@@ -4,7 +4,6 @@ import type { StreamSummaryPerKm } from '@/types/inertia';
 
 import {
     FULL_SPREAD_SEC,
-    barRowFill,
     computeBarWidth,
     paceScale,
     paceSecOf,
@@ -60,18 +59,6 @@ describe('paceScale', () => {
         expect(
             paceScale([{ pace: '6:00' }, { pace: '5:45' }, { pace: '6:10' }]),
         ).toEqual({ fastest: 345, slowest: 370 });
-    });
-});
-
-describe('barRowFill', () => {
-    it('tints the fastest row regardless of its position', () => {
-        expect(barRowFill(true, 0)).toBe('bg-horizon/[0.08]');
-        expect(barRowFill(true, 1)).toBe('bg-horizon/[0.08]');
-    });
-
-    it('zebra-stripes the other rows by position', () => {
-        expect(barRowFill(false, 0)).toBe('bg-foreground/[0.03]');
-        expect(barRowFill(false, 1)).toBe('bg-muted/60');
     });
 });
 

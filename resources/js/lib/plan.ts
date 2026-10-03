@@ -361,7 +361,7 @@ export function volumeAdjustedFrom(day: PlanDay): number | null {
         : null;
 }
 
-export function sessionHasWork(day: PlanDay): boolean {
+function sessionHasWork(day: PlanDay): boolean {
     return day.segments.some((s) => s.zone > 'Z2');
 }
 

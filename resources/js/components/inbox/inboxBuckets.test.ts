@@ -1,11 +1,14 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { bucketOf, groupByBucket } from './inboxBuckets';
+import { groupByBucket } from './inboxBuckets';
 
 const today = '2026-08-19';
 const earlierToday = '2026-08-19T07:30:00+07:00';
 const monday = '2026-08-17T08:00:00+07:00';
 const beforeMonday = '2026-08-16T08:00:00+07:00';
+
+const bucketOf = (createdAt: string | null, day: string) =>
+    groupByBucket([{ created_at: createdAt }], day)[0].bucket;
 
 describe('bucketOf', () => {
     afterEach(() => {

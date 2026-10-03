@@ -27,48 +27,6 @@ export const RARITY_ORDER: Rarity[] = [
     'legendary',
 ];
 
-// Slug → display name (emoji emblem + casual name). Mirrored word-for-word
-// from PHP Badge::labels() — keep both runtimes in sync.
-export const BADGE_LABELS: Record<string, string> = {
-    heat_tamer: '🔥 Heat Tamer',
-    rain_warrior: '🌧️ Rain Warrior',
-    early_bird: '🌅 Early Bird',
-    long_slow_distance: '🐢 Long Slow Distance',
-    negative_split: '👻 Negative Split',
-    held_back: '🧘 Held Back',
-    night_owl: '🌙 Night Owl',
-    climber: '⛰️ Climber',
-    first_timer: '🏅 First Timer',
-    speedster: '⚡ Speedster',
-    long_hauler: '🗺️ Long Hauler',
-    z2_master: '🫀 Z2 Master',
-    cold_runner: '❄️ Cold Runner',
-    all_out: '😤 All Out',
-    easy_miles: '☺️ Easy Miles',
-    headwind: '🌬️ Headwind',
-};
-
-// One-line "ability" meaning per badge, accurate to RunCardFactory::badges()
-// thresholds. Casual register, no em-dashes. Shown on the card ability rows.
-export const BADGE_ABILITY: Record<string, string> = {
-    heat_tamer: 'Braved a run in 31°C+ heat.',
-    rain_warrior: 'Kept running through the rain.',
-    early_bird: 'Out the door before 6am.',
-    long_slow_distance: 'Long and easy, 12K+ at a mostly relaxed pace.',
-    negative_split: 'Second half faster than the first.',
-    held_back: '10K+ and stayed patient instead of chasing pace.',
-    night_owl: 'Ran at night, before dawn or after 9pm.',
-    climber: '200m+ of elevation gain, basically a mountain.',
-    first_timer: 'Your first logged run.',
-    speedster: 'Pace under 5:00/km, fast.',
-    long_hauler: 'Half marathon distance or more, 21K+.',
-    z2_master: 'More than 80% of the time in Z2.',
-    cold_runner: 'Before 6am, still dark, still cold.',
-    all_out: 'Average HR above 85% max, full effort.',
-    easy_miles: 'Average HR below 70% max, genuinely easy.',
-    headwind: 'Pushed through strong wind, 20 km/h or more.',
-};
-
 // Escalating "set symbol" glyph per rarity (circle to star), TCG-style. Colored
 // via RARITY_TEXT. Mirrored as Rarity::symbol() for the server-rendered card.
 export const RARITY_SYMBOL: Record<Rarity, string> = {
@@ -161,31 +119,6 @@ export const RARITY_INK: Record<Rarity, string> = {
     epic: 'text-rarity-epic-ink',
     legendary: 'text-rarity-legendary-ink',
 };
-
-// Slug → Title Case ("early_bird" → "Early Bird"). Fallback for unknown slugs.
-export function prettyBadge(slug: string): string {
-    return slug
-        .split('_')
-        .map((p) => p.charAt(0).toUpperCase() + p.slice(1))
-        .join(' ');
-}
-
-// Emoji emblem for a badge slug ("heat_tamer" → "🔥"). Empty when unknown.
-export function badgeEmblem(slug: string): string {
-    const label = BADGE_LABELS[slug];
-    if (!label) return '';
-    const sp = label.indexOf(' ');
-    return sp === -1 ? '' : label.slice(0, sp);
-}
-
-// Display name without the leading emoji ("heat_tamer" → "Heat Tamer").
-// Falls back to prettyBadge for slugs not in BADGE_LABELS.
-export function badgeName(slug: string): string {
-    const label = BADGE_LABELS[slug];
-    if (!label) return prettyBadge(slug);
-    const sp = label.indexOf(' ');
-    return sp === -1 ? label : label.slice(sp + 1);
-}
 
 // Parse a "M:SS" pace string to seconds. Null on malformed input.
 function parsePaceSeconds(mmss: string): number | null {

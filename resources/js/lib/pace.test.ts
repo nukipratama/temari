@@ -12,12 +12,10 @@ import {
     formatKm,
     formatMonthDayId,
     formatNaiveIdDate,
-    formatNaiveRelativeId,
     formatNaiveTimeId,
     formatPace,
     formatRelativeId,
     formatShortDateTimeId,
-    formatShortWeekdayDateId,
     formatWeekdayDayId,
     isoDateLocal,
     mondayOf,
@@ -268,29 +266,6 @@ describe('formatAbsoluteId', () => {
     });
 });
 
-describe('formatNaiveRelativeId', () => {
-    it('measures the delta from the as-recorded wall clock, ignoring any offset', () => {
-        // Wall clock 09:00 vs a local-now of 12:00 → 3 hr ago. new Date() would
-        // shift the -08:00 input to 17:00Z and clamp it to "just now" instead.
-        const localNow = new Date(2026, 4, 20, 12, 0, 0);
-        expect(
-            formatNaiveRelativeId('2026-05-20T09:00:00-08:00', localNow),
-        ).toBe('3 hr ago');
-    });
-
-    it('returns dash for null and non-parseable input', () => {
-        expect(formatNaiveRelativeId(null)).toBe('—');
-        expect(formatNaiveRelativeId('totally-not-a-date')).toBe('—');
-    });
-
-    it('falls back to the naive short date for old timestamps', () => {
-        const localNow = new Date(2026, 4, 20, 12, 0, 0);
-        expect(
-            formatNaiveRelativeId('2026-01-02T06:30:00.000000Z', localNow),
-        ).toContain('2');
-    });
-});
-
 describe('parsePaceSec', () => {
     it('parses "M:SS" into seconds', () => {
         expect(parsePaceSec('5:05')).toBe(305);
@@ -313,10 +288,6 @@ describe('parsePaceSec', () => {
 describe('date/time format variants', () => {
     // 11 May 2026 is a Monday at 08:30 local.
     const d = new Date(2026, 4, 11, 8, 30);
-
-    it('formatShortWeekdayDateId: short weekday + day + short month', () => {
-        expect(formatShortWeekdayDateId(d)).toBe('mon, may 11');
-    });
 
     it('formatMonthDayId: day + short month', () => {
         expect(formatMonthDayId(d)).toBe('may 11');

@@ -47,11 +47,3 @@ export function computeBarWidth(
     const t = (slowest - sec) / spread; // 0 (slowest) .. 1 (fastest)
     return Math.round(90 - (1 - t) * amplitude);
 }
-
-// Every bar row (splits and laps alike) shares the same rounded box; only this
-// fill differs — horizon tint for the fastest row, a faint zebra stripe otherwise.
-export function barRowFill(isFast: boolean, idx: number): string {
-    if (isFast) return 'bg-horizon/[0.08]';
-    if (idx % 2 === 1) return 'bg-muted/60';
-    return 'bg-foreground/[0.03]';
-}

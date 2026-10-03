@@ -108,7 +108,7 @@ so the page never reads untyped JSON, and the shape is a declared TypeScript int
 (`InboxItem` in [types/inertia.ts](../../resources/js/types/inertia.ts)) rather than
 `Record<string, unknown>`. `created_at` ships as `toIso8601String()` — a true instant with its
 `+07:00` offset, so the frontend reads it with `formatRelativeId`
-([pace.ts](../../resources/js/lib/pace.ts#L104)) and never with the naive wall-clock parser the
+([pace.ts](../../resources/js/lib/pace.ts#L106)) and never with the naive wall-clock parser the
 Strava dates need.
 
 The list is a **growing window**, not a pager. The first request ships 20 rows

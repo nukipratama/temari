@@ -59,7 +59,7 @@ type ZoneBounds = Record<ZoneKey, number>;
  * Derive Z1-Z5 lower bounds from max/resting HR. Each is
  * `round(resting + pct * (max - resting))`.
  */
-export function deriveBounds(maxHr: number, restingHr: number): ZoneBounds {
+function deriveBounds(maxHr: number, restingHr: number): ZoneBounds {
     const reserve = maxHr - restingHr;
     const bounds = {} as ZoneBounds;
     ZONE_KEYS.forEach((key, index) => {
@@ -73,7 +73,7 @@ export function deriveBounds(maxHr: number, restingHr: number): ZoneBounds {
  * Each zone's upper bound is the next zone's lower bound by definition — the
  * server enforces exactly that — and Z5 gets the open-ended sentinel.
  */
-export function toZonePairs(bounds: ZoneBounds): Array<Record<string, number>> {
+function toZonePairs(bounds: ZoneBounds): Array<Record<string, number>> {
     return ZONE_KEYS.map((key, index) => ({
         lo: bounds[key],
         hi:
