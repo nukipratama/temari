@@ -18,11 +18,11 @@ there is no flat colour to compare against, and scoring it against an ancestor's
 failures that are not on screen. That was the difference between four reported failures and the
 three that were real.
 
-**One known false positive remains**, on the light ground only: the "Activate map" overlay on
-`/activities/{id}`. Nothing in its ancestor chain paints an opaque background, so the resolver falls
-back to white and scores `text-cream` against white (1.13). In the browser it sits on a dark
-`bg-ink/70` pill over the map placeholder and is perfectly legible. Treat a **dark-ground total of 0
-and a light-ground total of 1** as the clean baseline; anything above that is new.
+Colours resolve through the shared canvas helper in `scans.mjs`, and every translucent layer between
+the text and the first opaque ancestor is composited. Its regex-only parser once read the "Activate
+map" pill's `bg-ink/70`, which Chromium reports as `oklab(... / 0.7)`, as transparent and scored
+cream on the slab behind it at 1.13 on the light ground; the pill measures 6.75 there. The clean
+baseline is a **total of 0 on both grounds**; anything above that is new.
 
 ### `mounts.mjs` and `light-islands.mjs` — the two questions a ratio can't answer
 
@@ -87,6 +87,6 @@ only caught this one via its border.
 Its known-clean baseline is **one island on `/race`**: the selected date cell's `bg-horizon`, fixed
 identity by design. Light ground is clean.
 
-`scans.mjs` holds the colour maths all three scanners share, so a fix lands everywhere at once —
-`light-islands.mjs` was still parsing colours with a regex and silently dropping every `oklab()`
-background until it was pulled onto the shared canvas resolver.
+`scans.mjs` holds the colour maths every scanner shares, so a fix lands everywhere at once —
+`light-islands.mjs` and then `contrast.mjs` were still parsing colours with a regex and silently
+dropping every `oklab()` background until each was pulled onto the shared canvas resolver.
