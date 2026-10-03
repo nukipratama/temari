@@ -555,7 +555,7 @@ it('records every panel/text pair painted in one class string', function (): voi
 
 it('scores every chip tone tint on every surface a chip can land on', function (): void {
     $variants = File::get(resource_path('js/lib/variants.ts'));
-    preg_match('/export const chipVariants = cva\((.*?)\n\);/s', $variants, $chip);
+    preg_match('/export const chipVariantMap = \{(.*?)\n\};/s', $variants, $chip);
     preg_match('/tone:\s*\{(.*?)\n\s*\},/s', $chip[1] ?? '', $tones);
     preg_match_all("/^\s*(\w+):\s*'([^']*)'/m", $tones[1] ?? '', $entries, PREG_SET_ORDER);
 
