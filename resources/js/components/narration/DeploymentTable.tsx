@@ -2,8 +2,8 @@ import { Server } from 'lucide-react';
 
 import type { DeploymentRow } from '@/pages/Narration/types';
 
+import DataTable, { Td } from '@/components/narration/DataTable';
 import EmptyState from '@/components/narration/EmptyState';
-import DataTable, { Td } from '@/components/ui/DataTable';
 import { fmt, formatCost } from '@/pages/Narration/helpers';
 
 const COLUMNS = [

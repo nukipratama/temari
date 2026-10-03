@@ -126,7 +126,7 @@ function Filter({
     return (
         <label
             htmlFor={id}
-            className="flex flex-col gap-1 font-mono text-xs font-bold uppercase tracking-wider text-text-2"
+            className="flex flex-col gap-1 text-label-small text-text-2"
         >
             {label}
             <select

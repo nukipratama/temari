@@ -1,7 +1,7 @@
 import { Head } from '@inertiajs/react';
 import { Flag } from 'lucide-react';
 
-import DataTable, { Td } from '@/components/ui/DataTable';
+import DataTable, { Td } from '@/components/narration/DataTable';
 import EmptyPanel from '@/components/ui/EmptyPanel';
 import { Icon } from '@/components/ui/Icon';
 import PageContainer from '@/components/ui/PageContainer';

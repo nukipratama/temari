@@ -9,7 +9,7 @@ import {
 
 import type { IconComponent } from '@/components/ui/Icon';
 
-import SectionHeading from '@/components/SectionHeading';
+import SectionHeading from '@/components/narration/SectionHeading';
 import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/cn';
 

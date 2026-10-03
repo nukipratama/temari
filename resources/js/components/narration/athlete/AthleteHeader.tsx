@@ -23,9 +23,7 @@ export default function AthleteHeader({
     return (
         <div className="mt-6 grid gap-4 md:grid-cols-3">
             <Card className="bg-popover">
-                <p className="text-label-micro font-semibold uppercase text-text-3">
-                    today
-                </p>
+                <p className="text-label-micro text-text-3">today</p>
                 <p className="mt-1 text-display-xs tabular-nums text-foreground">
                     {formatCost(today, currency)}
                 </p>
@@ -51,16 +49,12 @@ export default function AthleteHeader({
             </Card>
 
             <Card className="bg-popover">
-                <p className="text-label-micro font-semibold uppercase text-text-3">
-                    last 30 days
-                </p>
+                <p className="text-label-micro text-text-3">last 30 days</p>
                 <Sparkline points={header.sparkline} currency={currency} />
             </Card>
 
             <Card className="bg-popover">
-                <p className="text-label-micro font-semibold uppercase text-text-3">
-                    month to date
-                </p>
+                <p className="text-label-micro text-text-3">month to date</p>
                 <p className="mt-1 text-display-xs tabular-nums text-foreground">
                     {formatCost(forecast.month_to_date, currency)}
                 </p>

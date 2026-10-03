@@ -52,7 +52,6 @@ const UPPERCASED_TAGS = new Set([
     'Head',
     'LensLabel',
     'NumberField',
-    'SectionLabel',
     'TemariTake',
     'TimeInZoneBar',
 ]);

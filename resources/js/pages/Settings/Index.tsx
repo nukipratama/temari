@@ -19,11 +19,11 @@ import TrainingPreferencesCard, {
     type TrainingPreferencesPayload,
 } from '@/components/settings/TrainingPreferencesCard';
 import TemariNudgeModal from '@/components/temari/TemariNudgeModal';
+import Eyebrow from '@/components/ui/Eyebrow';
 import { Icon, TelegramIcon } from '@/components/ui/Icon';
 import PageContainer from '@/components/ui/PageContainer';
 import PageHero from '@/components/ui/PageHero';
 import PillButton from '@/components/ui/PillButton';
-import SectionLabel from '@/components/ui/SectionLabel';
 import SettingsDisconnectLink from '@/components/ui/SettingsDisconnectLink';
 import SettingsRow from '@/components/ui/SettingsRow';
 import Toggle from '@/components/ui/Switch';
@@ -131,7 +131,9 @@ export default function Settings({
 
                 <div className={laneStack}>
                     <section>
-                        <SectionLabel>Appearance</SectionLabel>
+                        <Eyebrow token="small" tone="ink-2" rule>
+                            Appearance
+                        </Eyebrow>
                         <div className="mt-3">
                             <AppearanceCard />
                         </div>
@@ -142,7 +144,9 @@ export default function Settings({
                         and splitting those across "Notifications", "Push" and
                         "Telegram" made them look unrelated. */}
                     <section>
-                        <SectionLabel>Notifications</SectionLabel>
+                        <Eyebrow token="small" tone="ink-2" rule>
+                            Notifications
+                        </Eyebrow>
                         <div className="mt-3">
                             <NotificationPrefsPanel
                                 prefs={notificationPrefs}
@@ -153,7 +157,9 @@ export default function Settings({
                     </section>
 
                     <section>
-                        <SectionLabel>Running</SectionLabel>
+                        <Eyebrow token="small" tone="ink-2" rule>
+                            Running
+                        </Eyebrow>
                         {/* Preferences before the zones disclosure, as the
                             prototype orders them: the open card first, the
                             collapsed one under it. */}
@@ -167,7 +173,9 @@ export default function Settings({
 
                     {dataUse ? (
                         <section>
-                            <SectionLabel>{dataUse.headline}</SectionLabel>
+                            <Eyebrow token="small" tone="ink-2" rule>
+                                {dataUse.headline}
+                            </Eyebrow>
                             <ul className="mt-3 flex list-disc flex-col gap-1.5 pl-4.5">
                                 {dataUse.points.map((point) => (
                                     <li
@@ -182,7 +190,9 @@ export default function Settings({
                     ) : null}
 
                     <section>
-                        <SectionLabel>The fine print</SectionLabel>
+                        <Eyebrow token="small" tone="ink-2" rule>
+                            The fine print
+                        </Eyebrow>
                         <div className="mt-3">
                             {LEGAL_ROWS.map((row, index) => (
                                 <Link
@@ -208,7 +218,9 @@ export default function Settings({
                     </section>
 
                     <section>
-                        <SectionLabel>Account</SectionLabel>
+                        <Eyebrow token="small" tone="ink-2" rule>
+                            Account
+                        </Eyebrow>
                         <AccountActions />
                     </section>
                 </div>
@@ -409,7 +421,7 @@ function TestSendButton({
     );
 }
 
-/** Sub-heading inside a settings card, one tier below SectionLabel. */
+/** Sub-heading inside a settings card, one tier below the section Eyebrow. */
 function GroupLabel({ children }: Readonly<{ children: ReactNode }>) {
     return (
         <div className="mb-2 px-2 text-label-micro font-semibold text-text-3">

@@ -29,7 +29,7 @@ code_refs:
   - resources/js/components/narration/Sparkline.tsx
   - resources/js/components/narration/DeploymentTable.tsx
   - resources/js/components/narration/KindTable.tsx
-  - resources/js/components/ui/DataTable.tsx
+  - resources/js/components/narration/DataTable.tsx
   - docker/Caddyfile
   - routes/web.php
 ---
@@ -66,7 +66,7 @@ today's number, then who and what drove it, then the rule-based ledger.
 
 ### The breakdown tab
 
-- **by kind** ([KindTable](../../resources/js/components/narration/KindTable.tsx), which narrator), **by deployment** ([DeploymentTable](../../resources/js/components/narration/DeploymentTable.tsx), which Azure model served the call) and **by origin** ([OriginTable](../../resources/js/components/narration/OriginTable.tsx), what started it). All share the generic [DataTable](../../resources/js/components/ui/DataTable.tsx) shell, which takes its empty state from the caller.
+- **by kind** ([KindTable](../../resources/js/components/narration/KindTable.tsx), which narrator), **by deployment** ([DeploymentTable](../../resources/js/components/narration/DeploymentTable.tsx), which Azure model served the call) and **by origin** ([OriginTable](../../resources/js/components/narration/OriginTable.tsx), what started it). All share the operator-only [DataTable](../../resources/js/components/narration/DataTable.tsx) shell, which takes its empty state from the caller and heads itself with the operator [SectionHeading](../../resources/js/components/narration/SectionHeading.tsx), not the product's mono `Eyebrow`.
 - Each **by kind** row carries an agent summary line under its name — `3.5 steps · 638 cached (71%) · 18% reasoning`. Every narrator is a tool-calling agent, so one row can span several model turns: without the step count an expensive block is indistinguishable from a chatty one. The cached figure is the raw token count, not just the percentage, so it reads as a fact rather than a derived composite. The line is **absent, not zeroed**, for kinds whose rows predate those columns, since zero would read as "never cached, never reasoned" rather than "never measured".
 
 The kind, origin and from/to date controls ([UsageFilters](../../resources/js/components/narration/UsageFilters.tsx)) re-query the same endpoint via `router`, and stay visible on both tabs.

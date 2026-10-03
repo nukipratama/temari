@@ -57,7 +57,7 @@ export default function PrBibStamp({
     return (
         <div
             className={cn(
-                'pr-bib-stamp inline-flex w-fit items-center gap-1.5 rounded-sm bg-horizon px-2.5 py-1 font-mono text-label-micro font-bold uppercase tracking-wide text-sky',
+                'pr-bib-stamp inline-flex w-fit items-center gap-1.5 rounded-sm bg-horizon px-2.5 py-1 text-label-micro tracking-wide text-sky',
                 bib.animate && 'pr-bib-stamp-animate',
                 className,
             )}

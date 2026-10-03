@@ -32,7 +32,7 @@ export default function CostByKindTab({
         >
             <table className="w-full min-w-[360px] text-left text-sm">
                 <thead>
-                    <tr className="font-mono text-xs font-semibold uppercase tracking-wider text-text-3">
+                    <tr className="text-label-small text-text-3">
                         <th scope="col" className="py-2">
                             kind
                         </th>
@@ -52,7 +52,7 @@ export default function CostByKindTab({
                         <tr key={row.kind} className="border-t border-border">
                             <th
                                 scope="row"
-                                className="py-2 font-mono text-xs font-semibold uppercase text-foreground"
+                                className="py-2 text-label-small text-foreground"
                             >
                                 {row.kind}
                             </th>

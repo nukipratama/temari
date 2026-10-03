@@ -73,7 +73,7 @@ export default function LegalDocument({
                 <div className="mx-auto max-w-[46rem] py-10">
                     <Link
                         href="/login"
-                        className="font-mono text-xs font-semibold uppercase tracking-wider text-text-3 hover:text-foreground"
+                        className="text-label-small text-text-3 hover:text-foreground"
                     >
                         Temari
                     </Link>
@@ -81,7 +81,7 @@ export default function LegalDocument({
                     <h1 className="mt-4 font-serif text-display-lg text-foreground">
                         {title}
                     </h1>
-                    <p className="mt-2 font-mono text-xs font-semibold uppercase tracking-wider text-text-3">
+                    <p className="mt-2 text-label-small text-text-3">
                         Last updated {updated}
                     </p>
                     <p className="mt-4 max-w-[44ch] font-sans text-sm leading-relaxed text-text-2">

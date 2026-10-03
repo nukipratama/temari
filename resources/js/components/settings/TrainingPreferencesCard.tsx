@@ -16,9 +16,9 @@ import type { ExperienceLevel, GoalType } from '@/types/generated';
 import { DayCell, DayRow } from '@/components/onboarding/DayPicker';
 import IconChoiceCard from '@/components/onboarding/IconChoiceCard';
 import SessionsDial from '@/components/onboarding/SessionsDial';
+import Eyebrow from '@/components/ui/Eyebrow';
 import { Icon, IconComponent } from '@/components/ui/Icon';
 import PillButton from '@/components/ui/PillButton';
-import SectionLabel from '@/components/ui/SectionLabel';
 import { useExitTransition } from '@/hooks/useExitTransition';
 
 const SAVED_FLASH_MS = 2000;
@@ -195,8 +195,10 @@ export default function TrainingPreferencesCard({
 
     return (
         <div>
-            <SectionLabel size="micro">Training preferences</SectionLabel>
-            <p className="mb-4 font-sans text-xs leading-relaxed text-text-2">
+            <Eyebrow token="micro" tone="ink-2" rule>
+                Training preferences
+            </Eyebrow>
+            <p className="mt-3 mb-4 font-sans text-xs leading-relaxed text-text-2">
                 set at onboarding, change them any time.
             </p>
 

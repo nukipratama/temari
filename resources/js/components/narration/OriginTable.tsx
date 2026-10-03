@@ -2,8 +2,8 @@ import { CirclePlay } from 'lucide-react';
 
 import type { OriginRow } from '@/pages/Narration/types';
 
+import DataTable, { Td } from '@/components/narration/DataTable';
 import EmptyState from '@/components/narration/EmptyState';
-import DataTable, { Td } from '@/components/ui/DataTable';
 import { fmt, formatCost } from '@/pages/Narration/helpers';
 
 const COLUMNS = ['origin', 'calls', 'prompt', 'completion', 'total', 'cost'];

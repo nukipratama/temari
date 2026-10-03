@@ -2,7 +2,7 @@ import { Wand2 } from 'lucide-react';
 
 import type { AthleteRow, RuleBasedReasons } from '@/pages/Narration/types';
 
-import SectionHeading from '@/components/SectionHeading';
+import SectionHeading from '@/components/narration/SectionHeading';
 import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/cn';
 import {
