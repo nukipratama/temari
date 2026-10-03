@@ -55,7 +55,8 @@ class DashboardController extends Controller
                 $weekEnding = $today->copy()->endOfWeek(Carbon::SUNDAY)->toDateString();
 
                 return $trailingWeeks($user->id, $weekEnding, 1)
-                    ->first(fn (WeeklySnapshot $row): bool => $row->week_ending->toDateString() === $weekEnding);
+                    ->first(fn (WeeklySnapshot $row): bool => $row->week_ending->toDateString() === $weekEnding)
+                    ?->makeHidden(['created_at', 'updated_at']);
             },
             'hasRuns' => fn (): bool => ActivityDetail::query()->forUser($user->id)->exists(),
             'pastYouTrend' => fn (): array => $pastYouTrend->payload($user, $today),

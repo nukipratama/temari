@@ -15,6 +15,7 @@ use App\Services\Run\Metrics\TrainingLoad;
 use App\Services\Run\Plan\RacePresenter;
 use App\Services\Run\Story\BriefingContext;
 use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -27,6 +28,8 @@ use Inertia\Response;
  */
 class TrendsController extends Controller
 {
+    private const array UNREAD_LOAD_KEYS = ['weekly_trimp_reference'];
+
     public function __invoke(
         Request $request,
         TrainingLoad $trainingLoad,
@@ -38,12 +41,22 @@ class TrendsController extends Controller
 
         return Inertia::render('Trends', [
             'weekComparison' => Inertia::defer(fn (): array => $this->weekComparison($user, $today)),
-            'load' => Inertia::defer(fn (): ?array => $trainingLoad->summary($user, $today, 7)),
+            'load' => Inertia::defer(fn (): ?array => $this->load($trainingLoad, $user, $today)),
             'ctlTrend' => Inertia::defer(fn (): array => $trainingLoad->ctlTrend($user, 365)),
             'chartAnnotations' => Inertia::defer(fn (): array => $this->chartAnnotations($user, $today)),
             'narration' => Inertia::defer(fn (): array => $this->narration($user)),
             'raceOutlook' => Inertia::defer(fn (): ?array => $this->raceOutlook($user, $racePresenter)),
         ]);
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function load(TrainingLoad $trainingLoad, User $user, Carbon $today): ?array
+    {
+        $summary = $trainingLoad->summary($user, $today, 7);
+
+        return $summary === null ? null : Arr::except($summary, self::UNREAD_LOAD_KEYS);
     }
 
     /**

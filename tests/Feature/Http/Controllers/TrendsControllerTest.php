@@ -129,7 +129,8 @@ it('ships the load section as one 7-day summary, not one entry per range', funct
         ->get('/trends', inertiaPartialHeaders($this->actingAs($user), '/trends', 'Trends', 'load'))
         ->assertSuccessful()
         ->assertJsonPath('props.load.ctl_42d', fn (mixed $ctl): bool => is_numeric($ctl))
-        ->assertJsonPath('props.load.weekly_trimp', fn (mixed $trimp): bool => is_numeric($trimp));
+        ->assertJsonPath('props.load.weekly_trimp', fn (mixed $trimp): bool => is_numeric($trimp))
+        ->assertJsonMissingPath('props.load.weekly_trimp_reference');
 });
 
 it('never surfaces another user\'s training load in the load summary', function (): void {

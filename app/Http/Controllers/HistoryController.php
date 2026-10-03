@@ -18,6 +18,7 @@ use App\Services\Run\LifetimeStats;
 use App\Services\Run\Metrics\RunEffort;
 use App\Services\Run\PostRunNoteReader;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection as SupportCollection;
 use Inertia\Inertia;
@@ -36,6 +37,10 @@ class HistoryController extends Controller
 {
     /** Safety cap on weekly snapshots loaded into memory (10 years ≈ 520 weeks). */
     private const int MAX_WEEKS = 520;
+
+    private const array RUN_FIELDS = ['id', 'user_id', 'strava_external_id', 'analyzed_at', 'ingest_state', 'detail', 'runCard'];
+
+    private const array LIFETIME_FIELDS = ['total_runs', 'total_km', 'first_run_at'];
 
     public function __construct(
         private readonly BuildCalendarCellsAction $calendarBuilder,
@@ -76,7 +81,7 @@ class HistoryController extends Controller
         $loadedRuns = null;
         $loadRuns = function () use ($runsQuery, &$loadedRuns, $user): Collection {
             if ($loadedRuns === null) {
-                $loadedRuns = $runsQuery->get();
+                $loadedRuns = $runsQuery->get()->each->setVisible(self::RUN_FIELDS);
                 $this->attachEfforts($loadedRuns, $user->id);
             }
 
@@ -101,11 +106,10 @@ class HistoryController extends Controller
             'moods' => Inertia::defer(fn (): array => $loadNotes()['moods']),
             'rangeFilter' => $filters->range,
             'weekFilter' => $filters->week?->toDateString(),
-            'rangeStart' => $filters->rangeStart?->toDateString(),
             'rangeAutoWidened' => $filters->rangeAutoWidened,
             // The header's activity count is lifetime, not page-scoped: paging
             // by week would otherwise shrink it on first paint.
-            'lifetime' => fn (): array => $this->lifetimeStats->forUser($user),
+            'lifetime' => fn (): array => Arr::only($this->lifetimeStats->forUser($user), self::LIFETIME_FIELDS),
             'weeksShown' => $weeks,
             'hasOlderWeeks' => $hasOlderWeeks,
             'weeklySnapshots' => Inertia::defer(fn (): SupportCollection => $this->weeklySnapshotPayload(
@@ -208,7 +212,7 @@ class HistoryController extends Controller
         Carbon $currentWeekEnding,
     ): array {
         return [
-            ...$row->toArray(),
+            ...$row->makeHidden(['created_at', 'updated_at'])->toArray(),
             'is_current_week' => $row->week_ending->equalTo($currentWeekEnding),
             'is_chain_head' => $row->id === $chainHeadId,
             'recap_analysis' => $recapAnalysis,
@@ -249,7 +253,7 @@ class HistoryController extends Controller
             'nextMonth' => $monthStart->copy()->addMonthNoOverflow()->format('Y-m'),
             'todayMonth' => Carbon::today()->format('Y-m'),
             'cells' => Inertia::defer(fn (): array => ($this->calendarBuilder)($user, $gridStart, $gridEnd, $monthStart, $monthEnd)),
-            'lifetime' => fn (): array => $this->lifetimeStats->forUser($user),
+            'lifetime' => fn (): array => Arr::only($this->lifetimeStats->forUser($user), self::LIFETIME_FIELDS),
             // The grid's own weeks, so each week row can disclose Temari's
             // weekly recap without leaving the calendar (prototype WeekRow).
             'weeklySnapshots' => Inertia::defer(fn (): SupportCollection => $this->weeklySnapshotPayload(

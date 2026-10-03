@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Enums\RaceOutcome;
 use App\Models\RaceGoal;
 use App\Models\StreakRestToken;
 use App\Models\User;
@@ -21,26 +20,38 @@ beforeEach(function (): void {
 });
 afterEach(fn () => Carbon::setTestNow());
 
-it('returns null season payload when there is no season, without creating one', function (): void {
+it('returns null season payloads when there is no season', function (): void {
     $user = User::factory()->create();
 
-    $payload = $this->builder->seasonPayload($user, null, Carbon::today());
-
-    expect($payload)->toBeNull();
+    expect($this->builder->seasonPayload(null, Carbon::today()))->toBeNull()
+        ->and($this->builder->profileSeasonPayload($user, null, Carbon::today()))->toBeNull();
 });
 
-it('builds the same season payload PlanController used to build inline, given an ensured season', function (): void {
+it('builds the Plan season frame without goals or record, given an ensured season', function (): void {
     $user = User::factory()->create();
     $season = app(SeasonService::class)->ensureCurrent($user, Carbon::today());
 
-    $payload = $this->builder->seasonPayload($user, $season, Carbon::today());
+    $payload = $this->builder->seasonPayload($season, Carbon::today());
 
     expect($payload)
-        ->toHaveKeys(['starts_at', 'ends_at', 'week_index', 'total_weeks', 'is_race_oriented', 'goals'])
+        ->toHaveKeys(['starts_at', 'ends_at', 'week_index', 'total_weeks', 'is_race_oriented', 'block_opens_on'])
+        ->not->toHaveKeys(['goals', 'record'])
         ->and($payload['week_index'])->toBe(1)
         ->and($payload['is_race_oriented'])->toBeFalse()
-        ->and($payload['goals'])->toHaveCount(5)
         ->and($payload['block_opens_on'])->toBeNull();
+});
+
+it('builds the Profile season with its resolved goals and none of the Plan-only fields', function (): void {
+    $user = User::factory()->create();
+    $season = app(SeasonService::class)->ensureCurrent($user, Carbon::today());
+
+    $payload = $this->builder->profileSeasonPayload($user, $season, Carbon::today());
+
+    expect($payload)->not->toBeNull()
+        ->and(array_keys($payload))->toBe(['starts_at', 'ends_at', 'week_index', 'total_weeks', 'goals'])
+        ->and($payload['week_index'])->toBe(1)
+        ->and($payload['goals'])->toHaveCount(5)
+        ->and($payload['goals'][0])->toHaveKeys(['id', 'title', 'current', 'target', 'unit', 'is_completed']);
 });
 
 it('counts season weeks as the plan\'s Monday weeks when the season opens mid-week', function (): void {
@@ -49,7 +60,7 @@ it('counts season weeks as the plan\'s Monday weeks when the season opens mid-we
     $season = app(SeasonService::class)->ensureCurrent($user, Carbon::today());
     expect($season->starts_at->toDateString())->toBe('2026-09-05');
 
-    $payload = $this->builder->seasonPayload($user, $season, Carbon::parse('2026-09-24'));
+    $payload = $this->builder->seasonPayload($season, Carbon::parse('2026-09-24'));
 
     expect($payload['week_index'])->toBe(4);
 });
@@ -59,19 +70,7 @@ it('carries the day a race season\'s block opens', function (): void {
     RaceGoal::factory()->for($user)->create(['race_date' => '2027-03-13', 'distance_m' => 42_195]);
     $season = app(SeasonService::class)->ensureCurrent($user, Carbon::today());
 
-    expect($this->builder->seasonPayload($user, $season, Carbon::today())['block_opens_on'])->toBe('2026-10-26');
-});
-
-it('carries the season record with process and performance kept apart', function (): void {
-    $user = User::factory()->create();
-    RaceGoal::factory()->for($user)->create(['race_date' => '2026-12-13', 'distance_m' => 21_097, 'outcome' => RaceOutcome::Pending]);
-    $season = app(SeasonService::class)->ensureCurrent($user, Carbon::today());
-
-    $record = $this->builder->seasonPayload($user, $season, Carbon::today())['record'];
-
-    expect($record['process'])->toHaveKeys(['pct', 'goals_met', 'goals_total'])
-        ->and($record['performance']['state'])->toBe('pending')
-        ->and($record['performance']['target_time_sec'])->toBe(3_000);
+    expect($this->builder->seasonPayload($season, Carbon::today())['block_opens_on'])->toBe('2026-10-26');
 });
 
 it('has no block to open for a race beyond the marathon', function (): void {
@@ -79,7 +78,7 @@ it('has no block to open for a race beyond the marathon', function (): void {
     RaceGoal::factory()->for($user)->create(['race_date' => '2027-03-13', 'distance_m' => 80_000]);
     $season = app(SeasonService::class)->ensureCurrent($user, Carbon::today());
 
-    expect($this->builder->seasonPayload($user, $season, Carbon::today())['block_opens_on'])->toBeNull();
+    expect($this->builder->seasonPayload($season, Carbon::today())['block_opens_on'])->toBeNull();
 });
 
 it('reports the weekly streak with its open week and no rest weeks held', function (): void {

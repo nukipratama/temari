@@ -104,11 +104,13 @@ it('creates a season and its 5 goals on a fresh user\'s first Plan view, before 
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
             ->has('season')
-            ->has('season.goals', 5)
             ->where('season.week_index', 1)
-            ->where('season.is_race_oriented', false));
+            ->where('season.is_race_oriented', false)
+            ->missing('season.goals')
+            ->missing('season.record'));
 
-    expect(Season::query()->where('user_id', $user->id)->count())->toBe(1);
+    $season = Season::query()->where('user_id', $user->id)->sole();
+    expect($season->goals()->count())->toBe(5);
 });
 
 it('regenerating populates the plan and redirects with a success flash', function (): void {

@@ -544,7 +544,9 @@ it('ships the current week snapshot once the open week has one', function (): vo
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
             ->where('snapshot.week_ending', '2026-05-17')
-            ->where('snapshot.distance_km', 12));
+            ->where('snapshot.distance_km', 12)
+            ->missing('snapshot.created_at')
+            ->missing('snapshot.updated_at'));
 });
 
 // The budget above is one shallow athlete. This holds the count flat as the

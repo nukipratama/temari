@@ -97,6 +97,24 @@ it('stamps each run\'s effort onto its detail and never ships stream_summary to 
         ->assertJsonMissingPath('props.runs.0.detail.stream_summary');
 });
 
+it('sends each run only the activity fields the list reads', function (): void {
+    $user = User::factory()->create();
+    $activity = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($activity)->create(['start_date_local' => Carbon::now()]);
+
+    $this->actingAs($user)
+        ->get('/history', inertiaPartialHeaders($this->actingAs($user), '/history', 'History', 'runs'))
+        ->assertSuccessful()
+        ->assertJsonPath('props.runs.0.id', $activity->id)
+        ->assertJsonPath('props.runs.0.user_id', $user->id)
+        ->assertJsonPath('props.runs.0.detail.activity_id', $activity->id)
+        ->assertJsonMissingPath('props.runs.0.created_at')
+        ->assertJsonMissingPath('props.runs.0.updated_at')
+        ->assertJsonMissingPath('props.runs.0.fetched_at')
+        ->assertJsonMissingPath('props.runs.0.milestones_detected_at')
+        ->assertJsonMissingPath('props.runs.0.detail_fail_count');
+});
+
 it('ships the persisted post-run mood per run so the list mascot matches the backend', function (): void {
     $user = User::factory()->create();
     $activity = Activity::factory()->for($user)->analyzed()->create();
@@ -247,11 +265,10 @@ it('escalates to the all range so a run older than every preset still shows', fu
     ActivityDetail::factory()->for($ancient)->create(['name' => 'Ancient', 'start_date_local' => Carbon::now()->subDays(400)]);
 
     $this->actingAs($user)
-        ->get('/history', inertiaPartialHeaders($this->actingAs($user), '/history', 'History', 'rangeFilter,rangeAutoWidened,rangeStart,hasOlderWeeks,runs'))
+        ->get('/history', inertiaPartialHeaders($this->actingAs($user), '/history', 'History', 'rangeFilter,rangeAutoWidened,hasOlderWeeks,runs'))
         ->assertSuccessful()
         ->assertJsonPath('props.rangeFilter', 'all')
         ->assertJsonPath('props.rangeAutoWidened', true)
-        ->assertJsonPath('props.rangeStart', null)
         ->assertJsonPath('props.hasOlderWeeks', false)
         ->assertJsonCount(1, 'props.runs')
         ->assertJsonPath('props.runs.0.detail.name', 'Ancient');
@@ -356,7 +373,9 @@ it('returns only weekly snapshots inside the range', function (): void {
     $this->actingAs($user)
         ->get('/history', inertiaPartialHeaders($this->actingAs($user), '/history', 'History', 'weeklySnapshots'))
         ->assertJsonCount(1, 'props.weeklySnapshots')
-        ->assertJsonPath('props.weeklySnapshots.0.distance_km', 30);
+        ->assertJsonPath('props.weeklySnapshots.0.distance_km', 30)
+        ->assertJsonMissingPath('props.weeklySnapshots.0.created_at')
+        ->assertJsonMissingPath('props.weeklySnapshots.0.updated_at');
 });
 
 it('flags the in-progress week with is_current_week on each snapshot payload', function (): void {
@@ -536,7 +555,9 @@ it('exposes a lifetime stats payload', function (): void {
             ->where('activeView', 'calendar')
             ->has('lifetime.total_runs')
             ->has('lifetime.total_km')
-            ->has('lifetime.first_run_at'));
+            ->has('lifetime.first_run_at')
+            ->missing('lifetime.longest_km')
+            ->missing('lifetime.has_activity'));
 });
 
 it('passes the MonthlyRecap analysis for the viewed month as the monthlyRecap prop', function (): void {
