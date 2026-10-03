@@ -587,17 +587,17 @@ body {
     animation: reveal-fade 0.3s both;
 }
 
-/* A popover anchored under its trigger. The horizontal centring lives in the
-   keyframes rather than in a utility class, since an animated transform
-   replaces one set in CSS. */
+/* A popover anchored under its trigger. These keyframes stay off the x axis:
+   Tailwind v4's `-translate-x-1/2` centres through the separate `translate`
+   property, which an animated `transform` stacks on rather than replaces. */
 @keyframes popover-reveal {
     from {
         opacity: 0;
-        transform: translate(-50%, -4px) scale(0.97);
+        transform: translateY(-4px) scale(0.97);
     }
     to {
         opacity: 1;
-        transform: translate(-50%, 0) scale(1);
+        transform: translateY(0) scale(1);
     }
 }
 
@@ -634,11 +634,11 @@ body {
 @keyframes popover-reveal-out {
     from {
         opacity: 1;
-        transform: translate(-50%, 0) scale(1);
+        transform: translateY(0) scale(1);
     }
     to {
         opacity: 0;
-        transform: translate(-50%, -4px) scale(0.97);
+        transform: translateY(-4px) scale(0.97);
     }
 }
 
