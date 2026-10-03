@@ -57,7 +57,8 @@ export default function DataTable<T>({
                 <div className="relative mt-4">
                     <Card
                         ref={scrollerRef}
-                        className="overflow-x-auto bg-popover py-0 scrollbar-thin-fine"
+                        padding="none"
+                        className="overflow-x-auto bg-popover scrollbar-thin-fine"
                     >
                         <table
                             className="w-full text-sm tabular-nums"

@@ -1,8 +1,8 @@
 import { X } from 'lucide-react';
 import { useState } from 'react';
 
+import { Card } from '@/components/ui/card';
 import { Icon } from '@/components/ui/Icon';
-import Card from '@/components/ui/LegacyCard';
 
 /** Inline confirmation for a `back()->with('info', …)` flash (e.g. a retry
  * confirmation). This page renders standalone, not under AppShell, so it
@@ -18,7 +18,6 @@ export default function FlashBanner({
 
     return (
         <Card
-            tone="card"
             padding="panel"
             className="mb-4 flex items-center justify-between gap-3 bg-popover text-sm text-foreground"
         >

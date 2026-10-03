@@ -47,7 +47,7 @@ export default function AthletesPanel({
             {rows.length === 0 ? (
                 <EmptyState />
             ) : (
-                <Card className="mt-4 bg-popover px-4 py-1">
+                <Card padding="panel" className="mt-4 bg-popover">
                     {live.map((row) => (
                         <AthleteRowView
                             key={row.user_id}

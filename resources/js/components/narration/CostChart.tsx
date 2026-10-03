@@ -45,7 +45,7 @@ export default function CostChart({
                 tone="accent"
             />
 
-            <Card className="mt-4 bg-popover px-4 py-4">
+            <Card className="mt-4 bg-popover">
                 <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
                     <label
                         htmlFor="athlete-filter"

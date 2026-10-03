@@ -15,8 +15,8 @@ import type {
 } from '@/pages/Narration/types';
 import type { SharedProps } from '@/types/inertia';
 
+import { Card } from '@/components/ui/card';
 import { Icon, type IconComponent } from '@/components/ui/Icon';
-import Card from '@/components/ui/LegacyCard';
 import PillButton from '@/components/ui/PillButton';
 import { formatCost, formatTimestamp } from '@/pages/Narration/helpers';
 
@@ -110,7 +110,7 @@ function Bucket({
     action: ReactNode;
 }>) {
     return (
-        <Card tone="card" padding="card" className="bg-popover">
+        <Card className="bg-popover">
             <div className="flex flex-wrap items-center justify-between gap-3">
                 <p className="flex items-center gap-2 text-sm font-semibold text-foreground">
                     <Icon icon={icon} aria-hidden />
@@ -162,7 +162,7 @@ function CeilingOverrideCard({
     const error = usePage<SharedProps>().props.errors?.ceiling;
 
     return (
-        <Card tone="card" padding="card" className="bg-popover">
+        <Card className="bg-popover">
             <p className="text-sm font-semibold text-foreground">
                 today-only ceiling override
             </p>
@@ -249,7 +249,7 @@ function CeilingOverrideCard({
 
 function AuditLog({ rows }: Readonly<{ rows: AuditRow[] }>) {
     return (
-        <Card tone="card" padding="card" className="bg-popover">
+        <Card className="bg-popover">
             <p className="text-sm font-semibold text-foreground">
                 recent operator actions
             </p>

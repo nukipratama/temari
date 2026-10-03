@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 
 import TemariMascot from '@/components/temari/TemariMascot';
-import Card from '@/components/ui/LegacyCard';
+import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/cn';
 
 interface EmptyPanelProps {
@@ -22,14 +22,14 @@ export default function EmptyPanel({
     title,
     body,
     action,
-    as = 'div',
+    as: Tag = 'div',
     className,
 }: Readonly<EmptyPanelProps>) {
     const horizontal = layout === 'horizontal';
 
     return (
         <Card
-            as={as}
+            render={<Tag />}
             tone="empty"
             padding="hero"
             className={cn(

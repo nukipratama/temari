@@ -6,8 +6,8 @@ import type {
     ReplayBudget,
 } from '@/pages/Narration/types';
 
+import { Card } from '@/components/ui/card';
 import Chip from '@/components/ui/Chip';
-import Card from '@/components/ui/LegacyCard';
 import { fmt, formatCost, formatTimestamp } from '@/pages/Narration/helpers';
 
 import ConfirmAction from './ConfirmAction';
@@ -44,7 +44,7 @@ export default function NarrationRow({
     }));
 
     return (
-        <Card as="li" tone="card" padding="card" className="bg-popover">
+        <Card render={<li />} className="bg-popover">
             <div className="flex flex-wrap items-center gap-2">
                 <span className="font-mono text-xs font-semibold uppercase tracking-wider text-foreground">
                     {row.kind}

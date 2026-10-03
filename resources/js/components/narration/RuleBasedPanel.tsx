@@ -68,7 +68,7 @@ export default function RuleBasedPanel({
                 tone="accent"
             />
 
-            <Card className="mt-4 bg-popover px-4 py-1">
+            <Card padding="panel" className="mt-4 bg-popover">
                 {entries.length === 0 && unknown === 0 ? (
                     <p className="py-6 text-center text-sm text-text-3">
                         Nothing served rule-based. Every done block in range

@@ -290,14 +290,14 @@ Section rhythm (unchanged): major section → next major `mt-10`; subsection →
 |---|---|---|
 | `rounded-xs` | 6px | Bars, progress fills, tiny inner tiles |
 | `rounded-sm` | 10px | Inputs, small tiles, swatches |
-| `rounded-md` | **14px** | **The card / panel corner** |
+| `rounded-md` | **14px** | Panels and tiles inside a section |
 | `rounded-lg` | 18px | Larger panels, modals, sheets |
 | `rounded-xl` | 24px | Takeover surfaces, bottom sheets |
 | `rounded-full` | 9999px | Pills, chips, avatars, dots |
 | `rounded-2xl` | 18px | shadcn/prototype primitives (F2+) — a separate keyword vocabulary, not a continuation of the ladder above |
 | `rounded-3xl` | 22px | shadcn/prototype primitives |
 | `rounded-4xl` | 26px | shadcn/prototype primitives — lands on the same corner as `rounded-panel`, independently |
-| `rounded-panel` | 26px | The hero-panel corner (`ProfileHero`, `RunHero`). A separate name on purpose: `--radius-lg`/`--shadow-e*` are reused across ~170 unrelated call sites, so new surfaces opt in by name rather than moving shape on everything that already uses them. |
+| `rounded-panel` | 26px | **The card corner** ([card.tsx](../resources/js/components/ui/card.tsx)) and the hero-panel corner (`ProfileHero`, `RunHero`). A separate name on purpose: `--radius-lg`/`--shadow-e*` are reused across ~170 unrelated call sites, so new surfaces opt in by name rather than moving shape on everything that already uses them. |
 
 These replace Tailwind's values for the **named steps** above. They do not cover the whole
 namespace: bare `rounded` is not a step and would compile to Tailwind's 0.25rem (4px, under the
@@ -323,8 +323,8 @@ Tailwind's default `shadow-*` scale is not used and is rejected by the source gu
 `surface-elev` is reserved for the floating step — never a resting card (that is `surface-card` /
 `surface-warm`). Pair each step with its matching surface rather than mixing tiers.
 
-The resting step ships inside `cardVariants` ([variants.ts](../resources/js/lib/variants.ts)), so
-`Card` and `LinkCard` carry it already — do not re-apply `shadow-e1` at a call site. Elevation
+The resting step ships inside `Card` ([card.tsx](../resources/js/components/ui/card.tsx)), so
+every card carries it already — do not re-apply `shadow-e1` at a call site. Elevation
 applies once per stack: a tile nested inside a card stays flat, because the card it sits in already
 carries the resting step.
 
@@ -415,30 +415,33 @@ art**; everywhere else the 11px floor holds.
 ## Variant maps (cva)
 
 Component style variants live in [resources/js/lib/variants.ts](../resources/js/lib/variants.ts)
-as [class-variance-authority](https://cva.style) definitions: `cardVariants`, `pillButtonVariants`,
+as [class-variance-authority](https://cva.style) definitions: `pillButtonVariants`,
 `chipVariants`, `toggleButtonVariants` (segmented / filter controls), `iconButtonVariants`
 (bare-icon buttons), `rarityVariants`. Consume them with the `cn()` merge helper:
 
 ```tsx
-import { cardVariants } from '@/lib/variants';
+import { pillButtonVariants } from '@/lib/variants';
 import { cn } from '@/lib/cn';
 
-className={cn(cardVariants({ tone, padding }), className)}
+className={cn(pillButtonVariants({ tone, size }), className)}
 ```
 
-**There is one card**, and MASTER.md limits where it goes: page sections are split by lane
-dividers, not wrapped in cards, and nothing nests inside one. `cardVariants` is a single surface — `bg-card` on a `border` edge at
-`rounded-md` with `shadow-e1` — in five tones, not a spread of competing treatments:
+**There is one card**, `Card` in [card.tsx](../resources/js/components/ui/card.tsx), and MASTER.md
+limits where it goes: page sections are split by lane dividers, not wrapped in cards, and nothing
+nests inside one. It is a single surface — `bg-card` on a `border` edge at `rounded-panel` with
+`shadow-e1` — with optional `CardHeader` / `CardContent` / `CardFooter` slots, in two tones:
 
 | Tone | What it is |
 |---|---|
-| `card` | The card. Every resting surface in the app. |
-| `sky` | The card inverted into the dark panel itself: `bg-sky` under `text-cream`, lifted to `shadow-e2`. |
-| `onSky` | The same card mounted *on* a dark sky panel: translucent cream over the panel, no elevation (there is nothing to cast onto). |
+| `default` | The card. Every resting surface in the app. |
 | `empty` | The card standing in for content that is not there yet. `T3` found the prototype gives empty states no distinct treatment at all, so the invented dashed edge and 40%-opacity fill went; it keeps only a heavier `border-strong` edge to stay distinguishable from a resting card. |
-| `narration` | Temari's voice: a heavier accent-mixed edge plus a `horizon` halo, so narration reads as spoken rather than tabulated. |
 
-Padding names its role (`panel` / `card` / `hero` / `none`), never a number. A tone or padding
+The `sky`, `onSky` and `narration` tones of the retired `cardVariants` had no product caller and
+went with it (#1416), as did `LegacyCard` and `LinkCard`: a card that is a link or a list item
+passes the element as `render` (`<Card render={<Link href="/race" />}>`), the Base UI
+`useRender` convention.
+
+Padding names its role (`panel` / `card` / `hero` / `none`, default `card`), never a number. A tone or padding
 that "just needs to be a bit different" at one call site is the drift this collapse removed —
 override with `className` if a one-off is genuinely required, so it stays visible in review.
 

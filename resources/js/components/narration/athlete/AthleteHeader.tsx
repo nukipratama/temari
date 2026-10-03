@@ -1,6 +1,6 @@
 import type { AthleteHeaderData } from '@/pages/Narration/types';
 
-import Card from '@/components/ui/LegacyCard';
+import { Card } from '@/components/ui/card';
 import ProgressBar from '@/components/ui/ProgressBar';
 import { formatCost } from '@/pages/Narration/helpers';
 
@@ -22,7 +22,7 @@ export default function AthleteHeader({
 
     return (
         <div className="mt-6 grid gap-4 md:grid-cols-3">
-            <Card tone="card" padding="card" className="bg-popover">
+            <Card className="bg-popover">
                 <p className="text-label-micro font-semibold uppercase text-text-3">
                     today
                 </p>
@@ -50,14 +50,14 @@ export default function AthleteHeader({
                 )}
             </Card>
 
-            <Card tone="card" padding="card" className="bg-popover">
+            <Card className="bg-popover">
                 <p className="text-label-micro font-semibold uppercase text-text-3">
                     last 30 days
                 </p>
                 <Sparkline points={header.sparkline} currency={currency} />
             </Card>
 
-            <Card tone="card" padding="card" className="bg-popover">
+            <Card className="bg-popover">
                 <p className="text-label-micro font-semibold uppercase text-text-3">
                     month to date
                 </p>
