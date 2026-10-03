@@ -172,7 +172,7 @@ export default function RunHero({
                     </div>
                 </div>
 
-                <div className="mt-3.5 grid grid-cols-3 gap-1.5 min-[360px]:gap-2">
+                <div className="mt-3.5 grid grid-cols-2 gap-2 min-[360px]:grid-cols-3">
                     {secondary.map((stat, index) => (
                         <StatTile
                             key={stat.label}
@@ -188,7 +188,6 @@ export default function RunHero({
                                     </span>
                                 )
                             }
-                            size="xs"
                         />
                     ))}
                 </div>

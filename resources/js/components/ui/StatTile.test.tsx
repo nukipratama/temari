@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import { HeartPulse } from 'lucide-react';
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 import StatTile, { Stat, StatDelta } from './StatTile';
@@ -85,13 +86,38 @@ describe('StatTile', () => {
             'pad-panel',
         );
         expect(screen.getByText('trimp')).toHaveClass('text-label-micro');
-        expect(screen.getByText('412')).toHaveClass('text-stat-sm');
+        expect(screen.getByText('412')).toHaveClass('md:text-stat-tile');
     });
 
-    it('sets the number at the dense size for a three-up row', () => {
-        render(<StatTile label="spm avg" value="172" size="xs" />);
+    it('sets every tile number at the one tile step, whatever row it sits in', () => {
+        const { container } = render(<StatTile label="spm avg" value="172" />);
 
-        expect(screen.getByText('172')).toHaveClass('text-sm', 'tabular-nums');
+        expect(container.firstElementChild).toHaveClass('@container');
+        expect(screen.getByText('172')).toHaveClass(
+            'text-stat-tile-fit',
+            'md:text-stat-tile',
+            'whitespace-nowrap',
+            'tabular-nums',
+        );
+    });
+
+    it('steps the tile number from at most 24px, fitted to the tile, on a phone to 30px from tablet up', () => {
+        const css = readFileSync('resources/css/app.css', 'utf8');
+
+        expect(css).toMatch(/--text-stat-tile:\s*1\.875rem;/);
+        expect(css).toMatch(/--text-stat-tile-fit:\s*min\(1\.5rem,\s*28cqi\);/);
+    });
+
+    it('lets a unit beside the number drop to its own line rather than squeeze it', () => {
+        render(
+            <StatTile
+                label="HR"
+                value="148"
+                delta={<span className="text-label-micro">bpm</span>}
+            />,
+        );
+
+        expect(screen.getByText('148').parentElement).toHaveClass('flex-wrap');
     });
 
     it('leads the label with its icon', () => {

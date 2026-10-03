@@ -214,7 +214,7 @@ export default function WeekComparison({
                     <p className="text-xs text-text-3">
                         last 7 days · {dateRangeLabel(date_ranges.load)}
                     </p>
-                    <div className="grid grid-cols-3 gap-2">
+                    <div className="grid grid-cols-2 gap-2 min-[360px]:grid-cols-3">
                         <StatTile
                             label={<TileLabel plain="load" metricKey="trimp" />}
                             value={

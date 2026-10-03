@@ -208,7 +208,6 @@ export default function VitalsCard({
                             icon={tile.icon}
                             label={tile.label}
                             value={tile.value}
-                            size="xs"
                         />
                     ))}
                 </div>

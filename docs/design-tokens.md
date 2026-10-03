@@ -116,7 +116,9 @@ utility class lands the full spec.
 - **Display** (`text-display-xs` … `text-display-2xl`) — editorial / hero headlines.
 - **Headline** (`text-headline-xs` … `text-headline-lg`) — section-level headings.
 - **Quote** (`text-quote-sm` / `-md` / `-lg`) — fixed px; body reading should not scale with viewport.
-- **Stat** (`text-stat`, 32px) — the big tabular number on KPI tiles / PR cards.
+- **Stat** (`text-stat`, 32px) — the big tabular number on KPI / PR cards. A stat tile's number takes
+  `text-stat-tile` (30px, from tablet up) and, on a phone, `text-stat-tile-fit`: `min(1.5rem, 28cqi)`,
+  so it is at most 24px and a six-character number always fits its tile (the tile is a size container).
 
 The display tier is tuned for **Fraunces**, with `font-optical-sizing: auto` handling the `opsz`
 axis per size. Role → class mapping is encoded in the role utilities below (`.text-prose`,
@@ -470,7 +472,8 @@ A chip whose colour *is* its meaning (an effort band, a card rarity) keeps that 
 in one of six tones; `danger` (`ember-deep` under cream) is the destructive confirmation, and
 `muted` at size `xs` is the one compact action pill (edit race, regenerate, reread all, load older).
 A row of two or more secondary numbers is [StatTile](../resources/js/components/ui/StatTile.tsx):
-MASTER's `bg-secondary` tile on the `.pad-panel` role, one eyebrow and one number.
+MASTER's `bg-secondary` tile on the `.pad-panel` role, the icon and eyebrow on top and the number big
+below at the tile step (`text-stat-tile-fit` / `md:text-stat-tile`, see Type scale).
 
 **Every "pick one" control is `ToggleGroup`** ([toggle-group.tsx](../resources/js/components/ui/toggle-group.tsx)),
 the Base UI group restyled to Pewter: rounded hairline pills on the mono label tier, the chosen
