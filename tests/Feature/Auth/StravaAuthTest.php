@@ -45,6 +45,17 @@ it('shows the login page to guests', function (): void {
         ->assertInertia(fn (Assert $page) => $page->component('Auth/Login')->has('authStravaUrl'));
 });
 
+it('logs a passwordless athlete back in from the remember cookie once the session is gone', function (): void {
+    $user = User::factory()->create(['remember_token' => 'remember-token-123']);
+    $guard = Auth::guard();
+    $recaller = $user->id.'|remember-token-123|'.$guard->hashPasswordForCookie(null);
+
+    $this->withCookie($guard->getRecallerName(), $recaller)
+        ->get(route('dashboard'));
+
+    $this->assertAuthenticatedAs($user);
+});
+
 it('shares the you-vs-past-you line as the page and social description', function (): void {
     $this->get(route('login'))
         ->assertSuccessful()
