@@ -43,7 +43,7 @@ export default function NoPlanCard({
                     </Link>
                 </div>
             </div>
-            <p className="mt-3.5 border-t border-border pt-3 font-mono text-[0.625rem] uppercase tracking-[0.05em] text-foreground">
+            <p className="mt-3.5 border-t border-border pt-3 text-meta uppercase tracking-[0.05em] text-foreground">
                 this week · {km === null ? '—' : km.toFixed(1)} km ·{' '}
                 {trimp === null ? '—' : Math.round(trimp)} trimp
             </p>

@@ -197,8 +197,8 @@ function Tag({
         <span
             className={
                 alert
-                    ? 'rounded-full bg-ember/[0.15] px-1.5 py-0.5 text-[0.625rem] font-normal text-ember-ink'
-                    : 'rounded-full bg-muted px-1.5 py-0.5 text-[0.625rem] font-normal text-text-2'
+                    ? 'rounded-full bg-ember/[0.15] px-1.5 py-0.5 text-xs font-normal text-ember-ink'
+                    : 'rounded-full bg-muted px-1.5 py-0.5 text-xs font-normal text-text-2'
             }
         >
             {label}

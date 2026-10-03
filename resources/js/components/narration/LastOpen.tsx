@@ -29,7 +29,7 @@ export default function LastOpen({
             </p>
             {away && (
                 <>
-                    <span className="mt-1 inline-block rounded-full bg-horizon/15 px-1.5 py-0.5 text-[0.625rem] font-normal text-horizon-ink">
+                    <span className="mt-1 inline-block rounded-full bg-horizon/15 px-1.5 py-0.5 text-xs font-normal text-horizon-ink">
                         away: scheduled narration paused
                     </span>
                     <p className="mt-1">

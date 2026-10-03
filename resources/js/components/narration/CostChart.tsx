@@ -143,7 +143,7 @@ export default function CostChart({
                                     className="pointer-events-none absolute inset-x-0 border-t border-dashed border-border-strong"
                                     style={{ bottom: `${medianPct}%` }}
                                 >
-                                    <span className="absolute left-0 -translate-y-full bg-popover pr-1 font-mono text-[0.625rem] text-text-3">
+                                    <span className="absolute left-0 -translate-y-full bg-popover pr-1 text-meta">
                                         median day{' '}
                                         {formatCost(medianCost, currency)}
                                     </span>

@@ -85,17 +85,17 @@ export default function CalendarGrid({
                                     )
                                 }
                                 className={cn(
-                                    'focus-ring pressable flex h-full flex-col justify-end gap-0.5 rounded-md px-1.5 pt-1 pb-1.5 text-left transition-colors hover:bg-muted',
+                                    'focus-ring pressable flex h-full flex-col justify-end gap-0.5 rounded-md px-1 pt-1 pb-1.5 text-left transition-colors hover:bg-muted',
                                     expanded && 'bg-muted',
                                 )}
                             >
-                                <span className="font-mono text-[0.625rem] leading-none text-text-3">
+                                <span className="text-meta leading-none whitespace-nowrap">
                                     week {week.weekNumber}
                                 </span>
                                 <span className="font-mono text-sm leading-none font-bold tabular-nums text-foreground">
                                     {kmLabel(week.totalKm)}
                                 </span>
-                                <span className="font-mono text-[0.5625rem] leading-none text-text-3">
+                                <span className="text-meta leading-none whitespace-nowrap">
                                     {runs} run{runs === 1 ? '' : 's'}
                                 </span>
                             </button>
@@ -146,7 +146,7 @@ function DayBar({
         >
             <span className="flex h-14 w-full flex-col items-center justify-end">
                 {ran && (
-                    <span className="mb-0.5 font-mono text-[0.625rem] leading-none font-bold tabular-nums whitespace-nowrap text-foreground">
+                    <span className="mb-0.5 text-meta leading-none font-bold tracking-normal tabular-nums whitespace-nowrap text-foreground">
                         {kmLabel(cell.distance_km ?? 0)}
                     </span>
                 )}
@@ -178,7 +178,7 @@ function DayBar({
             <span className="h-px w-full bg-border-strong" aria-hidden />
             <span
                 className={cn(
-                    'mt-0.5 flex size-5 flex-col items-center justify-center rounded-full font-mono text-[0.625rem] leading-none tabular-nums',
+                    'mt-0.5 flex size-5 flex-col items-center justify-center rounded-full text-meta leading-none tabular-nums',
                     ran ? 'font-bold text-foreground' : 'text-text-3',
                     cell.is_today && 'ring-[1.5px] ring-icon-accent',
                 )}
@@ -266,7 +266,7 @@ function WeekRecapPanel({
                 {week.rarity && (
                     <span
                         className={cn(
-                            'inline-flex items-center gap-0.5 rounded-full bg-card px-1.75 py-0.5 font-mono text-[0.5rem] leading-[1.2] font-extrabold tracking-[.03em] uppercase',
+                            'inline-flex items-center gap-0.5 rounded-full bg-card px-1.75 py-0.5 text-label-micro leading-[1.2] font-extrabold tracking-[.03em]',
                             RARITY_INK[week.rarity],
                         )}
                     >

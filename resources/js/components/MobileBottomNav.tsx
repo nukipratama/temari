@@ -165,7 +165,7 @@ export default function MobileBottomNav() {
                             </span>
                             <span
                                 className={cn(
-                                    'overflow-hidden font-mono text-[0.5625rem] font-extrabold tracking-[.05em] uppercase transition-[max-width,opacity] duration-200',
+                                    'overflow-hidden text-label-micro font-extrabold tracking-[.05em] transition-[max-width,opacity] duration-200',
                                     isActive
                                         ? 'max-w-[60px] opacity-100'
                                         : 'max-w-0 opacity-0',

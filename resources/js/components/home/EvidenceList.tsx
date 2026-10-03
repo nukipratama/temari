@@ -43,7 +43,7 @@ export default function EvidenceList({
                             EFFORT_STRIPE_CLASS[row.effort ?? 'unknown'],
                         )}
                     >
-                        <span className="font-sans text-[0.65625rem] text-foreground">
+                        <span className="font-sans text-xs text-foreground">
                             {row.label}
                         </span>
                         <div className="mt-1 flex flex-wrap items-baseline gap-x-3 gap-y-1 font-mono tabular-nums">
@@ -53,7 +53,7 @@ export default function EvidenceList({
                             )}
                             <span
                                 className={cn(
-                                    'ml-auto rounded-full px-2 py-0.5 font-mono text-[0.625rem] font-extrabold',
+                                    'ml-auto rounded-full px-2 py-0.5 text-meta font-extrabold',
                                     DELTA_TONE[row.direction],
                                 )}
                             >
@@ -88,7 +88,7 @@ function Reading({
             <span className="text-[0.90625rem] font-extrabold text-foreground">
                 {reading.now}
             </span>
-            <span className="text-[0.625rem] text-text-3">{unit}</span>
+            <span className="text-meta">{unit}</span>
         </span>
     );
 }

@@ -204,7 +204,7 @@ function LoadOlder({ shown }: Readonly<{ shown: number }>) {
                 preserveScroll
                 preserveState
                 only={['notifications', 'shown', 'hasOlder']}
-                className="pressable focus-ring inline-flex items-center gap-1.25 rounded-full border border-border-strong bg-card px-4.5 py-2.25 font-mono text-[0.59375rem] leading-[1.2] font-extrabold tracking-[.05em] text-foreground uppercase shadow-e1"
+                className="pressable focus-ring inline-flex items-center gap-1.25 rounded-full border border-border-strong bg-card px-4.5 py-2.25 text-label-micro leading-[1.2] font-extrabold tracking-[.05em] text-foreground shadow-e1"
             >
                 Load older
                 <Icon icon={ChevronDown} width={12} height={12} aria-hidden />
