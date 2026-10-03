@@ -1,17 +1,17 @@
 import { Head, Link, router } from '@inertiajs/react';
 import { ArrowRight, CalendarX, Pencil } from 'lucide-react';
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 
 import type { PastRace, RaceDetails, RaceProjection } from '@/types/inertia';
 
 import RaceDuel from '@/components/race/RaceDuel';
-import RaceGoalForm from '@/components/race/RaceGoalForm';
 import RaceOutcomeCard from '@/components/race/RaceOutcomeCard';
 import TemariNudgeModal from '@/components/temari/TemariNudgeModal';
 import Eyebrow from '@/components/ui/Eyebrow';
 import { Icon } from '@/components/ui/Icon';
 import PageContainer from '@/components/ui/PageContainer';
 import { appLayout } from '@/layouts/appLayout';
+import { lazyIsland } from '@/lib/lazyIsland';
 
 interface ProjectionPayload extends RaceProjection {
     /** Fitted Riegel exponent — carried by the payload, not drawn. */
@@ -23,6 +23,8 @@ interface RaceProps {
     projection: ProjectionPayload | null;
     past_races?: PastRace[];
 }
+
+const RaceGoalForm = lazyIsland(() => import('@/components/race/RaceGoalForm'));
 
 const FORM_ID = 'race-goal-form';
 
@@ -141,12 +143,14 @@ export default function Race({
 
                 <div id={FORM_ID}>
                     {editing && (
-                        <RaceGoalForm
-                            race={race}
-                            projection={projection}
-                            onSaved={() => setEditing(false)}
-                            className="mt-3"
-                        />
+                        <Suspense fallback={null}>
+                            <RaceGoalForm
+                                race={race}
+                                projection={projection}
+                                onSaved={() => setEditing(false)}
+                                className="mt-3"
+                            />
+                        </Suspense>
                     )}
                 </div>
             </PageContainer>

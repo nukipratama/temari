@@ -214,7 +214,7 @@ describe('Profile', () => {
         ).toBeInTheDocument();
     });
 
-    it('renders the progression card when progressionByCategory is provided', () => {
+    it('renders the progression card when progressionByCategory is provided', async () => {
         render(
             <Profile
                 mood="easy"
@@ -233,7 +233,7 @@ describe('Profile', () => {
             />,
         );
 
-        expect(screen.getByText(/Journey/)).toBeInTheDocument();
+        expect(await screen.findByText(/Journey/)).toBeInTheDocument();
         expect(screen.getByTestId('journey-chart')).toBeInTheDocument();
     });
 
