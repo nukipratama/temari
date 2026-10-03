@@ -58,7 +58,7 @@ export default defineConfig(
                         },
                         {
                             group: ['**/ui/SectionLabel', './SectionLabel'],
-                            message: 'SectionLabel is retired. Use Eyebrow from @/components/ui/Eyebrow with rule.',
+                            message: 'SectionLabel is retired. Use Eyebrow from @/components/ui/Eyebrow.',
                         },
                         {
                             group: ['**/ui/PillLink', './PillLink'],

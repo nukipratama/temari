@@ -131,7 +131,7 @@ export default function Settings({
 
                 <LaneStack>
                     <section>
-                        <Eyebrow token="small" tone="ink-2" rule>
+                        <Eyebrow token="small" tone="ink-2">
                             Appearance
                         </Eyebrow>
                         <div className="mt-3">
@@ -144,7 +144,7 @@ export default function Settings({
                         and splitting those across "Notifications", "Push" and
                         "Telegram" made them look unrelated. */}
                     <section>
-                        <Eyebrow token="small" tone="ink-2" rule>
+                        <Eyebrow token="small" tone="ink-2">
                             Notifications
                         </Eyebrow>
                         <div className="mt-3">
@@ -157,7 +157,7 @@ export default function Settings({
                     </section>
 
                     <section>
-                        <Eyebrow token="small" tone="ink-2" rule>
+                        <Eyebrow token="small" tone="ink-2">
                             Running
                         </Eyebrow>
                         {/* Preferences before the zones disclosure, as the
@@ -173,7 +173,7 @@ export default function Settings({
 
                     {dataUse ? (
                         <section>
-                            <Eyebrow token="small" tone="ink-2" rule>
+                            <Eyebrow token="small" tone="ink-2">
                                 {dataUse.headline}
                             </Eyebrow>
                             <ul className="mt-3 flex list-disc flex-col gap-1.5 pl-4.5">
@@ -190,7 +190,7 @@ export default function Settings({
                     ) : null}
 
                     <section>
-                        <Eyebrow token="small" tone="ink-2" rule>
+                        <Eyebrow token="small" tone="ink-2">
                             The fine print
                         </Eyebrow>
                         <div className="mt-3">
@@ -218,7 +218,7 @@ export default function Settings({
                     </section>
 
                     <section>
-                        <Eyebrow token="small" tone="ink-2" rule>
+                        <Eyebrow token="small" tone="ink-2">
                             Account
                         </Eyebrow>
                         <AccountActions />

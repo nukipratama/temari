@@ -100,7 +100,7 @@ export default function EmptyRunsState() {
 
             {/* While you wait */}
             <Card className="w-full max-w-md">
-                <Eyebrow token="small" tone="ink-2" rule>
+                <Eyebrow token="small" tone="ink-2">
                     While you wait
                 </Eyebrow>
                 <div className="mt-3 flex flex-col gap-2">

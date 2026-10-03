@@ -111,7 +111,8 @@ component instead of hand-rolling a near copy.
   not a stack of bordered cards. `ui/LaneStack` draws them on a slot around each lane, so a card that
   sits in a lane keeps its own outline and padding.
 - A section opens with a mono uppercase eyebrow (`.text-label-small`), then its hero number or
-  voice line, then detail.
+  voice line, then detail. The eyebrow is plain, with no trailing line: the lane divider does the
+  separating.
 - **No card inside a card.** Nothing is nested inside a bordered surface.
 
 ### Stat tiles

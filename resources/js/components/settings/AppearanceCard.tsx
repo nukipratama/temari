@@ -27,7 +27,7 @@ export default function AppearanceCard() {
 
     return (
         <div>
-            <Eyebrow token="micro" tone="ink-2" rule>
+            <Eyebrow token="micro" tone="ink-2">
                 Theme
             </Eyebrow>
             <ToggleGroup
