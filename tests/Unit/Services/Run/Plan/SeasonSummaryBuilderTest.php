@@ -54,7 +54,7 @@ it('covers every week from season start to season end for a self-scaled season',
     $weeks = $this->builder->build($user, $season, Carbon::today());
 
     // week_start's diffInWeeks(starts_at, ends_at) + 1 convention (shared with
-    // SeasonStreakSummaryBuilder::seasonPayload()'s "Week X of Y") counts the
+    // SeasonPayloadBuilder::seasonPayload()'s "Week X of Y") counts the
     // boundary week on both ends, so a 12-week-later ends_at yields 13 weeks.
     expect($weeks)->toHaveCount(13)
         ->and($weeks[0]['week_start'])->toBe('2026-08-10')

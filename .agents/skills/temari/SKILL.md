@@ -23,7 +23,7 @@ System overview (principles, subsystems, data lifecycle): [docs/DESIGN.md](../..
 Backend logic is split by domain under `app/Services/`:
 - **AI/** — narrators + the Analysis pipeline (see [narration.md](references/narration.md)).
 - **Run/** — ingest (Strava activity → `ActivityDetail` + streams), metrics (`TrainingLoad`, `PersonalRecords`, VDOT/threshold estimators, `WeeklyAggregator`), and story (`Vibe`, `Temari`, `BriefingComposer`, `RunCardFactory`).
-- **Gamification/** — `SeasonGoalResolver`, `SeasonGamificationContext`, `SeasonStreakSummaryBuilder`, `StreakSettlementService` (plus `DetectActivityMilestonesAction` under `app/Actions/Gamification/`).
+- **Gamification/** — `SeasonGoalResolver`, `SeasonGamificationContext`, `SeasonPayloadBuilder`, `StreakSettlementService` (plus `DetectActivityMilestonesAction` under `app/Actions/Gamification/`).
 - **Strava/** — OAuth client, activity fetch, webhook + sync orchestration.
 - **Geo/** — polyline encode/decode + Nominatim reverse-geocode (`app/Jobs/Geo/` resolves location names).
 - **Weather/** — Open-Meteo snapshot attached per activity.

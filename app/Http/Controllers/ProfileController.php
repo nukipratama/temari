@@ -11,7 +11,7 @@ use App\Models\RaceGoal;
 use App\Models\Season;
 use App\Models\User;
 use App\Actions\Run\Metrics\EstimateThresholdAction;
-use App\Services\Gamification\SeasonStreakSummaryBuilder;
+use App\Services\Gamification\SeasonPayloadBuilder;
 use App\Services\Run\LifetimeStats;
 use App\Services\Run\Metrics\TimeInZoneSummary;
 use App\Services\Run\Metrics\TrainingPaceCalculator;
@@ -53,7 +53,7 @@ class ProfileController extends Controller
         TrainingPaceCalculator $trainingPaceCalculator,
         TimeInZoneSummary $timeInZoneSummary,
         SeasonService $seasonService,
-        SeasonStreakSummaryBuilder $seasonStreakBuilder,
+        SeasonPayloadBuilder $seasonPayloadBuilder,
         SeasonSummaryBuilder $seasonSummaryBuilder,
         ResolveActiveRaceAction $activeRace,
         WeekSessionTypesBuilder $weekSessionTypes,
@@ -107,7 +107,7 @@ class ProfileController extends Controller
             'progressionByCategory' => Inertia::defer(fn (): array => $this->buildProgressionByCategory($progressionSeriesBuilder, $user, $this->personalRecords($user), $activeRace($user->id))),
             'fitness' => Inertia::defer(fn (): ?array => $this->fitness($vdotEstimator, $thresholdEstimator, $trainingPaceCalculator, $weekSessionTypes, $user, $today, $activeRace)),
             'timeInZone' => Inertia::defer(fn (): ?array => $timeInZoneSummary->forUser($user, $today) ?: null),
-            'season' => Inertia::defer(fn (): ?array => $seasonStreakBuilder->profileSeasonPayload($user, $loadSeason(), $today)),
+            'season' => Inertia::defer(fn (): ?array => $seasonPayloadBuilder->profileSeasonPayload($user, $loadSeason(), $today)),
             'seasonWeeks' => Inertia::defer(function () use ($loadSeason, $seasonSummaryBuilder, $user, $today): ?array {
                 $season = $loadSeason();
 
