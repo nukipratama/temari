@@ -347,7 +347,7 @@ describe('WeekPlanWidget', () => {
         await waitFor(() => {
             expectWeekKm('18.2', '32.0');
         });
-        const tiles = screen.getByText('sessions').closest('dl');
+        const tiles = screen.getByText('sessions').closest('.grid-cols-2');
         expect(tiles).toHaveClass('grid-cols-2');
         expect(tiles?.children).toHaveLength(2);
         expect(tiles?.contains(screen.getByText('trimp'))).toBe(true);

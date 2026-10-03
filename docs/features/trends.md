@@ -12,7 +12,7 @@ code_refs:
   - resources/js/components/trends/MonthComparison.tsx
   - resources/js/components/trends/RaceComparison.tsx
   - resources/js/components/trends/panels/FitnessPanel.tsx
-  - resources/js/components/trends/Stat.tsx
+  - resources/js/components/ui/StatTile.tsx
   - app/Services/AI/Narrators/TrendReadNarrator.php
   - app/Services/AI/AnalysisType.php
   - app/Models/Scopes/KnownAnalysisTypeScope.php

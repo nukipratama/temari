@@ -279,7 +279,7 @@ describe('Activities/Feed', () => {
             );
 
             expect(
-                screen.getByRole('link', { name: /Load older weeks/ }),
+                screen.getByRole('link', { name: /load older weeks/ }),
             ).toHaveAttribute('href', '/history?range=all&weeks=4');
         });
 
@@ -294,7 +294,7 @@ describe('Activities/Feed', () => {
             );
 
             expect(
-                screen.queryByRole('link', { name: /Load older weeks/ }),
+                screen.queryByRole('link', { name: /load older weeks/ }),
             ).not.toBeInTheDocument();
         });
 

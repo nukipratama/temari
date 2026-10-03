@@ -11,6 +11,7 @@ describe('PillButton', () => {
         ['ghost', 'border-foreground/20'],
         ['outline', 'border-border'],
         ['danger', 'bg-ember-deep'],
+        ['muted', 'bg-muted'],
     ] satisfies [PillTone, string][])(
         'renders tone %s with its class',
         (tone, expected) => {
@@ -44,5 +45,18 @@ describe('PillButton', () => {
         render(<PillButton onClick={onClick}>Go</PillButton>);
         await userEvent.setup().click(screen.getByRole('button'));
         expect(onClick).toHaveBeenCalledOnce();
+    });
+
+    it('sets the compact action pill on the mono label tier, not the sans base', () => {
+        render(
+            <PillButton tone="muted" size="xs">
+                edit race
+            </PillButton>,
+        );
+        const button = screen.getByRole('button', { name: 'edit race' });
+
+        expect(button).toHaveClass('text-label-micro');
+        expect(button).not.toHaveClass('font-sans');
+        expect(button).not.toHaveClass('font-medium');
     });
 });

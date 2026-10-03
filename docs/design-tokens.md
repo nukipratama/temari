@@ -456,7 +456,10 @@ override with `className` if a one-off is genuinely required, so it stays visibl
 `sky`, `onSky`, and the two status tones `positive` (leaf at 18%) and `warning` (ember at 18%),
 matching `horizon`'s 18% tint. A chip whose colour *is* its meaning (an effort band, a card
 rarity) keeps that colour through `className` on top of the `Chip` shape. Buttons are `PillButton`
-in one of five tones; `danger` (`ember-deep` under cream) is the destructive confirmation.
+in one of six tones; `danger` (`ember-deep` under cream) is the destructive confirmation, and
+`muted` at size `xs` is the one compact action pill (edit race, regenerate, reread all, load older).
+A row of two or more secondary numbers is [StatTile](../resources/js/components/ui/StatTile.tsx):
+MASTER's `bg-secondary` tile on the `.pad-panel` role, one eyebrow and one number.
 
 **Every "pick one" control is `ToggleGroup`** ([toggle-group.tsx](../resources/js/components/ui/toggle-group.tsx)),
 the Base UI group restyled to Pewter: rounded hairline pills on the mono label tier, the chosen

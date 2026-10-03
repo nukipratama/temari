@@ -8,8 +8,9 @@ import AnalysisStatus from '@/components/temari/AnalysisStatus';
 import MascotWatermark from '@/components/temari/MascotWatermark';
 import { writingPose } from '@/components/temari/TemariMascot';
 import Eyebrow from '@/components/ui/Eyebrow';
-import { Icon, IconComponent } from '@/components/ui/Icon';
+import { type IconComponent } from '@/components/ui/Icon';
 import Skeleton from '@/components/ui/Skeleton';
+import StatTile from '@/components/ui/StatTile';
 import { formatShortDateId } from '@/lib/pace';
 import { renderBold, stripEdgeQuotes } from '@/lib/richText';
 
@@ -95,26 +96,15 @@ export default function ProfileHero({
 
             <div className="mt-5 border-t border-dashed border-border" />
             {stats.length > 0 ? (
-                <div className="mt-3.5 grid grid-cols-3 gap-2">
+                <div className="mt-3.5 grid grid-cols-2 gap-2 min-[360px]:grid-cols-3">
                     {stats.map((stat) => (
-                        <div
+                        <StatTile
                             key={stat.label}
-                            className="rounded-sm bg-secondary px-2.5 py-3 text-center"
-                        >
-                            <Icon
-                                icon={stat.icon}
-                                width={17}
-                                height={17}
-                                className="mx-auto mb-1.5 text-horizon-ink"
-                                aria-hidden
-                            />
-                            <b className="block font-mono text-base font-bold tabular-nums text-foreground">
-                                {stat.value}
-                            </b>
-                            <span className="mt-0.5 block text-label-micro text-text-2">
-                                {stat.label}
-                            </span>
-                        </div>
+                            icon={stat.icon}
+                            label={stat.label}
+                            value={stat.value}
+                            size="xs"
+                        />
                     ))}
                 </div>
             ) : (

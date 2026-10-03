@@ -8,6 +8,7 @@ import { ChangeRow } from '@/components/plan/DeltaPair';
 import Chip from '@/components/ui/Chip';
 import Eyebrow from '@/components/ui/Eyebrow';
 import { Icon } from '@/components/ui/Icon';
+import StatTile from '@/components/ui/StatTile';
 import { useCountUp } from '@/hooks/useCountUp';
 import { cn } from '@/lib/cn';
 import { formatKm, useTodayIso } from '@/lib/pace';
@@ -52,18 +53,6 @@ function dayDetail(day: WeekPlanDay): string {
         parts.push('ran anyway');
     }
     return parts.join(' · ');
-}
-
-function StatTile({
-    label,
-    value,
-}: Readonly<{ label: string; value: string }>) {
-    return (
-        <div className="rounded-sm bg-secondary px-3 py-2.5">
-            <dt className="text-label-micro text-text-3">{label}</dt>
-            <dd className="text-stat-sm mt-1">{value}</dd>
-        </div>
-    );
 }
 
 function DayCell({
@@ -144,13 +133,13 @@ export default function WeekPlanWidget({
                 />
             )}
 
-            <dl className="mt-3 mb-3.5 grid grid-cols-2 gap-2">
+            <div className="mt-3 mb-3.5 grid grid-cols-2 gap-2">
                 <StatTile
                     label="sessions"
                     value={`${Math.round(creditedTweened)}/${weekPlan.sessions_this_week}`}
                 />
                 <StatTile label="trimp" value={trimpValue} />
-            </dl>
+            </div>
 
             <ul className="mb-3.5 grid grid-cols-7 gap-1">
                 {weekPlan.days.map((day) => (

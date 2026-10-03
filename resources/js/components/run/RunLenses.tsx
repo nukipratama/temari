@@ -17,6 +17,7 @@ import TemariMascot, { writingPose } from '@/components/temari/TemariMascot';
 import Chip from '@/components/ui/Chip';
 import Eyebrow from '@/components/ui/Eyebrow';
 import { Icon, IconComponent } from '@/components/ui/Icon';
+import PillButton from '@/components/ui/PillButton';
 import { triggerAnalysis } from '@/hooks/useAnalysisTrigger';
 import {
     cooldownAriaLabel,
@@ -283,15 +284,15 @@ export default function RunLenses({
                     resume per-block instead. */}
                 {isChainHead && !paused && (
                     <div className="mt-3 flex justify-end">
-                        <button
-                            type="button"
+                        <PillButton
                             onClick={triggerAll}
                             disabled={bulkPending || cooling}
                             aria-label={cooldownAriaLabel(
                                 cooldownRemaining,
                                 'rereading all',
                             )}
-                            className="focus-ring pressable inline-flex items-center gap-1.5 rounded-full bg-muted px-2.5 py-1.5 text-label-micro text-text-2 transition hover:text-foreground disabled:cursor-not-allowed disabled:opacity-70"
+                            tone="muted"
+                            size="xs"
                         >
                             <Icon
                                 icon={cooling ? Clock : RefreshCw}
@@ -301,7 +302,7 @@ export default function RunLenses({
                                 aria-hidden
                             />
                             {rereadLabel(bulkPending, cooldownRemaining)}
-                        </button>
+                        </PillButton>
                     </div>
                 )}
             </div>

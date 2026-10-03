@@ -1,7 +1,8 @@
 import { render, screen } from '@testing-library/react';
+import { HeartPulse } from 'lucide-react';
 import { describe, expect, it } from 'vitest';
 
-import { Stat, StatDelta } from './Stat';
+import StatTile, { Stat, StatDelta } from './StatTile';
 
 describe('Stat', () => {
     it('renders the label and value, each labelled on its own', () => {
@@ -71,5 +72,46 @@ describe('StatDelta', () => {
     it('appends the unit after the magnitude', () => {
         render(<StatDelta value={-1} unit="" decimals={0} />);
         expect(screen.getByText('−1')).toBeInTheDocument();
+    });
+});
+
+describe('StatTile', () => {
+    it('draws the one tile MASTER specifies: secondary fill, small corner, the panel padding', () => {
+        const { container } = render(<StatTile label="trimp" value="412" />);
+
+        expect(container.firstElementChild).toHaveClass(
+            'rounded-sm',
+            'bg-secondary',
+            'pad-panel',
+        );
+        expect(screen.getByText('trimp')).toHaveClass('text-label-micro');
+        expect(screen.getByText('412')).toHaveClass('text-stat-sm');
+    });
+
+    it('sets the number at the dense size for a three-up row', () => {
+        render(<StatTile label="spm avg" value="172" size="xs" />);
+
+        expect(screen.getByText('172')).toHaveClass('text-sm', 'tabular-nums');
+    });
+
+    it('leads the label with its icon', () => {
+        render(<StatTile label="HR" value="152" icon={HeartPulse} />);
+
+        expect(screen.getByText('HR').firstElementChild).toHaveAttribute(
+            'aria-hidden',
+        );
+    });
+
+    it('renders as a list item with extra rows under the number', () => {
+        render(
+            <ul>
+                <StatTile as="li" label="Lap 1" value="5:42">
+                    <span>♡ 151</span>
+                </StatTile>
+            </ul>,
+        );
+
+        expect(screen.getByRole('listitem')).toHaveTextContent('Lap 1');
+        expect(screen.getByRole('listitem')).toHaveTextContent('♡ 151');
     });
 });

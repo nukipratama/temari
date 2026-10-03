@@ -1,40 +1,18 @@
 import { usePage } from '@inertiajs/react';
-import { CircleAlert, CircleCheck, Info, X } from 'lucide-react';
+import { CircleAlert, CircleCheck, Info } from 'lucide-react';
 import { useState } from 'react';
 
 import type { SharedProps } from '@/types/inertia';
 
-import { Icon, IconComponent } from '@/components/ui/Icon';
+import Banner, { type BannerTone } from '@/components/ui/Banner';
+import { type IconComponent } from '@/components/ui/Icon';
 
 type FlashTone = 'error' | 'info' | 'success';
 
-const TONES: Record<
-    FlashTone,
-    {
-        icon: IconComponent;
-        role: 'alert' | 'status';
-        frame: string;
-        glyph: string;
-    }
-> = {
-    error: {
-        icon: CircleAlert,
-        role: 'alert',
-        frame: 'border-ember/30 bg-ember/[0.08]',
-        glyph: 'text-ember-ink',
-    },
-    info: {
-        icon: Info,
-        role: 'status',
-        frame: 'border-border bg-popover',
-        glyph: 'text-text-3',
-    },
-    success: {
-        icon: CircleCheck,
-        role: 'status',
-        frame: 'border-leaf/30 bg-leaf/[0.08]',
-        glyph: 'text-leaf-ink',
-    },
+const TONES: Record<FlashTone, { icon: IconComponent; tone: BannerTone }> = {
+    error: { icon: CircleAlert, tone: 'error' },
+    info: { icon: Info, tone: 'neutral' },
+    success: { icon: CircleCheck, tone: 'success' },
 };
 
 const ORDER: readonly FlashTone[] = ['error', 'info', 'success'];
@@ -70,30 +48,13 @@ export default function FlashNotice() {
     const style = TONES[tone];
 
     return (
-        <div className="px-4 pt-4 min-[900px]:px-6">
-            <div
-                role={style.role}
-                className={`mx-auto flex min-[900px]:max-w-column min-[1280px]:max-w-column-wide items-start gap-3 rounded-lg border px-4 py-3 ${style.frame}`}
-            >
-                <Icon
-                    icon={style.icon}
-                    width={20}
-                    height={20}
-                    className={`mt-0.5 shrink-0 ${style.glyph}`}
-                    aria-hidden
-                />
-                <p className="flex-1 font-sans text-sm leading-relaxed text-foreground">
-                    {message}
-                </p>
-                <button
-                    type="button"
-                    onClick={() => setDismissed(true)}
-                    aria-label="Close"
-                    className="focus-ring -m-1 rounded-xs p-1 text-text-3 transition hover:text-foreground"
-                >
-                    <Icon icon={X} width={16} height={16} />
-                </button>
-            </div>
-        </div>
+        <Banner
+            tone={style.tone}
+            icon={style.icon}
+            role="status"
+            onDismiss={() => setDismissed(true)}
+        >
+            {message}
+        </Banner>
     );
 }

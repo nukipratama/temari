@@ -9,6 +9,7 @@ import type {
 
 import { TRIGGER_CLASS, triggerTone } from '@/components/temari/AnalysisStatus';
 import Eyebrow from '@/components/ui/Eyebrow';
+import { Stat } from '@/components/ui/StatTile';
 import { cn } from '@/lib/cn';
 import { formStatusWord } from '@/lib/formStatus';
 import {
@@ -20,8 +21,6 @@ import {
     useTodayIso,
 } from '@/lib/pace';
 import { ambitionNote } from '@/lib/raceGoal';
-
-import { Stat } from './Stat';
 
 interface RaceComparisonProps {
     activeRace: ActiveRace | null;

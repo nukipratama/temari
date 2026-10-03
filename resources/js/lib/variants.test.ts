@@ -31,6 +31,15 @@ describe('pillButtonVariants', () => {
         expect(cls).toContain('hover:border-foreground/40');
     });
 
+    it('draws the compact muted action pill from tone="muted" size="xs"', () => {
+        const cls = tokens(pillButtonVariants({ tone: 'muted', size: 'xs' }));
+        expect(cls).toContain('bg-muted');
+        expect(cls).toContain('text-foreground');
+        expect(cls).toContain('hover:bg-accent');
+        expect(cls).toContain('h-8');
+        expect(cls).toContain('text-label-micro');
+    });
+
     it('uses sm sizing when size="sm"', () => {
         expect(tokens(pillButtonVariants({ size: 'sm' }))).toContain('text-xs');
     });

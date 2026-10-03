@@ -260,7 +260,7 @@ describe('Inbox', () => {
         renderInbox([item()], { shown: 20, hasOlder: true });
 
         expect(
-            screen.getByRole('link', { name: /Load older/ }),
+            screen.getByRole('link', { name: /load older/ }),
         ).toHaveAttribute('href', '/inbox?shown=40');
     });
 
@@ -268,7 +268,7 @@ describe('Inbox', () => {
         renderInbox([item()], { shown: 40, hasOlder: false });
 
         expect(
-            screen.queryByRole('link', { name: /Load older/ }),
+            screen.queryByRole('link', { name: /load older/ }),
         ).not.toBeInTheDocument();
     });
 });

@@ -7,6 +7,7 @@ import type { SharedProps } from '@/types/inertia';
 import AthletesPanel from '@/components/narration/AthletesPanel';
 import CostChart from '@/components/narration/CostChart';
 import DeploymentTable from '@/components/narration/DeploymentTable';
+import DevtoolsHeader from '@/components/narration/DevtoolsHeader';
 import FaultStrip from '@/components/narration/FaultStrip';
 import FlashBanner from '@/components/narration/FlashBanner';
 import KindTable from '@/components/narration/KindTable';
@@ -15,7 +16,6 @@ import OriginTable from '@/components/narration/OriginTable';
 import RuleBasedPanel from '@/components/narration/RuleBasedPanel';
 import TodayPanel from '@/components/narration/TodayPanel';
 import UsageFilters from '@/components/narration/UsageFilters';
-import { Icon } from '@/components/ui/Icon';
 import PageContainer from '@/components/ui/PageContainer';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { navigate } from '@/pages/Narration/helpers';
@@ -52,29 +52,11 @@ export default function Overview({
         <div className="min-h-screen bg-background text-foreground">
             <Head title="Narration" />
 
-            <header className="border-b border-border bg-popover">
-                <div className="mx-auto flex max-w-page items-center justify-between px-6 py-4 2xl:max-w-page-2xl">
-                    <div className="flex items-center gap-3">
-                        <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-leaf-deep text-cream">
-                            <Icon icon={Hash} width={20} aria-hidden />
-                        </span>
-                        <div>
-                            <h1 className="font-serif italic text-headline-xs text-foreground">
-                                narration
-                            </h1>
-                            <p className="text-xs text-text-3">
-                                What the narration pipeline costs, per athlete.
-                            </p>
-                        </div>
-                    </div>
-                    <a
-                        href="/devtools"
-                        className="focus-ring hidden rounded-full px-2 py-1 text-label-micro font-semibold text-text-3 transition hover:text-foreground sm:inline"
-                    >
-                        Temari · Devtools
-                    </a>
-                </div>
-            </header>
+            <DevtoolsHeader icon={Hash} title="narration">
+                <p className="text-xs text-text-3">
+                    What the narration pipeline costs, per athlete.
+                </p>
+            </DevtoolsHeader>
 
             <PageContainer className="min-[900px]:max-w-page min-[1280px]:max-w-page 2xl:max-w-page-2xl">
                 {flashInfo && <FlashBanner message={flashInfo} />}

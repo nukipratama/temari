@@ -1,6 +1,15 @@
-import type { ReactNode } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 
+import { Icon, type IconComponent } from '@/components/ui/Icon';
 import { cn } from '@/lib/cn';
+
+type StatSize = 'lg' | 'sm' | 'xs';
+
+const VALUE_SIZE: Record<StatSize, string> = {
+    lg: 'text-stat',
+    sm: 'text-stat-sm',
+    xs: 'text-sm',
+};
 
 interface StatProps {
     /** Usually a plain string; a jargon label pairs it with an inline
@@ -10,8 +19,8 @@ interface StatProps {
     /** Rendered next to the value — {@link StatDelta} or a plain string. */
     delta?: ReactNode;
     sub?: string;
-    /** Default `lg`; `sm` is for a denser multi-tile row (three-up and up). */
-    size?: 'lg' | 'sm';
+    /** Default `lg`; `sm` for a tile, `xs` for a dense three-up tile row. */
+    size?: StatSize;
     className?: string;
 }
 
@@ -31,7 +40,7 @@ export function Stat({
             <div className="mt-1 flex items-baseline gap-2">
                 <span
                     className={cn(
-                        size === 'lg' ? 'text-stat' : 'text-stat-sm',
+                        VALUE_SIZE[size],
                         'font-mono font-bold tabular-nums text-foreground',
                     )}
                 >
@@ -73,5 +82,61 @@ export function StatDelta({
             {Math.abs(rounded)}
             {unit}
         </span>
+    );
+}
+
+interface StatTileProps extends Omit<StatProps, 'className' | 'size'> {
+    /** Default `sm`; `xs` for a dense three-up row. */
+    size?: StatSize;
+    /** Drawn before the label. */
+    icon?: IconComponent;
+    as?: 'div' | 'li';
+    /** Extra rows under the number. */
+    children?: ReactNode;
+    id?: string;
+    style?: CSSProperties;
+    className?: string;
+}
+
+/** MASTER's stat tile: a secondary-filled block holding one eyebrow and one number. */
+export default function StatTile({
+    label,
+    icon,
+    size = 'sm',
+    as: Tag = 'div',
+    children,
+    id,
+    style,
+    className,
+    ...stat
+}: Readonly<StatTileProps>) {
+    return (
+        <Tag
+            id={id}
+            style={style}
+            className={cn('rounded-sm bg-secondary pad-panel', className)}
+        >
+            <Stat
+                size={size}
+                label={
+                    icon ? (
+                        <span className="inline-flex items-center gap-1.5">
+                            <Icon
+                                icon={icon}
+                                width={12}
+                                height={12}
+                                aria-hidden
+                                className="flex-none text-icon-accent"
+                            />
+                            {label}
+                        </span>
+                    ) : (
+                        label
+                    )
+                }
+                {...stat}
+            />
+            {children}
+        </Tag>
     );
 }

@@ -17,6 +17,7 @@ import MascotWatermark from '@/components/temari/MascotWatermark';
 import Eyebrow from '@/components/ui/Eyebrow';
 import { Icon, IconComponent } from '@/components/ui/Icon';
 import MoodChip from '@/components/ui/MoodChip';
+import StatTile from '@/components/ui/StatTile';
 import { useCountUp } from '@/hooks/useCountUp';
 import { cn } from '@/lib/cn';
 import { EFFORT_STRIPE_CLASS } from '@/lib/effort';
@@ -170,34 +171,22 @@ export default function RunHero({
 
                 <div className="mt-3.5 grid grid-cols-3 gap-1.5 min-[360px]:gap-2">
                     {secondary.map((stat, index) => (
-                        <div
+                        <StatTile
                             key={stat.label}
                             style={revealDelay(index + 1)}
-                            className="reveal flex items-center gap-1.5 rounded-sm bg-secondary px-2 py-2 min-[360px]:gap-2 min-[360px]:px-2.5"
-                        >
-                            <Icon
-                                icon={stat.icon}
-                                width={14}
-                                height={14}
-                                aria-hidden
-                                className="flex-none text-icon-accent"
-                            />
-                            <div className="min-w-0">
-                                <div className="leading-none">
-                                    <b className="font-mono text-sm font-bold tabular-nums text-foreground">
-                                        {stat.value}
-                                    </b>
-                                    {stat.unit && (
-                                        <span className="ml-0.5 text-label-micro text-text-2">
-                                            {stat.unit}
-                                        </span>
-                                    )}
-                                </div>
-                                <span className="mt-1 block truncate text-label-micro text-text-3">
-                                    {stat.label}
-                                </span>
-                            </div>
-                        </div>
+                            className="reveal"
+                            icon={stat.icon}
+                            label={stat.label}
+                            value={stat.value}
+                            delta={
+                                stat.unit && (
+                                    <span className="text-label-micro text-text-2">
+                                        {stat.unit}
+                                    </span>
+                                )
+                            }
+                            size="xs"
+                        />
                     ))}
                 </div>
             </div>

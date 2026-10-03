@@ -6,6 +6,7 @@ import AthleteHeader from '@/components/narration/athlete/AthleteHeader';
 import AttentionTab from '@/components/narration/athlete/AttentionTab';
 import CostByKindTab from '@/components/narration/athlete/CostByKindTab';
 import NarrationsTab from '@/components/narration/athlete/NarrationsTab';
+import DevtoolsHeader from '@/components/narration/DevtoolsHeader';
 import FlashBanner from '@/components/narration/FlashBanner';
 import LastOpen from '@/components/narration/LastOpen';
 import PageContainer from '@/components/ui/PageContainer';
@@ -41,35 +42,22 @@ export default function Athlete({
         <div className="min-h-screen bg-background text-foreground">
             <Head title={`${header.athlete.name} · narration`} />
 
-            <header className="border-b border-border bg-popover">
-                <div className="mx-auto flex max-w-page items-center justify-between px-6 py-4 2xl:max-w-page-2xl">
-                    <div>
-                        <h1 className="font-serif italic text-headline-xs text-foreground">
-                            {header.athlete.name}
-                        </h1>
-                        <p className="text-xs text-text-3">
-                            narration, spend and stuck work for one athlete
-                            {header.athlete.is_demo ? ' · demo account' : ''}
-                            {header.athlete.strava_athlete_id !== null
-                                ? ` · Strava ${header.athlete.strava_athlete_id}`
-                                : ''}
-                        </p>
-                        <div className="mt-1">
-                            <LastOpen
-                                lastSeenAt={header.athlete.last_seen_at}
-                                away={header.athlete.away}
-                                isDemo={header.athlete.is_demo}
-                            />
-                        </div>
-                    </div>
-                    <a
-                        href="/devtools"
-                        className="focus-ring hidden rounded-full px-2 py-1 text-label-micro font-semibold text-text-3 transition hover:text-foreground sm:inline"
-                    >
-                        Temari · Devtools
-                    </a>
+            <DevtoolsHeader title={header.athlete.name}>
+                <p className="text-xs text-text-3">
+                    narration, spend and stuck work for one athlete
+                    {header.athlete.is_demo ? ' · demo account' : ''}
+                    {header.athlete.strava_athlete_id !== null
+                        ? ` · Strava ${header.athlete.strava_athlete_id}`
+                        : ''}
+                </p>
+                <div className="mt-1">
+                    <LastOpen
+                        lastSeenAt={header.athlete.last_seen_at}
+                        away={header.athlete.away}
+                        isDemo={header.athlete.is_demo}
+                    />
                 </div>
-            </header>
+            </DevtoolsHeader>
 
             <PageContainer className="min-[900px]:max-w-page min-[1280px]:max-w-page 2xl:max-w-page-2xl">
                 {flashInfo && <FlashBanner message={flashInfo} />}

@@ -4,7 +4,8 @@ import type { ActivityDetail, StreamSummary } from '@/types/inertia';
 
 import EmptyPanel from '@/components/ui/EmptyPanel';
 import Eyebrow from '@/components/ui/Eyebrow';
-import { Icon, IconComponent } from '@/components/ui/Icon';
+import { type IconComponent } from '@/components/ui/Icon';
+import StatTile from '@/components/ui/StatTile';
 import { showsDecoupling, showsGrade } from '@/lib/anchors';
 import { cn } from '@/lib/cn';
 
@@ -192,34 +193,23 @@ export default function VitalsCard({
             {tiles.length > 0 && (
                 <div
                     className={cn(
-                        'grid grid-cols-3 gap-2',
+                        'grid grid-cols-2 gap-2 min-[360px]:grid-cols-3',
                         avgHr !== null && 'mt-4',
                     )}
                 >
                     {tiles.map((tile) => (
-                        <div
+                        <StatTile
                             key={tile.label}
                             id={
                                 tile.metric === null
                                     ? undefined
                                     : `anchor-metric-${tile.metric}`
                             }
-                            className="rounded-sm bg-secondary p-2.5 text-center"
-                        >
-                            <Icon
-                                icon={tile.icon}
-                                width={16}
-                                height={16}
-                                aria-hidden
-                                className="mx-auto text-icon-accent"
-                            />
-                            <b className="mt-1.5 block font-mono text-sm font-bold tabular-nums text-foreground">
-                                {tile.value}
-                            </b>
-                            <span className="block font-sans text-xs text-text-2">
-                                {tile.label}
-                            </span>
-                        </div>
+                            icon={tile.icon}
+                            label={tile.label}
+                            value={tile.value}
+                            size="xs"
+                        />
                     ))}
                 </div>
             )}

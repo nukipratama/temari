@@ -1,6 +1,7 @@
 import { Head } from '@inertiajs/react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
+import DevtoolsHeader from '@/components/narration/DevtoolsHeader';
 import { renderNarration } from '@/components/temari/Citation';
 import MascotWatermark from '@/components/temari/MascotWatermark';
 import TemariMascot, {
@@ -315,20 +316,10 @@ export default function Design() {
     return (
         <>
             <Head title="Design tokens · Temari" />
-            <div className="min-h-screen bg-background pad-page text-foreground">
-                <div className="mx-auto max-w-page">
-                    <div className="flex items-start justify-between gap-4">
-                        <h1 className="font-serif italic text-headline-xs text-foreground">
-                            Design tokens
-                        </h1>
-                        <a
-                            href="/devtools"
-                            className="focus-ring flex-none rounded-full px-2 py-1 text-label-micro font-semibold text-text-3 transition hover:text-foreground"
-                        >
-                            Temari · Devtools
-                        </a>
-                    </div>
-                    <p className="mt-2 max-w-[72ch] font-sans text-xs leading-relaxed text-text-2">
+            <div className="min-h-screen bg-background text-foreground">
+                <DevtoolsHeader title="Design tokens" />
+                <div className="mx-auto box-content max-w-page pad-page">
+                    <p className="max-w-[72ch] font-sans text-xs leading-relaxed text-text-2">
                         Every value below is read out of the live stylesheet at
                         render time with getComputedStyle, never from a list
                         copied into TypeScript. If a token moves in app.css this
