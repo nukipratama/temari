@@ -45,6 +45,24 @@ describe('Settings', () => {
         expect(screen.getByText('delete account')).toBeInTheDocument();
     });
 
+    it('draws its section labels as plain eyebrows, with no trailing line', () => {
+        const { container } = render(<Settings />);
+
+        for (const label of [
+            'Appearance',
+            'Notifications',
+            'Running',
+            'The fine print',
+            'Account',
+        ]) {
+            expect(screen.getByText(label)).toHaveClass('text-label-small');
+        }
+        for (const label of ['Theme', 'Training preferences']) {
+            expect(screen.getByText(label)).toHaveClass('text-label-micro');
+        }
+        expect(container.querySelector('.h-px.flex-1')).toBeNull();
+    });
+
     it('expands the HR zones disclosure inline, without navigating', () => {
         render(<Settings />);
         expect(screen.queryByLabelText('Max HR')).not.toBeInTheDocument();

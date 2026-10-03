@@ -23,14 +23,6 @@ export default {
             ),
         },
         {
-            name: 'with rule',
-            render: () => (
-                <Eyebrow token="micro" tone="ink-3" rule>
-                    splits
-                </Eyebrow>
-            ),
-        },
-        {
             name: 'on sky',
             render: () => (
                 <div className="rounded-md bg-sky pad-hero">

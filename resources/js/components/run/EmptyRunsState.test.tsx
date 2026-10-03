@@ -129,4 +129,13 @@ describe('EmptyRunsState', () => {
         ).toBeInTheDocument();
         expectActionLinks();
     });
+
+    it('labels the while-you-wait card with a plain eyebrow, no trailing line', () => {
+        renderWithState('ready');
+
+        expect(screen.getByText('While you wait')).toHaveClass(
+            'text-label-small',
+        );
+        expect(document.querySelector('.h-px.flex-1')).toBeNull();
+    });
 });

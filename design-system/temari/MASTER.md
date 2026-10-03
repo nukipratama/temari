@@ -110,7 +110,8 @@ component instead of hand-rolling a near copy.
 - A page is a column of **sections separated by lane dividers** (`border-t border-dashed border-border`),
   not a stack of bordered cards.
 - A section opens with a mono uppercase eyebrow (`.text-label-small`), then its hero number or
-  voice line, then detail.
+  voice line, then detail. The eyebrow is plain, with no trailing line: the lane divider does the
+  separating.
 - **No card inside a card.** Nothing is nested inside a bordered surface.
 
 ### Stat tiles
