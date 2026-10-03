@@ -108,7 +108,8 @@ component instead of hand-rolling a near copy.
 ### Sections
 
 - A page is a column of **sections separated by lane dividers** (`border-t border-dashed border-border`),
-  not a stack of bordered cards.
+  not a stack of bordered cards. `ui/LaneStack` draws them on a slot around each lane, so a card that
+  sits in a lane keeps its own outline and padding.
 - A section opens with a mono uppercase eyebrow (`.text-label-small`), then its hero number or
   voice line, then detail.
 - **No card inside a card.** Nothing is nested inside a bordered surface.

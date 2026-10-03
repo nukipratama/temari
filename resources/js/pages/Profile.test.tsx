@@ -148,6 +148,15 @@ describe('Profile', () => {
         expect(screen.getByText('got a race coming up?')).toBeInTheDocument();
     });
 
+    it('sits the race card in its own lane slot, so the lane divider never restyles its border or padding', () => {
+        render(<Profile mood="easy" identity={identity} stats={stats} />);
+
+        const card = screen.getByText('got a race coming up?').closest('a')!;
+
+        expect(card.parentElement).toHaveAttribute('data-slot', 'lane');
+        expect(card.className).not.toMatch(/divide|dashed/);
+    });
+
     it('shows the active race from the shared prop', () => {
         setMockPage({
             auth: { user: makeUser() },

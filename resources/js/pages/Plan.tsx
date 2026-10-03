@@ -16,6 +16,7 @@ import SeasonTimeline from '@/components/plan/SeasonTimeline';
 import EmptyPanel from '@/components/ui/EmptyPanel';
 import Eyebrow from '@/components/ui/Eyebrow';
 import { Icon } from '@/components/ui/Icon';
+import LaneStack from '@/components/ui/LaneStack';
 import PageContainer from '@/components/ui/PageContainer';
 import PillButton from '@/components/ui/PillButton';
 import { SkeletonRows, SkeletonStats } from '@/components/ui/Skeleton';
@@ -28,7 +29,6 @@ import {
     formatNaiveMonthDayId,
     useTodayIso,
 } from '@/lib/pace';
-import { laneStack } from '@/lib/variants';
 
 interface SeasonSummary {
     starts_at: string;
@@ -235,7 +235,7 @@ export default function Plan({
                                 className="mt-6"
                             />
                         ) : (
-                            <div className={cn('mt-6', laneStack)}>
+                            <LaneStack className="mt-6">
                                 <SeasonHeaderCard
                                     weekIndex={season.week_index}
                                     totalWeeks={season.total_weeks}
@@ -264,7 +264,7 @@ export default function Plan({
                                     onSkip={skipSession}
                                     onUnskip={unskipSession}
                                 />
-                            </div>
+                            </LaneStack>
                         )
                     }
                 </Deferred>

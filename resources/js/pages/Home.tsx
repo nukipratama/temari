@@ -19,11 +19,11 @@ import TodaySession from '@/components/home/TodaySession';
 import VerdictHero from '@/components/home/VerdictHero';
 import WeekPlanWidget from '@/components/home/WeekPlanWidget';
 import EmptyRunsState from '@/components/run/EmptyRunsState';
+import LaneStack from '@/components/ui/LaneStack';
 import PageContainer from '@/components/ui/PageContainer';
 import { appLayout } from '@/layouts/appLayout';
 import { drawnHomeAnchors } from '@/lib/anchors';
 import { useTodayIso } from '@/lib/pace';
-import { laneStack } from '@/lib/variants';
 
 interface HomeProps {
     briefing: BriefingResult;
@@ -67,7 +67,7 @@ export default function Home({
                 {!hasRuns ? (
                     <EmptyRunsState />
                 ) : (
-                    <div className={laneStack}>
+                    <LaneStack>
                         {pendingRaceOutcome !== null && (
                             <RaceOutcomePrompt race={pendingRaceOutcome} />
                         )}
@@ -99,7 +99,7 @@ export default function Home({
                             ) : (
                                 <NoVerdictPanel trend={pastYouTrend} />
                             ))}
-                    </div>
+                    </LaneStack>
                 )}
             </PageContainer>
         </>

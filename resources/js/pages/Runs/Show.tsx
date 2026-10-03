@@ -22,14 +22,13 @@ import RunLenses from '@/components/run/RunLenses';
 import SplitsChart from '@/components/run/SplitsChart';
 import VitalsCard from '@/components/run/VitalsCard';
 import Eyebrow from '@/components/ui/Eyebrow';
+import LaneStack from '@/components/ui/LaneStack';
 import PageContainer from '@/components/ui/PageContainer';
 import { appLayout } from '@/layouts/appLayout';
 import { drawnRunAnchors } from '@/lib/anchors';
-import { cn } from '@/lib/cn';
 import { lazyIsland } from '@/lib/lazyIsland';
 import { formatAbsoluteId } from '@/lib/pace';
 import { zonePctFromDetail } from '@/lib/runcard';
-import { laneStack } from '@/lib/variants';
 
 import { useRunShow, type RunCardDetail } from './useRunShow';
 
@@ -120,7 +119,7 @@ export default function RunsShow({
                     </div>
                 )}
 
-                <div className={cn('mt-6', laneStack)}>
+                <LaneStack className="mt-6">
                     <RunHero
                         detail={detail}
                         mood={mood}
@@ -195,7 +194,7 @@ export default function RunsShow({
                             {laps.length > 0 && <LapsCarousel laps={laps} />}
                         </>
                     )}
-                </div>
+                </LaneStack>
 
                 <Eyebrow
                     as="footer"

@@ -166,10 +166,6 @@ export const eyebrowVariantMap = {
 
 export const eyebrowVariants = cva('', { variants: eyebrowVariantMap });
 
-/** MASTER.md's lane stack: sections separated by dashed hairlines, no card per section. */
-export const laneStack =
-    'flex flex-col divide-y divide-dashed divide-border [&>*]:py-6 [&>*:first-child]:pt-0 [&>*:last-child]:pb-0';
-
 /**
  * Rarity → border + flag + corner scale, the one source of truth for the card
  * surfaces. `border` backs card/Card.tsx and card/RunCardMini.tsx; `flag` and

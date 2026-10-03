@@ -20,15 +20,15 @@ import RaceCard from '@/components/profile/RaceCard';
 import SeasonCard from '@/components/profile/SeasonCard';
 import Eyebrow from '@/components/ui/Eyebrow';
 import { Icon, StravaIcon } from '@/components/ui/Icon';
+import LaneStack from '@/components/ui/LaneStack';
 import PageContainer from '@/components/ui/PageContainer';
 import PageHero from '@/components/ui/PageHero';
 import { SkeletonChart, SkeletonRows } from '@/components/ui/Skeleton';
 import UserAvatar from '@/components/UserAvatar';
 import { appLayout } from '@/layouts/appLayout';
-import { cn } from '@/lib/cn';
 import { lazyIsland } from '@/lib/lazyIsland';
 import { formatPace } from '@/lib/pace';
-import { laneStack, pillButtonVariants } from '@/lib/variants';
+import { pillButtonVariants } from '@/lib/variants';
 
 const ProgressionCard = lazyIsland(
     () => import('@/components/profile/ProgressionCard'),
@@ -143,7 +143,7 @@ export default function Profile({
                     />
                 </header>
 
-                <div className={cn('mt-6', laneStack)}>
+                <LaneStack className="mt-6">
                     <ProfileHero
                         mood={mood}
                         firstRunAt={identity.first_run_at}
@@ -215,7 +215,7 @@ export default function Profile({
                             ) : null
                         }
                     </Deferred>
-                </div>
+                </LaneStack>
             </PageContainer>
         </>
     );

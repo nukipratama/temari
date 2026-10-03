@@ -19,6 +19,7 @@ import NarrationCard from '@/components/trends/NarrationCard';
 import RaceComparison from '@/components/trends/RaceComparison';
 import WeekComparison from '@/components/trends/WeekComparison';
 import Eyebrow from '@/components/ui/Eyebrow';
+import LaneStack from '@/components/ui/LaneStack';
 import PageContainer from '@/components/ui/PageContainer';
 import PageHero from '@/components/ui/PageHero';
 import {
@@ -27,8 +28,6 @@ import {
     SkeletonStats,
 } from '@/components/ui/Skeleton';
 import { appLayout } from '@/layouts/appLayout';
-import { cn } from '@/lib/cn';
-import { laneStack } from '@/lib/variants';
 
 interface TrendsProps {
     ctlTrend?: FitnessTrendPoint[];
@@ -76,7 +75,7 @@ export default function Trends({
                     </em>
                 </PageHero>
 
-                <div className={cn('mt-6', laneStack)}>
+                <LaneStack className="mt-6">
                     <Deferred data="narration" fallback={<SkeletonProse />}>
                         {() => <NarrationCard analysis={narration!} />}
                     </Deferred>
@@ -132,7 +131,7 @@ export default function Trends({
                             />
                         )}
                     </Deferred>
-                </div>
+                </LaneStack>
             </PageContainer>
         </>
     );
