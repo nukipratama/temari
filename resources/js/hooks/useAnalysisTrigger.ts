@@ -21,7 +21,7 @@ export const RATE_LIMITED_ERROR = 'rate_limited';
 /** Server refusal status for a trigger posted while narration is paused. */
 const PAUSED_STATUS = 409;
 
-const MALFORMED_RESPONSE_ERROR = 'The server sent back something unreadable';
+const MALFORMED_RESPONSE_ERROR = 'the server sent back something unreadable';
 
 /**
  * Minimal runtime shape check for a trigger response. The fetch body is
@@ -238,7 +238,7 @@ export function useAnalysisTrigger(
                 throw new Error(
                     response.status === 429
                         ? RATE_LIMITED_ERROR
-                        : `Trigger failed (${response.status})`,
+                        : `trigger failed (${response.status})`,
                 );
             }
 

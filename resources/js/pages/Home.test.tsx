@@ -226,7 +226,7 @@ describe('Home', () => {
         renderHome(trend(), null);
 
         expect(screen.queryByText("this week's plan")).not.toBeInTheDocument();
-        expect(screen.getByText('No plan yet.')).toBeInTheDocument();
+        expect(screen.getByText('no plan yet.')).toBeInTheDocument();
     });
 
     it('shows the evidence the verdict was computed from', () => {
@@ -316,7 +316,7 @@ describe('Home', () => {
         renderHome(null);
 
         expect(screen.queryByText(/You vs Past You/)).not.toBeInTheDocument();
-        expect(screen.getByText('No plan yet.')).toBeInTheDocument();
+        expect(screen.getByText('no plan yet.')).toBeInTheDocument();
     });
 
     it('shows the no-runs empty state instead of a verdict on a brand new account', () => {
@@ -330,7 +330,7 @@ describe('Home', () => {
         );
 
         expect(screen.queryByText(/You vs Past You/)).not.toBeInTheDocument();
-        expect(screen.queryByText('No plan yet.')).not.toBeInTheDocument();
+        expect(screen.queryByText('no plan yet.')).not.toBeInTheDocument();
     });
 
     it("passes restDayEasePace through to today's session on a rest day", () => {

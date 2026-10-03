@@ -24,16 +24,16 @@ export default function NoPlanCard({
                 <TemariMascot size={40} />
                 <div>
                     <p className="text-base font-semibold text-foreground">
-                        No plan yet.
+                        no plan yet.
                     </p>
                     <p className="mt-1 mb-2.5 text-xs leading-relaxed text-foreground">
-                        Set one up and Temari will lay out the weeks ahead.
+                        set one up and temari will lay out the weeks ahead.
                     </p>
                     <Link
                         href="/plan"
                         className="focus-ring inline-flex items-center gap-1 rounded-xs text-[0.71875rem] font-bold text-icon-accent"
                     >
-                        Set up a plan
+                        set up a plan
                         <Icon
                             icon={ArrowRight}
                             width={12}

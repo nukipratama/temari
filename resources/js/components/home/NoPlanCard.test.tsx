@@ -7,9 +7,9 @@ describe('NoPlanCard', () => {
     it("renders the prototype's empty plan state with a way into Plan", () => {
         render(<NoPlanCard />);
 
-        expect(screen.getByText('No plan yet.')).toBeInTheDocument();
+        expect(screen.getByText('no plan yet.')).toBeInTheDocument();
         expect(
-            screen.getByRole('link', { name: /Set up a plan/ }),
+            screen.getByRole('link', { name: /set up a plan/ }),
         ).toHaveAttribute('href', '/plan');
     });
 

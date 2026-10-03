@@ -79,16 +79,16 @@ describe('PastYouCard', () => {
                 })}
             />,
         );
-        expect(screen.getByText('Dead even')).toBeInTheDocument();
+        expect(screen.getByText('dead even')).toBeInTheDocument();
         expect(screen.queryByText(/sec\/km/)).not.toBeInTheDocument();
     });
 
     it('links to the matched run', () => {
         render(<PastYouCard match={match()} />);
         expect(
-            screen.getByRole('link', { name: /View that run/ }),
+            screen.getByRole('link', { name: /view that run/ }),
         ).toHaveAttribute('href', '/activities/42');
-        expect(screen.getByRole('link', { name: /View that run/ })).toHaveClass(
+        expect(screen.getByRole('link', { name: /view that run/ })).toHaveClass(
             'hit-area',
         );
     });
@@ -120,7 +120,7 @@ describe('PastYouCard', () => {
 
     it('shows what the pace gap was worth over the whole distance', () => {
         render(<PastYouCard match={match()} />);
-        expect(screen.getByText('Over the distance')).toBeInTheDocument();
+        expect(screen.getByText('over the distance')).toBeInTheDocument();
         expect(screen.getByText(/quicker/)).toBeInTheDocument();
     });
 
@@ -130,7 +130,7 @@ describe('PastYouCard', () => {
                 match={match({ time: { seconds: 0, relation: 'same' } })}
             />,
         );
-        expect(screen.queryByText('Over the distance')).not.toBeInTheDocument();
+        expect(screen.queryByText('over the distance')).not.toBeInTheDocument();
     });
 
     it('marks a slower finish over the same distance', () => {

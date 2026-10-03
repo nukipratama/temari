@@ -163,7 +163,7 @@ describe('RaceGoalForm', () => {
 
         expect(screen.getByRole('button', { name: 'set race' })).toBeDisabled();
         expect(
-            screen.getByText('Goal time has to be at least 5 minutes.'),
+            screen.getByText('goal time has to be at least 5 minutes.'),
         ).toBeInTheDocument();
     });
 
@@ -342,7 +342,7 @@ describe('RaceGoalForm', () => {
     });
 
     it.each([
-        ['race_date', 'Race day', "That's further out than we can plan for."],
+        ['race_date', 'Race day', "that's further out than we can plan for."],
         [
             'distance_m',
             'Custom distance in kilometers',

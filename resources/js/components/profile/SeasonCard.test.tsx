@@ -44,9 +44,9 @@ describe('SeasonCard', () => {
     it('points at Plan when there is no season yet', () => {
         render(<SeasonCard season={null} weeks={[]} />);
 
-        expect(screen.getByText(/No season yet/)).toBeInTheDocument();
+        expect(screen.getByText(/no season yet/)).toBeInTheDocument();
         expect(
-            screen.getByRole('link', { name: /Start one on Plan/ }),
+            screen.getByRole('link', { name: /start one on plan/ }),
         ).toHaveAttribute('href', '/plan');
     });
 

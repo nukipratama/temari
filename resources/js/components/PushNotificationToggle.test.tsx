@@ -42,7 +42,7 @@ it('renders nothing when no VAPID public key is configured', () => {
 it('shows the enable button when ready and subscribes on click', async () => {
     render(<PushNotificationToggle />);
 
-    fireEvent.click(await screen.findByRole('button', { name: /Turn on/ }));
+    fireEvent.click(await screen.findByRole('button', { name: /turn on/ }));
 
     await waitFor(() =>
         expect(webPush.subscribe).toHaveBeenCalledWith('test-key'),
@@ -54,7 +54,7 @@ it('offers a re-register when permission is granted but the subscription is gone
     render(<PushNotificationToggle />);
 
     expect(await screen.findByText(/re-registered/)).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: /Fix/ }));
+    fireEvent.click(screen.getByRole('button', { name: /fix/ }));
 
     await waitFor(() =>
         expect(webPush.subscribe).toHaveBeenCalledWith('test-key'),
@@ -113,7 +113,7 @@ it('unsubscribes and returns to the ready state when disconnect is clicked', asy
 
     await waitFor(() => expect(webPush.unsubscribe).toHaveBeenCalled());
     expect(
-        await screen.findByRole('button', { name: /Turn on/ }),
+        await screen.findByRole('button', { name: /turn on/ }),
     ).toBeInTheDocument();
 });
 
@@ -152,7 +152,7 @@ it('opens and closes the demo-blocked modal for a demo user', async () => {
     });
     render(<PushNotificationToggle />);
 
-    fireEvent.click(await screen.findByRole('button', { name: /Turn on/ }));
+    fireEvent.click(await screen.findByRole('button', { name: /turn on/ }));
     expect(await screen.findByRole('dialog')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /close/i }));

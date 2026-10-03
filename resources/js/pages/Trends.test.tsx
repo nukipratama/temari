@@ -83,7 +83,7 @@ describe('Trends', () => {
     it('renders the page headline', () => {
         render(<Trends {...BASE_PROPS} />);
 
-        expect(screen.getByText('am I getting fitter,')).toBeInTheDocument();
+        expect(screen.getByText('am i getting fitter,')).toBeInTheDocument();
         expect(screen.getByText('and at what cost?')).toBeInTheDocument();
     });
 
@@ -165,7 +165,7 @@ describe('Trends', () => {
 
         const { container } = render(<Trends />);
 
-        expect(screen.getByText('am I getting fitter,')).toBeInTheDocument();
+        expect(screen.getByText('am i getting fitter,')).toBeInTheDocument();
         expect(screen.queryByText('vs last week')).not.toBeInTheDocument();
         expect(screen.queryByText('long-term load')).not.toBeInTheDocument();
         expect(container.querySelectorAll('.skeleton').length).toBeGreaterThan(

@@ -30,7 +30,7 @@ export default function StravaPausedBanner() {
                     aria-hidden
                 />
                 <p className="flex-1 font-sans text-sm leading-relaxed text-foreground">
-                    The pull from Strava is paused for a bit. Your runs are safe
+                    the pull from Strava is paused for a bit. your runs are safe
                     on Strava, they&apos;ll pull back in automatically.
                 </p>
             </div>

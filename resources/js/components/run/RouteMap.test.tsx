@@ -74,14 +74,14 @@ describe('RouteMap', () => {
     it('gives the map a generic accessible name when no distance is provided', () => {
         render(<RouteMap polyline="good" />);
         expect(
-            screen.getByRole('img', { name: 'Run route map' }),
+            screen.getByRole('img', { name: 'run route map' }),
         ).toBeInTheDocument();
     });
 
     it('threads the distance into the accessible name when provided', () => {
         render(<RouteMap polyline="good" distanceKm="10.42" />);
         expect(
-            screen.getByRole('img', { name: 'Run route map, 10.42 km' }),
+            screen.getByRole('img', { name: 'run route map, 10.42 km' }),
         ).toBeInTheDocument();
     });
 

@@ -187,7 +187,7 @@ describe('Onboarding/Index', () => {
             screen.getByRole('button', { name: 'set my goal' }),
         ).toBeDisabled();
         expect(
-            screen.getByText('Goal time has to be at least 5 minutes.'),
+            screen.getByText('goal time has to be at least 5 minutes.'),
         ).toBeInTheDocument();
     });
 
@@ -410,7 +410,7 @@ describe('Onboarding/Index', () => {
 
         expect(
             screen.getByText(
-                'Got it: new to running · 3x a week · stay consistent.',
+                'got it: new to running · 3x a week · stay consistent.',
             ),
         ).toBeInTheDocument();
     });
@@ -493,7 +493,7 @@ describe('Onboarding/Index', () => {
             '_blank',
         );
         expect(
-            await screen.findByRole('button', { name: /Turn on/ }),
+            await screen.findByRole('button', { name: /turn on/ }),
         ).toBeInTheDocument();
     });
 

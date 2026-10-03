@@ -550,13 +550,13 @@ describe('verdictSupport', () => {
             verdictSupport(
                 trend({ verdict: 'not_enough_history', comparison_count: 0 }),
             ),
-        ).toBe("run something twice and I'll tell you exactly what changed.");
+        ).toBe("run something twice and i'll tell you exactly what changed.");
 
         expect(
             verdictSupport(
                 trend({ verdict: 'not_enough_history', comparison_count: 1 }),
             ),
-        ).toBe("one more comparable run and I'll call it.");
+        ).toBe("one more comparable run and i'll call it.");
 
         expect(
             verdictSupport(
@@ -566,7 +566,7 @@ describe('verdictSupport', () => {
                     comparisons: [comparison(), comparison({ activityId: 3 })],
                 }),
             ),
-        ).toBe("one more comparable run and I'll call the trend.");
+        ).toBe("one more comparable run and i'll call the trend.");
     });
 
     it('omits the aggregate when the window shipped no mean', () => {

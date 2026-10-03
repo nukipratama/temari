@@ -9,7 +9,7 @@ import StravaSyncButton from './StravaSyncButton';
 describe('StravaSyncButton', () => {
     it('renders a connect link to the OAuth redirect when disconnected', () => {
         render(<StravaSyncButton state="disconnected" />);
-        expect(screen.getByText('Connect Strava').closest('a')).toHaveAttribute(
+        expect(screen.getByText('connect Strava').closest('a')).toHaveAttribute(
             'href',
             '/auth/strava/redirect',
         );
@@ -77,7 +77,7 @@ describe('StravaSyncButton', () => {
             stravaPaused: true,
         });
         render(<StravaSyncButton state="disconnected" />);
-        expect(screen.getByText('Connect Strava').closest('a')).toHaveAttribute(
+        expect(screen.getByText('connect Strava').closest('a')).toHaveAttribute(
             'href',
             '/auth/strava/redirect',
         );

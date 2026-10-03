@@ -270,7 +270,7 @@ describe('AnalysisStatus', () => {
                 analysis={payload({ status: 'processing', attempts: 3 })}
             />,
         );
-        expect(screen.getByText(/Attempt 3/)).toBeInTheDocument();
+        expect(screen.getByText(/attempt 3/)).toBeInTheDocument();
     });
 
     it('disables reread and shows countdown when retry_after_seconds > 0', () => {
@@ -374,7 +374,7 @@ describe('AnalysisStatus', () => {
 
             await waitFor(() => {
                 expect(
-                    screen.getByText(/Easy there, Temari's overwhelmed/),
+                    screen.getByText(/easy there, temari's overwhelmed/),
                 ).toBeInTheDocument();
             });
         } finally {
@@ -420,7 +420,7 @@ describe('AnalysisStatus', () => {
             setMockPage({ aiPaused: true, aiPauseRetriesFailed: true });
             render(<AnalysisStatus analysis={payload({ status: 'failed' })} />);
             expect(
-                screen.getByText('This will be written once Temari is back.'),
+                screen.getByText('this will be written once temari is back.'),
             ).toBeInTheDocument();
             expect(screen.queryByText(/try again/i)).not.toBeInTheDocument();
         });
@@ -429,7 +429,7 @@ describe('AnalysisStatus', () => {
             setMockPage({ aiPaused: true, aiPauseRetriesFailed: false });
             render(<AnalysisStatus analysis={payload({ status: 'failed' })} />);
             expect(
-                screen.queryByText('This will be written once Temari is back.'),
+                screen.queryByText('this will be written once temari is back.'),
             ).not.toBeInTheDocument();
         });
 

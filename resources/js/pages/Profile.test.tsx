@@ -85,7 +85,7 @@ describe('Profile', () => {
             />,
         );
 
-        expect(screen.getByText('Runner,')).toBeInTheDocument();
+        expect(screen.getByText('runner,')).toBeInTheDocument();
     });
 
     it('renders the lifetime stat tiles in the hero', () => {
@@ -145,7 +145,7 @@ describe('Profile', () => {
     it('prompts for a race when none is active', () => {
         render(<Profile mood="easy" identity={identity} stats={stats} />);
 
-        expect(screen.getByText('Got a race coming up?')).toBeInTheDocument();
+        expect(screen.getByText('got a race coming up?')).toBeInTheDocument();
     });
 
     it('shows the active race from the shared prop', () => {
@@ -170,7 +170,7 @@ describe('Profile', () => {
     it('points at Plan when there is no season', () => {
         render(<Profile mood="easy" identity={identity} stats={stats} />);
 
-        expect(screen.getByText(/No season yet/)).toBeInTheDocument();
+        expect(screen.getByText(/no season yet/)).toBeInTheDocument();
     });
 
     it('renders the season card when a season exists', () => {

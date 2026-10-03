@@ -1,0 +1,17 @@
+[
+    "focusId",
+    "hasOlder",
+    "notifications",
+    "notifications[].body",
+    "notifications[].created_at",
+    "notifications[].distance_m",
+    "notifications[].elapsed_time_s",
+    "notifications[].id",
+    "notifications[].kind",
+    "notifications[].rarity",
+    "notifications[].read_at",
+    "notifications[].run_card_id",
+    "notifications[].title",
+    "notifications[].url",
+    "shown"
+]

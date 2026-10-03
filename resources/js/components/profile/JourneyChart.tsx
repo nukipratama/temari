@@ -81,7 +81,7 @@ export default function JourneyChart({
 
     if (points.length === 0) {
         return (
-            <EmptyPanel title="Not enough runs at this distance yet to draw a journey line." />
+            <EmptyPanel title="not enough runs at this distance yet to draw a journey line." />
         );
     }
 
@@ -144,7 +144,7 @@ export default function JourneyChart({
     }
 
     const path = points.map((p) => `${p.x},${p.y}`).join(' ');
-    const summary = `From ${formatDurationHMS(points[0].time)} on ${points[0].label} to ${formatDurationHMS(points.at(-1)!.time)} on ${points.at(-1)!.label}.`;
+    const summary = `from ${formatDurationHMS(points[0].time)} on ${points[0].label} to ${formatDurationHMS(points.at(-1)!.time)} on ${points.at(-1)!.label}.`;
     const selected = selectedIndex !== null ? points[selectedIndex] : null;
 
     return (

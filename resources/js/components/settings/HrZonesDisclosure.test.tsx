@@ -116,7 +116,7 @@ describe('HrZonesDisclosure', () => {
             />,
         );
         expect(
-            screen.getByText(/Synced from Strava · last synced 3 days ago/),
+            screen.getByText(/synced from Strava · last synced 3 days ago/),
         ).toBeInTheDocument();
     });
 
@@ -157,7 +157,7 @@ describe('HrZonesDisclosure', () => {
         // Editing the field alone must not touch the rendered zones.
         expect(screen.getByTestId('zone-Z1-lo')).toHaveValue(DEFAULT_BOUNDS.Z1);
 
-        fireEvent.click(screen.getByRole('button', { name: 'Auto-calculate' }));
+        fireEvent.click(screen.getByRole('button', { name: 'auto-calculate' }));
 
         expect(screen.getByTestId('zone-Z1-lo')).toHaveValue(
             deriveBounds(200, DEFAULT_PROFILE.resting_hr).Z1,
@@ -179,14 +179,14 @@ describe('HrZonesDisclosure', () => {
         open();
 
         expect(
-            screen.getByRole('button', { name: /Save zones/ }),
+            screen.getByRole('button', { name: /save zones/ }),
         ).toBeDisabled();
 
         fireEvent.change(screen.getByLabelText('Max HR'), {
             target: { value: '200' },
         });
         expect(
-            screen.getByRole('button', { name: /Save zones/ }),
+            screen.getByRole('button', { name: /save zones/ }),
         ).toBeEnabled();
     });
 
@@ -198,7 +198,7 @@ describe('HrZonesDisclosure', () => {
         fireEvent.change(screen.getByLabelText('Resting HR'), {
             target: { value: '50' },
         });
-        fireEvent.click(screen.getByRole('button', { name: /Save zones/ }));
+        fireEvent.click(screen.getByRole('button', { name: /save zones/ }));
 
         expect(router.patch).toHaveBeenCalledWith(
             '/settings/zones',
@@ -235,7 +235,7 @@ describe('HrZonesDisclosure', () => {
         );
         open();
         expect(
-            screen.queryByRole('button', { name: /Reset to default/ }),
+            screen.queryByRole('button', { name: /reset to default/ }),
         ).not.toBeInTheDocument();
 
         rerender(
@@ -244,7 +244,7 @@ describe('HrZonesDisclosure', () => {
             />,
         );
         expect(
-            screen.getByRole('button', { name: /Reset to default/ }),
+            screen.getByRole('button', { name: /reset to default/ }),
         ).toBeInTheDocument();
     });
 
@@ -256,7 +256,7 @@ describe('HrZonesDisclosure', () => {
         fireEvent.change(screen.getByLabelText('Max HR'), {
             target: { value: '200' },
         });
-        fireEvent.click(screen.getByRole('button', { name: /Save zones/ }));
+        fireEvent.click(screen.getByRole('button', { name: /save zones/ }));
         expect(screen.queryByRole('status')).not.toBeInTheDocument();
 
         const [, , options] = vi.mocked(router.patch).mock.calls[0] as [
@@ -274,7 +274,7 @@ describe('HrZonesDisclosure', () => {
             options.onFinish?.();
         });
 
-        expect(screen.getByRole('status')).toHaveTextContent('Saved');
+        expect(screen.getByRole('status')).toHaveTextContent('saved');
     });
 
     it('only shows resync from Strava when canSyncFromStrava is true and the source is manual', () => {
@@ -338,7 +338,7 @@ describe('HrZonesDisclosure', () => {
         );
         open();
         fireEvent.click(
-            screen.getByRole('button', { name: /Reset to default/ }),
+            screen.getByRole('button', { name: /reset to default/ }),
         );
 
         expect(router.delete).toHaveBeenCalledWith(

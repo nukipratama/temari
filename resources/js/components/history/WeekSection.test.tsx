@@ -215,7 +215,7 @@ describe('WeekSection', () => {
             );
 
             expect(
-                screen.getByText(/You ran 4x this week for 35.5 km/),
+                screen.getByText(/you ran 4x this week for 35.5 km/),
             ).toBeInTheDocument();
         });
 
@@ -240,7 +240,7 @@ describe('WeekSection', () => {
             );
 
             expect(
-                screen.getByText(/No data for this week yet, hang tight/),
+                screen.getByText(/no data for this week yet, hang tight/),
             ).toBeInTheDocument();
         });
     });

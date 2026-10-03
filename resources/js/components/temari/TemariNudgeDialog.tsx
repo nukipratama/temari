@@ -38,7 +38,7 @@ export default function TemariNudgeDialog({
     primaryIcon,
     primaryClassName,
     onPrimary,
-    secondaryLabel = 'Not now',
+    secondaryLabel = 'not now',
     pose = 'neutral',
 }: Readonly<TemariNudgeModalProps>) {
     return (

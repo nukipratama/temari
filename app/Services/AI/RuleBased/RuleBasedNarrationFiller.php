@@ -20,6 +20,7 @@ use App\Services\AI\AnalysisType;
 use App\Services\Run\Metrics\DecimalFormatter;
 use App\Services\Run\Metrics\DistanceFormatter;
 use App\Services\Run\Metrics\StreamSummary;
+use App\Services\Run\Metrics\TrainingLoad;
 use App\Services\Run\Plan\EffectiveSession;
 use App\Services\Run\Plan\IntentOutcome;
 use App\Services\Run\Plan\PlanRenderer;
@@ -341,12 +342,7 @@ final readonly class RuleBasedNarrationFiller
         $sessionWord = $runs === 1 ? 'session' : 'sessions';
         $timeWord = $runs === 1 ? 'time' : 'times';
 
-        // A ran week with a null form_status means the training-load rollup
-        // never reached this snapshot before the recap read it — the caller
-        // is expected to gate that (see KickoffWeeklyRecaps /
-        // RecapHydrationReadiness), so a hit here past that gate is worth
-        // knowing about rather than a closer that quietly reads as generic.
-        if ($snapshot->form_status === null) {
+        if ($snapshot->form_status === null && $snapshot->weekly_trimp !== null && $this->formKnownBy($snapshot)) {
             Log::warning('narrator.recap.form_status_missing', [
                 'snapshot_id' => $snapshotId,
                 'runs' => $runs,
@@ -372,6 +368,23 @@ final readonly class RuleBasedNarrationFiller
             "The week came to {$km} km from {$runs} {$sessionWord}. {$closer}",
             "{$km} km logged, {$runs} {$timeWord} out the door. {$closer}",
         ], $snapshotId);
+    }
+
+    /**
+     * Whether the week closes on or after the day {@see TrainingLoad} starts
+     * reading form: one CTL time constant after the athlete's first scored run.
+     */
+    private function formKnownBy(WeeklySnapshot $snapshot): bool
+    {
+        $firstScored = Activity::analyzedJoinConstraint(
+            ActivityDetail::query()->join('activities', 'activities.id', '=', 'activity_details.activity_id'),
+        )
+            ->where('activities.user_id', $snapshot->user_id)
+            ->whereNotNull('activity_details.trimp_edwards')
+            ->min('activity_details.start_date_local');
+
+        return $firstScored !== null
+            && $snapshot->week_ending->toDateString() >= Carbon::parse((string) $firstScored)->addDays(TrainingLoad::CTL_TAU)->toDateString();
     }
 
     /**

@@ -564,7 +564,7 @@ export default function OnboardingIndex({
                         </div>
                         {prefsSummary !== '' && (
                             <p className="mb-3 narration">
-                                Got it: {prefsSummary}.
+                                got it: {prefsSummary}.
                             </p>
                         )}
                         <div className="flex items-center gap-2">
@@ -575,9 +575,9 @@ export default function OnboardingIndex({
                             <Chip className="mt-1 self-start">optional</Chip>
                         </div>
                         <p className="mt-3 font-sans text-sm leading-relaxed text-text-2">
-                            Give temari something to build toward. Skip it if
+                            give temari something to build toward. skip it if
                             you&rsquo;re not sure yet, you can always set one
-                            later from Plan.
+                            later from plan.
                         </p>
 
                         <div className="mt-6 mb-4 flex items-center gap-4">
@@ -777,7 +777,7 @@ export default function OnboardingIndex({
                             <Chip className="mt-1 self-start">optional</Chip>
                         </div>
                         <p className="mt-3 font-sans text-sm leading-relaxed text-text-2">
-                            She only pings you when there is something to say:
+                            she only pings you when there is something to say:
                             the read on a run once it lands, your week and month
                             wrapped up, a heads-up when a streak is about to
                             slip, and a word if Strava quietly stops syncing.

@@ -41,7 +41,7 @@ export default function StravaSyncButton({
                 )}
             >
                 <Icon icon={StravaIcon} width={16} height={16} aria-hidden />
-                {state === 'revoked' ? 'reconnect' : 'Connect Strava'}
+                {state === 'revoked' ? 'reconnect' : 'connect Strava'}
             </a>
         );
     }

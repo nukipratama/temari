@@ -216,7 +216,7 @@ function PushAction({
             return (
                 <Button disabled={busy} onClick={onSubscribe}>
                     <Icon icon={Bell} width={14} height={14} aria-hidden />
-                    Fix
+                    fix
                 </Button>
             );
         case 'subscribed':
@@ -230,7 +230,7 @@ function PushAction({
             return (
                 <Button disabled={busy} onClick={onSubscribe}>
                     <Icon icon={BellRing} width={14} height={14} aria-hidden />
-                    Turn on
+                    turn on
                 </Button>
             );
         default:

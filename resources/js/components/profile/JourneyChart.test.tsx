@@ -30,7 +30,7 @@ describe('JourneyChart', () => {
 
         expect(
             screen.getByText(
-                'Best time journey. From 52:40 on may 25 to 48:15 on jun 22.',
+                'Best time journey. from 52:40 on may 25 to 48:15 on jun 22.',
             ),
         ).toBeInTheDocument();
     });
@@ -39,7 +39,7 @@ describe('JourneyChart', () => {
         render(<JourneyChart weeks={WEEKS} timesSec={[null, null, null]} />);
 
         expect(
-            screen.getByText(/Not enough runs at this distance yet/),
+            screen.getByText(/not enough runs at this distance yet/),
         ).toBeInTheDocument();
     });
 

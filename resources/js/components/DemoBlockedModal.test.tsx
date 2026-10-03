@@ -18,12 +18,12 @@ describe('DemoBlockedModal', () => {
         expect(
             screen.getByText("Telegram's taking a break for now"),
         ).toBeInTheDocument();
-        expect(screen.getByText(/Connect your own Strava/)).toBeInTheDocument();
+        expect(screen.getByText(/connect your own Strava/)).toBeInTheDocument();
         expect(
-            screen.getByRole('button', { name: 'Connect Strava' }),
+            screen.getByRole('button', { name: 'connect Strava' }),
         ).toBeInTheDocument();
         expect(
-            screen.getByRole('button', { name: 'Not now' }),
+            screen.getByRole('button', { name: 'not now' }),
         ).toBeInTheDocument();
     });
 
@@ -40,7 +40,7 @@ describe('DemoBlockedModal', () => {
         vi.mocked(router.post).mockReset();
         render(<DemoBlockedModal open onClose={vi.fn()} />);
         await screen.findByRole('dialog');
-        fireEvent.click(screen.getByRole('button', { name: 'Connect Strava' }));
+        fireEvent.click(screen.getByRole('button', { name: 'connect Strava' }));
         expect(router.post).toHaveBeenCalledWith('/logout');
     });
 
@@ -48,7 +48,7 @@ describe('DemoBlockedModal', () => {
         const onClose = vi.fn();
         render(<DemoBlockedModal open onClose={onClose} />);
         await screen.findByRole('dialog');
-        fireEvent.click(screen.getByRole('button', { name: 'Not now' }));
+        fireEvent.click(screen.getByRole('button', { name: 'not now' }));
         expect(onClose).toHaveBeenCalledOnce();
     });
 

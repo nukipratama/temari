@@ -383,7 +383,7 @@ function TestSendButton({
     if (cooling) {
         label = formatDurationHMS(remaining);
     } else if (sending) {
-        label = 'Sending…';
+        label = 'sending…';
     }
 
     return (
@@ -472,11 +472,11 @@ function TelegramPanel({
     // Mute sits beside the connection it silences, and only exists once there is
     // a connection — a mute on an unwired channel would mean nothing.
     let description = telegram.username
-        ? `Active · @${telegram.username}`
+        ? `active · @${telegram.username}`
         : 'active';
     if (muted) {
         description = telegram.username
-            ? `Muted · @${telegram.username}`
+            ? `muted · @${telegram.username}`
             : 'muted';
     }
 

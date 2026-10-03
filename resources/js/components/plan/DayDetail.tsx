@@ -270,7 +270,7 @@ export function DayHeadline({ day }: Readonly<{ day: PlanDay }>) {
             )}
             {isRest && day.ran_anyway && (
                 <span className="mt-0.5 block text-xs font-semibold text-leaf-ink">
-                    Ran anyway · {daySummary(day)}
+                    ran anyway · {daySummary(day)}
                 </span>
             )}
             {!isRest && STATUS_LABEL[status] && (
