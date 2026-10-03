@@ -62,6 +62,15 @@ describe('RunHero', () => {
         expect(screen.getByText('blazing')).toBeInTheDocument();
     });
 
+    it('marks its header as the morph target for its run, unnamed until a transition starts', () => {
+        renderHero();
+        const header = screen
+            .getByRole('heading', { name: 'Morning tempo' })
+            .closest('header');
+        expect(header?.dataset.runMorph).toBe('99');
+        expect(header?.style.getPropertyValue('view-transition-name')).toBe('');
+    });
+
     it('falls back to "run" when the activity has no name', () => {
         renderHero({}, { name: null });
         expect(

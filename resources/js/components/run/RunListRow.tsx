@@ -19,6 +19,7 @@ import {
 import { renderBold } from '@/lib/richText';
 import { activityUrl } from '@/lib/routes';
 import { RARITY_INK } from '@/lib/runcard';
+import { morphRunCard } from '@/lib/runMorph';
 import { EFFORT_WORD } from '@/pages/Activities/calendarBars';
 
 export interface RunNote {
@@ -55,6 +56,8 @@ function RunListRow({
     return (
         <Link
             href={activityUrl(detail)}
+            data-run-morph={detail.activity_id}
+            viewTransition={morphRunCard(detail.activity_id)}
             className={cn(
                 'pressable block p-3.5 text-sm transition hover:bg-background',
                 stripeClass,

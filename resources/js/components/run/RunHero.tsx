@@ -107,7 +107,10 @@ export default function RunHero({
             )}
         >
             <MascotWatermark pose={mood} className="-top-3 -right-14" />
-            <header className="flex items-start gap-3.5">
+            <header
+                data-run-morph={detail.activity_id}
+                className="flex items-start gap-3.5"
+            >
                 <div className="min-w-0 flex-1">
                     <Eyebrow token="micro" tone="ink-2">
                         {formatShortDateTimeId(detail.start_date_local)}
