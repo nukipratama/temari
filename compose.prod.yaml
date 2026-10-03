@@ -259,9 +259,10 @@ services:
 
   mysql:
     # Custom image = stock mysql + the bootstrap baked into initdb (see docker/mysql/
-    # Dockerfile), so a fresh volume self-initializes on any machine. compose builds it
-    # on `up` if missing; existing volumes are unaffected (initdb only runs once).
-    image: temari/mysql:8.4
+    # Dockerfile), so a fresh volume self-initializes on any machine. No workflow builds
+    # or recreates it: an image change is the manual "Upgrading MySQL" window in
+    # docs/architecture/deployment.md.
+    image: temari/mysql:9.7
     build:
       context: ./docker/mysql
     restart: unless-stopped

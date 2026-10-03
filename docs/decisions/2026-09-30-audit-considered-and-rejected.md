@@ -111,6 +111,8 @@ The blocker is `typescript-eslint`, which declares a peer range below TypeScript
 
 ## MySQL 9.7: stay on 8.4 LTS
 
+> **Superseded 2026-10-04:** the owner moved every MySQL to 9.7 LTS in a staged upgrade (#1647); see "Upgrading MySQL" in [[deployment]].
+
 8.4 has premier support to 2029-04-30 and extended support to 2032-04-30; 9.7 LTS (released 2026-04-21) extends that by two years. Its headline features (hypergraph optimizer, dynamic data masking, group-replication metrics) do not apply to a single-node 90 MB database with 560 MiB of memory in use. Upgrading costs a dump-and-restore window and lockstep changes to prod, dev, the shared services and both CI workflows (`compose.prod.yaml:264`) for no measurable gain. Migration risk when it comes is low: LTS-to-LTS is supported, nothing references `mysql_native_password` (removed in 9.0), the tuning flags are valid in 9.x, and the restore path is exercised nightly.
 
 **Revisit when** 8.4 nears the end of premier support (2028-2029): move dev, CI and the custom image to 9.7 in one change, run the restore exercise against it first, then roll prod from a fresh dump.
