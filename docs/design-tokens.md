@@ -468,6 +468,10 @@ one on the `horizon` 18% tint with a `horizon-ink` label, in `sm` (inline filter
 that navigates passes its link as `render` with `nativeButton={false}`, and the group then takes
 no `onValueChange`.
 
+The retired primitives (`LegacyCard`, `LinkCard`, `cardVariants`, the shadcn `button` and
+`toggle`, `toggleButtonVariants`, `SectionLabel`) cannot come back: `no-restricted-imports` in
+[eslint.config.js](../eslint.config.js) fails `npm run lint` with the replacement to use.
+
 Data maps that are *not* style-variant matrices — [lib/mood.ts](../resources/js/lib/mood.ts) (mood →
 face / label / fill) and [lib/tones.ts](../resources/js/lib/tones.ts) (icon-tile tones) — stay as
 plain `Record` lookups; do **not** fold those into cva.
