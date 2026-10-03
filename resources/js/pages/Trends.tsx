@@ -69,7 +69,7 @@ export default function Trends({
                     Trends
                 </Eyebrow>
                 <PageHero size="quote-lg" italic className="mt-2">
-                    am I getting fitter,
+                    am i getting fitter,
                     <br />
                     <em className="italic text-icon-accent">
                         and at what cost?

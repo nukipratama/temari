@@ -105,7 +105,7 @@ export default function AskAboutRun({
                     className="mt-4 rounded-sm bg-secondary px-3.5 py-2.5 font-sans text-xs leading-relaxed text-text-2"
                 >
                     only the summary has landed for this run, so no splits,
-                    zones or terrain yet. I'll answer from what's here.
+                    zones or terrain yet. i'll answer from what's here.
                 </p>
             )}
 

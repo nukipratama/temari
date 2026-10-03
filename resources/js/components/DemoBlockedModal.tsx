@@ -25,7 +25,7 @@ export default function DemoBlockedModal({
             title="Telegram's taking a break for now"
             body={
                 <>
-                    this is still the demo, so I&apos;ve switched off Telegram
+                    this is still the demo, so i&apos;ve switched off Telegram
                     here, that keeps this shared bot from getting tapped by
                     someone else. connect your own Strava and you&apos;ll get
                     real notifications on your phone.

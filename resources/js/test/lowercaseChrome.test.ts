@@ -80,9 +80,11 @@ const COMPARISON_OPERATORS = [
 function capitalisedWord(text: string): string | null {
     for (const match of text
         .trim()
-        .matchAll(/(?:^|[.!?]\s+)([A-Z][a-z]+)|\b(Temari)\b/g)) {
-        const word = match[1] ?? match[2];
-        if (word === 'Temari' || !PROPER_NOUNS.has(word)) {
+        .matchAll(
+            /(?:^|[.!?]\s+)([A-Z][a-z]+)|\b(Temari)\b|(?<![\w-])(I)(?=['’&\s,.!?]|$)/g,
+        )) {
+        const word = match[1] ?? match[2] ?? match[3];
+        if (word === 'Temari' || word === 'I' || !PROPER_NOUNS.has(word)) {
             return word;
         }
     }

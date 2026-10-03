@@ -78,7 +78,7 @@ export default function RunHydratingNotice({
                 <p className="mt-1 font-sans text-xs leading-relaxed text-text-2">
                     {stoppedPolling
                         ? 'the deeper fetch still has not landed. i stopped reloading on your behalf rather than doing it forever, so this one is on you now.'
-                        : 'so far I have the distance, time and pace Strava lists for it. the splits, heart-rate zones, effort score and its card come from a second, deeper fetch that queues behind runs finishing right now, so it can take a few minutes. this page refreshes itself when the rest arrives.'}
+                        : 'so far i have the distance, time and pace Strava lists for it. the splits, heart-rate zones, effort score and its card come from a second, deeper fetch that queues behind runs finishing right now, so it can take a few minutes. this page refreshes itself when the rest arrives.'}
                 </p>
                 {stoppedPolling && (
                     <PillButton
