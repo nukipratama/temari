@@ -150,10 +150,7 @@ it('attributes a saved preference\'s re-narration to the athlete, so it re-arms 
         ->patch('/settings/training-preferences', validPreferencesPayload())
         ->assertSessionHasNoErrors();
 
-    Bus::assertDispatched(
-        AnalyzePlanSeasonVoiceJob::class,
-        fn (AnalyzePlanSeasonVoiceJob $job): bool => $job->origin === AnalysisOrigin::User,
-    );
+    Bus::assertDispatched(fn (AnalyzePlanSeasonVoiceJob $job): bool => $job->origin === AnalysisOrigin::User);
     Bus::assertNotDispatched(AnalyzePlanDayVoiceJob::class);
 
     Carbon::setTestNow();

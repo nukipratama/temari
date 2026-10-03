@@ -203,7 +203,7 @@ it('delays the invalidating briefing request so a burst of same-day ingests bill
     fire(analyzedActivity('2026-05-19 05:55:00', $first->user_id));
 
     Bus::assertDispatchedTimes(AnalyzeBriefingMascotVoiceJob::class, 1);
-    Bus::assertDispatched(AnalyzeBriefingMascotVoiceJob::class, fn (AnalyzeBriefingMascotVoiceJob $job): bool => $job->delay >= 120);
+    Bus::assertDispatched(fn (AnalyzeBriefingMascotVoiceJob $job): bool => $job->delay >= 120);
     Carbon::setTestNow();
 });
 
@@ -213,10 +213,7 @@ it('dispatches ProfileVoice on first ingest, keyed by the current ISO week', fun
 
     fire($activity);
 
-    Bus::assertDispatched(
-        AnalyzeProfileVoiceJob::class,
-        fn (AnalyzeProfileVoiceJob $job): bool => Analysis::query()->whereKey($job->analysisId)->value('discriminator') === AnalysisType::currentIsoWeek(),
-    );
+    Bus::assertDispatched(fn (AnalyzeProfileVoiceJob $job): bool => Analysis::query()->whereKey($job->analysisId)->value('discriminator') === AnalysisType::currentIsoWeek());
     Carbon::setTestNow();
 });
 
@@ -329,7 +326,7 @@ it('lets the recalibration re-run cover a run ingested while it held its lock', 
 
     expect(WeeklySnapshot::query()->where('user_id', $user->id)->exists())->toBeFalse();
     $rerun = null;
-    Bus::assertDispatched(RecalibrateTrainingHistoryJob::class, function (RecalibrateTrainingHistoryJob $job) use ($user, &$rerun): bool {
+    Bus::assertDispatched(function (RecalibrateTrainingHistoryJob $job) use ($user, &$rerun): bool {
         $rerun = $job;
 
         return $job->userId === $user->id;
@@ -402,10 +399,7 @@ it('uses today as the briefing discriminator', function (): void {
 
     fire($activity);
 
-    Bus::assertDispatched(
-        AnalyzeBriefingMascotVoiceJob::class,
-        fn (AnalyzeBriefingMascotVoiceJob $job): bool => Analysis::query()->whereKey($job->analysisId)->value('discriminator') === '2026-05-19',
-    );
+    Bus::assertDispatched(fn (AnalyzeBriefingMascotVoiceJob $job): bool => Analysis::query()->whereKey($job->analysisId)->value('discriminator') === '2026-05-19');
     Bus::assertDispatched(AnalyzeBriefingMascotVoiceJob::class);
     Carbon::setTestNow();
 });
@@ -491,10 +485,7 @@ it('backfill kickoff dispatches the user earliest Pending group, not the just-in
     fire($newer);
 
     // The kickoff re-kicks the user's earliest Pending group (the older run).
-    Bus::assertDispatched(
-        AnalyzeActivityJob::class,
-        fn (AnalyzeActivityJob $job): bool => $job->subjectId === $older->id,
-    );
+    Bus::assertDispatched(fn (AnalyzeActivityJob $job): bool => $job->subjectId === $older->id);
     Carbon::setTestNow();
 });
 
@@ -513,7 +504,7 @@ it('staggers card_flavor by the same backfill delay as the activity group', func
 
     fire($activity);
 
-    Bus::assertDispatched(AnalyzeCardFlavorJob::class, fn (AnalyzeCardFlavorJob $job): bool => $job->delay === 100);
+    Bus::assertDispatched(fn (AnalyzeCardFlavorJob $job): bool => $job->delay === 100);
     Carbon::setTestNow();
 });
 
@@ -528,7 +519,7 @@ it('staggers ProfileVoice by the backfill delay on the ingest that first origina
 
     fire($activity);
 
-    Bus::assertDispatched(AnalyzeProfileVoiceJob::class, fn (AnalyzeProfileVoiceJob $job): bool => $job->delay === 100);
+    Bus::assertDispatched(fn (AnalyzeProfileVoiceJob $job): bool => $job->delay === 100);
     Carbon::setTestNow();
 });
 
@@ -560,7 +551,7 @@ it('does not grow a recent run\'s stagger delay with the number of rule-based ba
     // No ->delay() call leaves the job's delay null, which PendingDispatch
     // treats as immediate — the same "reserved the 0-delay slot" outcome
     // StaggerBackfillActionTest asserts directly on the action itself.
-    Bus::assertDispatched(AnalyzeCardFlavorJob::class, fn (AnalyzeCardFlavorJob $job): bool => ($job->delay ?? 0) === 0);
+    Bus::assertDispatched(fn (AnalyzeCardFlavorJob $job): bool => ($job->delay ?? 0) === 0);
     Carbon::setTestNow();
 });
 
@@ -621,10 +612,7 @@ it('steady-state (fresh run) dispatches the activity group immediately', functio
 
     fire($fresh);
 
-    Bus::assertDispatched(
-        AnalyzeActivityJob::class,
-        fn (AnalyzeActivityJob $job): bool => $job->subjectId === $fresh->id,
-    );
+    Bus::assertDispatched(fn (AnalyzeActivityJob $job): bool => $job->subjectId === $fresh->id);
     Carbon::setTestNow();
 });
 
@@ -648,10 +636,7 @@ it('a live (non-backfill) run joins the chain instead of jumping ahead when an o
     expect($freshRow->status)->toBe(AnalysisStatus::Pending);
 
     // The chain re-kicks the older, still-earliest link — not the fresh run.
-    Bus::assertDispatched(
-        AnalyzeActivityJob::class,
-        fn (AnalyzeActivityJob $job): bool => $job->subjectId === $older->id,
-    );
+    Bus::assertDispatched(fn (AnalyzeActivityJob $job): bool => $job->subjectId === $older->id);
     Bus::assertNotDispatched(
         AnalyzeActivityJob::class,
         fn (AnalyzeActivityJob $job): bool => $job->subjectId === $fresh->id,
@@ -694,10 +679,7 @@ it('re-narrates the latest run when its material data changed since narration', 
 
     // Invalidated out of Done and re-queued for a fresh narration.
     expect(postRunSpeechRow($activity)->status)->toBe(AnalysisStatus::Queued);
-    Bus::assertDispatched(
-        AnalyzeActivityJob::class,
-        fn (AnalyzeActivityJob $job): bool => $job->subjectId === $activity->id,
-    );
+    Bus::assertDispatched(fn (AnalyzeActivityJob $job): bool => $job->subjectId === $activity->id);
     Carbon::setTestNow();
 });
 
@@ -1013,7 +995,7 @@ it('a 60-day backfill narrates only the last 7 days, rule-based on the rest', fu
     $recentCard = RunCard::factory()->create(['activity_id' => $recent->id]);
     fire($recent);
 
-    Bus::assertDispatched(AnalyzeActivityJob::class, fn (AnalyzeActivityJob $job): bool => $job->subjectId === $recent->id);
+    Bus::assertDispatched(fn (AnalyzeActivityJob $job): bool => $job->subjectId === $recent->id);
     expect(Analysis::query()->forSubject(RunCard::class, $recentCard->id, AnalysisType::CardFlavor)->firstOrFail()->status)
         ->not->toBe(AnalysisStatus::Done);
 

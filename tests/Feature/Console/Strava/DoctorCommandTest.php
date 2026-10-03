@@ -47,10 +47,7 @@ it('re-dispatches only stranded activities on --repair', function (): void {
     $this->artisan('strava:doctor', ['--repair' => true])->assertSuccessful();
 
     Bus::assertDispatchedTimes(IngestActivityJob::class, 1);
-    Bus::assertDispatched(
-        IngestActivityJob::class,
-        fn (IngestActivityJob $job): bool => $job->activityId === $stranded->id,
-    );
+    Bus::assertDispatched(fn (IngestActivityJob $job): bool => $job->activityId === $stranded->id);
 });
 
 it('skips repair for a revoked connection', function (): void {

@@ -1015,10 +1015,7 @@ it('dispatches ResolveActivityLocationJob when the activity has start coords', f
     $this->pipeline->ingest($activity);
 
     $detail = ActivityDetail::query()->where('activity_id', $activity->id)->firstOrFail();
-    Bus::assertDispatched(
-        ResolveActivityLocationJob::class,
-        fn (ResolveActivityLocationJob $job): bool => $job->activityDetailId === $detail->id,
-    );
+    Bus::assertDispatched(fn (ResolveActivityLocationJob $job): bool => $job->activityDetailId === $detail->id);
 });
 
 it('does NOT dispatch ResolveActivityLocationJob when the activity has no coords', function (): void {

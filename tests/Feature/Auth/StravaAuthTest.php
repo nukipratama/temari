@@ -242,10 +242,7 @@ it('creates a new user from the strava callback and logs them in', function (): 
 
     // First connect kicks off a full-history backfill (no single-activity scope),
     // with the one-shot recap kickoff chained behind it.
-    Bus::assertDispatched(
-        SyncActivitiesJob::class,
-        fn (SyncActivitiesJob $job): bool => $job->userId === $user->id && $job->stravaActivityId === null,
-    );
+    Bus::assertDispatched(fn (SyncActivitiesJob $job): bool => $job->userId === $user->id && $job->stravaActivityId === null);
     Bus::assertChained([SyncActivitiesJob::class, KickoffRecapsJob::class]);
 });
 
@@ -496,7 +493,7 @@ it('reaches the callback and upgrades scopes when an authenticated user reconnec
         ->assertRedirect();
 
     expect($user->stravaConnection()->first()->scopes)->toBe('read,activity:read_all,profile:read_all');
-    Bus::assertDispatched(SyncZonesJob::class, fn (SyncZonesJob $job): bool => $job->userId === $user->id);
+    Bus::assertDispatched(fn (SyncZonesJob $job): bool => $job->userId === $user->id);
 });
 
 it('dispatches SyncZonesJob when a reconnect newly grants profile:read_all', function (): void {
@@ -522,7 +519,7 @@ it('dispatches SyncZonesJob when a reconnect newly grants profile:read_all', fun
     $this->get(route('auth.strava.callback', ['scope' => 'read,activity:read_all,profile:read_all']))
         ->assertRedirect(route('dashboard'));
 
-    Bus::assertDispatched(SyncZonesJob::class, fn (SyncZonesJob $job): bool => $job->userId === $existingUser->id);
+    Bus::assertDispatched(fn (SyncZonesJob $job): bool => $job->userId === $existingUser->id);
     // Not a fresh connection, so no redundant history backfill.
     Bus::assertNotDispatched(SyncActivitiesJob::class);
     Bus::assertNotDispatched(KickoffRecapsJob::class);
@@ -584,8 +581,8 @@ it('reactivates a revoked connection and dispatches one incremental sync', funct
         ->and($grant->refresh_token)->toBe('reactivated-refresh');
 
     Bus::assertDispatchedTimes(SyncActivitiesJob::class, 1);
-    Bus::assertDispatched(SyncActivitiesJob::class, fn (SyncActivitiesJob $job): bool => $job->userId === $existingUser->id);
-    Bus::assertDispatched(SyncZonesJob::class, fn (SyncZonesJob $job): bool => $job->userId === $existingUser->id);
+    Bus::assertDispatched(fn (SyncActivitiesJob $job): bool => $job->userId === $existingUser->id);
+    Bus::assertDispatched(fn (SyncZonesJob $job): bool => $job->userId === $existingUser->id);
     Bus::assertNotDispatched(KickoffRecapsJob::class);
 });
 

@@ -61,10 +61,7 @@ it('emits ActivityIngested with the activity id after a successful ingest', func
 
     $this->pipeline->ingest($activity);
 
-    Event::assertDispatched(
-        ActivityIngested::class,
-        fn (ActivityIngested $event): bool => $event->activityId === $activity->id,
-    );
+    Event::assertDispatched(fn (ActivityIngested $event): bool => $event->activityId === $activity->id);
 });
 
 it('queues no AI job from inside the ingest transaction', function (): void {

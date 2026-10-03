@@ -52,7 +52,7 @@ it('writes the closed range through today and emits settlement when no work rema
     expect($user->fresh()->trend_snapshots_pending_from)->toBeNull()
         ->and($user->fresh()->trend_snapshots_rebuilding_from)->toBeNull()
         ->and(TrendDailySnapshot::query()->where('user_id', $user->id)->count())->toBe(3);
-    Event::assertDispatched(TrendSnapshotsSettled::class, fn (TrendSnapshotsSettled $event): bool => $event->userId === $user->id);
+    Event::assertDispatched(fn (TrendSnapshotsSettled $event): bool => $event->userId === $user->id);
 });
 
 it('retains a new earlier date for a second bounded pass', function (): void {

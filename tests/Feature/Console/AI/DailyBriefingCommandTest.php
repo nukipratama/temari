@@ -58,7 +58,7 @@ it('continues dispatching later briefings after one athlete fails and alerts onc
 
     expect($requested)->toBe([[$later->id, Carbon::today()->toDateString()]]);
     Bus::assertDispatchedTimes(SendMaintainerAlertJob::class, 1);
-    Bus::assertDispatched(SendMaintainerAlertJob::class, static fn (SendMaintainerAlertJob $job): bool =>
+    Bus::assertDispatched(static fn (SendMaintainerAlertJob $job): bool =>
         str_contains($job->message, 'ai:daily-briefing')
         && str_contains($job->message, '1 athlete')
         && ! str_contains($job->message, 'Private Failed Athlete')

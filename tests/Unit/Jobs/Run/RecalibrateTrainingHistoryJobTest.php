@@ -40,10 +40,7 @@ it('dispatches one follow-up after a run that was marked dirty', function (): vo
     new RecalibrateTrainingHistoryJob($user->id)->handle(app(PlanRecalibrationService::class));
 
     Bus::assertDispatchedTimes(RecalibrateTrainingHistoryJob::class, 1);
-    Bus::assertDispatched(
-        RecalibrateTrainingHistoryJob::class,
-        fn (RecalibrateTrainingHistoryJob $job): bool => $job->userId === $user->id && $job->delay === 5,
-    );
+    Bus::assertDispatched(fn (RecalibrateTrainingHistoryJob $job): bool => $job->userId === $user->id && $job->delay === 5);
     expect(Cache::has(RecalibrateTrainingHistoryJob::dirtyMarkerKey($user->id)))->toBeFalse();
 });
 

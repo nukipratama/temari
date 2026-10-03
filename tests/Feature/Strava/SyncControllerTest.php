@@ -24,10 +24,7 @@ it('queues a full sync for the signed-in athlete and flashes a notice', function
         ->assertRedirect()
         ->assertSessionHas('success');
 
-    Bus::assertDispatched(
-        SyncActivitiesJob::class,
-        fn (SyncActivitiesJob $job): bool => $job->userId === $user->id && $job->stravaActivityId === null,
-    );
+    Bus::assertDispatched(fn (SyncActivitiesJob $job): bool => $job->userId === $user->id && $job->stravaActivityId === null);
 });
 
 it('throttles rapid taps to two per minute', function (): void {

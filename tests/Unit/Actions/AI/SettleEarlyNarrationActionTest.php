@@ -234,10 +234,7 @@ it('rebuilds PRs, replays cards, and regenerates every early-marked row exactly 
     // Only the earliest activity's group is dispatched directly; its own
     // chain-advance (untested here, covered by AnalyzeActivityJob's own
     // suite) is what would carry $newer's group forward in production.
-    Bus::assertDispatched(
-        AnalyzeActivityJob::class,
-        fn (AnalyzeActivityJob $job): bool => $job->subjectId === $older->id,
-    );
+    Bus::assertDispatched(fn (AnalyzeActivityJob $job): bool => $job->subjectId === $older->id);
     Bus::assertNotDispatched(
         AnalyzeActivityJob::class,
         fn (AnalyzeActivityJob $job): bool => $job->subjectId === $newer->id,
@@ -290,10 +287,7 @@ it('pairs a lone early RunInsight with its own PostRunSpeech row so the group is
 
     // The group's representative row (chain advance + SelfHealer key on it)
     // is reset alongside its sibling, not left Done.
-    Bus::assertDispatched(
-        AnalyzeActivityJob::class,
-        fn (AnalyzeActivityJob $job): bool => $job->subjectId === $activity->id,
-    );
+    Bus::assertDispatched(fn (AnalyzeActivityJob $job): bool => $job->subjectId === $activity->id);
     expect($speech->fresh()->status)->toBe(AnalysisStatus::Queued)
         ->and($insight->fresh()->status)->toBe(AnalysisStatus::Queued)
         ->and($insight->fresh()->narrated_early_at)->toBeNull();
@@ -349,10 +343,7 @@ it('requests a hydrated closed-week recap when the drain empties without touchin
     $closedRow = Analysis::query()->forSubject(WeeklySnapshot::class, $closedWeek->id, AnalysisType::WeeklyRecap)->firstOrFail();
     $openRow = Analysis::query()->forSubject(WeeklySnapshot::class, $openWeek->id, AnalysisType::WeeklyRecap)->firstOrFail();
 
-    Bus::assertDispatched(
-        AnalyzeWeeklyRecapJob::class,
-        fn (AnalyzeWeeklyRecapJob $job): bool => $job->analysisId === $closedRow->id,
-    );
+    Bus::assertDispatched(fn (AnalyzeWeeklyRecapJob $job): bool => $job->analysisId === $closedRow->id);
     expect($closedRow->fresh()->status)->toBe(AnalysisStatus::Queued)
         ->and($openRow->fresh()->status)->toBe(AnalysisStatus::Pending);
 

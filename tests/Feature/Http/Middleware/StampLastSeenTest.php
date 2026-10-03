@@ -73,7 +73,7 @@ it('queues the return narration on the first visit after a gap, and only once th
     stampFor($user->fresh());
 
     Bus::assertDispatchedTimes(NarrateOnReturnJob::class, 1);
-    Bus::assertDispatched(NarrateOnReturnJob::class, fn (NarrateOnReturnJob $job): bool => $job->userId === $user->id);
+    Bus::assertDispatched(fn (NarrateOnReturnJob $job): bool => $job->userId === $user->id);
 });
 
 it('queues the return narration for an older account that has never been seen', function (): void {

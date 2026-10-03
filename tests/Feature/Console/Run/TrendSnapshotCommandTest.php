@@ -21,7 +21,7 @@ it('queues durable recovery by default', function (): void {
         ->expectsOutputToContain('Queued durable trend snapshot recovery for 1 users.')
         ->assertSuccessful();
 
-    Bus::assertDispatched(ReconcileScheduledTrendSnapshotsJob::class, fn (ReconcileScheduledTrendSnapshotsJob $job): bool => $job->userId === $user->id);
+    Bus::assertDispatched(fn (ReconcileScheduledTrendSnapshotsJob $job): bool => $job->userId === $user->id);
 });
 
 it('writes a snapshot row for every real user', function (): void {

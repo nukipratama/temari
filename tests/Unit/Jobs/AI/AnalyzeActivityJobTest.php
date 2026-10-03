@@ -451,10 +451,7 @@ it('advances the chain to the next chronological Pending activity group on compl
     new AnalyzeActivityJob($first->id)->handle(app(AnalysisService::class));
 
     // The next chronological activity's group is dispatched as the chain link.
-    Bus::assertDispatched(
-        AnalyzeActivityJob::class,
-        fn (AnalyzeActivityJob $job): bool => $job->subjectId === $next->id,
-    );
+    Bus::assertDispatched(fn (AnalyzeActivityJob $job): bool => $job->subjectId === $next->id);
 });
 
 it('does not advance the chain when no later activity group is Pending', function (): void {
