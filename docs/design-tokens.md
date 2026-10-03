@@ -33,14 +33,16 @@ prevent.
 Tailwind v4 auto-generates utilities from each `--color-*` / `--text-*` / `--radius-*` /
 `--shadow-*` / `--spacing-*` token (e.g. `--color-horizon` → `bg-horizon`, `--shadow-e1` →
 `shadow-e1`). The block is declared `@theme static`, so every token is emitted to `:root`
-whether or not a utility references it — `/devtools/design` reads them back out of the live
-stylesheet, and a pruned variable would read there as a missing token.
+whether or not a utility references it — the tokens tab of `/devtools/design` reads them back out
+of the live stylesheet, and a pruned variable would read there as a missing token.
 
 **Two guards enforce this page.** [scripts/check-raw-palette.mjs](../scripts/check-raw-palette.mjs)
 (`npm run check:palette`) fails CI on a value that never reached a token — a raw Tailwind
-shade, a default `shadow-lg`, a bare `rounded`, a sub-11px rem font size outside the card art. `/devtools/design`
-([Design.tsx](../resources/js/pages/Devtools/Design.tsx)) catches the other half: values that
-*are* tokenised but inconsistent, by rendering the audits against the live CSS.
+shade, a default `shadow-lg`, a bare `rounded`, a sub-11px rem font size outside the card art. The tokens
+tab of `/devtools/design` ([TokenSheet.tsx](../resources/js/components/catalogue/TokenSheet.tsx))
+catches the other half: values that *are* tokenised but inconsistent, by rendering the audits
+against the live CSS. It draws Pewter's families only; Tailwind's default palette, which the
+vendored Pulse view pulls into the build, is left out.
 
 ## Fonts
 
@@ -423,8 +425,10 @@ art**; everywhere else the 11px floor holds.
 Component style variants live in [resources/js/lib/variants.ts](../resources/js/lib/variants.ts)
 as [class-variance-authority](https://cva.style) definitions: `pillButtonVariants`,
 `chipVariants`, `outlineChipVariants` (an inline action pill that is not a choice),
-`iconButtonVariants` (bare-icon buttons), `rarityVariants`. Consume them with the `cn()` merge
-helper:
+`iconButtonVariants` (bare-icon buttons), `rarityVariants`. The axes of `pillButtonVariants`,
+`chipVariants` and `eyebrowVariants` are exported on their own (`pillButtonVariantMap`,
+`chipVariantMap`, `eyebrowVariantMap`) so the design catalogue draws its variant matrix from the
+same map the component renders. Consume the variants with the `cn()` merge helper:
 
 ```tsx
 import { pillButtonVariants } from '@/lib/variants';
