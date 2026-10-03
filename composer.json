@@ -77,6 +77,11 @@
             "Composer\\Config::disableProcessTimeout",
             "sh scripts/gate.sh --full"
         ],
+        "inertia-props:update": [
+            "Composer\\Config::disableProcessTimeout",
+            "@putenv UPDATE_INERTIA_PROP_FIXTURES=1",
+            "@php vendor/bin/pest tests/Feature/Inertia/PagePropsContractTest.php"
+        ],
         "post-autoload-dump": [
             "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",
             "@php artisan package:discover --ansi"

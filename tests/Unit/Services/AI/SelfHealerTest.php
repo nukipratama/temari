@@ -154,6 +154,47 @@ it('fills a stalled weekly link older than the backfill depth cap rule-based ins
         ->and($captured[0]['ruleBased'])->toBeTrue();
 });
 
+/** A just-connected athlete whose week past the backfill depth cap still holds a summary-only run. */
+function stalledTooOldWeekStillHydrating(): Activity
+{
+    config()->set('ai.backfill_max_age_days', 365);
+    $user = User::factory()->create();
+    StravaConnection::factory()->for($user)->create(['created_at' => Carbon::now()->subHour()]);
+    $week = WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2025-01-05', 'runs' => 2]);
+    Analysis::factory()->create([
+        'subject_type' => WeeklySnapshot::class,
+        'subject_id' => $week->id,
+        'analysis_type' => AnalysisType::WeeklyRecap,
+        'discriminator' => null,
+        'status' => AnalysisStatus::Pending,
+    ]);
+    $activity = Activity::factory()->for($user)->summaryOnly()->create();
+    ActivityDetail::factory()->for($activity)->create(['start_date_local' => Carbon::parse('2025-01-02 06:00:00')]);
+
+    return $activity;
+}
+
+it('leaves a stalled weekly link past the depth cap Pending while its week still hydrates', function (): void {
+    stalledTooOldWeekStillHydrating();
+
+    $captured = [];
+
+    expect(selfHealer(captureResumeRequests($captured))->run())->toBe(0)
+        ->and($captured)->toBeEmpty();
+});
+
+it('fills that stalled weekly link rule-based once its week has hydrated', function (): void {
+    $activity = stalledTooOldWeekStillHydrating();
+    $activity->update(['ingest_state' => IngestState::Detailed]);
+
+    $captured = [];
+
+    expect(selfHealer(captureResumeRequests($captured))->run())->toBe(1)
+        ->and($captured)->toHaveCount(1)
+        ->and($captured[0]['type'])->toBe(AnalysisType::WeeklyRecap)
+        ->and($captured[0]['ruleBased'])->toBeTrue();
+});
+
 it('skips a demo user so the resume net never auto-bills its weekly LLM', function (): void {
     $demo = User::factory()->demo()->create();
     $snap = WeeklySnapshot::factory()->for($demo)->create(['week_ending' => '2026-05-03', 'runs' => 3]);

@@ -20,6 +20,7 @@ use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
 use App\Services\AI\TemariPersona;
+use App\Services\AI\Agent\Tools\CardIdentityTool;
 use App\Services\AI\Agent\Tools\LifetimeStatsTool;
 use App\Services\AI\Agent\Tools\WeatherTool;
 use App\Services\AI\Agent\Tools\MonthTotalsTool;
@@ -808,6 +809,28 @@ it('PlanDayVoiceNarrator returns voice on valid JSON', function (): void {
     expect($narrator->generate($session))->toBe('tempo work today.');
 });
 
+/**
+ * @param  array<string, mixed>  $context
+ */
+function assertOneStepWithContext(ClientFake $client, array $context): void
+{
+    $client->assertSent(Responses::class, 1);
+    $client->assertSent(Responses::class, fn (string $method, array $params): bool => $method === 'create'
+        && $params['input'][1]['content'] === json_encode($context, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE)
+        && ! array_key_exists('tools', $params));
+}
+
+it('PlanDayVoiceNarrator hands the day plan in the user message and answers in one step with no tools', function (): void {
+    $session = PlannedSession::factory()->for(User::factory()->create())->create(['session_type' => 'tempo', 'date' => Carbon::today()->toDateString()]);
+    [$caller, $client] = capturingCaller(json_encode(['voice' => 'tempo work today.'], JSON_THROW_ON_ERROR));
+    $narrator = new PlanDayVoiceNarrator($caller, app(TrainingBaseline::class), app(SessionMatcher::class), app(VdotEstimator::class), app(TrainingPaceCalculator::class));
+
+    $narrator->generate($session);
+
+    assertOneStepWithContext($client, new PlanDayTool($session, app(TrainingBaseline::class), app(VdotEstimator::class), app(TrainingPaceCalculator::class))->handle([]));
+    expect(narratorPrompt(PlanDayVoiceNarrator::class))->not->toMatch('/\bget_[a-z_]+/');
+});
+
 it('PlanDayVoiceNarrator throws on missing voice key', function (): void {
     $user = User::factory()->create();
     $session = PlannedSession::factory()->for($user)->create();
@@ -1069,6 +1092,16 @@ it('PlanSeasonVoiceNarrator returns voice on valid JSON', function (): void {
     expect($narrator->generate($season))->toBe('a self-scaled block.');
 });
 
+it('PlanSeasonVoiceNarrator hands the season in the user message and answers in one step with no tools', function (): void {
+    $season = Season::factory()->for(User::factory()->create())->create();
+    [$caller, $client] = capturingCaller(json_encode(['voice' => 'a self-scaled block.'], JSON_THROW_ON_ERROR));
+
+    new PlanSeasonVoiceNarrator($caller, app(SustainedAheadOfRacePace::class))->generate($season);
+
+    assertOneStepWithContext($client, new PlanSeasonTool($season, app(SustainedAheadOfRacePace::class))->handle([]));
+    expect(narratorPrompt(PlanSeasonVoiceNarrator::class))->not->toMatch('/\bget_[a-z_]+/');
+});
+
 it('PlanSeasonVoiceNarrator throws on missing voice key', function (): void {
     $user = User::factory()->create();
     $season = Season::factory()->for($user)->create();
@@ -1163,7 +1196,17 @@ it('CardFlavorNarrator returns flavor on valid JSON', function (): void {
     expect($narrator->generate($card))->toBe('Card epic!');
 });
 
-it('CardFlavorNarrator sends an empty context and lets the model read the card', function (): void {
+it('CardFlavorNarrator hands the card identity in the user message', function (): void {
+    $card = cardFixture();
+    [$caller, $client] = capturingCaller('{"flavor":"x"}');
+
+    cardFlavorNarrator($caller)->generate($card);
+
+    $identity = json_encode(new CardIdentityTool($card)->handle([]), JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
+    $client->assertSent(Responses::class, fn (string $method, array $params): bool => $params['input'][1]['content'] === $identity);
+});
+
+it('CardFlavorNarrator leaves the run reads optional and no longer offers the card identity as a tool', function (): void {
     $card = cardFixture();
 
     $names = array_column(
@@ -1173,7 +1216,6 @@ it('CardFlavorNarrator sends an empty context and lets the model read the card',
     );
 
     expect($names)->toBe([
-        'get_card_identity',
         'get_run_summary',
         'get_km_splits',
         'get_weather',
@@ -1183,18 +1225,16 @@ it('CardFlavorNarrator sends an empty context and lets the model read the card',
     ]);
 });
 
-it('CardFlavorNarrator drops the run reads when the activity was never detailed', function (): void {
+it('CardFlavorNarrator writes a never-detailed card from its identity in one step with no tools', function (): void {
     $card = cardFixture();
     $card->activity->detail->delete();
+    $card = $card->fresh();
+    [$caller, $client] = capturingCaller('{"flavor":"x"}');
 
-    $names = array_column(
-        cardFlavorNarrator(fakeCaller('{"flavor":"x"}'))
-            ->toolbox($card->fresh())->definitions(),
-        'name',
-    );
+    cardFlavorNarrator($caller)->generate($card);
 
     // Offering tools that can only answer null teaches the model to distrust them.
-    expect($names)->toBe(['get_card_identity']);
+    assertOneStepWithContext($client, new CardIdentityTool($card)->handle([]));
 });
 
 it('CardFlavorNarrator throws on missing flavor key', function (): void {
@@ -2051,8 +2091,6 @@ it('per-narrator step budgets cover two full read passes and only exist where th
 
     expect($declared)->toBe([
         'MonthlyRecapNarrator' => 6,
-        'PlanDayVoiceNarrator' => 4,
-        'PlanSeasonVoiceNarrator' => 4,
         'TrendReadNarrator' => 6,
         'WeeklyRecapNarrator' => 6,
     ]);
