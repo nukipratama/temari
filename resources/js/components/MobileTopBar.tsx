@@ -12,7 +12,7 @@ import { cn } from '@/lib/cn';
 import { backTargetFor } from '@/lib/nav';
 import {
     contextualOriginSnapshot,
-    readContextualOrigin,
+    parseContextualOrigin,
     subscribeToContextualOrigin,
 } from '@/lib/navigationMemory';
 import { iconButtonVariants } from '@/lib/variants';
@@ -57,12 +57,15 @@ const PUSHED_WITH_BELL: ReadonlySet<string> = new Set([
 export default function MobileTopBar() {
     const page = usePage<SharedProps>();
     const user = page.props.auth.user;
-    useSyncExternalStore(
+    const storedOrigin = useSyncExternalStore(
         subscribeToContextualOrigin,
         contextualOriginSnapshot,
         () => null,
     );
-    const back = backTargetFor(page.component, readContextualOrigin());
+    const back = backTargetFor(
+        page.component,
+        parseContextualOrigin(storedOrigin),
+    );
 
     return (
         <header
