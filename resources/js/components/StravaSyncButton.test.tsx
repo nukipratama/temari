@@ -23,6 +23,14 @@ describe('StravaSyncButton', () => {
         );
     });
 
+    it('renders sync now as the outline pill, like the connect state', () => {
+        render(<StravaSyncButton state="ready" />);
+        const button = screen.getByRole('button', { name: 'sync now' });
+        expect(button).toHaveClass('bg-card', 'border-border', 'text-text-2');
+        expect(button).not.toHaveClass('bg-cream');
+        expect(button).not.toHaveClass('border-cream-deep');
+    });
+
     it('posts to /strava/sync when ready and clicked', () => {
         vi.mocked(router.post).mockReset();
         render(<StravaSyncButton state="ready" />);
