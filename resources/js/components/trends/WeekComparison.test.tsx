@@ -154,20 +154,58 @@ describe('WeekComparison', () => {
         expect(screen.getByText('467')).toBeInTheDocument();
         expect(
             screen.getByText(
-                /246 over your last 7 days\. a steady week for you sits around 200 to 300\./,
+                'over your last 7 days. a steady week for you sits around 200 to 300.',
             ),
         ).toBeInTheDocument();
         expect(
             screen.getByText(
-                /1\.9 over your last 7 days\. a steady week for you sits around 1\.4 to 2\.2\./,
+                'over your last 7 days. a steady week for you sits around 1.4 to 2.2.',
             ),
         ).toBeInTheDocument();
         expect(
             screen.getByText(
-                /467 over your last 7 days\. a steady week for you sits around 350 to 550\./,
+                'over your last 7 days. a steady week for you sits around 350 to 550.',
             ),
         ).toBeInTheDocument();
     });
+
+    it('reserves two label lines in every cost tile so the three values share one top', () => {
+        render(<WeekComparison weekComparison={payload()} load={load()} />);
+
+        for (const label of ['load', 'sameness', 'total cost']) {
+            expect(screen.getByText(label)).toHaveClass('min-h-[2lh]');
+        }
+    });
+
+    it.each([
+        ['with a normal range', {}],
+        [
+            'without a normal range',
+            {
+                weekly_trimp_range: null,
+                monotony_range: null,
+                strain_range: null,
+            },
+        ],
+    ])(
+        'never opens a tile description with its own number, %s',
+        (_, overrides) => {
+            render(
+                <WeekComparison
+                    weekComparison={payload()}
+                    load={load(overrides)}
+                />,
+            );
+
+            for (const value of ['246', '1.9', '467']) {
+                expect(
+                    screen.queryByText(
+                        new RegExp(`^${value.replace('.', '\\.')}\\s`),
+                    ),
+                ).not.toBeInTheDocument();
+            }
+        },
+    );
 
     it("falls back to a plain gloss for each of the three when there's no baseline range yet", () => {
         render(
@@ -183,17 +221,17 @@ describe('WeekComparison', () => {
 
         expect(
             screen.getByText(
-                /246 over your last 7 days: heart rate and time, added up\./,
+                'heart rate and time, added up over your last 7 days.',
             ),
         ).toBeInTheDocument();
         expect(
             screen.getByText(
-                /1\.9 over your last 7 days: how varied your training's been\./,
+                "how varied your training's been over your last 7 days.",
             ),
         ).toBeInTheDocument();
         expect(
             screen.getByText(
-                /467 over your last 7 days: the week's effort multiplied by how varied it was\./,
+                "the week's effort multiplied by how varied it was, over your last 7 days.",
             ),
         ).toBeInTheDocument();
     });

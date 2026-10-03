@@ -61,7 +61,9 @@ jargon-accessibility rule in [[voice-and-tone]].
 7-day window, not one entry per range, minus `weekly_trimp_reference`, which only the briefing's
 `BriefingContext` reads. The comparison labels carry the current Monday-to-today
 slice and the prior week's matching weekdays; the load tiles carry their trailing seven calendar
-dates. The load balance value is labelled with its as-of date. All three windows share the controller's
+dates. The three cost tiles stay three columns on a phone: each label reserves two lines so the
+values share one top whether or not a label wraps, and each tile's line names the window and the
+athlete's own normal range without repeating the number above it. The load balance value is labelled with its as-of date. All three windows share the controller's
 app-local `today`, and the calendar slice uses the same Sunday-ending week boundaries as
 `BriefingContext`. See [[training-load-metrics]].
 

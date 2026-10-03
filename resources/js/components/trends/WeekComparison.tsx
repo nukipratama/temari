@@ -38,59 +38,50 @@ function TileLabel({
     metricKey,
 }: Readonly<{ plain: string; metricKey: 'trimp' | 'monotony' | 'strain' }>) {
     return (
-        <>
+        <span className="block min-h-[2lh]">
             {plain}
             <MetricExplainer metricKey={metricKey} size="xs" />
-        </>
+        </span>
     );
 }
 
 type WeeklyRange = { low: number; high: number } | null;
 
-/** "452 over your last 7 days. a steady week for you sits around 400 to
- *  500." — the number plus the athlete's own normal range, when there's
- *  enough history to size one (#1296). */
+/** "over your last 7 days. a steady week for you sits around 400 to 500.":
+ *  the window plus the athlete's own normal range, when there's enough
+ *  history to size one. */
 function trimpMeaning(weeklyTrimp: number | null, range: WeeklyRange): string {
-    if (weeklyTrimp === null) {
+    if (weeklyTrimp === null || range === null) {
         return 'heart rate and time, added up over your last 7 days.';
     }
 
-    const value = Math.round(weeklyTrimp);
-    if (range === null) {
-        return `${value} over your last 7 days: heart rate and time, added up.`;
-    }
-
-    return `${value} over your last 7 days. a steady week for you sits around ${range.low} to ${range.high}.`;
+    return `over your last 7 days. a steady week for you sits around ${range.low} to ${range.high}.`;
 }
 
-/** Same shape as {@link trimpMeaning}: the number plus the athlete's own
- *  normal range for how varied the week was (#1296). */
+/** Same shape as {@link trimpMeaning}, for how varied the week was. */
 function monotonyMeaning(monotony: number | null, range: WeeklyRange): string {
     if (monotony === null) {
         return "how varied your training's been. every run at the same effort pushes this up, so mix in an easy day to bring it down.";
     }
 
-    const value = monotony.toFixed(1);
     if (range === null) {
-        return `${value} over your last 7 days: how varied your training's been.`;
+        return "how varied your training's been over your last 7 days.";
     }
 
-    return `${value} over your last 7 days. a steady week for you sits around ${range.low.toFixed(1)} to ${range.high.toFixed(1)}.`;
+    return `over your last 7 days. a steady week for you sits around ${range.low.toFixed(1)} to ${range.high.toFixed(1)}.`;
 }
 
-/** Same shape as {@link trimpMeaning}: the number plus the athlete's own
- *  normal range for the week's total cost (#1296). */
+/** Same shape as {@link trimpMeaning}, for the week's total cost. */
 function strainMeaning(strain: number | null, range: WeeklyRange): string {
     if (strain === null) {
         return "the week's effort multiplied by how varied it was, the total cost you're carrying.";
     }
 
-    const value = Math.round(strain);
     if (range === null) {
-        return `${value} over your last 7 days: the week's effort multiplied by how varied it was.`;
+        return "the week's effort multiplied by how varied it was, over your last 7 days.";
     }
 
-    return `${value} over your last 7 days. a steady week for you sits around ${range.low} to ${range.high}.`;
+    return `over your last 7 days. a steady week for you sits around ${range.low} to ${range.high}.`;
 }
 
 function dateParts(iso: string): { day: number; month: string; year: string } {
@@ -203,12 +194,12 @@ export default function WeekComparison({
                         {load.form_status === null ? (
                             <Chip>learning</Chip>
                         ) : (
-                            <>
+                            <span className="inline-flex items-center gap-2.5">
                                 <FormChip status={load.form_status} />
                                 <span className="font-mono text-xs text-text-3">
                                     {formatSignedForm(load.form)}
                                 </span>
-                            </>
+                            </span>
                         )}
                     </div>
                     <p className="text-sm leading-relaxed text-foreground">
