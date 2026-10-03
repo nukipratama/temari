@@ -7,5 +7,5 @@
 # swap the stateful DB engine out from under a rebuild without a reviewable diff.
 # = mysql:8.4 (8.4.10). Refresh after a bump with:
 #   docker buildx imagetools inspect mysql:8.4 --format '{{.Manifest.Digest}}'
-FROM mysql:8.4@sha256:c592c15aaf4a1961e15d82eb31ea5987dda862d1c4b1e93424438c0e91dc1f8d
+FROM mysql:26.7@sha256:9d48c42f8341068f199116dfccb919b607c99765b5c61e549a548a43033471a4
 COPY init/01-databases.sh /docker-entrypoint-initdb.d/01-databases.sh
