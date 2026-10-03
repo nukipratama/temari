@@ -4,8 +4,8 @@ import { useState } from 'react';
 
 import type { KindOption, RangeToken } from '@/pages/Narration/types';
 
+import { Card } from '@/components/ui/card';
 import { Icon } from '@/components/ui/Icon';
-import Card from '@/components/ui/LegacyCard';
 import PillButton from '@/components/ui/PillButton';
 import { cn } from '@/lib/cn';
 import { toggleButtonVariants } from '@/lib/variants';
@@ -77,12 +77,7 @@ export default function UsageFilters({
 
     return (
         <>
-            <Card
-                as="section"
-                tone="card"
-                padding="panel"
-                className="bg-popover"
-            >
+            <Card render={<section />} padding="panel" className="bg-popover">
                 <form
                     onSubmit={handleSubmit}
                     className="flex flex-wrap items-end gap-3"

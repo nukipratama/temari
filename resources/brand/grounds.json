@@ -164,29 +164,12 @@
                 "foreground"
             ]
         },
-        "cream/0.06": {
-            "text": []
-        },
-        "cream/0.08": {
-            "over": {
-                "resources/js/components/run/EmptyRunsState.tsx": [
-                    "sky"
-                ]
-            },
-            "text": [
-                "cream",
-                "ink-on-sky"
-            ]
-        },
         "cream/0.1": {
             "over": {
                 "resources/js/components/temari/AnalysisStatus.test.tsx": [
                     "sky"
                 ],
                 "resources/js/components/temari/AnalysisStatus.tsx": [
-                    "sky"
-                ],
-                "resources/js/components/run/EmptyRunsState.tsx": [
                     "sky"
                 ],
                 "resources/js/components/ui/Chip.test.tsx": [

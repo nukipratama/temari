@@ -7,7 +7,7 @@ import TemariMascot, {
     type MascotPose,
     POSES,
 } from '@/components/temari/TemariMascot';
-import Card from '@/components/ui/LegacyCard';
+import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/cn';
 import {
     type ContrastRow,
@@ -21,9 +21,8 @@ import {
     readTokenValues,
     tokensWithPrefix,
 } from '@/lib/designTokens';
-import { cardVariants } from '@/lib/variants';
 
-const CARD_TONES = ['card', 'onSky', 'empty'] as const;
+const CARD_TONES = ['default', 'empty'] as const;
 const CARD_PADDINGS = ['panel', 'card', 'hero'] as const;
 
 const MASCOT_POSES = Object.keys(POSES) as MascotPose[];
@@ -575,25 +574,16 @@ export default function Design() {
                             ))}
                             {CARD_TONES.map((tone) =>
                                 CARD_PADDINGS.map((padding) => (
-                                    <div
+                                    <Card
                                         key={`${tone}-${padding}`}
                                         data-surface-probe={`${tone} · ${padding}`}
-                                        className={cardVariants({
-                                            tone,
-                                            padding,
-                                        })}
+                                        tone={tone}
+                                        padding={padding}
                                     >
-                                        <span
-                                            className={cn(
-                                                'text-label-micro',
-                                                tone === 'onSky'
-                                                    ? 'text-cream'
-                                                    : 'text-text-3',
-                                            )}
-                                        >
+                                        <span className="text-label-micro text-text-3">
                                             {tone} · {padding}
                                         </span>
-                                    </div>
+                                    </Card>
                                 )),
                             )}
                         </div>
@@ -639,7 +629,7 @@ export default function Design() {
                                     <div className="mb-2 text-meta">
                                         {specimen.label}
                                     </div>
-                                    <Card tone="narration" padding="hero">
+                                    <Card padding="hero">
                                         <p className="narration">
                                             {renderNarration(
                                                 specimen.text,

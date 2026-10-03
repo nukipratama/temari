@@ -1,9 +1,8 @@
 import { Head } from '@inertiajs/react';
 import { Activity, DollarSign, Flag, Palette, Sailboat } from 'lucide-react';
 
+import { Card } from '@/components/ui/card';
 import { Icon, IconComponent } from '@/components/ui/Icon';
-import { cn } from '@/lib/cn';
-import { cardVariants } from '@/lib/variants';
 
 interface DevtoolsLink {
     icon: IconComponent;
@@ -61,15 +60,9 @@ export default function Devtools() {
                 <ul className="grid w-full max-w-[560px] gap-3.5">
                     {LINKS.map((link) => (
                         <li key={link.href}>
-                            <a
-                                href={link.href}
-                                className={cn(
-                                    cardVariants({
-                                        tone: 'card',
-                                        padding: 'card',
-                                    }),
-                                    'focus-ring flex items-center gap-4 transition hover:border-horizon/40',
-                                )}
+                            <Card
+                                render={<a href={link.href} />}
+                                className="focus-ring flex items-center gap-4 transition hover:border-horizon/40"
                             >
                                 <span
                                     aria-hidden
@@ -90,7 +83,7 @@ export default function Devtools() {
                                         {link.desc}
                                     </div>
                                 </div>
-                            </a>
+                            </Card>
                         </li>
                     ))}
                 </ul>

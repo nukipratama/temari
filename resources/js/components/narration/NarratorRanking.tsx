@@ -42,7 +42,7 @@ export default function NarratorRanking({
                 tone="accent"
             />
 
-            <Card className="mt-4 bg-popover px-4 py-4">
+            <Card className="mt-4 bg-popover">
                 {chart.kinds.length === 0 ? (
                     <p className="py-6 text-center text-sm text-text-3">
                         No narrator has billed yet. The ranking fills in as

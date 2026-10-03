@@ -27,7 +27,7 @@ never a `dark:` utility (`bg-card`, not `bg-cream dark:bg-sky`) — the token la
 definition site, is classified fixed-vs-reactive by `grounds.json` so the audit scores it against
 the right grounds, and cannot drift into a raw palette shade. A difference that is **not** a colour
 value — an opacity, a ring width, a whole property — may use `dark:`, because no token can hold it;
-`card.tsx`'s `dark:ring-foreground/10` is the canonical case. `dark:` is wired to `data-theme`, not
+[MascotWatermark.tsx](../../../../resources/js/components/temari/MascotWatermark.tsx#L26)'s `dark:opacity-20` is the canonical case. `dark:` is wired to `data-theme`, not
 `prefers-color-scheme`. See [tokens-flip-colour-dark-variant-flips-the-rest](../../../../docs/decisions/tokens-flip-colour-dark-variant-flips-the-rest.md).
 
 **Two grounds, since F2.** `[data-theme="dark"]` on `<html>` inverts Sky and Cream — Sky becomes
@@ -45,7 +45,7 @@ light to reach 3:1 (legendary gold, uncommon green) keep their vibrancy and are 
 `-ink` outline rather than being darkened. On a **dark** ground the split inverts: the vivid fill is
 the readable label there (`text-leaf` on a sky panel), so an `onSky` branch keeps it.
 
-**Radius, elevation, spacing** are scales now, not call-site guesses: `rounded-md` (14px) is the
+**Radius, elevation, spacing** are scales now, not call-site guesses: `rounded-panel` (26px) is the
 card corner, `shadow-e1`..`e4` is resting → floating → sheet → modal (warm-tinted, never
 Tailwind's neutral defaults), and padding names a role (`.pad-chip` / `.pad-panel` / `.pad-card` /
 `.pad-hero` / `.pad-page`). `npm run check:palette` rejects raw palette shades, default shadows and

@@ -1,7 +1,7 @@
 import { DatabaseX } from 'lucide-react';
 
+import { Card } from '@/components/ui/card';
 import { Icon } from '@/components/ui/Icon';
-import Card from '@/components/ui/LegacyCard';
 
 export default function EmptyState() {
     return (

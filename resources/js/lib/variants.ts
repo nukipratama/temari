@@ -12,39 +12,6 @@ import { cva } from 'class-variance-authority';
  */
 
 /**
- * The card system. One surface treatment — `surface-card` on a `line` border at
- * the `md` radius with the resting `e1` elevation — in three states: the card
- * itself, the same card mounted on a dark sky panel, and the empty state, which
- * the prototype draws as an ordinary card on the heavier border rather than as
- * a dashed placeholder (see T2/T3). Padding names the `--pad-*` role it wants
- * rather than a number.
- */
-export const cardVariants = cva('rounded-md', {
-    variants: {
-        tone: {
-            card: 'border border-border bg-card shadow-e1',
-            sky: 'border border-sky bg-sky text-cream shadow-e2',
-            onSky: 'border border-cream/[0.12] bg-cream/[0.06] backdrop-blur',
-            empty: 'border border-border-strong bg-card shadow-e1',
-            // Temari's voice: the card gains a heavier accent-mixed edge and a
-            // horizon halo so narration reads as spoken, not tabulated.
-            narration:
-                'border-[1.5px] border-horizon-ink/45 bg-card shadow-e1 ring-3 ring-horizon/15',
-        },
-        padding: {
-            none: '',
-            panel: 'pad-panel',
-            card: 'pad-card',
-            hero: 'pad-hero',
-        },
-    },
-    defaultVariants: {
-        tone: 'card',
-        padding: 'card',
-    },
-});
-
-/**
  * Pill button tone + size, with an `onSky` compound that flips the `ghost`
  * tone to its cream-on-sky variant. Mirrors TONE_CLASS + size ternary +
  * GHOST_ON_SKY in components/ui/PillButton.tsx.

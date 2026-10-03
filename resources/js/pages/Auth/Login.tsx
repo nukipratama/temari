@@ -307,7 +307,7 @@ function WhyRow({ icon, label, desc }: Readonly<WhyItem>) {
 
 function CardTeaser() {
     return (
-        <Card className="mb-6 flex-row items-center gap-3.5 rounded-2xl border border-border p-3.5 shadow-e1 ring-0">
+        <Card className="mb-6 flex items-center gap-3.5">
             <Suspense
                 fallback={
                     <div

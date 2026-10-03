@@ -32,7 +32,10 @@ export default function InlineNote({
     className,
 }: Readonly<InlineNoteProps>) {
     return (
-        <Card className={cn('flex items-center gap-2.5 px-4 py-3', className)}>
+        <Card
+            padding="panel"
+            className={cn('flex items-center gap-2.5', className)}
+        >
             <Icon
                 icon={icon}
                 width={16}

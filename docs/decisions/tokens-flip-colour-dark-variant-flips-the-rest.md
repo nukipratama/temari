@@ -16,6 +16,8 @@ code_refs:
 
 **Status:** Accepted (documented 2026-09-05)
 
+> **Fact changed (2026-10-03).** `card.tsx` no longer carries a `dark:` utility; the decision stands, and its live example is now `MascotWatermark.tsx`'s `dark:opacity-20`.
+
 ## Context
 
 Two mechanisms in this codebase can make a value depend on the ground.

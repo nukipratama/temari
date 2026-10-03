@@ -6,11 +6,10 @@ import type { SharedProps, StravaSyncState } from '@/types/inertia';
 
 import StravaSyncButton from '@/components/StravaSyncButton';
 import TemariMascot from '@/components/temari/TemariMascot';
+import { Card } from '@/components/ui/card';
 import Eyebrow from '@/components/ui/Eyebrow';
 import { Icon } from '@/components/ui/Icon';
-import Card from '@/components/ui/LegacyCard';
 import SectionLabel from '@/components/ui/SectionLabel';
-import { cn } from '@/lib/cn';
 
 const HERO: Record<
     StravaSyncState,
@@ -52,12 +51,7 @@ const ACTIONS = [
     },
 ] as const;
 
-export default function EmptyRunsState({
-    onSky = false,
-}: Readonly<{
-    /** Cream-on-dark treatment for use on a HeroPanel/sky background. */
-    onSky?: boolean;
-}> = {}) {
+export default function EmptyRunsState() {
     const { stravaSync } = usePage<SharedProps>().props;
     const state: StravaSyncState = stravaSync?.state ?? 'disconnected';
     const hero = HERO[state];
@@ -89,26 +83,15 @@ export default function EmptyRunsState({
                         <TemariMascot
                             pose={isSyncing ? 'thinking' : 'sleepy'}
                             size={40}
-                            onSky={onSky}
                         />
                         <Eyebrow token="hero" tone="horizon-ink">
                             {hero.eyebrow}
                         </Eyebrow>
                     </div>
-                    <h2
-                        className={cn(
-                            'font-serif text-display-sm',
-                            onSky ? 'text-cream' : 'text-foreground',
-                        )}
-                    >
+                    <h2 className="font-serif text-display-sm text-foreground">
                         {hero.headline}
                     </h2>
-                    <p
-                        className={cn(
-                            'mx-auto mt-3 max-w-sm text-quote-sm leading-relaxed',
-                            onSky ? 'text-ink-on-sky' : 'text-text-2',
-                        )}
-                    >
+                    <p className="mx-auto mt-3 max-w-sm text-quote-sm leading-relaxed text-text-2">
                         &ldquo;{hero.copy}&rdquo;
                     </p>
                 </div>
@@ -117,61 +100,32 @@ export default function EmptyRunsState({
             </div>
 
             {/* While you wait */}
-            <Card
-                tone={onSky ? 'onSky' : 'card'}
-                padding="card"
-                className="w-full max-w-md"
-            >
-                <SectionLabel onSky={onSky}>While you wait</SectionLabel>
+            <Card className="w-full max-w-md">
+                <SectionLabel>While you wait</SectionLabel>
                 <div className="mt-3 flex flex-col gap-2">
                     {ACTIONS.map(({ icon, title, desc, href }) => (
                         <Link
                             key={title}
                             href={href}
-                            className={cn(
-                                'focus-ring flex items-center gap-3 rounded-xl px-4 py-3',
-                                onSky ? 'bg-cream/[0.08]' : 'bg-card',
-                            )}
+                            className="focus-ring flex items-center gap-3 rounded-xl bg-card px-4 py-3"
                         >
                             <span
                                 aria-hidden
-                                className={cn(
-                                    'flex h-8 w-8 flex-none items-center justify-center rounded-lg',
-                                    onSky
-                                        ? 'bg-cream/10 text-horizon'
-                                        : 'bg-horizon/[0.14] text-horizon-ink',
-                                )}
+                                className="flex h-8 w-8 flex-none items-center justify-center rounded-lg bg-horizon/[0.14] text-horizon-ink"
                             >
                                 <Icon icon={icon} width={16} height={16} />
                             </span>
                             <div className="min-w-0 flex-1">
-                                <div
-                                    className={cn(
-                                        'text-xs font-semibold',
-                                        onSky
-                                            ? 'text-cream'
-                                            : 'text-foreground',
-                                    )}
-                                >
+                                <div className="text-xs font-semibold text-foreground">
                                     {title}
                                 </div>
-                                <div
-                                    className={cn(
-                                        'mt-0.5 font-mono text-[0.6875rem]',
-                                        onSky
-                                            ? 'text-ink-on-sky'
-                                            : 'text-text-3',
-                                    )}
-                                >
+                                <div className="mt-0.5 font-mono text-[0.6875rem] text-text-3">
                                     {desc}
                                 </div>
                             </div>
                             <span
                                 aria-hidden
-                                className={cn(
-                                    'font-mono text-sm',
-                                    onSky ? 'text-ink-on-sky' : 'text-text-3',
-                                )}
+                                className="font-mono text-sm text-text-3"
                             >
                                 ›
                             </span>

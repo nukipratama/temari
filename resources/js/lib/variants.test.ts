@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-    cardVariants,
     chipVariants,
     iconButtonVariants,
     inputVariants,
@@ -14,43 +13,6 @@ import {
 
 /** Split into class tokens, so `toContain` matches a whole class, not a prefix of one. */
 const tokens = (cls: string) => cls.split(' ');
-
-describe('cardVariants', () => {
-    it('applies the one card surface, radius, elevation and pad role by default', () => {
-        const cls = tokens(cardVariants());
-        expect(cls).toContain('bg-card');
-        expect(cls).toContain('border-border');
-        expect(cls).toContain('rounded-md');
-        expect(cls).toContain('shadow-e1');
-        expect(cls).toContain('pad-card');
-    });
-
-    it.each([
-        ['card', 'bg-card'],
-        ['sky', 'bg-sky'],
-        ['onSky', 'backdrop-blur'],
-        ['empty', 'border-border-strong'],
-    ] as const)('renders tone %s', (tone, expected) => {
-        expect(tokens(cardVariants({ tone }))).toContain(expected);
-    });
-
-    it('keeps every tone on the same radius', () => {
-        for (const tone of ['card', 'sky', 'onSky', 'empty'] as const) {
-            expect(tokens(cardVariants({ tone }))).toContain('rounded-md');
-        }
-    });
-
-    it('emits no padding utility for padding="none"', () => {
-        expect(cardVariants({ padding: 'none' })).not.toContain('pad-');
-    });
-
-    it('names a --pad-* role rather than a number', () => {
-        expect(tokens(cardVariants({ padding: 'panel' }))).toContain(
-            'pad-panel',
-        );
-        expect(tokens(cardVariants({ padding: 'hero' }))).toContain('pad-hero');
-    });
-});
 
 describe('pillButtonVariants', () => {
     it.each([

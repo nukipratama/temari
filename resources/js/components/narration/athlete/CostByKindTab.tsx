@@ -1,7 +1,7 @@
 import type { CostByKindRow } from '@/pages/Narration/types';
 
+import { Card } from '@/components/ui/card';
 import EmptyPanel from '@/components/ui/EmptyPanel';
-import Card from '@/components/ui/LegacyCard';
 import { fmt, formatCost } from '@/pages/Narration/helpers';
 
 interface CostByKindTabProps {
@@ -26,8 +26,7 @@ export default function CostByKindTab({
 
     return (
         <Card
-            as="section"
-            tone="card"
+            render={<section />}
             padding="panel"
             className="mt-6 overflow-x-auto bg-popover"
         >

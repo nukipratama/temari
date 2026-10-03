@@ -1,9 +1,10 @@
+import { Link } from '@inertiajs/react';
 import { Flag } from 'lucide-react';
 
 import type { ActiveRace } from '@/types/inertia';
 
+import { Card } from '@/components/ui/card';
 import { Icon } from '@/components/ui/Icon';
-import LinkCard from '@/components/ui/LinkCard';
 import { daysUntilId, formatShortDateId, useTodayIso } from '@/lib/pace';
 
 /**
@@ -17,9 +18,9 @@ export default function RaceCard({
 
     if (race === null) {
         return (
-            <LinkCard
-                href="/race"
-                className="pressable flex items-center justify-between gap-2.5 transition hover:border-horizon/60"
+            <Card
+                render={<Link href="/race" />}
+                className="pressable focus-ring flex items-center justify-between gap-2.5 transition hover:border-horizon/60"
             >
                 <span className="flex items-center gap-2 text-sm font-bold text-foreground">
                     <Icon icon={Flag} width={15} height={15} aria-hidden />
@@ -28,16 +29,16 @@ export default function RaceCard({
                 <span className="text-label-micro text-text-3">
                     Set your race &rarr;
                 </span>
-            </LinkCard>
+            </Card>
         );
     }
 
     const days = daysUntilId(race.race_date, today);
 
     return (
-        <LinkCard
-            href="/race"
-            className="pressable flex items-center gap-3 transition hover:border-horizon/60"
+        <Card
+            render={<Link href="/race" />}
+            className="pressable focus-ring flex items-center gap-3 transition hover:border-horizon/60"
         >
             <Icon
                 icon={Flag}
@@ -63,6 +64,6 @@ export default function RaceCard({
                     {days === 1 ? 'day' : 'days'}
                 </span>
             </div>
-        </LinkCard>
+        </Card>
     );
 }
