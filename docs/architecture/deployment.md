@@ -178,11 +178,11 @@ The `mysql` image changes only in a manual, announced window. Deploys never buil
 
 **Window.** No deploy is running or queued (`gh run list --workflow ci.yml --status in_progress`, and again with `--status queued`), and nothing merges until the window ends. Keep well clear of the nightly backup (23:40 WIB) and the Sunday restore dry run (04:07 WIB), both of which share the `deploy-prod` lock. Users see the maintenance page from step 3 to step 8.
 
-Run each command on its own, on the host, from a fresh checkout of `main` at the merge commit. The 8.4 → 9.7 values are shown; set `OLD`/`NEW` for a later upgrade.
+Run each command on its own, on the host, from a fresh checkout of `main` at the merge commit. The 8.4 → 9.7 values are shown; set `OLD`/`NEW` for a later upgrade. Compose reads `/opt/temari/.env`, which a personal login cannot read, so `COMPOSE` runs it through `sudo` from an interactive SSH session.
 
 ```bash
 git clone https://github.com/nukipratama/temari.git /tmp/temari-mysql && cd /tmp/temari-mysql
-COMPOSE="docker compose -f compose.prod.yaml"; OLD=temari/mysql:8.4; NEW=temari/mysql:9.7
+COMPOSE="sudo docker compose -f compose.prod.yaml"; OLD=temari/mysql:8.4; NEW=temari/mysql:9.7
 VOL=temari-prod_mysql_data; COPY=temari-prod_mysql_data_before_upgrade
 
 # 1. Preflight: mysql runs $OLD, the image is kept for rollback, and the disk fits one more copy of the volume.
@@ -224,11 +224,11 @@ $COMPOSE exec -T mysql sh -c 'MYSQL_PWD="$DB_PASSWORD" mysql -h 127.0.0.1 -N -B 
 sort "$APP_MANIFEST" | diff - /tmp/live-counts.tsv && echo "row counts match the manifest"
 $COMPOSE exec -T mysql sh -c 'export MYSQL_PWD="$DB_PASSWORD"; mysqldump -h 127.0.0.1 --single-transaction --quick --no-tablespaces --set-gtid-purged=OFF --loose-skip-masking-policies -u"$DB_USERNAME" "$DB_DATABASE"' | gzip > /tmp/mysql-check.sql.gz && gzip -t /tmp/mysql-check.sql.gz && ls -l /tmp/mysql-check.sql.gz
 
-# 8. Services back.
+# 8. Services back. `/up` fails until Horizon registers its supervisor, so it is retried.
 $COMPOSE restart app
 $COMPOSE start scheduler horizon pulse
 $COMPOSE exec -T app php artisan up
-curl -fsS http://127.0.0.1:7001/ready && curl -fsS http://127.0.0.1:7001/up
+curl -fsS http://127.0.0.1:7001/ready && curl -fsS -o /dev/null --retry 6 --retry-delay 5 --retry-all-errors http://127.0.0.1:7001/up && echo "up OK"
 rm -f /tmp/mysql-check.sql.gz /tmp/count-rows.sql /tmp/live-counts.tsv
 ```
 
@@ -238,7 +238,7 @@ rm -f /tmp/mysql-check.sql.gz /tmp/count-rows.sql /tmp/live-counts.tsv
 $COMPOSE stop mysql
 docker run --rm --entrypoint sh -v "$VOL":/data -v "$COPY":/from:ro "$OLD" -c 'find /data -mindepth 1 -delete && cp -a /from/. /data/'
 printf 'services:\n  mysql:\n    image: %s\n' "$OLD" > /tmp/mysql-rollback.yml
-docker compose -f compose.prod.yaml -f /tmp/mysql-rollback.yml up -d --no-deps --wait mysql
+$COMPOSE -f /tmp/mysql-rollback.yml up -d --no-deps --wait mysql
 # then step 8, and revert the merge that renamed the tag
 ```
 
