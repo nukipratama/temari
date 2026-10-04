@@ -2,6 +2,8 @@ import { csrfToken } from '@/lib/http';
 
 const SAVED_ENDPOINT_KEY = 'temari-push-endpoint';
 
+let inFlightSubscribe: Promise<void> | null = null;
+
 /** The browser can do web push at all (all iOS browsers gate this behind a Home-Screen install). */
 export function isPushSupported(): boolean {
     return (
@@ -59,7 +61,15 @@ export async function currentSubscription(): Promise<PushSubscription | null> {
  * subscribe, and persist the subscription server-side. Throws 'permission-denied'
  * when the user (or the OS) blocks the prompt.
  */
-export async function subscribe(publicKey: string): Promise<void> {
+export function subscribe(publicKey: string): Promise<void> {
+    inFlightSubscribe ??= subscribeOnce(publicKey).finally(() => {
+        inFlightSubscribe = null;
+    });
+
+    return inFlightSubscribe;
+}
+
+async function subscribeOnce(publicKey: string): Promise<void> {
     const registration = await navigator.serviceWorker.register('/sw.js');
     await navigator.serviceWorker.ready;
 
