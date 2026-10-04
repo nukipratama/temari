@@ -120,13 +120,18 @@ class StreamAnalysis
         $grade = $this->data($streams, 'grade_smooth');
         $latlng = $this->data($streams, 'latlng');
 
+        $seconds = self::floats($time);
+        $intervals = self::intervals($seconds);
+        $grade = self::floats($grade);
+        $gradeCost = array_map(fn (float $pct): float => $this->gradeCostFactor($pct / 100), $grade);
+
         $summary = array_merge(
-            $this->bestEffortPaces($time, $velocity),
+            $this->bestEffortPaces($seconds, $intervals, $velocity),
             $this->elevation($altitude),
-            $this->timeInZones($time, $heartrate, $hrZones),
-            $this->stoppedTime($time, $velocity),
-            $this->cadenceDistribution($time, $cadence, $optimalCadenceSpm),
-            $this->grade($grade, $time, $velocity),
+            $this->timeInZones($intervals, $heartrate, $hrZones),
+            $this->stoppedTime($intervals, $velocity),
+            $this->cadenceDistribution($intervals, $cadence, $optimalCadenceSpm),
+            $this->grade($grade, $gradeCost, $seconds, $intervals, $velocity),
         );
 
         $terrainReadable = self::terrainIsReadable($summary);
@@ -134,10 +139,10 @@ class StreamAnalysis
         $summary = array_merge($summary, $this->steadyEffortDrift($splitsMetric ?? []));
 
         if ($terrainReadable && $this->isSustainedEffort($time, $heartrate, $velocity, $grade, $summary)) {
-            $summary = array_merge($summary, $this->decoupling($time, $heartrate, $velocity, $grade));
+            $summary = array_merge($summary, $this->decoupling($seconds, $intervals, $heartrate, $velocity, $gradeCost));
         }
 
-        $cadenceByKm = $this->perKmCadenceFromStream($time, $distance, $cadence);
+        $cadenceByKm = $this->perKmCadenceFromStream($intervals, $distance, $cadence);
 
         $perKm = $this->kmSplits->perKm($laps, $latlng, $time, $heartrate, $splitsMetric, $deviceDistanceM);
         if ($perKm !== []) {
@@ -183,18 +188,50 @@ class StreamAnalysis
     }
 
     /**
-     * @param  list<float|int>  $time
+     * @param  list<float|int>  $values
+     * @return list<float>
+     */
+    private static function floats(array $values): array
+    {
+        $floats = [];
+        foreach ($values as $value) {
+            $floats[] = (float) $value;
+        }
+
+        return $floats;
+    }
+
+    /**
+     * Seconds between each sample and the next.
+     *
+     * @param  list<float>  $seconds
+     * @return list<float>
+     */
+    private static function intervals(array $seconds): array
+    {
+        $intervals = [];
+        for ($i = 1, $n = count($seconds); $i < $n; $i++) {
+            $intervals[] = $seconds[$i] - $seconds[$i - 1];
+        }
+
+        return $intervals;
+    }
+
+    /**
+     * @param  list<float>  $seconds
+     * @param  list<float>  $intervals
      * @param  list<float|int>  $velocity
      * @return array<string, string|float|null>
      */
-    private function bestEffortPaces(array $time, array $velocity): array
+    private function bestEffortPaces(array $seconds, array $intervals, array $velocity): array
     {
-        if ($time === [] || $velocity === []) {
+        $series = self::effortSeries($seconds, $intervals, $velocity);
+        if ($series === null) {
             return [];
         }
         $result = [];
         foreach (self::BEST_EFFORT_WINDOWS as $sec => $label) {
-            $pace = $this->bestEffortPace($time, $velocity, $sec);
+            $pace = self::fastestWindowPace(...$series, targetSec: $sec);
             if ($pace !== null) {
                 $result["best_{$label}_pace"] = $pace;
             }
@@ -212,12 +249,43 @@ class StreamAnalysis
      */
     public function bestEffortPace(array $time, array $velocity, int $targetSec): ?string
     {
-        $n = count($time);
+        $seconds = self::floats($time);
+        $series = self::effortSeries($seconds, self::intervals($seconds), $velocity);
+
+        return $series === null ? null : self::fastestWindowPace(...$series, targetSec: $targetSec);
+    }
+
+    /**
+     * @param  list<float>  $seconds
+     * @param  list<float>  $intervals
+     * @param  list<float|int>  $velocity
+     * @return array{time: list<float>, velocity: list<float>, segmentDist: list<float>}|null
+     */
+    private static function effortSeries(array $seconds, array $intervals, array $velocity): ?array
+    {
+        $n = count($seconds);
         if ($n < 2 || count($velocity) < $n) {
             return null;
         }
-        $totalTime = (float) ($time[$n - 1] - $time[0]);
-        if ($totalTime < $targetSec * 0.95) {
+
+        $v = self::floats(array_slice($velocity, 0, $n));
+        $segmentDist = [];
+        foreach ($intervals as $i => $interval) {
+            $segmentDist[] = $v[$i] * $interval;
+        }
+
+        return ['time' => $seconds, 'velocity' => $v, 'segmentDist' => $segmentDist];
+    }
+
+    /**
+     * @param  list<float>  $time
+     * @param  list<float>  $velocity
+     * @param  list<float>  $segmentDist  distance covered between sample i and i + 1
+     */
+    private static function fastestWindowPace(array $time, array $velocity, array $segmentDist, int $targetSec): ?string
+    {
+        $last = count($time) - 1;
+        if ($time[$last] - $time[0] < $targetSec * 0.95) {
             return null;
         }
 
@@ -230,20 +298,27 @@ class StreamAnalysis
         $bestDist = 0.0;
         $j = 0;
         $windowDist = 0.0;
-        for ($i = 0; $i < $n - 1; $i++) {
-            while ($j < $n - 1 && ($time[$j] - $time[$i]) < $targetSec) {
-                $windowDist += ((float) $velocity[$j]) * ((float) ($time[$j + 1] - $time[$j]));
-                $j++;
+        for ($i = 0; $i < $last; $i++) {
+            $start = $time[$i];
+            $span = $time[$j] - $start;
+            while ($j < $last && $span < $targetSec) {
+                $windowDist += $segmentDist[$j];
+                $span = $time[++$j] - $start;
             }
-            if (($time[$j] - $time[$i]) >= $targetSec) {
-                $overshoot = (float) ($time[$j] - $time[$i]) - $targetSec;
-                $trailingDt = (float) ($time[$j] - $time[$j - 1]);
-                $trimDist = $overshoot > 0 && $trailingDt > 0
-                    ? min($overshoot, $trailingDt) * (float) $velocity[$j - 1]
-                    : 0.0;
-                $bestDist = max($bestDist, $windowDist - $trimDist);
+            if ($span >= $targetSec) {
+                $overshoot = $span - $targetSec;
+                $credited = $windowDist;
+                if ($overshoot > 0) {
+                    $trailingDt = $time[$j] - $time[$j - 1];
+                    if ($trailingDt > 0) {
+                        $credited -= min($overshoot, $trailingDt) * $velocity[$j - 1];
+                    }
+                }
+                if ($credited > $bestDist) {
+                    $bestDist = $credited;
+                }
             }
-            $windowDist -= ((float) $velocity[$i]) * ((float) ($time[$i + 1] - $time[$i]));
+            $windowDist -= $segmentDist[$i];
         }
         if ($bestDist <= 0) {
             return null;
@@ -277,27 +352,29 @@ class StreamAnalysis
      * Hill metrics from the grade_smooth stream: steepest sustained climb,
      * share of time spent climbing, and grade-adjusted pace (GAP).
      *
-     * @param  list<float|int>  $grade  per-sample gradient in percent
-     * @param  list<float|int>  $time
+     * @param  list<float>  $grade  per-sample gradient in percent
+     * @param  list<float>  $gradeCost  per-sample {@see self::gradeCostFactor()}
+     * @param  list<float>  $seconds
+     * @param  list<float>  $intervals
      * @param  list<float|int>  $velocity
      * @return array<string, string|float>
      */
-    private function grade(array $grade, array $time, array $velocity): array
+    private function grade(array $grade, array $gradeCost, array $seconds, array $intervals, array $velocity): array
     {
-        if (count($grade) < 2 || count($time) < 2) {
+        if (count($grade) < 2 || count($seconds) < 2) {
             return [];
         }
 
         $result = [];
-        $maxGrade = $this->maxSustainedGrade($grade, $time);
+        $maxGrade = $this->maxSustainedGrade($grade, $seconds, $intervals);
         if ($maxGrade !== null) {
             $result['max_grade_pct'] = $maxGrade;
         }
-        $climbPct = $this->climbTimePct($grade, $time);
+        $climbPct = $this->climbTimePct($grade, $intervals);
         if ($climbPct !== null) {
             $result['climb_time_pct'] = $climbPct;
         }
-        $gap = $this->gradeAdjustedPace($grade, $time, $velocity);
+        $gap = $this->gradeAdjustedPace($gradeCost, $intervals, $velocity);
         if ($gap !== null) {
             $result['gap_pace'] = $gap;
         }
@@ -325,21 +402,22 @@ class StreamAnalysis
      * per-sample max would just surface GPS spikes, so this is time-weighted
      * over the window using the same two-pointer idiom as bestEffortPace().
      *
-     * @param  list<float|int>  $grade
-     * @param  list<float|int>  $time
+     * @param  list<float>  $grade
+     * @param  list<float>  $seconds
+     * @param  list<float>  $intervals
      */
-    private function maxSustainedGrade(array $grade, array $time): ?float
+    private function maxSustainedGrade(array $grade, array $seconds, array $intervals): ?float
     {
-        $n = min(count($grade), count($time));
+        $n = min(count($grade), count($seconds));
         $best = null;
         $j = 0;
         $wSum = 0.0;
         $tSum = 0.0;
         for ($i = 0; $i < $n - 1; $i++) {
-            while ($j < $n - 1 && ($time[$j] - $time[$i]) < self::GRADE_WINDOW_SEC) {
-                $dt = (float) ($time[$j + 1] - $time[$j]);
-                $wSum += (float) $grade[$j] * $dt;
-                $tSum += $dt;
+            $start = $seconds[$i];
+            while ($j < $n - 1 && $seconds[$j] - $start < self::GRADE_WINDOW_SEC) {
+                $wSum += $grade[$j] * $intervals[$j];
+                $tSum += $intervals[$j];
                 $j++;
             }
             if ($tSum > 0) {
@@ -348,9 +426,8 @@ class StreamAnalysis
                     $best = $mean;
                 }
             }
-            $dtI = (float) ($time[$i + 1] - $time[$i]);
-            $wSum -= (float) $grade[$i] * $dtI;
-            $tSum -= $dtI;
+            $wSum -= $grade[$i] * $intervals[$i];
+            $tSum -= $intervals[$i];
         }
 
         return $best !== null ? round($best, 1) : null;
@@ -359,22 +436,21 @@ class StreamAnalysis
     /**
      * Share of recorded time spent climbing (grade >= CLIMB_GRADE_PCT), percent.
      *
-     * @param  list<float|int>  $grade
-     * @param  list<float|int>  $time
+     * @param  list<float>  $grade
+     * @param  list<float>  $intervals
      */
-    private function climbTimePct(array $grade, array $time): ?float
+    private function climbTimePct(array $grade, array $intervals): ?float
     {
-        $n = min(count($grade), count($time) - 1);
+        $n = min(count($grade), count($intervals));
         if ($n < 1) {
             return null;
         }
         $climb = 0.0;
         $total = 0.0;
         for ($i = 0; $i < $n; $i++) {
-            $dt = (float) ($time[$i + 1] - $time[$i]);
-            $total += $dt;
-            if ((float) $grade[$i] >= self::CLIMB_GRADE_PCT) {
-                $climb += $dt;
+            $total += $intervals[$i];
+            if ($grade[$i] >= self::CLIMB_GRADE_PCT) {
+                $climb += $intervals[$i];
             }
         }
 
@@ -386,13 +462,13 @@ class StreamAnalysis
      * Minetti's cost-of-running curve normalised to flat = 1. Uphill costs more,
      * so the flat-equivalent distance grows and the pace comes out faster than raw.
      *
-     * @param  list<float|int>  $grade
-     * @param  list<float|int>  $time
+     * @param  list<float>  $gradeCost  per-sample {@see self::gradeCostFactor()}
+     * @param  list<float>  $intervals
      * @param  list<float|int>  $velocity
      */
-    private function gradeAdjustedPace(array $grade, array $time, array $velocity): ?string
+    private function gradeAdjustedPace(array $gradeCost, array $intervals, array $velocity): ?string
     {
-        $n = min(count($grade), count($time) - 1, count($velocity));
+        $n = min(count($gradeCost), count($intervals), count($velocity));
         if ($n < 1) {
             return null;
         }
@@ -403,9 +479,8 @@ class StreamAnalysis
             if ($v < self::STOP_VELOCITY_MS) {
                 continue;
             }
-            $dt = (float) ($time[$i + 1] - $time[$i]);
-            $flatEquivDist += $v * $dt * $this->gradeCostFactor((float) $grade[$i] / 100);
-            $movingTime += $dt;
+            $flatEquivDist += $v * $intervals[$i] * $gradeCost[$i];
+            $movingTime += $intervals[$i];
         }
         if ($flatEquivDist <= 0) {
             return null;
@@ -427,26 +502,25 @@ class StreamAnalysis
     }
 
     /**
-     * @param  list<float|int>  $time
+     * @param  list<float>  $intervals
      * @param  list<float|int>  $heartrate
      * @param  array<string, array{lo: int, hi: int}>  $hrZones
      * @return array<string, array<string, float>>
      */
-    private function timeInZones(array $time, array $heartrate, array $hrZones): array
+    private function timeInZones(array $intervals, array $heartrate, array $hrZones): array
     {
-        if ($time === [] || $heartrate === []) {
+        if ($intervals === [] || $heartrate === []) {
             return [];
         }
         $zoneSec = array_fill_keys(array_keys($hrZones), 0.0);
         $total = 0.0;
-        $n = min(count($time) - 1, count($heartrate));
+        $n = min(count($intervals), count($heartrate));
         for ($i = 0; $i < $n; $i++) {
-            $dt = (float) $time[$i + 1] - (float) $time[$i];
             $bpm = (float) $heartrate[$i];
             foreach ($hrZones as $name => $range) {
                 if ($bpm >= $range['lo'] && $bpm < $range['hi']) {
-                    $zoneSec[$name] += $dt;
-                    $total += $dt;
+                    $zoneSec[$name] += $intervals[$i];
+                    $total += $intervals[$i];
 
                     break;
                 }
@@ -734,23 +808,19 @@ class StreamAnalysis
     }
 
     /**
-     * @param  list<float|int>  $time
+     * @param  list<float>  $intervals
      * @param  list<float|int>  $velocity
      * @return array<string, int|float>
      */
-    private function stoppedTime(array $time, array $velocity): array
+    private function stoppedTime(array $intervals, array $velocity): array
     {
-        if (count($time) < 2) {
-            return [];
-        }
         $stopped = 0.0;
         $count = 0;
         $inStop = false;
-        $n = min(count($velocity), count($time) - 1);
+        $n = min(count($velocity), count($intervals));
         for ($i = 0; $i < $n; $i++) {
-            $dt = (float) $time[$i + 1] - (float) $time[$i];
             if ((float) $velocity[$i] < self::STOP_VELOCITY_MS) {
-                $stopped += $dt;
+                $stopped += $intervals[$i];
                 if (! $inStop) {
                     $count++;
                     $inStop = true;
@@ -782,19 +852,20 @@ class StreamAnalysis
      * standing for a couple of metres, and an index split cut the halves
      * unevenly in time whenever the sample spacing changed mid-run.
      *
-     * @param  list<float|int>  $time
+     * @param  list<float>  $seconds
+     * @param  list<float>  $intervals
      * @param  list<float|int>  $heartrate
      * @param  list<float|int>  $velocity
-     * @param  list<float|int>  $grade  per-sample gradient in percent
+     * @param  list<float>  $gradeCost  per-sample {@see self::gradeCostFactor()}
      * @return array<string, float>
      */
-    private function decoupling(array $time, array $heartrate, array $velocity, array $grade): array
+    private function decoupling(array $seconds, array $intervals, array $heartrate, array $velocity, array $gradeCost): array
     {
-        $n = self::driftSampleCount($time, $heartrate, $velocity, $grade);
+        $n = self::driftSampleCount($seconds, $heartrate, $velocity, $gradeCost);
         if ($n < 4) {
             return [];
         }
-        $midpoint = ((float) $time[0] + (float) $time[$n]) / 2;
+        $midpoint = ($seconds[0] + $seconds[$n]) / 2;
 
         $firstHrSeconds = 0.0;
         $firstFlatEquivDist = 0.0;
@@ -803,20 +874,20 @@ class StreamAnalysis
         $secondFlatEquivDist = 0.0;
         $secondMovingSeconds = 0.0;
         for ($i = 0; $i < $n; $i++) {
-            $at = (float) $time[$i];
             $v = (float) $velocity[$i];
             $bpm = (float) $heartrate[$i];
             if ($v < self::STOP_VELOCITY_MS || $bpm < self::HR_PLAUSIBLE_MIN_BPM || $bpm > self::HR_PLAUSIBLE_MAX_BPM) {
                 continue;
             }
-            $dt = (float) $time[$i + 1] - $at;
+            $at = $seconds[$i];
+            $dt = $intervals[$i];
             if ($dt <= 0) {
                 continue;
             }
             // Flat-equivalent distance: climbing costs more per metre, so
             // the metres covered are scaled by that cost to compare like
             // with like.
-            $flatEquivDelta = $v * $dt * $this->gradeCostFactor((float) $grade[$i] / 100);
+            $flatEquivDelta = $v * $dt * $gradeCost[$i];
             if ($at < $midpoint) {
                 $firstHrSeconds += $bpm * $dt;
                 $firstFlatEquivDist += $flatEquivDelta;
@@ -846,13 +917,13 @@ class StreamAnalysis
      * Cadence stream is "rotations per minute, single foot". Double it for
      * the conventional steps-per-minute (SPM) used in running.
      *
-     * @param  list<float|int>  $time
+     * @param  list<float>  $intervals
      * @param  list<float|int>  $cadence
      * @return array<string, mixed>
      */
-    private function cadenceDistribution(array $time, array $cadence, int $optimalSpm): array
+    private function cadenceDistribution(array $intervals, array $cadence, int $optimalSpm): array
     {
-        if ($time === [] || $cadence === []) {
+        if ($intervals === [] || $cadence === []) {
             return [];
         }
         $buckets = ['<165' => 0.0, '165-175' => 0.0, '>175' => 0.0];
@@ -860,9 +931,9 @@ class StreamAnalysis
         $optimalLo = $optimalSpm;
         $optimalHi = $optimalSpm + 15;
         $optSec = 0.0;
-        $n = min(count($cadence), count($time) - 1);
+        $n = min(count($cadence), count($intervals));
         for ($i = 0; $i < $n; $i++) {
-            $dt = (float) $time[$i + 1] - (float) $time[$i];
+            $dt = $intervals[$i];
             $spm = (float) $cadence[$i] * 2;
             if ($spm < 165) {
                 $buckets['<165'] += $dt;
@@ -944,17 +1015,14 @@ class StreamAnalysis
      * Time-weighted (matching `cadenceDistribution()` line 317) and doubles
      * the half-cadence values Strava ships in the stream.
      *
-     * @param  list<float|int>  $time
+     * @param  list<float>  $intervals
      * @param  list<float|int>  $distance
      * @param  list<float|int>  $cadence
      * @return array<int, int>  km index (1-based) → average spm
      */
-    private function perKmCadenceFromStream(array $time, array $distance, array $cadence): array
+    private function perKmCadenceFromStream(array $intervals, array $distance, array $cadence): array
     {
-        if ($time === [] || $distance === [] || $cadence === []) {
-            return [];
-        }
-        $n = min(count($cadence), count($distance), count($time) - 1);
+        $n = min(count($cadence), count($distance), count($intervals));
         if ($n <= 0) {
             return [];
         }
@@ -962,7 +1030,7 @@ class StreamAnalysis
         /** @var array<int, array{sum: float, dt: float}> $buckets */
         $buckets = [];
         for ($i = 0; $i < $n; $i++) {
-            $dt = (float) $time[$i + 1] - (float) $time[$i];
+            $dt = $intervals[$i];
             if ($dt <= 0) {
                 continue;
             }
