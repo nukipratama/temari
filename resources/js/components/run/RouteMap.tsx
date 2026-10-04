@@ -1,12 +1,8 @@
-import { usePage } from '@inertiajs/react';
 import polylineCodec from '@mapbox/polyline';
 import { latLngBounds } from 'leaflet';
 import { useMemo, useState } from 'react';
 import { MapContainer, Polyline, TileLayer } from 'react-leaflet';
 
-import type { SharedProps } from '@/types/inertia';
-
-import { useIsDarkGround } from '@/hooks/useIsDarkGround';
 import { PALETTE } from '@/lib/chartTokens';
 // leaflet.css lives in resources/css/app.css (@import). Importing it here would race
 // the lazy-load and leave tiles unpositioned on first render.
@@ -14,13 +10,6 @@ import { PALETTE } from '@/lib/chartTokens';
 const OSM_URL = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
 const OSM_ATTRIBUTION =
     '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors';
-
-const CARTO_VOYAGER_URL =
-    'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png';
-const CARTO_DARK_MATTER_URL =
-    'https://{s}.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}.png';
-const CARTO_ATTRIBUTION =
-    '&copy; <a href="https://carto.com/attributions" target="_blank" rel="noopener noreferrer">CARTO</a> &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors';
 
 interface RouteMapProps {
     polyline: string;
@@ -33,8 +22,6 @@ export default function RouteMap({
     distanceKm,
 }: Readonly<RouteMapProps>) {
     const [active, setActive] = useState(false);
-    const isDark = useIsDarkGround();
-    const cartoApiKey = usePage<SharedProps>().props.cartoApiKey ?? '';
     const positions = useMemo<Array<[number, number]>>(
         () => polylineCodec.decode(polyline) as Array<[number, number]>,
         [polyline],
@@ -52,14 +39,6 @@ export default function RouteMap({
         ? `run route map, ${distanceKm} km`
         : 'run route map';
 
-    // Anonymous CARTO tiles now render an "API key required" watermark, so the
-    // CARTO style only applies once the owner has configured a key; empty
-    // falls back to plain OSM tiles rather than show that watermark.
-    const tileUrl = cartoApiKey
-        ? `${isDark ? CARTO_DARK_MATTER_URL : CARTO_VOYAGER_URL}?key=${cartoApiKey}`
-        : OSM_URL;
-    const tileAttribution = cartoApiKey ? CARTO_ATTRIBUTION : OSM_ATTRIBUTION;
-
     // `isolate` confines Leaflet's internal pane/control z-indexes (up to ~1000)
     // to this box so they don't paint over the fixed bottom nav. `role="img"` sits
     // on its own inner div (not this wrapper) — screen readers flatten a
@@ -76,9 +55,8 @@ export default function RouteMap({
                     attributionControl
                 >
                     <TileLayer
-                        attribution={tileAttribution}
-                        url={tileUrl}
-                        subdomains="abcd"
+                        attribution={OSM_ATTRIBUTION}
+                        url={OSM_URL}
                         maxZoom={19}
                         eventHandlers={{
                             /* v8 ignore next 3 — fires only when the network/tile

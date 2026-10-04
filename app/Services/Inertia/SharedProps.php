@@ -63,9 +63,6 @@ final readonly class SharedProps
             // Public VAPID key only — the client needs it to subscribe; the private
             // key never leaves the server.
             'webPushPublicKey' => (string) config('webpush.vapid.public_key'),
-            // '' when unconfigured; the run map falls back to plain OSM tiles rather
-            // than a watermarked CARTO map.
-            'cartoApiKey' => (string) config('services.carto.api_key'),
             'today' => Carbon::today()->toDateString(),
             'planRecalibration' => fn (): array => $this->planRecalibrationFor($user),
             ...$this->gamification->forUser($user),
