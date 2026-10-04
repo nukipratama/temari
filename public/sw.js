@@ -83,17 +83,30 @@ self.addEventListener('fetch', (event) => {
     );
 });
 
-self.addEventListener('push', (event) => {
-    if (!event.data) {
-        return;
+// iOS revokes the subscription of a web app whose pushes it is not shown, so a
+// push with nothing readable in it still has to show something.
+const FALLBACK_PAYLOAD = { title: 'Temari', body: 'Something new is in your inbox.', data: { url: '/inbox' } };
+
+function readPayload(data) {
+    if (!data) {
+        return null;
     }
 
-    let payload;
     try {
-        payload = event.data.json();
+        const parsed = data.json();
+        return parsed !== null && typeof parsed === 'object' ? parsed : null;
     } catch {
-        payload = { title: 'Temari', body: event.data.text() };
+        try {
+            return { body: data.text() };
+        } catch {
+            return null;
+        }
     }
+}
+
+self.addEventListener('push', (event) => {
+    const read = readPayload(event.data);
+    const payload = read?.title || read?.body ? read : FALLBACK_PAYLOAD;
 
     if (typeof payload.data?.unread === 'number') {
         lastKnownUnread = payload.data.unread;
