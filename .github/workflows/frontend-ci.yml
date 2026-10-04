@@ -58,7 +58,7 @@ jobs:
   gate:
     name: gate
     needs: [tests, static-analysis]
-    if: always()
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-26.04-arm
     timeout-minutes: 2
     steps:

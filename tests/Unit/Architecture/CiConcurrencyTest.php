@@ -30,8 +30,10 @@ it('cancels a superseded CI run on every ref, main included', function (): void 
     ]);
 })->group('structure');
 
-it('runs ci-gate unless the run was cancelled, so a timed-out job still fails it', function (): void {
-    expect(ciWorkflow('ci.yml')['jobs']['ci-gate']['if'])->toBe('${{ !cancelled() }}');
+it('runs ci-gate and both suite gates unless the run was cancelled, so a timed-out job still fails them', function (): void {
+    expect(ciWorkflow('ci.yml')['jobs']['ci-gate']['if'])->toBe('${{ !cancelled() }}')
+        ->and(ciWorkflow('backend-ci.yml')['jobs']['gate']['if'])->toBe('${{ !cancelled() }}')
+        ->and(ciWorkflow('frontend-ci.yml')['jobs']['gate']['if'])->toBe('${{ !cancelled() }}');
 })->group('structure');
 
 it('keeps the deploy out of the CI workflow', function (): void {

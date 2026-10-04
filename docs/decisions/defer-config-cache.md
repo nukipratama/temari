@@ -12,6 +12,8 @@ code_refs:
 
 # Defer config:cache to deploy time; never at build or in CI tests
 
+> **Fact update, 2026-10-04.** The deploy job, including the `php artisan optimize` step below, now lives in [deploy.yml](../../.github/workflows/deploy.yml), triggered after CI succeeds on `main` ([#1742](https://github.com/nukipratama/temari/issues/1742)). The decision is unchanged.
+
 **Status:** Accepted (documented 2026-06-20)
 
 ## Context
