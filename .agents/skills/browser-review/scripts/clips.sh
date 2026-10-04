@@ -16,8 +16,8 @@ OUT=storage/app/clips
 LIMIT=10485760
 
 if ! command -v ffmpeg >/dev/null 2>&1; then
-    echo "clips.sh needs ffmpeg with libx264 and found none. Install it in the Sail container:" >&2
-    echo "  docker compose exec -u root app apk add ffmpeg   (recorded frames are kept)" >&2
+    echo "clips.sh needs ffmpeg with libx264 and found none; recorded frames are kept." >&2
+    echo "Run .agents/skills/browser-review/scripts/setup.sh in the Sail container for the rebuild steps." >&2
     exit 3
 fi
 

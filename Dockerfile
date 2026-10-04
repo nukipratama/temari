@@ -65,6 +65,15 @@ COPY --from=node-src /usr/local/lib/node_modules /usr/local/lib/node_modules
 RUN ln -sf /usr/local/lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
     && ln -sf /usr/local/lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx
 
+# browser-review capture tooling: Alpine's musl Chromium (Playwright's bundled
+# build is glibc and cannot launch here), ffmpeg with libx264 for clips.sh, and
+# the Playwright JS driver installed globally so `npm ci` cannot wipe it. Keep
+# PLAYWRIGHT_VERSION within a Chromium release or two of Alpine's chromium.
+ARG PLAYWRIGHT_VERSION=1.63.0
+RUN apk add --no-cache chromium nss freetype harfbuzz ttf-freefont font-noto-emoji ffmpeg \
+    && PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm install -g --no-audit --no-fund "playwright@${PLAYWRIGHT_VERSION}" \
+    && npm cache clean --force
+
 # Caddy needs writable dirs for its PKI module even when auto_https is off.
 # Named volumes compose mounts over ~/.pest, node_modules and the package caches
 # must exist here so a fresh volume inherits www-data ownership instead of root's.

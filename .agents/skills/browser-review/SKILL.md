@@ -19,7 +19,7 @@ Read only the file the step needs; each holds its section verbatim.
 - [Viewport matrix (default)](references/viewports.md): before narrowing or widening `VIEWPORTS`.
 - [States the demo does not produce, and the operator console](references/edge-states-and-devtools.md): before auditing loading, empty or failed states, or sweeping `/devtools`, `/pulse` or a production host.
 - [Before merging to the epic — the probes are not in CI](references/pre-merge-probes.md): before merging UI work to the epic.
-- [The Alpine/Playwright gotcha](references/alpine-playwright.md): when `setup.sh` or Chromium fails to launch.
+- [The Alpine/Playwright gotcha](references/alpine-playwright.md): when `setup.sh` reports something missing or Chromium fails to launch.
 - [Scanners](references/scanners.md) (`contrast.mjs`, `mounts.mjs`, `light-islands.mjs`, `edges.mjs`, `states.mjs`, `scans.mjs`): before running step 4 or 5, or judging their baselines.
 - [Reading the output and inspecting](references/inspect.md) ("Reading screenshots", "Inspect (audit-gated)", "Verify before reporting", the probe-evidence contract): after steps 2–3, before reading any screenshot.
 - [Recording before/after clips](references/clips.md): when a PR changes motion or interaction (transitions, popovers, gestures, loading states), before opening it.
@@ -42,8 +42,9 @@ The app is reachable **inside the container at `http://localhost`** (host-forwar
 ## Run it
 
 ```bash
-# 1. one-time setup per container lifetime (apk needs root)
-docker compose exec -u root app sh .agents/skills/browser-review/scripts/setup.sh
+# 1. check the dev image carries Chromium, Playwright and ffmpeg (installs nothing; prints the
+#    rebuild steps when the image predates them)
+./vendor/bin/sail exec app sh .agents/skills/browser-review/scripts/setup.sh
 
 # 2. screenshots across the viewport matrix (default mobile,se,laptop,desktop — see references/viewports.md)
 ./vendor/bin/sail exec app node .agents/skills/browser-review/scripts/shoot.mjs
@@ -65,7 +66,6 @@ docker compose exec -u root app sh .agents/skills/browser-review/scripts/setup.s
 ./vendor/bin/sail exec app node .agents/skills/browser-review/scripts/edges.mjs dark
 ./vendor/bin/sail exec app node .agents/skills/browser-review/scripts/states.mjs dark
 ./vendor/bin/sail exec app node .agents/skills/browser-review/scripts/probe.mjs / dark 'document.title'
-
-# 6. teardown (restore node_modules; screenshots are kept as history)
-./vendor/bin/sail exec app sh .agents/skills/browser-review/scripts/teardown.sh
 ```
+
+Screenshots stay in place as history; the next sweep replaces them.

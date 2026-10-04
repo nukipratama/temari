@@ -20,4 +20,5 @@
   is actually mounted on), `light-islands.mjs` (surfaces wearing the wrong ground), `edges.mjs`
   (borders and rings that are not there), `states.mjs` (those scans, in states a page load never
   reaches), `scans.mjs` (the shared colour maths), `probe.mjs` (one live DOM question, answered; `--viewport=<key>` picks the viewport),
-  `record.mjs` + `clips.sh` (before/after clips, see [clips.md](clips.md)), `setup.sh` / `teardown.sh`.
+  `record.mjs` + `clips.sh` (before/after clips, see [clips.md](clips.md)), `playwright.mjs` (the
+  dev image's global Playwright), `setup.sh` (checks the baked-in tooling).

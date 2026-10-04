@@ -17,7 +17,7 @@
  *
  * Usage: node states.mjs [dark|light]
  */
-import { chromium } from 'playwright';
+import { chromium } from './playwright.mjs';
 import {
     BASE,
     login,
