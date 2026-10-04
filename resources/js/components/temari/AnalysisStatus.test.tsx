@@ -236,34 +236,6 @@ describe('AnalysisStatus', () => {
         vi.useRealTimers();
     });
 
-    it('gives the done-state timestamp and "reread" pill their on-sky tone', () => {
-        vi.useFakeTimers();
-        const now = new Date('2026-07-07T12:00:00Z');
-        vi.setSystemTime(now);
-        const ts = new Date(now.getTime() - 5 * 60 * 1000).toISOString();
-        render(
-            <AnalysisStatus
-                analysis={payload({
-                    status: 'done',
-                    content: 'ok',
-                    generated_at: ts,
-                })}
-                onSky
-            />,
-        );
-
-        expect(screen.getByText(/generated 5 min ago/)).toHaveClass(
-            'text-ink-on-sky',
-        );
-        expect(screen.getByText(/generated 5 min ago/)).not.toHaveClass(
-            'text-text-3',
-        );
-        const button = screen.getByRole('button', { name: /reread/ });
-        expect(button).toHaveClass('bg-cream/10', 'text-cream');
-        expect(button).not.toHaveClass('bg-muted');
-        vi.useRealTimers();
-    });
-
     it('shows attempt count when attempts > 1 on queued/processing', () => {
         render(
             <AnalysisStatus

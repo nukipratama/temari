@@ -166,18 +166,6 @@
         },
         "cream/0.1": {
             "over": {
-                "resources/js/components/temari/AnalysisStatus.test.tsx": [
-                    "sky"
-                ],
-                "resources/js/components/temari/AnalysisStatus.tsx": [
-                    "sky"
-                ],
-                "resources/js/components/ui/Chip.test.tsx": [
-                    "sky"
-                ],
-                "resources/js/components/ui/MoodChip.tsx": [
-                    "sky"
-                ],
                 "resources/js/lib/variants.ts": [
                     "sky"
                 ]
@@ -387,19 +375,6 @@
             },
             "text": [
                 "text-2",
-                "sky"
-            ]
-        },
-        "sky/0.08": {
-            "over": {
-                "resources/js/components/ui/Chip.test.tsx": [
-                    "paper"
-                ],
-                "resources/js/lib/variants.ts": [
-                    "paper"
-                ]
-            },
-            "text": [
                 "sky"
             ]
         },

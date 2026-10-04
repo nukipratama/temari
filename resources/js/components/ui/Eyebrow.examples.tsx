@@ -37,8 +37,6 @@ export default {
         axes: axesOf(eyebrowVariantMap, ['tone', 'token']),
         omitted: {
             horizon: "the Login hero's sky only, see the on sky state",
-            'ink-on-sky': 'no caller',
-            cream: 'no caller',
         },
         render: ({ tone, token }) => (
             <Eyebrow

@@ -11,7 +11,7 @@ import { cva } from 'class-variance-authority';
  * `Record` lookups and are not folded in here.
  */
 
-/** The tone, size and onSky axes {@link pillButtonVariants} is built from. */
+/** The tone and size axes {@link pillButtonVariants} is built from. */
 export const pillButtonVariantMap = {
     tone: {
         horizon: 'bg-horizon text-sky hover:bg-horizon-deep',
@@ -27,39 +27,16 @@ export const pillButtonVariantMap = {
         sm: 'px-3.5 py-2 font-sans font-medium text-xs',
         md: 'px-[22px] py-3 font-sans font-medium text-sm',
     },
-    onSky: {
-        true: '',
-        false: '',
-    },
 };
 
-/**
- * Pill button tone + size, with an `onSky` compound that flips the `ghost`
- * tone to its cream-on-sky variant. Mirrors TONE_CLASS + size ternary +
- * GHOST_ON_SKY in components/ui/PillButton.tsx.
- */
+/** Pill button tone + size. Mirrors TONE_CLASS + size ternary in components/ui/PillButton.tsx. */
 export const pillButtonVariants = cva(
     'pressable inline-flex items-center gap-2 rounded-full transition focus-ring disabled:pointer-events-none disabled:opacity-60',
     {
         variants: pillButtonVariantMap,
-        compoundVariants: [
-            {
-                tone: 'ghost',
-                onSky: true,
-                class: 'bg-transparent text-cream border-[1.5px] border-cream/30 hover:border-cream/60',
-            },
-            {
-                // Primary pill on a dark (sky) panel: flip to a cream fill so it
-                // keeps contrast — navy-on-navy would vanish.
-                tone: 'sky',
-                onSky: true,
-                class: 'bg-cream text-sky hover:bg-cream-deep',
-            },
-        ],
         defaultVariants: {
             tone: 'sky',
             size: 'md',
-            onSky: false,
         },
     },
 );
@@ -69,8 +46,6 @@ export const chipVariantMap = {
     tone: {
         neutral: 'bg-muted text-text-2',
         horizon: 'bg-horizon/[0.18] text-horizon-ink',
-        sky: 'bg-sky/[0.08] text-sky',
-        onSky: 'bg-cream/10 text-cream/80',
         positive: 'bg-leaf/[0.18] text-leaf-ink',
         warning: 'bg-ember/[0.18] text-ember-ink',
     },
@@ -159,8 +134,6 @@ export const eyebrowVariantMap = {
         horizon: 'text-horizon',
         'horizon-ink': 'text-horizon-ink',
         'icon-accent': 'text-icon-accent',
-        'ink-on-sky': 'text-ink-on-sky',
-        cream: 'text-cream',
     },
 };
 

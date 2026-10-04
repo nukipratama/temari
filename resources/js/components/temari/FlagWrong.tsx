@@ -30,7 +30,6 @@ export default function FlagWrong({
     subjectId,
     label,
     flagged = false,
-    onSky = false,
     compact = false,
 }: Readonly<{
     subjectType: FeedbackSubject;
@@ -39,8 +38,6 @@ export default function FlagWrong({
     label: string;
     /** Already flagged by this athlete, per the server. */
     flagged?: boolean;
-    /** Cream-on-sky styling, for a block drawn on a dark panel. */
-    onSky?: boolean;
     /** Draw on a small box, keeping the 44px target — see {@link COMPACT_BUTTON_CLASS}. */
     compact?: boolean;
 }>) {
@@ -55,7 +52,6 @@ export default function FlagWrong({
         return null;
     }
 
-    const tone = onSky ? 'text-ink-on-sky' : 'text-text-3';
     const box = compact ? COMPACT_BUTTON_CLASS : ICON_BUTTON_CLASS;
 
     return (
@@ -72,7 +68,7 @@ export default function FlagWrong({
                     className={cn(
                         box,
                         'focus-ring pressable transition-colors hover:text-foreground',
-                        tone,
+                        'text-text-3',
                     )}
                 >
                     <Icon icon={Flag} className="size-5" aria-hidden />

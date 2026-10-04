@@ -81,7 +81,7 @@ accepted knowingly when the buttons moved onto the pill (#1271).
 [`PillButton`](../../../../resources/js/components/ui/PillButton.tsx) presets:
 There are **six tones**, defined once in [`pillButtonVariants`](../../../../resources/js/lib/variants.ts#L41):
 - `horizon` bg → **`text-sky`**, a fixed value rather than the ground-reactive `text-foreground`. This is deliberate and the one place the semantic layer must not be used: `foreground` flips to cream on the dark ground, which is the unreadable pairing on lime. Hover darkens to `horizon-deep`.
-- `sky` (the default) is ground-reactive: `bg-foreground` → `text-background` (16:1 light, 17:1 dark), so it is a near-black pill on light and a cream pill on dark; hover drops the fill to 85%. `onSky` keeps it `bg-cream` → `text-sky` on a fixed-dark sky panel.
+- `sky` (the default) is ground-reactive: `bg-foreground` → `text-background` (16:1 light, 17:1 dark), so it is a near-black pill on light and a cream pill on dark; hover drops the fill to 85%.
 - `ghost` → transparent with an `ink`-tinted hairline; `outline` → `bg-card` with a `border` edge and `text-text-2`.
 - `danger` → `bg-ember-deep` under `text-cream`, for a destructive confirmation (a `-deep` fill carries cream, never a label).
 - `muted` → `bg-muted` under `text-foreground`, at size `xs` (32px, mono label) for the compact action pill.

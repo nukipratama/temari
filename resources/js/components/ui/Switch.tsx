@@ -36,7 +36,7 @@ export default function Switch({
             onClick={() => onChange(!checked)}
             className={cn(
                 'focus-ring pressable relative h-6 w-11 shrink-0 rounded-full motion-safe:transition-colors motion-safe:duration-150 motion-safe:ease-[cubic-bezier(0.34,1.1,0.64,1)]',
-                checked ? 'bg-horizon' : 'bg-cream-deep',
+                checked ? 'bg-horizon' : 'bg-muted',
                 disabled && 'cursor-not-allowed opacity-50',
             )}
         >

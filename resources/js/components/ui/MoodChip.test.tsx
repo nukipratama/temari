@@ -50,12 +50,4 @@ describe('MoodChip', () => {
             expect(chip).not.toHaveClass('text-foreground');
         },
     );
-
-    it('uses the ground-reactive tier only on a sky panel, which is fixed dark', () => {
-        render(<MoodChip mood="easy" onSky />);
-
-        const chip = screen.getByText('easy');
-        expect(chip).toHaveClass('text-cream');
-        expect(chip).not.toHaveClass('text-mood-easy-ink');
-    });
 });

@@ -268,7 +268,7 @@ All five clear WCAG AA on their intended background.
 - `horizon` (lime) → **`text-sky`**, never white and never `text-foreground`. This is the one CTA
   where the ground-reactive layer is wrong: `foreground` flips to cream on the dark ground, which is
   the unreadable pairing on lime. The fixed value clears 11.5:1 on both grounds.
-- `sky`, the default tone, is ground-reactive: `bg-foreground` under `text-background`, a near-black pill on the light ground and a cream one on the dark ground, so it keeps its shape on every dark surface (12:1 or more against `popover`/`muted`, where the fixed `bg-sky` fill measured 1.25:1). On a fixed-dark sky panel, `onSky` flips it to `bg-cream` under `text-sky`.
+- `sky`, the default tone, is ground-reactive: `bg-foreground` under `text-background`, a near-black pill on the light ground and a cream one on the dark ground, so it keeps its shape on every dark surface (12:1 or more against `popover`/`muted`, where the fixed `bg-sky` fill measured 1.25:1).
 - `ghost` and `outline` carry no fill; their label is `text-foreground` / `text-text-2`.
 
 ## Spacing

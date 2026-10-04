@@ -42,7 +42,6 @@ counter-rotating arcs).
 |---|---|
 | `pose` | which entry of `POSES` to draw |
 | `size` | both axes; the face drops to eyes only when it would render under 32px |
-| `onSky` | scopes `data-theme="dark"` onto the svg so a fixed-dark surface resolves dark-ground tokens |
 | `drawIn` | traces the arcs in once on mount (reuses `.draw-in`); off under reduced motion |
 | `faceOnly` | just the face, cropped to fill the box, for a slot another ring already frames |
 

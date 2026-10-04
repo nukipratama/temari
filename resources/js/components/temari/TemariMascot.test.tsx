@@ -86,14 +86,6 @@ describe('TemariMascot', () => {
         expect(featureCount(full)).toBeGreaterThan(2);
     });
 
-    it('resolves tokens against the dark ground on sky surfaces', () => {
-        const onSky = svgOf(render(<TemariMascot onSky />).container);
-        const onCard = svgOf(render(<TemariMascot />).container);
-
-        expect(onSky.getAttribute('data-theme')).toBe('dark');
-        expect(onCard.hasAttribute('data-theme')).toBe(false);
-    });
-
     it('traces every solid arc in when drawIn is set', () => {
         const svg = svgOf(
             render(<TemariMascot pose="easy" drawIn />).container,

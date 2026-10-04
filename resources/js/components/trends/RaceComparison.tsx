@@ -7,7 +7,10 @@ import type {
     TrainingLoad,
 } from '@/types/inertia';
 
-import { TRIGGER_CLASS, triggerTone } from '@/components/temari/AnalysisStatus';
+import {
+    TRIGGER_CLASS,
+    TRIGGER_TONE,
+} from '@/components/temari/AnalysisStatus';
 import Eyebrow from '@/components/ui/Eyebrow';
 import { Stat } from '@/components/ui/StatTile';
 import { cn } from '@/lib/cn';
@@ -58,7 +61,7 @@ export default function RaceComparison({
                 </p>
                 <Link
                     href="/race"
-                    className={cn(TRIGGER_CLASS, triggerTone(false), 'mt-3.5')}
+                    className={cn(TRIGGER_CLASS, TRIGGER_TONE, 'mt-3.5')}
                 >
                     set a race
                 </Link>

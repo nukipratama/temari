@@ -46,27 +46,12 @@ describe('pillButtonVariants', () => {
     it('carries the shared focus-ring in its base', () => {
         expect(tokens(pillButtonVariants())).toContain('focus-ring');
     });
-
-    it('flips ghost to the on-sky variant via the onSky compound', () => {
-        const cls = tokens(pillButtonVariants({ tone: 'ghost', onSky: true }));
-        expect(cls).toContain('text-cream');
-        expect(cls).toContain('border-cream/30');
-    });
-
-    it('does not apply the on-sky compound to non-ghost tones', () => {
-        const cls = tokens(
-            pillButtonVariants({ tone: 'horizon', onSky: true }),
-        );
-        expect(cls).not.toContain('border-cream/30');
-    });
 });
 
 describe('chipVariants', () => {
     it.each([
         ['neutral', 'text-text-2'],
         ['horizon', 'text-horizon-ink'],
-        ['sky', 'text-sky'],
-        ['onSky', 'text-cream/80'],
         ['positive', 'text-leaf-ink'],
         ['warning', 'text-ember-ink'],
     ] as const)('renders tone %s', (tone, expected) => {

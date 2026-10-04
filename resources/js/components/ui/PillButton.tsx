@@ -13,15 +13,12 @@ interface PillButtonProps extends Omit<
     children: ReactNode;
     tone?: PillTone;
     size?: 'xs' | 'sm' | 'md';
-    /** Switch ghost to a cream-on-sky variant. */
-    onSky?: boolean;
 }
 
 export default function PillButton({
     children,
     tone = 'sky',
     size = 'md',
-    onSky = false,
     className,
     type = 'button',
     ...rest
@@ -29,7 +26,7 @@ export default function PillButton({
     return (
         <button
             type={type}
-            className={cn(pillButtonVariants({ tone, size, onSky }), className)}
+            className={cn(pillButtonVariants({ tone, size }), className)}
             {...rest}
         >
             {children}
