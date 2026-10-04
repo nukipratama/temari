@@ -159,6 +159,10 @@ Schedule::command('analytics:prune')->dailyAt('02:25')->withoutOverlapping(15)->
 Schedule::command('model:prune', ['--model' => [TelegramUpdateReceipt::class]])->dailyAt('02:30')->withoutOverlapping(15)->onOneServer();
 Schedule::command('model:prune', ['--model' => [TelegramLinkTokenUse::class]])->dailyAt('02:31')->withoutOverlapping(15)->onOneServer();
 
+// 02:35 daily: drop push subscriptions no installed app has reported in 60 days,
+// such as the one a Home-Screen reinstall leaves behind.
+Schedule::command('notifications:prune-push-subscriptions')->dailyAt('02:35')->withoutOverlapping(15)->onOneServer();
+
 Schedule::command('notifications:recover-deliveries')->everyFiveMinutes()->withoutOverlapping(10)->onOneServer();
 
 // Fallback poll behind the Strava webhook. Hourly around the clock rather than

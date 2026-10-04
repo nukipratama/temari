@@ -13,6 +13,7 @@ import {
 import { installGlobalErrorReporting } from '@/lib/clientErrorReporter';
 import { startContextualBackSession } from '@/lib/navigationMemory';
 import { registerServiceWorker } from '@/lib/registerServiceWorker';
+import { reportSeen } from '@/lib/webPush';
 
 const APP_NAME = import.meta.env.VITE_APP_NAME ?? 'Temari';
 
@@ -25,6 +26,7 @@ syncAppBadgeOnVisible();
 // reading the inbox clears the badge on its next partial reload.
 router.on('navigate', (event) => {
     syncAppBadge(unreadCountFromProps(event.detail.page.props));
+    void reportSeen(event.detail.page.props);
 });
 
 installGlobalErrorReporting();
@@ -93,6 +95,7 @@ void createInertiaApp({
             </ErrorBoundary>,
         );
         syncAppBadge(unreadCountFromProps(props.initialPage.props));
+        void reportSeen(props.initialPage.props);
         warmTabChunks();
     },
     // No progress bar at all. Deferred props paint a shell immediately and the

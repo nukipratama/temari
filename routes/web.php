@@ -180,6 +180,7 @@ Route::middleware(['auth', 'onboarded'])->group(function (): void {
     // the push send path a subscription feeds.
     Route::post('/profile/push', [PushSubscriptionController::class, 'store'])->middleware(['throttle:6,1', 'block-demo-telegram'])->name('push.subscribe');
     Route::delete('/profile/push', [PushSubscriptionController::class, 'destroy'])->middleware(['throttle:6,1', 'block-demo-telegram'])->name('push.unsubscribe');
+    Route::post('/profile/push/seen', [PushSubscriptionController::class, 'seen'])->middleware(['throttle:6,1', 'block-demo-telegram'])->name('push.seen');
 
     Route::get('/settings', SettingsController::class)->name('settings');
 

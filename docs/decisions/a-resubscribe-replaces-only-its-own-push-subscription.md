@@ -14,6 +14,8 @@ code_refs:
 
 # A re-subscribe replaces only its own push subscription
 
+> **Partly superseded (2026-10-04) by [[unseen-push-subscriptions-are-pruned-after-60-days]].** A subscription no installed app has reported for 60 days is now pruned, which removes the row a Home-Screen reinstall leaves behind. The rest of this decision stands.
+
 **Status:** Accepted (2026-10-04)
 
 ## Context
