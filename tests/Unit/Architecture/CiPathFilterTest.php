@@ -119,6 +119,7 @@ it('routes toolchain and testing environment inputs to their checks', function (
     '.nvmrc' => ['.nvmrc', ['backend' => false, 'frontend' => true, 'docker' => false, 'worktree' => false]],
     '.npmrc' => ['.npmrc', ['backend' => false, 'frontend' => true, 'docker' => false, 'worktree' => false]],
     '.env.testing.example' => ['.env.testing.example', ['backend' => true, 'frontend' => false, 'docker' => false, 'worktree' => false]],
+    '.dockerignore' => ['.dockerignore', ['backend' => true, 'frontend' => true, 'docker' => true, 'worktree' => true]],
 ])->group('structure');
 
 it('routes development shell helpers to backend CI only', function (): void {

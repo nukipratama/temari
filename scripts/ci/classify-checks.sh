@@ -8,7 +8,7 @@ match() {
 }
 
 # Anything infrastructural runs the lot (deploy stays main-push-only).
-ARCH='^(Dockerfile|compose[^/]*\.ya?ml|\.env\.example)$|^(docker|\.github)/|^public/(frankenphp-worker\.php|\.htaccess)$'
+ARCH='^(Dockerfile|\.dockerignore|compose[^/]*\.ya?ml|\.env\.example)$|^(docker|\.github)/|^public/(frankenphp-worker\.php|\.htaccess)$'
 
 # Backend also owns the token-mirror structure tests, which read files that
 # look like frontend or documentation.
