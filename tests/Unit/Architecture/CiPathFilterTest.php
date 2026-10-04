@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Illuminate\Support\Facades\File;
 use Symfony\Component\Finder\SplFileInfo;
 use Symfony\Component\Process\Process;
+use Symfony\Component\Yaml\Yaml;
 
 const CI_WORKFLOW = '.github/workflows/ci.yml';
 
@@ -25,6 +26,16 @@ function ciClassifyPaths(array $paths): array
     return $checks;
 }
 
+function ciChecks(
+    bool $backend = false,
+    bool $frontend = false,
+    bool $docker = false,
+    bool $worktree = false,
+    bool $structure = false,
+): array {
+    return compact('backend', 'frontend', 'docker', 'worktree', 'structure');
+}
+
 function ciClassifiesAsBackend(string $path): bool
 {
     return ciClassifyPaths([$path])['backend'];
@@ -38,6 +49,49 @@ function ciClassifiesAsFrontend(string $path): bool
 function ciClassifiesAsDocker(string $path): bool
 {
     return ciClassifyPaths([$path])['docker'];
+}
+
+function ciRunsStructureTests(string $path): bool
+{
+    $checks = ciClassifyPaths([$path]);
+
+    return $checks['backend'] || $checks['structure'];
+}
+
+/** @return list<string> */
+function ciRepoPathsReadBy(string $testSource): array
+{
+    $roots = ['base' => '', 'resource' => 'resources/', 'public' => 'public/'];
+
+    preg_match_all("/\b(base|resource|public)_path\('([^'$]+)'\)/", $testSource, $calls, PREG_SET_ORDER);
+    preg_match_all("/^const [A-Z_]+ = '([^'$]+)';/m", $testSource, $constants);
+
+    return collect($calls)
+        ->map(fn (array $call): string => $roots[$call[1]].$call[2])
+        ->merge($constants[1])
+        ->reject(fn (string $path): bool => str_starts_with($path, 'vendor/'))
+        ->flatMap(function (string $path): array {
+            if (is_file(base_path($path))) {
+                return [$path];
+            }
+            if (! is_dir(base_path($path))) {
+                return [];
+            }
+
+            return collect(File::allFiles(base_path($path)))
+                ->map(fn (SplFileInfo $file): string => "{$path}/ci-probe.{$file->getExtension()}")
+                ->unique()
+                ->all();
+        })
+        ->unique()
+        ->values()
+        ->all();
+}
+
+function ciRunsOnlyStructureTests(string $testSource): bool
+{
+    return str_contains($testSource, "uses()->group('structure')")
+        || preg_match_all('/^(?:it|test)\(/m', $testSource) === substr_count($testSource, "->group('structure')");
 }
 
 it('runs backend CI for every file the token-mirror test reads', function (): void {
@@ -55,14 +109,14 @@ it('runs backend CI for every file the token-mirror test reads', function (): vo
     );
 })->group('structure');
 
-it('runs backend CI for every doc the token-docs test reads', function (): void {
+it('runs the structure tests for every doc the token-docs test reads', function (): void {
     $skillDocs = collect(File::allFiles(base_path('.agents/skills/temari')))
         ->filter(fn (SplFileInfo $file): bool => $file->getExtension() === 'md')
         ->map(fn (SplFileInfo $file): string => '.agents/skills/temari/'.$file->getRelativePathname());
 
     $docs = ['CLAUDE.md', 'README.md', 'docs/design-tokens.md', ...$skillDocs];
 
-    $unguarded = collect($docs)->reject(ciClassifiesAsBackend(...))->values();
+    $unguarded = collect($docs)->reject(ciRunsStructureTests(...))->values();
 
     expect($unguarded->all())->toBe(
         [],
@@ -71,54 +125,104 @@ it('runs backend CI for every doc the token-docs test reads', function (): void 
     );
 })->group('structure');
 
+it('runs a check that executes every test reading a repo file it names', function (): void {
+    $unguarded = [];
+
+    foreach (File::allFiles(base_path('tests')) as $test) {
+        if ($test->getExtension() !== 'php') {
+            continue;
+        }
+
+        $source = $test->getContents();
+
+        foreach (ciRepoPathsReadBy($source) as $path) {
+            $checks = ciClassifyPaths([$path]);
+
+            if (! $checks['backend'] && ! ($checks['structure'] && ciRunsOnlyStructureTests($source))) {
+                $unguarded[] = "{$path} (read by tests/{$test->getRelativePathname()})";
+            }
+        }
+    }
+
+    expect($unguarded)->toBe(
+        [],
+        "A test reads these files, but changing one alone runs no CI job that executes that test:\n  ".
+        implode("\n  ", $unguarded),
+    );
+})->group('structure');
+
+it('runs only the structure tests for documentation those tests read', function (array $paths): void {
+    expect(ciClassifyPaths($paths))->toBe(ciChecks(structure: true));
+})->with([
+    'design docs' => [['docs/design-tokens.md', '.agents/skills/temari/references/design-system.md']],
+    'llm inventory' => [['docs/architecture/llm-triggers.md']],
+    'agent entrypoints' => [['CLAUDE.md', 'README.md']],
+])->group('structure');
+
+it('runs the structure tests in their own required job only when backend CI does not run', function (): void {
+    $workflow = Yaml::parseFile(base_path(CI_WORKFLOW));
+    $job = $workflow['jobs']['structure'];
+
+    expect($job['if'])->toBe("\${{ needs.changes.outputs.structure == 'true' }}")
+        ->and($job['timeout-minutes'])->toBeInt()
+        ->and(collect($job['steps'])->pluck('run')->filter()->implode("\n"))->toContain('./vendor/bin/pest --group=structure')
+        ->and($workflow['jobs']['ci-gate']['needs'])->toContain('structure')
+        ->and($workflow['jobs']['ci-gate']['steps'][0]['run'])->toContain('needs.structure.result');
+
+    expect(ciClassifyPaths(['docs/design-tokens.md', 'app/Models/User.php']))->toBe(ciChecks(backend: true));
+})->group('structure');
+
 it('uses the tested classifier and runs every check when the workflow itself changes', function (): void {
     expect(File::get(base_path(CI_WORKFLOW)))->toContain('scripts/ci/classify-checks.sh');
-    expect(ciClassifyPaths([CI_WORKFLOW]))->toBe([
-        'backend' => true,
-        'frontend' => true,
-        'docker' => true,
-        'worktree' => true,
-    ]);
+    expect(ciClassifyPaths([CI_WORKFLOW]))->toBe(ciChecks(backend: true, frontend: true, docker: true, worktree: true));
 })->group('structure');
 
-it('routes public runtime assets and frontend configuration to frontend CI only', function (): void {
-    $paths = [
-        'public/sw.js',
-        'public/offline.html',
-        'public/manifest.webmanifest',
-        'public/robots.txt',
-        'vitest.config.ts',
-        'prettier.config.js',
-    ];
+it('routes public runtime assets to frontend CI and to the backend tests that check they exist', function (string $path): void {
+    expect(ciClassifyPaths([$path]))->toBe(ciChecks(backend: true, frontend: true));
+})->with([
+    'public/sw.js',
+    'public/offline.html',
+    'public/manifest.webmanifest',
+    'public/robots.txt',
+])->group('structure');
 
-    foreach ($paths as $path) {
-        expect(ciClassifiesAsBackend($path))->toBeFalse("{$path} should not trigger backend CI.");
-        expect(ciClassifiesAsFrontend($path))->toBeTrue("{$path} should trigger frontend CI.");
-        expect(ciClassifiesAsDocker($path))->toBeFalse("{$path} should not trigger an image build.");
-    }
+it('routes frontend configuration to frontend CI only', function (string $path): void {
+    expect(ciClassifyPaths([$path]))->toBe(ciChecks(frontend: true));
+})->with([
+    'vitest.config.ts',
+    'prettier.config.js',
+    '.prettierignore',
+    '.editorconfig',
+    '.npmrc',
+])->group('structure');
+
+it('routes frontend source to frontend CI and the structure tests that scan it', function (): void {
+    expect(ciClassifyPaths(['resources/js/pages/Plan.tsx']))->toBe(ciChecks(frontend: true, structure: true));
+    expect(ciClassifyPaths(['resources/js/types/generated.ts']))->toBe(ciChecks(backend: true, frontend: true));
 })->group('structure');
 
-it('routes public PHP entry points to backend or all checks', function (): void {
-    expect(ciClassifyPaths(['public/index.php']))->toBe([
-        'backend' => true,
-        'frontend' => false,
-        'docker' => false,
-        'worktree' => false,
-    ]);
-    expect(ciClassifyPaths(['public/frankenphp-worker.php']))->toBe([
-        'backend' => true,
-        'frontend' => true,
-        'docker' => true,
-        'worktree' => true,
-    ]);
-})->group('structure');
+it('routes files a Vitest test reads from outside resources/js to frontend CI', function (string $path): void {
+    expect(ciClassifiesAsFrontend($path))->toBeTrue("{$path} should trigger frontend CI.");
+})->with([
+    'tests/fixtures/inertia-props/Dashboard.json',
+    'resources/brand/grounds.mjs',
+    'scripts/check-raw-palette.mjs',
+    'tsconfig.json',
+])->group('structure');
+
+it('routes public PHP entry points to backend CI', function (string $path): void {
+    expect(ciClassifyPaths([$path]))->toBe(ciChecks(backend: true));
+})->with([
+    'public/index.php',
+    'public/frankenphp-worker.php',
+])->group('structure');
 
 it('routes toolchain and testing environment inputs to their checks', function (string $path, array $checks): void {
     expect(ciClassifyPaths([$path]))->toBe($checks);
 })->with([
-    '.nvmrc' => ['.nvmrc', ['backend' => false, 'frontend' => true, 'docker' => false, 'worktree' => false]],
-    '.npmrc' => ['.npmrc', ['backend' => false, 'frontend' => true, 'docker' => false, 'worktree' => false]],
-    '.env.testing.example' => ['.env.testing.example', ['backend' => true, 'frontend' => false, 'docker' => false, 'worktree' => false]],
+    '.nvmrc' => ['.nvmrc', ciChecks(backend: true, frontend: true)],
+    '.gitignore' => ['.gitignore', ciChecks(backend: true, frontend: true)],
+    '.env.testing.example' => ['.env.testing.example', ciChecks(backend: true)],
 ])->group('structure');
 
 it('routes development shell helpers to backend CI only', function (): void {
@@ -152,48 +256,55 @@ it('skips the worktree race harness for unrelated changes', function (string $pa
     'app/Models/User.php',
     'tests/Unit/Architecture/CiPathFilterTest.php',
     'resources/js/app.tsx',
+    'Dockerfile',
+    'compose.yaml',
 ])->group('structure');
 
-it('routes infrastructure and server configuration changes to every check', function (): void {
-    foreach ([
-        'compose.prod.yaml',
-        'compose.shared-services.yml',
-        'public/.htaccess',
-    ] as $path) {
-        expect(ciClassifyPaths([$path]))->toBe([
-            'backend' => true,
-            'frontend' => true,
-            'docker' => true,
-            'worktree' => true,
-        ]);
-    }
-})->group('structure');
+it('routes infrastructure and server configuration to the checks that read them', function (string $path, array $checks): void {
+    expect(ciClassifyPaths([$path]))->toBe($checks);
+})->with([
+    'Dockerfile' => ['Dockerfile', ciChecks(backend: true, docker: true)],
+    '.dockerignore' => ['.dockerignore', ciChecks(docker: true)],
+    'docker/php.ini' => ['docker/php.ini', ciChecks(backend: true, docker: true)],
+    'public/.htaccess' => ['public/.htaccess', ciChecks(backend: true, docker: true)],
+    'compose.prod.yaml' => ['compose.prod.yaml', ciChecks(backend: true)],
+    'compose.shared-services.yml' => ['compose.shared-services.yml', ciChecks(backend: true)],
+    'deploy/restore-dry-run-compose.yml' => ['deploy/restore-dry-run-compose.yml', ciChecks(backend: true)],
+])->group('structure');
+
+it('routes GitHub configuration to the checks that read it', function (string $path, array $checks): void {
+    expect(ciClassifyPaths([$path]))->toBe($checks);
+})->with([
+    '.github/labeler.yml' => ['.github/labeler.yml', ciChecks()],
+    '.github/dependabot.yml' => ['.github/dependabot.yml', ciChecks()],
+    '.github/pull_request_template.md' => ['.github/pull_request_template.md', ciChecks()],
+    '.github/workflows/labeler.yml' => ['.github/workflows/labeler.yml', ciChecks(backend: true)],
+    '.github/workflows/backend-ci.yml' => ['.github/workflows/backend-ci.yml', ciChecks(backend: true)],
+    '.github/workflows/frontend-ci.yml' => ['.github/workflows/frontend-ci.yml', ciChecks(backend: true, frontend: true)],
+    '.github/actions/setup-node/action.yml' => ['.github/actions/setup-node/action.yml', ciChecks(backend: true, frontend: true)],
+])->group('structure');
 
 it('keeps renamed-away inputs in the changed path list', function (): void {
     expect(File::get(base_path(CI_WORKFLOW)))->toContain('git diff --no-renames --name-only "$base" HEAD');
 })->group('structure');
 
-it('unions mixed changes and takes the all-checks branch for infrastructure', function (): void {
+it('unions mixed changes and takes the all-checks branch for the workflow', function (): void {
     expect(ciClassifyPaths([
         'docs/decisions/dark-is-the-default-ground.md',
-        'public/offline.html',
-    ]))->toBe([
-        'backend' => false,
-        'frontend' => true,
-        'docker' => false,
-        'worktree' => false,
-    ]);
+        'resources/js/app.tsx',
+    ]))->toBe(ciChecks(frontend: true, structure: true));
 
     expect(ciClassifyPaths([
         'docs/decisions/dark-is-the-default-ground.md',
-        'public/offline.html',
-        'compose.override.yaml',
-    ]))->toBe([
-        'backend' => true,
-        'frontend' => true,
-        'docker' => true,
-        'worktree' => true,
-    ]);
+        'resources/js/app.tsx',
+        'app/Models/User.php',
+    ]))->toBe(ciChecks(backend: true, frontend: true));
+
+    expect(ciClassifyPaths([
+        'docs/decisions/dark-is-the-default-ground.md',
+        'resources/js/app.tsx',
+        CI_WORKFLOW,
+    ]))->toBe(ciChecks(backend: true, frontend: true, docker: true, worktree: true));
 })->group('structure');
 
 it('skips the heavy jobs for planning docs, which nothing asserts against', function (): void {
@@ -201,8 +312,6 @@ it('skips the heavy jobs for planning docs, which nothing asserts against', func
         'plan/README.md',
         'docs/decisions/dark-is-the-default-ground.md',
     ] as $path) {
-        expect(ciClassifiesAsBackend($path))->toBeFalse();
-        expect(ciClassifiesAsFrontend($path))->toBeFalse();
-        expect(ciClassifiesAsDocker($path))->toBeFalse();
+        expect(ciClassifyPaths([$path]))->toBe(ciChecks());
     }
 })->group('structure');

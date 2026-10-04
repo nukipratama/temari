@@ -35,6 +35,7 @@ jobs:
       frontend: ${{ steps.filter.outputs.frontend }}
       docker: ${{ steps.filter.outputs.docker }}
       worktree: ${{ steps.filter.outputs.worktree }}
+      structure: ${{ steps.filter.outputs.structure }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -46,7 +47,7 @@ jobs:
 
           if [ "${{ github.event_name }}" != "pull_request" ]; then
             echo "push event - running everything"
-            { echo "backend=true"; echo "frontend=true"; echo "docker=true"; echo "worktree=true"; } >> "$GITHUB_OUTPUT"
+            { echo "backend=true"; echo "frontend=true"; echo "docker=true"; echo "worktree=true"; echo "structure=false"; } >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
@@ -144,9 +145,28 @@ jobs:
           tests/scripts/worktree-races.sh "$LOCK_BACKEND" | tee "$RUNNER_TEMP/races.out"
           grep -qx "PASS: lock backend $LOCK_BACKEND" "$RUNNER_TEMP/races.out"
 
+  structure:
+    name: backend-structure
+    needs: [changes]
+    if: ${{ needs.changes.outputs.structure == 'true' }}
+    runs-on: ubuntu-26.04-arm
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: ./.github/actions/setup-php
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+
+      - name: Stub .env for file-scanning tests
+        run: cp .env.example .env
+
+      - name: Backend structure tests
+        run: ./vendor/bin/pest --group=structure
+
   # Single required check for branch protection.
   ci-gate:
-    needs: [changes, backend, frontend, build, worktree, secret-scan, repo-guards, dependency-review]
+    needs: [changes, backend, frontend, build, worktree, structure, secret-scan, repo-guards, dependency-review]
     if: always()
     runs-on: ubuntu-26.04-arm
     steps:
@@ -164,6 +184,7 @@ jobs:
           require_if_changed "${{ needs.changes.outputs.backend }}" "${{ needs.backend.result }}" backend
           require_if_changed "${{ needs.changes.outputs.frontend }}" "${{ needs.frontend.result }}" frontend
           require_if_changed "${{ needs.changes.outputs.worktree }}" "${{ needs.worktree.result }}" worktree
+          require_if_changed "${{ needs.changes.outputs.structure }}" "${{ needs.structure.result }}" backend-structure
 
           for r in "${{ needs.build.result }}" "${{ needs.dependency-review.result }}"; do
             [ "$r" = "success" ] || [ "$r" = "skipped" ] || { echo "::error::a required job did not pass ($r)"; exit 1; }
