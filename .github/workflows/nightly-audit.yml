@@ -37,6 +37,7 @@ env:
 jobs:
   composer-audit:
     runs-on: ubuntu-26.04-arm
+    timeout-minutes: 2
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -54,6 +55,7 @@ jobs:
   # whether the other one is clean.
   npm-audit:
     runs-on: ubuntu-26.04-arm
+    timeout-minutes: 2
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -265,6 +267,7 @@ jobs:
     needs: [composer-audit, npm-audit, restore-db-exercise]
     if: always() && (needs.composer-audit.result == 'failure' || needs.npm-audit.result == 'failure' || needs.restore-db-exercise.result == 'failure' || inputs.test_alert == true)
     runs-on: ubuntu-26.04-arm
+    timeout-minutes: 2
     steps:
       - name: Push a Telegram alert
         env:

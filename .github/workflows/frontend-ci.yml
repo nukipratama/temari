@@ -13,6 +13,7 @@ jobs:
   tests:
     name: tests (shard ${{ matrix.shard }}/3)
     runs-on: ubuntu-26.04-arm
+    timeout-minutes: 3
     strategy:
       fail-fast: false
       matrix:
@@ -59,6 +60,7 @@ jobs:
     needs: [tests, static-analysis]
     if: always()
     runs-on: ubuntu-26.04-arm
+    timeout-minutes: 2
     steps:
       - name: Require all frontend checks
         run: |
@@ -108,6 +110,7 @@ jobs:
   static-analysis:
     name: static analysis
     runs-on: ubuntu-26.04-arm
+    timeout-minutes: 3
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 

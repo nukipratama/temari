@@ -32,6 +32,8 @@ code_refs:
 
 > **Fact update, 2026-10-04.** Each suite's coverage merge now runs inside its `gate` job, and Pint, PHPStan and Rector run in sequence in one static-analysis job ([#1741](https://github.com/nukipratama/temari/issues/1741)).
 
+> **Fact update, 2026-10-04.** `refresh-shards` runs weekly (Mondays 02:05 WIB) instead of nightly ([#1736](https://github.com/nukipratama/temari/issues/1736)).
+
 Coverage roughly doubled backend tests on every pull request (186–340s vs ~145s on a push),
 making them the PR's critical path by two to three minutes. Frontend tests were also near the
 critical path because per-file jsdom setup dominated their runtime. Both suites now use the same

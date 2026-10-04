@@ -3,7 +3,7 @@ name: Refresh shards
 # Pest balances the 4-way backend shard using the per-class timings committed
 # in tests/.pest/shards.json (docs/decisions/sharded-pr-coverage.md). Nobody
 # regenerates it on a schedule, so it drifts as classes are added, removed, or
-# get slower/faster. This runs the regeneration nightly and opens or updates
+# get slower/faster. This runs the regeneration weekly and opens or updates
 # one PR, but only when scripts/compare-shards.php decides the drift matters
 # enough to be worth a review.
 #
@@ -17,8 +17,8 @@ name: Refresh shards
 
 on:
   schedule:
-    # 02:05 WIB, off the hour and clear of the nightly audit at 03:17.
-    - cron: '5 19 * * *'
+    # Mondays 02:05 WIB, off the hour and clear of the nightly audit at 03:17.
+    - cron: '5 19 * * 0'
   workflow_dispatch:
 
 permissions:
@@ -35,6 +35,7 @@ env:
 jobs:
   refresh-shards:
     runs-on: ubuntu-26.04-arm
+    timeout-minutes: 28
     services:
       mysql:
         image: mysql:9.7@sha256:e2bde46db6563855d7177adb5f0b57b9dc663f5a20927a90f4259d3312068497
