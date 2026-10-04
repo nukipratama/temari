@@ -155,7 +155,7 @@ it('holds the arc\'s starting volume for its whole length', function (): void {
 });
 
 it('does not lower the next week\'s prescription because a build week was missed', function (): void {
-    $intact = array_slice(anchoredEightWeekArc(), 0, 6);
+    $intact = trainedArc(anchoredArcAthlete(), 6);
     $missed = trainedArc(anchoredArcAthlete(), 6, missedWeekIndexes: [4]);
 
     expect($missed[5]['planned_km'])->toBe($intact[5]['planned_km'])
