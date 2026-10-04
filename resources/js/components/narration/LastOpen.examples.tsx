@@ -4,7 +4,7 @@ import { type CatalogueEntry } from '@/lib/catalogue';
 export default {
     name: 'LastOpen',
     description:
-        "When the athlete last opened the app, and whether that leaves them outside scheduled narration's window.",
+        "The athlete's last active day, and whether that leaves them outside scheduled narration's window.",
     usage: `<LastOpen lastSeenAt={athlete.last_seen_at} away={athlete.away} isDemo={athlete.is_demo} />`,
     states: [
         {
