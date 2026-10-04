@@ -37,7 +37,12 @@ export function Stat({
     return (
         <div className={className}>
             <span className="text-label-micro text-text-3">{label}</span>
-            <div className="mt-1 flex flex-wrap items-baseline gap-x-2">
+            <div
+                className={cn(
+                    'mt-1 flex flex-wrap items-baseline gap-x-2',
+                    size === 'tile' && '@container',
+                )}
+            >
                 <span
                     className={cn(
                         VALUE_SIZE[size],
@@ -94,6 +99,8 @@ interface StatTileProps extends Omit<StatProps, 'className' | 'size'> {
     id?: string;
     style?: CSSProperties;
     className?: string;
+    /** Spans the label, value and sub rows of the parent grid, so sibling tiles share one row per part. */
+    subgrid?: boolean;
 }
 
 /** MASTER's stat tile: a secondary-filled block holding one eyebrow and one number. */
@@ -105,6 +112,7 @@ export default function StatTile({
     id,
     style,
     className,
+    subgrid = false,
     ...stat
 }: Readonly<StatTileProps>) {
     return (
@@ -112,12 +120,14 @@ export default function StatTile({
             id={id}
             style={style}
             className={cn(
-                '@container rounded-sm bg-secondary pad-panel',
+                'rounded-sm bg-secondary pad-panel',
+                subgrid && 'row-span-3 grid grid-rows-subgrid gap-y-0',
                 className,
             )}
         >
             <Stat
                 size="tile"
+                className={subgrid ? 'contents' : undefined}
                 label={
                     icon ? (
                         <span className="inline-flex items-center gap-1.5">

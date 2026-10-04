@@ -474,6 +474,7 @@ in one of six tones; `danger` (`ember-deep` under cream) is the destructive conf
 A row of two or more secondary numbers is [StatTile](../resources/js/components/ui/StatTile.tsx):
 MASTER's `bg-secondary` tile on the `.pad-panel` role, the icon and eyebrow on top and the number big
 below at the tile step (`text-stat-tile-fit` / `md:text-stat-tile`, see Type scale).
+Tiles in a row whose labels can wrap pass `subgrid`, so they share one label row and their numbers share one top.
 
 **Every "pick one" control is `ToggleGroup`** ([toggle-group.tsx](../resources/js/components/ui/toggle-group.tsx)),
 the Base UI group restyled to Pewter: rounded hairline pills on the mono label tier, the chosen

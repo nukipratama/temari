@@ -90,9 +90,9 @@ describe('StatTile', () => {
     });
 
     it('sets every tile number at the one tile step, whatever row it sits in', () => {
-        const { container } = render(<StatTile label="spm avg" value="172" />);
+        render(<StatTile label="spm avg" value="172" />);
 
-        expect(container.firstElementChild).toHaveClass('@container');
+        expect(screen.getByText('172').parentElement).toHaveClass('@container');
         expect(screen.getByText('172')).toHaveClass(
             'text-stat-tile-fit',
             'md:text-stat-tile',
