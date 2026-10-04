@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Actions\Run\Plan\ResolveTrailingWeeksAction;
+use App\Enums\IngestState;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\User;
@@ -755,6 +756,7 @@ function seedWeeklyAggregatorMultiYearHistory(User $user): void
 {
     $first = Carbon::parse('2023-01-02');
     $days = (int) $first->diffInDays(Carbon::today());
+    $details = [];
     for ($d = 0; $d <= $days; $d++) {
         if (($d >= 400 && $d < 440) || ($d % 4 !== 0 && $d % 9 !== 5)) {
             continue;
@@ -769,16 +771,39 @@ function seedWeeklyAggregatorMultiYearHistory(User $user): void
                 $d % 3 === 0 => ['decoupling_pct' => ($d % 11) * 0.45],
                 default => null,
             };
-            $activity = Activity::factory()->for($user)->analyzed()->create();
-            ActivityDetail::factory()->for($activity)->create([
+            $details[] = [
                 'distance' => 3000 + ($d * 271 + $n * 97) % 15000 + 0.5,
                 'moving_time' => 1200 + ($d * 53) % 4000,
                 'elapsed_time' => 1260 + ($d * 53 + $n * 11) % 4000,
                 'trimp_edwards' => $d < 60 || $d % 11 === 0 ? null : 30 + ($d * 37 + $n * 5) % 90 + 0.3,
-                'start_date_local' => $start,
-                'stream_summary' => $summary,
-            ]);
+                'start_date_local' => $start->toDateTimeString(),
+                'stream_summary' => $summary === null ? null : json_encode($summary, JSON_THROW_ON_ERROR),
+                'has_heartrate' => true,
+            ];
         }
+    }
+
+    $now = Carbon::now();
+    foreach (array_chunk(array_keys($details), 500) as $chunk) {
+        DB::table('activities')->insert(array_map(fn (int $i): array => [
+            'user_id' => $user->id,
+            'strava_external_id' => 1_000_000_000 + $i,
+            'fetched_at' => $now,
+            'analyzed_at' => $now,
+            'ingest_state' => IngestState::Detailed->value,
+            'detail_fail_count' => 0,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ], $chunk));
+    }
+
+    $activityIds = DB::table('activities')->where('user_id', $user->id)->orderBy('id')->pluck('id')->all();
+    foreach (array_chunk($details, 500, preserve_keys: true) as $chunk) {
+        $rows = [];
+        foreach ($chunk as $i => $detail) {
+            $rows[] = [...$detail, 'activity_id' => $activityIds[$i], 'created_at' => $now, 'updated_at' => $now];
+        }
+        DB::table('activity_details')->insert($rows);
     }
 }
 

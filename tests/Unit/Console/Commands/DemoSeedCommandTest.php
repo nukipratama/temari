@@ -26,7 +26,9 @@ use App\Services\AI\ServedBy;
 use App\Services\Run\Plan\Periodizer;
 use App\Services\Run\Story\Card\CardFacts;
 use App\Services\Run\Story\Card\RunForm;
+use Database\Seeders\Demo\BlueprintLibrary;
 use Database\Seeders\Demo\DemoRunSeeder;
+use Database\Seeders\Demo\RunBlueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Testing\RefreshDatabaseState;
 use Illuminate\Support\Carbon;
@@ -151,7 +153,107 @@ afterAll(function (): void {
     RefreshDatabaseState::$migrated = false;
 });
 
-it('seeds a complete, login-ready demo dataset and stays idempotent across re-runs', function (): void {
+const SLIM_DEMO_BLUEPRINTS = ['5K time trial', 'Fresh tempo 8K', '10K race-pace effort', 'Yesterday shakeout'];
+
+function seedSlimDemo(): User
+{
+    app()->bind(BlueprintLibrary::class, fn (): BlueprintLibrary => new class () extends BlueprintLibrary {
+        public function all(): array
+        {
+            return array_values(array_filter(
+                parent::all(),
+                fn (RunBlueprint $blueprint): bool => in_array($blueprint->name, SLIM_DEMO_BLUEPRINTS, true),
+            ));
+        }
+    });
+
+    config()->set('services.telegram.bot_token', 'test-token');
+    Queue::fake();
+    Notification::fake();
+
+    test()->artisan('demo:seed')->assertSuccessful();
+
+    $user = User::query()->where('email', DemoRunSeeder::DEMO_USER_EMAIL)->firstOrFail();
+    expect(Activity::query()->where('user_id', $user->id)->count())->toBe(count(SLIM_DEMO_BLUEPRINTS) + 1);
+
+    return $user;
+}
+
+/**
+ * @return array<string, int>
+ */
+function demoSurfaceCounts(User $user): array
+{
+    $activityIds = Activity::query()->where('user_id', $user->id)->pluck('id');
+
+    return [
+        'demo users' => User::query()->where('email', DemoRunSeeder::DEMO_USER_EMAIL)->count(),
+        'activities' => $activityIds->count(),
+        'run cards' => RunCard::query()->whereIn('activity_id', $activityIds)->count(),
+        'weekly snapshots' => WeeklySnapshot::query()->where('user_id', $user->id)->count(),
+        'personal records' => PersonalRecord::query()->where('user_id', $user->id)->count(),
+        'planned sessions' => PlannedSession::query()->where('user_id', $user->id)->count(),
+        'plan day voices' => Analysis::query()->where('analysis_type', AnalysisType::PlanDayVoice)->count(),
+        'plan season voices' => Analysis::query()->where('analysis_type', AnalysisType::PlanSeasonVoice)->count(),
+        'trend reads' => Analysis::query()
+            ->where('subject_type', AnalysisType::TREND_READ_SUBJECT_TYPE)
+            ->where('subject_id', $user->id)
+            ->where('analysis_type', AnalysisType::TrendRead)
+            ->count(),
+        'inbox rows' => InboxNotification::query()->where('user_id', $user->id)->count(),
+    ];
+}
+
+it('converges a same-day re-seed without duplicating rows and heals a stale Strava connection', function (): void {
+    $user = seedSlimDemo();
+    $counts = demoSurfaceCounts($user);
+
+    expect($counts)->each->toBeGreaterThan(0)
+        ->and($counts['demo users'])->toBe(1)
+        ->and($counts['plan season voices'])->toBe(1)
+        ->and($counts['trend reads'])->toBe(count(AnalysisType::TREND_READ_RANGES));
+
+    // Simulate a stale connection (expired + revoked); re-seed must heal it.
+    StravaConnection::query()->where('user_id', $user->id)->update([
+        'token_expires_at' => Carbon::now()->subDay(),
+        'revoked_at' => Carbon::now(),
+    ]);
+
+    $this->artisan('demo:seed')->assertSuccessful();
+
+    $connection = StravaConnection::query()->where('user_id', $user->id)->firstOrFail();
+    expect(StravaConnection::query()->where('user_id', $user->id)->count())->toBe(1)
+        ->and($connection->token_expires_at->isFuture())->toBeTrue()
+        ->and($connection->revoked_at)->toBeNull();
+
+    // F7: re-seeding under the same frozen clock converges rather than
+    // duplicating rows for the plan/narration/inbox surfaces this slice adds.
+    expect(demoSurfaceCounts($user))->toBe($counts);
+});
+
+it('replaces the timeline on a later-day re-seed instead of stacking a second copy', function (): void {
+    $user = seedSlimDemo();
+    $activityCount = Activity::query()->where('user_id', $user->id)->count();
+
+    // #1165: every blueprint anchors to Carbon::today(), so its identity
+    // shifts whenever "today" does. A re-seed on a *later* calendar day must
+    // still replace the timeline instead of stacking a second copy of it
+    // onto the account — the bug left several runs piled onto most days.
+    Carbon::setTestNow('2026-05-20 12:00:00');
+    $this->artisan('demo:seed')->assertSuccessful();
+
+    $driftedActivityIds = Activity::query()->where('user_id', $user->id)->pluck('id');
+    expect($driftedActivityIds)->toHaveCount($activityCount);
+
+    $runsPerDay = ActivityDetail::query()
+        ->whereIn('activity_id', $driftedActivityIds)
+        ->get()
+        ->groupBy(fn (ActivityDetail $detail) => $detail->start_date_local->toDateString())
+        ->map->count();
+    expect($runsPerDay->max())->toBe(1, 'A re-seed on a later day must replace the timeline, not stack a second run onto the same date.');
+});
+
+it('seeds a complete, login-ready demo dataset', function (): void {
     ensureBareDemoSeeded();
 
     $user = User::query()->where('email', DemoRunSeeder::DEMO_USER_EMAIL)->firstOrFail();
@@ -335,60 +437,6 @@ it('seeds a complete, login-ready demo dataset and stays idempotent across re-ru
     expect($runQuestions)->not->toBeEmpty()
         ->and($runQuestions->pluck('status')->unique()->all())->toBe([AnalysisStatus::Done])
         ->and($runQuestions->pluck('answer')->filter()->count())->toBe($runQuestions->count());
-
-    // A second bare seed (no wipe) converges to the same row counts.
-    $cardCount = RunCard::query()->whereIn('activity_id', $activityIds)->count();
-    $snapshotCount = WeeklySnapshot::query()->where('user_id', $user->id)->count();
-    $prCount = PersonalRecord::query()->where('user_id', $user->id)->count();
-
-    // Simulate a stale connection (expired + revoked); re-seed must heal it.
-    StravaConnection::query()->where('user_id', $user->id)->update([
-        'token_expires_at' => Carbon::now()->subDay(),
-        'revoked_at' => Carbon::now(),
-    ]);
-
-    $this->artisan('demo:seed')->assertSuccessful();
-
-    $connection = StravaConnection::query()->where('user_id', $user->id)->firstOrFail();
-    expect(StravaConnection::query()->where('user_id', $user->id)->count())->toBe(1)
-        ->and($connection->token_expires_at->isFuture())->toBeTrue()
-        ->and($connection->revoked_at)->toBeNull();
-
-    $reseededActivityIds = Activity::query()->where('user_id', $user->id)->pluck('id');
-    expect(User::query()->where('email', DemoRunSeeder::DEMO_USER_EMAIL)->count())->toBe(1)
-        ->and($reseededActivityIds)->toHaveCount($activityCount)
-        ->and(RunCard::query()->whereIn('activity_id', $reseededActivityIds)->count())->toBe($cardCount)
-        ->and(WeeklySnapshot::query()->where('user_id', $user->id)->count())->toBe($snapshotCount)
-        ->and(PersonalRecord::query()->where('user_id', $user->id)->count())->toBe($prCount);
-
-    // F7: re-seeding under the same frozen clock converges rather than
-    // duplicating rows for the plan/narration/inbox surfaces this slice adds.
-    expect(PlannedSession::query()->where('user_id', $user->id)->count())->toBe($plannedSessionCount)
-        ->and(Analysis::query()->where('analysis_type', AnalysisType::PlanDayVoice)->count())->toBe($creditedThisWeek)
-        ->and(Analysis::query()->where('analysis_type', AnalysisType::PlanSeasonVoice)->count())->toBe(1)
-        ->and(Analysis::query()
-            ->where('subject_type', AnalysisType::TREND_READ_SUBJECT_TYPE)
-            ->where('subject_id', $user->id)
-            ->where('analysis_type', AnalysisType::TrendRead)
-            ->count())->toBe(count(AnalysisType::TREND_READ_RANGES))
-        ->and(InboxNotification::query()->where('user_id', $user->id)->count())->toBe($inboxCount);
-
-    // #1165: every blueprint anchors to Carbon::today(), so its identity
-    // shifts whenever "today" does. A re-seed on a *later* calendar day must
-    // still replace the timeline instead of stacking a second copy of it
-    // onto the account — the bug left several runs piled onto most days.
-    Carbon::setTestNow('2026-05-20 12:00:00');
-    $this->artisan('demo:seed')->assertSuccessful();
-
-    $driftedActivityIds = Activity::query()->where('user_id', $user->id)->pluck('id');
-    expect($driftedActivityIds)->toHaveCount($activityCount);
-
-    $runsPerDay = ActivityDetail::query()
-        ->whereIn('activity_id', $driftedActivityIds)
-        ->get()
-        ->groupBy(fn (ActivityDetail $detail) => $detail->start_date_local->toDateString())
-        ->map->count();
-    expect($runsPerDay->max())->toBe(1, 'A re-seed on a later day must replace the timeline, not stack a second run onto the same date.');
 });
 
 it('reminds the operator to enable the demo login only when it is off', function (): void {

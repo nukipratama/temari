@@ -131,21 +131,31 @@ function trainedArc(User $user, int $weeks, array $missedWeekIndexes = []): arra
     return $trained;
 }
 
+/**
+ * @return list<array{phase: PlanPhase, multiplier: float, planned_km: float, anchor_km: float}>
+ */
+function anchoredEightWeekArc(): array
+{
+    static $arc = null;
+
+    return $arc ??= trainedArc(anchoredArcAthlete(), 8);
+}
+
 it('prescribes the deload week well under the build weeks around it', function (): void {
-    $arc = trainedArc(anchoredArcAthlete(), 8);
+    $arc = anchoredEightWeekArc();
 
     expect($arc[3]['planned_km'])->toBeLessThan($arc[2]['planned_km'] * 0.75)
         ->and($arc[4]['planned_km'])->toBeGreaterThan($arc[2]['planned_km']);
 });
 
 it('holds the arc\'s starting volume for its whole length', function (): void {
-    $arc = trainedArc(anchoredArcAthlete(), 8);
+    $arc = anchoredEightWeekArc();
 
     expect(array_unique(array_column($arc, 'anchor_km')))->toBe([26.05]);
 });
 
 it('does not lower the next week\'s prescription because a build week was missed', function (): void {
-    $intact = trainedArc(anchoredArcAthlete(), 6);
+    $intact = array_slice(anchoredEightWeekArc(), 0, 6);
     $missed = trainedArc(anchoredArcAthlete(), 6, missedWeekIndexes: [4]);
 
     expect($missed[5]['planned_km'])->toBe($intact[5]['planned_km'])
