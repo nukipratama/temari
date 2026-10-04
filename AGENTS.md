@@ -15,6 +15,7 @@ This is the canonical project guidance shared by agents. Runtime entrypoints may
 - Long or multi-agent runs track progress with one writer per level. The main session owns the milestone checklist as checkboxes in the parent issue and ticks an item only after verifying the agent's report against real state. Each agent keeps its own `.planning/progress.md` in its worktree, ticks it as it goes, appends new findings, and never edits the issue or another agent's files. The main session files those findings as backlog issues.
 - For plan/coaching policy calls (redistribution, clamps, grading), decide from established coaching practice, record the rationale in the PR or ADR, and build; ask the owner only about product, UX or infra trade-offs.
 - Parallel briefs assign each agent its route paths and names, with no placeholder routes; the later PR checks `routes/` for duplicate paths after merging `main`.
+- 'Polish' a PR means running the `polish` skill on it — the simplify and correctness passes over its full diff; report a PR as polished only after that, and say so when only part of a diff was reviewed.
 
 ### PR handoff standard
 

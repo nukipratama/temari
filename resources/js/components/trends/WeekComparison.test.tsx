@@ -169,11 +169,16 @@ describe('WeekComparison', () => {
         ).toBeInTheDocument();
     });
 
-    it('reserves two label lines in every cost tile so the three values share one top', () => {
+    it('shares one label row across the three cost tiles so the values share one top', () => {
         render(<WeekComparison weekComparison={payload()} load={load()} />);
 
         for (const label of ['load', 'sameness', 'total cost']) {
-            expect(screen.getByText(label)).toHaveClass('min-h-[2lh]');
+            const element = screen.getByText(label);
+            const tile = element.closest('.grid-rows-subgrid');
+
+            expect(element).not.toHaveClass('min-h-[2lh]');
+            expect(tile).toHaveClass('row-span-3', 'grid', 'gap-y-0');
+            expect(tile).toContainElement(element);
         }
     });
 

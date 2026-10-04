@@ -38,10 +38,10 @@ function TileLabel({
     metricKey,
 }: Readonly<{ plain: string; metricKey: 'trimp' | 'monotony' | 'strain' }>) {
     return (
-        <span className="block min-h-[2lh]">
+        <>
             {plain}
             <MetricExplainer metricKey={metricKey} size="xs" />
-        </span>
+        </>
     );
 }
 
@@ -216,6 +216,7 @@ export default function WeekComparison({
                     </p>
                     <div className="grid grid-cols-2 gap-2 min-[360px]:grid-cols-3">
                         <StatTile
+                            subgrid
                             label={<TileLabel plain="load" metricKey="trimp" />}
                             value={
                                 load.weekly_trimp !== null
@@ -228,6 +229,7 @@ export default function WeekComparison({
                             )}
                         />
                         <StatTile
+                            subgrid
                             label={
                                 <TileLabel
                                     plain="sameness"
@@ -245,6 +247,7 @@ export default function WeekComparison({
                             )}
                         />
                         <StatTile
+                            subgrid
                             label={
                                 <TileLabel
                                     plain="total cost"
