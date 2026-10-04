@@ -110,8 +110,18 @@ function longRunSeries(User $user, int $weeks): array
     return $series;
 }
 
+/**
+ * @return list<array{phase: PlanPhase, long_km: float, week_km: float}>
+ */
+function tenKFloorSeries(): array
+{
+    static $series = null;
+
+    return $series ??= longRunSeries(longRunFloorAthlete(), 8);
+}
+
 it('works the long run up to the race distance before the taper', function (): void {
-    $series = longRunSeries(longRunFloorAthlete(), 8);
+    $series = tenKFloorSeries();
 
     $beforeTaper = array_filter($series, fn (array $week): bool => $week['phase'] !== PlanPhase::Taper);
 
@@ -119,7 +129,7 @@ it('works the long run up to the race distance before the taper', function (): v
 });
 
 it('reaches it by ramping rather than by jumping there in week one', function (): void {
-    $series = longRunSeries(longRunFloorAthlete(), 8);
+    $series = tenKFloorSeries();
 
     // 9.1 km was the un-floored share of this athlete's week. The floor lifts
     // the arc's STARTING long run only as far as the build ramp needs to carry
@@ -129,7 +139,7 @@ it('reaches it by ramping rather than by jumping there in week one', function ()
 });
 
 it('never lets the long run take more than half the week', function (): void {
-    $series = longRunSeries(longRunFloorAthlete(), 8);
+    $series = tenKFloorSeries();
 
     foreach ($series as $week) {
         expect($week['long_km'])->toBeLessThanOrEqual($week['week_km'] * 0.5);

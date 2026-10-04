@@ -131,15 +131,25 @@ function trainedArc(User $user, int $weeks, array $missedWeekIndexes = []): arra
     return $trained;
 }
 
+/**
+ * @return list<array{phase: PlanPhase, multiplier: float, planned_km: float, anchor_km: float}>
+ */
+function anchoredEightWeekArc(): array
+{
+    static $arc = null;
+
+    return $arc ??= trainedArc(anchoredArcAthlete(), 8);
+}
+
 it('prescribes the deload week well under the build weeks around it', function (): void {
-    $arc = trainedArc(anchoredArcAthlete(), 8);
+    $arc = anchoredEightWeekArc();
 
     expect($arc[3]['planned_km'])->toBeLessThan($arc[2]['planned_km'] * 0.75)
         ->and($arc[4]['planned_km'])->toBeGreaterThan($arc[2]['planned_km']);
 });
 
 it('holds the arc\'s starting volume for its whole length', function (): void {
-    $arc = trainedArc(anchoredArcAthlete(), 8);
+    $arc = anchoredEightWeekArc();
 
     expect(array_unique(array_column($arc, 'anchor_km')))->toBe([26.05]);
 });
