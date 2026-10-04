@@ -15,7 +15,6 @@
     "auth.user.id",
     "auth.user.is_demo",
     "auth.user.name",
-    "cartoApiKey",
     "demoLoginEnabled",
     "errors",
     "flash",

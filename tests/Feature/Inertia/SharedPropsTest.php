@@ -32,7 +32,6 @@ it('shares every documented key on every response', function (): void {
         'flash',
         'demoLoginEnabled',
         'webPushPublicKey',
-        'cartoApiKey',
         'today',
         'planRecalibration',
         'activeRace',
@@ -70,14 +69,6 @@ it('exposes the signed-in user in the auth block', function (): void {
         'name' => 'Nuki Pratama',
         'is_demo' => false,
     ]);
-});
-
-it('exposes the CARTO API key for the run map, empty when unconfigured', function (): void {
-    config(['services.carto.api_key' => null]);
-    expect(sharedPropsFor(User::factory()->create())['cartoApiKey'])->toBe('');
-
-    config(['services.carto.api_key' => 'test-carto-key']);
-    expect(sharedPropsFor(User::factory()->create())['cartoApiKey'])->toBe('test-carto-key');
 });
 
 it('shares the server calendar day in the app timezone, not the UTC date', function (): void {

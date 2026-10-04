@@ -1,22 +1,35 @@
+import { usePage } from '@inertiajs/react';
+
+import type { SharedProps } from '@/types/inertia';
+
 import Chip from '@/components/ui/Chip';
 import { formatRelativeId } from '@/lib/pace';
 
 interface LastOpenProps {
+    /** The app-timezone ISO stamp of the athlete's first request on their last active day. */
     lastSeenAt: string | null;
     away: boolean;
     isDemo: boolean;
 }
 
+function activityLabel(lastSeenAt: string, today: string): string {
+    return lastSeenAt.slice(0, 10) === today
+        ? `active today · first open ${lastSeenAt.slice(11, 16)}`
+        : `last active ${formatRelativeId(lastSeenAt)}`;
+}
+
 /**
- * When the athlete last opened the app, and whether that leaves them outside
- * the window scheduled narration spends on. `away` comes from the server's
- * own `RecentlyActiveUsers::includes()`, so this never re-derives the rule.
+ * The athlete's last active day, and whether that leaves them outside the
+ * window scheduled narration spends on. `away` comes from the server's own
+ * `RecentlyActiveUsers::includes()`, so this never re-derives the rule.
  */
 export default function LastOpen({
     lastSeenAt,
     away,
     isDemo,
 }: Readonly<LastOpenProps>) {
+    const { today } = usePage<SharedProps>().props;
+
     if (isDemo) {
         return <p className="text-xs text-text-3">demo (never stamped)</p>;
     }
@@ -26,7 +39,7 @@ export default function LastOpen({
             <p>
                 {lastSeenAt === null
                     ? 'never opened'
-                    : `opened ${formatRelativeId(lastSeenAt)}`}
+                    : activityLabel(lastSeenAt, today)}
             </p>
             {away && (
                 <>

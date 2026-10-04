@@ -164,19 +164,6 @@
                 "foreground"
             ]
         },
-        "cream/0.1": {
-            "over": {
-                "resources/js/lib/variants.ts": [
-                    "sky"
-                ]
-            },
-            "text": [
-                "cream",
-                "cream/0.8",
-                "cream/0.85",
-                "horizon"
-            ]
-        },
         "ember/0.08": {
             "over": {
                 "resources/js/components/catalogue/TokenSheet.tsx": [
