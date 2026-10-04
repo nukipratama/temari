@@ -63,7 +63,6 @@ const BALANCED_BASE = [
     'Tests\\F' => 10.0,
     'Tests\\G' => 10.0,
     'Tests\\H' => 10.0,
-    'Tests\\I' => 10.0,
 ];
 
 it('decides no when the map is unchanged', function (): void {
@@ -75,30 +74,29 @@ it('decides no when the map is unchanged', function (): void {
 });
 
 it('decides yes when a class was added', function (): void {
-    $out = compareShards(BALANCED_BASE, [...BALANCED_BASE, 'Tests\\J' => 10.0]);
+    $out = compareShards(BALANCED_BASE, [...BALANCED_BASE, 'Tests\\I' => 10.0]);
 
     expect($out['decision'])->toBe('yes')
         ->and($out['added'])->toBe('1')
         ->and($out['removed'])->toBe('0')
-        ->and($out['body'])->toContain('Tests\\J');
+        ->and($out['body'])->toContain('Tests\\I');
 });
 
 it('decides yes when a class was removed', function (): void {
-    $out = compareShards([...BALANCED_BASE, 'Tests\\J' => 10.0], BALANCED_BASE);
+    $out = compareShards([...BALANCED_BASE, 'Tests\\I' => 10.0], BALANCED_BASE);
 
     expect($out['decision'])->toBe('yes')
         ->and($out['added'])->toBe('0')
         ->and($out['removed'])->toBe('1')
-        ->and($out['body'])->toContain('Tests\\J');
+        ->and($out['body'])->toContain('Tests\\I');
 });
 
-// The old map's own split ends up as Tests\A+D+G, Tests\B+E+H and Tests\C+F+I
-// once timings tie-break in insertion order (see partitionByTime).
+// The old map's own split ends up as Tests\A+E, Tests\B+F, Tests\C+G and
+// Tests\D+H once timings tie-break in insertion order (see partitionByTime).
 it('decides yes when a fresh split would rebalance shards the stale one has drifted out of', function (): void {
     $out = compareShards(BALANCED_BASE, [
-        'Tests\\A' => 11.2, 'Tests\\B' => 10.0, 'Tests\\C' => 8.8,
-        'Tests\\D' => 11.2, 'Tests\\E' => 10.0, 'Tests\\F' => 8.8,
-        'Tests\\G' => 11.2, 'Tests\\H' => 10.0, 'Tests\\I' => 8.8,
+        'Tests\\A' => 11.2, 'Tests\\B' => 10.0, 'Tests\\C' => 8.8, 'Tests\\D' => 10.0,
+        'Tests\\E' => 11.2, 'Tests\\F' => 10.0, 'Tests\\G' => 8.8, 'Tests\\H' => 10.0,
     ]);
 
     // Under the pre-fix rule this looked at new_excess_pct (0.0, not > 10) and
@@ -110,9 +108,8 @@ it('decides yes when a fresh split would rebalance shards the stale one has drif
 
 it('decides no when the stale split drifts but stays within the 10% threshold', function (): void {
     $out = compareShards(BALANCED_BASE, [
-        'Tests\\A' => 10.8, 'Tests\\B' => 10.0, 'Tests\\C' => 9.2,
-        'Tests\\D' => 10.8, 'Tests\\E' => 10.0, 'Tests\\F' => 9.2,
-        'Tests\\G' => 10.8, 'Tests\\H' => 10.0, 'Tests\\I' => 9.2,
+        'Tests\\A' => 10.8, 'Tests\\B' => 10.0, 'Tests\\C' => 9.2, 'Tests\\D' => 10.0,
+        'Tests\\E' => 10.8, 'Tests\\F' => 10.0, 'Tests\\G' => 9.2, 'Tests\\H' => 10.0,
     ]);
 
     expect($out['decision'])->toBe('no')
@@ -120,24 +117,23 @@ it('decides no when the stale split drifts but stays within the 10% threshold', 
 });
 
 it('decides no when a fresh split would not do any better than the stale one', function (): void {
-    $rest = ['Tests\\B' => 50.0, 'Tests\\C' => 50.0, 'Tests\\D' => 50.0, 'Tests\\E' => 50.0];
+    $rest = ['Tests\\B' => 50.0, 'Tests\\C' => 50.0, 'Tests\\D' => 50.0, 'Tests\\E' => 50.0, 'Tests\\F' => 50.0, 'Tests\\G' => 50.0];
     $out = compareShards(['Tests\\A' => 100.0, ...$rest], ['Tests\\A' => 120.0, ...$rest]);
 
     expect($out['decision'])->toBe('no')
-        ->and((float) $out['old_applied_excess_pct'])->toBe(12.5)
-        ->and((float) $out['new_excess_pct'])->toBe(12.5);
+        ->and((float) $out['old_applied_excess_pct'])->toBe(14.29)
+        ->and((float) $out['new_excess_pct'])->toBe(14.29);
 });
 
 it('simulates the same number of shards backend CI runs', function (): void {
     $workflow = Yaml::parseFile(base_path('.github/workflows/backend-ci.yml'));
     preg_match('/^const SHARD_TOTAL = (\d+);$/m', (string) file_get_contents(base_path('scripts/compare-shards.php')), $constant);
 
-    expect($workflow['env']['SHARD_TOTAL'])->toBe(3)
-        ->and($workflow['jobs']['tests']['strategy']['matrix']['shard'])->toBe([1, 2, 3])
-        ->and((int) ($constant[1] ?? 0))->toBe(3)
-        ->and(compareShards(BALANCED_BASE, BALANCED_BASE)['body'])->toContain('Simulated 3-shard totals')
-        ->toContain('| shard 3 |')
-        ->not->toContain('| shard 4 |');
+    expect($workflow['env']['SHARD_TOTAL'])->toBe(4)
+        ->and($workflow['jobs']['tests']['strategy']['matrix']['shard'])->toBe([1, 2, 3, 4])
+        ->and((int) ($constant[1] ?? 0))->toBe(4)
+        ->and(compareShards(BALANCED_BASE, BALANCED_BASE)['body'])->toContain('Simulated 4-shard totals')
+        ->toContain('| shard 4 |');
 });
 
 it('times the shard map with pcov loaded, as PR shards run', function (): void {

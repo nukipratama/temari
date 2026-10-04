@@ -53,7 +53,7 @@ log. **CI is the authoritative full gate** — a green `composer gate` locally i
 signal, not a substitute for CI passing. On `push` to `main`, `deploy` additionally builds and
 rolls the image once `ci-gate` and `build` both pass; see [[deployment]] for that half.
 
-The backend and frontend suites each run three parallel shards, on PRs and main pushes. The test jobs and the image build need only `changes`, so they start without waiting for `repo-guards`, which also runs the gitleaks secret scan; `ci-gate` still requires it. Backend shards start MySQL with a backgrounded `docker run` right after checkout and wait for it just before the tests, so its pull and init overlap PHP setup. PR shards collect coverage;
+The backend suite runs four parallel shards and the frontend suite three, on PRs and main pushes. The test jobs and the image build need only `changes`, so they start without waiting for `repo-guards`, which also runs the gitleaks secret scan; `ci-gate` still requires it. Backend shards start MySQL with a backgrounded `docker run` right after checkout and wait for it just before the tests, so its pull and init overlap PHP setup. PR shards collect coverage;
 each suite's `gate` job merges the whole-suite totals and applies the configured thresholds exactly
 once. Main-push shards skip instrumentation, and their `gate` skips the merge, because the change
 was already coverage-gated before merge. Each side's single static-analysis job runs its tools in
