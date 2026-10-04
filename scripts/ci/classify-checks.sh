@@ -7,7 +7,7 @@ match() {
   printf '%s\n' "$changed" | grep -qE "$1"
 }
 
-# The workflow that defines every job runs the lot (deploy stays main-push-only).
+# The workflow that defines every CI job runs the lot.
 EVERYTHING='^\.github/workflows/ci\.yml$'
 
 # Backend also owns the structure tests that read infrastructure, workflow and

@@ -28,11 +28,11 @@ it('pushes the maintainer alert from a hosted runner with the nightly-audit secr
         ->and($job['timeout-minutes'])->toBeInt();
 })->group('structure');
 
-it('alerts from a hosted runner when the deploy job fails, outside ci-gate', function (): void {
-    $workflow = workflowDoc('ci.yml');
+it('alerts from a hosted runner when the deploy job fails', function (): void {
+    $notify = workflowDoc('deploy.yml')['jobs']['notify'];
 
-    expectHostedAlertJob($workflow['jobs']['notify'], 'deploy');
-    expect($workflow['jobs']['ci-gate']['needs'])->not->toContain('notify');
+    expectHostedAlertJob($notify, 'deploy');
+    expect($notify['with']['message'])->toContain('github.event.workflow_run.head_sha');
 })->group('structure');
 
 it('alerts from a hosted runner when the nightly backup job fails', function (): void {

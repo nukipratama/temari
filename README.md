@@ -150,7 +150,7 @@ Defined in [compose.prod.yaml](compose.prod.yaml) + [Dockerfile](Dockerfile) + [
 ### How a deploy works
 
 1. PR merges to `main`.
-2. The `deploy` job in [.github/workflows/ci.yml](.github/workflows/ci.yml) waits for `lint` + `pest` to pass.
+2. [.github/workflows/deploy.yml](.github/workflows/deploy.yml) starts the `deploy` job once CI passes on that commit.
 3. The job runs on a containerized self-hosted runner registered for this repo, connecting outbound-only (no inbound port).
 4. On the host, the job preserves owner maintenance, enables deploy-owned maintenance only when migrations are pending, migrates, rolls the services, checks shallow `/ready` and deep `/up`, smoke-tests the release, then lifts only deploy-owned maintenance.
 

@@ -109,7 +109,7 @@ it('dumps without GTID or masking-policy statements, so the app user can back up
         expect($dump)->toContain('--set-gtid-purged=OFF')->toContain('--loose-skip-masking-policies');
     }
 })->with([
-    '.github/workflows/ci.yml',
+    '.github/workflows/deploy.yml',
     '.github/workflows/nightly-backup.yml',
     '.github/workflows/nightly-audit.yml',
 ])->group('structure');
