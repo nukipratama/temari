@@ -24,7 +24,7 @@ function getServerSnapshot(): boolean {
  * Some consumers read plain JS values, not CSS custom properties, so they
  * can't just follow the `[data-theme]` cascade the way a component's
  * classes do — they need to know which ground is active and recompute.
- * Chart.js colour picks and Leaflet tile URLs are both this shape.
+ * Chart.js colour picks are this shape.
  * `data-theme` can change via `useTheme`'s explicit toggle or
  * `useSystemTheme`'s OS listener; a MutationObserver keeps this correct
  * however it ends up changing.
