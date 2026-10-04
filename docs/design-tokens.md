@@ -7,8 +7,7 @@ instead of re-describing the palette so they do not drift again.
 
 **Composition lives elsewhere.** How screens use these tokens (sections and lane dividers, which
 face speaks, effort colors on run rows) is owned by
-[design-system/temari/MASTER.md](../design-system/temari/MASTER.md), the file the ui-ux-pro-max
-skill reads. This page owns the values and the mechanics behind them.
+[design-system/temari/MASTER.md](../design-system/temari/MASTER.md). This page owns the values and the mechanics behind them.
 
 **What owns what.** `app.css` owns the emitted values — the radius, spacing, elevation and type
 scales are declared there directly and nowhere else.

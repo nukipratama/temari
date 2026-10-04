@@ -7,8 +7,8 @@ emitted value; [build-tokens.mjs](../../../../resources/brand/build-tokens.mjs) 
 spacing, elevation or type scales. Full reference (colors, type scale, fonts, radius, elevation,
 spacing) in [docs/design-tokens.md](../../../../docs/design-tokens.md). Composition (lane-divided
 sections, no nested cards, effort colors on run rows, which face speaks) is owned by
-[design-system/temari/MASTER.md](../../../../design-system/temari/MASTER.md), which the ui-ux-pro-max
-skill also reads. Follow it for any screen work.
+[design-system/temari/MASTER.md](../../../../design-system/temari/MASTER.md).
+Follow it for any screen work.
 Use the **semantic token families, never raw Tailwind colors** like `lime-500`:
 
 - `sky` (`#171f28`) / `sky-deep` (`#0b1017`) / `sky-2` (`#26303d`) — structure, dark hero panels, and (since F2) the dark ground itself. Cold near-black.
