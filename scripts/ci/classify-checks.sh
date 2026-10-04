@@ -17,7 +17,7 @@ BACKEND='^resources/js/types/generated\.ts$|^(app|bootstrap|config|database|depl
 FRONTEND='^resources/(js|css|views|brand)/|^tests/fixtures/|^\.github/actions/|^\.github/workflows/frontend-ci\.yml$|^public/(sw\.js|offline\.html|manifest\.webmanifest|robots\.txt)$|^scripts/.*\.mjs$|^(package\.json|package-lock\.json|vite\.config\.ts|vitest\.config\.ts|prettier\.config\.js|eslint\.config\.js|\.nvmrc|\.npmrc|\.prettierignore|\.editorconfig|\.gitignore|\.gitattributes)$|^tsconfig.*\.json$|^\.prettierrc'
 DOCKER='^(Dockerfile|\.dockerignore)$|^docker/|^public/\.htaccess$'
 WORKTREE='^scripts/worktree|^tests/scripts/'
-STRUCTURE='^resources/js/|^(CLAUDE|README)\.md$|^docs/(design-tokens|architecture/llm-triggers)\.md$|^\.agents/skills/temari/.*\.md$'
+STRUCTURE='^resources/js/|^(CLAUDE|README)\.md$|^\.dockerignore$|^docs/(design-tokens|architecture/llm-triggers)\.md$|^\.agents/skills/temari/.*\.md$'
 
 if match "$EVERYTHING"; then
   backend=true
