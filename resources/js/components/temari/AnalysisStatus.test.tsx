@@ -103,9 +103,7 @@ describe('AnalysisStatus', () => {
             <AnalysisStatus analysis={payload({ status: 'queued' })} />,
         );
         expect(screen.getByRole('status')).toBeInTheDocument();
-        expect(
-            container.querySelector('.skeleton, .skeleton-on-sky'),
-        ).not.toBeNull();
+        expect(container.querySelector('.skeleton')).not.toBeNull();
     });
 
     it('renders a skeleton placeholder when processing', () => {
@@ -113,9 +111,7 @@ describe('AnalysisStatus', () => {
             <AnalysisStatus analysis={payload({ status: 'processing' })} />,
         );
         expect(screen.getByRole('status')).toBeInTheDocument();
-        expect(
-            container.querySelector('.skeleton, .skeleton-on-sky'),
-        ).not.toBeNull();
+        expect(container.querySelector('.skeleton')).not.toBeNull();
     });
 
     it('flips the queued skeleton to a quiet "check back later" state after polling gives up', async () => {
