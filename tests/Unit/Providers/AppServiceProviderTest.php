@@ -141,3 +141,19 @@ it('binds TrainingLoad as scoped, not a cross-request singleton', function (): v
     expect(app(TrainingLoad::class))->not->toBe($first)
         ->and(app(TrainingLoad::class))->toBe(app(TrainingLoad::class));
 });
+
+it('registers every listener once per event, so discovery and an explicit listen never both fire it', function (): void {
+    $duplicates = collect(app('events')->getRawListeners())
+        ->map(fn (array $listeners): array => collect($listeners)
+            ->reject(fn (mixed $listener): bool => $listener instanceof Closure)
+            ->map(fn (string|array $listener): string => is_array($listener)
+                ? $listener[0].'@'.$listener[1]
+                : (str_contains($listener, '@') ? $listener : $listener.'@handle'))
+            ->duplicates()
+            ->values()
+            ->all())
+        ->filter()
+        ->all();
+
+    expect($duplicates)->toBe([]);
+});
