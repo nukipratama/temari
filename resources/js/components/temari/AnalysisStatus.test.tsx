@@ -103,9 +103,7 @@ describe('AnalysisStatus', () => {
             <AnalysisStatus analysis={payload({ status: 'queued' })} />,
         );
         expect(screen.getByRole('status')).toBeInTheDocument();
-        expect(
-            container.querySelector('.skeleton, .skeleton-on-sky'),
-        ).not.toBeNull();
+        expect(container.querySelector('.skeleton')).not.toBeNull();
     });
 
     it('renders a skeleton placeholder when processing', () => {
@@ -113,9 +111,7 @@ describe('AnalysisStatus', () => {
             <AnalysisStatus analysis={payload({ status: 'processing' })} />,
         );
         expect(screen.getByRole('status')).toBeInTheDocument();
-        expect(
-            container.querySelector('.skeleton, .skeleton-on-sky'),
-        ).not.toBeNull();
+        expect(container.querySelector('.skeleton')).not.toBeNull();
     });
 
     it('flips the queued skeleton to a quiet "check back later" state after polling gives up', async () => {
@@ -233,34 +229,6 @@ describe('AnalysisStatus', () => {
             />,
         );
         expect(screen.getByText(/generated 5 min ago/)).toBeInTheDocument();
-        vi.useRealTimers();
-    });
-
-    it('gives the done-state timestamp and "reread" pill their on-sky tone', () => {
-        vi.useFakeTimers();
-        const now = new Date('2026-07-07T12:00:00Z');
-        vi.setSystemTime(now);
-        const ts = new Date(now.getTime() - 5 * 60 * 1000).toISOString();
-        render(
-            <AnalysisStatus
-                analysis={payload({
-                    status: 'done',
-                    content: 'ok',
-                    generated_at: ts,
-                })}
-                onSky
-            />,
-        );
-
-        expect(screen.getByText(/generated 5 min ago/)).toHaveClass(
-            'text-ink-on-sky',
-        );
-        expect(screen.getByText(/generated 5 min ago/)).not.toHaveClass(
-            'text-text-3',
-        );
-        const button = screen.getByRole('button', { name: /reread/ });
-        expect(button).toHaveClass('bg-cream/10', 'text-cream');
-        expect(button).not.toHaveClass('bg-muted');
         vi.useRealTimers();
     });
 

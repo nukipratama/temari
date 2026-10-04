@@ -268,7 +268,7 @@ All five clear WCAG AA on their intended background.
 - `horizon` (lime) → **`text-sky`**, never white and never `text-foreground`. This is the one CTA
   where the ground-reactive layer is wrong: `foreground` flips to cream on the dark ground, which is
   the unreadable pairing on lime. The fixed value clears 11.5:1 on both grounds.
-- `sky`, the default tone, is ground-reactive: `bg-foreground` under `text-background`, a near-black pill on the light ground and a cream one on the dark ground, so it keeps its shape on every dark surface (12:1 or more against `popover`/`muted`, where the fixed `bg-sky` fill measured 1.25:1). On a fixed-dark sky panel, `onSky` flips it to `bg-cream` under `text-sky`.
+- `sky`, the default tone, is ground-reactive: `bg-foreground` under `text-background`, a near-black pill on the light ground and a cream one on the dark ground, so it keeps its shape on every dark surface (12:1 or more against `popover`/`muted`, where the fixed `bg-sky` fill measured 1.25:1).
 - `ghost` and `outline` carry no fill; their label is `text-foreground` / `text-text-2`.
 
 ## Spacing
@@ -462,8 +462,8 @@ Padding names its role (`panel` / `card` / `hero` / `none`, default `card`), nev
 that "just needs to be a bit different" at one call site is the drift this collapse removed —
 override with `className` if a one-off is genuinely required, so it stays visible in review.
 
-**Every chip is `Chip` or `MoodChip`.** `chipVariants` carries six tones: `neutral`, `horizon`,
-`sky`, `onSky`, and the two status tones `positive` (leaf at 18%) and `warning` (ember at 18%),
+**Every chip is `Chip` or `MoodChip`.** `chipVariants` carries four tones: `neutral`, `horizon`,
+and the two status tones `positive` (leaf at 18%) and `warning` (ember at 18%),
 matching `horizon`'s 18% tint. Every tinted tone is registered in
 [grounds.json](../resources/brand/grounds.json) over `paper`, because a chip can land on any surface,
 and `DesignTokenContrastTest` fails if one is narrowed to a single mount. `positive` and `warning`

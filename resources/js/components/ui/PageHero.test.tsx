@@ -34,13 +34,6 @@ describe('PageHero', () => {
         expect(h1).toHaveClass('text-display-lg', 'text-foreground');
     });
 
-    it('applies the on-sky tone (cream headline text)', () => {
-        render(<PageHero onSky>Trophy wall</PageHero>);
-        expect(screen.getByText('Trophy wall').className).toContain(
-            'text-cream',
-        );
-    });
-
     it('italicizes the whole headline when requested', () => {
         render(<PageHero italic>Your heart rate zones.</PageHero>);
         expect(screen.getByText('Your heart rate zones.').className).toContain(
@@ -48,19 +41,10 @@ describe('PageHero', () => {
         );
     });
 
-    it('wraps a string eyebrow in the standard hero Eyebrow, tone flipping on-sky', () => {
+    it('wraps a string eyebrow in the standard hero Eyebrow, in the ink-2 tone', () => {
         render(<PageHero eyebrow="Collection">Trophy wall</PageHero>);
         expect(screen.getByText('Collection').className).toContain(
             'text-text-2',
-        );
-
-        render(
-            <PageHero eyebrow="Collection" onSky>
-                Trophy wall
-            </PageHero>,
-        );
-        expect(screen.getAllByText('Collection')[1].className).toContain(
-            'text-horizon',
         );
     });
 

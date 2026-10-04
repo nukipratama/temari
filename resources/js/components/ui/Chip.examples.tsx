@@ -24,10 +24,6 @@ export default {
     ],
     matrix: {
         axes: axesOf(chipVariantMap, ['tone', 'size']),
-        omitted: {
-            sky: 'no caller, and its fixed-dark text disappears on the dark ground',
-            onSky: 'no caller',
-        },
         render: ({ tone, size }) => (
             <Chip tone={tone as ChipTone} size={size as 'sm' | 'md'}>
                 {tone}

@@ -4,7 +4,7 @@ import type { AnalysisPayload } from '@/types/inertia';
 
 import AnalysisStatus, {
     TRIGGER_CLASS,
-    triggerTone,
+    TRIGGER_TONE,
 } from '@/components/temari/AnalysisStatus';
 import Eyebrow from '@/components/ui/Eyebrow';
 import { Icon } from '@/components/ui/Icon';
@@ -103,7 +103,7 @@ export default function NarrationCard({
                     type="button"
                     onClick={trigger}
                     disabled={pending || cooling}
-                    className={cn(TRIGGER_CLASS, triggerTone(false))}
+                    className={cn(TRIGGER_CLASS, TRIGGER_TONE)}
                 >
                     <Icon icon={RefreshCw} className="size-3" aria-hidden />
                     <span>

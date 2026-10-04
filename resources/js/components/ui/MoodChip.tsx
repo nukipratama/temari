@@ -7,7 +7,6 @@ interface MoodChipProps {
     mood: Mood;
     label?: string;
     size?: 'sm' | 'md';
-    onSky?: boolean;
     className?: string;
 }
 
@@ -15,7 +14,6 @@ export default function MoodChip({
     mood,
     label,
     size = 'sm',
-    onSky = false,
     className,
 }: Readonly<MoodChipProps>) {
     return (
@@ -25,9 +23,8 @@ export default function MoodChip({
                 size === 'sm'
                     ? 'px-2.5 py-1 text-label-micro'
                     : 'px-3 py-1.5 text-label-small',
-                onSky
-                    ? 'bg-cream/10 text-cream'
-                    : cn(MOOD_SOFT_FILL[mood], MOOD_INK[mood]),
+                MOOD_SOFT_FILL[mood],
+                MOOD_INK[mood],
                 className,
             )}
         >

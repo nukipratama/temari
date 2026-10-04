@@ -15,8 +15,6 @@ interface PageHeroProps {
      *  Default 'lg', the app's standard page-title weight; pick a bigger/
      *  smaller step to shape the page's own top-fold hierarchy. */
     size?: PageHeroSize;
-    /** Dark HeroPanel/sky-panel context: cream headline text. Default false. */
-    onSky?: boolean;
     /** Italicize the whole headline (Temari-voice register). Default false —
      *  compose an inline <em>/<span> in children for partial emphasis instead. */
     italic?: boolean;
@@ -43,18 +41,13 @@ const SIZE_CLASS: Record<PageHeroSize, string> = {
 export default function PageHero({
     eyebrow,
     size = 'lg',
-    onSky = false,
     italic = false,
     className,
     children,
 }: Readonly<PageHeroProps>) {
     const eyebrowNode =
         typeof eyebrow === 'string' ? (
-            <Eyebrow
-                token="hero"
-                tone={onSky ? 'horizon' : 'ink-2'}
-                className="mb-3.5"
-            >
+            <Eyebrow token="hero" tone="ink-2" className="mb-3.5">
                 {eyebrow}
             </Eyebrow>
         ) : (
@@ -69,7 +62,7 @@ export default function PageHero({
                     'font-serif',
                     SIZE_CLASS[size],
                     italic && 'italic',
-                    onSky ? 'text-cream' : 'text-foreground',
+                    'text-foreground',
                 )}
             >
                 {children}

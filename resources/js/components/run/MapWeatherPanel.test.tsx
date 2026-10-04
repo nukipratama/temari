@@ -136,27 +136,21 @@ describe('MapWeatherPanel', () => {
         const { container } = render(
             <MapWeatherPanel detail={detail({ summary_polyline: null })} />,
         );
-        expect(
-            container.querySelector('.skeleton, .skeleton-on-sky'),
-        ).toBeNull();
+        expect(container.querySelector('.skeleton')).toBeNull();
     });
 
     it('hides the map area when the polyline is an empty string', () => {
         const { container } = render(
             <MapWeatherPanel detail={detail({ summary_polyline: '' })} />,
         );
-        expect(
-            container.querySelector('.skeleton, .skeleton-on-sky'),
-        ).toBeNull();
+        expect(container.querySelector('.skeleton')).toBeNull();
     });
 
     it('shows the map suspense fallback when a polyline IS present', () => {
         const { container } = render(
             <MapWeatherPanel detail={detail({ summary_polyline: 'abc123' })} />,
         );
-        expect(
-            container.querySelector('.skeleton, .skeleton-on-sky'),
-        ).not.toBeNull();
+        expect(container.querySelector('.skeleton')).not.toBeNull();
         expect(container.querySelector('.h-\\[17\\.5rem\\]')).not.toBeNull();
         expect(container.querySelector('.h-\\[280px\\]')).toBeNull();
     });

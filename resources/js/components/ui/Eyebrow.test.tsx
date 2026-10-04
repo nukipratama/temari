@@ -37,8 +37,6 @@ describe('Eyebrow', () => {
         ['ink-3', 'text-text-3'],
         ['horizon', 'text-horizon'],
         ['horizon-ink', 'text-horizon-ink'],
-        ['ink-on-sky', 'text-ink-on-sky'],
-        ['cream', 'text-cream'],
     ] as const)('renders tone="%s"', (tone, expected) => {
         render(
             <Eyebrow token="micro" tone={tone}>

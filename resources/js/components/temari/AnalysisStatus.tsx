@@ -82,8 +82,6 @@ interface Props {
     awaitingSchedule?: boolean;
     /** Empty-state copy shown when {@link awaitingSchedule}. Defaults to the weekly wording. */
     awaitingScheduleLabel?: string;
-    /** Use cream-tinted colours for non-done states when rendered on a dark sky panel. */
-    onSky?: boolean;
     /**
      * This block belongs to a connected + chained narration kind. The trigger
      * still POSTs to this row, but the server resumes the chain from the
@@ -119,24 +117,15 @@ const TEXT_SIZE: Record<AnalysisStatusSize, string> = {
 export const TRIGGER_CLASS =
     'focus-ring pad-chip text-label-micro pressable inline-flex items-center self-end gap-1 rounded-full transition-colors disabled:pointer-events-none disabled:opacity-60';
 
-export function triggerTone(onSky: boolean): string {
-    return onSky
-        ? 'bg-cream/10 text-cream hover:opacity-90'
-        : 'bg-muted text-foreground hover:bg-accent';
-}
+export const TRIGGER_TONE = 'bg-muted text-foreground hover:bg-accent';
 
 /** Widths of the stacked skeleton bars shown while a block is queued/processing. */
 const SKELETON_WIDTHS = ['w-full', 'w-[70%]', 'w-[85%]'];
 
-function WaitingNote({
-    label,
-    onSky,
-}: Readonly<{ label: string; onSky: boolean }>) {
+function WaitingNote({ label }: Readonly<{ label: string }>) {
     return (
         <div className="flex flex-col gap-1.5">
-            <span
-                className={`inline-flex items-center gap-1.5 text-xs ${onSky ? 'text-ink-on-sky' : 'text-text-2'}`}
-            >
+            <span className="inline-flex items-center gap-1.5 text-xs text-text-2">
                 <Icon icon={Clock} aria-hidden />
                 <span>{label}</span>
             </span>
@@ -144,11 +133,9 @@ function WaitingNote({
     );
 }
 
-function RateLimitedNote({ onSky }: Readonly<{ onSky: boolean }>) {
+function RateLimitedNote() {
     return (
-        <span
-            className={`text-xs ${onSky ? 'text-horizon' : 'text-horizon-ink'}`}
-        >
+        <span className="text-xs text-horizon-ink">
             easy there, temari&apos;s overwhelmed. try again in a bit.
         </span>
     );
@@ -177,7 +164,6 @@ export default function AnalysisStatus({
     allowReanalyze = true,
     awaitingSchedule = false,
     awaitingScheduleLabel = "this week's recap isn't available yet.",
-    onSky = false,
     chained = false,
     isChainHead = false,
     thinkingMark = false,
@@ -235,9 +221,7 @@ export default function AnalysisStatus({
                         )}
                     >
                         {generatedAt !== null && (
-                            <span
-                                className={`text-xs ${onSky ? 'text-ink-on-sky' : 'text-text-3'}`}
-                            >
+                            <span className="text-xs text-text-3">
                                 generated {formatRelativeId(generatedAt)}
                             </span>
                         )}
@@ -247,7 +231,6 @@ export default function AnalysisStatus({
                                 subjectId={analysis.id}
                                 label="flag this read"
                                 flagged={analysis.flagged === true}
-                                onSky={onSky}
                                 compact
                             />
                         )}
@@ -268,7 +251,7 @@ export default function AnalysisStatus({
                             }
                             className={cn(
                                 TRIGGER_CLASS,
-                                triggerTone(onSky),
+                                TRIGGER_TONE,
                                 unreadWhileAway &&
                                     'ring-[1.5px] ring-horizon/45',
                             )}
@@ -294,7 +277,7 @@ export default function AnalysisStatus({
                         </button>
                     </div>
                 )}
-                {rateLimited && <RateLimitedNote onSky={onSky} />}
+                {rateLimited && <RateLimitedNote />}
             </div>
         );
     }
@@ -303,17 +286,13 @@ export default function AnalysisStatus({
         // Polling gave up without the block settling: drop the fake "working"
         // skeleton for an honest, quiet reload affordance.
         if (awaitingSchedule) {
-            return <WaitingNote label={awaitingScheduleLabel} onSky={onSky} />;
+            return <WaitingNote label={awaitingScheduleLabel} />;
         }
         if (pollingRetired && !pending) {
             return (
-                <WaitingNote
-                    label="still processing, check back in a bit."
-                    onSky={onSky}
-                />
+                <WaitingNote label="still processing, check back in a bit." />
             );
         }
-        const skeletonBg = onSky ? 'skeleton-on-sky' : 'skeleton';
         return (
             <div
                 className={`flex flex-col gap-3 ${TEXT_SIZE[size]}`}
@@ -322,23 +301,19 @@ export default function AnalysisStatus({
             >
                 <span className="sr-only">temari&apos;s thinking it over…</span>
                 <div className="flex items-start gap-2.5">
-                    {thinkingMark && (
-                        <TemariMascot pose="thinking" size={40} onSky={onSky} />
-                    )}
+                    {thinkingMark && <TemariMascot pose="thinking" size={40} />}
                     <div className="flex min-w-0 flex-1 flex-col gap-1.5">
                         {SKELETON_WIDTHS.map((width) => (
                             <div
                                 key={width}
-                                className={`h-[1.625em] rounded-xs ${width} ${skeletonBg}`}
+                                className={`h-[1.625em] rounded-xs ${width} skeleton`}
                                 aria-hidden
                             />
                         ))}
                     </div>
                 </div>
                 {attempts > 1 && (
-                    <span
-                        className={`text-xs ${onSky ? 'text-ink-on-sky' : 'text-text-3'}`}
-                    >
+                    <span className="text-xs text-text-3">
                         attempt {attempts}
                     </span>
                 )}
@@ -357,13 +332,13 @@ export default function AnalysisStatus({
                             : undefined
                     }
                 />
-                {rateLimited && <RateLimitedNote onSky={onSky} />}
+                {rateLimited && <RateLimitedNote />}
                 {canTrigger && (
                     <button
                         type="button"
                         onClick={trigger}
                         disabled={pending}
-                        className={cn(TRIGGER_CLASS, triggerTone(onSky))}
+                        className={cn(TRIGGER_CLASS, TRIGGER_TONE)}
                     >
                         <Icon icon={RefreshCw} className="size-3" aria-hidden />
                         <span>try again</span>
@@ -382,5 +357,5 @@ export default function AnalysisStatus({
         return null;
     }
 
-    return <WaitingNote label={awaitingScheduleLabel} onSky={onSky} />;
+    return <WaitingNote label={awaitingScheduleLabel} />;
 }

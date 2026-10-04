@@ -38,28 +38,6 @@ describe('PillButton', () => {
         expect(button).not.toHaveClass('text-cream');
     });
 
-    it('keeps the cream fill for the default tone on a sky panel', () => {
-        render(<PillButton onSky>send</PillButton>);
-        const button = screen.getByRole('button', { name: 'send' });
-        expect(button).toHaveClass(
-            'bg-cream',
-            'text-sky',
-            'hover:bg-cream-deep',
-        );
-        expect(button).not.toHaveClass('bg-foreground');
-        expect(button).not.toHaveClass('text-background');
-    });
-
-    it('switches ghost to onSky variant when onSky=true', () => {
-        render(
-            <PillButton tone="ghost" onSky>
-                Ikuti
-            </PillButton>,
-        );
-        const button = screen.getByRole('button', { name: 'Ikuti' });
-        expect(button.className).toMatch(/text-cream/);
-    });
-
     it('fires onClick when clicked', async () => {
         const onClick = vi.fn();
         render(<PillButton onClick={onClick}>Go</PillButton>);

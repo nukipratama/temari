@@ -210,8 +210,6 @@ function MouthShape({ mouth }: Readonly<{ mouth: Mouth }>) {
 interface TemariMascotProps {
     pose?: MascotPose;
     size?: number;
-    /** A fixed-dark surface: resolves every token against the dark ground. */
-    onSky?: boolean;
     /** Trace the arcs in once on mount, for the big-moment surfaces. */
     drawIn?: boolean;
     /** Just the face, cropped to fill the box, for a slot another ring already frames. */
@@ -226,7 +224,6 @@ interface TemariMascotProps {
 export default function TemariMascot({
     pose = 'neutral',
     size = 48,
-    onSky = false,
     drawIn = false,
     faceOnly = false,
     className,
@@ -244,7 +241,6 @@ export default function TemariMascot({
             className={cn('flex-none', className)}
             aria-hidden="true"
             data-mascot={pose}
-            data-theme={onSky ? 'dark' : undefined}
         >
             {!faceOnly && (
                 <g
