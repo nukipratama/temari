@@ -127,10 +127,15 @@ class PlannedSession extends Model
                 PastYouTrendBuilder::clearCacheForUserId($row->user_id);
             }
         });
-        static::deleted(static function (PlannedSession $row) use ($bust): void {
-            $bust($row);
-            PastYouTrendBuilder::clearCacheForUserId($row->user_id);
+        static::deleted(static function (PlannedSession $row): void {
+            self::forgetCachedReads($row->user_id);
         });
+    }
+
+    public static function forgetCachedReads(int $userId): void
+    {
+        app(ResolvePlannedSessionsAction::class)->forget($userId);
+        PastYouTrendBuilder::clearCacheForUserId($userId);
     }
 
     /**

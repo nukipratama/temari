@@ -15,6 +15,8 @@ use App\Models\PlanAdaptation;
 use App\Models\PlannedSession;
 use App\Models\User;
 use Closure;
+use DateTimeImmutable;
+use DateTimeZone;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
@@ -327,6 +329,7 @@ final readonly class Periodizer
             }
             $currentByDate = $current->keyBy(fn (PlannedSession $session): string => $session->date->toDateString());
 
+            $inserts = [];
             foreach ($rows as $date => $row) {
                 $existing = $currentByDate->get($date);
                 if (isset($inputs->settledDates[$date])
@@ -336,29 +339,41 @@ final readonly class Periodizer
                 }
 
                 $carriedClamp = $carriedClamps->get($date);
+                $key = ['user_id' => $inputs->userId, 'date' => $date];
+                $values = [
+                    'phase' => $row['phase'],
+                    'session_type' => $row['session_type'],
+                    'volume_multiplier' => $row['volume_multiplier'],
+                    // Stamped on the row so race day still knows its own
+                    // distance once the goal behind it has been retired.
+                    'race_distance_m' => $row['session_type'] === SessionType::Race ? (int) $inputs->raceDistanceM : null,
+                    'prescribed_hard_minutes' => $row['prescribed_hard_minutes'],
+                    'prescribed_pace_band' => $row['prescribed_pace_band'],
+                    'prescribed_pace_sec_per_km' => $row['prescribed_pace_sec_per_km'],
+                    'prescription_reason' => $row['prescription_reason'],
+                    'prescription_race_context' => $row['prescription_race_context'],
+                    'pinned' => false,
+                    'status' => PlannedSessionStatus::Planned,
+                    'clamped_km' => $carriedClamp?->clamped_km,
+                    'rest_clamped_at' => $carriedClamp?->rest_clamped_at,
+                    'eased_pace_sec_per_km' => $carriedClamp?->eased_pace_sec_per_km,
+                    'readiness_assessment' => $carriedClamp?->readiness_assessment,
+                ];
 
-                PlannedSession::query()->updateOrCreate(
-                    ['user_id' => $inputs->userId, 'date' => $date],
-                    [
-                        'phase' => $row['phase'],
-                        'session_type' => $row['session_type'],
-                        'volume_multiplier' => $row['volume_multiplier'],
-                        // Stamped on the row so race day still knows its own
-                        // distance once the goal behind it has been retired.
-                        'race_distance_m' => $row['session_type'] === SessionType::Race ? (int) $inputs->raceDistanceM : null,
-                        'prescribed_hard_minutes' => $row['prescribed_hard_minutes'],
-                        'prescribed_pace_band' => $row['prescribed_pace_band'],
-                        'prescribed_pace_sec_per_km' => $row['prescribed_pace_sec_per_km'],
-                        'prescription_reason' => $row['prescription_reason'],
-                        'prescription_race_context' => $row['prescription_race_context'],
-                        'pinned' => false,
-                        'status' => PlannedSessionStatus::Planned,
-                        'clamped_km' => $carriedClamp?->clamped_km,
-                        'rest_clamped_at' => $carriedClamp?->rest_clamped_at,
-                        'eased_pace_sec_per_km' => $carriedClamp?->eased_pace_sec_per_km,
-                        'readiness_assessment' => $carriedClamp?->readiness_assessment,
-                    ],
-                );
+                if ($existing !== null) {
+                    PlannedSession::query()->updateOrCreate($key, $values);
+
+                    continue;
+                }
+
+                $session = new PlannedSession([...$key, ...$values]);
+                $session->updateTimestamps();
+                $inserts[] = $session->getAttributes();
+            }
+
+            if ($inserts !== []) {
+                PlannedSession::query()->insert($inserts);
+                PlannedSession::forgetCachedReads($inputs->userId);
             }
 
             PlanAdaptation::query()->updateOrCreate(
@@ -567,7 +582,7 @@ final readonly class Periodizer
             && $row['prescribed_pace_band'] === PaceBand::Marathon
             && $row['prescribed_hard_minutes'] > 0));
         foreach ($generatedHardLongDates as $date) {
-            $tooCloseToHardDay = array_any($longOffsets, static fn (string $other): bool => $other !== $date && abs(Carbon::parse($date)->diffInDays(Carbon::parse($other))) < 2);
+            $tooCloseToHardDay = array_any($longOffsets, static fn (string $other): bool => $other !== $date && self::daysApart($date, $other) < 2);
             if (count($fixedHardOffsets) >= 2 || $tooCloseToHardDay) {
                 $rows[$date] = [
                     ...$rows[$date],
@@ -592,7 +607,7 @@ final readonly class Periodizer
         foreach ($qualityDates as $date) {
             $recoveryByDate[$date] = $protectedOffsets === []
                 ? PHP_INT_MAX
-                : min(array_map(static fn (string $protected): float => abs(Carbon::parse($date)->diffInDays(Carbon::parse($protected))), $protectedOffsets));
+                : min(array_map(static fn (string $protected): int => self::daysApart($date, $protected), $protectedOffsets));
         }
         usort($qualityDates, static fn (string $left, string $right): int =>
             ($recoveryByDate[$right] <=> $recoveryByDate[$left]) ?: strcmp($right, $left));
@@ -603,7 +618,7 @@ final readonly class Periodizer
         foreach ($qualityDates as $date) {
             $tooCloseToHardDay = array_any(
                 [...$protectedOffsets, ...$keptHardOffsets],
-                static fn (string $hardDate): bool => abs(Carbon::parse($date)->diffInDays(Carbon::parse($hardDate))) < 2,
+                static fn (string $hardDate): bool => self::daysApart($date, $hardDate) < 2,
             );
             if ($keptQualityCount < $qualityLimit && ! $tooCloseToHardDay) {
                 $keptQualityCount++;
@@ -626,6 +641,13 @@ final readonly class Periodizer
         }
 
         return $rows;
+    }
+
+    private static function daysApart(string $date, string $other): int
+    {
+        $utc = new DateTimeZone('UTC');
+
+        return intdiv(abs(new DateTimeImmutable($date, $utc)->getTimestamp() - new DateTimeImmutable($other, $utc)->getTimestamp()), 86_400);
     }
 
     /**

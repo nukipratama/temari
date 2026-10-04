@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Actions\Run\Plan\ResolvePlannedSessionsAction;
 use App\Enums\AdaptationReason;
 use App\Enums\PaceBand;
 use App\Enums\PlanPhase;
@@ -27,9 +28,11 @@ use App\Services\Run\Plan\PlanInputsGatherer;
 use App\Services\Run\Plan\SeasonService;
 use App\Services\Run\Plan\TrainingBaseline;
 use App\Services\Run\Plan\PlanAdapter;
+use App\Services\Run\Story\PastYouTrendBuilder;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 uses(RefreshDatabase::class);
@@ -1029,3 +1032,54 @@ it('plans the week around the day an eased tempo became, not the tempo it abando
     'eased tempo run easy' => [true, true],
     'tempo run without hard-minute measurement' => [false, false],
 ]);
+
+it('regenerates the whole horizon with a constant number of queries', function (): void {
+    $user = User::factory()->create();
+    seedPeriodizerBaseline($user);
+    $this->periodizer->regenerate($user, Carbon::today());
+
+    DB::flushQueryLog();
+    DB::enableQueryLog();
+    $this->periodizer->regenerate($user, Carbon::today());
+    $queries = array_column(DB::getQueryLog(), 'query');
+    DB::disableQueryLog();
+
+    $plannedSessionInserts = array_filter($queries, fn (string $sql): bool => str_starts_with(strtolower($sql), 'insert into `planned_sessions`'));
+    expect(PlannedSession::query()->where('user_id', $user->id)->count())->toBe(Periodizer::HORIZON_WEEKS * 7)
+        ->and($plannedSessionInserts)->toHaveCount(1)
+        ->and(count($queries))->toBeLessThanOrEqual(22);
+});
+
+it('leaves settled sessions untouched by a batched regeneration', function (): void {
+    $user = User::factory()->create();
+    seedPeriodizerBaseline($user);
+    $this->periodizer->regenerate($user, Carbon::today());
+    $sessionOn = fn (int $days): PlannedSession => PlannedSession::query()->where('user_id', $user->id)->whereDate('date', Carbon::today()->addDays($days))->firstOrFail();
+    $sessionOn(0)->update(['status' => PlannedSessionStatus::Done, 'compliance_score' => 96, 'distance_score' => 98, 'intent_verdict' => 'hit', 'intent_evidence' => ['effective_type' => 'easy']]);
+    $sessionOn(2)->update(['skipped' => true]);
+    $sessionOn(9)->update(['status' => PlannedSessionStatus::Partial, 'compliance_score' => 70]);
+    $settledAttributes = fn (): array => collect([0, 2, 9])->mapWithKeys(fn (int $days): array => [$days => $sessionOn($days)->getAttributes()])->all();
+    $settled = $settledAttributes();
+    $replaced = $sessionOn(1)->id;
+    $this->travel(5)->minutes();
+
+    $this->periodizer->regenerate($user, Carbon::today());
+
+    expect($settledAttributes())->toBe($settled)
+        ->and($sessionOn(1)->id)->not->toBe($replaced)
+        ->and(PlannedSession::query()->where('user_id', $user->id)->count())->toBe(Periodizer::HORIZON_WEEKS * 7);
+});
+
+it('drops cached plan reads after a batched regeneration', function (): void {
+    $user = User::factory()->create();
+    seedPeriodizerBaseline($user);
+    $resolve = app(ResolvePlannedSessionsAction::class);
+    $today = Carbon::today()->toDateString();
+    expect($resolve($user->id, $today, $today))->toBeEmpty();
+    Cache::put(PastYouTrendBuilder::cacheKey($user->id, $today), ['stale'], 3600);
+
+    $this->periodizer->regenerate($user, Carbon::today());
+
+    expect($resolve($user->id, $today, $today))->toHaveCount(1)
+        ->and(Cache::has(PastYouTrendBuilder::cacheKey($user->id, $today)))->toBeFalse();
+});
