@@ -67,8 +67,7 @@ export default function FlagWrong({
                     }}
                     className={cn(
                         box,
-                        'focus-ring pressable transition-colors hover:text-foreground',
-                        'text-text-3',
+                        'focus-ring pressable text-text-3 transition-colors hover:text-foreground',
                     )}
                 >
                     <Icon icon={Flag} className="size-5" aria-hidden />

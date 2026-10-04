@@ -462,8 +462,8 @@ Padding names its role (`panel` / `card` / `hero` / `none`, default `card`), nev
 that "just needs to be a bit different" at one call site is the drift this collapse removed —
 override with `className` if a one-off is genuinely required, so it stays visible in review.
 
-**Every chip is `Chip` or `MoodChip`.** `chipVariants` carries six tones: `neutral`, `horizon`,
-`sky`, `onSky`, and the two status tones `positive` (leaf at 18%) and `warning` (ember at 18%),
+**Every chip is `Chip` or `MoodChip`.** `chipVariants` carries four tones: `neutral`, `horizon`,
+and the two status tones `positive` (leaf at 18%) and `warning` (ember at 18%),
 matching `horizon`'s 18% tint. Every tinted tone is registered in
 [grounds.json](../resources/brand/grounds.json) over `paper`, because a chip can land on any surface,
 and `DesignTokenContrastTest` fails if one is narrowed to a single mount. `positive` and `warning`
