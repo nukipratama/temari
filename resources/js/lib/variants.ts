@@ -69,7 +69,7 @@ export const chipVariants = cva(
 
 /**
  * Icon button — square/round hit target for a bare icon (close ×, nav
- * arrows, modal dismiss). `onSky` flips it to the cream-on-dark treatment.
+ * arrows, modal dismiss).
  */
 export const iconButtonVariants = cva(
     'pressable inline-flex min-h-11 min-w-11 items-center justify-center rounded-full transition text-text-2 hover:bg-muted hover:text-foreground focus-ring',
@@ -79,14 +79,9 @@ export const iconButtonVariants = cva(
                 sm: 'h-10 w-10',
                 md: 'h-10 w-10',
             },
-            onSky: {
-                true: 'text-cream/80 hover:bg-cream/10 hover:text-cream',
-                false: '',
-            },
         },
         defaultVariants: {
             size: 'sm',
-            onSky: false,
         },
     },
 );
