@@ -67,3 +67,13 @@ it('keeps every file the Dockerfile copies from the build context in the allow-l
     expect($sources)->not->toBeEmpty()
         ->and($missing->values()->all())->toBe([]);
 })->group('structure');
+
+it('loads and lists the image only when an image input changed, never on a main push', function (): void {
+    $workflow = Yaml::parseFile(base_path('.github/workflows/ci.yml'));
+    $steps = collect($workflow['jobs']['build']['steps'])->keyBy('name');
+
+    expect($steps['Load the runtime image locally']['if'])->toBe("needs.changes.outputs.image == 'true'")
+        ->and($steps['Assert the shipped app entries']['if'])->toBe("needs.changes.outputs.image == 'true'")
+        ->and($workflow['jobs']['changes']['outputs']['image'])->toBe('${{ steps.filter.outputs.image }}')
+        ->and(collect($workflow['jobs']['changes']['steps'])->firstWhere('id', 'filter')['run'])->toContain('echo "image=false"');
+})->group('structure');
