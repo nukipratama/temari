@@ -9,6 +9,7 @@ use App\Http\Requests\DestroyPushSubscriptionRequest;
 use App\Http\Requests\StorePushSubscriptionRequest;
 use App\Models\User;
 use App\Support\SharedPropCacheKey;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\Response;
 
 /**
@@ -24,11 +25,18 @@ class PushSubscriptionController extends Controller
     {
         /** @var User $user */
         $user = $request->user();
-        $user->updatePushSubscription(
+        $save = fn () => $user->updatePushSubscription(
             (string) $request->input('endpoint'),
             (string) $request->input('keys.p256dh'),
             (string) $request->input('keys.auth'),
         );
+
+        try {
+            $save();
+        } catch (UniqueConstraintViolationException) {
+            // A simultaneous request for the same device inserted the row first; this pass updates it.
+            $save();
+        }
 
         $previousEndpoint = $request->previousEndpoint();
         if ($previousEndpoint !== null) {

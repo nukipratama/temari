@@ -120,6 +120,16 @@ describe('subscribe', () => {
         await expect(subscribe('aGVsbG8')).rejects.toThrow('permission-denied');
         expect(fetch).not.toHaveBeenCalled();
     });
+
+    it('sends one request for a double tap and a fresh one afterwards', async () => {
+        stubServiceWorker();
+
+        await Promise.all([subscribe('aGVsbG8'), subscribe('aGVsbG8')]);
+        expect(fetch).toHaveBeenCalledTimes(1);
+
+        await subscribe('aGVsbG8');
+        expect(fetch).toHaveBeenCalledTimes(2);
+    });
 });
 
 describe('unsubscribe', () => {

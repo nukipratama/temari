@@ -3,6 +3,8 @@
 declare(strict_types=1);
 
 use App\Models\User;
+use Illuminate\Support\Facades\DB;
+use NotificationChannels\WebPush\PushSubscription;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
@@ -121,4 +123,29 @@ it('rejects an over-long previous endpoint', function (): void {
     $this->actingAs($user)
         ->postJson('/profile/push', [...pushPayload(), 'previous_endpoint' => 'https://web.push.apple.com/'.str_repeat('a', 500)])
         ->assertStatus(422);
+});
+
+it('answers a subscribe that loses the insert race to a duplicate request with the one saved row', function (): void {
+    $user = User::factory()->create();
+    $endpoint = 'https://fcm.googleapis.com/fcm/send/abc';
+    $raced = false;
+
+    PushSubscription::creating(function () use (&$raced, $user, $endpoint): void {
+        if ($raced) {
+            return;
+        }
+        $raced = true;
+        DB::table('push_subscriptions')->insert([
+            'subscribable_type' => $user->getMorphClass(),
+            'subscribable_id' => $user->id,
+            'endpoint' => $endpoint,
+            'public_key' => 'p256dh-key',
+            'auth_token' => 'auth-token',
+        ]);
+    });
+
+    $this->actingAs($user)->postJson('/profile/push', pushPayload($endpoint))->assertNoContent();
+
+    $this->assertDatabaseCount('push_subscriptions', 1);
+    $this->assertDatabaseHas('push_subscriptions', ['subscribable_id' => $user->id, 'endpoint' => $endpoint]);
 });
