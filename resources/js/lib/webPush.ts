@@ -1,5 +1,7 @@
 import { csrfToken } from '@/lib/http';
 
+const SAVED_ENDPOINT_KEY = 'temari-push-endpoint';
+
 /** The browser can do web push at all (all iOS browsers gate this behind a Home-Screen install). */
 export function isPushSupported(): boolean {
     return (
@@ -73,11 +75,15 @@ export async function subscribe(publicKey: string): Promise<void> {
         applicationServerKey: urlBase64ToUint8Array(publicKey) as BufferSource,
     });
 
-    const response = await send('/profile/push', 'POST', subscription.toJSON());
+    const response = await send('/profile/push', 'POST', {
+        ...subscription.toJSON(),
+        previous_endpoint: savedEndpoint() ?? undefined,
+    });
     if (!response.ok) {
         await subscription.unsubscribe();
         throw new Error(`subscribe failed (${response.status})`);
     }
+    rememberEndpoint(subscription.endpoint);
 }
 
 /** Drop the local subscription and remove it server-side. */
@@ -89,6 +95,32 @@ export async function unsubscribe(): Promise<void> {
     const { endpoint } = subscription;
     await subscription.unsubscribe();
     await send('/profile/push', 'DELETE', { endpoint });
+    rememberEndpoint(null);
+}
+
+/**
+ * The endpoint this install last saved server-side. A re-subscribe sends it so
+ * the server drops the subscription it replaces: iOS revokes a subscription
+ * without telling the server, and its push service keeps accepting sends to it.
+ */
+function savedEndpoint(): string | null {
+    try {
+        return localStorage.getItem(SAVED_ENDPOINT_KEY);
+    } catch {
+        return null;
+    }
+}
+
+function rememberEndpoint(endpoint: string | null): void {
+    try {
+        if (endpoint === null) {
+            localStorage.removeItem(SAVED_ENDPOINT_KEY);
+        } else {
+            localStorage.setItem(SAVED_ENDPOINT_KEY, endpoint);
+        }
+    } catch {
+        return;
+    }
 }
 
 /** Decode a base64url VAPID public key into the Uint8Array PushManager wants. */

@@ -52,7 +52,15 @@ class StorePushSubscriptionRequest extends FormRequest
             'keys' => ['required', 'array'],
             'keys.p256dh' => ['required', 'string', 'max:255'],
             'keys.auth' => ['required', 'string', 'max:255'],
+            'previous_endpoint' => ['nullable', 'string', 'max:500'],
         ];
+    }
+
+    public function previousEndpoint(): ?string
+    {
+        $previous = $this->validated('previous_endpoint');
+
+        return is_string($previous) && $previous !== $this->validated('endpoint') ? $previous : null;
     }
 
     private function allowedPushEndpoint(): Closure

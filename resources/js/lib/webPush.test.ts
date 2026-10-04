@@ -146,3 +146,70 @@ describe('currentSubscription', () => {
         expect(await currentSubscription()).toBe(fakeSubscription);
     });
 });
+
+describe('replacing the subscription this device saved before', () => {
+    afterEach(() => localStorage.clear());
+
+    function postedBody(): Record<string, unknown> {
+        const [, init] = (fetch as ReturnType<typeof vi.fn>).mock.calls[0] as [
+            string,
+            RequestInit,
+        ];
+        return JSON.parse(init.body as string) as Record<string, unknown>;
+    }
+
+    it('sends no previous endpoint on a first subscribe', async () => {
+        stubServiceWorker();
+
+        await subscribe('aGVsbG8');
+
+        expect(postedBody()).not.toHaveProperty('previous_endpoint');
+    });
+
+    it('sends the endpoint it saved before so the server can drop it', async () => {
+        stubServiceWorker();
+        localStorage.setItem(
+            'temari-push-endpoint',
+            'https://web.push.apple.com/revoked',
+        );
+
+        await subscribe('aGVsbG8');
+
+        expect(postedBody().previous_endpoint).toBe(
+            'https://web.push.apple.com/revoked',
+        );
+    });
+
+    it('remembers the endpoint once the server stored it', async () => {
+        stubServiceWorker();
+
+        await subscribe('aGVsbG8');
+
+        expect(localStorage.getItem('temari-push-endpoint')).toBe(
+            fakeSubscription.endpoint,
+        );
+    });
+
+    it('still subscribes when storage is unavailable', async () => {
+        stubServiceWorker();
+        const blocked = () => {
+            throw new Error('SecurityError');
+        };
+        vi.spyOn(Storage.prototype, 'getItem').mockImplementation(blocked);
+        vi.spyOn(Storage.prototype, 'setItem').mockImplementation(blocked);
+
+        await expect(subscribe('aGVsbG8')).resolves.toBeUndefined();
+        expect(postedBody()).not.toHaveProperty('previous_endpoint');
+
+        vi.restoreAllMocks();
+    });
+
+    it('forgets the endpoint on unsubscribe', async () => {
+        stubServiceWorker();
+        localStorage.setItem('temari-push-endpoint', fakeSubscription.endpoint);
+
+        await unsubscribe();
+
+        expect(localStorage.getItem('temari-push-endpoint')).toBeNull();
+    });
+});
