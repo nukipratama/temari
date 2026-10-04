@@ -1,8 +1,6 @@
-import { act, render, screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { afterEach, describe, expect, it, vi } from 'vitest';
-
-import { setMockPage } from '@/test/setup';
+import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('react-leaflet', () => ({
     MapContainer: ({
@@ -47,15 +45,7 @@ vi.mock('leaflet/dist/leaflet.css', () => ({}));
 
 import RouteMap from './RouteMap';
 
-function setTheme(theme: 'light' | 'dark') {
-    document.documentElement.dataset.theme = theme;
-}
-
 describe('RouteMap', () => {
-    afterEach(() => {
-        delete document.documentElement.dataset.theme;
-    });
-
     it('renders a MapContainer + Polyline + TileLayer when the polyline decodes to ≥2 points', () => {
         render(<RouteMap polyline="good" />);
         expect(screen.getByTestId('map-container')).toBeInTheDocument();
@@ -108,9 +98,7 @@ describe('RouteMap', () => {
         ).not.toBeInTheDocument();
     });
 
-    it('falls back to plain OSM tiles when no CARTO key is configured', () => {
-        setTheme('light');
-        setMockPage({ cartoApiKey: '' });
+    it('renders plain OSM tiles with the OSM attribution', () => {
         render(<RouteMap polyline="good" />);
         const tile = screen.getByTestId('tile-layer');
         expect(tile.getAttribute('data-url')).toBe(
@@ -118,54 +106,6 @@ describe('RouteMap', () => {
         );
         expect(tile.getAttribute('data-attribution')).toContain(
             'OpenStreetMap',
-        );
-        expect(tile.getAttribute('data-attribution')).not.toContain('CARTO');
-    });
-
-    it('uses the CARTO Voyager tiles on the light ground when a key is configured', () => {
-        setTheme('light');
-        setMockPage({ cartoApiKey: 'test-key' });
-        render(<RouteMap polyline="good" />);
-        const tile = screen.getByTestId('tile-layer');
-        expect(tile.getAttribute('data-url')).toBe(
-            'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png?key=test-key',
-        );
-        expect(tile.getAttribute('data-attribution')).toContain('CARTO');
-        expect(tile.getAttribute('data-attribution')).toContain(
-            'OpenStreetMap',
-        );
-    });
-
-    it('uses the CARTO Dark Matter tiles on the dark ground when a key is configured', () => {
-        setTheme('dark');
-        setMockPage({ cartoApiKey: 'test-key' });
-        render(<RouteMap polyline="good" />);
-        const tile = screen.getByTestId('tile-layer');
-        expect(tile.getAttribute('data-url')).toBe(
-            'https://{s}.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}.png?key=test-key',
-        );
-        expect(tile.getAttribute('data-attribution')).toContain('CARTO');
-        expect(tile.getAttribute('data-attribution')).toContain(
-            'OpenStreetMap',
-        );
-    });
-
-    it('flips the CARTO style live when the ground changes while mounted', async () => {
-        setTheme('light');
-        setMockPage({ cartoApiKey: 'test-key' });
-        render(<RouteMap polyline="good" />);
-        expect(screen.getByTestId('tile-layer').getAttribute('data-url')).toBe(
-            'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png?key=test-key',
-        );
-
-        act(() => setTheme('dark'));
-
-        await vi.waitFor(() =>
-            expect(
-                screen.getByTestId('tile-layer').getAttribute('data-url'),
-            ).toBe(
-                'https://{s}.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}.png?key=test-key',
-            ),
         );
     });
 });

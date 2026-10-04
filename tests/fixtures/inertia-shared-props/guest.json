@@ -5,7 +5,6 @@
     "aiPaused",
     "auth",
     "auth.user",
-    "cartoApiKey",
     "demoLoginEnabled",
     "errors",
     "flash",
