@@ -7,13 +7,8 @@ namespace App\Providers;
 use App\Actions\Feedback\ResolveFlaggedSubjectsAction;
 use App\Actions\Run\Metrics\ResolveRunBaselineAction;
 use App\Actions\Run\Plan\ResolveActiveRaceAction;
-use App\Events\ActivityIngested;
-use App\Events\TrendSnapshotsSettled;
 use App\Http\Middleware\EnsureDevtoolsAccess;
-use App\Listeners\DispatchPostRunAnalysis;
-use App\Listeners\RefreshTrendReadOnSnapshotsSettled;
 use App\Listeners\RecordScheduledTaskRun;
-use App\Listeners\VerifyDependencies;
 use App\Models\User;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\NarratedAnalysis;
@@ -27,7 +22,6 @@ use App\Support\Config\AppConfigMaintenanceMode;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Console\Events\ScheduledTaskFailed;
 use Illuminate\Console\Events\ScheduledTaskFinished;
-use Illuminate\Foundation\Events\DiagnosingHealth;
 use Illuminate\Foundation\MaintenanceModeManager;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -129,13 +123,6 @@ class AppServiceProvider extends ServiceProvider
         }
 
         Event::listen(SocialiteWasCalled::class, StravaExtendSocialite::class);
-
-        // Deepen the `/up` health route to fail when MySQL or Redis is unreachable.
-        Event::listen(DiagnosingHealth::class, VerifyDependencies::class);
-
-        // Post-ingest AI analysis fan-out runs in its own queued job.
-        Event::listen(ActivityIngested::class, DispatchPostRunAnalysis::class);
-        Event::listen(TrendSnapshotsSettled::class, RefreshTrendReadOnSnapshotsSettled::class);
 
         // Scheduler heartbeat: record every command's last run for the Pulse card.
         Event::listen(ScheduledTaskFinished::class, [RecordScheduledTaskRun::class, 'finished']);
