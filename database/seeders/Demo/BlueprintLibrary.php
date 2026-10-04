@@ -15,7 +15,7 @@ class BlueprintLibrary
 {
     private const int FILLER_SEED = 4242;
 
-    private const int FILLER_RATE_PCT = 65;
+    private const int FILLER_RATE_PCT = 30;
 
     // Disjoint ranges on a 0–99 roll: filler is treadmill OR phone-only OR full.
     private const int TREADMILL_BUCKET_HI = 8;

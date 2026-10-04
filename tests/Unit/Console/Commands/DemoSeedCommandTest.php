@@ -23,6 +23,7 @@ use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
 use App\Services\AI\RecapPeriod;
 use App\Services\AI\ServedBy;
+use App\Services\Run\FeedFilters;
 use App\Services\Run\Plan\Periodizer;
 use App\Services\Run\Story\Card\CardFacts;
 use App\Services\Run\Story\Card\RunForm;
@@ -259,11 +260,11 @@ it('seeds a complete, login-ready demo dataset', function (): void {
     $user = User::query()->where('email', DemoRunSeeder::DEMO_USER_EMAIL)->firstOrFail();
 
     // Core row counts — 35 scripted (one moved off today to D-2, which now
-    // excludes a filler that used to land there) + RNG fillers @ 65% over
+    // excludes a filler that used to land there) + RNG fillers @ 30% over
     // ~180d + 1 D-0 cold-start run; exact match fails loud on drift.
     $activityIds = Activity::query()->where('user_id', $user->id)->pluck('id');
     $activityCount = $activityIds->count();
-    expect($activityCount)->toBe(126)
+    expect($activityCount)->toBe(81)
         ->and(RunCard::query()->whereIn('activity_id', $activityIds)->count())
         ->toBe($activityCount)
         ->and(StoryLine::query()->where('user_id', $user->id)->where('kind', StoryLine::KIND_POST_RUN)->count())
@@ -272,6 +273,14 @@ it('seeds a complete, login-ready demo dataset', function (): void {
         ->toBe(1)
         ->and(WeeklySnapshot::query()->where('user_id', $user->id)->count())->toBe(27)
         ->and(PersonalRecord::query()->where('user_id', $user->id)->count())->toBe(11);
+
+    // Every History range chip has runs, and each wider chip reaches further back.
+    $runsInRange = fn (int $days): int => ActivityDetail::query()
+        ->whereIn('activity_id', $activityIds)
+        ->where('start_date_local', '>=', Carbon::today()->subDays($days - 1))
+        ->count();
+    expect([...array_map($runsInRange, FeedFilters::RANGE_DAYS), FeedFilters::RANGE_ALL => $activityCount])
+        ->toBe(['8w' => 31, '12w' => 44, '6m' => 80, '1y' => 81, FeedFilters::RANGE_ALL => 81]);
 
     // Rarity ladder — the seeded dataset spans up to legendary.
     $cardQuery = RunCard::query()->whereHas('activity', fn ($q) => $q->where('user_id', $user->id));
