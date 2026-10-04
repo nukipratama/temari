@@ -226,7 +226,7 @@ jobs:
             package-lock.json package.json public resources routes storage tsconfig.json
             vendor vite.config.ts
         run: |
-          expected=$(printf '%s\n' $EXPECTED_ENTRIES | sort)
+          expected=$(tr -s ' ' '\n' <<< "$EXPECTED_ENTRIES" | sort)
           actual=$(docker run --rm --entrypoint ls temari-app:contents -A /var/www/html | sort)
           if [ "$expected" != "$actual" ]; then
             echo "::error::/var/www/html differs from the expected entries. Change the .dockerignore allow-list and EXPECTED_ENTRIES together."
