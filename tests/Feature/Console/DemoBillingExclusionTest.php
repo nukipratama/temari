@@ -61,6 +61,7 @@ const NON_BILLING = [
     'analytics:prune' => 'deletes rows, touches no user',
     'model:prune' => 'deletes expired Telegram dedupe and token-use rows, touches no user',
     'notifications:recover-deliveries' => 'updates delivery state only, makes no provider or LLM calls',
+    'notifications:prune-push-subscriptions' => 'deletes unseen push subscriptions, makes no provider or LLM calls',
     'geo:backfill-locations' => 'free Nominatim lookup, no LLM and no Strava call',
     'weather:correct-forecast' => 'free Open-Meteo lookup, no LLM and no Strava call',
     'weather:backfill' => 'free Open-Meteo lookup, no LLM and no Strava call',

@@ -1,8 +1,12 @@
+import type { SharedProps } from '@/types/inertia';
+
 import { csrfToken } from '@/lib/http';
 
 const SAVED_ENDPOINT_KEY = 'temari-push-endpoint';
+const SEEN_ON_KEY = 'temari-push-seen-on';
 
 let inFlightSubscribe: Promise<void> | null = null;
+let inFlightSeen: Promise<void> | null = null;
 
 /** The browser can do web push at all (all iOS browsers gate this behind a Home-Screen install). */
 export function isPushSupported(): boolean {
@@ -85,15 +89,64 @@ async function subscribeOnce(publicKey: string): Promise<void> {
         applicationServerKey: urlBase64ToUint8Array(publicKey) as BufferSource,
     });
 
-    const response = await send('/profile/push', 'POST', {
-        ...subscription.toJSON(),
-        previous_endpoint: savedEndpoint() ?? undefined,
-    });
+    const response = await save(subscription);
     if (!response.ok) {
         await subscription.unsubscribe();
         throw new Error(`subscribe failed (${response.status})`);
     }
-    rememberEndpoint(subscription.endpoint);
+}
+
+async function save(subscription: PushSubscription): Promise<Response> {
+    const response = await send('/profile/push', 'POST', {
+        ...subscription.toJSON(),
+        previous_endpoint: savedEndpoint() ?? undefined,
+    });
+    if (response.ok) {
+        rememberEndpoint(subscription.endpoint);
+    }
+
+    return response;
+}
+
+/**
+ * Tell the server, at most once a day, that a signed-in athlete still has this
+ * app installed, so the daily prune keeps its subscription. A 404 means the
+ * server already pruned it, so the device saves the subscription again.
+ */
+export function reportSeen(props: Record<string, unknown>): Promise<void> {
+    const user = (props.auth as SharedProps['auth'] | undefined)?.user;
+    if (!user || user.is_demo || readStorage(SEEN_ON_KEY) === today()) {
+        return Promise.resolve();
+    }
+
+    inFlightSeen ??= reportSeenOnce()
+        .catch(() => undefined)
+        .finally(() => {
+            inFlightSeen = null;
+        });
+
+    return inFlightSeen;
+}
+
+async function reportSeenOnce(): Promise<void> {
+    const subscription = await currentSubscription();
+    if (subscription === null) {
+        return;
+    }
+
+    let response = await send('/profile/push/seen', 'POST', {
+        endpoint: subscription.endpoint,
+    });
+    if (response.status === 404) {
+        response = await save(subscription);
+    }
+    if (response.ok) {
+        writeStorage(SEEN_ON_KEY, today());
+    }
+}
+
+function today(): string {
+    return new Date().toDateString();
 }
 
 /** Drop the local subscription and remove it server-side. */
@@ -114,19 +167,27 @@ export async function unsubscribe(): Promise<void> {
  * without telling the server, and its push service keeps accepting sends to it.
  */
 function savedEndpoint(): string | null {
+    return readStorage(SAVED_ENDPOINT_KEY);
+}
+
+function rememberEndpoint(endpoint: string | null): void {
+    writeStorage(SAVED_ENDPOINT_KEY, endpoint);
+}
+
+function readStorage(key: string): string | null {
     try {
-        return localStorage.getItem(SAVED_ENDPOINT_KEY);
+        return localStorage.getItem(key);
     } catch {
         return null;
     }
 }
 
-function rememberEndpoint(endpoint: string | null): void {
+function writeStorage(key: string, value: string | null): void {
     try {
-        if (endpoint === null) {
-            localStorage.removeItem(SAVED_ENDPOINT_KEY);
+        if (value === null) {
+            localStorage.removeItem(key);
         } else {
-            localStorage.setItem(SAVED_ENDPOINT_KEY, endpoint);
+            localStorage.setItem(key, value);
         }
     } catch {
         return;

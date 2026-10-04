@@ -19,6 +19,7 @@ class EnsureOnboarded
     private const array ALLOWED_ROUTE_NAMES = [
         'push.subscribe',
         'push.unsubscribe',
+        'push.seen',
     ];
 
     public function handle(Request $request, Closure $next): Response

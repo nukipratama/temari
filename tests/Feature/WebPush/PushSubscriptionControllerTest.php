@@ -149,3 +149,55 @@ it('answers a subscribe that loses the insert race to a duplicate request with t
     $this->assertDatabaseCount('push_subscriptions', 1);
     $this->assertDatabaseHas('push_subscriptions', ['subscribable_id' => $user->id, 'endpoint' => $endpoint]);
 });
+
+it('stamps the subscription as seen when the device saves it again', function (): void {
+    $this->freezeTime();
+    $user = User::factory()->create();
+    $user->updatePushSubscription('https://web.push.apple.com/iphone', 'k', 't')
+        ->forceFill(['last_seen_at' => now()->subDays(30)])
+        ->save();
+
+    $this->actingAs($user)->postJson('/profile/push', pushPayload('https://web.push.apple.com/iphone'))->assertNoContent();
+
+    expect($user->pushSubscriptions()->value('last_seen_at'))->toBe(now()->toDateTimeString());
+});
+
+it('stamps the reporting device as seen and leaves the others alone', function (): void {
+    $this->freezeTime();
+    $user = User::factory()->create();
+    foreach (['iphone', 'ipad'] as $device) {
+        $user->updatePushSubscription("https://web.push.apple.com/{$device}", 'k', 't')
+            ->forceFill(['last_seen_at' => now()->subDays(30)])
+            ->save();
+    }
+
+    $this->actingAs($user)->postJson('/profile/push/seen', ['endpoint' => 'https://web.push.apple.com/iphone'])->assertNoContent();
+
+    expect($user->pushSubscriptions()->orderBy('endpoint')->pluck('last_seen_at', 'endpoint')->all())->toBe([
+        'https://web.push.apple.com/ipad' => now()->subDays(30)->toDateTimeString(),
+        'https://web.push.apple.com/iphone' => now()->toDateTimeString(),
+    ]);
+});
+
+it('answers 404 for an endpoint the server no longer has so the device saves it again', function (): void {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)->postJson('/profile/push/seen', ['endpoint' => 'https://web.push.apple.com/pruned'])->assertNotFound();
+});
+
+it("never stamps another user's subscription as seen", function (): void {
+    $this->freezeTime();
+    $other = User::factory()->create();
+    $other->updatePushSubscription('https://web.push.apple.com/someone-else', 'k', 't')
+        ->forceFill(['last_seen_at' => now()->subDays(30)])
+        ->save();
+    $user = User::factory()->create();
+
+    $this->actingAs($user)->postJson('/profile/push/seen', ['endpoint' => 'https://web.push.apple.com/someone-else'])->assertNotFound();
+
+    expect($other->pushSubscriptions()->value('last_seen_at'))->toBe(now()->subDays(30)->toDateTimeString());
+});
+
+it('requires authentication to report a device as seen', function (): void {
+    $this->postJson('/profile/push/seen', ['endpoint' => 'https://web.push.apple.com/iphone'])->assertUnauthorized();
+});

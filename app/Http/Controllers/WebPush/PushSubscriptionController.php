@@ -6,6 +6,7 @@ namespace App\Http\Controllers\WebPush;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\DestroyPushSubscriptionRequest;
+use App\Http\Requests\SeenPushSubscriptionRequest;
 use App\Http\Requests\StorePushSubscriptionRequest;
 use App\Models\User;
 use App\Support\SharedPropCacheKey;
@@ -32,11 +33,12 @@ class PushSubscriptionController extends Controller
         );
 
         try {
-            $save();
+            $subscription = $save();
         } catch (UniqueConstraintViolationException) {
             // A simultaneous request for the same device inserted the row first; this pass updates it.
-            $save();
+            $subscription = $save();
         }
+        $subscription->forceFill(['last_seen_at' => now()])->save();
 
         $previousEndpoint = $request->previousEndpoint();
         if ($previousEndpoint !== null) {
@@ -55,6 +57,24 @@ class PushSubscriptionController extends Controller
         $user->deletePushSubscription($request->endpoint());
 
         SharedPropCacheKey::WebPushSubscribed->forget($user->id);
+
+        return response()->noContent();
+    }
+
+    /**
+     * The installed app reports its endpoint at most once a day; a 404 tells it
+     * the server no longer has this device, so it saves the subscription again.
+     */
+    public function seen(SeenPushSubscriptionRequest $request): Response
+    {
+        /** @var User $user */
+        $user = $request->user();
+        $subscription = $user->pushSubscriptions()->where('endpoint', $request->endpoint())->first();
+        if ($subscription === null) {
+            return response()->noContent(Response::HTTP_NOT_FOUND);
+        }
+
+        $subscription->forceFill(['last_seen_at' => now()])->save();
 
         return response()->noContent();
     }

@@ -5,6 +5,7 @@ import {
     isIosNonSafari,
     isPushSupported,
     isStandalone,
+    reportSeen,
     subscribe,
     unsubscribe,
     urlBase64ToUint8Array,
@@ -221,5 +222,104 @@ describe('replacing the subscription this device saved before', () => {
         await unsubscribe();
 
         expect(localStorage.getItem('temari-push-endpoint')).toBeNull();
+    });
+});
+
+describe('reportSeen', () => {
+    afterEach(() => localStorage.clear());
+
+    const athlete = { auth: { user: { is_demo: false } } };
+
+    function fetchCalls(): [string, RequestInit][] {
+        return (fetch as ReturnType<typeof vi.fn>).mock.calls as [
+            string,
+            RequestInit,
+        ][];
+    }
+
+    it('reports this device endpoint once a day', async () => {
+        stubServiceWorker();
+
+        await reportSeen(athlete);
+        await reportSeen(athlete);
+
+        expect(fetchCalls()).toHaveLength(1);
+        const [url, init] = fetchCalls()[0];
+        expect(url).toBe('/profile/push/seen');
+        expect(JSON.parse(init.body as string)).toEqual({
+            endpoint: fakeSubscription.endpoint,
+        });
+    });
+
+    it('sends one request when two visits race', async () => {
+        stubServiceWorker();
+
+        await Promise.all([reportSeen(athlete), reportSeen(athlete)]);
+
+        expect(fetchCalls()).toHaveLength(1);
+    });
+
+    it('saves the subscription again when the server no longer has it', async () => {
+        stubServiceWorker();
+        (fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+            ok: false,
+            status: 404,
+        });
+
+        await reportSeen(athlete);
+
+        expect(fetchCalls().map(([url]) => url)).toEqual([
+            '/profile/push/seen',
+            '/profile/push',
+        ]);
+        expect(JSON.parse(fetchCalls()[1][1].body as string)).toMatchObject(
+            fakeSubscription.toJSON(),
+        );
+        expect(localStorage.getItem('temari-push-endpoint')).toBe(
+            fakeSubscription.endpoint,
+        );
+    });
+
+    it('tries again on the next visit when the report failed', async () => {
+        stubServiceWorker();
+        (fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+            ok: false,
+            status: 500,
+        });
+
+        await reportSeen(athlete);
+        await reportSeen(athlete);
+
+        expect(fetchCalls()).toHaveLength(2);
+    });
+
+    it('stays quiet when the request cannot reach the server', async () => {
+        stubServiceWorker();
+        (fetch as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
+            new TypeError('offline'),
+        );
+
+        await expect(reportSeen(athlete)).resolves.toBeUndefined();
+    });
+
+    it('sends nothing without a push subscription on this device', async () => {
+        stubServiceWorker();
+        fakeRegistration.pushManager.getSubscription.mockResolvedValueOnce(
+            null as never,
+        );
+
+        await reportSeen(athlete);
+
+        expect(fetch).not.toHaveBeenCalled();
+    });
+
+    it('sends nothing for a guest or the demo account', async () => {
+        stubServiceWorker();
+
+        await reportSeen({ auth: { user: null } });
+        await reportSeen({ auth: { user: { is_demo: true } } });
+        await reportSeen({});
+
+        expect(fetch).not.toHaveBeenCalled();
     });
 });
