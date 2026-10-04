@@ -264,7 +264,7 @@ it('routes infrastructure and server configuration to the checks that read them'
     expect(ciClassifyPaths([$path]))->toBe($checks);
 })->with([
     'Dockerfile' => ['Dockerfile', ciChecks(backend: true, docker: true)],
-    '.dockerignore' => ['.dockerignore', ciChecks(docker: true)],
+    '.dockerignore' => ['.dockerignore', ciChecks(docker: true, structure: true)],
     'docker/php.ini' => ['docker/php.ini', ciChecks(backend: true, docker: true)],
     'public/.htaccess' => ['public/.htaccess', ciChecks(backend: true, docker: true)],
     'compose.prod.yaml' => ['compose.prod.yaml', ciChecks(backend: true)],

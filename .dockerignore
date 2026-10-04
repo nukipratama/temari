@@ -1,52 +1,41 @@
-.git
-.github
-.githooks
-.gitignore
-.gitattributes
-.editorconfig
-.vscode
-.idea
+*
 
-.env
-.env.*
-!.env.example
+!app/
+!artisan
+!composer.json
+!composer.lock
+!config/
+!routes/
 
-node_modules
-vendor
-public/build
-public/hot
-
+!bootstrap/
 # Locally-generated, dev-context manifests (list dev-only providers like
 # laravel/boost) — must NOT leak into the prod image or package:discover fails
 # loading a class absent from the --no-dev vendor. Regenerated in the image.
 bootstrap/cache/*
 !bootstrap/cache/.gitignore
 
-storage/logs/*
-!storage/logs/.gitignore
-storage/framework/cache/*
-!storage/framework/cache/.gitignore
-storage/framework/sessions/*
-!storage/framework/sessions/.gitignore
-storage/framework/views/*
-!storage/framework/views/.gitignore
-storage/framework/testing/*
-!storage/framework/testing/.gitignore
+!database/
+database/factories
 
-tests
-phpunit.xml
-phpstan.neon
-rector.php
-pint.json
-boost.json
+!public/
+public/build
+public/hot
+public/storage
+public/fonts-manifest.dev.json
 
-README.md
-LICENSE
-*.md
+!resources/
 
-compose.yaml
-compose.prod.yaml
-docker-compose.override.yaml
+!storage/
+storage/**
+!storage/**/.gitignore
 
-Dockerfile
-.dockerignore
+!package.json
+!package-lock.json
+!vite.config.ts
+!tsconfig.json
+
+!docker/Caddyfile
+!docker/Caddyfile.dev
+!docker/php.ini
+!docker/php.dev.ini
+!docker/imagemagick-policy.xml

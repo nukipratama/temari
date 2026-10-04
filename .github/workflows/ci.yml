@@ -230,6 +230,31 @@ jobs:
           cache-to: ${{ github.event_name == 'push' && format('type=registry,ref={0}:buildcache,mode=max', env.APP_IMAGE) || '' }}
           provenance: false
 
+      - name: Load the runtime image locally
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: Dockerfile
+          platforms: linux/amd64
+          load: true
+          tags: temari-app:contents
+          provenance: false
+
+      - name: Assert the shipped app entries
+        env:
+          EXPECTED_ENTRIES: >-
+            app artisan bootstrap composer.json composer.lock config database docker
+            package-lock.json package.json public resources routes storage tsconfig.json
+            vendor vite.config.ts
+        run: |
+          expected=$(tr -s ' ' '\n' <<< "$EXPECTED_ENTRIES" | sort)
+          actual=$(docker run --rm --entrypoint ls temari-app:contents -A /var/www/html | sort)
+          if [ "$expected" != "$actual" ]; then
+            echo "::error::/var/www/html differs from the expected entries. Change the .dockerignore allow-list and EXPECTED_ENTRIES together."
+            diff <(echo "$expected") <(echo "$actual")
+            exit 1
+          fi
+
   deploy:
     name: Deploy
     needs: ci-gate
