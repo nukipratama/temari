@@ -13,7 +13,7 @@ declare(strict_types=1);
  *
  * Decides yes when a class was added or removed, or when sticking with the
  * old split (re-measured on the new timings) has its slowest shard more than
- * 10% over the mean and a fresh 4-shard split of the new timings would
+ * 10% over the mean and a fresh 3-shard split of the new timings would
  * actually improve on that.
  *
  * Usage: php scripts/compare-shards.php --old=<path> --new=<path> [--body-out=<path>]
@@ -21,7 +21,7 @@ declare(strict_types=1);
  * new_excess_pct, old_applied_excess_pct, summary.
  */
 
-const SHARD_TOTAL = 4;
+const SHARD_TOTAL = 3;
 const THRESHOLD_PCT = 10.0;
 
 /**

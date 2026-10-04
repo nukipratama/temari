@@ -26,12 +26,6 @@ jobs:
 
       - uses: ./.github/actions/setup-node
 
-      - name: Component/test 1:1 structure check
-        run: npx vitest run resources/js/test/structure.test.ts
-
-      - name: Raw Tailwind palette guard
-        run: npm run check:palette
-
       - name: Vitest
         run: |
           if [ "${{ github.event_name }}" = "pull_request" ]; then
@@ -60,27 +54,37 @@ jobs:
         if: github.event_name != 'pull_request' && matrix.shard == 1
         run: npm run check:chunks
 
-  coverage:
-    name: coverage (merged)
-    needs: tests
-    if: github.event_name == 'pull_request' && needs.tests.result == 'success'
+  gate:
+    name: gate
+    needs: [tests, static-analysis]
+    if: always()
     runs-on: ubuntu-26.04-arm
     steps:
+      - name: Require all frontend checks
+        run: |
+          [ "${{ needs.tests.result }}" = "success" ] || { echo "::error::frontend tests did not pass (${{ needs.tests.result }})"; exit 1; }
+          [ "${{ needs.static-analysis.result }}" = "success" ] || { echo "::error::frontend static analysis did not pass (${{ needs.static-analysis.result }})"; exit 1; }
+
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: github.event_name == 'pull_request'
 
       - uses: ./.github/actions/setup-node
+        if: github.event_name == 'pull_request'
 
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        if: github.event_name == 'pull_request'
         with:
           pattern: vitest-blob-*
           path: .vitest-reports
           merge-multiple: true
 
       - name: Merge shard reports and check coverage thresholds on the whole suite
+        id: merge
+        if: github.event_name == 'pull_request'
         run: npx vitest run --mergeReports=.vitest-reports --coverage
 
       - name: Vitest summary
-        if: always()
+        if: always() && steps.merge.outcome != 'skipped'
         run: |
           if [ -f coverage/coverage-summary.json ]; then
             {
@@ -94,9 +98,11 @@ jobs:
           fi
 
       - name: Build assets
+        if: github.event_name == 'pull_request'
         run: npm run build
 
       - name: Entry chunk guard (first-paint budget)
+        if: github.event_name == 'pull_request'
         run: npm run check:chunks
 
   static-analysis:
@@ -116,17 +122,10 @@ jobs:
       - name: Prettier (format check)
         run: npm run format:check
 
-  gate:
-    name: gate
-    needs: [tests, coverage, static-analysis]
-    if: always()
-    runs-on: ubuntu-26.04-arm
-    steps:
-      - name: Require all frontend checks
-        run: |
-          [ "${{ needs.tests.result }}" = "success" ] || { echo "::error::frontend tests did not pass (${{ needs.tests.result }})"; exit 1; }
-          [ "${{ needs.static-analysis.result }}" = "success" ] || { echo "::error::frontend static analysis did not pass (${{ needs.static-analysis.result }})"; exit 1; }
+      - name: Component/test 1:1 structure check
+        if: ${{ !cancelled() }}
+        run: npx vitest run resources/js/test/structure.test.ts
 
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            [ "${{ needs.coverage.result }}" = "success" ] || { echo "::error::frontend coverage merge did not pass (${{ needs.coverage.result }})"; exit 1; }
-          fi
+      - name: Raw Tailwind palette guard
+        if: ${{ !cancelled() }}
+        run: npm run check:palette
