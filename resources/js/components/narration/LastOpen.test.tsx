@@ -1,29 +1,46 @@
 import { render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { setMockPage } from '@/test/setup';
+
 import LastOpen from './LastOpen';
 
 describe('LastOpen', () => {
     beforeEach(() => {
         vi.useFakeTimers();
         vi.setSystemTime(new Date('2026-09-30T10:00:00Z'));
+        setMockPage({ today: '2026-09-30' });
     });
 
     afterEach(() => {
         vi.useRealTimers();
     });
 
-    it('shows how long ago an active athlete opened the app, with no away badge', () => {
+    it('shows the last active day of an active athlete, with no away badge', () => {
         render(
             <LastOpen
-                lastSeenAt="2026-09-27T08:00:00Z"
+                lastSeenAt="2026-09-27T15:00:00+07:00"
                 away={false}
                 isDemo={false}
             />,
         );
 
-        expect(screen.getByText('opened 3 days ago')).toBeInTheDocument();
+        expect(screen.getByText('last active 3 days ago')).toBeInTheDocument();
         expect(screen.queryByText(/away:/)).not.toBeInTheDocument();
+    });
+
+    it('shows a stamp from today as active today with its first-open time in the app timezone', () => {
+        render(
+            <LastOpen
+                lastSeenAt="2026-09-30T05:03:12+07:00"
+                away={false}
+                isDemo={false}
+            />,
+        );
+
+        expect(
+            screen.getByText('active today · first open 05:03'),
+        ).toBeInTheDocument();
     });
 
     it('marks an away athlete as paused and says their next open catches up', () => {

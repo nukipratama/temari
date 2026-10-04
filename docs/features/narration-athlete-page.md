@@ -44,7 +44,8 @@ Every one of those numbers comes from a single per-day query
 ([`dailyCost()`](app/Services/Devtools/AthleteNarrationReport.php#L368)), so today, the
 week, the month and the sparkline never disagree.
 
-The title block also says when the athlete last opened the app (`users.last_seen_at`)
+The title block also shows the athlete's last active day (`users.last_seen_at`, stamped once
+per day on the first request, so a same-day stamp reads "active today · first open 05:03")
 and, when [`RecentlyActiveUsers::includes()`](app/Actions/AI/RecentlyActiveUsers.php#L40)
 rejects them, an "away: scheduled narration paused" badge
 ([LastOpen](resources/js/components/narration/LastOpen.tsx)). The `away` flag is computed
