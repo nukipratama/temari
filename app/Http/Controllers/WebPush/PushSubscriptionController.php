@@ -30,6 +30,11 @@ class PushSubscriptionController extends Controller
             (string) $request->input('keys.auth'),
         );
 
+        $previousEndpoint = $request->previousEndpoint();
+        if ($previousEndpoint !== null) {
+            $user->deletePushSubscription($previousEndpoint);
+        }
+
         SharedPropCacheKey::WebPushSubscribed->forget($user->id);
 
         return response()->noContent();

@@ -59,3 +59,66 @@ it('blocks the shared demo account from subscribing', function (): void {
 
     $this->assertDatabaseCount('push_subscriptions', 0);
 });
+
+it('replaces the subscription this device saved before when it re-subscribes', function (): void {
+    $user = User::factory()->create();
+    $user->updatePushSubscription('https://web.push.apple.com/old-iphone', 'k', 't');
+
+    $this->actingAs($user)
+        ->postJson('/profile/push', [...pushPayload('https://web.push.apple.com/new-iphone'), 'previous_endpoint' => 'https://web.push.apple.com/old-iphone'])
+        ->assertNoContent();
+
+    expect($user->pushSubscriptions()->pluck('endpoint')->all())->toBe(['https://web.push.apple.com/new-iphone']);
+});
+
+it("keeps the user's other devices on the same push service", function (): void {
+    $user = User::factory()->create();
+    $user->updatePushSubscription('https://web.push.apple.com/ipad', 'k', 't');
+    $user->updatePushSubscription('https://web.push.apple.com/old-iphone', 'k', 't');
+
+    $this->actingAs($user)
+        ->postJson('/profile/push', [...pushPayload('https://web.push.apple.com/new-iphone'), 'previous_endpoint' => 'https://web.push.apple.com/old-iphone'])
+        ->assertNoContent();
+
+    expect($user->pushSubscriptions()->orderBy('endpoint')->pluck('endpoint')->all())
+        ->toBe(['https://web.push.apple.com/ipad', 'https://web.push.apple.com/new-iphone']);
+});
+
+it('keeps every existing subscription when no previous endpoint is sent', function (): void {
+    $user = User::factory()->create();
+    $user->updatePushSubscription('https://web.push.apple.com/ipad', 'k', 't');
+
+    $this->actingAs($user)->postJson('/profile/push', pushPayload('https://web.push.apple.com/new-iphone'))->assertNoContent();
+
+    expect($user->pushSubscriptions()->count())->toBe(2);
+});
+
+it('keeps the subscription when the previous endpoint is the one being saved', function (): void {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)
+        ->postJson('/profile/push', [...pushPayload('https://web.push.apple.com/same'), 'previous_endpoint' => 'https://web.push.apple.com/same'])
+        ->assertNoContent();
+
+    expect($user->pushSubscriptions()->pluck('endpoint')->all())->toBe(['https://web.push.apple.com/same']);
+});
+
+it("never deletes another user's subscription named as the previous endpoint", function (): void {
+    $other = User::factory()->create();
+    $other->updatePushSubscription('https://web.push.apple.com/someone-else', 'k', 't');
+    $user = User::factory()->create();
+
+    $this->actingAs($user)
+        ->postJson('/profile/push', [...pushPayload('https://web.push.apple.com/mine'), 'previous_endpoint' => 'https://web.push.apple.com/someone-else'])
+        ->assertNoContent();
+
+    expect($other->pushSubscriptions()->pluck('endpoint')->all())->toBe(['https://web.push.apple.com/someone-else']);
+});
+
+it('rejects an over-long previous endpoint', function (): void {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)
+        ->postJson('/profile/push', [...pushPayload(), 'previous_endpoint' => 'https://web.push.apple.com/'.str_repeat('a', 500)])
+        ->assertStatus(422);
+});
