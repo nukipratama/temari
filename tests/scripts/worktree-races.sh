@@ -508,11 +508,9 @@ adopt_refresher() {
 adopt_refresher
 assert_eq 'composer install
 npm ci --no-audit --no-fund' "$(<"$FAKE_INSTALL_LOG")" 'first adopt did not install both dependency sets'
-grep -q 'browser-review/scripts/setup.sh' "${case_dir}/adopt.out" || fail 'npm ci did not say to re-run browser-review setup'
 
 adopt_refresher
 assert_eq '' "$(<"$FAKE_INSTALL_LOG")" 'adopt reinstalled dependencies whose lockfiles are unchanged'
-! grep -q 'browser-review/scripts/setup.sh' "${case_dir}/adopt.out" || fail 'unchanged lockfiles still printed the browser-review notice'
 
 printf 'bumped\n' >> "${case_dir}/refresher/composer.lock"
 printf 'bumped\n' >> "${case_dir}/refresher/package-lock.json"

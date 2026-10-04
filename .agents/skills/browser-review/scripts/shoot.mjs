@@ -4,7 +4,7 @@
 //      OUT=storage/app/browser-review  BATCH=<date>/<time> (override the run key)
 // Pages are discovered from `artisan route:list` (see lib.mjs) — nothing hardcoded.
 import { rmSync } from 'node:fs';
-import { chromium } from 'playwright';
+import { chromium } from './playwright.mjs';
 import { BASE, VIEWPORT_DEFS, parseViewports, login, discoverPageRoutes, fullPageScreenshot, SHOT, EXT, DEVTOOLS_AUTH } from './lib.mjs';
 
 // Each run lands in its own dir keyed by date + execution time. Prior batches are

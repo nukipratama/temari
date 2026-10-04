@@ -1,4 +1,4 @@
-import { chromium } from 'playwright';
+import { chromium } from './playwright.mjs';
 import { BASE, VIEWPORT_DEFS, login, discoverPageRoutes } from './lib.mjs';
 import { HELPERS } from './scans.mjs';
 

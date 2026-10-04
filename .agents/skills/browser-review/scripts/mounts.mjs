@@ -11,7 +11,7 @@
  *
  * Usage: node mounts.mjs [dark|light] [spec,spec,...]
  */
-import { chromium } from 'playwright';
+import { chromium } from './playwright.mjs';
 import {
     BASE,
     login,

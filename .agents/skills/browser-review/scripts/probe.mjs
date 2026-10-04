@@ -31,7 +31,7 @@
  * `--shot` also saves a full-page screenshot next to the JSON output:
  *   node probe.mjs /settings dark --shot 'document.title'
  */
-import { chromium } from 'playwright';
+import { chromium } from './playwright.mjs';
 import { BASE, VIEWPORT_DEFS, login, fullPageScreenshot, SHOT, EXT, DEVTOOLS_AUTH } from './lib.mjs';
 
 const args = process.argv.slice(2);

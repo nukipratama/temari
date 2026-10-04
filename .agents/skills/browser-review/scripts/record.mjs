@@ -21,7 +21,7 @@
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { chromium } from 'playwright';
+import { chromium } from './playwright.mjs';
 import { BASE, VIEWPORT_DEFS, login, DEVTOOLS_AUTH } from './lib.mjs';
 
 const LEAD_MS = 300;

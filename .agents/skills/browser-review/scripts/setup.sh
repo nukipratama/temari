@@ -1,35 +1,34 @@
 #!/bin/sh
-# Idempotent browser-review setup. Run inside the Sail `app` container as ROOT
-# (apk needs root):  docker compose exec -u root app sh .agents/skills/browser-review/scripts/setup.sh
-#
-# The container is Alpine ARM64 (musl), so Playwright's bundled glibc Chromium
-# can't run — install Alpine's native chromium and let shoot.mjs/audit.mjs point
-# Playwright at /usr/bin/chromium. Both installs are ephemeral (lost on recreate).
-set -e
-APP_USER=${APP_USER:-www-data}
+# Checks the browser-review tooling the dev image bakes in. Installs nothing.
+#   ./vendor/bin/sail exec app sh .agents/skills/browser-review/scripts/setup.sh
+missing=0
 
-# npm must NOT run as root: a root-owned node_modules makes the unprivileged app
-# user's later installs/teardown fail on permissions. Drop to APP_USER when root.
-run_as_app() {
-  if [ "$(id -u)" = "0" ]; then
-    su "$APP_USER" -s /bin/sh -c "$1"
-  else
-    sh -c "$1"
-  fi
-}
-
-if [ ! -x /usr/bin/chromium ]; then
-  echo "→ installing native chromium (apk)…"
-  apk add --no-cache chromium nss freetype harfbuzz ttf-freefont font-noto-emoji
+if [ -x /usr/bin/chromium ]; then
+  echo "ok  $(/usr/bin/chromium --version 2>/dev/null)"
 else
-  echo "→ chromium already present at /usr/bin/chromium"
+  echo "missing  /usr/bin/chromium"
+  missing=1
 fi
 
-if [ ! -d node_modules/playwright ]; then
-  echo "→ installing playwright js driver as ${APP_USER} (--no-save)…"
-  run_as_app 'npm i playwright --no-save --no-audit --no-fund'
+pw=/usr/local/lib/node_modules/playwright/package.json
+if [ -f "$pw" ]; then
+  echo "ok  playwright $(node -p "require('$pw').version")"
 else
-  echo "→ playwright already installed"
+  echo "missing  global playwright (/usr/local/lib/node_modules/playwright)"
+  missing=1
 fi
 
-echo "✓ browser-review setup ready"
+if ffmpeg -hide_banner -encoders 2>/dev/null | grep -q libx264; then
+  echo "ok  ffmpeg with libx264"
+else
+  echo "missing  ffmpeg with libx264"
+  missing=1
+fi
+
+if [ "$missing" = 1 ]; then
+  echo "This container runs a dev image built without the capture tools. Rebuild temari/dev, then recreate this container:" >&2
+  echo "  docker compose build app     (in the main checkout)" >&2
+  echo "  ./vendor/bin/sail up -d      (in this checkout)" >&2
+  exit 1
+fi
+echo "browser-review tooling ready"

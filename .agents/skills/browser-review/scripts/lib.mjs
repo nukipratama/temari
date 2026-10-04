@@ -2,7 +2,7 @@
 // container, so `php artisan` is available to enumerate routes — no hardcoded
 // page list to rot when pages are added.
 import { execSync } from 'node:child_process';
-import { devices } from 'playwright';
+import { devices } from './playwright.mjs';
 
 export const BASE = process.env.BASE ?? 'http://localhost';
 

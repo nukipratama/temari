@@ -22,7 +22,7 @@
  *
  * Usage: node edges.mjs [dark|light] [minRatio]
  */
-import { chromium } from 'playwright';
+import { chromium } from './playwright.mjs';
 import {
     BASE,
     login,
