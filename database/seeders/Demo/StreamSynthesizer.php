@@ -29,33 +29,32 @@ class StreamSynthesizer
         $time = [];
         /** @var list<float> $rawVelocity unrounded; the scale factor and rescale both work off this series so rounding never re-introduces drift */
         $rawVelocity = [];
-        $velocity = [];
         $heartrate = [];
         $cadence = [];
         $altitude = [];
         $latlng = [];
-        $distance = [];
         $acc = 0.0;
 
         for ($t = 0; $t <= $duration; $t++) {
             $progress = $t / $duration;
+            $intervalWork = $this->intervalWork($progress);
             $time[] = $t;
 
-            $v = $this->velocityAt($blueprint, $progress, $avgSpeed, $rng);
+            $v = $this->velocityAt($blueprint, $progress, $intervalWork, $avgSpeed, $rng);
             $rawVelocity[] = $v;
-            $velocity[] = round($v, 3);
             $acc += $v;
-            $distance[] = round($acc, 2);
 
             if ($blueprint->hasHrSensor) {
-                $heartrate[] = $this->hrAt($blueprint, $progress, $rng);
+                $heartrate[] = $this->hrAt($blueprint, $progress, $intervalWork, $rng);
             }
             if ($blueprint->hasCadenceSensor) {
                 $cadence[] = $this->cadenceAt($blueprint, $progress, $v, $avgSpeed, $rng);
             }
-            $altitude[] = $this->altitudeAt($blueprint, $progress);
+            $angle = $progress * 2 * M_PI;
+            $sinAngle = sin($angle);
+            $altitude[] = $this->altitudeAt($blueprint, $sinAngle);
             if ($blueprint->hasGps) {
-                $latlng[] = $this->latLngAt($location, $progress);
+                $latlng[] = $this->latLngAt($location, $sinAngle, cos($angle));
             }
         }
 
@@ -65,17 +64,15 @@ class StreamSynthesizer
         // the same unrounded series; rounding happens only at output. Walking
         // the rounded series here would re-introduce the drift the scale was
         // meant to cancel.
-        if ($acc > 0.0 && $acc !== (float) $blueprint->distanceM) {
-            $scale = (float) $blueprint->distanceM / $acc;
-            $velocity = [];
-            $distance = [];
-            $acc = 0.0;
-            foreach ($rawVelocity as $v) {
-                $scaled = $v * $scale;
-                $acc += $scaled;
-                $velocity[] = round($scaled, 3);
-                $distance[] = round($acc, 2);
-            }
+        $scale = $acc > 0.0 && $acc !== (float) $blueprint->distanceM ? (float) $blueprint->distanceM / $acc : null;
+        $velocity = [];
+        $distance = [];
+        $acc = 0.0;
+        foreach ($rawVelocity as $v) {
+            $scaled = $scale === null ? $v : $v * $scale;
+            $acc += $scaled;
+            $velocity[] = round($scaled, 3);
+            $distance[] = round($acc, 2);
         }
 
         $streams = [
@@ -98,16 +95,16 @@ class StreamSynthesizer
         return $streams;
     }
 
-    private function velocityAt(RunBlueprint $b, float $progress, float $avg, Randomizer $rng): float
+    private function velocityAt(RunBlueprint $b, float $progress, bool $intervalWork, float $avg, Randomizer $rng): float
     {
-        $multiplier = $b->hrProfile->velocityMultiplier($progress, $this->intervalWork($progress));
+        $multiplier = $b->hrProfile->velocityMultiplier($progress, $intervalWork);
 
         return max(0.5, $avg * $multiplier * $rng->getFloat(0.96, 1.04));
     }
 
-    private function hrAt(RunBlueprint $b, float $progress, Randomizer $rng): int
+    private function hrAt(RunBlueprint $b, float $progress, bool $intervalWork, Randomizer $rng): int
     {
-        $base = $b->hrProfile->hrBase($progress, $this->intervalWork($progress));
+        $base = $b->hrProfile->hrBase($progress, $intervalWork);
 
         return (int) round($base + $rng->getFloat(-3.0, 3.0));
     }
@@ -147,21 +144,19 @@ class StreamSynthesizer
         return $grade;
     }
 
-    private function altitudeAt(RunBlueprint $b, float $progress): float
+    private function altitudeAt(RunBlueprint $b, float $sinAngle): float
     {
-        return round(10.0 + $b->elevationGainM * (0.5 + 0.5 * sin($progress * M_PI * 2)), 2);
+        return round(10.0 + $b->elevationGainM * (0.5 + 0.5 * $sinAngle), 2);
     }
 
     /**
      * @return array{float, float}
      */
-    private function latLngAt(DemoLocation $location, float $progress): array
+    private function latLngAt(DemoLocation $location, float $sinAngle, float $cosAngle): array
     {
-        $angle = $progress * 2 * M_PI;
-
         return [
-            round($location->lat + 0.008 * sin($angle), 6),
-            round($location->lng + 0.008 * cos($angle), 6),
+            round($location->lat + 0.008 * $sinAngle, 6),
+            round($location->lng + 0.008 * $cosAngle, 6),
         ];
     }
 

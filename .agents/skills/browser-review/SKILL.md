@@ -30,7 +30,7 @@ Read only the file the step needs; each holds its section verbatim.
 ```bash
 ./vendor/bin/sail up -d
 ./vendor/bin/sail npm run build               # fresh built assets — stale/missing build = Vite manifest errors or old UI
-./vendor/bin/sail artisan demo:seed          # demo user + ~126 runs, deterministic
+./vendor/bin/sail artisan demo:seed          # demo user + ~81 runs, deterministic
 ./vendor/bin/sail artisan demo:seed --with-edge-states   # + pending/processing/failed AI blocks
 # the scripts log in via the /login demo button: DEMO_LOGIN_ENABLED defaults to true
 # (config/demo.php); only a local override to false breaks login
