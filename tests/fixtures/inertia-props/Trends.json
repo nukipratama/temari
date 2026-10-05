@@ -61,6 +61,7 @@
     "raceOutlook.support.dedicated_preparation",
     "raceOutlook.support.limitation",
     "raceOutlook.support.mode",
+    "supportedHistory",
     "weekComparison",
     "weekComparison.date_ranges",
     "weekComparison.date_ranges.last_week",

@@ -1,9 +1,9 @@
 ---
 title: Trends
-description: /trends — Temari's 7-day verdict, then three stacked comparisons (vs last week, vs a month ago, vs race day)
+description: /trends — Temari's 7-day verdict, then three stacked comparisons (vs last week, vs a month ago, vs race day) and the supported time over the race season
 tags: [feature, trends]
 status: living
-reviewed: 2026-10-02
+reviewed: 2026-10-05
 code_refs:
   - resources/js/pages/Trends.tsx
   - app/Http/Controllers/TrendsController.php
@@ -11,6 +11,8 @@ code_refs:
   - resources/js/components/trends/WeekComparison.tsx
   - resources/js/components/trends/MonthComparison.tsx
   - resources/js/components/trends/RaceComparison.tsx
+  - resources/js/components/trends/SupportedOverTime.tsx
+  - app/Services/Run/Trend/TrendSnapshotWriter.php
   - resources/js/components/trends/panels/FitnessPanel.tsx
   - resources/js/components/ui/StatTile.tsx
   - app/Services/AI/Narrators/TrendReadNarrator.php
@@ -90,13 +92,26 @@ no new backend query, so the card and the line can never disagree.
 
 ## vs race day
 
-[RaceComparison](resources/js/components/trends/RaceComparison.tsx#L40) closes the page: days out, then
+[RaceComparison](resources/js/components/trends/RaceComparison.tsx#L40) follows long-term load: days out, then
 "your target" with its time and pace beside "supported by your recent runs", the VDOT race equivalent,
 and the one sentence that states the band, all from the same `RacePresenter` as `/race`
 ([TrendsController::raceOutlook()](app/Http/Controllers/TrendsController.php#L68), [[race-projection]],
 [[the-race-page-sets-the-target-beside-supported-time]]). It repeats no long-term load hero: a single
 "load balance today" line closes the section. With no race set it is one line and a "set a race" link
 to `/race`, with no repeated long-term load.
+
+## Supported over time
+
+[SupportedOverTime](resources/js/components/trends/SupportedOverTime.tsx#L156) follows "vs race day": the
+supported time at the current race's distance across its season, as a stepped line in leaf with faster
+up, the target as a dashed ink-3 line labelled "your target m:ss", and a headline with the change since
+the first point ("3:15 faster since aug 3" in leaf-ink, "slower" in ember-ink). A step is labelled
+"10K · oct 1" only when the effort under it changed. The points are the daily trend snapshots taken for
+the active race from its season's start
+([TrendsController::supportedHistory()](app/Http/Controllers/TrendsController.php#L92)), which
+[TrendSnapshotWriter](app/Services/Run/Trend/TrendSnapshotWriter.php#L56) fills as of each date. With no
+race, no supported time, or fewer than two days of history the panel is absent. See
+[[supported-time-history-from-daily-trend-snapshots]].
 
 ## Removed (#967)
 

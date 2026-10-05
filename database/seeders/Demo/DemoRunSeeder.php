@@ -20,6 +20,7 @@ use App\Models\PersonalRecord;
 use App\Models\PlannedSession;
 use App\Models\RaceGoal;
 use App\Models\RunCard;
+use App\Models\Season;
 use App\Models\StravaConnection;
 use App\Models\TrainingPreference;
 use App\Models\User;
@@ -48,6 +49,7 @@ use App\Services\Run\Plan\WeekPlanBuilder;
 use App\Services\Run\Story\RunCardFactory;
 use App\Services\Run\Story\Temari;
 use App\Services\Run\Story\Vibe;
+use App\Services\Run\Trend\TrendSnapshotWriter;
 use Closure;
 use Illuminate\Support\Carbon;
 use Random\Engine\Mt19937;
@@ -78,6 +80,7 @@ class DemoRunSeeder
         private readonly WeekPlanBuilder $weekPlanBuilder,
         private readonly TrainingBaseline $trainingBaseline,
         private readonly PlanNarrationRequester $planNarrationRequester,
+        private readonly TrendSnapshotWriter $trendSnapshots,
         private readonly PolylineEncoder $polylineEncoder = new PolylineEncoder(),
     ) {
     }
@@ -152,6 +155,9 @@ class DemoRunSeeder
 
             $log("Regenerating this week's training plan...");
             $this->seedCurrentWeekPlan($user);
+
+            $log('Writing this season\'s trend snapshots...');
+            $this->seedSeasonTrendSnapshots($user);
 
             $this->seedTrendRead($user);
 
@@ -485,6 +491,15 @@ class DemoRunSeeder
         // (the active Season) rule-based, mirroring the demo Plan page's own
         // "Reread" path — see PlanNarrationRequester::ensureDemoFilled's docblock.
         $this->planNarrationRequester->ensureDemoFilled($user, $today);
+    }
+
+    /** The current season's daily trend snapshots, supported race time included. */
+    private function seedSeasonTrendSnapshots(User $user): void
+    {
+        $today = Carbon::today();
+        $season = Season::query()->where('user_id', $user->id)->orderByDesc('starts_at')->first();
+
+        $this->trendSnapshots->writeRange($user, $season?->starts_at ?? $today, $today);
     }
 
     /**

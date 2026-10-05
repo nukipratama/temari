@@ -114,6 +114,41 @@ describe('Trends', () => {
         ]);
     });
 
+    it('places supported over time directly after vs race day when there is history', () => {
+        render(
+            <Trends
+                {...BASE_PROPS}
+                ctlTrend={yearOfTrend()}
+                supportedHistory={{
+                    target_time_sec: 3000,
+                    points: [
+                        {
+                            date: '2026-08-03',
+                            supported_time_sec: 3300,
+                            source: { distance_m: 5000, date: '2026-07-20' },
+                            new_source: false,
+                        },
+                        {
+                            date: '2026-10-04',
+                            supported_time_sec: 3105,
+                            source: { distance_m: 5000, date: '2026-07-20' },
+                            new_source: false,
+                        },
+                    ],
+                }}
+            />,
+        );
+
+        const headings = screen
+            .getAllByRole('heading', { level: 2 })
+            .map((h) => h.textContent);
+
+        expect(headings.slice(-2)).toEqual([
+            'vs race day',
+            'supported over time',
+        ]);
+    });
+
     it('counts down to race day when a race is set', () => {
         setMockPage({
             activeRace: {

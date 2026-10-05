@@ -57,6 +57,7 @@ export const CHART_GROUND = {
         pointBorder: '#f1f5f8', // = card on light
         line: PALETTE.horizonInk, // primary accent stroke, ink-safe on light
         border: '#bfc5cc', // = border on light — neutral marker outlines
+        leafInk: '#226748', // = leaf-ink on light — leaf-toned chart text
     },
     dark: {
         grid: 'rgba(241,245,248,.10)',
@@ -65,6 +66,7 @@ export const CHART_GROUND = {
         pointBorder: '#171f28', // = card on dark
         line: PALETTE.horizon, // raw vivid lime — horizonInk is too dark to read here
         border: '#4d5560', // = border on dark
+        leafInk: '#77b699', // = leaf-ink on dark
     },
 } as const;
 

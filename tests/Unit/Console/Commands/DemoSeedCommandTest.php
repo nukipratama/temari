@@ -17,6 +17,7 @@ use App\Models\StoryLine;
 use App\Models\StravaConnection;
 use App\Models\RaceGoal;
 use App\Models\TrainingPreference;
+use App\Models\TrendDailySnapshot;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisStatus;
@@ -401,6 +402,12 @@ it('seeds a complete, login-ready demo dataset', function (): void {
     expect($km10Best)->not->toBeNull();
     $expectedGoalTimeSec = (int) (round($km10Best * 0.97 / 15) * 15);
     expect($race->goal_time_sec)->toBe($expectedGoalTimeSec);
+
+    $snapshot = TrendDailySnapshot::query()->where('user_id', $user->id)->whereDate('snapshot_date', Carbon::today())->firstOrFail();
+    expect($snapshot->race_goal_id)->toBe($race->id)
+        ->and($snapshot->supported_time_sec)->toBeInt()->toBeGreaterThan(0)
+        ->and($snapshot->supported_source_distance_m)->toBeInt()
+        ->and($snapshot->supported_source_date)->not->toBeNull();
 
     // #979. The 10K that backs that goal is itself flagged as a race, so the
     // share card's `race` form (bib chassis, chip splits) is reachable on the

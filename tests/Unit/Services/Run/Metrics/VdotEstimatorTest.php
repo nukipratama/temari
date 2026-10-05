@@ -181,6 +181,17 @@ it('reads the supported VDOT at 10K when there is no goal race', function (): vo
         ->and($estimate['vdot'])->toBe(round($this->estimator->vdotFromTimeAndDistance($tenK, 10_000), 1));
 });
 
+it('resolves the race that was active on a past day, and the active race today', function (): void {
+    $user = User::factory()->create();
+    $retired = RaceGoal::factory()->for($user)->create(['created_at' => '2026-08-01 08:00:00', 'completed_at' => '2026-09-01 08:00:00']);
+    $active = RaceGoal::factory()->for($user)->create(['created_at' => '2026-09-01 08:00:00']);
+
+    expect($this->estimator->raceAsOf($user, Carbon::parse('2026-07-31')))->toBeNull()
+        ->and($this->estimator->raceAsOf($user, Carbon::parse('2026-08-15'))?->id)->toBe($retired->id)
+        ->and($this->estimator->raceAsOf($user, Carbon::parse('2026-09-02'))?->id)->toBe($active->id)
+        ->and($this->estimator->raceAsOf($user, Carbon::today())?->id)->toBe($active->id);
+});
+
 it('reads the supported VDOT at the goal race distance with that distance\'s default fall-off', function (): void {
     $user = User::factory()->create();
     RaceGoal::factory()->for($user)->create(['distance_m' => 21_098, 'race_date' => '2026-12-01']);

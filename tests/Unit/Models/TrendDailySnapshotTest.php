@@ -24,6 +24,21 @@ it('casts snapshot_date to a Carbon date and metrics to floats', function (): vo
         ->and($snap->pace_variability_sec)->toBeFloat()->toEqualWithDelta(8.3, 0.001);
 });
 
+it('casts the supported race time columns to integers and the source date to a Carbon date', function (): void {
+    $snap = TrendDailySnapshot::factory()->make([
+        'user_id' => 1,
+        'race_goal_id' => '7',
+        'supported_time_sec' => '3125',
+        'supported_source_distance_m' => '5000',
+        'supported_source_date' => '2026-08-03',
+    ]);
+
+    expect($snap->race_goal_id)->toBe(7)
+        ->and($snap->supported_time_sec)->toBe(3125)
+        ->and($snap->supported_source_distance_m)->toBe(5000)
+        ->and($snap->supported_source_date?->toDateString())->toBe('2026-08-03');
+});
+
 it('serializes snapshot_date as a plain Y-m-d string under a non-UTC timezone', function (): void {
     $originalTimezone = config('app.timezone');
     $originalPhpTimezone = date_default_timezone_get();
