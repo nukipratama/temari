@@ -12,7 +12,7 @@ code_refs:
   - app/Services/User/UserEraser.php
   - app/Providers/AppServiceProvider.php
   - tests/TestCase.php
-  - .github/workflows/ci.yml
+  - .github/workflows/deploy.yml
 ---
 
 # Analytics DB connection
@@ -66,7 +66,7 @@ against the analytics schema explicitly:
 php artisan migrate --database=analytics --path=database/migrations/analytics --force
 ```
 
-CI does exactly this as its own step in [ci.yml](.github/workflows/ci.yml). The
+The deploy does exactly this as its own step in [deploy.yml](.github/workflows/deploy.yml). The
 `--database=analytics` flag is what routes them, but **name the connection in the
 migration too** — `Schema::connection('analytics')->table(...)`, as every migration
 since the first one does. The flag alone is a footgun: run the command without it

@@ -3,12 +3,13 @@ title: Deployment & runtime
 description: Multi-stage FrankenPHP/Octane image built on a hosted runner and pushed to GHCR, the loopback-only prod compose stack behind a Cloudflare Tunnel, Redis DB partitioning, and the GitHub Actions pull/migrate/roll/rollback flow on a single homelab host
 tags: [architecture, infra]
 status: living
-reviewed: 2026-09-21
+reviewed: 2026-10-04
 code_refs:
   - Dockerfile
   - compose.prod.yaml
   - docker/Caddyfile
   - .github/workflows/ci.yml
+  - .github/workflows/deploy.yml
   - .github/workflows/nightly-audit.yml
   - .github/workflows/nightly-backup.yml
   - .github/workflows/restore-dry-run.yml
@@ -29,7 +30,7 @@ code_refs:
 
 # Deployment & runtime
 
-How Temari is built into an image, run as a compose stack, and continuously deployed to **one self-hosted homelab host** on every push to `main`. The image is *built* on a GitHub-hosted runner and pulled from GHCR; only the run stack lives on the homelab. The host sits behind an existing Cloudflare Tunnel; nothing in this repo provisions the tunnel itself. Start here before touching the [Dockerfile](Dockerfile), [compose.prod.yaml](compose.prod.yaml), or the build/deploy jobs in [.github/workflows/ci.yml](.github/workflows/ci.yml).
+How Temari is built into an image, run as a compose stack, and continuously deployed to **one self-hosted homelab host** on every push to `main`. The image is *built* on a GitHub-hosted runner and pulled from GHCR; only the run stack lives on the homelab. The host sits behind an existing Cloudflare Tunnel; nothing in this repo provisions the tunnel itself. Start here before touching the [Dockerfile](Dockerfile), [compose.prod.yaml](compose.prod.yaml), the `build` job in [.github/workflows/ci.yml](.github/workflows/ci.yml) or the deploy in [.github/workflows/deploy.yml](.github/workflows/deploy.yml).
 
 ## The image (multi-stage)
 
@@ -42,7 +43,7 @@ How Temari is built into an image, run as a compose stack, and continuously depl
 
 [.dockerignore](.dockerignore) is an allow-list: it starts with `*` and re-includes only what the runtime or a build stage reads, so a new top-level tree stays out of the image by default. The `vendor` stage copies the whole filtered context, so the build inputs (`package*.json`, `vite.config.ts`, `tsconfig.json`, the `docker/` configs, `resources/js`) also ship, unused at runtime. `build-prod-image` loads the image and fails when `/var/www/html` holds any top-level entry other than its `EXPECTED_ENTRIES` list, and [ProdImageAllowListTest](tests/Unit/Architecture/ProdImageAllowListTest.php) keeps that list, the allow-list and the Dockerfile's context `COPY`s in step.
 
-`config:cache` is deliberately **not** baked into the image — build time has no `.env`, so `env()` would freeze PHP defaults (e.g. `DB_CONNECTION` → `sqlite` in [config/database.php](config/database.php)) into the cache. Caching happens at deploy time instead, inside the running container. See `package:discover` + the `Optimize caches` step ([.github/workflows/ci.yml](.github/workflows/ci.yml)) and [[defer-config-cache]].
+`config:cache` is deliberately **not** baked into the image — build time has no `.env`, so `env()` would freeze PHP defaults (e.g. `DB_CONNECTION` → `sqlite` in [config/database.php](config/database.php)) into the cache. Caching happens at deploy time instead, inside the running container. See `package:discover` + the `Optimize caches` step ([.github/workflows/deploy.yml](.github/workflows/deploy.yml)) and [[defer-config-cache]].
 
 ## Runtime: FrankenPHP + Octane
 
@@ -100,7 +101,7 @@ On pull requests, the `changes` job in [.github/workflows/ci.yml](.github/workfl
 
 ## How a deploy runs
 
-The `deploy` job in [.github/workflows/ci.yml](.github/workflows/ci.yml) runs on the `[self-hosted, homelab]` runner, only on `push` to `main`, after `ci-gate` (lint + pest + vitest + the repo guards, secret scan included) **and** `build` pass. `concurrency: deploy-prod` with `cancel-in-progress: false` serializes deploys. Main runs are not serialized against each other (each gets its own workflow concurrency group), so a merge burst tests in parallel; GitHub keeps one pending deploy, a newer one replacing it. Once the job holds the lock, its first step compares `github.sha` with `git ls-remote origin refs/heads/main` and, when main has moved on, skips every later step as a success with "Superseded by <sha>, skipped" in the summary, so a late-finishing older commit can never roll prod back behind a newer one. In order:
+The `deploy` job lives in its own workflow, [.github/workflows/deploy.yml](.github/workflows/deploy.yml), triggered by `workflow_run` when the `CI` workflow completes on `main`. It runs on the `[self-hosted, homelab]` runner only when that CI run concluded `success` and came from a `push`, so `ci-gate` (lint + pest + vitest + the repo guards, secret scan included) **and** `build` passed for the commit. The commit is `github.event.workflow_run.head_sha`, the sha CI tested, and the job uses it for the checkout ref, the image tag, the newest-commit check, the backup names, the summary and both alerts; in a `workflow_run` run, `github.sha` is the default branch's head instead. `concurrency: deploy-prod` with `cancel-in-progress: false` serializes deploys; GitHub keeps one pending deploy, a newer one replacing it. Once the job holds the lock, its first step compares the head sha with `git ls-remote origin refs/heads/main` and, when main has moved on, skips every later step as a success with "Superseded by <sha>, skipped" in the summary, so a late-finishing older commit can never roll prod back behind a newer one. In order:
 
 1. **Require a running `mysql`.** The step fails when `$COMPOSE ps -q mysql` is empty, and only warns when the running container uses a different image than [compose.prod.yaml](compose.prod.yaml) pins. No deploy step builds, starts or recreates `mysql`: the data-layer `up` names only `redis redis-cache`, and every `up`/`run` passes `--no-deps` (pinned by [ProdMysqlDeployGuardTest](tests/Unit/Architecture/ProdMysqlDeployGuardTest.php)). An image change is the manual [Upgrading MySQL](#upgrading-mysql) window.
 2. Pull `ghcr.io/<owner>/<repo>/app:<git-sha>` (token widened to `packages: read`).
@@ -116,6 +117,19 @@ The `deploy` job in [.github/workflows/ci.yml](.github/workflows/ci.yml) runs on
 12. Poll shallow `/ready`, then deep `/up`, and smoke-test `/login` (which must carry no `X-Powered-By` header) plus the PWA assets while maintenance is still active.
 13. Resume `scheduler`, roll `pulse`, then lift maintenance only if this deploy enabled it. Owner maintenance remains untouched.
 14. Prune SHA-tagged `temari/app` images that aren't `:latest`/`:previous`.
+
+### Superseded main runs
+
+CI's workflow-level concurrency group is `ci-<ref>` with `cancel-in-progress: true` on every ref, `main` included, so a newer push to `main` cancels the older commit's whole CI run. The superseded run shows as cancelled: `ci-gate` runs under `if: ${{ !cancelled() }}`, so it is skipped rather than failed, and a cancelled CI run never starts a deploy. A job that hits its `timeout-minutes` is different: the job's result is `cancelled` but the run is not, so `ci-gate` still runs, fails on that job, and the run reads red.
+
+The cancellation never reaches a deploy. `Deploy` is a separate workflow run outside CI's concurrency group, and its `deploy-prod` group never cancels a started job. [CiConcurrencyTest](tests/Unit/Architecture/CiConcurrencyTest.php) pins both concurrency settings, the trigger and guard, the head sha, the newest-commit check and the rollback step.
+
+`workflow_run` has two properties to keep in mind:
+
+- GitHub always runs the copy of `deploy.yml` on `main`, never the one in the commit CI tested. A PR never runs the deploy, so a change to `deploy.yml` is checked only by actionlint and the structure tests, and first runs for real on the deploy of its own merge commit.
+- The deploy starts about 10–30 s after CI completes, the time GitHub takes to deliver the `workflow_run` event.
+
+Re-running a main CI run to success starts a new `Deploy` run for that commit, and re-running a `Deploy` run retries the same head sha. Both still pass through the newest-commit check.
 
 ### Migrations must be expand/contract
 
@@ -142,7 +156,7 @@ Neither path has ever fired in prod. The restore half is now exercised nightly i
 
 ### Backup naming and retention
 
-A deploy backup used to be named `pre-deploy-<sha>.sql.gz` — keyed on the sha alone, so a retried or manually re-run deploy for that sha overwrote the only backup with whatever state existed at the retry, silently. `Compute backup filename suffix` in [.github/workflows/ci.yml](.github/workflows/ci.yml) now appends a UTC timestamp plus `github.run_id` and `github.run_attempt`, e.g. `pre-deploy-<sha>-<timestamp>-<run_id>-<run_attempt>.sql.gz` (and `analytics-pre-deploy-<...>.sql.gz`, sharing the identical suffix after its own prefix — that's how [restore-dry-run.yml](.github/workflows/restore-dry-run.yml) pairs them without parsing the sha back out). Both backup steps refuse to write over an existing path as a second line of defense.
+A deploy backup used to be named `pre-deploy-<sha>.sql.gz` — keyed on the sha alone, so a retried or manually re-run deploy for that sha overwrote the only backup with whatever state existed at the retry, silently. `Compute backup filename suffix` in [.github/workflows/deploy.yml](.github/workflows/deploy.yml) now appends a UTC timestamp plus `github.run_id` and `github.run_attempt`, e.g. `pre-deploy-<sha>-<timestamp>-<run_id>-<run_attempt>.sql.gz` (and `analytics-pre-deploy-<...>.sql.gz`, sharing the identical suffix after its own prefix — that's how [restore-dry-run.yml](.github/workflows/restore-dry-run.yml) pairs them without parsing the sha back out). Both backup steps refuse to write over an existing path as a second line of defense.
 
 [scripts/deploy/verify-and-prune-backup.sh](scripts/deploy/verify-and-prune-backup.sh) prunes by count-and-age (keep the newest 10 regardless of age, then drop anything past the retention window) but, given a group prefix, first checks whether a candidate is the newest backup sharing its sha — if so it's kept no matter how old, so a sha is never left with zero backups. Deploy backups pass `7` days retention and their prefix (`pre-deploy-`/`analytics-pre-deploy-`); nightly backups (below) pass `14` days and no prefix, since they aren't sha-keyed.
 
@@ -160,7 +174,7 @@ Disk cleanup rides the same job, strictly after a successful backup (cleanup ste
 
 ## Hosted-runner failure alerts
 
-The alert steps inside the self-hosted `deploy` and `nightly-backup` jobs never run when the job dies before its steps: the homelab runner is offline, or "Set up job" fails (a CI run on 2026-09-26 failed there after three action-tarball download timeouts, with no alert), and the `restore-dry-run` job has no alert step at all. Each of those workflows therefore has a `notify` job that runs on `ubuntu-26.04-arm` when the self-hosted job's result is `failure`, calling the reusable [.github/workflows/maintainer-alert.yml](.github/workflows/maintainer-alert.yml), which pushes the given message plus the run URL to Telegram with the same two secrets as the nightly audit (and skips when either is unset). When the in-job alert also fired, the maintainer gets two messages. `notify` sits after `deploy`, outside `ci-gate`'s `needs`, so it can never block a merge. A job-level timeout is a cancellation (`cancelled`), not a `failure`, so it does not trigger `notify`.
+The alert steps inside the self-hosted `deploy` and `nightly-backup` jobs never run when the job dies before its steps: the homelab runner is offline, or "Set up job" fails (a CI run on 2026-09-26 failed there after three action-tarball download timeouts, with no alert), and the `restore-dry-run` job has no alert step at all. Each of those workflows therefore has a `notify` job that runs on `ubuntu-26.04-arm` when the self-hosted job's result is `failure`, calling the reusable [.github/workflows/maintainer-alert.yml](.github/workflows/maintainer-alert.yml), which pushes the given message plus the run URL to Telegram with the same two secrets as the nightly audit (and skips when either is unset). When the in-job alert also fired, the maintainer gets two messages. `notify` sits after `deploy` in `deploy.yml`, outside CI, so it can never block a merge. A job-level timeout is a cancellation (`cancelled`), not a `failure`, so it does not trigger `notify`.
 
 A backup that never starts has no failed job to react to. [.github/workflows/backup-watchdog.yml](.github/workflows/backup-watchdog.yml) runs daily at 08:37 WIB on `ubuntu-26.04-arm` with `actions: read`, reads the newest successful `Nightly backup` run via `gh run list`, and fails, then alerts through the same reusable workflow, when that run started 26 or more hours ago or no successful run exists. Running nine hours after the 23:40 WIB backup means one missed night shows up as about 33 hours. A manual run takes a lower `max_age_hours` to exercise the alert.
 
@@ -172,13 +186,13 @@ Every successful deploy leaves `temari/app:previous` and `temari/app:<git-sha>` 
 
 The `Rollback prod` workflow ([.github/workflows/rollback.yml](.github/workflows/rollback.yml)) is **deliberately registry-unaware**: it only inspects and re-tags local `temari/app` images. Building on a hosted runner does not change that, because the deploy still lands `temari/app:latest` as a local tag on the host and still tags the outgoing one `:previous` before it does. Keep it that way — a rollback that has to reach the network is a rollback that can fail when the network is why you're rolling back.
 
-**On the host you can still only go back one deploy.** The prune step runs `if: always()` on every deploy and deletes every `temari/app` tag except `:latest`, `:previous` and the SHA just deployed ([.github/workflows/ci.yml](.github/workflows/ci.yml#L538)), so the host holds exactly two recoverable images. What is new is that GHCR keeps a `:<git-sha>` per deploy, so recovering further back is now a `docker pull ghcr.io/<owner>/<repo>/app:<sha>` + local re-tag instead of a rebuild from source.
+**On the host you can still only go back one deploy.** The prune step runs `if: always()` on every deploy and deletes every `temari/app` tag except `:latest`, `:previous` and the SHA just deployed ([.github/workflows/deploy.yml](.github/workflows/deploy.yml#L322)), so the host holds exactly two recoverable images. What is new is that GHCR keeps a `:<git-sha>` per deploy, so recovering further back is now a `docker pull ghcr.io/<owner>/<repo>/app:<sha>` + local re-tag instead of a rebuild from source.
 
 ## Upgrading MySQL
 
 The `mysql` image changes only in a manual, announced window. Deploys never build, start or recreate `mysql` (step 1 of "How a deploy runs"). After a merge that renames the tag in [compose.prod.yaml](compose.prod.yaml), deploys keep the old container running and warn until this window has run. A tag that is still missing makes the restore dry run fail instead of pulling it from a registry ([deploy/restore-dry-run-compose.yml](deploy/restore-dry-run-compose.yml) sets `pull_policy: never`). Every dump already carries the 9.7-safe flags (step 6 above).
 
-**Window.** No deploy is running or queued (`gh run list --workflow ci.yml --status in_progress`, and again with `--status queued`), and nothing merges until the window ends. Keep well clear of the nightly backup (23:40 WIB) and the Sunday restore dry run (04:07 WIB), both of which share the `deploy-prod` lock. Users see the maintenance page from step 3 to step 8.
+**Window.** No deploy is running or queued (`gh run list --workflow deploy.yml --status in_progress`, and again with `--status queued`), no `main` CI run is in progress (its success starts a deploy), and nothing merges until the window ends. Keep well clear of the nightly backup (23:40 WIB) and the Sunday restore dry run (04:07 WIB), both of which share the `deploy-prod` lock. Users see the maintenance page from step 3 to step 8.
 
 Run each command on its own, on the host, from a fresh checkout of `main` at the merge commit. The 8.4 → 9.7 values are shown; set `OLD`/`NEW` for a later upgrade. Compose reads `/opt/temari/.env`, which a personal login cannot read, so `COMPOSE` runs it through `sudo` from an interactive SSH session.
 

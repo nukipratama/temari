@@ -279,6 +279,7 @@ it('routes GitHub configuration to the checks that read it', function (string $p
     '.github/dependabot.yml' => ['.github/dependabot.yml', ciChecks()],
     '.github/pull_request_template.md' => ['.github/pull_request_template.md', ciChecks()],
     '.github/workflows/labeler.yml' => ['.github/workflows/labeler.yml', ciChecks(backend: true)],
+    '.github/workflows/deploy.yml' => ['.github/workflows/deploy.yml', ciChecks(backend: true)],
     '.github/workflows/backend-ci.yml' => ['.github/workflows/backend-ci.yml', ciChecks(backend: true)],
     '.github/workflows/frontend-ci.yml' => ['.github/workflows/frontend-ci.yml', ciChecks(backend: true, frontend: true)],
     '.github/actions/setup-node/action.yml' => ['.github/actions/setup-node/action.yml', ciChecks(backend: true, frontend: true)],

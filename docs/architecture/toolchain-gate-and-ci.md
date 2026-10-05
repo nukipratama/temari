@@ -8,6 +8,7 @@ code_refs:
   - scripts/gate.sh
   - .githooks/pre-commit
   - .github/workflows/ci.yml
+  - .github/workflows/deploy.yml
   - .github/workflows/backend-ci.yml
   - .github/workflows/frontend-ci.yml
   - composer.json
@@ -45,13 +46,14 @@ Rector pass was the slowest single step the hook ever carried, so it moved to th
 
 ## CI: the full gate, plus deploy
 
-[.github/workflows/ci.yml](../../.github/workflows/ci.yml) orchestrates the unconditional guards,
-build and deployment while [backend-ci.yml](../../.github/workflows/backend-ci.yml) and
+[.github/workflows/ci.yml](../../.github/workflows/ci.yml) orchestrates the unconditional guards
+and the image build while [backend-ci.yml](../../.github/workflows/backend-ci.yml) and
 [frontend-ci.yml](../../.github/workflows/frontend-ci.yml) run each suite's tests, coverage and
 static analysis directly. They do not shell out to `gate.sh`, so every check gets its own cache and
 log. **CI is the authoritative full gate** — a green `composer gate` locally is a fast pre-push
-signal, not a substitute for CI passing. On `push` to `main`, `deploy` additionally builds and
-rolls the image once `ci-gate` and `build` both pass; see [[deployment]] for that half.
+signal, not a substitute for CI passing. On `push` to `main`, a successful CI run triggers
+[deploy.yml](../../.github/workflows/deploy.yml), which rolls the built image; see [[deployment]]
+for that half.
 
 The backend suite runs four parallel shards and the frontend suite three, on PRs and main pushes. The test jobs and the image build need only `changes`, so they start without waiting for `repo-guards`, which also runs the gitleaks secret scan; `ci-gate` still requires it. Backend shards start MySQL with a backgrounded `docker run` right after checkout and wait for it just before the tests, so its pull and init overlap PHP setup. PR shards collect coverage;
 each suite's `gate` job merges the whole-suite totals and applies the configured thresholds exactly
@@ -62,6 +64,8 @@ structure check and source guard (`{@see}` references; the raw-palette guard), s
 checks run once per run instead of once per shard. Each reusable workflow's `gate` requires all of
 its shards and its static analysis on both events, and the top-level `ci-gate` requires each
 changed suite as a unit. A missing, cancelled or failed shard therefore reds the gate — see
-[docs/decisions/sharded-pr-coverage.md](../decisions/sharded-pr-coverage.md).
+[docs/decisions/sharded-pr-coverage.md](../decisions/sharded-pr-coverage.md). A newer push to
+the same ref, `main` included, cancels the older run whole instead, and its `ci-gate` skips; see
+[[deployment]] under "Superseded main runs".
 
 See also: [[deployment]].

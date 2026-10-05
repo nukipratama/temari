@@ -17,17 +17,17 @@ use Symfony\Component\Yaml\Yaml;
  * fabricated fixtures (never a live docker daemon or database). See the PR
  * description for what only a real run on the host can still prove.
  */
-const CI_WORKFLOW_PATH = '.github/workflows/ci.yml';
+const DEPLOY_WORKFLOW_PATH = '.github/workflows/deploy.yml';
 const NIGHTLY_BACKUP_WORKFLOW_PATH = '.github/workflows/nightly-backup.yml';
 
-function ciYamlText(): string
+function deployYamlText(): string
 {
-    return File::get(base_path(CI_WORKFLOW_PATH));
+    return File::get(base_path(DEPLOY_WORKFLOW_PATH));
 }
 
-function findCiStepRun(string $stepName): string
+function findDeployStepRun(string $stepName): string
 {
-    $doc = Yaml::parseFile(base_path(CI_WORKFLOW_PATH));
+    $doc = Yaml::parseFile(base_path(DEPLOY_WORKFLOW_PATH));
     $steps = $doc['jobs']['deploy']['steps'];
 
     foreach ($steps as $step) {
@@ -38,15 +38,15 @@ function findCiStepRun(string $stepName): string
         }
     }
 
-    expect(false)->toBeTrue("No deploy step named '{$stepName}' found in ".CI_WORKFLOW_PATH);
+    expect(false)->toBeTrue("No deploy step named '{$stepName}' found in ".DEPLOY_WORKFLOW_PATH);
 
     return '';
 }
 
 it('names deploy backups with a suffix that differs on every run and every retry', function (): void {
-    $suffixStep = findCiStepRun('Compute backup filename suffix');
+    $suffixStep = findDeployStepRun('Compute backup filename suffix');
 
-    expect($suffixStep)->toContain('github.sha')
+    expect($suffixStep)->toContain('github.event.workflow_run.head_sha')
         ->toContain('github.run_id')
         ->toContain('github.run_attempt');
 
@@ -60,7 +60,7 @@ it('names deploy backups with a suffix that differs on every run and every retry
 
 it('has both deploy backup steps write through the shared suffix and refuse to overwrite', function (): void {
     foreach (['Backup DB before migrate', 'Backup analytics schema'] as $stepName) {
-        $run = findCiStepRun($stepName);
+        $run = findDeployStepRun($stepName);
 
         expect($run)->toContain('$BACKUP_SUFFIX')
             ->toContain('if [ -e "$out" ]')
@@ -69,7 +69,7 @@ it('has both deploy backup steps write through the shared suffix and refuse to o
 });
 
 it('passes the new suffixed pre-deploy glob and a group prefix to the prune script for both schemas', function (): void {
-    $yaml = ciYamlText();
+    $yaml = deployYamlText();
 
     expect($yaml)->toContain(
         'scripts/deploy/verify-and-prune-backup.sh "Backup" "$out" "$tables" "$BACKUP_DIR/pre-deploy-*.sql.gz" 7 "pre-deploy-"'
@@ -79,9 +79,9 @@ it('passes the new suffixed pre-deploy glob and a group prefix to the prune scri
 });
 
 it('skips re-tagging :previous when the incoming image already is :latest', function (): void {
-    $run = findCiStepRun('Tag current :latest as :previous (rollback target)');
+    $run = findDeployStepRun('Tag current :latest as :previous (rollback target)');
 
-    expect($run)->toContain('docker image inspect "$APP_IMAGE:${{ github.sha }}"')
+    expect($run)->toContain('docker image inspect "$APP_IMAGE:${{ github.event.workflow_run.head_sha }}"')
         ->toContain('docker image inspect temari/app:latest')
         ->toContain('"$current" = "$incoming"');
 
@@ -181,7 +181,7 @@ it('verify-and-prune-backup.sh keeps the newest backup for a sha and drops an ol
 });
 
 it('verify-and-prune-backup.sh: two backup runs for the same sha never collide on a filename', function (): void {
-    // The actual uniqueness guarantee lives in the ci.yml suffix (sha + timestamp
+    // The actual uniqueness guarantee lives in the deploy.yml suffix (sha + timestamp
     // + run_id + run_attempt), asserted above; this proves the prune script's
     // own side of the contract — given two distinctly-named files for one sha,
     // neither is silently treated as "the same backup" and both are inspectable

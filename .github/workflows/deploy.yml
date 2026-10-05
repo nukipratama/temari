@@ -1,0 +1,354 @@
+name: Deploy
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+
+env:
+  APP_IMAGE: ghcr.io/${{ github.repository }}/app
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy
+    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push'
+    runs-on: [self-hosted, homelab]
+    permissions:
+      contents: read
+      packages: read
+    concurrency:
+      group: deploy-prod
+      cancel-in-progress: false
+    # A job timeout is a cancellation, so `if: failure()` never runs. Overruns are
+    # capped per step instead; this is a backstop above the sum of those caps.
+    timeout-minutes: 60
+    env:
+      COMPOSE: docker compose -f compose.prod.yaml
+      BACKUP_DIR: /var/lib/temari-backups
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      # Runs inside the deploy-prod lock, so an older commit whose CI finished late
+      # can never roll prod back behind a newer deploy.
+      - name: Skip if main has moved past this commit
+        id: tip
+        run: |
+          tip=$(git ls-remote origin refs/heads/main | cut -f1)
+          if [ -z "$tip" ]; then
+            echo "::error::Could not read the tip of main"
+            exit 1
+          fi
+          if [ "$tip" = "${{ github.event.workflow_run.head_sha }}" ]; then
+            echo "current=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "current=false" >> "$GITHUB_OUTPUT"
+            echo "tip=$tip" >> "$GITHUB_OUTPUT"
+            echo "Superseded by $tip, skipped."
+          fi
+
+      - name: Require a running mysql (deploys never create or recreate it)
+        if: steps.tip.outputs.current == 'true'
+        run: |
+          container=$($COMPOSE ps -q mysql)
+          if [ -z "$container" ]; then
+            echo "::error::mysql is not running. Start it by hand first; see \"Upgrading MySQL\" in docs/architecture/deployment.md."
+            exit 1
+          fi
+          running=$(docker inspect --format '{{.Config.Image}}' "$container")
+          wanted=$($COMPOSE config --images mysql)
+          if [ "$running" != "$wanted" ]; then
+            echo "::warning::mysql runs $running but compose.prod.yaml pins $wanted. This deploy leaves mysql as it is; switch it in the \"Upgrading MySQL\" window in docs/architecture/deployment.md."
+          fi
+
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        if: steps.tip.outputs.current == 'true'
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pull the image built on the hosted runner
+        if: steps.tip.outputs.current == 'true'
+        timeout-minutes: 15
+        run: docker pull "$APP_IMAGE:${{ github.event.workflow_run.head_sha }}"
+
+      - name: Tag current :latest as :previous (rollback target)
+        if: steps.tip.outputs.current == 'true'
+        # Skipped when the incoming image already IS :latest: re-running a
+        # deploy for a sha that's already live must not collapse :previous onto
+        # the release it's re-running, or a rollback would roll back to itself.
+        run: |
+          incoming=$(docker image inspect "$APP_IMAGE:${{ github.event.workflow_run.head_sha }}" --format '{{.Id}}')
+          current=$(docker image inspect temari/app:latest --format '{{.Id}}' 2>/dev/null || echo "")
+          if [ -z "$current" ]; then
+            echo "No current :latest — nothing to preserve as :previous."
+          elif [ "$current" = "$incoming" ]; then
+            echo "Incoming image already is :latest — leaving :previous untouched."
+          else
+            docker tag temari/app:latest temari/app:previous
+          fi
+
+      - name: Tag the pulled image as :latest
+        if: steps.tip.outputs.current == 'true'
+        run: docker tag "$APP_IMAGE:${{ github.event.workflow_run.head_sha }}" temari/app:latest
+
+      - name: Bring up the data + cache layer
+        if: steps.tip.outputs.current == 'true'
+        # redis-cache is named explicitly (not just pulled in via app's depends_on)
+        # so a compose change to its command/healthcheck — e.g. adding requirepass —
+        # actually recreates it here, before the app rolls and starts authing to it.
+        run: $COMPOSE up -d --no-deps --remove-orphans --wait --wait-timeout 300 redis redis-cache
+
+      - name: Record pre-deploy maintenance state
+        if: steps.tip.outputs.current == 'true'
+        run: |
+          echo "MAINTENANCE_WAS_ACTIVE=true" >> "$GITHUB_ENV"
+          echo "DEPLOY_ENABLED_MAINTENANCE=false" >> "$GITHUB_ENV"
+          state=$($COMPOSE run --rm --no-deps app php artisan tinker --execute='echo app()->isDownForMaintenance() ? "active" : "inactive";' | tail -n 1)
+          case "$state" in
+            active) echo "Maintenance was already active; this deploy will not lift it." ;;
+            inactive) echo "MAINTENANCE_WAS_ACTIVE=false" >> "$GITHUB_ENV" ;;
+            *) echo "::error::Could not determine maintenance state: $state"; exit 1 ;;
+          esac
+
+      - name: Tag new image with git SHA
+        if: steps.tip.outputs.current == 'true'
+        run: docker tag temari/app:latest temari/app:${{ github.event.workflow_run.head_sha }}
+
+      # A re-run of this same workflow run keeps github.event.workflow_run.head_sha AND github.run_id —
+      # only github.run_attempt changes — so the sha alone can't name a unique
+      # file. The timestamp+run_id+run_attempt suffix guarantees a re-run always
+      # writes a new file beside the old one instead of overwriting it.
+      - name: Compute backup filename suffix
+        if: steps.tip.outputs.current == 'true'
+        run: |
+          echo "BACKUP_SUFFIX=${{ github.event.workflow_run.head_sha }}-$(date -u +%Y%m%dT%H%M%SZ)-${{ github.run_id }}-${{ github.run_attempt }}" >> "$GITHUB_ENV"
+
+      # MYSQL_PWD (exported inside the container) instead of `-p"$pass"` so the
+      # password never lands in the container process table / /proc/*/cmdline.
+      - name: Backup DB before migrate
+        if: steps.tip.outputs.current == 'true'
+        timeout-minutes: 5
+        run: |
+          set -o pipefail
+          mkdir -p "$BACKUP_DIR"
+          out="$BACKUP_DIR/pre-deploy-$BACKUP_SUFFIX.sql.gz"
+          if [ -e "$out" ]; then
+            echo "::error::backup already exists, refusing to overwrite: $out"
+            exit 1
+          fi
+          # shellcheck disable=SC2016 # Database variables must expand inside the container shell.
+          $COMPOSE exec -T mysql sh -c \
+            'export MYSQL_PWD="$DB_PASSWORD"; mysqldump -h 127.0.0.1 --single-transaction --quick --no-tablespaces --set-gtid-purged=OFF --loose-skip-masking-policies -u"$DB_USERNAME" "$DB_DATABASE"' \
+            | gzip > "$out"
+          # shellcheck disable=SC2016 # Database variables must expand inside the container shell.
+          tables=$($COMPOSE exec -T mysql sh -c \
+            'export MYSQL_PWD="$DB_PASSWORD"; mysql -h 127.0.0.1 -N -u"$DB_USERNAME" -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = \"$DB_DATABASE\""' \
+            | tr -d '[:space:]')
+          scripts/deploy/verify-and-prune-backup.sh "Backup" "$out" "$tables" "$BACKUP_DIR/pre-deploy-*.sql.gz" 7 "pre-deploy-"
+
+      - name: Backup analytics schema
+        if: steps.tip.outputs.current == 'true'
+        timeout-minutes: 5
+        run: |
+          out="$BACKUP_DIR/analytics-pre-deploy-$BACKUP_SUFFIX.sql.gz"
+          if [ -e "$out" ]; then
+            echo "::error::backup already exists, refusing to overwrite: $out"
+            exit 1
+          fi
+          # shellcheck disable=SC2016 # Analytics variables must expand inside the container shell.
+          if $COMPOSE exec -T mysql sh -c 'adb="${DB_ANALYTICS_DATABASE:-temari_analytics}"; export MYSQL_PWD="$DB_PASSWORD"; mysql -h 127.0.0.1 -u"$DB_USERNAME" -e "USE $adb"' 2>/dev/null; then
+            set -o pipefail
+            # shellcheck disable=SC2016 # Analytics variables must expand inside the container shell.
+            $COMPOSE exec -T mysql sh -c 'adb="${DB_ANALYTICS_DATABASE:-temari_analytics}"; export MYSQL_PWD="$DB_PASSWORD"; mysqldump -h 127.0.0.1 --single-transaction --quick --no-tablespaces --set-gtid-purged=OFF --loose-skip-masking-policies -u"$DB_USERNAME" --databases "$adb"' \
+              | gzip > "$out"
+            # shellcheck disable=SC2016 # Analytics variables must expand inside the container shell.
+            tables=$($COMPOSE exec -T mysql sh -c 'adb="${DB_ANALYTICS_DATABASE:-temari_analytics}"; export MYSQL_PWD="$DB_PASSWORD"; mysql -h 127.0.0.1 -N -u"$DB_USERNAME" -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = \"$adb\""' \
+              | tr -d '[:space:]')
+            scripts/deploy/verify-and-prune-backup.sh "Analytics backup" "$out" "$tables" "$BACKUP_DIR/analytics-pre-deploy-*.sql.gz" 7 "analytics-pre-deploy-"
+          else
+            echo "Analytics schema not present yet — skipping (first deploy)."
+          fi
+
+      - name: Quiesce scheduler + horizon before the roll
+        if: steps.tip.outputs.current == 'true'
+        run: $COMPOSE stop scheduler horizon || true
+
+      # migrate:status --pending=1 exits non-zero when a schema has pending migrations.
+      - name: Detect pending migrations (auto-rollback safety gate)
+        if: steps.tip.outputs.current == 'true'
+        run: |
+          applied=false
+          $COMPOSE run --rm --no-deps app php artisan migrate:status --pending=1 >/dev/null 2>&1 || applied=true
+          $COMPOSE run --rm --no-deps app php artisan migrate:status --database=analytics --path=database/migrations/analytics --pending=1 >/dev/null 2>&1 || applied=true
+          echo "MIGRATIONS_APPLIED=$applied" >> "$GITHUB_ENV"
+          echo "Migrations pending this deploy: $applied"
+
+      - name: Enter maintenance for pending migrations
+        if: steps.tip.outputs.current == 'true'
+        run: |
+          if [ "$MIGRATIONS_APPLIED" = "true" ] && [ "$MAINTENANCE_WAS_ACTIVE" = "false" ]; then
+            echo "DEPLOY_ENABLED_MAINTENANCE=true" >> "$GITHUB_ENV"
+            $COMPOSE run --rm --no-deps app php artisan down
+          elif [ "$MIGRATIONS_APPLIED" = "true" ]; then
+            echo "Migrations pending; preserving owner maintenance."
+          else
+            echo "No migrations pending; staying live."
+          fi
+
+      - name: Migrate (one-shot, on the new image)
+        if: steps.tip.outputs.current == 'true'
+        timeout-minutes: 10
+        run: $COMPOSE run --rm --no-deps app php artisan migrate --force
+
+      - name: Migrate analytics schema
+        if: steps.tip.outputs.current == 'true'
+        timeout-minutes: 10
+        run: $COMPOSE run --rm --no-deps app php artisan migrate --database=analytics --path=database/migrations/analytics --force
+
+      # Roll app + workers together. /ready proves the app can serve; /up remains
+      # the separate whole-stack check and requires Horizon to be running.
+      # Pulse is deliberately not in this list — it's a monitoring daemon, not on
+      # the healthcheck's dependency graph, so it rolls after the deploy is green
+      # (below), the same way `scheduler` does.
+      - name: Roll app + workers onto the new image
+        if: steps.tip.outputs.current == 'true'
+        run: $COMPOSE up -d --no-deps app horizon
+
+      - name: Optimize caches
+        if: steps.tip.outputs.current == 'true'
+        run: $COMPOSE exec -T app php artisan optimize
+
+      - name: Healthcheck
+        if: steps.tip.outputs.current == 'true'
+        run: |
+          if scripts/deploy/poll-health.sh http://127.0.0.1:7001/ready; then
+            echo "Readiness passed"
+          else
+            echo "Readiness failed"
+            exit 1
+          fi
+          if scripts/deploy/poll-health.sh http://127.0.0.1:7001/up; then
+            echo "Dependency health passed"
+          else
+            echo "Dependency health failed"
+            exit 1
+          fi
+
+      - name: Smoke test
+        if: steps.tip.outputs.current == 'true'
+        run: |
+          curl -fsS --max-time 10 -o /dev/null -w "login: HTTP %{http_code} in %{time_total}s\n" \
+            http://127.0.0.1:7001/login
+          login=$(curl -fsS --max-time 10 -D- -o /dev/null http://127.0.0.1:7001/login)
+          if printf '%s' "$login" | grep -qi '^x-powered-by:'; then
+            echo "::error::/login advertises X-Powered-By"; exit 1
+          fi
+          # PWA assets must serve with the right MIME + cache headers. Asserting them
+          # here catches a Caddyfile serving regression (e.g. the file copied to the
+          # wrong path → default config with no header handles) before the deploy goes green.
+          sw=$(curl -fsS --max-time 10 -D- -o /dev/null http://127.0.0.1:7001/sw.js)
+          printf '%s' "$sw" | grep -qi '^content-type: *text/javascript' \
+            || { echo "::error::/sw.js missing Content-Type text/javascript"; exit 1; }
+          printf '%s' "$sw" | grep -qi '^cache-control: *no-cache' \
+            || { echo "::error::/sw.js missing Cache-Control no-cache"; exit 1; }
+          man=$(curl -fsS --max-time 10 -D- -o /dev/null http://127.0.0.1:7001/manifest.webmanifest)
+          printf '%s' "$man" | grep -qi '^content-type: *application/manifest+json' \
+            || { echo "::error::/manifest.webmanifest missing Content-Type application/manifest+json"; exit 1; }
+          # The service worker's offline fallback. It must be a real static file:
+          # if it ever 404s or gets routed through PHP, an offline user sees the
+          # browser error page instead, and nothing else would surface that.
+          off=$(curl -fsS --max-time 10 -D- -o /dev/null http://127.0.0.1:7001/offline.html)
+          printf '%s' "$off" | grep -qi '^content-type: *text/html' \
+            || { echo "::error::/offline.html missing Content-Type text/html"; exit 1; }
+          echo "PWA assets OK: /sw.js + /manifest.webmanifest + /offline.html"
+
+      - name: Resume scheduler (deploy green)
+        if: steps.tip.outputs.current == 'true'
+        run: $COMPOSE up -d --no-deps scheduler
+
+      - name: Roll Pulse daemon (deploy green)
+        if: steps.tip.outputs.current == 'true'
+        run: $COMPOSE up -d --no-deps pulse
+
+      - name: Leave deploy-owned maintenance
+        if: steps.tip.outputs.current == 'true'
+        run: |
+          if [ "$DEPLOY_ENABLED_MAINTENANCE" = "true" ]; then
+            $COMPOSE exec -T app php artisan up
+          else
+            echo "Maintenance was not enabled by this deploy; leaving its state unchanged."
+          fi
+
+      - name: Roll back on failure
+        if: failure() && steps.tip.outputs.current == 'true'
+        timeout-minutes: 6
+        run: |
+          $COMPOSE start scheduler horizon pulse || true
+
+          # App rollback is safe only when no migration ran this deploy.
+          if [ "${MIGRATIONS_APPLIED:-true}" = "true" ]; then
+            echo "::error::Deploy failed on the migration path — not auto-rolling back and leaving maintenance active. Recover with the 'Rollback prod' workflow, plus ./scripts/restore-db.sh <backup> if a migration was destructive."
+          elif docker image inspect temari/app:previous >/dev/null 2>&1; then
+            docker tag temari/app:previous temari/app:latest
+            $COMPOSE up -d --no-deps app horizon pulse scheduler
+            $COMPOSE exec -T app php artisan horizon:terminate || true
+            scripts/deploy/poll-health.sh http://127.0.0.1:7001/up \
+              && echo "Rolled back to :previous and healthy." \
+              || echo "::warning::Rolled back to :previous but /up still failing — likely an infra fault, not the image."
+          else
+            echo "::warning::No :previous image to roll back to. App left on the failed image."
+          fi
+
+      # Best-effort push; run --rm boots on :latest (the good :previous after a rollback).
+      - name: Alert on deploy failure
+        if: failure()
+        continue-on-error: true
+        timeout-minutes: 3
+        run: |
+          if [ "${MIGRATIONS_APPLIED:-true}" = "true" ]; then
+            note="migrations ran, manual recovery needed"
+          else
+            note="auto-rolled-back to :previous"
+          fi
+          $COMPOSE run --rm --no-deps app php artisan deploy:alert "deploy ${{ github.event.workflow_run.head_sha }} failed ($note)" || true
+
+      - name: Prune old temari images
+        # Prune by TAG reference, never by image id: after a deploy the old image
+        # carries both :previous (the rollback target) and its old :<sha>. Deleting
+        # by id would drop the shared image and destroy the rollback target. Removing
+        # only the stale :<sha> tag leaves :previous/:latest intact.
+        if: always() && steps.tip.outputs.current == 'true'
+        continue-on-error: true
+        run: |
+          docker images "temari/app" --format "{{.Repository}}:{{.Tag}}" \
+            | grep -vE ":(latest|previous|${{ github.event.workflow_run.head_sha }})$" \
+            | xargs --no-run-if-empty -n1 docker rmi 2>/dev/null || true
+
+      - name: Deploy summary
+        if: always()
+        run: |
+          {
+            echo "## Deploy"
+            echo "| | |"
+            echo "| --- | --- |"
+            echo "| SHA | \`${{ github.event.workflow_run.head_sha }}\` |"
+            echo "| Status | ${{ steps.tip.outputs.current == 'false' && format('Superseded by {0}, skipped', steps.tip.outputs.tip) || (job.status == 'success' && '✅ Deployed' || '❌ Failed') }} |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  notify:
+    name: Deploy alert
+    needs: [deploy]
+    if: always() && needs.deploy.result == 'failure'
+    uses: ./.github/workflows/maintainer-alert.yml
+    with:
+      message: Deploy ${{ github.event.workflow_run.head_sha }} failed on the homelab runner, possibly before any step ran.
+    secrets:
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TELEGRAM_MAINTAINER_CHAT_ID: ${{ secrets.TELEGRAM_MAINTAINER_CHAT_ID }}
