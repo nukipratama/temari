@@ -48,6 +48,7 @@ final readonly class CurrentWeekVolumeProjector
             $multiplier,
             $longRunCapKm,
             longRunProgressionCapKm: $longRunProgressionCapKm,
+            fallOffTilt: $session->fall_off_tilt,
         ))->coreKm;
 
         $weekTargetKm = $sessions->sum($kmFor);

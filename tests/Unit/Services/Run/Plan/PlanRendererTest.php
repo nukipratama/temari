@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\FallOffTilt;
 use App\Enums\FeedbackReason;
 use App\Enums\FeedbackSubject;
 use App\Enums\IntentVerdict;
@@ -1174,4 +1175,55 @@ it('dayPayload quotes the card\'s elapsed pace in the result note, naming the hi
 
     expect($render(3_056))->toBe('it ran harder than the easy effort the day asked for; averaged 6:22/km, quicker than the easy limit of 6:48/km.')
         ->and($render(3_200))->toBe('it ran harder than the easy effort the day asked for; averaged 6:40/km; effort-adjusted for hills that is 6:20/km, quicker than the easy limit of 6:48/km.');
+});
+
+it('dayPayload names the tilt that lengthened a long run, and none once the cap swallows it', function (): void {
+    $session = PlannedSession::factory()->make([
+        'date' => '2026-08-12',
+        'phase' => PlanPhase::Build,
+        'session_type' => SessionType::Long,
+        'fall_off_tilt' => FallOffTilt::Endurance,
+    ]);
+    $payload = fn (float $capKm): array => PlanRenderer::dayPayload($session, Carbon::parse('2026-08-10'), null, [], 10_000.0, false, 20.0, 1.0, $capKm, RENDERER_PACES, PlannedSessionStatus::Planned);
+
+    expect($payload(INF)['fall_off_tilt'])->toBe('endurance')
+        ->and($payload(INF)['asked_km'])->toBe(22.0)
+        ->and($payload(20.0)['fall_off_tilt'])->toBeNull()
+        ->and($payload(20.0)['asked_km'])->toBe(20.0);
+});
+
+it('dayPayload names the tilt behind a quality day only while that day is shown as written', function (): void {
+    $tempo = PlannedSession::factory()->make([
+        'date' => '2026-08-12',
+        'phase' => PlanPhase::Build,
+        'session_type' => SessionType::Tempo,
+        'prescribed_hard_minutes' => 20,
+        'prescribed_pace_band' => PaceBand::Threshold,
+        'fall_off_tilt' => FallOffTilt::Endurance,
+    ]);
+    $keptEasy = PlannedSession::factory()->make([
+        'date' => '2026-08-12',
+        'phase' => PlanPhase::Peak,
+        'session_type' => SessionType::Interval,
+        'prescribed_hard_minutes' => 0,
+        'fall_off_tilt' => FallOffTilt::Speed,
+    ]);
+    $untilted = PlannedSession::factory()->make(['date' => '2026-08-12', 'phase' => PlanPhase::Build, 'session_type' => SessionType::Tempo]);
+    $payload = fn (PlannedSession $s): array => PlanRenderer::dayPayload($s, Carbon::parse('2026-08-10'), null, [], 10_000.0, false, 20.0, 1.0, INF, RENDERER_PACES, PlannedSessionStatus::Planned);
+
+    expect($payload($tempo)['fall_off_tilt'])->toBe('endurance')
+        ->and($payload($keptEasy)['fall_off_tilt'])->toBeNull()
+        ->and($payload($untilted)['fall_off_tilt'])->toBeNull();
+});
+
+it('sizes a past tilted long run from its own row, so a later regrade reads the same km', function (): void {
+    $week = collect([
+        PlannedSession::factory()->make(['date' => '2026-08-04', 'phase' => PlanPhase::Build, 'session_type' => SessionType::Easy, 'volume_multiplier' => 1.0]),
+        PlannedSession::factory()->make(['date' => '2026-08-09', 'phase' => PlanPhase::Build, 'session_type' => SessionType::Long, 'volume_multiplier' => 1.0, 'fall_off_tilt' => FallOffTilt::Endurance]),
+    ]);
+
+    expect(PlanRenderer::plannedKmByDate($week, 20.0, INF, false))->toBe([
+        '2026-08-04' => SegmentGenerator::coreKmFor(SessionType::Easy, true, 20.0, 1.0, INF),
+        '2026-08-09' => 22.0,
+    ]);
 });

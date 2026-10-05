@@ -31,12 +31,6 @@ final class FallOffExponent
 
     private const float TEN_K_METERS = 10_000.0;
 
-    /** @param list<array{date: Carbon, distance_m: float, time_sec: float}> $efforts */
-    public static function forDistance(array $efforts, float $distanceM): float
-    {
-        return self::fit($efforts) ?? self::default($distanceM);
-    }
-
     public static function default(float $distanceM): float
     {
         return match (true) {

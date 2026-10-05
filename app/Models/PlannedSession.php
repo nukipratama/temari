@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Actions\Run\Plan\ResolvePlannedSessionsAction;
+use App\Enums\FallOffTilt;
 use App\Enums\IntentVerdict;
 use App\Enums\PlanPhase;
 use App\Enums\PaceBand;
@@ -61,6 +62,7 @@ use Override;
  * @property int|null $prescribed_pace_sec_per_km
  * @property string|null $prescription_reason
  * @property array<string, int|float|string>|null $prescription_race_context
+ * @property FallOffTilt|null $fall_off_tilt
  * @property bool $pinned
  * @property bool $skipped
  * @property PlannedSessionStatus $status
@@ -83,6 +85,7 @@ use Override;
     'prescribed_pace_sec_per_km',
     'prescription_reason',
     'prescription_race_context',
+    'fall_off_tilt',
     'pinned',
     'skipped',
     'status',
@@ -111,6 +114,7 @@ class PlannedSession extends Model
         'prescribed_pace_sec_per_km',
         'prescription_reason',
         'prescription_race_context',
+        'fall_off_tilt',
         'race_distance_m',
     ];
 
@@ -207,6 +211,7 @@ class PlannedSession extends Model
             'prescribed_pace_sec_per_km' => 'integer',
             'prescription_reason' => 'string',
             'prescription_race_context' => 'array',
+            'fall_off_tilt' => FallOffTilt::class,
             'pinned' => 'boolean',
             'skipped' => 'boolean',
             'status' => PlannedSessionStatus::class,

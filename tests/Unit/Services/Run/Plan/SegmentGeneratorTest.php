@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\FallOffTilt;
 use App\Enums\PaceBand;
 use App\Enums\PlanPhase;
 use App\Enums\SegmentKey;
@@ -426,3 +427,23 @@ it('bounds every running session by the recent single-run cap, not only the long
     'primary easy' => [SessionType::Easy, true],
     'easy' => [SessionType::Easy, false],
 ]);
+
+it('lengthens only an endurance-tilted long run, by a tenth', function (): void {
+    expect(SegmentGenerator::coreKmFor(SessionType::Long, false, 16.0, 1.0, INF, fallOffTilt: FallOffTilt::Endurance))->toBe(17.6)
+        ->and(SegmentGenerator::coreKmFor(SessionType::Long, false, 16.0, 1.0, INF, fallOffTilt: FallOffTilt::Speed))->toBe(16.0)
+        ->and(SegmentGenerator::coreKmFor(SessionType::Long, false, 16.0, 1.0, INF))->toBe(16.0)
+        ->and(SegmentGenerator::coreKmFor(SessionType::Tempo, false, 16.0, 1.0, INF, fallOffTilt: FallOffTilt::Endurance))
+        ->toBe(SegmentGenerator::coreKmFor(SessionType::Tempo, false, 16.0, 1.0, INF))
+        ->and(SegmentGenerator::coreKmFor(SessionType::Easy, true, 16.0, 1.0, INF, fallOffTilt: FallOffTilt::Endurance))
+        ->toBe(SegmentGenerator::coreKmFor(SessionType::Easy, true, 16.0, 1.0, INF));
+});
+
+it('keeps an endurance-tilted long run under the long-run cap and the progression cap', function (): void {
+    expect(SegmentGenerator::coreKmFor(SessionType::Long, false, 16.0, 1.0, 17.0, fallOffTilt: FallOffTilt::Endurance))->toBe(17.0)
+        ->and(SegmentGenerator::coreKmFor(SessionType::Long, false, 16.0, 1.0, INF, longRunProgressionCapKm: 16.5, fallOffTilt: FallOffTilt::Endurance))->toBe(16.5)
+        ->and(SegmentGenerator::coreKmFor(SessionType::Long, false, 16.0, 1.0, 15.0, fallOffTilt: FallOffTilt::Endurance))->toBe(15.0);
+
+    $segments = SegmentGenerator::generate(SessionType::Long, PlanPhase::Build, 10_000.0, false, 16.0, 1.0, 17.0, PACES, 1.2, fallOffTilt: FallOffTilt::Endurance);
+
+    expect(SegmentGenerator::segmentSumKm($segments))->toBe(17.0);
+});

@@ -14,6 +14,7 @@ import {
     computeAdherence,
     deltaDirection,
     easedFromDelta,
+    fallOffTiltWhy,
     generalZoneSpan,
     isRaceWeek,
     judgedDayResult,
@@ -344,6 +345,7 @@ function planDay(overrides: Partial<PlanDay> = {}): PlanDay {
         ran_anyway: false,
         prescribed_km: null,
         prescription_reason: null,
+        fall_off_tilt: null,
         advice_note: null,
         eased_from: null,
         pace_eased_from: null,
@@ -751,5 +753,42 @@ describe('dayStatusGlyph', () => {
         ['overreached', STATUS_GLYPH.overreached],
     ] as const)('maps status %s to its glyph', (status, glyph) => {
         expect(dayStatusGlyph(planDay({ status }))).toBe(glyph);
+    });
+});
+
+describe('fallOffTiltWhy', () => {
+    it('names the tilt behind each session it moves', () => {
+        expect(
+            fallOffTiltWhy(
+                planDay({ session_type: 'tempo', fall_off_tilt: 'endurance' }),
+            ),
+        ).toBe('threshold this week: your pace fades over longer distances.');
+        expect(
+            fallOffTiltWhy(
+                planDay({ session_type: 'long', fall_off_tilt: 'endurance' }),
+            ),
+        ).toBe(
+            'a little longer this week: your pace fades over longer distances.',
+        );
+        expect(
+            fallOffTiltWhy(
+                planDay({ session_type: 'interval', fall_off_tilt: 'speed' }),
+            ),
+        ).toBe(
+            'intervals this week: you hold pace well over longer distances, so speed has the most room to grow.',
+        );
+    });
+
+    it('says nothing on an untilted day or a pairing no tilt produces', () => {
+        expect(
+            fallOffTiltWhy(
+                planDay({ session_type: 'tempo', fall_off_tilt: null }),
+            ),
+        ).toBeNull();
+        expect(
+            fallOffTiltWhy(
+                planDay({ session_type: 'easy', fall_off_tilt: 'endurance' }),
+            ),
+        ).toBeNull();
     });
 });

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Run\Plan;
 
+use App\Enums\FallOffTilt;
 use App\Enums\FeedbackSubject;
 use App\Enums\PaceBand;
 use App\Enums\PlanPhase;
@@ -144,7 +145,7 @@ final readonly class Periodizer
                 }
                 $session->update(array_intersect_key($row, array_flip([
                     'session_type', 'prescribed_hard_minutes', 'prescribed_pace_band',
-                    'prescribed_pace_sec_per_km', 'prescription_reason', 'prescription_race_context',
+                    'prescribed_pace_sec_per_km', 'prescription_reason', 'prescription_race_context', 'fall_off_tilt',
                 ])));
                 $changed = true;
             }
@@ -174,7 +175,7 @@ final readonly class Periodizer
      * Y-m-d. Reads nothing and writes nothing — everything it needs is in
      * {@see PlanInputs}.
      *
-     * @return array<string, array{phase: PlanPhase, session_type: SessionType, volume_multiplier: float, prescribed_hard_minutes: int, prescribed_pace_band: PaceBand|null, prescribed_pace_sec_per_km: int|null, prescription_reason: string|null, prescription_race_context: array<string, int|float|string>|null, ...}>
+     * @return array<string, array{phase: PlanPhase, session_type: SessionType, volume_multiplier: float, fall_off_tilt: FallOffTilt|null, prescribed_hard_minutes: int, prescribed_pace_band: PaceBand|null, prescribed_pace_sec_per_km: int|null, prescription_reason: string|null, prescription_race_context: array<string, int|float|string>|null, ...}>
      */
     public function rowsFor(PlanInputs $inputs): array
     {
@@ -206,13 +207,14 @@ final readonly class Periodizer
                 $inputs->raceDate,
                 $week['zone'],
                 $inputs->twoRunQualityEligible,
+                $inputs->fallOffTilt,
             );
             if ($ceilingKm !== null) {
                 [$week['multiplier'], $ceilingKm] = self::boundResumedWeek($weekRows, $week['multiplier'], $inputs, $ceilingKm);
             }
             $weekRows = $this->withIntensityPrescriptions($weekRows, $week['multiplier'], $inputs, $week['week_start'], $rows);
             foreach ($weekRows as $date => $row) {
-                $rows[$date] = [...$row, 'volume_multiplier' => $week['multiplier']];
+                $rows[$date] = [...$row, 'volume_multiplier' => $week['multiplier'], 'fall_off_tilt' => $row['session_type'] === SessionType::Easy ? null : ($row['fall_off_tilt'] ?? null)];
             }
         }
 
@@ -265,6 +267,7 @@ final readonly class Periodizer
                 $inputs->longRunCapKm,
                 $inputs->raceDistanceM,
                 $inputs->longRunProgressionCapKm,
+                $row['fall_off_tilt'] ?? null,
             );
         }
 
@@ -352,6 +355,7 @@ final readonly class Periodizer
                     'prescribed_pace_sec_per_km' => $row['prescribed_pace_sec_per_km'],
                     'prescription_reason' => $row['prescription_reason'],
                     'prescription_race_context' => $row['prescription_race_context'],
+                    'fall_off_tilt' => $row['fall_off_tilt'],
                     'pinned' => false,
                     'status' => PlannedSessionStatus::Planned,
                     'clamped_km' => $carriedClamp?->clamped_km,

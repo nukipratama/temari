@@ -53,6 +53,7 @@ function day(overrides: Partial<PlanDay> = {}): PlanDay {
         ran_anyway: false,
         prescribed_km: null,
         prescription_reason: null,
+        fall_off_tilt: null,
         advice_note: null,
         eased_from: null,
         pace_eased_from: null,
@@ -363,6 +364,31 @@ describe('DayHeadline and DayDetail', () => {
                 'time on feet. builds the engine the race runs on. chatty pace the whole way.',
             ),
         ).toBeInTheDocument();
+    });
+
+    it('ends the point with why the fall-off tilted the session', () => {
+        renderRow({
+            day: day({
+                prescription_reason:
+                    'progressed after the latest comparable session was hit',
+                fall_off_tilt: 'endurance',
+            }),
+        });
+
+        const line = screen.getByText(
+            'threshold this week: your pace fades over longer distances.',
+        );
+        expect(line).toHaveClass('mt-1', 'text-xs', 'italic', 'text-text-2');
+        expect(line.previousElementSibling).toHaveTextContent(
+            'a step up. you hit the last one.',
+        );
+        expect(line.nextElementSibling).toBeNull();
+    });
+
+    it('shows no tilt line on an untilted session', () => {
+        renderRow({ day: day() });
+
+        expect(screen.queryByText(/this week:/)).not.toBeInTheDocument();
     });
 
     it('says why a quality day was kept easy', () => {

@@ -472,3 +472,22 @@ it('caps a rise from a training-run floor like any unconfirmed record', function
     expect($estimate['vdot'])->toBe(round($baseline + 1.0, 1))
         ->and($estimate['source_category'])->toBe('training_run');
 });
+
+it('exposes the fall-off it projected with and whether it was fitted', function (): void {
+    $fitted = User::factory()->create();
+    recordRun($fitted, '2026-09-01', 5_000, 1_650);
+    recordRun($fitted, '2026-09-10', 15_000, 5_700);
+    $single = User::factory()->create();
+    recordRun($single, '2026-09-20', 5_000, 1_500);
+
+    $fittedEstimate = $this->estimator->estimate($fitted);
+    $singleEstimate = $this->estimator->estimate($single);
+
+    expect($fittedEstimate['k_fitted'])->toBeTrue()
+        ->and($fittedEstimate['k'])->toBe(FallOffExponent::fit([
+            ['date' => Carbon::parse('2026-09-01'), 'distance_m' => 5_000.0, 'time_sec' => 1_650.0],
+            ['date' => Carbon::parse('2026-09-10'), 'distance_m' => 15_000.0, 'time_sec' => 5_700.0],
+        ]))
+        ->and($singleEstimate['k_fitted'])->toBeFalse()
+        ->and($singleEstimate['k'])->toBe(FallOffExponent::DEFAULT_UP_TO_10K);
+});

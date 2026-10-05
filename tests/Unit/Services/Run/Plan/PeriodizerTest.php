@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Actions\Run\Plan\ResolvePlannedSessionsAction;
 use App\Enums\AdaptationReason;
+use App\Enums\FallOffTilt;
 use App\Enums\PaceBand;
 use App\Enums\PlanPhase;
 use App\Enums\PlannedSessionStatus;
@@ -1086,4 +1087,26 @@ it('drops cached plan reads after a batched regeneration', function (): void {
 
     expect($resolve($user->id, $today, $today))->toHaveCount(1)
         ->and(Cache::has(PastYouTrendBuilder::cacheKey($user->id, $today)))->toBeFalse();
+});
+
+it('persists an endurance tilt on the Build and Peak long runs, and nowhere outside them', function (): void {
+    $user = User::factory()->create();
+    seedPeriodizerBaseline($user);
+    RaceGoal::factory()->for($user)->create([
+        'race_date' => Carbon::today()->addWeeks(9)->toDateString(),
+        'distance_m' => 10_000,
+    ]);
+    seedConfirmedEffort($user, 5_000, 1_500, Carbon::today()->subWeeks(3));
+    seedConfirmedEffort($user, 15_000, (int) round(1_500 * 3 ** 1.13), Carbon::today()->subWeeks(2));
+
+    $this->periodizer->regenerate($user, Carbon::today());
+
+    $rows = PlannedSession::query()->where('user_id', $user->id)->get();
+    $tilted = $rows->whereNotNull('fall_off_tilt');
+    $blockLongs = $rows->filter(fn (PlannedSession $s): bool => $s->session_type === SessionType::Long && in_array($s->phase, [PlanPhase::Build, PlanPhase::Peak], true));
+
+    expect($blockLongs)->not->toBeEmpty()
+        ->and($blockLongs->every(fn (PlannedSession $s): bool => $s->fall_off_tilt === FallOffTilt::Endurance))->toBeTrue()
+        ->and($tilted->every(fn (PlannedSession $s): bool => in_array($s->phase, [PlanPhase::Build, PlanPhase::Peak], true)
+            && in_array($s->session_type, [SessionType::Long, SessionType::Tempo], true)))->toBeTrue();
 });

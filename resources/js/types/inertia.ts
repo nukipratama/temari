@@ -575,6 +575,9 @@ export interface WeekPlanDay {
     prescribed_km: number | null;
     /** Deterministic explanation of why this hard-work dose was selected. */
     prescription_reason: string | null;
+    /** Which way the athlete's own fall-off moved this session, set only
+     *  while the session shown is the one the tilt shaped. */
+    fall_off_tilt: 'endurance' | 'speed' | null;
     /** Today's safety advice on a pinned or race day, whose prescription
      *  keeps leading. Null on every other day. */
     advice_note: string | null;

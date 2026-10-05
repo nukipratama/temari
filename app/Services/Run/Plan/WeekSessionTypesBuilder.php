@@ -97,6 +97,7 @@ final readonly class WeekSessionTypesBuilder
             $longRunCapKm,
             $paces,
             longRunProgressionCapKm: $longRunProgressionCapKm,
+            fallOffTilt: $session->fall_off_tilt,
         );
 
         return PlanRenderer::sessionDistanceKm(
@@ -108,6 +109,7 @@ final readonly class WeekSessionTypesBuilder
             $longRunCapKm,
             $raceDistanceM,
             longRunProgressionCapKm: $longRunProgressionCapKm,
+            fallOffTilt: $session->fall_off_tilt,
         );
     }
 }

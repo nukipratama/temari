@@ -6,6 +6,7 @@ namespace App\Services\Run\Plan;
 
 use App\Actions\Run\Plan\ResolveActiveRaceAction;
 use App\Actions\Run\Plan\ResolveTrainingPreferenceAction;
+use App\Enums\FallOffTilt;
 use App\Enums\IntentVerdict;
 use App\Enums\PaceBand;
 use App\Enums\PlannedSessionStatus;
@@ -70,7 +71,8 @@ final readonly class PlanInputsGatherer
         $ambition = $race === null ? null : $this->ambition->assess($user, $race, $today);
         $preference = ($this->trainingPreference)($user->id);
         $baseline = $this->baseline->forUser($user, $today);
-        $paces = $this->paceCalculator->fromVdotResult($this->vdotEstimator->estimate($user, $today));
+        $estimate = $this->vdotEstimator->estimate($user, $today);
+        $paces = $this->paceCalculator->fromVdotResult($estimate);
         ['pinned' => $pinnedDates, 'settled' => $settledDates, 'fixed' => $fixedSessions] = $this->fixedPlanDaysIn($user, $currentWeekStart->copy()->subWeek(), $today, $horizonEnd, $baseline, $paces);
         $actualSessions = array_map(static fn (array $session): array => [
             'date' => $session['date'],
@@ -117,6 +119,7 @@ final readonly class PlanInputsGatherer
             twoRunQualityEligible: $paces !== null && $weeks->count() >= 6
                 && $weeks->every(static fn (WeeklySnapshot $week): bool => $week->runs >= 2),
             resumeTrailingMeanKm: $this->resumeTrailingMeanKm($race, $weeks, $currentWeekStart),
+            fallOffTilt: FallOffTilt::fromFallOff($estimate['k'] ?? null, $estimate['k_fitted'] ?? false),
         );
     }
 
@@ -181,7 +184,7 @@ final readonly class PlanInputsGatherer
                 ->orWhere('status', '!=', PlannedSessionStatus::Planned)
                 ->orWhere('date', '<', $today->toDateString()))
             ->orderBy('date')
-            ->get(['date', 'pinned', 'skipped', 'status', 'session_type', 'prescribed_hard_minutes', 'prescribed_pace_band', 'prescribed_pace_sec_per_km', 'phase', 'volume_multiplier', 'race_distance_m', 'clamped_km', 'rest_clamped_at', 'eased_pace_sec_per_km', 'readiness_assessment', 'prescription_race_context', 'intent_evidence']);
+            ->get(['date', 'pinned', 'skipped', 'status', 'session_type', 'prescribed_hard_minutes', 'prescribed_pace_band', 'prescribed_pace_sec_per_km', 'phase', 'volume_multiplier', 'race_distance_m', 'clamped_km', 'rest_clamped_at', 'eased_pace_sec_per_km', 'readiness_assessment', 'prescription_race_context', 'intent_evidence', 'fall_off_tilt']);
 
         $pinned = [];
         $settled = [];
@@ -213,7 +216,7 @@ final readonly class PlanInputsGatherer
                     $fixed[$date]['hard_minutes'] = null;
                 }
                 if ($row->status === PlannedSessionStatus::Planned && $paces !== null) {
-                    $km = SegmentGenerator::coreKmFor($row->session_type, false, $baseline['long_run_km'], (float) $row->volume_multiplier, $baseline['long_run_cap_km'], $row->race_distance_m === null ? null : (float) $row->race_distance_m, $baseline['long_run_progression_cap_km']);
+                    $km = SegmentGenerator::coreKmFor($row->session_type, false, $baseline['long_run_km'], (float) $row->volume_multiplier, $baseline['long_run_cap_km'], $row->race_distance_m === null ? null : (float) $row->race_distance_m, $baseline['long_run_progression_cap_km'], $row->fall_off_tilt);
                     $km = $row->clamped_km === null ? $km : min($km, (float) $row->clamped_km);
                     $prescription = new IntensityPrescription($row->prescribed_hard_minutes ?? 0, $row->prescribed_pace_band, $row->prescribed_pace_sec_per_km ?? ($row->prescribed_pace_band === null ? null : $paces[$row->prescribed_pace_band->value]), null);
                     $segments = SegmentGenerator::forPrescription($row->session_type, $row->phase, $km, $paces, $prescription);
