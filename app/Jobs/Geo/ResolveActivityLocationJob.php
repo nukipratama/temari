@@ -42,6 +42,7 @@ class ResolveActivityLocationJob implements ShouldBeUnique, ShouldQueue
             $detail === null
             || $detail->location_resolved_at !== null
             || $detail->location_attempts >= ActivityDetail::MAX_BACKFILL_ATTEMPTS
+            || $detail->location_attempted_at?->isAfter(Carbon::now()->subHours(ActivityDetail::LOCATION_ATTEMPT_COOLDOWN_HOURS))
         ) {
             return;
         }

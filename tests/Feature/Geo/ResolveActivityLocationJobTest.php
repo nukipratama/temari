@@ -68,6 +68,22 @@ it('does not resolve a row that reached five attempts', function (): void {
     expect($detail->fresh()->location_attempts)->toBe(5);
 });
 
+it('waits a day after a failed attempt before resolving again', function (): void {
+    $detail = ActivityDetail::factory()->create([
+        'start_lat' => 0.0,
+        'start_lng' => 0.0,
+        'location_resolved_at' => null,
+        'location_attempts' => 1,
+        'location_attempted_at' => now()->subHours(23),
+    ]);
+
+    $this->mock(ReverseGeocodeAction::class, fn ($m) => $m->shouldReceive('__invoke')->never());
+
+    new ResolveActivityLocationJob($detail->id)->handle(app(ReverseGeocodeAction::class));
+
+    expect($detail->fresh()->location_attempts)->toBe(1);
+});
+
 it('skips already-resolved details', function (): void {
     $detail = ActivityDetail::factory()->create([
         'start_lat' => -6.24,

@@ -152,7 +152,7 @@ it('reaches a newer never-attempted row behind 200 attempted ones', function ():
         'start_lng' => 106.81,
         'location_resolved_at' => null,
         'location_attempts' => 1,
-        'location_attempted_at' => now()->subHour(),
+        'location_attempted_at' => now()->subDays(2),
     ]);
     $fresh = ActivityDetail::factory()->create([
         'start_lat' => -7.95,
@@ -178,6 +178,22 @@ it('skips rows that reached five attempts', function (): void {
         'location_resolved_at' => null,
         'location_attempts' => 5,
         'location_attempted_at' => now()->subDays(3),
+    ]);
+
+    $this->artisan('geo:backfill-locations')->assertSuccessful();
+
+    Queue::assertNothingPushed();
+});
+
+it('skips a row attempted within the last day, so an hourly sweep spends one attempt per day', function (): void {
+    Queue::fake();
+
+    ActivityDetail::factory()->create([
+        'start_lat' => -6.24,
+        'start_lng' => 106.81,
+        'location_resolved_at' => null,
+        'location_attempts' => 1,
+        'location_attempted_at' => now()->subHours(2),
     ]);
 
     $this->artisan('geo:backfill-locations')->assertSuccessful();

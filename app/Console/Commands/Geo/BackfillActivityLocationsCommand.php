@@ -69,6 +69,9 @@ class BackfillActivityLocationsCommand extends Command
             ->whereNotNull('start_lng')
             ->whereNull('location_resolved_at')
             ->where('location_attempts', '<', ActivityDetail::MAX_BACKFILL_ATTEMPTS)
+            ->where(fn ($query) => $query
+                ->whereNull('location_attempted_at')
+                ->orWhere('location_attempted_at', '<', now()->subHours(ActivityDetail::LOCATION_ATTEMPT_COOLDOWN_HOURS)))
             ->orderByRaw('location_attempted_at is not null')
             ->orderBy('location_attempted_at')
             ->orderBy('id');

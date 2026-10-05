@@ -121,6 +121,8 @@ class ActivityDetail extends Model
 
     public const int MAX_BACKFILL_ATTEMPTS = 5;
 
+    public const int LOCATION_ATTEMPT_COOLDOWN_HOURS = 24;
+
     #[Override]
     protected static function booted(): void
     {
