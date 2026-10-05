@@ -14,6 +14,7 @@ use App\Enums\SessionType;
 use App\Services\Run\Metrics\ReadinessCeiling;
 use App\Services\Run\Metrics\SessionIntent;
 use App\Services\Run\Metrics\StreamSummary;
+use App\Services\Run\Plan\PlanRenderer;
 
 /**
  * A stable hash over the run data that MATERIALLY drives its per-run narration,
@@ -35,6 +36,8 @@ final class MaterialFingerprint
      */
     public static function forPlannedSession(PlannedSession $session, ?float $longRunBaselineKm): string
     {
+        $goalPace = PlanRenderer::goalPaceKindOf($session, $session->session_type);
+
         return self::digest([
             'session_type' => $session->session_type->value,
             'phase' => $session->phase->value,
@@ -50,6 +53,7 @@ final class MaterialFingerprint
             // conditionally so every already-stamped row keeps its digest
             // rather than the new key re-narrating everyone's whole week.
             ...($session->race_distance_m === null ? [] : ['race_distance_m' => $session->race_distance_m]),
+            ...($goalPace === null ? [] : ['goal_pace' => $goalPace]),
             // The day flipping to credited turns the blurb from a label into a
             // read of what happened, so it has to re-narrate once. Added
             // conditionally for the same reason race_distance_m is: an ungraded

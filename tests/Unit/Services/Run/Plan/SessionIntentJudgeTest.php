@@ -342,3 +342,13 @@ it('records no hard minutes when a too-fast easy run carries no heart rate', fun
     expect($reading['evidence'])->toMatchArray(['stimulus_family' => 'hard', 'stimulus_source' => 'pace'])
         ->not->toHaveKey('stimulus_minutes');
 });
+
+it('judges goal-pace reps on a tempo day as intervals and a goal-pace block on an interval day as a tempo', function (): void {
+    $laps = lapRows([[2000, 800], [630, 180], [300, 130], [620, 180], [300, 130], [640, 180], [300, 130], [560, 180], [1000, 400]]);
+    $reps = SessionIntentJudge::judge(SessionType::Tempo, intervalDay(), JUDGE_PACES, [judgeRun(6.6, 2300, ['laps' => $laps])]);
+    $block = SessionIntentJudge::judge(SessionType::Interval, tempoDay(), JUDGE_PACES, [judgeRun(8.0, 2400, ['best_efforts' => ['20min' => '5:12']])]);
+
+    expect($reps['verdict'])->toBe(IntentVerdict::Hit)
+        ->and($reps['evidence'])->toMatchArray(['basis' => 'laps', 'reps_prescribed' => 4])
+        ->and($block['evidence'])->toHaveKey('block_minutes');
+});

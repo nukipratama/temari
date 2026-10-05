@@ -120,6 +120,7 @@ final readonly class PlanInputsGatherer
                 && $weeks->every(static fn (WeeklySnapshot $week): bool => $week->runs >= 2),
             resumeTrailingMeanKm: $this->resumeTrailingMeanKm($race, $weeks, $currentWeekStart),
             fallOffTilt: FallOffTilt::fromFallOff($estimate['k'] ?? null, $estimate['k_fitted'] ?? false),
+            raceAmbitionState: $ambition?->state,
         );
     }
 

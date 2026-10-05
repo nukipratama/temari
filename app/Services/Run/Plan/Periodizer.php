@@ -212,7 +212,7 @@ final readonly class Periodizer
             if ($ceilingKm !== null) {
                 [$week['multiplier'], $ceilingKm] = self::boundResumedWeek($weekRows, $week['multiplier'], $inputs, $ceilingKm);
             }
-            $weekRows = $this->withIntensityPrescriptions($weekRows, $week['multiplier'], $inputs, $week['week_start'], $rows);
+            $weekRows = $this->withIntensityPrescriptions($weekRows, $week['multiplier'], $inputs, $week['week_start'], $rows, GoalPaceWork::forWeek($inputs, $week['week_start'], $week['phase']));
             foreach ($weekRows as $date => $row) {
                 $rows[$date] = [...$row, 'volume_multiplier' => $week['multiplier'], 'fall_off_tilt' => $row['session_type'] === SessionType::Easy ? null : ($row['fall_off_tilt'] ?? null)];
             }
@@ -453,7 +453,7 @@ final readonly class Periodizer
      * @param array<string, array{session_type: SessionType, prescribed_hard_minutes: int, prescribed_pace_band: PaceBand|null, ...}> $priorRows
      * @return array<string, array{phase: PlanPhase, session_type: SessionType, prescribed_hard_minutes: int, prescribed_pace_band: PaceBand|null, prescribed_pace_sec_per_km: int|null, prescription_reason: string|null, prescription_race_context: array<string, int|float|string>|null, ...}>
      */
-    private function withIntensityPrescriptions(array $rows, float $multiplier, PlanInputs $inputs, Carbon $weekStart, array $priorRows): array
+    private function withIntensityPrescriptions(array $rows, float $multiplier, PlanInputs $inputs, Carbon $weekStart, array $priorRows, ?GoalPaceWork $goalPace = null): array
     {
         $workloadSessions = self::workloadSessions($inputs);
         $weekEnd = $weekStart->copy()->addDays(6)->toDateString();
@@ -462,16 +462,18 @@ final readonly class Periodizer
             && array_key_exists('hard_minutes', $session) && $session['hard_minutes'] === null
             && self::isHardDay($session));
         $kmByDate = self::plannedKmByDate($rows, $multiplier, $inputs);
-
-        $prescriptions = [];
-        foreach ($rows as $date => $row) {
-            $family = IntensityPrescriptionResolver::familyKey(
-                $row['session_type'],
-                $inputs->raceDistanceM,
-                $inputs->raceGoalTimeSec,
-            );
+        $goalPaceDate = $goalPace?->replacedDate($rows);
+        $resolve = function (string $date, ?int $hardMinutesAvailable = null) use ($rows, $inputs, $goalPace, $goalPaceDate): IntensityPrescription {
+            $row = $rows[$date];
+            $work = $date === $goalPaceDate || ($row['session_type'] === SessionType::Long && $goalPace?->racesLongAtGoalPace() === true)
+                ? $goalPace
+                : null;
+            $family = $work === null
+                ? IntensityPrescriptionResolver::familyKey($row['session_type'], $inputs->raceDistanceM, $inputs->raceGoalTimeSec)
+                : IntensityPrescriptionResolver::familyKeyForContext($row['session_type'], $work->context());
             $recent = $inputs->recentPrescriptions[$family] ?? null;
-            $prescriptions[$date] = $this->prescriptionResolver->resolve(
+
+            return $this->prescriptionResolver->resolve(
                 $row['session_type'],
                 $row['phase'],
                 $inputs->raceDistanceM,
@@ -479,7 +481,14 @@ final readonly class Periodizer
                 $inputs->paces,
                 $recent['verdict'] ?? null,
                 $recent['hard_minutes'] ?? null,
+                $hardMinutesAvailable,
+                $work,
             );
+        };
+
+        $prescriptions = [];
+        foreach ($rows as $date => $row) {
+            $prescriptions[$date] = $resolve($date);
             if (($inputs->runDays === null ? $inputs->sessionsPerWeek : count($inputs->runDays)) === 2) {
                 $prescription = $prescriptions[$date];
                 $prescriptions[$date] = $row['session_type'] === SessionType::Tempo
@@ -501,25 +510,9 @@ final readonly class Periodizer
             if ($date === null) {
                 break;
             }
-            $row = $rows[$date];
             $current = $prescriptions[$date];
             $over = array_sum(array_map(static fn (IntensityPrescription $p): int => $p->hardMinutes, $prescriptions)) - $hardCeiling;
-            $family = IntensityPrescriptionResolver::familyKey(
-                $row['session_type'],
-                $inputs->raceDistanceM,
-                $inputs->raceGoalTimeSec,
-            );
-            $recent = $inputs->recentPrescriptions[$family] ?? null;
-            $prescriptions[$date] = $this->prescriptionResolver->resolve(
-                $row['session_type'],
-                $row['phase'],
-                $inputs->raceDistanceM,
-                $inputs->raceGoalTimeSec,
-                $inputs->paces,
-                $recent['verdict'] ?? null,
-                $recent['hard_minutes'] ?? null,
-                max(0, $current->hardMinutes - $over),
-            );
+            $prescriptions[$date] = $resolve($date, max(0, $current->hardMinutes - $over));
             if ($prescriptions[$date]->hardMinutes === $current->hardMinutes) {
                 break;
             }
@@ -529,18 +522,29 @@ final readonly class Periodizer
 
         foreach ($rows as $date => &$row) {
             $prescription = $prescriptions[$date];
-            if (! $prescription->isEasy()) {
-                $segments = SegmentGenerator::forPrescription($row['session_type'], $row['phase'], $kmByDate[$date], $inputs->paces, $prescription);
-                $hasHard = array_any($segments, static fn (SessionSegment $segment): bool => in_array($segment->key, [SegmentKey::Main, SegmentKey::Interval], true) && $segment->paceLabel !== PaceBand::Easy);
-                if (! $hasHard) {
-                    $prescription = new IntensityPrescription(0, null, null, 'easy because the outing cannot safely fit the minimum quality structure', $prescription->raceContext);
+            $fits = static fn (IntensityPrescription $candidate): bool => array_any(
+                SegmentGenerator::forPrescription($row['session_type'], $row['phase'], $kmByDate[$date], $inputs->paces, $candidate),
+                static fn (SessionSegment $segment): bool => in_array($segment->key, [SegmentKey::Main, SegmentKey::Interval], true) && $segment->paceLabel !== PaceBand::Easy,
+            );
+            if ($date === $goalPaceDate && ! $prescription->isEasy() && ! $fits($prescription)) {
+                do {
+                    $prescription = $resolve($date, $prescription->hardMinutes - 1);
+                } while (! $prescription->isEasy() && ! $fits($prescription));
+                if (! $prescription->isEasy()) {
+                    $prescription = new IntensityPrescription($prescription->hardMinutes, $prescription->paceBand, $prescription->paceSecPerKm, 'bounded by the distance this day holds', $prescription->raceContext);
                 }
+            }
+            if (! $prescription->isEasy() && ! $fits($prescription)) {
+                $prescription = new IntensityPrescription(0, null, null, 'easy because the outing cannot safely fit the minimum quality structure', $prescription->raceContext);
             }
             if ($prescription->isEasy() && $row['session_type']->isQuality() && $unknownDemandingMinutes) {
                 $prescription = new IntensityPrescription(0, null, null, 'easy because demanding work this week has unmeasured hard minutes', $prescription->raceContext);
             }
             if ($prescription->isEasy() && in_array($row['session_type'], [SessionType::Tempo, SessionType::Interval], true)) {
                 $row['session_type'] = SessionType::Easy;
+            }
+            if ($date === $goalPaceDate && ! $prescription->isEasy()) {
+                unset($row['fall_off_tilt']);
             }
             $row = [...$row, ...$prescription->toArray()];
         }

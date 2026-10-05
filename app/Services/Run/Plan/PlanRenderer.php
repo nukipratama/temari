@@ -405,6 +405,7 @@ final class PlanRenderer
             'ran_anyway' => $ranAnyway ?? $s->ran_anyway,
             'prescription_reason' => $s->prescription_reason,
             'fall_off_tilt' => $fallOffTilt?->value,
+            'goal_pace' => self::goalPaceKindOf($s, $sessionType),
             'advice_note' => $advisoryClamp !== null && $keepsPrescription ? $clampVoice ?? $advisoryClamp['note'] : null,
             'eased_from' => match (true) {
                 $headlinesEase => self::easedFromPayload($effective, $status, $isToday ? $clampVoice : null, $recordedReasons),
@@ -431,6 +432,21 @@ final class PlanRenderer
             ),
             'flagged' => app(ResolveFlaggedSubjectsAction::class)(FeedbackSubject::PlanDay, $s->id),
         ];
+    }
+
+    /** The race whose goal pace the session shown rehearses, or null on any other session. */
+    public static function goalPaceKindOf(PlannedSession $s, SessionType $shownType): ?string
+    {
+        $kind = $s->prescription_race_context['kind'] ?? null;
+        if ($shownType !== $s->session_type
+            || ! in_array($shownType, [SessionType::Tempo, SessionType::Interval], true)
+            || ! GoalPaceWork::isGoalPace($s->prescription_race_context)
+            || IntensityPrescription::fromSession($s)?->isEasy() !== false
+            || ! is_string($kind)) {
+            return null;
+        }
+
+        return $kind;
     }
 
     /**

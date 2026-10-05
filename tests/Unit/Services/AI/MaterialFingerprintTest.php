@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Enums\AdaptationReason;
 use App\Enums\IntentVerdict;
+use App\Enums\PaceBand;
 use App\Enums\PlanPhase;
 use App\Enums\PlannedSessionStatus;
 use App\Enums\SessionType;
@@ -389,4 +390,25 @@ it('changes when the current week adaptation reason or deload changes', function
         ->not->toBe($steady)
         ->and(MaterialFingerprint::forSeason(false, AdaptationReason::Steady, true))
         ->not->toBe($steady);
+});
+
+it('re-narrates a day that became goal-pace work, and leaves an ordinary quality day\'s digest as it was', function (): void {
+    $tempo = PlannedSession::factory()->make([
+        'session_type' => SessionType::Tempo,
+        'phase' => PlanPhase::Peak,
+        'skipped' => false,
+        'race_distance_m' => null,
+        'prescribed_hard_minutes' => 20,
+        'prescribed_pace_band' => PaceBand::Threshold,
+        'prescription_race_context' => null,
+    ]);
+    $goalPace = $tempo->replicate()->forceFill(['prescription_race_context' => ['distance_m' => 10_000, 'goal_pace_sec_per_km' => 300, 'kind' => '10k', 'band' => 'on_track']]);
+
+    expect(MaterialFingerprint::forPlannedSession($tempo, 16.0))->toBe(hash('xxh128', (string) json_encode([
+        'long_run_km' => 16.0,
+        'phase' => 'peak',
+        'session_type' => 'tempo',
+        'skipped' => false,
+    ])))
+        ->and(MaterialFingerprint::forPlannedSession($goalPace, 16.0))->not->toBe(MaterialFingerprint::forPlannedSession($tempo, 16.0));
 });

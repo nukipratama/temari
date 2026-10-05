@@ -447,3 +447,18 @@ it('keeps an endurance-tilted long run under the long-run cap and the progressio
 
     expect(SegmentGenerator::segmentSumKm($segments))->toBe(17.0);
 });
+
+it('writes goal-pace work in the kind\'s own shape rather than the day\'s type', function (SessionType $type, string $kind, SegmentKey $workKey, int $blocks): void {
+    $prescription = new IntensityPrescription(20, PaceBand::Threshold, 285, null, ['distance_m' => 10_000, 'goal_pace_sec_per_km' => 285, 'kind' => $kind, 'band' => 'on_track']);
+    $work = array_values(array_filter(
+        SegmentGenerator::forPrescription($type, PlanPhase::Peak, 11.0, PACES, $prescription),
+        static fn ($segment): bool => $segment->paceLabel !== PaceBand::Easy,
+    ));
+
+    expect($work)->toHaveCount($blocks)
+        ->and(array_unique(array_map(static fn ($segment): string => $segment->key->value, $work)))->toBe([$workKey->value])
+        ->and(array_unique(array_map(static fn ($segment): ?int => $segment->paceSecPerKm, $work)))->toBe([285]);
+})->with([
+    '10K reps on a tempo day' => [SessionType::Tempo, '10k', SegmentKey::Interval, 5],
+    'half block on an interval day' => [SessionType::Interval, 'half', SegmentKey::Main, 1],
+]);

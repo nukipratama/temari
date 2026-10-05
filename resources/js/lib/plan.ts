@@ -365,8 +365,29 @@ function sessionHasWork(day: PlanDay): boolean {
     return day.segments.some((s) => s.zone > 'Z2');
 }
 
+export const GOAL_PACE_LABEL = 'goal pace';
+
+const GOAL_PACE_RACE: Record<NonNullable<PlanDay['goal_pace']>, string> = {
+    '5k': '5K',
+    '10k': '10K',
+    half: 'half marathon',
+    marathon: 'marathon',
+};
+
+/** The session's name: goal-pace work by its own, every other day by its type. */
+export function sessionLabel(
+    day: Pick<PlanDay, 'session_type' | 'goal_pace'>,
+): string {
+    return day.goal_pace !== null
+        ? GOAL_PACE_LABEL
+        : (SESSION_TYPE_LABEL[day.session_type] ?? day.session_type);
+}
+
 /** What a session is for and how it should feel, in one line. */
 export function sessionPurpose(day: PlanDay): string | null {
+    if (day.goal_pace !== null) {
+        return `rehearsing your ${GOAL_PACE_RACE[day.goal_pace]} goal pace.`;
+    }
     const hasWork = sessionHasWork(day);
     switch (day.session_type) {
         case 'long':

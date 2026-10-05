@@ -30,7 +30,7 @@ import {
     paceLabel,
     prescriptionWhy,
     ranHot,
-    SESSION_TYPE_LABEL,
+    sessionLabel,
     sessionPurpose,
     STATUS_LABEL,
     STATUS_MEANING,
@@ -248,7 +248,7 @@ export function DayHeadline({ day }: Readonly<{ day: PlanDay }>) {
     return (
         <span className="block min-w-0 flex-1">
             <span className="block text-sm font-semibold text-foreground">
-                {SESSION_TYPE_LABEL[day.session_type] ?? day.session_type}
+                {sessionLabel(day)}
             </span>
             {!isRest && judged !== null && (
                 <AskedRanResult

@@ -24,6 +24,7 @@ function day(overrides: Partial<PlanDay> = {}): PlanDay {
         prescribed_km: null,
         prescription_reason: null,
         fall_off_tilt: null,
+        goal_pace: null,
         advice_note: null,
         eased_from: null,
         pace_eased_from: null,
@@ -215,6 +216,27 @@ describe('WeekStrip', () => {
         );
         expect(tabs[0]).not.toHaveTextContent('interval');
         expect(tabs[0]).toHaveAttribute(
+            'aria-label',
+            expect.stringContaining('interval'),
+        );
+    });
+
+    it('labels goal-pace work by its own name rather than its session type', () => {
+        const { tabs } = renderStrip({
+            days: [
+                day({
+                    session_type: 'interval',
+                    status: 'planned',
+                    goal_pace: '5k',
+                }),
+            ],
+        });
+
+        expect(tabs[0]).toHaveAttribute(
+            'aria-label',
+            expect.stringContaining('goal pace'),
+        );
+        expect(tabs[0]).not.toHaveAttribute(
             'aria-label',
             expect.stringContaining('interval'),
         );

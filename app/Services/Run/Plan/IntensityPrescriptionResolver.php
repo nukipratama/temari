@@ -7,6 +7,7 @@ namespace App\Services\Run\Plan;
 use App\Enums\IntentVerdict;
 use App\Enums\PaceBand;
 use App\Enums\PlanPhase;
+use App\Enums\RaceAmbitionState;
 use App\Enums\RaceSupport;
 use App\Enums\SessionType;
 
@@ -27,6 +28,15 @@ final class IntensityPrescriptionResolver
     /** @var array<string, int> */
     private const array INTERVAL_REP_MINUTES = ['build' => 3, 'peak' => 4, 'taper' => 2];
 
+    /** @var array<string, array<string, int>> */
+    private const array GOAL_PACE_TARGETS = [
+        GoalPaceWork::KIND_5K => ['build' => 15, 'peak' => 20, 'taper' => 10],
+        GoalPaceWork::KIND_10K => ['build' => 21, 'peak' => 24, 'taper' => 12],
+        GoalPaceWork::KIND_HALF => ['build' => 30, 'peak' => 40, 'taper' => 20],
+    ];
+
+    private const int AMBITIOUS_DOSE_DIVISOR = 2;
+
     /**
      * @param array{easy: int, marathon: int, threshold: int, interval: int}|null $paces
      */
@@ -39,22 +49,26 @@ final class IntensityPrescriptionResolver
         ?IntentVerdict $previousVerdict = null,
         ?int $previousHardMinutes = null,
         ?int $hardMinutesAvailable = null,
+        ?GoalPaceWork $goalPace = null,
     ): IntensityPrescription {
         if (! $type->isQuality()) {
             return new IntensityPrescription(0, null, null, null);
         }
 
-        [$target, $band, $raceContext] = $this->target($type, $phase, $raceDistanceM, $raceGoalTimeSec);
+        [$target, $band, $raceContext] = $goalPace === null
+            ? $this->target($type, $phase, $raceDistanceM, $raceGoalTimeSec)
+            : $this->goalPaceTarget($type, $phase, $goalPace);
         if ($target === 0 || $band === null) {
             return new IntensityPrescription(0, null, null, null, $raceContext);
         }
 
-        $coldStart = $type === SessionType::Interval
+        $shape = GoalPaceWork::shapeOf($type, $raceContext);
+        $coldStart = $shape === SessionType::Interval
             ? 2 * (self::INTERVAL_REP_MINUTES[$phase->value] ?? 3)
             : ($raceContext === null ? 20 : 15);
         $minutes = $previousHardMinutes === null
             ? min($target, $coldStart)
-            : $this->progressed($previousHardMinutes, $previousVerdict, $type, $phase, $target);
+            : $this->progressed($previousHardMinutes, $previousVerdict, $shape, $phase, $target);
         $reason = $previousHardMinutes === null ? 'conservative start with sparse comparable evidence' : match ($previousVerdict) {
             IntentVerdict::Hit => 'progressed after the latest comparable session was hit',
             IntentVerdict::TooHard => 'stepped down after the latest comparable session was too hard',
@@ -63,23 +77,41 @@ final class IntensityPrescriptionResolver
 
         $minutes = min($target, $minutes);
         if ($hardMinutesAvailable !== null && $minutes > $hardMinutesAvailable) {
-            $minutes = $this->wholeWorkUnits($type, $phase, $target, $hardMinutesAvailable);
+            $minutes = $this->wholeWorkUnits($shape, $phase, $target, $hardMinutesAvailable);
             $reason = 'bounded by this week’s easy-time reserve';
         }
-        if ($type === SessionType::Interval) {
+        if ($shape === SessionType::Interval) {
             $rep = self::INTERVAL_REP_MINUTES[$phase->value] ?? 3;
             $minutes = intdiv($minutes, $rep) * $rep;
         }
 
-        $minimum = $type === SessionType::Interval
+        $minimum = $shape === SessionType::Interval
             ? 2 * (self::INTERVAL_REP_MINUTES[$phase->value] ?? 3)
             : 10;
         if ($minutes < $minimum) {
             return new IntensityPrescription(0, null, null, 'easy because the week has no safe room for meaningful quality', $raceContext);
         }
 
-        $pace = $this->pace($band, $raceContext, $paces);
+        $pace = $goalPace === null ? $this->pace($band, $raceContext, $paces) : $goalPace->goalPaceSecPerKm;
         return new IntensityPrescription($minutes, $band, $pace, $reason, $raceContext);
+    }
+
+    /**
+     * @return array{0: int, 1: PaceBand, 2: array{distance_m: int, goal_pace_sec_per_km: int, kind: string, band: string}}
+     */
+    private function goalPaceTarget(SessionType $type, PlanPhase $phase, GoalPaceWork $goalPace): array
+    {
+        $targets = match (true) {
+            ! $goalPace->isMarathon() => self::GOAL_PACE_TARGETS[$goalPace->kind],
+            $type === SessionType::Long => self::RACE_LONG_TARGETS,
+            default => self::RACE_TEMPO_TARGETS,
+        };
+        $target = $targets[$phase->value] ?? 0;
+        if ($goalPace->band === RaceAmbitionState::Ambitious) {
+            $target = intdiv($target, self::AMBITIOUS_DOSE_DIVISOR);
+        }
+
+        return [$target, $goalPace->paceBand(), $goalPace->context()];
     }
 
     /**
@@ -136,7 +168,7 @@ final class IntensityPrescriptionResolver
     }
 
     /**
-     * @param array{distance_m: int, goal_pace_sec_per_km: int, kind: 'marathon'}|null $context
+     * @param array{distance_m: int, goal_pace_sec_per_km: int, kind: string, band?: string}|null $context
      * @param array{easy: int, marathon: int, threshold: int, interval: int}|null $paces
      */
     private function pace(PaceBand $band, ?array $context, ?array $paces): ?int
@@ -185,6 +217,9 @@ final class IntensityPrescriptionResolver
     {
         if ($raceContext === null) {
             return $type->value;
+        }
+        if (GoalPaceWork::isGoalPace($raceContext) && ($raceContext['kind'] ?? null) !== GoalPaceWork::KIND_MARATHON) {
+            return 'goal_pace';
         }
 
         return match ($type) {

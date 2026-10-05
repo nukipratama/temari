@@ -54,6 +54,7 @@ export function planDay(overrides: Partial<PlanDay> = {}): PlanDay {
         prescribed_km: null,
         prescription_reason: null,
         fall_off_tilt: null,
+        goal_pace: null,
         advice_note: null,
         eased_from: null,
         pace_eased_from: null,

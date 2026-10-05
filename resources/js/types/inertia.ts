@@ -578,6 +578,9 @@ export interface WeekPlanDay {
     /** Which way the athlete's own fall-off moved this session, set only
      *  while the session shown is the one the tilt shaped. */
     fall_off_tilt: 'endurance' | 'speed' | null;
+    /** The race whose goal pace this session rehearses, set only while the
+     *  session shown is that goal-pace work. */
+    goal_pace: '5k' | '10k' | 'half' | 'marathon' | null;
     /** Today's safety advice on a pinned or race day, whose prescription
      *  keeps leading. Null on every other day. */
     advice_note: string | null;

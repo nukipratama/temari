@@ -49,8 +49,11 @@ function planFingerprint(User $user): array
 }
 
 it('plans a 50 minute 10K ambition from 70 minute capacity without a crash build', function (): void {
+    $sessionDays = fn (): array => array_map(static fn (array $day): array => array_slice($day, 0, 3), planFingerprint($this->user));
+    $goalPaceDays = fn (): int => PlannedSession::query()->where('user_id', $this->user->id)->whereNotNull('prescription_race_context->band')->count();
     app(Periodizer::class)->regenerate($this->user, Carbon::today());
-    $ambitious = planFingerprint($this->user);
+    $ambitious = $sessionDays();
+    $ambitiousGoalPaceDays = $goalPaceDays();
     $adaptation = PlanAdaptation::query()->where('user_id', $this->user->id)->firstOrFail();
 
     $supported = app(RaceAmbitionAssessor::class)->assess($this->user, $this->race)->supportedTimeSec;
@@ -59,7 +62,9 @@ it('plans a 50 minute 10K ambition from 70 minute capacity without a crash build
 
     expect($adaptation->reason)->not->toBe(AdaptationReason::BehindRacePace)
         ->and($adaptation->quality_delta)->toBe(0)
-        ->and(planFingerprint($this->user))->toBe($ambitious);
+        ->and($ambitiousGoalPaceDays)->toBe(0)
+        ->and($sessionDays())->toBe($ambitious)
+        ->and($goalPaceDays())->toBeGreaterThan(0);
 });
 
 it('prescribes the supported pace on race day and keeps the stated target visible', function (): void {

@@ -18,6 +18,7 @@ use App\Models\TrainingPreference;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\Run\Plan\PlanInputsGatherer;
+use App\Services\Run\Plan\RaceAmbitionAssessor;
 use App\Services\Run\Metrics\VdotEstimator;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -384,3 +385,17 @@ it('tilts the plan only by a fitted fall-off, and only outside the neutral band'
     'neutral fall-off' => [(int) round(1_500 * 3 ** 1.08), null],
     'no fitted fall-off' => [null, null],
 ]);
+
+it('carries the race ambition band the goal-pace work is gated on, and none without a race', function (): void {
+    $user = gathererAthlete();
+    $withoutRace = $this->gatherer->forUser($user, Carbon::today());
+    $race = RaceGoal::factory()->for($user)->create([
+        'race_date' => '2026-10-31',
+        'distance_m' => 10_000,
+        'goal_time_sec' => 3_540,
+    ]);
+
+    expect($withoutRace->raceAmbitionState)->toBeNull()
+        ->and($this->gatherer->forUser($user, Carbon::today())->raceAmbitionState)
+        ->toBe(app(RaceAmbitionAssessor::class)->assess($user, $race, Carbon::today())->state);
+});

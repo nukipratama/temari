@@ -8,6 +8,7 @@ use App\Enums\AdaptationReason;
 use App\Enums\FallOffTilt;
 use App\Enums\IntentVerdict;
 use App\Enums\PaceBand;
+use App\Enums\RaceAmbitionState;
 use App\Enums\SessionType;
 use Illuminate\Support\Carbon;
 
@@ -60,6 +61,7 @@ final readonly class PlanInputs
         public bool $twoRunQualityEligible = false,
         public ?float $resumeTrailingMeanKm = null,
         public ?FallOffTilt $fallOffTilt = null,
+        public ?RaceAmbitionState $raceAmbitionState = null,
     ) {
     }
 
