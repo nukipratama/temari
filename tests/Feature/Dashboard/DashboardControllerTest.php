@@ -444,7 +444,8 @@ it('paints Home inside its query budget', function (): void {
     // 25: Home asks about a passed race still waiting on its outcome.
     // 27: the supported VDOT reads the athlete's hard efforts, and with one on file
     // also reads the quality sessions that corroborate it.
-    expect($queries)->toBeLessThanOrEqual(27);
+    // 28: Home asks about a time trial still waiting on its answer.
+    expect($queries)->toBeLessThanOrEqual(28);
     expect($fitnessQueries)->toBe(['performance_evidence' => 1, 'fitness_anchors' => 1]);
     expect($readinessQueries)->toBe(['stress' => 1, 'feedback' => 1]);
 

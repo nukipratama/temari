@@ -119,7 +119,7 @@ final readonly class ComplianceScorer
 
         $typesByDate = array_map(static fn (RecommendationRevision $revision): SessionType => SessionType::from($revision->effective['session_type']), $recommendationsByDate);
         $verdicts = $this->sessionMatcher->scoreRange($user, $plannedKmByDate, $excusedByDate, $today, $typesByDate);
-        $intents = $this->intentsFor($rows, $effectiveByDate, $verdicts, $recommendationsByDate, $runsByDate);
+        $intents = $this->intentsFor($rows, $effectiveByDate, $verdicts, $recommendationsByDate, $runsByDate, $user->hrProfile()['hr_zones']);
         if ($user->runnerProfile?->hasExplicitZones() !== true) {
             $intents = array_map(static fn (array $intent): array => self::onHeartRate($intent['evidence'])
                 ? ['verdict' => $intent['verdict'], 'evidence' => $intent['evidence'] + ['zones' => 'estimated']]
@@ -146,9 +146,10 @@ final readonly class ComplianceScorer
      * @param  array<string, array{status: PlannedSessionStatus, score: int|null, ran_anyway: bool}>  $verdicts
      * @param  array<string, RecommendationRevision>  $recommendationsByDate
      * @param  array<string, list<ActivityDetail>>  $runsByDate
+     * @param  array<string, array{lo: int, hi: int}>  $zones
      * @return array<string, array{verdict: IntentVerdict, evidence: array<string, int|float|string>}>
      */
-    private function intentsFor(Collection $rows, array $effectiveByDate, array $verdicts, array $recommendationsByDate, array $runsByDate): array
+    private function intentsFor(Collection $rows, array $effectiveByDate, array $verdicts, array $recommendationsByDate, array $runsByDate, array $zones): array
     {
         $judged = $rows->filter(static fn (PlannedSession $row): bool => ($verdicts[$row->date->toDateString()]['status'] ?? null)?->isCredited() === true
             && in_array($effectiveByDate[$row->date->toDateString()]->sessionType, [SessionType::Easy, SessionType::Long, SessionType::Tempo, SessionType::Interval], true));
@@ -159,6 +160,13 @@ final readonly class ComplianceScorer
         $intents = [];
         foreach ($judged as $row) {
             $date = $row->date->toDateString();
+            $trial = TimeTrial::of($row);
+            $effectiveType = $effectiveByDate[$date]->sessionType;
+            if ($trial !== null && in_array($effectiveType, [SessionType::Tempo, SessionType::Interval], true)) {
+                $intents[$date] = self::trialIntent($trial, $effectiveType, $runsByDate[$date] ?? [], $zones);
+
+                continue;
+            }
             $recommendation = $recommendationsByDate[$date] ?? null;
             $intents[$date] = $recommendation === null
                 ? ['verdict' => IntentVerdict::Unknown, 'evidence' => ['advice_history' => 'unknown']]
@@ -213,6 +221,27 @@ final readonly class ComplianceScorer
         }
 
         return ['verdict' => $verdict, 'evidence' => $evidence];
+    }
+
+    /**
+     * A time trial is judged by whether any run on its day passed the trial's
+     * gate, never by the pace segments it was written with.
+     *
+     * @param  list<ActivityDetail>  $runs
+     * @param  array<string, array{lo: int, hi: int}>  $zones
+     * @return array{verdict: IntentVerdict, evidence: array<string, int|float|string>}
+     */
+    private static function trialIntent(TimeTrial $trial, SessionType $effectiveType, array $runs, array $zones): array
+    {
+        $passed = null;
+        foreach ($runs as $run) {
+            $passed ??= $trial->gate((float) $run->distance, $run->elapsed_time ?? $run->moving_time, $run->average_heartrate, $zones);
+        }
+
+        return [
+            'verdict' => $passed === null ? IntentVerdict::Missed : IntentVerdict::Hit,
+            'evidence' => ['time_trial' => $passed ?? 'not_passed', 'effective_type' => $effectiveType->value],
+        ];
     }
 
     /** @param  array<string, int|float|string>  $evidence */

@@ -218,6 +218,9 @@ final class IntensityPrescriptionResolver
         if ($raceContext === null) {
             return $type->value;
         }
+        if (TimeTrial::isTrial($raceContext)) {
+            return TimeTrial::KIND;
+        }
         if (GoalPaceWork::isGoalPace($raceContext) && ($raceContext['kind'] ?? null) !== GoalPaceWork::KIND_MARATHON) {
             return 'goal_pace';
         }

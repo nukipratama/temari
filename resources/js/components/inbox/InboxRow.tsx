@@ -8,6 +8,7 @@ import {
     Footprints,
     Moon,
     RefreshCwOff,
+    Timer,
     TrendingUp,
 } from 'lucide-react';
 import { useState } from 'react';
@@ -37,6 +38,7 @@ const KIND_LABEL: Record<NotificationKind, string> = {
     race_tomorrow: 'Race',
     race_outcome: 'Race',
     fitness_improved: 'Race',
+    time_trial: 'Plan',
     test: 'Test',
 };
 
@@ -50,6 +52,7 @@ const KIND_ICON: Record<NotificationKind, IconComponent> = {
     race_tomorrow: Flag,
     race_outcome: Flag,
     fitness_improved: TrendingUp,
+    time_trial: Timer,
     test: Bell,
 };
 
@@ -63,6 +66,7 @@ const KIND_TONE: Record<NotificationKind, Tone> = {
     race_tomorrow: 'accent',
     race_outcome: 'accent',
     fitness_improved: 'accent',
+    time_trial: 'accent',
     test: 'neutral',
 };
 

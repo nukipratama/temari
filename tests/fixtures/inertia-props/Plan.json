@@ -101,6 +101,9 @@
     "weeks[].days[].session_type",
     "weeks[].days[].skipped",
     "weeks[].days[].status",
+    "weeks[].days[].time_trial",
+    "weeks[].days[].time_trial.aim_time_sec",
+    "weeks[].days[].time_trial.distance_m",
     "weeks[].phase",
     "weeks[].type",
     "weeks[].week_start"

@@ -25,7 +25,6 @@ import {
     deltaDirection,
     easedFromDelta,
     fallOffTiltWhy,
-    GOAL_PACE_LABEL,
     judgedDayResult,
     paceEaseDelta,
     paceLabel,
@@ -35,6 +34,7 @@ import {
     sessionPurpose,
     STATUS_LABEL,
     STATUS_MEANING,
+    workLabel,
     volumeAdjustedFrom,
     weekdayLabel,
 } from '@/lib/plan';
@@ -436,7 +436,7 @@ export default function DayDetail({
             )}
             <SessionBarGraph
                 segments={day.segments}
-                workPaceLabel={day.goal_pace ? GOAL_PACE_LABEL : undefined}
+                workPaceLabel={workLabel(day)}
             />
             {day.activities.length > 0 && <RunList runs={day.activities} />}
             {(canMove || canSkip || canUnskip) && (

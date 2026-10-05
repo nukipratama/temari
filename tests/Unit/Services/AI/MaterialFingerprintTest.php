@@ -412,3 +412,18 @@ it('re-narrates a day that became goal-pace work, and leaves an ordinary quality
     ])))
         ->and(MaterialFingerprint::forPlannedSession($goalPace, 16.0))->not->toBe(MaterialFingerprint::forPlannedSession($tempo, 16.0));
 });
+
+it('re-narrates a day that became a time trial', function (): void {
+    $interval = PlannedSession::factory()->make([
+        'session_type' => SessionType::Interval,
+        'phase' => PlanPhase::Build,
+        'skipped' => false,
+        'race_distance_m' => null,
+        'prescribed_hard_minutes' => 25,
+        'prescribed_pace_band' => PaceBand::Interval,
+        'prescription_race_context' => null,
+    ]);
+    $trial = $interval->replicate()->forceFill(['prescription_race_context' => ['kind' => 'time_trial', 'distance_m' => 5_000, 'aim_time_sec' => 1_500, 'retry' => 0]]);
+
+    expect(MaterialFingerprint::forPlannedSession($trial, 16.0))->not->toBe(MaterialFingerprint::forPlannedSession($interval, 16.0));
+});

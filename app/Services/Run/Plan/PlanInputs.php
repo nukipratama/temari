@@ -32,6 +32,9 @@ final readonly class PlanInputs
      * @param array<string, array{verdict: IntentVerdict, hard_minutes: int}> $recentPrescriptions
      * @param array<string, array{session_type: SessionType, prescribed_hard_minutes: int, prescribed_pace_band: PaceBand|null, hard_minutes?: float|null, duration_minutes?: float, demanding?: bool}> $fixedSessions
      * @param list<array{date: string, duration_minutes: int|null, hard_minutes: float|null, demanding: bool}> $actualSessions
+     * @param  int|null  $timeTrialAimSec  the supported time at the season’s trial distance
+     * @param  list<array{date: string, retry: bool, skipped: bool}>  $timeTrials  the trials already run, excused or fixed
+     * @param  list<string>  $timeTrialEvidenceDates  Y-m-d of confirmed evidence or hard efforts at the trial distance
      */
     public function __construct(
         public int $userId,
@@ -63,6 +66,9 @@ final readonly class PlanInputs
         public ?FallOffTilt $fallOffTilt = null,
         public ?RaceAmbitionState $raceAmbitionState = null,
         public ?float $raceAmbitionGapPct = null,
+        public ?int $timeTrialAimSec = null,
+        public array $timeTrials = [],
+        public array $timeTrialEvidenceDates = [],
     ) {
     }
 

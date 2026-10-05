@@ -11,6 +11,7 @@ use App\Enums\PlanPhase;
 use App\Enums\PaceBand;
 use App\Enums\PlannedSessionStatus;
 use App\Enums\SessionType;
+use App\Enums\TimeTrialOutcome;
 use App\Services\Run\Story\PastYouTrendBuilder;
 use Database\Factories\PlannedSessionFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -63,6 +64,7 @@ use Override;
  * @property string|null $prescription_reason
  * @property array<string, int|float|string>|null $prescription_race_context
  * @property FallOffTilt|null $fall_off_tilt
+ * @property TimeTrialOutcome|null $time_trial_outcome
  * @property bool $pinned
  * @property bool $skipped
  * @property PlannedSessionStatus $status
@@ -86,6 +88,7 @@ use Override;
     'prescription_reason',
     'prescription_race_context',
     'fall_off_tilt',
+    'time_trial_outcome',
     'pinned',
     'skipped',
     'status',
@@ -212,6 +215,7 @@ class PlannedSession extends Model
             'prescription_reason' => 'string',
             'prescription_race_context' => 'array',
             'fall_off_tilt' => FallOffTilt::class,
+            'time_trial_outcome' => TimeTrialOutcome::class,
             'pinned' => 'boolean',
             'skipped' => 'boolean',
             'status' => PlannedSessionStatus::class,

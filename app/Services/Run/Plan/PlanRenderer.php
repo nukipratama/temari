@@ -13,6 +13,7 @@ use App\Enums\SessionType;
 use App\Enums\PlanPhase;
 use App\Enums\PlannedSessionStatus;
 use App\Models\PlannedSession;
+use App\Services\Run\Metrics\DurationFormatter;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use LogicException;
@@ -167,6 +168,7 @@ final class PlanRenderer
                 self::raceDistanceOf($s),
                 $longRunProgressionCapKm,
                 $s->fall_off_tilt,
+                $s->prescription_race_context,
             );
         }
 
@@ -189,7 +191,7 @@ final class PlanRenderer
             ->get();
 
         return self::plannedKmByDate($weekSessions, $longRunBaselineKm, $longRunCapKm, $selfScaled, $longRunProgressionCapKm)[$session->date->toDateString()]
-            ?? SegmentGenerator::coreKmFor($session->session_type, false, $longRunBaselineKm, 1.0, $longRunCapKm, self::raceDistanceOf($session), $longRunProgressionCapKm, $session->fall_off_tilt);
+            ?? SegmentGenerator::coreKmFor($session->session_type, false, $longRunBaselineKm, 1.0, $longRunCapKm, self::raceDistanceOf($session), $longRunProgressionCapKm, $session->fall_off_tilt, $session->prescription_race_context);
     }
 
     /**
@@ -271,7 +273,7 @@ final class PlanRenderer
         // the day's own narration is sized from (see PlanDayTool). Exposed so
         // the Plan page can say why `distance_km` moved, rather than the two
         // screens just disagreeing with no explanation.
-        $askedKm = SegmentGenerator::coreKmFor($s->session_type, $isPrimaryEasy, $longRunKm, $multiplier, $longRunCapKm, $raceDistanceM, $longRunProgressionCapKm, $s->fall_off_tilt);
+        $askedKm = SegmentGenerator::coreKmFor($s->session_type, $isPrimaryEasy, $longRunKm, $multiplier, $longRunCapKm, $raceDistanceM, $longRunProgressionCapKm, $s->fall_off_tilt, $s->prescription_race_context);
         $effective = EffectiveSession::of($s, $askedKm);
         $recordedReasons = $s->readiness_assessment['reasons'] ?? $readinessReasons;
         $headlinesEase = $effective->isEased();
@@ -360,9 +362,9 @@ final class PlanRenderer
         $creditedKm = $activity === null || $longestRunKm === null ? null : round(SessionMatcher::creditedKm($s->session_type, [
             'sum' => $activity['km'],
             'longest' => $longestRunKm,
-        ]), 1);
+        ], TimeTrial::of($s) !== null), 1);
         $ranPaceSecPerKm = $status->isCredited() && $sessionType !== SessionType::Rest
-            ? SessionMatcher::ranPaceSecPerKmFromRuns($s->session_type, $activity['runs'] ?? [])
+            ? SessionMatcher::ranPaceSecPerKmFromRuns($s->session_type, $activity['runs'] ?? [], TimeTrial::of($s) !== null)
             : null;
 
         $originalSegments = self::segmentsFor($s, $s->session_type, $s->phase, $raceDistanceM, $isPrimaryEasy, $longRunKm, $multiplier, $longRunCapKm, $paces, $volumeScale, $raceGoalTimeSec, $longRunProgressionCapKm);
@@ -406,6 +408,7 @@ final class PlanRenderer
             'prescription_reason' => $s->prescription_reason,
             'fall_off_tilt' => $fallOffTilt?->value,
             'goal_pace' => self::goalPaceKindOf($s, $sessionType),
+            'time_trial' => self::timeTrialOf($s, $sessionType),
             'advice_note' => $advisoryClamp !== null && $keepsPrescription ? $clampVoice ?? $advisoryClamp['note'] : null,
             'eased_from' => match (true) {
                 $headlinesEase => self::easedFromPayload($effective, $status, $isToday ? $clampVoice : null, $recordedReasons),
@@ -447,6 +450,27 @@ final class PlanRenderer
         }
 
         return $kind;
+    }
+
+    /**
+     * The time trial the session shown is, or null on any other session.
+     *
+     * @return array{distance_m: int, aim_time_sec: int}|null
+     */
+    public static function timeTrialOf(PlannedSession $s, SessionType $shownType): ?array
+    {
+        $trial = $shownType === $s->session_type ? TimeTrial::of($s) : null;
+
+        return $trial === null ? null : ['distance_m' => $trial->distanceM, 'aim_time_sec' => $trial->aimTimeSec];
+    }
+
+    /**
+     * @param  array{distance_m: int, aim_time_sec: int}  $trial
+     * @return array{distance_km: float, aim_time: string}
+     */
+    public static function timeTrialForNarration(array $trial): array
+    {
+        return ['distance_km' => round($trial['distance_m'] / 1000, 1), 'aim_time' => DurationFormatter::hms($trial['aim_time_sec'])];
     }
 
     /**
@@ -504,7 +528,7 @@ final class PlanRenderer
             return SegmentGenerator::generate($sessionType, $phase, $raceDistanceM, $isPrimaryEasy, $longRunKm, $multiplier, $longRunCapKm, $paces, $volumeScale, $raceGoalTimeSec, $longRunProgressionCapKm, $session->fall_off_tilt);
         }
 
-        $km = SegmentGenerator::coreKmFor($sessionType, $isPrimaryEasy, $longRunKm, $multiplier, $longRunCapKm, $raceDistanceM, $longRunProgressionCapKm, $session->fall_off_tilt) * $volumeScale;
+        $km = SegmentGenerator::coreKmFor($sessionType, $isPrimaryEasy, $longRunKm, $multiplier, $longRunCapKm, $raceDistanceM, $longRunProgressionCapKm, $session->fall_off_tilt, $session->prescription_race_context) * $volumeScale;
         if ($sessionType === SessionType::Long) {
             $km = min($km, $longRunCapKm, $longRunProgressionCapKm);
         }

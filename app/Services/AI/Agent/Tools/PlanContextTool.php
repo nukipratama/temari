@@ -18,6 +18,7 @@ use App\Services\Run\Plan\EffectiveSession;
 use App\Services\Run\Plan\IntentOutcome;
 use App\Services\Run\Plan\PlanRenderer;
 use App\Services\Run\Plan\SessionMatcher;
+use App\Services\Run\Plan\TimeTrial;
 use App\Services\Run\Plan\SegmentGenerator;
 use App\Services\Run\Plan\TrainingBaseline;
 use App\Services\Run\Plan\WeekPlanBuilder;
@@ -75,7 +76,10 @@ final class PlanContextTool extends UserTool
             .'target_pace_formatted are already the eased (slower) pace, and pace_eased_from names the '
             .'pace it replaced. goal_pace, when present, names the race (5k/10k/half/marathon) whose '
             .'goal pace the session rehearses, and the target pace is that goal pace: call it goal-pace '
-            .'work, not tempo or intervals. Call this to say what was asked of them, not just what they did. An '
+            .'work, not tempo or intervals. time_trial, when present, means the day is an all-out time '
+            .'trial over time_trial.distance_km after a warmup, aiming around time_trial.aim_time, the '
+            .'supported time at that distance: call it a time trial, not tempo or intervals; it checks '
+            .'their fitness so their paces stay honest. Call this to say what was asked of them, not just what they did. An '
             .'empty list means no plan covers these days.';
     }
 
@@ -108,7 +112,8 @@ final class PlanContextTool extends UserTool
                     PlanRenderer::coreKmForSession($session, $longRunBaselineKm, $longRunCapKm, $selfScaled, $longRunProgressionCapKm),
                 );
                 $goalPace = PlanRenderer::goalPaceKindOf($session, $effective->sessionType);
-                $targetPaceSec = $goalPace === null
+                $timeTrial = PlanRenderer::timeTrialOf($session, $effective->sessionType);
+                $targetPaceSec = $goalPace === null && $timeTrial === null
                     ? self::targetPaceSec($session, $effective->sessionType, $paces)
                     : $session->prescribed_pace_sec_per_km;
                 $easedFrom = $effective->easedFromForNarration();
@@ -123,6 +128,7 @@ final class PlanContextTool extends UserTool
                     'date' => $session->date->toDateString(),
                     'session_type' => $effective->sessionType->value,
                     ...($goalPace === null ? [] : ['goal_pace' => $goalPace]),
+                    ...($timeTrial === null ? [] : ['time_trial' => PlanRenderer::timeTrialForNarration($timeTrial)]),
                     'phase' => $session->phase->value,
                     'distance_km' => $session->prescribed_km !== null
                         ? round($session->prescribed_km, 1)
@@ -139,7 +145,7 @@ final class PlanContextTool extends UserTool
                     'skipped' => $session->skipped,
                     'status' => $session->status->value,
                     'completed_km' => $runDistances === null ? null : round($runDistances['sum'], 1),
-                    'credited_km' => $runDistances === null ? null : round(SessionMatcher::creditedKm($session->session_type, $runDistances), 1),
+                    'credited_km' => $runDistances === null ? null : round(SessionMatcher::creditedKm($session->session_type, $runDistances, TimeTrial::of($session) !== null), 1),
                     'distance_score' => $session->distance_score,
                     'compliance_score' => $session->compliance_score,
                     'ran_anyway' => $session->ran_anyway,

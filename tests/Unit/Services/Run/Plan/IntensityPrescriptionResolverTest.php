@@ -167,3 +167,7 @@ it('keeps goal-pace history in its own family and the marathon in its race famil
         ->and(IntensityPrescriptionResolver::familyKeyForContext(SessionType::Tempo, ['kind' => 'marathon']))->toBe('race_tempo')
         ->and(IntensityPrescriptionResolver::familyKeyForContext(SessionType::Interval, null))->toBe('interval');
 });
+
+it('keeps a time trial out of every progression family', function (SessionType $type): void {
+    expect(IntensityPrescriptionResolver::familyKeyForContext($type, ['kind' => 'time_trial', 'distance_m' => 5_000, 'aim_time_sec' => 1_500, 'retry' => 0]))->toBe('time_trial');
+})->with([SessionType::Tempo, SessionType::Interval]);

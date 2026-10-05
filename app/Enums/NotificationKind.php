@@ -21,6 +21,7 @@ enum NotificationKind: string
     case RaceTomorrow = 'race_tomorrow';
     case RaceOutcome = 'race_outcome';
     case FitnessImproved = 'fitness_improved';
+    case TimeTrial = 'time_trial';
     case Test = 'test';
 
     /** Null for an analysis type that never notifies. */

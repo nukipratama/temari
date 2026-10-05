@@ -20,6 +20,7 @@ import type {
 } from '@/types/inertia';
 
 import {
+    formatDurationHMS,
     formatMonthDayId,
     formatPace,
     isoDateLocal,
@@ -374,17 +375,37 @@ const GOAL_PACE_RACE: Record<NonNullable<PlanDay['goal_pace']>, string> = {
     marathon: 'marathon',
 };
 
-/** The session's name: goal-pace work by its own, every other day by its type. */
+export const TIME_TRIAL_LABEL = 'time trial';
+
+/** The session's name: a time trial or goal-pace work by its own, every other day by its type. */
 export function sessionLabel(
-    day: Pick<PlanDay, 'session_type' | 'goal_pace'>,
+    day: Pick<PlanDay, 'session_type' | 'goal_pace' | 'time_trial'>,
 ): string {
+    if (day.time_trial !== null) {
+        return TIME_TRIAL_LABEL;
+    }
+
     return day.goal_pace !== null
         ? GOAL_PACE_LABEL
         : (SESSION_TYPE_LABEL[day.session_type] ?? day.session_type);
 }
 
+/** The label a session's hard segments carry in place of their pace band, if any. */
+export function workLabel(
+    day: Pick<PlanDay, 'goal_pace' | 'time_trial'>,
+): string | undefined {
+    if (day.time_trial !== null) {
+        return TIME_TRIAL_LABEL;
+    }
+
+    return day.goal_pace !== null ? GOAL_PACE_LABEL : undefined;
+}
+
 /** What a session is for and how it should feel, in one line. */
 export function sessionPurpose(day: PlanDay): string | null {
+    if (day.time_trial !== null) {
+        return `aim around ${formatDurationHMS(day.time_trial.aim_time_sec)}. checks your fitness so your paces stay honest.`;
+    }
     if (day.goal_pace !== null) {
         return `rehearsing your ${GOAL_PACE_RACE[day.goal_pace]} goal pace.`;
     }

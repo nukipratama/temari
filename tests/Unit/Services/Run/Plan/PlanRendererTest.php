@@ -1265,3 +1265,23 @@ it('dayPayload names the race a goal-pace session rehearses, at the goal pace, o
         ->and($payload($supportedMarathon)['goal_pace'])->toBeNull()
         ->and(PlanRenderer::goalPaceKindOf($goalPace, SessionType::Easy))->toBeNull();
 });
+
+it('dayPayload names a time trial, sized as a warmup and the trial at the aim, only while it is shown as written', function (): void {
+    $trial = PlannedSession::factory()->make([
+        'date' => '2026-08-12',
+        'phase' => PlanPhase::Build,
+        'session_type' => SessionType::Interval,
+        'prescribed_hard_minutes' => 25,
+        'prescribed_pace_band' => PaceBand::Interval,
+        'prescribed_pace_sec_per_km' => 300,
+        'prescription_race_context' => ['kind' => 'time_trial', 'distance_m' => 5_000, 'aim_time_sec' => 1_500, 'retry' => 0],
+    ]);
+    $payload = PlanRenderer::dayPayload($trial, Carbon::parse('2026-08-10'), null, [], null, false, 20.0, 1.0, INF, RENDERER_PACES, PlannedSessionStatus::Planned);
+
+    expect($payload['time_trial'])->toBe(['distance_m' => 5_000, 'aim_time_sec' => 1_500])
+        ->and($payload['goal_pace'])->toBeNull()
+        ->and($payload['distance_km'])->toBe(7.0)
+        ->and(array_column($payload['segments'], 'key'))->toBe(['warmup', 'main'])
+        ->and(PlanRenderer::timeTrialOf($trial, SessionType::Easy))->toBeNull()
+        ->and(PlanRenderer::timeTrialForNarration(['distance_m' => 10_000, 'aim_time_sec' => 3_125]))->toBe(['distance_km' => 10.0, 'aim_time' => '52:05']);
+});

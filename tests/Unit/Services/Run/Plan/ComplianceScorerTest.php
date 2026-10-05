@@ -764,3 +764,26 @@ it('does not read an easy run as the original completed when the eased session w
         ->and($verdict['intent']['evidence'])->toMatchArray(['eased_from' => 'long', 'stimulus_family' => 'easy'])
         ->not->toHaveKeys(['original_completed', 'quality_progression']);
 });
+
+it('grades a time trial on its distance and the trial gate, never on its pace segments', function (int $trialSecPerKm, IntentVerdict $intent, PlannedSessionStatus $status, string $gate): void {
+    $user = User::factory()->create();
+    $row = scorerDay($user, '2026-08-05', [
+        'session_type' => SessionType::Interval,
+        'prescribed_hard_minutes' => 25,
+        'prescribed_pace_band' => PaceBand::Interval,
+        'prescribed_pace_sec_per_km' => 300,
+        'prescription_race_context' => ['kind' => 'time_trial', 'distance_m' => 5_000, 'aim_time_sec' => 1_500, 'retry' => 0],
+    ]);
+    scorerPacedRun($user, '2026-08-05', 2.0, 400);
+    scorerPacedRun($user, '2026-08-05', 5.0, $trialSecPerKm, everyWindowAt($trialSecPerKm));
+
+    $verdict = scorerVerdict($user, $row);
+
+    expect($verdict['prescribed_km'])->toBe(7.0)
+        ->and($verdict['intent']['verdict'])->toBe($intent)
+        ->and($verdict['intent']['evidence'])->toBe(['time_trial' => $gate, 'effective_type' => 'interval'])
+        ->and($verdict['status'])->toBe($status);
+})->with([
+    'much faster than the aim' => [250, IntentVerdict::Hit, PlannedSessionStatus::Done, 'pace'],
+    'slower than the aim and its slack' => [330, IntentVerdict::Missed, PlannedSessionStatus::Partial, 'not_passed'],
+]);

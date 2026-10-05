@@ -484,3 +484,15 @@ it('grades on distance alone when the intent was hit or cannot be told, or the d
         ->and(SessionMatcher::withIntent($missed, IntentVerdict::TooHard))->toBe($missed)
         ->and(SessionMatcher::withIntent($excused, IntentVerdict::Missed))->toBe($excused);
 });
+
+it('credits a time trial with its whole day, since its warmup is often recorded apart', function (): void {
+    $runs = [
+        ['id' => 1, 'km' => 2.0, 'seconds' => 800, 'started_at' => '2026-08-05 06:00:00'],
+        ['id' => 2, 'km' => 5.0, 'seconds' => 1_500, 'started_at' => '2026-08-05 06:20:00'],
+    ];
+
+    expect(SessionMatcher::creditedKm(SessionType::Interval, ['sum' => 7.0, 'longest' => 5.0]))->toBe(5.0)
+        ->and(SessionMatcher::creditedKm(SessionType::Interval, ['sum' => 7.0, 'longest' => 5.0], timeTrial: true))->toBe(7.0)
+        ->and(SessionMatcher::ranPaceSecPerKmFromRuns(SessionType::Interval, $runs))->toBe(300)
+        ->and(SessionMatcher::ranPaceSecPerKmFromRuns(SessionType::Interval, $runs, timeTrial: true))->toBe(329);
+});

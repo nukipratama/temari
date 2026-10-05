@@ -29,6 +29,7 @@ import {
     volumeAdjustedFrom,
     weekdayLabel,
     weekRangeLabel,
+    workLabel,
 } from './plan';
 
 function week(overrides: Partial<SeasonSummaryWeek> = {}): SeasonSummaryWeek {
@@ -348,6 +349,7 @@ function planDay(overrides: Partial<PlanDay> = {}): PlanDay {
         prescription_reason: null,
         fall_off_tilt: null,
         goal_pace: null,
+        time_trial: null,
         advice_note: null,
         eased_from: null,
         pace_eased_from: null,
@@ -811,6 +813,35 @@ describe('sessionLabel', () => {
         expect(
             sessionLabel(planDay({ session_type: 'long', goal_pace: null })),
         ).toBe('long run');
+    });
+});
+
+describe('a time trial', () => {
+    const trial = { distance_m: 5_000, aim_time_sec: 1_410 };
+
+    it('is named by its own label ahead of goal pace and its type', () => {
+        expect(
+            sessionLabel(
+                planDay({
+                    session_type: 'interval',
+                    goal_pace: '5k',
+                    time_trial: trial,
+                }),
+            ),
+        ).toBe('time trial');
+        expect(workLabel(planDay({ time_trial: trial }))).toBe('time trial');
+        expect(workLabel(planDay({ goal_pace: '10k' }))).toBe('goal pace');
+        expect(workLabel(planDay({}))).toBeUndefined();
+    });
+
+    it('says the time to aim around and what the trial is for', () => {
+        expect(
+            sessionPurpose(
+                planDay({ session_type: 'interval', time_trial: trial }),
+            ),
+        ).toBe(
+            'aim around 23:30. checks your fitness so your paces stay honest.',
+        );
     });
 });
 

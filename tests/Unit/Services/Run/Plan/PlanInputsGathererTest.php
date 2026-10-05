@@ -402,3 +402,40 @@ it('carries the race ambition band and gap the goal-pace work is gated on, and n
         ->and($inputs->raceAmbitionState)->toBe($ambition->state)
         ->and($inputs->raceAmbitionGapPct)->toBe($ambition->gapPct);
 });
+
+it('carries the trial aim, the season\'s fixed trials read as run or skipped, and recent evidence at the trial distance', function (): void {
+    $user = gathererAthlete();
+    Season::factory()->for($user)->create(['starts_at' => '2026-08-03', 'ends_at' => '2026-10-25']);
+    seedConfirmedEffort($user, 5_000, 1_500, Carbon::parse('2026-08-20'));
+    seedConfirmedEffort($user, 10_000, 3_200, Carbon::parse('2026-08-25'));
+    seedConfirmedEffort($user, 5_000, 1_520, Carbon::parse('2026-06-01'));
+    $trial = ['kind' => 'time_trial', 'distance_m' => 5_000, 'aim_time_sec' => 1_500, 'retry' => 0];
+    foreach (['2026-08-18' => [], '2026-08-25' => [], '2026-09-01' => ['skipped' => true], '2026-09-10' => ['pinned' => true]] as $date => $attributes) {
+        PlannedSession::factory()->for($user)->create([
+            'date' => $date,
+            'session_type' => SessionType::Interval,
+            'prescribed_hard_minutes' => 25,
+            'prescribed_pace_band' => PaceBand::Interval,
+            'prescription_race_context' => $date === '2026-08-25' ? [...$trial, 'retry' => 1] : $trial,
+            ...$attributes,
+        ]);
+    }
+    PlannedSession::factory()->for($user)->create(['date' => '2026-09-08', 'session_type' => SessionType::Interval, 'prescription_race_context' => $trial]);
+    ActivityDetail::factory()->for(Activity::factory()->for($user)->analyzed()->create())->create(['start_date_local' => '2026-08-25 06:30:00', 'distance' => 5_000.0]);
+    ActivityDetail::factory()->for(Activity::factory()->for($user)->analyzed()->create())->create([
+        'start_date_local' => '2026-08-28 06:00:00', 'distance' => 5_100.0, 'elapsed_time' => 1_480, 'moving_time' => 1_480,
+        'stream_summary' => ['per_km' => array_map(static fn (int $km): array => ['km' => $km, 'pace' => '4:50', 'elapsed_sec' => 290, 'distance_m' => 1000], range(1, 5))],
+    ]);
+    $estimate = app(VdotEstimator::class)->estimate($user, Carbon::today());
+
+    $inputs = $this->gatherer->forUser($user, Carbon::today());
+
+    expect($inputs->timeTrialAimSec)->toBe((int) round(app(VdotEstimator::class)->raceTimeForVdot($estimate['vdot'], 5_000)))
+        ->and($inputs->timeTrials)->toBe([
+            ['date' => '2026-08-18', 'retry' => false, 'skipped' => true],
+            ['date' => '2026-08-25', 'retry' => true, 'skipped' => false],
+            ['date' => '2026-09-01', 'retry' => false, 'skipped' => true],
+            ['date' => '2026-09-10', 'retry' => false, 'skipped' => false],
+        ])
+        ->and($inputs->timeTrialEvidenceDates)->toBe(['2026-08-20', '2026-08-28']);
+});

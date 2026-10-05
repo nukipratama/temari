@@ -257,6 +257,13 @@ Schedule::command('race:remind')->dailyAt('18:00')->withoutOverlapping(15)->onOn
 // no-op. No LLM — the copy is templated.
 Schedule::command('race:ask-outcome')->dailyAt('09:00')->withoutOverlapping(15)->onOneServer();
 
+// 09:05 daily: settle each time trial from the last week once its day is over.
+// A run that passes the trial's gate becomes Test evidence with no question; a
+// run that does not gets one ask (inbox + push, quiet hours apply through the
+// shared hold, no reminder). Demo excluded (notDemo() on the scan); a settled
+// row is never selected again. No LLM, the copy is templated.
+Schedule::command('plan:settle-time-trials')->dailyAt('09:05')->withoutOverlapping(15)->onOneServer();
+
 // 10:00 daily: tell each athlete whose supported race time improved by at least
 // half a VDOT point since the last note, at most once a week. The first run only
 // records each athlete's baseline. Demo excluded (notDemo() on the user scan),

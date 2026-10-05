@@ -117,6 +117,7 @@ final class SegmentGenerator
      * @param  ?float  $raceDistanceM  the active {@see \App\Models\RaceGoal}'s distance, required only on a `Race` day
      * @param  float  $longRunProgressionCapKm  {@see TrainingBaseline}'s `long_run_progression_cap_km`
      * @param  ?FallOffTilt  $fallOffTilt  the row's persisted tilt, which lengthens only the Long day itself
+     * @param  array<string, int|float|string>|null  $raceContext  the row's persisted race context, which sizes a time trial day from the trial
      */
     public static function coreKmFor(
         SessionType $sessionType,
@@ -127,9 +128,15 @@ final class SegmentGenerator
         ?float $raceDistanceM = null,
         float $longRunProgressionCapKm = INF,
         ?FallOffTilt $fallOffTilt = null,
+        ?array $raceContext = null,
     ): float {
         if ($sessionType === SessionType::Rest) {
             return 0.0;
+        }
+
+        $trialKm = TimeTrial::dayKm($sessionType, $raceContext);
+        if ($trialKm !== null) {
+            return $trialKm;
         }
 
         if ($sessionType === SessionType::Race) {
@@ -269,6 +276,9 @@ final class SegmentGenerator
     ): array {
         if ($prescription->isEasy() || ! $sessionType->isQuality()) {
             return self::easyBlock($coreKm, $paces);
+        }
+        if (TimeTrial::isTrial($prescription->raceContext)) {
+            return self::timeTrialSegments($coreKm, $paces, $prescription);
         }
 
         return match (GoalPaceWork::shapeOf($sessionType, $prescription->raceContext)) {
@@ -494,6 +504,24 @@ final class SegmentGenerator
             self::prescribedBlock(SegmentKey::Main, $prescription->hardMinutes, $prescription),
             self::block(SegmentKey::Easy, round($km - round($km - $hardKm - $finishKm, 1) - round($hardKm, 1), 1), PaceBand::Easy, $paces),
         ];
+    }
+
+    /**
+     * A warmup, then the trial distance run at the aim. The warmup takes
+     * whatever the day holds beyond the trial itself.
+     *
+     * @param array{easy: int, marathon: int, threshold: int, interval: int}|null $paces
+     * @return list<SessionSegment>
+     */
+    private static function timeTrialSegments(float $km, ?array $paces, IntensityPrescription $prescription): array
+    {
+        $trialKm = round((float) ($prescription->raceContext['distance_m'] ?? 0) / 1000, 1);
+        $aimSec = (int) ($prescription->raceContext['aim_time_sec'] ?? 0);
+        $pace = $prescription->paceBand ?? PaceBand::Interval;
+        $warmupKm = round(max(0.0, $km - $trialKm), 1);
+        $trial = new SessionSegment(SegmentKey::Main, round($aimSec / 60, 1), self::zoneFor($pace), $pace, $prescription->paceSecPerKm, $trialKm);
+
+        return $warmupKm > 0.0 ? [self::block(SegmentKey::Warmup, $warmupKm, PaceBand::Easy, $paces), $trial] : [$trial];
     }
 
     private static function prescribedBlock(SegmentKey $key, float $minutes, IntensityPrescription $prescription): SessionSegment

@@ -150,6 +150,7 @@ const weekPlan: WeekPlan = {
             prescription_reason: null,
             fall_off_tilt: null,
             goal_pace: null,
+            time_trial: null,
             advice_note: null,
             eased_from: null,
             pace_eased_from: null,
@@ -221,6 +222,31 @@ describe('Home', () => {
         );
         expect(
             screen.getByText('how did Bandung Half go?'),
+        ).toBeInTheDocument();
+    });
+
+    it('asks once about a time trial waiting on its answer, and stays quiet otherwise', () => {
+        const { rerender } = renderHome();
+        expect(
+            screen.queryByText(/your all-out trial\?$/),
+        ).not.toBeInTheDocument();
+
+        rerender(
+            <Home
+                briefing={briefing}
+                snapshot={snapshot}
+                hasRuns
+                pastYouTrend={trend()}
+                weekPlan={null}
+                pendingTimeTrial={{
+                    id: 12,
+                    date: '2026-10-06',
+                    distance_m: 5_000,
+                }}
+            />,
+        );
+        expect(
+            screen.getByText("was Tuesday's 5K your all-out trial?"),
         ).toBeInTheDocument();
     });
 

@@ -49,6 +49,7 @@ final readonly class CurrentWeekVolumeProjector
             $longRunCapKm,
             longRunProgressionCapKm: $longRunProgressionCapKm,
             fallOffTilt: $session->fall_off_tilt,
+            raceContext: $session->prescription_race_context,
         ))->coreKm;
 
         $weekTargetKm = $sessions->sum($kmFor);

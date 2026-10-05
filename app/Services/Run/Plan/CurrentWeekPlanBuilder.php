@@ -99,6 +99,7 @@ final readonly class CurrentWeekPlanBuilder
                 $s->race_distance_m === null ? null : (float) $s->race_distance_m,
                 $baselineData['long_run_progression_cap_km'],
                 $s->fall_off_tilt,
+                $s->prescription_race_context,
             ));
             $plannedKmByDate[$s->date->toDateString()] = $effective->coreKm;
         }
