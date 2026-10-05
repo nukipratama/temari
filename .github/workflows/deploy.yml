@@ -18,6 +18,8 @@ jobs:
     name: Deploy
     if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push'
     runs-on: [self-hosted, homelab]
+    outputs:
+      failure_note: ${{ steps.failure_note.outputs.note }}
     permissions:
       contents: read
       packages: read
@@ -307,18 +309,15 @@ jobs:
             echo "::warning::No :previous image to roll back to. App left on the failed image."
           fi
 
-      # Best-effort push; run --rm boots on :latest (the good :previous after a rollback).
-      - name: Alert on deploy failure
+      - name: Record the failure note for the alert
+        id: failure_note
         if: failure()
-        continue-on-error: true
-        timeout-minutes: 3
         run: |
           if [ "${MIGRATIONS_APPLIED:-true}" = "true" ]; then
-            note="migrations ran, manual recovery needed"
+            echo "note=migrations ran, manual recovery needed" >> "$GITHUB_OUTPUT"
           else
-            note="auto-rolled-back to :previous"
+            echo "note=auto-rolled-back to :previous" >> "$GITHUB_OUTPUT"
           fi
-          $COMPOSE run --rm --no-deps app php artisan deploy:alert "deploy ${{ github.event.workflow_run.head_sha }} failed ($note)" || true
 
       - name: Prune old temari images
         # Prune by TAG reference, never by image id: after a deploy the old image
@@ -349,7 +348,7 @@ jobs:
     if: always() && needs.deploy.result == 'failure'
     uses: ./.github/workflows/maintainer-alert.yml
     with:
-      message: Deploy ${{ github.event.workflow_run.head_sha }} failed on the homelab runner, possibly before any step ran.
+      message: Deploy ${{ github.event.workflow_run.head_sha }} failed on the homelab runner (${{ needs.deploy.outputs.failure_note || 'possibly before any step ran' }}).
     secrets:
       TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
       TELEGRAM_MAINTAINER_CHAT_ID: ${{ secrets.TELEGRAM_MAINTAINER_CHAT_ID }}
