@@ -15,6 +15,8 @@ code_refs:
 
 # A weekly recap waits for its week to finish hydrating
 
+> **Superseded fact (2026-10-05):** the recap kickoff runs Monday 00:16, not 00:01, and `ai:self-heal` usually narrates the closed week at 00:00 (see [[scheduler]]).
+
 **Status:** Accepted (2026-09-09)
 
 ## Context

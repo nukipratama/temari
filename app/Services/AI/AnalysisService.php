@@ -19,6 +19,7 @@ use App\Models\RunCard;
 use App\Models\User;
 use App\Notifications\AnalysisReadyNotification;
 use App\Services\AI\RuleBased\RuleBasedNarrationFiller;
+use App\Services\Gamification\StreakSettlementService;
 use App\Services\Telegram\NotificationEligibility;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Builder;
@@ -39,6 +40,7 @@ class AnalysisService
         private readonly CostCeilingLedger $ceilingLedger,
         private readonly NarrationOrigin $origin,
         private readonly HistoryNarrationGate $history,
+        private readonly StreakSettlementService $streakSettlement,
     ) {
     }
 
@@ -520,6 +522,11 @@ class AnalysisService
         bool $invalidate,
         ?int $delaySeconds,
     ): Analysis {
+        // The profile voice quotes the settled weekly streak; only the athlete's own Reread (invalidate) skips the wait.
+        if ($type === AnalysisType::ProfileVoice && ! $invalidate && ! $this->streakSettlement->isSettled($subjectId)) {
+            return $this->requestDeferred($subjectType, $subjectId, $type, $discriminator);
+        }
+
         $row = $this->upsertRow($subjectType, $subjectId, $type, $discriminator);
         $justCreated = $row->wasRecentlyCreated;
 

@@ -17,8 +17,9 @@ use Illuminate\Support\Collection;
 
 /**
  * Kicks off the connected monthly-recap chain for every completed month whose
- * recap is not Done — the scheduled 1st-of-month sweep and the one-shot kickoff
- * that follows a first-connect backfill draw from this single query.
+ * recap is not Done, for the one-shot kickoff that follows a first-connect
+ * backfill. A month that closes later narrates through ai:self-heal, from the
+ * row the ingest cascade staged.
  *
  * A month that closed before the athlete connected Strava is filled
  * rule-based up front, the same as a month past the backfill depth cap —

@@ -28,8 +28,8 @@ $alertOnFailure = static fn (Event $event, string $command): Event => $event->on
 // Every minute: stamp a liveness timestamp on the durable Redis so the scheduler
 // container's healthcheck (`schedule:heartbeat --check`) can tell a live
 // schedule:work from a dead or wedged one. Deliberately no withoutOverlapping —
-// the write is one idempotent SETEX, and the scheduler mutex would take a lock
-// on the evictable cache store every minute for nothing. No $alertOnFailure
+// the write is one idempotent SETEX, so a scheduler mutex taken every minute
+// would guard nothing. No $alertOnFailure
 // either: while Redis is down this would fail every 60s, and the alerter's own
 // cooldown is Redis-backed. Keep the scheduler healthcheck alive during maintenance.
 Schedule::command('schedule:heartbeat')->everyMinute()->onOneServer()->evenInMaintenanceMode();
@@ -51,28 +51,28 @@ Schedule::command('demo:daily-refresh')->dailyAt('00:13')->withoutOverlapping(10
 
 // Monday 00:16: narrate last week's recap once per user, on final data. The
 // per-ingest cascade only stages the row Pending (weekly cadence) — this is
-// the single scheduled LLM call that fills it. Chained after streak:settle
-// (00:00), which it reads consecutiveWeekStreak() from: the ->when() gate
-// refuses to start until the settlement jobs have marked every athlete current,
-// so a slow or failed settle can never let a stale streak get narrated. 00:16
-// is a spacing fallback, not the enforcement — see the Monday ordering table
-// in docs/architecture/scheduler.md.
-$alertOnFailure(Schedule::command('ai:weekly-recap')->weeklyOn(1, '00:16')->withoutOverlapping(30)->onOneServer()
-    ->when(static fn (): bool => SchedulerChain::prerequisitesMet('ai:weekly-recap')), 'ai:weekly-recap');
+// the single scheduled LLM call that fills it. The recap reads the week's own
+// snapshot and plan, never the streak, so it does not wait on streak:settle;
+// ai:self-heal may already have narrated it at 00:00.
+$alertOnFailure(Schedule::command('ai:weekly-recap')->weeklyOn(1, '00:16')->withoutOverlapping(30)->onOneServer(), 'ai:weekly-recap');
 
 // Monday 00:21: refresh the Profile-page persona summary + Temari voice once a
 // week, just after the recap (00:16). These two have no per-run cadence, so
 // this is their only auto-refresh; persona self-throttles per ISO week and
 // the voice is invalidated weekly. Demo excluded. Mid-week freshness stays on
-// "Reread".
+// "Reread". The voice quotes the settled weekly streak, so an athlete whose
+// streak:settle has not finished keeps the row Pending and ai:self-heal
+// narrates it once they are settled (AnalysisService::dispatchRow).
 Schedule::command('ai:weekly-profile')->weeklyOn(1, '00:21')->withoutOverlapping(20)->onOneServer();
 
 // 00:04 daily, ahead of plan:regenerate (Monday 00:26): retire a race the
 // athlete has already run. `completed_at` was only ever stamped by
 // RaceController::store() superseding one goal with another, so an
 // unreplaced race stayed active forever and the periodizer kept planning
-// against a day in the past.
-$alertOnFailure(Schedule::command('plan:close-finished-races')->dailyAt('00:04')->withoutOverlapping(10)->onOneServer(), 'plan:close-finished-races')
+// against a day in the past. Retried at :04 every hour until it succeeds that
+// day, so a deploy or a failure at 00:04 delays it by an hour, not a day.
+$alertOnFailure(Schedule::command('plan:close-finished-races')->hourlyAt(4)->withoutOverlapping(10)->onOneServer()
+    ->when(static fn (): bool => ! SchedulerChain::isDoneToday(SchedulerChain::PLAN_CLOSE_FINISHED_RACES)), 'plan:close-finished-races')
     ->onSuccess(static fn () => SchedulerChain::markDoneToday(SchedulerChain::PLAN_CLOSE_FINISHED_RACES));
 
 // 00:09 daily: judge every user's Planned rows that just became past —
@@ -81,7 +81,9 @@ $alertOnFailure(Schedule::command('plan:close-finished-races')->dailyAt('00:04')
 // also the one-time backfill mechanism for existing historical rows after
 // this feature ships — no separate backfill command needed. Must run before
 // plan:regenerate (Monday 00:26), which reads last week's average score.
-$alertOnFailure(Schedule::command('plan:score-compliance')->dailyAt('00:09')->withoutOverlapping(20)->onOneServer(), 'plan:score-compliance')
+// Retried at :09 every hour until it succeeds that day.
+$alertOnFailure(Schedule::command('plan:score-compliance')->hourlyAt(9)->withoutOverlapping(20)->onOneServer()
+    ->when(static fn (): bool => ! SchedulerChain::isDoneToday(SchedulerChain::PLAN_SCORE_COMPLIANCE)), 'plan:score-compliance')
     ->onSuccess(static fn () => SchedulerChain::markDoneToday(SchedulerChain::PLAN_SCORE_COMPLIANCE));
 
 // Monday 00:26: regenerate every user's plan today-forward against their
@@ -90,25 +92,30 @@ $alertOnFailure(Schedule::command('plan:score-compliance')->dailyAt('00:09')->wi
 // plan:close-finished-races (00:04) and plan:score-compliance (00:09): the
 // ->when() below refuses to start until both have marked themselves done for
 // today, so regeneration can never run against an unretired race or a stale
-// compliance score. 00:26 is a spacing fallback, not the enforcement — see
-// the Monday ordering table in docs/architecture/scheduler.md.
+// compliance score. Retried at :26 every Monday hour until one run succeeds,
+// then held for the rest of the ISO week; the flags live on the durable
+// Redis — see the Monday window in docs/architecture/scheduler.md.
 //
 // The periodizer is deterministic and free, but this command is NOT LLM-free:
 // it then calls PlanNarrationRequester::requestForCurrentWeek() per non-demo
 // user, which touches one row: plan_season_voice, re-read only when its
 // content fingerprint changed. plan_day_voice is requested per run day after
 // reconciliation, not here. See docs/architecture/llm-triggers.md.
-$alertOnFailure(Schedule::command('plan:regenerate')->weeklyOn(1, '00:26')->withoutOverlapping(45)->onOneServer()
-    ->when(static fn (): bool => SchedulerChain::prerequisitesMet('plan:regenerate')), 'plan:regenerate');
+$alertOnFailure(Schedule::command('plan:regenerate')->mondays()->hourlyAt(26)->withoutOverlapping(45)->onOneServer()
+    ->when(static fn (): bool => SchedulerChain::prerequisitesMet(SchedulerChain::PLAN_REGENERATE)
+        && ! SchedulerChain::isDoneThisWeek(SchedulerChain::PLAN_REGENERATE)), 'plan:regenerate')
+    ->onSuccess(static fn () => SchedulerChain::markDoneThisWeek(SchedulerChain::PLAN_REGENERATE));
+
+// Monday 06:00: one maintainer alert if a Monday entry above or streak:settle
+// still has not succeeded six hours after the week closed. The entries keep
+// retrying hourly regardless; individual gate skips are not alerted.
+Schedule::command('schedule:monday-check')->weeklyOn(1, '06:00')->withoutOverlapping(10)->onOneServer();
 
 // 1st of the month 00:10: HR zones change rarely, so a monthly sweep is enough
 // (also piggybacks the per-connect SyncZonesJob dispatch). Skips manual-source
 // profiles and connections lacking `profile:read_all`. No numeric derivation
 // behind "rarely" — see docs/architecture/scheduler.md.
 Schedule::command('strava:sync-zones')->monthlyOn(1, '00:10')->withoutOverlapping(55)->onOneServer();
-
-// 1st of the month 05:45: same pattern for the monthly recap.
-$alertOnFailure(Schedule::command('ai:monthly-recap')->monthlyOn(1, '05:45')->withoutOverlapping(30)->onOneServer(), 'ai:monthly-recap');
 
 // Trends tab's "Temari's read" — one verdict, the 7-day window. Scheduled +
 // cached like every other narrator — never generated live per page view. See
@@ -226,13 +233,15 @@ Schedule::command('weather:backfill')->dailyAt('03:30')->withoutOverlapping(55)-
 // claim table makes a same-week re-run a no-op, not a second push.
 Schedule::command('streak:remind')->weeklyOn(Carbon::SATURDAY, '18:00')->withoutOverlapping(15)->onOneServer();
 
-// Monday 00:00: queue settlement of the week that just closed — mint a rest
-// token every 4th streak week, or spend one to forgive a runless week. Each
-// per-user job advances a durable cursor and the final job marks the prerequisite
-// done only after every athlete is current, which ai:weekly-recap's ->when() gate
-// requires before it narrates a streak this command might restore. No LLM and
-// no Strava call.
-Schedule::command('streak:settle')->weeklyOn(1, '00:00')->withoutOverlapping(20)->onOneServer();
+// Hourly: settle every closed week not yet settled — mint a rest token every
+// 4th streak week, or spend one to forgive a runless week. Each per-user job
+// advances a durable cursor, and a run only queues athletes still behind or
+// marked dirty, so Monday 00:00 settles the week that just closed, a missed or
+// failed run catches up on the next tick, a new or dirty athlete is settled
+// within the hour, and an hour with nobody behind is one query. The weekly
+// profile voice, which quotes the streak, waits per athlete for this. No LLM
+// and no Strava call.
+Schedule::command('streak:settle')->hourly()->withoutOverlapping(20)->onOneServer();
 
 // 18:00 daily (Asia/Jakarta, the app timezone): tell an athlete whose goal race
 // is tomorrow that it is tomorrow, while there is still an evening left to act

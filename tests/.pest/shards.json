@@ -16,7 +16,6 @@
         "Tests\\Feature\\Compliance\\CrossUserDataIsolationTest": 0.3643,
         "Tests\\Feature\\Console\\AI\\CatchUpCommandTest": 0.0408,
         "Tests\\Feature\\Console\\AI\\DailyBriefingCommandTest": 0.2778,
-        "Tests\\Feature\\Console\\AI\\MonthlyRecapCommandTest": 0.2468,
         "Tests\\Feature\\Console\\AI\\RecoverCommandTest": 0.1678,
         "Tests\\Feature\\Console\\AI\\RelabelDemoNarrationCommandTest": 0.1707,
         "Tests\\Feature\\Console\\AI\\SelfHealCommandTest": 0.1782,

@@ -7,7 +7,6 @@ namespace App\Jobs\Gamification;
 use Illuminate\Queue\Attributes\Backoff;
 use Illuminate\Queue\Attributes\Tries;
 use Illuminate\Queue\Attributes\UniqueFor;
-use App\Console\SchedulerChain;
 use App\Models\User;
 use App\Services\Gamification\StreakSettlementService;
 use Illuminate\Contracts\Queue\ShouldBeUniqueUntilProcessing;
@@ -50,12 +49,6 @@ final class SettleStreakWeeksJob implements ShouldBeUniqueUntilProcessing, Shoul
 
         if (! $settlement->settle($user)) {
             self::dispatch($this->userId);
-
-            return;
-        }
-
-        if ($settlement->allUsersSettled()) {
-            SchedulerChain::markDoneToday(SchedulerChain::STREAK_SETTLE);
         }
     }
 }

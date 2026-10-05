@@ -34,7 +34,6 @@ const BILLING = [
     'ai:weekly-recap' => 'User::notDemo() on the active-user scan KickoffWeeklyRecaps, the action the command delegates to, draws from',
     'ai:weekly-profile' => 'User::notDemo() on the profile scan, via the shared RecentlyActiveUsers action',
     'ai:catch-up' => 'creates rows only, off the RecentlyActiveUsers scan (User::notDemo()) that KickoffWeeklyRecaps draws from too',
-    'ai:monthly-recap' => 'User::notDemo() on the active-user scan KickoffMonthlyRecaps, the action the command delegates to, draws from',
     'ai:trend-read' => 'User::notDemo() on the active-user scan',
     'strava:sync' => 'notDemo() on the connection scan',
     'strava:sync-zones' => 'notDemo() on the connection scan',
@@ -54,6 +53,7 @@ const BILLING = [
  */
 const NON_BILLING = [
     'schedule:heartbeat' => 'writes one Redis timestamp, touches no user',
+    'schedule:monday-check' => 'reads settlement cursors and the scheduler-chain flags and pushes one maintainer alert, no LLM and no Strava call',
     'demo:daily-refresh' => 'the demo account is the point; rule-based fill, zero LLM tokens',
     'plan:score-compliance' => 'free local km comparison against ActivityDetail rows, no LLM and no Strava call',
     'ai:self-heal' => 'only re-kicks Pending rows; demo rows are seeded Done, and the sweeps that could bill draw from RecentlyActiveUsers, which applies notDemo()',
@@ -119,7 +119,6 @@ it('reads the demo exclusion straight out of each billing command source', funct
     'ai:weekly-recap' => ['ai:weekly-recap', 'app/Console/Commands/AI/WeeklyRecapCommand.php', 'app/Actions/AI/KickoffWeeklyRecaps.php', 'app/Actions/AI/RecentlyActiveUsers.php'],
     'ai:weekly-profile' => ['ai:weekly-profile', 'app/Console/Commands/AI/WeeklyProfileCommand.php', 'app/Actions/AI/RecentlyActiveUsers.php'],
     'ai:catch-up' => ['ai:catch-up', 'app/Console/Commands/AI/CatchUpCommand.php', 'app/Actions/AI/KickoffCatchUp.php', 'app/Actions/AI/RecentlyActiveUsers.php', 'app/Actions/AI/KickoffWeeklyRecaps.php'],
-    'ai:monthly-recap' => ['ai:monthly-recap', 'app/Console/Commands/AI/MonthlyRecapCommand.php', 'app/Actions/AI/KickoffMonthlyRecaps.php', 'app/Actions/AI/RecentlyActiveUsers.php'],
     'ai:trend-read' => ['ai:trend-read', 'app/Console/Commands/AI/TrendReadCommand.php', 'app/Actions/AI/RecentlyActiveUsers.php'],
     'strava:sync' => ['strava:sync', 'app/Console/Commands/Strava/SyncCommand.php'],
     'strava:sync-zones' => ['strava:sync-zones', 'app/Console/Commands/Strava/SyncZonesCommand.php'],

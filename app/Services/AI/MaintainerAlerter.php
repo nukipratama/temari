@@ -388,6 +388,21 @@ class MaintainerAlerter
         $this->broadcast(implode("\n", [$headline, ...$lines]));
     }
 
+    /**
+     * Monday entries that still have not succeeded by the 06:00 check. They keep
+     * retrying hourly, so one push per ISO week is enough.
+     *
+     * @param  list<string>  $entries
+     */
+    public function mondayEntriesOverdue(array $entries): void
+    {
+        $this->broadcastOnce(
+            'scheduler.monday_overdue:'.Carbon::now()->isoFormat('GGGG-[W]WW'),
+            7 * 86_400,
+            'Monday scheduler entries have not succeeded by 06:00: '.implode(', ', $entries).'. They keep retrying hourly today; check Horizon and the logs.',
+        );
+    }
+
     /** " ($4.58 left)", or nothing at all when that ceiling is unset. */
     private function headroom(float $spent, ?float $ceiling): string
     {

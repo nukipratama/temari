@@ -23,6 +23,7 @@
         <env name="BCRYPT_ROUNDS" value="4"/>
         <env name="BROADCAST_CONNECTION" value="null"/>
         <env name="CACHE_STORE" value="array"/>
+        <env name="CACHE_DURABLE_DRIVER" value="array"/>
         <!-- A cached object outside cache.serializable_classes breaks here as it would on Redis. -->
         <env name="CACHE_ARRAY_SERIALIZE" value="true"/>
         <env name="DB_CONNECTION" value="mysql"/>

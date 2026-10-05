@@ -69,6 +69,19 @@ it('creates every kickoff row a missed 00:01 and Monday block would have created
     Bus::assertNothingDispatched();
 });
 
+it('stages every recap while an athlete is behind on streak settlement, since a recap never reads the streak', function (): void {
+    $settled = activeAthlete();
+    $settledWeek = WeeklySnapshot::factory()->for($settled)->create(['week_ending' => '2026-05-17', 'runs' => 4]);
+    $settled->forceFill(['streak_settled_through' => '2026-05-17'])->saveQuietly();
+    $behind = activeAthlete();
+    $behindWeek = WeeklySnapshot::factory()->for($behind)->create(['week_ending' => '2026-05-17', 'runs' => 2]);
+
+    app(KickoffCatchUp::class)();
+
+    expect(rowFor(AnalysisType::WeeklyRecap, $settledWeek->id, null)?->status)->toBe(AnalysisStatus::Pending)
+        ->and(rowFor(AnalysisType::WeeklyRecap, $behindWeek->id, null)?->status)->toBe(AnalysisStatus::Pending);
+});
+
 it('creates nothing on a second run', function (): void {
     $user = activeAthlete();
     WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-17', 'runs' => 4]);

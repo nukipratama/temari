@@ -40,7 +40,7 @@ It's written during ingest by [ActivityPipeline::lookupWeather](app/Services/Run
 
 **Backfill.** Transient Open-Meteo misses leave `weather_temp_c` null even though coords exist. [`weather:backfill`](app/Console/Commands/Weather/BackfillActivityWeatherCommand.php) re-fetches exactly those rows (coords present, weather null) up to a `--limit`, so a temporary outage self-repairs on the next run. Every `null` result bumps `weather_attempts` and stamps `weather_attempted_at`. The batch takes never-attempted rows first, then the oldest attempt, then `id`, and rows with `ActivityDetail::MAX_BACKFILL_ATTEMPTS` (5) attempts are excluded for good, so rows that can never be filled cannot starve newer gaps. The count is never reset automatically.
 
-**Correct forecast.** Archived runs that land late in the forecast window may have stale data after the archive endpoint stabilises. [`weather:correct-forecast`](app/Console/Commands/Weather/CorrectForecastWeatherCommand.php) runs at 03:15 daily (see [routes/console.php](routes/console.php#L66)) and re-fetches archive-endpoint weather for runs that were ingested within the forecast-window overlap, replacing initial forecast data with settled archive data.
+**Correct forecast.** Archived runs that land late in the forecast window may have stale data after the archive endpoint stabilises. [`weather:correct-forecast`](app/Console/Commands/Weather/CorrectForecastWeatherCommand.php) runs at 03:15 daily (see [routes/console.php](routes/console.php#L221)) and re-fetches archive-endpoint weather for runs that were ingested within the forecast-window overlap, replacing initial forecast data with settled archive data.
 
 ## What consumes it
 

@@ -171,7 +171,7 @@ it('does not auto-notify a weekly recap whose week ended before the max age', fu
 });
 
 it('auto-notifies a monthly recap whose month ended within the max age', function (): void {
-    // The recap only fires right after the month closes (ai:monthly-recap runs on
+    // The recap only fires right after the month closes (ai:self-heal picks it up on
     // the 1st), so pin "now" to just after a month boundary to assert the fresh case.
     $this->travelTo(Carbon::parse('2026-07-01 06:00'));
     $analysis = Analysis::factory()->make([

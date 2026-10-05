@@ -7,6 +7,7 @@ namespace App\Services\Gamification;
 use App\Models\StreakRestToken;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -122,11 +123,22 @@ final class StreakSettlementService
         });
     }
 
-    public function allUsersSettled(): bool
+    public function isSettled(int $userId): bool
+    {
+        return ! $this->unsettledUsers()->whereKey($userId)->exists();
+    }
+
+    /**
+     * Athletes whose streak is not settled through the latest closed week, or
+     * whose settled history a later snapshot write marked dirty.
+     *
+     * @return Builder<User>
+     */
+    public function unsettledUsers(): Builder
     {
         $latest = self::latestClosedWeekEnding();
 
-        return ! User::query()
+        return User::query()
             ->notDemo()
             ->whereHas('weeklySnapshots')
             ->where(function ($query) use ($latest): void {
@@ -135,8 +147,7 @@ final class StreakSettlementService
                     ->orWhere(fn ($dirty) => $dirty
                         ->whereNotNull('streak_settlement_dirty_from')
                         ->where('streak_settlement_dirty_from', '<=', $latest->toDateString()));
-            })
-            ->exists();
+            });
     }
 
     public static function latestClosedWeekEnding(): Carbon

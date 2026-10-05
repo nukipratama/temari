@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Actions\AI;
 
 use App\Models\AI\Analysis;
-use App\Services\Gamification\StreakSettlementService;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisType;
 use Illuminate\Support\Carbon;
@@ -26,7 +25,6 @@ class KickoffCatchUp
         private readonly RecentlyActiveUsers $activeUsers,
         private readonly KickoffWeeklyRecaps $weeklyRecaps,
         private readonly RunDailyBriefingSideEffects $sideEffects,
-        private readonly StreakSettlementService $streakSettlement,
     ) {
     }
 
@@ -47,13 +45,9 @@ class KickoffCatchUp
                 $created += (int) $this->service->requestProfileVoice($user, $isoWeek)->wasRecentlyCreated;
             }
 
-            // The scheduler-chain flag is date-scoped; keep the durable query
-            // so a deferred recap can resume after Monday.
-            if ($this->streakSettlement->allUsersSettled()) {
-                $recapsBefore = $this->recapRowCount();
-                ($this->weeklyRecaps)();
-                $created += $this->recapRowCount() - $recapsBefore;
-            }
+            $recapsBefore = $this->recapRowCount();
+            ($this->weeklyRecaps)();
+            $created += $this->recapRowCount() - $recapsBefore;
         });
 
         return $created;

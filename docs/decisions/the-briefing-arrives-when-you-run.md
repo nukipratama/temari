@@ -23,7 +23,7 @@ code_refs:
 ## Context
 
 `ai:daily-briefing` narrates every active athlete's briefing at 00:01
-([routes/console.php](../../routes/console.php#L39)), and then nothing tells them it exists. The
+([routes/console.php](../../routes/console.php#L43)), and then nothing tells them it exists. The
 briefing is written for the morning they are about to have, and it sat on the dashboard waiting for
 someone to open the app — which, for an athlete who opens Temari *after* a run, is the one moment
 the briefing is already spent.

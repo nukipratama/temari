@@ -177,7 +177,7 @@ enum AnalysisType: string
      *   the block once a card is picked, and a null id would bill the narrator's
      *   "no card yet" line under a second cooldown key.
      * - ProfileVoice: the ISO week key WeeklyProfileCommand + ProfileController use.
-     * - `Y-m` months: MonthlyRecapCommand, HistoryController.
+     * - `Y-m` months: KickoffMonthlyRecaps, HistoryController.
      * - every other type keys off subject_id alone and its job ignores the
      *   discriminator, so a non-null value is rejected outright.
      *

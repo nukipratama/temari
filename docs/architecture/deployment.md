@@ -73,7 +73,7 @@ Two Redis instances, each addressed by DB number ([config/database.php](config/d
 
 | Instance | DB | Connection | Holds |
 | --- | --- | --- | --- |
-| `redis` | 0 | `default` | queue jobs + Horizon state + sessions (`SESSION_CONNECTION=default`) + the `scheduler:heartbeat` liveness stamp |
+| `redis` | 0 | `default` | queue jobs + Horizon state + sessions (`SESSION_CONNECTION=default`) + the `scheduler:heartbeat` liveness stamp + cache locks, the scheduler mutexes included (the `redis` store's `lock_connection`) + the Monday scheduler-chain flags (the `durable` cache store, see [[scheduler]]) |
 | `redis` | 2 | `pulse` | Pulse ingest buffer (`PULSE_REDIS_DB=2`) |
 | `redis-cache` | 1 | `cache` | application cache (`REDIS_CACHE_DB=1`) |
 

@@ -492,6 +492,50 @@ it('requestProfileVoice creates the profile-voice row and dispatches one Analyze
     Bus::assertDispatched(fn (AnalyzeProfileVoiceJob $job): bool => $job->analysisId === $row->id);
 });
 
+it('holds an automatic profile voice Pending while the athlete is behind on streak settlement', function (): void {
+    Carbon::setTestNow('2026-05-18 00:21:00');
+    $user = User::factory()->create();
+    WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-17', 'runs' => 3]);
+
+    $held = $this->service->requestProfileVoice($user, '2026-W21');
+
+    expect($held->status)->toBe(AnalysisStatus::Pending);
+    Bus::assertNotDispatched(AnalyzeProfileVoiceJob::class);
+
+    $user->forceFill(['streak_settled_through' => '2026-05-17'])->saveQuietly();
+
+    $this->service->requestProfileVoice($user, '2026-W21');
+
+    Bus::assertDispatched(fn (AnalyzeProfileVoiceJob $job): bool => $job->analysisId === $held->id);
+    Carbon::setTestNow();
+});
+
+it('holds the profile voice of a dirty athlete too', function (): void {
+    Carbon::setTestNow('2026-05-20 10:00:00');
+    $user = User::factory()->create();
+    WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-17', 'runs' => 3]);
+    $user->forceFill([
+        'streak_settled_through' => '2026-05-17',
+        'streak_settlement_dirty_from' => '2026-05-10',
+    ])->saveQuietly();
+
+    $this->service->requestProfileVoice($user, '2026-W21');
+
+    Bus::assertNotDispatched(AnalyzeProfileVoiceJob::class);
+    Carbon::setTestNow();
+});
+
+it('lets the athlete\'s own Reread narrate the profile voice while settlement is behind', function (): void {
+    Carbon::setTestNow('2026-05-18 09:00:00');
+    $user = User::factory()->create();
+    WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-17', 'runs' => 3]);
+
+    $row = $this->service->requestProfileVoice($user, '2026-W21', invalidate: true);
+
+    Bus::assertDispatched(fn (AnalyzeProfileVoiceJob $job): bool => $job->analysisId === $row->id);
+    Carbon::setTestNow();
+});
+
 it('withoutDispatching suppresses dispatch but still creates Pending rows', function (): void {
     $activity = Activity::factory()->create();
 

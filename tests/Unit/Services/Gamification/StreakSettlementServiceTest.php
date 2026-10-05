@@ -101,7 +101,7 @@ it('rebuilds when a backdated weekly snapshot lowers the dirty cursor', function
     ]);
 
     expect($user->fresh()->streak_settlement_dirty_from?->toDateString())->toBe('2026-05-03')
-        ->and($service->allUsersSettled())->toBeFalse();
+        ->and($service->isSettled($user->id))->toBeFalse();
 
     expect($service->settle($user))->toBeTrue()
         ->and($user->fresh()->streak_settlement_dirty_from)->toBeNull()
@@ -143,7 +143,7 @@ it('refuses to truncate history beyond the safety bound', function (): void {
         ->toThrow(LogicException::class);
 });
 
-it('queues a continuation and does not mark the chain until the user catches up', function (): void {
+it('queues a continuation until the user catches up', function (): void {
     Bus::fake();
     $user = User::factory()->create([
         'streak_settled_through' => '2025-04-27',
@@ -156,9 +156,27 @@ it('queues a continuation and does not mark the chain until the user catches up'
     Bus::assertDispatched(fn (SettleStreakWeeksJob $job): bool => $job->userId === $user->id);
 });
 
-it('ignores demo history when deciding whether recaps may proceed', function (): void {
+it('never counts the demo account as unsettled', function (): void {
     $demo = User::factory()->demo()->create();
     snapshotWeeks($demo, Carbon::parse('2026-05-31'), 2);
 
-    expect(app(StreakSettlementService::class)->allUsersSettled())->toBeTrue();
+    expect(app(StreakSettlementService::class)->isSettled($demo->id))->toBeTrue()
+        ->and(app(StreakSettlementService::class)->unsettledUsers()->count())->toBe(0);
+});
+
+it('answers settlement per athlete, so one athlete behind holds back nobody else', function (): void {
+    Bus::fake();
+    $behind = User::factory()->create();
+    snapshotWeeks($behind, Carbon::parse('2026-05-31'), 2);
+    $settled = User::factory()->create();
+    snapshotWeeks($settled, Carbon::parse('2026-05-31'), 2);
+    $noHistory = User::factory()->create();
+
+    $service = app(StreakSettlementService::class);
+    $service->settle($settled);
+
+    expect($service->isSettled($behind->id))->toBeFalse()
+        ->and($service->isSettled($settled->id))->toBeTrue()
+        ->and($service->isSettled($noHistory->id))->toBeTrue()
+        ->and($service->unsettledUsers()->pluck('id')->all())->toBe([$behind->id]);
 });
