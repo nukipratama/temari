@@ -38,6 +38,7 @@ it('excludes everything the allow-list does not name', function (): void {
 it('asserts in CI exactly the top-level entries the allow-list ships', function (): void {
     $shipped = allowListedPaths()
         ->map(fn (string $path): string => explode('/', $path)[0])
+        ->reject(fn (string $entry): bool => $entry === '.npmrc')
         ->push('vendor')
         ->unique()
         ->sort()

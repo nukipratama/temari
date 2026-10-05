@@ -106,6 +106,7 @@ RUN --mount=type=cache,target=/tmp/composer-cache,sharing=locked \
         --ignore-platform-req=ext-pcntl
 
 COPY . .
+RUN rm .npmrc
 # --no-scripts skips the post-autoload-dump hook (package:discover). The
 # composer:2 image has no redis ext, and a provider boot under the new
 # redis-default cache would crash here. package:discover runs in the
@@ -118,7 +119,7 @@ RUN composer dump-autoload --optimize --classmap-authoritative --no-scripts
 FROM node-src AS assets
 WORKDIR /var/www/html
 
-COPY package.json package-lock.json vite.config.ts tsconfig.json ./
+COPY .npmrc package.json package-lock.json vite.config.ts tsconfig.json ./
 RUN --mount=type=cache,target=/root/.npm,sharing=locked \
     npm ci --no-audit --no-fund
 

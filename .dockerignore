@@ -29,6 +29,7 @@ public/fonts-manifest.dev.json
 storage/**
 !storage/**/.gitignore
 
+!.npmrc
 !package.json
 !package-lock.json
 !vite.config.ts
