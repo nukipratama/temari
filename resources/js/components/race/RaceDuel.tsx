@@ -101,14 +101,14 @@ export default function RaceDuel({
                         <p className={cn(TIME, SUPPORTED_TONE[tone])}>
                             {formatDurationHMS(supportedSec)}
                         </p>
-                        {basisLine !== null && (
-                            <p className="mt-0.5 text-xs text-text-3">
-                                {basisLine}
-                            </p>
-                        )}
                     </div>
                 )}
             </div>
+            {basisLine !== null && (
+                <p className="mt-1 text-right text-xs text-text-3">
+                    {basisLine}
+                </p>
+            )}
 
             <p className="mt-4 text-xs leading-relaxed text-text-2">
                 {ambitionNote(ambition, support)}
