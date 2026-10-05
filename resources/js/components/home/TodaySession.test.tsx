@@ -56,6 +56,7 @@ function day(overrides: Partial<WeekPlanDay> = {}): WeekPlanDay {
         prescribed_km: null,
         prescription_reason: null,
         fall_off_tilt: null,
+        goal_pace: null,
         advice_note: null,
         eased_from: null,
         pace_eased_from: null,
@@ -284,6 +285,33 @@ describe('TodaySession', () => {
         expect(
             screen.getByText('Rest is the advice after the pain you reported.'),
         ).toHaveClass('text-text-2');
+    });
+
+    it('leads goal-pace work with its own label and the goal pace as the target', () => {
+        render(
+            <TodaySession
+                briefing={briefing('Goal pace today.')}
+                today={day({
+                    session_type: 'tempo',
+                    goal_pace: 'half',
+                    segments: [
+                        {
+                            key: 'main',
+                            minutes: 30,
+                            zone: 'Z4',
+                            pace_label: 'threshold',
+                            km: 6,
+                            pace_sec_per_km: 299,
+                        },
+                    ],
+                })}
+            />,
+        );
+
+        expectSession('8', 'goal pace · 4:59/km');
+        expect(
+            screen.getByText('rehearsing your half marathon goal pace.'),
+        ).toBeInTheDocument();
     });
 
     /** The real case: a tempo eased to easy with its distance held leads as the easy run. */

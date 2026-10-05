@@ -1227,3 +1227,41 @@ it('sizes a past tilted long run from its own row, so a later regrade reads the 
         '2026-08-09' => 22.0,
     ]);
 });
+
+it('dayPayload names the race a goal-pace session rehearses, at the goal pace, only while it is shown as written', function (): void {
+    $context = ['distance_m' => 10_000, 'goal_pace_sec_per_km' => 300, 'kind' => '10k', 'band' => 'on_track'];
+    $goalPace = PlannedSession::factory()->make([
+        'date' => '2026-08-12',
+        'phase' => PlanPhase::Peak,
+        'session_type' => SessionType::Tempo,
+        'prescribed_hard_minutes' => 16,
+        'prescribed_pace_band' => PaceBand::Threshold,
+        'prescribed_pace_sec_per_km' => 300,
+        'prescription_race_context' => $context,
+    ]);
+    $keptEasy = PlannedSession::factory()->make([
+        'date' => '2026-08-12',
+        'phase' => PlanPhase::Peak,
+        'session_type' => SessionType::Interval,
+        'prescribed_hard_minutes' => 0,
+        'prescription_race_context' => $context,
+    ]);
+    $supportedMarathon = PlannedSession::factory()->make([
+        'date' => '2026-08-12',
+        'phase' => PlanPhase::Peak,
+        'session_type' => SessionType::Tempo,
+        'prescribed_hard_minutes' => 20,
+        'prescribed_pace_band' => PaceBand::Marathon,
+        'prescribed_pace_sec_per_km' => 320,
+        'prescription_race_context' => ['distance_m' => 42_195, 'goal_pace_sec_per_km' => 300, 'kind' => 'marathon'],
+    ]);
+    $payload = fn (PlannedSession $s): array => PlanRenderer::dayPayload($s, Carbon::parse('2026-08-10'), null, [], 10_000.0, false, 20.0, 1.0, INF, RENDERER_PACES, PlannedSessionStatus::Planned);
+    $work = array_values(array_filter($payload($goalPace)['segments'], static fn (array $segment): bool => $segment['pace_label'] !== 'easy'));
+
+    expect($payload($goalPace)['goal_pace'])->toBe('10k')
+        ->and(array_unique(array_column($work, 'key')))->toBe(['interval'])
+        ->and(array_unique(array_column($work, 'pace_sec_per_km')))->toBe([300])
+        ->and($payload($keptEasy)['goal_pace'])->toBeNull()
+        ->and($payload($supportedMarathon)['goal_pace'])->toBeNull()
+        ->and(PlanRenderer::goalPaceKindOf($goalPace, SessionType::Easy))->toBeNull();
+});

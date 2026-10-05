@@ -271,7 +271,7 @@ final class SegmentGenerator
             return self::easyBlock($coreKm, $paces);
         }
 
-        return match ($sessionType) {
+        return match (GoalPaceWork::shapeOf($sessionType, $prescription->raceContext)) {
             SessionType::Tempo => self::prescribedTempoSegments($phase, $coreKm, $paces, $prescription),
             SessionType::Interval => self::prescribedIntervalSegments($phase, $coreKm, $paces, $prescription),
             SessionType::Long => self::prescribedLongSegments($coreKm, $paces, $prescription),

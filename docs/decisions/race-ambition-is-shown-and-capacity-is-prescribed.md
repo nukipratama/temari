@@ -17,6 +17,8 @@ code_refs:
 
 > **Partly superseded (2026-10-05) by [[supported-race-time-from-recent-efforts]].** The supported VDOT now comes from hard efforts of the last 16 weeks, confirmed evidence or whole-run records, read at the race distance with the athlete's own fall-off; unconfirmed rises are capped at about 1 VDOT a week. The payload also names the effort it rests on (`basis`).
 
+> **Partly superseded (2026-10-05) by [[goal-pace-work-in-the-last-weeks]].** Inside the last 6 to 8 weeks, an on-track or ambitious goal trains one session a week at the real goal pace, lifting the supported marathon-pace clamp for those two bands.
+
 # A race ambition is shown, and the supported effort is prescribed
 
 **Status:** Accepted (2026-10-01).

@@ -23,6 +23,7 @@ import {
     phaseGroupKey,
     phasesOf,
     prescriptionWhy,
+    sessionLabel,
     sessionPurpose,
     sessionShape,
     volumeAdjustedFrom,
@@ -346,6 +347,7 @@ function planDay(overrides: Partial<PlanDay> = {}): PlanDay {
         prescribed_km: null,
         prescription_reason: null,
         fall_off_tilt: null,
+        goal_pace: null,
         advice_note: null,
         eased_from: null,
         pace_eased_from: null,
@@ -790,5 +792,49 @@ describe('fallOffTiltWhy', () => {
                 planDay({ session_type: 'easy', fall_off_tilt: 'endurance' }),
             ),
         ).toBeNull();
+    });
+});
+
+describe('sessionLabel', () => {
+    it('names goal-pace work by its own label and every other day by its type', () => {
+        expect(
+            sessionLabel(
+                planDay({ session_type: 'interval', goal_pace: '10k' }),
+            ),
+        ).toBe('goal pace');
+        expect(
+            sessionLabel(planDay({ session_type: 'tempo', goal_pace: 'half' })),
+        ).toBe('goal pace');
+        expect(
+            sessionLabel(planDay({ session_type: 'tempo', goal_pace: null })),
+        ).toBe('tempo');
+        expect(
+            sessionLabel(planDay({ session_type: 'long', goal_pace: null })),
+        ).toBe('long run');
+    });
+});
+
+describe('sessionPurpose on goal-pace work', () => {
+    it('says which goal pace the session rehearses', () => {
+        expect(
+            sessionPurpose(
+                planDay({ session_type: 'interval', goal_pace: '5k' }),
+            ),
+        ).toBe('rehearsing your 5K goal pace.');
+        expect(
+            sessionPurpose(
+                planDay({ session_type: 'tempo', goal_pace: '10k' }),
+            ),
+        ).toBe('rehearsing your 10K goal pace.');
+        expect(
+            sessionPurpose(
+                planDay({ session_type: 'tempo', goal_pace: 'half' }),
+            ),
+        ).toBe('rehearsing your half marathon goal pace.');
+        expect(
+            sessionPurpose(
+                planDay({ session_type: 'tempo', goal_pace: 'marathon' }),
+            ),
+        ).toBe('rehearsing your marathon goal pace.');
     });
 });

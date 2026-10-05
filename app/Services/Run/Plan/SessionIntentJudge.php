@@ -45,8 +45,9 @@ final class SessionIntentJudge
         }
 
         return match ($sessionType) {
-            SessionType::Tempo => self::tempo($segments, $runs),
-            SessionType::Interval => self::interval($segments, $runs),
+            SessionType::Tempo, SessionType::Interval => array_any($segments, static fn (SessionSegment $segment): bool => $segment->key === SegmentKey::Interval)
+                ? self::interval($segments, $runs)
+                : self::tempo($segments, $runs),
             SessionType::Long => self::hasHardBlock($segments) && count($segments) > 1
                 ? self::tempo($segments, $runs)
                 : self::steady($segments, $paces, $runs),

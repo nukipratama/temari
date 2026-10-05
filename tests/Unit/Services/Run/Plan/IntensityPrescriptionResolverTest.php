@@ -5,9 +5,11 @@ declare(strict_types=1);
 use App\Enums\IntentVerdict;
 use App\Enums\PaceBand;
 use App\Enums\PlanPhase;
+use App\Enums\RaceAmbitionState;
 use App\Enums\SessionType;
 use App\Services\Run\Metrics\TrainingPaceCalculator;
 use App\Services\Run\Metrics\VdotEstimator;
+use App\Services\Run\Plan\GoalPaceWork;
 use App\Services\Run\Plan\IntensityPrescriptionResolver;
 
 const PRESCRIPTION_PACES = ['easy' => 360, 'marathon' => 300, 'threshold' => 270, 'interval' => 240];
@@ -117,3 +119,51 @@ it('never prescribes a marathon-pace block faster than the VDOT marathon equival
     expect($prescription->paceBand === PaceBand::Marathon ? $prescription->paceSecPerKm : PRESCRIPTION_PACES['marathon'])
         ->toBeGreaterThanOrEqual(PRESCRIPTION_PACES['marathon']);
 })->with([SessionType::Long, SessionType::Tempo])->with([PlanPhase::Base, PlanPhase::Build, PlanPhase::Peak, PlanPhase::Taper]);
+
+it('targets goal-pace work from the table by kind and phase, halved when ambitious', function (string $kind, SessionType $type, PlanPhase $phase, RaceAmbitionState $band, int $minutes): void {
+    $work = new GoalPaceWork($kind, 10_000, 285, $band);
+    $prescription = $this->resolver->resolve($type, $phase, 10_000, 2850, PRESCRIPTION_PACES, IntentVerdict::Hit, 60, goalPace: $work);
+
+    expect($prescription->hardMinutes)->toBe($minutes)
+        ->and($prescription->paceSecPerKm)->toBe(285)
+        ->and($prescription->raceContext)->toBe($work->context());
+})->with([
+    ['5k', SessionType::Interval, PlanPhase::Build, RaceAmbitionState::OnTrack, 15],
+    ['5k', SessionType::Interval, PlanPhase::Peak, RaceAmbitionState::OnTrack, 20],
+    ['5k', SessionType::Interval, PlanPhase::Taper, RaceAmbitionState::OnTrack, 10],
+    ['5k', SessionType::Interval, PlanPhase::Taper, RaceAmbitionState::Ambitious, 4],
+    ['10k', SessionType::Interval, PlanPhase::Build, RaceAmbitionState::OnTrack, 21],
+    ['10k', SessionType::Tempo, PlanPhase::Peak, RaceAmbitionState::OnTrack, 24],
+    ['10k', SessionType::Interval, PlanPhase::Taper, RaceAmbitionState::Ambitious, 6],
+    ['half', SessionType::Tempo, PlanPhase::Build, RaceAmbitionState::OnTrack, 30],
+    ['half', SessionType::Tempo, PlanPhase::Peak, RaceAmbitionState::Ambitious, 20],
+    ['half', SessionType::Interval, PlanPhase::Taper, RaceAmbitionState::OnTrack, 20],
+    ['marathon', SessionType::Tempo, PlanPhase::Peak, RaceAmbitionState::OnTrack, 35],
+    ['marathon', SessionType::Tempo, PlanPhase::Peak, RaceAmbitionState::Ambitious, 17],
+    ['marathon', SessionType::Long, PlanPhase::Peak, RaceAmbitionState::OnTrack, 40],
+]);
+
+it('runs goal-pace work at the goal pace, faster than the supported marathon pace', function (): void {
+    $prescription = $this->resolver->resolve(SessionType::Tempo, PlanPhase::Peak, 42_195, 12_000, PRESCRIPTION_PACES, goalPace: new GoalPaceWork('marathon', 42_195, 284, RaceAmbitionState::OnTrack));
+
+    expect($prescription->paceSecPerKm)->toBe(284)
+        ->and($prescription->paceBand)->toBe(PaceBand::Marathon);
+});
+
+it('starts and steps 5K and 10K goal pace in whole reps, whatever the day\'s type', function (): void {
+    $work = new GoalPaceWork('10k', 10_000, 300, RaceAmbitionState::OnTrack);
+    $cold = $this->resolver->resolve(SessionType::Tempo, PlanPhase::Peak, 10_000, 3000, PRESCRIPTION_PACES, goalPace: $work);
+    $stepped = $this->resolver->resolve(SessionType::Tempo, PlanPhase::Peak, 10_000, 3000, PRESCRIPTION_PACES, IntentVerdict::TooHard, 16, goalPace: $work);
+
+    expect($cold->hardMinutes)->toBe(8)
+        ->and($stepped->hardMinutes)->toBe(12);
+});
+
+it('keeps goal-pace history in its own family and the marathon in its race families', function (): void {
+    expect(IntensityPrescriptionResolver::familyKeyForContext(SessionType::Interval, ['kind' => '10k', 'band' => 'on_track']))->toBe('goal_pace')
+        ->and(IntensityPrescriptionResolver::familyKeyForContext(SessionType::Tempo, ['kind' => 'half', 'band' => 'ambitious']))->toBe('goal_pace')
+        ->and(IntensityPrescriptionResolver::familyKeyForContext(SessionType::Tempo, ['kind' => 'marathon', 'band' => 'on_track']))->toBe('race_tempo')
+        ->and(IntensityPrescriptionResolver::familyKeyForContext(SessionType::Long, ['kind' => 'marathon', 'band' => 'on_track']))->toBe('race_long')
+        ->and(IntensityPrescriptionResolver::familyKeyForContext(SessionType::Tempo, ['kind' => 'marathon']))->toBe('race_tempo')
+        ->and(IntensityPrescriptionResolver::familyKeyForContext(SessionType::Interval, null))->toBe('interval');
+});

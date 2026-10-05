@@ -17,6 +17,8 @@ code_refs:
 
 > **Partly superseded (2026-10-05) by [[supported-race-time-from-recent-efforts]].** The supported fitness the plan reads is now projected from recent whole-run efforts at the race distance, and the `low_evidence` check measures the longest effort that projection rests on.
 
+> **Partly superseded (2026-10-05) by [[goal-pace-work-in-the-last-weeks]].** Decision 3 no longer holds for an on-track or ambitious goal inside the last 8 weeks, whose goal-pace work runs at the real goal pace.
+
 # One race model drives the plan
 
 **Status:** Accepted (2026-10-02). Supersedes the bands clause of [[race-ambition-is-shown-and-capacity-is-prescribed]].

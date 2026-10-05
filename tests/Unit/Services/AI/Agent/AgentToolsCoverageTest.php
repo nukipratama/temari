@@ -27,6 +27,7 @@ use App\Services\AI\Agent\Tools\TrainingLoadTool;
 use App\Enums\IntentVerdict;
 use App\Enums\SessionType;
 use App\Models\PlannedSession;
+use App\Enums\PaceBand;
 use App\Enums\PlannedSessionStatus;
 use App\Enums\PlanPhase;
 use App\Services\AI\Agent\Tools\PlanAdherenceTool;
@@ -1705,4 +1706,31 @@ it('exposes no signed numeric field across every tool payload touched by the #10
     foreach ($payloads as $payload) {
         assertNoSignedDelta($payload, $retiredKeys);
     }
+});
+
+it('names goal-pace work and its goal pace to the plan tools, and nothing on an ordinary quality day', function (): void {
+    $user = User::factory()->create();
+    $monday = Carbon::parse('2026-09-07');
+    $goalPace = PlannedSession::factory()->for($user)->create([
+        'date' => $monday->toDateString(),
+        'session_type' => SessionType::Interval,
+        'prescribed_hard_minutes' => 16,
+        'prescribed_pace_band' => PaceBand::Threshold,
+        'prescribed_pace_sec_per_km' => 300,
+        'prescription_race_context' => ['distance_m' => 10_000, 'goal_pace_sec_per_km' => 300, 'kind' => '10k', 'band' => 'on_track'],
+    ]);
+    PlannedSession::factory()->for($user)->create([
+        'date' => $monday->copy()->addDays(2)->toDateString(),
+        'session_type' => SessionType::Tempo,
+        'prescribed_hard_minutes' => 20,
+        'prescribed_pace_band' => PaceBand::Threshold,
+    ]);
+
+    $days = planContextTool($user, $monday, $monday->copy()->addDays(2))->handle([])['days'];
+
+    expect(planDayTool($goalPace, app(TrainingBaseline::class))->handle([])['goal_pace'])->toBe('10k')
+        ->and($days[0]['goal_pace'])->toBe('10k')
+        ->and($days[0]['target_pace_sec'])->toBe(300)
+        ->and($days[0]['target_pace_formatted'])->toBe('5:00')
+        ->and($days[1])->not->toHaveKey('goal_pace');
 });

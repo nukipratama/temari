@@ -75,7 +75,9 @@ final class PlanDayTool extends NoArgumentTool
             .'replaced (with its distance only when that moved). Describe the eased session as the '
             .'day, and the replaced one only as what it was eased from. pace_sec/pace_formatted are '
             .'present only when readiness eased the day\'s pace only: they are the eased (slower) '
-            .'pace the athlete is actually running, and pace_eased_from names the pace it replaced.';
+            .'pace the athlete is actually running, and pace_eased_from names the pace it replaced. '
+            .'goal_pace, when present, names the race (5k/10k/half/marathon) whose goal pace the '
+            .'session rehearses: call it goal-pace work, not tempo or intervals.';
     }
 
     /** @return array<string, mixed> */
@@ -111,9 +113,12 @@ final class PlanDayTool extends NoArgumentTool
             }
         }
 
+        $goalPace = PlanRenderer::goalPaceKindOf($this->session, $effective->sessionType);
+
         return [
             'date' => $this->session->date->toDateString(),
             'session_type' => $effective->sessionType->value,
+            ...($goalPace === null ? [] : ['goal_pace' => $goalPace]),
             'phase' => $this->session->phase->value,
             'distance_km' => $effective->coreKm,
             ...($easedFrom === null ? [] : ['eased_from' => $easedFrom]),

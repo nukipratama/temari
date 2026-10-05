@@ -54,6 +54,7 @@ function day(overrides: Partial<PlanDay> = {}): PlanDay {
         prescribed_km: null,
         prescription_reason: null,
         fall_off_tilt: null,
+        goal_pace: null,
         advice_note: null,
         eased_from: null,
         pace_eased_from: null,
@@ -161,6 +162,33 @@ describe('DayHeadline and DayDetail', () => {
 
         expect(screen.getByText('tempo')).toBeInTheDocument();
         expect(screen.getByText('8 km · 5:00/km')).toBeInTheDocument();
+    });
+
+    it('names goal-pace work in its headline, at the goal pace, with the race it rehearses', () => {
+        renderRow({
+            day: day({
+                session_type: 'interval',
+                goal_pace: '10k',
+                segments: [
+                    {
+                        key: 'interval',
+                        minutes: 4,
+                        zone: 'Z4',
+                        pace_label: 'threshold',
+                        km: 0.8,
+                        pace_sec_per_km: 300,
+                    },
+                ],
+            }),
+        });
+
+        expect(screen.getByText('goal pace')).toBeInTheDocument();
+        expect(screen.queryByText('interval')).not.toBeInTheDocument();
+        expect(screen.getByText('5:00/km · goal pace')).toBeInTheDocument();
+        expect(screen.getByText('8 km · 5:00/km')).toBeInTheDocument();
+        expect(
+            screen.getByText('rehearsing your 10K goal pace.'),
+        ).toBeInTheDocument();
     });
 
     /**

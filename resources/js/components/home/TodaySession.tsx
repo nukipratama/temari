@@ -21,7 +21,7 @@ import {
     paceEaseDelta,
     paceLabel,
     prescriptionWhy,
-    SESSION_TYPE_LABEL,
+    sessionLabel,
     sessionPurpose,
     sessionShape,
 } from '@/lib/plan';
@@ -97,7 +97,7 @@ function TodayPrescription({
         : null;
     const heroKm = day.session_type !== 'rest' && judged === null;
     const ranUnjudged = heroKm && day.actual_km !== null;
-    const parts = [SESSION_TYPE_LABEL[day.session_type] ?? day.session_type];
+    const parts = [sessionLabel(day)];
     if (heroKm && pace !== null) {
         parts.push(pace);
     }

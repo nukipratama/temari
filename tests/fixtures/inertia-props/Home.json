@@ -100,6 +100,7 @@
     "weekPlan.days[].eased_from",
     "weekPlan.days[].fall_off_tilt",
     "weekPlan.days[].flagged",
+    "weekPlan.days[].goal_pace",
     "weekPlan.days[].id",
     "weekPlan.days[].pace_eased_from",
     "weekPlan.days[].phase",

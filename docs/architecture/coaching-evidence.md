@@ -34,6 +34,7 @@ code_refs:
   - app/Actions/Run/Metrics/ResolveHardEffortsAction.php
   - app/Console/Commands/Run/FitnessNotifyImprovementCommand.php
   - resources/js/lib/raceGoal.ts
+  - app/Services/Run/Plan/GoalPaceWork.php
 ---
 
 # Coaching evidence
@@ -82,6 +83,11 @@ ADRs, feature notes and code docblocks cite a source here as `[[coaching-evidenc
 | A target backed by evidence covering under half the race distance is `low_evidence`, and the prescribed race time is the slower of target and supported | [RaceAmbitionAssessor.php:44](app/Services/Run/Plan/RaceAmbitionAssessor.php#L44), [RaceAmbition.php:22](app/Services/Run/Plan/RaceAmbition.php#L22) | evidence-supported | [[#VickersVertosick2016]], [[#Keogh2019]], [[#OficialCasado2025]], [[#BlytheKiraly2016]], [[#Riegel1981]] |
 | The 3% and 6% ambition bands against supported race time | [RaceAmbitionAssessor.php:17](app/Services/Run/Plan/RaceAmbitionAssessor.php#L17), [RaceAmbitionAssessor.php:19](app/Services/Run/Plan/RaceAmbitionAssessor.php#L19) | heuristic | — |
 | A Riegel projection slower than the goal adds no quality session; the projection is display only, with its fitted exponent floored at 1.0 and efforts under 3.5 min excluded | [PlanAdapter.php:148](app/Services/Run/Plan/PlanAdapter.php#L148), [RiegelProjector.php:52](app/Services/Run/Metrics/RiegelProjector.php#L52), [RiegelProjector.php:57](app/Services/Run/Metrics/RiegelProjector.php#L57) | evidence-supported | [[#Riegel1981]], [[#BlytheKiraly2016]], [[#VickersVertosick2016]] |
+| In the last 6 weeks before a race up to 10K and the last 8 before a longer road race, Build, Peak and Taper weeks of an on-track or ambitious goal turn one quality session into goal-pace work; a scheduled deload keeps its deload session | [GoalPaceWork.php:21](app/Services/Run/Plan/GoalPaceWork.php#L21), [GoalPaceWork.php:49](app/Services/Run/Plan/GoalPaceWork.php#L49) | heuristic | [[#PfitzingerDouglas2019]], [[#PfitzingerLatter2015]], [[#Daniels2022]], [[#Kiely2018]] |
+| Goal-pace work replaces the week's Interval for a 5K or 10K and its Tempo for the half or marathon (else its first Tempo or Interval), never adds a hard day, and stays under the hard-day budget, hard-minute ceiling and readiness clamp | [GoalPaceWork.php:128](app/Services/Run/Plan/GoalPaceWork.php#L128), [Periodizer.php:465](app/Services/Run/Plan/Periodizer.php#L465) | product choice | — |
+| Goal-pace minutes by kind and phase (5K 15/20/10, 10K 21/24/12, half 30/40/20 in Build/Peak/Taper; the marathon keeps 25/35/20), halved for an ambitious goal | [IntensityPrescriptionResolver.php:32](app/Services/Run/Plan/IntensityPrescriptionResolver.php#L32), [IntensityPrescriptionResolver.php:38](app/Services/Run/Plan/IntensityPrescriptionResolver.php#L38) | heuristic | [[#PfitzingerDouglas2019]], [[#PfitzingerLatter2015]], [[#Daniels2022]] |
+| Taper weeks keep goal-pace intensity while its dose drops to about half the peak | [IntensityPrescriptionResolver.php:32](app/Services/Run/Plan/IntensityPrescriptionResolver.php#L32) | evidence-supported | [[#Bosquet2007]] |
+| On-track and ambitious goals rehearse the real goal pace; unsupported, low-evidence and unknown goals get none, and the marathon keeps its supported-pace race Tempo and race Long for them. Recreational marathoners race at about 85% of critical speed, so a goal pace near the supported one is a sustainable rehearsal stimulus | [IntensityPrescriptionResolver.php:102](app/Services/Run/Plan/IntensityPrescriptionResolver.php#L102), [GoalPaceWork.php:49](app/Services/Run/Plan/GoalPaceWork.php#L49) | heuristic | [[#SmythMunizPumares2020]], [[#PfitzingerDouglas2019]] |
 | A goal-less season's goal counts weeks that reached 85% of the planned km, not CTL growth | [SeasonGamificationContext.php:176](app/Services/Gamification/SeasonGamificationContext.php#L176), [SeasonService.php:473](app/Services/Run/Plan/SeasonService.php#L473) | product choice | [[#Vermeire2022]], [[#Doherty2020]] |
 | Load numbers are presented as running load: long-term load, short-term load and a three-state load balance (fresh, steady, heavy); no copy reads them as fitness, readiness, overreaching, injury or soreness | [TrainingFormStatus.php:17](app/Services/Run/Metrics/TrainingFormStatus.php#L17) | evidence-supported | [[#Meeusen2013]], [[#Vermeire2022]], [[#Foster1998]], [[#JonesCM2017]], [[#Smyth2022]], [[#Mountjoy2023]] |
 | Heart-rate zones without a measured max or synced bands are labelled estimated, and heart-rate intent verdicts on them are marked a rough read | [HrZonesDisclosure.tsx:95](resources/js/components/settings/HrZonesDisclosure.tsx#L95), [ComplianceScorer.php:57](app/Services/Run/Plan/ComplianceScorer.php#L57) | evidence-supported | [[#Tanaka2001]], [[#Nes2013]], [[#RobergsLandwehr2002]] |
@@ -225,3 +231,18 @@ Hunter B, Ledger A, Muniz-Pumares D. Remote determination of critical speed and 
 
 ### MolinaGarcia2022
 Molina-Garcia P, Notbohm HL, Schumann M, et al. Validity of estimating the maximal oxygen consumption by consumer wearables: a systematic review with meta-analysis and expert statement of the INTERLIVE network. *Sports Med* 2022;52(7):1577–1597. https://pubmed.ncbi.nlm.nih.gov/35072942/ Wearable VO2max estimates from heart rate and pace had small group bias but wide individual limits of agreement. Grade MA · access ABS.
+
+### Bosquet2007
+Bosquet L, Montpetit J, Arvisais D, Mujika I. Effects of tapering on performance: a meta-analysis. *Med Sci Sports Exerc* 2007;39(8):1358–1365. https://doi.org/10.1249/mss.0b013e31806010e0. Across 27 studies the best taper lasted about two weeks with volume cut 41–60%, and keeping intensity (ES 0.33) and frequency (ES 0.35) each beat reducing them. Grade MA · access ABS.
+
+### Kiely2018
+Kiely J. Periodization theory: confronting an inconvenient truth. *Sports Med* 2018;48:753–764. https://doi.org/10.1007/s40279-017-0823-y. Periodization grew from coaching tradition, and no experiment supports specific cycle or block lengths. Grade REV · access ABS.
+
+### PfitzingerDouglas2019
+Pfitzinger P, Douglas S. *Advanced Marathoning.* 3rd ed. Human Kinetics, 2019. Book, no DOI. Marathon-pace runs and long runs with marathon-pace segments concentrated in the final weeks before the race. Grade NONE · access NR.
+
+### PfitzingerLatter2015
+Pfitzinger P, Latter P. *Faster Road Racing: 5K to Half Marathon.* Human Kinetics, 2015. Book, no DOI. Race-pace repetitions and half-marathon-pace segments in the final mesocycles of 5K to half marathon schedules. Grade NONE · access NR.
+
+### Daniels2022
+Daniels J. *Daniels' Running Formula.* 4th ed. Human Kinetics, 2022. Book, no DOI. Race-specific quality in the last phase of a season, built on the VDOT training paces. Grade NONE · access NR.

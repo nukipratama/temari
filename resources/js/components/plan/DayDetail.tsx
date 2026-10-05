@@ -25,12 +25,13 @@ import {
     deltaDirection,
     easedFromDelta,
     fallOffTiltWhy,
+    GOAL_PACE_LABEL,
     judgedDayResult,
     paceEaseDelta,
     paceLabel,
     prescriptionWhy,
     ranHot,
-    SESSION_TYPE_LABEL,
+    sessionLabel,
     sessionPurpose,
     STATUS_LABEL,
     STATUS_MEANING,
@@ -248,7 +249,7 @@ export function DayHeadline({ day }: Readonly<{ day: PlanDay }>) {
     return (
         <span className="block min-w-0 flex-1">
             <span className="block text-sm font-semibold text-foreground">
-                {SESSION_TYPE_LABEL[day.session_type] ?? day.session_type}
+                {sessionLabel(day)}
             </span>
             {!isRest && judged !== null && (
                 <AskedRanResult
@@ -433,7 +434,10 @@ export default function DayDetail({
                     {day.result_note}
                 </p>
             )}
-            <SessionBarGraph segments={day.segments} />
+            <SessionBarGraph
+                segments={day.segments}
+                workPaceLabel={day.goal_pace ? GOAL_PACE_LABEL : undefined}
+            />
             {day.activities.length > 0 && <RunList runs={day.activities} />}
             {(canMove || canSkip || canUnskip) && (
                 <div className="mt-3">

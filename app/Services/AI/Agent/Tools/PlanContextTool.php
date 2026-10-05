@@ -73,7 +73,9 @@ final class PlanContextTool extends UserTool
             .'only when that moved), which is context, never the day itself. pace_eased_from means '
             .'readiness eased the day\'s pace only: type and distance are unchanged, target_pace_sec/'
             .'target_pace_formatted are already the eased (slower) pace, and pace_eased_from names the '
-            .'pace it replaced. Call this to say what was asked of them, not just what they did. An '
+            .'pace it replaced. goal_pace, when present, names the race (5k/10k/half/marathon) whose '
+            .'goal pace the session rehearses, and the target pace is that goal pace: call it goal-pace '
+            .'work, not tempo or intervals. Call this to say what was asked of them, not just what they did. An '
             .'empty list means no plan covers these days.';
     }
 
@@ -105,7 +107,10 @@ final class PlanContextTool extends UserTool
                     $session,
                     PlanRenderer::coreKmForSession($session, $longRunBaselineKm, $longRunCapKm, $selfScaled, $longRunProgressionCapKm),
                 );
-                $targetPaceSec = self::targetPaceSec($session, $effective->sessionType, $paces);
+                $goalPace = PlanRenderer::goalPaceKindOf($session, $effective->sessionType);
+                $targetPaceSec = $goalPace === null
+                    ? self::targetPaceSec($session, $effective->sessionType, $paces)
+                    : $session->prescribed_pace_sec_per_km;
                 $easedFrom = $effective->easedFromForNarration();
                 $paceEasedFromSec = $effective->isPaceEased() ? $targetPaceSec : null;
                 if ($effective->isPaceEased()) {
@@ -117,6 +122,7 @@ final class PlanContextTool extends UserTool
                 return [
                     'date' => $session->date->toDateString(),
                     'session_type' => $effective->sessionType->value,
+                    ...($goalPace === null ? [] : ['goal_pace' => $goalPace]),
                     'phase' => $session->phase->value,
                     'distance_km' => $session->prescribed_km !== null
                         ? round($session->prescribed_km, 1)
