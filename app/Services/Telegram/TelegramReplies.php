@@ -41,7 +41,7 @@ class TelegramReplies
     /** Sent by the "Send test notification" button on the Profile page. */
     public static function test(): string
     {
-        return "Test notification from Temari. If you're seeing this, your Telegram connection is working. "
+        return "Test notification from temari. If you're seeing this, your Telegram connection is working. "
             . "I'll ping you here after every run and with your weekly recap.";
     }
 }

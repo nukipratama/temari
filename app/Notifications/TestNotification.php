@@ -27,6 +27,10 @@ class TestNotification extends Notification implements ShouldQueue
 {
     use Queueable;
 
+    private const string INBOX_BODY = "Test notification from temari. If you're seeing this, your inbox is working. I'll drop a note here after every run and with your weekly recap.";
+
+    private const string PUSH_BODY = "Test notification from temari. If you're seeing this, push notifications are working. I'll ping you after every run and with your weekly recap.";
+
     public int $tries = 3;
 
     /**
@@ -52,7 +56,7 @@ class TestNotification extends Notification implements ShouldQueue
         return new InboxMessage(
             kind: NotificationKind::Test,
             title: 'Test notification',
-            body: TelegramReplies::test(),
+            body: self::INBOX_BODY,
             payload: ['url' => route('dashboard')],
         );
     }
@@ -61,7 +65,7 @@ class TestNotification extends Notification implements ShouldQueue
     {
         return new WebPushMessage()
             ->title('Test notification')
-            ->body(TelegramReplies::test())
+            ->body(self::PUSH_BODY)
             ->icon('/icon-192.png')
             // Mirror the real push: high urgency so the test is a truthful delivery signal.
             ->options(['urgency' => 'high', 'TTL' => 300]);

@@ -127,7 +127,7 @@ it('renders a mute toggle instead of the action once subscribed, when onMuteChan
     );
 
     const toggle = await screen.findByRole('switch', {
-        name: 'send run notifications to this device',
+        name: 'send run notifications to all your devices',
     });
     fireEvent.click(toggle);
 

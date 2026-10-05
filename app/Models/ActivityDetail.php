@@ -55,6 +55,10 @@ use Override;
  * @property int|null $weather_wind_gust_kmh
  * @property int|null $weather_wind_direction_deg
  * @property bool|null $weather_rain_is_forecast
+ * @property int $weather_attempts
+ * @property Carbon|null $weather_attempted_at
+ * @property int $location_attempts
+ * @property Carbon|null $location_attempted_at
  * @property float|null $start_lat
  * @property float|null $start_lng
  * @property string|null $location_name
@@ -99,6 +103,10 @@ use Override;
     'weather_wind_gust_kmh',
     'weather_wind_direction_deg',
     'weather_rain_is_forecast',
+    'weather_attempts',
+    'weather_attempted_at',
+    'location_attempts',
+    'location_attempted_at',
     'start_lat',
     'start_lng',
     'location_name',
@@ -110,6 +118,10 @@ class ActivityDetail extends Model
 {
     /** @use HasFactory<ActivityDetailFactory> */
     use HasFactory;
+
+    public const int MAX_BACKFILL_ATTEMPTS = 5;
+
+    public const int LOCATION_ATTEMPT_COOLDOWN_HOURS = 24;
 
     #[Override]
     protected static function booted(): void
@@ -235,6 +247,10 @@ class ActivityDetail extends Model
             'weather_wind_gust_kmh' => 'integer',
             'weather_wind_direction_deg' => 'integer',
             'weather_rain_is_forecast' => 'boolean',
+            'weather_attempts' => 'integer',
+            'weather_attempted_at' => 'datetime',
+            'location_attempts' => 'integer',
+            'location_attempted_at' => 'datetime',
             'start_lat' => 'float',
             'start_lng' => 'float',
             'location_resolved_at' => 'datetime',

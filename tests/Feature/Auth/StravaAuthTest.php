@@ -686,6 +686,41 @@ it('logs the user out, clears session data, and redirects to login', function ()
     $this->assertGuest();
 });
 
+it('drops only the signing-out device push subscription on logout', function (): void {
+    $user = User::factory()->create();
+    $user->updatePushSubscription('https://fcm.googleapis.com/fcm/send/this-phone', 'k', 't');
+    $user->updatePushSubscription('https://fcm.googleapis.com/fcm/send/other-phone', 'k', 't');
+
+    $this->actingAs($user)->startSession()
+        ->post(route('auth.logout'), ['push_endpoint' => 'https://fcm.googleapis.com/fcm/send/this-phone'])
+        ->assertRedirect(route('login'));
+
+    $this->assertGuest();
+    expect($user->pushSubscriptions()->pluck('endpoint')->all())
+        ->toBe(['https://fcm.googleapis.com/fcm/send/other-phone']);
+});
+
+it("never deletes another user's subscription through the logout endpoint", function (): void {
+    $user = User::factory()->create();
+    $other = User::factory()->create();
+    $other->updatePushSubscription('https://fcm.googleapis.com/fcm/send/theirs', 'k', 't');
+
+    $this->actingAs($user)->startSession()
+        ->post(route('auth.logout'), ['push_endpoint' => 'https://fcm.googleapis.com/fcm/send/theirs'])
+        ->assertRedirect(route('login'));
+
+    expect($other->pushSubscriptions()->count())->toBe(1);
+});
+
+it('logs out without an endpoint and keeps every subscription', function (): void {
+    $user = User::factory()->create();
+    $user->updatePushSubscription('https://fcm.googleapis.com/fcm/send/abc', 'k', 't');
+
+    $this->actingAs($user)->startSession()->post(route('auth.logout'))->assertRedirect(route('login'));
+
+    expect($user->pushSubscriptions()->count())->toBe(1);
+});
+
 // Inertia keeps every page's props in window.history.state so back/forward can
 // re-render without a round trip. Without clearing, the back button still
 // re-renders the last authenticated page after signing out.

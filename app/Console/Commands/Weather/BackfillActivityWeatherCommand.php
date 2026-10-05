@@ -24,6 +24,9 @@ class BackfillActivityWeatherCommand extends Command
             ->whereNotNull('start_lat')
             ->whereNotNull('start_lng')
             ->whereNotNull('start_date_local')
+            ->where('weather_attempts', '<', ActivityDetail::MAX_BACKFILL_ATTEMPTS)
+            ->orderByRaw('weather_attempted_at is not null')
+            ->orderBy('weather_attempted_at')
             ->orderBy('id')
             ->limit($limit);
 
@@ -56,6 +59,11 @@ class BackfillActivityWeatherCommand extends Command
         );
 
         if ($snapshot === null) {
+            $detail->update([
+                'weather_attempts' => $detail->weather_attempts + 1,
+                'weather_attempted_at' => now(),
+            ]);
+
             return false;
         }
 

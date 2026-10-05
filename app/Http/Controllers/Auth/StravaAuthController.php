@@ -9,11 +9,13 @@ use App\Jobs\AI\KickoffRecapsJob;
 use App\Jobs\Strava\SyncActivitiesJob;
 use App\Jobs\Strava\SyncZonesJob;
 use App\Enums\StravaGrantEventType;
+use App\Http\Requests\LogoutRequest;
 use App\Models\StravaConnection;
 use App\Models\User;
 use App\Services\Strava\StravaGrantLedger;
 use App\Services\Strava\StravaGrantReleaseService;
 use App\Support\LocalRedirectPath;
+use App\Support\SharedPropCacheKey;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -114,8 +116,15 @@ class StravaAuthController extends Controller
         return redirect()->intended(route('dashboard'));
     }
 
-    public function logout(Request $request): RedirectResponse
+    public function logout(LogoutRequest $request): RedirectResponse
     {
+        $user = $request->user();
+        $pushEndpoint = $request->pushEndpoint();
+        if ($user !== null && $pushEndpoint !== null) {
+            $user->deletePushSubscription($pushEndpoint);
+            SharedPropCacheKey::WebPushSubscribed->forget($user->id);
+        }
+
         Auth::logout();
         $request->session()->invalidate();
 
