@@ -104,6 +104,10 @@ export interface RaceAmbition {
         performed_on: string;
         activity_id: number | null;
     } | null;
+    /** The edge of on track, 3% faster than supported; set only for an
+     *  unsupported goal, where goal-pace work runs at it. */
+    stepping_stone_time_sec: number | null;
+    stepping_stone_pace_sec_per_km: number | null;
 }
 
 /** The Riegel fit over the athlete's PRs, used by the race form's typed-goal warning. */
@@ -589,6 +593,9 @@ export interface WeekPlanDay {
     /** The race whose goal pace this session rehearses, set only while the
      *  session shown is that goal-pace work. */
     goal_pace: '5k' | '10k' | 'half' | 'marathon' | null;
+    /** True when that goal-pace work runs at an unsupported goal's
+     *  stepping-stone pace rather than the goal pace itself. */
+    stepping_stone: boolean;
     /** The time trial this session is, set only while the session shown is
      *  that trial: its distance and the supported time to aim around. */
     time_trial: { distance_m: number; aim_time_sec: number } | null;

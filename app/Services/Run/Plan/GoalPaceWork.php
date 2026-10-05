@@ -13,8 +13,8 @@ use Illuminate\Support\Carbon;
 
 /**
  * The race-pace rehearsal one quality session a week becomes in the last
- * weeks before a race the athlete's fitness supports. See
- * `docs/decisions/goal-pace-work-in-the-last-weeks.md`.
+ * weeks before a race, at the goal pace, or at the stepping-stone pace for
+ * an unsupported goal. See `docs/decisions/goal-pace-work-in-the-last-weeks.md`.
  */
 final readonly class GoalPaceWork
 {
@@ -34,7 +34,7 @@ final readonly class GoalPaceWork
 
     public const string KIND_MARATHON = 'marathon';
 
-    private const array BANDS = [RaceAmbitionState::OnTrack, RaceAmbitionState::Ambitious];
+    private const array BANDS = [RaceAmbitionState::OnTrack, RaceAmbitionState::Ambitious, RaceAmbitionState::Unsupported];
 
     private const array PHASES = [PlanPhase::Build, PlanPhase::Peak, PlanPhase::Taper];
 
@@ -49,7 +49,9 @@ final readonly class GoalPaceWork
     public static function forWeek(PlanInputs $inputs, Carbon $weekStart, PlanPhase $phase): ?self
     {
         $distanceM = $inputs->raceDistanceM;
-        $goalTimeSec = $inputs->raceGoalTimeSec;
+        $goalTimeSec = $inputs->raceAmbitionState === RaceAmbitionState::Unsupported
+            ? $inputs->raceSteppingStoneTimeSec
+            : $inputs->raceGoalTimeSec;
         if ($inputs->raceDate === null || $distanceM === null || $goalTimeSec === null || $goalTimeSec <= 0
             || ! RaceSupport::forDistance($distanceM)->dedicatedPreparation()
             || ! in_array($inputs->raceAmbitionState, self::BANDS, true)
@@ -97,7 +99,7 @@ final readonly class GoalPaceWork
 
     public function racesLongAtGoalPace(): bool
     {
-        return $this->isMarathon() && $this->band === RaceAmbitionState::OnTrack;
+        return $this->isMarathon() && in_array($this->band, [RaceAmbitionState::OnTrack, RaceAmbitionState::Unsupported], true);
     }
 
     public function paceBand(): PaceBand
@@ -140,6 +142,12 @@ final readonly class GoalPaceWork
     public static function isGoalPace(?array $context): bool
     {
         return isset($context['band']);
+    }
+
+    /** @param  array<string, int|float|string>|null  $context */
+    public static function isSteppingStone(?array $context): bool
+    {
+        return ($context['band'] ?? null) === RaceAmbitionState::Unsupported->value;
     }
 
     /**

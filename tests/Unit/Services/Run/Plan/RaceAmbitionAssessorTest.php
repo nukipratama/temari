@@ -6,6 +6,7 @@ use App\Enums\RaceAmbitionState;
 use App\Models\PerformanceEvidence;
 use App\Models\RaceGoal;
 use App\Models\User;
+use App\Services\Run\Metrics\VdotEstimator;
 use App\Services\Run\Plan\RaceAmbitionAssessor;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -130,3 +131,58 @@ it('names the effort the supported time rests on', function (): void {
 
     expect($ambition->basis)->toBe(['distance_m' => 10_000, 'performed_on' => '2026-09-24', 'activity_id' => null]);
 });
+
+it('sets the stepping stone 3 percent faster than supported for an unsupported goal only', function (int $goalSec, bool $steppingStone): void {
+    tenKEvidence($this->user, 4200);
+
+    $ambition = $this->assessor->assess($this->user, tenKRace($this->user, $goalSec));
+
+    expect($ambition->steppingStoneTimeSec)->toBe($steppingStone ? RaceAmbitionAssessor::steppingStoneTimeSec($ambition->supportedTimeSec) : null)
+        ->and($ambition->steppingStonePaceSecPerKm)->toBe($steppingStone ? (int) round($ambition->steppingStoneTimeSec / 10) : null)
+        ->and($ambition->targetTimeSec)->toBe($goalSec);
+})->with([
+    'unsupported' => [3000, true],
+    'ambitious' => [4000, false],
+    'on track' => [4200, false],
+]);
+
+it('gives a low-evidence or unknown goal no stepping stone', function (): void {
+    $unknown = $this->assessor->assess($this->user, tenKRace($this->user, 3000));
+    PerformanceEvidence::query()->create([
+        'user_id' => $this->user->id, 'kind' => 'test', 'distance_m' => 5_000, 'elapsed_time_sec' => 2000,
+        'performed_on' => Carbon::today()->subWeek(), 'confirmed_at' => now(),
+    ]);
+    $lowEvidence = $this->assessor->assess($this->user, RaceGoal::factory()->for($this->user)->create([
+        'distance_m' => 42_195, 'goal_time_sec' => 10_800, 'race_date' => Carbon::today()->addWeeks(12)->toDateString(),
+    ]));
+
+    expect($unknown->state)->toBe(RaceAmbitionState::Unknown)
+        ->and($unknown->steppingStoneTimeSec)->toBeNull()
+        ->and($lowEvidence->state)->toBe(RaceAmbitionState::LowEvidence)
+        ->and($lowEvidence->steppingStoneTimeSec)->toBeNull();
+});
+
+it('moves the stepping stone with the supported time', function (): void {
+    tenKEvidence($this->user, 4200);
+    $race = tenKRace($this->user, 3000);
+    $before = $this->assessor->assess($this->user, $race);
+    PerformanceEvidence::query()->create([
+        'user_id' => $this->user->id, 'kind' => 'test', 'distance_m' => 10_000, 'elapsed_time_sec' => 3900,
+        'performed_on' => Carbon::today(), 'confirmed_at' => now(),
+    ]);
+    app()->forgetInstance(VdotEstimator::class);
+    $after = app(RaceAmbitionAssessor::class)->assess($this->user, $race);
+
+    expect($after->supportedTimeSec)->toBeLessThan($before->supportedTimeSec)
+        ->and($after->steppingStoneTimeSec)->toBe(RaceAmbitionAssessor::steppingStoneTimeSec($after->supportedTimeSec))
+        ->and($after->steppingStoneTimeSec)->toBeLessThan($before->steppingStoneTimeSec)
+        ->and($after->targetTimeSec)->toBe(3000);
+});
+
+it('rounds the stepping stone to whole seconds at the edge of on track', function (int $supportedSec, int $steppingStoneSec): void {
+    expect(RaceAmbitionAssessor::steppingStoneTimeSec($supportedSec))->toBe($steppingStoneSec);
+})->with([
+    'exact' => [4200, 4074],
+    'rounds up' => [3150, 3056],
+    'rounds down' => [3001, 2911],
+]);

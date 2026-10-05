@@ -48,12 +48,15 @@ function planFingerprint(User $user): array
         ])->all();
 }
 
-it('plans a 50 minute 10K ambition from 70 minute capacity without a crash build', function (): void {
+it('plans a 50 minute 10K ambition from 70 minute capacity without a crash build, its goal-pace work at the stepping stone', function (): void {
     $sessionDays = fn (): array => array_map(static fn (array $day): array => array_slice($day, 0, 3), planFingerprint($this->user));
     $goalPaceDays = fn (): int => PlannedSession::query()->where('user_id', $this->user->id)->whereNotNull('prescription_race_context->band')->count();
     app(Periodizer::class)->regenerate($this->user, Carbon::today());
     $ambitious = $sessionDays();
     $ambitiousGoalPaceDays = $goalPaceDays();
+    $steppingStonePaces = PlannedSession::query()->where('user_id', $this->user->id)->whereNotNull('prescription_race_context->band')->where('prescribed_hard_minutes', '>', 0)->get()
+        ->map(fn (PlannedSession $s): array => [$s->prescription_race_context['band'], $s->prescribed_pace_sec_per_km])->unique()->values()->all();
+    $steppingStone = app(RaceAmbitionAssessor::class)->assess($this->user, $this->race)->steppingStonePaceSecPerKm;
     $adaptation = PlanAdaptation::query()->where('user_id', $this->user->id)->firstOrFail();
 
     $supported = app(RaceAmbitionAssessor::class)->assess($this->user, $this->race)->supportedTimeSec;
@@ -62,7 +65,8 @@ it('plans a 50 minute 10K ambition from 70 minute capacity without a crash build
 
     expect($adaptation->reason)->not->toBe(AdaptationReason::BehindRacePace)
         ->and($adaptation->quality_delta)->toBe(0)
-        ->and($ambitiousGoalPaceDays)->toBe(0)
+        ->and($ambitiousGoalPaceDays)->toBeGreaterThan(0)
+        ->and($steppingStonePaces)->toBe([['unsupported', $steppingStone]])
         ->and($sessionDays())->toBe($ambitious)
         ->and($goalPaceDays())->toBeGreaterThan(0);
 });

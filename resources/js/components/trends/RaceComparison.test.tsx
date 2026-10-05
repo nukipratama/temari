@@ -59,6 +59,8 @@ describe('RaceComparison', () => {
                         prescribed_time_sec: 3120,
                         gap_pct: 4.6,
                         evidence_confidence: 'confirmed',
+                        stepping_stone_time_sec: null,
+                        stepping_stone_pace_sec_per_km: null,
                         basis: {
                             distance_m: 10_000,
                             performed_on: '2026-09-20',
@@ -105,6 +107,8 @@ describe('RaceComparison', () => {
             prescribed_time_sec: 3270,
             gap_pct: 4.6,
             evidence_confidence: 'confirmed',
+            stepping_stone_time_sec: null,
+            stepping_stone_pace_sec_per_km: null,
             basis: null,
         };
         const support = {

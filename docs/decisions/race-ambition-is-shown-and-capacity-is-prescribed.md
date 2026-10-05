@@ -19,6 +19,8 @@ code_refs:
 
 > **Partly superseded (2026-10-05) by [[goal-pace-work-in-the-last-weeks]].** Inside the last 6 to 8 weeks, an on-track or ambitious goal trains one session a week at the real goal pace, lifting the supported marathon-pace clamp for those two bands.
 
+> **Partly superseded (2026-10-05) by [[a-stepping-stone-for-an-unsupported-goal]].** An unsupported goal's goal-pace work in the last 6 to 8 weeks runs at a stepping-stone pace 3% faster than the supported time; the stated target is still never a pace.
+
 # A race ambition is shown, and the supported effort is prescribed
 
 **Status:** Accepted (2026-10-01).

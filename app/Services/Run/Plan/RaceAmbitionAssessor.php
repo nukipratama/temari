@@ -39,14 +39,16 @@ final readonly class RaceAmbitionAssessor
         $gap = 1 - $race->goal_time_sec / $supportedSec;
         $evidenceM = $estimate['longest_source_m'] ?? $estimate['distance_m'] ?? PrCategory::tryFrom($estimate['source_category'])?->distanceMeters();
         $basisM = $estimate['distance_m'] ?? null;
+        $state = match (true) {
+            $evidenceM === null || $evidenceM < $race->distance_m / 2 => RaceAmbitionState::LowEvidence,
+            $gap <= self::ON_TRACK_WITHIN => RaceAmbitionState::OnTrack,
+            $gap <= self::AMBITIOUS_WITHIN => RaceAmbitionState::Ambitious,
+            default => RaceAmbitionState::Unsupported,
+        };
+        $steppingStoneSec = $state === RaceAmbitionState::Unsupported ? self::steppingStoneTimeSec($supportedSec) : null;
 
         return new RaceAmbition(
-            match (true) {
-                $evidenceM === null || $evidenceM < $race->distance_m / 2 => RaceAmbitionState::LowEvidence,
-                $gap <= self::ON_TRACK_WITHIN => RaceAmbitionState::OnTrack,
-                $gap <= self::AMBITIOUS_WITHIN => RaceAmbitionState::Ambitious,
-                default => RaceAmbitionState::Unsupported,
-            },
+            $state,
             $race->goal_time_sec,
             $targetPace,
             $supportedSec,
@@ -54,6 +56,14 @@ final readonly class RaceAmbitionAssessor
             round($gap * 100, 1),
             $estimate['confidence'],
             $basisM === null ? null : ['distance_m' => $basisM, 'performed_on' => $estimate['set_at']->toDateString(), 'activity_id' => $estimate['source_activity_id'] ?? null],
+            $steppingStoneSec,
+            $steppingStoneSec === null ? null : (int) round($steppingStoneSec / $distanceKm),
         );
+    }
+
+    /** The edge of on track: the supported time made faster by the on-track margin. */
+    public static function steppingStoneTimeSec(int $supportedSec): int
+    {
+        return (int) round($supportedSec * (1 - self::ON_TRACK_WITHIN));
     }
 }

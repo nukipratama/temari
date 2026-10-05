@@ -57,6 +57,7 @@ function day(overrides: Partial<WeekPlanDay> = {}): WeekPlanDay {
         prescription_reason: null,
         fall_off_tilt: null,
         goal_pace: null,
+        stepping_stone: false,
         time_trial: null,
         hr_cap_bpm: null,
         advice_note: null,
@@ -369,6 +370,37 @@ describe('TodaySession', () => {
         expect(
             screen.getByText('rehearsing your half marathon goal pace.'),
         ).toBeInTheDocument();
+    });
+
+    it('leads stepping-stone work with its own label and the stepping-stone pace as the target', () => {
+        render(
+            <TodaySession
+                briefing={briefing('Stepping stone today.')}
+                today={day({
+                    session_type: 'tempo',
+                    goal_pace: 'half',
+                    stepping_stone: true,
+                    segments: [
+                        {
+                            key: 'main',
+                            minutes: 30,
+                            zone: 'Z4',
+                            pace_label: 'threshold',
+                            km: 6,
+                            pace_sec_per_km: 290,
+                        },
+                    ],
+                })}
+            />,
+        );
+
+        expectSession('8', 'stepping-stone pace · 4:50/km');
+        expect(
+            screen.getByText(
+                'rehearsing your half marathon stepping-stone pace.',
+            ),
+        ).toBeInTheDocument();
+        expect(screen.queryByText(/goal pace/)).not.toBeInTheDocument();
     });
 
     /** The real case: a tempo eased to easy with its distance held leads as the easy run. */

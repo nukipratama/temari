@@ -125,6 +125,7 @@
     "weekPlan.days[].session_type",
     "weekPlan.days[].skipped",
     "weekPlan.days[].status",
+    "weekPlan.days[].stepping_stone",
     "weekPlan.days[].time_trial",
     "weekPlan.phase",
     "weekPlan.planned_km_eased_from",

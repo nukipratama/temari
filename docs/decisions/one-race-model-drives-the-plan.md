@@ -19,6 +19,8 @@ code_refs:
 
 > **Partly superseded (2026-10-05) by [[goal-pace-work-in-the-last-weeks]].** Decision 3 no longer holds for an on-track or ambitious goal inside the last 8 weeks, whose goal-pace work runs at the real goal pace.
 
+> **Partly superseded (2026-10-05) by [[a-stepping-stone-for-an-unsupported-goal]].** Decision 3 no longer holds for an unsupported marathon inside the last 8 weeks either, whose race Tempo and race long run at the stepping-stone pace.
+
 # One race model drives the plan
 
 **Status:** Accepted (2026-10-02). Supersedes the bands clause of [[race-ambition-is-shown-and-capacity-is-prescribed]].

@@ -169,6 +169,8 @@ describe('ambitionNote', () => {
         prescribed_time_sec: 3_000,
         gap_pct: 1.6,
         evidence_confidence: 'confirmed',
+        stepping_stone_time_sec: null,
+        stepping_stone_pace_sec_per_km: null,
         basis: null,
     };
     const support: RaceSupport = {
@@ -218,6 +220,8 @@ describe('supportedEyebrow', () => {
         prescribed_time_sec: 3_000,
         gap_pct: -0.3,
         evidence_confidence: 'confirmed',
+        stepping_stone_time_sec: null,
+        stepping_stone_pace_sec_per_km: null,
         basis: null,
     };
 
@@ -261,6 +265,8 @@ describe('supportedBasisLine', () => {
         prescribed_time_sec: 3_480,
         gap_pct: 2.5,
         evidence_confidence: 'provisional',
+        stepping_stone_time_sec: null,
+        stepping_stone_pace_sec_per_km: null,
         basis: {
             distance_m: 5_000,
             performed_on: '2026-08-26',

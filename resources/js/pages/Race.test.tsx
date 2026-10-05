@@ -30,6 +30,8 @@ const RACE: RaceDetails = {
         prescribed_time_sec: 3_000,
         gap_pct: 1.6,
         evidence_confidence: 'confirmed',
+        stepping_stone_time_sec: null,
+        stepping_stone_pace_sec_per_km: null,
         basis: null,
     },
     support: { mode: 'road', dedicated_preparation: true, limitation: null },
@@ -119,6 +121,49 @@ describe('Race', () => {
 
         expect(positions.every((p) => p >= 0)).toBe(true);
         expect(positions).toEqual([...positions].sort((a, b) => a - b));
+    });
+
+    it('sets the stepping stone under the duel for an unsupported goal, and leaves the target as stated', () => {
+        const { container } = render(
+            <Race
+                race={{
+                    ...RACE,
+                    ambition: {
+                        ...RACE.ambition,
+                        state: 'unsupported',
+                        supported_time_sec: 3_300,
+                        supported_pace_sec_per_km: 330,
+                        prescribed_time_sec: 3_300,
+                        gap_pct: 9.1,
+                        stepping_stone_time_sec: 3_201,
+                        stepping_stone_pace_sec_per_km: 320,
+                    },
+                }}
+                projection={PROJECTION}
+            />,
+        );
+
+        const text = container.textContent ?? '';
+        const order = [
+            'your target',
+            'Jakarta 10K',
+            'the edge of on track',
+            'edit race',
+        ];
+        const positions = order.map((h) => text.indexOf(h));
+
+        expect(positions.every((p) => p >= 0)).toBe(true);
+        expect(positions).toEqual([...positions].sort((a, b) => a - b));
+        expect(screen.getByText('53:21')).toBeInTheDocument();
+        expect(screen.getByText('50:00')).toBeInTheDocument();
+    });
+
+    it('shows no stepping stone for a goal that is not unsupported', () => {
+        render(<Race race={RACE} projection={PROJECTION} />);
+
+        expect(
+            screen.queryByRole('region', { name: 'stepping stone' }),
+        ).not.toBeInTheDocument();
     });
 
     it('shows only a short line and a set-a-race button when no race is set', () => {

@@ -160,7 +160,7 @@ export function ambitionNote(
         case 'low_evidence':
             return `${label}: your recent results cover less than half this distance, so the supported time is a rough guide and race pace won't be set faster than it.`;
         case 'unsupported':
-            return `${label}: your target is ${gap}% faster than your recent runs support, so the plan trains at the supported effort. your target stays yours.`;
+            return `${label}: your target is ${gap}% faster than your recent runs support, so the plan trains at the supported effort, with race-pace work at a stepping stone between the two. your target stays yours.`;
         case 'ambitious':
             return `${label}: your target is ${gap}% faster than your recent runs support. the plan trains at your target.`;
         default:

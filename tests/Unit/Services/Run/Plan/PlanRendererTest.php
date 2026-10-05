@@ -1327,3 +1327,26 @@ it('dayPayload names a time trial, sized as the trial alone at the aim, only whi
         ->and(PlanRenderer::timeTrialOf($trial, SessionType::Easy))->toBeNull()
         ->and(PlanRenderer::timeTrialForNarration(['distance_m' => 10_000, 'aim_time_sec' => 3_125]))->toBe(['distance_km' => 10.0, 'aim_time' => '52:05']);
 });
+
+it('dayPayload marks goal-pace work at an unsupported goal\'s stepping-stone pace, and only that', function (): void {
+    $session = fn (string $band): PlannedSession => PlannedSession::factory()->make([
+        'date' => '2026-08-12',
+        'phase' => PlanPhase::Peak,
+        'session_type' => SessionType::Interval,
+        'prescribed_hard_minutes' => 16,
+        'prescribed_pace_band' => PaceBand::Threshold,
+        'prescribed_pace_sec_per_km' => 291,
+        'prescription_race_context' => ['distance_m' => 10_000, 'goal_pace_sec_per_km' => 291, 'kind' => '10k', 'band' => $band],
+    ]);
+    $payload = fn (PlannedSession $s): array => PlanRenderer::dayPayload($s, Carbon::parse('2026-08-10'), null, [], 10_000.0, false, 20.0, 1.0, INF, RENDERER_PACES, PlannedSessionStatus::Planned);
+    $steppingStone = $payload($session('unsupported'));
+    $work = array_values(array_filter($steppingStone['segments'], static fn (array $segment): bool => $segment['pace_label'] !== 'easy'));
+
+    expect($steppingStone['goal_pace'])->toBe('10k')
+        ->and($steppingStone['stepping_stone'])->toBeTrue()
+        ->and(array_unique(array_column($work, 'pace_sec_per_km')))->toBe([291])
+        ->and($payload($session('on_track'))['stepping_stone'])->toBeFalse()
+        ->and(PlanRenderer::goalPaceForNarration($session('unsupported'), SessionType::Interval))->toBe(['stepping_stone' => '10k'])
+        ->and(PlanRenderer::goalPaceForNarration($session('on_track'), SessionType::Interval))->toBe(['goal_pace' => '10k'])
+        ->and(PlanRenderer::goalPaceForNarration($session('unsupported'), SessionType::Easy))->toBe([]);
+});

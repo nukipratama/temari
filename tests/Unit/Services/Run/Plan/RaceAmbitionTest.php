@@ -16,7 +16,7 @@ it('prescribes the target unless it is unsupported, then the supported time', fu
 });
 
 it('exposes both numbers under stable payload keys', function (): void {
-    $ambition = new RaceAmbition(RaceAmbitionState::Unsupported, 3000, 300, 4200, 420, 28.6, 'confirmed');
+    $ambition = new RaceAmbition(RaceAmbitionState::Unsupported, 3000, 300, 4200, 420, 28.6, 'confirmed', null, 4074, 407);
 
     expect($ambition->toArray())->toBe([
         'state' => 'unsupported',
@@ -28,5 +28,7 @@ it('exposes both numbers under stable payload keys', function (): void {
         'gap_pct' => 28.6,
         'evidence_confidence' => 'confirmed',
         'basis' => null,
+        'stepping_stone_time_sec' => 4074,
+        'stepping_stone_pace_sec_per_km' => 407,
     ]);
 });

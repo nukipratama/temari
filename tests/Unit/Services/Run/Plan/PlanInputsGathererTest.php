@@ -7,8 +7,10 @@ use App\Enums\FallOffTilt;
 use App\Enums\IntentVerdict;
 use App\Enums\PaceBand;
 use App\Enums\PlannedSessionStatus;
+use App\Enums\RaceAmbitionState;
 use App\Enums\SessionType;
 use App\Models\PlannedSession;
+use App\Models\PerformanceEvidence;
 use App\Models\PersonalRecord;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
@@ -438,4 +440,24 @@ it('carries the trial aim, the season\'s fixed trials read as run or skipped, an
             ['date' => '2026-09-10', 'retry' => false, 'skipped' => false],
         ])
         ->and($inputs->timeTrialEvidenceDates)->toBe(['2026-08-20', '2026-08-28']);
+});
+
+it('carries an unsupported goal\'s stepping-stone time for its goal-pace work', function (): void {
+    $user = gathererAthlete();
+    PerformanceEvidence::query()->create([
+        'user_id' => $user->id, 'kind' => 'test', 'distance_m' => 10_000, 'elapsed_time_sec' => 3_000,
+        'performed_on' => Carbon::today()->subWeek(), 'confirmed_at' => now(),
+    ]);
+    $race = RaceGoal::factory()->for($user)->create([
+        'race_date' => '2026-10-31',
+        'distance_m' => 10_000,
+        'goal_time_sec' => 2_400,
+    ]);
+    $inputs = $this->gatherer->forUser($user, Carbon::today());
+    $ambition = app(RaceAmbitionAssessor::class)->assess($user, $race, Carbon::today());
+
+    expect($inputs->raceAmbitionState)->toBe(RaceAmbitionState::Unsupported)
+        ->and($inputs->raceSteppingStoneTimeSec)->toBe($ambition->steppingStoneTimeSec)
+        ->and($inputs->raceSteppingStoneTimeSec)->toBe(RaceAmbitionAssessor::steppingStoneTimeSec($ambition->supportedTimeSec))
+        ->and($inputs->raceGoalTimeSec)->toBe($ambition->supportedTimeSec);
 });

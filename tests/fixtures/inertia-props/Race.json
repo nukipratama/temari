@@ -18,6 +18,8 @@
     "race.ambition.gap_pct",
     "race.ambition.prescribed_time_sec",
     "race.ambition.state",
+    "race.ambition.stepping_stone_pace_sec_per_km",
+    "race.ambition.stepping_stone_time_sec",
     "race.ambition.supported_pace_sec_per_km",
     "race.ambition.supported_time_sec",
     "race.ambition.target_pace_sec_per_km",

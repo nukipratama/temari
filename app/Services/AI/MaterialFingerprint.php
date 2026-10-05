@@ -36,7 +36,7 @@ final class MaterialFingerprint
      */
     public static function forPlannedSession(PlannedSession $session, ?float $longRunBaselineKm): string
     {
-        $goalPace = PlanRenderer::goalPaceKindOf($session, $session->session_type);
+        $goalPace = PlanRenderer::goalPaceForNarration($session, $session->session_type);
         $timeTrial = PlanRenderer::timeTrialOf($session, $session->session_type);
 
         return self::digest([
@@ -54,7 +54,7 @@ final class MaterialFingerprint
             // conditionally so every already-stamped row keeps its digest
             // rather than the new key re-narrating everyone's whole week.
             ...($session->race_distance_m === null ? [] : ['race_distance_m' => $session->race_distance_m]),
-            ...($goalPace === null ? [] : ['goal_pace' => $goalPace]),
+            ...$goalPace,
             ...($timeTrial === null ? [] : ['time_trial' => $timeTrial['distance_m']]),
             // The day flipping to credited turns the blurb from a label into a
             // read of what happened, so it has to re-narrate once. Added

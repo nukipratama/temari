@@ -55,6 +55,7 @@ function day(overrides: Partial<PlanDay> = {}): PlanDay {
         prescription_reason: null,
         fall_off_tilt: null,
         goal_pace: null,
+        stepping_stone: false,
         time_trial: null,
         hr_cap_bpm: null,
         advice_note: null,
@@ -252,6 +253,35 @@ describe('DayHeadline and DayDetail', () => {
         expect(
             screen.getByText('rehearsing your 10K goal pace.'),
         ).toBeInTheDocument();
+    });
+
+    it('names stepping-stone work in its headline, at the stepping-stone pace, never as goal pace', () => {
+        renderRow({
+            day: day({
+                session_type: 'interval',
+                goal_pace: '10k',
+                stepping_stone: true,
+                segments: [
+                    {
+                        key: 'interval',
+                        minutes: 4,
+                        zone: 'Z4',
+                        pace_label: 'threshold',
+                        km: 0.8,
+                        pace_sec_per_km: 291,
+                    },
+                ],
+            }),
+        });
+
+        expect(screen.getByText('stepping-stone pace')).toBeInTheDocument();
+        expect(
+            screen.getByText('4:51/km · stepping-stone pace'),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByText('rehearsing your 10K stepping-stone pace.'),
+        ).toBeInTheDocument();
+        expect(screen.queryByText(/goal pace/)).not.toBeInTheDocument();
     });
 
     /**

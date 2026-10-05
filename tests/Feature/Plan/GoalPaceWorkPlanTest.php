@@ -12,6 +12,7 @@ use App\Enums\SessionType;
 use App\Services\Run\Plan\IntensityPrescription;
 use App\Services\Run\Plan\Periodizer;
 use App\Services\Run\Plan\PlanInputs;
+use App\Services\Run\Plan\RaceAmbitionAssessor;
 use App\Services\Run\Plan\SegmentGenerator;
 use Illuminate\Support\Carbon;
 
@@ -23,7 +24,7 @@ const GOAL_PACE_HALF = 21_097.5;
 
 const GOAL_PACE_MARATHON = 42_195.0;
 
-/** Goal paces of 4:36, 5:00, 4:59 and 5:10 per km, against a supported marathon pace of 5:20. */
+/** Goal paces of 4:36, 5:00, 4:59 and 5:10 per km, against a supported marathon pace of 5:20; an unsupported goal's supported times. */
 const GOAL_PACE_TIMES = [5_000 => 1380, 10_000 => 3000, 21_097 => 6300, 42_195 => 13_080];
 
 /**
@@ -61,6 +62,7 @@ function goalPaceInputs(
         longRunCapKm: 32.0,
         recentPrescriptions: $recent,
         raceAmbitionState: $band,
+        raceSteppingStoneTimeSec: $band === RaceAmbitionState::Unsupported ? RaceAmbitionAssessor::steppingStoneTimeSec($goalTimeSec) : null,
     );
 }
 
@@ -153,20 +155,71 @@ it('doses 5K and 10K goal-pace reps by band', function (float $distanceM, RaceAm
     '10K ambitious' => [GOAL_PACE_10K, RaceAmbitionState::Ambitious, 12],
 ]);
 
-it('gives unsupported, low-evidence and unknown 10K and half goals no goal-pace work', function (float $distanceM, RaceAmbitionState $band): void {
+it('gives low-evidence and unknown 10K and half goals no goal-pace work', function (float $distanceM, RaceAmbitionState $band): void {
     $rows = goalPacePlan(goalPaceInputs($distanceM, $band));
 
     expect(goalPaceSessions($rows))->toBe([])
         ->and($rows)->toBe(goalPacePlan(goalPaceInputs($distanceM, null)));
-})->with([GOAL_PACE_10K, GOAL_PACE_HALF])->with([RaceAmbitionState::Unsupported, RaceAmbitionState::LowEvidence, RaceAmbitionState::Unknown]);
+})->with([GOAL_PACE_10K, GOAL_PACE_HALF])->with([RaceAmbitionState::LowEvidence, RaceAmbitionState::Unknown]);
 
-it('keeps exactly today\'s marathon plan for unsupported, low-evidence and unknown goals', function (RaceAmbitionState $band): void {
+it('keeps exactly today\'s marathon plan for low-evidence and unknown goals', function (RaceAmbitionState $band): void {
     $rows = goalPacePlan(goalPaceInputs(GOAL_PACE_MARATHON, $band));
 
     expect($rows)->toBe(goalPacePlan(goalPaceInputs(GOAL_PACE_MARATHON, null)))
         ->and($rows['2026-11-05']['prescribed_pace_sec_per_km'])->toBe(320)
         ->and($rows['2026-11-08']['prescribed_pace_sec_per_km'])->toBe(320);
-})->with([RaceAmbitionState::Unsupported, RaceAmbitionState::LowEvidence, RaceAmbitionState::Unknown]);
+})->with([RaceAmbitionState::LowEvidence, RaceAmbitionState::Unknown]);
+
+it('runs unsupported 5K and 10K goal-pace reps at the stepping-stone pace with the full on-track dose', function (float $distanceM, int $pace): void {
+    $recent = ['goal_pace' => goalPaceHit(24)];
+    $rows = goalPacePlan(goalPaceInputs($distanceM, RaceAmbitionState::Unsupported, '2026-10-26', recent: $recent));
+    $onTrack = goalPacePlan(goalPaceInputs($distanceM, RaceAmbitionState::OnTrack, '2026-10-26', recent: $recent));
+
+    expect(goalPaceWeeks($rows))->toBe(goalPaceWeeks($onTrack))
+        ->and($rows['2026-11-19']['prescribed_hard_minutes'])->toBe($onTrack['2026-11-19']['prescribed_hard_minutes'])
+        ->and($rows['2026-11-19']['prescribed_pace_sec_per_km'])->toBe($pace)
+        ->and($rows['2026-11-19']['prescription_race_context']['band'])->toBe('unsupported')
+        ->and(hardDates($rows))->toBe(hardDates(goalPacePlan(goalPaceInputs($distanceM, RaceAmbitionState::LowEvidence, '2026-10-26'))));
+})->with([
+    '5K' => [5_000.0, 268],
+    '10K' => [GOAL_PACE_10K, 291],
+]);
+
+it('runs an unsupported half goal-pace block at the stepping-stone pace with the full on-track dose, taper included', function (): void {
+    $rows = goalPacePlan(goalPaceInputs(GOAL_PACE_HALF, RaceAmbitionState::Unsupported, recent: ['goal_pace' => goalPaceHit(40)]));
+
+    expect([$rows['2026-11-12']['prescribed_hard_minutes'], $rows['2026-11-19']['prescribed_hard_minutes'], $rows['2026-12-10']['prescribed_hard_minutes']])
+        ->toBe([30, 40, 20])
+        ->and($rows['2026-11-19']['prescribed_pace_sec_per_km'])->toBe(290)
+        ->and($rows['2026-12-10']['prescribed_pace_sec_per_km'])->toBe(290)
+        ->and($rows['2026-10-22']['prescription_race_context'])->toBeNull()
+        ->and($rows['2026-10-22']['prescribed_pace_sec_per_km'])->toBe(295);
+});
+
+it('learns unsupported goal-pace progression from goal-pace history, not intervals', function (): void {
+    $fromIntervals = goalPacePlan(goalPaceInputs(GOAL_PACE_10K, RaceAmbitionState::Unsupported, '2026-10-26', recent: ['interval' => goalPaceHit(16)]));
+    $fromGoalPace = goalPacePlan(goalPaceInputs(GOAL_PACE_10K, RaceAmbitionState::Unsupported, '2026-10-26', recent: ['goal_pace' => goalPaceHit(16)]));
+
+    expect($fromIntervals['2026-11-19']['prescribed_hard_minutes'])->toBe(8)
+        ->and($fromGoalPace['2026-11-19']['prescribed_hard_minutes'])->toBe(20);
+});
+
+it('runs an unsupported marathon tempo and race long at the stepping-stone pace with on-track minutes inside the window only', function (): void {
+    $recent = ['race_tempo' => goalPaceHit(40), 'race_long' => goalPaceHit(40)];
+    $rows = goalPacePlan(goalPaceInputs(GOAL_PACE_MARATHON, RaceAmbitionState::Unsupported, recent: $recent));
+    $onTrack = goalPacePlan(goalPaceInputs(GOAL_PACE_MARATHON, RaceAmbitionState::OnTrack, recent: $recent));
+
+    expect($rows['2026-10-15']['prescribed_pace_sec_per_km'])->toBe(320)
+        ->and($rows['2026-10-18']['prescribed_pace_sec_per_km'])->toBe(320)
+        ->and($rows['2026-10-29']['prescribed_pace_sec_per_km'])->toBe(301)
+        ->and($rows['2026-10-29']['prescribed_hard_minutes'])->toBe($onTrack['2026-10-29']['prescribed_hard_minutes'])
+        ->and($rows['2026-10-29']['prescription_race_context']['band'])->toBe('unsupported')
+        ->and($rows['2026-11-01']['session_type'])->toBe(SessionType::Long)
+        ->and($rows['2026-11-01']['prescribed_pace_band'])->toBe(PaceBand::Marathon)
+        ->and($rows['2026-11-01']['prescribed_pace_sec_per_km'])->toBe(301)
+        ->and($rows['2026-11-01']['prescribed_hard_minutes'])->toBe($onTrack['2026-11-01']['prescribed_hard_minutes'])
+        ->and(hardDates($rows))->toBe(hardDates($onTrack));
+});
 
 it('runs an on-track marathon tempo and race long at goal pace inside the window only', function (): void {
     $rows = goalPacePlan(goalPaceInputs(GOAL_PACE_MARATHON, RaceAmbitionState::OnTrack));
@@ -198,7 +251,7 @@ it('replaces the interval of a two-quality 10K week and never adds a hard day', 
         ->and($rows['2026-11-19']['session_type'])->toBe(SessionType::Interval)
         ->and($rows['2026-11-17']['session_type'])->toBe(SessionType::Tempo)
         ->and($rows['2026-11-17']['prescribed_pace_sec_per_km'])->toBe(295)
-        ->and(hardDates($rows))->toBe(hardDates(goalPacePlan(goalPaceInputs(GOAL_PACE_10K, RaceAmbitionState::Unsupported, '2026-10-26', sessions: 5))));
+        ->and(hardDates($rows))->toBe(hardDates(goalPacePlan(goalPaceInputs(GOAL_PACE_10K, RaceAmbitionState::LowEvidence, '2026-10-26', sessions: 5))));
 });
 
 it('turns a 10K week\'s only tempo into goal-pace reps when it has no interval', function (): void {

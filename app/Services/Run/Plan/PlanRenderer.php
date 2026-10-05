@@ -390,6 +390,7 @@ final class PlanRenderer
             'reason' => $shownClamp['note'] ?? ($effective->isEased() ? ReadinessClamp::noteFor($s->session_type, $effective->impliedCeiling(), $readinessReasons) : $s->prescription_reason),
             'readiness_assessment' => $effective->isEased() ? $s->readiness_assessment : $currentReadinessAssessment,
         ]);
+        $goalPace = self::goalPaceKindOf($s, $sessionType);
 
         return [
             'id' => $s->id,
@@ -410,7 +411,8 @@ final class PlanRenderer
             'ran_anyway' => $ranAnyway ?? $s->ran_anyway,
             'prescription_reason' => $s->prescription_reason,
             'fall_off_tilt' => $fallOffTilt?->value,
-            'goal_pace' => self::goalPaceKindOf($s, $sessionType),
+            'goal_pace' => $goalPace,
+            'stepping_stone' => $goalPace !== null && GoalPaceWork::isSteppingStone($s->prescription_race_context),
             'time_trial' => self::timeTrialOf($s, $sessionType),
             'advice_note' => $advisoryClamp !== null && $keepsPrescription ? $clampVoice ?? $advisoryClamp['note'] : null,
             'eased_from' => match (true) {
@@ -466,6 +468,23 @@ final class PlanRenderer
         }
 
         return $kind;
+    }
+
+    /**
+     * The goal-pace label the plan tools hand a narrator: `stepping_stone`
+     * for an unsupported goal's stepping-stone pace, `goal_pace` otherwise.
+     *
+     * @return array{goal_pace?: string, stepping_stone?: string}
+     */
+    public static function goalPaceForNarration(PlannedSession $s, SessionType $shownType): array
+    {
+        $kind = self::goalPaceKindOf($s, $shownType);
+
+        return match (true) {
+            $kind === null => [],
+            GoalPaceWork::isSteppingStone($s->prescription_race_context) => ['stepping_stone' => $kind],
+            default => ['goal_pace' => $kind],
+        };
     }
 
     /**
