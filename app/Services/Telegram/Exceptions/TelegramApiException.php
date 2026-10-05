@@ -13,7 +13,7 @@ class TelegramApiException extends RuntimeException
      * failure (retry) from a permanent one (drop). Null when the request never
      * got a response (transport failure).
      */
-    public function __construct(string $message = '', public readonly ?int $status = null)
+    public function __construct(string $message = '', public readonly ?int $status = null, public readonly ?string $description = null)
     {
         parent::__construct($message);
     }

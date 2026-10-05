@@ -131,6 +131,7 @@ it('throws when Telegram answers 200 but ok is false', function (): void {
         $this->fail('Expected TelegramApiException was not thrown.');
     } catch (TelegramApiException $e) {
         expect($e->status)->toBe(200)
+            ->and($e->description)->toBe('Unauthorized')
             ->and($e->getMessage())->toContain('Unauthorized');
     }
 });

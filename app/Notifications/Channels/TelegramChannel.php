@@ -7,6 +7,7 @@ namespace App\Notifications\Channels;
 use Throwable;
 use App\Jobs\Telegram\Concerns\RevokesConnectionOnPermanentFailure;
 use App\Models\User;
+use App\Services\AI\MaintainerAlerter;
 use App\Notifications\Messages\TelegramMessage;
 use App\Services\Notifications\ChannelRouter;
 use App\Services\Notifications\NotificationDeliveryClaim;
@@ -37,6 +38,7 @@ class TelegramChannel
         private readonly TelegramClient $client,
         private readonly NotificationDeliveryClaim $claim,
         private readonly ChannelRouter $router,
+        private readonly MaintainerAlerter $alerter,
     ) {
     }
 
@@ -100,10 +102,12 @@ class TelegramChannel
     }
 
     /**
-     * A blocked bot / gone chat / bad token is non-retryable: mark the connection
-     * dead (like a Strava revocation) and stop. A force push is one-shot: log and
-     * stop. The automatic path rethrows so the queued notification's retry can
-     * resend, which the failed claim now permits.
+     * A blocked bot / gone chat revokes the connection (like a Strava revocation)
+     * and stops. A bad bot token (401/404) alerts the maintainer and keeps the link,
+     * and a message Telegram rejects (other 4xx) is logged and kept too, without a
+     * retry. A force push is one-shot: log and stop. Everything else rethrows on the
+     * automatic path so the queued notification's retry can resend, which the failed
+     * claim now permits.
      */
     private function handleFailure(Throwable $e, User $notifiable, TelegramMessage $message, ?int $claimVersion): void
     {
@@ -118,10 +122,23 @@ class TelegramChannel
             );
         }
 
-        if ($e instanceof TelegramApiException && $this->isPermanentTelegramFailure($e)) {
-            $notifiable->telegramConnection?->markRevoked();
+        if ($e instanceof TelegramApiException) {
+            if ($this->isChatSpecificFailure($e)) {
+                $notifiable->telegramConnection?->markRevoked();
 
-            return;
+                return;
+            }
+
+            if ($this->isBotConfigurationFailure($e)) {
+                $this->alerter->telegramBotRejected((int) $e->status);
+            } elseif ($this->isRejectedMessage($e)) {
+                Log::warning('telegram.send.rejected', [
+                    'delivery_key' => $message->deliveryKey,
+                    'reason' => $e->getMessage(),
+                ]);
+
+                return;
+            }
         }
 
         if ($message->force) {

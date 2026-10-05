@@ -66,6 +66,10 @@ class MaintainerAlerter
 
     private const int STRAVA_BUDGET_WINDOW_SECONDS = 900;
 
+    private const int TELEGRAM_BOT_ALERT_COOLDOWN_SECONDS = 3600;
+
+    private const string TELEGRAM_BOT_ALERT_COOLDOWN_CACHE_KEY = 'telegram.bot_rejected_alert_cooldown';
+
     /** Keeps the exception digest inside Telegram's 4096-character message limit. */
     public const int EXCEPTION_DIGEST_MAX_LINES = 25;
 
@@ -311,6 +315,19 @@ class MaintainerAlerter
             $remaining,
             $budget,
         ));
+    }
+
+    /**
+     * Telegram rejected the bot itself (401 bad token, 404 unknown method), so
+     * no athlete can be reached until the config is fixed. One push per hour.
+     */
+    public function telegramBotRejected(int $status): void
+    {
+        $this->broadcastOnce(
+            self::TELEGRAM_BOT_ALERT_COOLDOWN_CACHE_KEY,
+            self::TELEGRAM_BOT_ALERT_COOLDOWN_SECONDS,
+            "Telegram rejected the bot with status {$status}. Check TELEGRAM_BOT_TOKEN; no athlete links were revoked.",
+        );
     }
 
     /**

@@ -457,6 +457,18 @@ it('queues the Telegram send instead of calling the client inline', function ():
     Bus::assertDispatched(fn (SendMaintainerAlertJob $job): bool => str_contains($job->message, '80%'));
 });
 
+it('telegramBotRejected names the status and pushes once per cooldown window', function (): void {
+    Bus::fake();
+    adminWithChat(8003);
+
+    $alerter = app(MaintainerAlerter::class);
+    $alerter->telegramBotRejected(401);
+    $alerter->telegramBotRejected(404);
+
+    Bus::assertDispatchedTimes(SendMaintainerAlertJob::class, 1);
+    Bus::assertDispatched(fn (SendMaintainerAlertJob $job): bool => str_contains($job->message, 'status 401'));
+});
+
 it('gates the job dispatch itself on the dedupe window, not just the eventual send', function (): void {
     Bus::fake();
     adminWithChat(8002);
