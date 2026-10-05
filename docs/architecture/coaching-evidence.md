@@ -218,10 +218,10 @@ Haddad M, Stylianides G, Djaoui L, Dellal A, Chamari K. Session-RPE method for t
 Wallace LK, Slattery KM, Coutts AJ. A comparison of methods for quantifying training load: relationships between modelled and actual training responses. *Eur J Appl Physiol* 2014;114(1):11–20. https://doi.org/10.1007/s00421-013-2745-1. In seven runners over 15 weeks, session RPE, TRIMP and rTSS loads each fitted the measured performance response moderately to strongly. Grade COH · access ABS. Basis for #1577.
 
 ### EmigPeltonen2020
-Emig T, Peltonen J. Human running performance from real-world big data. *Nat Commun* 2020. https://pmc.ncbi.nlm.nih.gov/articles/PMC7538888/ Fitted each runner's fastest efforts from the 180 days before a marathon; with three or more races the mean prediction error was 2.0%. Grade COH · access FT.
+Emig T, Peltonen J. Human running performance from real-world big data. *Nat Commun* 2020. https://pmc.ncbi.nlm.nih.gov/articles/PMC7538888/ Modelled each runner from all running activities in the 180 days before a marathon; across seasons with three or more races the mean error between model and race time was 2.0%. Grade COH · access FT.
 
 ### Hunter2023
-Hunter B, Ledger A, Muniz-Pumares D. Remote determination of critical speed and critical power in recreational runners. *Int J Sports Physiol Perform* 2023. https://doi.org/10.1123/ijspp.2023-0276. Critical speed from habitual training data did not differ from time trials or a 3-minute all-out test. Grade XS · access ABS.
+Hunter B, Ledger A, Muniz-Pumares D. Remote determination of critical speed and critical power in recreational runners. *Int J Sports Physiol Perform* 2023;18(12):1449–1456. https://doi.org/10.1123/ijspp.2023-0276. Critical speed from habitual training data did not differ from time trials or a 3-minute all-out test. Grade XS · access ABS.
 
 ### MolinaGarcia2022
-Molina-Garcia P, Notbohm HL, Schumann M, et al. Validity of estimating the maximal oxygen consumption by consumer wearables: a systematic review with meta-analysis and expert statement of the INTERLIVE network. *Sports Med* 2022. https://pubmed.ncbi.nlm.nih.gov/35072942/ Wearable VO2max estimates from heart rate and pace had small group bias but wide individual limits of agreement. Grade MA · access ABS.
+Molina-Garcia P, Notbohm HL, Schumann M, et al. Validity of estimating the maximal oxygen consumption by consumer wearables: a systematic review with meta-analysis and expert statement of the INTERLIVE network. *Sports Med* 2022;52(7):1577–1597. https://pubmed.ncbi.nlm.nih.gov/35072942/ Wearable VO2max estimates from heart rate and pace had small group bias but wide individual limits of agreement. Grade MA · access ABS.
