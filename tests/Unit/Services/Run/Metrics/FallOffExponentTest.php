@@ -54,7 +54,7 @@ it('fits the newest valid cluster', function (): void {
 });
 
 it('falls back to a default for the race distance', function (float $meters, float $expected): void {
-    expect(FallOffExponent::forDistance([], $meters))->toBe($expected);
+    expect(FallOffExponent::default($meters))->toBe($expected);
 })->with([
     [5_000, FallOffExponent::DEFAULT_UP_TO_10K],
     [10_000, FallOffExponent::DEFAULT_UP_TO_10K],

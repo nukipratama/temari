@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Run\Plan;
 
+use App\Enums\FallOffTilt;
 use App\Enums\PlanPhase;
 use App\Enums\RaceSupport;
 use App\Enums\SessionType;
@@ -71,7 +72,8 @@ final class WeekPlanBuilder
      * @param  string  $zone  {@see PhaseSchedule::ZONE_GENERAL}/{@see PhaseSchedule::ZONE_BLOCK} — a race
      *                        season's general-zone week trains its quality block by base rules
      *                        regardless of `$phase`, see {@see self::phaseQualitySlots()}
-     * @return array<string, array{phase: PlanPhase, session_type: SessionType}> keyed by Y-m-d
+     * @param  ?FallOffTilt  $fallOffTilt  the athlete's fitted fall-off lean, applied only in a race block's Build and Peak weeks
+     * @return array<string, array{phase: PlanPhase, session_type: SessionType, fall_off_tilt?: FallOffTilt}> keyed by Y-m-d
      */
     public function build(
         Carbon $weekStart,
@@ -88,7 +90,11 @@ final class WeekPlanBuilder
         ?Carbon $raceDate = null,
         string $zone = PhaseSchedule::ZONE_BLOCK,
         bool $twoRunQualityEligible = false,
+        ?FallOffTilt $fallOffTilt = null,
     ): array {
+        $fallOffTilt = ! $selfScaled && $zone === PhaseSchedule::ZONE_BLOCK && in_array($phase, [PlanPhase::Build, PlanPhase::Peak], true)
+            ? $fallOffTilt
+            : null;
         if ($preferredOffsets !== null && $preferredLongOffset !== null) {
             $trainingOffsets = $preferredOffsets;
             $longOffset = $preferredLongOffset;
@@ -111,7 +117,7 @@ final class WeekPlanBuilder
         ));
 
         $qualitySlots = self::withQualityDelta(
-            $this->phaseQualitySlots($phase, $sessionsPerWeek, $isMarathonDistance, $selfScaled, $projectedRaceSeconds, $zone),
+            $this->phaseQualitySlots($phase, $sessionsPerWeek, $isMarathonDistance, $selfScaled, $projectedRaceSeconds, $zone, $fallOffTilt),
             $phase,
             $qualityDelta,
             $selfScaled,
@@ -150,7 +156,9 @@ final class WeekPlanBuilder
             }
 
             if ($offset === $longOffset) {
-                $rows[$date] = ['session_type' => SessionType::Long];
+                $rows[$date] = $fallOffTilt === FallOffTilt::Endurance
+                    ? ['session_type' => SessionType::Long, 'fall_off_tilt' => $fallOffTilt]
+                    : ['session_type' => SessionType::Long];
 
                 continue;
             }
@@ -337,8 +345,8 @@ final class WeekPlanBuilder
      * {@see self::phaseQualitySlots()} — regardless of which phase the
      * self-scaled mesocycle it's borrowing happens to land it on.
      *
-     * @param  list<array{session_type: SessionType}>  $slots
-     * @return list<array{session_type: SessionType}>
+     * @param  list<array{session_type: SessionType, fall_off_tilt?: FallOffTilt}>  $slots
+     * @return list<array{session_type: SessionType, fall_off_tilt?: FallOffTilt}>
      */
     private static function withQualityDelta(array $slots, PlanPhase $phase, int $qualityDelta, bool $selfScaled, string $zone): array
     {
@@ -362,9 +370,12 @@ final class WeekPlanBuilder
      * same Base rules whatever phase the self-scaled mesocycle assigned it —
      * race-specific interval work waits for the block.
      *
-     * @return list<array{session_type: SessionType}>
+     * A fall-off tilt moves only the slot the race duration leaves open, see
+     * {@see self::tiltedSingleSlot()} and {@see self::tiltedPair()}.
+     *
+     * @return list<array{session_type: SessionType, fall_off_tilt?: FallOffTilt}>
      */
-    private function phaseQualitySlots(PlanPhase $phase, int $sessionsPerWeek, bool $isMarathonDistance, bool $selfScaled, ?float $projectedRaceSeconds, string $zone = PhaseSchedule::ZONE_BLOCK): array
+    private function phaseQualitySlots(PlanPhase $phase, int $sessionsPerWeek, bool $isMarathonDistance, bool $selfScaled, ?float $projectedRaceSeconds, string $zone = PhaseSchedule::ZONE_BLOCK, ?FallOffTilt $fallOffTilt = null): array
     {
         if ($phase === PlanPhase::Deload || $sessionsPerWeek < self::MIN_SESSIONS_FOR_QUALITY) {
             return [];
@@ -387,14 +398,61 @@ final class WeekPlanBuilder
         }
 
         if ($sessionsPerWeek < self::MIN_SESSIONS_FOR_EXTRA_QUALITY) {
-            return [['session_type' => self::singleQualityType($phase, $selfScaled, $projectedRaceSeconds)]];
+            return [self::tiltedSingleSlot(self::singleQualityType($phase, $selfScaled, $projectedRaceSeconds), $projectedRaceSeconds, $fallOffTilt)];
         }
 
         // Two slots hold both stimuli, so there is nothing to choose between.
-        return [
+        return self::tiltedPair([
             ['session_type' => SessionType::Tempo],
             ['session_type' => $selfScaled ? SessionType::Tempo : SessionType::Interval],
-        ];
+        ], $projectedRaceSeconds, $fallOffTilt);
+    }
+
+    /**
+     * Only a race between the VO2max and threshold durations leaves the one
+     * quality day open to the tilt; shorter and longer races keep their own.
+     *
+     * @return array{session_type: SessionType, fall_off_tilt?: FallOffTilt}
+     */
+    private static function tiltedSingleSlot(SessionType $neutral, ?float $projectedRaceSeconds, ?FallOffTilt $fallOffTilt): array
+    {
+        $open = $projectedRaceSeconds !== null
+            && $projectedRaceSeconds >= self::VO2MAX_RACE_SECONDS
+            && $projectedRaceSeconds < self::THRESHOLD_RACE_SECONDS;
+        if ($fallOffTilt === null || ! $open || $fallOffTilt->qualityType() === $neutral) {
+            return ['session_type' => $neutral];
+        }
+
+        return ['session_type' => $fallOffTilt->qualityType(), 'fall_off_tilt' => $fallOffTilt];
+    }
+
+    /**
+     * Turns the Tempo + Interval pair into two of the tilt's type, unless the
+     * race duration pins the other one: a race under the VO2max duration keeps
+     * its Interval, one at or over the threshold duration keeps its Tempo.
+     *
+     * @param  list<array{session_type: SessionType}>  $pair
+     * @return list<array{session_type: SessionType, fall_off_tilt?: FallOffTilt}>
+     */
+    private static function tiltedPair(array $pair, ?float $projectedRaceSeconds, ?FallOffTilt $fallOffTilt): array
+    {
+        if ($fallOffTilt === null) {
+            return $pair;
+        }
+        $pinned = $projectedRaceSeconds !== null && match ($fallOffTilt) {
+            FallOffTilt::Endurance => $projectedRaceSeconds < self::VO2MAX_RACE_SECONDS,
+            FallOffTilt::Speed => $projectedRaceSeconds >= self::THRESHOLD_RACE_SECONDS,
+        };
+        if ($pinned) {
+            return $pair;
+        }
+
+        return array_map(
+            static fn (array $slot): array => $slot['session_type'] === $fallOffTilt->qualityType()
+                ? $slot
+                : ['session_type' => $fallOffTilt->qualityType(), 'fall_off_tilt' => $fallOffTilt],
+            $pair,
+        );
     }
 
     /**

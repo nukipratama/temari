@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Run\Plan;
 
 use LogicException;
+use App\Enums\FallOffTilt;
 use App\Enums\PaceBand;
 use App\Enums\PlanPhase;
 use App\Enums\SegmentKey;
@@ -115,6 +116,7 @@ final class SegmentGenerator
      * @param  float  $longRunCapKm  {@see TrainingBaseline}'s `long_run_cap_km`
      * @param  ?float  $raceDistanceM  the active {@see \App\Models\RaceGoal}'s distance, required only on a `Race` day
      * @param  float  $longRunProgressionCapKm  {@see TrainingBaseline}'s `long_run_progression_cap_km`
+     * @param  ?FallOffTilt  $fallOffTilt  the row's persisted tilt, which lengthens only the Long day itself
      */
     public static function coreKmFor(
         SessionType $sessionType,
@@ -124,6 +126,7 @@ final class SegmentGenerator
         float $longRunCapKm,
         ?float $raceDistanceM = null,
         float $longRunProgressionCapKm = INF,
+        ?FallOffTilt $fallOffTilt = null,
     ): float {
         if ($sessionType === SessionType::Rest) {
             return 0.0;
@@ -136,7 +139,7 @@ final class SegmentGenerator
         $effectiveLong = min($longRunBaselineKm * $volumeMultiplier, $longRunCapKm);
 
         return round(min($longRunProgressionCapKm, match ($sessionType) {
-            SessionType::Long => $effectiveLong,
+            SessionType::Long => min($longRunBaselineKm * $volumeMultiplier * ($fallOffTilt?->longRunFactor() ?? 1.0), $longRunCapKm),
             SessionType::Tempo => $effectiveLong * self::MEDIUM_FRACTION_OF_LONG,
             SessionType::Interval => $effectiveLong * self::SHORT_FRACTION_OF_LONG,
             SessionType::Easy => $effectiveLong * ($isPrimaryEasy ? self::MEDIUM_FRACTION_OF_LONG : self::SHORT_FRACTION_OF_LONG),
@@ -199,8 +202,9 @@ final class SegmentGenerator
         float $volumeScale = 1.0,
         ?int $raceGoalTimeSec = null,
         float $longRunProgressionCapKm = INF,
+        ?FallOffTilt $fallOffTilt = null,
     ): array {
-        $coreKm = self::coreKmFor($sessionType, $isPrimaryEasy, $longRunBaselineKm, $volumeMultiplier, $longRunCapKm, $raceDistanceM, $longRunProgressionCapKm);
+        $coreKm = self::coreKmFor($sessionType, $isPrimaryEasy, $longRunBaselineKm, $volumeMultiplier, $longRunCapKm, $raceDistanceM, $longRunProgressionCapKm, $fallOffTilt);
 
         // The race is the distance it is: a redistributed week may scale the
         // training around it, never the event itself. A Long day remains under

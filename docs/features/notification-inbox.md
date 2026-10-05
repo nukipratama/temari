@@ -176,7 +176,7 @@ Rows render grouped into **Today / This Week / Earlier**
 ([inboxBuckets.ts](../../resources/js/components/inbox/inboxBuckets.ts)), a pure client-side
 grouping over whatever rows the window holds, no backend shape change. The "this week"
 boundary is Monday-start, matching the backend's own week convention (`startOfWeek(Carbon::MONDAY)`,
-e.g. [Periodizer](../../app/Services/Run/Plan/Periodizer.php#L56)) rather than a locale default.
+e.g. [Periodizer](../../app/Services/Run/Plan/Periodizer.php#L57)) rather than a locale default.
 Both boundaries come from the shared server `today`, never the device clock: `created_at` is
 serialized in the app timezone, so its leading date is the server's calendar day, and
 [`bucketOf`](../../resources/js/components/inbox/inboxBuckets.ts#L17) compares that date with

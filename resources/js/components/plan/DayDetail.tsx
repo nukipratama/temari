@@ -24,6 +24,7 @@ import {
     dayStatusGlyph,
     deltaDirection,
     easedFromDelta,
+    fallOffTiltWhy,
     judgedDayResult,
     paceEaseDelta,
     paceLabel,
@@ -164,6 +165,7 @@ function dayPoint(day: PlanDay) {
             ? sessionPurpose(day)
             : null,
         doseWhy: prescriptionWhy(day),
+        tiltWhy: fallOffTiltWhy(day),
     };
 }
 
@@ -192,7 +194,7 @@ export function hasDayDetail(
     narration: AnalysisPayload | null,
 ): boolean {
     const { sessionDelta, paceDelta, weekFitDelta } = dayChanges(day);
-    const { purpose, doseWhy } = dayPoint(day);
+    const { purpose, doseWhy, tiltWhy } = dayPoint(day);
     const { canMove, canSkip, canUnskip } = dayActions(day, weekDays, today);
 
     return (
@@ -205,6 +207,7 @@ export function hasDayDetail(
         showsNarration(narration) ||
         purpose !== null ||
         doseWhy !== null ||
+        tiltWhy !== null ||
         day.advice_note !== null ||
         Boolean(day.credit_note) ||
         Boolean(day.result_note) ||
@@ -316,9 +319,9 @@ export default function DayDetail({
     const [picking, setPicking] = useState(false);
 
     const { sessionDelta, paceDelta, weekFitDelta } = dayChanges(day);
-    const { purpose, doseWhy } = dayPoint(day);
+    const { purpose, doseWhy, tiltWhy } = dayPoint(day);
     const { canMove, canSkip, canUnskip } = dayActions(day, weekDays, today);
-    const showsPoint = purpose !== null || doseWhy !== null;
+    const showsPoint = purpose !== null || doseWhy !== null || tiltWhy !== null;
 
     return (
         <>
@@ -389,6 +392,11 @@ export default function DayDetail({
                     {doseWhy && (
                         <p className="mt-1 text-xs italic text-text-2">
                             {doseWhy}
+                        </p>
+                    )}
+                    {tiltWhy && (
+                        <p className="mt-1 text-xs italic text-text-2">
+                            {tiltWhy}
                         </p>
                     )}
                 </div>

@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Enums\AdaptationReason;
+use App\Enums\FallOffTilt;
 use App\Enums\IntentVerdict;
 use App\Enums\PaceBand;
 use App\Enums\PlanPhase;
@@ -10,6 +11,7 @@ use App\Enums\SessionType;
 use App\Services\Run\Plan\IntensityPrescription;
 use App\Services\Run\Plan\Periodizer;
 use App\Services\Run\Plan\PlanInputs;
+use App\Services\Run\Plan\PostRaceRecovery;
 use App\Services\Run\Plan\SegmentGenerator;
 use Illuminate\Support\Carbon;
 
@@ -380,3 +382,58 @@ it('distinguishes credible easy race execution from unknown completed race effor
         expect($row['prescription_reason'])->toContain('unmeasured hard minutes');
     }
 })->with(['credible easy' => [0.0, false], 'unknown completed race' => [null, true]]);
+
+it('carries an endurance tilt onto the Build week\'s quality day and long run, and lengthens only the long run', function (): void {
+    $weekStart = '2026-09-21';
+    $base = [
+        ...get_object_vars(arcInputs(today: $weekStart)),
+        'raceGoalTimeSec' => 3_540,
+        'paces' => ['easy' => 380, 'marathon' => 330, 'threshold' => 305, 'interval' => 280],
+        'longRunBaselineKm' => 14.0,
+    ];
+    $week = static fn (array $rows): array => array_filter(
+        $rows,
+        static fn (string $date): bool => $date >= $weekStart && $date <= Carbon::parse($weekStart)->addDays(6)->toDateString(),
+        ARRAY_FILTER_USE_KEY,
+    );
+    $neutral = $week(app(Periodizer::class)->rowsFor(new PlanInputs(...$base)));
+    $tilted = $week(app(Periodizer::class)->rowsFor(new PlanInputs(...[...$base, 'fallOffTilt' => FallOffTilt::Endurance])));
+
+    $types = static fn (array $rows): array => array_map(static fn (array $row): array => [$row['session_type'], $row['fall_off_tilt']], $rows);
+
+    expect($types($neutral))->toBe([
+        '2026-09-21' => [SessionType::Rest, null],
+        '2026-09-22' => [SessionType::Easy, null],
+        '2026-09-23' => [SessionType::Rest, null],
+        '2026-09-24' => [SessionType::Interval, null],
+        '2026-09-25' => [SessionType::Rest, null],
+        '2026-09-26' => [SessionType::Easy, null],
+        '2026-09-27' => [SessionType::Long, null],
+    ])->and($types($tilted))->toBe([
+        '2026-09-21' => [SessionType::Rest, null],
+        '2026-09-22' => [SessionType::Easy, null],
+        '2026-09-23' => [SessionType::Rest, null],
+        '2026-09-24' => [SessionType::Tempo, FallOffTilt::Endurance],
+        '2026-09-25' => [SessionType::Rest, null],
+        '2026-09-26' => [SessionType::Easy, null],
+        '2026-09-27' => [SessionType::Long, FallOffTilt::Endurance],
+    ]);
+});
+
+it('drops the tilt from a tilted quality day the week then keeps easy', function (): void {
+    $base = [
+        ...get_object_vars(arcInputs(today: '2026-09-21')),
+        'raceGoalTimeSec' => 3_540,
+        'paces' => ['easy' => 380, 'marathon' => 330, 'threshold' => 305, 'interval' => 280],
+        'longRunBaselineKm' => 14.0,
+        'fallOffTilt' => FallOffTilt::Endurance,
+    ];
+    $kept = app(Periodizer::class)->rowsFor(new PlanInputs(...$base))['2026-09-24'];
+    $recovering = app(Periodizer::class)->rowsFor(new PlanInputs(...[
+        ...$base,
+        'recovery' => new PostRaceRecovery(Carbon::parse('2026-09-19'), Carbon::parse('2026-09-27'), null),
+    ]))['2026-09-24'];
+
+    expect([$kept['session_type'], $kept['fall_off_tilt']])->toBe([SessionType::Tempo, FallOffTilt::Endurance])
+        ->and([$recovering['session_type'], $recovering['fall_off_tilt']])->toBe([SessionType::Easy, null]);
+});

@@ -495,6 +495,26 @@ export function prescriptionWhy(day: PlanDay): string | null {
     );
 }
 
+const FALL_OFF_TILT_WHY: Record<string, string> = {
+    'endurance:tempo':
+        'threshold this week: your pace fades over longer distances.',
+    'endurance:long':
+        'a little longer this week: your pace fades over longer distances.',
+    'speed:interval':
+        'intervals this week: you hold pace well over longer distances, so speed has the most room to grow.',
+};
+
+/** Why the athlete's own fall-off shaped this session, only on a session it moved. */
+export function fallOffTiltWhy(day: PlanDay): string | null {
+    if (day.fall_off_tilt === null) {
+        return null;
+    }
+
+    return (
+        FALL_OFF_TILT_WHY[`${day.fall_off_tilt}:${day.session_type}`] ?? null
+    );
+}
+
 /** The core segment's own pace, in seconds/km — the number every pace figure
  *  on a day (the target, a pace-ease delta) reads from. Null with no VDOT
  *  estimate to size one. */

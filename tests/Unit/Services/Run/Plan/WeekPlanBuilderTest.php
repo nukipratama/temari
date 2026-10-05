@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\FallOffTilt;
 use App\Enums\PaceBand;
 use App\Enums\PlanPhase;
 use App\Enums\SessionType;
@@ -499,4 +500,99 @@ it('keeps a Base week under a fifth of its volume at threshold or faster', funct
     }
 
     expect($hardKm / $weekKm)->toBeLessThan(0.20);
+});
+
+/**
+ * @return list<array{0: SessionType, 1: FallOffTilt|null}>
+ */
+function tiltedQuality(array $rows): array
+{
+    return array_values(array_map(
+        static fn (array $row): array => [$row['session_type'], $row['fall_off_tilt'] ?? null],
+        array_filter($rows, static fn (array $row): bool => $row['session_type']->isQuality() && $row['session_type'] !== SessionType::Long),
+    ));
+}
+
+function tiltedLong(array $rows): ?FallOffTilt
+{
+    $long = array_find($rows, static fn (array $row): bool => $row['session_type'] === SessionType::Long);
+
+    return $long['fall_off_tilt'] ?? null;
+}
+
+it('moves the one quality day of a race between the VO2max and threshold durations toward the tilt', function (): void {
+    $middling = 60 * 60.0;
+    $build = fn (PlanPhase $phase, ?FallOffTilt $tilt): array => $this->builder->build($this->monday, $phase, 4, [], 10_000.0, false, projectedRaceSeconds: $middling, fallOffTilt: $tilt);
+
+    expect(tiltedQuality($build(PlanPhase::Build, FallOffTilt::Endurance)))->toBe([[SessionType::Tempo, FallOffTilt::Endurance]])
+        ->and(tiltedQuality($build(PlanPhase::Peak, FallOffTilt::Endurance)))->toBe([[SessionType::Tempo, null]])
+        ->and(tiltedQuality($build(PlanPhase::Peak, FallOffTilt::Speed)))->toBe([[SessionType::Interval, FallOffTilt::Speed]])
+        ->and(tiltedQuality($build(PlanPhase::Build, FallOffTilt::Speed)))->toBe([[SessionType::Interval, null]])
+        ->and(tiltedQuality($build(PlanPhase::Build, null)))->toBe([[SessionType::Interval, null]])
+        ->and(tiltedQuality($build(PlanPhase::Peak, null)))->toBe([[SessionType::Tempo, null]]);
+});
+
+it('keeps the one quality day a short or long race duration pins', function (): void {
+    $build = fn (PlanPhase $phase, float $seconds, FallOffTilt $tilt): array => $this->builder->build($this->monday, $phase, 4, [], 10_000.0, false, projectedRaceSeconds: $seconds, fallOffTilt: $tilt);
+
+    foreach ([PlanPhase::Build, PlanPhase::Peak] as $phase) {
+        expect(tiltedQuality($build($phase, 35 * 60.0, FallOffTilt::Endurance)))->toBe([[SessionType::Interval, null]])
+            ->and(tiltedQuality($build($phase, 70 * 60.0, FallOffTilt::Speed)))->toBe([[SessionType::Tempo, null]]);
+    }
+});
+
+it('turns a two-slot week\'s pair toward the tilt unless the race duration pins one of them', function (): void {
+    $build = fn (float $seconds, FallOffTilt $tilt): array => $this->builder->build($this->monday, PlanPhase::Build, 6, [], 10_000.0, false, projectedRaceSeconds: $seconds, fallOffTilt: $tilt);
+
+    expect(tiltedQuality($build(60 * 60.0, FallOffTilt::Endurance)))->toEqualCanonicalizing([[SessionType::Tempo, null], [SessionType::Tempo, FallOffTilt::Endurance]])
+        ->and(tiltedQuality($build(60 * 60.0, FallOffTilt::Speed)))->toEqualCanonicalizing([[SessionType::Interval, FallOffTilt::Speed], [SessionType::Interval, null]])
+        ->and(tiltedQuality($build(70 * 60.0, FallOffTilt::Endurance)))->toEqualCanonicalizing([[SessionType::Tempo, null], [SessionType::Tempo, FallOffTilt::Endurance]])
+        ->and(tiltedQuality($build(35 * 60.0, FallOffTilt::Speed)))->toEqualCanonicalizing([[SessionType::Interval, FallOffTilt::Speed], [SessionType::Interval, null]])
+        ->and(tiltedQuality($build(35 * 60.0, FallOffTilt::Endurance)))->toEqualCanonicalizing([[SessionType::Tempo, null], [SessionType::Interval, null]])
+        ->and(tiltedQuality($build(70 * 60.0, FallOffTilt::Speed)))->toEqualCanonicalizing([[SessionType::Tempo, null], [SessionType::Interval, null]]);
+});
+
+it('keeps the hard-day count and the quality-delta drop under a tilt', function (): void {
+    $neutral = $this->builder->build($this->monday, PlanPhase::Build, 6, [], 10_000.0, false, null, -1, projectedRaceSeconds: 60 * 60.0);
+    $tilted = $this->builder->build($this->monday, PlanPhase::Build, 6, [], 10_000.0, false, null, -1, projectedRaceSeconds: 60 * 60.0, fallOffTilt: FallOffTilt::Speed);
+
+    expect(qualityCount($tilted))->toBe(qualityCount($neutral))
+        ->and(array_keys($tilted))->toBe(array_keys($neutral));
+});
+
+it('marks the long run of an endurance-tilted Build or Peak week, and never a speed-tilted one', function (): void {
+    foreach ([PlanPhase::Build, PlanPhase::Peak] as $phase) {
+        $endurance = $this->builder->build($this->monday, $phase, 4, [], 10_000.0, false, projectedRaceSeconds: 60 * 60.0, fallOffTilt: FallOffTilt::Endurance);
+        $speed = $this->builder->build($this->monday, $phase, 4, [], 10_000.0, false, projectedRaceSeconds: 60 * 60.0, fallOffTilt: FallOffTilt::Speed);
+
+        expect(tiltedLong($endurance))->toBe(FallOffTilt::Endurance)
+            ->and(tiltedLong($speed))->toBeNull();
+    }
+});
+
+it('leaves Base, Deload, Taper, general-zone, self-scaled and marathon race-pace weeks untilted', function (): void {
+    $cases = [
+        'base' => [PlanPhase::Base, 10_000.0, false, PhaseSchedule::ZONE_BLOCK],
+        'deload' => [PlanPhase::Deload, 10_000.0, false, PhaseSchedule::ZONE_BLOCK],
+        'taper' => [PlanPhase::Taper, 10_000.0, false, PhaseSchedule::ZONE_BLOCK],
+        'general zone' => [PlanPhase::Build, 10_000.0, false, PhaseSchedule::ZONE_GENERAL],
+        'self-scaled' => [PlanPhase::Build, null, true, PhaseSchedule::ZONE_GENERAL],
+    ];
+
+    foreach ($cases as $label => [$phase, $distance, $selfScaled, $zone]) {
+        foreach ([4, 6] as $sessions) {
+            foreach (FallOffTilt::cases() as $tilt) {
+                $neutral = $this->builder->build($this->monday, $phase, $sessions, [], $distance, $selfScaled, projectedRaceSeconds: 60 * 60.0, zone: $zone);
+                $tilted = $this->builder->build($this->monday, $phase, $sessions, [], $distance, $selfScaled, projectedRaceSeconds: 60 * 60.0, zone: $zone, fallOffTilt: $tilt);
+
+                expect($tilted)->toBe($neutral, "{$label}, {$sessions} sessions, {$tilt->value}");
+            }
+        }
+    }
+
+    foreach ([PlanPhase::Build, PlanPhase::Peak] as $phase) {
+        $marathon = $this->builder->build($this->monday, $phase, 6, [], 42_195.0, false, projectedRaceSeconds: 4 * 3600.0, fallOffTilt: FallOffTilt::Speed);
+
+        expect(tiltedQuality($marathon))->toBe([[SessionType::Tempo, null]]);
+    }
 });

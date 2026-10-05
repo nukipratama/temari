@@ -31,10 +31,10 @@ use Illuminate\Support\Collection;
  * from the athlete's recent whole-run hard efforts, projected with their own
  * fall-off between distances. See docs/decisions/supported-race-time-from-recent-efforts.md.
  *
- * @phpstan-type VdotEstimate array{vdot: float, quality_vdot: float, source_activity_id?: int|null, source_value_sec?: float|null, source_category: string, set_at: Carbon, stale: bool, quality_source: array{source_category: string, set_at: Carbon, source_activity_id?: int|null, source_value_sec?: float|null, evidence_kind?: string, distance_m?: int}|null, confidence: string, evidence_id: int|null, evidence_kind?: string|null, distance_m?: int|null, corroborating_quality_count: int, race_distance_m?: float, longest_source_m?: int|null}
+ * @phpstan-type VdotEstimate array{vdot: float, quality_vdot: float, source_activity_id?: int|null, source_value_sec?: float|null, source_category: string, set_at: Carbon, stale: bool, quality_source: array{source_category: string, set_at: Carbon, source_activity_id?: int|null, source_value_sec?: float|null, evidence_kind?: string, distance_m?: int}|null, confidence: string, evidence_id: int|null, evidence_kind?: string|null, distance_m?: int|null, corroborating_quality_count: int, race_distance_m?: float, longest_source_m?: int|null, k?: float, k_fitted?: bool}
  * @phpstan-import-type TrainingRun from ResolveHardEffortsAction
  * @phpstan-type Effort array{date: Carbon, known_on: Carbon, distance_m: float, time_sec: float, activity_id: int|null, evidence: PerformanceEvidence|null, basis: string}
- * @phpstan-type Projection array{vdot: float, time_sec: float, k: float, sources: non-empty-list<Effort>, dominant: Effort, stale: bool, confirmed_only: bool, floor: TrainingRun|null}
+ * @phpstan-type Projection array{vdot: float, time_sec: float, k: float, k_fitted: bool, sources: non-empty-list<Effort>, dominant: Effort, stale: bool, confirmed_only: bool, floor: TrainingRun|null}
  */
 class VdotEstimator
 {
@@ -213,6 +213,8 @@ class VdotEstimator
             'corroborating_quality_count' => $this->corroboratingQualityCount($user, $now),
             'race_distance_m' => $distance,
             'longest_source_m' => (int) round(max(array_column($projection['sources'], 'distance_m'))),
+            'k' => $projection['k'],
+            'k_fitted' => $projection['k_fitted'],
         ];
     }
 
@@ -308,10 +310,10 @@ class VdotEstimator
         $pool = $level === [] ? [$efforts[0]] : $this->newestPerBand($level);
 
         $shapeFrom = $now->copy()->startOfDay()->subMonths(self::SHAPE_MONTHS);
-        $k = FallOffExponent::forDistance(
+        $fittedK = FallOffExponent::fit(
             array_values(array_filter($efforts, static fn (array $effort): bool => $effort['date']->gte($shapeFrom))),
-            $distance,
         );
+        $k = $fittedK ?? FallOffExponent::default($distance);
 
         $weighted = $this->select($pool, $distance);
         $logTime = 0.0;
@@ -329,6 +331,7 @@ class VdotEstimator
             'vdot' => round($vdot, 1),
             'time_sec' => $time,
             'k' => $k,
+            'k_fitted' => $fittedK !== null,
             'sources' => $sources,
             'dominant' => $weighted[0]['effort'],
             'stale' => $stale,

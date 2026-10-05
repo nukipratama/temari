@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Run\Plan;
 
 use App\Enums\AdaptationReason;
+use App\Enums\FallOffTilt;
 use App\Enums\IntentVerdict;
 use App\Enums\PaceBand;
 use App\Enums\SessionType;
@@ -58,6 +59,7 @@ final readonly class PlanInputs
         public array $actualSessions = [],
         public bool $twoRunQualityEligible = false,
         public ?float $resumeTrailingMeanKm = null,
+        public ?FallOffTilt $fallOffTilt = null,
     ) {
     }
 

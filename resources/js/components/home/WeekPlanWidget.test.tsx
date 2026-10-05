@@ -53,6 +53,7 @@ function day(overrides: Partial<WeekPlanDay>): WeekPlanDay {
         ran_anyway: false,
         prescribed_km: null,
         prescription_reason: null,
+        fall_off_tilt: null,
         advice_note: null,
         eased_from: null,
         pace_eased_from: null,
@@ -227,6 +228,7 @@ describe('WeekPlanWidget', () => {
                       ran_anyway: true,
                       prescribed_km: null,
                       prescription_reason: null,
+                      fall_off_tilt: null,
                       actual_km: 4.2,
                   })
                 : day({ date }),

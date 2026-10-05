@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Enums\ExperienceLevel;
+use App\Enums\FallOffTilt;
 use App\Enums\IntentVerdict;
 use App\Enums\PaceBand;
 use App\Enums\PlannedSessionStatus;
@@ -368,3 +369,18 @@ it('sizes the race by the time the plan trains for, not a separate Riegel projec
 
     expect($inputs->projectedRaceSeconds)->toBe((float) $inputs->raceGoalTimeSec);
 });
+
+it('tilts the plan only by a fitted fall-off, and only outside the neutral band', function (?int $fifteenKSec, ?FallOffTilt $expected): void {
+    $user = User::factory()->create();
+    seedConfirmedEffort($user, 5_000, 1_500, Carbon::today()->subWeeks(3));
+    if ($fifteenKSec !== null) {
+        seedConfirmedEffort($user, 15_000, $fifteenKSec, Carbon::today()->subWeeks(2));
+    }
+
+    expect($this->gatherer->forUser($user, Carbon::today())->fallOffTilt)->toBe($expected);
+})->with([
+    'slow fall-off' => [(int) round(1_500 * 3 ** 1.13), FallOffTilt::Endurance],
+    'flat fall-off' => [(int) round(1_500 * 3 ** 1.03), FallOffTilt::Speed],
+    'neutral fall-off' => [(int) round(1_500 * 3 ** 1.08), null],
+    'no fitted fall-off' => [null, null],
+]);
