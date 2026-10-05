@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Run\Plan;
 
+use App\Actions\Run\Metrics\ResolveHardEffortsAction;
 use App\Actions\Run\Plan\ResolveActiveRaceAction;
 use App\Actions\Run\Plan\ResolveTrainingPreferenceAction;
 use App\Enums\FallOffTilt;
@@ -14,6 +15,7 @@ use App\Enums\RaceChangeKind;
 use App\Enums\RaceOutcome;
 use App\Enums\SessionType;
 use App\Models\ActivityDetail;
+use App\Models\PerformanceEvidence;
 use App\Models\PlannedSession;
 use App\Models\RaceGoal;
 use App\Models\RaceGoalChange;
@@ -52,6 +54,7 @@ final readonly class PlanInputsGatherer
         private ResolveTrailingWeeksAction $trailingWeeks,
         private RaceAmbitionAssessor $ambition,
         private RaceOutcomeMatcher $raceOutcomes,
+        private ResolveHardEffortsAction $hardEfforts,
     ) {
     }
 
@@ -68,6 +71,7 @@ final readonly class PlanInputsGatherer
         $this->seasonService->releaseHeldIncreases($season, $user, $today);
 
         $race = ($this->activeRace)($user->id);
+        $trialDistanceM = TimeTrial::distanceFor($race === null ? null : (float) $race->distance_m);
         $ambition = $race === null ? null : $this->ambition->assess($user, $race, $today);
         $preference = ($this->trainingPreference)($user->id);
         $baseline = $this->baseline->forUser($user, $today);
@@ -122,6 +126,9 @@ final readonly class PlanInputsGatherer
             fallOffTilt: FallOffTilt::fromFallOff($estimate['k'] ?? null, $estimate['k_fitted'] ?? false),
             raceAmbitionState: $ambition?->state,
             raceAmbitionGapPct: $ambition?->gapPct,
+            timeTrialAimSec: $this->timeTrialAimSec($estimate, $trialDistanceM),
+            timeTrials: $this->timeTrials($user, $season->starts_at->copy()->startOfWeek(Carbon::MONDAY), $today),
+            timeTrialEvidenceDates: $this->timeTrialEvidenceDates($user, $trialDistanceM, $currentWeekStart),
         );
     }
 
@@ -144,6 +151,65 @@ final readonly class PlanInputsGatherer
         }
 
         return null;
+    }
+
+    /** @param  array{vdot: float, ...}|null  $estimate */
+    private function timeTrialAimSec(?array $estimate, int $distanceM): ?int
+    {
+        $seconds = $estimate === null ? null : $this->vdotEstimator->raceTimeForVdot($estimate['vdot'], $distanceM);
+
+        return $seconds === null ? null : (int) round($seconds);
+    }
+
+    /** @return list<array{date: string, retry: bool, skipped: bool}> */
+    private function timeTrials(User $user, Carbon $from, Carbon $today): array
+    {
+        $trials = PlannedSession::query()
+            ->where('user_id', $user->id)
+            ->where('date', '>=', $from->toDateString())
+            ->where('prescription_race_context->kind', TimeTrial::KIND)
+            ->where(fn (Builder $query): Builder => $query
+                ->where('date', '<', $today->toDateString())
+                ->orWhere('pinned', true)
+                ->orWhere('skipped', true)
+                ->orWhere('status', '!=', PlannedSessionStatus::Planned))
+            ->orderBy('date')
+            ->get();
+        if ($trials->isEmpty()) {
+            return [];
+        }
+
+        $ranOn = ActivityDetail::query()->forUser($user->id)
+            ->whereBetween('activity_details.start_date_local', [$trials->first()->date->copy()->startOfDay(), $today->copy()->endOfDay()])
+            ->pluck('activity_details.start_date_local')
+            ->mapWithKeys(static fn (mixed $startedAt): array => [Carbon::parse($startedAt)->toDateString() => true])
+            ->all();
+
+        return array_values($trials->map(static fn (PlannedSession $trial): array => [
+            'date' => $trial->date->toDateString(),
+            'retry' => (bool) ($trial->prescription_race_context['retry'] ?? 0),
+            'skipped' => $trial->skipped || ($trial->date->lt($today) && TimeTrial::countsAsSkipped($trial, isset($ranOn[$trial->date->toDateString()]))),
+        ])->all());
+    }
+
+    /** @return list<string> */
+    private function timeTrialEvidenceDates(User $user, int $distanceM, Carbon $currentWeekStart): array
+    {
+        $from = $currentWeekStart->copy()->subWeeks(TimeTrialSchedule::CADENCE_WEEKS + TimeTrialSchedule::RECENT_EVIDENCE_WEEKS);
+        $near = static fn (float $meters): bool => abs($meters - $distanceM) / $distanceM <= TimeTrial::DISTANCE_TOLERANCE;
+
+        $confirmed = PerformanceEvidence::query()
+            ->where('user_id', $user->id)
+            ->where('performed_on', '>=', $from->toDateString())
+            ->get(['distance_m', 'performed_on'])
+            ->toBase()
+            ->filter(static fn (PerformanceEvidence $evidence): bool => $near((float) $evidence->distance_m))
+            ->map(static fn (PerformanceEvidence $evidence): string => $evidence->performed_on->toDateString());
+        $efforts = collect(($this->hardEfforts)($user->id)['efforts'])
+            ->filter(static fn (array $effort): bool => $effort['date']->gte($from) && $near($effort['distance_m']))
+            ->map(static fn (array $effort): string => $effort['date']->toDateString());
+
+        return array_values($confirmed->merge($efforts)->unique()->sort()->all());
     }
 
     /**
@@ -218,9 +284,9 @@ final readonly class PlanInputsGatherer
                     $fixed[$date]['hard_minutes'] = null;
                 }
                 if ($row->status === PlannedSessionStatus::Planned && $paces !== null) {
-                    $km = SegmentGenerator::coreKmFor($row->session_type, false, $baseline['long_run_km'], (float) $row->volume_multiplier, $baseline['long_run_cap_km'], $row->race_distance_m === null ? null : (float) $row->race_distance_m, $baseline['long_run_progression_cap_km'], $row->fall_off_tilt);
+                    $km = SegmentGenerator::coreKmFor($row->session_type, false, $baseline['long_run_km'], (float) $row->volume_multiplier, $baseline['long_run_cap_km'], $row->race_distance_m === null ? null : (float) $row->race_distance_m, $baseline['long_run_progression_cap_km'], $row->fall_off_tilt, $row->prescription_race_context);
                     $km = $row->clamped_km === null ? $km : min($km, (float) $row->clamped_km);
-                    $prescription = new IntensityPrescription($row->prescribed_hard_minutes ?? 0, $row->prescribed_pace_band, $row->prescribed_pace_sec_per_km ?? ($row->prescribed_pace_band === null ? null : $paces[$row->prescribed_pace_band->value]), null);
+                    $prescription = new IntensityPrescription($row->prescribed_hard_minutes ?? 0, $row->prescribed_pace_band, $row->prescribed_pace_sec_per_km ?? ($row->prescribed_pace_band === null ? null : $paces[$row->prescribed_pace_band->value]), null, $row->prescription_race_context);
                     $segments = SegmentGenerator::forPrescription($row->session_type, $row->phase, $km, $paces, $prescription);
                     $fixed[$date]['duration_minutes'] = array_sum(array_map(static fn (SessionSegment $segment): float => $segment->minutes ?? 0.0, $segments));
                     if ($row->rest_clamped_at !== null || $row->eased_pace_sec_per_km !== null) {

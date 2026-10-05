@@ -43,12 +43,33 @@ final class RunDistanceTimes
      */
     public static function timeAtDistance(array $splits, float $targetMeters): ?float
     {
+        return self::bestWindow($splits, $targetMeters)['time_sec'] ?? null;
+    }
+
+    /**
+     * The run's fastest window over the target distance, with the heart rate
+     * its splits averaged across it, or null heart rate when any split in the
+     * window carries none.
+     *
+     * @return array{time_sec: float, heart_rate: float|null}|null
+     */
+    public static function bestSplit(ActivityDetail $detail, float $targetMeters): ?array
+    {
+        return self::bestWindow(self::splitRows(StreamSummary::fromArray($detail->streamSummary())), $targetMeters);
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $splits
+     * @return array{time_sec: float, heart_rate: float|null}|null
+     */
+    private static function bestWindow(array $splits, float $targetMeters): ?array
+    {
         $best = null;
         $count = count($splits);
 
         for ($start = 0; $start < $count; $start++) {
-            $window = self::windowTime(array_slice($splits, $start), $targetMeters);
-            if ($window !== null && ($best === null || $window < $best)) {
+            $window = self::window(array_slice($splits, $start), $targetMeters);
+            if ($window !== null && ($best === null || $window['time_sec'] < $best['time_sec'])) {
                 $best = $window;
             }
         }
@@ -86,24 +107,29 @@ final class RunDistanceTimes
      * within the final partial split. Null when the given splits fall short.
      *
      * @param  array<int, array<string, mixed>>  $splits
+     * @return array{time_sec: float, heart_rate: float|null}|null
      */
-    private static function windowTime(array $splits, float $targetMeters): ?float
+    private static function window(array $splits, float $targetMeters): ?array
     {
         $accDist = 0.0;
         $accTime = 0.0;
+        $beats = 0.0;
+        $everySplitHasHeartRate = true;
         foreach ($splits as $split) {
             $distance = (float) ($split['distance_m'] ?? 0);
             $time = (float) ($split['elapsed_sec'] ?? 0);
             if ($distance <= 0 || $time <= 0) {
                 continue;
             }
+            $used = $accDist + $distance >= $targetMeters ? $time * (($targetMeters - $accDist) / $distance) : $time;
+            $heartRate = $split['avg_hr'] ?? null;
+            $everySplitHasHeartRate = $everySplitHasHeartRate && is_numeric($heartRate);
+            $beats += is_numeric($heartRate) ? (float) $heartRate * $used : 0.0;
+            $accTime += $used;
             if ($accDist + $distance >= $targetMeters) {
-                $remaining = $targetMeters - $accDist;
-
-                return $accTime + $time * ($remaining / $distance);
+                return ['time_sec' => $accTime, 'heart_rate' => $everySplitHasHeartRate && $accTime > 0 ? $beats / $accTime : null];
             }
             $accDist += $distance;
-            $accTime += $time;
         }
 
         return null;

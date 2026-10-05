@@ -44,6 +44,7 @@ function day(overrides: Partial<PlanDay> = {}): PlanDay {
         prescription_reason: null,
         fall_off_tilt: null,
         goal_pace: null,
+        time_trial: null,
         advice_note: null,
         eased_from: null,
         pace_eased_from: null,

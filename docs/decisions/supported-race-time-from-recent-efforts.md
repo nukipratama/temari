@@ -18,6 +18,8 @@ code_refs:
 
 # Supported race time from recent efforts and a personal fall-off
 
+> **Partly superseded (2026-10-05) by [[a-time-trial-every-six-weeks]].** A time trial whose run misses the trial's gate now asks the athlete once whether it was all-out; the engine still never asks about any other run.
+
 **Status:** Accepted (2026-10-05). Supersedes the "lowest VDOT across 12 months" rule in [VdotEstimator](app/Services/Run/Metrics/VdotEstimator.php) and the frozen provisional anchor. Partly supersedes [[race-ambition-is-shown-and-capacity-is-prescribed]] and [[one-race-model-drives-the-plan]].
 
 ## Context

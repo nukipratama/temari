@@ -191,6 +191,7 @@ final readonly class Periodizer
         $rows = [];
         $fixedDates = $inputs->pinnedDates + $inputs->settledDates;
         $ceilingKm = $inputs->resumeTrailingMeanKm === null ? null : $inputs->resumeTrailingMeanKm * self::RESUME_WEEKLY_GROWTH;
+        $trials = new TimeTrialSchedule($inputs);
         foreach ($weeks as $week) {
             $weekRows = $this->weekPlanBuilder->build(
                 $week['week_start'],
@@ -212,7 +213,14 @@ final readonly class Periodizer
             if ($ceilingKm !== null) {
                 [$week['multiplier'], $ceilingKm] = self::boundResumedWeek($weekRows, $week['multiplier'], $inputs, $ceilingKm);
             }
-            $weekRows = $this->withIntensityPrescriptions($weekRows, $week['multiplier'], $inputs, $week['week_start'], $rows, GoalPaceWork::forWeek($inputs, $week['week_start'], $week['phase']));
+            $trial = $trials->forWeek($week['week_start'], $week['phase']);
+            $trialRows = $trial === null ? null : $this->withIntensityPrescriptions($weekRows, $week['multiplier'], $inputs, $week['week_start'], $rows, trial: $trial);
+            if ($trialRows !== null && array_any($trialRows, static fn (array $row): bool => TimeTrial::isTrial($row['prescription_race_context']))) {
+                $weekRows = $trialRows;
+                $trials->placedIn($week['week_start']);
+            } else {
+                $weekRows = $this->withIntensityPrescriptions($weekRows, $week['multiplier'], $inputs, $week['week_start'], $rows, GoalPaceWork::forWeek($inputs, $week['week_start'], $week['phase']));
+            }
             foreach ($weekRows as $date => $row) {
                 $rows[$date] = [...$row, 'volume_multiplier' => $week['multiplier'], 'fall_off_tilt' => $row['session_type'] === SessionType::Easy ? null : ($row['fall_off_tilt'] ?? null)];
             }
@@ -453,7 +461,7 @@ final readonly class Periodizer
      * @param array<string, array{session_type: SessionType, prescribed_hard_minutes: int, prescribed_pace_band: PaceBand|null, ...}> $priorRows
      * @return array<string, array{phase: PlanPhase, session_type: SessionType, prescribed_hard_minutes: int, prescribed_pace_band: PaceBand|null, prescribed_pace_sec_per_km: int|null, prescription_reason: string|null, prescription_race_context: array<string, int|float|string>|null, ...}>
      */
-    private function withIntensityPrescriptions(array $rows, float $multiplier, PlanInputs $inputs, Carbon $weekStart, array $priorRows, ?GoalPaceWork $goalPace = null): array
+    private function withIntensityPrescriptions(array $rows, float $multiplier, PlanInputs $inputs, Carbon $weekStart, array $priorRows, ?GoalPaceWork $goalPace = null, ?TimeTrial $trial = null): array
     {
         $workloadSessions = self::workloadSessions($inputs);
         $weekEnd = $weekStart->copy()->addDays(6)->toDateString();
@@ -500,13 +508,20 @@ final readonly class Periodizer
             }
         }
 
+        $trialDate = $trial === null || $unknownDemandingMinutes ? null : self::firstQualityDate($rows, $prescriptions);
+        if ($trial !== null && $trialDate !== null) {
+            $prescriptions[$trialDate] = $trial->prescription();
+            $kmByDate[$trialDate] = TimeTrial::dayKm($rows[$trialDate]['session_type'], $trial->context()) ?? $kmByDate[$trialDate];
+        }
+
         // Without VDOT there is no trustworthy time denominator. Keep the
         // phase/day caps, but do not invent a weekly percentage ceiling.
         $hardCeiling = $unknownDemandingMinutes ? 0 : $this->hardCeiling($rows, $kmByDate, $prescriptions, $inputs, $weekStart, $workloadSessions);
         while ($hardCeiling !== null && array_sum(array_map(static fn (IntensityPrescription $p): int => $p->hardMinutes, $prescriptions)) > $hardCeiling) {
-            $hardMinutes = array_map(static fn (IntensityPrescription $p): int => $p->hardMinutes, $prescriptions);
+            $adjustable = array_diff_key($prescriptions, [(string) $trialDate => true]);
+            $hardMinutes = array_map(static fn (IntensityPrescription $p): int => $p->hardMinutes, $adjustable);
             $largestHardMinutes = $hardMinutes === [] ? 0 : max($hardMinutes);
-            $date = array_find_key($prescriptions, static fn (IntensityPrescription $candidate): bool => $candidate->hardMinutes === $largestHardMinutes);
+            $date = array_find_key($adjustable, static fn (IntensityPrescription $candidate): bool => $candidate->hardMinutes === $largestHardMinutes);
             if ($date === null) {
                 break;
             }
@@ -543,7 +558,7 @@ final readonly class Periodizer
             if ($prescription->isEasy() && in_array($row['session_type'], [SessionType::Tempo, SessionType::Interval], true)) {
                 $row['session_type'] = SessionType::Easy;
             }
-            if ($date === $goalPaceDate && ! $prescription->isEasy()) {
+            if (in_array($date, [$goalPaceDate, $trialDate], true) && ! $prescription->isEasy()) {
                 unset($row['fall_off_tilt']);
             }
             $row = [...$row, ...$prescription->toArray()];
@@ -551,6 +566,21 @@ final readonly class Periodizer
         unset($row);
 
         return self::capQualityAroundWeeklyHardDays($rows, $workloadSessions + $priorRows, $weekStart);
+    }
+
+    /**
+     * The week's first Tempo or Interval that is still prescribed as quality.
+     *
+     * @param  array<string, array{session_type: SessionType, ...}>  $rows
+     * @param  array<string, IntensityPrescription>  $prescriptions
+     */
+    private static function firstQualityDate(array $rows, array $prescriptions): ?string
+    {
+        $dates = array_keys($rows);
+        sort($dates);
+
+        return array_find($dates, static fn (string $date): bool => in_array($rows[$date]['session_type'], [SessionType::Tempo, SessionType::Interval], true)
+            && ! $prescriptions[$date]->isEasy());
     }
 
     /**
@@ -617,8 +647,9 @@ final readonly class Periodizer
                 ? PHP_INT_MAX
                 : min(array_map(static fn (string $protected): int => self::daysApart($date, $protected), $protectedOffsets));
         }
+        $isTrial = static fn (string $date): bool => TimeTrial::isTrial($rows[$date]['prescription_race_context']);
         usort($qualityDates, static fn (string $left, string $right): int =>
-            ($recoveryByDate[$right] <=> $recoveryByDate[$left]) ?: strcmp($right, $left));
+            ($isTrial($right) <=> $isTrial($left)) ?: ($recoveryByDate[$right] <=> $recoveryByDate[$left]) ?: strcmp($right, $left));
 
         $qualityLimit = max(0, 2 - count($fixedHardOffsets) - count($generatedHardLongDates));
         $keptHardOffsets = [];

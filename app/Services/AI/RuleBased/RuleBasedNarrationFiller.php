@@ -25,6 +25,7 @@ use App\Services\Run\Plan\EffectiveSession;
 use App\Services\Run\Plan\IntentOutcome;
 use App\Services\Run\Plan\PlanRenderer;
 use App\Services\Run\Plan\SessionMatcher;
+use App\Services\Run\Plan\TimeTrial;
 use App\Services\Run\Plan\SustainedAheadOfRacePace;
 use App\Services\Run\Plan\TrainingBaseline;
 use Illuminate\Support\Carbon;
@@ -181,7 +182,7 @@ final readonly class RuleBasedNarrationFiller
         $creditedKm = $planned === null ? null : round(SessionMatcher::creditedKm($planned->session_type, [
             'sum' => DistanceFormatter::km($actualMeters),
             'longest' => DistanceFormatter::km((float) $distancesM->max()),
-        ]), 1);
+        ], TimeTrial::of($planned) !== null), 1);
         $distanceLine = match (true) {
             $plannedKm === null => "{$actual} km logged, no plan for today",
             $plannedKm <= 0 => "{$actual} km logged on a planned rest day",

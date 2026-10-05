@@ -581,6 +581,9 @@ export interface WeekPlanDay {
     /** The race whose goal pace this session rehearses, set only while the
      *  session shown is that goal-pace work. */
     goal_pace: '5k' | '10k' | 'half' | 'marathon' | null;
+    /** The time trial this session is, set only while the session shown is
+     *  that trial: its distance and the supported time to aim around. */
+    time_trial: { distance_m: number; aim_time_sec: number } | null;
     /** Today's safety advice on a pinned or race day, whose prescription
      *  keeps leading. Null on every other day. */
     advice_note: string | null;

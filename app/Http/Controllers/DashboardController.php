@@ -7,6 +7,7 @@ namespace App\Http\Controllers;
 use App\Actions\Run\Plan\ResolveTrailingWeeksAction;
 use App\Enums\RaceOutcome;
 use App\Enums\SessionType;
+use App\Enums\TimeTrialOutcome;
 use App\Models\ActivityDetail;
 use App\Models\PlannedSession;
 use App\Models\RaceGoal;
@@ -70,6 +71,15 @@ class DashboardController extends Controller
                     ->first();
 
                 return $race === null ? null : ['id' => $race->id, 'name' => $race->name, 'race_date' => $race->race_date->toDateString()];
+            },
+            'pendingTimeTrial' => function () use ($user): ?array {
+                $trial = PlannedSession::query()
+                    ->where('user_id', $user->id)
+                    ->where('time_trial_outcome', TimeTrialOutcome::Asked)
+                    ->orderByDesc('date')
+                    ->first();
+
+                return $trial === null ? null : ['id' => $trial->id, 'date' => $trial->date->toDateString(), 'distance_m' => (int) ($trial->prescription_race_context['distance_m'] ?? 0)];
             },
         ];
 

@@ -130,6 +130,7 @@ describe('InboxRow', () => {
         ['race_tomorrow', 'Race'],
         ['race_outcome', 'Race'],
         ['fitness_improved', 'Race'],
+        ['time_trial', 'Plan'],
         ['test', 'Test'],
     ] as const)('labels the %s kind', (kind, label) => {
         renderRow({ kind, body: null });

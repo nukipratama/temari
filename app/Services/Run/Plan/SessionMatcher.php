@@ -95,9 +95,11 @@ final readonly class SessionMatcher
             $day = $completed[$date] ?? ['sum' => 0.0, 'longest' => 0.0];
             $session = $sessionByDate[$date] ?? null;
             $type = $sessionTypesByDate[$date] ?? $session?->session_type;
+            $timeTrial = $session !== null && $type === $session->session_type && TimeTrial::of($session) !== null;
+            $creditedKm = self::creditedKm($type, $day, $timeTrial);
             $results[$date] = self::scoreFor(
                 $plannedKm,
-                self::creditedKm($type, $day),
+                $timeTrial ? min($creditedKm, $plannedKm) : $creditedKm,
                 $isPast,
                 $excusedByDate[$date] ?? false,
                 (array_key_exists($date, $sessionTypesByDate) ? $type === SessionType::Long : self::asksForOneLongRun($session)) ? $day['longest'] : null,
@@ -262,15 +264,15 @@ final readonly class SessionMatcher
      *
      * @param  array{sum: float, longest: float}  $day
      */
-    public static function creditedKm(?SessionType $type, array $day): float
+    public static function creditedKm(?SessionType $type, array $day, bool $timeTrial = false): float
     {
-        return self::creditsBestRunOnly($type) ? $day['longest'] : $day['sum'];
+        return self::creditsBestRunOnly($type, $timeTrial) ? $day['longest'] : $day['sum'];
     }
 
-    /** A quality day is credited from its best single run; every other day sums the whole day. */
-    private static function creditsBestRunOnly(?SessionType $type): bool
+    /** A quality day is credited from its best single run; a time trial, its warmup often recorded apart, and every other day sum the whole day. */
+    private static function creditsBestRunOnly(?SessionType $type, bool $timeTrial = false): bool
     {
-        return $type === SessionType::Tempo || $type === SessionType::Interval;
+        return ! $timeTrial && ($type === SessionType::Tempo || $type === SessionType::Interval);
     }
 
     /**
@@ -291,7 +293,7 @@ final readonly class SessionMatcher
             return null;
         }
 
-        return self::creditedKm($session->session_type, $day);
+        return self::creditedKm($session->session_type, $day, TimeTrial::of($session) !== null);
     }
 
     /** The pace the day's card shows ({@see self::ranPaceSecPerKmFromRuns()}), or null when nothing was logged. */
@@ -299,7 +301,7 @@ final readonly class SessionMatcher
     {
         $runs = $this->activityByDate($session->user, $session->date, $session->date)[$session->date->toDateString()]['runs'] ?? [];
 
-        return self::ranPaceSecPerKmFromRuns($session->session_type, $runs);
+        return self::ranPaceSecPerKmFromRuns($session->session_type, $runs, TimeTrial::of($session) !== null);
     }
 
     /**
@@ -315,14 +317,14 @@ final readonly class SessionMatcher
      *
      * @param  list<array{id: int, km: float, seconds: int|null, started_at: string}>  $runs
      */
-    public static function ranPaceSecPerKmFromRuns(?SessionType $type, array $runs): ?int
+    public static function ranPaceSecPerKmFromRuns(?SessionType $type, array $runs, bool $timeTrial = false): ?int
     {
         $timed = array_values(array_filter($runs, static fn (array $run): bool => ($run['seconds'] ?? null) !== null));
         if ($timed === []) {
             return null;
         }
 
-        $credited = self::creditsBestRunOnly($type) ? [self::longestByKm($timed)] : $timed;
+        $credited = self::creditsBestRunOnly($type, $timeTrial) ? [self::longestByKm($timed)] : $timed;
 
         $pace = PaceCalculator::secPerKm(
             array_sum(array_column($credited, 'km')) * 1000,

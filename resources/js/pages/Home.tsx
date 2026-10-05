@@ -15,6 +15,9 @@ import NoVerdictPanel from '@/components/home/NoVerdictPanel';
 import RaceOutcomePrompt, {
     type PendingRaceOutcome,
 } from '@/components/home/RaceOutcomePrompt';
+import TimeTrialPrompt, {
+    type PendingTimeTrial,
+} from '@/components/home/TimeTrialPrompt';
 import TodaySession from '@/components/home/TodaySession';
 import VerdictHero from '@/components/home/VerdictHero';
 import WeekPlanWidget from '@/components/home/WeekPlanWidget';
@@ -34,6 +37,7 @@ interface HomeProps {
     /** Only shipped, deferred, on a planned rest day. */
     restDayEasePace?: RestDayEasePace | null;
     pendingRaceOutcome?: PendingRaceOutcome | null;
+    pendingTimeTrial?: PendingTimeTrial | null;
 }
 
 /**
@@ -50,6 +54,7 @@ export default function Home({
     weekPlan = null,
     restDayEasePace = null,
     pendingRaceOutcome = null,
+    pendingTimeTrial = null,
 }: Readonly<HomeProps>) {
     const todayIso = useTodayIso();
     const todayPlan =
@@ -70,6 +75,9 @@ export default function Home({
                     <LaneStack>
                         {pendingRaceOutcome !== null && (
                             <RaceOutcomePrompt race={pendingRaceOutcome} />
+                        )}
+                        {pendingTimeTrial !== null && (
+                            <TimeTrialPrompt trial={pendingTimeTrial} />
                         )}
                         <TodaySession
                             briefing={briefing}

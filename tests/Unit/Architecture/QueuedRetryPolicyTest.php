@@ -45,6 +45,7 @@ use App\Notifications\RaceTomorrowNotification;
 use App\Notifications\StravaDisconnectedNotification;
 use App\Notifications\StreakReminderNotification;
 use App\Notifications\TestNotification;
+use App\Notifications\TimeTrialNotification;
 use Illuminate\Bus\UniqueLock;
 use Illuminate\Contracts\Cache\Repository;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
@@ -152,6 +153,7 @@ $expectedRetryPolicies = [
     StravaDisconnectedNotification::class => [3, '30,120', null, null, null],
     StreakReminderNotification::class => [3, '30,120', null, null, null],
     TestNotification::class => [3, '30,120', null, null, null],
+    TimeTrialNotification::class => [3, '30,120', null, null, null],
 ];
 
 it('pins a retry policy for every queued job and notification', function () use ($expectedRetryPolicies): void {

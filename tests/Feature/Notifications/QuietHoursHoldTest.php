@@ -11,6 +11,7 @@ use App\Models\AI\Analysis;
 use App\Models\HeldNotification;
 use App\Models\InboxNotification;
 use App\Models\NotificationDelivery;
+use App\Models\PlannedSession;
 use App\Models\RaceGoal;
 use App\Models\TelegramConnection;
 use App\Models\User;
@@ -23,6 +24,7 @@ use App\Notifications\RaceTomorrowNotification;
 use App\Notifications\StravaDisconnectedNotification;
 use App\Notifications\StreakReminderNotification;
 use App\Notifications\TestNotification;
+use App\Notifications\TimeTrialNotification;
 use App\Services\AI\AnalysisType;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Notifications\Notification;
@@ -95,6 +97,7 @@ dataset('notification types', [
     'race tomorrow' => [fn (User $user): Notification => new RaceTomorrowNotification(RaceGoal::factory()->for($user)->create(['race_date' => '2026-10-06'])), 1, true],
     'strava disconnected' => [fn (User $user): Notification => new StravaDisconnectedNotification(now()), 1, true],
     'streak reminder' => [fn (User $user): Notification => new StreakReminderNotification(4), 1, true],
+    'time trial' => [fn (User $user): Notification => new TimeTrialNotification(PlannedSession::factory()->for($user)->create(['date' => '2026-10-05', 'prescription_race_context' => ['kind' => 'time_trial', 'distance_m' => 5_000, 'aim_time_sec' => 1_500, 'retry' => 0]])), 1, true],
 ]);
 
 it('holds every channel inside the window and releases each once at 04:00', function (Closure $make, int $inbox, bool $outbound, bool $demo): void {

@@ -7,7 +7,7 @@ import type { PlanDay } from '@/lib/plan';
 import { DAY_CELL_CLASS, DayCellBody } from '@/components/plan/DayCell';
 import { cn } from '@/lib/cn';
 import { formatKm } from '@/lib/pace';
-import { GOAL_PACE_LABEL, weekdayLabel } from '@/lib/plan';
+import { workLabel, weekdayLabel } from '@/lib/plan';
 
 type TileState = 'today' | 'missed' | 'done' | 'rest' | 'planned';
 
@@ -48,7 +48,7 @@ function tileWord(day: PlanDay): string {
     if (day.status === 'done') {
         return 'done';
     }
-    return day.goal_pace !== null ? GOAL_PACE_LABEL : day.session_type;
+    return workLabel(day) ?? day.session_type;
 }
 
 function tileKm(day: PlanDay): string | null {

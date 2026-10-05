@@ -462,3 +462,16 @@ it('writes goal-pace work in the kind\'s own shape rather than the day\'s type',
     '10K reps on a tempo day' => [SessionType::Tempo, '10k', SegmentKey::Interval, 5],
     'half block on an interval day' => [SessionType::Interval, 'half', SegmentKey::Main, 1],
 ]);
+
+it('sizes a time trial day as the trial alone and writes it as one block at the aim, like race day', function (SessionType $type): void {
+    $context = ['kind' => 'time_trial', 'distance_m' => 5_000, 'aim_time_sec' => 1_500, 'retry' => 0];
+    $km = SegmentGenerator::coreKmFor($type, false, 18.0, 1.0, 32.0, raceContext: $context);
+    $segments = SegmentGenerator::forPrescription($type, PlanPhase::Build, $km, PACES, new IntensityPrescription(25, PaceBand::Interval, 300, null, $context));
+
+    expect($km)->toBe(5.0)
+        ->and(SegmentGenerator::coreKmFor($type, false, 18.0, 1.0, 32.0))->not->toBe(5.0)
+        ->and(array_map(static fn ($segment): array => [$segment->key->value, $segment->km, $segment->paceSecPerKm], $segments))
+        ->toBe([['main', 5.0, 300]])
+        ->and($segments[0]->minutes)->toBe(25.0)
+        ->and(SegmentGenerator::forPrescription($type, PlanPhase::Build, 9.0, PACES, new IntensityPrescription(25, PaceBand::Interval, 300, null, $context)))->toHaveCount(1);
+})->with([SessionType::Tempo, SessionType::Interval]);

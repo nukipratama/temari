@@ -41,6 +41,7 @@ use App\Http\Controllers\Telegram\TelegramConnectionController;
 use App\Http\Controllers\Telegram\TelegramWebhookController;
 use App\Http\Controllers\WebPush\PushSubscriptionController;
 use App\Http\Controllers\NarrationOverviewController;
+use App\Http\Controllers\TimeTrialAnswerController;
 use App\Http\Controllers\TrainingPreferencesController;
 use App\Http\Controllers\TrendsController;
 use App\Support\LegalDocuments;
@@ -150,6 +151,10 @@ Route::middleware(['auth', 'onboarded'])->group(function (): void {
         ->name('plan.recommendations.shown');
     Route::post('/plan/regenerate', [PlanController::class, 'regenerate'])->name('plan.regenerate');
     Route::patch('/plan/sessions/{plannedSession}', [PlanController::class, 'update'])->name('plan.sessions.update');
+    Route::post('/plan/time-trials/{plannedSession}', TimeTrialAnswerController::class)
+        ->middleware(['throttle:20,1', 'block-demo-telegram'])
+        ->whereNumber('plannedSession')
+        ->name('plan.time-trials.answer');
     Route::post('/recovery/feedback', RecoveryFeedbackController::class)
         ->middleware(['throttle:10,1', 'block-demo-telegram'])
         ->name('recovery.feedback.store');

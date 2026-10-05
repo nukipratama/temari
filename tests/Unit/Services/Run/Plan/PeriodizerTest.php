@@ -1052,7 +1052,7 @@ it('regenerates the whole horizon with a constant number of queries', function (
     $plannedSessionInserts = array_filter($queries, fn (string $sql): bool => str_starts_with(strtolower($sql), 'insert into `planned_sessions`'));
     expect(PlannedSession::query()->where('user_id', $user->id)->count())->toBe(Periodizer::HORIZON_WEEKS * 7)
         ->and($plannedSessionInserts)->toHaveCount(1)
-        ->and(count($queries))->toBeLessThanOrEqual(22);
+        ->and(count($queries))->toBeLessThanOrEqual(24);
 });
 
 it('leaves settled sessions untouched by a batched regeneration', function (): void {

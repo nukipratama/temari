@@ -55,6 +55,7 @@ function day(overrides: Partial<PlanDay> = {}): PlanDay {
         prescription_reason: null,
         fall_off_tilt: null,
         goal_pace: null,
+        time_trial: null,
         advice_note: null,
         eased_from: null,
         pace_eased_from: null,
@@ -162,6 +163,40 @@ describe('DayHeadline and DayDetail', () => {
 
         expect(screen.getByText('tempo')).toBeInTheDocument();
         expect(screen.getByText('8 km · 5:00/km')).toBeInTheDocument();
+    });
+
+    it('names a time trial in its headline and bar graph, with the aim and what it checks', () => {
+        renderRow({
+            day: day({
+                session_type: 'tempo',
+                distance_km: 10,
+                time_trial: { distance_m: 10_000, aim_time_sec: 3_125 },
+                segments: [
+                    {
+                        key: 'main',
+                        minutes: 52,
+                        zone: 'Z4',
+                        pace_label: 'threshold',
+                        km: 10,
+                        pace_sec_per_km: 313,
+                    },
+                ],
+            }),
+        });
+
+        expect(screen.getByText('time trial')).toBeInTheDocument();
+        expect(screen.queryByText('tempo')).not.toBeInTheDocument();
+        expect(screen.getByText('5:13/km · time trial')).toBeInTheDocument();
+        expect(
+            screen.getByText(
+                'aim around 52:05. checks your fitness so your paces stay honest.',
+            ),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByText(
+                'warm up first like you would before a race, then record the trial as its own run if you can.',
+            ),
+        ).toBeInTheDocument();
     });
 
     it('names goal-pace work in its headline, at the goal pace, with the race it rehearses', () => {

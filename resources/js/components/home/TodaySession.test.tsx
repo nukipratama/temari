@@ -57,6 +57,7 @@ function day(overrides: Partial<WeekPlanDay> = {}): WeekPlanDay {
         prescription_reason: null,
         fall_off_tilt: null,
         goal_pace: null,
+        time_trial: null,
         advice_note: null,
         eased_from: null,
         pace_eased_from: null,
@@ -285,6 +286,41 @@ describe('TodaySession', () => {
         expect(
             screen.getByText('Rest is the advice after the pain you reported.'),
         ).toHaveClass('text-text-2');
+    });
+
+    it('leads a time trial with its own label, the aim and what it is for', () => {
+        render(
+            <TodaySession
+                briefing={briefing('Trial today.')}
+                today={day({
+                    session_type: 'interval',
+                    distance_km: 5,
+                    time_trial: { distance_m: 5_000, aim_time_sec: 1_410 },
+                    segments: [
+                        {
+                            key: 'main',
+                            minutes: 23.5,
+                            zone: 'Z5',
+                            pace_label: 'interval',
+                            km: 5,
+                            pace_sec_per_km: 282,
+                        },
+                    ],
+                })}
+            />,
+        );
+
+        expectSession('5', 'time trial · 4:42/km');
+        expect(
+            screen.getByText(
+                'warm up first like you would before a race, then record the trial as its own run if you can.',
+            ),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByText(
+                'aim around 23:30. checks your fitness so your paces stay honest.',
+            ),
+        ).toBeInTheDocument();
     });
 
     it('leads goal-pace work with its own label and the goal pace as the target', () => {
