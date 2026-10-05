@@ -18,6 +18,7 @@ FRONTEND='^resources/(js|css|views|brand)/|^tests/fixtures/|^\.github/actions/|^
 DOCKER='^(Dockerfile|\.dockerignore)$|^docker/|^public/\.htaccess$'
 WORKTREE='^scripts/worktree|^tests/scripts/'
 STRUCTURE='^resources/js/|^(CLAUDE|README)\.md$|^\.dockerignore$|^docs/(design-tokens|architecture/llm-triggers)\.md$|^\.agents/skills/temari/.*\.md$'
+IMAGE='^(Dockerfile|\.dockerignore|composer\.(json|lock)|package(-lock)?\.json)$|^docker/|^\.github/workflows/ci\.yml$'
 
 if match "$EVERYTHING"; then
   backend=true
@@ -48,4 +49,9 @@ if [ "$backend" = false ] && match "$STRUCTURE"; then
   structure=true
 fi
 
-printf 'backend=%s\nfrontend=%s\ndocker=%s\nworktree=%s\nstructure=%s\n' "$backend" "$frontend" "$docker" "$worktree" "$structure"
+image=false
+if match "$IMAGE"; then
+  image=true
+fi
+
+printf 'backend=%s\nfrontend=%s\ndocker=%s\nworktree=%s\nstructure=%s\nimage=%s\n' "$backend" "$frontend" "$docker" "$worktree" "$structure" "$image"

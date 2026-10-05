@@ -32,8 +32,9 @@ function ciChecks(
     bool $docker = false,
     bool $worktree = false,
     bool $structure = false,
+    bool $image = false,
 ): array {
-    return compact('backend', 'frontend', 'docker', 'worktree', 'structure');
+    return compact('backend', 'frontend', 'docker', 'worktree', 'structure', 'image');
 }
 
 function ciClassifiesAsBackend(string $path): bool
@@ -174,7 +175,7 @@ it('runs the structure tests in their own required job only when backend CI does
 
 it('uses the tested classifier and runs every check when the workflow itself changes', function (): void {
     expect(File::get(base_path(CI_WORKFLOW)))->toContain('scripts/ci/classify-checks.sh');
-    expect(ciClassifyPaths([CI_WORKFLOW]))->toBe(ciChecks(backend: true, frontend: true, docker: true, worktree: true));
+    expect(ciClassifyPaths([CI_WORKFLOW]))->toBe(ciChecks(backend: true, frontend: true, docker: true, worktree: true, image: true));
 })->group('structure');
 
 it('routes public runtime assets to frontend CI and to the backend tests that check they exist', function (string $path): void {
@@ -263,9 +264,9 @@ it('skips the worktree race harness for unrelated changes', function (string $pa
 it('routes infrastructure and server configuration to the checks that read them', function (string $path, array $checks): void {
     expect(ciClassifyPaths([$path]))->toBe($checks);
 })->with([
-    'Dockerfile' => ['Dockerfile', ciChecks(backend: true, docker: true)],
-    '.dockerignore' => ['.dockerignore', ciChecks(docker: true, structure: true)],
-    'docker/php.ini' => ['docker/php.ini', ciChecks(backend: true, docker: true)],
+    'Dockerfile' => ['Dockerfile', ciChecks(backend: true, docker: true, image: true)],
+    '.dockerignore' => ['.dockerignore', ciChecks(docker: true, structure: true, image: true)],
+    'docker/php.ini' => ['docker/php.ini', ciChecks(backend: true, docker: true, image: true)],
     'public/.htaccess' => ['public/.htaccess', ciChecks(backend: true, docker: true)],
     'compose.prod.yaml' => ['compose.prod.yaml', ciChecks(backend: true)],
     'compose.shared-services.yml' => ['compose.shared-services.yml', ciChecks(backend: true)],
@@ -305,7 +306,7 @@ it('unions mixed changes and takes the all-checks branch for the workflow', func
         'docs/decisions/dark-is-the-default-ground.md',
         'resources/js/app.tsx',
         CI_WORKFLOW,
-    ]))->toBe(ciChecks(backend: true, frontend: true, docker: true, worktree: true));
+    ]))->toBe(ciChecks(backend: true, frontend: true, docker: true, worktree: true, image: true));
 })->group('structure');
 
 it('skips the heavy jobs for planning docs, which nothing asserts against', function (): void {
@@ -316,3 +317,20 @@ it('skips the heavy jobs for planning docs, which nothing asserts against', func
         expect(ciClassifyPaths([$path]))->toBe(ciChecks());
     }
 })->group('structure');
+
+it('runs the image-contents check only for the inputs that can change the image\'s entries', function (string $path, bool $image): void {
+    expect(ciClassifyPaths([$path])['image'])->toBe($image);
+})->with([
+    'Dockerfile' => ['Dockerfile', true],
+    '.dockerignore' => ['.dockerignore', true],
+    'docker/php.ini' => ['docker/php.ini', true],
+    'composer.json' => ['composer.json', true],
+    'composer.lock' => ['composer.lock', true],
+    'package.json' => ['package.json', true],
+    'package-lock.json' => ['package-lock.json', true],
+    'ci.yml' => ['.github/workflows/ci.yml', true],
+    'app source' => ['app/Models/User.php', false],
+    'frontend source' => ['resources/js/pages/Plan.tsx', false],
+    'backend workflow' => ['.github/workflows/backend-ci.yml', false],
+    'docs' => ['docs/architecture/deployment.md', false],
+])->group('structure');
