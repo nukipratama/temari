@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use App\Models\Activity;
+use App\Models\ActivityDetail;
 use App\Enums\RaceAmbitionState;
 use App\Models\PerformanceEvidence;
 use App\Models\RaceGoal;
@@ -133,8 +135,8 @@ it('names the effort the supported time rests on', function (): void {
 });
 
 it('asks for a confirmed effort when the supported time rests only on unconfirmed records', function (): void {
-    $activity = App\Models\Activity::factory()->for($this->user)->create();
-    App\Models\ActivityDetail::factory()->for($activity)->create([
+    $activity = Activity::factory()->for($this->user)->create();
+    ActivityDetail::factory()->for($activity)->create([
         'start_date_local' => '2026-09-20 06:00:00', 'distance' => 10_000, 'elapsed_time' => 4_200, 'workout_type' => 1,
     ]);
 
