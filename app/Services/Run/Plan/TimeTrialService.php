@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Notifications\TimeTrialNotification;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Carbon;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -21,8 +22,10 @@ use Illuminate\Validation\ValidationException;
  */
 final readonly class TimeTrialService
 {
-    public function __construct(private PerformanceEvidenceRecorder $evidence)
-    {
+    public function __construct(
+        private PerformanceEvidenceRecorder $evidence,
+        private ComplianceScorer $compliance,
+    ) {
     }
 
     public function settle(PlannedSession $session): ?TimeTrialOutcome
@@ -67,7 +70,13 @@ final readonly class TimeTrialService
             throw ValidationException::withMessages(['answer' => 'There is no run on that day that can count.']);
         }
 
-        return $this->mark($session, TimeTrialOutcome::Confirmed);
+        $this->mark($session, TimeTrialOutcome::Confirmed);
+        $verdict = $this->compliance->verdictsFor($user, Collection::wrap([$session]), Carbon::today())[$session->date->toDateString()] ?? null;
+        if ($verdict !== null) {
+            ComplianceScorer::applyVerdict($session, $verdict);
+        }
+
+        return TimeTrialOutcome::Confirmed;
     }
 
     /** @return Collection<int, ActivityDetail> */

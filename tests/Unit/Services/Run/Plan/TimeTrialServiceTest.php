@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\IntentVerdict;
 use App\Enums\PaceBand;
 use App\Enums\PerformanceEvidenceKind;
 use App\Enums\PlannedSessionStatus;
@@ -131,6 +132,20 @@ it('counts the asked run when the athlete says it was all-out', function (): voi
     expect($this->trials->answer($this->user, $session, true))->toBe(TimeTrialOutcome::Confirmed)
         ->and(PerformanceEvidence::query()->sole()->activity_id)->toBe($run->id)
         ->and($session->fresh()->time_trial_outcome)->toBe(TimeTrialOutcome::Confirmed);
+});
+
+it('grades an asked trial the athlete confirms as a hit, not as the missed gate it was scored with', function (): void {
+    $session = trialDay($this->user, [
+        'time_trial_outcome' => TimeTrialOutcome::Asked,
+        'status' => PlannedSessionStatus::Partial,
+        'intent_verdict' => IntentVerdict::Missed,
+    ]);
+    trialRun($this->user, 5_000.0, 1_700);
+
+    $this->trials->answer($this->user, $session, true);
+
+    expect($session->fresh()->intent_verdict)->toBe(IntentVerdict::Hit)
+        ->and($session->fresh()->status)->not->toBe(PlannedSessionStatus::Partial);
 });
 
 it('closes the trial with nothing counted when the athlete says it was not all-out', function (): void {

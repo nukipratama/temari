@@ -7,6 +7,7 @@ namespace App\Services\Run\Plan;
 use App\Enums\IntentVerdict;
 use App\Enums\PlannedSessionStatus;
 use App\Enums\SessionType;
+use App\Enums\TimeTrialOutcome;
 use App\Enums\PaceBand;
 use App\Enums\SegmentKey;
 use App\Models\Activity;
@@ -163,7 +164,7 @@ final readonly class ComplianceScorer
             $trial = TimeTrial::of($row);
             $effectiveType = $effectiveByDate[$date]->sessionType;
             if ($trial !== null && in_array($effectiveType, [SessionType::Tempo, SessionType::Interval], true)) {
-                $intents[$date] = self::trialIntent($trial, $effectiveType, $runsByDate[$date] ?? [], $zones);
+                $intents[$date] = self::trialIntent($trial, $effectiveType, $runsByDate[$date] ?? [], $zones, $row->time_trial_outcome === TimeTrialOutcome::Confirmed);
 
                 continue;
             }
@@ -225,13 +226,14 @@ final readonly class ComplianceScorer
 
     /**
      * A time trial is judged by whether any run on its day passed the trial's
-     * gate, never by the pace segments it was written with.
+     * gate, or the athlete confirmed it as all-out, never by the pace segments
+     * it was written with.
      *
      * @param  list<ActivityDetail>  $runs
      * @param  array<string, array{lo: int, hi: int}>  $zones
      * @return array{verdict: IntentVerdict, evidence: array<string, int|float|string>}
      */
-    private static function trialIntent(TimeTrial $trial, SessionType $effectiveType, array $runs, array $zones): array
+    private static function trialIntent(TimeTrial $trial, SessionType $effectiveType, array $runs, array $zones, bool $confirmed): array
     {
         foreach ($runs as $run) {
             $reading = $trial->reading($run);
@@ -250,8 +252,8 @@ final readonly class ComplianceScorer
         }
 
         return [
-            'verdict' => IntentVerdict::Missed,
-            'evidence' => ['time_trial' => 'not_passed', 'effective_type' => $effectiveType->value],
+            'verdict' => $confirmed ? IntentVerdict::Hit : IntentVerdict::Missed,
+            'evidence' => ['time_trial' => $confirmed ? 'confirmed' : 'not_passed', 'effective_type' => $effectiveType->value],
         ];
     }
 
