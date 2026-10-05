@@ -61,6 +61,14 @@ it('leaves a queued push without Retry-After on the notification backoff', funct
     expect(workQueuedPush())->toBe(30);
 });
 
+it('caps a long Retry-After at ten minutes', function (): void {
+    $job = Mockery::mock(Job::class);
+    $job->allows(['hasFailed' => false, 'isReleased' => false, 'isDeleted' => false]);
+    $job->expects('release')->with(600);
+
+    new ReleaseTransientWebPush()->handle(new JobExceptionOccurred('database', $job, new TransientWebPushException('busy', 86_400)));
+});
+
 it('does not release a job that already failed, was released or was deleted', function (string $state): void {
     $job = Mockery::mock(Job::class);
     $job->allows(['hasFailed' => $state === 'failed', 'isReleased' => $state === 'released', 'isDeleted' => $state === 'deleted']);
