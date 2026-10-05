@@ -443,7 +443,7 @@ export function sessionPurpose(day: PlanDay): string | null {
         case 'long':
             return hasWork
                 ? 'long run with goal-pace work. rehearses race day on tired legs.'
-                : 'time on feet. builds the engine the race runs on. chatty pace the whole way.';
+                : 'time on feet. builds the engine the race runs on. chatty effort the whole way.';
         case 'tempo':
             return hasWork
                 ? 'comfortably hard. teaches you to hold a pace without tipping over.'

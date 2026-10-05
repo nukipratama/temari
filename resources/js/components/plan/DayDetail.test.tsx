@@ -452,7 +452,7 @@ describe('DayHeadline and DayDetail', () => {
         expect(screen.queryByText('easy volume')).not.toBeInTheDocument();
         expect(
             screen.getByText(
-                'time on feet. builds the engine the race runs on. chatty pace the whole way.',
+                'time on feet. builds the engine the race runs on. chatty effort the whole way.',
             ),
         ).toBeInTheDocument();
     });
