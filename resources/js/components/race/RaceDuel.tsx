@@ -15,6 +15,7 @@ import {
     type GoalGapVerdict,
     goalGap,
     goalGapPose,
+    supportedBasisLine,
     supportedEyebrow,
 } from '@/lib/raceGoal';
 
@@ -64,6 +65,7 @@ export default function RaceDuel({
             ? 'on'
             : gap.verdict;
     const daysToGo = daysUntilId(race.race_date, useTodayIso());
+    const basisLine = supportedBasisLine(ambition);
 
     return (
         <section className={cn('relative isolate overflow-hidden', className)}>
@@ -102,6 +104,11 @@ export default function RaceDuel({
                     </div>
                 )}
             </div>
+            {basisLine !== null && (
+                <p className="mt-1 text-right text-xs text-text-3">
+                    {basisLine}
+                </p>
+            )}
 
             <p className="mt-4 text-xs leading-relaxed text-text-2">
                 {ambitionNote(ambition, support)}

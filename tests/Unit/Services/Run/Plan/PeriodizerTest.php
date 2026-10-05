@@ -51,6 +51,7 @@ it('keeps carried readiness doses under new workload limits during reconciliatio
     ActivityDetail::factory()->for(Activity::factory()->for($user)->analyzed()->create())->create(['start_date_local' => '2026-08-08 07:00:00', 'distance' => 20_000]);
     TrainingPreference::factory()->for($user)->create(['sessions_per_week' => 4]);
     PersonalRecord::factory()->for($user)->create(['category' => '10km', 'value_sec' => 2700, 'set_at' => Carbon::today()]);
+    seedConfirmedEffort($user, 10_000, 2700, Carbon::today());
     $this->periodizer->regenerate($user, Carbon::today());
     $session = PlannedSession::query()->where('user_id', $user->id)->whereDate('date', Carbon::today())->firstOrFail();
     $assessment = ['adjustment' => ['quality_dose' => ['hard_minutes' => 15, 'original_hard_minutes' => 20, 'pace_band' => 'threshold', 'pace_sec_per_km' => 270]]];
@@ -81,6 +82,7 @@ it('reconciles new actual workload only into affected current-week prescriptions
     ActivityDetail::factory()->for(Activity::factory()->for($user)->analyzed()->create())->create(['start_date_local' => '2026-08-08 07:00:00', 'distance' => 20_000]);
     TrainingPreference::factory()->for($user)->create(['sessions_per_week' => 4]);
     PersonalRecord::factory()->for($user)->create(['category' => '10km', 'value_sec' => 2700, 'set_at' => Carbon::today()]);
+    seedConfirmedEffort($user, 10_000, 2700, Carbon::today());
     $this->periodizer->regenerate($user, Carbon::today());
     $thursday = PlannedSession::query()->where('user_id', $user->id)->whereDate('date', '2026-08-13')->firstOrFail();
     $nextWeek = PlannedSession::query()->where('user_id', $user->id)->whereDate('date', '2026-08-20')->firstOrFail();

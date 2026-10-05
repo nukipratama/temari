@@ -254,6 +254,30 @@ describe('PaceTargetsCard', () => {
         ).toBeInTheDocument();
     });
 
+    it('names an effort that is not a record by its distance', () => {
+        render(
+            <PaceTargetsCard
+                paces={PACES}
+                source={{
+                    category: 'training_run',
+                    set_at: '2026-09-20',
+                    stale: false,
+                    confidence: 'provisional',
+                    evidence_id: null,
+                    evidence_kind: null,
+                    distance_m: 10_000,
+                    corroborating_quality_count: 0,
+                    quality_category: null,
+                    quality_set_at: null,
+                    quality_evidence_kind: null,
+                    quality_distance_m: null,
+                }}
+            />,
+        );
+
+        expect(screen.getByText('from your 10K · sep 20')).toBeInTheDocument();
+    });
+
     it('renders no chips at all when nothing is known about the source', () => {
         render(<PaceTargetsCard paces={PACES} />);
 

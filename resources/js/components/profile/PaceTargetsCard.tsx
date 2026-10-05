@@ -3,6 +3,7 @@ import Eyebrow from '@/components/ui/Eyebrow';
 import { cn } from '@/lib/cn';
 import { formatNaiveMonthDayId, formatPace } from '@/lib/pace';
 import { PR_CATEGORY_LABELS } from '@/lib/pr';
+import { raceDistanceLabel } from '@/lib/raceGoal';
 
 export interface TrainingPaces {
     easy: number;
@@ -115,9 +116,20 @@ function todaysPaceKey(week: WeekSession[]): PaceKey | null {
     );
 }
 
+function sourceLabel(source: VdotSource): string {
+    if (
+        PR_CATEGORY_LABELS[source.category] === undefined &&
+        source.distance_m !== null
+    ) {
+        return `from your ${raceDistanceLabel(source.distance_m)}`;
+    }
+
+    return `from ${prLabel(source.category)} pr`;
+}
+
 function sourceChips(source: VdotSource): string[] {
     const chips = [
-        `from ${prLabel(source.category)} pr · ${formatNaiveMonthDayId(source.set_at)}`,
+        `${sourceLabel(source)} · ${formatNaiveMonthDayId(source.set_at)}`,
     ];
 
     if (source.stale) {

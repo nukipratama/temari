@@ -98,6 +98,12 @@ export interface RaceAmbition {
     /** Percent the target pace is faster than the supported pace; negative when slower. */
     gap_pct: number | null;
     evidence_confidence: string | null;
+    /** The effort the supported time rests on, named under it. */
+    basis: {
+        distance_m: number;
+        performed_on: string;
+        activity_id: number | null;
+    } | null;
 }
 
 /** The Riegel fit over the athlete's PRs, used by the race form's typed-goal warning. */

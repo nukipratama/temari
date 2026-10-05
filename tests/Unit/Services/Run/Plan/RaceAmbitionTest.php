@@ -27,5 +27,6 @@ it('exposes both numbers under stable payload keys', function (): void {
         'prescribed_time_sec' => 4200,
         'gap_pct' => 28.6,
         'evidence_confidence' => 'confirmed',
+        'basis' => null,
     ]);
 });

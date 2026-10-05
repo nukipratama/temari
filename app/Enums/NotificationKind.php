@@ -20,6 +20,7 @@ enum NotificationKind: string
     case StravaDisconnected = 'strava_disconnected';
     case RaceTomorrow = 'race_tomorrow';
     case RaceOutcome = 'race_outcome';
+    case FitnessImproved = 'fitness_improved';
     case Test = 'test';
 
     /** Null for an analysis type that never notifies. */

@@ -16,6 +16,8 @@ final readonly class RaceAmbition
         public ?int $supportedPaceSecPerKm,
         public ?float $gapPct,
         public ?string $confidence,
+        /** @var array{distance_m: int, performed_on: string, activity_id: int|null}|null */
+        public ?array $basis = null,
     ) {
     }
 
@@ -30,7 +32,7 @@ final readonly class RaceAmbition
     }
 
     /**
-     * @return array{state: string, target_time_sec: int, target_pace_sec_per_km: int, supported_time_sec: int|null, supported_pace_sec_per_km: int|null, prescribed_time_sec: int, gap_pct: float|null, evidence_confidence: string|null}
+     * @return array{state: string, target_time_sec: int, target_pace_sec_per_km: int, supported_time_sec: int|null, supported_pace_sec_per_km: int|null, prescribed_time_sec: int, gap_pct: float|null, evidence_confidence: string|null, basis: array{distance_m: int, performed_on: string, activity_id: int|null}|null}
      */
     public function toArray(): array
     {
@@ -43,6 +45,7 @@ final readonly class RaceAmbition
             'prescribed_time_sec' => $this->prescribedTimeSec(),
             'gap_pct' => $this->gapPct,
             'evidence_confidence' => $this->confidence,
+            'basis' => $this->basis,
         ];
     }
 }

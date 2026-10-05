@@ -3,7 +3,7 @@ title: Coaching evidence
 description: The one curated reference list behind the app's coaching rules — each source keyed AuthorYear with grade and access, and a rule table mapping each rule to code and its label (evidence-supported, heuristic or product choice)
 tags: [architecture, run]
 status: living
-reviewed: 2026-10-02
+reviewed: 2026-10-05
 code_refs:
   - app/Services/Run/Metrics/TrainingPaceCalculator.php
   - app/Services/Run/Metrics/VdotEstimator.php
@@ -30,6 +30,9 @@ code_refs:
   - app/Services/Run/Plan/CoachingReset.php
   - app/Services/Run/Story/Temari.php
   - resources/js/components/settings/HrZonesDisclosure.tsx
+  - app/Services/Run/Metrics/FallOffExponent.php
+  - app/Actions/Run/Metrics/ResolveHardEffortsAction.php
+  - app/Console/Commands/Run/FitnessNotifyImprovementCommand.php
   - resources/js/lib/raceGoal.ts
 ---
 
@@ -45,7 +48,7 @@ ADRs, feature notes and code docblocks cite a source here as `[[coaching-evidenc
 
 | App rule | Code | Label | Sources |
 |---|---|---|---|
-| Fitness is a VDOT fitted to race time with Daniels' sustainable-fraction curve; the same model turns a VDOT back into a race time | [VdotEstimator.php:481](app/Services/Run/Metrics/VdotEstimator.php#L481), [VdotEstimator.php:498](app/Services/Run/Metrics/VdotEstimator.php#L498), [VdotEstimator.php:505](app/Services/Run/Metrics/VdotEstimator.php#L505) | heuristic | [[#DanielsGilbert1979]], [[#OficialCasado2025]] |
+| Fitness is a VDOT fitted to race time with Daniels' sustainable-fraction curve; the same model turns a VDOT back into a race time | [VdotEstimator.php:702](app/Services/Run/Metrics/VdotEstimator.php#L702), [VdotEstimator.php:719](app/Services/Run/Metrics/VdotEstimator.php#L719), [VdotEstimator.php:726](app/Services/Run/Metrics/VdotEstimator.php#L726) | heuristic | [[#DanielsGilbert1979]], [[#OficialCasado2025]] |
 | The marathon guide pace is the athlete's marathon race-equivalent pace | [TrainingPaceCalculator.php:17](app/Services/Run/Metrics/TrainingPaceCalculator.php#L17) | heuristic | [[#DanielsGilbert1979]] |
 | Marathon pace is slower than threshold pace | [TrainingPaceCalculator.php:57](app/Services/Run/Metrics/TrainingPaceCalculator.php#L57) | evidence-supported | [[#SmythMunizPumares2020]], [[#Jones2021]] |
 | The threshold guide pace is the pace the athlete could race for an hour | [TrainingPaceCalculator.php:19](app/Services/Run/Metrics/TrainingPaceCalculator.php#L19) | heuristic | [[#DanielsGilbert1979]], [[#Jones2010]] |
@@ -69,6 +72,13 @@ ADRs, feature notes and code docblocks cite a source here as `[[coaching-evidenc
 | Deleting a run re-grades its day from the surviving runs in either direction; an excused day keeps its verdict | [ComplianceScorer.php:321](app/Services/Run/Plan/ComplianceScorer.php#L321) | product choice | — |
 | After a marathon-class race (30 km or more run), 14 days carry no quality and the first full week after race day runs at the deload multiplier | [PostRaceRecovery.php:28](app/Services/Run/Plan/PostRaceRecovery.php#L28), [PlanInputsGatherer.php:127](app/Services/Run/Plan/PlanInputsGatherer.php#L127), [Periodizer.php:471](app/Services/Run/Plan/Periodizer.php#L471), [Periodizer.php:771](app/Services/Run/Plan/Periodizer.php#L771) | evidence-supported | [[#Sherman1984]], [[#Warhol1985]], [[#MartinezNavarro2021]] |
 | After a race of over 15 km, 7 days carry no quality; after 15 km or less, 3 days; the 30 km and 15 km class thresholds are conventions (the research found no half-marathon or shorter recovery timelines) | [PostRaceRecovery.php:17](app/Services/Run/Plan/PostRaceRecovery.php#L17), [PostRaceRecovery.php:19](app/Services/Run/Plan/PostRaceRecovery.php#L19), [PostRaceRecovery.php:28](app/Services/Run/Plan/PostRaceRecovery.php#L28) | heuristic | — |
+| The supported VDOT is read at the race distance (the goal race, or 10K) from whole-run hard efforts of the last 16 weeks, newest per ±10% band; nothing in 16 weeks falls back to the newest older effort, labelled stale | [VdotEstimator.php:75](app/Services/Run/Metrics/VdotEstimator.php#L75), [VdotEstimator.php:79](app/Services/Run/Metrics/VdotEstimator.php#L79), [VdotEstimator.php:299](app/Services/Run/Metrics/VdotEstimator.php#L299) | evidence-supported (window), heuristic (fallback) | [[#SmythMunizPumares2020]], [[#EmigPeltonen2020]], [[#Coyle1984]] |
+| An unconfirmed hard effort is a distance record covering essentially the whole run; embedded segments, the Strava workout tag and heart rate never qualify a run | [ResolveHardEffortsAction.php:47](app/Actions/Run/Metrics/ResolveHardEffortsAction.php#L47) | heuristic | [[#MolinaGarcia2022]] |
+| Efforts bracketing the race distance are log-interpolated, otherwise the closest sets it; each projection is the slower of the VDOT equivalence and a power law with the athlete's fall-off | [VdotEstimator.php:347](app/Services/Run/Metrics/VdotEstimator.php#L347), [VdotEstimator.php:377](app/Services/Run/Metrics/VdotEstimator.php#L377) | evidence-supported | [[#EmigPeltonen2020]], [[#BlytheKiraly2016]], [[#VickersVertosick2016]], [[#Riegel1981]] |
+| The personal fall-off k is fitted within an 8-week cluster spanning at least 1.5× in distance, clamped to [1.06, 1.15], defaulting to 1.08 up to 10K, 1.10 to the half and 1.15 beyond | [FallOffExponent.php:55](app/Services/Run/Metrics/FallOffExponent.php#L55), [FallOffExponent.php:40](app/Services/Run/Metrics/FallOffExponent.php#L40) | heuristic | [[#BlytheKiraly2016]], [[#VickersVertosick2016]], [[#Riegel1981]] |
+| A recent training run of at least the race distance floors the supported time; it never sets one alone, and heart rate never becomes a time | [VdotEstimator.php:392](app/Services/Run/Metrics/VdotEstimator.php#L392) | evidence-supported | [[#SmythMunizPumares2020]], [[#Hunter2023]], [[#MolinaGarcia2022]] |
+| A rise resting on unconfirmed records lifts the supported VDOT by at most 1.0 a week from the anchor's capture; confirmed rises and drops apply at once | [VdotEstimator.php:226](app/Services/Run/Metrics/VdotEstimator.php#L226) | heuristic | — |
+| An improvement of at least 0.5 VDOT is noted at most once a week; the Race page and Trends name the effort behind the supported time, and never ask the athlete to vouch for a run | [FitnessNotifyImprovementCommand.php:22](app/Console/Commands/Run/FitnessNotifyImprovementCommand.php#L22), [raceGoal.ts:206](resources/js/lib/raceGoal.ts#L206) | product choice | — |
 | A target backed by evidence covering under half the race distance is `low_evidence`, and the prescribed race time is the slower of target and supported | [RaceAmbitionAssessor.php:44](app/Services/Run/Plan/RaceAmbitionAssessor.php#L44), [RaceAmbition.php:22](app/Services/Run/Plan/RaceAmbition.php#L22) | evidence-supported | [[#VickersVertosick2016]], [[#Keogh2019]], [[#OficialCasado2025]], [[#BlytheKiraly2016]], [[#Riegel1981]] |
 | The 3% and 6% ambition bands against supported race time | [RaceAmbitionAssessor.php:17](app/Services/Run/Plan/RaceAmbitionAssessor.php#L17), [RaceAmbitionAssessor.php:19](app/Services/Run/Plan/RaceAmbitionAssessor.php#L19) | heuristic | — |
 | A Riegel projection slower than the goal adds no quality session; the projection is display only, with its fitted exponent floored at 1.0 and efforts under 3.5 min excluded | [PlanAdapter.php:148](app/Services/Run/Plan/PlanAdapter.php#L148), [RiegelProjector.php:52](app/Services/Run/Metrics/RiegelProjector.php#L52), [RiegelProjector.php:57](app/Services/Run/Metrics/RiegelProjector.php#L57) | evidence-supported | [[#Riegel1981]], [[#BlytheKiraly2016]], [[#VickersVertosick2016]] |
@@ -91,7 +101,7 @@ Daniels J, Gilbert J. *Oxygen Power: Performance Tables for Distance Runners.* S
 Oficial-Casado F, Priego-Quesada JI, Pérez-Soriano P. Performance prediction equation for the Valencia Marathon based on time and pacing in the half marathon. *Front Physiol* 2025;16:1718298. https://doi.org/10.3389/fphys.2025.1718298. The best independent test of VDOT found: marathon-from-half accuracy similar to a fitted regression (MAE ~5.9%), better for sub-3-hour runners, worse for slower ones. Grade COH · access ABS.
 
 ### SmythMunizPumares2020
-Smyth B, Muniz-Pumares D. Calculation of critical speed from raw training data in recreational marathon runners. *Med Sci Sports Exerc* 2020;52(12):2637–2645. https://doi.org/10.1249/MSS.0000000000002412. Recreational marathoners raced at ~85% of critical speed on average. Grade COH · access ABS.
+Smyth B, Muniz-Pumares D. Calculation of critical speed from raw training data in recreational marathon runners. *Med Sci Sports Exerc* 2020;52(12):2637–2645. https://doi.org/10.1249/MSS.0000000000002412. Recreational marathoners raced at ~85% of critical speed on average. Critical speed came from each runner's best training efforts of 400 m to 5 km in the 16 weeks before the race, weighted equally, and predicted marathon time within 7.7%. Grade COH · access ABS.
 
 ### Jones2021
 Jones AM, Kirby BS, Clark IE, et al. Physiological demands of running at 2-hour marathon race pace. *J Appl Physiol* 2021;130(2):369–379. https://doi.org/10.1152/japplphysiol.00647.2020. Even elite marathon pace sits just under critical speed. Grade LAB · access ABS.
@@ -206,3 +216,12 @@ Haddad M, Stylianides G, Djaoui L, Dellal A, Chamari K. Session-RPE method for t
 
 ### Wallace2014
 Wallace LK, Slattery KM, Coutts AJ. A comparison of methods for quantifying training load: relationships between modelled and actual training responses. *Eur J Appl Physiol* 2014;114(1):11–20. https://doi.org/10.1007/s00421-013-2745-1. In seven runners over 15 weeks, session RPE, TRIMP and rTSS loads each fitted the measured performance response moderately to strongly. Grade COH · access ABS. Basis for #1577.
+
+### EmigPeltonen2020
+Emig T, Peltonen J. Human running performance from real-world big data. *Nat Commun* 2020. https://pmc.ncbi.nlm.nih.gov/articles/PMC7538888/ Modelled each runner from all running activities in the 180 days before a marathon; across seasons with three or more races the mean error between model and race time was 2.0%. Grade COH · access FT.
+
+### Hunter2023
+Hunter B, Ledger A, Muniz-Pumares D. Remote determination of critical speed and critical power in recreational runners. *Int J Sports Physiol Perform* 2023;18(12):1449–1456. https://doi.org/10.1123/ijspp.2023-0276. Critical speed from habitual training data did not differ from time trials or a 3-minute all-out test. Grade XS · access ABS.
+
+### MolinaGarcia2022
+Molina-Garcia P, Notbohm HL, Schumann M, et al. Validity of estimating the maximal oxygen consumption by consumer wearables: a systematic review with meta-analysis and expert statement of the INTERLIVE network. *Sports Med* 2022;52(7):1577–1597. https://pubmed.ncbi.nlm.nih.gov/35072942/ Wearable VO2max estimates from heart rate and pace had small group bias but wide individual limits of agreement. Grade MA · access ABS.

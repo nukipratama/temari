@@ -122,3 +122,11 @@ it('applies the bands once the evidence covers at least half the race distance',
     'a 5K covers half a 10K' => [5_000, RaceAmbitionState::Unsupported],
     'a 3K does not' => [3_000, RaceAmbitionState::LowEvidence],
 ]);
+
+it('names the effort the supported time rests on', function (): void {
+    tenKEvidence($this->user, 4200);
+
+    $ambition = $this->assessor->assess($this->user, tenKRace($this->user, 4000));
+
+    expect($ambition->basis)->toBe(['distance_m' => 10_000, 'performed_on' => '2026-09-24', 'activity_id' => null]);
+});

@@ -30,6 +30,7 @@ const RACE: RaceDetails = {
         prescribed_time_sec: 3_000,
         gap_pct: 1.6,
         evidence_confidence: 'confirmed',
+        basis: null,
     },
     support: { mode: 'road', dedicated_preparation: true, limitation: null },
     history: [],
@@ -61,6 +62,33 @@ const PROJECTION = {
 };
 
 describe('Race', () => {
+    it('names the effort the supported time rests on, with no ask to confirm it', () => {
+        render(
+            <Race
+                race={{
+                    ...RACE,
+                    ambition: {
+                        ...RACE.ambition,
+                        evidence_confidence: 'provisional',
+                        basis: {
+                            distance_m: 5_000,
+                            performed_on: '2026-08-26',
+                            activity_id: 42,
+                        },
+                    },
+                }}
+                projection={PROJECTION}
+            />,
+        );
+
+        expect(
+            screen.getByText('based on your 5K on aug 26'),
+        ).toBeInTheDocument();
+        expect(
+            screen.queryByRole('link', { name: 'open the run' }),
+        ).not.toBeInTheDocument();
+    });
+
     it('shows nothing about an AI pause, since it renders no narration', () => {
         setMockPage({ aiPaused: true });
 

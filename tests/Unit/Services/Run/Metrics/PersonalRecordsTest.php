@@ -10,7 +10,7 @@ use App\Models\PersonalRecord;
 use App\Models\User;
 use App\Services\Run\Metrics\PaceFormatter;
 use App\Services\Run\Metrics\PersonalRecords;
-use App\Services\Run\Metrics\TrainingPaceCalculator;
+use Illuminate\Support\Carbon;
 use App\Services\Run\Metrics\VdotEstimator;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
@@ -41,56 +41,12 @@ function evenPerKm(int $count, int $elapsedSec): array
 
     return $rows;
 }
-
-it('interpolates time at distance from splits (no walk-past inflation)', function (): void {
-    // Half-marathon hit mid-run; later walk splits must not inflate the PR.
-    $splits = evenPerKm(21, 480);
-    for ($km = 22; $km <= 25; $km++) {
-        $splits[] = ['km' => $km, 'pace' => '15:00', 'elapsed_sec' => 900, 'distance_m' => 1000];
-    }
-
-    // 21 km × 480s + 97.5m of the slow km 22 ≈ 10167.75s.
-    $secs = $this->records->timeAtDistance($splits, 21097.5);
-
-    expect($secs)->toBeFloat()->toEqualWithDelta(10167.75, 1.0);
-});
-
-it('records the fastest embedded window, not the opening segment, on a negative-split run', function (): void {
-    // Slow first 5 km (400s/km) then a fast closing 5 km (300s/km). The opening
-    // 5 km is 2000s; the genuine best 5 km is the closing window at 1500s.
-    $splits = [
-        ...evenPerKm(5, 400),
-        ...evenPerKm(5, 300),
-    ];
-
-    $secs = $this->records->timeAtDistance($splits, 5000.0);
-
-    expect($secs)->toBeFloat()->toEqualWithDelta(1500.0, 0.01);
-});
-
-it('reads elapsed_sec, so paused seconds count toward the PR like the watch counts them', function (): void {
-    // A paused run: each km took 600s moving but 900s elapsed. Strava's own
-    // moving_time is no longer an input, so the 5 km PR is the elapsed 4500s.
-    $splits = [];
-    for ($km = 1; $km <= 5; $km++) {
-        $splits[] = ['km' => $km, 'pace' => '15:00', 'elapsed_sec' => 900, 'moving_time' => 600, 'distance_m' => 1000];
-    }
-
-    $secs = $this->records->timeAtDistance($splits, 5000.0);
-
-    expect($secs)->toBeFloat()->toEqualWithDelta(4500.0, 0.01);
-});
-
-it('returns null when splits do not reach the target distance', function (): void {
-    expect($this->records->timeAtDistance(evenPerKm(2, 400), 10_000))->toBeNull();
-});
-
 it('inserts a fresh distance PR when none exists', function (): void {
     $user = User::factory()->create();
     $activity = Activity::factory()->for($user)->create();
     $detail = ActivityDetail::factory()->for($activity)->create([
-        'distance' => 6000,
-        'stream_summary' => ['per_km' => evenPerKm(6, 380)],
+        'distance' => 5000,
+        'stream_summary' => ['per_km' => evenPerKm(5, 380)],
     ]);
 
     $broken = $this->records->detectAndStore($activity, $detail);
@@ -103,8 +59,9 @@ it('inserts a fresh distance PR when none exists', function (): void {
         ->and(FitnessAnchor::query()->where('user_id', $user->id)->value('source_activity_id'))->toBe($activity->id);
 });
 
-it('preserves the existing guide when a faster activity overwrites the only PR', function (): void {
+it('lifts the guide by at most one VDOT when a faster run overwrites the only PR after the anchor', function (): void {
     $user = User::factory()->create();
+    Carbon::setTestNow('2026-06-01 09:00:00');
     $oldActivity = Activity::factory()->for($user)->create();
     $oldDetail = ActivityDetail::factory()->for($oldActivity)->create([
         'distance' => 5000,
@@ -113,10 +70,9 @@ it('preserves the existing guide when a faster activity overwrites the only PR',
     ]);
     $this->records->detectAndStore($oldActivity, $oldDetail);
     $estimator = app(VdotEstimator::class);
-    $calculator = app(TrainingPaceCalculator::class);
     $before = $estimator->estimate($user);
-    $beforePaces = $calculator->fromVdotResult($before);
 
+    Carbon::setTestNow('2026-09-01 09:00:00');
     $newActivity = Activity::factory()->for($user)->create();
     $newDetail = ActivityDetail::factory()->for($newActivity)->create([
         'distance' => 5000,
@@ -125,22 +81,19 @@ it('preserves the existing guide when a faster activity overwrites the only PR',
     ]);
     $this->records->detectAndStore($newActivity, $newDetail);
     $after = $estimator->estimate($user);
-    $afterPaces = $calculator->fromVdotResult($after);
+    Carbon::setTestNow();
 
     expect(PersonalRecord::query()->where('user_id', $user->id)->where('category', '5km')->value('activity_id'))
         ->toBe($newActivity->id)
-        ->and($after['vdot'])->toBe($before['vdot'])
-        ->and($after['quality_vdot'])->toBe($before['quality_vdot'])
-        ->and($afterPaces['threshold'])->toBe($beforePaces['threshold'])
-        ->and($afterPaces['interval'])->toBe($beforePaces['interval']);
+        ->and($after['vdot'])->toBe(round($before['vdot'] + VdotEstimator::RISE_CAP_VDOT_PER_WEEK, 1));
 });
 
-it('rebuilds a provisional anchor downward when its source activity is deleted', function (): void {
+it('drops the estimate at once when its source activity is deleted', function (): void {
     $user = User::factory()->create();
     $fastActivity = Activity::factory()->for($user)->create();
     $fastDetail = ActivityDetail::factory()->for($fastActivity)->create([
         'distance' => 5000,
-        'start_date_local' => '2026-06-01 07:00:00',
+        'start_date_local' => now()->subWeeks(4),
         'stream_summary' => ['per_km' => evenPerKm(5, 300)],
     ]);
     $this->records->detectAndStore($fastActivity, $fastDetail);
@@ -149,7 +102,7 @@ it('rebuilds a provisional anchor downward when its source activity is deleted',
     $survivingActivity = Activity::factory()->for($user)->create();
     $survivingDetail = ActivityDetail::factory()->for($survivingActivity)->create([
         'distance' => 5000,
-        'start_date_local' => '2026-07-01 07:00:00',
+        'start_date_local' => now()->subWeeks(5),
         'stream_summary' => ['per_km' => evenPerKm(5, 420)],
     ]);
     $this->records->detectAndStore($survivingActivity, $survivingDetail);
@@ -157,18 +110,17 @@ it('rebuilds a provisional anchor downward when its source activity is deleted',
     $fastActivity->delete();
     $this->records->rebuildForUser($user);
 
-    $anchor = FitnessAnchor::query()->where('user_id', $user->id)->firstOrFail();
-    expect($anchor->source_activity_id)->toBe($survivingActivity->id)
-        ->and($anchor->vdot)->toBeLessThan($fastVdot)
-        ->and(app(VdotEstimator::class)->estimate($user)['vdot'])->toBe($anchor->vdot);
+    $estimate = app(VdotEstimator::class)->estimate($user);
+    expect($estimate['source_activity_id'])->toBe($survivingActivity->id)
+        ->and($estimate['vdot'])->toBeLessThan($fastVdot);
 });
 
-it('invalidates a corrected source activity and lowers the provisional anchor', function (): void {
+it('lowers the estimate when a corrected source activity is rebuilt', function (): void {
     $user = User::factory()->create();
     $activity = Activity::factory()->for($user)->create();
     $detail = ActivityDetail::factory()->for($activity)->create([
         'distance' => 5000,
-        'start_date_local' => '2026-06-01 07:00:00',
+        'start_date_local' => now()->subWeeks(2),
         'stream_summary' => ['per_km' => evenPerKm(5, 300)],
     ]);
     $this->records->detectAndStore($activity, $detail);
@@ -178,32 +130,27 @@ it('invalidates a corrected source activity and lowers the provisional anchor', 
     $this->records->rebuildForUser($user);
 
     $estimate = app(VdotEstimator::class)->estimate($user);
-    expect(FitnessAnchor::query()->where('user_id', $user->id)->value('source_value_sec'))->toBe(2100.0)
+    expect($estimate['source_value_sec'])->toBe(2100.0)
         ->and($estimate['vdot'])->toBeLessThan($fastVdot);
 });
 
-it('drops a quality source after its activity is deleted while keeping the base anchor', function (): void {
+it('drops a quality source after its activity is deleted', function (): void {
     $user = User::factory()->create();
     $half = Activity::factory()->for($user)->create();
     ActivityDetail::factory()->for($half)->create([
         'distance' => 21_200,
-        'start_date_local' => '2026-05-01 07:00:00',
+        'start_date_local' => now()->subWeeks(14),
         'stream_summary' => ['per_km' => evenPerKm(21, 420), 'partial_split' => ['distance_m' => 200, 'pace' => '7:00']],
     ]);
     $fiveK = Activity::factory()->for($user)->create();
     ActivityDetail::factory()->for($fiveK)->create([
-        'distance' => 5000,
-        'start_date_local' => '2026-09-01 07:00:00',
-        'stream_summary' => ['per_km' => evenPerKm(5, 335)],
+        'distance' => 12_000,
+        'elapsed_time' => 5_875,
+        'start_date_local' => now()->subWeeks(3),
+        'stream_summary' => ['per_km' => [...evenPerKm(5, 335), ...evenPerKm(7, 600)]],
     ]);
-    PersonalRecord::factory()->for($user)->create([
-        'activity_id' => $half->id, 'category' => 'half_marathon', 'value_sec' => 8860.95, 'set_at' => '2026-05-01',
-    ]);
-    PersonalRecord::factory()->for($user)->create([
-        'activity_id' => $fiveK->id, 'category' => '5km', 'value_sec' => 1675, 'set_at' => '2026-09-01',
-    ]);
+    $this->records->rebuildForUser($user);
     $estimator = app(VdotEstimator::class);
-    $estimator->captureProvisionalAnchor($user);
     $before = $estimator->estimate($user);
 
     $fiveK->delete();

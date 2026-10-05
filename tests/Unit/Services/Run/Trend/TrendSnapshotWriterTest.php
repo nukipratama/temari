@@ -27,6 +27,7 @@ it('writes a row with vdot and pace-variability computed from real data', functi
         'value_sec' => 1200.0,
         'set_at' => Carbon::today(),
     ]);
+    seedConfirmedEffort($user, 5000, 1200, Carbon::today());
     $activity = Activity::factory()->for($user)->create();
     ActivityDetail::factory()->for($activity)->create([
         'start_date_local' => Carbon::today(),

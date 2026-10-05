@@ -47,6 +47,7 @@ it('requires six recent consistent running weeks and credible paces for two-run 
     ]));
     expect($this->gatherer->forUser($user, Carbon::today())->twoRunQualityEligible)->toBeFalse();
     PersonalRecord::factory()->for($user)->create(['category' => '10km', 'value_sec' => 3000, 'set_at' => Carbon::today()]);
+    seedConfirmedEffort($user, 10_000, 3000, Carbon::today());
     app(VdotEstimator::class)->forget($user);
     expect($this->gatherer->forUser($user, Carbon::today())->twoRunQualityEligible)->toBeTrue();
     $weeks->last()->update(['runs' => 1]);

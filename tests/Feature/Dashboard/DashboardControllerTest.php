@@ -392,8 +392,9 @@ it('paints Home inside its query budget', function (): void {
         $activity = Activity::factory()->for($user)->analyzed()->create();
         ActivityDetail::factory()->for($activity)->create([
             'start_date_local' => Carbon::today()->subDays($daysAgo),
-            'distance' => 8000.0,
+            'distance' => $daysAgo === 3 ? 10_000.0 : 8000.0,
             'trimp_edwards' => 70.0,
+            ...($daysAgo === 3 ? ['stream_summary' => ['per_km' => array_fill(0, 10, ['pace' => '6:00', 'elapsed_sec' => 360, 'distance_m' => 1000])]] : []),
         ]);
     }
     WeeklySnapshot::factory()->for($user)->create([
@@ -441,7 +442,9 @@ it('paints Home inside its query budget', function (): void {
     // whether restDayEasePace's deferred prop is worth adding at all.
     // 24: BriefingContext::prescribedKmToDate reads this week's planned sessions.
     // 25: Home asks about a passed race still waiting on its outcome.
-    expect($queries)->toBeLessThanOrEqual(25);
+    // 27: the supported VDOT reads the athlete's hard efforts, and with one on file
+    // also reads the quality sessions that corroborate it.
+    expect($queries)->toBeLessThanOrEqual(27);
     expect($fitnessQueries)->toBe(['performance_evidence' => 1, 'fitness_anchors' => 1]);
     expect($readinessQueries)->toBe(['stress' => 1, 'feedback' => 1]);
 

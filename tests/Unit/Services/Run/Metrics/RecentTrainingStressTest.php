@@ -122,6 +122,7 @@ it('recognises sustained threshold laps without heart-rate data', function (): v
         'value_sec' => 1200,
         'set_at' => '2026-09-01',
     ]);
+    seedConfirmedEffort($user, 5000, 1200, Carbon::parse('2026-09-01'));
     $thresholdPace = app(TrainingPaceCalculator::class)->fromVdotResult(
         app(VdotEstimator::class)->estimate($user, $asOf),
     )['threshold'];
@@ -157,6 +158,7 @@ it('recognises threshold grade-adjusted pace when heart-rate data is absent', fu
         'value_sec' => 1200,
         'set_at' => '2026-09-01',
     ]);
+    seedConfirmedEffort($user, 5000, 1200, Carbon::parse('2026-09-01'));
     $thresholdPace = app(TrainingPaceCalculator::class)->fromVdotResult(
         app(VdotEstimator::class)->estimate($user, $asOf),
     )['threshold'];

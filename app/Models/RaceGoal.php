@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Actions\Run\Plan\ResolveActiveRaceAction;
+use App\Services\Run\Metrics\VdotEstimator;
 use App\Enums\RaceOutcome;
 use App\Support\SharedPropCacheKey;
 use Database\Factories\RaceGoalFactory;
@@ -63,6 +64,7 @@ class RaceGoal extends Model
         $bust = function (RaceGoal $race): void {
             SharedPropCacheKey::ActiveRace->forget($race->user_id);
             app(ResolveActiveRaceAction::class)->forget($race->user_id);
+            app(VdotEstimator::class)->forget($race->user);
         };
 
         static::saved($bust);

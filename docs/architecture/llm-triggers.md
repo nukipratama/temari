@@ -331,7 +331,7 @@ athlete at all ([[app-wide-ceiling-above-the-per-athlete-one]]). See
 
 Three more limits:
 
-- **Demo exclusion.** [`notDemo()`](../../app/Models/User.php#L120) filters the AI kickoff commands
+- **Demo exclusion.** [`notDemo()`](../../app/Models/User.php#L137) filters the AI kickoff commands
   and every `SelfHealer` sweep, and
   [`shouldServeRuleBased()`](../../app/Services/AI/NarrationGate.php#L96) serves a demo user's
   manual trigger from the filler *before* any pause check — so the public demo spends nothing while

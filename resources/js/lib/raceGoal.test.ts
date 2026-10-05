@@ -13,6 +13,8 @@ import {
     MAX_GOAL_TIME_SEC,
     MIN_GOAL_TIME_SEC,
     ON_GOAL_TOLERANCE_SEC,
+    raceDistanceLabel,
+    supportedBasisLine,
     supportedEyebrow,
 } from './raceGoal';
 
@@ -167,6 +169,7 @@ describe('ambitionNote', () => {
         prescribed_time_sec: 3_000,
         gap_pct: 1.6,
         evidence_confidence: 'confirmed',
+        basis: null,
     };
     const support: RaceSupport = {
         mode: 'road',
@@ -215,6 +218,7 @@ describe('supportedEyebrow', () => {
         prescribed_time_sec: 3_000,
         gap_pct: -0.3,
         evidence_confidence: 'confirmed',
+        basis: null,
     };
 
     it('reads on track for only in the band with the supported time not behind', () => {
@@ -231,5 +235,47 @@ describe('supportedEyebrow', () => {
         expect(supportedEyebrow({ ...base, state: 'low_evidence' })).toBe(
             'supported',
         );
+    });
+});
+
+describe('raceDistanceLabel', () => {
+    it.each([
+        [5_000, '5K'],
+        [10_000, '10K'],
+        [15_000, '15K'],
+        [21_098, 'half marathon'],
+        [42_195, 'marathon'],
+        [7_300, '7.3 km'],
+    ])('names %d m as %s', (meters, label) => {
+        expect(raceDistanceLabel(meters)).toBe(label);
+    });
+});
+
+describe('supportedBasisLine', () => {
+    const ambition: RaceAmbition = {
+        state: 'on_track',
+        target_time_sec: 3_480,
+        target_pace_sec_per_km: 348,
+        supported_time_sec: 3_570,
+        supported_pace_sec_per_km: 357,
+        prescribed_time_sec: 3_480,
+        gap_pct: 2.5,
+        evidence_confidence: 'provisional',
+        basis: {
+            distance_m: 5_000,
+            performed_on: '2026-08-26',
+            activity_id: 7,
+        },
+    };
+
+    it('names the effort the supported time rests on', () => {
+        expect(supportedBasisLine(ambition)).toBe('based on your 5K on aug 26');
+    });
+
+    it('says nothing without a supported time or a basis', () => {
+        expect(
+            supportedBasisLine({ ...ambition, supported_time_sec: null }),
+        ).toBeNull();
+        expect(supportedBasisLine({ ...ambition, basis: null })).toBeNull();
     });
 });

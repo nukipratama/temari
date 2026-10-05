@@ -4,16 +4,20 @@ declare(strict_types=1);
 
 namespace App\Services\Run\Metrics;
 
-use App\Models\PersonalRecord;
-use App\Models\PerformanceEvidence;
-use App\Models\PlannedSession;
+use App\Actions\Run\Metrics\ResolveDistanceRecordsAction;
+use App\Actions\Run\Metrics\ResolveHardEffortsAction;
+use App\Actions\Run\Plan\ResolveActiveRaceAction;
 use App\Enums\IntentVerdict;
+use App\Enums\RaceSupport;
 use App\Enums\SessionType;
 use App\Models\FitnessAnchor;
+use App\Models\PerformanceEvidence;
+use App\Models\PersonalRecord;
+use App\Models\PlannedSession;
+use App\Models\RaceGoal;
 use App\Models\User;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
-use App\Actions\Run\Metrics\ResolveDistanceRecordsAction;
 
 /**
  * Daniels' VDOT formula (1998 tables):
@@ -23,12 +27,22 @@ use App\Actions\Run\Metrics\ResolveDistanceRecordsAction;
  *   VDOT  = VO2 / pmax
  * Skipping pmax underestimates marathon VDOT by ~10 points.
  *
- * @phpstan-type VdotEstimate array{vdot: float, quality_vdot: float, source_activity_id?: int|null, source_value_sec?: float|null, source_category: string, set_at: Carbon, stale: bool, quality_source: array{source_category: string, set_at: Carbon, source_activity_id?: int|null, source_value_sec?: float|null, evidence_kind?: string, distance_m?: int}|null, confidence: string, evidence_id: int|null, evidence_kind?: string|null, distance_m?: int|null, corroborating_quality_count: int}
+ * The supported VDOT is read at the race distance D (the active race, or 10K)
+ * from the athlete's recent whole-run hard efforts, projected with their own
+ * fall-off between distances. See docs/decisions/supported-race-time-from-recent-efforts.md.
+ *
+ * @phpstan-type VdotEstimate array{vdot: float, quality_vdot: float, source_activity_id?: int|null, source_value_sec?: float|null, source_category: string, set_at: Carbon, stale: bool, quality_source: array{source_category: string, set_at: Carbon, source_activity_id?: int|null, source_value_sec?: float|null, evidence_kind?: string, distance_m?: int}|null, confidence: string, evidence_id: int|null, evidence_kind?: string|null, distance_m?: int|null, corroborating_quality_count: int, race_distance_m?: float, longest_source_m?: int|null}
+ * @phpstan-import-type TrainingRun from ResolveHardEffortsAction
+ * @phpstan-type Effort array{date: Carbon, known_on: Carbon, distance_m: float, time_sec: float, activity_id: int|null, evidence: PerformanceEvidence|null, basis: string}
+ * @phpstan-type Projection array{vdot: float, time_sec: float, k: float, sources: non-empty-list<Effort>, dominant: Effort, stale: bool, confirmed_only: bool, floor: TrainingRun|null}
  */
 class VdotEstimator
 {
     /** @var array<int, array<string, VdotEstimate|null>> */
     private array $estimates = [];
+
+    /** @var array<int, array<string, Projection|null>> */
+    private array $projections = [];
 
     /** @var array<int, Collection<int, PerformanceEvidence>> */
     private array $evidenceByUser = [];
@@ -36,11 +50,16 @@ class VdotEstimator
     /** @var array<int, FitnessAnchor|null> */
     private array $anchorsByUser = [];
 
+    /** @var array<int, Collection<int, RaceGoal>> */
+    private array $racesByUser = [];
+
     /** @var array<int, Collection<int, PlannedSession>> */
     private array $qualitySessionsByUser = [];
 
     public function __construct(
         private readonly ResolveDistanceRecordsAction $distanceRecords,
+        private readonly ResolveHardEffortsAction $hardEfforts,
+        private readonly ResolveActiveRaceAction $activeRace,
     ) {
     }
 
@@ -53,19 +72,17 @@ class VdotEstimator
 
     public const float VO2_COEFFICIENT_C = -4.60;
 
-    /**
-     * A personal record is only ever replaced by a faster one, so it improves but
-     * never ages out on its own. Unbounded, one hard effort from years ago keeps
-     * a permanent veto over every prescribed pace.
-     */
-    public const int RECENT_MONTHS = 12;
+    public const int LEVEL_WEEKS = 16;
+
+    public const int SHAPE_MONTHS = 12;
+
+    public const float DEFAULT_RACE_METERS = 10_000.0;
+
+    public const float RISE_CAP_VDOT_PER_WEEK = 1.0;
 
     /**
      * A record is a floor on what the athlete could do on its own date, never a
-     * ceiling on what they can do now. Taking one minimum across every distance
-     * and every date conflates the two: a hard long effort from months ago
-     * outvotes a recent short one and holds quality paces below what the athlete
-     * demonstrably runs in training. Quality work therefore reads a second
+     * ceiling on what they can do now. Quality work therefore reads a second
      * anchor, restricted to recent short-distance evidence.
      */
     public const int QUALITY_MONTHS = 3;
@@ -76,15 +93,17 @@ class VdotEstimator
      * A record shorter than this is a few minutes of work, and is often a
      * closing surge inside an easy run rather than an effort. It may still
      * refine the quality anchor, since the minimum keeps whichever evidence is
-     * most conservative, but it cannot establish one on its own: an athlete
-     * whose only recent short record is a sprint would otherwise have 30-minute
-     * tempo work prescribed from three minutes of running.
+     * most conservative, but it cannot establish one on its own.
      */
     public const float QUALITY_MIN_METERS = 3_000.0;
+
+    private const int MAX_EVIDENCE_METERS = 42_195;
 
     private const float CONFIDENCE_CONFLICT_PERCENT = 10.0;
 
     private const float COMPARABLE_DISTANCE_PERCENT = 10.0;
+
+    private const string TRAINING_RUN_CATEGORY = 'training_run';
 
     /** @return VdotEstimate|null */
     public function estimate(User $user, ?Carbon $asOf = null): ?array
@@ -101,48 +120,12 @@ class VdotEstimator
     public function forget(User $user): void
     {
         unset($this->estimates[$user->id]);
+        unset($this->projections[$user->id]);
         unset($this->evidenceByUser[$user->id]);
         unset($this->anchorsByUser[$user->id]);
+        unset($this->racesByUser[$user->id]);
         unset($this->qualitySessionsByUser[$user->id]);
-    }
-
-    /** @return VdotEstimate|null */
-    private function estimateAsOf(User $user, Carbon $now): ?array
-    {
-        $confirmed = $this->confirmedEstimate($user, $now);
-        if ($confirmed !== null) {
-            return $confirmed;
-        }
-
-        $anchor = $this->anchorForUser($user);
-        if ($anchor !== null && $anchor->captured_at->lte($now->copy()->endOfDay())) {
-            $stale = $anchor->set_at->lt($now->copy()->subMonths(self::RECENT_MONTHS));
-
-            return [
-                'vdot' => $anchor->vdot,
-                'quality_vdot' => $anchor->quality_vdot,
-                'source_activity_id' => $anchor->source_activity_id,
-                'source_value_sec' => $anchor->source_value_sec,
-                'source_category' => $anchor->source_category,
-                'set_at' => $anchor->set_at,
-                'evidence_kind' => null,
-                'distance_m' => null,
-                'stale' => $stale,
-                'quality_source' => $anchor->quality_source_category === null || $anchor->quality_set_at === null
-                    ? null
-                    : [
-                        'source_category' => $anchor->quality_source_category,
-                        'set_at' => $anchor->quality_set_at,
-                        'source_activity_id' => $anchor->quality_source_activity_id,
-                        'source_value_sec' => $anchor->quality_source_value_sec,
-                    ],
-                'confidence' => $stale ? 'stale' : 'provisional',
-                'evidence_id' => null,
-                'corroborating_quality_count' => $this->corroboratingQualityCount($user, $now),
-            ];
-        }
-
-        return $this->provisionalEstimate($user, $now);
+        $this->hardEfforts->forget($user->id);
     }
 
     public function captureProvisionalAnchor(User $user, ?Carbon $capturedAt = null): void
@@ -152,7 +135,7 @@ class VdotEstimator
         }
 
         $capturedAt ??= Carbon::now();
-        $estimate = $this->provisionalEstimate($user, $capturedAt);
+        $estimate = $this->estimateAsOf($user, $capturedAt);
         if ($estimate === null) {
             return;
         }
@@ -162,8 +145,8 @@ class VdotEstimator
             [
                 'vdot' => $estimate['vdot'],
                 'quality_vdot' => $estimate['quality_vdot'],
-                'source_activity_id' => $estimate['source_activity_id'],
-                'source_value_sec' => $estimate['source_value_sec'],
+                'source_activity_id' => $estimate['source_activity_id'] ?? null,
+                'source_value_sec' => $estimate['source_value_sec'] ?? 0.0,
                 'source_category' => $estimate['source_category'],
                 'set_at' => $estimate['set_at']->toDateString(),
                 'quality_source_activity_id' => $estimate['quality_source']['source_activity_id'] ?? null,
@@ -176,198 +159,440 @@ class VdotEstimator
         $this->forget($user);
     }
 
-    /** @return array{vdot: float, quality_vdot: float, source_activity_id: int|null, source_value_sec: float, source_category: string, set_at: Carbon, stale: bool, quality_source: array{source_category: string, set_at: Carbon, source_activity_id: int|null, source_value_sec: float}|null, confidence: string, evidence_id: null, corroborating_quality_count: int}|null */
-    private function provisionalEstimate(User $user, Carbon $now): ?array
+    /** @return VdotEstimate|null */
+    private function estimateAsOf(User $user, Carbon $now): ?array
     {
-        $prs = ($this->distanceRecords)($user->id);
-        $cutoff = $now->copy()->subMonths(self::RECENT_MONTHS);
-        $qualityCutoff = $now->copy()->subMonths(self::QUALITY_MONTHS);
-        $sustainedPrs = $prs->filter(
-            static fn (PersonalRecord $pr): bool => ($pr->category->distanceMeters() ?? 0) >= self::QUALITY_MIN_METERS,
-        );
-        $asOfPrs = $prs->filter(
-            static fn (PersonalRecord $pr): bool => $pr->set_at->lessThanOrEqualTo($now->copy()->endOfDay()),
-        );
-        $asOfSustainedPrs = $sustainedPrs->filter(
-            static fn (PersonalRecord $pr): bool => $pr->set_at->lessThanOrEqualTo($now->copy()->endOfDay()),
-        );
-
-        if ($asOfSustainedPrs->isEmpty()) {
+        $distance = $this->raceDistance($user, $now);
+        $projection = $this->projection($user, $now, $distance);
+        if ($projection === null) {
             return null;
         }
 
-        $result = $this->lowestVdot($asOfSustainedPrs->filter(
-            static fn (PersonalRecord $pr): bool => $pr->set_at->greaterThanOrEqualTo($cutoff),
-        ));
-        $stale = $result === null;
-        $result ??= $this->lowestVdot($asOfSustainedPrs);
+        $vdot = $this->riseCapped($user, $now, $distance, $projection);
+        $floor = $projection['floor'];
+        $floorBinds = $floor !== null;
 
-        if ($result === null) {
-            return null;
-        }
-
-        $qualityEvidence = $asOfPrs->filter(
-            static fn (PersonalRecord $pr): bool => $pr->set_at->greaterThanOrEqualTo($qualityCutoff)
-                && $pr->category->distanceMeters() !== null
-                && $pr->category->distanceMeters() <= self::QUALITY_MAX_METERS,
-        );
-        $hasSustainedQualityEvidence = $qualityEvidence->contains(
-            static fn (PersonalRecord $pr): bool => ($pr->category->distanceMeters() ?? 0) >= self::QUALITY_MIN_METERS,
-        );
-        $quality = $hasSustainedQualityEvidence ? $this->lowestVdot($qualityEvidence) : null;
-        $qualityVdot = $quality === null ? $result['vdot'] : max($result['vdot'], $quality['vdot']);
-
-        $corroboratingQualityCount = $this->corroboratingQualityCount($user, $now);
-
-        return [
-            ...$result,
-            'quality_vdot' => $qualityVdot,
-            'quality_source' => $quality !== null && $qualityVdot > $result['vdot']
-                ? [
-                    'source_category' => $quality['source_category'],
-                    'set_at' => $quality['set_at'],
-                    'source_activity_id' => $quality['source_activity_id'],
-                    'source_value_sec' => $quality['source_value_sec'],
-                ]
-                : null,
-            'stale' => $stale,
-            'confidence' => $stale ? 'stale' : 'provisional',
-            'evidence_id' => null,
-            'corroborating_quality_count' => $corroboratingQualityCount,
-        ];
-    }
-
-    /** @return array{vdot: float, quality_vdot: float, source_category: string, set_at: Carbon, stale: bool, quality_source: array{source_category: string, set_at: Carbon}|null, confidence: string, evidence_id: int, corroborating_quality_count: int}|null */
-    private function confirmedEstimate(User $user, Carbon $now): ?array
-    {
-        $evidence = $this->evidenceForUser($user)->filter(
-            static fn (PerformanceEvidence $row): bool => $row->performed_on->lessThanOrEqualTo($now->toDateString())
-                && $row->confirmed_at->lessThanOrEqualTo($now->copy()->endOfDay())
-                && $row->distance_m >= 1_000
-                && $row->distance_m <= 42_195,
-        );
-        $candidates = [];
-        foreach ($evidence as $row) {
-            $vdot = $this->vdotFromTimeAndDistance($row->elapsed_time_sec, $row->distance_m);
-            if ($vdot !== null) {
-                $candidates[] = ['vdot' => round($vdot, 1), 'evidence' => $row];
-            }
-        }
-
-        $sustainedCandidates = array_values(array_filter(
-            $candidates,
-            static fn (array $candidate): bool => $candidate['evidence']->distance_m >= self::QUALITY_MIN_METERS,
-        ));
-        if ($sustainedCandidates === []) {
-            return null;
-        }
-
-        $recentCutoff = $now->copy()->subMonths(self::RECENT_MONTHS);
-        $qualityCutoff = $now->copy()->subMonths(self::QUALITY_MONTHS);
-        $recentEvidence = array_values(array_filter(
-            $candidates,
-            static fn (array $candidate): bool => $candidate['evidence']->performed_on->gte($recentCutoff),
-        ));
-        $recentSustainedEvidence = array_values(array_filter(
-            $recentEvidence,
-            static fn (array $candidate): bool => $candidate['evidence']->distance_m >= self::QUALITY_MIN_METERS,
-        ));
-        $anchorPool = $recentSustainedEvidence === [] ? $sustainedCandidates : $recentSustainedEvidence;
-        $anchor = $this->lowestConfirmedCandidate($this->newestComparableCandidates($anchorPool));
-        if ($anchor === null) {
-            return null;
-        }
-
-        $recentQualityEvidence = array_values(array_filter(
-            $recentEvidence,
-            static fn (array $candidate): bool => $candidate['evidence']->performed_on->gte($qualityCutoff)
-                && $candidate['evidence']->distance_m <= self::QUALITY_MAX_METERS,
-        ));
-        $hasSustainedQualityEvidence = array_any(
-            $recentQualityEvidence,
-            static fn (array $candidate): bool => $candidate['evidence']->distance_m >= self::QUALITY_MIN_METERS,
-        );
-        $quality = $hasSustainedQualityEvidence
-            ? $this->lowestConfirmedCandidate($this->newestComparableCandidates($recentQualityEvidence))
-            : null;
-        $qualityVdot = $quality === null ? $anchor['vdot'] : max($anchor['vdot'], $quality['vdot']);
-        $distinctRecentEvidence = $this->newestComparableCandidates($recentSustainedEvidence);
-        $vdots = array_column($distinctRecentEvidence, 'vdot');
-        $conflicting = count($vdots) > 1
-            && (max($vdots) - min($vdots)) / min($vdots) >= self::CONFIDENCE_CONFLICT_PERCENT / 100;
-        $qualitySource = null;
-        if ($quality !== null && $qualityVdot > $anchor['vdot']) {
-            $qualitySource = [
-                'source_category' => 'confirmed_'.$quality['evidence']->kind->value,
-                'set_at' => $quality['evidence']->performed_on,
-                'evidence_kind' => $quality['evidence']->kind->value,
-                'distance_m' => $quality['evidence']->distance_m,
+        $dominant = $projection['dominant'];
+        $evidence = $dominant['evidence'];
+        $source = $floorBinds
+            ? [
+                'source_activity_id' => $floor['activity_id'],
+                'source_value_sec' => $floor['time_sec'],
+                'source_category' => self::TRAINING_RUN_CATEGORY,
+                'set_at' => $floor['date'],
+                'evidence_kind' => null,
+                'distance_m' => (int) round($floor['distance_m']),
+                'evidence_id' => null,
+            ]
+            : [
+                'source_activity_id' => $dominant['activity_id'],
+                'source_value_sec' => $dominant['time_sec'],
+                'source_category' => $evidence === null ? $dominant['basis'] : 'confirmed_'.$evidence->kind->value,
+                'set_at' => $dominant['date'],
+                'evidence_kind' => $evidence?->kind->value,
+                'distance_m' => (int) round($dominant['distance_m']),
+                'evidence_id' => $evidence?->id,
             ];
-        }
+        $confirmedOnly = ! $floorBinds && $projection['confirmed_only'];
+
+        $quality = $this->quality($user, $now);
+        $qualityVdot = $quality === null ? $vdot : max($vdot, $quality['vdot']);
 
         return [
-            'vdot' => $anchor['vdot'],
+            ...$source,
+            'vdot' => $vdot,
             'quality_vdot' => $qualityVdot,
-            'source_category' => 'confirmed_'.$anchor['evidence']->kind->value,
-            'set_at' => $anchor['evidence']->performed_on,
-            'evidence_kind' => $anchor['evidence']->kind->value,
-            'distance_m' => $anchor['evidence']->distance_m,
-            'stale' => $recentSustainedEvidence === [],
-            'confidence' => $recentSustainedEvidence === [] ? 'stale' : ($conflicting ? 'conflicting' : 'confirmed'),
-            'evidence_id' => $anchor['evidence']->id,
+            'quality_source' => $quality !== null && $qualityVdot > $vdot ? $quality['source'] : null,
+            'stale' => $projection['stale'],
+            'confidence' => match (true) {
+                $projection['stale'] => 'stale',
+                ! $confirmedOnly => 'provisional',
+                $this->confirmedConflict($user, $now) => 'conflicting',
+                default => 'confirmed',
+            },
             'corroborating_quality_count' => $this->corroboratingQualityCount($user, $now),
-            'quality_source' => $qualitySource,
+            'race_distance_m' => $distance,
+            'longest_source_m' => (int) round(max(array_column($projection['sources'], 'distance_m'))),
         ];
     }
 
     /**
-     * @param list<array{vdot: float, evidence: PerformanceEvidence}> $candidates
-     * @return array{vdot: float, evidence: PerformanceEvidence}|null
+     * The supported VDOT with unconfirmed rises replayed from the anchor's
+     * capture: each step lifts it by at most {@see self::RISE_CAP_VDOT_PER_WEEK}
+     * per started week of the rise, while confirmed efforts and drops apply at once.
+     *
+     * @param Projection $projection
      */
-    private function lowestConfirmedCandidate(array $candidates): ?array
+    private function riseCapped(User $user, Carbon $now, float $distance, array $projection): float
     {
-        $lowest = null;
-        foreach ($candidates as $candidate) {
-            if ($lowest === null || $candidate['vdot'] < $lowest['vdot']) {
-                $lowest = $candidate;
+        $anchor = $this->anchorForUser($user);
+        if ($anchor === null || $anchor->captured_at->gt($now->copy()->endOfDay())) {
+            return $projection['vdot'];
+        }
+
+        $capture = $anchor->captured_at->copy()->startOfDay();
+        $today = $now->copy()->startOfDay();
+        $eventDates = [];
+        foreach ($this->efforts($user, $now) as $effort) {
+            if ($effort['known_on']->gt($capture) && $effort['known_on']->lt($today)) {
+                $eventDates[$effort['known_on']->toDateString()] = $effort['known_on'];
+            }
+        }
+        foreach (($this->hardEfforts)($user->id)['runs'] as $run) {
+            $day = $run['date']->copy()->startOfDay();
+            if ($run['distance_m'] >= $distance && $day->gt($capture) && $day->lt($today)) {
+                $eventDates[$day->toDateString()] = $day;
+            }
+        }
+        ksort($eventDates);
+
+        $capped = null;
+        $riseStart = null;
+        $riseBase = 0.0;
+        $steps = [$capture, ...array_values($eventDates), $today];
+        foreach ($steps as $step) {
+            $target = $step->equalTo($today) ? $projection : $this->projection($user, $step, $distance);
+            if ($target === null) {
+                continue;
+            }
+            if ($capped === null || $target['vdot'] <= $capped || $target['confirmed_only']) {
+                $capped = $target['vdot'];
+                $riseStart = null;
+
+                continue;
+            }
+            if ($riseStart === null) {
+                $riseStart = $step;
+                $riseBase = $capped;
+            }
+            $weeks = intdiv((int) $riseStart->diffInDays($step), 7);
+            $capped = min($target['vdot'], round($riseBase + self::RISE_CAP_VDOT_PER_WEEK * ($weeks + 1), 1));
+            if ($capped >= $target['vdot']) {
+                $riseStart = null;
             }
         }
 
-        return $lowest;
+        return $capped ?? $projection['vdot'];
     }
 
-    /** @param list<array{vdot: float, evidence: PerformanceEvidence}> $candidates
-     * @return list<array{vdot: float, evidence: PerformanceEvidence}>
-     */
-    private function newestComparableCandidates(array $candidates): array
+    /** @return Projection|null */
+    private function projection(User $user, Carbon $now, float $distance): ?array
     {
-        $groups = [];
-        foreach ($candidates as $candidate) {
-            $distance = $candidate['evidence']->distance_m;
-            $matched = false;
-            foreach ($groups as &$group) {
-                foreach ($group['members'] as $member) {
-                    $memberDistance = $member['evidence']->distance_m;
-                    if (abs($distance - $memberDistance) / min($distance, $memberDistance)
-                        <= self::COMPARABLE_DISTANCE_PERCENT / 100) {
-                        $group['members'][] = $candidate;
-                        $matched = true;
-                        break;
-                    }
-                }
-                unset($member);
-                if ($matched) {
-                    break;
-                }
-            }
-            unset($group);
+        $key = $now->toDateString().'@'.$distance;
+        if (array_key_exists($key, $this->projections[$user->id] ?? [])) {
+            return $this->projections[$user->id][$key];
+        }
 
-            if (! $matched) {
-                $groups[] = ['representative' => $candidate, 'members' => [$candidate]];
+        $projection = $this->project($this->efforts($user, $now), $now, $distance);
+        $floor = $projection === null ? null : $this->trainingFloor($user, $now, $distance, $projection['k']);
+        if ($projection !== null && $floor !== null && $floor['vdot'] > $projection['vdot']) {
+            $projection = [...$projection, 'vdot' => $floor['vdot'], 'floor' => $floor['run'], 'confirmed_only' => false];
+        }
+
+        return $this->projections[$user->id][$key] = $projection;
+    }
+
+    /**
+     * @param list<Effort> $efforts newest first
+     * @return Projection|null
+     */
+    private function project(array $efforts, Carbon $now, float $distance): ?array
+    {
+        if ($efforts === []) {
+            return null;
+        }
+
+        $levelFrom = $now->copy()->startOfDay()->subWeeks(self::LEVEL_WEEKS);
+        $level = array_values(array_filter($efforts, static fn (array $effort): bool => $effort['date']->gte($levelFrom)));
+        $stale = $level === [];
+        $pool = $level === [] ? [$efforts[0]] : $this->newestPerBand($level);
+
+        $shapeFrom = $now->copy()->startOfDay()->subMonths(self::SHAPE_MONTHS);
+        $k = FallOffExponent::forDistance(
+            array_values(array_filter($efforts, static fn (array $effort): bool => $effort['date']->gte($shapeFrom))),
+            $distance,
+        );
+
+        $weighted = $this->select($pool, $distance);
+        $logTime = 0.0;
+        foreach ($weighted as $source) {
+            $logTime += $source['weight'] * log($this->projectedTime($source['effort'], $distance, $k));
+        }
+        $time = exp($logTime);
+        $vdot = $this->vdotFromTimeAndDistance($time, $distance);
+        if ($vdot === null) {
+            return null;
+        }
+        $sources = array_map(static fn (array $source): array => $source['effort'], $weighted);
+
+        return [
+            'vdot' => round($vdot, 1),
+            'time_sec' => $time,
+            'k' => $k,
+            'sources' => $sources,
+            'dominant' => $weighted[0]['effort'],
+            'stale' => $stale,
+            'confirmed_only' => ! array_any($sources, static fn (array $effort): bool => $effort['evidence'] === null),
+            'floor' => null,
+        ];
+    }
+
+    /**
+     * The two efforts bracketing the race distance, weighted by how close each
+     * sits to it in log distance, or the single closest effort; the heavier first.
+     *
+     * @param non-empty-list<Effort> $pool
+     * @return non-empty-list<array{effort: Effort, weight: float}>
+     */
+    private function select(array $pool, float $distance): array
+    {
+        $below = null;
+        $above = null;
+        $closest = $pool[0];
+        foreach ($pool as $effort) {
+            if (abs(log($effort['distance_m'] / $distance)) < abs(log($closest['distance_m'] / $distance))) {
+                $closest = $effort;
+            }
+            if ($effort['distance_m'] < $distance && ($below === null || $effort['distance_m'] > $below['distance_m'])) {
+                $below = $effort;
+            }
+            if ($effort['distance_m'] > $distance && ($above === null || $effort['distance_m'] < $above['distance_m'])) {
+                $above = $effort;
             }
         }
 
-        return array_map(static fn (array $group): array => $group['representative'], $groups);
+        if ($below === null || $above === null || $closest['distance_m'] === $distance) {
+            return [['effort' => $closest, 'weight' => 1.0]];
+        }
+
+        $belowGap = log($distance / $below['distance_m']);
+        $aboveGap = log($above['distance_m'] / $distance);
+        $belowWeight = $aboveGap / ($belowGap + $aboveGap);
+        $pair = [['effort' => $below, 'weight' => $belowWeight], ['effort' => $above, 'weight' => 1 - $belowWeight]];
+
+        return $belowWeight >= 0.5 ? $pair : array_reverse($pair);
+    }
+
+    /** @param Effort $effort */
+    private function projectedTime(array $effort, float $distance, float $k): float
+    {
+        $powerLaw = $effort['time_sec'] * ($distance / $effort['distance_m']) ** $k;
+        $vdot = $this->vdotFromTimeAndDistance($effort['time_sec'], $effort['distance_m']);
+        $equivalent = $vdot === null ? null : $this->raceTimeForVdot($vdot, $distance);
+
+        return max($powerLaw, $equivalent ?? $powerLaw);
+    }
+
+    /**
+     * The fastest recent run of at least the race distance, scaled to it: a
+     * floor under the supported VDOT, never a source that sets it on its own.
+     *
+     * @return array{vdot: float, run: TrainingRun}|null
+     */
+    private function trainingFloor(User $user, Carbon $now, float $distance, float $k): ?array
+    {
+        $from = $now->copy()->startOfDay()->subWeeks(self::LEVEL_WEEKS);
+        $until = $now->copy()->endOfDay();
+        $confirmed = $this->evidenceForUser($user)->pluck('activity_id')->filter()->flip()->all();
+        $best = null;
+        $bestTime = null;
+        foreach (($this->hardEfforts)($user->id)['runs'] as $run) {
+            if ($run['distance_m'] < $distance || isset($confirmed[$run['activity_id']]) || ! $run['date']->betweenIncluded($from, $until)) {
+                continue;
+            }
+            $time = $run['time_sec'] * ($distance / $run['distance_m']) ** $k;
+            if ($bestTime === null || $time < $bestTime) {
+                $bestTime = $time;
+                $best = $run;
+            }
+        }
+
+        $vdot = $bestTime === null ? null : $this->vdotFromTimeAndDistance($bestTime, $distance);
+
+        return $vdot === null || $best === null ? null : ['vdot' => round($vdot, 1), 'run' => $best];
+    }
+
+    /**
+     * Confirmed evidence and unconfirmed hard efforts known by the given day, newest first.
+     *
+     * @return list<Effort>
+     */
+    private function efforts(User $user, Carbon $now): array
+    {
+        $endOfDay = $now->copy()->endOfDay();
+        $efforts = [];
+        $confirmedActivities = [];
+        foreach ($this->evidenceForUser($user) as $row) {
+            if ($row->performed_on->gt($endOfDay) || $row->confirmed_at->gt($endOfDay)
+                || $row->distance_m < ResolveHardEffortsAction::MIN_METERS || $row->distance_m > self::MAX_EVIDENCE_METERS) {
+                continue;
+            }
+            if ($row->activity_id !== null) {
+                $confirmedActivities[$row->activity_id] = true;
+            }
+            $efforts[] = [
+                'date' => $row->performed_on,
+                'known_on' => $row->confirmed_at->copy()->startOfDay()->max($row->performed_on),
+                'distance_m' => (float) $row->distance_m,
+                'time_sec' => (float) $row->elapsed_time_sec,
+                'activity_id' => $row->activity_id,
+                'evidence' => $row,
+                'basis' => 'confirmed_'.$row->kind->value,
+            ];
+        }
+
+        foreach (($this->hardEfforts)($user->id)['efforts'] as $effort) {
+            if ($effort['date']->gt($endOfDay) || isset($confirmedActivities[$effort['activity_id']])) {
+                continue;
+            }
+            $efforts[] = [
+                'date' => $effort['date'],
+                'known_on' => $effort['date']->copy()->startOfDay(),
+                'distance_m' => $effort['distance_m'],
+                'time_sec' => $effort['time_sec'],
+                'activity_id' => $effort['activity_id'],
+                'evidence' => null,
+                'basis' => $effort['basis'],
+            ];
+        }
+
+        usort($efforts, static fn (array $a, array $b): int => $b['date'] <=> $a['date']);
+
+        return $efforts;
+    }
+
+    /**
+     * @param list<Effort> $efforts newest first
+     * @return ($efforts is non-empty-list ? non-empty-list<Effort> : list<Effort>)
+     */
+    private function newestPerBand(array $efforts): array
+    {
+        $kept = [];
+        foreach ($efforts as $effort) {
+            if (! array_any($kept, fn (array $other): bool => $this->comparable($effort['distance_m'], $other['distance_m']))) {
+                $kept[] = $effort;
+            }
+        }
+
+        return $kept;
+    }
+
+    private function comparable(float $a, float $b): bool
+    {
+        return abs($a - $b) / min($a, $b) <= self::COMPARABLE_DISTANCE_PERCENT / 100;
+    }
+
+    private function raceDistance(User $user, Carbon $now): float
+    {
+        $endOfDay = $now->copy()->endOfDay();
+        $race = $now->gte(Carbon::today())
+            ? ($this->activeRace)($user->id)
+            : $this->racesForUser($user)->first(
+                static fn (RaceGoal $race): bool => $race->created_at !== null && $race->created_at->lte($endOfDay)
+                    && ($race->completed_at === null || $race->completed_at->gt($endOfDay)),
+            );
+
+        return $race !== null && RaceSupport::forDistance((float) $race->distance_m)->dedicatedPreparation()
+            ? (float) $race->distance_m
+            : self::DEFAULT_RACE_METERS;
+    }
+
+    private function confirmedConflict(User $user, Carbon $now): bool
+    {
+        $levelFrom = $now->copy()->startOfDay()->subWeeks(self::LEVEL_WEEKS);
+        $confirmed = array_values(array_filter(
+            $this->efforts($user, $now),
+            static fn (array $effort): bool => $effort['evidence'] !== null && $effort['date']->gte($levelFrom),
+        ));
+        $vdots = array_filter(array_map(
+            fn (array $effort): ?float => $this->vdotFromTimeAndDistance($effort['time_sec'], $effort['distance_m']),
+            $this->newestPerBand($confirmed),
+        ));
+
+        return count($vdots) > 1 && (max($vdots) - min($vdots)) / min($vdots) >= self::CONFIDENCE_CONFLICT_PERCENT / 100;
+    }
+
+    /**
+     * The recent short-distance anchor quality work reads: confirmed evidence
+     * when the athlete has any, otherwise their distance records.
+     *
+     * @return array{vdot: float, source: array{source_category: string, set_at: Carbon, source_activity_id?: int|null, source_value_sec?: float|null, evidence_kind?: string, distance_m?: int}}|null
+     */
+    private function quality(User $user, Carbon $now): ?array
+    {
+        $confirmed = $this->evidenceForUser($user)->filter(
+            static fn (PerformanceEvidence $row): bool => $row->performed_on->lessThanOrEqualTo($now->toDateString())
+                && $row->confirmed_at->lessThanOrEqualTo($now->copy()->endOfDay())
+                && $row->distance_m >= 1_000
+                && $row->distance_m <= self::MAX_EVIDENCE_METERS,
+        );
+        if ($confirmed->contains(static fn (PerformanceEvidence $row): bool => $row->distance_m >= self::QUALITY_MIN_METERS)) {
+            return $this->confirmedQuality($confirmed, $now);
+        }
+
+        return $this->recordQuality($user, $now);
+    }
+
+    /**
+     * @param Collection<int, PerformanceEvidence> $evidence
+     * @return array{vdot: float, source: array{source_category: string, set_at: Carbon, evidence_kind: string, distance_m: int}}|null
+     */
+    private function confirmedQuality(Collection $evidence, Carbon $now): ?array
+    {
+        $cutoff = $now->copy()->subMonths(self::QUALITY_MONTHS);
+        $recent = [];
+        foreach ($evidence as $row) {
+            if ($row->performed_on->lt($cutoff) || $row->distance_m > self::QUALITY_MAX_METERS) {
+                continue;
+            }
+            $vdot = $this->vdotFromTimeAndDistance($row->elapsed_time_sec, $row->distance_m);
+            if ($vdot !== null && ! array_any($recent, fn (array $kept): bool => $this->comparable($row->distance_m, $kept['row']->distance_m))) {
+                $recent[] = ['vdot' => round($vdot, 1), 'row' => $row];
+            }
+        }
+        if (! array_any($recent, static fn (array $kept): bool => $kept['row']->distance_m >= self::QUALITY_MIN_METERS)) {
+            return null;
+        }
+
+        usort($recent, static fn (array $a, array $b): int => $a['vdot'] <=> $b['vdot']);
+        $lowest = $recent[0]['row'];
+
+        return [
+            'vdot' => $recent[0]['vdot'],
+            'source' => [
+                'source_category' => 'confirmed_'.$lowest->kind->value,
+                'set_at' => $lowest->performed_on,
+                'evidence_kind' => $lowest->kind->value,
+                'distance_m' => $lowest->distance_m,
+            ],
+        ];
+    }
+
+    /** @return array{vdot: float, source: array{source_category: string, set_at: Carbon, source_activity_id: int|null, source_value_sec: float}}|null */
+    private function recordQuality(User $user, Carbon $now): ?array
+    {
+        $cutoff = $now->copy()->subMonths(self::QUALITY_MONTHS);
+        $until = $now->copy()->endOfDay();
+        $recent = ($this->distanceRecords)($user->id)->filter(
+            static fn (PersonalRecord $pr): bool => $pr->set_at->betweenIncluded($cutoff, $until)
+                && $pr->category->distanceMeters() !== null
+                && $pr->category->distanceMeters() <= self::QUALITY_MAX_METERS,
+        );
+        if (! $recent->contains(static fn (PersonalRecord $pr): bool => ($pr->category->distanceMeters() ?? 0) >= self::QUALITY_MIN_METERS)) {
+            return null;
+        }
+
+        $lowest = $this->lowestVdot($recent);
+
+        return $lowest === null ? null : [
+            'vdot' => $lowest['vdot'],
+            'source' => [
+                'source_category' => $lowest['source_category'],
+                'set_at' => $lowest['set_at'],
+                'source_activity_id' => $lowest['source_activity_id'],
+                'source_value_sec' => $lowest['source_value_sec'],
+            ],
+        ];
     }
 
     private function corroboratingQualityCount(User $user, Carbon $asOf): int
@@ -394,6 +619,14 @@ class VdotEstimator
         }
 
         return $this->anchorsByUser[$user->id];
+    }
+
+    /** @return Collection<int, RaceGoal> */
+    private function racesForUser(User $user): Collection
+    {
+        return $this->racesByUser[$user->id] ??= RaceGoal::query()->where('user_id', $user->id)
+            ->orderByDesc('created_at')->orderByDesc('id')
+            ->get(['id', 'user_id', 'distance_m', 'created_at', 'completed_at']);
     }
 
     /** @return Collection<int, PlannedSession> */
@@ -423,19 +656,7 @@ class VdotEstimator
                 continue;
             }
             $vdot = $this->vdotFromTimeAndDistance($pr->value_sec, $distance);
-            if ($vdot === null) {
-                continue;
-            }
-            // Daniels' formula is distance-normalized in theory, but a runner
-            // who is disproportionately fast over a short distance (anaerobic
-            // speed, not aerobic endurance) makes a max-across-distances VDOT
-            // prescribe paces faster than any real PR at longer distances —
-            // e.g. a marathon "target" pace quicker than the athlete's actual
-            // marathon PR. Same asymmetric-caution stance as {@see Readiness}:
-            // take the MINIMUM VDOT across categories, so every prescribed
-            // pace stays within what at least one genuine PR has proven
-            // reachable, never faster than the athlete's slowest relative PR.
-            if ($bestVdot === null || $vdot < $bestVdot) {
+            if ($vdot !== null && ($bestVdot === null || $vdot < $bestVdot)) {
                 $bestVdot = $vdot;
                 $best = $pr;
             }

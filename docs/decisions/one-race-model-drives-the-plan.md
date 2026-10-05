@@ -15,6 +15,8 @@ code_refs:
 
 > **Partly superseded (2026-10-02) by [[the-race-page-sets-the-target-beside-supported-time]].** Riegel is no longer shown on the Race page; only the race form's typed-goal warning reads it. The rest of this decision stands.
 
+> **Partly superseded (2026-10-05) by [[supported-race-time-from-recent-efforts]].** The supported fitness the plan reads is now projected from recent whole-run efforts at the race distance, and the `low_evidence` check measures the longest effort that projection rests on.
+
 # One race model drives the plan
 
 **Status:** Accepted (2026-10-02). Supersedes the bands clause of [[race-ambition-is-shown-and-capacity-is-prescribed]].

@@ -8,6 +8,7 @@ use OpenAI\Responses\Meta\MetaInformation;
 use App\Enums\SessionType;
 use App\Models\AI\Analysis;
 use App\Models\AI\TokenUsage;
+use App\Models\PerformanceEvidence;
 use App\Models\PlannedSession;
 use App\Models\RaceGoal;
 use App\Models\Season;
@@ -501,5 +502,16 @@ function spend(int $userId, int $promptTokens, ?AnalysisOrigin $origin = null): 
         ...($origin !== null ? ['origin' => $origin] : []),
         'kind' => 'briefing', 'prompt_tokens' => $promptTokens, 'completion_tokens' => 0,
         'total_tokens' => $promptTokens, 'model' => 'gpt-4o', 'created_at' => Carbon::now(),
+    ]);
+}
+
+/** A confirmed hard effort, so the athlete has a supported VDOT without seeding any runs. */
+function seedConfirmedEffort(User $user, int $meters, int $seconds, ?Carbon $on = null): PerformanceEvidence
+{
+    $on ??= Carbon::today()->subMonths(4);
+
+    return PerformanceEvidence::query()->create([
+        'user_id' => $user->id, 'kind' => 'test', 'distance_m' => $meters, 'elapsed_time_sec' => $seconds,
+        'performed_on' => $on->toDateString(), 'confirmed_at' => $on->copy()->startOfDay(),
     ]);
 }
