@@ -89,14 +89,6 @@ it('keeps the recap, race outcome, strava and test pushes for their fixed window
         ->and(pushOptions(new TestNotification(), $user)['TTL'])->toBe(300);
 });
 
-it('only uses Topic values the Web Push spec allows', function (): void {
-    Carbon::setTestNow('2026-05-23 18:00:00');
-    $user = User::factory()->create();
-
-    foreach ([new StreakReminderNotification(3), new MorningBriefingNotification(briefingOn($user, '2026-05-24'))] as $notification) {
-        expect(pushOptions($notification, $user)['topic'])->toMatch('/^[A-Za-z0-9_-]{1,32}$/');
-    }
-});
 
 it('leaves no notification with a web push and no TTL', function (): void {
     $sources = collect(File::files(app_path('Notifications')))

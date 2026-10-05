@@ -136,7 +136,7 @@ released by quiet hours therefore gets its full TTL. The app clock (WIB) defines
 
 A deadline already past clamps to one second. A `Topic` makes a newer briefing or streak push
 replace an undelivered older one. The TTLs are set in each notification's `toWebPush()`, for
-example [MorningBriefingNotification](../../app/Notifications/MorningBriefingNotification.php#L74).
+example [MorningBriefingNotification](../../app/Notifications/MorningBriefingNotification.php#L72).
 
 ## Deep links, not replays
 
