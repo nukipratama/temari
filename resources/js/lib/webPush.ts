@@ -1,3 +1,5 @@
+import { router } from '@inertiajs/react';
+
 import type { SharedProps } from '@/types/inertia';
 
 import { csrfToken } from '@/lib/http';
@@ -159,6 +161,27 @@ export async function unsubscribe(): Promise<void> {
     await subscription.unsubscribe();
     await send('/profile/push', 'DELETE', { endpoint });
     rememberEndpoint(null);
+}
+
+/**
+ * Sign out, dropping this device's push subscription first. The endpoint rides
+ * the logout so the server deletes the row even when the browser unsubscribe fails.
+ */
+export async function signOut(): Promise<void> {
+    let endpoint: string | undefined;
+    try {
+        const subscription = await currentSubscription();
+        endpoint = subscription?.endpoint;
+        await subscription?.unsubscribe();
+        rememberEndpoint(null);
+    } catch {
+        endpoint ??= savedEndpoint() ?? undefined;
+    }
+
+    router.post(
+        '/logout',
+        endpoint === undefined ? {} : { push_endpoint: endpoint },
+    );
 }
 
 /**

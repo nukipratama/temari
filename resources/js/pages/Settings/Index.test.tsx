@@ -207,13 +207,15 @@ describe('Settings', () => {
         ).toBeInTheDocument();
     });
 
-    it('posts to /logout when the Log out row is clicked', () => {
+    it('posts to /logout when the Log out row is clicked', async () => {
         vi.mocked(router.post).mockReset();
         render(<Settings />);
 
         fireEvent.click(screen.getByText('log out'));
 
-        expect(router.post).toHaveBeenCalledWith('/logout');
+        await waitFor(() =>
+            expect(router.post).toHaveBeenCalledWith('/logout', {}),
+        );
     });
 
     it('tints the destructive row so it stops reading as routine', () => {

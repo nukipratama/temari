@@ -1,5 +1,5 @@
 import { router } from '@inertiajs/react';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import DemoBlockedModal from './DemoBlockedModal';
@@ -41,7 +41,9 @@ describe('DemoBlockedModal', () => {
         render(<DemoBlockedModal open onClose={vi.fn()} />);
         await screen.findByRole('dialog');
         fireEvent.click(screen.getByRole('button', { name: 'connect Strava' }));
-        expect(router.post).toHaveBeenCalledWith('/logout');
+        await waitFor(() =>
+            expect(router.post).toHaveBeenCalledWith('/logout', {}),
+        );
     });
 
     it('calls onClose when the dismiss CTA is clicked', async () => {

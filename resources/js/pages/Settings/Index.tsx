@@ -37,6 +37,7 @@ import { usePendingPost } from '@/hooks/usePendingPost';
 import { appLayout } from '@/layouts/appLayout';
 import { cn } from '@/lib/cn';
 import { formatDurationHMS } from '@/lib/pace';
+import { signOut } from '@/lib/webPush';
 
 import {
     useNotificationPrefs,
@@ -242,7 +243,7 @@ function AccountActions() {
         <div className="mt-3 mb-2 flex flex-col items-center gap-3 min-[900px]:flex-row min-[900px]:justify-center">
             <button
                 type="button"
-                onClick={() => router.post('/logout')}
+                onClick={() => void signOut()}
                 className="pressable focus-ring flex w-full items-center justify-center gap-2 rounded-lg border border-border-strong bg-card py-3 font-sans text-xs font-bold text-foreground transition hover:bg-cream-deep/30 min-[900px]:w-auto min-[900px]:px-6"
             >
                 <Icon icon={LogOut} width={16} height={16} aria-hidden />

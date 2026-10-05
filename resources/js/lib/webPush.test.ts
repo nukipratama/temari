@@ -1,3 +1,4 @@
+import { router } from '@inertiajs/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
@@ -6,6 +7,7 @@ import {
     isPushSupported,
     isStandalone,
     reportSeen,
+    signOut,
     subscribe,
     unsubscribe,
     urlBase64ToUint8Array,
@@ -222,6 +224,65 @@ describe('replacing the subscription this device saved before', () => {
         await unsubscribe();
 
         expect(localStorage.getItem('temari-push-endpoint')).toBeNull();
+    });
+});
+
+describe('signOut', () => {
+    afterEach(() => localStorage.clear());
+
+    it('unsubscribes the browser before posting the endpoint with the logout', async () => {
+        stubServiceWorker();
+        localStorage.setItem('temari-push-endpoint', fakeSubscription.endpoint);
+        const order: string[] = [];
+        fakeSubscription.unsubscribe.mockImplementationOnce(() => {
+            order.push('unsubscribe');
+
+            return Promise.resolve(true);
+        });
+        vi.mocked(router.post).mockImplementationOnce(() => {
+            order.push('post');
+        });
+
+        await signOut();
+
+        expect(order).toEqual(['unsubscribe', 'post']);
+        expect(router.post).toHaveBeenCalledWith('/logout', {
+            push_endpoint: fakeSubscription.endpoint,
+        });
+        expect(localStorage.getItem('temari-push-endpoint')).toBeNull();
+    });
+
+    it('still posts the endpoint when the browser unsubscribe fails', async () => {
+        stubServiceWorker();
+        fakeSubscription.unsubscribe.mockImplementationOnce(() =>
+            Promise.reject(new Error('boom')),
+        );
+
+        await signOut();
+
+        expect(router.post).toHaveBeenCalledWith('/logout', {
+            push_endpoint: fakeSubscription.endpoint,
+        });
+    });
+
+    it('falls back to the remembered endpoint when the subscription cannot be read', async () => {
+        stubServiceWorker();
+        localStorage.setItem('temari-push-endpoint', 'https://saved.test/x');
+        fakeRegistration.pushManager.getSubscription.mockImplementationOnce(
+            () => Promise.reject(new Error('boom')),
+        );
+
+        await signOut();
+
+        expect(router.post).toHaveBeenCalledWith('/logout', {
+            push_endpoint: 'https://saved.test/x',
+        });
+    });
+
+    it('posts a bare logout when this device never subscribed', async () => {
+        await signOut();
+
+        expect(router.post).toHaveBeenCalledWith('/logout', {});
     });
 });
 

@@ -1,7 +1,6 @@
-import { router } from '@inertiajs/react';
-
 import TemariNudgeModal from '@/components/temari/TemariNudgeModal';
 import { StravaIcon } from '@/components/ui/Icon';
+import { signOut } from '@/lib/webPush';
 
 interface DemoBlockedModalProps {
     open: boolean;
@@ -34,7 +33,7 @@ export default function DemoBlockedModal({
             primaryLabel="connect Strava"
             primaryIcon={StravaIcon}
             primaryTone="outline"
-            onPrimary={() => router.post('/logout')}
+            onPrimary={() => void signOut()}
         />
     );
 }
