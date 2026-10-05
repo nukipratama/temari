@@ -6,6 +6,7 @@ use App\Enums\NotificationDeliveryStatus;
 use App\Models\AI\Analysis;
 use App\Models\NotificationPreference;
 use App\Models\User;
+use App\Exceptions\Notifications\TransientWebPushException;
 use App\Notifications\AnalysisReadyNotification;
 use App\Notifications\Channels\IdempotentWebPushChannel;
 use App\Notifications\TestNotification;
@@ -198,17 +199,34 @@ it('reclaims and sends a stale web push once with the new claim version', functi
     ]);
 });
 
-it('delivers an encrypted, VAPID-signed push to the subscription endpoint through the HTTP client', function (): void {
-    Http::fake(['push.example/*' => Http::response('', 201)]);
+function encryptablePushUser(string ...$endpoints): User
+{
     $vapid = VAPID::createVapidKeys();
     config(['webpush.vapid.public_key' => $vapid['publicKey'], 'webpush.vapid.private_key' => $vapid['privateKey']]);
-    $device = openssl_pkey_get_details(openssl_pkey_new(['curve_name' => 'prime256v1', 'private_key_type' => OPENSSL_KEYTYPE_EC]))['ec'];
     $user = User::factory()->create();
-    $user->updatePushSubscription(
-        'https://push.example/endpoint',
-        Base64Url::encode("\x04".str_pad($device['x'], 32, "\0", STR_PAD_LEFT).str_pad($device['y'], 32, "\0", STR_PAD_LEFT)),
-        Base64Url::encode(random_bytes(16)),
-    );
+    foreach ($endpoints as $endpoint) {
+        $device = openssl_pkey_get_details(openssl_pkey_new(['curve_name' => 'prime256v1', 'private_key_type' => OPENSSL_KEYTYPE_EC]))['ec'];
+        $user->updatePushSubscription(
+            $endpoint,
+            Base64Url::encode("\x04".str_pad($device['x'], 32, "\0", STR_PAD_LEFT).str_pad($device['y'], 32, "\0", STR_PAD_LEFT)),
+            Base64Url::encode(random_bytes(16)),
+        );
+    }
+
+    return $user;
+}
+
+function webPushDelivery(Analysis $analysis): object
+{
+    return DB::table('notification_deliveries')
+        ->where('analysis_id', $analysis->id)
+        ->where('channel', 'webpush')
+        ->sole();
+}
+
+it('delivers an encrypted, VAPID-signed push to the subscription endpoint through the HTTP client', function (): void {
+    Http::fake(['push.example/*' => Http::response('', 201)]);
+    $user = encryptablePushUser('https://push.example/endpoint');
 
     app(IdempotentWebPushChannel::class)->send($user, new TestNotification());
 
@@ -219,4 +237,113 @@ it('delivers an encrypted, VAPID-signed push to the subscription endpoint throug
         && $request->header('Content-Encoding') === ['aes128gcm']
         && $request->header('Urgency') === ['high']
         && $request->body() !== '');
+});
+
+it('records a throttled push as failed and throws a retryable exception carrying Retry-After', function (): void {
+    Http::fake(['push.example/*' => Http::response('', 429, ['Retry-After' => '120'])]);
+    $analysis = Analysis::factory()->create();
+    $user = encryptablePushUser('https://push.example/endpoint');
+
+    expect(fn () => app(IdempotentWebPushChannel::class)->send($user, new AnalysisReadyNotification($analysis)))
+        ->toThrow(fn (TransientWebPushException $e) => expect($e->retryAfterSeconds)->toBe(120));
+
+    $delivery = webPushDelivery($analysis);
+    expect($delivery->status)->toBe(NotificationDeliveryStatus::Failed->value)
+        ->and($delivery->error)->toContain('429');
+    expect(app(NotificationDeliveryClaim::class)->claim($analysis->id, 'webpush'))->toBe(2);
+});
+
+it('reads a Retry-After given as an HTTP date', function (): void {
+    $this->freezeTime();
+    Http::fake(['push.example/*' => Http::response('', 503, ['Retry-After' => now()->addMinutes(5)->toRfc7231String()])]);
+    $user = encryptablePushUser('https://push.example/endpoint');
+
+    expect(fn () => app(IdempotentWebPushChannel::class)->send($user, new AnalysisReadyNotification(Analysis::factory()->create())))
+        ->toThrow(fn (TransientWebPushException $e) => expect($e->retryAfterSeconds)->toBe(300));
+});
+
+it('records a server error or network failure as failed and throws a retryable exception without a delay', function (Closure $response, string $recorded): void {
+    Http::fake(['push.example/*' => $response()]);
+    $analysis = Analysis::factory()->create();
+    $user = encryptablePushUser('https://push.example/endpoint');
+
+    expect(fn () => app(IdempotentWebPushChannel::class)->send($user, new AnalysisReadyNotification($analysis)))
+        ->toThrow(fn (TransientWebPushException $e) => expect($e->retryAfterSeconds)->toBeNull());
+
+    $delivery = webPushDelivery($analysis);
+    expect($delivery->status)->toBe(NotificationDeliveryStatus::Failed->value)
+        ->and($delivery->error)->toContain($recorded);
+})->with([
+    '500' => [fn () => Http::response('', 500), '500'],
+    '503' => [fn () => Http::response('', 503), '503'],
+    'network error' => [fn () => Http::failedConnection(), 'network error'],
+]);
+
+it('records a permanent rejection as failed with its status code and does not retry', function (int $status): void {
+    Http::fake(['push.example/*' => Http::response('', $status)]);
+    $analysis = Analysis::factory()->create();
+    $user = encryptablePushUser('https://push.example/endpoint');
+
+    app(IdempotentWebPushChannel::class)->send($user, new AnalysisReadyNotification($analysis));
+
+    $delivery = webPushDelivery($analysis);
+    expect($delivery->status)->toBe(NotificationDeliveryStatus::Failed->value)
+        ->and($delivery->error)->toContain((string) $status);
+    expect($user->pushSubscriptions()->count())->toBe(1);
+})->with([400, 403, 413]);
+
+it('records an expired last subscription as failed and deletes it', function (): void {
+    Http::fake(['push.example/*' => Http::response('', 410)]);
+    $analysis = Analysis::factory()->create();
+    $user = encryptablePushUser('https://push.example/endpoint');
+
+    app(IdempotentWebPushChannel::class)->send($user, new AnalysisReadyNotification($analysis));
+
+    $delivery = webPushDelivery($analysis);
+    expect($delivery->status)->toBe(NotificationDeliveryStatus::Failed->value)
+        ->and($delivery->error)->toContain('410')
+        ->and($delivery->error)->toContain('expired');
+    expect($user->pushSubscriptions()->count())->toBe(0);
+});
+
+it('records sent when one of several subscriptions accepts', function (): void {
+    Http::fake([
+        'push.example/gone' => Http::response('', 410),
+        'push.example/busy' => Http::response('', 503),
+        'push.example/ok' => Http::response('', 201),
+    ]);
+    $analysis = Analysis::factory()->create();
+    $user = encryptablePushUser('https://push.example/gone', 'https://push.example/busy', 'https://push.example/ok');
+
+    app(IdempotentWebPushChannel::class)->send($user, new AnalysisReadyNotification($analysis));
+
+    expect(webPushDelivery($analysis)->status)->toBe(NotificationDeliveryStatus::Sent->value);
+    expect($user->pushSubscriptions()->pluck('endpoint')->all())
+        ->toEqualCanonicalizing(['https://push.example/busy', 'https://push.example/ok']);
+});
+
+it('retries when no subscription accepted and any rejection is retryable', function (): void {
+    Http::fake([
+        'push.example/forbidden' => Http::response('', 403),
+        'push.example/busy' => Http::response('', 429, ['Retry-After' => '60']),
+    ]);
+    $analysis = Analysis::factory()->create();
+    $user = encryptablePushUser('https://push.example/forbidden', 'https://push.example/busy');
+
+    expect(fn () => app(IdempotentWebPushChannel::class)->send($user, new AnalysisReadyNotification($analysis)))
+        ->toThrow(fn (TransientWebPushException $e) => expect($e->retryAfterSeconds)->toBe(60));
+
+    expect(webPushDelivery($analysis)->status)->toBe(NotificationDeliveryStatus::Failed->value);
+});
+
+it('records a permanently rejected forced send as failed', function (): void {
+    Http::fake(['push.example/*' => Http::response('', 403)]);
+    $analysis = Analysis::factory()->create();
+    $user = encryptablePushUser('https://push.example/endpoint');
+
+    app(IdempotentWebPushChannel::class)->send($user, new AnalysisReadyNotification($analysis, force: true));
+
+    $delivery = webPushDelivery($analysis);
+    expect($delivery->status)->toBe(NotificationDeliveryStatus::Failed->value)
+        ->and($delivery->error)->toContain('403');
 });
