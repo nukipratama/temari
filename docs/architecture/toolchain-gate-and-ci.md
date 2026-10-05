@@ -53,12 +53,15 @@ log. **CI is the authoritative full gate** — a green `composer gate` locally i
 signal, not a substitute for CI passing. On `push` to `main`, `deploy` additionally builds and
 rolls the image once `ci-gate` and `build` both pass; see [[deployment]] for that half.
 
-The backend suite runs four parallel shards and the frontend suite three, on PRs and main pushes. The test jobs and the image build need only `changes`, so they start without waiting for `secret-scan` or `repo-guards`; `ci-gate` still requires both. Backend shards start MySQL with a backgrounded `docker run` right after checkout and wait for it just before the tests, so its pull and init overlap PHP setup. PR shards collect coverage;
-their `coverage` jobs merge the whole-suite totals and apply the configured thresholds exactly
-once. Main-push shards skip instrumentation and the merge jobs because the change was already
-coverage-gated before merge. Each reusable workflow's `gate` requires all of its shards and static
-analysis on both events, plus coverage on PRs, and the top-level `ci-gate` requires each changed
-suite as a unit. A missing, cancelled or failed shard therefore reds the gate — see
+The backend suite runs four parallel shards and the frontend suite three, on PRs and main pushes. The test jobs and the image build need only `changes`, so they start without waiting for `repo-guards`, which also runs the gitleaks secret scan; `ci-gate` still requires it. Backend shards start MySQL with a backgrounded `docker run` right after checkout and wait for it just before the tests, so its pull and init overlap PHP setup. PR shards collect coverage;
+each suite's `gate` job merges the whole-suite totals and applies the configured thresholds exactly
+once. Main-push shards skip instrumentation, and their `gate` skips the merge, because the change
+was already coverage-gated before merge. Each side's single static-analysis job runs its tools in
+sequence (Pint, PHPStan and Rector; TypeScript, ESLint and Prettier) and then that side's 1:1
+structure check and source guard (`{@see}` references; the raw-palette guard), so the structure
+checks run once per run instead of once per shard. Each reusable workflow's `gate` requires all of
+its shards and its static analysis on both events, and the top-level `ci-gate` requires each
+changed suite as a unit. A missing, cancelled or failed shard therefore reds the gate — see
 [docs/decisions/sharded-pr-coverage.md](../decisions/sharded-pr-coverage.md).
 
 See also: [[deployment]].

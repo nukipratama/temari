@@ -66,17 +66,6 @@ jobs:
           printf '%s\n' "$checks"
           printf '%s\n' "$checks" >> "$GITHUB_OUTPUT"
 
-  secret-scan:
-    runs-on: ubuntu-26.04-arm
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          fetch-depth: 0
-      - uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITLEAKS_ENABLE_COMMENTS: false
-
   # Unfiltered: a deletion anywhere can orphan a doc citation, so this has to see
   # the whole tree. ci-gate requires it.
   repo-guards:
@@ -98,6 +87,13 @@ jobs:
         env:
           MIGRATION_DIFF_BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
         run: php scripts/check-migration-safety.php --base "$MIGRATION_DIFF_BASE"
+
+      - name: Scan for secrets
+        if: ${{ !cancelled() }}
+        uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_ENABLE_COMMENTS: false
 
   # High+ advisories in composer.lock or package-lock.json, dev scopes included,
   # block the PR through ci-gate. Skipped on a main push: there is no base to diff.
@@ -166,7 +162,7 @@ jobs:
 
   # Single required check for branch protection.
   ci-gate:
-    needs: [changes, backend, frontend, build, worktree, structure, secret-scan, repo-guards, dependency-review]
+    needs: [changes, backend, frontend, build, worktree, structure, repo-guards, dependency-review]
     if: always()
     runs-on: ubuntu-26.04-arm
     steps:
@@ -189,7 +185,7 @@ jobs:
           for r in "${{ needs.build.result }}" "${{ needs.dependency-review.result }}"; do
             [ "$r" = "success" ] || [ "$r" = "skipped" ] || { echo "::error::a required job did not pass ($r)"; exit 1; }
           done
-          for r in "${{ needs.secret-scan.result }}" "${{ needs.repo-guards.result }}" "${{ needs.changes.result }}"; do
+          for r in "${{ needs.repo-guards.result }}" "${{ needs.changes.result }}"; do
             [ "$r" = "success" ] || { echo "::error::a required unconditional job did not pass ($r)"; exit 1; }
           done
 

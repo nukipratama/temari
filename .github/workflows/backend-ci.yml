@@ -44,12 +44,6 @@ jobs:
       - name: Stub .env for file-scanning tests
         run: cp .env.example .env
 
-      - name: Check {@see} references resolve
-        run: php scripts/check-see-references.php
-
-      - name: Class/test 1:1 structure check
-        run: ./vendor/bin/pest --group=structure
-
       # TCP ping: the entrypoint's init server answers only on the socket.
       - name: Wait for MySQL
         timeout-minutes: 3
@@ -112,27 +106,37 @@ jobs:
           path: coverage-shard-${{ matrix.shard }}.cov
           retention-days: 1
 
-  coverage:
-    name: coverage (merged)
-    needs: tests
-    if: github.event_name == 'pull_request' && needs.tests.result == 'success'
+  gate:
+    name: gate
+    needs: [tests, static-analysis]
+    if: always()
     runs-on: ubuntu-26.04-arm
     steps:
+      - name: Require all backend checks
+        run: |
+          [ "${{ needs.tests.result }}" = "success" ] || { echo "::error::backend tests did not pass (${{ needs.tests.result }})"; exit 1; }
+          [ "${{ needs.static-analysis.result }}" = "success" ] || { echo "::error::backend static analysis did not pass (${{ needs.static-analysis.result }})"; exit 1; }
+
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: github.event_name == 'pull_request'
 
       - uses: ./.github/actions/setup-php
+        if: github.event_name == 'pull_request'
         with:
           php-version: ${{ env.PHP_VERSION }}
           coverage: 'none'
           classmap-authoritative: 'true'
 
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        if: github.event_name == 'pull_request'
         with:
           pattern: coverage-shard-*
           path: coverage-shards
           merge-multiple: true
 
       - name: Merge shard coverage and check --min=95 on the whole suite
+        id: merge
+        if: github.event_name == 'pull_request'
         run: |
           ./vendor/bin/phpcov merge --clover=coverage-merged-clover.xml coverage-shards
 
@@ -152,7 +156,7 @@ jobs:
           '
 
       - name: Coverage summary
-        if: always()
+        if: always() && steps.merge.outcome != 'skipped'
         run: |
           {
             echo "### Backend · Coverage (merged, ${{ env.SHARD_TOTAL }}-way shard)"
@@ -174,12 +178,8 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
   static-analysis:
-    name: static analysis (${{ matrix.tool }})
+    name: static analysis
     runs-on: ubuntu-26.04-arm
-    strategy:
-      fail-fast: false
-      matrix:
-        tool: [pint, phpstan, rector]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -191,7 +191,6 @@ jobs:
         run: cp .env.example .env
 
       - name: Cache PHPStan analyser cache
-        if: matrix.tool == 'phpstan'
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v5
         with:
           path: .phpstan-cache
@@ -199,7 +198,6 @@ jobs:
           restore-keys: phpstan-${{ runner.os }}-${{ runner.arch }}-php${{ env.PHP_VERSION }}-${{ hashFiles('composer.lock', 'phpstan.neon') }}-
 
       - name: Cache Rector analyser cache
-        if: matrix.tool == 'rector'
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v5
         with:
           path: .rector-cache
@@ -207,28 +205,21 @@ jobs:
           restore-keys: rector-${{ runner.os }}-${{ runner.arch }}-php${{ env.PHP_VERSION }}-${{ hashFiles('composer.lock', 'rector.php') }}-
 
       - name: Pint (code style)
-        if: matrix.tool == 'pint'
+        if: ${{ !cancelled() }}
         run: vendor/bin/pint --test
 
       - name: PHPStan
-        if: matrix.tool == 'phpstan'
+        if: ${{ !cancelled() }}
         run: vendor/bin/phpstan analyse --no-progress
 
       - name: Rector (dry-run)
-        if: matrix.tool == 'rector'
+        if: ${{ !cancelled() }}
         run: vendor/bin/rector --dry-run --no-progress-bar
 
-  gate:
-    name: gate
-    needs: [tests, coverage, static-analysis]
-    if: always()
-    runs-on: ubuntu-26.04-arm
-    steps:
-      - name: Require all backend checks
-        run: |
-          [ "${{ needs.tests.result }}" = "success" ] || { echo "::error::backend tests did not pass (${{ needs.tests.result }})"; exit 1; }
-          [ "${{ needs.static-analysis.result }}" = "success" ] || { echo "::error::backend static analysis did not pass (${{ needs.static-analysis.result }})"; exit 1; }
+      - name: Check {@see} references resolve
+        if: ${{ !cancelled() }}
+        run: php scripts/check-see-references.php
 
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            [ "${{ needs.coverage.result }}" = "success" ] || { echo "::error::backend coverage merge did not pass (${{ needs.coverage.result }})"; exit 1; }
-          fi
+      - name: Class/test 1:1 structure check
+        if: ${{ !cancelled() }}
+        run: ./vendor/bin/pest --group=structure
