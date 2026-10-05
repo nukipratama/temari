@@ -23,7 +23,7 @@ import {
     paceSecPerKm,
     useTodayIso,
 } from '@/lib/pace';
-import { ambitionNote } from '@/lib/raceGoal';
+import { ambitionNote, supportedBasisLine } from '@/lib/raceGoal';
 
 interface RaceComparisonProps {
     activeRace: ActiveRace | null;
@@ -70,6 +70,8 @@ export default function RaceComparison({
     }
 
     const supportedSec = outlook?.ambition.supported_time_sec ?? null;
+    const basisLine =
+        outlook === null ? null : supportedBasisLine(outlook.ambition);
     const daysOut = daysUntilId(activeRace.race_date, today);
     const weeksOut = Math.floor(daysOut / 7);
     const paceSec = paceSecPerKm(
@@ -110,6 +112,9 @@ export default function RaceComparison({
                             : undefined
                     }
                 />
+            )}
+            {basisLine !== null && (
+                <p className="mt-1 text-xs text-text-3">{basisLine}</p>
             )}
             {outlook !== null && (
                 <p className="mt-3 text-xs leading-relaxed text-text-2">

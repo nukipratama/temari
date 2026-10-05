@@ -59,6 +59,12 @@ describe('RaceComparison', () => {
                         prescribed_time_sec: 3120,
                         gap_pct: 4.6,
                         evidence_confidence: 'confirmed',
+                        basis: {
+                            distance_m: 10_000,
+                            performed_on: '2026-09-20',
+                            activity_id: null,
+                        },
+                        confirm_nudge: false,
                     },
                     support: {
                         mode: 'road',
@@ -77,6 +83,9 @@ describe('RaceComparison', () => {
             screen.getByText('supported by your recent runs'),
         ).toBeInTheDocument();
         expect(screen.getByText('54:30')).toBeInTheDocument();
+        expect(
+            screen.getByText('based on your 10K on sep 20'),
+        ).toBeInTheDocument();
         expect(
             screen.getByText(/^ambitious: your target is 4\.6% faster/),
         ).toBeInTheDocument();
@@ -97,6 +106,8 @@ describe('RaceComparison', () => {
             prescribed_time_sec: 3270,
             gap_pct: 4.6,
             evidence_confidence: 'confirmed',
+            basis: null,
+            confirm_nudge: false,
         };
         const support = {
             mode: 'road' as const,

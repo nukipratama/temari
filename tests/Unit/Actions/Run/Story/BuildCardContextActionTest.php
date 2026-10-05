@@ -226,6 +226,7 @@ it('flags qualitySessionPaceMet when the run beats its planned tempo pace', func
         'value_sec' => 1_200, // 5K in 20:00 -> a fast VDOT, so threshold pace is well under 300 sec/km
         'set_at' => Carbon::parse('2026-05-14 07:00:00'),
     ]);
+    seedConfirmedEffort($user, 5000, 1200, Carbon::parse('2026-05-14'));
     PlannedSession::factory()->for($user)->create([
         'date' => '2026-05-15',
         'session_type' => SessionType::Tempo,
@@ -301,6 +302,7 @@ it('judges the planned pace on elapsed time, the basis every surface displays', 
         'category' => PrCategory::Km5,
         'value_sec' => 1_200,
     ]);
+    seedConfirmedEffort($user, 5000, 1200, Carbon::parse('2026-05-01'));
     PlannedSession::factory()->for($user)->create([
         'date' => '2026-05-15',
         'session_type' => SessionType::Tempo,

@@ -377,6 +377,7 @@ it('moves a generated quality prescription with its workout and keeps its render
         'value_sec' => 1500,
         'set_at' => '2026-08-01',
     ]);
+    seedConfirmedEffort($user, 5000, 1500, Carbon::parse('2026-08-01'));
     Season::factory()->for($user)->create(['anchor_weekly_volume_km' => 28.0]);
     app(Periodizer::class)->regenerate($user);
 
@@ -764,7 +765,8 @@ it('resolves the deferred Plan props inside their query budget', function (): vo
     // ran. The fixture now carries 9 weeks of them (see planBudgetFixture),
     // adding that one query.
     // 20: BriefingContext::prescribedKmToDate reads this week's planned sessions.
-    expect($queries)->toBeLessThanOrEqual(20);
+    // 21: the supported VDOT reads the athlete's hard efforts.
+    expect($queries)->toBeLessThanOrEqual(21);
     expect($readinessQueries)->toBe(['stress' => 1, 'feedback' => 1]);
 });
 

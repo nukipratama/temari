@@ -1686,6 +1686,7 @@ it('ProfileVoiceNarrator throws when the rewrite leaks a figure too', function (
 
 it('ProfileVoiceNarrator feeds the four training paces derived from the runner VDOT', function (): void {
     $user = User::factory()->create();
+    seedConfirmedEffort($user, 5000, 1200);
     PersonalRecord::factory()->for($user)->create(['category' => '5km', 'value_sec' => 1200]);
 
     $context = new TrainingPacesTool($user->fresh(), Carbon::now(), app(VdotEstimator::class), app(TrainingPaceCalculator::class))->handle([]);

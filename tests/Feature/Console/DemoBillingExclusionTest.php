@@ -42,6 +42,7 @@ const BILLING = [
     'streak:remind' => 'where(is_demo, false) inside the command',
     'race:remind' => 'notDemo() on the race scan inside the command',
     'race:ask-outcome' => 'notDemo() on the race scan inside the command',
+    'fitness:notify-improvement' => 'notDemo() on the user scan inside the command',
     'plan:regenerate' => 'RecentlyActiveUsers gates the plan-narration request only; the regenerate itself stays free and still runs for demo',
 ];
 
@@ -126,5 +127,6 @@ it('reads the demo exclusion straight out of each billing command source', funct
     'streak:remind' => ['streak:remind', 'app/Console/Commands/Gamification/StreakRemindCommand.php'],
     'race:remind' => ['race:remind', 'app/Console/Commands/Run/RaceRemindCommand.php'],
     'race:ask-outcome' => ['race:ask-outcome', 'app/Console/Commands/Run/RaceOutcomeAskCommand.php'],
+    'fitness:notify-improvement' => ['fitness:notify-improvement', 'app/Console/Commands/Run/FitnessNotifyImprovementCommand.php'],
     'plan:regenerate' => ['plan:regenerate', 'app/Console/Commands/Run/RegeneratePlanCommand.php', 'app/Actions/AI/RecentlyActiveUsers.php'],
 ]);

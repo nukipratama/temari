@@ -122,3 +122,33 @@ it('applies the bands once the evidence covers at least half the race distance',
     'a 5K covers half a 10K' => [5_000, RaceAmbitionState::Unsupported],
     'a 3K does not' => [3_000, RaceAmbitionState::LowEvidence],
 ]);
+
+it('names the effort the supported time rests on', function (): void {
+    tenKEvidence($this->user, 4200);
+
+    $ambition = $this->assessor->assess($this->user, tenKRace($this->user, 4000));
+
+    expect($ambition->basis)->toBe(['distance_m' => 10_000, 'performed_on' => '2026-09-24', 'activity_id' => null])
+        ->and($ambition->confirmNudge)->toBeFalse();
+});
+
+it('asks for a confirmed effort when the supported time rests only on unconfirmed records', function (): void {
+    $activity = App\Models\Activity::factory()->for($this->user)->create();
+    App\Models\ActivityDetail::factory()->for($activity)->create([
+        'start_date_local' => '2026-09-20 06:00:00', 'distance' => 10_000, 'elapsed_time' => 4_200, 'workout_type' => 1,
+    ]);
+
+    expect($this->assessor->assess($this->user, tenKRace($this->user, 4000))->confirmNudge)->toBeTrue();
+});
+
+it('asks for a recent effort when the supported time is stale, even from confirmed evidence', function (): void {
+    PerformanceEvidence::query()->create([
+        'user_id' => $this->user->id, 'kind' => 'race', 'distance_m' => 10_000, 'elapsed_time_sec' => 4_200,
+        'performed_on' => '2026-03-01', 'confirmed_at' => '2026-03-01 12:00:00',
+    ]);
+
+    $ambition = $this->assessor->assess($this->user, tenKRace($this->user, 4000));
+
+    expect($ambition->confidence)->toBe('stale')
+        ->and($ambition->confirmNudge)->toBeTrue();
+});

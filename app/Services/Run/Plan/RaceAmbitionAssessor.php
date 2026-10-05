@@ -37,7 +37,8 @@ final readonly class RaceAmbitionAssessor
 
         $supportedSec = (int) round($supportedSec);
         $gap = 1 - $race->goal_time_sec / $supportedSec;
-        $evidenceM = $estimate['distance_m'] ?? PrCategory::tryFrom($estimate['source_category'])?->distanceMeters();
+        $evidenceM = $estimate['longest_source_m'] ?? $estimate['distance_m'] ?? PrCategory::tryFrom($estimate['source_category'])?->distanceMeters();
+        $basisM = $estimate['distance_m'] ?? null;
 
         return new RaceAmbition(
             match (true) {
@@ -52,6 +53,8 @@ final readonly class RaceAmbitionAssessor
             (int) round($supportedSec / $distanceKm),
             round($gap * 100, 1),
             $estimate['confidence'],
+            $basisM === null ? null : ['distance_m' => $basisM, 'performed_on' => $estimate['set_at']->toDateString(), 'activity_id' => $estimate['source_activity_id'] ?? null],
+            ($estimate['unconfirmed_only'] ?? false) || $estimate['stale'],
         );
     }
 }

@@ -7,7 +7,6 @@ namespace App\Services\Run\Metrics;
 use App\Enums\PrCategory;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
-use App\Models\FitnessAnchor;
 use App\Models\PersonalRecord;
 use App\Models\User;
 use Illuminate\Support\Carbon;
@@ -44,7 +43,6 @@ class PersonalRecords
         }
 
         $this->vdotEstimator->forget($user);
-        $this->validateFitnessAnchor($user);
         $this->vdotEstimator->captureProvisionalAnchor($user);
     }
 
@@ -127,77 +125,6 @@ class PersonalRecords
         return $broken;
     }
 
-    private function validateFitnessAnchor(User $user): void
-    {
-        $anchor = FitnessAnchor::query()->where('user_id', $user->id)->first();
-        if ($anchor === null) {
-            return;
-        }
-
-        if (! $this->sourcePerformanceIsValid(
-            $user,
-            $anchor->source_activity_id,
-            $anchor->source_category,
-            $anchor->source_value_sec,
-            $anchor->set_at,
-        )) {
-            $anchor->delete();
-
-            return;
-        }
-
-        if ($anchor->quality_vdot > $anchor->vdot
-            && ($anchor->quality_source_category === null
-                || $anchor->quality_source_value_sec === null
-                || $anchor->quality_set_at === null
-                || ! $this->sourcePerformanceIsValid(
-                    $user,
-                    $anchor->quality_source_activity_id,
-                    $anchor->quality_source_category,
-                    $anchor->quality_source_value_sec,
-                    $anchor->quality_set_at,
-                ))) {
-            $anchor->update([
-                'quality_vdot' => $anchor->vdot,
-                'quality_source_activity_id' => null,
-                'quality_source_category' => null,
-                'quality_source_value_sec' => null,
-                'quality_set_at' => null,
-            ]);
-        }
-    }
-
-    private function sourcePerformanceIsValid(
-        User $user,
-        ?int $activityId,
-        string $category,
-        float $valueSec,
-        Carbon $setAt,
-    ): bool {
-        if ($activityId === null) {
-            $record = PersonalRecord::query()->where('user_id', $user->id)
-                ->where('category', $category)->first();
-
-            return $record !== null
-                && $record->set_at->toDateString() === $setAt->toDateString()
-                && $record->value_sec <= $valueSec + 0.01;
-        }
-
-        $activity = Activity::withStubs()->where('user_id', $user->id)
-            ->with('detail')->find($activityId);
-        $detail = $activity?->detail;
-        if ($detail === null) {
-            return false;
-        }
-        if ($detail->start_date_local?->toDateString() !== $setAt->toDateString()) {
-            return false;
-        }
-
-        $sourceValue = $this->categoryValues($detail)[$category] ?? null;
-
-        return $sourceValue !== null && $sourceValue <= $valueSec + 0.01;
-    }
-
     /**
      * The run's time for every category it qualifies for: distances first, then efforts.
      *
@@ -206,20 +133,7 @@ class PersonalRecords
     private function categoryValues(ActivityDetail $detail): array
     {
         $summary = StreamSummary::fromArray($detail->streamSummary());
-        $distance = (float) ($detail->distance ?? 0);
-        $splits = $this->splitRows($summary);
-        $values = [];
-
-        foreach (PrCategory::distances() as $category) {
-            $targetMeters = $category->distanceMeters();
-            if ($targetMeters === null || $distance < $targetMeters * 0.99) {
-                continue;
-            }
-            $value = $this->timeAtDistance($splits, $targetMeters);
-            if ($value !== null && $value > 0) {
-                $values[$category->value] = $value;
-            }
-        }
+        $values = RunDistanceTimes::forDetail($detail);
 
         foreach (PrCategory::efforts() as $category) {
             $window = $category->effortWindow();
@@ -234,81 +148,6 @@ class PersonalRecords
         }
 
         return $values;
-    }
-
-    /**
-     * The run's segments in order: every full kilometre, then the trailing
-     * sub-km leftover. The window needs that leftover to reach a target that
-     * lands inside it — a 42.6 km run only covers 42 full kilometres, so the
-     * marathon PR sits in the final 600 m. The leftover's time is recovered
-     * from its already-normalized pace, the one place Strava's `moving_time`
-     * still shows through until KmSplitBuilder derives the partial itself.
-     *
-     * @return list<array<string, mixed>>
-     */
-    private function splitRows(StreamSummary $summary): array
-    {
-        $rows = array_values($summary->perKm() ?? []);
-
-        $partial = $summary->partialSplit() ?? [];
-        $pace = $partial['pace'] ?? null;
-        $paceSec = is_string($pace) ? PaceFormatter::parse($pace) : null;
-        $distance = (float) ($partial['distance_m'] ?? 0);
-        if ($paceSec !== null && $distance > 0) {
-            $rows[] = ['distance_m' => $distance, 'elapsed_sec' => $paceSec * $distance / 1000];
-        }
-
-        return $rows;
-    }
-
-    /**
-     * Fastest time over any contiguous window of splits that covers the target
-     * distance, so a negative-split run records its genuine best embedded effort
-     * rather than only its opening segment. Null when no window reaches the target.
-     *
-     * @param  array<int, array<string, mixed>>  $splits
-     */
-    public function timeAtDistance(array $splits, float $targetMeters): ?float
-    {
-        $best = null;
-        $count = count($splits);
-
-        for ($start = 0; $start < $count; $start++) {
-            $window = $this->windowTime(array_slice($splits, $start), $targetMeters);
-            if ($window !== null && ($best === null || $window < $best)) {
-                $best = $window;
-            }
-        }
-
-        return $best;
-    }
-
-    /**
-     * Time to cover the target distance from the first split onward, interpolating
-     * within the final partial split. Null when the given splits fall short.
-     *
-     * @param  array<int, array<string, mixed>>  $splits
-     */
-    private function windowTime(array $splits, float $targetMeters): ?float
-    {
-        $accDist = 0.0;
-        $accTime = 0.0;
-        foreach ($splits as $split) {
-            $distance = (float) ($split['distance_m'] ?? 0);
-            $time = (float) ($split['elapsed_sec'] ?? 0);
-            if ($distance <= 0 || $time <= 0) {
-                continue;
-            }
-            if ($accDist + $distance >= $targetMeters) {
-                $remaining = $targetMeters - $accDist;
-
-                return $accTime + $time * ($remaining / $distance);
-            }
-            $accDist += $distance;
-            $accTime += $time;
-        }
-
-        return null;
     }
 
     private function updateIfFaster(Activity $activity, PrCategory $category, float $value, Carbon $setAt): bool

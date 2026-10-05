@@ -281,6 +281,7 @@ it('leaves a rest-clamped day excused however the day was actually run', functio
 function scorerPaces(User $user, string $date): array
 {
     PersonalRecord::factory()->for($user)->create(['category' => '5km', 'value_sec' => 1500, 'set_at' => '2026-07-01']);
+    seedConfirmedEffort($user, 5000, 1500, Carbon::parse('2026-07-01'));
 
     /** @var array{easy: int, marathon: int, threshold: int, interval: int} */
     return app(TrainingPaceCalculator::class)->fromVdotResult(app(VdotEstimator::class)->estimate($user, Carbon::parse($date)));

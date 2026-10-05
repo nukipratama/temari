@@ -5,7 +5,12 @@ import type {
     RaceSupport,
 } from '@/types/inertia';
 
-import { formatDurationHMS, formatPace, isoDateLocal } from '@/lib/pace';
+import {
+    formatDurationHMS,
+    formatNaiveMonthDayId,
+    formatPace,
+    isoDateLocal,
+} from '@/lib/pace';
 
 /**
  * The race-goal bounds, mirrored from the server so a form cannot offer a
@@ -175,4 +180,33 @@ export function supportedEyebrow(ambition: RaceAmbition): string {
     }
 
     return 'supported';
+}
+
+const NAMED_DISTANCES: readonly (readonly [number, string])[] = [
+    [5_000, '5K'],
+    [10_000, '10K'],
+    [15_000, '15K'],
+    [21_097.5, 'half marathon'],
+    [42_195, 'marathon'],
+];
+
+const NAMED_DISTANCE_TOLERANCE = 0.01;
+
+/** "10K" or "half marathon" for a standard distance, "7.3 km" for anything else. */
+export function raceDistanceLabel(meters: number): string {
+    const named = NAMED_DISTANCES.find(
+        ([standard]) =>
+            Math.abs(meters - standard) / standard <= NAMED_DISTANCE_TOLERANCE,
+    );
+
+    return named?.[1] ?? `${(meters / 1000).toFixed(1)} km`;
+}
+
+/** The line under the supported time naming the effort it rests on. */
+export function supportedBasisLine(ambition: RaceAmbition): string | null {
+    if (ambition.supported_time_sec === null || ambition.basis === null) {
+        return null;
+    }
+
+    return `based on your ${raceDistanceLabel(ambition.basis.distance_m)} on ${formatNaiveMonthDayId(ambition.basis.performed_on)}`;
 }

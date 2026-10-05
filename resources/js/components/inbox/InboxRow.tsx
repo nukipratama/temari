@@ -8,6 +8,7 @@ import {
     Footprints,
     Moon,
     RefreshCwOff,
+    TrendingUp,
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -35,6 +36,7 @@ const KIND_LABEL: Record<NotificationKind, string> = {
     strava_disconnected: 'Strava',
     race_tomorrow: 'Race',
     race_outcome: 'Race',
+    fitness_improved: 'Race',
     test: 'Test',
 };
 
@@ -47,6 +49,7 @@ const KIND_ICON: Record<NotificationKind, IconComponent> = {
     strava_disconnected: RefreshCwOff,
     race_tomorrow: Flag,
     race_outcome: Flag,
+    fitness_improved: TrendingUp,
     test: Bell,
 };
 
@@ -59,6 +62,7 @@ const KIND_TONE: Record<NotificationKind, Tone> = {
     strava_disconnected: 'neutral',
     race_tomorrow: 'accent',
     race_outcome: 'accent',
+    fitness_improved: 'accent',
     test: 'neutral',
 };
 

@@ -22,6 +22,8 @@ const AMBITION: RaceAmbition = {
     prescribed_time_sec: 3_000,
     gap_pct: 4.8,
     evidence_confidence: 'confirmed',
+    basis: null,
+    confirm_nudge: false,
 };
 
 const SUPPORT: RaceSupport = {
@@ -187,5 +189,25 @@ describe('RaceDuel', () => {
             'whitespace-nowrap',
         );
         expect(screen.getByText('3:35:12')).toHaveClass('break-all');
+    });
+});
+
+describe('RaceDuel basis', () => {
+    beforeEach(() => {
+        setMockPage({ today: '2026-11-26' });
+    });
+
+    it('names the effort the supported time rests on under it', () => {
+        renderDuel({
+            basis: {
+                distance_m: 5_000,
+                performed_on: '2026-08-26',
+                activity_id: 9,
+            },
+        });
+
+        expect(
+            screen.getByText('based on your 5K on aug 26'),
+        ).toBeInTheDocument();
     });
 });

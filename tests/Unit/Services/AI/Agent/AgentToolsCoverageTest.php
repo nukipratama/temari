@@ -700,6 +700,7 @@ it('excludes the run being narrated from its own baseline', function (): void {
 it('reads easy and threshold paces derived from the runner VDOT', function (): void {
     ['activity' => $a, 'detail' => $d] = agentToolFixture();
     PersonalRecord::factory()->for($a->user)->create(['category' => '5km', 'value_sec' => 1200]);
+    seedConfirmedEffort($a->user, 5000, 1200);
 
     $reading = new TrainingPacesTool($a->user, $d->start_date_local, app(VdotEstimator::class), app(TrainingPaceCalculator::class))->handle([]);
 
@@ -724,6 +725,7 @@ it('reads null paces when the runner has no VDOT-eligible PR', function (): void
 it('formats a sub-4:00 interval pace for a fast runner', function (): void {
     ['activity' => $a, 'detail' => $d] = agentToolFixture();
     PersonalRecord::factory()->for($a->user)->create(['category' => '5km', 'value_sec' => 780]); // 14:00 5K, elite-ish
+    seedConfirmedEffort($a->user, 5000, 780);
 
     $reading = new TrainingPacesTool($a->user, $d->start_date_local, app(VdotEstimator::class), app(TrainingPaceCalculator::class))->handle([]);
 
@@ -1166,6 +1168,7 @@ it('omits intent entirely when the day was never judged', function (): void {
 it('carries the eased pace and the pace it replaced once readiness eases the day\'s pace only', function (): void {
     $user = User::factory()->create();
     PersonalRecord::factory()->for($user)->create(['category' => '5km', 'value_sec' => 1200]);
+    seedConfirmedEffort($user, 5000, 1200);
     $session = PlannedSession::factory()->for($user)->create([
         'session_type' => SessionType::Easy,
         'date' => Carbon::today()->toDateString(),
@@ -1361,6 +1364,7 @@ it('caps a planned-session fallback at recent single-run capacity', function ():
 it('reads a tempo day eased to easy as the easy run, at easy pace, tempo only as context', function (): void {
     $user = User::factory()->create();
     PersonalRecord::factory()->for($user)->create(['category' => '5km', 'value_sec' => 1200]);
+    seedConfirmedEffort($user, 5000, 1200);
     $today = Carbon::today();
     $session = PlannedSession::factory()->for($user)->create([
         'date' => $today->toDateString(),
@@ -1408,6 +1412,7 @@ it('leaves an un-eased day with no easing to explain', function (): void {
 it('reads a pace-only ease as the eased pace, naming the pace it replaced', function (): void {
     $user = User::factory()->create();
     PersonalRecord::factory()->for($user)->create(['category' => '5km', 'value_sec' => 1200]);
+    seedConfirmedEffort($user, 5000, 1200);
     $today = Carbon::today();
     PlannedSession::factory()->for($user)->create([
         'date' => $today->toDateString(),
@@ -1464,6 +1469,7 @@ it('targets each day at the pace its session type calls for', function (): void 
         'value_sec' => 1200,
         'set_at' => $monday->copy()->subYear(),
     ]);
+    seedConfirmedEffort($user, 5000, 1200, $monday->copy()->subYear());
     foreach ([SessionType::Easy, SessionType::Tempo, SessionType::Rest] as $offset => $type) {
         PlannedSession::factory()->for($user)->create([
             'date' => $monday->copy()->addDays($offset)->toDateString(),
@@ -1491,6 +1497,7 @@ it('targets each day at the pace its session type calls for', function (): void 
 it('targets a sub-marathon race day at threshold pace, not marathon pace', function (): void {
     $user = User::factory()->create();
     PersonalRecord::factory()->for($user)->create(['category' => '5km', 'value_sec' => 1200]);
+    seedConfirmedEffort($user, 5000, 1200);
     $today = Carbon::today();
     PlannedSession::factory()->for($user)->create([
         'date' => $today->toDateString(),

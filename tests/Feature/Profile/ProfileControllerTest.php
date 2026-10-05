@@ -139,6 +139,7 @@ it('includes training_paces derived from VDOT when the user has a qualifying PR'
         'value_sec' => 1200.0,
         'set_at' => Carbon::today(),
     ]);
+    seedConfirmedEffort($user, 5000, 1200, Carbon::today());
 
     $this->actingAs($user)
         ->get('/profile', inertiaPartialHeaders($this->actingAs($user), '/profile', 'Profile', 'fitness'))
@@ -153,6 +154,7 @@ it('carries this week\'s training days beside the paces, so the ladder can say w
         'value_sec' => 1200.0,
         'set_at' => Carbon::today(),
     ]);
+    seedConfirmedEffort($user, 5000, 1200, Carbon::today());
     $weekStart = Carbon::today()->startOfWeek(Carbon::MONDAY);
     PlannedSession::factory()->for($user)->create([
         'date' => $weekStart,
@@ -186,6 +188,7 @@ it('flags this week\'s training day that is today', function (): void {
         'value_sec' => 1200.0,
         'set_at' => Carbon::today(),
     ]);
+    seedConfirmedEffort($user, 5000, 1200, Carbon::today());
     $weekStart = Carbon::today()->startOfWeek(Carbon::MONDAY);
     foreach ([0, 2, 4] as $offset) {
         PlannedSession::factory()->for($user)->create([
@@ -210,6 +213,7 @@ it('reports an empty week when the athlete has no plan', function (): void {
         'category' => '5km',
         'value_sec' => 1200.0,
     ]);
+    seedConfirmedEffort($user, 5000, 1200);
 
     $this->actingAs($user)
         ->get('/profile', inertiaPartialHeaders($this->actingAs($user), '/profile', 'Profile', 'fitness'))

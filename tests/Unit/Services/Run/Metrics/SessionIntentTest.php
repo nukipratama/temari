@@ -72,3 +72,7 @@ it('treats race and workout as intended-hard, everything else as not', function 
         ->and(SessionIntent::isIntendedHard(intentDetail(['workout_type' => null] + zones(['Z2' => 95]))))->toBeFalse()
         ->and(SessionIntent::isIntendedHard(intentDetail(['workout_type' => null, 'stream_summary' => null])))->toBeFalse();
 });
+
+it('reads only the Strava race tag as a tagged race', function (?int $code, bool $race): void {
+    expect(SessionIntent::isTaggedRace($code))->toBe($race);
+})->with([[1, true], [3, false], [2, false], [0, false], [null, false]]);

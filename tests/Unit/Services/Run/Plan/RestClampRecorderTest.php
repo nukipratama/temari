@@ -116,6 +116,7 @@ function givePaceHistory(User $user): void
         'value_sec' => 1500,
         'set_at' => Carbon::today()->subMonth()->toDateString(),
     ]);
+    seedConfirmedEffort($user, 5000, 1500, Carbon::today()->subMonth());
 }
 
 function todaysSession(User $user, string $type = 'interval', bool $pinned = false): PlannedSession
