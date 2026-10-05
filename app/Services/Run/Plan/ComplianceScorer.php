@@ -120,7 +120,7 @@ final readonly class ComplianceScorer
 
         $typesByDate = array_map(static fn (RecommendationRevision $revision): SessionType => SessionType::from($revision->effective['session_type']), $recommendationsByDate);
         $verdicts = $this->sessionMatcher->scoreRange($user, $plannedKmByDate, $excusedByDate, $today, $typesByDate);
-        $intents = $this->intentsFor($rows, $effectiveByDate, $verdicts, $recommendationsByDate, $runsByDate, $user->hrProfile()['hr_zones']);
+        $intents = $this->intentsFor($rows, $effectiveByDate, $verdicts, $recommendationsByDate, $runsByDate, $user->hrProfile()['hr_zones'], $user->runnerProfile?->easyHrCapBpm() !== null);
         if ($user->runnerProfile?->hasExplicitZones() !== true) {
             $intents = array_map(static fn (array $intent): array => self::onHeartRate($intent['evidence'])
                 ? ['verdict' => $intent['verdict'], 'evidence' => $intent['evidence'] + ['zones' => 'estimated']]
@@ -150,7 +150,7 @@ final readonly class ComplianceScorer
      * @param  array<string, array{lo: int, hi: int}>  $zones
      * @return array<string, array{verdict: IntentVerdict, evidence: array<string, int|float|string>}>
      */
-    private function intentsFor(Collection $rows, array $effectiveByDate, array $verdicts, array $recommendationsByDate, array $runsByDate, array $zones): array
+    private function intentsFor(Collection $rows, array $effectiveByDate, array $verdicts, array $recommendationsByDate, array $runsByDate, array $zones, bool $heartRateCapped): array
     {
         $judged = $rows->filter(static fn (PlannedSession $row): bool => ($verdicts[$row->date->toDateString()]['status'] ?? null)?->isCredited() === true
             && in_array($effectiveByDate[$row->date->toDateString()]->sessionType, [SessionType::Easy, SessionType::Long, SessionType::Tempo, SessionType::Interval], true));
@@ -171,7 +171,7 @@ final readonly class ComplianceScorer
             $recommendation = $recommendationsByDate[$date] ?? null;
             $intents[$date] = $recommendation === null
                 ? ['verdict' => IntentVerdict::Unknown, 'evidence' => ['advice_history' => 'unknown']]
-                : self::shownIntent($recommendation, $runsByDate[$date] ?? []);
+                : self::shownIntent($recommendation, $runsByDate[$date] ?? [], $heartRateCapped);
         }
 
         return $intents;
@@ -186,7 +186,7 @@ final readonly class ComplianceScorer
      * @param  list<ActivityDetail>  $runs
      * @return array{verdict: IntentVerdict, evidence: array<string, int|float|string>}
      */
-    private static function shownIntent(RecommendationRevision $recommendation, array $runs): array
+    private static function shownIntent(RecommendationRevision $recommendation, array $runs, bool $heartRateCapped): array
     {
         $effectiveType = SessionType::from($recommendation->effective['session_type']);
         $effectiveSegments = self::segmentsOf($recommendation->effective['segments'] ?? []);
@@ -197,7 +197,7 @@ final readonly class ComplianceScorer
         $eased = $originalHardMinutes > 0.0
             && ($originalType !== $effectiveType || self::hardMinutes($effectiveSegments) < $originalHardMinutes);
 
-        $reading = SessionIntentJudge::judge($effectiveType, $effectiveSegments, $paces, $runs);
+        $reading = SessionIntentJudge::judge($effectiveType, $effectiveSegments, $paces, $runs, $heartRateCapped);
         $evidence = $reading['evidence'] + ['recommendation_revision_id' => $recommendation->id, 'advice_history' => 'shown', 'effective_type' => $effectiveType->value];
         $verdict = $reading['verdict'];
 
@@ -212,7 +212,7 @@ final readonly class ComplianceScorer
 
         $evidence['eased_from'] = $originalType->value;
         $evidence['concern'] = self::concernOf($recommendation->effective['readiness_assessment'] ?? null);
-        $original = SessionIntentJudge::judge($originalType, $originalSegments, $paces, $runs);
+        $original = SessionIntentJudge::judge($originalType, $originalSegments, $paces, $runs, $heartRateCapped);
         if (in_array($original['verdict'], [IntentVerdict::Hit, IntentVerdict::TooHard], true)
             && in_array($original['evidence']['stimulus_family'] ?? null, ['tempo', 'interval', 'hard'], true)) {
             $evidence['original_completed'] = $original['evidence']['control'] ?? 'controlled';

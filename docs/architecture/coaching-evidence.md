@@ -37,13 +37,19 @@ code_refs:
   - app/Services/Run/Plan/GoalPaceWork.php
   - app/Services/Run/Plan/TimeTrial.php
   - app/Services/Run/Plan/TimeTrialSchedule.php
+  - app/Services/Run/Plan/EasyEffort.php
+  - app/Services/Run/Ingest/StreamAnalysis.php
+  - app/Models/RunnerProfile.php
+  - app/Services/Run/Plan/ReadinessClamp.php
+  - app/Services/Run/Plan/SessionIntentJudge.php
+  - resources/js/lib/plan.ts
 ---
 
 # Coaching evidence
 
 ADRs, feature notes and code docblocks cite a source here as `[[coaching-evidence#AuthorYear]]` rather than appealing to "coaching convention". This is a curated list: a source earns a heading only when a rule below relies on it. Each coaching-redesign layer appends its own sources and rule rows.
 
-**Labels.** *Evidence-supported*: a peer-reviewed source backs the rule as applied. *Heuristic*: a defensible model or convention with no peer-reviewed validation for this use; books and non-peer-reviewed conventions (Daniels, Allen & Coggan, Edwards, Banister 1991) never back more than this. *Product choice*: a decision about what the app shows or asks, not a training claim.
+**Labels.** *Evidence-supported*: a peer-reviewed source backs the rule as applied. *Heuristic*: a defensible model or convention with no peer-reviewed validation for this use; books and non-peer-reviewed conventions (Daniels, Allen & Coggan, Edwards, Banister 1991) never back more than this. *Product choice*: a decision about what the app shows or asks, not a training claim. Rows for the heart-rate cap (#1809) use three finer labels: *measured*, a peer-reviewed measurement backs the basis of the rule; *convention*, a published method choice, not a tested threshold; *heuristic*, as above, including any number whose size was chosen here on a measured basis.
 
 **Grade** (strongest design in the source): MA meta-analysis · SR systematic review · RCT · CT controlled trial · COH cohort · XS cross-sectional · LAB laboratory or modelling · CON consensus statement · REV narrative review · NONE no peer review. **Access**: FT full text read · ABS abstract only · NR not read (provenance only).
 
@@ -71,7 +77,15 @@ ADRs, feature notes and code docblocks cite a source here as `[[coaching-evidenc
 | A goal-less season's four-week cycle averages its frozen anchor, unless a long-run cap binds | [TrainingBaseline.php:511](app/Services/Run/Plan/TrainingBaseline.php#L511) | heuristic | [[#Doherty2020]], [[#Coyle1984]], [[#MujikaPadilla2000a]] |
 | Following the prescription never lowers the anchor; only running well short of it re-anchors mid-season or at rollover | [SeasonService.php:240](app/Services/Run/Plan/SeasonService.php#L240) | heuristic | [[#Coyle1984]], [[#MujikaPadilla2000a]], [[#MujikaPadilla2000b]] |
 | The Build ramp is a heuristic, not a safety rule | [PhaseSchedule.php:46](app/Services/Run/Plan/PhaseSchedule.php#L46) | heuristic | [[#Buist2008]] |
-| Steady-segment decoupling describes a run; only easy days run above Z2 count a week as run too hard | [PlanAdapter.php:286](app/Services/Run/Plan/PlanAdapter.php#L286) | evidence-supported | [[#Smyth2022]], [[#CoyleGonzalezAlonso2001]], [[#Maunder2021]], [[#Racinais2015]] |
+| Steady-segment decoupling describes a run; only easy-effort days run past the heart-rate cap count a week as run too hard | [PlanAdapter.php:273](app/Services/Run/Plan/PlanAdapter.php#L273) | evidence-supported | [[#Smyth2022]], [[#CoyleGonzalezAlonso2001]], [[#Maunder2021]], [[#Racinais2015]] |
+| An athlete with zones from Strava, a manual edit or an observed peak runs Easy and Long days under the top of zone 2 (the `Z3` lower bound), with pace as a hint; config-default zones keep pace the target. The cap estimates the first ventilatory threshold, and fixed-percentage zones place individuals in different domains (coaching-evidence-base claim 24: Jamnick 2020, Mann 2013, Seiler 2010), an error likely larger than any choice below | [RunnerProfile.php:92](app/Models/RunnerProfile.php#L92), [PlanRenderer.php:449](app/Services/Run/Plan/PlanRenderer.php#L449) | heuristic | [[#Jamnick2020]] |
+| An easy-effort day (Easy, or Long with no marathon-pace block) is too hard past 15 minutes over the cap, or 20% of moving time when its runs total under 75 minutes | [EasyEffort.php:18](app/Services/Run/Plan/EasyEffort.php#L18), [SessionIntentJudge.php:186](app/Services/Run/Plan/SessionIntentJudge.php#L186) | convention | [[#Sylta2014]] |
+| A session's goal is read from its time in zone, which gives no per-session limit of its own | [EasyEffort.php:61](app/Services/Run/Plan/EasyEffort.php#L61) | measured | [[#SeilerKjerland2006]] |
+| The first 5 minutes of a run are not read against the cap | [StreamAnalysis.php:85](app/Services/Run/Ingest/StreamAnalysis.php#L85) | heuristic (measured basis) | [[#Hunt2015]], [[#VanOost2025]] |
+| Time over the cap counts only where the 30-second rolling-average heart rate sits more than 5 bpm above it | [StreamAnalysis.php:87](app/Services/Run/Ingest/StreamAnalysis.php#L87), [StreamAnalysis.php:89](app/Services/Run/Ingest/StreamAnalysis.php#L89), [StreamAnalysis.php:524](app/Services/Run/Ingest/StreamAnalysis.php#L524) | heuristic (measured basis) | [[#Zhang2020]], [[#Wang2017]], [[#Pasadyn2019]], [[#Gillinov2017]] |
+| A long run's hint says the pace may slow late: heart rate drifts up over a long effort, more in heat | [plan.ts:408](resources/js/lib/plan.ts#L408) | measured | [[#CoyleGonzalezAlonso2001]], [[#Lafrenz2008]], [[#Wingo2005]] |
+| One easy-effort day speaks for the week past double the ragged line: 30 minutes, or 40% of a run under 75 minutes | [EasyEffort.php:20](app/Services/Run/Plan/EasyEffort.php#L20), [PlanAdapter.php:273](app/Services/Run/Plan/PlanAdapter.php#L273) | heuristic | — |
+| At the mildest readiness triggers alone a quality session keeps its minutes at a 3% slower pace; goal-pace work keeps its pace with the 0.75× cut, and a time trial is eased to easy | [ReadinessClamp.php:28](app/Services/Run/Plan/ReadinessClamp.php#L28), [ReadinessClamp.php:53](app/Services/Run/Plan/ReadinessClamp.php#L53) | heuristic | — |
 | Deleting a run re-grades its day from the surviving runs in either direction; an excused day keeps its verdict | [ComplianceScorer.php:321](app/Services/Run/Plan/ComplianceScorer.php#L321) | product choice | — |
 | After a marathon-class race (30 km or more run), 14 days carry no quality and the first full week after race day runs at the deload multiplier | [PostRaceRecovery.php:28](app/Services/Run/Plan/PostRaceRecovery.php#L28), [PlanInputsGatherer.php:137](app/Services/Run/Plan/PlanInputsGatherer.php#L137), [Periodizer.php:475](app/Services/Run/Plan/Periodizer.php#L475), [Periodizer.php:775](app/Services/Run/Plan/Periodizer.php#L775) | evidence-supported | [[#Sherman1984]], [[#Warhol1985]], [[#MartinezNavarro2021]] |
 | After a race of over 15 km, 7 days carry no quality; after 15 km or less, 3 days; the 30 km and 15 km class thresholds are conventions (the research found no half-marathon or shorter recovery timelines) | [PostRaceRecovery.php:17](app/Services/Run/Plan/PostRaceRecovery.php#L17), [PostRaceRecovery.php:19](app/Services/Run/Plan/PostRaceRecovery.php#L19), [PostRaceRecovery.php:28](app/Services/Run/Plan/PostRaceRecovery.php#L28) | heuristic | — |
@@ -254,3 +268,33 @@ Pfitzinger P, Latter P. *Faster Road Racing: 5K to Half Marathon.* Human Kinetic
 
 ### Daniels2022
 Daniels J. *Daniels' Running Formula.* 4th ed. Human Kinetics, 2022. Book, no DOI. Race-specific quality in the last phase of a season, built on the VDOT training paces. Grade NONE · access NR.
+
+### Sylta2014
+Sylta, Tønnessen & Seiler. *IJSPP* 2014;9:100–107. https://doi.org/10.1123/ijspp.2013-0298. Of 570 elite sessions, a continuous session with more than 15 minutes in zone 2/3 was classed as zone 2/3: a method choice, not a tested threshold. Grade XS · access NR.
+
+### SeilerKjerland2006
+Seiler & Kjerland. *Scand J Med Sci Sports* 2006. https://doi.org/10.1111/j.1600-0838.2004.00418.x. Session goal compared with time in zone; it gives no per-session limit. Grade XS · access NR.
+
+### Hunt2015
+Hunt, Fankhauser & Saengsuwan. *BioMed Eng OnLine* 2015;14:117. https://doi.org/10.1186/s12938-015-0112-7. Heart-rate on-kinetics τ ≈ 58 s, so about 95% of the steady value in roughly 3 minutes. Grade LAB · access NR.
+
+### VanOost2025
+Van Oost et al. *Sensors* 2025;25:6319. https://doi.org/10.3390/s25206319. Wrist sensors are least accurate at motion onset; walking only. Grade LAB · access NR.
+
+### Zhang2020
+Zhang et al. Meta-analysis. *J Sports Sci* 2020;38:2021–2034. https://doi.org/10.1080/02640414.2020.1767348. Wrist heart-rate mean bias −0.51 bpm. Grade MA · access NR.
+
+### Wang2017
+Wang et al. *JAMA Cardiol* 2017;2:104–106. https://doi.org/10.1001/jamacardio.2016.3340. Sample-level limits of agreement for wrist heart rate run about ±27 bpm. Grade LAB · access NR.
+
+### Pasadyn2019
+Pasadyn et al. 2019. https://doi.org/10.21037/cdt.2019.06.05. Wrist heart-rate error grows with speed. Grade LAB · access NR.
+
+### Gillinov2017
+Gillinov et al. *MSSE* 2017. https://doi.org/10.1249/MSS.0000000000001284. Wrist heart-rate error grows with speed. Grade LAB · access NR.
+
+### Lafrenz2008
+Lafrenz et al. *MSSE* 2008;40:1065–1071. https://doi.org/10.1249/MSS.0b013e3181666ed7. Heart-rate drift about 2% at 22°C against 11% at 35°C; cycling, under an hour. Grade LAB · access NR.
+
+### Wingo2005
+Wingo et al. *MSSE* 2005;37:248–255. No DOI recorded. Heart rate rose from 151 to 169 bpm at 35°C; cycling, under an hour. Grade LAB · access NR.

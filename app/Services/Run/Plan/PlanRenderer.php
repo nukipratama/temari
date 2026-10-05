@@ -8,6 +8,7 @@ use App\Actions\Feedback\ResolveFlaggedSubjectsAction;
 use App\Enums\FallOffTilt;
 use App\Enums\FeedbackSubject;
 use App\Enums\IntentVerdict;
+use App\Enums\PaceBand;
 use App\Enums\SegmentKey;
 use App\Enums\SessionType;
 use App\Enums\PlanPhase;
@@ -258,6 +259,7 @@ final class PlanRenderer
         float $longRunProgressionCapKm = INF,
         ?bool $ranAnyway = null,
         ?array $readinessAssessment = null,
+        ?int $easyHrCapBpm = null,
     ): array {
         $isToday = $s->date->isSameDay($today);
         $currentReadinessAssessment = $isToday && ! $status->isCredited()
@@ -397,6 +399,7 @@ final class PlanRenderer
             'phase' => $s->phase->value,
             'session_type' => $sessionType->value,
             'segments' => array_map(static fn (SessionSegment $segment): array => $segment->toArray(), $segments),
+            'hr_cap_bpm' => self::heartRateCapOf($sessionType, $segments, $easyHrCapBpm),
             'distance_km' => $distanceKm,
             'asked_km' => $askedKm,
             'pinned' => $s->pinned,
@@ -435,6 +438,19 @@ final class PlanRenderer
             ),
             'flagged' => app(ResolveFlaggedSubjectsAction::class)(FeedbackSubject::PlanDay, $s->id),
         ];
+    }
+
+    /**
+     * The heart rate an easy or long run is held under, or null when the
+     * athlete's zones are the config default or the session has no easy running.
+     *
+     * @param  list<SessionSegment>  $segments
+     */
+    private static function heartRateCapOf(SessionType $shownType, array $segments, ?int $easyHrCapBpm): ?int
+    {
+        $easyRunning = array_any($segments, static fn (SessionSegment $segment): bool => $segment->paceLabel === PaceBand::Easy);
+
+        return in_array($shownType, [SessionType::Easy, SessionType::Long], true) && $easyRunning ? $easyHrCapBpm : null;
     }
 
     /** The race whose goal pace the session shown rehearses, or null on any other session. */
@@ -562,7 +578,7 @@ final class PlanRenderer
             'distance_km' => $distanceHeld ? null : $effective->easedFromKm,
             'voice' => $status->isCredited() ? null : $clampVoice ?? ($dose === null
                 ? ReadinessClamp::noteFor($original, $effective->impliedCeiling(), $reasons)
-                : ReadinessClamp::qualityDoseNote($original, $reasons, $dose['hard_minutes'], $dose['original_hard_minutes'])),
+                : ReadinessClamp::qualityDoseNote($original, $reasons, $dose['hard_minutes'], $dose['original_hard_minutes'], $dose['pace_sec_per_km'])),
         ];
     }
 
@@ -594,7 +610,7 @@ final class PlanRenderer
             'core_km' => $effective->coreKm,
             'note' => $effective->qualityDose === null
                 ? ReadinessClamp::noteFor($original, $effective->impliedCeiling(), $reasons) ?? ''
-                : ReadinessClamp::qualityDoseNote($original, $reasons, $effective->qualityDose['hard_minutes'], $effective->qualityDose['original_hard_minutes']),
+                : ReadinessClamp::qualityDoseNote($original, $reasons, $effective->qualityDose['hard_minutes'], $effective->qualityDose['original_hard_minutes'], $effective->qualityDose['pace_sec_per_km']),
             'quality_dose' => $effective->qualityDose,
         ];
     }

@@ -58,6 +58,7 @@ function day(overrides: Partial<WeekPlanDay> = {}): WeekPlanDay {
         fall_off_tilt: null,
         goal_pace: null,
         time_trial: null,
+        hr_cap_bpm: null,
         advice_note: null,
         eased_from: null,
         pace_eased_from: null,
@@ -134,6 +135,26 @@ describe('TodaySession', () => {
         const mascot = container.querySelector('svg[data-mascot]');
 
         expect(mascot?.getAttribute('data-mascot')).toBe('blazing');
+    });
+
+    it('leads an easy day with its heart-rate cap and keeps the pace as a hint', () => {
+        render(
+            <TodaySession
+                briefing={briefing('Easy 6k.')}
+                today={day({ hr_cap_bpm: 152 })}
+            />,
+        );
+
+        expectSession('8', 'easy · under 152 bpm');
+        expect(screen.getByText('about 6:00/km.')).toBeInTheDocument();
+        expect(screen.queryByText('easy · 6:00/km')).toBeNull();
+    });
+
+    it('keeps pace as the target for an athlete still on default zones', () => {
+        render(<TodaySession briefing={briefing('Easy 6k.')} today={day()} />);
+
+        expectSession('8', 'easy · 6:00/km');
+        expect(screen.queryByText(/bpm/)).toBeNull();
     });
 
     it('sets the session straight on the section, with no box nested inside', () => {

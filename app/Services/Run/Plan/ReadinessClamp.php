@@ -7,6 +7,7 @@ namespace App\Services\Run\Plan;
 use App\Enums\PlanPhase;
 use App\Enums\SessionType;
 use App\Enums\PaceBand;
+use App\Services\Run\Metrics\PaceFormatter;
 use App\Services\Run\Metrics\ReadinessCeiling;
 
 /**
@@ -24,6 +25,38 @@ use App\Services\Run\Metrics\ReadinessCeiling;
  */
 final class ReadinessClamp
 {
+    public const float MILD_QUALITY_PACE_SLOWDOWN = 0.03;
+
+    /** @var list<string> */
+    private const array MILD_MODERATE_REASONS = [
+        'mild_fatigue_or_soreness_with_load_support',
+        'fair_sleep_with_load_support',
+        'poor_sleep_with_load_support',
+    ];
+
+    /** @var list<string> */
+    private const array STRONG_MODERATE_REASONS = [
+        'running_ahead_of_plan',
+        'weekly_load_above_personal_range',
+        'demanding_session_within_24h',
+        'closely_spaced_demanding_sessions',
+        'moderate_fatigue_or_soreness_reported',
+    ];
+
+    /**
+     * Whether a `ModerateOk` ceiling rests only on its mildest triggers:
+     * mild fatigue or soreness, or fair or poor sleep, alongside supporting
+     * load, with no stronger trigger that would cap the day by itself.
+     *
+     * @param  list<string>  $reasons
+     */
+    public static function isMildModerate(ReadinessCeiling $ceiling, array $reasons): bool
+    {
+        return $ceiling === ReadinessCeiling::ModerateOk
+            && array_intersect(self::MILD_MODERATE_REASONS, $reasons) !== []
+            && array_intersect(self::STRONG_MODERATE_REASONS, $reasons) === [];
+    }
+
     /**
      * @param  array{easy: int, marathon: int, threshold: int, interval: int}|null  $paces
      * @param  list<string>  $reasons
@@ -56,6 +89,22 @@ final class ReadinessClamp
         }
 
         if ($ceiling === ReadinessCeiling::ModerateOk && in_array($sessionType, [SessionType::Tempo, SessionType::Interval], true) && $prescription !== null && $prescription->paceBand !== null && ! $prescription->isEasy()) {
+            if (TimeTrial::isTrial($prescription->raceContext)) {
+                $km = SegmentGenerator::coreKmFor($sessionType, false, $longRunBaselineKm, $volumeMultiplier, $longRunCapKm, raceContext: $prescription->raceContext);
+
+                return ['session_type' => SessionType::Easy, 'segments' => SegmentGenerator::easyBlock($km, $paces), 'core_km' => $km,
+                    'note' => self::noteFor($sessionType, $ceiling, $reasons) ?? self::moderateOkNote()];
+            }
+            $basePace = $prescription->paceSecPerKm ?? $paces[$prescription->paceBand->value] ?? null;
+            if ($basePace !== null && self::isMildModerate($ceiling, $reasons) && ! GoalPaceWork::isGoalPace($prescription->raceContext)) {
+                $slowed = (int) round($basePace * (1 + self::MILD_QUALITY_PACE_SLOWDOWN));
+                $km = SegmentGenerator::coreKmFor($sessionType, false, $longRunBaselineKm, $volumeMultiplier, $longRunCapKm);
+                $segments = SegmentGenerator::forPrescription($sessionType, $phase, $km, $paces, new IntensityPrescription($prescription->hardMinutes, $prescription->paceBand, $slowed, $prescription->reason, $prescription->raceContext));
+
+                return ['session_type' => $sessionType, 'segments' => $segments, 'core_km' => $km,
+                    'note' => self::qualityDoseNote($sessionType, $reasons, $prescription->hardMinutes, $prescription->hardMinutes, $slowed),
+                    'quality_dose' => ['hard_minutes' => $prescription->hardMinutes, 'original_hard_minutes' => $prescription->hardMinutes, 'pace_band' => $prescription->paceBand->value, 'pace_sec_per_km' => $slowed]];
+            }
             $minutes = max(1, (int) floor($prescription->hardMinutes * 0.75));
             $reduced = new IntensityPrescription($minutes, $prescription->paceBand, $prescription->paceSecPerKm, $prescription->reason, $prescription->raceContext);
             $km = SegmentGenerator::coreKmFor($sessionType, false, $longRunBaselineKm, $volumeMultiplier, $longRunCapKm);
@@ -281,9 +330,12 @@ final class ReadinessClamp
     }
 
     /** @param list<string> $reasons */
-    public static function qualityDoseNote(SessionType $sessionType, array $reasons, int $minutes, int $originalMinutes): string
+    public static function qualityDoseNote(SessionType $sessionType, array $reasons, int $minutes, int $originalMinutes, ?int $paceSecPerKm = null): string
     {
         $cause = self::specificNote($reasons);
+        if ($minutes === $originalMinutes && $paceSecPerKm !== null) {
+            return ($cause === null ? '' : $cause.' ')."keep all {$minutes} hard minutes of the {$sessionType->value} work, a touch easier at ".PaceFormatter::format((float) $paceSecPerKm).'/km.';
+        }
         $cause = $cause === null ? '' : str_replace('quality can wait.', 'reduce the quality dose.', $cause).' ';
 
         return $cause."keep the {$sessionType->value} intent with {$minutes} hard minutes instead of {$originalMinutes}.";

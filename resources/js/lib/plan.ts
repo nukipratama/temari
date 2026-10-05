@@ -362,7 +362,7 @@ export function volumeAdjustedFrom(day: PlanDay): number | null {
         : null;
 }
 
-function sessionHasWork(day: PlanDay): boolean {
+function sessionHasWork(day: Pick<PlanDay, 'segments'>): boolean {
     return day.segments.some((s) => s.zone > 'Z2');
 }
 
@@ -404,9 +404,31 @@ export function workLabel(
 export const TIME_TRIAL_HINT =
     'warm up first like you would before a race, then record the trial as its own run if you can.';
 
-/** The one practical line a time trial day carries. */
-export function sessionHint(day: Pick<PlanDay, 'time_trial'>): string | null {
-    return day.time_trial !== null ? TIME_TRIAL_HINT : null;
+/** The one practical line a time trial day, or a day run under a heart-rate cap, carries. */
+export function sessionHint(
+    day: Pick<
+        PlanDay,
+        'time_trial' | 'hr_cap_bpm' | 'session_type' | 'segments'
+    >,
+): string | null {
+    if (day.time_trial !== null) {
+        return TIME_TRIAL_HINT;
+    }
+    if (day.hr_cap_bpm === null) {
+        return null;
+    }
+    if (sessionHasWork(day)) {
+        return `keep the easy running around it under ${day.hr_cap_bpm} bpm.`;
+    }
+
+    const pace = paceLabel(day);
+    if (day.session_type === 'long') {
+        return pace === null
+            ? "the pace may slow late as you tire, and that's fine."
+            : `about ${pace} early on. the pace may slow late as you tire, and that's fine.`;
+    }
+
+    return pace === null ? null : `about ${pace}.`;
 }
 /** What a session is for and how it should feel, in one line. */
 export function sessionPurpose(day: PlanDay): string | null {
@@ -421,7 +443,7 @@ export function sessionPurpose(day: PlanDay): string | null {
         case 'long':
             return hasWork
                 ? 'long run with goal-pace work. rehearses race day on tired legs.'
-                : 'time on feet. builds the engine the race runs on. chatty pace the whole way.';
+                : 'time on feet. builds the engine the race runs on. chatty effort the whole way.';
         case 'tempo':
             return hasWork
                 ? 'comfortably hard. teaches you to hold a pace without tipping over.'
@@ -567,7 +589,7 @@ export function fallOffTiltWhy(day: PlanDay): string | null {
 /** The core segment's own pace, in seconds/km — the number every pace figure
  *  on a day (the target, a pace-ease delta) reads from. Null with no VDOT
  *  estimate to size one. */
-function corePaceSecPerKm(day: PlanDay): number | null {
+function corePaceSecPerKm(day: Pick<PlanDay, 'segments'>): number | null {
     const core = day.segments.find(
         (s) => s.key === 'main' || s.key === 'interval',
     );
@@ -576,9 +598,17 @@ function corePaceSecPerKm(day: PlanDay): number | null {
 }
 
 /** The core set's pace target, which is the one pace an unrun day is read at. */
-export function paceLabel(day: PlanDay): string | null {
+export function paceLabel(day: Pick<PlanDay, 'segments'>): string | null {
     const sec = corePaceSecPerKm(day);
     return sec == null ? null : `${formatPace(sec)}/km`;
+}
+
+/** What an unrun day is run to: under its heart-rate cap on an easy or long
+ *  run, otherwise its core pace. */
+export function targetLabel(day: PlanDay): string | null {
+    return day.hr_cap_bpm !== null && !sessionHasWork(day)
+        ? `under ${day.hr_cap_bpm} bpm`
+        : paceLabel(day);
 }
 
 /**

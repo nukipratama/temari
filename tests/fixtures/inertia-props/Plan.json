@@ -79,6 +79,7 @@
     "weeks[].days[].fall_off_tilt",
     "weeks[].days[].flagged",
     "weeks[].days[].goal_pace",
+    "weeks[].days[].hr_cap_bpm",
     "weeks[].days[].id",
     "weeks[].days[].pace_eased_from",
     "weeks[].days[].phase",

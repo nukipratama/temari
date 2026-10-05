@@ -102,6 +102,7 @@
     "weekPlan.days[].fall_off_tilt",
     "weekPlan.days[].flagged",
     "weekPlan.days[].goal_pace",
+    "weekPlan.days[].hr_cap_bpm",
     "weekPlan.days[].id",
     "weekPlan.days[].pace_eased_from",
     "weekPlan.days[].phase",

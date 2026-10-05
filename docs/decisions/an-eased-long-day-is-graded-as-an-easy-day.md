@@ -34,7 +34,7 @@ A Long day with no recorded ease, or with only a pace ease (`eased_pace_sec_per_
 No new column is needed, because the stored data already tells the two clamp arms apart for a Long day:
 
 - `requiredRank(Long)` is `ModerateOk`, so at a `ModerateOk` ceiling
-  [ReadinessClamp::apply()](app/Services/Run/Plan/ReadinessClamp.php#L43) returns null for a Long day. The
+  [ReadinessClamp::apply()](app/Services/Run/Plan/ReadinessClamp.php#L76) returns null for a Long day. The
   `ModerateOk` arm is reachable only for Tempo and Interval.
 - [RestClampRecorder](app/Services/Run/Plan/RestClampRecorder.php) writes `clamped_km` only from a
   non-null `apply()`, so on a Long row it can only come from the `EasyOnly` arm. At `ModerateOk` a Long

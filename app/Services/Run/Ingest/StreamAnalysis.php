@@ -79,6 +79,15 @@ class StreamAnalysis
      */
     private const float NEGATIVE_SPLIT_MARGIN = 1.07;
 
+    /** The zone whose lower bound is the easy-effort heart-rate cap: the top of Z2. */
+    public const string EASY_CAP_ZONE = 'Z3';
+
+    public const int EASY_CAP_WARMUP_SEC = 300;
+
+    public const int EASY_CAP_ROLLING_SEC = 30;
+
+    public const int EASY_CAP_MARGIN_BPM = 5;
+
     /** Best-effort window durations in seconds → label suffix. */
     public const array BEST_EFFORT_WINDOWS = [
         30 => '30s',
@@ -129,6 +138,7 @@ class StreamAnalysis
             $this->bestEffortPaces($seconds, $intervals, $velocity),
             $this->elevation($altitude),
             $this->timeInZones($intervals, $heartrate, $hrZones),
+            $this->easyCapOverage($streams, $hrZones),
             $this->stoppedTime($intervals, $velocity),
             $this->cadenceDistribution($intervals, $cadence, $optimalCadenceSpm),
             $this->grade($grade, $gradeCost, $seconds, $intervals, $velocity),
@@ -499,6 +509,58 @@ class StreamAnalysis
         $cost = 155.4 * $i ** 5 - 30.4 * $i ** 4 - 43.3 * $i ** 3 + 46.3 * $i ** 2 + 19.5 * $i + 3.6;
 
         return max($cost, 0.36) / 3.6;
+    }
+
+    /**
+     * Moving seconds after the first {@see self::EASY_CAP_WARMUP_SEC} whose
+     * trailing {@see self::EASY_CAP_ROLLING_SEC} average heart rate sat more
+     * than {@see self::EASY_CAP_MARGIN_BPM} above the easy cap, with the cap
+     * it was measured against. Empty without a usable heart-rate stream.
+     *
+     * @param  array<string, mixed>  $streams  raw Strava streams dict
+     * @param  array<string, array{lo: int, hi: int}>  $hrZones
+     * @return array{easy_cap_bpm?: int, over_easy_cap_sec?: int}
+     */
+    public function easyCapOverage(array $streams, array $hrZones): array
+    {
+        $cap = $hrZones[self::EASY_CAP_ZONE]['lo'] ?? null;
+        $seconds = self::floats($this->data($streams, 'time'));
+        $heartrate = self::floats($this->data($streams, 'heartrate'));
+        $velocity = $this->data($streams, 'velocity_smooth');
+        $n = min(count($seconds), count($heartrate));
+        if ($cap === null || $n < 2) {
+            return [];
+        }
+
+        $over = 0.0;
+        $plausible = 0;
+        $windowStart = 0;
+        $windowSum = 0.0;
+        $windowCount = 0;
+        for ($i = 0; $i < $n; $i++) {
+            if ($heartrate[$i] >= self::HR_PLAUSIBLE_MIN_BPM && $heartrate[$i] <= self::HR_PLAUSIBLE_MAX_BPM) {
+                $windowSum += $heartrate[$i];
+                $windowCount++;
+                $plausible++;
+            }
+            while ($seconds[$i] - $seconds[$windowStart] >= self::EASY_CAP_ROLLING_SEC) {
+                if ($heartrate[$windowStart] >= self::HR_PLAUSIBLE_MIN_BPM && $heartrate[$windowStart] <= self::HR_PLAUSIBLE_MAX_BPM) {
+                    $windowSum -= $heartrate[$windowStart];
+                    $windowCount--;
+                }
+                $windowStart++;
+            }
+
+            $moving = ! isset($velocity[$i]) || (float) $velocity[$i] >= self::STOP_VELOCITY_MS;
+            if ($i === $n - 1 || $windowCount === 0 || ! $moving || $seconds[$i] - $seconds[0] < self::EASY_CAP_WARMUP_SEC) {
+                continue;
+            }
+            if ($windowSum / $windowCount > $cap + self::EASY_CAP_MARGIN_BPM) {
+                $over += $seconds[$i + 1] - $seconds[$i];
+            }
+        }
+
+        return $plausible === 0 ? [] : ['easy_cap_bpm' => (int) $cap, 'over_easy_cap_sec' => (int) round($over)];
     }
 
     /**

@@ -326,6 +326,10 @@ export interface StreamSummary {
     descent_m?: number;
     stopped_time_sec?: number;
     stop_count?: number;
+    /** The easy-effort cap (top of Z2) `over_easy_cap_sec` was measured against. */
+    easy_cap_bpm?: number;
+    /** Moving seconds past the first 5 min whose 30 s average HR sat over the cap + 5 bpm. */
+    over_easy_cap_sec?: number;
     best_30s_pace?: string;
     best_1min_pace?: string;
     best_3min_pace?: string;
@@ -550,6 +554,10 @@ export interface WeekPlanDay {
     /** Ordered warmup/main (or interval reps) breakdown — see
      *  `App\Services\Run\Plan\SegmentGenerator`. Empty on a rest day. */
     segments: PlanSessionSegment[];
+    /** The heart rate an easy or long day is run under, the top of the
+     *  athlete's zone 2. Null on other days and while the zones are still
+     *  the config default, when pace stays the target. */
+    hr_cap_bpm: number | null;
     /** The whole outing, warmup included — the same figure `SessionMatcher`
      *  grades the day's total logged distance against. Plan's current week
      *  can shrink this below `asked_km` as the week's live volume
