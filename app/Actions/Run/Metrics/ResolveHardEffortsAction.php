@@ -8,16 +8,16 @@ use App\Enums\PrCategory;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Services\Run\Metrics\RunDistanceTimes;
-use App\Services\Run\Metrics\SessionIntent;
 use Illuminate\Support\Carbon;
 
 /**
  * The athlete's unconfirmed hard whole-run efforts and their other runs, read
  * once per request in date order.
  *
- * A run is a hard effort when Strava tags it a race, or when it set a distance
- * record on its own date and the record covers essentially the whole run. A
- * fast segment inside a longer run never counts, and heart rate plays no part.
+ * A run is a hard effort when it set a distance record on its own date and the
+ * record covers essentially the whole run. A fast segment inside a longer run
+ * never counts, and neither the Strava workout tag nor heart rate plays a part:
+ * a tag edited after ingest never reaches the app.
  *
  * @phpstan-type HardEffort array{activity_id: int, date: Carbon, distance_m: float, time_sec: float, basis: string}
  * @phpstan-type TrainingRun array{activity_id: int, date: Carbon, distance_m: float, time_sec: float}
@@ -28,8 +28,6 @@ class ResolveHardEffortsAction
     public const float MIN_METERS = 3_000.0;
 
     public const float WHOLE_RUN_TOLERANCE = 0.10;
-
-    public const string RACE_BASIS = 'race';
 
     /** @var array<int, Efforts> */
     private array $memo = [];
@@ -57,7 +55,7 @@ class ResolveHardEffortsAction
             ->orderBy('activity_details.activity_id')
             ->select([
                 'activity_details.activity_id', 'activity_details.start_date_local', 'activity_details.distance',
-                'activity_details.elapsed_time', 'activity_details.moving_time', 'activity_details.workout_type',
+                'activity_details.elapsed_time', 'activity_details.moving_time',
                 'activity_details.stream_summary',
             ])
             ->cursor();
@@ -92,14 +90,10 @@ class ResolveHardEffortsAction
                 continue;
             }
 
-            $effort = SessionIntent::isTaggedRace($detail->workout_type)
-                ? ['distance_m' => $distance, 'time_sec' => $time, 'basis' => self::RACE_BASIS]
-                : $recordEffort;
-
-            if ($effort === null) {
+            if ($recordEffort === null) {
                 $runs[] = ['activity_id' => $detail->activity_id, 'date' => $date, 'distance_m' => $distance, 'time_sec' => $time];
             } else {
-                $efforts[] = ['activity_id' => $detail->activity_id, 'date' => $date, ...$effort];
+                $efforts[] = ['activity_id' => $detail->activity_id, 'date' => $date, ...$recordEffort];
             }
         }
 

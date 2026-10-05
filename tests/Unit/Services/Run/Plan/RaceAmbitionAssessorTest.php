@@ -2,8 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Models\Activity;
-use App\Models\ActivityDetail;
 use App\Enums\RaceAmbitionState;
 use App\Models\PerformanceEvidence;
 use App\Models\RaceGoal;
@@ -130,27 +128,5 @@ it('names the effort the supported time rests on', function (): void {
 
     $ambition = $this->assessor->assess($this->user, tenKRace($this->user, 4000));
 
-    expect($ambition->basis)->toBe(['distance_m' => 10_000, 'performed_on' => '2026-09-24', 'activity_id' => null])
-        ->and($ambition->confirmNudge)->toBeFalse();
-});
-
-it('asks for a confirmed effort when the supported time rests only on unconfirmed records', function (): void {
-    $activity = Activity::factory()->for($this->user)->create();
-    ActivityDetail::factory()->for($activity)->create([
-        'start_date_local' => '2026-09-20 06:00:00', 'distance' => 10_000, 'elapsed_time' => 4_200, 'workout_type' => 1,
-    ]);
-
-    expect($this->assessor->assess($this->user, tenKRace($this->user, 4000))->confirmNudge)->toBeTrue();
-});
-
-it('asks for a recent effort when the supported time is stale, even from confirmed evidence', function (): void {
-    PerformanceEvidence::query()->create([
-        'user_id' => $this->user->id, 'kind' => 'race', 'distance_m' => 10_000, 'elapsed_time_sec' => 4_200,
-        'performed_on' => '2026-03-01', 'confirmed_at' => '2026-03-01 12:00:00',
-    ]);
-
-    $ambition = $this->assessor->assess($this->user, tenKRace($this->user, 4000));
-
-    expect($ambition->confidence)->toBe('stale')
-        ->and($ambition->confirmNudge)->toBeTrue();
+    expect($ambition->basis)->toBe(['distance_m' => 10_000, 'performed_on' => '2026-09-24', 'activity_id' => null]);
 });

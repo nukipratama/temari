@@ -64,7 +64,6 @@ describe('RaceComparison', () => {
                             performed_on: '2026-09-20',
                             activity_id: null,
                         },
-                        confirm_nudge: false,
                     },
                     support: {
                         mode: 'road',
@@ -107,7 +106,6 @@ describe('RaceComparison', () => {
             gap_pct: 4.6,
             evidence_confidence: 'confirmed',
             basis: null,
-            confirm_nudge: false,
         };
         const support = {
             mode: 'road' as const,

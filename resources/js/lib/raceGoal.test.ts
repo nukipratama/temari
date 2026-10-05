@@ -170,7 +170,6 @@ describe('ambitionNote', () => {
         gap_pct: 1.6,
         evidence_confidence: 'confirmed',
         basis: null,
-        confirm_nudge: false,
     };
     const support: RaceSupport = {
         mode: 'road',
@@ -220,7 +219,6 @@ describe('supportedEyebrow', () => {
         gap_pct: -0.3,
         evidence_confidence: 'confirmed',
         basis: null,
-        confirm_nudge: false,
     };
 
     it('reads on track for only in the band with the supported time not behind', () => {
@@ -268,7 +266,6 @@ describe('supportedBasisLine', () => {
             performed_on: '2026-08-26',
             activity_id: 7,
         },
-        confirm_nudge: true,
     };
 
     it('names the effort the supported time rests on', () => {

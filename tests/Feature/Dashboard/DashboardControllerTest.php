@@ -392,9 +392,9 @@ it('paints Home inside its query budget', function (): void {
         $activity = Activity::factory()->for($user)->analyzed()->create();
         ActivityDetail::factory()->for($activity)->create([
             'start_date_local' => Carbon::today()->subDays($daysAgo),
-            'distance' => 8000.0,
+            'distance' => $daysAgo === 3 ? 10_000.0 : 8000.0,
             'trimp_edwards' => 70.0,
-            'workout_type' => $daysAgo === 3 ? 1 : 0,
+            ...($daysAgo === 3 ? ['stream_summary' => ['per_km' => array_fill(0, 10, ['pace' => '6:00', 'elapsed_sec' => 360, 'distance_m' => 1000])]] : []),
         ]);
     }
     WeeklySnapshot::factory()->for($user)->create([

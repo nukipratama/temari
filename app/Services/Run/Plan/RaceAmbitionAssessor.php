@@ -54,7 +54,6 @@ final readonly class RaceAmbitionAssessor
             round($gap * 100, 1),
             $estimate['confidence'],
             $basisM === null ? null : ['distance_m' => $basisM, 'performed_on' => $estimate['set_at']->toDateString(), 'activity_id' => $estimate['source_activity_id'] ?? null],
-            ($estimate['unconfirmed_only'] ?? false) || $estimate['stale'],
         );
     }
 }

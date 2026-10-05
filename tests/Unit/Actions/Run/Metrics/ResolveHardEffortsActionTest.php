@@ -27,16 +27,17 @@ function hardEffortRun(User $user, string $date, float $meters, int $secPerKm, ?
     return $activity;
 }
 
-it('keeps a race-tagged run whole and a whole-run record at its record distance', function (): void {
+it('keeps a whole-run record at its record distance and a Race-tagged run without one as a run', function (): void {
     $user = User::factory()->create();
     $race = hardEffortRun($user, '2026-09-01', 8_000, 330, 1, false);
     $record = hardEffortRun($user, '2026-09-10', 5_200, 300);
 
-    $efforts = new ResolveHardEffortsAction()($user->id)['efforts'];
+    $resolved = new ResolveHardEffortsAction()($user->id);
+    $efforts = $resolved['efforts'];
 
-    expect($efforts)->toHaveCount(2)
-        ->and($efforts[0])->toMatchArray(['activity_id' => $race->id, 'distance_m' => 8_000.0, 'time_sec' => 2_640.0, 'basis' => 'race'])
-        ->and($efforts[1])->toMatchArray(['activity_id' => $record->id, 'distance_m' => 5_000.0, 'time_sec' => 1_500.0, 'basis' => '5km']);
+    expect($efforts)->toHaveCount(1)
+        ->and(array_column($resolved['runs'], 'activity_id'))->toBe([$race->id])
+        ->and($efforts[0])->toMatchArray(['activity_id' => $record->id, 'distance_m' => 5_000.0, 'time_sec' => 1_500.0, 'basis' => '5km']);
 });
 
 it('judges a record against every earlier run, embedded segments included', function (): void {
@@ -61,7 +62,7 @@ it('reads once per request until forgotten', function (): void {
     $user = User::factory()->create();
     $action = new ResolveHardEffortsAction();
     $action($user->id);
-    hardEffortRun($user, '2026-09-01', 8_000, 330, 1, false);
+    hardEffortRun($user, '2026-09-01', 5_000, 330);
 
     expect($action($user->id)['efforts'])->toBe([]);
 

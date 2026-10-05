@@ -104,8 +104,6 @@ export interface RaceAmbition {
         performed_on: string;
         activity_id: number | null;
     } | null;
-    /** Ask for a confirmed recent effort: the supported time rests only on unconfirmed records, or is stale. */
-    confirm_nudge: boolean;
 }
 
 /** The Riegel fit over the athlete's PRs, used by the race form's typed-goal warning. */

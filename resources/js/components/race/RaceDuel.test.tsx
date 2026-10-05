@@ -23,7 +23,6 @@ const AMBITION: RaceAmbition = {
     gap_pct: 4.8,
     evidence_confidence: 'confirmed',
     basis: null,
-    confirm_nudge: false,
 };
 
 const SUPPORT: RaceSupport = {

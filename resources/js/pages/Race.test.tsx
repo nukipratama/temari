@@ -31,7 +31,6 @@ const RACE: RaceDetails = {
         gap_pct: 1.6,
         evidence_confidence: 'confirmed',
         basis: null,
-        confirm_nudge: false,
     },
     support: { mode: 'road', dedicated_preparation: true, limitation: null },
     history: [],
@@ -63,7 +62,7 @@ const PROJECTION = {
 };
 
 describe('Race', () => {
-    it('asks for a confirmed effort under the duel when the supported time needs one', () => {
+    it('names the effort the supported time rests on, with no ask to confirm it', () => {
         render(
             <Race
                 race={{
@@ -76,7 +75,6 @@ describe('Race', () => {
                             performed_on: '2026-08-26',
                             activity_id: 42,
                         },
-                        confirm_nudge: true,
                     },
                 }}
                 projection={PROJECTION}
@@ -87,8 +85,8 @@ describe('Race', () => {
             screen.getByText('based on your 5K on aug 26'),
         ).toBeInTheDocument();
         expect(
-            screen.getByRole('link', { name: 'open the run' }),
-        ).toHaveAttribute('href', '/activities/42');
+            screen.queryByRole('link', { name: 'open the run' }),
+        ).not.toBeInTheDocument();
     });
 
     it('shows nothing about an AI pause, since it renders no narration', () => {

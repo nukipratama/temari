@@ -4,7 +4,6 @@ import { Suspense, useState } from 'react';
 
 import type { PastRace, RaceDetails, RaceProjection } from '@/types/inertia';
 
-import ConfirmEffortNudge from '@/components/race/ConfirmEffortNudge';
 import RaceDuel from '@/components/race/RaceDuel';
 import RaceOutcomeCard from '@/components/race/RaceOutcomeCard';
 import TemariNudgeModal from '@/components/temari/TemariNudgeModal';
@@ -74,10 +73,6 @@ export default function Race({
                             ambition={race.ambition}
                             support={race.support}
                             className="mt-4"
-                        />
-                        <ConfirmEffortNudge
-                            ambition={race.ambition}
-                            className="mt-3"
                         />
                         <div className="mt-3 flex items-center justify-between gap-3 border-t border-dashed border-border pt-3">
                             <PillButton

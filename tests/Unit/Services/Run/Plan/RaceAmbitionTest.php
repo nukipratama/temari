@@ -28,6 +28,5 @@ it('exposes both numbers under stable payload keys', function (): void {
         'gap_pct' => 28.6,
         'evidence_confidence' => 'confirmed',
         'basis' => null,
-        'confirm_nudge' => false,
     ]);
 });

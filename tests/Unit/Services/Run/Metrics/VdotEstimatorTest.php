@@ -24,12 +24,19 @@ beforeEach(function (): void {
 
 afterEach(fn () => Carbon::setTestNow());
 
-function taggedRace(User $user, string $date, float $meters, int $seconds): Activity
+function recordRun(User $user, string $date, float $meters, int $seconds): Activity
 {
+    $pace = $seconds / $meters * 1000;
+    $splits = [];
+    for ($km = 1; $km <= (int) floor($meters / 1000); $km++) {
+        $splits[] = ['km' => $km, 'pace' => PaceFormatter::format($pace), 'elapsed_sec' => $pace, 'distance_m' => 1000];
+    }
+    $leftover = $meters - floor($meters / 1000) * 1000;
     $activity = Activity::factory()->for($user)->create();
     ActivityDetail::factory()->for($activity)->create([
         'start_date_local' => $date.' 06:00:00', 'distance' => $meters, 'elapsed_time' => $seconds,
-        'moving_time' => $seconds, 'workout_type' => 1, 'stream_summary' => null,
+        'moving_time' => $seconds, 'workout_type' => 0,
+        'stream_summary' => ['per_km' => $splits, ...($leftover > 0 ? ['partial_split' => ['distance_m' => $leftover, 'pace' => PaceFormatter::format($pace)]] : [])],
     ]);
 
     return $activity;
@@ -67,9 +74,9 @@ function supportedTime(VdotEstimator $estimator, array $estimate, float $meters 
 it('reads a recent 5K over older long races, so the 10K lands near an hour rather than the lowest record', function (): void {
     $user = User::factory()->create();
     RaceGoal::factory()->for($user)->create(['distance_m' => 10_000, 'goal_time_sec' => 3480, 'race_date' => '2026-11-15']);
-    taggedRace($user, '2026-05-10', 10_000, 3917);
-    taggedRace($user, '2026-05-24', 15_000, 6141);
-    taggedRace($user, '2026-05-31', 21_100, 8792);
+    recordRun($user, '2026-05-10', 10_000, 3917);
+    recordRun($user, '2026-05-24', 15_000, 6141);
+    recordRun($user, '2026-05-31', 21_100, 8792);
     evenRun($user, '2026-08-26', 5_050, 337);
 
     $estimate = $this->estimator->estimate($user);
@@ -80,18 +87,22 @@ it('reads a recent 5K over older long races, so the 10K lands near an hour rathe
         ->and($estimate['source_category'])->toBe('5km')
         ->and($estimate['distance_m'])->toBe(5000)
         ->and($estimate['set_at']->toDateString())->toBe('2026-08-26')
-        ->and($estimate['confidence'])->toBe('provisional')
-        ->and($estimate['unconfirmed_only'])->toBeTrue();
+        ->and($estimate['confidence'])->toBe('provisional');
 });
 
-it('counts a run tagged race on Strava as a hard effort', function (): void {
+it('never counts a run tagged Race on Strava that set no record', function (): void {
     $user = User::factory()->create();
-    taggedRace($user, '2026-09-20', 8_000, 2_880);
+    recordRun($user, '2026-08-01', 10_000, 3_000);
+    $tagged = Activity::factory()->for($user)->create();
+    ActivityDetail::factory()->for($tagged)->create([
+        'start_date_local' => '2026-09-20 06:00:00', 'distance' => 10_000, 'elapsed_time' => 3_300,
+        'moving_time' => 3_300, 'workout_type' => 1, 'stream_summary' => null,
+    ]);
 
     $estimate = $this->estimator->estimate($user);
 
-    expect($estimate['source_category'])->toBe('race')
-        ->and($estimate['distance_m'])->toBe(8000);
+    expect($estimate['set_at']->toDateString())->toBe('2026-08-01')
+        ->and($estimate['source_activity_id'])->not->toBe($tagged->id);
 });
 
 it('counts a run that set a distance record over essentially the whole run', function (): void {
@@ -132,16 +143,17 @@ it('never reads heart rate as a hard effort', function (): void {
 
 it('lets the effort closest to the race distance set the supported time', function (): void {
     $user = User::factory()->create();
-    taggedRace($user, '2026-09-01', 3_200, 1_000);
-    taggedRace($user, '2026-09-10', 6_000, 2_100);
+    RaceGoal::factory()->for($user)->create(['distance_m' => 21_098, 'race_date' => '2026-12-01']);
+    recordRun($user, '2026-09-01', 5_000, 1_500);
+    recordRun($user, '2026-09-10', 10_000, 3_150);
 
-    expect($this->estimator->estimate($user)['distance_m'])->toBe(6000);
+    expect($this->estimator->estimate($user)['distance_m'])->toBe(10000);
 });
 
 it('interpolates between the efforts either side of the race distance, weighted toward the closer one', function (): void {
     $user = User::factory()->create();
-    taggedRace($user, '2026-09-01', 5_000, 1_650);
-    taggedRace($user, '2026-09-10', 15_000, 5_700);
+    recordRun($user, '2026-09-01', 5_000, 1_650);
+    recordRun($user, '2026-09-10', 15_000, 5_700);
     $k = FallOffExponent::fit([
         ['date' => Carbon::parse('2026-09-01'), 'distance_m' => 5_000.0, 'time_sec' => 1_650.0],
         ['date' => Carbon::parse('2026-09-10'), 'distance_m' => 15_000.0, 'time_sec' => 5_700.0],
@@ -160,7 +172,7 @@ it('interpolates between the efforts either side of the race distance, weighted 
 
 it('reads the supported VDOT at 10K when there is no goal race', function (): void {
     $user = User::factory()->create();
-    taggedRace($user, '2026-09-20', 5_000, 1_500);
+    recordRun($user, '2026-09-20', 5_000, 1_500);
     $tenK = max(1_500 * 2 ** FallOffExponent::DEFAULT_UP_TO_10K, $this->estimator->raceTimeForVdot($this->estimator->vdotFromTimeAndDistance(1_500, 5_000), 10_000));
 
     $estimate = $this->estimator->estimate($user);
@@ -172,7 +184,7 @@ it('reads the supported VDOT at 10K when there is no goal race', function (): vo
 it('reads the supported VDOT at the goal race distance with that distance\'s default fall-off', function (): void {
     $user = User::factory()->create();
     RaceGoal::factory()->for($user)->create(['distance_m' => 21_098, 'race_date' => '2026-12-01']);
-    taggedRace($user, '2026-09-20', 10_000, 3_000);
+    recordRun($user, '2026-09-20', 10_000, 3_000);
     $half = 3_000 * 2.1098 ** FallOffExponent::DEFAULT_HALF;
 
     $estimate = $this->estimator->estimate($user);
@@ -184,8 +196,8 @@ it('reads the supported VDOT at the goal race distance with that distance\'s def
 it('slows a projection with the athlete\'s own fall-off fitted from a close cluster', function (): void {
     $user = User::factory()->create();
     RaceGoal::factory()->for($user)->create(['distance_m' => 21_098, 'race_date' => '2026-12-01']);
-    taggedRace($user, '2026-09-01', 5_000, 1_500);
-    taggedRace($user, '2026-09-20', 10_000, 3_000 * 1);
+    recordRun($user, '2026-09-01', 5_000, 1_500);
+    recordRun($user, '2026-09-20', 10_000, 3_000 * 1);
     $fitted = FallOffExponent::fit([
         ['date' => Carbon::parse('2026-09-01'), 'distance_m' => 5_000.0, 'time_sec' => 1_500.0],
         ['date' => Carbon::parse('2026-09-20'), 'distance_m' => 10_000.0, 'time_sec' => 3_000.0],
@@ -199,7 +211,7 @@ it('slows a projection with the athlete\'s own fall-off fitted from a close clus
 
 it('never lets the supported time sit slower than a recent training run of the race distance', function (): void {
     $user = User::factory()->create();
-    taggedRace($user, '2026-09-01', 5_000, 1_800);
+    recordRun($user, '2026-09-01', 5_000, 1_800);
     $run = Activity::factory()->for($user)->create();
     ActivityDetail::factory()->for($run)->create([
         'start_date_local' => '2026-09-25 06:00:00', 'distance' => 10_000, 'elapsed_time' => 3_300, 'workout_type' => 0, 'stream_summary' => null,
@@ -221,21 +233,21 @@ it('never lets a training run lower the supported time or stand in for an effort
 
     expect($this->estimator->estimate($user))->toBeNull();
 
-    taggedRace($user, '2026-09-01', 10_000, 3_000);
+    recordRun($user, '2026-09-01', 10_000, 3_000);
     $this->estimator->forget($user);
 
-    expect($this->estimator->estimate($user)['source_category'])->toBe('race');
+    expect($this->estimator->estimate($user)['source_category'])->toBe('10km');
 });
 
-it('lifts on unconfirmed records by at most one VDOT a week and drops at once', function (): void {
+it('lifts on unconfirmed records by at most one VDOT a week, and a confirmed slower effort drops it at once', function (): void {
     $user = User::factory()->create();
-    taggedRace($user, '2026-08-01', 10_000, 3_600);
+    recordRun($user, '2026-08-01', 10_000, 3_600);
     FitnessAnchor::query()->create([
         'user_id' => $user->id, 'vdot' => 1, 'quality_vdot' => 1, 'source_category' => 'race', 'source_value_sec' => 3600,
         'set_at' => '2026-08-01', 'captured_at' => '2026-08-02 08:00:00',
     ]);
     $baseline = $this->estimator->estimate($user, Carbon::parse('2026-09-09'))['vdot'];
-    taggedRace($user, '2026-09-10', 10_000, 3_200);
+    recordRun($user, '2026-09-10', 10_000, 3_200);
     $this->estimator->forget($user);
     $uncapped = round($this->estimator->vdotFromTimeAndDistance(3_200, 10_000), 1);
 
@@ -244,7 +256,7 @@ it('lifts on unconfirmed records by at most one VDOT a week and drops at once', 
         ->and($this->estimator->estimate($user, Carbon::parse('2026-09-17'))['vdot'])->toBe(round($baseline + 2.0, 1))
         ->and($this->estimator->estimate($user, Carbon::parse('2026-10-05'))['vdot'])->toBe(min($uncapped, round($baseline + 4.0, 1)));
 
-    taggedRace($user, '2026-10-05', 10_000, 3_700);
+    confirmedEffort($user, '2026-10-05', 10_000, 3_700);
     $this->estimator->forget($user);
 
     expect($this->estimator->estimate($user)['vdot'])->toBe(round($this->estimator->vdotFromTimeAndDistance(3_700, 10_000), 1));
@@ -252,7 +264,7 @@ it('lifts on unconfirmed records by at most one VDOT a week and drops at once', 
 
 it('applies a confirmed effort at once', function (): void {
     $user = User::factory()->create();
-    taggedRace($user, '2026-08-01', 10_000, 3_600);
+    recordRun($user, '2026-08-01', 10_000, 3_600);
     FitnessAnchor::query()->create([
         'user_id' => $user->id, 'vdot' => 1, 'quality_vdot' => 1, 'source_category' => 'race', 'source_value_sec' => 3600,
         'set_at' => '2026-08-01', 'captured_at' => '2026-08-02 08:00:00',
@@ -262,21 +274,20 @@ it('applies a confirmed effort at once', function (): void {
     $estimate = $this->estimator->estimate($user, Carbon::parse('2026-09-10'));
 
     expect($estimate['vdot'])->toBe(round($this->estimator->vdotFromTimeAndDistance(3_200, 10_000), 1))
-        ->and($estimate['confidence'])->toBe('confirmed')
-        ->and($estimate['unconfirmed_only'])->toBeFalse();
+        ->and($estimate['confidence'])->toBe('confirmed');
 });
 
 it('gives the same capped answer for a past day whether read then or after later efforts landed', function (): void {
     $user = User::factory()->create();
-    taggedRace($user, '2026-07-01', 10_000, 3_700);
+    recordRun($user, '2026-07-01', 10_000, 3_700);
     FitnessAnchor::query()->create([
         'user_id' => $user->id, 'vdot' => 1, 'quality_vdot' => 1, 'source_category' => 'race', 'source_value_sec' => 3700,
         'set_at' => '2026-07-01', 'captured_at' => '2026-07-02 08:00:00',
     ]);
-    taggedRace($user, '2026-08-01', 10_000, 3_300);
+    recordRun($user, '2026-08-01', 10_000, 3_300);
     $then = $this->estimator->estimate($user, Carbon::parse('2026-08-12'));
 
-    taggedRace($user, '2026-08-20', 10_000, 3_000);
+    recordRun($user, '2026-08-20', 10_000, 3_000);
     $fresh = app(VdotEstimator::class);
     $fresh->forget($user);
     $later = $fresh->estimate($user, Carbon::parse('2026-10-01'));
@@ -287,8 +298,8 @@ it('gives the same capped answer for a past day whether read then or after later
 
 it('falls back to the newest older effort, labelled stale, when nothing qualifies in 16 weeks', function (): void {
     $user = User::factory()->create();
-    taggedRace($user, '2025-12-01', 10_000, 3_000);
-    taggedRace($user, '2026-04-01', 21_100, 9_000);
+    recordRun($user, '2025-12-01', 10_000, 3_000);
+    recordRun($user, '2026-04-01', 21_100, 9_000);
 
     $estimate = $this->estimator->estimate($user);
 
@@ -304,8 +315,7 @@ it('keeps old confirmed evidence available with stale confidence', function (): 
     $estimate = $this->estimator->estimate($user);
 
     expect($estimate['confidence'])->toBe('stale')
-        ->and($estimate['stale'])->toBeTrue()
-        ->and($estimate['unconfirmed_only'])->toBeFalse();
+        ->and($estimate['stale'])->toBeTrue();
 });
 
 it('anchors fitness to confirmed races and tests with explicit provenance', function (): void {
@@ -323,7 +333,7 @@ it('anchors fitness to confirmed races and tests with explicit provenance', func
 
 it('reads a confirmed effort in place of the same run\'s unconfirmed record', function (): void {
     $user = User::factory()->create();
-    $activity = taggedRace($user, '2026-09-20', 10_000, 3_000);
+    $activity = recordRun($user, '2026-09-20', 10_000, 3_000);
     PerformanceEvidence::query()->create([
         'user_id' => $user->id, 'activity_id' => $activity->id, 'kind' => 'race', 'distance_m' => 10_000,
         'elapsed_time_sec' => 3_050, 'performed_on' => '2026-09-20', 'confirmed_at' => now(),
@@ -352,14 +362,14 @@ it('excludes an evidence confirmation made after the historical as-of date', fun
 
 it('does not use an effort run after the requested as-of date', function (): void {
     $user = User::factory()->create();
-    taggedRace($user, '2026-10-06', 5_000, 1_500);
+    recordRun($user, '2026-10-06', 5_000, 1_500);
 
     expect($this->estimator->estimate($user))->toBeNull();
 });
 
 it('anchors quality work on recent short records above the supported VDOT', function (): void {
     $user = User::factory()->create();
-    taggedRace($user, '2026-09-01', 21_100, 9_000);
+    recordRun($user, '2026-09-01', 21_100, 9_000);
     PersonalRecord::factory()->for($user)->create(['category' => '5km', 'value_sec' => 1_500, 'set_at' => '2026-09-15']);
 
     $estimate = $this->estimator->estimate($user);
@@ -371,7 +381,7 @@ it('anchors quality work on recent short records above the supported VDOT', func
 
 it('never lets the quality anchor fall below the supported VDOT', function (): void {
     $user = User::factory()->create();
-    taggedRace($user, '2026-09-01', 10_000, 3_000);
+    recordRun($user, '2026-09-01', 10_000, 3_000);
     PersonalRecord::factory()->for($user)->create(['category' => '5km', 'value_sec' => 2_400, 'set_at' => '2026-09-15']);
 
     $estimate = $this->estimator->estimate($user);
@@ -382,7 +392,7 @@ it('never lets the quality anchor fall below the supported VDOT', function (): v
 
 it('will not let a lone short record establish the quality anchor', function (): void {
     $user = User::factory()->create();
-    taggedRace($user, '2026-09-01', 10_000, 3_600);
+    recordRun($user, '2026-09-01', 10_000, 3_600);
     PersonalRecord::factory()->for($user)->create(['category' => '1km', 'value_sec' => 200, 'set_at' => '2026-09-15']);
 
     $estimate = $this->estimator->estimate($user);
@@ -406,7 +416,7 @@ it('captures a provisional anchor once, at the first estimate', function (): voi
 
     expect(FitnessAnchor::query()->where('user_id', $user->id)->exists())->toBeFalse();
 
-    taggedRace($user, '2026-09-20', 10_000, 3_000);
+    recordRun($user, '2026-09-20', 10_000, 3_000);
     $this->estimator->forget($user);
     $this->estimator->captureProvisionalAnchor($user, Carbon::parse('2026-09-21 08:00:00'));
     $this->estimator->captureProvisionalAnchor($user, Carbon::parse('2026-10-01 08:00:00'));
@@ -436,16 +446,16 @@ it('supports no race time for a non-positive VDOT or distance', function (): voi
 
 it('summarises the source of an estimate for display', function (): void {
     $user = User::factory()->create();
-    taggedRace($user, '2026-09-20', 10_000, 3_000);
+    recordRun($user, '2026-09-20', 10_000, 3_000);
 
     expect(VdotEstimator::sourceSummary($this->estimator->estimate($user)))->toMatchArray([
-        'category' => 'race', 'set_at' => '2026-09-20', 'stale' => false, 'confidence' => 'provisional', 'distance_m' => 10000,
+        'category' => '10km', 'set_at' => '2026-09-20', 'stale' => false, 'confidence' => 'provisional', 'distance_m' => 10000,
     ]);
 });
 
 it('caps a rise from a training-run floor like any unconfirmed record', function (): void {
     $user = User::factory()->create();
-    taggedRace($user, '2026-08-01', 10_000, 3_600);
+    recordRun($user, '2026-08-01', 10_000, 3_600);
     FitnessAnchor::query()->create([
         'user_id' => $user->id, 'vdot' => 1, 'quality_vdot' => 1, 'source_category' => 'race', 'source_value_sec' => 3600,
         'set_at' => '2026-08-01', 'captured_at' => '2026-08-02 08:00:00',

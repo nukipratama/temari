@@ -76,11 +76,6 @@ final class SessionIntent
         return $intent === self::RACE || $intent === self::WORKOUT;
     }
 
-    public static function isTaggedRace(?int $workoutType): bool
-    {
-        return self::fromWorkoutType($workoutType) === self::RACE;
-    }
-
     private static function fromWorkoutType(?int $workoutType): ?string
     {
         return match ($workoutType) {
