@@ -720,6 +720,8 @@ it('caps future quality around a settled tempo and a race-pace Long in the curre
     ActivityDetail::factory()->for(Activity::factory()->for($user)->analyzed()->create())->create([
         'start_date_local' => $tuesday->copy()->setTime(7, 0),
         'elapsed_time' => 3600,
+        'moving_time' => 3600,
+        'distance' => 10_000,
         'stream_summary' => ['time_in_zone_min' => ['Z1' => 10, 'Z2' => 30, 'Z3' => 0, 'Z4' => 20, 'Z5' => 0]],
     ]);
 

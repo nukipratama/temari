@@ -50,6 +50,8 @@ use Tests\TestCase;
 pest()->extend(TestCase::class)->in('Feature', 'Unit');
 
 pest()->beforeEach(function (): void {
+    // A Faker generator reseeds mt_rand at random from its destructor, so a stale per-test one collected mid-test would undo this seed.
+    gc_collect_cycles();
     fake()->seed(crc32(static::class.$this->name()));
     WeeklySnapshotFactory::resetSequence();
     TrendDailySnapshotFactory::resetSequence();
