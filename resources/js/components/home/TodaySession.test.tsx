@@ -294,17 +294,9 @@ describe('TodaySession', () => {
                 briefing={briefing('Trial today.')}
                 today={day({
                     session_type: 'interval',
-                    distance_km: 7,
+                    distance_km: 5,
                     time_trial: { distance_m: 5_000, aim_time_sec: 1_410 },
                     segments: [
-                        {
-                            key: 'warmup',
-                            minutes: 13,
-                            zone: 'Z2',
-                            pace_label: 'easy',
-                            km: 2,
-                            pace_sec_per_km: 390,
-                        },
                         {
                             key: 'main',
                             minutes: 23.5,
@@ -318,7 +310,12 @@ describe('TodaySession', () => {
             />,
         );
 
-        expectSession('7', 'time trial · 4:42/km');
+        expectSession('5', 'time trial · 4:42/km');
+        expect(
+            screen.getByText(
+                'warm up first like you would before a race, then record the trial as its own run if you can.',
+            ),
+        ).toBeInTheDocument();
         expect(
             screen.getByText(
                 'aim around 23:30. checks your fitness so your paces stay honest.',

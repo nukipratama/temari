@@ -169,17 +169,9 @@ describe('DayHeadline and DayDetail', () => {
         renderRow({
             day: day({
                 session_type: 'tempo',
-                distance_km: 12,
+                distance_km: 10,
                 time_trial: { distance_m: 10_000, aim_time_sec: 3_125 },
                 segments: [
-                    {
-                        key: 'warmup',
-                        minutes: 13,
-                        zone: 'Z2',
-                        pace_label: 'easy',
-                        km: 2,
-                        pace_sec_per_km: 390,
-                    },
                     {
                         key: 'main',
                         minutes: 52,
@@ -198,6 +190,11 @@ describe('DayHeadline and DayDetail', () => {
         expect(
             screen.getByText(
                 'aim around 52:05. checks your fitness so your paces stay honest.',
+            ),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByText(
+                'warm up first like you would before a race, then record the trial as its own run if you can.',
             ),
         ).toBeInTheDocument();
     });

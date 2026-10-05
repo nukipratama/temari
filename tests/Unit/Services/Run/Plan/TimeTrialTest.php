@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Enums\PaceBand;
 use App\Enums\SessionType;
+use App\Models\ActivityDetail;
 use App\Models\PlannedSession;
 use App\Services\Run\Plan\TimeTrial;
 
@@ -34,11 +35,11 @@ it('prescribes the trial at the aim, as hard work carrying its own context', fun
         ->and(TimeTrial::isTrial(null))->toBeFalse();
 });
 
-it('sizes a trial day as the warmup plus the trial distance, and no other day', function (): void {
+it('sizes a trial day as the trial distance alone, and no other day', function (): void {
     $context = new TimeTrial(10_000, 3_100)->context();
 
-    expect(TimeTrial::dayKm(SessionType::Tempo, $context))->toBe(12.0)
-        ->and(TimeTrial::dayKm(SessionType::Interval, new TimeTrial(5_000, 1_500)->context()))->toBe(7.0)
+    expect(TimeTrial::dayKm(SessionType::Tempo, $context))->toBe(10.0)
+        ->and(TimeTrial::dayKm(SessionType::Interval, new TimeTrial(5_000, 1_500)->context()))->toBe(5.0)
         ->and(TimeTrial::dayKm(SessionType::Easy, $context))->toBeNull()
         ->and(TimeTrial::dayKm(SessionType::Tempo, null))->toBeNull();
 });
@@ -94,4 +95,37 @@ it('reads a trial as skipped when excused, not run, or eased to easy or rest', f
     'eased to easy' => [['clamped_km' => 6.0], true, true],
     'rested' => [['rest_clamped_at' => '2026-10-06 07:00:00'], true, true],
     'shown easy when run' => [['intent_evidence' => ['effective_type' => 'easy']], true, true],
+]);
+
+/** @return list<array<string, int|string>> */
+function trialSplits(?int $heartRate = 172): array
+{
+    return [
+        ['km' => 1, 'pace' => '6:40', 'elapsed_sec' => 400, 'distance_m' => 1000],
+        ['km' => 2, 'pace' => '6:40', 'elapsed_sec' => 400, 'distance_m' => 1000],
+        ...array_map(static fn (int $km): array => ['km' => $km, 'pace' => '4:50', 'elapsed_sec' => 290, 'distance_m' => 1000, ...($heartRate === null ? [] : ['avg_hr' => $heartRate])], range(3, 7)),
+    ];
+}
+
+it('reads a run longer than the band by its fastest split at the trial distance, never the whole run', function (?int $splitHeartRate, ?float $runHeartRate, ?float $heartRate, ?string $heartRateSource): void {
+    $run = new ActivityDetail(['distance' => 7_000.0, 'elapsed_time' => 2_250, 'average_heartrate' => $runHeartRate, 'stream_summary' => ['per_km' => trialSplits($splitHeartRate)]]);
+    $trial = new TimeTrial(5_000, 1_500);
+    $reading = $trial->reading($run);
+
+    expect($reading)->toEqual(['distance_m' => 5_000.0, 'time_sec' => 1_450.0, 'heart_rate' => $heartRate, 'source' => 'split', 'heart_rate_source' => $heartRateSource])
+        ->and($trial->passes($reading, TRIAL_ZONES))->toBe('pace');
+})->with([
+    'split heart rate' => [172, 150.0, 172.0, 'split'],
+    'the whole run\'s heart rate when the split has none' => [null, 150.0, 150.0, 'run'],
+    'no heart rate at all' => [null, null, null, null],
+]);
+
+it('reads the whole run when it is inside the band, shorter than it, or has no split at the trial distance', function (float $meters, ?array $summary): void {
+    $run = new ActivityDetail(['distance' => $meters, 'elapsed_time' => 1_800, 'average_heartrate' => 160.0, 'stream_summary' => $summary]);
+
+    expect(new TimeTrial(5_000, 1_500)->reading($run))->toEqual(['distance_m' => $meters, 'time_sec' => 1_800.0, 'heart_rate' => 160.0, 'source' => 'run', 'heart_rate_source' => 'run']);
+})->with([
+    'inside the band' => [5_100.0, ['per_km' => trialSplits()]],
+    'shorter than the band' => [4_000.0, null],
+    'longer with no splits' => [7_000.0, null],
 ]);

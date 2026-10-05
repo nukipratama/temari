@@ -1758,6 +1758,6 @@ it('names a time trial, its distance and its aim to the plan tools, and nothing 
     expect(planDayTool($trial, app(TrainingBaseline::class))->handle([])['time_trial'])->toBe(['distance_km' => 5.0, 'aim_time' => '25:00'])
         ->and($days[0]['time_trial'])->toBe(['distance_km' => 5.0, 'aim_time' => '25:00'])
         ->and($days[0]['target_pace_sec'])->toBe(300)
-        ->and($days[0]['distance_km'])->toBe(7.0)
+        ->and($days[0]['distance_km'])->toBe(5.0)
         ->and($days[1])->not->toHaveKey('time_trial');
 });

@@ -23,6 +23,7 @@ import {
     phaseGroupKey,
     phasesOf,
     prescriptionWhy,
+    sessionHint,
     sessionLabel,
     sessionPurpose,
     sessionShape,
@@ -832,6 +833,13 @@ describe('a time trial', () => {
         expect(workLabel(planDay({ time_trial: trial }))).toBe('time trial');
         expect(workLabel(planDay({ goal_pace: '10k' }))).toBe('goal pace');
         expect(workLabel(planDay({}))).toBeUndefined();
+    });
+
+    it('carries one practical hint, on a trial day only', () => {
+        expect(sessionHint(planDay({ time_trial: trial }))).toBe(
+            'warm up first like you would before a race, then record the trial as its own run if you can.',
+        );
+        expect(sessionHint(planDay({}))).toBeNull();
     });
 
     it('says the time to aim around and what the trial is for', () => {

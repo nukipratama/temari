@@ -30,6 +30,7 @@ import {
     paceLabel,
     prescriptionWhy,
     ranHot,
+    sessionHint,
     sessionLabel,
     sessionPurpose,
     STATUS_LABEL,
@@ -388,6 +389,11 @@ export default function DayDetail({
                     {purpose && (
                         <p className="mt-1 text-xs leading-relaxed text-foreground">
                             {purpose}
+                        </p>
+                    )}
+                    {sessionHint(day) && (
+                        <p className="mt-1 text-xs leading-relaxed text-text-2">
+                            {sessionHint(day)}
                         </p>
                     )}
                     {doseWhy && (

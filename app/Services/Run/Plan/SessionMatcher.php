@@ -95,9 +95,11 @@ final readonly class SessionMatcher
             $day = $completed[$date] ?? ['sum' => 0.0, 'longest' => 0.0];
             $session = $sessionByDate[$date] ?? null;
             $type = $sessionTypesByDate[$date] ?? $session?->session_type;
+            $timeTrial = $session !== null && $type === $session->session_type && TimeTrial::of($session) !== null;
+            $creditedKm = self::creditedKm($type, $day, $timeTrial);
             $results[$date] = self::scoreFor(
                 $plannedKm,
-                self::creditedKm($type, $day, $session !== null && $type === $session->session_type && TimeTrial::of($session) !== null),
+                $timeTrial ? min($creditedKm, $plannedKm) : $creditedKm,
                 $isPast,
                 $excusedByDate[$date] ?? false,
                 (array_key_exists($date, $sessionTypesByDate) ? $type === SessionType::Long : self::asksForOneLongRun($session)) ? $day['longest'] : null,

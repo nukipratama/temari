@@ -161,3 +161,54 @@ it('refuses another athlete\'s trial', function (): void {
 
     expect(fn () => $this->trials->answer($this->user, $session, false))->toThrow(AuthorizationException::class);
 });
+
+function trialRunWithSplits(User $user, int $trialSecPerKm, bool $splits = true): Activity
+{
+    $rows = [
+        ['km' => 1, 'pace' => '6:40', 'elapsed_sec' => 400, 'distance_m' => 1000],
+        ['km' => 2, 'pace' => '6:40', 'elapsed_sec' => 400, 'distance_m' => 1000],
+        ...array_map(static fn (int $km): array => ['km' => $km, 'pace' => '5:00', 'elapsed_sec' => $trialSecPerKm, 'distance_m' => 1000], range(3, 7)),
+    ];
+    $activity = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($activity)->create([
+        'start_date_local' => '2026-10-06 06:30:00',
+        'distance' => 7_000.0,
+        'elapsed_time' => 800 + 5 * $trialSecPerKm,
+        'moving_time' => 800 + 5 * $trialSecPerKm,
+        'average_heartrate' => null,
+        'has_heartrate' => false,
+        'stream_summary' => $splits ? ['per_km' => $rows] : null,
+    ]);
+
+    return $activity;
+}
+
+it('counts a warmup and trial recorded as one run by its trial split when the split clears the gate', function (): void {
+    $session = trialDay($this->user);
+    $run = trialRunWithSplits($this->user, 290);
+
+    expect($this->trials->settle($session))->toBe(TimeTrialOutcome::Confirmed)
+        ->and(PerformanceEvidence::query()->sole()->only(['distance_m', 'elapsed_time_sec', 'activity_id']))
+        ->toBe(['distance_m' => 5_000, 'elapsed_time_sec' => 1_450, 'activity_id' => $run->id]);
+    Notification::assertNothingSent();
+});
+
+it('asks about a trial split that misses the gate, and a yes records the split, never the whole run', function (): void {
+    $session = trialDay($this->user);
+    trialRunWithSplits($this->user, 340);
+
+    expect($this->trials->settle($session))->toBe(TimeTrialOutcome::Asked)
+        ->and($this->trials->answer($this->user, $session->fresh(), true))->toBe(TimeTrialOutcome::Confirmed)
+        ->and(PerformanceEvidence::query()->sole()->only(['distance_m', 'elapsed_time_sec']))
+        ->toBe(['distance_m' => 5_000, 'elapsed_time_sec' => 1_700]);
+});
+
+it('asks about a long run with no split at the trial distance, and a yes records the run as it is', function (): void {
+    $session = trialDay($this->user);
+    trialRunWithSplits($this->user, 290, splits: false);
+
+    expect($this->trials->settle($session))->toBe(TimeTrialOutcome::Asked)
+        ->and($this->trials->answer($this->user, $session->fresh(), true))->toBe(TimeTrialOutcome::Confirmed)
+        ->and(PerformanceEvidence::query()->sole()->only(['distance_m', 'elapsed_time_sec']))
+        ->toBe(['distance_m' => 7_000, 'elapsed_time_sec' => 2_250]);
+});

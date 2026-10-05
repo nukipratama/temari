@@ -6,7 +6,9 @@ namespace App\Services\Run\Plan;
 
 use App\Enums\PaceBand;
 use App\Enums\SessionType;
+use App\Models\ActivityDetail;
 use App\Models\PlannedSession;
+use App\Services\Run\Metrics\RunDistanceTimes;
 
 /**
  * The all-out 5K or 10K that takes one quality session's place, so the
@@ -21,8 +23,6 @@ final readonly class TimeTrial
 
     public const int LONG_DISTANCE_M = 10_000;
 
-    public const float WARMUP_KM = 2.0;
-
     public const float DISTANCE_TOLERANCE = 0.10;
 
     public const float AIM_SLACK = 0.05;
@@ -32,6 +32,10 @@ final readonly class TimeTrial
     public const string GATE_PACE = 'pace';
 
     public const string GATE_HEART_RATE = 'heart_rate';
+
+    public const string READ_RUN = 'run';
+
+    public const string READ_SPLIT = 'split';
 
     private const string REASON = 'a time trial in place of this week’s quality session';
 
@@ -98,8 +102,8 @@ final readonly class TimeTrial
     }
 
     /**
-     * The whole outing a trial day asks for, the warmup plus the trial
-     * distance, or null on any other day.
+     * The whole outing a trial day asks for, the trial distance alone like
+     * race day, or null on any other day.
      *
      * @param  array<string, int|float|string>|null  $context
      */
@@ -109,7 +113,55 @@ final readonly class TimeTrial
             return null;
         }
 
-        return round((float) $context['distance_m'] / 1000 + self::WARMUP_KM, 1);
+        return round((float) $context['distance_m'] / 1000, 1);
+    }
+
+    /**
+     * What a run on the trial day ran over the trial: the whole run, or, for
+     * a run longer than the distance band, its fastest split at the trial
+     * distance, with that split's heart rate when every split in it carries one.
+     *
+     * @return array{distance_m: float, time_sec: float|null, heart_rate: float|null, source: string, heart_rate_source: string|null}
+     */
+    public function reading(ActivityDetail $run): array
+    {
+        $meters = (float) ($run->distance ?? 0);
+        $runHeartRate = $run->average_heartrate;
+        $split = $meters > $this->distanceM * (1 + self::DISTANCE_TOLERANCE)
+            ? RunDistanceTimes::bestSplit($run, $this->distanceM)
+            : null;
+        if ($split !== null) {
+            return [
+                'distance_m' => (float) $this->distanceM,
+                'time_sec' => $split['time_sec'],
+                'heart_rate' => $split['heart_rate'] ?? $runHeartRate,
+                'source' => self::READ_SPLIT,
+                'heart_rate_source' => match (true) {
+                    $split['heart_rate'] !== null => self::READ_SPLIT,
+                    $runHeartRate !== null => self::READ_RUN,
+                    default => null,
+                },
+            ];
+        }
+
+        return [
+            'distance_m' => $meters,
+            'time_sec' => $run->elapsed_time === null ? ($run->moving_time === null ? null : (float) $run->moving_time) : (float) $run->elapsed_time,
+            'heart_rate' => $runHeartRate,
+            'source' => self::READ_RUN,
+            'heart_rate_source' => $runHeartRate === null ? null : self::READ_RUN,
+        ];
+    }
+
+    /**
+     * Which test a reading passed, or null.
+     *
+     * @param  array{distance_m: float, time_sec: float|null, heart_rate: float|null, ...}  $reading
+     * @param  array<string, array{lo: int, hi: int}>  $zones
+     */
+    public function passes(array $reading, array $zones): ?string
+    {
+        return $this->gate($reading['distance_m'], $reading['time_sec'], $reading['heart_rate'], $zones);
     }
 
     /**

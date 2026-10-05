@@ -207,7 +207,7 @@ it('offers no retry for a trial that was run, a skipped retry, or a following de
     'deload the week after' => ['2026-10-26', [['date' => '2026-10-22', 'retry' => false, 'skipped' => true]]],
 ]);
 
-it('writes the trial day as a warmup and the trial distance at the aim', function (): void {
+it('writes the trial day as the trial distance alone, at the aim', function (): void {
     $date = array_key_first(trialRows(trialPlan(trialPlanInputs(null))));
     $row = trialPlan(trialPlanInputs(null))[$date];
     $segments = SegmentGenerator::forPrescription(
@@ -221,8 +221,7 @@ it('writes the trial day as a warmup and the trial distance at the aim', functio
     expect($row['prescribed_pace_band'])->toBe(PaceBand::Interval)
         ->and($row['prescribed_pace_sec_per_km'])->toBe(280)
         ->and($row['fall_off_tilt'])->toBeNull()
-        ->and(array_map(static fn ($segment): string => $segment->key->value, $segments))->toBe([SegmentKey::Warmup->value, SegmentKey::Main->value])
-        ->and($segments[0]->km)->toBe(2.0)
-        ->and($segments[1]->km)->toBe(5.0)
-        ->and($segments[1]->paceSecPerKm)->toBe(280);
+        ->and(array_map(static fn ($segment): string => $segment->key->value, $segments))->toBe([SegmentKey::Main->value])
+        ->and($segments[0]->km)->toBe(5.0)
+        ->and($segments[0]->paceSecPerKm)->toBe(280);
 });

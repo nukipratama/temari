@@ -233,14 +233,25 @@ final readonly class ComplianceScorer
      */
     private static function trialIntent(TimeTrial $trial, SessionType $effectiveType, array $runs, array $zones): array
     {
-        $passed = null;
         foreach ($runs as $run) {
-            $passed ??= $trial->gate((float) $run->distance, $run->elapsed_time ?? $run->moving_time, $run->average_heartrate, $zones);
+            $reading = $trial->reading($run);
+            $passed = $trial->passes($reading, $zones);
+            if ($passed !== null) {
+                return [
+                    'verdict' => IntentVerdict::Hit,
+                    'evidence' => [
+                        'time_trial' => $passed,
+                        'time_trial_read' => $reading['source'],
+                        ...($passed === TimeTrial::GATE_HEART_RATE ? ['time_trial_heart_rate_read' => (string) $reading['heart_rate_source']] : []),
+                        'effective_type' => $effectiveType->value,
+                    ],
+                ];
+            }
         }
 
         return [
-            'verdict' => $passed === null ? IntentVerdict::Missed : IntentVerdict::Hit,
-            'evidence' => ['time_trial' => $passed ?? 'not_passed', 'effective_type' => $effectiveType->value],
+            'verdict' => IntentVerdict::Missed,
+            'evidence' => ['time_trial' => 'not_passed', 'effective_type' => $effectiveType->value],
         ];
     }
 

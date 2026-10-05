@@ -21,6 +21,7 @@ import {
     paceEaseDelta,
     paceLabel,
     prescriptionWhy,
+    sessionHint,
     sessionLabel,
     sessionPurpose,
     sessionShape,
@@ -103,6 +104,7 @@ function TodayPrescription({
     }
     const shape = judged === null ? sessionShape(day.segments) : null;
     const purpose = judged === null ? sessionPurpose(day) : null;
+    const hint = judged === null ? sessionHint(day) : null;
     const doseWhy = judged === null ? prescriptionWhy(day) : null;
 
     return (
@@ -145,6 +147,11 @@ function TodayPrescription({
                     {doseWhy && (
                         <span className="text-text-2 italic"> {doseWhy}</span>
                     )}
+                </p>
+            )}
+            {hint && (
+                <p className="mt-1 text-xs leading-relaxed text-text-2">
+                    {hint}
                 </p>
             )}
             {judged !== null && (

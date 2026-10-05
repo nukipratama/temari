@@ -1266,7 +1266,7 @@ it('dayPayload names the race a goal-pace session rehearses, at the goal pace, o
         ->and(PlanRenderer::goalPaceKindOf($goalPace, SessionType::Easy))->toBeNull();
 });
 
-it('dayPayload names a time trial, sized as a warmup and the trial at the aim, only while it is shown as written', function (): void {
+it('dayPayload names a time trial, sized as the trial alone at the aim, only while it is shown as written', function (): void {
     $trial = PlannedSession::factory()->make([
         'date' => '2026-08-12',
         'phase' => PlanPhase::Build,
@@ -1280,8 +1280,8 @@ it('dayPayload names a time trial, sized as a warmup and the trial at the aim, o
 
     expect($payload['time_trial'])->toBe(['distance_m' => 5_000, 'aim_time_sec' => 1_500])
         ->and($payload['goal_pace'])->toBeNull()
-        ->and($payload['distance_km'])->toBe(7.0)
-        ->and(array_column($payload['segments'], 'key'))->toBe(['warmup', 'main'])
+        ->and($payload['distance_km'])->toBe(5.0)
+        ->and(array_column($payload['segments'], 'key'))->toBe(['main'])
         ->and(PlanRenderer::timeTrialOf($trial, SessionType::Easy))->toBeNull()
         ->and(PlanRenderer::timeTrialForNarration(['distance_m' => 10_000, 'aim_time_sec' => 3_125]))->toBe(['distance_km' => 10.0, 'aim_time' => '52:05']);
 });

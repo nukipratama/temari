@@ -779,11 +779,34 @@ it('grades a time trial on its distance and the trial gate, never on its pace se
 
     $verdict = scorerVerdict($user, $row);
 
-    expect($verdict['prescribed_km'])->toBe(7.0)
+    expect($verdict['prescribed_km'])->toBe(5.0)
         ->and($verdict['intent']['verdict'])->toBe($intent)
-        ->and($verdict['intent']['evidence'])->toBe(['time_trial' => $gate, 'effective_type' => 'interval'])
+        ->and($verdict['intent']['evidence'])->toMatchArray(['time_trial' => $gate, 'effective_type' => 'interval'])
         ->and($verdict['status'])->toBe($status);
 })->with([
     'much faster than the aim' => [250, IntentVerdict::Hit, PlannedSessionStatus::Done, 'pace'],
     'slower than the aim and its slack' => [330, IntentVerdict::Missed, PlannedSessionStatus::Partial, 'not_passed'],
 ]);
+
+it('grades a warmup and trial recorded as one run by its trial split, crediting no more than the trial', function (): void {
+    $user = User::factory()->create();
+    $row = scorerDay($user, '2026-08-05', [
+        'session_type' => SessionType::Interval,
+        'prescribed_hard_minutes' => 25,
+        'prescribed_pace_band' => PaceBand::Interval,
+        'prescribed_pace_sec_per_km' => 300,
+        'prescription_race_context' => ['kind' => 'time_trial', 'distance_m' => 5_000, 'aim_time_sec' => 1_500, 'retry' => 0],
+    ]);
+    $perKm = [
+        ['km' => 1, 'pace' => '6:40', 'elapsed_sec' => 400, 'distance_m' => 1000],
+        ['km' => 2, 'pace' => '6:40', 'elapsed_sec' => 400, 'distance_m' => 1000],
+        ...array_map(static fn (int $km): array => ['km' => $km, 'pace' => '4:50', 'elapsed_sec' => 290, 'distance_m' => 1000], range(3, 7)),
+    ];
+    scorerPacedRun($user, '2026-08-05', 7.0, 321, ['per_km' => $perKm]);
+
+    $verdict = scorerVerdict($user, $row);
+
+    expect($verdict['intent']['verdict'])->toBe(IntentVerdict::Hit)
+        ->and($verdict['intent']['evidence'])->toMatchArray(['time_trial' => 'pace', 'time_trial_read' => 'split'])
+        ->and($verdict['status'])->toBe(PlannedSessionStatus::Done);
+});

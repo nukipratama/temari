@@ -38,8 +38,8 @@ final readonly class TimeTrialService
         }
 
         $zones = $session->user->hrProfile()['hr_zones'];
-        $passing = $runs->first(static fn (ActivityDetail $run): bool => $trial->gate((float) $run->distance, $run->elapsed_time ?? $run->moving_time, $run->average_heartrate, $zones) !== null);
-        if ($passing !== null && $this->countsPlausibly($session, $passing)) {
+        $passing = $runs->first(static fn (ActivityDetail $run): bool => $trial->passes($trial->reading($run), $zones) !== null);
+        if ($passing !== null && $this->countsPlausibly($session, $trial, $passing)) {
             return $this->mark($session, TimeTrialOutcome::Confirmed);
         }
 
@@ -63,7 +63,7 @@ final readonly class TimeTrialService
         }
 
         $run = $this->runsOn($session, $trial)->first();
-        if ($run === null || ! $this->count($session, $run)) {
+        if ($run === null || ! $this->count($session, $trial, $run)) {
             throw ValidationException::withMessages(['answer' => 'There is no run on that day that can count.']);
         }
 
@@ -81,26 +81,26 @@ final readonly class TimeTrialService
             ->get();
     }
 
-    private function countsPlausibly(PlannedSession $session, ActivityDetail $run): bool
+    private function countsPlausibly(PlannedSession $session, TimeTrial $trial, ActivityDetail $run): bool
     {
         try {
-            return $this->count($session, $run);
+            return $this->count($session, $trial, $run);
         } catch (ValidationException) {
             return false;
         }
     }
 
-    private function count(PlannedSession $session, ActivityDetail $run): bool
+    private function count(PlannedSession $session, TimeTrial $trial, ActivityDetail $run): bool
     {
-        $seconds = $run->elapsed_time ?? $run->moving_time;
-        if ($seconds === null || ! PerformanceEvidenceRecorder::qualifies((float) $run->distance)) {
+        $reading = $trial->reading($run);
+        if ($reading['time_sec'] === null || ! PerformanceEvidenceRecorder::qualifies($reading['distance_m'])) {
             return false;
         }
 
         $this->evidence->record($session->user, [
             'kind' => PerformanceEvidenceKind::Test->value,
-            'distance_m' => (int) round((float) $run->distance),
-            'elapsed_time_sec' => (int) $seconds,
+            'distance_m' => (int) round($reading['distance_m']),
+            'elapsed_time_sec' => (int) round($reading['time_sec']),
             'performed_on' => $session->date->toDateString(),
             'activity_id' => $run->activity_id,
         ]);

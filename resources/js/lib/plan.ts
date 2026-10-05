@@ -401,6 +401,13 @@ export function workLabel(
     return day.goal_pace !== null ? GOAL_PACE_LABEL : undefined;
 }
 
+export const TIME_TRIAL_HINT =
+    'warm up first like you would before a race, then record the trial as its own run if you can.';
+
+/** The one practical line a time trial day carries. */
+export function sessionHint(day: Pick<PlanDay, 'time_trial'>): string | null {
+    return day.time_trial !== null ? TIME_TRIAL_HINT : null;
+}
 /** What a session is for and how it should feel, in one line. */
 export function sessionPurpose(day: PlanDay): string | null {
     if (day.time_trial !== null) {

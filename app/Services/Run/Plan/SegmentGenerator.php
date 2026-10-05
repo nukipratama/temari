@@ -278,7 +278,7 @@ final class SegmentGenerator
             return self::easyBlock($coreKm, $paces);
         }
         if (TimeTrial::isTrial($prescription->raceContext)) {
-            return self::timeTrialSegments($coreKm, $paces, $prescription);
+            return self::timeTrialSegments($prescription);
         }
 
         return match (GoalPaceWork::shapeOf($sessionType, $prescription->raceContext)) {
@@ -507,21 +507,23 @@ final class SegmentGenerator
     }
 
     /**
-     * A warmup, then the trial distance run at the aim. The warmup takes
-     * whatever the day holds beyond the trial itself.
+     * The trial distance as one block at the aim, and nothing else: like race
+     * day, the warmup belongs to the athlete and is never carved out.
      *
-     * @param array{easy: int, marathon: int, threshold: int, interval: int}|null $paces
      * @return list<SessionSegment>
      */
-    private static function timeTrialSegments(float $km, ?array $paces, IntensityPrescription $prescription): array
+    private static function timeTrialSegments(IntensityPrescription $prescription): array
     {
-        $trialKm = round((float) ($prescription->raceContext['distance_m'] ?? 0) / 1000, 1);
-        $aimSec = (int) ($prescription->raceContext['aim_time_sec'] ?? 0);
         $pace = $prescription->paceBand ?? PaceBand::Interval;
-        $warmupKm = round(max(0.0, $km - $trialKm), 1);
-        $trial = new SessionSegment(SegmentKey::Main, round($aimSec / 60, 1), self::zoneFor($pace), $pace, $prescription->paceSecPerKm, $trialKm);
 
-        return $warmupKm > 0.0 ? [self::block(SegmentKey::Warmup, $warmupKm, PaceBand::Easy, $paces), $trial] : [$trial];
+        return [new SessionSegment(
+            SegmentKey::Main,
+            round((int) ($prescription->raceContext['aim_time_sec'] ?? 0) / 60, 1),
+            self::zoneFor($pace),
+            $pace,
+            $prescription->paceSecPerKm,
+            round((float) ($prescription->raceContext['distance_m'] ?? 0) / 1000, 1),
+        )];
     }
 
     private static function prescribedBlock(SegmentKey $key, float $minutes, IntensityPrescription $prescription): SessionSegment

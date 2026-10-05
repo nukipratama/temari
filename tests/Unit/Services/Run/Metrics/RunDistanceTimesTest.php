@@ -64,3 +64,18 @@ it('skips a distance the run falls short of', function (): void {
 
     expect(RunDistanceTimes::forDetail($detail))->toBe(['1km' => 360.0]);
 });
+
+it('reads a run\'s fastest split at a distance with the heart rate its splits averaged, or none when a split lacks one', function (): void {
+    $rows = [
+        ['km' => 1, 'pace' => '6:40', 'elapsed_sec' => 400, 'distance_m' => 1000, 'avg_hr' => 130],
+        ['km' => 2, 'pace' => '6:40', 'elapsed_sec' => 400, 'distance_m' => 1000, 'avg_hr' => 135],
+        ...array_map(static fn (int $km): array => ['km' => $km, 'pace' => '4:50', 'elapsed_sec' => 290, 'distance_m' => 1000, 'avg_hr' => 170 + $km], range(3, 7)),
+    ];
+    $withHeartRate = new ActivityDetail(['distance' => 7_000.0, 'stream_summary' => ['per_km' => $rows]]);
+    $rows[4] = array_diff_key($rows[4], ['avg_hr' => 0]);
+    $missingOne = new ActivityDetail(['distance' => 7_000.0, 'stream_summary' => ['per_km' => $rows]]);
+
+    expect(RunDistanceTimes::bestSplit($withHeartRate, 5_000.0))->toEqual(['time_sec' => 1_450.0, 'heart_rate' => 175.0])
+        ->and(RunDistanceTimes::bestSplit($missingOne, 5_000.0))->toEqual(['time_sec' => 1_450.0, 'heart_rate' => null])
+        ->and(RunDistanceTimes::bestSplit($withHeartRate, 10_000.0))->toBeNull();
+});
