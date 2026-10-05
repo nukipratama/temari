@@ -71,7 +71,7 @@ is fingerprinted:
   string are dropped and numeric path segments are masked.
 
 The first sighting in 30 days queues the fingerprint. Repeats raise its count until the next
-digest, skipping the count rather than waiting when the ledger lock is busy. At 21:00 [`MaintainerAlerter::exceptionDigest()`](../../app/Services/AI/MaintainerAlerter.php#L355)
+digest, skipping the count rather than waiting when the ledger lock is busy. At 21:00 [`MaintainerAlerter::exceptionDigest()`](../../app/Services/AI/MaintainerAlerter.php#L372)
 sends one message: a line per fingerprint with its first-seen time and count, folded to
 "and N more" past 25 lines so it stays under Telegram's message limit.
 

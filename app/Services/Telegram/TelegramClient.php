@@ -136,6 +136,7 @@ class TelegramClient
             throw new TelegramApiException(
                 "Telegram [{$method}] failed with status {$response->status()}: {$description}",
                 $response->status(),
+                $description,
             );
         }
 

@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Enums\NotificationDeliveryStatus;
+use App\Jobs\AI\SendMaintainerAlertJob;
 use App\Services\Notifications\NotificationDeliveryClaim;
 use App\Services\Notifications\ChannelRouter;
 use App\Services\Telegram\Exceptions\TelegramApiException;
@@ -14,6 +15,7 @@ use App\Notifications\Channels\TelegramChannel;
 use App\Notifications\Messages\TelegramMessage;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Notifications\Notification;
+use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -164,7 +166,7 @@ it('settles the keyed claim as failed with its error so a retry can resend', fun
 });
 
 it('revokes the connection and does not retry when the bot is blocked (403)', function (): void {
-    Http::fake(['api.telegram.org/*' => Http::response(['ok' => false, 'description' => 'Forbidden: bot was blocked'], 403)]);
+    Http::fake(['api.telegram.org/*' => Http::response(['ok' => false, 'description' => 'Forbidden: bot was blocked by the user'], 403)]);
     $user = connectedUser();
     $analysisId = Analysis::factory()->create()->id;
 
@@ -273,10 +275,85 @@ it('sends a keyless message (streak / test) without touching the deliveries tabl
 });
 
 it('still revokes on a permanent failure for a keyless message', function (): void {
-    Http::fake(['api.telegram.org/*' => Http::response(['ok' => false, 'description' => 'Forbidden'], 403)]);
+    Http::fake(['api.telegram.org/*' => Http::response(['ok' => false, 'description' => 'Forbidden: user is deactivated'], 403)]);
     $user = connectedUser();
 
     channelSend($user, new TelegramMessage(text: 'Nudge'));
 
     expect($user->telegramConnection->fresh()->isRevoked())->toBeTrue();
+});
+
+it('revokes the connection when the chat is not found (400)', function (): void {
+    Http::fake(['api.telegram.org/*' => Http::response(['ok' => false, 'description' => 'Bad Request: chat not found'], 400)]);
+    $user = connectedUser();
+
+    channelSend($user, new TelegramMessage(text: 'Hilang'));
+
+    expect($user->telegramConnection->fresh()->isRevoked())->toBeTrue();
+});
+
+it('keeps the link, alerts the maintainer once, and rethrows on a bad bot token', function (int $status, string $description): void {
+    Bus::fake([SendMaintainerAlertJob::class]);
+    Http::fake(['api.telegram.org/*' => Http::response(['ok' => false, 'description' => $description], $status)]);
+    $first = connectedUser();
+    $second = connectedUser(['chat_id' => 4343]);
+    $analysisId = Analysis::factory()->create()->id;
+
+    expect(fn () => channelSend($first, new TelegramMessage(text: 'Token', deliveryKey: $analysisId)))
+        ->toThrow(TelegramApiException::class);
+    expect(fn () => channelSend($second, new TelegramMessage(text: 'Token')))
+        ->toThrow(TelegramApiException::class);
+
+    expect($first->telegramConnection->fresh()->isRevoked())->toBeFalse()
+        ->and($second->telegramConnection->fresh()->isRevoked())->toBeFalse();
+    $this->assertDatabaseHas('notification_deliveries', [
+        'analysis_id' => $analysisId,
+        'status' => NotificationDeliveryStatus::Failed->value,
+    ]);
+    Bus::assertDispatchedTimes(SendMaintainerAlertJob::class, 1);
+})->with([
+    '401 unauthorized' => [401, 'Unauthorized'],
+    '404 not found' => [404, 'Not Found'],
+]);
+
+it('keeps the link and does not retry when Telegram rejects the message itself', function (string $description): void {
+    Bus::fake([SendMaintainerAlertJob::class]);
+    Log::spy();
+    Http::fake(['api.telegram.org/*' => Http::response(['ok' => false, 'description' => $description], 400)]);
+    $user = connectedUser();
+    $analysisId = Analysis::factory()->create()->id;
+
+    channelSend($user, new TelegramMessage(text: 'Rusak', deliveryKey: $analysisId));
+
+    expect($user->telegramConnection->fresh()->isRevoked())->toBeFalse();
+    $this->assertDatabaseHas('notification_deliveries', [
+        'analysis_id' => $analysisId,
+        'status' => NotificationDeliveryStatus::Failed->value,
+    ]);
+    Log::shouldHaveReceived('warning')->with('telegram.send.rejected', Mockery::type('array'))->once();
+    Bus::assertNothingDispatched();
+})->with([
+    'parse error' => ["Bad Request: can't parse entities"],
+    'empty text' => ['Bad Request: message text is empty'],
+    'too long' => ['Bad Request: message is too long'],
+]);
+
+it('keeps the link on a 403 that is not about this chat', function (): void {
+    Http::fake(['api.telegram.org/*' => Http::response(['ok' => false, 'description' => 'Forbidden: something else'], 403)]);
+    $user = connectedUser();
+
+    channelSend($user, new TelegramMessage(text: 'Nudge'));
+
+    expect($user->telegramConnection->fresh()->isRevoked())->toBeFalse();
+});
+
+it('keeps the link when a force push meets a bad bot token', function (): void {
+    Bus::fake([SendMaintainerAlertJob::class]);
+    Http::fake(['api.telegram.org/*' => Http::response(['ok' => false, 'description' => 'Unauthorized'], 401)]);
+    $user = connectedUser();
+
+    channelSend($user, new TelegramMessage(text: 'Manual', force: true));
+
+    expect($user->telegramConnection->fresh()->isRevoked())->toBeFalse();
+    Bus::assertDispatchedTimes(SendMaintainerAlertJob::class, 1);
 });

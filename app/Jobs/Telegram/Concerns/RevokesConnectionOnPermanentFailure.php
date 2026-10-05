@@ -8,12 +8,24 @@ use App\Services\Telegram\Exceptions\TelegramApiException;
 
 trait RevokesConnectionOnPermanentFailure
 {
-    /**
-     * A 4xx other than 429 (rate limit) is permanent: the bot is blocked (403),
-     * the chat is gone, or the token is bad. Retrying it just churns the queue
-     * and pollutes failed_jobs, so treat it like a Strava revocation.
-     */
-    private function isPermanentTelegramFailure(TelegramApiException $e): bool
+    private function isChatSpecificFailure(TelegramApiException $e): bool
+    {
+        $description = strtolower($e->description ?? '');
+
+        return match ($e->status) {
+            403 => str_contains($description, 'bot was blocked by the user')
+                || str_contains($description, 'user is deactivated'),
+            400 => str_contains($description, 'chat not found'),
+            default => false,
+        };
+    }
+
+    private function isBotConfigurationFailure(TelegramApiException $e): bool
+    {
+        return $e->status === 401 || $e->status === 404;
+    }
+
+    private function isRejectedMessage(TelegramApiException $e): bool
     {
         return $e->status !== null && $e->status >= 400 && $e->status < 500 && $e->status !== 429;
     }
