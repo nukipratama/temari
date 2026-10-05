@@ -25,6 +25,7 @@ import {
     deltaDirection,
     easedFromDelta,
     fallOffTiltWhy,
+    GOAL_PACE_LABEL,
     judgedDayResult,
     paceEaseDelta,
     paceLabel,
@@ -433,7 +434,10 @@ export default function DayDetail({
                     {day.result_note}
                 </p>
             )}
-            <SessionBarGraph segments={day.segments} />
+            <SessionBarGraph
+                segments={day.segments}
+                workPaceLabel={day.goal_pace ? GOAL_PACE_LABEL : undefined}
+            />
             {day.activities.length > 0 && <RunList runs={day.activities} />}
             {(canMove || canSkip || canUnskip) && (
                 <div className="mt-3">

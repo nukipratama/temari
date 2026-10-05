@@ -34,10 +34,10 @@ function figureText(segment: PlanSessionSegment): string {
     return parts.length === 0 ? '—' : parts.join(' · ');
 }
 
-function paceSub(segment: PlanSessionSegment): string {
+function paceSub(segment: PlanSessionSegment, label: string): string {
     return segment.pace_sec_per_km == null
-        ? segment.pace_label
-        : `${formatPace(segment.pace_sec_per_km)}/km · ${segment.pace_label}`;
+        ? label
+        : `${formatPace(segment.pace_sec_per_km)}/km · ${label}`;
 }
 
 function LegendItem({
@@ -79,8 +79,16 @@ function LegendItem({
  */
 export default function SessionBarGraph({
     segments,
-}: Readonly<{ segments: PlanSessionSegment[] }>) {
+    workPaceLabel,
+}: Readonly<{ segments: PlanSessionSegment[]; workPaceLabel?: string }>) {
     const total = segments.reduce((sum, s) => sum + (s.minutes ?? 0), 0);
+    const subFor = (segment: PlanSessionSegment) =>
+        paceSub(
+            segment,
+            segment.pace_label !== 'easy' && workPaceLabel
+                ? workPaceLabel
+                : segment.pace_label,
+        );
 
     if (segments.length === 0 || total === 0) {
         return null;
@@ -121,7 +129,7 @@ export default function SessionBarGraph({
                                 label={SEGMENT_LABEL.warmup}
                                 zone={warmup.zone}
                                 figure={figureText(warmup)}
-                                sub={paceSub(warmup)}
+                                sub={subFor(warmup)}
                             />
                         )}
                         <LegendItem
@@ -129,7 +137,7 @@ export default function SessionBarGraph({
                             label={`${repeats.length}× ${SEGMENT_LABEL[work.key]}`}
                             zone={work.zone}
                             figure={`${figureText(work)} hard / ${recovery?.minutes ?? 0} min easy`}
-                            sub={paceSub(work)}
+                            sub={subFor(work)}
                         />
                         {easy.map((segment) => (
                             <LegendItem
@@ -137,7 +145,7 @@ export default function SessionBarGraph({
                                 label={SEGMENT_LABEL.easy}
                                 zone={segment.zone}
                                 figure={figureText(segment)}
-                                sub={paceSub(segment)}
+                                sub={subFor(segment)}
                             />
                         ))}
                     </>
@@ -148,7 +156,7 @@ export default function SessionBarGraph({
                             label={SEGMENT_LABEL[segments[index].key]}
                             zone={segments[index].zone}
                             figure={figureText(segments[index])}
-                            sub={paceSub(segments[index])}
+                            sub={subFor(segments[index])}
                         />
                     ))
                 )}

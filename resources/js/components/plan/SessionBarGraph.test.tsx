@@ -133,6 +133,21 @@ describe('SessionBarGraph', () => {
         expect(screen.getByText('5:48/km · easy')).toBeInTheDocument();
     });
 
+    it('names the work at goal pace instead of its band, leaving the easy parts as they are', () => {
+        render(
+            <SessionBarGraph
+                segments={INTERVAL_SESSION.map((s) =>
+                    s.key === 'interval' ? { ...s, pace_sec_per_km: 300 } : s,
+                )}
+                workPaceLabel="goal pace"
+            />,
+        );
+
+        expect(screen.getByText('5:00/km · goal pace')).toBeInTheDocument();
+        expect(screen.getByText('5:48/km · easy')).toBeInTheDocument();
+        expect(screen.queryByText(/· interval/)).not.toBeInTheDocument();
+    });
+
     it('falls back to the pace band alone when there is no VDOT estimate yet', () => {
         render(
             <SessionBarGraph

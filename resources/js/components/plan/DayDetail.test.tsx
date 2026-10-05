@@ -184,6 +184,7 @@ describe('DayHeadline and DayDetail', () => {
 
         expect(screen.getByText('goal pace')).toBeInTheDocument();
         expect(screen.queryByText('interval')).not.toBeInTheDocument();
+        expect(screen.getByText('5:00/km · goal pace')).toBeInTheDocument();
         expect(screen.getByText('8 km · 5:00/km')).toBeInTheDocument();
         expect(
             screen.getByText('rehearsing your 10K goal pace.'),
