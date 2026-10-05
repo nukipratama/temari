@@ -142,34 +142,14 @@ jobs:
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
-      # Backup-only alert: cleanup uses continue-on-error above, so it can never
-      # be what makes the job's status here "failure".
-      - name: Alert on backup failure
-        if: failure()
-        continue-on-error: true
-        timeout-minutes: 3
-        env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_MAINTAINER_CHAT_ID: ${{ secrets.TELEGRAM_MAINTAINER_CHAT_ID }}
-          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-        run: |
-          if [ -z "$TELEGRAM_BOT_TOKEN" ] || [ -z "$TELEGRAM_MAINTAINER_CHAT_ID" ]; then
-            echo "TELEGRAM_BOT_TOKEN / TELEGRAM_MAINTAINER_CHAT_ID not set, skipping the push."
-            exit 0
-          fi
-
-          curl -sS --fail-with-body \
-            "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
-            -d chat_id="${TELEGRAM_MAINTAINER_CHAT_ID}" \
-            --data-urlencode text="Nightly backup failed. A silent backup failure is worse than none — check the run: $RUN_URL"
-
+  # Cleanup uses continue-on-error above, so only a backup step can fail the job.
   notify:
     name: Backup alert
     needs: [nightly-backup]
     if: always() && needs.nightly-backup.result == 'failure'
     uses: ./.github/workflows/maintainer-alert.yml
     with:
-      message: Nightly backup failed on the homelab runner, possibly before any step ran.
+      message: Nightly backup failed on the homelab runner. A silent backup failure is worse than none.
     secrets:
       TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
       TELEGRAM_MAINTAINER_CHAT_ID: ${{ secrets.TELEGRAM_MAINTAINER_CHAT_ID }}

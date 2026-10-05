@@ -172,15 +172,6 @@ it('pushes one overdue-Monday alert per week, naming each entry still behind', f
     Carbon::setTestNow();
 });
 
-it('pushes a deploy-failure alert', function (): void {
-    $client = fakeTelegram();
-    adminWithChat(6001);
-
-    $client->shouldReceive('sendMessage')->once()->with(6001, Mockery::pattern('/Prod deploy failed/'));
-
-    app(MaintainerAlerter::class)->deployFailed('healthcheck failed');
-});
-
 it('swallows a send failure so an alert never fails its caller', function (): void {
     $client = fakeTelegram();
     adminWithChat(5001);

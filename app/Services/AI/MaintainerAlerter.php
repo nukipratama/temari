@@ -206,12 +206,6 @@ class MaintainerAlerter
         $this->broadcast("Scheduler `{$command}` skipped {$athletes} after errors. Check the logs.");
     }
 
-    /** A prod deploy failed its gate; pushed best-effort via the `deploy:alert` command. */
-    public function deployFailed(string $reason): void
-    {
-        $this->broadcast("Prod deploy failed: {$reason}. Check CI and the deploy logs.");
-    }
-
     /**
      * A token-usage insert failed. The row is swallowed by
      * {@see \App\Actions\AI\RecordTokenUsageAction} so the successful Azure call
