@@ -56,11 +56,8 @@ it('deploys only after CI succeeds on a push to main', function (): void {
         ->and(deployJob())->not->toHaveKey('needs');
 })->group('structure');
 
-it('names each deploy run after the commit it deploys or skips, with the same condition as the job', function (): void {
-    expect(ciWorkflow('deploy.yml')['run-name'])
-        ->toStartWith('${{ '.deployJob()['if'].' && ')
-        ->toContain("format('Deploy: {0}', github.event.workflow_run.display_title)")
-        ->toContain("format('Skipped, CI {0}: {1}', github.event.workflow_run.conclusion, github.event.workflow_run.display_title)");
+it('names each deploy run after the commit it deploys', function (): void {
+    expect(ciWorkflow('deploy.yml')['run-name'])->toBe('${{ github.event.workflow_run.display_title }}');
 })->group('structure');
 
 it('never lets a newer deploy cancel one that has started', function (): void {
