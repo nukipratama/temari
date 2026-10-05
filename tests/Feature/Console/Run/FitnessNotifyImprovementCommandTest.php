@@ -19,7 +19,7 @@ afterEach(fn () => Carbon::setTestNow());
 
 function athleteWithTenK(int $seconds, array $attributes = []): User
 {
-    $user = User::factory()->create($attributes);
+    $user = User::factory()->create([...$attributes, 'last_notified_race_m' => 10_000]);
     PerformanceEvidence::query()->create([
         'user_id' => $user->id, 'kind' => 'race', 'distance_m' => 10_000, 'elapsed_time_sec' => $seconds,
         'performed_on' => '2026-09-27', 'confirmed_at' => '2026-09-27 12:00:00',
@@ -68,6 +68,21 @@ it('stays quiet below the threshold and keeps the baseline', function (): void {
 
     Notification::assertNothingSent();
     expect($user->fresh()->last_notified_vdot)->toBe($baseline);
+});
+
+it('re-seeds the baseline silently when the race distance changes', function (): void {
+    Notification::fake();
+    $user = athleteWithTenK(3_500, ['last_notified_vdot' => tenKVdot(3_500) - 2.0]);
+    $user->forceFill(['last_notified_race_m' => 42_195])->save();
+
+    $this->artisan('fitness:notify-improvement')
+        ->expectsOutputToContain('Seeded 1 baselines and noted an improvement for 0 users.')
+        ->assertSuccessful();
+
+    Notification::assertNothingSent();
+    expect($user->fresh())
+        ->last_notified_vdot->toBe(tenKVdot(3_500))
+        ->last_notified_race_m->toBe(10_000);
 });
 
 it('notes at most once a week', function (): void {

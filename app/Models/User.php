@@ -40,6 +40,7 @@ use Override;
  * @property Carbon|null $trend_snapshots_scheduled_through
  * @property Carbon|null $last_seen_at
  * @property float|null $last_notified_vdot
+ * @property int|null $last_notified_race_m
  */
 // `is_admin` is deliberately NOT fillable: it is a privilege flag granted only
 // via the `user:set-admin` command, never through mass assignment.
@@ -93,6 +94,7 @@ class User extends Authenticatable
             'trend_snapshots_scheduled_through' => 'date:Y-m-d',
             'last_seen_at' => 'datetime',
             'last_notified_vdot' => 'float',
+            'last_notified_race_m' => 'integer',
         ];
     }
 

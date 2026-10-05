@@ -11,13 +11,14 @@ return new class () extends Migration {
     {
         Schema::table('users', function (Blueprint $table): void {
             $table->decimal('last_notified_vdot', 4, 1)->nullable();
+            $table->unsignedInteger('last_notified_race_m')->nullable();
         });
     }
 
     public function down(): void
     {
         Schema::table('users', function (Blueprint $table): void {
-            $table->dropColumn('last_notified_vdot');
+            $table->dropColumn(['last_notified_vdot', 'last_notified_race_m']);
         });
     }
 };

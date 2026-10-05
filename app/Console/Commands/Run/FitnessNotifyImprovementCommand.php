@@ -41,9 +41,12 @@ class FitnessNotifyImprovementCommand extends Command
                 }
 
                 $vdot = $estimate['vdot'];
+                $distance = $estimate['race_distance_m'] ?? VdotEstimator::DEFAULT_RACE_METERS;
+                $baseline = ['last_notified_vdot' => $vdot, 'last_notified_race_m' => (int) round($distance)];
                 $last = $user->last_notified_vdot;
-                if ($last === null) {
-                    User::query()->whereKey($user->id)->update(['last_notified_vdot' => $vdot]);
+                // A VDOT read at another race distance moves with the fall-off, not with fitness.
+                if ($last === null || $user->last_notified_race_m !== $baseline['last_notified_race_m']) {
+                    User::query()->whereKey($user->id)->update($baseline);
                     $seeded++;
 
                     continue;
@@ -53,7 +56,6 @@ class FitnessNotifyImprovementCommand extends Command
                     continue;
                 }
 
-                $distance = $estimate['race_distance_m'] ?? VdotEstimator::DEFAULT_RACE_METERS;
                 $user->notify(new FitnessImprovedNotification(
                     $distance,
                     (int) round($estimator->raceTimeForVdot($vdot, $distance) ?? 0),
@@ -62,7 +64,7 @@ class FitnessNotifyImprovementCommand extends Command
                     $estimate['set_at']->toDateString(),
                     $today->toDateString(),
                 ));
-                User::query()->whereKey($user->id)->update(['last_notified_vdot' => $vdot]);
+                User::query()->whereKey($user->id)->update($baseline);
                 $sent++;
             }
         });
