@@ -62,6 +62,7 @@ final readonly class PlanInputs
         public ?float $resumeTrailingMeanKm = null,
         public ?FallOffTilt $fallOffTilt = null,
         public ?RaceAmbitionState $raceAmbitionState = null,
+        public ?float $raceAmbitionGapPct = null,
     ) {
     }
 

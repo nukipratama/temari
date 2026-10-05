@@ -117,3 +117,15 @@ it('shapes goal-pace work by kind and leaves every other session its own shape',
     'supported marathon tempo' => [SessionType::Tempo, ['kind' => 'marathon'], SessionType::Tempo],
     'no context' => [SessionType::Interval, null, SessionType::Interval],
 ]);
+
+it('leaves a goal far slower than supported fitness without goal-pace work', function (?float $gapPct, bool $exists): void {
+    $inputs = goalPaceWorkInputs(10_000.0, RaceAmbitionState::OnTrack);
+    $inputs = new PlanInputs(...[...get_object_vars($inputs), 'raceAmbitionGapPct' => $gapPct]);
+
+    expect(GoalPaceWork::forWeek($inputs, Carbon::parse('2026-11-16'), PlanPhase::Peak) !== null)->toBe($exists);
+})->with([
+    'faster than supported' => [2.0, true],
+    'at the slower edge of on track' => [-3.0, true],
+    'far slower than supported' => [-20.0, false],
+    'no gap' => [null, true],
+]);

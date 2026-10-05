@@ -121,6 +121,7 @@ final readonly class PlanInputsGatherer
             resumeTrailingMeanKm: $this->resumeTrailingMeanKm($race, $weeks, $currentWeekStart),
             fallOffTilt: FallOffTilt::fromFallOff($estimate['k'] ?? null, $estimate['k_fitted'] ?? false),
             raceAmbitionState: $ambition?->state,
+            raceAmbitionGapPct: $ambition?->gapPct,
         );
     }
 

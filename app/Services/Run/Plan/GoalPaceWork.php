@@ -53,6 +53,7 @@ final readonly class GoalPaceWork
         if ($inputs->raceDate === null || $distanceM === null || $goalTimeSec === null || $goalTimeSec <= 0
             || ! RaceSupport::forDistance($distanceM)->dedicatedPreparation()
             || ! in_array($inputs->raceAmbitionState, self::BANDS, true)
+            || ($inputs->raceAmbitionGapPct ?? 0.0) < -RaceAmbitionAssessor::ON_TRACK_WITHIN * 100
             || ! in_array($phase, self::PHASES, true)
             || ! self::inWindow($weekStart, $inputs->raceDate, $distanceM)) {
             return null;
