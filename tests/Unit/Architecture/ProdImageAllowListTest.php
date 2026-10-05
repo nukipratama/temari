@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
 use Symfony\Component\Yaml\Yaml;
 
 function dockerignorePatterns(): Collection
@@ -67,6 +68,12 @@ it('keeps every file the Dockerfile copies from the build context in the allow-l
 
     expect($sources)->not->toBeEmpty()
         ->and($missing->values()->all())->toBe([]);
+})->group('structure');
+
+it('installs the assets stage under the repo .npmrc, so dependency install scripts stay off', function (): void {
+    $assetsStage = Str::between((string) file_get_contents(base_path('Dockerfile')), 'AS assets', 'npm ci');
+
+    expect($assetsStage)->toMatch('/^COPY\s+(?!--from)[^\n]*\.npmrc\s/m');
 })->group('structure');
 
 it('loads and lists the image only when an image input changed, never on a main push', function (): void {
