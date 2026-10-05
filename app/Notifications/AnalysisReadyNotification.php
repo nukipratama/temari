@@ -97,7 +97,7 @@ class AnalysisReadyNotification extends Notification implements ShouldQueue
             ->icon('/icon-192.png')
             ->data($this->withUnreadBadge(['url' => $presenter->url($this->analysis)], $notifiable->id))
             // High urgency so the push isn't deferred by the OS in Low Power Mode.
-            ->options(['urgency' => 'high']);
+            ->options(['urgency' => 'high', 'TTL' => 3 * 86400]);
     }
 
     /**

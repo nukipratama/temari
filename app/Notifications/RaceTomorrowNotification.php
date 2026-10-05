@@ -11,6 +11,7 @@ use App\Models\RaceGoal;
 use App\Models\User;
 use App\Notifications\Concerns\AppendsUnreadBadge;
 use App\Notifications\Concerns\RechecksRouteAtDelivery;
+use App\Notifications\Concerns\SetsWebPushExpiry;
 use App\Notifications\Messages\InboxMessage;
 use App\Notifications\Messages\TelegramMessage;
 use App\Services\Notifications\ChannelRouter;
@@ -33,6 +34,7 @@ class RaceTomorrowNotification extends Notification implements ShouldQueue
 {
     use AppendsUnreadBadge;
     use RechecksRouteAtDelivery;
+    use SetsWebPushExpiry;
     use Queueable;
 
     public int $tries = 3;
@@ -78,7 +80,10 @@ class RaceTomorrowNotification extends Notification implements ShouldQueue
             ->body($this->body($notifiable))
             ->icon('/icon-192.png')
             ->data($this->withUnreadBadge(['url' => route('race')], $notifiable->id))
-            ->options(['urgency' => 'high']);
+            ->options([
+                'urgency' => 'high',
+                'TTL' => $this->secondsUntil($this->race->race_date->copy()->setTime(6, 0)),
+            ]);
     }
 
     public function toInbox(User $notifiable): InboxMessage

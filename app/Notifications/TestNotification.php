@@ -64,6 +64,6 @@ class TestNotification extends Notification implements ShouldQueue
             ->body(TelegramReplies::test())
             ->icon('/icon-192.png')
             // Mirror the real push: high urgency so the test is a truthful delivery signal.
-            ->options(['urgency' => 'high']);
+            ->options(['urgency' => 'high', 'TTL' => 300]);
     }
 }
