@@ -49,6 +49,23 @@ it('leaves resolved_at null on a transient miss so the catch-up retries', functi
     expect($detail->location_name)->toBeNull();
     // A null Nominatim result leaves the row unresolved for the geo:backfill sweep.
     expect($detail->location_resolved_at)->toBeNull();
+    expect($detail->location_attempts)->toBe(1)
+        ->and($detail->location_attempted_at)->not->toBeNull();
+});
+
+it('does not resolve a row that reached five attempts', function (): void {
+    $detail = ActivityDetail::factory()->create([
+        'start_lat' => 0.0,
+        'start_lng' => 0.0,
+        'location_resolved_at' => null,
+        'location_attempts' => 5,
+    ]);
+
+    $this->mock(ReverseGeocodeAction::class, fn ($m) => $m->shouldReceive('__invoke')->never());
+
+    new ResolveActivityLocationJob($detail->id)->handle(app(ReverseGeocodeAction::class));
+
+    expect($detail->fresh()->location_attempts)->toBe(5);
 });
 
 it('skips already-resolved details', function (): void {

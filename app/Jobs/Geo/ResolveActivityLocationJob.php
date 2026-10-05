@@ -38,7 +38,11 @@ class ResolveActivityLocationJob implements ShouldBeUnique, ShouldQueue
     public function handle(ReverseGeocodeAction $resolver): void
     {
         $detail = ActivityDetail::query()->find($this->activityDetailId);
-        if ($detail === null || $detail->location_resolved_at !== null) {
+        if (
+            $detail === null
+            || $detail->location_resolved_at !== null
+            || $detail->location_attempts >= ActivityDetail::MAX_BACKFILL_ATTEMPTS
+        ) {
             return;
         }
 
@@ -56,8 +60,12 @@ class ResolveActivityLocationJob implements ShouldBeUnique, ShouldQueue
             return;
         }
 
-        // Keep the row unresolved so catch-up can retry after its cached outcome expires.
         if ($resolved === null) {
+            $detail->update([
+                'location_attempts' => $detail->location_attempts + 1,
+                'location_attempted_at' => Carbon::now(),
+            ]);
+
             return;
         }
 
