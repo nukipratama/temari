@@ -29,6 +29,8 @@ abstract class TestCase extends BaseTestCase
         }
 
         Cache::forever(AppConfigKey::MaintenanceEnabled->cacheKey(), ['__config' => false]);
+
+        config(['notifications.hold_during_quiet_hours' => false]);
     }
 
     /**

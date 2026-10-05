@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisSubjectMap;
 use App\Services\AI\AnalysisType;
+use Carbon\CarbonInterface;
 use Illuminate\Support\Carbon;
 
 /**
@@ -43,9 +44,10 @@ class NotificationEligibility
      * `notify_max_age_days`, so only the freshest period pings and history stays
      * quiet. Types with no reference date, or a missing one, are never gated.
      * Only the automatic path — the manual "Send notification" push (force)
-     * bypasses it on purpose.
+     * bypasses it on purpose. Measured as of `$triggeredAt` when given, so time a
+     * notification spends held in quiet hours never makes it too old.
      */
-    public function isRecentEnoughToAutoNotify(Analysis $analysis): bool
+    public function isRecentEnoughToAutoNotify(Analysis $analysis, ?CarbonInterface $triggeredAt = null): bool
     {
         $reference = $this->autoNotifyReferenceDate($analysis);
         if ($reference === null) {
@@ -54,7 +56,7 @@ class NotificationEligibility
 
         $maxDays = (int) config('services.telegram.notify_max_age_days');
 
-        return $reference->diffInDays(Carbon::now(), absolute: true) <= $maxDays;
+        return $reference->diffInDays($triggeredAt ?? Carbon::now(), absolute: true) <= $maxDays;
     }
 
     /**

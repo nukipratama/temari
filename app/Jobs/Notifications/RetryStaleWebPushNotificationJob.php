@@ -11,6 +11,7 @@ use App\Notifications\Channels\IdempotentWebPushChannel;
 use App\Notifications\MorningBriefingNotification;
 use App\Services\AI\AnalysisType;
 use App\Services\Notifications\NotificationDeliveryClaim;
+use App\Services\Notifications\QuietHours;
 use App\Services\Telegram\NotificationEligibility;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Facades\Notification;
@@ -32,6 +33,10 @@ class RetryStaleWebPushNotificationJob implements ShouldQueue
 
     public function handle(NotificationDeliveryClaim $claim, NotificationEligibility $eligibility): void
     {
+        if (QuietHours::inEffect()) {
+            return;
+        }
+
         $analysis = Analysis::query()->find($this->analysisId);
         if ($analysis === null) {
             $claim->markStaleWebPushSkipped($this->analysisId, $this->claimVersion);
