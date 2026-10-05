@@ -23,7 +23,7 @@ Every row is something Temari already sent; nothing is written here, and nothing
 
 ## The kinds
 
-Eight, each with its own row treatment ([NotificationKind](../../app/Enums/NotificationKind.php#L13)).
+Ten, each with its own row treatment ([NotificationKind](../../app/Enums/NotificationKind.php#L13)).
 Where a row goes is the router's call ([[inbox-is-an-always-on-channel]]), never the kind's.
 
 | kind | what fires it | channels | opens |
@@ -36,6 +36,7 @@ Where a row goes is the router's call ([[inbox-is-an-always-on-channel]]), never
 | `strava_disconnected` | the Strava grant being revoked | inbox · Telegram · push | the profile, where the reconnect button is |
 | `race_tomorrow` | 18:00 the evening before an active race goal's date | inbox · Telegram · push | the race page |
 | `race_outcome` | 09:00 the morning after a race whose outcome is still pending | inbox · Telegram · push | the race page, where the athlete confirms a run, enters a time or says they did not run |
+| `fitness_improved` | 10:00 daily, when the supported VDOT has risen at least 0.5 above the last noted one, at most once a week ([[supported-race-time-from-recent-efforts]]) | inbox · Telegram · push | the race page |
 | `test` | the "send test notification" button | inbox · Telegram · push | the dashboard |
 
 **`plan_clamp` is the one inbox-only kind.** A step-down used to exist only while the plan page

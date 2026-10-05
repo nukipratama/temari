@@ -3,7 +3,7 @@ title: Profile
 description: The runner's identity page — Temari's profile voice, lifetime stats, PR progression charts, Strava status
 tags: [feature, profile]
 status: living
-reviewed: 2026-10-01
+reviewed: 2026-10-05
 code_refs:
   - resources/js/pages/Profile.tsx
   - app/Http/Controllers/ProfileController.php
@@ -21,6 +21,7 @@ code_refs:
   - app/Enums/PerformanceEvidenceKind.php
   - app/Models/PerformanceEvidence.php
   - app/Models/FitnessAnchor.php
+  - app/Actions/Run/Metrics/ResolveHardEffortsAction.php
   - app/Http/Controllers/PerformanceEvidenceController.php
   - database/migrations/2026_10_01_000100_create_performance_evidence.php
   - database/migrations/2026_10_01_000200_create_fitness_anchors.php
@@ -76,11 +77,11 @@ These are the same estimators [ProfileVoiceNarrator](app/Services/AI/Narrators/P
 
 ### Confirmed performances and the provisional guide
 
-Legacy personal records still provide a provisional guide, so existing athletes keep seeing the pace targets they already had while the app starts collecting explicit evidence. [PersonalRecords](app/Services/Run/Metrics/PersonalRecords.php) asks [VdotEstimator](app/Services/Run/Metrics/VdotEstimator.php) to capture that guide before a PR can be overwritten, and captures the first complete set after initial ingestion. The [FitnessAnchor](app/Models/FitnessAnchor.php) records the values, their source activity and time, and the exact capture timestamp. A capture made after an as-of date is never used for that historical estimate. Sustained evidence of at least 3 km is required; a short incidental PR alone cannot establish VDOT or a quality pace.
+Without confirmed evidence the guide is provisional: [VdotEstimator](app/Services/Run/Metrics/VdotEstimator.php) reads whole-run hard efforts the athlete has not confirmed, runs tagged Race on Strava and distance records that cover essentially the whole run ([ResolveHardEffortsAction](app/Actions/Run/Metrics/ResolveHardEffortsAction.php)). A fast segment inside a longer run never counts. The [FitnessAnchor](app/Models/FitnessAnchor.php) is captured once, with the first estimate, and only its capture time is read: rises resting on unconfirmed records are replayed from it at up to 1 VDOT a week, while confirmed rises and every drop apply at once. Sustained evidence of at least 3 km is required. The full model is [[supported-race-time-from-recent-efforts]].
 
 The authenticated `POST /fitness/evidence` route ([PerformanceEvidenceController](app/Http/Controllers/PerformanceEvidenceController.php)) records a runner-confirmed race or purposeful test. It accepts a qualifying distance from 1 km through marathon, elapsed time, performance date, and optional owned activity or race-goal references. Confirmation time is stored separately from performance date, so a later confirmation cannot rewrite what a historical plan knew. Repeating confirmation for the same activity returns its first saved details and does not move that confirmation date. A race outcome confirmed on the Race page takes the same validated path through [PerformanceEvidenceRecorder](app/Services/Run/Plan/PerformanceEvidenceRecorder.php) ([[a-race-outcome-is-confirmed-not-assumed]]).
 
-Confirmed sustained performances are the primary route to changing quality capacity. A newer confirmed result at the same or a distance within 10% replaces the older comparable result inside the 12-month window. Distinct recent distances remain separate evidence; when their VDOTs differ by at least 10%, confidence is `conflicting` and the lower VDOT remains the conservative anchor. When no sustained result is recent, the most recent sustained confirmation remains available with `stale` confidence. Confirmed results inside the last three months and at or under 10 km may support threshold and interval paces; the 3 km minimum must still be represented. Controlled quality sessions that were prescribed and successfully completed are counted as corroboration, but never act as a maximal test.
+Confirmed and unconfirmed efforts from the last 16 weeks form one pool, newest per 10% distance band; a confirmed result replaces the same run's unconfirmed record. The supported VDOT is read at the goal race distance (10K without one) from the efforts closest to it. When the recent confirmed efforts it could rest on differ by at least 10% in VDOT, confidence is `conflicting`. With nothing recent, the newest older effort remains available with `stale` confidence. Confirmed results inside the last three months and at or under 10 km may support threshold and interval paces; the 3 km minimum must still be represented. Controlled quality sessions that were prescribed and successfully completed are counted as corroboration, but never act as a maximal test.
 
 The response to confirmation includes `fitness.vdot`, `fitness.vdot_source` (category, date, confidence, stale state, evidence id, evidence kind and distance, corroborating quality count, plus quality source metadata), and the four `training_paces`. The same source and freshness metadata is available on the Profile prop for the later evidence UI. If a pace changes by at least five seconds per kilometre and planned future sessions exist, the deterministic [Periodizer](app/Services/Run/Plan/Periodizer.php) refreshes those planned rows directly; the endpoint does not request narration. Settled and pinned rows stay fixed, and recommendation revisions/views remain as the history of what was previously shown.
 
@@ -96,9 +97,9 @@ Together these produced **6:56/km at "high confidence" from 23 samples** for an 
 
 ### Endurance and quality read different evidence
 
-[TrainingPaceCalculator](app/Services/Run/Metrics/TrainingPaceCalculator.php) derives easy and marathon pace from `vdot`, then threshold and interval pace from `quality_vdot`. For legacy PRs, the captured provisional anchor preserves the existing guide until a runner confirms a race or purposeful test. Later easy or faster activity-linked PRs cannot silently raise that guide. The stored activity provenance lets [PersonalRecords](app/Services/Run/Metrics/PersonalRecords.php)`::rebuildForUser` invalidate a source that was deleted or corrected, rebuild from the surviving sustained PRs, and drop a quality source that no longer exists.
+[TrainingPaceCalculator](app/Services/Run/Metrics/TrainingPaceCalculator.php) derives easy and marathon pace from `vdot`, then threshold and interval pace from `quality_vdot`. A deleted or corrected run drops out of the pool and the records [PersonalRecords](app/Services/Run/Metrics/PersonalRecords.php)`::rebuildForUser` rebuilds, so a guide resting on it falls at once.
 
-Confirmed evidence remains conservative across materially different distances: the lower VDOT drives easy and marathon pace, while recent sustained confirmed results can support quality paces. A shorter confirmed result may keep quality VDOT at or below its sustained companion, but cannot raise it above that sustained evidence. Without a sustained confirmed result there is no confirmed anchor, and without a recent qualifying quality result the quality VDOT equals the endurance VDOT.
+Quality reads recent short evidence: confirmed results when the athlete has any, distance records otherwise. A shorter confirmed result may keep quality VDOT at or below its sustained companion, but cannot raise it above that sustained evidence. Without a sustained confirmed result there is no confirmed anchor, and without a recent qualifying quality result the quality VDOT equals the endurance VDOT.
 
 Both performance date and confirmation timestamp are checked against a caller-supplied `$asOf`. [TrainingBaseline](app/Services/Run/Plan/TrainingBaseline.php) threads its own date through, so [ComplianceScorer](app/Services/Run/Plan/ComplianceScorer.php) and [SeasonSummaryBuilder](app/Services/Run/Plan/SeasonSummaryBuilder.php) judge old weeks only by evidence and provisional snapshots available then, consistent with [[a-day-is-scored-when-it-is-run]].
 

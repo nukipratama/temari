@@ -3,8 +3,9 @@ title: Race — goal race and Riegel projection
 description: The first user-authored object in the app — a race the user is training for and a fitted-Riegel finish-time projection
 tags: [feature, run]
 status: living
-reviewed: 2026-10-02
+reviewed: 2026-10-05
 code_refs:
+  - resources/js/components/race/ConfirmEffortNudge.tsx
   - app/Models/RaceGoal.php
   - app/Http/Controllers/RaceController.php
   - app/Http/Requests/StoreRaceGoalRequest.php
@@ -67,9 +68,9 @@ This is deliberately **not** reconciled with [VdotEstimator](app/Services/Run/Me
 
 ## The page: target against supported time
 
-The page leads with one duel card, [RaceDuel](resources/js/components/race/RaceDuel.tsx#L42), under a compact "your race." header with a "plan →" link. It sets "your target" against `race.ambition.supported_time_sec`, the VDOT race equivalent the plan trains at. The right eyebrow reads "on track for" only when the band is on track and the supported time is not behind the target ([supportedEyebrow()](resources/js/lib/raceGoal.ts#L169)), and "supported" otherwise. The gap pill states the difference in words, and one sentence from [ambitionNote()](resources/js/lib/raceGoal.ts#L144) names the band (on track, ambitious, unsupported, low evidence) or, with an unknown state, the honest limit. Times wrap at 320px rather than clip. A Temari watermark is posed from the gap. With no supported time the card shows the target alone. Why this shape: [[the-race-page-sets-the-target-beside-supported-time]].
+The page leads with one duel card, [RaceDuel](resources/js/components/race/RaceDuel.tsx#L42), under a compact "your race." header with a "plan →" link. It sets "your target" against `race.ambition.supported_time_sec`, the VDOT race equivalent the plan trains at. The right eyebrow reads "on track for" only when the band is on track and the supported time is not behind the target ([supportedEyebrow()](resources/js/lib/raceGoal.ts#L169)), and "supported" otherwise. The gap pill states the difference in words, and one sentence from [ambitionNote()](resources/js/lib/raceGoal.ts#L144) names the band (on track, ambitious, unsupported, low evidence) or, with an unknown state, the honest limit. Times wrap at 320px rather than clip. A Temari watermark is posed from the gap. With no supported time the card shows the target alone. Why this shape: [[the-race-page-sets-the-target-beside-supported-time]]. Under the supported time a line names the effort it rests on, "based on your 5K on aug 26" ([supportedBasisLine()](resources/js/lib/raceGoal.ts#L206)). When that time rests only on unconfirmed records, or is stale, [ConfirmEffortNudge](resources/js/components/race/ConfirmEffortNudge.tsx) asks under the card for a confirmed effort and links the run when there is one. How the supported time is computed: [[supported-race-time-from-recent-efforts]].
 
-Trends shows the same comparison. [TrendsController::raceOutlook()](app/Http/Controllers/TrendsController.php#L68) serves `ambition` and `support` from the same `RacePresenter`, and [RaceComparison](resources/js/components/trends/RaceComparison.tsx#L40) renders "your target", "supported by your recent runs" and the same sentence, so the two pages cannot disagree ([[trends]]).
+Trends shows the same comparison. [TrendsController::raceOutlook()](app/Http/Controllers/TrendsController.php#L68) serves `ambition` and `support` from the same `RacePresenter`, and [RaceComparison](resources/js/components/trends/RaceComparison.tsx#L40) renders "your target", "supported by your recent runs", the same basis line and the same sentence, so the two pages cannot disagree ([[trends]]).
 
 Under the card, a row behind a hairline holds "edit race" and a quiet ember "clear race". "edit race" expands [RaceGoalForm](resources/js/components/race/RaceGoalForm.tsx) inline, collapsed by default; with a race set it first asks "Update this race" (the default, distance held) or "Add a new race" (a blank form that posts `intent: new`). A successful save collapses it again, and reopening remounts it on the saved values. A rejected save keeps the form open with each server message beside its field (date, distance, goal time, name, intent), as onboarding does. "clear race" confirms through the concerned-pose `TemariNudgeModal` before `DELETE /race`, which retires the race and regenerates the plan onto its self-scaled arc. With no race set, the page shows only a one-line prompt and a "set a race" button that expands the same form.
 

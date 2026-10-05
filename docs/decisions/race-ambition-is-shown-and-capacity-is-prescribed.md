@@ -15,6 +15,8 @@ code_refs:
 
 > **Partly superseded (2026-10-02) by [[one-race-model-drives-the-plan]].** The 3% and 6% bands now apply only when the qualifying evidence covers at least half the race distance; otherwise the state is `low_evidence`. The behind-pace arm no longer exists. The rest of this decision stands.
 
+> **Partly superseded (2026-10-05) by [[supported-race-time-from-recent-efforts]].** The supported VDOT now comes from whole-run hard efforts of the last 16 weeks, confirmed or not, read at the race distance with the athlete's own fall-off; unconfirmed rises are capped at about 1 VDOT a week. The payload also names the effort it rests on (`basis`) and whether to ask for a confirmed one (`confirm_nudge`).
+
 # A race ambition is shown, and the supported effort is prescribed
 
 **Status:** Accepted (2026-10-01).
