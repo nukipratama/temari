@@ -120,7 +120,7 @@ it('never prescribes a marathon-pace block faster than the VDOT marathon equival
         ->toBeGreaterThanOrEqual(PRESCRIPTION_PACES['marathon']);
 })->with([SessionType::Long, SessionType::Tempo])->with([PlanPhase::Base, PlanPhase::Build, PlanPhase::Peak, PlanPhase::Taper]);
 
-it('targets goal-pace work from the table by kind and phase, halved when ambitious', function (string $kind, SessionType $type, PlanPhase $phase, RaceAmbitionState $band, int $minutes): void {
+it('targets goal-pace work from the table by kind and phase, halved when ambitious and full at a stepping stone', function (string $kind, SessionType $type, PlanPhase $phase, RaceAmbitionState $band, int $minutes): void {
     $work = new GoalPaceWork($kind, 10_000, 285, $band);
     $prescription = $this->resolver->resolve($type, $phase, 10_000, 2850, PRESCRIPTION_PACES, IntentVerdict::Hit, 60, goalPace: $work);
 
@@ -141,6 +141,11 @@ it('targets goal-pace work from the table by kind and phase, halved when ambitio
     ['marathon', SessionType::Tempo, PlanPhase::Peak, RaceAmbitionState::OnTrack, 35],
     ['marathon', SessionType::Tempo, PlanPhase::Peak, RaceAmbitionState::Ambitious, 17],
     ['marathon', SessionType::Long, PlanPhase::Peak, RaceAmbitionState::OnTrack, 40],
+    ['5k', SessionType::Interval, PlanPhase::Peak, RaceAmbitionState::Unsupported, 20],
+    ['10k', SessionType::Interval, PlanPhase::Build, RaceAmbitionState::Unsupported, 21],
+    ['half', SessionType::Tempo, PlanPhase::Peak, RaceAmbitionState::Unsupported, 40],
+    ['marathon', SessionType::Tempo, PlanPhase::Peak, RaceAmbitionState::Unsupported, 35],
+    ['marathon', SessionType::Long, PlanPhase::Peak, RaceAmbitionState::Unsupported, 40],
 ]);
 
 it('runs goal-pace work at the goal pace, faster than the supported marathon pace', function (): void {
@@ -162,6 +167,9 @@ it('starts and steps 5K and 10K goal pace in whole reps, whatever the day\'s typ
 it('keeps goal-pace history in its own family and the marathon in its race families', function (): void {
     expect(IntensityPrescriptionResolver::familyKeyForContext(SessionType::Interval, ['kind' => '10k', 'band' => 'on_track']))->toBe('goal_pace')
         ->and(IntensityPrescriptionResolver::familyKeyForContext(SessionType::Tempo, ['kind' => 'half', 'band' => 'ambitious']))->toBe('goal_pace')
+        ->and(IntensityPrescriptionResolver::familyKeyForContext(SessionType::Interval, ['kind' => '10k', 'band' => 'unsupported']))->toBe('goal_pace')
+        ->and(IntensityPrescriptionResolver::familyKeyForContext(SessionType::Tempo, ['kind' => 'marathon', 'band' => 'unsupported']))->toBe('race_tempo')
+        ->and(IntensityPrescriptionResolver::familyKeyForContext(SessionType::Long, ['kind' => 'marathon', 'band' => 'unsupported']))->toBe('race_long')
         ->and(IntensityPrescriptionResolver::familyKeyForContext(SessionType::Tempo, ['kind' => 'marathon', 'band' => 'on_track']))->toBe('race_tempo')
         ->and(IntensityPrescriptionResolver::familyKeyForContext(SessionType::Long, ['kind' => 'marathon', 'band' => 'on_track']))->toBe('race_long')
         ->and(IntensityPrescriptionResolver::familyKeyForContext(SessionType::Tempo, ['kind' => 'marathon']))->toBe('race_tempo')

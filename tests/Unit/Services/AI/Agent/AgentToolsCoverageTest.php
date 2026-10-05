@@ -1761,3 +1761,26 @@ it('names a time trial, its distance and its aim to the plan tools, and nothing 
         ->and($days[0]['distance_km'])->toBe(5.0)
         ->and($days[1])->not->toHaveKey('time_trial');
 });
+
+it('names stepping-stone work and its pace to the plan tools, never as goal pace', function (): void {
+    $user = User::factory()->create();
+    $monday = Carbon::parse('2026-09-07');
+    $steppingStone = PlannedSession::factory()->for($user)->create([
+        'date' => $monday->toDateString(),
+        'session_type' => SessionType::Interval,
+        'prescribed_hard_minutes' => 16,
+        'prescribed_pace_band' => PaceBand::Threshold,
+        'prescribed_pace_sec_per_km' => 291,
+        'prescription_race_context' => ['distance_m' => 10_000, 'goal_pace_sec_per_km' => 291, 'kind' => '10k', 'band' => 'unsupported'],
+    ]);
+
+    $day = planDayTool($steppingStone, app(TrainingBaseline::class))->handle([]);
+    $days = planContextTool($user, $monday, $monday)->handle([])['days'];
+
+    expect($day['stepping_stone'])->toBe('10k')
+        ->and($day)->not->toHaveKey('goal_pace')
+        ->and($days[0]['stepping_stone'])->toBe('10k')
+        ->and($days[0])->not->toHaveKey('goal_pace')
+        ->and($days[0]['target_pace_sec'])->toBe(291)
+        ->and($days[0]['target_pace_formatted'])->toBe('4:51');
+});

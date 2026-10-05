@@ -11,7 +11,7 @@ use App\Services\Run\Plan\GoalPaceWork;
 use App\Services\Run\Plan\PlanInputs;
 use Illuminate\Support\Carbon;
 
-function goalPaceWorkInputs(float $distanceM, ?RaceAmbitionState $band, ?int $goalTimeSec = 3000): PlanInputs
+function goalPaceWorkInputs(float $distanceM, ?RaceAmbitionState $band, ?int $goalTimeSec = 3000, ?int $steppingStoneSec = null): PlanInputs
 {
     return new PlanInputs(
         userId: 1,
@@ -30,6 +30,7 @@ function goalPaceWorkInputs(float $distanceM, ?RaceAmbitionState $band, ?int $go
         projectedRaceSeconds: null,
         raceGoalTimeSec: $goalTimeSec,
         raceAmbitionState: $band,
+        raceSteppingStoneTimeSec: $steppingStoneSec,
     );
 }
 
@@ -61,7 +62,7 @@ it('exists only for supported bands, race phases and dedicated preparation insid
 })->with([
     'on track' => [10_000.0, RaceAmbitionState::OnTrack, PlanPhase::Peak, '2026-11-16', 3000, true],
     'ambitious' => [10_000.0, RaceAmbitionState::Ambitious, PlanPhase::Taper, '2026-12-14', 3000, true],
-    'unsupported' => [10_000.0, RaceAmbitionState::Unsupported, PlanPhase::Peak, '2026-11-16', 3000, false],
+    'unsupported without a stepping stone' => [10_000.0, RaceAmbitionState::Unsupported, PlanPhase::Peak, '2026-11-16', 3000, false],
     'low evidence' => [10_000.0, RaceAmbitionState::LowEvidence, PlanPhase::Peak, '2026-11-16', 3000, false],
     'unknown' => [10_000.0, RaceAmbitionState::Unknown, PlanPhase::Peak, '2026-11-16', 3000, false],
     'no band' => [10_000.0, null, PlanPhase::Peak, '2026-11-16', 3000, false],
@@ -81,7 +82,24 @@ it('carries the goal pace, kind and band it was generated with', function (): vo
         ->and($work?->racesLongAtGoalPace())->toBeFalse();
 });
 
-it('picks a pace band per kind and races the long run at goal pace only for an on-track marathon', function (string $kind, RaceAmbitionState $band, PaceBand $paceBand, bool $long): void {
+it('runs an unsupported goal at its stepping-stone pace, never the goal or the supported pace', function (): void {
+    $work = GoalPaceWork::forWeek(goalPaceWorkInputs(10_000.0, RaceAmbitionState::Unsupported, 3200, 3104), Carbon::parse('2026-11-16'), PlanPhase::Peak);
+
+    expect($work?->context())->toBe(['distance_m' => 10_000, 'goal_pace_sec_per_km' => 310, 'kind' => '10k', 'band' => 'unsupported'])
+        ->and(GoalPaceWork::isSteppingStone($work?->context()))->toBeTrue();
+});
+
+it('names stepping-stone work only by the unsupported band it was generated with', function (?array $context, bool $steppingStone): void {
+    expect(GoalPaceWork::isSteppingStone($context))->toBe($steppingStone);
+})->with([
+    'unsupported' => [['kind' => '10k', 'band' => 'unsupported'], true],
+    'on track' => [['kind' => '10k', 'band' => 'on_track'], false],
+    'ambitious' => [['kind' => 'half', 'band' => 'ambitious'], false],
+    'supported marathon tempo' => [['kind' => 'marathon'], false],
+    'no context' => [null, false],
+]);
+
+it('picks a pace band per kind and races the long run at goal pace only for an on-track or stepping-stone marathon', function (string $kind, RaceAmbitionState $band, PaceBand $paceBand, bool $long): void {
     $work = new GoalPaceWork($kind, 1, 300, $band);
 
     expect($work->paceBand())->toBe($paceBand)
@@ -91,6 +109,8 @@ it('picks a pace band per kind and races the long run at goal pace only for an o
     ['half', RaceAmbitionState::OnTrack, PaceBand::Threshold, false],
     ['marathon', RaceAmbitionState::OnTrack, PaceBand::Marathon, true],
     ['marathon', RaceAmbitionState::Ambitious, PaceBand::Marathon, false],
+    ['marathon', RaceAmbitionState::Unsupported, PaceBand::Marathon, true],
+    ['half', RaceAmbitionState::Unsupported, PaceBand::Threshold, false],
 ]);
 
 it('replaces the kind\'s own form first, otherwise the week\'s first tempo or interval', function (string $kind, array $types, ?string $replaced): void {

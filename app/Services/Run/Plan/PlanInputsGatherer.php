@@ -126,6 +126,7 @@ final readonly class PlanInputsGatherer
             fallOffTilt: FallOffTilt::fromFallOff($estimate['k'] ?? null, $estimate['k_fitted'] ?? false),
             raceAmbitionState: $ambition?->state,
             raceAmbitionGapPct: $ambition?->gapPct,
+            raceSteppingStoneTimeSec: $ambition?->steppingStoneTimeSec,
             timeTrialAimSec: $this->timeTrialAimSec($estimate, $trialDistanceM),
             timeTrials: $this->timeTrials($user, $season->starts_at->copy()->startOfWeek(Carbon::MONDAY), $today),
             timeTrialEvidenceDates: $this->timeTrialEvidenceDates($user, $trialDistanceM, $currentWeekStart),

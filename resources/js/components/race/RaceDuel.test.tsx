@@ -22,6 +22,8 @@ const AMBITION: RaceAmbition = {
     prescribed_time_sec: 3_000,
     gap_pct: 4.8,
     evidence_confidence: 'confirmed',
+    stepping_stone_time_sec: null,
+    stepping_stone_pace_sec_per_km: null,
     basis: null,
 };
 

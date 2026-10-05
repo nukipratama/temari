@@ -7,6 +7,9 @@ use App\Enums\PaceBand;
 use App\Enums\SegmentKey;
 use App\Enums\SessionType;
 use App\Models\ActivityDetail;
+use App\Enums\PlanPhase;
+use App\Services\Run\Plan\IntensityPrescription;
+use App\Services\Run\Plan\SegmentGenerator;
 use App\Services\Run\Plan\SessionIntentJudge;
 use App\Services\Run\Plan\SessionSegment;
 
@@ -410,4 +413,16 @@ it('judges goal-pace reps on a tempo day as intervals and a goal-pace block on a
     expect($reps['verdict'])->toBe(IntentVerdict::Hit)
         ->and($reps['evidence'])->toMatchArray(['basis' => 'laps', 'reps_prescribed' => 4])
         ->and($block['evidence'])->toHaveKey('block_minutes');
+});
+
+it('judges stepping-stone work against the prescribed stepping-stone pace, not the supported pace', function (): void {
+    $context = ['distance_m' => 21_098, 'goal_pace_sec_per_km' => 290, 'kind' => 'half', 'band' => 'unsupported'];
+    $segments = SegmentGenerator::forPrescription(SessionType::Tempo, PlanPhase::Peak, 10.0, JUDGE_PACES, new IntensityPrescription(20, PaceBand::Threshold, 290, null, $context));
+    $atSteppingStone = SessionIntentJudge::judge(SessionType::Tempo, $segments, JUDGE_PACES, [judgeRun(9.0, 2800, ['best_20min_pace' => '4:52'])]);
+    $atSupported = SessionIntentJudge::judge(SessionType::Tempo, $segments, JUDGE_PACES, [judgeRun(9.0, 2800, ['best_20min_pace' => '5:10'])]);
+
+    expect($atSteppingStone['verdict'])->toBe(IntentVerdict::Hit)
+        ->and($atSteppingStone['evidence'])->toMatchArray(['target_pace_sec' => 290, 'basis' => 'pace'])
+        ->and($atSupported['verdict'])->not->toBe(IntentVerdict::Hit)
+        ->and($atSupported['evidence'])->toMatchArray(['target_pace_sec' => 290]);
 });

@@ -15,6 +15,8 @@ code_refs:
   - tests/Feature/Plan/GoalPaceWorkPlanTest.php
 ---
 
+> **Partly superseded (2026-10-05) by [[a-stepping-stone-for-an-unsupported-goal]].** Rule 5 no longer holds for an `unsupported` goal: its goal-pace work runs at the stepping-stone pace, 3% faster than the supported time, with the on-track dose, and an unsupported marathon runs its race Tempo and race long there. `low_evidence` and `unknown` are unchanged.
+
 # Goal-pace work in the last weeks, dosed by the ambition band
 
 **Status:** Accepted (2026-10-05). Decision #1803, layer 3 of #1804. Partly supersedes [[race-ambition-is-shown-and-capacity-is-prescribed]]: for an on-track or ambitious goal, marathon-pace work inside the window now runs at the real goal pace instead of the slower of goal and supported marathon pace. [[one-race-model-drives-the-plan]] decision 3 still holds for every other band and outside the window.

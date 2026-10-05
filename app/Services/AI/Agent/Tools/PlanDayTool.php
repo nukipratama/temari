@@ -77,7 +77,10 @@ final class PlanDayTool extends NoArgumentTool
             .'present only when readiness eased the day\'s pace only: they are the eased (slower) '
             .'pace the athlete is actually running, and pace_eased_from names the pace it replaced. '
             .'goal_pace, when present, names the race (5k/10k/half/marathon) whose goal pace the '
-            .'session rehearses: call it goal-pace work, not tempo or intervals. time_trial, when '
+            .'session rehearses: call it goal-pace work, not tempo or intervals. stepping_stone, '
+            .'when present instead, names the race whose stepping-stone pace the session rehearses: '
+            .'the edge of on track, 3% faster than the time their running supports, not their goal. '
+            .'Call it stepping-stone work, never goal pace, tempo or intervals. time_trial, when '
             .'present, means the day is an all-out time trial over time_trial.distance_km after a '
             .'warmup, aiming around time_trial.aim_time, the supported time at that distance: call it '
             .'a time trial, not tempo or intervals; it checks their fitness so their paces stay honest.';
@@ -116,13 +119,13 @@ final class PlanDayTool extends NoArgumentTool
             }
         }
 
-        $goalPace = PlanRenderer::goalPaceKindOf($this->session, $effective->sessionType);
+        $goalPace = PlanRenderer::goalPaceForNarration($this->session, $effective->sessionType);
         $timeTrial = PlanRenderer::timeTrialOf($this->session, $effective->sessionType);
 
         return [
             'date' => $this->session->date->toDateString(),
             'session_type' => $effective->sessionType->value,
-            ...($goalPace === null ? [] : ['goal_pace' => $goalPace]),
+            ...$goalPace,
             ...($timeTrial === null ? [] : ['time_trial' => PlanRenderer::timeTrialForNarration($timeTrial)]),
             'phase' => $this->session->phase->value,
             'distance_km' => $effective->coreKm,

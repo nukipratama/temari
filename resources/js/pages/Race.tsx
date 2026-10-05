@@ -6,6 +6,7 @@ import type { PastRace, RaceDetails, RaceProjection } from '@/types/inertia';
 
 import RaceDuel from '@/components/race/RaceDuel';
 import RaceOutcomeCard from '@/components/race/RaceOutcomeCard';
+import SteppingStoneCard from '@/components/race/SteppingStoneCard';
 import TemariNudgeModal from '@/components/temari/TemariNudgeModal';
 import Eyebrow from '@/components/ui/Eyebrow';
 import { Icon } from '@/components/ui/Icon';
@@ -72,6 +73,10 @@ export default function Race({
                             race={race}
                             ambition={race.ambition}
                             support={race.support}
+                            className="mt-4"
+                        />
+                        <SteppingStoneCard
+                            ambition={race.ambition}
                             className="mt-4"
                         />
                         <div className="mt-3 flex items-center justify-between gap-3 border-t border-dashed border-border pt-3">

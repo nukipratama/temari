@@ -351,6 +351,7 @@ function planDay(overrides: Partial<PlanDay> = {}): PlanDay {
         prescription_reason: null,
         fall_off_tilt: null,
         goal_pace: null,
+        stepping_stone: false,
         time_trial: null,
         hr_cap_bpm: null,
         advice_note: null,
@@ -877,6 +878,34 @@ describe('sessionPurpose on goal-pace work', () => {
                 planDay({ session_type: 'tempo', goal_pace: 'marathon' }),
             ),
         ).toBe('rehearsing your marathon goal pace.');
+    });
+});
+
+describe('stepping-stone work', () => {
+    const steppingStone = planDay({
+        session_type: 'interval',
+        goal_pace: '10k',
+        stepping_stone: true,
+    });
+
+    it('is named stepping-stone pace, never goal pace', () => {
+        expect(sessionLabel(steppingStone)).toBe('stepping-stone pace');
+        expect(workLabel(steppingStone)).toBe('stepping-stone pace');
+    });
+
+    it('says which stepping-stone pace the session rehearses', () => {
+        expect(sessionPurpose(steppingStone)).toBe(
+            'rehearsing your 10K stepping-stone pace.',
+        );
+        expect(
+            sessionPurpose(
+                planDay({
+                    session_type: 'tempo',
+                    goal_pace: 'marathon',
+                    stepping_stone: true,
+                }),
+            ),
+        ).toBe('rehearsing your marathon stepping-stone pace.');
     });
 });
 

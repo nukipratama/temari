@@ -66,6 +66,7 @@ final readonly class PlanInputs
         public ?FallOffTilt $fallOffTilt = null,
         public ?RaceAmbitionState $raceAmbitionState = null,
         public ?float $raceAmbitionGapPct = null,
+        public ?int $raceSteppingStoneTimeSec = null,
         public ?int $timeTrialAimSec = null,
         public array $timeTrials = [],
         public array $timeTrialEvidenceDates = [],

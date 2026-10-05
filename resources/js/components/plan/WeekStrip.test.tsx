@@ -25,6 +25,7 @@ function day(overrides: Partial<PlanDay> = {}): PlanDay {
         prescription_reason: null,
         fall_off_tilt: null,
         goal_pace: null,
+        stepping_stone: false,
         time_trial: null,
         hr_cap_bpm: null,
         advice_note: null,
@@ -262,6 +263,28 @@ describe('WeekStrip', () => {
         expect(tabs[0]).not.toHaveAttribute(
             'aria-label',
             expect.stringContaining('interval'),
+        );
+    });
+
+    it('labels stepping-stone work as stepping-stone pace, never goal pace', () => {
+        const { tabs } = renderStrip({
+            days: [
+                day({
+                    session_type: 'interval',
+                    status: 'planned',
+                    goal_pace: '10k',
+                    stepping_stone: true,
+                }),
+            ],
+        });
+
+        expect(tabs[0]).toHaveAttribute(
+            'aria-label',
+            expect.stringContaining('stepping-stone pace'),
+        );
+        expect(tabs[0]).not.toHaveAttribute(
+            'aria-label',
+            expect.stringContaining('goal pace'),
         );
     });
 

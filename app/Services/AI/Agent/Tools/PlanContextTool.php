@@ -76,7 +76,11 @@ final class PlanContextTool extends UserTool
             .'target_pace_formatted are already the eased (slower) pace, and pace_eased_from names the '
             .'pace it replaced. goal_pace, when present, names the race (5k/10k/half/marathon) whose '
             .'goal pace the session rehearses, and the target pace is that goal pace: call it goal-pace '
-            .'work, not tempo or intervals. time_trial, when present, means the day is an all-out time '
+            .'work, not tempo or intervals. stepping_stone, when present instead, names the race whose '
+            .'stepping-stone pace the session rehearses, and the target pace is that stepping-stone pace: '
+            .'the edge of on track, 3% faster than the time their running supports, not their goal. Call '
+            .'it stepping-stone work, never goal pace, tempo or intervals. '
+            .'time_trial, when present, means the day is an all-out time '
             .'trial over time_trial.distance_km after a warmup, aiming around time_trial.aim_time, the '
             .'supported time at that distance: call it a time trial, not tempo or intervals; it checks '
             .'their fitness so their paces stay honest. Call this to say what was asked of them, not just what they did. An '
@@ -111,9 +115,9 @@ final class PlanContextTool extends UserTool
                     $session,
                     PlanRenderer::coreKmForSession($session, $longRunBaselineKm, $longRunCapKm, $selfScaled, $longRunProgressionCapKm),
                 );
-                $goalPace = PlanRenderer::goalPaceKindOf($session, $effective->sessionType);
+                $goalPace = PlanRenderer::goalPaceForNarration($session, $effective->sessionType);
                 $timeTrial = PlanRenderer::timeTrialOf($session, $effective->sessionType);
-                $targetPaceSec = $goalPace === null && $timeTrial === null
+                $targetPaceSec = $goalPace === [] && $timeTrial === null
                     ? self::targetPaceSec($session, $effective->sessionType, $paces)
                     : $session->prescribed_pace_sec_per_km;
                 $easedFrom = $effective->easedFromForNarration();
@@ -127,7 +131,7 @@ final class PlanContextTool extends UserTool
                 return [
                     'date' => $session->date->toDateString(),
                     'session_type' => $effective->sessionType->value,
-                    ...($goalPace === null ? [] : ['goal_pace' => $goalPace]),
+                    ...$goalPace,
                     ...($timeTrial === null ? [] : ['time_trial' => PlanRenderer::timeTrialForNarration($timeTrial)]),
                     'phase' => $session->phase->value,
                     'distance_km' => $session->prescribed_km !== null

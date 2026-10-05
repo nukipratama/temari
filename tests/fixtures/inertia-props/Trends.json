@@ -51,6 +51,8 @@
     "raceOutlook.ambition.gap_pct",
     "raceOutlook.ambition.prescribed_time_sec",
     "raceOutlook.ambition.state",
+    "raceOutlook.ambition.stepping_stone_pace_sec_per_km",
+    "raceOutlook.ambition.stepping_stone_time_sec",
     "raceOutlook.ambition.supported_pace_sec_per_km",
     "raceOutlook.ambition.supported_time_sec",
     "raceOutlook.ambition.target_pace_sec_per_km",
