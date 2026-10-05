@@ -1,4 +1,3 @@
-import { router } from '@inertiajs/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
@@ -6,8 +5,8 @@ import {
     isIosNonSafari,
     isPushSupported,
     isStandalone,
+    releaseDeviceSubscription,
     reportSeen,
-    signOut,
     subscribe,
     unsubscribe,
     urlBase64ToUint8Array,
@@ -227,42 +226,29 @@ describe('replacing the subscription this device saved before', () => {
     });
 });
 
-describe('signOut', () => {
+describe('releaseDeviceSubscription', () => {
     afterEach(() => localStorage.clear());
 
-    it('unsubscribes the browser before posting the endpoint with the logout', async () => {
+    it('unsubscribes the browser and returns its endpoint', async () => {
         stubServiceWorker();
         localStorage.setItem('temari-push-endpoint', fakeSubscription.endpoint);
-        const order: string[] = [];
-        fakeSubscription.unsubscribe.mockImplementationOnce(() => {
-            order.push('unsubscribe');
 
-            return Promise.resolve(true);
-        });
-        vi.mocked(router.post).mockImplementationOnce(() => {
-            order.push('post');
-        });
-
-        await signOut();
-
-        expect(order).toEqual(['unsubscribe', 'post']);
-        expect(router.post).toHaveBeenCalledWith('/logout', {
-            push_endpoint: fakeSubscription.endpoint,
-        });
+        await expect(releaseDeviceSubscription()).resolves.toBe(
+            fakeSubscription.endpoint,
+        );
+        expect(fakeSubscription.unsubscribe).toHaveBeenCalled();
         expect(localStorage.getItem('temari-push-endpoint')).toBeNull();
     });
 
-    it('still posts the endpoint when the browser unsubscribe fails', async () => {
+    it('still returns the endpoint when the browser unsubscribe fails', async () => {
         stubServiceWorker();
         fakeSubscription.unsubscribe.mockImplementationOnce(() =>
             Promise.reject(new Error('boom')),
         );
 
-        await signOut();
-
-        expect(router.post).toHaveBeenCalledWith('/logout', {
-            push_endpoint: fakeSubscription.endpoint,
-        });
+        await expect(releaseDeviceSubscription()).resolves.toBe(
+            fakeSubscription.endpoint,
+        );
     });
 
     it('falls back to the remembered endpoint when the subscription cannot be read', async () => {
@@ -272,17 +258,13 @@ describe('signOut', () => {
             () => Promise.reject(new Error('boom')),
         );
 
-        await signOut();
-
-        expect(router.post).toHaveBeenCalledWith('/logout', {
-            push_endpoint: 'https://saved.test/x',
-        });
+        await expect(releaseDeviceSubscription()).resolves.toBe(
+            'https://saved.test/x',
+        );
     });
 
-    it('posts a bare logout when this device never subscribed', async () => {
-        await signOut();
-
-        expect(router.post).toHaveBeenCalledWith('/logout', {});
+    it('returns nothing when this device never subscribed', async () => {
+        await expect(releaseDeviceSubscription()).resolves.toBeUndefined();
     });
 });
 

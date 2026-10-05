@@ -37,7 +37,7 @@ import { usePendingPost } from '@/hooks/usePendingPost';
 import { appLayout } from '@/layouts/appLayout';
 import { cn } from '@/lib/cn';
 import { formatDurationHMS } from '@/lib/pace';
-import { signOut } from '@/lib/webPush';
+import { releaseDeviceSubscription } from '@/lib/webPush';
 
 import {
     useNotificationPrefs,
@@ -235,6 +235,15 @@ export default function Settings({
  * bordered full-width "Log out" that becomes an auto-width row item above
  * 900px, and a bare destructive "Delete account" beneath it.
  */
+async function signOut(): Promise<void> {
+    const endpoint = await releaseDeviceSubscription();
+
+    router.post(
+        '/logout',
+        endpoint === undefined ? {} : { push_endpoint: endpoint },
+    );
+}
+
 function AccountActions() {
     const [confirmOpen, setConfirmOpen] = useState(false);
     const { isDemo } = useDemoGuard();
