@@ -92,6 +92,18 @@ it('catches a missed 00:00 run up on a later Monday tick, and a re-run once ever
     Bus::assertNotDispatched(SettleStreakWeeksJob::class);
 });
 
+it('settles an athlete who connected mid-week on the next hourly run, not the next Monday', function (): void {
+    Carbon::setTestNow('2026-06-03 14:00:00');
+    $user = User::factory()->create();
+    settleWeeks($user, 3);
+
+    $this->artisan('streak:settle')
+        ->expectsOutputToContain('Queued streak settlement for 1 users.')
+        ->assertSuccessful();
+
+    expect(app(StreakSettlementService::class)->isSettled($user->id))->toBeTrue();
+});
+
 it('re-settles an athlete a later write marked dirty', function (): void {
     $user = User::factory()->create();
     settleWeeks($user, 2);

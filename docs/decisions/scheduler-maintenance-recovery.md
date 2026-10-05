@@ -14,7 +14,7 @@ code_refs:
 
 # Scheduled state recovers after maintenance without replaying stale notifications
 
-> **Superseded in part (2026-10-05):** weekly recaps are no longer gated on streak settlement, since no recap reads the streak and the gate never covered `ai:self-heal`; the weekly profile voice waits per athlete instead, and `streak:settle` retries every Monday hour (see [[scheduler]]).
+> **Superseded in part (2026-10-05):** weekly recaps are no longer gated on streak settlement, since no recap reads the streak and the gate never covered `ai:self-heal`; the weekly profile voice waits per athlete instead, and `streak:settle` runs every hour (see [[scheduler]]).
 
 ## Context
 

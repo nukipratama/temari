@@ -233,14 +233,15 @@ Schedule::command('weather:backfill')->dailyAt('03:30')->withoutOverlapping(55)-
 // claim table makes a same-week re-run a no-op, not a second push.
 Schedule::command('streak:remind')->weeklyOn(Carbon::SATURDAY, '18:00')->withoutOverlapping(15)->onOneServer();
 
-// Monday 00:00: queue settlement of the week that just closed — mint a rest
-// token every 4th streak week, or spend one to forgive a runless week. Each
-// per-user job advances a durable cursor. Retried every Monday hour: a run only
-// queues athletes still behind or marked dirty, so a missed or failed run
-// catches up on the next tick and a settled week makes it a no-op. The weekly
+// Hourly: settle every closed week not yet settled — mint a rest token every
+// 4th streak week, or spend one to forgive a runless week. Each per-user job
+// advances a durable cursor, and a run only queues athletes still behind or
+// marked dirty, so Monday 00:00 settles the week that just closed, a missed or
+// failed run catches up on the next tick, a new or dirty athlete is settled
+// within the hour, and an hour with nobody behind is one query. The weekly
 // profile voice, which quotes the streak, waits per athlete for this. No LLM
 // and no Strava call.
-Schedule::command('streak:settle')->mondays()->hourly()->withoutOverlapping(20)->onOneServer();
+Schedule::command('streak:settle')->hourly()->withoutOverlapping(20)->onOneServer();
 
 // 18:00 daily (Asia/Jakarta, the app timezone): tell an athlete whose goal race
 // is tomorrow that it is tomorrow, while there is still an evening left to act

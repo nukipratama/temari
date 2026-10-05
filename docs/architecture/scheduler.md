@@ -84,7 +84,7 @@ despite that.
 | `race:ask-outcome` | daily 09:00 | 15 | yes | one indexed sweep of races dated yesterday with a pending outcome, one notify each | not measured — added with CR-06; same shape and cost as `race:remind` |
 | `briefing:morning-push` | every 15 min | 14 | yes | one median-start-time sweep, sized like the other quarter-hourly drain; sends only, generates nothing | not measured — added after this pass; the median is cached per athlete per day (`UsualRunTime`), so only the first tick to see a given athlete that day pays the indexed read, every later tick that day is a cache hit |
 | `streak:remind` | Sat 18:00 | 15 | yes | one push-eligibility sweep | ~2.0s — dispatched to 0 users |
-| `streak:settle` | Mon 00:00, then every Monday hour | 20 | yes | queues chronological per-user settlement for the athletes still behind or marked dirty; a no-op once everyone is settled | queues one settlement job per athlete behind |
+| `streak:settle` | hourly | 20 | yes | queues chronological per-user settlement for the athletes still behind or marked dirty; one query when nobody is | queues one settlement job per athlete behind |
 | `schedule:monday-check` | Mon 06:00 | 10 | yes | one indexed count plus the chain flags, at most one alert per week | not measured — added with the Monday catch-up |
 | `RetryOrphanedStravaGrantReleasesJob` (queued job) | daily 02:40 | 30 | yes | retries the Strava release of grants whose local connection is gone or revoked, one call per orphaned grant | not measured — the scheduler only queues it |
 
@@ -108,7 +108,7 @@ protects, and every entry that a later one depends on retries until it succeeds:
 
 | command | time | must run after | why |
 |---|---|---|---|
-| `streak:settle` | 00:00, then every Monday hour | — | settles the week that just closed; each run queues only the athletes still behind or marked dirty |
+| `streak:settle` | 00:00, then every hour of every day | — | settles the week that just closed; each run queues only the athletes still behind or marked dirty, so a new or dirty athlete is settled within the hour all week |
 | `ai:daily-briefing` | 00:01 | — | daily cadence, unrelated to the Monday chain |
 | `plan:close-finished-races` | 00:04, then hourly at :04 until it succeeds that day | — | must itself finish before `plan:regenerate` |
 | `plan:score-compliance` | 00:09, then hourly at :09 until it succeeds that day | — | must itself finish before `plan:regenerate` |
@@ -140,7 +140,7 @@ replacement for the overlap/single-host locks.
 **Why the entries retry.** A Monday entry that ran once at a single minute was lost for the whole
 week when that minute was missed: a deploy or maintenance window across `00:00`-`00:26`, a killed
 scheduler, or an eviction of the gate flags. Each entry now re-evaluates every hour (the
-prerequisites every hour of every day, the Monday entries every Monday hour) until it succeeds, and
+prerequisites and `streak:settle` every hour of every day, `plan:regenerate` every Monday hour) until it succeeds, and
 the flag or cursor it leaves behind makes every later tick a no-op. The flags live on the `durable`
 cache store ([config/cache.php](../../config/cache.php)), which is the AOF-backed `default` Redis
 connection the scheduler mutexes and the heartbeat already use, not the allkeys-lru `cache`
@@ -152,7 +152,9 @@ those athletes and is a no-op once everyone is settled.
 A gate that is still closed simply skips that tick; individual skips are not alerted (recording them
 belongs to #1786). Instead `schedule:monday-check` runs at 06:00 and, if `streak:settle` still has
 an athlete behind or a plan entry has not succeeded, sends one maintainer alert for the week
-through `MaintainerAlerter::mondayEntriesOverdue()`. The entries keep retrying after it.
+through `MaintainerAlerter::mondayEntriesOverdue()`. The entries keep retrying after it. By then
+six hourly `streak:settle` runs have had their chance, so an athlete it counts is genuinely stuck,
+with one exception: an athlete marked dirty (or newly connected) after the 05:00 run still counts.
 
 **Settlement and narration.** No recap reads the streak: `WeeklyRecapNarrator` reads only the
 week's totals and plan context, and the monthly recap reads neither. The only narration that quotes
@@ -161,7 +163,9 @@ the gate sits there, per athlete: an automatic profile-voice request (the weekly
 cascade, `ai:self-heal`, the settle-early replay) for an athlete who is not settled through the
 latest closed week, or whose settled history is marked dirty, stays `Pending`
 ([AnalysisService::dispatchRow()](../../app/Services/AI/AnalysisService.php)), and `ai:self-heal`
-narrates it on the first sweep after that athlete's settlement lands. One athlete behind holds back
+narrates it on the first sweep after that athlete's settlement lands, which the hourly `streak:settle`
+keeps to about two hours at most for a new or dirty athlete (one settle tick, then the next
+self-heal sweep). One athlete behind holds back
 nobody else. The athlete's own Reread does not wait. The rule is
 [StreakSettlementService::unsettledUsers()](../../app/Services/Gamification/StreakSettlementService.php),
 the same query `streak:settle` and `schedule:monday-check` use.

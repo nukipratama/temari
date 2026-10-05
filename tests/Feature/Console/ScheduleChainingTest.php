@@ -90,12 +90,12 @@ it('catches a missed plan prerequisite up on a later tick the same day, then hol
     'plan:score-compliance' => ['plan:score-compliance', 9],
 ]);
 
-it('retries streak:settle every hour on Monday only', function (): void {
+it('runs streak:settle every hour of every day', function (): void {
     $settle = scheduledChainEvent('streak:settle');
 
     expect(runsAt($settle, '2026-09-14 00:00:00'))->toBeTrue()
         ->and(runsAt($settle, '2026-09-14 05:00:00'))->toBeTrue()
-        ->and(runsAt($settle, '2026-09-15 00:00:00'))->toBeFalse();
+        ->and(runsAt($settle, '2026-09-16 13:00:00'))->toBeTrue();
 });
 
 it('checks the Monday entries once, at 06:00', function (): void {

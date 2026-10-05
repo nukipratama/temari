@@ -13,6 +13,8 @@ code_refs:
 
 # A fresh connect starts its own hydration drain immediately
 
+> **Superseded fact (2026-10-05):** a fresh connect's profile voice no longer narrates immediately; it waits for the athlete's first streak settlement, which the hourly `streak:settle` makes about two hours at most (see [[scheduler]]).
+
 **Status:** Accepted (2026-09-19)
 
 ## Context
