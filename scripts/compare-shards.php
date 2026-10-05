@@ -147,7 +147,7 @@ function excessPct(array $totals): float
 function buildPrBody(array $added, array $removed, array $newTotals, array $oldAppliedTotals, float $newExcess, float $oldAppliedExcess): string
 {
     $lines = [];
-    $lines[] = 'Nightly regeneration of `tests/.pest/shards.json` via `--update-shards --exclude-group=structure`, timed under pcov.';
+    $lines[] = 'Weekly regeneration of `tests/.pest/shards.json` via `--update-shards --exclude-group=structure`, timed under pcov.';
     $lines[] = '';
     $lines[] = '## Class diff';
 

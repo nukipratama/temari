@@ -144,7 +144,7 @@ it('times the shard map with pcov loaded, as PR shards run', function (): void {
         ->and($steps->firstWhere('name', 'Regenerate shards.json')['run'])->toContain('--coverage-php=/dev/null');
 });
 
-it('runs the refresh workflow on ubuntu-26.04-arm, serially, off the existing nightly crons', function (): void {
+it('runs the refresh workflow on ubuntu-26.04-arm, serially, weekly, off the existing nightly crons', function (): void {
     $workflow = Yaml::parseFile(base_path('.github/workflows/refresh-shards.yml'));
     $job = $workflow['jobs']['refresh-shards'];
 
@@ -164,7 +164,7 @@ it('runs the refresh workflow on ubuntu-26.04-arm, serially, off the existing ni
 
     expect((int) $minute)->not->toBe(0)
         ->and($cron)->not->toBe('23 21 * * *')
-        ->toBe('5 19 * * *');
+        ->toBe('5 19 * * 0');
 });
 
 it('never enables auto-merge on the refresh PR', function (): void {

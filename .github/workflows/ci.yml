@@ -30,6 +30,7 @@ jobs:
   # anything. A push runs everything, having no base to diff against.
   changes:
     runs-on: ubuntu-26.04-arm
+    timeout-minutes: 2
     outputs:
       backend: ${{ steps.filter.outputs.backend }}
       frontend: ${{ steps.filter.outputs.frontend }}
@@ -70,6 +71,7 @@ jobs:
   # the whole tree. ci-gate requires it.
   repo-guards:
     runs-on: ubuntu-26.04-arm
+    timeout-minutes: 2
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -165,6 +167,7 @@ jobs:
     needs: [changes, backend, frontend, build, worktree, structure, repo-guards, dependency-review]
     if: always()
     runs-on: ubuntu-26.04-arm
+    timeout-minutes: 2
     steps:
       - name: Require upstream jobs to have succeeded (or cleanly skipped)
         run: |
