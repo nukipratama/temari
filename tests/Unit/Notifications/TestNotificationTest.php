@@ -69,7 +69,7 @@ it('builds a titled, high-urgency web push test message', function (): void {
     $payload = $message->toArray();
 
     expect($payload['title'])->toBe('Test notification')
-        ->and($payload['body'])->toBe("Test notification from Temari. If you're seeing this, push notifications are working. I'll ping you after every run and with your weekly recap.")
+        ->and($payload['body'])->toBe("Test notification from temari. If you're seeing this, push notifications are working. I'll ping you after every run and with your weekly recap.")
         ->and($payload['body'])->not->toContain('Telegram')
         ->and($message->getOptions())->toBe(['urgency' => 'high', 'TTL' => 300]);
 });
@@ -79,7 +79,7 @@ it('records the test in the inbox as well, so the send leaves a trace', function
 
     expect($message->kind)->toBe(NotificationKind::Test)
         ->and($message->title)->toBe('Test notification')
-        ->and($message->body)->toBe("Test notification from Temari. If you're seeing this, your inbox is working. I'll drop a note here after every run and with your weekly recap.")
+        ->and($message->body)->toBe("Test notification from temari. If you're seeing this, your inbox is working. I'll drop a note here after every run and with your weekly recap.")
         ->and($message->body)->not->toContain('Telegram')
         ->and($message->payload)->toBe(['url' => route('dashboard')])
         ->and($message->dedupeKey)->toBeNull();

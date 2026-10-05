@@ -27,9 +27,9 @@ class TestNotification extends Notification implements ShouldQueue
 {
     use Queueable;
 
-    private const string INBOX_BODY = "Test notification from Temari. If you're seeing this, your inbox is working. I'll drop a note here after every run and with your weekly recap.";
+    private const string INBOX_BODY = "Test notification from temari. If you're seeing this, your inbox is working. I'll drop a note here after every run and with your weekly recap.";
 
-    private const string PUSH_BODY = "Test notification from Temari. If you're seeing this, push notifications are working. I'll ping you after every run and with your weekly recap.";
+    private const string PUSH_BODY = "Test notification from temari. If you're seeing this, push notifications are working. I'll ping you after every run and with your weekly recap.";
 
     public int $tries = 3;
 
