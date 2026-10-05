@@ -126,6 +126,18 @@ it('is not recent enough to auto-notify when the activity is older than the max 
     expect(new NotificationEligibility()->isRecentEnoughToAutoNotify($analysis))->toBeFalse();
 });
 
+it('measures the max age as of the moment the notification was triggered', function (): void {
+    config(['services.telegram.notify_max_age_days' => 3]);
+    $activity = Activity::factory()->create();
+    ActivityDetail::factory()->for($activity)->create(['start_date_local' => now()->subDays(4)]);
+    $analysis = Analysis::factory()->make([
+        'analysis_type' => AnalysisType::PostRunSpeech,
+        'subject_id' => $activity->id,
+    ]);
+
+    expect(new NotificationEligibility()->isRecentEnoughToAutoNotify($analysis, now()->subDays(2)))->toBeTrue();
+});
+
 it('treats a missing activity detail as recent enough (nothing to gate on)', function (): void {
     $analysis = Analysis::factory()->make([
         'analysis_type' => AnalysisType::PostRunSpeech,

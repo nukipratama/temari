@@ -3,7 +3,7 @@ title: Telegram notifications
 description: Linking a Telegram account, the per-type notification toggles, and how post-run / weekly-recap / monthly-recap narration is pushed to the bot.
 tags: [feature, telegram]
 status: living
-reviewed: 2026-09-26
+reviewed: 2026-10-05
 code_refs:
   - app/Services/Telegram/TelegramClient.php
   - app/Services/Telegram/TelegramLinkToken.php
@@ -29,7 +29,7 @@ code_refs:
 
 # Telegram notifications
 
-The first outbound channel: Temari pushes the most "alive" narration to the user's Telegram so the companion feels present without them opening the app. Three events notify, all keyed off the same chokepoint that finalizes any narration ([[ai-pipeline]]): the **post-run speech** (minutes after a Strava activity syncs), the **weekly recap** (Monday morning), and the **monthly recap** (start of the next month). Each is an independent opt-in toggle; adding another event is one entry in [NotifiableAnalysisTypes](../../app/Services/Telegram/NotifiableAnalysisTypes.php). A fourth push, the **streak reminder** (Saturday 18:00, see [[streak-reminders]]), goes out over the same channels but isn't narration-keyed and has no toggle of its own: it piggybacks `weekly_recap`.
+The first outbound channel: Temari pushes the most "alive" narration to the user's Telegram so the companion feels present without them opening the app. Three events notify, all keyed off the same chokepoint that finalizes any narration ([[ai-pipeline]]): the **post-run speech** (minutes after a Strava activity syncs), the **weekly recap** (04:00 Monday, once quiet hours end), and the **monthly recap** (start of the next month). Nothing goes out from 22:00 to 04:00 WIB: a notification triggered then is held and released at 04:00 ([[quiet-hours-hold-every-notification]]). Each is an independent opt-in toggle; adding another event is one entry in [NotifiableAnalysisTypes](../../app/Services/Telegram/NotifiableAnalysisTypes.php). A fourth push, the **streak reminder** (Saturday 18:00, see [[streak-reminders]]), goes out over the same channels but isn't narration-keyed and has no toggle of its own: it piggybacks `weekly_recap`.
 
 No narration has a manual push button. The run detail page's was cut first (P28), and the weekly (Feed) and monthly (Calendar) recap buttons followed, since the athlete is already reading the recap on the page that offered to send it. Every narration push is automatic, and the in-app inbox ([[inbox-is-an-always-on-channel]]) always keeps a copy. "Send test notification" has a 60-second [Cooldown](../../app/Support/Cooldown.php), since it is a setup-time tool pressed while someone is iterating on a channel that is not working yet. The daily briefing fires once per day per user (the `Analysis` row is upserted per date-keyed discriminator, so `markDone()` fires at most once for that day's row).
 

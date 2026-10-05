@@ -18,6 +18,7 @@ use App\Services\AI\AnalysisType;
 use App\Services\Notifications\ChannelRouter;
 use App\Services\Telegram\AnalysisMessagePresenter;
 use App\Services\Telegram\NotificationEligibility;
+use Carbon\CarbonImmutable;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Notification;
@@ -44,8 +45,11 @@ class AnalysisReadyNotification extends Notification implements ShouldQueue
      */
     public array $backoff = [30, 120];
 
+    public ?CarbonImmutable $triggeredAt = null;
+
     public function __construct(public readonly Analysis $analysis, public readonly bool $force = false)
     {
+        $this->triggeredAt = now()->toImmutable();
     }
 
     /**
@@ -70,7 +74,7 @@ class AnalysisReadyNotification extends Notification implements ShouldQueue
             return $channels;
         }
 
-        $reachableNow = $eligibility->isRecentEnoughToAutoNotify($this->analysis)
+        $reachableNow = $eligibility->isRecentEnoughToAutoNotify($this->analysis, $this->triggeredAt)
             && $eligibility->isOptedIn($this->analysis, $notifiable);
 
         return $reachableNow ? $channels : [];

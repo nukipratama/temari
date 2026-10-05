@@ -16,6 +16,8 @@ code_refs:
 
 **Status:** Accepted (decided 2026-09-10)
 
+> **Quiet hours, noted 2026-10-05.** A briefing slot inside 22:00-04:00 WIB is held and goes out at 04:00 with the rest of the night's notifications; its push TTL still ends with the briefing's day ([[quiet-hours-hold-every-notification]]).
+
 > **The "Push only" sub-decision below is superseded (noted 2026-09-16) by [[the-briefing-also-goes-to-telegram]].** The briefing now routes to every outbound channel, so `ChannelRouter::pushOnly()` is `outboundOnly()` and the sweep selects with `scopeReachable()`. Everything else here — the median-start bucket, the fifteen-minute sweep, that it sends and never generates, and the one claim per athlete per day — is unchanged.
 
 ## Context

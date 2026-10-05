@@ -95,3 +95,27 @@ it('settles a stale claim when preferences now suppress the retry', function ():
         'error' => 'Retry skipped because current preferences or channel eligibility no longer allow web push.',
     ]);
 });
+
+it('leaves a stale claim pending for after quiet hours instead of settling it', function (): void {
+    config(['notifications.hold_during_quiet_hours' => true]);
+    $this->travelTo('2026-10-05 23:00:00');
+    $delivery = NotificationDelivery::query()->create([
+        'analysis_id' => Analysis::factory()->done('Your run is in.')->create()->id,
+        'channel' => 'webpush',
+        'status' => NotificationDeliveryStatus::Pending,
+        'created_at' => now()->subMinutes(16),
+        'claimed_at' => now()->subMinutes(16),
+        'claim_version' => 1,
+    ]);
+    $webPush = Mockery::mock(WebPushChannel::class);
+    $webPush->shouldNotReceive('send');
+    app()->instance(WebPushChannel::class, $webPush);
+
+    new RetryStaleWebPushNotificationJob($delivery->analysis_id, 1)->handle(
+        app(NotificationDeliveryClaim::class),
+        app(NotificationEligibility::class),
+    );
+
+    expect($delivery->fresh()->status)->toBe(NotificationDeliveryStatus::Pending)
+        ->and($delivery->fresh()->claim_version)->toBe(1);
+});

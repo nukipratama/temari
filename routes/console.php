@@ -165,6 +165,11 @@ Schedule::command('notifications:prune-push-subscriptions')->dailyAt('02:35')->w
 
 Schedule::command('notifications:recover-deliveries')->everyFiveMinutes()->withoutOverlapping(10)->onOneServer();
 
+// Every 5 minutes: queue everything held in a quiet-hours window (22:00-04:00)
+// that has ended, oldest first. Running all day rather than once at 04:00 means a
+// deploy or outage across 04:00 delays the release by one tick, not a day.
+$alertOnFailure(Schedule::command('notifications:release-held')->everyFiveMinutes()->withoutOverlapping(10)->onOneServer(), 'notifications:release-held');
+
 // Fallback poll behind the Strava webhook. Hourly around the clock rather than
 // only across the two running peaks: the old window left a five-hour overnight
 // gap in which a missed webhook went unnoticed, and one read per connected user

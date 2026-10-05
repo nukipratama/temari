@@ -3,10 +3,11 @@ title: Notification inbox
 description: The /inbox notification centre — a growing window over everything Temari sent, each row a deep link back into the page it was about.
 tags: [feature, notifications]
 status: living
-reviewed: 2026-09-01
+reviewed: 2026-10-05
 code_refs:
   - app/Http/Controllers/InboxController.php
   - app/Models/InboxNotification.php
+  - app/Listeners/HoldNotificationsInQuietHours.php
   - app/Http/Controllers/Api/NotificationReadController.php
   - app/Services/Inertia/NotificationProps.php
   - resources/js/pages/Inbox.tsx
@@ -118,6 +119,15 @@ so the button hides itself at the end. The requested size is snapped up to the p
 ([InboxController](../../app/Http/Controllers/InboxController.php#L150)), so a hand-typed `?shown=`
 cannot ask for an unbounded scan. Retention is undecided and nothing prunes the table, so the window
 is what keeps an old account's inbox usable without deciding how long a record lives.
+
+## Quiet hours
+
+From 22:00 up to 04:00 WIB nothing new appears here: a notification triggered in that window is
+held before its inbox row is written, alongside its push and Telegram sends, and the night's rows
+arrive together at 04:00, oldest first, each written once
+([[quiet-hours-hold-every-notification]]). The demo's inbox rows are held the same way. Only the
+manual test notification lands at once. A released row keeps the notification's id, so its
+fallback dedupe key is the same on a replayed release.
 
 ## Push expiry
 
