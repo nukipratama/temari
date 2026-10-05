@@ -30,7 +30,7 @@ describe('SteppingStoneCard', () => {
         expect(screen.getByText('5:20/km')).toBeInTheDocument();
         expect(
             screen.getByText(
-                'the edge of on track, 3% faster than your supported time. your goal-pace work runs here, and it moves as you get fitter.',
+                'the edge of on track, 3% faster than your supported time. your stepping-stone sessions run here, and it moves as you get fitter.',
             ),
         ).toBeInTheDocument();
     });

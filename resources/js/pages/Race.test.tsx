@@ -147,7 +147,7 @@ describe('Race', () => {
         const order = [
             'your target',
             'Jakarta 10K',
-            'stepping stone',
+            'the edge of on track',
             'edit race',
         ];
         const positions = order.map((h) => text.indexOf(h));

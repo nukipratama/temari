@@ -41,7 +41,8 @@ export default function SteppingStoneCard({
             </p>
             <p className="mt-2 text-xs leading-relaxed text-text-2">
                 the edge of on track, 3% faster than your supported time. your
-                goal-pace work runs here, and it moves as you get fitter.
+                stepping-stone sessions run here, and it moves as you get
+                fitter.
             </p>
         </section>
     );
