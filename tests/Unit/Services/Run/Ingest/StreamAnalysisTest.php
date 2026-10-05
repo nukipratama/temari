@@ -117,6 +117,69 @@ it('returns no zone summary when streams are missing HR', function (): void {
     expect($summary)->not->toHaveKey('time_in_zone_min');
 });
 
+/**
+ * One sample a second for $seconds seconds, the heart rate at each second from $heartRate.
+ *
+ * @param  callable(int): int  $heartRate
+ * @param  (callable(int): float)|null  $velocity
+ * @return array<string, array{data: list<int|float>}>
+ */
+function easyCapStreams(int $seconds, callable $heartRate, ?callable $velocity = null): array
+{
+    $time = range(0, $seconds - 1);
+    $streams = ['time' => ['data' => $time], 'heartrate' => ['data' => array_map($heartRate, $time)]];
+    if ($velocity !== null) {
+        $streams['velocity_smooth'] = ['data' => array_map($velocity, $time)];
+    }
+
+    return $streams;
+}
+
+it('measures time over the easy cap against the top of zone 2, with a 5 bpm margin', function (int $bpm, int $expected): void {
+    expect($this->analysis->easyCapOverage(easyCapStreams(900, static fn (int $t): int => $bpm), defaultZones()))
+        ->toBe(['easy_cap_bpm' => 156, 'over_easy_cap_sec' => $expected]);
+})->with([
+    'inside the margin' => [161, 0],
+    'past the margin' => [162, 599],
+]);
+
+it('ignores the first five minutes of the recording', function (): void {
+    $hotStart = easyCapStreams(900, static fn (int $t): int => $t < 270 ? 175 : 140);
+
+    expect($this->analysis->easyCapOverage($hotStart, defaultZones())['over_easy_cap_sec'])->toBe(0);
+});
+
+it('reads a 30-second rolling average, so a short spike does not count', function (): void {
+    $spike = easyCapStreams(900, static fn (int $t): int => $t >= 400 && $t < 410 ? 180 : 150);
+    $surge = easyCapStreams(900, static fn (int $t): int => $t >= 400 && $t < 460 ? 180 : 150);
+
+    expect($this->analysis->easyCapOverage($spike, defaultZones())['over_easy_cap_sec'])->toBe(0)
+        ->and($this->analysis->easyCapOverage($surge, defaultZones())['over_easy_cap_sec'])->toBeGreaterThan(50)->toBeLessThan(70);
+});
+
+it('counts only moving time over the cap, and skips implausible samples', function (): void {
+    $stopped = easyCapStreams(900, static fn (int $t): int => $t >= 600 && $t < 700 ? 170 : 150, static fn (int $t): float => $t >= 600 && $t < 700 ? 0.0 : 3.0);
+    $dropout = easyCapStreams(900, static fn (int $t): int => $t % 2 === 0 ? 0 : 150);
+
+    expect($this->analysis->easyCapOverage($stopped, defaultZones())['over_easy_cap_sec'])->toBeLessThan(30)
+        ->and($this->analysis->easyCapOverage($dropout, defaultZones())['over_easy_cap_sec'])->toBe(0);
+});
+
+it('reports no easy-cap figure without a heart-rate stream or a zone 3', function (): void {
+    $noHeartRate = ['time' => ['data' => range(0, 899)]];
+    $allDropout = easyCapStreams(900, static fn (int $t): int => 0);
+
+    expect($this->analysis->easyCapOverage($noHeartRate, defaultZones()))->toBe([])
+        ->and($this->analysis->easyCapOverage($allDropout, defaultZones()))->toBe([])
+        ->and($this->analysis->easyCapOverage(easyCapStreams(900, static fn (int $t): int => 170), ['Z1' => ['lo' => 100, 'hi' => 999]]))->toBe([]);
+});
+
+it('writes the easy-cap figure into the stream summary', function (): void {
+    $summary = $this->analysis->compute(easyCapStreams(900, static fn (int $t): int => 170), defaultZones(), null, 170);
+
+    expect($summary)->toMatchArray(['easy_cap_bpm' => 156, 'over_easy_cap_sec' => 599]);
+});
+
 it('measures v2 drift inside the steady segment and ignores a fast finish', function (): void {
     $steadyPaces = array_fill(0, 8, 420);
     $steadyHearts = [140, 140, 140, 140, 154, 154, 154, 154];

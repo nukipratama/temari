@@ -36,9 +36,10 @@ final class SessionIntentJudge
      * @param  list<SessionSegment>  $segments  the effective session's prescription
      * @param  array{easy: int, marathon: int, threshold: int, interval: int}|null  $paces
      * @param  list<ActivityDetail>  $runs  every run logged on the day
+     * @param  bool  $heartRateCapped  whether the athlete's zones are their own, so easy effort is capped by heart rate
      * @return array{verdict: IntentVerdict, evidence: array<string, int|float|string>}
      */
-    public static function judge(SessionType $sessionType, array $segments, ?array $paces, array $runs): array
+    public static function judge(SessionType $sessionType, array $segments, ?array $paces, array $runs, bool $heartRateCapped = false): array
     {
         if ($paces === null || $runs === []) {
             return self::reading(IntentVerdict::Unknown);
@@ -49,9 +50,9 @@ final class SessionIntentJudge
                 ? self::interval($segments, $runs)
                 : self::tempo($segments, $runs),
             SessionType::Long => self::hasHardBlock($segments) && count($segments) > 1
-                ? self::tempo($segments, $runs)
-                : self::steady($segments, $paces, $runs),
-            SessionType::Easy => self::steady($segments, $paces, $runs),
+                ? self::withEasyParts(self::tempo($segments, $runs), $segments, $runs, $heartRateCapped)
+                : self::steady($segments, $paces, $runs, $heartRateCapped),
+            SessionType::Easy => self::steady($segments, $paces, $runs, $heartRateCapped),
             SessionType::Rest, SessionType::Race => self::reading(IntentVerdict::Unknown),
         };
     }
@@ -182,7 +183,7 @@ final class SessionIntentJudge
      * @param  non-empty-list<ActivityDetail>  $runs
      * @return array{verdict: IntentVerdict, evidence: array<string, int|float|string>}
      */
-    private static function steady(array $segments, array $paces, array $runs): array
+    private static function steady(array $segments, array $paces, array $runs, bool $heartRateCapped): array
     {
         $main = $segments[0] ?? null;
         $pace = self::dayPace($runs);
@@ -190,33 +191,59 @@ final class SessionIntentJudge
             return self::reading(IntentVerdict::Unknown);
         }
 
-        $ceiling = $paces['marathon'] - ($main->paceLabel === PaceBand::Marathon ? self::PACE_TOLERANCE_SEC : 0);
+        $marathon = $main->paceLabel === PaceBand::Marathon;
+        $ceiling = $paces['marathon'] - ($marathon ? self::PACE_TOLERANCE_SEC : 0);
         $evidence = ['pace_sec' => $pace, 'ceiling_pace_sec' => $ceiling];
-        if ($main->paceLabel === PaceBand::Marathon) {
+        if ($marathon) {
             $evidence['limit'] = 'marathon';
+        }
+        $effort = $marathon ? null : EasyEffort::of($runs);
+        if ($heartRateCapped && $effort !== null) {
+            return self::onEasyCap($effort, $evidence);
         }
         if ($pace >= $ceiling) {
             return self::reading(IntentVerdict::Hit, $evidence + ['basis' => 'pace'] + self::stimulus('easy', null, 'pace'));
         }
 
-        $total = 0.0;
-        $above = 0.0;
-        foreach ($runs as $run) {
-            foreach (self::summaryOf($run)->zoneMinutes() ?? [] as $zone => $minutes) {
-                $total += (float) $minutes;
-                $above += self::zoneIndex((string) $zone) > self::zoneIndex($main->zone) ? (float) $minutes : 0.0;
-            }
-        }
-        if ($total <= 0.0) {
-            return self::reading(IntentVerdict::TooHard, $evidence + ['basis' => 'pace'] + self::stimulus('hard', null, 'pace'));
+        return $effort === null
+            ? self::reading(IntentVerdict::TooHard, $evidence + ['basis' => 'pace'] + self::stimulus('hard', null, 'pace'))
+            : self::onEasyCap($effort, $evidence);
+    }
+
+    /**
+     * @param  array<string, int|float|string>  $evidence
+     * @return array{verdict: IntentVerdict, evidence: array<string, int|float|string>}
+     */
+    private static function onEasyCap(EasyEffort $effort, array $evidence): array
+    {
+        $evidence += ['basis' => 'heart_rate', 'hr_cap_bpm' => $effort->capBpm, 'over_cap_minutes' => $effort->overCapMinutes(), 'over_cap_limit_minutes' => $effort->limitMinutes()];
+
+        return $effort->tooHard()
+            ? self::reading(IntentVerdict::TooHard, $evidence + self::stimulus('hard', $effort->overCapMinutes(), 'heart_rate'))
+            : self::reading(IntentVerdict::Hit, $evidence + self::stimulus('easy', null, 'heart_rate'));
+    }
+
+    /**
+     * A marathon-pace long run keeps its block's pace verdict, while the easy
+     * running around the block is held to the heart-rate cap; the block's own
+     * prescribed minutes are taken off the time over the cap first.
+     *
+     * @param  array{verdict: IntentVerdict, evidence: array<string, int|float|string>}  $block
+     * @param  list<SessionSegment>  $segments
+     * @param  non-empty-list<ActivityDetail>  $runs
+     * @return array{verdict: IntentVerdict, evidence: array<string, int|float|string>}
+     */
+    private static function withEasyParts(array $block, array $segments, array $runs, bool $heartRateCapped): array
+    {
+        $blockSeconds = 60 * array_sum(array_map(static fn (SessionSegment $segment): float => $segment->paceLabel === PaceBand::Easy ? 0.0 : ($segment->minutes ?? 0.0), $segments));
+        $effort = $heartRateCapped ? EasyEffort::of($runs, $blockSeconds) : null;
+        if ($effort === null) {
+            return $block;
         }
 
-        $share = $above / $total;
-        $evidence += ['basis' => 'heart_rate', 'zone' => $main->zone, 'above_zone_pct' => (int) round($share * 100)];
+        $evidence = $block['evidence'] + ['hr_cap_bpm' => $effort->capBpm, 'easy_over_cap_minutes' => $effort->overCapMinutes(), 'easy_parts' => $effort->tooHard() ? 'too_hard' : 'held', 'block_verdict' => $block['verdict']->value];
 
-        return $share <= PlanAdapter::EASY_DAY_HARD_SHARE
-            ? self::reading(IntentVerdict::Hit, $evidence + self::stimulus('easy', null, 'heart_rate'))
-            : self::reading(IntentVerdict::TooHard, $evidence + self::stimulus('hard', $above, 'heart_rate'));
+        return self::reading($effort->tooHard() ? IntentVerdict::TooHard : $block['verdict'], $evidence);
     }
 
     /**

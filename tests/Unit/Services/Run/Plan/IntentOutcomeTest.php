@@ -66,6 +66,23 @@ it('reads a heart-rate verdict on a steady day without implying the pace decided
         ->toBe('averaged 6:36/km, but heart rate kept it easy: only 12% of the run went above Z2');
 });
 
+it('reads a heart-rate-cap verdict on a steady day as time over the cap', function (): void {
+    $evidence = ['pace_sec' => 395, 'ceiling_pace_sec' => 408, 'basis' => 'heart_rate', 'hr_cap_bpm' => 150, 'over_cap_limit_minutes' => 15.0];
+
+    expect(IntentOutcome::detail(IntentVerdict::TooHard, $evidence + ['over_cap_minutes' => 22.4], 396))
+        ->toBe('averaged 6:36/km, and 22 min ran more than 5 bpm over the 150 bpm cap')
+        ->and(IntentOutcome::detail(IntentVerdict::Hit, $evidence + ['over_cap_minutes' => 3.0], 396))
+        ->toBe('averaged 6:36/km, and heart rate kept it easy: only 3 min ran more than 5 bpm over the 150 bpm cap');
+});
+
+it('names the easy running around a marathon-pace block that went over the cap', function (): void {
+    $evidence = ['block_minutes' => 30.0, 'target_pace_sec' => 340, 'tolerance_sec' => 10, 'window' => '30min', 'window_pace_sec' => 342, 'basis' => 'pace', 'hr_cap_bpm' => 150, 'easy_over_cap_minutes' => 16.0, 'easy_parts' => 'too_hard', 'block_verdict' => 'hit'];
+
+    expect(IntentOutcome::outcome(IntentVerdict::TooHard, $evidence))->toBe('the easy running around the marathon-pace block went over the heart-rate cap')
+        ->and(IntentOutcome::detail(IntentVerdict::TooHard, $evidence, null))
+        ->toBe('best 30-minute stretch averaged 5:42/km, on the 5:40/km target pace, but around the block 16 min ran more than 5 bpm over the 150 bpm cap');
+});
+
 it('reads a tempo block on pace, and one rescued or sunk by heart rate', function (): void {
     $base = ['block_minutes' => 20.0, 'target_pace_sec' => 300, 'tolerance_sec' => 10, 'window' => '20min'];
 

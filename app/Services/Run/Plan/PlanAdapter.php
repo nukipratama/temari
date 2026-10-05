@@ -16,7 +16,6 @@ use App\Models\User;
 use App\Services\AI\HydrationBacklog;
 use App\Services\Run\Metrics\ReadinessCeiling;
 use App\Services\Run\Metrics\RiegelProjector;
-use App\Services\Run\Metrics\StreamSummary;
 use App\Services\Run\Metrics\TrainingLoad;
 use App\Services\Run\Story\BriefingContext;
 use Illuminate\Database\Eloquent\Collection;
@@ -38,14 +37,8 @@ final readonly class PlanAdapter
     /** Below this share of the week's prescription completed, last week counts as a re-entry, not a catch-up. */
     public const float MISSED_WEEK_ADHERENCE = 0.50;
 
-    /** Share of an easy day's time above Z2 that stops it being an easy day. */
-    public const float EASY_DAY_HARD_SHARE = 0.20;
-
     /** One ragged day is a bad morning. This many is how the week was run. */
     public const int RAGGED_DAYS_MIN = 2;
-
-    /** Twice the easy-day line: a day this far past it speaks for the week on its own. */
-    public const float EGREGIOUS_EASY_DAY_HARD_SHARE = 0.40;
 
     /** Number of settled weeks that can contribute to a repeated-stimulus reduction. */
     public const int STIMULUS_HISTORY_WEEKS = 3;
@@ -95,7 +88,7 @@ final readonly class PlanAdapter
      * @param  int  $stimulusMisses  judgeable key sessions whose stimulus was missed
      * @param  int  $stimulusMissesInWindow  missed key sessions across the settled three-week window
      * @param  int  $raggedDays  days last week whose runs came in harder than the day was written for
-     * @param  int  $egregiousEasyDays  of those, easy days so far above Z2 that one is the whole verdict
+     * @param  int  $egregiousEasyDays  of those, easy-effort days so far over the heart-rate cap that one is the whole verdict
      * @param  float|null  $raceGapRatio  projected finish / goal time; only a reading inside the goal is named, and it changes no work
      * @return array{reason: AdaptationReason, deload: bool, quality_delta: int, adherence_pct: int, stimulus_adherence_pct: int}
      */
@@ -263,17 +256,17 @@ final readonly class PlanAdapter
     }
 
     /**
-     * How last week was run, as counts of `Easy` days whose runs spent more
-     * than {@see self::EASY_DAY_HARD_SHARE} of their moving time above Z2. The
-     * `egregious_easy` count is the subset far enough past that line for one
-     * day to speak for the week. Steady-segment decoupling is descriptive and
-     * never read here.
+     * How last week was run, as counts of easy-effort days, `Easy` days and
+     * `Long` days with no marathon-pace block, whose runs held more time over
+     * the heart-rate cap than {@see EasyEffort::tooHard()} allows. The
+     * `egregious_easy` count is the subset past {@see EasyEffort::egregious()},
+     * far enough for one day to speak for the week. Steady-segment decoupling
+     * is descriptive and never read here.
      *
      * A day counts once however many runs it holds, because sessions are
-     * matched to days and not to individual runs. A run carrying no
-     * heart-rate stream reads as no signal rather than as a clean day: the
-     * zone breakdown is absent, so the test cannot fire. Only easy days are
-     * judged.
+     * matched to days and not to individual runs, so its runs are read
+     * together. A run carrying no heart-rate stream reads as no signal rather
+     * than as a clean day.
      *
      * @return array{ragged: int, egregious_easy: int}
      */
@@ -281,42 +274,50 @@ final readonly class PlanAdapter
     {
         [$previousStart, $previousEnd] = self::previousWeekBounds($weekStart);
 
-        $prescribed = PlannedSession::query()
+        $easyEffortDates = PlannedSession::query()
             ->where('user_id', $user->id)
             ->whereBetween('date', [$previousStart->toDateString(), $previousEnd->toDateString()])
             ->get(['date', 'session_type', 'rest_clamped_at', 'clamped_km', 'eased_pace_sec_per_km', 'readiness_assessment', 'prescribed_hard_minutes', 'prescribed_pace_band', 'prescribed_pace_sec_per_km', 'prescription_race_context', 'intent_evidence'])
-            ->mapWithKeys(static fn (PlannedSession $session): array => [$session->date->toDateString() => EffectiveSession::settledTypeOf($session)]);
+            ->filter(static fn (PlannedSession $session): bool => self::isEasyEffort($session))
+            ->map(static fn (PlannedSession $session): string => $session->date->toDateString())
+            ->flip();
 
-        if ($prescribed->isEmpty()) {
+        if ($easyEffortDates->isEmpty()) {
             return ['ragged' => 0, 'egregious_easy' => 0];
         }
 
-        $details = ActivityDetail::query()
+        $runsByDate = ActivityDetail::query()
             ->forUser($user->id)
             ->whereNotNull('start_date_local')
             ->whereBetween('start_date_local', [$previousStart->copy()->startOfDay(), $previousEnd->copy()->endOfDay()])
-            ->get(['activity_details.id', 'start_date_local', 'stream_summary']);
+            ->get(['activity_details.id', 'start_date_local', 'moving_time', 'elapsed_time', 'stream_summary'])
+            ->groupBy(static fn (ActivityDetail $detail): string => (string) $detail->start_date_local?->toDateString());
 
-        $ragged = [];
-        $egregiousEasy = [];
-        foreach ($details as $detail) {
-            $date = $detail->start_date_local?->toDateString();
-            if ($date === null || $prescribed->get($date) !== SessionType::Easy) {
-                continue;
+        $ragged = 0;
+        $egregiousEasy = 0;
+        foreach ($runsByDate as $date => $runs) {
+            $effort = $easyEffortDates->has($date) ? EasyEffort::of($runs->all()) : null;
+            if ($effort?->tooHard() === true) {
+                $ragged++;
             }
-            $hardShare = StreamSummary::fromArray($detail->streamSummary())->hardZoneShare() / 100;
-            if ($hardShare > self::EASY_DAY_HARD_SHARE) {
-                $ragged[$date] = true;
-            }
-            if ($hardShare > self::EGREGIOUS_EASY_DAY_HARD_SHARE) {
-                $egregiousEasy[$date] = true;
+            if ($effort?->egregious() === true) {
+                $egregiousEasy++;
             }
         }
 
         return [
-            'ragged' => count($ragged),
-            'egregious_easy' => count($egregiousEasy),
+            'ragged' => $ragged,
+            'egregious_easy' => $egregiousEasy,
         ];
+    }
+
+    private static function isEasyEffort(PlannedSession $session): bool
+    {
+        return match (EffectiveSession::settledTypeOf($session)) {
+            SessionType::Easy => true,
+            SessionType::Long => $session->prescribed_hard_minutes === null || $session->prescribed_hard_minutes === 0 || $session->prescribed_pace_band === null,
+            default => false,
+        };
     }
 
     /**

@@ -587,7 +587,7 @@ it('reads self-added hard work on an easy day as an unplanned hard effort that t
     showAdvice($user, '2026-08-05', ['session_type' => 'easy', 'phase' => 'build', 'hard_minutes' => null, 'distance_km' => 6.4, 'reason' => null, 'segments' => shownEasySegments()], [
         'session_type' => 'easy', 'distance_km' => 6.4, 'segments' => shownEasySegments(), 'paces' => SHOWN_PACES, 'skipped' => false, 'reason' => null,
     ]);
-    shownRun($user, '2026-08-05', 6.4, 2100, ['time_in_zone_min' => ['Z1' => 2, 'Z2' => 10, 'Z3' => 15, 'Z4' => 8, 'Z5' => 0]]);
+    shownRun($user, '2026-08-05', 6.4, 2100, ['easy_cap_bpm' => 150, 'over_easy_cap_sec' => 1380]);
 
     $verdict = scorerVerdict($user, $row);
 
@@ -605,7 +605,7 @@ it('marks a heart-rate verdict as resting on estimated zones until the athlete m
     showAdvice($user, '2026-08-05', ['session_type' => 'easy', 'phase' => 'build', 'hard_minutes' => null, 'distance_km' => 6.4, 'reason' => null, 'segments' => shownEasySegments()], [
         'session_type' => 'easy', 'distance_km' => 6.4, 'segments' => shownEasySegments(), 'paces' => SHOWN_PACES, 'skipped' => false, 'reason' => null,
     ]);
-    shownRun($user, '2026-08-05', 6.4, 2100, ['time_in_zone_min' => ['Z1' => 2, 'Z2' => 10, 'Z3' => 15, 'Z4' => 8, 'Z5' => 0]]);
+    shownRun($user, '2026-08-05', 6.4, 2100, ['easy_cap_bpm' => 150, 'over_easy_cap_sec' => 1380]);
 
     $evidence = scorerVerdict($user, $row)['intent']['evidence'];
 
@@ -616,6 +616,46 @@ it('marks a heart-rate verdict as resting on estimated zones until the athlete m
     'raised to an observed peak' => ['observed', true],
     'synced from Strava' => ['strava', false],
     'set by hand' => ['manual', false],
+]);
+
+it('grades an easy day on the heart-rate cap alone once the athlete has zones of their own', function (?string $source, IntentVerdict $expected): void {
+    $user = User::factory()->create();
+    if ($source !== null) {
+        RunnerProfile::factory()->for($user)->create(['source' => $source]);
+    }
+    $row = scorerDay($user, '2026-08-05');
+    showAdvice($user, '2026-08-05', ['session_type' => 'easy', 'phase' => 'build', 'hard_minutes' => null, 'distance_km' => 6.4, 'reason' => null, 'segments' => shownEasySegments()], [
+        'session_type' => 'easy', 'distance_km' => 6.4, 'segments' => shownEasySegments(), 'paces' => SHOWN_PACES, 'skipped' => false, 'reason' => null,
+    ]);
+    shownRun($user, '2026-08-05', 6.0, 3000, ['easy_cap_bpm' => 150, 'over_easy_cap_sec' => 900]);
+
+    expect(scorerVerdict($user, $row)['intent']['verdict'])->toBe($expected);
+})->with([
+    'config default zones keep pace first' => [null, IntentVerdict::Hit],
+    'observed zones are capped' => ['observed', IntentVerdict::TooHard],
+    'manual zones are capped' => ['manual', IntentVerdict::TooHard],
+]);
+
+it('grades a mildly eased quality day against the slowed pace it was shown', function (string $bestPace, IntentVerdict $expected): void {
+    $user = User::factory()->create();
+    $row = scorerDay($user, '2026-08-05', ['session_type' => SessionType::Tempo, 'clamped_km' => 8.0]);
+    $slowed = [
+        new SessionSegment(SegmentKey::Warmup, 10.0, 'Z2', PaceBand::Easy, 400, 1.5)->toArray(),
+        new SessionSegment(SegmentKey::Main, 20.0, 'Z4', PaceBand::Threshold, 319, 3.8)->toArray(),
+    ];
+    showAdvice($user, '2026-08-05', shownTempoOriginal(), [
+        'session_type' => 'tempo', 'distance_km' => 8.0, 'segments' => $slowed, 'paces' => SHOWN_PACES, 'skipped' => false, 'reason' => 'ease this one',
+    ]);
+    shownRun($user, '2026-08-05', 8.0, 2800, ['best_20min_pace' => $bestPace]);
+
+    $intent = scorerVerdict($user, $row)['intent'];
+
+    expect($intent['verdict'])->toBe($expected)
+        ->and($intent['evidence'])->toMatchArray(['target_pace_sec' => 319, 'concern' => 'none'])
+        ->not->toHaveKey('eased_from');
+})->with([
+    'inside the slowed tolerance, outside the original' => ['5:27', IntentVerdict::Hit],
+    'outside the slowed tolerance' => ['5:31', IntentVerdict::Missed],
 ]);
 
 it('marks a shown quality session graded on complete evidence as eligible to teach progression', function (array $summary, IntentVerdict $expected): void {

@@ -605,6 +605,48 @@ it('renders a recorded readiness dose beside the unchanged prescribed quality se
         ->and($session->prescribed_hard_minutes)->toBe(20);
 });
 
+it('renders a mild readiness nudge as the same quality minutes at the slowed pace, and shows that pace to grading', function (): void {
+    $today = Carbon::parse('2026-09-15');
+    $qualityDose = ['hard_minutes' => 20, 'original_hard_minutes' => 20, 'pace_band' => PaceBand::Threshold->value, 'pace_sec_per_km' => 278];
+    $assessment = ['ceiling' => ReadinessCeiling::ModerateOk->value, 'reasons' => ['fair_sleep_with_load_support'], 'inputs' => [], 'adjustment' => ['quality_dose' => $qualityDose]];
+    $session = PlannedSession::factory()->make([
+        'date' => $today,
+        'phase' => PlanPhase::Build,
+        'session_type' => SessionType::Tempo,
+        'prescribed_hard_minutes' => 20,
+        'prescribed_pace_band' => PaceBand::Threshold,
+        'prescribed_pace_sec_per_km' => 270,
+        'clamped_km' => 6.4,
+        'readiness_assessment' => $assessment,
+    ]);
+
+    $payload = PlanRenderer::dayPayload($session, $today, null, [], null, false, 9.8, 1.0, INF, RENDERER_PACES, PlannedSessionStatus::Planned);
+    $token = json_decode(Crypt::decryptString($payload['recommendation_token']), true, flags: JSON_THROW_ON_ERROR);
+    $hard = array_values(array_filter($payload['segments'], static fn (array $seg): bool => $seg['key'] === 'main'));
+    $shownHard = array_values(array_filter($token['effective']['segments'], static fn (array $seg): bool => $seg['key'] === 'main'));
+
+    expect($payload['session_type'])->toBe('tempo')
+        ->and(array_sum(array_column($hard, 'minutes')))->toBe(20.0)
+        ->and(array_unique(array_column($hard, 'pace_sec_per_km')))->toBe([278])
+        ->and(array_unique(array_column($shownHard, 'pace_sec_per_km')))->toBe([278])
+        ->and($payload['eased_from']['voice'])->toBe('you reported fair sleep alongside elevated recent load, so ease this one. keep all 20 hard minutes of the tempo work, a touch easier at 4:38/km.');
+});
+
+it('carries the easy heart-rate cap on easy and long days only, and only when one is given', function (SessionType $type, PlanPhase $phase, ?int $cap, ?int $expected): void {
+    $today = Carbon::parse('2026-09-15');
+    $session = PlannedSession::factory()->make(['date' => $today->copy()->addDay(), 'phase' => $phase, 'session_type' => $type]);
+
+    $payload = PlanRenderer::dayPayload($session, $today, null, [], 42_195.0, false, 20.0, 1.0, INF, RENDERER_PACES, PlannedSessionStatus::Planned, easyHrCapBpm: $cap);
+
+    expect($payload['hr_cap_bpm'])->toBe($expected);
+})->with([
+    'easy day' => [SessionType::Easy, PlanPhase::Build, 152, 152],
+    'long day' => [SessionType::Long, PlanPhase::Build, 152, 152],
+    'all marathon-pace long day' => [SessionType::Long, PlanPhase::Peak, 152, null],
+    'tempo day' => [SessionType::Tempo, PlanPhase::Build, 152, null],
+    'easy day on default zones' => [SessionType::Easy, PlanPhase::Build, null, null],
+]);
+
 it('dayPayload leads a distance-eased today with the easy run it recorded, even with no advisory clamp now', function (): void {
     $today = Carbon::parse('2026-09-15');
     [$session] = tempoSessionWithEasyClamp($today, 'Templated floor.');

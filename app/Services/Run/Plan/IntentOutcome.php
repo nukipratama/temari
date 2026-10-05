@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Run\Plan;
 
 use App\Enums\IntentVerdict;
+use App\Services\Run\Ingest\StreamAnalysis;
 use App\Services\Run\Metrics\PaceFormatter;
 
 /**
@@ -104,12 +105,16 @@ final class IntentOutcome
 
         $judged = (int) $evidence['pace_sec'];
         $ceiling = (int) $evidence['ceiling_pace_sec'];
-        $onHeartRate = ($evidence['basis'] ?? null) === 'heart_rate' && isset($evidence['zone'], $evidence['above_zone_pct']);
+        $overCap = self::overCap($evidence, 'over_cap_minutes');
+        $onZoneShare = ($evidence['basis'] ?? null) === 'heart_rate' && isset($evidence['zone'], $evidence['above_zone_pct']);
 
         return match (true) {
-            $onHeartRate && $verdict === IntentVerdict::Hit => self::averaged($judged, $ranPaceSec)
+            $overCap !== null && $verdict === IntentVerdict::Hit => self::averaged($judged, $ranPaceSec)
+                .", and heart rate kept it easy: only {$overCap}",
+            $overCap !== null => self::averaged($judged, $ranPaceSec).", and {$overCap}",
+            $onZoneShare && $verdict === IntentVerdict::Hit => self::averaged($judged, $ranPaceSec)
                 .', but heart rate kept it '.(self::marathonLimit($evidence) ? 'in range' : 'easy').": only {$evidence['above_zone_pct']}% of the run went above {$evidence['zone']}",
-            $onHeartRate => self::averaged($judged, $ranPaceSec)
+            $onZoneShare => self::averaged($judged, $ranPaceSec)
                 .", and {$evidence['above_zone_pct']}% of the run sat above {$evidence['zone']}",
             $verdict === IntentVerdict::TooHard => self::averaged($judged, $ranPaceSec, $ceiling)
                 .', quicker than the '.self::limitName($evidence).' limit of '.self::pace($ceiling),
@@ -142,6 +147,10 @@ final class IntentOutcome
                 : "{$name} completed, though {$pronoun} exceeded the recovery advice shown";
         }
 
+        if (($evidence['easy_parts'] ?? null) === 'too_hard') {
+            return 'the easy running around the marathon-pace block went over the heart-rate cap';
+        }
+
         if (($evidence['control'] ?? null) === 'excessive') {
             return $family === self::REPS
                 ? 'the reps ran well past the effort they asked for'
@@ -169,6 +178,21 @@ final class IntentOutcome
         return 'about '.self::minutes((float) $evidence['stimulus_minutes'])." minutes of {$evidence['stimulus_family']} effort were measured from {$source}";
     }
 
+    /**
+     * How long the run sat over its heart-rate cap, worded, or null when the
+     * evidence carries no cap reading under $key.
+     *
+     * @param  array<string, int|float|string>  $evidence
+     */
+    private static function overCap(array $evidence, string $key): ?string
+    {
+        if (! is_numeric($evidence[$key] ?? null) || ! is_numeric($evidence['hr_cap_bpm'] ?? null)) {
+            return null;
+        }
+
+        return self::minutes((float) $evidence[$key]).' min ran more than '.StreamAnalysis::EASY_CAP_MARGIN_BPM.' bpm over the '.(int) $evidence['hr_cap_bpm'].' bpm cap';
+    }
+
     /** @param  array<string, int|float|string>  $evidence */
     private static function marathonLimit(array $evidence): bool
     {
@@ -186,7 +210,7 @@ final class IntentOutcome
     {
         $target = is_numeric($evidence['target_pace_sec'] ?? null) ? self::pace((int) $evidence['target_pace_sec']) : null;
         $targetName = self::family($evidence) === self::REPS ? 'rep pace' : 'target pace';
-        $hit = $verdict === IntentVerdict::Hit;
+        $hit = ($evidence['block_verdict'] ?? $verdict->value) === IntentVerdict::Hit->value;
         $excessive = ($evidence['control'] ?? null) === 'excessive';
         $parts = [];
 
@@ -210,6 +234,11 @@ final class IntentOutcome
             $parts[] = $hit
                 ? "heart rate spent {$minutes} minutes in {$evidence['zone']} or above, enough for the {$needed} minutes asked"
                 : "heart rate spent only {$minutes} of the {$needed} minutes asked in {$evidence['zone']} or above";
+        }
+
+        $easyParts = self::overCap($evidence, 'easy_over_cap_minutes');
+        if ($easyParts !== null) {
+            $parts[] = "around the block {$easyParts}";
         }
 
         return $parts === [] ? null : implode($hit ? ', but ' : ', and ', $parts);

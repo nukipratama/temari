@@ -193,3 +193,10 @@ it('reads every integer-valued metric', function (string $method, string $key): 
     ['stoppedTimeSec', 'stopped_time_sec'],
     ['stopCount', 'stop_count'],
 ]);
+
+it('reads the time over the easy cap only beside the cap it was measured against', function (): void {
+    expect(StreamSummary::fromArray(['easy_cap_bpm' => 152, 'over_easy_cap_sec' => 420])->overEasyCapSec())->toBe(420)
+        ->and(StreamSummary::fromArray(['easy_cap_bpm' => 152, 'over_easy_cap_sec' => 420])->easyCapBpm())->toBe(152)
+        ->and(StreamSummary::fromArray(['over_easy_cap_sec' => 420])->overEasyCapSec())->toBeNull()
+        ->and(StreamSummary::fromArray([])->easyCapBpm())->toBeNull();
+});

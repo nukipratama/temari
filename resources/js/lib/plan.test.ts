@@ -27,6 +27,7 @@ import {
     sessionLabel,
     sessionPurpose,
     sessionShape,
+    targetLabel,
     volumeAdjustedFrom,
     weekdayLabel,
     weekRangeLabel,
@@ -351,6 +352,7 @@ function planDay(overrides: Partial<PlanDay> = {}): PlanDay {
         fall_off_tilt: null,
         goal_pace: null,
         time_trial: null,
+        hr_cap_bpm: null,
         advice_note: null,
         eased_from: null,
         pace_eased_from: null,
@@ -875,5 +877,103 @@ describe('sessionPurpose on goal-pace work', () => {
                 planDay({ session_type: 'tempo', goal_pace: 'marathon' }),
             ),
         ).toBe('rehearsing your marathon goal pace.');
+    });
+});
+
+describe('heart-rate capped easy and long runs', () => {
+    const marathonPaceLong = planDay({
+        session_type: 'long',
+        hr_cap_bpm: 152,
+        segments: [
+            {
+                key: 'easy',
+                minutes: 60,
+                zone: 'Z2',
+                pace_label: 'easy',
+                km: 10,
+                pace_sec_per_km: 360,
+            },
+            {
+                key: 'main',
+                minutes: 30,
+                zone: 'Z3',
+                pace_label: 'marathon',
+                km: 6,
+                pace_sec_per_km: 300,
+            },
+            {
+                key: 'easy',
+                minutes: 10,
+                zone: 'Z2',
+                pace_label: 'easy',
+                km: 1.7,
+                pace_sec_per_km: 360,
+            },
+        ],
+    });
+
+    it('leads an easy or long day with its cap, and every other day with its pace', () => {
+        expect(targetLabel(planDay({ hr_cap_bpm: 152 }))).toBe('under 152 bpm');
+        expect(
+            targetLabel(planDay({ session_type: 'long', hr_cap_bpm: 152 })),
+        ).toBe('under 152 bpm');
+        expect(targetLabel(planDay())).toBe('6:00/km');
+        expect(targetLabel(marathonPaceLong)).toBe('5:00/km');
+    });
+
+    it('turns the pace into a hint beside the cap', () => {
+        expect(sessionHint(planDay({ hr_cap_bpm: 152 }))).toBe(
+            'about 6:00/km.',
+        );
+        expect(sessionHint(planDay())).toBeNull();
+        expect(
+            sessionHint(
+                planDay({
+                    hr_cap_bpm: 152,
+                    segments: [
+                        {
+                            key: 'main',
+                            minutes: null,
+                            zone: 'Z2',
+                            pace_label: 'easy',
+                            km: 8,
+                            pace_sec_per_km: null,
+                        },
+                    ],
+                }),
+            ),
+        ).toBeNull();
+    });
+
+    it('tells a long run its pace may slow late', () => {
+        expect(
+            sessionHint(planDay({ session_type: 'long', hr_cap_bpm: 152 })),
+        ).toBe(
+            "about 6:00/km early on. the pace may slow late as you tire, and that's fine.",
+        );
+        expect(
+            sessionHint(
+                planDay({
+                    session_type: 'long',
+                    hr_cap_bpm: 152,
+                    segments: [
+                        {
+                            key: 'main',
+                            minutes: null,
+                            zone: 'Z2',
+                            pace_label: 'easy',
+                            km: 18,
+                            pace_sec_per_km: null,
+                        },
+                    ],
+                }),
+            ),
+        ).toBe("the pace may slow late as you tire, and that's fine.");
+    });
+
+    it('caps only the easy running around a marathon-pace block', () => {
+        expect(sessionHint(marathonPaceLong)).toBe(
+            'keep the easy running around it under 152 bpm.',
+        );
     });
 });

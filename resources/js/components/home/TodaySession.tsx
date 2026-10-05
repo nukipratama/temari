@@ -19,12 +19,12 @@ import {
     easedFromDelta,
     judgedDayResult,
     paceEaseDelta,
-    paceLabel,
     prescriptionWhy,
     sessionHint,
     sessionLabel,
     sessionPurpose,
     sessionShape,
+    targetLabel,
 } from '@/lib/plan';
 import { stripEdgeQuotes } from '@/lib/richText';
 
@@ -89,7 +89,7 @@ function TodayPrescription({
     restDayEasePace,
 }: Readonly<{ day: WeekPlanDay; restDayEasePace: RestDayEasePace | null }>) {
     const judged = judgedDayResult(day);
-    const pace = judged === null ? paceLabel(day) : null;
+    const pace = judged === null ? targetLabel(day) : null;
     const sessionDelta = day.eased_from
         ? easedFromDelta(day.eased_from, day)
         : null;

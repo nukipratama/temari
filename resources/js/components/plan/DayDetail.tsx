@@ -27,7 +27,6 @@ import {
     fallOffTiltWhy,
     judgedDayResult,
     paceEaseDelta,
-    paceLabel,
     prescriptionWhy,
     ranHot,
     sessionHint,
@@ -35,6 +34,7 @@ import {
     sessionPurpose,
     STATUS_LABEL,
     STATUS_MEANING,
+    targetLabel,
     workLabel,
     volumeAdjustedFrom,
     weekdayLabel,
@@ -168,6 +168,7 @@ function dayPoint(day: PlanDay) {
             : null,
         doseWhy: prescriptionWhy(day),
         tiltWhy: fallOffTiltWhy(day),
+        hint: sessionHint(day),
     };
 }
 
@@ -196,7 +197,7 @@ export function hasDayDetail(
     narration: AnalysisPayload | null,
 ): boolean {
     const { sessionDelta, paceDelta, weekFitDelta } = dayChanges(day);
-    const { purpose, doseWhy, tiltWhy } = dayPoint(day);
+    const { purpose, doseWhy, tiltWhy, hint } = dayPoint(day);
     const { canMove, canSkip, canUnskip } = dayActions(day, weekDays, today);
 
     return (
@@ -210,6 +211,7 @@ export function hasDayDetail(
         purpose !== null ||
         doseWhy !== null ||
         tiltWhy !== null ||
+        hint !== null ||
         day.advice_note !== null ||
         Boolean(day.credit_note) ||
         Boolean(day.result_note) ||
@@ -227,7 +229,7 @@ export function hasDayDetail(
  */
 export function DayHeadline({ day }: Readonly<{ day: PlanDay }>) {
     const judged = judgedDayResult(day);
-    const pace = judged === null ? paceLabel(day) : null;
+    const pace = judged === null ? targetLabel(day) : null;
     const isRest = day.session_type === 'rest';
     const { sessionDelta, paceDelta, weekFitDelta } = dayChanges(day);
     // A day excused before it passes is still `planned` server-side until
@@ -321,9 +323,13 @@ export default function DayDetail({
     const [picking, setPicking] = useState(false);
 
     const { sessionDelta, paceDelta, weekFitDelta } = dayChanges(day);
-    const { purpose, doseWhy, tiltWhy } = dayPoint(day);
+    const { purpose, doseWhy, tiltWhy, hint } = dayPoint(day);
     const { canMove, canSkip, canUnskip } = dayActions(day, weekDays, today);
-    const showsPoint = purpose !== null || doseWhy !== null || tiltWhy !== null;
+    const showsPoint =
+        purpose !== null ||
+        doseWhy !== null ||
+        tiltWhy !== null ||
+        hint !== null;
 
     return (
         <>
@@ -391,9 +397,9 @@ export default function DayDetail({
                             {purpose}
                         </p>
                     )}
-                    {sessionHint(day) && (
+                    {hint && (
                         <p className="mt-1 text-xs leading-relaxed text-text-2">
-                            {sessionHint(day)}
+                            {hint}
                         </p>
                     )}
                     {doseWhy && (

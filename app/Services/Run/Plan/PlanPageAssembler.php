@@ -266,6 +266,7 @@ final class PlanPageAssembler
                     $baselineData['long_run_progression_cap_km'],
                     $fallbackVerdicts[$s->date->toDateString()]['ran_anyway'] ?? null,
                     $s->date->isSameDay($today) ? $briefingContext->readinessAssessment : null,
+                    $user->runnerProfile?->easyHrCapBpm(),
                 ))->all(),
             ];
         }

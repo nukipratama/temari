@@ -56,6 +56,7 @@ function day(overrides: Partial<PlanDay> = {}): PlanDay {
         fall_off_tilt: null,
         goal_pace: null,
         time_trial: null,
+        hr_cap_bpm: null,
         advice_note: null,
         eased_from: null,
         pace_eased_from: null,
@@ -163,6 +164,33 @@ describe('DayHeadline and DayDetail', () => {
 
         expect(screen.getByText('tempo')).toBeInTheDocument();
         expect(screen.getByText('8 km · 5:00/km')).toBeInTheDocument();
+    });
+
+    it('heads a capped long run with its heart rate and says the pace may slow late', () => {
+        const long = day({
+            session_type: 'long',
+            hr_cap_bpm: 152,
+            segments: [
+                {
+                    key: 'main',
+                    minutes: 110,
+                    zone: 'Z2',
+                    pace_label: 'easy',
+                    km: 18,
+                    pace_sec_per_km: 366,
+                },
+            ],
+            distance_km: 18,
+            asked_km: 18,
+        });
+        renderRow({ day: long, weekDays: [long] });
+
+        expect(screen.getByText('18 km · under 152 bpm')).toBeInTheDocument();
+        expect(
+            screen.getByText(
+                "about 6:06/km early on. the pace may slow late as you tire, and that's fine.",
+            ),
+        ).toBeInTheDocument();
     });
 
     it('names a time trial in its headline and bar graph, with the aim and what it checks', () => {

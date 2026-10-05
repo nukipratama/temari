@@ -186,6 +186,7 @@ final readonly class CurrentWeekPlanBuilder
             $baselineData['long_run_progression_cap_km'],
             $fallbackVerdicts[$s->date->toDateString()]['ran_anyway'] ?? null,
             $s->date->isSameDay($today) ? $briefingContext->readinessAssessment : null,
+            $user->runnerProfile?->easyHrCapBpm(),
         ))->values()->all();
 
         // A rest day asks for nothing and always scores Done, so counting it

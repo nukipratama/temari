@@ -95,6 +95,21 @@ final readonly class StreamSummary
         return (float) ($zonePct['Z4'] ?? 0) + (float) ($zonePct['Z5'] ?? 0);
     }
 
+    /** The easy-effort heart-rate cap {@see self::overEasyCapSec()} was measured against. */
+    public function easyCapBpm(): ?int
+    {
+        return $this->int('easy_cap_bpm');
+    }
+
+    /**
+     * Moving seconds past the warm-up whose rolling heart rate sat above the
+     * easy cap's margin, or null when the run carries no usable heart rate.
+     */
+    public function overEasyCapSec(): ?int
+    {
+        return $this->easyCapBpm() === null ? null : $this->int('over_easy_cap_sec');
+    }
+
     /**
      * Fastest pace sustained over one of the producer's best-effort windows,
      * as an "M:SS" string. $window is the label suffix ("30s", "5min", "60min").

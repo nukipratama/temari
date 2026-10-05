@@ -251,20 +251,78 @@ it('judges an easy day on every run it held, hill-adjusted where it can', functi
         ->toBe(IntentVerdict::Hit);
 });
 
-it('lets heart rate rescue a fast easy run that stayed in its zone', function (): void {
-    $run = judgeRun(6.0, 1980, ['time_in_zone_min' => ['Z1' => 8, 'Z2' => 22, 'Z3' => 3, 'Z4' => 0, 'Z5' => 0]]);
+it('lets heart rate rescue a fast easy run that held its cap', function (): void {
+    $run = judgeRun(6.0, 1980, ['easy_cap_bpm' => 150, 'over_easy_cap_sec' => 360]);
 
-    expect(SessionIntentJudge::judge(SessionType::Easy, easyDay(), JUDGE_PACES, [$run])['verdict'])
-        ->toBe(IntentVerdict::Hit);
+    $reading = SessionIntentJudge::judge(SessionType::Easy, easyDay(), JUDGE_PACES, [$run]);
+
+    expect($reading['verdict'])->toBe(IntentVerdict::Hit)
+        ->and($reading['evidence'])->toMatchArray(['basis' => 'heart_rate', 'hr_cap_bpm' => 150, 'over_cap_minutes' => 6.0, 'over_cap_limit_minutes' => 6.6]);
 });
 
 it('lets heart rate confirm a fast easy run was too hard', function (): void {
-    $run = judgeRun(6.0, 1980, ['time_in_zone_min' => ['Z1' => 2, 'Z2' => 10, 'Z3' => 15, 'Z4' => 6, 'Z5' => 0]]);
+    $run = judgeRun(6.0, 1980, ['easy_cap_bpm' => 150, 'over_easy_cap_sec' => 420]);
 
     $reading = SessionIntentJudge::judge(SessionType::Easy, easyDay(), JUDGE_PACES, [$run]);
 
     expect($reading['verdict'])->toBe(IntentVerdict::TooHard)
         ->and($reading['evidence']['basis'])->toBe('heart_rate');
+});
+
+it('judges a capped athlete on heart rate alone, whatever the pace', function (): void {
+    $fastUnderCap = judgeRun(6.0, 1980, ['easy_cap_bpm' => 150, 'over_easy_cap_sec' => 0]);
+    $slowOverCap = judgeRun(5.0, 2400, ['easy_cap_bpm' => 150, 'over_easy_cap_sec' => 600]);
+
+    expect(SessionIntentJudge::judge(SessionType::Easy, easyDay(), JUDGE_PACES, [$fastUnderCap], heartRateCapped: true)['verdict'])->toBe(IntentVerdict::Hit)
+        ->and(SessionIntentJudge::judge(SessionType::Easy, easyDay(), JUDGE_PACES, [$slowOverCap], heartRateCapped: true)['verdict'])->toBe(IntentVerdict::TooHard)
+        ->and(SessionIntentJudge::judge(SessionType::Easy, easyDay(), JUDGE_PACES, [$slowOverCap])['verdict'])->toBe(IntentVerdict::Hit);
+});
+
+it('allows fifteen minutes over the cap on a run of 75 minutes or more, and a fifth of a shorter one', function (int $movingSec, int $overSec, IntentVerdict $verdict): void {
+    $run = judgeRun(10.0, $movingSec, ['easy_cap_bpm' => 150, 'over_easy_cap_sec' => $overSec]);
+
+    expect(SessionIntentJudge::judge(SessionType::Long, easyDay(), JUDGE_PACES, [$run], heartRateCapped: true)['verdict'])->toBe($verdict);
+})->with([
+    '90 min, exactly 15 over' => [5400, 900, IntentVerdict::Hit],
+    '90 min, 15 min 1 s over' => [5400, 901, IntentVerdict::TooHard],
+    '75 min, 15 min over' => [4500, 900, IntentVerdict::Hit],
+    '60 min, exactly a fifth over' => [3600, 720, IntentVerdict::Hit],
+    '60 min, past a fifth' => [3600, 721, IntentVerdict::TooHard],
+]);
+
+it('falls back to the pace-first rule when the runs carry no heart rate', function (): void {
+    $fast = judgeRun(6.0, 1980);
+    $slow = judgeRun(5.3, 2136);
+
+    expect(SessionIntentJudge::judge(SessionType::Easy, easyDay(), JUDGE_PACES, [$fast], heartRateCapped: true)['evidence'])->toMatchArray(['basis' => 'pace'])
+        ->and(SessionIntentJudge::judge(SessionType::Easy, easyDay(), JUDGE_PACES, [$fast], heartRateCapped: true)['verdict'])->toBe(IntentVerdict::TooHard)
+        ->and(SessionIntentJudge::judge(SessionType::Easy, easyDay(), JUDGE_PACES, [$slow], heartRateCapped: true)['verdict'])->toBe(IntentVerdict::Hit);
+});
+
+it('keeps the marathon-pace block on pace and holds the easy running around it to the cap', function (): void {
+    $segments = [
+        new SessionSegment(SegmentKey::Easy, 40.0, 'Z2', PaceBand::Easy, 400, 6.0),
+        new SessionSegment(SegmentKey::Main, 30.0, 'Z3', PaceBand::Marathon, 340, 5.3),
+        new SessionSegment(SegmentKey::Easy, 10.0, 'Z2', PaceBand::Easy, 400, 1.5),
+    ];
+    $held = judgeRun(12.8, 4800, ['best_30min_pace' => '5:42', 'easy_cap_bpm' => 150, 'over_easy_cap_sec' => 30 * 60 + 600]);
+    $raggedAround = judgeRun(12.8, 4800, ['best_30min_pace' => '5:42', 'easy_cap_bpm' => 150, 'over_easy_cap_sec' => 30 * 60 + 960]);
+
+    $heldReading = SessionIntentJudge::judge(SessionType::Long, $segments, JUDGE_PACES, [$held], heartRateCapped: true);
+    $raggedReading = SessionIntentJudge::judge(SessionType::Long, $segments, JUDGE_PACES, [$raggedAround], heartRateCapped: true);
+
+    expect($heldReading['verdict'])->toBe(IntentVerdict::Hit)
+        ->and($heldReading['evidence'])->toMatchArray(['basis' => 'pace', 'easy_parts' => 'held', 'easy_over_cap_minutes' => 10.0, 'hr_cap_bpm' => 150, 'block_verdict' => 'hit'])
+        ->and($raggedReading['verdict'])->toBe(IntentVerdict::TooHard)
+        ->and($raggedReading['evidence'])->toMatchArray(['easy_parts' => 'too_hard', 'easy_over_cap_minutes' => 16.0, 'block_verdict' => 'hit'])
+        ->and(SessionIntentJudge::judge(SessionType::Long, $segments, JUDGE_PACES, [$raggedAround])['verdict'])->toBe(IntentVerdict::Hit);
+});
+
+it('never holds a single marathon-pace long segment to the easy cap', function (): void {
+    $run = judgeRun(20.0, 6700, ['easy_cap_bpm' => 150, 'over_easy_cap_sec' => 6000]);
+
+    expect(SessionIntentJudge::judge(SessionType::Long, easyDay(PaceBand::Marathon), JUDGE_PACES, [$run], heartRateCapped: true)['evidence'])
+        ->toMatchArray(['basis' => 'pace', 'limit' => 'marathon']);
 });
 
 it('gives a long run prescribed at marathon pace the same tolerance a tempo gets', function (): void {
@@ -320,17 +378,18 @@ it('cannot read a short rep window as covering a longer rep', function (): void 
 });
 
 it('records an easy day that stayed easy as easy stimulus, however fast', function (): void {
-    $run = judgeRun(6.0, 1980, ['time_in_zone_min' => ['Z1' => 8, 'Z2' => 22, 'Z3' => 3, 'Z4' => 0, 'Z5' => 0]]);
+    $run = judgeRun(6.0, 1980, ['easy_cap_bpm' => 150, 'over_easy_cap_sec' => 120]);
 
     expect(SessionIntentJudge::judge(SessionType::Easy, easyDay(), JUDGE_PACES, [$run])['evidence'])
         ->toMatchArray(['stimulus_family' => 'easy', 'stimulus_source' => 'heart_rate']);
 });
 
-it('records self-added hard work on an easy day with the hard minutes summed across the day', function (): void {
-    $first = judgeRun(6.0, 1980, ['time_in_zone_min' => ['Z1' => 2, 'Z2' => 10, 'Z3' => 15, 'Z4' => 6, 'Z5' => 0]]);
-    $second = judgeRun(2.0, 700, ['time_in_zone_min' => ['Z1' => 0, 'Z2' => 5, 'Z3' => 5, 'Z4' => 2, 'Z5' => 0]]);
+it('records self-added hard work on an easy day with the minutes over the cap summed across the day', function (): void {
+    $first = judgeRun(6.0, 1980, ['easy_cap_bpm' => 150, 'over_easy_cap_sec' => 1260]);
+    $second = judgeRun(2.0, 700, ['easy_cap_bpm' => 150, 'over_easy_cap_sec' => 420]);
+    $noHeartRate = judgeRun(2.0, 700);
 
-    $reading = SessionIntentJudge::judge(SessionType::Easy, easyDay(), JUDGE_PACES, [$first, $second]);
+    $reading = SessionIntentJudge::judge(SessionType::Easy, easyDay(), JUDGE_PACES, [$first, $second, $noHeartRate]);
 
     expect($reading['verdict'])->toBe(IntentVerdict::TooHard)
         ->and($reading['evidence'])->toMatchArray(['stimulus_family' => 'hard', 'stimulus_minutes' => 28.0, 'stimulus_source' => 'heart_rate']);

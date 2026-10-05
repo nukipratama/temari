@@ -145,3 +145,14 @@ it('flips a manual profile to strava on a forced sync with identical zones, repo
     expect($profile->source)->toBe('strava')
         ->and($profile->strava_zones_synced_at)->not->toBeNull();
 });
+
+it('caps easy running at the top of zone 2 only for zones the athlete synced, set or reached', function (string $source, ?int $expected): void {
+    $profile = RunnerProfile::factory()->make(['user_id' => 1, 'source' => $source]);
+
+    expect($profile->easyHrCapBpm())->toBe($expected);
+})->with([
+    'strava' => ['strava', 154],
+    'manual' => ['manual', 154],
+    'observed' => ['observed', 154],
+    'default' => ['default', null],
+]);

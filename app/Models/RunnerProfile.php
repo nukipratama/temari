@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Services\Run\Ingest\StreamAnalysis;
 use App\Support\SharedPropCacheKey;
 use Database\Factories\RunnerProfileFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -79,6 +80,20 @@ class RunnerProfile extends Model
     public function hasExplicitZones(): bool
     {
         return in_array($this->source, self::EXPLICIT_ZONE_SOURCES, strict: true);
+    }
+
+    /** @var list<string> */
+    private const array EASY_CAP_ZONE_SOURCES = ['strava', 'manual', 'observed'];
+
+    /**
+     * The heart rate easy and long runs are capped at, the top of zone 2, or
+     * null when the zones are still the config default and pace stays the target.
+     */
+    public function easyHrCapBpm(): ?int
+    {
+        $cap = $this->hr_zones[StreamAnalysis::EASY_CAP_ZONE]['lo'] ?? null;
+
+        return in_array($this->source, self::EASY_CAP_ZONE_SOURCES, strict: true) && is_int($cap) ? $cap : null;
     }
 
     /**

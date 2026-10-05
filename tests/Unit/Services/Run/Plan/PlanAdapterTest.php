@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Enums\AdaptationReason;
 use App\Enums\IngestState;
+use App\Enums\PaceBand;
 use App\Enums\RaceAmbitionState;
 use App\Services\Run\Plan\RaceAmbition;
 use App\Enums\PlanPhase;
@@ -545,15 +546,15 @@ function planAdapterFor(array $load = ['monotony' => 1.1, 'strain' => 300.0, 'ct
     return new PlanAdapter($trainingLoad, app(RiegelProjector::class), app(HydrationBacklog::class));
 }
 
-it('reads two easy days run above Z2 as how the week was run', function (): void {
+it('reads two easy days run over the heart-rate cap as how the week was run', function (): void {
     Carbon::setTestNow('2026-08-10 08:00:00');
     $user = User::factory()->create();
 
     planAdapterCreditedDay($user, '2026-08-03', SessionType::Easy);
     planAdapterCreditedDay($user, '2026-08-05', SessionType::Easy);
 
-    planAdapterRunOn($user, '2026-08-03', ['time_in_zone_pct' => ['Z1' => 20, 'Z2' => 55, 'Z3' => 25]]);
-    planAdapterRunOn($user, '2026-08-05', ['time_in_zone_pct' => ['Z1' => 20, 'Z2' => 55, 'Z3' => 25]]);
+    planAdapterRunOn($user, '2026-08-03', ['easy_cap_bpm' => 150, 'over_easy_cap_sec' => 720], ['moving_time' => 3000]);
+    planAdapterRunOn($user, '2026-08-05', ['easy_cap_bpm' => 150, 'over_easy_cap_sec' => 720], ['moving_time' => 3000]);
 
     $decision = planAdapterFor()->forWeek($user, Carbon::parse('2026-08-10'), Carbon::parse('2026-08-10'), null);
 
@@ -586,9 +587,9 @@ it('counts a day once however many runs it holds', function (): void {
 
     planAdapterCreditedDay($user, '2026-08-03', SessionType::Easy);
 
-    $hard = ['time_in_zone_pct' => ['Z1' => 10, 'Z2' => 50, 'Z3' => 40]];
-    planAdapterRunOn($user, '2026-08-03', $hard);
-    planAdapterRunOn($user, '2026-08-03', $hard);
+    $hard = ['easy_cap_bpm' => 150, 'over_easy_cap_sec' => 720];
+    planAdapterRunOn($user, '2026-08-03', $hard, ['moving_time' => 3000]);
+    planAdapterRunOn($user, '2026-08-03', $hard, ['moving_time' => 3000]);
 
     expect(planAdapterFor()->forWeek($user, Carbon::parse('2026-08-10'), Carbon::parse('2026-08-10'), null)['reason'])
         ->toBe(AdaptationReason::Steady);
@@ -603,9 +604,9 @@ it('leaves a rest day unjudged, however it was run', function (): void {
     planAdapterCreditedDay($user, '2026-08-03', SessionType::Rest);
     planAdapterCreditedDay($user, '2026-08-04', SessionType::Rest);
 
-    $hard = ['time_in_zone_pct' => ['Z1' => 10, 'Z2' => 40, 'Z4' => 50], 'decoupling_pct' => 12.0];
-    planAdapterRunOn($user, '2026-08-03', $hard);
-    planAdapterRunOn($user, '2026-08-04', $hard);
+    $hard = ['easy_cap_bpm' => 150, 'over_easy_cap_sec' => 2400, 'decoupling_pct' => 12.0];
+    planAdapterRunOn($user, '2026-08-03', $hard, ['moving_time' => 3000]);
+    planAdapterRunOn($user, '2026-08-04', $hard, ['moving_time' => 3000]);
 
     expect(planAdapterFor()->forWeek($user, Carbon::parse('2026-08-10'), Carbon::parse('2026-08-10'), null)['reason'])
         ->toBe(AdaptationReason::Steady);
@@ -634,12 +635,12 @@ it('keeps next week\'s quality after a hot long run and a threshold session that
     Carbon::setTestNow();
 });
 
-it('still lets one easy day far above Z2 speak for the week', function (): void {
+it('still lets one easy day far over the heart-rate cap speak for the week', function (): void {
     Carbon::setTestNow('2026-08-10 08:00:00');
     $user = User::factory()->create();
 
     planAdapterCreditedDay($user, '2026-08-03', SessionType::Easy);
-    planAdapterRunOn($user, '2026-08-03', ['time_in_zone_pct' => ['Z1' => 5, 'Z2' => 2.8, 'Z3' => 92.2]]);
+    planAdapterRunOn($user, '2026-08-03', ['easy_cap_bpm' => 150, 'over_easy_cap_sec' => 1500], ['moving_time' => 3000]);
 
     $decision = planAdapterFor()->forWeek($user, Carbon::parse('2026-08-10'), Carbon::parse('2026-08-10'), null);
 
@@ -649,6 +650,49 @@ it('still lets one easy day far above Z2 speak for the week', function (): void 
     Carbon::setTestNow();
 });
 
+
+it('reads a long run with no marathon-pace block by the same cap, and leaves a marathon-pace long run to its block', function (int $hardMinutes, ?PaceBand $band, AdaptationReason $expected): void {
+    Carbon::setTestNow('2026-08-10 08:00:00');
+    $user = User::factory()->create();
+
+    planAdapterCreditedDay($user, '2026-08-03', SessionType::Easy);
+    planAdapterRunOn($user, '2026-08-03', ['easy_cap_bpm' => 150, 'over_easy_cap_sec' => 720], ['moving_time' => 3000]);
+    PlannedSession::factory()->for($user)->create([
+        'date' => '2026-08-07',
+        'phase' => PlanPhase::Build,
+        'session_type' => SessionType::Long,
+        'status' => PlannedSessionStatus::Done,
+        'compliance_score' => 100,
+        'distance_score' => 100,
+        'prescribed_hard_minutes' => $hardMinutes,
+        'prescribed_pace_band' => $band,
+    ]);
+    planAdapterRunOn($user, '2026-08-07', ['easy_cap_bpm' => 150, 'over_easy_cap_sec' => 1200], ['moving_time' => 6000]);
+
+    expect(planAdapterFor()->forWeek($user, Carbon::parse('2026-08-10'), Carbon::parse('2026-08-10'), null)['reason'])->toBe($expected);
+
+    Carbon::setTestNow();
+})->with([
+    'easy long run' => [0, null, AdaptationReason::RanTooHard],
+    'marathon-pace long run' => [30, PaceBand::Marathon, AdaptationReason::Steady],
+]);
+
+it('lets one easy-effort day speak for the week only past thirty minutes, or two fifths of a run under 75 minutes', function (int $movingSec, int $overSec, AdaptationReason $expected): void {
+    Carbon::setTestNow('2026-08-10 08:00:00');
+    $user = User::factory()->create();
+
+    planAdapterCreditedDay($user, '2026-08-03', SessionType::Long);
+    planAdapterRunOn($user, '2026-08-03', ['easy_cap_bpm' => 150, 'over_easy_cap_sec' => $overSec], ['moving_time' => $movingSec]);
+
+    expect(planAdapterFor()->forWeek($user, Carbon::parse('2026-08-10'), Carbon::parse('2026-08-10'), null)['reason'])->toBe($expected);
+
+    Carbon::setTestNow();
+})->with([
+    '2 h, exactly 30 min over' => [7200, 1800, AdaptationReason::Steady],
+    '2 h, past 30 min over' => [7200, 1801, AdaptationReason::RanTooHard],
+    '50 min, exactly two fifths over' => [3000, 1200, AdaptationReason::Steady],
+    '50 min, past two fifths over' => [3000, 1201, AdaptationReason::RanTooHard],
+]);
 
 it('leaves an eased tempo that was run easy out of stimulus adherence', function (): void {
     Carbon::setTestNow('2026-08-10 08:00:00');
@@ -686,10 +730,10 @@ it('leaves an eased tempo that was run easy out of stimulus adherence', function
 it('judges how last week was run against the effective advice, not the stored session type', function (bool $eased, AdaptationReason $expected): void {
     Carbon::setTestNow('2026-08-10 08:00:00');
     $user = User::factory()->create();
-    $hard = ['time_in_zone_pct' => ['Z1' => 10, 'Z2' => 60, 'Z3' => 30]];
+    $hard = ['easy_cap_bpm' => 150, 'over_easy_cap_sec' => 720];
 
     planAdapterCreditedDay($user, '2026-08-03', SessionType::Easy);
-    planAdapterRunOn($user, '2026-08-03', $hard);
+    planAdapterRunOn($user, '2026-08-03', $hard, ['moving_time' => 3000]);
     PlannedSession::factory()->for($user)->create([
         'date' => '2026-08-05',
         'phase' => PlanPhase::Build,
@@ -699,7 +743,7 @@ it('judges how last week was run against the effective advice, not the stored se
         'compliance_score' => 100,
         'distance_score' => 100,
     ]);
-    planAdapterRunOn($user, '2026-08-05', $hard);
+    planAdapterRunOn($user, '2026-08-05', $hard, ['moving_time' => 3000]);
 
     $decision = planAdapterFor()->forWeek($user, Carbon::parse('2026-08-10'), Carbon::parse('2026-08-10'), null);
 
@@ -714,10 +758,10 @@ it('judges how last week was run against the effective advice, not the stored se
 it('reads the shown effective type over the stored one when the advice history recorded it', function (): void {
     Carbon::setTestNow('2026-08-10 08:00:00');
     $user = User::factory()->create();
-    $hard = ['time_in_zone_pct' => ['Z1' => 10, 'Z2' => 60, 'Z3' => 30]];
+    $hard = ['easy_cap_bpm' => 150, 'over_easy_cap_sec' => 720];
 
     planAdapterCreditedDay($user, '2026-08-03', SessionType::Easy);
-    planAdapterRunOn($user, '2026-08-03', $hard);
+    planAdapterRunOn($user, '2026-08-03', $hard, ['moving_time' => 3000]);
     PlannedSession::factory()->for($user)->create([
         'date' => '2026-08-05',
         'phase' => PlanPhase::Build,
@@ -728,7 +772,7 @@ it('reads the shown effective type over the stored one when the advice history r
         'intent_verdict' => 'too_hard',
         'intent_evidence' => ['advice_history' => 'shown', 'effective_type' => 'easy', 'eased_from' => 'tempo', 'concern' => 'mild', 'original_completed' => 'controlled'],
     ]);
-    planAdapterRunOn($user, '2026-08-05', $hard);
+    planAdapterRunOn($user, '2026-08-05', $hard, ['moving_time' => 3000]);
 
     expect(planAdapterFor()->forWeek($user, Carbon::parse('2026-08-10'), Carbon::parse('2026-08-10'), null)['reason'])
         ->toBe(AdaptationReason::RanTooHard);
