@@ -162,6 +162,24 @@ export async function unsubscribe(): Promise<void> {
 }
 
 /**
+ * Drop this device's push subscription before signing out and return its
+ * endpoint, so the logout can delete the row even when the browser unsubscribe fails.
+ */
+export async function releaseDeviceSubscription(): Promise<string | undefined> {
+    let endpoint: string | undefined;
+    try {
+        const subscription = await currentSubscription();
+        endpoint = subscription?.endpoint;
+        await subscription?.unsubscribe();
+        rememberEndpoint(null);
+    } catch {
+        endpoint ??= savedEndpoint() ?? undefined;
+    }
+
+    return endpoint;
+}
+
+/**
  * The endpoint this install last saved server-side. A re-subscribe sends it so
  * the server drops the subscription it replaces: iOS revokes a subscription
  * without telling the server, and its push service keeps accepting sends to it.

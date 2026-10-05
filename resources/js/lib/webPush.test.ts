@@ -5,6 +5,7 @@ import {
     isIosNonSafari,
     isPushSupported,
     isStandalone,
+    releaseDeviceSubscription,
     reportSeen,
     subscribe,
     unsubscribe,
@@ -222,6 +223,48 @@ describe('replacing the subscription this device saved before', () => {
         await unsubscribe();
 
         expect(localStorage.getItem('temari-push-endpoint')).toBeNull();
+    });
+});
+
+describe('releaseDeviceSubscription', () => {
+    afterEach(() => localStorage.clear());
+
+    it('unsubscribes the browser and returns its endpoint', async () => {
+        stubServiceWorker();
+        localStorage.setItem('temari-push-endpoint', fakeSubscription.endpoint);
+
+        await expect(releaseDeviceSubscription()).resolves.toBe(
+            fakeSubscription.endpoint,
+        );
+        expect(fakeSubscription.unsubscribe).toHaveBeenCalled();
+        expect(localStorage.getItem('temari-push-endpoint')).toBeNull();
+    });
+
+    it('still returns the endpoint when the browser unsubscribe fails', async () => {
+        stubServiceWorker();
+        fakeSubscription.unsubscribe.mockImplementationOnce(() =>
+            Promise.reject(new Error('boom')),
+        );
+
+        await expect(releaseDeviceSubscription()).resolves.toBe(
+            fakeSubscription.endpoint,
+        );
+    });
+
+    it('falls back to the remembered endpoint when the subscription cannot be read', async () => {
+        stubServiceWorker();
+        localStorage.setItem('temari-push-endpoint', 'https://saved.test/x');
+        fakeRegistration.pushManager.getSubscription.mockImplementationOnce(
+            () => Promise.reject(new Error('boom')),
+        );
+
+        await expect(releaseDeviceSubscription()).resolves.toBe(
+            'https://saved.test/x',
+        );
+    });
+
+    it('returns nothing when this device never subscribed', async () => {
+        await expect(releaseDeviceSubscription()).resolves.toBeUndefined();
     });
 });
 
