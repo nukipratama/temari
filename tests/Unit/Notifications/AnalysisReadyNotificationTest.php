@@ -287,7 +287,7 @@ it('builds a web push message with the dynamic title, body, tap-through url, and
     expect($payload['title'])->toContain('run is in.')
         ->and($payload['body'])->toContain('Pace konsisten.')
         ->and($payload['data'])->toBe(['url' => route('activities.show', $analysis->subject_id), 'unread' => 0])
-        ->and($message->getOptions())->toBe(['urgency' => 'high']);
+        ->and($message->getOptions())->toBe(['urgency' => 'high', 'TTL' => 3 * 86400]);
 });
 
 // --- toInbox() ---------------------------------------------------------------

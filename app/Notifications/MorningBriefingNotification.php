@@ -8,11 +8,13 @@ use App\Models\AI\Analysis;
 use App\Models\User;
 use App\Notifications\Concerns\AppendsUnreadBadge;
 use App\Notifications\Concerns\RechecksRouteAtDelivery;
+use App\Notifications\Concerns\SetsWebPushExpiry;
 use App\Notifications\Messages\TelegramMessage;
 use App\Services\Notifications\ChannelRouter;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Notification;
+use Illuminate\Support\Carbon;
 use NotificationChannels\WebPush\WebPushMessage;
 
 /**
@@ -32,6 +34,7 @@ class MorningBriefingNotification extends Notification implements ShouldQueue
 {
     use AppendsUnreadBadge;
     use RechecksRouteAtDelivery;
+    use SetsWebPushExpiry;
     use Queueable;
 
     public int $tries = 3;
@@ -75,7 +78,11 @@ class MorningBriefingNotification extends Notification implements ShouldQueue
             ->data($this->withUnreadBadge(['url' => route('dashboard')], $notifiable->id))
             // High urgency: the whole point is landing at the moment they are
             // about to head out, which a deferred push misses entirely.
-            ->options(['urgency' => 'high']);
+            ->options([
+                'urgency' => 'high',
+                'TTL' => $this->secondsUntil(Carbon::parse($this->briefing->discriminator)->endOfDay()),
+                'topic' => 'briefing',
+            ]);
     }
 
     /** The idempotency key: the briefing row, which is already per athlete per day. */

@@ -119,6 +119,25 @@ so the button hides itself at the end. The requested size is snapped up to the p
 cannot ask for an unbounded scan. Retention is undecided and nothing prunes the table, so the window
 is what keeps an old account's inbox usable without deciding how long a record lives.
 
+## Push expiry
+
+Every web push sets its own `TTL`, counted from the moment it is actually sent, so a phone that
+comes back online late never receives a stale one (the library default is four weeks). A push
+released by quiet hours therefore gets its full TTL. The app clock (WIB) defines the day edges.
+
+| Push | TTL | Topic |
+|---|---|---|
+| briefing | end of the briefing's day | `briefing` |
+| race tomorrow | 06:00 on race day | none |
+| streak reminder | Sunday 23:59 | `streak` |
+| post-run, weekly and monthly recaps, race outcome | 3 days | none |
+| Strava disconnected | 7 days | none |
+| test | 5 minutes | none |
+
+A deadline already past clamps to one second. A `Topic` makes a newer briefing or streak push
+replace an undelivered older one. The TTLs are set in each notification's `toWebPush()`, for
+example [MorningBriefingNotification](../../app/Notifications/MorningBriefingNotification.php#L74).
+
 ## Deep links, not replays
 
 `PP3` cut both celebration replays: the card-reveal modal and its `api.cards.*` endpoints, and the
