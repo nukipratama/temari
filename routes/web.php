@@ -24,7 +24,6 @@ use App\Http\Controllers\NotificationPreferenceController;
 use App\Http\Controllers\NotificationTestController;
 use App\Http\Controllers\OnboardingController;
 use App\Http\Controllers\PlanController;
-use App\Http\Controllers\PerformanceEvidenceController;
 use App\Http\Controllers\RecommendationViewController;
 use App\Http\Controllers\RecoveryFeedbackController;
 use App\Http\Controllers\PerceivedEffortController;
@@ -135,9 +134,6 @@ Route::middleware(['auth', 'onboarded'])->group(function (): void {
     Route::get('/trends', TrendsController::class)->name('trends');
 
     Route::get('/race', [RaceController::class, 'index'])->name('race');
-    Route::post('/fitness/evidence', PerformanceEvidenceController::class)
-        ->middleware(['throttle:10,1', 'block-demo-telegram'])
-        ->name('fitness.evidence.store');
     Route::post('/race', [RaceController::class, 'store'])->name('race.store');
     Route::delete('/race', [RaceController::class, 'destroy'])->name('race.destroy');
     Route::post('/race/{race}/outcome', [RaceOutcomeController::class, 'store'])

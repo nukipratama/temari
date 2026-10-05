@@ -111,7 +111,6 @@
         "Tests\\Feature\\NoLlmOnPageLoadTest": 0.2026,
         "Tests\\Feature\\Notifications\\InboxFanOutTest": 0.3718,
         "Tests\\Feature\\Onboarding\\FreshAccountSmokeTest": 2.4315,
-        "Tests\\Feature\\PerformanceEvidenceControllerTest": 0.4074,
         "Tests\\Feature\\Plan\\AnchoredArcTest": 2.6072,
         "Tests\\Feature\\Plan\\LongRunReachesRaceDistanceTest": 1.7389,
         "Tests\\Feature\\Plan\\MissedWeekAdaptationTest": 1.6471,
