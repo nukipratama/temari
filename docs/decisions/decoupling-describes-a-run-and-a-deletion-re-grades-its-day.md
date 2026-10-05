@@ -15,6 +15,8 @@ code_refs:
 
 **Status:** Accepted (2026-10-02)
 
+> **Partly superseded (2026-10-05) by [[easy-and-long-runs-are-capped-by-heart-rate]].** A ragged day is now an Easy day or a Long day with no marathon-pace block whose time past the heart-rate cap is too hard (15 minutes, or 20% of a run under 75 minutes; egregious past 30 minutes or 40%), not a share of time above Z2. Decoupling stays descriptive.
+
 ## Context
 
 The 2026-10-01 coaching audit found two problems in how a finished week is read:

@@ -22,6 +22,8 @@ code_refs:
 
 > **Partly superseded (2026-10-01) by [[grading-follows-shown-advice-and-actual-stimulus]].** Intent is judged against the shown advice only and is `unknown` without it, a quality block more than 5% quicker than target reads `too_hard`, and a window shorter than about 90% of the block cannot prove it.
 
+> **Partly superseded (2026-10-05) by [[easy-and-long-runs-are-capped-by-heart-rate]].** An easy or long day is now judged from the stored heart-rate stream against the athlete's zone 2 cap (more than 15 minutes, or 20% of a run under 75 minutes, past cap + 5 bpm is too hard), on heart rate alone once the zones are the athlete's own; `PlanAdapter::EASY_DAY_HARD_SHARE` is gone.
+
 ## Context
 
 A day's `status` and `compliance_score` were a km ratio and nothing else. An easy jog at full
