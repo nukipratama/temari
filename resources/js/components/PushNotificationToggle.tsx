@@ -131,7 +131,7 @@ export default function PushNotificationToggle({
 
     let description = PUSH_DESCRIPTION[state];
     if (subscribed && muted) {
-        description = 'muted on this device.';
+        description = 'muted on all your devices.';
     }
 
     return (
@@ -143,7 +143,7 @@ export default function PushNotificationToggle({
                 control={
                     subscribed && onMuteChange !== undefined ? (
                         <Toggle
-                            label="send run notifications to this device"
+                            label="send run notifications to all your devices"
                             checked={!muted}
                             onChange={(on) => onMuteChange(!on)}
                         />
