@@ -78,15 +78,15 @@ it('shows the Monday chain prerequisites as pending until they finish today', fu
     Livewire::test(SchedulerHealth::class)
         ->assertOk()
         ->assertSee('waits for')
-        ->assertSee('streak:settle pending');
+        ->assertSee('plan:score-compliance pending');
 });
 
 it('marks a chain prerequisite as done once it has run today', function (): void {
-    SchedulerChain::markDoneToday(SchedulerChain::STREAK_SETTLE);
+    SchedulerChain::markDoneToday(SchedulerChain::PLAN_SCORE_COMPLIANCE);
 
     Livewire::test(SchedulerHealth::class)
         ->assertOk()
-        ->assertSee('streak:settle done');
+        ->assertSee('plan:score-compliance done');
 });
 
 it('keeps a recorded command that is no longer on the schedule', function (): void {

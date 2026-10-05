@@ -36,7 +36,6 @@ dataset('queued entry points that can reach a narrator', [
 dataset('console entry points that can reach a narrator', [
     'ai:daily-briefing' => ['ai:daily-briefing', [], AnalysisOrigin::Scheduled],
     'ai:weekly-recap' => ['ai:weekly-recap', [], AnalysisOrigin::Scheduled],
-    'ai:monthly-recap' => ['ai:monthly-recap', [], AnalysisOrigin::Scheduled],
     'ai:weekly-profile' => ['ai:weekly-profile', [], AnalysisOrigin::Scheduled],
     'ai:trend-read' => ['ai:trend-read', ['range' => '7d'], AnalysisOrigin::Scheduled],
     'ai:catch-up' => ['ai:catch-up', [], AnalysisOrigin::Scheduled],

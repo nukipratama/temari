@@ -1,6 +1,6 @@
 ---
 title: Scheduler hygiene — overlap safety, single-host, ordering, cadence
-description: Every Schedule::command entry is overlap-safe and single-host by an unstated one-container invariant; the Monday window's hard dependencies are now chained rather than only spaced; the numeric derivation behind four previously-qualitative cadences; and measured local runtimes next to each lock TTL
+description: Every Schedule::command entry is overlap-safe and single-host by an unstated one-container invariant; the Monday window's hard dependencies are chained and retry hourly until they succeed; the numeric derivation behind four previously-qualitative cadences; and measured local runtimes next to each lock TTL
 tags: [architecture, scheduler]
 status: living
 reviewed: 2026-10-05
@@ -10,6 +10,8 @@ code_refs:
   - app/Console/Commands/Notifications/ReleaseHeldNotificationsCommand.php
   - app/Services/Notifications/NotificationDeliveryClaim.php
   - app/Console/SchedulerChain.php
+  - app/Console/Commands/MondayCheckCommand.php
+  - app/Services/Gamification/StreakSettlementService.php
   - compose.prod.yaml
   - config/strava.php
   - config/cache.php
@@ -18,8 +20,8 @@ code_refs:
 # Scheduler hygiene
 
 [routes/console.php](../../routes/console.php) registers every scheduled command. This note covers
-four things: why every event carries both `withoutOverlapping()` and `onOneServer()`, how the two
-hard dependencies in the Monday window are chained (not just spaced), the numeric basis for four
+four things: why every event carries both `withoutOverlapping()` and `onOneServer()`, how the
+Monday window's entries are chained and caught up after a miss, the numeric basis for four
 cadences that were previously justified only qualitatively, and a measured-locally runtime next to
 each lock TTL.
 
@@ -33,13 +35,14 @@ container's *next* tick starting before the current run has finished. Every even
 `routes/console.php` now carries both, with one deliberate exception:
 
 `schedule:heartbeat` skips `withoutOverlapping()` on purpose — the write is one idempotent `SETEX`,
-and taking a lock on the evictable cache store every minute buys nothing (see its comment in
-`routes/console.php`). It still takes `onOneServer()`, since a second scheduler container should
+so a mutex taken every minute would guard nothing (see its comment in `routes/console.php`). It still takes `onOneServer()`, since a second scheduler container should
 not double-write a heartbeat any more than it should double-run anything else.
 
 `onOneServer()` and `withoutOverlapping()` both key their lock through the app's default cache
 store ([config/cache.php](../../config/cache.php) — `redis` in prod via `CACHE_STORE`, `array` in
-tests via `phpunit.xml`, `database` from `.env.example` locally). `onOneServer()` additionally
+tests via `phpunit.xml`, `database` from `.env.example` locally). The `redis` store takes its locks
+on its `lock_connection`, the durable `default` connection, so an eviction on the allkeys-lru
+`cache` instance never drops a held mutex. `onOneServer()` additionally
 needs a store every scheduler container can reach, which `redis` is in prod; `array` works for
 tests because a Pest run is one process regardless of parallel workers.
 
@@ -60,13 +63,12 @@ despite that.
 | `schedule:heartbeat` | every minute | — (deliberate) | yes | one idempotent `SETEX`; a lock would cost more than the write itself | ~1.1s, but exits on `redis unreachable` — `.env.example` ships `REDIS_HOST=127.0.0.1`/`CACHE_STORE=database` for local dev, so the real Redis `SETEX` path cannot be exercised in this worktree at all |
 | `ai:daily-briefing` | daily 00:01 | 30 | yes | per-user dispatch loop over active (7d) users; 30 min is generous headroom before the next day's run | ~1.9s — dispatched for 0 active users (the seeded demo user is excluded from AI kickoff billing) |
 | `demo:daily-refresh` | daily 00:13 | 10 | yes | single demo user, one synthetic run + rule-based fill | ~2.2s — the one command that actually touches the seeded user (rule-based refresh, no LLM) |
-| `plan:close-finished-races` | daily 00:04 | 10 | yes | one bulk `UPDATE ... WHERE race_date < today` | ~1.5s — closed 0 races |
-| `plan:score-compliance` | daily 00:09 | 20 | yes | bounded by `--limit=500` users, one scoring pass each | ~1.3s — scored 0 planned rows |
+| `plan:close-finished-races` | daily 00:04, retried hourly at :04 until it succeeds that day | 10 | yes | one bulk `UPDATE ... WHERE race_date < today` | ~1.5s — closed 0 races |
+| `plan:score-compliance` | daily 00:09, retried hourly at :09 until it succeeds that day | 20 | yes | bounded by `--limit=500` users, one scoring pass each | ~1.3s — scored 0 planned rows |
 | `ai:weekly-recap` | Mon 00:16 | 30 | yes | per-user dispatch loop, same shape as `ai:daily-briefing` | ~1.5s — 0 snapshots (demo excluded) |
 | `ai:weekly-profile` | Mon 00:21 | 20 | yes | per-active-user dispatch loop, lighter than the recap (one row type) | ~1.4s — 0 active users (demo excluded) |
-| `plan:regenerate` | Mon 00:26 | 45 | yes | heaviest entry: `Periodizer::regenerate()` + `PlanNarrationRequester` per user | ~1.4s — regenerated for the 1 seeded user; `PlanNarrationRequester` dispatched no LLM calls (Azure unconfigured) |
+| `plan:regenerate` | Mon 00:26, retried every Monday hour at :26 until one run succeeds that week | 45 | yes | heaviest entry: `Periodizer::regenerate()` + `PlanNarrationRequester` per user | ~1.4s — regenerated for the 1 seeded user; `PlanNarrationRequester` dispatched no LLM calls (Azure unconfigured) |
 | `strava:sync-zones` | monthly 00:10 | 55 (unchanged) | yes | already guarded pre-DF-1 | ~1.7s — no eligible connection (the seeded demo `StravaConnection` carries a synthetic token, not a real Strava one, and is excluded) |
-| `ai:monthly-recap` | monthly 05:45 | 30 | yes | per-user dispatch loop, monthly cadence gives ample headroom | ~1.4s — 0 months dispatched (demo excluded) |
 | `ai:trend-read 7d` | daily 06:00 | 20 | yes | one narrator pass across active users | ~1.2-1.4s — 0 active users (demo excluded) |
 | `ai:self-heal` | hourly | 55 (unchanged) | yes | already guarded pre-DF-1 | ~1.3s — skipped, generation paused (Azure unset) |
 | `ai:catch-up` | hourly | 55 (unchanged) | yes | already guarded pre-DF-1 | ~1.5s — created 0 missing kickoff rows |
@@ -82,7 +84,9 @@ despite that.
 | `race:ask-outcome` | daily 09:00 | 15 | yes | one indexed sweep of races dated yesterday with a pending outcome, one notify each | not measured — added with CR-06; same shape and cost as `race:remind` |
 | `briefing:morning-push` | every 15 min | 14 | yes | one median-start-time sweep, sized like the other quarter-hourly drain; sends only, generates nothing | not measured — added after this pass; the median is cached per athlete per day (`UsualRunTime`), so only the first tick to see a given athlete that day pays the indexed read, every later tick that day is a cache hit |
 | `streak:remind` | Sat 18:00 | 15 | yes | one push-eligibility sweep | ~2.0s — dispatched to 0 users |
-| `streak:settle` | Mon 00:00 | 20 | yes | queues chronological per-user settlement; recap creation remains gated until all cursors are current | queues one settlement job per user with a `WeeklySnapshot` |
+| `streak:settle` | Mon 00:00, then every Monday hour | 20 | yes | queues chronological per-user settlement for the athletes still behind or marked dirty; a no-op once everyone is settled | queues one settlement job per athlete behind |
+| `schedule:monday-check` | Mon 06:00 | 10 | yes | one indexed count plus the chain flags, at most one alert per week | not measured — added with the Monday catch-up |
+| `RetryOrphanedStravaGrantReleasesJob` (queued job) | daily 02:40 | 30 | yes | retries the Strava release of grants whose local connection is gone or revoked, one call per orphaned grant | not measured — the scheduler only queues it |
 
 Values marked "unchanged" already had `withoutOverlapping()` before this pass and keep their
 existing TTL; only `onOneServer()` was added to those.
@@ -97,67 +101,74 @@ at 1 user their real cost is invisible, and the TTL's headroom is what protects 
 taking materially longer once the athlete base grows. Nothing measured here contradicts an existing
 TTL; it simply confirms none of them are already too tight at today's scale.
 
-## The Monday window: ordering, not just spacing
+## The Monday window: ordering and catch-up
 
-The old Monday window packed 8 entries into `00:00`-`00:07` with only comment-documented "must run
-after" relationships and no enforced ordering — each `withoutOverlapping()` lock is scoped to its
-own command, so nothing stopped two *different* commands from racing each other. Re-staggered to
-`00:00`-`00:26`, with the gap sized to the dependency it protects rather than to a uniform minute
-step:
+The Monday entries are spread over `00:00`-`00:26`, with each gap sized to the dependency it
+protects, and every entry that a later one depends on retries until it succeeds:
 
 | command | time | must run after | why |
 |---|---|---|---|
-| `streak:settle` | 00:00 | — | independent trigger; settles the week that just closed before anything narrates it |
-| `ai:daily-briefing` | 00:01 | — | daily cadence, unrelated to the Monday-only chain below |
-| `plan:close-finished-races` | 00:04 | — | independent trigger; must itself finish well before `plan:regenerate` (00:26) |
-| `plan:score-compliance` | 00:09 | — | independent trigger; must itself finish well before `plan:regenerate` (00:26) |
+| `streak:settle` | 00:00, then every Monday hour | — | settles the week that just closed; each run queues only the athletes still behind or marked dirty |
+| `ai:daily-briefing` | 00:01 | — | daily cadence, unrelated to the Monday chain |
+| `plan:close-finished-races` | 00:04, then hourly at :04 until it succeeds that day | — | must itself finish before `plan:regenerate` |
+| `plan:score-compliance` | 00:09, then hourly at :09 until it succeeds that day | — | must itself finish before `plan:regenerate` |
 | `demo:daily-refresh` | 00:13 | — | independent, single demo user, zero LLM cost |
-| `ai:weekly-recap` | 00:16 | `streak:settle` (00:00) | reads `consecutiveWeekStreak()` — narrating before the settle would freeze a streak `streak:settle` is about to restore or forgive |
-| `ai:weekly-profile` | 00:21 | `ai:weekly-recap` (00:16) | refreshes "just after the recap" by convention, though it reads no recap output directly — no hard code dependency, kept for narrative consistency |
-| `plan:regenerate` | 00:26 | `plan:close-finished-races` (00:04), `plan:score-compliance` (00:09) | regenerates today-forward off the newly retired races (`CloseFinishedRacesCommand`'s own docblock: an unretired race made `PhaseSchedule::forRace()` throw) and reads last week's average compliance score |
+| `ai:weekly-recap` | 00:16 | — | reads the week's own snapshot and plan, never the streak; `ai:self-heal` usually narrates it at 00:00 already |
+| `ai:weekly-profile` | 00:21 | per athlete: that athlete's settlement | the profile voice quotes the settled weekly streak, so each athlete's voice waits for their own settlement (below) |
+| `plan:regenerate` | 00:26, then every Monday hour at :26 until one run succeeds | `plan:close-finished-races`, `plan:score-compliance` (both done today) | regenerates today-forward off the newly retired races (`CloseFinishedRacesCommand`'s own docblock: an unretired race made `PhaseSchedule::forRace()` throw) and reads last week's average compliance score |
+| `schedule:monday-check` | 06:00 | — | one maintainer alert if anything above is still behind (below) |
 
-The two hard dependencies — `streak:settle` → `ai:weekly-recap`, and
-`plan:close-finished-races` + `plan:score-compliance` → `plan:regenerate` — are now **chained**, not
-just spaced: [SchedulerChain](../../app/Console/SchedulerChain.php) is a tiny "prerequisite done
-today" cache flag. The plan prerequisites mark themselves done via `->onSuccess()` when their exit
-code is 0. `plan:score-compliance` succeeds when at least one athlete's pass completes (or there
-was nobody to score); an all-failed pass leaves the gate closed and alerts the maintainer through
-the scheduler's failure callback. Streak settlement marks itself done from the final successful
-per-user job, after every athlete's durable cursor reaches the latest closed week. Each dependent's `->when()` gate refuses
-to run until every prerequisite it needs has marked itself done for the current date. Concretely,
-in `routes/console.php`:
+**The plan chain.** [SchedulerChain](../../app/Console/SchedulerChain.php) holds "done today" and
+"done this ISO week" flags. The two plan prerequisites mark themselves done today via
+`->onSuccess()` when their exit code is 0; `plan:score-compliance` succeeds when at least one
+athlete's pass completes (or there was nobody to score). `plan:regenerate`'s `->when()` gate opens
+only once both are done today and closes again once a run has marked it done this week:
 
 ```php
-Schedule::command('streak:settle')->weeklyOn(1, '00:00')->withoutOverlapping(20)->onOneServer();
-
-Schedule::command('ai:weekly-recap')->weeklyOn(1, '00:16')->withoutOverlapping(30)->onOneServer()
-    ->when(static fn (): bool => SchedulerChain::prerequisitesMet('ai:weekly-recap'));
+Schedule::command('plan:regenerate')->mondays()->hourlyAt(26)->withoutOverlapping(45)->onOneServer()
+    ->when(static fn (): bool => SchedulerChain::prerequisitesMet(SchedulerChain::PLAN_REGENERATE)
+        && ! SchedulerChain::isDoneThisWeek(SchedulerChain::PLAN_REGENERATE))
+    ->onSuccess(static fn () => SchedulerChain::markDoneThisWeek(SchedulerChain::PLAN_REGENERATE));
 ```
 
-and the same shape for `plan:regenerate`'s `->when()`. Which prerequisites each gated command
-waits for lives in `SchedulerChain::PREREQUISITES`, so the gates and the `/pulse` scheduler
-timeline (which renders each prerequisite as done/pending) read the same map. This was chosen over an
-`Event::then()`/`Artisan::call()` chain that runs the dependent immediately after its prerequisite:
-a `->when()` gate keeps every command's own cron expression the single source of truth for *when*
-it runs (`schedule:list` still shows `ai:weekly-recap` at its own `16 0 * * 1`, not folded into
-`streak:settle`'s entry), while still making the dependency load-bearing rather than assumed. The
-existing `withoutOverlapping()`/`onOneServer()` guards on every event are untouched — `->when()` is
-an additional filter Laravel checks via `Event::filtersPass()` before a due event runs, not a
-replacement for the overlap/single-host locks. A settlement job that fails or reaches the safety
-bound leaves the cache flag unset; its retry or next scheduled invocation must finish before the
-recap gate opens.
+Which prerequisites each gated command waits for lives in `SchedulerChain::PREREQUISITES`, so the
+gates and the `/pulse` scheduler timeline (which renders each prerequisite as done/pending) read
+the same map. A `->when()` gate keeps every command's own cron expression the single source of
+truth for *when* it runs, and it is an extra filter Laravel checks via `Event::filtersPass()`, not a
+replacement for the overlap/single-host locks.
 
-The staggered times (00:00 → 00:16 → 00:21 → 00:26) stay as a **fallback**, not the enforcement: in
-practice the flag is almost always already set by the time the dependent's own cron tick fires,
-since every command in this window finishes in low single-digit seconds even before accounting for
-its own generous `withoutOverlapping` TTL (see the measured-locally column in the table above) — so
-spacing alone would still work at today's scale, but the `->when()` gate is what makes it correct
-rather than merely likely, and is what protects the ordering once a slow run, a retry, or a future
-higher user count makes "usually finishes first" no longer safe to assume. A prerequisite that
-fails never marks itself done, so a failed `streak:settle` correctly holds back `ai:weekly-recap`
-rather than letting it narrate a streak the settle never applied. The per-user settlement jobs retry
-and self-dispatch while behind; if a job remains failed, the next Monday's scheduled command queues
-it again.
+**Why the entries retry.** A Monday entry that ran once at a single minute was lost for the whole
+week when that minute was missed: a deploy or maintenance window across `00:00`-`00:26`, a killed
+scheduler, or an eviction of the gate flags. Each entry now re-evaluates every hour (the
+prerequisites every hour of every day, the Monday entries every Monday hour) until it succeeds, and
+the flag or cursor it leaves behind makes every later tick a no-op. The flags live on the `durable`
+cache store ([config/cache.php](../../config/cache.php)), which is the AOF-backed `default` Redis
+connection the scheduler mutexes and the heartbeat already use, not the allkeys-lru `cache`
+instance, so an eviction or a restart of that instance no longer closes the gate. Tests run the
+store on the `array` driver through `CACHE_DURABLE_DRIVER` in `phpunit.xml`. `streak:settle`
+needs no flag: its durable per-athlete cursor already says who is behind, so a re-run queues only
+those athletes and is a no-op once everyone is settled.
+
+A gate that is still closed simply skips that tick; individual skips are not alerted (recording them
+belongs to #1786). Instead `schedule:monday-check` runs at 06:00 and, if `streak:settle` still has
+an athlete behind or a plan entry has not succeeded, sends one maintainer alert for the week
+through `MaintainerAlerter::mondayEntriesOverdue()`. The entries keep retrying after it.
+
+**Settlement and narration.** No recap reads the streak: `WeeklyRecapNarrator` reads only the
+week's totals and plan context, and the monthly recap reads neither. The only narration that quotes
+the settled streak is the weekly profile voice (`LifetimeStatsTool` → `ProfileVoiceNarrator`), so
+the gate sits there, per athlete: an automatic profile-voice request (the weekly kickoff, the ingest
+cascade, `ai:self-heal`, the settle-early replay) for an athlete who is not settled through the
+latest closed week, or whose settled history is marked dirty, stays `Pending`
+([AnalysisService::dispatchRow()](../../app/Services/AI/AnalysisService.php)), and `ai:self-heal`
+narrates it on the first sweep after that athlete's settlement lands. One athlete behind holds back
+nobody else. The athlete's own Reread does not wait. The rule is
+[StreakSettlementService::unsettledUsers()](../../app/Services/Gamification/StreakSettlementService.php),
+the same query `streak:settle` and `schedule:monday-check` use.
+
+**The monthly recap** has no scheduled slot of its own. The ingest cascade stages each month's row
+`Pending`, and the hourly `ai:self-heal` narrates it on its first sweep after the month closes;
+quiet hours deliver the resulting push at 04:00.
 
 ## Cadence derivations (previously qualitative-only)
 

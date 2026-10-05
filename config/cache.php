@@ -82,6 +82,13 @@ return [
             'lock_connection' => env('REDIS_CACHE_LOCK_CONNECTION', 'default'),
         ],
 
+        // State that must survive an eviction or a restart of the allkeys-lru `cache` instance.
+        'durable' => [
+            'driver' => env('CACHE_DURABLE_DRIVER', 'redis'),
+            'connection' => 'default',
+            'lock_connection' => 'default',
+        ],
+
         'dynamodb' => [
             'driver' => 'dynamodb',
             'key' => env('AWS_ACCESS_KEY_ID'),

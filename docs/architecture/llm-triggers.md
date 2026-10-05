@@ -83,19 +83,18 @@ everyone. See [[narration-spends-only-on-active-athletes]].
 | when | command | what it dispatches |
 |---|---|---|
 | daily 00:01 | [`ai:daily-briefing`](../../routes/console.php#L43) | one `BriefingMascotVoice` per active non-demo user — narrates right away even for a first connect whose backlog is still draining ([[history-narrates-on-demand]], #1054) |
-| Mon 00:16 | [`ai:weekly-recap`](../../routes/console.php#L60) | `WeeklyRecap`, oldest unfinished link first |
-| Mon 00:21 | [`ai:weekly-profile`](../../routes/console.php#L68) | `ProfileVoice`, keyed by ISO week — narrates right away under the same first-connect condition |
-| **Mon 00:26** | [**`plan:regenerate`**](../../routes/console.php#L101) | **one row per user, the season voice — see below** |
-| 1st 05:45 | [`ai:monthly-recap`](../../routes/console.php#L111) | `MonthlyRecap`, oldest first |
-| daily 06:00 | [`ai:trend-read 7d`](../../routes/console.php#L118) | `TrendRead`, discriminator `7d` — the only range since #967 |
+| Mon 00:16 | [`ai:weekly-recap`](../../routes/console.php#L57) | `WeeklyRecap`, oldest unfinished link first; `ai:self-heal` usually narrates it at 00:00 |
+| Mon 00:21 | [`ai:weekly-profile`](../../routes/console.php#L66) | `ProfileVoice`, keyed by ISO week — every automatic request waits until that athlete's streak is settled through the closed week and not dirty; the athlete's own Reread does not wait |
+| **Mon 00:26** | [**`plan:regenerate`**](../../routes/console.php#L104) | **one row per user, the season voice — see below** |
+| daily 06:00 | [`ai:trend-read 7d`](../../routes/console.php#L125) | `TrendRead`, discriminator `7d` — the only range since #967 |
 | first connect | [`KickoffRecapsJob`](../../app/Jobs/AI/KickoffRecapsJob.php) | the `trend_read` row, so a new account isn't a day behind |
-| hourly | [`ai:self-heal`](../../routes/console.php#L130) | recovery only — see origin 4 |
-| hourly | [`ai:catch-up`](../../routes/console.php#L139) | creation only — recreates a kickoff row a missed scheduler minute never staged, never dispatches |
+| hourly | [`ai:self-heal`](../../routes/console.php#L137) | recovery only — see origin 4; also the only scheduled path for `MonthlyRecap`, which it narrates from the ingest-staged row once the month closes |
+| hourly | [`ai:catch-up`](../../routes/console.php#L146) | creation only — recreates a kickoff row a missed scheduler minute never staged, never dispatches |
 
 **A new athlete's recap kickoff only reaches periods that closed after they connected.**
 [`KickoffWeeklyRecaps`](../../app/Actions/AI/KickoffWeeklyRecaps.php) /
 [`KickoffMonthlyRecaps`](../../app/Actions/AI/KickoffMonthlyRecaps.php) — the shared implementation
-behind `ai:weekly-recap`/`ai:monthly-recap` and `KickoffRecapsJob`'s first-connect kickoff — route a
+behind `ai:weekly-recap` and `KickoffRecapsJob`'s first-connect kickoff — route a
 week or month whose close fell before `StravaConnection.created_at` (read through
 [`HydrationBacklog::connectedAt()`](../../app/Services/AI/HydrationBacklog.php#L21) /
 `connectedAtFor()`, the same anchor [[recap-waits-for-hydration]] and [[history-narrates-on-demand]]

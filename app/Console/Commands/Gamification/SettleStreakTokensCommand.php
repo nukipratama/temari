@@ -4,10 +4,8 @@ declare(strict_types=1);
 
 namespace App\Console\Commands\Gamification;
 
-use App\Console\SchedulerChain;
 use App\Jobs\Gamification\SettleStreakWeeksJob;
-use App\Models\User;
-use App\Models\WeeklySnapshot;
+use App\Services\Gamification\StreakSettlementService;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
@@ -16,18 +14,12 @@ use Illuminate\Console\Command;
 #[Description('Settle the week that just closed against each user\'s weekly streak: mint a rest token, or spend one to forgive a runless week')]
 class SettleStreakTokensCommand extends Command
 {
-    public function handle(): int
+    public function handle(StreakSettlementService $settlement): int
     {
-        $users = User::query()->notDemo()
-            ->whereIn('id', WeeklySnapshot::query()->select('user_id')->distinct())
-            ->pluck('id');
+        $users = $settlement->unsettledUsers()->pluck('id');
 
         foreach ($users as $userId) {
             SettleStreakWeeksJob::dispatch((int) $userId)->afterCommit();
-        }
-
-        if ($users->isEmpty()) {
-            SchedulerChain::markDoneToday(SchedulerChain::STREAK_SETTLE);
         }
 
         $this->info("Queued streak settlement for {$users->count()} users.");

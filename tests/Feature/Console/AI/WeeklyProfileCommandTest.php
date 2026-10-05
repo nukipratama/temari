@@ -7,9 +7,11 @@ use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
 use App\Models\StravaConnection;
 use App\Models\User;
+use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
+use App\Services\Gamification\StreakSettlementService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Bus;
@@ -66,6 +68,38 @@ it('excludes the demo user so it never auto-bills the weekly profile LLM', funct
     expect(array_column($captured, 'subjectId'))
         ->toContain($real->id)
         ->not->toContain($demo->id);
+
+    Carbon::setTestNow();
+});
+
+it('narrates a settled athlete\'s voice on Monday while an unsettled athlete\'s waits, then resumes it once settled', function (): void {
+    Bus::fake();
+    Carbon::setTestNow('2026-05-18 00:21:00');
+    $isoWeek = AnalysisType::currentIsoWeek();
+
+    $settled = User::factory()->seenToday()->create();
+    WeeklySnapshot::factory()->for($settled)->create(['week_ending' => '2026-05-17', 'runs' => 3]);
+    $settled->forceFill(['streak_settled_through' => '2026-05-17'])->saveQuietly();
+    $unsettled = User::factory()->seenToday()->create();
+    WeeklySnapshot::factory()->for($unsettled)->create(['week_ending' => '2026-05-17', 'runs' => 2]);
+
+    $this->artisan('ai:weekly-profile')->assertSuccessful();
+
+    $voiceOf = fn (User $user): Analysis => Analysis::query()
+        ->where('subject_id', $user->id)
+        ->where('analysis_type', AnalysisType::ProfileVoice)
+        ->where('discriminator', $isoWeek)
+        ->firstOrFail();
+
+    expect($voiceOf($settled)->status)->toBe(AnalysisStatus::Queued)
+        ->and($voiceOf($unsettled)->status)->toBe(AnalysisStatus::Pending);
+
+    app(StreakSettlementService::class)->settle($unsettled);
+    Carbon::setTestNow('2026-05-18 01:00:00');
+
+    $this->artisan('ai:self-heal')->assertSuccessful();
+
+    expect($voiceOf($unsettled)->status)->toBe(AnalysisStatus::Queued);
 
     Carbon::setTestNow();
 });

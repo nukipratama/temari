@@ -14,6 +14,8 @@ code_refs:
 
 # Scheduled state recovers after maintenance without replaying stale notifications
 
+> **Superseded in part (2026-10-05):** weekly recaps are no longer gated on streak settlement, since no recap reads the streak and the gate never covered `ai:self-heal`; the weekly profile voice waits per athlete instead, and `streak:settle` retries every Monday hour (see [[scheduler]]).
+
 ## Context
 
 Maintenance mode pauses every scheduled command except the liveness heartbeat. Most commands are safe because they scan durable backlog or calculate from the current period when they next run. Three paths also have deterministic writes whose scheduled minute used to be the only trigger: weekly streak settlement, closed-day trend snapshots, and the daily readiness clamp record.

@@ -43,7 +43,7 @@ channel, the serialised notification with its id, `held_at`) and returns `false`
 channel's send. The queued job that carried it completes normally.
 
 **How it releases.** `notifications:release-held` runs every five minutes
-([routes/console.php](../../routes/console.php#L171)) and does nothing while the window is open.
+([routes/console.php](../../routes/console.php#L178)) and does nothing while the window is open.
 Outside it, it walks every held row in id order and, in one transaction per row, deletes the row and
 re-queues it as the same one-channel `SendQueuedNotifications` job Laravel queued at trigger time
 ([ReleaseHeldNotificationsCommand](../../app/Console/Commands/Notifications/ReleaseHeldNotificationsCommand.php#L53)).

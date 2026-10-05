@@ -155,6 +155,23 @@ it('pushes a scheduler-failure alert', function (): void {
     app(MaintainerAlerter::class)->schedulerFailed('ai:self-heal');
 });
 
+it('pushes one overdue-Monday alert per week, naming each entry still behind', function (): void {
+    $client = fakeTelegram();
+    adminWithChat(4101);
+    Carbon::setTestNow('2026-09-14 06:00:00');
+
+    $client->shouldReceive('sendMessage')->once()->with(4101, Mockery::on(
+        fn (string $message): bool => str_contains($message, 'streak:settle (2 athletes unsettled)')
+            && str_contains($message, 'plan:regenerate'),
+    ));
+
+    $alerter = app(MaintainerAlerter::class);
+    $alerter->mondayEntriesOverdue(['streak:settle (2 athletes unsettled)', 'plan:regenerate']);
+    $alerter->mondayEntriesOverdue(['plan:regenerate']);
+
+    Carbon::setTestNow();
+});
+
 it('pushes a deploy-failure alert', function (): void {
     $client = fakeTelegram();
     adminWithChat(6001);

@@ -7,7 +7,6 @@ reviewed: 2026-06-20
 code_refs:
   - app/Models/User.php
   - app/Console/Commands/AI/WeeklyRecapCommand.php
-  - app/Console/Commands/AI/MonthlyRecapCommand.php
   - app/Console/Commands/AI/SelfHealCommand.php
   - app/Console/Commands/AI/WeeklyProfileCommand.php
   - app/Console/Commands/AI/DailyBriefingCommand.php
@@ -18,6 +17,8 @@ code_refs:
 ---
 
 # Demo user excluded from auto-billing schedulers
+
+> **Superseded fact (2026-10-05):** `ai:monthly-recap` is no longer scheduled; the monthly recap narrates through `ai:self-heal`, which sweeps only `RecentlyActiveUsers` (see [[scheduler]]).
 
 **Status:** Accepted (documented 2026-06-20)
 
@@ -42,7 +43,7 @@ The flag and its scope live on [User](app/Models/User.php): an `is_demo` boolean
 - `ai:daily-briefing` (briefing set + trend caption) — [DailyBriefingCommand](app/Console/Commands/AI/DailyBriefingCommand.php)
 - `ai:weekly-recap` — [WeeklyRecapCommand](app/Console/Commands/AI/WeeklyRecapCommand.php)
 - `ai:weekly-profile` (persona summary + Kata Temari voice) — [WeeklyProfileCommand](app/Console/Commands/AI/WeeklyProfileCommand.php)
-- `ai:monthly-recap` — [MonthlyRecapCommand](app/Console/Commands/AI/MonthlyRecapCommand.php)
+- `ai:monthly-recap` — `MonthlyRecapCommand` (removed 2026-10-05)
 - `strava:sync` — [SyncCommand](app/Console/Commands/Strava/SyncCommand.php)
 - `strava:ingest` — [IngestCommand](app/Console/Commands/Strava/IngestCommand.php) (filters `is_demo = false` via a relation sub-query)
 

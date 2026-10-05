@@ -7,8 +7,6 @@ use App\Models\StreakRestToken;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\Gamification\StreakSettlementService;
-use Illuminate\Console\Scheduling\Event;
-use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Bus;
@@ -74,19 +72,35 @@ it('queues real athletes but excludes the demo history', function (): void {
     Bus::assertDispatched(fn (SettleStreakWeeksJob $job): bool => $job->userId === $secondReal->id);
 });
 
-it('is scheduled ahead of the weekly recap, which reads the streak it settles', function (): void {
-    $minuteOf = function (string $command): int {
-        $event = collect(app(Schedule::class)->events())
-            ->first(fn (Event $e): bool => str_contains((string) $e->command, $command));
+it('catches a missed 00:00 run up on a later Monday tick, and a re-run once everyone is settled queues nothing', function (): void {
+    Carbon::setTestNow('2026-06-01 03:00:00');
+    $user = User::factory()->create();
+    settleWeeks($user, 3);
 
-        expect($event)->not->toBeNull("[{$command}] is no longer scheduled");
+    $this->artisan('streak:settle')
+        ->expectsOutputToContain('Queued streak settlement for 1 users.')
+        ->assertSuccessful();
 
-        [$minute, $hour, , , $day] = explode(' ', $event->expression);
+    expect($user->fresh()->streak_settled_through?->toDateString())->toBe('2026-05-31');
 
-        expect($day)->toBe('1', "[{$command}] no longer runs on Monday");
+    Bus::fake();
 
-        return ((int) $hour * 60) + (int) $minute;
-    };
+    $this->artisan('streak:settle')
+        ->expectsOutputToContain('Queued streak settlement for 0 users.')
+        ->assertSuccessful();
 
-    expect($minuteOf('streak:settle'))->toBeLessThan($minuteOf('ai:weekly-recap'));
+    Bus::assertNotDispatched(SettleStreakWeeksJob::class);
+});
+
+it('re-settles an athlete a later write marked dirty', function (): void {
+    $user = User::factory()->create();
+    settleWeeks($user, 2);
+    app(StreakSettlementService::class)->settle($user);
+    app(StreakSettlementService::class)->markDirty($user->id, Carbon::parse('2026-05-31'));
+
+    Bus::fake();
+
+    $this->artisan('streak:settle')->assertSuccessful();
+
+    Bus::assertDispatched(fn (SettleStreakWeeksJob $job): bool => $job->userId === $user->id);
 });

@@ -144,8 +144,8 @@ class DispatchPostRunAnalysis implements ShouldQueue
         }
 
         // Monthly cadence: same deferred staging keyed by the run's month (Y-m).
-        // The chain narrates it once the month closes (ai:monthly-recap kickoff +
-        // the daily resume sweep). Demo stays weekly-only, so it never stages a
+        // The chain narrates it once the month closes (the hourly ai:self-heal
+        // resume sweep). Demo stays weekly-only, so it never stages a
         // monthly row.
         if (! $user->is_demo) {
             $this->analysisService->requestDeferred(

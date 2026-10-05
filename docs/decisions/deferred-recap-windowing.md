@@ -7,12 +7,13 @@ reviewed: 2026-06-20
 code_refs:
   - app/Services/AI/AnalysisService.php
   - app/Console/Commands/AI/WeeklyRecapCommand.php
-  - app/Console/Commands/AI/MonthlyRecapCommand.php
   - app/Http/Controllers/Api/AnalysisController.php
   - routes/console.php
 ---
 
 # Deferred recap dispatch, window-gated
+
+> **Superseded fact (2026-10-05):** the 05:45 `ai:monthly-recap` slot and its command are gone; the hourly `ai:self-heal` narrates a closed month from its staged row on the first sweep after the month closes (see [[scheduler]]).
 
 **Status:** Accepted (documented 2026-06-20)
 
@@ -82,7 +83,7 @@ A weekly or monthly recap describes a whole period. But activities trickle in ac
 We decided to **stage the recap row on ingest but defer its LLM narration to a scheduled command**, gated on the period being closed:
 
 - On ingest, [`AnalysisService::requestDeferred`](app/Services/AI/AnalysisService.php) upserts the WeeklyRecap / MonthlyRecap row as `Pending` (a `firstOrCreate`) without dispatching, filling, or invalidating. This is the windowed-cadence path; `AnalysisCadence` marked these `Weekly` / `Monthly`.
-- The single billed narration comes from a scheduled command. [WeeklyRecapCommand](app/Console/Commands/AI/WeeklyRecapCommand.php) (`ai:weekly-recap`) and [MonthlyRecapCommand](app/Console/Commands/AI/MonthlyRecapCommand.php) (`ai:monthly-recap`) narrate every completed period whose recap is not yet `Done`, oldest first. Both cap at the latest **fully-closed** period (`RecapPeriod::lastClosedWeekEnding()` / `lastClosedMonth()`), so the still-running current period is never narrated on incomplete data.
+- The single billed narration comes from a scheduled command. [WeeklyRecapCommand](app/Console/Commands/AI/WeeklyRecapCommand.php) (`ai:weekly-recap`) and `MonthlyRecapCommand` (removed 2026-10-05) (`ai:monthly-recap`) narrate every completed period whose recap is not yet `Done`, oldest first. Both cap at the latest **fully-closed** period (`RecapPeriod::lastClosedWeekEnding()` / `lastClosedMonth()`), so the still-running current period is never narrated on incomplete data.
 - Schedule ([routes/console.php](routes/console.php)): `ai:weekly-recap` runs `weeklyOn(1, '00:16')` (Monday 00:16); `ai:monthly-recap` runs `monthlyOn(1, '05:45')` (1st of month).
 - On-demand narration of the still-open current period is also blocked: [`AnalysisService::isStillOpenRecapPeriod`](app/Services/AI/AnalysisService.php) makes [AnalysisController](app/Http/Controllers/Api/AnalysisController.php) return the inert row unchanged for a recap whose week/month hasn't closed (and the UI hides the trigger for it).
 

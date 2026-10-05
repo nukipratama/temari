@@ -47,7 +47,7 @@ ingest cascade, which covers only an athlete who happened to run that day.
 ## Decision
 
 We added a **separate hourly `ai:catch-up` command** ([CatchUpCommand](../../app/Console/Commands/AI/CatchUpCommand.php),
-scheduled at [routes/console.php:115](../../routes/console.php#L115)) that **creates missing kickoff
+scheduled at [routes/console.php:146](../../routes/console.php#L146)) that **creates missing kickoff
 rows and does nothing else**.
 
 - **It runs the kickoffs' own creation code**, under
