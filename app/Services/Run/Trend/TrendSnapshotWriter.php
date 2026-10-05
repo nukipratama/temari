@@ -10,17 +10,20 @@ use App\Models\TrendDailySnapshot;
 use App\Models\User;
 use App\Services\Run\Metrics\StreamSummary;
 use App\Services\Run\Metrics\VdotEstimator;
+use App\Services\Run\Plan\RaceAmbitionAssessor;
 use Illuminate\Support\Carbon;
 
 /**
- * Recomputes daily VDOT and pace-variability snapshots for a user.
+ * Recomputes daily VDOT, pace-variability and supported race time snapshots for a user.
  */
 class TrendSnapshotWriter
 {
     public const int UPSERT_BATCH_SIZE = 100;
 
-    public function __construct(private readonly VdotEstimator $vdotEstimator)
-    {
+    public function __construct(
+        private readonly VdotEstimator $vdotEstimator,
+        private readonly RaceAmbitionAssessor $ambition,
+    ) {
     }
 
     public function writeToday(User $user, ?Carbon $today = null): void
@@ -50,12 +53,20 @@ class TrendSnapshotWriter
         for ($date = $from->copy(); $date->lte($through); $date->addDay()) {
             $estimate = $this->vdotEstimator->estimate($user, $date);
             $dateString = $date->toDateString();
+            $race = $this->vdotEstimator->raceAsOf($user, $date);
+            $ambition = $race === null ? null : $this->ambition->assess($user, $race, $date);
+            $supportedSec = $ambition?->supportedTimeSec;
+            $basis = $supportedSec === null ? null : $ambition->basis;
 
             $rows[] = [
                 'user_id' => $user->id,
                 'snapshot_date' => $dateString,
                 'vdot' => $estimate['vdot'] ?? null,
                 'pace_variability_sec' => $paceVariability[$dateString] ?? null,
+                'race_goal_id' => $supportedSec === null ? null : $race->id,
+                'supported_time_sec' => $supportedSec,
+                'supported_source_distance_m' => $basis['distance_m'] ?? null,
+                'supported_source_date' => $basis['performed_on'] ?? null,
                 'created_at' => $timestamp,
                 'updated_at' => $timestamp,
             ];
@@ -106,7 +117,7 @@ class TrendSnapshotWriter
     }
 
     /**
-     * @param  list<array{user_id: int, snapshot_date: string, vdot: float|null, pace_variability_sec: float|null, created_at: Carbon, updated_at: Carbon}>  $rows
+     * @param  list<array{user_id: int, snapshot_date: string, vdot: float|null, pace_variability_sec: float|null, race_goal_id: int|null, supported_time_sec: int|null, supported_source_distance_m: int|null, supported_source_date: string|null, created_at: Carbon, updated_at: Carbon}>  $rows
      */
     private function upsert(array $rows): int
     {
@@ -117,7 +128,7 @@ class TrendSnapshotWriter
         TrendDailySnapshot::query()->upsert(
             $rows,
             ['user_id', 'snapshot_date'],
-            ['vdot', 'pace_variability_sec', 'updated_at'],
+            ['vdot', 'pace_variability_sec', 'race_goal_id', 'supported_time_sec', 'supported_source_distance_m', 'supported_source_date', 'updated_at'],
         );
 
         return count($rows);

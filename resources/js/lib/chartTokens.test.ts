@@ -48,6 +48,11 @@ describe('CHART_GROUND', () => {
         expect(CHART_GROUND.light.border).toBe('#bfc5cc'); // = border on light
         expect(CHART_GROUND.dark.border).toBe('#4d5560'); // = border on dark
     });
+
+    it('mirrors the light/dark leaf-ink token pair for leaf-toned chart text', () => {
+        expect(CHART_GROUND.light.leafInk).toBe('#226748'); // = leaf-ink on light
+        expect(CHART_GROUND.dark.leafInk).toBe('#77b699'); // = leaf-ink on dark
+    });
 });
 
 describe('PHASE_COLORS', () => {

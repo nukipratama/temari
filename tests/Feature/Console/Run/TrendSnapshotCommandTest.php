@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Models\Activity;
 use App\Models\ActivityDetail;
+use App\Models\RaceGoal;
 use App\Models\TrendDailySnapshot;
 use App\Models\User;
 use App\Jobs\Run\ReconcileScheduledTrendSnapshotsJob;
@@ -86,6 +87,24 @@ it('is idempotent when run twice the same day', function (): void {
     $this->artisan('trend:snapshot-daily', ['--days' => 7])->assertSuccessful();
 
     expect(TrendDailySnapshot::query()->where('user_id', $user->id)->count())->toBe(7);
+
+    Carbon::setTestNow();
+});
+
+it('backfills the supported race time for the closed days of the current race', function (): void {
+    Carbon::setTestNow('2026-08-17 12:00:00');
+
+    $user = User::factory()->create();
+    $race = RaceGoal::factory()->for($user)->create(['created_at' => '2026-08-13 09:00:00']);
+    seedConfirmedEffort($user, 5000, 1320, Carbon::parse('2026-08-01'));
+
+    $this->artisan('trend:snapshot-daily', ['--days' => 7])->assertSuccessful();
+
+    $rows = TrendDailySnapshot::query()->where('user_id', $user->id)->orderBy('snapshot_date')->get();
+    expect($rows->pluck('race_goal_id')->all())->toBe([null, null, null, $race->id, $race->id, $race->id, $race->id])
+        ->and($rows->last()->supported_time_sec)->toBeInt()->toBeGreaterThan(0)
+        ->and($rows->last()->supported_source_distance_m)->toBe(5000)
+        ->and($rows->last()->supported_source_date?->toDateString())->toBe('2026-08-01');
 
     Carbon::setTestNow();
 });

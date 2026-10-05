@@ -9,6 +9,8 @@ use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\PlannedSession;
 use App\Models\RaceGoal;
+use App\Models\Season;
+use App\Models\TrendDailySnapshot;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisType;
@@ -52,6 +54,7 @@ it('paints the shell with every heavy block deferred', function (): void {
             ->missing('weekComparison')
             ->missing('load')
             ->missing('chartAnnotations')
+            ->missing('supportedHistory')
             ->etc());
 });
 
@@ -287,4 +290,99 @@ it('serves the active race outlook from the same presenter as /race, and null wi
     expect($outlook['ambition']['state'])->toBe('unknown')
         ->and($outlook['support']['dedicated_preparation'])->toBeTrue()
         ->and($outlook['ambition'])->toBe($race->viewData('page')['props']['race']['ambition']);
+});
+
+function supportedSnapshot(User $user, ?RaceGoal $race, string $date, ?int $supportedSec, ?int $sourceM = 5000, ?string $sourceOn = '2026-08-01'): void
+{
+    TrendDailySnapshot::factory()->for($user)->create([
+        'snapshot_date' => $date,
+        'race_goal_id' => $race?->id,
+        'supported_time_sec' => $supportedSec,
+        'supported_source_distance_m' => $supportedSec === null ? null : $sourceM,
+        'supported_source_date' => $supportedSec === null ? null : $sourceOn,
+    ]);
+}
+
+function supportedHistoryProp(mixed $test, User $user): mixed
+{
+    return $test->actingAs($user)
+        ->get('/trends', inertiaPartialHeaders($test->actingAs($user), '/trends', 'Trends', 'supportedHistory'))
+        ->json('props.supportedHistory');
+}
+
+it('serves the current race\'s supported time over its season, labelling a step only when the source effort changed', function (): void {
+    Carbon::setTestNow('2026-10-05 09:00:00');
+    $user = User::factory()->create();
+    $race = RaceGoal::factory()->for($user)->create(['goal_time_sec' => 3_000]);
+    Season::factory()->for($user)->create(['race_goal_id' => $race->id, 'starts_at' => '2026-08-03']);
+    supportedSnapshot($user, $race, '2026-08-02', 3_400);
+    supportedSnapshot($user, $race, '2026-08-03', 3_300);
+    supportedSnapshot($user, $race, '2026-08-04', 3_250);
+    supportedSnapshot($user, $race, '2026-08-05', 3_200, 10_000, '2026-08-05');
+    supportedSnapshot($user, $race, '2026-08-06', 3_200, 10_000, '2026-08-05');
+    supportedSnapshot($user, $race, '2026-08-07', null);
+
+    $history = supportedHistoryProp($this, $user);
+
+    expect($history['target_time_sec'])->toBe(3_000)
+        ->and(array_column($history['points'], 'date'))->toBe(['2026-08-03', '2026-08-04', '2026-08-05', '2026-08-06'])
+        ->and(array_column($history['points'], 'supported_time_sec'))->toBe([3_300, 3_250, 3_200, 3_200])
+        ->and(array_column($history['points'], 'new_source'))->toBe([false, false, true, false])
+        ->and($history['points'][2]['source'])->toBe(['distance_m' => 10_000, 'date' => '2026-08-05']);
+});
+
+it('plots only snapshots taken for the current race goal', function (): void {
+    Carbon::setTestNow('2026-10-05 09:00:00');
+    $user = User::factory()->create();
+    $old = RaceGoal::factory()->for($user)->completed()->create();
+    $race = RaceGoal::factory()->for($user)->create();
+    supportedSnapshot($user, $old, '2026-09-01', 3_500);
+    supportedSnapshot($user, $old, '2026-09-02', 3_450);
+    supportedSnapshot($user, $race, '2026-10-03', 3_300);
+    supportedSnapshot($user, $race, '2026-10-04', 3_290);
+
+    $history = supportedHistoryProp($this, $user);
+
+    expect(array_column($history['points'], 'date'))->toBe(['2026-10-03', '2026-10-04']);
+});
+
+it('serves no supported history without an active race', function (): void {
+    Carbon::setTestNow('2026-10-05 09:00:00');
+    $user = User::factory()->create();
+    $old = RaceGoal::factory()->for($user)->completed()->create();
+    supportedSnapshot($user, $old, '2026-10-03', 3_300);
+    supportedSnapshot($user, $old, '2026-10-04', 3_290);
+
+    expect(supportedHistoryProp($this, $user))->toBeNull();
+});
+
+it('serves no supported history with fewer than two days of it', function (): void {
+    Carbon::setTestNow('2026-10-05 09:00:00');
+    $user = User::factory()->create();
+    $race = RaceGoal::factory()->for($user)->create();
+    supportedSnapshot($user, $race, '2026-10-04', 3_290);
+    supportedSnapshot($user, $race, '2026-10-05', null);
+
+    expect(supportedHistoryProp($this, $user))->toBeNull();
+});
+
+it('serves no supported history when the race has no supported time', function (): void {
+    Carbon::setTestNow('2026-10-05 09:00:00');
+    $user = User::factory()->create();
+    RaceGoal::factory()->for($user)->create(['distance_m' => 50_000, 'goal_time_sec' => 18_000]);
+    supportedSnapshot($user, null, '2026-10-04', null);
+    supportedSnapshot($user, null, '2026-10-05', null);
+
+    expect(supportedHistoryProp($this, $user))->toBeNull();
+});
+
+it('never surfaces another user\'s supported history', function (): void {
+    Carbon::setTestNow('2026-10-05 09:00:00');
+    $user = User::factory()->create();
+    $other = User::factory()->create();
+    $race = RaceGoal::factory()->for($other)->create();
+    supportedSnapshot($other, $race, '2026-10-03', 3_300);
+    supportedSnapshot($other, $race, '2026-10-04', 3_290);
+
+    expect(supportedHistoryProp($this, $user))->toBeNull();
 });

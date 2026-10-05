@@ -485,15 +485,21 @@ class VdotEstimator
         return abs($a - $b) / min($a, $b) <= self::COMPARABLE_DISTANCE_PERCENT / 100;
     }
 
-    private function raceDistance(User $user, Carbon $now): float
+    public function raceAsOf(User $user, Carbon $now): ?RaceGoal
     {
         $endOfDay = $now->copy()->endOfDay();
-        $race = $now->gte(Carbon::today())
+
+        return $now->gte(Carbon::today())
             ? ($this->activeRace)($user->id)
             : $this->racesForUser($user)->first(
                 static fn (RaceGoal $race): bool => $race->created_at !== null && $race->created_at->lte($endOfDay)
                     && ($race->completed_at === null || $race->completed_at->gt($endOfDay)),
             );
+    }
+
+    private function raceDistance(User $user, Carbon $now): float
+    {
+        $race = $this->raceAsOf($user, $now);
 
         return $race !== null && RaceSupport::forDistance((float) $race->distance_m)->dedicatedPreparation()
             ? (float) $race->distance_m
@@ -629,7 +635,7 @@ class VdotEstimator
     {
         return $this->racesByUser[$user->id] ??= RaceGoal::query()->where('user_id', $user->id)
             ->orderByDesc('created_at')->orderByDesc('id')
-            ->get(['id', 'user_id', 'distance_m', 'created_at', 'completed_at']);
+            ->get(['id', 'user_id', 'distance_m', 'goal_time_sec', 'created_at', 'completed_at']);
     }
 
     /** @return Collection<int, PlannedSession> */

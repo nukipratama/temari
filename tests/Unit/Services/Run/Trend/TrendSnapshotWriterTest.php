@@ -6,8 +6,10 @@ use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\PersonalRecord;
 use App\Models\PerformanceEvidence;
+use App\Models\RaceGoal;
 use App\Models\TrendDailySnapshot;
 use App\Models\User;
+use App\Services\Run\Plan\RaceAmbitionAssessor;
 use App\Services\Run\Trend\TrendSnapshotWriter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -149,4 +151,65 @@ it('backfills a snapshot with the VDOT the athlete had proven by that date, not 
     $backfilled = TrendDailySnapshot::query()->where('snapshot_date', '2024-06-01')->sole();
 
     expect($backfilled->vdot)->toBeLessThan($today->vdot);
+});
+
+it('writes the supported time at the active race distance, its race goal and the effort it rests on', function (): void {
+    $user = User::factory()->create();
+    $race = RaceGoal::factory()->for($user)->create(['distance_m' => 10_000, 'created_at' => Carbon::today()->subWeeks(3)]);
+    seedConfirmedEffort($user, 5000, 1320, Carbon::parse('2026-08-03'));
+
+    $this->writer->writeToday($user);
+
+    $snap = TrendDailySnapshot::query()->where('user_id', $user->id)->sole();
+    $expected = app(RaceAmbitionAssessor::class)->assess($user, $race, Carbon::today());
+    expect($snap->race_goal_id)->toBe($race->id)
+        ->and($snap->supported_time_sec)->toBe($expected->supportedTimeSec)
+        ->and($snap->supported_time_sec)->toBeInt()->toBeGreaterThan(0)
+        ->and($snap->supported_source_distance_m)->toBe(5000)
+        ->and($snap->supported_source_date?->toDateString())->toBe('2026-08-03');
+});
+
+it('backfills a range with the race that was active on each date, and nulls the days before it was set', function (): void {
+    $user = User::factory()->create();
+    $race = RaceGoal::factory()->for($user)->create(['distance_m' => 10_000, 'created_at' => Carbon::parse('2026-08-14 09:00:00')]);
+    seedConfirmedEffort($user, 5000, 1320, Carbon::parse('2026-08-01'));
+
+    $this->writer->writeRange($user, Carbon::parse('2026-08-12'), Carbon::today());
+
+    $rows = TrendDailySnapshot::query()->where('user_id', $user->id)->orderBy('snapshot_date')->get()
+        ->keyBy(fn (TrendDailySnapshot $row): string => $row->snapshot_date->toDateString());
+    expect($rows)->toHaveCount(6)
+        ->and($rows['2026-08-13']->race_goal_id)->toBeNull()
+        ->and($rows['2026-08-13']->supported_time_sec)->toBeNull()
+        ->and($rows['2026-08-13']->supported_source_distance_m)->toBeNull()
+        ->and($rows['2026-08-13']->supported_source_date)->toBeNull()
+        ->and($rows['2026-08-14']->race_goal_id)->toBe($race->id)
+        ->and($rows['2026-08-16']->supported_time_sec)->toBeInt()
+        ->and($rows['2026-08-17']->race_goal_id)->toBe($race->id);
+});
+
+it('writes no supported time without an active race', function (): void {
+    $user = User::factory()->create();
+    seedConfirmedEffort($user, 5000, 1320, Carbon::parse('2026-08-03'));
+
+    $this->writer->writeToday($user);
+
+    $snap = TrendDailySnapshot::query()->where('user_id', $user->id)->sole();
+    expect($snap->vdot)->not->toBeNull()
+        ->and($snap->race_goal_id)->toBeNull()
+        ->and($snap->supported_time_sec)->toBeNull()
+        ->and($snap->supported_source_distance_m)->toBeNull()
+        ->and($snap->supported_source_date)->toBeNull();
+});
+
+it('writes no supported time for a race beyond the marathon', function (): void {
+    $user = User::factory()->create();
+    RaceGoal::factory()->for($user)->create(['distance_m' => 50_000, 'goal_time_sec' => 18_000, 'created_at' => Carbon::today()->subWeek()]);
+    seedConfirmedEffort($user, 5000, 1320, Carbon::parse('2026-08-03'));
+
+    $this->writer->writeToday($user);
+
+    $snap = TrendDailySnapshot::query()->where('user_id', $user->id)->sole();
+    expect($snap->race_goal_id)->toBeNull()
+        ->and($snap->supported_time_sec)->toBeNull();
 });
