@@ -167,6 +167,7 @@ Create `/opt/temari/.env` with:
 | `DB_DATABASE`         | e.g. `temari`                                                                                    |
 | `DB_USERNAME`         | e.g. `temari`                                                                                    |
 | `DB_PASSWORD`         | strong random                                                                                        |
+| `DB_BACKUP_PASSWORD`  | strong random — the read-only `temari_backup` user's password; every deploy resets that user to it and every dump runs as it |
 | `MYSQL_ROOT_PASSWORD` | strong random — used on first mysql init only; cannot be changed after the volume exists            |
 | `STRAVA_CLIENT_ID`    | from your Strava developer app                                                                       |
 | `STRAVA_CLIENT_SECRET`| from your Strava developer app                                                                       |

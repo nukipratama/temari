@@ -8,6 +8,7 @@ code_refs:
   - config/database.php
   - app/Models/AI/TokenUsage.php
   - app/Models/Analytics/StravaSyncLog.php
+  - app/Models/Analytics/StravaRead.php
   - database/migrations/analytics/2026_05_19_132139_create_ai_token_usages_table.php
   - app/Services/User/UserEraser.php
   - app/Providers/AppServiceProvider.php
@@ -41,6 +42,8 @@ These Eloquent models pin themselves to it via `#[Connection('analytics')]`:
 - [StravaSyncLog](app/Models/Analytics/StravaSyncLog.php) — table `strava_sync_logs`;
   write through its `StravaSyncLog::log()` factory method, not raw `create()` scattered
   about.
+- [StravaRead](app/Models/Analytics/StravaRead.php) — one row per Strava API response, with its
+  source, priority, safe endpoint category, HTTP status and rate-limit usage.
 - [ContentFilterEvent](app/Models/AI/ContentFilterEvent.php) — table
   `ai_content_filter_events`, one row per output-side content-filter trip that degraded to the
   rule-based filler.

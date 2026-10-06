@@ -14,6 +14,8 @@ code_refs:
 
 # A day is scored when it is run, and only ever upward
 
+> **One example below is superseded (noted 2026-10-06).** `strava:sync` now runs at :07, so a run whose webhook is missed is ingested at about 00:07, before the 00:09 `plan:score-compliance`, when the poll finishes; the "ingested at 01:00" timing no longer holds. The decision itself is unchanged.
+
 > **Partly superseded (2026-10-02) by [[decoupling-describes-a-run-and-a-deletion-re-grades-its-day]].** A deleted run now re-grades its day from the surviving runs in either direction, so a deletion can lower the score. Ingests, re-ingests, revisions and late uploads still only move it up, and the rest of this decision stands.
 
 **Status:** Accepted (2026-09-07). Supersedes the *"this stays render-only"* clause of
