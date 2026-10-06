@@ -133,6 +133,14 @@ jobs:
         run: |
           echo "BACKUP_SUFFIX=${{ github.event.workflow_run.head_sha }}-$(date -u +%Y%m%dT%H%M%SZ)-${{ github.run_id }}-${{ github.run_attempt }}" >> "$GITHUB_ENV"
 
+      - name: Ensure the read-only backup user
+        if: steps.tip.outputs.current == 'true'
+        timeout-minutes: 2
+        run: |
+          DB_BACKUP_PASSWORD=$(scripts/deploy/backup-password.sh)
+          export DB_BACKUP_PASSWORD
+          $COMPOSE exec -T -e DB_BACKUP_PASSWORD mysql sh -s < scripts/deploy/ensure-backup-user.sh
+
       # MYSQL_PWD (exported inside the container) instead of `-p"$pass"` so the
       # password never lands in the container process table / /proc/*/cmdline.
       - name: Backup DB before migrate
@@ -140,6 +148,8 @@ jobs:
         timeout-minutes: 5
         run: |
           set -o pipefail
+          DB_BACKUP_PASSWORD=$(scripts/deploy/backup-password.sh)
+          export DB_BACKUP_PASSWORD
           mkdir -p "$BACKUP_DIR"
           out="$BACKUP_DIR/pre-deploy-$BACKUP_SUFFIX.sql.gz"
           if [ -e "$out" ]; then
@@ -147,12 +157,12 @@ jobs:
             exit 1
           fi
           # shellcheck disable=SC2016 # Database variables must expand inside the container shell.
-          $COMPOSE exec -T mysql sh -c \
-            'export MYSQL_PWD="$DB_PASSWORD"; mysqldump -h 127.0.0.1 --single-transaction --quick --no-tablespaces --set-gtid-purged=OFF --loose-skip-masking-policies -u"$DB_USERNAME" "$DB_DATABASE"' \
+          $COMPOSE exec -T -e DB_BACKUP_PASSWORD mysql sh -c \
+            'export MYSQL_PWD="$DB_BACKUP_PASSWORD"; mysqldump -h 127.0.0.1 --single-transaction --quick --no-tablespaces --set-gtid-purged=COMMENTED --loose-skip-masking-policies -utemari_backup "$DB_DATABASE"' \
             | gzip > "$out"
           # shellcheck disable=SC2016 # Database variables must expand inside the container shell.
-          tables=$($COMPOSE exec -T mysql sh -c \
-            'export MYSQL_PWD="$DB_PASSWORD"; mysql -h 127.0.0.1 -N -u"$DB_USERNAME" -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = \"$DB_DATABASE\""' \
+          tables=$($COMPOSE exec -T -e DB_BACKUP_PASSWORD mysql sh -c \
+            'export MYSQL_PWD="$DB_BACKUP_PASSWORD"; mysql -h 127.0.0.1 -N -utemari_backup -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = \"$DB_DATABASE\""' \
             | tr -d '[:space:]')
           scripts/deploy/verify-and-prune-backup.sh "Backup" "$out" "$tables" "$BACKUP_DIR/pre-deploy-*.sql.gz" 7 "pre-deploy-"
 
@@ -160,19 +170,21 @@ jobs:
         if: steps.tip.outputs.current == 'true'
         timeout-minutes: 5
         run: |
+          DB_BACKUP_PASSWORD=$(scripts/deploy/backup-password.sh)
+          export DB_BACKUP_PASSWORD
           out="$BACKUP_DIR/analytics-pre-deploy-$BACKUP_SUFFIX.sql.gz"
           if [ -e "$out" ]; then
             echo "::error::backup already exists, refusing to overwrite: $out"
             exit 1
           fi
           # shellcheck disable=SC2016 # Analytics variables must expand inside the container shell.
-          if $COMPOSE exec -T mysql sh -c 'adb="${DB_ANALYTICS_DATABASE:-temari_analytics}"; export MYSQL_PWD="$DB_PASSWORD"; mysql -h 127.0.0.1 -u"$DB_USERNAME" -e "USE $adb"' 2>/dev/null; then
+          if $COMPOSE exec -T -e DB_BACKUP_PASSWORD mysql sh -c 'adb="${DB_ANALYTICS_DATABASE:-temari_analytics}"; export MYSQL_PWD="$DB_BACKUP_PASSWORD"; mysql -h 127.0.0.1 -utemari_backup -e "USE $adb"' 2>/dev/null; then
             set -o pipefail
             # shellcheck disable=SC2016 # Analytics variables must expand inside the container shell.
-            $COMPOSE exec -T mysql sh -c 'adb="${DB_ANALYTICS_DATABASE:-temari_analytics}"; export MYSQL_PWD="$DB_PASSWORD"; mysqldump -h 127.0.0.1 --single-transaction --quick --no-tablespaces --set-gtid-purged=OFF --loose-skip-masking-policies -u"$DB_USERNAME" --databases "$adb"' \
+            $COMPOSE exec -T -e DB_BACKUP_PASSWORD mysql sh -c 'adb="${DB_ANALYTICS_DATABASE:-temari_analytics}"; export MYSQL_PWD="$DB_BACKUP_PASSWORD"; mysqldump -h 127.0.0.1 --single-transaction --quick --no-tablespaces --set-gtid-purged=COMMENTED --loose-skip-masking-policies -utemari_backup --databases "$adb"' \
               | gzip > "$out"
             # shellcheck disable=SC2016 # Analytics variables must expand inside the container shell.
-            tables=$($COMPOSE exec -T mysql sh -c 'adb="${DB_ANALYTICS_DATABASE:-temari_analytics}"; export MYSQL_PWD="$DB_PASSWORD"; mysql -h 127.0.0.1 -N -u"$DB_USERNAME" -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = \"$adb\""' \
+            tables=$($COMPOSE exec -T -e DB_BACKUP_PASSWORD mysql sh -c 'adb="${DB_ANALYTICS_DATABASE:-temari_analytics}"; export MYSQL_PWD="$DB_BACKUP_PASSWORD"; mysql -h 127.0.0.1 -N -utemari_backup -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = \"$adb\""' \
               | tr -d '[:space:]')
             scripts/deploy/verify-and-prune-backup.sh "Analytics backup" "$out" "$tables" "$BACKUP_DIR/analytics-pre-deploy-*.sql.gz" 7 "analytics-pre-deploy-"
           else

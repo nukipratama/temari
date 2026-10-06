@@ -278,6 +278,7 @@ services:
       # Skip reverse-DNS on every TCP connect — every connection from the
       # Octane workers is a hot path.
       - "--skip-name-resolve"
+      - "--binlog-expire-logs-seconds=604800"
     volumes:
       - mysql_data:/var/lib/mysql
     networks: [internal]

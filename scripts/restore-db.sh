@@ -84,7 +84,7 @@ esac
   if [ -n "$drops" ]; then
     printf '%s\n' "$drops"
   fi
-  gunzip -c "$backup"
+  gunzip -c "$backup" | sed -e '/^SET @@SESSION.SQL_LOG_BIN/d' -e '/^SET @MYSQLDUMP_TEMP_LOG_BIN/d'
 } | $COMPOSE exec -T -e RESTORE_TARGET="$target" "$MYSQL_SERVICE" sh -c \
   'export MYSQL_PWD="$DB_PASSWORD"; mysql -h 127.0.0.1 -u"$DB_USERNAME" ${RESTORE_TARGET:+"$RESTORE_TARGET"}'
 
