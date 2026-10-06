@@ -26,8 +26,10 @@ step() {
   shift
   echo ">>> $name" | tee -a "$GATE_LOG"
   started=$(date +%s)
-  if ! "$@" > "$STEP_LOG" 2>&1; then
-    cat "$STEP_LOG" >> "$GATE_LOG"
+  step_status=0
+  "$@" > "$STEP_LOG" 2>&1 || step_status=$?
+  cat "$STEP_LOG" >> "$GATE_LOG"
+  if [ "$step_status" -ne 0 ]; then
     failed_after=$(($(date +%s) - started))
     tail -n 40 "$STEP_LOG"
     echo "    full output: $GATE_LOG"
@@ -35,7 +37,6 @@ step() {
     echo "GATE: FAIL at $name (${failed_after}s)" >&2
     exit 1
   fi
-  cat "$STEP_LOG" >> "$GATE_LOG"
   echo "    $name ok ($(($(date +%s) - started))s)"
 }
 
