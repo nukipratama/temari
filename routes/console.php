@@ -278,4 +278,4 @@ Schedule::command('fitness:notify-improvement')->dailyAt('10:00')->withoutOverla
 // inventory it cites). Idempotent per athlete per day through the shared
 // per-(analysis, channel) delivery claim. Demo excluded: the shared identity
 // has no outbound channel.
-Schedule::command('briefing:morning-push')->everyFifteenMinutes()->withoutOverlapping(14)->onOneServer();
+$alertOnFailure(Schedule::command('briefing:morning-push')->everyFifteenMinutes()->withoutOverlapping(14)->onOneServer(), 'briefing:morning-push');
