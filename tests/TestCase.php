@@ -58,10 +58,6 @@ abstract class TestCase extends BaseTestCase
         Redis::connection('default')->flushdb();
         Redis::connection('cache')->flushdb();
 
-        foreach (AppConfigKey::cases() as $key) {
-            Cache::forget($key->cacheKey());
-        }
-
         Cache::forever(AppConfigKey::MaintenanceEnabled->cacheKey(), ['__config' => false]);
 
         config(['notifications.hold_during_quiet_hours' => false]);

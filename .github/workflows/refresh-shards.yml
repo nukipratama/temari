@@ -75,7 +75,6 @@ jobs:
           DB_DATABASE: temari_testing
           DB_USERNAME: root
           DB_PASSWORD: password
-          CACHE_STORE: redis
           REDIS_HOST: 127.0.0.1
           SESSION_DRIVER: array
         run: ./vendor/bin/pest --compact --update-shards --exclude-group=structure --coverage-php=/dev/null
