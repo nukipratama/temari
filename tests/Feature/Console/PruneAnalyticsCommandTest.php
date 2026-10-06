@@ -8,6 +8,7 @@ use App\Models\AI\Analysis;
 use App\Models\AI\AnalysisVersion;
 use App\Models\AI\TokenUsage;
 use App\Models\Analytics\DevtoolsAction;
+use App\Models\Analytics\ScheduledTaskRunLog;
 use App\Models\Analytics\StravaRead;
 use App\Models\Analytics\StravaSyncLog;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -50,6 +51,11 @@ it('deletes metering, audit and narration-version rows older than 90 days', func
         'actor' => 'local', 'action' => 'ai_usage.recover', 'created_at' => Carbon::now()->subDays(89),
     ]);
 
+    $oldRunLog = ScheduledTaskRunLog::start('strava:sync');
+    $oldRunLog->update(['started_at' => Carbon::now()->subDays(91)]);
+    $recentRunLog = ScheduledTaskRunLog::start('strava:sync');
+    $recentRunLog->update(['started_at' => Carbon::now()->subDays(89)]);
+
     $this->artisan('analytics:prune')->assertSuccessful();
 
     expect(TokenUsage::query()->find($old->id))->toBeNull()
@@ -61,5 +67,7 @@ it('deletes metering, audit and narration-version rows older than 90 days', func
         ->and(AnalysisVersion::query()->find($oldVersion->id))->toBeNull()
         ->and(AnalysisVersion::query()->find($recentVersion->id))->not->toBeNull()
         ->and(DevtoolsAction::query()->find($oldAction->id))->toBeNull()
-        ->and(DevtoolsAction::query()->find($recentAction->id))->not->toBeNull();
+        ->and(DevtoolsAction::query()->find($recentAction->id))->not->toBeNull()
+        ->and(ScheduledTaskRunLog::query()->find($oldRunLog->id))->toBeNull()
+        ->and(ScheduledTaskRunLog::query()->find($recentRunLog->id))->not->toBeNull();
 });

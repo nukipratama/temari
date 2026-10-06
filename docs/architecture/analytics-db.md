@@ -34,7 +34,7 @@ read/write must name it explicitly.
 
 ## Which models use it
 
-Four Eloquent models pin themselves to it via `#[Connection('analytics')]`:
+These Eloquent models pin themselves to it via `#[Connection('analytics')]`:
 
 - [TokenUsage](app/Models/AI/TokenUsage.php) — table `ai_token_usages`, the per-call
   LLM token/cost ledger (`#[WithoutTimestamps]`, only `created_at`).
@@ -48,6 +48,9 @@ Four Eloquent models pin themselves to it via `#[Connection('analytics')]`:
   audit trail for operator actions taken from /devtools; write through
   [DevtoolsActionRecorder](app/Services/Devtools/DevtoolsActionRecorder.php), which resolves the
   actor from the current request.
+- [ScheduledTaskRunLog](app/Models/Analytics/ScheduledTaskRunLog.php) — table
+  `scheduled_task_run_logs`, one row per scheduled run, written by
+  [RecordScheduledTaskRun](app/Listeners/RecordScheduledTaskRun.php); see [[scheduler]].
 
 Read-side services skip Eloquent and go straight through the query builder with
 `DB::connection('analytics')` — see `LlmCostCalculator`, `TokenUsageReport`, and the

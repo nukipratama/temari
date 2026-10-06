@@ -22,6 +22,8 @@ use App\Support\Config\AppConfigMaintenanceMode;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Console\Events\ScheduledTaskFailed;
 use Illuminate\Console\Events\ScheduledTaskFinished;
+use Illuminate\Console\Events\ScheduledTaskSkipped;
+use Illuminate\Console\Events\ScheduledTaskStarting;
 use Illuminate\Foundation\MaintenanceModeManager;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -54,6 +56,8 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->bind(VerdictNarrator::class, VerdictTimeline::class);
+
+        $this->app->singleton(RecordScheduledTaskRun::class);
 
         // Scoped: one shared instance per request/command (so `withoutDispatching()`
         // reaches collaborators), flushed by Octane between requests.
@@ -124,9 +128,11 @@ class AppServiceProvider extends ServiceProvider
 
         Event::listen(SocialiteWasCalled::class, StravaExtendSocialite::class);
 
-        // Scheduler heartbeat: record every command's last run for the Pulse card.
+        // Scheduler heartbeat and run log: record every command's runs for the Pulse card.
+        Event::listen(ScheduledTaskStarting::class, [RecordScheduledTaskRun::class, 'starting']);
         Event::listen(ScheduledTaskFinished::class, [RecordScheduledTaskRun::class, 'finished']);
         Event::listen(ScheduledTaskFailed::class, [RecordScheduledTaskRun::class, 'failed']);
+        Event::listen(ScheduledTaskSkipped::class, [RecordScheduledTaskRun::class, 'skipped']);
 
         // Real enforcement happens upstream in EnsureDevtoolsAccess (HTTP Basic
         // Auth); this gate just rubber-stamps once that middleware has passed

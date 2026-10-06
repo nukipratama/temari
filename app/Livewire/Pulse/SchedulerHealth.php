@@ -6,6 +6,7 @@ namespace App\Livewire\Pulse;
 
 use App\Console\SchedulerChain;
 use App\Listeners\RecordScheduledTaskRun;
+use App\Models\Analytics\ScheduledTaskRunLog;
 use App\Models\ScheduledTaskRun;
 use Illuminate\Console\Scheduling\Event;
 use Illuminate\Console\Scheduling\Schedule;
@@ -18,32 +19,40 @@ use Throwable;
 
 /**
  * Scheduler timeline on the /pulse dashboard: every registered command in
- * next-due order with its last run, runtime and Monday-chain prerequisites,
- * plus any recorded command no longer on the schedule. Driven by the live
- * Schedule so a command that has never run is visible rather than absent, and
- * by {@see RecordScheduledTaskRun} for what actually happened.
+ * next-due order with its last run, runtime, 30-day run history and Monday-chain
+ * prerequisites, plus any recorded command no longer on the schedule. Driven by
+ * the live Schedule so a command that has never run is visible rather than
+ * absent, and by {@see RecordScheduledTaskRun} for what actually happened.
  *
- * Not lazy: one small table scan plus in-memory cron maths, so deferring buys
- * nothing.
+ * Not lazy: one small table scan, one grouped query over the run log and
+ * in-memory cron maths, so deferring buys nothing.
  */
 class SchedulerHealth extends Card
 {
     public function render(): Renderable
     {
         $runs = ScheduledTaskRun::query()->get()->keyBy('command');
+        $events = $this->scheduledEvents();
 
-        $scheduled = collect($this->scheduledEvents())
-            ->map(function (Event $event) use ($runs): array {
+        $windows = [];
+        foreach ($events as $event) {
+            $windows[RecordScheduledTaskRun::label($event)] = ScheduledTaskRunLog::windowSeconds($event);
+        }
+
+        $history = ScheduledTaskRunLog::stats($windows);
+
+        $scheduled = collect($events)
+            ->map(function (Event $event) use ($runs, $history): array {
                 $command = RecordScheduledTaskRun::label($event);
 
-                return $this->row($command, $runs->get($command), $this->nextDue($event));
+                return $this->row($command, $runs->get($command), $history[$command] ?? null, $this->nextDue($event));
             })
             ->sortBy(fn (array $task): string => $task['nextDue']?->toDateTimeString() ?? '9999')
             ->values();
 
         $retired = $runs
             ->reject(fn (ScheduledTaskRun $run): bool => $scheduled->contains('command', $run->command))
-            ->map(fn (ScheduledTaskRun $run): array => $this->row($run->command, $run, null))
+            ->map(fn (ScheduledTaskRun $run): array => $this->row($run->command, $run, $history[$run->command] ?? null, null))
             ->sortBy('command')
             ->values();
 
@@ -75,13 +84,15 @@ class SchedulerHealth extends Card
     }
 
     /**
-     * @return array{command: string, status: string, lastRunAt: Carbon|null, runtimeMs: int|null, failureMessage: string|null, nextDue: Carbon|null, prerequisites: list<array{command: string, met: bool}>}
+     * @param  array{runs: int, failures: int, skips: int, killed: int, p50: int|null, p95: int|null, max: int|null, latestKilled: bool}|null  $history
+     * @return array{command: string, status: string, lastRunAt: Carbon|null, runtimeMs: int|null, failureMessage: string|null, nextDue: Carbon|null, prerequisites: list<array{command: string, met: bool}>, history: array{runs: int, failures: int, skips: int, killed: int, p50: int|null, p95: int|null, max: int|null, latestKilled: bool}|null}
      */
-    private function row(string $command, ?ScheduledTaskRun $run, ?Carbon $nextDue): array
+    private function row(string $command, ?ScheduledTaskRun $run, ?array $history, ?Carbon $nextDue): array
     {
         return [
             'command' => $command,
             'status' => match (true) {
+                $history !== null && $history['latestKilled'] => 'killed',
                 $run === null => 'never run',
                 $run->hasFailed() => 'failed',
                 $run->isStale() => 'late',
@@ -92,6 +103,7 @@ class SchedulerHealth extends Card
             'failureMessage' => $run?->failure_message,
             'nextDue' => $nextDue,
             'prerequisites' => $this->prerequisites($command),
+            'history' => $history,
         ];
     }
 
