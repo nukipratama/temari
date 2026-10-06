@@ -24,7 +24,7 @@ final class NotifiableAnalysisTypes
      * @var array<string, array{title: string, cta: string}>
      */
     public const array TYPES = [
-        AnalysisType::PostRunSpeech->value => ['title' => 'Your run is in.', 'cta' => 'View run details'],
+        AnalysisType::PostRunSpeech->value => ['title' => 'Your run is in', 'cta' => 'View run details'],
         AnalysisType::WeeklyRecap->value => ['title' => 'Your weekly recap is ready', 'cta' => 'View history'],
         AnalysisType::MonthlyRecap->value => ['title' => 'Your monthly recap is ready', 'cta' => 'View calendar'],
     ];
