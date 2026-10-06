@@ -27,7 +27,7 @@ There is no dedicated streak toggle — the nudge is governed by the single `not
    - Skip if `WeeklySnapshot::consecutiveWeekStreak($userId)` returns `< 1` (no live streak).
    - Skip if the current week's `WeeklySnapshot` already has `runs > 0`.
    - Skip if `claim()` fails — `insertOrIgnore` on `streak_reminders` with a unique `(user_id, week_ending)` constraint, so repeated cron runs never double-send.
-3. Sends `StreakReminderNotification($streakWeeks)` to the user via `$user->notify()`.
+3. Sends `StreakReminderNotification($streakWeeks)` to the user via `$user->notify()`. If dispatch throws, the claim row is deleted before the error propagates, so the next run sends that week's nudge.
 
 > The command iterates **users, not Telegram connections**. Iterating connections (as it did before web push existed) silently excluded anyone who only had phone push enabled, so they got weekly recaps but never a streak nudge.
 

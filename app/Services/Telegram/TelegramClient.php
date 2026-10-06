@@ -128,6 +128,7 @@ class TelegramClient
 
             throw new TelegramApiException(
                 "Telegram [{$method}] could not reach the API: {$reason}",
+                connectionFailed: true,
             );
         }
 

@@ -47,9 +47,9 @@ function postRunAnalysis(User $user, string $content = 'Mantap!', int $daysAgo =
     ]);
 }
 
-function viaFor(Analysis $analysis, User $user, bool $force = false): array
+function viaFor(Analysis $analysis, User $user): array
 {
-    return new AnalysisReadyNotification($analysis, force: $force)->via($user);
+    return new AnalysisReadyNotification($analysis)->via($user);
 }
 
 // --- via() gating (automatic path) -----------------------------------------
@@ -173,25 +173,6 @@ it('routes nowhere for an automatic push older than the max age', function (): v
     expect(viaFor(postRunAnalysis($user, daysAgo: 10), $user))->toBe([]);
 });
 
-// --- via() gating (force path) ---------------------------------------------
-
-it('force routes to Telegram even when opted out', function (): void {
-    $user = User::factory()->create();
-    TelegramConnection::factory()->for($user)->create();
-    NotificationPreference::factory()->for($user)->create(['notifications_enabled' => false]);
-
-    expect(viaFor(postRunAnalysis($user), $user, force: true))->toBe([InAppChannel::class, TelegramChannel::class]);
-});
-
-it('force bypasses the recency gate for an old run', function (): void {
-    config(['services.telegram.notify_max_age_days' => 3]);
-    $user = User::factory()->create();
-    TelegramConnection::factory()->for($user)->create();
-    NotificationPreference::factory()->for($user)->create(['notifications_enabled' => false]);
-
-    expect(viaFor(postRunAnalysis($user, daysAgo: 10), $user, force: true))->toBe([InAppChannel::class, TelegramChannel::class]);
-});
-
 it('routes to web push for a subscribed user with a recent analysis', function (): void {
     $user = User::factory()->create();
     $user->updatePushSubscription('https://fcm.googleapis.com/fcm/send/abc', 'p256dh-key', 'auth-token');
@@ -223,46 +204,31 @@ it('does not route to web push for an old automatic analysis (recency)', functio
     expect(viaFor(postRunAnalysis($user, daysAgo: 10), $user))->toBe([]);
 });
 
-it('force reaches web push even without Telegram', function (): void {
-    $user = User::factory()->create();
-    $user->updatePushSubscription('https://fcm.googleapis.com/fcm/send/abc', 'p256dh-key', 'auth-token');
-
-    expect(viaFor(postRunAnalysis($user), $user, force: true))->toBe([InAppChannel::class, IdempotentWebPushChannel::class]);
-});
-
-it('force still reaches no outbound channel for the demo user', function (): void {
+it('reaches no outbound channel for the demo user', function (): void {
     $demo = User::factory()->create(['is_demo' => true]);
     TelegramConnection::factory()->for($demo)->create();
 
-    expect(viaFor(postRunAnalysis($demo), $demo, force: true))->toBe([InAppChannel::class]);
+    expect(viaFor(postRunAnalysis($demo), $demo))->toBe([InAppChannel::class]);
 });
 
-it('force reaches no outbound channel over a revoked connection', function (): void {
+it('reaches no outbound channel over a revoked connection', function (): void {
     $revoked = User::factory()->create();
     TelegramConnection::factory()->for($revoked)->revoked()->create();
 
-    expect(viaFor(postRunAnalysis($revoked), $revoked, force: true))->toBe([InAppChannel::class]);
+    expect(viaFor(postRunAnalysis($revoked), $revoked))->toBe([InAppChannel::class]);
 });
 
 // --- toTelegram() message building -----------------------------------------
 
-it('builds a Telegram message carrying the narration, the delivery key, and the force flag', function (): void {
+it('builds a Telegram message carrying the narration and the delivery key', function (): void {
     $user = User::factory()->create();
     $analysis = postRunAnalysis($user, 'Pace konsisten.');
 
-    $message = new AnalysisReadyNotification($analysis, force: true)->toTelegram($user);
+    $message = new AnalysisReadyNotification($analysis)->toTelegram($user);
 
     expect($message)->toBeInstanceOf(TelegramMessage::class)
         ->and($message->text)->toContain('Pace konsisten.')
-        ->and($message->deliveryKey)->toBe($analysis->id)
-        ->and($message->force)->toBeTrue();
-});
-
-it('exposes the force flag so a channel can skip its delivery claim', function (): void {
-    $analysis = postRunAnalysis(User::factory()->create());
-
-    expect(new AnalysisReadyNotification($analysis, force: true)->forcesDelivery())->toBeTrue()
-        ->and(new AnalysisReadyNotification($analysis)->forcesDelivery())->toBeFalse();
+        ->and($message->deliveryKey)->toBe($analysis->id);
 });
 
 it('sends the post-run as text with the run link, never a photo', function (): void {
@@ -292,15 +258,13 @@ it('builds a web push message with the dynamic title, body, tap-through url, and
 
 // --- toInbox() ---------------------------------------------------------------
 
-it('keys the inbox row on the analysis, so a re-analysis or a force send adds no second row', function (): void {
+it('keys the inbox row on the analysis, so a re-analysis adds no second row', function (): void {
     $user = User::factory()->create();
     $analysis = postRunAnalysis($user, 'Pace konsisten.');
 
     $automatic = new AnalysisReadyNotification($analysis)->toInbox($user);
-    $forced = new AnalysisReadyNotification($analysis, force: true)->toInbox($user);
 
     expect($automatic->dedupeKey)->toBe('analysis:'.$analysis->id)
-        ->and($forced->dedupeKey)->toBe($automatic->dedupeKey)
         ->and($automatic->kind)->toBe(NotificationKind::PostRun)
         ->and($automatic->body)->toBe('Pace konsisten.')
         ->and($automatic->subjectType)->toBe(Activity::class)
@@ -357,35 +321,6 @@ it('has no inbox message for an analysis type that never notifies', function ():
     expect(new AnalysisReadyNotification($analysis)->toInbox(User::factory()->create()))->toBeNull();
 });
 
-/**
- * The one rule that differs from every other gate: `force: true` skips the
- * recency and master-switch opt-in checks, because the user explicitly asked for
- * this send. It cannot skip a channel mute, because that is a routing decision — "do
- * not deliver here, ever" — rather than a per-message one.
- */
-it('will not force a send to a muted channel, even though force skips the opt-in', function (): void {
-    $user = User::factory()->create();
-    TelegramConnection::factory()->for($user)->create(['revoked_at' => null]);
-    NotificationPreference::factory()->for($user)->create([
-        'notifications_enabled' => false,
-        'telegram_enabled' => false,
-    ]);
-
-    // notifications_enabled is off too, and force would normally override that.
-    expect(viaFor(postRunAnalysis($user), $user->fresh(), force: true))->toBe([InAppChannel::class]);
-});
-
-it('forces past the master-switch opt-in when the channel is not muted', function (): void {
-    $user = User::factory()->create();
-    TelegramConnection::factory()->for($user)->create(['revoked_at' => null]);
-    NotificationPreference::factory()->for($user)->create([
-        'notifications_enabled' => false,
-        'telegram_enabled' => true,
-    ]);
-
-    expect(viaFor(postRunAnalysis($user), $user->fresh(), force: true))->toBe([InAppChannel::class, TelegramChannel::class]);
-});
-
 it('sends on the surviving channel when only one is muted', function (): void {
     $user = User::factory()->create();
     TelegramConnection::factory()->for($user)->create(['revoked_at' => null]);
@@ -409,7 +344,7 @@ it('keeps the Telegram text and the web push title in sentence case, whatever th
     $user = User::factory()->create();
     $analysis = postRunAnalysis($user, 'Pace konsisten.');
     $title = new AnalysisMessagePresenter()->title($analysis);
-    $notification = new AnalysisReadyNotification($analysis, force: true);
+    $notification = new AnalysisReadyNotification($analysis);
 
     expect($title)->toStartWith('Your ')
         ->and($notification->toTelegram($user)->text)->toStartWith($title . "\n\n")

@@ -14,6 +14,7 @@ use App\Models\User;
 use App\Notifications\Channels\TelegramChannel;
 use App\Notifications\Messages\TelegramMessage;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Notifications\Notification;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\DB;
@@ -111,7 +112,7 @@ it('skips a queued Telegram send when muted and does not claim it', function ():
     expect(app(ChannelRouter::class)->channelsFor($user))->toContain(TelegramChannel::class);
     NotificationPreference::factory()->for($user)->create(['telegram_enabled' => false]);
 
-    channelSend($user, new TelegramMessage(text: 'Muted', deliveryKey: $analysisId, force: true));
+    channelSend($user, new TelegramMessage(text: 'Muted', deliveryKey: $analysisId));
 
     Http::assertNothingSent();
     $this->assertDatabaseMissing('notification_deliveries', ['analysis_id' => $analysisId, 'channel' => 'telegram']);
@@ -165,6 +166,33 @@ it('settles the keyed claim as failed with its error so a retry can resend', fun
     expect(app(NotificationDeliveryClaim::class)->claim($analysisId, 'telegram'))->toBe(2);
 });
 
+it('abandons a keyed delivery whose connection failed, without a retry or a retake', function (): void {
+    Http::fake(fn () => throw new ConnectionException('cURL error 28: Operation timed out'));
+    $user = connectedUser();
+    $analysisId = Analysis::factory()->create()->id;
+
+    channelSend($user, new TelegramMessage(text: 'Timed out', deliveryKey: $analysisId));
+
+    $this->assertDatabaseHas('notification_deliveries', [
+        'analysis_id' => $analysisId,
+        'channel' => 'telegram',
+        'status' => NotificationDeliveryStatus::Abandoned->value,
+        'claim_version' => 1,
+    ]);
+    expect(app(NotificationDeliveryClaim::class)->claim($analysisId, 'telegram'))->toBeNull()
+        ->and($user->telegramConnection->fresh()->isRevoked())->toBeFalse();
+});
+
+it('rethrows a keyless delivery whose connection failed, so its retry can resend', function (): void {
+    Http::fake(fn () => throw new ConnectionException('cURL error 28: Operation timed out'));
+    $user = connectedUser();
+
+    expect(fn () => channelSend($user, new TelegramMessage(text: 'Nudge')))
+        ->toThrow(TelegramApiException::class);
+
+    expect(DB::table('notification_deliveries')->count())->toBe(0);
+});
+
 it('revokes the connection and does not retry when the bot is blocked (403)', function (): void {
     Http::fake(['api.telegram.org/*' => Http::response(['ok' => false, 'description' => 'Forbidden: bot was blocked by the user'], 403)]);
     $user = connectedUser();
@@ -173,37 +201,6 @@ it('revokes the connection and does not retry when the bot is blocked (403)', fu
     channelSend($user, new TelegramMessage(text: 'Diblokir', deliveryKey: $analysisId));
 
     expect($user->telegramConnection->fresh()->isRevoked())->toBeTrue();
-});
-
-it('force-sends even when the delivery row already exists, and records the claim', function (): void {
-    fakeTelegramOk();
-    $user = connectedUser();
-    $analysisId = Analysis::factory()->create()->id;
-    DB::table('notification_deliveries')->insert(['analysis_id' => $analysisId, 'channel' => 'telegram', 'created_at' => now()]);
-
-    channelSend($user, new TelegramMessage(text: 'Resend', deliveryKey: $analysisId, force: true));
-
-    Http::assertSentCount(1);
-    $this->assertDatabaseHas('notification_deliveries', [
-        'analysis_id' => $analysisId,
-        'channel' => 'telegram',
-        'status' => NotificationDeliveryStatus::Sent->value,
-        'claim_version' => 1,
-    ]);
-});
-
-it('force-send swallows a failure (one-shot) but records it as a failed delivery', function (): void {
-    Http::fake(['api.telegram.org/*' => Http::response(['ok' => false, 'description' => 'boom'], 500)]);
-    $user = connectedUser();
-    $analysisId = Analysis::factory()->create()->id;
-
-    channelSend($user, new TelegramMessage(text: 'Gagal manual', deliveryKey: $analysisId, force: true));
-
-    $this->assertDatabaseHas('notification_deliveries', [
-        'analysis_id' => $analysisId,
-        'channel' => 'telegram',
-        'status' => NotificationDeliveryStatus::Failed->value,
-    ]);
 });
 
 it('logs when a newer claim fences its send result', function (): void {
@@ -225,18 +222,6 @@ it('logs when a newer claim fences its send result', function (): void {
         'delivery_key' => $analysisId,
         'claim_version' => 1,
     ]);
-});
-
-it('does not log a forced failure that keeps an earlier delivery row', function (): void {
-    Log::spy();
-    Http::fake(['api.telegram.org/*' => Http::response(['ok' => false, 'description' => 'Bad Request'], 400)]);
-    $user = connectedUser();
-    $analysisId = Analysis::factory()->create()->id;
-    app(NotificationDeliveryClaim::class)->recordForcedSent($analysisId, 'telegram');
-
-    channelSend($user, new TelegramMessage(text: 'Forced', deliveryKey: $analysisId, force: true));
-
-    Log::shouldNotHaveReceived('info', ['telegram.delivery_record.fenced', Mockery::any()]);
 });
 
 it('abandons a stale claim without sending again and fences its late finisher', function (): void {
@@ -345,15 +330,4 @@ it('keeps the link on a 403 that is not about this chat', function (): void {
     channelSend($user, new TelegramMessage(text: 'Nudge'));
 
     expect($user->telegramConnection->fresh()->isRevoked())->toBeFalse();
-});
-
-it('keeps the link when a force push meets a bad bot token', function (): void {
-    Bus::fake([SendMaintainerAlertJob::class]);
-    Http::fake(['api.telegram.org/*' => Http::response(['ok' => false, 'description' => 'Unauthorized'], 401)]);
-    $user = connectedUser();
-
-    channelSend($user, new TelegramMessage(text: 'Manual', force: true));
-
-    expect($user->telegramConnection->fresh()->isRevoked())->toBeFalse();
-    Bus::assertDispatchedTimes(SendMaintainerAlertJob::class, 1);
 });

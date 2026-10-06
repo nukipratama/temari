@@ -156,6 +156,24 @@ it('does not double-send within the same at-risk week', function (): void {
     Notification::assertSentToTimes($user, StreakReminderNotification::class, 1);
 });
 
+it('releases the week claim when dispatch throws, so the next run sends', function (): void {
+    $user = User::factory()->create();
+    TelegramConnection::factory()->for($user)->create();
+    WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-17', 'runs' => 3]);
+    Notification::shouldReceive('send')->once()->andThrow(new RuntimeException('Redis is down'));
+
+    expect(fn () => $this->artisan('streak:remind')->run())->toThrow(RuntimeException::class, 'Redis is down');
+    $this->assertDatabaseMissing('streak_reminders', ['user_id' => $user->id]);
+
+    Notification::fake();
+    $this->artisan('streak:remind')
+        ->expectsOutputToContain('Dispatched streak-at-risk reminder to 1 users.')
+        ->assertSuccessful();
+
+    Notification::assertSentToTimes($user, StreakReminderNotification::class, 1);
+    $this->assertDatabaseHas('streak_reminders', ['user_id' => $user->id, 'week_ending' => '2026-05-24']);
+});
+
 /**
  * Without mute-awareness in the query filter this command enqueues a
  * notification per candidate whose via() then returns [] — silent no-op work

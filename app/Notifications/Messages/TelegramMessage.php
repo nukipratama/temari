@@ -10,8 +10,7 @@ namespace App\Notifications\Messages;
  * {@see \App\Notifications\Channels\TelegramChannel} needs.
  *
  * A null `deliveryKey` opts the message out of the once-only delivery claim
- * (streak / test nudges, which were never deduped). `force` marks a manual
- * "send it now" push that skips the claim CHECK but still records it on success.
+ * (streak / test nudges, which were never deduped).
  */
 final readonly class TelegramMessage
 {
@@ -19,7 +18,6 @@ final readonly class TelegramMessage
         public string $text,
         public ?string $photoPng = null,
         public ?int $deliveryKey = null,
-        public bool $force = false,
     ) {
     }
 }
