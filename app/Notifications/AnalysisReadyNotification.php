@@ -13,6 +13,7 @@ use App\Notifications\Concerns\AppendsUnreadBadge;
 use App\Notifications\Concerns\RechecksRouteAtDelivery;
 use App\Notifications\Channels\TelegramChannel;
 use App\Notifications\Messages\InboxMessage;
+use App\Notifications\Messages\PushBody;
 use App\Notifications\Messages\TelegramMessage;
 use App\Services\AI\AnalysisType;
 use App\Services\Notifications\ChannelRouter;
@@ -85,13 +86,14 @@ class AnalysisReadyNotification extends Notification implements ShouldQueue
     {
         $presenter = app(AnalysisMessagePresenter::class);
 
-        return new WebPushMessage()
+        $message = new WebPushMessage()
             ->title($presenter->title($this->analysis))
-            ->body(trim((string) $this->analysis->content))
             ->icon('/icon-192.png')
             ->data($this->withUnreadBadge(['url' => $presenter->url($this->analysis)], $notifiable->id))
             // High urgency so the push isn't deferred by the OS in Low Power Mode.
             ->options(['urgency' => 'high', 'TTL' => 3 * 86400]);
+
+        return PushBody::attach($message, (string) $this->analysis->content);
     }
 
     /**

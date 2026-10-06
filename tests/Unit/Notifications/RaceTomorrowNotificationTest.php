@@ -63,7 +63,7 @@ it('names the race and its distance, and points at the race page', function (): 
     $message = new RaceTomorrowNotification($race)->toInbox($user);
 
     expect($message->kind)->toBe(NotificationKind::RaceTomorrow)
-        ->and($message->title)->toBe('race day is tomorrow')
+        ->and($message->title)->toBe('Race day is tomorrow')
         ->and($message->body)->toStartWith('jakarta half is tomorrow — 21.1 km.')
         ->and($message->body)->toContain('lay your kit out tonight')
         ->and($message->payload['url'])->toBe(route('race'))
@@ -75,6 +75,13 @@ it('falls back to the bare distance when the race has no name', function (): voi
 
     expect(new RaceTomorrowNotification(raceFor($user))->toInbox($user)->body)
         ->toStartWith('your 21.1 km is tomorrow.');
+});
+
+it('prints a whole-kilometre distance without a trailing .0', function (): void {
+    $user = User::factory()->create();
+    $race = RaceGoal::factory()->for($user)->create(['race_date' => '2026-05-24', 'distance_m' => 10000, 'name' => null]);
+
+    expect(new RaceTomorrowNotification($race)->toInbox($user)->body)->toStartWith('your 10 km is tomorrow.');
 });
 
 it('says the plan back when today is the taper rest', function (): void {

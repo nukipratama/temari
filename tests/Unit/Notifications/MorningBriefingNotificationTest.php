@@ -13,6 +13,7 @@ use App\Models\User;
 use App\Notifications\Channels\IdempotentWebPushChannel;
 use App\Notifications\Channels\InAppChannel;
 use App\Notifications\Channels\TelegramChannel;
+use App\Notifications\Messages\PushBody;
 use App\Notifications\MorningBriefingNotification;
 use App\Notifications\RaceTomorrowNotification;
 use App\Notifications\StreakReminderNotification;
@@ -123,9 +124,22 @@ it('carries the briefing content, trimmed, and opens the dashboard', function ()
 
     $message = $notification->toWebPush($user, $notification)->toArray();
 
-    expect($message['title'])->toBe('your briefing for today')
+    expect($message['title'])->toBe('Your briefing for today')
         ->and($message['body'])->toBe('easy 5k, nothing clever.')
         ->and($message['data']['url'])->toBe(route('dashboard'));
+});
+
+it('cuts a long briefing to whole sentences for the push, and keeps it whole on Telegram', function (): void {
+    $user = subscribedUser();
+    $briefing = briefingFor($user);
+    $briefing->update(['content' => 'honestly the legs were heavier than the pace says 🔥🔥. you held 5:40 through the middle third ✨ and only let it slip on the climb back, which is fine. tomorrow stays easy 🛌 though, no heroics. the week still has room for one more quality day if the legs come round 🔥.']);
+    $notification = new MorningBriefingNotification($briefing);
+
+    $body = $notification->toWebPush($user, $notification)->toArray()['body'];
+
+    expect(mb_strlen($body))->toBeLessThanOrEqual(PushBody::MAX_CHARS)
+        ->and($body)->toEndWith('which is fine.')
+        ->and($notification->toTelegram($user)->text)->toContain('if the legs come round 🔥.');
 });
 
 // The briefing row is already one per athlete per day, so keying the shared

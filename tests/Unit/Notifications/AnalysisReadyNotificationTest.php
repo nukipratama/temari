@@ -16,6 +16,7 @@ use App\Notifications\AnalysisReadyNotification;
 use App\Notifications\Channels\IdempotentWebPushChannel;
 use App\Notifications\Channels\InAppChannel;
 use App\Notifications\Channels\TelegramChannel;
+use App\Notifications\Messages\PushBody;
 use App\Notifications\Messages\TelegramMessage;
 use App\Services\AI\AnalysisType;
 use App\Services\Telegram\AnalysisMessagePresenter;
@@ -23,6 +24,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Notifications\ChannelManager;
 use Illuminate\Notifications\SendQueuedNotifications;
 use Illuminate\Support\Facades\Queue;
+use Minishlink\WebPush\Encryption;
 use NotificationChannels\WebPush\WebPushChannel;
 
 uses(RefreshDatabase::class);
@@ -250,10 +252,23 @@ it('builds a web push message with the dynamic title, body, tap-through url, and
     $message = $notification->toWebPush($user, $notification);
     $payload = $message->toArray();
 
-    expect($payload['title'])->toContain('run is in.')
+    expect($payload['title'])->toEndWith('run is in')
         ->and($payload['body'])->toContain('Pace konsisten.')
         ->and($payload['data'])->toBe(['url' => route('activities.show', $analysis->subject_id), 'unread' => 0])
         ->and($message->getOptions())->toBe(['urgency' => 'high', 'TTL' => 3 * 86400]);
+});
+
+it('keeps a long, emoji-heavy narration under the push payload limit, and whole in the inbox', function (): void {
+    $user = User::factory()->create();
+    $narration = str_repeat('honestly the legs were heavier than the pace says 🔥🔥. you held 5:40 through the middle third ✨ and only let it slip on the climb back, which is fine. tomorrow stays easy 🛌 though, no heroics. the week still has room for one more quality day if the legs come round 🔥. ', 40);
+    $notification = new AnalysisReadyNotification(postRunAnalysis($user, $narration));
+
+    $payload = json_encode($notification->toWebPush($user, $notification)->toArray(), JSON_THROW_ON_ERROR);
+
+    expect(strlen(json_encode(['body' => $narration], JSON_THROW_ON_ERROR)))->toBeGreaterThan(Encryption::MAX_PAYLOAD_LENGTH)
+        ->and(strlen($payload))->toBeLessThan(Encryption::MAX_PAYLOAD_LENGTH)
+        ->and(mb_strlen(json_decode($payload, true)['body']))->toBeLessThanOrEqual(PushBody::MAX_CHARS)
+        ->and($notification->toInbox($user)->body)->toBe(trim($narration));
 });
 
 // --- toInbox() ---------------------------------------------------------------

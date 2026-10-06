@@ -15,6 +15,7 @@ use App\Notifications\Concerns\SetsWebPushExpiry;
 use App\Notifications\Messages\InboxMessage;
 use App\Notifications\Messages\TelegramMessage;
 use App\Services\Notifications\ChannelRouter;
+use App\Services\Run\Metrics\DecimalFormatter;
 use App\Services\Run\Metrics\DistanceFormatter;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -100,12 +101,12 @@ class RaceTomorrowNotification extends Notification implements ShouldQueue
 
     private function title(): string
     {
-        return 'race day is tomorrow';
+        return 'Race day is tomorrow';
     }
 
     private function body(User $notifiable): string
     {
-        $distance = DistanceFormatter::kmString((float) $this->race->distance_m);
+        $distance = DecimalFormatter::trimmed(DistanceFormatter::km((float) $this->race->distance_m));
         $lines = [
             $this->race->name === null
                 ? "your {$distance} km is tomorrow."

@@ -12,6 +12,7 @@ use App\Notifications\Concerns\RechecksRouteAtDelivery;
 use App\Notifications\Messages\InboxMessage;
 use App\Notifications\Messages\TelegramMessage;
 use App\Services\Notifications\ChannelRouter;
+use App\Services\Run\Metrics\DecimalFormatter;
 use App\Services\Run\Metrics\DistanceFormatter;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -89,12 +90,12 @@ class RaceOutcomeNotification extends Notification implements ShouldQueue
 
     private function title(): string
     {
-        return 'how did your race go?';
+        return 'How did your race go?';
     }
 
     private function body(): string
     {
-        $distance = DistanceFormatter::kmString((float) $this->race->distance_m);
+        $distance = DecimalFormatter::trimmed(DistanceFormatter::km((float) $this->race->distance_m));
         $subject = $this->race->name === null ? "your {$distance} km" : "{$this->race->name}";
 
         return "{$subject} was yesterday. confirm your run, enter your time, or tell me you did not run it. nothing is counted until you do.";

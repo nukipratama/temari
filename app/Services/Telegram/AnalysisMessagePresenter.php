@@ -167,13 +167,13 @@ class AnalysisMessagePresenter
         return $phrase;
     }
 
-    /** "Your 8.2K run is in.", dropping the distance when it's unknown. */
+    /** "Your 8.2K run is in", dropping the distance when it's unknown. */
     private function postRunTitle(Analysis $analysis): string
     {
         $distance = $this->activityDetail($analysis->subject_id)?->distance;
         $prefix = $distance !== null ? $this->shortDistance((int) $distance) . ' ' : '';
 
-        return 'Your ' . $prefix . 'run is in.';
+        return 'Your ' . $prefix . 'run is in';
     }
 
     /** "Your July recap is ready", falling back to the label when the month is unknown. */

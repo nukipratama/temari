@@ -76,9 +76,9 @@ it('releases every held item once, in the order it was triggered', function (): 
         ->expectsOutput('Released 9 held notifications.')
         ->assertExitCode(0);
 
-    expect(sentTelegramTitles())->toBe(['Your 4-week streak is on the edge', 'Strava stopped syncing', 'race day is tomorrow'])
+    expect(sentTelegramTitles())->toBe(['Your 4-week streak is on the edge', 'Strava stopped syncing', 'Race day is tomorrow'])
         ->and(InboxNotification::query()->orderBy('id')->pluck('title')->all())
-        ->toBe(['Your 4-week streak is on the edge', 'Strava stopped syncing', 'race day is tomorrow'])
+        ->toBe(['Your 4-week streak is on the edge', 'Strava stopped syncing', 'Race day is tomorrow'])
         ->and($this->pushes)->toBe(3)
         ->and(HeldNotification::query()->count())->toBe(0);
 });
@@ -174,7 +174,7 @@ it('judges a released race reminder as of when it was held, not when it was rele
     Carbon::setTestNow('2026-10-07 04:00:00');
     $this->artisan('notifications:release-held')->assertExitCode(0);
 
-    expect(sentTelegramTitles())->toBe(['race day is tomorrow'])
+    expect(sentTelegramTitles())->toBe(['Race day is tomorrow'])
         ->and($this->pushes)->toBe(1);
 });
 
@@ -200,6 +200,6 @@ it('judges a released briefing as of when it was held, not when it was released'
     Carbon::setTestNow('2026-10-06 04:00:00');
     $this->artisan('notifications:release-held')->assertExitCode(0);
 
-    expect(sentTelegramTitles())->toBe(['your briefing for today'])
+    expect(sentTelegramTitles())->toBe(['Your briefing for today'])
         ->and($this->pushes)->toBe(1);
 });
