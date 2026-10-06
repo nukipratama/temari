@@ -282,7 +282,7 @@ $COMPOSE run --rm --no-deps app php artisan migrate:status --database=analytics 
 $COMPOSE exec -T mysql sh -c 'MYSQL_PWD="$DB_PASSWORD" mysql -h 127.0.0.1 -N -B -u"$DB_USERNAME" "$DB_DATABASE" -e "SHOW TABLES"' | scripts/deploy/count-rows-query.sh > /tmp/count-rows.sql
 $COMPOSE exec -T mysql sh -c 'MYSQL_PWD="$DB_PASSWORD" mysql -h 127.0.0.1 -N -B -u"$DB_USERNAME" "$DB_DATABASE"' < /tmp/count-rows.sql | sort > /tmp/live-counts.tsv
 sort "$APP_MANIFEST" | diff - /tmp/live-counts.tsv && echo "row counts match the manifest"
-DB_BACKUP_PASSWORD=$(scripts/deploy/backup-password.sh); export DB_BACKUP_PASSWORD
+DB_BACKUP_PASSWORD=$(sudo scripts/deploy/backup-password.sh) && export DB_BACKUP_PASSWORD
 $COMPOSE exec -T -e DB_BACKUP_PASSWORD mysql sh -c 'export MYSQL_PWD="$DB_BACKUP_PASSWORD"; mysqldump -h 127.0.0.1 --single-transaction --quick --no-tablespaces --set-gtid-purged=COMMENTED --loose-skip-masking-policies -utemari_backup "$DB_DATABASE"' | gzip > /tmp/mysql-check.sql.gz && gzip -t /tmp/mysql-check.sql.gz && ls -l /tmp/mysql-check.sql.gz
 
 # 8. Services back. `/up` fails until Horizon registers its supervisor, so it is retried.
