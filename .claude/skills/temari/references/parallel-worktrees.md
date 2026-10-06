@@ -12,7 +12,7 @@ already resolves per-cwd correctly.
 
 Worktrees don't each get their own MySQL/Redis, though — see "Shared services" below.
 
-Use the worktree creation and lifecycle guidance in [AGENTS.md](../../../../AGENTS.md). This section
+Use the worktree creation and lifecycle guidance in [CLAUDE.md](../../../../CLAUDE.md). This section
 records the environment invariants that every worktree setup must preserve.
 
 Slot numbering is a formula (`scripts/worktree`), not a fixed table, and `create` picks the slot —
@@ -115,7 +115,7 @@ worktree's commits — invoke the script directly to test it. (If the stored val
 pins every worktree to the main checkout; `composer install` re-sets it relative.)
 
 **`commit-msg` has no merge-commit exemption, on purpose**; see the merge-message rule in
-[AGENTS.md](../../../../AGENTS.md).
+[CLAUDE.md](../../../../CLAUDE.md).
 
 **One fresh-worktree gotcha**, not concurrency-specific: if several worktrees cold-install at the
 same moment, one can occasionally fail mid-extraction on a transient bind-mount visibility race —

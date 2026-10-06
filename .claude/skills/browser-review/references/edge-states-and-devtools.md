@@ -29,5 +29,5 @@ to ask about. Do not reintroduce that gate. `DEVTOOLS_PASSWORD` is needed only t
 scripts at a production host, where Basic Auth does apply:
 
 ```bash
-./vendor/bin/sail exec -e DEVTOOLS_PASSWORD=<pw> app node .agents/skills/browser-review/scripts/shoot.mjs
+./vendor/bin/sail exec -e DEVTOOLS_PASSWORD=<pw> app node .claude/skills/browser-review/scripts/shoot.mjs
 ```

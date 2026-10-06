@@ -77,7 +77,7 @@ documentation:
       - any-glob-to-any-file:
           - 'docs/**'
           - 'design-system/**'
-          - '.agents/skills/**'
+          - '.claude/skills/**'
           - '*.md'
 
 php:

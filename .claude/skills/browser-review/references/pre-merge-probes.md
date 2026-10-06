@@ -24,11 +24,11 @@ silently checks stale output.
 ./vendor/bin/sail npm run build
 ./vendor/bin/sail artisan demo:seed --with-edge-states
 for g in dark light; do
-  ./vendor/bin/sail exec app node .agents/skills/browser-review/scripts/contrast.mjs $g
-  ./vendor/bin/sail exec app node .agents/skills/browser-review/scripts/edges.mjs $g
-  ./vendor/bin/sail exec app node .agents/skills/browser-review/scripts/states.mjs $g
+  ./vendor/bin/sail exec app node .claude/skills/browser-review/scripts/contrast.mjs $g
+  ./vendor/bin/sail exec app node .claude/skills/browser-review/scripts/edges.mjs $g
+  ./vendor/bin/sail exec app node .claude/skills/browser-review/scripts/states.mjs $g
 done
-./vendor/bin/sail exec app node .agents/skills/browser-review/scripts/light-islands.mjs dark
+./vendor/bin/sail exec app node .claude/skills/browser-review/scripts/light-islands.mjs dark
 ```
 
 Compare against the baselines each section below documents. A number that moved is the finding;

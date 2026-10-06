@@ -1,5 +1,5 @@
 // Horizontal-overflow audit across the viewport matrix. Runs inside the Sail
-// `app` container:  ./vendor/bin/sail exec app node .agents/skills/browser-review/scripts/audit.mjs
+// `app` container:  ./vendor/bin/sail exec app node .claude/skills/browser-review/scripts/audit.mjs
 // Pages are discovered from `artisan route:list` (lib.mjs); overflow is
 // breakpoint-dependent, so every discovered page is checked at every viewport.
 import { chromium } from './playwright.mjs';

@@ -1,6 +1,6 @@
 #!/bin/sh
 # Checks the browser-review tooling the dev image bakes in. Installs nothing.
-#   ./vendor/bin/sail exec app sh .agents/skills/browser-review/scripts/setup.sh
+#   ./vendor/bin/sail exec app sh .claude/skills/browser-review/scripts/setup.sh
 missing=0
 
 if [ -x /usr/bin/chromium ]; then
