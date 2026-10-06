@@ -100,13 +100,15 @@ it('verifies a nightly restore against its manifest, not live', function (): voi
         ->toContain('check_manifest sql_analytics "analytics" "$ANALYTICS_MANIFEST"');
 })->group('structure');
 
-it('dumps without GTID or masking-policy statements, so the app user can back up on MySQL 8.4 and 9.7', function (string $workflow): void {
+it('dumps as the read-only backup user with its GTID position recorded as a comment and no masking-policy statements', function (string $workflow): void {
     preg_match_all('/mysqldump -[^\'\n]*/', (string) file_get_contents(base_path($workflow)), $dumps);
 
     expect($dumps[0])->not->toBeEmpty();
 
     foreach ($dumps[0] as $dump) {
-        expect($dump)->toContain('--set-gtid-purged=OFF')->toContain('--loose-skip-masking-policies');
+        expect($dump)->toContain('--set-gtid-purged=COMMENTED')
+            ->toContain('--loose-skip-masking-policies')
+            ->toContain('-utemari_backup');
     }
 })->with([
     '.github/workflows/deploy.yml',

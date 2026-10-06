@@ -51,23 +51,25 @@ jobs:
         timeout-minutes: 10
         run: |
           set -o pipefail
+          DB_BACKUP_PASSWORD=$(scripts/deploy/backup-password.sh)
+          export DB_BACKUP_PASSWORD
           mkdir -p "$BACKUP_DIR"
           out="$BACKUP_DIR/nightly-$NIGHTLY_TIMESTAMP.sql.gz"
           manifest="$BACKUP_DIR/nightly-$NIGHTLY_TIMESTAMP.manifest"
           db_sql() {
-            $COMPOSE exec -T mysql sh -c "export MYSQL_PWD=\"\$DB_PASSWORD\"; mysql -h 127.0.0.1 -N -B -u\"\$DB_USERNAME\" \"\$DB_DATABASE\" -e \"$1\""
+            $COMPOSE exec -T -e DB_BACKUP_PASSWORD mysql sh -c "export MYSQL_PWD=\"\$DB_BACKUP_PASSWORD\"; mysql -h 127.0.0.1 -N -B -utemari_backup \"\$DB_DATABASE\" -e \"$1\""
           }
           if ! { query=$(db_sql "SHOW TABLES" | scripts/deploy/count-rows-query.sh) && db_sql "$query" > "$manifest"; }; then
             rm -f "$manifest"
             echo "::warning::Nightly manifest not written; the weekly restore test skips its count check for this dump."
           fi
           # shellcheck disable=SC2016 # Database variables must expand inside the container shell.
-          $COMPOSE exec -T mysql sh -c \
-            'export MYSQL_PWD="$DB_PASSWORD"; mysqldump -h 127.0.0.1 --single-transaction --quick --no-tablespaces --set-gtid-purged=OFF --loose-skip-masking-policies -u"$DB_USERNAME" "$DB_DATABASE"' \
+          $COMPOSE exec -T -e DB_BACKUP_PASSWORD mysql sh -c \
+            'export MYSQL_PWD="$DB_BACKUP_PASSWORD"; mysqldump -h 127.0.0.1 --single-transaction --quick --no-tablespaces --set-gtid-purged=COMMENTED --loose-skip-masking-policies -utemari_backup "$DB_DATABASE"' \
             | gzip > "$out"
           # shellcheck disable=SC2016 # Database variables must expand inside the container shell.
-          tables=$($COMPOSE exec -T mysql sh -c \
-            'export MYSQL_PWD="$DB_PASSWORD"; mysql -h 127.0.0.1 -N -u"$DB_USERNAME" -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = \"$DB_DATABASE\""' \
+          tables=$($COMPOSE exec -T -e DB_BACKUP_PASSWORD mysql sh -c \
+            'export MYSQL_PWD="$DB_BACKUP_PASSWORD"; mysql -h 127.0.0.1 -N -utemari_backup -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = \"$DB_DATABASE\""' \
             | tr -d '[:space:]')
           scripts/deploy/verify-and-prune-backup.sh "Nightly backup" "$out" "$tables" "$BACKUP_DIR/nightly-*.sql.gz" 14
           for m in "$BACKUP_DIR"/nightly-*.manifest; do
@@ -78,23 +80,25 @@ jobs:
       - name: Backup analytics schema
         timeout-minutes: 10
         run: |
+          DB_BACKUP_PASSWORD=$(scripts/deploy/backup-password.sh)
+          export DB_BACKUP_PASSWORD
           out="$BACKUP_DIR/analytics-nightly-$NIGHTLY_TIMESTAMP.sql.gz"
           # shellcheck disable=SC2016 # Analytics variables must expand inside the container shell.
-          if $COMPOSE exec -T mysql sh -c 'adb="${DB_ANALYTICS_DATABASE:-temari_analytics}"; export MYSQL_PWD="$DB_PASSWORD"; mysql -h 127.0.0.1 -u"$DB_USERNAME" -e "USE $adb"' 2>/dev/null; then
+          if $COMPOSE exec -T -e DB_BACKUP_PASSWORD mysql sh -c 'adb="${DB_ANALYTICS_DATABASE:-temari_analytics}"; export MYSQL_PWD="$DB_BACKUP_PASSWORD"; mysql -h 127.0.0.1 -utemari_backup -e "USE $adb"' 2>/dev/null; then
             set -o pipefail
             manifest="$BACKUP_DIR/analytics-nightly-$NIGHTLY_TIMESTAMP.manifest"
             adb_sql() {
-              $COMPOSE exec -T mysql sh -c "adb=\"\${DB_ANALYTICS_DATABASE:-temari_analytics}\"; export MYSQL_PWD=\"\$DB_PASSWORD\"; mysql -h 127.0.0.1 -N -B -u\"\$DB_USERNAME\" \"\$adb\" -e \"$1\""
+              $COMPOSE exec -T -e DB_BACKUP_PASSWORD mysql sh -c "adb=\"\${DB_ANALYTICS_DATABASE:-temari_analytics}\"; export MYSQL_PWD=\"\$DB_BACKUP_PASSWORD\"; mysql -h 127.0.0.1 -N -B -utemari_backup \"\$adb\" -e \"$1\""
             }
             if ! { query=$(adb_sql "SHOW TABLES" | scripts/deploy/count-rows-query.sh) && adb_sql "$query" > "$manifest"; }; then
               rm -f "$manifest"
               echo "::warning::Nightly analytics manifest not written; the weekly restore test skips its count check for this dump."
             fi
             # shellcheck disable=SC2016 # Analytics variables must expand inside the container shell.
-            $COMPOSE exec -T mysql sh -c 'adb="${DB_ANALYTICS_DATABASE:-temari_analytics}"; export MYSQL_PWD="$DB_PASSWORD"; mysqldump -h 127.0.0.1 --single-transaction --quick --no-tablespaces --set-gtid-purged=OFF --loose-skip-masking-policies -u"$DB_USERNAME" --databases "$adb"' \
+            $COMPOSE exec -T -e DB_BACKUP_PASSWORD mysql sh -c 'adb="${DB_ANALYTICS_DATABASE:-temari_analytics}"; export MYSQL_PWD="$DB_BACKUP_PASSWORD"; mysqldump -h 127.0.0.1 --single-transaction --quick --no-tablespaces --set-gtid-purged=COMMENTED --loose-skip-masking-policies -utemari_backup --databases "$adb"' \
               | gzip > "$out"
             # shellcheck disable=SC2016 # Analytics variables must expand inside the container shell.
-            tables=$($COMPOSE exec -T mysql sh -c 'adb="${DB_ANALYTICS_DATABASE:-temari_analytics}"; export MYSQL_PWD="$DB_PASSWORD"; mysql -h 127.0.0.1 -N -u"$DB_USERNAME" -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = \"$adb\""' \
+            tables=$($COMPOSE exec -T -e DB_BACKUP_PASSWORD mysql sh -c 'adb="${DB_ANALYTICS_DATABASE:-temari_analytics}"; export MYSQL_PWD="$DB_BACKUP_PASSWORD"; mysql -h 127.0.0.1 -N -utemari_backup -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = \"$adb\""' \
               | tr -d '[:space:]')
             scripts/deploy/verify-and-prune-backup.sh "Nightly analytics backup" "$out" "$tables" "$BACKUP_DIR/analytics-nightly-*.sql.gz" 14
             for m in "$BACKUP_DIR"/analytics-nightly-*.manifest; do
@@ -131,6 +135,28 @@ jobs:
           after=$(docker system df --format '{{.Type}}\t{{.Reclaimable}}' | awk -F'\t' '$1=="Images"{print $2}')
           echo "Images reclaimable before: ${before:-unknown}, after: ${after:-unknown}" | tee /tmp/image-prune.txt
 
+      - name: Binlog disk headroom
+        timeout-minutes: 2
+        run: |
+          binlogs=$($COMPOSE exec -T mysql sh -c 'find /var/lib/mysql -maxdepth 1 -name "binlog.[0-9]*" -mtime -7 -printf "%s\n"')
+          if [ -z "$binlogs" ]; then
+            echo "::error::No binlog written in the last 7 days under /var/lib/mysql; point-in-time recovery has nothing to replay."
+            exit 1
+          fi
+          binlog_bytes=$(printf '%s\n' "$binlogs" | awk '{ total += $1 } END { printf "%.0f", total }')
+          dump_bytes=$(du -cb "$BACKUP_DIR"/*nightly-"$NIGHTLY_TIMESTAMP".sql.gz | tail -n 1 | cut -f1)
+          mysql_free=$($COMPOSE exec -T mysql df -Pk /var/lib/mysql | awk 'NR == 2 { printf "%.0f", $4 * 1024 }')
+          backup_free=$(df -Pk "$BACKUP_DIR" | awk 'NR == 2 { printf "%.0f", $4 * 1024 }')
+          free=$(( mysql_free < backup_free ? mysql_free : backup_free ))
+          need=$(( binlog_bytes + dump_bytes ))
+          line="7-day binlogs $(( binlog_bytes / 1048576 )) MiB + tonight's dumps $(( dump_bytes / 1048576 )) MiB = $(( need / 1048576 )) MiB needed; $(( free / 1048576 )) MiB free (mysql $(( mysql_free / 1048576 )) MiB, backups $(( backup_free / 1048576 )) MiB)"
+          echo "$line"
+          echo "## Binlog disk headroom"$'\n'"$line" >> "$GITHUB_STEP_SUMMARY"
+          if [ "$need" -gt "$free" ]; then
+            echo "::error::Another 7 days of binlogs plus a nightly dump no longer fit the free disk: $line"
+            exit 1
+          fi
+
       - name: Reclaim disk summary
         if: always()
         run: |
@@ -142,14 +168,14 @@ jobs:
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
-  # Cleanup uses continue-on-error above, so only a backup step can fail the job.
+  # Cleanup uses continue-on-error above, so only a backup step or the headroom check can fail the job.
   notify:
     name: Backup alert
     needs: [nightly-backup]
     if: always() && needs.nightly-backup.result == 'failure'
     uses: ./.github/workflows/maintainer-alert.yml
     with:
-      message: Nightly backup failed on the homelab runner. A silent backup failure is worse than none.
+      message: Nightly backup or its binlog disk-headroom check failed on the homelab runner. A silent backup failure is worse than none.
     secrets:
       TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
       TELEGRAM_MAINTAINER_CHAT_ID: ${{ secrets.TELEGRAM_MAINTAINER_CHAT_ID }}
