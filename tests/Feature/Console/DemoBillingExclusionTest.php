@@ -56,6 +56,7 @@ const BILLING = [
 const NON_BILLING = [
     'schedule:heartbeat' => 'writes one Redis timestamp, touches no user',
     'schedule:monday-check' => 'reads settlement cursors and the scheduler-chain flags and pushes one maintainer alert, no LLM and no Strava call',
+    'schedule:check-late' => 'reads the heartbeat table and the scheduler-chain flags and pushes maintainer alerts, no LLM and no Strava call',
     'demo:daily-refresh' => 'the demo account is the point; rule-based fill, zero LLM tokens',
     'plan:score-compliance' => 'free local km comparison against ActivityDetail rows, no LLM and no Strava call',
     'ai:self-heal' => 'only re-kicks Pending rows; demo rows are seeded Done, and the sweeps that could bill draw from RecentlyActiveUsers, which applies notDemo()',

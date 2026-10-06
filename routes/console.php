@@ -279,3 +279,8 @@ Schedule::command('fitness:notify-improvement')->dailyAt('10:00')->withoutOverla
 // per-(analysis, channel) delivery claim. Demo excluded: the shared identity
 // has no outbound channel.
 $alertOnFailure(Schedule::command('briefing:morning-push')->everyFifteenMinutes()->withoutOverlapping(14)->onOneServer(), 'briefing:morning-push');
+
+// Every 5 minutes: page once per incident for each entry that is late (a gated
+// entry once a whole day or week passes without a success, any other once its
+// heartbeat is stale) and send one line when it is back on time.
+$alertOnFailure(Schedule::command('schedule:check-late')->everyFiveMinutes()->withoutOverlapping(4)->onOneServer(), 'schedule:check-late');

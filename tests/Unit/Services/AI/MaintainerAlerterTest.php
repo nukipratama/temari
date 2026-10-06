@@ -236,6 +236,56 @@ it('sends a cooldown alert anyway when the cooldown key cannot be claimed', func
     Bus::assertDispatched(SendMaintainerAlertJob::class);
 });
 
+it('pages skipped athletes once per incident per command, again a day later, and recovers on a clean run', function (): void {
+    $client = fakeTelegram();
+    adminWithChat(4009);
+    Carbon::setTestNow('2026-10-06 10:00:00');
+
+    $client->shouldReceive('sendMessage')->twice()->with(4009, Mockery::pattern('/`strava:sync` skipped/'), 5);
+    $client->shouldReceive('sendMessage')->once()->with(4009, Mockery::pattern('/`strava:sync-zones` skipped/'), 5);
+    $client->shouldReceive('sendMessage')->once()->with(4009, 'Scheduler `strava:sync` recovered: no athlete failed on its latest run.', 5);
+
+    $alerter = app(MaintainerAlerter::class);
+    $alerter->athletesRecovered('strava:sync');
+    $alerter->athletesFailed('strava:sync', 2);
+    $alerter->athletesFailed('strava:sync-zones', 1);
+    Carbon::setTestNow('2026-10-06 11:00:00');
+    $alerter->athletesFailed('strava:sync', 1);
+    Carbon::setTestNow('2026-10-07 10:00:00');
+    $alerter->athletesFailed('strava:sync', 1);
+    $alerter->athletesRecovered('strava:sync');
+    $alerter->athletesRecovered('strava:sync');
+
+    Carbon::setTestNow();
+});
+
+it('pages a late entry once, inline, and sends one line when it is back on time', function (): void {
+    Bus::fake();
+    $client = fakeTelegram();
+    adminWithChat(4010);
+
+    $client->shouldReceive('sendMessage')->once()->with(4010, 'Scheduler `strava:sync` is late: it has missed its schedule. Last run Oct 6 09:00. Check the scheduler container and the logs.', 5);
+    $client->shouldReceive('sendMessage')->once()->with(4010, 'Scheduler `strava:sync` is back on time.', 5);
+
+    $alerter = app(MaintainerAlerter::class);
+    $alerter->schedulerOnTime('strava:sync');
+    $alerter->schedulerLate('strava:sync', Carbon::parse('2026-10-06 09:00:00'));
+    $alerter->schedulerLate('strava:sync', Carbon::parse('2026-10-06 09:00:00'));
+    $alerter->schedulerOnTime('strava:sync');
+    $alerter->schedulerOnTime('strava:sync');
+
+    Bus::assertNotDispatched(SendMaintainerAlertJob::class);
+});
+
+it('names no last run for an entry that has never run', function (): void {
+    $client = fakeTelegram();
+    adminWithChat(4011);
+
+    $client->shouldReceive('sendMessage')->once()->with(4011, 'Scheduler `plan:regenerate` is late: it has missed its schedule. Check the scheduler container and the logs.', 5);
+
+    app(MaintainerAlerter::class)->schedulerLate('plan:regenerate', null);
+});
+
 it('pushes the skipped-athletes alert inline', function (): void {
     Bus::fake();
     $client = fakeTelegram();

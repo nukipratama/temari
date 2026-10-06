@@ -223,11 +223,52 @@ class MaintainerAlerter
         );
     }
 
+    /**
+     * A per-athlete loop swallowed errors for $count athletes; paged once per
+     * incident per command like {@see self::schedulerFailed()}.
+     */
     public function athletesFailed(string $command, int $count): void
     {
         $athletes = $count === 1 ? '1 athlete' : "{$count} athletes";
 
-        $this->sendInline("Scheduler `{$command}` skipped {$athletes} after errors. Check the logs.");
+        $this->openIncident(
+            'scheduler.incident.athletes:'.$command,
+            self::FAILURE_REPAGE_SECONDS,
+            "Scheduler `{$command}` skipped {$athletes} after errors. Check the logs.",
+            $this->sendInline(...),
+        );
+    }
+
+    /** A per-athlete loop ran with no athlete failing; one line if it was in an incident. */
+    public function athletesRecovered(string $command): void
+    {
+        $this->closeIncident(
+            'scheduler.incident.athletes:'.$command,
+            "Scheduler `{$command}` recovered: no athlete failed on its latest run.",
+            $this->sendInline(...),
+        );
+    }
+
+    /** An entry missed its schedule, per {@see \App\Console\SchedulerChain::isLate()}; paged once per incident. */
+    public function schedulerLate(string $command, ?Carbon $lastRunAt): void
+    {
+        $since = $lastRunAt === null ? '' : ' Last run '.$lastRunAt->format('M j H:i').'.';
+
+        $this->openIncident(
+            'scheduler.incident.late:'.$command,
+            null,
+            "Scheduler `{$command}` is late: it has missed its schedule.{$since} Check the scheduler container and the logs.",
+            $this->sendInline(...),
+        );
+    }
+
+    public function schedulerOnTime(string $command): void
+    {
+        $this->closeIncident(
+            'scheduler.incident.late:'.$command,
+            "Scheduler `{$command}` is back on time.",
+            $this->sendInline(...),
+        );
     }
 
     /**

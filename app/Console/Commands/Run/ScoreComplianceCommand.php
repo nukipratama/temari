@@ -79,6 +79,8 @@ class ScoreComplianceCommand extends Command
         $allFailed = $failed > 0 && $completed === 0;
         if ($failed > 0 && ! $allFailed) {
             $alerter->athletesFailed('plan:score-compliance', $failed);
+        } elseif ($failed === 0) {
+            $alerter->athletesRecovered('plan:score-compliance');
         }
 
         $this->info(sprintf('Scored %d planned session(s) across %d user(s).', $scored, $userIds->count()));

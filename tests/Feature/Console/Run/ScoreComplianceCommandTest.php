@@ -13,6 +13,7 @@ use App\Models\ActivityDetail;
 use App\Models\PlannedSession;
 use App\Models\TelegramConnection;
 use App\Models\User;
+use App\Services\AI\MaintainerAlerter;
 use App\Models\TrainingPreference;
 use App\Services\Run\Plan\SegmentGenerator;
 use App\Services\Run\Plan\TrainingBaseline;
@@ -397,4 +398,19 @@ it('grades race day against the race distance even once the goal behind it has b
         // The failure this replaces: a 0 km target scored the race "rest day,
         // ran anyway" instead of grading it.
         ->and($row->ran_anyway)->toBeFalse();
+});
+
+it('closes the skipped-athletes incident on a run where nobody fails', function (): void {
+    Carbon::setTestNow('2026-08-10');
+    $user = User::factory()->create();
+    PlannedSession::factory()->for($user)->rest()->create(['date' => Carbon::yesterday()]);
+    failScoringFor([]);
+    $alerter = Mockery::mock(MaintainerAlerter::class)->shouldIgnoreMissing();
+    $alerter->shouldReceive('athletesRecovered')->once()->with('plan:score-compliance');
+    $alerter->shouldNotReceive('athletesFailed');
+    $this->app->instance(MaintainerAlerter::class, $alerter);
+
+    $this->artisan('plan:score-compliance')->assertSuccessful();
+
+    Carbon::setTestNow();
 });

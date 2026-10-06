@@ -10,6 +10,7 @@ use App\Models\PlannedSession;
 use App\Models\StravaConnection;
 use App\Models\TelegramConnection;
 use App\Models\User;
+use App\Services\AI\MaintainerAlerter;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
@@ -226,4 +227,18 @@ it('narrates the briefing right away for a first connect whose history is still 
     expect($row->status)->toBe(AnalysisStatus::Queued);
 
     Carbon::setTestNow();
+});
+
+it('closes the skipped-athletes incident on a run where nobody fails', function (): void {
+    Bus::fake();
+    User::factory()->seenToday()->create();
+    $service = Mockery::mock(AnalysisService::class);
+    $service->shouldReceive('requestBriefing')->once()->andReturn(new Analysis());
+    $this->app->instance(AnalysisService::class, $service);
+    $alerter = Mockery::mock(MaintainerAlerter::class)->shouldIgnoreMissing();
+    $alerter->shouldReceive('athletesRecovered')->once()->with('ai:daily-briefing');
+    $alerter->shouldNotReceive('athletesFailed');
+    $this->app->instance(MaintainerAlerter::class, $alerter);
+
+    $this->artisan('ai:daily-briefing')->assertSuccessful();
 });
