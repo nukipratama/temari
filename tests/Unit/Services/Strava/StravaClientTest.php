@@ -1005,3 +1005,10 @@ it('fits a refresh-lock wait, a refresh and two worst-case reads inside the defa
 
     expect($worstCase)->toBeLessThan(config('horizon.defaults.supervisor-1.timeout'));
 });
+
+it('counts a bucket the cache store hands back as a string, as Redis does', function (): void {
+    Carbon::setTestNow(Carbon::parse('2026-10-06 03:05:00', 'UTC'));
+    Cache::store(config('cache.limiter'))->put(StravaClient::rateLimitKey('15min'), '5', 600);
+
+    expect(new StravaClient()->rateLimitRemaining()['15min'])->toBe(195);
+});
