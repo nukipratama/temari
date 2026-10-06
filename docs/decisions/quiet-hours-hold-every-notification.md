@@ -36,7 +36,7 @@ demo. Only `TestNotification` bypasses it. The Telegram bot's replies and mainta
 notifications and never reach the hold.
 
 **Where it holds.** A `NotificationSending` listener
-([HoldNotificationsInQuietHours](../../app/Listeners/HoldNotificationsInQuietHours.php#L20)) runs
+([HoldNotificationsInQuietHours](../../app/Listeners/HoldNotificationsInQuietHours.php#L21)) runs
 after a notification's own `shouldSend()` and before its channel's `send()`, so before any delivery
 claim and before the inbox write. It stores one `held_notifications` row per channel (athlete,
 channel, the serialised notification with its id, `held_at`) and returns `false`, which cancels that

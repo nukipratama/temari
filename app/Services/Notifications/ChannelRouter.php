@@ -105,7 +105,7 @@ final readonly class ChannelRouter
         return $this->outboundChannelsFor($user) !== [];
     }
 
-    public function telegramReachable(User $user): bool
+    private function telegramReachable(User $user): bool
     {
         if (! $this->telegramConfigured()) {
             return false;
@@ -119,7 +119,7 @@ final readonly class ChannelRouter
         return $this->enabled($user, 'telegram_enabled');
     }
 
-    public function pushReachable(User $user): bool
+    private function pushReachable(User $user): bool
     {
         if (! $user->pushSubscriptions()->exists()) {
             return false;
