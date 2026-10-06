@@ -26,8 +26,9 @@ jobs:
     concurrency:
       group: deploy-prod
       cancel-in-progress: false
-    # A job timeout is a cancellation, so `if: failure()` never runs. Overruns are
-    # capped per step instead; this is a backstop above the sum of those caps.
+    # A job timeout is a cancellation, so `if: failure()` steps never run, but the
+    # `notify` job alerts on `cancelled` too. Overruns are capped per step instead;
+    # this is a backstop above the sum of those caps.
     timeout-minutes: 60
     env:
       COMPOSE: docker compose -f compose.prod.yaml
@@ -357,10 +358,10 @@ jobs:
   notify:
     name: Deploy alert
     needs: [deploy]
-    if: always() && needs.deploy.result == 'failure'
+    if: always() && (needs.deploy.result == 'failure' || needs.deploy.result == 'cancelled')
     uses: ./.github/workflows/maintainer-alert.yml
     with:
-      message: Deploy ${{ github.event.workflow_run.head_sha }} failed on the homelab runner (${{ needs.deploy.outputs.failure_note || 'possibly before any step ran' }}).
+      message: Deploy ${{ github.event.workflow_run.head_sha }} ${{ needs.deploy.result == 'cancelled' && 'was cancelled' || 'failed' }} on the homelab runner (${{ needs.deploy.outputs.failure_note || (needs.deploy.result == 'cancelled' && 're-run it' || 'possibly before any step ran') }}).
     secrets:
       TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
       TELEGRAM_MAINTAINER_CHAT_ID: ${{ secrets.TELEGRAM_MAINTAINER_CHAT_ID }}

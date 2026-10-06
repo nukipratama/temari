@@ -6,10 +6,11 @@ name: Nightly backup
 #
 # Off the hour for the same reason nightly-audit.yml is: an on-the-hour cron
 # queues behind everyone else's. 23:40 WIB is chosen because the day's data is
-# complete by then and nothing else runs between 21:00 and midnight —
-# `streak:settle` is 00:00, then eight jobs through 00:26, pruning at
-# 02:20-02:25, weather and trend at 03:15-03:45, the nightly audit at 03:17,
-# `ai:trend-read` at 06:00, the spend digest at 21:00 (see routes/console.php).
+# complete by then. The 5-, 15- and 60-minute schedule entries still run
+# between 21:00 and midnight, as do `streak:settle` (hourly) and the 21:00
+# digests; then `ai:daily-briefing` at 00:01 and eight jobs through 00:26,
+# pruning at 02:20-02:40, weather and trend at 03:15-03:45, the nightly audit
+# at 03:17, `ai:trend-read` at 06:00 (see routes/console.php).
 #
 # Disk cleanup rides in the same job, strictly after a successful backup and
 # never before it: a full disk is how backups start failing silently, and the
