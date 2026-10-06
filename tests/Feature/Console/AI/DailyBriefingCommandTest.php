@@ -3,27 +3,32 @@
 declare(strict_types=1);
 
 use App\Jobs\AI\AnalyzeBriefingMascotVoiceJob;
-use App\Jobs\AI\SendMaintainerAlertJob;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
 use App\Models\PlannedSession;
 use App\Models\StravaConnection;
+use App\Models\TelegramConnection;
 use App\Models\User;
+use App\Services\AI\MaintainerAlerter;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
 use App\Services\AI\HydrationBacklog;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Facades\Http;
 
 uses(RefreshDatabase::class);
 
 it('continues dispatching later briefings after one athlete fails and alerts once', function (): void {
     Bus::fake();
+    Http::fake(['api.telegram.org/*' => Http::response(['ok' => true, 'result' => []])]);
     Config::set('services.telegram.bot_token', 'test-bot-token');
+    TelegramConnection::factory()->for(User::factory()->admin()->state(['last_seen_at' => null]))->create();
     Carbon::setTestNow('2026-05-11 00:01:00');
     $failing = User::factory()->seenToday()->create(['name' => 'Private Failed Athlete']);
     $later = User::factory()->seenToday()->create(['name' => 'Private Later Athlete']);
@@ -57,12 +62,12 @@ it('continues dispatching later briefings after one athlete fails and alerts onc
     $this->artisan('ai:daily-briefing')->assertSuccessful();
 
     expect($requested)->toBe([[$later->id, Carbon::today()->toDateString()]]);
-    Bus::assertDispatchedTimes(SendMaintainerAlertJob::class, 1);
-    Bus::assertDispatched(static fn (SendMaintainerAlertJob $job): bool =>
-        str_contains($job->message, 'ai:daily-briefing')
-        && str_contains($job->message, '1 athlete')
-        && ! str_contains($job->message, 'Private Failed Athlete')
-        && ! str_contains($job->message, 'Private Later Athlete'));
+    Http::assertSentCount(1);
+    Http::assertSent(static fn (Request $request): bool =>
+        str_contains((string) $request['text'], 'ai:daily-briefing')
+        && str_contains((string) $request['text'], '1 athlete')
+        && ! str_contains((string) $request['text'], 'Private Failed Athlete')
+        && ! str_contains((string) $request['text'], 'Private Later Athlete'));
 
     Carbon::setTestNow();
 });
@@ -222,4 +227,18 @@ it('narrates the briefing right away for a first connect whose history is still 
     expect($row->status)->toBe(AnalysisStatus::Queued);
 
     Carbon::setTestNow();
+});
+
+it('closes the skipped-athletes incident on a run where nobody fails', function (): void {
+    Bus::fake();
+    User::factory()->seenToday()->create();
+    $service = Mockery::mock(AnalysisService::class);
+    $service->shouldReceive('requestBriefing')->once()->andReturn(new Analysis());
+    $this->app->instance(AnalysisService::class, $service);
+    $alerter = Mockery::mock(MaintainerAlerter::class)->shouldIgnoreMissing();
+    $alerter->shouldReceive('athletesRecovered')->once()->with('ai:daily-briefing');
+    $alerter->shouldNotReceive('athletesFailed');
+    $this->app->instance(MaintainerAlerter::class, $alerter);
+
+    $this->artisan('ai:daily-briefing')->assertSuccessful();
 });

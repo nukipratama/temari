@@ -7,21 +7,24 @@ use App\Enums\PlannedSessionStatus;
 use App\Enums\SessionType;
 use App\Actions\Run\Plan\ResolveTrainingPreferenceAction;
 use App\Console\SchedulerChain;
-use App\Jobs\AI\SendMaintainerAlertJob;
 use App\Jobs\Run\ReconcilePlanJob;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\PlannedSession;
+use App\Models\TelegramConnection;
 use App\Models\User;
+use App\Services\AI\MaintainerAlerter;
 use App\Models\TrainingPreference;
 use App\Services\Run\Plan\SegmentGenerator;
 use App\Services\Run\Plan\TrainingBaseline;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\Request;
 use Illuminate\Console\Scheduling\Event;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Facades\Http;
 
 uses(RefreshDatabase::class);
 
@@ -61,7 +64,9 @@ it('continues scoring later athletes when one athlete throws', function (): void
 
 it('lets the Monday scheduler open the regenerate gate after a partial scoring failure and alerts once', function (): void {
     Bus::fake();
+    Http::fake(['api.telegram.org/*' => Http::response(['ok' => true, 'result' => []])]);
     Config::set('services.telegram.bot_token', 'test-bot-token');
+    TelegramConnection::factory()->for(User::factory()->admin())->create();
     Carbon::setTestNow('2026-08-10');
     $failing = User::factory()->create(['name' => 'Private Failed Athlete']);
     $later = User::factory()->create(['name' => 'Private Later Athlete']);
@@ -88,19 +93,21 @@ it('lets the Monday scheduler open the regenerate gate after a partial scoring f
     );
     expect($regenerate)->not->toBeNull()
         ->and($regenerate->filtersPass(app()))->toBeTrue();
-    Bus::assertDispatchedTimes(SendMaintainerAlertJob::class, 1);
-    Bus::assertDispatched(static fn (SendMaintainerAlertJob $job): bool =>
-        str_contains($job->message, 'plan:score-compliance')
-        && str_contains($job->message, '1 athlete')
-        && ! str_contains($job->message, 'Private Failed Athlete')
-        && ! str_contains($job->message, 'Private Later Athlete'));
+    Http::assertSentCount(1);
+    Http::assertSent(static fn (Request $request): bool =>
+        str_contains((string) $request['text'], 'plan:score-compliance')
+        && str_contains((string) $request['text'], '1 athlete')
+        && ! str_contains((string) $request['text'], 'Private Failed Athlete')
+        && ! str_contains((string) $request['text'], 'Private Later Athlete'));
 
     Carbon::setTestNow();
 });
 
 it('keeps the Monday regenerate gate closed when every athlete fails scoring', function (): void {
     Bus::fake();
+    Http::fake(['api.telegram.org/*' => Http::response(['ok' => true, 'result' => []])]);
     Config::set('services.telegram.bot_token', 'test-bot-token');
+    TelegramConnection::factory()->for(User::factory()->admin())->create();
     Carbon::setTestNow('2026-08-10');
     $first = User::factory()->create();
     $second = User::factory()->create();
@@ -124,10 +131,10 @@ it('keeps the Monday regenerate gate closed when every athlete fails scoring', f
     expect($scoreCompliance)->not->toBeNull();
     $scoreCompliance->finish(app(), 1);
     expect($regenerate->filtersPass(app()))->toBeFalse();
-    Bus::assertDispatchedTimes(SendMaintainerAlertJob::class, 1);
-    Bus::assertDispatched(static fn (SendMaintainerAlertJob $job): bool =>
-        str_contains($job->message, 'plan:score-compliance')
-        && str_contains($job->message, 'Scheduler failed to run'));
+    Http::assertSentCount(1);
+    Http::assertSent(static fn (Request $request): bool =>
+        str_contains((string) $request['text'], 'plan:score-compliance')
+        && str_contains((string) $request['text'], 'Scheduler failed to run'));
 
     Carbon::setTestNow();
 });
@@ -391,4 +398,19 @@ it('grades race day against the race distance even once the goal behind it has b
         // The failure this replaces: a 0 km target scored the race "rest day,
         // ran anyway" instead of grading it.
         ->and($row->ran_anyway)->toBeFalse();
+});
+
+it('closes the skipped-athletes incident on a run where nobody fails', function (): void {
+    Carbon::setTestNow('2026-08-10');
+    $user = User::factory()->create();
+    PlannedSession::factory()->for($user)->rest()->create(['date' => Carbon::yesterday()]);
+    failScoringFor([]);
+    $alerter = Mockery::mock(MaintainerAlerter::class)->shouldIgnoreMissing();
+    $alerter->shouldReceive('athletesRecovered')->once()->with('plan:score-compliance');
+    $alerter->shouldNotReceive('athletesFailed');
+    $this->app->instance(MaintainerAlerter::class, $alerter);
+
+    $this->artisan('plan:score-compliance')->assertSuccessful();
+
+    Carbon::setTestNow();
 });

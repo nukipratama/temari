@@ -54,6 +54,8 @@ class DailyBriefingCommand extends Command
         }
         if ($failed > 0) {
             $alerter->athletesFailed('ai:daily-briefing', $failed);
+        } else {
+            $alerter->athletesRecovered('ai:daily-briefing');
         }
 
         $this->info("Dispatched daily kickoff (briefing) for {$users->count()} active users.");

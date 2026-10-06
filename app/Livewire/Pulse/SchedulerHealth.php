@@ -95,7 +95,7 @@ class SchedulerHealth extends Card
                 $history !== null && $history['latestKilled'] => 'killed',
                 $run === null => 'never run',
                 $run->hasFailed() => 'failed',
-                $run->isStale() => 'late',
+                SchedulerChain::isLate($command, $run) => 'late',
                 default => 'ok',
             },
             'lastRunAt' => $run?->last_run_at,

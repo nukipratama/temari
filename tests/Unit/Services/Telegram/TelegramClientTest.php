@@ -189,3 +189,13 @@ it('adds a long-poll timeout on top of the base total timeout, unaffected by the
         ->toHaveKey('connect_timeout', 5)
         ->toHaveKey('timeout', 40);
 });
+
+it('replaces the total timeout when a caller sets its own', function (): void {
+    $method = new ReflectionMethod(TelegramClient::class, 'client');
+
+    $pending = $method->invoke(new TelegramClient(), 'test-bot-token', 0, 5);
+
+    expect($pending->getOptions())
+        ->toHaveKey('connect_timeout', 5)
+        ->toHaveKey('timeout', 5);
+});

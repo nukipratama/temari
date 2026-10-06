@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Console\SchedulerChain;
+use App\Services\AI\MaintainerAlerter;
 use Illuminate\Console\Scheduling\Event;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\Carbon;
@@ -96,6 +97,17 @@ it('runs streak:settle every hour of every day', function (): void {
     expect(runsAt($settle, '2026-09-14 00:00:00'))->toBeTrue()
         ->and(runsAt($settle, '2026-09-14 05:00:00'))->toBeTrue()
         ->and(runsAt($settle, '2026-09-16 13:00:00'))->toBeTrue();
+});
+
+it('alerts on a failed streak:settle and closes the incident on its next success', function (): void {
+    $alerter = Mockery::mock(MaintainerAlerter::class);
+    $alerter->shouldReceive('schedulerFailed')->once()->with('streak:settle');
+    $alerter->shouldReceive('schedulerRecovered')->once()->with('streak:settle');
+    app()->instance(MaintainerAlerter::class, $alerter);
+
+    $settle = scheduledChainEvent('streak:settle');
+    $settle->finish(app(), 1);
+    $settle->finish(app(), 0);
 });
 
 it('checks the Monday entries once, at 06:00', function (): void {

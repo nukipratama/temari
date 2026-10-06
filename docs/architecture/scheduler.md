@@ -91,6 +91,7 @@ despite that.
 | `streak:remind` | Sat 18:00 | 15 | yes | one push-eligibility sweep | ~2.0s — dispatched to 0 users |
 | `streak:settle` | hourly | 20 | yes | queues chronological per-user settlement for the athletes still behind or marked dirty; one query when nobody is | queues one settlement job per athlete behind |
 | `schedule:monday-check` | Mon 06:00 | 10 | yes | one indexed count plus the chain flags, at most one alert per week | not measured — added with the Monday catch-up |
+| `schedule:check-late` | every 5 minutes | 4 | yes | one heartbeat-table read plus the chain flags, at most one alert per entry per incident | not measured — added with the late sweep |
 | `RetryOrphanedStravaGrantReleasesJob` (queued job) | daily 02:40 | 30 | yes | retries the Strava release of grants whose local connection is gone or revoked, one call per orphaned grant | not measured — the scheduler only queues it |
 
 Values marked "unchanged" already had `withoutOverlapping()` before this pass and keep their
@@ -137,6 +138,34 @@ a command off the schedule). `analytics:prune` deletes log rows older than 90 da
 failures, skips and killed runs, and the nearest-rank p50/p95/max runtime of successful runs. The
 `/pulse` Scheduler card shows that line under each entry, and shows the entry itself as `killed`
 while its latest run is.
+
+## Alerts
+
+Every entry wrapped in `$alertOnFailure` in [routes/console.php](../../routes/console.php) pages
+once per incident through [MaintainerAlerter](../../app/Services/AI/MaintainerAlerter.php). The
+first failure pages. The entry then stays silent while it keeps failing, except for one repeat page
+per 24 hours, and its next success sends one "recovered" line. The open incident is a key on the
+`durable` store, so a cache eviction cannot re-page it. `athletesFailed()`, which a per-athlete
+loop (`ai:daily-briefing`, `plan:score-compliance`) sends when it skipped athletes after errors,
+follows the same rule per command: a run with no failed athlete closes the incident.
+
+`schedule:check-late` runs every 5 minutes and pages once per incident for each entry that is
+late, with one "back on time" line when it is not
+([SchedulerChain::isLate()](../../app/Console/SchedulerChain.php)):
+
+- A gated entry (`SchedulerChain::DAILY_GATED`, `WEEKLY_GATED`) is late once its previous whole
+  day or ISO week passed without a success and the current one has none yet, read from the chain
+  flags. Its closed gate skips every tick in between, so its heartbeat says nothing. A gate that
+  never opens still goes late.
+- Every other entry is late once `ScheduledTaskRun::isStale()` says so. A lock skip does not
+  refresh the heartbeat, so a jammed lock goes late too.
+
+Alerts raised by the scheduler itself (an entry's failure, lateness and recovery, and
+`athletesFailed()` from a per-athlete loop) go to Telegram inline with a 5-second timeout instead of through the queued
+`SendMaintainerAlertJob`, so a dead or paused Horizon cannot silence them. Every other maintainer
+alert stays queued. If the cache errors while reading an incident or cooldown key, the alert is
+sent anyway, because a duplicate page is better than silence. A recovery or back-on-time line is
+not, since every success and every sweep checks for one.
 
 ## The Monday window: ordering and catch-up
 

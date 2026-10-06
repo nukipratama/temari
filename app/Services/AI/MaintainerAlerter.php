@@ -24,10 +24,12 @@ use Throwable;
  *
  * Best-effort and self-contained: a no-op when Telegram is unconfigured, and a
  * per-chat send failure is logged, never thrown, so an alert can never fail the
- * job/command it is reporting on. Every alert's actual Telegram send happens in
- * {@see \App\Jobs\AI\SendMaintainerAlertJob}, queued by {@see self::broadcast()}
- * — so no outbound call ever runs inline in whatever fired the alert, a web
- * request included.
+ * job/command it is reporting on. Almost every alert's actual Telegram send
+ * happens in {@see \App\Jobs\AI\SendMaintainerAlertJob}, queued by
+ * {@see self::broadcast()}, so no outbound call runs inline in a web request.
+ * The alerts raised by the scheduler itself send inline through
+ * {@see self::sendInline()} instead, so a dead or paused Horizon cannot
+ * silence them.
  */
 class MaintainerAlerter
 {
@@ -72,6 +74,11 @@ class MaintainerAlerter
 
     /** Keeps the exception digest inside Telegram's 4096-character message limit. */
     public const int EXCEPTION_DIGEST_MAX_LINES = 25;
+
+    /** A failure incident still open this long pages again. */
+    private const int FAILURE_REPAGE_SECONDS = 86_400;
+
+    private const int INLINE_TIMEOUT_SECONDS = 5;
 
     public function __construct(
         private readonly TelegramClient $telegram,
@@ -192,18 +199,76 @@ class MaintainerAlerter
     /**
      * A scheduled command failed. Wired via `->onFailure()` in routes/console.php
      * so a dead scheduler surfaces as a push instead of silently taking down
-     * background processing.
+     * background processing. The first failure pages; the entry then stays
+     * silent until {@see self::schedulerRecovered()}, except for one page per
+     * {@see self::FAILURE_REPAGE_SECONDS} while it keeps failing.
      */
     public function schedulerFailed(string $command): void
     {
-        $this->broadcast("Scheduler failed to run `{$command}`. Check Horizon and the logs.");
+        $this->openIncident(
+            'scheduler.incident.failed:'.$command,
+            self::FAILURE_REPAGE_SECONDS,
+            "Scheduler failed to run `{$command}`. Check Horizon and the logs.",
+            $this->sendInline(...),
+        );
     }
 
+    /** A scheduled command succeeded; one line if it was in a failure incident. Wired via `->onSuccess()`. */
+    public function schedulerRecovered(string $command): void
+    {
+        $this->closeIncident(
+            'scheduler.incident.failed:'.$command,
+            "Scheduler `{$command}` recovered: its latest run succeeded.",
+            $this->sendInline(...),
+        );
+    }
+
+    /**
+     * A per-athlete loop swallowed errors for $count athletes; paged once per
+     * incident per command like {@see self::schedulerFailed()}.
+     */
     public function athletesFailed(string $command, int $count): void
     {
         $athletes = $count === 1 ? '1 athlete' : "{$count} athletes";
 
-        $this->broadcast("Scheduler `{$command}` skipped {$athletes} after errors. Check the logs.");
+        $this->openIncident(
+            'scheduler.incident.athletes:'.$command,
+            self::FAILURE_REPAGE_SECONDS,
+            "Scheduler `{$command}` skipped {$athletes} after errors. Check the logs.",
+            $this->sendInline(...),
+        );
+    }
+
+    /** A per-athlete loop ran with no athlete failing; one line if it was in an incident. */
+    public function athletesRecovered(string $command): void
+    {
+        $this->closeIncident(
+            'scheduler.incident.athletes:'.$command,
+            "Scheduler `{$command}` recovered: no athlete failed on its latest run.",
+            $this->sendInline(...),
+        );
+    }
+
+    /** An entry missed its schedule, per {@see \App\Console\SchedulerChain::isLate()}; paged once per incident. */
+    public function schedulerLate(string $command, ?Carbon $lastRunAt): void
+    {
+        $since = $lastRunAt === null ? '' : ' Last run '.$lastRunAt->format('M j H:i').'.';
+
+        $this->openIncident(
+            'scheduler.incident.late:'.$command,
+            null,
+            "Scheduler `{$command}` is late: it has missed its schedule.{$since} Check the scheduler container and the logs.",
+            $this->sendInline(...),
+        );
+    }
+
+    public function schedulerOnTime(string $command): void
+    {
+        $this->closeIncident(
+            'scheduler.incident.late:'.$command,
+            "Scheduler `{$command}` is back on time.",
+            $this->sendInline(...),
+        );
     }
 
     /**
@@ -417,14 +482,92 @@ class MaintainerAlerter
         };
     }
 
-    /** Broadcasts $message the first time $key is claimed within $ttl seconds, and no-ops on every repeat until the window lapses. */
+    /**
+     * Broadcasts $message the first time $key is claimed within $ttl seconds, and
+     * no-ops on every repeat until the window lapses. A cache error sends anyway.
+     */
     private function broadcastOnce(string $key, int $ttl, string $message): void
     {
-        if (! Cache::add($key, true, $ttl)) {
-            return;
+        try {
+            if (! Cache::add($key, true, $ttl)) {
+                return;
+            }
+        } catch (Throwable $e) {
+            $this->logKeyFailure($key, $e);
         }
 
         $this->broadcast($message);
+    }
+
+    /**
+     * Sends $message through $send when the incident at $key opens, and again
+     * once $repageSeconds have passed while it stays open (never, when null).
+     * The key lives on the durable store; a cache error sends anyway.
+     *
+     * @param  callable(string): void  $send
+     */
+    private function openIncident(string $key, ?int $repageSeconds, string $message, callable $send): void
+    {
+        $now = Carbon::now()->getTimestamp();
+
+        try {
+            $store = Cache::store('durable');
+            $pagedAt = $store->get($key);
+
+            if (is_numeric($pagedAt) && ($repageSeconds === null || $now - (int) $pagedAt < $repageSeconds)) {
+                return;
+            }
+
+            $store->forever($key, $now);
+        } catch (Throwable $e) {
+            $this->logKeyFailure($key, $e);
+        }
+
+        $send($message);
+    }
+
+    /**
+     * Sends $message through $send when the incident at $key was open, and
+     * closes it. A cache error stays silent, since every on-time sweep and
+     * every success calls this.
+     *
+     * @param  callable(string): void  $send
+     */
+    private function closeIncident(string $key, string $message, callable $send): void
+    {
+        try {
+            if (Cache::store('durable')->pull($key) === null) {
+                return;
+            }
+        } catch (Throwable $e) {
+            $this->logKeyFailure($key, $e);
+
+            return;
+        }
+
+        $send($message);
+    }
+
+    private function logKeyFailure(string $key, Throwable $e): void
+    {
+        Log::warning('maintainer_alert.key_failed', [
+            'key' => $key,
+            'reason' => $e->getMessage(),
+        ]);
+    }
+
+    /**
+     * Send $message to every admin's active Telegram chat right now, each send
+     * capped at {@see self::INLINE_TIMEOUT_SECONDS}; no-op when unconfigured.
+     * Only for alerts raised by the scheduler process, never a web request.
+     */
+    private function sendInline(string $message): void
+    {
+        if (blank(config('services.telegram.bot_token'))) {
+            return;
+        }
+
+        $this->deliver(fn (int $chatId) => $this->telegram->sendMessage($chatId, $message, self::INLINE_TIMEOUT_SECONDS));
     }
 
     /**
@@ -450,6 +593,12 @@ class MaintainerAlerter
      */
     public function sendToAdmins(string $message): void
     {
+        $this->deliver(fn (int $chatId) => $this->telegram->sendMessage($chatId, $message));
+    }
+
+    /** @param  callable(int): void  $send */
+    private function deliver(callable $send): void
+    {
         $connections = TelegramConnection::query()
             ->active()
             ->whereHas('user', fn (Builder $query) => $query->where('is_admin', true))
@@ -457,7 +606,7 @@ class MaintainerAlerter
 
         foreach ($connections as $connection) {
             try {
-                $this->telegram->sendMessage($connection->chat_id, $message);
+                $send($connection->chat_id);
             } catch (Throwable $e) {
                 Log::warning('maintainer_alert.send_failed', [
                     'chat_id' => $connection->chat_id,

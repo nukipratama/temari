@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Console\SchedulerChain;
+use App\Models\ScheduledTaskRun;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 
@@ -75,4 +76,47 @@ it('holds a gated command until every prerequisite is done today', function (): 
 
 it('lets an ungated command through', function (): void {
     expect(SchedulerChain::prerequisitesMet('strava:sync'))->toBeTrue();
+});
+
+it('reads a daily-gated command as late only once a whole day passed without a success', function (): void {
+    Carbon::setTestNow('2026-09-14 00:04:00');
+    SchedulerChain::markDoneToday(SchedulerChain::PLAN_SCORE_COMPLIANCE);
+
+    Carbon::setTestNow('2026-09-15 23:59:00');
+    expect(SchedulerChain::isLate(SchedulerChain::PLAN_SCORE_COMPLIANCE, null))->toBeFalse();
+
+    Carbon::setTestNow('2026-09-16 00:00:00');
+    expect(SchedulerChain::isLate(SchedulerChain::PLAN_SCORE_COMPLIANCE, null))->toBeTrue();
+
+    SchedulerChain::markDoneToday(SchedulerChain::PLAN_SCORE_COMPLIANCE);
+    expect(SchedulerChain::isLate(SchedulerChain::PLAN_SCORE_COMPLIANCE, null))->toBeFalse();
+});
+
+it('reads a weekly-gated command as late only once a whole ISO week passed without a success', function (): void {
+    Carbon::setTestNow('2026-09-14 00:26:00');
+    SchedulerChain::markDoneThisWeek(SchedulerChain::PLAN_REGENERATE);
+
+    Carbon::setTestNow('2026-09-27 23:59:00');
+    expect(SchedulerChain::isLate(SchedulerChain::PLAN_REGENERATE, null))->toBeFalse();
+
+    Carbon::setTestNow('2026-09-28 00:00:00');
+    expect(SchedulerChain::isLate(SchedulerChain::PLAN_REGENERATE, null))->toBeTrue();
+});
+
+it('ignores a stale heartbeat on a gated command whose gate is merely closed', function (): void {
+    SchedulerChain::markDoneToday(SchedulerChain::PLAN_CLOSE_FINISHED_RACES);
+    Carbon::setTestNow('2026-09-14 20:00:00');
+    $run = new ScheduledTaskRun(['command' => 'plan:close-finished-races', 'expression' => '4 * * * *', 'last_run_at' => Carbon::parse('2026-09-14 00:04:00')]);
+
+    expect($run->isStale())->toBeTrue()
+        ->and(SchedulerChain::isLate(SchedulerChain::PLAN_CLOSE_FINISHED_RACES, $run))->toBeFalse();
+});
+
+it('reads an ungated command as late from its heartbeat', function (): void {
+    $stale = new ScheduledTaskRun(['command' => 'strava:sync', 'expression' => '0 * * * *', 'last_run_at' => Carbon::now()->subHours(3)]);
+    $fresh = new ScheduledTaskRun(['command' => 'strava:sync', 'expression' => '0 * * * *', 'last_run_at' => Carbon::now()->subMinutes(30)]);
+
+    expect(SchedulerChain::isLate('strava:sync', $stale))->toBeTrue()
+        ->and(SchedulerChain::isLate('strava:sync', $fresh))->toBeFalse()
+        ->and(SchedulerChain::isLate('strava:sync', null))->toBeFalse();
 });

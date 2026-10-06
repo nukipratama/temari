@@ -27,14 +27,15 @@ class TelegramClient
 
     /**
      * Send a plain-text message to a chat. Returns nothing; throws on failure so
-     * the caller (a job) decides retry vs drop from the status.
+     * the caller (a job) decides retry vs drop from the status. $timeoutSeconds
+     * replaces the default total timeout.
      */
-    public function sendMessage(int $chatId, string $text): void
+    public function sendMessage(int $chatId, string $text, ?int $timeoutSeconds = null): void
     {
         $this->call('sendMessage', [
             'chat_id' => $chatId,
             'text' => $text,
-        ]);
+        ], timeoutSeconds: $timeoutSeconds);
     }
 
     /**
@@ -108,11 +109,11 @@ class TelegramClient
      * @param  (callable(PendingRequest): PendingRequest)|null  $request  Customises
      *         the pending request (e.g. multipart upload); defaults to a JSON body.
      */
-    private function call(string $method, array $params, int $longPollTimeout = 0, ?callable $request = null): mixed
+    private function call(string $method, array $params, int $longPollTimeout = 0, ?callable $request = null, ?int $timeoutSeconds = null): mixed
     {
         $token = (string) config('services.telegram.bot_token');
 
-        $http = $this->client($token, $longPollTimeout);
+        $http = $this->client($token, $longPollTimeout, $timeoutSeconds);
         $http = $request !== null ? $request($http) : $http->asJson();
 
         try {
@@ -148,10 +149,10 @@ class TelegramClient
      * timeout bounds DNS/TCP setup, separately from the total timeout, so a
      * resolver or socket stall can never outlast either budget.
      */
-    private function client(string $token, int $longPollTimeout): PendingRequest
+    private function client(string $token, int $longPollTimeout, ?int $timeoutSeconds = null): PendingRequest
     {
         return Http::baseUrl(self::API_BASE_URL . '/bot' . $token)
             ->connectTimeout(self::CONNECT_TIMEOUT_SECONDS)
-            ->timeout($longPollTimeout + self::TIMEOUT_SECONDS);
+            ->timeout($timeoutSeconds ?? $longPollTimeout + self::TIMEOUT_SECONDS);
     }
 }

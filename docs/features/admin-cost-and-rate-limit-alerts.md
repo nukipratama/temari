@@ -34,7 +34,8 @@ configured. It bypasses `ChannelRouter` and the channel mutes on purpose
 | Strava 15-minute budget under 10% | [`SyncOrchestrator::logSync()`](../../app/Services/Run/Ingest/SyncOrchestrator.php#L231) | `Cache::add` on a **global** key naming the quarter-hour window: once per window, and the next window may warn again |
 
 Every threshold and every dedupe key lives inside the alerter, so a call site hands it one number
-and never decides whether that number is worth a push.
+and never decides whether that number is worth a push. A cache error on a cooldown key sends the
+alert anyway.
 
 ## Why the Strava key is global
 
@@ -71,7 +72,7 @@ is fingerprinted:
   string are dropped and numeric path segments are masked.
 
 The first sighting in 30 days queues the fingerprint. Repeats raise its count until the next
-digest, skipping the count rather than waiting when the ledger lock is busy. At 21:00 [`MaintainerAlerter::exceptionDigest()`](../../app/Services/AI/MaintainerAlerter.php#L372)
+digest, skipping the count rather than waiting when the ledger lock is busy. At 21:00 [`MaintainerAlerter::exceptionDigest()`](../../app/Services/AI/MaintainerAlerter.php#L431)
 sends one message: a line per fingerprint with its first-seen time and count, folded to
 "and N more" past 25 lines so it stays under Telegram's message limit.
 
