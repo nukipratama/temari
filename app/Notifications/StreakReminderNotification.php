@@ -40,6 +40,7 @@ class StreakReminderNotification extends Notification implements ShouldQueue
 
     public function __construct(public readonly int $streakWeeks)
     {
+        $this->staleAfter = now()->endOfWeek();
     }
 
     /**

@@ -13,6 +13,7 @@ use App\Notifications\Channels\InAppChannel;
 use App\Notifications\RaceTomorrowNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Log;
 
 uses(RefreshDatabase::class);
 
@@ -97,4 +98,39 @@ it('says nothing about the taper when today is not a rest day', function (): voi
     expect(new RaceTomorrowNotification(raceFor($user))->toInbox($user)->body)
         ->not->toContain('the plan rests you today')
         ->not->toContain('  ');
+});
+
+it('sends the evening before and skips on race day', function (): void {
+    $user = User::factory()->create();
+    $user->updatePushSubscription('https://fcm.googleapis.com/fcm/send/abc', 'p256dh-key', 'auth-token');
+    $notification = new RaceTomorrowNotification(raceFor($user));
+
+    expect($notification->shouldSend($user, IdempotentWebPushChannel::class))->toBeTrue();
+
+    Log::spy();
+    Carbon::setTestNow('2026-05-24 06:00:00');
+
+    expect($notification->shouldSend($user, IdempotentWebPushChannel::class))->toBeFalse()
+        ->and($notification->shouldSend($user, InAppChannel::class))->toBeTrue();
+    Log::shouldHaveReceived('info')->withArgs(fn (string $message, array $context): bool => $message === 'notifications.stale_skipped'
+        && $context['type'] === RaceTomorrowNotification::class)->once();
+});
+
+it('judges a replayed race reminder as of the moment it was held', function (): void {
+    $user = User::factory()->create();
+    $user->updatePushSubscription('https://fcm.googleapis.com/fcm/send/abc', 'p256dh-key', 'auth-token');
+    $notification = new RaceTomorrowNotification(raceFor($user));
+    Carbon::setTestNow('2026-05-24 04:00:00');
+
+    expect($notification->shouldSend($user, IdempotentWebPushChannel::class))->toBeFalse();
+
+    $notification->heldAt = Carbon::parse('2026-05-23 23:00:00');
+
+    expect($notification->shouldSend($user, IdempotentWebPushChannel::class))->toBeTrue();
+});
+
+it('goes stale at the end of the day before the race', function (): void {
+    $user = User::factory()->create();
+
+    expect(new RaceTomorrowNotification(raceFor($user))->staleAfter->toDateTimeString())->toBe('2026-05-23 23:59:59');
 });

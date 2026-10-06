@@ -10,7 +10,9 @@ use App\Notifications\Concerns\AppendsUnreadBadge;
 use App\Notifications\Concerns\RechecksRouteAtDelivery;
 use App\Notifications\Concerns\SetsWebPushExpiry;
 use App\Notifications\Messages\TelegramMessage;
+use App\Console\Commands\Notifications\MorningBriefingPushCommand;
 use App\Services\Notifications\ChannelRouter;
+use App\Services\Notifications\UsualRunTime;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Notification;
@@ -37,6 +39,8 @@ class MorningBriefingNotification extends Notification implements ShouldQueue
     use SetsWebPushExpiry;
     use Queueable;
 
+    public const int STALE_AFTER_MINUTES = 120;
+
     public int $tries = 3;
 
     /**
@@ -46,6 +50,11 @@ class MorningBriefingNotification extends Notification implements ShouldQueue
 
     public function __construct(public readonly Analysis $briefing)
     {
+        $day = Carbon::parse($briefing->discriminator);
+        $bucket = intdiv(app(UsualRunTime::class)->forUser($briefing->subject_id), MorningBriefingPushCommand::BUCKET_MINUTES);
+        $slot = $bucket * MorningBriefingPushCommand::BUCKET_MINUTES;
+
+        $this->staleAfter = $day->copy()->addMinutes($slot + self::STALE_AFTER_MINUTES)->min($day->copy()->endOfDay());
     }
 
     /**

@@ -10,6 +10,8 @@ use App\Notifications\Channels\InAppChannel;
 use App\Notifications\Channels\TelegramChannel;
 use App\Notifications\StreakReminderNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Log;
 
 uses(RefreshDatabase::class);
 
@@ -129,4 +131,48 @@ it('builds a web push carrying the same streak length and a tap-through url', fu
         ->and($payload['body'])->toContain("streak doesn't break")
         ->and($payload['data'])->toBe(['url' => route('dashboard'), 'unread' => 0])
         ->and($message->getOptions())->toMatchArray(['urgency' => 'high', 'topic' => 'streak']);
+});
+
+it('sends until its week closes and skips after', function (): void {
+    Carbon::setTestNow('2026-05-20 18:00:00');
+    $user = User::factory()->create();
+    $user->updatePushSubscription('https://fcm.googleapis.com/fcm/send/abc', 'p256dh-key', 'auth-token');
+    $notification = new StreakReminderNotification(4);
+
+    Carbon::setTestNow('2026-05-24 23:30:00');
+    expect($notification->shouldSend($user, IdempotentWebPushChannel::class))->toBeTrue();
+
+    Log::spy();
+    Carbon::setTestNow('2026-05-25 00:10:00');
+    expect($notification->shouldSend($user, IdempotentWebPushChannel::class))->toBeFalse()
+        ->and($notification->shouldSend($user, InAppChannel::class))->toBeTrue();
+    Log::shouldHaveReceived('info')->withArgs(fn (string $message, array $context): bool => $message === 'notifications.stale_skipped'
+        && $context['type'] === StreakReminderNotification::class)->once();
+
+    Carbon::setTestNow();
+});
+
+it('judges a replayed streak nudge as of the moment it was held', function (): void {
+    Carbon::setTestNow('2026-05-24 22:30:00');
+    $user = User::factory()->create();
+    $user->updatePushSubscription('https://fcm.googleapis.com/fcm/send/abc', 'p256dh-key', 'auth-token');
+    $notification = new StreakReminderNotification(4);
+    $heldAt = now();
+    Carbon::setTestNow('2026-05-25 04:00:00');
+
+    expect($notification->shouldSend($user, IdempotentWebPushChannel::class))->toBeFalse();
+
+    $notification->heldAt = $heldAt;
+
+    expect($notification->shouldSend($user, IdempotentWebPushChannel::class))->toBeTrue();
+
+    Carbon::setTestNow();
+});
+
+it('goes stale when the week closes', function (): void {
+    Carbon::setTestNow('2026-05-20 18:00:00');
+
+    expect(new StreakReminderNotification(4)->staleAfter->toDateTimeString())->toBe('2026-05-24 23:59:59');
+
+    Carbon::setTestNow();
 });

@@ -2,17 +2,26 @@
 
 declare(strict_types=1);
 
+use App\Enums\NotificationDeliveryStatus;
+use App\Models\Activity;
+use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
+use App\Models\NotificationDelivery;
 use App\Models\NotificationPreference;
 use App\Models\TelegramConnection;
 use App\Models\User;
 use App\Notifications\Channels\IdempotentWebPushChannel;
+use App\Notifications\Channels\InAppChannel;
 use App\Notifications\Channels\TelegramChannel;
 use App\Notifications\MorningBriefingNotification;
+use App\Notifications\RaceTomorrowNotification;
+use App\Notifications\StreakReminderNotification;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
 use App\Services\Notifications\NotificationDeliveryClaim;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Log;
 
 uses(RefreshDatabase::class);
 
@@ -130,3 +139,89 @@ it('keys idempotency on the briefing row, so a second attempt is a no-op', funct
         ->and($claim->claim($briefing->id, 'webpush'))->toBe(1)
         ->and($claim->claim($briefing->id, 'webpush'))->toBeNull();
 });
+
+afterEach(fn () => Carbon::setTestNow());
+
+it('sends a briefing delivered inside two hours of its bucket', function (string $at): void {
+    Carbon::setTestNow($at);
+    $user = subscribedUser();
+
+    expect(new MorningBriefingNotification(briefingFor($user))->shouldSend($user, IdempotentWebPushChannel::class))->toBeTrue();
+})->with([
+    'on time' => '2026-05-24 06:05:00',
+    'exactly two hours late' => '2026-05-24 08:00:00',
+]);
+
+it('skips a briefing delivered more than two hours past its bucket', function (): void {
+    Carbon::setTestNow('2026-05-24 08:00:01');
+    $user = subscribedUser();
+
+    expect(new MorningBriefingNotification(briefingFor($user))->shouldSend($user, IdempotentWebPushChannel::class))->toBeFalse();
+});
+
+it('skips a briefing delivered on the next local day', function (): void {
+    Carbon::setTestNow('2026-05-25 00:10:00');
+    $user = subscribedUser();
+
+    expect(new MorningBriefingNotification(briefingFor($user))->shouldSend($user, IdempotentWebPushChannel::class))->toBeFalse();
+});
+
+it('keeps the inbox channel regardless of staleness', function (): void {
+    Carbon::setTestNow('2026-05-26 06:00:00');
+    $user = subscribedUser();
+
+    expect(new MorningBriefingNotification(briefingFor($user))->shouldSend($user, InAppChannel::class))->toBeTrue();
+});
+
+it('judges a replayed notification as of the moment it was held', function (): void {
+    Carbon::setTestNow('2026-05-24 04:00:00');
+    $user = subscribedUser();
+    $notification = new MorningBriefingNotification(briefingFor($user));
+
+    expect($notification->shouldSend($user, IdempotentWebPushChannel::class))->toBeTrue();
+
+    Carbon::setTestNow('2026-05-24 09:00:00');
+    expect($notification->shouldSend($user, IdempotentWebPushChannel::class))->toBeFalse();
+
+    $notification->heldAt = Carbon::parse('2026-05-24 06:30:00');
+    expect($notification->shouldSend($user, IdempotentWebPushChannel::class))->toBeTrue();
+});
+
+it('goes stale two hours past its bucket, or at the end of its day when that comes first', function (): void {
+    Carbon::setTestNow('2026-05-24 06:05:00');
+    $user = subscribedUser();
+    $briefing = briefingFor($user);
+
+    expect(new MorningBriefingNotification($briefing)->staleAfter->toDateTimeString())->toBe('2026-05-24 08:00:00');
+
+    $lateRunner = subscribedUser();
+    foreach (range(1, 5) as $day) {
+        $activity = Activity::factory()->for($lateRunner)->create();
+        ActivityDetail::factory()->for($activity)->create(['start_date_local' => "2026-05-0{$day} 23:30:00"]);
+    }
+
+    expect(new MorningBriefingNotification(briefingFor($lateRunner))->staleAfter->toDateTimeString())->toBe('2026-05-24 23:59:59');
+});
+
+it('logs a stale skip with its type and settles the delivery row as failed', function (): void {
+    Carbon::setTestNow('2026-05-24 09:00:00');
+    Log::spy();
+    $user = subscribedUser();
+    $briefing = briefingFor($user);
+
+    expect(new MorningBriefingNotification($briefing)->shouldSend($user, IdempotentWebPushChannel::class))->toBeFalse();
+
+    Log::shouldHaveReceived('info')->withArgs(fn (string $message, array $context): bool => $message === 'notifications.stale_skipped'
+        && $context['type'] === MorningBriefingNotification::class)->once();
+    $row = NotificationDelivery::query()->where('analysis_id', $briefing->id)->where('channel', 'webpush')->firstOrFail();
+    expect($row->status)->toBe(NotificationDeliveryStatus::Failed)
+        ->and($row->error)->toContain('stale');
+});
+
+it('sets no retry deadline, so a job picked up after its cutoff reaches the stale check instead of failing at pickup', function (string $notification): void {
+    expect(method_exists($notification, 'retryUntil'))->toBeFalse();
+})->with([
+    MorningBriefingNotification::class,
+    RaceTomorrowNotification::class,
+    StreakReminderNotification::class,
+]);

@@ -65,6 +65,10 @@ class ReleaseHeldNotificationsCommand extends Command
                 return false;
             }
 
+            if (property_exists($notification, 'heldAt')) {
+                $notification->heldAt = $held->held_at;
+            }
+
             $user = new Collection([User::query()->findOrFail($held->user_id)]);
             Bus::dispatch(new SendQueuedNotifications($user, $notification, [$held->channel]));
 
