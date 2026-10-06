@@ -3,12 +3,15 @@ title: AI narration internals — context builders & the demo filler
 description: How prompt signals are assembled (context builders) and how copy is produced without the LLM (demo seed + unconfigured env).
 tags: [architecture, ai]
 status: living
-reviewed: 2026-09-25
+reviewed: 2026-10-06
 code_refs:
   - app/Services/AI/Context/ActivityNarrationContext.php
   - app/Services/AI/Agent/AgentToolbox.php
   - app/Services/AI/Agent/Tools/ActivityTool.php
   - app/Services/AI/Narrators/RunInsightNarrator.php
+  - app/Console/Commands/AI/NarrationEvalCommand.php
+  - app/Console/Commands/AI/NarrationEvalChecks.php
+  - app/Console/Commands/AI/NarrationEvalFixtures.php
   - app/Services/Run/Story/BriefingContext.php
   - app/Services/AI/RuleBased/RuleBasedNarrationFiller.php
   - app/Services/AI/RuleBased/RuleBasedRunInsights.php
@@ -84,6 +87,22 @@ The neighbour it collides with is not on that page at all. `get_week_state` serv
 The last-week half of that pair, and `volume_ramp_pct`, are never the full prior week: [`lastWeekToDate`](app/Services/Run/Story/BriefingContext.php#L217) sums real activity through the same weekday `$asOf` falls on this week, queried straight off `ActivityDetail` rather than the `WeeklySnapshot` row, so a two-day-old week is compared against a two-day-old week rather than a full seven-day one. The figure is narration context only: [Readiness](app/Services/Run/Metrics/Readiness.php)'s volume guard compares actual km-to-date with the week's prescription instead ([[a-load-label-supports-a-concern-it-never-decides-one]]).
 
 Recovery hours is "hours since the most recent activity start", sharper than days-since for a mid-day briefing — now computed by [RecoveryWindow::forUser](app/Services/Run/Story/RecoveryWindow.php#L35) and passed in. `BriefingContext::forUser` is called from [WeekStateTool::handle](app/Services/AI/Agent/Tools/WeekStateTool.php#L36), one of the agent tools [BriefingMascotVoiceNarrator](app/Services/AI/Narrators/BriefingMascotVoiceNarrator.php) reads from; the rendered surface is the [[dashboard]] mascot-voice block.
+
+### Narration eval — what the model writes back
+
+The narrator tests fake the model, so they prove the payload and never the prose. `narration:eval` ([NarrationEvalCommand](app/Console/Commands/AI/NarrationEvalCommand.php#L20)) is the manual check for the four kinds that have shipped inverted or leaked reads: `plan_day_voice`, `briefing_mascot_voice` (the post-run block), `run_insight` and `profile_voice`. **Run it before closing a PR that changes a narrator prompt, a validator or one of their tools**, from a checkout that has Azure credentials, and paste the table and spend into the PR. It is not in CI or the scheduler.
+
+```
+./vendor/bin/sail artisan narration:eval --max-calls=60 [--kind=plan_day_voice ...]
+```
+
+- **Hard cap.** `--max-calls` is required, has no default and is refused above 60 ([cap()](app/Console/Commands/AI/NarrationEvalCommand.php#L121)). The loop stops before the call that would pass it and lists the unrun fixtures. The cap counts narrator calls; each can make several model requests (tool turns, plus the one validator rewrite), which the spend line reports.
+- **Never in production, never dispatching.** It refuses when `app()->isProduction()` ([handle()](app/Console/Commands/AI/NarrationEvalCommand.php#L24)) and calls the narrators directly, so no job is pushed.
+- **Real payloads, always rolled back.** It needs the seeded demo athlete (`demo:seed`). Each fixture builds its rows (planned day, run, graded intent) in a transaction that is rolled back on every path, including a thrown error ([evaluate()](app/Console/Commands/AI/NarrationEvalCommand.php#L143)). Only the metering rows on the `analytics` connection stay, so the spend is in the ledger like any other call.
+- **Fixtures.** [NarrationEvalFixtures](app/Console/Commands/AI/NarrationEvalFixtures.php#L126) holds seven plan-day reads (`hit` and `too_hard` easy days, a readiness-capped day, an eased original run as written, a strong-concern reading, an excessive one and an unplanned hard effort), the post-run briefing on a `hit` and a `too_hard` day, three run insights (faster and slower than the athlete's own 28-day baseline, picked from the demo history, and a run stripped of heart rate) and the profile voice. A fixture the history cannot support is skipped and costs no call. The briefing, run insight and profile fixtures also carry the renamed load numbers: the load direction is read from the `get_training_load` evidence the model saw ([loadDirection()](app/Console/Commands/AI/NarrationEvalFixtures.php#L83)).
+- **Checks.** [NarrationEvalChecks](app/Console/Commands/AI/NarrationEvalChecks.php#L18) runs on the written text: the narrator's own validators (a call that is rejected twice fails the `validators` column), `OutcomeLabels::complaint`, a raw-enum guard, a markdown guard, a numbers-in-evidence check (every figure must appear in the context or the tool outputs the model could read) and a direction check against the fixture's known answer. The direction check is a regex heuristic, so read a failing row's text before acting on it.
+
+The command prints one row per fixture and a spend line (calls, requests, tokens, cost from the usage metering). Fix the narrator, never loosen a check to pass.
 
 ## The demo filler — copy without the LLM
 
