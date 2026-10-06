@@ -91,7 +91,7 @@ dataset('notification types', [
         'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
         'subject_id' => $user->id,
         'analysis_type' => AnalysisType::BriefingMascotVoice,
-        'discriminator' => '2026-10-05',
+        'discriminator' => '2026-10-06',
     ])), 0, true],
     'race outcome' => [fn (User $user): Notification => new RaceOutcomeNotification(RaceGoal::factory()->for($user)->create(['race_date' => '2026-10-04'])), 1, true],
     'race tomorrow' => [fn (User $user): Notification => new RaceTomorrowNotification(RaceGoal::factory()->for($user)->create(['race_date' => '2026-10-06'])), 1, true],

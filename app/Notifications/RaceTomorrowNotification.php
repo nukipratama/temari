@@ -46,6 +46,7 @@ class RaceTomorrowNotification extends Notification implements ShouldQueue
 
     public function __construct(public readonly RaceGoal $race)
     {
+        $this->staleAfter = $race->race_date->copy()->subDay()->endOfDay();
     }
 
     public static function dedupeKeyFor(RaceGoal $race): string
