@@ -15,6 +15,7 @@ use App\Support\Config\AppConfigKey;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Config;
 
 uses(RefreshDatabase::class);
@@ -146,13 +147,105 @@ it('does not report a resume when the app-wide cost ceiling lifts', function ():
         ->and(app(AppConfig::class)->get(AppConfigKey::AiPauseStartedAt))->toBeNull();
 });
 
-it('pushes a scheduler-failure alert', function (): void {
+it('pushes a scheduler-failure alert inline with a 5 second timeout', function (): void {
+    Bus::fake();
     $client = fakeTelegram();
     adminWithChat(4001);
 
-    $client->shouldReceive('sendMessage')->once()->with(4001, Mockery::pattern('/ai:self-heal/'));
+    $client->shouldReceive('sendMessage')->once()->with(4001, Mockery::pattern('/Scheduler failed to run `ai:self-heal`/'), 5);
 
     app(MaintainerAlerter::class)->schedulerFailed('ai:self-heal');
+
+    Bus::assertNotDispatched(SendMaintainerAlertJob::class);
+});
+
+it('pages a failing entry once per incident, and again once a day while it keeps failing', function (): void {
+    $client = fakeTelegram();
+    adminWithChat(4002);
+    Carbon::setTestNow('2026-10-06 10:00:00');
+
+    $client->shouldReceive('sendMessage')->twice()->with(4002, Mockery::pattern('/failed to run `strava:sync`/'), 5);
+
+    $alerter = app(MaintainerAlerter::class);
+    $alerter->schedulerFailed('strava:sync');
+    Carbon::setTestNow('2026-10-06 11:00:00');
+    $alerter->schedulerFailed('strava:sync');
+    Carbon::setTestNow('2026-10-07 09:59:59');
+    $alerter->schedulerFailed('strava:sync');
+    Carbon::setTestNow('2026-10-07 10:00:00');
+    $alerter->schedulerFailed('strava:sync');
+
+    Carbon::setTestNow();
+});
+
+it('keeps each entry its own incident', function (): void {
+    $client = fakeTelegram();
+    adminWithChat(4003);
+
+    $client->shouldReceive('sendMessage')->once()->with(4003, Mockery::pattern('/`ai:self-heal`/'), 5);
+    $client->shouldReceive('sendMessage')->once()->with(4003, Mockery::pattern('/`ai:catch-up`/'), 5);
+
+    $alerter = app(MaintainerAlerter::class);
+    $alerter->schedulerFailed('ai:self-heal');
+    $alerter->schedulerFailed('ai:catch-up');
+});
+
+it('sends one recovered line when a failing entry next succeeds, then pages afresh on a new failure', function (): void {
+    $client = fakeTelegram();
+    adminWithChat(4004);
+
+    $client->shouldReceive('sendMessage')->twice()->with(4004, Mockery::pattern('/failed to run `ai:self-heal`/'), 5);
+    $client->shouldReceive('sendMessage')->once()->with(4004, 'Scheduler `ai:self-heal` recovered: its latest run succeeded.', 5);
+
+    $alerter = app(MaintainerAlerter::class);
+    $alerter->schedulerFailed('ai:self-heal');
+    $alerter->schedulerRecovered('ai:self-heal');
+    $alerter->schedulerRecovered('ai:self-heal');
+    $alerter->schedulerFailed('ai:self-heal');
+});
+
+it('stays silent on a success outside any incident', function (): void {
+    $client = fakeTelegram();
+    adminWithChat(4005);
+
+    $client->shouldNotReceive('sendMessage');
+
+    app(MaintainerAlerter::class)->schedulerRecovered('ai:self-heal');
+});
+
+it('pages anyway when the incident key cannot be read', function (): void {
+    $client = fakeTelegram();
+    adminWithChat(4006);
+    Cache::shouldReceive('store')->with('durable')->andThrow(new RuntimeException('redis down'));
+
+    $client->shouldReceive('sendMessage')->once()->with(4006, Mockery::pattern('/failed to run/'), 5);
+    $client->shouldReceive('sendMessage')->once()->with(4006, Mockery::pattern('/recovered/'), 5);
+
+    $alerter = app(MaintainerAlerter::class);
+    $alerter->schedulerFailed('ai:self-heal');
+    $alerter->schedulerRecovered('ai:self-heal');
+});
+
+it('sends a cooldown alert anyway when the cooldown key cannot be claimed', function (): void {
+    Bus::fake();
+    adminWithChat(4007);
+    Cache::shouldReceive('add')->andThrow(new RuntimeException('redis down'));
+
+    app(MaintainerAlerter::class)->telegramBotRejected(401);
+
+    Bus::assertDispatched(SendMaintainerAlertJob::class);
+});
+
+it('pushes the skipped-athletes alert inline', function (): void {
+    Bus::fake();
+    $client = fakeTelegram();
+    adminWithChat(4008);
+
+    $client->shouldReceive('sendMessage')->once()->with(4008, 'Scheduler `ai:daily-briefing` skipped 2 athletes after errors. Check the logs.', 5);
+
+    app(MaintainerAlerter::class)->athletesFailed('ai:daily-briefing', 2);
+
+    Bus::assertNotDispatched(SendMaintainerAlertJob::class);
 });
 
 it('pushes one overdue-Monday alert per week, naming each entry still behind', function (): void {

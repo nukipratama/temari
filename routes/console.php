@@ -18,12 +18,12 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 // Push a maintainer Telegram alert when an AI-critical scheduled command fails,
-// so a broken command surfaces as a push instead of silently taking down
-// background narration/recovery for days. Only fires for commands that actually
-// run — a scheduler that never runs anything is covered by the heartbeat below.
-$alertOnFailure = static fn (Event $event, string $command): Event => $event->onFailure(static function () use ($command): void {
-    app(MaintainerAlerter::class)->schedulerFailed($command);
-});
+// once per incident with one line when it next succeeds, so a broken command
+// surfaces instead of silently taking down background narration/recovery. Only
+// fires for commands that run; a scheduler that runs nothing has the heartbeat.
+$alertOnFailure = static fn (Event $event, string $command): Event => $event
+    ->onFailure(static fn () => app(MaintainerAlerter::class)->schedulerFailed($command))
+    ->onSuccess(static fn () => app(MaintainerAlerter::class)->schedulerRecovered($command));
 
 // Every minute: stamp a liveness timestamp on the durable Redis so the scheduler
 // container's healthcheck (`schedule:heartbeat --check`) can tell a live
@@ -241,7 +241,7 @@ Schedule::command('streak:remind')->weeklyOn(Carbon::SATURDAY, '18:00')->without
 // within the hour, and an hour with nobody behind is one query. The weekly
 // profile voice, which quotes the streak, waits per athlete for this. No LLM
 // and no Strava call.
-Schedule::command('streak:settle')->hourly()->withoutOverlapping(20)->onOneServer();
+$alertOnFailure(Schedule::command('streak:settle')->hourly()->withoutOverlapping(20)->onOneServer(), 'streak:settle');
 
 // 18:00 daily (Asia/Jakarta, the app timezone): tell an athlete whose goal race
 // is tomorrow that it is tomorrow, while there is still an evening left to act

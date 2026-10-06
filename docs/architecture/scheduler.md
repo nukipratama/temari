@@ -138,6 +138,20 @@ failures, skips and killed runs, and the nearest-rank p50/p95/max runtime of suc
 `/pulse` Scheduler card shows that line under each entry, and shows the entry itself as `killed`
 while its latest run is.
 
+## Alerts
+
+Every entry wrapped in `$alertOnFailure` in [routes/console.php](../../routes/console.php) pages
+once per incident through [MaintainerAlerter](../../app/Services/AI/MaintainerAlerter.php). The
+first failure pages. The entry then stays silent while it keeps failing, except for one repeat page
+per 24 hours, and its next success sends one "recovered" line. The open incident is a key on the
+`durable` store, so a cache eviction cannot re-page it.
+
+Alerts raised by the scheduler itself (an entry's failure and recovery, and `athletesFailed()` from
+a per-athlete loop) go to Telegram inline with a 5-second timeout instead of through the queued
+`SendMaintainerAlertJob`, so a dead or paused Horizon cannot silence them. Every other maintainer
+alert stays queued. If the cache errors while reading an incident or cooldown key, the alert is
+sent anyway, because a duplicate page is better than silence.
+
 ## The Monday window: ordering and catch-up
 
 The Monday entries are spread over `00:00`-`00:26`, with each gap sized to the dependency it
