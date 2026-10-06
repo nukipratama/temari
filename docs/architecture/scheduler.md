@@ -164,7 +164,8 @@ Alerts raised by the scheduler itself (an entry's failure, lateness and recovery
 `athletesFailed()` from a per-athlete loop) go to Telegram inline with a 5-second timeout instead of through the queued
 `SendMaintainerAlertJob`, so a dead or paused Horizon cannot silence them. Every other maintainer
 alert stays queued. If the cache errors while reading an incident or cooldown key, the alert is
-sent anyway, because a duplicate page is better than silence.
+sent anyway, because a duplicate page is better than silence. A recovery or back-on-time line is
+not, since every success and every sweep checks for one.
 
 ## The Monday window: ordering and catch-up
 

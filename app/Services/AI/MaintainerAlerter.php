@@ -528,7 +528,8 @@ class MaintainerAlerter
 
     /**
      * Sends $message through $send when the incident at $key was open, and
-     * closes it. A cache error sends anyway.
+     * closes it. A cache error stays silent, since every on-time sweep and
+     * every success calls this.
      *
      * @param  callable(string): void  $send
      */
@@ -540,6 +541,8 @@ class MaintainerAlerter
             }
         } catch (Throwable $e) {
             $this->logKeyFailure($key, $e);
+
+            return;
         }
 
         $send($message);

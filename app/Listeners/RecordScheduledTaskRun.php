@@ -44,8 +44,14 @@ class RecordScheduledTaskRun
     {
         $command = self::label($event->task);
 
-        if ($command !== self::HEARTBEAT) {
-            $this->openLogs[$event->task] = ScheduledTaskRunLog::start($command);
+        if ($command === self::HEARTBEAT) {
+            return;
+        }
+
+        $log = rescue(fn (): ScheduledTaskRunLog => ScheduledTaskRunLog::start($command));
+
+        if ($log !== null) {
+            $this->openLogs[$event->task] = $log;
         }
     }
 
@@ -54,7 +60,7 @@ class RecordScheduledTaskRun
         $log = $this->takeOpenLog($event->task);
 
         if ($event->task->skippedBecauseOverlapping) {
-            $log?->skipOverlapping();
+            rescue(fn () => $log?->skipOverlapping());
 
             return;
         }
@@ -68,11 +74,11 @@ class RecordScheduledTaskRun
 
         $exitCode = $event->task->exitCode;
 
-        $log?->close(
+        rescue(fn () => $log?->close(
             $exitCode === null || $exitCode === 0 ? ScheduledTaskStatus::Ok : ScheduledTaskStatus::Failed,
             $exitCode,
             (int) round($event->runtime * 1000),
-        );
+        ));
     }
 
     public function failed(ScheduledTaskFailed $event): void
@@ -84,7 +90,9 @@ class RecordScheduledTaskRun
             failureMessage: $event->exception->getMessage(),
         );
 
-        $this->takeOpenLog($event->task)?->close(ScheduledTaskStatus::Failed, $event->task->exitCode, null);
+        $log = $this->takeOpenLog($event->task);
+
+        rescue(fn () => $log?->close(ScheduledTaskStatus::Failed, $event->task->exitCode, null));
     }
 
     public function skipped(ScheduledTaskSkipped $event): void
@@ -95,11 +103,13 @@ class RecordScheduledTaskRun
             return;
         }
 
-        $paused = Schedule::$pausable
-            && ! $event->task->runsWhenPaused()
-            && Cache::get('illuminate:schedule:paused', false);
+        rescue(function () use ($event, $command): void {
+            $paused = Schedule::$pausable
+                && ! $event->task->runsWhenPaused()
+                && Cache::get('illuminate:schedule:paused', false);
 
-        ScheduledTaskRunLog::skip($command, $paused ? ScheduledTaskSkipReason::Paused : ScheduledTaskSkipReason::Gate);
+            ScheduledTaskRunLog::skip($command, $paused ? ScheduledTaskSkipReason::Paused : ScheduledTaskSkipReason::Gate);
+        });
     }
 
     /**

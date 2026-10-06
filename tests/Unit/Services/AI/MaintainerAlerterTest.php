@@ -213,17 +213,19 @@ it('stays silent on a success outside any incident', function (): void {
     app(MaintainerAlerter::class)->schedulerRecovered('ai:self-heal');
 });
 
-it('pages anyway when the incident key cannot be read', function (): void {
+it('pages anyway when the incident key cannot be read, but sends no recovery line', function (): void {
     $client = fakeTelegram();
     adminWithChat(4006);
     Cache::shouldReceive('store')->with('durable')->andThrow(new RuntimeException('redis down'));
 
     $client->shouldReceive('sendMessage')->once()->with(4006, Mockery::pattern('/failed to run/'), 5);
-    $client->shouldReceive('sendMessage')->once()->with(4006, Mockery::pattern('/recovered/'), 5);
+    $client->shouldNotReceive('sendMessage')->with(4006, Mockery::pattern('/recovered|back on time/'), 5);
 
     $alerter = app(MaintainerAlerter::class);
     $alerter->schedulerFailed('ai:self-heal');
     $alerter->schedulerRecovered('ai:self-heal');
+    $alerter->schedulerOnTime('ai:self-heal');
+    $alerter->athletesRecovered('strava:sync');
 });
 
 it('sends a cooldown alert anyway when the cooldown key cannot be claimed', function (): void {
