@@ -781,7 +781,7 @@ it('keys the daily bucket by the UTC date, not the app-timezone date', function 
 it('opens a fresh 15-minute bucket at :15 however recently the last one opened', function (): void {
     Carbon::setTestNow(Carbon::parse('2026-10-06 03:14:00', 'UTC'));
     for ($i = 0; $i < 200; $i++) {
-        RateLimiter::hit(StravaClient::rateLimitKey('15min'), 60);
+        RateLimiter::hit(StravaClient::rateLimitKey('15min'), 900);
     }
     expect(new StravaClient()->rateLimitRemaining()['15min'])->toBe(0);
 
