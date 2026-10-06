@@ -23,6 +23,8 @@ code_refs:
 
 > **Fact update, 2026-09-28.** The decision and its reasoning stand unchanged. The manual **Send notification** control named below was removed from the weekly and monthly recaps. It only ever resent the signed-in athlete's own recap, so it was never an operator path for someone else's message. An `Abandoned` Telegram delivery now has no manual resend; the in-app inbox still holds the narration.
 
+> **Fact update, 2026-10-06.** The decision stands. The forced-send path is gone from the code, so nothing resends an `Abandoned` Telegram delivery; a keyed Telegram send that loses its connection is settled `Abandoned` at once rather than retried; and the unclaimed `Failed` write survives as `NotificationDeliveryClaim::recordUnclaimedFailed()`, used when a send is skipped as stale at delivery.
+
 ## Context
 
 A worker can stop after claiming a notification but before it records the provider result. The database then cannot tell whether the provider accepted the send. Releasing every stale claim risks a visible Telegram duplicate; retaining every claim can lose a web push.

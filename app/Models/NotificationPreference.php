@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Models;
 
-use App\Support\SharedPropCacheKey;
 use Database\Factories\NotificationPreferenceFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -49,19 +48,6 @@ class NotificationPreference extends Model
 {
     /** @use HasFactory<NotificationPreferenceFactory> */
     use HasFactory;
-
-    /**
-     * A mute flips reachability without touching the connection or the
-     * subscription, so both shared props have to be re-derived on a save.
-     */
-    #[Override]
-    protected static function booted(): void
-    {
-        static::saved(function (NotificationPreference $preference): void {
-            SharedPropCacheKey::TelegramConnected->forget($preference->user_id);
-            SharedPropCacheKey::WebPushSubscribed->forget($preference->user_id);
-        });
-    }
 
     /**
      * @return BelongsTo<User, $this>

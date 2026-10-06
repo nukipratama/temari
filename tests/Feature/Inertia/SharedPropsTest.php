@@ -39,8 +39,6 @@ it('shares every documented key on every response', function (): void {
         'stravaPaused',
         'hrZonesChangedAt',
         'stravaZoneScopeMissing',
-        'telegramConnected',
-        'webPushSubscribed',
         'unreadNotifications',
         'aiPaused',
         'aiPauseRetriesFailed',
@@ -54,7 +52,7 @@ it('keeps every derived prop a closure so a partial reload can skip it', functio
     foreach ([
         'planRecalibration',
         'stravaSync',
-        'activeRace', 'hrZonesChangedAt', 'telegramConnected', 'webPushSubscribed', 'unreadNotifications',
+        'activeRace', 'hrZonesChangedAt', 'unreadNotifications',
         'stravaZoneScopeMissing', 'aiPaused', 'aiCatchingUp', 'stravaPaused',
     ] as $key) {
         expect($props[$key])->toBeInstanceOf(Closure::class);
@@ -87,8 +85,6 @@ it('answers with safe guest defaults when nobody is signed in', function (): voi
         ->and(($props['stravaSync'])())->toBe(['state' => 'disconnected', 'last_synced_at' => null])
         ->and(($props['activeRace'])())->toBeNull()
         ->and(($props['hrZonesChangedAt'])())->toBeNull()
-        ->and(($props['telegramConnected'])())->toBeFalse()
-        ->and(($props['webPushSubscribed'])())->toBeFalse()
         ->and(($props['unreadNotifications'])())->toBe(0)
         ->and(($props['stravaZoneScopeMissing'])())->toBeFalse()
         ->and(($props['aiPaused'])())->toBeFalse()

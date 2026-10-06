@@ -30,8 +30,7 @@ it('keeps the documented TTLs', function (): void {
         ->and(SharedPropCacheKey::StravaPaused->ttl())->toBe(60)
         ->and(SharedPropCacheKey::StravaSync->ttl())->toBe(120)
         ->and(SharedPropCacheKey::HrZonesChangedAt->ttl())->toBe(300)
-        ->and(SharedPropCacheKey::TelegramConnected->ttl())->toBe(300)
-        ->and(SharedPropCacheKey::WebPushSubscribed->ttl())->toBe(300)
+        ->and(SharedPropCacheKey::UnreadNotifications->ttl())->toBe(300)
         ->and(SharedPropCacheKey::StravaZoneScopeMissing->ttl())->toBe(300);
 });
 
@@ -49,8 +48,8 @@ it('computes once and serves the cached value afterwards', function (): void {
         return 'value';
     };
 
-    expect(SharedPropCacheKey::TelegramConnected->remember(1, $compute))->toBe('value')
-        ->and(SharedPropCacheKey::TelegramConnected->remember(1, $compute))->toBe('value')
+    expect(SharedPropCacheKey::StravaZoneScopeMissing->remember(1, $compute))->toBe('value')
+        ->and(SharedPropCacheKey::StravaZoneScopeMissing->remember(1, $compute))->toBe('value')
         ->and($calls)->toBe(1);
 });
 
@@ -62,18 +61,18 @@ it('caches a false value rather than treating it as a miss', function (): void {
         return false;
     };
 
-    SharedPropCacheKey::WebPushSubscribed->remember(1, $compute);
-    SharedPropCacheKey::WebPushSubscribed->remember(1, $compute);
+    SharedPropCacheKey::StravaZoneScopeMissing->remember(1, $compute);
+    SharedPropCacheKey::StravaZoneScopeMissing->remember(1, $compute);
 
     expect($calls)->toBe(1);
 });
 
 it('keeps one user out of another user cached value', function (): void {
-    SharedPropCacheKey::TelegramConnected->remember(1, fn (): bool => true);
-    SharedPropCacheKey::TelegramConnected->remember(2, fn (): bool => false);
+    SharedPropCacheKey::StravaZoneScopeMissing->remember(1, fn (): bool => true);
+    SharedPropCacheKey::StravaZoneScopeMissing->remember(2, fn (): bool => false);
 
-    expect(SharedPropCacheKey::TelegramConnected->remember(1, fn (): bool => false))->toBeTrue()
-        ->and(SharedPropCacheKey::TelegramConnected->remember(2, fn (): bool => true))->toBeFalse();
+    expect(SharedPropCacheKey::StravaZoneScopeMissing->remember(1, fn (): bool => false))->toBeTrue()
+        ->and(SharedPropCacheKey::StravaZoneScopeMissing->remember(2, fn (): bool => true))->toBeFalse();
 });
 
 it('recomputes after a forget', function (): void {
@@ -84,21 +83,21 @@ it('recomputes after a forget', function (): void {
         return $calls;
     };
 
-    SharedPropCacheKey::TelegramConnected->remember(1, $compute);
-    SharedPropCacheKey::TelegramConnected->forget(1);
-    SharedPropCacheKey::TelegramConnected->remember(1, $compute);
+    SharedPropCacheKey::StravaZoneScopeMissing->remember(1, $compute);
+    SharedPropCacheKey::StravaZoneScopeMissing->forget(1);
+    SharedPropCacheKey::StravaZoneScopeMissing->remember(1, $compute);
 
     expect($calls)->toBe(2);
 });
 
 it('forgets only the targeted user', function (): void {
-    SharedPropCacheKey::TelegramConnected->remember(1, fn (): string => 'one');
-    SharedPropCacheKey::TelegramConnected->remember(2, fn (): string => 'two');
+    SharedPropCacheKey::StravaZoneScopeMissing->remember(1, fn (): string => 'one');
+    SharedPropCacheKey::StravaZoneScopeMissing->remember(2, fn (): string => 'two');
 
-    SharedPropCacheKey::TelegramConnected->forget(1);
+    SharedPropCacheKey::StravaZoneScopeMissing->forget(1);
 
-    expect(Cache::has(SharedPropCacheKey::TelegramConnected->key(1)))->toBeFalse()
-        ->and(SharedPropCacheKey::TelegramConnected->remember(2, fn (): string => 'recomputed'))->toBe('two');
+    expect(Cache::has(SharedPropCacheKey::StravaZoneScopeMissing->key(1)))->toBeFalse()
+        ->and(SharedPropCacheKey::StravaZoneScopeMissing->remember(2, fn (): string => 'recomputed'))->toBe('two');
 });
 
 it('round-trips every scalar type intact on the stores a test run can reach', function (string $store): void {
@@ -106,15 +105,15 @@ it('round-trips every scalar type intact on the stores a test run can reach', fu
     Cache::purge();
 
     SharedPropCacheKey::UnreadNotifications->forget(1);
-    SharedPropCacheKey::TelegramConnected->forget(1);
+    SharedPropCacheKey::StravaZoneScopeMissing->forget(1);
     SharedPropCacheKey::HrZonesChangedAt->forget(1);
 
     SharedPropCacheKey::UnreadNotifications->remember(1, fn (): int => 5);
-    SharedPropCacheKey::TelegramConnected->remember(1, fn (): bool => false);
+    SharedPropCacheKey::StravaZoneScopeMissing->remember(1, fn (): bool => false);
     SharedPropCacheKey::HrZonesChangedAt->remember(1, fn (): ?string => null);
 
     expect(SharedPropCacheKey::UnreadNotifications->remember(1, fn (): int => 99))->toBe(5)
-        ->and(SharedPropCacheKey::TelegramConnected->remember(1, fn (): bool => true))->toBeFalse()
+        ->and(SharedPropCacheKey::StravaZoneScopeMissing->remember(1, fn (): bool => true))->toBeFalse()
         ->and(SharedPropCacheKey::HrZonesChangedAt->remember(1, fn (): ?string => 'recomputed'))->toBeNull();
 })->with(['array', 'file']);
 

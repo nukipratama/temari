@@ -196,10 +196,6 @@ export interface SharedProps {
     hrZonesChangedAt?: string | null;
     /** A zone-triggered plan rebuild keeps the previous coherent plan visible until this settles. */
     planRecalibration?: PlanRecalibrationState;
-    /** Whether the auth user has a live (non-revoked) Telegram connection. */
-    telegramConnected?: boolean;
-    /** Whether the auth user has at least one browser push subscription. */
-    webPushSubscribed?: boolean;
     /** How many of the auth user's inbox notifications are still unread. */
     unreadNotifications?: number;
     /** The public VAPID key the browser needs to subscribe to web push; '' when unconfigured. */

@@ -121,22 +121,22 @@ it('settles only the named channel', function (): void {
         ->and($claim->claim($id, 'telegram'))->toBe(2);
 });
 
-it('records a failed forced send that never claimed a row', function (): void {
+it('records a failed send that never claimed a row', function (): void {
     $id = Analysis::factory()->create()->id;
 
-    expect(app(NotificationDeliveryClaim::class)->recordForcedFailed($id, 'telegram', 'bot blocked'))->toBeTrue();
+    expect(app(NotificationDeliveryClaim::class)->recordUnclaimedFailed($id, 'telegram', 'bot blocked'))->toBeTrue();
 
     $row = NotificationDelivery::query()->firstOrFail();
     expect($row->status)->toBe(NotificationDeliveryStatus::Failed)
         ->and($row->error)->toBe('bot blocked');
 });
 
-it('does not let a failed forced send overwrite an earlier successful delivery', function (): void {
+it('does not let an unclaimed failure overwrite an earlier successful delivery', function (): void {
     $id = Analysis::factory()->create()->id;
     $claim = app(NotificationDeliveryClaim::class);
     $claim->markSent($id, 'telegram', $claim->claim($id, 'telegram'));
 
-    expect($claim->recordForcedFailed($id, 'telegram', 'forced resend blew up'))->toBeFalse()
+    expect($claim->recordUnclaimedFailed($id, 'telegram', 'skipped as stale'))->toBeFalse()
         ->and(NotificationDelivery::query()->firstOrFail()->status)->toBe(NotificationDeliveryStatus::Sent);
 });
 

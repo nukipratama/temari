@@ -5,9 +5,7 @@ declare(strict_types=1);
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
-use App\Models\NotificationPreference;
 use App\Models\StoryLine;
-use App\Models\TelegramConnection;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisType;
@@ -419,52 +417,6 @@ it('renders the Calendar page for the current month by default', function (): vo
         ->assertJsonStructure(['props' => ['monthLabel', 'cells']]);
 });
 
-it('shares telegramConnected true for a live connection', function (): void {
-    $connected = User::factory()->create();
-    TelegramConnection::factory()->for($connected)->create();
-    $this->actingAs($connected)->get('/history?view=calendar')
-        ->assertInertia(fn (Assert $page) => $page->where('telegramConnected', true));
-});
-
-it('shares telegramConnected false for a revoked connection', function (): void {
-    $revoked = User::factory()->create();
-    TelegramConnection::factory()->for($revoked)->revoked()->create();
-    $this->actingAs($revoked)->get('/history?view=calendar')
-        ->assertInertia(fn (Assert $page) => $page->where('telegramConnected', false));
-});
-
-it('shares telegramConnected false when there is no connection', function (): void {
-    $none = User::factory()->create();
-    $this->actingAs($none)->get('/history?view=calendar')
-        ->assertInertia(fn (Assert $page) => $page->where('telegramConnected', false));
-});
-
-it('shares webPushSubscribed true once the user has a push subscription', function (): void {
-    $subscribed = User::factory()->create();
-    $subscribed->updatePushSubscription('https://fcm.googleapis.com/fcm/send/abc', 'p256dh-key', 'auth-token');
-
-    $this->actingAs($subscribed)->get('/history?view=calendar')
-        ->assertInertia(fn (Assert $page) => $page->where('webPushSubscribed', true));
-});
-
-it('shares webPushSubscribed false when the user has no push subscription', function (): void {
-    $none = User::factory()->create();
-    $this->actingAs($none)->get('/history?view=calendar')
-        ->assertInertia(fn (Assert $page) => $page->where('webPushSubscribed', false));
-});
-
-// The pair that makes the manual send channel-neutral: a push-only user is
-// reachable even with Telegram absent, so the UI must not gate on Telegram.
-it('shares a push-only user as webPushSubscribed without a Telegram connection', function (): void {
-    $pushOnly = User::factory()->create();
-    $pushOnly->updatePushSubscription('https://fcm.googleapis.com/fcm/send/abc', 'p256dh-key', 'auth-token');
-
-    $this->actingAs($pushOnly)->get('/history?view=calendar')
-        ->assertInertia(fn (Assert $page) => $page
-            ->where('telegramConnected', false)
-            ->where('webPushSubscribed', true));
-});
-
 it('ships the calendar grid its own weeks, and none outside it', function (): void {
     $user = User::factory()->create();
     // The Jan 2026 grid runs 2025-12-29 .. 2026-02-01, so the 2026-01-04 week
@@ -621,35 +573,6 @@ it('never flags the current (in-progress) month as the chain head', function ():
     $this->actingAs($user)
         ->get('/history?view=calendar&month=2026-06', inertiaPartialHeaders($this->actingAs($user), '/history?view=calendar&month=2026-06', 'History', 'monthlyRecap'))
         ->assertJsonPath('props.monthlyRecap.is_chain_head', false);
-});
-
-/**
- * The shared props gate the manual "Send notification" pill on three pages. They
- * have to mean "wired AND un-muted": a muted channel would otherwise leave the
- * button looking live while the send silently goes nowhere, which is worse than
- * the disabled state that at least points at Settings.
- */
-it('reports telegramConnected false when the channel is muted but still linked', function (): void {
-    $user = User::factory()->create();
-    TelegramConnection::factory()->for($user)->create(['revoked_at' => null]);
-    NotificationPreference::factory()->for($user)->create(['telegram_enabled' => false]);
-
-    $this->actingAs($user)->get('/history?view=calendar')
-        ->assertInertia(fn (Assert $page) => $page->where('telegramConnected', false));
-
-    // Muting must not have revoked anything.
-    expect($user->fresh()->telegramConnection->isRevoked())->toBeFalse();
-});
-
-it('reports webPushSubscribed false when push is muted but still subscribed', function (): void {
-    $user = User::factory()->create();
-    $user->updatePushSubscription('https://push.example/endpoint', 'key', 'auth');
-    NotificationPreference::factory()->for($user)->create(['push_enabled' => false]);
-
-    $this->actingAs($user)->get('/history?view=calendar')
-        ->assertInertia(fn (Assert $page) => $page->where('webPushSubscribed', false));
-
-    expect($user->fresh()->pushSubscriptions()->count())->toBe(1);
 });
 
 it('does not resolve the run payload on a partial reload that only wants snapshots', function (): void {

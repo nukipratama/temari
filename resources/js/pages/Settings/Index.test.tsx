@@ -268,6 +268,15 @@ describe('Settings', () => {
         ).toBeInTheDocument();
     });
 
+    it('names the fitness-improved and time-trial asks among what the master switch sends', () => {
+        render(<Settings notificationPrefs={prefs} />);
+        expect(
+            screen.getByText(
+                /word when your race time gets quicker, a check on whether a hard run was your all-out trial/,
+            ),
+        ).toBeInTheDocument();
+    });
+
     it('patches the channel-neutral preferences when the master switch is flipped, carrying all current values', () => {
         vi.mocked(router.patch).mockReset();
         render(<Settings notificationPrefs={prefs} />);

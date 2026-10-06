@@ -56,7 +56,7 @@ trait RechecksRouteAtDelivery
 
         $deliveryKey = method_exists($this, 'deliveryKey') ? $this->deliveryKey() : null;
         if (is_int($deliveryKey)) {
-            app(NotificationDeliveryClaim::class)->recordForcedFailed(
+            app(NotificationDeliveryClaim::class)->recordUnclaimedFailed(
                 $deliveryKey,
                 ChannelRouter::deliveryChannel($channel),
                 'Skipped as stale at delivery.',
