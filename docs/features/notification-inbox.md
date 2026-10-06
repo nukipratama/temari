@@ -59,20 +59,21 @@ row once one is `done`, and otherwise the templated note that [[the-clamp-explai
 a permanent floor. The note is what a row usually carries, because the narration is requested moments
 before the notification is queued.
 
-**`race_tomorrow` has no claim table of its own.** `race:remind` sweeps active race goals whose
-`race_date` is tomorrow ([RaceRemindCommand](../../app/Console/Commands/Run/RaceRemindCommand.php#L21))
-and the inbox row it writes *is* the claim: the dedupe key is the race plus its date
-([RaceTomorrowNotification](../../app/Notifications/RaceTomorrowNotification.php#L45)), so a re-run
-finds the row and says nothing. That makes it a read-then-write rather than an atomic insert, which
-is safe here for the reason [[scheduler]] gives — one scheduler container, and the command holds an
-overlap lock while it runs. The body says the race and its distance, repeats the plan's own taper
-rest when today is one, and ends on the single practical thing left to do that evening; there is no
-narrator behind it and no hype in it.
+**`race_tomorrow` claims on the race row.** `race:remind` sweeps active race goals whose
+`race_date` is tomorrow ([RaceRemindCommand](../../app/Console/Commands/Run/RaceRemindCommand.php#L22))
+and, before notifying, claims each one with an atomic conditional update that sets `reminded_at`
+only while it is still null ([claim](../../app/Console/Commands/Run/RaceRemindCommand.php#L70)). A
+re-run, or a second run racing the first, updates no row and says nothing; a dispatch that throws
+clears the column again, so the next run sends, the same claim-then-release as `streak:remind`.
+The body says the race and its distance, repeats the plan's own taper rest when today is one, and
+ends on the single practical thing left to do that evening; there is no narrator behind it and no
+hype in it.
 
 **`race_outcome` asks, it does not assume.** `race:ask-outcome` runs at 09:00 and notifies each
 athlete whose race was yesterday and whose outcome is still `pending`
-([RaceOutcomeAskCommand](../../app/Console/Commands/Run/RaceOutcomeAskCommand.php)); the dedupe key
-is again the race plus its date ([RaceOutcomeNotification](../../app/Notifications/RaceOutcomeNotification.php)).
+([RaceOutcomeAskCommand](../../app/Console/Commands/Run/RaceOutcomeAskCommand.php)), claiming
+each race the same way through its own `outcome_asked_at` column
+([claim](../../app/Console/Commands/Run/RaceOutcomeAskCommand.php#L58)).
 A passed date is not participation, so the copy is neutral and says nothing is counted until the
 athlete answers. The demo account and athletes with the master switch off are never asked.
 

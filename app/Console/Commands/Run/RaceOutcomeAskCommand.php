@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Console\Commands\Run;
 
 use App\Enums\RaceOutcome;
-use App\Models\InboxNotification;
 use App\Models\RaceGoal;
 use App\Models\User;
 use App\Notifications\RaceOutcomeNotification;
@@ -14,6 +13,8 @@ use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
+use Throwable;
 
 #[Signature('race:ask-outcome')]
 #[Description('Ask each athlete whose race was yesterday how it went')]
@@ -34,11 +35,18 @@ class RaceOutcomeAskCommand extends Command
         $sent = 0;
 
         foreach ($races as $race) {
-            if ($this->alreadyAsked($race)) {
+            if (! $this->claim($race)) {
                 continue;
             }
 
-            $race->user->notify(new RaceOutcomeNotification($race));
+            try {
+                $race->user->notify(new RaceOutcomeNotification($race));
+            } catch (Throwable $e) {
+                $this->releaseClaim($race);
+
+                throw $e;
+            }
+
             $sent++;
         }
 
@@ -47,11 +55,16 @@ class RaceOutcomeAskCommand extends Command
         return self::SUCCESS;
     }
 
-    private function alreadyAsked(RaceGoal $race): bool
+    private function claim(RaceGoal $race): bool
     {
-        return InboxNotification::query()
-            ->where('user_id', $race->user_id)
-            ->where('dedupe_key', RaceOutcomeNotification::dedupeKeyFor($race))
-            ->exists();
+        return DB::table('race_goals')
+            ->where('id', $race->id)
+            ->whereNull('outcome_asked_at')
+            ->update(['outcome_asked_at' => now()]) === 1;
+    }
+
+    private function releaseClaim(RaceGoal $race): void
+    {
+        DB::table('race_goals')->where('id', $race->id)->update(['outcome_asked_at' => null]);
     }
 }

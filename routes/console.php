@@ -245,16 +245,16 @@ $alertOnFailure(Schedule::command('streak:settle')->hourly()->withoutOverlapping
 
 // 18:00 daily (Asia/Jakarta, the app timezone): tell an athlete whose goal race
 // is tomorrow that it is tomorrow, while there is still an evening left to act
-// on it. Demo excluded (notDemo() on the race scan); the inbox row's unique
-// (user, dedupe key) pair makes a same-day re-run a no-op rather than a second
-// push. No LLM — the copy is templated.
+// on it. Demo excluded (notDemo() on the race scan); an atomic claim on the
+// race's reminded_at column makes a same-day re-run a no-op rather than a
+// second push, and a failed dispatch releases it. No LLM — the copy is templated.
 Schedule::command('race:remind')->dailyAt('18:00')->withoutOverlapping(15)->onOneServer();
 
 // 09:00 daily (Asia/Jakarta, the app timezone): the morning after a race, ask
 // the athlete how it went. A passed date is not participation, so the race stays
 // pending until they confirm a run, enter a time or say they did not run. Demo
-// excluded (notDemo() on the race scan); the inbox dedupe key makes a re-run a
-// no-op. No LLM — the copy is templated.
+// excluded (notDemo() on the race scan); an atomic claim on the race's
+// outcome_asked_at column makes a re-run a no-op. No LLM — the copy is templated.
 Schedule::command('race:ask-outcome')->dailyAt('09:00')->withoutOverlapping(15)->onOneServer();
 
 // 09:05 daily: settle each time trial from the last week once its day is over.

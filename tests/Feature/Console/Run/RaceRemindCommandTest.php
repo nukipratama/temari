@@ -2,14 +2,15 @@
 
 declare(strict_types=1);
 
-use App\Models\InboxNotification;
 use App\Models\NotificationPreference;
 use App\Models\RaceGoal;
 use App\Models\User;
 use App\Notifications\RaceTomorrowNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Notifications\SendQueuedNotifications;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Queue;
 
 uses(RefreshDatabase::class);
 
@@ -46,21 +47,32 @@ it('tells each athlete whose race is tomorrow', function (): void {
 });
 
 it('says nothing a second time for the same race', function (): void {
-    Notification::fake();
+    Queue::fake();
+    $race = raceTomorrow(User::factory()->create());
 
+    $this->artisan('race:remind')->assertSuccessful();
+    $this->artisan('race:remind')->expectsOutputToContain('Dispatched race-day reminder to 0 users.')->assertSuccessful();
+
+    $queued = Queue::pushed(SendQueuedNotifications::class)
+        ->filter(fn (SendQueuedNotifications $job): bool => $job->notification instanceof RaceTomorrowNotification);
+    expect($queued)->not->toBeEmpty()
+        ->and($queued->map(fn (SendQueuedNotifications $job): string => $job->notification->id)->unique())->toHaveCount(1)
+        ->and($race->fresh()->reminded_at)->not->toBeNull();
+});
+
+it('releases the claim when dispatch throws, so the next run sends', function (): void {
     $user = User::factory()->create();
     $race = raceTomorrow($user);
+    Notification::shouldReceive('send')->once()->andThrow(new RuntimeException('Redis is down'));
 
-    InboxNotification::factory()->for($user)->create([
-        'kind' => 'race_tomorrow',
-        'dedupe_key' => RaceTomorrowNotification::dedupeKeyFor($race),
-    ]);
+    expect(fn () => $this->artisan('race:remind')->run())->toThrow(RuntimeException::class, 'Redis is down');
+    expect($race->fresh()->reminded_at)->toBeNull();
 
-    $this->artisan('race:remind')
-        ->expectsOutputToContain('Dispatched race-day reminder to 0 users.')
-        ->assertSuccessful();
+    Notification::fake();
+    $this->artisan('race:remind')->assertSuccessful();
 
-    Notification::assertNothingSent();
+    Notification::assertSentToTimes($user, RaceTomorrowNotification::class, 1);
+    expect($race->fresh()->reminded_at)->not->toBeNull();
 });
 
 it('skips a race that is not tomorrow', function (string $raceDate): void {
