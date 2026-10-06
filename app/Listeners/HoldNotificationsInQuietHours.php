@@ -6,6 +6,7 @@ namespace App\Listeners;
 
 use App\Models\HeldNotification;
 use App\Models\User;
+use App\Notifications\MorningBriefingNotification;
 use App\Notifications\TestNotification;
 use App\Services\Notifications\QuietHours;
 use Illuminate\Notifications\Events\NotificationSending;
@@ -23,9 +24,12 @@ class HoldNotificationsInQuietHours
             return null;
         }
 
-        HeldNotification::query()->create([
+        HeldNotification::query()->insertOrIgnore([
             'user_id' => $event->notifiable->id,
             'channel' => $event->channel,
+            'dedupe_key' => $event->notification instanceof MorningBriefingNotification
+                ? $event->notification->deliveryKey().':'.$event->channel
+                : null,
             'notification' => serialize($event->notification),
             'held_at' => now(),
         ]);
