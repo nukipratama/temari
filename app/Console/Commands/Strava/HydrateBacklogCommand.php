@@ -10,6 +10,8 @@ use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\Scopes\AnalyzedScope;
 use App\Models\User;
+use App\Services\AI\AnalysisOrigin;
+use App\Services\AI\NarrationOrigin;
 use App\Services\Run\Ingest\DetailHydrator;
 use App\Services\Strava\StravaClient;
 use App\Support\Config\AppConfig;
@@ -29,6 +31,8 @@ class HydrateBacklogCommand extends Command
 
     public function handle(AppConfig $config, StravaClient $client, DetailHydrator $hydrator): int
     {
+        app(NarrationOrigin::class)->set(AnalysisOrigin::Ingest);
+
         $this->rollDirtyWeeksForward();
 
         if (! $config->boolean(AppConfigKey::StravaEnabled)) {
