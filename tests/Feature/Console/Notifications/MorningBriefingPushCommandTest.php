@@ -13,7 +13,9 @@ use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Notification;
+use NotificationChannels\WebPush\WebPushChannel;
 
 uses(RefreshDatabase::class);
 
@@ -71,7 +73,7 @@ it('leaves an athlete alone outside their own bucket', function (string $usualSt
 
     Notification::assertNothingSent();
 })->with([
-    'the quarter hour before' => '05:50:00',
+    'ninety-five minutes before' => '04:30:00',
     'the quarter hour after' => '06:20:00',
     'the evening' => '19:00:00',
 ]);
@@ -201,4 +203,96 @@ it('excludes the demo account, like every other kickoff', function (): void {
     $this->artisan('briefing:morning-push')->assertSuccessful();
 
     Notification::assertNothingSent();
+});
+
+it('still pushes a run twenty minutes after the bucket', function (): void {
+    Notification::fake();
+    Carbon::setTestNow('2026-05-24 06:20:00');
+
+    $user = morningAthlete();
+
+    $this->artisan('briefing:morning-push')
+        ->expectsOutputToContain('Pushed the morning briefing to 1 athletes.')
+        ->assertSuccessful();
+
+    Notification::assertSentTo($user, MorningBriefingNotification::class);
+});
+
+it('does not push a run ninety minutes after the bucket', function (): void {
+    Notification::fake();
+    Carbon::setTestNow('2026-05-24 07:30:00');
+
+    morningAthlete();
+
+    $this->artisan('briefing:morning-push')
+        ->expectsOutputToContain('Pushed the morning briefing to 0 athletes.')
+        ->assertSuccessful();
+
+    Notification::assertNothingSent();
+});
+
+it('pushes a briefing that turns done after its bucket on the next tick', function (): void {
+    Notification::fake();
+
+    $user = morningAthlete('06:00:00', AnalysisStatus::Pending);
+
+    $this->artisan('briefing:morning-push')->assertSuccessful();
+    Notification::assertNothingSent();
+
+    Analysis::query()->where('subject_id', $user->id)->update(['status' => AnalysisStatus::Done]);
+    Carbon::setTestNow('2026-05-24 06:20:00');
+
+    $this->artisan('briefing:morning-push')->assertSuccessful();
+
+    Notification::assertSentToTimes($user, MorningBriefingNotification::class, 1);
+});
+
+it('sends once per analysis and channel however many ticks fall in the window', function (): void {
+    config(['services.telegram.bot_token' => 'test-bot-token']);
+    Http::fake(['api.telegram.org/*' => Http::response(['ok' => true, 'result' => true])]);
+    $pushes = 0;
+    $push = Mockery::mock(WebPushChannel::class);
+    $push->shouldReceive('send')->andReturnUsing(function () use (&$pushes): array {
+        $pushes++;
+
+        return [];
+    });
+    app()->instance(WebPushChannel::class, $push);
+
+    $user = morningAthlete('06:00:00', AnalysisStatus::Pending);
+    TelegramConnection::factory()->for($user)->create(['chat_id' => 4242, 'revoked_at' => null]);
+    $this->artisan('briefing:morning-push')->assertSuccessful();
+    Analysis::query()->where('subject_id', $user->id)->update(['status' => AnalysisStatus::Done]);
+
+    foreach (['06:20:00', '06:35:00', '06:50:00'] as $time) {
+        Carbon::setTestNow('2026-05-24 '.$time);
+        $this->artisan('briefing:morning-push')->assertSuccessful();
+    }
+
+    expect(Http::recorded()->count())->toBe(1)
+        ->and($pushes)->toBe(1);
+});
+
+it('sends the 00:00 bucket on a tick after the 00:01 generation', function (): void {
+    Notification::fake();
+    Carbon::setTestNow('2026-05-24 00:00:00');
+
+    $user = morningAthlete('00:00:00', null);
+
+    $this->artisan('briefing:morning-push')->assertSuccessful();
+    Notification::assertNothingSent();
+
+    Analysis::factory()->create([
+        'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
+        'subject_id' => $user->id,
+        'analysis_type' => AnalysisType::BriefingMascotVoice,
+        'discriminator' => '2026-05-24',
+        'status' => AnalysisStatus::Done,
+        'content' => 'a midnight runner.',
+    ]);
+    Carbon::setTestNow('2026-05-24 00:15:00');
+
+    $this->artisan('briefing:morning-push')->assertSuccessful();
+
+    Notification::assertSentTo($user, MorningBriefingNotification::class);
 });
