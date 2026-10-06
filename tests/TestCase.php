@@ -42,7 +42,7 @@ abstract class TestCase extends BaseTestCase
         }
 
         if ($token < 0 || $token >= self::REDIS_WORKERS_PER_SLOT) {
-            throw new RuntimeException("TEST_TOKEN {$token} is out of range: at most ".self::REDIS_WORKERS_PER_SLOT.' parallel workers fit a slot.');
+            throw new RuntimeException("TEST_TOKEN {$token} is out of range: at most ".(self::REDIS_WORKERS_PER_SLOT - 1).' parallel workers fit a slot.');
         }
 
         $default = $slotBase + $token * 2;

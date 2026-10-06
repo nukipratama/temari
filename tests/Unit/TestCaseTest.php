@@ -27,7 +27,7 @@ it('keeps slots 1 and 2 and slots 0 and 3 apart at the highest worker token', fu
 
 it('refuses a worker token beyond the slot capacity', function () {
     TestCase::redisDatabases(0, 16);
-})->throws(RuntimeException::class, 'TEST_TOKEN 16');
+})->throws(RuntimeException::class, 'TEST_TOKEN 16 is out of range: at most 15 parallel workers');
 
 it('refuses a slot above 3 or a base that is not a slot base', function (int $base) {
     TestCase::redisDatabases($base, 0);
