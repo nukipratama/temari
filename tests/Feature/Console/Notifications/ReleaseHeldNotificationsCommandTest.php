@@ -2,6 +2,9 @@
 
 declare(strict_types=1);
 
+use App\Models\Activity;
+use App\Models\ActivityDetail;
+use App\Models\AI\Analysis;
 use App\Models\HeldNotification;
 use App\Models\InboxNotification;
 use App\Models\NotificationPreference;
@@ -11,6 +14,8 @@ use App\Models\User;
 use App\Notifications\RaceTomorrowNotification;
 use App\Notifications\StravaDisconnectedNotification;
 use App\Notifications\StreakReminderNotification;
+use App\Services\AI\AnalysisStatus;
+use App\Services\AI\AnalysisType;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
@@ -64,7 +69,7 @@ it('releases every held item once, in the order it was triggered', function (): 
     $user = heldAthlete();
     holdAt('2026-10-05 22:30:00', $user, fn () => new StreakReminderNotification(4));
     holdAt('2026-10-05 23:00:00', $user, fn () => new StravaDisconnectedNotification(now()));
-    holdAt('2026-10-06 01:00:00', $user, fn () => new RaceTomorrowNotification(RaceGoal::factory()->for($user)->create(['race_date' => '2026-10-06', 'name' => null])));
+    holdAt('2026-10-06 01:00:00', $user, fn () => new RaceTomorrowNotification(RaceGoal::factory()->for($user)->create(['race_date' => '2026-10-07', 'name' => null])));
 
     Carbon::setTestNow('2026-10-06 04:00:00');
     $this->artisan('notifications:release-held')
@@ -160,4 +165,41 @@ it('drops an item whose subject is gone and releases the rest', function (): voi
 
     expect(sentTelegramTitles())->toBe(['Your 4-week streak is on the edge'])
         ->and(HeldNotification::query()->count())->toBe(0);
+});
+
+it('judges a released race reminder as of when it was held, not when it was released', function (): void {
+    $user = heldAthlete();
+    holdAt('2026-10-06 23:00:00', $user, fn () => new RaceTomorrowNotification(RaceGoal::factory()->for($user)->create(['race_date' => '2026-10-07', 'name' => null])));
+
+    Carbon::setTestNow('2026-10-07 04:00:00');
+    $this->artisan('notifications:release-held')->assertExitCode(0);
+
+    expect(sentTelegramTitles())->toBe(['race day is tomorrow'])
+        ->and($this->pushes)->toBe(1);
+});
+
+it('judges a released briefing as of when it was held, not when it was released', function (): void {
+    $user = heldAthlete();
+    foreach (range(1, 5) as $day) {
+        $activity = Activity::factory()->for($user)->create();
+        ActivityDetail::factory()->for($activity)->create(['start_date_local' => "2026-10-0{$day} 00:00:00"]);
+    }
+    Analysis::factory()->create([
+        'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
+        'subject_id' => $user->id,
+        'analysis_type' => AnalysisType::BriefingMascotVoice,
+        'discriminator' => '2026-10-06',
+        'status' => AnalysisStatus::Done,
+        'content' => 'a midnight runner.',
+    ]);
+    Carbon::setTestNow('2026-10-06 00:15:00');
+    $this->artisan('briefing:morning-push')->assertExitCode(0);
+
+    expect(HeldNotification::query()->count())->toBe(2);
+
+    Carbon::setTestNow('2026-10-06 04:00:00');
+    $this->artisan('notifications:release-held')->assertExitCode(0);
+
+    expect(sentTelegramTitles())->toBe(['your briefing for today'])
+        ->and($this->pushes)->toBe(1);
 });
