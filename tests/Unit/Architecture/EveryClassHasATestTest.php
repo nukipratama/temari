@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Console\Commands\AI\NarrationEvalFixture;
 use App\Console\Commands\Concerns\ConfirmsPermanentRemoval;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\StravaAuthController;
@@ -59,6 +60,7 @@ it('has a test class for every concrete app class', function (): void {
         ActivityIngested::class,         // event payload, asserted via DispatchPostRunAnalysisTest + ActivityPipelineCascadeTest
         ChainLink::class,               // chain link identity, asserted via ChainResolverTest
         ChatCallOptions::class,
+        NarrationEvalFixture::class,     // fixture identity, asserted via NarrationEvalFixturesTest
         ResolvedLocation::class,
         BriefingResult::class,
         VerdictTimelineItem::class,
