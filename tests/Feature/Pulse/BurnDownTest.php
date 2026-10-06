@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Services\Strava\StravaClient;
 use App\Livewire\Pulse\BurnDown;
 use App\Models\AI\TokenUsage;
 use App\Models\User;
@@ -62,7 +63,7 @@ it('alerts once the app-wide ceiling is spent', function (): void {
 
 it('counts the shared Strava read budget as spent, not as remaining', function (): void {
     for ($i = 0; $i < 5; $i++) {
-        RateLimiter::hit('strava-api:15min', 900);
+        RateLimiter::hit(StravaClient::rateLimitKey('15min'), 900);
     }
 
     Livewire::test(BurnDown::class)

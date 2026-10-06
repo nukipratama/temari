@@ -78,7 +78,7 @@ Two Redis instances, each addressed by DB number ([config/database.php](config/d
 | --- | --- | --- | --- |
 | `redis` | 0 | `default` | queue jobs + Horizon state + sessions (`SESSION_CONNECTION=default`) + the `scheduler:heartbeat` liveness stamp + cache locks, the scheduler mutexes included (the `redis` store's `lock_connection`) + the Monday scheduler-chain flags (the `durable` cache store, see [[scheduler]]) |
 | `redis` | 2 | `pulse` | Pulse ingest buffer (`PULSE_REDIS_DB=2`) |
-| `redis-cache` | 1 | `cache` | application cache (`REDIS_CACHE_DB=1`) |
+| `redis-cache` | 1 | `cache` | application cache (`REDIS_CACHE_DB=1`), including the shared Strava read buckets and the Strava-reported usage that caps them (the default store, which `RateLimiter` also uses; a restart empties both until Strava reports again, see [[strava-client]]) |
 
 Session cookie name and the Redis/cache key prefixes are pinned to **fixed literals** (`SESSION_COOKIE`, `REDIS_PREFIX`, `CACHE_PREFIX`) instead of being derived from `APP_NAME`, so a cosmetic name/tagline edit can't rename the cookie or shift every key prefix and log everyone out. See [[fixed-session-cookie]].
 

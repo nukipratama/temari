@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Services\Strava\StravaClient;
 use App\Enums\IngestState;
 use App\Jobs\Strava\IngestActivityJob;
 use App\Jobs\Strava\SyncActivitiesJob;
@@ -22,8 +23,8 @@ use Laravel\Socialite\Two\User as SocialiteUser;
 uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
-    RateLimiter::clear('strava-api:15min');
-    RateLimiter::clear('strava-api:daily');
+    RateLimiter::clear(StravaClient::rateLimitKey('15min'));
+    RateLimiter::clear(StravaClient::rateLimitKey('daily'));
 });
 
 /**

@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Services\Strava\StravaClient;
 use App\Enums\IngestState;
 use App\Enums\StravaReadPriority;
 use App\Enums\StravaReadSource;
@@ -23,8 +24,8 @@ use Illuminate\Support\Facades\RateLimiter;
 uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
-    RateLimiter::clear('strava-api:15min');
-    RateLimiter::clear('strava-api:daily');
+    RateLimiter::clear(StravaClient::rateLimitKey('15min'));
+    RateLimiter::clear(StravaClient::rateLimitKey('daily'));
 });
 
 function runnerWithConnection(): User
@@ -105,7 +106,7 @@ it('lets a freshly-finished run ingest while a browsing fetch queues, with the p
 
     // 150 of the 200/15min read pool spent: the reserved quarter is all that's left.
     for ($i = 0; $i < 150; $i++) {
-        RateLimiter::hit('strava-api:15min', 15 * 60);
+        RateLimiter::hit(StravaClient::rateLimitKey('15min'), 15 * 60);
     }
 
     $archiveRun = Activity::factory()->for(runnerWithConnection())->summaryOnly()->create();

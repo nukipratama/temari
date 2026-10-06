@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Services\Strava\StravaClient;
 use App\Livewire\Pulse\StravaHealth;
 use App\Models\Activity;
 use App\Models\Analytics\StravaSyncLog;
@@ -24,9 +25,9 @@ it('renders connection states and rate-limit headroom without error', function (
 });
 
 it('reads the shared API budget from the live rate limiter', function (): void {
-    RateLimiter::hit('strava-api:15min', 900);
-    RateLimiter::hit('strava-api:15min', 900);
-    RateLimiter::hit('strava-api:daily', 86400);
+    RateLimiter::hit(StravaClient::rateLimitKey('15min'), 900);
+    RateLimiter::hit(StravaClient::rateLimitKey('15min'), 900);
+    RateLimiter::hit(StravaClient::rateLimitKey('daily'), 86400);
 
     Livewire::test(StravaHealth::class)
         ->assertOk()

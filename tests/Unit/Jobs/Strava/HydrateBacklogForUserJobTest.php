@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Services\Strava\StravaClient;
 use App\Enums\StravaReadPriority;
 use App\Jobs\Strava\HydrateBacklogForUserJob;
 use App\Jobs\Strava\IngestActivityJob;
@@ -115,7 +116,7 @@ it('fetches nothing extra once the background read headroom is spent', function 
 
     $this->travelTo(now());
     for ($i = 0; $i < 150; $i++) {
-        RateLimiter::hit('strava-api:15min', 900);
+        RateLimiter::hit(StravaClient::rateLimitKey('15min'), 900);
     }
 
     runHydrateBacklogForUser($user->id);
