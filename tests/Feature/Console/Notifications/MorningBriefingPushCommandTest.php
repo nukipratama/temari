@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
+use App\Models\HeldNotification;
 use App\Models\NotificationPreference;
 use App\Models\TelegramConnection;
 use App\Models\User;
@@ -295,4 +296,24 @@ it('sends the 00:00 bucket on a tick after the 00:01 generation', function (): v
     $this->artisan('briefing:morning-push')->assertSuccessful();
 
     Notification::assertSentTo($user, MorningBriefingNotification::class);
+});
+
+it('holds a quiet-hours briefing once per channel across catch-up ticks', function (): void {
+    config([
+        'notifications.hold_during_quiet_hours' => true,
+        'services.telegram.bot_token' => 'test-bot-token',
+    ]);
+    Http::fake();
+    Carbon::setTestNow('2026-05-24 00:05:00');
+    $user = morningAthlete('00:00:00');
+    TelegramConnection::factory()->for($user)->create(['chat_id' => 4242, 'revoked_at' => null]);
+
+    $this->artisan('briefing:morning-push')->assertSuccessful();
+    $held = HeldNotification::query()->pluck('id')->all();
+    Carbon::setTestNow('2026-05-24 00:20:00');
+    $this->artisan('briefing:morning-push')->assertSuccessful();
+
+    expect($held)->toHaveCount(2)
+        ->and(HeldNotification::query()->pluck('id')->all())->toBe($held);
+    Http::assertNothingSent();
 });

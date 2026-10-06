@@ -18,10 +18,11 @@ use Override;
  * @property int $id
  * @property int $user_id
  * @property class-string $channel
+ * @property string|null $dedupe_key
  * @property string $notification
  * @property Carbon $held_at
  */
-#[Fillable(['user_id', 'channel', 'notification', 'held_at'])]
+#[Fillable(['user_id', 'channel', 'dedupe_key', 'notification', 'held_at'])]
 #[WithoutTimestamps]
 class HeldNotification extends Model
 {

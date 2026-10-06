@@ -3,11 +3,14 @@
 declare(strict_types=1);
 
 use App\Listeners\HoldNotificationsInQuietHours;
+use App\Models\AI\Analysis;
 use App\Models\HeldNotification;
 use App\Models\User;
 use App\Notifications\Channels\InAppChannel;
+use App\Notifications\MorningBriefingNotification;
 use App\Notifications\StreakReminderNotification;
 use App\Notifications\TestNotification;
+use App\Services\AI\AnalysisType;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Notifications\AnonymousNotifiable;
 use Illuminate\Notifications\Events\NotificationSending;
@@ -37,8 +40,28 @@ it('holds a send inside the window and keeps the notification id', function (): 
     expect($result)->toBeFalse()
         ->and($held->user_id)->toBe($user->id)
         ->and($held->channel)->toBe(InAppChannel::class)
+        ->and($held->dedupe_key)->toBeNull()
         ->and($held->held_at->toDateTimeString())->toBe('2026-10-05 23:00:00')
         ->and(unserialize($held->notification)->id)->toBe('f3b1c2d4-0000-4000-8000-000000000001');
+});
+
+it('holds a briefing once per channel however many times it is sent in the window', function (): void {
+    Carbon::setTestNow('2026-10-05 23:00:00');
+    $user = User::factory()->create();
+    $briefing = Analysis::factory()->done('easy 5k.')->create([
+        'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
+        'subject_id' => $user->id,
+        'analysis_type' => AnalysisType::BriefingMascotVoice,
+        'discriminator' => '2026-10-06',
+    ]);
+    $listener = new HoldNotificationsInQuietHours();
+
+    $first = $listener->handle(sendingEvent($user, new MorningBriefingNotification($briefing)));
+    $second = $listener->handle(sendingEvent($user, new MorningBriefingNotification($briefing)));
+
+    expect($first)->toBeFalse()
+        ->and($second)->toBeFalse()
+        ->and(HeldNotification::query()->sole()->dedupe_key)->toBe($briefing->id.':'.InAppChannel::class);
 });
 
 it('lets a send outside the window through', function (): void {
