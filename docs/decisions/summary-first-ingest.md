@@ -28,7 +28,7 @@ code_refs:
 
 ## Context
 
-Strava's read budget is **per API client, not per athlete** — 200 reads per 15 minutes and 2000 per day for the whole app ([`RATE_LIMIT_15MIN_MAX`](app/Services/Strava/StravaClient.php#L36)). Every user shares one pool.
+Strava's read budget is **per API client, not per athlete** — 200 reads per 15 minutes and 2000 per day for the whole app ([`RATE_LIMIT_15MIN_MAX`](app/Services/Strava/StravaClient.php#L54)). Every user shares one pool.
 
 The two ways to fill an athlete's history price out very differently against that pool:
 

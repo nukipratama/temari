@@ -25,12 +25,6 @@ use NotificationChannels\WebPush\WebPushChannel;
  * subscription records `sent`. When none accepted, a 429, 5xx or network failure
  * throws {@see TransientWebPushException} so the queue retries, and any other
  * rejection (400, 403, 413, an expired 404/410) records `failed` with its status.
- *
- * A notification whose `forcesDelivery()` is true — the manual "Send notification"
- * buttons — skips the claim and records it after the send, matching
- * {@see TelegramChannel}. On a send failure the claim is released so the
- * notification's retry can genuinely resend rather than being deduped against its
- * own half-done attempt; a forced send has no claim of its own to release.
  */
 class IdempotentWebPushChannel
 {
@@ -52,10 +46,9 @@ class IdempotentWebPushChannel
 
         $rawKey = method_exists($notification, 'deliveryKey') ? $notification->deliveryKey() : null;
         $deliveryKey = is_int($rawKey) ? $rawKey : null;
-        $force = method_exists($notification, 'forcesDelivery') && $notification->forcesDelivery();
 
         $claimVersion = null;
-        if ($deliveryKey !== null && ! $force) {
+        if ($deliveryKey !== null) {
             $claimVersion = $this->claim->claim($deliveryKey, self::CHANNEL);
             if ($claimVersion === null) {
                 return;
@@ -83,9 +76,7 @@ class IdempotentWebPushChannel
         }
 
         $this->record(
-            fn (): bool => $claimVersion === null
-                ? $this->claim->recordForcedSent($deliveryKey, self::CHANNEL)
-                : $this->claim->markSent($deliveryKey, self::CHANNEL, $claimVersion),
+            fn (): bool => $this->claim->markSent($deliveryKey, self::CHANNEL, $claimVersion),
             $deliveryKey,
             $claimVersion,
         );
@@ -143,22 +134,20 @@ class IdempotentWebPushChannel
         return $retryAt === false ? null : max(0, $retryAt - now()->getTimestamp());
     }
 
-    private function recordFailed(int $deliveryKey, ?int $claimVersion, string $error): void
+    private function recordFailed(int $deliveryKey, int $claimVersion, string $error): void
     {
         $this->record(
-            fn (): bool => $claimVersion === null
-                ? $this->claim->recordForcedFailed($deliveryKey, self::CHANNEL, $error)
-                : $this->claim->markFailed($deliveryKey, self::CHANNEL, $claimVersion, $error),
+            fn (): bool => $this->claim->markFailed($deliveryKey, self::CHANNEL, $claimVersion, $error),
             $deliveryKey,
             $claimVersion,
         );
     }
 
     /** @param callable(): bool $write */
-    private function record(callable $write, int $deliveryKey, ?int $claimVersion): void
+    private function record(callable $write, int $deliveryKey, int $claimVersion): void
     {
         try {
-            if (! $write() && $claimVersion !== null) {
+            if (! $write()) {
                 Log::info('webpush.delivery_record.fenced', [
                     'delivery_key' => $deliveryKey,
                     'claim_version' => $claimVersion,

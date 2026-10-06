@@ -13,6 +13,7 @@ use App\Notifications\Concerns\AppendsUnreadBadge;
 use App\Notifications\Concerns\RechecksRouteAtDelivery;
 use App\Notifications\Channels\TelegramChannel;
 use App\Notifications\Messages\InboxMessage;
+use App\Notifications\Messages\PushBody;
 use App\Notifications\Messages\TelegramMessage;
 use App\Services\AI\AnalysisType;
 use App\Services\Notifications\ChannelRouter;
@@ -26,11 +27,10 @@ use NotificationChannels\WebPush\WebPushMessage;
 
 /**
  * Fired from {@see \App\Services\AI\AnalysisService::markDone()} when a notifiable
- * analysis completes, and from the manual "Send notification" controllers
- * ($force). `via()` decides per channel: an automatic push honours the recency
- * gate and the master-switch opt-in, a manual push bypasses both and reaches every
- * wired channel (Telegram if connected, web push if subscribed). Delivery +
- * idempotency live in {@see TelegramChannel} / {@see IdempotentWebPushChannel}.
+ * analysis completes. `via()` honours the recency gate and the master-switch
+ * opt-in, then reaches every wired channel (Telegram if connected, web push if
+ * subscribed). Delivery + idempotency live in {@see TelegramChannel} /
+ * {@see IdempotentWebPushChannel}.
  */
 class AnalysisReadyNotification extends Notification implements ShouldQueue
 {
@@ -47,7 +47,7 @@ class AnalysisReadyNotification extends Notification implements ShouldQueue
 
     public ?CarbonImmutable $triggeredAt = null;
 
-    public function __construct(public readonly Analysis $analysis, public readonly bool $force = false)
+    public function __construct(public readonly Analysis $analysis)
     {
         $this->triggeredAt = now()->toImmutable();
     }
@@ -63,16 +63,8 @@ class AnalysisReadyNotification extends Notification implements ShouldQueue
         }
 
         // Where the user can be reached, including their per-channel mutes and
-        // the demo identity's inbox-only routing. A forced send may skip the
-        // *whether* gates below, but never this one: muting a channel is a
-        // routing decision, not a per-message one.
+        // the demo identity's inbox-only routing.
         $channels = app(ChannelRouter::class)->channelsFor($notifiable);
-
-        // A manual push bypasses the recency + opt-in gates; the automatic path
-        // keeps the recency gate and the channel-neutral master-switch opt-in.
-        if ($this->force) {
-            return $channels;
-        }
 
         $reachableNow = $eligibility->isRecentEnoughToAutoNotify($this->analysis, $this->triggeredAt)
             && $eligibility->isOptedIn($this->analysis, $notifiable);
@@ -87,7 +79,6 @@ class AnalysisReadyNotification extends Notification implements ShouldQueue
         return new TelegramMessage(
             text: $presenter->format($this->analysis),
             deliveryKey: $this->deliveryKey(),
-            force: $this->force,
         );
     }
 
@@ -95,19 +86,20 @@ class AnalysisReadyNotification extends Notification implements ShouldQueue
     {
         $presenter = app(AnalysisMessagePresenter::class);
 
-        return new WebPushMessage()
+        $message = new WebPushMessage()
             ->title($presenter->title($this->analysis))
-            ->body(trim((string) $this->analysis->content))
             ->icon('/icon-192.png')
             ->data($this->withUnreadBadge(['url' => $presenter->url($this->analysis)], $notifiable->id))
             // High urgency so the push isn't deferred by the OS in Low Power Mode.
             ->options(['urgency' => 'high', 'TTL' => 3 * 86400]);
+
+        return PushBody::attach($message, (string) $this->analysis->content);
     }
 
     /**
      * The inbox row. Keyed on the analysis rather than the notification id so a
-     * re-analysis ("Reread", ai:self-heal) or a manual force-send updates
-     * nothing instead of stacking a second row for the same run.
+     * re-analysis ("Reread", ai:self-heal) updates nothing instead of stacking a
+     * second row for the same run.
      */
     public function toInbox(User $notifiable): ?InboxMessage
     {
@@ -133,11 +125,6 @@ class AnalysisReadyNotification extends Notification implements ShouldQueue
     public function deliveryKey(): int
     {
         return $this->analysis->id;
-    }
-
-    public function forcesDelivery(): bool
-    {
-        return $this->force;
     }
 
     /**

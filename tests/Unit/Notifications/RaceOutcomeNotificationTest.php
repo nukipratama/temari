@@ -52,7 +52,7 @@ it('asks neutrally, claims nothing, and points at the race page', function (): v
     $message = new RaceOutcomeNotification($race)->toInbox($user);
 
     expect($message->kind)->toBe(NotificationKind::RaceOutcome)
-        ->and($message->title)->toBe('how did your race go?')
+        ->and($message->title)->toBe('How did your race go?')
         ->and($message->body)->toStartWith('jakarta 10k was yesterday.')
         ->and($message->body)->toContain('nothing is counted until you do')
         ->and($message->payload['url'])->toBe(route('race'))
@@ -62,13 +62,13 @@ it('asks neutrally, claims nothing, and points at the race page', function (): v
 it('falls back to the bare distance when the race has no name', function (): void {
     $user = User::factory()->create();
 
-    expect(new RaceOutcomeNotification(pastRace($user))->toInbox($user)->body)->toStartWith('your 10.0 km was yesterday.');
+    expect(new RaceOutcomeNotification(pastRace($user))->toInbox($user)->body)->toStartWith('your 10 km was yesterday.');
 });
 
 it('carries the same copy on telegram and web push', function (): void {
     $user = User::factory()->create();
     $notification = new RaceOutcomeNotification(pastRace($user, 'jakarta 10k'));
 
-    expect($notification->toTelegram($user)->text)->toContain('how did your race go?')->toContain(route('race'))
+    expect($notification->toTelegram($user)->text)->toContain('How did your race go?')->toContain(route('race'))
         ->and($notification->toWebPush($user, $notification))->toBeInstanceOf(WebPushMessage::class);
 });

@@ -22,7 +22,7 @@ it('formats a post-run message with the title line, a blank line, the content, a
 
     $message = new AnalysisMessagePresenter()->format($analysis);
 
-    expect($message)->toStartWith("Your run is in.\n\nYour pace held all the way.")
+    expect($message)->toStartWith("Your run is in\n\nYour pace held all the way.")
         ->and($message)->toContain('View run details: ' . route('activities.show', 123));
 });
 
@@ -98,7 +98,7 @@ it('builds a post-run title carrying the run distance', function (): void {
         'subject_id' => $activity->id,
     ]);
 
-    expect(new AnalysisMessagePresenter()->title($analysis))->toBe('Your 8.2K run is in.');
+    expect(new AnalysisMessagePresenter()->title($analysis))->toBe('Your 8.2K run is in');
 });
 
 it('drops the ".0" so a whole-kilometre run reads as "5K"', function (): void {
@@ -109,7 +109,7 @@ it('drops the ".0" so a whole-kilometre run reads as "5K"', function (): void {
         'subject_id' => $activity->id,
     ]);
 
-    expect(new AnalysisMessagePresenter()->title($analysis))->toBe('Your 5K run is in.');
+    expect(new AnalysisMessagePresenter()->title($analysis))->toBe('Your 5K run is in');
 });
 
 it('falls back to a distance-less post-run title when the activity has no detail', function (): void {
@@ -118,7 +118,7 @@ it('falls back to a distance-less post-run title when the activity has no detail
         'subject_id' => 999999,
     ]);
 
-    expect(new AnalysisMessagePresenter()->title($analysis))->toBe('Your run is in.');
+    expect(new AnalysisMessagePresenter()->title($analysis))->toBe('Your run is in');
 });
 
 it('builds a monthly-recap title naming the month', function (): void {

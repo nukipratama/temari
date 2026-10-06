@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Notifications\Concerns\AppendsUnreadBadge;
 use App\Notifications\Concerns\RechecksRouteAtDelivery;
 use App\Notifications\Concerns\SetsWebPushExpiry;
+use App\Notifications\Messages\PushBody;
 use App\Notifications\Messages\TelegramMessage;
 use App\Console\Commands\Notifications\MorningBriefingPushCommand;
 use App\Services\Notifications\ChannelRouter;
@@ -40,6 +41,8 @@ class MorningBriefingNotification extends Notification implements ShouldQueue
     use Queueable;
 
     public const int STALE_AFTER_MINUTES = 120;
+
+    private const string TITLE = 'Your briefing for today';
 
     public int $tries = 3;
 
@@ -73,16 +76,15 @@ class MorningBriefingNotification extends Notification implements ShouldQueue
     public function toTelegram(User $notifiable): TelegramMessage
     {
         return new TelegramMessage(
-            text: "your briefing for today\n\n".trim((string) $this->briefing->content)."\n\nOpen Temari: ".route('dashboard'),
+            text: self::TITLE."\n\n".trim((string) $this->briefing->content)."\n\nOpen Temari: ".route('dashboard'),
             deliveryKey: $this->deliveryKey(),
         );
     }
 
     public function toWebPush(User $notifiable, Notification $notification): WebPushMessage
     {
-        return new WebPushMessage()
-            ->title('your briefing for today')
-            ->body(trim((string) $this->briefing->content))
+        $message = new WebPushMessage()
+            ->title(self::TITLE)
             ->icon('/icon-192.png')
             ->data($this->withUnreadBadge(['url' => route('dashboard')], $notifiable->id))
             // High urgency: the whole point is landing at the moment they are
@@ -92,6 +94,8 @@ class MorningBriefingNotification extends Notification implements ShouldQueue
                 'TTL' => $this->secondsUntil(Carbon::parse($this->briefing->discriminator)->endOfDay()),
                 'topic' => 'briefing',
             ]);
+
+        return PushBody::attach($message, (string) $this->briefing->content);
     }
 
     /** The idempotency key: the briefing row, which is already per athlete per day. */

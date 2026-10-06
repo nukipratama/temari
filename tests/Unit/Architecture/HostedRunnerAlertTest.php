@@ -9,10 +9,14 @@ function workflowDoc(string $file): array
     return Yaml::parseFile(base_path(".github/workflows/{$file}"));
 }
 
-function expectHostedAlertJob(array $job, string $needs): void
+function expectHostedAlertJob(array $job, string $needs, bool $alertOnCancel = false): void
 {
+    $condition = $alertOnCancel
+        ? "always() && (needs.{$needs}.result == 'failure' || needs.{$needs}.result == 'cancelled')"
+        : "always() && needs.{$needs}.result == 'failure'";
+
     expect($job['needs'])->toBe([$needs])
-        ->and($job['if'])->toBe("always() && needs.{$needs}.result == 'failure'")
+        ->and($job['if'])->toBe($condition)
         ->and($job['uses'])->toBe('./.github/workflows/maintainer-alert.yml')
         ->and(array_keys($job['secrets']))->toBe(['TELEGRAM_BOT_TOKEN', 'TELEGRAM_MAINTAINER_CHAT_ID'])
         ->and($job['with']['message'])->not->toBeEmpty();
@@ -28,10 +32,10 @@ it('pushes the maintainer alert from a hosted runner with the nightly-audit secr
         ->and($job['timeout-minutes'])->toBeInt();
 })->group('structure');
 
-it('alerts from a hosted runner when the deploy job fails', function (): void {
+it('alerts from a hosted runner when the deploy job fails or is cancelled', function (): void {
     $notify = workflowDoc('deploy.yml')['jobs']['notify'];
 
-    expectHostedAlertJob($notify, 'deploy');
+    expectHostedAlertJob($notify, 'deploy', alertOnCancel: true);
     expect($notify['with']['message'])->toContain('github.event.workflow_run.head_sha');
 })->group('structure');
 

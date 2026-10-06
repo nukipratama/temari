@@ -29,10 +29,10 @@ Where a row goes is the router's call ([[inbox-is-an-always-on-channel]]), never
 | kind | what fires it | channels | opens |
 |---|---|---|---|
 | `post_run` | `post_run_speech` finishing after an ingest | inbox · Telegram · push | the run |
-| `weekly_recap` | Monday's recap, or the manual send on the Feed | inbox · Telegram · push | that week in history |
-| `monthly_recap` | the 1st's recap, or the manual send on the Calendar | inbox · Telegram · push | that month on the calendar |
+| `weekly_recap` | Monday's recap | inbox · Telegram · push | that week in history |
+| `monthly_recap` | the 1st's recap | inbox · Telegram · push | that month on the calendar |
 | `streak_reminder` | Saturday 18:00, one per at-risk week | inbox · Telegram · push | the dashboard |
-| `plan_clamp` | a rest day being stepped down | inbox only | the plan |
+| `plan_clamp` | a rest day being stepped down | inbox only | the dashboard |
 | `strava_disconnected` | the Strava grant being revoked | inbox · Telegram · push | the profile, where the reconnect button is |
 | `race_tomorrow` | 18:00 the evening before an active race goal's date | inbox · Telegram · push | the race page |
 | `race_outcome` | 09:00 the morning after a race whose outcome is still pending | inbox · Telegram · push | the race page, where the athlete confirms a run, enters a time or says they did not run |

@@ -297,8 +297,8 @@ function activityListReads(): int
 
 function connectedStravaUser(): User
 {
-    RateLimiter::clear('strava-api:15min');
-    RateLimiter::clear('strava-api:daily');
+    RateLimiter::clear(StravaClient::rateLimitKey('15min'));
+    RateLimiter::clear(StravaClient::rateLimitKey('daily'));
     Carbon::setTestNow('2026-08-02T06:00:00Z');
 
     $user = User::factory()->create();

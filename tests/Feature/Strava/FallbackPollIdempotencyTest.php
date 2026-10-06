@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Services\Strava\StravaClient;
 use App\Jobs\AI\AnalyzeActivityJob;
 use App\Jobs\Strava\IngestActivityJob;
 use App\Models\Activity;
@@ -16,8 +17,8 @@ use Illuminate\Support\Facades\RateLimiter;
 uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
-    RateLimiter::clear('strava-api:15min');
-    RateLimiter::clear('strava-api:daily');
+    RateLimiter::clear(StravaClient::rateLimitKey('15min'));
+    RateLimiter::clear(StravaClient::rateLimitKey('daily'));
 });
 
 /**

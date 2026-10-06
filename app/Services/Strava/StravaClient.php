@@ -15,6 +15,9 @@ use App\Services\Strava\Exceptions\StravaConnectionRevokedException;
 use App\Services\Strava\Exceptions\StravaRateLimitedException;
 use App\Services\Strava\Exceptions\StravaTokenRefreshFailedException;
 use App\Services\Strava\Exceptions\StravaTokenRefreshTransientException;
+use Carbon\CarbonImmutable;
+use Carbon\CarbonInterface;
+use Illuminate\Contracts\Cache\Repository;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
@@ -50,11 +53,7 @@ class StravaClient
     // of our calls are reads.
     public const int RATE_LIMIT_15MIN_MAX = 200;
 
-    private const int RATE_LIMIT_15MIN_DECAY = 15 * 60;
-
     private const int RATE_LIMIT_DAILY_MAX = 2000;
-
-    private const int RATE_LIMIT_DAILY_DECAY = 24 * 60 * 60;
 
     // Share of the 15-minute bucket only StravaReadPriority::Live may spend. A
     // freshly-finished run appearing promptly is the product's core promise; a
@@ -90,7 +89,8 @@ class StravaClient
 
         $connection = $this->refreshIfExpired($connection);
 
-        $this->guardRateLimit($priority);
+        $sentAt = CarbonImmutable::now();
+        $this->guardRateLimit($priority, $sentAt);
 
         try {
             $response = $this->http()->baseUrl(self::apiBaseUrl())
@@ -103,7 +103,7 @@ class StravaClient
             throw $e;
         }
 
-        $this->recordRead($response, $source, $priority, $path);
+        $this->recordRead($response, $source, $priority, $path, $sentAt);
 
         if ($response->status() === 401) {
             // 401 is a per-connection auth problem, not a Strava outage: leave the
@@ -137,9 +137,12 @@ class StravaClient
         return $response->throw();
     }
 
-    private function recordRead(Response $response, StravaReadSource $source, StravaReadPriority $priority, string $path): void
+    private function recordRead(Response $response, StravaReadSource $source, StravaReadPriority $priority, string $path, CarbonImmutable $sentAt): void
     {
         [$usage15m, $usageDaily] = $this->readRateLimitUsage($response);
+
+        $this->rememberReportedUsage('15min', $usage15m, $sentAt);
+        $this->rememberReportedUsage('daily', $usageDaily, $sentAt);
 
         try {
             StravaRead::query()->create([
@@ -296,7 +299,32 @@ class StravaClient
 
     private function remainingBelow(string $bucket, int $ceiling): int
     {
-        return max(0, RateLimiter::remaining($this->rateLimitKey($bucket), $ceiling));
+        return max(0, $ceiling - $this->usage($bucket, CarbonImmutable::now()));
+    }
+
+    /**
+     * Reads counted against the bucket's current Strava window: the local
+     * count, raised to the usage Strava last reported for that same window.
+     */
+    private function usage(string $bucket, CarbonImmutable $at): int
+    {
+        $reported = $this->limiterStore()->get(self::reportedUsageKey($bucket, $at));
+
+        return max(RateLimiter::attempts(self::rateLimitKey($bucket, $at)), is_numeric($reported) ? (int) $reported : 0);
+    }
+
+    private function rememberReportedUsage(string $bucket, ?int $usage, CarbonImmutable $sentAt): void
+    {
+        if ($usage === null || $usage <= $this->usage($bucket, $sentAt)) {
+            return;
+        }
+
+        $this->limiterStore()->put(self::reportedUsageKey($bucket, $sentAt), $usage, self::windowEnd($bucket, $sentAt));
+    }
+
+    private function limiterStore(): Repository
+    {
+        return Cache::store(config('cache.limiter'));
     }
 
     public function refreshIfExpired(StravaConnection $connection): StravaConnection
@@ -407,32 +435,34 @@ class StravaClient
         return is_string($resource) && is_string($field) ? " ({$resource} {$field})" : '';
     }
 
-    private function guardRateLimit(StravaReadPriority $priority): void
+    private function guardRateLimit(StravaReadPriority $priority, CarbonImmutable $at): void
     {
         $backgroundCeilings = $this->backgroundCeilings();
 
         $buckets = [
-            ['bucket' => '15min', 'max' => self::RATE_LIMIT_15MIN_MAX, 'decay' => self::RATE_LIMIT_15MIN_DECAY],
-            ['bucket' => 'daily', 'max' => self::RATE_LIMIT_DAILY_MAX, 'decay' => self::RATE_LIMIT_DAILY_DECAY],
+            '15min' => self::RATE_LIMIT_15MIN_MAX,
+            'daily' => self::RATE_LIMIT_DAILY_MAX,
         ];
 
-        foreach ($buckets as ['bucket' => $bucket, 'max' => $max]) {
-            $key = $this->rateLimitKey($bucket);
+        foreach ($buckets as $bucket => $max) {
+            $key = self::rateLimitKey($bucket, $at);
             $ceiling = $priority->isLive() ? $max : $backgroundCeilings[$bucket];
 
-            if (RateLimiter::tooManyAttempts($key, $ceiling)) {
+            if ($this->usage($bucket, $at) >= $ceiling) {
                 Pulse::record('strava_rate_limited', $key)->count();
+
+                $retryIn = self::secondsLeftInWindow($bucket, $at);
 
                 throw new StravaRateLimitedException(
                     $priority->isLive()
-                        ? "Strava rate limit exhausted for bucket [{$key}]; retry in ".RateLimiter::availableIn($key).'s.'
-                        : "Strava bucket [{$key}] is down to its live-ingest reserve; background read deferred, retry in ".RateLimiter::availableIn($key).'s.',
+                        ? "Strava rate limit exhausted for bucket [{$key}]; retry in {$retryIn}s."
+                        : "Strava bucket [{$key}] is down to its live-ingest reserve; background read deferred, retry in {$retryIn}s.",
                 );
             }
         }
 
-        foreach ($buckets as ['bucket' => $bucket, 'decay' => $decay]) {
-            RateLimiter::hit($this->rateLimitKey($bucket), $decay);
+        foreach (array_keys($buckets) as $bucket) {
+            RateLimiter::hit(self::rateLimitKey($bucket, $at), self::secondsLeftInWindow($bucket, $at));
         }
     }
 
@@ -455,10 +485,39 @@ class StravaClient
     /**
      * Keyed per API client, never per athlete: Strava meters the whole OAuth
      * application. Reintroducing a user id here would hand every athlete a
-     * private allowance and blow the one shared limit.
+     * private allowance and blow the one shared limit. The window suffix follows
+     * Strava's own resets: the UTC quarter-hour and the UTC date.
      */
-    private function rateLimitKey(string $bucket): string
+    public static function rateLimitKey(string $bucket, ?CarbonInterface $at = null): string
     {
-        return "strava-api:{$bucket}";
+        $start = self::windowStart($bucket, CarbonImmutable::instance($at ?? Carbon::now()));
+
+        return "strava-api:{$bucket}:".($bucket === 'daily' ? $start->toDateString() : $start->format('Y-m-d\TH:i'));
+    }
+
+    private static function reportedUsageKey(string $bucket, CarbonImmutable $at): string
+    {
+        return self::rateLimitKey($bucket, $at).':reported';
+    }
+
+    private static function windowStart(string $bucket, CarbonImmutable $at): CarbonImmutable
+    {
+        $utc = $at->utc();
+
+        return $bucket === 'daily'
+            ? $utc->startOfDay()
+            : $utc->setTime($utc->hour, intdiv($utc->minute, 15) * 15);
+    }
+
+    private static function windowEnd(string $bucket, CarbonImmutable $at): CarbonImmutable
+    {
+        $start = self::windowStart($bucket, $at);
+
+        return $bucket === 'daily' ? $start->addDay() : $start->addMinutes(15);
+    }
+
+    private static function secondsLeftInWindow(string $bucket, CarbonImmutable $at): int
+    {
+        return max(1, self::windowEnd($bucket, $at)->getTimestamp() - $at->getTimestamp());
     }
 }

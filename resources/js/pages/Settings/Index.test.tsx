@@ -207,6 +207,13 @@ describe('Settings', () => {
         ).toBeInTheDocument();
     });
 
+    it('says how to keep only one channel with the mutes', () => {
+        render(<Settings />);
+        expect(
+            screen.getByText(/to keep just one, mute the other/),
+        ).toBeInTheDocument();
+    });
+
     it('posts to /logout when the Log out row is clicked', async () => {
         vi.mocked(router.post).mockReset();
         render(<Settings />);
@@ -251,6 +258,13 @@ describe('Settings', () => {
         render(<Settings notificationPrefs={prefs} />);
         expect(
             screen.getByText(/nudge when your streak's about to end/),
+        ).toBeInTheDocument();
+    });
+
+    it('names the race-outcome ask among what the master switch sends', () => {
+        render(<Settings notificationPrefs={prefs} />);
+        expect(
+            screen.getByText(/a check-in on how it went/),
         ).toBeInTheDocument();
     });
 

@@ -62,31 +62,6 @@ it('keeps a sent delivery deduped against a later automatic send', function (): 
     expect($claim->claim($id, 'telegram'))->toBeNull();
 });
 
-it('records a forced send that never claimed, so a later automatic send is deduped', function (): void {
-    $id = Analysis::factory()->create()->id;
-    $claim = app(NotificationDeliveryClaim::class);
-
-    expect($claim->recordForcedSent($id, 'telegram'))->toBeTrue()
-        ->and($claim->claim($id, 'telegram'))->toBeNull();
-
-    $row = NotificationDelivery::query()->firstOrFail();
-    expect($row->status)->toBe(NotificationDeliveryStatus::Sent)
-        ->and($row->claim_version)->toBe(1);
-});
-
-it('fences an in-flight automatic claim when a forced send succeeds', function (): void {
-    $id = Analysis::factory()->create()->id;
-    $claim = app(NotificationDeliveryClaim::class);
-    $oldVersion = $claim->claim($id, 'telegram');
-
-    expect($claim->recordForcedSent($id, 'telegram'))->toBeTrue()
-        ->and($claim->markSent($id, 'telegram', $oldVersion))->toBeFalse();
-
-    $row = NotificationDelivery::query()->firstOrFail();
-    expect($row->status)->toBe(NotificationDeliveryStatus::Sent)
-        ->and($row->claim_version)->toBe(2);
-});
-
 it('stores the error on a failed send instead of erasing the row', function (): void {
     $id = Analysis::factory()->create()->id;
     $claim = app(NotificationDeliveryClaim::class);
@@ -99,6 +74,22 @@ it('stores the error on a failed send instead of erasing the row', function (): 
         ->and($row->error)->toBe('chat not found')
         ->and($row->settled_at)->not->toBeNull()
         ->and($row->claimed_at)->toBeNull();
+});
+
+it('abandons a claim so no retry can take it over', function (): void {
+    $id = Analysis::factory()->create()->id;
+    $claim = app(NotificationDeliveryClaim::class);
+    $version = $claim->claim($id, 'telegram');
+
+    expect($claim->markAbandoned($id, 'telegram', $version, 'timed out'))->toBeTrue()
+        ->and($claim->claim($id, 'telegram'))->toBeNull()
+        ->and($claim->markSent($id, 'telegram', $version))->toBeFalse();
+
+    $row = NotificationDelivery::query()->firstOrFail();
+    expect($row->status)->toBe(NotificationDeliveryStatus::Abandoned)
+        ->and($row->error)->toBe('timed out')
+        ->and($row->claimed_at)->toBeNull()
+        ->and($row->settled_at)->not->toBeNull();
 });
 
 it('lets a retry take over a failed claim with a new version', function (): void {
@@ -143,7 +134,7 @@ it('records a failed forced send that never claimed a row', function (): void {
 it('does not let a failed forced send overwrite an earlier successful delivery', function (): void {
     $id = Analysis::factory()->create()->id;
     $claim = app(NotificationDeliveryClaim::class);
-    $claim->recordForcedSent($id, 'telegram');
+    $claim->markSent($id, 'telegram', $claim->claim($id, 'telegram'));
 
     expect($claim->recordForcedFailed($id, 'telegram', 'forced resend blew up'))->toBeFalse()
         ->and(NotificationDelivery::query()->firstOrFail()->status)->toBe(NotificationDeliveryStatus::Sent);

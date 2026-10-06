@@ -18,8 +18,8 @@ use Illuminate\Support\Facades\RateLimiter;
 uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
-    RateLimiter::clear('strava-api:15min');
-    RateLimiter::clear('strava-api:daily');
+    RateLimiter::clear(StravaClient::rateLimitKey('15min'));
+    RateLimiter::clear(StravaClient::rateLimitKey('daily'));
 });
 
 function makeConnection(): StravaConnection

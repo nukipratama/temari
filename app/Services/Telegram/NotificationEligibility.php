@@ -43,9 +43,8 @@ class NotificationEligibility
      * (the run's start, the week's ending, the recap month's end) against
      * `notify_max_age_days`, so only the freshest period pings and history stays
      * quiet. Types with no reference date, or a missing one, are never gated.
-     * Only the automatic path — the manual "Send notification" push (force)
-     * bypasses it on purpose. Measured as of `$triggeredAt` when given, so time a
-     * notification spends held in quiet hours never makes it too old.
+     * Measured as of `$triggeredAt` when given, so time a notification spends
+     * held in quiet hours never makes it too old.
      */
     public function isRecentEnoughToAutoNotify(Analysis $analysis, ?CarbonInterface $triggeredAt = null): bool
     {

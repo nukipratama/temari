@@ -13,7 +13,7 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
 
 #[Signature('ai:spend-digest')]
-#[Description("Push today's LLM spend, per athlete and against both ceilings, to every admin on Telegram")]
+#[Description("Push today's LLM spend, per athlete and against both ceilings, plus yesterday's final total, to every admin on Telegram")]
 class SpendDigestCommand extends Command
 {
     public function handle(LlmCostCalculator $costs, MaintainerAlerter $alerter): int
@@ -25,6 +25,7 @@ class SpendDigestCommand extends Command
             $costs->dailyCost(),
             self::ceiling('azure_openai.daily_cost_ceiling_per_user'),
             self::ceiling('azure_openai.daily_cost_ceiling_total'),
+            $costs->dailyCost(day: Carbon::yesterday()),
         );
 
         $this->info('Sent the spend digest for '.count($rows).' athletes.');

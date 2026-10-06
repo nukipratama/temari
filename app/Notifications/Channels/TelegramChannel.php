@@ -24,9 +24,6 @@ use Illuminate\Support\Facades\Log;
  * (analysis, channel).
  *
  * A message with a null `deliveryKey` (streak / test) skips the claim entirely.
- * A `force` message (manual push) skips the claim CHECK — so a resend always
- * goes out — but records the outcome, so a later automatic notification for the
- * same row (e.g. a "Reread" re-analysis) is deduped against a success.
  */
 class TelegramChannel
 {
@@ -62,11 +59,11 @@ class TelegramChannel
             return;
         }
 
-        // Automatic (keyed, non-force) sends claim before delivering; the claim is
-        // atomic on the unique (analysis_id, channel) pair, so a racing retry that
-        // already claimed it bails before re-sending.
+        // Keyed sends claim before delivering; the claim is atomic on the unique
+        // (analysis_id, channel) pair, so a racing retry that already claimed it
+        // bails before re-sending.
         $claimVersion = null;
-        if ($message->deliveryKey !== null && ! $message->force) {
+        if ($message->deliveryKey !== null) {
             $claimVersion = $this->claim->claim($message->deliveryKey, self::CHANNEL);
             if ($claimVersion === null) {
                 return;
@@ -87,14 +84,11 @@ class TelegramChannel
 
         // Best-effort and outside the deliver try: a bookkeeping hiccup must not be
         // misread as a send failure (the message already went out) nor trigger a
-        // duplicate on retry. A manual push has no claim of its own, so this is
-        // also what dedupes a later automatic notification for the same row.
+        // duplicate on retry.
         $deliveryKey = $message->deliveryKey;
         if ($deliveryKey !== null) {
             $this->record(
-                fn (): bool => $claimVersion === null
-                    ? $this->claim->recordForcedSent($deliveryKey, self::CHANNEL)
-                    : $this->claim->markSent($deliveryKey, self::CHANNEL, $claimVersion),
+                fn (): bool => $this->claim->markSent($deliveryKey, self::CHANNEL, $claimVersion),
                 $deliveryKey,
                 $claimVersion,
             );
@@ -105,18 +99,27 @@ class TelegramChannel
      * A blocked bot / gone chat revokes the connection (like a Strava revocation)
      * and stops. A bad bot token (401/404) alerts the maintainer and keeps the link,
      * and a message Telegram rejects (other 4xx) is logged and kept too, without a
-     * retry. A force push is one-shot: log and stop. Everything else rethrows on the
-     * automatic path so the queued notification's retry can resend, which the failed
-     * claim now permits.
+     * retry. A keyed send that lost its connection may still have been accepted, so
+     * it is abandoned rather than retried, as a crashed claim is. Everything else
+     * rethrows so the queued notification's retry can resend, which the failed claim
+     * now permits.
      */
     private function handleFailure(Throwable $e, User $notifiable, TelegramMessage $message, ?int $claimVersion): void
     {
         $deliveryKey = $message->deliveryKey;
-        if ($deliveryKey !== null) {
+        if ($deliveryKey !== null && $claimVersion !== null) {
+            if ($e instanceof TelegramApiException && $e->connectionFailed) {
+                $this->record(
+                    fn (): bool => $this->claim->markAbandoned($deliveryKey, self::CHANNEL, $claimVersion, $e->getMessage()),
+                    $deliveryKey,
+                    $claimVersion,
+                );
+
+                return;
+            }
+
             $this->record(
-                fn (): bool => $claimVersion === null
-                    ? $this->claim->recordForcedFailed($deliveryKey, self::CHANNEL, $e->getMessage())
-                    : $this->claim->markFailed($deliveryKey, self::CHANNEL, $claimVersion, $e->getMessage()),
+                fn (): bool => $this->claim->markFailed($deliveryKey, self::CHANNEL, $claimVersion, $e->getMessage()),
                 $deliveryKey,
                 $claimVersion,
             );
@@ -141,23 +144,14 @@ class TelegramChannel
             }
         }
 
-        if ($message->force) {
-            Log::warning('telegram.force_send.failed', [
-                'delivery_key' => $message->deliveryKey,
-                'reason' => $e->getMessage(),
-            ]);
-
-            return;
-        }
-
         throw $e;
     }
 
     /** @param callable(): bool $write */
-    private function record(callable $write, int $deliveryKey, ?int $claimVersion): void
+    private function record(callable $write, int $deliveryKey, int $claimVersion): void
     {
         try {
-            if (! $write() && $claimVersion !== null) {
+            if (! $write()) {
                 Log::info('telegram.delivery_record.fenced', [
                     'delivery_key' => $deliveryKey,
                     'claim_version' => $claimVersion,

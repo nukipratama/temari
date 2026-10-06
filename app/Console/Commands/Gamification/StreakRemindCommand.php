@@ -14,6 +14,7 @@ use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Throwable;
 
 #[Signature('streak:remind')]
 #[Description('Nudge users whose live weekly streak has no run yet this week, before the week closes and the streak breaks')]
@@ -54,7 +55,14 @@ class StreakRemindCommand extends Command
                 continue;
             }
 
-            $user->notify(new StreakReminderNotification($streak));
+            try {
+                $user->notify(new StreakReminderNotification($streak));
+            } catch (Throwable $e) {
+                $this->releaseClaim($user->id, $weekEnding);
+
+                throw $e;
+            }
+
             $sent++;
         }
 
@@ -76,5 +84,13 @@ class StreakRemindCommand extends Command
         ]);
 
         return $claimed !== 0;
+    }
+
+    private function releaseClaim(int $userId, Carbon $weekEnding): void
+    {
+        DB::table('streak_reminders')
+            ->where('user_id', $userId)
+            ->where('week_ending', $weekEnding->toDateString())
+            ->delete();
     }
 }

@@ -91,7 +91,7 @@ it('skips a queued web push when muted and does not claim it', function (): void
 
     $inner = Mockery::mock(WebPushChannel::class);
     $inner->shouldNotReceive('send');
-    idempotentChannel($inner)->send($user, new AnalysisReadyNotification($analysis, force: true));
+    idempotentChannel($inner)->send($user, new AnalysisReadyNotification($analysis));
 
     $this->assertDatabaseMissing('notification_deliveries', ['analysis_id' => $analysis->id, 'channel' => 'webpush']);
 });
@@ -111,55 +111,6 @@ it('settles the claim as failed with its error so a retry can resend', function 
         'error' => 'push boom',
     ]);
     expect(app(NotificationDeliveryClaim::class)->claim($analysis->id, 'webpush'))->toBe(2);
-});
-
-it('re-delivers a forced send even when the analysis was already claimed', function (): void {
-    $analysis = Analysis::factory()->create();
-    $inner = Mockery::mock(WebPushChannel::class);
-    $inner->shouldReceive('send')->twice();
-    $channel = idempotentChannel($inner);
-    $user = pushUser();
-
-    $channel->send($user, new AnalysisReadyNotification($analysis));
-    $channel->send($user, new AnalysisReadyNotification($analysis, force: true));
-
-    $this->assertDatabaseHas('notification_deliveries', [
-        'analysis_id' => $analysis->id,
-        'channel' => 'webpush',
-        'status' => NotificationDeliveryStatus::Sent->value,
-        'claim_version' => 2,
-    ]);
-});
-
-it('records the claim after a forced send so a later automatic push is deduped', function (): void {
-    $analysis = Analysis::factory()->create();
-    $inner = Mockery::mock(WebPushChannel::class);
-    $inner->shouldReceive('send')->once();
-    $channel = idempotentChannel($inner);
-    $user = pushUser();
-
-    $channel->send($user, new AnalysisReadyNotification($analysis, force: true));
-
-    $this->assertDatabaseHas('notification_deliveries', [
-        'analysis_id' => $analysis->id,
-        'channel' => 'webpush',
-        'status' => NotificationDeliveryStatus::Sent->value,
-        'claim_version' => 1,
-    ]);
-
-    $channel->send($user, new AnalysisReadyNotification($analysis));
-});
-
-it('keeps an existing claim when a forced send throws', function (): void {
-    $analysis = Analysis::factory()->create();
-    app(NotificationDeliveryClaim::class)->claim($analysis->id, 'webpush');
-    $inner = Mockery::mock(WebPushChannel::class);
-    $inner->shouldReceive('send')->andThrow(new RuntimeException('push boom'));
-
-    expect(fn () => idempotentChannel($inner)->send(pushUser(), new AnalysisReadyNotification($analysis, force: true)))
-        ->toThrow(RuntimeException::class);
-
-    $this->assertDatabaseHas('notification_deliveries', ['analysis_id' => $analysis->id, 'channel' => 'webpush']);
 });
 
 it('sends a keyless notification (no deliveryKey) without claiming', function (): void {
@@ -334,16 +285,4 @@ it('retries when no subscription accepted and any rejection is retryable', funct
         ->toThrow(fn (TransientWebPushException $e) => expect($e->retryAfterSeconds)->toBe(60));
 
     expect(webPushDelivery($analysis)->status)->toBe(NotificationDeliveryStatus::Failed->value);
-});
-
-it('records a permanently rejected forced send as failed', function (): void {
-    Http::fake(['push.example/*' => Http::response('', 403)]);
-    $analysis = Analysis::factory()->create();
-    $user = encryptablePushUser('https://push.example/endpoint');
-
-    app(IdempotentWebPushChannel::class)->send($user, new AnalysisReadyNotification($analysis, force: true));
-
-    $delivery = webPushDelivery($analysis);
-    expect($delivery->status)->toBe(NotificationDeliveryStatus::Failed->value)
-        ->and($delivery->error)->toContain('403');
 });
