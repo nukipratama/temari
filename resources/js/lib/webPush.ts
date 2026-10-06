@@ -8,7 +8,7 @@ const SEEN_ON_KEY = 'temari-push-seen-on';
 let inFlightSubscribe: Promise<void> | null = null;
 let inFlightSeen: Promise<void> | null = null;
 
-/** The browser can do web push at all (all iOS browsers gate this behind a Home-Screen install). */
+/** The browser can do web push at all (iOS and iPadOS additionally gate it behind a Home-Screen install). */
 export function isPushSupported(): boolean {
     return (
         typeof navigator !== 'undefined' &&
@@ -18,12 +18,20 @@ export function isPushSupported(): boolean {
     );
 }
 
-/** Running as an installed, standalone app (the only mode iOS delivers push in). */
+/** Running as an installed, standalone app (the only mode iOS and iPadOS deliver push in). */
 export function isStandalone(): boolean {
     return (
         window.matchMedia('(display-mode: standalone)').matches ||
         (window.navigator as Navigator & { standalone?: boolean })
             .standalone === true
+    );
+}
+
+/** iPhone, iPad or iPod; iPadOS Safari reports itself as a touch-enabled Mac. */
+export function isIos(): boolean {
+    return (
+        /iP(hone|ad|od)/.test(navigator.userAgent) ||
+        (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
     );
 }
 

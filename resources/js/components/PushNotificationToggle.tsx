@@ -13,6 +13,7 @@ import Toggle from '@/components/ui/Switch';
 import { useDemoGuard } from '@/hooks/useDemoGuard';
 import {
     currentSubscription,
+    isIos,
     isIosNonSafari,
     isPushSupported,
     isStandalone,
@@ -34,7 +35,7 @@ async function resolvePushState(): Promise<PushState> {
     if (!isPushSupported()) {
         return 'unsupported';
     }
-    if (!isStandalone()) {
+    if (isIos() && !isStandalone()) {
         return isIosNonSafari()
             ? 'needs-install-other'
             : 'needs-install-safari';

@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
     currentSubscription,
+    isIos,
     isIosNonSafari,
     isPushSupported,
     isStandalone,
@@ -97,6 +98,64 @@ describe('capability detection', () => {
             userAgent: 'Mozilla/5.0 (iPhone) Safari/605',
         });
         expect(isIosNonSafari()).toBe(false);
+    });
+});
+
+describe('isIos', () => {
+    it.each([
+        [
+            'iPhone Safari',
+            'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0) Safari/605',
+            'iPhone',
+            5,
+            true,
+        ],
+        ['iPhone Chrome', 'Mozilla/5.0 (iPhone) CriOS/120', 'iPhone', 5, true],
+        [
+            'iPad Safari with a mobile UA',
+            'Mozilla/5.0 (iPad; CPU OS 18_0) Safari/605',
+            'iPad',
+            5,
+            true,
+        ],
+        [
+            'iPadOS Safari posing as a Mac',
+            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) Safari/605',
+            'MacIntel',
+            5,
+            true,
+        ],
+        [
+            'a Mac without touch',
+            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) Safari/605',
+            'MacIntel',
+            0,
+            false,
+        ],
+        [
+            'Android Chrome',
+            'Mozilla/5.0 (Linux; Android 15) Chrome/130 Mobile',
+            'Linux armv81',
+            5,
+            false,
+        ],
+        [
+            'Windows Chrome',
+            'Mozilla/5.0 (Windows NT 10.0) Chrome/130',
+            'Win32',
+            0,
+            false,
+        ],
+        [
+            'Windows Firefox',
+            'Mozilla/5.0 (Windows NT 10.0; rv:130.0) Firefox/130.0',
+            'Win32',
+            0,
+            false,
+        ],
+    ])('%s', (_name, userAgent, platform, maxTouchPoints, expected) => {
+        vi.stubGlobal('navigator', { userAgent, platform, maxTouchPoints });
+        expect(isIos()).toBe(expected);
     });
 });
 
