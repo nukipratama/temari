@@ -351,8 +351,9 @@ function NotificationPrefsPanel({
                     admin Telegram chats without touching preferences, and the bot
                     still replies to /start and /stop. See MaintainerAlerter. */}
                 <p className="mb-2 px-2 font-sans text-xs text-text-3">
-                    controls your run notifications. bot replies and system
-                    alerts still come through.
+                    controls your run notifications. Telegram and push each get
+                    all of them, so to keep just one, mute the other. bot
+                    replies and system alerts still come through.
                 </p>
                 <div className="flex flex-col">
                     <TelegramPanel
