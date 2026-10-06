@@ -158,7 +158,11 @@ jobs:
       - name: Stub .env for file-scanning tests
         run: cp .env.example .env
 
+      - uses: ./.github/actions/start-redis
+
       - name: Backend structure tests
+        env:
+          REDIS_HOST: 127.0.0.1
         run: ./vendor/bin/pest --group=structure
 
   # Single required check for branch protection.

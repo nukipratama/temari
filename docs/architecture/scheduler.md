@@ -42,8 +42,8 @@ so a mutex taken every minute would guard nothing (see its comment in `routes/co
 not double-write a heartbeat any more than it should double-run anything else.
 
 `onOneServer()` and `withoutOverlapping()` both key their lock through the app's default cache
-store ([config/cache.php](../../config/cache.php) — `redis` in prod via `CACHE_STORE`, `array` in
-tests via `phpunit.xml`, `database` from `.env.example` locally). The `redis` store takes its locks
+store ([config/cache.php](../../config/cache.php) — `redis` in prod and in
+tests via `CACHE_STORE`/`phpunit.xml`, `database` from `.env.example` locally). The `redis` store takes its locks
 on its `lock_connection`, the durable `default` connection, so an eviction on the allkeys-lru
 `cache` instance never drops a held mutex. `onOneServer()` additionally
 needs a store every scheduler container can reach, which `redis` is in prod; `array` works for
