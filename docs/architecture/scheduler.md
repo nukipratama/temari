@@ -1,6 +1,6 @@
 ---
 title: Scheduler hygiene — overlap safety, single-host, ordering, cadence
-description: Every Schedule::command entry is overlap-safe and single-host by an unstated one-container invariant; every run lands in an append-only run log; the Monday window's hard dependencies are chained and retry hourly until they succeed; the numeric derivation behind four previously-qualitative cadences; and measured local runtimes next to each lock TTL
+description: Every Schedule::command entry is overlap-safe and single-host by an unstated one-container invariant; entries due in the same minute run serially, so strava:sync runs at :07; every run lands in an append-only run log; the Monday window's hard dependencies are chained and retry hourly until they succeed; the numeric derivation behind four previously-qualitative cadences; and measured local runtimes next to each lock TTL
 tags: [architecture, scheduler]
 status: living
 reviewed: 2026-10-06
@@ -23,8 +23,8 @@ code_refs:
 # Scheduler hygiene
 
 [routes/console.php](../../routes/console.php) registers every scheduled command. This note covers
-five things: why every event carries both `withoutOverlapping()` and `onOneServer()`, the per-run
-log every entry writes, how the Monday window's entries are chained and caught up after a miss,
+six things: why every event carries both `withoutOverlapping()` and `onOneServer()`, the order
+entries run in within one minute's tick, the per-run log every entry writes, how the Monday window's entries are chained and caught up after a miss,
 the numeric basis for four cadences that were previously justified only qualitatively, and a
 measured-locally runtime next to each lock TTL.
 
@@ -106,6 +106,27 @@ specifically to guard a *per-user* loop (`ai:daily-briefing`, `ai:weekly-recap`,
 at 1 user their real cost is invisible, and the TTL's headroom is what protects against that loop
 taking materially longer once the athlete base grows. Nothing measured here contradicts an existing
 TTL; it simply confirms none of them are already too tight at today's scale.
+
+## Tick order
+
+`schedule:work` starts one `schedule:run` a minute, and that run executes every entry due in that
+minute one after another, in registration order, because no entry uses `runInBackground()`. A slow
+entry therefore delays every entry registered after it in the same minute, though not the next
+minute's run. The :00 tick is the busy one: `ai:self-heal`, `ai:catch-up`, `geo:backfill-locations`
+and `streak:settle` every hour, the five- and fifteen-minute entries (`notifications:*`,
+`strava:ingest`, `strava:hydrate-backlog`, `briefing:morning-push`, `schedule:check-late`), and on
+their hours `ai:trend-read 7d`, `schedule:monday-check`, `race:ask-outcome`,
+`fitness:notify-improvement`, `race:remind`, `streak:remind` and the 21:00 digests.
+
+`strava:sync` runs at **:07** (`hourlyAt(7)`), a minute no other entry uses and not a multiple of 5,
+so it shares its tick only with `schedule:heartbeat`, which is registered first. Its runtime grows
+with the athlete count, because it polls Strava inline once per connected athlete (17.9 s at three
+athletes). At :00 it held back everything registered after it, including `streak:settle` on Monday
+and the briefing push. It stays inline rather than queuing one job per athlete, because that would
+lose the command's aggregate failed/recovered alert unless a job batch and a `job_batches` table
+were added. It also does not use `runInBackground()`, because the scheduler's 120 s
+`stop_grace_period` (see [[deployment]]) covers an in-flight `schedule:run` but not a background
+child. The stubs it finds are drained by `strava:ingest` at :10.
 
 ## Run history
 
@@ -281,7 +302,7 @@ streams, per [ActivityPipeline](../../app/Services/Run/Ingest/ActivityPipeline.p
 spends at most 40 reads per tick. Running every 5 minutes, three ticks fall inside one 15-minute
 window, so a fully-loaded drain spends up to 120 of that window's 200 reads
 ([StravaClient::RATE_LIMIT_15MIN_MAX](../../app/Services/Strava/StravaClient.php#L54)). The hourly
-`strava:sync` fallback poll is also live and lands in the window that opens on the hour: one
+`strava:sync` fallback poll is also live and lands at :07, in the window that opens on the hour: one
 activity-list page per connected athlete (more only for an athlete with over 200 new activities
 since the last poll), so at most 10 reads at the current 10-athlete Strava tier. The worst live
 window is therefore 120 + 10 = 130 reads (65%), before webhook-driven ingest, which is live too and

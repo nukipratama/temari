@@ -183,8 +183,10 @@ $alertOnFailure(Schedule::command('notifications:release-held')->everyFiveMinute
 // per run is a rounding error against the shared pool at this size. It is the
 // one scheduled job whose cost scales with user count, so revisit the cadence
 // long before the athlete cap does — see docs/decisions/background-hydration-drain.md.
+// At :07 so its inline per-athlete poll never holds back the serial :00 tick
+// (docs/architecture/scheduler.md, "Tick order").
 // Bounded withoutOverlapping so a strand self-releases, not 24h.
-Schedule::command('strava:sync')->hourly()->withoutOverlapping(55)->onOneServer();
+Schedule::command('strava:sync')->hourlyAt(7)->withoutOverlapping(55)->onOneServer();
 
 // Retry grants whose local connection is gone or revoked until Strava confirms release.
 Schedule::job(new RetryOrphanedStravaGrantReleasesJob())->dailyAt('02:40')->withoutOverlapping(30)->onOneServer();
