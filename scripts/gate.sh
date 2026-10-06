@@ -56,6 +56,7 @@ vitest_changed() {
 # not ours to check; deleted files are excluded by --diff-filter=ACMR.
 changed_paths() {
   git diff --name-only --diff-filter=ACMR "$1...HEAD"
+  git diff --name-only --diff-filter=ACMR --cached
   git diff --name-only --diff-filter=ACMR
   git ls-files --others --exclude-standard
 }
