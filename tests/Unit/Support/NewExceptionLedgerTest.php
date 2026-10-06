@@ -53,6 +53,7 @@ it('does not list a fingerprint again once a digest has taken it', function (): 
 });
 
 it('forgets a fingerprint after the seen window, so it can be new again', function (): void {
+    config(['cache.default' => 'array']);
     $exception = serverException();
 
     NewExceptionLedger::recordServer($exception);

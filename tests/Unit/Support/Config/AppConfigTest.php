@@ -56,6 +56,7 @@ it('writes through so a fresh process sees a toggle immediately', function (): v
 });
 
 it('expires cached values within the documented bound', function (): void {
+    config(['cache.default' => 'array']);
     $config = new AppConfig();
     $config->set(AppConfigKey::AiEnabled, false);
 

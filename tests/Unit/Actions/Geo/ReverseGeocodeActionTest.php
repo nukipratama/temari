@@ -131,6 +131,7 @@ it('caches an empty address so the same grid does not retry Nominatim', function
 });
 
 it('retries a transient failure after its ten-minute cache expires', function (): void {
+    config(['cache.default' => 'array']);
     $this->freezeTime();
     Http::fakeSequence('nominatim.openstreetmap.org/*')
         ->push('rate limited', 429)

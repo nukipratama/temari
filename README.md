@@ -92,7 +92,7 @@ The test stack (`mysql_test`, `redis_test`) runs on the compose network only —
 
 **Frontend** — Vitest with jsdom against React 19 + Inertia components. Same 1:1 convention. Gates: 95% lines + 95% functions ([vitest.config.ts](vitest.config.ts)). Branches relaxed because hitting every `?? null` fallback in defensive code is contortionist, not signal.
 
-CI uses GitHub Actions service containers (`mysql:9.7` + `redis:8-alpine`) for the PHP suite — every workflow run gets a fresh DB. FE suite is pure-node, no services.
+CI starts containers (`mysql:9.7` + `redis:8.10-alpine`) for the PHP suite — every workflow run gets a fresh DB. FE suite is pure-node, no services.
 
 Nothing is excluded from coverage: `phpunit.xml` measures all of `app/`, service providers included — [HorizonServiceProviderTest](tests/Unit/Providers/HorizonServiceProviderTest.php) and [AppServiceProviderTest](tests/Unit/Providers/AppServiceProviderTest.php) cover the two that ship. The 1:1 structural gate is what exempts provider classes from needing a test, not the coverage config.
 
@@ -104,7 +104,7 @@ Nothing is excluded from coverage: `phpunit.xml` measures all of `app/`, service
 | commit-msg      | Conventional Commits format check                                      |
 | pre-push        | Block direct pushes to `main` (force or not). Use feature branch + PR  |
 | CI — `lint`     | `pint --test`, `phpstan`, `rector --dry-run` (no DB, fast)             |
-| CI — `pest`     | `pest` against mysql:9.7 + redis:8-alpine services — `--coverage --min=95` on pull requests, bare on the `main` push |
+| CI — `pest`     | `pest` against mysql:9.7 + redis:8.10-alpine — `--coverage --min=95` on pull requests, bare on the `main` push |
 | CI — `vitest`   | `npm run test:coverage` — 95% lines + functions, jsdom only            |
 | CI — `deploy`   | On push to `main`: build, migration-only maintenance, migrate, roll, check `/ready` + `/up` |
 | Nightly         | `composer audit` + `npm audit` (prod deps, high+) — scheduled, off the PR/deploy path so an upstream advisory can't block an unrelated change |

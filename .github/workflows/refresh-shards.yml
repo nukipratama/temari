@@ -61,6 +61,8 @@ jobs:
       - name: Stub .env for file-scanning tests
         run: cp .env.example .env
 
+      - uses: ./.github/actions/start-redis
+
       - name: Snapshot the current shard map
         run: cp tests/.pest/shards.json /tmp/shards-old.json
 
@@ -73,7 +75,7 @@ jobs:
           DB_DATABASE: temari_testing
           DB_USERNAME: root
           DB_PASSWORD: password
-          CACHE_STORE: array
+          REDIS_HOST: 127.0.0.1
           SESSION_DRIVER: array
         run: ./vendor/bin/pest --compact --update-shards --exclude-group=structure --coverage-php=/dev/null
 

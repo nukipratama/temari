@@ -401,7 +401,7 @@ it('completes a long backfill across chained attempts, ingesting every run exact
         ->and($ids->unique())->toHaveCount($runs)
         ->and(StravaSyncLog::query()->where('user_id', $user->id)->count())->toBe(3)
         ->and(activityListReads())->toBe(SyncActivitiesJob::PAGES_PER_ATTEMPT * 2 + 1)
-        ->and(Cache::get('backfill-tail-saw'))->toBe($runs);
+        ->and(Cache::get('backfill-tail-saw'))->toBe((string) $runs);
 });
 
 it('chains nothing when the walk finishes under the page cap', function (): void {

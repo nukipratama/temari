@@ -432,8 +432,8 @@ it('allows the last request under this app\'s read allocation', function (): voi
 
     new StravaClient()->get($connection, 'athlete', StravaReadSource::Manual);
 
-    expect(RateLimiter::attempts(StravaClient::rateLimitKey('15min')))->toBe(200)
-        ->and(RateLimiter::attempts(StravaClient::rateLimitKey('daily')))->toBe(2000);
+    expect(RateLimiter::attempts(StravaClient::rateLimitKey('15min')))->toBe('200')
+        ->and(RateLimiter::attempts(StravaClient::rateLimitKey('daily')))->toBe('2000');
 });
 
 it('sends API reads to the configured base URL', function (): void {
@@ -464,8 +464,8 @@ it('records hits against both rate limit buckets per request', function (): void
 
     new StravaClient()->get($connection, 'athlete', StravaReadSource::Manual);
 
-    expect(RateLimiter::attempts(StravaClient::rateLimitKey('15min')))->toBe(1)
-        ->and(RateLimiter::attempts(StravaClient::rateLimitKey('daily')))->toBe(1);
+    expect(RateLimiter::attempts(StravaClient::rateLimitKey('15min')))->toBe('1')
+        ->and(RateLimiter::attempts(StravaClient::rateLimitKey('daily')))->toBe('1');
 });
 
 it('shares one rate-limit budget across all athletes (per client, not per athlete)', function (): void {
@@ -481,8 +481,8 @@ it('shares one rate-limit budget across all athletes (per client, not per athlet
 
     // Both athletes' calls land in the same shared bucket: Strava's limit is
     // per client, so two athletes consume two of the app's 200/15min, not one each.
-    expect(RateLimiter::attempts(StravaClient::rateLimitKey('15min')))->toBe(2)
-        ->and(RateLimiter::attempts(StravaClient::rateLimitKey('daily')))->toBe(2);
+    expect(RateLimiter::attempts(StravaClient::rateLimitKey('15min')))->toBe('2')
+        ->and(RateLimiter::attempts(StravaClient::rateLimitKey('daily')))->toBe('2');
 });
 
 it('keys both buckets globally, with nothing user-scoped, at either priority', function (): void {
@@ -498,8 +498,8 @@ it('keys both buckets globally, with nothing user-scoped, at either priority', f
 
     // Fails the moment anyone reintroduces a user id into rateLimitKey(): the
     // shared keys would stop accumulating and per-user keys would appear.
-    expect(RateLimiter::attempts(StravaClient::rateLimitKey('15min')))->toBe(2)
-        ->and(RateLimiter::attempts(StravaClient::rateLimitKey('daily')))->toBe(2);
+    expect(RateLimiter::attempts(StravaClient::rateLimitKey('15min')))->toBe('2')
+        ->and(RateLimiter::attempts(StravaClient::rateLimitKey('daily')))->toBe('2');
 
     foreach ([$athleteA, $athleteB] as $connection) {
         foreach (['15min', 'daily'] as $bucket) {
@@ -558,7 +558,7 @@ it('lets a live read spend the reserve a background read was just refused', func
     new StravaClient()->get($connection, 'athlete', StravaReadSource::Manual, priority: StravaReadPriority::Live);
 
     Http::assertSentCount(1);
-    expect(RateLimiter::attempts(StravaClient::rateLimitKey('15min')))->toBe(151);
+    expect(RateLimiter::attempts(StravaClient::rateLimitKey('15min')))->toBe('151');
 });
 
 it('holds only the live floor back from the daily bucket, not a quarter of it', function (): void {
@@ -596,8 +596,8 @@ it('lets a background read spend right up to the reserve floor', function (): vo
 
     new StravaClient()->get($connection, 'athlete', StravaReadSource::Manual, priority: StravaReadPriority::Background);
 
-    expect(RateLimiter::attempts(StravaClient::rateLimitKey('15min')))->toBe(150)
-        ->and(RateLimiter::attempts(StravaClient::rateLimitKey('daily')))->toBe(1600);
+    expect(RateLimiter::attempts(StravaClient::rateLimitKey('15min')))->toBe('150')
+        ->and(RateLimiter::attempts(StravaClient::rateLimitKey('daily')))->toBe('1600');
 });
 
 it('lets background spend the whole pool above the floor when live traffic is zero', function (): void {
@@ -630,7 +630,7 @@ it('caps background at what live traffic leaves, and live keeps the floor', func
 
     $client->get($connection, 'athlete', StravaReadSource::Manual, priority: StravaReadPriority::Live);
 
-    expect(RateLimiter::attempts(StravaClient::rateLimitKey('daily')))->toBe(1601);
+    expect(RateLimiter::attempts(StravaClient::rateLimitKey('daily')))->toBe('1601');
 });
 
 it('still refuses a background burst at the unchanged 15-minute ceiling', function (): void {
@@ -673,7 +673,7 @@ it('defaults an unqualified read to live so no caller silently loses the reserve
 
     new StravaClient()->get($connection, 'athlete', StravaReadSource::Manual);
 
-    expect(RateLimiter::attempts(StravaClient::rateLimitKey('15min')))->toBe(200);
+    expect(RateLimiter::attempts(StravaClient::rateLimitKey('15min')))->toBe('200');
 });
 
 it('counts a 5xx toward the circuit breaker, then surfaces the request exception', function (): void {

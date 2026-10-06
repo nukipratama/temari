@@ -32,6 +32,8 @@ jobs:
             --innodb-flush-log-at-trx-commit=0 --innodb-doublewrite=0 --skip-log-bin --performance-schema=OFF \
             > "$RUNNER_TEMP/mysql-start.log" 2>&1 &
 
+      - uses: ./.github/actions/start-redis
+
       - uses: ./.github/actions/show-runner-resources
         with:
           workers-label: test workers
@@ -68,7 +70,7 @@ jobs:
           DB_DATABASE: temari_testing
           DB_USERNAME: root
           DB_PASSWORD: password
-          CACHE_STORE: array
+          REDIS_HOST: 127.0.0.1
           SESSION_DRIVER: array
         run: |
           coverage_args=()
@@ -193,6 +195,8 @@ jobs:
       - name: Stub .env for tools that boot the app
         run: cp .env.example .env
 
+      - uses: ./.github/actions/start-redis
+
       - name: Cache PHPStan analyser cache
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v5
         with:
@@ -225,4 +229,6 @@ jobs:
 
       - name: Class/test 1:1 structure check
         if: ${{ !cancelled() }}
+        env:
+          REDIS_HOST: 127.0.0.1
         run: ./vendor/bin/pest --group=structure
