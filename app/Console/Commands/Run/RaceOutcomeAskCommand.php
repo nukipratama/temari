@@ -66,6 +66,6 @@ class RaceOutcomeAskCommand extends Command
 
     private function releaseClaim(RaceGoal $race): void
     {
-        DB::table('race_goals')->where('id', $race->id)->update(['outcome_asked_for_date' => $race->getRawOriginal('outcome_asked_for_date')]);
+        DB::table('race_goals')->where('id', $race->id)->update(['outcome_asked_for_date' => null]);
     }
 }

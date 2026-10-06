@@ -78,6 +78,6 @@ class RaceRemindCommand extends Command
 
     private function releaseClaim(RaceGoal $race): void
     {
-        DB::table('race_goals')->where('id', $race->id)->update(['reminded_for_date' => $race->getRawOriginal('reminded_for_date')]);
+        DB::table('race_goals')->where('id', $race->id)->update(['reminded_for_date' => null]);
     }
 }
