@@ -123,6 +123,9 @@ class ActivityDetail extends Model
 
     public const int LOCATION_ATTEMPT_COOLDOWN_HOURS = 24;
 
+    /** A run still missing its location or weather this long after ingest is a persistent gap. */
+    public const int PERSISTENT_GAP_HOURS = 48;
+
     #[Override]
     protected static function booted(): void
     {

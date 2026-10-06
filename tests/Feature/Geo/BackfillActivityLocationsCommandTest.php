@@ -6,6 +6,8 @@ use App\Actions\Geo\ReverseGeocodeAction;
 use App\Jobs\Geo\ResolveActivityLocationJob;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
+use App\Models\User;
+use App\Services\AI\MaintainerAlerter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
@@ -231,4 +233,42 @@ it('skips polyline backfill when the polyline is empty/malformed', function (): 
 
     expect($detail->fresh()->start_lat)->toBeNull();
     Queue::assertNothingPushed();
+});
+
+it('reports runs still missing a location 48 hours after ingest, but not newer or demo ones', function (): void {
+    Queue::fake();
+    $unresolved = [
+        'start_lat' => -6.24,
+        'start_lng' => 106.81,
+        'location_resolved_at' => null,
+        'location_attempts' => ActivityDetail::MAX_BACKFILL_ATTEMPTS,
+    ];
+    ActivityDetail::factory()->create([...$unresolved, 'created_at' => now()->subHours(48)]);
+    ActivityDetail::factory()->create([...$unresolved, 'created_at' => now()->subHours(47)]);
+    ActivityDetail::factory()->create([...$unresolved, 'start_lat' => null, 'start_lng' => null, 'created_at' => now()->subDays(5)]);
+    ActivityDetail::factory()
+        ->for(Activity::factory()->for(User::factory()->state(['is_demo' => true])))
+        ->create([...$unresolved, 'created_at' => now()->subDays(5)]);
+
+    $alerter = Mockery::mock(MaintainerAlerter::class);
+    $alerter->shouldReceive('persistentGap')->once()->with('geo:backfill-locations', 'location', 1);
+    $this->app->instance(MaintainerAlerter::class, $alerter);
+
+    $this->artisan('geo:backfill-locations')->assertSuccessful();
+});
+
+it('reports no gap once every run is resolved', function (): void {
+    Queue::fake();
+    ActivityDetail::factory()->create([
+        'start_lat' => -6.24,
+        'start_lng' => 106.81,
+        'location_resolved_at' => now()->subDays(3),
+        'created_at' => now()->subDays(4),
+    ]);
+
+    $alerter = Mockery::mock(MaintainerAlerter::class);
+    $alerter->shouldReceive('persistentGap')->once()->with('geo:backfill-locations', 'location', 0);
+    $this->app->instance(MaintainerAlerter::class, $alerter);
+
+    $this->artisan('geo:backfill-locations')->assertSuccessful();
 });

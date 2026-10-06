@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Models\RunnerProfile;
 use App\Models\StravaConnection;
 use App\Models\User;
+use App\Services\AI\MaintainerAlerter;
 use App\Services\Strava\Exceptions\StravaConnectionRevokedException;
 use App\Services\Strava\ZoneFetcher;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -145,6 +146,23 @@ it('keeps syncing other users and still succeeds when one connection throws', fu
     $fetcher->shouldReceive('fetch')->once()->andThrow(new RuntimeException('boom'));
     $fetcher->shouldReceive('fetch')->once()->andReturn(null);
     $this->app->instance(ZoneFetcher::class, $fetcher);
+    $alerter = Mockery::mock(MaintainerAlerter::class);
+    $alerter->shouldReceive('athletesFailed')->once()->with('strava:sync-zones', 1);
+    $this->app->instance(MaintainerAlerter::class, $alerter);
+
+    $this->artisan('strava:sync-zones')->assertSuccessful();
+});
+
+it('does not count a revoked connection as a failed athlete', function (): void {
+    $user = User::factory()->create();
+    StravaConnection::factory()->for($user)->create(['scopes' => 'read,activity:read_all,profile:read_all']);
+
+    $fetcher = Mockery::mock(ZoneFetcher::class);
+    $fetcher->shouldReceive('fetch')->once()->andThrow(new StravaConnectionRevokedException('401'));
+    $this->app->instance(ZoneFetcher::class, $fetcher);
+    $alerter = Mockery::mock(MaintainerAlerter::class);
+    $alerter->shouldNotReceive('athletesFailed');
+    $this->app->instance(MaintainerAlerter::class, $alerter);
 
     $this->artisan('strava:sync-zones')->assertSuccessful();
 });

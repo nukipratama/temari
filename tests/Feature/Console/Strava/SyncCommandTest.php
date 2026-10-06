@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Models\StravaConnection;
 use App\Models\User;
+use App\Services\AI\MaintainerAlerter;
 use App\Services\Run\Ingest\SyncOrchestrator;
 use App\Support\Config\AppConfig;
 use App\Support\Config\AppConfigKey;
@@ -57,6 +58,22 @@ it('keeps syncing other users and still succeeds when one connection throws', fu
     $orchestrator->shouldReceive('syncUser')->once()->andThrow(new RuntimeException('boom'));
     $orchestrator->shouldReceive('syncUser')->once()->andReturn(1);
     $this->app->instance(SyncOrchestrator::class, $orchestrator);
+    $alerter = Mockery::mock(MaintainerAlerter::class);
+    $alerter->shouldReceive('athletesFailed')->once()->with('strava:sync', 1);
+    $this->app->instance(MaintainerAlerter::class, $alerter);
+
+    $this->artisan('strava:sync')->assertSuccessful();
+});
+
+it('raises no alert when every athlete syncs', function (): void {
+    User::factory()->withStravaConnection()->create();
+
+    $orchestrator = Mockery::mock(SyncOrchestrator::class);
+    $orchestrator->shouldReceive('syncUser')->once()->andReturn(0);
+    $this->app->instance(SyncOrchestrator::class, $orchestrator);
+    $alerter = Mockery::mock(MaintainerAlerter::class);
+    $alerter->shouldNotReceive('athletesFailed');
+    $this->app->instance(MaintainerAlerter::class, $alerter);
 
     $this->artisan('strava:sync')->assertSuccessful();
 });

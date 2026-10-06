@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Console\Commands\Strava;
 
 use App\Models\User;
+use App\Services\AI\MaintainerAlerter;
 use App\Services\Run\Ingest\SyncOrchestrator;
 use App\Support\Config\AppConfig;
 use App\Support\Config\AppConfigKey;
@@ -21,7 +22,7 @@ use Throwable;
 #[Description('Fetch new Strava activities and queue them for ingestion.')]
 class SyncCommand extends Command
 {
-    public function handle(SyncOrchestrator $orchestrator, AppConfig $config): int
+    public function handle(SyncOrchestrator $orchestrator, AppConfig $config, MaintainerAlerter $alerter): int
     {
         if (! $config->boolean(AppConfigKey::StravaEnabled)) {
             $this->warn('Strava is disabled (kill-switch); skipping sync.');
@@ -38,6 +39,7 @@ class SyncCommand extends Command
 
         $since = $this->resolveSince();
 
+        $failed = 0;
         foreach ($users as $user) {
             try {
                 $queued = $orchestrator->syncUser($user, $since);
@@ -46,8 +48,13 @@ class SyncCommand extends Command
                 // One bad connection (transient API error, open breaker) must not
                 // abort the scheduled run or the other users. The per-user signal
                 // is already persisted in StravaSyncLog + Pulse by the orchestrator.
+                $failed++;
                 $this->warn("user {$user->id}: sync failed — {$e->getMessage()}");
             }
+        }
+
+        if ($failed > 0) {
+            $alerter->athletesFailed('strava:sync', $failed);
         }
 
         return self::SUCCESS;
