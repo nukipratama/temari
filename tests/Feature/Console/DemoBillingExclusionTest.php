@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use App\Jobs\Strava\RetryOrphanedStravaGrantReleasesJob;
+use Illuminate\Console\Scheduling\CallbackEvent;
 use Illuminate\Console\Scheduling\Event;
 use Illuminate\Console\Scheduling\Schedule;
 
@@ -44,6 +46,8 @@ const BILLING = [
     'race:ask-outcome' => 'notDemo() on the race scan inside the command',
     'plan:settle-time-trials' => 'notDemo() on the trial scan inside the command',
     'fitness:notify-improvement' => 'notDemo() on the user scan inside the command',
+    'plan:score-compliance' => 'PlanReconciliationService::markDirty and drain scope to User::notDemo(), and the plan-narration requests it can reach are gated by RecentlyActiveUsers',
+    'ai:self-heal' => 'every sweep in SelfHealer draws from RecentlyActiveUsers, which applies User::notDemo()',
     'plan:regenerate' => 'RecentlyActiveUsers gates the plan-narration request only; the regenerate itself stays free and still runs for demo',
 ];
 
@@ -54,12 +58,11 @@ const BILLING = [
  * @var array<string, string>
  */
 const NON_BILLING = [
+    RetryOrphanedStravaGrantReleasesJob::class => 'releases orphaned Strava grants by athlete id, no LLM call and no per-user read budget',
     'schedule:heartbeat' => 'writes one Redis timestamp, touches no user',
     'schedule:monday-check' => 'reads settlement cursors and the scheduler-chain flags and pushes one maintainer alert, no LLM and no Strava call',
     'schedule:check-late' => 'reads the heartbeat table and the scheduler-chain flags and pushes maintainer alerts, no LLM and no Strava call',
     'demo:daily-refresh' => 'the demo account is the point; rule-based fill, zero LLM tokens',
-    'plan:score-compliance' => 'free local km comparison against ActivityDetail rows, no LLM and no Strava call',
-    'ai:self-heal' => 'only re-kicks Pending rows; demo rows are seeded Done, and the sweeps that could bill draw from RecentlyActiveUsers, which applies notDemo()',
     'queue:prune-failed' => 'deletes rows, touches no user',
     'analytics:prune' => 'deletes rows, touches no user',
     'model:prune' => 'deletes expired Telegram dedupe and token-use rows, touches no user',
@@ -84,6 +87,10 @@ function scheduledCommandNames(): array
 {
     return collect(app(Schedule::class)->events())
         ->map(function (Event $event): ?string {
+            if ($event instanceof CallbackEvent) {
+                return $event->description;
+            }
+
             preg_match('/artisan[\'"]? (?:[\'"])?([a-z0-9:_-]+)/i', (string) $event->command, $matches);
 
             return $matches[1] ?? null;
@@ -131,5 +138,8 @@ it('reads the demo exclusion straight out of each billing command source', funct
     'race:ask-outcome' => ['race:ask-outcome', 'app/Console/Commands/Run/RaceOutcomeAskCommand.php'],
     'plan:settle-time-trials' => ['plan:settle-time-trials', 'app/Console/Commands/Run/TimeTrialSettleCommand.php'],
     'fitness:notify-improvement' => ['fitness:notify-improvement', 'app/Console/Commands/Run/FitnessNotifyImprovementCommand.php'],
+    'strava:hydrate-backlog' => ['strava:hydrate-backlog', 'app/Console/Commands/Strava/HydrateBacklogCommand.php'],
     'plan:regenerate' => ['plan:regenerate', 'app/Console/Commands/Run/RegeneratePlanCommand.php', 'app/Actions/AI/RecentlyActiveUsers.php'],
+    'plan:score-compliance' => ['plan:score-compliance', 'app/Console/Commands/Run/ScoreComplianceCommand.php', 'app/Services/Run/Plan/PlanReconciliationService.php'],
+    'ai:self-heal' => ['ai:self-heal', 'app/Console/Commands/AI/SelfHealCommand.php', 'app/Services/AI/SelfHealer.php', 'app/Actions/AI/RecentlyActiveUsers.php'],
 ]);
