@@ -201,10 +201,15 @@ cost-capped or content-filtered day), and those must stay eligible for a real na
 keeping filler forever.
 
 Everything else on the schedule (`strava:sync`, `geo:backfill-locations`, `weather:*`,
-`trend:snapshot-daily`, `plan:score-compliance`, `streak:*`, `demo:daily-refresh`) reaches no model.
+`trend:snapshot-daily`, `streak:*`, `demo:daily-refresh`) reaches no model.
 `demo:daily-refresh` is worth naming because it looks like it should: it runs under
 `AnalysisService::withoutDispatching()`, so the demo account's content is filled deterministically
 and spends nothing. See [[demo-user-billing-exclusion]].
+
+`plan:score-compliance` is not on that list: its scoring is free, but a settled row marks the plan
+dirty, and the reconciliation that follows can request the plan narration for an active athlete
+([`PlanReconciliationService::drain()`](../../app/Services/Run/Plan/PlanReconciliationService.php)).
+It is classified as billing in the demo-exclusion tripwire.
 
 ### 2. Ingest cascade
 
