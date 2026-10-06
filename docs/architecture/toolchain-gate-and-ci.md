@@ -3,7 +3,7 @@ title: Local gate vs. CI
 description: What composer gate / check:full run locally, what pre-commit runs, and what CI runs — and why they differ
 tags: [architecture, toolchain]
 status: living
-reviewed: 2026-09-21
+reviewed: 2026-10-06
 code_refs:
   - scripts/gate.sh
   - .githooks/pre-commit
@@ -22,10 +22,11 @@ Three layers, each catching a different class of problem at the point it's cheap
 
 [.githooks/pre-commit](../../.githooks/pre-commit) runs on every commit (not on `main`, which it
 blocks outright): a gitleaks secret scan on all staged files, then — only when PHP or TS files are
-staged — Pint, full-project PHPStan, and ESLint/Prettier on the staged TS. These are fast enough to
-pay for every commit and give the tightest feedback loop. Rector does **not** run here; a full-tree
-Rector pass was the slowest single step the hook ever carried, so it moved to the gate (scoped) and
-`check:full` (full), per [#832](https://github.com/nukipratama/temari/pull/832).
+staged — Rector (applying its fixes to the staged `app/` and `tests/` PHP), Pint, full-project
+PHPStan, and ESLint/Prettier on the staged TS. These are fast enough to pay for every commit and give
+the tightest feedback loop. A full-tree Rector pass was the slowest single step the hook ever carried,
+so it stays in `check:full`, per [#832](https://github.com/nukipratama/temari/pull/832); the gate keeps
+its scoped dry run as the check.
 
 ## `composer gate`: the fast pre-push gate
 
@@ -37,7 +38,8 @@ Rector pass was the slowest single step the hook ever carried, so it moved to th
   Rector `--dry-run` scoped to files changed since the merge-base, Vitest `--changed`, then only the
   Pest tests paired with changed files ([scripts/changed-tests.sh](../../scripts/changed-tests.sh):
   `{Name}Test.php` for each changed class, plus changed tests). Seconds, not minutes, so any number of
-  worktrees can gate at once; the full suite is CI's.
+  worktrees can gate at once; the full suite is CI's. Each step's output goes to
+  `storage/logs/gate.log`; a failing step prints its last 40 lines before the final `GATE:` line.
 - **full** (`composer check:full`, `sh scripts/gate.sh --full`): everything fast mode runs, plus
   Pint/PHPStan/full-tree Rector (all in `--test`/dry-run form), ESLint/Prettier `--check`, the full
   Pest suite in parallel, Vitest coverage, the asset

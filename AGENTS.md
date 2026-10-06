@@ -16,6 +16,10 @@ This is the canonical project guidance shared by agents. Runtime entrypoints may
 - For plan/coaching policy calls (redistribution, clamps, grading), decide from established coaching practice, record the rationale in the PR or ADR, and build; ask the owner only about product, UX or infra trade-offs.
 - Parallel briefs assign each agent its route paths and names, with no placeholder routes; the later PR checks `routes/` for duplicate paths after merging `main`.
 - 'Polish' a PR means running the `polish` skill on it — the simplify and correctness passes over its full diff; report a PR as polished only after that, and say so when only part of a diff was reviewed.
+- `scripts/worktree info [path]` prints a checkout's slot and ports; never read them from `.env`.
+- `scripts/pr-status [n…]` prints one line per open PR: checks, merge state, auto-merge and the closing issue's board column. Never poll CI with `sleep` loops or `gh … --watch`.
+- Draft a PR body in `.planning/pr-<n>.md`, change it with Edit, and send it with `gh pr create|edit --body-file`; never patch a body in place with perl or sed.
+- Every agent report backs each claim of an action or a result with the command that proves it and its key output line (the `GATE:` line, a test count, `gh pr view` state). A claim without one is unverified.
 
 ### PR handoff standard
 
@@ -65,23 +69,10 @@ The human-facing knowledge base lives in `docs/` as `[[wikilinked]]` notes (a fr
 
 ## Common commands
 
-Everything runs in Docker via **Sail** (no host PHP/Node): run every container tool, npm included, through `./vendor/bin/sail` rather than `docker compose exec`, and don't run host python/perl over repo files. Stop at the first failure on the fast-feedback ladder; the full skill toolchain has the rest.
+Everything runs in Docker via **Sail** (no host PHP/Node): run every container tool, npm included, through `./vendor/bin/sail` rather than `docker compose exec`. Start with `./vendor/bin/sail pest --group=structure` or the narrowest test, stop at the first failure, and run `./vendor/bin/sail composer gate` before pushing; the command ladder is in the `temari` skill's [toolchain reference](.agents/skills/temari/references/toolchain.md). Prefer Edit for a targeted change; host perl/sed/python are fine for a multi-file mechanical rewrite, followed by `git diff --stat` to confirm only the expected files changed.
 
-```bash
-./vendor/bin/sail up -d                      # start the stack
-./vendor/bin/sail pest --group=structure     # fast 1:1 + aggregate structural gate (run first)
-./vendor/bin/sail bin pest --filter=Name     # a single test / file while iterating
-./vendor/bin/sail npm run test               # frontend (Vitest); `test:coverage` for the 95% gate
-./vendor/bin/sail npm run build              # build assets (`npm run dev` for HMR)
-./vendor/bin/sail bin pint                    # format PHP (pre-commit also runs phpstan + eslint)
-./vendor/bin/sail composer gate              # fast pre-push gate: tests for changed files only; CI runs the full suite
-./vendor/bin/sail composer check:full        # reproduce CI locally, opt-in, slow
-```
-
-**Reading the gate.** Run it unpiped and read the final `GATE:` line. If you must capture the
-output, `./vendor/bin/sail composer gate 2>&1 | tee <file>` and read `${PIPESTATUS[0]}` — never
-`| tail`, which drops the failing step, and never `; echo EXIT=$?` after a pipe, which reports the
-pipe's exit code rather than the gate's.
+**Reading the gate.** Run it unpiped: it prints one line per step, and on a failure the step's last
+40 lines and the path of the full log (`storage/logs/gate.log`) before the final `GATE:` line.
 
 Running several agents at once, each in its own `git worktree`? See the `temari` skill's
 "Parallel worktrees" section before starting a second Sail stack.
@@ -92,14 +83,7 @@ Every commit follows Conventional Commits, and the scope never contains a slash.
 
 ## LLM Integration
 
-Briefing and analysis narration is LLM-backed via Azure OpenAI through openai-php/laravel ([AzureOpenAIClient](app/Services/AI/AzureOpenAIClient.php), [StructuredChatCaller](app/Services/AI/StructuredChatCaller.php), narrators under [app/Services/AI/Narrators/](app/Services/AI/Narrators/)). All narrator output flows through the [Analysis](app/Models/AI/Analysis.php) row model (status: pending / queued / processing / done / failed).
-
-- **Failure and retry**: a job that exhausts `$tries` ([AnalyzeBaseJob](app/Jobs/AI/AnalyzeBaseJob.php)) lands in `failed_jobs`, marks its row `failed`, and the block shows "Try again" via [AnalysisStatus.tsx](resources/js/components/temari/AnalysisStatus.tsx); Horizon's failed-job tab retries it too.
-- **Idempotency**: jobs early-exit on a row already `done` ([AnalyzeRowJob](app/Jobs/AI/AnalyzeRowJob.php), [AnalyzeGroupJob](app/Jobs/AI/AnalyzeGroupJob.php)), so racing retries never double-bill.
-- **Paused vs failed**: a paused block (`AiEnabled` off, Azure unset, breaker tripped) stays `pending` and the hourly `ai:self-heal` ([SelfHealCommand](app/Console/Commands/AI/SelfHealCommand.php)) re-kicks it; a `failed` block gets bounded retries (`Analysis::MAX_SELF_HEAL_ATTEMPTS`), then dead-letters to `/devtools/narration`. Kickoffs in [routes/console.php](routes/console.php) never re-dispatch a failed block. The one exception: when a pause other than the app-wide cost ceiling lifts, an active athlete's block that failed during it gets one fresh attempt ([docs/decisions/failed-during-a-pause-retried-once-on-resume.md](docs/decisions/failed-during-a-pause-retried-once-on-resume.md)). See [docs/decisions/bounded-self-heal-and-dead-letter.md](docs/decisions/bounded-self-heal-and-dead-letter.md).
-- **Cost ceilings**: past the per-athlete daily ceiling (`azure_openai.daily_cost_ceiling_per_user`), that athlete's `pending` blocks are filled by [RuleBasedNarrationFiller](app/Services/AI/RuleBased/RuleBasedNarrationFiller.php) and manual triggers are refused ([docs/decisions/cost-ceiling-degrades-to-rule-based.md](docs/decisions/cost-ceiling-degrades-to-rule-based.md)); past the app-wide total (`azure_openai.daily_cost_ceiling_total`), every athlete degrades the same way, generation pauses and one maintainer alert fires ([docs/decisions/app-wide-ceiling-above-the-per-athlete-one.md](docs/decisions/app-wide-ceiling-above-the-per-athlete-one.md)). `failed` blocks stay `failed`, and there is no global emergency-mode chip.
-- **Unconfigured env**: with `AZURE_OPENAI_URI` / `AZURE_OPENAI_API_KEY` empty, [AnalysisService](app/Services/AI/AnalysisService.php) skips dispatch and rows stay `pending`.
-- **Demo**: [DemoSeedCommand](app/Console/Commands/DemoSeedCommand.php) fills every row rule-based under `AnalysisService::withoutDispatching()`, and demo "Reread" triggers are served rule-based too, so the demo spends no tokens ([docs/decisions/demo-triggers-served-rule-based.md](docs/decisions/demo-triggers-served-rule-based.md)). Every billing kickoff or scheduler excludes the demo user (`User::notDemo()`), with no exceptions ([docs/decisions/demo-user-billing-exclusion.md](docs/decisions/demo-user-billing-exclusion.md)).
+Narration is Azure OpenAI-backed through the [Analysis](app/Models/AI/Analysis.php) row model. Its failure, retry, idempotency, pause, cost-ceiling, unconfigured-env and demo rules are in the `temari` skill's [narration reference](.agents/skills/temari/references/narration.md). Every billing kickoff or scheduler excludes the demo user (`User::notDemo()`), with no exceptions.
 
 ## Environment toggles
 
@@ -117,7 +101,7 @@ When a bug or error is reported, ground the investigation in real state before h
 
 Batch several visual changes before reviewing one screenshot for the round. Activate the
 `browser-review` skill for a viewport sweep or repeated image inspection; it owns the image-read,
-cropping, and live-verification rules. Run the narrowest check that can fail before widening.
+cropping, and live-verification rules. The main session views at most one image per round, as a crop of the changed region or a screenshot at scale 0.5 or below; a full viewport sweep goes to a subagent that reports in text. Run the narrowest check that can fail before widening.
 Confirm a localhost port is the local stack before interacting with it, since a tunnel can shadow
 it. Verify every touched UI surface on both grounds and at a ≥1280px viewport, and list that matrix
 in the PR.

@@ -1,9 +1,21 @@
 ## Toolchain (everything in Docker via Sail)
 
-Use the fast-feedback ladder in [AGENTS.md](../../../../AGENTS.md): start with structure or the
+```bash
+./vendor/bin/sail up -d                      # start the stack
+./vendor/bin/sail pest --group=structure     # fast 1:1 + aggregate structural gate (run first)
+./vendor/bin/sail bin pest --filter=Name     # a single test / file while iterating
+./vendor/bin/sail npm run test               # frontend (Vitest); `test:coverage` for the 95% gate
+./vendor/bin/sail npm run build              # build assets (`npm run dev` for HMR)
+./vendor/bin/sail bin pint                    # format PHP (pre-commit also runs phpstan + eslint)
+./vendor/bin/sail composer gate              # fast pre-push gate: tests for changed files only; CI runs the full suite
+./vendor/bin/sail composer check:full        # reproduce CI locally, opt-in, slow
+```
+
+Use the ladder above: start with structure or the
 narrowest targeted test, stop at the first failure, and widen only after it passes.
 Both modes are [scripts/gate.sh](../../../../scripts/gate.sh); it stops at the first failure and its
-last line is `GATE: PASS (<n>s, mode=fast|full)` or `GATE: FAIL at <step> (<n>s)`.
+last line is `GATE: PASS (<n>s, mode=fast|full)` or `GATE: FAIL at <step> (<n>s)`. Step output goes to
+`storage/logs/gate.log`; a failing step prints its last 40 lines above the `GATE:` line.
 Pint/phpstan/eslint run on **pre-commit**; the fast gate runs **scoped rector on changed files**
 (`app/`+`tests/` PHP since the merge base, plus uncommitted ones — sub-second warm), and the
 full-tree `rector --dry-run` stays in **CI** and `check:full`. CI is the

@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+# One line per open PR (or the given PR numbers): checks, merge state, auto-merge,
+# and the board column of the issue it closes.
+set -euo pipefail
+
+columns=$(gh project item-list 1 --owner nukipratama --limit 2000 --format json \
+  --jq '[.items[] | select(.content.number != null) | {key: (.content.number | tostring), value: (.status // "-")}] | from_entries')
+
+prs=$(gh pr list --state open --limit 100 \
+  --json number,title,mergeStateStatus,autoMergeRequest,statusCheckRollup,closingIssuesReferences)
+
+jq -r --argjson columns "$columns" --arg wanted "$*" '
+  ($wanted | split(" ") | map(select(. != ""))) as $only
+  | .[]
+  | select(($only | length) == 0 or ((.number | tostring) as $n | $only | index($n)))
+  | ([.statusCheckRollup[] | {name: (.name // .context), state: (.conclusion // .state // .status)}]) as $checks
+  | ([$checks[] | select(.state | IN("FAILURE", "CANCELLED", "TIMED_OUT", "ERROR", "ACTION_REQUIRED")) | .name]) as $failed
+  | (if ($failed | length) > 0 then "FAIL(" + ($failed | join(",")) + ")"
+     elif any($checks[]; .state | IN("SUCCESS", "SKIPPED", "NEUTRAL") | not) then "pending"
+     elif ($checks | length) == 0 then "no-checks"
+     else "pass" end) as $ci
+  | ([.closingIssuesReferences[].number | tostring | "#" + . + "=" + ($columns[.] // "off-board")] | join(" ")) as $cards
+  | "#\(.number)\t\($ci)\t\(.mergeStateStatus)\tauto-merge=\(if .autoMergeRequest then "on" else "off" end)\t\(if $cards == "" then "no-closing-issue" else $cards end)\t\(.title[0:60])"
+' <<<"$prs"
