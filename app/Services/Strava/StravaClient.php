@@ -310,7 +310,7 @@ class StravaClient
     {
         $reported = $this->limiterStore()->get(self::reportedUsageKey($bucket, $at));
 
-        return max(RateLimiter::attempts(self::rateLimitKey($bucket, $at)), is_numeric($reported) ? (int) $reported : 0);
+        return max((int) RateLimiter::attempts(self::rateLimitKey($bucket, $at)), is_numeric($reported) ? (int) $reported : 0);
     }
 
     private function rememberReportedUsage(string $bucket, ?int $usage, CarbonImmutable $sentAt): void
