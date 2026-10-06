@@ -61,10 +61,12 @@ before the notification is queued.
 
 **`race_tomorrow` claims on the race row.** `race:remind` sweeps active race goals whose
 `race_date` is tomorrow ([RaceRemindCommand](../../app/Console/Commands/Run/RaceRemindCommand.php#L22))
-and, before notifying, claims each one with an atomic conditional update that sets `reminded_at`
-only while it is still null ([claim](../../app/Console/Commands/Run/RaceRemindCommand.php#L70)). A
-re-run, or a second run racing the first, updates no row and says nothing; a dispatch that throws
-clears the column again, so the next run sends, the same claim-then-release as `streak:remind`.
+and, before notifying, claims each one with an atomic conditional update that copies `race_date`
+into `reminded_for_date` only while that column is null or holds another date
+([claim](../../app/Console/Commands/Run/RaceRemindCommand.php#L71)). A re-run for the same date, or a
+second run racing the first, updates no row and says nothing, while a race moved to a later date is
+reminded again the evening before its new date. A dispatch that throws puts the column back to its
+earlier value, so the next run sends, the same claim-then-release as `streak:remind`.
 The body says the race and its distance, repeats the plan's own taper rest when today is one, and
 ends on the single practical thing left to do that evening; there is no narrator behind it and no
 hype in it.
@@ -72,8 +74,8 @@ hype in it.
 **`race_outcome` asks, it does not assume.** `race:ask-outcome` runs at 09:00 and notifies each
 athlete whose race was yesterday and whose outcome is still `pending`
 ([RaceOutcomeAskCommand](../../app/Console/Commands/Run/RaceOutcomeAskCommand.php)), claiming
-each race the same way through its own `outcome_asked_at` column
-([claim](../../app/Console/Commands/Run/RaceOutcomeAskCommand.php#L58)).
+each race for its date the same way through its own `outcome_asked_for_date` column
+([claim](../../app/Console/Commands/Run/RaceOutcomeAskCommand.php#L59)).
 A passed date is not participation, so the copy is neutral and says nothing is counted until the
 athlete answers. The demo account and athletes with the master switch off are never asked.
 

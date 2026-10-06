@@ -57,7 +57,7 @@ it('says nothing a second time for the same race', function (): void {
         ->filter(fn (SendQueuedNotifications $job): bool => $job->notification instanceof RaceTomorrowNotification);
     expect($queued)->not->toBeEmpty()
         ->and($queued->map(fn (SendQueuedNotifications $job): string => $job->notification->id)->unique())->toHaveCount(1)
-        ->and($race->fresh()->reminded_at)->not->toBeNull();
+        ->and($race->fresh()->reminded_for_date?->toDateString())->toBe('2026-05-24');
 });
 
 it('releases the claim when dispatch throws, so the next run sends', function (): void {
@@ -66,13 +66,29 @@ it('releases the claim when dispatch throws, so the next run sends', function ()
     Notification::shouldReceive('send')->once()->andThrow(new RuntimeException('Redis is down'));
 
     expect(fn () => $this->artisan('race:remind')->run())->toThrow(RuntimeException::class, 'Redis is down');
-    expect($race->fresh()->reminded_at)->toBeNull();
+    expect($race->fresh()->reminded_for_date)->toBeNull();
 
     Notification::fake();
     $this->artisan('race:remind')->assertSuccessful();
 
     Notification::assertSentToTimes($user, RaceTomorrowNotification::class, 1);
-    expect($race->fresh()->reminded_at)->not->toBeNull();
+    expect($race->fresh()->reminded_for_date?->toDateString())->toBe('2026-05-24');
+});
+
+it('claims a rescheduled race again for its new date', function (): void {
+    Notification::fake();
+    $user = User::factory()->create();
+    $race = raceTomorrow($user);
+    $this->artisan('race:remind')->assertSuccessful();
+
+    $race->update(['race_date' => '2026-05-31']);
+    Carbon::setTestNow('2026-05-30 18:00:00');
+
+    $this->artisan('race:remind')->assertSuccessful();
+    $this->artisan('race:remind')->expectsOutputToContain('Dispatched race-day reminder to 0 users.')->assertSuccessful();
+
+    Notification::assertSentToTimes($user, RaceTomorrowNotification::class, 2);
+    expect($race->fresh()->reminded_for_date?->toDateString())->toBe('2026-05-31');
 });
 
 it('skips a race that is not tomorrow', function (string $raceDate): void {

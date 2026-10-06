@@ -10,15 +10,15 @@ return new class () extends Migration {
     public function up(): void
     {
         Schema::table('race_goals', function (Blueprint $table): void {
-            $table->timestamp('reminded_at')->nullable()->after('outcome_recorded_at');
-            $table->timestamp('outcome_asked_at')->nullable()->after('reminded_at');
+            $table->date('reminded_for_date')->nullable()->after('outcome_recorded_at');
+            $table->date('outcome_asked_for_date')->nullable()->after('reminded_for_date');
         });
     }
 
     public function down(): void
     {
         Schema::table('race_goals', function (Blueprint $table): void {
-            $table->dropColumn(['reminded_at', 'outcome_asked_at']);
+            $table->dropColumn(['reminded_for_date', 'outcome_asked_for_date']);
         });
     }
 };

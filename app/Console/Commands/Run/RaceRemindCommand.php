@@ -11,6 +11,7 @@ use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Throwable;
@@ -71,12 +72,12 @@ class RaceRemindCommand extends Command
     {
         return DB::table('race_goals')
             ->where('id', $race->id)
-            ->whereNull('reminded_at')
-            ->update(['reminded_at' => now()]) === 1;
+            ->where(fn (QueryBuilder $query): QueryBuilder => $query->whereNull('reminded_for_date')->orWhereColumn('reminded_for_date', '<>', 'race_date'))
+            ->update(['reminded_for_date' => DB::raw('race_date')]) === 1;
     }
 
     private function releaseClaim(RaceGoal $race): void
     {
-        DB::table('race_goals')->where('id', $race->id)->update(['reminded_at' => null]);
+        DB::table('race_goals')->where('id', $race->id)->update(['reminded_for_date' => $race->getRawOriginal('reminded_for_date')]);
     }
 }

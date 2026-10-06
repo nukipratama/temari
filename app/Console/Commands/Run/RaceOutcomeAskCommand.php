@@ -12,6 +12,7 @@ use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Throwable;
@@ -59,12 +60,12 @@ class RaceOutcomeAskCommand extends Command
     {
         return DB::table('race_goals')
             ->where('id', $race->id)
-            ->whereNull('outcome_asked_at')
-            ->update(['outcome_asked_at' => now()]) === 1;
+            ->where(fn (QueryBuilder $query): QueryBuilder => $query->whereNull('outcome_asked_for_date')->orWhereColumn('outcome_asked_for_date', '<>', 'race_date'))
+            ->update(['outcome_asked_for_date' => DB::raw('race_date')]) === 1;
     }
 
     private function releaseClaim(RaceGoal $race): void
     {
-        DB::table('race_goals')->where('id', $race->id)->update(['outcome_asked_at' => null]);
+        DB::table('race_goals')->where('id', $race->id)->update(['outcome_asked_for_date' => $race->getRawOriginal('outcome_asked_for_date')]);
     }
 }
