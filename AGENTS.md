@@ -18,7 +18,7 @@ This is the canonical project guidance shared by agents. Runtime entrypoints may
 - 'Polish' a PR means running the `polish` skill on it — the simplify and correctness passes over its full diff; report a PR as polished only after that, and say so when only part of a diff was reviewed.
 - `scripts/worktree info [path]` prints a checkout's slot and ports; never read them from `.env`.
 - `scripts/pr-status [n…]` prints one line per open PR: checks, merge state, auto-merge and the closing issue's board column. Never poll CI with `sleep` loops or `gh … --watch`.
-- GitHub's GraphQL quota (5,000 points an hour) is shared by every agent on the account, and Projects v2 board moves only work through GraphQL. `gh issue`, `gh pr`, `gh project` and `scripts/pr-status` all spend it, and `gh project item-list` costs by the size of the board. List the board once per wave and reuse the item IDs from `.planning/board-ids.json`; never re-list it to find one card. Use REST (`gh api repos/<owner>/<repo>/…`), which has its own quota, for issue comments, closing issues and squash merges. An agent calls `gh pr create` and one `gh pr view` to prove its PR exists, nothing more.
+- `gh project item-list` fetches the whole board, about 500 of the 5,000 GraphQL points an hour that every agent on the account shares. Look up one card through its issue's `projectItems` instead, as `scripts/pr-status` does.
 - Draft a PR body in `.planning/pr-<n>.md`, change it with Edit, and send it with `gh pr create|edit --body-file`; never patch a body in place with perl or sed.
 - Every agent report backs each claim of an action or a result with the command that proves it and its key output line (the `GATE:` line, a test count, `gh pr view` state). A claim without one is unverified.
 
