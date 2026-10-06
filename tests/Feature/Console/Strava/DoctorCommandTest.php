@@ -6,9 +6,11 @@ use App\Jobs\Strava\IngestActivityJob;
 use App\Models\Activity;
 use App\Models\StravaConnection;
 use App\Models\User;
+use App\Services\Strava\StravaClient;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\RateLimiter;
 
 uses(RefreshDatabase::class);
 
@@ -106,6 +108,26 @@ it('e2e passes all checks when healthy', function (): void {
         ->expectsOutputToContain('PASS  No stranded activities')
         ->expectsOutputToContain('Results: 6 passed, 0 failed')
         ->assertSuccessful();
+});
+
+it('e2e fails the 15-minute headroom check when that bucket is spent', function (): void {
+    $this->freezeTime();
+    RateLimiter::increment(StravaClient::rateLimitKey('15min'), 900, StravaClient::RATE_LIMIT_15MIN_MAX);
+
+    $this->artisan('strava:doctor', ['--e2e' => true])
+        ->expectsOutputToContain('FAIL  Rate limit headroom (15 min)')
+        ->expectsOutputToContain('PASS  Rate limit headroom (daily)')
+        ->assertFailed();
+});
+
+it('e2e fails the daily headroom check when that bucket is spent', function (): void {
+    $this->freezeTime();
+    RateLimiter::increment(StravaClient::rateLimitKey('daily'), 86400, 2000);
+
+    $this->artisan('strava:doctor', ['--e2e' => true])
+        ->expectsOutputToContain('PASS  Rate limit headroom (15 min)')
+        ->expectsOutputToContain('FAIL  Rate limit headroom (daily)')
+        ->assertFailed();
 });
 
 it('e2e fails when oauth credentials are missing', function (): void {
