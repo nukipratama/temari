@@ -53,7 +53,8 @@ Today's calls, tokens and estimated cost per athlete, heaviest first, plus the a
 the headroom left against each ceiling. Cost comes from `LlmCostCalculator` — the same source the
 two ceilings are measured against ([[cost-ceiling-degrades-to-rule-based]],
 [[app-wide-ceiling-above-the-per-athlete-one]]), so the digest can never disagree with the gate
-about what a day cost. Rows whose athlete has been erased carry a null `user_id`; they count in the
+about what a day cost. A closing "yesterday, final" line gives the previous day's complete spend,
+covering the 21:00-24:00 hours after yesterday's digest went out. Rows whose athlete has been erased carry a null `user_id`; they count in the
 app-wide total and get no per-athlete line.
 
 The figures themselves only exist in the Telegram message. This is a public repo: nothing that

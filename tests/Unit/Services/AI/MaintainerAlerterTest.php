@@ -542,13 +542,14 @@ it('spendDigest reports the app-wide total, its headroom and a line per athlete'
         7401,
         "AI spend today: \$0.42 of \$5.00 (\$4.58 left). 12 calls, 30,400 tokens.\n"
         ."- athlete 7: 8 calls, 20,000 tokens, \$0.30 (\$0.70 left)\n"
-        .'- athlete 9: 4 calls, 10,400 tokens, $0.12 ($0.88 left)',
+        ."- athlete 9: 4 calls, 10,400 tokens, \$0.12 (\$0.88 left)\n"
+        .'AI spend yesterday, final: $0.58.',
     );
 
     app(MaintainerAlerter::class)->spendDigest([
         ['userId' => 7, 'calls' => 8, 'tokens' => 20_000, 'cost' => 0.30],
         ['userId' => 9, 'calls' => 4, 'tokens' => 10_400, 'cost' => 0.12],
-    ], 0.42, 1.0, 5.0);
+    ], 0.42, 1.0, 5.0, 0.58);
 });
 
 it('spendDigest says so plainly on a day nobody spent anything', function (): void {
@@ -557,7 +558,7 @@ it('spendDigest says so plainly on a day nobody spent anything', function (): vo
 
     $client->shouldReceive('sendMessage')->once()->with(7402, Mockery::pattern('/No athlete spent anything today/'));
 
-    app(MaintainerAlerter::class)->spendDigest([], 0.0, 1.0, 5.0);
+    app(MaintainerAlerter::class)->spendDigest([], 0.0, 1.0, 5.0, 0.0);
 });
 
 it('exceptionDigest lists each new fingerprint with its first-seen time and count', function (): void {

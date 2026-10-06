@@ -392,12 +392,13 @@ class MaintainerAlerter
 
     /**
      * The evening spend digest: what today cost app-wide, what is left against
-     * each ceiling, and a line per athlete who spent anything. Sent once by
+     * each ceiling, a line per athlete who spent anything, and yesterday's
+     * complete spend, including the hours after yesterday's digest. Sent once by
      * {@see \App\Console\Commands\AI\SpendDigestCommand}, so no dedupe of its own.
      *
      * @param  list<array{userId: int, calls: int, tokens: int, cost: float}>  $rows
      */
-    public function spendDigest(array $rows, float $todayCost, ?float $perUserCeiling, ?float $totalCeiling): void
+    public function spendDigest(array $rows, float $todayCost, ?float $perUserCeiling, ?float $totalCeiling, float $yesterdayCost): void
     {
         $calls = array_sum(array_column($rows, 'calls'));
         $tokens = array_sum(array_column($rows, 'tokens'));
@@ -418,7 +419,7 @@ class MaintainerAlerter
             $this->headroom($row['cost'], $perUserCeiling),
         ), $rows);
 
-        $this->broadcast(implode("\n", [$headline, ...$lines]));
+        $this->broadcast(implode("\n", [$headline, ...$lines, sprintf('AI spend yesterday, final: $%.2f.', $yesterdayCost)]));
     }
 
     /**

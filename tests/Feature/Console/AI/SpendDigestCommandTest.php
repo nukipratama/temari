@@ -61,11 +61,31 @@ it('sends one digest with a line per athlete who spent today', function (): void
     $this->artisan('ai:spend-digest')->assertSuccessful();
 });
 
+it('reports yesterday in full, including spend after the previous digest', function (): void {
+    $this->travelTo(Carbon::parse('2026-10-06 21:00:00'));
+    $athlete = User::factory()->create();
+
+    seedSpend($athlete->id, 40_000, 2_000, Carbon::parse('2026-10-05 22:00:00'));
+    seedSpend($athlete->id, 40_000, 2_000, Carbon::parse('2026-10-05 08:00:00'));
+    seedSpend($athlete->id, 40_000, 2_000, Carbon::parse('2026-10-04 22:00:00'));
+
+    $alerter = Mockery::mock(MaintainerAlerter::class);
+    app()->instance(MaintainerAlerter::class, $alerter);
+
+    $alerter->shouldReceive('spendDigest')->once()->withArgs(
+        fn (array $rows, float $todayCost, ?float $perUser, ?float $total, float $yesterdayCost): bool => $rows === []
+            && $todayCost === 0.0
+            && round($yesterdayCost, 2) === 0.24,
+    );
+
+    $this->artisan('ai:spend-digest')->assertSuccessful();
+});
+
 it('sends a digest even on a day with no spend at all', function (): void {
     $alerter = Mockery::mock(MaintainerAlerter::class);
     app()->instance(MaintainerAlerter::class, $alerter);
 
-    $alerter->shouldReceive('spendDigest')->once()->with([], 0.0, 1.0, 5.0);
+    $alerter->shouldReceive('spendDigest')->once()->with([], 0.0, 1.0, 5.0, 0.0);
 
     $this->artisan('ai:spend-digest')->assertSuccessful();
 });
