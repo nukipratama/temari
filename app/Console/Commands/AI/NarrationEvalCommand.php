@@ -71,7 +71,7 @@ class NarrationEvalCommand extends Command
                 continue;
             }
 
-            $calls++;
+            $calls += $outcome['called'] ? 1 : 0;
             $failed = $failed || $outcome['failures'] !== [];
             $spend['requests'] += $outcome['spend']['requests'];
             $spend['input'] += $outcome['spend']['input'];
@@ -138,13 +138,14 @@ class NarrationEvalCommand extends Command
     }
 
     /**
-     * @return array{failures: array<string, string>, text: string, spend: array{requests: int, input: int, output: int, cost: float}}|null
+     * @return array{called: bool, failures: array<string, string>, text: string, spend: array{requests: int, input: int, output: int, cost: float}}|null
      */
     private function evaluate(NarrationEvalFixture $fixture, User $demo, LlmCostCalculator $costs): ?array
     {
         $lastUsageId = (int) TokenUsage::query()->max('id');
         $failures = [];
         $text = '';
+        $called = false;
 
         DB::beginTransaction();
 
@@ -155,6 +156,7 @@ class NarrationEvalCommand extends Command
             }
 
             try {
+                $called = true;
                 $text = ($case['generate'])();
                 $failures = array_filter(NarrationEvalChecks::run($text, $case['evidence'], $case['direction'], $case['plain_text']));
             } catch (Throwable $e) {
@@ -166,7 +168,7 @@ class NarrationEvalCommand extends Command
             DB::rollBack();
         }
 
-        return ['failures' => $failures, 'text' => $text, 'spend' => $this->spendSince($lastUsageId, $demo, $costs)];
+        return ['called' => $called, 'failures' => $failures, 'text' => $text, 'spend' => $this->spendSince($lastUsageId, $demo, $costs)];
     }
 
     /**

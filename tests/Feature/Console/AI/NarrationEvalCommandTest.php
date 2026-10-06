@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Services\AI\StructuredChatCaller;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Queue;
 use OpenAI\Resources\Responses;
 use OpenAI\Testing\ClientFake;
@@ -200,6 +201,19 @@ it('reports a fixture the history cannot support as skipped without spending a c
     $this->artisan('narration:eval', ['--max-calls' => 5, '--kind' => ['run_insight']])
         ->expectsOutputToContain('skipped (no history)')
         ->assertSuccessful();
+
+    $client->assertNothingSent();
+});
+
+it('does not spend a call on a fixture that cannot be built', function (): void {
+    User::factory()->demo()->create();
+    $client = evalClient(evalVoices());
+    Event::listen('eloquent.creating: '.PlannedSession::class, fn () => throw new RuntimeException('no such row'));
+
+    $this->artisan('narration:eval', ['--max-calls' => 1, '--kind' => ['plan_day_voice']])
+        ->expectsOutputToContain('fixture could not be built: no such row')
+        ->expectsOutputToContain('Spend: 0 calls')
+        ->assertFailed();
 
     $client->assertNothingSent();
 });

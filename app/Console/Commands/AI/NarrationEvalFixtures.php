@@ -392,7 +392,7 @@ final readonly class NarrationEvalFixtures
     {
         $kept = [];
         foreach ($summary as $key => $value) {
-            if (preg_match('/(?:^|_)(?:hr|heartrate|heart)(?:_|$)|zone|decoupling|easy_cap/i', $key) === 1) {
+            if (preg_match('/(?:^|_)(?:hr|heartrate|heart)(?:_|$)|zone|decoupling|easy_cap/i', (string) $key) === 1) {
                 continue;
             }
             $kept[$key] = is_array($value) ? self::withoutHeartRateKeys($value) : $value;

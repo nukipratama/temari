@@ -100,15 +100,23 @@ it('skips a run insight fixture the history cannot support', function (): void {
 it('strips heart rate from the no heart rate run inside the transaction only', function (): void {
     $demo = User::factory()->demo()->create();
     $run = evalRun($demo, Carbon::now()->subDay(), 2880);
+    $run->update(['stream_summary' => [
+        'time_in_zone_pct' => ['Z2' => 80],
+        'easy_cap_bpm' => 150,
+        'pace_variability_sec' => 4.2,
+        'per_km' => [['km' => 1, 'pace' => '6:00', 'avg_hr' => 148]],
+    ]]);
     $fixtures = collect(app(NarrationEvalFixtures::class)->for($demo, ['run_insight']))->keyBy('name');
 
     DB::beginTransaction();
     $fixtures['no_heart_rate']->build->__invoke();
-    $during = $run->fresh()->has_heartrate;
+    $during = $run->fresh();
     DB::rollBack();
 
-    expect($during)->toBeFalse()
-        ->and($run->fresh()->has_heartrate)->toBeTrue();
+    expect($during->has_heartrate)->toBeFalse()
+        ->and($during->streamSummary())->toEqual(['pace_variability_sec' => 4.2, 'per_km' => [['km' => 1, 'pace' => '6:00']]])
+        ->and($run->fresh()->has_heartrate)->toBeTrue()
+        ->and($run->fresh()->streamSummary())->toHaveKey('time_in_zone_pct');
 });
 
 it('builds the post run briefing against a run logged today', function (): void {
