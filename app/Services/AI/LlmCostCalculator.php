@@ -63,14 +63,16 @@ class LlmCostCalculator
      * `$userId` scopes the sum to one athlete's spend. Rows carry `user_id`
      * already, so this is the same query with one more predicate — what makes a
      * per-athlete budget possible without any new bookkeeping. `$origin` narrows
-     * it the same way, which is how the replay cap reads its own slice.
+     * it the same way, which is how the replay cap reads its own slice. `$day`
+     * selects another calendar day, today by default.
      */
-    public function dailyCost(?int $userId = null, ?AnalysisOrigin $origin = null): float
+    public function dailyCost(?int $userId = null, ?AnalysisOrigin $origin = null, ?Carbon $day = null): float
     {
         $originValue = $origin?->value;
+        $day ??= Carbon::today();
 
         $rows = TokenUsage::query()->toBase()
-            ->whereBetween('created_at', [Carbon::today()->startOfDay(), Carbon::today()->endOfDay()])
+            ->whereBetween('created_at', [$day->copy()->startOfDay(), $day->copy()->endOfDay()])
             ->when($userId !== null, fn ($query) => $query->where('user_id', $userId))
             ->when($originValue !== null, fn ($query) => $query->where('origin', $originValue))
             ->selectRaw('model, SUM(prompt_tokens) as prompt, SUM(completion_tokens) as completion, SUM(cached_tokens) as cached')
