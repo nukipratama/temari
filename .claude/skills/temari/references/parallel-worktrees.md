@@ -18,9 +18,9 @@ records the environment invariants that every worktree setup must preserve.
 Slot numbering is a formula (`scripts/worktree`), not a fixed table, and `create` picks the slot —
 never hand-pick one: `APP_PORT = 7000 + slot*10 + 1`, `VITE_PORT = +2` (main stays 7001/7002, slot 1
 is 7011/7012, slot 2 is 7021/7022, and so on), `COMPOSE_PROJECT_NAME = temari-slot<N>`. Every
-host-forwarded port stays in the 7000 range; a new forwarded service continues the sequence. The real
-ceiling is the shared Redis `--databases 256`: dev takes indices `slot*3..+2`, so slot 84 is the last
-one that fits. Setup writes an untracked `compose.override.yaml` mounting the shared git dir so the
+host-forwarded port stays in the 7000 range; a new forwarded service continues the sequence. Slots are
+capped at 3 (`MAX_WORKTREE_SLOTS`); main and CI are slot 0. The cap keeps the shared test Redis's 256
+databases collision-free (see "Tests get the same treatment" below). Setup writes an untracked `compose.override.yaml` mounting the shared git dir so the
 gate's changed-file steps work, and joining the shared-services network, brings the shared stack and this worktree's `app` up,
 then bootstraps the app: `composer install`, `key:generate`, **both** migration sets, `npm ci` and
 `npm run build`. The two installs run only when `composer.lock` / `package-lock.json` no longer match
@@ -70,6 +70,14 @@ wildcard, so paratest self-creates each per-worker schema exactly like before �
 wildcard doesn't cover is the slot's own *unsuffixed* base schema (previously auto-created by
 `mysql_test`'s `MYSQL_DATABASE` env var at container boot, which the shared instance has no
 per-slot equivalent of), so `scripts/worktree` setup creates that one explicitly.
+
+Test Redis follows the same split: `.env.testing`'s `REDIS_DB` holds the slot base `slot*32` (slot 0 =
+main and CI, which have no `.env.testing` value), and `tests/TestCase.php` gives paratest worker
+`TEST_TOKEN` default DB `base + 2*token` and cache DB one above it. Slots 0-3 times tokens 0-15 use
+DBs 0-127 of the 256, disjoint by construction; a token of 16 or more, or a base that is not
+`0/32/64/96`, fails loudly. The test case also refuses any Redis host other than `redis_test`,
+`temari-shared-redis-test` or `127.0.0.1` (CI), so a checkout without `.env.testing` cannot flush dev
+Redis. `scripts/worktree remove` flushes all 32 indices a slot owns.
 
 `vendor/`/`node_modules` stay per-worktree, unchanged — see below, this was deliberately not
 folded into the consolidation.
