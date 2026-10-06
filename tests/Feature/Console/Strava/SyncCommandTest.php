@@ -65,7 +65,7 @@ it('keeps syncing other users and still succeeds when one connection throws', fu
     $this->artisan('strava:sync')->assertSuccessful();
 });
 
-it('raises no alert when every athlete syncs', function (): void {
+it('closes the skipped-athletes incident when every athlete syncs', function (): void {
     User::factory()->withStravaConnection()->create();
 
     $orchestrator = Mockery::mock(SyncOrchestrator::class);
@@ -73,6 +73,7 @@ it('raises no alert when every athlete syncs', function (): void {
     $this->app->instance(SyncOrchestrator::class, $orchestrator);
     $alerter = Mockery::mock(MaintainerAlerter::class);
     $alerter->shouldNotReceive('athletesFailed');
+    $alerter->shouldReceive('athletesRecovered')->once()->with('strava:sync');
     $this->app->instance(MaintainerAlerter::class, $alerter);
 
     $this->artisan('strava:sync')->assertSuccessful();

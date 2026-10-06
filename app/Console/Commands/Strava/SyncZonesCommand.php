@@ -57,6 +57,8 @@ class SyncZonesCommand extends Command
 
         if ($failed > 0) {
             $alerter->athletesFailed('strava:sync-zones', $failed);
+        } else {
+            $alerter->athletesRecovered('strava:sync-zones');
         }
 
         return self::SUCCESS;

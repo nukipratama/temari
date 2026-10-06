@@ -56,7 +56,10 @@ class BackfillActivityWeatherCommand extends Command
             ->whereNotNull('start_lat')
             ->whereNotNull('start_lng')
             ->whereNotNull('start_date_local')
-            ->where('created_at', '<=', now()->subHours(ActivityDetail::PERSISTENT_GAP_HOURS))
+            ->whereBetween('created_at', [
+                now()->subDays(ActivityDetail::PERSISTENT_GAP_MAX_DAYS),
+                now()->subHours(ActivityDetail::PERSISTENT_GAP_HOURS),
+            ])
             ->whereHas('activity.user', fn ($query) => $query->notDemo())
             ->count();
     }

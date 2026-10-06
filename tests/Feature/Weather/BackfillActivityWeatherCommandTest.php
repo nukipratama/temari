@@ -168,7 +168,7 @@ it('tries the oldest attempt first among attempted rows', function (): void {
         ->and($recent->fresh()->weather_temp_c)->toBeNull();
 });
 
-it('reports runs still missing weather 48 hours after ingest, but not newer or demo ones', function (): void {
+it('reports runs still missing weather 48 hours to 7 days after ingest, but not newer, older or demo ones', function (): void {
     $this->mock(OpenMeteoClient::class)->shouldReceive('fetchForActivity')->never();
     $missing = [
         'start_lat' => -6.24,
@@ -179,10 +179,11 @@ it('reports runs still missing weather 48 hours after ingest, but not newer or d
     ];
     ActivityDetail::factory()->create([...$missing, 'created_at' => now()->subHours(48)]);
     ActivityDetail::factory()->create([...$missing, 'created_at' => now()->subHours(47)]);
-    ActivityDetail::factory()->create([...$missing, 'start_lat' => null, 'start_lng' => null, 'created_at' => now()->subDays(5)]);
+    ActivityDetail::factory()->create([...$missing, 'created_at' => now()->subDays(7)->subMinute()]);
+    ActivityDetail::factory()->create([...$missing, 'start_lat' => null, 'start_lng' => null, 'created_at' => now()->subDays(3)]);
     ActivityDetail::factory()
         ->for(Activity::factory()->for(User::factory()->state(['is_demo' => true])))
-        ->create([...$missing, 'created_at' => now()->subDays(5)]);
+        ->create([...$missing, 'created_at' => now()->subDays(3)]);
 
     $alerter = Mockery::mock(MaintainerAlerter::class);
     $alerter->shouldReceive('persistentGap')->once()->with('weather:backfill', 'weather', 1);

@@ -487,9 +487,10 @@ class MaintainerAlerter
     }
 
     /**
-     * How many runs a backfill command still leaves without $field
-     * {@see ActivityDetail::PERSISTENT_GAP_HOURS} after ingest. Above zero opens
-     * one incident per command; zero closes it with one line.
+     * How many runs a backfill command still leaves without $field between
+     * {@see ActivityDetail::PERSISTENT_GAP_HOURS} hours and
+     * {@see ActivityDetail::PERSISTENT_GAP_MAX_DAYS} days after ingest. Above
+     * zero opens one incident per command; zero closes it with one line.
      */
     public function persistentGap(string $command, string $field, int $count): void
     {

@@ -153,7 +153,7 @@ it('keeps syncing other users and still succeeds when one connection throws', fu
     $this->artisan('strava:sync-zones')->assertSuccessful();
 });
 
-it('does not count a revoked connection as a failed athlete', function (): void {
+it('does not count a revoked connection as a failed athlete, so the run recovers', function (): void {
     $user = User::factory()->create();
     StravaConnection::factory()->for($user)->create(['scopes' => 'read,activity:read_all,profile:read_all']);
 
@@ -162,6 +162,7 @@ it('does not count a revoked connection as a failed athlete', function (): void 
     $this->app->instance(ZoneFetcher::class, $fetcher);
     $alerter = Mockery::mock(MaintainerAlerter::class);
     $alerter->shouldNotReceive('athletesFailed');
+    $alerter->shouldReceive('athletesRecovered')->once()->with('strava:sync-zones');
     $this->app->instance(MaintainerAlerter::class, $alerter);
 
     $this->artisan('strava:sync-zones')->assertSuccessful();

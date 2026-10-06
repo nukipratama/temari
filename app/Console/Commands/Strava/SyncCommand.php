@@ -55,6 +55,8 @@ class SyncCommand extends Command
 
         if ($failed > 0) {
             $alerter->athletesFailed('strava:sync', $failed);
+        } else {
+            $alerter->athletesRecovered('strava:sync');
         }
 
         return self::SUCCESS;

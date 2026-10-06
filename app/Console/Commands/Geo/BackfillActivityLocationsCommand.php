@@ -46,7 +46,10 @@ class BackfillActivityLocationsCommand extends Command
             ->whereNotNull('start_lat')
             ->whereNotNull('start_lng')
             ->whereNull('location_resolved_at')
-            ->where('created_at', '<=', now()->subHours(ActivityDetail::PERSISTENT_GAP_HOURS))
+            ->whereBetween('created_at', [
+                now()->subDays(ActivityDetail::PERSISTENT_GAP_MAX_DAYS),
+                now()->subHours(ActivityDetail::PERSISTENT_GAP_HOURS),
+            ])
             ->whereHas('activity.user', fn ($query) => $query->notDemo())
             ->count();
     }

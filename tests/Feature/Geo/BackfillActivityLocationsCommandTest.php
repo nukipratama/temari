@@ -235,7 +235,7 @@ it('skips polyline backfill when the polyline is empty/malformed', function (): 
     Queue::assertNothingPushed();
 });
 
-it('reports runs still missing a location 48 hours after ingest, but not newer or demo ones', function (): void {
+it('reports runs still missing a location 48 hours to 7 days after ingest, but not newer, older or demo ones', function (): void {
     Queue::fake();
     $unresolved = [
         'start_lat' => -6.24,
@@ -245,10 +245,11 @@ it('reports runs still missing a location 48 hours after ingest, but not newer o
     ];
     ActivityDetail::factory()->create([...$unresolved, 'created_at' => now()->subHours(48)]);
     ActivityDetail::factory()->create([...$unresolved, 'created_at' => now()->subHours(47)]);
-    ActivityDetail::factory()->create([...$unresolved, 'start_lat' => null, 'start_lng' => null, 'created_at' => now()->subDays(5)]);
+    ActivityDetail::factory()->create([...$unresolved, 'created_at' => now()->subDays(7)->subMinute()]);
+    ActivityDetail::factory()->create([...$unresolved, 'start_lat' => null, 'start_lng' => null, 'created_at' => now()->subDays(3)]);
     ActivityDetail::factory()
         ->for(Activity::factory()->for(User::factory()->state(['is_demo' => true])))
-        ->create([...$unresolved, 'created_at' => now()->subDays(5)]);
+        ->create([...$unresolved, 'created_at' => now()->subDays(3)]);
 
     $alerter = Mockery::mock(MaintainerAlerter::class);
     $alerter->shouldReceive('persistentGap')->once()->with('geo:backfill-locations', 'location', 1);
