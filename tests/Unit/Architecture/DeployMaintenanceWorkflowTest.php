@@ -67,3 +67,10 @@ it('uses shallow readiness for app lifecycle checks while retaining deep health 
         ->and($compose)->toContain('http://127.0.0.1:7001/ready')
         ->and($dockerfile)->toContain('http://127.0.0.1:7001/ready');
 });
+
+it('gives the quiesced scheduler a grace period longer than its slowest scheduled run', function (): void {
+    $scheduler = Yaml::parseFile(base_path('compose.prod.yaml'))['services']['scheduler'];
+
+    expect($scheduler['stop_grace_period'] ?? null)->toBe('120s')
+        ->and(deployStep('Quiesce scheduler + horizon before the roll')['run'])->not->toMatch('/\s-t\s|--timeout/');
+});
