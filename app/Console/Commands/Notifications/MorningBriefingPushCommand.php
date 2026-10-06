@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Console\Commands\Notifications;
 
 use App\Models\AI\Analysis;
+use App\Models\NotificationDelivery;
 use App\Models\User;
 use App\Notifications\MorningBriefingNotification;
 use App\Services\AI\AnalysisStatus;
@@ -23,10 +24,12 @@ class MorningBriefingPushCommand extends Command
 {
     public const int BUCKET_MINUTES = 15;
 
+    public const int CATCH_UP_MINUTES = 60;
+
     public function handle(ChannelRouter $router, UsualRunTime $usualRunTime): int
     {
         $now = Carbon::now();
-        $bucket = intdiv($now->hour * 60 + $now->minute, self::BUCKET_MINUTES);
+        $minuteOfDay = $now->hour * 60 + $now->minute;
         $today = $now->toDateString();
 
         $users = User::query()
@@ -40,12 +43,13 @@ class MorningBriefingPushCommand extends Command
         $sent = 0;
 
         foreach ($users as $user) {
-            if (intdiv($usualRunTime->forUser($user->id), self::BUCKET_MINUTES) !== $bucket) {
+            $slot = intdiv($usualRunTime->forUser($user->id), self::BUCKET_MINUTES) * self::BUCKET_MINUTES;
+            if ($minuteOfDay < $slot || $minuteOfDay - $slot > self::CATCH_UP_MINUTES) {
                 continue;
             }
 
             $briefing = $this->briefingFor($user, $today);
-            if ($briefing === null) {
+            if ($briefing === null || $this->claimedOnEveryChannel($router, $user, $briefing)) {
                 continue;
             }
 
@@ -56,6 +60,22 @@ class MorningBriefingPushCommand extends Command
         $this->info("Pushed the morning briefing to {$sent} athletes.");
 
         return self::SUCCESS;
+    }
+
+    private function claimedOnEveryChannel(ChannelRouter $router, User $user, Analysis $briefing): bool
+    {
+        $channels = array_map(ChannelRouter::deliveryChannel(...), $router->outboundOnly($user));
+        if ($channels === []) {
+            return false;
+        }
+
+        $claimed = NotificationDelivery::query()
+            ->where('analysis_id', $briefing->id)
+            ->whereIn('channel', $channels)
+            ->distinct()
+            ->count('channel');
+
+        return $claimed === count($channels);
     }
 
     /**

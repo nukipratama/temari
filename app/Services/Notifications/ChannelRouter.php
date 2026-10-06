@@ -75,6 +75,12 @@ final readonly class ChannelRouter
         return $this->outboundChannelsFor($user);
     }
 
+    /** @param class-string $channel */
+    public static function deliveryChannel(string $channel): string
+    {
+        return $channel === TelegramChannel::class ? 'telegram' : 'webpush';
+    }
+
     /**
      * Refresh queued user state before an outbound channel sends.
      *
