@@ -10,12 +10,12 @@ use App\Enums\StravaReadSource;
 use App\Jobs\Strava\IngestActivityJob;
 use App\Models\Activity;
 use App\Models\User;
+use App\Services\Strava\StravaClient;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
-use Illuminate\Support\Facades\RateLimiter;
 
 /**
  * One-stop health check for the Strava ingestion pipeline: per-athlete
@@ -61,7 +61,7 @@ class DoctorCommand extends Command
         $passes = 0;
         $failures = 0;
 
-        $sampleUserId = $this->resolveUsers()->first()?->id;
+        $headroom = app(StravaClient::class)->rateLimitRemaining();
 
         $checks = [
             'OAuth credentials' => function (): bool {
@@ -79,8 +79,8 @@ class DoctorCommand extends Command
 
                 return $verifyToken !== '' && app(ProbeStravaWebhookAction::class)($callbackUrl, $verifyToken)['passed'];
             },
-            'Rate limit headroom (15 min)' => fn (): bool => $sampleUserId !== null && RateLimiter::remaining("strava-api:{$sampleUserId}:15min", 200) > 0,
-            'Rate limit headroom (daily)' => fn (): bool => $sampleUserId !== null && RateLimiter::remaining("strava-api:{$sampleUserId}:daily", 2000) > 0,
+            'Rate limit headroom (15 min)' => fn (): bool => $headroom['15min'] > 0,
+            'Rate limit headroom (daily)' => fn (): bool => $headroom['daily'] > 0,
             'No stranded activities' => fn (): bool => Activity::query()
                 ->pendingIngest()
                 ->whereHas('user.stravaConnection', fn (Builder $q): Builder => $q->whereNull('revoked_at'))
