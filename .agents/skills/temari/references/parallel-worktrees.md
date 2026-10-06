@@ -101,7 +101,7 @@ always runs as `www-data` — no manual fix needed.
 
 **Throughput, rule of thumb.** `docker stats` during a real `pest --parallel` run showed `app`
 dominates resource use regardless of the shared-services consolidation (peak ~300% CPU; `mysql_test`
-was a distant second at 168%, everything else negligible) — so the ceiling is CPU, not RAM. That is
+was a distant second at 168%, everything else negligible) — so CPU is the throughput ceiling. Memory has a floor: one `tsc` peaks at about 0.7 GB RSS, and the Docker VM needs at least 8 GB when several slots gate at once. That is
 why full-suite runs are CI's: the gate's `pest changed` step runs a few paired test files, so any
 number of worktrees can gate at once, and a full local `pest --parallel` (including `check:full` —
 rector, coverage and the Vite build) is a rare opt-in, **one** worktree at a time. Sharing

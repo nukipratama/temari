@@ -59,10 +59,11 @@ async function resolvePushState(): Promise<PushState> {
  * a VAPID public key is configured.
  *
  * Renders as a `SettingsRow` rather than owning a section, so it sits in the
- * "Ke mana" group beside Telegram and both channels read as the same kind of
- * thing. Each of the eight states resolves to a description plus at most one
- * action; the states that are pure explanation (unsupported, needs-install,
- * denied) simply have no control.
+ * "Where it goes" group beside Telegram and both channels read as the same kind
+ * of thing. `loading` renders nothing; each of the other seven states resolves
+ * to a description plus at most one action. Only `ready`, `stale` and
+ * `subscribed` have a control; `unsupported`, both `needs-install` states and
+ * `denied` are pure explanation.
  */
 export default function PushNotificationToggle({
     muted = false,
