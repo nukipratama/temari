@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Jobs\Strava;
 
 use App\Console\Commands\Strava\HydrateBacklogCommand;
+use App\Services\AI\AnalysisOrigin;
+use App\Services\AI\NarrationOrigin;
 use App\Services\Run\Ingest\DetailHydrator;
 use App\Services\Strava\StravaClient;
 use App\Support\Config\AppConfig;
@@ -27,6 +29,8 @@ class HydrateBacklogForUserJob implements ShouldQueue
 
     public function handle(AppConfig $config, StravaClient $client, DetailHydrator $hydrator, HydrateBacklogCommand $command): void
     {
+        app(NarrationOrigin::class)->set(AnalysisOrigin::Ingest);
+
         if (! $config->boolean(AppConfigKey::StravaEnabled)) {
             return;
         }
