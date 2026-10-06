@@ -13,7 +13,7 @@ code_refs:
 
 **Status:** Accepted (documented 2026-06-20)
 
-> **One detail below is superseded (noted 2026-08-14).** The note says `rateLimitRemaining(int $userId)` still takes a `$userId` for call-site compatibility. It no longer does: the parameter was never read, so it is gone ([StravaClient::rateLimitRemaining](app/Services/Strava/StravaClient.php#L256)). The decision recorded here, that the buckets are keyed app-wide and never per athlete, is unchanged.
+> **One detail below is superseded (noted 2026-08-14).** The note says `rateLimitRemaining(int $userId)` still takes a `$userId` for call-site compatibility. It no longer does: the parameter was never read, so it is gone ([StravaClient::rateLimitRemaining](app/Services/Strava/StravaClient.php#L274)). The decision recorded here, that the buckets are keyed app-wide and never per athlete, is unchanged.
 
 > **The key names below are superseded (noted 2026-10-06, #1787).** The keys now carry Strava's window, `strava-api:15min:<UTC quarter-hour>` and `strava-api:daily:<UTC date>`, and the local count is raised to the usage Strava last reported for that window; see [[strava-client]]. The buckets are still app-wide and never per athlete.
 
