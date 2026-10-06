@@ -20,7 +20,7 @@ This is the canonical project guidance shared by agents. Runtime entrypoints may
 - `scripts/pr-status [n…]` prints one line per open PR: checks, merge state, auto-merge and the closing issue's board column. Never poll CI with `sleep` loops or `gh … --watch`.
 - `gh project item-list` fetches the whole board, about 500 of the 5,000 GraphQL points an hour that every agent on the account shares. Look up one card through its issue's `projectItems` instead, as `scripts/pr-status` does.
 - Draft a PR body in `.planning/pr-<n>.md`, change it with Edit, and send it with `gh pr create|edit --body-file`; never patch a body in place with perl or sed.
-- Every agent report backs each claim of an action or a result with the command that proves it and its key output line (the `GATE:` line, a test count, `gh pr view` state). A claim without one is unverified.
+- Every agent report backs each claim of an action or a result with the command that proves it and its key output line (the `GATE:` line, a test count, `gh pr view` state). A claim without one is unverified. An unmeasured cause is a hypothesis: say so, and measure it with the authoritative source before shipping a fix or rule for it.
 
 ### PR handoff standard
 
