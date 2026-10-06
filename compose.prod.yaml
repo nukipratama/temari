@@ -193,6 +193,7 @@ services:
   scheduler:
     <<: *app-base
     command: ["php", "artisan", "schedule:work"]
+    stop_grace_period: 120s
     healthcheck:
       test: ["CMD", "php", "artisan", "schedule:heartbeat", "--check"]
       interval: 60s
