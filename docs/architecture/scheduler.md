@@ -121,7 +121,9 @@ Two tables record what the scheduler did:
 [RecordScheduledTaskRun](../../app/Listeners/RecordScheduledTaskRun.php) writes both. It opens a
 `running` log row on `ScheduledTaskStarting` and closes it on `ScheduledTaskFinished` (ok, or
 failed on a non-zero exit) or `ScheduledTaskFailed`. A run that found its `withoutOverlapping()`
-lock taken still fires Starting and Finished, so it closes as an `overlapping` skip. A closed
+lock taken still fires Starting and Finished, so it closes as an `overlapping` skip, and it does
+not refresh the heartbeat: a lock that stays jammed leaves `last_run_at` behind, so the entry reads
+as late. A closed
 `->when()` gate fires only `ScheduledTaskSkipped`, which writes a closed `gate` row, or a `paused`
 row while `schedule:pause` is on. `schedule:heartbeat` stays out of the log: at one run a minute
 it would be most of the rows and says nothing the heartbeat key does not.

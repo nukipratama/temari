@@ -125,6 +125,27 @@ it('records a run that found its overlap lock taken as an overlap skip', functio
         ->and($log->skipped_reason)->toBe(ScheduledTaskSkipReason::Overlapping);
 });
 
+it('leaves the heartbeat untouched when the overlap lock was taken, so a jam goes late', function (): void {
+    $task = app(Schedule::class)->command('strava:sync')->hourly()->withoutOverlapping(55);
+    $lastRunAt = Carbon::parse('2026-10-06 09:00:00');
+    ScheduledTaskRun::query()->create([
+        'command' => 'strava:sync',
+        'expression' => '0 * * * *',
+        'last_status' => 'ok',
+        'last_run_at' => $lastRunAt,
+        'runtime_ms' => 900,
+    ]);
+    $listener = new RecordScheduledTaskRun();
+
+    $listener->starting(new ScheduledTaskStarting($task));
+    $task->skippedBecauseOverlapping = true;
+    $listener->finished(new ScheduledTaskFinished($task, 0.0));
+
+    $row = ScheduledTaskRun::query()->sole();
+    expect($row->last_run_at?->equalTo($lastRunAt))->toBeTrue()
+        ->and($row->runtime_ms)->toBe(900);
+});
+
 it('records a closed gate as a gate skip', function (): void {
     $task = app(Schedule::class)->command('plan:regenerate')->hourly()->when(fn (): bool => false);
 

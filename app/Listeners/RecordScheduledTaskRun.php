@@ -21,7 +21,9 @@ use WeakMap;
  * Records a heartbeat for every scheduled command as it finishes or fails — one
  * global listener instead of per-command wiring, so a newly scheduled command
  * shows up on the Pulse SchedulerHealth card without any extra plumbing — and
- * appends every run except the heartbeat's own to {@see ScheduledTaskRunLog}.
+ * appends every run except the heartbeat's own to {@see ScheduledTaskRunLog}. A
+ * run that found its overlap lock taken is logged but leaves the heartbeat alone,
+ * so a jammed lock reads as late.
  *
  * Registered in {@see \App\Providers\AppServiceProvider::boot()} as a singleton,
  * so a run's log row is closed by the same instance that opened it.
@@ -49,6 +51,14 @@ class RecordScheduledTaskRun
 
     public function finished(ScheduledTaskFinished $event): void
     {
+        $log = $this->takeOpenLog($event->task);
+
+        if ($event->task->skippedBecauseOverlapping) {
+            $log?->skipOverlapping();
+
+            return;
+        }
+
         ScheduledTaskRun::record(
             self::label($event->task),
             $event->task->getExpression(),
@@ -56,21 +66,9 @@ class RecordScheduledTaskRun
             (int) round($event->runtime * 1000),
         );
 
-        $log = $this->takeOpenLog($event->task);
-
-        if ($log === null) {
-            return;
-        }
-
-        if ($event->task->skippedBecauseOverlapping) {
-            $log->skipOverlapping();
-
-            return;
-        }
-
         $exitCode = $event->task->exitCode;
 
-        $log->close(
+        $log?->close(
             $exitCode === null || $exitCode === 0 ? ScheduledTaskStatus::Ok : ScheduledTaskStatus::Failed,
             $exitCode,
             (int) round($event->runtime * 1000),
