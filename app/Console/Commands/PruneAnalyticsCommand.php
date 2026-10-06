@@ -7,6 +7,7 @@ namespace App\Console\Commands;
 use App\Models\AI\AnalysisVersion;
 use App\Models\AI\TokenUsage;
 use App\Models\Analytics\DevtoolsAction;
+use App\Models\Analytics\ScheduledTaskRunLog;
 use App\Models\Analytics\StravaRead;
 use App\Models\Analytics\StravaSyncLog;
 use Illuminate\Console\Attributes\Description;
@@ -17,8 +18,8 @@ use Illuminate\Support\Carbon;
 /**
  * Prunes the metering and audit tables no other retention bounds: the
  * analytics-connection ones (`ai_token_usages`, `strava_reads`,
- * `strava_sync_logs`, `devtools_actions`) and the superseded-narration history
- * (`analysis_versions`, app connection) — unlike `failed_jobs`, which
+ * `strava_sync_logs`, `devtools_actions`, `scheduled_task_run_logs`) and the
+ * superseded-narration history (`analysis_versions`, app connection) — unlike `failed_jobs`, which
  * `queue:prune-failed` already bounds.
  */
 #[Signature('analytics:prune')]
@@ -36,14 +37,16 @@ class PruneAnalyticsCommand extends Command
         $syncLogs = StravaSyncLog::query()->where('synced_at', '<', $cutoff)->delete();
         $versions = AnalysisVersion::query()->where('created_at', '<', $cutoff)->delete();
         $devtoolsActions = DevtoolsAction::query()->where('created_at', '<', $cutoff)->delete();
+        $runLogs = ScheduledTaskRunLog::query()->where('started_at', '<', $cutoff)->delete();
 
         $this->info(sprintf(
-            'Pruned %d ai_token_usages, %d strava_reads, %d strava_sync_logs, %d analysis_versions and %d devtools_actions row(s) older than %d days.',
+            'Pruned %d ai_token_usages, %d strava_reads, %d strava_sync_logs, %d analysis_versions, %d devtools_actions and %d scheduled_task_run_logs row(s) older than %d days.',
             $tokenUsages,
             $stravaReads,
             $syncLogs,
             $versions,
             $devtoolsActions,
+            $runLogs,
             self::RETENTION_DAYS,
         ));
 

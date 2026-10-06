@@ -6,6 +6,8 @@ namespace App\Enums;
 
 enum ScheduledTaskStatus: string
 {
+    case Running = 'running';
     case Ok = 'ok';
     case Failed = 'failed';
+    case Skipped = 'skipped';
 }

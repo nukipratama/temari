@@ -1,15 +1,18 @@
 ---
 title: Scheduler hygiene — overlap safety, single-host, ordering, cadence
-description: Every Schedule::command entry is overlap-safe and single-host by an unstated one-container invariant; the Monday window's hard dependencies are chained and retry hourly until they succeed; the numeric derivation behind four previously-qualitative cadences; and measured local runtimes next to each lock TTL
+description: Every Schedule::command entry is overlap-safe and single-host by an unstated one-container invariant; every run lands in an append-only run log; the Monday window's hard dependencies are chained and retry hourly until they succeed; the numeric derivation behind four previously-qualitative cadences; and measured local runtimes next to each lock TTL
 tags: [architecture, scheduler]
 status: living
-reviewed: 2026-10-05
+reviewed: 2026-10-06
 code_refs:
   - routes/console.php
   - app/Console/Commands/Notifications/RecoverStaleNotificationDeliveriesCommand.php
   - app/Console/Commands/Notifications/ReleaseHeldNotificationsCommand.php
   - app/Services/Notifications/NotificationDeliveryClaim.php
   - app/Console/SchedulerChain.php
+  - app/Listeners/RecordScheduledTaskRun.php
+  - app/Models/Analytics/ScheduledTaskRunLog.php
+  - app/Livewire/Pulse/SchedulerHealth.php
   - app/Console/Commands/MondayCheckCommand.php
   - app/Services/Gamification/StreakSettlementService.php
   - compose.prod.yaml
@@ -20,10 +23,10 @@ code_refs:
 # Scheduler hygiene
 
 [routes/console.php](../../routes/console.php) registers every scheduled command. This note covers
-four things: why every event carries both `withoutOverlapping()` and `onOneServer()`, how the
-Monday window's entries are chained and caught up after a miss, the numeric basis for four
-cadences that were previously justified only qualitatively, and a measured-locally runtime next to
-each lock TTL.
+five things: why every event carries both `withoutOverlapping()` and `onOneServer()`, the per-run
+log every entry writes, how the Monday window's entries are chained and caught up after a miss,
+the numeric basis for four cadences that were previously justified only qualitatively, and a
+measured-locally runtime next to each lock TTL.
 
 ## Overlap safety and single-host
 
@@ -73,7 +76,7 @@ despite that.
 | `ai:self-heal` | hourly | 55 (unchanged) | yes | already guarded pre-DF-1 | ~1.3s — skipped, generation paused (Azure unset) |
 | `ai:catch-up` | hourly | 55 (unchanged) | yes | already guarded pre-DF-1 | ~1.5s — created 0 missing kickoff rows |
 | `queue:prune-failed` | daily 02:20 | 15 | yes | one `DELETE` on `failed_jobs` | ~1.6s — 0 entries deleted |
-| `analytics:prune` | daily 02:25 | 15 | yes | five `DELETE`s — four on the `analytics` connection, one on `analysis_versions` | ~1.7s — 0 rows pruned |
+| `analytics:prune` | daily 02:25 | 15 | yes | six `DELETE`s — five on the `analytics` connection, one on `analysis_versions` | ~1.7s — 0 rows pruned |
 | `model:prune TelegramUpdateReceipt` | daily 02:30 | 15 | yes | delete Telegram update receipts older than 7 days | not measured — added with durable Telegram update dedupe |
 | `model:prune TelegramLinkTokenUse` | daily 02:31 | 15 | yes | delete spent link-token claims after token expiry | not measured — added with durable Telegram link claims |
 | `notifications:prune-push-subscriptions` | daily 02:35 | 15 | yes | one `SELECT DISTINCT` and one `DELETE` on `push_subscriptions` for rows unseen for 60 days | not measured — added with unseen push-subscription pruning |
@@ -102,6 +105,36 @@ specifically to guard a *per-user* loop (`ai:daily-briefing`, `ai:weekly-recap`,
 at 1 user their real cost is invisible, and the TTL's headroom is what protects against that loop
 taking materially longer once the athlete base grows. Nothing measured here contradicts an existing
 TTL; it simply confirms none of them are already too tight at today's scale.
+
+## Run history
+
+Two tables record what the scheduler did:
+
+- `scheduled_task_runs` (default connection) is the heartbeat: one upserted row per command with
+  its last status and runtime ([ScheduledTaskRun](../../app/Models/ScheduledTaskRun.php)). Its
+  `isStale()` is what reads an entry as late.
+- `scheduled_task_run_logs` (`analytics` connection) is append-only, one row per run
+  ([ScheduledTaskRunLog](../../app/Models/Analytics/ScheduledTaskRunLog.php)): command,
+  `started_at`, `finished_at`, `runtime_ms`, `status` (`running`, `ok`, `failed`, `skipped`),
+  `exit_code` and `skipped_reason` (`gate`, `paused`, `overlapping`).
+
+[RecordScheduledTaskRun](../../app/Listeners/RecordScheduledTaskRun.php) writes both. It opens a
+`running` log row on `ScheduledTaskStarting` and closes it on `ScheduledTaskFinished` (ok, or
+failed on a non-zero exit) or `ScheduledTaskFailed`. A run that found its `withoutOverlapping()`
+lock taken still fires Starting and Finished, so it closes as an `overlapping` skip. A closed
+`->when()` gate fires only `ScheduledTaskSkipped`, which writes a closed `gate` row, or a `paused`
+row while `schedule:pause` is on. `schedule:heartbeat` stays out of the log: at one run a minute
+it would be most of the rows and says nothing the heartbeat key does not.
+
+No process writes a "killed" row. A run whose process dies (SIGKILL, OOM, a container restart)
+simply stays `running`, and it reads as **killed** once it has been open longer than its entry's
+`withoutOverlapping()` lifetime, which is the longest a run is expected to hold the lock (a day for
+a command off the schedule). `analytics:prune` deletes log rows older than 90 days.
+
+`ScheduledTaskRunLog::stats()` is the one query over the log: per command over 30 days, the runs,
+failures, skips and killed runs, and the nearest-rank p50/p95/max runtime of successful runs. The
+`/pulse` Scheduler card shows that line under each entry, and shows the entry itself as `killed`
+while its latest run is.
 
 ## The Monday window: ordering and catch-up
 
@@ -151,8 +184,8 @@ store on the `array` driver through `CACHE_DURABLE_DRIVER` in `phpunit.xml`. `st
 needs no flag: its durable per-athlete cursor already says who is behind, so a re-run queues only
 those athletes and is a no-op once everyone is settled.
 
-A gate that is still closed simply skips that tick; individual skips are not alerted (recording them
-belongs to #1786). Instead `schedule:monday-check` runs at 06:00 and, if `streak:settle` still has
+A gate that is still closed simply skips that tick; the skip is recorded in the run log (above) but
+not alerted. Instead `schedule:monday-check` runs at 06:00 and, if `streak:settle` still has
 an athlete behind or a plan entry has not succeeded, sends one maintainer alert for the week
 through `MaintainerAlerter::mondayEntriesOverdue()`. The entries keep retrying after it. By then
 six hourly `streak:settle` runs have had their chance, so an athlete it counts is genuinely stuck,

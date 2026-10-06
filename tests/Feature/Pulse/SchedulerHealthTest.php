@@ -3,7 +3,9 @@
 declare(strict_types=1);
 
 use App\Console\SchedulerChain;
+use App\Enums\ScheduledTaskStatus;
 use App\Livewire\Pulse\SchedulerHealth;
+use App\Models\Analytics\ScheduledTaskRunLog;
 use App\Models\ScheduledTaskRun;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -101,4 +103,29 @@ it('keeps a recorded command that is no longer on the schedule', function (): vo
         ->assertOk()
         ->assertSee('ai:retired-command')
         ->assertSee('off the schedule');
+});
+
+it('shows the 30-day run history from the run log', function (): void {
+    foreach ([800, 1200, 4000] as $runtimeMs) {
+        ScheduledTaskRunLog::start('strava:sync')->close(ScheduledTaskStatus::Ok, 0, $runtimeMs);
+    }
+    ScheduledTaskRunLog::start('strava:sync')->close(ScheduledTaskStatus::Failed, 1, 300);
+
+    Livewire::test(SchedulerHealth::class)
+        ->assertOk()
+        ->assertSeeInOrder(['30d', '4 runs', '1 failed', '0 skipped', 'p50 1.2s', 'p95 4s', 'max 4s']);
+});
+
+it('reads a run still open past its overlap lock as killed', function (): void {
+    ScheduledTaskRun::query()->create([
+        'command' => 'strava:sync',
+        'expression' => '0 * * * *',
+        'last_status' => 'ok',
+        'last_run_at' => Carbon::now()->subMinutes(70),
+    ]);
+    ScheduledTaskRunLog::start('strava:sync')->update(['started_at' => Carbon::now()->subMinutes(60)]);
+
+    Livewire::test(SchedulerHealth::class)
+        ->assertOk()
+        ->assertSeeInOrder(['strava:sync', 'killed', '1 killed']);
 });
