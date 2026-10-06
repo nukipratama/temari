@@ -17,6 +17,7 @@ Usage:
   scripts/worktree setup <slot>
   scripts/worktree remove [--force] <path>
   scripts/worktree prune
+  scripts/worktree info [path]
 EOF
   exit 1
 }
@@ -830,6 +831,26 @@ setup_cmd() {
   trap - ERR
 }
 
+info_cmd() {
+  local checkout
+  local slot="main"
+
+  checkout="$(absolute_path "${1:-$PWD}")" || {
+    fail "${1} does not exist"
+    return
+  }
+  [ -f "${checkout}/.env" ] || {
+    fail "${checkout} has no .env; run scripts/worktree adopt there first"
+    return
+  }
+  [ ! -f "${checkout}/${SLOT_FILE}" ] || slot="$(<"${checkout}/${SLOT_FILE}")"
+
+  printf 'path=%s\nslot=%s\nAPP_PORT=%s\nVITE_PORT=%s\n' \
+    "$checkout" "$slot" \
+    "$(env_value "${checkout}/.env" APP_PORT)" \
+    "$(env_value "${checkout}/.env" VITE_PORT)"
+}
+
 [ $# -ge 1 ] || usage
 command="$1"
 shift
@@ -870,6 +891,10 @@ case "$command" in
   prune)
     [ $# -eq 0 ] || usage
     prune_cmd
+    ;;
+  info)
+    [ $# -le 1 ] || usage
+    info_cmd "$@"
     ;;
   remove)
     force=false

@@ -15,18 +15,27 @@ case "${1:-}" in
 esac
 
 GATE_STARTED_AT=$(date +%s)
+GATE_LOG=storage/logs/gate.log
+STEP_LOG=storage/logs/gate-step.log
+: > "$GATE_LOG"
 
+# Each step's output goes to the log; only a failing step's tail is printed, so
+# the gate's own output is short enough to read unpiped.
 step() {
   name=$1
   shift
-  echo ">>> $name"
+  echo ">>> $name" | tee -a "$GATE_LOG"
   started=$(date +%s)
-  if ! "$@"; then
+  if ! "$@" > "$STEP_LOG" 2>&1; then
+    cat "$STEP_LOG" >> "$GATE_LOG"
     failed_after=$(($(date +%s) - started))
+    tail -n 40 "$STEP_LOG"
+    echo "    full output: $GATE_LOG"
     echo "GATE: FAIL at $name (${failed_after}s)"
     echo "GATE: FAIL at $name (${failed_after}s)" >&2
     exit 1
   fi
+  cat "$STEP_LOG" >> "$GATE_LOG"
   echo "    $name ok ($(($(date +%s) - started))s)"
 }
 
