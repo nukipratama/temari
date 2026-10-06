@@ -15,6 +15,7 @@ use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Exceptions;
 
 uses(RefreshDatabase::class);
 
@@ -180,4 +181,18 @@ it('keeps the heartbeat out of the run log', function (): void {
 
 it('is bound as a singleton so the instance that opens a run closes it', function (): void {
     expect(app(RecordScheduledTaskRun::class))->toBe(app(RecordScheduledTaskRun::class));
+});
+
+it('reports a run log write that throws without stopping the run or failing it', function (): void {
+    Exceptions::fake();
+    ScheduledTaskRunLog::creating(fn (): never => throw new RuntimeException('analytics down'));
+    $task = app(Schedule::class)->command('strava:sync')->hourly();
+    $listener = new RecordScheduledTaskRun();
+
+    $listener->starting(new ScheduledTaskStarting($task));
+    $listener->skipped(new ScheduledTaskSkipped($task));
+    $listener->finished(new ScheduledTaskFinished($task, 1.0));
+
+    expect(ScheduledTaskRun::query()->sole()->last_status)->toBe(ScheduledTaskStatus::Ok);
+    Exceptions::assertReportedCount(2);
 });
