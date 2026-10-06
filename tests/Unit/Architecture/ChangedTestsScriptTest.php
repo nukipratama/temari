@@ -48,3 +48,31 @@ it('is the gate\'s Pest step', function (): void {
         ->toContain('step "pest changed" pest_changed')
         ->toContain('sh scripts/changed-tests.sh');
 })->group('structure');
+
+it('counts staged but uncommitted files as changed', function (): void {
+    $dir = sys_get_temp_dir().'/gate-changed-paths-'.uniqid();
+    File::ensureDirectoryExists($dir);
+
+    $run = function (string $command) use ($dir): string {
+        $process = Process::fromShellCommandline($command, $dir);
+        $process->run();
+        expect($process->isSuccessful())->toBeTrue($process->getErrorOutput());
+
+        return trim($process->getOutput());
+    };
+
+    try {
+        $run('git init -q && git config user.email t@example.test && git config user.name t');
+        File::put($dir.'/committed.php', 'a');
+        $run('git add . && git commit -q -m init');
+        File::put($dir.'/staged.php', 'b');
+        $run('git add staged.php');
+
+        $function = $run('sed -n \'/^changed_paths() {/,/^}/p\' '.escapeshellarg(base_path('scripts/gate.sh')));
+        $paths = $run($function.'; changed_paths HEAD');
+
+        expect(explode("\n", $paths))->toContain('staged.php');
+    } finally {
+        File::deleteDirectory($dir);
+    }
+})->group('structure');
