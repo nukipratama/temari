@@ -25,6 +25,12 @@ itself. This note covers the pieces that only matter once installed; the visual
 language they use is in [[design-tokens]], and the shell's structure is in
 [[dashboard]].
 
+The install is required for web push only on iOS and iPadOS, where
+[`isIos()`](../../resources/js/lib/webPush.ts) (which also recognises iPadOS Safari
+posing as a touch-enabled Mac) gates the Home-Screen explainer in
+[PushNotificationToggle](../../resources/js/components/PushNotificationToggle.tsx).
+Android and desktop browsers subscribe from a tab.
+
 ## The status bar is iOS's again
 
 The app asks for `apple-mobile-web-app-status-bar-style: default`

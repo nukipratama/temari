@@ -20,6 +20,7 @@ function mockPage(webPushPublicKey: string = 'test-key') {
 beforeEach(() => {
     vi.mocked(webPush.isPushSupported).mockReturnValue(true);
     vi.mocked(webPush.isStandalone).mockReturnValue(true);
+    vi.mocked(webPush.isIos).mockReturnValue(false);
     vi.mocked(webPush.isIosNonSafari).mockReturnValue(false);
     vi.mocked(webPush.currentSubscription).mockResolvedValue(null);
     vi.mocked(webPush.subscribe).mockResolvedValue(undefined);
@@ -61,19 +62,43 @@ it('offers a re-register when permission is granted but the subscription is gone
     );
 });
 
-it('shows the Home-Screen install hint on Safari when not standalone', async () => {
+it('shows the Home-Screen install hint on iOS Safari in a tab', async () => {
+    vi.mocked(webPush.isIos).mockReturnValue(true);
     vi.mocked(webPush.isStandalone).mockReturnValue(false);
     render(<PushNotificationToggle />);
     expect(await screen.findByText(/Add to Home Screen/)).toBeInTheDocument();
+    expect(
+        screen.queryByRole('button', { name: /turn on/ }),
+    ).not.toBeInTheDocument();
 });
 
 it('tells a non-Safari iOS browser to open in Safari', async () => {
+    vi.mocked(webPush.isIos).mockReturnValue(true);
     vi.mocked(webPush.isStandalone).mockReturnValue(false);
     vi.mocked(webPush.isIosNonSafari).mockReturnValue(true);
     render(<PushNotificationToggle />);
     expect(
         await screen.findByText(/open temari in Safari/),
     ).toBeInTheDocument();
+});
+
+it('offers turn on for installed iOS Safari', async () => {
+    vi.mocked(webPush.isIos).mockReturnValue(true);
+    vi.mocked(webPush.isStandalone).mockReturnValue(true);
+    render(<PushNotificationToggle />);
+    expect(
+        await screen.findByRole('button', { name: /turn on/ }),
+    ).toBeInTheDocument();
+});
+
+it('offers turn on without an install outside iOS (Android Chrome, desktop Chrome and Firefox)', async () => {
+    vi.mocked(webPush.isIos).mockReturnValue(false);
+    vi.mocked(webPush.isStandalone).mockReturnValue(false);
+    render(<PushNotificationToggle />);
+    expect(
+        await screen.findByRole('button', { name: /turn on/ }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Add to Home Screen/)).not.toBeInTheDocument();
 });
 
 it('shows the unsupported hint', async () => {
