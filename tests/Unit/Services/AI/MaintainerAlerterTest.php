@@ -633,3 +633,47 @@ it('gates the job dispatch itself on the dedupe window, not just the eventual se
     // Not zero (the first trigger is not lost) and not two (no duplicate).
     Bus::assertDispatchedTimes(SendMaintainerAlertJob::class, 1);
 });
+
+it('queues a failed-job page once per incident and one recovered line on its next success', function (): void {
+    Bus::fake();
+    adminWithChat(8101);
+
+    $alerter = app(MaintainerAlerter::class);
+    $alerter->jobFailed('RetryOrphanedStravaGrantReleasesJob');
+    $alerter->jobFailed('RetryOrphanedStravaGrantReleasesJob');
+    $alerter->jobRecovered('RetryOrphanedStravaGrantReleasesJob');
+    $alerter->jobRecovered('RetryOrphanedStravaGrantReleasesJob');
+
+    Bus::assertDispatchedTimes(SendMaintainerAlertJob::class, 2);
+    Bus::assertDispatched(fn (SendMaintainerAlertJob $job): bool => $job->message === 'Queued job `RetryOrphanedStravaGrantReleasesJob` failed. Check Horizon and the logs.');
+    Bus::assertDispatched(fn (SendMaintainerAlertJob $job): bool => $job->message === 'Queued job `RetryOrphanedStravaGrantReleasesJob` recovered: its latest run succeeded.');
+});
+
+it('pages a persistent backfill gap once, inline, and recovers when it closes', function (): void {
+    Bus::fake();
+    $client = fakeTelegram();
+    adminWithChat(8102);
+    Carbon::setTestNow('2026-10-06 03:30:00');
+
+    $client->shouldReceive('sendMessage')->once()->with(8102, 'Scheduler `weather:backfill`: 3 runs are still missing weather 48 h after ingest. Check the logs.', 5);
+    $client->shouldReceive('sendMessage')->once()->with(8102, 'Scheduler `weather:backfill`: every run has its weather again.', 5);
+
+    $alerter = app(MaintainerAlerter::class);
+    $alerter->persistentGap('weather:backfill', 'weather', 0);
+    $alerter->persistentGap('weather:backfill', 'weather', 3);
+    Carbon::setTestNow('2026-10-08 03:30:00');
+    $alerter->persistentGap('weather:backfill', 'weather', 1);
+    $alerter->persistentGap('weather:backfill', 'weather', 0);
+
+    Bus::assertNotDispatched(SendMaintainerAlertJob::class);
+    Carbon::setTestNow();
+});
+
+it('singularises a lone persistent gap', function (): void {
+    $client = fakeTelegram();
+    adminWithChat(8103);
+
+    $client->shouldReceive('sendMessage')->once()->with(8103, 'Scheduler `geo:backfill-locations`: 1 run is still missing location 48 h after ingest. Check the logs.', 5);
+
+    app(MaintainerAlerter::class)->persistentGap('geo:backfill-locations', 'location', 1);
+});

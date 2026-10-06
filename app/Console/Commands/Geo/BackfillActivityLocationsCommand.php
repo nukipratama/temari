@@ -7,6 +7,7 @@ namespace App\Console\Commands\Geo;
 use App\Actions\Geo\ReverseGeocodeAction;
 use App\Jobs\Geo\ResolveActivityLocationJob;
 use App\Models\ActivityDetail;
+use App\Services\AI\MaintainerAlerter;
 use App\Services\Geo\PolylineDecoder;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
@@ -20,7 +21,7 @@ class BackfillActivityLocationsCommand extends Command
     /** Stagger queued jobs while the resolver enforces the shared request slot. */
     private const int DISPATCH_SPACING_SECONDS = 1;
 
-    public function handle(PolylineDecoder $decoder, ReverseGeocodeAction $resolver): int
+    public function handle(PolylineDecoder $decoder, ReverseGeocodeAction $resolver, MaintainerAlerter $alerter): int
     {
         $limit = (int) $this->option('limit');
 
@@ -34,7 +35,23 @@ class BackfillActivityLocationsCommand extends Command
             $limit,
         ));
 
+        $alerter->persistentGap('geo:backfill-locations', 'location', $this->persistentGaps());
+
         return self::SUCCESS;
+    }
+
+    private function persistentGaps(): int
+    {
+        return ActivityDetail::query()
+            ->whereNotNull('start_lat')
+            ->whereNotNull('start_lng')
+            ->whereNull('location_resolved_at')
+            ->whereBetween('created_at', [
+                now()->subDays(ActivityDetail::PERSISTENT_GAP_MAX_DAYS),
+                now()->subHours(ActivityDetail::PERSISTENT_GAP_HOURS),
+            ])
+            ->whereHas('activity.user', fn ($query) => $query->notDemo())
+            ->count();
     }
 
     private function backfillCoordsFromPolyline(PolylineDecoder $decoder, int $limit): int

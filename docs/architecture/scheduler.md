@@ -160,10 +160,24 @@ late, with one "back on time" line when it is not
 - Every other entry is late once `ScheduledTaskRun::isStale()` says so. A lock skip does not
   refresh the heartbeat, so a jammed lock goes late too.
 
-Alerts raised by the scheduler itself (an entry's failure, lateness and recovery, and
-`athletesFailed()` from a per-athlete loop) go to Telegram inline with a 5-second timeout instead of through the queued
-`SendMaintainerAlertJob`, so a dead or paused Horizon cannot silence them. Every other maintainer
-alert stays queued. If the cache errors while reading an incident or cooldown key, the alert is
+Three more sources raise alerts:
+
+- `strava:sync` and `strava:sync-zones` report athletes whose sync threw through `athletesFailed()`,
+  under the same per-command incident as `ai:daily-briefing` and `plan:score-compliance`. A run
+  with no failed athlete closes it. A revoked connection is not a failure.
+- `geo:backfill-locations` and `weather:backfill` count the non-demo runs still missing their
+  location or weather between 48 hours and 7 days after ingest. A count above zero opens the
+  incident, with no repeat page, and zero closes it. A miss the next run repairs never reaches 48
+  hours, and an older row ages out of the window, so an incident can always close and rows already
+  in production never open one at deploy.
+- `RetryOrphanedStravaGrantReleasesJob`'s `failed()` hook pages like an entry failure, repeating
+  once per 24 hours, and its next completed run closes the incident.
+
+Alerts raised by the scheduler itself (an entry's failure, lateness and recovery, `athletesFailed()`
+from a per-athlete loop, and the backfill gaps) go to Telegram inline with a 5-second timeout
+instead of through the queued `SendMaintainerAlertJob`, so a dead or paused Horizon cannot silence
+them. Every other maintainer alert stays queued, including the orphaned-grant job's, which already
+runs on a worker. If the cache errors while reading an incident or cooldown key, the alert is
 sent anyway, because a duplicate page is better than silence. A recovery or back-on-time line is
 not, since every success and every sweep checks for one.
 

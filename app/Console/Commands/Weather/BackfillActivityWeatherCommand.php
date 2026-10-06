@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Console\Commands\Weather;
 
 use App\Models\ActivityDetail;
+use App\Services\AI\MaintainerAlerter;
 use App\Services\Weather\OpenMeteoClient;
 use Carbon\CarbonImmutable;
 use Illuminate\Console\Attributes\Description;
@@ -15,7 +16,7 @@ use Illuminate\Console\Command;
 #[Description('Re-fetch weather for activities with stored coords but a null weather_temp_c (transient Open-Meteo misses).')]
 class BackfillActivityWeatherCommand extends Command
 {
-    public function handle(OpenMeteoClient $weather): int
+    public function handle(OpenMeteoClient $weather, MaintainerAlerter $alerter): int
     {
         $limit = (int) $this->option('limit');
 
@@ -43,7 +44,24 @@ class BackfillActivityWeatherCommand extends Command
             $limit,
         ));
 
+        $alerter->persistentGap('weather:backfill', 'weather', $this->persistentGaps());
+
         return self::SUCCESS;
+    }
+
+    private function persistentGaps(): int
+    {
+        return ActivityDetail::query()
+            ->whereNull('weather_temp_c')
+            ->whereNotNull('start_lat')
+            ->whereNotNull('start_lng')
+            ->whereNotNull('start_date_local')
+            ->whereBetween('created_at', [
+                now()->subDays(ActivityDetail::PERSISTENT_GAP_MAX_DAYS),
+                now()->subHours(ActivityDetail::PERSISTENT_GAP_HOURS),
+            ])
+            ->whereHas('activity.user', fn ($query) => $query->notDemo())
+            ->count();
     }
 
     private function backfill(OpenMeteoClient $weather, ActivityDetail $detail): bool

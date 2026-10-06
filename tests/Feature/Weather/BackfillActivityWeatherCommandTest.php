@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 use App\Models\Activity;
 use App\Models\ActivityDetail;
+use App\Models\User;
+use App\Services\AI\MaintainerAlerter;
 use App\Services\Weather\OpenMeteoClient;
 use App\Services\Weather\WeatherSnapshot;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -164,4 +166,45 @@ it('tries the oldest attempt first among attempted rows', function (): void {
 
     expect($older->fresh()->weather_temp_c)->toBe(27)
         ->and($recent->fresh()->weather_temp_c)->toBeNull();
+});
+
+it('reports runs still missing weather 48 hours to 7 days after ingest, but not newer, older or demo ones', function (): void {
+    $this->mock(OpenMeteoClient::class)->shouldReceive('fetchForActivity')->never();
+    $missing = [
+        'start_lat' => -6.24,
+        'start_lng' => 106.81,
+        'start_date_local' => now()->subDays(30),
+        'weather_temp_c' => null,
+        'weather_attempts' => ActivityDetail::MAX_BACKFILL_ATTEMPTS,
+    ];
+    ActivityDetail::factory()->create([...$missing, 'created_at' => now()->subHours(48)]);
+    ActivityDetail::factory()->create([...$missing, 'created_at' => now()->subHours(47)]);
+    ActivityDetail::factory()->create([...$missing, 'created_at' => now()->subDays(7)->subMinute()]);
+    ActivityDetail::factory()->create([...$missing, 'start_lat' => null, 'start_lng' => null, 'created_at' => now()->subDays(3)]);
+    ActivityDetail::factory()
+        ->for(Activity::factory()->for(User::factory()->state(['is_demo' => true])))
+        ->create([...$missing, 'created_at' => now()->subDays(3)]);
+
+    $alerter = Mockery::mock(MaintainerAlerter::class);
+    $alerter->shouldReceive('persistentGap')->once()->with('weather:backfill', 'weather', 1);
+    $this->app->instance(MaintainerAlerter::class, $alerter);
+
+    $this->artisan('weather:backfill')->assertSuccessful();
+});
+
+it('reports no weather gap once every run has weather', function (): void {
+    $this->mock(OpenMeteoClient::class)->shouldReceive('fetchForActivity')->never();
+    ActivityDetail::factory()->create([
+        'start_lat' => -6.24,
+        'start_lng' => 106.81,
+        'start_date_local' => now()->subDays(30),
+        'weather_temp_c' => 25,
+        'created_at' => now()->subDays(4),
+    ]);
+
+    $alerter = Mockery::mock(MaintainerAlerter::class);
+    $alerter->shouldReceive('persistentGap')->once()->with('weather:backfill', 'weather', 0);
+    $this->app->instance(MaintainerAlerter::class, $alerter);
+
+    $this->artisan('weather:backfill')->assertSuccessful();
 });

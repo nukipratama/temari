@@ -6,6 +6,7 @@ namespace App\Console\Commands\Strava;
 
 use App\Models\RunnerProfile;
 use App\Models\User;
+use App\Services\AI\MaintainerAlerter;
 use App\Services\Run\Plan\PlanRecalibrationDispatch;
 use App\Services\Strava\Exceptions\StravaConnectionRevokedException;
 use App\Services\Strava\Exceptions\StravaTokenRefreshFailedException;
@@ -21,7 +22,7 @@ use Throwable;
 #[Description('Fetch HR-zone boundaries from Strava (/athlete/zones) and sync them into runner_profiles.')]
 class SyncZonesCommand extends Command
 {
-    public function handle(ZoneFetcher $fetcher): int
+    public function handle(ZoneFetcher $fetcher, MaintainerAlerter $alerter): int
     {
         $users = $this->resolveUsers();
         if ($users->isEmpty()) {
@@ -30,6 +31,7 @@ class SyncZonesCommand extends Command
             return self::SUCCESS;
         }
 
+        $failed = 0;
         foreach ($users as $user) {
             $connection = $user->stravaConnection;
             $credentialVersion = $connection?->credential_version;
@@ -48,8 +50,15 @@ class SyncZonesCommand extends Command
             } catch (Throwable $e) {
                 // One bad connection must not abort the scheduled run for the
                 // other users — mirrors strava:sync.
+                $failed++;
                 $this->warn("user {$user->id}: zone sync failed — {$e->getMessage()}");
             }
+        }
+
+        if ($failed > 0) {
+            $alerter->athletesFailed('strava:sync-zones', $failed);
+        } else {
+            $alerter->athletesRecovered('strava:sync-zones');
         }
 
         return self::SUCCESS;

@@ -6,6 +6,7 @@ namespace App\Services\AI;
 
 use App\Jobs\AI\FlushDeadLetterAlertJob;
 use App\Jobs\AI\SendMaintainerAlertJob;
+use App\Models\ActivityDetail;
 use App\Models\TelegramConnection;
 use App\Services\Telegram\TelegramClient;
 use App\Support\Config\AppConfig;
@@ -459,6 +460,55 @@ class MaintainerAlerter
             'scheduler.monday_overdue:'.Carbon::now()->isoFormat('GGGG-[W]WW'),
             7 * 86_400,
             'Monday scheduler entries have not succeeded by 06:00: '.implode(', ', $entries).'. They keep retrying hourly today; check Horizon and the logs.',
+        );
+    }
+
+    /**
+     * A queued job's final attempt failed; paged like {@see self::schedulerFailed()}
+     * but queued, since the job already runs on a worker.
+     */
+    public function jobFailed(string $job): void
+    {
+        $this->openIncident(
+            'scheduler.incident.job_failed:'.$job,
+            self::FAILURE_REPAGE_SECONDS,
+            "Queued job `{$job}` failed. Check Horizon and the logs.",
+            $this->broadcast(...),
+        );
+    }
+
+    public function jobRecovered(string $job): void
+    {
+        $this->closeIncident(
+            'scheduler.incident.job_failed:'.$job,
+            "Queued job `{$job}` recovered: its latest run succeeded.",
+            $this->broadcast(...),
+        );
+    }
+
+    /**
+     * How many runs a backfill command still leaves without $field between
+     * {@see ActivityDetail::PERSISTENT_GAP_HOURS} hours and
+     * {@see ActivityDetail::PERSISTENT_GAP_MAX_DAYS} days after ingest. Above
+     * zero opens one incident per command; zero closes it with one line.
+     */
+    public function persistentGap(string $command, string $field, int $count): void
+    {
+        $key = 'scheduler.incident.gap:'.$command;
+
+        if ($count === 0) {
+            $this->closeIncident($key, "Scheduler `{$command}`: every run has its {$field} again.", $this->sendInline(...));
+
+            return;
+        }
+
+        $runs = $count === 1 ? '1 run is' : "{$count} runs are";
+
+        $this->openIncident(
+            $key,
+            null,
+            sprintf('Scheduler `%s`: %s still missing %s %d h after ingest. Check the logs.', $command, $runs, $field, ActivityDetail::PERSISTENT_GAP_HOURS),
+            $this->sendInline(...),
         );
     }
 
