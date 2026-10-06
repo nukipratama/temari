@@ -15,7 +15,6 @@ use App\Models\User;
 use App\Services\Strava\StravaGrantLedger;
 use App\Services\Strava\StravaGrantReleaseService;
 use App\Support\LocalRedirectPath;
-use App\Support\SharedPropCacheKey;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -122,7 +121,6 @@ class StravaAuthController extends Controller
         $pushEndpoint = $request->pushEndpoint();
         if ($user !== null && $pushEndpoint !== null) {
             $user->deletePushSubscription($pushEndpoint);
-            SharedPropCacheKey::WebPushSubscribed->forget($user->id);
         }
 
         Auth::logout();

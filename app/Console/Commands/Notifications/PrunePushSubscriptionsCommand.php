@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace App\Console\Commands\Notifications;
 
-use App\Models\User;
-use App\Support\SharedPropCacheKey;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
@@ -19,17 +17,7 @@ class PrunePushSubscriptionsCommand extends Command
 
     public function handle(): int
     {
-        $unseen = PushSubscription::query()->where('last_seen_at', '<', now()->subDays(self::UNSEEN_DAYS));
-        $userIds = (clone $unseen)
-            ->where('subscribable_type', new User()->getMorphClass())
-            ->distinct()
-            ->pluck('subscribable_id');
-
-        $deleted = $unseen->delete();
-
-        foreach ($userIds as $userId) {
-            SharedPropCacheKey::WebPushSubscribed->forget((int) $userId);
-        }
+        $deleted = PushSubscription::query()->where('last_seen_at', '<', now()->subDays(self::UNSEEN_DAYS))->delete();
 
         $this->info("Pruned {$deleted} push subscriptions unseen for ".self::UNSEEN_DAYS.' days.');
 

@@ -21,9 +21,7 @@ enum SharedPropCacheKey: string
     case StravaPaused = 'strava-paused';
     case StravaSync = 'strava-sync';
     case StravaZoneScopeMissing = 'strava-zone-scope-missing';
-    case TelegramConnected = 'telegram-connected';
     case UnreadNotifications = 'unread-notifications';
-    case WebPushSubscribed = 'web-push-subscribed';
 
     /**
      * Short TTL for the Strava-sync share. The two queries it runs fire on
@@ -74,11 +72,9 @@ enum SharedPropCacheKey: string
 
     /**
      * TTL shared by the settings-shaped signals:
-     * Telegram reachability, web-push reachability, the missing Strava zone
-     * scope and the unread inbox count. Each moves only on an explicit write —
-     * a connect or revoke, a push subscribe or unsubscribe, a
-     * notification-preference save, an inbox write or read — and every one of
-     * those paths busts the key, so like the HR-zone marker the
+     * the missing Strava zone scope and the unread inbox count. Each moves only
+     * on an explicit write — a Strava connect or revoke, an inbox write or
+     * read — and every one of those paths busts the key, so like the HR-zone marker the
      * TTL is a safety net rather than the mechanism. The win is dropping their
      * per-page-load queries, which is why they get a TTL at all instead of
      * bust-only caching: a missed bust must self-heal in minutes, not never.
@@ -107,9 +103,7 @@ enum SharedPropCacheKey: string
             self::HrZonesChangedAt => self::HR_ZONES_CHANGED_SECONDS,
             self::StravaSync => self::STRAVA_SYNC_SECONDS,
             self::StravaZoneScopeMissing,
-            self::TelegramConnected,
-            self::UnreadNotifications,
-            self::WebPushSubscribed => self::SETTINGS_SIGNAL_SECONDS,
+            self::UnreadNotifications => self::SETTINGS_SIGNAL_SECONDS,
         };
     }
 

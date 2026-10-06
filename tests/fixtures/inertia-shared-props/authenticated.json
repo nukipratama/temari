@@ -31,9 +31,7 @@
     "stravaSync.last_synced_at",
     "stravaSync.state",
     "stravaZoneScopeMissing",
-    "telegramConnected",
     "today",
     "unreadNotifications",
-    "webPushPublicKey",
-    "webPushSubscribed"
+    "webPushPublicKey"
 ]

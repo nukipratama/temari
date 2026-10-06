@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use App\Models\User;
-use App\Support\SharedPropCacheKey;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
@@ -34,14 +33,4 @@ it('keeps a device seen within the last 60 days', function (): void {
     $this->artisan('notifications:prune-push-subscriptions')->assertSuccessful();
 
     expect($user->pushSubscriptions()->count())->toBe(1);
-});
-
-it("forgets a pruned athlete's cached push-reachable flag", function (): void {
-    $user = User::factory()->create();
-    pushSubscriptionSeen($user, 'https://web.push.apple.com/deleted-install', 61);
-    SharedPropCacheKey::WebPushSubscribed->remember($user->id, fn (): bool => true);
-
-    $this->artisan('notifications:prune-push-subscriptions')->assertSuccessful();
-
-    expect(SharedPropCacheKey::WebPushSubscribed->remember($user->id, fn (): bool => false))->toBeFalse();
 });

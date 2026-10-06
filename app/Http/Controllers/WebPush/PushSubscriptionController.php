@@ -9,7 +9,6 @@ use App\Http\Requests\DestroyPushSubscriptionRequest;
 use App\Http\Requests\SeenPushSubscriptionRequest;
 use App\Http\Requests\StorePushSubscriptionRequest;
 use App\Models\User;
-use App\Support\SharedPropCacheKey;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\Response;
 
@@ -45,8 +44,6 @@ class PushSubscriptionController extends Controller
             $user->deletePushSubscription($previousEndpoint);
         }
 
-        SharedPropCacheKey::WebPushSubscribed->forget($user->id);
-
         return response()->noContent();
     }
 
@@ -55,8 +52,6 @@ class PushSubscriptionController extends Controller
         /** @var User $user */
         $user = $request->user();
         $user->deletePushSubscription($request->endpoint());
-
-        SharedPropCacheKey::WebPushSubscribed->forget($user->id);
 
         return response()->noContent();
     }
