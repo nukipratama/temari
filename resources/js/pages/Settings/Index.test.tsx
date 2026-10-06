@@ -207,6 +207,13 @@ describe('Settings', () => {
         ).toBeInTheDocument();
     });
 
+    it('says how to keep only one channel with the mutes', () => {
+        render(<Settings />);
+        expect(
+            screen.getByText(/to keep just one, mute the other/),
+        ).toBeInTheDocument();
+    });
+
     it('posts to /logout when the Log out row is clicked', async () => {
         vi.mocked(router.post).mockReset();
         render(<Settings />);
