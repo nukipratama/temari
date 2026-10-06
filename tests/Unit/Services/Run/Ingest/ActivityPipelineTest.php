@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Services\Strava\StravaClient;
 use App\Models\RunCard;
 use App\Enums\IngestState;
 use App\Actions\AI\SettleEarlyNarrationAction;
@@ -306,7 +307,7 @@ it('propagates a rate-limit exception so the job can re-queue with backoff', fun
     // Exhaust the shared 15-minute bucket (per client, not per athlete) so the
     // next client call throws before any HTTP.
     for ($i = 0; $i < 200; $i++) {
-        RateLimiter::hit('strava-api:15min', 15 * 60);
+        RateLimiter::hit(StravaClient::rateLimitKey('15min'), 15 * 60);
     }
     Http::fake();
 
@@ -325,7 +326,7 @@ it('propagates a rate-limit exception from the streams fetch, with the detail al
     // detail fetch consumes it, so the streams fetch is the one that trips
     // the limit — the two calls share one client-wide counter.
     for ($i = 0; $i < 199; $i++) {
-        RateLimiter::hit('strava-api:15min', 15 * 60);
+        RateLimiter::hit(StravaClient::rateLimitKey('15min'), 15 * 60);
     }
     Http::fake([
         'strava.com/api/v3/activities/999' => Http::response(['name' => 'R', 'distance' => 5000]),

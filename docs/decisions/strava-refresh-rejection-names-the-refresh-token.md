@@ -20,7 +20,7 @@ code_refs:
 
 ## Decision
 
-[StravaClient::requestRefreshedTokens](app/Services/Strava/StravaClient.php#L336) raises `StravaTokenRefreshFailedException` for a `400` only when `errors[]` contains `resource: RefreshToken`; during a release a `401` still confirms the grant is gone. Every other `400` — including an OAuth-style `error: invalid_grant` body, which Strava does not send — is `StravaTokenRefreshTransientException`, whose message carries the first error's resource and field. Sync backs off instead of revoking, and a release records `release_failed` through [StravaGrantLedger::recordReleaseOutcome](app/Services/Strava/StravaGrantLedger.php#L175), keeping the token.
+[StravaClient::requestRefreshedTokens](app/Services/Strava/StravaClient.php#L374) raises `StravaTokenRefreshFailedException` for a `400` only when `errors[]` contains `resource: RefreshToken`; during a release a `401` still confirms the grant is gone. Every other `400` — including an OAuth-style `error: invalid_grant` body, which Strava does not send — is `StravaTokenRefreshTransientException`, whose message carries the first error's resource and field. Sync backs off instead of revoking, and a release records `release_failed` through [StravaGrantLedger::recordReleaseOutcome](app/Services/Strava/StravaGrantLedger.php#L175), keeping the token.
 
 ## Consequences
 
