@@ -3,14 +3,15 @@
 declare(strict_types=1);
 
 use App\Enums\RaceOutcome;
-use App\Models\InboxNotification;
 use App\Models\NotificationPreference;
 use App\Models\RaceGoal;
 use App\Models\User;
 use App\Notifications\RaceOutcomeNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Notifications\SendQueuedNotifications;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Queue;
 
 uses(RefreshDatabase::class);
 
@@ -41,17 +42,48 @@ it('asks each athlete whose race was yesterday how it went', function (): void {
 });
 
 it('asks only once for the same race', function (): void {
+    Queue::fake();
+    $race = raceYesterday(User::factory()->create());
+
+    $this->artisan('race:ask-outcome')->assertSuccessful();
+    $this->artisan('race:ask-outcome')->expectsOutputToContain('Asked 0 users')->assertSuccessful();
+
+    $queued = Queue::pushed(SendQueuedNotifications::class)
+        ->filter(fn (SendQueuedNotifications $job): bool => $job->notification instanceof RaceOutcomeNotification);
+    expect($queued)->not->toBeEmpty()
+        ->and($queued->map(fn (SendQueuedNotifications $job): string => $job->notification->id)->unique())->toHaveCount(1)
+        ->and($race->fresh()->outcome_asked_for_date?->toDateString())->toBe('2026-10-04');
+});
+
+it('releases the claim when dispatch throws, so the next run sends', function (): void {
+    $user = User::factory()->create();
+    $race = raceYesterday($user);
+    Notification::shouldReceive('send')->once()->andThrow(new RuntimeException('Redis is down'));
+
+    expect(fn () => $this->artisan('race:ask-outcome')->run())->toThrow(RuntimeException::class, 'Redis is down');
+    expect($race->fresh()->outcome_asked_for_date)->toBeNull();
+
+    Notification::fake();
+    $this->artisan('race:ask-outcome')->assertSuccessful();
+
+    Notification::assertSentToTimes($user, RaceOutcomeNotification::class, 1);
+    expect($race->fresh()->outcome_asked_for_date?->toDateString())->toBe('2026-10-04');
+});
+
+it('claims a rescheduled race again for its new date', function (): void {
     Notification::fake();
     $user = User::factory()->create();
     $race = raceYesterday($user);
-    InboxNotification::factory()->for($user)->create([
-        'kind' => 'race_outcome',
-        'dedupe_key' => RaceOutcomeNotification::dedupeKeyFor($race),
-    ]);
+    $this->artisan('race:ask-outcome')->assertSuccessful();
 
+    $race->update(['race_date' => '2026-10-11']);
+    Carbon::setTestNow('2026-10-12 09:00:00');
+
+    $this->artisan('race:ask-outcome')->assertSuccessful();
     $this->artisan('race:ask-outcome')->expectsOutputToContain('Asked 0 users')->assertSuccessful();
 
-    Notification::assertNothingSent();
+    Notification::assertSentToTimes($user, RaceOutcomeNotification::class, 2);
+    expect($race->fresh()->outcome_asked_for_date?->toDateString())->toBe('2026-10-11');
 });
 
 it('does not ask about a race that is already answered, legacy, or on another day', function (RaceGoal $race): void {

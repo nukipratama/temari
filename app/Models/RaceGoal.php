@@ -39,6 +39,8 @@ use Override;
  * @property int|null $outcome_activity_id
  * @property int|null $finish_time_sec
  * @property Carbon|null $outcome_recorded_at
+ * @property Carbon|null $reminded_for_date
+ * @property Carbon|null $outcome_asked_for_date
  * @property-read User $user
  */
 #[Fillable([
@@ -121,6 +123,8 @@ class RaceGoal extends Model
             'outcome_activity_id' => 'integer',
             'finish_time_sec' => 'integer',
             'outcome_recorded_at' => 'datetime',
+            'reminded_for_date' => 'date',
+            'outcome_asked_for_date' => 'date',
         ];
     }
 }
