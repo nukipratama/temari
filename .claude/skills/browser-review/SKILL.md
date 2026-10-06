@@ -5,7 +5,7 @@ description: Drive a real browser to screenshot every user-facing page across a 
 
 # browser-review
 
-This is the canonical full skill shared by agents. For an end-to-end visual review,
+For an end-to-end visual review,
 log in as the demo user, **discover every page from the route table**,
 screenshot each across the viewport matrix, collect JS/console errors, and flag any horizontal overflow.
 Then read the PNGs back to spot layout bugs. Everything runs **inside the Sail `app` container**
@@ -44,28 +44,28 @@ The app is reachable **inside the container at `http://localhost`** (host-forwar
 ```bash
 # 1. check the dev image carries Chromium, Playwright and ffmpeg (installs nothing; prints the
 #    rebuild steps when the image predates them)
-./vendor/bin/sail exec app sh .agents/skills/browser-review/scripts/setup.sh
+./vendor/bin/sail exec app sh .claude/skills/browser-review/scripts/setup.sh
 
 # 2. screenshots across the viewport matrix (default mobile,se,laptop,desktop — see references/viewports.md)
-./vendor/bin/sail exec app node .agents/skills/browser-review/scripts/shoot.mjs
+./vendor/bin/sail exec app node .claude/skills/browser-review/scripts/shoot.mjs
 #    e.g. just phone:    ./vendor/bin/sail exec -e VIEWPORTS=mobile app node .../shoot.mjs
 #    e.g. full 5-way:    ./vendor/bin/sail exec -e VIEWPORTS=mobile,se,tablet,laptop,desktop app node .../shoot.mjs
 
 # 3. horizontal-overflow audit across the matrix (run BEFORE Inspect — its output gates which
 #    pages get the expensive vision read, see references/inspect.md)
-./vendor/bin/sail exec app node .agents/skills/browser-review/scripts/audit.mjs
+./vendor/bin/sail exec app node .claude/skills/browser-review/scripts/audit.mjs
 
 # 4. rendered-contrast audit, once per ground
-./vendor/bin/sail exec app node .agents/skills/browser-review/scripts/contrast.mjs dark
-./vendor/bin/sail exec app node .agents/skills/browser-review/scripts/contrast.mjs light
+./vendor/bin/sail exec app node .claude/skills/browser-review/scripts/contrast.mjs dark
+./vendor/bin/sail exec app node .claude/skills/browser-review/scripts/contrast.mjs light
 
 # 5. on demand: is a design-page shortfall real, and is any surface wearing the wrong ground?
-./vendor/bin/sail exec app node .agents/skills/browser-review/scripts/mounts.mjs dark 'bg-leaf/15,...'
-./vendor/bin/sail exec app node .agents/skills/browser-review/scripts/light-islands.mjs dark
+./vendor/bin/sail exec app node .claude/skills/browser-review/scripts/mounts.mjs dark 'bg-leaf/15,...'
+./vendor/bin/sail exec app node .claude/skills/browser-review/scripts/light-islands.mjs dark
 
-./vendor/bin/sail exec app node .agents/skills/browser-review/scripts/edges.mjs dark
-./vendor/bin/sail exec app node .agents/skills/browser-review/scripts/states.mjs dark
-./vendor/bin/sail exec app node .agents/skills/browser-review/scripts/probe.mjs / dark 'document.title'
+./vendor/bin/sail exec app node .claude/skills/browser-review/scripts/edges.mjs dark
+./vendor/bin/sail exec app node .claude/skills/browser-review/scripts/states.mjs dark
+./vendor/bin/sail exec app node .claude/skills/browser-review/scripts/probe.mjs / dark 'document.title'
 ```
 
 Screenshots stay in place as history; the next sweep replaces them.

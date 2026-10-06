@@ -111,9 +111,9 @@ it('runs backend CI for every file the token-mirror test reads', function (): vo
 })->group('structure');
 
 it('runs the structure tests for every doc the token-docs test reads', function (): void {
-    $skillDocs = collect(File::allFiles(base_path('.agents/skills/temari')))
+    $skillDocs = collect(File::allFiles(base_path('.claude/skills/temari')))
         ->filter(fn (SplFileInfo $file): bool => $file->getExtension() === 'md')
-        ->map(fn (SplFileInfo $file): string => '.agents/skills/temari/'.$file->getRelativePathname());
+        ->map(fn (SplFileInfo $file): string => '.claude/skills/temari/'.$file->getRelativePathname());
 
     $docs = ['CLAUDE.md', 'README.md', 'docs/design-tokens.md', ...$skillDocs];
 
@@ -155,7 +155,7 @@ it('runs a check that executes every test reading a repo file it names', functio
 it('runs only the structure tests for documentation those tests read', function (array $paths): void {
     expect(ciClassifyPaths($paths))->toBe(ciChecks(structure: true));
 })->with([
-    'design docs' => [['docs/design-tokens.md', '.agents/skills/temari/references/design-system.md']],
+    'design docs' => [['docs/design-tokens.md', '.claude/skills/temari/references/design-system.md']],
     'llm inventory' => [['docs/architecture/llm-triggers.md']],
     'agent entrypoints' => [['CLAUDE.md', 'README.md']],
 ])->group('structure');

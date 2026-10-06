@@ -5,14 +5,14 @@ description: Project conventions and domain map for the temari repo — design t
 
 # temari conventions
 
-This is the canonical full skill shared by agents. Source-of-truth docs are generated from code and
+Source-of-truth docs are generated from code and
 kept honest by `tests/Unit/Architecture/DesignTokenDocsTest.php` (palette/type docs) — link to
 them rather than re-copying, since copies drift.
 
 ## Tracking
 
 Issue tracking, decision labels, the kanban flow and the PR handoff standard are in
-[AGENTS.md](../../../AGENTS.md). Other labels: `wave:tooling` / `wave:bugs` / `wave:engine-1` /
+[CLAUDE.md](../../../CLAUDE.md). Other labels: `wave:tooling` / `wave:bugs` / `wave:engine-1` /
 `wave:engine-2` / `wave:refine` for the programme wave, `design-round` for design rounds, and
 `area:*` for the subsystem.
 
@@ -52,6 +52,6 @@ Read only the file the task needs; each holds its section verbatim.
 
 ## Inspecting real state
 
-Data, schema, log and console commands are under "Debugging" in [AGENTS.md](../../../AGENTS.md).
+Data, schema, log and console commands are under "Debugging" in [CLAUDE.md](../../../CLAUDE.md).
 For framework APIs, read the installed source under `vendor/` rather than recalling; this stack
 (Laravel 13 / Inertia v3 / React 19 / Tailwind v4 / Pest 5) drifts fast.

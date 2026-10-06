@@ -1,5 +1,5 @@
 // End-to-end screenshot sweep across a viewport matrix. Runs inside the Sail
-// `app` container:  ./vendor/bin/sail exec app node .agents/skills/browser-review/scripts/shoot.mjs
+// `app` container:  ./vendor/bin/sail exec app node .claude/skills/browser-review/scripts/shoot.mjs
 // Env: VIEWPORTS=mobile,se,tablet,laptop,desktop (default mobile,se,laptop,desktop)  BASE=http://localhost
 //      OUT=storage/app/browser-review  BATCH=<date>/<time> (override the run key)
 // Pages are discovered from `artisan route:list` (see lib.mjs) — nothing hardcoded.

@@ -12,7 +12,7 @@ Two scripts, split by where they run:
 ### Run it
 
 ```bash
-S=.agents/skills/browser-review
+S=.claude/skills/browser-review
 rec() { ./vendor/bin/sail exec app node $S/scripts/record.mjs "$@"; }
 clip() { ./vendor/bin/sail exec app sh $S/scripts/clips.sh "$@"; }
 

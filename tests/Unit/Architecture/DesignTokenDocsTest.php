@@ -34,9 +34,9 @@ it('keeps the design docs free of removed token names', function (): void {
     // Names that were deleted from the codebase and must not reappear in docs.
     $forbidden = ['text-ink-soft', 'text-ink-meta', 'GradientNumber', '--gradient-subuh', '--color-phase-'];
 
-    $skillDocs = collect(File::allFiles(base_path('.agents/skills/temari')))
+    $skillDocs = collect(File::allFiles(base_path('.claude/skills/temari')))
         ->filter(fn (SplFileInfo $file): bool => $file->getExtension() === 'md')
-        ->map(fn (SplFileInfo $file): string => '.agents/skills/temari/'.$file->getRelativePathname());
+        ->map(fn (SplFileInfo $file): string => '.claude/skills/temari/'.$file->getRelativePathname());
 
     foreach (['CLAUDE.md', 'README.md', 'docs/design-tokens.md', ...$skillDocs] as $relativePath) {
         $content = File::get(base_path($relativePath));

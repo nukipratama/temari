@@ -34,7 +34,7 @@ sample for overlapping, clipped or truncated text, wrong nav chrome, off-screen 
 spacing, and hierarchy problems.
 
 You can do this yourself, one viewport at a time, reading each screenshot once and noting findings
-as you go. If your runtime supports subagents, you may hand it off instead: at most three concurrent
+as you go. You may hand it off to subagents instead: at most three concurrent
 inspectors, each owning one viewport pair (for example `mobile`+`se`, `laptop`+`desktop`) with both
 its flagged and sampled pages, and each reporting findings in text. Either way every finding follows
 the evidence contract below.
@@ -53,7 +53,7 @@ Every inspector **must verify before returning a finding**, and the result requi
 so the requirement cannot be quietly skipped. `probe.mjs` makes that one command:
 
 ```bash
-./vendor/bin/sail exec app node .agents/skills/browser-review/scripts/probe.mjs <route> [dark|light] [--click=<text>] [--viewport=<key>] [--shot] '<expression>'
+./vendor/bin/sail exec app node .claude/skills/browser-review/scripts/probe.mjs <route> [dark|light] [--click=<text>] [--viewport=<key>] [--shot] '<expression>'
 ```
 
 `--viewport` takes a `VIEWPORT_DEFS` key (`mobile`, `se`, `tablet`, `laptop`, `desktop`) and defaults to the 390x844 mobile context; an unknown key exits with the valid list.
