@@ -20,8 +20,8 @@ never hand-pick one: `APP_PORT = 7000 + slot*10 + 1`, `VITE_PORT = +2` (main sta
 is 7011/7012, slot 2 is 7021/7022, and so on), `COMPOSE_PROJECT_NAME = temari-slot<N>`. Every
 host-forwarded port stays in the 7000 range; a new forwarded service continues the sequence. Slots are
 capped at 3 (`MAX_WORKTREE_SLOTS`); main and CI are slot 0. The cap keeps the shared test Redis's 256
-databases collision-free (see "Tests get the same treatment" below). Setup writes an untracked `compose.override.yaml` mounting the shared git dir so the
-gate's changed-file steps work, and joining the shared-services network, brings the shared stack and this worktree's `app` up,
+databases collision-free (see "Tests get the same treatment" below). Setup writes an untracked
+`compose.override.yaml` mounting the shared git dir so the gate's changed-file steps work, and joining the shared-services network, brings the shared stack and this worktree's `app` up,
 then bootstraps the app: `composer install`, `key:generate`, **both** migration sets, `npm ci` and
 `npm run build`. The two installs run only when `composer.lock` / `package-lock.json` no longer match
 the sha256 stamp the last successful install left in `vendor/` / `node_modules/`, so `adopt` on a reused
