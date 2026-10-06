@@ -164,6 +164,7 @@ it('wraps a transport failure in a TelegramApiException with no status', functio
         $this->fail('Expected TelegramApiException was not thrown.');
     } catch (TelegramApiException $e) {
         expect($e->status)->toBeNull()
+            ->and($e->connectionFailed)->toBeTrue()
             ->and($e->getMessage())->toContain('could not reach the API');
     }
 });

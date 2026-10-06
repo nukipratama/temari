@@ -7,7 +7,6 @@ namespace App\Services\Notifications;
 use App\Enums\NotificationDeliveryStatus;
 use App\Models\NotificationDelivery;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 /**
@@ -91,15 +90,12 @@ class NotificationDeliveryClaim
 
     public function markFailed(int $analysisId, string $channel, int $claimVersion, string $error): bool
     {
-        return $this->rowFor($analysisId, $channel)
-            ->where('status', NotificationDeliveryStatus::Pending->value)
-            ->where('claim_version', $claimVersion)
-            ->update([
-                'status' => NotificationDeliveryStatus::Failed->value,
-                'error' => Str::limit($error, self::ERROR_LIMIT),
-                'claimed_at' => null,
-                'settled_at' => now(),
-            ]) !== 0;
+        return $this->settleWithError($analysisId, $channel, $claimVersion, NotificationDeliveryStatus::Failed, $error);
+    }
+
+    public function markAbandoned(int $analysisId, string $channel, int $claimVersion, string $error): bool
+    {
+        return $this->settleWithError($analysisId, $channel, $claimVersion, NotificationDeliveryStatus::Abandoned, $error);
     }
 
     public function markStaleWebPushSkipped(int $analysisId, int $claimVersion): bool
@@ -114,29 +110,6 @@ class NotificationDeliveryClaim
             ->update([
                 'status' => NotificationDeliveryStatus::Failed->value,
                 'error' => 'Retry skipped because current preferences or channel eligibility no longer allow web push.',
-                'claimed_at' => null,
-                'settled_at' => now(),
-            ]) !== 0;
-    }
-
-    public function recordForcedSent(int $analysisId, string $channel): bool
-    {
-        if (NotificationDelivery::query()->insertOrIgnore([
-            'analysis_id' => $analysisId,
-            'channel' => $channel,
-            'status' => NotificationDeliveryStatus::Sent->value,
-            'created_at' => now(),
-            'claim_version' => 1,
-            'settled_at' => now(),
-        ]) !== 0) {
-            return true;
-        }
-
-        return $this->rowFor($analysisId, $channel)
-            ->update([
-                'status' => NotificationDeliveryStatus::Sent->value,
-                'claim_version' => DB::raw('claim_version + 1'),
-                'error' => null,
                 'claimed_at' => null,
                 'settled_at' => now(),
             ]) !== 0;
@@ -193,6 +166,19 @@ class NotificationDeliveryClaim
             });
 
         return $recovered;
+    }
+
+    private function settleWithError(int $analysisId, string $channel, int $claimVersion, NotificationDeliveryStatus $status, string $error): bool
+    {
+        return $this->rowFor($analysisId, $channel)
+            ->where('status', NotificationDeliveryStatus::Pending->value)
+            ->where('claim_version', $claimVersion)
+            ->update([
+                'status' => $status->value,
+                'error' => Str::limit($error, self::ERROR_LIMIT),
+                'claimed_at' => null,
+                'settled_at' => now(),
+            ]) !== 0;
     }
 
     /** @return Builder<NotificationDelivery> */

@@ -11,10 +11,14 @@ class TelegramApiException extends RuntimeException
     /**
      * HTTP status Telegram returned, so callers can distinguish a transient
      * failure (retry) from a permanent one (drop). Null when the request never
-     * got a response (transport failure).
+     * got a response (transport failure), which `$connectionFailed` marks.
      */
-    public function __construct(string $message = '', public readonly ?int $status = null, public readonly ?string $description = null)
-    {
+    public function __construct(
+        string $message = '',
+        public readonly ?int $status = null,
+        public readonly ?string $description = null,
+        public readonly bool $connectionFailed = false,
+    ) {
         parent::__construct($message);
     }
 }
