@@ -115,7 +115,7 @@ class NotificationDeliveryClaim
             ]) !== 0;
     }
 
-    public function recordForcedFailed(int $analysisId, string $channel, string $error): bool
+    public function recordUnclaimedFailed(int $analysisId, string $channel, string $error): bool
     {
         return NotificationDelivery::query()->insertOrIgnore([
             'analysis_id' => $analysisId,
