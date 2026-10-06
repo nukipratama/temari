@@ -129,8 +129,8 @@ it('judges a replayed race reminder as of the moment it was held', function (): 
     expect($notification->shouldSend($user, IdempotentWebPushChannel::class))->toBeTrue();
 });
 
-it('retries until the end of the day before the race', function (): void {
+it('goes stale at the end of the day before the race', function (): void {
     $user = User::factory()->create();
 
-    expect(new RaceTomorrowNotification(raceFor($user))->retryUntil()->toDateTimeString())->toBe('2026-05-23 23:59:59');
+    expect(new RaceTomorrowNotification(raceFor($user))->staleAfter->toDateTimeString())->toBe('2026-05-23 23:59:59');
 });

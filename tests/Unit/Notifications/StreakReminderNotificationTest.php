@@ -169,10 +169,10 @@ it('judges a replayed streak nudge as of the moment it was held', function (): v
     Carbon::setTestNow();
 });
 
-it('retries until the week closes', function (): void {
+it('goes stale when the week closes', function (): void {
     Carbon::setTestNow('2026-05-20 18:00:00');
 
-    expect(new StreakReminderNotification(4)->retryUntil()->toDateTimeString())->toBe('2026-05-24 23:59:59');
+    expect(new StreakReminderNotification(4)->staleAfter->toDateTimeString())->toBe('2026-05-24 23:59:59');
 
     Carbon::setTestNow();
 });

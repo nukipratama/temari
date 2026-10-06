@@ -14,6 +14,8 @@ use App\Notifications\Channels\IdempotentWebPushChannel;
 use App\Notifications\Channels\InAppChannel;
 use App\Notifications\Channels\TelegramChannel;
 use App\Notifications\MorningBriefingNotification;
+use App\Notifications\RaceTomorrowNotification;
+use App\Notifications\StreakReminderNotification;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
 use App\Services\Notifications\NotificationDeliveryClaim;
@@ -185,12 +187,12 @@ it('judges a replayed notification as of the moment it was held', function (): v
     expect($notification->shouldSend($user, IdempotentWebPushChannel::class))->toBeTrue();
 });
 
-it('retries until two hours past its bucket, or the end of its day when that comes first', function (): void {
+it('goes stale two hours past its bucket, or at the end of its day when that comes first', function (): void {
     Carbon::setTestNow('2026-05-24 06:05:00');
     $user = subscribedUser();
     $briefing = briefingFor($user);
 
-    expect(new MorningBriefingNotification($briefing)->retryUntil()->toDateTimeString())->toBe('2026-05-24 08:00:00');
+    expect(new MorningBriefingNotification($briefing)->staleAfter->toDateTimeString())->toBe('2026-05-24 08:00:00');
 
     $lateRunner = subscribedUser();
     foreach (range(1, 5) as $day) {
@@ -198,7 +200,7 @@ it('retries until two hours past its bucket, or the end of its day when that com
         ActivityDetail::factory()->for($activity)->create(['start_date_local' => "2026-05-0{$day} 23:30:00"]);
     }
 
-    expect(new MorningBriefingNotification(briefingFor($lateRunner))->retryUntil()->toDateTimeString())->toBe('2026-05-24 23:59:59');
+    expect(new MorningBriefingNotification(briefingFor($lateRunner))->staleAfter->toDateTimeString())->toBe('2026-05-24 23:59:59');
 });
 
 it('logs a stale skip with its type and settles the delivery row as failed', function (): void {
@@ -215,3 +217,11 @@ it('logs a stale skip with its type and settles the delivery row as failed', fun
     expect($row->status)->toBe(NotificationDeliveryStatus::Failed)
         ->and($row->error)->toContain('stale');
 });
+
+it('sets no retry deadline, so a job picked up after its cutoff reaches the stale check instead of failing at pickup', function (string $notification): void {
+    expect(method_exists($notification, 'retryUntil'))->toBeFalse();
+})->with([
+    MorningBriefingNotification::class,
+    RaceTomorrowNotification::class,
+    StreakReminderNotification::class,
+]);

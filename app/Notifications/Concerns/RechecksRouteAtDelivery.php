@@ -41,11 +41,6 @@ trait RechecksRouteAtDelivery
         return $currentUser !== null && in_array($channel, $this->via($currentUser), true);
     }
 
-    public function retryUntil(): ?CarbonInterface
-    {
-        return $this->heldAt === null ? $this->staleAfter : null;
-    }
-
     private function isStale(): bool
     {
         return $this->staleAfter !== null && ($this->heldAt ?? now())->greaterThan($this->staleAfter);
