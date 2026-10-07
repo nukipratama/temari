@@ -10,7 +10,7 @@ function evalChecks(string $text, array $evidence = [], array $direction = []): 
 }
 
 it('passes a clean answer on every check', function (): void {
-    $evidence = ['get_day_plan' => ['distance_km' => 8.0, 'intent_detail' => 'averaged 7:30/km']];
+    $evidence = ['get_planned_sessions' => ['distance_km' => 8.0, 'intent_detail' => 'averaged 7:30/km']];
     $direction = ['required' => ['easy'], 'forbidden' => ['harder than']];
 
     $results = evalChecks('8 km, easy the whole way at 7:30/km.', $evidence, $direction);

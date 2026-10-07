@@ -31,8 +31,8 @@ use Illuminate\Support\Carbon;
  *
  * `prescribed_km` is written by {@see \App\Services\Run\Plan\ComplianceScorer}
  * the morning after a day passes, so it is null for today and every future day;
- * those fall back to the unredistributed core distance. The target pace comes from the athlete's current VDOT rather than
- * the row, which stores none.
+ * those fall back to the unredistributed core distance. The target pace comes
+ * from the athlete's current VDOT rather than the row, which stores none.
  */
 final class PlanContextTool extends UserTool
 {

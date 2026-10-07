@@ -37,6 +37,7 @@ use App\Services\AI\Narrators\NarratorContinuity;
 use App\Services\AI\Narrators\OutcomeLabels;
 use App\Services\AI\Narrators\QuotedFigures;
 use App\Services\AI\Narrators\MonthlyRecapNarrator;
+use App\Services\AI\Narrators\PlanClampVoiceNarrator;
 use App\Services\AI\Narrators\PlanSeasonVoiceNarrator;
 use App\Services\AI\Narrators\PostRunSpeechNarrator;
 use App\Services\AI\Narrators\RunQuestionNarrator;
@@ -804,6 +805,13 @@ function assertOneStepWithContext(ClientFake $client, array $context): void
         && $params['input'][1]['content'] === json_encode($context, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE)
         && ! array_key_exists('tools', $params));
 }
+
+it('PlanClampVoiceNarrator names the eased session as the one being run today', function (): void {
+    $prompt = narratorPrompt(PlanClampVoiceNarrator::class);
+
+    expect($prompt)->toContain('stepped_down_to is the session the athlete is running today')
+        ->and($prompt)->not->toContain('SAY WHY, NOT WHAT');
+});
 
 it('OutcomeLabels catches a verdict label, and passes a described outcome', function (string $text, bool $label): void {
     expect(OutcomeLabels::labelIn($text))->toBe($label)

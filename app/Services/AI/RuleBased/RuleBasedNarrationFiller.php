@@ -574,13 +574,6 @@ final readonly class RuleBasedNarrationFiller
         ], $seed);
     }
 
-    /**
-     * A read of a credited day, phrasing #946's intent verdict rather than
-     * describing the session ahead of time — see
-     * `docs/decisions/a-day-is-graded-on-distance-and-intent.md`. Only ever
-     * requested for a day that already has a run (no run, no section), but
-     * stays defensively safe on an uncredited row rather than crashing.
-     */
     private function planSeasonVoice(Analysis $row): string
     {
         $season = Season::query()->find($row->subject_id);

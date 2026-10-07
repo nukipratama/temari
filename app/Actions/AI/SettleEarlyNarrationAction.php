@@ -132,11 +132,11 @@ class SettleEarlyNarrationAction
 
     /**
      * One conditional UPDATE per row: clears `narrated_early_at` and sends it
-     * back to Pending. A sibling swept in
-     * alongside its own early-marked pair (see claimEarlyRows) may already
-     * have no `narrated_early_at` of its own, so only a row that has one is
-     * required to still have it — that's the only row a second caller could
-     * otherwise race. Returns whether this call actually claimed the row.
+     * back to Pending. A sibling swept in alongside its own early-marked pair
+     * (see claimEarlyRows) may already have no `narrated_early_at` of its own,
+     * so only a row that has one is required to still have it — that's the
+     * only row a second caller could otherwise race. Returns whether this call
+     * actually claimed the row.
      */
     private function claimRow(Analysis $row): bool
     {
