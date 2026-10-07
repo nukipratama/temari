@@ -136,6 +136,16 @@ it('restHonoredCountForUser scopes to a date range when given one', function ():
     Carbon::setTestNow();
 });
 
+it('earns a day read only once credited, and never on a day a make-up emptied', function (PlannedSessionStatus $status, ?string $madeUpOn, bool $earns): void {
+    $session = new PlannedSession()->forceFill(['status' => $status, 'made_up_on' => $madeUpOn]);
+
+    expect($session->earnsDayRead())->toBe($earns);
+})->with([
+    'credited' => [PlannedSessionStatus::Done, null, true],
+    'uncredited' => [PlannedSessionStatus::Planned, null, false],
+    'emptied by a make-up' => [PlannedSessionStatus::Done, '2026-10-07', false],
+]);
+
 it('isExcused covers both an athlete skip and a recorded rest clamp', function (): void {
     $user = User::factory()->create();
 

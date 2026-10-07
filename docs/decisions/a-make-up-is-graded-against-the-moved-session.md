@@ -17,6 +17,8 @@ code_refs:
 
 **Status:** Accepted (2026-10-07). A documented exception to [[grading-follows-shown-advice-and-actual-stimulus]].
 
+> **Superseded fact (2026-10-07):** the emptied day gets no day read; only the made-up day is re-read ([PlannedSession::earnsDayRead()](app/Models/PlannedSession.php)).
+
 ## Context
 
 Move and Skip reached only days after today. An athlete who missed Tuesday's Easy and ran 5 km on Wednesday's rest day had no way to link the two: Tuesday stayed `missed` and Wednesday read as a rest day run anyway. Grading follows the advice shown before a run, and what Wednesday showed that morning was rest.

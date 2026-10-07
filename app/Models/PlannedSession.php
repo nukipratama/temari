@@ -206,6 +206,12 @@ class PlannedSession extends Model
         return $this->skipped || $this->rest_clamped_at !== null;
     }
 
+    /** A day a make-up emptied carries its "made up on" line instead of a read. */
+    public function earnsDayRead(): bool
+    {
+        return $this->status->isCredited() && $this->made_up_on === null;
+    }
+
     /** @return array<string, string> */
     #[Override]
     protected function casts(): array

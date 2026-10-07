@@ -413,6 +413,18 @@ describe('payloadsForCurrentWeek', function (): void {
 
         expect($this->requester->payloadsForCurrentWeek($user, Carbon::today())['days'][$today]['content'])->toBe('already narrated');
     });
+
+    it('shows no take on a day a make-up emptied, even one already narrated', function (): void {
+        $user = User::factory()->create();
+        $session = PlannedSession::factory()->for($user)->rest()->create([
+            'date' => Carbon::today()->toDateString(),
+            'status' => PlannedSessionStatus::Done,
+            'made_up_on' => Carbon::tomorrow()->toDateString(),
+        ]);
+        stampedDay($user, $session);
+
+        expect($this->requester->payloadsForCurrentWeek($user, Carbon::today())['days'])->toBe([]);
+    });
 });
 
 describe('ensureDemoFilled', function (): void {
@@ -705,6 +717,20 @@ describe('requestDayVoiceIfChanged', function (): void {
 
         expect($this->requester->requestDayVoiceIfChanged($user, $today->copy()))->toBeTrue();
         Bus::assertDispatchedTimes(AnalyzePlanDayVoiceJob::class, 1);
+    });
+
+    it('never narrates a day a make-up emptied', function (): void {
+        $user = User::factory()->create();
+        $today = Carbon::today();
+        PlannedSession::factory()->for($user)->rest()->create([
+            'date' => $today->toDateString(),
+            'status' => PlannedSessionStatus::Done,
+            'made_up_on' => $today->copy()->addDay()->toDateString(),
+        ]);
+
+        expect($this->requester->requestDayVoiceIfChanged($user, $today))->toBeFalse();
+        Bus::assertNotDispatched(AnalyzePlanDayVoiceJob::class);
+        expect(Analysis::query()->where('analysis_type', AnalysisType::PlanDayVoice)->exists())->toBeFalse();
     });
 
     /** Crediting an eased day earns its one re-narration, and that replacement retires the flag on the old text. */

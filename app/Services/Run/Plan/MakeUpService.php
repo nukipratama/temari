@@ -56,7 +56,6 @@ final readonly class MakeUpService
     public function notify(User $user, Carbon $vacatedDate, Carbon $targetDate, Carbon $today): void
     {
         $this->reconciliation->markDirty($user->id, $vacatedDate->min($targetDate));
-        $this->planNarration->requestDayVoiceIfChanged($user, $vacatedDate);
         $this->planNarration->requestDayVoiceIfChanged($user, $targetDate);
 
         if ($user->is_demo) {

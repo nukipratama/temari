@@ -97,7 +97,7 @@ final readonly class PlanNarrationRequester
     {
         $key = $date->toDateString();
         $session = $this->plannedSessionsFor($user, [$key])->first();
-        if ($session === null || ! $session->status->isCredited()) {
+        if ($session === null || ! $session->earnsDayRead()) {
             return false;
         }
 
@@ -291,7 +291,7 @@ final readonly class PlanNarrationRequester
 
         foreach ($dates as $date) {
             $session = $sessionsByDate->get($date);
-            if ($session === null || ! $session->status->isCredited()) {
+            if ($session === null || ! $session->earnsDayRead()) {
                 continue;
             }
 
@@ -367,7 +367,7 @@ final readonly class PlanNarrationRequester
             // eased day still speaking through its own clamp line, a missed
             // day, or an excused one, none of them has a read to show.
             $session = $sessionsByDate->get($date);
-            if ($session === null || ! $session->status->isCredited()) {
+            if ($session === null || ! $session->earnsDayRead()) {
                 continue;
             }
 
