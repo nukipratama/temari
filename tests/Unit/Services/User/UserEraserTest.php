@@ -5,7 +5,9 @@ declare(strict_types=1);
 use App\Models\Activity;
 use App\Models\AI\Analysis;
 use App\Models\AI\TokenUsage;
+use App\Models\PlanAdaptation;
 use App\Models\RunCard;
+use App\Models\Season;
 use App\Models\StravaConnection;
 use App\Enums\StravaGrantEventType;
 use App\Models\StravaGrantToken;
@@ -54,6 +56,8 @@ function analysesForEverySubjectShape(User $user): void
     $activity = Activity::factory()->for($user)->analyzed()->create();
     $card = RunCard::factory()->create(['activity_id' => $activity->id]);
     $snapshot = WeeklySnapshot::factory()->for($user)->create();
+    $season = Season::factory()->for($user)->create();
+    $adaptation = PlanAdaptation::factory()->for($user)->create();
 
     foreach ([
         [Activity::class, $activity->id, AnalysisType::PostRunSpeech],
@@ -66,7 +70,10 @@ function analysesForEverySubjectShape(User $user): void
         [AnalysisType::PROFILE_VOICE_SUBJECT_TYPE, $user->id, AnalysisType::ProfileVoice],
         [AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE, $user->id, AnalysisType::MonthlyRecap],
         [AnalysisType::TREND_READ_SUBJECT_TYPE, $user->id, AnalysisType::TrendRead],
+        [AnalysisType::PLAN_DAY_VOICE_SUBJECT_TYPE, $user->id, AnalysisType::PlanDayVoice],
         [AnalysisType::PLAN_CLAMP_VOICE_SUBJECT_TYPE, $user->id, AnalysisType::PlanClampVoice],
+        [Season::class, $season->id, AnalysisType::PlanSeasonVoice],
+        [PlanAdaptation::class, $adaptation->id, AnalysisType::PlanSeasonVoice],
     ] as [$subjectType, $subjectId, $type]) {
         Analysis::factory()->done('x')->create([
             'subject_type' => $subjectType,
@@ -95,7 +102,7 @@ function pushEndpointFor(User $user, string $endpoint): void
 it('removes every ai_analyses subject shape the table can hold', function (): void {
     $user = User::factory()->create();
     analysesForEverySubjectShape($user);
-    expect(Analysis::query()->count())->toBe(11);
+    expect(Analysis::query()->count())->toBe(14);
 
     app(UserEraser::class)->erase($user);
 
@@ -120,9 +127,9 @@ it('counts the orphans it would remove without removing them', function (): void
 
     $counts = app(UserEraser::class)->orphanCounts($user);
 
-    expect($counts)->toBe(['ai_analyses' => 11, 'push_subscriptions' => 1])
+    expect($counts)->toBe(['ai_analyses' => 14, 'push_subscriptions' => 1])
         // Read-only: a preview must not delete what it is previewing.
-        ->and(Analysis::query()->count())->toBe(11)
+        ->and(Analysis::query()->count())->toBe(14)
         ->and(User::query()->whereKey($user->id)->exists())->toBeTrue();
 });
 
@@ -156,7 +163,7 @@ it('leaves another user narration and endpoints alone', function (): void {
 
     app(UserEraser::class)->erase($user);
 
-    expect(Analysis::query()->count())->toBe(11)
+    expect(Analysis::query()->count())->toBe(14)
         ->and(DB::table('push_subscriptions')->count())->toBe(1)
         ->and(User::query()->whereKey($bystander->id)->exists())->toBeTrue();
 });
