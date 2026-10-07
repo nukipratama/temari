@@ -161,39 +161,6 @@ class PlannedSession extends Model
     }
 
     /**
-     * Count PAST, SCORED `Rest` rows where nothing was logged that date
-     * (`ran_anyway = false`) — the badge board's "honored" definition.
-     * `[$from, $to]` scopes to one season;
-     * omitted, it's the lifetime count across the user's whole plan history.
-     * A past row `plan:score-compliance` hasn't reached yet is excluded
-     * (still `Planned`, not proven honored) rather than assumed honored —
-     * the same "stays honestly pending, never guessed" default the AI
-     * pipeline uses for its own unscored/paused states.
-     */
-    public static function restHonoredCountForUser(int $userId, Carbon $today, ?Carbon $from = null, ?Carbon $to = null): int
-    {
-        $rangeEnd = $today->copy()->subDay();
-        if ($to !== null && $to->lessThan($rangeEnd)) {
-            $rangeEnd = $to->copy();
-        }
-        if ($from !== null && $rangeEnd->lessThan($from)) {
-            return 0;
-        }
-
-        $query = self::query()
-            ->where('user_id', $userId)
-            ->where('session_type', SessionType::Rest)
-            ->where('status', '!=', PlannedSessionStatus::Planned)
-            ->where('ran_anyway', false)
-            ->where('date', '<=', $rangeEnd->toDateString());
-        if ($from !== null) {
-            $query->where('date', '>=', $from->toDateString());
-        }
-
-        return $query->count();
-    }
-
-    /**
      * Whether this day is exempt from being graded: the athlete excused it
      * ahead of time, or the readiness clamp downgraded it to a full rest and
      * {@see \App\Services\Run\Plan\RestClampRecorder} recorded that. Both
