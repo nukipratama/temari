@@ -11,7 +11,6 @@ code_refs:
   - app/Services/Run/Plan/GoalPaceWork.php
   - app/Services/Run/Plan/IntensityPrescriptionResolver.php
   - app/Services/Run/Plan/PlanRenderer.php
-  - app/Services/AI/Agent/Tools/PlanDayTool.php
   - app/Services/AI/Agent/Tools/PlanContextTool.php
   - resources/js/components/race/SteppingStoneCard.tsx
   - resources/js/lib/plan.ts

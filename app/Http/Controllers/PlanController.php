@@ -51,7 +51,7 @@ class PlanController extends Controller
             'seasonAdherencePct' => Inertia::defer(fn (): ?int => $plan->seasonAdherencePct($user, $today)),
             'adaptation' => Inertia::defer(fn (): ?array => $plan->adaptation($user, $today)),
             'disclaimerLine' => TrainingDisclaimer::SHORT,
-            'planNarration' => Inertia::defer(fn (): array => $plan->planNarration($user, $today)),
+            'planNarration' => Inertia::defer(fn (): array => $plan->planNarration($user)),
             'regenerateCooldownSeconds' => fn (): ?int => $plan->regenerateCooldownSeconds($user),
         ]);
     }
@@ -87,7 +87,6 @@ class PlanController extends Controller
         UpdatePlannedSessionRequest $request,
         PlannedSession $plannedSession,
         Periodizer $periodizer,
-        PlanNarrationRequester $narrationRequester,
         SessionMatcher $sessionMatcher,
         MakeUpService $makeUps,
         AnalysisService $analysisService,
@@ -153,15 +152,6 @@ class PlanController extends Controller
         $toggledToday = $session->date->isSameDay($today) && $session->wasChanged('skipped');
         if (! $user->is_demo && ($movedOntoOrOffToday || $toggledToday)) {
             $analysisService->requestBriefing($user, $today->toDateString(), invalidate: true);
-        }
-
-        if ($occupant !== null || $session->wasChanged(['session_type', 'skipped', 'date'])) {
-            $touchedSessions = $occupant === null ? [$session] : [$session, $occupant];
-            foreach ($touchedSessions as $touchedSession) {
-                if ($touchedSession->status->isCredited() && $narrationRequester->isWithinCurrentWeek($touchedSession->date, $today)) {
-                    $narrationRequester->requestDayVoiceIfChanged($user, $touchedSession->date);
-                }
-            }
         }
 
         return back();

@@ -7,14 +7,11 @@ use App\Actions\Run\Story\RecomputeCardClaimsAction;
 use App\Jobs\AI\AnalyzeActivityJob;
 use App\Jobs\AI\AnalyzeBriefingMascotVoiceJob;
 use App\Jobs\AI\AnalyzeCardFlavorJob;
-use App\Jobs\AI\AnalyzePlanDayVoiceJob;
 use App\Jobs\AI\AnalyzeProfileVoiceJob;
 use App\Jobs\AI\AnalyzeWeeklyRecapJob;
-use App\Enums\PlannedSessionStatus;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
-use App\Models\PlannedSession;
 use App\Models\RunCard;
 use App\Models\StravaConnection;
 use App\Models\User;
@@ -353,63 +350,6 @@ it('requests a hydrated closed-week recap when the drain empties without touchin
     expect($openRow->fresh()->status)->toBe(AnalysisStatus::Pending);
 
     Carbon::setTestNow();
-});
-
-it('regenerates a thin plan-day voice exactly once when history lands', function (): void {
-    Bus::fake();
-    $user = User::factory()->create();
-    StravaConnection::factory()->for($user)->create(['created_at' => Carbon::now()->subHour()]);
-    $date = Carbon::yesterday();
-    PlannedSession::factory()->for($user)->create([
-        'date' => $date->toDateString(),
-        'status' => PlannedSessionStatus::Done,
-    ]);
-    $row = Analysis::factory()->done()->create([
-        'subject_type' => AnalysisType::PLAN_DAY_VOICE_SUBJECT_TYPE,
-        'subject_id' => $user->id,
-        'analysis_type' => AnalysisType::PlanDayVoice,
-        'discriminator' => $date->toDateString(),
-        'narrated_early_at' => Carbon::now(),
-    ]);
-
-    $this->mock(PersonalRecords::class)->shouldReceive('rebuildForUser')->once();
-    $this->mock(RecomputeCardClaimsAction::class)->shouldReceive('__invoke')->once()
-        ->andReturn(['cleared' => [], 'earned' => [], 'moods' => 0]);
-
-    app(SettleEarlyNarrationAction::class)($user);
-
-    Bus::assertDispatched(AnalyzePlanDayVoiceJob::class);
-    expect($row->fresh()->narrated_early_at)->toBeNull()
-        ->and($row->fresh()->status)->toBe(AnalysisStatus::Queued);
-});
-
-it('leaves a thin plan-day voice Done, not stranded Pending, when nothing about the day actually changed', function (): void {
-    // requestDayVoiceIfChanged() has no SelfHealer recovery family, so if its
-    // own fingerprint check ever decides nothing changed, the row must stay
-    // exactly as it was rather than being pre-flipped to a Pending nothing
-    // will ever fill.
-    Bus::fake();
-    $user = User::factory()->create();
-    StravaConnection::factory()->for($user)->create(['created_at' => Carbon::now()->subHour()]);
-    $row = Analysis::factory()->done()->create([
-        'subject_type' => AnalysisType::PLAN_DAY_VOICE_SUBJECT_TYPE,
-        'subject_id' => $user->id,
-        'analysis_type' => AnalysisType::PlanDayVoice,
-        'discriminator' => Carbon::yesterday()->toDateString(),
-        'narrated_early_at' => Carbon::now(),
-    ]);
-
-    $this->mock(PersonalRecords::class)->shouldReceive('rebuildForUser')->once();
-    $this->mock(RecomputeCardClaimsAction::class)->shouldReceive('__invoke')->once()
-        ->andReturn(['cleared' => [], 'earned' => [], 'moods' => 0]);
-
-    // No PlannedSession exists for that date at all, so requestDayVoiceIfChanged() no-ops.
-    app(SettleEarlyNarrationAction::class)($user);
-
-    Bus::assertNotDispatched(AnalyzePlanDayVoiceJob::class);
-    expect($row->fresh()->narrated_early_at)->toBeNull()
-        ->and($row->fresh()->status)->toBe(AnalysisStatus::Done)
-        ->and($row->fresh()->content)->not->toBeNull();
 });
 
 it('bills nothing more on a second completion signal', function (): void {

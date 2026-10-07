@@ -3,19 +3,15 @@
 declare(strict_types=1);
 
 use App\Enums\IngestState;
-use App\Enums\PlannedSessionStatus;
-use App\Enums\SessionType;
 use App\Jobs\AI\AnalyzeActivityJob;
 use App\Jobs\AI\AnalyzeBaseJob;
 use App\Jobs\AI\AnalyzeCardFlavorJob;
 use App\Jobs\AI\AnalyzeMonthlyRecapJob;
-use App\Jobs\AI\AnalyzePlanDayVoiceJob;
 use App\Jobs\AI\AnalyzeWeeklyRecapJob;
 use App\Jobs\AI\NarrateOnReturnJob;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
-use App\Models\PlannedSession;
 use App\Models\RunCard;
 use App\Models\StravaConnection;
 use App\Models\TelegramConnection;
@@ -190,18 +186,6 @@ it('leaves a failed older recap failed rather than hiding the fault behind fille
     narrateOnReturn($this->athlete);
 
     expect(returnRowStatus(WeeklySnapshot::class, $failed->id, AnalysisType::WeeklyRecap))->toBe(AnalysisStatus::Failed);
-});
-
-it('reads a day of this week the athlete ran while away', function (): void {
-    PlannedSession::factory()->for($this->athlete)->create([
-        'date' => '2026-06-16',
-        'session_type' => SessionType::Easy,
-        'status' => PlannedSessionStatus::Done,
-    ]);
-
-    narrateOnReturn($this->athlete);
-
-    Bus::assertDispatched(AnalyzePlanDayVoiceJob::class, dispatchedOnReturn(AnalyzePlanDayVoiceJob::class));
 });
 
 it('bills nothing twice when the return job runs again', function (): void {

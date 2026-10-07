@@ -111,7 +111,6 @@ function renderTimeline(
             detailByWeekStart={DETAIL}
             today="2026-06-17"
             weekFocus={FOCUS}
-            dayNarration={{}}
             onMove={vi.fn()}
             onSkip={vi.fn()}
             onUnskip={vi.fn()}

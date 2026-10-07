@@ -16,45 +16,30 @@ use App\Models\ActivityDetail;
 use App\Models\PlannedSession;
 use App\Models\User;
 use App\Services\AI\Agent\AgentToolbox;
-use App\Services\AI\Agent\Tools\PlanDayTool;
 use App\Services\AI\Narrators\BriefingMascotVoiceNarrator;
-use App\Services\AI\Narrators\PlanDayVoiceNarrator;
 use App\Services\AI\Narrators\ProfileVoiceNarrator;
 use App\Services\AI\Narrators\RunInsightNarrator;
 use App\Services\Run\Metrics\PaceCalculator;
-use App\Services\Run\Metrics\TrainingPaceCalculator;
-use App\Services\Run\Metrics\VdotEstimator;
-use App\Services\Run\Plan\SessionMatcher;
-use App\Services\Run\Plan\TrainingBaseline;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Carbon;
 use RuntimeException;
 
 final readonly class NarrationEvalFixtures
 {
-    public const array KINDS = ['plan_day_voice', 'briefing_mascot_voice', 'run_insight', 'profile_voice'];
+    public const array KINDS = ['briefing_mascot_voice', 'run_insight', 'profile_voice'];
 
     public const string RETIRED_LOAD_NAMES = '\b(?:ATL|CTL|TSB|acute|chronic)\b';
 
     private const string EASY_AS_ASKED = 'stayed easy|stayed at the easy|kept (?:it )?easy|properly easy|did the job|as asked';
-
-    private const string PRAISE = 'nice work|well done|great (?:job|work|run)|good call|smart';
-
-    private const int FIRST_PLAN_DAY_OFFSET = 400;
 
     private const float MIN_BASELINE_GAP = 0.03;
 
     private const int CANDIDATE_RUNS = 40;
 
     public function __construct(
-        private PlanDayVoiceNarrator $planDay,
         private BriefingMascotVoiceNarrator $briefing,
         private RunInsightNarrator $runInsight,
         private ProfileVoiceNarrator $profile,
-        private SessionMatcher $sessionMatcher,
-        private TrainingBaseline $trainingBaseline,
-        private VdotEstimator $vdotEstimator,
-        private TrainingPaceCalculator $paceCalculator,
         private ResolveRunBaselineAction $runBaseline,
     ) {
     }
@@ -66,7 +51,6 @@ final readonly class NarrationEvalFixtures
     public function for(User $demo, array $kinds): array
     {
         $fixtures = [
-            ...$this->planDayFixtures($demo),
             ...$this->briefingFixtures($demo),
             ...$this->runInsightFixtures($demo),
             ...$this->profileFixtures($demo),
@@ -124,81 +108,6 @@ final readonly class NarrationEvalFixtures
     }
 
     /** @return list<NarrationEvalFixture> */
-    private function planDayFixtures(User $demo): array
-    {
-        $steady = static fn (int $paceSec, array $extra = []): array => ['pace_sec' => $paceSec, 'ceiling_pace_sec' => 480, ...$extra];
-        $easedTempo = static fn (array $extra = []): array => [
-            'eased_from' => 'tempo',
-            'original_completed' => true,
-            'stimulus_family' => 'tempo',
-            'stimulus_minutes' => 18,
-            'stimulus_source' => 'pace',
-            'effective_type' => 'easy',
-            ...$extra,
-        ];
-        $eased = ['session_type' => SessionType::Tempo, 'clamped_km' => 5.0];
-
-        $days = [
-            'hit_easy' => [
-                [SessionType::Easy, PlannedSessionStatus::Done, IntentVerdict::Hit, $steady(450), []], 8.0, 450,
-                ['required' => ['easy|held|stayed|kept'], 'forbidden' => ['too hard|harder than|quicker than|missed|never showed|over the (?:cap|limit)']],
-            ],
-            'too_hard_easy' => [
-                [SessionType::Easy, PlannedSessionStatus::Overreached, IntentVerdict::TooHard, $steady(405), []], 8.0, 405,
-                ['required' => ['harder|quicker|faster|too hard|past|over|above|hot'], 'forbidden' => [self::EASY_AS_ASKED]],
-            ],
-            'capped_day' => [
-                [SessionType::Tempo, PlannedSessionStatus::Done, IntentVerdict::Hit, $steady(460, ['effective_type' => 'easy']), $eased], 5.0, 460,
-                ['required' => [], 'forbidden' => ['too hard|harder than|missed|never showed']],
-            ],
-            'eased_original' => [
-                [SessionType::Tempo, PlannedSessionStatus::Overreached, IntentVerdict::TooHard, $easedTempo(), $eased], 8.0, 300,
-                ['required' => ['exceed|beyond|past|against|ignor|despite|anyway|advice|eased|recovery'], 'forbidden' => [self::EASY_AS_ASKED, self::PRAISE]],
-            ],
-            'strong_concern' => [
-                [SessionType::Tempo, PlannedSessionStatus::Overreached, IntentVerdict::TooHard, $easedTempo(['concern' => 'strong']), $eased], 8.0, 300,
-                ['required' => ['advice|rest|against|despite|pain|illness|fatigue'], 'forbidden' => [self::EASY_AS_ASKED, self::PRAISE]],
-            ],
-            'excessive' => [
-                [SessionType::Tempo, PlannedSessionStatus::Overreached, IntentVerdict::TooHard, $easedTempo(['original_completed' => 'excessive']), $eased], 8.0, 270,
-                ['required' => ['past|well|beyond|exceed|over'], 'forbidden' => [self::EASY_AS_ASKED, self::PRAISE]],
-            ],
-            'unplanned_hard' => [
-                [SessionType::Easy, PlannedSessionStatus::Overreached, IntentVerdict::TooHard, $steady(380, ['stimulus_family' => 'hard', 'stimulus_minutes' => 12, 'stimulus_source' => 'pace']), []], 8.0, 380,
-                ['required' => ['harder|hard effort|unplanned|quicker|faster'], 'forbidden' => [self::EASY_AS_ASKED]],
-            ],
-        ];
-
-        $fixtures = [];
-        $slot = 0;
-        foreach ($days as $name => [$session, $km, $paceSec, $direction]) {
-            $date = Carbon::today()->subDays(self::FIRST_PLAN_DAY_OFFSET + $slot++);
-            $fixtures[] = new NarrationEvalFixture('plan_day_voice', $name, function () use ($demo, $date, $session, $km, $paceSec, $direction): array {
-                $planned = $this->plannedSession($demo, $date, $session, $km);
-                $this->logRun($demo, $date->copy()->setTime(7, 0), $km, $paceSec);
-
-                $tool = new PlanDayTool(
-                    $planned,
-                    $this->trainingBaseline,
-                    $this->vdotEstimator,
-                    $this->paceCalculator,
-                    $this->sessionMatcher->creditedKmFor($planned),
-                    $this->sessionMatcher->ranPaceSecPerKmFor($planned),
-                );
-
-                return [
-                    'generate' => fn (): string => $this->planDay->generate($planned),
-                    'evidence' => ['get_day_plan' => $tool->handle([])],
-                    'direction' => $direction,
-                    'plain_text' => true,
-                ];
-            });
-        }
-
-        return $fixtures;
-    }
-
-    /** @return list<NarrationEvalFixture> */
     private function briefingFixtures(User $demo): array
     {
         $today = [
@@ -225,7 +134,6 @@ final readonly class NarrationEvalFixtures
                     'generate' => fn (): string => $this->briefing->generate($demo, $day),
                     'evidence' => $evidence,
                     'direction' => self::merge($direction, self::loadDirection($evidence)),
-                    'plain_text' => false,
                 ];
             });
         }
@@ -285,7 +193,6 @@ final readonly class NarrationEvalFixtures
                     'generate' => fn (): string => $this->profile->generate($demo),
                     'evidence' => $evidence,
                     'direction' => self::merge($direction, self::loadDirection($evidence)),
-                    'plain_text' => false,
                 ];
             }),
         ];
@@ -293,7 +200,7 @@ final readonly class NarrationEvalFixtures
 
     /**
      * @param  array{required: list<string>, forbidden: list<string>}  $direction
-     * @return ?array{generate: Closure():string, evidence: array<string, mixed>, direction: array{required: list<string>, forbidden: list<string>}, plain_text: bool}
+     * @return ?array{generate: Closure():string, evidence: array<string, mixed>, direction: array{required: list<string>, forbidden: list<string>}}
      */
     private function againstBaseline(User $demo, bool $fastest, array $direction): ?array
     {
@@ -311,7 +218,7 @@ final readonly class NarrationEvalFixtures
 
     /**
      * @param  array{required: list<string>, forbidden: list<string>}  $direction
-     * @return array{generate: Closure():string, evidence: array<string, mixed>, direction: array{required: list<string>, forbidden: list<string>}, plain_text: bool}
+     * @return array{generate: Closure():string, evidence: array<string, mixed>, direction: array{required: list<string>, forbidden: list<string>}}
      */
     private function runInsightCase(Activity $activity, ActivityDetail $detail, array $direction): array
     {
@@ -331,7 +238,6 @@ final readonly class NarrationEvalFixtures
             },
             'evidence' => $evidence,
             'direction' => self::merge($direction, self::loadDirection($evidence)),
-            'plain_text' => false,
         ];
     }
 

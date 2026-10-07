@@ -228,7 +228,6 @@
         "Tests\\Unit\\Http\\Resources\\RunQuestionResourceTest": 0.0803,
         "Tests\\Unit\\Jobs\\AI\\AnalyzeActivityJobTest": 1.0834,
         "Tests\\Unit\\Jobs\\AI\\AnalyzeGroupJobTest": 0.0506,
-        "Tests\\Unit\\Jobs\\AI\\AnalyzePlanDayVoiceJobTest": 0.0437,
         "Tests\\Unit\\Jobs\\AI\\AnalyzeRowJobTest": 1.0575,
         "Tests\\Unit\\Jobs\\AI\\AnswerRunQuestionJobTest": 0.9805,
         "Tests\\Unit\\Jobs\\AI\\FlushDeadLetterAlertJobTest": 0.0195,

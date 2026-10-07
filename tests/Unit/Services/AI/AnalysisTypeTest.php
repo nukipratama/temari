@@ -5,7 +5,6 @@ declare(strict_types=1);
 use App\Jobs\AI\AnalyzeActivityJob;
 use App\Jobs\AI\AnalyzeProfileVoiceJob;
 use App\Jobs\AI\AnalyzeMonthlyRecapJob;
-use App\Jobs\AI\AnalyzePlanDayVoiceJob;
 use App\Jobs\AI\AnalyzePlanSeasonVoiceJob;
 use App\Jobs\AI\AnalyzeTrendReadJob;
 use App\Models\Season;
@@ -24,7 +23,6 @@ it('pins the exact case list, so adding or retiring a type is a deliberate edit'
         'profile_voice',
         'monthly_recap',
         'trend_read',
-        'plan_day_voice',
         'plan_clamp_voice',
         'plan_season_voice',
     ], implode(' ', [
@@ -50,11 +48,6 @@ it('maps MonthlyRecap to its job + subject type', function (): void {
 it('maps TrendRead to its job + subject type', function (): void {
     expect(AnalysisType::TrendRead->jobClass())->toBe(AnalyzeTrendReadJob::class)
         ->and(AnalysisType::TrendRead->subjectType())->toBe(AnalysisType::TREND_READ_SUBJECT_TYPE);
-});
-
-it('maps PlanDayVoice to its job + subject type', function (): void {
-    expect(AnalysisType::PlanDayVoice->jobClass())->toBe(AnalyzePlanDayVoiceJob::class)
-        ->and(AnalysisType::PlanDayVoice->subjectType())->toBe(AnalysisType::PLAN_DAY_VOICE_SUBJECT_TYPE);
 });
 
 it('maps PlanSeasonVoice to its job + subject type', function (): void {
@@ -126,7 +119,6 @@ it('requires the date shape each keyed type dispatches with', function (Analysis
     'briefing mascot voice is a day' => [AnalysisType::BriefingMascotVoice, 'date_format:Y-m-d'],
     'monthly recap is a month' => [AnalysisType::MonthlyRecap, 'date_format:Y-m'],
     'profile voice is an ISO week' => [AnalysisType::ProfileVoice, 'regex:/^\d{4}-W\d{2}$/'],
-    'plan day voice is a day' => [AnalysisType::PlanDayVoice, 'date_format:Y-m-d'],
 ]);
 
 it('formats currentIsoWeek to the discriminator shape ProfileVoice requires', function (): void {

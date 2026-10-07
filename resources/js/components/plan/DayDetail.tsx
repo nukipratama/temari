@@ -8,7 +8,6 @@ import {
 import { useState } from 'react';
 
 import type { EditablePlanDay, PlanDay } from '@/lib/plan';
-import type { AnalysisPayload } from '@/types/inertia';
 
 import {
     AskedRanResult,
@@ -16,7 +15,6 @@ import {
     DeltaTag,
 } from '@/components/plan/DeltaPair';
 import SessionBarGraph from '@/components/plan/SessionBarGraph';
-import TemariTake from '@/components/plan/TemariTake';
 import { Icon } from '@/components/ui/Icon';
 import { cn } from '@/lib/cn';
 import { formatDurationHMS } from '@/lib/pace';
@@ -152,28 +150,14 @@ function dayPoint(day: PlanDay) {
     };
 }
 
-/** Whether a day's narration has anything to show: a read still pending, or done with nothing to say, draws no block. */
-export function showsNarration(
-    narration: AnalysisPayload | null,
-): narration is AnalysisPayload {
-    return (
-        narration !== null &&
-        narration.status !== 'pending' &&
-        !(narration.status === 'done' && narration.content === null)
-    );
-}
-
 /**
  * Whether {@see DayDetail} would draw anything for this day. A rest day with
- * nothing logged, no note, no clamp and no read has nothing to show; a future
+ * nothing logged, no note and no clamp has nothing to show; a future
  * day with a session type but no segments yet (no VDOT to size them) is the
  * same case. A changed day always has detail: the full old -> new pairs live
  * only there, never in the headline.
  */
-export function hasDayDetail(
-    day: EditablePlanDay,
-    narration: AnalysisPayload | null,
-): boolean {
+export function hasDayDetail(day: EditablePlanDay): boolean {
     const { sessionDelta, paceDelta, weekFitDelta } = dayChanges(day);
     const { purpose, doseWhy, tiltWhy, hint } = dayPoint(day);
     const { move, skip, restore } = day.actions;
@@ -185,7 +169,6 @@ export function hasDayDetail(
         weekFitDelta !== null ||
         Boolean(day.eased_from?.voice) ||
         Boolean(day.pace_eased_from?.voice) ||
-        showsNarration(narration) ||
         purpose !== null ||
         doseWhy !== null ||
         tiltWhy !== null ||
@@ -278,7 +261,7 @@ export function DayHeadline({ day }: Readonly<{ day: PlanDay }>) {
 
 /**
  * Everything a day holds beyond its headline: the eased-value change rows,
- * what the session is for, Temari's read on it, the readiness step-down
+ * what the session is for, the readiness step-down
  * beside the standing prescription, credit and heat notes, the segment
  * graph, what was actually run and the Move, Skip and restore actions
  * `SessionEditRules` allows.
@@ -286,14 +269,12 @@ export function DayHeadline({ day }: Readonly<{ day: PlanDay }>) {
 export default function DayDetail({
     day,
     weekDays,
-    narration,
     onMove,
     onSkip,
     onUnskip,
 }: Readonly<{
     day: EditablePlanDay;
     weekDays: PlanDay[];
-    narration: AnalysisPayload | null;
     onMove: (toDate: string) => void;
     onSkip: () => void;
     onUnskip: () => void;
@@ -391,23 +372,6 @@ export default function DayDetail({
                         </p>
                     )}
                 </div>
-            )}
-            {showsNarration(narration) && (
-                <TemariTake
-                    analysis={narration}
-                    label="Temari's read"
-                    allowReanalyze={false}
-                    className={
-                        sessionDelta ||
-                        paceDelta ||
-                        weekFitDelta ||
-                        showsPoint ||
-                        day.eased_from?.voice ||
-                        day.pace_eased_from?.voice
-                            ? 'mt-2'
-                            : undefined
-                    }
-                />
             )}
             {day.advice_note !== null && (
                 <p className="mt-2 border-l-2 border-border-strong pl-3 text-xs italic text-text-2">

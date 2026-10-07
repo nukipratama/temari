@@ -26,39 +26,8 @@ function evalRun(User $user, Carbon $on, int $elapsedSec, bool $heartRate = true
     ]);
 }
 
-it('offers the four kinds', function (): void {
-    expect(NarrationEvalFixtures::KINDS)->toBe(['plan_day_voice', 'briefing_mascot_voice', 'run_insight', 'profile_voice']);
-});
-
-it('covers every plan day trap with a direction answer', function (): void {
-    $demo = User::factory()->demo()->create();
-
-    $fixtures = app(NarrationEvalFixtures::class)->for($demo, ['plan_day_voice']);
-
-    expect(array_map(fn ($fixture): string => $fixture->name, $fixtures))->toBe([
-        'hit_easy', 'too_hard_easy', 'capped_day', 'eased_original', 'strong_concern', 'excessive', 'unplanned_hard',
-    ]);
-
-    DB::beginTransaction();
-    $case = $fixtures[1]->build->__invoke();
-    DB::rollBack();
-
-    expect($case['evidence']['get_day_plan']['intent'])->toContain('harder than the easy effort')
-        ->and($case['direction']['forbidden'])->not->toBe([])
-        ->and($case['plain_text'])->toBeTrue();
-});
-
-it('words the strong concern and excessive readings from the persisted evidence', function (): void {
-    $demo = User::factory()->demo()->create();
-    $fixtures = collect(app(NarrationEvalFixtures::class)->for($demo, ['plan_day_voice']))->keyBy('name');
-
-    DB::beginTransaction();
-    $strong = $fixtures['strong_concern']->build->__invoke();
-    $excessive = $fixtures['excessive']->build->__invoke();
-    DB::rollBack();
-
-    expect($strong['evidence']['get_day_plan']['intent'])->toContain('against advice to rest')
-        ->and($excessive['evidence']['get_day_plan']['intent'])->toContain('well past its target effort');
+it('offers the three kinds', function (): void {
+    expect(NarrationEvalFixtures::KINDS)->toBe(['briefing_mascot_voice', 'run_insight', 'profile_voice']);
 });
 
 it('picks the runs furthest from their baseline for the run insight', function (): void {

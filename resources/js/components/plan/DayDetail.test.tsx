@@ -2,29 +2,8 @@ import { fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { EditablePlanDay } from '@/lib/plan';
-import type { AnalysisPayload } from '@/types/inertia';
 
-import DayDetail, {
-    DayHeadline,
-    hasDayDetail,
-    showsNarration,
-} from './DayDetail';
-
-function narrationPayload(
-    overrides: Partial<AnalysisPayload> = {},
-): AnalysisPayload {
-    return {
-        id: 1,
-        status: 'done',
-        content: 'easy all the way, tempo block never happened.',
-        type: 'plan_day_voice',
-        is_zone_dependent: false,
-        subject_type: 'plan_day_voice_user_day',
-        subject_id: 1,
-        discriminator: '2026-06-18',
-        ...overrides,
-    } as AnalysisPayload;
-}
+import DayDetail, { DayHeadline, hasDayDetail } from './DayDetail';
 
 const TODAY = '2026-06-17';
 
@@ -105,7 +84,6 @@ function renderRow(overrides: Partial<Parameters<typeof DayDetail>[0]> = {}) {
     const props = {
         day: WEEK[0],
         weekDays: WEEK,
-        narration: null,
         onMove: vi.fn(),
         onSkip: vi.fn(),
         onUnskip: vi.fn(),
@@ -116,9 +94,7 @@ function renderRow(overrides: Partial<Parameters<typeof DayDetail>[0]> = {}) {
             <div data-testid="headline">
                 <DayHeadline day={props.day} />
             </div>
-            {hasDayDetail(props.day, props.narration) && (
-                <DayDetail {...props} />
-            )}
+            {hasDayDetail(props.day) && <DayDetail {...props} />}
         </>,
     );
     return props;
@@ -541,33 +517,6 @@ describe('DayHeadline and DayDetail', () => {
         ).toBeInTheDocument();
     });
 
-    /**
-     * #939: the day's take is labelled "Temari's read", not "Temari's take" —
-     * the backend only ever hands this row a `narration` payload once the
-     * day is credited (see PlanNarrationRequesterTest), so the row itself
-     * renders whatever it is given.
-     */
-    it("labels a credited day's narration as Temari's read", () => {
-        renderRow({
-            day: day({ status: 'done' }),
-            narration: narrationPayload(),
-        });
-
-        expect(screen.getByText("Temari's read")).toBeInTheDocument();
-        expect(
-            screen.getByText('easy all the way, tempo block never happened.'),
-        ).toBeInTheDocument();
-    });
-
-    it('renders no read wrapper while the day narration is pending', () => {
-        renderRow({
-            day: day({ status: 'done' }),
-            narration: narrationPayload({ status: 'pending', content: null }),
-        });
-
-        expect(screen.queryByText("Temari's read")).not.toBeInTheDocument();
-    });
-
     it('offers move and skip on a day still ahead', () => {
         renderRow();
 
@@ -903,7 +852,6 @@ describe('DayHeadline and DayDetail', () => {
                     voice: 'legs are still carrying the weekend, so today runs easy.',
                 },
             }),
-            narration: null,
         });
 
         expect(screen.getByText('6.4 km · 6:43/km')).toBeInTheDocument();
@@ -921,47 +869,6 @@ describe('DayHeadline and DayDetail', () => {
                 'legs are still carrying the weekend, so today runs easy.',
             ),
         ).toBeInTheDocument();
-        expect(screen.queryByText("Temari's read")).not.toBeInTheDocument();
-    });
-
-    /**
-     * #939 decision 6: the clamp line is the reason for the eased session,
-     * never the day's read — it renders beside the eased session, and
-     * Temari's read renders independently whenever the day has one. A day
-     * that has both shows both, each in its own place.
-     */
-    it("shows both the eased-session reason and Temari's read on a credited day that has both", () => {
-        renderRow({
-            day: day({
-                date: '2026-06-15',
-                status: 'done',
-                session_type: 'easy',
-                eased_from: {
-                    session_type: 'tempo',
-                    distance_km: null,
-                    voice: 'legs are still carrying the weekend, so today runs easy.',
-                },
-            }),
-            narration: narrationPayload(),
-        });
-
-        const reason = screen.getByText(
-            'legs are still carrying the weekend, so today runs easy.',
-        );
-        const readLabel = screen.getByText("Temari's read");
-        const readContent = screen.getByText(
-            'easy all the way, tempo block never happened.',
-        );
-
-        expect(reason).toBeInTheDocument();
-        expect(readLabel).toBeInTheDocument();
-        expect(readContent).toBeInTheDocument();
-
-        // Neither the label nor the read's own content contains the reason —
-        // they render in separate places, not stacked inside one slot.
-        const readBlock = readLabel.parentElement!.parentElement!;
-        expect(within(readBlock).queryByText(reason.textContent!)).toBeNull();
-        expect(readBlock).not.toContainElement(reason);
     });
 
     /**
@@ -991,7 +898,6 @@ describe('DayHeadline and DayDetail', () => {
                     voice: "your form's a little flat, so run this one at the easy end of your range.",
                 },
             }),
-            narration: null,
         });
 
         expect(screen.getByText('20 km · 6:40/km')).toBeInTheDocument();
@@ -1033,7 +939,6 @@ describe('DayHeadline and DayDetail', () => {
                 ],
                 pace_eased_from: { pace_sec_per_km: 360, voice: null },
             }),
-            narration: null,
         });
 
         expect(document.body).toHaveTextContent('6:00');
@@ -1289,31 +1194,13 @@ const REST = day({
     distance_km: 0,
 });
 
-describe('showsNarration', () => {
-    it('shows a finished read and a failed one, never a pending or empty one', () => {
-        expect(showsNarration(narrationPayload())).toBe(true);
-        expect(showsNarration(narrationPayload({ status: 'failed' }))).toBe(
-            true,
-        );
-        expect(showsNarration(narrationPayload({ status: 'pending' }))).toBe(
-            false,
-        );
-        expect(showsNarration(narrationPayload({ content: null }))).toBe(false);
-        expect(showsNarration(null)).toBe(false);
-    });
-});
-
 describe('hasDayDetail', () => {
     it('has detail for a sized session still ahead', () => {
-        expect(hasDayDetail(day(), null)).toBe(true);
+        expect(hasDayDetail(day())).toBe(true);
     });
 
     it('has none for a plain rest day', () => {
-        expect(hasDayDetail(REST, null)).toBe(false);
-    });
-
-    it('has detail for a rest day once a read is in', () => {
-        expect(hasDayDetail(REST, narrationPayload())).toBe(true);
+        expect(hasDayDetail(REST)).toBe(false);
     });
 
     it('has detail for a day carrying safety advice even with no segments', () => {
@@ -1324,7 +1211,6 @@ describe('hasDayDetail', () => {
                     segments: [],
                     advice_note: 'legs need it.',
                 }),
-                null,
             ),
         ).toBe(true);
     });

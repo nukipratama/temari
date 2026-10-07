@@ -22,7 +22,6 @@ use App\Services\AI\NarrationVerdict;
 use App\Services\Run\Plan\ComplianceScorer;
 use App\Services\Run\Plan\PlanReconciliationDispatch;
 use App\Services\AI\MaterialFingerprint;
-use App\Services\AI\PlanNarrationRequester;
 use App\Services\Run\Metrics\WeeklyAggregator;
 use App\Services\Run\Story\Temari;
 use App\Services\Run\Trend\TrendSnapshotRepairDispatch;
@@ -46,7 +45,6 @@ class DispatchPostRunAnalysis implements ShouldQueue
         private readonly WeeklyAggregator $weeklyAggregator,
         private readonly StaggerBackfillAction $staggerBackfill,
         private readonly NarrationEligibility $eligibility,
-        private readonly PlanNarrationRequester $planNarration,
         private readonly ComplianceScorer $complianceScorer,
         private readonly PlanReconciliationDispatch $planReconciliation,
         private readonly TrendSnapshotRepairDispatch $trendSnapshots,
@@ -126,11 +124,6 @@ class DispatchPostRunAnalysis implements ShouldQueue
         $snapshot = $this->rebuildWeeksUnlessRecalibrating($user, $detail->start_date_local, $isBackfill && ! $user->is_demo);
         $this->trendSnapshots->forActivity($activity);
 
-        if ($isToday && ! $athleteAway) {
-            if ($user->is_demo) {
-                $this->planNarration->requestDayVoiceIfChanged($user, Carbon::today());
-            }
-        }
         if ($snapshot !== null) {
             // Weekly cadence: regenerating the recap of a still-unfinished week
             // on every run was the single biggest LLM re-bill. The row is staged

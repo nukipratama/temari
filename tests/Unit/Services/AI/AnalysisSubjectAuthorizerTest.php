@@ -23,7 +23,6 @@ it('lets the owner through and rejects a stranger for every AnalysisType', funct
         AnalysisType::ProfileVoice,
         AnalysisType::MonthlyRecap,
         AnalysisType::TrendRead,
-        AnalysisType::PlanDayVoice,
         AnalysisType::PlanClampVoice => $owner->id,
         AnalysisType::PostRunSpeech,
         AnalysisType::RunInsight => Activity::factory()->for($owner)->create()->id,

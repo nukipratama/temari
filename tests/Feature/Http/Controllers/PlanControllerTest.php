@@ -9,7 +9,6 @@ use App\Enums\IntentVerdict;
 use App\Enums\SessionType;
 use App\Http\Controllers\PlanController;
 use App\Http\Requests\UpdatePlannedSessionRequest;
-use App\Jobs\AI\AnalyzePlanDayVoiceJob;
 use App\Jobs\AI\AnalyzePlanSeasonVoiceJob;
 use App\Jobs\Run\RegeneratePlanJob;
 use App\Models\Activity;
@@ -24,9 +23,7 @@ use App\Models\TrainingPreference;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Models\AI\Analysis;
-use App\Services\AI\AnalysisOrigin;
 use App\Services\AI\AnalysisService;
-use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
 use App\Services\AI\PlanNarrationRequester;
 use App\Services\Run\Plan\ComplianceScorer;
@@ -164,29 +161,6 @@ it('updating a session automatically pins it, so the next regeneration leaves it
         ->and($fresh->pinned)->toBeTrue();
 });
 
-/**
- * A day already credited (a run logged on it) keeps its narration in sync
- * with an edit — this is the one case a day edit still re-narrates, per #939.
- */
-it('attributes an edit\'s re-narration to the athlete, so it re-arms the row\'s retry budget', function (): void {
-    Bus::fake();
-    $user = creditedRestMoveFixture();
-
-    $this->actingAs($user)->patch('/plan/sessions/'.creditedRestMoveSourceId($user), ['date' => '2026-08-10']);
-
-    Bus::assertDispatched(fn (AnalyzePlanDayVoiceJob $job): bool => $job->origin === AnalysisOrigin::User);
-});
-
-it('serves a demo plan edit of a credited day rule-based, dispatching no job', function (): void {
-    Bus::fake();
-    $user = creditedRestMoveFixture(['is_demo' => true]);
-
-    $this->actingAs($user)->patch('/plan/sessions/'.creditedRestMoveSourceId($user), ['date' => '2026-08-10']);
-
-    Bus::assertNotDispatched(AnalyzePlanDayVoiceJob::class);
-    expect(Analysis::query()->where('analysis_type', AnalysisType::PlanDayVoice)->firstOrFail()->status)->toBe(AnalysisStatus::Done);
-});
-
 it('serves a demo manual regenerate rule-based, dispatching no season job', function (): void {
     Bus::fake();
     $user = User::factory()->create(['is_demo' => true]);
@@ -195,23 +169,6 @@ it('serves a demo manual regenerate rule-based, dispatching no season job', func
     $this->actingAs($user)->post('/plan/regenerate');
 
     Bus::assertNotDispatched(AnalyzePlanSeasonVoiceJob::class);
-});
-
-/**
- * #939: an edit almost always touches a day still ahead, which has no read
- * to keep in sync — the day gets no narration request at all.
- */
-it('requests no narration for an edit to a day that has not been credited', function (): void {
-    Bus::fake();
-    $user = User::factory()->create();
-    $session = PlannedSession::factory()->for($user)->create([
-        'date' => Carbon::today()->addDay()->toDateString(),
-        'status' => PlannedSessionStatus::Planned,
-    ]);
-
-    $this->actingAs($user)->patch("/plan/sessions/{$session->id}", ['skipped' => true]);
-
-    Bus::assertNotDispatched(AnalyzePlanDayVoiceJob::class);
 });
 
 it('allows an explicit unpin alongside an edit', function (): void {
@@ -243,7 +200,7 @@ it('skips a day via the skipped flag, leaving the prescribed session in place', 
         ->and($fresh->session_type->value)->toBe('tempo');
 });
 
-it('restores a skipped future session to scoring and regeneration without requesting a day read', function (): void {
+it('restores a skipped future session to scoring and regeneration', function (): void {
     Bus::fake();
     $user = User::factory()->create();
     $date = Carbon::today()->addDay()->toDateString();
@@ -263,7 +220,6 @@ it('restores a skipped future session to scoring and regeneration without reques
     expect($restored->skipped)->toBeFalse()
         ->and($restored->pinned)->toBeFalse()
         ->and($restored->isExcused())->toBeFalse();
-    Bus::assertNotDispatched(AnalyzePlanDayVoiceJob::class);
 
     app(Periodizer::class)->regenerate($user);
 
@@ -473,7 +429,6 @@ it('rejects a session edit when regeneration replaced its bound row', function (
         $request,
         $staleSession,
         app(Periodizer::class),
-        app(PlanNarrationRequester::class),
         app(SessionMatcher::class),
         app(MakeUpService::class),
         app(AnalysisService::class),
@@ -812,39 +767,6 @@ it('keeps a session the athlete pinned to today leading, with the safety advice 
         ->and($todayDay['eased_from'])->toBeNull()
         ->and($todayDay['advice_note'])->toContain('reported concerning pain');
 });
-
-/**
- * Wednesday 12 Aug: a missed Tuesday Easy and a Monday rest day that carries
- * a run and is already scored.
- */
-function creditedRestMoveFixture(array $userAttributes = []): User
-{
-    Carbon::setTestNow('2026-08-12 08:00:00');
-    $user = User::factory()->create($userAttributes);
-    PlannedSession::factory()->for($user)->rest()->create([
-        'date' => '2026-08-10',
-        'status' => PlannedSessionStatus::Done,
-        'ran_anyway' => true,
-    ]);
-    PlannedSession::factory()->for($user)->create([
-        'date' => '2026-08-11',
-        'session_type' => SessionType::Easy,
-        'status' => PlannedSessionStatus::Missed,
-    ]);
-    ActivityDetail::factory()->for(Activity::factory()->for($user))->create([
-        'start_date_local' => Carbon::parse('2026-08-10 06:00:00'),
-        'distance' => 5000,
-        'moving_time' => 1800,
-        'elapsed_time' => 1800,
-    ]);
-
-    return $user;
-}
-
-function creditedRestMoveSourceId(User $user): int
-{
-    return PlannedSession::query()->where('user_id', $user->id)->whereDate('date', '2026-08-11')->value('id');
-}
 
 /**
  * @param  array<string, string>  $types  Y-m-d => session type

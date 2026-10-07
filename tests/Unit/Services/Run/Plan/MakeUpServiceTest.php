@@ -7,7 +7,6 @@ use App\Enums\SessionType;
 use App\Jobs\AI\AnalyzeActivityJob;
 use App\Jobs\AI\AnalyzeBriefingMascotVoiceJob;
 use App\Jobs\AI\AnalyzeCardFlavorJob;
-use App\Jobs\AI\AnalyzePlanDayVoiceJob;
 use App\Jobs\Run\ReconcilePlanJob;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
@@ -117,17 +116,14 @@ it('marks the plan for reconciliation from the earlier of the two days', functio
     Bus::assertDispatched(ReconcilePlanJob::class);
 });
 
-it('re-reads both days, invalidates the made-up day\'s run narration, and rebriefs when the make-up lands today', function (): void {
+it('invalidates the made-up day\'s run narration, and rebriefs when the make-up lands today', function (): void {
     [$user, $vacated, $target, $activity] = swappedMakeUp('2026-08-11', '2026-08-12');
 
     applyMakeUp($user, $vacated, $target);
 
-    expect(Analysis::query()->where('analysis_type', AnalysisType::PlanDayVoice)->pluck('discriminator')->sort()->values()->all())
-        ->toBe(['2026-08-11', '2026-08-12'])
-        ->and(Analysis::query()->where('analysis_type', AnalysisType::PostRunSpeech)->sole()->status)->not->toBe(AnalysisStatus::Done)
+    expect(Analysis::query()->where('analysis_type', AnalysisType::PostRunSpeech)->sole()->status)->not->toBe(AnalysisStatus::Done)
         ->and(Analysis::query()->where('analysis_type', AnalysisType::CardFlavor)->sole()->status)->not->toBe(AnalysisStatus::Done)
         ->and(Analysis::query()->where('analysis_type', AnalysisType::BriefingMascotVoice)->sole()->status)->not->toBe(AnalysisStatus::Done);
-    Bus::assertDispatchedTimes(AnalyzePlanDayVoiceJob::class, 2);
     Bus::assertDispatched(fn (AnalyzeActivityJob $job): bool => $job->subjectId === $activity->id);
     Bus::assertDispatched(AnalyzeCardFlavorJob::class);
     Bus::assertDispatched(AnalyzeBriefingMascotVoiceJob::class);
@@ -183,6 +179,5 @@ it('keeps the demo athlete rule-based, with no LLM call and no reconciliation', 
     applyMakeUp($user, $vacated, $target);
 
     Bus::assertNothingDispatched();
-    expect($target->fresh()->intent_evidence['advice_history'])->toBe('declared_after_run')
-        ->and(Analysis::query()->where('analysis_type', AnalysisType::PlanDayVoice)->where('status', '!=', AnalysisStatus::Done)->exists())->toBeFalse();
+    expect($target->fresh()->intent_evidence['advice_history'])->toBe('declared_after_run');
 });

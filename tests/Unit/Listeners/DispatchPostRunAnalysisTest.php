@@ -5,7 +5,6 @@ declare(strict_types=1);
 use App\Models\User;
 use App\Events\ActivityIngested;
 use App\Jobs\AI\AnalyzeActivityJob;
-use App\Jobs\AI\AnalyzePlanDayVoiceJob;
 use App\Jobs\Run\ReconcilePlanJob;
 use App\Jobs\Run\RecalibrateTrainingHistoryJob;
 use App\Services\Run\Plan\PlanRecalibrationService;
@@ -35,10 +34,8 @@ use App\Actions\AI\StaggerBackfillAction;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
 use App\Services\AI\NarrationEligibility;
-use App\Services\AI\PlanNarrationRequester;
 use App\Services\Run\Plan\ComplianceScorer;
 use App\Services\Run\Plan\PlanReconciliationDispatch;
-use App\Services\Run\Plan\PlanReconciliationService;
 use App\Services\Run\Plan\RestClampRecorder;
 use App\Services\AI\MaterialFingerprint;
 use App\Services\Run\Metrics\WeeklyAggregator;
@@ -776,7 +773,6 @@ it('skips weekly recap staging when rebuildForwardFrom finds no in-window histor
         $weekly,
         app(StaggerBackfillAction::class),
         app(NarrationEligibility::class),
-        app(PlanNarrationRequester::class),
         app(ComplianceScorer::class),
         app(PlanReconciliationDispatch::class),
         app(TrendSnapshotRepairDispatch::class),
@@ -786,163 +782,6 @@ it('skips weekly recap staging when rebuildForwardFrom finds no in-window histor
     $listener->handle(new ActivityIngested($activity->id));
 
     expect(Analysis::query()->where('analysis_type', AnalysisType::WeeklyRecap)->exists())->toBeFalse();
-});
-
-/**
- * creditIfEarned() may flip today's row to credited, which turns its blurb from
- * "tempo day, about 5.9 km" into a read of what was run. The fingerprint gate is
- * what keeps that to one call: a second run the same day moves the score, not
- * the verdict.
- */
-it('re-narrates today plan day blurb once the run credits the day', function (): void {
-    $activity = analyzedActivity(Carbon::today()->setTime(6, 30)->toDateTimeString());
-    PlannedSession::factory()->for($activity->user)->create([
-        'date' => Carbon::today()->toDateString(),
-        'session_type' => SessionType::Easy,
-        'status' => PlannedSessionStatus::Planned,
-    ]);
-
-    fire($activity);
-
-    expect(Analysis::query()
-        ->where('subject_type', AnalysisType::PLAN_DAY_VOICE_SUBJECT_TYPE)
-        ->where('subject_id', $activity->user_id)
-        ->where('analysis_type', AnalysisType::PlanDayVoice)
-        ->where('discriminator', Carbon::today()->toDateString())
-        ->exists())->toBeFalse();
-
-    // A late upload can leave an older pending marker ahead of today's run.
-    $activity->user->forceFill(['plan_reconciliation_pending_from' => Carbon::yesterday()])->saveQuietly();
-    app(PlanReconciliationService::class)->drain($activity->user_id);
-
-    expect(Analysis::query()
-        ->where('subject_type', AnalysisType::PLAN_DAY_VOICE_SUBJECT_TYPE)
-        ->where('subject_id', $activity->user_id)
-        ->where('analysis_type', AnalysisType::PlanDayVoice)
-        ->where('discriminator', Carbon::today()->toDateString())
-        ->exists())->toBeTrue();
-});
-
-it('fills a demo today plan day blurb rule-based after the run credits the day', function (): void {
-    $demo = User::factory()->demo()->create();
-    $activity = analyzedActivity(Carbon::today()->setTime(6, 30)->toDateTimeString(), $demo->id);
-    PlannedSession::factory()->for($demo)->create([
-        'date' => Carbon::today()->toDateString(),
-        'session_type' => SessionType::Easy,
-        'status' => PlannedSessionStatus::Planned,
-    ]);
-
-    fire($activity);
-
-    expect(Analysis::query()
-        ->where('subject_type', AnalysisType::PLAN_DAY_VOICE_SUBJECT_TYPE)
-        ->where('subject_id', $demo->id)
-        ->where('analysis_type', AnalysisType::PlanDayVoice)
-        ->where('discriminator', Carbon::today()->toDateString())
-        ->firstOrFail()
-        ->status)->toBe(AnalysisStatus::Done);
-    Bus::assertNotDispatched(AnalyzePlanDayVoiceJob::class);
-});
-
-it('does not fill a demo today plan day blurb before the run credits the day', function (): void {
-    $demo = User::factory()->demo()->create();
-    $activity = Activity::factory()->create([
-        'user_id' => $demo->id,
-        'analyzed_at' => Carbon::now(),
-    ]);
-    ActivityDetail::factory()->for($activity)->create([
-        'start_date_local' => Carbon::today()->setTime(6, 30),
-        'distance' => 50.0,
-        'moving_time' => 20,
-        'elapsed_time' => 20,
-    ]);
-    PlannedSession::factory()->for($demo)->create([
-        'date' => Carbon::today()->toDateString(),
-        'session_type' => SessionType::Easy,
-        'status' => PlannedSessionStatus::Planned,
-    ]);
-
-    fire($activity);
-
-    expect(Analysis::query()
-        ->where('subject_type', AnalysisType::PLAN_DAY_VOICE_SUBJECT_TYPE)
-        ->where('subject_id', $demo->id)
-        ->where('analysis_type', AnalysisType::PlanDayVoice)
-        ->where('discriminator', Carbon::today()->toDateString())
-        ->exists())->toBeFalse();
-});
-
-it('refreshes a demo today plan day blurb when the credited day changes', function (): void {
-    $demo = User::factory()->demo()->create();
-    $activity = analyzedActivity(Carbon::today()->setTime(6, 30)->toDateTimeString(), $demo->id);
-    $session = PlannedSession::factory()->for($demo)->create([
-        'date' => Carbon::today()->toDateString(),
-        'session_type' => SessionType::Easy,
-        'status' => PlannedSessionStatus::Planned,
-    ]);
-
-    fire($activity);
-
-    $row = Analysis::query()
-        ->where('subject_type', AnalysisType::PLAN_DAY_VOICE_SUBJECT_TYPE)
-        ->where('subject_id', $demo->id)
-        ->where('analysis_type', AnalysisType::PlanDayVoice)
-        ->where('discriminator', Carbon::today()->toDateString())
-        ->firstOrFail();
-    $initialFingerprint = $row->content_fingerprint;
-
-    $session->forceFill(['skipped' => true])->saveQuietly();
-    fire($activity);
-
-    expect($initialFingerprint)->not->toBeNull()
-        ->and($row->fresh()->content_fingerprint)->not->toBe($initialFingerprint);
-});
-
-/**
- * #939: a day not yet run has no read, and nothing requests one for it — a
- * short run that lands but doesn't earn the day's credit asks for nothing.
- */
-it('requests no plan day read for a run that does not credit the day', function (): void {
-    $user = User::factory()->create();
-    PlannedSession::factory()->for($user)->create([
-        'date' => Carbon::today()->toDateString(),
-        'session_type' => SessionType::Easy,
-        'status' => PlannedSessionStatus::Planned,
-    ]);
-    $activity = Activity::factory()->create(['user_id' => $user->id, 'analyzed_at' => Carbon::now()]);
-    ActivityDetail::factory()->for($activity)->create([
-        'start_date_local' => Carbon::today()->setTime(6, 30),
-        // Far too short to clear the 35% credit threshold against any
-        // plausible prescribed distance.
-        'distance' => 50.0,
-        'moving_time' => 20,
-        'elapsed_time' => 20,
-    ]);
-
-    fire($activity);
-
-    expect(Analysis::query()
-        ->where('subject_type', AnalysisType::PLAN_DAY_VOICE_SUBJECT_TYPE)
-        ->where('subject_id', $activity->user_id)
-        ->where('discriminator', Carbon::today()->toDateString())
-        ->exists())->toBeFalse();
-});
-
-/** Re-narrating a backfilled day would rewrite history at LLM prices. */
-it('leaves an older day blurb alone when the ingest is a backfill', function (): void {
-    $activity = analyzedActivity('2026-05-10 06:30:00');
-    PlannedSession::factory()->for($activity->user)->create([
-        'date' => '2026-05-10',
-        'session_type' => SessionType::Easy,
-        'status' => PlannedSessionStatus::Planned,
-    ]);
-
-    fire($activity);
-
-    expect(Analysis::query()
-        ->where('subject_type', AnalysisType::PLAN_DAY_VOICE_SUBJECT_TYPE)
-        ->where('discriminator', '2026-05-10')
-        ->exists())->toBeFalse();
 });
 
 it('fills a pre-connect run rule-based and dispatches no LLM job for it', function (): void {
@@ -1085,8 +924,7 @@ it('still stages the recaps and scores the day for an athlete away from the app'
 
     expect($session->fresh()->status->isCredited())->toBeTrue()
         ->and(Analysis::query()->where('analysis_type', AnalysisType::WeeklyRecap)->exists())->toBeTrue()
-        ->and(Analysis::query()->where('analysis_type', AnalysisType::MonthlyRecap)->exists())->toBeTrue()
-        ->and(Analysis::query()->where('analysis_type', AnalysisType::PlanDayVoice)->exists())->toBeFalse();
+        ->and(Analysis::query()->where('analysis_type', AnalysisType::MonthlyRecap)->exists())->toBeTrue();
 });
 
 it('narrates the run of an athlete seen on the edge of the active window exactly as before', function (): void {

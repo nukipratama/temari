@@ -32,7 +32,6 @@ use App\Enums\PlannedSessionStatus;
 use App\Enums\PlanPhase;
 use App\Services\AI\Agent\Tools\PlanAdherenceTool;
 use App\Services\AI\Agent\Tools\PlanContextTool;
-use App\Services\AI\Agent\Tools\PlanDayTool;
 use App\Services\Run\Plan\PlanRenderer;
 use App\Services\Run\Plan\TrainingBaseline;
 use App\Services\AI\Agent\Tools\TrainingPacesTool;
@@ -971,238 +970,6 @@ it('reads an empty mood mix when the runner has no story lines', function (): vo
         ->and($reading['total_runs'])->toBe(0);
 });
 
-// ── PlanDayTool ───────────────────────────────────────────────────────
-
-function planDayTool(PlannedSession $session, TrainingBaseline $baseline, ?float $completedKm = null): PlanDayTool
-{
-    return new PlanDayTool($session, $baseline, app(VdotEstimator::class), app(TrainingPaceCalculator::class), $completedKm);
-}
-
-/**
- * Regression for a bug where the tool always read `isPrimaryEasy: false` and
- * `volumeMultiplier: 1.0`, so every easy day (and every week with a phase
- * ramp) narrated the wrong distance — see {@see PlanRenderer::coreKmForSession()}.
- */
-it('sizes the week\'s primary easy day bigger than a later easy day', function (): void {
-    $user = User::factory()->create();
-    $monday = Carbon::parse('2026-09-07');
-    $primaryEasy = PlannedSession::factory()->for($user)->create([
-        'date' => $monday->toDateString(),
-        'session_type' => SessionType::Easy,
-    ]);
-    $laterEasy = PlannedSession::factory()->for($user)->create([
-        'date' => $monday->copy()->addDays(2)->toDateString(),
-        'session_type' => SessionType::Easy,
-    ]);
-    $baseline = app(TrainingBaseline::class);
-
-    $primaryReading = planDayTool($primaryEasy, $baseline)->handle([]);
-    $laterReading = planDayTool($laterEasy, $baseline)->handle([]);
-
-    expect($primaryReading['distance_km'])->toBeGreaterThan($laterReading['distance_km']);
-});
-
-it('scales today\'s reported distance by the week\'s own volume multiplier', function (): void {
-    $user = User::factory()->create();
-    $today = Carbon::today();
-    ActivityDetail::factory()->for(Activity::factory()->for($user)->analyzed()->create())->create([
-        'distance' => 15_000,
-        'start_date_local' => $today->copy()->subDays(2),
-    ]);
-    $session = PlannedSession::factory()->for($user)->create([
-        'date' => $today->toDateString(),
-        'session_type' => SessionType::Long,
-        'phase' => PlanPhase::Build,
-        'volume_multiplier' => 1.3,
-    ]);
-    $baseline = app(TrainingBaseline::class);
-    $longRunKm = $baseline->forUser($user, $today)['long_run_km'];
-    $flatOldReading = round($longRunKm, 1); // the pre-fix figure: multiplier hardcoded to 1.0
-
-    $reading = planDayTool($session, $baseline)->handle([]);
-
-    expect($reading['distance_km'])
-        ->toBe(round($longRunKm * 1.3, 1))
-        ->not->toBe($flatOldReading);
-});
-
-it('caps a narrated Long day at recent single-run capacity', function (): void {
-    $user = User::factory()->create();
-    $activity = Activity::factory()->for($user)->analyzed()->create();
-    ActivityDetail::factory()->for($activity)->create([
-        'start_date_local' => Carbon::today()->subDay(),
-        'distance' => 2_000.0,
-    ]);
-    $session = PlannedSession::factory()->for($user)->create([
-        'date' => Carbon::today()->toDateString(),
-        'session_type' => SessionType::Long,
-    ]);
-
-    expect(planDayTool($session, app(TrainingBaseline::class))->handle([])['distance_km'])->toBe(3.0);
-});
-
-it('reads a graded day from the prescription persisted by the scorer', function (): void {
-    $user = User::factory()->create();
-    $session = PlannedSession::factory()->for($user)->create([
-        'date' => Carbon::today()->toDateString(),
-        'session_type' => SessionType::Long,
-        'status' => PlannedSessionStatus::Done,
-        'prescribed_km' => 4.2,
-    ]);
-
-    expect(planDayTool($session, app(TrainingBaseline::class), 4.2)->handle([])['distance_km'])->toBe(4.2);
-});
-
-/**
- * The verdict a narrator reads has to be the exact one the grade persisted —
- * see `docs/decisions/a-day-is-graded-on-distance-and-intent.md`.
- */
-it('words a tempo verdict and its evidence once the day is credited', function (): void {
-    $user = User::factory()->create();
-    $session = PlannedSession::factory()->for($user)->create([
-        'session_type' => SessionType::Tempo,
-        'date' => Carbon::today()->toDateString(),
-        'status' => PlannedSessionStatus::Done,
-        'intent_verdict' => IntentVerdict::Hit,
-        'intent_evidence' => ['block_minutes' => 20.0, 'target_pace_sec' => 300, 'window' => '20min', 'window_pace_sec' => 295, 'basis' => 'pace'],
-    ]);
-
-    $reading = planDayTool($session, app(TrainingBaseline::class), completedKm: 5.9)->handle([]);
-
-    expect($reading['intent'])->toBe('the hard block got done at the effort it asked for')
-        ->and($reading['intent_detail'])->toBe('best 20-minute stretch averaged 4:55/km, on the 5:00/km target pace')
-        ->and($reading)->not->toHaveKey('intent_evidence');
-});
-
-/**
- * An easy day graded hit on its hill-adjusted pace (449 s/km) while the card
- * showed 7:22/km. The read inverted it ("missed the hit mark") from the raw
- * pace-vs-ceiling pair, so the payload now carries the outcome in words, the
- * card's pace first, and no ceiling to compare against.
- */
-it('hands the model an easy day that stayed easy in words, quoting the card\'s pace', function (): void {
-    $session = PlannedSession::factory()->for(User::factory()->create())->create([
-        'session_type' => SessionType::Easy,
-        'date' => Carbon::today()->toDateString(),
-        'status' => PlannedSessionStatus::Done,
-        'intent_verdict' => IntentVerdict::Hit,
-        'intent_evidence' => ['pace_sec' => 449, 'ceiling_pace_sec' => 408, 'basis' => 'pace'],
-    ]);
-
-    $reading = new PlanDayTool($session, app(TrainingBaseline::class), app(VdotEstimator::class), app(TrainingPaceCalculator::class), 8.0, 442)->handle([]);
-
-    expect($reading['intent'])->toBe('it stayed at the easy effort the day asked for')
-        ->and($reading['intent_detail'])->toBe('averaged 7:22/km; effort-adjusted for hills that is 7:29/km')
-        ->and($reading)->not->toHaveKey('intent_evidence')
-        ->and(json_encode($reading, JSON_THROW_ON_ERROR))->not->toContain('6:48')->not->toContain('ceiling')->not->toContain('"hit"');
-});
-
-/** The eased long day graded hit at 419 s/km against a 408 s/km limit, the second inverted read. */
-it('hands the model an eased long day that stayed easy without the limit it was graded against', function (): void {
-    $session = PlannedSession::factory()->for(User::factory()->create())->create([
-        'session_type' => SessionType::Long,
-        'date' => Carbon::today()->toDateString(),
-        'status' => PlannedSessionStatus::Done,
-        'intent_verdict' => IntentVerdict::Hit,
-        'intent_evidence' => ['pace_sec' => 419, 'ceiling_pace_sec' => 408, 'basis' => 'pace'],
-    ]);
-
-    $reading = new PlanDayTool($session, app(TrainingBaseline::class), app(VdotEstimator::class), app(TrainingPaceCalculator::class), 7.0, 418)->handle([]);
-
-    expect($reading['intent'])->toBe('it stayed at the easy effort the day asked for')
-        ->and($reading['intent_detail'])->toBe('averaged 6:58/km')
-        ->and(json_encode($reading, JSON_THROW_ON_ERROR))->not->toContain('6:48')->not->toContain('ceiling');
-});
-
-it('hands the model a heart-rate too-hard day with the direction already stated', function (): void {
-    $session = PlannedSession::factory()->for(User::factory()->create())->create([
-        'session_type' => SessionType::Easy,
-        'date' => Carbon::today()->toDateString(),
-        'status' => PlannedSessionStatus::Overreached,
-        'intent_verdict' => IntentVerdict::TooHard,
-        'intent_evidence' => ['pace_sec' => 395, 'ceiling_pace_sec' => 408, 'basis' => 'heart_rate', 'zone' => 'Z2', 'above_zone_pct' => 64],
-    ]);
-
-    $reading = new PlanDayTool($session, app(TrainingBaseline::class), app(VdotEstimator::class), app(TrainingPaceCalculator::class), 8.0, 396)->handle([]);
-
-    expect($reading['intent'])->toBe('it ran harder than the easy effort the day asked for')
-        ->and($reading['intent_detail'])->toBe('averaged 6:36/km, and 64% of the run sat above Z2')
-        ->and(json_encode($reading, JSON_THROW_ON_ERROR))->not->toContain('too_hard');
-});
-
-/** unknown words itself exactly like every other verdict, so the read can say so plainly. */
-it('words an unknown intent verdict rather than omitting it', function (): void {
-    $user = User::factory()->create();
-    $session = PlannedSession::factory()->for($user)->create([
-        'session_type' => SessionType::Interval,
-        'date' => Carbon::today()->toDateString(),
-        'status' => PlannedSessionStatus::Done,
-        'intent_verdict' => IntentVerdict::Unknown,
-        'intent_evidence' => [],
-    ]);
-    $baseline = app(TrainingBaseline::class);
-
-    $reading = planDayTool($session, $baseline, completedKm: 6.4)->handle([]);
-
-    expect($reading['intent'])->toBe("this run's data can't tell how the effort went")
-        ->and($reading)->not->toHaveKey('intent_detail');
-});
-
-/** No intent to judge (a rest/race day, or one never judged) carries no key at all. */
-it('omits intent entirely when the day was never judged', function (): void {
-    $user = User::factory()->create();
-    $session = PlannedSession::factory()->for($user)->create([
-        'session_type' => SessionType::Rest,
-        'date' => Carbon::today()->toDateString(),
-        'status' => PlannedSessionStatus::Done,
-        'intent_verdict' => null,
-    ]);
-    $baseline = app(TrainingBaseline::class);
-
-    $reading = planDayTool($session, $baseline, completedKm: 0.0)->handle([]);
-
-    expect($reading)->not->toHaveKey('intent')
-        ->and($reading)->not->toHaveKey('intent_detail');
-});
-
-/** A pace-only ease is carried the same way `eased_from` names a type/distance ease. */
-it('carries the eased pace and the pace it replaced once readiness eases the day\'s pace only', function (): void {
-    $user = User::factory()->create();
-    PersonalRecord::factory()->for($user)->create(['category' => '5km', 'value_sec' => 1200]);
-    seedConfirmedEffort($user, 5000, 1200);
-    $session = PlannedSession::factory()->for($user)->create([
-        'session_type' => SessionType::Easy,
-        'date' => Carbon::today()->toDateString(),
-        'eased_pace_sec_per_km' => 400,
-    ]);
-    $baseline = app(TrainingBaseline::class);
-    $easyPace = app(TrainingPaceCalculator::class)
-        ->fromVdotResult(app(VdotEstimator::class)->estimate($user, Carbon::today()))['easy'];
-
-    $reading = planDayTool($session, $baseline)->handle([]);
-
-    expect($reading['pace_sec'])->toBe(400)
-        ->and($reading['pace_formatted'])->toBe(PaceFormatter::format(400.0))
-        ->and($reading['pace_eased_from'])->toBe([
-            'pace_sec' => $easyPace,
-            'pace_formatted' => PaceFormatter::format((float) $easyPace),
-        ]);
-});
-
-it('carries no pace field at all on a day that was not pace-eased', function (): void {
-    $user = User::factory()->create();
-    $session = PlannedSession::factory()->for($user)->create([
-        'session_type' => SessionType::Easy,
-        'date' => Carbon::today()->toDateString(),
-    ]);
-    $baseline = app(TrainingBaseline::class);
-
-    $reading = planDayTool($session, $baseline)->handle([]);
-
-    expect($reading)->not->toHaveKey('pace_sec')
-        ->and($reading)->not->toHaveKey('pace_eased_from');
-});
-
 // ── PlanContextTool ───────────────────────────────────────────────────
 
 function planContextTool(User $user, Carbon $from, Carbon $through): PlanContextTool
@@ -1315,8 +1082,7 @@ it('derives the distance for a day the scorer has not reached yet', function ():
 });
 
 /**
- * Regression sibling to {@see PlanDayTool}'s own test: this tool falls back to
- * the same {@see PlanRenderer::coreKmForSession()} figure, which must carry the
+ * This tool falls back to the {@see PlanRenderer::coreKmForSession()} figure, which must carry the
  * week's real volume multiplier rather than a hardcoded 1.0.
  */
 it('scales the fallback distance by the week\'s own volume multiplier', function (): void {
@@ -1711,7 +1477,7 @@ it('exposes no signed numeric field across every tool payload touched by the #10
 it('names goal-pace work and its goal pace to the plan tools, and nothing on an ordinary quality day', function (): void {
     $user = User::factory()->create();
     $monday = Carbon::parse('2026-09-07');
-    $goalPace = PlannedSession::factory()->for($user)->create([
+    PlannedSession::factory()->for($user)->create([
         'date' => $monday->toDateString(),
         'session_type' => SessionType::Interval,
         'prescribed_hard_minutes' => 16,
@@ -1728,8 +1494,7 @@ it('names goal-pace work and its goal pace to the plan tools, and nothing on an 
 
     $days = planContextTool($user, $monday, $monday->copy()->addDays(2))->handle([])['days'];
 
-    expect(planDayTool($goalPace, app(TrainingBaseline::class))->handle([])['goal_pace'])->toBe('10k')
-        ->and($days[0]['goal_pace'])->toBe('10k')
+    expect($days[0]['goal_pace'])->toBe('10k')
         ->and($days[0]['target_pace_sec'])->toBe(300)
         ->and($days[0]['target_pace_formatted'])->toBe('5:00')
         ->and($days[1])->not->toHaveKey('goal_pace');
@@ -1738,7 +1503,7 @@ it('names goal-pace work and its goal pace to the plan tools, and nothing on an 
 it('names a time trial, its distance and its aim to the plan tools, and nothing on an ordinary quality day', function (): void {
     $user = User::factory()->create();
     $monday = Carbon::parse('2026-09-07');
-    $trial = PlannedSession::factory()->for($user)->create([
+    PlannedSession::factory()->for($user)->create([
         'date' => $monday->toDateString(),
         'session_type' => SessionType::Interval,
         'prescribed_hard_minutes' => 25,
@@ -1755,8 +1520,7 @@ it('names a time trial, its distance and its aim to the plan tools, and nothing 
 
     $days = planContextTool($user, $monday, $monday->copy()->addDays(2))->handle([])['days'];
 
-    expect(planDayTool($trial, app(TrainingBaseline::class))->handle([])['time_trial'])->toBe(['distance_km' => 5.0, 'aim_time' => '25:00'])
-        ->and($days[0]['time_trial'])->toBe(['distance_km' => 5.0, 'aim_time' => '25:00'])
+    expect($days[0]['time_trial'])->toBe(['distance_km' => 5.0, 'aim_time' => '25:00'])
         ->and($days[0]['target_pace_sec'])->toBe(300)
         ->and($days[0]['distance_km'])->toBe(5.0)
         ->and($days[1])->not->toHaveKey('time_trial');
@@ -1765,7 +1529,7 @@ it('names a time trial, its distance and its aim to the plan tools, and nothing 
 it('names stepping-stone work and its pace to the plan tools, never as goal pace', function (): void {
     $user = User::factory()->create();
     $monday = Carbon::parse('2026-09-07');
-    $steppingStone = PlannedSession::factory()->for($user)->create([
+    PlannedSession::factory()->for($user)->create([
         'date' => $monday->toDateString(),
         'session_type' => SessionType::Interval,
         'prescribed_hard_minutes' => 16,
@@ -1774,12 +1538,9 @@ it('names stepping-stone work and its pace to the plan tools, never as goal pace
         'prescription_race_context' => ['distance_m' => 10_000, 'goal_pace_sec_per_km' => 291, 'kind' => '10k', 'band' => 'unsupported'],
     ]);
 
-    $day = planDayTool($steppingStone, app(TrainingBaseline::class))->handle([]);
     $days = planContextTool($user, $monday, $monday)->handle([])['days'];
 
-    expect($day['stepping_stone'])->toBe('10k')
-        ->and($day)->not->toHaveKey('goal_pace')
-        ->and($days[0]['stepping_stone'])->toBe('10k')
+    expect($days[0]['stepping_stone'])->toBe('10k')
         ->and($days[0])->not->toHaveKey('goal_pace')
         ->and($days[0]['target_pace_sec'])->toBe(291)
         ->and($days[0]['target_pace_formatted'])->toBe('4:51');

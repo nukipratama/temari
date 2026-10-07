@@ -24,7 +24,6 @@ use App\Services\AI\Agent\Tools\CardIdentityTool;
 use App\Services\AI\Agent\Tools\LifetimeStatsTool;
 use App\Services\AI\Agent\Tools\WeatherTool;
 use App\Services\AI\Agent\Tools\MonthTotalsTool;
-use App\Services\AI\Agent\Tools\PlanDayTool;
 use App\Services\AI\Agent\Tools\PlanSeasonTool;
 use App\Services\AI\Agent\Tools\TrainingPacesTool;
 use App\Services\AI\Agent\Tools\TrendRangeTool;
@@ -38,7 +37,7 @@ use App\Services\AI\Narrators\NarratorContinuity;
 use App\Services\AI\Narrators\OutcomeLabels;
 use App\Services\AI\Narrators\QuotedFigures;
 use App\Services\AI\Narrators\MonthlyRecapNarrator;
-use App\Services\AI\Narrators\PlanDayVoiceNarrator;
+use App\Services\AI\Narrators\PlanClampVoiceNarrator;
 use App\Services\AI\Narrators\PlanSeasonVoiceNarrator;
 use App\Services\AI\Narrators\PostRunSpeechNarrator;
 use App\Services\AI\Narrators\RunQuestionNarrator;
@@ -47,11 +46,8 @@ use App\Services\AI\Narrators\RunInsightNarrator;
 use App\Services\AI\Narrators\TrendReadNarrator;
 use App\Services\AI\Narrators\WeeklyRecapNarrator;
 use App\Services\AI\RuleBased\RuleBasedNarrationFiller;
-use App\Services\Run\Plan\SessionMatcher;
-use App\Services\Run\Plan\PlanRenderer;
 use App\Services\Run\Plan\SustainedAheadOfRacePace;
 use App\Services\Run\Plan\TrainingBaseline;
-use App\Services\AI\Narrators\PlanClampVoiceNarrator;
 use App\Services\Run\LifetimeStats;
 use App\Services\Run\Metrics\PaceFormatter;
 use App\Services\Run\Metrics\RelativeEffort;
@@ -799,16 +795,6 @@ it('WeatherTool feeds the run conditions into the context', function (): void {
     expect($context['weather_temp_c'])->toBe(33);
 });
 
-// ── PlanDayVoiceNarrator ──────────────────────────────────────────────
-
-it('PlanDayVoiceNarrator returns voice on valid JSON', function (): void {
-    $user = User::factory()->create();
-    $session = PlannedSession::factory()->for($user)->create(['session_type' => 'tempo', 'date' => Carbon::today()->toDateString()]);
-    $caller = fakeCaller(json_encode(['voice' => 'tempo work today.'], JSON_THROW_ON_ERROR));
-    $narrator = new PlanDayVoiceNarrator($caller, app(TrainingBaseline::class), app(SessionMatcher::class), app(VdotEstimator::class), app(TrainingPaceCalculator::class));
-    expect($narrator->generate($session))->toBe('tempo work today.');
-});
-
 /**
  * @param  array<string, mixed>  $context
  */
@@ -820,117 +806,6 @@ function assertOneStepWithContext(ClientFake $client, array $context): void
         && ! array_key_exists('tools', $params));
 }
 
-it('PlanDayVoiceNarrator hands the day plan in the user message and answers in one step with no tools', function (): void {
-    $session = PlannedSession::factory()->for(User::factory()->create())->create(['session_type' => 'tempo', 'date' => Carbon::today()->toDateString()]);
-    [$caller, $client] = capturingCaller(json_encode(['voice' => 'tempo work today.'], JSON_THROW_ON_ERROR));
-    $narrator = new PlanDayVoiceNarrator($caller, app(TrainingBaseline::class), app(SessionMatcher::class), app(VdotEstimator::class), app(TrainingPaceCalculator::class));
-
-    $narrator->generate($session);
-
-    assertOneStepWithContext($client, new PlanDayTool($session, app(TrainingBaseline::class), app(VdotEstimator::class), app(TrainingPaceCalculator::class))->handle([]));
-    expect(narratorPrompt(PlanDayVoiceNarrator::class))->not->toMatch('/\bget_[a-z_]+/');
-});
-
-it('PlanDayVoiceNarrator throws on missing voice key', function (): void {
-    $user = User::factory()->create();
-    $session = PlannedSession::factory()->for($user)->create();
-    $caller = fakeCaller(json_encode(['other' => 'x'], JSON_THROW_ON_ERROR));
-    $narrator = new PlanDayVoiceNarrator($caller, app(TrainingBaseline::class), app(SessionMatcher::class), app(VdotEstimator::class), app(TrainingPaceCalculator::class));
-    $narrator->generate($session);
-})->throws(UnavailableException::class);
-
-it('PlanDayTool reports the prescribed session, distance and skip state', function (): void {
-    $user = User::factory()->create();
-    $session = PlannedSession::factory()->for($user)->create([
-        'session_type' => 'long',
-        'phase' => 'build',
-        'date' => Carbon::today()->toDateString(),
-        'skipped' => false,
-    ]);
-
-    $context = new PlanDayTool($session, app(TrainingBaseline::class), app(VdotEstimator::class), app(TrainingPaceCalculator::class))->handle([]);
-
-    expect($context['session_type'])->toBe('long')
-        ->and($context['phase'])->toBe('build')
-        ->and($context['distance_km'])->toBeFloat()
-        ->and($context['skipped'])->toBeFalse()
-        // A day still ahead of the athlete has no outcome. The keys are ABSENT
-        // rather than null: one that is always there teaches the model the day
-        // is over even when it is not.
-        ->and($context)->not->toHaveKey('status')
-        ->and($context)->not->toHaveKey('completed_km')
-        ->and($context)->not->toHaveKey('ran_anyway');
-});
-
-it('PlanDayTool asks for the eased distance on a clamped day, not the one it replaced', function (): void {
-    $user = User::factory()->create();
-    $session = PlannedSession::factory()->for($user)->create([
-        'session_type' => 'tempo',
-        'phase' => 'build',
-        'date' => Carbon::today()->toDateString(),
-        'skipped' => false,
-        'clamped_km' => 1.2,
-    ]);
-
-    $context = new PlanDayTool($session, app(TrainingBaseline::class), app(VdotEstimator::class), app(TrainingPaceCalculator::class))->handle([]);
-
-    // The card says an easy 1.2 km. The blurb has to say an easy 1.2 km too.
-    expect($context['session_type'])->toBe('easy')
-        ->and($context['distance_km'])->toBe(1.2)
-        ->and($context['eased_from']['session_type'])->toBe('tempo')
-        ->and($context['eased_from']['distance_km'])->toBeGreaterThan(1.2);
-});
-
-/** The real case: a tempo eased to easy with the distance held names tempo as context only. */
-it('PlanDayTool describes a tempo eased to easy with its distance held as the easy run', function (): void {
-    $user = User::factory()->create();
-    $session = PlannedSession::factory()->for($user)->create([
-        'session_type' => 'tempo',
-        'phase' => 'build',
-        'date' => Carbon::today()->toDateString(),
-    ]);
-    $baseline = app(TrainingBaseline::class)->forUser($user, Carbon::today());
-    $storedKm = PlanRenderer::coreKmForSession($session, $baseline['long_run_km'], $baseline['long_run_cap_km'], $baseline['self_scaled']);
-    $session->update(['clamped_km' => $storedKm]);
-
-    $context = new PlanDayTool($session, app(TrainingBaseline::class), app(VdotEstimator::class), app(TrainingPaceCalculator::class))->handle([]);
-
-    expect($context['session_type'])->toBe('easy')
-        ->and($context['distance_km'])->toBe($storedKm)
-        ->and($context['eased_from'])->toBe(['session_type' => 'tempo']);
-});
-
-it('PlanDayTool describes a rest-clamped day as rest', function (): void {
-    $user = User::factory()->create();
-    $session = PlannedSession::factory()->for($user)->create([
-        'session_type' => 'long',
-        'phase' => 'build',
-        'date' => Carbon::today()->toDateString(),
-        'rest_clamped_at' => Carbon::today()->setTime(0, 1),
-    ]);
-
-    $context = new PlanDayTool($session, app(TrainingBaseline::class), app(VdotEstimator::class), app(TrainingPaceCalculator::class))->handle([]);
-
-    expect($context['session_type'])->toBe('rest')
-        ->and($context['distance_km'])->toBe(0.0)
-        ->and($context['eased_from']['session_type'])->toBe('long');
-});
-
-it('PlanDayTool leaves an unclamped day with no easing to explain', function (): void {
-    $user = User::factory()->create();
-    $session = PlannedSession::factory()->for($user)->create([
-        'session_type' => 'tempo',
-        'phase' => 'build',
-        'date' => Carbon::today()->toDateString(),
-        'skipped' => false,
-    ]);
-
-    $context = new PlanDayTool($session, app(TrainingBaseline::class), app(VdotEstimator::class), app(TrainingPaceCalculator::class))->handle([]);
-
-    expect($context['session_type'])->toBe('tempo')
-        ->and($context)->not->toHaveKey('eased_from');
-});
-
 it('PlanClampVoiceNarrator names the eased session as the one being run today', function (): void {
     $prompt = narratorPrompt(PlanClampVoiceNarrator::class);
 
@@ -938,100 +813,20 @@ it('PlanClampVoiceNarrator names the eased session as the one being run today', 
         ->and($prompt)->not->toContain('SAY WHY, NOT WHAT');
 });
 
-it('PlanDayTool carries how the day went once it has been graded', function (): void {
-    $user = User::factory()->create();
-    $session = PlannedSession::factory()->for($user)->create([
-        'session_type' => 'tempo',
-        'phase' => 'build',
-        'date' => Carbon::today()->toDateString(),
-        'skipped' => false,
-        'status' => 'overreached',
-        'ran_anyway' => true,
-    ]);
-
-    $context = new PlanDayTool($session, app(TrainingBaseline::class), app(VdotEstimator::class), app(TrainingPaceCalculator::class), 10.4)->handle([]);
-
-    expect($context['status'])->toBe('overreached')
-        ->and($context['completed_km'])->toBe(10.4)
-        ->and($context['ran_anyway'])->toBeTrue()
-        // The ask stays beside the outcome: the line reads one against the other.
-        ->and($context['distance_km'])->toBeFloat();
-});
-
-/**
- * Prod shipped "tempo day, about 5.9 km. base work, nothing flashy." — the model
- * reading `phase: base` and rendering it as a description of the session's
- * effort. A threshold set is quality work in every phase, so that line tells the
- * athlete to take a hard day easy. Reproduced 4/4 before the carve-out.
- */
-it('PlanDayVoiceNarrator prompt separates the training phase from the day\'s effort', function (): void {
-    $prompt = narratorPrompt(PlanDayVoiceNarrator::class);
-
-    expect($prompt)->toContain('PHASE IS THE BLOCK, NOT THE EFFORT')
-        ->and($prompt)->toContain('base work')
-        ->and($prompt)->toContain('quality work in every phase');
-});
-
-/**
- * Prod inverted a hit ("so it missed the hit mark") after reading the verdict
- * as an enum beside a raw pace-vs-limit pair. The prompt now reads the worded
- * outcome inside its FLOW, and names no verdict value the model could echo.
- */
-it('PlanDayVoiceNarrator prompt reads the worded outcome and never lists a verdict value', function (): void {
-    $prompt = narratorPrompt(PlanDayVoiceNarrator::class);
-
-    expect($prompt)->toContain('intent_detail')
-        ->toContain('never turn it around')
-        ->toContain('effort-adjusted for hills')
-        ->toContain('no markdown')
-        ->not->toContain('intent_evidence')
-        ->not->toContain('hit, missed, too_hard');
-});
-
-it('PlanDayVoiceNarrator re-asks once when the read labels the outcome instead of describing it', function (): void {
-    $session = PlannedSession::factory()->for(User::factory()->create())->create(['date' => Carbon::today()->toDateString()]);
-    $client = new ClientFake([
-        fakeAzureResponse(json_encode(['voice' => 'easy 8 km at 7:29/km, so it missed the hit mark.'], JSON_THROW_ON_ERROR)),
-        fakeAzureResponse(json_encode(['voice' => 'easy 8 km at 7:22/km, kept easy the whole way.'], JSON_THROW_ON_ERROR)),
-    ]);
-    $narrator = new PlanDayVoiceNarrator(fakeStructuredCaller($client), app(TrainingBaseline::class), app(SessionMatcher::class), app(VdotEstimator::class), app(TrainingPaceCalculator::class));
-
-    expect($narrator->generate($session))->toBe('easy 8 km at 7:22/km, kept easy the whole way.');
-
-    $client->assertSent(Responses::class, function (string $method, array $params): bool {
-        $last = end($params['input']);
-
-        return $method === 'create' && is_array($last) && str_contains((string) $last['content'], 'names the outcome with a label');
-    });
-});
-
-it('PlanDayVoiceNarrator throws rather than store a read that keeps a markdown enum', function (): void {
-    $session = PlannedSession::factory()->for(User::factory()->create())->create(['date' => Carbon::today()->toDateString()]);
-    $client = new ClientFake([
-        fakeAzureResponse(json_encode(['voice' => 'easy day, **too_hard** at 6:20/km.'], JSON_THROW_ON_ERROR)),
-        fakeAzureResponse(json_encode(['voice' => 'easy day, *too hard* at 6:20/km.'], JSON_THROW_ON_ERROR)),
-    ]);
-    $narrator = new PlanDayVoiceNarrator(fakeStructuredCaller($client), app(TrainingBaseline::class), app(SessionMatcher::class), app(VdotEstimator::class), app(TrainingPaceCalculator::class));
-
-    $narrator->generate($session);
-})->throws(UnavailableException::class, 'rejected twice');
-
-it('OutcomeLabels catches a verdict label or markdown, and passes a described outcome', function (string $text, bool $label, bool $markdown): void {
+it('OutcomeLabels catches a verdict label, and passes a described outcome', function (string $text, bool $label): void {
     expect(OutcomeLabels::labelIn($text))->toBe($label)
-        ->and(OutcomeLabels::markdownIn($text))->toBe($markdown)
-        ->and(OutcomeLabels::complaint($text, 'voice', plainText: true) === null)->toBe(! $label && ! $markdown)
-        ->and(OutcomeLabels::complaint($text, 'voice', plainText: false) === null)->toBe(! $label);
+        ->and(OutcomeLabels::complaint($text, 'voice') === null)->toBe(! $label);
 })->with([
-    'the inverted prod read' => ['the pace sat at 7:29/km, so it missed the hit mark.', true, false],
-    'a bold enum' => ['easy day, **too_hard** at 6:20/km.', true, true],
-    'the briefing label' => ['6.2 km done as planned, intent hit.', true, false],
-    'a spaced enum after intent' => ['intent: too hard.', true, false],
-    'a field name' => ['your completed_km says 8.', true, false],
-    'emphasis only' => ['that was *easy*, properly.', false, true],
-    'a backtick' => ['kept it `easy`.', false, true],
-    'a described hit' => ['8 easy km at 7:22/km, kept properly easy the whole way.', false, false],
-    'hit as a verb' => ['you hit the tempo block right on 5:00/km.', false, false],
-    'a described too-hard day' => ['10 against an easy 7, harder than the day asked for.', false, false],
+    'the inverted prod read' => ['the pace sat at 7:29/km, so it missed the hit mark.', true],
+    'a bold enum' => ['easy day, **too_hard** at 6:20/km.', true],
+    'the briefing label' => ['6.2 km done as planned, intent hit.', true],
+    'a spaced enum after intent' => ['intent: too hard.', true],
+    'a field name' => ['your completed_km says 8.', true],
+    'emphasis only' => ['that was *easy*, properly.', false],
+    'a backtick' => ['kept it `easy`.', false],
+    'a described hit' => ['8 easy km at 7:22/km, kept properly easy the whole way.', false],
+    'hit as a verb' => ['you hit the tempo block right on 5:00/km.', false],
+    'a described too-hard day' => ['10 against an easy 7, harder than the day asked for.', false],
 ]);
 
 it('BriefingMascotVoiceNarrator re-asks a post-run block that labels the intent', function (): void {

@@ -9,11 +9,12 @@ code_refs:
   - app/Services/Run/Plan/ReadinessClamp.php
   - app/Services/Run/Plan/PlanRenderer.php
   - app/Services/Run/Plan/SessionMatcher.php
-  - app/Services/AI/Agent/Tools/PlanDayTool.php
   - app/Services/AI/MaterialFingerprint.php
   - resources/js/components/plan/DayDetail.tsx
   - resources/js/components/home/WeekPlanWidget.tsx
 ---
+
+> **Further superseded (2026-10-07) by [[a-plan-day-has-no-narrated-read]].** `plan_day_voice` and `PlanDayTool`, the narration half of the table below, are gone.
 
 > **Superseded (2026-09-16) by [[the-eased-session-leads]].** A recorded ease is now the day's session: it leads the card, the week total sums it, and the narrator tools describe it, with the original as context. Only a clamp that was shown but never recorded keeps the advisory step-down described below.
 
@@ -29,7 +30,7 @@ Observed on prod: the Plan card read *"long run today, around 9.1 km"* in Temari
 
 Pulling on it found not one disagreement but four, all from the same root. The clamp was **authoritative in the one place with no memory** — the render, where it overwrote `session_type`, `segments` and `distance_km` — and **advisory in both places that persist**:
 
-- **Narration** describes the stored session. [PlanDayTool](app/Services/AI/Agent/Tools/PlanDayTool.php) reads the stored row and recomputes core km from it; the narrator cannot see the clamp at all.
+- **Narration** describes the stored session. `PlanDayTool` (since removed) reads the stored row and recomputes core km from it; the narrator cannot see the clamp at all.
 - **Compliance** grades the stored session. [SessionMatcher](app/Services/Run/Plan/SessionMatcher.php) never sees the clamp either, so an athlete who correctly took a clamped-to-Rest day was scored 0% against the stored ask and landed on `missed` for following the app's own advice.
 - **The week's headline km** summed the clamped figure while the day cell beside it showed something else.
 

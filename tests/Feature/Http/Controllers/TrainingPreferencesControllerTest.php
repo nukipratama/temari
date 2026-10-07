@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 use App\Enums\ExperienceLevel;
 use App\Enums\GoalType;
-use App\Jobs\AI\AnalyzePlanDayVoiceJob;
 use App\Jobs\AI\AnalyzePlanSeasonVoiceJob;
 use App\Models\TrainingPreference;
 use App\Models\PlannedSession;
@@ -151,7 +150,6 @@ it('attributes a saved preference\'s re-narration to the athlete, so it re-arms 
         ->assertSessionHasNoErrors();
 
     Bus::assertDispatched(fn (AnalyzePlanSeasonVoiceJob $job): bool => $job->origin === AnalysisOrigin::User);
-    Bus::assertNotDispatched(AnalyzePlanDayVoiceJob::class);
 
     Carbon::setTestNow();
 });
@@ -171,7 +169,7 @@ it('never bills narration for the demo account', function (): void {
         ->patch('/settings/training-preferences', validPreferencesPayload())
         ->assertSessionHasNoErrors();
 
-    Bus::assertNotDispatched(AnalyzePlanDayVoiceJob::class);
+    Bus::assertNotDispatched(AnalyzePlanSeasonVoiceJob::class);
     expect(PlannedSession::query()->where('user_id', $user->id)->count())->toBeGreaterThan(0);
 
     Carbon::setTestNow();

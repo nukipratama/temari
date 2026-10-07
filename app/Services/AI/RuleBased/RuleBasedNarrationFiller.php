@@ -7,7 +7,6 @@ namespace App\Services\AI\RuleBased;
 use App\Enums\Badge;
 use App\Enums\IntentVerdict;
 use App\Enums\PlannedSessionStatus;
-use App\Enums\SessionType;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
@@ -62,7 +61,6 @@ final readonly class RuleBasedNarrationFiller
     ];
 
     public function __construct(
-        private SessionMatcher $sessionMatcher,
         private SustainedAheadOfRacePace $sustainedAheadOfRacePace,
         private TrainingBaseline $trainingBaseline,
     ) {
@@ -81,7 +79,6 @@ final readonly class RuleBasedNarrationFiller
             AnalysisType::ProfileVoice => $this->profileVoice($seed),
             AnalysisType::MonthlyRecap => $this->monthlyRecap($row->subject_id, $row->discriminator, $seed),
             AnalysisType::TrendRead => $this->trendRead($seed),
-            AnalysisType::PlanDayVoice => $this->planDayVoice($row),
             AnalysisType::PlanClampVoice => $this->planClampVoice($seed),
             AnalysisType::PlanSeasonVoice => $this->planSeasonVoice($row),
         };
@@ -575,62 +572,6 @@ final readonly class RuleBasedNarrationFiller
             "The pattern reads disciplined: mostly **chill**, pushed on occasion, and your total built out of steady volume rather than one heroic run. Nothing in here is accidental.",
             "You're early and the mix is still thin, but you've come back more than once already. That's a start with a number attached. The reading gets sharper the more you feed it.",
         ], $seed);
-    }
-
-    /**
-     * A read of a credited day, phrasing #946's intent verdict rather than
-     * describing the session ahead of time — see
-     * `docs/decisions/a-day-is-graded-on-distance-and-intent.md`. Only ever
-     * requested for a day that already has a run (no run, no section), but
-     * stays defensively safe on an uncredited row rather than crashing.
-     */
-    private function planDayVoice(Analysis $row): string
-    {
-        $session = PlannedSession::query()
-            ->where('user_id', $row->subject_id)
-            ->where('date', $row->discriminator)
-            ->first();
-        $seed = $this->seedFor($row);
-
-        if ($session === null || ! $session->status->isCredited()) {
-            return 'logged.';
-        }
-
-        $km = DecimalFormatter::decimal((float) ($this->sessionMatcher->creditedKmFor($session) ?? 0.0));
-
-        if ($session->ran_anyway) {
-            return $this->select([
-                "excused, and you ran it anyway. {$km}k.",
-                "already off the hook for this one, but {$km}k went in the log regardless.",
-            ], $seed);
-        }
-
-        if (in_array($session->session_type, [SessionType::Rest, SessionType::Race], true)) {
-            return $session->session_type === SessionType::Rest
-                ? $this->select(['rest, and you took it. 🛌', 'a real day off. nothing to add.'], $seed)
-                : $this->select(['race day, logged.', 'the race is in the book.'], $seed);
-        }
-
-        $outcome = IntentOutcome::outcome($session->intent_verdict ?? IntentVerdict::Unknown, $session->intent_evidence ?? []);
-
-        return match ($session->intent_verdict) {
-            IntentVerdict::Hit => $this->select([
-                "{$km} km, and {$outcome}.",
-                "right where the day asked you to be. {$km} km.",
-            ], $seed),
-            IntentVerdict::Missed => $this->select([
-                "{$km} km logged; {$outcome}.",
-                "logged at {$km} km, though the session itself came in softer than what was written.",
-            ], $seed),
-            IntentVerdict::TooHard => $this->select([
-                "{$km} km, and {$outcome}. the ground is covered either way.",
-                "more effort than this one asked for, at {$km} km.",
-            ], $seed),
-            default => $this->select([
-                "{$km} km done; {$outcome}.",
-                "not enough signal here to say how it went, only that {$km} km happened.",
-            ], $seed),
-        };
     }
 
     private function planSeasonVoice(Analysis $row): string

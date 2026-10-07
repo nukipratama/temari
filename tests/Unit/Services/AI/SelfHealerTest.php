@@ -902,12 +902,12 @@ it('resumes a stalled profile-voice row even while any run of the backlog awaits
 });
 
 /** @param array<string, mixed> $attributes */
-function failedPlanDayVoice(User $user, string $day, string $failedAt, array $attributes = []): Analysis
+function failedPlanClampVoice(User $user, string $day, string $failedAt, array $attributes = []): Analysis
 {
     return Analysis::factory()->create([
-        'subject_type' => AnalysisType::PlanDayVoice->subjectType(),
+        'subject_type' => AnalysisType::PlanClampVoice->subjectType(),
         'subject_id' => $user->id,
-        'analysis_type' => AnalysisType::PlanDayVoice,
+        'analysis_type' => AnalysisType::PlanClampVoice,
         'discriminator' => $day,
         'status' => AnalysisStatus::Failed,
         'attempts' => Analysis::MAX_SELF_HEAL_ATTEMPTS,
@@ -918,12 +918,12 @@ function failedPlanDayVoice(User $user, string $day, string $failedAt, array $at
 
 it('re-arms every active athlete block that failed since an hour before the pause began, one attempt short of the limit', function (): void {
     $user = User::factory()->create(['last_seen_at' => Carbon::now()]);
-    $deadLettered = failedPlanDayVoice($user, '2026-06-16', '2026-06-17 07:30:00');
-    $underBudget = failedPlanDayVoice($user, '2026-06-17', '2026-06-17 09:00:00', ['attempts' => 1]);
-    $tooEarly = failedPlanDayVoice($user, '2026-06-15', '2026-06-17 06:59:00');
-    $done = failedPlanDayVoice($user, '2026-06-14', '2026-06-17 09:00:00', ['status' => AnalysisStatus::Done]);
-    $demo = failedPlanDayVoice(User::factory()->demo()->create(), '2026-06-16', '2026-06-17 09:00:00');
-    $away = failedPlanDayVoice(User::factory()->create(['last_seen_at' => Carbon::today()->subDays(8)]), '2026-06-16', '2026-06-17 09:00:00');
+    $deadLettered = failedPlanClampVoice($user, '2026-06-16', '2026-06-17 07:30:00');
+    $underBudget = failedPlanClampVoice($user, '2026-06-17', '2026-06-17 09:00:00', ['attempts' => 1]);
+    $tooEarly = failedPlanClampVoice($user, '2026-06-15', '2026-06-17 06:59:00');
+    $done = failedPlanClampVoice($user, '2026-06-14', '2026-06-17 09:00:00', ['status' => AnalysisStatus::Done]);
+    $demo = failedPlanClampVoice(User::factory()->demo()->create(), '2026-06-16', '2026-06-17 09:00:00');
+    $away = failedPlanClampVoice(User::factory()->create(['last_seen_at' => Carbon::today()->subDays(8)]), '2026-06-16', '2026-06-17 09:00:00');
 
     $captured = [];
 

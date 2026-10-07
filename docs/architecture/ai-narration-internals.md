@@ -3,7 +3,7 @@ title: AI narration internals — context builders & the demo filler
 description: How prompt signals are assembled (context builders) and how copy is produced without the LLM (demo seed + unconfigured env).
 tags: [architecture, ai]
 status: living
-reviewed: 2026-10-06
+reviewed: 2026-10-07
 code_refs:
   - app/Services/AI/Context/ActivityNarrationContext.php
   - app/Services/AI/Agent/AgentToolbox.php
@@ -45,7 +45,7 @@ The per-activity narrators no longer take a pre-computed context. Every number r
 
 Each tool is bound to its subject at construction and declares an argument-free schema ([ActivityTool](app/Services/AI/Agent/Tools/ActivityTool.php)), which is how cross-user reads are prevented: there is no id to pass. The loop, its ceilings, and why the model gets an error payload rather than a failed block are in [[narration-agents-on-openai-php]].
 
-**What still travels in the context** is whatever no tool could serve: a value the *call itself* carries rather than the database (post-run speech's `mood`), plus the continuity line, which stays in the prompt because the content-filter retry has to be able to strip it. A read the model would always call first, with no argument to choose, also travels in the context: the card's identity for the card flavor, and the day plan or season for the plan voices. The tool class still builds that payload; the narrator calls its `handle()` instead of offering it.
+**What still travels in the context** is whatever no tool could serve: a value the *call itself* carries rather than the database (post-run speech's `mood`), plus the continuity line, which stays in the prompt because the content-filter retry has to be able to strip it. A read the model would always call first, with no argument to choose, also travels in the context: the card's identity for the card flavor, and the season for the season voice. The tool class still builds that payload; the narrator calls its `handle()` instead of offering it.
 
 A toolbox is built per call, so it can be shorter when the subject is thinner — a card whose activity has no detail row is offered no tools at all and writes from the identity in its context, rather than from tools that would answer null to everything. The same applies by ingest state: [RunQuestionNarrator](app/Services/AI/Narrators/RunQuestionNarrator.php) drops the splits, laps, zone and terrain reads on a `summary`-state run and keeps the run summary plus the history reads, since the stream pipeline has not run yet. See [[run-qa]].
 
@@ -90,16 +90,16 @@ Recovery hours is "hours since the most recent activity start", sharper than day
 
 ### Narration eval — what the model writes back
 
-The narrator tests fake the model, so they prove the payload and never the prose. `narration:eval` ([NarrationEvalCommand](app/Console/Commands/AI/NarrationEvalCommand.php#L20)) is the manual check for the four kinds that have shipped inverted or leaked reads: `plan_day_voice`, `briefing_mascot_voice` (the post-run block), `run_insight` and `profile_voice`. **Run it before closing a PR that changes a narrator prompt, a validator or one of their tools**, from a checkout that has Azure credentials, and paste the table and spend into the PR. It is not in CI or the scheduler.
+The narrator tests fake the model, so they prove the payload and never the prose. `narration:eval` ([NarrationEvalCommand](app/Console/Commands/AI/NarrationEvalCommand.php#L20)) is the manual check for the three kinds that have shipped inverted or leaked reads: `briefing_mascot_voice` (the post-run block), `run_insight` and `profile_voice`. **Run it before closing a PR that changes a narrator prompt, a validator or one of their tools**, from a checkout that has Azure credentials, and paste the table and spend into the PR. It is not in CI or the scheduler.
 
 ```
-./vendor/bin/sail artisan narration:eval --max-calls=60 [--kind=plan_day_voice ...]
+./vendor/bin/sail artisan narration:eval --max-calls=60 [--kind=run_insight ...]
 ```
 
 - **Hard cap.** `--max-calls` is required, has no default and is refused above 60 ([cap()](app/Console/Commands/AI/NarrationEvalCommand.php#L121)). The loop stops before the call that would pass it and lists the unrun fixtures. The cap counts narrator calls; each can make several model requests (tool turns, plus the one validator rewrite), which the spend line reports.
 - **Never in production, never dispatching.** It refuses when `app()->isProduction()` ([handle()](app/Console/Commands/AI/NarrationEvalCommand.php#L24)) and calls the narrators directly, so no job is pushed.
 - **Real payloads, always rolled back.** It needs the seeded demo athlete (`demo:seed`). Each fixture builds its rows (planned day, run, graded intent) in a transaction that is rolled back on every path, including a thrown error ([evaluate()](app/Console/Commands/AI/NarrationEvalCommand.php#L143)). Only the metering rows on the `analytics` connection stay, so the spend is in the ledger like any other call.
-- **Fixtures.** [NarrationEvalFixtures](app/Console/Commands/AI/NarrationEvalFixtures.php#L126) holds seven plan-day reads (`hit` and `too_hard` easy days, a readiness-capped day, an eased original run as written, a strong-concern reading, an excessive one and an unplanned hard effort), the post-run briefing on a `hit` and a `too_hard` day, three run insights (faster and slower than the athlete's own 28-day baseline, picked from the demo history, and a run stripped of heart rate) and the profile voice. A fixture the history cannot support is skipped and costs no call. The briefing, run insight and profile fixtures also carry the renamed load numbers: the load direction is read from the `get_training_load` evidence the model saw ([loadDirection()](app/Console/Commands/AI/NarrationEvalFixtures.php#L83)).
+- **Fixtures.** [NarrationEvalFixtures](app/Console/Commands/AI/NarrationEvalFixtures.php#L111) holds the post-run briefing on a `hit` and a `too_hard` day, three run insights (faster and slower than the athlete's own 28-day baseline, picked from the demo history, and a run stripped of heart rate) and the profile voice. A fixture the history cannot support is skipped and costs no call. Every fixture also carries the renamed load numbers: the load direction is read from the `get_training_load` evidence the model saw ([loadDirection()](app/Console/Commands/AI/NarrationEvalFixtures.php#L68)).
 - **Checks.** [NarrationEvalChecks](app/Console/Commands/AI/NarrationEvalChecks.php#L18) runs on the written text: the narrator's own validators (a call that is rejected twice fails the `validators` column), `OutcomeLabels::complaint`, a raw-enum guard, a markdown guard, a numbers-in-evidence check (every figure must appear in the context or the tool outputs the model could read) and a direction check against the fixture's known answer. The direction check is a regex heuristic, so read a failing row's text before acting on it.
 
 The command prints one row per fixture and a spend line (calls, requests, tokens, cost from the usage metering). Fix the narrator, never loosen a check to pass.
@@ -120,7 +120,7 @@ No failure path falls back to the filler: a paused or failing block stays `Pendi
 
 ### The demo seed path
 
-The demo seeder stages and fills all Analysis rows under [`AnalysisService::withoutDispatching()`](app/Services/AI/AnalysisService.php#L64), which suppresses every job dispatch ([DemoRunSeeder::seed](database/seeders/Demo/DemoRunSeeder.php#L117)). Rows are staged `Pending` inside that closure and then flat-filled afterward by walking them through the filler ([`backfillWithFiller`](database/seeders/Demo/DemoRunSeeder.php#L327)), so seeding spends zero LLM tokens. `trend_read` and the three `plan_*_voice` types are filled the same way but bypass that walk, going straight through `AnalysisService::requestRuleBased()`/`PlanNarrationRequester::ensureDemoFilled()` instead (`F7`, since neither has a demo-reachable dispatch path otherwise). The "Reread" button stays live for the demo, but its trigger is filled through the same filler rather than dispatched, so no demo click reaches Azure — see [[demo-triggers-served-rule-based]]. The demo user is also held out of billing schedulers — see [[demo-user-billing-exclusion]].
+The demo seeder stages and fills all Analysis rows under [`AnalysisService::withoutDispatching()`](app/Services/AI/AnalysisService.php#L64), which suppresses every job dispatch ([DemoRunSeeder::seed](database/seeders/Demo/DemoRunSeeder.php#L117)). Rows are staged `Pending` inside that closure and then flat-filled afterward by walking them through the filler ([`backfillWithFiller`](database/seeders/Demo/DemoRunSeeder.php#L327)), so seeding spends zero LLM tokens. `trend_read` and `plan_season_voice` are filled the same way but bypass that walk, going straight through `AnalysisService::requestRuleBased()`/`PlanNarrationRequester::ensureDemoFilled()` instead (`F7`, since neither has a demo-reachable dispatch path otherwise). The "Reread" button stays live for the demo, but its trigger is filled through the same filler rather than dispatched, so no demo click reaches Azure — see [[demo-triggers-served-rule-based]]. The demo user is also held out of billing schedulers — see [[demo-user-billing-exclusion]].
 
 ### Beyond the demo
 

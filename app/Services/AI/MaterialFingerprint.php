@@ -8,13 +8,11 @@ use App\Enums\AdaptationReason;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\PersonalRecord;
-use App\Models\PlannedSession;
 use App\Models\StoryLine;
 use App\Enums\SessionType;
 use App\Services\Run\Metrics\ReadinessCeiling;
 use App\Services\Run\Metrics\SessionIntent;
 use App\Services\Run\Metrics\StreamSummary;
-use App\Services\Run\Plan\PlanRenderer;
 
 /**
  * A stable hash over the run data that MATERIALLY drives its per-run narration,
@@ -28,50 +26,6 @@ use App\Services\Run\Plan\PlanRenderer;
  */
 final class MaterialFingerprint
 {
-    /**
-     * The material a day's plan blurb speaks to, mirroring what
-     * {@see \App\Services\AI\Agent\Tools\PlanDayTool} hands the model. The
-     * long-run baseline is passed in rather than resolved here: it is one
-     * lookup per user, and the caller is already walking seven days.
-     */
-    public static function forPlannedSession(PlannedSession $session, ?float $longRunBaselineKm): string
-    {
-        $goalPace = PlanRenderer::goalPaceForNarration($session, $session->session_type);
-        $timeTrial = PlanRenderer::timeTrialOf($session, $session->session_type);
-
-        return self::digest([
-            'session_type' => $session->session_type->value,
-            'phase' => $session->phase->value,
-            // Cast, not read raw: a freshly-created model carries null here
-            // while a reloaded one carries false, and both mean "not skipped".
-            'skipped' => (bool) $session->skipped,
-            // Drives the prescribed distance the blurb quotes, so a moved
-            // baseline changes what the day should say.
-            'long_run_km' => self::half($longRunBaselineKm),
-            // Only ever present on a race day, whose distance comes from the
-            // goal rather than the baseline above — an athlete who swaps a 10K
-            // for a half on the same date changes nothing else here. Added
-            // conditionally so every already-stamped row keeps its digest
-            // rather than the new key re-narrating everyone's whole week.
-            ...($session->race_distance_m === null ? [] : ['race_distance_m' => $session->race_distance_m]),
-            ...$goalPace,
-            ...($timeTrial === null ? [] : ['time_trial' => $timeTrial['distance_m']]),
-            // The day flipping to credited turns the blurb from a label into a
-            // read of what happened, so it has to re-narrate once. Added
-            // conditionally for the same reason race_distance_m is: an ungraded
-            // day keeps the digest it already carries, so shipping this does not
-            // re-narrate every athlete's whole week. The SCORE is deliberately
-            // out — it moves with every run that lands, and the verdict is what
-            // changes the sentence. The intent verdict rides along with status
-            // for the same reason: a second run that flips hit -> missed
-            // changes what the read says even when the distance status does not.
-            ...($session->status->isCredited() ? [
-                'status' => $session->status->value,
-                'intent_verdict' => $session->intent_verdict?->value,
-            ] : []),
-        ]);
-    }
-
     /**
      * What a clamp explanation actually speaks to, deliberately coarser than
      * the clamp itself. The ceiling is recomputed from {@see \App\Services\Run\Metrics\TrainingLoad}

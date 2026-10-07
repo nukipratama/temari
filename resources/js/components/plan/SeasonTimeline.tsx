@@ -1,7 +1,6 @@
 import { useRef, useState } from 'react';
 
 import type { PlanDay, PlanWeek, SeasonSummaryWeek } from '@/lib/plan';
-import type { AnalysisPayload } from '@/types/inertia';
 
 import WeeksList from '@/components/plan/WeeksList';
 import WeekView from '@/components/plan/WeekView';
@@ -18,7 +17,6 @@ export default function SeasonTimeline({
     today,
     raceDate = null,
     weekFocus,
-    dayNarration,
     focusDay = null,
     selectedDay = null,
     onMove,
@@ -32,7 +30,6 @@ export default function SeasonTimeline({
     raceDate?: string | null;
     /** The current week's adaptation verdict, shown as its note. */
     weekFocus: { headline: string; detail: string } | null;
-    dayNarration: Record<string, AnalysisPayload>;
     /** The day the visitor arrived asking for, from `/plan?day=`. */
     focusDay?: string | null;
     /** The day selected earlier in this tab session. */
@@ -80,7 +77,6 @@ export default function SeasonTimeline({
                     today={today}
                     raceDate={raceDate}
                     focus={shown === current ? weekFocus : null}
-                    dayNarration={dayNarration}
                     focusDay={pendingFocusDay}
                     selectedDay={selectedDay}
                     onBack={

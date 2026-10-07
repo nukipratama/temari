@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Jobs\AI\AnalyzePlanDayVoiceJob;
 use App\Jobs\AI\AnalyzePlanSeasonVoiceJob;
 use App\Models\PerformanceEvidence;
 use App\Models\PersonalRecord;
@@ -247,7 +246,7 @@ it('never bills narration for the demo account', function (): void {
         'name' => 'A half',
     ])->assertSessionHasNoErrors();
 
-    Bus::assertNotDispatched(AnalyzePlanDayVoiceJob::class);
+    Bus::assertNotDispatched(AnalyzePlanSeasonVoiceJob::class);
     expect(PlannedSession::query()->where('user_id', $user->id)->count())->toBeGreaterThan(0);
 
     Carbon::setTestNow();
@@ -317,7 +316,6 @@ it('attributes a race save\'s re-narration to the athlete, so it re-arms the row
     $this->actingAs($user)->post('/race', racePayload())->assertSessionHasNoErrors();
 
     Bus::assertDispatched(fn (AnalyzePlanSeasonVoiceJob $job): bool => $job->origin === AnalysisOrigin::User);
-    Bus::assertNotDispatched(AnalyzePlanDayVoiceJob::class);
 
     Carbon::setTestNow();
 });

@@ -271,8 +271,7 @@ final class PlanRenderer
         // The row's own distance on race day, the active race's everywhere
         // else — where it only ever picks a pace band.
         $raceDistanceM = self::raceDistanceOf($s) ?? $raceDistanceM;
-        // The plain, unredistributed ask — what Home's widget shows and what
-        // the day's own narration is sized from (see PlanDayTool). Exposed so
+        // The plain, unredistributed ask — what Home's widget shows. Exposed so
         // the Plan page can say why `distance_km` moved, rather than the two
         // screens just disagreeing with no explanation.
         $askedKm = SegmentGenerator::coreKmFor($s->session_type, $isPrimaryEasy, $longRunKm, $multiplier, $longRunCapKm, $raceDistanceM, $longRunProgressionCapKm, $s->fall_off_tilt, $s->prescription_race_context);

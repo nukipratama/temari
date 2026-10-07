@@ -435,8 +435,6 @@ class AnalysisService
             ),
             AnalysisType::BriefingMascotVoice => $this->history->awaitsOlderHydration($row->subject_id, Carbon::now()),
             AnalysisType::ProfileVoice => $this->history->awaitsFullHydration($row->subject_id),
-            AnalysisType::PlanDayVoice => $row->discriminator !== null
-                && $this->history->awaitsOlderHydration($row->subject_id, Carbon::parse($row->discriminator)),
             default => false,
         };
     }

@@ -65,7 +65,7 @@ final readonly class PlanRegenerationService
         }
 
         if ($user->is_demo) {
-            $this->narrationRequester->ensureDemoFilled($user, $today);
+            $this->narrationRequester->ensureDemoFilled($user);
         } else {
             $this->narrationRequester->requestForCurrentWeekUnlessCoolingDown($user, $today);
         }

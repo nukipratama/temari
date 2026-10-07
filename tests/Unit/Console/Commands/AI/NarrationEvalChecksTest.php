@@ -4,13 +4,13 @@ declare(strict_types=1);
 
 use App\Console\Commands\AI\NarrationEvalChecks;
 
-function evalChecks(string $text, array $evidence = [], array $direction = [], bool $plainText = true): array
+function evalChecks(string $text, array $evidence = [], array $direction = []): array
 {
-    return NarrationEvalChecks::run($text, $evidence, $direction, $plainText);
+    return NarrationEvalChecks::run($text, $evidence, $direction);
 }
 
 it('passes a clean answer on every check', function (): void {
-    $evidence = ['get_day_plan' => ['distance_km' => 8.0, 'intent_detail' => 'averaged 7:30/km']];
+    $evidence = ['get_planned_sessions' => ['distance_km' => 8.0, 'intent_detail' => 'averaged 7:30/km']];
     $direction = ['required' => ['easy'], 'forbidden' => ['harder than']];
 
     $results = evalChecks('8 km, easy the whole way at 7:30/km.', $evidence, $direction);
@@ -39,13 +39,9 @@ it('fails the raw enum guard on a leaked enum value', function (): void {
     expect($results['raw_enum'])->toContain('too_hard');
 });
 
-it('fails the markdown guard on asterisks in plain text', function (): void {
-    expect(evalChecks('a **solid** day.')['markdown'])->not->toBeNull();
-});
-
-it('allows bold but not backticks where markdown is part of the voice', function (): void {
-    expect(evalChecks('a **solid** day.', plainText: false)['markdown'])->toBeNull()
-        ->and(evalChecks('a `solid` day.', plainText: false)['markdown'])->not->toBeNull();
+it('allows bold but not backticks, since markdown is part of the voice', function (): void {
+    expect(evalChecks('a **solid** day.')['markdown'])->toBeNull()
+        ->and(evalChecks('a `solid` day.')['markdown'])->not->toBeNull();
 });
 
 it('fails the numbers check on a figure the evidence never held', function (): void {
@@ -65,7 +61,6 @@ it('fails the outcome label check on a verdict label', function (): void {
     expect(evalChecks('the pace sat easy, so it missed the hit mark.')['outcome_labels'])->not->toBeNull();
 });
 
-it('flags markdown through the outcome label check only on plain text kinds', function (): void {
-    expect(evalChecks('a **solid** day.')['outcome_labels'])->not->toBeNull()
-        ->and(evalChecks('a **solid** day.', plainText: false)['outcome_labels'])->toBeNull();
+it('leaves markdown out of the outcome label check', function (): void {
+    expect(evalChecks('a **solid** day.')['outcome_labels'])->toBeNull();
 });
