@@ -7,7 +7,6 @@ use App\Actions\AI\KickoffWeeklyRecaps;
 use App\Actions\AI\RequestTodaysBriefing;
 use App\Enums\PlanRegenerationReason;
 use App\Jobs\AI\AnalyzeBriefingMascotVoiceJob;
-use App\Jobs\AI\AnalyzePlanDayVoiceJob;
 use App\Jobs\AI\AnalyzePlanSeasonVoiceJob;
 use App\Jobs\AI\KickoffRecapsJob;
 use App\Jobs\Run\RegeneratePlanJob;
@@ -106,8 +105,7 @@ it('stamps backfilled_at as the last link of the connect chain', function (): vo
     expect($user->fresh()->backfilled_at)->not->toBeNull();
 });
 
-/** #939: the first week has no run in it yet, so only the season narrates. */
-it('narrates the season, never a day, when onboarding already wrote a plan', function (): void {
+it('narrates the season when onboarding already wrote a plan', function (): void {
     Bus::fake();
     $user = User::factory()->create();
     PlannedSession::factory()->for($user)->create(['date' => Carbon::today()->toDateString()]);
@@ -116,7 +114,6 @@ it('narrates the season, never a day, when onboarding already wrote a plan', fun
     new KickoffRecapsJob($user->id)->handle($weekly, $monthly, app(PlanNarrationRequester::class), app(AnalysisService::class), app(Periodizer::class), app(RequestTodaysBriefing::class), app(HistoryNarrationGate::class));
 
     Bus::assertDispatched(AnalyzePlanSeasonVoiceJob::class);
-    Bus::assertNotDispatched(AnalyzePlanDayVoiceJob::class);
 });
 
 /**
@@ -191,7 +188,7 @@ it('narrates nothing and plans nothing when no plan exists yet', function (): vo
 
     new KickoffRecapsJob($user->id)->handle($weekly, $monthly, app(PlanNarrationRequester::class), app(AnalysisService::class), app(Periodizer::class), app(RequestTodaysBriefing::class), app(HistoryNarrationGate::class));
 
-    Bus::assertNotDispatched(AnalyzePlanDayVoiceJob::class);
+    Bus::assertNotDispatched(AnalyzePlanSeasonVoiceJob::class);
     expect(PlannedSession::query()->where('user_id', $user->id)->exists())->toBeFalse()
         ->and($user->fresh()->backfilled_at)->not->toBeNull();
 });
@@ -202,7 +199,7 @@ it('does nothing beyond the recaps when the user is gone', function (): void {
 
     new KickoffRecapsJob(404)->handle($weekly, $monthly, app(PlanNarrationRequester::class), app(AnalysisService::class), app(Periodizer::class), app(RequestTodaysBriefing::class), app(HistoryNarrationGate::class));
 
-    Bus::assertNotDispatched(AnalyzePlanDayVoiceJob::class);
+    Bus::assertNotDispatched(AnalyzePlanSeasonVoiceJob::class);
 });
 
 it('kicks every Trends range off the backfill, so a new account is not days behind', function (): void {

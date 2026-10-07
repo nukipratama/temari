@@ -13,6 +13,8 @@ code_refs:
   - database/migrations/2026_10_07_000000_add_make_up_columns_to_planned_sessions_table.php
 ---
 
+> **Partly superseded (2026-10-07) by [[a-plan-day-has-no-narrated-read]].** A make-up no longer re-requests either day's read, since there is none; the grading and every other consequence stand.
+
 # A make-up is graded against the moved session
 
 **Status:** Accepted (2026-10-07). A documented exception to [[grading-follows-shown-advice-and-actual-stimulus]].

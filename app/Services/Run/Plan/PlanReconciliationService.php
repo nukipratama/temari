@@ -88,9 +88,6 @@ final readonly class PlanReconciliationService
             if ($changed && $this->activeUsers->includes($user)) {
                 $this->planNarration->requestForCurrentWeek($user, $today);
             }
-            if ($this->activeUsers->includes($user)) {
-                $this->planNarration->requestDayVoiceIfChanged($user, $today);
-            }
         }
 
         $again = $this->finish($userId);

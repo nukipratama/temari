@@ -2,7 +2,6 @@ import { ArrowLeft } from 'lucide-react';
 import { useEffect, useId, useRef, useState } from 'react';
 
 import type { EditablePlanDay, PlanDay, SeasonSummaryWeek } from '@/lib/plan';
-import type { AnalysisPayload } from '@/types/inertia';
 
 import DayDetail, {
     DayHeadline,
@@ -80,7 +79,6 @@ export default function WeekView({
     today,
     raceDate = null,
     focus,
-    dayNarration,
     focusDay = null,
     selectedDay = null,
     onBack,
@@ -96,7 +94,6 @@ export default function WeekView({
     raceDate?: string | null;
     /** The periodizer's adaptation verdict for this week, where one exists. */
     focus: { headline: string; detail: string } | null;
-    dayNarration: Record<string, AnalysisPayload>;
     /** The day the visitor arrived asking for, from `/plan?day=`. */
     focusDay?: string | null;
     /** The day selected earlier in this tab session. */
@@ -135,8 +132,6 @@ export default function WeekView({
             selectDate(days[next].date);
         }
     });
-    const narration =
-        selected === null ? null : (dayNarration[selected.date] ?? null);
     const tally = complianceTally(days);
     const adherence = computeAdherence(days);
 
@@ -239,13 +234,12 @@ export default function WeekView({
                                 flagged={selected.flagged === true}
                             />
                         </div>
-                        {hasDayDetail(selected, narration) && (
+                        {hasDayDetail(selected) && (
                             <div className="mt-3">
                                 <DayDetail
                                     key={selected.date}
                                     day={selected}
                                     weekDays={days}
-                                    narration={narration}
                                     onMove={(toDate) =>
                                         onMove(selected, toDate)
                                     }

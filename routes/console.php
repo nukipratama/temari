@@ -99,8 +99,7 @@ $alertOnFailure(Schedule::command('plan:score-compliance')->hourlyAt(9)->without
 // The periodizer is deterministic and free, but this command is NOT LLM-free:
 // it then calls PlanNarrationRequester::requestForCurrentWeek() per non-demo
 // user, which touches one row: plan_season_voice, re-read only when its
-// content fingerprint changed. plan_day_voice is requested per run day after
-// reconciliation, not here. See docs/architecture/llm-triggers.md.
+// content fingerprint changed. See docs/architecture/llm-triggers.md.
 $alertOnFailure(Schedule::command('plan:regenerate')->mondays()->hourlyAt(26)->withoutOverlapping(45)->onOneServer()
     ->when(static fn (): bool => SchedulerChain::prerequisitesMet(SchedulerChain::PLAN_REGENERATE)
         && ! SchedulerChain::isDoneThisWeek(SchedulerChain::PLAN_REGENERATE)), 'plan:regenerate')

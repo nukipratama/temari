@@ -133,17 +133,17 @@ final class PlanPageAssembler
     /**
      * @return array<string, mixed>
      */
-    public function planNarration(User $user, Carbon $today): array
+    public function planNarration(User $user): array
     {
         // Demo is excluded from plan:regenerate's real narration dispatch (no
         // LLM billing for the public account), so its Plan page fills any gap
         // with the same rule-based path its manual "Reread" already resolves
         // through — otherwise the demo would show perpetually-Pending blocks.
         if ($user->is_demo) {
-            $this->narrationRequester->ensureDemoFilled($user, $today);
+            $this->narrationRequester->ensureDemoFilled($user);
         }
 
-        return $this->narrationRequester->payloadsForCurrentWeek($user, $today);
+        return ['season' => $this->narrationRequester->seasonPayload($user)];
     }
 
     public function regenerateCooldownSeconds(User $user): ?int

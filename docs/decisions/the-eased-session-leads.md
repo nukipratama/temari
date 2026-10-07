@@ -11,7 +11,6 @@ code_refs:
   - app/Services/Run/Plan/CurrentWeekPlanBuilder.php
   - app/Services/Run/Plan/PlanPageAssembler.php
   - app/Services/Run/Plan/SeasonSummaryBuilder.php
-  - app/Services/AI/Agent/Tools/PlanDayTool.php
   - app/Services/AI/Agent/Tools/PlanContextTool.php
   - app/Services/AI/PlanNarrationRequester.php
   - app/Services/AI/Narrators/PlanClampVoiceNarrator.php
@@ -20,6 +19,8 @@ code_refs:
   - resources/js/components/home/WeekPlanWidget.tsx
   - resources/js/components/plan/WeekView.tsx
 ---
+
+> **Partly superseded (2026-10-07) by [[a-plan-day-has-no-narrated-read]].** The `plan_day_voice` re-narration on credit and `PlanDayTool` are gone; a credited eased day has no narrated read, and the rest of this decision stands.
 
 > **Amendment moot (2026-10-02).** [[the-advised-session-leads-every-day]] makes today lead with the ease too, so the today-before-credit exception no longer applies.
 

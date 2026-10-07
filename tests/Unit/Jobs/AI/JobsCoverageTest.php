@@ -10,12 +10,10 @@ use App\Jobs\AI\AnalyzeBriefingMascotVoiceJob;
 use App\Jobs\AI\AnalyzeProfileVoiceJob;
 use App\Jobs\AI\AnalyzeCardFlavorJob;
 use App\Jobs\AI\AnalyzeMonthlyRecapJob;
-use App\Jobs\AI\AnalyzePlanDayVoiceJob;
 use App\Jobs\AI\AnalyzePlanSeasonVoiceJob;
 use App\Jobs\AI\AnalyzeTrendReadJob;
 use App\Jobs\AI\AnalyzeWeeklyRecapJob;
 use App\Models\AI\Analysis;
-use App\Models\PlannedSession;
 use App\Models\RunCard;
 use App\Models\Season;
 use App\Models\User;
@@ -28,7 +26,6 @@ use App\Services\AI\Narrators\ProfileVoiceNarrator;
 use App\Services\AI\Narrators\BriefingMascotVoiceNarrator;
 use App\Services\AI\Narrators\CardFlavorNarrator;
 use App\Services\AI\Narrators\MonthlyRecapNarrator;
-use App\Services\AI\Narrators\PlanDayVoiceNarrator;
 use App\Services\AI\Narrators\PlanSeasonVoiceNarrator;
 use App\Services\AI\Narrators\TrendReadNarrator;
 use App\Services\AI\Narrators\WeeklyRecapNarrator;
@@ -257,29 +254,6 @@ it('AnalyzeCardFlavorJob throws when card missing', function (): void {
     new AnalyzeCardFlavorJob($row->id)->handle(app(AnalysisService::class));
 
     expect($row->fresh()->status)->toBe(AnalysisStatus::Failed);
-});
-
-// ── AnalyzePlanDayVoiceJob (row) ───────────────────────────────────────
-
-it('AnalyzePlanDayVoiceJob returns voice for the discriminator date', function (): void {
-    $user = User::factory()->create();
-    PlannedSession::factory()->for($user)->create(['date' => '2026-05-18']);
-    mockNarrator(PlanDayVoiceNarrator::class, 'tempo work today.');
-
-    $row = rowOf(AnalysisType::PLAN_DAY_VOICE_SUBJECT_TYPE, $user->id, AnalysisType::PlanDayVoice, '2026-05-18');
-    new AnalyzePlanDayVoiceJob($row->id)->handle(app(AnalysisService::class));
-
-    expect($row->fresh()->content)->toBe('tempo work today.');
-});
-
-it('AnalyzePlanDayVoiceJob deletes its row when no PlannedSession exists for that date', function (): void {
-    $user = User::factory()->create();
-    $row = rowOf(AnalysisType::PLAN_DAY_VOICE_SUBJECT_TYPE, $user->id, AnalysisType::PlanDayVoice, '2026-05-18');
-    new AnalyzePlanDayVoiceJob($row->id)->handle(app(AnalysisService::class));
-
-    // Not Failed: nothing can ever fill a day the plan does not contain, so the
-    // row is obsolete rather than failed. See ObsoleteAnalysisException.
-    expect($row->fresh())->toBeNull();
 });
 
 // ── AnalyzePlanSeasonVoiceJob (row) ─────────────────────────────────────

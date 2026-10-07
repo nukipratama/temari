@@ -18,6 +18,8 @@ code_refs:
   - app/Services/AI/AnalysisService.php
 ---
 
+> **Partly superseded (2026-10-07) by [[a-plan-day-has-no-narrated-read]].** The per-day read is gone, so neither the ingest path nor the return job requests one; the rest of this decision stands.
+
 # Narration spends only on active athletes
 
 **Status:** Accepted (documented 2026-09-17). Supersedes [[narration-follows-the-athlete-not-the-run]].

@@ -195,7 +195,6 @@ function demoSurfaceCounts(User $user): array
         'weekly snapshots' => WeeklySnapshot::query()->where('user_id', $user->id)->count(),
         'personal records' => PersonalRecord::query()->where('user_id', $user->id)->count(),
         'planned sessions' => PlannedSession::query()->where('user_id', $user->id)->count(),
-        'plan day voices' => Analysis::query()->where('analysis_type', AnalysisType::PlanDayVoice)->count(),
         'plan season voices' => Analysis::query()->where('analysis_type', AnalysisType::PlanSeasonVoice)->count(),
         'trend reads' => Analysis::query()
             ->where('subject_type', AnalysisType::TREND_READ_SUBJECT_TYPE)
@@ -342,20 +341,8 @@ it('seeds a complete, login-ready demo dataset', function (): void {
             ->where('status', '!=', PlannedSessionStatus::Planned)
             ->count())->toBe(0);
 
-    // F7 / #939: plan narration filled rule-based for the active season, and
-    // for whichever of the current week's days already have a run credited
-    // on them — a day still ahead shows no read at all.
-    $creditedThisWeek = PlannedSession::query()
-        ->where('user_id', $user->id)
-        ->whereBetween('date', [
-            Carbon::today()->startOfWeek(Carbon::MONDAY)->toDateString(),
-            Carbon::today()->endOfWeek(Carbon::SUNDAY)->toDateString(),
-        ])
-        ->whereIn('status', [PlannedSessionStatus::Done, PlannedSessionStatus::Partial, PlannedSessionStatus::Overreached])
-        ->count();
-    expect($creditedThisWeek)->toBeGreaterThan(0)
-        ->and(Analysis::query()->where('analysis_type', AnalysisType::PlanDayVoice)->where('status', 'done')->count())->toBe($creditedThisWeek)
-        ->and(Analysis::query()->where('analysis_type', AnalysisType::PlanSeasonVoice)->where('status', 'done')->count())->toBe(1);
+    // F7: season narration filled rule-based for the active season.
+    expect(Analysis::query()->where('analysis_type', AnalysisType::PlanSeasonVoice)->where('status', 'done')->count())->toBe(1);
 
     // F7: trend_read narrated for every live window (just 7d since #967).
     expect(Analysis::query()

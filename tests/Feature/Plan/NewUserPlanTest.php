@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Jobs\AI\AnalyzePlanDayVoiceJob;
 use App\Jobs\AI\AnalyzePlanSeasonVoiceJob;
 use App\Models\Activity;
 use App\Models\AI\Analysis;
@@ -129,9 +128,7 @@ it('narrates the first week when the backfill has already landed', function (): 
         'goal_type' => 'consistent',
     ])->assertSessionHasNoErrors();
 
-    // #939: the first week has no run in it yet, so only the season narrates.
     Bus::assertDispatched(AnalyzePlanSeasonVoiceJob::class);
-    Bus::assertNotDispatched(AnalyzePlanDayVoiceJob::class);
 
     Carbon::setTestNow();
 });
@@ -148,7 +145,7 @@ it('narrates nothing, and promises nothing, while the backfill is still running'
         'goal_type' => 'consistent',
     ])->assertSessionHasNoErrors();
 
-    Bus::assertNotDispatched(AnalyzePlanDayVoiceJob::class);
+    Bus::assertNotDispatched(AnalyzePlanSeasonVoiceJob::class);
 
     // No row means no payload, which is what keeps the Plan page from drawing
     // a skeleton over a job nobody queued. Today's briefing is a different

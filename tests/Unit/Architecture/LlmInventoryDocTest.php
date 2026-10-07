@@ -100,7 +100,7 @@ it('names no narrator or agent tool that has since been deleted', function (): v
  * queryable, which is exactly why nothing else would notice.
  */
 it('never resurrects a retired narration surface', function (): void {
-    $retired = ['pr_context', 'daily_greeting', 'trend_caption', 'persona_summary', 'briefing_featured_kartu_voice'];
+    $retired = ['pr_context', 'daily_greeting', 'trend_caption', 'persona_summary', 'briefing_featured_kartu_voice', 'plan_day_voice'];
     $doc = llmInventoryDoc();
 
     $live = array_column(AnalysisType::cases(), 'value');

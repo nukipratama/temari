@@ -26,13 +26,12 @@ use Illuminate\Support\Carbon;
 
 /**
  * What the periodizer prescribed over a span, and how the athlete did against
- * it. Bound to the span the calling block is about, so a day narrator, a weekly
- * recap and a per-run narrator all ask the same question of a different window.
+ * it. Bound to the span the calling block is about, so a weekly recap and a
+ * per-run narrator ask the same question of a different window.
  *
  * `prescribed_km` is written by {@see \App\Services\Run\Plan\ComplianceScorer}
  * the morning after a day passes, so it is null for today and every future day;
- * those fall back to the same unredistributed core distance {@see PlanDayTool}
- * reports. The target pace comes from the athlete's current VDOT rather than
+ * those fall back to the unredistributed core distance. The target pace comes from the athlete's current VDOT rather than
  * the row, which stores none.
  */
 final class PlanContextTool extends UserTool

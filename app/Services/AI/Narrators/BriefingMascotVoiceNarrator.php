@@ -384,7 +384,7 @@ class BriefingMascotVoiceNarrator
                 maxTokens: 1800,
                 toolbox: $this->toolbox($user, $asOf),
                 validator: $postRun
-                    ? static fn (array $answer): ?string => OutcomeLabels::complaint((string) $answer['mascot_voice'], 'mascot_voice', plainText: false)
+                    ? static fn (array $answer): ?string => OutcomeLabels::complaint((string) $answer['mascot_voice'], 'mascot_voice')
                     : null,
             ),
         );

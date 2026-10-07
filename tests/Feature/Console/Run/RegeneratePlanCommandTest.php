@@ -98,7 +98,6 @@ it('regenerates the plan for a dormant athlete but narrates only the active one'
 
     expect(seasonVoiceRowsFor($active))->toBeGreaterThan(0)
         ->and(seasonVoiceRowsFor($dormant))->toBe(0)
-        ->and(Analysis::query()->where('subject_id', $active->id)->where('analysis_type', AnalysisType::PlanDayVoice)->count())->toBe(0)
         ->and(PlannedSession::query()->where('user_id', $dormant->id)->exists())->toBeTrue();
 });
 

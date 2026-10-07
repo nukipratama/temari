@@ -487,10 +487,9 @@ class DemoRunSeeder
             );
         }
 
-        // Fills plan_day_voice (current week's 7 days) / plan_season_voice
-        // (the active Season) rule-based, mirroring the demo Plan page's own
-        // "Reread" path — see PlanNarrationRequester::ensureDemoFilled's docblock.
-        $this->planNarrationRequester->ensureDemoFilled($user, $today);
+        // Fills plan_season_voice (the active Season) rule-based, mirroring the
+        // demo Plan page's own "Reread" path — see PlanNarrationRequester::ensureDemoFilled's docblock.
+        $this->planNarrationRequester->ensureDemoFilled($user);
     }
 
     /** The current season's daily trend snapshots, supported race time included. */

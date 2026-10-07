@@ -127,8 +127,8 @@ it('authorizes a narration through the analysis subject authorizer', function ()
     $user = User::factory()->create();
     $stranger = User::factory()->create();
     $analysis = Analysis::factory()->create([
-        'analysis_type' => AnalysisType::PlanDayVoice,
-        'subject_type' => User::class,
+        'analysis_type' => AnalysisType::PlanClampVoice,
+        'subject_type' => AnalysisType::PLAN_CLAMP_VOICE_SUBJECT_TYPE,
         'subject_id' => $user->id,
     ]);
 

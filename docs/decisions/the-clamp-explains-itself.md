@@ -11,6 +11,8 @@ code_refs:
   - app/Services/AI/MaterialFingerprint.php
 ---
 
+> **Partly superseded (2026-10-07) by [[a-plan-day-has-no-narrated-read]].** `plan_day_voice` no longer exists, so the comparisons with it below are historical; the clamp line itself is unchanged.
+
 > **Correction (2026-09-30):** Clamp writes and `plan_clamp_voice` requests now come from shared daily-briefing side effects (the 00:01 kickoff and hourly catch-up replay); the ingest listener does neither. A day with a recorded run is excluded from new clamp writes. If a clamp still shows on an uncredited day, it keeps the morning narration or templated explanation without regeneration by ingest. This overrides the two-sites trigger and post-run regeneration described below.
 
 # The clamp explains itself, in its own narration

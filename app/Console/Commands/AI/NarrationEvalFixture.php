@@ -12,7 +12,7 @@ use Closure;
 final readonly class NarrationEvalFixture
 {
     /**
-     * @param  Closure(): ?array{generate: Closure(): string, evidence: array<string, mixed>, direction: array{required: list<string>, forbidden: list<string>}, plain_text: bool}  $build
+     * @param  Closure(): ?array{generate: Closure(): string, evidence: array<string, mixed>, direction: array{required: list<string>, forbidden: list<string>}}  $build
      */
     public function __construct(
         public string $kind,

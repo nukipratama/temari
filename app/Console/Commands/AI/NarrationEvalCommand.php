@@ -13,7 +13,7 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Throwable;
 
-#[Signature('narration:eval {--kind=* : plan_day_voice, briefing_mascot_voice, run_insight or profile_voice; default all} {--max-calls= : Hard cap on narrator calls, required, at most 60}')]
+#[Signature('narration:eval {--kind=* : briefing_mascot_voice, run_insight or profile_voice; default all} {--max-calls= : Hard cap on narrator calls, required, at most 60}')]
 #[Description('Run the narrators against seeded extremes on the demo athlete and check what the model writes back (manual, spends tokens)')]
 class NarrationEvalCommand extends Command
 {
@@ -158,7 +158,7 @@ class NarrationEvalCommand extends Command
             try {
                 $called = true;
                 $text = ($case['generate'])();
-                $failures = array_filter(NarrationEvalChecks::run($text, $case['evidence'], $case['direction'], $case['plain_text']));
+                $failures = array_filter(NarrationEvalChecks::run($text, $case['evidence'], $case['direction']));
             } catch (Throwable $e) {
                 $failures = ['validators' => $e->getMessage()];
             }

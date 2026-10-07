@@ -12,12 +12,9 @@ use App\Services\Run\Metrics\ReadinessCeiling;
 /**
  * One line naming today's eased session as the day's session, and why it was eased.
  *
- * Deliberately its own narrator rather than a branch of
- * {@see PlanDayVoiceNarrator}: the day's blurb is fingerprinted on the stored
- * session and must not re-bill every time readiness moves, which on a clamped
- * day is exactly what happens. This one carries no tools — everything it needs
- * is three coarse facts, and the numbers on the card are already right beside
- * it. Before the day is credited this line is the eased day's voice; see
+ * It carries no tools — everything it needs is three coarse facts, and the
+ * numbers on the card are already right beside it. Before the day is credited
+ * this line is the eased day's voice; see
  * `docs/decisions/the-eased-session-leads.md`.
  */
 class PlanClampVoiceNarrator

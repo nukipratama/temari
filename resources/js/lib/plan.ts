@@ -53,8 +53,6 @@ export interface SeasonSummaryWeek {
 }
 
 export interface PlanNarration {
-    /** Keyed by date (Y-m-d) — only the current week's 7 days are ever requested. */
-    days: Record<string, AnalysisPayload>;
     season: AnalysisPayload | null;
 }
 

@@ -7,26 +7,21 @@ import { Icon } from '@/components/ui/Icon';
 import { cn } from '@/lib/cn';
 
 /**
- * Temari's read on a season, a week or a single day — the labelled
- * narration block the plan repeats at all three levels of the timeline.
+ * Temari's take on the season — the labelled narration block in the plan's
+ * season header.
  */
 export default function TemariTake({
     analysis,
-    label = "Temari's take",
-    allowReanalyze = true,
     className,
 }: Readonly<{
     analysis: AnalysisPayload;
-    /** The day row reads "Temari's read" instead — everywhere else keeps the default. */
-    label?: string;
-    allowReanalyze?: boolean;
     className?: string;
 }>) {
     return (
         <div className={cn(className)}>
             <div className="flex items-center gap-1.5 text-horizon-ink">
                 <Icon icon={Sparkles} className="size-3.5" aria-hidden />
-                <span className="text-label-micro">{label}</span>
+                <span className="text-label-micro">Temari's take</span>
             </div>
             <div className="mt-1">
                 <AnalysisStatus
@@ -34,7 +29,6 @@ export default function TemariTake({
                     thinkingMark
                     inertiaReloadProps={['planNarration']}
                     size="sm"
-                    allowReanalyze={allowReanalyze}
                     renderContent={(content) => (
                         <p className="narration">{content}</p>
                     )}

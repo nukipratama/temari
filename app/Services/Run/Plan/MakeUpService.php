@@ -10,7 +10,6 @@ use App\Models\RunCard;
 use App\Models\User;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisType;
-use App\Services\AI\PlanNarrationRequester;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Carbon;
 
@@ -33,7 +32,6 @@ final readonly class MakeUpService
     public function __construct(
         private ComplianceScorer $scorer,
         private PlanReconciliationService $reconciliation,
-        private PlanNarrationRequester $planNarration,
         private AnalysisService $analysisService,
     ) {
     }
@@ -56,8 +54,6 @@ final readonly class MakeUpService
     public function notify(User $user, Carbon $vacatedDate, Carbon $targetDate, Carbon $today): void
     {
         $this->reconciliation->markDirty($user->id, $vacatedDate->min($targetDate));
-        $this->planNarration->requestDayVoiceIfChanged($user, $vacatedDate);
-        $this->planNarration->requestDayVoiceIfChanged($user, $targetDate);
 
         if ($user->is_demo) {
             return;

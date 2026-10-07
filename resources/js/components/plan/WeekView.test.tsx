@@ -2,7 +2,6 @@ import { fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { EditablePlanDay, SeasonSummaryWeek } from '@/lib/plan';
-import type { AnalysisPayload } from '@/types/inertia';
 
 import {
     clearNavigationMemory,
@@ -59,20 +58,6 @@ function day(overrides: Partial<EditablePlanDay> = {}): EditablePlanDay {
         made_up_on: null,
         ...overrides,
     };
-}
-
-function narration(overrides: Partial<AnalysisPayload> = {}): AnalysisPayload {
-    return {
-        id: 1,
-        status: 'done',
-        content: 'held it easy the whole way.',
-        type: 'plan_day_voice',
-        is_zone_dependent: false,
-        subject_type: 'plan_day_voice_user_day',
-        subject_id: 1,
-        discriminator: '2026-06-15',
-        ...overrides,
-    } as AnalysisPayload;
 }
 
 /** Mon done, Tue missed, Wed today (easy), Thu tempo, Fri rest. */
@@ -137,7 +122,6 @@ function renderWeek(overrides: Partial<Parameters<typeof WeekView>[0]> = {}) {
             days={WEEK}
             today={TODAY}
             focus={null}
-            dayNarration={{}}
             onMove={onMove}
             onSkip={onSkip}
             onUnskip={onUnskip}
@@ -403,29 +387,6 @@ describe('WeekView', () => {
             note.compareDocumentPosition(screen.getByRole('tablist')) &
                 Node.DOCUMENT_POSITION_FOLLOWING,
         ).toBeTruthy();
-    });
-
-    it("shows Temari's read on a credited day once its narration is in", () => {
-        renderWeek({
-            focusDay: '2026-06-15',
-            dayNarration: { '2026-06-15': narration() },
-        });
-
-        expect(screen.getByText("Temari's read")).toBeInTheDocument();
-        expect(
-            screen.getByText('held it easy the whole way.'),
-        ).toBeInTheDocument();
-    });
-
-    it('draws no read while the day narration is pending', () => {
-        renderWeek({
-            focusDay: '2026-06-15',
-            dayNarration: {
-                '2026-06-15': narration({ status: 'pending', content: null }),
-            },
-        });
-
-        expect(screen.queryByText("Temari's read")).not.toBeInTheDocument();
     });
 
     it("shows the run's asked and ran result and its activity link", () => {

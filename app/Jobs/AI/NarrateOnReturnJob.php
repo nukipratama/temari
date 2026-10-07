@@ -16,7 +16,6 @@ use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
 use App\Services\AI\HydrationBacklog;
 use App\Services\AI\NarrationOrigin;
-use App\Services\AI\PlanNarrationRequester;
 use App\Services\AI\RecapHydrationReadiness;
 use App\Services\AI\RecapPeriod;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -26,8 +25,8 @@ use Illuminate\Support\Carbon;
 
 /**
  * Catches an athlete up on the narration deferred while they were away from the
- * app: the last week of runs, the latest closed week's and month's recaps and
- * this week's day reads go to the LLM, and anything older still pending is
+ * app: the last week of runs and the latest closed week's and month's recaps
+ * go to the LLM, and anything older still pending is
  * filled rule-based. Queued from {@see \App\Http\Middleware\StampLastSeen} on
  * the first visit after the active window lapsed.
  *
@@ -52,7 +51,6 @@ class NarrateOnReturnJob implements ShouldQueue
     public function handle(
         AnalysisService $service,
         RecapHydrationReadiness $readiness,
-        PlanNarrationRequester $planNarration,
         HydrationBacklog $backlog,
     ): void {
         app(NarrationOrigin::class)->set(AnalysisOrigin::Return);
@@ -68,7 +66,6 @@ class NarrateOnReturnJob implements ShouldQueue
         $this->catchUpCardFlavors($service, $user, $windowStart);
         $this->catchUpWeeklyRecaps($service, $readiness, $user);
         $this->catchUpMonthlyRecaps($service, $backlog, $user);
-        $this->readThisWeek($planNarration, $user);
     }
 
     private function catchUpRuns(AnalysisService $service, User $user, Carbon $windowStart): void
@@ -162,15 +159,6 @@ class NarrateOnReturnJob implements ShouldQueue
             }
 
             $service->request(AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE, $user->id, AnalysisType::MonthlyRecap, $month, invalidate: false);
-        }
-    }
-
-    private function readThisWeek(PlanNarrationRequester $planNarration, User $user): void
-    {
-        $today = Carbon::today();
-
-        for ($day = $today->copy()->startOfWeek(Carbon::MONDAY); $day->lte($today); $day->addDay()) {
-            $planNarration->requestDayVoiceIfChanged($user, $day->copy());
         }
     }
 }

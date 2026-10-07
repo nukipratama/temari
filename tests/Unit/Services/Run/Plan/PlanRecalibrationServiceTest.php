@@ -42,9 +42,9 @@ it('recomputes stored streams and rebuilds the plan without external work', func
     ActivityStream::factory()->for($activity)->create();
     PlannedSession::factory()->for($user)->create(['date' => Carbon::today()->subWeek()]);
     $analysis = Analysis::factory()->done('Keep this narration')->create([
-        'subject_type' => AnalysisType::PLAN_DAY_VOICE_SUBJECT_TYPE,
+        'subject_type' => AnalysisType::PLAN_CLAMP_VOICE_SUBJECT_TYPE,
         'subject_id' => $user->id,
-        'analysis_type' => AnalysisType::PlanDayVoice,
+        'analysis_type' => AnalysisType::PlanClampVoice,
         'discriminator' => Carbon::today()->subWeek()->toDateString(),
     ]);
 
@@ -157,9 +157,9 @@ it('keeps past prescriptions, grades and their narration through an ordinary rec
     ]);
     $before = Arr::only($past->fresh()->getAttributes(), ['prescribed_hard_minutes', 'prescribed_pace_band', 'prescribed_pace_sec_per_km', 'prescription_reason', 'status', 'compliance_score', 'intent_verdict', 'intent_evidence']);
     $narration = Analysis::factory()->done('Shown that day')->create([
-        'subject_type' => AnalysisType::PLAN_DAY_VOICE_SUBJECT_TYPE,
+        'subject_type' => AnalysisType::PLAN_CLAMP_VOICE_SUBJECT_TYPE,
         'subject_id' => $user->id,
-        'analysis_type' => AnalysisType::PlanDayVoice,
+        'analysis_type' => AnalysisType::PlanClampVoice,
         'discriminator' => Carbon::today()->subWeek()->toDateString(),
     ]);
 

@@ -15,12 +15,12 @@ final class NarrationEvalChecks
      * @param  array{required?: list<string>, forbidden?: list<string>}  $direction
      * @return array{outcome_labels: ?string, raw_enum: ?string, markdown: ?string, numbers: ?string, direction: ?string}
      */
-    public static function run(string $text, array $evidence, array $direction, bool $plainText): array
+    public static function run(string $text, array $evidence, array $direction): array
     {
         return [
-            'outcome_labels' => OutcomeLabels::complaint($text, 'the text', $plainText),
+            'outcome_labels' => OutcomeLabels::complaint($text, 'the text'),
             'raw_enum' => self::rawEnum($text),
-            'markdown' => self::markdown($text, $plainText),
+            'markdown' => self::markdown($text),
             'numbers' => self::numbers($text, $evidence),
             'direction' => self::direction($text, $direction),
         ];
@@ -35,13 +35,9 @@ final class NarrationEvalChecks
         return "snake_case token \"{$match[0]}\"";
     }
 
-    private static function markdown(string $text, bool $plainText): ?string
+    private static function markdown(string $text): ?string
     {
-        $pattern = $plainText
-            ? '/\*|(?<!\w)_|_(?!\w)|`|^\s*#{1,6}\s|^\s*[-+]\s/m'
-            : '/`|^\s*#{1,6}\s|^\s*[-+]\s/m';
-
-        if (preg_match($pattern, $text, $match) !== 1) {
+        if (preg_match('/`|^\s*#{1,6}\s|^\s*[-+]\s/m', $text, $match) !== 1) {
             return null;
         }
 

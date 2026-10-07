@@ -16,7 +16,6 @@ use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisSubjectMap;
 use App\Services\AI\AnalysisType;
 use App\Services\AI\HydrationBacklog;
-use App\Services\AI\PlanNarrationRequester;
 use App\Services\Run\Metrics\PersonalRecords;
 use App\Services\Run\Metrics\WeeklyAggregator;
 use Illuminate\Database\Eloquent\Collection;
@@ -42,7 +41,6 @@ class SettleEarlyNarrationAction
         private readonly PersonalRecords $personalRecords,
         private readonly RecomputeCardClaimsAction $recomputeCardClaims,
         private readonly AnalysisService $analysisService,
-        private readonly PlanNarrationRequester $planNarration,
         private readonly HydrationBacklog $backlog,
         private readonly KickoffWeeklyRecaps $weeklyRecaps,
         private readonly WeeklyAggregator $weeklyAggregator,
@@ -133,11 +131,8 @@ class SettleEarlyNarrationAction
     }
 
     /**
-     * One conditional UPDATE per row: clears `narrated_early_at` and, unless
-     * this is a PlanDayVoice row, sends it back to Pending. PlanDayVoice is
-     * the exception — requestDayVoiceIfChanged() decides for itself whether
-     * the day's material changed, and has no SelfHealer recovery family, so
-     * pre-flipping it to Pending here could strand it. A sibling swept in
+     * One conditional UPDATE per row: clears `narrated_early_at` and sends it
+     * back to Pending. A sibling swept in
      * alongside its own early-marked pair (see claimEarlyRows) may already
      * have no `narrated_early_at` of its own, so only a row that has one is
      * required to still have it — that's the only row a second caller could
@@ -145,10 +140,7 @@ class SettleEarlyNarrationAction
      */
     private function claimRow(Analysis $row): bool
     {
-        $attributes = ['narrated_early_at' => null, 'error' => null];
-        if ($row->analysis_type !== AnalysisType::PlanDayVoice) {
-            $attributes['status'] = AnalysisStatus::Pending;
-        }
+        $attributes = ['narrated_early_at' => null, 'error' => null, 'status' => AnalysisStatus::Pending];
 
         $query = Analysis::query()->whereKey($row->getKey());
         if ($row->narrated_early_at !== null) {
@@ -190,9 +182,6 @@ class SettleEarlyNarrationAction
                     (string) $row->discriminator,
                     invalidate: false,
                 ),
-                AnalysisType::PlanDayVoice => $row->discriminator !== null
-                    ? $this->planNarration->requestDayVoiceIfChanged($user, Carbon::parse($row->discriminator))
-                    : null,
                 default => null,
             };
         }
