@@ -22,7 +22,7 @@ Zones come from a max heart rate. With no explicit zones the app uses a default 
 ## Decision
 
 1. **Label the estimate.** [HrZonesDisclosure](resources/js/components/settings/HrZonesDisclosure.tsx#L139) reads "estimated from a default max HR" or "estimated from your highest recorded heart rate", with one line asking for a max from a race or hard test, or a Strava zone sync. The `strava` and `manual` sources read as before. **Evidence-supported.**
-2. **Mark the verdicts that rest on them.** [ComplianceScorer::verdictsFor()](app/Services/Run/Plan/ComplianceScorer.php#L57) adds `zones => estimated` to heart-rate-based intent evidence whenever [RunnerProfile::hasExplicitZones()](app/Models/RunnerProfile.php#L79) is not true. [IntentOutcome::detail()](app/Services/Run/Plan/IntentOutcome.php#L59) then appends "the heart-rate zones behind this are estimated, so it is a rough read". The verdict itself is unchanged. **Evidence-supported.**
+2. **Mark the verdicts that rest on them.** [ComplianceScorer::verdictsFor()](app/Services/Run/Plan/ComplianceScorer.php#L61) adds `zones => estimated` to heart-rate-based intent evidence whenever [RunnerProfile::hasExplicitZones()](app/Models/RunnerProfile.php#L79) is not true. [IntentOutcome::detail()](app/Services/Run/Plan/IntentOutcome.php#L59) then appends "the heart-rate zones behind this are estimated, so it is a rough read". The verdict itself is unchanged. **Evidence-supported.**
 3. **No age is collected.** The age-predicted formulas would give a fresher number than 180 but need a birth date the app has no other use for. The default and the observed-peak raise stay as they are. **Product choice.**
 
 ## Consequences

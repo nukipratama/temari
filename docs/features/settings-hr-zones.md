@@ -59,7 +59,7 @@ Every Strava zone write, from `SyncZonesJob` or `strava:sync-zones`, goes throug
 
 Zones without a measured max are estimates, and the card says so ([[zones-without-a-measured-max-are-estimates]]). [HrZonesDisclosure](../../resources/js/components/settings/HrZonesDisclosure.tsx#L95) labels the `default` source "estimated from a default max HR" and the `observed` source "estimated from your highest recorded heart rate", and opens with one line asking for a max from a race or hard test, or a Strava zone sync. `strava` and `manual` read as before.
 
-Heart-rate intent verdicts carry the same caveat. [ComplianceScorer::verdictsFor()](../../app/Services/Run/Plan/ComplianceScorer.php#L57) adds `zones => estimated` to heart-rate-based evidence whenever [RunnerProfile::hasExplicitZones()](../../app/Models/RunnerProfile.php#L79) is false, and [IntentOutcome::detail()](../../app/Services/Run/Plan/IntentOutcome.php#L59) appends "the heart-rate zones behind this are estimated, so it is a rough read". The verdict is unchanged. The app collects no age, so it has no age-predicted max; the default 180 and the observed-peak raise stand.
+Heart-rate intent verdicts carry the same caveat. [ComplianceScorer::verdictsFor()](../../app/Services/Run/Plan/ComplianceScorer.php#L61) adds `zones => estimated` to heart-rate-based evidence whenever [RunnerProfile::hasExplicitZones()](../../app/Models/RunnerProfile.php#L79) is false, and [IntentOutcome::detail()](../../app/Services/Run/Plan/IntentOutcome.php#L59) appends "the heart-rate zones behind this are estimated, so it is a rough read". The verdict is unchanged. The app collects no age, so it has no age-predicted max; the default 180 and the observed-peak raise stand.
 
 ## The app-wide reconnect nudge
 
