@@ -63,6 +63,7 @@ final class SessionEditRules
     public static function canToggleSkip(PlannedSession $day, PlannedSessionStatus $status, Carbon $today): bool
     {
         return $day->session_type !== SessionType::Rest
+            && $day->made_up_from_id === null
             && ! $day->date->lessThan($today)
             && ! $status->isCredited();
     }

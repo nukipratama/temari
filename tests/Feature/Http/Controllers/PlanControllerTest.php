@@ -1052,6 +1052,25 @@ it('makes up a missed Tuesday easy on today\'s rest day, already run', function 
         ->and(planDaysByDate($user)['2026-08-11']['made_up_on'])->toBe('2026-08-12');
 });
 
+it('refuses to skip a missed session made up onto today before it is run', function (): void {
+    Carbon::setTestNow('2026-08-12 08:00:00');
+    $user = User::factory()->create();
+    $rows = planWeekRows($user, ['2026-08-11' => 'easy', '2026-08-12' => 'rest'], [
+        '2026-08-11' => ['status' => PlannedSessionStatus::Missed, 'compliance_score' => 0, 'distance_score' => 0],
+    ]);
+
+    $this->actingAs($user)
+        ->patch("/plan/sessions/{$rows['2026-08-11']->id}", ['date' => '2026-08-12'])
+        ->assertSessionHasNoErrors();
+
+    $this->actingAs($user)
+        ->patch("/plan/sessions/{$rows['2026-08-12']->id}", ['skipped' => true])
+        ->assertSessionHasErrors('skipped');
+
+    expect($rows['2026-08-12']->fresh()->skipped)->toBeFalse()
+        ->and(planDaysByDate($user)['2026-08-12']['actions']['skip'])->toBeFalse();
+});
+
 it('makes up the same missed easy on Thursday, onto Wednesday\'s past rest day that was run', function (): void {
     Carbon::setTestNow('2026-08-13 08:00:00');
     $user = User::factory()->create();

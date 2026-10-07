@@ -219,6 +219,16 @@ it('keeps a made-up session where it was linked', function (): void {
     expect(SessionEditRules::actionsFor($madeUp, PlannedSessionStatus::Missed, $rows, [], Carbon::today())['move'])->toBeFalse();
 });
 
+it('gives a make-up linked onto today no skip or restore', function (bool $skipped): void {
+    $rows = editRulesWeek();
+    $madeUp = editRulesDay($rows, '2026-08-12');
+    $madeUp->made_up_from_id = 7;
+    $madeUp->skipped = $skipped;
+
+    expect(SessionEditRules::actionsFor($madeUp, PlannedSessionStatus::Planned, $rows, [], Carbon::today()))
+        ->toBe(['move' => false, 'skip' => false, 'restore' => false]);
+})->with([false, true]);
+
 it('reads a move from a past day, or onto a day a run landed on, as a make-up', function (string $source, string $target, array $ranDates, bool $makeUp): void {
     $rows = editRulesWeek(['2026-08-10' => SessionType::Rest]);
 

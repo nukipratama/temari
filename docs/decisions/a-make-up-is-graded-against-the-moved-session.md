@@ -38,4 +38,4 @@ Move and Skip reached only days after today. An athlete who missed Tuesday's Eas
 
 ## Consequences
 
-A made-up day keeps its link while the week lasts: neither day can take part in another make-up, so a mistaken link is not undone in the app. A "missed because sick or injured" reason with an easy-only comeback week was considered and decided against.
+A made-up day keeps its link while the week lasts: neither day can take part in another make-up, so a mistaken link is not undone in the app. The made-up day takes no Skip either, so moving a missed session onto today and skipping it never excuses the miss. A "missed because sick or injured" reason with an easy-only comeback week was considered and decided against.
