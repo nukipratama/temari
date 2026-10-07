@@ -72,10 +72,10 @@ wildcard doesn't cover is the slot's own *unsuffixed* base schema (previously au
 per-slot equivalent of), so `scripts/worktree` setup creates that one explicitly.
 
 Test Redis follows the same split: `.env.testing`'s `REDIS_DB` holds the slot base `slot*32` (slot 0 =
-main and CI, which have no `.env.testing` value), and `tests/TestCase.php` gives paratest worker
+main and CI, whose `.env.testing` keeps the example's `REDIS_DB=0`), and `tests/TestCase.php` gives paratest worker
 `TEST_TOKEN` default DB `base + 2*token` and cache DB one above it. Slots 0-3 times tokens 0-15 use
-DBs 0-127 of the 256, disjoint by construction; a token of 16 or more, or a base that is not
-`0/32/64/96`, fails loudly. The test case also refuses any Redis host other than `redis_test`,
+DBs 0-127 of the 256, disjoint by construction; a token of 16 or more, a base that is not
+`0/32/64/96`, or a non-integer value fails loudly. The test case also refuses any Redis host other than `redis_test`,
 `temari-shared-redis-test` or `127.0.0.1` (CI), so a checkout without `.env.testing` cannot flush dev
 Redis. `scripts/worktree remove` flushes all 32 indices a slot owns.
 

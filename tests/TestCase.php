@@ -38,7 +38,7 @@ abstract class TestCase extends BaseTestCase
     public static function redisDatabases(int $slotBase, int $token): array
     {
         if ($slotBase < 0 || $slotBase % self::REDIS_DBS_PER_SLOT !== 0 || intdiv($slotBase, self::REDIS_DBS_PER_SLOT) > self::REDIS_MAX_SLOT) {
-            throw new RuntimeException("REDIS_DB {$slotBase} is not a slot base: use a multiple of ".self::REDIS_DBS_PER_SLOT.' up to '.self::REDIS_MAX_SLOT * self::REDIS_DBS_PER_SLOT.'.');
+            throw new RuntimeException("REDIS_DB {$slotBase} is not a slot base: use a multiple of ".self::REDIS_DBS_PER_SLOT.' up to '.self::REDIS_MAX_SLOT * self::REDIS_DBS_PER_SLOT.'. In a worktree, run scripts/worktree adopt to rewrite .env.testing.');
         }
 
         if ($token < 0 || $token >= self::REDIS_WORKERS_PER_SLOT) {
