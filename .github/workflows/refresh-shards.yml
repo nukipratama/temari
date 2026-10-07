@@ -1,6 +1,6 @@
 name: Refresh shards
 
-# Pest balances the 4-way backend shard using the per-class timings committed
+# Pest balances the 3-way backend shard using the per-class timings committed
 # in tests/.pest/shards.json (docs/decisions/sharded-pr-coverage.md). Nobody
 # regenerates it on a schedule, so it drifts as classes are added, removed, or
 # get slower/faster. This runs the regeneration weekly and opens or updates

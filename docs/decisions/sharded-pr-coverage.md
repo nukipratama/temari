@@ -30,6 +30,9 @@ code_refs:
 > `refresh-shards` times the map with pcov loaded (`--coverage-php=/dev/null`), so the split balances
 > the coverage-instrumented PR shards; main-push shards share the same map.
 
+> **Fact update, 2026-10-07.** Backend tests run in three shards (`SHARD_TOTAL` 3) to cut billed
+> runner minutes; the trial and its measurements are in [#1891](https://github.com/nukipratama/temari/issues/1891).
+
 > **Fact update, 2026-10-04.** Each suite's coverage merge now runs inside its `gate` job, and Pint, PHPStan and Rector run in sequence in one static-analysis job ([#1741](https://github.com/nukipratama/temari/issues/1741)).
 
 > **Fact update, 2026-10-04.** `refresh-shards` runs weekly (Mondays 02:05 WIB) instead of nightly ([#1736](https://github.com/nukipratama/temari/issues/1736)).
