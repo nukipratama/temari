@@ -8,6 +8,7 @@ use App\Enums\PlanRegenerationReason;
 use App\Http\Requests\UpdatePlannedSessionRequest;
 use App\Models\PlannedSession;
 use App\Models\User;
+use App\Services\AI\AnalysisService;
 use App\Services\AI\PlanNarrationRequester;
 use App\Services\Run\Plan\Periodizer;
 use App\Services\Run\Plan\PlanRegenerationService;
@@ -87,6 +88,7 @@ class PlanController extends Controller
         Periodizer $periodizer,
         PlanNarrationRequester $narrationRequester,
         SessionMatcher $sessionMatcher,
+        AnalysisService $analysisService,
     ): RedirectResponse {
         $this->authorizeOwner($request, $plannedSession);
 
@@ -132,6 +134,10 @@ class PlanController extends Controller
             );
         } catch (LockTimeoutException) {
             return back()->with('info', 'The plan is updating right now. Reload and try your edit again.');
+        }
+
+        if (! $user->is_demo && $session->date->isSameDay($today) && $session->wasChanged('skipped')) {
+            $analysisService->requestBriefing($user, $today->toDateString(), invalidate: true);
         }
 
         if ($occupant !== null || $session->wasChanged(['session_type', 'skipped', 'date'])) {
