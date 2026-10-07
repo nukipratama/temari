@@ -312,7 +312,7 @@ once the day is credited, since the athlete just changed that day on purpose.
 
 **Past days of the current season get the same read, rule-based, in one deploy-time step.**
 `plan:regrade-season` ([RegradeSeasonCommand](app/Console/Commands/Run/RegradeSeasonCommand.php))
-backfills a `plan_day_voice` row for every credited day it regrades via
+backfills a `plan_day_voice` row for every credited day it regrades, except a day a make-up emptied, via
 [`PlanNarrationRequester::backfillRuleBasedRead()`](app/Services/AI/PlanNarrationRequester.php),
 phrasing the same verdict [RuleBasedNarrationFiller::planDayVoice()](app/Services/AI/RuleBased/RuleBasedNarrationFiller.php)
 uses for the demo account — never the LLM, and idempotent to re-run. The demo account's own Plan

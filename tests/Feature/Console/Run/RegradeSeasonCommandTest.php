@@ -127,6 +127,26 @@ it('backfills no read for a day that was never credited', function (): void {
         ->exists())->toBeFalse();
 });
 
+it('backfills no read for a day a make-up emptied', function (): void {
+    PlannedSession::factory()->for($this->user)->create([
+        'date' => '2026-08-05',
+        'phase' => PlanPhase::Build,
+        'session_type' => SessionType::Rest,
+        'status' => PlannedSessionStatus::Done,
+        'made_up_on' => '2026-08-06',
+    ]);
+
+    $this->artisan('plan:regrade-season')
+        ->expectsOutputToContain('backfilling 0 rule-based read(s).')
+        ->assertSuccessful();
+
+    expect(Analysis::query()
+        ->where('subject_type', AnalysisType::PLAN_DAY_VOICE_SUBJECT_TYPE)
+        ->where('subject_id', $this->user->id)
+        ->where('discriminator', '2026-08-05')
+        ->exists())->toBeFalse();
+});
+
 it('leaves today and the days before the season alone', function (): void {
     $before = regradeFastEasyDay($this->user, '2026-07-29', PlannedSessionStatus::Done);
     $today = regradeFastEasyDay($this->user, '2026-08-20', PlannedSessionStatus::Planned);
