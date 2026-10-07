@@ -225,7 +225,7 @@ class PlannedSession extends Model
             'time_trial_outcome' => TimeTrialOutcome::class,
             'pinned' => 'boolean',
             'skipped' => 'boolean',
-            'made_up_on' => 'date',
+            'made_up_on' => 'date:Y-m-d',
             'made_up_from_id' => 'integer',
             'status' => PlannedSessionStatus::class,
             'compliance_score' => 'integer',
