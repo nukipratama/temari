@@ -428,7 +428,7 @@ echo 'PASS: interrupted reclaim retries and leaves live owners untouched'
 
 case_dir="${test_root}/slot-capacity"
 init_case "$case_dir"
-for slot in $(seq 1 84); do
+for slot in $(seq 1 3); do
   owner="${case_dir}/owner-${slot}"
   make_worktree "$owner"
   mkdir -p "${FAKE_COMMON}/temari-worktree-slots/slot-${slot}"
@@ -440,12 +440,12 @@ if "${FAKE_MAIN}/scripts/worktree" create creator > "${case_dir}/create.out" 2>&
   cat "${case_dir}/create.out" >&2
   fail 'create succeeded after all documented worktree slots were occupied'
 fi
-assert_eq 84 "$(wc -l < "$FAKE_LOCK_ATTEMPTS" | tr -d ' ')" 'allocator attempted slots beyond the documented limit'
-if ! grep -q 'no free worktree slots; the maximum is 84' "${case_dir}/create.out"; then
+assert_eq 3 "$(wc -l < "$FAKE_LOCK_ATTEMPTS" | tr -d ' ')" 'allocator attempted slots beyond the documented limit'
+if ! grep -q 'no free worktree slots; the maximum is 3' "${case_dir}/create.out"; then
   cat "${case_dir}/create.out" >&2
   fail 'allocator did not report that all documented worktree slots were occupied'
 fi
-echo 'PASS: allocation stops at the documented 84-slot limit'
+echo 'PASS: allocation stops at the documented 3-slot limit'
 
 case_dir="${test_root}/remove-prune-create"
 init_case "$case_dir"

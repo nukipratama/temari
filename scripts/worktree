@@ -6,7 +6,7 @@ SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
 CHECKOUT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd -P)"
 SLOT_FILE=".claude-worktree-slot"
 LOCKS_NAME="temari-worktree-slots"
-MAX_WORKTREE_SLOTS=84
+MAX_WORKTREE_SLOTS=3
 INCOMPLETE_SLOT_TTL_MINUTES=5
 
 usage() {
@@ -227,7 +227,7 @@ allocate_slot_for() {
     slot=$((slot + 1))
   done
 
-  fail "no free worktree slots; the maximum is ${MAX_WORKTREE_SLOTS}"
+  fail "no free worktree slots; the maximum is ${MAX_WORKTREE_SLOTS}. Free one with scripts/worktree remove <path>, or reclaim abandoned slots with scripts/worktree prune"
   return 1
 }
 
@@ -251,11 +251,16 @@ step() {
 setup_impl() {
   local worktree="$1"
   local slot="$2"
+
+  if [ "$slot" -gt "$MAX_WORKTREE_SLOTS" ]; then
+    fail "slot ${slot} is above the maximum of ${MAX_WORKTREE_SLOTS}; remove this worktree with scripts/worktree remove <path> and create it again"
+    return 1
+  fi
   local git_common_dir
   local app_port=$((7000 + slot * 10 + 1))
   local vite_port=$((7000 + slot * 10 + 2))
   local redis_base=$((slot * 3))
-  local test_redis_db=$((30 + slot))
+  local test_redis_db=$((slot * 32))
   local db_schema="temari_slot${slot}"
   local db_analytics_schema="temari_slot${slot}_analytics"
   local test_db_schema="temari_testing_slot${slot}"
@@ -347,7 +352,7 @@ EOF
 worktree: slot $slot configured; APP_PORT=$app_port, VITE_PORT=$vite_port.
 DB: $db_schema (+ $db_analytics_schema) on shared MySQL. Redis: indices
 $redis_base-$((redis_base + 2)) on shared Redis. Tests: $test_db_schema on
-shared test MySQL, Redis index $test_redis_db; see .env.testing.
+shared test MySQL, Redis indices $test_redis_db-$((test_redis_db + 31)); see .env.testing.
 Stack is up, PHP and npm dependencies are installed, both migration sets
 completed and assets are built; pages load at http://localhost:${app_port}.
 Run ./vendor/bin/sail npm run dev only when you need HMR.
@@ -383,7 +388,7 @@ clean_slot_data() {
   local db_analytics_schema="temari_slot${slot}_analytics"
   local test_db_schema="temari_testing_slot${slot}"
   local redis_base=$((slot * 3))
-  local test_redis_db=$((30 + slot))
+  local test_redis_db=$((slot * 32))
   local test_schemas
   local schema
   local service
@@ -437,8 +442,10 @@ clean_slot_data() {
         return 1
       }
     done
-    shared exec -T redis-test redis-cli -n "$test_redis_db" FLUSHDB >/dev/null || {
-      fail "could not flush shared test Redis index ${test_redis_db}"
+    [ "$slot" -le "$MAX_WORKTREE_SLOTS" ] || return 0
+    shared exec -T redis-test sh -c 'for index in $(seq "$1" "$2"); do redis-cli -n "$index" FLUSHDB >/dev/null || exit 1; done' \
+      sh "$test_redis_db" "$((test_redis_db + 31))" || {
+      fail "could not flush shared test Redis indices ${test_redis_db}-$((test_redis_db + 31))"
       return 1
     }
   )
