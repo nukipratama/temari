@@ -141,18 +141,6 @@ function dayChanges(day: PlanDay) {
     };
 }
 
-function isValidMoveTarget(day: EditablePlanDay, target: PlanDay) {
-    return day.move_targets.includes(target.date);
-}
-
-function dayActions(day: EditablePlanDay) {
-    return {
-        canMove: day.actions.move,
-        canSkip: day.actions.skip,
-        canUnskip: day.actions.restore,
-    };
-}
-
 function dayPoint(day: PlanDay) {
     return {
         purpose: ['long', 'tempo', 'interval'].includes(day.session_type)
@@ -188,7 +176,7 @@ export function hasDayDetail(
 ): boolean {
     const { sessionDelta, paceDelta, weekFitDelta } = dayChanges(day);
     const { purpose, doseWhy, tiltWhy, hint } = dayPoint(day);
-    const { canMove, canSkip, canUnskip } = dayActions(day);
+    const { move, skip, restore } = day.actions;
 
     return (
         day.segments.some((s) => (s.minutes ?? 0) > 0) ||
@@ -207,9 +195,9 @@ export function hasDayDetail(
         Boolean(day.credit_note) ||
         Boolean(day.result_note) ||
         day.activities.length > 0 ||
-        canMove ||
-        canSkip ||
-        canUnskip
+        move ||
+        skip ||
+        restore
     );
 }
 
@@ -314,7 +302,7 @@ export default function DayDetail({
 
     const { sessionDelta, paceDelta, weekFitDelta } = dayChanges(day);
     const { purpose, doseWhy, tiltWhy, hint } = dayPoint(day);
-    const { canMove, canSkip, canUnskip } = dayActions(day);
+    const { move: canMove, skip: canSkip, restore: canUnskip } = day.actions;
     const showsPoint =
         purpose !== null ||
         doseWhy !== null ||
@@ -451,7 +439,9 @@ export default function DayDetail({
                     {picking ? (
                         <div className="grid grid-cols-7 gap-1.5">
                             {weekDays.map((target) => {
-                                const valid = isValidMoveTarget(day, target);
+                                const valid = day.move_targets.includes(
+                                    target.date,
+                                );
                                 return (
                                     <button
                                         key={target.date}
