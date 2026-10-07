@@ -910,6 +910,19 @@ it('refuses move, skip and restore on a today a run has credited', function (arr
     'restore' => [['skipped' => false], 'skipped'],
 ]);
 
+it('refuses a move that also sets skipped, leaving both days as they were', function (): void {
+    Carbon::setTestNow('2026-08-12 08:00:00');
+    $user = User::factory()->create();
+    $rows = planWeekRows($user, ['2026-08-12' => 'easy', '2026-08-13' => 'rest']);
+    $before = [$rows['2026-08-12']->fresh()->getAttributes(), $rows['2026-08-13']->fresh()->getAttributes()];
+
+    $this->actingAs($user)
+        ->patch("/plan/sessions/{$rows['2026-08-12']->id}", ['date' => '2026-08-13', 'skipped' => true])
+        ->assertSessionHasErrors('date');
+
+    expect([$rows['2026-08-12']->fresh()->getAttributes(), $rows['2026-08-13']->fresh()->getAttributes()])->toBe($before);
+});
+
 it('refuses to skip or restore a past day', function (bool $skipped): void {
     Carbon::setTestNow('2026-08-12 08:00:00');
     $user = User::factory()->create();
