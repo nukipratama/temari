@@ -18,7 +18,7 @@ it('never shares a Redis database between any slot and worker', function () {
     expect($owners)->toHaveCount(128);
 });
 
-it('keeps slots 1 and 2 and slots 0 and 3 apart at the highest worker token', function () {
+it('keeps neighbouring slots apart at the highest worker token', function () {
     expect(TestCase::redisDatabases(32, 15))->toBe([62, 63])
         ->and(TestCase::redisDatabases(64, 0))->toBe([64, 65])
         ->and(TestCase::redisDatabases(0, 15))->toBe([30, 31])
@@ -33,10 +33,17 @@ it('refuses a slot above 3 or a base that is not a slot base', function (int $ba
     TestCase::redisDatabases($base, 0);
 })->with([128, 33, -32])->throws(RuntimeException::class, 'not a slot base');
 
+it('reads integer Redis settings', function (mixed $value, int $expected) {
+    expect(TestCase::integerSetting('REDIS_DB', $value))->toBe($expected);
+})->with([['32', 32], [0, 0], ['0', 0]]);
+
+it('refuses a non-integer Redis setting instead of coercing it', function (mixed $value) {
+    TestCase::integerSetting('REDIS_DB', $value);
+})->with(['', 'abc', '32abc', null])->throws(RuntimeException::class, 'REDIS_DB must be an integer');
+
 it('allows only the test Redis hosts', function (string $host) {
     TestCase::assertTestRedisHost($host);
-    expect(true)->toBeTrue();
-})->with(['redis_test', 'temari-shared-redis-test', '127.0.0.1']);
+})->with(['redis_test', 'temari-shared-redis-test', '127.0.0.1'])->throwsNoExceptions();
 
 it('refuses the dev Redis host', function (string $host) {
     TestCase::assertTestRedisHost($host);

@@ -32,9 +32,7 @@ services:
         image: 'redis:8.10-alpine@sha256:3811787313eba226a2ef38658c6ccb91cd5e110edc89c37767de373120a0e5a0'
         container_name: temari-shared-redis
         restart: unless-stopped
-        # 256, not the default 16: scripts/worktree assigns 3 indices per slot
-        # (SLOT*3..+2), so 16 (or even 64) silently runs out ("DB index is out of
-        # range") within a handful of slots. Worktrees are capped at 3 slots.
+        # scripts/worktree assigns 3 indices per slot (SLOT*3..+2), so slots 0-3 use 0-11.
         # No persistence, like `redis-test`: dev Redis holds only disposable
         # state, and a dump left by a newer Redis would stop the pinned one booting.
         command: ['redis-server', '--save', '', '--appendonly', 'no', '--databases', '256']
@@ -81,8 +79,8 @@ services:
         image: 'redis:8.10-alpine@sha256:3811787313eba226a2ef38658c6ccb91cd5e110edc89c37767de373120a0e5a0'
         container_name: temari-shared-redis-test
         restart: unless-stopped
-        # See the shared `redis` service above; each test slot (0-3) owns
-        # 32 indices, 2 per parallel worker (tests/TestCase.php), filling the first 128.
+        # Each test slot (0-3) owns 32 indices, 2 per parallel worker
+        # (tests/TestCase.php), filling the first 128.
         command: ['redis-server', '--save', '', '--appendonly', 'no', '--databases', '256']
         healthcheck:
             test: ['CMD', 'redis-cli', 'ping']

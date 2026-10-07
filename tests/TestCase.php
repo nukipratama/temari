@@ -50,6 +50,17 @@ abstract class TestCase extends BaseTestCase
         return [$default, $default + 1];
     }
 
+    public static function integerSetting(string $name, mixed $value): int
+    {
+        $integer = filter_var($value, FILTER_VALIDATE_INT);
+
+        if ($integer === false) {
+            throw new RuntimeException("{$name} must be an integer, got '".print_r($value, true)."'.");
+        }
+
+        return $integer;
+    }
+
     public static function assertTestRedisHost(string $host): void
     {
         if (! in_array($host, self::TEST_REDIS_HOSTS, true)) {
@@ -73,8 +84,8 @@ abstract class TestCase extends BaseTestCase
             self::assertTestRedisHost((string) $config->get('database.redis.cache.host'));
 
             [$default, $cache] = self::redisDatabases(
-                (int) $config->get('database.redis.default.database'),
-                (int) ($_SERVER['TEST_TOKEN'] ?? 0),
+                self::integerSetting('REDIS_DB', $config->get('database.redis.default.database')),
+                self::integerSetting('TEST_TOKEN', $_SERVER['TEST_TOKEN'] ?? 0),
             );
 
             $config->set('database.redis.default.database', $default);
