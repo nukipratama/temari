@@ -264,6 +264,10 @@ narrate them once the window closes, which is why a pending recap row is not a b
 - **`PlanController::update`, on a plain move onto or off today**: re-requests today's
   `briefing_mascot_voice` with `invalidate: true`, so the briefing never describes a session that
   moved. The demo athlete is skipped.
+- **`PlanController::update`, on a skip or restore of today**: when the edit actually flips
+  today's `skipped`, re-requests today's `briefing_mascot_voice` with `invalidate: true`, so the
+  briefing never describes a session the athlete skipped or misses one they restored. The demo athlete
+  is skipped.
 
 ### 4. Recovery
 

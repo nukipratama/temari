@@ -893,6 +893,27 @@ it('skips and restores today\'s unrun session', function (): void {
     expect($rows['2026-08-12']->fresh()->skipped)->toBeFalse();
 });
 
+it('rebriefs today only when a skip or restore changes today\'s session', function (string $date, bool $wasSkipped, bool $skipped, bool $demo, bool $rebriefs): void {
+    Carbon::setTestNow('2026-08-12 08:00:00');
+    Bus::fake();
+    $user = User::factory()->create(['is_demo' => $demo]);
+    $rows = planWeekRows($user, ['2026-08-12' => 'easy', '2026-08-14' => 'easy'], [
+        $date => ['skipped' => $wasSkipped],
+    ]);
+
+    $this->actingAs($user)
+        ->patch("/plan/sessions/{$rows[$date]->id}", ['skipped' => $skipped])
+        ->assertSessionHasNoErrors();
+
+    expect(Analysis::query()->where('analysis_type', AnalysisType::BriefingMascotVoice)->where('discriminator', '2026-08-12')->exists())->toBe($rebriefs);
+})->with([
+    'skip today' => ['2026-08-12', false, true, false, true],
+    'restore today' => ['2026-08-12', true, false, false, true],
+    'skip today again' => ['2026-08-12', true, true, false, false],
+    'skip a later day' => ['2026-08-14', false, true, false, false],
+    'demo skips today' => ['2026-08-12', false, true, true, false],
+]);
+
 it('refuses move, skip and restore on a today a run has credited', function (array $payload, string $field): void {
     Carbon::setTestNow('2026-08-12 08:00:00');
     $user = User::factory()->create();
