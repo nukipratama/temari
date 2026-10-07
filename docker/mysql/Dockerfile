@@ -18,6 +18,6 @@ RUN version=$(rpm -q --qf '%{VERSION}-%{RELEASE}' mysql-community-server-minimal
  && package=/tmp/mysql-community-client.rpm \
  && curl -fsSL -o "$package" "https://repo.mysql.com/yum/mysql-$series-community/el/$el/$arch/mysql-community-client-$version.$arch.rpm" \
  && rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-mysql \
- && rpm -K "$package" \
+ && rpm -K "$package" | grep -q 'signatures OK' \
  && rpm -i --nodeps --replacefiles "$package" \
  && rm -f "$package"
