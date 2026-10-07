@@ -1,4 +1,4 @@
-# Prod mysql image: stock mysql + the idempotent bootstrap baked into initdb, so a
+# Prod mysql image: stock mysql + mysqlbinlog + the idempotent bootstrap baked into initdb, so a
 # FRESH volume on ANY machine self-initializes the app's schemas + user + grants.
 # Baked (not bind-mounted) because the CI runner is docker-out-of-docker —
 # a bind mount of a repo path resolves to an empty dir the host daemon can't see.
