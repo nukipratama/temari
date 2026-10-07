@@ -34,6 +34,9 @@ code_refs:
 
 > **Fact update, 2026-10-04.** `refresh-shards` runs weekly (Mondays 02:05 WIB) instead of nightly ([#1736](https://github.com/nukipratama/temari/issues/1736)).
 
+> **Fact update, 2026-10-07.** Backend tests run in three shards (`SHARD_TOTAL` 3) to cut billed
+> runner minutes, trialled against the acceptance criteria in [#1891](https://github.com/nukipratama/temari/issues/1891).
+
 Coverage roughly doubled backend tests on every pull request (186–340s vs ~145s on a push),
 making them the PR's critical path by two to three minutes. Frontend tests were also near the
 critical path because per-file jsdom setup dominated their runtime. Both suites now use the same
