@@ -850,3 +850,79 @@ it('grades a warmup and trial recorded as one run by its trial split, crediting 
         ->and($verdict['intent']['evidence'])->toMatchArray(['time_trial' => 'pace', 'time_trial_read' => 'split'])
         ->and($verdict['status'])->toBe(PlannedSessionStatus::Done);
 });
+
+/** @return array{PlannedSession, PlannedSession} the emptied Tuesday and the made-up Wednesday */
+function madeUpPair(User $user, SessionType $movedType): array
+{
+    foreach (['2026-06-28', '2026-07-05', '2026-07-12', '2026-07-19', '2026-07-26', '2026-08-02'] as $weekEnding) {
+        WeeklySnapshot::factory()->for($user)->create(['week_ending' => $weekEnding, 'distance_km' => 50.0, 'runs' => 5]);
+    }
+    scorerRun($user, '2026-07-26', 16.0);
+
+    $vacated = scorerDay($user, '2026-08-04', ['session_type' => SessionType::Rest, 'made_up_on' => '2026-08-05']);
+    $target = scorerDay($user, '2026-08-05', ['session_type' => $movedType, 'made_up_from_id' => $vacated->id]);
+
+    return [$vacated, $target];
+}
+
+it('grades a made-up day against the moved session, not the rest it was shown that morning', function (): void {
+    $user = User::factory()->create();
+    $paces = scorerPaces($user, '2026-08-05');
+    [, $target] = madeUpPair($user, SessionType::Easy);
+    showAdvice($user, '2026-08-05', ['session_type' => 'rest'], [
+        'session_type' => 'rest', 'distance_km' => 0.0, 'segments' => [], 'paces' => SHOWN_PACES, 'skipped' => false, 'reason' => null,
+    ]);
+    $askedKm = (float) scorerVerdict($user, $target)['prescribed_km'];
+    shownRun($user, '2026-08-05', $askedKm, (int) round($askedKm * $paces['easy']), everyWindowAt($paces['easy']));
+
+    $verdict = scorerVerdict($user, $target);
+
+    expect($askedKm)->toBeGreaterThan(0.0)
+        ->and($verdict['status'])->toBe(PlannedSessionStatus::Done)
+        ->and($verdict['distance_score'])->toBe(100)
+        ->and($verdict['intent']['verdict'])->toBe(IntentVerdict::Hit)
+        ->and($verdict['intent']['evidence'])->toMatchArray(['advice_history' => 'declared_after_run', 'effective_type' => 'easy'])
+        ->and($verdict['intent']['evidence'])->not->toHaveKey('quality_progression');
+});
+
+it('keeps a made-up quality session out of progression even when it hit', function (): void {
+    $user = User::factory()->create();
+    $paces = scorerPaces($user, '2026-08-05');
+    [, $target] = madeUpPair($user, SessionType::Tempo);
+    $askedKm = (float) scorerVerdict($user, $target)['prescribed_km'];
+    scorerPacedRun($user, '2026-08-05', $askedKm, $paces['threshold'], everyWindowAt($paces['threshold']));
+
+    $verdict = scorerVerdict($user, $target);
+
+    expect($verdict['intent']['verdict'])->toBe(IntentVerdict::Hit)
+        ->and($verdict['intent']['evidence'])->toMatchArray(['advice_history' => 'declared_after_run', 'effective_type' => 'tempo'])
+        ->and($verdict['intent']['evidence'])->not->toHaveKey('quality_progression');
+});
+
+it('grades a missed tempo made up on an easy run as missed on intent', function (): void {
+    $user = User::factory()->create();
+    $paces = scorerPaces($user, '2026-08-05');
+    [, $target] = madeUpPair($user, SessionType::Tempo);
+    $askedKm = (float) scorerVerdict($user, $target)['prescribed_km'];
+    scorerPacedRun($user, '2026-08-05', $askedKm, $paces['easy'], everyWindowAt($paces['easy']));
+
+    $verdict = scorerVerdict($user, $target);
+
+    expect($verdict['intent']['verdict'])->toBe(IntentVerdict::Missed)
+        ->and($verdict['status'])->toBe(PlannedSessionStatus::Partial);
+});
+
+it('grades the day a make-up emptied as rest, whatever it was shown or run', function (): void {
+    $user = User::factory()->create();
+    [$vacated] = madeUpPair($user, SessionType::Easy);
+    showAdvice($user, '2026-08-04', ['session_type' => 'easy'], [
+        'session_type' => 'easy', 'distance_km' => 6.0, 'segments' => shownEasySegments(), 'paces' => SHOWN_PACES, 'skipped' => false, 'reason' => null,
+    ]);
+    shownRun($user, '2026-08-04', 1.5, 540);
+
+    $verdict = scorerVerdict($user, $vacated);
+
+    expect($verdict['status'])->toBe(PlannedSessionStatus::Done)
+        ->and($verdict['distance_score'])->toBeNull()
+        ->and($verdict['intent'])->toBeNull();
+});

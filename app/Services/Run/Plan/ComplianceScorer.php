@@ -16,6 +16,8 @@ use App\Models\PlannedSession;
 use App\Models\RecommendationRevision;
 use App\Models\User;
 use App\Services\Run\Metrics\ReadinessCeiling;
+use App\Services\Run\Metrics\TrainingPaceCalculator;
+use App\Services\Run\Metrics\VdotEstimator;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Carbon;
 
@@ -39,6 +41,8 @@ final readonly class ComplianceScorer
         private SessionMatcher $sessionMatcher,
         private TrainingBaseline $baseline,
         private RecommendationHistory $recommendationHistory,
+        private VdotEstimator $vdotEstimator,
+        private TrainingPaceCalculator $paceCalculator,
     ) {
     }
 
@@ -86,7 +90,8 @@ final readonly class ComplianceScorer
         foreach ($rows as $row) {
             $date = $row->date->toDateString();
             $anchor = collect($runsByDate[$date] ?? [])->sortByDesc('distance')->first();
-            $recommendation = $anchor === null ? null : ($shownByActivity[$anchor->id] ?? null);
+            $madeUp = $row->made_up_on !== null || $row->made_up_from_id !== null;
+            $recommendation = $anchor === null || $madeUp ? null : ($shownByActivity[$anchor->id] ?? null);
             if ($recommendation !== null) {
                 $recommendationsByDate[$date] = $recommendation;
                 $snapshot = clone $row;
@@ -120,7 +125,7 @@ final readonly class ComplianceScorer
 
         $typesByDate = array_map(static fn (RecommendationRevision $revision): SessionType => SessionType::from($revision->effective['session_type']), $recommendationsByDate);
         $verdicts = $this->sessionMatcher->scoreRange($user, $plannedKmByDate, $excusedByDate, $today, $typesByDate);
-        $intents = $this->intentsFor($rows, $effectiveByDate, $verdicts, $recommendationsByDate, $runsByDate, $user->hrProfile()['hr_zones'], $user->runnerProfile?->easyHrCapBpm() !== null);
+        $intents = $this->intentsFor($user, $rows, $effectiveByDate, $plannedKmByDate, $verdicts, $recommendationsByDate, $runsByDate, $user->hrProfile()['hr_zones'], $user->runnerProfile?->easyHrCapBpm() !== null);
         if ($user->runnerProfile?->hasExplicitZones() !== true) {
             $intents = array_map(static fn (array $intent): array => self::onHeartRate($intent['evidence'])
                 ? ['verdict' => $intent['verdict'], 'evidence' => $intent['evidence'] + ['zones' => 'estimated']]
@@ -144,13 +149,14 @@ final readonly class ComplianceScorer
     /**
      * @param  Collection<int, PlannedSession>  $rows
      * @param  array<string, EffectiveSession>  $effectiveByDate
+     * @param  array<string, float>  $plannedKmByDate
      * @param  array<string, array{status: PlannedSessionStatus, score: int|null, ran_anyway: bool}>  $verdicts
      * @param  array<string, RecommendationRevision>  $recommendationsByDate
      * @param  array<string, list<ActivityDetail>>  $runsByDate
      * @param  array<string, array{lo: int, hi: int}>  $zones
      * @return array<string, array{verdict: IntentVerdict, evidence: array<string, int|float|string>}>
      */
-    private function intentsFor(Collection $rows, array $effectiveByDate, array $verdicts, array $recommendationsByDate, array $runsByDate, array $zones, bool $heartRateCapped): array
+    private function intentsFor(User $user, Collection $rows, array $effectiveByDate, array $plannedKmByDate, array $verdicts, array $recommendationsByDate, array $runsByDate, array $zones, bool $heartRateCapped): array
     {
         $judged = $rows->filter(static fn (PlannedSession $row): bool => ($verdicts[$row->date->toDateString()]['status'] ?? null)?->isCredited() === true
             && in_array($effectiveByDate[$row->date->toDateString()]->sessionType, [SessionType::Easy, SessionType::Long, SessionType::Tempo, SessionType::Interval], true));
@@ -165,6 +171,11 @@ final readonly class ComplianceScorer
             $effectiveType = $effectiveByDate[$date]->sessionType;
             if ($trial !== null && in_array($effectiveType, [SessionType::Tempo, SessionType::Interval], true)) {
                 $intents[$date] = self::trialIntent($trial, $effectiveType, $runsByDate[$date] ?? [], $zones, $row->time_trial_outcome === TimeTrialOutcome::Confirmed);
+
+                continue;
+            }
+            if ($row->made_up_from_id !== null) {
+                $intents[$date] = $this->madeUpIntent($user, $row, $effectiveType, $plannedKmByDate[$date], $runsByDate[$date] ?? [], $heartRateCapped);
 
                 continue;
             }
@@ -222,6 +233,28 @@ final readonly class ComplianceScorer
         }
 
         return ['verdict' => $verdict, 'evidence' => $evidence];
+    }
+
+    /**
+     * A make-up is judged against the session moved onto the day, which was
+     * declared after the run, so it never teaches quality progression.
+     *
+     * @param  list<ActivityDetail>  $runs
+     * @return array{verdict: IntentVerdict, evidence: array<string, int|float|string>}
+     */
+    private function madeUpIntent(User $user, PlannedSession $row, SessionType $type, float $coreKm, array $runs, bool $heartRateCapped): array
+    {
+        $paces = $this->paceCalculator->fromVdotResult($this->vdotEstimator->estimate($user, $row->date));
+        $prescription = IntensityPrescription::fromSession($row);
+        $segments = $prescription !== null && $type->isQuality()
+            ? SegmentGenerator::forPrescription($type, $row->phase, $coreKm, $paces, $prescription)
+            : SegmentGenerator::forCoreKm($type, $row->phase, $row->race_distance_m === null ? null : (float) $row->race_distance_m, $coreKm, $paces);
+        $reading = SessionIntentJudge::judge($type, $segments, $paces, $runs, $heartRateCapped);
+
+        return [
+            'verdict' => $reading['verdict'],
+            'evidence' => $reading['evidence'] + ['advice_history' => 'declared_after_run', 'effective_type' => $type->value],
+        ];
     }
 
     /**

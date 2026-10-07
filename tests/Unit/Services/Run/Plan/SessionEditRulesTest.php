@@ -202,3 +202,31 @@ it('moves a day still ahead within its own week, from today on', function (): vo
         ->and(SessionEditRules::moveTargets(editRulesDay($rows, '2026-08-18'), $rows, [], Carbon::today()))
         ->toBe(['2026-08-19']);
 });
+
+it('never targets a day a make-up already emptied', function (): void {
+    $rows = editRulesWeek();
+    editRulesDay($rows, '2026-08-13')->made_up_on = Carbon::parse('2026-08-15');
+
+    expect(SessionEditRules::moveTargets(editRulesDay($rows, '2026-08-11'), $rows, ['2026-08-13'], Carbon::today()))
+        ->toBe(['2026-08-15']);
+});
+
+it('keeps a made-up session where it was linked', function (): void {
+    $rows = editRulesWeek();
+    $madeUp = editRulesDay($rows, '2026-08-11');
+    $madeUp->made_up_from_id = 7;
+
+    expect(SessionEditRules::actionsFor($madeUp, PlannedSessionStatus::Missed, $rows, [], Carbon::today())['move'])->toBeFalse();
+});
+
+it('reads a move from a past day, or onto a day a run landed on, as a make-up', function (string $source, string $target, array $ranDates, bool $makeUp): void {
+    $rows = editRulesWeek(['2026-08-10' => SessionType::Rest]);
+
+    expect(SessionEditRules::isMakeUp(editRulesDay($rows, $source), editRulesDay($rows, $target), $ranDates, Carbon::today()))
+        ->toBe($makeUp);
+})->with([
+    'past source onto a later rest day' => ['2026-08-11', '2026-08-13', [], true],
+    'today onto a rest day a run landed on' => ['2026-08-12', '2026-08-10', ['2026-08-10'], true],
+    'today onto a rest day still ahead' => ['2026-08-12', '2026-08-13', [], false],
+    'ahead onto a rest day still ahead' => ['2026-08-14', '2026-08-15', [], false],
+]);

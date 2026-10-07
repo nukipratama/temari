@@ -85,6 +85,7 @@
     "weeks[].days[].goal_pace",
     "weeks[].days[].hr_cap_bpm",
     "weeks[].days[].id",
+    "weeks[].days[].made_up_on",
     "weeks[].days[].move_targets",
     "weeks[].days[].pace_eased_from",
     "weeks[].days[].phase",

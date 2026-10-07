@@ -74,7 +74,7 @@ final readonly class SeasonGamificationContext
             $hasActivity = array_key_exists((string) $session->date->toDateString(), $kmByDay);
 
             if ($session->session_type === SessionType::Rest) {
-                if (! $hasActivity) {
+                if (! $hasActivity && $session->made_up_on === null) {
                     $restHonored++;
                 }
 

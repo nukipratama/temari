@@ -271,7 +271,7 @@ final class PlanPageAssembler
                     $fallbackVerdicts[$s->date->toDateString()]['ran_anyway'] ?? null,
                     $s->date->isSameDay($today) ? $briefingContext->readinessAssessment : null,
                     $user->runnerProfile?->easyHrCapBpm(),
-                ), ...$this->editRules($s, $fallbackVerdicts[$s->date->toDateString()]['status'] ?? $s->status, $ruleRows, $ranDates, $today)])->all(),
+                ), ...$this->editRules($s, $fallbackVerdicts[$s->date->toDateString()]['status'] ?? $s->status, $ruleRows, $ranDates, $today), 'made_up_on' => $s->made_up_on?->toDateString()])->all(),
             ];
         }
 

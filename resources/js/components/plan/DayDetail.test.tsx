@@ -71,6 +71,7 @@ function day(overrides: Partial<EditablePlanDay> = {}): EditablePlanDay {
         flagged: false,
         actions: { move: false, skip: false, restore: false },
         move_targets: [],
+        made_up_on: null,
         ...overrides,
     };
 }
@@ -718,6 +719,20 @@ describe('DayHeadline and DayDetail', () => {
         expect(
             screen.queryByRole('button', { name: /^move$/i }),
         ).not.toBeInTheDocument();
+    });
+
+    it('says when a day emptied by a make-up was made up', () => {
+        const emptied = day({
+            date: '2026-06-16',
+            session_type: 'rest',
+            segments: [],
+            distance_km: 0,
+            status: 'done',
+            made_up_on: '2026-06-17',
+        });
+        renderRow({ day: emptied, weekDays: [emptied] });
+
+        expect(screen.getByText('made up on Wed')).toBeInTheDocument();
     });
 
     it('links to what was actually run', () => {

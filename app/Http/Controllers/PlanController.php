@@ -9,6 +9,7 @@ use App\Http\Requests\UpdatePlannedSessionRequest;
 use App\Models\PlannedSession;
 use App\Models\User;
 use App\Services\AI\PlanNarrationRequester;
+use App\Services\Run\Plan\MakeUpService;
 use App\Services\Run\Plan\Periodizer;
 use App\Services\Run\Plan\PlanRegenerationService;
 use App\Services\Run\Plan\PlanPageAssembler;
@@ -87,6 +88,7 @@ class PlanController extends Controller
         Periodizer $periodizer,
         PlanNarrationRequester $narrationRequester,
         SessionMatcher $sessionMatcher,
+        MakeUpService $makeUps,
     ): RedirectResponse {
         $this->authorizeOwner($request, $plannedSession);
 
@@ -100,9 +102,9 @@ class PlanController extends Controller
         $today = Carbon::today();
 
         try {
-            [$session, $occupant] = $periodizer->withRegenerationLock(
+            [$session, $occupant, $makeUpTarget] = $periodizer->withRegenerationLock(
                 $user,
-                fn (): array => DB::transaction(function () use ($user, $plannedSession, $attributes, $today, $sessionMatcher): array {
+                fn (): array => DB::transaction(function () use ($user, $plannedSession, $attributes, $today, $sessionMatcher, $makeUps): array {
                     $session = PlannedSession::query()
                         ->where('user_id', $user->id)
                         ->whereDate('date', $plannedSession->date->toDateString())
@@ -118,20 +120,31 @@ class PlanController extends Controller
                     }
 
                     $occupant = null;
+                    $makeUpTarget = null;
                     if (isset($attributes['date'])) {
-                        $occupant = $this->moveTarget($user, $session, Carbon::parse($attributes['date']), $today, $sessionMatcher);
+                        [$occupant, $madeUp] = $this->moveTarget($user, $session, Carbon::parse($attributes['date']), $today, $sessionMatcher);
                         $this->swapSessions($session, $occupant);
                         unset($attributes['date']);
+                        $makeUpTarget = $madeUp ? $occupant : null;
                     }
 
                     $session->update($attributes);
+                    if ($makeUpTarget !== null) {
+                        $makeUps->apply($user, $session, $makeUpTarget, $today);
+                    }
 
-                    return [$session, $occupant];
+                    return [$session, $occupant, $makeUpTarget];
                 }),
                 Periodizer::REQUEST_LOCK_WAIT_SECONDS,
             );
         } catch (LockTimeoutException) {
             return back()->with('info', 'The plan is updating right now. Reload and try your edit again.');
+        }
+
+        if ($makeUpTarget !== null) {
+            $makeUps->notify($user, $session->date, $makeUpTarget->date, $today);
+
+            return back();
         }
 
         if ($occupant !== null || $session->wasChanged(['session_type', 'skipped', 'date'])) {
@@ -146,7 +159,10 @@ class PlanController extends Controller
         return back();
     }
 
-    private function moveTarget(User $user, PlannedSession $session, Carbon $toDate, Carbon $today, SessionMatcher $sessionMatcher): PlannedSession
+    /**
+     * @return array{PlannedSession, bool} the rest day the session lands on, and whether the move is a make-up
+     */
+    private function moveTarget(User $user, PlannedSession $session, Carbon $toDate, Carbon $today, SessionMatcher $sessionMatcher): array
     {
         [$from, $to] = SessionEditRules::window($session->date);
         $rows = PlannedSession::query()
@@ -163,7 +179,7 @@ class PlanController extends Controller
             throw ValidationException::withMessages(['date' => "this session can't move to that day."]);
         }
 
-        return $target;
+        return [$target, SessionEditRules::isMakeUp($session, $target, $ranDates, $today)];
     }
 
     /**

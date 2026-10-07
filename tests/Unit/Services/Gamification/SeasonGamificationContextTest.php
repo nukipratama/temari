@@ -95,6 +95,17 @@ it('counts a rest day as honored only when no activity was logged', function ():
     expect(ctxFor($user, $season)->restHonored)->toBe(1);
 });
 
+it('does not count a rest day a make-up emptied as honored', function (): void {
+    $user = User::factory()->create();
+    $season = seasonFor($user);
+    PlannedSession::factory()->for($user)->rest()->create([
+        'date' => Carbon::today()->subDays(2)->toDateString(),
+        'made_up_on' => Carbon::today()->subDay()->toDateString(),
+    ]);
+
+    expect(ctxFor($user, $season)->restHonored)->toBe(0);
+});
+
 it('does not count a day with no planned session at all as honored', function (): void {
     $user = User::factory()->create();
     $season = seasonFor($user);
