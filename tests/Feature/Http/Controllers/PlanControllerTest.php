@@ -25,6 +25,7 @@ use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Models\AI\Analysis;
 use App\Services\AI\AnalysisOrigin;
+use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
 use App\Services\AI\PlanNarrationRequester;
@@ -475,6 +476,7 @@ it('rejects a session edit when regeneration replaced its bound row', function (
         app(PlanNarrationRequester::class),
         app(SessionMatcher::class),
         app(MakeUpService::class),
+        app(AnalysisService::class),
     ))->toThrow(HttpException::class, 'This plan changed while you were editing. Reload and try again.');
 
     expect(PlannedSession::query()
@@ -908,6 +910,29 @@ it('refuses move, skip and restore on a today a run has credited', function (arr
     'move' => [['date' => '2026-08-13'], 'date'],
     'skip' => [['skipped' => true], 'skipped'],
     'restore' => [['skipped' => false], 'skipped'],
+]);
+
+it('rebriefs today when a plain move takes a session off today or onto it', function (string $from, string $to, bool $rebriefs, bool $demo): void {
+    Carbon::setTestNow('2026-08-12 08:00:00');
+    Bus::fake();
+    $user = User::factory()->create(['is_demo' => $demo]);
+    $rows = planWeekRows($user, [
+        '2026-08-12' => $from === '2026-08-12' ? 'easy' : 'rest',
+        '2026-08-13' => 'rest',
+        '2026-08-14' => 'easy',
+        '2026-08-15' => 'rest',
+    ]);
+
+    $this->actingAs($user)
+        ->patch("/plan/sessions/{$rows[$from]->id}", ['date' => $to])
+        ->assertSessionHasNoErrors();
+
+    expect(Analysis::query()->where('analysis_type', AnalysisType::BriefingMascotVoice)->where('discriminator', '2026-08-12')->exists())->toBe($rebriefs);
+})->with([
+    'today away' => ['2026-08-12', '2026-08-13', true, false],
+    'onto today' => ['2026-08-14', '2026-08-12', true, false],
+    'between later days' => ['2026-08-14', '2026-08-15', false, false],
+    'demo, today away' => ['2026-08-12', '2026-08-13', false, true],
 ]);
 
 it('refuses a move that also sets skipped, leaving both days as they were', function (): void {

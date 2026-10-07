@@ -60,6 +60,13 @@ it('rejects a move that also sets skipped', function (bool $skipped): void {
         ->and($validator->errors()->has('date'))->toBeTrue();
 })->with([true, false]);
 
+it('rejects a move that also sets pinned', function (bool $pinned): void {
+    $validator = validatePlannedSessionUpdate(['date' => now()->addDay()->toDateString(), 'pinned' => $pinned]);
+
+    expect($validator->fails())->toBeTrue()
+        ->and($validator->errors()->has('date'))->toBeTrue();
+})->with([true, false]);
+
 it('leaves which days a move may reach to the edit rules', function (): void {
     expect(validatePlannedSessionUpdate(['date' => now()->toDateString()])->passes())->toBeTrue()
         ->and(validatePlannedSessionUpdate(['date' => now()->subDay()->toDateString()])->passes())->toBeTrue();

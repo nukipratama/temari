@@ -258,8 +258,12 @@ narrate them once the window closes, which is why a pending recap row is not a b
   [`MakeUpService::notify()`](../../app/Services/Run/Plan/MakeUpService.php#L56) asks for both days'
   `plan_day_voice` through `requestDayVoiceIfChanged()`, re-requests the made-up day's runs
   (`post_run_speech`, `run_insight`) and their `card_flavor` with `invalidate: true`, and re-requests
-  today's `briefing_mascot_voice` with `invalidate: true` only when the make-up landed today. The demo
-  athlete gets only the rule-based day reads. See [[a-make-up-is-graded-against-the-moved-session]].
+  today's `briefing_mascot_voice` with `invalidate: true` when the make-up lands on today or takes
+  today's session away. The demo athlete gets only the rule-based day reads. See
+  [[a-make-up-is-graded-against-the-moved-session]].
+- **`PlanController::update`, on a plain move onto or off today**: re-requests today's
+  `briefing_mascot_voice` with `invalidate: true`, so the briefing never describes a session that
+  moved. The demo athlete is skipped.
 
 ### 4. Recovery
 

@@ -70,7 +70,7 @@ final readonly class MakeUpService
             }
         }
 
-        if ($targetDate->isSameDay($today)) {
+        if ($targetDate->isSameDay($today) || $vacatedDate->isSameDay($today)) {
             $this->analysisService->requestBriefing($user, $today->toDateString(), invalidate: true);
         }
     }

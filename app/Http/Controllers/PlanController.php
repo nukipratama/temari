@@ -8,6 +8,7 @@ use App\Enums\PlanRegenerationReason;
 use App\Http\Requests\UpdatePlannedSessionRequest;
 use App\Models\PlannedSession;
 use App\Models\User;
+use App\Services\AI\AnalysisService;
 use App\Services\AI\PlanNarrationRequester;
 use App\Services\Run\Plan\MakeUpService;
 use App\Services\Run\Plan\Periodizer;
@@ -89,6 +90,7 @@ class PlanController extends Controller
         PlanNarrationRequester $narrationRequester,
         SessionMatcher $sessionMatcher,
         MakeUpService $makeUps,
+        AnalysisService $analysisService,
     ): RedirectResponse {
         $this->authorizeOwner($request, $plannedSession);
 
@@ -145,6 +147,10 @@ class PlanController extends Controller
             $makeUps->notify($user, $session->date, $makeUpTarget->date, $today);
 
             return back();
+        }
+
+        if ($occupant !== null && ! $user->is_demo && ($session->date->isSameDay($today) || $occupant->date->isSameDay($today))) {
+            $analysisService->requestBriefing($user, $today->toDateString(), invalidate: true);
         }
 
         if ($occupant !== null || $session->wasChanged(['session_type', 'skipped', 'date'])) {

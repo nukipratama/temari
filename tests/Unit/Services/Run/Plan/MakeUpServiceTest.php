@@ -143,6 +143,15 @@ it('leaves today\'s briefing alone when the make-up lands on an earlier day', fu
     expect(Analysis::query()->where('analysis_type', AnalysisType::BriefingMascotVoice)->sole()->status)->toBe(AnalysisStatus::Done);
 });
 
+it('rebriefs when today\'s own session is the one made up onto an earlier day', function (): void {
+    [$user, $vacated, $target] = swappedMakeUp('2026-08-12', '2026-08-11');
+
+    applyMakeUp($user, $vacated, $target);
+
+    Bus::assertDispatched(AnalyzeBriefingMascotVoiceJob::class);
+    expect(Analysis::query()->where('analysis_type', AnalysisType::BriefingMascotVoice)->sole()->status)->not->toBe(AnalysisStatus::Done);
+});
+
 it('keeps the demo athlete rule-based, with no LLM call and no reconciliation', function (): void {
     [$user, $vacated, $target] = swappedMakeUp('2026-08-11', '2026-08-12', ['is_demo' => true]);
 
