@@ -83,8 +83,9 @@ athlete answers. The demo account and athletes with the master switch off are ne
 only surface that admitted a dead grant was the empty-runs hero, a screen an athlete with runs on
 the dashboard never sees, so their history just stopped growing with no page saying why.
 `notifications_enabled` names what it covers in its own Settings description (the story, the recaps,
-the morning briefing, the race heads-up, the nudge), all of it content Temari initiates; this is the app reporting that something the athlete
-wired up broke. The per-channel mutes still apply, because those answer *where* rather than
+the morning briefing, the fitness-improved word, the time-trial check, the race heads-up and outcome
+check-in, the nudge), all of it content Temari initiates; this is the app reporting that something
+the athlete wired up broke. The per-channel mutes still apply, because those answer *where* rather than
 *whether*.
 
 It fires from [markRevoked](../../app/Models/StravaConnection.php#L100) itself rather than from the
