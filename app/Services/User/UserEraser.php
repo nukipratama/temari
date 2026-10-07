@@ -54,6 +54,8 @@ final readonly class UserEraser
         AnalysisType::PROFILE_VOICE_SUBJECT_TYPE,
         AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE,
         AnalysisType::TREND_READ_SUBJECT_TYPE,
+        AnalysisType::PLAN_DAY_VOICE_SUBJECT_TYPE,
+        AnalysisType::PLAN_CLAMP_VOICE_SUBJECT_TYPE,
         // Retired narration types. Their AnalysisType cases are gone but the
         // historical rows are kept, and erasure must still reach them.
         'daily_greeting_user_day',

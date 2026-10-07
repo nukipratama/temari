@@ -66,6 +66,7 @@ function analysesForEverySubjectShape(User $user): void
         [AnalysisType::PROFILE_VOICE_SUBJECT_TYPE, $user->id, AnalysisType::ProfileVoice],
         [AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE, $user->id, AnalysisType::MonthlyRecap],
         [AnalysisType::TREND_READ_SUBJECT_TYPE, $user->id, AnalysisType::TrendRead],
+        [AnalysisType::PLAN_CLAMP_VOICE_SUBJECT_TYPE, $user->id, AnalysisType::PlanClampVoice],
     ] as [$subjectType, $subjectId, $type]) {
         Analysis::factory()->done('x')->create([
             'subject_type' => $subjectType,
@@ -94,7 +95,7 @@ function pushEndpointFor(User $user, string $endpoint): void
 it('removes every ai_analyses subject shape the table can hold', function (): void {
     $user = User::factory()->create();
     analysesForEverySubjectShape($user);
-    expect(Analysis::query()->count())->toBe(10);
+    expect(Analysis::query()->count())->toBe(11);
 
     app(UserEraser::class)->erase($user);
 
@@ -119,9 +120,9 @@ it('counts the orphans it would remove without removing them', function (): void
 
     $counts = app(UserEraser::class)->orphanCounts($user);
 
-    expect($counts)->toBe(['ai_analyses' => 10, 'push_subscriptions' => 1])
+    expect($counts)->toBe(['ai_analyses' => 11, 'push_subscriptions' => 1])
         // Read-only: a preview must not delete what it is previewing.
-        ->and(Analysis::query()->count())->toBe(10)
+        ->and(Analysis::query()->count())->toBe(11)
         ->and(User::query()->whereKey($user->id)->exists())->toBeTrue();
 });
 
@@ -155,7 +156,7 @@ it('leaves another user narration and endpoints alone', function (): void {
 
     app(UserEraser::class)->erase($user);
 
-    expect(Analysis::query()->count())->toBe(10)
+    expect(Analysis::query()->count())->toBe(11)
         ->and(DB::table('push_subscriptions')->count())->toBe(1)
         ->and(User::query()->whereKey($bystander->id)->exists())->toBeTrue();
 });
