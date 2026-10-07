@@ -67,18 +67,7 @@ echo "Replaying binlogs into '$schema' after $start, stopping at $stop."
 
 $COMPOSE exec -T -e REPLAY_START="$start" -e REPLAY_STOP_OPTION="$stop_option" -e REPLAY_SCHEMA="$schema" "$MYSQL_SERVICE" bash -s <<'SH'
 set -euo pipefail
-if ! command -v mysqlbinlog >/dev/null; then
-  version=$(rpm -q --qf '%{VERSION}-%{RELEASE}' mysql-community-server-minimal)
-  series=$(echo "$version" | cut -d. -f1,2)
-  el=${version##*.el}
-  arch=$(uname -m)
-  package=/tmp/mysql-community-client.rpm
-  curl -fsSL -o "$package" "https://repo.mysql.com/yum/mysql-$series-community/el/$el/$arch/mysql-community-client-$version.$arch.rpm"
-  rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-mysql
-  rpm -K "$package" >/dev/null || { echo "mysql-community-client-$version failed its signature check." >&2; exit 1; }
-  rpm -i --nodeps --replacefiles "$package"
-  rm -f "$package"
-fi
+command -v mysqlbinlog >/dev/null || { echo "mysqlbinlog is missing: rebuild the mysql image from docker/mysql/Dockerfile." >&2; exit 1; }
 
 export MYSQL_PWD="$MYSQL_ROOT_PASSWORD"
 datadir=$(mysql -h 127.0.0.1 -uroot -N -e 'SELECT @@datadir')

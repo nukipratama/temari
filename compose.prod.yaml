@@ -259,7 +259,7 @@ services:
           cpus: "0.1"
 
   mysql:
-    # Custom image = stock mysql + the bootstrap baked into initdb (see docker/mysql/
+    # Custom image = stock mysql + mysqlbinlog + the bootstrap baked into initdb (see docker/mysql/
     # Dockerfile), so a fresh volume self-initializes on any machine. No workflow builds
     # or recreates it: an image change is the manual "Upgrading MySQL" window in
     # docs/architecture/deployment.md.
