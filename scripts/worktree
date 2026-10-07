@@ -251,6 +251,11 @@ step() {
 setup_impl() {
   local worktree="$1"
   local slot="$2"
+
+  if [ "$slot" -gt "$MAX_WORKTREE_SLOTS" ]; then
+    fail "slot ${slot} is above the maximum of ${MAX_WORKTREE_SLOTS}; remove this worktree with scripts/worktree remove <path> and create it again"
+    return 1
+  fi
   local git_common_dir
   local app_port=$((7000 + slot * 10 + 1))
   local vite_port=$((7000 + slot * 10 + 2))
@@ -437,12 +442,12 @@ clean_slot_data() {
         return 1
       }
     done
-    for index in $(seq "$test_redis_db" "$((test_redis_db + 31))"); do
-      shared exec -T redis-test redis-cli -n "$index" FLUSHDB >/dev/null || {
-        fail "could not flush shared test Redis index ${index}"
-        return 1
-      }
-    done
+    [ "$slot" -le "$MAX_WORKTREE_SLOTS" ] || return 0
+    shared exec -T redis-test sh -c 'for index in $(seq "$1" "$2"); do redis-cli -n "$index" FLUSHDB >/dev/null || exit 1; done' \
+      sh "$test_redis_db" "$((test_redis_db + 31))" || {
+      fail "could not flush shared test Redis indices ${test_redis_db}-$((test_redis_db + 31))"
+      return 1
+    }
   )
 }
 

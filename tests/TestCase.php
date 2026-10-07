@@ -61,6 +61,20 @@ abstract class TestCase extends BaseTestCase
         return $integer;
     }
 
+    public static function assertSlotBase(int $slotBase, ?string $slotFile): void
+    {
+        if ($slotFile === null) {
+            return;
+        }
+
+        $slot = self::integerSetting('.claude-worktree-slot', trim($slotFile));
+        $expected = $slot * self::REDIS_DBS_PER_SLOT;
+
+        if ($slotBase !== $expected) {
+            throw new RuntimeException("REDIS_DB {$slotBase} does not match worktree slot {$slot}, which expects {$expected}. Run scripts/worktree adopt to rewrite .env.testing.");
+        }
+    }
+
     public static function assertTestRedisHost(string $host): void
     {
         if (! in_array($host, self::TEST_REDIS_HOSTS, true)) {
@@ -83,8 +97,12 @@ abstract class TestCase extends BaseTestCase
             self::assertTestRedisHost((string) $config->get('database.redis.default.host'));
             self::assertTestRedisHost((string) $config->get('database.redis.cache.host'));
 
+            $slotBase = self::integerSetting('REDIS_DB', $config->get('database.redis.default.database'));
+            $slotFile = $app->basePath('.claude-worktree-slot');
+            self::assertSlotBase($slotBase, is_file($slotFile) ? (string) file_get_contents($slotFile) : null);
+
             [$default, $cache] = self::redisDatabases(
-                self::integerSetting('REDIS_DB', $config->get('database.redis.default.database')),
+                $slotBase,
                 self::integerSetting('TEST_TOKEN', $_SERVER['TEST_TOKEN'] ?? 0),
             );
 

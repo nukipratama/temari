@@ -41,6 +41,14 @@ it('refuses a non-integer Redis setting instead of coercing it', function (mixed
     TestCase::integerSetting('REDIS_DB', $value);
 })->with(['', 'abc', '32abc', null])->throws(RuntimeException::class, 'REDIS_DB must be an integer');
 
+it('accepts the base that matches the worktree slot file, or no slot file', function (int $base, ?string $slotFile) {
+    TestCase::assertSlotBase($base, $slotFile);
+})->with([[0, null], [32, "1\n"], [96, '3']])->throwsNoExceptions();
+
+it('refuses a base left over from another slot', function () {
+    TestCase::assertSlotBase(32, "2\n");
+})->throws(RuntimeException::class, 'REDIS_DB 32 does not match worktree slot 2, which expects 64');
+
 it('allows only the test Redis hosts', function (string $host) {
     TestCase::assertTestRedisHost($host);
 })->with(['redis_test', 'temari-shared-redis-test', '127.0.0.1'])->throwsNoExceptions();
