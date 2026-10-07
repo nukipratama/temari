@@ -58,6 +58,12 @@ it('serializes date as the naive date, not a UTC-shifted instant', function (): 
     expect($session->toArray()['date'])->toBe('2026-08-17');
 });
 
+it('serializes made_up_on as the naive date, not a UTC-shifted instant', function (): void {
+    $session = new PlannedSession(['made_up_on' => '2026-08-18']);
+
+    expect($session->toArray()['made_up_on'])->toBe('2026-08-18');
+});
+
 it('enforces one row per user per date', function (): void {
     $user = User::factory()->create();
     PlannedSession::factory()->for($user)->create(['date' => '2026-08-17']);

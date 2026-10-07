@@ -52,6 +52,7 @@ function day(overrides: Partial<EditablePlanDay> = {}): EditablePlanDay {
         flagged: false,
         actions: { move: false, skip: false, restore: false },
         move_targets: [],
+        made_up_on: null,
         ...overrides,
     };
 }

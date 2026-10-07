@@ -700,4 +700,6 @@ export type EditablePlanDay = PlanDay & {
     actions: { move: boolean; skip: boolean; restore: boolean };
     /** The days, Y-m-d, a move may land on. */
     move_targets: string[];
+    /** Set on a day a make-up emptied: the day, Y-m-d, its session moved to. */
+    made_up_on: string | null;
 };

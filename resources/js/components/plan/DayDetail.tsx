@@ -191,6 +191,7 @@ export function hasDayDetail(
         tiltWhy !== null ||
         hint !== null ||
         day.advice_note !== null ||
+        day.made_up_on !== null ||
         Boolean(day.credit_note) ||
         Boolean(day.result_note) ||
         day.activities.length > 0 ||
@@ -411,6 +412,11 @@ export default function DayDetail({
             {day.advice_note !== null && (
                 <p className="mt-2 border-l-2 border-border-strong pl-3 text-xs italic text-text-2">
                     {day.advice_note}
+                </p>
+            )}
+            {day.made_up_on !== null && (
+                <p className="mt-2 text-xs italic text-text-2">
+                    made up on {weekdayLabel(day.made_up_on)}
                 </p>
             )}
             {day.credit_note && (

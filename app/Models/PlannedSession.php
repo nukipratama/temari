@@ -41,6 +41,9 @@ use Override;
  * fresh at render — {@see \App\Services\Run\Plan\TrainingBaseline} is what the
  * multiplier scales. See `docs/decisions/the-arc-is-anchored-once.md`.
  *
+ * A make-up move stamps the day it empties with `made_up_on`, the date its
+ * session moved to, and points that day back at it through `made_up_from_id`.
+ *
  * `race_distance_m` is set only on a {@see SessionType::Race} row, and is what
  * keeps race day self-describing: `plan:close-finished-races` retires the
  * {@see RaceGoal} at 00:02, before `plan:score-compliance` grades the day, so a
@@ -67,6 +70,8 @@ use Override;
  * @property TimeTrialOutcome|null $time_trial_outcome
  * @property bool $pinned
  * @property bool $skipped
+ * @property Carbon|null $made_up_on
+ * @property int|null $made_up_from_id
  * @property PlannedSessionStatus $status
  * @property int|null $compliance_score
  * @property int|null $distance_score
@@ -91,6 +96,8 @@ use Override;
     'time_trial_outcome',
     'pinned',
     'skipped',
+    'made_up_on',
+    'made_up_from_id',
     'status',
     'compliance_score',
     'distance_score',
@@ -218,6 +225,8 @@ class PlannedSession extends Model
             'time_trial_outcome' => TimeTrialOutcome::class,
             'pinned' => 'boolean',
             'skipped' => 'boolean',
+            'made_up_on' => 'date:Y-m-d',
+            'made_up_from_id' => 'integer',
             'status' => PlannedSessionStatus::class,
             'compliance_score' => 'integer',
             'distance_score' => 'integer',

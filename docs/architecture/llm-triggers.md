@@ -185,7 +185,7 @@ fingerprint gate takes over from there.
 **A day's own read re-bills only where the verdict actually changed.** It is requested separately
 from the season, by
 [`requestDayVoiceIfChanged()`](../../app/Services/AI/PlanNarrationRequester.php#L83) right after
-[`ComplianceScorer::creditIfEarned()`](../../app/Services/Run/Plan/ComplianceScorer.php#L327)
+[`ComplianceScorer::creditIfEarned()`](../../app/Services/Run/Plan/ComplianceScorer.php#L394)
 credits the day and the post-ingest plan reconciliation settles, and only when the day is actually
 credited — a day still ahead asks for nothing.
 Each row carries a [`MaterialFingerprint`](../../app/Services/AI/MaterialFingerprint.php#L26) of
@@ -254,6 +254,17 @@ narrate them once the window closes, which is why a pending recap row is not a b
   `requestForCurrentWeek()` as the Monday command, which touches only the season row
   (`PlanSeasonVoice`). It is limited by its own 3600s cooldown inside `PlanNarrationRequester`, not by
   the per-block cooldown every other trigger uses.
+- **`PlanController::update`, on a make-up move** — once the lock is released,
+  [`MakeUpService::notify()`](../../app/Services/Run/Plan/MakeUpService.php#L56) asks for both days'
+  `plan_day_voice` through `requestDayVoiceIfChanged()`, re-requests the runs on both the made-up
+  day and the day it emptied (`post_run_speech`, `run_insight`) and their `card_flavor` with
+  `invalidate: true`, and re-requests
+  today's `briefing_mascot_voice` with `invalidate: true` when the make-up lands on today or takes
+  today's session away. The demo athlete gets only the rule-based day reads. See
+  [[a-make-up-is-graded-against-the-moved-session]].
+- **`PlanController::update`, on a plain move onto or off today**: re-requests today's
+  `briefing_mascot_voice` with `invalidate: true`, so the briefing never describes a session that
+  moved. The demo athlete is skipped.
 - **`PlanController::update`, on a skip or restore of today**: when the edit actually flips
   today's `skipped`, re-requests today's `briefing_mascot_voice` with `invalidate: true`, so the
   briefing never describes a session the athlete skipped or misses one they restored. The demo athlete

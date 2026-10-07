@@ -48,7 +48,7 @@ final class SessionEditRules
 
     public static function canMoveFrom(PlannedSession $day, PlannedSessionStatus $status, Carbon $today): bool
     {
-        if ($day->session_type === SessionType::Rest) {
+        if ($day->session_type === SessionType::Rest || $day->made_up_from_id !== null) {
             return false;
         }
         if (! $day->date->lessThan($today)) {
@@ -63,6 +63,7 @@ final class SessionEditRules
     public static function canToggleSkip(PlannedSession $day, PlannedSessionStatus $status, Carbon $today): bool
     {
         return $day->session_type !== SessionType::Rest
+            && $day->made_up_from_id === null
             && ! $day->date->lessThan($today)
             && ! $status->isCredited();
     }
@@ -90,7 +91,7 @@ final class SessionEditRules
         return array_values($rows
             ->filter(static function (PlannedSession $row) use ($source, $sourceDate, $weekStart, $weekEnd, $hardDates, $ranDates, $todayKey): bool {
                 $date = $row->date->toDateString();
-                if ($date === $sourceDate || $date < $weekStart || $date > $weekEnd || $row->session_type !== SessionType::Rest) {
+                if ($date === $sourceDate || $date < $weekStart || $date > $weekEnd || $row->session_type !== SessionType::Rest || $row->made_up_on !== null) {
                     return false;
                 }
                 if ($date < $todayKey && ! in_array($date, $ranDates, true)) {
@@ -103,6 +104,17 @@ final class SessionEditRules
             ->map(static fn (PlannedSession $row): string => $row->date->toDateString())
             ->sort()
             ->all());
+    }
+
+    /**
+     * A move from a day already gone, or onto a day a run already landed on,
+     * links a run to the session rather than planning one.
+     *
+     * @param  list<string>  $ranDates
+     */
+    public static function isMakeUp(PlannedSession $source, PlannedSession $target, array $ranDates, Carbon $today): bool
+    {
+        return $source->date->lessThan($today) || in_array($target->date->toDateString(), $ranDates, true);
     }
 
     private static function isHard(SessionType $type): bool
