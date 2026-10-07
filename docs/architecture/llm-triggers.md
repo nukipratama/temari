@@ -297,7 +297,7 @@ rendered somewhere a user can see — both directions matter, and only one of th
 
 | type | narrator | subject · discriminator | origin | renders |
 |---|---|---|---|---|
-| `briefing_mascot_voice` | `BriefingMascotVoiceNarrator` | synthetic user+day · `Y-m-d` | scheduled + ingest + signup | `TodaySession` on Home |
+| `briefing_mascot_voice` | `BriefingMascotVoiceNarrator` | synthetic user+day · `Y-m-d` | scheduled + ingest + signup + Plan page | `TodaySession` on Home |
 | `post_run_speech` | `PostRunSpeechNarrator` | `Activity` · none | ingest (grouped) | `RunLenses`, top of "What Temari says" |
 | `run_insight` | `RunInsightNarrator` | `Activity` · none | ingest (grouped) | `RunLenses`, "What stood out" claims |
 | `card_flavor` | `CardFlavorNarrator` | `RunCard` · none | ingest | the share sheet's caption in `ShareCardModal`, never printed on the card image |
