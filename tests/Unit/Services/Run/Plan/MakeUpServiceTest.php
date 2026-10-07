@@ -133,7 +133,7 @@ it('re-reads the made-up day but not the emptied one, invalidates the made-up da
     Bus::assertDispatched(AnalyzeBriefingMascotVoiceJob::class);
 });
 
-it('re-narrates the runs on the day the make-up emptied, never for the demo athlete', function (bool $demo): void {
+it('re-narrates the runs on the day the make-up emptied and reads that day, never by LLM for the demo athlete', function (bool $demo): void {
     [$user, $vacated, $target] = swappedMakeUp('2026-08-11', '2026-08-12', ['is_demo' => $demo]);
     $emptiedDayRun = Activity::factory()->for($user)->create();
     ActivityDetail::factory()->for($emptiedDayRun)->create([
@@ -149,7 +149,9 @@ it('re-narrates the runs on the day the make-up emptied, never for the demo athl
     applyMakeUp($user, $vacated, $target);
 
     expect($speech->fresh()->status === AnalysisStatus::Done)->toBe($demo)
-        ->and($flavor->fresh()->status === AnalysisStatus::Done)->toBe($demo);
+        ->and($flavor->fresh()->status === AnalysisStatus::Done)->toBe($demo)
+        ->and($vacated->fresh()->ran_anyway)->toBeTrue()
+        ->and(Analysis::query()->where('analysis_type', AnalysisType::PlanDayVoice)->pluck('discriminator')->sort()->values()->all())->toBe(['2026-08-11', '2026-08-12']);
     if ($demo) {
         Bus::assertNothingDispatched();
     } else {
