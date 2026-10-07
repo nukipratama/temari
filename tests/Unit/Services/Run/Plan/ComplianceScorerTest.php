@@ -899,6 +899,51 @@ it('keeps a made-up quality session out of progression even when it hit', functi
         ->and($verdict['intent']['evidence'])->not->toHaveKey('quality_progression');
 });
 
+it('grades a session made up onto a day still ahead on the advice shown before its run', function (): void {
+    $user = User::factory()->create();
+    [, $target] = madeUpPair($user, SessionType::Tempo);
+    $revision = showAdvice($user, '2026-08-05', shownTempoOriginal(), [
+        'session_type' => 'tempo', 'distance_km' => 8.0, 'segments' => shownTempoSegments(), 'paces' => SHOWN_PACES, 'skipped' => false, 'reason' => null,
+    ]);
+    shownRun($user, '2026-08-05', 8.0, 2800, controlledTempoSummary());
+
+    $verdict = scorerVerdict($user, $target);
+
+    expect($verdict['intent']['verdict'])->toBe(IntentVerdict::Hit)
+        ->and($verdict['intent']['evidence'])->toMatchArray([
+            'advice_history' => 'shown',
+            'recommendation_revision_id' => $revision->id,
+            'quality_progression' => 'eligible',
+        ]);
+});
+
+it('keeps a make-up declared after the run when the moved session was shown only after the day\'s first run', function (array $runTimes): void {
+    $user = User::factory()->create();
+    [, $target] = madeUpPair($user, SessionType::Tempo);
+    showAdvice($user, '2026-08-05', ['session_type' => 'rest'], [
+        'session_type' => 'rest', 'distance_km' => 0.0, 'segments' => [], 'paces' => SHOWN_PACES, 'skipped' => false, 'reason' => null,
+    ]);
+    $tempo = app(RecommendationHistory::class)->record($user->id, '2026-08-05', shownTempoOriginal(), [
+        'session_type' => 'tempo', 'distance_km' => 8.0, 'segments' => shownTempoSegments(), 'paces' => SHOWN_PACES, 'skipped' => false, 'reason' => null,
+    ]);
+    RecommendationView::query()->create([
+        'recommendation_revision_id' => $tempo->id,
+        'observation_id' => (string) Str::uuid(),
+        'shown_at' => Carbon::parse('2026-08-05 09:00:00', 'UTC'),
+    ]);
+    foreach ($runTimes as [$km, $time]) {
+        shownRun($user, '2026-08-05', $km, (int) round($km * 350), controlledTempoSummary(), $time);
+    }
+
+    $verdict = scorerVerdict($user, $target);
+
+    expect($verdict['intent']['evidence'])->toMatchArray(['advice_history' => 'declared_after_run', 'effective_type' => 'tempo'])
+        ->and($verdict['intent']['evidence'])->not->toHaveKeys(['quality_progression', 'recommendation_revision_id']);
+})->with([
+    'run before the move was shown' => [[[8.0, '06:00:00']]],
+    'a short run before, the long one after' => [[[3.0, '06:00:00'], [8.0, '18:00:00']]],
+]);
+
 it('judges a made-up time trial on its gate and tags it declared after the run', function (): void {
     $user = User::factory()->create();
     $vacated = scorerDay($user, '2026-08-04', ['session_type' => SessionType::Rest, 'made_up_on' => '2026-08-05']);
