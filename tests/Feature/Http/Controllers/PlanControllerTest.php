@@ -1125,3 +1125,23 @@ it('counts the made-up day in next week\'s adherence and leaves the emptied day 
     expect($adherence)->toBe(min(100, $rows['2026-08-12']->fresh()->distance_score))
         ->and($adherence)->toBeGreaterThan(0);
 });
+
+it('credits the run a skipped session is made up onto, rather than excusing it', function (): void {
+    Carbon::setTestNow('2026-08-12 08:00:00');
+    $user = User::factory()->create();
+    $rows = planWeekRows($user, ['2026-08-10' => 'rest', '2026-08-12' => 'easy'], [
+        '2026-08-10' => ['status' => PlannedSessionStatus::Done, 'ran_anyway' => true],
+        '2026-08-12' => ['skipped' => true, 'status' => PlannedSessionStatus::Skip],
+    ]);
+    makeUpRun($user, '2026-08-10', 5.0);
+
+    $this->actingAs($user)
+        ->patch("/plan/sessions/{$rows['2026-08-12']->id}", ['date' => '2026-08-10'])
+        ->assertSessionHasNoErrors();
+
+    $monday = $rows['2026-08-10']->fresh();
+    expect($monday->session_type)->toBe(SessionType::Easy)
+        ->and($monday->skipped)->toBeFalse()
+        ->and($monday->status->isCredited())->toBeTrue()
+        ->and($monday->distance_score)->toBeGreaterThan(0);
+});

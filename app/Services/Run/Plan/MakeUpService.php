@@ -41,7 +41,7 @@ final readonly class MakeUpService
     public function apply(User $user, PlannedSession $vacated, PlannedSession $target, Carbon $today): void
     {
         $vacated->update([...self::CLAMP_RESET, 'made_up_on' => $target->date]);
-        $target->update([...self::CLAMP_RESET, 'made_up_from_id' => $vacated->id]);
+        $target->update([...self::CLAMP_RESET, 'skipped' => false, 'made_up_from_id' => $vacated->id]);
 
         $rows = PlannedSession::query()->whereKey([$vacated->id, $target->id])->orderBy('date')->get();
         $verdicts = $this->scorer->verdictsFor($user, $rows, $today);
