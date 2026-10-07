@@ -8,7 +8,9 @@ use App\Models\Activity;
 use App\Models\AI\Analysis;
 use App\Models\AI\TokenUsage;
 use App\Models\PersonalRecord;
+use App\Models\PlanAdaptation;
 use App\Models\RunCard;
+use App\Models\Season;
 use App\Models\StravaGrantToken;
 use App\Models\Scopes\KnownAnalysisTypeScope;
 use App\Models\User;
@@ -24,9 +26,9 @@ use Illuminate\Support\Facades\DB;
  *
  * Most owned tables cascade off the `users` row's foreign keys. Two do not, and
  * both are polymorphic with no user column to constrain: `ai_analyses` (its
- * subject is an activity, card, snapshot, record, or a synthetic per-user
- * string) and `push_subscriptions` (a `subscribable` morph). They have to be
- * deleted by hand, which is why this lives in one place rather than in each
+ * subject is an activity, card, snapshot, record, season, plan adaptation, or
+ * a synthetic per-user string) and `push_subscriptions` (a `subscribable`
+ * morph). They have to be deleted by hand, which is why this lives in one place rather than in each
  * caller — the in-app delete button did not, and leaked both.
  *
  * `notification_deliveries` needs no handling here: it cascades off
@@ -54,6 +56,8 @@ final readonly class UserEraser
         AnalysisType::PROFILE_VOICE_SUBJECT_TYPE,
         AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE,
         AnalysisType::TREND_READ_SUBJECT_TYPE,
+        AnalysisType::PLAN_DAY_VOICE_SUBJECT_TYPE,
+        AnalysisType::PLAN_CLAMP_VOICE_SUBJECT_TYPE,
         // Retired narration types. Their AnalysisType cases are gone but the
         // historical rows are kept, and erasure must still reach them.
         'daily_greeting_user_day',
@@ -207,6 +211,8 @@ final readonly class UserEraser
                 ->orWhere(fn (Builder $q) => $q->where('subject_type', RunCard::class)->whereIn('subject_id', $cardIds))
                 ->orWhere(fn (Builder $q) => $q->where('subject_type', WeeklySnapshot::class)->whereIn('subject_id', $snapshotIds))
                 ->orWhere(fn (Builder $q) => $q->where('subject_type', PersonalRecord::class)->whereIn('subject_id', $personalRecordIds))
+                ->orWhere(fn (Builder $q) => $q->where('subject_type', Season::class)->whereIn('subject_id', Season::query()->where('user_id', $userId)->select('id')))
+                ->orWhere(fn (Builder $q) => $q->where('subject_type', PlanAdaptation::class)->whereIn('subject_id', PlanAdaptation::query()->where('user_id', $userId)->select('id')))
                 ->orWhere(fn (Builder $q) => $q->whereIn('subject_type', self::USER_SUBJECT_TYPES)->where('subject_id', $userId));
         });
     }
