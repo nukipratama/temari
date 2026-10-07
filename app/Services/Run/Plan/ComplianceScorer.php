@@ -171,6 +171,9 @@ final readonly class ComplianceScorer
             $effectiveType = $effectiveByDate[$date]->sessionType;
             if ($trial !== null && in_array($effectiveType, [SessionType::Tempo, SessionType::Interval], true)) {
                 $intents[$date] = self::trialIntent($trial, $effectiveType, $runsByDate[$date] ?? [], $zones, $row->time_trial_outcome === TimeTrialOutcome::Confirmed);
+                if ($row->made_up_from_id !== null) {
+                    $intents[$date]['evidence']['advice_history'] = 'declared_after_run';
+                }
 
                 continue;
             }

@@ -899,6 +899,26 @@ it('keeps a made-up quality session out of progression even when it hit', functi
         ->and($verdict['intent']['evidence'])->not->toHaveKey('quality_progression');
 });
 
+it('judges a made-up time trial on its gate and tags it declared after the run', function (): void {
+    $user = User::factory()->create();
+    $vacated = scorerDay($user, '2026-08-04', ['session_type' => SessionType::Rest, 'made_up_on' => '2026-08-05']);
+    $target = scorerDay($user, '2026-08-05', [
+        'session_type' => SessionType::Interval,
+        'prescribed_hard_minutes' => 25,
+        'prescribed_pace_band' => PaceBand::Interval,
+        'prescribed_pace_sec_per_km' => 300,
+        'prescription_race_context' => ['kind' => 'time_trial', 'distance_m' => 5_000, 'aim_time_sec' => 1_500, 'retry' => 0],
+        'made_up_from_id' => $vacated->id,
+    ]);
+    scorerPacedRun($user, '2026-08-05', 5.0, 250, everyWindowAt(250));
+
+    $verdict = scorerVerdict($user, $target);
+
+    expect($verdict['intent']['verdict'])->toBe(IntentVerdict::Hit)
+        ->and($verdict['intent']['evidence'])->toMatchArray(['time_trial' => 'pace', 'advice_history' => 'declared_after_run'])
+        ->and($verdict['intent']['evidence'])->not->toHaveKey('quality_progression');
+});
+
 it('grades a missed tempo made up on an easy run as missed on intent', function (): void {
     $user = User::factory()->create();
     $paces = scorerPaces($user, '2026-08-05');
