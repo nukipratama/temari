@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
-import type { PlanDay } from '@/lib/plan';
+import type { EditablePlanDay } from '@/lib/plan';
 import type { AnalysisPayload } from '@/types/inertia';
 
 import DayDetail, {
@@ -28,7 +28,7 @@ function narrationPayload(
 
 const TODAY = '2026-06-17';
 
-function day(overrides: Partial<PlanDay> = {}): PlanDay {
+function day(overrides: Partial<EditablePlanDay> = {}): EditablePlanDay {
     return {
         id: 1,
         date: '2026-06-18',
@@ -69,13 +69,20 @@ function day(overrides: Partial<PlanDay> = {}): PlanDay {
         credited_km: null,
         activities: [],
         flagged: false,
+        actions: { move: false, skip: false, restore: false },
+        move_targets: [],
         ...overrides,
     };
 }
 
 /** Thursday's tempo, with Fri/Sat rest days it could move onto. */
-const WEEK: PlanDay[] = [
-    day({ id: 1, date: '2026-06-18' }),
+const WEEK: EditablePlanDay[] = [
+    day({
+        id: 1,
+        date: '2026-06-18',
+        actions: { move: true, skip: true, restore: false },
+        move_targets: ['2026-06-19', '2026-06-20'],
+    }),
     day({
         id: 2,
         date: '2026-06-19',
@@ -97,7 +104,6 @@ function renderRow(overrides: Partial<Parameters<typeof DayDetail>[0]> = {}) {
     const props = {
         day: WEEK[0],
         weekDays: WEEK,
-        today: TODAY,
         narration: null,
         onMove: vi.fn(),
         onSkip: vi.fn(),
@@ -109,12 +115,9 @@ function renderRow(overrides: Partial<Parameters<typeof DayDetail>[0]> = {}) {
             <div data-testid="headline">
                 <DayHeadline day={props.day} />
             </div>
-            {hasDayDetail(
-                props.day,
-                props.weekDays,
-                props.today,
-                props.narration,
-            ) && <DayDetail {...props} />}
+            {hasDayDetail(props.day, props.narration) && (
+                <DayDetail {...props} />
+            )}
         </>,
     );
     return props;
@@ -123,8 +126,13 @@ function renderRow(overrides: Partial<Parameters<typeof DayDetail>[0]> = {}) {
 const headline = () => screen.getByTestId('headline');
 
 describe('DayHeadline and DayDetail', () => {
-    it('brings a skipped future session back through the caller', () => {
-        const { onUnskip } = renderRow({ day: day({ skipped: true }) });
+    it('brings a skipped session back through the caller', () => {
+        const { onUnskip } = renderRow({
+            day: day({
+                skipped: true,
+                actions: { move: false, skip: false, restore: true },
+            }),
+        });
 
         fireEvent.click(screen.getByRole('button', { name: 'restore' }));
 
@@ -134,13 +142,8 @@ describe('DayHeadline and DayDetail', () => {
         ).not.toBeInTheDocument();
     });
 
-    it.each([
-        { date: '2026-06-16', skipped: true },
-        { date: TODAY, skipped: true },
-        { skipped: false },
-        { skipped: true, session_type: 'rest' as const },
-    ])('does not offer restoration for an ineligible day %j', (overrides) => {
-        renderRow({ day: day(overrides) });
+    it('does not offer restoration when the edit rules withhold it', () => {
+        renderRow({ day: day({ skipped: true }) });
 
         expect(
             screen.queryByRole('button', { name: 'restore' }),
@@ -152,6 +155,7 @@ describe('DayHeadline and DayDetail', () => {
             session_type: 'easy',
             skipped: true,
             segments: [],
+            actions: { move: false, skip: false, restore: true },
         });
         renderRow({ day: session, weekDays: [session] });
 
@@ -574,7 +578,42 @@ describe('DayHeadline and DayDetail', () => {
         ).toBeInTheDocument();
     });
 
-    it('offers neither on a day that has already passed', () => {
+    it('offers move and skip on today when the edit rules allow them', () => {
+        renderRow({
+            day: day({
+                date: TODAY,
+                actions: { move: true, skip: true, restore: false },
+                move_targets: ['2026-06-19'],
+            }),
+        });
+
+        expect(
+            screen.getByRole('button', { name: /^move$/i }),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByRole('button', { name: /^skip$/i }),
+        ).toBeInTheDocument();
+    });
+
+    it('offers move alone on an unrun past day of this week', () => {
+        renderRow({
+            day: day({
+                date: '2026-06-16',
+                status: 'missed',
+                actions: { move: true, skip: false, restore: false },
+                move_targets: ['2026-06-19'],
+            }),
+        });
+
+        expect(
+            screen.getByRole('button', { name: /^move$/i }),
+        ).toBeInTheDocument();
+        expect(
+            screen.queryByRole('button', { name: /^skip$/i }),
+        ).not.toBeInTheDocument();
+    });
+
+    it('offers neither when the edit rules withhold both', () => {
         renderRow({ day: day({ date: '2026-06-15', status: 'done' }) });
 
         expect(
@@ -611,7 +650,13 @@ describe('DayHeadline and DayDetail', () => {
     });
 
     it('does not offer skip twice on an already-excused day', () => {
-        renderRow({ day: day({ skipped: true }) });
+        renderRow({
+            day: day({
+                skipped: true,
+                actions: { move: true, skip: false, restore: true },
+                move_targets: ['2026-06-19'],
+            }),
+        });
 
         expect(
             screen.queryByRole('button', { name: /^skip$/i }),
@@ -625,7 +670,7 @@ describe('DayHeadline and DayDetail', () => {
         expect(onSkip).toHaveBeenCalledOnce();
     });
 
-    it('offers a weekday picker whose only enabled targets are later rest days', () => {
+    it("offers a weekday picker whose only enabled targets are the day's move targets", () => {
         renderRow();
         fireEvent.click(screen.getByRole('button', { name: /^move$/i }));
 
@@ -645,7 +690,28 @@ describe('DayHeadline and DayDetail', () => {
         ).toBeInTheDocument();
     });
 
-    it('hides move when the week has no rest day left to move onto', () => {
+    it('enables a past rest day the edit rules offer as a target', () => {
+        const pastRest = day({
+            id: 4,
+            date: '2026-06-15',
+            session_type: 'rest',
+            segments: [],
+            distance_km: 0,
+        });
+        const missed = day({
+            date: '2026-06-16',
+            status: 'missed',
+            actions: { move: true, skip: false, restore: false },
+            move_targets: ['2026-06-15'],
+        });
+        renderRow({ day: missed, weekDays: [pastRest, missed] });
+        fireEvent.click(screen.getByRole('button', { name: /^move$/i }));
+
+        expect(screen.getByRole('button', { name: 'Mon' })).toBeEnabled();
+        expect(screen.getByRole('button', { name: 'Tue' })).toBeDisabled();
+    });
+
+    it('hides move when the edit rules offer no target', () => {
         const noTargets = [day({ id: 1, date: '2026-06-18' })];
         renderRow({ day: noTargets[0], weekDays: noTargets });
 
@@ -1224,17 +1290,15 @@ describe('showsNarration', () => {
 
 describe('hasDayDetail', () => {
     it('has detail for a sized session still ahead', () => {
-        expect(hasDayDetail(day(), [day(), REST], TODAY, null)).toBe(true);
+        expect(hasDayDetail(day(), null)).toBe(true);
     });
 
     it('has none for a plain rest day', () => {
-        expect(hasDayDetail(REST, [day(), REST], TODAY, null)).toBe(false);
+        expect(hasDayDetail(REST, null)).toBe(false);
     });
 
     it('has detail for a rest day once a read is in', () => {
-        expect(hasDayDetail(REST, [REST], TODAY, narrationPayload())).toBe(
-            true,
-        );
+        expect(hasDayDetail(REST, narrationPayload())).toBe(true);
     });
 
     it('has detail for a day carrying safety advice even with no segments', () => {
@@ -1245,8 +1309,6 @@ describe('hasDayDetail', () => {
                     segments: [],
                     advice_note: 'legs need it.',
                 }),
-                [],
-                TODAY,
                 null,
             ),
         ).toBe(true);

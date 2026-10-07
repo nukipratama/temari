@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import type { PlanDay, SeasonSummaryWeek } from '@/lib/plan';
+import type { EditablePlanDay, SeasonSummaryWeek } from '@/lib/plan';
 import type { AnalysisPayload } from '@/types/inertia';
 
 import {
@@ -13,7 +13,7 @@ import WeekView from './WeekView';
 
 const TODAY = '2026-06-17';
 
-function day(overrides: Partial<PlanDay> = {}): PlanDay {
+function day(overrides: Partial<EditablePlanDay> = {}): EditablePlanDay {
     return {
         id: 1,
         date: '2026-06-15',
@@ -54,6 +54,8 @@ function day(overrides: Partial<PlanDay> = {}): PlanDay {
         credited_km: null,
         activities: [],
         flagged: false,
+        actions: { move: false, skip: false, restore: false },
+        move_targets: [],
         ...overrides,
     };
 }
@@ -73,7 +75,7 @@ function narration(overrides: Partial<AnalysisPayload> = {}): AnalysisPayload {
 }
 
 /** Mon done, Tue missed, Wed today (easy), Thu tempo, Fri rest. */
-const WEEK: PlanDay[] = [
+const WEEK: EditablePlanDay[] = [
     day({
         id: 1,
         date: '2026-06-15',
@@ -91,7 +93,14 @@ const WEEK: PlanDay[] = [
         prescribed_km: 7,
     }),
     day({ id: 3, date: '2026-06-17' }),
-    day({ id: 4, date: '2026-06-18', session_type: 'tempo', distance_km: 8 }),
+    day({
+        id: 4,
+        date: '2026-06-18',
+        session_type: 'tempo',
+        distance_km: 8,
+        actions: { move: true, skip: true, restore: false },
+        move_targets: ['2026-06-19'],
+    }),
     day({
         id: 5,
         date: '2026-06-19',
@@ -438,7 +447,12 @@ describe('WeekView', () => {
     });
 
     it('restores the selected skipped session through the caller', () => {
-        const skipped = { ...WEEK[3], skipped: true, pinned: true };
+        const skipped = {
+            ...WEEK[3],
+            skipped: true,
+            pinned: true,
+            actions: { move: true, skip: false, restore: true },
+        };
         const { onUnskip } = renderWeek({
             days: WEEK.map((day) => (day.id === skipped.id ? skipped : day)),
         });
@@ -448,7 +462,7 @@ describe('WeekView', () => {
         expect(onUnskip).toHaveBeenCalledWith(skipped);
     });
 
-    it('moves the selected session onto a later rest day in the same week', () => {
+    it('moves the selected session onto one of its move targets', () => {
         const { onMove } = renderWeek();
         fireEvent.click(screen.getByRole('tab', { name: /^Thu/ }));
         fireEvent.click(screen.getByRole('button', { name: /^move$/i }));

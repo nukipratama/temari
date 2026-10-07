@@ -53,7 +53,7 @@ it('rejects a non-boolean skipped value', function (): void {
     expect(validatePlannedSessionUpdate(['skipped' => 'yes'])->fails())->toBeTrue();
 });
 
-it('rejects a move onto today or a day already gone', function (): void {
-    expect(validatePlannedSessionUpdate(['date' => now()->toDateString()])->fails())->toBeTrue()
-        ->and(validatePlannedSessionUpdate(['date' => now()->subDay()->toDateString()])->fails())->toBeTrue();
+it('leaves which days a move may reach to the edit rules', function (): void {
+    expect(validatePlannedSessionUpdate(['date' => now()->toDateString()])->passes())->toBeTrue()
+        ->and(validatePlannedSessionUpdate(['date' => now()->subDay()->toDateString()])->passes())->toBeTrue();
 });

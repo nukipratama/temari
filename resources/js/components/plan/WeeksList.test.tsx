@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
-import type { PlanDay, PlanWeek, SeasonSummaryWeek } from '@/lib/plan';
+import type { EditablePlanDay, PlanWeek, SeasonSummaryWeek } from '@/lib/plan';
 
 import WeeksList from './WeeksList';
 
@@ -30,7 +30,7 @@ function detail(weekStart: string, scores: (number | null)[]): PlanWeek {
                         Number(weekStart.slice(8)) + index,
                     ).padStart(2, '0')}`,
                     compliance_score: score,
-                }) as PlanDay,
+                }) as EditablePlanDay,
         ),
     };
 }
