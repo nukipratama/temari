@@ -29,7 +29,7 @@ Move and Skip reached only days after today. An athlete who missed Tuesday's Eas
 - **Declared after the run.** That made-up day's `intent_evidence` carries `advice_history: declared_after_run` and never `quality_progression: eligible`, so it teaches neither quality progression nor stimulus adherence.
 - **Shown first, graded as shown.** The exception exists only because the run happened before the moved session could be shown. A missed session moved onto a rest day still ahead this week, or onto today before today's run, is shown before it is run, so once the athlete has seen it the made-up day takes the normal shown-advice path and can count toward progression. The ledger is append-only, so the answer survives every later regrade at ingest and at day end.
 - **Not honored rest.** The emptied day is not counted as honored rest in season goals ([SeasonGamificationContext](app/Services/Gamification/SeasonGamificationContext.php)), and its day panel says when it was made up.
-- **Consequences reconciled.** The week is marked for reconciliation from the earlier day, both days' reads are re-requested after grading, the made-up day's run narration and card flavor are invalidated, and today's briefing is re-requested when the make-up lands on today or takes today's session away. The demo athlete stays rule-based and makes no LLM call.
+- **Consequences reconciled.** The week is marked for reconciliation from the earlier day, both days' reads are re-requested after grading, the run narration and card flavor of both the made-up day and the emptied day are invalidated, and today's briefing is re-requested when the make-up lands on today or takes today's session away. The demo athlete stays rule-based and makes no LLM call.
 
 ## Evidence
 

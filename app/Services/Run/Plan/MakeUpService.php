@@ -63,7 +63,7 @@ final readonly class MakeUpService
             return;
         }
 
-        foreach ($this->runsOn($user, $targetDate) as $activity) {
+        foreach ([...$this->runsOn($user, $targetDate), ...$this->runsOn($user, $vacatedDate)] as $activity) {
             $this->analysisService->requestActivityGroup($activity, invalidate: true);
             if ($activity->runCard !== null) {
                 $this->analysisService->request(RunCard::class, $activity->runCard->id, AnalysisType::CardFlavor, invalidate: true);

@@ -256,8 +256,9 @@ narrate them once the window closes, which is why a pending recap row is not a b
   the per-block cooldown every other trigger uses.
 - **`PlanController::update`, on a make-up move** — once the lock is released,
   [`MakeUpService::notify()`](../../app/Services/Run/Plan/MakeUpService.php#L56) asks for both days'
-  `plan_day_voice` through `requestDayVoiceIfChanged()`, re-requests the made-up day's runs
-  (`post_run_speech`, `run_insight`) and their `card_flavor` with `invalidate: true`, and re-requests
+  `plan_day_voice` through `requestDayVoiceIfChanged()`, re-requests the runs on both the made-up
+  day and the day it emptied (`post_run_speech`, `run_insight`) and their `card_flavor` with
+  `invalidate: true`, and re-requests
   today's `briefing_mascot_voice` with `invalidate: true` when the make-up lands on today or takes
   today's session away. The demo athlete gets only the rule-based day reads. See
   [[a-make-up-is-graded-against-the-moved-session]].

@@ -133,6 +133,31 @@ it('re-reads both days, invalidates the made-up day\'s run narration, and rebrie
     Bus::assertDispatched(AnalyzeBriefingMascotVoiceJob::class);
 });
 
+it('re-narrates the runs on the day the make-up emptied, never for the demo athlete', function (bool $demo): void {
+    [$user, $vacated, $target] = swappedMakeUp('2026-08-11', '2026-08-12', ['is_demo' => $demo]);
+    $emptiedDayRun = Activity::factory()->for($user)->create();
+    ActivityDetail::factory()->for($emptiedDayRun)->create([
+        'start_date_local' => Carbon::parse('2026-08-11 06:00:00'),
+        'distance' => 1500,
+        'moving_time' => 600,
+        'elapsed_time' => 600,
+    ]);
+    $card = RunCard::factory()->create(['activity_id' => $emptiedDayRun->id]);
+    $speech = Analysis::factory()->done()->create(['subject_type' => Activity::class, 'subject_id' => $emptiedDayRun->id, 'analysis_type' => AnalysisType::PostRunSpeech, 'discriminator' => null]);
+    $flavor = Analysis::factory()->done()->create(['subject_type' => RunCard::class, 'subject_id' => $card->id, 'analysis_type' => AnalysisType::CardFlavor, 'discriminator' => null]);
+
+    applyMakeUp($user, $vacated, $target);
+
+    expect($speech->fresh()->status === AnalysisStatus::Done)->toBe($demo)
+        ->and($flavor->fresh()->status === AnalysisStatus::Done)->toBe($demo);
+    if ($demo) {
+        Bus::assertNothingDispatched();
+    } else {
+        Bus::assertDispatched(fn (AnalyzeActivityJob $job): bool => $job->subjectId === $emptiedDayRun->id);
+        Bus::assertDispatched(fn (AnalyzeCardFlavorJob $job): bool => $job->analysisId === $flavor->id);
+    }
+})->with(['athlete' => [false], 'demo' => [true]]);
+
 it('leaves today\'s briefing alone when the make-up lands on an earlier day', function (): void {
     Carbon::setTestNow('2026-08-13 08:00:00');
     [$user, $vacated, $target] = swappedMakeUp('2026-08-11', '2026-08-12');
