@@ -254,6 +254,10 @@ narrate them once the window closes, which is why a pending recap row is not a b
   `requestForCurrentWeek()` as the Monday command, which touches only the season row
   (`PlanSeasonVoice`). It is limited by its own 3600s cooldown inside `PlanNarrationRequester`, not by
   the per-block cooldown every other trigger uses.
+- **`PlanController::update`, on a skip or restore of today**: when the edit actually flips
+  today's `skipped`, re-requests today's `briefing_mascot_voice` with `invalidate: true`, so the
+  briefing never describes a session the athlete skipped or misses one they restored. The demo athlete
+  is skipped.
 
 ### 4. Recovery
 
@@ -293,7 +297,7 @@ rendered somewhere a user can see — both directions matter, and only one of th
 
 | type | narrator | subject · discriminator | origin | renders |
 |---|---|---|---|---|
-| `briefing_mascot_voice` | `BriefingMascotVoiceNarrator` | synthetic user+day · `Y-m-d` | scheduled + ingest + signup | `TodaySession` on Home |
+| `briefing_mascot_voice` | `BriefingMascotVoiceNarrator` | synthetic user+day · `Y-m-d` | scheduled + ingest + signup + Plan page | `TodaySession` on Home |
 | `post_run_speech` | `PostRunSpeechNarrator` | `Activity` · none | ingest (grouped) | `RunLenses`, top of "What Temari says" |
 | `run_insight` | `RunInsightNarrator` | `Activity` · none | ingest (grouped) | `RunLenses`, "What stood out" claims |
 | `card_flavor` | `CardFlavorNarrator` | `RunCard` · none | ingest | the share sheet's caption in `ShareCardModal`, never printed on the card image |

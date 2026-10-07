@@ -4,7 +4,7 @@ import { router } from '@inertiajs/react';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { PlanDay, SeasonSummaryWeek } from '@/lib/plan';
+import type { EditablePlanDay, SeasonSummaryWeek } from '@/lib/plan';
 
 import {
     clearNavigationMemory,
@@ -17,7 +17,7 @@ import Plan from './Plan';
 const DISCLAIMER_LINE =
     'temari plans from your runs, not a check-up. if something hurts, rest and see a pro.';
 
-function day(overrides: Partial<PlanDay> = {}): PlanDay {
+function day(overrides: Partial<EditablePlanDay> = {}): EditablePlanDay {
     return {
         id: 1,
         date: '2026-06-18',
@@ -57,6 +57,8 @@ function day(overrides: Partial<PlanDay> = {}): PlanDay {
         actual_km: null,
         credited_km: null,
         activities: [],
+        actions: { move: false, skip: false, restore: false },
+        move_targets: [],
         ...overrides,
     };
 }
@@ -85,7 +87,12 @@ const BASE_PROPS: ComponentProps<typeof Plan> = {
             phase: 'base',
             type: 'current',
             days: [
-                day({ id: 1, date: '2026-06-18' }),
+                day({
+                    id: 1,
+                    date: '2026-06-18',
+                    actions: { move: true, skip: true, restore: false },
+                    move_targets: ['2026-06-19'],
+                }),
                 day({
                     id: 2,
                     date: '2026-06-19',
@@ -132,27 +139,15 @@ describe('Plan', () => {
         expect(screen.getByText(/catching her breath/)).toBeInTheDocument();
     });
 
-    it("keeps the server's tomorrow editable while the device clock already reads that day", () => {
+    it("takes a day's actions from the server whatever the device clock reads", () => {
         vi.useFakeTimers();
-        vi.setSystemTime(new Date(2026, 5, 18, 0, 30));
+        vi.setSystemTime(new Date(2026, 5, 19, 0, 30));
 
         renderPlan();
 
         expect(
             screen.getByRole('button', { name: /^skip$/i }),
         ).toBeInTheDocument();
-    });
-
-    it("locks the server's today while the device clock still reads the day before", () => {
-        vi.useFakeTimers();
-        vi.setSystemTime(new Date(2026, 5, 17, 23, 0));
-        setMockPage({ today: '2026-06-18' }, '/plan', 'Plan');
-
-        renderPlan();
-
-        expect(
-            screen.queryByRole('button', { name: /^skip$/i }),
-        ).not.toBeInTheDocument();
     });
 
     it('leads with the eyebrow, headline and a one-line race summary', () => {
@@ -347,7 +342,17 @@ describe('Plan', () => {
             weeks: [
                 {
                     ...BASE_PROPS.weeks![0],
-                    days: [day({ skipped: true, pinned: true })],
+                    days: [
+                        day({
+                            skipped: true,
+                            pinned: true,
+                            actions: {
+                                move: false,
+                                skip: false,
+                                restore: true,
+                            },
+                        }),
+                    ],
                 },
             ],
         });

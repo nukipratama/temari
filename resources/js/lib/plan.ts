@@ -36,7 +36,7 @@ export interface PlanWeek {
     week_start: string;
     phase: string;
     type: 'history' | 'current' | 'lookahead';
-    days: PlanDay[];
+    days: EditablePlanDay[];
 }
 
 export interface SeasonSummaryWeek {
@@ -694,3 +694,10 @@ export function weekdayLabel(iso: string): string {
     const date = parseNaiveLocalDate(iso);
     return date === null ? '' : WEEKDAYS[date.getDay()];
 }
+
+/** A Plan page day row with the edits `SessionEditRules` allows on it. */
+export type EditablePlanDay = PlanDay & {
+    actions: { move: boolean; skip: boolean; restore: boolean };
+    /** The days, Y-m-d, a move may land on. */
+    move_targets: string[];
+};

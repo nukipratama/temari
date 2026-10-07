@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 
-import type { PlanDay } from '@/lib/plan';
+import type { EditablePlanDay, PlanDay } from '@/lib/plan';
 import type { AnalysisPayload } from '@/types/inertia';
 
 import {
@@ -141,26 +141,6 @@ function dayChanges(day: PlanDay) {
     };
 }
 
-function isValidMoveTarget(day: PlanDay, target: PlanDay, today: string) {
-    return (
-        target.date !== day.date &&
-        target.date > today &&
-        target.session_type === 'rest'
-    );
-}
-
-function dayActions(day: PlanDay, weekDays: PlanDay[], today: string) {
-    const editable = day.date > today && day.session_type !== 'rest';
-
-    return {
-        canMove:
-            editable &&
-            weekDays.some((target) => isValidMoveTarget(day, target, today)),
-        canSkip: editable && !day.skipped,
-        canUnskip: editable && day.skipped,
-    };
-}
-
 function dayPoint(day: PlanDay) {
     return {
         purpose: ['long', 'tempo', 'interval'].includes(day.session_type)
@@ -191,14 +171,12 @@ export function showsNarration(
  * only there, never in the headline.
  */
 export function hasDayDetail(
-    day: PlanDay,
-    weekDays: PlanDay[],
-    today: string,
+    day: EditablePlanDay,
     narration: AnalysisPayload | null,
 ): boolean {
     const { sessionDelta, paceDelta, weekFitDelta } = dayChanges(day);
     const { purpose, doseWhy, tiltWhy, hint } = dayPoint(day);
-    const { canMove, canSkip, canUnskip } = dayActions(day, weekDays, today);
+    const { move, skip, restore } = day.actions;
 
     return (
         day.segments.some((s) => (s.minutes ?? 0) > 0) ||
@@ -216,9 +194,9 @@ export function hasDayDetail(
         Boolean(day.credit_note) ||
         Boolean(day.result_note) ||
         day.activities.length > 0 ||
-        canMove ||
-        canSkip ||
-        canUnskip
+        move ||
+        skip ||
+        restore
     );
 }
 
@@ -301,20 +279,19 @@ export function DayHeadline({ day }: Readonly<{ day: PlanDay }>) {
  * Everything a day holds beyond its headline: the eased-value change rows,
  * what the session is for, Temari's read on it, the readiness step-down
  * beside the standing prescription, credit and heat notes, the segment
- * graph, what was actually run and, on a day still ahead, Move and Skip.
+ * graph, what was actually run and the Move, Skip and restore actions
+ * `SessionEditRules` allows.
  */
 export default function DayDetail({
     day,
     weekDays,
-    today,
     narration,
     onMove,
     onSkip,
     onUnskip,
 }: Readonly<{
-    day: PlanDay;
+    day: EditablePlanDay;
     weekDays: PlanDay[];
-    today: string;
     narration: AnalysisPayload | null;
     onMove: (toDate: string) => void;
     onSkip: () => void;
@@ -324,7 +301,7 @@ export default function DayDetail({
 
     const { sessionDelta, paceDelta, weekFitDelta } = dayChanges(day);
     const { purpose, doseWhy, tiltWhy, hint } = dayPoint(day);
-    const { canMove, canSkip, canUnskip } = dayActions(day, weekDays, today);
+    const { move: canMove, skip: canSkip, restore: canUnskip } = day.actions;
     const showsPoint =
         purpose !== null ||
         doseWhy !== null ||
@@ -456,10 +433,8 @@ export default function DayDetail({
                     {picking ? (
                         <div className="grid grid-cols-7 gap-1.5">
                             {weekDays.map((target) => {
-                                const valid = isValidMoveTarget(
-                                    day,
-                                    target,
-                                    today,
+                                const valid = day.move_targets.includes(
+                                    target.date,
                                 );
                                 return (
                                     <button

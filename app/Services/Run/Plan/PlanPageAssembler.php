@@ -160,11 +160,14 @@ final class PlanPageAssembler
         $rangeStart = $currentWeekStart->copy()->subWeeks(PlanRenderer::HISTORY_WEEKS);
         $rangeEnd = $currentWeekStart->copy()->addWeeks(self::LOOKAHEAD_WEEKS)->addDays(6);
 
-        $sessions = PlannedSession::query()
+        $ruleRows = PlannedSession::query()
             ->where('user_id', $user->id)
-            ->whereBetween('date', [$rangeStart->toDateString(), $rangeEnd->toDateString()])
+            ->whereBetween('date', [$rangeStart->copy()->subDay()->toDateString(), $rangeEnd->copy()->addDay()->toDateString()])
             ->orderBy('date')
             ->get();
+        $sessions = $ruleRows
+            ->filter(fn (PlannedSession $s): bool => $s->date->betweenIncluded($rangeStart, $rangeEnd))
+            ->values();
 
         $race = ($this->activeRace)($user->id);
         $baselineData = $this->baseline->forUser($user, $today);
@@ -234,6 +237,7 @@ final class PlanPageAssembler
         );
         $volumeScaleByDate = $weekProjection['scale_by_date'];
         $activityByDate = $weekProjection['activity_by_date'];
+        $ranDates = array_map(strval(...), array_keys($activityByDate));
 
         $weeks = [];
         foreach ($sessionsByWeek as $weekStartKey => $weekSessions) {
@@ -248,7 +252,7 @@ final class PlanPageAssembler
                 'week_start' => $weekStartKey,
                 'phase' => $weekPhase->value,
                 'type' => $weekStartKey < $currentWeekKey ? 'history' : ($weekStartKey === $currentWeekKey ? 'current' : 'lookahead'),
-                'days' => $weekSessions->map(fn (PlannedSession $s) => PlanRenderer::dayPayload(
+                'days' => $weekSessions->map(fn (PlannedSession $s): array => [...PlanRenderer::dayPayload(
                     $s,
                     $today,
                     $clamp,
@@ -267,11 +271,28 @@ final class PlanPageAssembler
                     $fallbackVerdicts[$s->date->toDateString()]['ran_anyway'] ?? null,
                     $s->date->isSameDay($today) ? $briefingContext->readinessAssessment : null,
                     $user->runnerProfile?->easyHrCapBpm(),
-                ))->all(),
+                ), ...$this->editRules($s, $fallbackVerdicts[$s->date->toDateString()]['status'] ?? $s->status, $ruleRows, $ranDates, $today)])->all(),
             ];
         }
 
         return $weeks;
+    }
+
+    /**
+     * @param  Collection<int, PlannedSession>  $ruleRows
+     * @param  list<string>  $ranDates
+     * @return array{actions: array{move: bool, skip: bool, restore: bool}, move_targets: list<string>}
+     */
+    private function editRules(PlannedSession $day, PlannedSessionStatus $status, Collection $ruleRows, array $ranDates, Carbon $today): array
+    {
+        [$from, $to] = SessionEditRules::window($day->date);
+        $window = $ruleRows->filter(fn (PlannedSession $row): bool => $row->date->betweenIncluded($from, $to));
+        $actions = SessionEditRules::actionsFor($day, $status, $window, $ranDates, $today);
+
+        return [
+            'actions' => $actions,
+            'move_targets' => $actions['move'] ? SessionEditRules::moveTargets($day, $window, $ranDates, $today) : [],
+        ];
     }
 
     private function currentSeason(User $user, Carbon $today): Season

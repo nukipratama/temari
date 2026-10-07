@@ -1,7 +1,7 @@
 import { ArrowLeft } from 'lucide-react';
 import { useEffect, useId, useRef, useState } from 'react';
 
-import type { PlanDay, SeasonSummaryWeek } from '@/lib/plan';
+import type { EditablePlanDay, PlanDay, SeasonSummaryWeek } from '@/lib/plan';
 import type { AnalysisPayload } from '@/types/inertia';
 
 import DayDetail, {
@@ -90,7 +90,7 @@ export default function WeekView({
 }: Readonly<{
     week: SeasonSummaryWeek;
     weekNumber: number;
-    days: PlanDay[];
+    days: EditablePlanDay[];
     today: string;
     /** The goal race's date, so the week holding it can say so. */
     raceDate?: string | null;
@@ -239,13 +239,12 @@ export default function WeekView({
                                 flagged={selected.flagged === true}
                             />
                         </div>
-                        {hasDayDetail(selected, days, today, narration) && (
+                        {hasDayDetail(selected, narration) && (
                             <div className="mt-3">
                                 <DayDetail
                                     key={selected.date}
                                     day={selected}
                                     weekDays={days}
-                                    today={today}
                                     narration={narration}
                                     onMove={(toDate) =>
                                         onMove(selected, toDate)

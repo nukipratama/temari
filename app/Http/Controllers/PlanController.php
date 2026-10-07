@@ -5,14 +5,16 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Enums\PlanRegenerationReason;
-use App\Enums\SessionType;
 use App\Http\Requests\UpdatePlannedSessionRequest;
 use App\Models\PlannedSession;
 use App\Models\User;
+use App\Services\AI\AnalysisService;
 use App\Services\AI\PlanNarrationRequester;
 use App\Services\Run\Plan\Periodizer;
 use App\Services\Run\Plan\PlanRegenerationService;
 use App\Services\Run\Plan\PlanPageAssembler;
+use App\Services\Run\Plan\SessionEditRules;
+use App\Services\Run\Plan\SessionMatcher;
 use App\Support\TrainingDisclaimer;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -70,21 +72,23 @@ class PlanController extends Controller
     }
 
     /**
-     * Move (date), block (session_type = rest), skip (excuse the day before
-     * it passes), or pin/unpin. Any explicit edit fixes the day (pins it) so
-     * the next regeneration doesn't silently overwrite it, unless the caller
-     * passes `pinned: false` to hand control back to the periodizer.
+     * Move (date), skip or restore (excuse the day before it passes), or
+     * pin/unpin, each only where {@see SessionEditRules} allows it. Any
+     * explicit edit fixes the day (pins it) so the next regeneration doesn't
+     * silently overwrite it, unless the caller passes `pinned: false` to hand
+     * control back to the periodizer.
      *
-     * A move onto a date the athlete already has a row for is a **swap**, not
-     * a re-date: `planned_sessions` is unique on (user_id, date) and the
-     * periodizer materializes all seven days of every week, so every in-horizon
-     * target is occupied.
+     * A move is a **swap** with the rest day it lands on, not a re-date:
+     * `planned_sessions` is unique on (user_id, date) and the periodizer
+     * materializes all seven days of every week.
      */
     public function update(
         UpdatePlannedSessionRequest $request,
         PlannedSession $plannedSession,
         Periodizer $periodizer,
         PlanNarrationRequester $narrationRequester,
+        SessionMatcher $sessionMatcher,
+        AnalysisService $analysisService,
     ): RedirectResponse {
         $this->authorizeOwner($request, $plannedSession);
 
@@ -100,7 +104,7 @@ class PlanController extends Controller
         try {
             [$session, $occupant] = $periodizer->withRegenerationLock(
                 $user,
-                fn (): array => DB::transaction(function () use ($user, $plannedSession, $attributes, $today): array {
+                fn (): array => DB::transaction(function () use ($user, $plannedSession, $attributes, $today, $sessionMatcher): array {
                     $session = PlannedSession::query()
                         ->where('user_id', $user->id)
                         ->whereDate('date', $plannedSession->date->toDateString())
@@ -111,16 +115,13 @@ class PlanController extends Controller
                         abort(409, 'This plan changed while you were editing. Reload and try again.');
                     }
 
-                    if (isset($attributes['date']) && ! $session->date->isAfter($today)) {
-                        throw ValidationException::withMessages(['date' => 'only a day still ahead can be moved.']);
+                    if (array_key_exists('skipped', $attributes) && ! SessionEditRules::canToggleSkip($session, $session->status, $today)) {
+                        throw ValidationException::withMessages(['skipped' => 'only an unrun day from today on can be skipped or restored.']);
                     }
 
-                    $occupant = $this->occupantOfMoveTarget($session, $attributes['date'] ?? null);
-                    if ($occupant !== null && $occupant->session_type !== SessionType::Rest) {
-                        throw ValidationException::withMessages(['date' => 'a session can only move onto a rest day.']);
-                    }
-
-                    if ($occupant !== null) {
+                    $occupant = null;
+                    if (isset($attributes['date'])) {
+                        $occupant = $this->moveTarget($user, $session, Carbon::parse($attributes['date']), $today, $sessionMatcher);
                         $this->swapSessions($session, $occupant);
                         unset($attributes['date']);
                     }
@@ -135,6 +136,10 @@ class PlanController extends Controller
             return back()->with('info', 'The plan is updating right now. Reload and try your edit again.');
         }
 
+        if (! $user->is_demo && $session->date->isSameDay($today) && $session->wasChanged('skipped')) {
+            $analysisService->requestBriefing($user, $today->toDateString(), invalidate: true);
+        }
+
         if ($occupant !== null || $session->wasChanged(['session_type', 'skipped', 'date'])) {
             $touchedSessions = $occupant === null ? [$session] : [$session, $occupant];
             foreach ($touchedSessions as $touchedSession) {
@@ -147,17 +152,24 @@ class PlanController extends Controller
         return back();
     }
 
-    private function occupantOfMoveTarget(PlannedSession $plannedSession, ?string $toDate): ?PlannedSession
+    private function moveTarget(User $user, PlannedSession $session, Carbon $toDate, Carbon $today, SessionMatcher $sessionMatcher): PlannedSession
     {
-        if ($toDate === null || Carbon::parse($toDate)->isSameDay($plannedSession->date)) {
-            return null;
+        [$from, $to] = SessionEditRules::window($session->date);
+        $rows = PlannedSession::query()
+            ->where('user_id', $user->id)
+            ->whereBetween('date', [$from->toDateString(), $to->toDateString()])
+            ->lockForUpdate()
+            ->get();
+        $ranDates = array_map(strval(...), array_keys($sessionMatcher->activityByDate($user, $from, $to)));
+        $target = $rows->first(static fn (PlannedSession $row): bool => $row->date->isSameDay($toDate));
+
+        if ($target === null
+            || ! SessionEditRules::canMoveFrom($session, $session->status, $today)
+            || ! in_array($target->date->toDateString(), SessionEditRules::moveTargets($session, $rows, $ranDates, $today), true)) {
+            throw ValidationException::withMessages(['date' => "this session can't move to that day."]);
         }
 
-        return PlannedSession::query()
-            ->where('user_id', $plannedSession->user_id)
-            ->whereDate('date', $toDate)
-            ->lockForUpdate()
-            ->first();
+        return $target;
     }
 
     /**

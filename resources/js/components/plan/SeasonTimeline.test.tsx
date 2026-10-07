@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { PlanDay, PlanWeek, SeasonSummaryWeek } from '@/lib/plan';
+import type { EditablePlanDay, PlanWeek, SeasonSummaryWeek } from '@/lib/plan';
 
 import SeasonTimeline from './SeasonTimeline';
 
@@ -18,7 +18,7 @@ function week(overrides: Partial<SeasonSummaryWeek> = {}): SeasonSummaryWeek {
     };
 }
 
-function day(overrides: Partial<PlanDay> = {}): PlanDay {
+function day(overrides: Partial<EditablePlanDay> = {}): EditablePlanDay {
     return {
         id: 1,
         date: '2026-06-15',
@@ -50,6 +50,8 @@ function day(overrides: Partial<PlanDay> = {}): PlanDay {
         credited_km: null,
         activities: [],
         flagged: false,
+        actions: { move: false, skip: false, restore: false },
+        move_targets: [],
         ...overrides,
     };
 }
