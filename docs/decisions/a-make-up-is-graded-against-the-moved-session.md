@@ -17,7 +17,7 @@ code_refs:
 
 **Status:** Accepted (2026-10-07). A documented exception to [[grading-follows-shown-advice-and-actual-stimulus]].
 
-> **Superseded fact (2026-10-07):** the emptied day gets no day read; only the made-up day is re-read ([PlannedSession::earnsDayRead()](app/Models/PlannedSession.php)).
+> **Superseded fact (2026-10-07):** the emptied day gets no day read unless a run later lands on it; only the made-up day is re-read ([PlannedSession::earnsDayRead()](app/Models/PlannedSession.php)).
 
 ## Context
 

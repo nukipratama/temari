@@ -20,7 +20,7 @@ use Illuminate\Support\Carbon;
  * `docs/decisions/a-day-is-graded-on-distance-and-intent.md`.
  *
  * Also backfills a rule-based "Temari's read" for every credited day the
- * regrade touches (#939), except a day a make-up emptied — never the LLM, and in the same deploy-time step,
+ * regrade touches (#939), except a day a make-up emptied with no run on it — never the LLM, and in the same deploy-time step,
  * so history phrases the verdict rather than keeping whatever ahead-of-time
  * label a pre-#939 row carried. Run once after deploy:
  * `./vendor/bin/sail artisan plan:regrade-season`.
