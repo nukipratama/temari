@@ -15,10 +15,14 @@ use App\Services\Strava\Exceptions\StravaRateLimitedException;
 use App\Services\Strava\Exceptions\StravaTokenRefreshFailedException;
 use App\Services\Strava\Exceptions\StravaTokenRefreshTransientException;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Queue\Attributes\Backoff;
+use Illuminate\Queue\Attributes\Tries;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Log;
 use Laravel\Pulse\Facades\Pulse;
 
+#[Backoff([30, 120])]
+#[Tries(3)]
 class SyncActivitiesJob implements ShouldQueue
 {
     use Queueable;
@@ -26,13 +30,6 @@ class SyncActivitiesJob implements ShouldQueue
     public const int PAGES_PER_ATTEMPT = 2;
 
     public const int LOCK_RETRY_SECONDS = 30;
-
-    public int $tries = 3;
-
-    /**
-     * @var array<int, int>
-     */
-    public array $backoff = [30, 120];
 
     /**
      * @param  int  $userId  Local user id whose connection drives the sync.

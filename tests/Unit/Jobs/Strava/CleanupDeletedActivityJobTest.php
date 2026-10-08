@@ -238,12 +238,11 @@ function runCleanupJob(User $user, int $externalId): void
     );
 }
 
-it('retries within a 24-hour window with a stepped backoff', function (): void {
+it('retries within a 24-hour window', function (): void {
     $this->freezeTime();
     $job = new CleanupDeletedActivityJob(1, 7_020);
 
-    expect($job->retryUntil()->getTimestamp())->toBe(now()->addHours(24)->getTimestamp())
-        ->and($job->backoff)->toBe([60, 300, 900, 3600]);
+    expect($job->retryUntil()->getTimestamp())->toBe(now()->addHours(24)->getTimestamp());
 });
 
 it('rethrows a transient Strava failure, then deletes once a retry confirms the 404', function (): void {

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Jobs\Notifications;
 
+use Illuminate\Queue\Attributes\Backoff;
+use Illuminate\Queue\Attributes\Tries;
 use Illuminate\Foundation\Queue\Queueable;
 use App\Models\AI\Analysis;
 use App\Notifications\AnalysisReadyNotification;
@@ -16,14 +18,11 @@ use App\Services\Telegram\NotificationEligibility;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Facades\Notification;
 
+#[Backoff([30, 120])]
+#[Tries(3)]
 class RetryStaleWebPushNotificationJob implements ShouldQueue
 {
     use Queueable;
-
-    public int $tries = 3;
-
-    /** @var array<int, int> */
-    public array $backoff = [30, 120];
 
     public function __construct(
         public readonly int $analysisId,

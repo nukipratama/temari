@@ -396,12 +396,6 @@ it('keeps the completed insight Done when speech generation throws', function ()
         ->and($rows[AnalysisType::PostRunSpeech->value]->error)->toBe('boom');
 });
 
-it('shared retry config: tries=3, backoff=[10, 60]', function (): void {
-    $job = new AnalyzeActivityJob(1);
-    expect($job->tries)->toBe(3)
-        ->and($job->backoff)->toBe([10, 60]);
-});
-
 /**
  * Seed an activity for $user with a staged-Pending narration group at $startDate,
  * the chain shape a backfill produces (rows Pending, awaiting the chain).

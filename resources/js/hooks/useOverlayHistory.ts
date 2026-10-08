@@ -1,6 +1,6 @@
 import type { router as inertiaRouter } from '@inertiajs/react';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useEffectEvent } from 'react';
 
 interface Entry {
     close: () => void;
@@ -109,18 +109,14 @@ export function installOverlayHistory(router: typeof inertiaRouter): void {
  * overlay's entry with it before the new page is pushed.
  */
 export function useOverlayHistory(open: boolean, onClose: () => void): void {
-    const closeRef = useRef(onClose);
-
-    useEffect(() => {
-        closeRef.current = onClose;
-    });
+    const close = useEffectEvent(onClose);
 
     useEffect(() => {
         if (!open) {
             return;
         }
 
-        const entry: Entry = { close: () => closeRef.current(), closed: false };
+        const entry: Entry = { close: () => close(), closed: false };
         pageState = window.history.state;
         window.history.pushState(window.history.state, '');
         entries.push(entry);
