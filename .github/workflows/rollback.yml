@@ -17,7 +17,7 @@ permissions:
 jobs:
   rollback:
     runs-on: [self-hosted, homelab]
-    timeout-minutes: 10
+    timeout-minutes: 20
     env:
       COMPOSE: docker compose -f compose.prod.yaml
     steps:

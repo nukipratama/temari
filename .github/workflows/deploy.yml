@@ -29,7 +29,7 @@ jobs:
     # A job timeout is a cancellation, so `if: failure()` steps never run, but the
     # `notify` job alerts on `cancelled` too. Overruns are capped per step instead;
     # this is a backstop above the sum of those caps.
-    timeout-minutes: 60
+    timeout-minutes: 70
     env:
       COMPOSE: docker compose -f compose.prod.yaml
       BACKUP_DIR: /var/lib/temari-backups
@@ -304,7 +304,7 @@ jobs:
 
       - name: Roll back on failure
         if: failure() && steps.tip.outputs.current == 'true'
-        timeout-minutes: 6
+        timeout-minutes: 15
         run: |
           $COMPOSE start scheduler horizon pulse || true
 
