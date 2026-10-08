@@ -38,7 +38,12 @@ use Illuminate\Support\ServiceProvider;
  *
  * Exemptions below are the documented exceptions to 1:1, not a TODO list:
  * abstract/interface/enum/exception/provider types carry no standalone test, and
- * a few families are intentionally covered by aggregate suites.
+ * a few families are intentionally covered by aggregate suites. An exempt class
+ * that has its own {Name}Test.php fails the guard, so a stale exemption cannot
+ * outlive the test that replaced it.
+ *
+ * `database/seeders/Demo` is outside the guard (it scans `app/`); it is covered end
+ * to end by DemoSeedCommandTest.
  */
 it('has a test class for every concrete app class', function (): void {
     // Whole namespaces covered by an aggregate suite rather than per-class files.
@@ -85,6 +90,15 @@ it('has a test class for every concrete app class', function (): void {
         ->map(fn ($file): string => substr($file->getFilename(), 0, -strlen('Test.php')))
         ->unique()
         ->flip();
+
+    $staleExemptions = collect($exemptClasses)
+        ->filter(fn (string $class): bool => $testedBasenames->has(class_basename($class)))
+        ->values();
+
+    expect($staleExemptions->all())->toBe(
+        [],
+        "These exempt classes now have their own {Name}Test.php. Remove them from the exemption list in this file:\n  ".$staleExemptions->implode("\n  "),
+    );
 
     $missing = collect(File::allFiles(app_path()))
         ->filter(fn ($file): bool => $file->getExtension() === 'php')

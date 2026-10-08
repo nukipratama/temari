@@ -1,6 +1,6 @@
 ## Testing
 
-- **1:1 class↔test.** Every concrete class has a `{Name}Test.php`, or is exempt in [tests/Unit/Architecture/EveryClassHasATestTest.php](../../../../tests/Unit/Architecture/EveryClassHasATestTest.php). Frontend: co-located `{name}.test.tsx`, guarded by [resources/js/test/structure.test.ts](../../../../resources/js/test/structure.test.ts). A design-catalogue `*.examples.tsx` needs no test of its own: [catalogue-examples.test.tsx](../../../../resources/js/test/catalogue-examples.test.tsx) renders every one.
+- **1:1 class↔test.** Every concrete class has a `{Name}Test.php`, or is exempt in [tests/Unit/Architecture/EveryClassHasATestTest.php](../../../../tests/Unit/Architecture/EveryClassHasATestTest.php). Frontend: co-located `{name}.test.tsx`, guarded by [resources/js/test/structure.test.ts](../../../../resources/js/test/structure.test.ts). `database/seeders/Demo` is outside the guard (it scans `app/`) and is covered end to end by `DemoSeedCommandTest`. A design-catalogue `*.examples.tsx` needs no test of its own: [catalogue-examples.test.tsx](../../../../resources/js/test/catalogue-examples.test.tsx) renders every one.
 - **Unit tests avoid the DB** unless the class needs persisted state; mock collaborators instead.
 - **No mutation testing** (Infection or `pest --mutate`).
 - **Aggregate suites** cover whole families: narrators → `NarratorsCoverageTest`, AI jobs → `JobsCoverageTest`. A new narrator/job must be registered there.
