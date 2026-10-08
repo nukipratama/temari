@@ -246,21 +246,24 @@ Schedule::command('streak:remind')->weeklyOn(Carbon::SATURDAY, '18:00')->without
 // and no Strava call.
 $alertOnFailure(Schedule::command('streak:settle')->hourly()->withoutOverlapping(20), 'streak:settle');
 
-// 18:00 daily (Asia/Jakarta, the app timezone): tell an athlete whose goal race
-// is tomorrow that it is tomorrow, while there is still an evening left to act
-// on it. Demo excluded (notDemo() on the race scan); an atomic claim that
-// records the race date in reminded_for_date makes a re-run for the same date
-// a no-op rather than a second push, while a rescheduled race is reminded again
-// for its new date, and a failed dispatch releases it. No LLM — the copy is templated.
-Schedule::command('race:remind')->dailyAt('18:00')->withoutOverlapping(15);
+// Hourly 18:00-21:00 (Asia/Jakarta, the app timezone), ending before the 22:00
+// quiet hours: tell an athlete whose goal race is tomorrow that it is tomorrow,
+// while there is still an evening left to act on it. Demo excluded (notDemo()
+// on the race scan); an atomic claim that records the race date in
+// reminded_for_date makes every later tick for the same date a no-op rather
+// than a second push, so a missed 18:00 is caught up within the evening, while
+// a rescheduled race is reminded again for its new date, and a failed dispatch
+// releases it. No LLM — the copy is templated.
+Schedule::command('race:remind')->cron('0 18-21 * * *')->withoutOverlapping(15);
 
-// 09:00 daily (Asia/Jakarta, the app timezone): the morning after a race, ask
-// the athlete how it went. A passed date is not participation, so the race stays
-// pending until they confirm a run, enter a time or say they did not run. Demo
-// excluded (notDemo() on the race scan); an atomic claim that records the race
-// date in outcome_asked_for_date makes a re-run for the same date a no-op. No
-// LLM — the copy is templated.
-Schedule::command('race:ask-outcome')->dailyAt('09:00')->withoutOverlapping(15);
+// Hourly 09:00-21:00 (Asia/Jakarta, the app timezone), ending before the 22:00
+// quiet hours: the day after a race, ask the athlete how it went. A passed date
+// is not participation, so the race stays pending until they confirm a run,
+// enter a time or say they did not run. Demo excluded (notDemo() on the race
+// scan); an atomic claim that records the race date in outcome_asked_for_date
+// makes every later tick for the same date a no-op, so a missed 09:00 is caught
+// up later that day. No LLM — the copy is templated.
+Schedule::command('race:ask-outcome')->cron('0 9-21 * * *')->withoutOverlapping(15);
 
 // 09:05 daily: settle each time trial from the last week once its day is over.
 // A run that passes the trial's gate becomes Test evidence with no question; a
