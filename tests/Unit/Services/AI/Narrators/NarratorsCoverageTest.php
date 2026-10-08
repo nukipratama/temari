@@ -37,7 +37,9 @@ use App\Services\AI\Narrators\NarratorContinuity;
 use App\Services\AI\Narrators\OutcomeLabels;
 use App\Services\AI\Narrators\QuotedFigures;
 use App\Services\AI\Narrators\MonthlyRecapNarrator;
+use App\Enums\SessionType;
 use App\Services\AI\Narrators\PlanClampVoiceNarrator;
+use App\Services\Run\Metrics\ReadinessCeiling;
 use App\Services\AI\Narrators\PlanSeasonVoiceNarrator;
 use App\Services\AI\Narrators\PostRunSpeechNarrator;
 use App\Services\AI\Narrators\RunQuestionNarrator;
@@ -805,6 +807,39 @@ function assertOneStepWithContext(ClientFake $client, array $context): void
         && $params['input'][1]['content'] === json_encode($context, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE)
         && ! array_key_exists('tools', $params));
 }
+
+it('PlanClampVoiceNarrator hands the eased session and its reasons in the user message and answers in one step with no tools', function (): void {
+    [$caller, $client] = capturingCaller(json_encode(['voice' => 'you reported pain, so today is a rest day.'], JSON_THROW_ON_ERROR));
+
+    $voice = new PlanClampVoiceNarrator($caller)->generate([
+        'ceiling' => ReadinessCeiling::Rest,
+        'original' => SessionType::Interval,
+        'clamped_to' => SessionType::Rest,
+        'has_run_today' => false,
+        'readiness_reasons' => ['concerning_pain_reported'],
+        'readiness_inputs' => [],
+    ], 7);
+
+    expect($voice)->toBe('you reported pain, so today is a rest day.');
+    assertOneStepWithContext($client, [
+        'planned' => 'interval',
+        'stepped_down_to' => 'rest',
+        'readiness_reasons' => ['concerning_pain_reported'],
+    ]);
+});
+
+it('PlanClampVoiceNarrator throws on missing voice key', function (): void {
+    $caller = fakeCaller(json_encode(['other' => 'x'], JSON_THROW_ON_ERROR));
+
+    new PlanClampVoiceNarrator($caller)->generate([
+        'ceiling' => ReadinessCeiling::Rest,
+        'original' => SessionType::Interval,
+        'clamped_to' => SessionType::Rest,
+        'has_run_today' => false,
+        'readiness_reasons' => [],
+        'readiness_inputs' => [],
+    ], 7);
+})->throws(UnavailableException::class);
 
 it('PlanClampVoiceNarrator names the eased session as the one being run today', function (): void {
     $prompt = narratorPrompt(PlanClampVoiceNarrator::class);
