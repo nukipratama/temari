@@ -42,10 +42,13 @@ jobs:
         run: docker tag temari/app:previous temari/app:latest
 
       - name: Roll app, horizon, scheduler, pulse onto rolled-back image
-        # Caches were already baked when :previous was first deployed — image
-        # is immutable, no need to re-run `artisan optimize`. Pulse is included
-        # so its daemon does not keep running the rolled-back-FROM (bad) image.
+        # The image does not bake config:cache (see the Dockerfile), so the
+        # recreated app runs uncached until the optimize step below. Pulse is
+        # included so its daemon does not keep running the rolled-back-FROM (bad) image.
         run: $COMPOSE up -d --no-deps app horizon scheduler pulse
+
+      - name: Optimize caches
+        run: $COMPOSE exec -T app php artisan optimize
 
       - name: Recycle Horizon workers
         run: $COMPOSE exec -T app php artisan horizon:terminate

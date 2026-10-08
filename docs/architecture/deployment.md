@@ -150,7 +150,7 @@ Note what this does **not** buy: the roll itself is not zero-downtime. There is 
 
 ## Rollback
 
-A failed deploy **tries to roll itself back first**. The `Roll back on failure` step runs under `if: failure()`: it restarts the quiesced scheduler/horizon/pulse, re-tags `:previous` → `:latest`, rolls the containers back and re-polls `/up`. The hosted `notify` job then sends one Telegram alert either way, saying whether prod auto-rolled back or needs manual recovery, and it alerts even when the deploy job died before any step ran (see "Hosted-runner failure alerts" below). So a red deploy without pending migrations usually means prod is already back on the previous image — check the alert before intervening by hand.
+A failed deploy **tries to roll itself back first**. The `Roll back on failure` step runs under `if: failure()`: it restarts the quiesced scheduler/horizon/pulse, re-tags `:previous` → `:latest`, rolls the containers back, runs `artisan optimize` and re-polls `/up`. The `Rollback prod` workflow runs the same `optimize` after its roll. The hosted `notify` job then sends one Telegram alert either way, saying whether prod auto-rolled back or needs manual recovery, and it alerts even when the deploy job died before any step ran (see "Hosted-runner failure alerts" below). So a red deploy without pending migrations usually means prod is already back on the previous image — check the alert before intervening by hand.
 
 **It refuses to auto-roll when migrations were pending.** `Detect pending migrations` runs `migrate:status --pending=1` on both connections before migrating and records the existing `MIGRATIONS_APPLIED` safety flag. When that is `true`—including when it is unset, which defaults fail-safe—the rollback step deliberately leaves migration maintenance active and requires manual recovery. A migration command can apply one file and fail on the next, so “the step failed” cannot prove the old image is schema-compatible. Owner-enabled maintenance also remains active. Recover with the `Rollback prod` workflow plus `./scripts/restore-db.sh <backup>`.
 
@@ -202,7 +202,7 @@ A backup that never starts has no failed job to react to. [.github/workflows/bac
 
 ### Manual rollback
 
-Every successful deploy leaves `temari/app:previous` and `temari/app:<git-sha>` on the host. To roll back the most recent deploy by hand, re-tag `:previous` → `:latest`, `up -d --no-deps app horizon scheduler`, and `horizon:terminate`. The full commands and the `/opt/temari/.env` setup table live in the Deployment section of [README.md](README.md).
+Every successful deploy leaves `temari/app:previous` and `temari/app:<git-sha>` on the host. To roll back the most recent deploy by hand, re-tag `:previous` → `:latest`, `up -d --no-deps app horizon scheduler`, `exec -T app php artisan optimize` (the image bakes no config cache, so a recreated `app` runs uncached until this), and `horizon:terminate`. The full commands and the `/opt/temari/.env` setup table live in the Deployment section of [README.md](README.md).
 
 The `Rollback prod` workflow ([.github/workflows/rollback.yml](.github/workflows/rollback.yml)) is **deliberately registry-unaware**: it only inspects and re-tags local `temari/app` images. Building on a hosted runner does not change that, because the deploy still lands `temari/app:latest` as a local tag on the host and still tags the outgoing one `:previous` before it does. Keep it that way — a rollback that has to reach the network is a rollback that can fail when the network is why you're rolling back.
 

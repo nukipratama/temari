@@ -314,6 +314,7 @@ jobs:
           elif docker image inspect temari/app:previous >/dev/null 2>&1; then
             docker tag temari/app:previous temari/app:latest
             $COMPOSE up -d --no-deps app horizon pulse scheduler
+            $COMPOSE exec -T app php artisan optimize
             $COMPOSE exec -T app php artisan horizon:terminate || true
             scripts/deploy/poll-health.sh http://127.0.0.1:7001/up \
               && echo "Rolled back to :previous and healthy." \
