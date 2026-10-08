@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Jobs\AI\FlushDeadLetterAlertJob;
 use App\Jobs\AI\SendMaintainerAlertJob;
 use App\Models\NotificationPreference;
+use App\Models\ScheduledTaskRun;
 use App\Models\TelegramConnection;
 use App\Models\User;
 use App\Services\AI\MaintainerAlerter;
@@ -269,10 +270,11 @@ it('pages a late entry once, inline, and sends one line when it is back on time'
     $client->shouldReceive('sendMessage')->once()->with(4010, 'Scheduler `strava:sync` is late: it has missed its schedule. Last run Oct 6 09:00. Check the scheduler container and the logs.', 5);
     $client->shouldReceive('sendMessage')->once()->with(4010, 'Scheduler `strava:sync` is back on time.', 5);
 
+    $run = new ScheduledTaskRun(['command' => 'strava:sync', 'last_status' => 'ok', 'last_run_at' => Carbon::parse('2026-10-06 09:00:00')]);
     $alerter = app(MaintainerAlerter::class);
     $alerter->schedulerOnTime('strava:sync');
-    $alerter->schedulerLate('strava:sync', Carbon::parse('2026-10-06 09:00:00'));
-    $alerter->schedulerLate('strava:sync', Carbon::parse('2026-10-06 09:00:00'));
+    $alerter->schedulerLate('strava:sync', $run);
+    $alerter->schedulerLate('strava:sync', $run);
     $alerter->schedulerOnTime('strava:sync');
     $alerter->schedulerOnTime('strava:sync');
 
@@ -286,6 +288,32 @@ it('names no last run for an entry that has never run', function (): void {
     $client->shouldReceive('sendMessage')->once()->with(4011, 'Scheduler `plan:regenerate` is late: it has missed its schedule. Check the scheduler container and the logs.', 5);
 
     app(MaintainerAlerter::class)->schedulerLate('plan:regenerate', null);
+});
+
+it('says a late entry has kept failing since its last success', function (): void {
+    $client = fakeTelegram();
+    adminWithChat(4012);
+    $run = new ScheduledTaskRun([
+        'command' => 'race:remind',
+        'last_status' => 'failed',
+        'last_run_at' => Carbon::parse('2026-10-06 18:00:00'),
+        'last_success_at' => Carbon::parse('2026-10-01 18:00:00'),
+    ]);
+
+    $client->shouldReceive('sendMessage')->once()->with(4012, 'Scheduler `race:remind` is late: it has kept failing since its last success on Oct 1 18:00. Check the scheduler container and the logs.', 5);
+
+    app(MaintainerAlerter::class)->schedulerLate('race:remind', $run);
+});
+
+it('says a late entry has kept failing since it was first recorded when it never succeeded', function (): void {
+    $client = fakeTelegram();
+    adminWithChat(4013);
+    $run = new ScheduledTaskRun(['command' => 'race:remind', 'last_status' => 'failed', 'last_run_at' => Carbon::parse('2026-10-06 18:00:00')]);
+    $run->created_at = Carbon::parse('2026-10-01 18:00:00');
+
+    $client->shouldReceive('sendMessage')->once()->with(4013, 'Scheduler `race:remind` is late: it has kept failing since it was first recorded on Oct 1 18:00. Check the scheduler container and the logs.', 5);
+
+    app(MaintainerAlerter::class)->schedulerLate('race:remind', $run);
 });
 
 it('pushes the skipped-athletes alert inline', function (): void {

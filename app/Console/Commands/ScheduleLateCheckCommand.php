@@ -28,7 +28,7 @@ class ScheduleLateCheckCommand extends Command
 
             if (SchedulerChain::isLate($command, $run)) {
                 $late[] = $command;
-                $alerter->schedulerLate($command, $run?->last_run_at);
+                $alerter->schedulerLate($command, $run);
             } else {
                 $alerter->schedulerOnTime($command);
             }

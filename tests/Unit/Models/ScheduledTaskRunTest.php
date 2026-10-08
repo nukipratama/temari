@@ -26,11 +26,11 @@ it('flags a command as stale once it misses ~2x its cadence', function (): void 
     Carbon::setTestNow('2026-06-10 12:00:00');
 
     $recent = new ScheduledTaskRun(['command' => 'a', 'expression' => '0 * * * *', 'last_status' => 'ok']);
-    $recent->last_run_at = Carbon::now()->subMinutes(30);
+    $recent->last_success_at = Carbon::now()->subMinutes(30);
     expect($recent->isStale())->toBeFalse();
 
     $late = new ScheduledTaskRun(['command' => 'b', 'expression' => '0 * * * *', 'last_status' => 'ok']);
-    $late->last_run_at = Carbon::now()->subHours(3);
+    $late->last_success_at = Carbon::now()->subHours(3);
     expect($late->isStale())->toBeTrue();
 
     Carbon::setTestNow();
@@ -38,13 +38,54 @@ it('flags a command as stale once it misses ~2x its cadence', function (): void 
 
 it('never reports stale when the signal is missing or unparseable', function (): void {
     $noExpression = new ScheduledTaskRun(['command' => 'a', 'last_status' => 'ok']);
-    $noExpression->last_run_at = Carbon::now()->subYears(1);
+    $noExpression->last_success_at = Carbon::now()->subYears(1);
     expect($noExpression->isStale())->toBeFalse();
 
     $neverRan = new ScheduledTaskRun(['command' => 'b', 'expression' => '0 * * * *', 'last_status' => 'ok']);
     expect($neverRan->isStale())->toBeFalse();
 
     $garbage = new ScheduledTaskRun(['command' => 'c', 'expression' => 'not-a-cron', 'last_status' => 'ok']);
-    $garbage->last_run_at = Carbon::now()->subYears(1);
+    $garbage->last_success_at = Carbon::now()->subYears(1);
     expect($garbage->isStale())->toBeFalse();
+});
+
+it('advances the last success only on a successful run', function (): void {
+    Carbon::setTestNow('2026-10-06 18:00:00');
+    ScheduledTaskRun::record('race:remind', '0 18 * * *', ScheduledTaskStatus::Ok);
+    Carbon::setTestNow('2026-10-07 18:00:00');
+    $row = ScheduledTaskRun::record('race:remind', '0 18 * * *', ScheduledTaskStatus::Failed, failureMessage: 'boom');
+    Carbon::setTestNow();
+
+    expect($row->last_run_at?->toDateTimeString())->toBe('2026-10-07 18:00:00')
+        ->and($row->last_success_at?->toDateTimeString())->toBe('2026-10-06 18:00:00');
+});
+
+it('advances the last success on a skipped run', function (): void {
+    Carbon::setTestNow('2026-10-07 18:00:00');
+    $row = ScheduledTaskRun::record('race:remind', '0 18 * * *', ScheduledTaskStatus::Skipped);
+    Carbon::setTestNow();
+
+    expect($row->last_success_at?->toDateTimeString())->toBe('2026-10-07 18:00:00');
+});
+
+it('measures staleness from the last success, or from the first record before any success', function (): void {
+    Carbon::setTestNow('2026-10-07 18:04:00');
+
+    $failing = new ScheduledTaskRun(['command' => 'a', 'expression' => '0 18 * * *', 'last_status' => 'failed']);
+    $failing->last_run_at = Carbon::parse('2026-10-07 18:00:00');
+    $failing->last_success_at = Carbon::parse('2026-10-01 18:00:00');
+
+    $neverSucceeded = new ScheduledTaskRun(['command' => 'b', 'expression' => '0 18 * * *', 'last_status' => 'failed']);
+    $neverSucceeded->last_run_at = Carbon::parse('2026-10-07 18:00:00');
+    $neverSucceeded->created_at = Carbon::parse('2026-10-01 18:00:00');
+
+    $justRecorded = new ScheduledTaskRun(['command' => 'c', 'expression' => '0 18 * * *', 'last_status' => 'failed']);
+    $justRecorded->last_run_at = Carbon::parse('2026-10-07 18:00:00');
+    $justRecorded->created_at = Carbon::parse('2026-10-07 18:00:00');
+
+    expect($failing->isStale())->toBeTrue()
+        ->and($neverSucceeded->isStale())->toBeTrue()
+        ->and($justRecorded->isStale())->toBeFalse();
+
+    Carbon::setTestNow();
 });

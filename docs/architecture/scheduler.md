@@ -133,8 +133,9 @@ child. The stubs it finds are drained by `strava:ingest` at :10.
 Two tables record what the scheduler did:
 
 - `scheduled_task_runs` (default connection) is the heartbeat: one upserted row per command with
-  its last status and runtime ([ScheduledTaskRun](../../app/Models/ScheduledTaskRun.php)). Its
-  `isStale()` is what reads an entry as late.
+  its last status and runtime, `last_run_at` for every run and `last_success_at` for the last
+  run that did not fail ([ScheduledTaskRun](../../app/Models/ScheduledTaskRun.php)). Its `isStale()` is
+  what reads an entry as late.
 - `scheduled_task_run_logs` (`analytics` connection) is append-only, one row per run
   ([ScheduledTaskRunLog](../../app/Models/Analytics/ScheduledTaskRunLog.php)): command,
   `started_at`, `finished_at`, `runtime_ms`, `status` (`running`, `ok`, `failed`, `skipped`),
@@ -178,8 +179,11 @@ late, with one "back on time" line when it is not
   day or ISO week passed without a success and the current one has none yet, read from the chain
   flags. Its closed gate skips every tick in between, so its heartbeat says nothing. A gate that
   never opens still goes late.
-- Every other entry is late once `ScheduledTaskRun::isStale()` says so. A lock skip does not
-  refresh the heartbeat, so a jammed lock goes late too.
+- Every other entry is late once `ScheduledTaskRun::isStale()` says so: about twice its cadence
+  since its last success, or since its row was first recorded while it has never succeeded. A run
+  that fails or exits non-zero does not advance `last_success_at`, so an entry that keeps failing
+  goes late whether or not it is wrapped in `$alertOnFailure`, and its page says it has kept
+  failing since then. A lock skip does not refresh the heartbeat, so a jammed lock goes late too.
 
 Three more sources raise alerts:
 

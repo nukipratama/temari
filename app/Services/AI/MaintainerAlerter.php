@@ -7,6 +7,7 @@ namespace App\Services\AI;
 use App\Jobs\AI\FlushDeadLetterAlertJob;
 use App\Jobs\AI\SendMaintainerAlertJob;
 use App\Models\ActivityDetail;
+use App\Models\ScheduledTaskRun;
 use App\Models\TelegramConnection;
 use App\Services\Telegram\TelegramClient;
 use App\Support\Config\AppConfig;
@@ -251,14 +252,18 @@ class MaintainerAlerter
     }
 
     /** An entry missed its schedule, per {@see \App\Console\SchedulerChain::isLate()}; paged once per incident. */
-    public function schedulerLate(string $command, ?Carbon $lastRunAt): void
+    public function schedulerLate(string $command, ?ScheduledTaskRun $run): void
     {
-        $since = $lastRunAt === null ? '' : ' Last run '.$lastRunAt->format('M j H:i').'.';
+        $reason = match (true) {
+            $run?->hasFailed() === true && $run->last_success_at !== null => 'it has kept failing since its last success on '.$run->last_success_at->format('M j H:i').'.',
+            $run?->hasFailed() === true => 'it has kept failing since it was first recorded'.($run->created_at === null ? '' : ' on '.$run->created_at->format('M j H:i')).'.',
+            default => 'it has missed its schedule.'.($run?->last_run_at === null ? '' : ' Last run '.$run->last_run_at->format('M j H:i').'.'),
+        };
 
         $this->openIncident(
             'scheduler.incident.late:'.$command,
             null,
-            "Scheduler `{$command}` is late: it has missed its schedule.{$since} Check the scheduler container and the logs.",
+            "Scheduler `{$command}` is late: {$reason} Check the scheduler container and the logs.",
             $this->sendInline(...),
         );
     }
