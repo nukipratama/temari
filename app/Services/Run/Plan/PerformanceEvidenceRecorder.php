@@ -11,6 +11,7 @@ use App\Models\RaceGoal;
 use App\Models\User;
 use App\Services\Run\Metrics\TrainingPaceCalculator;
 use App\Services\Run\Metrics\VdotEstimator;
+use Closure;
 use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Support\Carbon;
 use Illuminate\Validation\ValidationException;
@@ -79,8 +80,14 @@ final readonly class PerformanceEvidenceRecorder
             return;
         }
 
+        $this->retracting($user, fn () => PerformanceEvidence::query()->whereKey($evidence->modelKeys())->delete());
+    }
+
+    /** Runs $retract, then regenerates the plan if what it removed moved the training paces. */
+    public function retracting(User $user, Closure $retract): void
+    {
         $before = $this->currentPaces($user);
-        PerformanceEvidence::query()->whereKey($evidence->modelKeys())->delete();
+        $retract();
         $this->vdotEstimator->forget($user);
         $this->regenerateIfPacesChanged($user, $before, $this->currentPaces($user));
     }

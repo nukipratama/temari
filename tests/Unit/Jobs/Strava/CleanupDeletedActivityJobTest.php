@@ -12,8 +12,10 @@ use App\Jobs\Strava\CleanupDeletedActivityJob;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
+use App\Models\PerformanceEvidence;
 use App\Models\PersonalRecord;
 use App\Enums\IntentVerdict;
+use App\Enums\PerformanceEvidenceKind;
 use App\Enums\PlannedSessionStatus;
 use App\Models\PlannedSession;
 use App\Models\StravaConnection;
@@ -382,4 +384,22 @@ it('marks plan reconciliation and trend snapshots dirty from the deleted run dat
     $user->refresh();
     expect($user->trend_snapshots_pending_from?->toDateString())->toBe($day->toDateString())
         ->and($user->plan_reconciliation_pending_from?->toDateString())->toBe($day->toDateString());
+});
+
+it('retracts the deleted run\'s time-trial evidence and keeps another run\'s', function (): void {
+    $user = User::factory()->create();
+    $doomed = makeCleanupRun($user, 7_001, 5_000, now()->startOfWeek()->addDay());
+    $survivor = makeCleanupRun($user, 7_002, 5_000, now()->startOfWeek()->addDays(2));
+    fakeStravaConfirms404($user, 7_001);
+    $test = runEvidence($user, $doomed, PerformanceEvidenceKind::Test);
+    $otherTest = runEvidence($user, $survivor, PerformanceEvidenceKind::Test);
+
+    new CleanupDeletedActivityJob($user->id, 7_001)->handle(
+        app(StravaClient::class),
+        app(SettleEarlyNarrationAction::class),
+        app(DeleteIngestedRunAction::class),
+    );
+
+    expect(PerformanceEvidence::query()->whereKey($test->id)->exists())->toBeFalse()
+        ->and($otherTest->fresh()->activity_id)->toBe($survivor->id);
 });

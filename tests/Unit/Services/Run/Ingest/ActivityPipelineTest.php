@@ -5,6 +5,8 @@ declare(strict_types=1);
 use App\Services\Strava\StravaClient;
 use App\Models\RunCard;
 use App\Enums\IngestState;
+use App\Enums\PerformanceEvidenceKind;
+use App\Models\PerformanceEvidence;
 use App\Actions\AI\SettleEarlyNarrationAction;
 use App\Models\RunnerProfile;
 use App\Models\StoryLine;
@@ -447,7 +449,7 @@ it('drops a non-run activity (ride) without minting a run', function (): void {
     Http::assertSentCount(1);
 });
 
-it('heals the records, week and narration of an ingested run re-typed to a ride on resync', function (): void {
+it('heals the records, week, narration and time-trial evidence of an ingested run re-typed to a ride on resync', function (): void {
     Event::fake([ActivityIngested::class]);
     $activity = makeActivityWithConnection();
     $user = $activity->user;
@@ -483,6 +485,7 @@ it('heals the records, week and narration of an ingested run re-typed to a ride 
     $card = RunCard::query()->where('activity_id', $activity->id)->firstOrFail();
     Analysis::factory()->create(['subject_type' => Activity::class, 'subject_id' => $activity->id, 'analysis_type' => AnalysisType::PostRunSpeech]);
     Analysis::factory()->create(['subject_type' => RunCard::class, 'subject_id' => $card->id, 'analysis_type' => AnalysisType::CardFlavor]);
+    $test = runEvidence($user, $activity, PerformanceEvidenceKind::Test);
     expect(PersonalRecord::query()->where('user_id', $user->id)->where('category', '5km')->value('activity_id'))->toBe($activity->id)
         ->and(WeeklySnapshot::query()->where('user_id', $user->id)->where('week_ending', $weekEnding)->value('runs'))->toBe(2);
 
@@ -494,7 +497,8 @@ it('heals the records, week and narration of an ingested run re-typed to a ride 
         ->and($record->value_sec)->toBe(1500.0)
         ->and(WeeklySnapshot::query()->where('user_id', $user->id)->where('week_ending', $weekEnding)->value('runs'))->toBe(1)
         ->and(Analysis::query()->where('subject_type', Activity::class)->where('subject_id', $activity->id)->exists())->toBeFalse()
-        ->and(Analysis::query()->where('subject_type', RunCard::class)->where('subject_id', $card->id)->exists())->toBeFalse();
+        ->and(Analysis::query()->where('subject_type', RunCard::class)->where('subject_id', $card->id)->exists())->toBeFalse()
+        ->and(PerformanceEvidence::query()->whereKey($test->id)->exists())->toBeFalse();
 });
 
 it('fires the replay when a non-run upload empties the backlog, not just a successful ingest', function (): void {

@@ -137,6 +137,7 @@ it('backfills a snapshot with the VDOT the athlete had proven by that date, not 
     ]);
     PerformanceEvidence::query()->create([
         'user_id' => $user->id,
+        'activity_id' => Activity::factory()->for($user)->create()->id,
         'kind' => 'test',
         'distance_m' => 5000,
         'elapsed_time_sec' => 1500,

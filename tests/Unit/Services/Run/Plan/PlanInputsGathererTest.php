@@ -445,7 +445,7 @@ it('carries the trial aim, the season\'s fixed trials read as run or skipped, an
 it('carries an unsupported goal\'s stepping-stone time for its goal-pace work', function (): void {
     $user = gathererAthlete();
     PerformanceEvidence::query()->create([
-        'user_id' => $user->id, 'kind' => 'test', 'distance_m' => 10_000, 'elapsed_time_sec' => 3_000,
+        'user_id' => $user->id, 'activity_id' => Activity::factory()->for($user)->create()->id, 'kind' => 'test', 'distance_m' => 10_000, 'elapsed_time_sec' => 3_000,
         'performed_on' => Carbon::today()->subWeek(), 'confirmed_at' => now(),
     ]);
     $race = RaceGoal::factory()->for($user)->create([
