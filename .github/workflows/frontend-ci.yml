@@ -30,8 +30,10 @@ jobs:
       - name: Vitest
         run: |
           if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "Vitest shuffle seed: ${{ github.run_id }}"
             npx vitest run \
               --shard="${{ matrix.shard }}/${FRONTEND_SHARD_TOTAL}" \
+              --sequence.shuffle --sequence.seed="${{ github.run_id }}" \
               --coverage \
               --coverage.thresholds.lines=0 --coverage.thresholds.functions=0 \
               --reporter=blob --reporter=default \
