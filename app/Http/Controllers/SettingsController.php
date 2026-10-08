@@ -84,7 +84,7 @@ class SettingsController extends Controller
     {
         // A fresh, signed deep-link token per render (60 min TTL). Null when the
         // bot username isn't configured, so the UI hides the connect button.
-        $connectUrl = $linkToken->connectUrl($user->id);
+        $connectUrl = $user->is_demo ? null : $linkToken->connectUrl($user->id);
 
         $connection = $user->telegramConnection;
         if ($connection === null) {

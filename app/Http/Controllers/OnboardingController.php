@@ -41,7 +41,7 @@ class OnboardingController extends Controller
     {
         $connection = $user->telegramConnection;
 
-        if ($connection !== null && ! $connection->isRevoked()) {
+        if ($user->is_demo || ($connection !== null && ! $connection->isRevoked())) {
             return null;
         }
 

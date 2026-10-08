@@ -151,6 +151,18 @@ it('does not link and replies generically on a garbage token', function (): void
     Http::assertSent(fn ($request): bool => str_contains((string) $request['text'], 'Connect Telegram'));
 });
 
+it('refuses to link the demo account even with a valid token', function (): void {
+    Bus::fake();
+    $demo = User::factory()->create(['is_demo' => true]);
+    $token = app(TelegramLinkToken::class)->mint($demo->id);
+
+    runUpdate(startUpdate(555, $token, 'stranger_runs'));
+
+    expect(TelegramConnection::query()->count())->toBe(0);
+    Bus::assertNotDispatched(SendTelegramLinkWelcomeJob::class);
+    Http::assertSent(fn ($request): bool => str_contains((string) $request['text'], 'Connect Telegram'));
+});
+
 it('revokes the connection and confirms on /stop', function (): void {
     $connection = TelegramConnection::factory()->create(['chat_id' => 777]);
 

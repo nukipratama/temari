@@ -351,6 +351,34 @@ describe('Settings', () => {
         ).toBeInTheDocument();
     });
 
+    it('keeps the Telegram connect row for the demo, which gets no link, and opens the demo-blocked modal', async () => {
+        setMockPage({
+            auth: { user: makeUser({ is_demo: true }) },
+            flash: {},
+            demoLoginEnabled: false,
+        });
+        render(
+            <Settings
+                telegram={{
+                    connected: false,
+                    username: null,
+                    connect_url: null,
+                }}
+            />,
+        );
+
+        expect(
+            screen.queryByText("the Telegram bot isn't configured yet."),
+        ).not.toBeInTheDocument();
+        fireEvent.click(
+            screen.getByText('connect it so temari can keep you posted.'),
+        );
+
+        expect(
+            await screen.findByText("Telegram's taking a break for now"),
+        ).toBeInTheDocument();
+    });
+
     it('disconnects via DELETE when Disconnect is clicked', () => {
         vi.mocked(router.delete).mockReset();
         render(<Settings telegram={connectedTelegram} />);
