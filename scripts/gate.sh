@@ -84,6 +84,11 @@ pest_changed() {
   echo "$tests" | xargs vendor/bin/pest
 }
 
+migration_safety() {
+  base=$(sh scripts/vitest-changed-base.sh) || return 1
+  php scripts/check-migration-safety.php --base "$base"
+}
+
 step "config:clear" php artisan config:clear --ansi
 step "typescript:enums --check" php artisan typescript:enums --check
 step "doc citations" php scripts/check-doc-citations.php
@@ -102,6 +107,7 @@ if [ "$MODE" = full ]; then
   step "lint" npm run lint
   step "phpstan" vendor/bin/phpstan analyse
   step "rector" vendor/bin/rector --dry-run
+  step "migration safety" migration_safety
   step "pest" vendor/bin/pest --parallel
   step "vitest coverage" npm run test:coverage
   step "build" npm run build

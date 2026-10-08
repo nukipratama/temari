@@ -42,7 +42,8 @@ its scoped dry run as the check.
   `storage/logs/gate.log`; a failing step prints its last 40 lines before the final `GATE:` line.
 - **full** (`composer check:full`, `sh scripts/gate.sh --full`): everything fast mode runs, plus
   Pint/PHPStan/full-tree Rector (all in `--test`/dry-run form), ESLint/Prettier `--check`, the full
-  Pest suite in parallel, Vitest coverage, the asset
+  Pest suite in parallel (no backend coverage; that is CI's), the migration-safety check against the
+  merge-base, Vitest coverage, the asset
   build, and the bundle-chunk budget check. This reproduces what CI runs, opt-in and slow — for when
   the fast gate isn't enough confidence before a push.
 
