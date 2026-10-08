@@ -28,9 +28,6 @@ use InvalidArgumentException;
  */
 final class PhaseSchedule
 {
-    /** race distance (m) -> taper length (weeks), standard taper-duration convention. */
-    private const float HALF_MARATHON_DISTANCE_M = 15_000.0;
-
     /**
      * base / build / peak split of the weeks remaining after the taper — Base
      * has no constant of its own since it's computed as the remainder (see
@@ -55,7 +52,7 @@ final class PhaseSchedule
     private const array TAPER_REDUCTION_CURVE = [0.20, 0.40, 0.60];
 
     /**
-     * Every fourth week of the Base/Build ramp is a recovery week. Without one
+     * Every fourth week of the Base/Build/Peak run is a recovery week. Without one
      * the ramp compounds unbroken — five Build weeks at
      * {@see self::BUILD_WEEKLY_RAMP} is +33% with nothing absorbing it — and
      * the only Deload that existed was the reactive one
@@ -83,7 +80,6 @@ final class PhaseSchedule
     public function taperWeeksForDistance(float $distanceM): int
     {
         return match (true) {
-            $distanceM <= self::HALF_MARATHON_DISTANCE_M => 1,
             $distanceM <= RaceSupport::MARATHON_CLASS_ABOVE_M => 2,
             default => 3,
         };
@@ -181,7 +177,7 @@ final class PhaseSchedule
             ...array_fill(0, $taperWeeks, PlanPhase::Taper),
         ];
 
-        return $this->weeksFrom($currentWeekStart, self::withScheduledDeloads($phases, $baseWeeks + $buildWeeks), self::ZONE_BLOCK);
+        return $this->weeksFrom($currentWeekStart, self::withScheduledDeloads($phases, $remainingWeeks), self::ZONE_BLOCK);
     }
 
     /**
@@ -294,14 +290,14 @@ final class PhaseSchedule
     }
 
     /**
-     * Turns every fourth week of the Base/Build ramp into a recovery week. Peak
-     * and Taper are untouched, and a race arc short enough to hold fewer than
-     * {@see self::DELOAD_EVERY_WEEKS} ramp weeks has nothing to recover from yet.
-     * A recovery week never takes the ramp's last week: it moves one week
-     * earlier, so the block reaches Peak off a Build week.
+     * Turns every fourth week of the Base/Build/Peak run into a recovery week.
+     * Taper is untouched, and a race arc short enough to hold fewer than
+     * {@see self::DELOAD_EVERY_WEEKS} weeks before it has nothing to recover from
+     * yet. A recovery week never takes the last week before Taper: it moves one
+     * week earlier, so the block reaches Taper off a Peak week.
      *
      * @param  list<PlanPhase>  $phases
-     * @param  int  $rampWeeks  how many leading weeks are Base or Build
+     * @param  int  $rampWeeks  how many leading weeks are Base, Build or Peak
      * @return list<PlanPhase>
      */
     private static function withScheduledDeloads(array $phases, int $rampWeeks): array

@@ -233,10 +233,10 @@ it('counts a race season\'s general-zone weeks at their reduced, base-rule quali
     $qualityGoal = SeasonGoal::query()->where('season_id', $season->id)->where('metric', 'season_quality_completed')->first();
 
     // 31-week arc: 15 general weeks (12 Build @ 1 slot + 3 Deload @ 0) = 12,
-    // 16 block weeks (3 Base @ 1 + 2 Deload @ 0 + 6 Build @ 2 + 4 Peak @ 2 +
-    // 1 Taper @ 2) = 25. A general-zone Build week no longer counts the
+    // 16 block weeks (3 Base @ 1 + 3 Deload @ 0 + 5 Build @ 2 + 3 Peak @ 2 +
+    // 2 Taper @ 2) = 23. A general-zone Build week no longer counts the
     // block's race-mode 2-slot mix.
-    expect($qualityGoal->target)->toBe(37.0);
+    expect($qualityGoal->target)->toBe(35.0);
 });
 
 it('respects an explicit sessions_per_week preference below the old behavioral floor of 3', function (): void {
@@ -308,7 +308,7 @@ it('asks for exactly the long run the plan builds to, which reaches a 10K\'s 12 
     $season = $this->service->ensureCurrent($user, Carbon::today());
     $goal = SeasonGoal::query()->where('season_id', $season->id)->where('metric', 'season_longest_long_run_km')->value('target');
 
-    expect($goal)->toBe(12.0)
+    expect($goal)->toBe(12.2)
         ->and($goal)->toBe(planLongestLongRunKm($user, $season->raceGoal));
 });
 
@@ -325,7 +325,7 @@ it('keeps the season long-run goal aimed at the arc beyond the first staged step
     $season = $this->service->ensureCurrent($user, Carbon::today());
     $goal = SeasonGoal::query()->where('season_id', $season->id)->where('metric', 'season_longest_long_run_km')->value('target');
 
-    expect($goal)->toBe(12.0)
+    expect($goal)->toBe(12.2)
         ->and($goal)->toBeGreaterThan(app(TrainingBaseline::class)->forUser($user, Carbon::today())['long_run_progression_cap_km']);
 });
 

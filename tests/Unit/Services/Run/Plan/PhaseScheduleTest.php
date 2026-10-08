@@ -11,8 +11,9 @@ beforeEach(function (): void {
 });
 
 it('maps race distance to taper weeks at the documented boundaries', function (): void {
-    expect($this->schedule->taperWeeksForDistance(10_000))->toBe(1)
-        ->and($this->schedule->taperWeeksForDistance(15_000))->toBe(1)
+    expect($this->schedule->taperWeeksForDistance(5_000))->toBe(2)
+        ->and($this->schedule->taperWeeksForDistance(10_000))->toBe(2)
+        ->and($this->schedule->taperWeeksForDistance(15_000))->toBe(2)
         ->and($this->schedule->taperWeeksForDistance(15_001))->toBe(2)
         ->and($this->schedule->taperWeeksForDistance(21_097))->toBe(2)
         ->and($this->schedule->taperWeeksForDistance(25_000))->toBe(2)
@@ -22,7 +23,7 @@ it('maps race distance to taper weeks at the documented boundaries', function ()
 
 it('goes taper-only when too little time remains to build anything', function (): void {
     $today = Carbon::parse('2026-08-10')->startOfWeek(Carbon::MONDAY);
-    $raceDate = $today->copy()->addWeeks(1); // weeksToRace = 2, taperWeeks(10K) = 1 -> 2 <= 1+1
+    $raceDate = $today->copy()->addWeeks(1); // weeksToRace = 2, taperWeeks(10K) = 2 -> 2 <= 2+1
 
     $weeks = $this->schedule->forRace($today, $raceDate, 10_000);
 
@@ -34,13 +35,13 @@ it('allocates base/build/peak/taper summing to exactly weeksToRace, in strict or
     $today = Carbon::parse('2026-08-10')->startOfWeek(Carbon::MONDAY);
     $raceDate = $today->copy()->addWeeks(15); // weeksToRace = 16
 
-    $weeks = $this->schedule->forRace($today, $raceDate, 10_000); // taperWeeks = 1
+    $weeks = $this->schedule->forRace($today, $raceDate, 10_000); // taperWeeks = 2
 
     expect($weeks)->toHaveCount(16);
     $phases = array_map(fn (array $w): string => $w['phase']->value, $weeks);
-    expect(array_slice($phases, -1))->toBe(['taper']);
+    expect(array_slice($phases, -2))->toBe(['taper', 'taper']);
 
-    // Recovery weeks sit inside the Base/Build ramp, so they are skipped when
+    // Recovery weeks sit inside the Base/Build/Peak run, so they are skipped when
     // checking that the arc itself never runs backwards.
     $rank = ['base' => 0, 'build' => 1, 'peak' => 2, 'taper' => 3];
     $prev = -1;
@@ -53,23 +54,20 @@ it('allocates base/build/peak/taper summing to exactly weeksToRace, in strict or
     }
 });
 
-it('breaks the base/build ramp with a recovery week every fourth week', function (): void {
+it('breaks the base, build and peak run with a recovery week every fourth week', function (): void {
     $today = Carbon::parse('2026-08-10')->startOfWeek(Carbon::MONDAY);
-    $raceDate = $today->copy()->addWeeks(15); // weeksToRace = 16, taper = 1
+    $raceDate = $today->copy()->addWeeks(15); // weeksToRace = 16, taper = 2
 
     $phases = array_map(
         fn (array $w): string => $w['phase']->value,
         $this->schedule->forRace($today, $raceDate, 10_000),
     );
 
-    // 4 base + 7 build = 11 ramp weeks, so recovery lands on weeks 4 and 8;
-    // week 12 is already Peak and keeps its own reduction.
-    expect($phases[3])->toBe('deload')
-        ->and($phases[7])->toBe('deload')
-        ->and(array_slice($phases, -1))->toBe(['taper']);
-
-    // Never inside peak or taper — both are already reductions.
-    expect(array_slice($phases, 11))->not->toContain('deload');
+    // 4 base + 6 build + 4 peak = 14 weeks before the taper, so recovery lands on weeks 4, 8 and 12.
+    expect($phases)->toBe([
+        'base', 'base', 'base', 'deload', 'build', 'build', 'build', 'deload',
+        'build', 'build', 'peak', 'deload', 'peak', 'peak', 'taper', 'taper',
+    ]);
 });
 
 it('leaves a ramp too short to need one without any recovery week', function (): void {
@@ -108,15 +106,16 @@ it('carries the build ramp across a recovery week instead of restarting it', fun
 
 it('never produces a negative week count when remaining weeks are minimal', function (): void {
     $today = Carbon::parse('2026-08-10')->startOfWeek(Carbon::MONDAY);
-    $raceDate = $today->copy()->addWeeks(2); // weeksToRace = 3, taperWeeks = 1, remainingWeeks = 2
+    $raceDate = $today->copy()->addWeeks(3); // weeksToRace = 4, taperWeeks = 2, remainingWeeks = 2
 
     $weeks = $this->schedule->forRace($today, $raceDate, 10_000);
 
-    expect($weeks)->toHaveCount(3);
+    expect($weeks)->toHaveCount(4);
     $counts = array_count_values(array_map(fn (array $w): string => $w['phase']->value, $weeks));
-    expect(array_sum($counts))->toBe(3)
-        ->and($counts['taper'] ?? 0)->toBe(1)
-        ->and($counts['peak'] ?? 0)->toBe(1);
+    expect(array_sum($counts))->toBe(4)
+        ->and($counts['taper'] ?? 0)->toBe(2)
+        ->and($counts['peak'] ?? 0)->toBe(1)
+        ->and($counts['build'] ?? 0)->toBe(1);
 });
 
 it('week_start values are consecutive Mondays starting at the current week', function (): void {
@@ -224,7 +223,7 @@ it('volumeMultipliers leaves a 12-week block untouched by the ramp cap', functio
         array_map(fn (array $w): PlanPhase => $w['phase'], $arc),
     );
 
-    expect(max($multipliers))->toEqualWithDelta(1.1556, 0.001);
+    expect(max($multipliers))->toEqualWithDelta(1.075 ** 3, 0.001);
 });
 
 it('holds a self-scaled arc at 1.0 outside its deload dips', function (): void {
@@ -255,7 +254,7 @@ it('keeps a race twelve weeks out as one block, exactly the arc it always was', 
     $phases = array_column($arc, 'phase');
 
     expect(array_map(fn (PlanPhase $p): string => $p->value, $phases))->toBe([
-        'base', 'base', 'base', 'deload', 'build', 'build', 'build', 'deload', 'build', 'peak', 'peak', 'peak', 'taper',
+        'base', 'base', 'base', 'deload', 'build', 'build', 'build', 'deload', 'peak', 'peak', 'peak', 'taper', 'taper',
     ])
         ->and(array_unique(array_column($arc, 'zone')))->toBe([PhaseSchedule::ZONE_BLOCK])
         ->and(PhaseSchedule::volumeMultipliers($phases, zones: array_column($arc, 'zone')))->toBe(PhaseSchedule::volumeMultipliers($phases));
@@ -299,29 +298,36 @@ it('marks every self-scaled week as general', function (): void {
     expect(array_unique(array_column($arc, 'zone')))->toBe([PhaseSchedule::ZONE_GENERAL]);
 });
 
-/**
- * The audit case: the 12-week 10K block scheduled its second recovery week on
- * the last Build week, so the block went deload -> peak and the ramp only
- * compounded twice before it.
- */
-it('moves a recovery week off the last Build week so a Build week follows it', function (): void {
+it('moves a recovery week off the last week before the taper so a Peak week leads into it', function (): void {
     $arcStart = Carbon::parse('2026-09-14');
 
-    $phases = array_column($this->schedule->forRace($arcStart, Carbon::parse('2026-12-06'), 10_000.0), 'phase');
+    $phases = array_column($this->schedule->forRace($arcStart, Carbon::parse('2026-11-22'), 10_000.0), 'phase');
 
     expect(array_map(fn (PlanPhase $p): string => $p->value, $phases))->toBe([
-        'base', 'base', 'base', 'deload', 'build', 'build', 'deload', 'build', 'peak', 'peak', 'peak', 'taper',
+        'base', 'base', 'build', 'deload', 'build', 'build', 'deload', 'peak', 'taper', 'taper',
     ]);
 });
 
-it('never lets a race block reach Peak or Taper straight out of a recovery week', function (int $weeksOut, float $distanceM): void {
+it('takes a recovery week inside Peak off the build level and returns to it after', function (): void {
+    $multipliers = PhaseSchedule::volumeMultipliers([
+        PlanPhase::Build, PlanPhase::Build, PlanPhase::Peak, PlanPhase::Deload, PlanPhase::Peak, PlanPhase::Taper, PlanPhase::Taper,
+    ]);
+
+    expect($multipliers[2])->toEqualWithDelta(1.075, 0.0001)
+        ->and($multipliers[3])->toEqualWithDelta(1.075 * 0.65, 0.0001)
+        ->and($multipliers[4])->toEqualWithDelta(1.075, 0.0001)
+        ->and($multipliers[5])->toEqualWithDelta(1.075 * 0.60, 0.0001)
+        ->and($multipliers[6])->toEqualWithDelta(1.075 * 0.40, 0.0001);
+});
+
+it('never lets a race block reach Taper straight out of a recovery week', function (int $weeksOut, float $distanceM): void {
     $arcStart = Carbon::parse('2026-08-10');
 
     $phases = array_column($this->schedule->forRace($arcStart, $arcStart->copy()->addWeeks($weeksOut), $distanceM), 'phase');
 
     foreach ($phases as $i => $phase) {
         if ($phase === PlanPhase::Deload) {
-            expect($phases[$i + 1])->toBeIn([PlanPhase::Base, PlanPhase::Build]);
+            expect($phases[$i + 1])->not->toBe(PlanPhase::Taper);
         }
     }
 })->with(function (): array {
@@ -329,7 +335,7 @@ it('never lets a race block reach Peak or Taper straight out of a recovery week'
     $schedule = new PhaseSchedule();
 
     $cases = [];
-    foreach ([10_000.0, 21_097.0, 42_195.0] as $distanceM) {
+    foreach ([5_000.0, 10_000.0, 21_097.0, 42_195.0] as $distanceM) {
         foreach (range(4, 20) as $weeksOut) {
             $phases = array_column($schedule->forRace($arcStart, $arcStart->copy()->addWeeks($weeksOut), $distanceM), 'phase');
             // A block this short holds no scheduled recovery week at all
@@ -346,9 +352,20 @@ it('never lets a race block reach Peak or Taper straight out of a recovery week'
     return $cases;
 });
 
-it('climbs or holds the block\'s volume outside its recovery weeks until the taper', function (int $weeksOut, float $distanceM): void {
+dataset('race blocks', function (): array {
+    $cases = [];
+    foreach ([5_000.0, 10_000.0, 21_097.0, 42_195.0] as $distanceM) {
+        foreach ([8, 10, 12, 16, 20, 30] as $weeks) {
+            $cases["{$distanceM} m, {$weeks} weeks"] = [$weeks, $distanceM];
+        }
+    }
+
+    return $cases;
+});
+
+it('climbs or holds the block\'s volume outside its recovery weeks until the taper', function (int $weeks, float $distanceM): void {
     $arcStart = Carbon::parse('2026-08-10');
-    $arc = $this->schedule->forRace($arcStart, $arcStart->copy()->addWeeks($weeksOut), $distanceM);
+    $arc = $this->schedule->forRace($arcStart, $arcStart->copy()->addWeeks($weeks - 1), $distanceM);
     $phases = array_column($arc, 'phase');
     $multipliers = PhaseSchedule::volumeMultipliers($phases, zones: array_column($arc, 'zone'));
 
@@ -363,11 +380,42 @@ it('climbs or holds the block\'s volume outside its recovery weeks until the tap
         expect($multipliers[$i])->toBeGreaterThanOrEqual($highWater);
         $highWater = $multipliers[$i];
     }
+})->with('race blocks');
+
+it('never runs a block more than four weeks without a recovery or taper week', function (int $weeks, float $distanceM): void {
+    $arcStart = Carbon::parse('2026-08-10');
+    $arc = $this->schedule->forRace($arcStart, $arcStart->copy()->addWeeks($weeks - 1), $distanceM);
+
+    $run = 0;
+    foreach ($arc as $week) {
+        if ($week['zone'] === PhaseSchedule::ZONE_GENERAL) {
+            continue;
+        }
+        $run = in_array($week['phase'], [PlanPhase::Deload, PlanPhase::Taper], true) ? 0 : $run + 1;
+        expect($run)->toBeLessThanOrEqual(4);
+    }
+})->with('race blocks');
+
+it('tapers a race up to 25 km for two weeks at 0.6 and 0.4 of the build level', function (int $weeks, float $distanceM): void {
+    $arcStart = Carbon::parse('2026-08-10');
+    $arc = $this->schedule->forRace($arcStart, $arcStart->copy()->addWeeks($weeks - 1), $distanceM);
+    $phases = array_column($arc, 'phase');
+    $multipliers = PhaseSchedule::volumeMultipliers($phases, zones: array_column($arc, 'zone'));
+
+    $buildWeeks = count(array_filter(
+        $arc,
+        fn (array $week): bool => $week['zone'] === PhaseSchedule::ZONE_BLOCK && $week['phase'] === PlanPhase::Build,
+    ));
+    $buildLevel = min(1.4, 1.075 ** ($buildWeeks - 1));
+
+    expect(array_slice($phases, -3))->toBe([PlanPhase::Peak, PlanPhase::Taper, PlanPhase::Taper])
+        ->and(end($multipliers))->toEqualWithDelta($buildLevel * 0.4, 0.0001)
+        ->and(prev($multipliers))->toEqualWithDelta($buildLevel * 0.6, 0.0001);
 })->with(function (): array {
     $cases = [];
-    foreach ([10_000.0, 21_097.0, 42_195.0] as $distanceM) {
-        foreach ([8, 12, 16, 20, 30] as $weeksOut) {
-            $cases["{$distanceM} m, {$weeksOut} weeks"] = [$weeksOut, $distanceM];
+    foreach ([5_000.0, 10_000.0, 21_097.0] as $distanceM) {
+        foreach ([8, 10, 12, 16, 20, 30] as $weeks) {
+            $cases["{$distanceM} m, {$weeks} weeks"] = [$weeks, $distanceM];
         }
     }
 

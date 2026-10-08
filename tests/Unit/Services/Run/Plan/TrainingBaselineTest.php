@@ -574,8 +574,8 @@ it('leaves the long run to the share and the readiness distance when the season 
     flooredRaceSeason($user, 20.0, null);
 
     // Half of a 20 km week caps the 12 km readiness long run at 10, and the
-    // twelve-week block peaks at 1.075^2: 10 / 1.155625 rounds up to 8.7.
-    expect($this->baseline->forUser($user, Carbon::today())['long_run_km'])->toBe(8.7);
+    // twelve-week block peaks at 1.075^3: 10 / 1.242297 rounds up to 8.1.
+    expect($this->baseline->forUser($user, Carbon::today())['long_run_km'])->toBe(8.1);
 });
 
 it('sizes half the week off the floor when the floor asks for the bigger week', function (): void {

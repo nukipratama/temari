@@ -23,6 +23,8 @@ code_refs:
   - tests/Feature/Plan/TimeTrialPlanTest.php
 ---
 
+> **Partly superseded (2026-10-08) by [[a-race-block-tapers-two-weeks-and-recovers-in-peak]].** A trial due in a scheduled recovery week now falls due the week before it. Only when that week cannot take it does the trial move to the next week of its cycle. The rest of this decision stands.
+
 # A time trial every six weeks, auto-confirmed as evidence
 
 **Status:** Accepted (2026-10-05). Decision #1803, layer 4 of #1804. Extends [[supported-race-time-from-recent-efforts]], whose supported time now gets fresh confirmed evidence on a schedule, and reuses the ask pattern of [[a-race-outcome-is-confirmed-not-assumed]].

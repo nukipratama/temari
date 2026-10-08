@@ -77,9 +77,9 @@ function planTaperThenMoveRace(User $user, bool $viaRevision = true): array
     $taperKm = currentWeekKm($user);
 
     if ($viaRevision) {
-        $races->submit($user, ['race_date' => '2026-11-07', 'distance_m' => 10_000, 'goal_time_sec' => 3000, 'name' => null], RaceIntent::Update);
+        $races->submit($user, ['race_date' => '2026-10-31', 'distance_m' => 10_000, 'goal_time_sec' => 3000, 'name' => null], RaceIntent::Update);
     } else {
-        $race->update(['race_date' => '2026-11-07']);
+        $race->update(['race_date' => '2026-10-31']);
     }
     app(Periodizer::class)->regenerate($user, Carbon::today());
 

@@ -3,7 +3,7 @@ title: Coaching evidence
 description: The one curated reference list behind the app's coaching rules — each source keyed AuthorYear with grade and access, and a rule table mapping each rule to code and its label (evidence-supported, heuristic or product choice)
 tags: [architecture, run]
 status: living
-reviewed: 2026-10-05
+reviewed: 2026-10-08
 code_refs:
   - app/Services/Run/Metrics/TrainingPaceCalculator.php
   - app/Services/Run/Metrics/VdotEstimator.php
@@ -78,6 +78,8 @@ ADRs, feature notes and code docblocks cite a source here as `[[coaching-evidenc
 | A goal-less season's four-week cycle averages its frozen anchor, unless a long-run cap binds | [TrainingBaseline.php:511](app/Services/Run/Plan/TrainingBaseline.php#L511) | heuristic | [[#Doherty2020]], [[#Coyle1984]], [[#MujikaPadilla2000a]] |
 | Following the prescription never lowers the anchor; only running well short of it re-anchors mid-season or at rollover | [SeasonService.php:240](app/Services/Run/Plan/SeasonService.php#L240) | heuristic | [[#Coyle1984]], [[#MujikaPadilla2000a]], [[#MujikaPadilla2000b]] |
 | The Build ramp is a heuristic, not a safety rule | [PhaseSchedule.php:46](app/Services/Run/Plan/PhaseSchedule.php#L46) | heuristic | [[#Buist2008]] |
+| Every race up to 25 km tapers for two weeks, cutting volume to 0.6× and then 0.4× of the build level | [PhaseSchedule::taperWeeksForDistance()](app/Services/Run/Plan/PhaseSchedule.php) | evidence-supported | [[#Bosquet2007]], [[#Wang2023]] |
+| Every fourth week of Base, Build and Peak is a recovery week, Taper is exempt, and a slot on the last week before Taper moves one week earlier | [PhaseSchedule::withScheduledDeloads()](app/Services/Run/Plan/PhaseSchedule.php) | heuristic | [[#Kiely2018]] |
 | Steady-segment decoupling describes a run; only easy-effort days run past the heart-rate cap count a week as run too hard | [PlanAdapter.php:273](app/Services/Run/Plan/PlanAdapter.php#L273) | evidence-supported | [[#Smyth2022]], [[#CoyleGonzalezAlonso2001]], [[#Maunder2021]], [[#Racinais2015]] |
 | An athlete with zones from Strava, a manual edit or an observed peak runs Easy and Long days under the top of zone 2 (the `Z3` lower bound), with pace as a hint; config-default zones keep pace the target. The cap estimates the first ventilatory threshold, and fixed-percentage zones place individuals in different domains (coaching-evidence-base claim 24: Jamnick 2020, Mann 2013, Seiler 2010), an error likely larger than any choice below | [RunnerProfile.php:92](app/Models/RunnerProfile.php#L92), [PlanRenderer.php:451](app/Services/Run/Plan/PlanRenderer.php#L451) | heuristic | [[#Jamnick2020]] |
 | An easy-effort day (Easy, or Long with no marathon-pace block) is too hard past 15 minutes over the cap, or 20% of moving time when its runs total under 75 minutes | [EasyEffort.php:18](app/Services/Run/Plan/EasyEffort.php#L18), [SessionIntentJudge.php:186](app/Services/Run/Plan/SessionIntentJudge.php#L186) | convention | [[#Sylta2014]] |
@@ -108,7 +110,7 @@ ADRs, feature notes and code docblocks cite a source here as `[[coaching-evidenc
 | An unsupported goal is given a nearer, moderately hard stepping stone beside it rather than being rewritten: the target stays as stated and the stepping stone moves with the supported time; low-evidence and unknown goals get none | [RaceAmbitionAssessor.php:48](app/Services/Run/Plan/RaceAmbitionAssessor.php#L48), [SteppingStoneCard.tsx:13](resources/js/components/race/SteppingStoneCard.tsx#L13) | measured | [[#KylloLanders1995]], [[#BanduraSchunk1981]] (mechanism only) |
 | The stepping stone is the supported time × 0.97, rounded to whole seconds: the on-track edge from #1803, not a research number | [RaceAmbitionAssessor.php:65](app/Services/Run/Plan/RaceAmbitionAssessor.php#L65) | product definition | — |
 | An unsupported 5K to half goal's goal-pace work runs at the stepping-stone pace with the full on-track dose, and an unsupported marathon's race Tempo and race long run there with the existing minutes, because the stepping-stone pace equals the on-track edge | [GoalPaceWork.php:49](app/Services/Run/Plan/GoalPaceWork.php#L49), [GoalPaceWork.php:100](app/Services/Run/Plan/GoalPaceWork.php#L100) | heuristic | [[#PfitzingerDouglas2019]], [[#PfitzingerLatter2015]], [[#Daniels2022]] |
-| A time trial is 5K, or 10K for a half marathon or longer goal; it falls 4 weeks before race week, then every 6 weeks earlier, never in the last 3 weeks before a race, and a season with no race starts in its third week, then every 6 weeks | [TimeTrial.php:50](app/Services/Run/Plan/TimeTrial.php#L50), [TimeTrialSchedule.php:48](app/Services/Run/Plan/TimeTrialSchedule.php#L48) | heuristic | [[#Kiely2018]] |
+| A time trial is 5K, or 10K for a half marathon or longer goal; it falls 4 weeks before race week, then every 6 weeks earlier, never in the last 3 weeks before a race, and a season with no race starts in its third week, then every 6 weeks; a trial due in a scheduled Deload week falls due the week before it | [TimeTrial.php:50](app/Services/Run/Plan/TimeTrial.php#L50), [TimeTrialSchedule.php:48](app/Services/Run/Plan/TimeTrialSchedule.php#L48) | heuristic | [[#Kiely2018]] |
 | Confirmed evidence or a hard effort within ±10% of the trial distance, dated from 4 weeks before a trial's due week, skips that trial | [TimeTrialSchedule.php:122](app/Services/Run/Plan/TimeTrialSchedule.php#L122) | heuristic | — |
 | A time trial replaces the week's first quality session and never adds a hard day; a skipped trial is offered once more the following week, and a skipped retry or a trial answered "no" is not | [Periodizer.php:511](app/Services/Run/Plan/Periodizer.php#L511), [TimeTrialSchedule.php:70](app/Services/Run/Plan/TimeTrialSchedule.php#L70) | product choice | — |
 | A run on the trial day becomes confirmed evidence when it is within ±10% of the trial distance and no slower than the supported time plus 5%, or averages heart-rate zone 4 or above; heart rate only gates effort and never becomes a time | [TimeTrial.php:176](app/Services/Run/Plan/TimeTrial.php#L176) | heuristic | [[#MolinaGarcia2022]] |
@@ -260,6 +262,9 @@ Molina-Garcia P, Notbohm HL, Schumann M, et al. Validity of estimating the maxim
 
 ### Bosquet2007
 Bosquet L, Montpetit J, Arvisais D, Mujika I. Effects of tapering on performance: a meta-analysis. *Med Sci Sports Exerc* 2007;39(8):1358–1365. https://doi.org/10.1249/mss.0b013e31806010e0. Across 27 studies the best taper lasted about two weeks with volume cut 41–60%, and keeping intensity (ES 0.33) and frequency (ES 0.35) each beat reducing them. Grade MA · access ABS.
+
+### Wang2023
+Wang Z, Wang YT, Gao W, Zhong Y. Effects of tapering on performance in endurance athletes: a systematic review and meta-analysis. *PLoS One* 2023;18(5):e0282838. https://doi.org/10.1371/journal.pone.0282838. In endurance athletes a taper of 8–14 days had the largest effect on time-trial performance (SMD −1.47), and a 41–60% volume cut was the effective range; race distance was not tested as a moderator. Grade MA · access FT.
 
 ### Kiely2018
 Kiely J. Periodization theory: confronting an inconvenient truth. *Sports Med* 2018;48:753–764. https://doi.org/10.1007/s40279-017-0823-y. Periodization grew from coaching tradition, and no experiment supports specific cycle or block lengths. Grade REV · access ABS.
