@@ -35,7 +35,8 @@ the only reason two schedulers have never double-run a command — an unstated i
 enforced one. `onOneServer()` makes that invariant free to hold today and load-bearing the moment
 the container ever scales past one; `withoutOverlapping()` guards the orthogonal case of the same
 container's *next* tick starting before the current run has finished. Every event in
-`routes/console.php` now carries both, with one deliberate exception:
+`routes/console.php` carries `withoutOverlapping()` explicitly and `onOneServer()` through
+`Schedule::alwaysOnOneServer()` at the top of the file, with one deliberate exception:
 
 `schedule:heartbeat` skips `withoutOverlapping()` on purpose — the write is one idempotent `SETEX`,
 so a mutex taken every minute would guard nothing (see its comment in `routes/console.php`). It still takes `onOneServer()`, since a second scheduler container should
@@ -225,7 +226,7 @@ athlete's pass completes (or there was nobody to score). `plan:regenerate`'s `->
 only once both are done today and closes again once a run has marked it done this week:
 
 ```php
-Schedule::command('plan:regenerate')->mondays()->hourlyAt(26)->withoutOverlapping(45)->onOneServer()
+Schedule::command('plan:regenerate')->mondays()->hourlyAt(26)->withoutOverlapping(45)
     ->when(static fn (): bool => SchedulerChain::prerequisitesMet(SchedulerChain::PLAN_REGENERATE)
         && ! SchedulerChain::isDoneThisWeek(SchedulerChain::PLAN_REGENERATE))
     ->onSuccess(static fn () => SchedulerChain::markDoneThisWeek(SchedulerChain::PLAN_REGENERATE));
