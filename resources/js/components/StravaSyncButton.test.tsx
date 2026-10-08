@@ -2,9 +2,9 @@ import { router } from '@inertiajs/react';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
-import { setMockPage } from '@/test/setup';
+import { makeUser, setMockPage } from '@/test/setup';
 
-import StravaSyncButton from './StravaSyncButton';
+import StravaSyncButton, { SYNC_DEMO_BLOCKED } from './StravaSyncButton';
 
 describe('StravaSyncButton', () => {
     it('renders a connect link to the OAuth redirect when disconnected', () => {
@@ -105,5 +105,18 @@ describe('StravaSyncButton', () => {
             {},
             expect.objectContaining({ preserveScroll: true }),
         );
+    });
+
+    it('shows a demo visitor the demo-blocked modal instead of syncing', async () => {
+        setMockPage({ auth: { user: makeUser({ is_demo: true }) } });
+        vi.mocked(router.post).mockReset();
+        render(<StravaSyncButton state="ready" />);
+
+        fireEvent.click(screen.getByText('sync now'));
+
+        expect(
+            await screen.findByText(SYNC_DEMO_BLOCKED.title),
+        ).toBeInTheDocument();
+        expect(router.post).not.toHaveBeenCalled();
     });
 });
