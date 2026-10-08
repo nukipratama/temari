@@ -134,9 +134,7 @@ final readonly class UserEraser
             return null;
         }
 
-        $credentialVersion = $connection === null
-            ? $grant->credential_version
-            : $connection->credential_version;
+        $credentialVersion = $connection->credential_version ?? $grant->credential_version;
 
         $result = $this->grantReleases->release(
             $grant->strava_athlete_id,

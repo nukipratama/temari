@@ -147,9 +147,7 @@ final readonly class SeasonService
         }
         $volumeFloorKm = $race !== null ? $this->baseline->recentWeeklyMeanKm($user, $today) : null;
         $increasesHeld = $race !== null && $this->hydrationBacklog->recentLoadAwaitsScoring($user->id, $today);
-        $endsAt = $race !== null
-            ? $race->race_date->toDateString()
-            : $today->copy()->addWeeks(self::SELF_SCALED_WEEKS)->toDateString();
+        $endsAt = $race?->race_date->toDateString() ?? $today->copy()->addWeeks(self::SELF_SCALED_WEEKS)->toDateString();
         $blockGoalsAppendedAt = $race !== null && self::blockHasOpened($race, $today) ? Carbon::now() : null;
 
         // A mode switch on the very same day the current season started

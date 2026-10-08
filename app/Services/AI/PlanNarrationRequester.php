@@ -183,7 +183,7 @@ final readonly class PlanNarrationRequester
         $expected = MaterialFingerprint::forSeason(
             $this->sustainedAheadOfRacePace->forUser($user->id, $weekStart),
             $adaptation?->reason,
-            $adaptation === null ? false : $adaptation->deload,
+            $adaptation->deload ?? false,
         );
         if ($this->analysisService->shouldServeRuleBased($user)) {
             $this->analysisService->requestRuleBased(Season::class, $season->id, AnalysisType::PlanSeasonVoice, refillDone: false);

@@ -9,6 +9,7 @@ dataset('dev and ci service manifests', [
     'compose.shared-services.yml',
     '.github/workflows/backend-ci.yml',
     '.github/workflows/refresh-shards.yml',
+    '.github/actions/start-redis/action.yml',
 ]);
 
 it('pins dev and CI MySQL and Redis to the digests prod runs', function (string $manifest): void {

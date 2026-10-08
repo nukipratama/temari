@@ -64,7 +64,7 @@ class SettingsController extends Controller
 
         return [
             'profile' => $user->hrProfile(),
-            'source' => $profile !== null ? $profile->source : 'default',
+            'source' => $profile->source ?? 'default',
             'stravaSyncedLabel' => $profile !== null ? $profile->strava_zones_synced_at?->format('j M Y, H:i') : null,
             'canSyncFromStrava' => $this->canSyncFromStrava($user),
         ];

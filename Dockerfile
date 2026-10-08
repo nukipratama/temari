@@ -7,10 +7,15 @@
 FROM dunglas/frankenphp:1.13.0-php8.5-alpine@sha256:b64048cc72ee412fd7247f45d70011c385850c0bfd0b467cd26cdccc99e158ca AS frankenphp-base
 
 # Single pinned Node toolchain reused by the dev stage (copied in) and the
-# assets build, so dev/CI/prod all run the same Node. node:24.21.0-alpine
-# (Krypton LTS). Refresh after a version bump with:
+# assets build, so dev/CI/prod all run the same Node. node:26.10.0-alpine.
+# Refresh after a version bump with:
 #   docker buildx imagetools inspect node:<ver>-alpine --format '{{.Manifest.Digest}}'
-FROM node:24.21.0-alpine@sha256:ebfe2f90462722a7a4de65e91990e97fe0d401c70e0e762c5b53302f905ec1c1 AS node-src
+FROM node:26.10.0-alpine@sha256:0b36e8c136b94cd4fcf02188228e76c31ad5872eef3fec8cbd2eee500cfd9e80 AS node-src
+
+# Single pinned Composer, copied into the dev stage and built on by the vendor stage.
+# = composer:2.10.3. Refresh after a bump with:
+#   docker buildx imagetools inspect composer:2 --format '{{json .Manifest.Digest}}'
+FROM composer:2.10.3@sha256:af98f42dfff7c68ba8d53c2164fd9fde1087b7d449514baa38c418b1f6bc4bac AS composer-src
 
 # ─── Stage: dev ─────────────────────────────────────────────────────────────
 # Local dev target — FrankenPHP traditional mode (no Octane worker).
@@ -53,7 +58,7 @@ RUN fc-cache -f
 # coders the run-card rasteriser never uses. SVG/PNG stay enabled (see the file).
 COPY docker/imagemagick-policy.xml /etc/ImageMagick-7/policy.xml
 
-COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+COPY --from=composer-src /usr/bin/composer /usr/bin/composer
 
 # Node + npm for `npm run dev` inside the container (composer dev script),
 # copied from the pinned node-src stage so dev matches CI + the assets build
@@ -92,10 +97,7 @@ EXPOSE 80
 # Composer install (no dev deps), then dump optimized autoloader. The second
 # composer call also fires post-autoload-dump → `php artisan package:discover`,
 # which writes bootstrap/cache/{packages,services}.php.
-# Digest-pinned like the other base images above. = composer:2.10.3. Refresh
-# after a bump with:
-#   docker buildx imagetools inspect composer:2 --format '{{json .Manifest.Digest}}'
-FROM composer:2.10.3@sha256:af98f42dfff7c68ba8d53c2164fd9fde1087b7d449514baa38c418b1f6bc4bac AS vendor
+FROM composer-src AS vendor
 WORKDIR /var/www/html
 
 COPY composer.json composer.lock ./

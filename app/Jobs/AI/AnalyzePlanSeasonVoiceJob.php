@@ -46,7 +46,7 @@ class AnalyzePlanSeasonVoiceJob extends AnalyzeRowJob
         return MaterialFingerprint::forSeason(
             app(SustainedAheadOfRacePace::class)->forUser($season->user_id, $weekStart),
             $adaptation?->reason,
-            $adaptation === null ? false : $adaptation->deload,
+            $adaptation->deload ?? false,
         );
     }
 }

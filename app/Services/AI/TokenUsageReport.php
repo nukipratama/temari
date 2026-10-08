@@ -466,7 +466,7 @@ class TokenUsageReport
             $type = AnalysisType::tryFrom($key);
             $kinds[] = [
                 'kind' => $key,
-                'label' => $type === null ? $key : $type->name,
+                'label' => $type->name ?? $key,
                 'cost' => $cost,
             ];
         }

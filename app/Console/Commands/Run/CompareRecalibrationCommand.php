@@ -144,9 +144,9 @@ class CompareRecalibrationCommand extends Command
         // bucket rather than reading properties off null.
         $tallies['badges']['stored'] += $card === null ? 0 : count((array) $card->badges);
         $tallies['badges']['recomputed'] += count($badges);
-        $this->bump($tallies['rarity']['stored'], $card === null ? 'no card' : $card->rarity->value);
+        $this->bump($tallies['rarity']['stored'], $card->rarity->value ?? 'no card');
         $this->bump($tallies['rarity']['recomputed'], $this->rarityScorer->fromScore($score)->value);
-        $this->bump($tallies['move']['stored'], $card === null ? 'no card' : $card->special_move);
+        $this->bump($tallies['move']['stored'], $card->special_move ?? 'no card');
         $this->bump($tallies['move']['recomputed'], $this->specialMoves->pick($recomputed, [
             'distance_m' => $detail->distance,
             'pr_set' => $card !== null && $card->pr_set,
