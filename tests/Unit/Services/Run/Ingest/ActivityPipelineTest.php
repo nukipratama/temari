@@ -274,8 +274,22 @@ it('marks analyzed_at after max attempts so we stop hammering Strava', function 
         ->and($activity->fresh()->analyzed_at)->not->toBeNull();
 });
 
-it('stops immediately on a 404 detail (deleted activity), no further retries', function (): void {
+it('deletes a stub whose detail fetch hits a permanent 4xx, with no further retries', function (int $status): void {
     $activity = makeActivityWithConnection();
+
+    Http::fake([
+        'strava.com/api/v3/activities/999' => Http::response(['error' => 'Record Not Found'], $status),
+    ]);
+
+    $this->pipeline->ingest($activity);
+
+    expect(Activity::query()->withStubs()->find($activity->id))->toBeNull();
+})->with([404, 403]);
+
+it('keeps an ingested run whose resync hits a permanent 4xx', function (): void {
+    $activity = makeActivityWithConnection();
+    $activity->update(['analyzed_at' => now(), 'ingest_state' => IngestState::Detailed]);
+    ActivityDetail::factory()->for($activity)->create();
 
     Http::fake([
         'strava.com/api/v3/activities/999' => Http::response(['error' => 'Record Not Found'], 404),
@@ -283,10 +297,7 @@ it('stops immediately on a 404 detail (deleted activity), no further retries', f
 
     $this->pipeline->ingest($activity);
 
-    // analyzed_at stamped so the row is treated as handled and never refetched,
-    // even though we are nowhere near DETAIL_FETCH_MAX_ATTEMPTS.
-    expect($activity->fresh()->detail_fail_count)->toBe(1)
-        ->and($activity->fresh()->analyzed_at)->not->toBeNull();
+    expect(ActivityDetail::query()->where('activity_id', $activity->id)->exists())->toBeTrue();
 });
 
 it('keeps retrying on a 5xx detail (transient)', function (): void {

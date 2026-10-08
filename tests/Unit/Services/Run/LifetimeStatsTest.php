@@ -50,6 +50,15 @@ it('counts only analyzed runs belonging to the user', function (): void {
         ->and($stats['has_activity'])->toBeFalse();
 });
 
+it('does not count an analyzed run whose detail never arrived', function (): void {
+    $user = User::factory()->create();
+    Activity::factory()->for($user)->analyzed()->create();
+    $run = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($run)->create(['distance' => 5_000]);
+
+    expect(new LifetimeStats()->forUser($user)['total_runs'])->toBe(1);
+});
+
 it('reports has_activity as false for a brand-new athlete with no analyzed runs at all', function (): void {
     $user = User::factory()->create();
 

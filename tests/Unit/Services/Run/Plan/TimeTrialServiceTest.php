@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\IngestState;
 use App\Enums\IntentVerdict;
 use App\Enums\PaceBand;
 use App\Enums\PerformanceEvidenceKind;
@@ -108,6 +109,16 @@ it('leaves a trial that was not run, excused or eased to the plan\'s retry', fun
     'excused' => [['skipped' => true], true],
     'eased to easy' => [['clamped_km' => 6.0], true],
 ]);
+
+it('leaves the trial unsettled while a run on its day is still only a summary', function (): void {
+    $session = trialDay($this->user);
+    trialRun($this->user, 5_020.0, 1_560)->update(['ingest_state' => IngestState::Summary]);
+
+    expect($this->trials->settle($session))->toBeNull()
+        ->and($session->fresh()->time_trial_outcome)->toBeNull()
+        ->and(PerformanceEvidence::query()->count())->toBe(0);
+    Notification::assertNothingSent();
+});
 
 it('ignores a day that is no longer a trial', function (): void {
     $session = trialDay($this->user, ['prescription_race_context' => null]);
