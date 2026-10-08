@@ -325,7 +325,7 @@ it('moves a generated quality prescription with its workout and keeps its render
     $paceText = sprintf('%d:%02d', intdiv($runPace, 60), $runPace % 60);
     $summary = collect(['30s', '1min', '3min', '5min', '10min', '20min', '30min', '60min'])
         ->mapWithKeys(fn (string $window): array => ["best_{$window}_pace" => $paceText])
-        ->all();
+        ->all() + ['time_in_zone_min' => ['Z1' => 0, 'Z2' => 10, 'Z3' => 5, 'Z4' => 30, 'Z5' => 20]];
     $shown = json_decode(Crypt::decryptString($renderedDay['recommendation_token']), true, flags: JSON_THROW_ON_ERROR);
     $revision = app(RecommendationHistory::class)->record($user->id, $rest->date->toDateString(), $shown['original'], $shown['effective']);
     RecommendationView::query()->create([

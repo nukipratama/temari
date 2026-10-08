@@ -94,7 +94,9 @@ final class SessionIntentJudge
                 return self::reading(IntentVerdict::TooHard, $evidence + ['basis' => 'pace', 'control' => 'excessive'] + $stimulus);
             }
             if ($windowPace <= $block->paceSecPerKm + self::PACE_TOLERANCE_SEC) {
-                return self::reading(IntentVerdict::Hit, $evidence + ['basis' => 'pace', 'control' => 'controlled'] + $stimulus);
+                return $coveredSeconds >= $totalMinutes * 60 * self::MIN_COVERAGE
+                    ? self::reading(IntentVerdict::Hit, $evidence + ['basis' => 'pace', 'control' => 'controlled'] + $stimulus)
+                    : self::onHeartRateOrUnknown($summary, $runs, $block->zone, $totalMinutes, $evidence, ['basis' => 'pace'] + $stimulus, 'tempo');
             }
         }
 
@@ -170,7 +172,9 @@ final class SessionIntentJudge
                 return self::reading(IntentVerdict::TooHard, $evidence + ['basis' => 'window', 'control' => 'excessive'] + $stimulus);
             }
             if ($windowPace <= $ceiling) {
-                return self::reading(IntentVerdict::Hit, $evidence + ['basis' => 'window', 'control' => 'controlled'] + $stimulus);
+                return $coveredSeconds >= $needed * $repMinutes * 60 * self::MIN_COVERAGE
+                    ? self::reading(IntentVerdict::Hit, $evidence + ['basis' => 'window', 'control' => 'controlled'] + $stimulus)
+                    : self::onHeartRateOrUnknown($summary, $runs, $rep->zone, $needed * $repMinutes, $evidence, ['basis' => 'window'] + $stimulus, 'interval');
             }
         }
 
@@ -269,6 +273,26 @@ final class SessionIntentJudge
             $evidence + ['basis' => 'heart_rate', 'zone' => $zone, 'zone_minutes' => round($minutes, 1)]
                 + self::stimulus($dayMinutes > 0.0 ? $family : 'easy', $dayMinutes > 0.0 ? $dayMinutes : null, 'heart_rate'),
         );
+    }
+
+    /**
+     * A window at pace that covers too little of the requested work: heart
+     * rate can prove the rest, and nothing here can disprove it.
+     *
+     * @param  non-empty-list<ActivityDetail>  $runs
+     * @param  array<string, int|float|string>  $evidence
+     * @param  array<string, int|float|string>  $windowReading  the window's basis and stimulus
+     * @return array{verdict: IntentVerdict, evidence: array<string, int|float|string>}
+     */
+    private static function onHeartRateOrUnknown(StreamSummary $summary, array $runs, string $zone, float $minutesNeeded, array $evidence, array $windowReading, string $family): array
+    {
+        if ($summary->zoneMinutes() === null) {
+            return self::reading(IntentVerdict::Unknown, $evidence + $windowReading);
+        }
+
+        $reading = self::onHeartRate($summary, $runs, $zone, $minutesNeeded, true, $evidence, $family, 'window');
+
+        return $reading['verdict'] === IntentVerdict::Hit ? $reading : self::reading(IntentVerdict::Unknown, $reading['evidence']);
     }
 
     /**
