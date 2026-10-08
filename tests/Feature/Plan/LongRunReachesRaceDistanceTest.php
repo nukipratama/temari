@@ -138,7 +138,7 @@ it('reaches it by ramping rather than by jumping there in week one', function ()
         ->and($series[0]['long_km'])->toBeGreaterThan(9.1);
 });
 
-it('never lets the long run take more than half the week', function (): void {
+it('keeps a four-run week\'s long run within half the prescribed week', function (): void {
     $series = tenKFloorSeries();
 
     foreach ($series as $week) {

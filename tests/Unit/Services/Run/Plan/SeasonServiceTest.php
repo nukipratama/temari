@@ -292,7 +292,7 @@ it('opens a race season far from its block with the general goals only, its long
     '10K' => [10_000, 40.0],
     'half' => [21_097, 40.0],
     'marathon' => [42_195, 80.0],
-    '10K capped at half the week' => [10_000, 16.0],
+    '10K capped at half the anchor' => [10_000, 16.0],
 ]);
 
 /**

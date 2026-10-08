@@ -149,11 +149,12 @@ final class TrainingBaseline
     private const float RACE_DISTANCE_FLOOR_THRESHOLD_M = RaceSupport::MARATHON_CLASS_ABOVE_M;
 
     /**
-     * The long run may never be more than half the week, whatever the floor
-     * asks for. A single day carrying more than that is not a week with a long
-     * run in it, it is a long run with some jogging attached.
+     * The long run may never be more than half the anchor week, or of the week
+     * a race season's volume floor asks for when that is the bigger one,
+     * whatever the floor asks for. It bounds the long run against that week,
+     * not against the week the long run is prescribed in.
      */
-    private const float MAX_LONG_RUN_SHARE_OF_WEEK = 0.5;
+    private const float MAX_LONG_RUN_SHARE_OF_ANCHOR = 0.5;
 
     /**
      * The long run a race distance wants the athlete to reach by the block's
@@ -355,9 +356,9 @@ final class TrainingBaseline
 
     /**
      * The ceiling on any single long run, whichever of the three binds
-     * tightest: the race-distance band, time on feet, and half the week —
-     * the week a race season's volume floor asks for, when that is the
-     * bigger one.
+     * tightest: the race-distance band, time on feet, and half the anchor
+     * week, or of the week a race season's volume floor asks for when that
+     * is the bigger one.
      * Returned by {@see self::forUser()} because capping the baseline alone
      * left {@see SegmentGenerator::coreKmFor()}'s volume-multiplied
      * prescription unbounded.
@@ -367,7 +368,7 @@ final class TrainingBaseline
         return max(self::MIN_LONG_RUN_KM, min(
             self::raceBandCapKm($race),
             $this->timeCapKm($user, $asOf),
-            $weeklyVolumeKm * self::MAX_LONG_RUN_SHARE_OF_WEEK,
+            $weeklyVolumeKm * self::MAX_LONG_RUN_SHARE_OF_ANCHOR,
         ));
     }
 
