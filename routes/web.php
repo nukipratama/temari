@@ -134,10 +134,10 @@ Route::middleware(['auth', 'onboarded'])->group(function (): void {
     Route::get('/trends', TrendsController::class)->name('trends');
 
     Route::get('/race', [RaceController::class, 'index'])->name('race');
-    Route::post('/race', [RaceController::class, 'store'])->name('race.store');
-    Route::delete('/race', [RaceController::class, 'destroy'])->name('race.destroy');
+    Route::post('/race', [RaceController::class, 'store'])->middleware('block-demo-telegram')->name('race.store');
+    Route::delete('/race', [RaceController::class, 'destroy'])->middleware('block-demo-telegram')->name('race.destroy');
     Route::post('/race/{race}/outcome', [RaceOutcomeController::class, 'store'])
-        ->middleware('throttle:20,1')
+        ->middleware(['throttle:20,1', 'block-demo-telegram'])
         ->whereNumber('race')
         ->name('race.outcome.store');
 

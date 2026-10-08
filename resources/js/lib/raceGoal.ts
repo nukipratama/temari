@@ -210,3 +210,9 @@ export function supportedBasisLine(ambition: RaceAmbition): string | null {
 
     return `based on your ${raceDistanceLabel(ambition.basis.distance_m)} on ${formatNaiveMonthDayId(ambition.basis.performed_on)}`;
 }
+
+/** What the demo-blocked modal says when a demo visitor tries to change a race. */
+export const RACE_DEMO_BLOCKED = {
+    title: 'race plans stay put in the demo',
+    body: "this is the shared demo, so its race stays the same for everyone who drops by. connect your own Strava and set the race you're actually training for.",
+} as const;
