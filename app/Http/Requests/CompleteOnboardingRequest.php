@@ -10,6 +10,7 @@ use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Override;
+use App\Models\RaceGoal;
 
 /**
  * The onboarding wizard's preferences and first-goal steps are both
@@ -36,7 +37,7 @@ class CompleteOnboardingRequest extends FormRequest
         return [
             'race_date' => ['nullable', 'date', 'after:today', 'before:'.now()->addYears(5)->toDateString(), 'required_with:distance_m,goal_time_sec'],
             'distance_m' => ['nullable', 'integer', 'between:1000,300000', 'required_with:race_date,goal_time_sec'],
-            'goal_time_sec' => ['nullable', 'integer', 'between:300,259200', 'required_with:race_date,distance_m'],
+            'goal_time_sec' => ['nullable', 'integer', 'between:'.RaceGoal::MIN_GOAL_TIME_SEC.','.RaceGoal::MAX_GOAL_TIME_SEC, 'required_with:race_date,distance_m'],
             'name' => ['nullable', 'string', 'max:120'],
             'experience_level' => ['nullable', Rule::enum(ExperienceLevel::class)],
             'sessions_per_week' => ['nullable', 'integer', 'between:2,6'],

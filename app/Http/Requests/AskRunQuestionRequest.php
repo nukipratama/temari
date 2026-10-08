@@ -32,7 +32,7 @@ class AskRunQuestionRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'question' => ['required', 'string', 'min:3', 'max:'.RunQuestion::MAX_QUESTION_LENGTH],
+            'question' => ['required', 'string', 'min:'.RunQuestion::MIN_QUESTION_LENGTH, 'max:'.RunQuestion::MAX_QUESTION_LENGTH],
         ];
     }
 

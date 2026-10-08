@@ -30,6 +30,7 @@ use App\Services\Run\Plan\TrainingBaseline;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
 use App\Services\Run\Metrics\TrainingFormStatus;
+use App\Services\Weather\WeatherSnapshot;
 
 /**
  * Rule-based content per AnalysisType. Reached in production, not only by the
@@ -297,7 +298,7 @@ final readonly class RuleBasedNarrationFiller
         }
         if ($detail->weather_rain_detected === true) {
             $codas[] = ' In the rain, too.';
-        } elseif ($detail->weather_temp_c !== null && $detail->weather_temp_c >= 31) {
+        } elseif ($detail->weather_temp_c !== null && $detail->weather_temp_c >= WeatherSnapshot::HOT_RUN_TEMP_C) {
             $codas[] = " That was at {$detail->weather_temp_c} degrees, so it cost more than the pace lets on.";
         }
 

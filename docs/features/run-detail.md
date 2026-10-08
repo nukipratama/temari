@@ -190,7 +190,9 @@ cadence / steepest grade / flat pace as three tiles, then decoupling as a marker
 on a leaf→citrus→ember gradient with a plain-language line under it. Grade and
 flat pace appear only on a run that actually climbed (≥3%), so a flat GPS run
 does not show a noisy 0%; a corrupt JSON reading never renders as `NaN`. High
-drift is toned as a warning **unless** the run was ≥31°C, which mirrors the
+drift is toned as a warning **unless** the run was at or above
+`WeatherSnapshot::HOT_RUN_TEMP_C` (31°C), the one hot-run threshold the backend
+also uses and `typescript:enums` generates into the frontend, which mirrors the
 backend's own rule — heat explains an upward drift, and cannot explain a
 negative one. Relative effort is **not** here: P18 cut it, and the prototype's
 vitals card draws these five readings instead.

@@ -8,6 +8,7 @@ use App\Enums\RaceIntent;
 use Illuminate\Validation\Rule;
 use Override;
 use Illuminate\Foundation\Http\FormRequest;
+use App\Models\RaceGoal;
 
 /**
  * Validates a race-goal submission. Bounds are deliberately generous (this is
@@ -51,7 +52,7 @@ class StoreRaceGoalRequest extends FormRequest
             // multi-day ultra without accepting a typo'd distance.
             'distance_m' => ['required', 'integer', 'between:1000,300000'],
             // 5 minutes to 72 hours, same "plausible ultra" ceiling.
-            'goal_time_sec' => ['required', 'integer', 'between:300,259200'],
+            'goal_time_sec' => ['required', 'integer', 'between:'.RaceGoal::MIN_GOAL_TIME_SEC.','.RaceGoal::MAX_GOAL_TIME_SEC],
             'name' => ['nullable', 'string', 'max:120'],
             'intent' => ['nullable', Rule::enum(RaceIntent::class)],
         ];

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { getJson, postJson } from '@/lib/http';
+import { MIN_QUESTION_LENGTH } from '@/types/generated';
 
 export type RunQuestionStatus = 'queued' | 'processing' | 'done' | 'failed';
 
@@ -17,10 +18,7 @@ export interface RunQuestion {
 /** Why an ask did not land. Each maps to its own honest line in the UI. */
 export type AskError = 'rate_limited' | 'paused' | 'invalid' | 'failed';
 
-/** Mirrors RunQuestion::MAX_QUESTION_LENGTH. */
-export const MAX_QUESTION_LENGTH = 300;
-
-export const MIN_QUESTION_LENGTH = 3;
+export { MAX_QUESTION_LENGTH, MIN_QUESTION_LENGTH } from '@/types/generated';
 
 const POLL_INTERVAL_MS = 3000;
 
