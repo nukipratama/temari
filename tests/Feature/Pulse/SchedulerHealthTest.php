@@ -60,6 +60,7 @@ it('flags a command that has missed its cadence as late', function (): void {
         'expression' => '*/5 * * * *',
         'last_status' => 'ok',
         'last_run_at' => Carbon::now()->subHours(2),
+        'last_success_at' => Carbon::now()->subHours(2),
     ]);
 
     Livewire::test(SchedulerHealth::class)

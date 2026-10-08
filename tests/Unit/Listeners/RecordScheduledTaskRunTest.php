@@ -196,3 +196,24 @@ it('reports a run log write that throws without stopping the run or failing it',
     expect(ScheduledTaskRun::query()->sole()->last_status)->toBe(ScheduledTaskStatus::Ok);
     Exceptions::assertReportedCount(2);
 });
+
+it('keeps the last success when a command exits non-zero', function (): void {
+    $task = app(Schedule::class)->command('race:remind')->dailyAt('18:00');
+    $lastSuccessAt = Carbon::parse('2026-10-06 18:00:00');
+    ScheduledTaskRun::query()->create([
+        'command' => 'race:remind',
+        'expression' => '0 18 * * *',
+        'last_status' => 'ok',
+        'last_run_at' => $lastSuccessAt,
+        'last_success_at' => $lastSuccessAt,
+    ]);
+    $listener = new RecordScheduledTaskRun();
+
+    $task->exitCode = 1;
+    $listener->finished(new ScheduledTaskFinished($task, 1.0));
+    $listener->failed(new ScheduledTaskFailed($task, new RuntimeException('exit 1')));
+
+    $row = ScheduledTaskRun::query()->sole();
+    expect($row->last_status)->toBe(ScheduledTaskStatus::Failed)
+        ->and($row->last_success_at?->equalTo($lastSuccessAt))->toBeTrue();
+});

@@ -194,6 +194,7 @@ Non-running images older than 7 days are pruned automatically.
 ```bash
 docker tag temari/app:previous temari/app:latest
 docker compose -f compose.prod.yaml up -d --no-deps app horizon scheduler
+docker compose -f compose.prod.yaml exec -T app php artisan optimize
 docker compose -f compose.prod.yaml exec -T app php artisan horizon:terminate
 ```
 
@@ -201,7 +202,7 @@ docker compose -f compose.prod.yaml exec -T app php artisan horizon:terminate
 ```bash
 docker image ls temari/app                      # find the SHA you want
 docker tag temari/app:<sha> temari/app:latest
-# ... up + horizon:terminate as above ...
+# ... up + optimize + horizon:terminate as above ...
 ```
 
 For both: env vars (`APP_KEY`, DB creds, etc.) must be in your shell before running compose — easiest path is to re-run the relevant GitHub Actions deploy job rather than fight compose env locally. `compose.prod.yaml`'s `${VAR:?required}` markers tell you what's missing if anything's unset.

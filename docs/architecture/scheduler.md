@@ -83,14 +83,15 @@ despite that.
 | `strava:sync` / `strava:ingest` / `strava:hydrate-backlog` | see `routes/console.php` | 55/10/14 (unchanged) | yes | already guarded pre-DF-1 | ~1.3-1.4s each — no real Strava connection to poll/drain against locally (needs live Strava credentials); cannot be meaningfully measured in this worktree |
 | `geo:backfill-locations` / `weather:correct-forecast` / `weather:backfill` | see `routes/console.php` | 55/55/55 (unchanged) | yes | already guarded pre-DF-1 | ~1.3s each — 0 rows to backfill; `weather:*` additionally need a live Open-Meteo call to exercise the fetch path |
 | `trend:snapshot-daily` | daily 03:45 | 55 (unchanged) | yes | queues durable closed-date recovery in 365-day chunks; `--days=N` remains the focused mode | scheduled recovery advances each user's cursor through yesterday; ingest repairs backdated ranges; each row also records the supported race time for the race active that day ([[supported-time-history-from-daily-trend-snapshots]]) |
-| `race:remind` | daily 18:00 | 15 | yes | one race-goal sweep, same shape and cost as `streak:remind` | not measured — added after this pass; the sweep is one indexed `race_date` query plus one notify per athlete racing tomorrow |
-| `race:ask-outcome` | daily 09:00 | 15 | yes | one indexed sweep of races dated yesterday with a pending outcome, one notify each | not measured — added with CR-06; same shape and cost as `race:remind` |
+| `race:remind` | hourly 18:00-21:00, every tick after the first send a no-op | 15 | yes | one race-goal sweep, same shape and cost as `streak:remind` | not measured — added after this pass; the sweep is one indexed `race_date` query plus one notify per athlete racing tomorrow |
+| `race:ask-outcome` | hourly 09:00-21:00, every tick after the first ask a no-op | 15 | yes | one indexed sweep of races dated yesterday with a pending outcome, one notify each | not measured — added with CR-06; same shape and cost as `race:remind` |
 | `plan:settle-time-trials` | daily 09:05 | 15 | yes | one indexed sweep of the last week's unsettled time-trial rows for non-demo athletes, at most one evidence write or one notify each; a settled row is never selected again | not measured — added with the time trials (#1808) |
 | `fitness:notify-improvement` | daily 10:00 | 30 | yes | one estimate per non-demo athlete against their last noted VDOT, one notify for each improvement of at least 0.5 a week apart; the first run only records baselines | not measured — added with the supported-race-time model; the estimate reads each athlete's runs once |
 | `briefing:morning-push` | every 15 min | 14 | yes | one median-start-time sweep, sized like the other quarter-hourly drain; sends only, generates nothing | not measured — added after this pass; the median is cached per athlete per day (`UsualRunTime`), so only the first tick to see a given athlete that day pays the indexed read, every later tick that day is a cache hit |
 | `streak:remind` | Sat 18:00 | 15 | yes | one push-eligibility sweep | ~2.0s — dispatched to 0 users |
 | `streak:settle` | hourly | 20 | yes | queues chronological per-user settlement for the athletes still behind or marked dirty; one query when nobody is | queues one settlement job per athlete behind |
 | `schedule:monday-check` | Mon 06:00 | 10 | yes | one indexed count plus the chain flags, at most one alert per week | not measured — added with the Monday catch-up |
+| `horizon:snapshot` | every 5 minutes | 4 | yes | one Redis snapshot of Horizon's per-queue and per-job metrics for its Metrics tab, trimmed by `horizon.metrics.trim_snapshots` | not measured — added with the long-wait alert |
 | `schedule:check-late` | every 5 minutes | 4 | yes | one heartbeat-table read plus the chain flags, at most one alert per entry per incident | not measured — added with the late sweep |
 | `RetryOrphanedStravaGrantReleasesJob` (queued job) | daily 02:40 | 30 | yes | retries the Strava release of grants whose local connection is gone or revoked, one call per orphaned grant | not measured — the scheduler only queues it |
 
@@ -133,8 +134,9 @@ child. The stubs it finds are drained by `strava:ingest` at :10.
 Two tables record what the scheduler did:
 
 - `scheduled_task_runs` (default connection) is the heartbeat: one upserted row per command with
-  its last status and runtime ([ScheduledTaskRun](../../app/Models/ScheduledTaskRun.php)). Its
-  `isStale()` is what reads an entry as late.
+  its last status and runtime, `last_run_at` for every run and `last_success_at` for the last
+  run that did not fail ([ScheduledTaskRun](../../app/Models/ScheduledTaskRun.php)). Its `isStale()` is
+  what reads an entry as late.
 - `scheduled_task_run_logs` (`analytics` connection) is append-only, one row per run
   ([ScheduledTaskRunLog](../../app/Models/Analytics/ScheduledTaskRunLog.php)): command,
   `started_at`, `finished_at`, `runtime_ms`, `status` (`running`, `ok`, `failed`, `skipped`),
@@ -178,8 +180,11 @@ late, with one "back on time" line when it is not
   day or ISO week passed without a success and the current one has none yet, read from the chain
   flags. Its closed gate skips every tick in between, so its heartbeat says nothing. A gate that
   never opens still goes late.
-- Every other entry is late once `ScheduledTaskRun::isStale()` says so. A lock skip does not
-  refresh the heartbeat, so a jammed lock goes late too.
+- Every other entry is late once `ScheduledTaskRun::isStale()` says so: about twice its cadence
+  since its last success, or since its row was first recorded while it has never succeeded. A run
+  that fails or exits non-zero does not advance `last_success_at`, so an entry that keeps failing
+  goes late whether or not it is wrapped in `$alertOnFailure`, and its page says it has kept
+  failing since then. A lock skip does not refresh the heartbeat, so a jammed lock goes late too.
 
 Three more sources raise alerts:
 

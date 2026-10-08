@@ -164,7 +164,7 @@ services:
   horizon:
     <<: *app-base
     command: ["php", "artisan", "horizon"]
-    stop_grace_period: 60s
+    stop_grace_period: 390s
     # Override the image's HTTP healthcheck: a wedged supervisor keeps the
     # container alive but stops processing. horizon:status exits 0 running,
     # 1 paused, 2 inactive — so paused/dead both surface as `unhealthy`.

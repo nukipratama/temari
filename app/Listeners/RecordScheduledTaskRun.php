@@ -65,17 +65,18 @@ class RecordScheduledTaskRun
             return;
         }
 
+        $exitCode = $event->task->exitCode;
+        $status = $exitCode === null || $exitCode === 0 ? ScheduledTaskStatus::Ok : ScheduledTaskStatus::Failed;
+
         ScheduledTaskRun::record(
             self::label($event->task),
             $event->task->getExpression(),
-            ScheduledTaskStatus::Ok,
+            $status,
             (int) round($event->runtime * 1000),
         );
 
-        $exitCode = $event->task->exitCode;
-
         rescue(fn () => $log?->close(
-            $exitCode === null || $exitCode === 0 ? ScheduledTaskStatus::Ok : ScheduledTaskStatus::Failed,
+            $status,
             $exitCode,
             (int) round($event->runtime * 1000),
         ));

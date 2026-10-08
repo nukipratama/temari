@@ -27,7 +27,6 @@ code_refs:
   - app/Services/Run/Metrics/TrainingFormStatus.php
   - app/Services/Run/Plan/PlanRenderer.php
   - app/Services/Run/Plan/PlanRecalibrationService.php
-  - app/Services/Run/Plan/CoachingReset.php
   - app/Services/Run/Story/Temari.php
   - resources/js/components/settings/HrZonesDisclosure.tsx
   - app/Services/Run/Metrics/FallOffExponent.php
@@ -126,7 +125,7 @@ ADRs, feature notes and code docblocks cite a source here as `[[coaching-evidenc
 | The current week's total is the week as it ends if the athlete follows the plan from today: past days at their credited km, today at its credited km once run or else its shown km, and later days at their shown, trimmed km | [CurrentWeekKm::forUser()](app/Services/Run/Plan/CurrentWeekKm.php) | product choice | — |
 | A run's fallback mood follows the same effort scale as its colour | [Temari.php:109](app/Services/Run/Story/Temari.php#L109) | product choice | — |
 | Ordinary recalibration recomputes metrics and the future plan but keeps past prescriptions and shown-advice grades | [PlanRecalibrationService.php:47](app/Services/Run/Plan/PlanRecalibrationService.php#L47) | product choice (#1511) | — |
-| One pre-launch reset rebuilds derived history once under the current policy | [CoachingReset.php:64](app/Services/Run/Plan/CoachingReset.php#L64) | product choice (#1541) | — |
+| One pre-launch reset rebuilds derived history once under the current policy | `CoachingReset::reset()` (removed 2026-10-08) | product choice (#1541) | — |
 
 ## Sources
 

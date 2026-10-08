@@ -151,7 +151,7 @@ class PlanController extends Controller
         $movedOntoOrOffToday = $occupant !== null && ($session->date->isSameDay($today) || $occupant->date->isSameDay($today));
         $toggledToday = $session->date->isSameDay($today) && $session->wasChanged('skipped');
         if (! $user->is_demo && ($movedOntoOrOffToday || $toggledToday)) {
-            $analysisService->requestBriefing($user, $today->toDateString(), invalidate: true);
+            $analysisService->requestBriefing($user, $today->toDateString(), invalidate: true, delaySeconds: AnalysisService::PLAN_EDIT_DELAY_SECONDS);
         }
 
         return back();

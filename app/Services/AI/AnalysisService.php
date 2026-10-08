@@ -32,6 +32,9 @@ use Laravel\Pulse\Facades\Pulse;
 
 class AnalysisService
 {
+    /** Seconds a plan edit's re-narration waits before its job runs. */
+    public const int PLAN_EDIT_DELAY_SECONDS = 30;
+
     public function __construct(
         private readonly NarrationGate $gate,
         private readonly NotificationEligibility $eligibility,

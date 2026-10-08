@@ -29,7 +29,6 @@ _Pipelines & metrics_
 - [[stream-analysis]] — raw streams → `stream_summary` (HR zones, splits, decoupling, cadence)
 - [[training-load-metrics]] — Edwards TRIMP, CTL/ATL EWMA, strain/monotony/form, backdated propagation
 - [[coaching-evidence]] — the curated sources behind coaching rules, and a rule table labelling each evidence-supported, heuristic or product choice
-- [[coaching-reset-runbook]] — the release procedure for the one-time pre-launch `coaching:reset`: dry run, apply, partial failure, lock recovery and what cannot be rolled back
 - [[past-you-engine]] — summary-safe matching against the runner's own history, and the trend verdict it produces
 
 _AI narration_

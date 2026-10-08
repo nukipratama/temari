@@ -15,7 +15,6 @@ code_refs:
   - app/Services/Run/Plan/PlanRenderer.php
   - app/Services/Run/Plan/IntentOutcome.php
   - app/Models/RunnerProfile.php
-  - app/Console/Commands/Run/BackfillEasyEffortCommand.php
   - resources/js/lib/plan.ts
 ---
 
@@ -53,7 +52,7 @@ No peer-reviewed study defines how much time above the first threshold an easy s
 - A long run held too hard can now count toward a ragged week; a marathon-pace long run cannot.
 - A time trial on a mildly concerning day becomes an easy run and is offered again the following week; before, it ran as a 0.75× dose and used up the cycle.
 - Old intent evidence carrying `zone` and `above_zone_pct` is still worded as before ([IntentOutcome](app/Services/Run/Plan/IntentOutcome.php)); a regrade replaces it.
-- Rollout, each run by the owner on prod after deploy, in order: `run:backfill-easy-effort` writes the figure onto every past run from its stored streams under the athlete's current zones ([BackfillEasyEffortCommand](app/Console/Commands/Run/BackfillEasyEffortCommand.php#L22)), then `plan:regenerate`, then `plan:regrade-season`. Ingest and zone recalibration keep the figure current after that.
+- Rollout, each run by the owner on prod after deploy, in order: `run:backfill-easy-effort` writes the figure onto every past run from its stored streams under the athlete's current zones (`BackfillEasyEffortCommand` (removed 2026-10-08)), then `plan:regenerate`, then `plan:regrade-season`. Ingest and zone recalibration keep the figure current after that.
 
 ## See also
 

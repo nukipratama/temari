@@ -20,7 +20,7 @@ A goal-less season asked the athlete to "Grow your fitness (CTL) this season". C
 
 ## Decision
 
-- **The goal is "Run your planned volume week by week."** Its metric is `season_consistent_weeks` and its unit is weeks ([SeasonService::consistencyGoal()](app/Services/Run/Plan/SeasonService.php#L505)). The target is the number of Sundays in the season, 12 for a 12-week season.
+- **The goal is "Run your planned volume week by week."** Its metric is `season_consistent_weeks` and its unit is weeks ([SeasonService::consistencyGoal()](app/Services/Run/Plan/SeasonService.php#L473)). The target is the number of Sundays in the season, 12 for a 12-week season.
 - **A week counts when the athlete ran at least 85% of what was written.** [SeasonGamificationContext::consistentWeeks()](app/Services/Gamification/SeasonGamificationContext.php#L176) counts completed weeks whose actual km reached [CONSISTENT_WEEK_FRACTION](app/Services/Gamification/SeasonGamificationContext.php#L38) (0.85) of the sum of that week's recorded `prescribed_km`.
 - **Open seasons are migrated.** `2026_10_02_000200_replace_open_ctl_growth_goals_with_consistency` swaps the CTL goal for the consistency goal on open goal-less seasons. A settled season keeps its CTL goal as history, and the resolver still reads it. Rollback restores the CTL goals.
 - **Product choice.** The goal says what the app asks of the athlete: run the plan. CTL growth is not fitness ([[coaching-evidence#Vermeire2022]]), and volume is the trained quantity the plan holds ([[coaching-evidence#Doherty2020]]). The 85% line is a product choice, not a training claim.

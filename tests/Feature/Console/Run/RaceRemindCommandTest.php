@@ -6,6 +6,8 @@ use App\Models\NotificationPreference;
 use App\Models\RaceGoal;
 use App\Models\User;
 use App\Notifications\RaceTomorrowNotification;
+use Illuminate\Console\Scheduling\Event;
+use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Notifications\SendQueuedNotifications;
 use Illuminate\Support\Carbon;
@@ -145,4 +147,48 @@ it('excludes the demo account, like every other kickoff', function (): void {
         ->assertSuccessful();
 
     Notification::assertNothingSent();
+});
+
+function raceRemindIsDueAt(string $at): bool
+{
+    Carbon::setTestNow($at);
+    $event = collect(app(Schedule::class)->events())->first(fn (Event $e): bool => str_ends_with((string) $e->command, 'race:remind'));
+
+    return $event->isDue(app()) && $event->filtersPass(app());
+}
+
+it('runs every hour from 18:00 to 21:00, before quiet hours', function (): void {
+    expect(raceRemindIsDueAt('2026-05-23 17:00:00'))->toBeFalse()
+        ->and(raceRemindIsDueAt('2026-05-23 18:00:00'))->toBeTrue()
+        ->and(raceRemindIsDueAt('2026-05-23 18:30:00'))->toBeFalse()
+        ->and(raceRemindIsDueAt('2026-05-23 19:00:00'))->toBeTrue()
+        ->and(raceRemindIsDueAt('2026-05-23 20:00:00'))->toBeTrue()
+        ->and(raceRemindIsDueAt('2026-05-23 21:00:00'))->toBeTrue()
+        ->and(raceRemindIsDueAt('2026-05-23 22:00:00'))->toBeFalse();
+});
+
+it('sends one reminder when it runs twice in its window', function (): void {
+    Notification::fake();
+    $user = User::factory()->create();
+    raceTomorrow($user);
+
+    foreach (['2026-05-23 18:00:00', '2026-05-23 19:00:00'] as $at) {
+        expect(raceRemindIsDueAt($at))->toBeTrue();
+        $this->artisan('race:remind')->assertSuccessful();
+    }
+
+    Notification::assertSentToTimes($user, RaceTomorrowNotification::class, 1);
+});
+
+it('still reminds at the window\'s last hour when the first hour was missed', function (): void {
+    Notification::fake();
+    $user = User::factory()->create();
+    raceTomorrow($user);
+
+    expect(raceRemindIsDueAt('2026-05-23 21:00:00'))->toBeTrue();
+    $this->artisan('race:remind')
+        ->expectsOutputToContain('Dispatched race-day reminder to 1 users.')
+        ->assertSuccessful();
+
+    Notification::assertSentToTimes($user, RaceTomorrowNotification::class, 1);
 });

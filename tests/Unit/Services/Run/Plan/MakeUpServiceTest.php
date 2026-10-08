@@ -14,6 +14,7 @@ use App\Models\AI\Analysis;
 use App\Models\PlannedSession;
 use App\Models\RunCard;
 use App\Models\User;
+use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
 use App\Services\Run\Plan\MakeUpService;
@@ -180,4 +181,21 @@ it('keeps the demo athlete rule-based, with no LLM call and no reconciliation', 
 
     Bus::assertNothingDispatched();
     expect($target->fresh()->intent_evidence['advice_history'])->toBe('declared_after_run');
+});
+
+it('merges a burst of back-and-forth make-up moves into one delayed job per run group, card flavor and briefing', function (): void {
+    [$user, $vacated, $target, $activity] = swappedMakeUp('2026-08-11', '2026-08-12');
+    $service = app(MakeUpService::class);
+
+    $service->notify($user, $vacated->date, $target->date, Carbon::today());
+    $service->notify($user, $target->date, $vacated->date, Carbon::today());
+    $service->notify($user, $vacated->date, $target->date, Carbon::today());
+
+    $delayed = fn (object $job): bool => $job->delay === AnalysisService::PLAN_EDIT_DELAY_SECONDS;
+    Bus::assertDispatchedTimes(AnalyzeActivityJob::class, 1);
+    Bus::assertDispatched(fn (AnalyzeActivityJob $job): bool => $job->subjectId === $activity->id && $delayed($job));
+    Bus::assertDispatchedTimes(AnalyzeCardFlavorJob::class, 1);
+    Bus::assertDispatched(AnalyzeCardFlavorJob::class, $delayed);
+    Bus::assertDispatchedTimes(AnalyzeBriefingMascotVoiceJob::class, 1);
+    Bus::assertDispatched(AnalyzeBriefingMascotVoiceJob::class, $delayed);
 });

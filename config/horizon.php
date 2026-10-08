@@ -113,7 +113,7 @@ return [
 
     'waits' => [
         'redis:default' => 60,
-        'redis:ai' => 900,
+        'redis:ai' => 420,
     ],
 
     /*

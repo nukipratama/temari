@@ -66,13 +66,14 @@ into `reminded_for_date` only while that column is null or holds another date
 ([claim](../../app/Console/Commands/Run/RaceRemindCommand.php#L71)). A re-run for the same date, or a
 second run racing the first, updates no row and says nothing, while a race moved to a later date is
 reminded again the evening before its new date. A dispatch that throws clears the column, so the
-next run sends, the same claim-then-release as `streak:remind`.
+next run sends, the same claim-then-release as `streak:remind`. It runs every hour from 18:00 to
+21:00, so a deploy or restart over 18:00 still reminds that evening, before the 22:00 quiet hours.
 The body says the race and its distance, repeats the plan's own taper rest when today is one, and
 ends on the single practical thing left to do that evening; there is no narrator behind it and no
 hype in it.
 
-**`race_outcome` asks, it does not assume.** `race:ask-outcome` runs at 09:00 and notifies each
-athlete whose race was yesterday and whose outcome is still `pending`
+**`race_outcome` asks, it does not assume.** `race:ask-outcome` runs every hour from 09:00 to
+21:00 and notifies each athlete whose race was yesterday and whose outcome is still `pending`
 ([RaceOutcomeAskCommand](../../app/Console/Commands/Run/RaceOutcomeAskCommand.php)), claiming
 each race for its date the same way through its own `outcome_asked_for_date` column
 ([claim](../../app/Console/Commands/Run/RaceOutcomeAskCommand.php#L59)).
