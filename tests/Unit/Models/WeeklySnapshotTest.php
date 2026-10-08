@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Services\Run\Metrics\TrainingFormStatus;
 use App\Models\StreakRestToken;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
@@ -155,7 +156,7 @@ it('reads the form_status of the most recent snapshot as the shared spine', func
     WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-10', 'form_status' => 'optimal']);
     WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-17', 'form_status' => 'overreaching']);
 
-    expect(WeeklySnapshot::latestFormStatus($user->id))->toBe('overreaching');
+    expect(WeeklySnapshot::latestFormStatus($user->id))->toBe(TrainingFormStatus::Overreaching);
 });
 
 it('returns null form_status when the user has no snapshots', function (): void {

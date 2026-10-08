@@ -6,7 +6,6 @@ namespace App\Services\AI\Agent\Tools;
 
 use App\Models\WeeklySnapshot;
 use App\Services\AI\HistoryNarrationGate;
-use App\Services\Run\Metrics\LoadBalance;
 use App\Services\Run\Story\MoodMix;
 
 /**
@@ -52,7 +51,7 @@ final class PersonaMixTool extends UserTool
             'persona_mix' => $mix,
             'persona_mix_recent' => $recent,
             'persona_mix_earlier' => $earlier,
-            'load_balance' => $historyLoading ? null : LoadBalance::fromStored(WeeklySnapshot::latestFormStatus($this->user->id))?->value,
+            'load_balance' => $historyLoading ? null : WeeklySnapshot::latestFormStatus($this->user->id)?->loadBalance()->value,
             ...($historyLoading ? ['history_loading' => true] : []),
         ];
     }

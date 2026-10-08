@@ -51,7 +51,7 @@ class TrainingLoad
      */
     private const int SUMMARY_CACHE_SECONDS = 300;
 
-    private const int SUMMARY_CACHE_VERSION = 3;
+    private const int SUMMARY_CACHE_VERSION = 4;
 
     /**
      * @param  int  $windowDays  the trailing window `weekly_trimp`/monotony/strain
@@ -277,7 +277,7 @@ class TrainingLoad
      * (which only returns the final day's pair) — this exposes every day the
      * roll already computes along the way, not new computation.
      *
-     * @return list<array{date: string, atl: float, ctl: float, form_status: string|null}>
+     * @return list<array{date: string, atl: float, ctl: float, form_status: TrainingFormStatus|null}>
      */
     public function ctlTrend(User $user, int $days = 90, ?Carbon $asOf = null): array
     {
@@ -359,7 +359,7 @@ class TrainingLoad
      * and (60, 20), flat outside, so more load can never cross a band edge into
      * a fresher label.
      */
-    public function formStatus(float $form, float $ctl): string
+    public function formStatus(float $form, float $ctl): TrainingFormStatus
     {
         $threshold = match (true) {
             $ctl <= 10 => 5.0,
@@ -369,10 +369,10 @@ class TrainingLoad
         };
 
         return match (true) {
-            $form > $threshold => 'fresh',
-            $form > -$threshold => 'optimal',
-            $form > -$threshold * 2 => 'fatigued',
-            default => 'overreaching',
+            $form > $threshold => TrainingFormStatus::Fresh,
+            $form > -$threshold => TrainingFormStatus::Optimal,
+            $form > -$threshold * 2 => TrainingFormStatus::Fatigued,
+            default => TrainingFormStatus::Overreaching,
         };
     }
 
