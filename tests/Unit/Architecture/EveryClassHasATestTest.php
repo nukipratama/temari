@@ -17,11 +17,9 @@ use App\Models\AI\TokenUsage;
 use App\Models\Analytics\StravaSyncLog;
 use App\Services\AI\ChainLink;
 use App\Services\AI\ChatCallOptions;
-use App\Services\AI\RuleBased\RuleBasedNarrationFiller;
 use App\Actions\AI\RecordTokenUsageAction;
 use App\Services\Geo\ResolvedLocation;
 use App\Services\Run\FeedFilters;
-use App\Services\Run\Metrics\PaceFormatter;
 use App\Livewire\Pulse\Concerns\SumsPulseTotals;
 use App\Services\AI\Narrators\Concerns\ReadsPreviousActivityNarrative;
 use App\Services\AI\Narrators\Concerns\ReadsPreviousDailyNarrative;
@@ -71,11 +69,9 @@ it('has a test class for every concrete app class', function (): void {
         TokenUsage::class,              // StructuredChatCallerTest
         ContentFilterEvent::class,      // AnalyzeRowJobTest
         RecordTokenUsageAction::class, // StructuredChatCallerTest
-        RuleBasedNarrationFiller::class, // DemoSeedCommandTest
-        PaceFormatter::class,           // exercised across pace tests
         StravaSyncLog::class,           // SyncOrchestratorTest
         SumsPulseTotals::class,         // trait, exercised via AiPipelineHealthTest + StravaHealthTest
-        ReadsPreviousActivityNarrative::class, // trait, exercised via PostRunSpeechNarratorTest + RunInsightNarratorTest
+        ReadsPreviousActivityNarrative::class, // trait, exercised via the PostRunSpeech and RunInsight cases in NarratorsCoverageTest
         ReadsPreviousDailyNarrative::class, // trait, exercised via the BriefingMascotVoice cases in NarratorsCoverageTest
         RevokesConnectionOnPermanentFailure::class, // trait, exercised via TelegramChannelTest
         ConfirmsPermanentRemoval::class, // trait, exercised via RemoveAthleteCommandTest + UserRemoveCommandTest
