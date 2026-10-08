@@ -91,6 +91,7 @@ despite that.
 | `streak:remind` | Sat 18:00 | 15 | yes | one push-eligibility sweep | ~2.0s — dispatched to 0 users |
 | `streak:settle` | hourly | 20 | yes | queues chronological per-user settlement for the athletes still behind or marked dirty; one query when nobody is | queues one settlement job per athlete behind |
 | `schedule:monday-check` | Mon 06:00 | 10 | yes | one indexed count plus the chain flags, at most one alert per week | not measured — added with the Monday catch-up |
+| `horizon:snapshot` | every 5 minutes | 4 | yes | one Redis snapshot of Horizon's per-queue and per-job metrics for its Metrics tab, trimmed by `horizon.metrics.trim_snapshots` | not measured — added with the long-wait alert |
 | `schedule:check-late` | every 5 minutes | 4 | yes | one heartbeat-table read plus the chain flags, at most one alert per entry per incident | not measured — added with the late sweep |
 | `RetryOrphanedStravaGrantReleasesJob` (queued job) | daily 02:40 | 30 | yes | retries the Strava release of grants whose local connection is gone or revoked, one call per orphaned grant | not measured — the scheduler only queues it |
 

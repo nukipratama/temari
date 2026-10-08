@@ -268,6 +268,17 @@ class MaintainerAlerter
         );
     }
 
+    /** A Horizon queue's wait crossed its `horizon.waits` threshold; paged once per queue a day while it stays long. */
+    public function queueWaitLong(string $connection, string $queue, int $seconds): void
+    {
+        $this->openIncident(
+            'horizon.incident.long_wait:'.$connection.':'.$queue,
+            self::FAILURE_REPAGE_SECONDS,
+            "Horizon queue `{$connection}:{$queue}` is backed up: its wait is about {$seconds} s. Check Horizon and the logs.",
+            $this->sendInline(...),
+        );
+    }
+
     public function schedulerOnTime(string $command): void
     {
         $this->closeIncident(

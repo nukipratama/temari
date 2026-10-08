@@ -288,6 +288,10 @@ Schedule::command('fitness:notify-improvement')->dailyAt('10:00')->withoutOverla
 // has no outbound channel.
 $alertOnFailure(Schedule::command('briefing:morning-push')->everyFifteenMinutes()->withoutOverlapping(14), 'briefing:morning-push');
 
+// Every 5 minutes: record Horizon's throughput, runtime and wait per queue and
+// job for its Metrics tab, trimmed by horizon.metrics.trim_snapshots.
+$alertOnFailure(Schedule::command('horizon:snapshot')->everyFiveMinutes()->withoutOverlapping(4), 'horizon:snapshot');
+
 // Every 5 minutes: page once per incident for each entry that is late (a gated
 // entry once a whole day or week passes without a success, any other once its
 // heartbeat is stale) and send one line when it is back on time.
