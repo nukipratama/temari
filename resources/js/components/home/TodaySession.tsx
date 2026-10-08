@@ -262,7 +262,7 @@ export default function TodaySession({
                 pose={writingPose(pose, voice)}
                 className="-top-18 -right-14"
             />
-            <Eyebrow token="micro" className="text-icon-accent">
+            <Eyebrow as="h2" token="micro" className="text-icon-accent">
                 Today
             </Eyebrow>
             {today !== null && (

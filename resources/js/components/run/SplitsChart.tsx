@@ -122,7 +122,7 @@ export default function SplitsChart({
 
     return (
         <section className={className}>
-            <Eyebrow token="small" tone="ink-2">
+            <Eyebrow as="h2" token="small" tone="ink-2">
                 Splits per km
             </Eyebrow>
             <p className="mb-1.5 mt-0.5 font-sans text-xs text-text-3">

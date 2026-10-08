@@ -195,7 +195,7 @@ export default function TrainingPreferencesCard({
 
     return (
         <div>
-            <Eyebrow token="micro" tone="ink-2">
+            <Eyebrow as="h3" token="micro" tone="ink-2">
                 Training preferences
             </Eyebrow>
             <p className="mt-3 mb-4 font-sans text-xs leading-relaxed text-text-2">

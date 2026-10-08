@@ -20,7 +20,7 @@ export default function NoVerdictPanel({
 
     return (
         <section>
-            <Eyebrow token="micro" className="text-foreground">
+            <Eyebrow as="h2" token="micro" className="text-foreground">
                 You vs Past You · Last {trend.window_days} Days
             </Eyebrow>
 

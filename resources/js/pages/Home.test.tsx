@@ -342,6 +342,24 @@ describe('Home', () => {
         ).toBeInTheDocument();
     });
 
+    it('titles the page with one visually hidden h1 on both the run and the empty branch', () => {
+        const { unmount } = renderHome();
+        const heading = screen.getByRole('heading', { level: 1 });
+        expect(heading).toHaveTextContent('today');
+        expect(heading).toHaveClass('sr-only');
+        unmount();
+
+        render(
+            <Home
+                briefing={briefing}
+                snapshot={snapshot}
+                hasRuns={false}
+                pastYouTrend={trend()}
+            />,
+        );
+        expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
+    });
+
     it('omits the verdict block entirely when the backend shipped no trend', () => {
         renderHome(null);
 

@@ -41,6 +41,12 @@ describe('Profile', () => {
         expect(screen.getByText(/catching her breath/)).toBeInTheDocument();
     });
 
+    it('titles the page with exactly one h1', () => {
+        render(<Profile mood="easy" identity={identity} stats={stats} />);
+
+        expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
+    });
+
     it('renders the eyebrow and the editorial greeting with the first name', () => {
         render(<Profile mood="easy" identity={identity} stats={stats} />);
 

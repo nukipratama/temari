@@ -140,7 +140,7 @@ export default function VitalsCard({
 
     return (
         <section className={className}>
-            <Eyebrow token="small" tone="ink-2" className="mb-3.5">
+            <Eyebrow as="h3" token="small" tone="ink-2" className="mb-3.5">
                 Vitals
             </Eyebrow>
 

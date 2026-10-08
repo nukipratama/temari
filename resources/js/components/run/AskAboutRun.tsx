@@ -88,7 +88,7 @@ export default function AskAboutRun({
         <section className={className}>
             <div className="flex items-center gap-1.5">
                 <Icon icon={MessageCircle} width={12} height={12} aria-hidden />
-                <Eyebrow token="small" tone="icon-accent" as="span">
+                <Eyebrow token="small" tone="icon-accent" as="h2">
                     Ask about this run
                 </Eyebrow>
             </div>
@@ -124,7 +124,12 @@ export default function AskAboutRun({
 
             {followUps.length > 0 && (
                 <>
-                    <Eyebrow token="micro" tone="ink-3" className="mb-2 mt-1">
+                    <Eyebrow
+                        as="h3"
+                        token="micro"
+                        tone="ink-3"
+                        className="mb-2 mt-1"
+                    >
                         Keep going
                     </Eyebrow>
                     <SuggestionChips
@@ -137,7 +142,12 @@ export default function AskAboutRun({
 
             {loaded && questions.length === 0 && suggestions.length > 0 && (
                 <>
-                    <Eyebrow token="micro" tone="ink-3" className="mb-2 mt-3.5">
+                    <Eyebrow
+                        as="h3"
+                        token="micro"
+                        tone="ink-3"
+                        className="mb-2 mt-3.5"
+                    >
                         Starting points
                     </Eyebrow>
                     <SuggestionChips

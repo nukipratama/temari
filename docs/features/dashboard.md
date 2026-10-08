@@ -22,7 +22,7 @@ code_refs:
 
 # Dashboard
 
-The app's home (`/`), ported to the frozen prototype's `TodayScreen` in `PS3`. Three sections, in the order the page draws them: today's session and Temari's read on it, the week's plan card carrying the week's own numbers (or its empty state), then the **"am I getting better?"** verdict with the evidence behind it. The deep stats — vitals and condition — moved to `/trends`, see "Where the deep stats went" below. Server entry is [DashboardController](app/Http/Controllers/DashboardController.php) (`__invoke`), rendering the [Home](resources/js/pages/Home.tsx) page.
+The app's home (`/`), ported to the frozen prototype's `TodayScreen` in `PS3`. Three sections, in the order the page draws them: today's session and Temari's read on it, the week's plan card carrying the week's own numbers (or its empty state), then the **"am I getting better?"** verdict with the evidence behind it. The deep stats — vitals and condition — moved to `/trends`, see "Where the deep stats went" below. Server entry is [DashboardController](app/Http/Controllers/DashboardController.php) (`__invoke`), rendering the [Home](resources/js/pages/Home.tsx) page. Home has no visible title, so it opens with a visually hidden `h1` ("today", matching the nav label), and the section eyebrows below it ("Today", "this week's plan") render as `h2`.
 
 **Navigation:** `route('dashboard')` → `/`. Named route: `dashboard`. `/` is dispatched by [RootController](app/Http/Controllers/RootController.php), which branches on auth: a guest gets the landing page ([[landing]]) and a signed-in user is delegated here. `route('dashboard')` therefore resolves for guests too — it answers with the landing page rather than a redirect.
 

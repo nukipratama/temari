@@ -187,6 +187,25 @@ describe('Runs/Show', () => {
         expect(screen.getByText(/catching her breath/)).toBeInTheDocument();
     });
 
+    it('titles the page with exactly one h1', () => {
+        renderShow();
+
+        expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
+    });
+
+    it('never skips a heading level down the page', () => {
+        renderShow();
+
+        const levels = screen
+            .getAllByRole('heading')
+            .map((heading) => Number(heading.tagName.slice(1)));
+
+        expect(levels[0]).toBe(1);
+        levels.slice(1).forEach((level, index) => {
+            expect(level - levels[index]).toBeLessThanOrEqual(1);
+        });
+    });
+
     it('renders the prototype section list in order', () => {
         renderShow();
         expect(screen.getByText('Activity')).toBeInTheDocument();

@@ -91,7 +91,7 @@ export default function PastYouCard({
         <section
             className={cn('pl-3', EFFORT_STRIPE_CLASS[match.effort], className)}
         >
-            <Eyebrow token="small" tone="ink-2">
+            <Eyebrow as="h2" token="small" tone="ink-2">
                 You vs past you
             </Eyebrow>
             <p className="mt-1.5 flex flex-wrap items-baseline gap-x-2 font-mono font-bold leading-tight tabular-nums text-icon-accent">
@@ -155,7 +155,7 @@ export default function PastYouCard({
 function DuelSection({ duel }: Readonly<{ duel: PastYouDuel }>) {
     return (
         <div className="mt-4 border-t border-dashed border-border pt-3">
-            <Eyebrow token="small" tone="ink-2">
+            <Eyebrow as="h3" token="small" tone="ink-2">
                 Km by km
             </Eyebrow>
             <ul className="mt-2 space-y-1.5">

@@ -59,6 +59,7 @@ export default function NarrationCard({
         return (
             <section className={className}>
                 <Eyebrow
+                    as="h2"
                     token="micro"
                     className="mb-1.5 flex items-center gap-1.5 text-icon-accent"
                 >
@@ -93,6 +94,7 @@ export default function NarrationCard({
         <section className={className}>
             <div className="flex items-center justify-between gap-3">
                 <Eyebrow
+                    as="h2"
                     token="micro"
                     className="flex items-center gap-1.5 text-text-2"
                 >

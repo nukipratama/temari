@@ -92,6 +92,12 @@ describe('Race', () => {
         ).not.toBeInTheDocument();
     });
 
+    it('titles the page with exactly one h1', () => {
+        render(<Race race={RACE} projection={PROJECTION} />);
+
+        expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
+    });
+
     it('shows nothing about an AI pause, since it renders no narration', () => {
         setMockPage({ aiPaused: true });
 

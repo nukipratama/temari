@@ -15,7 +15,7 @@ export default function BareShell({ children }: Readonly<BareShellProps>) {
         // 0 under the solid status bar, hence the floor.
         <div className="min-h-screen bg-background pt-[max(1rem,env(safe-area-inset-top))] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] text-foreground">
             <ErrorBanner />
-            {children}
+            <main>{children}</main>
         </div>
     );
 }

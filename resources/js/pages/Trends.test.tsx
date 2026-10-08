@@ -80,6 +80,12 @@ describe('Trends', () => {
         expect(screen.getByText(/catching her breath/)).toBeInTheDocument();
     });
 
+    it('titles the page with exactly one h1', () => {
+        render(<Trends {...BASE_PROPS} />);
+
+        expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
+    });
+
     it('renders the page headline', () => {
         render(<Trends {...BASE_PROPS} />);
 
@@ -108,6 +114,7 @@ describe('Trends', () => {
             .map((h) => h.textContent);
 
         expect(headings).toEqual([
+            "Temari's read · last 7 days",
             'vs last week',
             'long-term load',
             'vs race day',

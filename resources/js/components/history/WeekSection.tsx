@@ -51,6 +51,7 @@ const WeekSection = memo(function WeekSection({
         <div>
             <div className="mb-2.5 flex flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5 px-0.5">
                 <Eyebrow
+                    as="h2"
                     token="small"
                     className="whitespace-nowrap text-foreground"
                 >

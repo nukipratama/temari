@@ -145,7 +145,7 @@ export default function RaceGoalForm({
                 className,
             )}
         >
-            <Eyebrow token="micro" tone="ink-2">
+            <Eyebrow as="h2" token="micro" tone="ink-2">
                 {race ? 'edit your race' : 'set your race'}
             </Eyebrow>
             <form onSubmit={submit} className="mt-3.5 flex flex-col gap-3.5">

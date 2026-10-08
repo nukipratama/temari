@@ -105,7 +105,7 @@ export default function WeekPlanWidget({
     return (
         <section>
             <div className="mb-3.5 flex flex-wrap items-center justify-between gap-2">
-                <Eyebrow token="micro" className="text-foreground">
+                <Eyebrow as="h2" token="micro" className="text-foreground">
                     this week&apos;s plan
                 </Eyebrow>
                 <Chip className="text-label-micro bg-muted text-foreground">
