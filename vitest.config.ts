@@ -2,6 +2,8 @@ import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 import path from 'node:path';
 
+process.env.TZ = 'Asia/Jakarta';
+
 export default defineConfig({
     plugins: [react()],
     resolve: {
@@ -18,6 +20,7 @@ export default defineConfig({
     },
     test: {
         environment: 'jsdom',
+        pool: 'vmThreads',
         fsModuleCache: !process.env.CI,
         globals: true,
         env: { TZ: 'Asia/Jakarta' },
