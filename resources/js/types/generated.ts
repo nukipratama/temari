@@ -45,3 +45,6 @@ export const RECOVERY_CONCERN_LEVEL_VALUES = ['none', 'mild', 'moderate', 'sever
 
 export type SleepQuality = 'good' | 'fair' | 'poor';
 export const SLEEP_QUALITY_VALUES = ['good', 'fair', 'poor'] as const;
+
+export type Mood = 'blazing' | 'easy' | 'wobbly' | 'gassed' | 'overloaded' | 'chill';
+export const MOOD_VALUES = ['blazing', 'easy', 'wobbly', 'gassed', 'overloaded', 'chill'] as const;

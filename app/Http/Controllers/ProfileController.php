@@ -103,7 +103,7 @@ class ProfileController extends Controller
                 'has_activity' => $loadLifetime()['has_activity'],
             ],
             'profileVoice' => fn (): array => $this->resolveProfileVoice($user),
-            'mood' => fn (): string => $temari->moodForVibe($vibe->current($user, $today)),
+            'mood' => fn (): string => $temari->moodForVibe($vibe->current($user, $today))->value,
             'progressionByCategory' => Inertia::defer(fn (): array => $this->buildProgressionByCategory($progressionSeriesBuilder, $user, $this->personalRecords($user), $activeRace($user->id))),
             'fitness' => Inertia::defer(fn (): ?array => $this->fitness($vdotEstimator, $thresholdEstimator, $trainingPaceCalculator, $weekSessionTypes, $user, $today, $activeRace)),
             'timeInZone' => Inertia::defer(fn (): ?array => $timeInZoneSummary->forUser($user, $today) ?: null),

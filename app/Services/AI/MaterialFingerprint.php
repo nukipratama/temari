@@ -13,6 +13,7 @@ use App\Enums\SessionType;
 use App\Services\Run\Metrics\ReadinessCeiling;
 use App\Services\Run\Metrics\SessionIntent;
 use App\Services\Run\Metrics\StreamSummary;
+use App\Enums\Mood;
 
 /**
  * A stable hash over the run data that MATERIALLY drives its per-run narration,
@@ -188,7 +189,7 @@ final class MaterialFingerprint
         return $rounded;
     }
 
-    private static function mood(Activity $activity): ?string
+    private static function mood(Activity $activity): ?Mood
     {
         return StoryLine::query()
             ->where('activity_id', $activity->id)

@@ -215,7 +215,7 @@ class AnalyzeActivityJob extends AnalyzeGroupJob
             fn (): string => app(PostRunSpeechNarrator::class)->generate(
                 $subject,
                 $detail,
-                $storyLine->mood,
+                $storyLine->mood->value,
                 $speechDeadlineSeconds,
             ),
         );

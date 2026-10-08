@@ -11,6 +11,7 @@ use App\Enums\ExperienceLevel;
 use App\Enums\FeedbackReason;
 use App\Enums\FeedbackSubject;
 use App\Enums\GoalType;
+use App\Enums\Mood;
 use App\Enums\NotificationKind;
 use App\Enums\PerformanceEvidenceKind;
 use App\Enums\PlannedSessionStatus;
@@ -52,6 +53,7 @@ final class GenerateTypeScriptEnumsCommand extends Command
         PerformanceEvidenceKind::class,
         RecoveryConcernLevel::class,
         SleepQuality::class,
+        Mood::class,
     ];
 
     public function handle(): int

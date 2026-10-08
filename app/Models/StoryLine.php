@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
 use Override;
+use App\Enums\Mood;
 
 /**
  * @property int $id
@@ -18,7 +19,7 @@ use Override;
  * @property string $kind
  * @property int|null $activity_id
  * @property Carbon|null $for_date
- * @property string $mood
+ * @property Mood $mood
  * @property string $speech
  * @property string $sigil_pattern
  * @property-read User $user
@@ -68,6 +69,7 @@ class StoryLine extends Model
             'user_id' => 'integer',
             'activity_id' => 'integer',
             'for_date' => 'date:Y-m-d',
+            'mood' => Mood::class,
         ];
     }
 }
