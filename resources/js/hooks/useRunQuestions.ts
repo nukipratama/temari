@@ -33,6 +33,9 @@ const ERROR_BY_STATUS: Readonly<Record<number, AskError>> = {
     429: 'rate_limited',
 };
 
+/** The demo is answered without a stored row, so its 201 carries no id. */
+type AskedQuestion = Omit<RunQuestion, 'id'> & { id: number | null };
+
 interface ThreadBody {
     questions?: ReadonlyArray<RunQuestion>;
     suggestions?: ReadonlyArray<string>;
@@ -77,6 +80,17 @@ function mergeThread(
     }
 
     return [...byId.values()].sort((a, b) => a.id - b.id);
+}
+
+function withClientId(
+    current: ReadonlyArray<RunQuestion>,
+    row: AskedQuestion,
+): RunQuestion {
+    if (row.id !== null) {
+        return { ...row, id: row.id };
+    }
+
+    return { ...row, id: Math.max(0, ...current.map((known) => known.id)) + 1 };
 }
 
 export function useRunQuestions(activityId: number) {
@@ -202,10 +216,12 @@ export function useRunQuestions(activityId: number) {
             try {
                 const response = await postJson(url, { question });
                 if (response.status === 201) {
-                    const row: RunQuestion = await response.json();
+                    const row: AskedQuestion = await response.json();
                     pollsLeftRef.current = MAX_POLLS;
                     setStalled(false);
-                    setQuestions((prev) => mergeThread(prev, [row]));
+                    setQuestions((prev) =>
+                        mergeThread(prev, [withClientId(prev, row)]),
+                    );
                     setTick((n) => n + 1);
                     return true;
                 }
