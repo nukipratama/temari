@@ -69,18 +69,20 @@ error posted to [ClientErrorController](../../app/Http/Controllers/ClientErrorCo
 is fingerprinted:
 
 - **Server:** the exception class plus the first `file:line` outside `vendor/`, so a library error (a `QueryException`, an HTTP client error) is told apart by the app code that reached it.
-- **Browser:** a hash of the message plus the first stack frame. The frame's origin and query
-  string are dropped and numeric path segments are masked.
+- **Browser:** a hash of the message plus the first stack frame under `/build/assets/`, the app's
+  own bundle. The frame's origin and query string are dropped, and a stack with no such frame gets
+  the fixed label `unknown frame`, so a page URL or other caller text never becomes a label.
 
 The first sighting in 30 days queues the fingerprint. Repeats raise its count until the next
 digest, skipping the count rather than waiting when the ledger lock is busy. At 21:00 [`MaintainerAlerter::exceptionDigest()`](../../app/Services/AI/MaintainerAlerter.php#L431)
 sends one message: a line per fingerprint with its first-seen time and count, folded to
 "and N more" past 25 lines so it stays under Telegram's message limit.
 
-The message carries locations only: no exception message, no user id, no request URL. The queue is
-capped at 100 fingerprints, so a flood of distinct browser errors (the endpoint is public and only
-IP-throttled) cannot grow it without bound. Anything past the cap is picked up after the next
-digest clears the queue.
+The message carries locations only: no exception message, no user id, no request URL. Fingerprints
+wait in three queues, listed in this order: server exceptions (capped at 100), browser errors from
+signed-in sessions (100), and browser errors from guests (10). The browser endpoint is public and
+only IP-throttled, so a guest flood fills only its own small queue and can never crowd out a server
+exception. Anything past a cap is picked up after the next digest clears the queues.
 
 ## See also
 

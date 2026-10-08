@@ -18,7 +18,9 @@ use App\Services\AI\CostCeilingLedger;
 use App\Services\AI\RunQuestion\RuleBasedRunAnswer;
 use App\Services\AI\RunQuestion\RunQuestionSeeds;
 use App\Services\AI\RunQuestion\RunQuestionTopic;
+use Database\Seeders\Demo\DemoRunSeeder;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -41,7 +43,9 @@ class RunQuestionController extends Controller
 
         return response()->json([
             'questions' => RunQuestionResource::collection(
-                RunQuestion::query()->forActivity($activity)->get(),
+                $gate->shouldServeRuleBased($user)
+                    ? $this->seededDemoThread($activity, $detail)
+                    : RunQuestion::query()->forActivity($activity)->get(),
             ),
             'suggestions' => array_map(
                 fn (RunQuestionTopic $topic): string => $topic->question(),
@@ -66,7 +70,7 @@ class RunQuestionController extends Controller
         // stance the "Reread" trigger takes, keyed on is_demo rather than on
         // the route. See docs/decisions/demo-triggers-served-rule-based.md.
         if ($gate->shouldServeRuleBased($user)) {
-            return $this->created($this->ruleBasedRow($user, $activity, $question, $detail));
+            return $this->created($this->statelessDemoAnswer($user, $activity, $question, $detail));
         }
 
         if ($this->atRunCap($user, $activity)) {
@@ -76,7 +80,12 @@ class RunQuestionController extends Controller
         if ($gate->costCeilingDegraded($user->id)) {
             $ledger->recordDegradedFill('run_question', $user->id);
 
-            return $this->created($this->ruleBasedRow($user, $activity, $question, $detail));
+            return $this->created($this->record(
+                $user,
+                $activity,
+                $question,
+                $this->ruleBasedAnswer($detail, $question, RunQuestion::askedAbout($activity)),
+            ));
         }
 
         if ($gate->generationPaused($user->id)) {
@@ -89,13 +98,47 @@ class RunQuestionController extends Controller
         return $this->created($row);
     }
 
-    private function ruleBasedRow(User $user, int $activityId, string $question, ActivityDetail $detail): RunQuestion
+    /**
+     * @param  list<string>  $asked
+     * @return array{status: AnalysisStatus, answer: string, follow_ups: list<string>}
+     */
+    private function ruleBasedAnswer(ActivityDetail $detail, string $question, array $asked): array
     {
-        return $this->record($user, $activityId, $question, [
+        return [
             'status' => AnalysisStatus::Done,
             'answer' => RuleBasedRunAnswer::for($detail, $question),
-            'follow_ups' => RunQuestionSeeds::unasked($detail, [...RunQuestion::askedAbout($activityId), $question]),
+            'follow_ups' => RunQuestionSeeds::unasked($detail, [...$asked, $question]),
+        ];
+    }
+
+    private function statelessDemoAnswer(User $user, int $activityId, string $question, ActivityDetail $detail): RunQuestion
+    {
+        $seeded = $this->seededDemoThread($activityId, $detail)
+            ->map(fn (RunQuestion $row): string => $row->question)
+            ->all();
+
+        return new RunQuestion()->forceFill([
+            'user_id' => $user->id,
+            'activity_id' => $activityId,
+            'question' => $question,
+            ...$this->ruleBasedAnswer($detail, $question, array_values($seeded)),
+            'created_at' => Carbon::now(),
         ]);
+    }
+
+    /**
+     * @return Collection<int, RunQuestion>
+     */
+    private function seededDemoThread(int $activityId, ActivityDetail $detail): Collection
+    {
+        $seeded = DemoRunSeeder::seededExchanges($detail);
+
+        return RunQuestion::query()
+            ->forActivity($activityId)
+            ->whereIn('question', array_keys($seeded))
+            ->get()
+            ->filter(fn (RunQuestion $row): bool => ($seeded[$row->question] ?? null) === $row->answer)
+            ->values();
     }
 
     private function atRunCap(User $user, int $activityId): bool

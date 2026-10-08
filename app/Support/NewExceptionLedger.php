@@ -24,7 +24,17 @@ final class NewExceptionLedger
 
     public const int MAX_PENDING = 100;
 
-    private const string PENDING_KEY = 'ops.exceptions.pending';
+    public const int MAX_GUEST_PENDING = 10;
+
+    private const string SERVER_KEY = 'ops.exceptions.pending';
+
+    private const string BROWSER_KEY = 'ops.exceptions.pending.browser';
+
+    private const string GUEST_BROWSER_KEY = 'ops.exceptions.pending.guest-browser';
+
+    private const array QUEUE_KEYS = [self::SERVER_KEY, self::BROWSER_KEY, self::GUEST_BROWSER_KEY];
+
+    private const string UNKNOWN_FRAME = 'unknown frame';
 
     private const string LOCK_KEY = 'ops.exceptions.lock';
 
@@ -32,30 +42,37 @@ final class NewExceptionLedger
     {
         $label = $exception::class.' at '.self::firstAppFrame($exception);
 
-        self::record(sha1($label), $label);
+        self::record(sha1($label), $label, self::SERVER_KEY, self::MAX_PENDING);
     }
 
-    public static function recordBrowser(string $message, ?string $stack): void
+    public static function recordBrowser(string $message, ?string $stack, bool $guest): void
     {
-        $frame = self::firstFrame($stack) ?? 'unknown frame';
+        $frame = self::firstAssetFrame($stack) ?? self::UNKNOWN_FRAME;
         $fingerprint = sha1($message."\n".$frame);
+        $label = 'browser error at '.$frame.' (#'.substr($fingerprint, 0, 8).')';
 
-        self::record($fingerprint, 'browser error at '.$frame.' (#'.substr($fingerprint, 0, 8).')');
+        $guest
+            ? self::record($fingerprint, $label, self::GUEST_BROWSER_KEY, self::MAX_GUEST_PENDING)
+            : self::record($fingerprint, $label, self::BROWSER_KEY, self::MAX_PENDING);
     }
 
     /**
-     * Every fingerprint queued since the last call, oldest first, and an empty
-     * queue behind it.
+     * Every fingerprint queued since the last call, server exceptions first and
+     * then browser errors, each oldest first, and empty queues behind them.
      *
      * @return list<array{label: string, first_seen: string, count: int}>
      */
     public static function pull(): array
     {
         return self::locked(function (): array {
-            $pending = self::pending();
-            Cache::forget(self::PENDING_KEY);
+            $entries = [];
 
-            return array_values($pending);
+            foreach (self::QUEUE_KEYS as $key) {
+                $entries = [...$entries, ...array_values(self::pending($key))];
+                Cache::forget($key);
+            }
+
+            return $entries;
         });
     }
 
@@ -64,32 +81,36 @@ final class NewExceptionLedger
      * when the lock is free and is dropped from the count when it is not, so
      * an error storm never queues its requests behind this bookkeeping.
      */
-    private static function record(string $fingerprint, string $label): void
+    private static function record(string $fingerprint, string $label, string $key, int $cap): void
     {
         try {
             if (Cache::add(self::seenKey($fingerprint), true, Carbon::now()->addDays(self::SEEN_DAYS))) {
-                self::locked(function () use ($fingerprint, $label): void {
-                    $pending = self::pending();
+                self::locked(function () use ($fingerprint, $label, $key, $cap): void {
+                    $pending = self::pending($key);
 
-                    if (count($pending) >= self::MAX_PENDING) {
+                    if (count($pending) >= $cap) {
                         Cache::forget(self::seenKey($fingerprint));
 
                         return;
                     }
 
                     $pending[$fingerprint] = ['label' => $label, 'first_seen' => Carbon::now()->toIso8601String(), 'count' => 1];
-                    self::store($pending);
+                    self::store($key, $pending);
                 });
 
                 return;
             }
 
             Cache::lock(self::LOCK_KEY, 10)->get(function () use ($fingerprint): void {
-                $pending = self::pending();
+                foreach (self::QUEUE_KEYS as $queue) {
+                    $pending = self::pending($queue);
 
-                if (isset($pending[$fingerprint])) {
-                    $pending[$fingerprint]['count']++;
-                    self::store($pending);
+                    if (isset($pending[$fingerprint])) {
+                        $pending[$fingerprint]['count']++;
+                        self::store($queue, $pending);
+
+                        return;
+                    }
                 }
             });
         } catch (Throwable) {
@@ -100,9 +121,9 @@ final class NewExceptionLedger
     /**
      * @param  array<string, array{label: string, first_seen: string, count: int}>  $pending
      */
-    private static function store(array $pending): void
+    private static function store(string $key, array $pending): void
     {
-        Cache::put(self::PENDING_KEY, $pending, Carbon::now()->addDays(self::SEEN_DAYS));
+        Cache::put($key, $pending, Carbon::now()->addDays(self::SEEN_DAYS));
     }
 
     /** The first `path:line` outside `vendor/`, so errors thrown inside a library are told apart by the app code that reached them. */
@@ -137,9 +158,9 @@ final class NewExceptionLedger
     /**
      * @return array<string, array{label: string, first_seen: string, count: int}>
      */
-    private static function pending(): array
+    private static function pending(string $key): array
     {
-        $pending = Cache::get(self::PENDING_KEY);
+        $pending = Cache::get($key);
 
         return is_array($pending) ? $pending : [];
     }
@@ -149,13 +170,13 @@ final class NewExceptionLedger
         return 'ops.exceptions.seen:'.$fingerprint;
     }
 
-    /** The first `path:line:column` in a browser stack, with its origin dropped and numeric path segments masked. */
-    private static function firstFrame(?string $stack): ?string
+    /** The first `/build/assets/<file>.js:line:column` in a browser stack, with its origin and query dropped. */
+    private static function firstAssetFrame(?string $stack): ?string
     {
-        if ($stack === null || preg_match('~(?:[a-z][a-z0-9+.-]*://[^/\s)]+)?(/[^\s()?#]+)(?:[?#][^\s():]*)?(:\d+:\d+)~i', $stack, $match) !== 1) {
+        if ($stack === null || preg_match('~(/build/assets/[\w-]+(?:\.[\w-]+)*\.js)(?:[?#][^\s():]*)?(:\d+:\d+)~', $stack, $match) !== 1) {
             return null;
         }
 
-        return preg_replace('~/\d+(?=/|$)~', '/{id}', $match[1]).$match[2];
+        return $match[1].$match[2];
     }
 }

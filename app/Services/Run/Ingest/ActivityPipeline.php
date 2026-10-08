@@ -68,7 +68,7 @@ class ActivityPipeline
 
     public function ingest(Activity $activity, StravaReadSource $source = StravaReadSource::IngestSweep, StravaReadPriority $priority = StravaReadPriority::Live): void
     {
-        if ($this->stravaIngestDisabled()) {
+        if ($activity->user->is_demo || $this->stravaIngestDisabled()) {
             return;
         }
 

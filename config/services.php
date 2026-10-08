@@ -44,8 +44,11 @@ return [
         // host. Cutting over is this value, not a code change.
         'api_base_url' => env('STRAVA_API_BASE_URL', 'https://www.strava.com/api/v3'),
         // Shared secret echoed back to Strava during the webhook subscription
-        // handshake (GET /strava/webhook?hub.verify_token=...).
+        // handshake (GET /strava/webhook/{token}?hub.verify_token=...).
         'webhook_verify_token' => env('STRAVA_WEBHOOK_VERIFY_TOKEN'),
+        // Secret path segment of the registered callback URL
+        // (/strava/webhook/{token}); every delivery to another segment is a 404.
+        'webhook_callback_token' => env('STRAVA_WEBHOOK_CALLBACK_TOKEN'),
         // Strava's id for the active push subscription. Set after creating it
         // via `php artisan strava:webhook-subscribe --action=create`.
         'webhook_subscription_id' => env('STRAVA_WEBHOOK_SUBSCRIPTION_ID'),

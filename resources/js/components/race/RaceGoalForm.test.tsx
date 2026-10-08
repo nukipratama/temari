@@ -2,7 +2,8 @@ import { router } from '@inertiajs/react';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
-import { setMockPage } from '@/test/setup';
+import { RACE_DEMO_BLOCKED } from '@/lib/raceGoal';
+import { makeUser, setMockPage } from '@/test/setup';
 
 import RaceGoalForm from './RaceGoalForm';
 
@@ -402,5 +403,21 @@ describe('RaceGoalForm', () => {
         expect(
             screen.getByRole('button', { name: 'update race' }),
         ).toBeVisible();
+    });
+
+    it('shows a demo visitor the race demo-blocked modal instead of saving', async () => {
+        setMockPage({ auth: { user: makeUser({ is_demo: true }) } });
+        vi.mocked(router.post).mockClear();
+        render(
+            <RaceGoalForm race={RACE} projection={null} onSaved={() => {}} />,
+        );
+
+        fireEvent.click(screen.getByRole('button', { name: 'update race' }));
+
+        expect(router.post).not.toHaveBeenCalled();
+        expect(
+            await screen.findByText(RACE_DEMO_BLOCKED.title),
+        ).toBeInTheDocument();
+        expect(screen.getByText(RACE_DEMO_BLOCKED.body)).toBeInTheDocument();
     });
 });

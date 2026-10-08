@@ -13,7 +13,7 @@ beforeEach(function (): void {
 
 it('sends the new fingerprints in one digest and clears the list', function (): void {
     NewExceptionLedger::recordServer(new RuntimeException('athlete 42 failed'));
-    NewExceptionLedger::recordBrowser('TypeError: user 7', "at f (https://temari.example/build/assets/app.js:1:2)");
+    NewExceptionLedger::recordBrowser('TypeError: user 7', "at f (https://temari.example/build/assets/app.js:1:2)", guest: false);
 
     $alerter = Mockery::mock(MaintainerAlerter::class);
     app()->instance(MaintainerAlerter::class, $alerter);

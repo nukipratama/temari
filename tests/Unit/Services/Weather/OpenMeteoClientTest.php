@@ -212,20 +212,34 @@ it('returns null on HTTP failure (pipeline keeps moving)', function (): void {
     expect(new OpenMeteoClient()->fetchForActivity(-6.2, 106.8, $startedAt))->toBeNull();
 });
 
-it('logs a warning with status + coords + hour when the response fails', function (): void {
+it('logs a warning with status and hour but no coordinate when the response fails', function (): void {
     Log::spy();
     $startedAt = CarbonImmutable::parse('2026-05-10 06:00:00');
     Http::fake(['api.open-meteo.com/*' => Http::response(['error' => 'rate limited'], 429)]);
 
-    expect(new OpenMeteoClient()->fetchForActivity(-6.2, 106.8, $startedAt))->toBeNull();
+    expect(new OpenMeteoClient()->fetchForActivity(12.3456789, 98.7654321, $startedAt))->toBeNull();
 
     Log::shouldHaveReceived('warning')
         ->once()
         ->withArgs(fn (string $message, array $context): bool => $message === 'open-meteo request failed'
-            && $context['status'] === 429
-            && $context['lat'] === -6.2
-            && $context['lng'] === 106.8
-            && $context['hour'] === '2026-05-10T06:00');
+            && $context === ['status' => 429, 'hour' => '2026-05-10T06:00']);
+});
+
+it('logs a failed request without the coordinate its error message carries', function (): void {
+    Log::spy();
+    Http::fake(['api.open-meteo.com/*' => fn () => throw new ConnectionException(
+        'cURL error 28: Operation timed out (see https://curl.se/libcurl/c/libcurl-errors.html) for https://api.open-meteo.com/v1/forecast?latitude=12.3456789&longitude=98.7654321&hourly=temperature_2m',
+    )]);
+
+    expect(new OpenMeteoClient()->fetchForActivity(12.3456789, 98.7654321, CarbonImmutable::parse('2026-05-10 06:00:00')))->toBeNull();
+
+    Log::shouldHaveReceived('warning')
+        ->once()
+        ->withArgs(fn (string $message, array $context): bool => $message === 'open-meteo request failed'
+            && array_keys($context) === ['started_at', 'error']
+            && str_contains($context['error'], 'cURL error 28')
+            && ! str_contains(json_encode($context, JSON_THROW_ON_ERROR), '12.3456789')
+            && ! str_contains(json_encode($context, JSON_THROW_ON_ERROR), '98.7654321'));
 });
 
 it('returns null when the response shape is missing hourly', function (): void {

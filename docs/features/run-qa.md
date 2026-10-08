@@ -46,7 +46,7 @@ auth group.
   (below).
 
 Ownership is checked against the authenticated user on both
-([`ownedRun`](app/Http/Controllers/Api/RunQuestionController.php#L137)); another
+([`ownedRun`](app/Http/Controllers/Api/RunQuestionController.php#L180)); another
 user's run is a `403`, not a `404`, matching the analysis endpoints.
 
 ## Suggested questions come off the run
@@ -129,6 +129,15 @@ marked `done` in the same request — no job, no Azure call. It answers the
 suggested questions directly and falls back to the run's headline reading for
 free text. Deterministic, so re-asking returns the same words. Same stance as
 [[demo-triggers-served-rule-based]].
+
+The demo login is public and the account is shared, so a demo question is never
+stored: the `201` carries the answer with `id: null`, its follow-ups come from the
+seeded questions plus the current one, and the panel keeps it in local state under
+a client-side id until the page reloads. `index()` lists only the exchanges
+[DemoRunSeeder::seededExchanges](database/seeders/Demo/DemoRunSeeder.php) writes,
+matched on question and answer, so no visitor's text reaches the next visitor. Real
+athletes keep every row, including the rule-based ones written past the cost
+ceiling.
 
 ## The panel
 

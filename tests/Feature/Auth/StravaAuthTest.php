@@ -317,7 +317,7 @@ it('records a maintenance refusal and hands the grant back to Strava', function 
         ->toBe([StravaGrantEventType::RefusedInMaintenance, StravaGrantEventType::Released]);
     Http::assertSent(fn (HttpRequest $request): bool => $request->url() === 'https://www.strava.com/oauth/deauthorize'
         && $request['access_token'] === 'access-token-xyz');
-    Log::shouldHaveReceived('info')->with('strava.registration.refused_during_maintenance', ['athlete_id' => '987654', 'deauthorized' => true]);
+    Log::shouldHaveReceived('info')->with('strava.registration.refused_during_maintenance', ['deauthorized' => true]);
     Bus::assertNothingDispatched();
 
     // The redirect lands the refused guest on the maintenance page.
@@ -425,9 +425,11 @@ it('stores only the granted scopes and logs when a required scope is declined', 
     $connection = StravaConnection::where('strava_athlete_id', 555111)->firstOrFail();
     expect($connection->scopes)->toBe('read');
 
-    Log::shouldHaveReceived('warning')->once()->with('strava.scopes.partial', Mockery::on(
-        fn (array $ctx): bool => $ctx['missing'] === ['activity:read_all', 'profile:read_all'] && $ctx['granted'] === 'read',
-    ));
+    Log::shouldHaveReceived('warning')->once()->with('strava.scopes.partial', [
+        'user_id' => $connection->user_id,
+        'granted' => 'read',
+        'missing' => ['activity:read_all', 'profile:read_all'],
+    ]);
 });
 
 it('updates an existing user on subsequent strava callbacks', function (): void {

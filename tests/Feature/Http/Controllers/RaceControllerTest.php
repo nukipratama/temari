@@ -228,28 +228,21 @@ it('reshapes the plan the moment a race is set', function (): void {
     Carbon::setTestNow();
 });
 
-/**
- * The demo login is public and credential-free — a real narration dispatch
- * here would be an unauthenticated path to the Azure bill, the exact gap
- * `plan:regenerate` and `shouldServeRuleBased()` already guard against
- * everywhere else the plan is regenerated.
- */
-it('never bills narration for the demo account', function (): void {
+it('refuses the demo account a race save or clear, billing nothing and writing nothing', function (): void {
     Bus::fake();
-    Carbon::setTestNow('2026-09-08 10:00:00'); // a Tuesday
-    $user = User::factory()->create(['is_demo' => true]);
+    $demo = User::factory()->create(['is_demo' => true]);
+    $race = RaceGoal::factory()->for($demo)->create(['name' => 'Seeded half']);
 
-    $this->actingAs($user)->post('/race', [
-        'race_date' => Carbon::today()->addMonths(4)->toDateString(),
-        'distance_m' => 21_097,
-        'goal_time_sec' => 7_200,
-        'name' => 'A half',
-    ])->assertSessionHasNoErrors();
+    $this->actingAs($demo)
+        ->post('/race', racePayload(['name' => 'visit evil.example']), ['X-Inertia' => 'true'])
+        ->assertRedirect()
+        ->assertSessionHasErrors('demo');
+    $this->actingAs($demo)->postJson('/race', racePayload(['name' => 'visit evil.example']))->assertForbidden();
+    $this->actingAs($demo)->deleteJson('/race')->assertForbidden();
 
-    Bus::assertNotDispatched(AnalyzePlanSeasonVoiceJob::class);
-    expect(PlannedSession::query()->where('user_id', $user->id)->count())->toBeGreaterThan(0);
-
-    Carbon::setTestNow();
+    Bus::assertNothingDispatched();
+    expect(RaceGoal::query()->where('user_id', $demo->id)->sole()->name)->toBe('Seeded half')
+        ->and($race->fresh()->completed_at)->toBeNull();
 });
 
 /**

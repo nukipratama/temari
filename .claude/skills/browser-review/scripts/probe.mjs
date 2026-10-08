@@ -69,19 +69,14 @@ const errors = [];
 page.on('console', (m) => { if (m.type() === 'error') errors.push(`[console] ${page.url()} :: ${m.text()}`); });
 page.on('pageerror', (e) => errors.push(`[pageerror] ${page.url()} :: ${e.message}`));
 
+await page.addInitScript((g) => localStorage.setItem('temari-theme', g), ground);
 await page.goto(`${BASE}/login`, { waitUntil: 'load' });
-await page.evaluate((g) => {
-    localStorage.setItem('theme', g);
-    document.documentElement.setAttribute('data-theme', g);
-}, ground);
 await login(page);
 
 await page.goto(`${BASE}${route}`, { waitUntil: 'load' });
 await page.waitForLoadState('networkidle').catch(() => {});
-await page.evaluate(
-    (g) => document.documentElement.setAttribute('data-theme', g),
-    ground,
-);
+const appliedGround = await page.evaluate(() => document.documentElement.dataset.theme);
+if (appliedGround !== ground) throw new Error(`ground ${ground} did not apply (data-theme=${appliedGround})`);
 await page.waitForTimeout(400);
 
 if (clickArg) {

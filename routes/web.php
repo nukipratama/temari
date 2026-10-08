@@ -46,14 +46,14 @@ use App\Http\Controllers\TrendsController;
 use App\Support\LegalDocuments;
 use Illuminate\Support\Facades\Route;
 
-// Strava push subscription. Called by Strava unauthenticated — gated by the
-// shared verify token (handshake) and scoped to the owning athlete (events),
-// so it lives outside the auth middleware group.
-Route::get('/strava/webhook', [StravaWebhookController::class, 'verify'])->name('strava.webhook.verify');
-// IP rate-limited like the other public POSTs: the channel is unauthenticated,
-// so cap it to blunt amplification. 60/min is well above Strava's real delivery
-// rate (one event per activity) while still throttling a flood.
-Route::post('/strava/webhook', [StravaWebhookController::class, 'handle'])
+// Strava push subscription. Called by Strava with no session — gated by the
+// secret callback token in the path, the shared verify token (handshake) and the
+// subscription id (events), so it lives outside the auth middleware group.
+Route::get('/strava/webhook/{token}', [StravaWebhookController::class, 'verify'])->name('strava.webhook.verify');
+// IP rate-limited like the other public POSTs to blunt amplification. 60/min is
+// well above Strava's real delivery rate (one event per activity) while still
+// throttling a flood.
+Route::post('/strava/webhook/{token}', [StravaWebhookController::class, 'handle'])
     ->middleware('throttle:60,1')
     ->name('strava.webhook.handle');
 
@@ -134,10 +134,10 @@ Route::middleware(['auth', 'onboarded'])->group(function (): void {
     Route::get('/trends', TrendsController::class)->name('trends');
 
     Route::get('/race', [RaceController::class, 'index'])->name('race');
-    Route::post('/race', [RaceController::class, 'store'])->name('race.store');
-    Route::delete('/race', [RaceController::class, 'destroy'])->name('race.destroy');
+    Route::post('/race', [RaceController::class, 'store'])->middleware('block-demo-telegram')->name('race.store');
+    Route::delete('/race', [RaceController::class, 'destroy'])->middleware('block-demo-telegram')->name('race.destroy');
     Route::post('/race/{race}/outcome', [RaceOutcomeController::class, 'store'])
-        ->middleware('throttle:20,1')
+        ->middleware(['throttle:20,1', 'block-demo-telegram'])
         ->whereNumber('race')
         ->name('race.outcome.store');
 
@@ -189,11 +189,11 @@ Route::middleware(['auth', 'onboarded'])->group(function (): void {
 
     Route::patch('/settings/zones', [RunnerZonesController::class, 'update'])->name('settings.zones.update');
     Route::delete('/settings/zones', [RunnerZonesController::class, 'resetToDefault'])->name('settings.zones.reset');
-    Route::post('/settings/zones/resync-strava', [RunnerZonesController::class, 'resyncFromStrava'])->name('settings.zones.resync');
+    Route::post('/settings/zones/resync-strava', [RunnerZonesController::class, 'resyncFromStrava'])->middleware('block-demo-telegram')->name('settings.zones.resync');
     Route::patch('/settings/training-preferences', [TrainingPreferencesController::class, 'update'])->name('settings.training-preferences.update');
 
     Route::post('/strava/sync', SyncController::class)
-        ->middleware('throttle:strava-sync')
+        ->middleware(['throttle:strava-sync', 'block-demo-telegram'])
         ->name('strava.sync');
 
     Route::post('/api/notifications/{notification}/read', NotificationReadController::class)

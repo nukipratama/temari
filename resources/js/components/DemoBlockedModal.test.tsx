@@ -59,4 +59,23 @@ describe('DemoBlockedModal', () => {
         fireEvent.click(screen.getByLabelText('Close'));
         expect(onClose).toHaveBeenCalledOnce();
     });
+
+    it('renders the copy it is handed in place of the Telegram default', async () => {
+        render(
+            <DemoBlockedModal
+                open
+                onClose={vi.fn()}
+                title="race plans stay put"
+                body="set your own"
+            />,
+        );
+
+        expect(
+            await screen.findByText('race plans stay put'),
+        ).toBeInTheDocument();
+        expect(screen.getByText('set your own')).toBeInTheDocument();
+        expect(
+            screen.queryByText("Telegram's taking a break for now"),
+        ).not.toBeInTheDocument();
+    });
 });

@@ -4,6 +4,7 @@ import { Suspense, useState } from 'react';
 
 import type { PastRace, RaceDetails, RaceProjection } from '@/types/inertia';
 
+import DemoBlockedModal from '@/components/DemoBlockedModal';
 import RaceDuel from '@/components/race/RaceDuel';
 import RaceOutcomeCard from '@/components/race/RaceOutcomeCard';
 import SteppingStoneCard from '@/components/race/SteppingStoneCard';
@@ -12,8 +13,10 @@ import Eyebrow from '@/components/ui/Eyebrow';
 import { Icon } from '@/components/ui/Icon';
 import PageContainer from '@/components/ui/PageContainer';
 import PillButton from '@/components/ui/PillButton';
+import { useDemoGuard } from '@/hooks/useDemoGuard';
 import { appLayout } from '@/layouts/appLayout';
 import { lazyIsland } from '@/lib/lazyIsland';
+import { RACE_DEMO_BLOCKED } from '@/lib/raceGoal';
 
 interface ProjectionPayload extends RaceProjection {
     /** Fitted Riegel exponent — carried by the payload, not drawn. */
@@ -42,6 +45,11 @@ export default function Race({
 }: Readonly<RaceProps>) {
     const [editing, setEditing] = useState(false);
     const [confirmingClear, setConfirmingClear] = useState(false);
+    const {
+        open: demoBlocked,
+        setOpen: setDemoBlocked,
+        guard,
+    } = useDemoGuard();
 
     return (
         <>
@@ -114,8 +122,13 @@ export default function Race({
                             secondaryLabel="keep it"
                             onPrimary={() => {
                                 setConfirmingClear(false);
-                                router.delete('/race');
+                                guard(() => router.delete('/race'));
                             }}
+                        />
+                        <DemoBlockedModal
+                            open={demoBlocked}
+                            onClose={() => setDemoBlocked(false)}
+                            {...RACE_DEMO_BLOCKED}
                         />
                     </>
                 ) : (

@@ -4,12 +4,14 @@ import { type FormEvent, useState } from 'react';
 
 import type { RaceProjection, SharedProps } from '@/types/inertia';
 
+import DemoBlockedModal from '@/components/DemoBlockedModal';
 import DateField from '@/components/ui/DateField';
 import Eyebrow from '@/components/ui/Eyebrow';
 import FieldError from '@/components/ui/FieldError';
 import { Icon } from '@/components/ui/Icon';
 import PillButton from '@/components/ui/PillButton';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { useDemoGuard } from '@/hooks/useDemoGuard';
 import { cn } from '@/lib/cn';
 import { useTodayIso } from '@/lib/pace';
 import {
@@ -17,6 +19,7 @@ import {
     earliestRaceDate,
     goalTimeError,
     impossiblePaceWarning,
+    RACE_DEMO_BLOCKED,
 } from '@/lib/raceGoal';
 import { inputVariants } from '@/lib/variants';
 
@@ -75,6 +78,11 @@ export default function RaceGoalForm({
     const [intent, setIntent] = useState<RaceIntent>('update');
     const today = useTodayIso();
     const errors = usePage<SharedProps>().props.errors ?? {};
+    const {
+        open: demoBlocked,
+        setOpen: setDemoBlocked,
+        guard,
+    } = useDemoGuard();
 
     const updating = race !== null && intent === 'update';
 
@@ -110,21 +118,23 @@ export default function RaceGoalForm({
 
     const submit = (event: FormEvent) => {
         event.preventDefault();
-        router.post(
-            '/race',
-            {
-                race_date: raceDate,
-                distance_m: Math.round(distanceKm * 1_000),
-                goal_time_sec: goalTimeSec,
-                name: name.trim() === '' ? null : name.trim(),
-                ...(race ? { intent } : {}),
-            },
-            {
-                preserveScroll: true,
-                onStart: () => setProcessing(true),
-                onSuccess: onSaved,
-                onFinish: () => setProcessing(false),
-            },
+        guard(() =>
+            router.post(
+                '/race',
+                {
+                    race_date: raceDate,
+                    distance_m: Math.round(distanceKm * 1_000),
+                    goal_time_sec: goalTimeSec,
+                    name: name.trim() === '' ? null : name.trim(),
+                    ...(race ? { intent } : {}),
+                },
+                {
+                    preserveScroll: true,
+                    onStart: () => setProcessing(true),
+                    onSuccess: onSaved,
+                    onFinish: () => setProcessing(false),
+                },
+            ),
         );
     };
 
@@ -320,6 +330,11 @@ export default function RaceGoalForm({
                           : 'set race'}
                 </PillButton>
             </form>
+            <DemoBlockedModal
+                open={demoBlocked}
+                onClose={() => setDemoBlocked(false)}
+                {...RACE_DEMO_BLOCKED}
+            />
         </div>
     );
 }

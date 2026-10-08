@@ -140,6 +140,42 @@ describe('useRunQuestions', () => {
         );
     });
 
+    it('keeps an id-less demo answer locally after the seeded thread, one client id per ask', async () => {
+        const seeded = row({ id: 41, status: 'done', answer: 'seeded.' });
+        const demoAnswer = {
+            ...row({ status: 'done', answer: 'from your own numbers.' }),
+            id: null,
+        };
+        const fetchMock = vi
+            .fn()
+            .mockResolvedValueOnce(
+                jsonResponse({ questions: [seeded], suggestions: [] }),
+            )
+            .mockResolvedValueOnce(jsonResponse(demoAnswer, 201))
+            .mockResolvedValueOnce(
+                jsonResponse({ ...demoAnswer, question: 'and the pace?' }, 201),
+            );
+        vi.stubGlobal('fetch', fetchMock);
+
+        const { result } = renderHook(() => useRunQuestions(9));
+        await waitFor(() => expect(result.current.questions).toHaveLength(1));
+
+        await act(async () => {
+            await result.current.ask('why did my heart rate drift up?');
+        });
+        await act(async () => {
+            await result.current.ask('and the pace?');
+        });
+
+        expect(result.current.questions.map((q) => q.id)).toEqual([41, 42, 43]);
+        expect(result.current.questions.map((q) => q.question)).toEqual([
+            'why did my heart rate drift up?',
+            'why did my heart rate drift up?',
+            'and the pace?',
+        ]);
+        expect(result.current.awaitingAnswer).toBe(false);
+    });
+
     it('trims the question before sending it', async () => {
         const fetchMock = vi
             .fn()

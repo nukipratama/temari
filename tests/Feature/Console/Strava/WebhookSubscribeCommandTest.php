@@ -2,6 +2,9 @@
 
 declare(strict_types=1);
 
+use App\Http\Controllers\Strava\StravaWebhookController;
+use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Http;
 
 beforeEach(function (): void {
@@ -9,6 +12,7 @@ beforeEach(function (): void {
         'services.strava.client_id' => 'cid',
         'services.strava.client_secret' => 'secret',
         'services.strava.webhook_verify_token' => 'verify-tok',
+        'services.strava.webhook_callback_token' => 'fake-callback-token',
     ]);
 });
 
@@ -36,7 +40,7 @@ it('fails when client credentials are missing', function (): void {
 
 it('creates a subscription with the callback url and verify token', function (): void {
     Http::fake([
-        route('strava.webhook.verify').'*' => fakeCallbackEchoes(),
+        StravaWebhookController::callbackUrl().'*' => fakeCallbackEchoes(),
         'www.strava.com/api/v3/push_subscriptions' => Http::response(['id' => 555], 201),
     ]);
 
@@ -50,13 +54,13 @@ it('creates a subscription with the callback url and verify token', function ():
         && $request['client_id'] === 'cid'
         && $request['client_secret'] === 'secret'
         && $request['verify_token'] === 'verify-tok'
-        && $request['callback_url'] === route('strava.webhook.verify'));
+        && $request['callback_url'] === url('/strava/webhook/fake-callback-token'));
 });
 
 it('aborts create without calling Strava when the self-verify handshake fails', function (): void {
     Http::fake([
         // Stale token / Cloudflare: the callback does not echo the challenge.
-        route('strava.webhook.verify').'*' => Http::response(['error' => 'invalid verification request'], 403),
+        StravaWebhookController::callbackUrl().'*' => Http::response(['error' => 'invalid verification request'], 403),
         'www.strava.com/api/v3/push_subscriptions' => Http::response(['id' => 555], 201),
     ]);
 
@@ -83,7 +87,7 @@ it('fails to create when the verify token is missing', function (): void {
 
 it('surfaces a Strava error when create is rejected', function (): void {
     Http::fake([
-        route('strava.webhook.verify').'*' => fakeCallbackEchoes(),
+        StravaWebhookController::callbackUrl().'*' => fakeCallbackEchoes(),
         'www.strava.com/api/v3/push_subscriptions' => Http::response(['errors' => 'bad'], 400),
     ]);
 
@@ -95,7 +99,7 @@ it('surfaces a Strava error when create is rejected', function (): void {
 
 it('hints at the edge when self-verify passes but Strava cannot GET a 200', function (): void {
     Http::fake([
-        route('strava.webhook.verify').'*' => fakeCallbackEchoes(),
+        StravaWebhookController::callbackUrl().'*' => fakeCallbackEchoes(),
         'www.strava.com/api/v3/push_subscriptions' => Http::response([
             'message' => 'Bad Request',
             'errors' => [[
@@ -118,7 +122,7 @@ it('hints at the edge when self-verify passes but Strava cannot GET a 200', func
 it('ensure skips creating when a matching subscription already exists', function (): void {
     Http::fake([
         'www.strava.com/api/v3/push_subscriptions*' => Http::response([
-            ['id' => 555, 'callback_url' => route('strava.webhook.verify')],
+            ['id' => 555, 'callback_url' => StravaWebhookController::callbackUrl()],
         ]),
     ]);
 
@@ -132,7 +136,7 @@ it('ensure skips creating when a matching subscription already exists', function
 
 it('ensure creates when no subscription exists', function (): void {
     Http::fake([
-        route('strava.webhook.verify').'*' => fakeCallbackEchoes(),
+        StravaWebhookController::callbackUrl().'*' => fakeCallbackEchoes(),
         // GET (list) returns none; POST (create) returns the new id.
         'www.strava.com/api/v3/push_subscriptions*' => fn ($request) => $request->method() === 'POST'
             ? Http::response(['id' => 777], 201)
@@ -147,10 +151,10 @@ it('ensure creates when no subscription exists', function (): void {
         && str_contains((string) $request->url(), 'push_subscriptions'));
 });
 
-it('ensure refuses when a stale subscription with a different callback blocks the slot', function (): void {
+it('ensure refuses when a stale subscription with a different callback blocks the slot', function (string $staleCallback): void {
     Http::fake([
         'www.strava.com/api/v3/push_subscriptions*' => Http::response([
-            ['id' => 999, 'callback_url' => 'https://old.example.test/strava/webhook'],
+            ['id' => 999, 'callback_url' => $staleCallback],
         ]),
     ]);
 
@@ -160,7 +164,11 @@ it('ensure refuses when a stale subscription with a different callback blocks th
         ->assertFailed();
 
     Http::assertNotSent(fn ($request): bool => $request->method() === 'POST');
-});
+})->with([
+    'another host' => 'https://old.example.test/strava/webhook',
+    'untokenised callback' => fn (): string => url('/strava/webhook'),
+    'rotated token' => fn (): string => url('/strava/webhook/previous-callback-token'),
+]);
 
 it('lists active subscriptions', function (): void {
     Http::fake([
@@ -173,6 +181,42 @@ it('lists active subscriptions', function (): void {
         ->expectsOutputToContain('id=555')
         ->assertSuccessful();
 });
+
+it('never prints the raw callback or verify token', function (string $action, Closure $fake): void {
+    Http::fake($fake());
+
+    Artisan::call('strava:webhook-subscribe', ['--action' => $action]);
+
+    expect(Artisan::output())
+        ->toContain('/strava/webhook/****')
+        ->not->toContain('fake-callback-token')
+        ->not->toContain('verify-tok');
+})->with([
+    'create' => ['create', fn (): array => [
+        StravaWebhookController::callbackUrl().'*' => fakeCallbackEchoes(),
+        'www.strava.com/api/v3/push_subscriptions' => Http::response(['id' => 555], 201),
+    ]],
+    'create with an unreachable callback' => ['create', fn (): array => [
+        StravaWebhookController::callbackUrl().'*' => fn () => throw new ConnectionException(
+            'cURL error 28: Operation timed out for '.StravaWebhookController::callbackUrl().'?hub.mode=subscribe&hub.verify_token=verify-tok',
+        ),
+    ]],
+    'ensure already subscribed' => ['ensure', fn (): array => [
+        'www.strava.com/api/v3/push_subscriptions*' => Http::response([
+            ['id' => 555, 'callback_url' => StravaWebhookController::callbackUrl()],
+        ]),
+    ]],
+    'ensure blocked by another token' => ['ensure', fn (): array => [
+        'www.strava.com/api/v3/push_subscriptions*' => Http::response([
+            ['id' => 555, 'callback_url' => url('/strava/webhook/fake-callback-token-old')],
+        ]),
+    ]],
+    'view' => ['view', fn (): array => [
+        'www.strava.com/api/v3/push_subscriptions*' => Http::response([
+            ['id' => 555, 'callback_url' => StravaWebhookController::callbackUrl()],
+        ]),
+    ]],
+]);
 
 it('warns when there is no active subscription', function (): void {
     Http::fake([

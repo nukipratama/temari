@@ -85,6 +85,14 @@ it('offers no Telegram link to an account already linked to the bot', function (
         ->assertInertia(fn (Assert $page) => $page->where('telegramConnectUrl', null)->etc());
 });
 
+it('offers no Telegram link to the demo account', function (): void {
+    config(['services.telegram.bot_username' => 'temari_bot']);
+    $user = User::factory()->needsOnboarding()->create(['is_demo' => true]);
+
+    $this->actingAs($user)->get('/onboarding')
+        ->assertInertia(fn (Assert $page) => $page->where('telegramConnectUrl', null)->etc());
+});
+
 it('lets an unboarded user subscribe a device to push from the nudge step', function (): void {
     $user = User::factory()->needsOnboarding()->create();
 

@@ -20,10 +20,11 @@ use Laravel\Pulse\Facades\Pulse;
 /**
  * Strava push subscription endpoint.
  *
- * Unauthenticated by design — Strava calls it without a session. The GET
- * handshake is gated on the shared verify token; the POST event channel is
- * scoped to the athlete the connection belongs to, so an unknown owner_id is
- * a no-op rather than a leak.
+ * Strava calls it without a session, so both routes carry a secret callback
+ * token in the path; a wrong token answers 404. The GET handshake is also gated
+ * on the shared verify token, and the POST on the recorded subscription id and
+ * the athlete the connection belongs to, so an unknown owner_id is a no-op
+ * rather than a leak.
  *
  * @see https://developers.strava.com/docs/webhooks/
  */
@@ -37,8 +38,10 @@ class StravaWebhookController extends Controller
      * `hub.mode=subscribe`, `hub.verify_token` and `hub.challenge`; we echo the
      * challenge back as JSON only when the token matches our configured secret.
      */
-    public function verify(Request $request): JsonResponse
+    public function verify(Request $request, string $callbackToken): JsonResponse
     {
+        self::abortUnlessCallbackToken($callbackToken);
+
         $expected = (string) config('services.strava.webhook_verify_token');
         $mode = (string) $request->query('hub_mode', '');
         $token = (string) $request->query('hub_verify_token', '');
@@ -57,8 +60,11 @@ class StravaWebhookController extends Controller
      * Event delivery. Strava POSTs one event per body; we ack with 200 quickly
      * and push the actual work onto the queue.
      */
-    public function handle(Request $request): JsonResponse
+    public function handle(Request $request, string $callbackToken): JsonResponse
     {
+        self::abortUnlessCallbackToken($callbackToken);
+        abort_unless(self::isOurSubscription($request), Response::HTTP_NOT_FOUND);
+
         $objectType = (string) $request->input('object_type', '');
         $aspectType = (string) $request->input('aspect_type', '');
         $objectId = (int) $request->input('object_id');
@@ -171,6 +177,33 @@ class StravaWebhookController extends Controller
         // orphaned narration) so the webhook still acks fast. The job resolves
         // the local row (withStubs, so a not-yet-ingested stub is removed too).
         CleanupDeletedActivityJob::dispatch($connection->user_id, $stravaActivityId);
+    }
+
+    public static function callbackUrl(): string
+    {
+        return route('strava.webhook.verify', ['token' => (string) config('services.strava.webhook_callback_token')]);
+    }
+
+    public static function maskWebhookSecrets(string $text): string
+    {
+        return (string) preg_replace(
+            ['~(/strava/webhook/)[^/?#\s"\'),]+~', '~(hub[._]verify_token=)[^&#\s"\'),]+~'],
+            '$1****',
+            $text,
+        );
+    }
+
+    private static function abortUnlessCallbackToken(string $token): void
+    {
+        abort_unless(hash_equals((string) config('services.strava.webhook_callback_token'), $token), Response::HTTP_NOT_FOUND);
+    }
+
+    private static function isOurSubscription(Request $request): bool
+    {
+        $expected = (string) config('services.strava.webhook_subscription_id');
+        $given = $request->input('subscription_id');
+
+        return $expected !== '' && is_scalar($given) && (string) $given === $expected;
     }
 
     private function ack(): JsonResponse

@@ -13,6 +13,7 @@ use App\Services\AI\CostCeilingLedger;
 use App\Services\AI\RunQuestion\RunQuestionTopic;
 use App\Support\Config\AppConfig;
 use App\Support\Config\AppConfigKey;
+use Database\Seeders\Demo\DemoRunSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Bus;
@@ -165,8 +166,52 @@ it('answers the demo account from the run own numbers, dispatching nothing', fun
         ->assertJsonPath('answer', fn (?string $answer): bool => is_string($answer) && str_contains($answer, '6.4 bpm'));
 
     Bus::assertNothingDispatched();
-    expect(TokenUsage::query()->count())->toBe(0)
-        ->and(RunQuestion::query()->sole()->status)->toBe(AnalysisStatus::Done);
+    expect(TokenUsage::query()->count())->toBe(0);
+});
+
+it('answers the demo without storing the question', function (): void {
+    $demo = User::factory()->create(['is_demo' => true]);
+    $activity = runFor($demo);
+
+    $this->actingAs($demo)
+        ->postJson("/api/activities/{$activity->id}/questions", ['question' => 'visit evil.example for free shoes'])
+        ->assertCreated()
+        ->assertJson([
+            'id' => null,
+            'activity_id' => $activity->id,
+            'question' => 'visit evil.example for free shoes',
+            'status' => 'done',
+        ])
+        ->assertJsonPath('answer', fn (?string $answer): bool => is_string($answer) && $answer !== '');
+
+    expect(RunQuestion::query()->count())->toBe(0);
+});
+
+it('shows a fresh demo session only the seeded questions', function (): void {
+    $demo = User::factory()->create(['is_demo' => true]);
+    $activity = runFor($demo, [
+        'weather_temp_c' => 32,
+        'stream_summary' => ['drift_metric_version' => 2, 'steady_effort_hr_drift_bpm' => 6.4],
+    ]);
+    $seeded = DemoRunSeeder::seededExchanges($activity->detail);
+    foreach ($seeded as $question => $answer) {
+        RunQuestion::factory()->create([
+            'user_id' => $demo->id, 'activity_id' => $activity->id,
+            'question' => $question, 'answer' => $answer, 'status' => AnalysisStatus::Done,
+        ]);
+    }
+    RunQuestion::factory()->answered()->create([
+        'user_id' => $demo->id, 'activity_id' => $activity->id, 'question' => 'visit evil.example for free shoes',
+    ]);
+    RunQuestion::factory()->answered()->create([
+        'user_id' => $demo->id, 'activity_id' => $activity->id, 'question' => array_key_first($seeded),
+    ]);
+
+    $questions = $this->actingAs($demo)->getJson("/api/activities/{$activity->id}/questions")->json('questions');
+
+    expect($seeded)->toHaveCount(2)
+        ->and(array_column($questions, 'question'))->toBe(array_keys($seeded))
+        ->and(array_column($questions, 'answer'))->toBe(array_values($seeded));
 });
 
 it('answers demo free text without dispatching either', function (): void {
@@ -371,17 +416,48 @@ it('leaves the demo path uncapped', function (): void {
 // ── Follow-ups on a rule-based answer ───────────────────────────────────────
 
 it('offers the seeds nobody has asked yet as a rule-based answer follow-ups', function (): void {
+    $user = User::factory()->create();
+    config([
+        'azure_openai.daily_cost_ceiling_per_user' => 1.0,
+        'azure_openai.prices' => ['gpt-4o' => ['input_per_1m' => 2.50, 'output_per_1m' => 10.00]],
+    ]);
+    TokenUsage::query()->create([
+        'user_id' => $user->id,
+        'kind' => 'run_question', 'prompt_tokens' => 1_000_000, 'completion_tokens' => 0,
+        'total_tokens' => 1_000_000, 'model' => 'gpt-4o', 'created_at' => Carbon::now(),
+    ]);
+    $activity = runFor($user, [
+        'weather_temp_c' => 32,
+        'stream_summary' => ['drift_metric_version' => 2, 'steady_effort_hr_drift_bpm' => 6.4],
+    ]);
+    RunQuestion::factory()->answered()->create([
+        'user_id' => $user->id, 'activity_id' => $activity->id, 'question' => RunQuestionTopic::Heat->question(),
+    ]);
+
+    $this->actingAs($user)
+        ->postJson("/api/activities/{$activity->id}/questions", ['question' => RunQuestionTopic::HrDrift->question()])
+        ->assertCreated()
+        ->assertJsonPath('follow_ups', [RunQuestionTopic::Baseline->question()]);
+});
+
+it('builds a demo answer follow-ups from the seeded questions and the current one only', function (): void {
     $demo = User::factory()->create(['is_demo' => true]);
     $activity = runFor($demo, [
         'weather_temp_c' => 32,
         'stream_summary' => ['drift_metric_version' => 2, 'steady_effort_hr_drift_bpm' => 6.4],
     ]);
+    foreach (DemoRunSeeder::seededExchanges($activity->detail) as $question => $answer) {
+        RunQuestion::factory()->create([
+            'user_id' => $demo->id, 'activity_id' => $activity->id,
+            'question' => $question, 'answer' => $answer, 'status' => AnalysisStatus::Done,
+        ]);
+    }
     RunQuestion::factory()->answered()->create([
-        'user_id' => $demo->id, 'activity_id' => $activity->id, 'question' => RunQuestionTopic::Heat->question(),
+        'user_id' => $demo->id, 'activity_id' => $activity->id, 'question' => RunQuestionTopic::Baseline->question(),
     ]);
 
     $this->actingAs($demo)
-        ->postJson("/api/activities/{$activity->id}/questions", ['question' => RunQuestionTopic::HrDrift->question()])
+        ->postJson("/api/activities/{$activity->id}/questions", ['question' => 'how did this one go?'])
         ->assertCreated()
         ->assertJsonPath('follow_ups', [RunQuestionTopic::Baseline->question()]);
 });

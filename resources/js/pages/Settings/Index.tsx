@@ -453,17 +453,6 @@ function TelegramPanel({
     const { isDemo, open, setOpen, guard } = useDemoGuard();
 
     if (!telegram.connected) {
-        if (telegram.connect_url === null) {
-            return (
-                <SettingsRow
-                    icon={TelegramIcon}
-                    label="Telegram"
-                    description="the Telegram bot isn't configured yet."
-                    control={<span aria-hidden />}
-                />
-            );
-        }
-
         // Whole-row tap when the row means one thing ("go connect"); a discrete
         // control only once there is an action distinct from the row itself.
         if (isDemo) {
@@ -479,6 +468,17 @@ function TelegramPanel({
                         onClose={() => setOpen(false)}
                     />
                 </SettingsRow>
+            );
+        }
+
+        if (telegram.connect_url === null) {
+            return (
+                <SettingsRow
+                    icon={TelegramIcon}
+                    label="Telegram"
+                    description="the Telegram bot isn't configured yet."
+                    control={<span aria-hidden />}
+                />
             );
         }
 

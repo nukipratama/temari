@@ -95,7 +95,7 @@ class HandleTelegramUpdateJob implements ShouldQueue
         }
 
         $user = User::query()->find($userId);
-        if ($user === null) {
+        if ($user === null || $user->is_demo) {
             $client->sendMessage($chatId, TelegramReplies::generic());
 
             return;
