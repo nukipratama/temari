@@ -50,6 +50,8 @@ class RunQuestion extends Model
     /** Longest question the endpoint accepts, matching the column width. */
     public const int MAX_QUESTION_LENGTH = 300;
 
+    public const int MIN_QUESTION_LENGTH = 3;
+
     /**
      * @return BelongsTo<User, $this>
      */

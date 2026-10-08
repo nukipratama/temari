@@ -29,6 +29,8 @@ use App\Services\Run\Plan\SustainedAheadOfRacePace;
 use App\Services\Run\Plan\TrainingBaseline;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
+use App\Services\Run\Metrics\TrainingFormStatus;
+use App\Services\Weather\WeatherSnapshot;
 
 /**
  * Rule-based content per AnalysisType. Reached in production, not only by the
@@ -296,7 +298,7 @@ final readonly class RuleBasedNarrationFiller
         }
         if ($detail->weather_rain_detected === true) {
             $codas[] = ' In the rain, too.';
-        } elseif ($detail->weather_temp_c !== null && $detail->weather_temp_c >= 31) {
+        } elseif ($detail->weather_temp_c !== null && $detail->weather_temp_c >= WeatherSnapshot::HOT_RUN_TEMP_C) {
             $codas[] = " That was at {$detail->weather_temp_c} degrees, so it cost more than the pace lets on.";
         }
 
@@ -348,13 +350,13 @@ final readonly class RuleBasedNarrationFiller
         }
 
         $closer = match ($snapshot->form_status) {
-            'fresh' => "your recent running is lighter than your longer-term load, so there's room to add a little.",
-            'optimal' => match ($this->volumeBand((float) $snapshot->distance_km, $this->usualWeeklyKm($snapshot))) {
+            TrainingFormStatus::Fresh => "your recent running is lighter than your longer-term load, so there's room to add a little.",
+            TrainingFormStatus::Optimal => match ($this->volumeBand((float) $snapshot->distance_km, $this->usualWeeklyKm($snapshot))) {
                 'light' => "well below your usual week. that's the number, not a verdict on it.",
                 'big' => "well above your usual week, and your load balance is still steady.",
                 default => "right around your usual week.",
             },
-            'fatigued', 'overreaching' => "your recent running is above your longer-term load, which is normal in a build week. if you feel run down, illness, poor sleep or under-fuelling can be behind it too, so tell me how you feel.",
+            TrainingFormStatus::Fatigued, TrainingFormStatus::Overreaching => "your recent running is above your longer-term load, which is normal in a build week. if you feel run down, illness, poor sleep or under-fuelling can be behind it too, so tell me how you feel.",
             default => "steady. that's the read.",
         };
 

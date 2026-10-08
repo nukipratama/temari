@@ -542,6 +542,17 @@ class ActivityPipeline
         $status = $this->httpStatus($reason);
         $count = $activity->detail_fail_count + 1;
 
+        if ($this->isPermanentClientError($status) && $activity->detail()->doesntExist()) {
+            $activity->delete();
+            Log::info('detail fetch hit a permanent 4xx; deleted the stub', [
+                'activity_id' => $activity->id,
+                'status' => $status,
+                'reason' => $reason->getMessage(),
+            ]);
+
+            return true;
+        }
+
         if ($this->isPermanentClientError($status)) {
             $activity->update([
                 'detail_fail_count' => $count,

@@ -6,6 +6,7 @@ namespace App\Services\Run\Story;
 
 use Illuminate\Contracts\Support\Arrayable;
 use Override;
+use App\Enums\Mood;
 
 /**
  * @phpstan-type AnalysisPayload array{
@@ -37,7 +38,7 @@ final readonly class BriefingResult implements Arrayable
         public ?int $recoveryHours,
         public ?string $streakLabel,
         public string $sigilPattern,
-        public string $mood,
+        public Mood $mood,
     ) {
     }
 
@@ -55,7 +56,7 @@ final readonly class BriefingResult implements Arrayable
             'recoveryHours' => $this->recoveryHours,
             'streakLabel' => $this->streakLabel,
             'sigilPattern' => $this->sigilPattern,
-            'mood' => $this->mood,
+            'mood' => $this->mood->value,
         ];
     }
 }

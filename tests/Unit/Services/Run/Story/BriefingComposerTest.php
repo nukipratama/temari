@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\Mood;
 use App\Jobs\AI\AnalyzeBriefingMascotVoiceJob;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
@@ -139,7 +140,7 @@ it('computes non-LLM fields (vibe state, streak, mood) without an LLM call', fun
     $result = app(BriefingComposer::class)->compose($user, Carbon::parse('2026-05-18'));
 
     expect($result->vibeState)->toBeString()->not->toBeEmpty()
-        ->and($result->mood)->toBeString()->not->toBeEmpty()
+        ->and($result->mood)->toBeInstanceOf(Mood::class)
         ->and($result->sigilPattern)->toBeString()->not->toBeEmpty()
         ->and($result->recoveryLabel)->toBeString()->not->toBeEmpty()
         ->and($result->streakLabel)->toBe('Ran today');

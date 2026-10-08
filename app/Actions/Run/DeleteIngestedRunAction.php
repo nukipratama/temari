@@ -5,14 +5,17 @@ declare(strict_types=1);
 namespace App\Actions\Run;
 
 use App\Actions\Run\Plan\ResolveTrailingWeeksAction;
+use App\Enums\PerformanceEvidenceKind;
 use App\Models\Activity;
 use App\Models\AI\Analysis;
+use App\Models\PerformanceEvidence;
 use App\Models\RunCard;
 use App\Models\Scopes\KnownAnalysisTypeScope;
 use App\Models\WeeklySnapshot;
 use App\Services\Run\Metrics\PersonalRecords;
 use App\Services\Run\Metrics\WeeklyAggregator;
 use App\Services\Run\Plan\ComplianceScorer;
+use App\Services\Run\Plan\PerformanceEvidenceRecorder;
 use App\Services\Run\Plan\PlanReconciliationService;
 use App\Services\Run\Trend\TrendSnapshotRepairService;
 use Illuminate\Support\Carbon;
@@ -23,8 +26,9 @@ use Illuminate\Support\Facades\DB;
  * cascade drops detail / streams / card / post-run storyline, but the plan
  * day's verdict and the weekly snapshot are recomputed from separate
  * aggregates, PRs are only ever lowered (so a deleted run's record lingers),
- * and the polymorphic Analysis rows have no FK. Shared by a Strava delete and
- * a resync that re-types the run to a non-run sport.
+ * and the polymorphic Analysis rows have no FK. A time trial confirmed from the
+ * run is retracted with it, while a race result the athlete confirmed stays.
+ * Shared by a Strava delete and a resync that re-types the run to a non-run sport.
  */
 class DeleteIngestedRunAction
 {
@@ -35,6 +39,7 @@ class DeleteIngestedRunAction
         private readonly ComplianceScorer $complianceScorer,
         private readonly PlanReconciliationService $planReconciliation,
         private readonly TrendSnapshotRepairService $trendSnapshots,
+        private readonly PerformanceEvidenceRecorder $evidence,
     ) {
     }
 
@@ -47,8 +52,14 @@ class DeleteIngestedRunAction
         // The card cascades on delete, but its CardFlavor analysis (keyed by the
         // card id, no FK) does not — capture the id now to purge it below.
         $cardId = $activity->runCard?->id;
+        $runTests = PerformanceEvidence::query()
+            ->where('activity_id', $localId)
+            ->where('kind', PerformanceEvidenceKind::Test)
+            ->whereNull('race_goal_id');
 
-        DB::transaction(function () use ($activity, $weekAnchor, $user, $localId, $cardId): void {
+        $delete = fn () => DB::transaction(function () use ($activity, $weekAnchor, $user, $localId, $cardId, $runTests): void {
+            $runTests->delete();
+
             // Cascades detail / stream / card / post-run storyline via FK.
             $activity->delete();
 
@@ -96,6 +107,12 @@ class DeleteIngestedRunAction
                     ->delete();
             }
         });
+
+        if ($runTests->exists()) {
+            $this->evidence->retracting($user, $delete);
+        } else {
+            $delete();
+        }
 
         if ($weekAnchor !== null) {
             $this->planReconciliation->markDirty($user->id, $weekAnchor);

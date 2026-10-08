@@ -5,6 +5,8 @@ declare(strict_types=1);
 use App\Services\Strava\StravaClient;
 use App\Models\RunCard;
 use App\Enums\IngestState;
+use App\Enums\PerformanceEvidenceKind;
+use App\Models\PerformanceEvidence;
 use App\Actions\AI\SettleEarlyNarrationAction;
 use App\Models\RunnerProfile;
 use App\Models\StoryLine;
@@ -272,8 +274,22 @@ it('marks analyzed_at after max attempts so we stop hammering Strava', function 
         ->and($activity->fresh()->analyzed_at)->not->toBeNull();
 });
 
-it('stops immediately on a 404 detail (deleted activity), no further retries', function (): void {
+it('deletes a stub whose detail fetch hits a permanent 4xx, with no further retries', function (int $status): void {
     $activity = makeActivityWithConnection();
+
+    Http::fake([
+        'strava.com/api/v3/activities/999' => Http::response(['error' => 'Record Not Found'], $status),
+    ]);
+
+    $this->pipeline->ingest($activity);
+
+    expect(Activity::query()->withStubs()->find($activity->id))->toBeNull();
+})->with([404, 403]);
+
+it('keeps an ingested run whose resync hits a permanent 4xx', function (): void {
+    $activity = makeActivityWithConnection();
+    $activity->update(['analyzed_at' => now(), 'ingest_state' => IngestState::Detailed]);
+    ActivityDetail::factory()->for($activity)->create();
 
     Http::fake([
         'strava.com/api/v3/activities/999' => Http::response(['error' => 'Record Not Found'], 404),
@@ -281,10 +297,7 @@ it('stops immediately on a 404 detail (deleted activity), no further retries', f
 
     $this->pipeline->ingest($activity);
 
-    // analyzed_at stamped so the row is treated as handled and never refetched,
-    // even though we are nowhere near DETAIL_FETCH_MAX_ATTEMPTS.
-    expect($activity->fresh()->detail_fail_count)->toBe(1)
-        ->and($activity->fresh()->analyzed_at)->not->toBeNull();
+    expect(ActivityDetail::query()->where('activity_id', $activity->id)->exists())->toBeTrue();
 });
 
 it('keeps retrying on a 5xx detail (transient)', function (): void {
@@ -447,7 +460,7 @@ it('drops a non-run activity (ride) without minting a run', function (): void {
     Http::assertSentCount(1);
 });
 
-it('heals the records, week and narration of an ingested run re-typed to a ride on resync', function (): void {
+it('heals the records, week, narration and time-trial evidence of an ingested run re-typed to a ride on resync', function (): void {
     Event::fake([ActivityIngested::class]);
     $activity = makeActivityWithConnection();
     $user = $activity->user;
@@ -483,6 +496,7 @@ it('heals the records, week and narration of an ingested run re-typed to a ride 
     $card = RunCard::query()->where('activity_id', $activity->id)->firstOrFail();
     Analysis::factory()->create(['subject_type' => Activity::class, 'subject_id' => $activity->id, 'analysis_type' => AnalysisType::PostRunSpeech]);
     Analysis::factory()->create(['subject_type' => RunCard::class, 'subject_id' => $card->id, 'analysis_type' => AnalysisType::CardFlavor]);
+    $test = runEvidence($user, $activity, PerformanceEvidenceKind::Test);
     expect(PersonalRecord::query()->where('user_id', $user->id)->where('category', '5km')->value('activity_id'))->toBe($activity->id)
         ->and(WeeklySnapshot::query()->where('user_id', $user->id)->where('week_ending', $weekEnding)->value('runs'))->toBe(2);
 
@@ -494,7 +508,8 @@ it('heals the records, week and narration of an ingested run re-typed to a ride 
         ->and($record->value_sec)->toBe(1500.0)
         ->and(WeeklySnapshot::query()->where('user_id', $user->id)->where('week_ending', $weekEnding)->value('runs'))->toBe(1)
         ->and(Analysis::query()->where('subject_type', Activity::class)->where('subject_id', $activity->id)->exists())->toBeFalse()
-        ->and(Analysis::query()->where('subject_type', RunCard::class)->where('subject_id', $card->id)->exists())->toBeFalse();
+        ->and(Analysis::query()->where('subject_type', RunCard::class)->where('subject_id', $card->id)->exists())->toBeFalse()
+        ->and(PerformanceEvidence::query()->whereKey($test->id)->exists())->toBeFalse();
 });
 
 it('fires the replay when a non-run upload empties the backlog, not just a successful ingest', function (): void {

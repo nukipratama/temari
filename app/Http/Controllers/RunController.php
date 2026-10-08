@@ -144,7 +144,7 @@ class RunController extends Controller
             // Backend-computed mood for the (rare) window before the post-run
             // StoryLine lands, so the detail mascot matches the share card
             // instead of diverging into a frontend heuristic.
-            'moodFallback' => fn (): string => Temari::moodForActivityOrDefault($activity),
+            'moodFallback' => fn (): string => Temari::moodForActivityOrDefault($activity)->value,
             // Per-activity narration is a connected + chained kind: only the chain
             // head (the user's latest run) may regenerate ("Reread"); historical
             // runs are resume-only, so re-narrating mid-history can't desync the

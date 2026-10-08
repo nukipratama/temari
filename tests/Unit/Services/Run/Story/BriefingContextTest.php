@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Services\Run\Metrics\TrainingFormStatus;
 use App\Enums\PlanPhase;
 use App\Enums\SessionType;
 use App\Models\Activity;
@@ -72,7 +73,7 @@ it('pulls this-week snapshot and last-week real activity through the same weekda
         ->and($ctx->thisWeekKm)->toBe(32.0)
         ->and($ctx->lastWeekRuns)->toBe(1)
         ->and($ctx->lastWeekKm)->toBe(8.0)
-        ->and($ctx->formStatus)->toBe('optimal');
+        ->and($ctx->formStatus)->toBe(TrainingFormStatus::Optimal);
 });
 
 it('does not compare a partial week against a full one, either in the numbers or the ramp', function (): void {
@@ -240,7 +241,7 @@ it('exposes a deterministic readiness ceiling from the live load, never resting 
     Carbon::setTestNow($asOf);
     $user = User::factory()->create();
 
-    $ctx = BriefingContext::forUser($user, $asOf, ['form_status' => 'overreaching', 'monotony' => 1.0]);
+    $ctx = BriefingContext::forUser($user, $asOf, ['form_status' => TrainingFormStatus::Overreaching, 'monotony' => 1.0]);
 
     expect($ctx->readinessCeiling)->toBe('quality_ok');
 });
@@ -250,7 +251,7 @@ it('presents the stored form status as a three-state load balance in the LLM pay
     Carbon::setTestNow($asOf);
     $user = User::factory()->create();
 
-    $ctx = BriefingContext::forUser($user, $asOf, ['form_status' => 'overreaching', 'monotony' => 1.0]);
+    $ctx = BriefingContext::forUser($user, $asOf, ['form_status' => TrainingFormStatus::Overreaching, 'monotony' => 1.0]);
     $payload = $ctx->toArray();
 
     expect($payload['load_balance'])->toBe('heavy')
@@ -327,7 +328,7 @@ it('records stale feedback but does not apply it to current readiness', function
         'illness' => true,
     ]);
 
-    $ctx = BriefingContext::forUser($user, $asOf, ['form_status' => 'optimal', 'monotony' => 1.0]);
+    $ctx = BriefingContext::forUser($user, $asOf, ['form_status' => TrainingFormStatus::Optimal, 'monotony' => 1.0]);
 
     expect($ctx->readinessCeiling)->toBe('quality_ok')
         ->and($ctx->readinessAssessment['reasons'])->toContain('stale_recovery_feedback_not_applied')
@@ -366,7 +367,7 @@ it('falls back to last-week form_status when this week has no snapshot yet', fun
 
     $ctx = BriefingContext::forUser($user, $asOf);
 
-    expect($ctx->formStatus)->toBe('fatigued');
+    expect($ctx->formStatus)->toBe(TrainingFormStatus::Fatigued);
     expect($ctx->toArray()['load_balance'])->toBeNull()
         ->and($ctx->readinessAssessment['inputs']['form_status'])->toBeNull();
 });
@@ -390,7 +391,7 @@ it('falls back to last-week form_status when this week has a snapshot but no for
 
     $ctx = BriefingContext::forUser($user, $asOf);
 
-    expect($ctx->formStatus)->toBe('fatigued');
+    expect($ctx->formStatus)->toBe(TrainingFormStatus::Fatigued);
 });
 
 it('counts consecutive active weeks back from the current week', function (): void {
@@ -467,7 +468,7 @@ it('keeps quality in a compliant post-deload Build week and caps only a week run
     $prescribedToDate = BriefingContext::prescribedKmToDate($user, $asOf);
     WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-24', 'runs' => 3, 'distance_km' => round($prescribedToDate * $actualShareOfPlan, 1)]);
 
-    $ctx = BriefingContext::forUser($user, $asOf, ['form_status' => 'optimal', 'monotony' => 1.0]);
+    $ctx = BriefingContext::forUser($user, $asOf, ['form_status' => TrainingFormStatus::Optimal, 'monotony' => 1.0]);
 
     expect($prescribedToDate)->toBeGreaterThan(0.0)
         ->and($ctx->volumeRampPct)->toBeGreaterThan(15.0)

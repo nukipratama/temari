@@ -4,6 +4,7 @@ use App\Services\Geo\ResolvedLocation;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
+use App\Services\Run\Metrics\TrainingFormStatus;
 
 return [
 
@@ -141,6 +142,7 @@ return [
         Collection::class,
         ResolvedLocation::class,
         stdClass::class,
+        TrainingFormStatus::class,
     ],
 
 ];

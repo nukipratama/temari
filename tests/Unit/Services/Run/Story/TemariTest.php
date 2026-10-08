@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\Mood;
 use App\Enums\Effort;
 use App\Enums\IntentVerdict;
 use App\Enums\PlannedSessionStatus;
@@ -56,12 +57,12 @@ it('persists a post_run story line with mood + sigil + null speech (LLM async)',
         ->and($line->speech)->toBeNull()
         ->and($line->sigil_pattern)->toBeString()
         ->and($line->mood)->toBeIn([
-            Temari::MOOD_ENTENG,
-            Temari::MOOD_NYALA,
-            Temari::MOOD_LEMES,
-            Temari::MOOD_ADEM,
-            Temari::MOOD_MUMET,
-            Temari::MOOD_OLENG,
+            Mood::Easy,
+            Mood::Blazing,
+            Mood::Gassed,
+            Mood::Chill,
+            Mood::Overloaded,
+            Mood::Wobbly,
         ]);
 
     // Temari no longer dispatches the post-run analysis — ActivityPipeline's
@@ -78,7 +79,7 @@ it('picks glow mood when this activity\'s card set a PR', function (): void {
     RunCard::factory()->create(['activity_id' => $activity->id, 'pr_set' => true]);
 
     expect(app(Temari::class)->postRunLine($activity, $detail)->mood)
-        ->toBe(Temari::MOOD_NYALA);
+        ->toBe(Mood::Blazing);
 });
 
 it('does not glow on a record row its card was judged not to have set', function (): void {
@@ -94,7 +95,7 @@ it('does not glow on a record row its card was judged not to have set', function
     ]);
 
     expect(app(Temari::class)->postRunLine($activity, $detail)->mood)
-        ->not->toBe(Temari::MOOD_NYALA);
+        ->not->toBe(Mood::Blazing);
 });
 
 it('picks overloaded mood on a hard grind (≥80% Z3+ time) without a controlled finish', function (): void {
@@ -106,7 +107,7 @@ it('picks overloaded mood on a hard grind (≥80% Z3+ time) without a controlled
     ]);
 
     expect(app(Temari::class)->postRunLine($activity, $detail)->mood)
-        ->toBe(Temari::MOOD_MUMET);
+        ->toBe(Mood::Overloaded);
 });
 
 it('picks gassed mood when decoupling is high (>12%)', function (): void {
@@ -120,7 +121,7 @@ it('picks gassed mood when decoupling is high (>12%)', function (): void {
     ]);
 
     expect(app(Temari::class)->postRunLine($activity, $detail)->mood)
-        ->toBe(Temari::MOOD_LEMES);
+        ->toBe(Mood::Gassed);
 });
 
 it('does not call legacy whole-run drift a gassed verdict', function (): void {
@@ -135,7 +136,7 @@ it('does not call legacy whole-run drift a gassed verdict', function (): void {
     ]);
 
     expect(app(Temari::class)->postRunLine($activity, $detail)->mood)
-        ->toBe(Temari::MOOD_ADEM);
+        ->toBe(Mood::Chill);
 });
 
 it('does not flag decoupling at exactly 12% as gassed (boundary is strictly above)', function (): void {
@@ -150,7 +151,7 @@ it('does not flag decoupling at exactly 12% as gassed (boundary is strictly abov
     ]);
 
     expect(app(Temari::class)->postRunLine($activity, $detail)->mood)
-        ->toBe(Temari::MOOD_ADEM);
+        ->toBe(Mood::Chill);
 });
 
 it('flags decoupling at 12.01% as gassed', function (): void {
@@ -165,7 +166,7 @@ it('flags decoupling at 12.01% as gassed', function (): void {
     ]);
 
     expect(app(Temari::class)->postRunLine($activity, $detail)->mood)
-        ->toBe(Temari::MOOD_LEMES);
+        ->toBe(Mood::Gassed);
 });
 
 it('reads an inferred tempo (Z3-Z4 heavy, untagged) with high decoupling + neg split as blazing, not gassed', function (): void {
@@ -183,7 +184,7 @@ it('reads an inferred tempo (Z3-Z4 heavy, untagged) with high decoupling + neg s
     ]);
 
     expect(app(Temari::class)->postRunLine($activity, $detail)->mood)
-        ->toBe(Temari::MOOD_NYALA);
+        ->toBe(Mood::Blazing);
 });
 
 it('reads a tagged workout with high decoupling and no controlled finish as overloaded, not gassed', function (): void {
@@ -200,7 +201,7 @@ it('reads a tagged workout with high decoupling and no controlled finish as over
     ]);
 
     expect(app(Temari::class)->postRunLine($activity, $detail)->mood)
-        ->toBe(Temari::MOOD_MUMET);
+        ->toBe(Mood::Overloaded);
 });
 
 it('picks blazing for a hard session finished under control (neg split, low decoupling)', function (): void {
@@ -215,7 +216,7 @@ it('picks blazing for a hard session finished under control (neg split, low deco
     ]);
 
     expect(app(Temari::class)->postRunLine($activity, $detail)->mood)
-        ->toBe(Temari::MOOD_NYALA);
+        ->toBe(Mood::Blazing);
 });
 
 it('picks blazing when decoupling is exactly at the 5% control ceiling', function (): void {
@@ -231,7 +232,7 @@ it('picks blazing when decoupling is exactly at the 5% control ceiling', functio
     ]);
 
     expect(app(Temari::class)->postRunLine($activity, $detail)->mood)
-        ->toBe(Temari::MOOD_NYALA);
+        ->toBe(Mood::Blazing);
 });
 
 it('drops to easy once decoupling is just past the 5% control ceiling', function (): void {
@@ -247,7 +248,7 @@ it('drops to easy once decoupling is just past the 5% control ceiling', function
     ]);
 
     expect(app(Temari::class)->postRunLine($activity, $detail)->mood)
-        ->toBe(Temari::MOOD_ENTENG);
+        ->toBe(Mood::Easy);
 });
 
 it('picks easy for a hard session that was controlled but not clean enough for blazing', function (): void {
@@ -263,7 +264,7 @@ it('picks easy for a hard session that was controlled but not clean enough for b
     ]);
 
     expect(app(Temari::class)->postRunLine($activity, $detail)->mood)
-        ->toBe(Temari::MOOD_ENTENG);
+        ->toBe(Mood::Easy);
 });
 
 it('no longer flags a moderately hard run (50% hard zone) as overloaded', function (): void {
@@ -280,7 +281,7 @@ it('no longer flags a moderately hard run (50% hard zone) as overloaded', functi
     // hardShare 50 is under the raised 80 threshold, so this is not overloaded;
     // its 20% in Z4 reads as hard work on the effort scale, so not the rest-day chill either.
     expect(app(Temari::class)->postRunLine($activity, $detail)->mood)
-        ->toBe(Temari::MOOD_NYALA);
+        ->toBe(Mood::Blazing);
 });
 
 /** #1527: the run's effort colour and its mood tell one story. */
@@ -304,8 +305,8 @@ it('never gives a planned tempo run the rest-day chill mood beside its moderate 
     ]);
 
     expect(RunEffort::forDetails($user->id, collect([$detail]))[$activity->id])->toBe(Effort::Steady)
-        ->and(app(Temari::class)->postRunLine($activity, $detail)->mood)->toBe(Temari::MOOD_ENTENG)
-        ->and(Temari::moodForActivityOrDefault($activity->fresh()))->toBe(Temari::MOOD_ENTENG);
+        ->and(app(Temari::class)->postRunLine($activity, $detail)->mood)->toBe(Mood::Easy)
+        ->and(Temari::moodForActivityOrDefault($activity->fresh()))->toBe(Mood::Easy);
 });
 
 it('keeps chill for an easy run with nothing else to say', function (): void {
@@ -326,7 +327,7 @@ it('keeps chill for an easy run with nothing else to say', function (): void {
         'weather_temp_c' => 25,
     ]);
 
-    expect(app(Temari::class)->postRunLine($activity, $detail)->mood)->toBe(Temari::MOOD_ADEM);
+    expect(app(Temari::class)->postRunLine($activity, $detail)->mood)->toBe(Mood::Chill);
 });
 
 it('picks squished mood on hot-weather easy runs', function (): void {
@@ -339,7 +340,7 @@ it('picks squished mood on hot-weather easy runs', function (): void {
     ]);
 
     expect(app(Temari::class)->postRunLine($activity, $detail)->mood)
-        ->toBe(Temari::MOOD_OLENG);
+        ->toBe(Mood::Wobbly);
 });
 
 it('flags exactly 31°C as hot weather (wobbly)', function (): void {
@@ -352,7 +353,7 @@ it('flags exactly 31°C as hot weather (wobbly)', function (): void {
     ]);
 
     expect(app(Temari::class)->postRunLine($activity, $detail)->mood)
-        ->toBe(Temari::MOOD_OLENG);
+        ->toBe(Mood::Wobbly);
 });
 
 it('does not flag 30°C as hot weather', function (): void {
@@ -365,7 +366,7 @@ it('does not flag 30°C as hot weather', function (): void {
     ]);
 
     expect(app(Temari::class)->postRunLine($activity, $detail)->mood)
-        ->toBe(Temari::MOOD_ADEM);
+        ->toBe(Mood::Chill);
 });
 
 it('is idempotent — calling twice for the same activity updates the row', function (): void {
@@ -409,14 +410,14 @@ it('upserts the daily greeting (no dup on second call)', function (): void {
 it('maps each vibe to a mood', function (): void {
     $temari = app(Temari::class);
 
-    expect($temari->moodForVibe(Vibe::PUMPED))->toBe(Temari::MOOD_NYALA)
-        ->and($temari->moodForVibe(Vibe::FRESH))->toBe(Temari::MOOD_NYALA)
-        ->and($temari->moodForVibe(Vibe::BOUNCY))->toBe(Temari::MOOD_ENTENG)
-        ->and($temari->moodForVibe(Vibe::WORN_DOWN))->toBe(Temari::MOOD_LEMES)
-        ->and($temari->moodForVibe(Vibe::COOKED))->toBe(Temari::MOOD_OLENG)
-        ->and($temari->moodForVibe(Vibe::STRETCHED_THIN))->toBe(Temari::MOOD_MUMET)
-        ->and($temari->moodForVibe(Vibe::HIBERNATING))->toBe(Temari::MOOD_ADEM)
-        ->and($temari->moodForVibe('unknown'))->toBe(Temari::MOOD_ADEM);
+    expect($temari->moodForVibe(Vibe::PUMPED))->toBe(Mood::Blazing)
+        ->and($temari->moodForVibe(Vibe::FRESH))->toBe(Mood::Blazing)
+        ->and($temari->moodForVibe(Vibe::BOUNCY))->toBe(Mood::Easy)
+        ->and($temari->moodForVibe(Vibe::WORN_DOWN))->toBe(Mood::Gassed)
+        ->and($temari->moodForVibe(Vibe::COOKED))->toBe(Mood::Wobbly)
+        ->and($temari->moodForVibe(Vibe::STRETCHED_THIN))->toBe(Mood::Overloaded)
+        ->and($temari->moodForVibe(Vibe::HIBERNATING))->toBe(Mood::Chill)
+        ->and($temari->moodForVibe('unknown'))->toBe(Mood::Chill);
 });
 
 it('moodForActivityOrDefault matches the mood the post-run line would persist', function (): void {
@@ -433,7 +434,7 @@ it('moodForActivityOrDefault matches the mood the post-run line would persist', 
     $activity->setRelation('detail', $detail);
 
     expect(Temari::moodForActivityOrDefault($activity))
-        ->toBe(Temari::MOOD_ENTENG)
+        ->toBe(Mood::Easy)
         ->toBe(app(Temari::class)->postRunLine($activity, $detail)->mood);
 });
 
@@ -445,7 +446,7 @@ it('moodForActivityOrDefault falls back to chill when the activity has no detail
     $activity = Activity::factory()->make(['id' => 1, 'user_id' => 1]);
     $activity->setRelation('detail', null);
 
-    expect(Temari::moodForActivityOrDefault($activity))->toBe(Temari::MOOD_ADEM);
+    expect(Temari::moodForActivityOrDefault($activity))->toBe(Mood::Chill);
 });
 
 /**
@@ -475,8 +476,8 @@ it('reads a planned tempo that shows threshold work as a session gone after, not
         ['Z1' => 2.6, 'Z2' => 22.1, 'Z3' => 48.0, 'Z4' => 27.3, 'Z5' => 0.0],
     );
 
-    expect(app(Temari::class)->postRunLine($activity, $detail)->mood)->toBe(Temari::MOOD_NYALA)
-        ->and(Temari::moodForActivityOrDefault($activity->fresh()))->toBe(Temari::MOOD_NYALA);
+    expect(app(Temari::class)->postRunLine($activity, $detail)->mood)->toBe(Mood::Blazing)
+        ->and(Temari::moodForActivityOrDefault($activity->fresh()))->toBe(Mood::Blazing);
 });
 
 it('keeps a negative-split tempo a quality win rather than an easy run', function (): void {
@@ -486,10 +487,10 @@ it('keeps a negative-split tempo a quality win rather than an easy run', functio
         negativeSplit: true,
     );
 
-    expect(app(Temari::class)->postRunLine($activity, $detail)->mood)->toBe(Temari::MOOD_NYALA);
+    expect(app(Temari::class)->postRunLine($activity, $detail)->mood)->toBe(Mood::Blazing);
 });
 
-it('follows the graded verdict on a quality day: done as asked is blazing, harder than asked is overloaded', function (IntentVerdict $verdict, string $mood): void {
+it('follows the graded verdict on a quality day: done as asked is blazing, harder than asked is overloaded', function (IntentVerdict $verdict, Mood $mood): void {
     [$activity, $detail] = qualityDayRun(
         ['session_type' => SessionType::Interval, 'status' => PlannedSessionStatus::Done, 'intent_verdict' => $verdict],
         ['Z2' => 70.0, 'Z3' => 20.0, 'Z4' => 10.0],
@@ -498,8 +499,8 @@ it('follows the graded verdict on a quality day: done as asked is blazing, harde
 
     expect(app(Temari::class)->postRunLine($activity, $detail)->mood)->toBe($mood);
 })->with([
-    'hit' => [IntentVerdict::Hit, Temari::MOOD_NYALA],
-    'too hard' => [IntentVerdict::TooHard, Temari::MOOD_MUMET],
+    'hit' => [IntentVerdict::Hit, Mood::Blazing],
+    'too hard' => [IntentVerdict::TooHard, Mood::Overloaded],
 ]);
 
 it('does not call a tempo whose hard part never happened a quality win', function (): void {
@@ -509,7 +510,7 @@ it('does not call a tempo whose hard part never happened a quality win', functio
         negativeSplit: true,
     );
 
-    expect(app(Temari::class)->postRunLine($activity, $detail)->mood)->toBe(Temari::MOOD_ENTENG);
+    expect(app(Temari::class)->postRunLine($activity, $detail)->mood)->toBe(Mood::Easy);
 });
 
 it('judges an eased tempo by the easy run it was eased to', function (): void {
@@ -519,7 +520,7 @@ it('judges an eased tempo by the easy run it was eased to', function (): void {
         negativeSplit: true,
     );
 
-    expect(app(Temari::class)->postRunLine($activity, $detail)->mood)->toBe(Temari::MOOD_ENTENG);
+    expect(app(Temari::class)->postRunLine($activity, $detail)->mood)->toBe(Mood::Easy);
 });
 
 it('still flags threshold work on a planned easy day as a grind, not a win', function (): void {
@@ -528,7 +529,7 @@ it('still flags threshold work on a planned easy day as a grind, not a win', fun
         ['Z2' => 15.0, 'Z3' => 45.0, 'Z4' => 40.0],
     );
 
-    expect(app(Temari::class)->postRunLine($activity, $detail)->mood)->toBe(Temari::MOOD_MUMET);
+    expect(app(Temari::class)->postRunLine($activity, $detail)->mood)->toBe(Mood::Overloaded);
 });
 
 it('agrees with a too-hard grade on an easy day instead of calling the run easy', function (): void {
@@ -538,7 +539,7 @@ it('agrees with a too-hard grade on an easy day instead of calling the run easy'
         negativeSplit: true,
     );
 
-    expect(app(Temari::class)->postRunLine($activity, $detail)->mood)->toBe(Temari::MOOD_MUMET);
+    expect(app(Temari::class)->postRunLine($activity, $detail)->mood)->toBe(Mood::Overloaded);
 });
 
 it('keeps a well-run easy day easy', function (): void {
@@ -548,5 +549,5 @@ it('keeps a well-run easy day easy', function (): void {
         negativeSplit: true,
     );
 
-    expect(app(Temari::class)->postRunLine($activity, $detail)->mood)->toBe(Temari::MOOD_ENTENG);
+    expect(app(Temari::class)->postRunLine($activity, $detail)->mood)->toBe(Mood::Easy);
 });

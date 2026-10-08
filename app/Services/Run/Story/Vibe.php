@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Services\Run\Metrics\StreamSummary;
 use App\Services\Run\Metrics\TrainingLoad;
 use Illuminate\Support\Carbon;
+use App\Services\Run\Metrics\TrainingFormStatus;
 
 class Vibe
 {
@@ -72,7 +73,7 @@ class Vibe
 
         return $this->memo[$key] = $this->matrix->pick([
             'form' => (float) ($load['form'] ?? 0.0),
-            'form_status' => (string) ($load['form_status'] ?? 'optimal'),
+            'form_status' => $load['form_status'] ?? TrainingFormStatus::Optimal,
             'days_since_run' => $daysSinceRun,
             'recent_pr' => $recentPr,
             'decoupling_avg' => $decoupling,

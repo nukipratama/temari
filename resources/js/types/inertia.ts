@@ -4,6 +4,7 @@ import type {
     AnalysisStatus,
     AnalysisType,
     Effort,
+    Mood,
     NotificationKind,
     PlannedSessionStatus,
     Rarity,
@@ -13,13 +14,11 @@ export type {
     AnalysisStatus,
     AnalysisType,
     Effort,
+    Mood,
     NotificationKind,
     PlannedSessionStatus,
     Rarity,
 } from './generated';
-
-export type Mood =
-    'blazing' | 'easy' | 'wobbly' | 'gassed' | 'overloaded' | 'chill';
 
 export type Tone = 'neutral' | 'positive' | 'warning' | 'alert';
 

@@ -5,7 +5,9 @@ use App\Enums\Rarity;
 use App\Services\Run\Story\Card\CardFacts;
 use OpenAI\Responses\Responses\CreateResponse;
 use OpenAI\Responses\Meta\MetaInformation;
+use App\Enums\PerformanceEvidenceKind;
 use App\Enums\SessionType;
+use App\Models\Activity;
 use App\Models\AI\Analysis;
 use App\Models\AI\TokenUsage;
 use App\Models\PerformanceEvidence;
@@ -511,7 +513,16 @@ function seedConfirmedEffort(User $user, int $meters, int $seconds, ?Carbon $on 
     $on ??= Carbon::today()->subMonths(4);
 
     return PerformanceEvidence::query()->create([
-        'user_id' => $user->id, 'kind' => 'test', 'distance_m' => $meters, 'elapsed_time_sec' => $seconds,
+        'user_id' => $user->id, 'activity_id' => Activity::factory()->for($user)->create()->id, 'kind' => 'test', 'distance_m' => $meters, 'elapsed_time_sec' => $seconds,
         'performed_on' => $on->toDateString(), 'confirmed_at' => $on->copy()->startOfDay(),
+    ]);
+}
+
+function runEvidence(User $user, Activity $activity, PerformanceEvidenceKind $kind, ?int $raceGoalId = null): PerformanceEvidence
+{
+    return PerformanceEvidence::query()->create([
+        'user_id' => $user->id, 'activity_id' => $activity->id, 'race_goal_id' => $raceGoalId, 'kind' => $kind,
+        'distance_m' => 5_000, 'elapsed_time_sec' => 1_200,
+        'performed_on' => Carbon::today()->toDateString(), 'confirmed_at' => now(),
     ]);
 }

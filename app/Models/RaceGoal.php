@@ -60,6 +60,10 @@ class RaceGoal extends Model
     /** @use HasFactory<RaceGoalFactory> */
     use HasFactory;
 
+    public const int MIN_GOAL_TIME_SEC = 300;
+
+    public const int MAX_GOAL_TIME_SEC = 259_200;
+
     #[Override]
     protected static function booted(): void
     {

@@ -9,6 +9,7 @@ use App\Models\AI\Analysis;
 use App\Models\StoryLine;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
+use App\Enums\Mood;
 
 /**
  * Composite read for a run's post-run note: the mood comes from the
@@ -44,7 +45,7 @@ class PostRunNoteReader
             return null;
         }
 
-        return ['oneline' => $speech, 'mood' => $mood];
+        return ['oneline' => $speech, 'mood' => $mood->value];
     }
 
     /**
@@ -115,6 +116,7 @@ class PostRunNoteReader
             ->where('kind', StoryLine::KIND_POST_RUN)
             ->whereIn('activity_id', $activityIds)
             ->pluck('mood', 'activity_id')
+            ->map(fn (Mood $mood): string => $mood->value)
             ->all();
     }
 }

@@ -26,7 +26,7 @@ afterEach(fn () => Carbon::setTestNow());
 
 it('presents the requested target beside the supported effort and the event history', function (): void {
     PerformanceEvidence::query()->create([
-        'user_id' => $this->user->id, 'kind' => 'test', 'distance_m' => 10_000, 'elapsed_time_sec' => 4200,
+        'user_id' => $this->user->id, 'activity_id' => Activity::factory()->for($this->user)->create()->id, 'kind' => 'test', 'distance_m' => 10_000, 'elapsed_time_sec' => 4200,
         'performed_on' => Carbon::today()->subWeek(), 'confirmed_at' => now(),
     ]);
     $race = $this->races->submit($this->user, ['race_date' => Carbon::today()->addWeeks(4)->toDateString(), 'distance_m' => 10_000, 'goal_time_sec' => 3000, 'name' => null], RaceIntent::Update);

@@ -29,6 +29,7 @@ import { SkeletonRows } from '@/components/ui/Skeleton';
 import { appLayout } from '@/layouts/appLayout';
 import { revealDelay } from '@/lib/styles';
 import { pillButtonVariants } from '@/lib/variants';
+import { FEED_WEEKS_PER_PAGE } from '@/types/generated';
 
 import {
     groupByWeek,
@@ -57,9 +58,6 @@ interface RunsIndexProps {
     weeklySnapshots?: ReadonlyArray<WeeklySnapshotWithRecap>;
 }
 
-/** Week sections each "load older weeks" press adds — mirrors FeedFilters::WEEKS_PER_PAGE. */
-const WEEKS_PER_PAGE = 2;
-
 export default function RunsIndex({
     runs = [],
     notes = {},
@@ -68,7 +66,7 @@ export default function RunsIndex({
     weekFilter = null,
     rangeAutoWidened = false,
     lifetime,
-    weeksShown = WEEKS_PER_PAGE,
+    weeksShown = FEED_WEEKS_PER_PAGE,
     hasOlderWeeks = false,
     weeklySnapshots = [],
 }: Readonly<RunsIndexProps>) {
@@ -152,7 +150,7 @@ export default function RunsIndex({
 function LoadOlderWeeks({ weeksShown }: Readonly<{ weeksShown: number }>) {
     const { url } = usePage();
     const next = new URL(url, 'http://history.local');
-    next.searchParams.set('weeks', String(weeksShown + WEEKS_PER_PAGE));
+    next.searchParams.set('weeks', String(weeksShown + FEED_WEEKS_PER_PAGE));
 
     return (
         <div className="flex justify-center">

@@ -10,11 +10,11 @@ use App\Services\Run\Metrics\TrainingFormStatus;
 class VibeMatrix
 {
     /**
-     * @param  array{form: float, form_status: string, days_since_run: ?int, recent_pr: bool, decoupling_avg: ?float}  $signals
+     * @param  array{form: float, form_status: TrainingFormStatus, days_since_run: ?int, recent_pr: bool, decoupling_avg: ?float}  $signals
      */
     public function pick(array $signals): string
     {
-        $status = TrainingFormStatus::tryFrom($signals['form_status']);
+        $status = $signals['form_status'];
         $daysSince = $signals['days_since_run'];
         $hasRecentPr = $signals['recent_pr'];
         $decoupling = $signals['decoupling_avg'];

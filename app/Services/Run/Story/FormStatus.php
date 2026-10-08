@@ -42,8 +42,8 @@ final class FormStatus
      */
     private static function balance(array $load): LoadBalance
     {
-        $status = is_string($load['form_status'] ?? null) ? TrainingFormStatus::tryFrom($load['form_status']) : null;
+        $status = $load['form_status'] ?? null;
 
-        return $status?->loadBalance() ?? LoadBalance::Steady;
+        return $status instanceof TrainingFormStatus ? $status->loadBalance() : LoadBalance::Steady;
     }
 }

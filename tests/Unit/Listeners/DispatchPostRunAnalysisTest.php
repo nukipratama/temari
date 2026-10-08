@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\Mood;
 use App\Models\User;
 use App\Events\ActivityIngested;
 use App\Jobs\AI\AnalyzeActivityJob;
@@ -1033,9 +1034,9 @@ it('refreshes the run mood once its plan day is graded, before narration reads i
     $activity = analyzedActivity();
     PlannedSession::factory()->for($activity->user)->create(['date' => '2026-05-10', 'session_type' => SessionType::Tempo]);
     $activity->detail->update(['stream_summary' => ['time_in_zone_pct' => ['Z2' => 25.0, 'Z3' => 45.0, 'Z4' => 30.0], 'negative_split' => false], 'weather_temp_c' => 24]);
-    StoryLine::query()->create(['user_id' => $activity->user_id, 'activity_id' => $activity->id, 'kind' => StoryLine::KIND_POST_RUN, 'mood' => Temari::MOOD_ENTENG, 'sigil_pattern' => 'orct']);
+    StoryLine::query()->create(['user_id' => $activity->user_id, 'activity_id' => $activity->id, 'kind' => StoryLine::KIND_POST_RUN, 'mood' => Mood::Easy, 'sigil_pattern' => 'orct']);
 
     fire($activity);
 
-    expect($activity->postRunStoryLine()->first()->mood)->toBe(Temari::MOOD_NYALA);
+    expect($activity->postRunStoryLine()->first()->mood)->toBe(Mood::Blazing);
 });

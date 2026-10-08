@@ -28,6 +28,12 @@ class TelegramReplies
             . 'in Temari and tap "Connect Telegram" again, and I\'ll send you a fresh one.';
     }
 
+    public static function linkedElsewhere(): string
+    {
+        return "This chat's already linked to another temari account. Disconnect Telegram in that "
+            . "account's settings first, then connect it from yours again.";
+    }
+
     public static function generic(): string
     {
         return 'Hey! I\'m temari. Open Temari and tap "Connect Telegram" to link up.';

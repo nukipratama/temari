@@ -2,19 +2,19 @@
 
 declare(strict_types=1);
 
+use App\Enums\Mood;
 use App\Actions\Run\Story\RecomputeCardClaimsAction;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\RunCard;
 use App\Models\StoryLine;
 use App\Models\User;
-use App\Services\Run\Story\Temari;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 
 uses(RefreshDatabase::class);
 
-function claimedRun(User $user, string $date, int $secPerKm, bool $prSet, string $mood): Activity
+function claimedRun(User $user, string $date, int $secPerKm, bool $prSet, Mood $mood): Activity
 {
     $activity = Activity::factory()->for($user)->analyzed()->create();
     $perKm = [];
@@ -40,22 +40,22 @@ function claimedRun(User $user, string $date, int $secPerKm, bool $prSet, string
 
 it('clears a phantom PR and its frozen mood, and earns the flag for a run that really set one', function (): void {
     $user = User::factory()->create();
-    $genuine = claimedRun($user, '2025-11-26 06:00:00', 360, false, Temari::MOOD_ADEM);
-    $phantom = claimedRun($user, '2026-09-17 17:39:00', 434, true, Temari::MOOD_NYALA);
+    $genuine = claimedRun($user, '2025-11-26 06:00:00', 360, false, Mood::Chill);
+    $phantom = claimedRun($user, '2026-09-17 17:39:00', 434, true, Mood::Blazing);
 
     $result = app(RecomputeCardClaimsAction::class)($user);
 
     expect($result)->toBe(['cleared' => [$phantom->id], 'earned' => [$genuine->id], 'moods' => 2])
         ->and($phantom->runCard()->value('pr_set'))->toBeFalse()
-        ->and($phantom->postRunStoryLine()->value('mood'))->not->toBe(Temari::MOOD_NYALA)
+        ->and($phantom->postRunStoryLine()->value('mood'))->not->toBe(Mood::Blazing)
         ->and($genuine->runCard()->value('pr_set'))->toBeTrue()
-        ->and($genuine->postRunStoryLine()->value('mood'))->toBe(Temari::MOOD_NYALA);
+        ->and($genuine->postRunStoryLine()->value('mood'))->toBe(Mood::Blazing);
 });
 
 it('keeps a PR earned on its day after a later run beats it, and changes nothing on a second pass', function (): void {
     $user = User::factory()->create();
-    $earned = claimedRun($user, '2026-01-01 06:00:00', 360, true, Temari::MOOD_NYALA);
-    $better = claimedRun($user, '2026-03-01 06:00:00', 330, true, Temari::MOOD_NYALA);
+    $earned = claimedRun($user, '2026-01-01 06:00:00', 360, true, Mood::Blazing);
+    $better = claimedRun($user, '2026-03-01 06:00:00', 330, true, Mood::Blazing);
 
     $action = app(RecomputeCardClaimsAction::class);
 

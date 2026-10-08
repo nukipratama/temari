@@ -374,7 +374,7 @@ class WeeklyAggregator
             'atl_7d' => $summary['atl_7d'] ?? null,
             'ctl_42d' => $summary['ctl_42d'] ?? null,
             'form' => $summary['form'] ?? null,
-            'form_status' => $summary['form_status'] ?? null,
+            'form_status' => ($summary['form_status'] ?? null)?->value,
             'avg_decoupling' => $avgDecoupling,
             'avg_decoupling_v2' => $avgDecouplingV2,
             'monotony' => $summary['monotony'] ?? null,

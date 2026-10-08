@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Mockery\MockInterface;
 use App\Enums\StravaSyncSource;
 use App\Enums\StravaReadSource;
+use App\Enums\StravaReadPriority;
 use App\Jobs\Strava\IngestActivityJob;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
@@ -355,6 +356,20 @@ it('skips re-ingest on a duplicate webhook delivery for an already-analyzed acti
     expect($result)->toBeFalse()
         ->and(Activity::query()->where('user_id', $user->id)->where('strava_external_id', 9_010)->count())->toBe(1);
     Queue::assertNotPushed(IngestActivityJob::class);
+});
+
+it('queues a live detail ingest for a run the poll stored only as a summary', function (): void {
+    $user = User::factory()->create();
+    StravaConnection::factory()->for($user)->create();
+    $summary = Activity::factory()->for($user)->summaryOnly()->create(['strava_external_id' => 9_012]);
+
+    $fetcher = Mockery::mock(ActivityFetcher::class);
+    $fetcher->shouldNotReceive('fetchNewSummaries');
+
+    $result = orchestrator($fetcher)->syncSingleActivity($user, 9_012);
+
+    expect($result)->toBeTrue();
+    Queue::assertPushed(IngestActivityJob::class, fn (IngestActivityJob $job): bool => $job->activityId === $summary->id && $job->priority === StravaReadPriority::Live);
 });
 
 it('still dispatches re-ingest for a stub (un-analyzed) activity on a webhook delivery', function (): void {

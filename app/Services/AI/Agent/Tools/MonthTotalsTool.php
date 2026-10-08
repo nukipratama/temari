@@ -9,7 +9,6 @@ use App\Models\PersonalRecord;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\Run\Metrics\DistanceFormatter;
-use App\Services\Run\Metrics\LoadBalance;
 use App\Services\Run\Story\MoodMix;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -129,7 +128,7 @@ final class MonthTotalsTool extends NoArgumentTool
         return [
             'ctl_start' => $snapshots->first()->ctl_42d,
             'ctl_end' => $snapshots->last()->ctl_42d,
-            'load_balance_end' => LoadBalance::fromStored($snapshots->last()->form_status)?->value,
+            'load_balance_end' => $snapshots->last()->form_status?->loadBalance()->value,
         ];
     }
 }

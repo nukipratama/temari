@@ -47,6 +47,21 @@ it('reads a high decoupling on a hot day as heat rather than lost fitness', func
         ->and($answer)->toContain('shedding heat');
 });
 
+it('blames the heat from the hot-run threshold up, not a degree below it', function (int $tempC, bool $heat): void {
+    $answer = RuleBasedRunAnswer::for(
+        answerDetail([
+            'drift_metric_version' => 2,
+            'steady_effort_decoupling_pct' => 14.2,
+        ], ['weather_temp_c' => $tempC]),
+        RunQuestionTopic::Decoupling->question(),
+    );
+
+    expect(str_contains($answer, 'shedding heat'))->toBe($heat);
+})->with([
+    '30 degrees' => [30, false],
+    '31 degrees' => [31, true],
+]);
+
 it('names the slowest kilometre and its pace', function (): void {
     $answer = RuleBasedRunAnswer::for(
         answerDetail(['per_km' => [

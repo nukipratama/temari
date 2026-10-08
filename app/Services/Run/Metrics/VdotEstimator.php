@@ -8,6 +8,7 @@ use App\Actions\Run\Metrics\ResolveDistanceRecordsAction;
 use App\Actions\Run\Metrics\ResolveHardEffortsAction;
 use App\Actions\Run\Plan\ResolveActiveRaceAction;
 use App\Enums\IntentVerdict;
+use App\Enums\PerformanceEvidenceKind;
 use App\Enums\RaceSupport;
 use App\Enums\SessionType;
 use App\Models\FitnessAnchor;
@@ -16,6 +17,7 @@ use App\Models\PersonalRecord;
 use App\Models\PlannedSession;
 use App\Models\RaceGoal;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
@@ -618,6 +620,7 @@ class VdotEstimator
     private function evidenceForUser(User $user): Collection
     {
         return $this->evidenceByUser[$user->id] ??= PerformanceEvidence::query()->where('user_id', $user->id)
+            ->where(fn (Builder $query) => $query->where('kind', '!=', PerformanceEvidenceKind::Test)->orWhereNotNull('activity_id'))
             ->orderByDesc('performed_on')->orderByDesc('id')->get();
     }
 

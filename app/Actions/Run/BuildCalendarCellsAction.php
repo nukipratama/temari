@@ -18,6 +18,7 @@ use App\Services\Run\Metrics\PaceCalculator;
 use App\Services\Run\Metrics\RunEffort;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use App\Enums\Mood;
 
 /**
  * Builds the per-day cell grid for the /calendar month view. Each cell carries
@@ -250,6 +251,7 @@ class BuildCalendarCellsAction
             ->where('kind', StoryLine::KIND_POST_RUN)
             ->whereIn('activity_id', $activityIds)
             ->pluck('mood', 'activity_id')
+            ->map(fn (Mood $mood): string => $mood->value)
             ->all();
     }
 

@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\Mood;
 use App\Enums\Rarity;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
@@ -119,14 +120,14 @@ it('prefers the post-run story line mood', function (): void {
         'mood' => 'wobbly',
     ]);
 
-    expect(app(CardPresenter::class)->mood($card->fresh()))->toBe('wobbly');
+    expect(app(CardPresenter::class)->mood($card->fresh()))->toBe(Mood::Wobbly);
 });
 
 it('falls back to the derived mood when there is no post-run story line', function (): void {
     $user = User::factory()->create();
     $card = presenterCard($user, Rarity::Common);
 
-    expect(app(CardPresenter::class)->mood($card))->toBeString();
+    expect(app(CardPresenter::class)->mood($card))->toBeInstanceOf(Mood::class);
 });
 
 it('shapes the card flavor analysis payload', function (): void {

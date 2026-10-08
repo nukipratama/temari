@@ -8,6 +8,7 @@ use App\Models\ActivityDetail;
 use App\Services\Run\Metrics\DistanceFormatter;
 use App\Services\Run\Metrics\PaceFormatter;
 use App\Services\Run\Metrics\StreamSummary;
+use App\Services\Weather\WeatherSnapshot;
 
 /**
  * The deterministic answer served to the demo account instead of an LLM call,
@@ -59,7 +60,7 @@ final class RuleBasedRunAnswer
         }
 
         $pct = self::oneDecimal($value);
-        $heat = ($detail->weather_temp_c ?? 0) >= 30
+        $heat = ($detail->weather_temp_c ?? 0) >= WeatherSnapshot::HOT_RUN_TEMP_C
             ? " it was {$detail->weather_temp_c} degrees out, so a chunk of that is your body shedding heat rather than your base slipping."
             : ' cool conditions, so that one is about the base rather than the weather.';
 

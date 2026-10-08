@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Enums\RaceAmbitionState;
+use App\Models\Activity;
 use App\Models\PerformanceEvidence;
 use App\Models\RaceGoal;
 use App\Models\User;
@@ -23,7 +24,7 @@ afterEach(fn () => Carbon::setTestNow());
 function tenKEvidence(User $user, int $seconds): void
 {
     PerformanceEvidence::query()->create([
-        'user_id' => $user->id, 'kind' => 'test', 'distance_m' => 10_000, 'elapsed_time_sec' => $seconds,
+        'user_id' => $user->id, 'activity_id' => Activity::factory()->for($user)->create()->id, 'kind' => 'test', 'distance_m' => 10_000, 'elapsed_time_sec' => $seconds,
         'performed_on' => Carbon::today()->subWeek(), 'confirmed_at' => now(),
     ]);
 }
@@ -86,7 +87,7 @@ it('does not classify a race beyond the marathon', function (): void {
 function evidenceAt(User $user, int $distanceM, int $seconds): void
 {
     PerformanceEvidence::query()->create([
-        'user_id' => $user->id, 'kind' => 'test', 'distance_m' => $distanceM, 'elapsed_time_sec' => $seconds,
+        'user_id' => $user->id, 'activity_id' => Activity::factory()->for($user)->create()->id, 'kind' => 'test', 'distance_m' => $distanceM, 'elapsed_time_sec' => $seconds,
         'performed_on' => Carbon::today()->subWeek(), 'confirmed_at' => now(),
     ]);
 }
@@ -129,7 +130,7 @@ it('names the effort the supported time rests on', function (): void {
 
     $ambition = $this->assessor->assess($this->user, tenKRace($this->user, 4000));
 
-    expect($ambition->basis)->toBe(['distance_m' => 10_000, 'performed_on' => '2026-09-24', 'activity_id' => null]);
+    expect($ambition->basis)->toBe(['distance_m' => 10_000, 'performed_on' => '2026-09-24', 'activity_id' => PerformanceEvidence::query()->sole()->activity_id]);
 });
 
 it('sets the stepping stone 3 percent faster than supported for an unsupported goal only', function (int $goalSec, bool $steppingStone): void {
@@ -149,7 +150,7 @@ it('sets the stepping stone 3 percent faster than supported for an unsupported g
 it('gives a low-evidence or unknown goal no stepping stone', function (): void {
     $unknown = $this->assessor->assess($this->user, tenKRace($this->user, 3000));
     PerformanceEvidence::query()->create([
-        'user_id' => $this->user->id, 'kind' => 'test', 'distance_m' => 5_000, 'elapsed_time_sec' => 2000,
+        'user_id' => $this->user->id, 'activity_id' => Activity::factory()->for($this->user)->create()->id, 'kind' => 'test', 'distance_m' => 5_000, 'elapsed_time_sec' => 2000,
         'performed_on' => Carbon::today()->subWeek(), 'confirmed_at' => now(),
     ]);
     $lowEvidence = $this->assessor->assess($this->user, RaceGoal::factory()->for($this->user)->create([
@@ -167,7 +168,7 @@ it('moves the stepping stone with the supported time', function (): void {
     $race = tenKRace($this->user, 3000);
     $before = $this->assessor->assess($this->user, $race);
     PerformanceEvidence::query()->create([
-        'user_id' => $this->user->id, 'kind' => 'test', 'distance_m' => 10_000, 'elapsed_time_sec' => 3900,
+        'user_id' => $this->user->id, 'activity_id' => Activity::factory()->for($this->user)->create()->id, 'kind' => 'test', 'distance_m' => 10_000, 'elapsed_time_sec' => 3900,
         'performed_on' => Carbon::today(), 'confirmed_at' => now(),
     ]);
     app()->forgetInstance(VdotEstimator::class);

@@ -264,7 +264,8 @@ narrate them once the window closes, which is why a pending recap row is not a b
 flight, then resumes the earliest stalled link per user per family. **Every dispatch is
 `invalidate: false`**, so recovery never re-bills content that already exists, and every sweep
 covers only [`RecentlyActiveUsers`](../../app/Actions/AI/RecentlyActiveUsers.php), so demo and
-athletes away from the app are excluded. A stalled weekly or monthly recap link that is past the
+athletes away from the app are excluded. The plan clamp voice resumes only today's row, and the
+plan season voice only the athlete's current season. A stalled weekly or monthly recap link that is past the
 backfill age cutoff, or whose period closed before the athlete connected, is filled with
 `requestRuleBased()` instead of being resumed, so recovery never bills the LLM for history Temari
 never watched; a too-old or pre-connect weekly link still waits for its week to finish hydrating

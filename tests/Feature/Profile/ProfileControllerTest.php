@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\Mood;
 use App\Enums\PlanPhase;
 use App\Enums\SessionType;
 use App\Models\AI\Analysis;
@@ -17,7 +18,6 @@ use App\Models\User;
 use App\Services\AI\AnalysisType;
 use App\Services\Run\LifetimeStats;
 use App\Services\Run\Plan\SeasonService;
-use App\Services\Run\Story\Temari;
 use App\Services\Run\Story\Vibe;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -100,7 +100,7 @@ it('poses the hero to the daily vibe, collapsed onto a run mood', function (): v
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
             ->component('Profile')
-            ->where('mood', Temari::MOOD_NYALA));
+            ->where('mood', Mood::Blazing->value));
 });
 
 it('rests the hero on the chill pose for an athlete with no runs', function (): void {
@@ -110,7 +110,7 @@ it('rests the hero on the chill pose for an athlete with no runs', function (): 
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
             ->component('Profile')
-            ->where('mood', Temari::MOOD_ADEM));
+            ->where('mood', Mood::Chill->value));
 });
 
 it('paints identity, stats and the voice while the heavy blocks stay deferred', function (): void {

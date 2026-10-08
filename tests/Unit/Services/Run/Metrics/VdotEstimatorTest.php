@@ -332,7 +332,7 @@ it('keeps old confirmed evidence available with stale confidence', function (): 
 it('anchors fitness to confirmed races and tests with explicit provenance', function (): void {
     $user = User::factory()->create();
     PerformanceEvidence::query()->create([
-        'user_id' => $user->id, 'kind' => 'test', 'distance_m' => 5000, 'elapsed_time_sec' => 1500,
+        'user_id' => $user->id, 'activity_id' => Activity::factory()->for($user)->create()->id, 'kind' => 'test', 'distance_m' => 5000, 'elapsed_time_sec' => 1500,
         'performed_on' => Carbon::today()->subWeek(), 'confirmed_at' => now(),
     ]);
 
@@ -501,4 +501,14 @@ it('exposes the fall-off it projected with and whether it was fitted', function 
         ]))
         ->and($singleEstimate['k_fitted'])->toBeFalse()
         ->and($singleEstimate['k'])->toBe(FallOffExponent::DEFAULT_UP_TO_10K);
+});
+
+it('ignores a time-trial row whose run is gone', function (): void {
+    $user = User::factory()->create();
+    PerformanceEvidence::query()->create([
+        'user_id' => $user->id, 'activity_id' => null, 'kind' => 'test', 'distance_m' => 5000, 'elapsed_time_sec' => 1500,
+        'performed_on' => Carbon::today()->subWeek(), 'confirmed_at' => now(),
+    ]);
+
+    expect($this->estimator->estimate($user))->toBeNull();
 });

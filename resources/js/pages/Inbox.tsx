@@ -16,9 +16,7 @@ import { appLayout } from '@/layouts/appLayout';
 import { postJson } from '@/lib/http';
 import { useTodayIso } from '@/lib/pace';
 import { pillButtonVariants } from '@/lib/variants';
-
-/** Rows each "load older" press adds — mirrors InboxController::PER_PAGE. */
-const PER_PAGE = 20;
+import { INBOX_PER_PAGE } from '@/types/generated';
 
 interface InboxProps {
     notifications?: InboxItem[];
@@ -201,7 +199,7 @@ function LoadOlder({ shown }: Readonly<{ shown: number }>) {
     return (
         <div className="mt-1 flex justify-center">
             <Link
-                href={`/inbox?shown=${shown + PER_PAGE}`}
+                href={`/inbox?shown=${shown + INBOX_PER_PAGE}`}
                 preserveScroll
                 preserveState
                 only={['notifications', 'shown', 'hasOlder']}
