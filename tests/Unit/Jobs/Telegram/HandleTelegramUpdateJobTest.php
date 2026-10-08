@@ -9,6 +9,7 @@ use App\Models\TelegramLinkTokenUse;
 use App\Models\User;
 use App\Services\Telegram\TelegramClient;
 use App\Services\Telegram\TelegramLinkToken;
+use App\Services\Telegram\TelegramReplies;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Http;
@@ -211,4 +212,38 @@ it('clears a revoked connection from another user before re-linking the same cha
         'chat_id' => 555,
         'revoked_at' => null,
     ]);
+});
+
+it('refuses a chat that is active on another account, leaving the token for a retry', function (): void {
+    $other = User::factory()->create();
+    TelegramConnection::factory()->for($other)->create(['chat_id' => 555, 'revoked_at' => null]);
+    $user = User::factory()->create();
+    $token = app(TelegramLinkToken::class)->mint($user->id);
+
+    runUpdate(startUpdate(555, $token));
+
+    expect(TelegramConnection::query()->where('chat_id', 555)->sole()->user_id)->toBe($other->id)
+        ->and(TelegramLinkTokenUse::query()->whereKey(hash('sha256', $token))->exists())->toBeFalse();
+    Http::assertSentCount(1);
+    Http::assertSent(fn ($request): bool => $request['chat_id'] === 555
+        && $request['text'] === TelegramReplies::linkedElsewhere());
+});
+
+it('replies the same way when another account claims the chat between the check and the link', function (): void {
+    $other = User::factory()->create();
+    $user = User::factory()->create();
+    $token = app(TelegramLinkToken::class)->mint($user->id);
+    $linkToken = Mockery::mock(TelegramLinkToken::class);
+    $linkToken->shouldReceive('userId')->with($token)->andReturn($user->id);
+    $linkToken->shouldReceive('consume')->with($token)->andReturnUsing(function () use ($other): bool {
+        TelegramConnection::factory()->for($other)->create(['chat_id' => 555, 'revoked_at' => null]);
+
+        return true;
+    });
+
+    new HandleTelegramUpdateJob(startUpdate(555, $token))->handle(app(TelegramClient::class), $linkToken);
+
+    expect(TelegramConnection::query()->where('user_id', $user->id)->exists())->toBeFalse();
+    Http::assertSent(fn ($request): bool => $request['chat_id'] === 555
+        && $request['text'] === TelegramReplies::linkedElsewhere());
 });
