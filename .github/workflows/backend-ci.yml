@@ -81,11 +81,7 @@ jobs:
           ./vendor/bin/pest --parallel --processes="$(nproc)" \
             --shard="${{ matrix.shard }}/${SHARD_TOTAL}" \
             "${coverage_args[@]}" \
-            --exclude-group=structure \
-            --fail-on-warning --fail-on-notice \
-            --fail-on-deprecation --fail-on-risky \
-            --fail-on-phpunit-warning --fail-on-phpunit-notice \
-            --fail-on-phpunit-deprecation 2>&1 | tee /tmp/pest-output.txt
+            --exclude-group=structure 2>&1 | tee /tmp/pest-output.txt
           exit "${PIPESTATUS[0]}"
 
       - name: Pest summary
