@@ -128,9 +128,7 @@ class ReverseGeocodeAction
             return $this->formatAddress($payload['address']) ?? ReverseGeocodeOutcome::NoAddress;
         } catch (Throwable $e) {
             Log::info('nominatim resolve failed', [
-                'lat' => $lat,
-                'lng' => $lng,
-                'error' => $e->getMessage(),
+                'error' => preg_replace('/\?\S*/', '', $e->getMessage()),
             ]);
 
             return ReverseGeocodeOutcome::TransientFailure;

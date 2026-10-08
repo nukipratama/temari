@@ -130,10 +130,8 @@ class OpenMeteoClient
             );
         } catch (Throwable $e) {
             Log::warning('open-meteo request failed', [
-                'lat' => $latitude,
-                'lng' => $longitude,
                 'started_at' => $startedAt->toIso8601String(),
-                'error' => $e->getMessage(),
+                'error' => preg_replace('/\?\S*/', '', $e->getMessage()),
             ]);
 
             return null;
@@ -142,8 +140,6 @@ class OpenMeteoClient
         if ($response->failed()) {
             Log::warning('open-meteo request failed', [
                 'status' => $response->status(),
-                'lat' => $latitude,
-                'lng' => $longitude,
                 'hour' => $startedAt->format('Y-m-d\TH:00'),
             ]);
 

@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 use App\Actions\Geo\ReverseGeocodeAction;
 use App\Services\Geo\Exceptions\NominatimRateSlotUnavailableException;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 beforeEach(function (): void {
     Cache::flush();
@@ -56,6 +58,23 @@ it('returns null when the API throws', function (): void {
     ]);
 
     expect(new ReverseGeocodeAction()(-6.2, 106.8))->toBeNull();
+});
+
+it('logs a failed lookup without the coordinate its error message carries', function (): void {
+    Log::spy();
+    Http::fake(['nominatim.openstreetmap.org/*' => fn () => throw new ConnectionException(
+        'cURL error 28: Operation timed out (see https://curl.se/libcurl/c/libcurl-errors.html) for https://nominatim.openstreetmap.org/reverse?lat=12.3456789&lon=98.7654321&format=jsonv2',
+    )]);
+
+    expect(new ReverseGeocodeAction()(12.3456789, 98.7654321))->toBeNull();
+
+    Log::shouldHaveReceived('info')
+        ->once()
+        ->withArgs(fn (string $message, array $context): bool => $message === 'nominatim resolve failed'
+            && array_keys($context) === ['error']
+            && str_contains($context['error'], 'cURL error 28')
+            && ! str_contains($context['error'], '12.3456789')
+            && ! str_contains($context['error'], '98.7654321'));
 });
 
 it('returns cached locations without claiming another request slot', function (): void {

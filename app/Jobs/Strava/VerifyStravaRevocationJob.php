@@ -62,7 +62,7 @@ class VerifyStravaRevocationJob implements ShouldQueue
         // a real revocation. Ignore it. Rate-limit / circuit-open / transport
         // errors bubble up so the job retries later.
         Log::warning('strava.webhook deauthorization ignored — grant still live', [
-            'strava_athlete_id' => $connection->strava_athlete_id,
+            'user_id' => $connection->user_id,
             'source' => $this->source,
         ]);
     }
@@ -75,7 +75,7 @@ class VerifyStravaRevocationJob implements ShouldQueue
 
         Pulse::record('strava_revoked', $this->source)->count();
         Log::info("strava.webhook {$this->source} — connection revoked (verified)", [
-            'strava_athlete_id' => $connection->strava_athlete_id,
+            'user_id' => $connection->user_id,
         ]);
 
         StravaSyncLog::log(
