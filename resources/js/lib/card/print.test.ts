@@ -6,6 +6,7 @@ import {
     renderPrint,
     resetEmbeddedFonts,
 } from '@/lib/card/print';
+import { resetMeasureContext } from '@/lib/card/svg';
 import {
     ALL_FACTS,
     CARD_ASPECTS,
@@ -121,6 +122,7 @@ describe('rasterising', () => {
         });
         vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({
             drawImage: vi.fn(),
+            measureText: (value: string) => ({ width: value.length * 600 }),
         } as never);
         vi.spyOn(HTMLCanvasElement.prototype, 'toBlob').mockImplementation(
             (callback) => callback(new Blob(['png'], { type: 'image/png' })),
@@ -137,6 +139,7 @@ describe('rasterising', () => {
     afterEach(() => {
         vi.restoreAllMocks();
         vi.unstubAllGlobals();
+        resetMeasureContext();
     });
 
     it('waits for the page fonts before it measures and draws', async () => {

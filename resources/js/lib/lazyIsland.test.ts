@@ -2,17 +2,17 @@ import { render, screen } from '@testing-library/react';
 import { createElement, Suspense } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { reloadDocument } from '@/lib/reloadDocument';
+
 import { lazyIsland, recoverFromChunkFailure } from './lazyIsland';
 
-const reload = vi.fn();
+vi.mock('@/lib/reloadDocument', () => ({ reloadDocument: vi.fn() }));
+
+const reload = vi.mocked(reloadDocument);
 
 beforeEach(() => {
     reload.mockClear();
     window.sessionStorage.clear();
-    Object.defineProperty(window, 'location', {
-        configurable: true,
-        value: { ...window.location, reload },
-    });
 });
 
 afterEach(() => {

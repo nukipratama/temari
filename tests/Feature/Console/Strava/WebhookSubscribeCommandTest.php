@@ -91,10 +91,10 @@ it('surfaces a Strava error when create is rejected', function (): void {
         'www.strava.com/api/v3/push_subscriptions' => Http::response(['errors' => 'bad'], 400),
     ]);
 
-    $this->artisan('strava:webhook-subscribe', ['--action' => 'create'])
-        ->expectsOutputToContain('Strava rejected the subscription')
-        ->doesntExpectOutputToContain('Cloudflare')
-        ->assertFailed();
+    expect(Artisan::call('strava:webhook-subscribe', ['--action' => 'create']))->toBe(1);
+    $output = Artisan::output();
+    expect($output)->toContain('Strava rejected the subscription');
+    expect($output)->not->toContain('Cloudflare');
 });
 
 it('hints at the edge when self-verify passes but Strava cannot GET a 200', function (): void {

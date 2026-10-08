@@ -17,11 +17,9 @@ use App\Models\AI\TokenUsage;
 use App\Models\Analytics\StravaSyncLog;
 use App\Services\AI\ChainLink;
 use App\Services\AI\ChatCallOptions;
-use App\Services\AI\RuleBased\RuleBasedNarrationFiller;
 use App\Actions\AI\RecordTokenUsageAction;
 use App\Services\Geo\ResolvedLocation;
 use App\Services\Run\FeedFilters;
-use App\Services\Run\Metrics\PaceFormatter;
 use App\Livewire\Pulse\Concerns\SumsPulseTotals;
 use App\Services\AI\Narrators\Concerns\ReadsPreviousActivityNarrative;
 use App\Services\AI\Narrators\Concerns\ReadsPreviousDailyNarrative;
@@ -40,14 +38,26 @@ use Illuminate\Support\ServiceProvider;
  *
  * Exemptions below are the documented exceptions to 1:1, not a TODO list:
  * abstract/interface/enum/exception/provider types carry no standalone test, and
- * a few families are intentionally covered by aggregate suites.
+ * a few families are intentionally covered by aggregate suites. An exempt class
+ * that has its own {Name}Test.php fails the guard, so a stale exemption cannot
+ * outlive the test that replaced it.
+ *
+ * `database/seeders/Demo` is outside the guard (it scans `app/`); it is covered end
+ * to end by DemoSeedCommandTest.
  */
 it('has a test class for every concrete app class', function (): void {
-    // Whole namespaces covered by an aggregate suite rather than per-class files.
-    $exemptNamespaces = [
-        'App\\Services\\AI\\Narrators\\',  // NarratorsCoverageTest
-        'App\\Services\\AI\\Agent\\Tools\\', // AgentToolsCoverageTest
-        'App\\Jobs\\AI\\',                  // JobsCoverageTest (+ AnalyzeActivityJobTest, AnalyzeRowJobTest)
+    // Whole namespaces covered by aggregate suites; each concrete class must be named in one of them or have its own {Name}Test.php.
+    $aggregateSuites = [
+        'App\\Services\\AI\\Narrators\\' => ['Unit/Services/AI/Narrators/NarratorsCoverageTest.php'],
+        'App\\Services\\AI\\Agent\\Tools\\' => [
+            'Unit/Services/AI/Agent/AgentToolsCoverageTest.php',
+            'Unit/Services/AI/Narrators/NarratorsCoverageTest.php',
+        ],
+        'App\\Jobs\\AI\\' => [
+            'Unit/Jobs/AI/JobsCoverageTest.php',
+            'Unit/Jobs/AI/AnalyzeActivityJobTest.php',
+            'Unit/Jobs/AI/AnalyzeRowJobTest.php',
+        ],
     ];
 
     // Concrete classes intentionally without their own {Name}Test file.
@@ -71,11 +81,9 @@ it('has a test class for every concrete app class', function (): void {
         TokenUsage::class,              // StructuredChatCallerTest
         ContentFilterEvent::class,      // AnalyzeRowJobTest
         RecordTokenUsageAction::class, // StructuredChatCallerTest
-        RuleBasedNarrationFiller::class, // DemoSeedCommandTest
-        PaceFormatter::class,           // exercised across pace tests
         StravaSyncLog::class,           // SyncOrchestratorTest
         SumsPulseTotals::class,         // trait, exercised via AiPipelineHealthTest + StravaHealthTest
-        ReadsPreviousActivityNarrative::class, // trait, exercised via PostRunSpeechNarratorTest + RunInsightNarratorTest
+        ReadsPreviousActivityNarrative::class, // trait, exercised via the PostRunSpeech and RunInsight cases in NarratorsCoverageTest
         ReadsPreviousDailyNarrative::class, // trait, exercised via the BriefingMascotVoice cases in NarratorsCoverageTest
         RevokesConnectionOnPermanentFailure::class, // trait, exercised via TelegramChannelTest
         ConfirmsPermanentRemoval::class, // trait, exercised via RemoveAthleteCommandTest + UserRemoveCommandTest
@@ -90,6 +98,35 @@ it('has a test class for every concrete app class', function (): void {
         ->unique()
         ->flip();
 
+    $staleExemptions = collect($exemptClasses)
+        ->filter(fn (string $class): bool => $testedBasenames->has(class_basename($class)))
+        ->values();
+
+    expect($staleExemptions->all())->toBe(
+        [],
+        "These exempt classes now have their own {Name}Test.php. Remove them from the exemption list in this file:\n  ".$staleExemptions->implode("\n  "),
+    );
+
+    $unnamed = collect($aggregateSuites)
+        ->flatMap(function (array $suites, string $prefix) use ($testedBasenames): array {
+            $source = collect($suites)->map(fn (string $suite): string => File::get(base_path('tests/'.$suite)))->implode("\n");
+
+            return collect(File::allFiles(app_path(str_replace('\\', '/', substr($prefix, strlen('App\\'))))))
+                ->filter(fn ($file): bool => $file->getExtension() === 'php')
+                ->map(fn ($file): string => $prefix.str_replace(['/', '.php'], ['\\', ''], $file->getRelativePathname()))
+                ->filter(fn (string $class): bool => class_exists($class) && ! new ReflectionClass($class)->isAbstract())
+                ->reject(fn (string $class): bool => new ReflectionClass($class)->isEnum() || is_subclass_of($class, Throwable::class))
+                ->reject(fn (string $class): bool => $testedBasenames->has(class_basename($class)))
+                ->reject(fn (string $class): bool => preg_match('/\b'.preg_quote(class_basename($class), '/').'\b/', $source) === 1)
+                ->all();
+        })
+        ->values();
+
+    expect($unnamed->all())->toBe(
+        [],
+        "These classes sit in an aggregate-suite namespace but no suite names them and they have no {Name}Test.php. Add a case to the suite:\n  ".$unnamed->implode("\n  "),
+    );
+
     $missing = collect(File::allFiles(app_path()))
         ->filter(fn ($file): bool => $file->getExtension() === 'php')
         ->map(function ($file): string {
@@ -98,7 +135,7 @@ it('has a test class for every concrete app class', function (): void {
             return 'App\\'.$relative;
         })
         ->filter(fn (string $class): bool => class_exists($class) || interface_exists($class) || trait_exists($class))
-        ->reject(fn (string $class): bool => array_any($exemptNamespaces, fn ($prefix) => str_starts_with($class, (string) $prefix)))
+        ->reject(fn (string $class): bool => array_any(array_keys($aggregateSuites), fn ($prefix) => str_starts_with($class, (string) $prefix)))
         ->reject(fn (string $class): bool => in_array($class, $exemptClasses, true))
         ->reject(function (string $class): bool {
             $reflection = new ReflectionClass($class);

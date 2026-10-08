@@ -42,7 +42,8 @@ its scoped dry run as the check.
   `storage/logs/gate.log`; a failing step prints its last 40 lines before the final `GATE:` line.
 - **full** (`composer check:full`, `sh scripts/gate.sh --full`): everything fast mode runs, plus
   Pint/PHPStan/full-tree Rector (all in `--test`/dry-run form), ESLint/Prettier `--check`, the full
-  Pest suite in parallel, Vitest coverage, the asset
+  Pest suite in parallel (no backend coverage; that is CI's), the migration-safety check against the
+  merge-base, Vitest coverage, the asset
   build, and the bundle-chunk budget check. This reproduces what CI runs, opt-in and slow — for when
   the fast gate isn't enough confidence before a push.
 
@@ -69,5 +70,11 @@ changed suite as a unit. A missing, cancelled or failed shard therefore reds the
 [docs/decisions/sharded-pr-coverage.md](../decisions/sharded-pr-coverage.md). A newer push to
 the same ref, `main` included, cancels the older run whole instead, and its `ci-gate` skips; see
 [[deployment]] under "Superseded main runs".
+
+PR frontend shards run Vitest in a shuffled order seeded with the workflow run id, and echo the seed
+first in the step log (`Vitest shuffle seed: <id>`), so an order-dependent test goes red on the PR instead of
+on a later unlucky run. Reproduce a red shard locally with
+`./vendor/bin/sail npx vitest run --sequence.shuffle --sequence.seed=<id>` (add `--shard=<n>/3` to
+match one shard). The merge-reports coverage job and main-push shards stay in file order.
 
 See also: [[deployment]].

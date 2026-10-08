@@ -2,6 +2,7 @@ import { FaceSlightlyFrowning, RefreshCw } from 'lucide-react';
 import { Component, type ErrorInfo, type ReactNode } from 'react';
 
 import { reportClientError } from '@/lib/clientErrorReporter';
+import { reloadDocument } from '@/lib/reloadDocument';
 
 interface Props {
     children: ReactNode;
@@ -53,7 +54,7 @@ export default class ErrorBoundary extends Component<Props, State> {
                 </div>
                 <button
                     type="button"
-                    onClick={() => window.location.reload()}
+                    onClick={reloadDocument}
                     className="focus-ring inline-flex items-center gap-1.5 rounded-full bg-leaf-deep px-4 py-2 text-sm font-semibold text-cream transition hover:opacity-90"
                 >
                     <RefreshCw aria-hidden />

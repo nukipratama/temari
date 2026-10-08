@@ -464,7 +464,7 @@ describe('Runs/Show', () => {
     it('closes with a Strava provenance footer carrying the run’s own id', () => {
         const { container } = renderShow();
         expect(container.querySelector('footer')).toHaveTextContent(
-            'Synced from Strava · may 10 · 00:00 · #4821',
+            'Synced from Strava · may 10 · 07:00 · #4821',
         );
     });
 

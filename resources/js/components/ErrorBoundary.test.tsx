@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
 import { reportClientError } from '@/lib/clientErrorReporter';
+import { reloadDocument } from '@/lib/reloadDocument';
 
 import ErrorBoundary from './ErrorBoundary';
 
@@ -10,6 +11,8 @@ vi.mock('@/lib/clientErrorReporter', () => ({
     reportClientError: vi.fn(),
     installGlobalErrorReporting: vi.fn(),
 }));
+
+vi.mock('@/lib/reloadDocument', () => ({ reloadDocument: vi.fn() }));
 
 function Boom(): never {
     throw new Error('kaboom');
@@ -53,8 +56,6 @@ describe('ErrorBoundary', () => {
         const consoleError = vi
             .spyOn(console, 'error')
             .mockImplementation(() => {});
-        const reload = vi.fn();
-        vi.stubGlobal('location', { ...window.location, reload });
 
         render(
             <ErrorBoundary>
@@ -64,9 +65,8 @@ describe('ErrorBoundary', () => {
 
         await userEvent.click(screen.getByRole('button', { name: /reload/i }));
 
-        expect(reload).toHaveBeenCalledOnce();
+        expect(reloadDocument).toHaveBeenCalledOnce();
 
-        vi.unstubAllGlobals();
         consoleError.mockRestore();
     });
 });

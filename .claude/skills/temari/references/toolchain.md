@@ -19,7 +19,8 @@ last line is `GATE: PASS (<n>s, mode=fast|full)` or `GATE: FAIL at <step> (<n>s)
 Pint/phpstan/eslint run on **pre-commit**; the fast gate runs **scoped rector on changed files**
 (`app/`+`tests/` PHP since the merge base, plus uncommitted ones — sub-second warm), and the
 full-tree `rector --dry-run` stays in **CI** and `check:full`. CI is the
-full gate and is what `main` is protected by; coverage is CI-owned and only in `check:full`.
+full gate and is what `main` is protected by; `check:full` runs frontend coverage only, and backend
+coverage is CI's (locally `./vendor/bin/sail bin pest --parallel --coverage --min=95`).
 
 **Local Pest runs always execute.** The gate's `pest changed` step runs only the `{Name}Test.php`
 files paired with the PHP classes changed since the merge base, plus changed test files

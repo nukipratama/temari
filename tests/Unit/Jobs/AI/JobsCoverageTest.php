@@ -10,10 +10,13 @@ use App\Jobs\AI\AnalyzeBriefingMascotVoiceJob;
 use App\Jobs\AI\AnalyzeProfileVoiceJob;
 use App\Jobs\AI\AnalyzeCardFlavorJob;
 use App\Jobs\AI\AnalyzeMonthlyRecapJob;
+use App\Jobs\AI\AnalyzePlanClampVoiceJob;
 use App\Jobs\AI\AnalyzePlanSeasonVoiceJob;
 use App\Jobs\AI\AnalyzeTrendReadJob;
 use App\Jobs\AI\AnalyzeWeeklyRecapJob;
 use App\Models\AI\Analysis;
+use App\Models\PlannedSession;
+use App\Models\RecoveryFeedback;
 use App\Models\RunCard;
 use App\Models\Season;
 use App\Models\User;
@@ -21,12 +24,15 @@ use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
+use App\Services\AI\MaterialFingerprint;
 use App\Services\AI\TrendReadFingerprint;
 use App\Services\AI\Narrators\ProfileVoiceNarrator;
 use App\Services\AI\Narrators\BriefingMascotVoiceNarrator;
 use App\Services\AI\Narrators\CardFlavorNarrator;
 use App\Services\AI\Narrators\MonthlyRecapNarrator;
+use App\Services\AI\Narrators\PlanClampVoiceNarrator;
 use App\Services\AI\Narrators\PlanSeasonVoiceNarrator;
+use App\Services\Run\Plan\ClampNarrationContext;
 use App\Services\AI\Narrators\TrendReadNarrator;
 use App\Services\AI\Narrators\WeeklyRecapNarrator;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -236,6 +242,72 @@ it('AnalyzeTrendReadJob failed() marks a stranded row Failed', function (): void
 
     expect($row->fresh()->status)->toBe(AnalysisStatus::Failed)
         ->and($row->fresh()->error)->toBe('worker timeout');
+});
+
+// ── AnalyzePlanClampVoiceJob (row) ────────────────────────────────────
+
+function clampedUser(): User
+{
+    $user = User::factory()->create();
+    RecoveryFeedback::query()->create([
+        'user_id' => $user->id,
+        'date' => Carbon::today()->toDateString(),
+        'concerning_pain' => true,
+    ]);
+    PlannedSession::factory()->for($user)->create([
+        'date' => Carbon::today()->toDateString(),
+        'session_type' => 'interval',
+    ]);
+
+    return $user;
+}
+
+function clampRowOf(User $user): Analysis
+{
+    return rowOf(AnalysisType::PLAN_CLAMP_VOICE_SUBJECT_TYPE, $user->id, AnalysisType::PlanClampVoice, Carbon::today()->toDateString());
+}
+
+it('AnalyzePlanClampVoiceJob stores the clamp voice and the clamp fingerprint on a Done row', function (): void {
+    $user = clampedUser();
+    mockNarrator(PlanClampVoiceNarrator::class, 'you reported pain, so today is a rest day.');
+
+    $row = clampRowOf($user);
+    new AnalyzePlanClampVoiceJob($row->id)->handle(app(AnalysisService::class));
+
+    $context = app(ClampNarrationContext::class)->forUserOn($user->id, Carbon::today());
+
+    expect($row->fresh()->status)->toBe(AnalysisStatus::Done)
+        ->and($row->fresh()->content)->toBe('you reported pain, so today is a rest day.')
+        ->and($row->fresh()->content_fingerprint)->toBe(MaterialFingerprint::forClamp(
+            $context['ceiling'],
+            $context['clamped_to'],
+            $context['has_run_today'],
+            $context['readiness_reasons'],
+        ));
+});
+
+it('AnalyzePlanClampVoiceJob deletes the row as obsolete when the day no longer clamps', function (): void {
+    $user = User::factory()->create();
+    $mock = Mockery::mock(PlanClampVoiceNarrator::class);
+    $mock->shouldNotReceive('generate');
+    app()->instance(PlanClampVoiceNarrator::class, $mock);
+
+    $row = clampRowOf($user);
+    new AnalyzePlanClampVoiceJob($row->id)->handle(app(AnalysisService::class));
+
+    expect(Analysis::query()->find($row->id))->toBeNull();
+});
+
+it('AnalyzePlanClampVoiceJob fingerprints the same clamp identically for different athletes', function (): void {
+    mockNarrator(PlanClampVoiceNarrator::class, 'a rest day.');
+
+    $first = clampRowOf(clampedUser());
+    $second = clampRowOf(clampedUser());
+    new AnalyzePlanClampVoiceJob($first->id)->handle(app(AnalysisService::class));
+    new AnalyzePlanClampVoiceJob($second->id)->handle(app(AnalysisService::class));
+
+    expect($first->fresh()->content_fingerprint)->not->toBeNull()
+        ->and($second->fresh()->content_fingerprint)->toBe($first->fresh()->content_fingerprint);
 });
 
 // ── AnalyzeCardFlavorJob (row) ────────────────────────────────────────
