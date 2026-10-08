@@ -105,6 +105,7 @@ it('shares the current week surplus projection between Home and Plan without wri
     $futureSaturday = PlannedSession::query()->where('user_id', $user->id)->whereDate('date', $saturday)->firstOrFail();
     $homeTotal = round(array_sum(array_column($home['days'], 'distance_km')), 1);
     $planTotal = round(array_sum(array_column($planDays->all(), 'distance_km')), 1);
+    $mondayDate = $weekStart->toDateString();
 
     expect($homeDays[$saturday]['session_type'])->toBe($planDays[$saturday]['session_type'])
         ->and($homeDays[$saturday]['distance_km'])->toBe($planDays[$saturday]['distance_km'])
@@ -112,7 +113,8 @@ it('shares the current week surplus projection between Home and Plan without wri
         ->and($planDays[$saturday]['distance_km'])->toBeLessThan($planDays[$saturday]['asked_km'])
         ->and($homeDays[$friday]['distance_km'])->toBe($homeDays[$friday]['asked_km'])
         ->and($homeDays[$sunday]['distance_km'])->toBe($homeDays[$sunday]['asked_km'])
-        ->and($home['planned_km_this_week'])->toBe($homeTotal)
+        ->and($homeDays[$mondayDate]['credited_km'])->toBe(round($monday['asked_km'] + 10.0, 1))
+        ->and($home['planned_km_this_week'])->toBe(round($homeTotal - $homeDays[$mondayDate]['distance_km'] + $homeDays[$mondayDate]['credited_km'], 1))
         ->and($planTotal)->toBe($homeTotal)
         ->and($homeDays[$saturday]['eased_from'])->toBeNull()
         ->and($planDays[$saturday]['eased_from'])->toBeNull()
@@ -391,15 +393,16 @@ it('credits today once the run already clears the bar, without waiting for the n
     Carbon::setTestNow();
 });
 
-it('reports the km it renders, so a clamped today cannot disagree with the headline', function (): void {
+it('reports the km it renders from today on, so a clamped today cannot disagree with the headline', function (): void {
     Carbon::setTestNow('2026-08-12');
     $user = User::factory()->create();
     seedWeekOfSessions($user, Carbon::today()->startOfWeek(Carbon::MONDAY));
 
     $result = app(CurrentWeekPlanBuilder::class)->forUser($user, Carbon::today());
+    $fromToday = array_filter($result['days'], static fn (array $day): bool => $day['date'] >= Carbon::today()->toDateString());
 
     expect($result['planned_km_this_week'])
-        ->toBe(round(array_sum(array_column($result['days'], 'distance_km')), 1));
+        ->toBe(round(array_sum(array_column($fromToday, 'distance_km')), 1));
 
     Carbon::setTestNow();
 });
@@ -499,7 +502,7 @@ it('leads Home today with a tempo day eased to easy, tempo only as context', fun
     Carbon::setTestNow();
 });
 
-/** The week total is the sum of the days the plan shows, today's ease included. */
+/** The week total counts today and later days at the km the plan shows, today's ease included; unrun past days credit nothing. */
 it('takes todays recorded ease off the week total, with the un-eased total as eased-from', function (): void {
     Carbon::setTestNow('2026-08-12 08:00:00');
     $user = User::factory()->create();
@@ -509,7 +512,8 @@ it('takes todays recorded ease off the week total, with the un-eased total as ea
 
     $result = app(CurrentWeekPlanBuilder::class)->forUser($user, Carbon::today());
     $today = collect($result['days'])->firstWhere('date', Carbon::today()->toDateString());
-    $total = round(array_sum(array_column($result['days'], 'distance_km')), 1);
+    $fromToday = array_filter($result['days'], static fn (array $day): bool => $day['date'] >= Carbon::today()->toDateString());
+    $total = round(array_sum(array_column($fromToday, 'distance_km')), 1);
 
     expect($today['distance_km'])->toBe(1.0)
         ->and($result['planned_km_this_week'])->toBe($total)
