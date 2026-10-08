@@ -11,6 +11,8 @@ use App\Services\Telegram\TelegramClient;
 use App\Services\Telegram\TelegramLinkToken;
 use App\Services\Telegram\TelegramReplies;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Queue\Attributes\Backoff;
+use Illuminate\Queue\Attributes\Tries;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\DB;
 
@@ -20,16 +22,11 @@ use Illuminate\Support\Facades\DB;
  * dev `telegram:listen` long-poll. Resolves a `/start <token>` to a user and
  * stores their chat id, or handles `/stop`. See the account-linking ADR.
  */
+#[Backoff([30, 120])]
+#[Tries(3)]
 class HandleTelegramUpdateJob implements ShouldQueue
 {
     use Queueable;
-
-    public int $tries = 3;
-
-    /**
-     * @var array<int, int>
-     */
-    public array $backoff = [30, 120];
 
     /**
      * @param  array<string, mixed>  $update  One raw Telegram update payload.

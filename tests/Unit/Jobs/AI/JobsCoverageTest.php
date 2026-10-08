@@ -32,6 +32,7 @@ use App\Services\AI\Narrators\WeeklyRecapNarrator;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Queue;
 
 uses(RefreshDatabase::class);
 
@@ -484,7 +485,12 @@ it('AnalyzeMonthlyRecapJob does not advance when no later Pending month exists',
 it('sends every analyze job to the narration queue, whichever base it extends', function (): void {
     // Not configurable and not the dispatcher's business: a tool-calling run
     // needs the longer timeout only supervisor-ai gives it.
-    expect(new AnalyzeBriefingMascotVoiceJob(1)->queue)->toBe(AnalyzeBaseJob::QUEUE)
-        ->and(new AnalyzeActivityJob(1)->queue)->toBe(AnalyzeBaseJob::QUEUE)
-        ->and(AnalyzeBaseJob::QUEUE)->toBe('ai');
+    Queue::fake();
+
+    AnalyzeBriefingMascotVoiceJob::dispatch(1);
+    AnalyzeActivityJob::dispatch(1);
+
+    Queue::assertPushedOn('ai', AnalyzeBriefingMascotVoiceJob::class);
+    Queue::assertPushedOn('ai', AnalyzeActivityJob::class);
+    expect(AnalyzeBaseJob::QUEUE)->toBe('ai');
 });

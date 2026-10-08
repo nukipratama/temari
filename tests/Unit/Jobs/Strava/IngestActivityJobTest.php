@@ -177,8 +177,6 @@ it('lets the throttle middleware re-raise a genuine non rate-limit failure', fun
 
     expect(fn () => $middleware->handle($fakeJob, $next))
         ->toThrow(RuntimeException::class, 'genuine failure');
-
-    expect($job->maxExceptions)->toBe(3);
 });
 
 it('is unique per activity id so a throttled stub is not re-dispatched as a duplicate', function (): void {

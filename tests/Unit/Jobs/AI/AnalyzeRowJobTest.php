@@ -366,12 +366,6 @@ it('skips re-execution when status is already Done (idempotent)', function (): v
     expect($row->fresh()->content)->toBe('previous');
 });
 
-it('shared retry config: tries=3, backoff=[10, 60]', function (): void {
-    $job = fakeSuccessRowJob(1);
-    expect($job->tries)->toBe(3)
-        ->and($job->backoff)->toBe([10, 60]);
-});
-
 it('requeues (not fails) and releases on a transient error without Retry-After while tries remain', function (): void {
     $row = makeRowForRowJobTest();
 

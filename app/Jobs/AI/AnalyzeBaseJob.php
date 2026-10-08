@@ -13,9 +13,15 @@ use App\Services\AI\AnalysisSubjectMap;
 use App\Services\AI\NarrationOrigin;
 use App\Services\AI\AnalysisStatus;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Queue\Attributes\Backoff;
+use Illuminate\Queue\Attributes\Queue;
+use Illuminate\Queue\Attributes\Tries;
 use Illuminate\Foundation\Queue\Queueable;
 use Throwable;
 
+#[Backoff(self::BACKOFF_SECONDS)]
+#[Queue(self::QUEUE)]
+#[Tries(self::TRIES)]
 abstract class AnalyzeBaseJob implements ShouldQueue
 {
     use Queueable;
@@ -28,6 +34,11 @@ abstract class AnalyzeBaseJob implements ShouldQueue
      */
     public const string QUEUE = 'ai';
 
+    private const int TRIES = 3;
+
+    /** @var array<int, int> */
+    private const array BACKOFF_SECONDS = [10, 60];
+
     /**
      * What started this job, stamped by {@see \App\Services\AI\AnalysisService}
      * at dispatch and restored into {@see NarrationOrigin} before generating, so
@@ -37,11 +48,6 @@ abstract class AnalyzeBaseJob implements ShouldQueue
      */
     public AnalysisOrigin $origin = AnalysisOrigin::Unknown;
 
-    public int $tries = 3;
-
-    /** @var array<int, int> */
-    public array $backoff = [10, 60];
-
     public ?string $generationToken = null;
 
     public function __construct(?string $generationToken = null)
@@ -49,7 +55,6 @@ abstract class AnalyzeBaseJob implements ShouldQueue
         if ($generationToken !== null) {
             $this->generationToken = $generationToken;
         }
-        $this->onQueue(self::QUEUE);
     }
 
     /**
@@ -76,7 +81,7 @@ abstract class AnalyzeBaseJob implements ShouldQueue
      * row(s) failed or re-queued.
      *
      * Any `TransientUpstreamException` (429 / 5xx / timeout) is retryable while
-     * both a `$tries` slot and a row retry budget remain, whether or not it
+     * both a `TRIES` slot and a row retry budget remain, whether or not it
      * carries a `Retry-After`: re-queue the row(s) and release the job. The
      * release delay is the upstream `Retry-After` when present, otherwise the
      * configured backoff, capped at {@see self::MAX_RETRY_AFTER_SECONDS}. A
@@ -95,7 +100,7 @@ abstract class AnalyzeBaseJob implements ShouldQueue
     {
         if ($e instanceof TransientUpstreamException
             && $this->retryBudgetRemains($rows)
-            && $this->attempts() < $this->tries) {
+            && $this->attempts() < self::TRIES) {
             $markRequeued();
             $this->release(min($e->retryAfterSeconds ?? $this->defaultBackoffSeconds(), self::MAX_RETRY_AFTER_SECONDS));
 
@@ -110,12 +115,12 @@ abstract class AnalyzeBaseJob implements ShouldQueue
     }
 
     /**
-     * First configured `$backoff` step, used as the release delay when a
+     * First `BACKOFF_SECONDS` step, used as the release delay when a
      * transient failure carries no `Retry-After` hint.
      */
     private function defaultBackoffSeconds(): int
     {
-        return $this->backoff[0] ?? 0;
+        return self::BACKOFF_SECONDS[0];
     }
 
     /**
@@ -123,7 +128,7 @@ abstract class AnalyzeBaseJob implements ShouldQueue
      * settle it so it dead-letters. Returns true to tell handle() to stop.
      *
      * `attempts` bumps once per real run (markProcessing), so it is the single
-     * budget the queue's own `$tries` retries and ai:self-heal's re-dispatches
+     * budget the queue's own `TRIES` retries and ai:self-heal's re-dispatches
      * both draw from, and {@see Analysis::MAX_SELF_HEAL_ATTEMPTS} bounds their
      * sum rather than each half separately. Every dispatch leaves its row
      * Queued, so a row arriving Failed or Processing is a queue-driven re-entry

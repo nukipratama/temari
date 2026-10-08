@@ -12,7 +12,7 @@ use Throwable;
  * rate-limit, 5xx server error, or a connection/timeout). Unlike
  * {@see UnavailableException} (terminal: bad schema, malformed JSON, permanent
  * 4xx), this is retryable: the queue worker should re-attempt under its
- * configured `$tries`/`$backoff` instead of marking the row failed.
+ * configured `TRIES`/`BACKOFF_SECONDS` instead of marking the row failed.
  *
  * `$retryAfterSeconds` carries Azure's `Retry-After` hint when the upstream
  * supplies one, so the job can release itself with that delay.
