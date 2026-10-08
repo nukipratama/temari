@@ -84,3 +84,23 @@ it('records the browser error fingerprint for the next exception digest', functi
     expect($pending)->toHaveCount(1)
         ->and($pending[0]['label'])->toStartWith('browser error at /build/assets/app.js:1:2');
 });
+
+it('leaves room for a real server exception after a guest flood, and stops the flood at the guest cap', function (): void {
+    spyOnClientErrorLog();
+
+    foreach (range(1, 11) as $host) {
+        foreach (range(1, 10) as $i) {
+            $this->withServerVariables(['REMOTE_ADDR' => "203.0.113.{$host}"])
+                ->postJson('/client-errors', [
+                    'message' => "visit evil.example {$host}-{$i}",
+                    'stack' => "at https://evil.example/build/assets/free-shoes-{$host}-{$i}.js:1:1",
+                ])->assertNoContent();
+        }
+    }
+    NewExceptionLedger::recordServer(new RuntimeException('real failure'));
+
+    $labels = array_column(NewExceptionLedger::pull(), 'label');
+
+    expect($labels)->toHaveCount(1 + NewExceptionLedger::MAX_GUEST_PENDING)
+        ->and($labels[0])->toStartWith('RuntimeException at ');
+});

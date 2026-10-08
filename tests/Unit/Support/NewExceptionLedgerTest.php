@@ -105,9 +105,9 @@ it('does not wait on the ledger lock to count a fingerprint it has already seen'
 it('records a browser error by message and first frame, showing only the frame path', function (): void {
     $stack = "TypeError: athlete 42 is undefined\n    at Run (https://temari.example/build/assets/app-abc123.js:1:2345)\n    at x (https://temari.example/build/assets/app-abc123.js:1:99)";
 
-    NewExceptionLedger::recordBrowser('TypeError: athlete 42 is undefined', $stack);
-    NewExceptionLedger::recordBrowser('TypeError: athlete 42 is undefined', $stack);
-    NewExceptionLedger::recordBrowser('TypeError: another message', $stack);
+    NewExceptionLedger::recordBrowser('TypeError: athlete 42 is undefined', $stack, guest: false);
+    NewExceptionLedger::recordBrowser('TypeError: athlete 42 is undefined', $stack, guest: false);
+    NewExceptionLedger::recordBrowser('TypeError: another message', $stack, guest: false);
 
     $pending = NewExceptionLedger::pull();
 
@@ -119,33 +119,86 @@ it('records a browser error by message and first frame, showing only the frame p
         ->and(json_encode($pending))->not->toContain('temari.example');
 });
 
-it('masks ids and drops the query string when the first frame is a page url', function (): void {
-    NewExceptionLedger::recordBrowser('boom', 'at https://temari.example/activities/987654?tab=splits:12:4');
+it('builds a browser label only from a /build/assets/ frame, so caller text never reaches it', function (): void {
+    NewExceptionLedger::recordBrowser(
+        'visit evil.example for free shoes',
+        "at https://evil.example/visit-evil-example:1:1\n    at https://temari.example/build/assets/Index-Dk9x1aB.js?v=2:3:44",
+        guest: true,
+    );
 
-    expect(NewExceptionLedger::pull()[0]['label'])->toStartWith('browser error at /activities/{id}:12:4 (#');
+    expect(NewExceptionLedger::pull()[0]['label'])->toMatch('~^browser error at /build/assets/Index-Dk9x1aB\.js:3:44 \(#[0-9a-f]{8}\)$~');
 });
 
+it('uses a fixed label when no frame is under /build/assets/', function (string $stack): void {
+    NewExceptionLedger::recordBrowser('visit evil.example', $stack, guest: true);
+
+    expect(NewExceptionLedger::pull()[0]['label'])->toMatch('~^browser error at unknown frame \(#[0-9a-f]{8}\)$~');
+})->with([
+    'page url' => 'at https://temari.example/activities/987654?tab=splits:12:4',
+    'caller path' => 'at /visit-evil-example-for-free-shoes:1:1',
+    'asset outside build' => 'at https://evil.example/assets/free-shoes.js:1:1',
+    'not a script' => 'at https://evil.example/build/assets/free shoes.css:1:1',
+]);
+
 it('labels a browser error with no stack by an unknown frame', function (): void {
-    NewExceptionLedger::recordBrowser('Script error.', null);
+    NewExceptionLedger::recordBrowser('Script error.', null, guest: false);
 
     expect(NewExceptionLedger::pull()[0]['label'])->toStartWith('browser error at unknown frame');
 });
 
 it('stops taking new fingerprints past the pending cap until a digest clears them', function (): void {
     for ($i = 0; $i < NewExceptionLedger::MAX_PENDING + 3; $i++) {
-        NewExceptionLedger::recordBrowser("message {$i}", null);
+        NewExceptionLedger::recordBrowser("message {$i}", null, guest: false);
     }
 
     expect(NewExceptionLedger::pull())->toHaveCount(NewExceptionLedger::MAX_PENDING);
 
-    NewExceptionLedger::recordBrowser('message '.(NewExceptionLedger::MAX_PENDING + 1), null);
+    NewExceptionLedger::recordBrowser('message '.(NewExceptionLedger::MAX_PENDING + 1), null, guest: false);
 
     expect(NewExceptionLedger::pull())->toHaveCount(1);
+});
+
+it('counts a repeat from a signed-in session or a guest in whichever queue took the fingerprint', function (bool $firstGuest): void {
+    NewExceptionLedger::recordBrowser('TypeError: x is undefined', null, guest: $firstGuest);
+    NewExceptionLedger::recordBrowser('TypeError: x is undefined', null, guest: ! $firstGuest);
+    NewExceptionLedger::recordBrowser('TypeError: x is undefined', null, guest: ! $firstGuest);
+
+    $pending = NewExceptionLedger::pull();
+
+    expect($pending)->toHaveCount(1)
+        ->and($pending[0]['count'])->toBe(3);
+})->with([
+    'guest first' => true,
+    'signed in first' => false,
+]);
+
+it('caps guest browser errors at their own smaller budget', function (): void {
+    for ($i = 0; $i < NewExceptionLedger::MAX_PENDING + 3; $i++) {
+        NewExceptionLedger::recordBrowser("guest {$i}", null, guest: true);
+    }
+    NewExceptionLedger::recordBrowser('signed in', null, guest: false);
+
+    $labels = array_column(NewExceptionLedger::pull(), 'label');
+
+    expect($labels)->toHaveCount(NewExceptionLedger::MAX_GUEST_PENDING + 1);
+});
+
+it('keeps room for server exceptions however full the browser queues are', function (): void {
+    for ($i = 0; $i < NewExceptionLedger::MAX_PENDING + 3; $i++) {
+        NewExceptionLedger::recordBrowser("guest {$i}", null, guest: true);
+        NewExceptionLedger::recordBrowser("signed in {$i}", null, guest: false);
+    }
+    NewExceptionLedger::recordServer(serverException());
+
+    $pending = NewExceptionLedger::pull();
+
+    expect($pending)->toHaveCount(1 + NewExceptionLedger::MAX_PENDING + NewExceptionLedger::MAX_GUEST_PENDING)
+        ->and($pending[0]['label'])->toStartWith('RuntimeException at ');
 });
 
 it('never throws when the cache is unavailable', function (): void {
     Cache::shouldReceive('lock')->andThrow(new RuntimeException('redis down'));
 
     NewExceptionLedger::recordServer(serverException());
-    NewExceptionLedger::recordBrowser('boom', null);
+    NewExceptionLedger::recordBrowser('boom', null, guest: true);
 })->throwsNoExceptions();

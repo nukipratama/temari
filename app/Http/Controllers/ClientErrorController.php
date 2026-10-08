@@ -32,7 +32,7 @@ class ClientErrorController extends Controller
             'user_id' => $request->user()?->id,
         ]);
 
-        NewExceptionLedger::recordBrowser($validated['message'], $validated['stack'] ?? null);
+        NewExceptionLedger::recordBrowser($validated['message'], $validated['stack'] ?? null, guest: $request->user() === null);
 
         return response()->noContent();
     }
