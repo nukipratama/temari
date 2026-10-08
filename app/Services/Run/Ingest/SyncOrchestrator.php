@@ -70,7 +70,7 @@ class SyncOrchestrator
      */
     public function syncSingleActivity(User $user, int $externalId, StravaSyncSource $source = StravaSyncSource::Webhook): bool
     {
-        if (! $this->stravaEnabled()) {
+        if ($user->is_demo || ! $this->stravaEnabled()) {
             return false;
         }
 
@@ -129,7 +129,7 @@ class SyncOrchestrator
     {
         $finished = ['inserted' => 0, 'resume_before' => null];
 
-        if (! $this->stravaEnabled()) {
+        if ($user->is_demo || ! $this->stravaEnabled()) {
             return $finished;
         }
 

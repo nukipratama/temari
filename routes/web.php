@@ -189,11 +189,11 @@ Route::middleware(['auth', 'onboarded'])->group(function (): void {
 
     Route::patch('/settings/zones', [RunnerZonesController::class, 'update'])->name('settings.zones.update');
     Route::delete('/settings/zones', [RunnerZonesController::class, 'resetToDefault'])->name('settings.zones.reset');
-    Route::post('/settings/zones/resync-strava', [RunnerZonesController::class, 'resyncFromStrava'])->name('settings.zones.resync');
+    Route::post('/settings/zones/resync-strava', [RunnerZonesController::class, 'resyncFromStrava'])->middleware('block-demo-telegram')->name('settings.zones.resync');
     Route::patch('/settings/training-preferences', [TrainingPreferencesController::class, 'update'])->name('settings.training-preferences.update');
 
     Route::post('/strava/sync', SyncController::class)
-        ->middleware('throttle:strava-sync')
+        ->middleware(['throttle:strava-sync', 'block-demo-telegram'])
         ->name('strava.sync');
 
     Route::post('/api/notifications/{notification}/read', NotificationReadController::class)
