@@ -1,0 +1,219 @@
+name: Container health
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'print what each service would get; restart nothing, keep the state, page nobody'
+        type: boolean
+        default: false
+
+concurrency:
+  group: container-health
+  cancel-in-progress: false
+
+permissions: {}
+
+jobs:
+  busy:
+    runs-on: ubuntu-26.04-arm
+    timeout-minutes: 5
+    permissions:
+      actions: read
+    outputs:
+      busy: ${{ steps.runs.outputs.busy }}
+    steps:
+      - name: Skip while a deploy or rollback is queued or running
+        id: runs
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          busy=false
+          for workflow in deploy.yml rollback.yml; do
+            for status in queued in_progress; do
+              count=$(gh run list --workflow "$workflow" --status "$status" --limit 1 --json databaseId --jq 'length')
+              if [ "$count" != "0" ]; then
+                echo "$workflow has a run $status, skipping this tick."
+                busy=true
+              fi
+            done
+          done
+          echo "busy=$busy" >> "$GITHUB_OUTPUT"
+
+  check:
+    needs: [busy]
+    if: needs.busy.outputs.busy == 'false'
+    runs-on: [self-hosted, homelab]
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    outputs:
+      alert: ${{ steps.health.outputs.alert }}
+    env:
+      COMPOSE: docker compose -f compose.prod.yaml
+      STATE_FILE: .container-health/restarted
+      DRY_RUN: ${{ inputs.dry_run == true }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Restore the restart state
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .container-health
+          key: container-health-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: container-health-
+
+      - name: Restart once, then page, for an unhealthy scheduler or horizon
+        id: health
+        timeout-minutes: 12
+        run: |
+          set -euo pipefail
+          mkdir -p "$(dirname "$STATE_FILE")"
+          touch "$STATE_FILE"
+          before=$(cat "$STATE_FILE")
+          alert=""
+
+          inspect() {
+            docker inspect --format '{{.State.Running}} {{.State.Health.Status}}' "$1" 2>/dev/null || echo "false gone"
+          }
+
+          for service in scheduler horizon; do
+            container=$($COMPOSE ps -q "$service")
+            if [ -z "$container" ]; then
+              echo "$service: not running, left alone."
+              continue
+            fi
+
+            read -r running health <<< "$(inspect "$container")"
+            marker=$(grep -E "^$service " "$STATE_FILE" | cut -d' ' -f2 || true)
+            echo "$service: running=$running health=$health marker=${marker:-none}"
+
+            if [ "$running" != "true" ]; then
+              continue
+            fi
+
+            case "$health" in
+              healthy)
+                sed -i "/^$service /d" "$STATE_FILE"
+                ;;
+              unhealthy)
+                if [ "$marker" = "restarted" ]; then
+                  alert="$alert Container health: $service is still unhealthy after its one restart. It will not be restarted again; check it by hand."
+                  sed -i "/^$service /d" "$STATE_FILE"
+                  echo "$service paged" >> "$STATE_FILE"
+                elif [ "$marker" = "paged" ]; then
+                  echo "$service: already paged for this incident."
+                else
+                  read -r running health <<< "$(inspect "$container")"
+                  if [ "$running" != "true" ] || [ "$health" != "unhealthy" ]; then
+                    echo "$service: now running=$running health=$health, not restarting."
+                    continue
+                  fi
+                  if [ "$DRY_RUN" = "true" ]; then
+                    echo "DRY RUN: would restart $service and page."
+                    continue
+                  fi
+                  if $COMPOSE restart "$service"; then
+                    alert="$alert Container health: $service was unhealthy and was restarted. If it is unhealthy again, it will be paged, not restarted."
+                  else
+                    alert="$alert Container health: $service was unhealthy and its restart failed. It will not be restarted again; check it by hand."
+                  fi
+                  echo "$service restarted" >> "$STATE_FILE"
+                fi
+                ;;
+            esac
+          done
+
+          if [ "$DRY_RUN" = "true" ]; then
+            echo "DRY RUN: state would be: $(tr '\n' ' ' < "$STATE_FILE")"
+            echo "DRY RUN: would page:${alert:- nothing}"
+            alert=""
+            printf '%s' "$before" > "$STATE_FILE"
+          fi
+
+          if [ "$(cat "$STATE_FILE")" != "$before" ]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+          echo "alert=${alert# }" >> "$GITHUB_OUTPUT"
+
+      - name: Save the restart state
+        if: steps.health.outputs.changed == 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .container-health
+          key: container-health-${{ github.run_id }}-${{ github.run_attempt }}
+
+  failures:
+    needs: [busy, check]
+    if: always() && inputs.dry_run != true
+    runs-on: ubuntu-26.04-arm
+    timeout-minutes: 5
+    outputs:
+      alert: ${{ steps.failures.outputs.alert }}
+    env:
+      STATE_FILE: .container-health/restarted
+    steps:
+      - name: Restore the watchdog state
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .container-health
+          key: container-health-${{ github.run_id }}-${{ github.run_attempt }}-failures
+          restore-keys: container-health-
+
+      - name: Page once per failing watchdog job
+        id: failures
+        env:
+          BUSY_RESULT: ${{ needs.busy.result }}
+          CHECK_RESULT: ${{ needs.check.result }}
+          RUN_NUMBER: ${{ github.run_number }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$(dirname "$STATE_FILE")"
+          touch "$STATE_FILE"
+          before=$(cat "$STATE_FILE")
+          alert=""
+
+          track() {
+            case "$2" in
+              failure)
+                if grep -qx "$1" "$STATE_FILE"; then
+                  echo "$1: already paged, staying silent."
+                else
+                  echo "$1" >> "$STATE_FILE"
+                  alert="$alert $3"
+                fi
+                ;;
+              success)
+                sed -i "/^$1\$/d" "$STATE_FILE"
+                ;;
+            esac
+          }
+
+          track busy-failed "$BUSY_RESULT" "Container health: the deploy-overlap check failed in workflow run $RUN_NUMBER, so scheduler and horizon health went unchecked. Later failures stay silent until it passes again."
+          track check-failed "$CHECK_RESULT" "Container health: the health check failed in workflow run $RUN_NUMBER, so scheduler and horizon health went unchecked. Later failures stay silent until it passes again."
+
+          if [ "$(cat "$STATE_FILE")" != "$before" ]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+          echo "alert=${alert# }" >> "$GITHUB_OUTPUT"
+
+      - name: Save the watchdog state
+        if: steps.failures.outputs.changed == 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .container-health
+          key: container-health-${{ github.run_id }}-${{ github.run_attempt }}-failures
+
+  notify:
+    needs: [check, failures]
+    if: always() && (needs.check.outputs.alert != '' || needs.failures.outputs.alert != '')
+    uses: ./.github/workflows/maintainer-alert.yml
+    with:
+      message: ${{ needs.failures.outputs.alert != '' && needs.check.outputs.alert != '' && format('{0} {1}', needs.failures.outputs.alert, needs.check.outputs.alert) || needs.failures.outputs.alert || needs.check.outputs.alert }}
+    secrets:
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TELEGRAM_MAINTAINER_CHAT_ID: ${{ secrets.TELEGRAM_MAINTAINER_CHAT_ID }}

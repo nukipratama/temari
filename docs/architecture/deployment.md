@@ -15,6 +15,7 @@ code_refs:
   - .github/workflows/restore-dry-run.yml
   - .github/workflows/maintainer-alert.yml
   - .github/workflows/backup-watchdog.yml
+  - .github/workflows/container-health.yml
   - scripts/restore-db.sh
   - scripts/deploy/ensure-backup-user.sh
   - scripts/deploy/backup-password.sh
@@ -170,6 +171,20 @@ A deploy backup only exists because a deploy happened — a quiet week between d
 After cleanup, `Binlog disk headroom` ([nightly-backup.yml](.github/workflows/nightly-backup.yml#L138)) sums the binlog files written in the last 7 days (the retention window) and the night's two dumps, and fails the job, so `notify` alerts, when that total exceeds the smaller of the free space under the mysql data directory and under `/var/lib/temari-backups`. It also fails when no binlog was written in 7 days, since point-in-time recovery would then have nothing to replay. Each run writes the numbers to the job summary.
 
 Disk cleanup rides the same job, strictly after a successful backup (cleanup steps use `continue-on-error`, so a cleanup failure can never fail the backup that already succeeded): `docker builder prune` with an age filter, then [scripts/deploy/select-images-to-prune.sh](scripts/deploy/select-images-to-prune.sh) removes sha-tagged `ghcr.io/<owner>/<repo>/app` images beyond the most recent 10 — the pulled images the `build` job pushes one per merged commit, which nothing else ever cleaned up (the deploy's own prune step at the end of this doc only touches the local `temari/app` re-tags, not the ghcr.io-sourced ones). The selection logic reads plain `CREATED<TAB>ID<TAB>TAG` lines from stdin rather than calling `docker` itself, so it can run against a fixture in tests; it never selects `latest`, `previous`, anything not shaped like a full sha, or anything a running container has by id or by `repo:tag`.
+
+## Container health watchdog
+
+Docker restarts a container only when its process exits, so the `scheduler` and `horizon` healthchecks above can report `unhealthy` with nothing acting on it, and every in-app alarm for a stuck scheduler runs inside the scheduler. [.github/workflows/container-health.yml](.github/workflows/container-health.yml) closes that loop from outside both containers, every 10 minutes plus `workflow_dispatch`:
+
+- A hosted `busy` job (`actions: read`) runs `gh run list` and skips the tick while a `deploy.yml` or `rollback.yml` run is queued or in progress. The watchdog has its own `container-health` concurrency group, so it never queues in, or cancels anything in, the `deploy-prod` group.
+- The homelab `check` job reads `docker inspect --format '{{.State.Running}} {{.State.Health.Status}}'` for each service's container in the `temari-prod` compose project. Only a running `unhealthy` container is acted on; `starting`, `healthy` or a stopped container (a deliberate stop) is left alone.
+- On the first `unhealthy` it re-reads the container, and only if it is still running and `unhealthy` runs `docker compose restart` on that service and pages through [maintainer-alert.yml](.github/workflows/maintainer-alert.yml) naming the service and the restart. If the service is still or again `unhealthy` on a later tick, it pages once more and does not restart again. Reporting `healthy` clears that state.
+- The state is a one-line-per-service file kept in the Actions cache (the newest `container-health-*` entry), not on the prod host, since the two homelab runner agents have separate workspaces.
+- A hosted `failures` job pages once when the `busy` job fails ("the deploy-overlap check failed") or the `check` job fails (a broken `docker` or `compose` call), naming the workflow run. It keeps a `busy-failed` or `check-failed` line in the same state, so later failed ticks stay silent until that job succeeds again and clears its line. A tick skipped because a deploy or rollback was busy never pages, and a dry run neither pages nor sets or clears either line.
+- A missing or evicted cache entry is not a failure: the tick starts from an empty state, so a service it already restarted can be restarted once more, and a failure already paged pages again.
+- A deploy that starts between the `busy` check and the restart can still overlap the restart; that race is accepted.
+
+To exercise it without acting on prod, dispatch it with `dry_run` set: the `check` job prints each service's state and what it would restart or page, then keeps the stored state and pages nobody.
 
 ## Nightly dependency audit alert
 
