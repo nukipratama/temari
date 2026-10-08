@@ -1,15 +1,19 @@
 import { router } from '@inertiajs/react';
 import { LoaderCircle, RefreshCw } from 'lucide-react';
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 
 import type { StravaSyncState } from '@/types/inertia';
 
-import DemoBlockedModal from '@/components/DemoBlockedModal';
 import StravaAction from '@/components/StravaAction';
 import { Icon, StravaIcon } from '@/components/ui/Icon';
 import { useDemoGuard } from '@/hooks/useDemoGuard';
 import { cn } from '@/lib/cn';
+import { lazyIsland } from '@/lib/lazyIsland';
 import { pillButtonVariants } from '@/lib/variants';
+
+const DemoBlockedModal = lazyIsland(
+    () => import('@/components/DemoBlockedModal'),
+);
 
 export const SYNC_DEMO_BLOCKED = {
     title: "the demo doesn't sync",
@@ -38,6 +42,7 @@ export default function StravaSyncButton({
 }: Readonly<StravaSyncButtonProps>) {
     const [pending, setPending] = useState(false);
     const {
+        isDemo,
         open: demoBlocked,
         setOpen: setDemoBlocked,
         guard,
@@ -91,11 +96,15 @@ export default function StravaSyncButton({
                     />
                     {pending ? 'syncing…' : 'sync now'}
                 </button>
-                <DemoBlockedModal
-                    open={demoBlocked}
-                    onClose={() => setDemoBlocked(false)}
-                    {...SYNC_DEMO_BLOCKED}
-                />
+                {isDemo && (
+                    <Suspense fallback={null}>
+                        <DemoBlockedModal
+                            open={demoBlocked}
+                            onClose={() => setDemoBlocked(false)}
+                            {...SYNC_DEMO_BLOCKED}
+                        />
+                    </Suspense>
+                )}
             </StravaAction>
         );
     }
