@@ -451,9 +451,10 @@ it('reminds the operator to enable the demo login only when it is off', function
         ->assertSuccessful();
 
     config()->set('demo.login_enabled', true);
-    $this->artisan('demo:seed')
-        ->doesntExpectOutputToContain('DEMO_LOGIN_ENABLED')
-        ->assertSuccessful();
+    expect(Artisan::call('demo:seed'))->toBe(0);
+    $output = Artisan::output();
+    expect($output)->toContain('Demo seed complete: 126 runs materialised.');
+    expect($output)->not->toContain('DEMO_LOGIN_ENABLED');
 });
 
 it('tells the operator the demo narration stays rule-based, Reread included', function (): void {
