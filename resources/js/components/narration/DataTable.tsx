@@ -58,7 +58,7 @@ export default function DataTable<T>({
                     <Card
                         ref={scrollerRef}
                         padding="none"
-                        className="overflow-x-auto bg-popover scrollbar-thin-fine"
+                        className="overflow-x-auto bg-popover scrollbar-none pointer-fine:scrollbar-thin pointer-fine:scrollbar-thumb-muted pointer-fine:scrollbar-track-transparent"
                     >
                         <table
                             className="w-full text-sm tabular-nums"
