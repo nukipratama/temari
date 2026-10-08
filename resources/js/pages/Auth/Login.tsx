@@ -119,8 +119,12 @@ export default function Login({
                 demoPending={demoForm.processing}
             />
 
-            <main className="px-4.5 pt-6.5 pb-2 min-[900px]:mx-auto min-[900px]:max-w-column min-[1280px]:max-w-column-wide min-[900px]:px-6 min-[900px]:pt-11">
-                <Eyebrow token="micro" className="mb-2.5 text-foreground">
+            <div className="px-4.5 pt-6.5 pb-2 min-[900px]:mx-auto min-[900px]:max-w-column min-[1280px]:max-w-column-wide min-[900px]:px-6 min-[900px]:pt-11">
+                <Eyebrow
+                    as="h2"
+                    token="micro"
+                    className="mb-2.5 text-foreground"
+                >
                     why the comparison is fair
                 </Eyebrow>
                 <WhyList
@@ -128,7 +132,11 @@ export default function Login({
                     wideClassName="min-[900px]:grid min-[900px]:grid-cols-3"
                 />
 
-                <Eyebrow token="micro" className="mb-2.5 text-foreground">
+                <Eyebrow
+                    as="h2"
+                    token="micro"
+                    className="mb-2.5 text-foreground"
+                >
                     what you get
                 </Eyebrow>
                 <CardTeaser />
@@ -141,7 +149,7 @@ export default function Login({
                     dataUse={dataUse}
                     trainingDisclaimer={trainingDisclaimer}
                 />
-            </main>
+            </div>
 
             <footer className="mt-1 border-t border-border px-4.5 pt-1 pb-7 text-center min-[900px]:mx-auto min-[900px]:max-w-column min-[1280px]:max-w-column-wide">
                 <nav

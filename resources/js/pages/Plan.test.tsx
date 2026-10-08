@@ -132,6 +132,12 @@ describe('Plan', () => {
         clearNavigationMemory();
     });
 
+    it('titles the page with exactly one h1', () => {
+        renderPlan();
+
+        expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
+    });
+
     it('shows the AI pause banner while generation is paused', () => {
         setMockPage({ today: '2026-06-17', aiPaused: true }, '/plan', 'Plan');
 
@@ -155,7 +161,7 @@ describe('Plan', () => {
         renderPlan();
 
         expect(screen.getByText('Plan')).toBeInTheDocument();
-        expect(screen.getByRole('heading')).toHaveTextContent(
+        expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
             /the weeks\s*ahead\./i,
         );
         expect(

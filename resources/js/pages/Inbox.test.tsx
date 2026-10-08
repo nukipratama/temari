@@ -68,6 +68,25 @@ describe('Inbox', () => {
         ).not.toBeInTheDocument();
     });
 
+    it('titles the page with exactly one h1', () => {
+        renderInbox([]);
+
+        expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
+    });
+
+    it('nests each row title under its bucket heading', () => {
+        renderInbox([item()]);
+
+        const levels = screen
+            .getAllByRole('heading')
+            .map((heading) => Number(heading.tagName.slice(1)));
+
+        expect(levels).toEqual([1, 2, 3]);
+        expect(
+            screen.getByRole('heading', { level: 3, name: 'Your run is in' }),
+        ).toBeInTheDocument();
+    });
+
     it('shows a decent empty state rather than a bare list', () => {
         renderInbox([]);
 

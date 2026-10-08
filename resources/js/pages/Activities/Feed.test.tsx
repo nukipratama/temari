@@ -66,6 +66,12 @@ describe('Activities/Feed', () => {
         expect(screen.getByText(/catching her breath/)).toBeInTheDocument();
     });
 
+    it('titles the page with exactly one h1', () => {
+        render(<RunsIndex runs={[]} rangeFilter="8w" weeklySnapshots={[]} />);
+
+        expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
+    });
+
     it('explains the effort stripe and mood dot above the weeks', () => {
         const { container } = render(
             <RunsIndex

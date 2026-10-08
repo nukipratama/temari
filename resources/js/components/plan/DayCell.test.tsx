@@ -108,6 +108,21 @@ describe('DayCellBody', () => {
         expect(screen.getByText('of 6.0')).toBeInTheDocument();
     });
 
+    it('renders the planned line as "of X" from 360px and as "/X" below it', () => {
+        render(
+            <DayCellBody
+                day={day({ status: 'done', actual_km: 5, prescribed_km: 6 })}
+                hasElapsed
+            />,
+        );
+
+        expect(screen.getByText('of 6.0')).toHaveClass('max-[359px]:hidden');
+        expect(screen.getByText('/6.0')).toHaveClass(
+            'hidden',
+            'max-[359px]:inline',
+        );
+    });
+
     it('prefers the prescribed km over the (possibly redistributed) distance for the planned figure', () => {
         render(
             <DayCellBody

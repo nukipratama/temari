@@ -24,7 +24,7 @@ export default function LapsCarousel({
 
     return (
         <section className={className}>
-            <Eyebrow token="small" tone="ink-2" className="mb-2 px-0.5">
+            <Eyebrow as="h2" token="small" tone="ink-2" className="mb-2 px-0.5">
                 Laps
             </Eyebrow>
             <ul

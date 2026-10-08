@@ -49,6 +49,23 @@ describe('AppShell', () => {
         );
     });
 
+    it('renders exactly one main landmark around the children', () => {
+        setMockPage({
+            auth: { user: andiUser },
+            flash: {},
+            demoLoginEnabled: false,
+        });
+        render(
+            <AppShell>
+                <p>child content</p>
+            </AppShell>,
+        );
+
+        const main = screen.getByRole('main');
+        expect(screen.getAllByRole('main')).toHaveLength(1);
+        expect(main).toContainElement(screen.getByText('child content'));
+    });
+
     it('draws no progress bar — the shell paints at once and the swap cross-fades', () => {
         setMockPage({
             auth: { user: andiUser },

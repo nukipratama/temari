@@ -148,6 +148,7 @@ export default function Inbox({
                                         ({ bucket, items }) => (
                                             <div key={bucket}>
                                                 <Eyebrow
+                                                    as="h2"
                                                     token="small"
                                                     className="mb-2"
                                                 >

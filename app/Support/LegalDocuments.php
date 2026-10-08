@@ -15,7 +15,7 @@ namespace App\Support;
  */
 final class LegalDocuments
 {
-    public const string UPDATED = '2026-09-29';
+    public const string UPDATED = '2026-10-08';
 
     public const string NOTES_SECTION_ID = 'notes';
 
@@ -127,8 +127,8 @@ final class LegalDocuments
                     'heading' => 'who else sees it',
                     'paragraphs' => [
                         'No other Temari account, ever. Every read is scoped to the signed-in runner, and tests check that it stays that way.',
-                        'It isn\'t sold, and it isn\'t handed to advertisers or data brokers. There is no advertising and no third-party analytics or tracking script in the app.',
-                        'A few services make specific features work, and each only receives what its feature needs: a third-party AI service receives your run numbers so it can write your notes, and does not train on them; Open-Meteo receives a coordinate and a timestamp to return the weather for a run; OpenStreetMap\'s Nominatim receives a start coordinate to name the place; Telegram receives your messages only if you connect it; your browser vendor\'s push service receives a notification only if you turn push on.',
+                        'It isn\'t sold, and it isn\'t handed to advertisers or data brokers. There is no advertising, and nothing tracks you across other sites.',
+                        'A few services make specific features work, and each only receives what its feature needs: a third-party AI service receives your run numbers so it can write your notes, and does not train on them; Open-Meteo receives a coordinate and a timestamp to return the weather for a run; OpenStreetMap\'s Nominatim receives a start coordinate to name the place; Telegram receives your messages only if you connect it; your browser vendor\'s push service receives a notification only if you turn push on. Cloudflare, which serves the site, counts page views with its cookieless Web Analytics: the page, the referring site, and the browser, device and country, seen only as totals.',
                     ],
                 ],
                 [

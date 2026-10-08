@@ -57,6 +57,12 @@ describe('Legal/Document', () => {
         ).toBeInTheDocument();
     });
 
+    it('titles the page with exactly one h1', () => {
+        renderDocument();
+
+        expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
+    });
+
     it('opens with the short version before the full sections', () => {
         renderDocument();
 

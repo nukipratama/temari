@@ -28,7 +28,7 @@ export default function SteppingStoneCard({
                 className,
             )}
         >
-            <Eyebrow token="micro" tone="ink-2">
+            <Eyebrow as="h2" token="micro" tone="ink-2">
                 stepping stone
             </Eyebrow>
             <p className="mt-1 flex flex-wrap items-baseline gap-x-2 font-mono tabular-nums">

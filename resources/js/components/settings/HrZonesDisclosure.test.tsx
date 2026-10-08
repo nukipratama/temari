@@ -2,9 +2,12 @@ import { router } from '@inertiajs/react';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
-import { setMockPage } from '@/test/setup';
+import { makeUser, setMockPage } from '@/test/setup';
 
-import HrZonesDisclosure, { type HrZonesPayload } from './HrZonesDisclosure';
+import HrZonesDisclosure, {
+    type HrZonesPayload,
+    ZONES_DEMO_BLOCKED,
+} from './HrZonesDisclosure';
 
 const DEFAULT_BOUNDS = { Z1: 116, Z2: 138, Z3: 154, Z4: 168, Z5: 176 };
 
@@ -309,6 +312,33 @@ describe('HrZonesDisclosure', () => {
         act(() => options.onSuccess?.());
 
         expect(router.reload).toHaveBeenCalledWith({ only: ['hrZones'] });
+    });
+
+    it('shows a demo visitor the demo-blocked modal instead of resyncing from Strava', async () => {
+        setMockPage({
+            errors: {},
+            auth: { user: makeUser({ is_demo: true }) },
+        });
+        vi.mocked(router.post).mockReset();
+
+        render(
+            <HrZonesDisclosure
+                hrZones={{
+                    ...DEFAULT_PAYLOAD,
+                    source: 'manual',
+                    canSyncFromStrava: true,
+                }}
+            />,
+        );
+        open();
+        fireEvent.click(
+            screen.getByRole('button', { name: /resync from Strava/ }),
+        );
+
+        expect(
+            await screen.findByText(ZONES_DEMO_BLOCKED.title),
+        ).toBeInTheDocument();
+        expect(router.post).not.toHaveBeenCalled();
     });
 
     it('deletes and reloads just the hrZones prop when Reset to default is clicked', () => {

@@ -168,7 +168,7 @@ export default function PaceTargetsCard({
 
     return (
         <section>
-            <Eyebrow token="micro" tone="ink-3">
+            <Eyebrow as="h2" token="micro" tone="ink-3">
                 Training · pace targets · per km
             </Eyebrow>
             <ul className="mx-4 mt-3 space-y-3.5">

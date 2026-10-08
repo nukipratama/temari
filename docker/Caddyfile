@@ -66,15 +66,16 @@
 	# Cloudflare Access fronts the edge too.
 
 	# Horizon (Vue) and Pulse (Alpine) compile template expressions via
-	# `new Function()`, and Horizon fetches its font from Bunny. Scoped here so the
-	# app-wide policy below stays strict.
+	# `new Function()`, and both load their Figtree font from fonts.bunny.net, the
+	# only third-party font origin allowed. Scoped here so the app-wide policy
+	# below stays strict.
 	@ops path /devtools/horizon /devtools/horizon/* /devtools/pulse /devtools/pulse/*
 	handle @ops {
 		header -Server
 		header X-Frame-Options "DENY"
 		header X-Content-Type-Options "nosniff"
 		header Referrer-Policy "strict-origin-when-cross-origin"
-		header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: https: blob:; connect-src 'self' https://cloudflareinsights.com; worker-src 'self'; manifest-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'"
+		header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline' https://fonts.bunny.net; font-src 'self' data: https://fonts.bunny.net; img-src 'self' data: https: blob:; connect-src 'self' https://cloudflareinsights.com; worker-src 'self'; manifest-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'"
 		php_server
 	}
 
@@ -90,7 +91,7 @@
 		# Enforced. script-src allows inline (Cloudflare's automatic Web Analytics /
 		# Rocket Loader inject inline scripts whose hash changes per page, so they can't
 		# be pinned) plus CF's external beacon host; connect-src allows the beacon POST.
-		# mdi icons are bundled offline; fonts via Google Fonts; style unsafe-inline for
+		# mdi icons are bundled offline; fonts are self-hosted (font-src 'self'); style unsafe-inline for
 		# lib-injected <style>; img https: for OSM tiles. All other directives stay strict.
 		header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: https: blob:; connect-src 'self' https://cloudflareinsights.com; worker-src 'self'; manifest-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'"
 		php_server

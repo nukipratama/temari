@@ -77,7 +77,7 @@ export default function SeasonHeaderCard({
 
     return (
         <section>
-            <Eyebrow token="small" className="text-foreground">
+            <Eyebrow as="h2" token="small" className="text-foreground">
                 season
             </Eyebrow>
             <Collapsible className="mt-2">

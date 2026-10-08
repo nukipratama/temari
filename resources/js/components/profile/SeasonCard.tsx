@@ -39,7 +39,7 @@ export default function SeasonCard({
 }: Readonly<{ season: ProfileSeason | null; weeks: SeasonSummaryWeek[] }>) {
     return (
         <section>
-            <Eyebrow token="micro" tone="ink-3">
+            <Eyebrow as="h2" token="micro" tone="ink-3">
                 Season
             </Eyebrow>
             {season === null ? (
