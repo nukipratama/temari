@@ -37,7 +37,7 @@ step() {
     echo "GATE: FAIL at $name (${failed_after}s)" >&2
     exit 1
   fi
-  echo "    $name ok ($(($(date +%s) - started))s)"
+  echo "    $name ok ($(($(date +%s) - started))s)" | tee -a "$GATE_LOG"
 }
 
 # vitest can exit non-zero when --changed selects nothing; that is a pass here.
