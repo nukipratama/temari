@@ -146,7 +146,9 @@ Route::middleware(['auth', 'onboarded'])->group(function (): void {
         ->middleware('throttle:120,1')
         ->name('plan.recommendations.shown');
     Route::post('/plan/regenerate', [PlanController::class, 'regenerate'])->name('plan.regenerate');
-    Route::patch('/plan/sessions/{plannedSession}', [PlanController::class, 'update'])->name('plan.sessions.update');
+    Route::patch('/plan/sessions/{plannedSession}', [PlanController::class, 'update'])
+        ->middleware('throttle:20,1,plan-edit')
+        ->name('plan.sessions.update');
     Route::post('/plan/time-trials/{plannedSession}', TimeTrialAnswerController::class)
         ->middleware(['throttle:20,1', 'block-demo-telegram'])
         ->whereNumber('plannedSession')
