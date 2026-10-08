@@ -8,6 +8,12 @@
 >    --out crop.jpg` (or one PIL call). Ad-hoc `crops/*.png` have historically been the single largest
 >    source of oversized reads after the sweep itself.
 
+### Main-session image budget
+
+- Batch several visual changes before reviewing one screenshot for the round.
+- The main session views at most one image per round, as a crop of the changed region or a screenshot at scale 0.5 or below. A full viewport sweep goes to a subagent that reports in text; run a screenshot-reader subagent with `run_in_background: false`.
+- Run the narrowest check that can fail before widening.
+
 Each run lands in its own batch dir, keyed by date + execution time:
 `storage/app/browser-review/<YYYY-MM-DD>/<HHMMSS>/<viewport>/NN-<page>-{viewport,full}.jpg`. `shoot.mjs`
 clears prior batches at the start, so only the latest sweep is on disk, and prints the resolved dir as
