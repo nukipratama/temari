@@ -2,6 +2,8 @@ import type { ComponentType } from 'react';
 
 import { lazy } from 'react';
 
+import { reloadDocument } from '@/lib/reloadDocument';
+
 const RELOADED_KEY = 'temari-chunk-reload';
 
 /**
@@ -26,7 +28,7 @@ export function recoverFromChunkFailure(): boolean {
         return false;
     }
 
-    window.location.reload();
+    reloadDocument();
 
     return true;
 }
