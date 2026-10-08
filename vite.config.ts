@@ -2,7 +2,6 @@ import { defineConfig, type Plugin } from 'vite';
 import laravel from 'laravel-vite-plugin';
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
-import path from 'node:path';
 
 const CATALOGUE = '?catalogue';
 
@@ -130,9 +129,7 @@ export default defineConfig({
         },
     },
     resolve: {
-        alias: {
-            '@': path.resolve(import.meta.dirname, 'resources/js'),
-        },
+        tsconfigPaths: true,
     },
     server: {
         host: '0.0.0.0',

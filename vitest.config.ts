@@ -5,8 +5,8 @@ import path from 'node:path';
 export default defineConfig({
     plugins: [react()],
     resolve: {
+        tsconfigPaths: true,
         alias: {
-            '@': path.resolve(import.meta.dirname, 'resources/js'),
             // Test-only: the brand generators are the source of truth for the
             // derived token set, and are pinned from Vitest. They are never
             // aliased in vite.config.ts, so none of this reaches a bundle.
