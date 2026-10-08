@@ -5,17 +5,11 @@ declare(strict_types=1);
 namespace App\Services\Run\Plan;
 
 use Throwable;
-use App\Enums\IntentVerdict;
 use App\Jobs\Run\RecalibrateTrainingHistoryJob;
 use App\Models\Activity;
-use App\Models\PlannedSession;
-use App\Models\Season;
 use App\Models\User;
 use App\Services\Run\Ingest\ActivityPipeline;
 use App\Services\Run\Metrics\WeeklyAggregator;
-use App\Services\Run\Metrics\TrainingPaceCalculator;
-use App\Services\Run\Metrics\VdotEstimator;
-use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -28,19 +22,14 @@ final readonly class PlanRecalibrationService
     public function __construct(
         private ActivityPipeline $activityPipeline,
         private WeeklyAggregator $weeklyAggregator,
-        private ComplianceScorer $complianceScorer,
         private Periodizer $periodizer,
-        private IntensityPrescriptionResolver $prescriptionResolver,
-        private VdotEstimator $vdotEstimator,
-        private TrainingPaceCalculator $paceCalculator,
     ) {
     }
 
     /**
      * Ordinary recalibration after a zone change or ingest: run metrics, weekly
      * snapshots and the future plan follow the current zones. Past
-     * prescriptions and the grades given against shown advice are kept; only
-     * the one-time reset ({@see CoachingReset}) rewrites them.
+     * prescriptions and the grades given against shown advice are kept.
      *
      * @return array{activities: int, snapshots: int}
      */
@@ -147,80 +136,5 @@ final readonly class PlanRecalibrationService
         }
 
         return $recomputed;
-    }
-
-    /**
-     * Rewrites every past prescription under the current policy and re-grades
-     * it, oldest first, so each verdict feeds the next prescription of its
-     * family. Only the one-time reset calls this; it is never part of ordinary
-     * recalibration.
-     */
-    public function rewriteHistory(User $user): int
-    {
-        /** @var Collection<int, PlannedSession> $rows */
-        $rows = PlannedSession::query()
-            ->where('user_id', $user->id)
-            ->whereDate('date', '<', Carbon::today())
-            ->orderBy('date')
-            ->get();
-        if ($rows->isEmpty()) {
-            return 0;
-        }
-
-        $seasons = Season::query()
-            ->where('user_id', $user->id)
-            ->with('raceGoal')
-            ->orderBy('starts_at')
-            ->get();
-
-        /** @var array<string, array{date: Carbon, verdict: IntentVerdict, hard_minutes: int}> $recent */
-        $recent = [];
-        $count = 0;
-        foreach ($rows as $row) {
-            $season = $seasons->first(fn (Season $candidate): bool => $row->date->betweenIncluded($candidate->starts_at, $candidate->ends_at));
-            $race = $season?->raceGoal;
-            $paces = $this->paceCalculator->fromVdotResult($this->vdotEstimator->estimate($user, $row->date));
-            $family = IntensityPrescriptionResolver::familyKey(
-                $row->session_type,
-                $race === null ? null : (float) $race->distance_m,
-                $race?->goal_time_sec,
-            );
-            $previous = $recent[$family] ?? null;
-            if ($previous !== null && $previous['date']->diffInDays($row->date) > 42) {
-                $previous = null;
-            }
-
-            $prescription = $this->prescriptionResolver->resolve(
-                $row->session_type,
-                $row->phase,
-                $race === null ? null : (float) $race->distance_m,
-                $race?->goal_time_sec,
-                $paces,
-                $previous['verdict'] ?? null,
-                $previous['hard_minutes'] ?? null,
-            );
-            $row->update($prescription->toArray());
-
-            $verdict = $this->complianceScorer->verdictsFor(
-                $user,
-                Collection::wrap([$row]),
-                Carbon::today(),
-            )[$row->date->toDateString()] ?? null;
-            if ($verdict === null) {
-                continue;
-            }
-
-            ComplianceScorer::applyVerdict($row, $verdict);
-            if ($row->intent_verdict !== null && $row->prescribed_hard_minutes !== null && $row->prescribed_hard_minutes > 0) {
-                $recent[$family] = [
-                    'date' => $row->date->copy(),
-                    'verdict' => $row->intent_verdict,
-                    'hard_minutes' => $row->prescribed_hard_minutes,
-                ];
-            }
-            $count++;
-        }
-
-        return $count;
     }
 }

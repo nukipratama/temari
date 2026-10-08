@@ -32,5 +32,5 @@ Ingest writes the mood before the day is graded, so [DispatchPostRunAnalysis](ap
 
 ## Consequences
 
-- New runs get the purpose-based mood on ingest. Stored moods of past runs change only when `RecomputeCardClaimsCommand` runs for an athlete; that recomputes moods and PR flags, writes no grade and requests no narration.
+- New runs get the purpose-based mood on ingest. Stored moods of past runs change only when `RecomputeCardClaimsCommand` (removed 2026-10-08) runs for an athlete; that recomputes moods and PR flags, writes no grade and requests no narration.
 - A changed mood changes the run's material fingerprint, so a run whose narration later re-runs reads the new mood.

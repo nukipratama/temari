@@ -47,7 +47,7 @@ dataset('console entry points that can reach a narrator', [
     'plan:score-compliance' => ['plan:score-compliance', [], AnalysisOrigin::Scheduled],
     'strava:hydrate-backlog' => ['strava:hydrate-backlog', [], AnalysisOrigin::Ingest],
     'strava:resync-activity' => ['strava:resync-activity', ['activity' => 0], AnalysisOrigin::Recovery],
-    'run:rebuild-splits' => ['run:rebuild-splits', ['--skip-fetch' => true], AnalysisOrigin::Recovery],
+    'run:rebuild-splits' => ['run:rebuild-splits', [], AnalysisOrigin::Recovery],
 ]);
 
 it('declares an origin before a queued job can reach a narrator', function (Closure $makeJob, AnalysisOrigin $expected): void {
