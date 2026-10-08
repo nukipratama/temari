@@ -4,7 +4,8 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { makeUser, setMockPage } from '@/test/setup';
 
-import StravaSyncButton, { SYNC_DEMO_BLOCKED } from './StravaSyncButton';
+import StravaSyncButton from './StravaSyncButton';
+import { SYNC_DEMO_BLOCKED } from './SyncDemoBlockedModal';
 
 describe('StravaSyncButton', () => {
     it('renders a connect link to the OAuth redirect when disconnected', () => {

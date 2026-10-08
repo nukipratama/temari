@@ -1,24 +1,18 @@
-import { router } from '@inertiajs/react';
+import { router, usePage } from '@inertiajs/react';
 import { LoaderCircle, RefreshCw } from 'lucide-react';
 import { Suspense, useState } from 'react';
 
-import type { StravaSyncState } from '@/types/inertia';
+import type { SharedProps, StravaSyncState } from '@/types/inertia';
 
 import StravaAction from '@/components/StravaAction';
 import { Icon, StravaIcon } from '@/components/ui/Icon';
-import { useDemoGuard } from '@/hooks/useDemoGuard';
 import { cn } from '@/lib/cn';
 import { lazyIsland } from '@/lib/lazyIsland';
 import { pillButtonVariants } from '@/lib/variants';
 
-const DemoBlockedModal = lazyIsland(
-    () => import('@/components/DemoBlockedModal'),
+const SyncDemoBlockedModal = lazyIsland(
+    () => import('@/components/SyncDemoBlockedModal'),
 );
-
-export const SYNC_DEMO_BLOCKED = {
-    title: "the demo doesn't sync",
-    body: 'this is the shared demo, so its runs are a fixed set. connect your own Strava and sync now pulls in your latest runs.',
-} as const;
 
 interface StravaSyncButtonProps {
     state: StravaSyncState;
@@ -41,12 +35,8 @@ export default function StravaSyncButton({
     className,
 }: Readonly<StravaSyncButtonProps>) {
     const [pending, setPending] = useState(false);
-    const {
-        isDemo,
-        open: demoBlocked,
-        setOpen: setDemoBlocked,
-        guard,
-    } = useDemoGuard();
+    const isDemo = usePage<SharedProps>().props.auth.user?.is_demo ?? false;
+    const [demoBlocked, setDemoBlocked] = useState(false);
 
     if (state === 'disconnected' || state === 'revoked') {
         return (
@@ -69,17 +59,17 @@ export default function StravaSyncButton({
                 <button
                     type="button"
                     onClick={() =>
-                        guard(() =>
-                            router.post(
-                                '/strava/sync',
-                                {},
-                                {
-                                    preserveScroll: true,
-                                    onStart: () => setPending(true),
-                                    onFinish: () => setPending(false),
-                                },
-                            ),
-                        )
+                        isDemo
+                            ? setDemoBlocked(true)
+                            : router.post(
+                                  '/strava/sync',
+                                  {},
+                                  {
+                                      preserveScroll: true,
+                                      onStart: () => setPending(true),
+                                      onFinish: () => setPending(false),
+                                  },
+                              )
                     }
                     disabled={pending}
                     className={cn(
@@ -98,10 +88,9 @@ export default function StravaSyncButton({
                 </button>
                 {isDemo && (
                     <Suspense fallback={null}>
-                        <DemoBlockedModal
+                        <SyncDemoBlockedModal
                             open={demoBlocked}
                             onClose={() => setDemoBlocked(false)}
-                            {...SYNC_DEMO_BLOCKED}
                         />
                     </Suspense>
                 )}
