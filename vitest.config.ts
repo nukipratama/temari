@@ -20,6 +20,7 @@ export default defineConfig({
         environment: 'jsdom',
         fsModuleCache: !process.env.CI,
         globals: true,
+        expect: { requireAssertions: true },
         setupFiles: ['./resources/js/test/setup.ts'],
         include: ['resources/js/**/*.test.{ts,tsx}'],
         coverage: {
