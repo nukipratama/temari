@@ -61,7 +61,11 @@ it('never lets a Horizon supervisor force its workers through maintenance', func
 });
 
 it('queues a Strava webhook event during maintenance and processes it only once maintenance lifts', function (): void {
-    config(['queue.default' => 'database']);
+    config([
+        'queue.default' => 'database',
+        'services.strava.webhook_callback_token' => 'fake-callback-token',
+        'services.strava.webhook_subscription_id' => '424242',
+    ]);
     Http::preventStrayRequests();
     Http::fake(['*/activities/*' => Http::response(['message' => 'Record Not Found'], 404)]);
 
@@ -70,7 +74,8 @@ it('queues a Strava webhook event during maintenance and processes it only once 
 
     app()->maintenanceMode()->activate([]);
 
-    $this->postJson(route('strava.webhook.handle'), [
+    $this->postJson(route('strava.webhook.handle', ['token' => 'fake-callback-token']), [
+        'subscription_id' => 424242,
         'object_type' => 'activity',
         'aspect_type' => 'delete',
         'object_id' => 9001,

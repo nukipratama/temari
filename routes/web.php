@@ -46,14 +46,14 @@ use App\Http\Controllers\TrendsController;
 use App\Support\LegalDocuments;
 use Illuminate\Support\Facades\Route;
 
-// Strava push subscription. Called by Strava unauthenticated — gated by the
-// shared verify token (handshake) and scoped to the owning athlete (events),
-// so it lives outside the auth middleware group.
-Route::get('/strava/webhook', [StravaWebhookController::class, 'verify'])->name('strava.webhook.verify');
-// IP rate-limited like the other public POSTs: the channel is unauthenticated,
-// so cap it to blunt amplification. 60/min is well above Strava's real delivery
-// rate (one event per activity) while still throttling a flood.
-Route::post('/strava/webhook', [StravaWebhookController::class, 'handle'])
+// Strava push subscription. Called by Strava with no session — gated by the
+// secret callback token in the path, the shared verify token (handshake) and the
+// subscription id (events), so it lives outside the auth middleware group.
+Route::get('/strava/webhook/{token}', [StravaWebhookController::class, 'verify'])->name('strava.webhook.verify');
+// IP rate-limited like the other public POSTs to blunt amplification. 60/min is
+// well above Strava's real delivery rate (one event per activity) while still
+// throttling a flood.
+Route::post('/strava/webhook/{token}', [StravaWebhookController::class, 'handle'])
     ->middleware('throttle:60,1')
     ->name('strava.webhook.handle');
 

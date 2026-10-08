@@ -2,12 +2,14 @@
 
 declare(strict_types=1);
 
+use App\Http\Controllers\Strava\StravaWebhookController;
 use App\Jobs\Strava\IngestActivityJob;
 use App\Models\Activity;
 use App\Models\StravaConnection;
 use App\Models\User;
 use App\Services\Strava\StravaClient;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\RateLimiter;
@@ -17,7 +19,10 @@ uses(RefreshDatabase::class);
 beforeEach(function (): void {
     // Default: skip the webhook self-handshake so no outbound HTTP fires unless
     // a test opts in by configuring the verify token.
-    config(['services.strava.webhook_verify_token' => null]);
+    config([
+        'services.strava.webhook_verify_token' => null,
+        'services.strava.webhook_callback_token' => 'fake-callback-token',
+    ]);
 });
 
 it('warns when no athlete is connected', function (): void {
@@ -66,7 +71,7 @@ it('skips repair for a revoked connection', function (): void {
 it('passes the webhook self-handshake when the callback echoes the challenge', function (): void {
     config(['services.strava.webhook_verify_token' => 'verify-tok']);
     Http::fake([
-        route('strava.webhook.verify').'*' => function ($request) {
+        StravaWebhookController::callbackUrl().'*' => function ($request) {
             parse_str((string) parse_url((string) $request->url(), PHP_URL_QUERY), $query);
 
             return Http::response(['hub.challenge' => $query['hub_challenge'] ?? '']);
@@ -81,6 +86,17 @@ it('passes the webhook self-handshake when the callback echoes the challenge', f
         ->assertSuccessful();
 });
 
+it('prints the webhook callback with its token masked', function (): void {
+    $user = User::factory()->create();
+    StravaConnection::factory()->for($user)->create();
+
+    expect(Artisan::call('strava:doctor', ['--user' => $user->id]))->toBe(0);
+
+    expect(Artisan::output())
+        ->toContain('Webhook callback: '.url('/strava/webhook/****'))
+        ->not->toContain('fake-callback-token');
+});
+
 it('e2e passes all checks when healthy', function (): void {
     config([
         'services.strava.client_id' => '123',
@@ -88,7 +104,7 @@ it('e2e passes all checks when healthy', function (): void {
         'services.strava.webhook_verify_token' => 'verify-tok',
     ]);
     Http::fake([
-        route('strava.webhook.verify').'*' => function ($request) {
+        StravaWebhookController::callbackUrl().'*' => function ($request) {
             parse_str((string) parse_url((string) $request->url(), PHP_URL_QUERY), $query);
 
             return Http::response(['hub.challenge' => $query['hub_challenge'] ?? '']);

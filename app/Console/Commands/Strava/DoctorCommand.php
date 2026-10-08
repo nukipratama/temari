@@ -7,6 +7,7 @@ namespace App\Console\Commands\Strava;
 use App\Actions\Strava\ProbeStravaWebhookAction;
 use App\Enums\StravaReadPriority;
 use App\Enums\StravaReadSource;
+use App\Http\Controllers\Strava\StravaWebhookController;
 use App\Jobs\Strava\IngestActivityJob;
 use App\Models\Activity;
 use App\Models\User;
@@ -74,7 +75,7 @@ class DoctorCommand extends Command
                 ->whereHas('stravaConnection', fn (Builder $q): Builder => $q->whereNull('revoked_at'))
                 ->exists(),
             'Webhook self-handshake' => function (): bool {
-                $callbackUrl = route('strava.webhook.verify');
+                $callbackUrl = StravaWebhookController::callbackUrl();
                 $verifyToken = (string) config('services.strava.webhook_verify_token');
 
                 return $verifyToken !== '' && app(ProbeStravaWebhookAction::class)($callbackUrl, $verifyToken)['passed'];
@@ -164,10 +165,10 @@ class DoctorCommand extends Command
 
     private function reportWebhook(): void
     {
-        $callbackUrl = route('strava.webhook.verify');
+        $callbackUrl = StravaWebhookController::callbackUrl();
         $verifyToken = (string) config('services.strava.webhook_verify_token');
 
-        $this->line("Webhook callback: {$callbackUrl}");
+        $this->line('Webhook callback: '.StravaWebhookController::maskWebhookSecrets($callbackUrl));
 
         if ($verifyToken === '') {
             $this->warn('Webhook self-handshake: SKIPPED (STRAVA_WEBHOOK_VERIFY_TOKEN not configured).');

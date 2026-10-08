@@ -121,9 +121,13 @@ it('shows the demo button again once maintenance lifts', function (): void {
 });
 
 it('keeps the Strava webhook handshake answering', function (): void {
-    config(['services.strava.webhook_verify_token' => 'verify-token']);
+    config([
+        'services.strava.webhook_verify_token' => 'verify-token',
+        'services.strava.webhook_callback_token' => 'fake-callback-token',
+    ]);
 
     $this->getJson(route('strava.webhook.verify', [
+        'token' => 'fake-callback-token',
         'hub.mode' => 'subscribe',
         'hub.verify_token' => 'verify-token',
         'hub.challenge' => 'challenge-abc',

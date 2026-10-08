@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Console\Commands\Strava;
 
 use App\Actions\Strava\ProbeStravaWebhookAction;
+use App\Http\Controllers\Strava\StravaWebhookController;
 use App\Services\Strava\StravaClient;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
@@ -59,11 +60,11 @@ class WebhookSubscribeCommand extends Command
             return self::FAILURE;
         }
 
-        $callbackUrl = route('strava.webhook.verify');
+        $callbackUrl = StravaWebhookController::callbackUrl();
 
         foreach ($subscriptions as $subscription) {
             if (($subscription['callback_url'] ?? null) === $callbackUrl) {
-                $this->info("Already subscribed (id={$subscription['id']}), callback {$callbackUrl}.");
+                $this->info("Already subscribed (id={$subscription['id']}), callback ".StravaWebhookController::maskWebhookSecrets($callbackUrl).'.');
 
                 return self::SUCCESS;
             }
@@ -71,7 +72,7 @@ class WebhookSubscribeCommand extends Command
 
         if ($subscriptions !== []) {
             $existing = $subscriptions[0];
-            $this->warn("A subscription already exists with a different callback ({$existing['callback_url']}, id={$existing['id']}).");
+            $this->warn('A subscription already exists with a different callback ('.StravaWebhookController::maskWebhookSecrets((string) $existing['callback_url']).", id={$existing['id']}).");
             $this->line("Strava allows one subscription per app — delete it first: php artisan strava:webhook-subscribe --action=delete --id={$existing['id']}");
 
             return self::FAILURE;
@@ -89,8 +90,8 @@ class WebhookSubscribeCommand extends Command
             return self::FAILURE;
         }
 
-        $callbackUrl = route('strava.webhook.verify');
-        $this->line("Callback URL: {$callbackUrl}");
+        $callbackUrl = StravaWebhookController::callbackUrl();
+        $this->line('Callback URL: '.StravaWebhookController::maskWebhookSecrets($callbackUrl));
         $this->line('Verify token length: '.mb_strlen((string) $verifyToken));
 
         // Strava synchronously GETs the callback during create and subscribes
@@ -98,7 +99,7 @@ class WebhookSubscribeCommand extends Command
         $probe = app(ProbeStravaWebhookAction::class)($callbackUrl, (string) $verifyToken);
         if (! $probe['passed']) {
             $this->error("Self-verify failed ({$probe['status']}): the callback did not echo the challenge.");
-            $this->line('Response: '.$probe['detail']);
+            $this->line('Response: '.StravaWebhookController::maskWebhookSecrets($probe['detail']));
             $this->error('Aborting before calling Strava: the public callback did not pass its own verify handshake. Fix that (recreate the app container so it loads the verify token, or allow /strava/webhook through Cloudflare), then retry.');
 
             return self::FAILURE;
@@ -115,7 +116,7 @@ class WebhookSubscribeCommand extends Command
 
         if ($response->failed()) {
             $body = $response->body();
-            $this->error("Strava rejected the subscription ({$response->status()}): {$body}");
+            $this->error("Strava rejected the subscription ({$response->status()}): ".StravaWebhookController::maskWebhookSecrets($body));
 
             if (str_contains($body, 'GET to callback URL')) {
                 $this->warn('The app and token are fine (the callback just echoed the self-check). Strava still got a non-200, which points at the edge, not the app: Cloudflare Bot Fight Mode challenges datacenter callers like Strava (AWS), and the self-probe runs from a trusted IP so it cannot see this. Disable Bot Fight Mode for the zone (the free plan cannot scope it per path), then retry.');
@@ -147,7 +148,7 @@ class WebhookSubscribeCommand extends Command
         foreach ($subscriptions as $subscription) {
             $id = $subscription['id'] ?? '?';
             $callback = $subscription['callback_url'] ?? '?';
-            $this->line("id={$id}  callback={$callback}");
+            $this->line("id={$id}  callback=".StravaWebhookController::maskWebhookSecrets((string) $callback));
         }
 
         return self::SUCCESS;
