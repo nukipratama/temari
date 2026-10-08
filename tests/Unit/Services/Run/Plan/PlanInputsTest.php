@@ -92,21 +92,20 @@ it('is self-scaled exactly when there is no race to aim at', function (): void {
 it('trains every phase of the arc rather than restarting it each Monday', function (): void {
     expect(array_column(trainedArcRows(8), 'phase'))->toBe([
         PlanPhase::Base,
-        PlanPhase::Base,
+        PlanPhase::Build,
         PlanPhase::Build,
         PlanPhase::Deload,
-        PlanPhase::Build,
         PlanPhase::Peak,
         PlanPhase::Peak,
+        PlanPhase::Taper,
         PlanPhase::Taper,
     ]);
 });
 
 it('trains a ramp that builds, dips through the scheduled deload and tapers', function (): void {
-    // Base flat, Build's first week off it, the scheduled Deload at -35%,
-    // Build resuming its 7.5% compounding across the dip, Peak holding it,
-    // and race week at 40% of Peak.
-    expect(array_column(trainedArcRows(8), 'multiplier'))->toBe([1.0, 1.0, 1.0, 0.65, 1.075, 1.075, 1.075, 0.43]);
+    // Base flat, Build compounding 7.5%, the scheduled Deload at -35% off it,
+    // Peak holding the build level, and the taper at 60% then 40% of it.
+    expect(array_column(trainedArcRows(8), 'multiplier'))->toBe([1.0, 1.0, 1.075, 0.699, 1.075, 1.075, 0.645, 0.43]);
 });
 
 it('turns the week the adapter called down into a real deload', function (): void {
@@ -169,7 +168,7 @@ it('holds a race block flat outside its dips while its increases are held', func
     ));
     sort($multipliers);
 
-    expect($multipliers)->toBe([0.4, 0.65, 1.0]);
+    expect($multipliers)->toBe([0.4, 0.6, 0.65, 1.0]);
 });
 
 it('keeps prescribed hard work inside the real weekly time budget', function (): void {

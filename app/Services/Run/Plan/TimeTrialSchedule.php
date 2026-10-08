@@ -10,7 +10,8 @@ use Illuminate\Support\Carbon;
 /**
  * Which weeks of a season hold a time trial. A race season counts back from
  * race week, a season with no race counts forward from its own start; a trial
- * that cannot be placed in its week moves to the next week of its cycle, and a
+ * due in a scheduled Deload week falls due the week before it, a trial that
+ * cannot be placed in its week moves to the next week of its cycle, and a
  * skipped trial is offered once more the week after. See
  * `docs/decisions/a-time-trial-every-six-weeks.md`.
  */
@@ -32,9 +33,13 @@ final class TimeTrialSchedule
     /** @var array<string, true> */
     private array $trialWeeks = [];
 
-    public function __construct(private readonly PlanInputs $inputs)
+    /** @param  list<string>  $deloadWeeks  the Mondays of the arc's Deload weeks */
+    public function __construct(private readonly PlanInputs $inputs, array $deloadWeeks = [])
     {
-        $this->dueWeeks = self::dueWeeks($inputs);
+        $this->dueWeeks = array_map(
+            static fn (string $due): string => in_array($due, $deloadWeeks, true) ? Carbon::parse($due)->subWeek()->toDateString() : $due,
+            self::dueWeeks($inputs),
+        );
         foreach ($inputs->timeTrials as $trial) {
             $this->trialWeeks[self::weekOf($trial['date'])] = true;
         }

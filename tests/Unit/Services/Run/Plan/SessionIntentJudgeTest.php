@@ -9,6 +9,7 @@ use App\Enums\SessionType;
 use App\Models\ActivityDetail;
 use App\Enums\PlanPhase;
 use App\Services\Run\Plan\IntensityPrescription;
+use App\Services\Run\Plan\IntensityPrescriptionResolver;
 use App\Services\Run\Plan\SegmentGenerator;
 use App\Services\Run\Plan\SessionIntentJudge;
 use App\Services\Run\Plan\SessionSegment;
@@ -33,6 +34,20 @@ function tempoDay(float $blockMinutes = 20.0, PaceBand $band = PaceBand::Thresho
         new SessionSegment(SegmentKey::Warmup, 10.0, 'Z2', PaceBand::Easy, 400, 1.5),
         new SessionSegment(SegmentKey::Main, $blockMinutes, $band === PaceBand::Threshold ? 'Z4' : 'Z3', $band, JUDGE_PACES[$band->value], 4.0),
     ];
+}
+
+/** @return list<SessionSegment> */
+function tempoBlocksDay(int $blocks = 3, float $blockMinutes = 10.0): array
+{
+    $segments = [new SessionSegment(SegmentKey::Warmup, 10.0, 'Z2', PaceBand::Easy, 400, 1.5)];
+    for ($i = 0; $i < $blocks; $i++) {
+        $segments[] = new SessionSegment(SegmentKey::Main, $blockMinutes, 'Z4', PaceBand::Threshold, JUDGE_PACES['threshold'], 2.0);
+        if ($i < $blocks - 1) {
+            $segments[] = new SessionSegment(SegmentKey::Recovery, 3.0, 'Z2', PaceBand::Easy, 400, 0.4);
+        }
+    }
+
+    return $segments;
 }
 
 /** @return list<SessionSegment> */
@@ -212,15 +227,69 @@ it('cannot judge intervals on auto-km laps with no other signal', function (): v
         ->toBe(IntentVerdict::Unknown);
 });
 
-it('falls back to a rep-length window when the laps are just the kilometres', function (): void {
+it('falls back to a rep-length window when the laps are just the kilometres, a hit only when it covers the requested work', function (): void {
     $laps = lapRows([[1000, 400], [1000, 300], [1000, 390], [1000, 295], [600, 240]]);
 
     $fast = SessionIntentJudge::judge(SessionType::Interval, intervalDay(), JUDGE_PACES, [judgeRun(4.6, 1625, ['laps' => $laps, 'best_3min_pace' => '4:50'])]);
     $slow = SessionIntentJudge::judge(SessionType::Interval, intervalDay(), JUDGE_PACES, [judgeRun(4.6, 1625, ['laps' => $laps, 'best_3min_pace' => '5:30'])]);
+    $oneRepNeeded = SessionIntentJudge::judge(SessionType::Interval, intervalDay(reps: 2), JUDGE_PACES, [judgeRun(4.6, 1625, ['laps' => $laps, 'best_3min_pace' => '4:50'])]);
 
-    expect($fast['verdict'])->toBe(IntentVerdict::Hit)
-        ->and($fast['evidence']['basis'])->toBe('window')
-        ->and($slow['verdict'])->toBe(IntentVerdict::Missed);
+    expect($fast['verdict'])->toBe(IntentVerdict::Unknown)
+        ->and($fast['evidence'])->toMatchArray(['basis' => 'window', 'reps_needed' => 3, 'stimulus_minutes' => 3.0, 'stimulus_source' => 'window'])
+        ->and($slow['verdict'])->toBe(IntentVerdict::Missed)
+        ->and($oneRepNeeded['verdict'])->toBe(IntentVerdict::Hit)
+        ->and($oneRepNeeded['evidence'])->toMatchArray(['basis' => 'window', 'reps_needed' => 1]);
+});
+
+/** One 3-minute surge in a 5 x 3 minute day on auto-km laps, the rest at 6:40/km. */
+function oneSurgeIntervalRun(array $zones = []): ActivityDetail
+{
+    $laps = lapRows([[1000, 400], [1000, 400], [1000, 330], [1000, 400], [1000, 400], [1000, 400]]);
+
+    return judgeRun(6.0, 2330, ['laps' => $laps, 'best_3min_pace' => '4:50'] + ($zones === [] ? [] : ['time_in_zone_min' => $zones]));
+}
+
+/** One 10-minute block at threshold in a 3 x 10 minute tempo day. */
+function oneBlockTempoRun(array $zones = []): ActivityDetail
+{
+    return judgeRun(9.0, 3300, ['best_10min_pace' => '5:10'] + ($zones === [] ? [] : ['time_in_zone_min' => $zones]));
+}
+
+it('cannot read one fast rep of a five-rep day on auto-km laps as hit', function (): void {
+    $reading = SessionIntentJudge::judge(SessionType::Interval, intervalDay(reps: 5), JUDGE_PACES, [oneSurgeIntervalRun()]);
+
+    expect($reading['verdict'])->toBe(IntentVerdict::Unknown)
+        ->and($reading['evidence'])->toMatchArray(['reps_prescribed' => 5, 'reps_needed' => 4, 'window' => '3min', 'window_pace_sec' => 290, 'stimulus_family' => 'interval', 'stimulus_minutes' => 3.0, 'stimulus_source' => 'window']);
+});
+
+it('cannot read one block of a three-block tempo day as hit', function (): void {
+    $reading = SessionIntentJudge::judge(SessionType::Tempo, tempoBlocksDay(), JUDGE_PACES, [oneBlockTempoRun()]);
+
+    expect($reading['verdict'])->toBe(IntentVerdict::Unknown)
+        ->and($reading['evidence'])->toMatchArray(['block_minutes' => 30.0, 'window' => '10min', 'window_pace_sec' => 310, 'stimulus_family' => 'tempo', 'stimulus_minutes' => 10.0, 'stimulus_source' => 'window']);
+});
+
+it('reads a short window at pace as hit when heart rate covers the requested work, and unknown, never missed, when it falls short', function (): void {
+    $intervalHit = SessionIntentJudge::judge(SessionType::Interval, intervalDay(reps: 5), JUDGE_PACES, [oneSurgeIntervalRun(['Z1' => 4, 'Z2' => 15, 'Z3' => 4, 'Z4' => 4, 'Z5' => 12])]);
+    $intervalShort = SessionIntentJudge::judge(SessionType::Interval, intervalDay(reps: 5), JUDGE_PACES, [oneSurgeIntervalRun(['Z1' => 4, 'Z2' => 21, 'Z3' => 4, 'Z4' => 4, 'Z5' => 6])]);
+    $tempoHit = SessionIntentJudge::judge(SessionType::Tempo, tempoBlocksDay(), JUDGE_PACES, [oneBlockTempoRun(['Z1' => 5, 'Z2' => 15, 'Z3' => 5, 'Z4' => 26, 'Z5' => 4])]);
+    $tempoShort = SessionIntentJudge::judge(SessionType::Tempo, tempoBlocksDay(), JUDGE_PACES, [oneBlockTempoRun(['Z1' => 5, 'Z2' => 30, 'Z3' => 5, 'Z4' => 15])]);
+
+    expect($intervalHit['verdict'])->toBe(IntentVerdict::Hit)
+        ->and($intervalHit['evidence'])->toMatchArray(['basis' => 'heart_rate', 'zone' => 'Z5', 'zone_minutes' => 12.0])
+        ->and($intervalShort['verdict'])->toBe(IntentVerdict::Unknown)
+        ->and($tempoHit['verdict'])->toBe(IntentVerdict::Hit)
+        ->and($tempoHit['evidence'])->toMatchArray(['basis' => 'heart_rate', 'zone' => 'Z4', 'zone_minutes' => 30.0])
+        ->and($tempoShort['verdict'])->toBe(IntentVerdict::Unknown);
+});
+
+it('holds the dose after a day whose evidence covered one rep or one block', function (): void {
+    $resolver = new IntensityPrescriptionResolver();
+    $interval = SessionIntentJudge::judge(SessionType::Interval, intervalDay(reps: 5), JUDGE_PACES, [oneSurgeIntervalRun()]);
+    $tempo = SessionIntentJudge::judge(SessionType::Tempo, tempoBlocksDay(), JUDGE_PACES, [oneBlockTempoRun()]);
+
+    expect($resolver->resolve(SessionType::Interval, PlanPhase::Peak, null, null, JUDGE_PACES, $interval['verdict'], 12)->hardMinutes)->toBe(12)
+        ->and($resolver->resolve(SessionType::Tempo, PlanPhase::Peak, null, null, JUDGE_PACES, $tempo['verdict'], 30)->hardMinutes)->toBe(30);
 });
 
 it('rescues short intervals when heart rate reached the rep zone for the reps needed', function (): void {

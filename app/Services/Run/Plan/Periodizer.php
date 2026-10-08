@@ -191,7 +191,10 @@ final readonly class Periodizer
         $rows = [];
         $fixedDates = $inputs->pinnedDates + $inputs->settledDates;
         $ceilingKm = $inputs->resumeTrailingMeanKm === null ? null : $inputs->resumeTrailingMeanKm * self::RESUME_WEEKLY_GROWTH;
-        $trials = new TimeTrialSchedule($inputs);
+        $trials = new TimeTrialSchedule($inputs, array_values(array_map(
+            static fn (array $week): string => $week['week_start']->toDateString(),
+            array_filter($arc, static fn (array $week): bool => $week['phase'] === PlanPhase::Deload),
+        )));
         foreach ($weeks as $week) {
             $weekRows = $this->weekPlanBuilder->build(
                 $week['week_start'],

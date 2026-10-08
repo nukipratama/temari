@@ -113,7 +113,7 @@ function goalPaceHit(int $minutes): array
 it('opens the 10K window six weeks out, race week included', function (): void {
     $rows = goalPacePlan(goalPaceInputs(GOAL_PACE_10K, RaceAmbitionState::OnTrack, '2026-10-26'));
 
-    expect(goalPaceWeeks($rows))->toBe(['2026-11-09', '2026-11-16', '2026-11-23', '2026-11-30', '2026-12-07'])
+    expect(goalPaceWeeks($rows))->toBe(['2026-11-09', '2026-11-23', '2026-11-30', '2026-12-07'])
         ->and($rows['2026-11-05']['session_type'])->toBe(SessionType::Interval)
         ->and($rows['2026-11-05']['prescription_race_context'])->toBeNull()
         ->and($rows['2026-11-12']['prescribed_pace_sec_per_km'])->toBe(300);
@@ -121,12 +121,12 @@ it('opens the 10K window six weeks out, race week included', function (): void {
 
 it('opens the half window eight weeks out and keeps the deload week inside it easy', function (): void {
     $rows = goalPacePlan(goalPaceInputs(GOAL_PACE_HALF, RaceAmbitionState::OnTrack));
-    $deloadWeek = array_filter($rows, static fn (array $row, string $date): bool => $date >= '2026-11-02' && $date <= '2026-11-08', ARRAY_FILTER_USE_BOTH);
+    $deloadWeek = array_filter($rows, static fn (array $row, string $date): bool => $date >= '2026-11-09' && $date <= '2026-11-15', ARRAY_FILTER_USE_BOTH);
 
     expect($rows['2026-10-22']['phase'])->toBe(PlanPhase::Build)
         ->and($rows['2026-10-22']['prescription_race_context'])->toBeNull()
         ->and($rows['2026-10-22']['prescribed_pace_sec_per_km'])->toBe(295)
-        ->and(goalPaceWeeks($rows))->toBe(['2026-10-26', '2026-11-09', '2026-11-16', '2026-11-23', '2026-11-30', '2026-12-07'])
+        ->and(goalPaceWeeks($rows))->toBe(['2026-10-26', '2026-11-02', '2026-11-16', '2026-11-23', '2026-11-30', '2026-12-07'])
         ->and(array_values(array_unique(array_map(static fn (array $row): string => $row['phase']->value, $deloadWeek))))->toBe([PlanPhase::Deload->value])
         ->and(hardDates($deloadWeek))->toBe([]);
 });
@@ -134,7 +134,7 @@ it('opens the half window eight weeks out and keeps the deload week inside it ea
 it('doses the half by band and phase, taper included', function (RaceAmbitionState $band, array $minutes): void {
     $rows = goalPacePlan(goalPaceInputs(GOAL_PACE_HALF, $band, recent: ['goal_pace' => goalPaceHit(40)]));
 
-    expect([$rows['2026-11-12']['prescribed_hard_minutes'], $rows['2026-11-19']['prescribed_hard_minutes'], $rows['2026-12-10']['prescribed_hard_minutes']])
+    expect([$rows['2026-11-05']['prescribed_hard_minutes'], $rows['2026-11-19']['prescribed_hard_minutes'], $rows['2026-12-10']['prescribed_hard_minutes']])
         ->toBe($minutes)
         ->and($rows['2026-12-10']['phase'])->toBe(PlanPhase::Taper)
         ->and($rows['2026-12-10']['prescribed_pace_sec_per_km'])->toBe(299);
@@ -144,7 +144,7 @@ it('doses the half by band and phase, taper included', function (RaceAmbitionSta
 ]);
 
 it('doses 5K and 10K goal-pace reps by band', function (float $distanceM, RaceAmbitionState $band, int $peakMinutes): void {
-    $peak = goalPacePlan(goalPaceInputs($distanceM, $band, '2026-10-26', recent: ['goal_pace' => goalPaceHit(24)]))['2026-11-19'];
+    $peak = goalPacePlan(goalPaceInputs($distanceM, $band, '2026-10-26', recent: ['goal_pace' => goalPaceHit(24)]))['2026-11-26'];
 
     expect($peak['prescribed_hard_minutes'])->toBe($peakMinutes)
         ->and($peak['prescription_race_context']['band'])->toBe($band->value);
@@ -176,9 +176,9 @@ it('runs unsupported 5K and 10K goal-pace reps at the stepping-stone pace with t
     $onTrack = goalPacePlan(goalPaceInputs($distanceM, RaceAmbitionState::OnTrack, '2026-10-26', recent: $recent));
 
     expect(goalPaceWeeks($rows))->toBe(goalPaceWeeks($onTrack))
-        ->and($rows['2026-11-19']['prescribed_hard_minutes'])->toBe($onTrack['2026-11-19']['prescribed_hard_minutes'])
-        ->and($rows['2026-11-19']['prescribed_pace_sec_per_km'])->toBe($pace)
-        ->and($rows['2026-11-19']['prescription_race_context']['band'])->toBe('unsupported')
+        ->and($rows['2026-11-26']['prescribed_hard_minutes'])->toBe($onTrack['2026-11-26']['prescribed_hard_minutes'])
+        ->and($rows['2026-11-26']['prescribed_pace_sec_per_km'])->toBe($pace)
+        ->and($rows['2026-11-26']['prescription_race_context']['band'])->toBe('unsupported')
         ->and(hardDates($rows))->toBe(hardDates(goalPacePlan(goalPaceInputs($distanceM, RaceAmbitionState::LowEvidence, '2026-10-26'))));
 })->with([
     '5K' => [5_000.0, 268],
@@ -188,7 +188,7 @@ it('runs unsupported 5K and 10K goal-pace reps at the stepping-stone pace with t
 it('runs an unsupported half goal-pace block at the stepping-stone pace with the full on-track dose, taper included', function (): void {
     $rows = goalPacePlan(goalPaceInputs(GOAL_PACE_HALF, RaceAmbitionState::Unsupported, recent: ['goal_pace' => goalPaceHit(40)]));
 
-    expect([$rows['2026-11-12']['prescribed_hard_minutes'], $rows['2026-11-19']['prescribed_hard_minutes'], $rows['2026-12-10']['prescribed_hard_minutes']])
+    expect([$rows['2026-11-05']['prescribed_hard_minutes'], $rows['2026-11-19']['prescribed_hard_minutes'], $rows['2026-12-10']['prescribed_hard_minutes']])
         ->toBe([30, 40, 20])
         ->and($rows['2026-11-19']['prescribed_pace_sec_per_km'])->toBe(290)
         ->and($rows['2026-12-10']['prescribed_pace_sec_per_km'])->toBe(290)
@@ -200,8 +200,8 @@ it('learns unsupported goal-pace progression from goal-pace history, not interva
     $fromIntervals = goalPacePlan(goalPaceInputs(GOAL_PACE_10K, RaceAmbitionState::Unsupported, '2026-10-26', recent: ['interval' => goalPaceHit(16)]));
     $fromGoalPace = goalPacePlan(goalPaceInputs(GOAL_PACE_10K, RaceAmbitionState::Unsupported, '2026-10-26', recent: ['goal_pace' => goalPaceHit(16)]));
 
-    expect($fromIntervals['2026-11-19']['prescribed_hard_minutes'])->toBe(8)
-        ->and($fromGoalPace['2026-11-19']['prescribed_hard_minutes'])->toBe(20);
+    expect($fromIntervals['2026-11-26']['prescribed_hard_minutes'])->toBe(8)
+        ->and($fromGoalPace['2026-11-26']['prescribed_hard_minutes'])->toBe(20);
 });
 
 it('runs an unsupported marathon tempo and race long at the stepping-stone pace with on-track minutes inside the window only', function (): void {
@@ -245,18 +245,18 @@ it('gives an ambitious marathon goal pace only through a halved tempo, keeping t
 
 it('replaces the interval of a two-quality 10K week and never adds a hard day', function (): void {
     $rows = goalPacePlan(goalPaceInputs(GOAL_PACE_10K, RaceAmbitionState::OnTrack, '2026-10-26', sessions: 5));
-    $week = array_filter($rows, static fn (array $row, string $date): bool => $date >= '2026-11-16' && $date <= '2026-11-22', ARRAY_FILTER_USE_BOTH);
+    $week = array_filter($rows, static fn (array $row, string $date): bool => $date >= '2026-11-23' && $date <= '2026-11-29', ARRAY_FILTER_USE_BOTH);
 
-    expect(array_keys(goalPaceSessions($week)))->toBe(['2026-11-19'])
-        ->and($rows['2026-11-19']['session_type'])->toBe(SessionType::Interval)
-        ->and($rows['2026-11-17']['session_type'])->toBe(SessionType::Tempo)
-        ->and($rows['2026-11-17']['prescribed_pace_sec_per_km'])->toBe(295)
+    expect(array_keys(goalPaceSessions($week)))->toBe(['2026-11-26'])
+        ->and($rows['2026-11-26']['session_type'])->toBe(SessionType::Interval)
+        ->and($rows['2026-11-24']['session_type'])->toBe(SessionType::Tempo)
+        ->and($rows['2026-11-24']['prescribed_pace_sec_per_km'])->toBe(295)
         ->and(hardDates($rows))->toBe(hardDates(goalPacePlan(goalPaceInputs(GOAL_PACE_10K, RaceAmbitionState::LowEvidence, '2026-10-26', sessions: 5))));
 });
 
 it('turns a 10K week\'s only tempo into goal-pace reps when it has no interval', function (): void {
     $rows = goalPacePlan(goalPaceInputs(GOAL_PACE_10K, RaceAmbitionState::OnTrack, '2026-10-26', recent: ['goal_pace' => goalPaceHit(16)]));
-    $tempo = $rows['2026-11-19'];
+    $tempo = $rows['2026-11-26'];
     $prescription = new IntensityPrescription($tempo['prescribed_hard_minutes'], $tempo['prescribed_pace_band'], $tempo['prescribed_pace_sec_per_km'], null, $tempo['prescription_race_context']);
     $segments = SegmentGenerator::forPrescription($tempo['session_type'], $tempo['phase'], 11.0, ['easy' => 380, 'marathon' => 320, 'threshold' => 295, 'interval' => 270], $prescription);
 
@@ -270,14 +270,14 @@ it('keeps goal-pace progression apart from interval history', function (): void 
     $fromIntervals = goalPacePlan(goalPaceInputs(GOAL_PACE_10K, RaceAmbitionState::OnTrack, '2026-10-26', recent: ['interval' => goalPaceHit(16)]));
     $fromGoalPace = goalPacePlan(goalPaceInputs(GOAL_PACE_10K, RaceAmbitionState::OnTrack, '2026-10-26', recent: ['goal_pace' => goalPaceHit(16)]));
 
-    expect($fromIntervals['2026-11-19']['prescribed_hard_minutes'])->toBe(8)
+    expect($fromIntervals['2026-11-26']['prescribed_hard_minutes'])->toBe(8)
         ->and($fromIntervals['2026-11-05']['prescribed_hard_minutes'])->toBe(12)
-        ->and($fromGoalPace['2026-11-19']['prescribed_hard_minutes'])->toBe(20)
+        ->and($fromGoalPace['2026-11-26']['prescribed_hard_minutes'])->toBe(20)
         ->and($fromGoalPace['2026-11-05']['prescribed_hard_minutes'])->toBe(6);
 });
 
 it('trims goal-pace reps to the distance a short day holds instead of dropping them', function (): void {
-    $peak = goalPacePlan(goalPaceInputs(GOAL_PACE_10K, RaceAmbitionState::OnTrack, '2026-10-26', sessions: 5, recent: ['goal_pace' => goalPaceHit(24)], longRunKm: 10.0))['2026-11-19'];
+    $peak = goalPacePlan(goalPaceInputs(GOAL_PACE_10K, RaceAmbitionState::OnTrack, '2026-10-26', sessions: 5, recent: ['goal_pace' => goalPaceHit(24)], longRunKm: 10.0))['2026-11-26'];
 
     expect($peak['session_type'])->toBe(SessionType::Interval)
         ->and($peak['prescribed_hard_minutes'])->toBeGreaterThan(0)->toBeLessThan(24)

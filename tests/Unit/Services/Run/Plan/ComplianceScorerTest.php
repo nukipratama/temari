@@ -890,7 +890,7 @@ it('keeps a made-up quality session out of progression even when it hit', functi
     $paces = scorerPaces($user, '2026-08-05');
     [, $target] = madeUpPair($user, SessionType::Tempo);
     $askedKm = (float) scorerVerdict($user, $target)['prescribed_km'];
-    scorerPacedRun($user, '2026-08-05', $askedKm, $paces['threshold'], everyWindowAt($paces['threshold']));
+    scorerPacedRun($user, '2026-08-05', $askedKm, $paces['threshold'], everyWindowAt($paces['threshold']) + ['time_in_zone_min' => ['Z1' => 0, 'Z2' => 10, 'Z3' => 5, 'Z4' => 30, 'Z5' => 20]]);
 
     $verdict = scorerVerdict($user, $target);
 

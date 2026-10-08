@@ -19,6 +19,8 @@ code_refs:
 
 > **Partly superseded (2026-10-02) by [[one-race-model-drives-the-plan]].** The single quality slot now chooses on the race time the plan trains for, the supported or target time, not on `RiegelProjector`'s projected finish, and `Periodizer` no longer depends on `RiegelProjector`. The rest of this decision stands.
 
+> **Partly superseded (2026-10-08) by [[a-race-block-tapers-two-weeks-and-recovers-in-peak]].** Peak is no longer exempt from the every-fourth-week recovery week, because it stopped being a reduction once it held the Build level. Taper stays exempt. The rest of this decision stands.
+
 # The plan follows the coaching, not just the arithmetic
 
 **Status:** Accepted (2026-09-07)

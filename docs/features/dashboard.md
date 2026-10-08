@@ -3,7 +3,7 @@ title: Dashboard
 description: The home page — today's session and the voice on it, this week's plan widget carrying the week's own numbers, then the Past You verdict and its evidence
 tags: [feature, dashboard]
 status: living
-reviewed: 2026-10-02
+reviewed: 2026-10-08
 code_refs:
   - resources/js/pages/Home.tsx
   - app/Http/Controllers/DashboardController.php
@@ -35,7 +35,7 @@ The app's home (`/`), ported to the frozen prototype's `TodayScreen` in `PS3`. T
 
 ## This week's plan
 
-[WeekPlanWidget](resources/js/components/home/WeekPlanWidget.tsx) renders whenever `weekPlan` is non-null. It shows a credited/total progress ring reading out its own figure under a `sessions` caption, beside the two figures that say how the week actually went — `18.2 of 26.9` km (the week's `WeeklySnapshot.distance_km` against `planned_km_this_week`, with a delta pair against the un-eased total, tagged `eased`, beneath it when a recorded ease took km off the week) and its TRIMP — then a phase badge, a 7-day day-status grid (today's cell ringed), and a link into Plan — all lifted straight from `CurrentWeekPlanBuilder::forUser`'s payload — the same [PlanRenderer::dayPayload](app/Services/Run/Plan/PlanRenderer.php) shape Plan's own week rows render, so nothing shown here can numerically drift from the Plan page. A day that has elapsed with a run logged reads as the actual distance in its status tone, with the planned figure as a muted `of 8k` line beneath it; a day still ahead reads as the plan alone. A rest day someone ran anyway shows its `actual_km` on its own — there is no planned figure for it to be "of" — the way the prototype's own wednesday cell does.
+[WeekPlanWidget](resources/js/components/home/WeekPlanWidget.tsx) renders whenever `weekPlan` is non-null. It shows a credited/total progress ring reading out its own figure under a `sessions` caption, beside the two figures that say how the week actually went — `18.2 of 26.9` km (the week's `WeeklySnapshot.distance_km` against `planned_km_this_week`, the week as it ends if the athlete follows the plan from today ([[the-week-total-is-the-week-the-plan-asks-for]]), with a delta pair against the un-eased total, tagged `eased`, beneath it when a recorded ease took km off the week) and its TRIMP — then a phase badge, a 7-day day-status grid (today's cell ringed), and a link into Plan — all lifted straight from `CurrentWeekPlanBuilder::forUser`'s payload — the same [PlanRenderer::dayPayload](app/Services/Run/Plan/PlanRenderer.php) shape Plan's own week rows render, so nothing shown here can numerically drift from the Plan page. A day that has elapsed with a run logged reads as the actual distance in its status tone, with the planned figure as a muted `of 8k` line beneath it; a day still ahead reads as the plan alone. A rest day someone ran anyway shows its `actual_km` on its own — there is no planned figure for it to be "of" — the way the prototype's own wednesday cell does.
 
 **Today's own session is not repeated here.** It used to be a footer row on this card while the voice describing it sat on the card below, so answering "what do I run, at what pace, and why is it eased" meant reading two cards. The prescription now leads [TodaySession](resources/js/components/home/TodaySession.tsx) instead, and this widget is the week at a glance.
 
