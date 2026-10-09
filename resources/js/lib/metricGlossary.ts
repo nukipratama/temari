@@ -111,7 +111,7 @@ export const METRIC_GLOSSARY = {
     },
     status_heavy: {
         label: 'heavy',
-        body: 'your recent running load is above your longer-term load, which is normal in a build week. if you feel run down, illness, poor sleep or under-fuelling can be the cause too, so tell temari how you feel.',
+        body: 'your recent running load is above your longer-term load, which is normal in a build week. if you feel run down, illness, poor sleep or under-fuelling can be the cause too.',
     },
     vibe_vs_mood: {
         label: 'vibe vs mood',

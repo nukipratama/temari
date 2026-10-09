@@ -22,7 +22,7 @@ export function formStatusLabel(status: FormStatus | null): string {
 const MEANING: Record<LoadBalance, string> = {
     fresh: 'your recent running load is lighter than your longer-term load.',
     steady: 'your recent running load is close to your longer-term load.',
-    heavy: "your recent running load is above your longer-term load. that's normal in a build week. if you feel run down, illness, poor sleep or under-fuelling can be the cause too, so tell temari how you feel.",
+    heavy: "your recent running load is above your longer-term load. that's normal in a build week. if you feel run down, illness, poor sleep or under-fuelling can be the cause too.",
 };
 
 export function formStatusMeaning(status: FormStatus): string {

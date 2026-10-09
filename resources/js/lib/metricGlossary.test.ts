@@ -28,9 +28,9 @@ describe('METRIC_GLOSSARY', () => {
         expect(METRIC_GLOSSARY).not.toHaveProperty('status_overreaching');
     });
 
-    it('points a heavy balance at other causes and at telling temari', () => {
+    it('points a heavy balance at other causes', () => {
         expect(METRIC_GLOSSARY.status_heavy.body).toContain('illness');
         expect(METRIC_GLOSSARY.status_heavy.body).toContain('under-fuelling');
-        expect(METRIC_GLOSSARY.status_heavy.body).toContain('tell temari');
+        expect(METRIC_GLOSSARY.status_heavy.body).not.toContain('how you feel');
     });
 });

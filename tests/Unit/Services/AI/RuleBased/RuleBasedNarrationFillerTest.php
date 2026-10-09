@@ -394,7 +394,7 @@ it('weaves the snapshot real numbers into the weekly recap', function (): void {
     expect($recap)->toContain('24.6')
         ->and($recap)->toMatch('/\b4 (runs|sessions|times)\b/')
         ->and($recap)->toContain('illness, poor sleep or under-fuelling')
-        ->and($recap)->toContain('tell me how you feel');
+        ->and($recap)->not->toContain('how you feel');
 });
 
 function scoredRunForFiller(User $user, string $date): void

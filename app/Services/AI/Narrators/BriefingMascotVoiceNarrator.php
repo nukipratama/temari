@@ -154,8 +154,8 @@ class BriefingMascotVoiceNarrator
         - steady: flat and matter of fact, nothing to sell.
         - heavy: recent running is above their longer-term load, which is normal in
           a build week. Say so once, plainly, not preachy. If they feel run down,
-          illness, poor sleep or under-fuelling can be the cause too, and telling
-          temari how they feel is the next step. Never diagnose.
+          illness, poor sleep or under-fuelling can be the cause too.
+          Never diagnose.
 
         COASTING: if the last few weeks read flat or falling while their
         load balance has been steady or fresh the whole time, say so once, plainly, and

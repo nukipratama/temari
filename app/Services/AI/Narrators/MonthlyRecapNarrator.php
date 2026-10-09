@@ -63,8 +63,8 @@ class MonthlyRecapNarrator
            been running more, down = less). Running load only, never a fitness read. Use whichever stands out most.
         4. Close: 1 short reflection or nudge for next month. If
            `long_term_load.load_balance_end` is heavy, don't push for more load: say
-           illness, poor sleep or under-fuelling can be behind feeling run down, and
-           that telling temari how they feel helps. If it's missing, skip it.
+           illness, poor sleep or under-fuelling can be behind feeling run down.
+           If it's missing, skip it.
 
         Match the posture to the dominant mood. This sets how hard you lean, never
         whether you tell the truth about the numbers:
