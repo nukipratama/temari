@@ -382,7 +382,7 @@ it('is idempotent — calling twice for the same activity updates the row', func
     expect(StoryLine::query()->where('activity_id', $activity->id)->count())->toBe(1);
 });
 
-it('emits a daily greeting story line per (user, date) with null speech and dispatches NO LLM job', function (): void {
+it('emits a daily greeting story line per (user, date) with null speech, dispatches NO LLM job, and upserts it on a second call', function (): void {
     $user = User::factory()->create();
     $line = app(Temari::class)->dailyGreeting($user, Vibe::PUMPED, Carbon::parse('2026-05-11'));
 
@@ -394,11 +394,7 @@ it('emits a daily greeting story line per (user, date) with null speech and disp
     // No LLM dispatch on page-load greeting — analyses are user-triggered.
     Bus::assertNothingDispatched();
     expect(Analysis::query()->count())->toBe(0);
-});
 
-it('upserts the daily greeting (no dup on second call)', function (): void {
-    $user = User::factory()->create();
-    app(Temari::class)->dailyGreeting($user, Vibe::PUMPED, Carbon::parse('2026-05-11'));
     app(Temari::class)->dailyGreeting($user, Vibe::FRESH, Carbon::parse('2026-05-11'));
 
     expect(StoryLine::query()
