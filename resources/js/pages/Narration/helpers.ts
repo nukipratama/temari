@@ -145,7 +145,6 @@ export const REASON_LABEL: Record<keyof RuleBasedReasons, string> = {
     demo: 'demo account',
     capped: 'daily ceiling reached',
     return: 'return backfill',
-    dead_letter: 'dead-lettered block',
     content_filter: 'content filter tripped',
     unattributed: 'no reason recorded',
 };
@@ -153,7 +152,6 @@ export const REASON_LABEL: Record<keyof RuleBasedReasons, string> = {
 /** Reasons whose presence signals something worth a look, not routine cover. */
 export const FLAGGED_REASONS: ReadonlySet<keyof RuleBasedReasons> = new Set([
     'content_filter',
-    'dead_letter',
     'unattributed',
 ]);
 

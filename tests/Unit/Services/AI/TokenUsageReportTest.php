@@ -551,7 +551,7 @@ it('splits done narration by its producer, counting a null served_by as unknown'
         'llm' => 2,
         'rule_based' => 1,
         'unknown' => 1,
-        'reasons' => ['demo' => 0, 'capped' => 0, 'return' => 0, 'dead_letter' => 0, 'content_filter' => 0, 'unattributed' => 1],
+        'reasons' => ['demo' => 0, 'capped' => 0, 'return' => 0, 'content_filter' => 0, 'unattributed' => 1],
     ]);
 });
 
@@ -559,7 +559,6 @@ it('groups a rule-based fill by its stored reason', function () use ($range): vo
     $alice = User::factory()->create();
     seedDoneNarration($alice->id, ServedBy::RuleBased, Carbon::parse('2026-05-11'), AnalysisOrigin::Capped);
     seedDoneNarration($alice->id, ServedBy::RuleBased, Carbon::parse('2026-05-12'), AnalysisOrigin::Return);
-    seedDoneNarration($alice->id, ServedBy::RuleBased, Carbon::parse('2026-05-13'), AnalysisOrigin::DeadLetter);
     seedDoneNarration($alice->id, ServedBy::RuleBased, Carbon::parse('2026-05-14'), AnalysisOrigin::ContentFilter);
     seedDoneNarration($alice->id, ServedBy::RuleBased, Carbon::parse('2026-05-15'), null);
 
@@ -570,7 +569,6 @@ it('groups a rule-based fill by its stored reason', function () use ($range): vo
         'demo' => 0,
         'capped' => 1,
         'return' => 1,
-        'dead_letter' => 1,
         'content_filter' => 1,
         'unattributed' => 1,
     ]);
@@ -588,7 +586,6 @@ it('counts every one of a demo athlete\'s rule-based fills as demo, whatever rea
         'demo' => 2,
         'capped' => 0,
         'return' => 0,
-        'dead_letter' => 0,
         'content_filter' => 0,
         'unattributed' => 0,
     ]);
