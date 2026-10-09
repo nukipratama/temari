@@ -211,6 +211,18 @@ describe('Narration overview page', () => {
         expect(column?.className).not.toContain('max-w-column-wide');
     });
 
+    it('has exactly one main landmark and one h1 on both tabs', () => {
+        render(<Overview {...baseProps} />);
+
+        expect(screen.getAllByRole('main')).toHaveLength(1);
+        expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
+
+        fireEvent.click(screen.getByRole('button', { name: 'breakdown' }));
+
+        expect(screen.getAllByRole('main')).toHaveLength(1);
+        expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
+    });
+
     it('passes the budget currency down to every money figure', () => {
         render(
             <Overview

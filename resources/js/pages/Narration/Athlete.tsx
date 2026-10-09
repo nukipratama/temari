@@ -39,7 +39,7 @@ export default function Athlete({
     const currency = header.currency;
 
     return (
-        <div className="min-h-screen bg-background text-foreground">
+        <main className="min-h-screen bg-background text-foreground">
             <Head title={`${header.athlete.name} · narration`} />
 
             <DevtoolsHeader title={header.athlete.name}>
@@ -115,6 +115,6 @@ export default function Athlete({
                     />
                 )}
             </PageContainer>
-        </div>
+        </main>
     );
 }

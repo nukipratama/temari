@@ -49,7 +49,7 @@ export default function Overview({
     const currency = budget.currency;
 
     return (
-        <div className="min-h-screen bg-background text-foreground">
+        <main className="min-h-screen bg-background text-foreground">
             <Head title="Narration" />
 
             <DevtoolsHeader icon={Hash} title="narration">
@@ -148,6 +148,6 @@ export default function Overview({
                     </>
                 )}
             </PageContainer>
-        </div>
+        </main>
     );
 }

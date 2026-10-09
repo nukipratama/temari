@@ -4,6 +4,13 @@ import { describe, expect, it } from 'vitest';
 import Devtools from './Devtools';
 
 describe('Devtools', () => {
+    it('has exactly one main landmark and one h1', () => {
+        render(<Devtools />);
+
+        expect(screen.getAllByRole('main')).toHaveLength(1);
+        expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
+    });
+
     it('links to Design, Narration, Feedback, Horizon and Pulse', () => {
         render(<Devtools />);
 

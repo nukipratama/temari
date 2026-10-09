@@ -70,6 +70,13 @@ describe('DevtoolsFeedback', () => {
         expect(cell.textContent).toBe(note);
     });
 
+    it('has exactly one main landmark and one h1', () => {
+        render(<DevtoolsFeedback rows={[row()]} />);
+
+        expect(screen.getAllByRole('main')).toHaveLength(1);
+        expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
+    });
+
     it('shows a dash when there is no note', () => {
         render(<DevtoolsFeedback rows={[row({ note: null })]} />);
 
