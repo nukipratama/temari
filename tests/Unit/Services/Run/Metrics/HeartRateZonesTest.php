@@ -30,13 +30,3 @@ it('shifts every band up when max HR rises', function (): void {
     expect($after['Z3']['lo'])->toBeGreaterThan($before['Z3']['lo'])
         ->and($after['Z2']['lo'])->toBeGreaterThan($before['Z2']['lo']);
 });
-
-it('accepts a plausible max HR and rejects interference', function (int $bpm, bool $plausible): void {
-    expect(HeartRateZones::isPlausibleMax($bpm))->toBe($plausible);
-})->with([
-    'strap interference' => [245, false],
-    'at the ceiling' => [220, true],
-    'ordinary athlete' => [188, true],
-    'at the floor' => [120, true],
-    'implausibly low' => [119, false],
-]);

@@ -19,7 +19,7 @@ code_refs:
 
 Edwards TRIMP needs heart-rate minutes per zone, so a run without an HR stream scores nothing. Under [[summary-first-ingest]] that is the *normal* state of a freshly connected athlete: their entire history arrives summary-only and carries no `trimp_edwards` at all.
 
-[weekStats](app/Services/Run/Metrics/TrainingLoad.php#L454) only ever saw the daily TRIMP map, which by construction contains scored days and nothing else. Two very different weeks therefore arrived at it looking identical — an empty map slice — and both left as `0.0` for `weekly_trimp`, `monotony` and `strain`:
+[weekStats](app/Services/Run/Metrics/TrainingLoad.php) only ever saw the daily TRIMP map, which by construction contains scored days and nothing else. Two very different weeks therefore arrived at it looking identical — an empty map slice — and both left as `0.0` for `weekly_trimp`, `monotony` and `strain`:
 
 - a **rest week**, where nobody ran, and zero is the truth;
 - an **unscored week**, where they ran and we simply have no reading.
@@ -30,7 +30,7 @@ Edwards TRIMP needs heart-rate minutes per zone, so a run without an HR stream s
 
 **Carry the run days beside the TRIMP, and let the three week-window fields be null.**
 
-[loadDailyHistory](app/Services/Run/Metrics/TrainingLoad.php#L224) returns both maps from one query (a day whose runs all lack TRIMP sums to SQL `NULL`, so it lands in `runDays` and not in `trimp`), and [dailyHistory](app/Services/Run/Metrics/WeeklyAggregator.php#L333) derives the same pair from the detail set it has already loaded. One source each, so the two maps cannot drift apart.
+[loadDailyHistory](app/Services/Run/Metrics/TrainingLoad.php#L224) returns both maps from one query (a day whose runs all lack TRIMP sums to SQL `NULL`, so it lands in `runDays` and not in `trimp`), and [dailyHistory](app/Services/Run/Metrics/WeeklyAggregator.php) derives the same pair from the detail set it has already loaded. One source each, so the two maps cannot drift apart.
 
 `weekStats` then answers three ways rather than two: no runs in the window is `0.0`, runs but nothing scored is `null`, anything scored is the number.
 
@@ -39,7 +39,7 @@ Edwards TRIMP needs heart-rate minutes per zone, so a run without an HR stream s
 ### What each consumer does with unknown, and why they differ
 
 - **`weekly_trimp` / `monotony` / `strain`** — nullable. Their window is exactly the seven days in question, so when it holds no reading there is nothing to report.
-- **ATL / CTL / form / form_status** — stay numbers. These are EWMAs over roughly a year of real history ([rollDailySeries](app/Services/Run/Metrics/TrainingLoad.php#L422)), where an unscored day is treated as a missing one and understates the average rather than voiding it. Nulling a year-long average because of one gap would trade a small understatement for a total loss of signal, and any threshold at which "enough gaps" flips it to null would be arbitrary. The whole summary is already null when *nothing* in the lookback scored, which is the honest answer for a wholly-unscored athlete.
+- **ATL / CTL / form / form_status** — stay numbers. These are EWMAs over roughly a year of real history ([rollDailySeries](app/Services/Run/Metrics/TrainingLoad.php)), where an unscored day is treated as a missing one and understates the average rather than voiding it. Nulling a year-long average because of one gap would trade a small understatement for a total loss of signal, and any threshold at which "enough gaps" flips it to null would be arbitrary. The whole summary is already null when *nothing* in the lookback scored, which is the honest answer for a wholly-unscored athlete.
 - **[Readiness](app/Services/Run/Metrics/Readiness.php)** — a null monotony applies no cap, which its `?float` contract already meant. Its guardrails only fire on evidence, and unknown is not evidence.
 - **[PlanAdapter](app/Services/Run/Plan/PlanAdapter.php)** — same: `strainIsExcessive` and the monotony deload need a real number, so an unknown week triggers no adaptation rather than a false one.
 - **[BriefingContext](app/Services/Run/Story/BriefingContext.php)** — falls back to the most recent snapshot's monotony when the live value is unknown. Previously the live `0.0` won and suppressed that fallback; a real recent reading is a better basis for a safety ceiling than nothing.
@@ -55,7 +55,7 @@ A missing reading renders as the em-dash the rest of the app already uses for a 
 - **Enables:** a first screen that reads "we have no reading yet" instead of "you have been idle for a year", and consumers that can tell an unknown week from a rest week without guessing.
 - **Costs:** every reader of the three fields must handle null. The TypeScript shape enforces this on the frontend; on the backend the `?float` contracts largely already did.
 - **A partially-scored week is still an understatement**, not an unknown: one HR-bearing run among five reports that one run's load. It is low rather than absent, so it does not read as idleness, and splitting "partial" into a fourth state would need a policy on how partial is too partial.
-- **Backfilled snapshots correct themselves.** Hydrating a run recomputes its week and every later one through [rebuildForwardFrom](app/Services/Run/Metrics/WeeklyAggregator.php#L159), so unknown becomes a number as the history fills in.
+- **Backfilled snapshots correct themselves.** Hydrating a run recomputes its week and every later one through [rebuildForwardFrom](app/Services/Run/Metrics/WeeklyAggregator.php), so unknown becomes a number as the history fills in.
 
 ## See also
 

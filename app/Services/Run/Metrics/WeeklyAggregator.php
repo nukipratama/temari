@@ -130,26 +130,6 @@ class WeeklyAggregator
         return $result;
     }
 
-    public function rebuildForWeekOf(User $user, Carbon $when): ?WeeklySnapshot
-    {
-        return $this->exclusively($user, function () use ($user, $when): ?WeeklySnapshot {
-            $this->clearDerivedCaches($user);
-            $weekEnding = $when->copy()->endOfWeek(Carbon::SUNDAY)->startOfDay();
-
-            // Load a converged lead-in window through this week so the CTL EWMA
-            // settles as a continuous series; a short warm-up window would yield a
-            // too-low, window-dependent CTL.
-            $details = $this->loadHistoryThrough($user, $weekEnding, $this->leadInStart($weekEnding));
-            if ($details->isEmpty()) {
-                return null;
-            }
-
-            $this->writeWeeks($user, $weekEnding, $this->weekRows($user, $weekEnding, $weekEnding, $details));
-
-            return $this->snapshotFor($user, $weekEnding);
-        });
-    }
-
     /**
      * Rebuild the weekly snapshot for $weekAnchor's week and every later week
      * through today, returning the anchor week's snapshot. CTL is cumulative, so

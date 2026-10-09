@@ -37,18 +37,6 @@ final class PaceConsistency
         };
     }
 
-    /** Whether the pacing is even enough to be worth complimenting. */
-    public static function isPraiseworthy(float|int|null $variabilitySec): bool
-    {
-        return $variabilitySec !== null && $variabilitySec <= self::EVEN_SEC;
-    }
-
-    /** Whether the splits are tight enough to call out as notably even. */
-    public static function isVeryEven(float|int|null $variabilitySec): bool
-    {
-        return $variabilitySec !== null && $variabilitySec <= self::VERY_EVEN_SEC;
-    }
-
     /** Whether the swing is wide enough to be worth flagging. */
     public static function isNotablyUneven(float|int|null $variabilitySec): bool
     {

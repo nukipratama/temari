@@ -234,67 +234,6 @@ it('still sums the day everywhere a long run was not what was asked for', functi
 });
 
 /**
- * A quality day is one effort, so it is credited from its best single run;
- * everything else, a long run included, counts the volume the day actually
- * accumulated. Narration reads this same figure, so the rule lives here
- * rather than at each call site, where the two would drift.
- */
-it('credits a quality day from its best run and every other day from the total', function (SessionType $type, float $expected): void {
-    $user = User::factory()->create();
-    $session = PlannedSession::factory()->for($user)->create([
-        'date' => Carbon::today()->toDateString(),
-        'session_type' => $type,
-    ]);
-
-    foreach ([18_000.0, 5_000.0] as $metres) {
-        $activity = Activity::factory()->for($user)->create();
-        ActivityDetail::factory()->for($activity)->create([
-            'start_date_local' => Carbon::today()->setTime(7, 0),
-            'distance' => $metres,
-        ]);
-    }
-
-    expect(app(SessionMatcher::class)->creditedKmFor($session))->toBe($expected);
-})->with([
-    [SessionType::Tempo, 18.0],
-    [SessionType::Interval, 18.0],
-    [SessionType::Long, 23.0],
-    [SessionType::Easy, 23.0],
-]);
-
-it('credits nothing on a day with no runs at all', function (): void {
-    $user = User::factory()->create();
-    $session = PlannedSession::factory()->for($user)->create([
-        'date' => Carbon::today()->toDateString(),
-        'session_type' => SessionType::Easy,
-    ]);
-
-    expect(app(SessionMatcher::class)->creditedKmFor($session))->toBeNull();
-});
-
-it('reads one day\'s elapsed pace the way its card does, and nothing on a day with no runs', function (): void {
-    $user = User::factory()->create();
-    $session = PlannedSession::factory()->for($user)->create([
-        'date' => '2026-08-03',
-        'session_type' => SessionType::Easy,
-    ]);
-    $matcher = app(SessionMatcher::class);
-
-    expect($matcher->ranPaceSecPerKmFor($session))->toBeNull();
-
-    $activity = Activity::factory()->for($user)->create();
-    ActivityDetail::factory()->create([
-        'activity_id' => $activity->id,
-        'start_date_local' => Carbon::parse('2026-08-03 06:00:00'),
-        'distance' => 8_000.0,
-        'moving_time' => 3_536,
-        'elapsed_time' => 3_536,
-    ]);
-
-    expect($matcher->ranPaceSecPerKmFor($session->fresh()))->toBe(442);
-});
-
-/**
  * A quality session is one effort. Two easy 5 km outings on a tempo day are
  * not a 10 km tempo, so the day is credited from its best single run rather
  * than from what the two add up to.

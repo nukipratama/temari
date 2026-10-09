@@ -614,7 +614,7 @@ export interface WeekPlanDay {
     result_note: string | null;
     /** The credited runs' own pace — moving time over distance, the best
      *  single run for Tempo/Interval, the day's total otherwise — from
-     *  `SessionMatcher::ranPaceSecPerKmFor()`. Null until the day is
+     *  `SessionMatcher::ranPaceSecPerKmFromRuns()`. Null until the day is
      *  credited, or when the credited runs carry no moving time. */
     ran_pace_sec_per_km: number | null;
     /** Total km actually run that day — null when nothing was logged. */

@@ -109,7 +109,7 @@ the first point ("3:15 faster since aug 3" in leaf-ink, "slower" in ember-ink). 
 "10K · oct 1" only when the effort under it changed. The points are the daily trend snapshots taken for
 the active race from its season's start
 ([TrendsController::supportedHistory()](app/Http/Controllers/TrendsController.php#L92)), which
-[TrendSnapshotWriter](app/Services/Run/Trend/TrendSnapshotWriter.php#L56) fills as of each date. With no
+[TrendSnapshotWriter::writeRange()](app/Services/Run/Trend/TrendSnapshotWriter.php) fills as of each date. With no
 race, no supported time, or fewer than two days of history the panel is absent. See
 [[supported-time-history-from-daily-trend-snapshots]].
 

@@ -121,7 +121,6 @@ it('reads every float-valued metric', function (string $method, string $key): vo
     ['hrDriftBpm', 'hr_drift_bpm'],
     ['cadenceDropSpm', 'cadence_drop_spm'],
     ['decouplingPct', 'decoupling_pct'],
-    ['optimalCadencePct', 'optimal_cadence_pct'],
     ['maxGradePct', 'max_grade_pct'],
     ['climbTimePct', 'climb_time_pct'],
 ]);
@@ -135,7 +134,6 @@ it('reports a float-valued metric as null when absent, null, or not numeric', fu
     ['hrDriftBpm', 'hr_drift_bpm'],
     ['cadenceDropSpm', 'cadence_drop_spm'],
     ['decouplingPct', 'decoupling_pct'],
-    ['optimalCadencePct', 'optimal_cadence_pct'],
     ['maxGradePct', 'max_grade_pct'],
     ['climbTimePct', 'climb_time_pct'],
 ]);
@@ -182,17 +180,6 @@ it('reads gap_pace only when it is a string', function (): void {
         ->and(StreamSummary::fromArray(['gap_pace' => null])->gapPace())->toBeNull()
         ->and(StreamSummary::fromArray(['gap_pace' => 304])->gapPace())->toBeNull();
 });
-
-it('reads every integer-valued metric', function (string $method, string $key): void {
-    expect(StreamSummary::fromArray([$key => 42])->{$method}())->toBe(42)
-        ->and(StreamSummary::fromArray([])->{$method}())->toBeNull()
-        ->and(StreamSummary::fromArray([$key => null])->{$method}())->toBeNull()
-        ->and(StreamSummary::fromArray([$key => 'nope'])->{$method}())->toBeNull();
-})->with([
-    ['descentM', 'descent_m'],
-    ['stoppedTimeSec', 'stopped_time_sec'],
-    ['stopCount', 'stop_count'],
-]);
 
 it('reads the time over the easy cap only beside the cap it was measured against', function (): void {
     expect(StreamSummary::fromArray(['easy_cap_bpm' => 152, 'over_easy_cap_sec' => 420])->overEasyCapSec())->toBe(420)

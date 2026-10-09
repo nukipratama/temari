@@ -104,14 +104,6 @@ class RaceGoal extends Model
     }
 
     /**
-     * @return BelongsTo<Activity, $this>
-     */
-    public function outcomeActivity(): BelongsTo
-    {
-        return $this->belongsTo(Activity::class, 'outcome_activity_id');
-    }
-
-    /**
      * @return array<string, string>
      */
     #[Override]
