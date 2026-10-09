@@ -170,7 +170,7 @@ jobs:
     needs: [changes, backend, frontend, build, worktree, structure, repo-guards, dependency-review]
     if: ${{ !cancelled() }}
     runs-on: ubuntu-26.04-arm
-    timeout-minutes: 2
+    timeout-minutes: 5
     steps:
       - name: Require upstream jobs to have succeeded (or cleanly skipped)
         run: |
@@ -194,6 +194,66 @@ jobs:
           for r in "${{ needs.repo-guards.result }}" "${{ needs.changes.result }}"; do
             [ "$r" = "success" ] || { echo "::error::a required unconditional job did not pass ($r)"; exit 1; }
           done
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: github.event_name == 'pull_request' && needs.backend.result == 'success'
+
+      - uses: ./.github/actions/setup-php
+        if: github.event_name == 'pull_request' && needs.backend.result == 'success'
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          coverage: 'none'
+          classmap-authoritative: 'true'
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        if: github.event_name == 'pull_request' && needs.backend.result == 'success'
+        with:
+          pattern: coverage-shard-*
+          path: coverage-shards
+          merge-multiple: true
+
+      - name: Merge shard coverage and check --min=95 on the whole suite
+        id: merge
+        if: github.event_name == 'pull_request' && needs.backend.result == 'success'
+        run: |
+          ./vendor/bin/phpcov merge --clover=coverage-merged-clover.xml coverage-shards
+
+          # shellcheck disable=SC2016 # PHP variables are evaluated by php, so the shell must leave this snippet literal.
+          php -r '
+            $xml = simplexml_load_file("coverage-merged-clover.xml");
+            $metrics = $xml->project->metrics;
+            $statements = (int) $metrics["statements"];
+            $covered = (int) $metrics["coveredstatements"];
+            $pct = $statements > 0 ? ($covered / $statements) * 100 : 100.0;
+            printf("Merged coverage: %.2f%% (%d/%d executable lines)\n", $pct, $covered, $statements);
+            $min = 95.0;
+            if ($pct < $min) {
+              fwrite(STDERR, sprintf("FAIL: merged coverage %.1f%% is below the required %.1f%%.\n", floor($pct * 10) / 10, $min));
+              exit(1);
+            }
+          '
+
+      - name: Coverage summary
+        if: always() && steps.merge.outcome != 'skipped'
+        run: |
+          {
+            echo "### Backend · Coverage (merged, $(find coverage-shards -name '*.cov' | wc -l)-way shard)"
+            echo ""
+            if [ -f coverage-merged-clover.xml ]; then
+              # shellcheck disable=SC2016 # PHP variables are evaluated by php, so the shell must leave this snippet literal.
+              php -r '
+              $xml = @simplexml_load_file("coverage-merged-clover.xml");
+              if ($xml === false) { exit(0); }
+              $metrics = $xml->project->metrics;
+              $statements = (int) $metrics["statements"];
+              $covered = (int) $metrics["coveredstatements"];
+              $pct = $statements > 0 ? ($covered / $statements) * 100 : 100.0;
+              echo "| | |\n| --- | --- |\n";
+              printf("| Lines | %.1f%% (%d/%d) |\n", $pct, $covered, $statements);
+              '
+            fi
+            echo ""
+          } >> "$GITHUB_STEP_SUMMARY"
 
   # Produces the image deploy.yml pulls after a main push, and on a PR proves a
   # Dockerfile/composer change still builds. ~40s off a warm cache.

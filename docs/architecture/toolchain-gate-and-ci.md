@@ -59,14 +59,14 @@ signal, not a substitute for CI passing. On `push` to `main`, a successful CI ru
 for that half.
 
 The backend suite and the frontend suite each run three parallel shards, on PRs and main pushes. The test jobs and the image build need only `changes`, so they start without waiting for `repo-guards`, which also runs the gitleaks secret scan; `ci-gate` still requires it. Backend shards start MySQL with a backgrounded `docker run` right after checkout and wait for it just before the tests, so its pull and init overlap PHP setup. PR shards collect coverage;
-each suite's `gate` job merges the whole-suite totals and applies the configured thresholds exactly
-once. Main-push shards skip instrumentation, and their `gate` skips the merge, because the change
-was already coverage-gated before merge. Each side's single static-analysis job runs its tools in
+the frontend's `gate` job and, for the backend, `ci-gate` merge the whole-suite totals and apply the
+configured thresholds exactly once. Main-push shards skip instrumentation and the merge is skipped,
+because the change was already coverage-gated before merge. Each side's single static-analysis job runs its tools in
 sequence (Pint, PHPStan and Rector; TypeScript, ESLint and Prettier) and then that side's 1:1
 structure check and source guard (`{@see}` references; the raw-palette guard), so the structure
-checks run once per run instead of once per shard. Each reusable workflow's `gate` requires all of
+checks run once per run instead of once per shard. The frontend workflow's `gate` requires all of
 its shards and its static analysis on both events, and the top-level `ci-gate` requires each
-changed suite as a unit. A missing, cancelled or failed shard therefore reds the gate — see
+changed suite as a unit, the backend's `tests` and `static-analysis` jobs included. A missing, cancelled or failed shard therefore reds the gate — see
 [[sharded-pr-coverage]]. A newer push to
 the same ref, `main` included, cancels the older run whole instead, and its `ci-gate` skips; see
 [[deployment]] under "Superseded main runs".

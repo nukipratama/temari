@@ -32,6 +32,8 @@ code_refs:
 
 > **Fact update, 2026-10-04.** Each suite's coverage merge now runs inside its `gate` job, and Pint, PHPStan and Rector run in sequence in one static-analysis job ([#1741](https://github.com/nukipratama/temari/issues/1741)).
 
+> **Fact update, 2026-10-09.** The backend's `gate` job is gone: `ci-gate` requires the backend workflow as a unit and runs the PR coverage merge itself. The frontend `gate` is unchanged.
+
 > **Fact update, 2026-10-04.** `refresh-shards` runs weekly (Mondays 02:05 WIB) instead of nightly ([#1736](https://github.com/nukipratama/temari/issues/1736)).
 
 > **Fact update, 2026-10-07.** Backend tests run in three shards (`SHARD_TOTAL` 3) to cut billed
