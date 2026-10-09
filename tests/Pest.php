@@ -29,9 +29,14 @@ use App\Services\AI\NarrationOrigin;
 use App\Services\AI\StructuredChatCaller;
 use App\Actions\AI\RecordTokenUsageAction;
 use Database\Factories\TrendDailySnapshotFactory;
+use Database\Seeders\Demo\BlueprintLibrary;
+use Database\Seeders\Demo\DemoRunSeeder;
+use Database\Seeders\Demo\RunBlueprint;
 use Database\Factories\WeeklySnapshotFactory;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\RateLimiter;
 use Laravel\Socialite\Facades\Socialite;
 use Laravel\Socialite\Two\AbstractProvider;
@@ -525,4 +530,30 @@ function runEvidence(User $user, Activity $activity, PerformanceEvidenceKind $ki
         'distance_m' => 5_000, 'elapsed_time_sec' => 1_200,
         'performed_on' => Carbon::today()->toDateString(), 'confirmed_at' => now(),
     ]);
+}
+
+const SLIM_DEMO_BLUEPRINTS = ['5K time trial', 'Fresh tempo 8K', '10K race-pace effort', 'Yesterday shakeout'];
+
+function seedSlimDemo(): User
+{
+    app()->bind(BlueprintLibrary::class, fn (): BlueprintLibrary => new class () extends BlueprintLibrary {
+        public function all(): array
+        {
+            return array_values(array_filter(
+                parent::all(),
+                fn (RunBlueprint $blueprint): bool => in_array($blueprint->name, SLIM_DEMO_BLUEPRINTS, true),
+            ));
+        }
+    });
+
+    config()->set('services.telegram.bot_token', 'test-token');
+    Queue::fake();
+    Notification::fake();
+
+    test()->artisan('demo:seed')->assertSuccessful();
+
+    $user = User::query()->where('email', DemoRunSeeder::DEMO_USER_EMAIL)->firstOrFail();
+    expect(Activity::query()->where('user_id', $user->id)->count())->toBe(count(SLIM_DEMO_BLUEPRINTS) + 1);
+
+    return $user;
 }

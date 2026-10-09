@@ -29,9 +29,7 @@ use App\Services\Run\FeedFilters;
 use App\Services\Run\Plan\Periodizer;
 use App\Services\Run\Story\Card\CardFacts;
 use App\Services\Run\Story\Card\RunForm;
-use Database\Seeders\Demo\BlueprintLibrary;
 use Database\Seeders\Demo\DemoRunSeeder;
-use Database\Seeders\Demo\RunBlueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Testing\RefreshDatabaseState;
 use Illuminate\Http\Request;
@@ -158,32 +156,6 @@ function releaseSharedDemoFixture(): void
 afterAll(function (): void {
     RefreshDatabaseState::$migrated = false;
 });
-
-const SLIM_DEMO_BLUEPRINTS = ['5K time trial', 'Fresh tempo 8K', '10K race-pace effort', 'Yesterday shakeout'];
-
-function seedSlimDemo(): User
-{
-    app()->bind(BlueprintLibrary::class, fn (): BlueprintLibrary => new class () extends BlueprintLibrary {
-        public function all(): array
-        {
-            return array_values(array_filter(
-                parent::all(),
-                fn (RunBlueprint $blueprint): bool => in_array($blueprint->name, SLIM_DEMO_BLUEPRINTS, true),
-            ));
-        }
-    });
-
-    config()->set('services.telegram.bot_token', 'test-token');
-    Queue::fake();
-    Notification::fake();
-
-    test()->artisan('demo:seed')->assertSuccessful();
-
-    $user = User::query()->where('email', DemoRunSeeder::DEMO_USER_EMAIL)->firstOrFail();
-    expect(Activity::query()->where('user_id', $user->id)->count())->toBe(count(SLIM_DEMO_BLUEPRINTS) + 1);
-
-    return $user;
-}
 
 /**
  * @return array<string, int>
