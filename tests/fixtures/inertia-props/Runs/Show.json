@@ -196,6 +196,7 @@
     "storyLine.id",
     "storyLine.kind",
     "storyLine.mood",
+    "storyLine.sigil_pattern",
     "storyLine.speech",
     "storyLine.user_id"
 ]

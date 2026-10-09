@@ -31,6 +31,7 @@ function seedVerdict(User $user, Carbon $when, Mood $mood, ?string $speech, floa
         'kind' => StoryLine::KIND_POST_RUN,
         'mood' => $mood,
         'speech' => null,
+        'sigil_pattern' => 'dddd',
     ]);
 
     if ($speech !== null) {
@@ -59,7 +60,7 @@ it('skips a story line whose activity is still an un-ingested stub', function ()
     ActivityDetail::factory()->for($stub)->create(['start_date_local' => Carbon::parse('2026-05-10 06:00:00')]);
     StoryLine::query()->create([
         'user_id' => $user->id, 'activity_id' => $stub->id, 'kind' => StoryLine::KIND_POST_RUN,
-        'mood' => Mood::Blazing, 'speech' => null,
+        'mood' => Mood::Blazing, 'speech' => null, 'sigil_pattern' => 'dddd',
     ]);
     Analysis::factory()->done('ada storynya')->create([
         'subject_type' => Activity::class, 'subject_id' => $stub->id,
@@ -138,6 +139,7 @@ it('ignores daily-greeting story lines', function (): void {
         'kind' => StoryLine::KIND_DAILY_GREETING,
         'mood' => Mood::Blazing,
         'speech' => null,
+        'sigil_pattern' => 'ssss',
     ]);
     seedVerdict($user, Carbon::today(), Mood::Easy, 'Real verdict', 5000.0);
 
@@ -176,6 +178,7 @@ it('skips story lines whose activity has no detail', function (): void {
         'kind' => StoryLine::KIND_POST_RUN,
         'mood' => Mood::Chill,
         'speech' => null,
+        'sigil_pattern' => 'dddd',
     ]);
     Analysis::factory()->done('orphan verdict')->create([
         'subject_type' => Activity::class,
@@ -231,6 +234,7 @@ it('classifies session intensity from TRIMP density', function (float $trimp, in
         'kind' => StoryLine::KIND_POST_RUN,
         'mood' => Mood::Easy,
         'speech' => null,
+        'sigil_pattern' => 'dddd',
     ]);
     Analysis::factory()->done('verdict')->create([
         'subject_type' => Activity::class,
@@ -266,6 +270,7 @@ it('returns a null intensity when TRIMP or elapsed time is missing', function ()
         'kind' => StoryLine::KIND_POST_RUN,
         'mood' => Mood::Easy,
         'speech' => null,
+        'sigil_pattern' => 'dddd',
     ]);
     Analysis::factory()->done('verdict')->create([
         'subject_type' => Activity::class,

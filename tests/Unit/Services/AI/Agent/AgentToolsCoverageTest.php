@@ -942,7 +942,7 @@ it('folds the full mood mix from its two halves', function (): void {
         StoryLine::query()->create([
             'user_id' => $user->id, 'activity_id' => $activity->id,
             'kind' => StoryLine::KIND_POST_RUN, 'mood' => $mood,
-            'speech' => null,
+            'speech' => null, 'sigil_pattern' => 'dddd',
         ]);
     };
 

@@ -64,6 +64,7 @@ use Override;
  * @property string|null $location_name
  * @property string|null $location_country
  * @property Carbon|null $location_resolved_at
+ * @property string|null $vibe_state
  * @property-read Activity $activity
  */
 #[Fillable([
@@ -111,6 +112,7 @@ use Override;
     'location_name',
     'location_country',
     'location_resolved_at',
+    'vibe_state',
 ])]
 class ActivityDetail extends Model
 {

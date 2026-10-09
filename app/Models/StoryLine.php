@@ -21,6 +21,7 @@ use App\Enums\Mood;
  * @property Carbon|null $for_date
  * @property Mood $mood
  * @property string $speech
+ * @property string $sigil_pattern
  * @property-read User $user
  * @property-read Activity|null $activity
  */
@@ -31,6 +32,7 @@ use App\Enums\Mood;
     'for_date',
     'mood',
     'speech',
+    'sigil_pattern',
 ])]
 class StoryLine extends Model
 {

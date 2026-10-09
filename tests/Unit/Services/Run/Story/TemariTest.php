@@ -36,7 +36,7 @@ function steadyDrift(float $pct): array
     ];
 }
 
-it('persists a post_run story line with mood + null speech (LLM async)', function (): void {
+it('persists a post_run story line with mood + sigil + null speech (LLM async)', function (): void {
     $activity = Activity::factory()->create();
     $detail = ActivityDetail::factory()->for($activity)->create([
         'distance' => 10_000,
@@ -55,6 +55,7 @@ it('persists a post_run story line with mood + null speech (LLM async)', functio
         ->and($line->activity_id)->toBe($activity->id)
         ->and($line->user_id)->toBe($activity->user_id)
         ->and($line->speech)->toBeNull()
+        ->and($line->sigil_pattern)->toBeString()
         ->and($line->mood)->toBeIn([
             Mood::Easy,
             Mood::Blazing,

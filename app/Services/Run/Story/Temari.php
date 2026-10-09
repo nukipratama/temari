@@ -40,6 +40,7 @@ class Temari
                 'for_date' => null,
                 'mood' => $mood,
                 'speech' => null,
+                'sigil_pattern' => self::sigilForMoodPublic($mood),
             ],
         );
     }
@@ -57,7 +58,7 @@ class Temari
 
         $mood = self::moodOf($activity, $detail);
         if ($line->mood !== $mood) {
-            $line->update(['mood' => $mood]);
+            $line->update(['mood' => $mood, 'sigil_pattern' => self::sigilForMoodPublic($mood)]);
         }
     }
 
@@ -81,8 +82,21 @@ class Temari
                 'activity_id' => null,
                 'mood' => $mood,
                 'speech' => null,
+                'sigil_pattern' => self::sigilForMoodPublic($mood),
             ],
         );
+    }
+
+    public static function sigilForMoodPublic(Mood $mood): string
+    {
+        return match ($mood) {
+            Mood::Blazing => 'ssss',
+            Mood::Easy => 'orct',
+            Mood::Wobbly => 'fhfh',
+            Mood::Gassed => 'wvwv',
+            Mood::Overloaded => 'splr',
+            Mood::Chill => 'dddd',
+        };
     }
 
     /**
