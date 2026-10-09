@@ -22,6 +22,8 @@ code_refs:
 
 > **Partly superseded (2026-10-08) by [[a-race-block-tapers-two-weeks-and-recovers-in-peak]].** Rule 2's move now applies to the last week before Taper, since the recovery-week cadence runs through Peak: a recovery week may precede Peak and never precedes Taper. The rest of this decision stands.
 
+> **Partly superseded (2026-10-09) by [[a-race-floor-solves-under-the-session-caps]].** Rule 1's floor is no longer one division: it is bisected under `long_run_cap_km` and the progression cap, and an unreachable floor takes the best reachable figure.
+
 # A race block never prescribes below habit, and the load guard outranks that
 
 **Status:** Accepted (2026-09-18)
