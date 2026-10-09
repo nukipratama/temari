@@ -22,6 +22,8 @@ code_refs:
 
 > **Partly superseded (2026-10-08) by [[a-race-block-tapers-two-weeks-and-recovers-in-peak]].** Rule 2's move now applies to the last week before Taper, since the recovery-week cadence runs through Peak: a recovery week may precede Peak and never precedes Taper. The rest of this decision stands.
 
+> **Fact update, 2026-10-09.** Rule 1's floor is no longer one division: [TrainingBaseline::volumeFloorKm()](app/Services/Run/Plan/TrainingBaseline.php) sizes the block under `long_run_cap_km` and `long_run_progression_cap_km` and bisects for the baseline, and where those caps leave no baseline that reaches the floor it takes the smallest one that reaches the most they allow.
+
 # A race block never prescribes below habit, and the load guard outranks that
 
 **Status:** Accepted (2026-09-18)
