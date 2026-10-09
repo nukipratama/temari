@@ -16,7 +16,7 @@ uses(RefreshDatabase::class);
  */
 const FRESH_ACCOUNT_PAGES = ['/', '/history', '/trends', '/race', '/plan', '/inbox', '/profile', '/settings'];
 
-it('renders every page for an account with no activity at all', function (string $path): void {
+it('renders every page for an account with no activity at all', function (): void {
     Carbon::setTestNow('2026-09-08 10:00:00'); // a Tuesday
     $user = User::factory()->create(['onboarded_at' => null]);
 
@@ -25,12 +25,15 @@ it('renders every page for an account with no activity at all', function (string
         'goal_type' => 'base',
     ])->assertSessionHasNoErrors();
 
-    $this->actingAs($user)->get($path)->assertSuccessful();
+    foreach (FRESH_ACCOUNT_PAGES as $path) {
+        $response = $this->actingAs($user)->get($path);
+        expect($response->isSuccessful())->toBeTrue("GET {$path} answered {$response->status()} {$response->exception?->getMessage()}");
+    }
 
     Carbon::setTestNow();
-})->with(FRESH_ACCOUNT_PAGES);
+});
 
-it('renders every page for an account whose Strava history has not arrived yet', function (string $path): void {
+it('renders every page for an account whose Strava history has not arrived yet', function (): void {
     Carbon::setTestNow('2026-09-08 10:00:00');
     $user = User::factory()->create(['onboarded_at' => null]);
 
@@ -46,7 +49,10 @@ it('renders every page for an account whose Strava history has not arrived yet',
         'sessions_per_week' => 4,
     ])->assertSessionHasNoErrors();
 
-    $this->actingAs($user)->get($path)->assertSuccessful();
+    foreach (FRESH_ACCOUNT_PAGES as $path) {
+        $response = $this->actingAs($user)->get($path);
+        expect($response->isSuccessful())->toBeTrue("GET {$path} answered {$response->status()} {$response->exception?->getMessage()}");
+    }
 
     Carbon::setTestNow();
-})->with(FRESH_ACCOUNT_PAGES);
+});
