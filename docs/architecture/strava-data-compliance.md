@@ -3,7 +3,7 @@ title: Strava data compliance
 description: What Strava's API terms oblige Temari to do and where each obligation is enforced — the endpoints we actually call, cross-user isolation, the 2027 host move, and the inference-not-training position on AI.
 tags: [architecture, strava]
 status: living
-reviewed: 2026-08-13
+reviewed: 2026-10-09
 code_refs:
   - app/Services/Strava/StravaClient.php
   - app/Services/Strava/ActivityFetcher.php
@@ -50,7 +50,7 @@ Strava's terms bar using its data to train AI models. Temari sends run stats to 
 - **2026-06-30** — standard API access requires a paid Strava subscription. Account-level, no code hook.
 - **2026-09-01** — club endpoints removed, Explore Segments restricted. No-op here, see above.
 - **2027-01-04** — `api-v3.strava.com` starts serving. It is **not the deadline it looks like**: it is the date the replacement host becomes *available*, and Strava has announced no shutdown date for `www.strava.com/api/v3`. The host is already a config value, `STRAVA_API_BASE_URL`, defaulting to the host that answers today; see [[strava-client]] before flipping it.
-- **2027-06-01** — access tokens must be sent in request headers rather than form params, and `oauth/deauthorize` is retired in favour of `oauth/revoke`. The first is a no-op here: API reads already authenticate with a bearer header via `withToken()` ([StravaClient](app/Services/Strava/StravaClient.php)). The second is a real hook — [StravaClient::deauthorize()](app/Services/Strava/StravaClient.php) calls `oauth/deauthorize` when an account is deleted or an operator releases an athlete, and that endpoint becomes `oauth/revoke` on this date. An athlete-initiated revocation is still something they do on Strava's side, which we detect from a 401 ([VerifyStravaRevocationJob](app/Jobs/Strava/VerifyStravaRevocationJob.php#L52)).
+- **2027-06-01** — access tokens must be sent in request headers rather than form params, and `oauth/deauthorize` is retired in favour of `oauth/revoke`. The first is a no-op here: API reads already authenticate with a bearer header via `withToken()` ([StravaClient](app/Services/Strava/StravaClient.php)). The second is a real hook — [StravaClient::deauthorizeGrantToken()](app/Services/Strava/StravaClient.php) calls `oauth/deauthorize` (through [StravaGrantReleaseService](app/Services/Strava/StravaGrantReleaseService.php)) when an account is deleted or an operator releases an athlete, and that endpoint becomes `oauth/revoke` on this date. An athlete-initiated revocation is still something they do on Strava's side, which we detect from a 401 ([VerifyStravaRevocationJob](app/Jobs/Strava/VerifyStravaRevocationJob.php#L52)).
 
 The dates above are from Strava's [V3 API changelog](https://developers.strava.com/docs/changelog/), which is the thing to re-read before acting on any of them.
 

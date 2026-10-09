@@ -3,7 +3,7 @@ title: Profile
 description: The runner's identity page — Temari's profile voice, lifetime stats, PR progression charts, Strava status
 tags: [feature, profile]
 status: living
-reviewed: 2026-10-05
+reviewed: 2026-10-09
 code_refs:
   - resources/js/pages/Profile.tsx
   - app/Http/Controllers/ProfileController.php
@@ -56,9 +56,9 @@ This is the merged profile voice: it reads who the runner is from their 12-week 
 
 ## Stat row
 
-A horizontally scrolling row inside the hero: **Total km**, **Total runs**, **Longest run** (its value carries the unit, `42.6 km`, like **Threshold**'s `/km`, so the label fits one line on phones), plus **VDOT** and **Threshold** when the athlete has a VDOT-eligible PR. The controller delegates to [LifetimeStats](app/Services/Run/LifetimeStats.php), the same service `/calendar` uses: one aggregate query over `ActivityDetail` (`SUM(distance)`, `MAX(distance)`, `MIN(start_date_local)`) plus a count of the athlete's runs that have a detail row, so a run whose detail never arrived is not counted, converted to km and cached per user for 5 minutes. `/profile` maps its `longest_km` onto the `longest_run_km` prop; the page renders **Total km** and **Longest run** at 1dp. The service rounds the total to 1dp and the longest run to 2dp, so the tile drops the second decimal.
+A horizontally scrolling row inside the hero: **Total km**, **Total runs**, **Longest run** (its value carries the unit, `42.6 km`, like **Threshold**'s `/km`, so the label fits one line on phones), plus **VDOT** and **Threshold** when the athlete has a VDOT-eligible PR. The controller delegates to [LifetimeStats](app/Services/Run/LifetimeStats.php), the same service History's lifetime props use ([HistoryController](app/Http/Controllers/HistoryController.php)): one aggregate query over `ActivityDetail` (`SUM(distance)`, `MAX(distance)`, `MIN(start_date_local)`) plus a count of the athlete's runs that have a detail row, so a run whose detail never arrived is not counted, converted to km and cached per user for 5 minutes. `/profile` maps its `longest_km` onto the `longest_run_km` prop; the page renders **Total km** and **Longest run** at 1dp. The service rounds the total to 1dp and the longest run to 2dp, so the tile drops the second decimal.
 
-Sharing `/calendar`'s cache means the totals can trail a just-ingested run by up to the TTL, the same window `/calendar` has always had.
+Sharing History's cache means the totals can trail a just-ingested run by up to the TTL, the same window History has always had.
 
 ## Fitness — VDOT, threshold pace & training paces
 

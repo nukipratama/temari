@@ -3,7 +3,7 @@ title: Run ingestion pipeline
 description: Strava sync stores the whole history from paged summaries; detail, streams and the story layer are fetched lazily, atomically, and drainably on failure
 tags: [architecture, run]
 status: living
-reviewed: 2026-08-14
+reviewed: 2026-10-09
 code_refs:
   - app/Services/Run/Ingest/SyncOrchestrator.php
   - app/Services/Run/Ingest/SummaryIngest.php
@@ -37,7 +37,7 @@ How a Strava run becomes a run card + story layer. Two distinct phases — **syn
 
 An [Activity](app/Models/Activity.php) carries two independent facts:
 
-- `analyzed_at` — the visibility watermark. Null = we know nothing about this run yet; set = the row carries real data. It means *when we processed this*, never *when the run happened*: a backfill stamps a whole imported history to `now()` ([`analyzed_at` stamp](app/Services/Run/Ingest/SummaryIngest.php#L107)), so anything asking "has this athlete been active lately?" must key off `activity_details.start_date_local` instead (as [`activeUserIds`](app/Console/Commands/AI/DailyBriefingCommand.php#L34) and [`activeUserIds`](app/Console/Commands/AI/WeeklyProfileCommand.php#L44) do). The [AnalyzedScope](app/Models/Scopes/AnalyzedScope.php) global scope hides the nulls from every user-facing query; only the pipeline opts back in via the `withStubs` / `pendingIngest` scopes.
+- `analyzed_at` — the visibility watermark. Null = we know nothing about this run yet; set = the row carries real data. It means *when we processed this*, never *when the run happened*: a backfill stamps a whole imported history to `now()` ([`analyzed_at` stamp](app/Services/Run/Ingest/SummaryIngest.php#L107)), so anything asking when a run happened must key off `activity_details.start_date_local` instead. Whether an athlete is active for narration is a separate question about app visits, not runs: [RecentlyActiveUsers](app/Actions/AI/RecentlyActiveUsers.php) answers it from `users.last_seen_at`, and the daily briefing and weekly profile commands inject it. The [AnalyzedScope](app/Models/Scopes/AnalyzedScope.php) global scope hides the nulls from every user-facing query; only the pipeline opts back in via the `withStubs` / `pendingIngest` scopes.
 - `ingest_state` ([IngestState](app/Enums/IngestState.php)) — how *complete* that data is. `summary` = only what `/athlete/activities` returned; `detailed` = the full pipeline ran. The `detailed` / `summaryOnly` scopes on [Activity](app/Models/Activity.php) are the read-side filter, so no caller has to spell the predicate out.
 
 A **summary-only** run is visible and honest: distance, moving time, elapsed time, average/max speed, elevation, average/max HR, cadence, polyline and start coords are all real. Everything stream-derived — `stream_summary`, `trimp_edwards`, `splits_metric`, `laps`, calories, device, weather — is null, and there is no [ActivityStream](app/Models/ActivityStream.php), [RunCard](app/Models/RunCard.php), [PersonalRecord](app/Models/PersonalRecord.php) or post-run [StoryLine](app/Models/StoryLine.php). Read paths degrade to "unknown", never to zero.

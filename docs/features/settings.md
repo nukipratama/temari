@@ -3,7 +3,7 @@ title: Settings
 description: The settings hub at /settings — appearance, notification types and channels, training preferences, the HR-zone entry, account deletion, and logout — a pushed screen reached from the gear on Profile's top bar.
 tags: [feature, settings]
 status: living
-reviewed: 2026-08-19
+reviewed: 2026-10-09
 code_refs:
     - app/Http/Controllers/SettingsController.php
     - app/Http/Controllers/AccountController.php
@@ -43,7 +43,7 @@ It carries **no back affordance in the page body**: Settings is a pushed screen,
 
 "Delete account" is the owner-facing way to release a Strava-account binding (one Strava account = one user, reused on every re-login). A confirmation modal guards against accidental deletion; confirming issues `router.delete('/account')` → [AccountController](../../app/Http/Controllers/AccountController.php) `destroy()`, which releases the mirrored Strava grant through [UserEraser](../../app/Services/User/UserEraser.php) before deleting the user, then logs them out, invalidates the session, and redirects to `/login` with a friendly flash.
 
-The grant ledger keeps the encrypted refresh token if Strava cannot release it, so `strava:slots` and the daily orphan retry can try again after the account is gone. The `User` model's `deleting` hook still marks the local connection revoked and writes a sync log; that local state change alone does not release the OAuth grant. The shared **demo** account can't be deleted (`AccountController` rejects `is_demo` with an error flash; the UI routes demo users through the demo-blocked modal instead).
+The grant ledger keeps the encrypted refresh token if Strava cannot release it, so `strava:slots` and the daily orphan retry can try again after the account is gone. The `User` model's `deleting` hook still marks the local connection revoked and writes a sync log; that local state change alone does not release the OAuth grant. The shared **demo** account can't be deleted (`AccountController` rejects `is_demo` with an error flash; the delete-account button is not rendered for the demo account).
 
 ## See also
 

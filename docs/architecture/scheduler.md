@@ -3,7 +3,7 @@ title: Scheduler hygiene — overlap safety, single-host, ordering, cadence
 description: Every Schedule::command entry is overlap-safe and single-host by an unstated one-container invariant; entries due in the same minute run serially, so strava:sync runs at :07; every run lands in an append-only run log; the Monday window's hard dependencies are chained and retry hourly until they succeed; the numeric derivation behind four previously-qualitative cadences; and measured local runtimes next to each lock TTL
 tags: [architecture, scheduler]
 status: living
-reviewed: 2026-10-06
+reviewed: 2026-10-09
 code_refs:
   - routes/console.php
   - app/Console/Commands/Notifications/RecoverStaleNotificationDeliveriesCommand.php
@@ -75,6 +75,8 @@ despite that.
 | `ai:trend-read 7d` | daily 06:00 | 20 | yes | one narrator pass across active users | ~1.2-1.4s — 0 active users (demo excluded) |
 | `ai:self-heal` | hourly | 55 (unchanged) | yes | already guarded pre-DF-1 | ~1.3s — skipped, generation paused (Azure unset) |
 | `ai:catch-up` | hourly | 55 (unchanged) | yes | already guarded pre-DF-1 | ~1.5s — created 0 missing kickoff rows |
+| `ai:spend-digest` | daily 21:00 | 10 | yes | one grouped read of today's `ai_token_usages` rows, then one Telegram push to every admin | not measured — added with the spend digest |
+| `exceptions:digest` | daily 21:00 | 10 | yes | pulls the exception ledger once and pushes only when a fingerprint is new; silent on a quiet day | not measured — added with the exception digest |
 | `queue:prune-failed` | daily 02:20 | 15 | yes | one `DELETE` on `failed_jobs` | ~1.6s — 0 entries deleted |
 | `analytics:prune` | daily 02:25 | 15 | yes | six `DELETE`s — five on the `analytics` connection, one on `analysis_versions` | ~1.7s — 0 rows pruned |
 | `model:prune TelegramUpdateReceipt` | daily 02:30 | 15 | yes | delete Telegram update receipts older than 7 days | not measured — added with durable Telegram update dedupe |

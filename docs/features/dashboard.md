@@ -3,7 +3,7 @@ title: Dashboard
 description: The home page — today's session and the voice on it, this week's plan widget carrying the week's own numbers, then the Past You verdict and its evidence
 tags: [feature, dashboard]
 status: living
-reviewed: 2026-10-08
+reviewed: 2026-10-09
 code_refs:
   - resources/js/pages/Home.tsx
   - app/Http/Controllers/DashboardController.php
@@ -14,6 +14,7 @@ code_refs:
   - resources/js/components/home/NoVerdictPanel.tsx
   - resources/js/components/home/TodaySession.tsx
   - resources/js/components/home/RaceOutcomePrompt.tsx
+  - resources/js/components/home/TimeTrialPrompt.tsx
   - resources/js/components/plan/DeltaPair.tsx
   - resources/js/components/home/NoPlanCard.tsx
   - resources/js/lib/verdict.ts
@@ -80,6 +81,8 @@ On a planned rest day, the session block also carries one deterministic, rule-ba
 The prescription is `weekPlan`'s row for today, passed down by the page and drawn as one line: the session type, its distance and the core set's pace. A day the plan has already judged states both figures it recorded instead, one line per side — `asked N km · pace` then `ran N km · pace`, no arrows — from the same `judgedDayResult()` and shared `AskedRanResult` (see [DeltaPair.tsx](resources/js/components/plan/DeltaPair.tsx)) the Plan page's day rows read, so the two pages cannot phrase the day differently. The advised session leads: a recorded readiness ease, or today's advisory before the 00:01 recorder has run, is the session itself, so the line states the eased session as a delta pair (the replaced type and/or distance struck through, tagged `eased`) with what it was eased from and the reason beneath, as ordinary prose rather than a footnote. A pinned or Race day keeps its prescription and carries the advice as one `advice_note` line. A credited run shows a `result_note` in the grading's own words when the effort and the distance tell different stories (hard effort on an easy day, an eased tempo run anyway, an unreadable effort that counts distance only). See [[the-advised-session-leads-every-day]], [[the-eased-session-leads]] and [[the-clamp-explains-itself]]. When no plan covers today the block is the voice alone.
 
 When a race date has passed with its outcome still pending, Home asks about it once: [RaceOutcomePrompt](resources/js/components/home/RaceOutcomePrompt.tsx) ("how did your race go?") links to `/race`, fed by the lazy `pendingRaceOutcome` prop in [DashboardController](app/Http/Controllers/DashboardController.php#L64). Nothing counts as a miss until the athlete answers ([[a-race-outcome-is-confirmed-not-assumed]]).
+
+A time trial whose run did not clear the bar on its own gets the same once-only ask: [TimeTrialPrompt](resources/js/components/home/TimeTrialPrompt.tsx) ("was Saturday's 5K your all-out trial?") posts the answer to the plan's time-trial route, fed by the lazy `pendingTimeTrial` prop in [DashboardController](app/Http/Controllers/DashboardController.php). Only an all-out answer makes it fitness evidence ([[a-time-trial-every-six-weeks]]).
 
 It renders `briefing.mascotVoice` through [AnalysisStatus](resources/js/components/temari/AnalysisStatus.tsx), so it carries the skeleton / retry states from the [[ai-pipeline]]. One exception, on an account's first day only: the composer sends [`firstRead`](app/Services/Run/Story/BriefingComposer.php) when this athlete has never had a briefing narrated, and the card then says "temari is reading your first week…" through the same label slot the deferred recaps use ([TodaySession.tsx:274](resources/js/components/home/TodaySession.tsx#L274)) instead of the usual silence a pending block renders. The flag costs no extra query — it comes back with today's row in the one read the composer already does. The text is parsed on `\n\n`: the first paragraph leads, the rest follows as body. Both halves render through [renderNarration](resources/js/components/temari/Citation.tsx) rather than plain bold, so the briefing may point one span of its own prose at the session it is talking about: the prescription above carries `id="anchor-session-today"`, and clicking the cited words scrolls to it and rings it. The server drops a citation the plan does not back, and the client drops one this page draws no element for, so the affordance only ever appears when there is something to show. See [[citations-go-where-the-prose-already-points]].
 

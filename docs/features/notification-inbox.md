@@ -3,7 +3,7 @@ title: Notification inbox
 description: The /inbox notification centre — a growing window over everything Temari sent, each row a deep link back into the page it was about.
 tags: [feature, notifications]
 status: living
-reviewed: 2026-10-05
+reviewed: 2026-10-09
 code_refs:
   - app/Http/Controllers/InboxController.php
   - app/Models/InboxNotification.php
@@ -23,7 +23,7 @@ Every row is something Temari already sent; nothing is written here, and nothing
 
 ## The kinds
 
-Ten, each with its own row treatment ([NotificationKind](../../app/Enums/NotificationKind.php#L13)).
+Eleven, each with its own row treatment ([NotificationKind](../../app/Enums/NotificationKind.php#L13)).
 Where a row goes is the router's call ([[inbox-is-an-always-on-channel]]), never the kind's.
 
 | kind | what fires it | channels | opens |

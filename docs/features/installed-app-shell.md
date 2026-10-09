@@ -3,7 +3,7 @@ title: Installed app shell
 description: What makes Temari feel native once it is on the iOS Home Screen — edge-to-edge status bar, launch image, top bar with back button, touch feel
 tags: [feature, pwa]
 status: living
-reviewed: 2026-09-28
+reviewed: 2026-10-09
 code_refs:
   - resources/views/app.blade.php
   - public/manifest.webmanifest
@@ -306,6 +306,15 @@ already declines on a browser without the API and on a hidden tab. That option
 is per-visit and defaults to false, so
 [useViewTransitions](../../resources/js/hooks/useViewTransitions.ts) only
 decides which visits earn one.
+
+One visit earns a named transition on top of that. A History run row
+([RunListRow](../../resources/js/components/run/RunListRow.tsx)) passes
+[morphRunCard](../../resources/js/lib/runMorph.ts) as its link's
+`viewTransition`, which gives the row and, once the run page has mounted, its
+hero ([RunHero](../../resources/js/components/run/RunHero.tsx)) the same
+`view-transition-name`, so the row morphs into the header. Both ends carry
+`data-run-morph`, `app.css` runs the `.run-morph` class at 280ms against the
+page's 180ms, and the names are cleared when the transition finishes.
 
 This is not the thing #396 removed. That attempt keyed `<main>` and animated the
 new subtree up from opacity 0, which needs the old page gone before the new one

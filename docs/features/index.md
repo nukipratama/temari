@@ -3,7 +3,7 @@ title: Features — Map of Content
 description: Hub for user-facing feature walkthroughs
 tags: [feature, moc]
 status: living
-reviewed: 2026-09-24
+reviewed: 2026-10-09
 ---
 
 # Features
@@ -14,7 +14,7 @@ One walkthrough per user-facing area — what it does and where it lives in the 
 
 _Pages_
 - [[landing]] — /login as the public landing page: the Past You promise, the sourced legal copy, and the honest throttle path
-- [[dashboard]] — the home screen: the Past You verdict and its evidence, today's session, then vitals / last run / card
+- [[dashboard]] — the home screen: today's session, the week plan, then the Past You verdict and its evidence
 - [[run-history]] — Feed/Calendar, weekly snapshots, week deep link
 - [[run-detail]] — single run: story + adaptive claims lenses, route map, splits, HR zones
 - [[run-qa]] — ask about this run: run-derived suggested questions, an answer scoped to that one activity
