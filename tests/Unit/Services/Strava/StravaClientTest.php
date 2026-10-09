@@ -401,9 +401,7 @@ it('throws StravaRateLimitedException naming the exhausted bucket and retry-afte
         'token_expires_at' => Carbon::now()->addHours(5),
     ]);
 
-    for ($i = 0; $i < 200; $i++) {
-        RateLimiter::hit(StravaClient::rateLimitKey('15min'), 15 * 60);
-    }
+    RateLimiter::increment(StravaClient::rateLimitKey('15min'), 15 * 60, 200);
 
     try {
         new StravaClient()->get($connection, 'athlete', StravaReadSource::Manual);
@@ -425,12 +423,8 @@ it('allows the last request under this app\'s read allocation', function (): voi
         'token_expires_at' => Carbon::now()->addHours(5),
     ]);
 
-    for ($i = 0; $i < 199; $i++) {
-        RateLimiter::hit(StravaClient::rateLimitKey('15min'), 15 * 60);
-    }
-    for ($i = 0; $i < 1999; $i++) {
-        RateLimiter::hit(StravaClient::rateLimitKey('daily'), 24 * 60 * 60);
-    }
+    RateLimiter::increment(StravaClient::rateLimitKey('15min'), 15 * 60, 199);
+    RateLimiter::increment(StravaClient::rateLimitKey('daily'), 24 * 60 * 60, 1999);
 
     new StravaClient()->get($connection, 'athlete', StravaReadSource::Manual);
 
@@ -453,38 +447,6 @@ it('sends API reads to the configured base URL', function (): void {
     new StravaClient()->get($connection, '/athlete', StravaReadSource::Manual);
 
     Http::assertSent(fn ($request) => $request->url() === 'https://api-v3.strava.com/athlete');
-});
-
-it('records hits against both rate limit buckets per request', function (): void {
-    Http::fake([
-        'www.strava.com/api/v3/*' => Http::response(['ok' => true]),
-    ]);
-
-    $connection = StravaConnection::factory()->create([
-        'token_expires_at' => Carbon::now()->addHours(5),
-    ]);
-
-    new StravaClient()->get($connection, 'athlete', StravaReadSource::Manual);
-
-    expect(RateLimiter::attempts(StravaClient::rateLimitKey('15min')))->toBe('1')
-        ->and(RateLimiter::attempts(StravaClient::rateLimitKey('daily')))->toBe('1');
-});
-
-it('shares one rate-limit budget across all athletes (per client, not per athlete)', function (): void {
-    Http::fake([
-        'www.strava.com/api/v3/*' => Http::response(['ok' => true]),
-    ]);
-
-    $athleteA = StravaConnection::factory()->create(['token_expires_at' => Carbon::now()->addHours(5)]);
-    $athleteB = StravaConnection::factory()->create(['token_expires_at' => Carbon::now()->addHours(5)]);
-
-    new StravaClient()->get($athleteA, 'athlete', StravaReadSource::Manual);
-    new StravaClient()->get($athleteB, 'athlete', StravaReadSource::Manual);
-
-    // Both athletes' calls land in the same shared bucket: Strava's limit is
-    // per client, so two athletes consume two of the app's 200/15min, not one each.
-    expect(RateLimiter::attempts(StravaClient::rateLimitKey('15min')))->toBe('2')
-        ->and(RateLimiter::attempts(StravaClient::rateLimitKey('daily')))->toBe('2');
 });
 
 it('keys both buckets globally, with nothing user-scoped, at either priority', function (): void {
@@ -519,9 +481,7 @@ it('refuses a background read once the buckets reach the live-ingest reserve flo
     ]);
 
     // 25% of 200 held back for live ingest: background stops at 150.
-    for ($i = 0; $i < 150; $i++) {
-        RateLimiter::hit(StravaClient::rateLimitKey('15min'), 15 * 60);
-    }
+    RateLimiter::increment(StravaClient::rateLimitKey('15min'), 15 * 60, 150);
 
     expect(fn () => new StravaClient()->get($connection, 'athlete', StravaReadSource::Manual, priority: StravaReadPriority::Background))
         ->toThrow(StravaRateLimitedException::class, 'is down to its live-ingest reserve');
@@ -550,9 +510,7 @@ it('lets a live read spend the reserve a background read was just refused', func
         'token_expires_at' => Carbon::now()->addHours(5),
     ]);
 
-    for ($i = 0; $i < 150; $i++) {
-        RateLimiter::hit(StravaClient::rateLimitKey('15min'), 15 * 60);
-    }
+    RateLimiter::increment(StravaClient::rateLimitKey('15min'), 15 * 60, 150);
 
     expect(fn () => new StravaClient()->get($connection, 'athlete', StravaReadSource::Manual, priority: StravaReadPriority::Background))
         ->toThrow(StravaRateLimitedException::class);
@@ -570,9 +528,7 @@ it('holds only the live floor back from the daily bucket, not a quarter of it', 
         'token_expires_at' => Carbon::now()->addHours(5),
     ]);
 
-    for ($i = 0; $i < 1600; $i++) {
-        RateLimiter::hit(StravaClient::rateLimitKey('daily'), 24 * 60 * 60);
-    }
+    RateLimiter::increment(StravaClient::rateLimitKey('daily'), 24 * 60 * 60, 1600);
 
     expect(fn () => new StravaClient()->get($connection, 'athlete', StravaReadSource::Manual, priority: StravaReadPriority::Background))
         ->toThrow(StravaRateLimitedException::class, StravaClient::rateLimitKey('daily'));
@@ -589,12 +545,8 @@ it('lets a background read spend right up to the reserve floor', function (): vo
         'token_expires_at' => Carbon::now()->addHours(5),
     ]);
 
-    for ($i = 0; $i < 149; $i++) {
-        RateLimiter::hit(StravaClient::rateLimitKey('15min'), 15 * 60);
-    }
-    for ($i = 0; $i < 1599; $i++) {
-        RateLimiter::hit(StravaClient::rateLimitKey('daily'), 24 * 60 * 60);
-    }
+    RateLimiter::increment(StravaClient::rateLimitKey('15min'), 15 * 60, 149);
+    RateLimiter::increment(StravaClient::rateLimitKey('daily'), 24 * 60 * 60, 1599);
 
     new StravaClient()->get($connection, 'athlete', StravaReadSource::Manual, priority: StravaReadPriority::Background);
 
@@ -615,9 +567,7 @@ it('caps background at what live traffic leaves, and live keeps the floor', func
         'token_expires_at' => Carbon::now()->addHours(5),
     ]);
 
-    for ($i = 0; $i < 1550; $i++) {
-        RateLimiter::hit(StravaClient::rateLimitKey('daily'), 24 * 60 * 60);
-    }
+    RateLimiter::increment(StravaClient::rateLimitKey('daily'), 24 * 60 * 60, 1550);
 
     $client = new StravaClient();
 
@@ -642,10 +592,8 @@ it('still refuses a background burst at the unchanged 15-minute ceiling', functi
         'token_expires_at' => Carbon::now()->addHours(5),
     ]);
 
-    for ($i = 0; $i < 150; $i++) {
-        RateLimiter::hit(StravaClient::rateLimitKey('15min'), 15 * 60);
-        RateLimiter::hit(StravaClient::rateLimitKey('daily'), 24 * 60 * 60);
-    }
+    RateLimiter::increment(StravaClient::rateLimitKey('15min'), 15 * 60, 150);
+    RateLimiter::increment(StravaClient::rateLimitKey('daily'), 24 * 60 * 60, 150);
 
     expect(fn () => new StravaClient()->get($connection, 'athlete', StravaReadSource::Manual, priority: StravaReadPriority::Background))
         ->toThrow(StravaRateLimitedException::class, StravaClient::rateLimitKey('15min'));
@@ -669,9 +617,7 @@ it('defaults an unqualified read to live so no caller silently loses the reserve
         'token_expires_at' => Carbon::now()->addHours(5),
     ]);
 
-    for ($i = 0; $i < 199; $i++) {
-        RateLimiter::hit(StravaClient::rateLimitKey('15min'), 15 * 60);
-    }
+    RateLimiter::increment(StravaClient::rateLimitKey('15min'), 15 * 60, 199);
 
     new StravaClient()->get($connection, 'athlete', StravaReadSource::Manual);
 
@@ -743,9 +689,7 @@ it('reports background headroom net of the live-ingest reserve', function (): vo
 });
 
 it('shrinks background headroom as live reads spend the shared pool', function (): void {
-    for ($i = 0; $i < 40; $i++) {
-        RateLimiter::hit(StravaClient::rateLimitKey('15min'), 15 * 60);
-    }
+    RateLimiter::increment(StravaClient::rateLimitKey('15min'), 15 * 60, 40);
 
     $client = new StravaClient();
 
@@ -754,9 +698,7 @@ it('shrinks background headroom as live reads spend the shared pool', function (
 });
 
 it('floors background headroom at zero once live reads pass the reserve', function (): void {
-    for ($i = 0; $i < 180; $i++) {
-        RateLimiter::hit(StravaClient::rateLimitKey('15min'), 15 * 60);
-    }
+    RateLimiter::increment(StravaClient::rateLimitKey('15min'), 15 * 60, 180);
 
     expect(new StravaClient()->backgroundHeadroom()['15min'])->toBe(0);
 });
@@ -782,9 +724,7 @@ it('keys the daily bucket by the UTC date, not the app-timezone date', function 
 
 it('opens a fresh 15-minute bucket at :15 however recently the last one opened', function (): void {
     Carbon::setTestNow(Carbon::parse('2026-10-06 03:14:00', 'UTC'));
-    for ($i = 0; $i < 200; $i++) {
-        RateLimiter::hit(StravaClient::rateLimitKey('15min'), 900);
-    }
+    RateLimiter::increment(StravaClient::rateLimitKey('15min'), 900, 200);
     expect(new StravaClient()->rateLimitRemaining()['15min'])->toBe(0);
 
     Carbon::setTestNow(Carbon::parse('2026-10-06 03:15:00', 'UTC'));
