@@ -74,6 +74,7 @@ ADRs, feature notes and code docblocks cite a source here as `[[coaching-evidenc
 | Monotony and strain describe a week; neither deloads it nor caps readiness | [PlanAdapter.php](app/Services/Run/Plan/PlanAdapter.php), [Readiness.php](app/Services/Run/Metrics/Readiness.php) | evidence-supported | [[#Foster1998]], [[#JonesCM2017]] |
 | A return after a gap is handled once, by the missed-week adaptation and the ramp, never as a separate strain deload | [PlanAdapter.php](app/Services/Run/Plan/PlanAdapter.php) | evidence-supported | [[#Frandsen2025]], [[#Impellizzeri2020]] |
 | No generated running session exceeds 110% of the longest run in the prior 30 days; with none, the cap is the cold-start long run | [SegmentGenerator.php](app/Services/Run/Plan/SegmentGenerator.php), [TrainingBaseline.php](app/Services/Run/Plan/TrainingBaseline.php) | evidence-supported | [[#Frandsen2025]] |
+| A race block holding its increases averages its training weeks at the volume floor, each within 10% of it | [TrainingBaseline.php](app/Services/Run/Plan/TrainingBaseline.php) | heuristic | [[#Gabbett2016]], [[#Impellizzeri2020]] |
 | A goal-less season's four-week cycle averages its frozen anchor, unless a long-run cap binds | [TrainingBaseline.php](app/Services/Run/Plan/TrainingBaseline.php) | heuristic | [[#Doherty2020]], [[#Coyle1984]], [[#MujikaPadilla2000a]] |
 | Following the prescription never lowers the anchor; only running well short of it re-anchors mid-season or at rollover | [SeasonService.php](app/Services/Run/Plan/SeasonService.php) | heuristic | [[#Coyle1984]], [[#MujikaPadilla2000a]], [[#MujikaPadilla2000b]] |
 | The Build ramp is a heuristic, not a safety rule | [PhaseSchedule.php](app/Services/Run/Plan/PhaseSchedule.php) | heuristic | [[#Buist2008]] |
@@ -170,6 +171,9 @@ Schuster Brandt Frandsen J, Hulme A, Parner ET, et al. How much running is too m
 
 ### Nakaoka2021
 Nakaoka G, Barboza SD, Verhagen E, van Mechelen W, Hespanhol L. The association between the acute:chronic workload ratio and running-related injuries in Dutch runners: a prospective cohort study. *Sports Med* 2021;51(11):2437–2447. https://doi.org/10.1007/s40279-021-01483-0. Grade COH · access ABS.
+
+### Gabbett2016
+Gabbett TJ. The training-injury prevention paradox: should athletes be training smarter and harder? *Br J Sports Med* 2016;50(5):273–280. https://doi.org/10.1136/bjsports-2015-095788. Acute:chronic workload ratios of about 0.8–1.3 carried the lowest injury risk, and week-to-week load increases above about 10% raised it. Grade REV · access FT.
 
 ### Impellizzeri2020
 Impellizzeri FM, Tenan MS, Kempton T, Novak A, Coutts AJ. Acute:chronic workload ratio: conceptual issues and fundamental pitfalls. *Int J Sports Physiol Perform* 2020;15:907–913. https://doi.org/10.1123/ijspp.2019-0864. Grade REV · access ABS.

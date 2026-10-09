@@ -75,6 +75,7 @@ final readonly class PlanInputsGatherer
         $ambition = $race === null ? null : $this->ambition->assess($user, $race, $today);
         $preference = ($this->trainingPreference)($user->id);
         $baseline = $this->baseline->forUser($user, $today);
+        $layout = $this->baseline->weekLayout($user, $today);
         $estimate = $this->vdotEstimator->estimate($user, $today);
         $paces = $this->paceCalculator->fromVdotResult($estimate);
         ['pinned' => $pinnedDates, 'settled' => $settledDates, 'fixed' => $fixedSessions] = $this->fixedPlanDaysIn($user, $currentWeekStart->copy()->subWeek(), $today, $horizonEnd, $baseline, $paces);
@@ -109,7 +110,7 @@ final readonly class PlanInputsGatherer
             // How long the race will take this athlete, not how far it is: the
             // same 10K is a VO2max event for one runner and a threshold event
             // for another, and only the time the plan trains for can tell them apart.
-            projectedRaceSeconds: $ambition === null ? null : (float) $ambition->prescribedTimeSec(),
+            projectedRaceSeconds: $layout['projected_race_seconds'],
             volumeFloorKm: $season->volume_floor_km,
             increasesHeld: $season->increases_held,
             raceGoalTimeSec: $ambition?->prescribedTimeSec(),

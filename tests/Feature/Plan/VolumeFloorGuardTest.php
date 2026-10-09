@@ -88,6 +88,8 @@ it('holds the race block at the athlete\'s own recent mean when load is fine, wi
         ->and(app(TrainingBaseline::class)->forUser($user, $season->starts_at)['long_run_progression_cap_km'])->toBe(11.0)
         ->and(max(storedLongRunsKm($user)))->toBe(11.0)
         ->and(array_sum(array_column($block, 'planned_km')) / count($block))->toBeGreaterThanOrEqual(25.91)
+        ->and(storedBlockWeeksKm($user, $season))->toHaveCount(12)
+        ->and(array_sum(storedBlockWeeksKm($user, $season)) / 12)->toBeGreaterThanOrEqual(25.91)
         ->and(thisWeekKm($user))->toBeGreaterThanOrEqual(25.91)
         ->and(PlanAdaptation::query()->where('user_id', $user->id)->value('volume_floor_km'))->toBeNull();
 });
@@ -164,6 +166,28 @@ function storedLongRunsKm(User $user): array
     ));
 }
 
+/** @return array<string, float> each stored block week's rendered km, keyed by its Monday */
+function storedBlockWeeksKm(User $user, Season $season): array
+{
+    $blockWeeks = array_map(
+        fn (array $week): string => $week['week_start']->toDateString(),
+        array_filter(app(SeasonSummaryBuilder::class)->plannedWeeks($user, $season), fn (array $week): bool => $week['zone'] === PhaseSchedule::ZONE_BLOCK),
+    );
+    $sessions = PlannedSession::query()->where('user_id', $user->id)->orderBy('date')->get();
+    $baseline = app(TrainingBaseline::class)->forUser($user, Carbon::today());
+    $kmByDate = PlanRenderer::plannedKmByDate($sessions, $baseline['long_run_km'], $baseline['long_run_cap_km'], false, $baseline['long_run_progression_cap_km']);
+
+    $kmByWeek = [];
+    foreach ($sessions as $session) {
+        $weekStart = $session->date->copy()->startOfWeek(Carbon::MONDAY)->toDateString();
+        if (in_array($weekStart, $blockWeeks, true)) {
+            $kmByWeek[$weekStart] = ($kmByWeek[$weekStart] ?? 0.0) + $kmByDate[$session->date->toDateString()];
+        }
+    }
+
+    return $kmByWeek;
+}
+
 function storedMaxMultiplier(User $user): float
 {
     return (float) PlannedSession::query()->where('user_id', $user->id)->max('volume_multiplier');
@@ -183,10 +207,9 @@ it('holds the block at the floor, with no ramp and no long-run climb, while rece
     $longRuns = storedLongRunsKm($user);
     $trainingWeeksKm = array_column(array_filter($block, fn (array $week): bool => ! in_array($week['phase'], [PlanPhase::Deload, PlanPhase::Taper], true)), 'planned_km');
 
-    // Each training week matches the 25.91 km mean to the 0.1 km a session rounds to, and none goes past it.
     expect($season->increases_held)->toBeTrue()
-        ->and(min($trainingWeeksKm))->toBeGreaterThanOrEqual(25.6)
-        ->and(max(array_column($block, 'planned_km')))->toBeLessThanOrEqual(26.0)
+        ->and(array_sum($trainingWeeksKm) / count($trainingWeeksKm))->toBeGreaterThanOrEqual(25.91)
+        ->and(max($trainingWeeksKm))->toBeLessThanOrEqual(25.91 * 1.10)
         ->and(storedMaxMultiplier($user))->toBe(1.0)
         ->and(max($longRuns))->toBe($longRuns[0])
         ->and(max($longRuns))->toBeLessThan(12.0)

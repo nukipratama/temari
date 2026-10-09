@@ -142,10 +142,11 @@ final readonly class SeasonSummaryBuilder
 
         $multipliers = PhaseSchedule::volumeMultipliers(array_column($weeks, 'phase'), $isSelfScaled || $season->increases_held, array_column($weeks, 'zone'));
         $baselineData = $this->baseline->forUser($user, $season->starts_at);
+        $layout = $this->baseline->weekLayout($user, $season->starts_at);
 
         $result = [];
         foreach ($weeks as $i => $week) {
-            $dayRows = $this->weekPlanBuilder->build($week['week_start'], $week['phase'], $baselineData['sessions_per_week'], [], $raceDistanceM, $isSelfScaled, raceDate: $race?->race_date, zone: $week['zone']);
+            $dayRows = $this->weekPlanBuilder->build($week['week_start'], $week['phase'], $baselineData['sessions_per_week'], [], $raceDistanceM, $isSelfScaled, projectedRaceSeconds: $layout['projected_race_seconds'], raceDate: $race?->race_date, zone: $week['zone']);
             $primaryEasyDate = self::primaryEasyDate($dayRows);
 
             $plannedKm = 0.0;
