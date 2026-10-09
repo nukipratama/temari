@@ -1,0 +1,14 @@
+# Overlay on deploy/restore-dry-run-compose.yml, added with a second `-f` only when
+# restore-dry-run.yml runs with a `ref`: that ref's image migrates the restore with
+# the workflow's generated env file, on the base file's internal network.
+services:
+  app_rehearsal:
+    image: ${REHEARSAL_IMAGE:?}
+    pull_policy: never
+    env_file:
+      - ${REHEARSAL_ENV_FILE:?}
+    networks: [restore]
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true

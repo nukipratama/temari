@@ -3,12 +3,14 @@
 # MYSQL_ROOT_PASSWORD are identical, which scripts/restore-db.sh relies on),
 # but brought up under its own compose project (`-p temari-restore`), with an
 # anonymous volume and no published ports, so it never touches the live stack.
+# Its network is internal (no route out), shared with the app_rehearsal overlay in deploy/restore-dry-run-rehearsal-compose.yml.
 services:
   mysql_restore:
     image: temari/mysql:9.7
     pull_policy: never
     env_file:
       - /opt/temari/.env
+    networks: [restore]
     volumes:
       - /var/lib/mysql
     healthcheck:
@@ -17,3 +19,7 @@ services:
       timeout: 3s
       retries: 10
       start_period: 60s
+
+networks:
+  restore:
+    internal: true
