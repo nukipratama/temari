@@ -115,9 +115,26 @@ final class PhaseSchedule
         }
 
         return [
-            ...$this->selfScaled($arcStartWeek, (int) $arcStartWeek->diffInWeeks($blockStart)),
+            ...$this->generalCycleUntil($arcStartWeek, $blockStart),
             ...$this->raceBlock($blockStart, $raceDate, $raceDistanceM),
         ];
+    }
+
+    /**
+     * The self-scaled cycle up to block open. When it would end two or more weeks past its last
+     * recovery week, that last week becomes one, so the run into the block's own cadence stays
+     * within {@see self::DELOAD_EVERY_WEEKS} weeks.
+     *
+     * @return list<array{week_start: Carbon, phase: PlanPhase, zone: string}>
+     */
+    private function generalCycleUntil(Carbon $arcStartWeek, Carbon $blockStart): array
+    {
+        $phases = array_column($this->selfScaled($arcStartWeek, (int) $arcStartWeek->diffInWeeks($blockStart)), 'phase');
+        if (count($phases) % self::SELF_SCALED_CYCLE_WEEKS >= 2) {
+            $phases = [...array_slice($phases, 0, -1), PlanPhase::Deload];
+        }
+
+        return $this->weeksFrom($arcStartWeek, $phases, self::ZONE_GENERAL);
     }
 
     /**

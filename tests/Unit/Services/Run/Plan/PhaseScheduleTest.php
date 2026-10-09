@@ -262,28 +262,44 @@ it('keeps a race twelve weeks out as one block, exactly the arc it always was', 
 
 it('runs the general cycle until block open and counts the race ramp from there', function (): void {
     $arcStart = Carbon::parse('2026-08-10');
-    $raceDay = $arcStart->copy()->addWeeks(29);
+    $raceDay = $arcStart->copy()->addWeeks(27);
     $blockOpen = PhaseSchedule::blockOpensOn($raceDay, 10_000.0);
 
     $arc = $this->schedule->forRace($arcStart, $raceDay, 10_000.0);
     $zones = array_column($arc, 'zone');
     $multipliers = PhaseSchedule::volumeMultipliers(array_column($arc, 'phase'), zones: $zones);
 
-    $general = array_slice($arc, 0, 14);
-    $block = array_slice($arc, 14);
+    $general = array_slice($arc, 0, 12);
+    $block = array_slice($arc, 12);
     $standaloneBlock = $this->schedule->forRace($blockOpen, $raceDay, 10_000.0);
 
-    expect(array_count_values($zones))->toBe([PhaseSchedule::ZONE_GENERAL => 14, PhaseSchedule::ZONE_BLOCK => 16])
+    expect(array_count_values($zones))->toBe([PhaseSchedule::ZONE_GENERAL => 12, PhaseSchedule::ZONE_BLOCK => 16])
         ->and(end($arc)['week_start']->toDateString())->toBe($raceDay->toDateString())
         ->and($block[0]['week_start']->toDateString())->toBe($blockOpen->toDateString())
-        ->and(array_column($general, 'phase'))->toBe(array_column($this->schedule->selfScaled($arcStart, 14), 'phase'))
+        ->and(array_column($general, 'phase'))->toBe(array_column($this->schedule->selfScaled($arcStart, 12), 'phase'))
         ->and(array_column($block, 'phase'))->toBe(array_column($standaloneBlock, 'phase'))
-        ->and(array_slice($multipliers, 14))->toBe(PhaseSchedule::volumeMultipliers(array_column($standaloneBlock, 'phase')));
+        ->and(array_slice($multipliers, 12))->toBe(PhaseSchedule::volumeMultipliers(array_column($standaloneBlock, 'phase')));
 
     foreach ($general as $i => $week) {
         expect($multipliers[$i])->toEqualWithDelta($week['phase'] === PlanPhase::Deload ? 0.65 : 1.0, 0.0001);
     }
 });
+
+it('ends a general cycle two or more weeks past its last recovery week on one before the block', function (int $generalWeeks, array $seam): void {
+    $arcStart = Carbon::parse('2026-08-10');
+    $raceDay = $arcStart->copy()->addWeeks($generalWeeks + 15);
+
+    $arc = $this->schedule->forRace($arcStart, $raceDay, 10_000.0);
+    $phases = array_map(fn (PlanPhase $phase): string => $phase->value, array_column($arc, 'phase'));
+    $standaloneBlock = $this->schedule->forRace(PhaseSchedule::blockOpensOn($raceDay, 10_000.0), $raceDay, 10_000.0);
+
+    expect(array_slice($phases, $generalWeeks - 3, 7))->toBe($seam)
+        ->and(array_column(array_slice($arc, $generalWeeks), 'phase'))->toBe(array_column($standaloneBlock, 'phase'));
+})->with([
+    'one week past' => [13, ['build', 'deload', 'build', 'base', 'base', 'base', 'deload']],
+    'two weeks past' => [14, ['deload', 'build', 'deload', 'base', 'base', 'base', 'deload']],
+    'three weeks past' => [15, ['build', 'build', 'deload', 'base', 'base', 'base', 'deload']],
+]);
 
 it('refuses zones where a general week follows the block', function (): void {
     expect(fn () => PhaseSchedule::volumeMultipliers(
@@ -382,15 +398,12 @@ it('climbs or holds the block\'s volume outside its recovery weeks until the tap
     }
 })->with('race blocks');
 
-it('never runs a block more than four weeks without a recovery or taper week', function (int $weeks, float $distanceM): void {
+it('never runs a season arc more than four weeks without a recovery or taper week', function (int $weeks, float $distanceM): void {
     $arcStart = Carbon::parse('2026-08-10');
     $arc = $this->schedule->forRace($arcStart, $arcStart->copy()->addWeeks($weeks - 1), $distanceM);
 
     $run = 0;
     foreach ($arc as $week) {
-        if ($week['zone'] === PhaseSchedule::ZONE_GENERAL) {
-            continue;
-        }
         $run = in_array($week['phase'], [PlanPhase::Deload, PlanPhase::Taper], true) ? 0 : $run + 1;
         expect($run)->toBeLessThanOrEqual(4);
     }
