@@ -25,8 +25,9 @@ permissions:
 jobs:
   # Diffs against the PR's *own* base branch, so filtering is correct whatever
   # the target; a hardcoded base saw the whole epic diff and never filtered
-  # anything. A push runs everything, having no base to diff against.
+  # anything. A push skips this job and runs everything, having no base to diff against.
   changes:
+    if: ${{ github.event_name == 'pull_request' }}
     runs-on: ubuntu-26.04-arm
     timeout-minutes: 2
     outputs:
@@ -44,12 +45,6 @@ jobs:
         id: filter
         run: |
           set -euo pipefail
-
-          if [ "${{ github.event_name }}" != "pull_request" ]; then
-            echo "push event - running everything"
-            { echo "backend=true"; echo "frontend=true"; echo "docker=true"; echo "worktree=true"; echo "structure=false"; echo "image=false"; } >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
 
           # Explicit refspec: `git fetch origin <branch>` updates FETCH_HEAD but
           # does not reliably create refs/remotes/origin/<branch>, which is what
@@ -114,19 +109,19 @@ jobs:
   backend:
     name: backend
     needs: [changes]
-    if: ${{ needs.changes.outputs.backend == 'true' }}
+    if: ${{ !cancelled() && (github.event_name != 'pull_request' || needs.changes.outputs.backend == 'true') }}
     uses: ./.github/workflows/backend-ci.yml
 
   frontend:
     name: frontend
     needs: [changes]
-    if: ${{ needs.changes.outputs.frontend == 'true' }}
+    if: ${{ !cancelled() && (github.event_name != 'pull_request' || needs.changes.outputs.frontend == 'true') }}
     uses: ./.github/workflows/frontend-ci.yml
 
   worktree:
     name: worktree-races
     needs: [changes]
-    if: ${{ needs.changes.outputs.worktree == 'true' }}
+    if: ${{ !cancelled() && (github.event_name != 'pull_request' || needs.changes.outputs.worktree == 'true') }}
     runs-on: ubuntu-26.04-arm
     timeout-minutes: 5
     strategy:
@@ -170,7 +165,7 @@ jobs:
     needs: [changes, backend, frontend, build, worktree, structure, repo-guards, dependency-review]
     if: ${{ !cancelled() }}
     runs-on: ubuntu-26.04-arm
-    timeout-minutes: 2
+    timeout-minutes: 5
     steps:
       - name: Require upstream jobs to have succeeded (or cleanly skipped)
         run: |
@@ -183,24 +178,90 @@ jobs:
             fi
           }
 
-          require_if_changed "${{ needs.changes.outputs.backend }}" "${{ needs.backend.result }}" backend
-          require_if_changed "${{ needs.changes.outputs.frontend }}" "${{ needs.frontend.result }}" frontend
-          require_if_changed "${{ needs.changes.outputs.worktree }}" "${{ needs.worktree.result }}" worktree
+          require_if_changed "${{ github.event_name != 'pull_request' || needs.changes.outputs.backend == 'true' }}" "${{ needs.backend.result }}" backend
+          require_if_changed "${{ github.event_name != 'pull_request' || needs.changes.outputs.frontend == 'true' }}" "${{ needs.frontend.result }}" frontend
+          require_if_changed "${{ github.event_name != 'pull_request' || needs.changes.outputs.worktree == 'true' }}" "${{ needs.worktree.result }}" worktree
           require_if_changed "${{ needs.changes.outputs.structure }}" "${{ needs.structure.result }}" backend-structure
 
           for r in "${{ needs.build.result }}" "${{ needs.dependency-review.result }}"; do
             [ "$r" = "success" ] || [ "$r" = "skipped" ] || { echo "::error::a required job did not pass ($r)"; exit 1; }
           done
-          for r in "${{ needs.repo-guards.result }}" "${{ needs.changes.result }}"; do
-            [ "$r" = "success" ] || { echo "::error::a required unconditional job did not pass ($r)"; exit 1; }
-          done
+          [ "${{ needs.repo-guards.result }}" = "success" ] || { echo "::error::a required unconditional job did not pass (${{ needs.repo-guards.result }})"; exit 1; }
+          expected_changes=success
+          [ "${{ github.event_name }}" = "pull_request" ] || expected_changes=skipped
+          [ "${{ needs.changes.result }}" = "$expected_changes" ] || { echo "::error::changes did not run as expected (${{ needs.changes.result }})"; exit 1; }
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: github.event_name == 'pull_request' && needs.backend.result == 'success'
+
+      - name: Restore composer vendor
+        if: github.event_name == 'pull_request' && needs.backend.result == 'success'
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: vendor
+          key: composer-${{ runner.os }}-${{ runner.arch }}-php${{ env.PHP_VERSION }}-${{ hashFiles('composer.lock') }}
+          restore-keys: composer-${{ runner.os }}-${{ runner.arch }}-php${{ env.PHP_VERSION }}-
+
+      - name: Install composer deps
+        if: github.event_name == 'pull_request' && needs.backend.result == 'success'
+        run: composer install --prefer-dist --no-interaction --no-progress --no-scripts
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        if: github.event_name == 'pull_request' && needs.backend.result == 'success'
+        with:
+          pattern: coverage-shard-*
+          path: coverage-shards
+          merge-multiple: true
+
+      - name: Merge shard coverage and check --min=95 on the whole suite
+        id: merge
+        if: github.event_name == 'pull_request' && needs.backend.result == 'success'
+        run: |
+          ./vendor/bin/phpcov merge --clover=coverage-merged-clover.xml coverage-shards
+
+          # shellcheck disable=SC2016 # PHP variables are evaluated by php, so the shell must leave this snippet literal.
+          php -r '
+            $xml = simplexml_load_file("coverage-merged-clover.xml");
+            $metrics = $xml->project->metrics;
+            $statements = (int) $metrics["statements"];
+            $covered = (int) $metrics["coveredstatements"];
+            $pct = $statements > 0 ? ($covered / $statements) * 100 : 100.0;
+            printf("Merged coverage: %.2f%% (%d/%d executable lines)\n", $pct, $covered, $statements);
+            $min = 95.0;
+            if ($pct < $min) {
+              fwrite(STDERR, sprintf("FAIL: merged coverage %.1f%% is below the required %.1f%%.\n", floor($pct * 10) / 10, $min));
+              exit(1);
+            }
+          '
+
+      - name: Coverage summary
+        if: always() && steps.merge.outcome != 'skipped'
+        run: |
+          {
+            echo "### Backend · Coverage (merged, $(find coverage-shards -name '*.cov' | wc -l)-way shard)"
+            echo ""
+            if [ -f coverage-merged-clover.xml ]; then
+              # shellcheck disable=SC2016 # PHP variables are evaluated by php, so the shell must leave this snippet literal.
+              php -r '
+              $xml = @simplexml_load_file("coverage-merged-clover.xml");
+              if ($xml === false) { exit(0); }
+              $metrics = $xml->project->metrics;
+              $statements = (int) $metrics["statements"];
+              $covered = (int) $metrics["coveredstatements"];
+              $pct = $statements > 0 ? ($covered / $statements) * 100 : 100.0;
+              echo "| | |\n| --- | --- |\n";
+              printf("| Lines | %.1f%% (%d/%d) |\n", $pct, $covered, $statements);
+              '
+            fi
+            echo ""
+          } >> "$GITHUB_STEP_SUMMARY"
 
   # Produces the image deploy.yml pulls after a main push, and on a PR proves a
   # Dockerfile/composer change still builds. ~40s off a warm cache.
   build:
     name: build-prod-image
     needs: [changes]
-    if: ${{ needs.changes.outputs.docker == 'true' || needs.changes.outputs.backend == 'true' || needs.changes.outputs.frontend == 'true' }}
+    if: ${{ !cancelled() && (github.event_name != 'pull_request' || needs.changes.outputs.docker == 'true' || needs.changes.outputs.backend == 'true' || needs.changes.outputs.frontend == 'true') }}
     runs-on: ubuntu-26.04
     timeout-minutes: 30
     permissions:
@@ -210,6 +271,8 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+        with:
+          cleanup: false
 
       - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
         with:
