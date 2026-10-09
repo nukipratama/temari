@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 use App\Console\SchedulerChain;
-use App\Services\AI\MaintainerAlerter;
+use App\Services\Ops\MaintainerAlerter;
 use Illuminate\Console\Scheduling\Event;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\Carbon;

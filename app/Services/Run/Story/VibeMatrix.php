@@ -12,7 +12,7 @@ class VibeMatrix
     /**
      * @param  array{form: float, form_status: TrainingFormStatus, days_since_run: ?int, recent_pr: bool, decoupling_avg: ?float}  $signals
      */
-    public function pick(array $signals): string
+    public static function pick(array $signals): string
     {
         $status = $signals['form_status'];
         $daysSince = $signals['days_since_run'];

@@ -18,7 +18,7 @@ class SpecialMoves
      *
      * @param  array{distance_m?: float|null, pr_set?: bool, seed?: int}  $context
      */
-    public function pick(StreamSummary $summary, array $context): string
+    public static function pick(StreamSummary $summary, array $context): string
     {
         $zonePct = $summary->zonePct();
         $distribution = $summary->cadenceDistributionPct();
@@ -51,17 +51,17 @@ class SpecialMoves
 
         foreach ($buckets as [$matched, $pool]) {
             if ($matched) {
-                return $this->select($pool, $seed);
+                return self::select($pool, $seed);
             }
         }
 
-        return $this->select([self::DEFAULT_MOVE, 'Shakeout', 'Just Cruising'], $seed);
+        return self::select([self::DEFAULT_MOVE, 'Shakeout', 'Just Cruising'], $seed);
     }
 
     /**
      * @param  non-empty-list<string>  $pool
      */
-    private function select(array $pool, int $seed): string
+    private static function select(array $pool, int $seed): string
     {
         return $pool[abs($seed) % count($pool)];
     }

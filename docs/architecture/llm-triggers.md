@@ -96,7 +96,7 @@ everyone. See [[narration-spends-only-on-active-athletes]].
 [`KickoffMonthlyRecaps`](../../app/Actions/AI/KickoffMonthlyRecaps.php) — the shared implementation
 behind `ai:weekly-recap` and `KickoffRecapsJob`'s first-connect kickoff — route a
 week or month whose close fell before `StravaConnection.created_at` (read through
-[`HydrationBacklog::connectedAt()`](../../app/Services/AI/HydrationBacklog.php) /
+[`HydrationBacklog::connectedAt()`](../../app/Services/Run/Ingest/HydrationBacklog.php) /
 `connectedAtFor()`, the same anchor [[recap-waits-for-hydration]] and [[history-narrates-on-demand]]
 use) to `AnalysisService::requestRuleBased()` alongside the too-old bucket instead of the LLM. A
 three-month backfill therefore bills nothing for the roughly twelve weekly and three monthly recaps

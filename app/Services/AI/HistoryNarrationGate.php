@@ -6,6 +6,7 @@ namespace App\Services\AI;
 
 use App\Actions\AI\RecentlyActiveUsers;
 use App\Models\User;
+use App\Services\Run\Ingest\HydrationBacklog;
 use App\Services\Run\Story\PastYouMatcher;
 use Illuminate\Support\Carbon;
 

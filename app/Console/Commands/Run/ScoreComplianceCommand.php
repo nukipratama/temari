@@ -9,7 +9,7 @@ use App\Models\PlannedSession;
 use App\Models\User;
 use App\Services\Run\Plan\ComplianceScorer;
 use App\Services\Run\Plan\PlanReconciliationService;
-use App\Services\AI\MaintainerAlerter;
+use App\Services\Ops\MaintainerAlerter;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 use Illuminate\Console\Attributes\Description;

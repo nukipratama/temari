@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Services\AI\MaintainerAlerter;
+use App\Services\Ops\MaintainerAlerter;
 use App\Support\NewExceptionLedger;
 use Illuminate\Support\Facades\Cache;
 

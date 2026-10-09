@@ -7,7 +7,7 @@ namespace App\Notifications\Channels;
 use Throwable;
 use App\Jobs\Telegram\Concerns\RevokesConnectionOnPermanentFailure;
 use App\Models\User;
-use App\Services\AI\MaintainerAlerter;
+use App\Services\Ops\MaintainerAlerter;
 use App\Notifications\Messages\TelegramMessage;
 use App\Services\Notifications\ChannelRouter;
 use App\Services\Notifications\NotificationDeliveryClaim;

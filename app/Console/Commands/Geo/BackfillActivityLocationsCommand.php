@@ -7,7 +7,7 @@ namespace App\Console\Commands\Geo;
 use App\Actions\Geo\ReverseGeocodeAction;
 use App\Jobs\Geo\ResolveActivityLocationJob;
 use App\Models\ActivityDetail;
-use App\Services\AI\MaintainerAlerter;
+use App\Services\Ops\MaintainerAlerter;
 use App\Services\Geo\PolylineDecoder;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;

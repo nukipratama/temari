@@ -18,7 +18,6 @@ use App\Services\Run\Metrics\TrainingPaceCalculator;
 use App\Services\Run\Metrics\VdotEstimator;
 use App\Services\Run\Plan\PhaseSchedule;
 use App\Services\Run\Plan\TrainingBaseline;
-use App\Services\Run\Plan\WeekPlanBuilder;
 use App\Services\Run\Plan\SeasonSummaryBuilder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -49,13 +48,11 @@ function baselineWithEasyPace(?int $easySecPerKm): TrainingBaseline
     return new TrainingBaseline(
         $vdot,
         $paces,
-        new PhaseSchedule(),
         new ResolveActiveRaceAction(),
         new ResolveTrainingPreferenceAction(),
         new ResolveTrailingWeeksAction(),
         new ResolveRecentLongestRunAction(),
         new ResolveSeasonAction(),
-        new WeekPlanBuilder(),
     );
 }
 
@@ -507,7 +504,7 @@ it('never prescribes a long run past the race band however long the arc is', fun
     $baselineData = $this->baseline->forUser($user, Carbon::today());
     $phases = array_map(
         fn (array $week): PlanPhase => $week['phase'],
-        new PhaseSchedule()->forRace(Carbon::parse('2026-08-10'), Carbon::parse('2027-08-09'), 10_000.0),
+        PhaseSchedule::forRace(Carbon::parse('2026-08-10'), Carbon::parse('2027-08-09'), 10_000.0),
     );
 
     foreach (PhaseSchedule::volumeMultipliers($phases) as $multiplier) {

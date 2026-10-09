@@ -7,7 +7,7 @@ use App\Jobs\Geo\ResolveActivityLocationJob;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\User;
-use App\Services\AI\MaintainerAlerter;
+use App\Services\Ops\MaintainerAlerter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;

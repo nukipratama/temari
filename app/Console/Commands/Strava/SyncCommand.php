@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Console\Commands\Strava;
 
 use App\Models\User;
-use App\Services\AI\MaintainerAlerter;
+use App\Services\Ops\MaintainerAlerter;
 use App\Services\Run\Ingest\SyncOrchestrator;
 use App\Support\Config\AppConfig;
 use App\Support\Config\AppConfigKey;

@@ -20,6 +20,7 @@ use App\Models\User;
 use App\Notifications\AnalysisReadyNotification;
 use App\Services\AI\RuleBased\RuleBasedNarrationFiller;
 use App\Services\Gamification\StreakSettlementService;
+use App\Services\Ops\MaintainerAlerter;
 use App\Services\Telegram\NotificationEligibility;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Builder;

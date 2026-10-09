@@ -20,7 +20,7 @@ use App\Services\AI\AnalysisType;
 use App\Services\AI\BackfillAgeGate;
 use App\Services\AI\ChainResolver;
 use App\Services\AI\HistoryNarrationGate;
-use App\Services\AI\HydrationBacklog;
+use App\Services\Run\Ingest\HydrationBacklog;
 use App\Services\AI\RecapHydrationReadiness;
 use App\Services\AI\SelfHealer;
 use Illuminate\Foundation\Testing\RefreshDatabase;

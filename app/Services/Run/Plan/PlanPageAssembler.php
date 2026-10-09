@@ -10,7 +10,7 @@ use App\Enums\PlannedSessionStatus;
 use App\Models\PlannedSession;
 use App\Models\Season;
 use App\Models\User;
-use App\Services\AI\HydrationBacklog;
+use App\Services\Run\Ingest\HydrationBacklog;
 use App\Services\AI\PlanNarrationRequester;
 use App\Services\Gamification\SeasonPayloadBuilder;
 use App\Services\Run\Metrics\ReadinessCeiling;

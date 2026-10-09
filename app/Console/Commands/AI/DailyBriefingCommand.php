@@ -7,7 +7,7 @@ namespace App\Console\Commands\AI;
 use App\Actions\AI\RecentlyActiveUsers;
 use App\Actions\AI\RunDailyBriefingSideEffects;
 use App\Services\AI\AnalysisService;
-use App\Services\AI\MaintainerAlerter;
+use App\Services\Ops\MaintainerAlerter;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;

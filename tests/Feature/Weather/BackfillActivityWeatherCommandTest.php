@@ -5,7 +5,7 @@ declare(strict_types=1);
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\User;
-use App\Services\AI\MaintainerAlerter;
+use App\Services\Ops\MaintainerAlerter;
 use App\Services\Weather\OpenMeteoClient;
 use App\Services\Weather\WeatherSnapshot;
 use Illuminate\Foundation\Testing\RefreshDatabase;

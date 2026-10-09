@@ -284,12 +284,11 @@ it('reads a short window at pace as hit when heart rate covers the requested wor
 });
 
 it('holds the dose after a day whose evidence covered one rep or one block', function (): void {
-    $resolver = new IntensityPrescriptionResolver();
     $interval = SessionIntentJudge::judge(SessionType::Interval, intervalDay(reps: 5), JUDGE_PACES, [oneSurgeIntervalRun()]);
     $tempo = SessionIntentJudge::judge(SessionType::Tempo, tempoBlocksDay(), JUDGE_PACES, [oneBlockTempoRun()]);
 
-    expect($resolver->resolve(SessionType::Interval, PlanPhase::Peak, null, null, JUDGE_PACES, $interval['verdict'], 12)->hardMinutes)->toBe(12)
-        ->and($resolver->resolve(SessionType::Tempo, PlanPhase::Peak, null, null, JUDGE_PACES, $tempo['verdict'], 30)->hardMinutes)->toBe(30);
+    expect(IntensityPrescriptionResolver::resolve(SessionType::Interval, PlanPhase::Peak, null, null, JUDGE_PACES, $interval['verdict'], 12)->hardMinutes)->toBe(12)
+        ->and(IntensityPrescriptionResolver::resolve(SessionType::Tempo, PlanPhase::Peak, null, null, JUDGE_PACES, $tempo['verdict'], 30)->hardMinutes)->toBe(30);
 });
 
 it('rescues short intervals when heart rate reached the rep zone for the reps needed', function (): void {

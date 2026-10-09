@@ -6,7 +6,7 @@ status: accepted
 reviewed: 2026-09-10
 code_refs:
   - app/Services/AI/AnalysisService.php
-  - app/Services/AI/MaintainerAlerter.php
+  - app/Services/Ops/MaintainerAlerter.php
   - app/Services/AI/TokenUsageReport.php
   - config/azure_openai.php
   - resources/js/components/narration/TodayPanel.tsx
@@ -51,7 +51,7 @@ athlete argument, so it gates callers that hold none — `pauseReason()`, the /p
 restores, deliberately: an athlete exhausting their own slice is ordinary operation, the whole
 app stopping is not.
 
-**4. A trip pushes one maintainer alert.** [`totalCeilingReached()`](app/Services/AI/MaintainerAlerter.php#L314) names
+**4. A trip pushes one maintainer alert.** [`totalCeilingReached()`](app/Services/Ops/MaintainerAlerter.php#L314) names
 the spend, the ceiling and how many athletes are degraded, behind a one-hour cooldown so a
 ceiling that stays tripped alerts once per window rather than once per gated dispatch. The
 per-athlete ceiling stays silent.

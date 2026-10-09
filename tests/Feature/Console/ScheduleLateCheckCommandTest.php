@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 use App\Console\SchedulerChain;
 use App\Models\ScheduledTaskRun;
-use App\Services\AI\MaintainerAlerter;
+use App\Services\Ops\MaintainerAlerter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 

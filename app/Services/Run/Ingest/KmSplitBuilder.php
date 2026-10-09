@@ -53,19 +53,19 @@ final class KmSplitBuilder
      * @param  float|null  $deviceDistanceM  the activity's own total distance
      * @return list<array<string, int|string>>
      */
-    public function perKm(?array $laps, array $latlng, array $time, array $heartrate, ?array $splitsMetric, ?float $deviceDistanceM): array
+    public static function perKm(?array $laps, array $latlng, array $time, array $heartrate, ?array $splitsMetric, ?float $deviceDistanceM): array
     {
-        $rows = $this->fromKmGridLaps($this->usableLaps($laps));
+        $rows = self::fromKmGridLaps(self::usableLaps($laps));
         if ($rows !== []) {
             return $rows;
         }
 
-        $rows = $this->fromGeoStreams($latlng, $time, $heartrate, $deviceDistanceM);
+        $rows = self::fromGeoStreams($latlng, $time, $heartrate, $deviceDistanceM);
         if ($rows !== []) {
             return $rows;
         }
 
-        return $this->fromSplitsMetric($splitsMetric);
+        return self::fromSplitsMetric($splitsMetric);
     }
 
     /**
@@ -75,10 +75,10 @@ final class KmSplitBuilder
      * @param  array<int, array<string, mixed>>|null  $laps
      * @return list<array<string, int|string>>
      */
-    public function laps(?array $laps): array
+    public static function laps(?array $laps): array
     {
         $rows = [];
-        foreach ($this->usableLaps($laps) as $i => $lap) {
+        foreach (self::usableLaps($laps) as $i => $lap) {
             $distance = (float) $lap['distance'];
             $elapsed = (float) $lap['elapsed_time'];
             $rows[] = [
@@ -86,7 +86,7 @@ final class KmSplitBuilder
                 'distance_m' => (int) round($distance),
                 'elapsed_sec' => (int) round($elapsed),
                 'pace' => PaceFormatter::format(PaceCalculator::secPerKm($distance, $elapsed) ?? 0.0),
-            ] + $this->averages($lap);
+            ] + self::averages($lap);
         }
 
         return $rows;
@@ -96,7 +96,7 @@ final class KmSplitBuilder
      * @param  array<int, array<string, mixed>>|null  $laps
      * @return list<array<string, mixed>>
      */
-    private function usableLaps(?array $laps): array
+    private static function usableLaps(?array $laps): array
     {
         if ($laps === null) {
             return [];
@@ -113,9 +113,9 @@ final class KmSplitBuilder
      * @param  list<array<string, mixed>>  $laps
      * @return list<array<string, int|string>>
      */
-    private function fromKmGridLaps(array $laps): array
+    private static function fromKmGridLaps(array $laps): array
     {
-        if (! $this->isKmGrid($laps)) {
+        if (! self::isKmGrid($laps)) {
             return [];
         }
 
@@ -125,7 +125,7 @@ final class KmSplitBuilder
             if ($distance < self::FULL_KM_MIN_DISTANCE_M) {
                 continue;
             }
-            $rows[] = $this->row($i + 1, (float) $lap['elapsed_time'], $distance) + $this->averages($lap);
+            $rows[] = self::row($i + 1, (float) $lap['elapsed_time'], $distance) + self::averages($lap);
         }
 
         return $rows;
@@ -138,7 +138,7 @@ final class KmSplitBuilder
      *
      * @param  list<array<string, mixed>>  $laps
      */
-    private function isKmGrid(array $laps): bool
+    private static function isKmGrid(array $laps): bool
     {
         return self::isPlainKmGrid(array_map(
             fn (array $lap): float => (float) $lap['distance'],
@@ -181,14 +181,14 @@ final class KmSplitBuilder
      * @param  list<mixed>  $heartrate
      * @return list<array<string, int|string>>
      */
-    private function fromGeoStreams(array $latlng, array $time, array $heartrate, ?float $deviceDistanceM): array
+    private static function fromGeoStreams(array $latlng, array $time, array $heartrate, ?float $deviceDistanceM): array
     {
         $n = min(count($latlng), count($time));
         if ($n < 2) {
             return [];
         }
 
-        $cumulative = $this->cumulativeDistance($latlng, $n);
+        $cumulative = self::cumulativeDistance($latlng, $n);
         $traced = $cumulative[$n - 1];
         if ($traced <= 0) {
             return [];
@@ -208,13 +208,13 @@ final class KmSplitBuilder
             while ($index < $n - 1 && $cumulative[$index] < $target) {
                 $index++;
             }
-            $boundaryTime = $this->interpolate($cumulative, $time, $index, $target);
+            $boundaryTime = self::interpolate($cumulative, $time, $index, $target);
             $elapsed = $boundaryTime - $startTime;
             if ($elapsed <= 0) {
                 continue;
             }
-            $rows[] = $this->row($km, $elapsed, self::METRES_PER_KM)
-                + $this->meanHeartRate($heartrate, $startIndex, $index);
+            $rows[] = self::row($km, $elapsed, self::METRES_PER_KM)
+                + self::meanHeartRate($heartrate, $startIndex, $index);
             $startIndex = $index;
             $startTime = $boundaryTime;
         }
@@ -226,17 +226,17 @@ final class KmSplitBuilder
      * @param  list<mixed>  $latlng  per-sample [lat, lng] pairs
      * @return list<float>
      */
-    private function cumulativeDistance(array $latlng, int $n): array
+    private static function cumulativeDistance(array $latlng, int $n): array
     {
         $cumulative = [0.0];
         for ($i = 1; $i < $n; $i++) {
-            $cumulative[] = $cumulative[$i - 1] + $this->haversine($latlng[$i - 1], $latlng[$i]);
+            $cumulative[] = $cumulative[$i - 1] + self::haversine($latlng[$i - 1], $latlng[$i]);
         }
 
         return $cumulative;
     }
 
-    private function haversine(mixed $from, mixed $to): float
+    private static function haversine(mixed $from, mixed $to): float
     {
         if (! is_array($from) || ! is_array($to) || count($from) < 2 || count($to) < 2) {
             return 0.0;
@@ -258,7 +258,7 @@ final class KmSplitBuilder
      * @param  list<float>  $cumulative
      * @param  list<mixed>  $time
      */
-    private function interpolate(array $cumulative, array $time, int $index, float $target): float
+    private static function interpolate(array $cumulative, array $time, int $index, float $target): float
     {
         $previous = $index - 1;
         $span = $cumulative[$index] - $cumulative[$previous];
@@ -272,7 +272,7 @@ final class KmSplitBuilder
      * @param  list<mixed>  $heartrate
      * @return array{avg_hr?: int}
      */
-    private function meanHeartRate(array $heartrate, int $from, int $to): array
+    private static function meanHeartRate(array $heartrate, int $from, int $to): array
     {
         $sum = 0.0;
         $count = 0;
@@ -290,7 +290,7 @@ final class KmSplitBuilder
      * @param  array<int, array<string, mixed>>|null  $splits
      * @return list<array<string, int|string>>
      */
-    private function fromSplitsMetric(?array $splits): array
+    private static function fromSplitsMetric(?array $splits): array
     {
         if ($splits === null) {
             return [];
@@ -303,7 +303,7 @@ final class KmSplitBuilder
             if ($distance < self::FULL_KM_MIN_DISTANCE_M || $elapsed <= 0) {
                 continue;
             }
-            $rows[] = $this->row((int) ($split['split'] ?? 0), $elapsed, $distance) + $this->averages($split);
+            $rows[] = self::row((int) ($split['split'] ?? 0), $elapsed, $distance) + self::averages($split);
         }
 
         return $rows;
@@ -312,7 +312,7 @@ final class KmSplitBuilder
     /**
      * @return array{km: int, pace: string, elapsed_sec: int, distance_m: int}
      */
-    private function row(int $km, float $elapsedSec, float $distanceM): array
+    private static function row(int $km, float $elapsedSec, float $distanceM): array
     {
         return [
             'km' => $km,
@@ -326,7 +326,7 @@ final class KmSplitBuilder
      * @param  array<string, mixed>  $source
      * @return array{avg_hr?: int, avg_cadence_spm?: int}
      */
-    private function averages(array $source): array
+    private static function averages(array $source): array
     {
         $averages = [];
         if (isset($source['average_heartrate'])) {

@@ -75,7 +75,7 @@ final class WeekPlanBuilder
      * @param  ?FallOffTilt  $fallOffTilt  the athlete's fitted fall-off lean, applied only in a race block's Build and Peak weeks
      * @return array<string, array{phase: PlanPhase, session_type: SessionType, fall_off_tilt?: FallOffTilt}> keyed by Y-m-d
      */
-    public function build(
+    public static function build(
         Carbon $weekStart,
         PlanPhase $phase,
         int $sessionsPerWeek,
@@ -117,7 +117,7 @@ final class WeekPlanBuilder
         ));
 
         $qualitySlots = self::withQualityDelta(
-            $this->phaseQualitySlots($phase, $sessionsPerWeek, $isMarathonDistance, $selfScaled, $projectedRaceSeconds, $zone, $fallOffTilt),
+            self::phaseQualitySlots($phase, $sessionsPerWeek, $isMarathonDistance, $selfScaled, $projectedRaceSeconds, $zone, $fallOffTilt),
             $phase,
             $qualityDelta,
             $selfScaled,
@@ -330,9 +330,9 @@ final class WeekPlanBuilder
      * same way {@see self::build()} does, so callers pass the raw race
      * distance rather than duplicating the marathon-distance threshold.
      */
-    public function qualitySlotCount(PlanPhase $phase, int $sessionsPerWeek, ?float $raceDistanceM, bool $selfScaled, string $zone = PhaseSchedule::ZONE_BLOCK): int
+    public static function qualitySlotCount(PlanPhase $phase, int $sessionsPerWeek, ?float $raceDistanceM, bool $selfScaled, string $zone = PhaseSchedule::ZONE_BLOCK): int
     {
-        return count($this->phaseQualitySlots($phase, $sessionsPerWeek, self::isMarathonDistance($raceDistanceM), $selfScaled, null, $zone));
+        return count(self::phaseQualitySlots($phase, $sessionsPerWeek, self::isMarathonDistance($raceDistanceM), $selfScaled, null, $zone));
     }
 
     /**
@@ -375,7 +375,7 @@ final class WeekPlanBuilder
      *
      * @return list<array{session_type: SessionType, fall_off_tilt?: FallOffTilt}>
      */
-    private function phaseQualitySlots(PlanPhase $phase, int $sessionsPerWeek, bool $isMarathonDistance, bool $selfScaled, ?float $projectedRaceSeconds, string $zone = PhaseSchedule::ZONE_BLOCK, ?FallOffTilt $fallOffTilt = null): array
+    private static function phaseQualitySlots(PlanPhase $phase, int $sessionsPerWeek, bool $isMarathonDistance, bool $selfScaled, ?float $projectedRaceSeconds, string $zone = PhaseSchedule::ZONE_BLOCK, ?FallOffTilt $fallOffTilt = null): array
     {
         if ($phase === PlanPhase::Deload || $sessionsPerWeek < self::MIN_SESSIONS_FOR_QUALITY) {
             return [];

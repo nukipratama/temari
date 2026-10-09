@@ -2,11 +2,10 @@
 
 declare(strict_types=1);
 
-use App\Services\Run\Ingest\KmSplitBuilder;
 use App\Services\Run\Ingest\StreamAnalysis;
 
 beforeEach(function (): void {
-    $this->analysis = new StreamAnalysis(new KmSplitBuilder());
+    $this->analysis = new StreamAnalysis();
 });
 
 function defaultZones(): array

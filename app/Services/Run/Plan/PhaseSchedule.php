@@ -77,7 +77,7 @@ final class PhaseSchedule
     /** A week inside the race block, periodized toward race day. */
     public const string ZONE_BLOCK = 'block';
 
-    public function taperWeeksForDistance(float $distanceM): int
+    public static function taperWeeksForDistance(float $distanceM): int
     {
         return match (true) {
             $distanceM <= RaceSupport::MARATHON_CLASS_ABOVE_M => 2,
@@ -102,21 +102,21 @@ final class PhaseSchedule
      *
      * @return list<array{week_start: Carbon, phase: PlanPhase, zone: string}>
      */
-    public function forRace(Carbon $arcStart, Carbon $raceDate, float $raceDistanceM): array
+    public static function forRace(Carbon $arcStart, Carbon $raceDate, float $raceDistanceM): array
     {
         $arcStartWeek = $arcStart->copy()->startOfWeek(Carbon::MONDAY);
         if (! RaceSupport::forDistance($raceDistanceM)->dedicatedPreparation()) {
-            return $this->generalMaintenance($arcStartWeek, $raceDate);
+            return self::generalMaintenance($arcStartWeek, $raceDate);
         }
 
         $blockStart = self::blockOpensOn($raceDate, $raceDistanceM);
         if ($blockStart->lessThanOrEqualTo($arcStartWeek)) {
-            return $this->raceBlock($arcStartWeek, $raceDate, $raceDistanceM);
+            return self::raceBlock($arcStartWeek, $raceDate, $raceDistanceM);
         }
 
         return [
-            ...$this->generalCycleUntil($arcStartWeek, $blockStart),
-            ...$this->raceBlock($blockStart, $raceDate, $raceDistanceM),
+            ...self::generalCycleUntil($arcStartWeek, $blockStart),
+            ...self::raceBlock($blockStart, $raceDate, $raceDistanceM),
         ];
     }
 
@@ -127,14 +127,14 @@ final class PhaseSchedule
      *
      * @return list<array{week_start: Carbon, phase: PlanPhase, zone: string}>
      */
-    private function generalCycleUntil(Carbon $arcStartWeek, Carbon $blockStart): array
+    private static function generalCycleUntil(Carbon $arcStartWeek, Carbon $blockStart): array
     {
-        $phases = array_column($this->selfScaled($arcStartWeek, (int) $arcStartWeek->diffInWeeks($blockStart)), 'phase');
+        $phases = array_column(self::selfScaled($arcStartWeek, (int) $arcStartWeek->diffInWeeks($blockStart)), 'phase');
         if (count($phases) % self::SELF_SCALED_CYCLE_WEEKS >= 2) {
             $phases = [...array_slice($phases, 0, -1), PlanPhase::Deload];
         }
 
-        return $this->weeksFrom($arcStartWeek, $phases, self::ZONE_GENERAL);
+        return self::weeksFrom($arcStartWeek, $phases, self::ZONE_GENERAL);
     }
 
     /**
@@ -142,18 +142,18 @@ final class PhaseSchedule
      *
      * @return list<array{week_start: Carbon, phase: PlanPhase, zone: string}>
      */
-    private function generalMaintenance(Carbon $arcStartWeek, Carbon $raceDate): array
+    private static function generalMaintenance(Carbon $arcStartWeek, Carbon $raceDate): array
     {
         $weekCount = max(1, (int) $arcStartWeek->diffInWeeks($raceDate->copy()->startOfWeek(Carbon::MONDAY)) + 1);
-        $cycle = array_column($this->selfScaled($arcStartWeek, $weekCount), 'phase');
+        $cycle = array_column(self::selfScaled($arcStartWeek, $weekCount), 'phase');
 
-        return $this->weeksFrom($arcStartWeek, [...array_slice($cycle, 0, -1), PlanPhase::Taper], self::ZONE_GENERAL);
+        return self::weeksFrom($arcStartWeek, [...array_slice($cycle, 0, -1), PlanPhase::Taper], self::ZONE_GENERAL);
     }
 
     /**
      * @return list<array{week_start: Carbon, phase: PlanPhase, zone: string}>
      */
-    private function raceBlock(Carbon $currentWeekStart, Carbon $raceDate, float $raceDistanceM): array
+    private static function raceBlock(Carbon $currentWeekStart, Carbon $raceDate, float $raceDistanceM): array
     {
         $raceWeekStart = $raceDate->copy()->startOfWeek(Carbon::MONDAY);
         // diffInWeeks is signed, so a race day already behind us counts down
@@ -164,14 +164,14 @@ final class PhaseSchedule
         // `plan:regenerate` run with it.
         $weeksToRace = max(1, (int) $currentWeekStart->diffInWeeks($raceWeekStart) + 1);
 
-        $taperWeeks = $this->taperWeeksForDistance($raceDistanceM);
+        $taperWeeks = self::taperWeeksForDistance($raceDistanceM);
 
         // Too little time to build anything meaningful: taper for however many
         // weeks are actually left, prioritizing race-day freshness.
         if ($weeksToRace <= $taperWeeks + 1) {
             $phases = array_fill(0, $weeksToRace, PlanPhase::Taper);
 
-            return $this->weeksFrom($currentWeekStart, $phases, self::ZONE_BLOCK);
+            return self::weeksFrom($currentWeekStart, $phases, self::ZONE_BLOCK);
         }
 
         $remainingWeeks = $weeksToRace - $taperWeeks;
@@ -194,13 +194,13 @@ final class PhaseSchedule
             ...array_fill(0, $taperWeeks, PlanPhase::Taper),
         ];
 
-        return $this->weeksFrom($currentWeekStart, self::withScheduledDeloads($phases, $remainingWeeks), self::ZONE_BLOCK);
+        return self::weeksFrom($currentWeekStart, self::withScheduledDeloads($phases, $remainingWeeks), self::ZONE_BLOCK);
     }
 
     /**
      * @return list<array{week_start: Carbon, phase: PlanPhase, zone: string}>
      */
-    public function selfScaled(Carbon $arcStart, int $weeks): array
+    public static function selfScaled(Carbon $arcStart, int $weeks): array
     {
         $currentWeekStart = $arcStart->copy()->startOfWeek(Carbon::MONDAY);
 
@@ -210,7 +210,7 @@ final class PhaseSchedule
             $phases[] = $cyclePosition < self::SELF_SCALED_CYCLE_WEEKS - 1 ? PlanPhase::Build : PlanPhase::Deload;
         }
 
-        return $this->weeksFrom($currentWeekStart, $phases, self::ZONE_GENERAL);
+        return self::weeksFrom($currentWeekStart, $phases, self::ZONE_GENERAL);
     }
 
     /**
@@ -354,7 +354,7 @@ final class PhaseSchedule
      * @param  list<PlanPhase>  $phases
      * @return list<array{week_start: Carbon, phase: PlanPhase, zone: string}>
      */
-    private function weeksFrom(Carbon $firstWeekStart, array $phases, string $zone): array
+    private static function weeksFrom(Carbon $firstWeekStart, array $phases, string $zone): array
     {
         $weeks = [];
         foreach ($phases as $index => $phase) {

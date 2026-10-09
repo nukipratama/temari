@@ -75,10 +75,7 @@ final readonly class Periodizer
     private const float RESUME_WEEKLY_GROWTH = 1.10;
 
     public function __construct(
-        private PhaseSchedule $phaseSchedule,
-        private WeekPlanBuilder $weekPlanBuilder,
         private PlanInputsGatherer $gatherer,
-        private IntensityPrescriptionResolver $prescriptionResolver,
     ) {
     }
 
@@ -181,10 +178,10 @@ final readonly class Periodizer
     {
         $arcStart = $inputs->arcStart();
         $arc = $inputs->raceDate !== null && $inputs->raceDistanceM !== null
-            ? $this->phaseSchedule->forRace($arcStart, $inputs->raceDate, $inputs->raceDistanceM)
+            ? PhaseSchedule::forRace($arcStart, $inputs->raceDate, $inputs->raceDistanceM)
             // The season's own window, not a fresh horizon, so the arc
             // SeasonSummaryBuilder draws is the one the athlete trains.
-            : $this->phaseSchedule->selfScaled($arcStart, max(1, (int) $arcStart->diffInWeeks($inputs->seasonEnd) + 1));
+            : PhaseSchedule::selfScaled($arcStart, max(1, (int) $arcStart->diffInWeeks($inputs->seasonEnd) + 1));
 
         $weeks = self::sliceFromCurrentWeek($arc, $arcStart, $inputs->currentWeekStart(), $inputs->adaptation['deload'], $inputs->isSelfScaled() || $inputs->increasesHeld, $inputs->recovery);
 
@@ -196,7 +193,7 @@ final readonly class Periodizer
             array_filter($arc, static fn (array $week): bool => $week['phase'] === PlanPhase::Deload),
         )));
         foreach ($weeks as $week) {
-            $weekRows = $this->weekPlanBuilder->build(
+            $weekRows = WeekPlanBuilder::build(
                 $week['week_start'],
                 $week['phase'],
                 $inputs->sessionsPerWeek,
@@ -487,7 +484,7 @@ final readonly class Periodizer
                 : IntensityPrescriptionResolver::familyKeyForContext($row['session_type'], $work->context());
             $recent = $inputs->recentPrescriptions[$family] ?? null;
 
-            return $this->prescriptionResolver->resolve(
+            return IntensityPrescriptionResolver::resolve(
                 $row['session_type'],
                 $row['phase'],
                 $inputs->raceDistanceM,

@@ -216,7 +216,7 @@ function seasonServiceWeeks(User $user, float $km): void
 function planLongestLongRunKm(User $user, RaceGoal $race): float
 {
     $baselineData = app(TrainingBaseline::class)->forUser($user, Carbon::today());
-    $weeks = new PhaseSchedule()->forRace(Carbon::today(), $race->race_date, (float) $race->distance_m);
+    $weeks = PhaseSchedule::forRace(Carbon::today(), $race->race_date, (float) $race->distance_m);
     $multipliers = PhaseSchedule::volumeMultipliers(array_column($weeks, 'phase'), zones: array_column($weeks, 'zone'));
 
     return round(max(array_map(

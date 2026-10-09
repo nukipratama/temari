@@ -9,7 +9,7 @@ use App\Enums\PlannedSessionStatus;
 use App\Models\PlannedSession;
 use App\Models\User;
 use App\Notifications\DayClampedNotification;
-use App\Services\AI\HydrationBacklog;
+use App\Services\Run\Ingest\HydrationBacklog;
 use App\Services\Run\Metrics\ReadinessCeiling;
 use App\Services\Run\Metrics\TrainingLoad;
 use App\Services\Run\Metrics\TrainingPaceCalculator;
