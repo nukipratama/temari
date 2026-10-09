@@ -1,10 +1,28 @@
 #!/bin/sh
 set -eu
 
+per_path=false
+if [ "${1:-}" = "--per-path" ]; then
+  per_path=true
+fi
+
 changed="$(cat)"
 
+hits() {
+  printf '%s\n' "$changed" | grep -nE "$1" | cut -d: -f1 | tr '\n' ' '
+}
+
+selected=
+
 match() {
-  printf '%s\n' "$changed" | grep -qE "$1"
+  if [ -z "$selected" ]; then
+    [ -n "$1" ]
+  else
+    case " $1" in
+      *" $selected "*) return 0 ;;
+      *) return 1 ;;
+    esac
+  fi
 }
 
 # The workflow that defines every CI job runs the lot.
@@ -20,38 +38,60 @@ WORKTREE='^scripts/worktree|^tests/scripts/'
 STRUCTURE='^resources/js/|^(CLAUDE|README)\.md$|^\.dockerignore$|^docs/(design-tokens|architecture/llm-triggers)\.md$|^\.claude/skills/temari/.*\.md$'
 IMAGE='^(Dockerfile|\.dockerignore|composer\.(json|lock)|package(-lock)?\.json)$|^docker/|^\.github/workflows/ci\.yml$'
 
-if match "$EVERYTHING"; then
-  backend=true
-  frontend=true
-  docker=true
-  worktree=true
-else
-  backend=false
-  frontend=false
-  docker=false
-  worktree=false
-  if match "$BACKEND" || match "$MIRRORS"; then
+hits_EVERYTHING="$(hits "$EVERYTHING")"
+hits_BACKEND="$(hits "$BACKEND")"
+hits_MIRRORS="$(hits "$MIRRORS")"
+hits_FRONTEND="$(hits "$FRONTEND")"
+hits_DOCKER="$(hits "$DOCKER")"
+hits_WORKTREE="$(hits "$WORKTREE")"
+hits_STRUCTURE="$(hits "$STRUCTURE")"
+hits_IMAGE="$(hits "$IMAGE")"
+
+classify() {
+  if match "$hits_EVERYTHING"; then
     backend=true
-  fi
-  if match "$FRONTEND"; then
     frontend=true
-  fi
-  if match "$DOCKER"; then
     docker=true
-  fi
-  if match "$WORKTREE"; then
     worktree=true
+  else
+    backend=false
+    frontend=false
+    docker=false
+    worktree=false
+    if match "$hits_BACKEND" || match "$hits_MIRRORS"; then
+      backend=true
+    fi
+    if match "$hits_FRONTEND"; then
+      frontend=true
+    fi
+    if match "$hits_DOCKER"; then
+      docker=true
+    fi
+    if match "$hits_WORKTREE"; then
+      worktree=true
+    fi
   fi
-fi
 
-structure=false
-if [ "$backend" = false ] && match "$STRUCTURE"; then
-  structure=true
-fi
+  structure=false
+  if [ "$backend" = false ] && match "$hits_STRUCTURE"; then
+    structure=true
+  fi
 
-image=false
-if match "$IMAGE"; then
-  image=true
-fi
+  image=false
+  if match "$hits_IMAGE"; then
+    image=true
+  fi
+}
 
-printf 'backend=%s\nfrontend=%s\ndocker=%s\nworktree=%s\nstructure=%s\nimage=%s\n' "$backend" "$frontend" "$docker" "$worktree" "$structure" "$image"
+if [ "$per_path" = true ]; then
+  number=0
+  printf '%s\n' "$changed" | while IFS= read -r path; do
+    number=$((number + 1))
+    selected=$number
+    classify
+    printf '%s\tbackend=%s\tfrontend=%s\tdocker=%s\tworktree=%s\tstructure=%s\timage=%s\n' "$path" "$backend" "$frontend" "$docker" "$worktree" "$structure" "$image"
+  done
+else
+  classify
+  printf 'backend=%s\nfrontend=%s\ndocker=%s\nworktree=%s\nstructure=%s\nimage=%s\n' "$backend" "$frontend" "$docker" "$worktree" "$structure" "$image"
+fi
