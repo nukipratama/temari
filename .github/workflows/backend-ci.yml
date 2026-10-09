@@ -143,9 +143,24 @@ jobs:
           key: rector-${{ runner.os }}-${{ runner.arch }}-php${{ env.PHP_VERSION }}-${{ hashFiles('composer.lock', 'rector.php') }}-${{ github.run_id }}
           restore-keys: rector-${{ runner.os }}-${{ runner.arch }}-php${{ env.PHP_VERSION }}-${{ hashFiles('composer.lock', 'rector.php') }}-
 
+      - name: Restore Pint cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .pint-cache
+          key: pint-${{ runner.os }}-${{ runner.arch }}-php${{ env.PHP_VERSION }}-${{ hashFiles('composer.lock', 'pint.json') }}-${{ github.run_id }}
+          restore-keys: pint-${{ runner.os }}-${{ runner.arch }}-php${{ env.PHP_VERSION }}-${{ hashFiles('composer.lock', 'pint.json') }}-
+
       - name: Pint (code style)
+        id: pint
         if: ${{ !cancelled() }}
-        run: vendor/bin/pint --test
+        run: vendor/bin/pint --test --cache-file=.pint-cache
+
+      - name: Save Pint cache
+        if: ${{ !cancelled() && steps.pint.outcome == 'success' && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .pint-cache
+          key: pint-${{ runner.os }}-${{ runner.arch }}-php${{ env.PHP_VERSION }}-${{ hashFiles('composer.lock', 'pint.json') }}-${{ github.run_id }}
 
       - name: PHPStan
         id: phpstan
