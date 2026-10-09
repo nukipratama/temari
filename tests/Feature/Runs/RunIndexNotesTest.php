@@ -29,7 +29,6 @@ function seedRunWithNote(User $user, int $daysAgo, Mood $mood, string $speech): 
         'kind' => StoryLine::KIND_POST_RUN,
         'mood' => $mood,
         'speech' => null,
-        'sigil_pattern' => 'dddd',
     ]);
     Analysis::factory()->done($speech)->create([
         'subject_type' => Activity::class,

@@ -40,7 +40,6 @@ class Temari
                 'for_date' => null,
                 'mood' => $mood,
                 'speech' => null,
-                'sigil_pattern' => self::sigilForMoodPublic($mood),
             ],
         );
     }
@@ -58,7 +57,7 @@ class Temari
 
         $mood = self::moodOf($activity, $detail);
         if ($line->mood !== $mood) {
-            $line->update(['mood' => $mood, 'sigil_pattern' => self::sigilForMoodPublic($mood)]);
+            $line->update(['mood' => $mood]);
         }
     }
 
@@ -82,22 +81,8 @@ class Temari
                 'activity_id' => null,
                 'mood' => $mood,
                 'speech' => null,
-                'sigil_pattern' => self::sigilForMoodPublic($mood),
             ],
         );
-    }
-
-    /** A 4-char sigil code; the renderer reads each char as a stitch op. */
-    public static function sigilForMoodPublic(Mood $mood): string
-    {
-        return match ($mood) {
-            Mood::Blazing => 'ssss',
-            Mood::Easy => 'orct',
-            Mood::Wobbly => 'fhfh',
-            Mood::Gassed => 'wvwv',
-            Mood::Overloaded => 'splr',
-            Mood::Chill => 'dddd',
-        };
     }
 
     /**
