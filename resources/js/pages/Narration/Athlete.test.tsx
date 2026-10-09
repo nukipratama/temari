@@ -157,4 +157,11 @@ describe('Narration/Athlete', () => {
 
         expect(screen.getByText('retrying 2 block(s).')).toBeInTheDocument();
     });
+
+    it('has exactly one main landmark and one h1', () => {
+        render(<Athlete {...props()} />);
+
+        expect(screen.getAllByRole('main')).toHaveLength(1);
+        expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
+    });
 });

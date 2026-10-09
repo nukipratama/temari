@@ -48,7 +48,7 @@ export default function Devtools() {
     return (
         <>
             <Head title="Devtools · Temari" />
-            <div className="flex min-h-screen flex-col items-center gap-8 bg-background px-8 py-16 text-foreground">
+            <main className="flex min-h-screen flex-col items-center gap-8 bg-background px-8 py-16 text-foreground">
                 <div className="text-center">
                     <h1 className="font-serif italic text-headline-xs text-foreground">
                         Devtools
@@ -87,7 +87,7 @@ export default function Devtools() {
                         </li>
                     ))}
                 </ul>
-            </div>
+            </main>
         </>
     );
 }

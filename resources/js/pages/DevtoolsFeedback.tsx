@@ -24,7 +24,7 @@ export default function DevtoolsFeedback({
     rows,
 }: Readonly<{ rows: FeedbackFlagRow[] }>) {
     return (
-        <div className="min-h-screen bg-background text-foreground">
+        <main className="min-h-screen bg-background text-foreground">
             <Head title="Feedback · Devtools" />
 
             <DevtoolsHeader icon={Flag} title="feedback">
@@ -52,7 +52,7 @@ export default function DevtoolsFeedback({
                     renderRow={(row) => <FeedbackCells row={row} />}
                 />
             </PageContainer>
-        </div>
+        </main>
     );
 }
 
