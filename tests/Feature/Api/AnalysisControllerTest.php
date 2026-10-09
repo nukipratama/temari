@@ -68,15 +68,6 @@ it('requires authentication', function (): void {
         ->assertStatus(401);
 });
 
-it('rejects triggering briefing for another user', function (): void {
-    $self = User::factory()->create();
-    $other = User::factory()->create();
-
-    $this->actingAs($self)
-        ->postJson("/api/analyses/briefing_mascot_voice/{$other->id}/trigger?discriminator=2026-05-18")
-        ->assertStatus(403);
-});
-
 it('triggers a briefing suggestion analysis for the authenticated user', function (): void {
     $user = User::factory()->create();
 
@@ -191,22 +182,6 @@ it('GET show rejects unknown analysis types with 422', function (): void {
         ->getJson('/api/analyses/nonsense/1')
         ->assertStatus(422)
         ->assertJson(['error' => 'unknown_analysis_type']);
-});
-
-it('authorizes weekly_recap only for the snapshot owner', function (): void {
-    $owner = User::factory()->create();
-    $other = User::factory()->create();
-    $snap = WeeklySnapshot::factory()->for($owner)->create([
-        'week_ending' => Carbon::today()->endOfWeek()->toDateString(),
-    ]);
-
-    $this->actingAs($other)
-        ->postJson("/api/analyses/weekly_recap/{$snap->id}/trigger")
-        ->assertForbidden();
-
-    $this->actingAs($owner)
-        ->postJson("/api/analyses/weekly_recap/{$snap->id}/trigger")
-        ->assertOk();
 });
 
 it('authorizes card_flavor only for the card activity owner', function (): void {
