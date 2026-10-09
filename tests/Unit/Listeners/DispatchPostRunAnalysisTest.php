@@ -232,7 +232,6 @@ it('fans out the activity group once, the briefing, the monthly recap and the re
 
     fire($activity);
 
-    Bus::assertDispatched(AnalyzeActivityJob::class);
     Bus::assertDispatchedTimes(AnalyzeActivityJob::class, 1);
     Bus::assertDispatched(AnalyzeBriefingMascotVoiceJob::class);
 
