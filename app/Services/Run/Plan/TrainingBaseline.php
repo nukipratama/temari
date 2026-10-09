@@ -575,21 +575,21 @@ final class TrainingBaseline
         }
 
         $reachableKm = min($targetBlockKm, $cappedKm(INF));
-        $low = 0.0;
-        $high = $linearKm;
-        while ($cappedKm($high) < $reachableKm) {
+        $low = 0;
+        $high = (int) round($linearKm * 10);
+        while ($cappedKm($high / 10) < $reachableKm) {
             [$low, $high] = [$high, $high * 2];
         }
-        for ($i = 0; $i < 30; $i++) {
-            $middle = ($low + $high) / 2;
-            if ($cappedKm($middle) >= $reachableKm) {
+        while ($high - $low > 1) {
+            $middle = intdiv($low + $high, 2);
+            if ($cappedKm($middle / 10) >= $reachableKm) {
                 $high = $middle;
             } else {
                 $low = $middle;
             }
         }
 
-        return ceil($high * 10) / 10;
+        return $high / 10;
     }
 
     private static function readinessLongRunKm(float $raceDistanceM): float

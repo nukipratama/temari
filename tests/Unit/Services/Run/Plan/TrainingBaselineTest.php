@@ -645,6 +645,21 @@ it('never solves the floor past what the session ceilings let the block reach', 
         ->and($floorFor(27.0, INF))->toBeLessThan($floorFor(50.0, INF));
 });
 
+it('solves a capped floor to the smallest tenth that reaches it', function (): void {
+    $user = User::factory()->create();
+    $season = flooredRaceSeason($user, 20.0, 27.0);
+    $race = RaceGoal::query()->where('user_id', $user->id)->firstOrFail();
+    $block = new ReflectionMethod(TrainingBaseline::class, 'block')->invoke($this->baseline, $race, $season);
+    $floorFor = function (float $floorKm) use ($race, $block, $season): float {
+        $season->volume_floor_km = $floorKm;
+
+        return volumeFloorKmFor($this->baseline, $race, $block, $season, 4, INF, 6.0);
+    };
+
+    expect($floorFor(17.4))->toBe(7.0)
+        ->and($floorFor(22.14))->toBe(12.5);
+});
+
 it('does not rebuild the race block on a second forUser() call in the same scope', function (): void {
     $user = User::factory()->create();
     flooredRaceSeason($user, 20.0, 27.0);
