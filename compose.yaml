@@ -24,6 +24,7 @@ services:
             dockerfile: Dockerfile
             target: dev
         image: 'temari/dev'
+        init: true
         extra_hosts:
             - 'host.docker.internal:host-gateway'
         ports:
