@@ -9,6 +9,8 @@ code_refs:
   - app/Services/Run/Plan/SegmentGenerator.php
 ---
 
+> **Partly superseded (2026-10-09) by [[a-goal-less-cycle-solves-under-the-session-caps]].** Point 5 no longer holds: the goal-less solve now runs under the same caps. The rest of this decision stands.
+
 # A race floor solves under the session caps
 
 **Status:** Accepted (2026-10-09)
