@@ -123,7 +123,7 @@ it('ignores TRIMP from a not-yet-analyzed activity', function (): void {
     expect($this->load->summary($user))->toBeNull();
 });
 
-it('rolls TRIMP into ATL/CTL/form with sane magnitudes', function (): void {
+it('rolls TRIMP into ATL/CTL/form with sane magnitudes, unchanged by the requested window', function (): void {
     $user = User::factory()->create();
 
     // Steady 80 TRIMP/day → ATL/CTL converge near 80.
@@ -139,6 +139,12 @@ it('rolls TRIMP into ATL/CTL/form with sane magnitudes', function (): void {
         ->and($summary['weekly_trimp'])->toBeFloat()->toEqualWithDelta(560.0, 5.0)
         ->and($summary['weekly_trimp'])->toBeGreaterThan(50)->toBeLessThan(2000);
 
+    $sevenDay = $this->load->summary($user, windowDays: 7);
+    $ninetyDay = $this->load->summary($user, windowDays: 90);
+
+    expect($sevenDay['atl_7d'])->toBe($ninetyDay['atl_7d'])
+        ->and($sevenDay['ctl_42d'])->toBe($ninetyDay['ctl_42d'])
+        ->and($sevenDay['form'])->toBe($ninetyDay['form']);
 });
 
 it('converges CTL to a steady load instead of the too-low 49-day cold-start value', function (): void {
@@ -275,7 +281,7 @@ it('marks fresh when fitness exceeds fatigue (taper-week shape)', function (): v
 
 });
 
-it('computes Foster monotony and strain over the week', function (): void {
+it('computes Foster monotony and strain over the week, capping monotony at 5.0 in strainMonotonyTrend too', function (): void {
     $user = User::factory()->create();
 
     // High-monotony: same 80 TRIMP every day for 7 days.
@@ -289,6 +295,10 @@ it('computes Foster monotony and strain over the week', function (): void {
     expect($summary['monotony'])->toBe(5.0);
     expect($summary['strain'])->toBeFloat()->toBeGreaterThan(0);
 
+    $trend = $this->load->strainMonotonyTrend($user, 7);
+
+    expect($trend[6]['monotony'])->toBe(5.0)
+        ->and($trend[6]['strain'])->toBeFloat()->toBeGreaterThan(0.0);
 });
 
 it('reports zero weekly_trimp / monotony / strain on a fully rested current week', function (): void {
@@ -322,21 +332,6 @@ it('sizes weekly_trimp/monotony/strain to the requested window, not a fixed 7 da
         ->and($thirtyDay['weekly_trimp'])->toEqualWithDelta(1800.0, 0.5);
 });
 
-it('leaves ATL/CTL/form unchanged by the requested window, only the weekly figures move', function (): void {
-    $user = User::factory()->create();
-
-    for ($i = 0; $i < 60; $i++) {
-        seedTrimpDay($user, 80.0, 59 - $i);
-    }
-
-    $sevenDay = $this->load->summary($user, windowDays: 7);
-    $ninetyDay = $this->load->summary($user, windowDays: 90);
-
-    expect($sevenDay['atl_7d'])->toBe($ninetyDay['atl_7d'])
-        ->and($sevenDay['ctl_42d'])->toBe($ninetyDay['ctl_42d'])
-        ->and($sevenDay['form'])->toBe($ninetyDay['form']);
-});
-
 it('only counts the requested user', function (): void {
     $userA = User::factory()->create();
     $userB = User::factory()->create();
@@ -353,7 +348,7 @@ it('returns an empty ctlTrend for a user with no TRIMP-bearing activities', func
     expect($this->load->ctlTrend($user))->toBe([]);
 });
 
-it('ctlTrend returns one entry per day for the last N days, matching the daily summary', function (): void {
+it('ctlTrend and strainMonotonyTrend return one entry per day for the last N days, matching the daily summary', function (): void {
     $user = User::factory()->create();
 
     for ($i = 0; $i < 100; $i++) {
@@ -372,6 +367,18 @@ it('ctlTrend returns one entry per day for the last N days, matching the daily s
     $summary = $this->load->summary($user);
     expect($trend[89]['atl'])->toEqualWithDelta($summary['atl_7d'], 0.05)
         ->and($trend[89]['ctl'])->toEqualWithDelta($summary['ctl_42d'], 0.05);
+
+    $strainTrend = $this->load->strainMonotonyTrend($user, 90);
+
+    expect($strainTrend)->toHaveCount(90)
+        ->and($strainTrend[0]['date'])->toBe(Carbon::today()->subDays(89)->toDateString())
+        ->and($strainTrend[89]['date'])->toBe(Carbon::today()->toDateString());
+
+    // Last day's window must agree with summary()'s own weekStats() call —
+    // this is exposing the same computation across a range, not a second one.
+    expect($strainTrend[89]['weekly_trimp'])->toBe($summary['weekly_trimp'])
+        ->and($strainTrend[89]['monotony'])->toBe($summary['monotony'])
+        ->and($strainTrend[89]['strain'])->toBe($summary['strain']);
 });
 
 it('ctlTrend never returns more than the available history, even when asked for more days', function (): void {
@@ -447,40 +454,6 @@ it('returns an empty strainMonotonyTrend for a user with no TRIMP-bearing activi
     expect($this->load->strainMonotonyTrend($user))->toBe([]);
 });
 
-it('strainMonotonyTrend returns one entry per requested day, agreeing with the daily summary', function (): void {
-    $user = User::factory()->create();
-
-    for ($i = 0; $i < 100; $i++) {
-        seedTrimpDay($user, 80.0, 99 - $i);
-    }
-
-    $trend = $this->load->strainMonotonyTrend($user, 90);
-
-    expect($trend)->toHaveCount(90)
-        ->and($trend[0]['date'])->toBe(Carbon::today()->subDays(89)->toDateString())
-        ->and($trend[89]['date'])->toBe(Carbon::today()->toDateString());
-
-    // Last day's window must agree with summary()'s own weekStats() call —
-    // this is exposing the same computation across a range, not a second one.
-    $summary = $this->load->summary($user);
-    expect($trend[89]['weekly_trimp'])->toBe($summary['weekly_trimp'])
-        ->and($trend[89]['monotony'])->toBe($summary['monotony'])
-        ->and($trend[89]['strain'])->toBe($summary['strain']);
-});
-
-it('strainMonotonyTrend caps monotony at 5.0 on a uniform-load week, same as summary()', function (): void {
-    $user = User::factory()->create();
-
-    for ($i = 0; $i < 7; $i++) {
-        seedTrimpDay($user, 80.0, 6 - $i);
-    }
-
-    $trend = $this->load->strainMonotonyTrend($user, 7);
-
-    expect($trend[6]['monotony'])->toBe(5.0)
-        ->and($trend[6]['strain'])->toBeFloat()->toBeGreaterThan(0.0);
-});
-
 it('strainMonotonyTrend reports days before any history began as a rested zero, not a gap', function (): void {
     $user = User::factory()->create();
 
@@ -512,8 +485,9 @@ it('strainMonotonyTrend tells an unscored week apart from a rested one, same as 
         ->and($trend[0]['strain'])->toBeNull();
 });
 
-it('memoizes a null summary within the same instance instead of rescanning', function (): void {
+it('memoizes a null summary within the same instance until clearSummaryCache forces a recompute', function (): void {
     $user = User::factory()->create();
+    $this->instance(TrainingLoad::class, $this->load);
 
     $queries = 0;
     DB::listen(function () use (&$queries): void {
@@ -525,13 +499,20 @@ it('memoizes a null summary within the same instance instead of rescanning', fun
         ->and($this->load->summary($user))->toBeNull();
 
     expect($queries)->toBe(1);
+
+    seedTrimpDay($user, 80.0, 0);
+    TrainingLoad::clearSummaryCache($user);
+
+    expect($this->load->summary($user))->not->toBeNull();
 });
 
-it('memoizes a real summary within the same instance instead of rescanning', function (): void {
+it('memoizes a real summary within the same instance, ignoring one an earlier build cached under the unversioned key', function (): void {
     $user = User::factory()->create();
     seedTrimpDay($user, 80.0, 0);
+    Cache::put("training-load:{$user->id}:".Carbon::today()->toDateString().':7', ['atl_7d' => 1.0]);
 
     $first = $this->load->summary($user);
+    expect($first)->toHaveKey('weekly_trimp_range');
 
     $queries = 0;
     DB::listen(function () use (&$queries): void {
@@ -542,26 +523,6 @@ it('memoizes a real summary within the same instance instead of rescanning', fun
 
     expect($queries)->toBe(0)
         ->and($second)->toBe($first);
-});
-
-it('clearSummaryCache forces the next summary() to recompute within the same scope', function (): void {
-    $user = User::factory()->create();
-
-    $this->instance(TrainingLoad::class, $this->load);
-    expect($this->load->summary($user))->toBeNull();
-
-    seedTrimpDay($user, 80.0, 0);
-    TrainingLoad::clearSummaryCache($user);
-
-    expect($this->load->summary($user))->not->toBeNull();
-});
-
-it('ignores a summary an earlier build cached under the unversioned key', function (): void {
-    $user = User::factory()->create();
-    seedTrimpDay($user, 80.0, 0);
-    Cache::put("training-load:{$user->id}:".Carbon::today()->toDateString().':7', ['atl_7d' => 1.0]);
-
-    expect($this->load->summary($user))->toHaveKey('weekly_trimp_range');
 });
 
 it('keeps distinct memo entries per user, date and window so they do not collide', function (): void {
