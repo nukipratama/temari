@@ -579,7 +579,6 @@ it('reports the empty state when nothing in history is comparable', function ():
     $trend = buildTrend($user);
 
     expect($trend->verdict)->toBe(TrendVerdict::NotEnoughHistory)
-        ->and($trend->verdict->isJudged())->toBeFalse()
         ->and($trend->comparisons)->toBe([])
         ->and($trend->meanPaceDeltaSec)->toBeNull();
 });

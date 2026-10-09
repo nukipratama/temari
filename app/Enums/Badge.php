@@ -49,15 +49,6 @@ enum Badge: string
         };
     }
 
-    /** @return array<string, string> slug → label for the full catalog */
-    public static function labels(): array
-    {
-        return array_combine(
-            array_map(fn (self $b): string => $b->value, self::cases()),
-            array_map(fn (self $b): string => $b->label(), self::cases()),
-        );
-    }
-
     /**
      * Emoji-free label for LLM prompt context, so the model has a human phrase to
      * weave in instead of echoing the raw snake_case slug ("negative_split").

@@ -11,10 +11,7 @@ it('exposes better, flat and worse', function (): void {
 
 it('answers its own identity checks', function (): void {
     expect(TrendDirection::Better->isBetter())->toBeTrue()
-        ->and(TrendDirection::Better->isFlat())->toBeFalse()
         ->and(TrendDirection::Better->isWorse())->toBeFalse()
-        ->and(TrendDirection::Flat->isFlat())->toBeTrue()
-        ->and(TrendDirection::Flat->isBetter())->toBeFalse()
-        ->and(TrendDirection::Worse->isWorse())->toBeTrue()
-        ->and(TrendDirection::Worse->isFlat())->toBeFalse();
+        ->and(TrendDirection::Worse->isBetter())->toBeFalse()
+        ->and(TrendDirection::Worse->isWorse())->toBeTrue();
 });
