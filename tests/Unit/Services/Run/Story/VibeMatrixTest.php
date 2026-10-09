@@ -17,19 +17,19 @@ function signals(array $overrides = []): array
 }
 
 it('picks hibernating when the user has been inactive 10+ days', function (): void {
-    expect(new VibeMatrix()->pick(signals(['days_since_run' => 14])))->toBe('hibernating');
+    expect(VibeMatrix::pick(signals(['days_since_run' => 14])))->toBe('hibernating');
 });
 
 it('picks hibernating when there is no prior run at all', function (): void {
-    expect(new VibeMatrix()->pick(signals(['days_since_run' => null])))->toBe('hibernating');
+    expect(VibeMatrix::pick(signals(['days_since_run' => null])))->toBe('hibernating');
 });
 
 it('picks pumped on a recent PR with non-negative form', function (): void {
-    expect(new VibeMatrix()->pick(signals(['recent_pr' => true, 'form' => 3.0])))->toBe('pumped');
+    expect(VibeMatrix::pick(signals(['recent_pr' => true, 'form' => 3.0])))->toBe('pumped');
 });
 
 it('still picks worn-down if recent PR coincides with bad form', function (): void {
-    expect(new VibeMatrix()->pick(signals([
+    expect(VibeMatrix::pick(signals([
         'recent_pr' => true,
         'form' => -25.0,
         'form_status' => TrainingFormStatus::Fatigued,
@@ -37,11 +37,11 @@ it('still picks worn-down if recent PR coincides with bad form', function (): vo
 });
 
 it('picks fresh on a fresh status (typical taper)', function (): void {
-    expect(new VibeMatrix()->pick(signals(['form_status' => TrainingFormStatus::Fresh, 'form' => 15.0])))->toBe('fresh');
+    expect(VibeMatrix::pick(signals(['form_status' => TrainingFormStatus::Fresh, 'form' => 15.0])))->toBe('fresh');
 });
 
 it('picks stretched-thin on overreaching + high aerobic decoupling', function (): void {
-    expect(new VibeMatrix()->pick(signals([
+    expect(VibeMatrix::pick(signals([
         'form_status' => TrainingFormStatus::Overreaching,
         'form' => -40.0,
         'decoupling_avg' => 8.5,
@@ -49,7 +49,7 @@ it('picks stretched-thin on overreaching + high aerobic decoupling', function ()
 });
 
 it('treats decoupling of exactly 5.0 as cooked, not stretched-thin (boundary is strictly above)', function (): void {
-    expect(new VibeMatrix()->pick(signals([
+    expect(VibeMatrix::pick(signals([
         'form_status' => TrainingFormStatus::Overreaching,
         'form' => -40.0,
         'decoupling_avg' => 5.0,
@@ -57,7 +57,7 @@ it('treats decoupling of exactly 5.0 as cooked, not stretched-thin (boundary is 
 });
 
 it('picks stretched-thin once decoupling is just past 5.0', function (): void {
-    expect(new VibeMatrix()->pick(signals([
+    expect(VibeMatrix::pick(signals([
         'form_status' => TrainingFormStatus::Overreaching,
         'form' => -40.0,
         'decoupling_avg' => 5.01,
@@ -65,7 +65,7 @@ it('picks stretched-thin once decoupling is just past 5.0', function (): void {
 });
 
 it('picks cooked on overreaching with healthy aerobic system', function (): void {
-    expect(new VibeMatrix()->pick(signals([
+    expect(VibeMatrix::pick(signals([
         'form_status' => TrainingFormStatus::Overreaching,
         'form' => -40.0,
         'decoupling_avg' => 1.5,
@@ -73,14 +73,14 @@ it('picks cooked on overreaching with healthy aerobic system', function (): void
 });
 
 it('picks worn-down on fatigued status', function (): void {
-    expect(new VibeMatrix()->pick(signals([
+    expect(VibeMatrix::pick(signals([
         'form_status' => TrainingFormStatus::Fatigued,
         'form' => -20.0,
     ])))->toBe('worn_down');
 });
 
 it('picks bouncy on optimal form + negative decoupling (aerobic system humming)', function (): void {
-    expect(new VibeMatrix()->pick(signals([
+    expect(VibeMatrix::pick(signals([
         'form_status' => TrainingFormStatus::Optimal,
         'form' => 2.0,
         'decoupling_avg' => -1.2,
@@ -88,7 +88,7 @@ it('picks bouncy on optimal form + negative decoupling (aerobic system humming)'
 });
 
 it('falls back to steady when no other rule fires', function (): void {
-    expect(new VibeMatrix()->pick(signals([
+    expect(VibeMatrix::pick(signals([
         'form_status' => TrainingFormStatus::Optimal,
         'form' => -3.0,
         'decoupling_avg' => 2.0,
