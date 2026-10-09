@@ -377,9 +377,10 @@ it('migrates both sets on the ref image, then fails loudly naming any connection
     $fake = 'case "$*" in *--database=analytics*) exit "$FAKE_ANALYTICS" ;; *) exit "$FAKE_DEFAULT" ;; esac';
     $env = ['REHEARSAL_COMPOSE' => 'docker compose -p temari-restore'];
 
-    [$clean] = runWithFakeDocker($pending['run'], $fake, [...$env, 'FAKE_DEFAULT' => '0', 'FAKE_ANALYTICS' => '0']);
+    [$clean, $bin0] = runWithFakeDocker($pending['run'], $fake, [...$env, 'FAKE_DEFAULT' => '0', 'FAKE_ANALYTICS' => '0']);
     [$analytics, $bin] = runWithFakeDocker($pending['run'], $fake, [...$env, 'FAKE_DEFAULT' => '0', 'FAKE_ANALYTICS' => '1']);
     [$default, $bin2] = runWithFakeDocker($pending['run'], $fake, [...$env, 'FAKE_DEFAULT' => '1', 'FAKE_ANALYTICS' => '0']);
+    File::deleteDirectory($bin0);
     File::deleteDirectory($bin);
     File::deleteDirectory($bin2);
 
