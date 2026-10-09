@@ -73,30 +73,22 @@ function seedUsage(
     ]);
 }
 
-it('is reachable with the correct devtools password', function (): void {
+it('serves the overview only for the correct devtools password', function (): void {
     armDevtoolsGate();
 
     $this->get('/devtools/narration')->assertSuccessful();
-});
-
-it('challenges a request with no devtools password', function (): void {
-    armDevtoolsGate();
 
     $this->withHeaders(['Authorization' => ''])
         ->get('/devtools/narration')
         ->assertUnauthorized()
         ->assertHeader('WWW-Authenticate', 'Basic realm="Devtools"');
-});
-
-it('challenges a request with the wrong devtools password', function (): void {
-    armDevtoolsGate();
 
     $this->withHeaders(['Authorization' => 'Basic '.base64_encode('devtools:wrong')])
         ->get('/devtools/narration')
         ->assertUnauthorized();
 });
 
-it('renders the narration overview with totals + per-kind breakdown filtered by date', function (): void {
+it('renders the narration overview with totals + per-kind breakdown filtered by a legacy from+to custom range', function (): void {
     seedUsage('briefing', 100, 50, Carbon::parse('2026-05-10 09:00:00'), latencyMs: 800);
     seedUsage('briefing', 200, 80, Carbon::parse('2026-05-15 11:00:00'), latencyMs: 1200, truncated: true);
     seedUsage('run-insight', 300, 150, Carbon::parse('2026-05-12 13:00:00'), latencyMs: 2400);
@@ -107,6 +99,7 @@ it('renders the narration overview with totals + per-kind breakdown filtered by 
         ->assertInertia(
             fn (AssertableInertia $page) => $page
                 ->component('Narration/Overview')
+                ->where('range', 'custom')
                 ->where('from', '2026-05-01')
                 ->where('to', '2026-05-19')
                 ->where('totals', [
@@ -232,17 +225,6 @@ it('resolves relative range tokens to self-correcting windows', function (string
     'all' => ['all', '1970-01-01'],
 ]);
 
-it('maps legacy absolute from+to links (no range) to a custom range', function (): void {
-    $this->get('/devtools/narration?from=2026-05-01&to=2026-05-19')
-        ->assertSuccessful()
-        ->assertInertia(
-            fn (AssertableInertia $page) => $page
-                ->where('range', 'custom')
-                ->where('from', '2026-05-01')
-                ->where('to', '2026-05-19'),
-        );
-});
-
 it('rejects malformed date inputs', function (): void {
     $this->getJson('/devtools/narration?from=yesterday')->assertStatus(422);
 });
@@ -284,7 +266,7 @@ it('renders the dashboard past a dead-lettered row of a retired type', function 
         ->assertInertia(fn (AssertableInertia $page) => $page->where('athletes.0.dead_lettered', 0));
 });
 
-it('re-arms and re-dispatches a user\'s dead-lettered blocks on retry', function (): void {
+it('re-arms and re-dispatches a user\'s dead-lettered blocks on retry, auditing the athlete and block count', function (): void {
     Bus::fake();
     $user = User::factory()->create();
     $row = deadLetterWeeklyRecap($user);
@@ -296,6 +278,13 @@ it('re-arms and re-dispatches a user\'s dead-lettered blocks on retry', function
     expect($fresh->attempts)->toBe(0)                          // budget re-armed
         ->and($fresh->status)->toBe(AnalysisStatus::Queued);   // re-dispatched
     Bus::assertDispatched(AnalyzeWeeklyRecapJob::class);
+
+    $action = DevtoolsAction::query()->sole();
+
+    expect($action->action)->toBe('narration.retry_failed')
+        ->and($action->user_id)->toBe($user->id)
+        ->and($action->payload)->toBe(['blocks' => 1])
+        ->and($action->actor)->not->toBe('');
 });
 
 it('retries a dead-lettered group for a hard-deleted user instead of 404ing', function (): void {
@@ -321,20 +310,7 @@ it('retries a dead-lettered group for a hard-deleted user instead of 404ing', fu
     Bus::assertDispatched(AnalyzeBriefingMascotVoiceJob::class);
 });
 
-it('retry is reachable with the correct devtools password', function (): void {
-    Bus::fake();
-    $user = User::factory()->create();
-
-    $token = armDevtoolsGate();
-
-    // No dead-lettered rows: still a clean redirect (0 retried).
-    $this->withSession($token)
-        ->post("/devtools/narration/athletes/{$user->id}/retry-failed", $token)
-        ->assertRedirect();
-    Bus::assertNothingDispatched();
-});
-
-it('challenges the mutating retry with the wrong devtools password', function (): void {
+it('runs the mutating retry and recover actions only for the correct devtools password', function (): void {
     Bus::fake();
     $user = User::factory()->create();
 
@@ -344,6 +320,17 @@ it('challenges the mutating retry with the wrong devtools password', function ()
         ->withSession($token)
         ->post("/devtools/narration/athletes/{$user->id}/retry-failed", $token)
         ->assertUnauthorized();
+    Bus::assertNothingDispatched();
+
+    $this->withSession($token)
+        ->post('/devtools/narration/recover', $token)
+        ->assertUnauthorized();
+
+    // No dead-lettered rows: still a clean redirect (0 retried).
+    $this->withHeaders(['Authorization' => 'Basic '.base64_encode('devtools:secret')])
+        ->withSession($token)
+        ->post("/devtools/narration/athletes/{$user->id}/retry-failed", $token)
+        ->assertRedirect();
     Bus::assertNothingDispatched();
 });
 
@@ -366,7 +353,7 @@ it('also re-arms a user\'s under-budget Failed blocks on retry (not only dead-le
     Bus::assertDispatched(AnalyzeWeeklyRecapJob::class);
 });
 
-it('runs the recover command and flashes a confirmation', function (): void {
+it('runs the recover command, flashes a confirmation and audits the run', function (): void {
     Bus::fake();
     $row = deadLetterWeeklyRecap(User::factory()->create());
 
@@ -378,37 +365,6 @@ it('runs the recover command and flashes a confirmation', function (): void {
     expect($fresh->attempts)->toBe(0)
         ->and($fresh->status)->toBe(AnalysisStatus::Queued);
     Bus::assertDispatched(AnalyzeWeeklyRecapJob::class);
-});
-
-it('challenges the recover action with the wrong devtools password', function (): void {
-    $token = armDevtoolsGate();
-
-    $this->withHeaders(['Authorization' => 'Basic '.base64_encode('devtools:wrong')])
-        ->withSession($token)
-        ->post('/devtools/narration/recover', $token)
-        ->assertUnauthorized();
-});
-
-it('audits a per-user re-arm, naming the athlete and how many blocks it touched', function (): void {
-    Bus::fake();
-    $user = User::factory()->create();
-    deadLetterWeeklyRecap($user);
-
-    $this->post("/devtools/narration/athletes/{$user->id}/retry-failed")->assertRedirect();
-
-    $action = DevtoolsAction::query()->sole();
-
-    expect($action->action)->toBe('narration.retry_failed')
-        ->and($action->user_id)->toBe($user->id)
-        ->and($action->payload)->toBe(['blocks' => 1])
-        ->and($action->actor)->not->toBe('');
-});
-
-it('audits the app-wide recovery run', function (): void {
-    Bus::fake();
-    deadLetterWeeklyRecap(User::factory()->create());
-
-    $this->post('/devtools/narration/recover')->assertRedirect();
 
     $action = DevtoolsAction::query()->sole();
 
