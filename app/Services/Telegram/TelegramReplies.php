@@ -13,7 +13,7 @@ class TelegramReplies
 {
     /**
      * Sent on a successful link. Names the account ($name, the Strava display
-     * name) so the user confirms which Temari account this Telegram is tied
+     * name) so the user confirms which temari account this Telegram is tied
      * to.
      */
     public static function welcome(string $name): string

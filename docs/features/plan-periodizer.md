@@ -3,7 +3,7 @@ title: Plan — deterministic periodizer and the Plan tab
 description: The rules-only training periodizer that fills the Plan tab, its two modes, the render-time readiness clamp, and the render-time volume redistribution
 tags: [feature, run]
 status: living
-reviewed: 2026-10-08
+reviewed: 2026-10-09
 code_refs:
   - app/Services/Run/Plan/Periodizer.php
   - app/Services/Run/Plan/PlanRegenerationService.php
@@ -268,7 +268,7 @@ Phase fill colors are the `PHASE_COLORS` export in [chartTokens.ts](../../resour
 
 ## Plan narration — voice only, layered on top
 
-`PlanSeasonVoice` narrates what the rules above already decided, never re-deciding it, through the standard AI narration pipeline (see the "AI narration pipeline" section of CLAUDE.md): `PlanSeasonVoiceNarrator` under [app/Services/AI/Narrators/](app/Services/AI/Narrators/) and its `AnalyzeRowJob` subclass under [app/Jobs/AI/](app/Jobs/AI/). The clamp line is covered under the readiness clamp above.
+`PlanSeasonVoice` narrates what the rules above already decided, never re-deciding it, through the standard AI narration pipeline (see the `temari` skill's narration reference, `.claude/skills/temari/references/narration.md`): `PlanSeasonVoiceNarrator` under [app/Services/AI/Narrators/](app/Services/AI/Narrators/) and its `AnalyzeRowJob` subclass under [app/Jobs/AI/](app/Jobs/AI/). The clamp line is covered under the readiness clamp above.
 
 **The week's own adaptation display never went through narration.** The headline, detail sentence
 and deload/quality chips `WeekView` and `SeasonHeaderCard` show for the current week come
