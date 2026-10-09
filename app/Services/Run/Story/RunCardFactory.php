@@ -15,7 +15,6 @@ use App\Services\Run\Metrics\StreamSummary;
 class RunCardFactory
 {
     public function __construct(
-        private readonly SpecialMoves $specialMoves,
         private readonly BuildCardContextAction $contextBuilder,
         private readonly BadgeEvaluator $badgeEvaluator,
         private readonly RarityScorer $rarityScorer,
@@ -41,7 +40,7 @@ class RunCardFactory
             $this->rarityScorer->score($detail, $summary, $badges, $prSet, $context),
         );
 
-        $move = $this->specialMoves->pick($summary, [
+        $move = SpecialMoves::pick($summary, [
             'distance_m' => $detail->distance,
             'pr_set' => $prSet,
             'seed' => $activity->id,

@@ -36,7 +36,6 @@ class CompareRecalibrationCommand extends Command
         private readonly BuildCardContextAction $contextBuilder,
         private readonly BadgeEvaluator $badgeEvaluator,
         private readonly RarityScorer $rarityScorer,
-        private readonly SpecialMoves $specialMoves,
     ) {
         parent::__construct();
     }
@@ -147,7 +146,7 @@ class CompareRecalibrationCommand extends Command
         $this->bump($tallies['rarity']['stored'], $card->rarity->value ?? 'no card');
         $this->bump($tallies['rarity']['recomputed'], $this->rarityScorer->fromScore($score)->value);
         $this->bump($tallies['move']['stored'], $card->special_move ?? 'no card');
-        $this->bump($tallies['move']['recomputed'], $this->specialMoves->pick($recomputed, [
+        $this->bump($tallies['move']['recomputed'], SpecialMoves::pick($recomputed, [
             'distance_m' => $detail->distance,
             'pr_set' => $card !== null && $card->pr_set,
             'seed' => $activity->id,
