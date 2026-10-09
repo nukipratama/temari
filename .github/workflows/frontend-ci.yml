@@ -42,6 +42,10 @@ jobs:
             npx vitest run --shard="${{ matrix.shard }}/${FRONTEND_SHARD_TOTAL}"
           fi
 
+      - name: Shuffle seed hint
+        if: failure() && github.event_name == 'pull_request'
+        run: echo "Vitest ran in shuffled order (seed ${{ github.run_id }}). Reproduce with \`./vendor/bin/sail npx vitest run --sequence.shuffle --sequence.seed=${{ github.run_id }} --shard=${{ matrix.shard }}/${FRONTEND_SHARD_TOTAL}\`. A re-run reuses the seed, so push to get a new order." >> "$GITHUB_STEP_SUMMARY"
+
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: github.event_name == 'pull_request'
         with:
