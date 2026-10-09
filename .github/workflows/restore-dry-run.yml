@@ -383,7 +383,7 @@ jobs:
           fi
           {
             echo "## Restore dry-run"
-            if [ "${{ job.status }}" = "success" ]; then
+            if [ "${{ steps.verify.outcome }}" = "success" ]; then
               echo "PASS — \`${{ steps.pick.outputs.label }}\` restored clean into a throwaway database and verified (nightly: against its dump-time manifest; pre-deploy: against live)."
             else
               echo "FAIL — \`${{ steps.pick.outputs.label }}\`, see the Verify step above."

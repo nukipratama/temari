@@ -456,6 +456,25 @@ it('tears down one-off containers before the stack, then removes the env file an
     expect($teardownLog)->toContain('rm -f one-off-id')
         ->toContain('compose -p temari-restore -f deploy/restore-dry-run-compose.yml down -v');
 
+    $summary = sys_get_temp_dir().'/temari-restore-summary-'.uniqid();
+    $expressions = ['job.status' => 'failure', 'steps.verify.outcome' => 'success', 'steps.pick.outputs.label' => 'nightly-x.sql.gz'];
+    $rehearsalFailed = preg_replace_callback('/\$\{\{ ([^}]*) \}\}/', fn (array $m): string => $expressions[$m[1]], (string) $teardown['run']);
+    [, $summaryBin] = runWithFakeDocker((string) $rehearsalFailed, '', [
+        'RESTORE_PROJECT' => 'temari-restore',
+        'RESTORE_COMPOSE_FILE' => 'deploy/restore-dry-run-compose.yml',
+        'REHEARSAL_COMPOSE' => 'docker compose -p temari-restore',
+        'REF' => 'feature',
+        'REHEARSAL_SHA' => str_repeat('c', 40),
+        'GITHUB_STEP_SUMMARY' => $summary,
+    ]);
+    File::deleteDirectory($summaryBin);
+    $written = (string) file_get_contents($summary);
+    unlink($summary);
+
+    expect($written)->toContain('PASS — `nightly-x.sql.gz` restored clean')
+        ->toContain('Rehearsal FAIL — `feature`')
+        ->not->toContain('see the Verify step above');
+
     expect($teardown['if'])->toBe('always()')
         ->and(strpos((string) $teardown['run'], 'label=com.docker.compose.oneoff=True'))->toBeLessThan(strpos((string) $teardown['run'], 'down -v'))
         ->and($teardown['run'])->toContain('label=com.docker.compose.project=$RESTORE_PROJECT')
