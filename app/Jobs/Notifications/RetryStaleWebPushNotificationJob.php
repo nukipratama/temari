@@ -8,6 +8,8 @@ use Illuminate\Queue\Attributes\Backoff;
 use Illuminate\Queue\Attributes\Tries;
 use Illuminate\Foundation\Queue\Queueable;
 use App\Models\AI\Analysis;
+use App\Models\NotificationDelivery;
+use Carbon\CarbonImmutable;
 use App\Notifications\AnalysisReadyNotification;
 use App\Notifications\Channels\IdempotentWebPushChannel;
 use App\Notifications\MorningBriefingNotification;
@@ -50,9 +52,18 @@ class RetryStaleWebPushNotificationJob implements ShouldQueue
             return;
         }
 
-        $notification = $analysis->analysis_type === AnalysisType::BriefingMascotVoice
-            ? new MorningBriefingNotification($analysis)
-            : new AnalysisReadyNotification($analysis);
+        if ($analysis->analysis_type === AnalysisType::BriefingMascotVoice) {
+            $notification = new MorningBriefingNotification($analysis);
+        } else {
+            $notification = new AnalysisReadyNotification($analysis);
+            $claimedAt = NotificationDelivery::query()
+                ->where('analysis_id', $this->analysisId)
+                ->where('channel', 'webpush')
+                ->value('created_at');
+            if ($claimedAt !== null) {
+                $notification->triggeredAt = CarbonImmutable::parse($claimedAt);
+            }
+        }
 
         Notification::sendNow($user, $notification, [IdempotentWebPushChannel::class]);
         $claim->markStaleWebPushSkipped($this->analysisId, $this->claimVersion);
