@@ -374,7 +374,8 @@ jobs:
           REHEARSAL_ENV_FILE: ${{ runner.temp }}/rehearsal-app-env
         run: |
           docker ps -aq --filter "label=com.docker.compose.project=$RESTORE_PROJECT" --filter "label=com.docker.compose.oneoff=True" \
-            | xargs --no-run-if-empty docker rm -f
+            | xargs --no-run-if-empty docker rm -f \
+            || echo "::warning::could not remove every one-off container in $RESTORE_PROJECT"
           if [ -n "$REF" ]; then
             $REHEARSAL_COMPOSE down -v
           else

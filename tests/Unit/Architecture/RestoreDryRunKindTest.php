@@ -442,6 +442,20 @@ it('tears down one-off containers before the stack, then removes the env file an
         File::deleteDirectory($bin);
     }
 
+    $rmFails = 'echo "$*" >> "$DOCKER_LOG"; case "$1" in ps) echo one-off-id ;; rm) exit 1 ;; esac';
+    $teardownScript = "set -eo pipefail\n".preg_replace('/\$\{\{[^}]*\}\}/', 'failure', (string) $teardown['run']);
+    [, $teardownBin] = runWithFakeDocker($teardownScript, $rmFails, [
+        'RESTORE_PROJECT' => 'temari-restore',
+        'RESTORE_COMPOSE_FILE' => 'deploy/restore-dry-run-compose.yml',
+        'REF' => '',
+        'GITHUB_STEP_SUMMARY' => '/dev/null',
+    ]);
+    $teardownLog = (string) file_get_contents("{$teardownBin}/docker-log");
+    File::deleteDirectory($teardownBin);
+
+    expect($teardownLog)->toContain('rm -f one-off-id')
+        ->toContain('compose -p temari-restore -f deploy/restore-dry-run-compose.yml down -v');
+
     expect($teardown['if'])->toBe('always()')
         ->and(strpos((string) $teardown['run'], 'label=com.docker.compose.oneoff=True'))->toBeLessThan(strpos((string) $teardown['run'], 'down -v'))
         ->and($teardown['run'])->toContain('label=com.docker.compose.project=$RESTORE_PROJECT')
