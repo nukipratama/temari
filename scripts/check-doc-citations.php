@@ -224,17 +224,6 @@ function declaresSymbol(string $source, string $symbol): bool
     return false;
 }
 
-/**
- * Identifiers in the link text that are plausibly symbols: camelCase or
- * snake_case, at least four characters, and not the cited file's own basename.
- *
- * PascalCase is deliberately excluded. A link text is very often just the class
- * name (`[StreamAnalysis](app/…/StreamAnalysis.php#L182)`), which matches the
- * file's own declaration near line 1 and would flag every citation deeper in the
- * file. A method or property name is what actually pins a line.
- *
- * @return list<string>
- */
 /** Does this word look like an identifier rather than a word of English prose? */
 function isSymbolShaped(string $word): bool
 {
@@ -254,6 +243,13 @@ function isSymbolShaped(string $word): bool
     return false;
 }
 
+/**
+ * Identifiers in the link text that are plausibly symbols: every `Class::member`
+ * member, plus each symbol-shaped word of four or more characters that the
+ * cited file's own basename does not contain.
+ *
+ * @return list<string>
+ */
 function symbolCandidates(string $linkText, string $basename): array
 {
     $candidates = [];

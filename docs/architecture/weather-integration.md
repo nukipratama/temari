@@ -55,5 +55,3 @@ All consumers read the stored columns; none call Open-Meteo.
 - Weather is sampled **once at the start point/hour**, not averaged over the route or duration — a long run that started cool and ended hot reads as cool.
 - Because rain is a precipitation-threshold boolean, light drizzle below the threshold reads as "no rain"; see [`RAIN_THRESHOLD_MM`](app/Services/Weather/OpenMeteoClient.php).
 - The cache key rounds coordinates, so two runs starting near each other in the same hour share a reading — intentional, it dedupes the upstream call.
-</content>
-</invoke>

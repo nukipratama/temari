@@ -4,7 +4,7 @@ description: <one line, used for retrieval + MOC listing>
 tags: [architecture|feature|decision, <domain>]
 status: living            # features/architecture track code; ADRs use: accepted | superseded
 reviewed: 2026-06-20      # date last verified against the code it cites
-code_refs:                # files this note describes — drift awareness + CI citation guard
+code_refs:                # files this note describes — read by the CI citation guard
   - app/Services/Example/Example.php
 # superseded_by: <note>   # ADRs only, set when a newer ADR replaces this one
 ---
