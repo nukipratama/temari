@@ -139,11 +139,18 @@ function seedPeriodizerBaseline(User $user): void
     }
 }
 
-it('generates a self-scaled build/deload cycle with its season and decision, and regenerates it in constant queries without re-reconciling', function (): void {
+it('generates a self-scaled cycle with its season and decision, then regenerates it in constant queries, leaving settled sessions alone', function (): void {
     $user = User::factory()->create();
     seedPeriodizerBaseline($user);
+    $resolve = app(ResolvePlannedSessionsAction::class);
+    $today = Carbon::today()->toDateString();
+    expect($resolve($user->id, $today, $today))->toBeEmpty();
+    Cache::put(PastYouTrendBuilder::cacheKey($user->id, $today), ['stale'], 3600);
 
     $this->periodizer->regenerate($user, Carbon::today());
+
+    expect($resolve($user->id, $today, $today))->toHaveCount(1)
+        ->and(Cache::has(PastYouTrendBuilder::cacheKey($user->id, $today)))->toBeFalse();
 
     $phases = PlannedSession::query()->where('user_id', $user->id)->pluck('phase')->map(fn ($p) => $p->value)->unique()->sort()->values()->all();
     expect($phases)->toBe(['build', 'deload'])
@@ -174,6 +181,21 @@ it('generates a self-scaled build/deload cycle with its season and decision, and
 
     expect(app(Periodizer::class)->regenerateIfChanged($user, Carbon::today()))->toBeFalse()
         ->and($before->fresh()->updated_at->equalTo($before->updated_at))->toBeTrue();
+
+    $sessionOn = fn (int $days): PlannedSession => PlannedSession::query()->where('user_id', $user->id)->whereDate('date', Carbon::today()->addDays($days))->firstOrFail();
+    $sessionOn(0)->update(['status' => PlannedSessionStatus::Done, 'compliance_score' => 96, 'distance_score' => 98, 'intent_verdict' => 'hit', 'intent_evidence' => ['effective_type' => 'easy']]);
+    $sessionOn(2)->update(['skipped' => true]);
+    $sessionOn(9)->update(['status' => PlannedSessionStatus::Partial, 'compliance_score' => 70]);
+    $settledAttributes = fn (): array => collect([0, 2, 9])->mapWithKeys(fn (int $days): array => [$days => $sessionOn($days)->getAttributes()])->all();
+    $settled = $settledAttributes();
+    $replaced = $sessionOn(1)->id;
+    $this->travel(5)->minutes();
+
+    $this->periodizer->regenerate($user, Carbon::today());
+
+    expect($settledAttributes())->toBe($settled)
+        ->and($sessionOn(1)->id)->not->toBe($replaced)
+        ->and(PlannedSession::query()->where('user_id', $user->id)->count())->toBe(Periodizer::HORIZON_WEEKS * 7);
 });
 it('generates a race-oriented base/build/peak/taper progression when an active race exists', function (): void {
     $user = User::factory()->create();
@@ -962,40 +984,6 @@ it('plans the week around the day an eased tempo became, not the tempo it abando
     'eased tempo run easy' => [true, true],
     'tempo run without hard-minute measurement' => [false, false],
 ]);
-
-it('leaves settled sessions untouched by a batched regeneration', function (): void {
-    $user = User::factory()->create();
-    seedPeriodizerBaseline($user);
-    $this->periodizer->regenerate($user, Carbon::today());
-    $sessionOn = fn (int $days): PlannedSession => PlannedSession::query()->where('user_id', $user->id)->whereDate('date', Carbon::today()->addDays($days))->firstOrFail();
-    $sessionOn(0)->update(['status' => PlannedSessionStatus::Done, 'compliance_score' => 96, 'distance_score' => 98, 'intent_verdict' => 'hit', 'intent_evidence' => ['effective_type' => 'easy']]);
-    $sessionOn(2)->update(['skipped' => true]);
-    $sessionOn(9)->update(['status' => PlannedSessionStatus::Partial, 'compliance_score' => 70]);
-    $settledAttributes = fn (): array => collect([0, 2, 9])->mapWithKeys(fn (int $days): array => [$days => $sessionOn($days)->getAttributes()])->all();
-    $settled = $settledAttributes();
-    $replaced = $sessionOn(1)->id;
-    $this->travel(5)->minutes();
-
-    $this->periodizer->regenerate($user, Carbon::today());
-
-    expect($settledAttributes())->toBe($settled)
-        ->and($sessionOn(1)->id)->not->toBe($replaced)
-        ->and(PlannedSession::query()->where('user_id', $user->id)->count())->toBe(Periodizer::HORIZON_WEEKS * 7);
-});
-
-it('drops cached plan reads after a batched regeneration', function (): void {
-    $user = User::factory()->create();
-    seedPeriodizerBaseline($user);
-    $resolve = app(ResolvePlannedSessionsAction::class);
-    $today = Carbon::today()->toDateString();
-    expect($resolve($user->id, $today, $today))->toBeEmpty();
-    Cache::put(PastYouTrendBuilder::cacheKey($user->id, $today), ['stale'], 3600);
-
-    $this->periodizer->regenerate($user, Carbon::today());
-
-    expect($resolve($user->id, $today, $today))->toHaveCount(1)
-        ->and(Cache::has(PastYouTrendBuilder::cacheKey($user->id, $today)))->toBeFalse();
-});
 
 it('persists an endurance tilt on the Build and Peak long runs, and nowhere outside them', function (): void {
     $user = User::factory()->create();
