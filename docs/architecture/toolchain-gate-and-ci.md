@@ -60,7 +60,10 @@ for that half.
 
 The backend suite and the frontend suite each run three parallel shards, on PRs and main pushes. The test jobs and the image build need only `changes`, so they start without waiting for `repo-guards`, which also runs the gitleaks secret scan; `ci-gate` still requires it. Backend shards start MySQL with a backgrounded `docker run` right after checkout and wait for it just before the tests, so its pull and init overlap PHP setup. PR shards collect coverage;
 the frontend's `gate` job and, for the backend, `ci-gate` merge the whole-suite totals and apply the
-configured thresholds exactly once. Main-push shards skip instrumentation and the merge is skipped,
+configured thresholds exactly once. The two sides differ on purpose: the backend merge sits on the
+critical path behind the slowest shard, so it runs inside `ci-gate` to save a job, while the
+frontend `gate` (merge, build and chunk check) finishes while the backend shards still run, and
+moving it into `ci-gate` would put that work on the critical path. Main-push shards skip instrumentation and the merge is skipped,
 because the change was already coverage-gated before merge. Each side's single static-analysis job runs its tools in
 sequence (Pint, PHPStan and Rector; TypeScript, ESLint and Prettier) and then that side's 1:1
 structure check and source guard (`{@see}` references; the raw-palette guard), so the structure
