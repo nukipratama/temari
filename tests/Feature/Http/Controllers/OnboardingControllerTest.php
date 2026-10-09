@@ -99,6 +99,7 @@ it('never redirects an already-onboarded user back into the wizard, and lets the
     $this->actingAs($user)->get('/onboarding')->assertRedirect(route('dashboard'));
     $this->actingAs($user)->get('/')->assertSuccessful();
 });
+
 it('redirects an unboarded user away from the rest of the app back to the wizard, but lets them subscribe to push and log out', function (): void {
     $user = User::factory()->needsOnboarding()->create();
 
@@ -114,6 +115,7 @@ it('redirects an unboarded user away from the rest of the app back to the wizard
 
     $this->actingAs($user)->post(route('auth.logout'))->assertRedirect(route('login'));
 });
+
 it('marks the user onboarded and skips the goal and preferences steps when no fields are submitted', function (): void {
     $user = User::factory()->needsOnboarding()->create();
 

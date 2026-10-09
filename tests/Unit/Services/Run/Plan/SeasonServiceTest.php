@@ -78,6 +78,7 @@ it('opens, keeps, peeks and auto-cycles a self-scaled 12-week season with its fi
         // No gap and no overlap: the new season starts exactly where the old one ended.
         ->and($season->fresh()->ends_at->toDateString())->toBe(Carbon::today()->copy()->subDay()->toDateString());
 });
+
 it('opens a race-oriented season ending on race day, keeps it unsettled, follows the race date and gives way to a self-scaled one when the race is cleared', function (): void {
     $user = User::factory()->create();
     $race = RaceGoal::factory()->for($user)->create(['race_date' => Carbon::today()->addWeeks(9)->toDateString()]);
@@ -114,6 +115,7 @@ it('opens a race-oriented season ending on race day, keeps it unsettled, follows
     expect($selfScaled->id)->not->toBe($season->id)
         ->and($selfScaled->race_goal_id)->toBeNull();
 });
+
 it('ends a self-scaled season early and starts a race-oriented one when a race is set mid-season', function (): void {
     $user = User::factory()->create();
     $selfScaled = $this->service->ensureCurrent($user, Carbon::today());

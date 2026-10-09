@@ -136,6 +136,7 @@ it('ships the load section as one 7-day summary, not one entry per range, and a 
         ->assertJsonMissingPath('props.load.weekly_trimp_reference')
         ->assertJsonPath('props.ctlTrend', fn (mixed $trend): bool => is_array($trend) && count($trend) > 0);
 });
+
 it('never surfaces another user\'s training load in the load summary or on the fitness trend', function (): void {
     $user = User::factory()->create();
     $other = User::factory()->create();
@@ -146,6 +147,7 @@ it('never surfaces another user\'s training load in the load summary or on the f
         ->assertJsonPath('props.load', null)
         ->assertJsonPath('props.ctlTrend', []);
 });
+
 it('passes the TrendRead 7d analysis as the single narration payload', function (): void {
     $user = User::factory()->create();
     Analysis::factory()->done("Holding steady this week.\n\nNo real swing either way.")->create([

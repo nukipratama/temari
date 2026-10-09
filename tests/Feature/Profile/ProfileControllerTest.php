@@ -85,6 +85,7 @@ it('paints a fresh athlete\'s identity, empty stats, chill pose and voice while 
             ->missing('progressionByCategory')
             ->etc());
 });
+
 it('requires auth', function (): void {
     $this->get('/profile')->assertRedirect('/login');
 });

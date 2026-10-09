@@ -100,6 +100,7 @@ it('paints a fresh user\'s shell with the plan body deferred, creating the seaso
         ->and($response->json('props'))->not->toHaveKey('season')
         ->and($response->json('props'))->not->toHaveKey('sessionsPerWeek');
 });
+
 it('regenerating populates the plan, redirects with a success flash and renders the generated weeks', function (): void {
     $user = User::factory()->create();
 
@@ -115,6 +116,7 @@ it('regenerating populates the plan, redirects with a success flash and renders 
         ->assertJsonPath('component', 'Plan')
         ->assertJsonPath('props.weeks', fn (mixed $weeks): bool => is_array($weeks) && $weeks !== []);
 });
+
 it('rejects updating another user\'s planned session', function (): void {
     $owner = User::factory()->create();
     $session = PlannedSession::factory()->for($owner)->create(['date' => Carbon::today()->addDay()->toDateString()]);
@@ -1105,6 +1107,7 @@ it('counts only plan edits against the plan-edit budget, and answers the 21st wi
         ->patch("/plan/sessions/{$rows['2026-08-14']->id}", ['skipped' => false])
         ->assertTooManyRequests();
 });
+
 it('merges a burst of skip and restore toggles on today into one delayed briefing that reads the final plan', function (): void {
     Carbon::setTestNow('2026-08-12 08:00:00');
     Bus::fake();

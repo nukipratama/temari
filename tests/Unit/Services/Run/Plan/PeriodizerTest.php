@@ -197,6 +197,7 @@ it('generates a self-scaled cycle with its season and decision, then regenerates
         ->and($sessionOn(1)->id)->not->toBe($replaced)
         ->and(PlannedSession::query()->where('user_id', $user->id)->count())->toBe(Periodizer::HORIZON_WEEKS * 7);
 });
+
 it('generates a race-oriented base/build/peak/taper progression when an active race exists', function (): void {
     $user = User::factory()->create();
     seedPeriodizerBaseline($user);
