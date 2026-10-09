@@ -733,6 +733,46 @@ it('lets a long-run cap hold a self-scaled cycle under its anchor', function (fl
     'four sessions at 70 km' => [70.0, 4],
 ]);
 
+it('lets the sessions under the progression cap carry a self-scaled cycle to its anchor', function (float $anchorKm, int $sessions, float $longestKm): void {
+    $user = User::factory()->create();
+    weeksOf($user, array_fill(0, 6, $anchorKm), $sessions);
+    completedRun($user, $longestKm, Carbon::today()->subDays(5));
+    TrainingPreference::factory()->for($user)->create(['sessions_per_week' => $sessions]);
+    $season = Season::factory()->for($user)->create([
+        'anchor_weekly_volume_km' => $anchorKm,
+        'starts_at' => '2026-08-10',
+        'ends_at' => '2026-09-06',
+    ]);
+
+    $plannedKm = array_column(app(SeasonSummaryBuilder::class)->plannedWeeks($user, $season), 'planned_km');
+    $baseline = $this->baseline->forUser($user, Carbon::today());
+
+    expect(array_sum($plannedKm) / count($plannedKm))->toBeGreaterThanOrEqual($anchorKm)
+        ->and($baseline['long_run_progression_cap_km'])->toBe(round($longestKm * 1.1, 1));
+})->with([
+    'four sessions at 20 km, 7 km longest' => [20.0, 4, 7.0],
+    'four sessions at 30 km, 10.5 km longest' => [30.0, 4, 10.5],
+    'five sessions at 40 km, 8 km longest' => [40.0, 5, 8.0],
+]);
+
+it('takes a self-scaled baseline to its own cap when the progression cap leaves the anchor out of reach', function (): void {
+    $user = User::factory()->create();
+    weeksOf($user, array_fill(0, 6, 30.0), 4);
+    completedRun($user, 7.0, Carbon::today()->subDays(5));
+    TrainingPreference::factory()->for($user)->create(['sessions_per_week' => 4]);
+    $season = Season::factory()->for($user)->create([
+        'anchor_weekly_volume_km' => 30.0,
+        'starts_at' => '2026-08-10',
+        'ends_at' => '2026-09-06',
+    ]);
+
+    $plannedKm = array_column(app(SeasonSummaryBuilder::class)->plannedWeeks($user, $season), 'planned_km');
+    $baseline = $this->baseline->forUser($user, Carbon::today());
+
+    expect($baseline['long_run_km'])->toBe($baseline['long_run_cap_km'])
+        ->and(array_sum($plannedKm) / count($plannedKm))->toBeLessThan(30.0);
+});
+
 it('caps the long run for a race beyond the marathon at the general aerobic ceiling, not the marathon one', function (): void {
     $marathoner = User::factory()->create();
     weeksOf($marathoner, array_fill(0, 6, 90.0));
