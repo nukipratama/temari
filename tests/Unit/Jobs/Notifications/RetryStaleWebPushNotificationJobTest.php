@@ -119,3 +119,72 @@ it('leaves a stale claim pending for after quiet hours instead of settling it', 
     expect($delivery->fresh()->status)->toBe(NotificationDeliveryStatus::Pending)
         ->and($delivery->fresh()->claim_version)->toBe(1);
 });
+
+it('does not deliver a stale retry for a run past the recency window', function (): void {
+    $user = User::factory()->create();
+    $user->updatePushSubscription('https://push.example/endpoint', 'key', 'auth');
+    $activity = Activity::factory()->for($user)->create();
+    ActivityDetail::factory()->for($activity)->create(['start_date_local' => now()->subDays(10)]);
+    $analysis = Analysis::factory()->done('Your run is in.')->create([
+        'analysis_type' => AnalysisType::PostRunSpeech,
+        'subject_type' => Activity::class,
+        'subject_id' => $activity->id,
+        'discriminator' => null,
+    ]);
+    NotificationDelivery::query()->create([
+        'analysis_id' => $analysis->id,
+        'channel' => 'webpush',
+        'status' => NotificationDeliveryStatus::Pending,
+        'created_at' => now()->subMinutes(16),
+        'claimed_at' => now()->subMinutes(16),
+        'claim_version' => 1,
+    ]);
+    $webPush = Mockery::mock(WebPushChannel::class);
+    $webPush->shouldNotReceive('send');
+    app()->instance(WebPushChannel::class, $webPush);
+
+    new RetryStaleWebPushNotificationJob($analysis->id, 1)->handle(
+        app(NotificationDeliveryClaim::class),
+        app(NotificationEligibility::class),
+    );
+
+    $this->assertDatabaseMissing('notification_deliveries', [
+        'analysis_id' => $analysis->id,
+        'status' => NotificationDeliveryStatus::Sent->value,
+    ]);
+});
+
+it('measures the recency window from the original claim, not from the retry', function (): void {
+    $user = User::factory()->create();
+    $user->updatePushSubscription('https://push.example/endpoint', 'key', 'auth');
+    $activity = Activity::factory()->for($user)->create();
+    ActivityDetail::factory()->for($activity)->create(['start_date_local' => now()->subDays(3)->subHour()]);
+    $analysis = Analysis::factory()->done('Your run is in.')->create([
+        'analysis_type' => AnalysisType::PostRunSpeech,
+        'subject_type' => Activity::class,
+        'subject_id' => $activity->id,
+        'discriminator' => null,
+    ]);
+    NotificationDelivery::query()->create([
+        'analysis_id' => $analysis->id,
+        'channel' => 'webpush',
+        'status' => NotificationDeliveryStatus::Pending,
+        'created_at' => now()->subHours(2),
+        'claimed_at' => now()->subHours(2),
+        'claim_version' => 1,
+    ]);
+    $webPush = Mockery::mock(WebPushChannel::class);
+    $webPush->shouldReceive('send')->once();
+    app()->instance(WebPushChannel::class, $webPush);
+
+    new RetryStaleWebPushNotificationJob($analysis->id, 1)->handle(
+        app(NotificationDeliveryClaim::class),
+        app(NotificationEligibility::class),
+    );
+
+    $this->assertDatabaseHas('notification_deliveries', [
+        'analysis_id' => $analysis->id,
+        'status' => NotificationDeliveryStatus::Sent->value,
+        'claim_version' => 2,
+    ]);
+});
