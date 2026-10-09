@@ -52,8 +52,9 @@ it('requires authentication for store', function (): void {
     $this->post('/race', racePayload())->assertRedirect('/login');
 });
 
-it('renders the page with no race and no projection for a fresh user', function (): void {
+it('renders the page with no race and no projection for a fresh user, never surfacing another user\'s race', function (): void {
     $user = User::factory()->create();
+    RaceGoal::factory()->create(); // another user's active race
 
     $this->actingAs($user)->get('/race')
         ->assertSuccessful()
@@ -80,16 +81,10 @@ it('renders the active race and its projection when one exists', function (): vo
             ->where('projection.window', 'all'));
 });
 
-it('never surfaces another user\'s race', function (): void {
+it('creates the first race for a user with none and busts the shared active-race cache prop', function (): void {
     $user = User::factory()->create();
-    RaceGoal::factory()->create(); // another user's active race
-
-    $this->actingAs($user)->get('/race')
-        ->assertInertia(fn (Assert $page) => $page->where('race', null));
-});
-
-it('creates the first race for a user with none', function (): void {
-    $user = User::factory()->create();
+    $cacheKey = SharedPropCacheKey::ActiveRace->key($user->id);
+    Cache::put($cacheKey, ['stale' => true]);
 
     $this->actingAs($user)
         ->post('/race', racePayload())
@@ -101,6 +96,8 @@ it('creates the first race for a user with none', function (): void {
         ->and($race->distance_m)->toBe(10_000)
         ->and($race->goal_time_sec)->toBe(3_000)
         ->and($race->name)->toBe('Jakarta 10K');
+
+    expect(Cache::has($cacheKey))->toBeFalse();
 });
 
 it('revises the current race in place by default, keeping its season and history', function (): void {
@@ -185,16 +182,6 @@ it('rejects an invalid submission and persists nothing', function (): void {
     expect(RaceGoal::query()->where('user_id', $user->id)->exists())->toBeFalse();
 });
 
-it('busts the shared active-race cache prop on store', function (): void {
-    $user = User::factory()->create();
-    $cacheKey = SharedPropCacheKey::ActiveRace->key($user->id);
-    Cache::put($cacheKey, ['stale' => true]);
-
-    $this->actingAs($user)->post('/race', racePayload())->assertRedirect();
-
-    expect(Cache::has($cacheKey))->toBeFalse();
-});
-
 it('shares the active race app-wide via the activeRace prop', function (): void {
     $user = User::factory()->create();
     RaceGoal::factory()->for($user)->create(['name' => 'Shared race', 'distance_m' => 5_000]);
@@ -251,7 +238,7 @@ it('refuses the demo account a race save or clear, billing nothing and writing n
  * never simply called off, so a wrong date was stuck until it passed while the
  * plan kept building phases toward it.
  */
-it('clears the active race and rebuilds the plan without it', function (): void {
+it('clears the active race, keeping it on record, and rebuilds the plan without it', function (): void {
     Carbon::setTestNow('2026-09-08 10:00:00');
     $user = User::factory()->create();
     $race = RaceGoal::query()->create([
@@ -266,36 +253,10 @@ it('clears the active race and rebuilds the plan without it', function (): void 
 
     expect($race->fresh()->completed_at)->not->toBeNull()
         ->and(RaceGoal::query()->where('user_id', $user->id)->active()->exists())->toBeFalse()
-        ->and(PlannedSession::query()->where('user_id', $user->id)->count())->toBeGreaterThan(0);
+        ->and(PlannedSession::query()->where('user_id', $user->id)->count())->toBeGreaterThan(0)
+        ->and(RaceGoal::query()->where('user_id', $user->id)->count())->toBe(1);
 
     Carbon::setTestNow();
-});
-
-/** Stamped, not deleted — an abandoned race is still part of the record. */
-it('keeps the cleared race on record', function (): void {
-    Carbon::setTestNow('2026-09-08 10:00:00');
-    $user = User::factory()->create();
-    RaceGoal::query()->create([
-        'user_id' => $user->id,
-        'race_date' => Carbon::today()->addMonths(4)->toDateString(),
-        'distance_m' => 21_097,
-        'goal_time_sec' => 7_200,
-        'name' => 'A half',
-    ]);
-
-    $this->actingAs($user)->delete('/race');
-
-    expect(RaceGoal::query()->where('user_id', $user->id)->count())->toBe(1);
-
-    Carbon::setTestNow();
-});
-
-it('does nothing when there is no race to clear', function (): void {
-    $user = User::factory()->create();
-
-    $this->actingAs($user)->delete('/race')->assertSessionHasNoErrors();
-
-    expect(PlannedSession::query()->where('user_id', $user->id)->count())->toBe(0);
 });
 
 /**
@@ -333,7 +294,7 @@ it('attributes a cleared race\'s re-narration to the athlete', function (): void
     Carbon::setTestNow();
 });
 
-it('never clears another athlete\'s race', function (): void {
+it('does nothing when there is no race of its own to clear, never clearing another athlete\'s race', function (): void {
     $user = User::factory()->create();
     $other = User::factory()->create();
     $theirs = RaceGoal::query()->create([
@@ -344,7 +305,8 @@ it('never clears another athlete\'s race', function (): void {
         'name' => 'Theirs',
     ]);
 
-    $this->actingAs($user)->delete('/race');
+    $this->actingAs($user)->delete('/race')->assertSessionHasNoErrors();
 
-    expect($theirs->fresh()->completed_at)->toBeNull();
+    expect($theirs->fresh()->completed_at)->toBeNull()
+        ->and(PlannedSession::query()->where('user_id', $user->id)->count())->toBe(0);
 });
