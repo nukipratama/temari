@@ -106,7 +106,7 @@ Both performance date and confirmation timestamp are checked against a caller-su
 
 **P13.** [TimeInZoneBar](resources/js/components/profile/TimeInZoneBar.tsx) draws a segmented Z1-Z5 bar and a dot legend in the hero slot the behavioural persona mix used to occupy (`PersonaBar` and the `personaMix` prop were cut in `PP3`). The percentages come from [TimeInZoneSummary](app/Services/Run/Metrics/TimeInZoneSummary.php), which sums the per-run `time_in_zone_min` that [StreamAnalysis](app/Services/Run/Ingest/StreamAnalysis.php) already writes onto `activity_details.stream_summary` across the trailing 12 weeks and normalises them. Zone colours and labels are the shared `HR_ZONE_COLORS`/`HR_ZONE_LABELS` in [chartTokens](resources/js/lib/chartTokens.ts), the same pair the [[settings-hr-zones]] editor names its bands with.
 
-The whole block is absent — bar, legend and label — when no run in the window recorded heart rate, rather than drawing an empty rail. `ProfileVoiceNarrator::personaMix()` and `PersonaMixTool` survive as narration context for the hero voice: `W2` verified both are live and kept them.
+The whole block is absent — bar, legend and label — when no run in the window recorded heart rate, rather than drawing an empty rail. `PersonaMixTool` survives as narration context for the hero voice.
 
 ## Journey (progression)
 

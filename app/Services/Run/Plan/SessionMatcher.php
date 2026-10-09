@@ -276,35 +276,6 @@ final readonly class SessionMatcher
     }
 
     /**
-     * The km a single day is credited with, by the same rule
-     * {@see self::scoreRange()} grades it on. Null when nothing
-     * was logged.
-     *
-     * Exists so a caller that wants the credited figure — narration reading
-     * "you ran X against an ask of Y" — cannot drift from the figure the score
-     * was computed from. Re-deriving it at the call site is how the two come
-     * apart.
-     */
-    public function creditedKmFor(PlannedSession $session): ?float
-    {
-        $day = $this->completedKmByDate($session->user, [$session->date->toDateString() => 0.0])[$session->date->toDateString()] ?? null;
-
-        if ($day === null) {
-            return null;
-        }
-
-        return self::creditedKm($session->session_type, $day, TimeTrial::of($session) !== null);
-    }
-
-    /** The pace the day's card shows ({@see self::ranPaceSecPerKmFromRuns()}), or null when nothing was logged. */
-    public function ranPaceSecPerKmFor(PlannedSession $session): ?int
-    {
-        $runs = $this->activityByDate($session->user, $session->date, $session->date)[$session->date->toDateString()]['runs'] ?? [];
-
-        return self::ranPaceSecPerKmFromRuns($session->session_type, $runs, TimeTrial::of($session) !== null);
-    }
-
-    /**
      * The pace the credited runs actually averaged — elapsed time over
      * distance — over the identical best-run/day-total selection
      * {@see self::creditedKm()} grades the km with, so the two figures a

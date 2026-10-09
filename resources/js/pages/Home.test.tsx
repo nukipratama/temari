@@ -14,7 +14,6 @@ import { makeUser, setMockPage } from '@/test/setup';
 import Home from './Home';
 
 const briefing: BriefingResult = {
-    vibeState: 'pumped',
     firstRead: false,
     mascotVoice: {
         id: 4,
@@ -25,12 +24,6 @@ const briefing: BriefingResult = {
         subject_id: 1,
         discriminator: '2026-06-12',
     },
-    recoveryLabel: 'Recovery: 41h',
-    recoveryTone: 'positive',
-    recoveryHoursLabel: '41h',
-    recoveryHours: 41,
-    streakLabel: 'Ran today',
-    sigilPattern: 'orct',
     mood: 'blazing',
 };
 

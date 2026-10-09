@@ -53,8 +53,8 @@ class WeeklyRecapNarrator
         - steady: flat and matter of fact. The week worked, that's the sentence.
         - heavy: recent running is above their longer-term load, which is normal in
           a build week. Say it plainly and once. If they mention feeling run down,
-          illness, poor sleep or under-fuelling can be the cause too, and telling
-          temari how they feel is the next step. Never diagnose or call it fatigue.
+          illness, poor sleep or under-fuelling can be the cause too.
+          Never diagnose or call it fatigue.
 
         WHAT THE WEEK ASKED FOR: get_planned_sessions returns the days the plan
         prescribed across this exact week, and how each was graded --

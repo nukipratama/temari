@@ -23,15 +23,8 @@ it('formats zero metres as zero km at either precision', function (): void {
         ->and(DistanceFormatter::kmString(0.0, DistanceFormatter::EXACT))->toBe('0.00');
 });
 
-it('passes null through kmOrNull and kmString', function (): void {
-    expect(DistanceFormatter::kmOrNull(null))->toBeNull()
-        ->and(DistanceFormatter::kmOrNull(null, DistanceFormatter::EXACT))->toBeNull()
-        ->and(DistanceFormatter::kmString(null))->toBeNull();
-});
-
-it('rounds a present distance through kmOrNull', function (): void {
-    expect(DistanceFormatter::kmOrNull(10470.0))->toBe(10.5)
-        ->and(DistanceFormatter::kmOrNull(10470.0, DistanceFormatter::EXACT))->toBe(10.47);
+it('passes null through kmString', function (): void {
+    expect(DistanceFormatter::kmString(null))->toBeNull();
 });
 
 it('renders a period-decimal string at each precision', function (): void {

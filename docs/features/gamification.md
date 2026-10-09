@@ -54,7 +54,7 @@ The rarity isn't a coin flip: [RarityScorer::score()](../../app/Services/Run/Sto
 
 Effort badges are read against the athlete's max HR, so a stale max quietly distorts them: `all_out` (hard) landed on 69% of runs while `easy_miles` (easy) fired on none at all, since its 70%-of-max bar describes a recovery jog rather than the easy run a Z2 session actually is. Both thresholds now sit where runners would recognise the effort, and max HR self-corrects during ingest (see [[stream-analysis]]).
 
-The result persists to the `run_cards` table via [RunCard](../../app/Models/RunCard.php): `rarity` is a string column cast to the `Rarity` enum, `badges` casts to an array, and `special_move` holds the name. The model exposes `forUser()`, `allBadgeCountsForUser()` (every `Badge` case, optionally date-ranged) for the collection views.
+The result persists to the `run_cards` table via [RunCard](../../app/Models/RunCard.php): `rarity` is a string column cast to the `Rarity` enum, `badges` casts to an array, and `special_move` holds the name. The model exposes `forUser()` for the collection views.
 
 **Two badges retired (Slice 7): `Berturut`/`streak` (7-day) and `Rajin`/`habit_forming` (3-day).** Both keyed off `CardContext::$consecutiveDaysBefore`, a daily-consecutive counter — a completely different signal from the weekly streak (`WeeklySnapshot::consecutiveWeekStreak()`), which still drives `StreakRemindCommand` untouched. `Badge` now has 16 cases (was 18 after Slice 2g retired the holiday badge). The frontend's `BADGE_LABELS`/`BADGE_ABILITY` catalog and its `prettyBadge()` fallback have since been deleted: nothing read them.
 

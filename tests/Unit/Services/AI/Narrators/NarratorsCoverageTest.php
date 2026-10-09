@@ -1273,38 +1273,6 @@ it('MonthlyRecapNarrator reads the plan window for a shorter month when the cloc
 
 // ── ProfileVoiceNarrator ───────────────────────────────────────────
 
-it('ProfileVoiceNarrator builds a mood-mix percent breakdown from story lines', function (): void {
-    $user = User::factory()->create();
-    $cutoff = Carbon::now()->subWeeks(11);
-
-    foreach (['blazing', 'blazing', 'blazing', 'chill', 'gassed'] as $mood) {
-        $activity = Activity::factory()->for($user)->analyzed()->create();
-        ActivityDetail::factory()->for($activity)->create(['start_date_local' => $cutoff->copy()->addDay()]);
-        StoryLine::factory()->for($user)->create([
-            'activity_id' => $activity->id,
-            'mood' => $mood,
-        ]);
-    }
-
-    $caller = fakeCaller(profileVoiceJson('Runmu lebih sering blazing.'));
-    $narrator = new ProfileVoiceNarrator($caller, app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(ProgressionSeriesBuilder::class), app(LifetimeStats::class));
-
-    $mix = $narrator->personaMix($user->fresh());
-    $blazing = collect($mix)->firstWhere('mood', 'blazing');
-    expect($blazing['mood'])->toBe('blazing');
-    expect($blazing['count'])->toBe(3);
-    expect($blazing['percent'])->toBe(60.0);
-    expect($narrator->generate($user->fresh()))->toBe('Runmu lebih sering blazing.');
-});
-
-it('ProfileVoiceNarrator returns an empty mix for a user with no story lines', function (): void {
-    $user = User::factory()->create();
-    $caller = fakeCaller(profileVoiceJson('x'));
-    $narrator = new ProfileVoiceNarrator($caller, app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(ProgressionSeriesBuilder::class), app(LifetimeStats::class));
-
-    expect($narrator->personaMix($user))->toBe([]);
-});
-
 it('ProfileVoiceNarrator returns profile voice on valid JSON', function (): void {
     $user = User::factory()->create();
     $caller = fakeCaller(profileVoiceJson('You have run 6247.5 km. Strong.'));

@@ -104,12 +104,12 @@ class AppServiceProvider extends ServiceProvider
         $this->app->scoped(ResolveFlaggedSubjectsAction::class);
 
         // Home's own repeats, all cross-service: the last run start is asked
-        // for by Vibe and twice by RecoveryWindow, and the four-week plan
-        // window the week builder loads is re-queried by SessionMatcher.
+        // for by Vibe and by the week plan's RecoveryWindow, and the four-week
+        // plan window the week builder loads is re-queried by SessionMatcher.
         $this->app->scoped(ResolveLastRunStartAction::class);
         $this->app->scoped(ResolvePlannedSessionsAction::class);
 
-        // Scoped so Vibe, the readiness clamp and the briefing share one
+        // Scoped so Vibe and the readiness clamp share one
         // `TrainingLoad::summary` memo instead of re-scanning per collaborator.
         $this->app->scoped(TrainingLoad::class);
     }

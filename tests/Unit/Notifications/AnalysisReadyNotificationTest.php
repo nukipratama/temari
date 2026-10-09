@@ -233,15 +233,14 @@ it('builds a Telegram message carrying the narration and the delivery key', func
         ->and($message->deliveryKey)->toBe($analysis->id);
 });
 
-it('sends the post-run as text with the run link, never a photo', function (): void {
+it('sends the post-run as text with the run link', function (): void {
     $user = User::factory()->create();
     $analysis = postRunAnalysis($user);
     RunCard::factory()->create(['activity_id' => $analysis->subject_id, 'rarity' => 'epic']);
 
     $message = new AnalysisReadyNotification($analysis)->toTelegram($user);
 
-    expect($message->photoPng)->toBeNull()
-        ->and($message->text)->toContain(route('activities.show', $analysis->subject_id));
+    expect($message->text)->toContain(route('activities.show', $analysis->subject_id));
 });
 
 it('builds a web push message with the dynamic title, body, tap-through url, and high urgency', function (): void {

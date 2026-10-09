@@ -54,12 +54,12 @@ describe('formStatusWord / formStatusTone / formStatusMeaning', () => {
         },
     );
 
-    it('points a heavy balance at other causes and at telling temari', () => {
+    it('points a heavy balance at other causes', () => {
         const meaning = formStatusMeaning('fatigued');
 
         expect(meaning).toContain('illness');
         expect(meaning).toContain('under-fuelling');
-        expect(meaning).toContain('tell temari how you feel');
+        expect(meaning).not.toContain('how you feel');
         expect(formStatusMeaning('overreaching')).toBe(meaning);
     });
 

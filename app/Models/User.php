@@ -247,14 +247,6 @@ class User extends Authenticatable
     }
 
     /**
-     * @return HasMany<StoryLine, $this>
-     */
-    public function storyLines(): HasMany
-    {
-        return $this->hasMany(StoryLine::class);
-    }
-
-    /**
      * The first whitespace token of the Strava display name, sanitized before it
      * flows into LLM prompts. Strips CR/LF and caps length so a hostile profile
      * name cannot inject instructions into a narrator prompt.

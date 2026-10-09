@@ -75,15 +75,4 @@ final readonly class ActivityNarrationContext
     {
         return DistanceFormatter::km((float) ($this->distanceMeters ?? 0), $precision);
     }
-
-    /**
-     * Distance in kilometres rounded to the given precision, or null when
-     * the distance is unknown.
-     */
-    public function distanceKmOrNull(int $precision): ?float
-    {
-        return $this->distanceMeters !== null
-            ? DistanceFormatter::km($this->distanceMeters, $precision)
-            : null;
-    }
 }

@@ -11,7 +11,7 @@ export const MOOD_LABEL: Record<Mood, string> = {
     chill: 'chill',
 };
 
-// Solid mood fill (bg-mood-{key}); use for persona bar segments + sigil swatches.
+// Solid mood fill (bg-mood-{key}); use for persona bar segments.
 export const MOOD_FILL: Record<Mood, string> = {
     blazing: 'bg-mood-blazing',
     easy: 'bg-mood-easy',

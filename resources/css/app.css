@@ -798,18 +798,7 @@ body {
     animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-/* Hide native scrollbar — used on horizontal strips where explicit
-   arrow buttons or swipe are the scroll affordance, so the native bar
-   would just be visual noise. */
 @layer utilities {
-    .scrollbar-hide {
-        -ms-overflow-style: none;
-        scrollbar-width: none;
-    }
-    .scrollbar-hide::-webkit-scrollbar {
-        display: none;
-    }
-
     /* Breaks a section out of a centered, padded parent (e.g. PageContainer)
        to fill the full viewport width. 50vw is measured from the true
        viewport rather than the nearest containing block, so it escapes

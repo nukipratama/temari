@@ -18,7 +18,6 @@
     "athletes[].served.reasons",
     "athletes[].served.reasons.capped",
     "athletes[].served.reasons.content_filter",
-    "athletes[].served.reasons.dead_letter",
     "athletes[].served.reasons.demo",
     "athletes[].served.reasons.return",
     "athletes[].served.reasons.unattributed",

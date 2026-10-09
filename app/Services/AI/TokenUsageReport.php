@@ -39,7 +39,7 @@ class TokenUsageReport
      *
      * @var list<string>
      */
-    private const array RULE_BASED_REASONS = ['demo', 'capped', 'return', 'dead_letter', 'content_filter', 'unattributed'];
+    private const array RULE_BASED_REASONS = ['demo', 'capped', 'return', 'content_filter', 'unattributed'];
 
     public function __construct(
         private readonly LlmCostCalculator $costCalculator,
@@ -494,7 +494,7 @@ class TokenUsageReport
      *     today:float, last7:float, last30:float, calls:int, tokens:int,
      *     ceiling:float|null, ceiling_overridden:bool, capped:bool,
      *     sparkline: list<array{day:string, cost:float}>,
-     *     served: array{llm:int, rule_based:int, unknown:int, reasons: array{demo:int, capped:int, return:int, dead_letter:int, content_filter:int, unattributed:int}},
+     *     served: array{llm:int, rule_based:int, unknown:int, reasons: array{demo:int, capped:int, return:int, content_filter:int, unattributed:int}},
      *     flags:int, dead_lettered:int,
      * }>
      */
@@ -658,7 +658,7 @@ class TokenUsageReport
      * @param  list<int>  $demoUserIds  Pre-resolved by the caller ({@see self::athletes()}), which
      *                                  already fetches every user's `is_demo` flag for the identity
      *                                  map, so this method does not re-query it.
-     * @return array<int, array{llm:int, rule_based:int, unknown:int, reasons: array{demo:int, capped:int, return:int, dead_letter:int, content_filter:int, unattributed:int}}>
+     * @return array<int, array{llm:int, rule_based:int, unknown:int, reasons: array{demo:int, capped:int, return:int, content_filter:int, unattributed:int}}>
      */
     private function servedByCounts(Carbon $from, Carbon $to, array $demoUserIds): array
     {
@@ -669,7 +669,7 @@ class TokenUsageReport
 
         $owners = AnalysisSubjectMap::ownerIdsForRows($rows);
 
-        /** @var array<int, array{llm:int, rule_based:int, unknown:int, reasons: array{demo:int, capped:int, return:int, dead_letter:int, content_filter:int, unattributed:int}}> $counts */
+        /** @var array<int, array{llm:int, rule_based:int, unknown:int, reasons: array{demo:int, capped:int, return:int, content_filter:int, unattributed:int}}> $counts */
         $counts = [];
         foreach ($rows as $row) {
             $userId = $owners[$row->id] ?? null;
@@ -700,7 +700,7 @@ class TokenUsageReport
     }
 
     /**
-     * @return array{llm:int, rule_based:int, unknown:int, reasons: array{demo:int, capped:int, return:int, dead_letter:int, content_filter:int, unattributed:int}}
+     * @return array{llm:int, rule_based:int, unknown:int, reasons: array{demo:int, capped:int, return:int, content_filter:int, unattributed:int}}
      */
     private static function emptyServedSplit(): array
     {

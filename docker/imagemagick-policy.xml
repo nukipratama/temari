@@ -12,9 +12,9 @@
 <!ATTLIST policy value CDATA #IMPLIED>
 ]>
 <!--
-  Hardened over the stock "open" alpine policy. The only ImageMagick use in this
-  app is the run-card rasteriser (app/Services/Run/Story/RunCardImageRenderer.php):
-  it reads a server-built, fully-escaped SVG blob and writes a PNG. Nothing should
+  Hardened over the stock "open" alpine policy. The only ImageMagick uses in this
+  repo are the dev-image brand-asset scripts (scripts/build-splash-screens.php and
+  resources/brand/build-og.mjs): they read a repo-owned SVG and write a PNG. Nothing should
   ever fetch a URL, run a delegate over the network, or read a file indirectly — so
   those coders/paths are denied here as defence-in-depth against a future change
   that lets unescaped content reach librsvg. SVG/MSVG/PNG coders stay enabled (not

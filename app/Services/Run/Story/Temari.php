@@ -87,7 +87,6 @@ class Temari
         );
     }
 
-    /** A 4-char sigil code; the renderer reads each char as a stitch op. */
     public static function sigilForMoodPublic(Mood $mood): string
     {
         return match ($mood) {

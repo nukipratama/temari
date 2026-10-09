@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Run\Plan;
 
 use App\Enums\PaceBand;
+use App\Enums\SessionType;
 use App\Models\PlannedSession;
 
 final readonly class IntensityPrescription
@@ -36,6 +37,12 @@ final readonly class IntensityPrescription
         // A missing VDOT pace does not erase the hard-day decision. It only
         // means the display cannot attach a seconds-per-kilometre target yet.
         return $this->hardMinutes === 0 || $this->paceBand === null;
+    }
+
+    public static function isEasyQualityDay(PlannedSession $session, SessionType $type): bool
+    {
+        return in_array($type, [SessionType::Tempo, SessionType::Interval], true)
+            && self::fromSession($session)?->isEasy() === true;
     }
 
     public static function fromSession(PlannedSession $session): ?self

@@ -224,7 +224,7 @@ from the same origin, immutable, as everything else. See [[design-tokens]].
 [build-og.mjs](resources/brand/build-og.mjs) — colors from the same
 `build-tokens.mjs` the stylesheet uses, mark geometry read straight out of
 [temari-mark.svg](resources/brand/logo/temari-mark.svg), and text rasterised
-through librsvg against the fonts the image installs. The per-card page ships
+through librsvg against the fonts the dev image installs. The per-card page ships
 its own tags on top of these.
 
 Nothing in a `<head>` fails loudly when its target is absent, so

@@ -160,9 +160,8 @@ final readonly class CardFacts
     }
 
     /**
-     * Badge display names with their emoji emblem removed. The image carries a
-     * colour-emoji font, but a colour glyph through librsvg is not something
-     * the card should depend on.
+     * The names of the known badges among the first three slugs, with their
+     * emoji emblem removed.
      *
      * @param  array<int, string>  $slugs
      * @return list<string>

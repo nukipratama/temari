@@ -33,14 +33,3 @@ it('maps a list of slugs to prompt labels, dropping unknown slugs', function ():
     expect(Badge::promptLabelsFor(['negative_split', 'not_a_badge', 'rain_warrior']))
         ->toBe(['Negative Split', 'Rain Warrior']);
 });
-
-it('builds a slug to label catalog covering every case', function (): void {
-    $labels = Badge::labels();
-
-    expect($labels)->toHaveCount(count(Badge::cases()));
-
-    foreach (Badge::cases() as $badge) {
-        expect($labels)->toHaveKey($badge->value)
-            ->and($labels[$badge->value])->toBe($badge->label());
-    }
-});

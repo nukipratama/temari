@@ -124,7 +124,6 @@ export interface RuleBasedReasons {
     demo: number;
     capped: number;
     return: number;
-    dead_letter: number;
     content_filter: number;
     /** No reason recorded: a null `rule_based_reason`, e.g. a pre-widening row. */
     unattributed: number;

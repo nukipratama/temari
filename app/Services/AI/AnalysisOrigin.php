@@ -31,7 +31,6 @@ enum AnalysisOrigin: string
     case Unknown = 'unknown';
     case Demo = 'demo';
     case Capped = 'capped';
-    case DeadLetter = 'dead_letter';
     case ContentFilter = 'content_filter';
 
     public function label(): string
@@ -46,7 +45,6 @@ enum AnalysisOrigin: string
             self::Unknown => 'Unattributed',
             self::Demo => 'Demo account',
             self::Capped => 'Daily ceiling reached',
-            self::DeadLetter => 'Dead-lettered block',
             self::ContentFilter => 'Content filter fallback',
         };
     }

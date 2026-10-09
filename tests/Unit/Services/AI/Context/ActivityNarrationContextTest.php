@@ -44,19 +44,17 @@ it('rounds distance to the requested precision', function (): void {
     $ctx = ActivityNarrationContext::fromDetail($detail);
 
     expect($ctx->distanceKm(1))->toBe(8.3)
-        ->and($ctx->distanceKm(2))->toBe(8.26)
-        ->and($ctx->distanceKmOrNull(2))->toBe(8.26);
+        ->and($ctx->distanceKm(2))->toBe(8.26);
 });
 
-it('treats a missing distance as 0 km but null for the nullable accessor', function (): void {
+it('treats a missing distance as 0 km', function (): void {
     $detail = narrationDetail(['distance' => null]);
 
     $ctx = ActivityNarrationContext::fromDetail($detail);
 
     expect($ctx->distanceMeters)->toBeNull()
         ->and($ctx->distanceKm(1))->toBe(0.0)
-        ->and($ctx->distanceKm(2))->toBe(0.0)
-        ->and($ctx->distanceKmOrNull(2))->toBeNull();
+        ->and($ctx->distanceKm(2))->toBe(0.0);
 });
 
 it('falls back to nulls and an empty zone map when the stream summary is null', function (): void {
@@ -78,6 +76,5 @@ it('builds an all-null context when the detail itself is missing', function (): 
         ->and($ctx->zonePct)->toBe([])
         ->and($ctx->weatherTempC)->toBeNull()
         ->and($ctx->weatherRain)->toBeNull()
-        ->and($ctx->distanceKm(1))->toBe(0.0)
-        ->and($ctx->distanceKmOrNull(2))->toBeNull();
+        ->and($ctx->distanceKm(1))->toBe(0.0);
 });

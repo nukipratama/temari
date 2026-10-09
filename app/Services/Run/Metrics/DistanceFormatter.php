@@ -27,11 +27,6 @@ final class DistanceFormatter
         return round($meters / 1000, $precision);
     }
 
-    public static function kmOrNull(?float $meters, int $precision = self::COPY): ?float
-    {
-        return $meters === null ? null : self::km($meters, $precision);
-    }
-
     public static function kmString(?float $meters, int $precision = self::COPY): ?string
     {
         return $meters === null ? null : DecimalFormatter::decimal(self::km($meters, $precision), $precision);

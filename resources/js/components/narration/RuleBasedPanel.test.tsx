@@ -30,7 +30,6 @@ function athlete(overrides: Partial<AthleteRow> = {}): AthleteRow {
                 demo: 0,
                 capped: 0,
                 return: 0,
-                dead_letter: 0,
                 content_filter: 0,
                 unattributed: 0,
             },
@@ -78,7 +77,6 @@ describe('RuleBasedPanel', () => {
                                 demo: 0,
                                 capped: 31,
                                 return: 14,
-                                dead_letter: 6,
                                 content_filter: 4,
                                 unattributed: 2,
                             },
@@ -95,7 +93,6 @@ describe('RuleBasedPanel', () => {
                                 demo: 0,
                                 capped: 0,
                                 return: 6,
-                                dead_letter: 0,
                                 content_filter: 3,
                                 unattributed: 0,
                             },
@@ -113,7 +110,7 @@ describe('RuleBasedPanel', () => {
         expect(screen.getByText('Nuki 14 · Rani 6')).toBeInTheDocument();
     });
 
-    it('flags content-filter, dead-letter and unattributed rows', () => {
+    it('flags content-filter and unattributed rows', () => {
         render(
             <RuleBasedPanel
                 athletes={[
@@ -126,7 +123,6 @@ describe('RuleBasedPanel', () => {
                                 demo: 0,
                                 capped: 0,
                                 return: 0,
-                                dead_letter: 6,
                                 content_filter: 4,
                                 unattributed: 2,
                             },
@@ -136,9 +132,6 @@ describe('RuleBasedPanel', () => {
             />,
         );
 
-        expect(screen.getByText('dead-lettered block')).toHaveClass(
-            'text-ember-ink',
-        );
         expect(screen.getByText('content filter tripped')).toHaveClass(
             'text-ember-ink',
         );
@@ -160,7 +153,6 @@ describe('RuleBasedPanel', () => {
                                 demo: 5,
                                 capped: 3,
                                 return: 0,
-                                dead_letter: 0,
                                 content_filter: 0,
                                 unattributed: 0,
                             },
@@ -191,7 +183,6 @@ describe('RuleBasedPanel', () => {
                                 demo: 0,
                                 capped: 1,
                                 return: 0,
-                                dead_letter: 0,
                                 content_filter: 0,
                                 unattributed: 0,
                             },

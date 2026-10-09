@@ -37,10 +37,11 @@ RUN install-php-extensions \
         imagick \
         pcov
 
-# librsvg is ImageMagick's SVG delegate — without it Imagick can't rasterise the
-# server-rendered run-card SVG to PNG for the Telegram post-run photo.
-# fontconfig is how librsvg resolves the SVG's font-family names; font-dejavu is
-# the fallback, font-jetbrains-mono one of the three families the card names.
+# librsvg is ImageMagick's SVG delegate — scripts/build-splash-screens.php
+# (Imagick) and resources/brand/build-og.mjs (the `magick` CLI) rasterise SVG
+# through it. fontconfig is how librsvg resolves the SVG's font-family names;
+# font-dejavu is the fallback, font-jetbrains-mono one of the three families the
+# social card names.
 # git is the gate's changed-file source (rector, vitest --changed, Pest tests).
 RUN apk add --no-cache librsvg font-dejavu font-jetbrains-mono fontconfig git
 
@@ -49,13 +50,13 @@ RUN apk add --no-cache librsvg font-dejavu font-jetbrains-mono fontconfig git
 # GIT_CONFIG_* on the app service in compose.yaml, which needs no rebuild.
 
 # Fraunces + Plus Jakarta Sans are not packaged for Alpine, so they ship in the
-# repo. Without them the card's name and prose fall back to DejaVu and stop
-# matching the client-rendered share image. See resources/brand/fonts/README.md.
+# repo. Without them resources/brand/build-og.mjs falls back to DejaVu for the
+# social card's text. See resources/brand/fonts/README.md.
 COPY resources/brand/fonts/*.ttf /usr/share/fonts/temari/
 RUN fc-cache -f
 
 # Harden ImageMagick over the stock "open" alpine policy — deny network/scripting
-# coders the run-card rasteriser never uses. SVG/PNG stay enabled (see the file).
+# coders the brand-asset scripts never use. SVG/PNG stay enabled (see the file).
 COPY docker/imagemagick-policy.xml /etc/ImageMagick-7/policy.xml
 
 COPY --from=composer-src /usr/bin/composer /usr/bin/composer
@@ -149,24 +150,7 @@ RUN install-php-extensions \
         bcmath \
         gmp \
         opcache \
-        pcntl \
-        imagick
-
-# librsvg is ImageMagick's SVG delegate — without it Imagick can't rasterise the
-# server-rendered run-card SVG to PNG for the Telegram post-run photo.
-# fontconfig is how librsvg resolves the SVG's font-family names; font-dejavu is
-# the fallback, font-jetbrains-mono one of the three families the card names.
-RUN apk add --no-cache librsvg font-dejavu font-jetbrains-mono fontconfig
-
-# Fraunces + Plus Jakarta Sans are not packaged for Alpine, so they ship in the
-# repo. Without them the card's name and prose fall back to DejaVu and stop
-# matching the client-rendered share image. See resources/brand/fonts/README.md.
-COPY resources/brand/fonts/*.ttf /usr/share/fonts/temari/
-RUN fc-cache -f
-
-# Harden ImageMagick over the stock "open" alpine policy — deny network/scripting
-# coders the run-card rasteriser never uses. SVG/PNG stay enabled (see the file).
-COPY docker/imagemagick-policy.xml /etc/ImageMagick-7/policy.xml
+        pcntl
 
 COPY --from=vendor /var/www/html /var/www/html
 COPY --from=assets /var/www/html/public/build /var/www/html/public/build

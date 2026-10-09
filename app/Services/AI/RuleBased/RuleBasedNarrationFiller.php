@@ -356,7 +356,7 @@ final readonly class RuleBasedNarrationFiller
                 'big' => "well above your usual week, and your load balance is still steady.",
                 default => "right around your usual week.",
             },
-            TrainingFormStatus::Fatigued, TrainingFormStatus::Overreaching => "your recent running is above your longer-term load, which is normal in a build week. if you feel run down, illness, poor sleep or under-fuelling can be behind it too, so tell me how you feel.",
+            TrainingFormStatus::Fatigued, TrainingFormStatus::Overreaching => "your recent running is above your longer-term load, which is normal in a build week. if you feel run down, illness, poor sleep or under-fuelling can be behind it too.",
             default => "steady. that's the read.",
         };
 

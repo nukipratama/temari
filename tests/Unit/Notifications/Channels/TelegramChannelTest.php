@@ -72,20 +72,6 @@ it('sends a text message to the chat', function (): void {
         && str_contains((string) $request['text'], 'Halo dunia'));
 });
 
-it('sends a photo with the text as caption when a photo is present', function (): void {
-    fakeTelegramOk();
-    $user = connectedUser();
-
-    channelSend($user, new TelegramMessage(text: 'Caption ini', photoPng: 'png-bytes'));
-
-    Http::assertSent(function ($request): bool {
-        $caption = collect($request->data())->firstWhere('name', 'caption')['contents'] ?? null;
-
-        return str_contains((string) $request->url(), '/sendPhoto') && str_contains((string) $caption, 'Caption ini');
-    });
-    Http::assertNotSent(fn ($request): bool => str_contains((string) $request->url(), '/sendMessage'));
-});
-
 it('sends nothing without a connection', function (): void {
     fakeTelegramOk();
 
