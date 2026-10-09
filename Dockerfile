@@ -98,7 +98,7 @@ EXPOSE 80
 # Composer install (no dev deps), then dump optimized autoloader. The second
 # composer call also fires post-autoload-dump → `php artisan package:discover`,
 # which writes bootstrap/cache/{packages,services}.php.
-FROM composer-src AS vendor
+FROM composer-src AS vendor-deps
 WORKDIR /var/www/html
 
 COPY composer.json composer.lock ./
@@ -108,6 +108,7 @@ RUN --mount=type=cache,target=/tmp/composer-cache,sharing=locked \
         --prefer-dist --no-interaction --no-progress \
         --ignore-platform-req=ext-pcntl
 
+FROM vendor-deps AS vendor
 COPY . .
 RUN rm .npmrc
 # --no-scripts skips the post-autoload-dump hook (package:discover). The
@@ -118,7 +119,8 @@ RUN composer dump-autoload --optimize --classmap-authoritative --no-scripts
 
 # ─── Stage 2: assets ────────────────────────────────────────────────────────
 # Build Vite bundle (tailwind via @tailwindcss/vite). Vendor dir is needed
-# because some Laravel packages publish CSS/JS that Vite picks up.
+# because Tailwind scans it for class names. It comes from vendor-deps so a
+# PHP-only change leaves this stage cached.
 FROM node-src AS assets
 WORKDIR /var/www/html
 
@@ -128,7 +130,7 @@ RUN --mount=type=cache,target=/root/.npm,sharing=locked \
 
 COPY resources ./resources
 COPY public ./public
-COPY --from=vendor /var/www/html/vendor ./vendor
+COPY --from=vendor-deps /var/www/html/vendor ./vendor
 RUN npm run build
 
 # ─── Stage 3: runtime ───────────────────────────────────────────────────────
