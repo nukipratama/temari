@@ -253,39 +253,7 @@ it('chained weekly_recap retry resumes the earliest unfilled link, not the click
     Carbon::setTestNow();
 });
 
-it('chained weekly_recap head regenerate (Done clicked row) re-narrates that exact row', function (): void {
-    Carbon::setTestNow('2026-05-18 05:30:00');
-    $user = User::factory()->create();
-
-    // An earlier still-Pending link exists, but a Done head is being regenerated.
-    $earlier = WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-03', 'runs' => 3]);
-    Analysis::factory()->create([
-        'subject_type' => WeeklySnapshot::class,
-        'subject_id' => $earlier->id,
-        'analysis_type' => AnalysisType::WeeklyRecap,
-        'discriminator' => null,
-        'status' => AnalysisStatus::Pending,
-    ]);
-    $head = WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-17', 'runs' => 4]);
-    Analysis::factory()->done('latest recap')->create([
-        'subject_type' => WeeklySnapshot::class,
-        'subject_id' => $head->id,
-        'analysis_type' => AnalysisType::WeeklyRecap,
-        'discriminator' => null,
-        'generated_at' => Carbon::now()->subHour(),
-    ]);
-
-    $response = $this->actingAs($user)
-        ->postJson("/api/analyses/weekly_recap/{$head->id}/trigger")
-        ->assertOk();
-
-    // A Done clicked row is a head regenerate → stays on the clicked (head) row.
-    expect($response->json('subject_id'))->toBe($head->id);
-
-    Carbon::setTestNow();
-});
-
-it('chained weekly_recap regenerate on a Done NON-head row resumes the chain instead (server guard)', function (): void {
+it('chained weekly_recap regenerate re-narrates only the Done head row; a Done NON-head row resumes the chain instead (server guard)', function (): void {
     Carbon::setTestNow('2026-05-18 05:30:00');
     $user = User::factory()->create();
 
@@ -307,7 +275,7 @@ it('chained weekly_recap regenerate on a Done NON-head row resumes the chain ins
         'generated_at' => Carbon::now()->subHour(),
     ]);
     // The actual head (latest runs>0 week) sits after the clicked mid row.
-    WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-17', 'runs' => 5]);
+    $head = WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-17', 'runs' => 5]);
 
     $response = $this->actingAs($user)
         ->postJson("/api/analyses/weekly_recap/{$midDone->id}/trigger")
@@ -315,6 +283,21 @@ it('chained weekly_recap regenerate on a Done NON-head row resumes the chain ins
 
     // A Done non-head POST must NOT re-narrate itself; it resumes the earliest unfilled link.
     expect($response->json('subject_id'))->toBe($earliest->id);
+
+    Analysis::factory()->done('latest recap')->create([
+        'subject_type' => WeeklySnapshot::class,
+        'subject_id' => $head->id,
+        'analysis_type' => AnalysisType::WeeklyRecap,
+        'discriminator' => null,
+        'generated_at' => Carbon::now()->subHour(),
+    ]);
+
+    $response = $this->actingAs($user)
+        ->postJson("/api/analyses/weekly_recap/{$head->id}/trigger")
+        ->assertOk();
+
+    // A Done clicked row is a head regenerate → stays on the clicked (head) row.
+    expect($response->json('subject_id'))->toBe($head->id);
 
     Carbon::setTestNow();
 });
@@ -344,36 +327,6 @@ it('chained monthly_recap retry resumes the earliest unfilled month, not the cli
 
     // The payload reflects the resumed (earliest) month, not the clicked one.
     expect($response->json('discriminator'))->toBe('2026-03');
-
-    Carbon::setTestNow();
-});
-
-it('chained monthly_recap head regenerate (Done clicked month) re-narrates that exact month', function (): void {
-    Carbon::setTestNow('2026-06-17 05:30:00');
-    $user = User::factory()->create();
-
-    // An earlier still-Pending month exists, but a Done head is being regenerated.
-    Analysis::factory()->create([
-        'subject_type' => AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE,
-        'subject_id' => $user->id,
-        'analysis_type' => AnalysisType::MonthlyRecap,
-        'discriminator' => '2026-03',
-        'status' => AnalysisStatus::Pending,
-    ]);
-    Analysis::factory()->done('latest recap')->create([
-        'subject_type' => AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE,
-        'subject_id' => $user->id,
-        'analysis_type' => AnalysisType::MonthlyRecap,
-        'discriminator' => '2026-05',
-        'generated_at' => Carbon::now()->subHour(),
-    ]);
-
-    $response = $this->actingAs($user)
-        ->postJson("/api/analyses/monthly_recap/{$user->id}/trigger?discriminator=2026-05")
-        ->assertOk();
-
-    // A Done clicked head month is a head regenerate → stays on the clicked month.
-    expect($response->json('discriminator'))->toBe('2026-05');
 
     Carbon::setTestNow();
 });
@@ -462,7 +415,7 @@ it('chained monthly_recap head regenerate ignores the still-open current month s
     Carbon::setTestNow();
 });
 
-it('chained monthly_recap regenerate on a Done NON-head month resumes the chain instead (server guard)', function (): void {
+it('chained monthly_recap regenerate re-narrates only the Done head month; a Done NON-head month resumes the chain instead (server guard)', function (): void {
     Carbon::setTestNow('2026-06-17 05:30:00');
     $user = User::factory()->create();
 
@@ -496,6 +449,13 @@ it('chained monthly_recap regenerate on a Done NON-head month resumes the chain 
 
     // A Done non-head POST must NOT re-narrate itself; it resumes the earliest unfilled month.
     expect($response->json('discriminator'))->toBe('2026-03');
+
+    $response = $this->actingAs($user)
+        ->postJson("/api/analyses/monthly_recap/{$user->id}/trigger?discriminator=2026-05")
+        ->assertOk();
+
+    // A Done clicked head month is a head regenerate → stays on the clicked month.
+    expect($response->json('discriminator'))->toBe('2026-05');
 
     Carbon::setTestNow();
 });
@@ -538,32 +498,14 @@ it('chained post_run_speech retry resumes the earliest unfilled run, not the cli
     Carbon::setTestNow();
 });
 
-it('chained post_run_speech head regenerate (Done latest run) re-narrates that exact run', function (): void {
-    Carbon::setTestNow('2026-06-17 05:30:00');
-    $user = User::factory()->create();
-
-    // An earlier still-Pending run exists, but the Done latest run (head) is regenerated.
-    activityWithSpeech($user, '2026-05-01 06:00:00', AnalysisStatus::Pending);
-    $head = activityWithSpeech($user, '2026-05-20 06:00:00', AnalysisStatus::Done, 'latest speech');
-
-    $response = $this->actingAs($user)
-        ->postJson("/api/analyses/post_run_speech/{$head->id}/trigger")
-        ->assertOk();
-
-    // A Done clicked head run is a head regenerate → stays on the clicked run.
-    expect($response->json('subject_id'))->toBe($head->id);
-
-    Carbon::setTestNow();
-});
-
-it('chained post_run_speech regenerate on a Done NON-head run resumes the chain instead (server guard)', function (): void {
+it('chained post_run_speech regenerate re-narrates only the Done head run; a Done NON-head run resumes the chain instead (server guard)', function (): void {
     Carbon::setTestNow('2026-06-17 05:30:00');
     $user = User::factory()->create();
 
     $earliest = activityWithSpeech($user, '2026-05-01 06:00:00', AnalysisStatus::Pending);
     $clickedMid = activityWithSpeech($user, '2026-05-10 06:00:00', AnalysisStatus::Done, 'mid speech');
     // The actual head (latest run) sits after the clicked mid run.
-    activityWithSpeech($user, '2026-05-20 06:00:00', AnalysisStatus::Done, 'head speech');
+    $head = activityWithSpeech($user, '2026-05-20 06:00:00', AnalysisStatus::Done, 'head speech');
 
     $response = $this->actingAs($user)
         ->postJson("/api/analyses/post_run_speech/{$clickedMid->id}/trigger")
@@ -571,6 +513,13 @@ it('chained post_run_speech regenerate on a Done NON-head run resumes the chain 
 
     // A Done non-head POST must NOT re-narrate itself; it resumes the earliest unfilled run.
     expect($response->json('subject_id'))->toBe($earliest->id);
+
+    $response = $this->actingAs($user)
+        ->postJson("/api/analyses/post_run_speech/{$head->id}/trigger")
+        ->assertOk();
+
+    // A Done clicked head run is a head regenerate → stays on the clicked run.
+    expect($response->json('subject_id'))->toBe($head->id);
 
     Carbon::setTestNow();
 });
