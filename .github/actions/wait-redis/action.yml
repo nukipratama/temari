@@ -1,0 +1,17 @@
+name: Wait for Redis
+description: Block until the container start-redis launched answers PING, for up to two minutes
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      run: |
+        for _ in $(seq 120); do
+          if docker exec redis redis-cli ping 2>/dev/null | grep -q PONG; then
+            exit 0
+          fi
+          sleep 1
+        done
+        echo "::error::Redis did not answer PING within 120s"
+        cat "$RUNNER_TEMP/redis-start.log" || true
+        docker logs redis || true
+        exit 1
