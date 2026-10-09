@@ -151,3 +151,25 @@ it('names an easy-prescribed tempo row as the easy run on the card and to the na
         ->and($narrated['2026-10-10'])->toBe($card['2026-10-10'])
         ->and($narrated)->toBe(array_intersect_key($card, $narrated));
 });
+
+it('names an easy-prescribed tempo row as the easy run on the card and to the narrator in a future week', function (): void {
+    $user = parityPlan(['2026-10-15' => ['prescribed_hard_minutes' => 0, 'prescribed_pace_band' => null]]);
+
+    $card = parityCardTypes($user);
+    $narrated = parityNarratedTypes($user, '2026-09-28', '2026-10-18');
+
+    expect($card['2026-10-15'])->toBe('easy')
+        ->and($narrated['2026-10-15'])->toBe($card['2026-10-15'])
+        ->and($narrated)->toBe(array_intersect_key($card, $narrated));
+});
+
+it('names an easy-prescribed tempo row as the easy run on the card and to the narrator in a past week', function (): void {
+    $user = parityPlan(['2026-09-30' => ['prescribed_hard_minutes' => 0, 'prescribed_pace_band' => null]]);
+
+    $card = parityCardTypes($user);
+    $narrated = parityNarratedTypes($user, '2026-09-28', '2026-10-18');
+
+    expect($card['2026-09-30'])->toBe('easy')
+        ->and($narrated['2026-09-30'])->toBe($card['2026-09-30'])
+        ->and($narrated)->toBe(array_intersect_key($card, $narrated));
+});

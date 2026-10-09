@@ -16,6 +16,7 @@ use App\Services\Run\Metrics\TrainingPaceCalculator;
 use App\Services\Run\Metrics\VdotEstimator;
 use App\Services\Run\Plan\CurrentWeekKm;
 use App\Services\Run\Plan\EffectiveSession;
+use App\Services\Run\Plan\IntensityPrescription;
 use App\Services\Run\Plan\IntentOutcome;
 use App\Services\Run\Plan\PlanRenderer;
 use App\Services\Run\Plan\SessionMatcher;
@@ -124,7 +125,8 @@ final class PlanContextTool extends UserTool
                     $session,
                     PlanRenderer::coreKmForSession($session, $longRunBaselineKm, $longRunCapKm, $selfScaled, $longRunProgressionCapKm),
                 );
-                $sessionType = $session->date->lt($today) ? $effective->sessionType : ($shownTypeByDate[$session->date->toDateString()] ?? $effective->sessionType);
+                $shownType = $session->date->lt($today) ? null : ($shownTypeByDate[$session->date->toDateString()] ?? null);
+                $sessionType = $shownType ?? (! $effective->isEased() && IntensityPrescription::isEasyQualityDay($session, $effective->sessionType) ? SessionType::Easy : $effective->sessionType);
                 $goalPace = PlanRenderer::goalPaceForNarration($session, $sessionType);
                 $timeTrial = PlanRenderer::timeTrialOf($session, $sessionType);
                 $targetPaceSec = $goalPace === [] && $timeTrial === null
