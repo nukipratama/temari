@@ -2,7 +2,8 @@
 title: Narration follows the athlete, not the run
 description: Scheduled narration is spent on athletes who opened the app in the last 7 days, read from users.last_seen_at, while plan rows, metrics and compliance keep running for everyone.
 tags: [decision, ai, cost]
-status: accepted
+status: superseded
+superseded_by: narration-spends-only-on-active-athletes
 reviewed: 2026-09-15
 code_refs:
   - app/Actions/AI/RecentlyActiveUsers.php

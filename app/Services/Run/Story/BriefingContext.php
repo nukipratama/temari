@@ -14,7 +14,7 @@ use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\HistoryNarrationGate;
 use App\Services\Run\Metrics\DistanceFormatter;
-use App\Services\Run\Metrics\LoadBalance;
+use App\Services\Run\Metrics\TrainingFormStatus;
 use App\Services\Run\Metrics\RecentTrainingStress;
 use App\Services\Run\Metrics\Readiness;
 use App\Services\Run\Metrics\TrainingLoad;
@@ -51,7 +51,7 @@ final readonly class BriefingContext
         public ?int $recoveryHours,
         public bool $ranToday,
         public ?int $daysSinceLastRun,
-        public ?string $formStatus,
+        public ?TrainingFormStatus $formStatus,
         /** `early_morning` (4-5) · `morning` (6-10) · `midday` (11-14) · `evening` (15-18) · `night` (19-3) */
         public string $timeBucket,
         /** Weeks in a row with at least 1 run, ending at the current week. */
@@ -118,7 +118,7 @@ final readonly class BriefingContext
         $volumeRampPct = self::volumeRampPct($thisWeek?->distance_km, $lastWeekToDate['km']);
         $fitnessTrend = self::fitnessTrend($byDate);
 
-        $liveFormStatus = self::stringOrNull($load['form_status'] ?? null);
+        $liveFormStatus = ($load['form_status'] ?? null) instanceof TrainingFormStatus ? $load['form_status'] : null;
         $formStatus = $liveFormStatus ?? $snapshotFormStatus;
         $readinessMonotony = self::floatOrNull($load['monotony'] ?? null);
         $stressProfile = $historyLoading ? null : app(RecentTrainingStress::class)->forUser($user, $asOf);
@@ -291,11 +291,6 @@ final readonly class BriefingContext
         };
     }
 
-    private static function stringOrNull(mixed $value): ?string
-    {
-        return is_string($value) ? $value : null;
-    }
-
     private static function floatOrNull(mixed $value): ?float
     {
         return is_int($value) || is_float($value) ? (float) $value : null;
@@ -453,7 +448,7 @@ final readonly class BriefingContext
         unset($inputs['form_status'], $inputs['fitness_trend']);
 
         return [
-            'load_balance' => is_string($formStatus) ? LoadBalance::fromStored($formStatus)?->value : null,
+            'load_balance' => is_string($formStatus) ? TrainingFormStatus::tryFrom($formStatus)?->loadBalance()->value : null,
             'long_term_load_trend' => $trend,
             ...$inputs,
         ];

@@ -5,8 +5,6 @@ tags: [decision, run, plan]
 status: accepted
 reviewed: 2026-10-02
 code_refs:
-  - app/Console/Commands/Run/CoachingResetCommand.php
-  - app/Services/Run/Plan/CoachingReset.php
   - app/Services/Run/Plan/PlanRecalibrationService.php
   - app/Services/Run/Plan/SeasonService.php
 ---
@@ -21,11 +19,11 @@ code_refs:
 
 ## Decision
 
-1. **Ordinary recalibration keeps history.** [PlanRecalibrationService::recalibrate()](app/Services/Run/Plan/PlanRecalibrationService.php#L47) recomputes run summaries and TRIMP, weekly snapshots and the future plan only. It no longer rewrites past prescriptions, re-grades past days or marks past plan-day narration stale. [rewriteHistory()](app/Services/Run/Plan/PlanRecalibrationService.php#L158) is public and only the reset calls it. **Product choice** (#1511): a grade shown against advice stays what the athlete saw.
-2. **One pre-launch reset rebuilds derived history once.** [CoachingResetCommand](app/Console/Commands/Run/CoachingResetCommand.php#L18) (`coaching:reset {--user=} {--dry-run}`) calls [CoachingReset::reset()](app/Services/Run/Plan/CoachingReset.php#L64) for each non-demo athlete, under the recalibration locks in one transaction. In order it:
+1. **Ordinary recalibration keeps history.** [PlanRecalibrationService::recalibrate()](app/Services/Run/Plan/PlanRecalibrationService.php#L47) recomputes run summaries and TRIMP, weekly snapshots and the future plan only. It no longer rewrites past prescriptions, re-grades past days or marks past plan-day narration stale. `rewriteHistory()` (removed 2026-10-08) is public and only the reset calls it. **Product choice** (#1511): a grade shown against advice stays what the athlete saw.
+2. **One pre-launch reset rebuilds derived history once.** `CoachingResetCommand` (removed 2026-10-08) (`coaching:reset {--user=} {--dry-run}`) calls `CoachingReset::reset()` (removed 2026-10-08) for each non-demo athlete, under the recalibration locks in one transaction. In order it:
    - recomputes run summaries and TRIMP, rebuilds personal records, weekly snapshots and the trend daily snapshots from the first run to today, and recomputes card PR flags and moods;
    - rewrites and re-grades past days oldest first, which includes the deletion rule of [[decoupling-describes-a-run-and-a-deletion-re-grades-its-day]] because grading reads the surviving runs;
-   - re-anchors the current season and regenerates its goals as of its own start date through [SeasonService::reanchorForReset()](app/Services/Run/Plan/SeasonService.php#L104), settles already settled seasons again and leaves legacy unsettled seasons alone;
+   - re-anchors the current season and regenerates its goals as of its own start date through `SeasonService::reanchorForReset()` (removed 2026-10-08), settles already settled seasons again and leaves legacy unsettled seasons alone;
    - regenerates the future plan, marks every Done narration the athlete owns stale (content kept, nothing dispatched) and stamps `users.coaching_reset_at`.
 
    **Product choice** (#1541, CR-D33).
@@ -36,6 +34,6 @@ code_refs:
 ## Consequences
 
 - A zone edit or a max-HR raise changes run metrics and the plan ahead, not last month's grades.
-- Release is a procedure, not a migration: see [[coaching-reset-runbook]].
+- Release is a procedure, not a migration: see `coaching-reset-runbook` (removed 2026-10-08).
 - The reset has no backup table. Undoing it means restoring a database backup taken before the apply; a code revert does not restore old grades.
 - [[plan-recalibration-job-horizon]] and [[plan-recalibration-retry-window]] still describe the queued job's limits, but the job no longer regrades history.

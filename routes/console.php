@@ -13,6 +13,8 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
 
+Schedule::alwaysOnOneServer();
+
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
@@ -32,7 +34,7 @@ $alertOnFailure = static fn (Event $event, string $command): Event => $event
 // would guard nothing. No $alertOnFailure
 // either: while Redis is down this would fail every 60s, and the alerter's own
 // cooldown is Redis-backed. Keep the scheduler healthcheck alive during maintenance.
-Schedule::command('schedule:heartbeat')->everyMinute()->onOneServer()->evenInMaintenanceMode();
+Schedule::command('schedule:heartbeat')->everyMinute()->evenInMaintenanceMode();
 
 // 00:01: daily kickoff for active users (last 7 days) — one briefing_mascot_voice
 // row each. The headline/suggestion/greeting/trend-caption types this once also
@@ -40,21 +42,21 @@ Schedule::command('schedule:heartbeat')->everyMinute()->onOneServer()->evenInMai
 // card voice went with W2's sweep.
 // Idempotent: a same-day re-run dispatches only still-missing types, never re-bills.
 // withoutOverlapping/onOneServer rationale: docs/architecture/scheduler.md.
-$alertOnFailure(Schedule::command('ai:daily-briefing')->dailyAt('00:01')->withoutOverlapping(30)->onOneServer(), 'ai:daily-briefing');
+$alertOnFailure(Schedule::command('ai:daily-briefing')->dailyAt('00:01')->withoutOverlapping(30), 'ai:daily-briefing');
 
 // 00:13: keep the seeded demo account fresh — one modest synthetic run (~5/week)
 // plus a rule-based refresh of today's briefing/greeting/trend so the demo never
 // renders an empty block once the date rolls. Zero LLM tokens
 // (withoutDispatching + rule-based fill), so the demo-billing exclusion holds.
 // Time chosen for Monday spacing — see docs/architecture/scheduler.md.
-Schedule::command('demo:daily-refresh')->dailyAt('00:13')->withoutOverlapping(10)->onOneServer();
+Schedule::command('demo:daily-refresh')->dailyAt('00:13')->withoutOverlapping(10);
 
 // Monday 00:16: narrate last week's recap once per user, on final data. The
 // per-ingest cascade only stages the row Pending (weekly cadence) — this is
 // the single scheduled LLM call that fills it. The recap reads the week's own
 // snapshot and plan, never the streak, so it does not wait on streak:settle;
 // ai:self-heal may already have narrated it at 00:00.
-$alertOnFailure(Schedule::command('ai:weekly-recap')->weeklyOn(1, '00:16')->withoutOverlapping(30)->onOneServer(), 'ai:weekly-recap');
+$alertOnFailure(Schedule::command('ai:weekly-recap')->weeklyOn(1, '00:16')->withoutOverlapping(30), 'ai:weekly-recap');
 
 // Monday 00:21: refresh the Profile-page persona summary + Temari voice once a
 // week, just after the recap (00:16). These two have no per-run cadence, so
@@ -63,7 +65,7 @@ $alertOnFailure(Schedule::command('ai:weekly-recap')->weeklyOn(1, '00:16')->with
 // "Reread". The voice quotes the settled weekly streak, so an athlete whose
 // streak:settle has not finished keeps the row Pending and ai:self-heal
 // narrates it once they are settled (AnalysisService::dispatchRow).
-Schedule::command('ai:weekly-profile')->weeklyOn(1, '00:21')->withoutOverlapping(20)->onOneServer();
+Schedule::command('ai:weekly-profile')->weeklyOn(1, '00:21')->withoutOverlapping(20);
 
 // 00:04 daily, ahead of plan:regenerate (Monday 00:26): retire a race the
 // athlete has already run. `completed_at` was only ever stamped by
@@ -71,7 +73,7 @@ Schedule::command('ai:weekly-profile')->weeklyOn(1, '00:21')->withoutOverlapping
 // unreplaced race stayed active forever and the periodizer kept planning
 // against a day in the past. Retried at :04 every hour until it succeeds that
 // day, so a deploy or a failure at 00:04 delays it by an hour, not a day.
-$alertOnFailure(Schedule::command('plan:close-finished-races')->hourlyAt(4)->withoutOverlapping(10)->onOneServer()
+$alertOnFailure(Schedule::command('plan:close-finished-races')->hourlyAt(4)->withoutOverlapping(10)
     ->when(static fn (): bool => ! SchedulerChain::isDoneToday(SchedulerChain::PLAN_CLOSE_FINISHED_RACES)), 'plan:close-finished-races')
     ->onSuccess(static fn () => SchedulerChain::markDoneToday(SchedulerChain::PLAN_CLOSE_FINISHED_RACES));
 
@@ -82,7 +84,7 @@ $alertOnFailure(Schedule::command('plan:close-finished-races')->hourlyAt(4)->wit
 // this feature ships — no separate backfill command needed. Must run before
 // plan:regenerate (Monday 00:26), which reads last week's average score.
 // Retried at :09 every hour until it succeeds that day.
-$alertOnFailure(Schedule::command('plan:score-compliance')->hourlyAt(9)->withoutOverlapping(20)->onOneServer()
+$alertOnFailure(Schedule::command('plan:score-compliance')->hourlyAt(9)->withoutOverlapping(20)
     ->when(static fn (): bool => ! SchedulerChain::isDoneToday(SchedulerChain::PLAN_SCORE_COMPLIANCE)), 'plan:score-compliance')
     ->onSuccess(static fn () => SchedulerChain::markDoneToday(SchedulerChain::PLAN_SCORE_COMPLIANCE));
 
@@ -100,7 +102,7 @@ $alertOnFailure(Schedule::command('plan:score-compliance')->hourlyAt(9)->without
 // it then calls PlanNarrationRequester::requestForCurrentWeek() per non-demo
 // user, which touches one row: plan_season_voice, re-read only when its
 // content fingerprint changed. See docs/architecture/llm-triggers.md.
-$alertOnFailure(Schedule::command('plan:regenerate')->mondays()->hourlyAt(26)->withoutOverlapping(45)->onOneServer()
+$alertOnFailure(Schedule::command('plan:regenerate')->mondays()->hourlyAt(26)->withoutOverlapping(45)
     ->when(static fn (): bool => SchedulerChain::prerequisitesMet(SchedulerChain::PLAN_REGENERATE)
         && ! SchedulerChain::isDoneThisWeek(SchedulerChain::PLAN_REGENERATE)), 'plan:regenerate')
     ->onSuccess(static fn () => SchedulerChain::markDoneThisWeek(SchedulerChain::PLAN_REGENERATE));
@@ -108,24 +110,24 @@ $alertOnFailure(Schedule::command('plan:regenerate')->mondays()->hourlyAt(26)->w
 // Monday 06:00: one maintainer alert if a Monday entry above or streak:settle
 // still has not succeeded six hours after the week closed. The entries keep
 // retrying hourly regardless; individual gate skips are not alerted.
-Schedule::command('schedule:monday-check')->weeklyOn(1, '06:00')->withoutOverlapping(10)->onOneServer();
+Schedule::command('schedule:monday-check')->weeklyOn(1, '06:00')->withoutOverlapping(10);
 
 // 1st of the month 00:10: HR zones change rarely, so a monthly sweep is enough
 // (also piggybacks the per-connect SyncZonesJob dispatch). Skips manual-source
 // profiles and connections lacking `profile:read_all`. No numeric derivation
 // behind "rarely" — see docs/architecture/scheduler.md.
-Schedule::command('strava:sync-zones')->monthlyOn(1, '00:10')->withoutOverlapping(55)->onOneServer();
+Schedule::command('strava:sync-zones')->monthlyOn(1, '00:10')->withoutOverlapping(55);
 
 // Trends tab's "Temari's read" — one verdict, the 7-day window. Scheduled +
 // cached like every other narrator — never generated live per page view. See
 // TREND_READ_RANGES. Used to also cover 30d/90d/12mo; those retired (#967)
 // once the page settled on a single verdict, cutting three of the four
 // scheduled trend-read calls.
-$alertOnFailure(Schedule::command('ai:trend-read 7d')->dailyAt('06:00')->withoutOverlapping(20)->onOneServer(), 'ai:trend-read 7d');
+$alertOnFailure(Schedule::command('ai:trend-read 7d')->dailyAt('06:00')->withoutOverlapping(20), 'ai:trend-read 7d');
 
 // Reconcile the seven closed days, never the open current day. Activity ingest
 // repairs the affected date immediately; this is the rest-day and missed-event backstop.
-$alertOnFailure(Schedule::command('trend:snapshot-daily')->dailyAt('03:45')->withoutOverlapping(55)->onOneServer(), 'trend:snapshot-daily');
+$alertOnFailure(Schedule::command('trend:snapshot-daily')->dailyAt('03:45')->withoutOverlapping(55), 'trend:snapshot-daily');
 
 // Hourly self-heal sweep: re-kicks the earliest stalled AI block per user
 // (weekly + monthly + per-activity chains, plus card/PR/briefing/profile/trend narration) — for
@@ -133,7 +135,7 @@ $alertOnFailure(Schedule::command('trend:snapshot-daily')->dailyAt('03:45')->wit
 // failures. Idempotent (invalidate=false): a no-op on blocks already advancing,
 // never re-bills; Failed blocks are bounded by MAX_SELF_HEAL_ATTEMPTS then
 // dead-lettered. Early-exits while generation is paused.
-$alertOnFailure(Schedule::command('ai:self-heal')->hourly()->withoutOverlapping(55)->onOneServer(), 'ai:self-heal');
+$alertOnFailure(Schedule::command('ai:self-heal')->hourly()->withoutOverlapping(55), 'ai:self-heal');
 
 // Hourly catch-up sweep, the creation-side companion to ai:self-heal: recreates
 // the kickoff rows a scheduler outage across 00:01 (or across the Monday
@@ -142,39 +144,39 @@ $alertOnFailure(Schedule::command('ai:self-heal')->hourly()->withoutOverlapping(
 // row of any status is untouched, nothing is queued and nothing is billed, so
 // unlike ai:self-heal it deliberately keeps running while generation is paused.
 // See docs/decisions/kickoff-catch-up-is-upsert-only.md.
-$alertOnFailure(Schedule::command('ai:catch-up')->hourly()->withoutOverlapping(55)->onOneServer(), 'ai:catch-up');
+$alertOnFailure(Schedule::command('ai:catch-up')->hourly()->withoutOverlapping(55), 'ai:catch-up');
 
 // 21:00: today's spend per athlete and against both ceilings, pushed to every admin.
-$alertOnFailure(Schedule::command('ai:spend-digest')->dailyAt('21:00')->withoutOverlapping(10)->onOneServer(), 'ai:spend-digest');
+$alertOnFailure(Schedule::command('ai:spend-digest')->dailyAt('21:00')->withoutOverlapping(10), 'ai:spend-digest');
 
 // 21:00: exception fingerprints first seen since yesterday's digest; silent on a quiet day.
-$alertOnFailure(Schedule::command('exceptions:digest')->dailyAt('21:00')->withoutOverlapping(10)->onOneServer(), 'exceptions:digest');
+$alertOnFailure(Schedule::command('exceptions:digest')->dailyAt('21:00')->withoutOverlapping(10), 'exceptions:digest');
 
 // 02:20 daily: prune failed_jobs older than 7 days. Most entries are superseded
 // dupes of the same Analysis rows (which are the real source of truth), so the
 // table just bloats and reads as an alarming unexplained count during triage.
 // 7-day derivation vs. MAX_SELF_HEAL_ATTEMPTS: docs/architecture/scheduler.md.
-Schedule::command('queue:prune-failed --hours=168')->dailyAt('02:20')->withoutOverlapping(15)->onOneServer();
+Schedule::command('queue:prune-failed --hours=168')->dailyAt('02:20')->withoutOverlapping(15);
 
 // 02:25 daily: prune analytics-connection metering and audit tables. 90 days
 // keeps enough history for cost/rate-limit triage without unbounded growth.
-Schedule::command('analytics:prune')->dailyAt('02:25')->withoutOverlapping(15)->onOneServer();
+Schedule::command('analytics:prune')->dailyAt('02:25')->withoutOverlapping(15);
 
 // Telegram webhook and long-poll receipts are retained for seven days; spent
 // link-token claims expire with their one-hour tokens.
-Schedule::command('model:prune', ['--model' => [TelegramUpdateReceipt::class]])->dailyAt('02:30')->withoutOverlapping(15)->onOneServer();
-Schedule::command('model:prune', ['--model' => [TelegramLinkTokenUse::class]])->dailyAt('02:31')->withoutOverlapping(15)->onOneServer();
+Schedule::command('model:prune', ['--model' => [TelegramUpdateReceipt::class]])->dailyAt('02:30')->withoutOverlapping(15);
+Schedule::command('model:prune', ['--model' => [TelegramLinkTokenUse::class]])->dailyAt('02:31')->withoutOverlapping(15);
 
 // 02:35 daily: drop push subscriptions no installed app has reported in 60 days,
 // such as the one a Home-Screen reinstall leaves behind.
-Schedule::command('notifications:prune-push-subscriptions')->dailyAt('02:35')->withoutOverlapping(15)->onOneServer();
+Schedule::command('notifications:prune-push-subscriptions')->dailyAt('02:35')->withoutOverlapping(15);
 
-Schedule::command('notifications:recover-deliveries')->everyFiveMinutes()->withoutOverlapping(10)->onOneServer();
+Schedule::command('notifications:recover-deliveries')->everyFiveMinutes()->withoutOverlapping(10);
 
 // Every 5 minutes: queue everything held in a quiet-hours window (22:00-04:00)
 // that has ended, oldest first. Running all day rather than once at 04:00 means a
 // deploy or outage across 04:00 delays the release by one tick, not a day.
-$alertOnFailure(Schedule::command('notifications:release-held')->everyFiveMinutes()->withoutOverlapping(10)->onOneServer(), 'notifications:release-held');
+$alertOnFailure(Schedule::command('notifications:release-held')->everyFiveMinutes()->withoutOverlapping(10), 'notifications:release-held');
 
 // Fallback poll behind the Strava webhook. Hourly around the clock rather than
 // only across the two running peaks: the old window left a five-hour overnight
@@ -185,16 +187,16 @@ $alertOnFailure(Schedule::command('notifications:release-held')->everyFiveMinute
 // At :07 so its inline per-athlete poll never holds back the serial :00 tick
 // (docs/architecture/scheduler.md, "Tick order").
 // Bounded withoutOverlapping so a strand self-releases, not 24h.
-Schedule::command('strava:sync')->hourlyAt(7)->withoutOverlapping(55)->onOneServer();
+Schedule::command('strava:sync')->hourlyAt(7)->withoutOverlapping(55);
 
 // Retry grants whose local connection is gone or revoked until Strava confirms release.
-Schedule::job(new RetryOrphanedStravaGrantReleasesJob())->dailyAt('02:40')->withoutOverlapping(30)->onOneServer();
+Schedule::job(new RetryOrphanedStravaGrantReleasesJob())->dailyAt('02:40')->withoutOverlapping(30);
 
 // Every 5 minutes: paced drain of pending activity stubs (the Strava rate-limit
 // pacer). Its input is strava:sync stubs + detail-fetch retries (webhook activities
 // self-dispatch their own ingest); batching keeps a backlog from 429-storming Strava.
 // Batch=20 vs. the 15-minute read bucket: docs/architecture/scheduler.md.
-Schedule::command('strava:ingest')->everyFiveMinutes()->withoutOverlapping(10)->onOneServer();
+Schedule::command('strava:ingest')->everyFiveMinutes()->withoutOverlapping(10);
 
 // Every 15 minutes: drain the summary-only backlog newest-first, so an imported
 // history converges on splits, TRIMP, PRs, cards and narration instead of waiting
@@ -207,32 +209,32 @@ Schedule::command('strava:ingest')->everyFiveMinutes()->withoutOverlapping(10)->
 // "headroom is measured at dispatch, not spent at dispatch" behaviour: a tick that
 // fires into a still-draining bucket queues only a handful of runs, and used to
 // wait an hour for its next chance. See docs/decisions/background-hydration-drain.md.
-Schedule::command('strava:hydrate-backlog')->everyFifteenMinutes()->withoutOverlapping(14)->onOneServer();
+Schedule::command('strava:hydrate-backlog')->everyFifteenMinutes()->withoutOverlapping(14);
 
 // Hourly catch-up for activity reverse-geocoding: backfills start coords from the
 // summary_polyline and re-queues ResolveActivityLocationJob for any GPS run still
 // missing location_resolved_at. Primary dispatch is per-ingest; this sweeps up
 // transient Nominatim misses and rows ingested before geo-on-ingest landed.
-Schedule::command('geo:backfill-locations')->hourly()->withoutOverlapping(55)->onOneServer();
+Schedule::command('geo:backfill-locations')->hourly()->withoutOverlapping(55);
 
 // 03:15 daily: correct forecast-sourced weather (rainIsForecast=true) once the
 // archive/reanalysis endpoint is reliable for it (a week+ old). Free HTTP, no
 // LLM; a miss just leaves the row for the next run to retry. Never touches
 // RunCard badges, only the weather_* columns.
-Schedule::command('weather:correct-forecast')->dailyAt('03:15')->withoutOverlapping(55)->onOneServer();
+Schedule::command('weather:correct-forecast')->dailyAt('03:15')->withoutOverlapping(55);
 
 // 03:30 daily: re-fetch weather for runs with coords but a null weather_temp_c,
 // left behind by a transient Open-Meteo blip during ingest. The documented
 // self-repair path so a weather gap closes itself instead of persisting forever.
 // Rows older than the forecast window route to the archive endpoint automatically,
 // so a daily sweep is enough. Free HTTP, no LLM.
-Schedule::command('weather:backfill')->dailyAt('03:30')->withoutOverlapping(55)->onOneServer();
+Schedule::command('weather:backfill')->dailyAt('03:30')->withoutOverlapping(55);
 
 // Saturday 18:00: nudge a user whose weekly streak is live but has no run yet
 // this week, while there's still time to save it before Sunday's week-close
 // breaks it. Demo excluded (checked inside the command); the streak_reminders
 // claim table makes a same-week re-run a no-op, not a second push.
-Schedule::command('streak:remind')->weeklyOn(Carbon::SATURDAY, '18:00')->withoutOverlapping(15)->onOneServer();
+Schedule::command('streak:remind')->weeklyOn(Carbon::SATURDAY, '18:00')->withoutOverlapping(15);
 
 // Hourly: settle every closed week not yet settled — mint a rest token every
 // 4th streak week, or spend one to forgive a runless week. Each per-user job
@@ -242,36 +244,39 @@ Schedule::command('streak:remind')->weeklyOn(Carbon::SATURDAY, '18:00')->without
 // within the hour, and an hour with nobody behind is one query. The weekly
 // profile voice, which quotes the streak, waits per athlete for this. No LLM
 // and no Strava call.
-$alertOnFailure(Schedule::command('streak:settle')->hourly()->withoutOverlapping(20)->onOneServer(), 'streak:settle');
+$alertOnFailure(Schedule::command('streak:settle')->hourly()->withoutOverlapping(20), 'streak:settle');
 
-// 18:00 daily (Asia/Jakarta, the app timezone): tell an athlete whose goal race
-// is tomorrow that it is tomorrow, while there is still an evening left to act
-// on it. Demo excluded (notDemo() on the race scan); an atomic claim that
-// records the race date in reminded_for_date makes a re-run for the same date
-// a no-op rather than a second push, while a rescheduled race is reminded again
-// for its new date, and a failed dispatch releases it. No LLM — the copy is templated.
-Schedule::command('race:remind')->dailyAt('18:00')->withoutOverlapping(15)->onOneServer();
+// Hourly 18:00-21:00 (Asia/Jakarta, the app timezone), ending before the 22:00
+// quiet hours: tell an athlete whose goal race is tomorrow that it is tomorrow,
+// while there is still an evening left to act on it. Demo excluded (notDemo()
+// on the race scan); an atomic claim that records the race date in
+// reminded_for_date makes every later tick for the same date a no-op rather
+// than a second push, so a missed 18:00 is caught up within the evening, while
+// a rescheduled race is reminded again for its new date, and a failed dispatch
+// releases it. No LLM — the copy is templated.
+Schedule::command('race:remind')->cron('0 18-21 * * *')->withoutOverlapping(15);
 
-// 09:00 daily (Asia/Jakarta, the app timezone): the morning after a race, ask
-// the athlete how it went. A passed date is not participation, so the race stays
-// pending until they confirm a run, enter a time or say they did not run. Demo
-// excluded (notDemo() on the race scan); an atomic claim that records the race
-// date in outcome_asked_for_date makes a re-run for the same date a no-op. No
-// LLM — the copy is templated.
-Schedule::command('race:ask-outcome')->dailyAt('09:00')->withoutOverlapping(15)->onOneServer();
+// Hourly 09:00-21:00 (Asia/Jakarta, the app timezone), ending before the 22:00
+// quiet hours: the day after a race, ask the athlete how it went. A passed date
+// is not participation, so the race stays pending until they confirm a run,
+// enter a time or say they did not run. Demo excluded (notDemo() on the race
+// scan); an atomic claim that records the race date in outcome_asked_for_date
+// makes every later tick for the same date a no-op, so a missed 09:00 is caught
+// up later that day. No LLM — the copy is templated.
+Schedule::command('race:ask-outcome')->cron('0 9-21 * * *')->withoutOverlapping(15);
 
 // 09:05 daily: settle each time trial from the last week once its day is over.
 // A run that passes the trial's gate becomes Test evidence with no question; a
 // run that does not gets one ask (inbox + push, quiet hours apply through the
 // shared hold, no reminder). Demo excluded (notDemo() on the scan); a settled
 // row is never selected again. No LLM, the copy is templated.
-Schedule::command('plan:settle-time-trials')->dailyAt('09:05')->withoutOverlapping(15)->onOneServer();
+Schedule::command('plan:settle-time-trials')->dailyAt('09:05')->withoutOverlapping(15);
 
 // 10:00 daily: tell each athlete whose supported race time improved by at least
 // half a VDOT point since the last note, at most once a week. The first run only
 // records each athlete's baseline. Demo excluded (notDemo() on the user scan),
 // quiet hours apply through the shared hold, and the copy is templated.
-Schedule::command('fitness:notify-improvement')->dailyAt('10:00')->withoutOverlapping(30)->onOneServer();
+Schedule::command('fitness:notify-improvement')->dailyAt('10:00')->withoutOverlapping(30);
 
 // Every 15 minutes: push today's briefing to each athlete at the quarter hour
 // their own run history says they usually start. Sends only — the row was
@@ -281,9 +286,13 @@ Schedule::command('fitness:notify-improvement')->dailyAt('10:00')->withoutOverla
 // inventory it cites). Idempotent per athlete per day through the shared
 // per-(analysis, channel) delivery claim. Demo excluded: the shared identity
 // has no outbound channel.
-$alertOnFailure(Schedule::command('briefing:morning-push')->everyFifteenMinutes()->withoutOverlapping(14)->onOneServer(), 'briefing:morning-push');
+$alertOnFailure(Schedule::command('briefing:morning-push')->everyFifteenMinutes()->withoutOverlapping(14), 'briefing:morning-push');
+
+// Every 5 minutes: record Horizon's throughput, runtime and wait per queue and
+// job for its Metrics tab, trimmed by horizon.metrics.trim_snapshots.
+$alertOnFailure(Schedule::command('horizon:snapshot')->everyFiveMinutes()->withoutOverlapping(4), 'horizon:snapshot');
 
 // Every 5 minutes: page once per incident for each entry that is late (a gated
 // entry once a whole day or week passes without a success, any other once its
 // heartbeat is stale) and send one line when it is back on time.
-$alertOnFailure(Schedule::command('schedule:check-late')->everyFiveMinutes()->withoutOverlapping(4)->onOneServer(), 'schedule:check-late');
+$alertOnFailure(Schedule::command('schedule:check-late')->everyFiveMinutes()->withoutOverlapping(4), 'schedule:check-late');

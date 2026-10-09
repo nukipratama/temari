@@ -27,7 +27,7 @@ class StoreRaceOutcomeRequest extends FormRequest
         return [
             'outcome' => ['required', Rule::enum(RaceOutcome::class)],
             'activity_id' => ['nullable', 'integer'],
-            'finish_time_sec' => ['nullable', 'integer', 'between:300,259200'],
+            'finish_time_sec' => ['nullable', 'integer', 'between:'.RaceGoal::MIN_GOAL_TIME_SEC.','.RaceGoal::MAX_GOAL_TIME_SEC],
         ];
     }
 }

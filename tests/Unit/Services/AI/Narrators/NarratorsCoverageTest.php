@@ -37,7 +37,9 @@ use App\Services\AI\Narrators\NarratorContinuity;
 use App\Services\AI\Narrators\OutcomeLabels;
 use App\Services\AI\Narrators\QuotedFigures;
 use App\Services\AI\Narrators\MonthlyRecapNarrator;
+use App\Enums\SessionType;
 use App\Services\AI\Narrators\PlanClampVoiceNarrator;
+use App\Services\Run\Metrics\ReadinessCeiling;
 use App\Services\AI\Narrators\PlanSeasonVoiceNarrator;
 use App\Services\AI\Narrators\PostRunSpeechNarrator;
 use App\Services\AI\Narrators\RunQuestionNarrator;
@@ -806,6 +808,39 @@ function assertOneStepWithContext(ClientFake $client, array $context): void
         && ! array_key_exists('tools', $params));
 }
 
+it('PlanClampVoiceNarrator hands the eased session and its reasons in the user message and answers in one step with no tools', function (): void {
+    [$caller, $client] = capturingCaller(json_encode(['voice' => 'you reported pain, so today is a rest day.'], JSON_THROW_ON_ERROR));
+
+    $voice = new PlanClampVoiceNarrator($caller)->generate([
+        'ceiling' => ReadinessCeiling::Rest,
+        'original' => SessionType::Interval,
+        'clamped_to' => SessionType::Rest,
+        'has_run_today' => false,
+        'readiness_reasons' => ['concerning_pain_reported'],
+        'readiness_inputs' => [],
+    ], 7);
+
+    expect($voice)->toBe('you reported pain, so today is a rest day.');
+    assertOneStepWithContext($client, [
+        'planned' => 'interval',
+        'stepped_down_to' => 'rest',
+        'readiness_reasons' => ['concerning_pain_reported'],
+    ]);
+});
+
+it('PlanClampVoiceNarrator throws on missing voice key', function (): void {
+    $caller = fakeCaller(json_encode(['other' => 'x'], JSON_THROW_ON_ERROR));
+
+    new PlanClampVoiceNarrator($caller)->generate([
+        'ceiling' => ReadinessCeiling::Rest,
+        'original' => SessionType::Interval,
+        'clamped_to' => SessionType::Rest,
+        'has_run_today' => false,
+        'readiness_reasons' => [],
+        'readiness_inputs' => [],
+    ], 7);
+})->throws(UnavailableException::class);
+
 it('PlanClampVoiceNarrator names the eased session as the one being run today', function (): void {
     $prompt = narratorPrompt(PlanClampVoiceNarrator::class);
 
@@ -1237,38 +1272,6 @@ it('MonthlyRecapNarrator reads the plan window for a shorter month when the cloc
 });
 
 // ── ProfileVoiceNarrator ───────────────────────────────────────────
-
-it('ProfileVoiceNarrator builds a mood-mix percent breakdown from story lines', function (): void {
-    $user = User::factory()->create();
-    $cutoff = Carbon::now()->subWeeks(11);
-
-    foreach (['blazing', 'blazing', 'blazing', 'chill', 'gassed'] as $mood) {
-        $activity = Activity::factory()->for($user)->analyzed()->create();
-        ActivityDetail::factory()->for($activity)->create(['start_date_local' => $cutoff->copy()->addDay()]);
-        StoryLine::factory()->for($user)->create([
-            'activity_id' => $activity->id,
-            'mood' => $mood,
-        ]);
-    }
-
-    $caller = fakeCaller(profileVoiceJson('Runmu lebih sering blazing.'));
-    $narrator = new ProfileVoiceNarrator($caller, app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(ProgressionSeriesBuilder::class), app(LifetimeStats::class));
-
-    $mix = $narrator->personaMix($user->fresh());
-    $blazing = collect($mix)->firstWhere('mood', 'blazing');
-    expect($blazing['mood'])->toBe('blazing');
-    expect($blazing['count'])->toBe(3);
-    expect($blazing['percent'])->toBe(60.0);
-    expect($narrator->generate($user->fresh()))->toBe('Runmu lebih sering blazing.');
-});
-
-it('ProfileVoiceNarrator returns an empty mix for a user with no story lines', function (): void {
-    $user = User::factory()->create();
-    $caller = fakeCaller(profileVoiceJson('x'));
-    $narrator = new ProfileVoiceNarrator($caller, app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(ProgressionSeriesBuilder::class), app(LifetimeStats::class));
-
-    expect($narrator->personaMix($user))->toBe([]);
-});
 
 it('ProfileVoiceNarrator returns profile voice on valid JSON', function (): void {
     $user = User::factory()->create();

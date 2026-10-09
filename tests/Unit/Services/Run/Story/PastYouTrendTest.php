@@ -53,7 +53,6 @@ it('builds the empty state as an outcome, not an error', function (): void {
     $trend = PastYouTrend::notEnoughHistory(42);
 
     expect($trend->verdict)->toBe(TrendVerdict::NotEnoughHistory)
-        ->and($trend->verdict->isJudged())->toBeFalse()
         ->and($trend->toArray())->toMatchArray([
             'verdict' => 'not_enough_history',
             'comparison_count' => 0,

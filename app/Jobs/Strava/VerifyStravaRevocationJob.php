@@ -12,6 +12,8 @@ use App\Services\Strava\Exceptions\StravaConnectionRevokedException;
 use App\Services\Strava\Exceptions\StravaTokenRefreshFailedException;
 use App\Services\Strava\StravaClient;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Queue\Attributes\Backoff;
+use Illuminate\Queue\Attributes\Tries;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Log;
 use Laravel\Pulse\Facades\Pulse;
@@ -26,16 +28,11 @@ use Laravel\Pulse\Facades\Pulse;
  * (or a permanently-rejected refresh) proves the revocation is genuine; a 2xx
  * means the event was forged or stale and the connection is left untouched.
  */
+#[Backoff([30, 120])]
+#[Tries(3)]
 class VerifyStravaRevocationJob implements ShouldQueue
 {
     use Queueable;
-
-    public int $tries = 3;
-
-    /**
-     * @var array<int, int>
-     */
-    public array $backoff = [30, 120];
 
     public function __construct(
         public readonly int $connectionId,
@@ -65,7 +62,7 @@ class VerifyStravaRevocationJob implements ShouldQueue
         // a real revocation. Ignore it. Rate-limit / circuit-open / transport
         // errors bubble up so the job retries later.
         Log::warning('strava.webhook deauthorization ignored — grant still live', [
-            'strava_athlete_id' => $connection->strava_athlete_id,
+            'user_id' => $connection->user_id,
             'source' => $this->source,
         ]);
     }
@@ -78,7 +75,7 @@ class VerifyStravaRevocationJob implements ShouldQueue
 
         Pulse::record('strava_revoked', $this->source)->count();
         Log::info("strava.webhook {$this->source} — connection revoked (verified)", [
-            'strava_athlete_id' => $connection->strava_athlete_id,
+            'user_id' => $connection->user_id,
         ]);
 
         StravaSyncLog::log(

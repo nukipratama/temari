@@ -11,7 +11,8 @@ import { describe, expect, it, vi } from 'vitest';
 
 import type { PastRace, RaceDetails } from '@/types/inertia';
 
-import { setMockPage } from '@/test/setup';
+import { RACE_DEMO_BLOCKED } from '@/lib/raceGoal';
+import { makeUser, setMockPage } from '@/test/setup';
 
 import Race from './Race';
 
@@ -89,6 +90,12 @@ describe('Race', () => {
         expect(
             screen.queryByRole('link', { name: 'open the run' }),
         ).not.toBeInTheDocument();
+    });
+
+    it('titles the page with exactly one h1', () => {
+        render(<Race race={RACE} projection={PROJECTION} />);
+
+        expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
     });
 
     it('shows nothing about an AI pause, since it renders no narration', () => {
@@ -372,5 +379,24 @@ describe('Race', () => {
         expect(vi.mocked(router.post).mock.calls.at(-1)?.[0]).toBe(
             '/race/9/outcome',
         );
+    });
+
+    it('shows a demo visitor the race demo-blocked modal instead of clearing', async () => {
+        setMockPage({ auth: { user: makeUser({ is_demo: true }) } });
+        const remove = vi.spyOn(router, 'delete').mockImplementation(() => {});
+        render(<Race race={RACE} projection={PROJECTION} />);
+
+        fireEvent.click(screen.getByRole('button', { name: 'clear race' }));
+        fireEvent.click(
+            within(await screen.findByRole('dialog')).getByRole('button', {
+                name: 'clear race',
+            }),
+        );
+
+        expect(
+            await screen.findByText(RACE_DEMO_BLOCKED.title),
+        ).toBeInTheDocument();
+        expect(remove).not.toHaveBeenCalled();
+        remove.mockRestore();
     });
 });

@@ -3,7 +3,7 @@ title: Notification inbox
 description: The /inbox notification centre — a growing window over everything Temari sent, each row a deep link back into the page it was about.
 tags: [feature, notifications]
 status: living
-reviewed: 2026-10-05
+reviewed: 2026-10-09
 code_refs:
   - app/Http/Controllers/InboxController.php
   - app/Models/InboxNotification.php
@@ -23,7 +23,7 @@ Every row is something Temari already sent; nothing is written here, and nothing
 
 ## The kinds
 
-Ten, each with its own row treatment ([NotificationKind](../../app/Enums/NotificationKind.php#L13)).
+Eleven, each with its own row treatment ([NotificationKind](../../app/Enums/NotificationKind.php)).
 Where a row goes is the router's call ([[inbox-is-an-always-on-channel]]), never the kind's.
 
 | kind | what fires it | channels | opens |
@@ -41,7 +41,7 @@ Where a row goes is the router's call ([[inbox-is-an-always-on-channel]]), never
 | `test` | the "send test notification" button | inbox · Telegram · push | the dashboard |
 
 **`plan_clamp` is the one inbox-only kind.** A step-down used to exist only while the plan page
-still rendered it: [RestClampRecorder](../../app/Services/Run/Plan/RestClampRecorder.php#L76) already
+still rendered it: [RestClampRecorder](../../app/Services/Run/Plan/RestClampRecorder.php) already
 wrote the outcome so compliance could grade the day the athlete was actually set, and that write is
 now also where they are told. Its guards make it the one place that fires once per athlete per day,
 so the row inherits that dedupe rather than adding its own, and a ceiling that recovers later does
@@ -60,22 +60,23 @@ a permanent floor. The note is what a row usually carries, because the narration
 before the notification is queued.
 
 **`race_tomorrow` claims on the race row.** `race:remind` sweeps active race goals whose
-`race_date` is tomorrow ([RaceRemindCommand](../../app/Console/Commands/Run/RaceRemindCommand.php#L22))
+`race_date` is tomorrow ([RaceRemindCommand](../../app/Console/Commands/Run/RaceRemindCommand.php))
 and, before notifying, claims each one with an atomic conditional update that copies `race_date`
 into `reminded_for_date` only while that column is null or holds another date
-([claim](../../app/Console/Commands/Run/RaceRemindCommand.php#L71)). A re-run for the same date, or a
+([claim](../../app/Console/Commands/Run/RaceRemindCommand.php)). A re-run for the same date, or a
 second run racing the first, updates no row and says nothing, while a race moved to a later date is
 reminded again the evening before its new date. A dispatch that throws clears the column, so the
-next run sends, the same claim-then-release as `streak:remind`.
+next run sends, the same claim-then-release as `streak:remind`. It runs every hour from 18:00 to
+21:00, so a deploy or restart over 18:00 still reminds that evening, before the 22:00 quiet hours.
 The body says the race and its distance, repeats the plan's own taper rest when today is one, and
 ends on the single practical thing left to do that evening; there is no narrator behind it and no
 hype in it.
 
-**`race_outcome` asks, it does not assume.** `race:ask-outcome` runs at 09:00 and notifies each
-athlete whose race was yesterday and whose outcome is still `pending`
+**`race_outcome` asks, it does not assume.** `race:ask-outcome` runs every hour from 09:00 to
+21:00 and notifies each athlete whose race was yesterday and whose outcome is still `pending`
 ([RaceOutcomeAskCommand](../../app/Console/Commands/Run/RaceOutcomeAskCommand.php)), claiming
 each race for its date the same way through its own `outcome_asked_for_date` column
-([claim](../../app/Console/Commands/Run/RaceOutcomeAskCommand.php#L59)).
+([claim](../../app/Console/Commands/Run/RaceOutcomeAskCommand.php)).
 A passed date is not participation, so the copy is neutral and says nothing is counted until the
 athlete answers. The demo account and athletes with the master switch off are never asked.
 
@@ -88,7 +89,7 @@ check-in, the nudge), all of it content Temari initiates; this is the app report
 the athlete wired up broke. The per-channel mutes still apply, because those answer *where* rather than
 *whether*.
 
-It fires from [markRevoked](../../app/Models/StravaConnection.php#L100) itself rather than from the
+It fires from [markRevoked](../../app/Models/StravaConnection.php) itself rather than from the
 eight call sites that revoke, so it is one send per revocation rather than one per failing call.
 That count is a DB-level claim (`whereNull('revoked_at')->update(...)`), not just the in-memory
 check: no lock covers every caller, so two failing jobs can each be holding an active copy of the
@@ -98,31 +99,31 @@ so a later reconnect-then-revoke is its own row. An account deletion revokes sil
 ## The prop shape
 
 There is no listing API. The page is a normal Inertia page
-([InboxController](../../app/Http/Controllers/InboxController.php#L36)) because the inbox is a
+([InboxController](../../app/Http/Controllers/InboxController.php)) because the inbox is a
 destination with its own URL, not a widget that polls: a push tap has to land on it cold, and
 `unreadNotifications` already rides on every page as a shared prop
-([NotificationProps](../../app/Services/Inertia/NotificationProps.php#L37)).
+([NotificationProps](../../app/Services/Inertia/NotificationProps.php)).
 
 `notifications`, `shown` and `hasOlder` ship behind `Inertia::defer()`, so the hero paints before the
 window is queried and the rows arrive in one follow-up request; only `focusId` is instant. The three
 are built together by one memoized loader
-([InboxController](../../app/Http/Controllers/InboxController.php#L61)), since `hasOlder` is a fact
+([InboxController](../../app/Http/Controllers/InboxController.php)), since `hasOlder` is a fact
 about the same query that produced the rows.
 
 Rows arrive **flattened**, not as the stored `payload` blob. The controller lifts out the deep
-link and the replay handles ([InboxController](../../app/Http/Controllers/InboxController.php#L90))
+link and the replay handles ([InboxController](../../app/Http/Controllers/InboxController.php))
 so the page never reads untyped JSON, and the shape is a declared TypeScript interface
 (`InboxItem` in [types/inertia.ts](../../resources/js/types/inertia.ts)) rather than
 `Record<string, unknown>`. `created_at` ships as `toIso8601String()` — a true instant with its
 `+07:00` offset, so the frontend reads it with `formatRelativeId`
-([pace.ts](../../resources/js/lib/pace.ts#L106)) and never with the naive wall-clock parser the
+([pace.ts](../../resources/js/lib/pace.ts)) and never with the naive wall-clock parser the
 Strava dates need.
 
 The list is a **growing window**, not a pager. The first request ships 20 rows
-([InboxController](../../app/Http/Controllers/InboxController.php#L32)); each "load older" press
+([InboxController](../../app/Http/Controllers/InboxController.php)); each "load older" press
 asks for `?shown=` twenty more and the server also says whether anything sits behind what it sent,
 so the button hides itself at the end. The requested size is snapped up to the page step and capped
-([InboxController](../../app/Http/Controllers/InboxController.php#L150)), so a hand-typed `?shown=`
+([InboxController](../../app/Http/Controllers/InboxController.php)), so a hand-typed `?shown=`
 cannot ask for an unbounded scan. Retention is undecided and nothing prunes the table, so the window
 is what keeps an old account's inbox usable without deciding how long a record lives.
 
@@ -152,7 +153,7 @@ released by quiet hours therefore gets its full TTL. The app clock (WIB) defines
 
 A deadline already past clamps to one second. A `Topic` makes a newer briefing or streak push
 replace an undelivered older one. The TTLs are set in each notification's `toWebPush()`, for
-example [MorningBriefingNotification](../../app/Notifications/MorningBriefingNotification.php#L72).
+example [MorningBriefingNotification](../../app/Notifications/MorningBriefingNotification.php).
 
 ## Deep links, not replays
 
@@ -160,7 +161,7 @@ example [MorningBriefingNotification](../../app/Notifications/MorningBriefingNot
 accessory-unlock takeover. Rows are now a record and a deep link, nothing more. Every row's only
 action is the link into the page the notification was about, which is the same URL its web push
 already carried — a full-bleed overlay over the row itself is the row's one accessible link
-([InboxRow](../../resources/js/components/inbox/InboxRow.tsx#L104)), named for the row's title
+([InboxRow](../../resources/js/components/inbox/InboxRow.tsx)), named for the row's title
 rather than a separate visible "open" affordance. It marks the row read on click.
 
 **Every kind carries that link.** It is whatever the producing notification put in
@@ -169,10 +170,10 @@ test row rendered with no way in at all. It now points at the dashboard. Rows re
 stay non-navigable; nothing backfills them, since the payload is the record of what was sent.
 
 A row's rarity badge, when it carries one, is read straight out of the stored payload
-([InboxController](../../app/Http/Controllers/InboxController.php#L104)); the read-side lookup that
+([InboxController](../../app/Http/Controllers/InboxController.php)); the read-side lookup that
 rated an unlock row against the unlock catalog went with the catalog. A **post-run** row carries its
 run's distance and elapsed time, looked up over the whole window in one query
-([InboxController](../../app/Http/Controllers/InboxController.php#L122)), which is what the row's
+([InboxController](../../app/Http/Controllers/InboxController.php)), which is what the row's
 distance/pace stat chips render.
 
 ## Grouped sections and the time toggle
@@ -181,10 +182,10 @@ Rows render grouped into **Today / This Week / Earlier**
 ([inboxBuckets.ts](../../resources/js/components/inbox/inboxBuckets.ts)), a pure client-side
 grouping over whatever rows the window holds, no backend shape change. The "this week"
 boundary is Monday-start, matching the backend's own week convention (`startOfWeek(Carbon::MONDAY)`,
-e.g. [Periodizer](../../app/Services/Run/Plan/Periodizer.php#L57)) rather than a locale default.
+e.g. [Periodizer](../../app/Services/Run/Plan/Periodizer.php)) rather than a locale default.
 Both boundaries come from the shared server `today`, never the device clock: `created_at` is
 serialized in the app timezone, so its leading date is the server's calendar day, and
-[`bucketOf`](../../resources/js/components/inbox/inboxBuckets.ts#L17) compares that date with
+[`bucketOf`](../../resources/js/components/inbox/inboxBuckets.ts) compares that date with
 `today` and with `today`'s Monday.
 
 Tapping a row's timestamp toggles it between relative (`formatRelativeId`) and absolute
@@ -197,29 +198,29 @@ been read where it was.
 ## Read state
 
 Reading is per-row and idempotent: opening a deep link or replaying a celebration POSTs to
-[NotificationReadController](../../app/Http/Controllers/Api/NotificationReadController.php#L19),
+[NotificationReadController](../../app/Http/Controllers/Api/NotificationReadController.php),
 which is scoped through the user's own relation. The page marks the row read optimistically and
 reloads only `unreadNotifications`, which is what the bell in
 [MobileTopBar](../../resources/js/components/MobileTopBar.tsx) renders. A "mark all read" control in
 the page header, shown only while something is unread, POSTs to
-[NotificationReadAllController](../../app/Http/Controllers/Api/NotificationReadAllController.php#L18)
+[NotificationReadAllController](../../app/Http/Controllers/Api/NotificationReadAllController.php)
 instead, which marks every unread row for that user in one query
-([InboxNotification::markAllReadFor](../../app/Models/InboxNotification.php#L108)) and reloads the
+([InboxNotification::markAllReadFor](../../app/Models/InboxNotification.php)) and reloads the
 same `unreadNotifications` prop.
 
 The same prop puts a dot on the Today tab
-([MobileBottomNav](../../resources/js/components/MobileBottomNav.tsx#L60)). On mobile the bell sits
+([MobileBottomNav](../../resources/js/components/MobileBottomNav.tsx)). On mobile the bell sits
 in a header a runner glancing at their dashboard after a run need never scroll up to, and a four-tab
 pill has no fifth slot to give the inbox. A dot rather than a count, and decorative rather than
 announced: the bell is the labelled, actionable control, and this tab does not open the inbox — it
 is a reason to look up, not a second way in. It carries the *unread dot's* own token rather than the
 bell badge's: `ember-deep` is a fixed-identity fill built to sit under `text-cream`, and bare on the
 pill it falls under 3:1 on the dark ground, while `icon-accent` — what
-[InboxRow](../../resources/js/components/inbox/InboxRow.tsx#L171) already dots an unread row with —
+[InboxRow](../../resources/js/components/inbox/InboxRow.tsx) already dots an unread row with —
 is ground-reactive. A ring keeps it off the lime the active tab tints its own icon with.
 
 `/inbox?item={id}` is the per-row deep link. The controller widens the window far enough to contain
-that row ([InboxController](../../app/Http/Controllers/InboxController.php#L150)) so the target is on
+that row ([InboxController](../../app/Http/Controllers/InboxController.php)) so the target is on
 screen even when it sits well behind the first twenty, and arriving on a row counts as reading it.
 
 ## Empty inbox
@@ -238,9 +239,9 @@ anything the demo did send ([[demo-notifications-are-inbox-only]]).
 
 `briefing:morning-push` pushes today's already-generated briefing at the quarter hour the athlete's
 own run history says they usually start
-([MorningBriefingPushCommand](../../app/Console/Commands/Notifications/MorningBriefingPushCommand.php#L27)),
+([MorningBriefingPushCommand](../../app/Console/Commands/Notifications/MorningBriefingPushCommand.php)),
 and writes **no inbox row at all**
-([MorningBriefingNotification](../../app/Notifications/MorningBriefingNotification.php#L46)). It is
+([MorningBriefingNotification](../../app/Notifications/MorningBriefingNotification.php)). It is
 the one deliberate exception to "the inbox is the record of everything Temari sent": the briefing is
 already on the dashboard, so a row of it would record nothing new, and what the push adds is the
 timing. It generates nothing either — a briefing row that is not `done` is skipped rather than

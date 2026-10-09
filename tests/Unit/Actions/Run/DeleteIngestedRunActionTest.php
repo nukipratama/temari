@@ -3,10 +3,13 @@
 declare(strict_types=1);
 
 use App\Actions\Run\DeleteIngestedRunAction;
+use App\Enums\PerformanceEvidenceKind;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
+use App\Models\PerformanceEvidence;
 use App\Models\PersonalRecord;
+use App\Models\RaceGoal;
 use App\Models\RunCard;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
@@ -67,4 +70,24 @@ it('drops the emptied weeks when the deleted run was the only one', function ():
     app(DeleteIngestedRunAction::class)($sole);
 
     expect(WeeklySnapshot::query()->where('user_id', $user->id)->exists())->toBeFalse();
+});
+
+it('retracts the run\'s time-trial evidence', function (): void {
+    $user = User::factory()->create();
+    $doomed = deletableRun($user, now()->startOfWeek()->subWeek()->addDay()->setTime(6, 0));
+    $test = runEvidence($user, $doomed, PerformanceEvidenceKind::Test);
+
+    app(DeleteIngestedRunAction::class)($doomed);
+
+    expect(PerformanceEvidence::query()->whereKey($test->id)->exists())->toBeFalse();
+});
+
+it('keeps a race result the athlete confirmed from the run', function (): void {
+    $user = User::factory()->create();
+    $doomed = deletableRun($user, now()->startOfWeek()->subWeek()->addDay()->setTime(6, 0));
+    $race = runEvidence($user, $doomed, PerformanceEvidenceKind::Race, RaceGoal::factory()->for($user)->completed()->create()->id);
+
+    app(DeleteIngestedRunAction::class)($doomed);
+
+    expect($race->fresh()->activity_id)->toBeNull();
 });

@@ -39,6 +39,13 @@ describe('Login', () => {
         );
     });
 
+    it('titles the page with exactly one h1 and leaves the main landmark to BareShell', () => {
+        render(<Login authStravaUrl="/auth/strava/redirect" />);
+
+        expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
+        expect(screen.queryByRole('main')).not.toBeInTheDocument();
+    });
+
     it('appends the deep-link ?from to every Strava CTA when present', () => {
         render(
             <Login

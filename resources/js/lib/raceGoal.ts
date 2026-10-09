@@ -11,15 +11,9 @@ import {
     formatPace,
     isoDateLocal,
 } from '@/lib/pace';
+import { MAX_GOAL_TIME_SEC, MIN_GOAL_TIME_SEC } from '@/types/generated';
 
-/**
- * The race-goal bounds, mirrored from the server so a form cannot offer a
- * submission that is guaranteed to come back 422. `StoreRaceGoalRequest` and
- * `CompleteOnboardingRequest` both enforce these; keeping one copy here is what
- * stops the two forms drifting from each other and from the rules.
- */
-export const MIN_GOAL_TIME_SEC = 300;
-export const MAX_GOAL_TIME_SEC = 259_200;
+export { MAX_GOAL_TIME_SEC, MIN_GOAL_TIME_SEC };
 
 // A pace floor a touch below current world-record pace (~2:31-2:51/km
 // depending on distance) - not personalized to the athlete, just a sanity
@@ -210,3 +204,9 @@ export function supportedBasisLine(ambition: RaceAmbition): string | null {
 
     return `based on your ${raceDistanceLabel(ambition.basis.distance_m)} on ${formatNaiveMonthDayId(ambition.basis.performed_on)}`;
 }
+
+/** What the demo-blocked modal says when a demo visitor tries to change a race. */
+export const RACE_DEMO_BLOCKED = {
+    title: 'race plans stay put in the demo',
+    body: "this is the shared demo, so its race stays the same for everyone who drops by. connect your own Strava and set the race you're actually training for.",
+} as const;

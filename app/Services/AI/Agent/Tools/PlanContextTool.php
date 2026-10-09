@@ -14,7 +14,9 @@ use App\Services\Run\Metrics\DistanceFormatter;
 use App\Services\Run\Metrics\PaceFormatter;
 use App\Services\Run\Metrics\TrainingPaceCalculator;
 use App\Services\Run\Metrics\VdotEstimator;
+use App\Services\Run\Plan\CurrentWeekKm;
 use App\Services\Run\Plan\EffectiveSession;
+use App\Services\Run\Plan\IntensityPrescription;
 use App\Services\Run\Plan\IntentOutcome;
 use App\Services\Run\Plan\PlanRenderer;
 use App\Services\Run\Plan\SessionMatcher;
@@ -30,9 +32,11 @@ use Illuminate\Support\Carbon;
  * per-run narrator ask the same question of a different window.
  *
  * `prescribed_km` is written by {@see \App\Services\Run\Plan\ComplianceScorer}
- * the morning after a day passes, so it is null for today and every future day;
- * those fall back to the unredistributed core distance. The target pace comes
- * from the athlete's current VDOT rather than the row, which stores none.
+ * the morning after a day passes, so it is null for today and every future day.
+ * Today and the rest of the current week take the session and km the page
+ * shows, from {@see CurrentWeekKm}; later days fall back to the unredistributed core
+ * distance. The target pace comes from the athlete's current VDOT rather than
+ * the row, which stores none.
  */
 final class PlanContextTool extends UserTool
 {
@@ -107,17 +111,26 @@ final class PlanContextTool extends UserTool
         $longRunProgressionCapKm = $baselineData['long_run_progression_cap_km'];
         $selfScaled = $baselineData['self_scaled'];
         $paces = $this->paceCalculator->fromVdotResult($this->vdotEstimator->estimate($this->user, $this->asOf)) ?? [];
+        $today = Carbon::today();
+        $currentWeekEnd = $today->copy()->endOfWeek(Carbon::SUNDAY)->toDateString();
+        $currentWeek = $sessions->contains(static fn (PlannedSession $session): bool => $session->date->toDateString() >= $today->toDateString() && $session->date->toDateString() <= $currentWeekEnd)
+            ? app(CurrentWeekKm::class)->forUser($this->user, $today)
+            : null;
+        $shownKmByDate = $currentWeek['km_by_date'] ?? [];
+        $shownTypeByDate = $currentWeek['type_by_date'] ?? [];
 
         return [
-            'days' => $sessions->map(function (PlannedSession $session) use ($runDistancesByDate, $paces, $longRunBaselineKm, $longRunCapKm, $longRunProgressionCapKm, $selfScaled): array {
+            'days' => $sessions->map(function (PlannedSession $session) use ($runDistancesByDate, $paces, $longRunBaselineKm, $longRunCapKm, $longRunProgressionCapKm, $selfScaled, $shownKmByDate, $today, $shownTypeByDate): array {
                 $effective = EffectiveSession::of(
                     $session,
                     PlanRenderer::coreKmForSession($session, $longRunBaselineKm, $longRunCapKm, $selfScaled, $longRunProgressionCapKm),
                 );
-                $goalPace = PlanRenderer::goalPaceForNarration($session, $effective->sessionType);
-                $timeTrial = PlanRenderer::timeTrialOf($session, $effective->sessionType);
+                $shownType = $session->date->lt($today) ? null : ($shownTypeByDate[$session->date->toDateString()] ?? null);
+                $sessionType = $shownType ?? (! $effective->isEased() && IntensityPrescription::isEasyQualityDay($session, $effective->sessionType) ? SessionType::Easy : $effective->sessionType);
+                $goalPace = PlanRenderer::goalPaceForNarration($session, $sessionType);
+                $timeTrial = PlanRenderer::timeTrialOf($session, $sessionType);
                 $targetPaceSec = $goalPace === [] && $timeTrial === null
-                    ? self::targetPaceSec($session, $effective->sessionType, $paces)
+                    ? self::targetPaceSec($session, $sessionType, $paces)
                     : $session->prescribed_pace_sec_per_km;
                 $easedFrom = $effective->easedFromForNarration();
                 $paceEasedFromSec = $effective->isPaceEased() ? $targetPaceSec : null;
@@ -129,13 +142,15 @@ final class PlanContextTool extends UserTool
 
                 return [
                     'date' => $session->date->toDateString(),
-                    'session_type' => $effective->sessionType->value,
+                    'session_type' => $sessionType->value,
                     ...$goalPace,
                     ...($timeTrial === null ? [] : ['time_trial' => PlanRenderer::timeTrialForNarration($timeTrial)]),
                     'phase' => $session->phase->value,
-                    'distance_km' => $session->prescribed_km !== null
-                        ? round($session->prescribed_km, 1)
-                        : $effective->coreKm,
+                    'distance_km' => match (true) {
+                        ! $session->date->lt($today) && isset($shownKmByDate[$session->date->toDateString()]) => $shownKmByDate[$session->date->toDateString()],
+                        $session->prescribed_km !== null => round($session->prescribed_km, 1),
+                        default => $effective->coreKm,
+                    },
                     ...($easedFrom === null ? [] : ['eased_from' => $easedFrom]),
                     'target_pace_sec' => $targetPaceSec,
                     'target_pace_formatted' => $targetPaceSec === null

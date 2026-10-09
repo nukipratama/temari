@@ -95,38 +95,6 @@ final readonly class SeasonService
         }
     }
 
-    /**
-     * The one-time reset's season step: the current season is re-anchored and
-     * its goals regenerated as of its own start date under the current policy,
-     * and every season already settled is settled again from the re-graded
-     * days. Ordinary planning never calls this.
-     */
-    public function reanchorForReset(User $user, Carbon $today): void
-    {
-        [$today, $race, $current] = $this->currentContext($user, $today);
-
-        if ($current !== null && $this->isCurrent($current, $race, $today)) {
-            $start = $current->starts_at->copy();
-            $current->update([
-                'anchor_weekly_volume_km' => $this->baseline->trailingWeeklyVolumeKm($user, $start),
-                'volume_floor_km' => $race !== null ? $this->baseline->recentWeeklyMeanKm($user, $start) : null,
-                'block_goals_appended_at' => null,
-            ]);
-            SeasonGoal::query()->where('season_id', $current->id)->delete();
-            $this->generateGoals($current, $user, $race, $start);
-            if ($race !== null) {
-                $this->appendBlockGoals($current, $race, $user, $today);
-            }
-        }
-
-        Season::query()
-            ->where('user_id', $user->id)
-            ->whereNotNull('record_settled_at')
-            ->get()
-            ->each(fn (Season $settled) => $this->records->settle($user, $settled, $settled->ends_at->copy()->addDay()));
-        $this->season->forget($user->id);
-    }
-
     private function ensureCurrentLocked(User $user, Carbon $today): Season
     {
         [$today, $race, $current] = $this->currentContext($user, $today);
@@ -147,9 +115,7 @@ final readonly class SeasonService
         }
         $volumeFloorKm = $race !== null ? $this->baseline->recentWeeklyMeanKm($user, $today) : null;
         $increasesHeld = $race !== null && $this->hydrationBacklog->recentLoadAwaitsScoring($user->id, $today);
-        $endsAt = $race !== null
-            ? $race->race_date->toDateString()
-            : $today->copy()->addWeeks(self::SELF_SCALED_WEEKS)->toDateString();
+        $endsAt = $race?->race_date->toDateString() ?? $today->copy()->addWeeks(self::SELF_SCALED_WEEKS)->toDateString();
         $blockGoalsAppendedAt = $race !== null && self::blockHasOpened($race, $today) ? Carbon::now() : null;
 
         // A mode switch on the very same day the current season started

@@ -14,19 +14,16 @@ use App\Services\Strava\Exceptions\StravaTokenRefreshFailedException;
 use App\Services\Strava\Exceptions\StravaTokenRefreshTransientException;
 use App\Services\Strava\ZoneFetcher;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Queue\Attributes\Backoff;
+use Illuminate\Queue\Attributes\Tries;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Log;
 
+#[Backoff([30, 120])]
+#[Tries(3)]
 class SyncZonesJob implements ShouldQueue
 {
     use Queueable;
-
-    public int $tries = 3;
-
-    /**
-     * @var array<int, int>
-     */
-    public array $backoff = [30, 120];
 
     /**
      * @param  bool  $force  Bypass the manual-source guard. Set only for an

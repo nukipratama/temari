@@ -13,6 +13,8 @@ code_refs:
   - resources/js/lib/plan.ts
 ---
 
+> **Partly superseded (2026-10-08) by [[the-week-total-is-the-week-the-plan-asks-for]].** Decision 4's current-week total now counts past days at their credited km and today and later days at their shown km, from `CurrentWeekKm`, and `planned_km_eased_from` adds back only the eases of today and later days. The rest of this decision stands.
+
 # The advised session leads every day
 
 **Status:** Accepted (2026-10-02). Supersedes the today-only rule of [[todays-ease-stays-a-stepdown]] and the "today's step-down" wording of [[a-pinned-day-still-gets-readiness-advice]]. The today-before-credit amendment to [[the-eased-session-leads]] is now moot.
@@ -23,9 +25,9 @@ code_refs:
 
 ## Decision
 
-1. **The effective session leads, recorded or not.** [PlanRenderer::dayPayload()](app/Services/Run/Plan/PlanRenderer.php#L238) uses today's recorded ease, and today's unrecorded advisory clamp before credit, as the day's `session_type`, segments, distance and pace. `eased_from` carries the replaced `session_type`, `distance_km` and the reason as context. The separate `clamp` step-down payload is gone, so the recorder running at 00:01 changes nothing on screen. **Product choice**: one story per card.
+1. **The effective session leads, recorded or not.** [PlanRenderer::dayPayload()](app/Services/Run/Plan/PlanRenderer.php#L239) uses today's recorded ease, and today's unrecorded advisory clamp before credit, as the day's `session_type`, segments, distance and pace. `eased_from` carries the replaced `session_type`, `distance_km` and the reason as context. The separate `clamp` step-down payload is gone, so the recorder running at 00:01 changes nothing on screen. **Product choice**: one story per card.
 2. **A pinned or Race day keeps its prescription.** It carries the safety advice as one `advice_note` line instead of replacing the session, so pinning still opts out of regeneration and a race is never downgraded ([[the-plan-knows-its-race-day]]). **Product choice.**
-3. **A credited day explains itself.** [PlanRenderer::resultNote()](app/Services/Run/Plan/PlanRenderer.php#L689) words the outcome with [IntentOutcome](app/Services/Run/Plan/IntentOutcome.php#L59)'s own clauses: hard effort on an easy day, an eased tempo run anyway, a strong-concern day run hard, and an unknown effort ("so the day counts its distance only"). A `ran_hot` flag replaces `hot_note`. Home's [TodaySession](resources/js/components/home/TodaySession.tsx) shows the same note. The grading is unchanged ([[grading-follows-shown-advice-and-actual-stimulus]]); the note only reports it. **Product choice.**
+3. **A credited day explains itself.** [PlanRenderer::resultNote()](app/Services/Run/Plan/PlanRenderer.php#L773) words the outcome with [IntentOutcome](app/Services/Run/Plan/IntentOutcome.php#L59)'s own clauses: hard effort on an easy day, an eased tempo run anyway, a strong-concern day run hard, and an unknown effort ("so the day counts its distance only"). A `ran_hot` flag replaces `hot_note`. Home's [TodaySession](resources/js/components/home/TodaySession.tsx) shows the same note. The grading is unchanged ([[grading-follows-shown-advice-and-actual-stimulus]]); the note only reports it. **Product choice.**
 4. **One week total everywhere.** [CurrentWeekPlanBuilder](app/Services/Run/Plan/CurrentWeekPlanBuilder.php) now sums today's ease and reports `planned_km_eased_from` from the days' `eased_from`. [SeasonSummaryBuilder::build()](app/Services/Run/Plan/SeasonSummaryBuilder.php#L69) takes the current week's planned km, phase and eased-from from it. For a reactive deload the eased-from figure is the arc's own km ([SeasonSummaryBuilder::easedFromKm()](app/Services/Run/Plan/SeasonSummaryBuilder.php#L116)). Future weeks keep the arc figure, since their readiness is not knowable yet. **Product choice.**
 
 ## Consequences

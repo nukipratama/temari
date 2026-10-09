@@ -8,13 +8,7 @@ import { type IconComponent } from '@/components/ui/Icon';
 import StatTile from '@/components/ui/StatTile';
 import { showsDecoupling, showsGrade } from '@/lib/anchors';
 import { cn } from '@/lib/cn';
-
-// Mirrors the "hot run" threshold used across the backend narration (e.g.
-// RunCardFactory, Story/Temari) so the frontend softens the same runs the
-// narrators already treat as heat-affected.
-const HOT_TEMP_C = 31;
-// Mirrors DecouplingBands::HIGH, the version 2 steady-effort scale (app/Services/Run/Metrics/DecouplingBands.php).
-const DECOUPLING_HIGH = 12;
+import { DECOUPLING_HIGH_PCT, HOT_RUN_TEMP_C } from '@/types/generated';
 
 /** The bar's span, wide enough to hold a resting and a maximal reading. */
 const HR_SCALE_MIN = 100;
@@ -32,8 +26,8 @@ function hrScalePct(bpm: number): number {
  */
 function decouplingPct(value: number): number {
     return (
-        Math.min(Math.max(value, 0), DECOUPLING_HIGH * 2) *
-        (100 / (DECOUPLING_HIGH * 2))
+        Math.min(Math.max(value, 0), DECOUPLING_HIGH_PCT * 2) *
+        (100 / (DECOUPLING_HIGH_PCT * 2))
     );
 }
 
@@ -44,13 +38,14 @@ function decouplingNote(
     // A hot run drifts HR up for a physiological reason (body works harder to
     // shed heat), not a fitness regression, so it doesn't earn the warn tone.
     // Only applies to a positive drift, mirroring the backend's rule
-    // (RuleBasedInsightBuilder decoupling > DECOUPLING_HIGH) — a large negative
+    // (RuleBasedRunInsights decoupling > DecouplingBands::HIGH) — a large negative
     // decoupling isn't HR drift at all, so heat can't explain it away.
     const wasHot =
-        detail.weather_temp_c != null && detail.weather_temp_c >= HOT_TEMP_C;
-    const high = Math.abs(decoupling) > DECOUPLING_HIGH;
+        detail.weather_temp_c != null &&
+        detail.weather_temp_c >= HOT_RUN_TEMP_C;
+    const high = Math.abs(decoupling) > DECOUPLING_HIGH_PCT;
 
-    if (decoupling > DECOUPLING_HIGH && wasHot) {
+    if (decoupling > DECOUPLING_HIGH_PCT && wasHot) {
         return {
             text: `normal, it was ${Math.round(detail.weather_temp_c as number)}°C out`,
             warn: false,
@@ -145,7 +140,7 @@ export default function VitalsCard({
 
     return (
         <section className={className}>
-            <Eyebrow token="small" tone="ink-2" className="mb-3.5">
+            <Eyebrow as="h3" token="small" tone="ink-2" className="mb-3.5">
                 Vitals
             </Eyebrow>
 

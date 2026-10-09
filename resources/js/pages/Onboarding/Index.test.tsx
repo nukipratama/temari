@@ -57,6 +57,14 @@ describe('Onboarding/Index', () => {
         ).toBeInTheDocument();
     });
 
+    it('titles the page with exactly one h1', () => {
+        setMockPage({ auth: { user: makeUser() } });
+
+        render(<OnboardingIndex />);
+
+        expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
+    });
+
     it('advances to the preferences step on continue', () => {
         setMockPage({ auth: { user: makeUser() } });
         render(<OnboardingIndex />);

@@ -130,6 +130,7 @@ afterEach(() => {
     vi.unstubAllGlobals();
     mockPageProps = { ...DEFAULT_PAGE_PROPS };
     mockUrl = DEFAULT_URL;
+    mockComponent = DEFAULT_COMPONENT;
     mockPendingDeferred = new Set();
     resetFormMock();
 });

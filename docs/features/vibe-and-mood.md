@@ -3,7 +3,7 @@ title: Vibe & mood system
 description: The daily "vibe" that sets Temari's tone and the run-level mood vocabulary.
 tags: [feature, story]
 status: living
-reviewed: 2026-09-24
+reviewed: 2026-10-09
 code_refs:
   - app/Services/Run/Story/Vibe.php
   - app/Services/Run/Story/VibeMatrix.php
@@ -28,13 +28,13 @@ Two distinct "feelings" drive how the app speaks. The **vibe** is a daily, *whol
 
 ## The daily vibe
 
-[Vibe::current](../../app/Services/Run/Story/Vibe.php) gathers five signals for a user as-of a date — current `form` and `form_status` from [TrainingLoad::summary](../../app/Services/Run/Metrics/TrainingLoad.php), days since the last run, whether a [[records|PR]] landed recently, and the average HR/pace `decoupling` over a recent window. The PR lookback and decoupling lookback windows are constants on the class ([`DECOUPLING_WINDOW_DAYS`](../../app/Services/Run/Story/Vibe.php#L35)). It hands all five to a pure lookup table.
+[Vibe::current](../../app/Services/Run/Story/Vibe.php) gathers five signals for a user as-of a date — current `form` and `form_status` from [TrainingLoad::summary](../../app/Services/Run/Metrics/TrainingLoad.php), days since the last run, whether a [[records|PR]] landed recently, and the average HR/pace `decoupling` over a recent window. The PR lookback and decoupling lookback windows are constants on the class ([`DECOUPLING_WINDOW_DAYS`](../../app/Services/Run/Story/Vibe.php)). It hands all five to a pure lookup table.
 
-[VibeMatrix::pick](../../app/Services/Run/Story/VibeMatrix.php) is that table: an ordered cascade of guard clauses (first match wins, most-significant signal first — staleness, then a fresh PR, then the form-status bands, with decoupling as the tiebreaker between near-neighbours). It returns one of eight stable vibe keys. **Read the cascade at the source rather than this prose** — the thresholds live there and only there ([VibeMatrix's signal shape](../../app/Services/Run/Story/VibeMatrix.php#L12)).
+[VibeMatrix::pick](../../app/Services/Run/Story/VibeMatrix.php) is that table: an ordered cascade of guard clauses (first match wins, most-significant signal first — staleness, then a fresh PR, then the form-status bands, with decoupling as the tiebreaker between near-neighbours). It returns one of eight stable vibe keys. **Read the cascade at the source rather than this prose** — the thresholds live there and only there ([VibeMatrix's signal shape](../../app/Services/Run/Story/VibeMatrix.php)).
 
 ### The eight vibes
 
-A fixed vocabulary — keys are internal, the labels + emoji are the display surface ([the vibe constants](../../app/Services/Run/Story/Vibe.php#L17)):
+A fixed vocabulary — keys are internal, the labels + emoji are the display surface ([the vibe constants](../../app/Services/Run/Story/Vibe.php)):
 
 | Vibe (key) | Label | Emoji | Roughly means |
 | --- | --- | --- | --- |
@@ -49,15 +49,15 @@ A fixed vocabulary — keys are internal, the labels + emoji are the display sur
 
 ## Run-level moods
 
-A finished run gets a single **mood** instead — six values on [Temari](../../app/Services/Run/Story/Temari.php): `blazing` (PR / hard win / a quality session done), `easy` (easy / negative split), `wobbly` (heat strain), `gassed` (decoupling drift), `overloaded` (hard-zone heavy / overreaching / graded too hard), `chill` (rest / default). The selection cascade is `moodForActivity` ([`moodForActivity()`](../../app/Services/Run/Story/Temari.php#L137)); it reads the run's [[stream-analysis|stream summary]], weather and, when the run is its day's only run, the plan day's effective type and grade. A quality day (tempo, intervals, race, or a long run with a marathon-pace block) is judged by its purpose, and a too-hard grade on any plan day reads `overloaded`; ingest re-reads the mood once the day is graded, before narration ([[a-quality-sessions-mood-follows-its-purpose]]). This mood is what [[gamification]] writes onto the run's `StoryLine`, and each mood also carries a 4-char "sigil" for the SVG renderer ([`SIGIL_FOR_MOOD`](../../app/Services/Run/Story/Temari.php#L32)).
+A finished run gets a single **mood** instead — six cases of the [Mood](../../app/Enums/Mood.php) enum, which `typescript:enums` generates into TypeScript and `StoryLine` casts: `blazing` (PR / hard win / a quality session done), `easy` (easy / negative split), `wobbly` (heat strain), `gassed` (decoupling drift), `overloaded` (hard-zone heavy / overreaching / graded too hard), `chill` (rest / default). The selection cascade is `moodForActivity` ([`Temari::moodForActivity()`](../../app/Services/Run/Story/Temari.php)); it reads the run's [[stream-analysis|stream summary]], weather and, when the run is its day's only run, the plan day's effective type and grade. A quality day (tempo, intervals, race, or a long run with a marathon-pace block) is judged by its purpose, and a too-hard grade on any plan day reads `overloaded`; ingest re-reads the mood once the day is graded, before narration ([[a-quality-sessions-mood-follows-its-purpose]]). This mood is what [[gamification]] writes onto the run's `StoryLine`, along with a 4-char `sigil_pattern` per mood ([`Temari::sigilForMoodPublic()`](../../app/Services/Run/Story/Temari.php)) that nothing reads.
 
-The bridge between the two systems is `moodForVibe` ([`moodForVibe()`](../../app/Services/Run/Story/Temari.php#L199)): when there's no run to react to, the daily greeting still needs a mood, so each vibe collapses onto the nearest run-mood.
+The bridge between the two systems is `moodForVibe` ([`Temari::moodForVibe()`](../../app/Services/Run/Story/Temari.php)): when there's no run to react to, the daily greeting still needs a mood, so each vibe collapses onto the nearest run-mood.
 
 ## How the vibe is consumed
 
 - **Mascot pose.** A run `Mood` picks Temari's pose on run surfaces (RunHero, RunLenses, [RecapCard](../../resources/js/components/history/RecapCard.tsx)). On Today and Profile the daily vibe does, collapsed onto a mood by `moodForVibe` below: Today reads `briefing.mood`, Profile its own `mood` prop. See [[temari-mascot]].
-- **Vibe bar.** Gone. It surfaced as text in `VitalBars`' "Vibe" row on `/trends`, until #967 deleted that component along with the range toggle it belonged to (see [[trends]]). `BriefingResult` no longer carries `vibeLabel`/`vibeEmoji` (nor does [Vibe](../../app/Services/Run/Story/Vibe.php) expose `label()`/`emoji()`/`LABELS`/`EMOJI` any more) — nothing rendered them once the bar was gone. `vibeState` itself is unaffected and still feeds `moodForVibe` below.
-- **LLM tone.** [BriefingComposer::compose](../../app/Services/Run/Story/BriefingComposer.php) resolves the vibe once and hangs the briefing off it. The vibe *key* is then a context field the narrators key their tone to: the mascot voice keys its register to the vibe band ([BriefingMascotVoiceNarrator.php](../../app/Services/AI/Narrators/BriefingMascotVoiceNarrator.php)) — energetic for `pumped`/`fresh`/`bouncy`, gentle for `worn_down`/`cooked`, coaxing for `hibernating`. The pipeline itself is documented in [[ai-pipeline]].
+- **Vibe bar.** Gone. It surfaced as text in `VitalBars`' "Vibe" row on `/trends`, until #967 deleted that component along with the range toggle it belonged to (see [[trends]]). `BriefingResult` no longer carries `vibeLabel`/`vibeEmoji` (nor does [Vibe](../../app/Services/Run/Story/Vibe.php) expose `label()`/`emoji()`/`LABELS`/`EMOJI` any more) — nothing rendered them once the bar was gone. The vibe itself still feeds `moodForVibe` below, but `BriefingResult` sends only the resulting `mood`, not the vibe key.
+- **LLM tone.** [BriefingComposer::compose](../../app/Services/Run/Story/BriefingComposer.php) resolves the vibe only to derive the briefing's mood; it does not hand the vibe to the narrator. [BriefingMascotVoiceNarrator](../../app/Services/AI/Narrators/BriefingMascotVoiceNarrator.php) calls `Vibe::current` itself, and the vibe *key* is a context field it keys its tone to: the mascot voice keys its register to the vibe band — energetic for `pumped`/`fresh`/`bouncy`, gentle for `worn_down`/`cooked`, coaxing for `hibernating`. The pipeline itself is documented in [[ai-pipeline]].
 
 ## Featured kartu
 
@@ -69,7 +69,7 @@ holds the picker if the surface ever returns.
 
 ## Past-you matcher
 
-[PastYouMatcher::findMatch](../../app/Services/Run/Story/PastYouMatcher.php) is a sibling story tool, not part of the vibe path: given a current run, it finds an *older* baseline run that's comparable enough to say "you've changed". It matches on pace-band, distance, and temperature within tolerances and a minimum age gap (all constants at the top of the class, [`bestMatch`](../../app/Services/Run/Story/PastYouMatcher.php#L22)), preferring the *oldest* qualifying run, then reports the pace/time/HR deltas. The pace-band edges are in `paceBand` ([`findMatchContext`](../../app/Services/Run/Story/PastYouMatcher.php#L197)).
+[PastYouMatcher::findMatch](../../app/Services/Run/Story/PastYouMatcher.php) is a sibling story tool, not part of the vibe path: given a current run, it finds an *older* baseline run that's comparable enough to say "you've changed". It matches on pace-band, distance, and temperature within tolerances and a minimum age gap (all constants at the top of the class, [`bestMatch`](../../app/Services/Run/Story/PastYouMatcher.php)), preferring the *oldest* qualifying run, then reports the pace/time/HR deltas. The pace-band edges are in `paceBand` ([`findMatchContext`](../../app/Services/Run/Story/PastYouMatcher.php)).
 
 ## See also
 

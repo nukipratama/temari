@@ -44,7 +44,7 @@ class LifetimeStats
      */
     private function compute(User $user): array
     {
-        $totalRuns = $user->activities()->count();
+        $totalRuns = $user->activities()->whereHas('detail')->count();
 
         $aggregates = ActivityDetail::query()
             ->whereHas(

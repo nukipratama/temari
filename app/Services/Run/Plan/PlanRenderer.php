@@ -20,18 +20,13 @@ use Illuminate\Support\Collection;
 use LogicException;
 
 /**
- * The two render-time computations shared by every "current week" surface —
- * {@see PlanPageAssembler} (the full multi-week arc) and
- * {@see CurrentWeekPlanBuilder} (Home's single-week widget). Pulled out so
- * the two pages can never numerically drift on the same week: the
- * phase→volume-multiplier math is relative to how far into a Peak/Taper/
- * Deload block a week sits, which only a shared computation over the same
- * trailing history can get right.
- *
- * That multiplier is now READ off the row rather than recomputed: it counts
- * from the season's arc start, which a window reaching back three weeks
- * cannot see. The recompute stays as the fallback for rows written before
- * generation stamped it. See `docs/decisions/the-arc-is-anchored-once.md`.
+ * The rules every plan surface renders a day by, so {@see PlanPageAssembler},
+ * {@see CurrentWeekPlanBuilder}, {@see CurrentWeekKm} and the narrator's planned
+ * sessions cannot drift: each week's phase and volume multiplier (read off the
+ * row, recomputed only for rows written before it was stamped, see
+ * `docs/decisions/the-arc-is-anchored-once.md`), the km a day asks for, and the
+ * session, segments and km it shows after an ease, today's clamp and the week's
+ * redistribution ({@see self::shownDay()}, {@see self::dayPayload()}).
  */
 final class PlanRenderer
 {
@@ -181,7 +176,8 @@ final class PlanRenderer
      * already-loaded week — looks up its own week's siblings so
      * {@see self::plannedKmByDate()}'s `isPrimaryEasy`/multiplier still apply.
      * Still the plain, unredistributed figure: no {@see VolumeRedistributor}
-     * scale reaches this.
+     * scale reaches this. The current week's shown km, scale included, come
+     * from {@see CurrentWeekKm}.
      */
     public static function coreKmForSession(PlannedSession $session, float $longRunBaselineKm, float $longRunCapKm, bool $selfScaled, float $longRunProgressionCapKm = INF): float
     {
@@ -262,11 +258,155 @@ final class PlanRenderer
         ?int $easyHrCapBpm = null,
     ): array {
         $isToday = $s->date->isSameDay($today);
+        $volumeScale = $volumeScaleByDate[$s->date->toDateString()] ?? 1.0;
+        [
+            'readiness_assessment' => $currentReadinessAssessment,
+            'readiness_reasons' => $readinessReasons,
+            'race_distance_m' => $raceDistanceM,
+            'asked_km' => $askedKm,
+            'original_asked_km' => $originalAskedKm,
+            'effective' => $effective,
+            'recorded_reasons' => $recordedReasons,
+            'headlines_ease' => $headlinesEase,
+            'advisory_clamp' => $advisoryClamp,
+            'keeps_prescription' => $keepsPrescription,
+            'headlines_advice' => $headlinesAdvice,
+            'session_type' => $sessionType,
+            'original_pace_sec_per_km' => $originalPaceSecPerKm,
+            'fall_off_tilt' => $fallOffTilt,
+            'segments' => $segments,
+            'distance_km' => $distanceKm,
+            'eased_from_km' => $easedFromKm,
+        ] = self::shownDay($s, $today, $status, $clamp, $volumeScale, $raceDistanceM, $isPrimaryEasy, $longRunKm, $multiplier, $longRunCapKm, $paces, $raceGoalTimeSec, $longRunProgressionCapKm, $readinessAssessment);
+
+        $creditedKm = self::creditedKmOf($s, $activity);
+        $ranPaceSecPerKm = $status->isCredited() && $sessionType !== SessionType::Rest
+            ? SessionMatcher::ranPaceSecPerKmFromRuns($s->session_type, $activity['runs'] ?? [], TimeTrial::of($s) !== null)
+            : null;
+
+        $originalSegments = self::segmentsFor($s, $s->session_type, $s->phase, $raceDistanceM, $isPrimaryEasy, $longRunKm, $multiplier, $longRunCapKm, $paces, $volumeScale, $raceGoalTimeSec, $longRunProgressionCapKm);
+        $shownClamp = $advisoryClamp;
+        if ($headlinesEase && $isToday && ! $status->isCredited()) {
+            $shownClamp = self::stepDownFromEffective($effective, $paces, $recordedReasons, $s->phase);
+        }
+        $recommendationToken = app(RecommendationHistory::class)->token($s->user_id, $s->date->toDateString(), [
+            'session_type' => $s->session_type->value,
+            'phase' => $s->phase->value,
+            'hard_minutes' => $s->prescribed_hard_minutes,
+            'distance_km' => SegmentGenerator::segmentSumKm($originalSegments) ?? $askedKm,
+            'reason' => $s->prescription_reason,
+            'segments' => array_map(static fn (SessionSegment $segment): array => $segment->toArray(), $originalSegments),
+        ], [
+            'session_type' => ($shownClamp['session_type'] ?? $sessionType)->value,
+            'distance_km' => $shownClamp['core_km'] ?? $distanceKm,
+            'segments' => array_map(static fn (SessionSegment $segment): array => $segment->toArray(), $shownClamp['segments'] ?? $segments),
+            'paces' => $paces,
+            'skipped' => $s->skipped,
+            'reason' => $shownClamp['note'] ?? ($effective->isEased() ? ReadinessClamp::noteFor($s->session_type, $effective->impliedCeiling(), $readinessReasons) : $s->prescription_reason),
+            'readiness_assessment' => $effective->isEased() ? $s->readiness_assessment : $currentReadinessAssessment,
+        ]);
+        $goalPace = self::goalPaceKindOf($s, $sessionType);
+
+        return [
+            'id' => $s->id,
+            'recommendation_token' => $recommendationToken,
+            'readiness_assessment' => $currentReadinessAssessment,
+            'date' => $s->date->toDateString(),
+            'phase' => $s->phase->value,
+            'session_type' => $sessionType->value,
+            'segments' => array_map(static fn (SessionSegment $segment): array => $segment->toArray(), $segments),
+            'hr_cap_bpm' => self::heartRateCapOf($sessionType, $segments, $easyHrCapBpm),
+            'distance_km' => $distanceKm,
+            'asked_km' => $askedKm,
+            'pinned' => $s->pinned,
+            'skipped' => $s->skipped,
+            'status' => $status->value,
+            'compliance_score' => $s->compliance_score,
+            'prescribed_km' => $s->prescribed_km,
+            'ran_anyway' => $ranAnyway ?? $s->ran_anyway,
+            'prescription_reason' => $s->prescription_reason,
+            'fall_off_tilt' => $fallOffTilt?->value,
+            'goal_pace' => $goalPace,
+            'stepping_stone' => $goalPace !== null && GoalPaceWork::isSteppingStone($s->prescription_race_context),
+            'time_trial' => self::timeTrialOf($s, $sessionType),
+            'advice_note' => $advisoryClamp !== null && $keepsPrescription ? $clampVoice ?? $advisoryClamp['note'] : null,
+            'eased_from' => match (true) {
+                $headlinesEase => self::easedFromPayload($effective, $status, $isToday ? $clampVoice : null, $easedFromKm, $recordedReasons),
+                $headlinesAdvice && $advisoryClamp !== null => [
+                    'session_type' => $s->session_type->value,
+                    'distance_km' => $easedFromKm,
+                    'voice' => $clampVoice ?? $advisoryClamp['note'],
+                ],
+                default => null,
+            },
+            'pace_eased_from' => $effective->isPaceEased() ? [
+                'pace_sec_per_km' => $originalPaceSecPerKm,
+                'voice' => $status->isCredited() ? null : ReadinessClamp::paceEaseNote($readinessReasons),
+            ] : null,
+            'credit_note' => self::creditNote($sessionType, $status, $askedKm, $activity),
+            'ran_hot' => self::ranHot($s, $status),
+            'result_note' => self::resultNote($s, $status, $ranPaceSecPerKm),
+            'ran_pace_sec_per_km' => $ranPaceSecPerKm,
+            'actual_km' => $activity['km'] ?? null,
+            'credited_km' => $creditedKm,
+            'activities' => array_map(
+                static fn (array $run): array => ['id' => $run['id'], 'km' => $run['km'], 'seconds' => $run['seconds'], 'started_at' => $run['started_at']],
+                $activity['runs'] ?? [],
+            ),
+            'flagged' => app(ResolveFlaggedSubjectsAction::class)(FeedbackSubject::PlanDay, $s->id),
+        ];
+    }
+
+    /**
+     * The km a day's runs earn it, or null when nothing ran.
+     *
+     * @param  array{km: float, runs: list<array{id: int, km: float, seconds: int|null, started_at: string}>}|null  $activity
+     */
+    public static function creditedKmOf(PlannedSession $s, ?array $activity): ?float
+    {
+        $longestRunKm = null;
+        foreach ($activity['runs'] ?? [] as $run) {
+            $longestRunKm = $longestRunKm === null ? $run['km'] : max($longestRunKm, $run['km']);
+        }
+
+        return $activity === null || $longestRunKm === null ? null : round(SessionMatcher::creditedKm($s->session_type, [
+            'sum' => $activity['km'],
+            'longest' => $longestRunKm,
+        ], TimeTrial::of($s) !== null), 1);
+    }
+
+    /**
+     * The session a day shows and the km it shows, after a recorded ease,
+     * today's advisory clamp and the week's redistribution: `distance_km`, and
+     * the per-day figure {@see CurrentWeekKm} totals. `eased_from_km` is the
+     * distance the day came down from, or null when it did not move.
+     *
+     * @param  array{session_type: SessionType, segments: list<SessionSegment>, core_km: float, note: string, quality_dose?: array{hard_minutes: int, original_hard_minutes: int, pace_band: string, pace_sec_per_km: int|null}|null}|null  $clamp
+     * @param  array{easy: int, marathon: int, threshold: int, interval: int}|null  $paces
+     * @param  array<string, mixed>|null  $readinessAssessment  today's deterministic inputs and reasons
+     * @return array{readiness_assessment: array<string, mixed>|null, readiness_reasons: list<string>, race_distance_m: float|null, asked_km: float, original_asked_km: float, effective: EffectiveSession, recorded_reasons: list<string>, headlines_ease: bool, advisory_clamp: array{session_type: SessionType, segments: list<SessionSegment>, core_km: float, note: string, quality_dose?: array{hard_minutes: int, original_hard_minutes: int, pace_band: string, pace_sec_per_km: int|null}|null}|null, keeps_prescription: bool, headlines_advice: bool, session_type: SessionType, original_pace_sec_per_km: int|null, fall_off_tilt: FallOffTilt|null, segments: list<SessionSegment>, distance_km: float, eased_from_km: float|null}
+     */
+    public static function shownDay(
+        PlannedSession $s,
+        Carbon $today,
+        PlannedSessionStatus $status,
+        ?array $clamp,
+        float $volumeScale,
+        ?float $raceDistanceM,
+        bool $isPrimaryEasy,
+        float $longRunKm,
+        float $multiplier,
+        float $longRunCapKm,
+        ?array $paces,
+        ?int $raceGoalTimeSec,
+        float $longRunProgressionCapKm,
+        ?array $readinessAssessment,
+    ): array {
+        $isToday = $s->date->isSameDay($today);
         $currentReadinessAssessment = $isToday && ! $status->isCredited()
             ? ($readinessAssessment ?? $s->readiness_assessment)
             : $s->readiness_assessment;
         $readinessReasons = $currentReadinessAssessment['reasons'] ?? [];
-        $volumeScale = $volumeScaleByDate[$s->date->toDateString()] ?? 1.0;
 
         // The row's own distance on race day, the active race's everywhere
         // else — where it only ever picks a pace band.
@@ -286,8 +426,7 @@ final class PlanRenderer
             $headlinesAdvice => $advisoryClamp['session_type'],
             default => $s->session_type,
         };
-        $storedPrescription = IntensityPrescription::fromSession($s);
-        if (! $headlinesEase && ! $headlinesAdvice && $storedPrescription?->isEasy() === true && in_array($sessionType, [SessionType::Tempo, SessionType::Interval], true)) {
+        if (! $headlinesEase && ! $headlinesAdvice && IntensityPrescription::isEasyQualityDay($s, $sessionType)) {
             $sessionType = SessionType::Easy;
         }
         $originalPaceSecPerKm = null;
@@ -356,88 +495,29 @@ final class PlanRenderer
             );
         }
 
-        $longestRunKm = null;
-        foreach ($activity['runs'] ?? [] as $run) {
-            $longestRunKm = $longestRunKm === null ? $run['km'] : max($longestRunKm, $run['km']);
-        }
-        $creditedKm = $activity === null || $longestRunKm === null ? null : round(SessionMatcher::creditedKm($s->session_type, [
-            'sum' => $activity['km'],
-            'longest' => $longestRunKm,
-        ], TimeTrial::of($s) !== null), 1);
-        $ranPaceSecPerKm = $status->isCredited() && $sessionType !== SessionType::Rest
-            ? SessionMatcher::ranPaceSecPerKmFromRuns($s->session_type, $activity['runs'] ?? [], TimeTrial::of($s) !== null)
-            : null;
-
-        $originalSegments = self::segmentsFor($s, $s->session_type, $s->phase, $raceDistanceM, $isPrimaryEasy, $longRunKm, $multiplier, $longRunCapKm, $paces, $volumeScale, $raceGoalTimeSec, $longRunProgressionCapKm);
-        $shownClamp = $advisoryClamp;
-        if ($headlinesEase && $isToday && ! $status->isCredited()) {
-            $shownClamp = self::stepDownFromEffective($effective, $paces, $recordedReasons, $s->phase);
-        }
-        $recommendationToken = app(RecommendationHistory::class)->token($s->user_id, $s->date->toDateString(), [
-            'session_type' => $s->session_type->value,
-            'phase' => $s->phase->value,
-            'hard_minutes' => $s->prescribed_hard_minutes,
-            'distance_km' => SegmentGenerator::segmentSumKm($originalSegments) ?? $askedKm,
-            'reason' => $s->prescription_reason,
-            'segments' => array_map(static fn (SessionSegment $segment): array => $segment->toArray(), $originalSegments),
-        ], [
-            'session_type' => ($shownClamp['session_type'] ?? $sessionType)->value,
-            'distance_km' => $shownClamp['core_km'] ?? $distanceKm,
-            'segments' => array_map(static fn (SessionSegment $segment): array => $segment->toArray(), $shownClamp['segments'] ?? $segments),
-            'paces' => $paces,
-            'skipped' => $s->skipped,
-            'reason' => $shownClamp['note'] ?? ($effective->isEased() ? ReadinessClamp::noteFor($s->session_type, $effective->impliedCeiling(), $readinessReasons) : $s->prescription_reason),
-            'readiness_assessment' => $effective->isEased() ? $s->readiness_assessment : $currentReadinessAssessment,
-        ]);
-        $goalPace = self::goalPaceKindOf($s, $sessionType);
 
         return [
-            'id' => $s->id,
-            'recommendation_token' => $recommendationToken,
             'readiness_assessment' => $currentReadinessAssessment,
-            'date' => $s->date->toDateString(),
-            'phase' => $s->phase->value,
-            'session_type' => $sessionType->value,
-            'segments' => array_map(static fn (SessionSegment $segment): array => $segment->toArray(), $segments),
-            'hr_cap_bpm' => self::heartRateCapOf($sessionType, $segments, $easyHrCapBpm),
-            'distance_km' => $distanceKm,
+            'readiness_reasons' => $readinessReasons,
+            'race_distance_m' => $raceDistanceM,
             'asked_km' => $askedKm,
-            'pinned' => $s->pinned,
-            'skipped' => $s->skipped,
-            'status' => $status->value,
-            'compliance_score' => $s->compliance_score,
-            'prescribed_km' => $s->prescribed_km,
-            'ran_anyway' => $ranAnyway ?? $s->ran_anyway,
-            'prescription_reason' => $s->prescription_reason,
-            'fall_off_tilt' => $fallOffTilt?->value,
-            'goal_pace' => $goalPace,
-            'stepping_stone' => $goalPace !== null && GoalPaceWork::isSteppingStone($s->prescription_race_context),
-            'time_trial' => self::timeTrialOf($s, $sessionType),
-            'advice_note' => $advisoryClamp !== null && $keepsPrescription ? $clampVoice ?? $advisoryClamp['note'] : null,
-            'eased_from' => match (true) {
-                $headlinesEase => self::easedFromPayload($effective, $status, $isToday ? $clampVoice : null, $recordedReasons),
-                $headlinesAdvice => [
-                    'session_type' => $s->session_type->value,
-                    'distance_km' => abs($originalAskedKm - $advisoryClamp['core_km']) < 0.05 ? null : $originalAskedKm,
-                    'voice' => $clampVoice ?? $advisoryClamp['note'],
-                ],
+            'original_asked_km' => $originalAskedKm,
+            'effective' => $effective,
+            'recorded_reasons' => $recordedReasons,
+            'headlines_ease' => $headlinesEase,
+            'advisory_clamp' => $advisoryClamp,
+            'keeps_prescription' => $keepsPrescription,
+            'headlines_advice' => $headlinesAdvice,
+            'session_type' => $sessionType,
+            'original_pace_sec_per_km' => $originalPaceSecPerKm,
+            'fall_off_tilt' => $fallOffTilt,
+            'segments' => $segments,
+            'distance_km' => $distanceKm,
+            'eased_from_km' => match (true) {
+                $headlinesEase => $effective->distanceHeld() ? null : $effective->easedFromKm,
+                $advisoryClamp !== null && $headlinesAdvice => abs($originalAskedKm - $advisoryClamp['core_km']) < 0.05 ? null : $originalAskedKm,
                 default => null,
             },
-            'pace_eased_from' => $effective->isPaceEased() ? [
-                'pace_sec_per_km' => $originalPaceSecPerKm,
-                'voice' => $status->isCredited() ? null : ReadinessClamp::paceEaseNote($readinessReasons),
-            ] : null,
-            'credit_note' => self::creditNote($sessionType, $status, $askedKm, $activity),
-            'ran_hot' => self::ranHot($s, $status),
-            'result_note' => self::resultNote($s, $status, $ranPaceSecPerKm),
-            'ran_pace_sec_per_km' => $ranPaceSecPerKm,
-            'actual_km' => $activity['km'] ?? null,
-            'credited_km' => $creditedKm,
-            'activities' => array_map(
-                static fn (array $run): array => ['id' => $run['id'], 'km' => $run['km'], 'seconds' => $run['seconds'], 'started_at' => $run['started_at']],
-                $activity['runs'] ?? [],
-            ),
-            'flagged' => app(ResolveFlaggedSubjectsAction::class)(FeedbackSubject::PlanDay, $s->id),
         ];
     }
 
@@ -553,7 +633,7 @@ final class PlanRenderer
         float $longRunProgressionCapKm,
     ): array {
         $prescription = IntensityPrescription::fromSession($session);
-        if ($prescription?->isEasy() === true && $sessionType === SessionType::Easy && in_array($session->session_type, [SessionType::Tempo, SessionType::Interval], true)) {
+        if ($sessionType === SessionType::Easy && IntensityPrescription::isEasyQualityDay($session, $session->session_type)) {
             $km = SegmentGenerator::coreKmFor($session->session_type, false, $longRunKm, $multiplier, $longRunCapKm, $raceDistanceM, $longRunProgressionCapKm, $session->fall_off_tilt) * $volumeScale;
 
             return SegmentGenerator::easyBlock(round($km, 1), $paces);
@@ -585,15 +665,14 @@ final class PlanRenderer
      * @return array{session_type: string, distance_km: float|null, voice: string|null}
      * @param list<string> $reasons
      */
-    private static function easedFromPayload(EffectiveSession $effective, PlannedSessionStatus $status, ?string $clampVoice, array $reasons = []): array
+    private static function easedFromPayload(EffectiveSession $effective, PlannedSessionStatus $status, ?string $clampVoice, ?float $easedFromKm, array $reasons = []): array
     {
         $original = $effective->easedFromType ?? $effective->sessionType;
-        $distanceHeld = $effective->distanceHeld();
         $dose = $effective->qualityDose;
 
         return [
             'session_type' => $original->value,
-            'distance_km' => $distanceHeld ? null : $effective->easedFromKm,
+            'distance_km' => $easedFromKm,
             'voice' => $status->isCredited() ? null : $clampVoice ?? ($dose === null
                 ? ReadinessClamp::noteFor($original, $effective->impliedCeiling(), $reasons)
                 : ReadinessClamp::qualityDoseNote($original, $reasons, $dose['hard_minutes'], $dose['original_hard_minutes'], $dose['pace_sec_per_km'])),

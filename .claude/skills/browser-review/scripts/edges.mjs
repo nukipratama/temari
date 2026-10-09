@@ -45,11 +45,8 @@ const ctx = await browser.newContext({
 });
 const page = await ctx.newPage();
 
+await page.addInitScript((g) => localStorage.setItem('temari-theme', g), GROUND);
 await page.goto(`${BASE}/login`, { waitUntil: 'load' });
-await page.evaluate((g) => {
-    localStorage.setItem('theme', g);
-    document.documentElement.setAttribute('data-theme', g);
-}, GROUND);
 await login(page);
 
 const SCAN = `(() => {
@@ -110,10 +107,8 @@ for (const route of routes) {
         continue;
     }
     await page.waitForLoadState('networkidle').catch(() => {});
-    await page.evaluate(
-        (g) => document.documentElement.setAttribute('data-theme', g),
-        GROUND,
-    );
+    const appliedGround = await page.evaluate(() => document.documentElement.dataset.theme);
+    if (appliedGround !== GROUND) throw new Error(`ground ${GROUND} did not apply on ${route.path} (data-theme=${appliedGround})`);
     await page.waitForTimeout(250);
 
     for (const row of await page.evaluate(SCAN)) {

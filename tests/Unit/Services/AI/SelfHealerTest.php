@@ -3,12 +3,14 @@
 declare(strict_types=1);
 
 use App\Actions\AI\RecentlyActiveUsers;
+use App\Actions\Run\Plan\ResolveSeasonAction;
 use App\Enums\IngestState;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
 use App\Models\PlanAdaptation;
 use App\Models\RunCard;
+use App\Models\Season;
 use App\Models\StravaConnection;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
@@ -82,7 +84,7 @@ function nonDispatchingResumeService(): AnalysisService
 
 function selfHealer(AnalysisService $service): SelfHealer
 {
-    return new SelfHealer($service, new ChainResolver(), new BackfillAgeGate(), new RecapHydrationReadiness(new HydrationBacklog()), new RecentlyActiveUsers(), new HistoryNarrationGate(new BackfillAgeGate(), new HydrationBacklog()), new HydrationBacklog());
+    return new SelfHealer($service, new ChainResolver(), new BackfillAgeGate(), new RecapHydrationReadiness(new HydrationBacklog()), new RecentlyActiveUsers(), new HistoryNarrationGate(new BackfillAgeGate(), new HydrationBacklog()), new HydrationBacklog(), app(ResolveSeasonAction::class));
 }
 
 /** Seed an activity for $user dated $startDate whose post-run speech is Pending. */
@@ -616,14 +618,16 @@ it('skips a demo user for the briefing suggestion so the resume net never auto-b
     expect(selfHealer(nonDispatchingResumeService())->run())->toBe(0);
 });
 
-it('re-kicks the earliest stalled single-row block per user with invalidate:false', function (AnalysisType $type, string $subjectType, ?string $discriminator): void {
+it('re-kicks the earliest stalled single-row block per user with invalidate:false', function (Closure $subject, AnalysisStatus $status, int $attempts): void {
     $user = User::factory()->create();
+    [$subjectType, $subjectId, $type, $discriminator] = $subject($user);
     Analysis::factory()->create([
         'subject_type' => $subjectType,
-        'subject_id' => $user->id,
+        'subject_id' => $subjectId,
         'analysis_type' => $type,
         'discriminator' => $discriminator,
-        'status' => AnalysisStatus::Pending,
+        'status' => $status,
+        'attempts' => $attempts,
     ]);
 
     $captured = [];
@@ -632,14 +636,72 @@ it('re-kicks the earliest stalled single-row block per user with invalidate:fals
 
     expect($captured)->toHaveCount(1)
         ->and($captured[0]['subjectOrType'])->toBe($subjectType)
-        ->and($captured[0]['subjectId'])->toBe($user->id)
+        ->and($captured[0]['subjectId'])->toBe($subjectId)
         ->and($captured[0]['type'])->toBe($type)
         ->and($captured[0]['discriminator'])->toBe($discriminator)
         ->and($captured[0]['invalidate'])->toBeFalse();
 })->with([
-    'BriefingMascotVoice' => [AnalysisType::BriefingMascotVoice, AnalysisType::BRIEFING_SUBJECT_TYPE, '2026-05-18'],
-    'ProfileVoice' => [AnalysisType::ProfileVoice, AnalysisType::PROFILE_VOICE_SUBJECT_TYPE, '2026-W21'],
+    'BriefingMascotVoice' => [fn (User $user): array => [AnalysisType::BRIEFING_SUBJECT_TYPE, $user->id, AnalysisType::BriefingMascotVoice, '2026-05-18']],
+    'ProfileVoice' => [fn (User $user): array => [AnalysisType::PROFILE_VOICE_SUBJECT_TYPE, $user->id, AnalysisType::ProfileVoice, '2026-W21']],
+    'PlanClampVoice' => [fn (User $user): array => [AnalysisType::PLAN_CLAMP_VOICE_SUBJECT_TYPE, $user->id, AnalysisType::PlanClampVoice, '2026-06-17']],
+    'PlanSeasonVoice' => [fn (User $user): array => [Season::class, Season::factory()->for($user)->create()->id, AnalysisType::PlanSeasonVoice, null]],
+])->with([
+    'Pending' => [AnalysisStatus::Pending, 0],
+    'Failed under budget' => [AnalysisStatus::Failed, 1],
 ]);
+
+it('resumes only today\'s plan clamp voice, never an earlier day\'s', function (): void {
+    $user = User::factory()->create();
+    Analysis::factory()->create([
+        'subject_type' => AnalysisType::PLAN_CLAMP_VOICE_SUBJECT_TYPE,
+        'subject_id' => $user->id,
+        'analysis_type' => AnalysisType::PlanClampVoice,
+        'discriminator' => '2026-06-16',
+        'status' => AnalysisStatus::Pending,
+    ]);
+
+    expect(selfHealer(nonDispatchingResumeService())->run())->toBe(0);
+});
+
+it('resumes only the current season\'s plan voice, never an earlier season\'s', function (): void {
+    $user = User::factory()->create();
+    $earlier = Season::factory()->for($user)->create(['starts_at' => '2026-01-05', 'ends_at' => '2026-04-26']);
+    $current = Season::factory()->for($user)->create(['starts_at' => '2026-05-04', 'ends_at' => '2026-08-23']);
+    foreach ([$earlier, $current] as $season) {
+        Analysis::factory()->create([
+            'subject_type' => Season::class,
+            'subject_id' => $season->id,
+            'analysis_type' => AnalysisType::PlanSeasonVoice,
+            'discriminator' => null,
+            'status' => AnalysisStatus::Pending,
+        ]);
+    }
+
+    $captured = [];
+
+    expect(selfHealer(captureResumeRequests($captured))->run())->toBe(1)
+        ->and(array_column($captured, 'subjectId'))->toBe([$current->id]);
+});
+
+it('skips a demo user for the plan voices so the resume net never auto-bills them', function (): void {
+    $demo = User::factory()->demo()->create();
+    Analysis::factory()->create([
+        'subject_type' => AnalysisType::PLAN_CLAMP_VOICE_SUBJECT_TYPE,
+        'subject_id' => $demo->id,
+        'analysis_type' => AnalysisType::PlanClampVoice,
+        'discriminator' => '2026-06-17',
+        'status' => AnalysisStatus::Pending,
+    ]);
+    Analysis::factory()->create([
+        'subject_type' => Season::class,
+        'subject_id' => Season::factory()->for($demo)->create()->id,
+        'analysis_type' => AnalysisType::PlanSeasonVoice,
+        'discriminator' => null,
+        'status' => AnalysisStatus::Pending,
+    ]);
+
+    expect(selfHealer(nonDispatchingResumeService())->run())->toBe(0);
+});
 
 it('spaces successive single-row-type resumes across users within one sweep', function (): void {
     $userA = User::factory()->create();
@@ -717,6 +779,24 @@ it('never resumes a stalled block of an athlete away from the app', function (Cl
             'subject_id' => $user->id,
             'analysis_type' => AnalysisType::ProfileVoice,
             'discriminator' => '2026-W24',
+            'status' => AnalysisStatus::Pending,
+        ]);
+    }],
+    'plan clamp voice' => [function (User $user): void {
+        Analysis::factory()->create([
+            'subject_type' => AnalysisType::PLAN_CLAMP_VOICE_SUBJECT_TYPE,
+            'subject_id' => $user->id,
+            'analysis_type' => AnalysisType::PlanClampVoice,
+            'discriminator' => '2026-06-17',
+            'status' => AnalysisStatus::Pending,
+        ]);
+    }],
+    'plan season voice' => [function (User $user): void {
+        Analysis::factory()->create([
+            'subject_type' => Season::class,
+            'subject_id' => Season::factory()->for($user)->create()->id,
+            'analysis_type' => AnalysisType::PlanSeasonVoice,
+            'discriminator' => null,
             'status' => AnalysisStatus::Pending,
         ]);
     }],

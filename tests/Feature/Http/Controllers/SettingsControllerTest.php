@@ -44,6 +44,17 @@ it('exposes the telegram connect url when the bot username is configured', funct
                 && str_starts_with($url, 'https://t.me/temari_bot?start=')));
 });
 
+it('hands the demo account no telegram connect url', function (): void {
+    config(['services.telegram.bot_username' => 'temari_bot']);
+
+    $this->actingAs(User::factory()->create(['is_demo' => true]))->get('/settings')
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('telegram.connected', false)
+            ->where('telegram.connect_url', null))
+        ->assertDontSee('t.me/temari_bot', false);
+});
+
 it('reports the connection state and the channel-neutral preferences', function (): void {
     $user = User::factory()->create();
     TelegramConnection::factory()->for($user)->create(['username' => 'ada_runs']);

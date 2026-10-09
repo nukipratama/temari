@@ -83,6 +83,17 @@ class StravaAuthController extends Controller
 
         [$user, $isFreshConnection, $zoneScopeNewlyGranted, $wasRevoked, $hasZoneScope] = $upserted;
 
+        // Surface partial grants: if the athlete declined a scope we need, the
+        // connection still saves but sync may silently return less data.
+        $missing = $grantedScopes === '' ? [] : array_diff(self::SCOPES, explode(',', $grantedScopes));
+        if ($missing !== []) {
+            Log::warning('strava.scopes.partial', [
+                'user_id' => $user->id,
+                'granted' => $grantedScopes,
+                'missing' => array_values($missing),
+            ]);
+        }
+
         Auth::login($user, remember: true);
 
         // First-ever connect: pull the athlete's full history now so the
@@ -158,17 +169,6 @@ class StravaAuthController extends Controller
     private function upsertUser(SocialiteUser $stravaUser, string $grantedScopes = ''): array|RedirectResponse|null
     {
         $scopes = $grantedScopes !== '' ? $grantedScopes : implode(',', self::SCOPES);
-
-        // Surface partial grants: if the athlete declined a scope we need, the
-        // connection still saves but sync may silently return less data.
-        $missing = array_diff(self::SCOPES, explode(',', $scopes));
-        if ($missing !== []) {
-            Log::warning('strava.scopes.partial', [
-                'athlete_id' => $stravaUser->getId(),
-                'granted' => $scopes,
-                'missing' => array_values($missing),
-            ]);
-        }
 
         $userAttributes = [
             'name' => $stravaUser->getName() ?: 'Strava Athlete',
@@ -268,7 +268,6 @@ class StravaAuthController extends Controller
         $result = $this->grantReleases->release($athleteId, expectedCredentialVersion: $credentialVersion);
 
         Log::info('strava.registration.refused_during_maintenance', [
-            'athlete_id' => $stravaUser->getId(),
             'deauthorized' => $result?->freedSlot() ?? false,
         ]);
     }

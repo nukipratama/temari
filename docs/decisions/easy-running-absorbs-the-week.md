@@ -11,7 +11,7 @@ code_refs:
 
 # Easy running absorbs the week, key sessions keep their size
 
-Superseded on 2026-10-01 by [[no-automatic-mileage-debt]].
+Partly superseded on 2026-10-01 by [[no-automatic-mileage-debt]] (its shortfall top-up).
 
 ## Context
 

@@ -68,7 +68,7 @@ class ActivityPipeline
 
     public function ingest(Activity $activity, StravaReadSource $source = StravaReadSource::IngestSweep, StravaReadPriority $priority = StravaReadPriority::Live): void
     {
-        if ($this->stravaIngestDisabled()) {
+        if ($activity->user->is_demo || $this->stravaIngestDisabled()) {
             return;
         }
 
@@ -382,12 +382,12 @@ class ActivityPipeline
         // or a Strava sync with custom zones), so compare against the effective
         // default too — keying off the row alone would leave that majority
         // never corrected.
-        $currentMax = $profile !== null ? $profile->max_hr : (int) config('runner.max_hr');
+        $currentMax = $profile->max_hr ?? (int) config('runner.max_hr');
         if ($observed <= $currentMax) {
             return;
         }
 
-        $restingHr = $profile !== null ? $profile->resting_hr : (int) config('runner.resting_hr');
+        $restingHr = $profile->resting_hr ?? (int) config('runner.resting_hr');
 
         if ($profile === null) {
             $user->runnerProfile()->create([
@@ -541,6 +541,17 @@ class ActivityPipeline
     {
         $status = $this->httpStatus($reason);
         $count = $activity->detail_fail_count + 1;
+
+        if ($this->isPermanentClientError($status) && $activity->detail()->doesntExist()) {
+            $activity->delete();
+            Log::info('detail fetch hit a permanent 4xx; deleted the stub', [
+                'activity_id' => $activity->id,
+                'status' => $status,
+                'reason' => $reason->getMessage(),
+            ]);
+
+            return true;
+        }
 
         if ($this->isPermanentClientError($status)) {
             $activity->update([

@@ -15,6 +15,7 @@ use App\Services\Run\Story\Contracts\VerdictNarrator;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Query\Builder as QueryBuilder;
 use Override;
+use App\Enums\Mood;
 
 class VerdictTimeline implements VerdictNarrator
 {
@@ -96,20 +97,16 @@ class VerdictTimeline implements VerdictNarrator
         return $items;
     }
 
-    /**
-     * @var array<string, string>
-     */
-    private const array MOOD_FACES = [
-        Temari::MOOD_NYALA => '✨',
-        Temari::MOOD_ENTENG => '🦘',
-        Temari::MOOD_LEMES => '🥵',
-        Temari::MOOD_OLENG => '🍳',
-        Temari::MOOD_MUMET => '💫',
-    ];
-
-    private function moodFace(string $mood): string
+    private function moodFace(Mood $mood): string
     {
-        return self::MOOD_FACES[$mood] ?? '🌧️';
+        return match ($mood) {
+            Mood::Blazing => '✨',
+            Mood::Easy => '🦘',
+            Mood::Gassed => '🥵',
+            Mood::Wobbly => '🍳',
+            Mood::Overloaded => '💫',
+            Mood::Chill => '🌧️',
+        };
     }
 
     /**

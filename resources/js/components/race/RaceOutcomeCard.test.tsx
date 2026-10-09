@@ -4,6 +4,9 @@ import { describe, expect, it, vi } from 'vitest';
 
 import type { PastRace } from '@/types/inertia';
 
+import { RACE_DEMO_BLOCKED } from '@/lib/raceGoal';
+import { makeUser, setMockPage } from '@/test/setup';
+
 import RaceOutcomeCard from './RaceOutcomeCard';
 
 function pastRace(overrides: Partial<PastRace['outcome']> = {}): PastRace {
@@ -163,5 +166,20 @@ describe('RaceOutcomeCard', () => {
         expect(
             screen.queryByRole('button', { name: 'keep as is' }),
         ).not.toBeInTheDocument();
+    });
+
+    it('shows a demo visitor the race demo-blocked modal instead of recording an outcome', async () => {
+        setMockPage({ auth: { user: makeUser({ is_demo: true }) } });
+        vi.mocked(router.post).mockClear();
+        render(<RaceOutcomeCard race={pastRace()} />);
+
+        fireEvent.click(
+            screen.getByRole('button', { name: 'i did not run it' }),
+        );
+
+        expect(router.post).not.toHaveBeenCalled();
+        expect(
+            await screen.findByText(RACE_DEMO_BLOCKED.title),
+        ).toBeInTheDocument();
     });
 });

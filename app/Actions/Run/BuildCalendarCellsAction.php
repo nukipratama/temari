@@ -11,11 +11,11 @@ use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\PlannedSession;
 use App\Models\RunCard;
-use App\Models\StoryLine;
 use App\Models\User;
 use App\Services\Run\Metrics\DistanceFormatter;
 use App\Services\Run\Metrics\PaceCalculator;
 use App\Services\Run\Metrics\RunEffort;
+use App\Services\Run\PostRunNoteReader;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
@@ -35,6 +35,10 @@ class BuildCalendarCellsAction
         'unknown' => 0,
         'rest' => -1,
     ];
+
+    public function __construct(private readonly PostRunNoteReader $postRunNotes)
+    {
+    }
 
     /**
      * @return array<int, array{date: string, day: int, is_current_month: bool, is_today: bool, distance_km: float|null, pace_sec_per_km: float|null, avg_hr: int|null, trimp: float|null, mood: string|null, rarity: string|null, activity_id: int|null, effort: string|null, runs: array<int, array{activity_id: int, name: string|null, distance_km: float|null, pace_sec_per_km: float|null, effort: string, mood: string|null}>}>
@@ -61,7 +65,7 @@ class BuildCalendarCellsAction
             ->get();
 
         $activityIds = $details->pluck('activity_id')->all();
-        $moodByActivity = $this->moodsForActivities($activityIds);
+        $moodByActivity = $this->postRunNotes->moodsFor($activityIds);
         $rarityByActivity = $this->raritiesForActivities($activityIds);
         $effortByActivity = RunEffort::forDetails($user->id, $details);
         $restDates = $this->restDatesFor($user, $gridStart, $gridEnd);
@@ -233,23 +237,6 @@ class BuildCalendarCellsAction
             ->whereBetween('date', [$gridStart->toDateString(), $gridEnd->toDateString()])
             ->get(['date'])
             ->map(fn (PlannedSession $session): string => $session->date->toDateString())
-            ->all();
-    }
-
-    /**
-     * @param  array<int, int>  $activityIds
-     * @return array<int, string>
-     */
-    private function moodsForActivities(array $activityIds): array
-    {
-        if ($activityIds === []) {
-            return [];
-        }
-
-        return StoryLine::query()
-            ->where('kind', StoryLine::KIND_POST_RUN)
-            ->whereIn('activity_id', $activityIds)
-            ->pluck('mood', 'activity_id')
             ->all();
     }
 

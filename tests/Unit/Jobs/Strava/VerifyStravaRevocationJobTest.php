@@ -11,6 +11,7 @@ use App\Services\Strava\StravaClient;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 uses(RefreshDatabase::class);
 
@@ -57,6 +58,22 @@ it('does NOT revoke when the grant is still live (forged deauth event)', functio
     expect($connection->fresh()->isRevoked())->toBeFalse()
         ->and(StravaSyncLog::query()->where('user_id', $connection->user_id)->exists())->toBeFalse();
 });
+
+it('logs the internal user id, never the Strava athlete id', function (int $status, string $level): void {
+    Log::spy();
+    $connection = freshConnection();
+    Http::fake(['strava.com/api/v3/athlete' => Http::response(['id' => 42], $status)]);
+
+    runVerifyJob($connection);
+
+    Log::shouldHaveReceived($level)
+        ->once()
+        ->withArgs(fn (string $message, array $context): bool => str_starts_with($message, 'strava.webhook')
+            && $context === ['user_id' => $connection->user_id] + ($level === 'warning' ? ['source' => 'webhook_deauth'] : []));
+})->with([
+    'grant still live' => [200, 'warning'],
+    'genuine deauth' => [401, 'info'],
+]);
 
 it('no-ops when the connection is missing', function (): void {
     Http::fake();

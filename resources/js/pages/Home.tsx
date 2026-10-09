@@ -69,6 +69,7 @@ export default function Home({
             <Head title="Home" />
             <AiOutageBanner />
             <PageContainer>
+                <h1 className="sr-only">today</h1>
                 {!hasRuns ? (
                     <EmptyRunsState />
                 ) : (

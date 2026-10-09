@@ -218,11 +218,6 @@ final readonly class StreamSummary
         return $this->array('cadence_distribution_pct') ?? [];
     }
 
-    public function optimalCadencePct(): ?float
-    {
-        return $this->float('optimal_cadence_pct');
-    }
-
     public function maxGradePct(): ?float
     {
         return $this->float('max_grade_pct');
@@ -236,21 +231,6 @@ final readonly class StreamSummary
     public function gapPace(): ?string
     {
         return $this->string('gap_pace');
-    }
-
-    public function descentM(): ?int
-    {
-        return $this->int('descent_m');
-    }
-
-    public function stoppedTimeSec(): ?int
-    {
-        return $this->int('stopped_time_sec');
-    }
-
-    public function stopCount(): ?int
-    {
-        return $this->int('stop_count');
     }
 
     private function float(string $key): ?float

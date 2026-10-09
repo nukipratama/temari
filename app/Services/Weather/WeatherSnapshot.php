@@ -6,6 +6,9 @@ namespace App\Services\Weather;
 
 final readonly class WeatherSnapshot
 {
+    /** The temperature, in °C, from which a run counts as hot. */
+    public const int HOT_RUN_TEMP_C = 31;
+
     public function __construct(
         public int $tempC,
         public int $humidityPct,

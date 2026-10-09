@@ -40,6 +40,11 @@ function context(): CanvasRenderingContext2D | null {
     return measureContext;
 }
 
+/** Test seam: forget the measuring context between tests. */
+export function resetMeasureContext(): void {
+    measureContext = undefined;
+}
+
 /** The width of one string at font-size 1, letter spacing excluded. */
 function advance(value: string, font: Font): number {
     const family = font.family ?? MONO;

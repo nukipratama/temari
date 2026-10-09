@@ -6,11 +6,15 @@ namespace App\Jobs\Telegram;
 
 use App\Models\TelegramConnection;
 use App\Models\User;
+use App\Services\Telegram\Exceptions\TelegramChatLinkedElsewhereException;
 use App\Services\Telegram\Exceptions\TelegramLinkTokenException;
 use App\Services\Telegram\TelegramClient;
 use App\Services\Telegram\TelegramLinkToken;
 use App\Services\Telegram\TelegramReplies;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Database\UniqueConstraintViolationException;
+use Illuminate\Queue\Attributes\Backoff;
+use Illuminate\Queue\Attributes\Tries;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\DB;
 
@@ -20,16 +24,11 @@ use Illuminate\Support\Facades\DB;
  * dev `telegram:listen` long-poll. Resolves a `/start <token>` to a user and
  * stores their chat id, or handles `/stop`. See the account-linking ADR.
  */
+#[Backoff([30, 120])]
+#[Tries(3)]
 class HandleTelegramUpdateJob implements ShouldQueue
 {
     use Queueable;
-
-    public int $tries = 3;
-
-    /**
-     * @var array<int, int>
-     */
-    public array $backoff = [30, 120];
 
     /**
      * @param  array<string, mixed>  $update  One raw Telegram update payload.
@@ -98,35 +97,45 @@ class HandleTelegramUpdateJob implements ShouldQueue
         }
 
         $user = User::query()->find($userId);
-        if ($user === null) {
+        if ($user === null || $user->is_demo) {
             $client->sendMessage($chatId, TelegramReplies::generic());
 
             return;
         }
 
-        $linkedUser = DB::transaction(function () use ($chatId, $linkToken, $message, $token, $user): ?User {
-            if (! $linkToken->consume($token)) {
-                return null;
-            }
+        try {
+            $linkedUser = DB::transaction(function () use ($chatId, $linkToken, $message, $token, $user): ?User {
+                if ($this->chatActiveOnAnotherUser($user->id, $chatId)) {
+                    throw new TelegramChatLinkedElsewhereException();
+                }
 
-            // Clear a revoked row from another user before reusing its chat id.
-            TelegramConnection::query()
-                ->where('chat_id', $chatId)
-                ->where('user_id', '!=', $user->id)
-                ->whereNotNull('revoked_at')
-                ->delete();
+                if (! $linkToken->consume($token)) {
+                    return null;
+                }
 
-            TelegramConnection::query()->updateOrCreate(
-                ['user_id' => $user->id],
-                [
-                    'chat_id' => $chatId,
-                    'username' => $message['from']['username'] ?? null,
-                    'revoked_at' => null,
-                ],
-            );
+                // Clear a revoked row from another user before reusing its chat id.
+                TelegramConnection::query()
+                    ->where('chat_id', $chatId)
+                    ->where('user_id', '!=', $user->id)
+                    ->whereNotNull('revoked_at')
+                    ->delete();
 
-            return $user;
-        });
+                TelegramConnection::query()->updateOrCreate(
+                    ['user_id' => $user->id],
+                    [
+                        'chat_id' => $chatId,
+                        'username' => $message['from']['username'] ?? null,
+                        'revoked_at' => null,
+                    ],
+                );
+
+                return $user;
+            });
+        } catch (TelegramChatLinkedElsewhereException|UniqueConstraintViolationException) {
+            $client->sendMessage($chatId, TelegramReplies::linkedElsewhere());
+
+            return;
+        }
 
         if ($linkedUser === null) {
             if (! $this->chatLinkedTo($user->id, $chatId)) {
@@ -137,6 +146,15 @@ class HandleTelegramUpdateJob implements ShouldQueue
         }
 
         SendTelegramLinkWelcomeJob::dispatch($chatId, (string) $linkedUser->name);
+    }
+
+    private function chatActiveOnAnotherUser(int $userId, int $chatId): bool
+    {
+        return TelegramConnection::query()
+            ->where('chat_id', $chatId)
+            ->where('user_id', '!=', $userId)
+            ->whereNull('revoked_at')
+            ->exists();
     }
 
     private function chatLinkedTo(int $userId, int $chatId): bool

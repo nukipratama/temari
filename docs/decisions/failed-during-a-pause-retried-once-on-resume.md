@@ -28,7 +28,7 @@ it burned says little about the block itself.
 
 ## Decision
 
-- **"Resumed" is the hourly pause transition.** [`MaintainerAlerter::syncPauseState()`](app/Services/AI/MaintainerAlerter.php#L157)
+- **"Resumed" is the hourly pause transition.** [`MaintainerAlerter::syncPauseState()`](app/Services/AI/MaintainerAlerter.php#L173)
   already compares the current pause reason to the stored one. It now stamps
   `AppConfigKey::AiPauseStartedAt` when a pause begins, keeps that stamp while only the reason
   changes, and returns it on the one sweep that sees the reason clear to none. That makes the retry

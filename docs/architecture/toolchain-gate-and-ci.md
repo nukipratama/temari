@@ -3,7 +3,7 @@ title: Local gate vs. CI
 description: What composer gate / check:full run locally, what pre-commit runs, and what CI runs — and why they differ
 tags: [architecture, toolchain]
 status: living
-reviewed: 2026-10-06
+reviewed: 2026-10-09
 code_refs:
   - scripts/gate.sh
   - .githooks/pre-commit
@@ -31,7 +31,7 @@ its scoped dry run as the check.
 ## `composer gate`: the fast pre-push gate
 
 [scripts/gate.sh](../../scripts/gate.sh) (wired as `composer gate` / `composer check:full` in
-[composer.json](../../composer.json#L70)) is a shared script with two modes:
+[composer.json](../../composer.json)) is a shared script with two modes:
 
 - **fast** (`composer gate`, `sh scripts/gate.sh`): config clear, TS-enum drift check, the doc-citation
   and `{@see}` guards, the design-token palette guard, the structural Pest + Vitest suites, `tsc`,
@@ -42,7 +42,8 @@ its scoped dry run as the check.
   `storage/logs/gate.log`; a failing step prints its last 40 lines before the final `GATE:` line.
 - **full** (`composer check:full`, `sh scripts/gate.sh --full`): everything fast mode runs, plus
   Pint/PHPStan/full-tree Rector (all in `--test`/dry-run form), ESLint/Prettier `--check`, the full
-  Pest suite in parallel, Vitest coverage, the asset
+  Pest suite in parallel (no backend coverage; that is CI's), the migration-safety check against the
+  merge-base, Vitest coverage, the asset
   build, and the bundle-chunk budget check. This reproduces what CI runs, opt-in and slow — for when
   the fast gate isn't enough confidence before a push.
 
@@ -66,8 +67,14 @@ structure check and source guard (`{@see}` references; the raw-palette guard), s
 checks run once per run instead of once per shard. Each reusable workflow's `gate` requires all of
 its shards and its static analysis on both events, and the top-level `ci-gate` requires each
 changed suite as a unit. A missing, cancelled or failed shard therefore reds the gate — see
-[docs/decisions/sharded-pr-coverage.md](../decisions/sharded-pr-coverage.md). A newer push to
+[[sharded-pr-coverage]]. A newer push to
 the same ref, `main` included, cancels the older run whole instead, and its `ci-gate` skips; see
 [[deployment]] under "Superseded main runs".
+
+PR frontend shards run Vitest in a shuffled order seeded with the workflow run id, and echo the seed
+first in the step log (`Vitest shuffle seed: <id>`), so an order-dependent test goes red on the PR instead of
+on a later unlucky run. Reproduce a red shard locally with
+`./vendor/bin/sail npx vitest run --sequence.shuffle --sequence.seed=<id>` (add `--shard=<n>/3` to
+match one shard). The merge-reports coverage job and main-push shards stay in file order.
 
 See also: [[deployment]].

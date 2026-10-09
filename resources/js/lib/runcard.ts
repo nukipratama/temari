@@ -28,7 +28,7 @@ export const RARITY_ORDER: Rarity[] = [
 ];
 
 // Escalating "set symbol" glyph per rarity (circle to star), TCG-style. Colored
-// via RARITY_TEXT. Mirrored as Rarity::symbol() for the server-rendered card.
+// via RARITY_TEXT.
 export const RARITY_SYMBOL: Record<Rarity, string> = {
     common: '●',
     uncommon: '◆',
@@ -48,7 +48,7 @@ export const RARITY_HEX: Record<Rarity, string> = {
     legendary: '#f5a623',
 };
 
-// Thread-band accent density (Slice 9c) — mirrors App\Enums\Rarity::bandCount().
+// Thread-band accent density (Slice 9c).
 // Additive rarity chrome, not a re-hue: more stitches at higher tiers.
 export const RARITY_BAND_COUNT: Record<Rarity, number> = {
     common: 1,
@@ -70,8 +70,7 @@ export interface ThreadBandLine {
 // Hand-placed stitch positions per count rather than an evenly-divided loop,
 // so 1-3 stitches read as a deliberate, balanced cluster instead of bunching
 // at one edge. From 4 on, a second set leans the opposite way and crosses
-// the rest — the "elaborate interwoven" look the top two tiers get. Mirrored
-// by hand in RunCardImageRenderer.php (different runtime, same geometry).
+// the rest — the "elaborate interwoven" look the top two tiers get.
 const THREAD_BAND_PRIMARY_X: Record<number, number[]> = {
     1: [0.5],
     2: [0.32, 0.68],

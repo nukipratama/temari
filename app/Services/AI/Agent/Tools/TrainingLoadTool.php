@@ -6,7 +6,6 @@ namespace App\Services\AI\Agent\Tools;
 
 use App\Models\User;
 use App\Services\AI\HistoryNarrationGate;
-use App\Services\Run\Metrics\LoadBalance;
 use App\Services\Run\Metrics\TrainingLoad;
 use Illuminate\Support\Carbon;
 
@@ -50,7 +49,7 @@ final class TrainingLoadTool extends UserTool
             'training_load' => $load === null ? null : [
                 'acute_7d' => $load['atl_7d'],
                 'chronic_42d' => $load['ctl_42d'],
-                'load_balance' => LoadBalance::fromStored($load['form_status'])?->value,
+                'load_balance' => $load['form_status']?->loadBalance()->value,
             ],
         ];
     }

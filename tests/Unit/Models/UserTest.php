@@ -6,7 +6,6 @@ use App\Models\Activity;
 use App\Models\Analytics\StravaSyncLog;
 use App\Models\PersonalRecord;
 use App\Models\RunnerProfile;
-use App\Models\StoryLine;
 use App\Models\StravaConnection;
 use App\Models\TelegramConnection;
 use App\Models\User;
@@ -157,14 +156,6 @@ it('has many weekly snapshots', function (): void {
     WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-10']);
 
     expect($user->weeklySnapshots)->toHaveCount(2);
-});
-
-it('has many story lines', function (): void {
-    $user = User::factory()->create();
-    StoryLine::factory()->dailyGreeting('2026-05-10')->create(['user_id' => $user->id]);
-    StoryLine::factory()->dailyGreeting('2026-05-11')->create(['user_id' => $user->id]);
-
-    expect($user->storyLines)->toHaveCount(2);
 });
 
 it('firstName returns the first whitespace token of the display name', function (): void {

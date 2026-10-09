@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Services\Run\Metrics\TrainingFormStatus;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\User;
@@ -72,31 +73,22 @@ it('a tempo (Z4-heavy) outscores an easy (Z2-heavy) of the same duration', funct
 });
 
 it('uses narrow thresholds for low-CTL beginners', function (): void {
-    expect($this->load->formStatus(0, 10))->toBe('optimal')
-        ->and($this->load->formStatus(-6, 10))->toBe('fatigued')
-        ->and($this->load->formStatus(-15, 10))->toBe('overreaching');
+    expect($this->load->formStatus(0, 10))->toBe(TrainingFormStatus::Optimal)
+        ->and($this->load->formStatus(-6, 10))->toBe(TrainingFormStatus::Fatigued)
+        ->and($this->load->formStatus(-15, 10))->toBe(TrainingFormStatus::Overreaching);
 });
 
 it('uses moderate thresholds for mid-CTL runners', function (): void {
-    expect($this->load->formStatus(0, 40))->toBe('optimal')
-        ->and($this->load->formStatus(-20, 40))->toBe('fatigued')
-        ->and($this->load->formStatus(-35, 40))->toBe('overreaching');
+    expect($this->load->formStatus(0, 40))->toBe(TrainingFormStatus::Optimal)
+        ->and($this->load->formStatus(-20, 40))->toBe(TrainingFormStatus::Fatigued)
+        ->and($this->load->formStatus(-35, 40))->toBe(TrainingFormStatus::Overreaching);
 });
 
 it('uses wide thresholds for veteran runners', function (): void {
-    expect($this->load->formStatus(0, 60))->toBe('optimal')
-        ->and($this->load->formStatus(-25, 60))->toBe('fatigued')
-        ->and($this->load->formStatus(-50, 60))->toBe('overreaching')
-        ->and($this->load->formStatus(25, 60))->toBe('fresh');
-});
-
-// Regression for #1009 (reopened): a narrator prompt used to spell out
-// "form (CTL - ATL): positive = fresh, negative = fatigued" and hand the
-// model the bare signed form. formRelation() resolves that sign server-side.
-it('resolves formRelation from the sign of form alone, independent of formStatus', function (): void {
-    expect(TrainingLoad::formRelation(8.0))->toBe('fresh')
-        ->and(TrainingLoad::formRelation(-8.0))->toBe('fatigued')
-        ->and(TrainingLoad::formRelation(0.0))->toBe('balanced');
+    expect($this->load->formStatus(0, 60))->toBe(TrainingFormStatus::Optimal)
+        ->and($this->load->formStatus(-25, 60))->toBe(TrainingFormStatus::Fatigued)
+        ->and($this->load->formStatus(-50, 60))->toBe(TrainingFormStatus::Overreaching)
+        ->and($this->load->formStatus(25, 60))->toBe(TrainingFormStatus::Fresh);
 });
 
 it('returns null when the user has no TRIMP-bearing activities', function (): void {
@@ -279,7 +271,7 @@ it('marks fresh when fitness exceeds fatigue (taper-week shape)', function (): v
     $summary = $this->load->summary($user);
 
     expect($summary['form'])->toBeGreaterThan(0);
-    expect($summary['form_status'])->toBeIn(['fresh', 'optimal']);
+    expect($summary['form_status'])->toBeIn([TrainingFormStatus::Fresh, TrainingFormStatus::Optimal]);
 
 });
 
@@ -446,7 +438,7 @@ it('keeps ATL/CTL as numbers through an unscored stretch', function (): void {
     expect($summary['weekly_trimp'])->toBeNull()
         ->and($summary['ctl_42d'])->toBeFloat()->toBeGreaterThan(0.0)
         ->and($summary['atl_7d'])->toBeFloat()
-        ->and($summary['form_status'])->toBeString();
+        ->and($summary['form_status'])->toBeInstanceOf(TrainingFormStatus::class);
 });
 
 it('returns an empty strainMonotonyTrend for a user with no TRIMP-bearing activities', function (): void {
@@ -636,13 +628,13 @@ it('stamps warm-up days in ctlTrend as unknown form', function (): void {
 });
 
 it('scales the form thresholds continuously with CTL, with no cliff at the old band edges', function (): void {
-    expect($this->load->formStatus(-9.9, 10))->toBe('fatigued')
-        ->and($this->load->formStatus(-10.1, 10))->toBe('overreaching')
-        ->and($this->load->formStatus(-29.9, 30))->toBe('fatigued')
-        ->and($this->load->formStatus(-30.1, 30))->toBe('overreaching')
-        ->and($this->load->formStatus(-39.9, 60))->toBe('fatigued')
-        ->and($this->load->formStatus(-40.1, 60))->toBe('overreaching')
-        ->and($this->load->formStatus(20.1, 90))->toBe('fresh')
+    expect($this->load->formStatus(-9.9, 10))->toBe(TrainingFormStatus::Fatigued)
+        ->and($this->load->formStatus(-10.1, 10))->toBe(TrainingFormStatus::Overreaching)
+        ->and($this->load->formStatus(-29.9, 30))->toBe(TrainingFormStatus::Fatigued)
+        ->and($this->load->formStatus(-30.1, 30))->toBe(TrainingFormStatus::Overreaching)
+        ->and($this->load->formStatus(-39.9, 60))->toBe(TrainingFormStatus::Fatigued)
+        ->and($this->load->formStatus(-40.1, 60))->toBe(TrainingFormStatus::Overreaching)
+        ->and($this->load->formStatus(20.1, 90))->toBe(TrainingFormStatus::Fresh)
         ->and($this->load->formStatus(-11, 19.9))->toBe($this->load->formStatus(-11, 20.1))
         ->and($this->load->formStatus(-20, 49.9))->toBe($this->load->formStatus(-20, 50.1));
 });
@@ -655,7 +647,7 @@ it('never reads fresher after more TRIMP on the last day', function (float $dail
     $previous = -1;
     for ($extra = 0.0; $extra <= 600.0; $extra += 10.0) {
         $map = $base + [$asOf->toDateString() => $extra];
-        $status = $this->load->summaryFromDailyMap($map, runDaysOf($map), $asOf)['form_status'];
+        $status = $this->load->summaryFromDailyMap($map, runDaysOf($map), $asOf)['form_status']->value;
 
         expect($severity[$status])->toBeGreaterThanOrEqual($previous);
         $previous = $severity[$status];

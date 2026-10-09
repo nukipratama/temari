@@ -62,15 +62,15 @@ class SyncOrchestrator
      *
      * Dedup: Strava can redeliver the same event, and the aspect type (create vs
      * update) is not propagated down to here, so we cannot tell a genuine update
-     * apart from a duplicate create. An already-analyzed row means the detail and
-     * streams are already fetched, so re-dispatching would re-spend two Strava API
-     * calls and re-run the pipeline for nothing; we skip it. A stub (analyzed_at
-     * null) still ingests. Genuine updates re-pull via the hourly poll or a manual
-     * re-ingest, not this push path.
+     * apart from a duplicate create. A detailed row means the detail and streams
+     * are already fetched, so re-dispatching would re-spend two Strava API calls
+     * and re-run the pipeline for nothing; we skip it. A stub, or a run the poll
+     * stored only as a summary, still ingests at live priority. Genuine updates
+     * re-pull via the hourly poll or a manual re-ingest, not this push path.
      */
     public function syncSingleActivity(User $user, int $externalId, StravaSyncSource $source = StravaSyncSource::Webhook): bool
     {
-        if (! $this->stravaEnabled()) {
+        if ($user->is_demo || ! $this->stravaEnabled()) {
             return false;
         }
 
@@ -94,8 +94,8 @@ class SyncOrchestrator
                 return false;
             }
 
-            if ($activity->analyzed_at !== null) {
-                Log::info('strava-sync skipped redundant re-ingest for already-analyzed activity', [
+            if ($activity->ingest_state === IngestState::Detailed) {
+                Log::info('strava-sync skipped redundant re-ingest for already-detailed activity', [
                     'user_id' => $user->id,
                     'strava_external_id' => $externalId,
                 ]);
@@ -129,7 +129,7 @@ class SyncOrchestrator
     {
         $finished = ['inserted' => 0, 'resume_before' => null];
 
-        if (! $this->stravaEnabled()) {
+        if ($user->is_demo || ! $this->stravaEnabled()) {
             return $finished;
         }
 

@@ -24,6 +24,27 @@ describe('BareShell', () => {
         expect(screen.queryByTestId('mobile-top-bar')).not.toBeInTheDocument();
     });
 
+    it("wraps its children in the page's one main landmark, outside the error banner", () => {
+        setMockPage({
+            auth: { user: null },
+            flash: {},
+            demoLoginEnabled: false,
+            errors: { strava: 'Strava connect was denied.' },
+        });
+        render(
+            <BareShell>
+                <p>only child</p>
+            </BareShell>,
+        );
+
+        const main = screen.getByRole('main');
+        expect(screen.getAllByRole('main')).toHaveLength(1);
+        expect(main).toContainElement(screen.getByText('only child'));
+        expect(main).not.toContainElement(
+            screen.getByText('Strava connect was denied.'),
+        );
+    });
+
     it('carries the error banner, since a connect denial lands on a bare screen', () => {
         setMockPage({
             auth: { user: null },

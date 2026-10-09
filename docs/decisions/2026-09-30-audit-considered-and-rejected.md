@@ -125,6 +125,8 @@ Redis 8 is a supported line (`compose.yaml:12`, digest-pinned in `compose.prod.y
 
 ## Node 25 and `@types/node`: the runtime stays on 24 LTS
 
+> **Superseded (2026-10-08)** by [[2026-10-08-node-26]]: the runtime moved to Node 26.
+
 Every environment runs Node 24 (`.nvmrc:1`, `package.json:6`), which is active LTS with security support to 2028-04-30, and Node is used only in the asset-build stage, so the runtime image has none. The typings are a major ahead: `@types/node` is `^25` (`package.json:30`), so the typecheck accepts Node 25-only APIs that would fail at runtime in build scripts and tests, and a bot would next propose 26. The fix is to hold `@types/node` on the runtime's major and ignore its major bumps.
 
 **Revisit when** the toolchain (Vitest, Vite, jsdom) lists Node 26 as supported and it has settled into LTS (expected 2027); then move `engines`, `.nvmrc`, the Dockerfile digest and `@types/node` together.

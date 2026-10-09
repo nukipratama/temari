@@ -92,7 +92,7 @@ final class IntensityPrescriptionResolver
             return new IntensityPrescription(0, null, null, 'easy because the week has no safe room for meaningful quality', $raceContext);
         }
 
-        $pace = $goalPace === null ? $this->pace($band, $raceContext, $paces) : $goalPace->goalPaceSecPerKm;
+        $pace = $goalPace->goalPaceSecPerKm ?? $this->pace($band, $raceContext, $paces);
         return new IntensityPrescription($minutes, $band, $pace, $reason, $raceContext);
     }
 

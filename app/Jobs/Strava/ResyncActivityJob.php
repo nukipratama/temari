@@ -15,6 +15,7 @@ use App\Services\Strava\Exceptions\StravaRateLimitedException;
 use DateTimeInterface;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Queue\Attributes\MaxExceptions;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Queue\Middleware\ThrottlesExceptions;
 use Illuminate\Support\Carbon;
@@ -28,11 +29,10 @@ use App\Services\AI\NarrationOrigin;
  * Shares {@see IngestActivityJob}'s rate-limit / circuit-breaker and
  * uniqueness handling so a resync is as resilient as the automatic ingest.
  */
+#[MaxExceptions(3)]
 class ResyncActivityJob implements ShouldBeUnique, ShouldQueue
 {
     use Queueable;
-
-    public int $maxExceptions = 3;
 
     private const int RATE_LIMIT_BACKOFF_MINUTES = 5;
 

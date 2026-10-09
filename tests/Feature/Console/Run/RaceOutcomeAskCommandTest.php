@@ -7,6 +7,8 @@ use App\Models\NotificationPreference;
 use App\Models\RaceGoal;
 use App\Models\User;
 use App\Notifications\RaceOutcomeNotification;
+use Illuminate\Console\Scheduling\Event;
+use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Notifications\SendQueuedNotifications;
 use Illuminate\Support\Carbon;
@@ -110,4 +112,45 @@ it('never asks the demo account or an athlete with notifications off', function 
     $this->artisan('race:ask-outcome')->expectsOutputToContain('Asked 0 users')->assertSuccessful();
 
     Notification::assertNothingSent();
+});
+
+function raceOutcomeAskIsDueAt(string $at): bool
+{
+    Carbon::setTestNow($at);
+    $event = collect(app(Schedule::class)->events())->first(fn (Event $e): bool => str_ends_with((string) $e->command, 'race:ask-outcome'));
+
+    return $event->isDue(app()) && $event->filtersPass(app());
+}
+
+it('runs every hour from 09:00 to 21:00, before quiet hours', function (): void {
+    expect(raceOutcomeAskIsDueAt('2026-10-05 08:00:00'))->toBeFalse()
+        ->and(raceOutcomeAskIsDueAt('2026-10-05 09:00:00'))->toBeTrue()
+        ->and(raceOutcomeAskIsDueAt('2026-10-05 09:30:00'))->toBeFalse()
+        ->and(raceOutcomeAskIsDueAt('2026-10-05 15:00:00'))->toBeTrue()
+        ->and(raceOutcomeAskIsDueAt('2026-10-05 21:00:00'))->toBeTrue()
+        ->and(raceOutcomeAskIsDueAt('2026-10-05 22:00:00'))->toBeFalse();
+});
+
+it('asks once when it runs twice in its window', function (): void {
+    Notification::fake();
+    $user = User::factory()->create();
+    raceYesterday($user);
+
+    foreach (['2026-10-05 09:00:00', '2026-10-05 10:00:00'] as $at) {
+        expect(raceOutcomeAskIsDueAt($at))->toBeTrue();
+        $this->artisan('race:ask-outcome')->assertSuccessful();
+    }
+
+    Notification::assertSentToTimes($user, RaceOutcomeNotification::class, 1);
+});
+
+it('still asks at the window\'s last hour when the first hour was missed', function (): void {
+    Notification::fake();
+    $user = User::factory()->create();
+    raceYesterday($user);
+
+    expect(raceOutcomeAskIsDueAt('2026-10-05 21:00:00'))->toBeTrue();
+    $this->artisan('race:ask-outcome')->assertSuccessful();
+
+    Notification::assertSentToTimes($user, RaceOutcomeNotification::class, 1);
 });

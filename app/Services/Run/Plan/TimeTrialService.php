@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Services\Run\Plan;
 
+use App\Enums\IngestState;
 use App\Enums\PerformanceEvidenceKind;
 use App\Enums\TimeTrialOutcome;
+use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\PlannedSession;
 use App\Models\User;
@@ -18,7 +20,8 @@ use Illuminate\Validation\ValidationException;
 /**
  * What a finished time trial becomes: evidence at once when a run on its day
  * passes the gate, otherwise one question to the athlete. A trial that was
- * excused, eased or not run is left to the plan's single retry.
+ * excused, eased or not run is left to the plan's single retry, and one whose
+ * run is still only a summary waits for a later settle within the lookback.
  */
 final readonly class TimeTrialService
 {
@@ -36,7 +39,7 @@ final readonly class TimeTrialService
         }
 
         $runs = $this->runsOn($session, $trial);
-        if (TimeTrial::countsAsSkipped($session, $runs->isNotEmpty())) {
+        if ($this->awaitsHydration($runs) || TimeTrial::countsAsSkipped($session, $runs->isNotEmpty())) {
             return null;
         }
 
@@ -88,6 +91,15 @@ final readonly class TimeTrialService
             ->orderByDesc('activity_details.distance')
             ->orderBy('activity_details.activity_id')
             ->get();
+    }
+
+    /** @param  Collection<int, ActivityDetail>  $runs */
+    private function awaitsHydration(Collection $runs): bool
+    {
+        return Activity::query()
+            ->whereKey($runs->pluck('activity_id')->all())
+            ->where('ingest_state', IngestState::Summary)
+            ->exists();
     }
 
     private function countsPlausibly(PlannedSession $session, TimeTrial $trial, ActivityDetail $run): bool

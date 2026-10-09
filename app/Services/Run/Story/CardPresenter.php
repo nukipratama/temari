@@ -11,56 +11,6 @@ use App\Services\AI\AnalysisType;
 class CardPresenter
 {
     /**
-     * @return array<string, int>
-     */
-    public function rarityCounts(int $userId): array
-    {
-        $rows = RunCard::query()
-            ->forUser($userId)
-            ->selectRaw('rarity, COUNT(*) as total')
-            ->groupBy('rarity')
-            ->pluck('total', 'rarity')
-            ->all();
-
-        return [
-            'common' => (int) ($rows['common'] ?? 0),
-            'uncommon' => (int) ($rows['uncommon'] ?? 0),
-            'rare' => (int) ($rows['rare'] ?? 0),
-            'epic' => (int) ($rows['epic'] ?? 0),
-            'legendary' => (int) ($rows['legendary'] ?? 0),
-        ];
-    }
-
-    /**
-     * Map of card id => 1-based edition index within its rarity (chronological by id),
-     * for the user's whole collection. One window-function pass, no N+1.
-     *
-     * @return array<int, int>
-     */
-    public function editionIndexMap(int $userId): array
-    {
-        return RunCard::query()
-            ->forUser($userId)
-            ->selectRaw('id, ROW_NUMBER() OVER (PARTITION BY rarity ORDER BY id) AS edition_index')
-            ->pluck('edition_index', 'id')
-            ->map(fn ($index): int => (int) $index)
-            ->all();
-    }
-
-    /**
-     * @param  array<int, int>  $editions
-     * @param  array<string, int>  $counts
-     * @return array{index: int, total: int}
-     */
-    public function editionFromMap(RunCard $card, array $editions, array $counts): array
-    {
-        return [
-            'index' => $editions[$card->id] ?? 1,
-            'total' => $counts[$card->rarity->value] ?? 1,
-        ];
-    }
-
-    /**
      * @return array{index: int, total: int}
      */
     public function edition(RunCard $card, int $userId): array
@@ -93,11 +43,6 @@ class CardPresenter
             'special_move' => $card->special_move,
             'badges' => $card->badges,
         ];
-    }
-
-    public function mood(RunCard $card): string
-    {
-        return $card->activity->postRunStoryLine->mood ?? Temari::moodForActivityOrDefault($card->activity);
     }
 
     /**

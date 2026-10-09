@@ -185,7 +185,7 @@ it('floors the long run so the arc reaches its readiness distance at its own pea
 
     // The share alone gives 26.0 x 0.35 = 9.1 km, and this eight-week arc
     // only ever ramps to 1.075. A 10K's readiness long run is 12 km, under
-    // this athlete's 13 km half-the-week cap, so the floor lifts the baseline
+    // this athlete's 13 km half-the-anchor cap, so the floor lifts the baseline
     // to 12 / 1.075 = 11.2 and the ramp carries it to 12 at the peak.
     expect($this->baseline->forUser($user, Carbon::today())['long_run_km'])->toBe(11.2);
 });
@@ -314,7 +314,7 @@ it('sizes the race floor off the block ramp alone, not the general weeks before 
     expect($this->baseline->forUser($user, Carbon::today())['long_run_km'])->toBe(15.8);
 });
 
-it('floors a marathon at its readiness distance rather than the race distance, within half the week', function (): void {
+it('floors a marathon at its readiness distance rather than the race distance, within half the anchor', function (): void {
     $user = User::factory()->create();
     weeksOf($user, array_fill(0, 6, 26.0));
     RaceGoal::factory()->for($user)->create(['distance_m' => 42_195, 'race_date' => '2026-10-03']);
@@ -324,11 +324,11 @@ it('floors a marathon at its readiness distance rather than the race distance, w
         'ends_at' => '2026-10-03',
     ]);
 
-    // 30 km readiness, bounded by the 13 km half-the-week cap, never 42 km.
+    // 30 km readiness, bounded by the 13 km half-the-anchor cap, never 42 km.
     expect($this->baseline->forUser($user, Carbon::today())['long_run_km'])->toBe(13.0);
 });
 
-it('never lets the floor take more than half the week', function (): void {
+it('never lets the floor take more than half the anchor', function (): void {
     $user = User::factory()->create();
     weeksOf($user, array_fill(0, 6, 12.0));
     RaceGoal::factory()->for($user)->create(['distance_m' => 10_000, 'race_date' => '2026-10-05']);
@@ -573,12 +573,12 @@ it('leaves the long run to the share and the readiness distance when the season 
     $user = User::factory()->create();
     flooredRaceSeason($user, 20.0, null);
 
-    // Half of a 20 km week caps the 12 km readiness long run at 10, and the
-    // twelve-week block peaks at 1.075^2: 10 / 1.155625 rounds up to 8.7.
-    expect($this->baseline->forUser($user, Carbon::today())['long_run_km'])->toBe(8.7);
+    // Half of a 20 km anchor caps the 12 km readiness long run at 10, and the
+    // twelve-week block peaks at 1.075^3: 10 / 1.242297 rounds up to 8.1.
+    expect($this->baseline->forUser($user, Carbon::today())['long_run_km'])->toBe(8.1);
 });
 
-it('sizes half the week off the floor when the floor asks for the bigger week', function (): void {
+it('sizes the half-the-anchor cap off the floor when the floor asks for the bigger week', function (): void {
     $user = User::factory()->create();
     flooredRaceSeason($user, 20.0, 27.0);
 

@@ -11,14 +11,14 @@ use Illuminate\Support\Carbon;
 
 /**
  * How long the runner has been recovering, resolved once from their run
- * history so the briefing chip and the LLM signal stay in agreement instead
- * of showing two contradictory numbers.
+ * history so the LLM signal and the readiness inputs stay in agreement instead
+ * of carrying two contradictory numbers.
  *
- * - {@see $hoursSinceLastRun} is literal hours since the most recent run —
- *   what the recency chip shows ("3h", "Ran today").
+ * - {@see $hoursSinceLastRun} is literal hours since the most recent run.
  * - {@see $recoveryHours} is the same number, but null on a day the runner
  *   already ran: the briefing regenerates at ingest, moments after the run,
- *   so a literal count would read "0h" and citing it would fight the chip.
+ *   so a literal count would read "0h" and citing it would contradict the
+ *   run just made.
  *   On a run day the narration leans on {@see $ranToday} instead.
  */
 final readonly class RecoveryWindow

@@ -78,7 +78,7 @@ export default function ProfileHero({
                 className="-top-20 -right-14"
             />
 
-            <Eyebrow token="micro" tone="horizon-ink">
+            <Eyebrow as="h2" token="micro" tone="horizon-ink">
                 what temari says about you
                 {firstRunAt && ` · est. ${formatShortDateId(firstRunAt)}`}
             </Eyebrow>

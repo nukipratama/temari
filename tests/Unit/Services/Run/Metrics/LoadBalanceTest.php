@@ -16,10 +16,3 @@ it('maps the four stored form statuses onto the three presented states', functio
         ->and(TrainingFormStatus::Fatigued->loadBalance())->toBe(LoadBalance::Heavy)
         ->and(TrainingFormStatus::Overreaching->loadBalance())->toBe(LoadBalance::Heavy);
 });
-
-it('reads a stored form status string, null for none or unknown', function (): void {
-    expect(LoadBalance::fromStored('optimal'))->toBe(LoadBalance::Steady)
-        ->and(LoadBalance::fromStored('overreaching'))->toBe(LoadBalance::Heavy)
-        ->and(LoadBalance::fromStored(null))->toBeNull()
-        ->and(LoadBalance::fromStored('nonsense'))->toBeNull();
-});

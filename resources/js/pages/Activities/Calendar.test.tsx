@@ -138,6 +138,12 @@ describe('calendar', () => {
         expect(screen.getByText(/catching her breath/)).toBeInTheDocument();
     });
 
+    it('titles the page with exactly one h1', () => {
+        render(<Calendar {...BASE_PROPS} cells={TWO_WEEK_CELLS} />);
+
+        expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
+    });
+
     it('renders the month label and the lowercase two-letter weekday header', () => {
         render(<Calendar {...BASE_PROPS} cells={TWO_WEEK_CELLS} />);
         expect(

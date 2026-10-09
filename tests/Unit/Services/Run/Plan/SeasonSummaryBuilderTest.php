@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 use App\Enums\PlanPhase;
 use App\Enums\SessionType;
+use App\Models\Activity;
+use App\Models\ActivityDetail;
 use App\Models\PlannedSession;
 use App\Models\RaceGoal;
 use App\Models\Season;
@@ -277,8 +279,8 @@ it('shows a reactively deloaded current week at its held target, the arc figure 
         ->and($weeks['2026-08-17']['eased_from_km'])->toBeNull();
 });
 
-/** A past day's recorded ease counts toward the week total. */
-it('still takes a past day\'s recorded ease off the current week\'s target', function (): void {
+/** A past day counts the km it was credited, so its recorded ease no longer moves the week total. */
+it('counts a past eased day at its credited km, not at its eased ask', function (): void {
     Carbon::setTestNow('2026-08-12 08:00:00'); // Wednesday of the same week as beforeEach's Monday
     $user = User::factory()->create();
     $season = Season::factory()->for($user)->create([
@@ -294,12 +296,17 @@ it('still takes a past day\'s recorded ease off the current week\'s target', fun
     $baseline = app(TrainingBaseline::class)->forUser($user, Carbon::today());
     $storedKm = PlanRenderer::coreKmForSession($row, $baseline['long_run_km'], $baseline['long_run_cap_km'], $baseline['self_scaled']);
     $row->update(['clamped_km' => 1.0]);
+    ActivityDetail::factory()->for(Activity::factory()->for($user))->create([
+        'start_date_local' => '2026-08-10 07:00:00',
+        'distance' => 3_000,
+    ]);
 
     $weeks = $this->builder->build($user, $season, Carbon::today());
     $current = collect($weeks)->firstWhere('type', 'current');
 
-    expect($current['eased_from_km'])->not->toBeNull()
-        ->and($current['planned_km'])->toBe(round($current['eased_from_km'] - ($storedKm - 1.0), 1));
+    expect($storedKm)->toBeGreaterThan(1.0)
+        ->and($current['eased_from_km'])->toBeNull()
+        ->and($current['planned_km'])->toBe(3.0);
 });
 
 it('names nothing on a week whose eased day kept its distance', function (): void {

@@ -2,24 +2,29 @@ import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 import path from 'node:path';
 
+process.env.TZ = 'Asia/Jakarta';
+
 export default defineConfig({
     plugins: [react()],
     resolve: {
+        tsconfigPaths: true,
         alias: {
-            '@': path.resolve(__dirname, 'resources/js'),
             // Test-only: the brand generators are the source of truth for the
             // derived token set, and are pinned from Vitest. They are never
             // aliased in vite.config.ts, so none of this reaches a bundle.
-            '@brand': path.resolve(__dirname, 'resources/brand'),
+            '@brand': path.resolve(import.meta.dirname, 'resources/brand'),
             // Test-only, same reasoning: source-guard scripts export their
             // rule tables for direct testing. Never aliased in vite.config.ts.
-            '@scripts': path.resolve(__dirname, 'scripts'),
+            '@scripts': path.resolve(import.meta.dirname, 'scripts'),
         },
     },
     test: {
         environment: 'jsdom',
+        pool: 'vmThreads',
         fsModuleCache: !process.env.CI,
         globals: true,
+        env: { TZ: 'Asia/Jakarta' },
+        expect: { requireAssertions: true },
         setupFiles: ['./resources/js/test/setup.ts'],
         include: ['resources/js/**/*.test.{ts,tsx}'],
         coverage: {

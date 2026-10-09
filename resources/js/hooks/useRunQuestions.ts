@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { getJson, postJson } from '@/lib/http';
+import { MIN_QUESTION_LENGTH } from '@/types/generated';
 
 export type RunQuestionStatus = 'queued' | 'processing' | 'done' | 'failed';
 
@@ -17,10 +18,7 @@ export interface RunQuestion {
 /** Why an ask did not land. Each maps to its own honest line in the UI. */
 export type AskError = 'rate_limited' | 'paused' | 'invalid' | 'failed';
 
-/** Mirrors RunQuestion::MAX_QUESTION_LENGTH. */
-export const MAX_QUESTION_LENGTH = 300;
-
-export const MIN_QUESTION_LENGTH = 3;
+export { MAX_QUESTION_LENGTH, MIN_QUESTION_LENGTH } from '@/types/generated';
 
 const POLL_INTERVAL_MS = 3000;
 
@@ -32,6 +30,9 @@ const ERROR_BY_STATUS: Readonly<Record<number, AskError>> = {
     422: 'invalid',
     429: 'rate_limited',
 };
+
+/** The demo is answered without a stored row, so its 201 carries no id. */
+type AskedQuestion = Omit<RunQuestion, 'id'> & { id: number | null };
 
 interface ThreadBody {
     questions?: ReadonlyArray<RunQuestion>;
@@ -77,6 +78,17 @@ function mergeThread(
     }
 
     return [...byId.values()].sort((a, b) => a.id - b.id);
+}
+
+function withClientId(
+    current: ReadonlyArray<RunQuestion>,
+    row: AskedQuestion,
+): RunQuestion {
+    if (row.id !== null) {
+        return { ...row, id: row.id };
+    }
+
+    return { ...row, id: Math.max(0, ...current.map((known) => known.id)) + 1 };
 }
 
 export function useRunQuestions(activityId: number) {
@@ -202,10 +214,12 @@ export function useRunQuestions(activityId: number) {
             try {
                 const response = await postJson(url, { question });
                 if (response.status === 201) {
-                    const row: RunQuestion = await response.json();
+                    const row: AskedQuestion = await response.json();
                     pollsLeftRef.current = MAX_POLLS;
                     setStalled(false);
-                    setQuestions((prev) => mergeThread(prev, [row]));
+                    setQuestions((prev) =>
+                        mergeThread(prev, [withClientId(prev, row)]),
+                    );
                     setTick((n) => n + 1);
                     return true;
                 }

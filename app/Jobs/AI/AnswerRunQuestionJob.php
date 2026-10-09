@@ -19,6 +19,9 @@ use App\Services\AI\RunQuestion\RuleBasedRunAnswer;
 use App\Services\AI\RunQuestion\RunQuestionSeeds;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Queue\Attributes\Backoff;
+use Illuminate\Queue\Attributes\Queue;
+use Illuminate\Queue\Attributes\Tries;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
@@ -33,20 +36,22 @@ use Throwable;
  * paused, and the fall back to {@see RuleBasedRunAnswer} when the daily spend
  * ceiling is the only thing stopping it.
  */
+#[Backoff(self::BACKOFF_SECONDS)]
+#[Queue(AnalyzeBaseJob::QUEUE)]
+#[Tries(self::TRIES)]
 class AnswerRunQuestionJob implements ShouldQueue
 {
     use Queueable;
 
-    public int $tries = 3;
+    private const int TRIES = 3;
 
     /** @var array<int, int> */
-    public array $backoff = [10, 60];
+    private const array BACKOFF_SECONDS = [10, 60];
 
     private const string PAUSED_ERROR = 'AI generation is paused.';
 
     public function __construct(public readonly int $runQuestionId)
     {
-        $this->onQueue(AnalyzeBaseJob::QUEUE);
     }
 
     public function handle(NarrationGate $gate, RunQuestionNarrator $narrator): void
@@ -107,14 +112,14 @@ class AnswerRunQuestionJob implements ShouldQueue
                 'error' => null,
             ]);
         } catch (TransientUpstreamException $e) {
-            if ($this->attempts() >= $this->tries) {
+            if ($this->attempts() >= self::TRIES) {
                 $this->settleFailed($question, $e->getMessage(), $claimToken);
 
                 return;
             }
 
             if ($this->settle($question, $claimToken, ['status' => AnalysisStatus::Queued])) {
-                $this->release($e->retryAfterSeconds ?? $this->backoff[0]);
+                $this->release($e->retryAfterSeconds ?? self::BACKOFF_SECONDS[0]);
             }
         } catch (UnavailableException $e) {
             $this->settleFailed($question, $e->getMessage(), $claimToken);

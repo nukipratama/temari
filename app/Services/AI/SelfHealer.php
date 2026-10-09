@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace App\Services\AI;
 
 use App\Actions\AI\RecentlyActiveUsers;
+use App\Actions\Run\Plan\ResolveSeasonAction;
 use App\Jobs\AI\AnalyzeActivityJob;
 use App\Models\Activity;
 use App\Models\AI\Analysis;
 use App\Models\RunCard;
+use App\Models\Season;
 use App\Models\WeeklySnapshot;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
@@ -57,6 +59,7 @@ class SelfHealer
         private readonly RecentlyActiveUsers $activeUsers,
         private readonly HistoryNarrationGate $history,
         private readonly HydrationBacklog $backlog,
+        private readonly ResolveSeasonAction $seasons,
     ) {
     }
 
@@ -74,7 +77,9 @@ class SelfHealer
             + $this->resumeCardFlavor()
             + $this->resumeSingleRowType(AnalysisType::BriefingMascotVoice)
             + $this->resumeSingleRowType(AnalysisType::ProfileVoice)
-            + $this->resumeSingleRowType(AnalysisType::TrendRead);
+            + $this->resumeSingleRowType(AnalysisType::TrendRead)
+            + $this->resumeSingleRowType(AnalysisType::PlanClampVoice, Carbon::today()->toDateString())
+            + $this->resumeCurrentSeasonVoice();
     }
 
     /**
@@ -365,7 +370,7 @@ class SelfHealer
 
     /**
      * Single-row-per-user narration types with no chain/group of their own:
-     * BriefingMascotVoice, ProfileVoice and TrendRead. Each is dispatched only at its
+     * BriefingMascotVoice, ProfileVoice, TrendRead and PlanClampVoice. Each is dispatched only at its
      * own kickoff (daily briefing / weekly profile) with no other scheduled
      * recovery, so a capped-Pending or transiently-Failed row would sit stuck
      * without this sweep. subject_id is the user id directly for both types, so
@@ -376,13 +381,14 @@ class SelfHealer
      * Both discriminators are zero-padded date/week strings, so a plain string
      * ORDER BY is chronological.
      */
-    private function resumeSingleRowType(AnalysisType $type): int
+    private function resumeSingleRowType(AnalysisType $type, ?string $onlyDiscriminator = null): int
     {
         $earliestPerUser = Analysis::query()
             ->stalled()
             ->where('subject_type', $type->subjectType())
             ->where('analysis_type', $type)
             ->whereIn('subject_id', $this->activeUsers->query()->select('id'))
+            ->when($onlyDiscriminator !== null, fn (Builder $query) => $query->where('discriminator', $onlyDiscriminator))
             ->orderBy('discriminator')
             ->get(['subject_id', 'discriminator'])
             ->unique('subject_id');
@@ -399,4 +405,26 @@ class SelfHealer
         return $earliestPerUser->count();
     }
 
+    private function resumeCurrentSeasonVoice(): int
+    {
+        $current = Analysis::query()
+            ->stalled()
+            ->where('ai_analyses.subject_type', Season::class)
+            ->where('ai_analyses.analysis_type', AnalysisType::PlanSeasonVoice)
+            ->join('seasons', 'seasons.id', '=', 'ai_analyses.subject_id')
+            ->whereIn('seasons.user_id', $this->activeUsers->query()->select('id'))
+            ->orderBy('ai_analyses.subject_id')
+            ->get(['ai_analyses.subject_id', 'seasons.user_id'])
+            ->filter(fn (Analysis $row): bool => $this->seasons->latest((int) $row->getAttribute('user_id'))?->id === (int) $row->subject_id);
+
+        $current->values()->each(fn (Analysis $row, int $index) => $this->service->request(
+            subjectOrType: Season::class,
+            subjectId: (int) $row->subject_id,
+            type: AnalysisType::PlanSeasonVoice,
+            delaySeconds: $index * self::SWEEP_SPACING_SECONDS,
+            invalidate: false,
+        ));
+
+        return $current->count();
+    }
 }

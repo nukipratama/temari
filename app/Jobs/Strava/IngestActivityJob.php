@@ -14,22 +14,22 @@ use App\Services\Strava\Exceptions\StravaRateLimitedException;
 use DateTimeInterface;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Queue\Attributes\MaxExceptions;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Queue\Middleware\ThrottlesExceptions;
 use Illuminate\Support\Facades\Log;
 use App\Services\AI\AnalysisOrigin;
 use App\Services\AI\NarrationOrigin;
 
+/**
+ * Genuine (non rate-limit) failures get a small budget before the job is
+ * marked failed. Strava 429s are absorbed by the ThrottlesExceptions
+ * middleware and never count against this.
+ */
+#[MaxExceptions(3)]
 class IngestActivityJob implements ShouldBeUnique, ShouldQueue
 {
     use Queueable;
-
-    /**
-     * Genuine (non rate-limit) failures get a small budget before the job is
-     * marked failed. Strava 429s are absorbed by the ThrottlesExceptions
-     * middleware and never count against this.
-     */
-    public int $maxExceptions = 3;
 
     /**
      * Minutes the throttle middleware waits before re-attempting after a 429,

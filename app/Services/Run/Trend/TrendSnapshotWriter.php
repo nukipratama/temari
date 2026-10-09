@@ -26,16 +26,6 @@ class TrendSnapshotWriter
     ) {
     }
 
-    public function writeToday(User $user, ?Carbon $today = null): void
-    {
-        $this->writeDate($user, $today ?? Carbon::today());
-    }
-
-    public function writeDate(User $user, Carbon $date): void
-    {
-        $this->writeRange($user, $date, $date);
-    }
-
     public function writeRange(User $user, Carbon $from, Carbon $through): int
     {
         $from = $from->copy()->startOfDay();

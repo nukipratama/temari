@@ -15,6 +15,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Support\Carbon;
 use Override;
+use App\Services\Run\Metrics\TrainingFormStatus;
 
 /**
  * @property int $id
@@ -27,7 +28,7 @@ use Override;
  * @property float|null $atl_7d
  * @property float|null $ctl_42d
  * @property float|null $form
- * @property string|null $form_status
+ * @property TrainingFormStatus|null $form_status
  * @property float|null $avg_decoupling
  * @property float|null $avg_decoupling_v2
  * @property float|null $monotony
@@ -164,7 +165,7 @@ class WeeklySnapshot extends Model
      * older week's recap that a self-heal retry may regenerate against that
      * week's own status.)
      */
-    public static function latestFormStatus(int $userId): ?string
+    public static function latestFormStatus(int $userId): ?TrainingFormStatus
     {
         return self::query()
             ->where('user_id', $userId)
@@ -188,6 +189,7 @@ class WeeklySnapshot extends Model
             'atl_7d' => 'float',
             'ctl_42d' => 'float',
             'form' => 'float',
+            'form_status' => TrainingFormStatus::class,
             'avg_decoupling' => 'float',
             'avg_decoupling_v2' => 'float',
             'monotony' => 'float',

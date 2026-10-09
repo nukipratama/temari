@@ -27,7 +27,7 @@ export interface PrintFacts {
     rarityLabel: string;
     /** 1 at common through 5 at legendary, the ladder every style escalates on. */
     level: number;
-    /** Thread-band accent density, matching `Rarity::bandCount()`. */
+    /** Thread-band accent density. */
     bandCount: number;
     kind: string;
     km: string;

@@ -21,7 +21,7 @@ Read only the file the step needs; each holds its section verbatim.
 - [Before merging to the epic — the probes are not in CI](references/pre-merge-probes.md): before merging UI work to the epic.
 - [The Alpine/Playwright gotcha](references/alpine-playwright.md): when `setup.sh` reports something missing or Chromium fails to launch.
 - [Scanners](references/scanners.md) (`contrast.mjs`, `mounts.mjs`, `light-islands.mjs`, `edges.mjs`, `states.mjs`, `scans.mjs`): before running step 4 or 5, or judging their baselines.
-- [Reading the output and inspecting](references/inspect.md) ("Reading screenshots", "Inspect (audit-gated)", "Verify before reporting", the probe-evidence contract): after steps 2–3, before reading any screenshot.
+- [Reading the output and inspecting](references/inspect.md) ("Reading screenshots", "Main-session image budget", "Inspect (audit-gated)", "Verify before reporting", the probe-evidence contract): after steps 2–3, before reading any screenshot.
 - [Recording before/after clips](references/clips.md): when a PR changes motion or interaction (transitions, popovers, gestures, loading states), before opening it.
 - [What the scripts handle for you, and notes](references/scripts.md): when a page is missing from the sweep, or before editing a script.
 
@@ -38,6 +38,7 @@ Read only the file the step needs; each holds its section verbatim.
 
 The app is reachable **inside the container at `http://localhost`** (host-forwarded port is
 `APP_PORT=7001`, but the scripts run in the container, so use `localhost`).
+Before interacting with a host-side localhost port, confirm it is the local stack: a tunnel can shadow it.
 
 ## Run it
 

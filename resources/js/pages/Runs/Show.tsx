@@ -166,7 +166,7 @@ export default function RunsShow({
                             />
 
                             <section>
-                                <Eyebrow token="small" tone="ink-3">
+                                <Eyebrow as="h2" token="small" tone="ink-3">
                                     The breakdown
                                 </Eyebrow>
                                 <div className="mt-3 flex flex-col gap-4">

@@ -20,12 +20,14 @@ it('pages each late entry and reports every other one as on time', function (): 
         'expression' => '0 * * * *',
         'last_status' => 'ok',
         'last_run_at' => $lastRunAt,
+        'last_success_at' => $lastRunAt,
     ]);
     ScheduledTaskRun::query()->create([
         'command' => 'ai:self-heal',
         'expression' => '0 * * * *',
         'last_status' => 'ok',
         'last_run_at' => Carbon::now()->subMinutes(30),
+        'last_success_at' => Carbon::now()->subMinutes(30),
     ]);
     foreach (SchedulerChain::DAILY_GATED as $command) {
         SchedulerChain::markDoneToday($command);
@@ -34,7 +36,7 @@ it('pages each late entry and reports every other one as on time', function (): 
 
     $alerter = Mockery::mock(MaintainerAlerter::class);
     $alerter->shouldReceive('schedulerLate')->once()->withArgs(
-        fn (string $command, ?Carbon $at): bool => $command === 'strava:sync' && $at?->equalTo($lastRunAt) === true,
+        fn (string $command, ?ScheduledTaskRun $run): bool => $command === 'strava:sync' && $run?->last_run_at?->equalTo($lastRunAt) === true,
     );
     $alerter->shouldReceive('schedulerOnTime')->with('ai:self-heal')->once();
     $alerter->shouldReceive('schedulerOnTime')->with('plan:regenerate')->once();

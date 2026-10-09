@@ -603,22 +603,11 @@ class DemoRunSeeder
             return 0;
         }
 
-        $topics = array_slice(RunQuestionSeeds::for($detail), 0, 2);
-        if ($topics === []) {
-            return 0;
-        }
-
-        $km = round((float) $detail->distance / 1000, 1);
-        $paceSec = PaceCalculator::secPerKm((float) $detail->distance, $detail->moving_time);
-        $pace = $paceSec === null
-            ? 'the pace you held'
-            : sprintf('%d:%02d/km', (int) ($paceSec / 60), (int) round(fmod($paceSec, 60)));
-
         $added = 0;
-        foreach ($topics as $topic) {
+        foreach (self::seededExchanges($detail) as $question => $answer) {
             $existing = RunQuestion::query()
                 ->where('activity_id', $detail->activity_id)
-                ->where('question', $topic->question())
+                ->where('question', $question)
                 ->exists();
             if ($existing) {
                 continue;
@@ -627,14 +616,36 @@ class DemoRunSeeder
             RunQuestion::query()->create([
                 'user_id' => $user->id,
                 'activity_id' => $detail->activity_id,
-                'question' => $topic->question(),
-                'answer' => self::demoAnswer($topic, $km, $pace),
+                'question' => $question,
+                'answer' => $answer,
                 'status' => AnalysisStatus::Done,
             ]);
             $added++;
         }
 
         return $added;
+    }
+
+    /**
+     * The question and answer {@see self::seedRunQuestions()} writes for each of
+     * this run's first two topics, keyed by question.
+     *
+     * @return array<string, string>
+     */
+    public static function seededExchanges(ActivityDetail $detail): array
+    {
+        $km = round((float) $detail->distance / 1000, 1);
+        $paceSec = PaceCalculator::secPerKm((float) $detail->distance, $detail->moving_time);
+        $pace = $paceSec === null
+            ? 'the pace you held'
+            : sprintf('%d:%02d/km', (int) ($paceSec / 60), (int) round(fmod($paceSec, 60)));
+
+        $exchanges = [];
+        foreach (array_slice(RunQuestionSeeds::for($detail), 0, 2) as $topic) {
+            $exchanges[$topic->question()] = self::demoAnswer($topic, $km, $pace);
+        }
+
+        return $exchanges;
     }
 
     /**

@@ -15,6 +15,7 @@ use App\Services\Strava\Exceptions\StravaTokenRefreshFailedException;
 use App\Services\Strava\StravaClient;
 use DateTimeInterface;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Queue\Attributes\Backoff;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Log;
@@ -26,16 +27,12 @@ use App\Services\AI\NarrationOrigin;
  * {@see DeleteIngestedRunAction}. Run from the delete webhook so the webhook
  * itself still acks fast.
  */
+#[Backoff([60, 300, 900, 3600])]
 class CleanupDeletedActivityJob implements ShouldQueue
 {
     use Queueable;
 
     private const int RETRY_WINDOW_HOURS = 24;
-
-    /**
-     * @var array<int, int>
-     */
-    public array $backoff = [60, 300, 900, 3600];
 
     public function __construct(
         public readonly int $userId,

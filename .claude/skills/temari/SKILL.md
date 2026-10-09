@@ -11,8 +11,8 @@ them rather than re-copying, since copies drift.
 
 ## Tracking
 
-Issue tracking, decision labels, the kanban flow and the PR handoff standard are in
-[CLAUDE.md](../../../CLAUDE.md). Other labels: `wave:tooling` / `wave:bugs` / `wave:engine-1` /
+Issue tracking, decision labels and the kanban flow are in [CLAUDE.md](../../../CLAUDE.md); the PR
+handoff standard is in [pr-handoff.md](references/pr-handoff.md). Other labels: `wave:tooling` / `wave:bugs` / `wave:engine-1` /
 `wave:engine-2` / `wave:refine` for the programme wave, `design-round` for design rounds, and
 `area:*` for the subsystem.
 
@@ -29,9 +29,11 @@ Backend logic is split by domain under `app/Services/`:
 - **Weather/** — Open-Meteo snapshot attached per activity.
 - **Telegram/** — client, link tokens, notification-eligible types, reply handling.
 - **Notifications/** — channel routing + delivery-claim idempotency.
+- **Devtools/** — the operator's narration report, replay and re-arm actions, cost forecast and action recorder.
+- **User/** — `UserEraser`, the account-deletion data eraser.
 - **Inertia/** — per-page shared prop builders (`SharedProps`, `AiProps`, `GamificationProps`, `NotificationProps`, `StravaProps`).
 
-Two DB connections: default `mysql` plus a second **`analytics`** schema for metering (e.g. `ai_token_usages`); its migrations live in `database/migrations/analytics/`. Pages live under `resources/js/pages/`, one per prototype screen: `Home` (the Today dashboard — the render name is `Home`, not `Today`), `Plan`, `Race`, `Trends`, `History` with `Activities/{Feed,Calendar}`, `Runs/Show`, `Inbox`, `Profile`, `Settings/Index`, plus `Auth/Login`, `Onboarding/Index`, `Legal/Document` and the operator screens `Narration/Overview` / `Devtools` / `Devtools/Design`. There is no `Collection/` tree — the cards, records and accessories pages were cut by the parity port.
+Two DB connections: default `mysql` plus a second **`analytics`** schema for metering (e.g. `ai_token_usages`); its migrations live in `database/migrations/analytics/`. Pages live under `resources/js/pages/`, one per prototype screen: `Home` (the Today dashboard — the render name is `Home`, not `Today`), `Plan`, `Race`, `Trends`, `History` with `Activities/{Feed,Calendar}`, `Runs/Show`, `Inbox`, `Profile`, `Settings/Index`, plus `Auth/Login`, `Onboarding/Index`, `Legal/Document` and the operator screens `Narration/Overview` / `Narration/Athlete` / `Devtools` / `Devtools/Design` / `DevtoolsFeedback`. There is no `Collection/` tree — the cards, records and accessories pages were cut by the parity port.
 
 ## Voice & copy
 
@@ -47,8 +49,9 @@ Read only the file the task needs; each holds its section verbatim.
 - [AI narration pipeline](references/narration.md): before touching a narrator, prompt, Analyze\*Job or `AnalysisType`, including "Adding a new narrated block — all 6 wires".
 - [Testing](references/testing.md): before writing or moving tests. The 1:1 class↔test rule, aggregate suites, DB isolation, test speed.
 - [Sail toolchain](references/toolchain.md) ("Toolchain (everything in Docker via Sail)"): before running the gate, tests, builds or `demo:seed`.
-- [Parallel worktrees](references/parallel-worktrees.md), including "Shared services": before starting a second Sail stack or working in a worktree.
+- [Parallel worktrees](references/parallel-worktrees.md), including "Creating and removing worktrees" and "Shared services": before creating, removing or working in a worktree, or starting a second Sail stack.
 - [Stacked PRs](references/stacked-prs.md): before starting, building or merging a `gh stack`.
+- [PR handoff](references/pr-handoff.md): before opening or editing a PR. The description checklist, body drafting, which CI checks gate merging.
 
 ## Inspecting real state
 

@@ -20,11 +20,6 @@ enum TrendDirection: string
         return $this === self::Better;
     }
 
-    public function isFlat(): bool
-    {
-        return $this === self::Flat;
-    }
-
     public function isWorse(): bool
     {
         return $this === self::Worse;

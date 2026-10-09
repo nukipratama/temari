@@ -32,7 +32,6 @@ const ROW: AthleteRow = {
             demo: 0,
             capped: 0,
             return: 2,
-            dead_letter: 0,
             content_filter: 0,
             unattributed: 0,
         },

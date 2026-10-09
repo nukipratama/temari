@@ -9,7 +9,6 @@ use App\Models\PersonalRecord;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\HistoryNarrationGate;
-use App\Services\Run\Metrics\LoadBalance;
 use App\Services\Run\LifetimeStats;
 use Illuminate\Support\Carbon;
 
@@ -62,7 +61,7 @@ final class LifetimeStatsTool extends UserTool
             'weekly_streak' => WeeklySnapshot::consecutiveWeekStreak($this->user->id),
             'favorite_time' => $this->favoriteTimeBucket(),
             'strava_connected' => $this->user->stravaConnection !== null,
-            'load_balance' => $historyLoading ? null : LoadBalance::fromStored(WeeklySnapshot::latestFormStatus($this->user->id))?->value,
+            'load_balance' => $historyLoading ? null : WeeklySnapshot::latestFormStatus($this->user->id)?->loadBalance()->value,
             ...($historyLoading ? ['history_loading' => true] : []),
         ];
     }

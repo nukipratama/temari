@@ -18,7 +18,6 @@ use App\Services\Run\LifetimeStats;
 use App\Services\Run\Metrics\TrainingPaceCalculator;
 use App\Services\Run\Metrics\VdotEstimator;
 use App\Services\Run\ProgressionSeriesBuilder;
-use App\Services\Run\Story\MoodMix;
 use Illuminate\Support\Carbon;
 
 /**
@@ -28,8 +27,6 @@ use Illuminate\Support\Carbon;
  */
 class ProfileVoiceNarrator
 {
-    private const int LOOKBACK_WEEKS = 12;
-
     private const string SYSTEM_PROMPT_TEMPLATE = <<<'PROMPT'
         Task: ONE paragraph (3-4 sentences, max 110 words) for the profile page,
         using "I" as the subject. Output THREE fields, in this order:
@@ -272,13 +269,5 @@ class ProfileVoiceNarrator
             new ProgressionSignalTool($user, $asOf, $this->progressionSeriesBuilder),
             new PlanAdherenceTool($user, $asOf, null),
         ]);
-    }
-
-    /**
-     * @return list<array{mood: string, count: int, percent: float}>
-     */
-    public function personaMix(User $user): array
-    {
-        return MoodMix::between($user->id, Carbon::now()->subWeeks(self::LOOKBACK_WEEKS));
     }
 }

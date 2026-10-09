@@ -24,6 +24,7 @@ use App\Services\Run\Plan\PlanPageAssembler;
 use App\Services\Run\Plan\PlanRenderer;
 use App\Services\Run\Plan\TrainingBaseline;
 use App\Services\Run\Plan\SeasonSummaryBuilder;
+use App\Services\Run\Plan\SegmentGenerator;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 
@@ -74,21 +75,38 @@ function thisWeekPhase(User $user): PlanPhase
     return PlannedSession::query()->where('user_id', $user->id)->where('date', Carbon::today()->toDateString())->value('phase');
 }
 
-it('holds the race block at the athlete\'s own recent mean when load is fine', function (): void {
+it('holds the race block at the athlete\'s own recent mean when load is fine, short only by the long-run km the progression cap removes', function (): void {
     $user = flooredAthlete();
+    $uncapped = flooredAthlete();
+    ActivityDetail::query()->whereHas('activity', fn ($query) => $query->where('user_id', $uncapped->id))->update(['distance' => 14_000]);
 
-    app(Periodizer::class)->regenerate($user, Carbon::today());
+    $blockOf = function (User $athlete): array {
+        app(Periodizer::class)->regenerate($athlete, Carbon::today());
+        $season = Season::query()->where('user_id', $athlete->id)->firstOrFail();
 
-    $season = Season::query()->where('user_id', $user->id)->firstOrFail();
-    $block = array_filter(
-        app(SeasonSummaryBuilder::class)->plannedWeeks($user, $season),
-        fn (array $week): bool => $week['zone'] === PhaseSchedule::ZONE_BLOCK,
-    );
+        return [$season, app(TrainingBaseline::class)->forUser($athlete, $season->starts_at), array_values(array_filter(
+            app(SeasonSummaryBuilder::class)->plannedWeeks($athlete, $season),
+            fn (array $week): bool => $week['zone'] === PhaseSchedule::ZONE_BLOCK,
+        ))];
+    };
+    [$season, $baseline, $block] = $blockOf($user);
+    [, $uncappedBaseline, $uncappedBlock] = $blockOf($uncapped);
+
+    $multipliers = PhaseSchedule::volumeMultipliers(array_column($block, 'phase'));
+    $longKm = fn (float $multiplier, float $progressionCapKm): float => SegmentGenerator::coreKmFor(SessionType::Long, false, $baseline['long_run_km'], $multiplier, $baseline['long_run_cap_km'], 10_000.0, $progressionCapKm);
+    $removedKm = array_map(fn (float $multiplier): float => round($longKm($multiplier, INF) - $longKm($multiplier, $baseline['long_run_progression_cap_km']), 1), $multipliers);
 
     expect($season->volume_floor_km)->toBe(25.91)
-        ->and(array_sum(array_column($block, 'planned_km')) / count($block))->toBeGreaterThanOrEqual(25.91)
+        ->and($baseline['long_run_progression_cap_km'])->toBe(11.0)
+        ->and($uncappedBaseline['long_run_progression_cap_km'])->toBe(15.4)
+        ->and([...$uncappedBaseline, 'long_run_progression_cap_km' => 11.0])->toBe($baseline)
+        ->and($removedKm)->toBe([0.0, 0.0, 0.0, 0.0, 0.0, 0.4, 1.3, 0.0, 1.3, 1.3, 0.0, 0.0])
+        ->and(array_sum(array_column($uncappedBlock, 'planned_km')) / count($uncappedBlock))->toBeGreaterThanOrEqual(25.91)
         ->and(thisWeekKm($user))->toBeGreaterThanOrEqual(25.91)
         ->and(PlanAdaptation::query()->where('user_id', $user->id)->value('volume_floor_km'))->toBeNull();
+    foreach ($block as $i => $week) {
+        expect($uncappedBlock[$i]['planned_km'] - $week['planned_km'])->toEqualWithDelta($removedKm[$i], 0.001);
+    }
 });
 
 it('backs off under the floor for a strong current concern, and says so on the plan', function (): void {

@@ -316,14 +316,14 @@ class Analysis extends Model
     ): array {
         return [
             'id' => $row?->id,
-            'status' => ($row === null ? AnalysisStatus::Pending : $row->status)->value,
+            'status' => ($row->status ?? AnalysisStatus::Pending)->value,
             'content' => $row?->content,
             'type' => $type->value,
             'is_zone_dependent' => $type->isZoneDependent(),
             'subject_type' => $subjectType,
             'subject_id' => $subjectId,
             'discriminator' => $discriminator,
-            'attempts' => $row === null ? 0 : $row->attempts,
+            'attempts' => $row->attempts ?? 0,
             'generated_at' => $row?->generated_at?->toIso8601String(),
             'stale_at' => $row?->stale_at?->toIso8601String(),
             'is_stale' => $row?->stale_at !== null,

@@ -27,7 +27,7 @@ Recovery was frozen on the season as `opens_with_recovery` when the next season 
    - Over 15 km ([HALF_CLASS_M](app/Services/Run/Plan/PostRaceRecovery.php#L19)): 7 days with no quality, at normal volume. **Heuristic**: the research found no recovery timelines for the half marathon or shorter.
    - 15 km or less: 3 days with no quality. **Heuristic**, same gap.
    - The 30 km and 15 km class thresholds are **Heuristic**.
-3. **Any arc applies it.** [Periodizer](app/Services/Run/Plan/Periodizer.php#L471) turns a quality session inside the window into an easy day ("easy while recovering from the race") and [applies the deload week](app/Services/Run/Plan/Periodizer.php#L771) to the week it names, unless that week is a taper. It works on the self-scaled arc and on a new race block alike, so a block opening inside the window starts with it.
+3. **Any arc applies it.** [Periodizer](app/Services/Run/Plan/Periodizer.php#L474) turns a quality session inside the window into an easy day ("easy while recovering from the race") and [applies the deload week](app/Services/Run/Plan/Periodizer.php#L774) to the week it names, unless that week is a taper. It works on the self-scaled arc and on a new race block alike, so a block opening inside the window starts with it.
 4. **Recording an outcome regenerates the plan.** [RaceOutcomeService](app/Services/Run/Plan/RaceOutcomeService.php#L84) requests a regeneration after every change. It is idempotent: recovery is a function of the race and the day, and no season is replayed.
 5. **`opens_with_recovery` is retired.** Nothing reads or writes the flag. The column stays and dropping it is a follow-up.
 

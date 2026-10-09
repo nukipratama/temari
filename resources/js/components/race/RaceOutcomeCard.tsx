@@ -3,10 +3,13 @@ import { type FormEvent, useState } from 'react';
 
 import type { PastRace, RaceOutcomeState } from '@/types/inertia';
 
+import DemoBlockedModal from '@/components/DemoBlockedModal';
 import Eyebrow from '@/components/ui/Eyebrow';
 import PillButton from '@/components/ui/PillButton';
+import { useDemoGuard } from '@/hooks/useDemoGuard';
 import { cn } from '@/lib/cn';
 import { formatDurationHMS, formatKm, formatNaiveIdDate } from '@/lib/pace';
+import { RACE_DEMO_BLOCKED } from '@/lib/raceGoal';
 import { inputVariants } from '@/lib/variants';
 
 interface RaceOutcomeCardProps {
@@ -38,18 +41,25 @@ export default function RaceOutcomeCard({
     const [minutes, setMinutes] = useState(0);
     const [seconds, setSeconds] = useState(0);
     const [processing, setProcessing] = useState(false);
+    const {
+        open: demoBlocked,
+        setOpen: setDemoBlocked,
+        guard,
+    } = useDemoGuard();
 
     const timeSec = hours * 3_600 + minutes * 60 + seconds;
     const open = outcome.state === 'pending' || changing;
     const title = race.name ?? `${formatKm(race.distance_m, 1)} km`;
 
     const post = (payload: Record<string, number | string>) => {
-        router.post(`/race/${race.id}/outcome`, payload, {
-            preserveScroll: true,
-            onStart: () => setProcessing(true),
-            onSuccess: () => setChanging(false),
-            onFinish: () => setProcessing(false),
-        });
+        guard(() =>
+            router.post(`/race/${race.id}/outcome`, payload, {
+                preserveScroll: true,
+                onStart: () => setProcessing(true),
+                onSuccess: () => setChanging(false),
+                onFinish: () => setProcessing(false),
+            }),
+        );
     };
 
     const saveTime = (event: FormEvent) => {
@@ -199,6 +209,11 @@ export default function RaceOutcomeCard({
                     </div>
                 </div>
             )}
+            <DemoBlockedModal
+                open={demoBlocked}
+                onClose={() => setDemoBlocked(false)}
+                {...RACE_DEMO_BLOCKED}
+            />
         </section>
     );
 }

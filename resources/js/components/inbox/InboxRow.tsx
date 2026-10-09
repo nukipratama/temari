@@ -150,9 +150,9 @@ export default function InboxRow({
                         </button>
                     </div>
 
-                    <h2 className="mt-1 font-sans text-sm font-semibold text-foreground">
+                    <h3 className="mt-1 font-sans text-sm font-semibold text-foreground">
                         {item.title}
-                    </h2>
+                    </h3>
 
                     {stats.length > 0 && (
                         <div className="mt-1.5 flex flex-wrap gap-1.5">

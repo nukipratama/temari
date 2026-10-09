@@ -4,6 +4,7 @@ import type {
     AnalysisStatus,
     AnalysisType,
     Effort,
+    Mood,
     NotificationKind,
     PlannedSessionStatus,
     Rarity,
@@ -13,17 +14,13 @@ export type {
     AnalysisStatus,
     AnalysisType,
     Effort,
+    Mood,
     NotificationKind,
     PlannedSessionStatus,
     Rarity,
 } from './generated';
 
-export type Mood =
-    'blazing' | 'easy' | 'wobbly' | 'gassed' | 'overloaded' | 'chill';
-
 export type Tone = 'neutral' | 'positive' | 'warning' | 'alert';
-
-export type RecoveryTone = 'positive' | 'warning' | 'alert' | 'neutral';
 
 export interface AuthUser {
     id: number;
@@ -242,17 +239,9 @@ export interface RestDayEasePace {
 }
 
 export interface BriefingResult {
-    vibeState: string;
     mascotVoice: AnalysisPayload;
     /** No briefing has ever been narrated for this athlete — a pending one says so on the Today card. */
     firstRead: boolean;
-    recoveryLabel: string;
-    recoveryTone: RecoveryTone;
-    recoveryHoursLabel: string | null;
-    /** Raw hours since the last run — the number `recoveryHoursLabel` is rendered from. */
-    recoveryHours: number | null;
-    streakLabel: string | null;
-    sigilPattern: string;
     mood: Mood;
 }
 
@@ -615,7 +604,7 @@ export interface WeekPlanDay {
     result_note: string | null;
     /** The credited runs' own pace — moving time over distance, the best
      *  single run for Tempo/Interval, the day's total otherwise — from
-     *  `SessionMatcher::ranPaceSecPerKmFor()`. Null until the day is
+     *  `SessionMatcher::ranPaceSecPerKmFromRuns()`. Null until the day is
      *  credited, or when the credited runs carry no moving time. */
     ran_pace_sec_per_km: number | null;
     /** Total km actually run that day — null when nothing was logged. */

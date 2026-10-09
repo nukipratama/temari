@@ -74,6 +74,20 @@ it('offers one trial per cycle, in its due week', function (): void {
         ->toBe(['2026-08-17' => 'none', '2026-08-24' => 'trial', '2026-08-31' => 'none', '2026-09-28' => 'none', '2026-10-05' => 'trial', '2026-10-12' => 'none']);
 });
 
+it('moves a trial due in a scheduled deload week to the week before it', function (): void {
+    $schedule = new TimeTrialSchedule(trialScheduleInputs(), deloadWeeks: ['2026-11-16']);
+
+    expect(offeredWeeks($schedule, ['2026-11-09', '2026-11-16', '2026-11-23'], deloads: ['2026-11-16']))
+        ->toBe(['2026-11-09' => 'trial', '2026-11-16' => 'none', '2026-11-23' => 'none']);
+});
+
+it('moves a deload-week trial on to the next week when the week before it is refused too', function (): void {
+    $schedule = new TimeTrialSchedule(trialScheduleInputs(), deloadWeeks: ['2026-08-24']);
+
+    expect(offeredWeeks($schedule, ['2026-08-17', '2026-08-24', '2026-08-31'], deloads: ['2026-08-17', '2026-08-24']))
+        ->toBe(['2026-08-17' => 'none', '2026-08-24' => 'none', '2026-08-31' => 'trial']);
+});
+
 it('moves a trial due in a deload week to the next week of its cycle, without spending the retry', function (): void {
     $schedule = new TimeTrialSchedule(trialScheduleInputs());
 

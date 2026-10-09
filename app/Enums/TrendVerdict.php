@@ -19,29 +19,4 @@ enum TrendVerdict: string
     case Slipped = 'slipped';
     case Mixed = 'mixed';
     case NotEnoughHistory = 'not_enough_history';
-
-    public function isImproving(): bool
-    {
-        return $this === self::Improving;
-    }
-
-    public function isPlateaued(): bool
-    {
-        return $this === self::Plateaued;
-    }
-
-    public function isSlipped(): bool
-    {
-        return $this === self::Slipped;
-    }
-
-    public function isNotEnoughHistory(): bool
-    {
-        return $this === self::NotEnoughHistory;
-    }
-
-    public function isJudged(): bool
-    {
-        return $this !== self::NotEnoughHistory;
-    }
 }

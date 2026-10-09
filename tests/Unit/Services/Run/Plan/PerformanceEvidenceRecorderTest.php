@@ -2,7 +2,10 @@
 
 declare(strict_types=1);
 
+use App\Enums\PlannedSessionStatus;
+use App\Models\Activity;
 use App\Models\PerformanceEvidence;
+use App\Models\PlannedSession;
 use App\Models\RaceGoal;
 use App\Models\User;
 use App\Services\Run\Plan\PerformanceEvidenceRecorder;
@@ -57,4 +60,23 @@ it('does nothing when the race has no evidence to retract', function (): void {
     $this->recorder->retractForRace($this->user, $race);
 
     expect(PerformanceEvidence::query()->count())->toBe(0);
+});
+
+it('regenerates the plan when a retraction moves the training paces', function (): void {
+    $run = Activity::factory()->for($this->user)->create();
+    $this->recorder->record($this->user, ['kind' => 'test', 'distance_m' => 5_000, 'elapsed_time_sec' => 1_200, 'performed_on' => '2026-10-04', 'activity_id' => $run->id]);
+    $marker = PlannedSession::factory()->for($this->user)->create(['date' => '2026-10-07', 'status' => PlannedSessionStatus::Planned]);
+
+    $this->recorder->retracting($this->user, fn () => PerformanceEvidence::query()->where('activity_id', $run->id)->delete());
+
+    expect(PerformanceEvidence::query()->count())->toBe(0)
+        ->and(PlannedSession::query()->whereKey($marker->id)->exists())->toBeFalse();
+});
+
+it('leaves the plan alone when a retraction does not move the training paces', function (): void {
+    $marker = PlannedSession::factory()->for($this->user)->create(['date' => '2026-10-07', 'status' => PlannedSessionStatus::Planned]);
+
+    $this->recorder->retracting($this->user, fn () => null);
+
+    expect(PlannedSession::query()->whereKey($marker->id)->exists())->toBeTrue();
 });

@@ -37,7 +37,7 @@ final class RecentRunsTool extends UserTool
     {
         $runs = array_map(
             fn (VerdictTimelineItem $item): array => [
-                'mood' => $item->mood,
+                'mood' => $item->mood->value,
                 'km' => $item->distanceKm,
                 'intensity' => $item->intensity,
                 'oneline' => $item->oneline,

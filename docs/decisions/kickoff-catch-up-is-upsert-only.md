@@ -30,6 +30,8 @@ covers the fill side; nothing it decided changes.
 > `AnalysisService::requestBriefing()` upsert this sweep does, so nothing below changes: an existing
 > row of any status is still untouched. See [[llm-triggers]].
 
+> **Partly superseded (2026-10-09) by [[scheduler-maintenance-recovery]].** "Creates missing kickoff rows and does nothing else" no longer holds: `ai:catch-up` also records the current day's readiness clamp, through `KickoffCatchUp` and `RunDailyBriefingSideEffects`, still creating rows only and never filling them.
+
 ## Context
 
 Every recovery family in [SelfHealer](../../app/Services/AI/SelfHealer.php) starts from a row that

@@ -11,6 +11,7 @@ use App\Models\NotificationPreference;
 use App\Models\RaceGoal;
 use App\Models\TelegramConnection;
 use App\Models\User;
+use App\Notifications\Channels\IdempotentWebPushChannel;
 use App\Notifications\RaceTomorrowNotification;
 use App\Notifications\StravaDisconnectedNotification;
 use App\Notifications\StreakReminderNotification;
@@ -19,6 +20,7 @@ use App\Services\AI\AnalysisType;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use NotificationChannels\WebPush\WebPushChannel;
 
 uses(RefreshDatabase::class);
@@ -202,4 +204,62 @@ it('judges a released briefing as of when it was held, not when it was released'
 
     expect(sentTelegramTitles())->toBe(['Your briefing for today'])
         ->and($this->pushes)->toBe(1);
+});
+
+it('drops a held row that can never be restored, releases the rest and fails the run', function (Closure $poison, string $storedClass): void {
+    Log::spy();
+    $user = heldAthlete();
+    holdAt('2026-10-05 22:30:00', $user, fn () => new StreakReminderNotification(4));
+    holdAt('2026-10-05 23:00:00', $user, fn () => new StravaDisconnectedNotification(now()));
+    $poisoned = HeldNotification::query()->where('held_at', '2026-10-05 22:30:00')->get();
+    $poisoned->each(fn (HeldNotification $held) => $held->update(['notification' => $poison($held->notification)]));
+
+    Carbon::setTestNow('2026-10-06 04:00:00');
+    $this->artisan('notifications:release-held')
+        ->expectsOutput('Released 3 held notifications.')
+        ->assertExitCode(1);
+
+    expect(sentTelegramTitles())->toBe(['Strava stopped syncing'])
+        ->and(InboxNotification::query()->pluck('title')->all())->toBe(['Strava stopped syncing'])
+        ->and(HeldNotification::query()->count())->toBe(0);
+    foreach ($poisoned as $held) {
+        Log::shouldHaveReceived('error')->with('notifications.held.unrestorable', ['held_id' => $held->id, 'class' => $storedClass]);
+    }
+})->with([
+    'renamed class' => [
+        fn (string $payload): string => str_replace('O:44:"App\Notifications\StreakReminderNotification"', 'O:37:"App\Notifications\RetiredNotification"', $payload),
+        'App\Notifications\RetiredNotification',
+    ],
+    'not a notification' => [fn (string $payload): string => serialize(['streak' => 4]), 'array'],
+    'truncated' => [fn (string $payload): string => substr($payload, 0, 80), StreakReminderNotification::class],
+]);
+
+it('keeps a held row whose release fails for another reason, releases the rest and fails the run', function (): void {
+    Log::spy();
+    $sends = 0;
+    $push = Mockery::mock(WebPushChannel::class);
+    $push->shouldReceive('send')->andReturnUsing(function () use (&$sends): array {
+        if ($sends++ === 0) {
+            throw new RuntimeException('push service down');
+        }
+        $this->pushes++;
+
+        return [];
+    });
+    app()->instance(WebPushChannel::class, $push);
+    $user = heldAthlete();
+    holdAt('2026-10-05 22:30:00', $user, fn () => new StreakReminderNotification(4));
+    holdAt('2026-10-05 23:00:00', $user, fn () => new StravaDisconnectedNotification(now()));
+
+    Carbon::setTestNow('2026-10-06 04:00:00');
+    $this->artisan('notifications:release-held')
+        ->expectsOutput('Released 5 held notifications.')
+        ->assertExitCode(1);
+
+    $kept = HeldNotification::query()->sole();
+    expect($kept->channel)->toBe(IdempotentWebPushChannel::class)
+        ->and($kept->held_at->toDateTimeString())->toBe('2026-10-05 22:30:00')
+        ->and($this->pushes)->toBe(1)
+        ->and(sentTelegramTitles())->toBe(['Your 4-week streak is on the edge', 'Strava stopped syncing']);
+    Log::shouldHaveReceived('error')->with('notifications.held.release_failed', Mockery::on(fn (array $context): bool => $context['held_id'] === $kept->id));
 });

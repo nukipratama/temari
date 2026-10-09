@@ -9,10 +9,9 @@ import {
     loadBalanceOf,
 } from '@/lib/formStatus';
 import { METRIC_GLOSSARY } from '@/lib/metricGlossary';
+import { DECOUPLING_HIGH_PCT } from '@/types/generated';
 
 const MONOTONY_ALERT_AT = 1.5;
-// Mirrors DecouplingBands::HIGH, the version 2 steady-effort scale (app/Services/Run/Metrics/DecouplingBands.php).
-const DECOUPLING_ALERT_PCT_AT = 12;
 
 interface StatMetric {
     key: string;
@@ -50,7 +49,7 @@ function buildMetrics(snapshot: WeeklySnapshotWithRecap): StatMetric[] {
     }
 
     if (snapshot.avg_decoupling_v2 !== null) {
-        const flagged = snapshot.avg_decoupling_v2 >= DECOUPLING_ALERT_PCT_AT;
+        const flagged = snapshot.avg_decoupling_v2 >= DECOUPLING_HIGH_PCT;
         const value = `${snapshot.avg_decoupling_v2.toFixed(1)}%`;
         metrics.push({
             key: 'decoupling',

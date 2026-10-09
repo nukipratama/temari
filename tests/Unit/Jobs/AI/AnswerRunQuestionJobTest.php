@@ -22,6 +22,7 @@ use App\Support\Config\AppConfigKey;
 use Illuminate\Contracts\Queue\Job as JobContract;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Queue;
 
 uses(RefreshDatabase::class);
 
@@ -156,7 +157,11 @@ it('passes athlete-supplied context to the narrator unchanged', function (): voi
 });
 
 it('runs on the ai queue', function (): void {
-    expect(new AnswerRunQuestionJob(1)->queue)->toBe('ai');
+    Queue::fake();
+
+    AnswerRunQuestionJob::dispatch(1);
+
+    Queue::assertPushedOn('ai', AnswerRunQuestionJob::class);
 });
 
 it('leaves an already-answered question alone rather than re-billing it', function (): void {

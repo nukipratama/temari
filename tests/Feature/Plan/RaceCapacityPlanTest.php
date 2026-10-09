@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Enums\AdaptationReason;
 use App\Enums\RaceAmbitionState;
+use App\Models\Activity;
 use App\Models\PerformanceEvidence;
 use App\Models\PlanAdaptation;
 use App\Models\PlannedSession;
@@ -31,7 +32,7 @@ beforeEach(function (): void {
     }
     TrainingPreference::factory()->for($this->user)->create(['sessions_per_week' => 4]);
     PerformanceEvidence::query()->create([
-        'user_id' => $this->user->id, 'kind' => 'test', 'distance_m' => 10_000, 'elapsed_time_sec' => 4200,
+        'user_id' => $this->user->id, 'activity_id' => Activity::factory()->for($this->user)->create()->id, 'kind' => 'test', 'distance_m' => 10_000, 'elapsed_time_sec' => 4200,
         'performed_on' => Carbon::today()->subWeek(), 'confirmed_at' => now(),
     ]);
     $this->race = RaceGoal::factory()->for($this->user)->create([

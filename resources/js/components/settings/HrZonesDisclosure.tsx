@@ -8,10 +8,12 @@ import {
 } from 'lucide-react';
 import { useEffect, useId, useRef, useState } from 'react';
 
+import DemoBlockedModal from '@/components/DemoBlockedModal';
 import StravaAction from '@/components/StravaAction';
 import Eyebrow from '@/components/ui/Eyebrow';
 import { Icon } from '@/components/ui/Icon';
 import PillButton from '@/components/ui/PillButton';
+import { useDemoGuard } from '@/hooks/useDemoGuard';
 import { useExitTransition } from '@/hooks/useExitTransition';
 import { usePendingPost } from '@/hooks/usePendingPost';
 import { HR_ZONE_LABELS } from '@/lib/chartTokens';
@@ -19,6 +21,11 @@ import { cn } from '@/lib/cn';
 
 const SAVED_FLASH_MS = 2000;
 const NOTICE_EXIT_MS = 320;
+
+export const ZONES_DEMO_BLOCKED = {
+    title: 'heart-rate zones stay put in the demo',
+    body: "this is the shared demo, so its zones stay the same for everyone. connect your own Strava and i'll read your zones from it.",
+} as const;
 
 const ZONE_KEYS = ['Z1', 'Z2', 'Z3', 'Z4', 'Z5'] as const;
 type ZoneKey = (typeof ZONE_KEYS)[number];
@@ -205,6 +212,12 @@ export default function HrZonesDisclosure({
         },
     );
 
+    const {
+        open: demoBlocked,
+        setOpen: setDemoBlocked,
+        guard,
+    } = useDemoGuard();
+
     const canShowResync = canSyncFromStrava && source === 'manual';
     const canShowReset = source !== 'default';
 
@@ -373,7 +386,7 @@ export default function HrZonesDisclosure({
                                     tone="outline"
                                     size="sm"
                                     className="w-full justify-center"
-                                    onClick={resyncFromStrava}
+                                    onClick={() => guard(resyncFromStrava)}
                                     disabled={resyncing}
                                 >
                                     <Icon
@@ -393,6 +406,11 @@ export default function HrZonesDisclosure({
                                         ? 'syncing…'
                                         : 'resync from Strava'}
                                 </PillButton>
+                                <DemoBlockedModal
+                                    open={demoBlocked}
+                                    onClose={() => setDemoBlocked(false)}
+                                    {...ZONES_DEMO_BLOCKED}
+                                />
                             </StravaAction>
                         </div>
                     )}

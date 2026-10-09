@@ -64,11 +64,11 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
 
         // Strava POSTs the webhook with no session/CSRF token; it is guarded by
-        // the verify token + athlete scoping in the controller instead.
+        // the callback token + subscription id in the controller instead.
         // client-errors is exempt too: it's low-risk telemetry guarded by an IP
         // rate limiter, and a global JS error handler may fire without a token.
         $middleware->validateCsrfTokens(except: [
-            'strava/webhook',
+            'strava/webhook/*',
             'telegram/webhook',
             'client-errors',
         ]);

@@ -41,7 +41,6 @@ use Override;
  * @property-read ActivityStream|null $stream
  * @property-read RunCard|null $runCard
  * @property-read Collection<int, PersonalRecord> $personalRecords
- * @property-read Collection<int, StoryLine> $storyLines
  * @property-read StoryLine|null $postRunStoryLine
  */
 #[ScopedBy([AnalyzedScope::class])]
@@ -231,14 +230,6 @@ class Activity extends Model
     public function analyses(): MorphMany
     {
         return $this->morphMany(Analysis::class, 'subject');
-    }
-
-    /**
-     * @return HasMany<StoryLine, $this>
-     */
-    public function storyLines(): HasMany
-    {
-        return $this->hasMany(StoryLine::class);
     }
 
     /**

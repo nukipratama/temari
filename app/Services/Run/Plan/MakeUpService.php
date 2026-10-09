@@ -60,14 +60,14 @@ final readonly class MakeUpService
         }
 
         foreach ([...$this->runsOn($user, $targetDate), ...$this->runsOn($user, $vacatedDate)] as $activity) {
-            $this->analysisService->requestActivityGroup($activity, invalidate: true);
+            $this->analysisService->requestActivityGroup($activity, invalidate: true, delaySeconds: AnalysisService::PLAN_EDIT_DELAY_SECONDS);
             if ($activity->runCard !== null) {
-                $this->analysisService->request(RunCard::class, $activity->runCard->id, AnalysisType::CardFlavor, invalidate: true);
+                $this->analysisService->request(RunCard::class, $activity->runCard->id, AnalysisType::CardFlavor, delaySeconds: AnalysisService::PLAN_EDIT_DELAY_SECONDS, invalidate: true);
             }
         }
 
         if ($targetDate->isSameDay($today) || $vacatedDate->isSameDay($today)) {
-            $this->analysisService->requestBriefing($user, $today->toDateString(), invalidate: true);
+            $this->analysisService->requestBriefing($user, $today->toDateString(), invalidate: true, delaySeconds: AnalysisService::PLAN_EDIT_DELAY_SECONDS);
         }
     }
 

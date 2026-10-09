@@ -9,6 +9,7 @@ const FAKE_LATITUDE = '-6.2146';
 const FAKE_LONGITUDE = '106.8451';
 const FAKE_STRAVA_SECRET = 'fakeStravaClientSecret0123';
 const FAKE_WEBHOOK_VERIFY_TOKEN = 'fakeWebhookVerifyToken0123';
+const FAKE_WEBHOOK_CALLBACK_TOKEN = 'fakeWebhookCallbackToken0123';
 
 function pulseOutgoingRequestKey(string $method, string $url): string
 {
@@ -48,8 +49,8 @@ dataset('outbound requests', [
     'strava oauth deauthorize' => ['POST', 'https://www.strava.com/oauth/deauthorize', 'https://www.strava.com/oauth/deauthorize'],
     'strava webhook probe' => [
         'GET',
-        'https://temari.test/strava/webhook?hub.mode=subscribe&hub.verify_token='.FAKE_WEBHOOK_VERIFY_TOKEN.'&hub.challenge=probe-0123456789ab',
-        'https://temari.test/strava/webhook',
+        'https://temari.test/strava/webhook/'.FAKE_WEBHOOK_CALLBACK_TOKEN.'?hub.mode=subscribe&hub.verify_token='.FAKE_WEBHOOK_VERIFY_TOKEN.'&hub.challenge=probe-0123456789ab',
+        'https://temari.test/strava/webhook/*',
     ],
 ]);
 
@@ -65,5 +66,6 @@ it('stores each outbound request under a group with no token or coordinates', fu
         ->not->toContain('latitude=')
         ->not->toContain(FAKE_STRAVA_SECRET)
         ->not->toContain(FAKE_WEBHOOK_VERIFY_TOKEN)
+        ->not->toContain(FAKE_WEBHOOK_CALLBACK_TOKEN)
         ->not->toContain('verify_token=');
 })->with('outbound requests');

@@ -9,6 +9,7 @@ use App\Enums\IntentVerdict;
 use App\Enums\SessionType;
 use App\Http\Controllers\PlanController;
 use App\Http\Requests\UpdatePlannedSessionRequest;
+use App\Jobs\AI\AnalyzeBriefingMascotVoiceJob;
 use App\Jobs\AI\AnalyzePlanSeasonVoiceJob;
 use App\Jobs\Run\RegeneratePlanJob;
 use App\Models\Activity;
@@ -24,6 +25,7 @@ use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Models\AI\Analysis;
 use App\Services\AI\AnalysisService;
+use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
 use App\Services\AI\PlanNarrationRequester;
 use App\Services\Run\Plan\ComplianceScorer;
@@ -325,7 +327,7 @@ it('moves a generated quality prescription with its workout and keeps its render
     $paceText = sprintf('%d:%02d', intdiv($runPace, 60), $runPace % 60);
     $summary = collect(['30s', '1min', '3min', '5min', '10min', '20min', '30min', '60min'])
         ->mapWithKeys(fn (string $window): array => ["best_{$window}_pace" => $paceText])
-        ->all();
+        ->all() + ['time_in_zone_min' => ['Z1' => 0, 'Z2' => 10, 'Z3' => 5, 'Z4' => 30, 'Z5' => 20]];
     $shown = json_decode(Crypt::decryptString($renderedDay['recommendation_token']), true, flags: JSON_THROW_ON_ERROR);
     $revision = app(RecommendationHistory::class)->record($user->id, $rest->date->toDateString(), $shown['original'], $shown['effective']);
     RecommendationView::query()->create([
@@ -1125,4 +1127,81 @@ it('credits the run a skipped session is made up onto, rather than excusing it',
         ->and($monday->skipped)->toBeFalse()
         ->and($monday->status->isCredited())->toBeTrue()
         ->and($monday->distance_score)->toBeGreaterThan(0);
+});
+
+it('answers the 21st plan edit within a minute with 429', function (): void {
+    Carbon::setTestNow('2026-08-12 08:00:00');
+    Bus::fake();
+    $user = User::factory()->create();
+    $rows = planWeekRows($user, ['2026-08-14' => 'easy']);
+
+    foreach (range(1, 20) as $edit) {
+        $this->actingAs($user)
+            ->patch("/plan/sessions/{$rows['2026-08-14']->id}", ['skipped' => $edit % 2 === 1])
+            ->assertRedirect();
+    }
+
+    $this->actingAs($user)
+        ->patch("/plan/sessions/{$rows['2026-08-14']->id}", ['skipped' => false])
+        ->assertTooManyRequests();
+});
+
+it('counts only plan edits against the plan-edit budget', function (): void {
+    Carbon::setTestNow('2026-08-12 08:00:00');
+    Bus::fake();
+    $user = User::factory()->create();
+    $rows = planWeekRows($user, ['2026-08-14' => 'easy']);
+
+    foreach (range(1, 5) as $view) {
+        $this->actingAs($user)->postJson('/plan/recommendations/shown', [])->assertUnprocessable();
+    }
+
+    foreach (range(1, 20) as $edit) {
+        $this->actingAs($user)
+            ->patch("/plan/sessions/{$rows['2026-08-14']->id}", ['skipped' => $edit % 2 === 1])
+            ->assertRedirect();
+    }
+});
+
+it('merges a burst of skip and restore toggles on today into one delayed briefing that reads the final plan', function (): void {
+    Carbon::setTestNow('2026-08-12 08:00:00');
+    Bus::fake();
+    $user = User::factory()->create();
+    $rows = planWeekRows($user, ['2026-08-12' => 'easy']);
+    Analysis::factory()->done()->create([
+        'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
+        'subject_id' => $user->id,
+        'analysis_type' => AnalysisType::BriefingMascotVoice,
+        'discriminator' => '2026-08-12',
+    ]);
+
+    foreach ([true, false, true] as $skipped) {
+        $this->actingAs($user)
+            ->patch("/plan/sessions/{$rows['2026-08-12']->id}", ['skipped' => $skipped])
+            ->assertSessionHasNoErrors();
+    }
+
+    $briefing = Analysis::query()->where('analysis_type', AnalysisType::BriefingMascotVoice)->where('discriminator', '2026-08-12')->sole();
+    Bus::assertDispatchedTimes(AnalyzeBriefingMascotVoiceJob::class, 1);
+    Bus::assertDispatched(fn (AnalyzeBriefingMascotVoiceJob $job): bool => $job->delay === AnalysisService::PLAN_EDIT_DELAY_SECONDS
+        && $job->analysisId === $briefing->id
+        && $job->generationToken === $briefing->generation_token);
+    expect($briefing->status)->toBe(AnalysisStatus::Queued)
+        ->and($rows['2026-08-12']->fresh()->skipped)->toBeTrue();
+});
+
+it('queues nothing for the demo athlete however often today is toggled', function (): void {
+    Carbon::setTestNow('2026-08-12 08:00:00');
+    Bus::fake();
+    $user = User::factory()->create(['is_demo' => true]);
+    $rows = planWeekRows($user, ['2026-08-12' => 'easy']);
+
+    foreach ([true, false, true] as $skipped) {
+        $this->actingAs($user)
+            ->patch("/plan/sessions/{$rows['2026-08-12']->id}", ['skipped' => $skipped])
+            ->assertSessionHasNoErrors();
+    }
+
+    Bus::assertNotDispatched(AnalyzeBriefingMascotVoiceJob::class);
+    expect(Analysis::query()->where('analysis_type', AnalysisType::BriefingMascotVoice)->exists())->toBeFalse();
 });

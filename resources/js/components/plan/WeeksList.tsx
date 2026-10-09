@@ -41,7 +41,7 @@ export default function WeeksList({
 }>) {
     return (
         <div>
-            <Eyebrow token="small" className="mb-2.5 text-foreground">
+            <Eyebrow as="h2" token="small" className="mb-2.5 text-foreground">
                 season weeks
             </Eyebrow>
             <ol

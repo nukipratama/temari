@@ -1064,7 +1064,7 @@ it('dayPayload quotes a stopped run on elapsed pace', function (): void {
 
 /**
  * The day payload's `ran_pace_sec_per_km` is computed over the identical
- * runs `SessionMatcher::creditedKmFor()` grades the km with, not re-derived
+ * runs `SessionMatcher::creditedKm()` grades the km with, not re-derived
  * at the render site — a Tempo day is one effort, so it reads the best
  * single run's own pace rather than blending in a second, unrelated run.
  */
@@ -1103,7 +1103,7 @@ it("dayPayload computes a Tempo day's ran pace from its best single run only", f
 
 /**
  * An Easy day sums what the whole day added up to — the same rule
- * `SessionMatcher::creditedKmFor()` grades it with — so its ran pace divides
+ * `SessionMatcher::creditedKm()` grades it with — so its ran pace divides
  * the combined elapsed time by the combined distance rather than either run's
  * own pace.
  */

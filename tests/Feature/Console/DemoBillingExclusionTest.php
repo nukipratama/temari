@@ -62,6 +62,7 @@ const NON_BILLING = [
     'schedule:heartbeat' => 'writes one Redis timestamp, touches no user',
     'schedule:monday-check' => 'reads settlement cursors and the scheduler-chain flags and pushes one maintainer alert, no LLM and no Strava call',
     'schedule:check-late' => 'reads the heartbeat table and the scheduler-chain flags and pushes maintainer alerts, no LLM and no Strava call',
+    'horizon:snapshot' => "stores Horizon's queue and job metrics in Redis, no LLM and no Strava call",
     'demo:daily-refresh' => 'the demo account is the point; rule-based fill, zero LLM tokens',
     'queue:prune-failed' => 'deletes rows, touches no user',
     'analytics:prune' => 'deletes rows, touches no user',

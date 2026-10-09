@@ -175,7 +175,7 @@ function LensLabel({
     return (
         <div className="mb-2 flex items-center gap-1.5">
             <Icon icon={icon} width={12} height={12} aria-hidden />
-            <Eyebrow token="micro" tone="icon-accent" as="span">
+            <Eyebrow token="micro" tone="icon-accent" as="h3">
                 {children}
             </Eyebrow>
         </div>
@@ -231,7 +231,7 @@ export default function RunLenses({
                     size={40}
                 />
                 <div className="min-w-0 flex-1">
-                    <Eyebrow as="h3" token="small" tone="ink-2">
+                    <Eyebrow as="h2" token="small" tone="ink-2">
                         What Temari says
                     </Eyebrow>
                     <p className="mt-0.5 text-sm text-text-2">

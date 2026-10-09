@@ -3,7 +3,7 @@ title: Ask about this run
 description: The scoped per-run Q&A — suggested questions derived from the run's own data, a multi-turn conversation bound to that single activity, follow-ups, a per-run daily cap, and the persisted thread.
 tags: [feature, ai]
 status: living
-reviewed: 2026-09-29
+reviewed: 2026-10-09
 code_refs:
   - app/Http/Controllers/Api/RunQuestionController.php
   - app/Http/Requests/AskRunQuestionRequest.php
@@ -33,7 +33,7 @@ build on earlier answers, but never reach past this run. See
 ## The two endpoints
 
 Both live in [RunQuestionController](app/Http/Controllers/Api/RunQuestionController.php)
-and are registered in [routes/web.php](routes/web.php#L191) behind the normal
+and are registered in [routes/web.php](routes/web.php) behind the normal
 auth group.
 
 - `GET /api/activities/{activity}/questions` — this run's thread (oldest first),
@@ -41,12 +41,12 @@ auth group.
   is what the client polls while an answer is generating.
 - `POST /api/activities/{activity}/questions` — ask. Returns `201` with the row
   in its `queued` state; the answer arrives on a later `GET`. Throttled by the
-  `run-question` limiter ([AppServiceProvider](app/Providers/AppServiceProvider.php#L163),
-  configured at [config/ai.php](config/ai.php#L36)), and capped per run per day
+  `run-question` limiter ([AppServiceProvider](app/Providers/AppServiceProvider.php),
+  configured at [config/ai.php](config/ai.php)), and capped per run per day
   (below).
 
 Ownership is checked against the authenticated user on both
-([`ownedRun`](app/Http/Controllers/Api/RunQuestionController.php#L137)); another
+([`ownedRun`](app/Http/Controllers/Api/RunQuestionController.php)); another
 user's run is a `403`, not a `404`, matching the analysis endpoints.
 
 ## Suggested questions come off the run
@@ -73,7 +73,7 @@ the agent budget, the content-filter retry, the exception taxonomy and the
 `ai_token_usages` metering all apply unchanged, under the `run_question` kind
 (visible on [[narration-devtools]]).
 
-The [toolbox](app/Services/AI/Narrators/RunQuestionNarrator.php#L169) is the run
+The [toolbox](app/Services/AI/Narrators/RunQuestionNarrator.php) is the run
 insight set minus the claim-shaping bits, plus `get_thread`, and shrinks to the
 run summary, `get_thread` and the history reads when the activity is still
 `summary` state. The full agent
@@ -95,7 +95,7 @@ The structured output carries `follow_ups` beside `answer`: zero to two short
 questions this run's data can answer that nobody asked yet. They are stored on
 the row (`follow_ups`, nullable json) and exposed by the resource. A rule-based
 answer offers the run's suggested questions nobody has asked yet instead
-([`RunQuestionSeeds::unasked`](app/Services/AI/RunQuestion/RunQuestionSeeds.php#L102)).
+([`RunQuestionSeeds::unasked`](app/Services/AI/RunQuestion/RunQuestionSeeds.php)).
 
 ### Answered once
 
@@ -113,9 +113,9 @@ unlike narration rows ([[bounded-self-heal-and-dead-letter]]).
 
 ## The per-run daily cap
 
-One athlete may ask [`ai.run_question_daily_cap_per_run`](config/ai.php#L40)
+One athlete may ask `ai.run_question_daily_cap_per_run` ([config/ai.php](config/ai.php))
 (default 10) questions about one run per local day, on top of the per-minute
-limit. [`store()`](app/Http/Controllers/Api/RunQuestionController.php#L72) checks
+limit. [`store()`](app/Http/Controllers/Api/RunQuestionController.php) checks
 it before the cost-ceiling and pause branches, so past it there is no agent run,
 no rule-based answer and no row: the response is `429` with
 `{"error": "run_cap"}`. Every row counts, including a failed one. The demo is
@@ -129,6 +129,15 @@ marked `done` in the same request — no job, no Azure call. It answers the
 suggested questions directly and falls back to the run's headline reading for
 free text. Deterministic, so re-asking returns the same words. Same stance as
 [[demo-triggers-served-rule-based]].
+
+The demo login is public and the account is shared, so a demo question is never
+stored: the `201` carries the answer with `id: null`, its follow-ups come from the
+seeded questions plus the current one, and the panel keeps it in local state under
+a client-side id until the page reloads. `index()` lists only the exchanges
+[DemoRunSeeder::seededExchanges](database/seeders/Demo/DemoRunSeeder.php) writes,
+matched on question and answer, so no visitor's text reaches the next visitor. Real
+athletes keep every row, including the rule-based ones written past the cost
+ceiling.
 
 ## The panel
 

@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Jobs\AI\AnalyzeActivityJob;
+use Symfony\Component\Yaml\Yaml;
 
 /**
  * A narrator's deadline can overshoot by one Azure request. Activity groups
@@ -46,4 +47,15 @@ it('keeps the queue retry window above every worker timeout', function (): void 
             "queue.connections.redis.retry_after ({$retryAfter}) must exceed the {$name} timeout.",
         );
     }
+})->group('structure');
+
+it('gives Horizon a stop grace above the ai worker timeout', function (): void {
+    $grace = Yaml::parseFile(base_path('compose.prod.yaml'))['services']['horizon']['stop_grace_period'];
+    $graceSeconds = (int) rtrim((string) $grace, 's');
+    $workerTimeout = (int) config('horizon.defaults.supervisor-ai.timeout');
+    $singleCallWorstCase = (int) config('ai.agent.deadline_seconds') + (int) config('azure_openai.timeout');
+
+    expect($grace)->toMatch('/^\d+s$/')
+        ->and($graceSeconds)->toBeGreaterThan($workerTimeout, "horizon stop_grace_period ({$grace}) must exceed the supervisor-ai timeout ({$workerTimeout}).")
+        ->and($workerTimeout)->toBeGreaterThan($singleCallWorstCase);
 })->group('structure');

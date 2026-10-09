@@ -6,9 +6,7 @@ import type { FeedbackReason, FeedbackSubject } from '@/types/generated';
 import PillButton from '@/components/ui/PillButton';
 import Sheet, { SheetClose } from '@/components/ui/Sheet';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-
-/** Mirrors the `note` column and the max on StoreFeedbackRequest. */
-const MAX_NOTE_LENGTH = 280;
+import { MAX_FEEDBACK_NOTE_LENGTH } from '@/types/generated';
 
 /**
  * The reasons each subject offers, split the same way
@@ -124,7 +122,7 @@ export default function FlagSheet({
                         id={noteId}
                         value={note}
                         onChange={(event) => setNote(event.target.value)}
-                        maxLength={MAX_NOTE_LENGTH}
+                        maxLength={MAX_FEEDBACK_NOTE_LENGTH}
                         rows={3}
                         required={freeText}
                         placeholder={freeText ? 'tell temari' : 'optional'}

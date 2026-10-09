@@ -14,7 +14,6 @@ import { makeUser, setMockPage } from '@/test/setup';
 import Home from './Home';
 
 const briefing: BriefingResult = {
-    vibeState: 'pumped',
     firstRead: false,
     mascotVoice: {
         id: 4,
@@ -25,12 +24,6 @@ const briefing: BriefingResult = {
         subject_id: 1,
         discriminator: '2026-06-12',
     },
-    recoveryLabel: 'Recovery: 41h',
-    recoveryTone: 'positive',
-    recoveryHoursLabel: '41h',
-    recoveryHours: 41,
-    streakLabel: 'Ran today',
-    sigilPattern: 'orct',
     mood: 'blazing',
 };
 
@@ -340,6 +333,24 @@ describe('Home', () => {
         expect(
             screen.getByText('this week · 35.5 km · 280 trimp'),
         ).toBeInTheDocument();
+    });
+
+    it('titles the page with one visually hidden h1 on both the run and the empty branch', () => {
+        const { unmount } = renderHome();
+        const heading = screen.getByRole('heading', { level: 1 });
+        expect(heading).toHaveTextContent('today');
+        expect(heading).toHaveClass('sr-only');
+        unmount();
+
+        render(
+            <Home
+                briefing={briefing}
+                snapshot={snapshot}
+                hasRuns={false}
+                pastYouTrend={trend()}
+            />,
+        );
+        expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
     });
 
     it('omits the verdict block entirely when the backend shipped no trend', () => {

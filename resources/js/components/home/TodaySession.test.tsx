@@ -9,7 +9,6 @@ import TodaySession from './TodaySession';
 
 function briefing(content: string, status = 'done'): BriefingResult {
     return {
-        vibeState: 'pumped',
         firstRead: false,
         mascotVoice: {
             id: 4,
@@ -20,12 +19,6 @@ function briefing(content: string, status = 'done'): BriefingResult {
             subject_id: 1,
             discriminator: '2026-06-12',
         },
-        recoveryLabel: 'Recovery: 41h',
-        recoveryTone: 'positive',
-        recoveryHoursLabel: '41h',
-        recoveryHours: 41,
-        streakLabel: 'Ran today',
-        sigilPattern: 'orct',
         mood: 'blazing',
     };
 }

@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Console\Commands\HorizonRecommendAiProcessesCommand;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Artisan;
 
 uses(RefreshDatabase::class);
 
@@ -49,7 +50,8 @@ it('stays quiet about drift when the configured value already matches', function
     config(['horizon.ai_processes' => 3]);
     User::factory()->count(11)->create();
 
-    $this->artisan('horizon:recommend-ai-processes')
-        ->assertSuccessful()
-        ->doesntExpectOutputToContain('Configured value differs from the recommendation');
+    expect(Artisan::call('horizon:recommend-ai-processes'))->toBe(0);
+    $output = Artisan::output();
+    expect($output)->toContain('Recommended HORIZON_AI_PROCESSES: 3');
+    expect($output)->not->toContain('Configured value differs from the recommendation');
 });

@@ -129,12 +129,4 @@ class UpdateHrZonesRequest extends FormRequest
             );
         }
     }
-
-    /**
-     * @return array<string, array{lo:int, hi:int}>
-     */
-    public static function deriveZones(int $maxHr, int $restingHr): array
-    {
-        return HeartRateZones::derive($maxHr, $restingHr);
-    }
 }

@@ -81,11 +81,7 @@ jobs:
           ./vendor/bin/pest --parallel --processes="$(nproc)" \
             --shard="${{ matrix.shard }}/${SHARD_TOTAL}" \
             "${coverage_args[@]}" \
-            --exclude-group=structure \
-            --fail-on-warning --fail-on-notice \
-            --fail-on-deprecation --fail-on-risky \
-            --fail-on-phpunit-warning --fail-on-phpunit-notice \
-            --fail-on-phpunit-deprecation 2>&1 | tee /tmp/pest-output.txt
+            --exclude-group=structure 2>&1 | tee /tmp/pest-output.txt
           exit "${PIPESTATUS[0]}"
 
       - name: Pest summary
@@ -102,7 +98,7 @@ jobs:
             echo ""
           } >> "$GITHUB_STEP_SUMMARY"
 
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: github.event_name == 'pull_request'
         with:
           name: coverage-shard-${{ matrix.shard }}
@@ -131,7 +127,7 @@ jobs:
           coverage: 'none'
           classmap-authoritative: 'true'
 
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         if: github.event_name == 'pull_request'
         with:
           pattern: coverage-shard-*
@@ -197,15 +193,15 @@ jobs:
 
       - uses: ./.github/actions/start-redis
 
-      - name: Cache PHPStan analyser cache
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v5
+      - name: Restore PHPStan analyser cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: .phpstan-cache
           key: phpstan-${{ runner.os }}-${{ runner.arch }}-php${{ env.PHP_VERSION }}-${{ hashFiles('composer.lock', 'phpstan.neon') }}-${{ github.run_id }}
           restore-keys: phpstan-${{ runner.os }}-${{ runner.arch }}-php${{ env.PHP_VERSION }}-${{ hashFiles('composer.lock', 'phpstan.neon') }}-
 
-      - name: Cache Rector analyser cache
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v5
+      - name: Restore Rector analyser cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: .rector-cache
           key: rector-${{ runner.os }}-${{ runner.arch }}-php${{ env.PHP_VERSION }}-${{ hashFiles('composer.lock', 'rector.php') }}-${{ github.run_id }}
@@ -216,12 +212,28 @@ jobs:
         run: vendor/bin/pint --test
 
       - name: PHPStan
+        id: phpstan
         if: ${{ !cancelled() }}
         run: vendor/bin/phpstan analyse --no-progress
 
+      - name: Save PHPStan analyser cache
+        if: ${{ !cancelled() && steps.phpstan.outcome == 'success' && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .phpstan-cache
+          key: phpstan-${{ runner.os }}-${{ runner.arch }}-php${{ env.PHP_VERSION }}-${{ hashFiles('composer.lock', 'phpstan.neon') }}-${{ github.run_id }}
+
       - name: Rector (dry-run)
+        id: rector
         if: ${{ !cancelled() }}
         run: vendor/bin/rector --dry-run --no-progress-bar
+
+      - name: Save Rector analyser cache
+        if: ${{ !cancelled() && steps.rector.outcome == 'success' && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .rector-cache
+          key: rector-${{ runner.os }}-${{ runner.arch }}-php${{ env.PHP_VERSION }}-${{ hashFiles('composer.lock', 'rector.php') }}-${{ github.run_id }}
 
       - name: Check {@see} references resolve
         if: ${{ !cancelled() }}

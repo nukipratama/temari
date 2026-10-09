@@ -1,7 +1,9 @@
 import { router } from '@inertiajs/react';
 import { useState } from 'react';
 
+import DemoBlockedModal from '@/components/DemoBlockedModal';
 import PillButton from '@/components/ui/PillButton';
+import { useDemoGuard } from '@/hooks/useDemoGuard';
 import { parseNaiveLocalDate } from '@/lib/pace';
 
 export interface PendingTimeTrial {
@@ -9,6 +11,11 @@ export interface PendingTimeTrial {
     date: string;
     distance_m: number;
 }
+
+export const TIME_TRIAL_DEMO_BLOCKED = {
+    title: 'time trials stay as they are in the demo',
+    body: 'this is the shared demo, so its fitness evidence stays the same for everyone who drops by. connect your own Strava and your own trials will set your paces.',
+} as const;
 
 const WEEKDAY = new Intl.DateTimeFormat('en-US', { weekday: 'long' });
 
@@ -20,19 +27,26 @@ export default function TimeTrialPrompt({
     trial,
 }: Readonly<{ trial: PendingTimeTrial }>) {
     const [processing, setProcessing] = useState(false);
+    const {
+        open: demoBlocked,
+        setOpen: setDemoBlocked,
+        guard,
+    } = useDemoGuard();
     const date = parseNaiveLocalDate(trial.date);
     const day = date === null ? 'that day' : WEEKDAY.format(date);
     const distance = `${Math.round(trial.distance_m / 1000)}K`;
 
     const answer = (allOut: boolean) => {
-        router.post(
-            `/plan/time-trials/${trial.id}`,
-            { all_out: allOut },
-            {
-                preserveScroll: true,
-                onStart: () => setProcessing(true),
-                onFinish: () => setProcessing(false),
-            },
+        guard(() =>
+            router.post(
+                `/plan/time-trials/${trial.id}`,
+                { all_out: allOut },
+                {
+                    preserveScroll: true,
+                    onStart: () => setProcessing(true),
+                    onFinish: () => setProcessing(false),
+                },
+            ),
         );
     };
 
@@ -63,6 +77,11 @@ export default function TimeTrialPrompt({
                     no, it wasn&apos;t all-out
                 </PillButton>
             </div>
+            <DemoBlockedModal
+                open={demoBlocked}
+                onClose={() => setDemoBlocked(false)}
+                {...TIME_TRIAL_DEMO_BLOCKED}
+            />
         </section>
     );
 }

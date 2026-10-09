@@ -66,7 +66,12 @@ export function DayCellBody({
                     </span>
                     {!isRest && (
                         <span className="text-meta leading-tight tracking-tight whitespace-nowrap text-text-2">
-                            of {kmFigure(planned)}
+                            <span className="max-[359px]:hidden">
+                                of {kmFigure(planned)}
+                            </span>
+                            <span className="hidden max-[359px]:inline">
+                                /{kmFigure(planned)}
+                            </span>
                         </span>
                     )}
                 </>

@@ -16,7 +16,6 @@ const REASON_ORDER: ReadonlyArray<keyof RuleBasedReasons> = [
     'demo',
     'capped',
     'return',
-    'dead_letter',
     'content_filter',
     'unattributed',
 ];
@@ -28,9 +27,9 @@ interface RuleBasedPanelProps {
 /**
  * The app-wide rule-based ledger: one row per reason with its count and which
  * athletes contributed it, plus the two anchors that give the numbers scale
- * (how much pre-dates `served_by`, how much the LLM wrote). Content-filter,
- * dead-letter and unattributed are the reasons that should not be there, so
- * they render in ember.
+ * (how much pre-dates `served_by`, how much the LLM wrote). Content-filter and
+ * unattributed are the reasons that should not be there, so they render in
+ * ember.
  */
 export default function RuleBasedPanel({
     athletes,

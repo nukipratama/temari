@@ -2,7 +2,9 @@ import { router } from '@inertiajs/react';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
-import TimeTrialPrompt from './TimeTrialPrompt';
+import { makeUser, setMockPage } from '@/test/setup';
+
+import TimeTrialPrompt, { TIME_TRIAL_DEMO_BLOCKED } from './TimeTrialPrompt';
 
 const TRIAL = { id: 42, date: '2026-10-06', distance_m: 5_000 };
 
@@ -68,4 +70,20 @@ describe('TimeTrialPrompt', () => {
             screen.getByText("was that day's 5K your all-out trial?"),
         ).toBeInTheDocument();
     });
+
+    it.each([['yes, count it'], ["no, it wasn't all-out"]])(
+        'shows a demo visitor the demo-blocked modal instead of posting on "%s"',
+        async (label) => {
+            setMockPage({ auth: { user: makeUser({ is_demo: true }) } });
+            vi.mocked(router.post).mockReset();
+            render(<TimeTrialPrompt trial={TRIAL} />);
+
+            fireEvent.click(screen.getByRole('button', { name: label }));
+
+            expect(
+                await screen.findByText(TIME_TRIAL_DEMO_BLOCKED.title),
+            ).toBeInTheDocument();
+            expect(router.post).not.toHaveBeenCalled();
+        },
+    );
 });

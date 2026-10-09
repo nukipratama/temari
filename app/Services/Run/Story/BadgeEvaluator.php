@@ -7,6 +7,7 @@ namespace App\Services\Run\Story;
 use App\Enums\Badge;
 use App\Models\ActivityDetail;
 use App\Services\Run\Metrics\StreamSummary;
+use App\Services\Weather\WeatherSnapshot;
 
 /**
  * Pure badge rules: every whole-history fact arrives on the {@see CardContext},
@@ -66,7 +67,7 @@ final class BadgeEvaluator
     {
         $badges = [];
 
-        if (($detail->weather_temp_c ?? 0) >= 31) {
+        if (($detail->weather_temp_c ?? 0) >= WeatherSnapshot::HOT_RUN_TEMP_C) {
             $badges[] = Badge::HeatTamer->value;
         }
         if ($detail->weather_rain_detected === true) {

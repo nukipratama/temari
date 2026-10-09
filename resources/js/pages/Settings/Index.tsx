@@ -132,7 +132,7 @@ export default function Settings({
 
                 <LaneStack>
                     <section>
-                        <Eyebrow token="small" tone="ink-2">
+                        <Eyebrow as="h2" token="small" tone="ink-2">
                             Appearance
                         </Eyebrow>
                         <div className="mt-3">
@@ -145,7 +145,7 @@ export default function Settings({
                         and splitting those across "Notifications", "Push" and
                         "Telegram" made them look unrelated. */}
                     <section>
-                        <Eyebrow token="small" tone="ink-2">
+                        <Eyebrow as="h2" token="small" tone="ink-2">
                             Notifications
                         </Eyebrow>
                         <div className="mt-3">
@@ -158,7 +158,7 @@ export default function Settings({
                     </section>
 
                     <section>
-                        <Eyebrow token="small" tone="ink-2">
+                        <Eyebrow as="h2" token="small" tone="ink-2">
                             Running
                         </Eyebrow>
                         {/* Preferences before the zones disclosure, as the
@@ -174,7 +174,7 @@ export default function Settings({
 
                     {dataUse ? (
                         <section>
-                            <Eyebrow token="small" tone="ink-2">
+                            <Eyebrow as="h2" token="small" tone="ink-2">
                                 {dataUse.headline}
                             </Eyebrow>
                             <ul className="mt-3 flex list-disc flex-col gap-1.5 pl-4.5">
@@ -191,7 +191,7 @@ export default function Settings({
                     ) : null}
 
                     <section>
-                        <Eyebrow token="small" tone="ink-2">
+                        <Eyebrow as="h2" token="small" tone="ink-2">
                             The fine print
                         </Eyebrow>
                         <div className="mt-3">
@@ -219,7 +219,7 @@ export default function Settings({
                     </section>
 
                     <section>
-                        <Eyebrow token="small" tone="ink-2">
+                        <Eyebrow as="h2" token="small" tone="ink-2">
                             Account
                         </Eyebrow>
                         <AccountActions />
@@ -453,17 +453,6 @@ function TelegramPanel({
     const { isDemo, open, setOpen, guard } = useDemoGuard();
 
     if (!telegram.connected) {
-        if (telegram.connect_url === null) {
-            return (
-                <SettingsRow
-                    icon={TelegramIcon}
-                    label="Telegram"
-                    description="the Telegram bot isn't configured yet."
-                    control={<span aria-hidden />}
-                />
-            );
-        }
-
         // Whole-row tap when the row means one thing ("go connect"); a discrete
         // control only once there is an action distinct from the row itself.
         if (isDemo) {
@@ -479,6 +468,17 @@ function TelegramPanel({
                         onClose={() => setOpen(false)}
                     />
                 </SettingsRow>
+            );
+        }
+
+        if (telegram.connect_url === null) {
+            return (
+                <SettingsRow
+                    icon={TelegramIcon}
+                    label="Telegram"
+                    description="the Telegram bot isn't configured yet."
+                    control={<span aria-hidden />}
+                />
             );
         }
 

@@ -9,6 +9,7 @@ use App\Services\Run\Metrics\DecimalFormatter;
 use App\Services\Run\Metrics\DecouplingBands;
 use App\Services\Run\Metrics\PaceConsistency;
 use App\Services\Run\Metrics\StreamSummary;
+use App\Services\Weather\WeatherSnapshot;
 
 /**
  * Deterministic run-insight claims for the demo seed and the unconfigured-Azure
@@ -26,9 +27,6 @@ use App\Services\Run\Metrics\StreamSummary;
  */
 final class RuleBasedRunInsights
 {
-    /** Above this temperature high decoupling is the weather, not lost fitness. */
-    private const int DECOUPLING_HOT_TEMP_C = 31;
-
     /** A short punchy climb is worth a claim even without big total gain. */
     private const float NOTABLE_GRADE_PCT = 8.0;
 
@@ -81,7 +79,7 @@ final class RuleBasedRunInsights
     {
         $temp = $detail->weather_temp_c;
 
-        return $temp !== null && $temp >= self::DECOUPLING_HOT_TEMP_C
+        return $temp !== null && $temp >= WeatherSnapshot::HOT_RUN_TEMP_C
             ? "Decoupling climbed, but that's the ~{$temp} degree heat talking, not your aerobic base slipping."
             : 'Decoupling drifted up. A long run, warmth and not drinking enough all raise it, so read it next to how the run went.';
     }

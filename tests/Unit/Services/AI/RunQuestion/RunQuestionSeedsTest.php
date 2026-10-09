@@ -79,6 +79,13 @@ it('offers the hard-zone question off the combined Z3+ share', function (): void
     expect(RunQuestionSeeds::for(runSeedDetail($summary)))->toContain(RunQuestionTopic::HardZones);
 });
 
+it('offers the heat question from the hot-run threshold up, not a degree below it', function (int $tempC, bool $offered): void {
+    expect(in_array(RunQuestionTopic::Heat, RunQuestionSeeds::for(runSeedDetail([], ['weather_temp_c' => $tempC])), true))->toBe($offered);
+})->with([
+    '30 degrees' => [30, false],
+    '31 degrees' => [31, true],
+]);
+
 it('offers the heat question only on a hot run', function (): void {
     expect(RunQuestionSeeds::for(runSeedDetail([], ['weather_temp_c' => 26])))
         ->not->toContain(RunQuestionTopic::Heat);

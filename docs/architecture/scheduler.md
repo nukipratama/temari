@@ -3,7 +3,7 @@ title: Scheduler hygiene — overlap safety, single-host, ordering, cadence
 description: Every Schedule::command entry is overlap-safe and single-host by an unstated one-container invariant; entries due in the same minute run serially, so strava:sync runs at :07; every run lands in an append-only run log; the Monday window's hard dependencies are chained and retry hourly until they succeed; the numeric derivation behind four previously-qualitative cadences; and measured local runtimes next to each lock TTL
 tags: [architecture, scheduler]
 status: living
-reviewed: 2026-10-06
+reviewed: 2026-10-09
 code_refs:
   - routes/console.php
   - app/Console/Commands/Notifications/RecoverStaleNotificationDeliveriesCommand.php
@@ -35,7 +35,8 @@ the only reason two schedulers have never double-run a command — an unstated i
 enforced one. `onOneServer()` makes that invariant free to hold today and load-bearing the moment
 the container ever scales past one; `withoutOverlapping()` guards the orthogonal case of the same
 container's *next* tick starting before the current run has finished. Every event in
-`routes/console.php` now carries both, with one deliberate exception:
+`routes/console.php` carries `withoutOverlapping()` explicitly and `onOneServer()` through
+`Schedule::alwaysOnOneServer()` at the top of the file, with one deliberate exception:
 
 `schedule:heartbeat` skips `withoutOverlapping()` on purpose — the write is one idempotent `SETEX`,
 so a mutex taken every minute would guard nothing (see its comment in `routes/console.php`). It still takes `onOneServer()`, since a second scheduler container should
@@ -61,7 +62,7 @@ despite that.
 | command | cadence | withoutOverlapping | onOneServer | why this TTL | measured locally on seeded data (1 user, 127 activities) |
 |---|---|---|---|---|---|
 | `notifications:recover-deliveries` | every 5 minutes | 10 | yes | one indexed scan of stale pending claims; Telegram claims become terminal, while web-push retries stay discoverable until a worker claims a new version | not measured — added with fenced notification recovery |
-| `notifications:release-held` | every 5 minutes | 10 | yes | a no-op inside quiet hours (22:00-04:00); outside them, queues each held row in id order, one small transaction per row. Every five minutes rather than once at 04:00, so a deploy across 04:00 delays the release by one tick ([[quiet-hours-hold-every-notification]]) | not measured — added with quiet hours |
+| `notifications:release-held` | every 5 minutes | 10 | yes | a no-op inside quiet hours (22:00-04:00); outside them, queues each held row in id order, one small transaction per row. A row whose payload can no longer be restored (it fails to unserialize, or unserializes into something other than a Notification) is logged and dropped, a failure to dispatch a restored one leaves its row held for the next tick, and either makes the run exit non-zero. Every five minutes rather than once at 04:00, so a deploy across 04:00 delays the release by one tick ([[quiet-hours-hold-every-notification]]) | not measured — added with quiet hours |
 | `schedule:heartbeat` | every minute | — (deliberate) | yes | one idempotent `SETEX`; a lock would cost more than the write itself | ~1.1s, but exits on `redis unreachable` — `.env.example` ships `REDIS_HOST=127.0.0.1`/`CACHE_STORE=database` for local dev, so the real Redis `SETEX` path cannot be exercised in this worktree at all |
 | `ai:daily-briefing` | daily 00:01 | 30 | yes | per-user dispatch loop over active (7d) users; 30 min is generous headroom before the next day's run | ~1.9s — dispatched for 0 active users (the seeded demo user is excluded from AI kickoff billing) |
 | `demo:daily-refresh` | daily 00:13 | 10 | yes | single demo user, one synthetic run + rule-based fill | ~2.2s — the one command that actually touches the seeded user (rule-based refresh, no LLM) |
@@ -74,6 +75,8 @@ despite that.
 | `ai:trend-read 7d` | daily 06:00 | 20 | yes | one narrator pass across active users | ~1.2-1.4s — 0 active users (demo excluded) |
 | `ai:self-heal` | hourly | 55 (unchanged) | yes | already guarded pre-DF-1 | ~1.3s — skipped, generation paused (Azure unset) |
 | `ai:catch-up` | hourly | 55 (unchanged) | yes | already guarded pre-DF-1 | ~1.5s — created 0 missing kickoff rows |
+| `ai:spend-digest` | daily 21:00 | 10 | yes | one grouped read of today's `ai_token_usages` rows, then one Telegram push to every admin | not measured — added with the spend digest |
+| `exceptions:digest` | daily 21:00 | 10 | yes | pulls the exception ledger once and pushes only when a fingerprint is new; silent on a quiet day | not measured — added with the exception digest |
 | `queue:prune-failed` | daily 02:20 | 15 | yes | one `DELETE` on `failed_jobs` | ~1.6s — 0 entries deleted |
 | `analytics:prune` | daily 02:25 | 15 | yes | six `DELETE`s — five on the `analytics` connection, one on `analysis_versions` | ~1.7s — 0 rows pruned |
 | `model:prune TelegramUpdateReceipt` | daily 02:30 | 15 | yes | delete Telegram update receipts older than 7 days | not measured — added with durable Telegram update dedupe |
@@ -82,14 +85,15 @@ despite that.
 | `strava:sync` / `strava:ingest` / `strava:hydrate-backlog` | see `routes/console.php` | 55/10/14 (unchanged) | yes | already guarded pre-DF-1 | ~1.3-1.4s each — no real Strava connection to poll/drain against locally (needs live Strava credentials); cannot be meaningfully measured in this worktree |
 | `geo:backfill-locations` / `weather:correct-forecast` / `weather:backfill` | see `routes/console.php` | 55/55/55 (unchanged) | yes | already guarded pre-DF-1 | ~1.3s each — 0 rows to backfill; `weather:*` additionally need a live Open-Meteo call to exercise the fetch path |
 | `trend:snapshot-daily` | daily 03:45 | 55 (unchanged) | yes | queues durable closed-date recovery in 365-day chunks; `--days=N` remains the focused mode | scheduled recovery advances each user's cursor through yesterday; ingest repairs backdated ranges; each row also records the supported race time for the race active that day ([[supported-time-history-from-daily-trend-snapshots]]) |
-| `race:remind` | daily 18:00 | 15 | yes | one race-goal sweep, same shape and cost as `streak:remind` | not measured — added after this pass; the sweep is one indexed `race_date` query plus one notify per athlete racing tomorrow |
-| `race:ask-outcome` | daily 09:00 | 15 | yes | one indexed sweep of races dated yesterday with a pending outcome, one notify each | not measured — added with CR-06; same shape and cost as `race:remind` |
+| `race:remind` | hourly 18:00-21:00, every tick after the first send a no-op | 15 | yes | one race-goal sweep, same shape and cost as `streak:remind` | not measured — added after this pass; the sweep is one indexed `race_date` query plus one notify per athlete racing tomorrow |
+| `race:ask-outcome` | hourly 09:00-21:00, every tick after the first ask a no-op | 15 | yes | one indexed sweep of races dated yesterday with a pending outcome, one notify each | not measured — added with CR-06; same shape and cost as `race:remind` |
 | `plan:settle-time-trials` | daily 09:05 | 15 | yes | one indexed sweep of the last week's unsettled time-trial rows for non-demo athletes, at most one evidence write or one notify each; a settled row is never selected again | not measured — added with the time trials (#1808) |
 | `fitness:notify-improvement` | daily 10:00 | 30 | yes | one estimate per non-demo athlete against their last noted VDOT, one notify for each improvement of at least 0.5 a week apart; the first run only records baselines | not measured — added with the supported-race-time model; the estimate reads each athlete's runs once |
 | `briefing:morning-push` | every 15 min | 14 | yes | one median-start-time sweep, sized like the other quarter-hourly drain; sends only, generates nothing | not measured — added after this pass; the median is cached per athlete per day (`UsualRunTime`), so only the first tick to see a given athlete that day pays the indexed read, every later tick that day is a cache hit |
 | `streak:remind` | Sat 18:00 | 15 | yes | one push-eligibility sweep | ~2.0s — dispatched to 0 users |
 | `streak:settle` | hourly | 20 | yes | queues chronological per-user settlement for the athletes still behind or marked dirty; one query when nobody is | queues one settlement job per athlete behind |
 | `schedule:monday-check` | Mon 06:00 | 10 | yes | one indexed count plus the chain flags, at most one alert per week | not measured — added with the Monday catch-up |
+| `horizon:snapshot` | every 5 minutes | 4 | yes | one Redis snapshot of Horizon's per-queue and per-job metrics for its Metrics tab, trimmed by `horizon.metrics.trim_snapshots` | not measured — added with the long-wait alert |
 | `schedule:check-late` | every 5 minutes | 4 | yes | one heartbeat-table read plus the chain flags, at most one alert per entry per incident | not measured — added with the late sweep |
 | `RetryOrphanedStravaGrantReleasesJob` (queued job) | daily 02:40 | 30 | yes | retries the Strava release of grants whose local connection is gone or revoked, one call per orphaned grant | not measured — the scheduler only queues it |
 
@@ -132,8 +136,9 @@ child. The stubs it finds are drained by `strava:ingest` at :10.
 Two tables record what the scheduler did:
 
 - `scheduled_task_runs` (default connection) is the heartbeat: one upserted row per command with
-  its last status and runtime ([ScheduledTaskRun](../../app/Models/ScheduledTaskRun.php)). Its
-  `isStale()` is what reads an entry as late.
+  its last status and runtime, `last_run_at` for every run and `last_success_at` for the last
+  run that did not fail ([ScheduledTaskRun](../../app/Models/ScheduledTaskRun.php)). Its `isStale()` is
+  what reads an entry as late.
 - `scheduled_task_run_logs` (`analytics` connection) is append-only, one row per run
   ([ScheduledTaskRunLog](../../app/Models/Analytics/ScheduledTaskRunLog.php)): command,
   `started_at`, `finished_at`, `runtime_ms`, `status` (`running`, `ok`, `failed`, `skipped`),
@@ -177,8 +182,11 @@ late, with one "back on time" line when it is not
   day or ISO week passed without a success and the current one has none yet, read from the chain
   flags. Its closed gate skips every tick in between, so its heartbeat says nothing. A gate that
   never opens still goes late.
-- Every other entry is late once `ScheduledTaskRun::isStale()` says so. A lock skip does not
-  refresh the heartbeat, so a jammed lock goes late too.
+- Every other entry is late once `ScheduledTaskRun::isStale()` says so: about twice its cadence
+  since its last success, or since its row was first recorded while it has never succeeded. A run
+  that fails or exits non-zero does not advance `last_success_at`, so an entry that keeps failing
+  goes late whether or not it is wrapped in `$alertOnFailure`, and its page says it has kept
+  failing since then. A lock skip does not refresh the heartbeat, so a jammed lock goes late too.
 
 Three more sources raise alerts:
 
@@ -225,7 +233,7 @@ athlete's pass completes (or there was nobody to score). `plan:regenerate`'s `->
 only once both are done today and closes again once a run has marked it done this week:
 
 ```php
-Schedule::command('plan:regenerate')->mondays()->hourlyAt(26)->withoutOverlapping(45)->onOneServer()
+Schedule::command('plan:regenerate')->mondays()->hourlyAt(26)->withoutOverlapping(45)
     ->when(static fn (): bool => SchedulerChain::prerequisitesMet(SchedulerChain::PLAN_REGENERATE)
         && ! SchedulerChain::isDoneThisWeek(SchedulerChain::PLAN_REGENERATE))
     ->onSuccess(static fn () => SchedulerChain::markDoneThisWeek(SchedulerChain::PLAN_REGENERATE));
@@ -295,12 +303,12 @@ source of truth (the `Analysis` row is) — 168h (7 days) is a full week of on-c
 every self-heal cycle's resolution, long enough to catch a fault found on a Monday by the following
 Monday, short enough that the table does not accumulate a month of superseded dupes.
 
-**`strava:ingest` batch size 20** ([IngestCommand.php#L17](../../app/Console/Commands/Strava/IngestCommand.php#L17)).
+**`strava:ingest` batch size 20** ([IngestCommand.php](../../app/Console/Commands/Strava/IngestCommand.php)).
 This is the live-priority drain of pending activity stubs, at 2 Strava reads per activity (detail +
 streams, per [ActivityPipeline](../../app/Services/Run/Ingest/ActivityPipeline.php)) — a batch of 20
 spends at most 40 reads per tick. Running every 5 minutes, three ticks fall inside one 15-minute
 window, so a fully-loaded drain spends up to 120 of that window's 200 reads
-([StravaClient::RATE_LIMIT_15MIN_MAX](../../app/Services/Strava/StravaClient.php#L54)). The hourly
+([StravaClient::RATE_LIMIT_15MIN_MAX](../../app/Services/Strava/StravaClient.php)). The hourly
 `strava:sync` fallback poll is also live and lands at :07, in the window that opens on the hour: one
 activity-list page per connected athlete (more only for an athlete with over 200 new activities
 since the last poll), so at most 10 reads at the current 10-athlete Strava tier. The worst live
@@ -309,7 +317,7 @@ uncapped by any cadence.
 
 `strava:hydrate-backlog`'s background drain shares the same bucket on its every-15-minutes cadence,
 but a background read is refused once the window's counted usage reaches 150, because the
-[25% live reserve](../../app/Services/Strava/StravaClient.php#L62) holds the last 50 reads for live
+[25% live reserve](../../app/Services/Strava/StravaClient.php) holds the last 50 reads for live
 reads. So live reads always have at least 50 reads in a window. They get the full 130 only when
 background reads have not already pushed the window past 70. If the drain fills the window to 150
 first, the rest of that window's ingest batch is refused and deferred to the next window. Live

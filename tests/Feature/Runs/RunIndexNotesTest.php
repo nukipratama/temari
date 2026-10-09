@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
+use App\Enums\Mood;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
 use App\Models\StoryLine;
 use App\Models\User;
 use App\Services\AI\AnalysisType;
-use App\Services\Run\Story\Temari;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 
@@ -17,7 +17,7 @@ uses(RefreshDatabase::class);
 beforeEach(fn () => Carbon::setTestNow('2026-05-11 12:00:00'));
 afterEach(fn () => Carbon::setTestNow());
 
-function seedRunWithNote(User $user, int $daysAgo, string $mood, string $speech): Activity
+function seedRunWithNote(User $user, int $daysAgo, Mood $mood, string $speech): Activity
 {
     $activity = Activity::factory()->for($user)->analyzed()->create();
     ActivityDetail::factory()->for($activity)->create([
@@ -43,14 +43,14 @@ function seedRunWithNote(User $user, int $daysAgo, string $mood, string $speech)
 
 it('attaches notes keyed by activity_id when post-run analyses exist', function (): void {
     $user = User::factory()->create();
-    $activity = seedRunWithNote($user, 0, Temari::MOOD_ENTENG, 'A strong run');
+    $activity = seedRunWithNote($user, 0, Mood::Easy, 'A strong run');
 
     $this->actingAs($user)
         ->get('/history', inertiaPartialHeaders($this->actingAs($user), '/history', 'History', 'notes'))
         ->assertSuccessful()
         ->assertJsonPath('component', 'History')
         ->assertJsonPath("props.notes.{$activity->id}.oneline", 'A strong run')
-        ->assertJsonPath("props.notes.{$activity->id}.mood", Temari::MOOD_ENTENG);
+        ->assertJsonPath("props.notes.{$activity->id}.mood", Mood::Easy->value);
 });
 
 it('omits notes when there are no post-run StoryLines', function (): void {
@@ -70,7 +70,7 @@ it('omits notes when there are no post-run StoryLines', function (): void {
 it('does not leak notes across users', function (): void {
     $a = User::factory()->create();
     $b = User::factory()->create();
-    seedRunWithNote($a, 0, Temari::MOOD_ENTENG, 'a-only line');
+    seedRunWithNote($a, 0, Mood::Easy, 'a-only line');
 
     $this->actingAs($b)
         ->get('/history', inertiaPartialHeaders($this->actingAs($b), '/history', 'History', 'notes'))

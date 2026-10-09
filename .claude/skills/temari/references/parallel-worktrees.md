@@ -12,8 +12,8 @@ already resolves per-cwd correctly.
 
 Worktrees don't each get their own MySQL/Redis, though — see "Shared services" below.
 
-Use the worktree creation and lifecycle guidance in [CLAUDE.md](../../../../CLAUDE.md). This section
-records the environment invariants that every worktree setup must preserve.
+Creation, removal and cleanup are under "Creating and removing worktrees" below. The rest of this
+section records the environment invariants that every worktree setup must preserve.
 
 Slot numbering is a formula (`scripts/worktree`), not a fixed table, and `create` picks the slot —
 never hand-pick one: `APP_PORT = 7000 + slot*10 + 1`, `VITE_PORT = +2` (main stays 7001/7002, slot 1
@@ -38,6 +38,43 @@ rollback releases a reservation under the same lock after confirming that it sti
 `scripts/worktree` uses `flock(1)` when available and Perl `Fcntl::flock` otherwise, and reports a clear
 error if neither is installed. `tests/scripts/worktree-races.sh` exercises both lock backends when
 `flock` is available, using an isolated fake checkout.
+
+### Creating and removing worktrees
+
+Two entry points reach the same `scripts/worktree` commands:
+
+- **Claude Code:** `EnterWorktree name=<slice>` invokes the `WorktreeCreate` hook and
+  `ExitWorktree action=remove|keep` invokes `WorktreeRemove`. Both hooks are configured in
+  `.claude/settings.json`, are consumed only by Claude Code, and call `scripts/worktree create` /
+  `remove`.
+- **Plain git:** any `git worktree add` triggers the `.githooks/post-checkout` hook, which runs
+  `scripts/worktree adopt` to give the new worktree its own slot. If Docker was down at that moment,
+  run `scripts/worktree adopt` inside the worktree yourself.
+
+Manual flow:
+
+- `scripts/worktree create <name> [base]` makes the worktree and its `worktree-<name>` branch from
+  `base` and runs the setup described in this file (slot, ports, Compose project, schemas, installs,
+  both migration sets, asset build; rolls back on failure). Re-running `create` with the same name,
+  or `adopt` on a reused worktree, re-runs setup and refreshes dependencies after `main` bumps a
+  lockfile.
+- `scripts/worktree remove <path>` deletes the worktree and its `worktree-<name>` branch. It refuses
+  while the worktree has uncommitted changes, or while the branch has commits that are on no remote
+  or other branch; push the work first, or pass `--force` to discard it. It never deletes a branch
+  that `adopt` set up, because `create` did not make that branch.
+- `scripts/worktree info [path]` prints a checkout's slot and ports; never read them from `.env`.
+- Setup prints one line per step. Its full output goes to `storage/logs/worktree-setup.log` in the
+  worktree, and the last lines are printed when a step fails.
+
+Cleanup:
+
+- A removal through the hooks leaves nothing behind: a measured
+  `WorktreeCreate`/`WorktreeRemove` cycle frees the directory, the `worktree-<name>` branch, the git
+  worktree registration, the slot lock and the app container, with no `prunable` entry left.
+- A worktree dropped with plain `git worktree remove` or `rm -rf` leaves its container, schemas and
+  slot lock behind. Run `scripts/worktree prune` in the main checkout: it prunes the git registration
+  and reclaims the slot's container, schemas and lock. The next `create`/`adopt` also reclaims any
+  abandoned slot it lands on. Git branches are never touched, so delete the stale branch yourself.
 
 ### Shared services
 

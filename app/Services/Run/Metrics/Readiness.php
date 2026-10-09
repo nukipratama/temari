@@ -23,7 +23,7 @@ final readonly class Readiness
     }
 
     /**
-     * @param  string|null  $formStatus  Current form status; null means unknown.
+     * @param  TrainingFormStatus|null  $formStatus  Current form status; null means unknown.
      * @param  int|null  $recoveryHours  Literal hours since any run, retained as context only.
      * @param  array<string, mixed>|null  $stressProfile  Actual recent activities, regardless of the planned session label.
      * @param  array<string, mixed>|null  $feedback  Latest recovery feedback and its freshness.
@@ -31,7 +31,7 @@ final readonly class Readiness
      * @param  float|null  $aheadOfPlanPct  Actual km-to-date against prescribed km-to-date this week; null without a prescription.
      */
     public static function assess(
-        ?string $formStatus,
+        ?TrainingFormStatus $formStatus,
         ?int $recoveryHours,
         bool $ranToday,
         ?float $monotony,
@@ -63,7 +63,7 @@ final readonly class Readiness
             && $weeklyTrimpRange !== null
             && $weeklyTrimp > $weeklyTrimpRange['high']
             && ($aheadOfPlanPct === null || $aheadOfPlanPct > 0.0);
-        $supportingLoad = in_array($formStatus, ['fatigued', 'overreaching'], true)
+        $supportingLoad = in_array($formStatus, [TrainingFormStatus::Fatigued, TrainingFormStatus::Overreaching], true)
             || $aheadOfPlan
             || $recentDemanding
             || $closelySpacedDemanding
@@ -123,7 +123,7 @@ final readonly class Readiness
         if ($formConflict) {
             $reasons[] = 'conflicting_form_signals';
         }
-        $buildNudge = $formStatus === 'fresh'
+        $buildNudge = $formStatus === TrainingFormStatus::Fresh
             && $fitnessTrend !== 'up'
             && ! $ranToday
             && $reasons === [];
@@ -133,7 +133,7 @@ final readonly class Readiness
             buildNudge: $buildNudge,
             reasons: array_values(array_unique($reasons)),
             inputs: [
-                'form_status' => $formStatus,
+                'form_status' => $formStatus?->value,
                 'recovery_hours_since_any_run' => $recoveryHours,
                 'ran_today' => $ranToday,
                 'monotony' => $monotony,

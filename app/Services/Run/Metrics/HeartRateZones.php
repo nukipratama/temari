@@ -69,9 +69,4 @@ final class HeartRateZones
 
         return $zones;
     }
-
-    public static function isPlausibleMax(int $maxHr): bool
-    {
-        return $maxHr >= self::MIN_MAX_HR && $maxHr <= self::MAX_MAX_HR;
-    }
 }

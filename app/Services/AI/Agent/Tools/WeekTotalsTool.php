@@ -6,7 +6,6 @@ namespace App\Services\AI\Agent\Tools;
 
 use App\Models\WeeklySnapshot;
 use App\Services\Run\Metrics\DecouplingBands;
-use App\Services\Run\Metrics\LoadBalance;
 use App\Services\Run\Metrics\PaceCalculator;
 use App\Services\Run\Metrics\PaceFormatter;
 
@@ -59,7 +58,7 @@ final class WeekTotalsTool extends NoArgumentTool
             'weekly_trimp' => $this->snapshot->weekly_trimp,
             'ctl_42d' => $this->snapshot->ctl_42d,
             'atl_7d' => $this->snapshot->atl_7d,
-            'load_balance' => LoadBalance::fromStored($this->snapshot->form_status)?->value,
+            'load_balance' => $this->snapshot->form_status?->loadBalance()->value,
             'monotony' => $this->snapshot->monotony,
             'strain' => $this->snapshot->strain,
             'avg_decoupling' => $this->snapshot->avg_decoupling_v2 === null ? null : [

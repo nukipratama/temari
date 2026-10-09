@@ -3,7 +3,7 @@ title: Architecture — Map of Content
 description: Hub for subsystem and cross-cutting architecture notes
 tags: [architecture, moc]
 status: living
-reviewed: 2026-10-02
+reviewed: 2026-10-09
 ---
 
 # Architecture
@@ -29,7 +29,6 @@ _Pipelines & metrics_
 - [[stream-analysis]] — raw streams → `stream_summary` (HR zones, splits, decoupling, cadence)
 - [[training-load-metrics]] — Edwards TRIMP, CTL/ATL EWMA, strain/monotony/form, backdated propagation
 - [[coaching-evidence]] — the curated sources behind coaching rules, and a rule table labelling each evidence-supported, heuristic or product choice
-- [[coaching-reset-runbook]] — the release procedure for the one-time pre-launch `coaching:reset`: dry run, apply, partial failure, lock recovery and what cannot be rolled back
 - [[past-you-engine]] — summary-safe matching against the runner's own history, and the trend verdict it produces
 
 _AI narration_
@@ -50,6 +49,7 @@ _Data & runtime_
 - [[deployment]] — FrankenPHP+Octane, Cloudflare tunnel, CI/CD, rollback, Redis partitioning
 - [[maintenance-mode]] — one durable flag behind Laravel's maintenance driver: who gets in, what pauses, the Pulse toggle and `artisan down`
 - [[scheduler]] — overlap safety and single-host lock flags, the Monday-window ordering, cadence derivations
+- [[notification-delivery]] — router, inbox/Telegram/web-push channels, per-(analysis, channel) claims and recovery, the quiet-hours hold, stale skips, the morning push slot, the demo rule
 - [[toolchain-gate-and-ci]] — pre-commit vs. `composer gate` vs. CI: what each layer runs and why they differ
 
 See also: [[design-tokens]], [[voice-and-tone]].

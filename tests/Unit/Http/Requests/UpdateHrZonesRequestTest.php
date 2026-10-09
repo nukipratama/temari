@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Http\Requests\UpdateHrZonesRequest;
+use App\Services\Run\Metrics\HeartRateZones;
 use Illuminate\Support\Facades\Validator;
 
 /**
@@ -78,8 +79,8 @@ it('rejects a resting_hr outside 30-90', function (): void {
 });
 
 it('accepts max_hr and resting_hr exactly at their inclusive between() boundaries', function (): void {
-    $lowBoundary = array_values(UpdateHrZonesRequest::deriveZones(120, 30));
-    $highBoundary = array_values(UpdateHrZonesRequest::deriveZones(220, 90));
+    $lowBoundary = array_values(HeartRateZones::derive(120, 30));
+    $highBoundary = array_values(HeartRateZones::derive(220, 90));
 
     expect(validateHrZones(hrZonePayload(['max_hr' => 120, 'resting_hr' => 30], $lowBoundary))->passes())->toBeTrue()
         ->and(validateHrZones(hrZonePayload(['max_hr' => 220, 'resting_hr' => 90], $highBoundary))->passes())->toBeTrue();
@@ -121,25 +122,4 @@ it('rejects a zone count other than five', function (): void {
     ];
 
     expect(validateHrZones(hrZonePayload(zones: $zones))->passes())->toBeFalse();
-});
-
-it('derives the config default zones at max 180 resting 55', function (): void {
-    expect(UpdateHrZonesRequest::deriveZones(180, 55))->toBe([
-        'Z1' => ['lo' => 116, 'hi' => 138],
-        'Z2' => ['lo' => 138, 'hi' => 154],
-        'Z3' => ['lo' => 154, 'hi' => 168],
-        'Z4' => ['lo' => 168, 'hi' => 176],
-        'Z5' => ['lo' => 176, 'hi' => 999],
-    ]);
-});
-
-it('derives gapless zones for an arbitrary max and resting', function (): void {
-    $zones = UpdateHrZonesRequest::deriveZones(200, 60);
-
-    expect($zones['Z1']['hi'])->toBe($zones['Z2']['lo'])
-        ->and($zones['Z2']['hi'])->toBe($zones['Z3']['lo'])
-        ->and($zones['Z3']['hi'])->toBe($zones['Z4']['lo'])
-        ->and($zones['Z4']['hi'])->toBe($zones['Z5']['lo'])
-        ->and($zones['Z5']['hi'])->toBe(999)
-        ->and($zones['Z1']['lo'])->toBeGreaterThanOrEqual(60);
 });

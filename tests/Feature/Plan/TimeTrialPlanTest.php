@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Enums\AdaptationReason;
 use App\Enums\PaceBand;
+use App\Enums\PlanPhase;
 use App\Enums\RaceAmbitionState;
 use App\Enums\SegmentKey;
 use App\Enums\SessionType;
@@ -13,6 +14,7 @@ use App\Services\Run\Plan\Periodizer;
 use App\Services\Run\Plan\PlanInputs;
 use App\Services\Run\Plan\SegmentGenerator;
 use App\Services\Run\Plan\TimeTrial;
+use App\Services\Run\Plan\TimeTrialSchedule;
 use Illuminate\Support\Carbon;
 
 const TRIAL_RACE_DAY = '2026-12-19';
@@ -119,8 +121,18 @@ function weeksWithQualitySlot(PlanInputs $inputs): array
 it('schedules a race season\'s trials counted back from race week, never in its last three weeks', function (): void {
     $rows = trialPlan(trialPlanInputs(10_000.0));
 
-    expect(trialWeeksOf($rows))->toBe(['2026-10-05', '2026-11-16'])
+    expect(trialWeeksOf($rows))->toBe(['2026-10-05', '2026-11-09'])
         ->and(array_filter(array_keys(trialRows($rows)), static fn (string $date): bool => $date >= '2026-11-23'))->toBe([]);
+});
+
+it('keeps a trial moved off a scheduled deload week in that week\'s cycle once the deload is past', function (): void {
+    $inputs = trialPlanInputs(10_000.0, today: '2026-08-31', trials: [['date' => '2026-08-20', 'retry' => false, 'skipped' => true]]);
+
+    expect(TimeTrialSchedule::dueWeeks($inputs))->toContain('2026-08-24')
+        ->and(trialPlan(trialPlanInputs(10_000.0, today: '2026-08-17'))['2026-08-24']['phase'])->toBe(PlanPhase::Deload)
+        ->and(trialWeeksOf(trialPlan(trialPlanInputs(10_000.0, today: '2026-08-17'))))->toContain('2026-08-17')
+        ->and(in_array('2026-08-31', weeksWithQualitySlot($inputs), true))->toBeTrue()
+        ->and(trialWeeksOf(trialPlan($inputs)))->not->toContain('2026-08-31');
 });
 
 it('runs a 10K trial for a half marathon goal and a 5K one for a 10K goal', function (float $raceDistanceM, int $trialM): void {
@@ -181,9 +193,9 @@ it('takes a goal-pace week\'s goal-pace session, leaving that week with no goal-
         array_keys(array_filter($rows, static fn (array $row): bool => GoalPaceWork::isGoalPace($row['prescription_race_context']))),
     )));
 
-    expect(GoalPaceWork::inWindow(Carbon::parse('2026-11-16'), Carbon::parse(TRIAL_RACE_DAY), 10_000.0))->toBeTrue()
-        ->and(trialWeeksOf($rows))->toContain('2026-11-16')
-        ->and($goalPaceWeeks)->not->toContain('2026-11-16')
+    expect(GoalPaceWork::inWindow(Carbon::parse('2026-11-09'), Carbon::parse(TRIAL_RACE_DAY), 10_000.0))->toBeTrue()
+        ->and(trialWeeksOf($rows))->toContain('2026-11-09')
+        ->and($goalPaceWeeks)->not->toContain('2026-11-09')
         ->and($goalPaceWeeks)->toContain('2026-11-23');
 });
 

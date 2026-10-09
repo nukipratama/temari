@@ -60,6 +60,10 @@ class RaceGoal extends Model
     /** @use HasFactory<RaceGoalFactory> */
     use HasFactory;
 
+    public const int MIN_GOAL_TIME_SEC = 300;
+
+    public const int MAX_GOAL_TIME_SEC = 259_200;
+
     #[Override]
     protected static function booted(): void
     {
@@ -97,14 +101,6 @@ class RaceGoal extends Model
     public function changes(): HasMany
     {
         return $this->hasMany(RaceGoalChange::class)->orderBy('id');
-    }
-
-    /**
-     * @return BelongsTo<Activity, $this>
-     */
-    public function outcomeActivity(): BelongsTo
-    {
-        return $this->belongsTo(Activity::class, 'outcome_activity_id');
     }
 
     /**

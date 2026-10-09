@@ -37,6 +37,25 @@ describe('Settings', () => {
         ).not.toBeInTheDocument();
     });
 
+    it('titles the page with exactly one h1', () => {
+        render(<Settings />);
+
+        expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
+    });
+
+    it('never skips a heading level down the page', () => {
+        render(<Settings />);
+
+        const levels = screen
+            .getAllByRole('heading')
+            .map((heading) => Number(heading.tagName.slice(1)));
+
+        expect(levels[0]).toBe(1);
+        levels.slice(1).forEach((level, index) => {
+            expect(level - levels[index]).toBeLessThanOrEqual(1);
+        });
+    });
+
     it('renders the settings sections', () => {
         render(<Settings />);
         expect(screen.getByText('Notifications')).toBeInTheDocument();
@@ -346,6 +365,34 @@ describe('Settings', () => {
 
         expect(router.patch).not.toHaveBeenCalled();
         expect(toggle).toHaveAttribute('aria-checked', 'false');
+        expect(
+            await screen.findByText("Telegram's taking a break for now"),
+        ).toBeInTheDocument();
+    });
+
+    it('keeps the Telegram connect row for the demo, which gets no link, and opens the demo-blocked modal', async () => {
+        setMockPage({
+            auth: { user: makeUser({ is_demo: true }) },
+            flash: {},
+            demoLoginEnabled: false,
+        });
+        render(
+            <Settings
+                telegram={{
+                    connected: false,
+                    username: null,
+                    connect_url: null,
+                }}
+            />,
+        );
+
+        expect(
+            screen.queryByText("the Telegram bot isn't configured yet."),
+        ).not.toBeInTheDocument();
+        fireEvent.click(
+            screen.getByText('connect it so temari can keep you posted.'),
+        );
+
         expect(
             await screen.findByText("Telegram's taking a break for now"),
         ).toBeInTheDocument();

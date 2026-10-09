@@ -47,9 +47,9 @@ No new column is needed, because the stored data already tells the two clamp arm
   already an `EasyOnly` ease, so re-scoring it applies the new grade. Stored verdicts change only when a
   row is re-scored; the one known affected day is re-scored by hand after deploy.
 - **The "not in one run" note needs no change.** On a past eased day the renderer already passes the
-  effective `Easy` type to `creditNote()` ([PlanRenderer](app/Services/Run/Plan/PlanRenderer.php#L271)),
+  effective `Easy` type to `creditNote()` ([PlanRenderer](app/Services/Run/Plan/PlanRenderer.php#L416)),
   so the note could never fire there. Only the stored grade was wrong.
-- **A clamp carried across a same-day regenerate** ([Periodizer](app/Services/Run/Plan/Periodizer.php#L211))
+- **A clamp carried across a same-day regenerate** ([Periodizer](app/Services/Run/Plan/Periodizer.php#L214))
   could land a Tempo's `clamped_km` on a row regenerated as Long. That row also renders as an easy run,
   so grading it as one keeps the card and the grade in agreement.
 - Stimulus adherence in [PlanAdapter](app/Services/Run/Plan/PlanAdapter.php) reads `intent_verdict`,

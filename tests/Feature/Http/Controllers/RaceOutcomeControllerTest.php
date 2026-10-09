@@ -72,6 +72,17 @@ it('confirms a manual time and marks did not run', function (): void {
         ->and(PerformanceEvidence::query()->count())->toBe(0);
 });
 
+it('refuses the demo account a race outcome', function (): void {
+    $demo = User::factory()->create(['is_demo' => true]);
+    $race = RaceGoal::factory()->for($demo)->completed()->create([
+        'race_date' => '2026-10-04', 'distance_m' => 10_000, 'goal_time_sec' => 3_000, 'outcome' => RaceOutcome::Pending,
+    ]);
+
+    $this->actingAs($demo)->postJson("/race/{$race->id}/outcome", ['outcome' => 'did_not_run'])->assertForbidden();
+
+    expect($race->fresh()->outcome)->toBe(RaceOutcome::Pending);
+});
+
 it('never lets one athlete confirm another athlete\'s race', function (): void {
     $intruder = User::factory()->create();
 

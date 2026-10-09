@@ -233,10 +233,10 @@ it('counts a race season\'s general-zone weeks at their reduced, base-rule quali
     $qualityGoal = SeasonGoal::query()->where('season_id', $season->id)->where('metric', 'season_quality_completed')->first();
 
     // 31-week arc: 15 general weeks (12 Build @ 1 slot + 3 Deload @ 0) = 12,
-    // 16 block weeks (3 Base @ 1 + 2 Deload @ 0 + 6 Build @ 2 + 4 Peak @ 2 +
-    // 1 Taper @ 2) = 25. A general-zone Build week no longer counts the
+    // 16 block weeks (3 Base @ 1 + 3 Deload @ 0 + 5 Build @ 2 + 3 Peak @ 2 +
+    // 2 Taper @ 2) = 23. A general-zone Build week no longer counts the
     // block's race-mode 2-slot mix.
-    expect($qualityGoal->target)->toBe(37.0);
+    expect($qualityGoal->target)->toBe(35.0);
 });
 
 it('respects an explicit sessions_per_week preference below the old behavioral floor of 3', function (): void {
@@ -292,7 +292,7 @@ it('opens a race season far from its block with the general goals only, its long
     '10K' => [10_000, 40.0],
     'half' => [21_097, 40.0],
     'marathon' => [42_195, 80.0],
-    '10K capped at half the week' => [10_000, 16.0],
+    '10K capped at half the anchor' => [10_000, 16.0],
 ]);
 
 /**
@@ -308,7 +308,7 @@ it('asks for exactly the long run the plan builds to, which reaches a 10K\'s 12 
     $season = $this->service->ensureCurrent($user, Carbon::today());
     $goal = SeasonGoal::query()->where('season_id', $season->id)->where('metric', 'season_longest_long_run_km')->value('target');
 
-    expect($goal)->toBe(12.0)
+    expect($goal)->toBe(12.2)
         ->and($goal)->toBe(planLongestLongRunKm($user, $season->raceGoal));
 });
 
@@ -325,7 +325,7 @@ it('keeps the season long-run goal aimed at the arc beyond the first staged step
     $season = $this->service->ensureCurrent($user, Carbon::today());
     $goal = SeasonGoal::query()->where('season_id', $season->id)->where('metric', 'season_longest_long_run_km')->value('target');
 
-    expect($goal)->toBe(12.0)
+    expect($goal)->toBe(12.2)
         ->and($goal)->toBeGreaterThan(app(TrainingBaseline::class)->forUser($user, Carbon::today())['long_run_progression_cap_km']);
 });
 
@@ -634,41 +634,4 @@ it('does not settle anything for the season it keeps', function (): void {
     $this->service->ensureCurrent($user, Carbon::today());
 
     expect($season->fresh()->record_settled_at)->toBeNull();
-});
-
-it('re-anchors the current season as of its own start and regenerates its goals for the reset, keeping its identity', function (): void {
-    $user = User::factory()->create();
-    seasonServiceWeeks($user, 30.0);
-    $season = $this->service->ensureCurrent($user, Carbon::today());
-    $season->update(['anchor_weekly_volume_km' => 99.0]);
-    SeasonGoal::query()->where('season_id', $season->id)->update(['target' => 1]);
-
-    Carbon::setTestNow('2026-08-24 08:00:00');
-    $this->service->reanchorForReset($user, Carbon::today());
-
-    $fresh = $season->fresh();
-    expect($fresh->id)->toBe($season->id)
-        ->and($fresh->anchor_weekly_volume_km)->toBe(app(TrainingBaseline::class)->trailingWeeklyVolumeKm($user, Carbon::parse('2026-08-10')))
-        ->and(SeasonGoal::query()->where('season_id', $season->id)->where('target', 1)->exists())->toBeFalse()
-        ->and(SeasonGoal::query()->where('season_id', $season->id)->count())->toBe(5);
-});
-
-it('settles an already settled season again from re-graded days, and leaves a legacy unsettled one alone', function (): void {
-    $user = User::factory()->create();
-    $settled = Season::factory()->for($user)->create([
-        'starts_at' => '2026-05-04',
-        'ends_at' => '2026-07-26',
-        'process_pct' => 3,
-        'record_settled_at' => '2026-07-27 00:00:00',
-    ]);
-    $legacy = Season::factory()->for($user)->create([
-        'starts_at' => '2026-02-02',
-        'ends_at' => '2026-04-26',
-    ]);
-
-    $this->service->reanchorForReset($user, Carbon::today());
-
-    expect($settled->fresh()->process_pct)->not->toBe(3)
-        ->and($settled->fresh()->record_settled_at->toDateTimeString())->toBe('2026-07-27 00:00:00')
-        ->and($legacy->fresh()->record_settled_at)->toBeNull();
 });

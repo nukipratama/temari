@@ -3,7 +3,7 @@ title: Analytics DB connection
 description: The second `analytics` MySQL connection that survives migrate:fresh, where its models/migrations live, and how tests rebind it.
 tags: [architecture, data]
 status: living
-reviewed: 2026-06-20
+reviewed: 2026-10-09
 code_refs:
   - config/database.php
   - app/Models/AI/TokenUsage.php
@@ -110,5 +110,5 @@ tables into the default test DB so they migrate and roll back transactionally:
 
 - [[data-model]]
 - [[ai-pipeline]]
-- [[analytics-db-separate-connection]] (ADR — not written yet)
+- [[analytics-db-separate-connection]] (ADR — why metering lives on its own connection)
 - [[narration-analytics-are-joinable]] (ADR — why usage rows carry an analysis id)
