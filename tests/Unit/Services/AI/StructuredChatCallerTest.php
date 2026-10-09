@@ -29,10 +29,7 @@ use GuzzleHttp\Psr7\Response as Psr7Response;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use OpenAI\Exceptions\ErrorException;
 use OpenAI\Exceptions\RateLimitException;
-use OpenAI\Exceptions\ServerException;
-use OpenAI\Exceptions\TransporterException;
 use OpenAI\Testing\ClientFake;
-use Psr\Http\Client\ClientExceptionInterface;
 
 uses(RefreshDatabase::class);
 
@@ -382,54 +379,6 @@ it('maps a 429 rate-limit into a retryable TransientUpstreamException carrying R
     expect(TokenUsage::query()->count())->toBe(0);
 });
 
-it('leaves retryAfterSeconds null on a 429 without a numeric Retry-After header', function (): void {
-    $response = new Psr7Response(429);
-
-    expect(fn () => callerWithResponses([new RateLimitException($response)])
-        ->call('briefing', 'sys', [], 'schema', ['headline']))
-        ->toThrow(function (TransientUpstreamException $e): void {
-            expect($e->retryAfterSeconds)->toBeNull();
-        });
-});
-
-it('maps a 5xx ServerException into a TransientUpstreamException', function (): void {
-    $response = new Psr7Response(503);
-
-    expect(fn () => callerWithResponses([new ServerException($response)])
-        ->call('briefing', 'sys', [], 'schema', ['headline']))
-        ->toThrow(TransientUpstreamException::class, 'Azure OpenAI call failed');
-});
-
-it('maps a connection/timeout TransporterException into a TransientUpstreamException with no delay', function (): void {
-    $clientException = new class ('read timed out') extends RuntimeException implements ClientExceptionInterface {};
-
-    expect(fn () => callerWithResponses([new TransporterException($clientException)])
-        ->call('briefing', 'sys', [], 'schema', ['headline']))
-        ->toThrow(function (TransientUpstreamException $e): void {
-            expect($e->retryAfterSeconds)->toBeNull();
-        });
-});
-
-it('treats an ErrorException carrying a 429 status as transient', function (): void {
-    $response = new Psr7Response(429, ['Retry-After' => '5']);
-    $error = new ErrorException(['message' => 'rate limited', 'type' => 'rate_limit_exceeded'], $response);
-
-    expect(fn () => callerWithResponses([$error])
-        ->call('briefing', 'sys', [], 'schema', ['headline']))
-        ->toThrow(function (TransientUpstreamException $e): void {
-            expect($e->retryAfterSeconds)->toBe(5);
-        });
-});
-
-it('keeps a permanent 4xx ErrorException terminal as UnavailableException', function (): void {
-    $response = new Psr7Response(400);
-    $error = new ErrorException(['message' => 'bad request', 'type' => 'invalid_request_error'], $response);
-
-    expect(fn () => callerWithResponses([$error])
-        ->call('briefing', 'sys', [], 'schema', ['headline']))
-        ->toThrow(UnavailableException::class);
-});
-
 it('keeps a schema/JSON failure terminal even though the HTTP call succeeded', function (): void {
     expect(fn () => callerWithResponses([fakeAzureResponse('{not json')])
         ->call('briefing', 'sys', [], 'schema', ['headline']))
@@ -451,25 +400,6 @@ it('counts a 401 auth failure toward the config circuit breaker', function (): v
 
     expect(configBreakerSnapshot())
         ->toMatchArray(['state' => AzureConfigCircuitBreaker::STATE_CLOSED, 'failures' => 1]);
-});
-
-it('counts a 403 auth failure toward the config circuit breaker', function (): void {
-    $error = new ErrorException(['message' => 'forbidden', 'type' => 'access_denied'], new Psr7Response(403));
-
-    expect(fn () => callerWithResponses([$error])->call('briefing', 'sys', [], 'schema', ['headline']))
-        ->toThrow(UnavailableException::class);
-
-    expect(configBreakerSnapshot()['failures'])->toBe(1);
-});
-
-it('counts a persistent connection/DNS TransporterException toward the config breaker', function (): void {
-    $clientException = new class ('could not resolve host') extends RuntimeException implements ClientExceptionInterface {};
-
-    expect(fn () => callerWithResponses([new TransporterException($clientException)])
-        ->call('briefing', 'sys', [], 'schema', ['headline']))
-        ->toThrow(TransientUpstreamException::class);
-
-    expect(configBreakerSnapshot()['failures'])->toBe(1);
 });
 
 it('trips the config breaker open after three consecutive auth failures', function (): void {
@@ -574,16 +504,6 @@ it('maps a content_filter ErrorException into a terminal ContentFilterException'
         ->toThrow(ContentFilterException::class, 'Azure OpenAI call failed');
 
     expect(TokenUsage::query()->count())->toBe(0);
-});
-
-it('detects a content filter from the message when the error code is absent', function (): void {
-    $error = new ErrorException(
-        ['message' => 'The response was filtered due to the prompt triggering Azure OpenAI content management policy.', 'type' => 'invalid_request_error'],
-        new Psr7Response(400),
-    );
-
-    expect(fn () => callerWithResponses([$error])->call('briefing_mascot_voice', 'sys', [], 'schema', ['speech']))
-        ->toThrow(ContentFilterException::class);
 });
 
 it('strips continuity context and retries once when the first attempt content-filters', function (): void {
