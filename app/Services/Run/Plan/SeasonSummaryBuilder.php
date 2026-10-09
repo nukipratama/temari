@@ -140,10 +140,11 @@ final readonly class SeasonSummaryBuilder
 
         $multipliers = PhaseSchedule::volumeMultipliers(array_column($weeks, 'phase'), $isSelfScaled || $season->increases_held, array_column($weeks, 'zone'));
         $baselineData = $this->baseline->forUser($user, $season->starts_at);
+        $layout = $this->baseline->weekLayout($user, $season->starts_at);
 
         $result = [];
         foreach ($weeks as $i => $week) {
-            $dayRows = WeekPlanBuilder::build($week['week_start'], $week['phase'], $baselineData['sessions_per_week'], [], $raceDistanceM, $isSelfScaled, raceDate: $race?->race_date, zone: $week['zone']);
+            $dayRows = WeekPlanBuilder::build($week['week_start'], $week['phase'], $baselineData['sessions_per_week'], [], $raceDistanceM, $isSelfScaled, preferredOffsets: $layout['run_days'], preferredLongOffset: $layout['long_run_day'], projectedRaceSeconds: $layout['projected_race_seconds'], raceDate: $race?->race_date, zone: $week['zone'], twoRunQualityEligible: $layout['two_run_quality_eligible'], fallOffTilt: $layout['fall_off_tilt']);
             $primaryEasyDate = self::primaryEasyDate($dayRows);
 
             $plannedKm = 0.0;
@@ -157,6 +158,7 @@ final readonly class SeasonSummaryBuilder
                     $baselineData['long_run_cap_km'],
                     $raceDistanceM,
                     $baselineData['long_run_progression_cap_km'],
+                    $row['fall_off_tilt'] ?? null,
                 );
                 if ($row['session_type'] !== SessionType::Rest) {
                     $sessions++;

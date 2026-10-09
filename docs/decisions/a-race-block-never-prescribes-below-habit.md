@@ -24,6 +24,8 @@ code_refs:
 
 > **Partly superseded (2026-10-09) by [[a-race-floor-solves-under-the-session-caps]].** Rule 1's floor is no longer one division: it is bisected under `long_run_cap_km` and the progression cap, and an unreachable floor takes the best reachable figure.
 
+> **Partly superseded (2026-10-09) by [[the-volume-floor-solves-the-weeks-the-plan-lays-out]].** Rule 6's "each one matches the athlete's mean" and the clarification's "no training week exceeds habit" no longer hold: a held block's training weeks average the floor, each within 10% of it.
+
 # A race block never prescribes below habit, and the load guard outranks that
 
 **Status:** Accepted (2026-09-18)

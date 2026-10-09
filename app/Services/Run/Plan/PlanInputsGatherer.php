@@ -6,8 +6,6 @@ namespace App\Services\Run\Plan;
 
 use App\Actions\Run\Metrics\ResolveHardEffortsAction;
 use App\Actions\Run\Plan\ResolveActiveRaceAction;
-use App\Actions\Run\Plan\ResolveTrainingPreferenceAction;
-use App\Enums\FallOffTilt;
 use App\Enums\IntentVerdict;
 use App\Enums\PaceBand;
 use App\Enums\PlannedSessionStatus;
@@ -47,7 +45,6 @@ final readonly class PlanInputsGatherer
         private SeasonService $seasonService,
         private PlanAdapter $planAdapter,
         private ResolveActiveRaceAction $activeRace,
-        private ResolveTrainingPreferenceAction $trainingPreference,
         private VdotEstimator $vdotEstimator,
         private TrainingPaceCalculator $paceCalculator,
         private RecentTrainingStress $trainingStress,
@@ -73,8 +70,8 @@ final readonly class PlanInputsGatherer
         $race = ($this->activeRace)($user->id);
         $trialDistanceM = TimeTrial::distanceFor($race === null ? null : (float) $race->distance_m);
         $ambition = $race === null ? null : $this->ambition->assess($user, $race, $today);
-        $preference = ($this->trainingPreference)($user->id);
         $baseline = $this->baseline->forUser($user, $today);
+        $layout = $this->baseline->weekLayout($user, $today);
         $estimate = $this->vdotEstimator->estimate($user, $today);
         $paces = $this->paceCalculator->fromVdotResult($estimate);
         ['pinned' => $pinnedDates, 'settled' => $settledDates, 'fixed' => $fixedSessions] = $this->fixedPlanDaysIn($user, $currentWeekStart->copy()->subWeek(), $today, $horizonEnd, $baseline, $paces);
@@ -96,8 +93,8 @@ final readonly class PlanInputsGatherer
             raceDate: $race?->race_date,
             raceDistanceM: $race === null ? null : (float) $race->distance_m,
             sessionsPerWeek: $baseline['sessions_per_week'],
-            runDays: $preference?->run_days,
-            longRunDay: $preference?->long_run_day,
+            runDays: $layout['run_days'],
+            longRunDay: $layout['long_run_day'],
             adaptation: $this->planAdapter->forWeek($user, $currentWeekStart, $today, $race, $ambition),
             pinnedDates: $pinnedDates,
             // A day that already carries a verdict is the record of what was
@@ -109,7 +106,7 @@ final readonly class PlanInputsGatherer
             // How long the race will take this athlete, not how far it is: the
             // same 10K is a VO2max event for one runner and a threshold event
             // for another, and only the time the plan trains for can tell them apart.
-            projectedRaceSeconds: $ambition === null ? null : (float) $ambition->prescribedTimeSec(),
+            projectedRaceSeconds: $layout['projected_race_seconds'],
             volumeFloorKm: $season->volume_floor_km,
             increasesHeld: $season->increases_held,
             raceGoalTimeSec: $ambition?->prescribedTimeSec(),
@@ -120,10 +117,9 @@ final readonly class PlanInputsGatherer
             recentPrescriptions: $this->recentPrescriptions($user, $today),
             fixedSessions: $fixedSessions,
             actualSessions: $actualSessions,
-            twoRunQualityEligible: $paces !== null && $weeks->count() >= 6
-                && $weeks->every(static fn (WeeklySnapshot $week): bool => $week->runs >= 2),
+            twoRunQualityEligible: $layout['two_run_quality_eligible'],
             resumeTrailingMeanKm: $this->resumeTrailingMeanKm($race, $weeks, $currentWeekStart),
-            fallOffTilt: FallOffTilt::fromFallOff($estimate['k'] ?? null, $estimate['k_fitted'] ?? false),
+            fallOffTilt: $layout['fall_off_tilt'],
             raceAmbitionState: $ambition?->state,
             raceAmbitionGapPct: $ambition?->gapPct,
             raceSteppingStoneTimeSec: $ambition?->steppingStoneTimeSec,
