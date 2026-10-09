@@ -10,7 +10,7 @@ use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
 use App\Services\AI\BackfillAgeGate;
-use App\Services\AI\HydrationBacklog;
+use App\Services\Run\Ingest\HydrationBacklog;
 use App\Services\AI\RecapPeriod;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;

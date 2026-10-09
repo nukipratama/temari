@@ -6,6 +6,7 @@ namespace App\Services\AI;
 
 use App\Models\Activity;
 use App\Models\WeeklySnapshot;
+use App\Services\Run\Ingest\HydrationBacklog;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;

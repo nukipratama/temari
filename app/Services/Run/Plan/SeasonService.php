@@ -13,7 +13,7 @@ use App\Models\Season;
 use App\Models\SeasonGoal;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
-use App\Services\AI\HydrationBacklog;
+use App\Services\Run\Ingest\HydrationBacklog;
 use App\Services\Gamification\SeasonGamificationContext;
 use App\Services\Gamification\SeasonRecordBuilder;
 use Illuminate\Database\UniqueConstraintViolationException;
