@@ -33,13 +33,26 @@ it('never renders the dashboard to a guest', function (): void {
 it('renders for a user with no synced activities', function (): void {
     $user = User::factory()->create();
 
+    $scans = 0;
+    DB::listen(function (QueryExecuted $query) use (&$scans): void {
+        if (str_contains($query->sql, 'trimp_sum')) {
+            $scans++;
+        }
+    });
+
     $this->actingAs($user)->get('/')
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
             ->component('Home')
             ->where('auth.user.first_name', explode(' ', (string) $user->name)[0])
             ->missing('load')
-            ->where('hasRuns', false));
+            ->where('hasRuns', false)
+            ->missing('trendAnalysis')
+            ->missing('weeklyRecap')
+            ->where('weekPlan', null)
+            ->missing('restDayEasePace'));
+
+    expect($scans)->toBe(1);
 });
 
 // Home reads this prop for one thing: whether the empty state is drawn. It used
@@ -72,13 +85,11 @@ it('renders the week snapshot and flags the runs when the user has training-load
     Carbon::setTestNow('2026-05-11 12:00:00');
     $user = User::factory()->create();
 
-    for ($i = 0; $i < 80; $i++) {
-        $activity = Activity::factory()->for($user)->analyzed()->create();
-        ActivityDetail::factory()->for($activity)->create([
-            'trimp_edwards' => 50.0,
-            'start_date_local' => Carbon::today()->subDays(79 - $i),
-        ]);
-    }
+    $activity = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($activity)->create([
+        'trimp_edwards' => 50.0,
+        'start_date_local' => Carbon::today(),
+    ]);
 
     WeeklySnapshot::factory()->for($user)->create([
         'week_ending' => Carbon::today()->endOfWeek(Carbon::SUNDAY)->toDateString(),
@@ -138,23 +149,6 @@ it('reads the weekly snapshots once and shows this week\'s', function (): void {
 // for the same user/date/window; the scoped memo (AppServiceProvider) must
 // collapse the 365-day daily scan to one read, for a no-run athlete's null
 // summary too.
-it('reads the training-load daily scan once per request for a no-run athlete', function (): void {
-    $user = User::factory()->create();
-
-    $scans = 0;
-    DB::listen(function (QueryExecuted $query) use (&$scans): void {
-        if (str_contains($query->sql, 'trimp_sum')) {
-            $scans++;
-        }
-    });
-
-    $this->actingAs($user)->get('/')
-        ->assertSuccessful()
-        ->assertInertia(fn (Assert $page) => $page->component('Home'));
-
-    expect($scans)->toBe(1);
-});
-
 it('reads the training-load daily scan once per request for an athlete with history', function (): void {
     $user = User::factory()->create();
     $activity = Activity::factory()->for($user)->analyzed()->create();
@@ -175,17 +169,6 @@ it('reads the training-load daily scan once per request for an athlete with hist
         ->assertInertia(fn (Assert $page) => $page->component('Home'));
 
     expect($scans)->toBe(1);
-});
-
-it('does not ship the unused trendAnalysis or weeklyRecap props', function (): void {
-    $user = User::factory()->create();
-
-    $this->actingAs($user)->get('/')
-        ->assertSuccessful()
-        ->assertInertia(fn (Assert $page) => $page
-            ->component('Home')
-            ->missing('trendAnalysis')
-            ->missing('weeklyRecap'));
 });
 
 it('reuses the same daily greeting on a second open within the day', function (): void {
@@ -264,16 +247,6 @@ it('still returns every dashboard prop on a full page load', function (): void {
             ->missing('load'));
 });
 
-it('ships weekPlan as null when the user has no planned sessions this week', function (): void {
-    $user = User::factory()->create();
-
-    $this->actingAs($user)->get('/')
-        ->assertSuccessful()
-        ->assertInertia(fn (Assert $page) => $page
-            ->component('Home')
-            ->where('weekPlan', null));
-});
-
 it('ships a real weekPlan when the user has a plan for the current week', function (): void {
     Carbon::setTestNow('2026-08-12'); // a Wednesday
     $user = User::factory()->create();
@@ -306,14 +279,6 @@ it('does not ship restDayEasePace on a day that is not a planned rest day', func
         ->assertInertia(fn (Assert $page) => $page->missing('restDayEasePace'));
 
     Carbon::setTestNow();
-});
-
-it('does not ship restDayEasePace when today has no planned session at all', function (): void {
-    $user = User::factory()->create();
-
-    $this->actingAs($user)->get('/')
-        ->assertSuccessful()
-        ->assertInertia(fn (Assert $page) => $page->missing('restDayEasePace'));
 });
 
 it('defers restDayEasePace on a planned rest day, resolving only on the named partial reload', function (): void {
