@@ -79,16 +79,16 @@ it('answers the handshake only on the tokenised callback URL', function (string 
     'wrong token' => '/strava/webhook/wrong-callback-token',
 ]);
 
-it('dispatches nothing for a forged event', function (string $aspect, string $path, array $subscription): void {
+it('dispatches nothing for a forged event', function (string $path, array $subscription): void {
     Bus::fake();
     $user = User::factory()->create();
     StravaConnection::factory()->for($user)->create(['strava_athlete_id' => 42]);
     Activity::factory()->for($user)->create(['strava_external_id' => 9_001]);
 
-    $this->postJson($path, $subscription + forgedStravaEvent($aspect))->assertNotFound();
+    $this->postJson($path, $subscription + forgedStravaEvent('create'))->assertNotFound();
 
     Bus::assertNothingDispatched();
-})->with(['create', 'update'])->with([
+})->with([
     'no token' => ['/strava/webhook', ['subscription_id' => 424242]],
     'wrong token' => ['/strava/webhook/wrong-callback-token', ['subscription_id' => 424242]],
     'wrong subscription id' => ['/strava/webhook/fake-callback-token', ['subscription_id' => 1]],

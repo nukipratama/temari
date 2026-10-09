@@ -83,22 +83,34 @@ function expectQuietDeliveries(int $inbox, int $telegram, int $push): void
         ->and(quietPushCount())->toBe($push);
 }
 
-dataset('notification types', [
-    'post-run story' => [fn (User $user): Notification => quietPostRun($user), 1, true],
-    'day clamped' => [fn (User $user): Notification => new DayClampedNotification('2026-10-06', SessionType::Rest, 'a full rest today.'), 1, false],
-    'fitness improved' => [fn (User $user): Notification => new FitnessImprovedNotification(10_000.0, 3_570, 3_640, 5_000, '2026-09-20', '2026-10-05'), 1, true],
-    'morning briefing' => [fn (User $user): Notification => new MorningBriefingNotification(Analysis::factory()->done('easy 5k.')->create([
-        'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
-        'subject_id' => $user->id,
-        'analysis_type' => AnalysisType::BriefingMascotVoice,
-        'discriminator' => '2026-10-06',
-    ])), 0, true],
-    'race outcome' => [fn (User $user): Notification => new RaceOutcomeNotification(RaceGoal::factory()->for($user)->create(['race_date' => '2026-10-04'])), 1, true],
-    'race tomorrow' => [fn (User $user): Notification => new RaceTomorrowNotification(RaceGoal::factory()->for($user)->create(['race_date' => '2026-10-06'])), 1, true],
-    'strava disconnected' => [fn (User $user): Notification => new StravaDisconnectedNotification(now()), 1, true],
-    'streak reminder' => [fn (User $user): Notification => new StreakReminderNotification(4), 1, true],
-    'time trial' => [fn (User $user): Notification => new TimeTrialNotification(PlannedSession::factory()->for($user)->create(['date' => '2026-10-05', 'prescription_race_context' => ['kind' => 'time_trial', 'distance_m' => 5_000, 'aim_time_sec' => 1_500, 'retry' => 0]])), 1, true],
-]);
+dataset('notification types', function (): array {
+    $types = [
+        'post-run story' => [fn (User $user): Notification => quietPostRun($user), 1, true],
+        'day clamped' => [fn (User $user): Notification => new DayClampedNotification('2026-10-06', SessionType::Rest, 'a full rest today.'), 1, false],
+        'fitness improved' => [fn (User $user): Notification => new FitnessImprovedNotification(10_000.0, 3_570, 3_640, 5_000, '2026-09-20', '2026-10-05'), 1, true],
+        'morning briefing' => [fn (User $user): Notification => new MorningBriefingNotification(Analysis::factory()->done('easy 5k.')->create([
+            'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
+            'subject_id' => $user->id,
+            'analysis_type' => AnalysisType::BriefingMascotVoice,
+            'discriminator' => '2026-10-06',
+        ])), 0, true],
+        'race outcome' => [fn (User $user): Notification => new RaceOutcomeNotification(RaceGoal::factory()->for($user)->create(['race_date' => '2026-10-04'])), 1, true],
+        'race tomorrow' => [fn (User $user): Notification => new RaceTomorrowNotification(RaceGoal::factory()->for($user)->create(['race_date' => '2026-10-06'])), 1, true],
+        'strava disconnected' => [fn (User $user): Notification => new StravaDisconnectedNotification(now()), 1, true],
+        'streak reminder' => [fn (User $user): Notification => new StreakReminderNotification(4), 1, true],
+        'time trial' => [fn (User $user): Notification => new TimeTrialNotification(PlannedSession::factory()->for($user)->create(['date' => '2026-10-05', 'prescription_race_context' => ['kind' => 'time_trial', 'distance_m' => 5_000, 'aim_time_sec' => 1_500, 'retry' => 0]])), 1, true],
+    ];
+
+    $cases = [];
+    foreach ($types as $name => $type) {
+        $cases["{$name}, athlete"] = [...$type, false];
+    }
+    foreach (['post-run story', 'morning briefing'] as $name) {
+        $cases["{$name}, demo"] = [...$types[$name], true];
+    }
+
+    return $cases;
+});
 
 it('holds every channel inside the window and releases each once at 04:00', function (Closure $make, int $inbox, bool $outbound, bool $demo): void {
     $user = quietAthlete($demo);
@@ -115,7 +127,7 @@ it('holds every channel inside the window and releases each once at 04:00', func
 
     expectQuietDeliveries($inbox, $outboundSends, $outboundSends);
     expect(HeldNotification::query()->count())->toBe(0);
-})->with('notification types')->with(['athlete' => false, 'demo' => true]);
+})->with('notification types');
 
 it('sends the manual test notification at once inside the window', function (): void {
     $user = quietAthlete();

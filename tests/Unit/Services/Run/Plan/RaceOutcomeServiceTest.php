@@ -39,7 +39,7 @@ function raceDayRun(User $user, float $distance = 10_040.0, int $elapsed = 2_950
     return $activity;
 }
 
-it('confirms a matching owned activity and feeds fitness evidence from it', function (): void {
+it('confirms a matching owned activity, feeds fitness evidence from it and regenerates the plan, and takes a repeat as a no-op', function (): void {
     $run = raceDayRun($this->user);
 
     $race = $this->service->record($this->user, $this->race, RaceOutcome::Confirmed, activityId: $run->id);
@@ -57,17 +57,15 @@ it('confirms a matching owned activity and feeds fitness evidence from it', func
         ->and($evidence->performed_on->toDateString())->toBe('2026-10-04')
         ->and($race->changes->last()->kind)->toBe(RaceChangeKind::Outcome)
         ->and($race->changes->last()->outcome)->toBe(RaceOutcome::Confirmed);
-});
 
-it('confirms a manual finish time against the race distance', function (): void {
-    $race = $this->service->record($this->user, $this->race, RaceOutcome::Confirmed, finishTimeSec: 3_100);
+    $plannedAfterConfirm = PlannedSession::query()->where('user_id', $this->user->id)->count();
+    PlannedSession::query()->where('user_id', $this->user->id)->delete();
+    $this->service->record($this->user, $this->race->fresh(), RaceOutcome::Confirmed, activityId: $run->id);
 
-    $evidence = PerformanceEvidence::query()->sole();
-    expect($race->finish_time_sec)->toBe(3_100)
-        ->and($race->outcome_activity_id)->toBeNull()
-        ->and($evidence->distance_m)->toBe(10_000)
-        ->and($evidence->elapsed_time_sec)->toBe(3_100)
-        ->and($evidence->activity_id)->toBeNull();
+    expect($this->race->fresh()->changes()->count())->toBe(1)
+        ->and(PerformanceEvidence::query()->count())->toBe(1)
+        ->and($plannedAfterConfirm)->toBeGreaterThan(0)
+        ->and(PlannedSession::query()->where('user_id', $this->user->id)->count())->toBe(0);
 });
 
 it('rejects an implausible manual time without recording anything', function (): void {
@@ -107,19 +105,15 @@ it('records did not run and cancelled without any result or evidence', function 
         ->and(PerformanceEvidence::query()->count())->toBe(0);
 })->with([RaceOutcome::DidNotRun, RaceOutcome::Cancelled]);
 
-it('is idempotent: a repeated outcome adds no history and no second evidence', function (): void {
-    $run = raceDayRun($this->user);
+it('confirms a manual finish time against the race distance, then lets the athlete correct any state later, recording each change and retracting stale evidence', function (): void {
+    $race = $this->service->record($this->user, $this->race, RaceOutcome::Confirmed, finishTimeSec: 3_100);
 
-    $this->service->record($this->user, $this->race, RaceOutcome::Confirmed, activityId: $run->id);
-    $this->service->record($this->user, $this->race->fresh(), RaceOutcome::Confirmed, activityId: $run->id);
-
-    expect($this->race->fresh()->changes()->count())->toBe(1)
-        ->and(PerformanceEvidence::query()->count())->toBe(1);
-});
-
-it('lets the athlete correct any state later, recording each change and retracting stale evidence', function (): void {
-    $this->service->record($this->user, $this->race, RaceOutcome::Confirmed, finishTimeSec: 3_100);
-    expect(PerformanceEvidence::query()->count())->toBe(1);
+    $evidence = PerformanceEvidence::query()->sole();
+    expect($race->finish_time_sec)->toBe(3_100)
+        ->and($race->outcome_activity_id)->toBeNull()
+        ->and($evidence->distance_m)->toBe(10_000)
+        ->and($evidence->elapsed_time_sec)->toBe(3_100)
+        ->and($evidence->activity_id)->toBeNull();
 
     $this->service->record($this->user, $this->race->fresh(), RaceOutcome::Confirmed, finishTimeSec: 3_050);
     expect(PerformanceEvidence::query()->sole()->elapsed_time_sec)->toBe(3_050);
@@ -196,16 +190,4 @@ it('carries a late confirmation into the performance of the season that was alre
 
     $this->service->record($this->user, $this->race->fresh(), RaceOutcome::DidNotRun);
     expect($season->fresh()->performance_state)->toBe(SeasonPerformance::DidNotRun);
-});
-
-it('regenerates the plan when an outcome changes, and not on a repeat of the same answer', function (): void {
-    $run = raceDayRun($this->user);
-
-    $this->service->record($this->user, $this->race, RaceOutcome::Confirmed, activityId: $run->id);
-    $plannedAfterConfirm = PlannedSession::query()->where('user_id', $this->user->id)->count();
-    PlannedSession::query()->where('user_id', $this->user->id)->delete();
-    $this->service->record($this->user, $this->race->fresh(), RaceOutcome::Confirmed, activityId: $run->id);
-
-    expect($plannedAfterConfirm)->toBeGreaterThan(0)
-        ->and(PlannedSession::query()->where('user_id', $this->user->id)->count())->toBe(0);
 });

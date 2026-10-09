@@ -75,21 +75,9 @@ it('reflects a Strava reconnect that grants the missing zone scope', function ()
         ->assertInertia(fn (Assert $page) => $page->where('stravaZoneScopeMissing', false));
 });
 
-it('reflects a Strava revoke on the very next request', function (): void {
+it('reflects a Strava revoke in stravaZoneScopeMissing and stravaSync on the very next request', function (): void {
     $user = User::factory()->create();
     $connection = StravaConnection::factory()->for($user)->create(['scopes' => 'read,activity:read_all']);
-
-    warmSharedProps($user);
-
-    $connection->markRevoked();
-
-    visitAs($user)
-        ->assertInertia(fn (Assert $page) => $page->where('stravaZoneScopeMissing', false));
-});
-
-it('reflects a Strava revoke in stravaSync on the very next request', function (): void {
-    $user = User::factory()->create();
-    $connection = StravaConnection::factory()->for($user)->create();
 
     warmSharedProps($user);
 
@@ -99,7 +87,9 @@ it('reflects a Strava revoke in stravaSync on the very next request', function (
     $connection->markRevoked();
 
     visitAs($user)
-        ->assertInertia(fn (Assert $page) => $page->where('stravaSync.state', 'revoked'));
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('stravaZoneScopeMissing', false)
+            ->where('stravaSync.state', 'revoked'));
 });
 
 it('reflects a first Strava connect in stravaSync on the very next request', function (): void {

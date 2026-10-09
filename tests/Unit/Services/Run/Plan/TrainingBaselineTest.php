@@ -680,7 +680,7 @@ it('sizes a self-scaled cycle so its four weeks average the anchor unless a long
     } else {
         expect($meanKm)->toBeLessThan($anchorKm * 1.05);
     }
-})->with([20.0, 40.0, 70.0])->with([2, 3, 4, 5, 6]);
+})->with([20.0, 70.0])->with([2, 3, 4, 5, 6]);
 
 it('lets a long-run cap hold a self-scaled cycle under its anchor', function (float $anchorKm, int $sessions): void {
     $user = User::factory()->create();

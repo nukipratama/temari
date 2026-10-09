@@ -132,16 +132,6 @@ it('requests card flavor for the run card the ingest minted', function (): void 
         ->exists())->toBeTrue();
 });
 
-it('writes the reconciliation marker in the post-ingest listener', function (): void {
-    $activity = analyzedActivity();
-
-    fire($activity);
-
-    expect($activity->user->fresh()->plan_reconciliation_pending_from->toDateString())
-        ->toBe('2026-05-10');
-    Bus::assertDispatched(ReconcilePlanJob::class);
-});
-
 it('re-narrates card flavor on a re-ingest whose run material changed, without minting a second row', function (): void {
     $activity = analyzedActivity();
     $card = RunCard::factory()->create(['activity_id' => $activity->id]);
@@ -205,13 +195,14 @@ it('delays the invalidating briefing request so a burst of same-day ingests bill
     Carbon::setTestNow();
 });
 
-it('dispatches ProfileVoice on first ingest, keyed by the current ISO week', function (): void {
+it('dispatches ProfileVoice keyed by the current ISO week and the briefing keyed by today on first ingest', function (): void {
     Carbon::setTestNow('2026-05-19 12:00:00');
     $activity = analyzedActivity();
 
     fire($activity);
 
     Bus::assertDispatched(fn (AnalyzeProfileVoiceJob $job): bool => Analysis::query()->whereKey($job->analysisId)->value('discriminator') === AnalysisType::currentIsoWeek());
+    Bus::assertDispatched(fn (AnalyzeBriefingMascotVoiceJob $job): bool => Analysis::query()->whereKey($job->analysisId)->value('discriminator') === '2026-05-19');
     Carbon::setTestNow();
 });
 
@@ -236,17 +227,29 @@ it('does not re-bill a Done ProfileVoice row on re-ingest (invalidate:false)', f
         ->and($row->fresh()->status)->toBe(AnalysisStatus::Done);
 });
 
-it('fans out activity + briefing + mascot voice analyses', function (): void {
+it('fans out the activity group once, the briefing, the monthly recap and the reconciliation marker', function (): void {
     $activity = analyzedActivity();
 
     fire($activity);
 
-    Bus::assertDispatched(AnalyzeActivityJob::class);
+    Bus::assertDispatchedTimes(AnalyzeActivityJob::class, 1);
     Bus::assertDispatched(AnalyzeBriefingMascotVoiceJob::class);
-    Bus::assertDispatched(AnalyzeBriefingMascotVoiceJob::class);
+
+    $row = Analysis::query()
+        ->where('subject_type', AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE)
+        ->where('subject_id', $activity->user_id)
+        ->where('analysis_type', AnalysisType::MonthlyRecap)
+        ->where('discriminator', '2026-05')
+        ->firstOrFail();
+
+    expect($row->status)->toBe(AnalysisStatus::Pending);
+
+    expect($activity->user->fresh()->plan_reconciliation_pending_from->toDateString())
+        ->toBe('2026-05-10');
+    Bus::assertDispatched(ReconcilePlanJob::class);
 });
 
-it('stages the weekly recap Pending without an LLM dispatch (weekly cadence)', function (): void {
+it('stages the weekly recap Pending without an LLM dispatch (weekly cadence), leaving the recalibration lock free', function (): void {
     $activity = analyzedActivity('2026-05-10 12:00:00');
 
     fire($activity);
@@ -260,6 +263,10 @@ it('stages the weekly recap Pending without an LLM dispatch (weekly cadence)', f
         ->where('analysis_type', AnalysisType::WeeklyRecap)
         ->firstOrFail();
     expect($row->status)->toBe(AnalysisStatus::Pending);
+
+    expect(WeeklySnapshot::query()->where('user_id', $activity->user_id)->exists())->toBeTrue()
+        ->and(Cache::get(RecalibrateTrainingHistoryJob::dirtyMarkerKey($activity->user_id)))->toBeNull()
+        ->and(Cache::lock(RecalibrateTrainingHistoryJob::overlapLockKey($activity->user_id), 1)->get())->toBeTrue();
 });
 
 it('marks a backfilled run week dirty and stages its recap against the week already synced', function (): void {
@@ -300,16 +307,6 @@ it('skips its weekly rebuild and marks recalibration dirty while recalibration r
         ->and(Cache::lock(WeeklyAggregator::lockKey($activity->user_id), 1)->get())->toBeTrue();
     Bus::assertDispatched(AnalyzeActivityJob::class);
     Bus::assertDispatched(AnalyzeBriefingMascotVoiceJob::class);
-});
-
-it('leaves the recalibration lock free after rebuilding when no recalibration runs', function (): void {
-    $activity = analyzedActivity('2026-05-10 12:00:00');
-
-    fire($activity);
-
-    expect(WeeklySnapshot::query()->where('user_id', $activity->user_id)->exists())->toBeTrue()
-        ->and(Cache::get(RecalibrateTrainingHistoryJob::dirtyMarkerKey($activity->user_id)))->toBeNull()
-        ->and(Cache::lock(RecalibrateTrainingHistoryJob::overlapLockKey($activity->user_id), 1)->get())->toBeTrue();
 });
 
 it('lets the recalibration re-run cover a run ingested while it held its lock', function (): void {
@@ -356,21 +353,6 @@ it('leaves a Done weekly recap untouched on re-ingest (no mid-week invalidation)
     Bus::assertNotDispatched(AnalyzeWeeklyRecapJob::class);
 });
 
-it('stages the monthly recap Pending keyed by the run month (monthly cadence)', function (): void {
-    $activity = analyzedActivity('2026-05-10 06:30:00');
-
-    fire($activity);
-
-    $row = Analysis::query()
-        ->where('subject_type', AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE)
-        ->where('subject_id', $activity->user_id)
-        ->where('analysis_type', AnalysisType::MonthlyRecap)
-        ->where('discriminator', '2026-05')
-        ->firstOrFail();
-
-    expect($row->status)->toBe(AnalysisStatus::Pending);
-});
-
 it('does not stage a monthly recap for the demo user (monthly is real-users-only)', function (): void {
     $demo = User::factory()->demo()->create();
     $activity = analyzedActivity('2026-05-10 06:30:00', $demo->id);
@@ -381,25 +363,6 @@ it('does not stage a monthly recap for the demo user (monthly is real-users-only
         ->where('subject_type', AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE)
         ->where('subject_id', $demo->id)
         ->exists())->toBeFalse();
-});
-
-it('dispatches AnalyzeActivityJob exactly once (grouped routing)', function (): void {
-    $activity = analyzedActivity();
-
-    fire($activity);
-
-    Bus::assertDispatchedTimes(AnalyzeActivityJob::class, 1);
-});
-
-it('uses today as the briefing discriminator', function (): void {
-    Carbon::setTestNow('2026-05-19 12:00:00');
-    $activity = analyzedActivity();
-
-    fire($activity);
-
-    Bus::assertDispatched(fn (AnalyzeBriefingMascotVoiceJob $job): bool => Analysis::query()->whereKey($job->analysisId)->value('discriminator') === '2026-05-19');
-    Bus::assertDispatched(AnalyzeBriefingMascotVoiceJob::class);
-    Carbon::setTestNow();
 });
 
 it('refreshes the daily briefing set on the second run of the day', function (): void {

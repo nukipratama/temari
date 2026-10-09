@@ -283,25 +283,6 @@ it('does not cycle the post-run speech in lockstep with consecutive activity ids
     expect(count(array_unique($lines)))->toBeGreaterThanOrEqual(8);
 });
 
-function postRunLinesOverIds(int $count, ?float $fixedDistance = null): array
-{
-    $filler = app(RuleBasedNarrationFiller::class);
-    $lines = [];
-    for ($i = 0; $i < $count; $i++) {
-        $activity = Activity::factory()->create();
-        ActivityDetail::factory()->create([
-            'activity_id' => $activity->id,
-            'distance' => $fixedDistance ?? 3000.0 + ($i * 137.0),
-            'stream_summary' => [],
-            'weather_temp_c' => 24,
-            'weather_rain_detected' => false,
-        ]);
-        $lines[] = $filler->fillFor(fillerRow(AnalysisType::PostRunSpeech, $activity->id));
-    }
-
-    return $lines;
-}
-
 it('renders the same post-run speech every time for one activity', function (): void {
     $activity = Activity::factory()->create();
     ActivityDetail::factory()->create(['activity_id' => $activity->id, 'distance' => 7400.0]);
@@ -313,27 +294,40 @@ it('renders the same post-run speech every time for one activity', function (): 
     expect($first)->toBe($second);
 });
 
-it('keeps the post-run speech near-fully distinct across a long feed scroll', function (): void {
-    $lines = postRunLinesOverIds(300);
+it('keeps the post-run speech distinct and inside the narrated register across a long feed scroll', function (): void {
+    $filler = app(RuleBasedNarrationFiller::class);
+    $activityIds = [];
+    for ($i = 0; $i < 300; $i++) {
+        $activity = Activity::factory()->create();
+        ActivityDetail::factory()->create([
+            'activity_id' => $activity->id,
+            'distance' => 3000.0 + ($i * 137.0),
+            'stream_summary' => [],
+            'weather_temp_c' => 24,
+            'weather_rain_detected' => false,
+        ]);
+        $activityIds[] = $activity->id;
+    }
+    $linesFor = fn (): array => array_map(
+        fn (int $activityId): string => $filler->fillFor(fillerRow(AnalysisType::PostRunSpeech, $activityId)),
+        $activityIds,
+    );
+
+    $lines = $linesFor();
 
     expect(count(array_unique($lines)))->toBeGreaterThanOrEqual(285);
-});
-
-it('varies the post-run speech even when every run is the same distance', function (): void {
-    // The opener and closer slots are salted separately, so the only variation
-    // left when the distance is constant is the slot pairing itself.
-    $lines = postRunLinesOverIds(300, 8000.0);
-
-    expect(count(array_unique($lines)))->toBeGreaterThanOrEqual(150);
-});
-
-it('keeps every post-run slot pairing inside the narrated register', function (): void {
-    foreach (postRunLinesOverIds(40) as $line) {
+    foreach ($lines as $line) {
         expect($line)->not->toContain('—')
             ->and($line)->not->toMatch('/\bAI\b/')
             ->and($line)->not->toMatch('/\b[A-Z]{3,}\b/')
             ->and($line)->not->toContain('!');
     }
+
+    // The opener and closer slots are salted separately, so the only variation
+    // left when the distance is constant is the slot pairing itself.
+    ActivityDetail::query()->whereIn('activity_id', $activityIds)->update(['distance' => 8000.0]);
+
+    expect(count(array_unique($linesFor())))->toBeGreaterThanOrEqual(150);
 });
 
 it('keeps the widened common flavor pool inside the narrated register', function (): void {

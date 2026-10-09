@@ -55,12 +55,16 @@ it('pushes a dead-letter alert to every admin chat', function (): void {
     app(MaintainerAlerter::class)->deadLettered();
 });
 
-it('is a no-op when Telegram is unconfigured', function (): void {
+it('is a no-op when Telegram is unconfigured, mute or not', function (): void {
     Config::set('services.telegram.bot_token', '');
     $client = fakeTelegram();
-    adminWithChat(1001);
+    $admin = adminWithChat(1001);
 
     $client->shouldNotReceive('sendMessage');
+
+    app(MaintainerAlerter::class)->deadLettered();
+
+    NotificationPreference::factory()->for($admin)->create(['telegram_enabled' => false]);
 
     app(MaintainerAlerter::class)->deadLettered();
 });
@@ -148,18 +152,6 @@ it('does not report a resume when the app-wide cost ceiling lifts', function ():
         ->and(app(AppConfig::class)->get(AppConfigKey::AiPauseStartedAt))->toBeNull();
 });
 
-it('pushes a scheduler-failure alert inline with a 5 second timeout', function (): void {
-    Bus::fake();
-    $client = fakeTelegram();
-    adminWithChat(4001);
-
-    $client->shouldReceive('sendMessage')->once()->with(4001, Mockery::pattern('/Scheduler failed to run `ai:self-heal`/'), 5);
-
-    app(MaintainerAlerter::class)->schedulerFailed('ai:self-heal');
-
-    Bus::assertNotDispatched(SendMaintainerAlertJob::class);
-});
-
 it('pages a failing entry once per incident, and again once a day while it keeps failing', function (): void {
     $client = fakeTelegram();
     adminWithChat(4002);
@@ -179,16 +171,19 @@ it('pages a failing entry once per incident, and again once a day while it keeps
     Carbon::setTestNow();
 });
 
-it('keeps each entry its own incident', function (): void {
+it('pushes a scheduler-failure alert inline with a 5 second timeout, keeping each entry its own incident', function (): void {
+    Bus::fake();
     $client = fakeTelegram();
     adminWithChat(4003);
 
-    $client->shouldReceive('sendMessage')->once()->with(4003, Mockery::pattern('/`ai:self-heal`/'), 5);
+    $client->shouldReceive('sendMessage')->once()->with(4003, Mockery::pattern('/Scheduler failed to run `ai:self-heal`/'), 5);
     $client->shouldReceive('sendMessage')->once()->with(4003, Mockery::pattern('/`ai:catch-up`/'), 5);
 
     $alerter = app(MaintainerAlerter::class);
     $alerter->schedulerFailed('ai:self-heal');
     $alerter->schedulerFailed('ai:catch-up');
+
+    Bus::assertNotDispatched(SendMaintainerAlertJob::class);
 });
 
 it('sends one recovered line when a failing entry next succeeds, then pages afresh on a new failure', function (): void {
@@ -372,17 +367,6 @@ it('still alerts an admin who has muted the Telegram channel', function (): void
 
     $client = fakeTelegram();
     $client->shouldReceive('sendMessage')->once()->with(4321, Mockery::type('string'));
-
-    app(MaintainerAlerter::class)->deadLettered();
-});
-
-it('still respects an unconfigured bot token, mute or not', function (): void {
-    Config::set('services.telegram.bot_token', '');
-    $admin = adminWithChat(4321);
-    NotificationPreference::factory()->for($admin)->create(['telegram_enabled' => false]);
-
-    $client = fakeTelegram();
-    $client->shouldNotReceive('sendMessage');
 
     app(MaintainerAlerter::class)->deadLettered();
 });

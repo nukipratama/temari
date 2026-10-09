@@ -48,7 +48,7 @@ beforeEach(function (): void {
     $this->service = app(AnalysisService::class);
 });
 
-it('creates a pending row and queues a row job on first request', function (): void {
+it('creates a pending row and queues a row job stamped unattributed on an undeclared first request', function (): void {
     $snap = WeeklySnapshot::factory()->create();
 
     $row = $this->service->request(
@@ -61,6 +61,7 @@ it('creates a pending row and queues a row job on first request', function (): v
         ->and($row->queued_at)->not->toBeNull();
 
     Bus::assertDispatched(fn (AnalyzeWeeklyRecapJob $job): bool => $job->analysisId === $row->id);
+    Bus::assertDispatched(fn (AnalyzeWeeklyRecapJob $job): bool => $job->origin === AnalysisOrigin::Unknown);
 });
 
 it('stamps the dispatching entry point origin onto the job, so spend attributes to its trigger', function (): void {
@@ -74,18 +75,6 @@ it('stamps the dispatching entry point origin onto the job, so spend attributes 
     );
 
     Bus::assertDispatched(fn (AnalyzeWeeklyRecapJob $job): bool => $job->origin === AnalysisOrigin::Scheduled);
-});
-
-it('stamps an undeclared dispatch as unattributed rather than defaulting to a real origin', function (): void {
-    $snap = WeeklySnapshot::factory()->create();
-
-    $this->service->request(
-        subjectOrType: WeeklySnapshot::class,
-        subjectId: $snap->id,
-        type: AnalysisType::WeeklyRecap,
-    );
-
-    Bus::assertDispatched(fn (AnalyzeWeeklyRecapJob $job): bool => $job->origin === AnalysisOrigin::Unknown);
 });
 
 it('skips dispatch when status is already done (idempotent)', function (): void {
@@ -308,23 +297,13 @@ it('re-dispatches when status is failed', function (): void {
         ->and($row->error)->toBeNull();
 });
 
-it('requestDeferred creates a Pending row and never dispatches', function (): void {
+it('requestDeferred creates a Pending row, never dispatches, and leaves it untouched once Done', function (): void {
     $snap = WeeklySnapshot::factory()->create();
-
-    $row = $this->service->requestDeferred(
-        WeeklySnapshot::class,
-        $snap->id,
-        AnalysisType::WeeklyRecap,
-    );
+    $row = $this->service->requestDeferred(WeeklySnapshot::class, $snap->id, AnalysisType::WeeklyRecap);
 
     expect($row->status)->toBe(AnalysisStatus::Pending)
         ->and($row->queued_at)->toBeNull();
-    Bus::assertNotDispatched(AnalyzeWeeklyRecapJob::class);
-});
 
-it('requestDeferred leaves an existing Done row untouched', function (): void {
-    $snap = WeeklySnapshot::factory()->create();
-    $row = $this->service->requestDeferred(WeeklySnapshot::class, $snap->id, AnalysisType::WeeklyRecap);
     $this->service->markDone($row, 'last week recap', ServedBy::Llm);
 
     $again = $this->service->requestDeferred(WeeklySnapshot::class, $snap->id, AnalysisType::WeeklyRecap);
@@ -365,7 +344,7 @@ it('requestActivityGroupRuleBased never overwrites an already-Done row with fill
     expect($realRow->fresh()->content)->toBe('original narration, already billed');
 });
 
-it('requestActivityGroup creates its rows and dispatches one AnalyzeActivityJob', function (): void {
+it('requestActivityGroup creates its rows, dispatches one AnalyzeActivityJob, and collapses a repeat request to one NULL-discriminator row per type', function (): void {
     $activity = Activity::factory()->create();
 
     $this->service->requestActivityGroup($activity);
@@ -378,6 +357,14 @@ it('requestActivityGroup creates its rows and dispatches one AnalyzeActivityJob'
         ]);
     Bus::assertDispatched(fn (AnalyzeActivityJob $job): bool => $job->subjectId === $activity->id);
     Bus::assertDispatchedTimes(AnalyzeActivityJob::class, 1);
+
+    $this->service->requestActivityGroup($activity);
+
+    expect(Analysis::query()
+        ->where('subject_type', Activity::class)
+        ->where('subject_id', $activity->id)
+        ->whereNull('discriminator')
+        ->count())->toBe(2);
 });
 
 it('request() with any activity-group type routes to AnalyzeActivityJob (group)', function (): void {
@@ -459,24 +446,6 @@ it('does not invalidate a completed sibling while another group row is active', 
     Bus::assertDispatchedTimes(AnalyzeActivityJob::class, 1);
     expect($done->fresh()->status)->toBe(AnalysisStatus::Done)
         ->and($done->fresh()->content)->toBe('completed sibling');
-});
-
-it('requestBriefing creates the suggestion row and dispatches one AnalyzeBriefingMascotVoiceJob', function (): void {
-    $user = User::factory()->create();
-
-    $this->service->requestBriefing($user, '2026-05-18');
-
-    // Mascot voice and featured-card voice are dispatched by their own callers.
-    expect(Analysis::query()->where('subject_id', $user->id)->where('discriminator', '2026-05-18')->count())->toBe(1);
-
-    $row = Analysis::query()
-        ->where('subject_type', AnalysisType::BRIEFING_SUBJECT_TYPE)
-        ->where('subject_id', $user->id)
-        ->where('analysis_type', AnalysisType::BriefingMascotVoice)
-        ->where('discriminator', '2026-05-18')
-        ->firstOrFail();
-
-    Bus::assertDispatched(fn (AnalyzeBriefingMascotVoiceJob $job): bool => $job->analysisId === $row->id);
 });
 
 it('requestProfileVoice creates the profile-voice row and dispatches one AnalyzeProfileVoiceJob', function (): void {
@@ -585,37 +554,7 @@ it('does not dispatch when ai.auto_dispatch config is false', function (): void 
     Bus::assertNotDispatched(AnalyzeWeeklyRecapJob::class);
 });
 
-it('does not dispatch when the AI kill-switch is off', function (): void {
-    app(AppConfig::class)->set(AppConfigKey::AiEnabled, false);
-    $snap = WeeklySnapshot::factory()->create();
-
-    $row = $this->service->request(
-        subjectOrType: WeeklySnapshot::class,
-        subjectId: $snap->id,
-        type: AnalysisType::WeeklyRecap,
-    );
-
-    expect($row->status)->toBe(AnalysisStatus::Pending)
-        ->and($row->content)->toBeNull();
-    Bus::assertNotDispatched(AnalyzeWeeklyRecapJob::class);
-});
-
-it('does not dispatch when Azure config is missing', function (): void {
-    config(['azure_openai.uri' => '', 'azure_openai.api_key' => '']);
-    $snap = WeeklySnapshot::factory()->create();
-
-    $row = $this->service->request(
-        subjectOrType: WeeklySnapshot::class,
-        subjectId: $snap->id,
-        type: AnalysisType::WeeklyRecap,
-    );
-
-    expect($row->status)->toBe(AnalysisStatus::Pending)
-        ->and($row->content)->toBeNull();
-    Bus::assertNotDispatched(AnalyzeWeeklyRecapJob::class);
-});
-
-it('serves rule-based content instead of dispatching once the daily ceiling is exceeded', function (): void {
+it('serves rule-based content, marked as a capped rule-based fill, instead of dispatching once the daily ceiling is exceeded', function (): void {
     $snap = WeeklySnapshot::factory()->create(['runs' => 3, 'distance_km' => 21.0]);
     breachTheCeilingFor($snap->user_id);
 
@@ -627,7 +566,9 @@ it('serves rule-based content instead of dispatching once the daily ceiling is e
 
     expect($row->status)->toBe(AnalysisStatus::Done)
         ->and($row->content)->toBe(app(RuleBasedNarrationFiller::class)->fillFor($row))
-        ->and($row->content)->toContain('21.0 km');
+        ->and($row->content)->toContain('21.0 km')
+        ->and($row->fresh()->served_by)->toBe(ServedBy::RuleBased)
+        ->and($row->fresh()->rule_based_reason)->toBe(AnalysisOrigin::Capped);
     Bus::assertNotDispatched(AnalyzeWeeklyRecapJob::class);
 });
 
@@ -647,7 +588,7 @@ it('leaves the row Pending when the kill switch, not the budget, stopped generat
     Bus::assertNotDispatched(AnalyzeWeeklyRecapJob::class);
 });
 
-it('leaves the row Pending when Azure is unconfigured, not degraded', function (): void {
+it('does not dispatch, and leaves the row Pending rather than degraded, when Azure is unconfigured', function (): void {
     config(['azure_openai.uri' => '', 'azure_openai.api_key' => '']);
 
     $snap = WeeklySnapshot::factory()->create();
@@ -660,6 +601,7 @@ it('leaves the row Pending when Azure is unconfigured, not degraded', function (
     expect($row->status)->toBe(AnalysisStatus::Pending)
         ->and($row->content)->toBeNull()
         ->and($this->service->costCeilingDegraded())->toBeFalse();
+    Bus::assertNotDispatched(AnalyzeWeeklyRecapJob::class);
 });
 
 it('degrades only the athlete who spent, and leaves everyone else billing normally', function (): void {
@@ -1130,32 +1072,23 @@ it('accepts a Model instance as the subject', function (): void {
     Bus::assertDispatched(AnalyzeActivityJob::class);
 });
 
-it('does not create a duplicate weekly_recap row when re-requested', function (): void {
-    $snap = WeeklySnapshot::factory()->create();
-
-    $first = $this->service->request(
-        subjectOrType: WeeklySnapshot::class,
-        subjectId: $snap->id,
-        type: AnalysisType::WeeklyRecap,
-    );
-    $second = $this->service->request(
-        subjectOrType: WeeklySnapshot::class,
-        subjectId: $snap->id,
-        type: AnalysisType::WeeklyRecap,
-    );
-
-    expect($second->id)->toBe($first->id)
-        ->and(Analysis::query()
-            ->where('subject_type', WeeklySnapshot::class)
-            ->where('subject_id', $snap->id)
-            ->where('analysis_type', AnalysisType::WeeklyRecap)
-            ->count())->toBe(1);
-});
-
-it('does not create a duplicate briefing row when re-requested', function (): void {
+it('requestBriefing creates the suggestion row, dispatches one AnalyzeBriefingMascotVoiceJob, and mints no duplicate when re-requested', function (): void {
     $user = User::factory()->create();
 
     $this->service->requestBriefing($user, '2026-05-18');
+
+    // Mascot voice and featured-card voice are dispatched by their own callers.
+    expect(Analysis::query()->where('subject_id', $user->id)->where('discriminator', '2026-05-18')->count())->toBe(1);
+
+    $row = Analysis::query()
+        ->where('subject_type', AnalysisType::BRIEFING_SUBJECT_TYPE)
+        ->where('subject_id', $user->id)
+        ->where('analysis_type', AnalysisType::BriefingMascotVoice)
+        ->where('discriminator', '2026-05-18')
+        ->firstOrFail();
+
+    Bus::assertDispatched(fn (AnalyzeBriefingMascotVoiceJob $job): bool => $job->analysisId === $row->id);
+
     $this->service->requestBriefing($user, '2026-05-18');
 
     expect(Analysis::query()
@@ -1214,37 +1147,6 @@ it('upsertRow with a NULL discriminator collapses concurrent calls to exactly on
             ->where('analysis_type', AnalysisType::WeeklyRecap)
             ->whereNull('discriminator')
             ->count())->toBe(1);
-});
-
-it('upsertGroupRows with NULL discriminators collapses repeat requests to one row per type', function (): void {
-    $activity = Activity::factory()->create();
-
-    $this->service->requestActivityGroup($activity);
-    $this->service->requestActivityGroup($activity);
-
-    expect(Analysis::query()
-        ->where('subject_type', Activity::class)
-        ->where('subject_id', $activity->id)
-        ->whereNull('discriminator')
-        ->count())->toBe(2);
-});
-
-it('upsertGroupRows flags rows it created as wasRecentlyCreated', function (): void {
-    $activity = Activity::factory()->create();
-
-    $rows = $this->service->upsertGroupRows(
-        Activity::class,
-        $activity->id,
-        null,
-        AnalyzeActivityJob::groupedTypes(),
-    );
-
-    expect($rows)->toHaveCount(2)
-        ->and($rows->every(fn (Analysis $row): bool => $row->wasRecentlyCreated))->toBeTrue()
-        ->and($rows->every(fn (Analysis $row): bool => $row->exists && $row->id > 0))->toBeTrue()
-        ->and($rows->keys()->all())->toBe(
-            array_map(fn (AnalysisType $type): string => $type->value, AnalyzeActivityJob::groupedTypes()),
-        );
 });
 
 it('upsertGroupRows leaves pre-existing rows unflagged and flags only the newly inserted ones', function (): void {
@@ -1312,16 +1214,25 @@ it('marks only rows inserted by this caller as recently created when an insert r
         ->and($rows->get(AnalysisType::RunInsight->value)->wasRecentlyCreated)->toBeFalse();
 });
 
-it('newly staged group rows are Pending until the whole group is claimed', function (): void {
+it('upsertGroupRows flags the rows it created, which stay Pending until the whole group is claimed', function (): void {
     Carbon::setTestNow('2026-05-18 07:10:59');
     $activity = Activity::factory()->create();
 
-    $row = $this->service->upsertGroupRows(
+    $rows = $this->service->upsertGroupRows(
         Activity::class,
         $activity->id,
         null,
         AnalyzeActivityJob::groupedTypes(),
-    )->get(AnalysisType::PostRunSpeech->value);
+    );
+
+    expect($rows)->toHaveCount(2)
+        ->and($rows->every(fn (Analysis $row): bool => $row->wasRecentlyCreated))->toBeTrue()
+        ->and($rows->every(fn (Analysis $row): bool => $row->exists && $row->id > 0))->toBeTrue()
+        ->and($rows->keys()->all())->toBe(
+            array_map(fn (AnalysisType $type): string => $type->value, AnalyzeActivityJob::groupedTypes()),
+        );
+
+    $row = $rows->get(AnalysisType::PostRunSpeech->value);
 
     expect($row->status)->toBe(AnalysisStatus::Pending)
         ->and($row->queued_at)->toBeNull()
@@ -1650,25 +1561,17 @@ it('markDone reaches the inbox alone when Telegram is unconfigured', function ()
     );
 });
 
-it('requestRuleBased fills a row from the filler without dispatching or cooling', function (): void {
-    $snap = WeeklySnapshot::factory()->create();
-
-    $row = $this->service->requestRuleBased(
-        WeeklySnapshot::class,
-        $snap->id,
-        AnalysisType::WeeklyRecap,
-    );
-
-    expect($row->status)->toBe(AnalysisStatus::Done)
-        ->and($row->content)->toBeString()->not->toBeEmpty()
-        ->and($row->generated_at)->not->toBeNull()
-        ->and($row->cooldownRemaining())->toBeNull();
-    Bus::assertNotDispatched(AnalyzeWeeklyRecapJob::class);
-});
-
-it('requestRuleBased refills an already-Done row in place rather than minting a second one', function (): void {
+it('requestRuleBased fills a row rule-based with no reason, without dispatching or cooling, and refills it in place rather than minting a second one', function (): void {
     $snap = WeeklySnapshot::factory()->create();
     $first = $this->service->requestRuleBased(WeeklySnapshot::class, $snap->id, AnalysisType::WeeklyRecap);
+
+    expect($first->status)->toBe(AnalysisStatus::Done)
+        ->and($first->content)->toBeString()->not->toBeEmpty()
+        ->and($first->generated_at)->not->toBeNull()
+        ->and($first->cooldownRemaining())->toBeNull()
+        ->and($first->fresh()->served_by)->toBe(ServedBy::RuleBased)
+        ->and($first->fresh()->rule_based_reason)->toBeNull();
+    Bus::assertNotDispatched(AnalyzeWeeklyRecapJob::class);
 
     $second = $this->service->requestRuleBased(WeeklySnapshot::class, $snap->id, AnalysisType::WeeklyRecap);
 
@@ -1843,14 +1746,6 @@ it('stamps the producer the caller states, and has no default to fall back on', 
         ->toBeFalse();
 });
 
-it('marks a rule-based trigger as rule-based', function (): void {
-    $snap = WeeklySnapshot::factory()->create();
-
-    $row = $this->service->requestRuleBased(WeeklySnapshot::class, $snap->id, AnalysisType::WeeklyRecap);
-
-    expect($row->fresh()->served_by)->toBe(ServedBy::RuleBased);
-});
-
 it('does not count a rule-based fill after a newer generation takes ownership', function (): void {
     $snap = WeeklySnapshot::factory()->create();
     $row = $this->service->requestDeferred(WeeklySnapshot::class, $snap->id, AnalysisType::WeeklyRecap);
@@ -1872,27 +1767,6 @@ it('does not count a rule-based fill after a newer generation takes ownership', 
 });
 
 // ── rule_based_reason: why (not merely that) a row was served rule-based ──
-
-it('leaves rule_based_reason null for a rule-based fill with no declared reason', function (): void {
-    $snap = WeeklySnapshot::factory()->create();
-
-    $row = $this->service->requestRuleBased(WeeklySnapshot::class, $snap->id, AnalysisType::WeeklyRecap);
-
-    expect($row->fresh()->rule_based_reason)->toBeNull();
-});
-
-it('records the declared reason on a rule-based fill', function (): void {
-    $snap = WeeklySnapshot::factory()->create();
-
-    $row = $this->service->requestRuleBased(
-        WeeklySnapshot::class,
-        $snap->id,
-        AnalysisType::WeeklyRecap,
-        reason: AnalysisOrigin::Return,
-    );
-
-    expect($row->fresh()->rule_based_reason)->toBe(AnalysisOrigin::Return);
-});
 
 it('never records a reason for an LLM-served row, even if one is passed', function (): void {
     $row = Analysis::factory()->queued()->create();
@@ -1933,27 +1807,16 @@ it('clears a stale rule_based_reason when re-served rule-based for a different r
     expect($row->fresh()->rule_based_reason)->toBeNull();
 });
 
-it('marks a ceiling degrade as rule-based', function (): void {
-    $snap = WeeklySnapshot::factory()->create();
-    breachTheCeilingFor($snap->user_id);
-
-    $row = $this->service->request(
-        subjectOrType: WeeklySnapshot::class,
-        subjectId: $snap->id,
-        type: AnalysisType::WeeklyRecap,
-    );
-
-    expect($row->fresh()->served_by)->toBe(ServedBy::RuleBased)
-        ->and($row->fresh()->rule_based_reason)->toBe(AnalysisOrigin::Capped);
-});
-
 // ── analysis_versions: what a re-narration supersedes ─────────────────
 
-it('keeps the previous narration when a done row is re-narrated', function (): void {
+it('keeps the previous narration and supersedes only its own flag when a done row is re-narrated', function (): void {
     $row = Analysis::factory()->done('first')->create([
         'content_fingerprint' => 'abc123',
         'served_by' => ServedBy::RuleBased,
     ]);
+    $flag = Feedback::factory()->onNarration($row->id)->create();
+    $otherNarration = Feedback::factory()->onNarration($row->id + 1)->create();
+    $planDay = Feedback::factory()->onPlanDay($row->id)->create();
 
     $this->service->markDone($row, 'second', ServedBy::Llm);
 
@@ -1963,44 +1826,20 @@ it('keeps the previous narration when a done row is re-narrated', function (): v
         ->and($version->content)->toBe('first')
         ->and($version->fingerprint)->toBe('abc123')
         ->and($version->served_by)->toBe(ServedBy::RuleBased)
-        ->and($row->fresh()->content)->toBe('second');
-});
-
-it('writes no version for a first narration, which supersedes nothing', function (): void {
-    $row = Analysis::factory()->queued()->create();
-
-    $this->service->markDone($row, 'first', ServedBy::Llm);
-
-    expect(AnalysisVersion::query()->count())->toBe(0);
-});
-
-it('supersedes the flag filed against the narration a re-narration replaces', function (): void {
-    $row = Analysis::factory()->done('first')->create();
-    $flag = Feedback::factory()->onNarration($row->id)->create();
-
-    $this->service->markDone($row, 'second', ServedBy::Llm);
-
-    expect($flag->fresh()->superseded_at)->not->toBeNull();
-});
-
-it('leaves a flag on another subject alone when a narration is replaced', function (): void {
-    $row = Analysis::factory()->done('first')->create();
-    $otherNarration = Feedback::factory()->onNarration($row->id + 1)->create();
-    $planDay = Feedback::factory()->onPlanDay($row->id)->create();
-
-    $this->service->markDone($row, 'second', ServedBy::Llm);
-
-    expect($otherNarration->fresh()->superseded_at)->toBeNull()
+        ->and($row->fresh()->content)->toBe('second')
+        ->and($flag->fresh()->superseded_at)->not->toBeNull()
+        ->and($otherNarration->fresh()->superseded_at)->toBeNull()
         ->and($planDay->fresh()->superseded_at)->toBeNull();
 });
 
-it('leaves the flag standing on a first narration, which replaces nothing', function (): void {
+it('writes no version and leaves the flag standing on a first narration, which supersedes nothing', function (): void {
     $row = Analysis::factory()->queued()->create();
     $flag = Feedback::factory()->onNarration($row->id)->create();
 
     $this->service->markDone($row, 'first', ServedBy::Llm);
 
-    expect($flag->fresh()->superseded_at)->toBeNull();
+    expect(AnalysisVersion::query()->count())->toBe(0)
+        ->and($flag->fresh()->superseded_at)->toBeNull();
 });
 
 // ── replay: its own app-wide cap, never the athlete's slice ───────────

@@ -9,7 +9,6 @@ use App\Models\User;
 use App\Services\AI\AnalysisStatus;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\Artisan;
 
 uses(RefreshDatabase::class);
 
@@ -23,7 +22,7 @@ function runDemoPurgeMigration(): void
 }
 
 it('purges visitor writes from a seeded demo and keeps the seeded exchanges and other athletes', function (): void {
-    Artisan::call('demo:seed');
+    seedSlimDemo();
     $demo = User::query()->where('is_demo', true)->sole();
     $seeded = RunQuestion::query()->where('user_id', $demo->id)->orderBy('id')->get(['id', 'activity_id', 'question', 'answer']);
     $seededRun = $seeded->first()->activity_id;

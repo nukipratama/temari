@@ -62,7 +62,7 @@ it('renders Profile with computed identity + hero stats', function (): void {
             ->where('identity.strava_connected', true));
 });
 
-it('reports strava_connected as false when the user has no connection', function (): void {
+it('paints a fresh athlete\'s identity, empty stats, chill pose and voice while the heavy blocks stay deferred', function (): void {
     $user = User::factory()->create();
 
     $this->actingAs($user)->get('/profile')
@@ -72,7 +72,18 @@ it('reports strava_connected as false when the user has no connection', function
             ->where('identity.strava_connected', false)
             ->where('stats.total_runs', 0)
             ->where('stats.longest_run_km', 0)
-            ->where('stats.has_activity', false));
+            ->where('stats.has_activity', false)
+            ->where('mood', Mood::Chill->value)
+            ->has('identity')
+            ->has('stats')
+            ->has('profileVoice')
+            ->has('mood')
+            ->missing('fitness')
+            ->missing('timeInZone')
+            ->missing('season')
+            ->missing('seasonWeeks')
+            ->missing('progressionByCategory')
+            ->etc());
 });
 
 it('requires auth', function (): void {
@@ -101,35 +112,6 @@ it('poses the hero to the daily vibe, collapsed onto a run mood', function (): v
         ->assertInertia(fn (Assert $page) => $page
             ->component('Profile')
             ->where('mood', Mood::Blazing->value));
-});
-
-it('rests the hero on the chill pose for an athlete with no runs', function (): void {
-    $user = User::factory()->create();
-
-    $this->actingAs($user)->get('/profile')
-        ->assertSuccessful()
-        ->assertInertia(fn (Assert $page) => $page
-            ->component('Profile')
-            ->where('mood', Mood::Chill->value));
-});
-
-it('paints identity, stats and the voice while the heavy blocks stay deferred', function (): void {
-    $user = User::factory()->create();
-
-    $this->actingAs($user)->get('/profile')
-        ->assertSuccessful()
-        ->assertInertia(fn (Assert $page) => $page
-            ->component('Profile')
-            ->has('identity')
-            ->has('stats')
-            ->has('profileVoice')
-            ->has('mood')
-            ->missing('fitness')
-            ->missing('timeInZone')
-            ->missing('season')
-            ->missing('seasonWeeks')
-            ->missing('progressionByCategory')
-            ->etc());
 });
 
 it('includes training_paces derived from VDOT when the user has a qualifying PR', function (): void {

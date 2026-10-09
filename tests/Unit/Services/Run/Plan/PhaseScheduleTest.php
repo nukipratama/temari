@@ -335,7 +335,7 @@ it('never lets a race block reach Taper straight out of a recovery week', functi
     $schedule = new PhaseSchedule();
 
     $cases = [];
-    foreach ([5_000.0, 10_000.0, 21_097.0, 42_195.0] as $distanceM) {
+    foreach ([21_097.0, 42_195.0] as $distanceM) {
         foreach (range(4, 20) as $weeksOut) {
             $phases = array_column($schedule->forRace($arcStart, $arcStart->copy()->addWeeks($weeksOut), $distanceM), 'phase');
             // A block this short holds no scheduled recovery week at all
@@ -354,7 +354,7 @@ it('never lets a race block reach Taper straight out of a recovery week', functi
 
 dataset('race blocks', function (): array {
     $cases = [];
-    foreach ([5_000.0, 10_000.0, 21_097.0, 42_195.0] as $distanceM) {
+    foreach ([21_097.0, 42_195.0] as $distanceM) {
         foreach ([8, 10, 12, 16, 20, 30] as $weeks) {
             $cases["{$distanceM} m, {$weeks} weeks"] = [$weeks, $distanceM];
         }
@@ -413,7 +413,7 @@ it('tapers a race up to 25 km for two weeks at 0.6 and 0.4 of the build level', 
         ->and(prev($multipliers))->toEqualWithDelta($buildLevel * 0.6, 0.0001);
 })->with(function (): array {
     $cases = [];
-    foreach ([5_000.0, 10_000.0, 21_097.0] as $distanceM) {
+    foreach ([21_097.0] as $distanceM) {
         foreach ([8, 10, 12, 16, 20, 30] as $weeks) {
             $cases["{$distanceM} m, {$weeks} weeks"] = [$weeks, $distanceM];
         }

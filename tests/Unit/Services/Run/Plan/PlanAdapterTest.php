@@ -791,14 +791,41 @@ function planAdapterLoadRun(User $user, Carbon $start, int $daysFromStart, ?floa
     ]);
 }
 
+/**
+ * @param  list<array{0: int, 1: ?float, 2?: bool}>  $runs  days from $start, trimp, pending
+ */
+function planAdapterLoadRuns(User $user, Carbon $start, array $runs): void
+{
+    $now = now()->toDateTimeString();
+    Activity::query()->insert(array_map(fn (array $run): array => [
+        ...(($run[2] ?? false) ? Activity::factory()->for($user)->stub() : Activity::factory()->for($user)->analyzed())->make()->getAttributes(),
+        'created_at' => $now,
+        'updated_at' => $now,
+    ], $runs));
+    $activityIds = Activity::query()->withStubs()->where('user_id', $user->id)->orderByDesc('id')->limit(count($runs))->pluck('id')->reverse()->values()->all();
+
+    ActivityDetail::query()->insert(array_map(fn (array $run, int $activityId): array => [
+        ...ActivityDetail::factory()->make([
+            'activity_id' => $activityId,
+            'start_date_local' => $start->copy()->addDays($run[0])->setTime(6, 0),
+            'trimp_edwards' => ($run[2] ?? false) ? null : $run[1],
+            'distance' => 6000.0,
+        ])->getAttributes(),
+        'created_at' => $now,
+        'updated_at' => $now,
+    ], $runs, $activityIds));
+}
+
 it('neither rests nor deloads a steady two-run beginner after one longer easy run', function (): void {
     $user = User::factory()->create();
     $start = Carbon::parse('2026-05-04');
+    $runs = [];
     for ($week = 0; $week < 16; $week++) {
-        planAdapterLoadRun($user, $start, $week * 7 + 1, 60.0);
-        planAdapterLoadRun($user, $start, $week * 7 + 4, 60.0);
+        $runs[] = [$week * 7 + 1, 60.0];
+        $runs[] = [$week * 7 + 4, 60.0];
     }
-    planAdapterLoadRun($user, $start, 16 * 7 - 1, 130.0);
+    $runs[] = [16 * 7 - 1, 130.0];
+    planAdapterLoadRuns($user, $start, $runs);
     $monday = $start->copy()->addWeeks(16);
     Carbon::setTestNow($monday->copy()->setTime(8, 0));
 
@@ -814,16 +841,18 @@ it('neither rests nor deloads a steady two-run beginner after one longer easy ru
 it('neither rests nor deloads a steady four-run athlete in the six weeks after heart rate starts', function (): void {
     $user = User::factory()->create();
     $hrStart = Carbon::parse('2026-06-01');
+    $runs = [];
     for ($day = -84; $day < 0; $day++) {
         if (in_array(($day + 84) % 7, [0, 2, 4, 6], true)) {
-            planAdapterLoadRun($user, $hrStart, $day, null);
+            $runs[] = [$day, null];
         }
     }
     for ($day = 0; $day < 42; $day++) {
         if (in_array($day % 7, [0, 2, 4, 6], true)) {
-            planAdapterLoadRun($user, $hrStart, $day, 148.0);
+            $runs[] = [$day, 148.0];
         }
     }
+    planAdapterLoadRuns($user, $hrStart, $runs);
 
     for ($week = 1; $week <= 6; $week++) {
         $monday = $hrStart->copy()->addWeeks($week);
@@ -863,9 +892,7 @@ it('stores no low-readiness deload for a race season opened mid-backfill, and re
         }
     }
     $analysedFrom = (int) floor(count($runDays) * 0.75);
-    foreach ($runDays as $index => $day) {
-        planAdapterLoadRun($user, $start, $day, 148.0, pending: $index < $analysedFrom);
-    }
+    planAdapterLoadRuns($user, $start, array_map(fn (int $index, int $day): array => [$day, 148.0, $index < $analysedFrom], array_keys($runDays), $runDays));
     $monday = $start->copy()->addWeeks(16);
     Carbon::setTestNow($monday->copy()->setTime(8, 0));
 
@@ -889,11 +916,13 @@ it('stores no low-readiness deload for a race season opened mid-backfill, and re
 it('adapts a steady plan-shaped six-session week and a steady daily runner as steady', function (array $runDays, float $trimp): void {
     $user = User::factory()->create();
     $start = Carbon::parse('2026-05-04');
+    $runs = [];
     for ($week = 0; $week < 12; $week++) {
         foreach ($runDays as $offset => $multiple) {
-            planAdapterLoadRun($user, $start, $week * 7 + $offset, $trimp * $multiple);
+            $runs[] = [$week * 7 + $offset, $trimp * $multiple];
         }
     }
+    planAdapterLoadRuns($user, $start, $runs);
     $monday = $start->copy()->addWeeks(12);
     Carbon::setTestNow($monday->copy()->setTime(8, 0));
 
@@ -908,11 +937,13 @@ it('adapts a steady plan-shaped six-session week and a steady daily runner as st
 it('handles a return after a two-week gap once, as a re-entry, not again as strain', function (): void {
     $user = User::factory()->create();
     $start = Carbon::parse('2026-05-04');
+    $runs = [];
     for ($week = 0; $week < 10; $week++) {
         foreach ([0, 2, 4, 6] as $offset) {
-            planAdapterLoadRun($user, $start, $week * 7 + $offset, 90.0);
+            $runs[] = [$week * 7 + $offset, 90.0];
         }
     }
+    planAdapterLoadRuns($user, $start, $runs);
     $gapStart = $start->copy()->addWeeks(10);
     foreach ([0, 2, 4, 6] as $offset) {
         PlannedSession::factory()->for($user)->create([

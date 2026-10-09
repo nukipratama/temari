@@ -156,17 +156,6 @@ it('breaks usage down by deployment with per-deployment cost', function () use (
         ->and($byDeployment->get('gpt-4o-mini')['cost'])->toBe(0.30);
 });
 
-it('reports the budget block with null ceiling and the config currency by default', function () use ($range): void {
-    [$from, $to] = $range();
-    $result = $this->report->build($from, $to, null);
-
-    expect($result['budget'])->toMatchArray([
-        'todayCost' => 0.0,
-        'dailyCeiling' => null,
-        'currency' => 'USD',
-    ]);
-});
-
 it('reports total spend against a combined ceiling derived from the per-athlete one', function () use ($range): void {
     config()->set('azure_openai.daily_cost_ceiling_per_user', 5.0);
     User::factory()->count(3)->create();
@@ -184,15 +173,6 @@ it('reports total spend against a combined ceiling derived from the per-athlete 
         ->and($result['budget']['todayCost'])->toBe(2.50);
 });
 
-it('reports no combined ceiling when none is configured', function () use ($range): void {
-    config()->set('azure_openai.daily_cost_ceiling_per_user', null);
-
-    $result = $this->report->build(Carbon::today()->subDay(), Carbon::today()->addDay(), null);
-
-    expect($result['budget']['dailyCeiling'])->toBeNull()
-        ->and($result['budget']['perUserCeiling'])->toBeNull();
-});
-
 it('reports the enforced app-wide ceiling alongside the derived combined figure', function (): void {
     config()->set('azure_openai.daily_cost_ceiling_per_user', 5.0);
     config()->set('azure_openai.daily_cost_ceiling_total', 8.0);
@@ -204,12 +184,6 @@ it('reports the enforced app-wide ceiling alongside the derived combined figure'
     expect($result['budget']['totalCeiling'])->toBe(8.0)
         ->and($result['budget']['dailyCeiling'])->toBe(15.0)
         ->and($result['budget']['todayCost'])->toBe(2.50);
-});
-
-it('reports no app-wide ceiling when none is configured', function (): void {
-    $result = $this->report->build(Carbon::today()->subDay(), Carbon::today()->addDay(), null);
-
-    expect($result['budget']['totalCeiling'])->toBeNull();
 });
 
 it('carries the ceiling trip and the rule-based fill count into the budget block', function () use ($range): void {
@@ -286,12 +260,6 @@ it('narrows the stacked series to one athlete when the chart filter names one', 
     expect($this->report->dailyCostByKind($from, $to, $alice->id)['days'][0]['cost'])->toBe(2.50);
 });
 
-it('returns an empty stacked series when nothing billed in the range', function () use ($range): void {
-    [$from, $to] = $range();
-
-    expect($this->report->dailyCostByKind($from, $to))->toBe(['kinds' => [], 'days' => []]);
-});
-
 it('labels available kinds via AnalysisType, falling back to the raw value', function () use ($range): void {
     seedReportUsage('card_flavor', 10, 5, Carbon::parse('2026-05-10'));
     seedReportUsage('totally-unknown-kind', 10, 5, Carbon::parse('2026-05-11'));
@@ -304,7 +272,7 @@ it('labels available kinds via AnalysisType, falling back to the raw value', fun
         ->and($kinds->get('totally-unknown-kind')['label'])->toBe('totally-unknown-kind');
 });
 
-it('returns zeroed totals and empty breakdowns when no rows fall in range', function () use ($range): void {
+it('returns zeroed figures, empty breakdowns and no ceilings when nothing billed and nothing is configured', function () use ($range): void {
     [$from, $to] = $range();
     $result = $this->report->build($from, $to, null);
 
@@ -313,7 +281,26 @@ it('returns zeroed totals and empty breakdowns when no rows fall in range', func
     ])
         ->and($result['byKind'])->toBe([])
         ->and($result['byDeployment'])->toBe([])
-        ->and($result['availableKinds'])->toBe([]);
+        ->and($result['availableKinds'])->toBe([])
+        ->and($result['budget'])->toMatchArray([
+            'todayCost' => 0.0,
+            'dailyCeiling' => null,
+            'currency' => 'USD',
+        ])
+        ->and($result['contentFilter'])->toBe([
+            'trips' => 0,
+            'pct' => null,
+        ])
+        ->and($this->report->dailyCostByKind($from, $to))->toBe(['kinds' => [], 'days' => []]);
+
+    $result = $this->report->build(Carbon::today()->subDay(), Carbon::today()->addDay(), null);
+
+    expect($result['budget']['dailyCeiling'])->toBeNull()
+        ->and($result['budget']['perUserCeiling'])->toBeNull()
+        ->and($result['budget']['totalCeiling'])->toBeNull()
+        ->and($result['budget']['tokens'])->toBe([
+            'prompt' => 0, 'completion' => 0, 'cached' => 0, 'total' => 0,
+        ]);
 });
 
 it('exposes raw cached token counts on totals and byKind, not just the cache percentage', function (): void {
@@ -338,14 +325,6 @@ it('reports raw token totals for today, decoupled from the selected range', func
         'completion' => 200,
         'cached' => 600,
         'total' => 1200,
-    ]);
-});
-
-it('reports zeroed today tokens when nothing billed today', function (): void {
-    $result = $this->report->build(Carbon::today()->subDay(), Carbon::today()->addDay(), null);
-
-    expect($result['budget']['tokens'])->toBe([
-        'prompt' => 0, 'completion' => 0, 'cached' => 0, 'total' => 0,
     ]);
 });
 
@@ -441,15 +420,6 @@ it('reports the content-filter trip count and its share of calls in range', func
     ]);
 });
 
-it('reports a null content-filter share when the range has no calls', function () use ($range): void {
-    [$from, $to] = $range();
-
-    expect($this->report->build($from, $to, null)['contentFilter'])->toBe([
-        'trips' => 0,
-        'pct' => null,
-    ]);
-});
-
 /** A Done narration owned by $userId, narrated inside the report's range. */
 function seedDoneNarration(int $userId, ?ServedBy $servedBy, Carbon $when, ?AnalysisOrigin $reason = null): void
 {
@@ -486,7 +456,7 @@ it('measures the money columns over fixed windows, whatever range is selected', 
         ->and($row['tokens'])->toBe(3_000_000);
 });
 
-it('gives the sparkline one slot per day of the window, silent days included', function (): void {
+it('gives the sparkline one slot per day of the window, silent days included, and never caps without a configured ceiling', function (): void {
     $alice = User::factory()->create();
     seedReportUsage('briefing', 1_000_000, 0, Carbon::today(), userId: $alice->id);
 
@@ -495,10 +465,12 @@ it('gives the sparkline one slot per day of the window, silent days included', f
 
     expect($row['sparkline'])->toHaveCount(TokenUsageReport::ATHLETE_WINDOW_DAYS)
         ->and($row['sparkline'][0]['cost'])->toBe(0.0)
-        ->and(end($row['sparkline'])['cost'])->toBe(2.50);
+        ->and(end($row['sparkline'])['cost'])->toBe(2.50)
+        ->and($row['ceiling'])->toBeNull()
+        ->and($row['capped'])->toBeFalse();
 });
 
-it('marks an athlete capped once today reaches their ceiling', function (): void {
+it('marks an athlete capped once today reaches their ceiling, and reads a today-only override in its place', function (): void {
     config()->set('azure_openai.daily_cost_ceiling_per_user', 2.0);
     $alice = User::factory()->create();
     seedReportUsage('briefing', 1_000_000, 0, Carbon::today(), userId: $alice->id); // 2.50
@@ -509,12 +481,7 @@ it('marks an athlete capped once today reaches their ceiling', function (): void
     expect($row['ceiling'])->toBe(2.0)
         ->and($row['capped'])->toBeTrue()
         ->and($row['ceiling_overridden'])->toBeFalse();
-});
 
-it('reads a today-only override in place of the configured ceiling', function (): void {
-    config()->set('azure_openai.daily_cost_ceiling_per_user', 2.0);
-    $alice = User::factory()->create();
-    seedReportUsage('briefing', 1_000_000, 0, Carbon::today(), userId: $alice->id); // 2.50
     app(CeilingOverride::class)->set($alice->id, 10.0);
 
     $row = collect($this->report->athletes(Carbon::today(), Carbon::now()))
@@ -522,17 +489,6 @@ it('reads a today-only override in place of the configured ceiling', function ()
 
     expect($row['ceiling'])->toBe(10.0)
         ->and($row['ceiling_overridden'])->toBeTrue()
-        ->and($row['capped'])->toBeFalse();
-});
-
-it('never caps an athlete when no ceiling is configured at all', function (): void {
-    $alice = User::factory()->create();
-    seedReportUsage('briefing', 1_000_000, 0, Carbon::today(), userId: $alice->id);
-
-    $row = collect($this->report->athletes(Carbon::today(), Carbon::now()))
-        ->firstWhere('user_id', $alice->id);
-
-    expect($row['ceiling'])->toBeNull()
         ->and($row['capped'])->toBeFalse();
 });
 

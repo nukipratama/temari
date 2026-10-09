@@ -124,64 +124,28 @@ it('never surfaces another user\'s week comparison', function (): void {
         ->assertJsonPath('props.weekComparison.this_week_runs', null);
 });
 
-it('ships the load section as one 7-day summary, not one entry per range', function (): void {
+it('ships the load section as one 7-day summary, not one entry per range, and a fitness trend from the user\'s TRIMP history', function (): void {
     $user = User::factory()->create();
     seedTrendsTrimpDay($user, 80);
 
     $this->actingAs($user)
-        ->get('/trends', inertiaPartialHeaders($this->actingAs($user), '/trends', 'Trends', 'load'))
+        ->get('/trends', inertiaPartialHeaders($this->actingAs($user), '/trends', 'Trends', 'load,ctlTrend'))
         ->assertSuccessful()
         ->assertJsonPath('props.load.ctl_42d', fn (mixed $ctl): bool => is_numeric($ctl))
         ->assertJsonPath('props.load.weekly_trimp', fn (mixed $trimp): bool => is_numeric($trimp))
-        ->assertJsonMissingPath('props.load.weekly_trimp_reference');
-});
-
-it('never surfaces another user\'s training load in the load summary', function (): void {
-    $user = User::factory()->create();
-    $other = User::factory()->create();
-    seedTrendsTrimpDay($other, 80);
-
-    $this->actingAs($user)
-        ->get('/trends', inertiaPartialHeaders($this->actingAs($user), '/trends', 'Trends', 'load'))
-        ->assertJsonPath('props.load', null);
-});
-
-it('renders an empty fitness trend for a fresh user', function (): void {
-    $user = User::factory()->create();
-
-    $this->actingAs($user)
-        ->get('/trends', inertiaPartialHeaders($this->actingAs($user), '/trends', 'Trends', 'ctlTrend'))
-        ->assertSuccessful()
-        ->assertJsonPath('component', 'Trends')
-        ->assertJsonPath('props.ctlTrend', []);
-});
-
-it('renders a fitness trend from the user\'s TRIMP history', function (): void {
-    $user = User::factory()->create();
-    seedTrendsTrimpDay($user, 80);
-
-    $this->actingAs($user)
-        ->get('/trends', inertiaPartialHeaders($this->actingAs($user), '/trends', 'Trends', 'ctlTrend'))
+        ->assertJsonMissingPath('props.load.weekly_trimp_reference')
         ->assertJsonPath('props.ctlTrend', fn (mixed $trend): bool => is_array($trend) && count($trend) > 0);
 });
 
-it('never surfaces another user\'s training load on the fitness trend', function (): void {
+it('never surfaces another user\'s training load in the load summary or on the fitness trend', function (): void {
     $user = User::factory()->create();
     $other = User::factory()->create();
     seedTrendsTrimpDay($other, 80);
 
     $this->actingAs($user)
-        ->get('/trends', inertiaPartialHeaders($this->actingAs($user), '/trends', 'Trends', 'ctlTrend'))
+        ->get('/trends', inertiaPartialHeaders($this->actingAs($user), '/trends', 'Trends', 'load,ctlTrend'))
+        ->assertJsonPath('props.load', null)
         ->assertJsonPath('props.ctlTrend', []);
-});
-
-it('passes a pending narration payload for the 7d verdict when none exists', function (): void {
-    $user = User::factory()->create();
-
-    $this->actingAs($user)
-        ->get('/trends', inertiaPartialHeaders($this->actingAs($user), '/trends', 'Trends', 'narration'))
-        ->assertJsonPath('props.narration.status', 'pending')
-        ->assertJsonPath('props.narration.discriminator', '7d');
 });
 
 it('passes the TrendRead 7d analysis as the single narration payload', function (): void {
@@ -231,16 +195,6 @@ it('never surfaces another user\'s narration', function (): void {
         ->assertJsonPath('props.narration.status', 'pending');
 });
 
-it('renders empty chart annotations for a user with no deload weeks or races', function (): void {
-    $user = User::factory()->create();
-
-    $this->actingAs($user)
-        ->get('/trends', inertiaPartialHeaders($this->actingAs($user), '/trends', 'Trends', 'chartAnnotations'))
-        ->assertSuccessful()
-        ->assertJsonPath('props.chartAnnotations.deload', [])
-        ->assertJsonPath('props.chartAnnotations.race', []);
-});
-
 it('marks a deload week and a race day from the athlete\'s plan history', function (): void {
     $user = User::factory()->create();
     PlannedSession::factory()->for($user)->create([
@@ -273,11 +227,18 @@ it('never surfaces another user\'s plan annotations', function (): void {
         ->assertJsonPath('props.chartAnnotations.deload', []);
 });
 
-it('serves the active race outlook from the same presenter as /race, and null with no race', function (): void {
+it('serves a fresh user an empty fitness trend, a pending 7d verdict, empty chart annotations and no race outlook, then the active race outlook from the same presenter as /race', function (): void {
     $user = User::factory()->create();
 
     $this->actingAs($user)
-        ->get('/trends', inertiaPartialHeaders($this->actingAs($user), '/trends', 'Trends', 'raceOutlook'))
+        ->get('/trends', inertiaPartialHeaders($this->actingAs($user), '/trends', 'Trends', 'ctlTrend,narration,chartAnnotations,raceOutlook'))
+        ->assertSuccessful()
+        ->assertJsonPath('component', 'Trends')
+        ->assertJsonPath('props.ctlTrend', [])
+        ->assertJsonPath('props.narration.status', 'pending')
+        ->assertJsonPath('props.narration.discriminator', '7d')
+        ->assertJsonPath('props.chartAnnotations.deload', [])
+        ->assertJsonPath('props.chartAnnotations.race', [])
         ->assertJsonPath('props.raceOutlook', null);
 
     RaceGoal::factory()->for($user)->create(['race_date' => Carbon::today()->addWeeks(10)->toDateString(), 'distance_m' => 10_000, 'goal_time_sec' => 3_000]);
