@@ -55,6 +55,7 @@ afterEach(() => {
     vi.unstubAllGlobals();
     Reflect.deleteProperty(navigator, 'serviceWorker');
     vi.clearAllMocks();
+    localStorage.clear();
 });
 
 describe('urlBase64ToUint8Array', () => {
@@ -219,8 +220,6 @@ describe('currentSubscription', () => {
 });
 
 describe('replacing the subscription this device saved before', () => {
-    afterEach(() => localStorage.clear());
-
     function postedBody(): Record<string, unknown> {
         const [, init] = (fetch as ReturnType<typeof vi.fn>).mock.calls[0] as [
             string,
@@ -286,8 +285,6 @@ describe('replacing the subscription this device saved before', () => {
 });
 
 describe('releaseDeviceSubscription', () => {
-    afterEach(() => localStorage.clear());
-
     it('unsubscribes the browser and returns its endpoint', async () => {
         stubServiceWorker();
         localStorage.setItem('temari-push-endpoint', fakeSubscription.endpoint);
@@ -328,8 +325,6 @@ describe('releaseDeviceSubscription', () => {
 });
 
 describe('reportSeen', () => {
-    afterEach(() => localStorage.clear());
-
     const athlete = { auth: { user: { is_demo: false } } };
 
     function fetchCalls(): [string, RequestInit][] {

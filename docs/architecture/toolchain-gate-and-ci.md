@@ -78,6 +78,7 @@ PR frontend shards run Vitest in a shuffled order seeded with the workflow run i
 first in the step log (`Vitest shuffle seed: <id>`), so an order-dependent test goes red on the PR instead of
 on a later unlucky run. Reproduce a red shard locally with
 `./vendor/bin/sail npx vitest run --sequence.shuffle --sequence.seed=<id>` (add `--shard=<n>/3` to
-match one shard). The merge-reports coverage job and main-push shards stay in file order.
+match one shard); a red PR shard writes that exact command to its job summary. A re-run keeps the run id and
+so the order, so only a new push reshuffles. The merge-reports coverage job and main-push shards stay in file order.
 
 See also: [[deployment]].
