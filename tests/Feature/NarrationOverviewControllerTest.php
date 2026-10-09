@@ -322,7 +322,8 @@ it('runs the mutating retry and recover actions only for the correct devtools pa
         ->assertUnauthorized();
     Bus::assertNothingDispatched();
 
-    $this->withSession($token)
+    $this->withHeaders(['Authorization' => 'Basic '.base64_encode('devtools:wrong')])
+        ->withSession($token)
         ->post('/devtools/narration/recover', $token)
         ->assertUnauthorized();
 
