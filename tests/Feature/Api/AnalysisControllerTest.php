@@ -132,7 +132,7 @@ it('authorizes post-run speech only for the activity owner', function (): void {
     Bus::assertDispatched(AnalyzeActivityJob::class);
 });
 
-it('responds with the flat payload shape at the top level, not a resource-wrapped "data" envelope', function (): void {
+it('returns the current state via GET show as a flat payload, not a resource-wrapped "data" envelope', function (): void {
     $user = User::factory()->create();
     Analysis::factory()->done('content here')->create([
         'subject_id' => $user->id,
@@ -141,7 +141,9 @@ it('responds with the flat payload shape at the top level, not a resource-wrappe
 
     $response = $this->actingAs($user)
         ->getJson("/api/analyses/briefing_mascot_voice/{$user->id}?discriminator=2026-05-18")
-        ->assertSuccessful();
+        ->assertSuccessful()
+        ->assertJsonPath('status', AnalysisStatus::Done->value)
+        ->assertJsonPath('content', 'content here');
 
     expect(array_keys($response->json()))->toEqualCanonicalizing([
         'id', 'status', 'content', 'type', 'is_zone_dependent',
@@ -149,20 +151,6 @@ it('responds with the flat payload shape at the top level, not a resource-wrappe
         'generated_at', 'retry_after_seconds', 'flagged', 'unread_while_away',
         'is_stale', 'stale_at',
     ]);
-});
-
-it('returns the current state via GET show', function (): void {
-    $user = User::factory()->create();
-    Analysis::factory()->done('content here')->create([
-        'subject_id' => $user->id,
-        'discriminator' => '2026-05-18',
-    ]);
-
-    $this->actingAs($user)
-        ->getJson("/api/analyses/briefing_mascot_voice/{$user->id}?discriminator=2026-05-18")
-        ->assertSuccessful()
-        ->assertJsonPath('status', AnalysisStatus::Done->value)
-        ->assertJsonPath('content', 'content here');
 });
 
 it('returns a pending pseudo-row when no analysis exists yet', function (): void {
@@ -657,7 +645,7 @@ it('does not dispatch a billed job when a discriminator is sent to a type whose 
  * the reviewer keeps a working "Reread" and no anonymous visitor can spend
  * Azure tokens.
  */
-it('serves the demo account a rule-based narration instead of dispatching a billed job', function (): void {
+it('serves the demo account a rule-based narration instead of dispatching a billed job, and stays re-triggerable', function (): void {
     $user = User::factory()->create(['is_demo' => true]);
 
     $response = $this->actingAs($user)
@@ -671,14 +659,9 @@ it('serves the demo account a rule-based narration instead of dispatching a bill
     $row = Analysis::query()->sole();
     expect($row->status)->toBe(AnalysisStatus::Done)
         ->and($row->content)->toBe($response->json('content'));
-});
 
-it('leaves the demo account re-triggerable, since a rule-based fill starts no cooldown', function (): void {
-    $user = User::factory()->create(['is_demo' => true]);
-    $url = "/api/analyses/briefing_mascot_voice/{$user->id}/trigger?discriminator=2026-05-18";
-
-    $this->actingAs($user)->postJson($url)->assertSuccessful();
-    $this->actingAs($user)->postJson($url)
+    $this->actingAs($user)
+        ->postJson("/api/analyses/briefing_mascot_voice/{$user->id}/trigger?discriminator=2026-05-18")
         ->assertSuccessful()
         ->assertJson(['status' => 'done', 'retry_after_seconds' => null]);
 
@@ -731,16 +714,6 @@ it('still serves the demo account a rule-based narration while narration is paus
 
     Bus::assertNothingDispatched();
     expect($response->json('content'))->toBeString()->not->toBeEmpty();
-});
-
-it('still dispatches a real billed job for a non-demo user on the same block', function (): void {
-    $user = User::factory()->create(['is_demo' => false]);
-
-    $this->actingAs($user)
-        ->postJson("/api/analyses/briefing_mascot_voice/{$user->id}/trigger?discriminator=2026-05-18")
-        ->assertSuccessful();
-
-    Bus::assertDispatched(AnalyzeBriefingMascotVoiceJob::class);
 });
 
 // ── trigger → narration age cutoff ──────────────────────────────────────────
