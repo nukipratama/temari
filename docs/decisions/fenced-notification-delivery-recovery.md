@@ -25,6 +25,8 @@ code_refs:
 
 > **Fact update, 2026-10-06.** The decision stands. The forced-send path is gone from the code, so nothing resends an `Abandoned` Telegram delivery; a keyed Telegram send that loses its connection is settled `Abandoned` at once rather than retried; and the unclaimed `Failed` write survives as `NotificationDeliveryClaim::recordUnclaimedFailed()`, used when a send is skipped as stale at delivery.
 
+> **Partly superseded (2026-10-09) by [[queue-resilient-stale-web-push-retries]].** "It clears the web-push claim, increments its version, and queues a web-push retry job" no longer holds: the recovery sweep queues the retry and leaves the claim row unchanged, and the retry takes the stale claim over itself. Telegram stays terminal `Abandoned`.
+
 ## Context
 
 A worker can stop after claiming a notification but before it records the provider result. The database then cannot tell whether the provider accepted the send. Releasing every stale claim risks a visible Telegram duplicate; retaining every claim can lose a web push.

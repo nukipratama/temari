@@ -3,7 +3,7 @@ title: The LLM surface — everything that calls a model, what starts it, and wh
 description: The complete inventory of narrators, agent tools and deterministic producers, with the five origins that dispatch them, the seven things that stop them, a proposed verdict per surface, and what the prod rebuild means for spend.
 tags: [architecture, ai]
 status: living
-reviewed: 2026-10-07
+reviewed: 2026-10-09
 code_refs:
   - routes/console.php
   - app/Services/AI/StructuredChatCaller.php
@@ -37,15 +37,15 @@ computes the numbers it describes, and who starts each call. Read it before addi
 block, before cutting one, and before trying to explain a spend spike.
 
 Every call funnels through one chokepoint —
-[`StructuredChatCaller`](../../app/Services/AI/StructuredChatCaller.php#L29). If a code path does
+[`StructuredChatCaller`](../../app/Services/AI/StructuredChatCaller.php). If a code path does
 not reach it, it does not cost money. That is enforced, not merely intended:
-[`LlmCallBoundaryTest`](../../tests/Unit/Architecture/LlmCallBoundaryTest.php#L78) fails the
+[`LlmCallBoundaryTest`](../../tests/Unit/Architecture/LlmCallBoundaryTest.php) fails the
 structure group if any class outside it builds an OpenAI client, reaches `AzureOpenAIClient`, or
 reaches the `AgentLoop` transport it owns — the three ways a call could be made with no ceiling,
 no breaker and no metering row behind it.
 
 **This note is a gate, not a diary.**
-[`LlmInventoryDocTest`](../../tests/Unit/Architecture/LlmInventoryDocTest.php#L44) fails the
+[`LlmInventoryDocTest`](../../tests/Unit/Architecture/LlmInventoryDocTest.php) fails the
 structure group when a narrator, a concrete agent tool or an `AnalysisType` case exists in code but
 not here, *and* when this note names a narrator or tool that no longer exists. Adding a surface
 without a row here is a red build.
@@ -62,9 +62,9 @@ the `web` middleware group, stamps `AnalysisOrigin::User` on every one of them �
 whose origin is not `User` (a webhook, a devtools re-arm) still declares itself explicitly, which
 wins because it runs after the middleware default. A job or console command, which never runs
 through that middleware, always declares itself with
-[`NarrationOrigin::set()`](../../app/Services/AI/NarrationOrigin.php#L32). Either way,
-[`AnalysisService::stamped()`](../../app/Services/AI/AnalysisService.php#L659) writes the current
-[`AnalysisOrigin`](../../app/Services/AI/AnalysisOrigin.php#L19) onto the job it dispatches, and the
+[`NarrationOrigin::set()`](../../app/Services/AI/NarrationOrigin.php). Either way,
+[`AnalysisService::stamped()`](../../app/Services/AI/AnalysisService.php) writes the current
+[`AnalysisOrigin`](../../app/Services/AI/AnalysisOrigin.php) onto the job it dispatches, and the
 job restores it before generating, so the metering row records what started the call rather than
 only which narrator answered. A dispatch site that is not an authenticated web request and declares
 nothing records `unknown` rather than a guess.
@@ -82,21 +82,21 @@ everyone. See [[narration-spends-only-on-active-athletes]].
 
 | when | command | what it dispatches |
 |---|---|---|
-| daily 00:01 | [`ai:daily-briefing`](../../routes/console.php#L43) | one `BriefingMascotVoice` per active non-demo user — narrates right away even for a first connect whose backlog is still draining ([[history-narrates-on-demand]], #1054) |
-| Mon 00:16 | [`ai:weekly-recap`](../../routes/console.php#L57) | `WeeklyRecap`, oldest unfinished link first; `ai:self-heal` usually narrates it at 00:00 |
-| Mon 00:21 | [`ai:weekly-profile`](../../routes/console.php#L66) | `ProfileVoice`, keyed by ISO week — every automatic request waits until that athlete's streak is settled through the closed week and not dirty; the athlete's own Reread does not wait |
-| **Mon 00:26** | [**`plan:regenerate`**](../../routes/console.php#L104) | **one row per user, the season voice — see below** |
-| daily 06:00 | [`ai:trend-read 7d`](../../routes/console.php#L125) | `TrendRead`, discriminator `7d` — the only range since #967 |
+| daily 00:01 | [`ai:daily-briefing`](../../routes/console.php) | one `BriefingMascotVoice` per active non-demo user — narrates right away even for a first connect whose backlog is still draining ([[history-narrates-on-demand]], #1054) |
+| Mon 00:16 | [`ai:weekly-recap`](../../routes/console.php) | `WeeklyRecap`, oldest unfinished link first; `ai:self-heal` usually narrates it at 00:00 |
+| Mon 00:21 | [`ai:weekly-profile`](../../routes/console.php) | `ProfileVoice`, keyed by ISO week — every automatic request waits until that athlete's streak is settled through the closed week and not dirty; the athlete's own Reread does not wait |
+| **Mon 00:26** | [**`plan:regenerate`**](../../routes/console.php) | **one row per user, the season voice — see below** |
+| daily 06:00 | [`ai:trend-read 7d`](../../routes/console.php) | `TrendRead`, discriminator `7d` — the only range since #967 |
 | first connect | [`KickoffRecapsJob`](../../app/Jobs/AI/KickoffRecapsJob.php) | the `trend_read` row, so a new account isn't a day behind |
-| hourly | [`ai:self-heal`](../../routes/console.php#L137) | recovery only — see origin 4; also the only scheduled path for `MonthlyRecap`, which it narrates from the ingest-staged row once the month closes |
-| hourly | [`ai:catch-up`](../../routes/console.php#L146) | creation only — recreates a kickoff row a missed scheduler minute never staged, never dispatches |
+| hourly | [`ai:self-heal`](../../routes/console.php) | recovery only — see origin 4; also the only scheduled path for `MonthlyRecap`, which it narrates from the ingest-staged row once the month closes |
+| hourly | [`ai:catch-up`](../../routes/console.php) | creation only — recreates a kickoff row a missed scheduler minute never staged, never dispatches |
 
 **A new athlete's recap kickoff only reaches periods that closed after they connected.**
 [`KickoffWeeklyRecaps`](../../app/Actions/AI/KickoffWeeklyRecaps.php) /
 [`KickoffMonthlyRecaps`](../../app/Actions/AI/KickoffMonthlyRecaps.php) — the shared implementation
 behind `ai:weekly-recap` and `KickoffRecapsJob`'s first-connect kickoff — route a
 week or month whose close fell before `StravaConnection.created_at` (read through
-[`HydrationBacklog::connectedAt()`](../../app/Services/AI/HydrationBacklog.php#L21) /
+[`HydrationBacklog::connectedAt()`](../../app/Services/AI/HydrationBacklog.php) /
 `connectedAtFor()`, the same anchor [[recap-waits-for-hydration]] and [[history-narrates-on-demand]]
 use) to `AnalysisService::requestRuleBased()` alongside the too-old bucket instead of the LLM. A
 three-month backfill therefore bills nothing for the roughly twelve weekly and three monthly recaps
@@ -108,13 +108,13 @@ hydration wait, unchanged — but a month that closed after connecting and would
 LLM read is staged Pending instead while `HydrationBacklog::monthAwaitsHydration()` (grace-bounded)
 holds (#1054), and the hourly `ai:self-heal` sweep resumes it once that clears.
 The pre-connect test is one classifier,
-[`RecapPeriod::weekClosedBeforeConnect()` / `monthClosedBeforeConnect()`](../../app/Services/AI/RecapPeriod.php#L36),
+[`RecapPeriod::weekClosedBeforeConnect()` / `monthClosedBeforeConnect()`](../../app/Services/AI/RecapPeriod.php),
 shared by both kickoffs, the self-heal recap sweeps (origin 4) and `NarrateOnReturnJob` (origin 5).
 See [[deferred-recap-windowing]] and [[history-narrates-on-demand]].
 
 **`plan:regenerate` is the one to know about.** The periodizer it runs is deterministic and free,
 and it still runs for every athlete. The narration half then calls
-[`requestForCurrentWeek()`](../../app/Services/AI/PlanNarrationRequester.php#L154) for each
+[`requestForCurrentWeek()`](../../app/Services/AI/PlanNarrationRequester.php) for each
 recently-active athlete, touching one row: `PlanSeasonVoice`. Its fingerprint includes the
 sustained-ahead signal and the current week's adaptation reason/deload, so a Monday plan change
 re-reads the season only when that material changes. There is no per-day read
@@ -123,13 +123,13 @@ re-reads the season only when that material changes. There is no per-day read
 **A brand-new account also gets today's briefing on the day it signs up.** `BriefingMascotVoice`
 is keyed by the day, and the only thing that used to stage it was the 00:01 kickoff, so an account
 created at any other hour met a silent Today card until the next midnight. Two triggers close that,
-both through [RequestTodaysBriefing](../../app/Actions/AI/RequestTodaysBriefing.php#L30) and both
+both through [RequestTodaysBriefing](../../app/Actions/AI/RequestTodaysBriefing.php) and both
 reusing `AnalysisService::requestBriefing()`, the same upsert the kickoff and `ai:catch-up` share:
 
 | when | entry point | origin | what it dispatches |
 |---|---|---|---|
-| the onboarding wizard is submitted | [`RequestTodaysBriefing::atSignup()`](../../app/Actions/AI/RequestTodaysBriefing.php#L38) from [OnboardingController::store](../../app/Http/Controllers/OnboardingController.php#L53) | user | one `BriefingMascotVoice` for today — one mini call per new athlete, never a second row |
-| the first-connect backfill lands | [`RequestTodaysBriefing::afterBackfill()`](../../app/Actions/AI/RequestTodaysBriefing.php#L55) from [KickoffRecapsJob](../../app/Jobs/AI/KickoffRecapsJob.php#L65) | ingest | the same row, invalidated, so a briefing narrated against an empty history is re-read once — at most one re-run per athlete per day |
+| the onboarding wizard is submitted | [`RequestTodaysBriefing::atSignup()`](../../app/Actions/AI/RequestTodaysBriefing.php) from [OnboardingController::store](../../app/Http/Controllers/OnboardingController.php) | user | one `BriefingMascotVoice` for today — one mini call per new athlete, never a second row |
+| the first-connect backfill lands | [`RequestTodaysBriefing::afterBackfill()`](../../app/Actions/AI/RequestTodaysBriefing.php) from [KickoffRecapsJob](../../app/Jobs/AI/KickoffRecapsJob.php) | ingest | the same row, invalidated, so a briefing narrated against an empty history is re-read once — at most one re-run per athlete per day |
 
 The second exists because `BriefingMascotVoice` stamps no `MaterialFingerprint`: a plain request
 leaves a Done row alone, so without `invalidate: true` the first briefing would keep whatever it said
@@ -167,7 +167,7 @@ lookup for no behaviour change. Used to kick all four `trend_read` ranges at onc
 retired (#967).
 
 **A scheduled trend read re-bills only where the range's own numbers moved.**
-[`TrendReadCommand`](../../app/Console/Commands/AI/TrendReadCommand.php#L20) fingerprints
+[`TrendReadCommand`](../../app/Console/Commands/AI/TrendReadCommand.php) fingerprints
 [`TrendRangeTool`](../../app/Services/AI/Agent/Tools/TrendRangeTool.php)'s own output for that range
 via [`MaterialFingerprint::forTrendRead()`](../../app/Services/AI/MaterialFingerprint.php), rounded to
 the granularity the narration actually reads at — km to 1 decimal, run counts and every load/fitness/
@@ -175,13 +175,13 @@ form figure (TRIMP, CTL, VDOT, monotony, strain) to whole numbers — and invali
 when that digest has moved since [`AnalyzeTrendReadJob::fingerprintFor()`](../../app/Jobs/AI/AnalyzeTrendReadJob.php)
 last stamped it. Each range's cadence above still decides *when* the check runs; the fingerprint only
 decides whether that tick spends. A row with no stored fingerprint — every row generated before this
-landed — counts as **changed**, matching [`PlanNarrationRequester`](../../app/Services/AI/PlanNarrationRequester.php#L171)'s
+landed — counts as **changed**, matching [`PlanNarrationRequester`](../../app/Services/AI/PlanNarrationRequester.php)'s
 season rule below rather than the opposite null-handling `DispatchPostRunAnalysis` uses for
 `PostRunSpeech`: each pre-existing Done read refreshes once on its next scheduled run, and the
 fingerprint gate takes over from there.
 
 **The season read re-bills only where its material moved.** `PlanSeasonVoice` carries a
-[`MaterialFingerprint`](../../app/Services/AI/MaterialFingerprint.php#L26) for the time-varying
+[`MaterialFingerprint`](../../app/Services/AI/MaterialFingerprint.php) for the time-varying
 season signals above; unchanged season material relies on `AnalysisService`'s own idempotency.
 
 A row with **no** stored fingerprint counts as changed — the inverse of the per-run rule in
@@ -202,7 +202,7 @@ It is classified as billing in the demo-exclusion tripwire.
 
 ### 2. Ingest cascade
 
-[`DispatchPostRunAnalysis::handle()`](../../app/Listeners/DispatchPostRunAnalysis.php#L57) is queued
+[`DispatchPostRunAnalysis::handle()`](../../app/Listeners/DispatchPostRunAnalysis.php) is queued
 on `ActivityIngested` and is where most per-run spend originates. In order: `CardFlavor` (invalidated only when the run's material fingerprint moved), then the
 grouped `PostRunSpeech` + `RunInsight` pair — both filled rule-based instead, with no dispatch, when
 [`NarrationEligibility::forIngestedRun()`](../../app/Services/AI/NarrationEligibility.php) says demo,
@@ -228,12 +228,12 @@ narrate them once the window closes, which is why a pending recap row is not a b
 
 ### 3. User-initiated
 
-- [`AnalysisController::trigger()`](../../app/Http/Controllers/Api/AnalysisController.php#L26) — the
+- [`AnalysisController::trigger()`](../../app/Http/Controllers/Api/AnalysisController.php) — the
   per-block "Reread". Gated in a fixed order: ownership, an open recap window, cooldown, then
   [`NarrationEligibility::forManualTrigger()`](../../app/Services/AI/NarrationEligibility.php) (demo,
   backfill age, unfinished history hydration), paused generation, then chain resumption. Each gate is described under
   *What stops a call*.
-- [`RunQuestionController::store()`](../../app/Http/Controllers/Api/RunQuestionController.php#L54) —
+- [`RunQuestionController::store()`](../../app/Http/Controllers/Api/RunQuestionController.php) —
   the scoped run Q&A. **The one AI surface that is not an `Analysis` row**: one run holds many
   questions, which `(subject, type, discriminator)` cannot key, so it persists `RunQuestion` rows
   instead. It still goes through `StructuredChatCaller`, so persona, budget, retries and metering are
@@ -244,7 +244,7 @@ narrate them once the window closes, which is why a pending recap row is not a b
   (`PlanSeasonVoice`). It is limited by its own 3600s cooldown inside `PlanNarrationRequester`, not by
   the per-block cooldown every other trigger uses.
 - **`PlanController::update`, on a make-up move** — once the lock is released,
-  [`MakeUpService::notify()`](../../app/Services/Run/Plan/MakeUpService.php#L54) re-requests the runs on both the made-up
+  [`MakeUpService::notify()`](../../app/Services/Run/Plan/MakeUpService.php) re-requests the runs on both the made-up
   day and the day it emptied (`post_run_speech`, `run_insight`) and their `card_flavor` with
   `invalidate: true`, and re-requests
   today's `briefing_mascot_voice` with `invalidate: true` when the make-up lands on today or takes
@@ -260,7 +260,7 @@ narrate them once the window closes, which is why a pending recap row is not a b
 
 ### 4. Recovery
 
-[`SelfHealer::run()`](../../app/Services/AI/SelfHealer.php#L59), hourly: reverts rows stuck in
+[`SelfHealer::run()`](../../app/Services/AI/SelfHealer.php), hourly: reverts rows stuck in
 flight, then resumes the earliest stalled link per user per family. **Every dispatch is
 `invalidate: false`**, so recovery never re-bills content that already exists, and every sweep
 covers only [`RecentlyActiveUsers`](../../app/Actions/AI/RecentlyActiveUsers.php), so demo and
@@ -270,10 +270,10 @@ backfill age cutoff, or whose period closed before the athlete connected, is fil
 `requestRuleBased()` instead of being resumed, so recovery never bills the LLM for history Temari
 never watched; a too-old or pre-connect weekly link still waits for its week to finish hydrating
 first, as the kickoffs do. Failed rows are bounded by
-[`MAX_SELF_HEAL_ATTEMPTS`](../../app/Models/AI/Analysis.php#L80) and then dead-letter to
+[`MAX_SELF_HEAL_ATTEMPTS`](../../app/Models/AI/Analysis.php) and then dead-letter to
 `/devtools/narration` for a manual re-arm, which is itself a recovery-origin dispatch. See
 [[bounded-self-heal-and-dead-letter]]. On the sweep that sees a non-ceiling pause lift,
-[`SelfHealer::retryFailedDuringPause()`](../../app/Services/AI/SelfHealer.php#L86) first gives every
+[`SelfHealer::retryFailedDuringPause()`](../../app/Services/AI/SelfHealer.php) first gives every
 active athlete's block that failed from one sweep before the pause began one more attempt; see
 [[failed-during-a-pause-retried-once-on-resume]].
 
@@ -322,16 +322,16 @@ is the one people misremember.
 | **daily cost ceiling** | **`Done`, rule-based** | no | **no — clears on the clock** |
 
 All three pauses resolve through
-[`blockingReason()`](../../app/Services/AI/NarrationGate.php#L144), and an in-flight job reverts
-its rows via [`haltForPausedGeneration()`](../../app/Jobs/AI/AnalyzeBaseJob.php#L203) without burning
+[`blockingReason()`](../../app/Services/AI/NarrationGate.php), and an in-flight job reverts
+its rows via [`haltForPausedGeneration()`](../../app/Jobs/AI/AnalyzeBaseJob.php) without burning
 an attempt.
 
 **The cost ceiling is the exception in three ways.** It does not pause: a `pending` row is filled
 from the rule-based filler and marked `Done` by
-[`degradeToRuleBased()`](../../app/Services/AI/AnalysisService.php#L975), so a capped day is not a
+[`degradeToRuleBased()`](../../app/Services/AI/AnalysisService.php), so a capped day is not a
 day of empty blocks. A `Failed` row is explicitly excluded and stays failed, keeping its dead-letter
 visibility. And a *manual* trigger past the ceiling is refused with a 409 rather than degraded,
-because [`generationPaused()`](../../app/Services/AI/NarrationGate.php#L109) asks with the budget
+because [`generationPaused()`](../../app/Services/AI/NarrationGate.php) asks with the budget
 included while auto-dispatch asks without it. Two ceilings reach that behaviour through the same
 path — the per-athlete slice and the app-wide total above it, which gates callers holding no
 athlete at all ([[app-wide-ceiling-above-the-per-athlete-one]]). See
@@ -339,28 +339,28 @@ athlete at all ([[app-wide-ceiling-above-the-per-athlete-one]]). See
 
 Three more limits:
 
-- **Demo exclusion.** [`notDemo()`](../../app/Models/User.php#L137) filters the AI kickoff commands
+- **Demo exclusion.** [`notDemo()`](../../app/Models/User.php) filters the AI kickoff commands
   and every `SelfHealer` sweep, and
-  [`shouldServeRuleBased()`](../../app/Services/AI/NarrationGate.php#L96) serves a demo user's
+  [`shouldServeRuleBased()`](../../app/Services/AI/NarrationGate.php) serves a demo user's
   manual trigger from the filler *before* any pause check — so the public demo spends nothing while
   still feeling live. See [[demo-triggers-served-rule-based]].
-- **The backfill age gate**, [84 days](../../config/ai.php#L43). The only limit that gates automatic
-  dispatch *and* manual triggers: [`isTooOld()`](../../app/Services/AI/BackfillAgeGate.php#L36) for
-  the ingest fan-out, [`blocksManualTrigger()`](../../app/Services/AI/BackfillAgeGate.php#L51) for
+- **The backfill age gate**, [84 days](../../config/ai.php). The only limit that gates automatic
+  dispatch *and* manual triggers: [`isTooOld()`](../../app/Services/AI/BackfillAgeGate.php) for
+  the ingest fan-out, [`blocksManualTrigger()`](../../app/Services/AI/BackfillAgeGate.php) for
   the button. It is exhaustive per type — chained and recap types are exempt, because they resume a
   chain rather than narrate old material. See [[twelve-week-narration-cutoff]].
 - **The history gate.** A run that started before the athlete's Strava connect is history. Inside
-  the last [`RecentlyActiveUsers::ACTIVE_WINDOW_DAYS`](../../app/Actions/AI/RecentlyActiveUsers.php#L22)
+  the last [`RecentlyActiveUsers::ACTIVE_WINDOW_DAYS`](../../app/Actions/AI/RecentlyActiveUsers.php)
   (7) days it still narrates automatically on ingest, so a day-one backfill's cost is bounded and
   identical whatever depth of history it imports — deliberately, not as a degradation. Older history
   is filled rule-based on ingest and narrated by a model only when the athlete asks for it on that
   run's page, and only once every older run inside the backfill window has hydrated —
-  [`HistoryNarrationGate`](../../app/Services/AI/HistoryNarrationGate.php#L28), which refuses the
+  [`HistoryNarrationGate`](../../app/Services/AI/HistoryNarrationGate.php), which refuses the
   trigger with 409 until then. See [[history-narrates-on-demand]].
 - **Cooldown and idempotency are two different defences for the same goal.** The
-  [900s cooldown](../../app/Support/Cooldown.php#L32) stops a human clicking twice, at the
+  [900s cooldown](../../app/Support/Cooldown.php) stops a human clicking twice, at the
   controller, before a job exists. The `Done` check at the top of
-  [`AnalyzeRowJob::handle()`](../../app/Jobs/AI/AnalyzeRowJob.php#L23) stops a UI trigger and a
+  [`AnalyzeRowJob::handle()`](../../app/Jobs/AI/AnalyzeRowJob.php) stops a UI trigger and a
   Horizon retry racing into a double bill. Plan narration adds two more, separate ones inside `PlanNarrationRequester`: a 86400s per-athlete narration cooldown (`Cooldown::PLAN_NARRATION_WINDOW_SECONDS`) and the 3600s manual-regenerate cooldown.
 
 Three further ceilings bound a call rather than stopping it: a per-user trigger rate limit of 8/min,
@@ -399,7 +399,7 @@ worth declaring where it both covers `2 * (tools + 1)` — one full read pass pl
 retry's replay — and lands below the global default; `NarratorsCoverageTest` enforces exactly that.
 
 **The persona is the largest single block of input.**
-[`TemariPersona::systemPrompt()`](../../app/Services/AI/TemariPersona.php#L238) is 15,975 characters,
+[`TemariPersona::systemPrompt()`](../../app/Services/AI/TemariPersona.php) is 15,975 characters,
 roughly **4,000 tokens**, and `StructuredChatCaller` prepends it to *every* turn of *every* run. What
 makes that affordable is the cache: `prompt_cache_key` is set to the narrator's `kind`, never the
 user, so the persona plus that narrator's prompt and tool schemas form one prefix shared by every
@@ -433,7 +433,7 @@ inline in its `toolbox()` method.
 | tool · `name()` | what it hands the model | who computed it |
 |---|---|---|
 | `WeekStateTool` · `get_week_state` | `this_week_runs`, `last_week_runs`, `this_week_km`, `last_week_km`, `recovery_hours`, `ran_today`, `days_since_last_run`, `form_status`, `time_bucket`, `consecutive_weeks_active`, `fitness_trend`, `volume_ramp` (`{pct, relation}`, no bare sign — #1009), `readiness_ceiling`, `build_nudge` | `BriefingContext` over `TrainingLoad`, `RecoveryWindow` and `Readiness` |
-| `TrainingLoadTool` · `get_training_load` | `training_load`: `acute_7d`, `chronic_42d`, `form` (`{value, relation}`, no bare sign — #1009), `form_status` | `TrainingLoad::summary()` |
+| `TrainingLoadTool` · `get_training_load` | `training_load`: `acute_7d`, `chronic_42d`, `load_balance` (fresh, steady or heavy; no bare sign — #1009) | `TrainingLoad::summary()` |
 | `TrainingPacesTool` · `get_training_paces` | `easy_pace_sec`, `marathon_pace_sec`, `threshold_pace_sec`, `interval_pace_sec` | `VdotEstimator` into `TrainingPaceCalculator` |
 | `RecentBaselineTool` · `get_recent_baseline` | `recent_baseline_28d`: rolling pace / HR averages, plus `avg_decoupling` from version 2 measured steady segments (`{pct, relation}`, no bare sign — #1009) | `ResolveRunBaselineAction` |
 | `RecentRunsTool` · `get_recent_runs` | `recent_runs`: up to 5 × `{mood, km, intensity, oneline}` | `VerdictNarrator::recent()` |
@@ -445,7 +445,7 @@ inline in its `toolbox()` method.
 
 | tool · `name()` | what it hands the model | who computed it |
 |---|---|---|
-| `WeekTotalsTool` · `get_week_totals` | `week_ending`, `runs`, `distance_km`, `pace_sec_per_km`, `weekly_trimp`, `ctl_42d`, `atl_7d`, `form` (`{value, relation}`, no bare sign — #1009), `form_status`, `monotony`, `strain`, `avg_decoupling` from the separate version 2 weekly aggregate (`{pct, relation}`, no bare sign — #1009), plus the previous week's `prev_runs`, `prev_distance_km`, `prev_pace_sec_per_km` | stored `WeeklySnapshot` rows, written by `WeeklyAggregator`; pace via `PaceCalculator`; relation via `DecouplingBands::relationFor()` |
+| `WeekTotalsTool` · `get_week_totals` | `week_ending`, `runs`, `distance_km`, `pace_sec_per_km`, `weekly_trimp`, `ctl_42d`, `atl_7d`, `load_balance` (fresh, steady or heavy; no bare sign — #1009), `monotony`, `strain`, `avg_decoupling` from the separate version 2 weekly aggregate (`{pct, relation}`, no bare sign — #1009), plus the previous week's `prev_runs`, `prev_distance_km`, `prev_pace_sec_per_km` | stored `WeeklySnapshot` rows, written by `WeeklyAggregator`; pace via `PaceCalculator`; relation via `DecouplingBands::relationFor()` |
 | `MonthTotalsTool` · `get_month_totals` | `month`, `total_runs`, `total_distance_km`, `longest_run_km`, `pr_count`, `weekly_distance_km`, `mood_mix`, `fitness` (`ctl_start`, `ctl_end`, `form_status_end`) | `DistanceFormatter`, `MoodMix`, stored `WeeklySnapshot` rows |
 | `TrendRangeTool` · `get_trend_range_totals` | `range`, `current` and `comparison` (`runs`, `distance_km`, `trimp_total`), `ctl_start`, `ctl_end`, `vdot_start`, `vdot_end`, `avg_monotony`, `avg_strain` | `TrainingLoad::ctlTrend()` / `::strainMonotonyTrend()`, `TrendDailySnapshot` |
 | `CardIdentityTool` · `get_card_identity` | `rarity`, `rarity_label`, `special_move`, `badges` | stored `RunCard` attributes; labels from `Badge::promptLabelsFor()` |
@@ -484,7 +484,7 @@ The classes above are the whole boundary — what a tool returns is exactly what
 Everything else under `app/Services/Run/Metrics/`, `app/Services/Run/Plan/` and
 `app/Services/Gamification/` computes state the model never sees directly.
 
-[`RuleBasedNarrationFiller`](../../app/Services/AI/RuleBased/RuleBasedNarrationFiller.php#L39) is the
+[`RuleBasedNarrationFiller`](../../app/Services/AI/RuleBased/RuleBasedNarrationFiller.php) is the
 deterministic twin: an exhaustive `match` with no `default` covering every `AnalysisType`, so a new
 case cannot ship without a fallback. The run Q&A has its own, `RuleBasedRunAnswer`. Both are what a
 capped day, an unconfigured environment and the public demo actually render, which is why a
@@ -568,7 +568,7 @@ top of it was rendered at `SeasonWeekRow`'s collapsed take, never load-bearing. 
 dispatch sites (`requestWeek()`'s week block, `ensureDemoFilled()`'s week block) are all gone.
 `plan_day_voice` and `plan_season_voice` are unaffected. No pruning migration: existing
 `plan_week_voice` rows are left in the table exactly as `pr_context` was —
-[`KnownAnalysisTypeScope`](../../app/Models/Scopes/KnownAnalysisTypeScope.php#L26) excludes them
+[`KnownAnalysisTypeScope`](../../app/Models/Scopes/KnownAnalysisTypeScope.php) excludes them
 from every normal query the moment the enum case is gone, so nothing renders, self-heals,
 dead-letters or re-requests them; `Analysis::toPayload()` is never reached for one because
 `PlanNarrationRequester::payloadsForCurrentWeek()` no longer looks for a week row at all.
@@ -582,7 +582,7 @@ the rule-based arm and the routing key are all gone. PR celebration survives: `P
 already carries `PersonalRecordsTool`.
 
 No pruning migration was needed.
-[`KnownAnalysisTypeScope`](../../app/Models/Scopes/KnownAnalysisTypeScope.php#L26) filters rows whose
+[`KnownAnalysisTypeScope`](../../app/Models/Scopes/KnownAnalysisTypeScope.php) filters rows whose
 type is no longer a live case at the query boundary, so retiring a case cannot crash a read.
 
 The lesson generalises: the old version of this note asserted that no type was orphaned, and it was
@@ -592,8 +592,8 @@ type was *displayed*. The table above now carries a "renders" column for that re
 ## What it costs
 
 Spend is metered per call into `ai_token_usages` on the separate `analytics` connection, written by
-[`RecordTokenUsageAction`](../../app/Actions/AI/RecordTokenUsageAction.php#L21) into
-[`TokenUsage`](../../app/Models/AI/TokenUsage.php#L41). A write failure is swallowed and logged, so
+[`RecordTokenUsageAction`](../../app/Actions/AI/RecordTokenUsageAction.php) into
+[`TokenUsage`](../../app/Models/AI/TokenUsage.php). A write failure is swallowed and logged, so
 metering never fails a call that already succeeded.
 
 **This note deliberately carries no cost table.** `/devtools/narration` renders spend live with kind,

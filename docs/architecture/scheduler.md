@@ -3,7 +3,7 @@ title: Scheduler hygiene — overlap safety, single-host, ordering, cadence
 description: Every Schedule::command entry is overlap-safe and single-host by an unstated one-container invariant; entries due in the same minute run serially, so strava:sync runs at :07; every run lands in an append-only run log; the Monday window's hard dependencies are chained and retry hourly until they succeed; the numeric derivation behind four previously-qualitative cadences; and measured local runtimes next to each lock TTL
 tags: [architecture, scheduler]
 status: living
-reviewed: 2026-10-06
+reviewed: 2026-10-09
 code_refs:
   - routes/console.php
   - app/Console/Commands/Notifications/RecoverStaleNotificationDeliveriesCommand.php
@@ -75,6 +75,8 @@ despite that.
 | `ai:trend-read 7d` | daily 06:00 | 20 | yes | one narrator pass across active users | ~1.2-1.4s — 0 active users (demo excluded) |
 | `ai:self-heal` | hourly | 55 (unchanged) | yes | already guarded pre-DF-1 | ~1.3s — skipped, generation paused (Azure unset) |
 | `ai:catch-up` | hourly | 55 (unchanged) | yes | already guarded pre-DF-1 | ~1.5s — created 0 missing kickoff rows |
+| `ai:spend-digest` | daily 21:00 | 10 | yes | one grouped read of today's `ai_token_usages` rows, then one Telegram push to every admin | not measured — added with the spend digest |
+| `exceptions:digest` | daily 21:00 | 10 | yes | pulls the exception ledger once and pushes only when a fingerprint is new; silent on a quiet day | not measured — added with the exception digest |
 | `queue:prune-failed` | daily 02:20 | 15 | yes | one `DELETE` on `failed_jobs` | ~1.6s — 0 entries deleted |
 | `analytics:prune` | daily 02:25 | 15 | yes | six `DELETE`s — five on the `analytics` connection, one on `analysis_versions` | ~1.7s — 0 rows pruned |
 | `model:prune TelegramUpdateReceipt` | daily 02:30 | 15 | yes | delete Telegram update receipts older than 7 days | not measured — added with durable Telegram update dedupe |
@@ -301,12 +303,12 @@ source of truth (the `Analysis` row is) — 168h (7 days) is a full week of on-c
 every self-heal cycle's resolution, long enough to catch a fault found on a Monday by the following
 Monday, short enough that the table does not accumulate a month of superseded dupes.
 
-**`strava:ingest` batch size 20** ([IngestCommand.php#L17](../../app/Console/Commands/Strava/IngestCommand.php#L17)).
+**`strava:ingest` batch size 20** ([IngestCommand.php](../../app/Console/Commands/Strava/IngestCommand.php)).
 This is the live-priority drain of pending activity stubs, at 2 Strava reads per activity (detail +
 streams, per [ActivityPipeline](../../app/Services/Run/Ingest/ActivityPipeline.php)) — a batch of 20
 spends at most 40 reads per tick. Running every 5 minutes, three ticks fall inside one 15-minute
 window, so a fully-loaded drain spends up to 120 of that window's 200 reads
-([StravaClient::RATE_LIMIT_15MIN_MAX](../../app/Services/Strava/StravaClient.php#L54)). The hourly
+([StravaClient::RATE_LIMIT_15MIN_MAX](../../app/Services/Strava/StravaClient.php)). The hourly
 `strava:sync` fallback poll is also live and lands at :07, in the window that opens on the hour: one
 activity-list page per connected athlete (more only for an athlete with over 200 new activities
 since the last poll), so at most 10 reads at the current 10-athlete Strava tier. The worst live
@@ -315,7 +317,7 @@ uncapped by any cadence.
 
 `strava:hydrate-backlog`'s background drain shares the same bucket on its every-15-minutes cadence,
 but a background read is refused once the window's counted usage reaches 150, because the
-[25% live reserve](../../app/Services/Strava/StravaClient.php#L62) holds the last 50 reads for live
+[25% live reserve](../../app/Services/Strava/StravaClient.php) holds the last 50 reads for live
 reads. So live reads always have at least 50 reads in a window. They get the full 130 only when
 background reads have not already pushed the window past 70. If the drain fills the window to 150
 first, the rest of that window's ingest batch is refused and deferred to the next window. Live

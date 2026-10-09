@@ -23,7 +23,7 @@ the narration it paid for until [[narration-analytics-are-joinable]] made the jo
 possible.
 
 Reached at `/devtools/narration/athletes/{userId}`, behind the same
-[`devtools` middleware group](routes/web.php#L204) as the rest of the operator screens.
+[`devtools` middleware group](routes/web.php) as the rest of the operator screens.
 An unknown id 404s; the demo athlete is deliberately *not* excluded, because its blocks
 are exactly the ones an operator most often has to look at.
 
@@ -36,17 +36,17 @@ is, so a raised ceiling never reads as the configured one. Beside it, thirty day
 daily spend as an inline SVG path
 ([Sparkline](resources/js/components/narration/athlete/Sparkline.tsx)), and
 month-to-date with a **projection**: the trailing week's daily rate carried across the
-days left in the month ([CostForecast](app/Services/Devtools/CostForecast.php#L20)). It
+days left in the month ([CostForecast](app/Services/Devtools/CostForecast.php)). It
 is labelled a projection rather than a forecast budget, because the recent run rate is
 the only evidence behind it.
 
 Every one of those numbers comes from a single per-day query
-([`dailyCost()`](app/Services/Devtools/AthleteNarrationReport.php#L368)), so today, the
+([`dailyCost()`](app/Services/Devtools/AthleteNarrationReport.php)), so today, the
 week, the month and the sparkline never disagree.
 
 The title block also shows the athlete's last active day (`users.last_seen_at`, stamped once
 per day on the first request, so a same-day stamp reads "active today · first open 05:03")
-and, when [`RecentlyActiveUsers::includes()`](app/Actions/AI/RecentlyActiveUsers.php#L40)
+and, when [`RecentlyActiveUsers::includes()`](app/Actions/AI/RecentlyActiveUsers.php)
 rejects them, an "away: scheduled narration paused" badge
 ([LastOpen](resources/js/components/narration/LastOpen.tsx)). The `away` flag is computed
 server-side from that same rule, so an idle athlete never reads as a stalled pipeline. The
@@ -82,19 +82,19 @@ across athletes.
 ## Tab: attention, and the four actions
 
 Three buckets — failed but still auto-retrying, dead-lettered, and in-flight rows past
-[`STALE_IN_FLIGHT_HOURS`](app/Models/AI/Analysis.php#L89) — each with the action that
+[`STALE_IN_FLIGHT_HOURS`](app/Models/AI/Analysis.php) — each with the action that
 clears it:
 
 | Action | What it runs |
 |---|---|
-| retry all failed | [`ReArmNarrationAction::retryFailed()`](app/Services/Devtools/ReArmNarrationAction.php#L31) — attempts to 0, re-dispatch with `invalidate: false` |
-| re-arm dead-lettered | [`reArmDeadLettered()`](app/Services/Devtools/ReArmNarrationAction.php#L37) — the same, narrowed to spent-budget rows: `ai:recover` for one athlete |
+| retry all failed | [`ReArmNarrationAction::retryFailed()`](app/Services/Devtools/ReArmNarrationAction.php) — attempts to 0, re-dispatch with `invalidate: false` |
+| re-arm dead-lettered | [`reArmDeadLettered()`](app/Services/Devtools/ReArmNarrationAction.php) — the same, narrowed to spent-budget rows: `ai:recover` for one athlete |
 | resync Strava | [SyncActivitiesJob](app/Jobs/Strava/SyncActivitiesJob.php), the same per-user dispatch "Sync now" uses |
-| today-only ceiling | [`CeilingOverride::set()`](app/Services/AI/CeilingOverride.php#L20), expiring at local midnight, plus a clear |
+| today-only ceiling | [`CeilingOverride::set()`](app/Services/AI/CeilingOverride.php), expiring at local midnight, plus a clear |
 
 The two re-arms resolve the demo athlete through the rule-based filler rather than
 dispatching, for the same reason its "Reread" does ([[demo-triggers-served-rule-based]]):
-[`AnalysisService::request()`](app/Services/AI/AnalysisService.php#L56) carries no demo
+[`AnalysisService::request()`](app/Services/AI/AnalysisService.php) carries no demo
 guard, so every manual trigger has to bring its own.
 
 Every one of them takes a **confirm step rendered in the page** — never the browser's
@@ -109,12 +109,12 @@ A flagged narration row carries a **replay** button: re-narrate that exact block
 [`AnalysisOrigin::Replay`](app/Services/AI/AnalysisOrigin.php), queued through the
 ordinary job path, so the row reads Queued until the new answer lands and then shows the
 diff against what it replaced (the snapshot is automatic in
-[`markDone()`](app/Services/AI/AnalysisService.php#L317)).
+[`markDone()`](app/Services/AI/AnalysisService.php)).
 
 A replay is the operator's spend, not the athlete's, so it is measured against its own
 app-wide `azure_openai.replay_daily_cap` and never against the athlete's slice —
 [`ReplayNarrationAction`](app/Services/Devtools/ReplayNarrationAction.php) reads the same
-numbers [AnalysisService](app/Services/AI/AnalysisService.php#L840) enforces at dispatch,
+numbers [AnalysisService](app/Services/AI/AnalysisService.php) enforces at dispatch,
 so the confirm step can quote the block's last cost and today's replay total, and the
 button refuses in place rather than asking for a confirmation it would not honour. The
 demo athlete's replay resolves through the rule-based filler like every other demo
@@ -123,7 +123,7 @@ onto the bill.
 
 ## See also
 
-- [[ai-usage]] — the overview this page drills down from
+- [[narration-devtools]] — the overview this page drills down from
 - [[narration-analytics-are-joinable]] — the schema that makes a per-block answer possible
 - [[cost-ceiling-degrades-to-rule-based]] — why an athlete has a ceiling to override at all
 - [[feedback]] — where the flag on a narration row comes from

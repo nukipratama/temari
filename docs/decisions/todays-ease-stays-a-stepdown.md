@@ -2,7 +2,8 @@
 title: Today's ease stays a step-down, recorded or not
 description: For TODAY only, a recorded readiness ease renders exactly like an unrecorded one — the original session leads and the ease is a step-down beside it — amending the-eased-session-leads for the one day it disagreed with itself.
 tags: [decision, run, plan]
-status: accepted
+status: superseded
+superseded_by: the-advised-session-leads-every-day
 reviewed: 2026-09-19
 code_refs:
   - app/Services/Run/Plan/PlanRenderer.php

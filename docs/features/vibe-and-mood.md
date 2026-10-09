@@ -3,7 +3,7 @@ title: Vibe & mood system
 description: The daily "vibe" that sets Temari's tone and the run-level mood vocabulary.
 tags: [feature, story]
 status: living
-reviewed: 2026-09-24
+reviewed: 2026-10-09
 code_refs:
   - app/Services/Run/Story/Vibe.php
   - app/Services/Run/Story/VibeMatrix.php
@@ -28,13 +28,13 @@ Two distinct "feelings" drive how the app speaks. The **vibe** is a daily, *whol
 
 ## The daily vibe
 
-[Vibe::current](../../app/Services/Run/Story/Vibe.php) gathers five signals for a user as-of a date — current `form` and `form_status` from [TrainingLoad::summary](../../app/Services/Run/Metrics/TrainingLoad.php), days since the last run, whether a [[records|PR]] landed recently, and the average HR/pace `decoupling` over a recent window. The PR lookback and decoupling lookback windows are constants on the class ([`DECOUPLING_WINDOW_DAYS`](../../app/Services/Run/Story/Vibe.php#L35)). It hands all five to a pure lookup table.
+[Vibe::current](../../app/Services/Run/Story/Vibe.php) gathers five signals for a user as-of a date — current `form` and `form_status` from [TrainingLoad::summary](../../app/Services/Run/Metrics/TrainingLoad.php), days since the last run, whether a [[records|PR]] landed recently, and the average HR/pace `decoupling` over a recent window. The PR lookback and decoupling lookback windows are constants on the class ([`DECOUPLING_WINDOW_DAYS`](../../app/Services/Run/Story/Vibe.php)). It hands all five to a pure lookup table.
 
-[VibeMatrix::pick](../../app/Services/Run/Story/VibeMatrix.php) is that table: an ordered cascade of guard clauses (first match wins, most-significant signal first — staleness, then a fresh PR, then the form-status bands, with decoupling as the tiebreaker between near-neighbours). It returns one of eight stable vibe keys. **Read the cascade at the source rather than this prose** — the thresholds live there and only there ([VibeMatrix's signal shape](../../app/Services/Run/Story/VibeMatrix.php#L12)).
+[VibeMatrix::pick](../../app/Services/Run/Story/VibeMatrix.php) is that table: an ordered cascade of guard clauses (first match wins, most-significant signal first — staleness, then a fresh PR, then the form-status bands, with decoupling as the tiebreaker between near-neighbours). It returns one of eight stable vibe keys. **Read the cascade at the source rather than this prose** — the thresholds live there and only there ([VibeMatrix's signal shape](../../app/Services/Run/Story/VibeMatrix.php)).
 
 ### The eight vibes
 
-A fixed vocabulary — keys are internal, the labels + emoji are the display surface ([the vibe constants](../../app/Services/Run/Story/Vibe.php#L17)):
+A fixed vocabulary — keys are internal, the labels + emoji are the display surface ([the vibe constants](../../app/Services/Run/Story/Vibe.php)):
 
 | Vibe (key) | Label | Emoji | Roughly means |
 | --- | --- | --- | --- |
@@ -57,7 +57,7 @@ The bridge between the two systems is `moodForVibe` ([`Temari::moodForVibe()`](.
 
 - **Mascot pose.** A run `Mood` picks Temari's pose on run surfaces (RunHero, RunLenses, [RecapCard](../../resources/js/components/history/RecapCard.tsx)). On Today and Profile the daily vibe does, collapsed onto a mood by `moodForVibe` below: Today reads `briefing.mood`, Profile its own `mood` prop. See [[temari-mascot]].
 - **Vibe bar.** Gone. It surfaced as text in `VitalBars`' "Vibe" row on `/trends`, until #967 deleted that component along with the range toggle it belonged to (see [[trends]]). `BriefingResult` no longer carries `vibeLabel`/`vibeEmoji` (nor does [Vibe](../../app/Services/Run/Story/Vibe.php) expose `label()`/`emoji()`/`LABELS`/`EMOJI` any more) — nothing rendered them once the bar was gone. The vibe itself still feeds `moodForVibe` below, but `BriefingResult` sends only the resulting `mood`, not the vibe key.
-- **LLM tone.** [BriefingComposer::compose](../../app/Services/Run/Story/BriefingComposer.php) resolves the vibe once and hangs the briefing off it. The vibe *key* is then a context field the narrators key their tone to: the mascot voice keys its register to the vibe band ([BriefingMascotVoiceNarrator.php](../../app/Services/AI/Narrators/BriefingMascotVoiceNarrator.php)) — energetic for `pumped`/`fresh`/`bouncy`, gentle for `worn_down`/`cooked`, coaxing for `hibernating`. The pipeline itself is documented in [[ai-pipeline]].
+- **LLM tone.** [BriefingComposer::compose](../../app/Services/Run/Story/BriefingComposer.php) resolves the vibe only to derive the briefing's mood; it does not hand the vibe to the narrator. [BriefingMascotVoiceNarrator](../../app/Services/AI/Narrators/BriefingMascotVoiceNarrator.php) calls `Vibe::current` itself, and the vibe *key* is a context field it keys its tone to: the mascot voice keys its register to the vibe band — energetic for `pumped`/`fresh`/`bouncy`, gentle for `worn_down`/`cooked`, coaxing for `hibernating`. The pipeline itself is documented in [[ai-pipeline]].
 
 ## Featured kartu
 
@@ -69,7 +69,7 @@ holds the picker if the surface ever returns.
 
 ## Past-you matcher
 
-[PastYouMatcher::findMatch](../../app/Services/Run/Story/PastYouMatcher.php) is a sibling story tool, not part of the vibe path: given a current run, it finds an *older* baseline run that's comparable enough to say "you've changed". It matches on pace-band, distance, and temperature within tolerances and a minimum age gap (all constants at the top of the class, [`bestMatch`](../../app/Services/Run/Story/PastYouMatcher.php#L22)), preferring the *oldest* qualifying run, then reports the pace/time/HR deltas. The pace-band edges are in `paceBand` ([`findMatchContext`](../../app/Services/Run/Story/PastYouMatcher.php#L197)).
+[PastYouMatcher::findMatch](../../app/Services/Run/Story/PastYouMatcher.php) is a sibling story tool, not part of the vibe path: given a current run, it finds an *older* baseline run that's comparable enough to say "you've changed". It matches on pace-band, distance, and temperature within tolerances and a minimum age gap (all constants at the top of the class, [`bestMatch`](../../app/Services/Run/Story/PastYouMatcher.php)), preferring the *oldest* qualifying run, then reports the pace/time/HR deltas. The pace-band edges are in `paceBand` ([`findMatchContext`](../../app/Services/Run/Story/PastYouMatcher.php)).
 
 ## See also
 

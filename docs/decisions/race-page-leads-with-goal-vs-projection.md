@@ -2,7 +2,8 @@
 title: The Race page leads with the goal against the projection
 description: The Race page is rebuilt around one duel card, the goal time facing the projected finish with the gap in words and a straight range bar, under a compact header, replacing the race card, the arc gauge and the schedule/race-goal tabs.
 tags: [decision, design]
-status: accepted
+status: superseded
+superseded_by: the-race-page-sets-the-target-beside-supported-time
 reviewed: 2026-09-24
 code_refs:
   - resources/js/pages/Race.tsx

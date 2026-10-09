@@ -3,7 +3,7 @@ title: Settings
 description: The settings hub at /settings — appearance, notification types and channels, training preferences, the HR-zone entry, account deletion, and logout — a pushed screen reached from the gear on Profile's top bar.
 tags: [feature, settings]
 status: living
-reviewed: 2026-08-19
+reviewed: 2026-10-09
 code_refs:
     - app/Http/Controllers/SettingsController.php
     - app/Http/Controllers/AccountController.php
@@ -31,7 +31,7 @@ Server entry is [SettingsController](../../app/Http/Controllers/SettingsControll
 - **Running** — [TrainingPreferencesCard](../../resources/js/components/settings/TrainingPreferencesCard.tsx) first, then the HR-zone disclosure. Preferences are an always-open card, not a disclosure, built from the same three controls [[onboarding]] uses (`IconChoiceCard`, `SessionsDial`, `DayPicker`) rather than a parallel set of pill buttons. Zones stay an inline expand/collapse, not a separate page; see [[settings-hr-zones]].
 - **Your data** — the plain-language data-use statement, server-supplied from [DataUseStatement](../../app/Support/DataUseStatement.php) so the page and the public terms/privacy pages cannot word it differently. Why it says what it says: [[strava-data-compliance]].
 - **The fine print** — a tight label-and-chevron list linking out to the three public documents in [[legal-pages]]. No icons and no per-row descriptions: the three titles are self-describing, and the prototype draws the list this way.
-- **Account** — not a row list but a **button pair**: a bordered full-width "Log out" that becomes an auto-width row item above 900px, and a bare destructive "Delete account" beneath it. Logging out goes through [signOut](../../resources/js/lib/webPush.ts), which unsubscribes this device from web push first and posts `/logout` with the device's `push_endpoint`, so [StravaAuthController::logout](../../app/Http/Controllers/Auth/StravaAuthController.php) deletes that one subscription even when the browser unsubscribe fails; signing out stops pushes on that device only, and the athlete's other devices stay subscribed. Delete account is covered below.
+- **Account** — not a row list but a **button pair**: a bordered full-width "Log out" that becomes an auto-width row item above 900px, and a bare destructive "Delete account" beneath it. Logging out goes through [signOut](../../resources/js/pages/Settings/Index.tsx), which unsubscribes this device from web push first and posts `/logout` with the device's `push_endpoint`, so [StravaAuthController::logout](../../app/Http/Controllers/Auth/StravaAuthController.php) deletes that one subscription even when the browser unsubscribe fails; signing out stops pushes on that device only, and the athlete's other devices stay subscribed. Delete account is covered below.
 
 Inside the notifications card every line is one primitive. [SettingsRow](../../resources/js/components/ui/SettingsRow.tsx) takes an optional `control` slot that replaces its chevron, so toggle rows and navigation rows share a layout instead of each inventing padding and type; a row carrying a control is never itself tappable, since a row that both navigates and holds a switch gives two different outcomes for taps a few pixels apart. The switch itself is [Switch](../../resources/js/components/ui/Switch.tsx), promoted out of this page once more than one place needed it. Renamed from `Toggle.tsx` in F3, when shadcn's own `toggle.tsx` (an unrelated pressed-button control, since deleted) would have collided with it by case.
 
@@ -43,7 +43,7 @@ It carries **no back affordance in the page body**: Settings is a pushed screen,
 
 "Delete account" is the owner-facing way to release a Strava-account binding (one Strava account = one user, reused on every re-login). A confirmation modal guards against accidental deletion; confirming issues `router.delete('/account')` → [AccountController](../../app/Http/Controllers/AccountController.php) `destroy()`, which releases the mirrored Strava grant through [UserEraser](../../app/Services/User/UserEraser.php) before deleting the user, then logs them out, invalidates the session, and redirects to `/login` with a friendly flash.
 
-The grant ledger keeps the encrypted refresh token if Strava cannot release it, so `strava:slots` and the daily orphan retry can try again after the account is gone. The `User` model's `deleting` hook still marks the local connection revoked and writes a sync log; that local state change alone does not release the OAuth grant. The shared **demo** account can't be deleted (`AccountController` rejects `is_demo` with an error flash; the UI routes demo users through the demo-blocked modal instead).
+The grant ledger keeps the encrypted refresh token if Strava cannot release it, so `strava:slots` and the daily orphan retry can try again after the account is gone. The `User` model's `deleting` hook still marks the local connection revoked and writes a sync log; that local state change alone does not release the OAuth grant. The shared **demo** account can't be deleted (`AccountController` rejects `is_demo` with an error flash; the delete-account button is not rendered for the demo account).
 
 ## See also
 

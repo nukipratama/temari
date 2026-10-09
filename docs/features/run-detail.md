@@ -3,11 +3,15 @@ title: Run detail (single activity)
 description: One run, fully unpacked — a headline hero, a "Past You" match, the story + adaptive claims voice card, the Q&A panel, and the breakdown (vitals, splits, laps)
 tags: [feature, runs]
 status: living
-reviewed: 2026-09-28
+reviewed: 2026-10-09
 code_refs:
   - resources/js/pages/Runs/Show.tsx
   - app/Http/Controllers/RunController.php
   - resources/js/components/run/RunHero.tsx
+  - resources/js/components/run/PrBibStamp.tsx
+  - app/Services/Run/Metrics/PrBibResolver.php
+  - app/Models/RecordStamp.php
+  - app/Http/Controllers/Api/RecordStampController.php
   - resources/js/components/run/EffortScore.tsx
   - resources/js/components/run/PastYouCard.tsx
   - resources/js/components/run/AskAboutRun.tsx
@@ -84,6 +88,25 @@ The stat block is a **hierarchy, not a grid of six equals**. Distance is the one
 big mono figure; duration and pace sit beside it at supporting size; HR, TRIMP
 and elevation are three small tiles below. Every figure count-ups from zero via
 `useCountUp` and renders `—` where the run recorded nothing.
+
+**PR bib stamp.** A run that currently holds one of the tracked records (the
+5K, 10K, half or full marathon best, or the account's longest run) shows a
+race-bib badge such as `10K · PR · 58:41` under the mood pill, on every view;
+when it holds more than one, the rarer record wins.
+[PrBibResolver](../../app/Services/Run/Metrics/PrBibResolver.php) builds the
+`prBib` prop read-only, with `animate` true while no
+[RecordStamp](../../app/Models/RecordStamp.php) row exists for that athlete and
+record. Only then does [PrBibStamp](../../resources/js/components/run/PrBibStamp.tsx)
+play its punch-in (static under `prefers-reduced-motion`) and a short vibrate
+where the browser supports one, then claim the stamp with a fire-and-forget
+`POST /api/record-stamps`
+([RecordStampController](../../app/Http/Controllers/Api/RecordStampController.php)),
+which first checks the athlete holds that record. The claim is keyed on the
+record, not the run, so the animation plays once per record per account, on
+whichever device opens it first, and a later run that takes the same record
+shows the badge statically. Claiming on the POST rather than during the render
+keeps the page's GET free of side effects, which its ETag replay
+([SetInertiaEtag](../../app/Http/Middleware/SetInertiaEtag.php)) relies on.
 
 The hero also carries the page's one **Share** button, rendered only when the
 run has a card — the prototype draws no share button anywhere, and keeping one

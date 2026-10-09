@@ -68,7 +68,7 @@ into the print rather than tokenised. The exemption has one shape — the three 
 [resources/js/lib/card/styles/](../resources/js/lib/card/styles/)
 set every figure and label in mono, and Fraunces italic appears in exactly two places, the
 wordmark and the broadsheet's hero figure. No sans is drawn on a card at all.
-[RunCardMini.tsx](../resources/js/components/card/RunCardMini.tsx#L111) stays mono the same way,
+[RunCardMini.tsx](../resources/js/components/card/RunCardMini.tsx) stays mono the same way,
 and the mono-for-numbers-and-uppercase-metadata rule is absolute everywhere else in the app.
 
 All three are **self-hosted**: [fonts.css](../resources/css/fonts.css) declares the faces and
@@ -238,7 +238,7 @@ pastel behind is what put a pale-green pill on near-black in `RunHero`.
 
 **Season-phase identity colours** live in TypeScript, not in the token layer. `F2` promoted the
 prototype's `PHASE_COLOR` literals into four CSS colour tokens, but the periodization display went
-on reading [`PHASE_COLORS`](../resources/js/lib/chartTokens.ts#L118) — a different set, with a fifth
+on reading [`PHASE_COLORS`](../resources/js/lib/chartTokens.ts) — a different set, with a fifth
 `deload` key those tokens never had. `W4` deleted the unread four rather than leave two disagreeing
 sources, and pinned the removal in `DesignTokenDocsTest`'s forbidden list so the name cannot come
 back quietly. The set that ships is validated colorblind-safe via the `dataviz` skill's palette
