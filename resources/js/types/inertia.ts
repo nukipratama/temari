@@ -22,8 +22,6 @@ export type {
 
 export type Tone = 'neutral' | 'positive' | 'warning' | 'alert';
 
-export type RecoveryTone = 'positive' | 'warning' | 'alert' | 'neutral';
-
 export interface AuthUser {
     id: number;
     name: string;
@@ -241,17 +239,9 @@ export interface RestDayEasePace {
 }
 
 export interface BriefingResult {
-    vibeState: string;
     mascotVoice: AnalysisPayload;
     /** No briefing has ever been narrated for this athlete — a pending one says so on the Today card. */
     firstRead: boolean;
-    recoveryLabel: string;
-    recoveryTone: RecoveryTone;
-    recoveryHoursLabel: string | null;
-    /** Raw hours since the last run — the number `recoveryHoursLabel` is rendered from. */
-    recoveryHours: number | null;
-    streakLabel: string | null;
-    sigilPattern: string;
     mood: Mood;
 }
 

@@ -72,64 +72,7 @@ it('does not re-dispatch when the voice is already done', function (): void {
     Bus::assertNotDispatched(AnalyzeBriefingMascotVoiceJob::class);
 });
 
-it('labels the streak from days since the last run', function (string $lastRun, string $label): void {
-    $user = User::factory()->create();
-    $activity = Activity::factory()->for($user)->analyzed()->create();
-    ActivityDetail::factory()->for($activity)->create([
-        'start_date_local' => Carbon::parse($lastRun),
-        'trimp_edwards' => 50.0,
-    ]);
-
-    $result = app(BriefingComposer::class)->compose($user, Carbon::parse('2026-05-18'));
-
-    expect($result->streakLabel)->toBe($label);
-})->with([
-    'yesterday' => ['2026-05-17', 'Ran yesterday'],
-    '3 days ago' => ['2026-05-15', '3 days ago'],
-    '8 days ago' => ['2026-05-10', '8 days ago'],
-]);
-
-it('returns a null streak label when the user has never run', function (): void {
-    $user = User::factory()->create();
-
-    $result = app(BriefingComposer::class)->compose($user, Carbon::parse('2026-05-18'));
-
-    expect($result->streakLabel)->toBeNull();
-});
-
-it('labels recovery hours as "Xh" under 72h and "Y days" at 72h and beyond', function (int $hoursAgo, string $label): void {
-    // hoursSinceLastRun measures against Carbon::now() when $asOf is "today" on
-    // the wall clock (else it bumps to end-of-day), so freeze "now" to asOf
-    // itself to get exact hour control.
-    $asOf = Carbon::parse('2026-05-18 12:00:00');
-    Carbon::setTestNow($asOf);
-
-    $user = User::factory()->create();
-    $activity = Activity::factory()->for($user)->analyzed()->create();
-    ActivityDetail::factory()->for($activity)->create([
-        'start_date_local' => $asOf->copy()->subHours($hoursAgo),
-        'trimp_edwards' => 50.0,
-    ]);
-
-    $result = app(BriefingComposer::class)->compose($user, $asOf);
-
-    expect($result->recoveryHoursLabel)->toBe($label);
-})->with([
-    '10 hours ago' => [10, '10h'],
-    '71 hours ago (just under the day boundary)' => [71, '71h'],
-    'exactly 72 hours ago (day boundary)' => [72, '3 days'],
-    '100 hours ago' => [100, '4 days'],
-]);
-
-it('returns a null recovery hours label when the user has never run', function (): void {
-    $user = User::factory()->create();
-
-    $result = app(BriefingComposer::class)->compose($user, Carbon::parse('2026-05-18'));
-
-    expect($result->recoveryHoursLabel)->toBeNull();
-});
-
-it('computes non-LLM fields (vibe state, streak, mood) without an LLM call', function (): void {
+it('computes the mood without an LLM call', function (): void {
     $user = User::factory()->create();
     $activity = Activity::factory()->for($user)->analyzed()->create();
     ActivityDetail::factory()->for($activity)->create([
@@ -139,11 +82,7 @@ it('computes non-LLM fields (vibe state, streak, mood) without an LLM call', fun
 
     $result = app(BriefingComposer::class)->compose($user, Carbon::parse('2026-05-18'));
 
-    expect($result->vibeState)->toBeString()->not->toBeEmpty()
-        ->and($result->mood)->toBeInstanceOf(Mood::class)
-        ->and($result->sigilPattern)->toBeString()->not->toBeEmpty()
-        ->and($result->recoveryLabel)->toBeString()->not->toBeEmpty()
-        ->and($result->streakLabel)->toBe('Ran today');
+    expect($result->mood)->toBeInstanceOf(Mood::class);
 });
 
 it('flags the very first briefing so the Today card can say it is reading', function (): void {

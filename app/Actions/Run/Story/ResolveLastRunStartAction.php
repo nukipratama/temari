@@ -11,9 +11,9 @@ use Illuminate\Support\Carbon;
  * The athlete's most recent run start, read once per request.
  *
  * Bound `scoped()` in AppServiceProvider — {@see \App\Services\Run\Story\Vibe}
- * and {@see \App\Services\Run\Story\RecoveryWindow} ask the same question from
- * three unrelated places on one Home render, and the memo can only collapse
- * them if they share an instance.
+ * and {@see \App\Services\Run\Story\RecoveryWindow} ask the same question on
+ * one Home render (today's vibe and the week plan's readiness clamp),
+ * and the memo can only collapse them if they share an instance.
  *
  * A ceiling keeps the window as-of the caller's date, so a backdated recompute
  * (self-heal / dead-letter retry) never sees a later run. It costs a second

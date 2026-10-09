@@ -470,7 +470,6 @@
         "Tests\\Unit\\Services\\Run\\Story\\CardPresenterTest": 0.4259,
         "Tests\\Unit\\Services\\Run\\Story\\Card\\CardFactsTest": 0.3426,
         "Tests\\Unit\\Services\\Run\\Story\\ComparableRunTest": 0.1827,
-        "Tests\\Unit\\Services\\Run\\Story\\FormStatusTest": 0.0609,
         "Tests\\Unit\\Services\\Run\\Story\\MoodMixTest": 0.3919,
         "Tests\\Unit\\Services\\Run\\Story\\PastYouComparisonTest": 0.4446,
         "Tests\\Unit\\Services\\Run\\Story\\PastYouDuelBuilderTest": 0.1012,

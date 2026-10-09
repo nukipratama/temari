@@ -14,7 +14,7 @@ export function loadBalanceOf(status: FormStatus): LoadBalance {
     return BALANCE[status];
 }
 
-// Mirrors App\Services\Run\Story\FormStatus::label/tone.
+// Mirrors App\Services\Run\Metrics\TrainingFormStatus::loadBalance().
 export function formStatusLabel(status: FormStatus | null): string {
     return status === null ? '—' : BALANCE[status];
 }
