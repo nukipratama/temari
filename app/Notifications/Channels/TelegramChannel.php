@@ -18,8 +18,8 @@ use Illuminate\Support\Facades\Log;
 
 /**
  * Delivers a {@see TelegramMessage} for any notification that implements
- * `toTelegram()`. Keeps delivery once-only (so a queued retry is idempotent),
- * the photo-vs-text send, and the revoke-on-permanent-failure behaviour. The
+ * `toTelegram()`. Keeps delivery once-only (so a queued retry is idempotent)
+ * and the revoke-on-permanent-failure behaviour. The
  * claim is held on the shared {@see NotificationDeliveryClaim} keyed by
  * (analysis, channel).
  *
@@ -71,11 +71,7 @@ class TelegramChannel
         }
 
         try {
-            if ($message->photoPng !== null) {
-                $this->client->sendPhoto($connection->chat_id, $message->photoPng, $message->text);
-            } else {
-                $this->client->sendMessage($connection->chat_id, $message->text);
-            }
+            $this->client->sendMessage($connection->chat_id, $message->text);
         } catch (Throwable $e) {
             $this->handleFailure($e, $notifiable, $message, $claimVersion);
 

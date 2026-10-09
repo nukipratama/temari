@@ -70,7 +70,6 @@ describe('rarity text colours', () => {
     });
 });
 
-// Parity guard: mirrored in App\Enums\Rarity::bandCount() (see RarityTest.php).
 describe('RARITY_BAND_COUNT', () => {
     it('scales from 1 (common) to 5 (legendary)', () => {
         expect(RARITY_BAND_COUNT).toEqual({

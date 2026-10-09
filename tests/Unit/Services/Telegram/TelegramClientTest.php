@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use Illuminate\Http\Client\Request;
 use App\Services\Telegram\Exceptions\TelegramApiException;
 use App\Services\Telegram\TelegramClient;
 use Illuminate\Http\Client\ConnectionException;
@@ -11,18 +10,6 @@ use Illuminate\Support\Facades\Http;
 beforeEach(function (): void {
     config(['services.telegram.bot_token' => 'test-bot-token']);
 });
-
-/** Read a multipart field's string contents from a faked outbound request. */
-function multipartField(Request $request, string $name): ?string
-{
-    foreach ($request->data() as $field) {
-        if (($field['name'] ?? null) === $name) {
-            return is_string($field['contents']) ? $field['contents'] : null;
-        }
-    }
-
-    return null;
-}
 
 it('sends a message to the bot API for the given chat', function (): void {
     Http::fake([
@@ -34,51 +21,6 @@ it('sends a message to the bot API for the given chat', function (): void {
     Http::assertSent(fn ($request): bool => $request->url() === 'https://api.telegram.org/bottest-bot-token/sendMessage'
         && $request['chat_id'] === 99887766
         && $request['text'] === 'Halo!');
-});
-
-it('uploads a photo as multipart with the caption for the given chat', function (): void {
-    Http::fake([
-        'api.telegram.org/*' => Http::response(['ok' => true, 'result' => ['message_id' => 2]]),
-    ]);
-
-    new TelegramClient()->sendPhoto(4242, 'PNG-BYTES', 'Strong run!');
-
-    Http::assertSent(function ($request): bool {
-        $names = array_column($request->data(), 'name');
-
-        return $request->url() === 'https://api.telegram.org/bottest-bot-token/sendPhoto'
-            && $request->isMultipart()
-            && in_array('photo', $names, true)
-            && multipartField($request, 'chat_id') === '4242'
-            && multipartField($request, 'caption') === 'Strong run!';
-    });
-});
-
-it('omits the caption field when none is given', function (): void {
-    Http::fake(['api.telegram.org/*' => Http::response(['ok' => true, 'result' => true])]);
-
-    new TelegramClient()->sendPhoto(1, 'PNG-BYTES', null);
-
-    Http::assertSent(fn ($request): bool => ! in_array('caption', array_column($request->data(), 'name'), true));
-});
-
-it('truncates a caption longer than the 1024-character cap', function (): void {
-    Http::fake(['api.telegram.org/*' => Http::response(['ok' => true, 'result' => true])]);
-
-    new TelegramClient()->sendPhoto(1, 'PNG-BYTES', str_repeat('a', 2000));
-
-    Http::assertSent(function ($request): bool {
-        $caption = multipartField($request, 'caption');
-
-        return mb_strlen((string) $caption) === 1024 && str_ends_with((string) $caption, '…');
-    });
-});
-
-it('throws a TelegramApiException when a photo upload fails', function (): void {
-    Http::fake(['api.telegram.org/*' => Http::response(['ok' => false, 'description' => 'chat not found'], 400)]);
-
-    expect(fn () => new TelegramClient()->sendPhoto(1, 'PNG-BYTES', 'hi'))
-        ->toThrow(TelegramApiException::class, 'chat not found');
 });
 
 it('registers the webhook url and secret token', function (): void {

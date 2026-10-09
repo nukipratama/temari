@@ -377,7 +377,6 @@
         "Tests\\Unit\\Services\\Gamification\\SeasonPayloadBuilderTest": 0.199,
         "Tests\\Unit\\Services\\Gamification\\SeasonRecordBuilderTest": 0.4492,
         "Tests\\Unit\\Services\\Gamification\\StreakSettlementServiceTest": 0.9325,
-        "Tests\\Unit\\Services\\Geo\\PolylineProjectorTest": 0.1558,
         "Tests\\Unit\\Services\\Notifications\\ChannelRouterTest": 0.6369,
         "Tests\\Unit\\Services\\Notifications\\NotificationDeliveryClaimTest": 0.455,
         "Tests\\Unit\\Services\\Notifications\\UsualRunTimeTest": 0.582,
