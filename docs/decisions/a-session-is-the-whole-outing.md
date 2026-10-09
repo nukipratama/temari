@@ -14,6 +14,8 @@ code_refs:
 
 **Status:** Accepted (2026-09-07)
 
+> **Partly superseded (2026-10-09) by [[plan-recalibration-rewrites-history]].** "Nothing is rescored; past verdicts stand" was replaced there, and that note was itself replaced by [[a-one-time-reset-rebuilds-history-before-launch]]: ordinary recalibration keeps past grades and only the one-time reset re-grades them.
+
 ## Context
 
 Reported by the athlete reading their own plan. A Tempo day's card said **5.9 km**; following the card's own segment graph meant running **7.7 km**, because the 10-minute warmup and 5-minute cooldown sat outside the figure. [SessionMatcher](app/Services/Run/Plan/SessionMatcher.php) then graded the day's *total* logged distance against the *core* figure, so complying exactly scored **130% — `overreached`**. An Interval day was worse: 3.6 km prescribed, 7.7 km asked, **214%**.

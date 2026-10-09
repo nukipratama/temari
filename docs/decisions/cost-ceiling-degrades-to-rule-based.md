@@ -46,6 +46,8 @@ code_refs:
 > `/pulse` is `/devtools/pulse` and `/horizon` is `/devtools/horizon`. The gate on them
 > also now skips outside production. Everything this decision says about behaviour stands.
 
+> **Partly superseded (2026-10-09) by [[cost-ceiling-answers-run-questions-rule-based]].** "Run questions are still refused" no longer holds: a capped day answers a run question with `RuleBasedRunAnswer` instead of refusing it, and manual triggers for narration blocks are still refused.
+
 ## Context
 
 Public signup opens with **no invite gate and no per-user cost cap**, so the app-wide daily ceiling from [[idempotent-dispatch-cost-ceiling]] becomes the entire spend mechanism. How it *behaves* now matters more than its number.
