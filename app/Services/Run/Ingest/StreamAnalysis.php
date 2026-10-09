@@ -100,10 +100,6 @@ class StreamAnalysis
         3600 => '60min',
     ];
 
-    public function __construct(private readonly KmSplitBuilder $kmSplits)
-    {
-    }
-
     /**
      * @param  array<string, mixed>  $streams  raw Strava streams dict
      * @param  array<string, array{lo: int, hi: int}>  $hrZones  inclusive lo / exclusive hi
@@ -154,12 +150,12 @@ class StreamAnalysis
 
         $cadenceByKm = $this->perKmCadenceFromStream($intervals, $distance, $cadence);
 
-        $perKm = $this->kmSplits->perKm($laps, $latlng, $time, $heartrate, $splitsMetric, $deviceDistanceM);
+        $perKm = KmSplitBuilder::perKm($laps, $latlng, $time, $heartrate, $splitsMetric, $deviceDistanceM);
         if ($perKm !== []) {
             $summary['per_km'] = $this->attachStreamCadenceToRows($perKm, $cadenceByKm);
         }
 
-        $lapRows = $this->kmSplits->laps($laps);
+        $lapRows = KmSplitBuilder::laps($laps);
         if ($lapRows !== []) {
             $summary['laps'] = $lapRows;
         }

@@ -4,10 +4,6 @@ declare(strict_types=1);
 
 use App\Services\Run\Ingest\KmSplitBuilder;
 
-beforeEach(function (): void {
-    $this->builder = new KmSplitBuilder();
-});
-
 /**
  * A GPS trace running due north from one point. Haversine along a meridian is
  * exactly R·Δlat, so the trace's cumulative distance stays proportional to the
@@ -65,14 +61,14 @@ it('reads a clean km grid straight off the laps, on elapsed time', function (): 
         $splits[] = ['split' => $km, 'distance' => 1000.0, 'elapsed_time' => 415, 'moving_time' => 415];
     }
 
-    $rows = $this->builder->perKm($laps, [], [], [], $splits, 11250.0);
+    $rows = KmSplitBuilder::perKm($laps, [], [], [], $splits, 11250.0);
 
     expect($rows)->toHaveCount(11)
         ->and($rows[3])->toBe(['km' => 4, 'pace' => '8:21', 'elapsed_sec' => 501, 'distance_m' => 1000]);
 });
 
 it('drops the trailing part-lap from the km rows', function (): void {
-    $rows = $this->builder->perKm(kmGridLaps([420, 430], 250.0, 105), [], [], [], null, 2250.0);
+    $rows = KmSplitBuilder::perKm(kmGridLaps([420, 430], 250.0, 105), [], [], [], null, 2250.0);
 
     expect($rows)->toHaveCount(2)
         ->and(array_column($rows, 'km'))->toBe([1, 2]);
@@ -83,7 +79,7 @@ it('carries the lap average heart rate and cadence onto the km row', function ()
         ['distance' => 1000.0, 'elapsed_time' => 420, 'average_heartrate' => 148.4, 'average_cadence' => 82.0],
     ];
 
-    expect($this->builder->perKm($laps, [], [], [], null, 1000.0)[0])
+    expect(KmSplitBuilder::perKm($laps, [], [], [], null, 1000.0)[0])
         ->toMatchArray(['avg_hr' => 148, 'avg_cadence_spm' => 164]);
 });
 
@@ -97,7 +93,7 @@ it('accepts laps that wobble within 5 m of the grid', function (): void {
         ['distance' => 300.0, 'elapsed_time' => 130],
     ];
 
-    $rows = $this->builder->perKm($laps, [], [], [], null, 3300.0);
+    $rows = KmSplitBuilder::perKm($laps, [], [], [], null, 3300.0);
 
     expect($rows)->toHaveCount(3)
         ->and($rows[1])->toMatchArray(['km' => 2, 'distance_m' => 997]);
@@ -110,13 +106,13 @@ it('rejects the grid when a lap falls more than 5 m short of a kilometre', funct
         ['distance' => 1000.0, 'elapsed_time' => 430],
     ];
 
-    expect($this->builder->perKm($laps, [], [], [], null, 2993.0))->toBe([]);
+    expect(KmSplitBuilder::perKm($laps, [], [], [], null, 2993.0))->toBe([]);
 });
 
 it('rejects the grid when a single lap covers the whole run', function (): void {
     $laps = [['distance' => 5010.0, 'elapsed_time' => 2132]];
 
-    expect($this->builder->perKm($laps, [], [], [], null, 5010.0))->toBe([]);
+    expect(KmSplitBuilder::perKm($laps, [], [], [], null, 5010.0))->toBe([]);
 });
 
 it('ignores laps with no distance or no elapsed time', function (): void {
@@ -126,7 +122,7 @@ it('ignores laps with no distance or no elapsed time', function (): void {
         ['distance' => 1000.0, 'elapsed_time' => 430],
     ];
 
-    expect($this->builder->perKm($laps, [], [], [], null, 2000.0))->toHaveCount(2);
+    expect(KmSplitBuilder::perKm($laps, [], [], [], null, 2000.0))->toHaveCount(2);
 });
 
 // ── Source 2: the GPS trace ──
@@ -147,7 +143,7 @@ it('falls back to the GPS trace when manual laps break the km grid', function ()
         [0, 210, 437, 660, 876, 1090, 1300, 1520, 1742, 1930, 2128, 2132],
     );
 
-    $rows = $this->builder->perKm($laps, $latlng, $time, $heartrate, null, 5010.0);
+    $rows = KmSplitBuilder::perKm($laps, $latlng, $time, $heartrate, null, 5010.0);
 
     expect(array_column($rows, 'pace'))->toBe(['7:17', '7:19', '7:04', '7:22', '6:26'])
         ->and(array_column($rows, 'elapsed_sec'))->toBe([437, 439, 424, 442, 386])
@@ -161,7 +157,7 @@ it('scales the trace onto the distance the device itself reported', function ():
     $seconds = array_map(fn (int $m): float => $m / 2.5, $metres);
 
     [$latlng, $time, $heartrate] = meridianTrace($metres, $seconds);
-    $rows = $this->builder->perKm(null, $latlng, $time, $heartrate, null, 2200.0);
+    $rows = KmSplitBuilder::perKm(null, $latlng, $time, $heartrate, null, 2200.0);
 
     expect($rows)->toHaveCount(2)
         ->and($rows[0]['elapsed_sec'])->toBe(364);
@@ -174,7 +170,7 @@ it('interpolates a km boundary that lands between two samples', function (): voi
     $seconds = array_map(fn (int $m): float => $m / 2.4, $metres);
 
     [$latlng, $time, $heartrate] = meridianTrace($metres, $seconds);
-    $rows = $this->builder->perKm(null, $latlng, $time, $heartrate, null, 1200.0);
+    $rows = KmSplitBuilder::perKm(null, $latlng, $time, $heartrate, null, 1200.0);
 
     expect($rows)->toHaveCount(1)
         ->and($rows[0]['elapsed_sec'])->toEqualWithDelta(417, 2);
@@ -186,7 +182,7 @@ it('averages the heart-rate stream across each kilometre of the trace', function
     $sampledHeartrate = array_merge(array_fill(0, 10, 150), array_fill(0, 11, 160));
 
     [$latlng, $time, $heartrate] = meridianTrace($metres, $seconds, $sampledHeartrate);
-    $rows = $this->builder->perKm(null, $latlng, $time, $heartrate, null, 2000.0);
+    $rows = KmSplitBuilder::perKm(null, $latlng, $time, $heartrate, null, 2000.0);
 
     expect($rows[0]['avg_hr'])->toBe(150)
         ->and($rows[1]['avg_hr'])->toBe(160);
@@ -198,7 +194,7 @@ it('drops a km boundary collapsed to zero elapsed time by a duplicate-timestamp 
     // reported as a kilometre run in no time at all.
     [$latlng, $time, $heartrate] = meridianTrace([0, 500, 2500, 2600], [0, 50, 50, 150]);
 
-    $rows = $this->builder->perKm(null, $latlng, $time, $heartrate, null, 2600.0);
+    $rows = KmSplitBuilder::perKm(null, $latlng, $time, $heartrate, null, 2600.0);
 
     expect(array_column($rows, 'km'))->toBe([1])
         ->and($rows[0]['elapsed_sec'])->toBe(50);
@@ -208,8 +204,8 @@ it('ignores a trace too short or too still to measure', function (): void {
     [$latlngShort, $timeShort, $heartrateShort] = meridianTrace([0], [0]);
     [$latlngStill, $timeStill, $heartrateStill] = meridianTrace([0, 0, 0], [0, 60, 120]);
 
-    expect($this->builder->perKm(null, $latlngShort, $timeShort, $heartrateShort, null, 1000.0))->toBe([])
-        ->and($this->builder->perKm(null, $latlngStill, $timeStill, $heartrateStill, null, 1000.0))->toBe([]);
+    expect(KmSplitBuilder::perKm(null, $latlngShort, $timeShort, $heartrateShort, null, 1000.0))->toBe([])
+        ->and(KmSplitBuilder::perKm(null, $latlngStill, $timeStill, $heartrateStill, null, 1000.0))->toBe([]);
 });
 
 // ── Source 3: splits_metric ──
@@ -222,7 +218,7 @@ it('falls back to splits_metric on elapsed time when there is no GPS trace', fun
         ['split' => 3, 'distance' => 640.0, 'elapsed_time' => 300],
     ];
 
-    $rows = $this->builder->perKm(null, [], [], [], $splits, 2640.0);
+    $rows = KmSplitBuilder::perKm(null, [], [], [], $splits, 2640.0);
 
     expect($rows)->toHaveCount(2)
         ->and($rows[0])->toBe(['km' => 1, 'pace' => '8:00', 'elapsed_sec' => 480, 'distance_m' => 1000, 'avg_hr' => 145])
@@ -230,8 +226,8 @@ it('falls back to splits_metric on elapsed time when there is no GPS trace', fun
 });
 
 it('returns nothing when no source can describe a kilometre', function (): void {
-    expect($this->builder->perKm(null, [], [], [], null, null))->toBe([])
-        ->and($this->builder->perKm([], [], [], [], [], 0.0))->toBe([]);
+    expect(KmSplitBuilder::perKm(null, [], [], [], null, null))->toBe([])
+        ->and(KmSplitBuilder::perKm([], [], [], [], [], 0.0))->toBe([]);
 });
 
 // ── Lap rows ──
@@ -247,7 +243,7 @@ it('normalizes the laps as their own rows, at whatever length they were', functi
         ['distance' => 358.0, 'elapsed_time' => 138],
     ];
 
-    $rows = $this->builder->laps($laps);
+    $rows = KmSplitBuilder::laps($laps);
 
     expect($rows)->toHaveCount(6)
         ->and(array_column($rows, 'distance_m'))->toBe([1000, 1000, 1000, 1005, 647, 358])
@@ -262,8 +258,8 @@ it('normalizes the laps as their own rows, at whatever length they were', functi
 });
 
 it('has no lap rows to report when the activity carries none', function (): void {
-    expect($this->builder->laps(null))->toBe([])
-        ->and($this->builder->laps([]))->toBe([]);
+    expect(KmSplitBuilder::laps(null))->toBe([])
+        ->and(KmSplitBuilder::laps([]))->toBe([]);
 });
 
 // Exposed so a reader holding the normalized rows (the narrator's get_laps)
