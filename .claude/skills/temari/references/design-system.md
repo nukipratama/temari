@@ -27,7 +27,7 @@ never a `dark:` utility (`bg-card`, not `bg-cream dark:bg-sky`) — the token la
 definition site, is classified fixed-vs-reactive by `grounds.json` so the audit scores it against
 the right grounds, and cannot drift into a raw palette shade. A difference that is **not** a colour
 value — an opacity, a ring width, a whole property — may use `dark:`, because no token can hold it;
-[MascotWatermark.tsx](../../../../resources/js/components/temari/MascotWatermark.tsx#L26)'s `dark:opacity-20` is the canonical case. `dark:` is wired to `data-theme`, not
+[MascotWatermark.tsx](../../../../resources/js/components/temari/MascotWatermark.tsx)'s `dark:opacity-20` is the canonical case. `dark:` is wired to `data-theme`, not
 `prefers-color-scheme`. See [tokens-flip-colour-dark-variant-flips-the-rest](../../../../docs/decisions/tokens-flip-colour-dark-variant-flips-the-rest.md).
 
 **Two grounds, since F2.** `[data-theme="dark"]` on `<html>` inverts Sky and Cream — Sky becomes
@@ -79,7 +79,7 @@ accepted knowingly when the buttons moved onto the pill (#1271).
 
 `horizon` (`#ade047`) is a lime tone, so it pairs with **dark** text, never white. Follow the
 [`PillButton`](../../../../resources/js/components/ui/PillButton.tsx) presets:
-There are **six tones**, defined once in [`pillButtonVariants`](../../../../resources/js/lib/variants.ts#L41):
+There are **six tones**, defined once in [`pillButtonVariants`](../../../../resources/js/lib/variants.ts):
 - `horizon` bg → **`text-sky`**, a fixed value rather than the ground-reactive `text-foreground`. This is deliberate and the one place the semantic layer must not be used: `foreground` flips to cream on the dark ground, which is the unreadable pairing on lime. Hover darkens to `horizon-deep`.
 - `sky` (the default) is ground-reactive: `bg-foreground` → `text-background` (16:1 light, 17:1 dark), so it is a near-black pill on light and a cream pill on dark; hover drops the fill to 85%.
 - `ghost` → transparent with an `ink`-tinted hairline; `outline` → `bg-card` with a `border` edge and `text-text-2`.

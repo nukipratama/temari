@@ -52,7 +52,7 @@ remaining weights renormalise, so a summary-state pairing is not penalised for
 missing optional data.
 
 **Neither pace nor heart rate is a similarity axis**
-([similarity()](app/Services/Run/Story/PastYouMatcher.php#L276)). The pace band
+([similarity()](app/Services/Run/Story/PastYouMatcher.php)). The pace band
 already establishes that two runs are the same kind of session, and both readings
 are what the verdict measures. Scoring similarity on them would bury the change
 the engine exists to find, so two candidates that differ only in HR rank equally.
@@ -67,7 +67,7 @@ the engine exists to find, so two candidates that differ only in HR rank equally
 
 Both paths hand a caller the same [TrendDirection](app/Enums/TrendDirection.php)
 call rather than a signed number alone:
-[PastYouComparison::directionFor()](app/Services/Run/Story/PastYouComparison.php#L116)
+[PastYouComparison::directionFor()](app/Services/Run/Story/PastYouComparison.php)
 is the rule shared by `bestMatch()`'s `PastYouComparison::direction()` and by
 `findMatch()`. There is one direction rule, efficiency-led, described under
 [The verdict](#the-verdict).
@@ -78,10 +78,10 @@ magnitude plus its own `relation` word — `pace`/`time`:
 `{seconds_per_km|seconds, relation: faster/slower/same}`; `hr`: `{bpm,
 relation: higher/lower/same}`. Pace is banded at the same 2% pace signal the
 direction rule uses
-([paceRelation()](app/Services/Run/Story/PastYouComparison.php#L126)). Heart
+([paceRelation()](app/Services/Run/Story/PastYouComparison.php)). Heart
 rate has no signal band of its own any more, so its relation names the gap as
 the card shows it: `same` only when it rounds to 0 bpm
-([hrRelation()](app/Services/Run/Story/PastYouMatcher.php#L221)). A run can
+([hrRelation()](app/Services/Run/Story/PastYouMatcher.php)). A run can
 therefore read "faster" and "higher" with a `flat` direction, which is exactly
 the faster-at-a-proportionally-higher-HR case. `direction` travels alongside as
 the overall call. It was originally the
@@ -115,7 +115,7 @@ past run is used at most once, so the pairs are independent.
 Each pair gets a [TrendDirection](app/Enums/TrendDirection.php) from
 [PastYouComparison::direction()](app/Services/Run/Story/PastYouComparison.php),
 decided on one metric per pair
-([metricFor()](app/Services/Run/Story/PastYouComparison.php#L84)):
+([metricFor()](app/Services/Run/Story/PastYouComparison.php)):
 
 - **Efficiency** when both runs carry an average heart rate and both are at least
   20 minutes of `elapsed_time` (`EF_MIN_ELAPSED_SEC`). Efficiency is whole-run
@@ -126,7 +126,7 @@ decided on one metric per pair
   pace.
 
 The thresholds live on
-[ComparisonMetric::signalPct()](app/Enums/ComparisonMetric.php#L17). Pace alone
+[ComparisonMetric::signalPct()](app/Enums/ComparisonMetric.php). Pace alone
 is weather-confounded and a few bpm sits inside wrist-sensor noise, which is why
 neither absolute threshold survives. A pair that is faster at a proportionally
 higher HR is `flat`, not better. There is no device gate: device bias is left to
@@ -141,7 +141,7 @@ thirds of the pairs point the same way, no pair points the opposite way, and the
 aggregate agrees. The aggregate reads each pair's change in multiples of its own
 metric's threshold (efficiency change ÷ 3%, pace change ÷ 2%) and needs a window
 mean of at least ±1 in the verdict's direction
-([aggregateDirection()](app/Services/Run/Story/PastYouTrendBuilder.php#L221)), so
+([aggregateDirection()](app/Services/Run/Story/PastYouTrendBuilder.php)), so
 windows mixing efficiency and pace pairs average on one scale. Flat pairs are allowed. If any pair points the other way, the
 verdict is `mixed`, a distinct state that keeps every row visible and states the
 split. If the evidence is not mixed but does not meet the vote or aggregate
@@ -157,7 +157,7 @@ Each pair ships its deciding `metric` and a `pace_relation`, and the trend ships
 `verdict_metric` (`ef`, `pace`, or `mixed` when pairs used both), the mean
 `pace_relation`, and an `hr_relation` that bands the mean HR shift at
 `SAME_HR_BPM` (2 bpm, inclusive)
-([verdictMetric()](app/Services/Run/Story/PastYouTrendBuilder.php#L236)). The
+([verdictMetric()](app/Services/Run/Story/PastYouTrendBuilder.php)). The
 home copy reads those words rather than re-deriving thresholds; see
 [[dashboard]].
 

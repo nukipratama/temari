@@ -18,18 +18,18 @@ The operational mechanics of talking to Strava live in [[strava-client]]; this n
 
 ## The endpoints we actually call
 
-Every read goes through [`StravaClient::get()`](app/Services/Strava/StravaClient.php#L64), so the call sites are enumerable:
+Every read goes through [`StravaClient::get()`](app/Services/Strava/StravaClient.php), so the call sites are enumerable:
 
 | Endpoint | Call site |
 | --- | --- |
-| `/athlete/activities` | [ActivityFetcher](app/Services/Strava/ActivityFetcher.php#L77) |
-| `/activities/{id}` | [CleanupDeletedActivityJob](app/Jobs/Strava/CleanupDeletedActivityJob.php#L112) |
-| `/activities/{id}/streams` | [ActivityPipeline](app/Services/Run/Ingest/ActivityPipeline.php#L289) |
-| `/athlete/zones` | [ZoneFetcher](app/Services/Strava/ZoneFetcher.php#L44) |
-| `/athlete` | [VerifyStravaRevocationJob](app/Jobs/Strava/VerifyStravaRevocationJob.php#L52) |
-| `/push_subscriptions` | [WebhookSubscribeCommand](app/Console/Commands/Strava/WebhookSubscribeCommand.php#L25) |
+| `/athlete/activities` | [ActivityFetcher](app/Services/Strava/ActivityFetcher.php) |
+| `/activities/{id}` | [CleanupDeletedActivityJob](app/Jobs/Strava/CleanupDeletedActivityJob.php) |
+| `/activities/{id}/streams` | [ActivityPipeline](app/Services/Run/Ingest/ActivityPipeline.php) |
+| `/athlete/zones` | [ZoneFetcher](app/Services/Strava/ZoneFetcher.php) |
+| `/athlete` | [VerifyStravaRevocationJob](app/Jobs/Strava/VerifyStravaRevocationJob.php) |
+| `/push_subscriptions` | [WebhookSubscribeCommand](app/Console/Commands/Strava/WebhookSubscribeCommand.php) |
 
-**No club endpoints and no segment endpoints, including Explore Segments.** Strava removes the club endpoints and restricts Explore Segments on **2026-09-01**; both are a no-op for Temari, and the table above is what keeps that checkable. The requested OAuth scopes are correspondingly narrow ([StravaAuthController](app/Http/Controllers/Auth/StravaAuthController.php#L28)): `read`, `activity:read_all`, `profile:read_all` and nothing else.
+**No club endpoints and no segment endpoints, including Explore Segments.** Strava removes the club endpoints and restricts Explore Segments on **2026-09-01**; both are a no-op for Temari, and the table above is what keeps that checkable. The requested OAuth scopes are correspondingly narrow ([StravaAuthController](app/Http/Controllers/Auth/StravaAuthController.php)): `read`, `activity:read_all`, `profile:read_all` and nothing else.
 
 ## One athlete's data is never shown to another
 
@@ -50,7 +50,7 @@ Strava's terms bar using its data to train AI models. Temari sends run stats to 
 - **2026-06-30** — standard API access requires a paid Strava subscription. Account-level, no code hook.
 - **2026-09-01** — club endpoints removed, Explore Segments restricted. No-op here, see above.
 - **2027-01-04** — `api-v3.strava.com` starts serving. It is **not the deadline it looks like**: it is the date the replacement host becomes *available*, and Strava has announced no shutdown date for `www.strava.com/api/v3`. The host is already a config value, `STRAVA_API_BASE_URL`, defaulting to the host that answers today; see [[strava-client]] before flipping it.
-- **2027-06-01** — access tokens must be sent in request headers rather than form params, and `oauth/deauthorize` is retired in favour of `oauth/revoke`. The first is a no-op here: API reads already authenticate with a bearer header via `withToken()` ([StravaClient](app/Services/Strava/StravaClient.php)). The second is a real hook — [StravaClient::deauthorizeGrantToken()](app/Services/Strava/StravaClient.php) calls `oauth/deauthorize` (through [StravaGrantReleaseService](app/Services/Strava/StravaGrantReleaseService.php)) when an account is deleted or an operator releases an athlete, and that endpoint becomes `oauth/revoke` on this date. An athlete-initiated revocation is still something they do on Strava's side, which we detect from a 401 ([VerifyStravaRevocationJob](app/Jobs/Strava/VerifyStravaRevocationJob.php#L52)).
+- **2027-06-01** — access tokens must be sent in request headers rather than form params, and `oauth/deauthorize` is retired in favour of `oauth/revoke`. The first is a no-op here: API reads already authenticate with a bearer header via `withToken()` ([StravaClient](app/Services/Strava/StravaClient.php)). The second is a real hook — [StravaClient::deauthorizeGrantToken()](app/Services/Strava/StravaClient.php) calls `oauth/deauthorize` (through [StravaGrantReleaseService](app/Services/Strava/StravaGrantReleaseService.php)) when an account is deleted or an operator releases an athlete, and that endpoint becomes `oauth/revoke` on this date. An athlete-initiated revocation is still something they do on Strava's side, which we detect from a 401 ([VerifyStravaRevocationJob](app/Jobs/Strava/VerifyStravaRevocationJob.php)).
 
 The dates above are from Strava's [V3 API changelog](https://developers.strava.com/docs/changelog/), which is the thing to re-read before acting on any of them.
 

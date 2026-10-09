@@ -31,7 +31,7 @@ its scoped dry run as the check.
 ## `composer gate`: the fast pre-push gate
 
 [scripts/gate.sh](../../scripts/gate.sh) (wired as `composer gate` / `composer check:full` in
-[composer.json](../../composer.json#L70)) is a shared script with two modes:
+[composer.json](../../composer.json)) is a shared script with two modes:
 
 - **fast** (`composer gate`, `sh scripts/gate.sh`): config clear, TS-enum drift check, the doc-citation
   and `{@see}` guards, the design-token palette guard, the structural Pest + Vitest suites, `tsc`,
