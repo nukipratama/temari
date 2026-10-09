@@ -115,6 +115,14 @@ it('passes a prose link text', function (): void {
     expect($code)->toBe(0, $output);
 });
 
+it('passes a line anchor on an external URL in a living note', function (): void {
+    [$code, $output] = runCitationGuard([
+        'docs/features/foo.md' => "# Foo\n\nSee [the upstream fix](https://github.com/laravel/framework/blob/0a1b2c3/src/Foo.php#L42).\n",
+    ]);
+
+    expect($code)->toBe(0, $output);
+});
+
 it('passes a line anchor in an ADR, even when the symbol has moved', function (): void {
     [$code, $output] = runCitationGuard([
         'app/Foo.php' => CITATION_GUARD_SOURCE,

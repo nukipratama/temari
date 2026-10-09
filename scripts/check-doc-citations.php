@@ -174,6 +174,10 @@ function checkCitation(string $root, string $doc, int $lineNo, string $raw, arra
 function checkLivingCitation(string $root, string $doc, int $lineNo, string $target, string $linkText, array &$unresolved): void
 {
     $target = trim($target);
+    if (preg_match('~^(https?:|mailto:|//|#)~', $target) === 1) {
+        return;
+    }
+
     $path = trim((string) preg_replace('/#.*$/', '', (string) (preg_split('/\s+/', $target)[0] ?? '')));
     $docRelative = substr($doc, strlen($root) + 1);
 
