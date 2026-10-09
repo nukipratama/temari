@@ -20,18 +20,13 @@ use Illuminate\Support\Collection;
 use LogicException;
 
 /**
- * The two render-time computations shared by every "current week" surface —
- * {@see PlanPageAssembler} (the full multi-week arc) and
- * {@see CurrentWeekPlanBuilder} (Home's single-week widget). Pulled out so
- * the two pages can never numerically drift on the same week: the
- * phase→volume-multiplier math is relative to how far into a Peak/Taper/
- * Deload block a week sits, which only a shared computation over the same
- * trailing history can get right.
- *
- * That multiplier is now READ off the row rather than recomputed: it counts
- * from the season's arc start, which a window reaching back three weeks
- * cannot see. The recompute stays as the fallback for rows written before
- * generation stamped it. See `docs/decisions/the-arc-is-anchored-once.md`.
+ * The rules every plan surface renders a day by, so {@see PlanPageAssembler},
+ * {@see CurrentWeekPlanBuilder}, {@see CurrentWeekKm} and the narrator's planned
+ * sessions cannot drift: each week's phase and volume multiplier (read off the
+ * row, recomputed only for rows written before it was stamped, see
+ * `docs/decisions/the-arc-is-anchored-once.md`), the km a day asks for, and the
+ * session, segments and km it shows after an ease, today's clamp and the week's
+ * redistribution ({@see self::shownDay()}, {@see self::dayPayload()}).
  */
 final class PlanRenderer
 {
@@ -431,8 +426,7 @@ final class PlanRenderer
             $headlinesAdvice => $advisoryClamp['session_type'],
             default => $s->session_type,
         };
-        $storedPrescription = IntensityPrescription::fromSession($s);
-        if (! $headlinesEase && ! $headlinesAdvice && $storedPrescription?->isEasy() === true && in_array($sessionType, [SessionType::Tempo, SessionType::Interval], true)) {
+        if (! $headlinesEase && ! $headlinesAdvice && IntensityPrescription::isEasyQualityDay($s, $sessionType)) {
             $sessionType = SessionType::Easy;
         }
         $originalPaceSecPerKm = null;
@@ -639,7 +633,7 @@ final class PlanRenderer
         float $longRunProgressionCapKm,
     ): array {
         $prescription = IntensityPrescription::fromSession($session);
-        if ($prescription?->isEasy() === true && $sessionType === SessionType::Easy && in_array($session->session_type, [SessionType::Tempo, SessionType::Interval], true)) {
+        if ($sessionType === SessionType::Easy && IntensityPrescription::isEasyQualityDay($session, $session->session_type)) {
             $km = SegmentGenerator::coreKmFor($session->session_type, false, $longRunKm, $multiplier, $longRunCapKm, $raceDistanceM, $longRunProgressionCapKm, $session->fall_off_tilt) * $volumeScale;
 
             return SegmentGenerator::easyBlock(round($km, 1), $paces);

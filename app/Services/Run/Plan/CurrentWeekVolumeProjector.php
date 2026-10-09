@@ -90,8 +90,7 @@ final readonly class CurrentWeekVolumeProjector
     private function runsEasy(PlannedSession $session): bool
     {
         return $session->session_type === SessionType::Easy
-            || (in_array($session->session_type, [SessionType::Tempo, SessionType::Interval], true)
-                && IntensityPrescription::fromSession($session)?->isEasy() === true);
+            || IntensityPrescription::isEasyQualityDay($session, $session->session_type);
     }
 
     /** @param array<string, array{meters: float}> $activityByDate */
