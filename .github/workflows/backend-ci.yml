@@ -33,6 +33,8 @@ jobs:
             > "$RUNNER_TEMP/mysql-start.log" 2>&1 &
 
       - uses: ./.github/actions/start-redis
+        with:
+          wait: 'false'
 
       - uses: ./.github/actions/show-runner-resources
         with:
@@ -61,6 +63,8 @@ jobs:
         run: |
           cat "$RUNNER_TEMP/mysql-start.log" || true
           docker logs mysql || true
+
+      - uses: ./.github/actions/wait-redis
 
       - name: Tests
         env:
@@ -184,6 +188,10 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
+      - uses: ./.github/actions/start-redis
+        with:
+          wait: 'false'
+
       - uses: ./.github/actions/setup-php
         with:
           php-version: ${{ env.PHP_VERSION }}
@@ -191,7 +199,7 @@ jobs:
       - name: Stub .env for tools that boot the app
         run: cp .env.example .env
 
-      - uses: ./.github/actions/start-redis
+      - uses: ./.github/actions/wait-redis
 
       - name: Restore PHPStan analyser cache
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
