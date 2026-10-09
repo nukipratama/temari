@@ -25,8 +25,9 @@ permissions:
 jobs:
   # Diffs against the PR's *own* base branch, so filtering is correct whatever
   # the target; a hardcoded base saw the whole epic diff and never filtered
-  # anything. A push runs everything, having no base to diff against.
+  # anything. A push skips this job and runs everything, having no base to diff against.
   changes:
+    if: ${{ github.event_name == 'pull_request' }}
     runs-on: ubuntu-26.04-arm
     timeout-minutes: 2
     outputs:
@@ -44,12 +45,6 @@ jobs:
         id: filter
         run: |
           set -euo pipefail
-
-          if [ "${{ github.event_name }}" != "pull_request" ]; then
-            echo "push event - running everything"
-            { echo "backend=true"; echo "frontend=true"; echo "docker=true"; echo "worktree=true"; echo "structure=false"; echo "image=false"; } >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
 
           # Explicit refspec: `git fetch origin <branch>` updates FETCH_HEAD but
           # does not reliably create refs/remotes/origin/<branch>, which is what
@@ -114,19 +109,19 @@ jobs:
   backend:
     name: backend
     needs: [changes]
-    if: ${{ needs.changes.outputs.backend == 'true' }}
+    if: ${{ !cancelled() && (github.event_name != 'pull_request' || needs.changes.outputs.backend == 'true') }}
     uses: ./.github/workflows/backend-ci.yml
 
   frontend:
     name: frontend
     needs: [changes]
-    if: ${{ needs.changes.outputs.frontend == 'true' }}
+    if: ${{ !cancelled() && (github.event_name != 'pull_request' || needs.changes.outputs.frontend == 'true') }}
     uses: ./.github/workflows/frontend-ci.yml
 
   worktree:
     name: worktree-races
     needs: [changes]
-    if: ${{ needs.changes.outputs.worktree == 'true' }}
+    if: ${{ !cancelled() && (github.event_name != 'pull_request' || needs.changes.outputs.worktree == 'true') }}
     runs-on: ubuntu-26.04-arm
     timeout-minutes: 5
     strategy:
@@ -183,17 +178,18 @@ jobs:
             fi
           }
 
-          require_if_changed "${{ needs.changes.outputs.backend }}" "${{ needs.backend.result }}" backend
-          require_if_changed "${{ needs.changes.outputs.frontend }}" "${{ needs.frontend.result }}" frontend
-          require_if_changed "${{ needs.changes.outputs.worktree }}" "${{ needs.worktree.result }}" worktree
+          require_if_changed "${{ github.event_name != 'pull_request' || needs.changes.outputs.backend == 'true' }}" "${{ needs.backend.result }}" backend
+          require_if_changed "${{ github.event_name != 'pull_request' || needs.changes.outputs.frontend == 'true' }}" "${{ needs.frontend.result }}" frontend
+          require_if_changed "${{ github.event_name != 'pull_request' || needs.changes.outputs.worktree == 'true' }}" "${{ needs.worktree.result }}" worktree
           require_if_changed "${{ needs.changes.outputs.structure }}" "${{ needs.structure.result }}" backend-structure
 
           for r in "${{ needs.build.result }}" "${{ needs.dependency-review.result }}"; do
             [ "$r" = "success" ] || [ "$r" = "skipped" ] || { echo "::error::a required job did not pass ($r)"; exit 1; }
           done
-          for r in "${{ needs.repo-guards.result }}" "${{ needs.changes.result }}"; do
-            [ "$r" = "success" ] || { echo "::error::a required unconditional job did not pass ($r)"; exit 1; }
-          done
+          [ "${{ needs.repo-guards.result }}" = "success" ] || { echo "::error::a required unconditional job did not pass (${{ needs.repo-guards.result }})"; exit 1; }
+          expected_changes=success
+          [ "${{ github.event_name }}" = "pull_request" ] || expected_changes=skipped
+          [ "${{ needs.changes.result }}" = "$expected_changes" ] || { echo "::error::changes did not run as expected (${{ needs.changes.result }})"; exit 1; }
 
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         if: github.event_name == 'pull_request' && needs.backend.result == 'success'
@@ -265,7 +261,7 @@ jobs:
   build:
     name: build-prod-image
     needs: [changes]
-    if: ${{ needs.changes.outputs.docker == 'true' || needs.changes.outputs.backend == 'true' || needs.changes.outputs.frontend == 'true' }}
+    if: ${{ !cancelled() && (github.event_name != 'pull_request' || needs.changes.outputs.docker == 'true' || needs.changes.outputs.backend == 'true' || needs.changes.outputs.frontend == 'true') }}
     runs-on: ubuntu-26.04
     timeout-minutes: 30
     permissions:
