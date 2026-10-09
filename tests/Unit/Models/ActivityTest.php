@@ -8,7 +8,6 @@ use App\Models\ActivityStream;
 use App\Models\PersonalRecord;
 use App\Models\RunCard;
 use App\Models\Scopes\AnalyzedScope;
-use App\Models\StoryLine;
 use App\Models\User;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -47,17 +46,13 @@ it('has one detail, one stream, and one run card', function (): void {
         ->and($activity->runCard)->toBeInstanceOf(RunCard::class);
 });
 
-it('has many personal records and story lines', function (): void {
+it('has many personal records', function (): void {
     $activity = Activity::factory()->create();
     // Pin categories so factory randomness doesn't collide on the unique index.
     PersonalRecord::factory()->forActivity($activity)->create(['category' => '5km']);
     PersonalRecord::factory()->forActivity($activity)->create(['category' => '10km']);
-    StoryLine::factory()->for($activity)->count(1)->create([
-        'user_id' => $activity->user_id,
-    ]);
 
-    expect($activity->personalRecords)->toHaveCount(2)
-        ->and($activity->storyLines)->toHaveCount(1);
+    expect($activity->personalRecords)->toHaveCount(2);
 });
 
 it('enforces unique (user_id, strava_external_id)', function (): void {
