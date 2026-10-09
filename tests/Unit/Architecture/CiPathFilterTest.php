@@ -26,6 +26,27 @@ function ciClassifyPaths(array $paths): array
     return $checks;
 }
 
+/** @return array<string, array<string, bool>> */
+function ciClassifyEachPath(array $paths): array
+{
+    $process = new Process([base_path('scripts/ci/classify-checks.sh'), '--per-path'], base_path());
+    $process->setInput(implode("\n", $paths)."\n");
+    $process->run();
+
+    expect($process->isSuccessful())->toBeTrue($process->getErrorOutput());
+
+    $classified = [];
+    foreach (explode("\n", trim($process->getOutput())) as $line) {
+        [$path, $checks] = explode("\t", $line, 2);
+        foreach (explode("\t", $checks) as $check) {
+            [$name, $value] = explode('=', $check, 2);
+            $classified[$path][$name] = $value === 'true';
+        }
+    }
+
+    return $classified;
+}
+
 function ciChecks(
     bool $backend = false,
     bool $frontend = false,
@@ -62,6 +83,8 @@ function ciRunsStructureTests(string $path): bool
 /** @return list<string> */
 function ciRepoPathsReadBy(string $testSource): array
 {
+    static $directoryProbes = [];
+
     $roots = ['base' => '', 'resource' => 'resources/', 'public' => 'public/'];
 
     preg_match_all("/\b(base|resource|public)_path\('([^'$]+)'\)/", $testSource, $calls, PREG_SET_ORDER);
@@ -71,7 +94,7 @@ function ciRepoPathsReadBy(string $testSource): array
         ->map(fn (array $call): string => $roots[$call[1]].$call[2])
         ->merge($constants[1])
         ->reject(fn (string $path): bool => str_starts_with($path, 'vendor/'))
-        ->flatMap(function (string $path): array {
+        ->flatMap(function (string $path) use (&$directoryProbes): array {
             if (is_file(base_path($path))) {
                 return [$path];
             }
@@ -79,7 +102,7 @@ function ciRepoPathsReadBy(string $testSource): array
                 return [];
             }
 
-            return collect(File::allFiles(base_path($path)))
+            return $directoryProbes[$path] ??= collect(File::allFiles(base_path($path)))
                 ->map(fn (SplFileInfo $file): string => "{$path}/ci-probe.{$file->getExtension()}")
                 ->unique()
                 ->all();
@@ -127,7 +150,7 @@ it('runs the structure tests for every doc the token-docs test reads', function 
 })->group('structure');
 
 it('runs a check that executes every test reading a repo file it names', function (): void {
-    $unguarded = [];
+    $reads = [];
 
     foreach (File::allFiles(base_path('tests')) as $test) {
         if ($test->getExtension() !== 'php') {
@@ -137,11 +160,18 @@ it('runs a check that executes every test reading a repo file it names', functio
         $source = $test->getContents();
 
         foreach (ciRepoPathsReadBy($source) as $path) {
-            $checks = ciClassifyPaths([$path]);
+            $reads[] = [$path, $test, $source];
+        }
+    }
 
-            if (! $checks['backend'] && ! ($checks['structure'] && ciRunsOnlyStructureTests($source))) {
-                $unguarded[] = "{$path} (read by tests/{$test->getRelativePathname()})";
-            }
+    $classified = ciClassifyEachPath(array_values(array_unique(array_column($reads, 0))));
+    $unguarded = [];
+
+    foreach ($reads as [$path, $test, $source]) {
+        $checks = $classified[$path];
+
+        if (! $checks['backend'] && ! ($checks['structure'] && ciRunsOnlyStructureTests($source))) {
+            $unguarded[] = "{$path} (read by tests/{$test->getRelativePathname()})";
         }
     }
 
@@ -307,6 +337,25 @@ it('unions mixed changes and takes the all-checks branch for the workflow', func
         'resources/js/app.tsx',
         CI_WORKFLOW,
     ]))->toBe(ciChecks(backend: true, frontend: true, docker: true, worktree: true, image: true));
+})->group('structure');
+
+it('classifies each path on its own in per-path mode, matching a single-path run', function (): void {
+    $paths = [
+        'docs/decisions/dark-is-the-default-ground.md',
+        'resources/js/app.tsx',
+        'app/Models/User.php',
+        'Dockerfile',
+        'scripts/worktree',
+        CI_WORKFLOW,
+    ];
+
+    $classified = ciClassifyEachPath($paths);
+
+    expect(array_keys($classified))->toBe($paths);
+
+    foreach ($paths as $path) {
+        expect($classified[$path])->toBe(ciClassifyPaths([$path]), $path);
+    }
 })->group('structure');
 
 it('skips the heavy jobs for planning docs, which nothing asserts against', function (): void {
