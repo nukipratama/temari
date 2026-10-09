@@ -77,7 +77,6 @@ class DemoRunSeeder
         private readonly AnalysisService $analysisService,
         private readonly RuleBasedNarrationFiller $filler,
         private readonly Periodizer $periodizer,
-        private readonly WeekPlanBuilder $weekPlanBuilder,
         private readonly TrainingBaseline $trainingBaseline,
         private readonly PlanNarrationRequester $planNarrationRequester,
         private readonly TrendSnapshotWriter $trendSnapshots,
@@ -420,7 +419,7 @@ class DemoRunSeeder
         $preference = TrainingPreference::query()->where('user_id', $user->id)->first();
         $sessionsPerWeek = $this->trainingBaseline->forUser($user, $today)['sessions_per_week'];
 
-        $weekRows = $this->weekPlanBuilder->build(
+        $weekRows = WeekPlanBuilder::build(
             $currentWeekStart,
             $todaysRow->phase,
             $sessionsPerWeek,

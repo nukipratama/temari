@@ -185,7 +185,6 @@ final class TrainingBaseline
         private readonly ResolveTrailingWeeksAction $weeklySnapshots,
         private readonly ResolveRecentLongestRunAction $recentLongestRun,
         private readonly ResolveSeasonAction $season,
-        private readonly WeekPlanBuilder $weekPlanBuilder,
     ) {
     }
 
@@ -544,7 +543,7 @@ final class TrainingBaseline
         $kmPerBaselineKm = 0.0;
         $raceKm = 0.0;
         foreach ($weeks as $week) {
-            $days = $this->weekPlanBuilder->build($week['week_start'], $week['phase'], $sessionsPerWeek, [], $raceDistanceM, $race === null, raceDate: $race?->race_date);
+            $days = WeekPlanBuilder::build($week['week_start'], $week['phase'], $sessionsPerWeek, [], $raceDistanceM, $race === null, raceDate: $race?->race_date);
             ksort($days);
             $primaryEasySeen = false;
             foreach ($days as $day) {

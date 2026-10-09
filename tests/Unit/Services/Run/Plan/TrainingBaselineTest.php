@@ -18,7 +18,6 @@ use App\Services\Run\Metrics\TrainingPaceCalculator;
 use App\Services\Run\Metrics\VdotEstimator;
 use App\Services\Run\Plan\PhaseSchedule;
 use App\Services\Run\Plan\TrainingBaseline;
-use App\Services\Run\Plan\WeekPlanBuilder;
 use App\Services\Run\Plan\SeasonSummaryBuilder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -55,7 +54,6 @@ function baselineWithEasyPace(?int $easySecPerKm): TrainingBaseline
         new ResolveTrailingWeeksAction(),
         new ResolveRecentLongestRunAction(),
         new ResolveSeasonAction(),
-        new WeekPlanBuilder(),
     );
 }
 

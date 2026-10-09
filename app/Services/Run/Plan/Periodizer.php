@@ -76,7 +76,6 @@ final readonly class Periodizer
 
     public function __construct(
         private PhaseSchedule $phaseSchedule,
-        private WeekPlanBuilder $weekPlanBuilder,
         private PlanInputsGatherer $gatherer,
         private IntensityPrescriptionResolver $prescriptionResolver,
     ) {
@@ -196,7 +195,7 @@ final readonly class Periodizer
             array_filter($arc, static fn (array $week): bool => $week['phase'] === PlanPhase::Deload),
         )));
         foreach ($weeks as $week) {
-            $weekRows = $this->weekPlanBuilder->build(
+            $weekRows = WeekPlanBuilder::build(
                 $week['week_start'],
                 $week['phase'],
                 $inputs->sessionsPerWeek,
