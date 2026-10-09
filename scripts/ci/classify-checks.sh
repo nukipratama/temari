@@ -15,7 +15,6 @@ hits() {
 selected=
 
 match() {
-  eval "set -- \"\$hits_$1\""
   if [ -z "$selected" ]; then
     [ -n "$1" ]
   else
@@ -49,7 +48,7 @@ hits_STRUCTURE="$(hits "$STRUCTURE")"
 hits_IMAGE="$(hits "$IMAGE")"
 
 classify() {
-  if match EVERYTHING; then
+  if match "$hits_EVERYTHING"; then
     backend=true
     frontend=true
     docker=true
@@ -59,27 +58,27 @@ classify() {
     frontend=false
     docker=false
     worktree=false
-    if match BACKEND || match MIRRORS; then
+    if match "$hits_BACKEND" || match "$hits_MIRRORS"; then
       backend=true
     fi
-    if match FRONTEND; then
+    if match "$hits_FRONTEND"; then
       frontend=true
     fi
-    if match DOCKER; then
+    if match "$hits_DOCKER"; then
       docker=true
     fi
-    if match WORKTREE; then
+    if match "$hits_WORKTREE"; then
       worktree=true
     fi
   fi
 
   structure=false
-  if [ "$backend" = false ] && match STRUCTURE; then
+  if [ "$backend" = false ] && match "$hits_STRUCTURE"; then
     structure=true
   fi
 
   image=false
-  if match IMAGE; then
+  if match "$hits_IMAGE"; then
     image=true
   fi
 }
