@@ -167,7 +167,7 @@ while its latest run is.
 ## Alerts
 
 Every entry wrapped in `$alertOnFailure` in [routes/console.php](../../routes/console.php) pages
-once per incident through [MaintainerAlerter](../../app/Services/AI/MaintainerAlerter.php). The
+once per incident through [MaintainerAlerter](../../app/Services/Ops/MaintainerAlerter.php). The
 first failure pages. The entry then stays silent while it keeps failing, except for one repeat page
 per 24 hours, and its next success sends one "recovered" line. The open incident is a key on the
 `durable` store, so a cache eviction cannot re-page it. `athletesFailed()`, which a per-athlete

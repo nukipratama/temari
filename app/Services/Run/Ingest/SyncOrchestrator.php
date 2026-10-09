@@ -13,7 +13,7 @@ use App\Jobs\Strava\IngestActivityJob;
 use App\Models\Activity;
 use App\Models\Analytics\StravaSyncLog;
 use App\Models\User;
-use App\Services\AI\MaintainerAlerter;
+use App\Services\Ops\MaintainerAlerter;
 use App\Services\Strava\ActivityFetcher;
 use App\Services\Run\Metrics\WeeklyAggregator;
 use App\Services\Strava\Exceptions\StravaConnectionRevokedException;

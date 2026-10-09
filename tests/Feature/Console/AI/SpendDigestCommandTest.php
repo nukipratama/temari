@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 use App\Models\AI\TokenUsage;
 use App\Models\User;
-use App\Services\AI\MaintainerAlerter;
+use App\Services\Ops\MaintainerAlerter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 

@@ -6,7 +6,7 @@ namespace App\Console\Commands\Strava;
 
 use App\Models\RunnerProfile;
 use App\Models\User;
-use App\Services\AI\MaintainerAlerter;
+use App\Services\Ops\MaintainerAlerter;
 use App\Services\Run\Plan\PlanRecalibrationDispatch;
 use App\Services\Strava\Exceptions\StravaConnectionRevokedException;
 use App\Services\Strava\Exceptions\StravaTokenRefreshFailedException;

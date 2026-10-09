@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Services\AI;
+namespace App\Services\Ops;
 
 use App\Jobs\AI\FlushDeadLetterAlertJob;
 use App\Jobs\AI\SendMaintainerAlertJob;
@@ -90,7 +90,7 @@ class MaintainerAlerter
 
     /**
      * A block just crossed into dead-letter (ai:self-heal gave up after burning
-     * the retry budget). Fired from {@see AnalysisService::markFailed()} only at
+     * the retry budget). Fired from {@see \App\Services\AI\AnalysisService::markFailed()} only at
      * the crossing (attempts reaching MAX). Coalesces into one summary push per
      * window instead of one per dead-letter — a rate-limit storm can dead-letter
      * many blocks within seconds, and one push per dead-letter would flood every
@@ -163,7 +163,7 @@ class MaintainerAlerter
 
     /**
      * Alert on a generation pause on/off transition, with the reason. Compares the
-     * current {@see NarrationGate::pauseReason()} to the last one alerted (stored
+     * current {@see \App\Services\AI\NarrationGate::pauseReason()} to the last one alerted (stored
      * durably) and pushes only on a change, so an ongoing pause is not re-sent on
      * every hourly self-heal run. A null reason means generation resumed.
      *

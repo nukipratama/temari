@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Jobs\Strava;
 
-use App\Services\AI\MaintainerAlerter;
+use App\Services\Ops\MaintainerAlerter;
 use Illuminate\Foundation\Queue\Queueable;
 use App\Services\Strava\StravaGrantReleaseService;
 use Illuminate\Contracts\Queue\ShouldQueue;

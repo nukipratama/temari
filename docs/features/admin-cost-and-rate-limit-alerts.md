@@ -5,7 +5,7 @@ tags: [feature, notifications]
 status: living
 reviewed: 2026-09-16
 code_refs:
-  - app/Services/AI/MaintainerAlerter.php
+  - app/Services/Ops/MaintainerAlerter.php
   - app/Console/Commands/AI/SpendDigestCommand.php
   - app/Console/Commands/ExceptionDigestCommand.php
   - app/Support/NewExceptionLedger.php
@@ -18,7 +18,7 @@ code_refs:
 
 # Admin cost and rate-limit alerts
 
-Everything here goes out through [MaintainerAlerter](../../app/Services/AI/MaintainerAlerter.php),
+Everything here goes out through [MaintainerAlerter](../../app/Services/Ops/MaintainerAlerter.php),
 the one path that pushes to every `is_admin` user's Telegram chat and no-ops when no bot token is
 configured. It bypasses `ChannelRouter` and the channel mutes on purpose
 ([[telegram-notifications]]): these are operational, not product.
@@ -74,7 +74,7 @@ is fingerprinted:
   the fixed label `unknown frame`, so a page URL or other caller text never becomes a label.
 
 The first sighting in 30 days queues the fingerprint. Repeats raise its count until the next
-digest, skipping the count rather than waiting when the ledger lock is busy. At 21:00 [`MaintainerAlerter::exceptionDigest()`](../../app/Services/AI/MaintainerAlerter.php)
+digest, skipping the count rather than waiting when the ledger lock is busy. At 21:00 [`MaintainerAlerter::exceptionDigest()`](../../app/Services/Ops/MaintainerAlerter.php)
 sends one message: a line per fingerprint with its first-seen time and count, folded to
 "and N more" past 25 lines so it stays under Telegram's message limit.
 

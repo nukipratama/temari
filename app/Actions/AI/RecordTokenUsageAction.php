@@ -7,7 +7,7 @@ namespace App\Actions\AI;
 use App\Models\AI\TokenUsage;
 use App\Services\AI\AnalysisOrigin;
 use App\Services\AI\Agent\AgentBudget;
-use App\Services\AI\MaintainerAlerter;
+use App\Services\Ops\MaintainerAlerter;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
 use Throwable;

@@ -17,7 +17,7 @@ use App\Services\AI\Agent\AgentToolbox;
 use App\Services\AI\AzureCallThrottle;
 use App\Services\AI\AzureConfigCircuitBreaker;
 use App\Services\AI\AzureOpenAIClient;
-use App\Services\AI\MaintainerAlerter;
+use App\Services\Ops\MaintainerAlerter;
 use App\Services\AI\ChatCallOptions;
 use App\Services\AI\AnalysisOrigin;
 use App\Services\AI\NarratedAnalysis;

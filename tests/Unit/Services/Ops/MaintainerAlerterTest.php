@@ -8,7 +8,7 @@ use App\Models\NotificationPreference;
 use App\Models\ScheduledTaskRun;
 use App\Models\TelegramConnection;
 use App\Models\User;
-use App\Services\AI\MaintainerAlerter;
+use App\Services\Ops\MaintainerAlerter;
 use App\Services\Telegram\Exceptions\TelegramApiException;
 use App\Services\Telegram\TelegramClient;
 use App\Support\Config\AppConfig;

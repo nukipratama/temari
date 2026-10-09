@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 use App\Jobs\Strava\RetryOrphanedStravaGrantReleasesJob;
-use App\Services\AI\MaintainerAlerter;
+use App\Services\Ops\MaintainerAlerter;
 use App\Services\Strava\StravaClient;
 use App\Services\Strava\StravaGrantLedger;
 use App\Services\Strava\StravaGrantReleaseService;

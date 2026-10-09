@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Console\Commands\AI;
 
 use App\Services\AI\NarrationGate;
-use App\Services\AI\MaintainerAlerter;
+use App\Services\Ops\MaintainerAlerter;
 use App\Services\AI\SelfHealer;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;

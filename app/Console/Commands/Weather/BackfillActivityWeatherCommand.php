@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Console\Commands\Weather;
 
 use App\Models\ActivityDetail;
-use App\Services\AI\MaintainerAlerter;
+use App\Services\Ops\MaintainerAlerter;
 use App\Services\Weather\OpenMeteoClient;
 use Carbon\CarbonImmutable;
 use Illuminate\Console\Attributes\Description;

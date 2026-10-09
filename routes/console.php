@@ -6,7 +6,7 @@ use App\Console\SchedulerChain;
 use App\Jobs\Strava\RetryOrphanedStravaGrantReleasesJob;
 use App\Models\TelegramLinkTokenUse;
 use App\Models\TelegramUpdateReceipt;
-use App\Services\AI\MaintainerAlerter;
+use App\Services\Ops\MaintainerAlerter;
 use Illuminate\Console\Scheduling\Event;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Carbon;

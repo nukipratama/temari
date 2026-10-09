@@ -27,7 +27,7 @@ use App\Services\AI\AnalysisType;
 use App\Services\AI\CeilingOverride;
 use App\Services\AI\CostCeilingLedger;
 use App\Services\AI\LlmCostCalculator;
-use App\Services\AI\MaintainerAlerter;
+use App\Services\Ops\MaintainerAlerter;
 use App\Services\AI\NarrationGate;
 use App\Services\AI\NarrationOrigin;
 use App\Services\AI\RuleBased\RuleBasedNarrationFiller;

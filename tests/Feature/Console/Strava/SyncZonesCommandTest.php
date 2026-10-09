@@ -5,7 +5,7 @@ declare(strict_types=1);
 use App\Models\RunnerProfile;
 use App\Models\StravaConnection;
 use App\Models\User;
-use App\Services\AI\MaintainerAlerter;
+use App\Services\Ops\MaintainerAlerter;
 use App\Services\Strava\Exceptions\StravaConnectionRevokedException;
 use App\Services\Strava\ZoneFetcher;
 use Illuminate\Foundation\Testing\RefreshDatabase;

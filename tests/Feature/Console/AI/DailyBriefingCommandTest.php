@@ -10,7 +10,7 @@ use App\Models\PlannedSession;
 use App\Models\StravaConnection;
 use App\Models\TelegramConnection;
 use App\Models\User;
-use App\Services\AI\MaintainerAlerter;
+use App\Services\Ops\MaintainerAlerter;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Jobs\AI;
 
-use App\Services\AI\MaintainerAlerter;
+use App\Services\Ops\MaintainerAlerter;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 

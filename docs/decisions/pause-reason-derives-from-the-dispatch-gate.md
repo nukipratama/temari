@@ -8,7 +8,7 @@ code_refs:
   - app/Services/AI/AnalysisService.php
   - app/Services/AI/AzureConfigCircuitBreaker.php
   - app/Livewire/Pulse/AiPipelineHealth.php
-  - app/Services/AI/MaintainerAlerter.php
+  - app/Services/Ops/MaintainerAlerter.php
 ---
 
 # The pause reason derives from the dispatch gate, it does not restate it
