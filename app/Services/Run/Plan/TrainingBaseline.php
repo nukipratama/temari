@@ -346,7 +346,7 @@ final class TrainingBaseline
         $derived = max(
             $selfScaledAnchorKm === null
                 ? $weeklyVolumeKm * self::longRunShare($weeklyVolumeKm)
-                : $this->selfScaledBaselineKm($selfScaledAnchorKm, $sessionsPerWeek, $asOf),
+                : $this->selfScaledBaselineKm($selfScaledAnchorKm, $sessionsPerWeek, $asOf, $capKm, $progressionCapKm),
             $block === null || $season->increases_held ? 0.0 : self::longRunTargetFloorKm($race, $block, $capKm),
             $block === null ? 0.0 : $this->volumeFloorKm($race, $block, $season, $sessionsPerWeek, $capKm, $progressionCapKm),
         );
@@ -508,11 +508,13 @@ final class TrainingBaseline
 
     /**
      * A self-scaled season's baseline: the one at which its four-week cycle,
-     * as {@see WeekPlanBuilder} lays it out, averages the frozen anchor. The
+     * as {@see WeekPlanBuilder} lays it out and {@see SegmentGenerator::coreKmFor()}
+     * sizes it under `long_run_cap_km` and `long_run_progression_cap_km`,
+     * averages the frozen anchor, or the most those ceilings allow. The
      * share-of-volume long run left the week to the session count, so the
      * same anchor prescribed anywhere from 0.4x to 1.2x itself.
      */
-    private function selfScaledBaselineKm(float $anchorKm, int $sessionsPerWeek, Carbon $asOf): float
+    private function selfScaledBaselineKm(float $anchorKm, int $sessionsPerWeek, Carbon $asOf, float $longRunCapKm, float $progressionCapKm): float
     {
         $phases = [PlanPhase::Build, PlanPhase::Build, PlanPhase::Build, PlanPhase::Deload];
         $multipliers = PhaseSchedule::volumeMultipliers($phases, true);
@@ -523,7 +525,7 @@ final class TrainingBaseline
             $multipliers,
         );
 
-        return $this->baselineAveragingKm($anchorKm, $cycle, $sessionsPerWeek, null);
+        return $this->baselineAveragingKm($anchorKm, $cycle, $sessionsPerWeek, null, $longRunCapKm, $progressionCapKm);
     }
 
     /**
@@ -535,7 +537,7 @@ final class TrainingBaseline
      *
      * @param  list<array{week_start: Carbon, phase: PlanPhase, multiplier: float}>  $weeks
      */
-    private function baselineAveragingKm(float $targetKm, array $weeks, int $sessionsPerWeek, ?RaceGoal $race, float $longRunCapKm = INF, float $progressionCapKm = INF): float
+    private function baselineAveragingKm(float $targetKm, array $weeks, int $sessionsPerWeek, ?RaceGoal $race, float $longRunCapKm, float $progressionCapKm): float
     {
         $raceDistanceM = $race === null ? null : (float) $race->distance_m;
         $sessions = [];

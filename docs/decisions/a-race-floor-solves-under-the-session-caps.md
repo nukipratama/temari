@@ -9,6 +9,8 @@ code_refs:
   - app/Services/Run/Plan/SegmentGenerator.php
 ---
 
+> **Partly superseded (2026-10-09) by [[a-goal-less-cycle-solves-under-the-session-caps]].** Point 5 and the last consequence no longer hold: the goal-less solve now runs under the same caps, so sessions under the progression cap carry its cycle to the anchor where the caps allow. The rest of this decision stands.
+
 # A race floor solves under the session caps
 
 **Status:** Accepted (2026-10-09)
