@@ -3,6 +3,7 @@ name: Restore dry-run
 # Restores a real prod backup pair with scripts/restore-db.sh into a throwaway
 # MySQL instead of the live one, weekly for the newest nightly pair and on demand
 # for either kind. See the "Rollback" section of docs/architecture/deployment.md.
+# With a `ref`, a hosted job builds that ref's image and the restore is migrated with it.
 
 on:
   schedule:
@@ -18,19 +19,88 @@ on:
         description: 'kind=pre-deploy only: git SHA of the pre-deploy-<sha>-*.sql.gz pair to restore (default: newest on disk)'
         required: false
         default: ''
-
-concurrency:
-  # Shares the deploy job's group: a dry run must never overlap a real deploy
-  # (or a rollback) touching the same host.
-  group: deploy-prod
-  cancel-in-progress: false
+      ref:
+        description: 'a branch, tag or sha whose image migrates the restore (empty keeps today''s restore-and-verify only)'
+        required: false
+        default: ''
 
 permissions:
   contents: read
 
 jobs:
+  build:
+    name: build-rehearsal-image
+    if: inputs.ref != ''
+    runs-on: ubuntu-26.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write
+    env:
+      APP_IMAGE: ghcr.io/${{ github.repository }}/app
+    outputs:
+      sha: ${{ steps.resolve.outputs.sha }}
+      image: ${{ env.APP_IMAGE }}:${{ steps.resolve.outputs.sha }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.ref }}
+
+      - name: Resolve the ref to a full sha
+        id: resolve
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # deploy.yml pulls app:<sha>, so a tag that already exists is reused, never re-pushed.
+      - name: Check for an existing image tag
+        id: existing
+        env:
+          SHA: ${{ steps.resolve.outputs.sha }}
+        run: |
+          set -euo pipefail
+          image="$APP_IMAGE:$SHA"
+          if err=$(docker buildx imagetools inspect "$image" 2>&1 >/dev/null); then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "$image already exists; the rehearsal pulls it and pushes nothing."
+          else
+            case "$err" in
+              *': not found') echo "exists=false" >> "$GITHUB_OUTPUT" ;;
+              *) echo "::error::could not inspect $image: $err"; exit 1 ;;
+            esac
+          fi
+
+      - name: Build and push the rehearsal image
+        if: steps.existing.outputs.exists == 'false'
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: ${{ env.APP_IMAGE }}:${{ steps.resolve.outputs.sha }}
+          labels: org.opencontainers.image.source=https://github.com/${{ github.repository }}
+          cache-from: type=registry,ref=${{ env.APP_IMAGE }}:buildcache
+          provenance: false
+
   restore-dry-run:
+    needs: [build]
+    if: ${{ !cancelled() && (needs.build.result == 'success' || needs.build.result == 'skipped') }}
     runs-on: [self-hosted, homelab]
+    permissions:
+      contents: read
+      packages: read
+    concurrency:
+      # Shares the deploy job's group: a dry run must never overlap a real deploy
+      # (or a rollback) touching the same host.
+      group: deploy-prod
+      cancel-in-progress: false
     timeout-minutes: 45
     env:
       BACKUP_DIR: /var/lib/temari-backups
@@ -39,6 +109,10 @@ jobs:
       RESTORE_COMPOSE_FILE: deploy/restore-dry-run-compose.yml
       RESTORE_PROJECT: temari-restore
       RESTORE_SERVICE: mysql_restore
+      REHEARSAL_COMPOSE: docker compose -p temari-restore -f deploy/restore-dry-run-compose.yml -f deploy/restore-dry-run-rehearsal-compose.yml
+      REF: ${{ inputs.ref }}
+      REHEARSAL_SHA: ${{ needs.build.outputs.sha }}
+      REHEARSAL_IMAGE: ${{ needs.build.outputs.image }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -204,10 +278,98 @@ jobs:
           fi
           echo "restore dry-run PASSED verification"
 
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        if: inputs.ref != ''
+        timeout-minutes: 2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pull the ref's image
+        if: inputs.ref != ''
+        timeout-minutes: 15
+        run: docker pull "$REHEARSAL_IMAGE"
+
+      - name: Write the rehearsal env file
+        if: inputs.ref != ''
+        timeout-minutes: 2
+        env:
+          REHEARSAL_ENV_FILE: ${{ runner.temp }}/rehearsal-app-env
+        run: |
+          set -euo pipefail
+
+          restore_env() {
+            docker compose -p "$RESTORE_PROJECT" -f "$RESTORE_COMPOSE_FILE" exec -T "$RESTORE_SERVICE" printenv "$1"
+          }
+
+          db_database=$(restore_env DB_DATABASE)
+          db_username=$(restore_env DB_USERNAME)
+          db_password=$(restore_env DB_PASSWORD)
+          db_analytics_database=$(restore_env DB_ANALYTICS_DATABASE || true)
+          app_key="base64:$(head -c 32 /dev/urandom | base64)"
+
+          umask 077
+          {
+            echo "DB_HOST='mysql_restore'"
+            echo "DB_DATABASE='$db_database'"
+            echo "DB_USERNAME='$db_username'"
+            echo "DB_PASSWORD='$db_password'"
+            echo "DB_ANALYTICS_DATABASE='${db_analytics_database:-temari_analytics}'"
+            echo "APP_KEY='$app_key'"
+            echo "QUEUE_CONNECTION='null'"
+            echo "CACHE_STORE='array'"
+            echo "SESSION_DRIVER='array'"
+            echo "MAIL_MAILER='array'"
+            echo "BROADCAST_CONNECTION='null'"
+            echo "PULSE_ENABLED='false'"
+          } > "$REHEARSAL_ENV_FILE"
+
+      - name: Migrate the restore on the ref's image
+        if: inputs.ref != ''
+        timeout-minutes: 10
+        env:
+          REHEARSAL_ENV_FILE: ${{ runner.temp }}/rehearsal-app-env
+        run: $REHEARSAL_COMPOSE run --rm --no-deps app_rehearsal php artisan migrate --force
+
+      - name: Migrate the restore's analytics schema
+        if: inputs.ref != ''
+        timeout-minutes: 10
+        env:
+          REHEARSAL_ENV_FILE: ${{ runner.temp }}/rehearsal-app-env
+        run: $REHEARSAL_COMPOSE run --rm --no-deps app_rehearsal php artisan migrate --database=analytics --path=database/migrations/analytics --force
+
+      # migrate:status --pending=1 exits non-zero when a schema has pending migrations.
+      - name: Require no pending migrations on either connection
+        if: inputs.ref != ''
+        timeout-minutes: 2
+        env:
+          REHEARSAL_ENV_FILE: ${{ runner.temp }}/rehearsal-app-env
+        run: |
+          set -euo pipefail
+          fail=0
+          if ! $REHEARSAL_COMPOSE run --rm --no-deps app_rehearsal php artisan migrate:status --pending=1; then
+            echo "::error::default connection: migrations still pending after migrate (or migrate:status failed)"
+            fail=1
+          fi
+          if ! $REHEARSAL_COMPOSE run --rm --no-deps app_rehearsal php artisan migrate:status --database=analytics --path=database/migrations/analytics --pending=1; then
+            echo "::error::analytics connection: migrations still pending after migrate (or migrate:status failed)"
+            fail=1
+          fi
+          exit "$fail"
+
       - name: Tear down the throwaway stack
         if: always()
+        env:
+          REHEARSAL_ENV_FILE: ${{ runner.temp }}/rehearsal-app-env
         run: |
-          docker compose -p "$RESTORE_PROJECT" -f "$RESTORE_COMPOSE_FILE" down -v
+          docker ps -aq --filter "label=com.docker.compose.project=$RESTORE_PROJECT" --filter "label=com.docker.compose.oneoff=True" \
+            | xargs --no-run-if-empty docker rm -f
+          if [ -n "$REF" ]; then
+            $REHEARSAL_COMPOSE down -v
+          else
+            docker compose -p "$RESTORE_PROJECT" -f "$RESTORE_COMPOSE_FILE" down -v
+          fi
           {
             echo "## Restore dry-run"
             if [ "${{ job.status }}" = "success" ]; then
@@ -215,14 +377,38 @@ jobs:
             else
               echo "FAIL — \`${{ steps.pick.outputs.label }}\`, see the Verify step above."
             fi
+            if [ -n "$REF" ]; then
+              if [ "${{ job.status }}" = "success" ]; then
+                echo "Rehearsal PASS — \`$REF\` at \`$REHEARSAL_SHA\` migrated \`${{ steps.pick.outputs.label }}\` with nothing pending on either connection."
+              else
+                echo "Rehearsal FAIL — \`$REF\` at \`$REHEARSAL_SHA\` on \`${{ steps.pick.outputs.label }}\`, see the first failed step above."
+              fi
+            fi
           } >> "$GITHUB_STEP_SUMMARY"
 
+      - name: Remove the rehearsal env file and image
+        if: always() && inputs.ref != ''
+        timeout-minutes: 2
+        env:
+          REHEARSAL_ENV_FILE: ${{ runner.temp }}/rehearsal-app-env
+        run: |
+          rm -f "$REHEARSAL_ENV_FILE"
+          image_id() { docker image inspect "$1" --format '{{.Id}}' 2>/dev/null || true; }
+          pulled=$(image_id "$REHEARSAL_IMAGE")
+          if [ -z "$pulled" ]; then
+            echo "No local $REHEARSAL_IMAGE to remove."
+          elif [ "$pulled" = "$(image_id temari/app:latest)" ] || [ "$pulled" = "$(image_id temari/app:previous)" ]; then
+            echo "$REHEARSAL_IMAGE is temari/app:latest or :previous; keeping it."
+          else
+            docker rmi "$REHEARSAL_IMAGE"
+          fi
+
   notify:
-    needs: [restore-dry-run]
-    if: always() && needs.restore-dry-run.result == 'failure'
+    needs: [build, restore-dry-run]
+    if: always() && (needs.build.result == 'failure' || needs.restore-dry-run.result == 'failure')
     uses: ./.github/workflows/maintainer-alert.yml
     with:
-      message: Restore dry-run (${{ inputs.kind || 'nightly' }}) failed on the homelab runner, possibly before any step ran.
+      message: Restore dry-run (${{ inputs.kind || 'nightly' }}${{ inputs.ref && format(', ref {0}', inputs.ref) || '' }}) ${{ needs.build.result == 'failure' && 'failed building the ref''s image on the hosted runner' || 'failed on the homelab runner, possibly before any step ran' }}.
     secrets:
       TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
       TELEGRAM_MAINTAINER_CHAT_ID: ${{ secrets.TELEGRAM_MAINTAINER_CHAT_ID }}
