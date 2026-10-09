@@ -28,7 +28,7 @@ code_refs:
 > connected, so a three-month backfill narrated roughly twelve weekly and three monthly recaps on
 > day one — periods Temari never watched. Both kickoffs now also route a period whose close (the
 > week's `week_ending`, or the month's last day) fell before
-> [`HydrationBacklog::connectedAt()`](app/Services/AI/HydrationBacklog.php) — reading
+> [`HydrationBacklog::connectedAt()`](app/Services/Run/Ingest/HydrationBacklog.php) — reading
 > `strava_connections.created_at`, the same anchor [[recap-waits-for-hydration]] and
 > [[history-narrates-on-demand]] already use — to `AnalysisService::requestRuleBased()` alongside
 > the too-old bucket, bypassing the hydration wait entirely: a pre-connect period is filled

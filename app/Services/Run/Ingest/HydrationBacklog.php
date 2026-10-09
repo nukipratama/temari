@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Services\AI;
+namespace App\Services\Run\Ingest;
 
 use App\Models\Activity;
 use App\Models\StravaConnection;
@@ -13,7 +13,7 @@ use Illuminate\Support\Carbon;
 /**
  * The two reads every "is this athlete's history in yet?" question needs: when
  * they connected Strava, and which of their runs the pipeline still owes a
- * hydration. {@see RecapHydrationReadiness} asks per week, {@see HistoryNarrationGate}
+ * hydration. {@see \App\Services\AI\RecapHydrationReadiness} asks per week, {@see \App\Services\AI\HistoryNarrationGate}
  * asks per run, and both would otherwise restate the same join and the same
  * connection lookup.
  */

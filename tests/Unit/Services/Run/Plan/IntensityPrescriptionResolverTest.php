@@ -14,14 +14,10 @@ use App\Services\Run\Plan\IntensityPrescriptionResolver;
 
 const PRESCRIPTION_PACES = ['easy' => 360, 'marathon' => 300, 'threshold' => 270, 'interval' => 240];
 
-beforeEach(function (): void {
-    $this->resolver = new IntensityPrescriptionResolver();
-});
-
 it('starts conservatively then progresses or steps down from comparable evidence', function (): void {
-    $cold = $this->resolver->resolve(SessionType::Tempo, PlanPhase::Peak, null, null, PRESCRIPTION_PACES);
-    $hit = $this->resolver->resolve(SessionType::Tempo, PlanPhase::Peak, null, null, PRESCRIPTION_PACES, IntentVerdict::Hit, 20);
-    $tooHard = $this->resolver->resolve(SessionType::Tempo, PlanPhase::Peak, null, null, PRESCRIPTION_PACES, IntentVerdict::TooHard, 20);
+    $cold = IntensityPrescriptionResolver::resolve(SessionType::Tempo, PlanPhase::Peak, null, null, PRESCRIPTION_PACES);
+    $hit = IntensityPrescriptionResolver::resolve(SessionType::Tempo, PlanPhase::Peak, null, null, PRESCRIPTION_PACES, IntentVerdict::Hit, 20);
+    $tooHard = IntensityPrescriptionResolver::resolve(SessionType::Tempo, PlanPhase::Peak, null, null, PRESCRIPTION_PACES, IntentVerdict::TooHard, 20);
 
     expect($cold->hardMinutes)->toBe(20)
         ->and($hit->hardMinutes)->toBe(22)
@@ -29,9 +25,9 @@ it('starts conservatively then progresses or steps down from comparable evidence
 });
 
 it('steps tempo down by one phase-shaped work block', function (): void {
-    $base = $this->resolver->resolve(SessionType::Tempo, PlanPhase::Base, null, null, PRESCRIPTION_PACES, IntentVerdict::TooHard, 20);
-    $build = $this->resolver->resolve(SessionType::Tempo, PlanPhase::Build, null, null, PRESCRIPTION_PACES, IntentVerdict::TooHard, 20);
-    $taper = $this->resolver->resolve(SessionType::Tempo, PlanPhase::Taper, null, null, PRESCRIPTION_PACES, IntentVerdict::TooHard, 20);
+    $base = IntensityPrescriptionResolver::resolve(SessionType::Tempo, PlanPhase::Base, null, null, PRESCRIPTION_PACES, IntentVerdict::TooHard, 20);
+    $build = IntensityPrescriptionResolver::resolve(SessionType::Tempo, PlanPhase::Build, null, null, PRESCRIPTION_PACES, IntentVerdict::TooHard, 20);
+    $taper = IntensityPrescriptionResolver::resolve(SessionType::Tempo, PlanPhase::Taper, null, null, PRESCRIPTION_PACES, IntentVerdict::TooHard, 20);
 
     expect($base->hardMinutes)->toBe(13)
         ->and($build->isEasy())->toBeTrue()
@@ -39,8 +35,8 @@ it('steps tempo down by one phase-shaped work block', function (): void {
 });
 
 it('uses whole interval repetitions and the phase target', function (): void {
-    $prescription = $this->resolver->resolve(SessionType::Interval, PlanPhase::Peak, null, null, PRESCRIPTION_PACES, IntentVerdict::Hit, 12);
-    $rounded = $this->resolver->resolve(SessionType::Interval, PlanPhase::Peak, null, null, PRESCRIPTION_PACES, IntentVerdict::Unknown, 13);
+    $prescription = IntensityPrescriptionResolver::resolve(SessionType::Interval, PlanPhase::Peak, null, null, PRESCRIPTION_PACES, IntentVerdict::Hit, 12);
+    $rounded = IntensityPrescriptionResolver::resolve(SessionType::Interval, PlanPhase::Peak, null, null, PRESCRIPTION_PACES, IntentVerdict::Unknown, 13);
 
     expect($prescription->hardMinutes)->toBe(16)
         ->and($rounded->hardMinutes)->toBe(12)
@@ -48,9 +44,9 @@ it('uses whole interval repetitions and the phase target', function (): void {
 });
 
 it('clips every quality type to whole work units when the weekly reserve binds', function (): void {
-    $tempo = $this->resolver->resolve(SessionType::Tempo, PlanPhase::Build, null, null, PRESCRIPTION_PACES, hardMinutesAvailable: 19);
-    $interval = $this->resolver->resolve(SessionType::Interval, PlanPhase::Build, null, null, PRESCRIPTION_PACES, hardMinutesAvailable: 5);
-    $long = $this->resolver->resolve(SessionType::Long, PlanPhase::Build, 42_195, 12_000, PRESCRIPTION_PACES, hardMinutesAvailable: 10);
+    $tempo = IntensityPrescriptionResolver::resolve(SessionType::Tempo, PlanPhase::Build, null, null, PRESCRIPTION_PACES, hardMinutesAvailable: 19);
+    $interval = IntensityPrescriptionResolver::resolve(SessionType::Interval, PlanPhase::Build, null, null, PRESCRIPTION_PACES, hardMinutesAvailable: 5);
+    $long = IntensityPrescriptionResolver::resolve(SessionType::Long, PlanPhase::Build, 42_195, 12_000, PRESCRIPTION_PACES, hardMinutesAvailable: 10);
 
     expect($tempo->hardMinutes)->toBe(15)
         ->and($interval->isEasy())->toBeTrue()
@@ -58,10 +54,10 @@ it('clips every quality type to whole work units when the weekly reserve binds',
 });
 
 it('uses the slower supported marathon pace and no race-specific work beyond the marathon', function (): void {
-    $marathon = $this->resolver->resolve(SessionType::Long, PlanPhase::Peak, 42_195, 12_000, PRESCRIPTION_PACES);
-    $slowerMarathon = $this->resolver->resolve(SessionType::Long, PlanPhase::Peak, 42_195, 15_000, PRESCRIPTION_PACES);
-    $marathonWithoutVdot = $this->resolver->resolve(SessionType::Long, PlanPhase::Peak, 42_195, 12_000, null);
-    $ultra = $this->resolver->resolve(SessionType::Long, PlanPhase::Build, 50_000, 21_000, PRESCRIPTION_PACES);
+    $marathon = IntensityPrescriptionResolver::resolve(SessionType::Long, PlanPhase::Peak, 42_195, 12_000, PRESCRIPTION_PACES);
+    $slowerMarathon = IntensityPrescriptionResolver::resolve(SessionType::Long, PlanPhase::Peak, 42_195, 15_000, PRESCRIPTION_PACES);
+    $marathonWithoutVdot = IntensityPrescriptionResolver::resolve(SessionType::Long, PlanPhase::Peak, 42_195, 12_000, null);
+    $ultra = IntensityPrescriptionResolver::resolve(SessionType::Long, PlanPhase::Build, 50_000, 21_000, PRESCRIPTION_PACES);
 
     expect($marathon->paceSecPerKm)->toBe(300)
         ->and($marathon->hardMinutes)->toBe(15)
@@ -73,8 +69,8 @@ it('uses the slower supported marathon pace and no race-specific work beyond the
 });
 
 it('keeps phase and hard-day caps when VDOT is absent, but downgrades when room is absent', function (): void {
-    $noPace = $this->resolver->resolve(SessionType::Tempo, PlanPhase::Build, null, null, null);
-    $noRoom = $this->resolver->resolve(SessionType::Tempo, PlanPhase::Build, null, null, PRESCRIPTION_PACES, hardMinutesAvailable: 5);
+    $noPace = IntensityPrescriptionResolver::resolve(SessionType::Tempo, PlanPhase::Build, null, null, null);
+    $noRoom = IntensityPrescriptionResolver::resolve(SessionType::Tempo, PlanPhase::Build, null, null, PRESCRIPTION_PACES, hardMinutesAvailable: 5);
 
     expect($noPace->hardMinutes)->toBe(20)
         ->and($noPace->paceBand)->toBe(PaceBand::Threshold)
@@ -84,7 +80,7 @@ it('keeps phase and hard-day caps when VDOT is absent, but downgrades when room 
 });
 
 it('prescribes no race-specific hard work for an ultra goal', function (): void {
-    $prescription = $this->resolver->resolve(SessionType::Long, PlanPhase::Peak, 50_000, 21_000, PRESCRIPTION_PACES);
+    $prescription = IntensityPrescriptionResolver::resolve(SessionType::Long, PlanPhase::Peak, 50_000, 21_000, PRESCRIPTION_PACES);
 
     expect($prescription->isEasy())->toBeTrue()
         ->and($prescription->hardMinutes)->toBe(0);
@@ -98,14 +94,14 @@ it('keeps comparable evidence separate for threshold and race-specific work', fu
 });
 
 it('stores no reason for a day that prescribes no quality', function (): void {
-    expect($this->resolver->resolve(SessionType::Rest, PlanPhase::Build, null, null, null)->reason)->toBeNull()
-        ->and($this->resolver->resolve(SessionType::Easy, PlanPhase::Build, null, null, null)->reason)->toBeNull()
-        ->and($this->resolver->resolve(SessionType::Long, PlanPhase::Base, null, null, null)->reason)->toBeNull();
+    expect(IntensityPrescriptionResolver::resolve(SessionType::Rest, PlanPhase::Build, null, null, null)->reason)->toBeNull()
+        ->and(IntensityPrescriptionResolver::resolve(SessionType::Easy, PlanPhase::Build, null, null, null)->reason)->toBeNull()
+        ->and(IntensityPrescriptionResolver::resolve(SessionType::Long, PlanPhase::Base, null, null, null)->reason)->toBeNull();
 });
 
 it('never prescribes a Peak threshold block longer than the athlete could race at its pace', function (float $vdot): void {
     $paces = app(TrainingPaceCalculator::class)->fromVdot($vdot);
-    $peak = $this->resolver->resolve(SessionType::Tempo, PlanPhase::Peak, null, null, $paces, IntentVerdict::Hit, 35);
+    $peak = IntensityPrescriptionResolver::resolve(SessionType::Tempo, PlanPhase::Peak, null, null, $paces, IntentVerdict::Hit, 35);
     $blockMeters = $peak->hardMinutes * 60 / $peak->paceSecPerKm * 1000;
 
     expect($peak->hardMinutes)->toBe(35)
@@ -114,7 +110,7 @@ it('never prescribes a Peak threshold block longer than the athlete could race a
 })->with([35.0, 55.0]);
 
 it('never prescribes a marathon-pace block faster than the VDOT marathon equivalent, whatever the goal time', function (SessionType $type, PlanPhase $phase): void {
-    $prescription = $this->resolver->resolve($type, $phase, 42_195, 10_800, PRESCRIPTION_PACES);
+    $prescription = IntensityPrescriptionResolver::resolve($type, $phase, 42_195, 10_800, PRESCRIPTION_PACES);
 
     expect($prescription->paceBand === PaceBand::Marathon ? $prescription->paceSecPerKm : PRESCRIPTION_PACES['marathon'])
         ->toBeGreaterThanOrEqual(PRESCRIPTION_PACES['marathon']);
@@ -122,7 +118,7 @@ it('never prescribes a marathon-pace block faster than the VDOT marathon equival
 
 it('targets goal-pace work from the table by kind and phase, halved when ambitious and full at a stepping stone', function (string $kind, SessionType $type, PlanPhase $phase, RaceAmbitionState $band, int $minutes): void {
     $work = new GoalPaceWork($kind, 10_000, 285, $band);
-    $prescription = $this->resolver->resolve($type, $phase, 10_000, 2850, PRESCRIPTION_PACES, IntentVerdict::Hit, 60, goalPace: $work);
+    $prescription = IntensityPrescriptionResolver::resolve($type, $phase, 10_000, 2850, PRESCRIPTION_PACES, IntentVerdict::Hit, 60, goalPace: $work);
 
     expect($prescription->hardMinutes)->toBe($minutes)
         ->and($prescription->paceSecPerKm)->toBe(285)
@@ -149,7 +145,7 @@ it('targets goal-pace work from the table by kind and phase, halved when ambitio
 ]);
 
 it('runs goal-pace work at the goal pace, faster than the supported marathon pace', function (): void {
-    $prescription = $this->resolver->resolve(SessionType::Tempo, PlanPhase::Peak, 42_195, 12_000, PRESCRIPTION_PACES, goalPace: new GoalPaceWork('marathon', 42_195, 284, RaceAmbitionState::OnTrack));
+    $prescription = IntensityPrescriptionResolver::resolve(SessionType::Tempo, PlanPhase::Peak, 42_195, 12_000, PRESCRIPTION_PACES, goalPace: new GoalPaceWork('marathon', 42_195, 284, RaceAmbitionState::OnTrack));
 
     expect($prescription->paceSecPerKm)->toBe(284)
         ->and($prescription->paceBand)->toBe(PaceBand::Marathon);
@@ -157,8 +153,8 @@ it('runs goal-pace work at the goal pace, faster than the supported marathon pac
 
 it('starts and steps 5K and 10K goal pace in whole reps, whatever the day\'s type', function (): void {
     $work = new GoalPaceWork('10k', 10_000, 300, RaceAmbitionState::OnTrack);
-    $cold = $this->resolver->resolve(SessionType::Tempo, PlanPhase::Peak, 10_000, 3000, PRESCRIPTION_PACES, goalPace: $work);
-    $stepped = $this->resolver->resolve(SessionType::Tempo, PlanPhase::Peak, 10_000, 3000, PRESCRIPTION_PACES, IntentVerdict::TooHard, 16, goalPace: $work);
+    $cold = IntensityPrescriptionResolver::resolve(SessionType::Tempo, PlanPhase::Peak, 10_000, 3000, PRESCRIPTION_PACES, goalPace: $work);
+    $stepped = IntensityPrescriptionResolver::resolve(SessionType::Tempo, PlanPhase::Peak, 10_000, 3000, PRESCRIPTION_PACES, IntentVerdict::TooHard, 16, goalPace: $work);
 
     expect($cold->hardMinutes)->toBe(8)
         ->and($stepped->hardMinutes)->toBe(12);

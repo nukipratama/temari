@@ -14,7 +14,7 @@ use App\Models\WeeklySnapshot;
 use App\Models\StravaConnection;
 use App\Models\User;
 use App\Notifications\StravaDisconnectedNotification;
-use App\Services\AI\MaintainerAlerter;
+use App\Services\Ops\MaintainerAlerter;
 use App\Services\Run\Ingest\SummaryIngest;
 use App\Services\Run\Ingest\SyncOrchestrator;
 use App\Services\Run\Metrics\WeeklyAggregator;

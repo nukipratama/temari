@@ -6,7 +6,7 @@ namespace App\Console\Commands\AI;
 
 use App\Models\AI\TokenUsage;
 use App\Services\AI\LlmCostCalculator;
-use App\Services\AI\MaintainerAlerter;
+use App\Services\Ops\MaintainerAlerter;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;

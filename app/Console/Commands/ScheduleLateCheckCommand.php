@@ -7,7 +7,7 @@ namespace App\Console\Commands;
 use App\Console\SchedulerChain;
 use App\Listeners\RecordScheduledTaskRun;
 use App\Models\ScheduledTaskRun;
-use App\Services\AI\MaintainerAlerter;
+use App\Services\Ops\MaintainerAlerter;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;

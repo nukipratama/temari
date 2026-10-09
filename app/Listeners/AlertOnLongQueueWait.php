@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Listeners;
 
-use App\Services\AI\MaintainerAlerter;
+use App\Services\Ops\MaintainerAlerter;
 use Laravel\Horizon\Events\LongWaitDetected;
 
 class AlertOnLongQueueWait

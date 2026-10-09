@@ -13,7 +13,7 @@ use App\Models\Season;
 use App\Models\SeasonGoal;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
-use App\Services\AI\HydrationBacklog;
+use App\Services\Run\Ingest\HydrationBacklog;
 use App\Services\Gamification\SeasonGamificationContext;
 use App\Services\Gamification\SeasonRecordBuilder;
 use Illuminate\Database\UniqueConstraintViolationException;
@@ -68,8 +68,6 @@ final readonly class SeasonService
 
     public function __construct(
         private TrainingBaseline $baseline,
-        private PhaseSchedule $phaseSchedule,
-        private WeekPlanBuilder $weekPlanBuilder,
         private ResolveActiveRaceAction $activeRace,
         private ResolveSeasonAction $season,
         private SeasonSummaryBuilder $seasonSummaryBuilder,
@@ -301,8 +299,8 @@ final readonly class SeasonService
         $sessionsPerWeek = $baselineData['sessions_per_week'];
 
         $weeks = $race !== null
-            ? $this->phaseSchedule->forRace($today, $race->race_date, (float) $race->distance_m)
-            : $this->phaseSchedule->selfScaled($today, self::SELF_SCALED_WEEKS);
+            ? PhaseSchedule::forRace($today, $race->race_date, (float) $race->distance_m)
+            : PhaseSchedule::selfScaled($today, self::SELF_SCALED_WEEKS);
         $weekCount = count($weeks);
 
         $phases = array_column($weeks, 'phase');
@@ -313,7 +311,7 @@ final readonly class SeasonService
         $qualityTotal = 0;
         $longestLongRunKm = 0.0;
         foreach ($phases as $index => $phase) {
-            $qualityTotal += $this->weekPlanBuilder->qualitySlotCount($phase, $sessionsPerWeek, $raceDistanceM, $race === null, $zones[$index]);
+            $qualityTotal += WeekPlanBuilder::qualitySlotCount($phase, $sessionsPerWeek, $raceDistanceM, $race === null, $zones[$index]);
             $longRunKm = SegmentGenerator::coreKmFor(SessionType::Long, isPrimaryEasy: false, longRunBaselineKm: $baselineData['long_run_km'], volumeMultiplier: $multipliers[$index], longRunCapKm: $baselineData['long_run_cap_km']);
             $longestLongRunKm = max($longestLongRunKm, $longRunKm);
         }

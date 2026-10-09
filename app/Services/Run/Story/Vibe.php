@@ -51,7 +51,6 @@ class Vibe
 
     public function __construct(
         private readonly TrainingLoad $trainingLoad,
-        private readonly VibeMatrix $matrix,
         private readonly ResolveLastRunStartAction $lastRunStart,
     ) {
     }
@@ -71,7 +70,7 @@ class Vibe
         $recentPr = $this->hasRecentPr($user, $asOf);
         $decoupling = $this->avgDecouplingPct($user, $asOf);
 
-        return $this->memo[$key] = $this->matrix->pick([
+        return $this->memo[$key] = VibeMatrix::pick([
             'form' => (float) ($load['form'] ?? 0.0),
             'form_status' => $load['form_status'] ?? TrainingFormStatus::Optimal,
             'days_since_run' => $daysSinceRun,

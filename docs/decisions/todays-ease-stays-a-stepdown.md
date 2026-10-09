@@ -9,7 +9,7 @@ code_refs:
   - app/Services/Run/Plan/PlanRenderer.php
   - app/Services/Run/Plan/CurrentWeekPlanBuilder.php
   - app/Services/Run/Plan/RestClampRecorder.php
-  - app/Services/AI/HydrationBacklog.php
+  - app/Services/Run/Ingest/HydrationBacklog.php
 ---
 
 > **Superseded (2026-10-02) by [[the-advised-session-leads-every-day]].** Today now leads with the recorded ease or the advisory, like every other day, and the separate step-down is gone.
@@ -40,7 +40,7 @@ it never disagrees with the day row it sits above.
 **Blind-clamp guard.** Neither the render path nor `RestClampRecorder::record()` applies a clamp
 while the athlete's recent load is still unscored — a half-hydrated history otherwise reads as no
 load and bottoms the ceiling out at Rest for the wrong reason. Both reuse
-[HydrationBacklog::recentLoadAwaitsScoring()](app/Services/AI/HydrationBacklog.php), the same
+[HydrationBacklog::recentLoadAwaitsScoring()](app/Services/Run/Ingest/HydrationBacklog.php), the same
 trailing-CTL-window check [SeasonService](app/Services/Run/Plan/SeasonService.php) already uses to
 hold a race season's `increases_held`, rather than a second signal for the same question.
 

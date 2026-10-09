@@ -39,8 +39,6 @@ final readonly class SeasonSummaryBuilder
 {
     public function __construct(
         private TrainingBaseline $baseline,
-        private PhaseSchedule $phaseSchedule,
-        private WeekPlanBuilder $weekPlanBuilder,
         private CurrentWeekPlanBuilder $currentWeekPlan,
     ) {
     }
@@ -133,11 +131,11 @@ final readonly class SeasonSummaryBuilder
 
         if ($race !== null) {
             $raceDistanceM = (float) $race->distance_m;
-            $weeks = $this->phaseSchedule->forRace($season->starts_at, $race->race_date, $raceDistanceM);
+            $weeks = PhaseSchedule::forRace($season->starts_at, $race->race_date, $raceDistanceM);
         } else {
             $raceDistanceM = null;
             $totalWeeks = max(1, (int) $season->starts_at->diffInWeeks($season->ends_at) + 1);
-            $weeks = $this->phaseSchedule->selfScaled($season->starts_at, $totalWeeks);
+            $weeks = PhaseSchedule::selfScaled($season->starts_at, $totalWeeks);
         }
 
         $multipliers = PhaseSchedule::volumeMultipliers(array_column($weeks, 'phase'), $isSelfScaled || $season->increases_held, array_column($weeks, 'zone'));
@@ -146,7 +144,7 @@ final readonly class SeasonSummaryBuilder
 
         $result = [];
         foreach ($weeks as $i => $week) {
-            $dayRows = $this->weekPlanBuilder->build($week['week_start'], $week['phase'], $baselineData['sessions_per_week'], [], $raceDistanceM, $isSelfScaled, preferredOffsets: $layout['run_days'], preferredLongOffset: $layout['long_run_day'], projectedRaceSeconds: $layout['projected_race_seconds'], raceDate: $race?->race_date, zone: $week['zone'], twoRunQualityEligible: $layout['two_run_quality_eligible'], fallOffTilt: $layout['fall_off_tilt']);
+            $dayRows = WeekPlanBuilder::build($week['week_start'], $week['phase'], $baselineData['sessions_per_week'], [], $raceDistanceM, $isSelfScaled, preferredOffsets: $layout['run_days'], preferredLongOffset: $layout['long_run_day'], projectedRaceSeconds: $layout['projected_race_seconds'], raceDate: $race?->race_date, zone: $week['zone'], twoRunQualityEligible: $layout['two_run_quality_eligible'], fallOffTilt: $layout['fall_off_tilt']);
             $primaryEasyDate = self::primaryEasyDate($dayRows);
 
             $plannedKm = 0.0;

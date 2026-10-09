@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Console\Commands;
 
 use App\Console\SchedulerChain;
-use App\Services\AI\MaintainerAlerter;
+use App\Services\Ops\MaintainerAlerter;
 use App\Services\Gamification\StreakSettlementService;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;

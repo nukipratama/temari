@@ -7,7 +7,7 @@ use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\StravaConnection;
 use App\Models\User;
-use App\Services\AI\HydrationBacklog;
+use App\Services\Run\Ingest\HydrationBacklog;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 

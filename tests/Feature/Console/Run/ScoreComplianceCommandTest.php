@@ -13,7 +13,7 @@ use App\Models\ActivityDetail;
 use App\Models\PlannedSession;
 use App\Models\TelegramConnection;
 use App\Models\User;
-use App\Services\AI\MaintainerAlerter;
+use App\Services\Ops\MaintainerAlerter;
 use App\Models\TrainingPreference;
 use App\Services\Run\Plan\SegmentGenerator;
 use App\Services\Run\Plan\TrainingBaseline;

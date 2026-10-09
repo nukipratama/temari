@@ -7,6 +7,7 @@ namespace App\Services\AI;
 use Closure;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
+use App\Services\Ops\MaintainerAlerter;
 use App\Support\Config\AppConfig;
 use App\Support\Config\AppConfigKey;
 use Illuminate\Support\Facades\Log;
