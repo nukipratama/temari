@@ -137,7 +137,17 @@ it('404s when the activity has not been analyzed yet', function (): void {
     $this->actingAs($user)->get("/activities/{$activity->id}")->assertNotFound();
 });
 
-it('dispatches a ResolveActivityLocationJob when the run has coords but no resolved_at', function (): void {
+/**
+ * `useAnalysisTrigger` reloads this page every 3-15s for up to 30 ticks while
+ * the run insights generate. The job's `ShouldBeUnique` lock only spans the
+ * queued-or-running window, and a transient Nominatim miss deliberately leaves
+ * `location_resolved_at` null, so each finished-but-unresolved attempt freed the
+ * lock for the next tick to re-queue against a rate-limited public endpoint.
+ *
+ * `releaseUniqueJobLocks()` is what makes this honest: without it the fake holds
+ * the unique lock forever and the test would pass with no guard at all.
+ */
+it('dispatches a ResolveActivityLocationJob for a run with coords but no resolved_at, and does not re-dispatch it on every poll tick', function (): void {
     Queue::fake();
     $user = User::factory()->create();
     $activity = Activity::factory()->for($user)->analyzed()->create();
@@ -150,32 +160,12 @@ it('dispatches a ResolveActivityLocationJob when the run has coords but no resol
     $this->actingAs($user)->get("/activities/{$activity->id}")->assertSuccessful();
 
     Queue::assertPushed(ResolveActivityLocationJob::class, 1);
-});
 
-/**
- * `useAnalysisTrigger` reloads this page every 3-15s for up to 30 ticks while
- * the run insights generate. The job's `ShouldBeUnique` lock only spans the
- * queued-or-running window, and a transient Nominatim miss deliberately leaves
- * `location_resolved_at` null, so each finished-but-unresolved attempt freed the
- * lock for the next tick to re-queue against a rate-limited public endpoint.
- *
- * `releaseUniqueJobLocks()` is what makes this honest: without it the fake holds
- * the unique lock forever and the test would pass with no guard at all.
- */
-it('does not re-dispatch a ResolveActivityLocationJob on every poll tick', function (): void {
-    Queue::fake();
-    $user = User::factory()->create();
-    $activity = Activity::factory()->for($user)->analyzed()->create();
-    ActivityDetail::factory()->for($activity)->create([
-        'start_lat' => -6.24,
-        'start_lng' => 106.81,
-        'location_resolved_at' => null,
-    ]);
-
-    foreach (range(1, 3) as $ignored) {
-        $this->actingAs($user)->get("/activities/{$activity->id}")->assertSuccessful();
+    foreach (range(1, 2) as $ignored) {
         Queue::releaseUniqueJobLocks();
+        $this->actingAs($user)->get("/activities/{$activity->id}")->assertSuccessful();
     }
+    Queue::releaseUniqueJobLocks();
 
     Queue::assertPushed(ResolveActivityLocationJob::class, 1);
 });
@@ -460,43 +450,6 @@ it('renders no duel when the matched past run has not been hydrated yet', functi
             ->where('pastYou.duel', null));
 });
 
-it('offers the bib stamp animation the first time a record-holding run is opened, without claiming it itself', function (): void {
-    $user = User::factory()->create();
-    $longer = Activity::factory()->for($user)->analyzed()->create();
-    ActivityDetail::factory()->for($longer)->create(['distance' => 30_000, 'start_date_local' => Carbon::yesterday()]);
-    $activity = Activity::factory()->for($user)->analyzed()->create();
-    ActivityDetail::factory()->for($activity)->create(['distance' => 10_000, 'start_date_local' => Carbon::today()]);
-    PersonalRecord::factory()->forActivity($activity)->create(['category' => '10km', 'value_sec' => 2400]);
-
-    $this->actingAs($user)->get("/activities/{$activity->id}")
-        ->assertSuccessful()
-        ->assertInertia(fn (Assert $page) => $page
-            ->where('prBib.label', '10K')
-            ->where('prBib.value_sec', 2400)
-            ->where('prBib.record_key', '10km')
-            ->where('prBib.animate', true));
-
-    // A GET must not change its own payload: rendering never claims the stamp.
-    expect(RecordStamp::query()->where('user_id', $user->id)->where('record_key', '10km')->exists())->toBeFalse();
-});
-
-it('keeps showing the bib stamp on a later view of the same record, but static, once the stamp is claimed', function (): void {
-    $user = User::factory()->create();
-    $longer = Activity::factory()->for($user)->analyzed()->create();
-    ActivityDetail::factory()->for($longer)->create(['distance' => 30_000, 'start_date_local' => Carbon::yesterday()]);
-    $activity = Activity::factory()->for($user)->analyzed()->create();
-    ActivityDetail::factory()->for($activity)->create(['distance' => 10_000, 'start_date_local' => Carbon::today()]);
-    PersonalRecord::factory()->forActivity($activity)->create(['category' => '10km']);
-
-    RecordStamp::query()->create(['user_id' => $user->id, 'record_key' => '10km', 'seen_at' => now()]);
-
-    $this->actingAs($user)->get("/activities/{$activity->id}")
-        ->assertSuccessful()
-        ->assertInertia(fn (Assert $page) => $page
-            ->where('prBib.label', '10K')
-            ->where('prBib.animate', false));
-});
-
 it('ships no bib stamp for a run that holds no tracked record', function (): void {
     $user = User::factory()->create();
     $longer = Activity::factory()->for($user)->analyzed()->create();
@@ -510,7 +463,7 @@ it('ships no bib stamp for a run that holds no tracked record', function (): voi
             ->where('prBib', null));
 });
 
-it("does not let another user's already-claimed stamp suppress this account's animation", function (): void {
+it("offers the bib stamp animation the first time a record-holding run is opened, static once claimed, and never suppressed by another user's claimed stamp", function (): void {
     $userA = User::factory()->create();
     $longerA = Activity::factory()->for($userA)->analyzed()->create();
     ActivityDetail::factory()->for($longerA)->create(['distance' => 30_000, 'start_date_local' => Carbon::yesterday()]);
@@ -524,12 +477,24 @@ it("does not let another user's already-claimed stamp suppress this account's an
     ActivityDetail::factory()->for($longerB)->create(['distance' => 30_000, 'start_date_local' => Carbon::yesterday()]);
     $activityB = Activity::factory()->for($userB)->analyzed()->create();
     ActivityDetail::factory()->for($activityB)->create(['distance' => 10_000, 'start_date_local' => Carbon::today()]);
-    PersonalRecord::factory()->forActivity($activityB)->create(['category' => '10km']);
+    PersonalRecord::factory()->forActivity($activityB)->create(['category' => '10km', 'value_sec' => 2400]);
+
+    $this->actingAs($userA)->get("/activities/{$activityA->id}")
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('prBib.label', '10K')
+            ->where('prBib.animate', false));
 
     $this->actingAs($userB)->get("/activities/{$activityB->id}")
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
+            ->where('prBib.label', '10K')
+            ->where('prBib.value_sec', 2400)
+            ->where('prBib.record_key', '10km')
             ->where('prBib.animate', true));
+
+    // A GET must not change its own payload: rendering never claims the stamp.
+    expect(RecordStamp::query()->where('user_id', $userB->id)->where('record_key', '10km')->exists())->toBeFalse();
 });
 
 it('runs no story-line queries when only the run insights are requested', function (): void {
