@@ -42,7 +42,7 @@
 
 - Before non-trivial work on a page/feature/subsystem you haven't touched this session, `grep -rl` its name across `docs/features/` and `docs/architecture/` and read any match. Skip this for isolated, mechanical fixes.
 - Only features and *architecturally significant* decisions earn a note. No per-commit, work-log or changelog notes.
-- Cite code by `path:line`, never transcribe it; [scripts/check-doc-citations.php](scripts/check-doc-citations.php) fails CI on a path that no longer exists.
+- Cite code by path plus a named symbol (no `#L` anchors in living notes), never transcribe it; [scripts/check-doc-citations.php](scripts/check-doc-citations.php) fails CI on a path that no longer exists.
 - Fix an *existing* doc a change makes wrong in the same PR; don't write a new note per PR.
 - ADRs in `docs/decisions/` are immutable: a changed decision gets a new dated note that supersedes it; a changed fact may get a dated one-line "superseded" banner, never a rewrite.
 

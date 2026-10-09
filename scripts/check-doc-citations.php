@@ -8,14 +8,14 @@ declare(strict_types=1);
  *
  * Fails if any code citation in docs/ points at a path that no longer exists —
  * the most dangerous form of doc rot ("the doc references code that's gone") —
- * or, for a `#L42` citation, if the symbol the doc names has moved away from
- * the line it cites. A path-only check passes happily while every line number
- * in the file rots, which is how citations end up hundreds of lines off.
+ * or, in a living note, if it uses a `#L42` line anchor or names a symbol the
+ * cited file does not declare. Living notes cite code by path plus a named
+ * symbol; ADRs are point-in-time records and skip both of those checks.
  *
  * Checks, per docs/**.md (excluding .obsidian/ and underscore-prefixed files like _template.md):
  *   - frontmatter `code_refs:` list items
- *   - inline markdown link targets, e.g. [text](app/Services/Foo.php#L42)
- *   - line drift for `#L42` targets, when the citation names a symbol we can find
+ *   - inline markdown link targets, e.g. [text](app/Services/Foo.php)
+ *   - in living notes: no `#L42` anchors, and a symbol-shaped link text must be declared in the target
  * Skips: external URLs, mailto, pure anchors, and [[wikilinks]] (unresolved Obsidian
  * links are allowed — they mark planned notes).
  *
@@ -30,19 +30,11 @@ if (! is_dir($docsDir)) {
     exit(1);
 }
 
-/**
- * How far a cited line may sit from the symbol it names before it counts as
- * drift. Citing a docblock's opening line rather than the declaration it
- * documents is a convention here, not an error, and docblocks run long; real
- * drift is hundreds of lines, so a generous window costs nothing.
- */
-const LINE_DRIFT_TOLERANCE = 15;
-
 /** @var list<string> $missing */
 $missing = [];
 
-/** @var list<string> $drifted */
-$drifted = [];
+/** @var list<string> $unresolved */
+$unresolved = [];
 
 $iterator = new RecursiveIteratorIterator(
     new RecursiveDirectoryIterator($docsDir, FilesystemIterator::SKIP_DOTS)
@@ -55,6 +47,7 @@ foreach ($iterator as $file) {
     }
 
     $path = $file->getPathname();
+    $isAdr = str_contains($path, '/docs/decisions/');
 
     if (str_contains($path, '/.obsidian/') || str_starts_with($file->getBasename(), '_')) {
         continue;
@@ -107,7 +100,10 @@ foreach ($iterator as $file) {
                 $linkText = $match[1];
                 $target = $match[2];
                 checkCitation($root, $path, $lineNo, $target, $missing);
-                checkLineDrift($root, $path, $lineNo, $target, $linkText, $drifted);
+
+                if (! $isAdr) {
+                    checkLivingCitation($root, $path, $lineNo, $target, $linkText, $unresolved);
+                }
             }
         }
     }
@@ -122,12 +118,12 @@ if ($missing !== []) {
     exit(1);
 }
 
-if ($drifted !== []) {
-    fwrite(STDERR, "Doc citation guard: these #L citations name a symbol that has moved:\n");
-    foreach ($drifted as $entry) {
+if ($unresolved !== []) {
+    fwrite(STDERR, "Doc citation guard: these living-note citations use a line anchor or name a symbol the file does not declare:\n");
+    foreach ($unresolved as $entry) {
         fwrite(STDERR, "  {$entry}\n");
     }
-    fwrite(STDERR, "\nUpdate the line number to where the symbol lives now.\n");
+    fwrite(STDERR, "\nCite path plus a symbol the file declares, with no #L anchor.\n");
     exit(1);
 }
 
@@ -169,31 +165,26 @@ function checkCitation(string $root, string $doc, int $lineNo, string $raw, arra
 }
 
 /**
- * Verify that a `#L42` citation still lands near the symbol the doc names.
+ * A living note cites code by path plus a named symbol: a `#L42` anchor is an
+ * error, and a symbol-shaped link text must be declared in the cited file.
+ * Prose link texts, and the cited file's own name, carry no symbol and pass.
  *
- * Symbol candidates come from the link text alone — `[ChainResolver::isHead()](…#L20)`
- * names what it points at. Widening to the surrounding prose sweeps up identifiers
- * belonging to the *other* citations on the same line and turns the guard into a
- * false-alarm generator, which gets it switched off. A citation whose link text
- * carries no symbol (`[Analysis.php:116](…#L116)`) is simply not checked, and a
- * candidate that appears nowhere in the target file is dropped rather than
- * reported. Only a symbol that demonstrably lives elsewhere in the same file
- * counts as drift.
- *
- * @param  list<string>  $drifted
+ * @param  list<string>  $unresolved
  */
-function checkLineDrift(string $root, string $doc, int $lineNo, string $target, string $linkText, array &$drifted): void
+function checkLivingCitation(string $root, string $doc, int $lineNo, string $target, string $linkText, array &$unresolved): void
 {
-    $path = trim((string) preg_replace('/#.*$/', '', trim($target)));
-    $citedLine = citedLineNumber($target);
+    $target = trim($target);
+    $path = trim((string) preg_replace('/#.*$/', '', (string) (preg_split('/\s+/', $target)[0] ?? '')));
+    $docRelative = substr($doc, strlen($root) + 1);
 
-    if ($path === '' || $citedLine === null) {
+    if (preg_match('/#L\d+/', $target) === 1) {
+        $unresolved[] = "{$docRelative}:{$lineNo} -> {$target} (line anchor)";
+    }
+
+    if ($path === '') {
         return;
     }
 
-    // Same dual resolution checkCitation() uses: docs cite either root-relative
-    // or doc-relative. Resolving only against the root silently skipped every
-    // `../../app/...` citation here while the existence check passed them.
     $file = $root.'/'.ltrim($path, '/');
     if (! is_file($file)) {
         $file = dirname($doc).'/'.$path;
@@ -202,65 +193,31 @@ function checkLineDrift(string $root, string $doc, int $lineNo, string $target, 
         return;
     }
 
-    $source = file($file, FILE_IGNORE_NEW_LINES) ?: [];
-    $docRelative = substr($doc, strlen($root) + 1);
-
-    if ($citedLine > count($source)) {
-        $drifted[] = "{$docRelative}:{$lineNo} -> {$path}#L{$citedLine} (file has only ".count($source).' lines)';
-
-        return;
-    }
-
-    $candidates = symbolCandidates($linkText, basename($path));
-    if ($candidates === []) {
-        return;
-    }
-
-    /** @var array<string, list<int>> $found */
-    $found = [];
-    foreach ($candidates as $symbol) {
-        $hits = [];
-        foreach ($source as $index => $text) {
-            if (preg_match('/\b'.preg_quote($symbol, '/').'\b/', $text) === 1) {
-                $hits[] = $index + 1;
-            }
-        }
-        if ($hits !== []) {
-            $found[$symbol] = $hits;
+    $source = (string) file_get_contents($file);
+    foreach (symbolCandidates($linkText, basename($path)) as $symbol) {
+        if (! declaresSymbol($source, $symbol)) {
+            $unresolved[] = "{$docRelative}:{$lineNo} -> {$path} (does not declare {$symbol})";
         }
     }
-
-    if ($found === []) {
-        return;
-    }
-
-    foreach ($found as $hits) {
-        foreach ($hits as $hit) {
-            if (abs($hit - $citedLine) <= LINE_DRIFT_TOLERANCE) {
-                return;
-            }
-        }
-    }
-
-    $report = [];
-    foreach ($found as $symbol => $hits) {
-        $report[] = $symbol.' at L'.implode('/L', array_slice($hits, 0, 3));
-    }
-
-    $drifted[] = "{$docRelative}:{$lineNo} -> {$path}#L{$citedLine} (".implode('; ', $report).')';
 }
 
-/**
- * The line number a `#L42` citation names, from the href suffix. Every
- * citation in docs/ uses this one form.
- */
-function citedLineNumber(string $target): ?int
+function declaresSymbol(string $source, string $symbol): bool
 {
-    if (preg_match('/#L(\d+)$/', trim($target), $m) === 1) {
-        return (int) $m[1];
+    $name = preg_quote($symbol, '/');
+    $patterns = [
+        '/\b(?:function|class|interface|trait|enum|const|case|let|var|type)\s+(?:&\s*)?'.$name.'\b/',
+        '/\bconst\s+[\w?|\\\\]+\s+'.$name.'\b/',
+        '/(?:public|protected|private|readonly|static|var)\b[^;=(\n]*\$'.$name.'\b/',
+        '/\bexport\s*\{[^}]*\b'.$name.'\b/',
+    ];
+
+    foreach ($patterns as $pattern) {
+        if (preg_match($pattern, $source) === 1) {
+            return true;
+        }
     }
 
-    return null;
+    return false;
 }
 
 /**
@@ -295,7 +252,6 @@ function isSymbolShaped(string $word): bool
 
 function symbolCandidates(string $linkText, string $basename): array
 {
-    $stem = preg_replace('/\.[^.]+$/', '', $basename);
     $candidates = [];
 
     // `Class::member` names its member unambiguously, so take it whatever its
@@ -312,17 +268,13 @@ function symbolCandidates(string $linkText, string $basename): array
     }
 
     foreach ($words[0] as $word) {
-        if ($word === $stem || $word === $basename) {
+        if (str_contains($basename, $word)) {
             continue;
         }
 
         // camelCase, snake_case, a SCREAMING_SNAKE constant, or multi-hump
-        // PascalCase. A bare lowercase English word in prose is not a symbol.
-        // PascalCase is only a candidate because the `$word === $stem` skip
-        // above has already dropped the class-in-its-own-file case, whose line
-        // number is meaningless; what is left is a usage site in another file,
-        // which can sit anywhere. The second hump keeps capitalised prose
-        // ("Inertia", "Every") out.
+        // PascalCase. A bare lowercase English word in prose is not a symbol,
+        // and the second hump keeps capitalised prose ("Inertia", "Every") out.
         if (! isSymbolShaped($word)) {
             continue;
         }

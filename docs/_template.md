@@ -15,7 +15,7 @@ code_refs:                # files this note describes — drift awareness + CI c
 
 **Writing rules**
 
-- Narrate for a human; **cite code by `path:line`, never transcribe it** — code is the source of truth, the note explains and points.
+- Narrate for a human; **cite code by path plus a named symbol (no `#L` anchors in living notes), never transcribe it** — code is the source of truth, the note explains and points.
 - Connect related notes with `[[wikilinks]]`.
 - **Generate-or-link volatile lists** (route tables, enum values) — never hand-copy them, they rot.
 - Link out to the `temari` skill / `memory` for conventions rather than restating them.
