@@ -34,7 +34,7 @@ interface RunHeroProps {
     trimp: number | null;
     /** Opens the share-card popup. Omitted when this run has no card to share. */
     onShare?: () => void;
-    /** Non-null only on the one view that plays the record's bib stamp. */
+    /** Non-null on every view of a run that holds a tracked record. */
     prBib?: PrBib | null;
     /** Sits beside the mood chip, e.g. the saved effort score. */
     effort?: ReactNode;
