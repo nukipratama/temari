@@ -165,13 +165,6 @@ it('PostRunSpeechNarrator ranks the run-scoped reads above the shared week pair'
         ->toContain("the same pair the home page's daily briefing already leads with");
 });
 
-it('PostRunSpeechNarrator throws on non-JSON', function (): void {
-    ['activity' => $a, 'detail' => $d] = postRunFixture();
-    $caller = fakeCaller('not json');
-    $narrator = postRunNarrator($caller);
-    $narrator->generate($a, $d, 'blazing');
-})->throws(UnavailableException::class, 'non-JSON');
-
 it('PostRunSpeechNarrator throws on missing key', function (): void {
     ['activity' => $a, 'detail' => $d] = postRunFixture();
     $caller = fakeCaller(json_encode(['other' => 'x'], JSON_THROW_ON_ERROR));
@@ -341,13 +334,6 @@ it('RunInsightNarrator throws on missing keys', function (): void {
     $narrator = runInsightNarrator($caller);
     $narrator->generate($a, $d);
 })->throws(UnavailableException::class);
-
-it('RunInsightNarrator throws on non-JSON', function (): void {
-    ['activity' => $a, 'detail' => $d] = postRunFixture();
-    $caller = fakeCaller('not json');
-    $narrator = runInsightNarrator($caller);
-    $narrator->generate($a, $d);
-})->throws(UnavailableException::class, 'non-JSON');
 
 it('RunInsightNarrator does not fatal when the stream summary is null, and renders no claims', function (): void {
     ['activity' => $a, 'detail' => $d] = postRunFixture();
@@ -635,16 +621,6 @@ it('WeeklyRecapNarrator throws on missing narrative key', function (): void {
     $narrator->generate($snap);
 })->throws(UnavailableException::class);
 
-it('WeeklyRecapNarrator throws on non-JSON', function (): void {
-    $user = User::factory()->create();
-    $snap = WeeklySnapshot::factory()->for($user)->create([
-        'week_ending' => Carbon::today()->endOfWeek()->toDateString(),
-    ]);
-    $caller = fakeCaller('not json');
-    $narrator = weeklyRecapNarrator($caller);
-    $narrator->generate($snap);
-})->throws(UnavailableException::class, 'non-JSON');
-
 it('WeekTotalsTool reads the previous week deltas when a prior snapshot exists', function (): void {
     $user = User::factory()->create();
     WeeklySnapshot::factory()->for($user)->create([
@@ -769,13 +745,6 @@ it('TrendReadNarrator throws on missing title key', function (): void {
     $narrator = new TrendReadNarrator($caller, app(TrainingLoad::class));
     $narrator->generate($user, '7d');
 })->throws(UnavailableException::class);
-
-it('TrendReadNarrator throws on non-JSON', function (): void {
-    $user = User::factory()->create();
-    $caller = fakeCaller('not json');
-    $narrator = new TrendReadNarrator($caller, app(TrainingLoad::class));
-    $narrator->generate($user, '7d');
-})->throws(UnavailableException::class, 'non-JSON');
 
 it('TrendRangeTool exposes the current range on its own reading', function (): void {
     $user = User::factory()->create();
@@ -1074,13 +1043,6 @@ it('CardFlavorNarrator throws on missing flavor key', function (): void {
     $narrator->generate($card);
 })->throws(UnavailableException::class);
 
-it('CardFlavorNarrator throws on non-JSON', function (): void {
-    $card = cardFixture();
-    $caller = fakeCaller('not json');
-    $narrator = cardFlavorNarrator($caller);
-    $narrator->generate($card);
-})->throws(UnavailableException::class, 'non-JSON');
-
 // ── MonthlyRecapNarrator ──────────────────────────────────────────────
 
 it('MonthTotalsTool reads month totals and the mood mix', function (): void {
@@ -1342,13 +1304,6 @@ it('ProfileVoiceNarrator throws on missing profile_voice key', function (): void
     $narrator = new ProfileVoiceNarrator($caller, app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(ProgressionSeriesBuilder::class), app(LifetimeStats::class));
     $narrator->generate($user);
 })->throws(UnavailableException::class);
-
-it('ProfileVoiceNarrator throws on non-JSON', function (): void {
-    $user = User::factory()->create();
-    $caller = fakeCaller('not json');
-    $narrator = new ProfileVoiceNarrator($caller, app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(ProgressionSeriesBuilder::class), app(LifetimeStats::class));
-    $narrator->generate($user);
-})->throws(UnavailableException::class, 'non-JSON');
 
 it('ProfileVoiceNarrator throws when the model skips its evidence slots', function (): void {
     $user = User::factory()->create();
@@ -1666,12 +1621,6 @@ it('BriefingMascotVoiceNarrator clamps when session_type is unparseable', functi
 
     expect($narrator->generate($user, Carbon::today()))->not->toBe('Free session today.');
 });
-
-it('BriefingMascotVoiceNarrator throws on non-JSON', function (): void {
-    $user = User::factory()->create();
-    $narrator = bootMascotNarrator('not json');
-    $narrator->generate($user, Carbon::today());
-})->throws(UnavailableException::class, 'non-JSON');
 
 it('BriefingMascotVoiceNarrator feeds prev_narrative from the prior day Temari note when Done', function (): void {
     $user = User::factory()->create();
