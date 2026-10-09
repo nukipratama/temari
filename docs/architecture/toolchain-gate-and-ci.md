@@ -3,7 +3,7 @@ title: Local gate vs. CI
 description: What composer gate / check:full run locally, what pre-commit runs, and what CI runs — and why they differ
 tags: [architecture, toolchain]
 status: living
-reviewed: 2026-10-06
+reviewed: 2026-10-09
 code_refs:
   - scripts/gate.sh
   - .githooks/pre-commit
@@ -67,7 +67,7 @@ structure check and source guard (`{@see}` references; the raw-palette guard), s
 checks run once per run instead of once per shard. Each reusable workflow's `gate` requires all of
 its shards and its static analysis on both events, and the top-level `ci-gate` requires each
 changed suite as a unit. A missing, cancelled or failed shard therefore reds the gate — see
-[docs/decisions/sharded-pr-coverage.md](../decisions/sharded-pr-coverage.md). A newer push to
+[[sharded-pr-coverage]]. A newer push to
 the same ref, `main` included, cancels the older run whole instead, and its `ci-gate` skips; see
 [[deployment]] under "Superseded main runs".
 
