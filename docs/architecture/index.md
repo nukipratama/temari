@@ -3,7 +3,7 @@ title: Architecture — Map of Content
 description: Hub for subsystem and cross-cutting architecture notes
 tags: [architecture, moc]
 status: living
-reviewed: 2026-10-02
+reviewed: 2026-10-09
 ---
 
 # Architecture
@@ -49,6 +49,7 @@ _Data & runtime_
 - [[deployment]] — FrankenPHP+Octane, Cloudflare tunnel, CI/CD, rollback, Redis partitioning
 - [[maintenance-mode]] — one durable flag behind Laravel's maintenance driver: who gets in, what pauses, the Pulse toggle and `artisan down`
 - [[scheduler]] — overlap safety and single-host lock flags, the Monday-window ordering, cadence derivations
+- [[notification-delivery]] — router, inbox/Telegram/web-push channels, per-(analysis, channel) claims and recovery, the quiet-hours hold, stale skips, the morning push slot, the demo rule
 - [[toolchain-gate-and-ci]] — pre-commit vs. `composer gate` vs. CI: what each layer runs and why they differ
 
 See also: [[design-tokens]], [[voice-and-tone]].
