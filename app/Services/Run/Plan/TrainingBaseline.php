@@ -179,7 +179,6 @@ final class TrainingBaseline
     public function __construct(
         private readonly VdotEstimator $vdotEstimator,
         private readonly TrainingPaceCalculator $paceCalculator,
-        private readonly PhaseSchedule $phaseSchedule,
         private readonly ResolveActiveRaceAction $activeRace,
         private readonly ResolveTrainingPreferenceAction $trainingPreference,
         private readonly ResolveTrailingWeeksAction $weeklySnapshots,
@@ -418,7 +417,7 @@ final class TrainingBaseline
     /** @return list<array{week_start: Carbon, phase: PlanPhase, multiplier: float}> */
     private function buildBlock(RaceGoal $race, Season $season): array
     {
-        $weeks = $this->phaseSchedule->forRace($season->starts_at, $race->race_date, (float) $race->distance_m);
+        $weeks = PhaseSchedule::forRace($season->starts_at, $race->race_date, (float) $race->distance_m);
         $zones = array_column($weeks, 'zone');
         $multipliers = PhaseSchedule::volumeMultipliers(array_column($weeks, 'phase'), $season->increases_held, $zones);
 

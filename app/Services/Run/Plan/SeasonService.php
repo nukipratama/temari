@@ -68,7 +68,6 @@ final readonly class SeasonService
 
     public function __construct(
         private TrainingBaseline $baseline,
-        private PhaseSchedule $phaseSchedule,
         private ResolveActiveRaceAction $activeRace,
         private ResolveSeasonAction $season,
         private SeasonSummaryBuilder $seasonSummaryBuilder,
@@ -300,8 +299,8 @@ final readonly class SeasonService
         $sessionsPerWeek = $baselineData['sessions_per_week'];
 
         $weeks = $race !== null
-            ? $this->phaseSchedule->forRace($today, $race->race_date, (float) $race->distance_m)
-            : $this->phaseSchedule->selfScaled($today, self::SELF_SCALED_WEEKS);
+            ? PhaseSchedule::forRace($today, $race->race_date, (float) $race->distance_m)
+            : PhaseSchedule::selfScaled($today, self::SELF_SCALED_WEEKS);
         $weekCount = count($weeks);
 
         $phases = array_column($weeks, 'phase');

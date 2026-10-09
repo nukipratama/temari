@@ -39,7 +39,6 @@ final readonly class SeasonSummaryBuilder
 {
     public function __construct(
         private TrainingBaseline $baseline,
-        private PhaseSchedule $phaseSchedule,
         private CurrentWeekPlanBuilder $currentWeekPlan,
     ) {
     }
@@ -132,11 +131,11 @@ final readonly class SeasonSummaryBuilder
 
         if ($race !== null) {
             $raceDistanceM = (float) $race->distance_m;
-            $weeks = $this->phaseSchedule->forRace($season->starts_at, $race->race_date, $raceDistanceM);
+            $weeks = PhaseSchedule::forRace($season->starts_at, $race->race_date, $raceDistanceM);
         } else {
             $raceDistanceM = null;
             $totalWeeks = max(1, (int) $season->starts_at->diffInWeeks($season->ends_at) + 1);
-            $weeks = $this->phaseSchedule->selfScaled($season->starts_at, $totalWeeks);
+            $weeks = PhaseSchedule::selfScaled($season->starts_at, $totalWeeks);
         }
 
         $multipliers = PhaseSchedule::volumeMultipliers(array_column($weeks, 'phase'), $isSelfScaled || $season->increases_held, array_column($weeks, 'zone'));
