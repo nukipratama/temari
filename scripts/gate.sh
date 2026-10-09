@@ -96,7 +96,7 @@ step "see references" php scripts/check-see-references.php
 step "palette" npm run check:palette
 step "pest structure" vendor/bin/pest --group=structure
 step "vitest structure" npx vitest run resources/js/test/structure.test.ts
-step "typecheck" npm run typecheck
+step "typecheck" npm run typecheck -- --incremental --tsBuildInfoFile node_modules/.cache/tsbuildinfo
 step "rector changed" rector_changed
 step "vitest changed" vitest_changed
 step "pest changed" pest_changed
