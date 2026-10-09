@@ -3,7 +3,7 @@ title: Vibe & mood system
 description: The daily "vibe" that sets Temari's tone and the run-level mood vocabulary.
 tags: [feature, story]
 status: living
-reviewed: 2026-09-24
+reviewed: 2026-10-09
 code_refs:
   - app/Services/Run/Story/Vibe.php
   - app/Services/Run/Story/VibeMatrix.php
@@ -57,7 +57,7 @@ The bridge between the two systems is `moodForVibe` ([`Temari::moodForVibe()`](.
 
 - **Mascot pose.** A run `Mood` picks Temari's pose on run surfaces (RunHero, RunLenses, [RecapCard](../../resources/js/components/history/RecapCard.tsx)). On Today and Profile the daily vibe does, collapsed onto a mood by `moodForVibe` below: Today reads `briefing.mood`, Profile its own `mood` prop. See [[temari-mascot]].
 - **Vibe bar.** Gone. It surfaced as text in `VitalBars`' "Vibe" row on `/trends`, until #967 deleted that component along with the range toggle it belonged to (see [[trends]]). `BriefingResult` no longer carries `vibeLabel`/`vibeEmoji` (nor does [Vibe](../../app/Services/Run/Story/Vibe.php) expose `label()`/`emoji()`/`LABELS`/`EMOJI` any more) — nothing rendered them once the bar was gone. The vibe itself still feeds `moodForVibe` below, but `BriefingResult` sends only the resulting `mood`, not the vibe key.
-- **LLM tone.** [BriefingComposer::compose](../../app/Services/Run/Story/BriefingComposer.php) resolves the vibe once and hangs the briefing off it. The vibe *key* is then a context field the narrators key their tone to: the mascot voice keys its register to the vibe band ([BriefingMascotVoiceNarrator.php](../../app/Services/AI/Narrators/BriefingMascotVoiceNarrator.php)) — energetic for `pumped`/`fresh`/`bouncy`, gentle for `worn_down`/`cooked`, coaxing for `hibernating`. The pipeline itself is documented in [[ai-pipeline]].
+- **LLM tone.** [BriefingComposer::compose](../../app/Services/Run/Story/BriefingComposer.php) resolves the vibe only to derive the briefing's mood; it does not hand the vibe to the narrator. [BriefingMascotVoiceNarrator](../../app/Services/AI/Narrators/BriefingMascotVoiceNarrator.php) calls `Vibe::current` itself, and the vibe *key* is a context field it keys its tone to: the mascot voice keys its register to the vibe band — energetic for `pumped`/`fresh`/`bouncy`, gentle for `worn_down`/`cooked`, coaxing for `hibernating`. The pipeline itself is documented in [[ai-pipeline]].
 
 ## Featured kartu
 

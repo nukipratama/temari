@@ -11,7 +11,7 @@ export const MOOD_LABEL: Record<Mood, string> = {
     chill: 'chill',
 };
 
-// Solid mood fill (bg-mood-{key}); use for persona bar segments.
+// Solid mood fill (bg-mood-{key}); used by the dots in MoodChip, EffortLegend and RunListRow.
 export const MOOD_FILL: Record<Mood, string> = {
     blazing: 'bg-mood-blazing',
     easy: 'bg-mood-easy',

@@ -3,7 +3,7 @@ title: The LLM surface — everything that calls a model, what starts it, and wh
 description: The complete inventory of narrators, agent tools and deterministic producers, with the five origins that dispatch them, the seven things that stop them, a proposed verdict per surface, and what the prod rebuild means for spend.
 tags: [architecture, ai]
 status: living
-reviewed: 2026-10-07
+reviewed: 2026-10-09
 code_refs:
   - routes/console.php
   - app/Services/AI/StructuredChatCaller.php
@@ -433,7 +433,7 @@ inline in its `toolbox()` method.
 | tool · `name()` | what it hands the model | who computed it |
 |---|---|---|
 | `WeekStateTool` · `get_week_state` | `this_week_runs`, `last_week_runs`, `this_week_km`, `last_week_km`, `recovery_hours`, `ran_today`, `days_since_last_run`, `form_status`, `time_bucket`, `consecutive_weeks_active`, `fitness_trend`, `volume_ramp` (`{pct, relation}`, no bare sign — #1009), `readiness_ceiling`, `build_nudge` | `BriefingContext` over `TrainingLoad`, `RecoveryWindow` and `Readiness` |
-| `TrainingLoadTool` · `get_training_load` | `training_load`: `acute_7d`, `chronic_42d`, `form` (`{value, relation}`, no bare sign — #1009), `form_status` | `TrainingLoad::summary()` |
+| `TrainingLoadTool` · `get_training_load` | `training_load`: `acute_7d`, `chronic_42d`, `load_balance` (fresh, steady or heavy; no bare sign — #1009) | `TrainingLoad::summary()` |
 | `TrainingPacesTool` · `get_training_paces` | `easy_pace_sec`, `marathon_pace_sec`, `threshold_pace_sec`, `interval_pace_sec` | `VdotEstimator` into `TrainingPaceCalculator` |
 | `RecentBaselineTool` · `get_recent_baseline` | `recent_baseline_28d`: rolling pace / HR averages, plus `avg_decoupling` from version 2 measured steady segments (`{pct, relation}`, no bare sign — #1009) | `ResolveRunBaselineAction` |
 | `RecentRunsTool` · `get_recent_runs` | `recent_runs`: up to 5 × `{mood, km, intensity, oneline}` | `VerdictNarrator::recent()` |
@@ -445,7 +445,7 @@ inline in its `toolbox()` method.
 
 | tool · `name()` | what it hands the model | who computed it |
 |---|---|---|
-| `WeekTotalsTool` · `get_week_totals` | `week_ending`, `runs`, `distance_km`, `pace_sec_per_km`, `weekly_trimp`, `ctl_42d`, `atl_7d`, `form` (`{value, relation}`, no bare sign — #1009), `form_status`, `monotony`, `strain`, `avg_decoupling` from the separate version 2 weekly aggregate (`{pct, relation}`, no bare sign — #1009), plus the previous week's `prev_runs`, `prev_distance_km`, `prev_pace_sec_per_km` | stored `WeeklySnapshot` rows, written by `WeeklyAggregator`; pace via `PaceCalculator`; relation via `DecouplingBands::relationFor()` |
+| `WeekTotalsTool` · `get_week_totals` | `week_ending`, `runs`, `distance_km`, `pace_sec_per_km`, `weekly_trimp`, `ctl_42d`, `atl_7d`, `load_balance` (fresh, steady or heavy; no bare sign — #1009), `monotony`, `strain`, `avg_decoupling` from the separate version 2 weekly aggregate (`{pct, relation}`, no bare sign — #1009), plus the previous week's `prev_runs`, `prev_distance_km`, `prev_pace_sec_per_km` | stored `WeeklySnapshot` rows, written by `WeeklyAggregator`; pace via `PaceCalculator`; relation via `DecouplingBands::relationFor()` |
 | `MonthTotalsTool` · `get_month_totals` | `month`, `total_runs`, `total_distance_km`, `longest_run_km`, `pr_count`, `weekly_distance_km`, `mood_mix`, `fitness` (`ctl_start`, `ctl_end`, `form_status_end`) | `DistanceFormatter`, `MoodMix`, stored `WeeklySnapshot` rows |
 | `TrendRangeTool` · `get_trend_range_totals` | `range`, `current` and `comparison` (`runs`, `distance_km`, `trimp_total`), `ctl_start`, `ctl_end`, `vdot_start`, `vdot_end`, `avg_monotony`, `avg_strain` | `TrainingLoad::ctlTrend()` / `::strainMonotonyTrend()`, `TrendDailySnapshot` |
 | `CardIdentityTool` · `get_card_identity` | `rarity`, `rarity_label`, `special_move`, `badges` | stored `RunCard` attributes; labels from `Badge::promptLabelsFor()` |
