@@ -133,8 +133,8 @@ jobs:
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: .phpstan-cache
-          key: phpstan-${{ runner.os }}-${{ runner.arch }}-php${{ env.PHP_VERSION }}-${{ hashFiles('composer.lock', 'phpstan.neon') }}-${{ github.run_id }}
-          restore-keys: phpstan-${{ runner.os }}-${{ runner.arch }}-php${{ env.PHP_VERSION }}-${{ hashFiles('composer.lock', 'phpstan.neon') }}-
+          key: phpstan-${{ runner.os }}-${{ runner.arch }}-php${{ env.PHP_VERSION }}-${{ hashFiles('phpstan.neon') }}-${{ github.run_id }}
+          restore-keys: phpstan-${{ runner.os }}-${{ runner.arch }}-php${{ env.PHP_VERSION }}-${{ hashFiles('phpstan.neon') }}-
 
       - name: Restore Rector analyser cache
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -172,7 +172,7 @@ jobs:
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: .phpstan-cache
-          key: phpstan-${{ runner.os }}-${{ runner.arch }}-php${{ env.PHP_VERSION }}-${{ hashFiles('composer.lock', 'phpstan.neon') }}-${{ github.run_id }}
+          key: phpstan-${{ runner.os }}-${{ runner.arch }}-php${{ env.PHP_VERSION }}-${{ hashFiles('phpstan.neon') }}-${{ github.run_id }}
 
       - name: Rector (dry-run)
         id: rector
