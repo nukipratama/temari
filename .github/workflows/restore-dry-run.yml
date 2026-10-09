@@ -311,7 +311,7 @@ jobs:
 
           single_quotable() {
             case "$2" in
-              *"'"* | *'\') echo "::error::$1 holds a single quote or a trailing backslash, which the generated env file can't carry"; exit 1 ;;
+              *"'"* | *\\) echo "::error::$1 holds a single quote or a trailing backslash, which the generated env file can't carry"; exit 1 ;;
             esac
           }
           single_quotable DB_DATABASE "$db_database"
