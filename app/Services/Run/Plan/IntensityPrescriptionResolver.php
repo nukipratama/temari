@@ -40,7 +40,7 @@ final class IntensityPrescriptionResolver
     /**
      * @param array{easy: int, marathon: int, threshold: int, interval: int}|null $paces
      */
-    public function resolve(
+    public static function resolve(
         SessionType $type,
         PlanPhase $phase,
         ?float $raceDistanceM,
@@ -56,8 +56,8 @@ final class IntensityPrescriptionResolver
         }
 
         [$target, $band, $raceContext] = $goalPace === null
-            ? $this->target($type, $phase, $raceDistanceM, $raceGoalTimeSec)
-            : $this->goalPaceTarget($type, $phase, $goalPace);
+            ? self::target($type, $phase, $raceDistanceM, $raceGoalTimeSec)
+            : self::goalPaceTarget($type, $phase, $goalPace);
         if ($target === 0 || $band === null) {
             return new IntensityPrescription(0, null, null, null, $raceContext);
         }
@@ -68,7 +68,7 @@ final class IntensityPrescriptionResolver
             : ($raceContext === null ? 20 : 15);
         $minutes = $previousHardMinutes === null
             ? min($target, $coldStart)
-            : $this->progressed($previousHardMinutes, $previousVerdict, $shape, $phase, $target);
+            : self::progressed($previousHardMinutes, $previousVerdict, $shape, $phase, $target);
         $reason = $previousHardMinutes === null ? 'conservative start with sparse comparable evidence' : match ($previousVerdict) {
             IntentVerdict::Hit => 'progressed after the latest comparable session was hit',
             IntentVerdict::TooHard => 'stepped down after the latest comparable session was too hard',
@@ -77,7 +77,7 @@ final class IntensityPrescriptionResolver
 
         $minutes = min($target, $minutes);
         if ($hardMinutesAvailable !== null && $minutes > $hardMinutesAvailable) {
-            $minutes = $this->wholeWorkUnits($shape, $phase, $target, $hardMinutesAvailable);
+            $minutes = self::wholeWorkUnits($shape, $phase, $target, $hardMinutesAvailable);
             $reason = 'bounded by this week’s easy-time reserve';
         }
         if ($shape === SessionType::Interval) {
@@ -92,14 +92,14 @@ final class IntensityPrescriptionResolver
             return new IntensityPrescription(0, null, null, 'easy because the week has no safe room for meaningful quality', $raceContext);
         }
 
-        $pace = $goalPace->goalPaceSecPerKm ?? $this->pace($band, $raceContext, $paces);
+        $pace = $goalPace->goalPaceSecPerKm ?? self::pace($band, $raceContext, $paces);
         return new IntensityPrescription($minutes, $band, $pace, $reason, $raceContext);
     }
 
     /**
      * @return array{0: int, 1: PaceBand, 2: array{distance_m: int, goal_pace_sec_per_km: int, kind: string, band: string}}
      */
-    private function goalPaceTarget(SessionType $type, PlanPhase $phase, GoalPaceWork $goalPace): array
+    private static function goalPaceTarget(SessionType $type, PlanPhase $phase, GoalPaceWork $goalPace): array
     {
         $targets = match (true) {
             ! $goalPace->isMarathon() => self::GOAL_PACE_TARGETS[$goalPace->kind],
@@ -117,7 +117,7 @@ final class IntensityPrescriptionResolver
     /**
      * @return array{0: int, 1: PaceBand|null, 2: array{distance_m: int, goal_pace_sec_per_km: int, kind: 'marathon'}|null}
      */
-    private function target(SessionType $type, PlanPhase $phase, ?float $distanceM, ?int $goalTimeSec): array
+    private static function target(SessionType $type, PlanPhase $phase, ?float $distanceM, ?int $goalTimeSec): array
     {
         $raceSpecific = $distanceM !== null && RaceSupport::isMarathonClass($distanceM) && $goalTimeSec !== null && $goalTimeSec > 0;
         $context = $raceSpecific ? [
@@ -139,7 +139,7 @@ final class IntensityPrescriptionResolver
         return [self::THRESHOLD_TARGETS[$phase->value] ?? 0, PaceBand::Threshold, null];
     }
 
-    private function progressed(int $minutes, ?IntentVerdict $verdict, SessionType $type, PlanPhase $phase, int $target): int
+    private static function progressed(int $minutes, ?IntentVerdict $verdict, SessionType $type, PlanPhase $phase, int $target): int
     {
         if ($type === SessionType::Interval) {
             $rep = self::INTERVAL_REP_MINUTES[$phase->value] ?? 3;
@@ -160,7 +160,7 @@ final class IntensityPrescriptionResolver
         };
     }
 
-    private function wholeWorkUnits(SessionType $type, PlanPhase $phase, int $target, int $available): int
+    private static function wholeWorkUnits(SessionType $type, PlanPhase $phase, int $target, int $available): int
     {
         $unit = SegmentGenerator::workUnitMinutes($type, $phase, $target);
 
@@ -171,7 +171,7 @@ final class IntensityPrescriptionResolver
      * @param array{distance_m: int, goal_pace_sec_per_km: int, kind: string, band?: string}|null $context
      * @param array{easy: int, marathon: int, threshold: int, interval: int}|null $paces
      */
-    private function pace(PaceBand $band, ?array $context, ?array $paces): ?int
+    private static function pace(PaceBand $band, ?array $context, ?array $paces): ?int
     {
         if ($paces === null) {
             return null;

@@ -76,7 +76,6 @@ final readonly class Periodizer
 
     public function __construct(
         private PlanInputsGatherer $gatherer,
-        private IntensityPrescriptionResolver $prescriptionResolver,
     ) {
     }
 
@@ -485,7 +484,7 @@ final readonly class Periodizer
                 : IntensityPrescriptionResolver::familyKeyForContext($row['session_type'], $work->context());
             $recent = $inputs->recentPrescriptions[$family] ?? null;
 
-            return $this->prescriptionResolver->resolve(
+            return IntensityPrescriptionResolver::resolve(
                 $row['session_type'],
                 $row['phase'],
                 $inputs->raceDistanceM,
