@@ -93,8 +93,17 @@ it('offers no Telegram link to the demo account', function (): void {
         ->assertInertia(fn (Assert $page) => $page->where('telegramConnectUrl', null)->etc());
 });
 
-it('lets an unboarded user subscribe a device to push from the nudge step', function (): void {
+it('never redirects an already-onboarded user back into the wizard, and lets them reach the rest of the app', function (): void {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)->get('/onboarding')->assertRedirect(route('dashboard'));
+    $this->actingAs($user)->get('/')->assertSuccessful();
+});
+it('redirects an unboarded user away from the rest of the app back to the wizard, but lets them subscribe to push and log out', function (): void {
     $user = User::factory()->needsOnboarding()->create();
+
+    $this->actingAs($user)->get('/')->assertRedirect(route('onboarding.show'));
+    $this->actingAs($user)->get('/history')->assertRedirect(route('onboarding.show'));
 
     $this->actingAs($user)
         ->postJson(route('push.subscribe'), [
@@ -102,28 +111,10 @@ it('lets an unboarded user subscribe a device to push from the nudge step', func
             'keys' => ['p256dh' => 'p256dh-key', 'auth' => 'auth-token'],
         ])
         ->assertNoContent();
-});
-
-it('never redirects an already-onboarded user back into the wizard', function (): void {
-    $user = User::factory()->create();
-
-    $this->actingAs($user)->get('/onboarding')->assertRedirect(route('dashboard'));
-});
-
-it('redirects an unboarded user away from the rest of the app back to the wizard', function (): void {
-    $user = User::factory()->needsOnboarding()->create();
-
-    $this->actingAs($user)->get('/')->assertRedirect(route('onboarding.show'));
-    $this->actingAs($user)->get('/history')->assertRedirect(route('onboarding.show'));
-});
-
-it('lets an unboarded user log out without hitting the onboarding gate', function (): void {
-    $user = User::factory()->needsOnboarding()->create();
 
     $this->actingAs($user)->post(route('auth.logout'))->assertRedirect(route('login'));
 });
-
-it('marks the user onboarded and skips the goal step when no race fields are submitted', function (): void {
+it('marks the user onboarded and skips the goal and preferences steps when no fields are submitted', function (): void {
     $user = User::factory()->needsOnboarding()->create();
 
     $this->actingAs($user)
@@ -132,10 +123,11 @@ it('marks the user onboarded and skips the goal step when no race fields are sub
         ->assertSessionHas('success');
 
     expect($user->fresh()->onboarded_at)->not->toBeNull()
-        ->and(RaceGoal::query()->where('user_id', $user->id)->exists())->toBeFalse();
+        ->and(RaceGoal::query()->where('user_id', $user->id)->exists())->toBeFalse()
+        ->and(TrainingPreference::query()->where('user_id', $user->id)->exists())->toBeFalse();
 });
 
-it('creates a race and marks the user onboarded when the goal step is filled in', function (): void {
+it('creates a race and marks the user onboarded when the goal step is filled in, without a second active race on a retried submit', function (): void {
     $user = User::factory()->needsOnboarding()->create();
 
     $this->actingAs($user)
@@ -150,6 +142,12 @@ it('creates a race and marks the user onboarded when the goal step is filled in'
         ->and($race->outcome)->toBe(RaceOutcome::Pending)
         ->and($race->changes->pluck('kind')->all())->toBe([RaceChangeKind::Created])
         ->and($user->fresh()->onboarded_at)->not->toBeNull();
+
+    // Simulate a retried/double submit after the user is already onboarded.
+    $user->refresh();
+    $this->actingAs($user)->post('/onboarding', onboardingGoalPayload())->assertRedirect(route('dashboard'));
+
+    expect(RaceGoal::query()->where('user_id', $user->id)->active()->count())->toBe(1);
 });
 
 it('rejects a partial goal submission and does not onboard the user', function (): void {
@@ -161,23 +159,6 @@ it('rejects a partial goal submission and does not onboard the user', function (
 
     expect($user->fresh()->onboarded_at)->toBeNull()
         ->and(RaceGoal::query()->where('user_id', $user->id)->exists())->toBeFalse();
-});
-
-it('does not create a second active race on a retried submit', function (): void {
-    $user = User::factory()->needsOnboarding()->create();
-
-    $this->actingAs($user)->post('/onboarding', onboardingGoalPayload())->assertRedirect(route('dashboard'));
-    // Simulate a retried/double submit after the user is already onboarded.
-    $user->refresh();
-    $this->actingAs($user)->post('/onboarding', onboardingGoalPayload())->assertRedirect(route('dashboard'));
-
-    expect(RaceGoal::query()->where('user_id', $user->id)->active()->count())->toBe(1);
-});
-
-it('lets an already-onboarded user reach the rest of the app', function (): void {
-    $user = User::factory()->create();
-
-    $this->actingAs($user)->get('/')->assertSuccessful();
 });
 
 it('creates a training_preferences row when the preferences step is filled in', function (): void {
@@ -198,14 +179,6 @@ it('creates a training_preferences row when the preferences step is filled in', 
         ->and($preference->sessions_per_week)->toBe(3)
         ->and($preference->run_days)->toBe([1, 3, 5])
         ->and($user->fresh()->onboarded_at)->not->toBeNull();
-});
-
-it('creates no training_preferences row when the preferences step is skipped', function (): void {
-    $user = User::factory()->needsOnboarding()->create();
-
-    $this->actingAs($user)->post('/onboarding')->assertRedirect(route('dashboard'));
-
-    expect(TrainingPreference::query()->where('user_id', $user->id)->exists())->toBeFalse();
 });
 
 // Before this, today's briefing was staged only by the 00:01 kickoff, so an
@@ -236,13 +209,7 @@ it('stages the briefing Pending instead of narrating against zero history when t
     expect($row)->not->toBeNull()
         ->and($row->status)->toBe(AnalysisStatus::Pending);
     Bus::assertNotDispatched(AnalyzeBriefingMascotVoiceJob::class);
-});
 
-it('does not stage a second briefing row on a resubmitted wizard', function (): void {
-    Bus::fake();
-    $user = User::factory()->needsOnboarding()->create();
-
-    $this->actingAs($user)->post('/onboarding')->assertRedirect(route('dashboard'));
     $this->actingAs($user->fresh())->post('/onboarding')->assertRedirect(route('dashboard'));
 
     expect(briefingRowsFor($user))->toHaveCount(1);
