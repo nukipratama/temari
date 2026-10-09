@@ -622,12 +622,28 @@ function trainingBaselineMemo(TrainingBaseline $baseline, string $property): arr
     return new ReflectionProperty(TrainingBaseline::class, $property)->getValue($baseline);
 }
 
-function volumeFloorKmFor(TrainingBaseline $baseline, RaceGoal $race, array $block, Season $season, int $sessionsPerWeek): float
+function volumeFloorKmFor(TrainingBaseline $baseline, RaceGoal $race, array $block, Season $season, int $sessionsPerWeek, float $longRunCapKm = INF, float $progressionCapKm = INF): float
 {
     $method = new ReflectionMethod(TrainingBaseline::class, 'volumeFloorKm');
 
-    return $method->invoke($baseline, $race, $block, $season, $sessionsPerWeek);
+    return $method->invoke($baseline, $race, $block, $season, $sessionsPerWeek, $longRunCapKm, $progressionCapKm);
 }
+
+it('never solves the floor past what the session ceilings let the block reach', function (): void {
+    $user = User::factory()->create();
+    $season = flooredRaceSeason($user, 20.0, 27.0);
+    $race = RaceGoal::query()->where('user_id', $user->id)->firstOrFail();
+    $block = new ReflectionMethod(TrainingBaseline::class, 'block')->invoke($this->baseline, $race, $season);
+    $floorFor = function (float $floorKm, float $progressionCapKm) use ($race, $block, $season): float {
+        $season->volume_floor_km = $floorKm;
+
+        return volumeFloorKmFor($this->baseline, $race, $block, $season, 4, INF, $progressionCapKm);
+    };
+
+    expect($floorFor(27.0, 3.0))->toBe($floorFor(50.0, 3.0))
+        ->and($floorFor(27.0, 3.0))->toBeLessThan($floorFor(50.0, INF))
+        ->and($floorFor(27.0, INF))->toBeLessThan($floorFor(50.0, INF));
+});
 
 it('does not rebuild the race block on a second forUser() call in the same scope', function (): void {
     $user = User::factory()->create();

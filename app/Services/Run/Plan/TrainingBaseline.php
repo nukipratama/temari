@@ -201,9 +201,8 @@ final class TrainingBaseline
 
     /**
      * The block's volume floor, keyed on the block key plus the season's
-     * `volume_floor_km` and `sessionsPerWeek` — the only other inputs
-     * {@see self::computeVolumeFloorKm()} reads, since that alone decides how
-     * {@see WeekPlanBuilder} lays each week out.
+     * `volume_floor_km`, `sessionsPerWeek` and the two session ceilings — the
+     * only other inputs {@see self::computeVolumeFloorKm()} reads.
      *
      * @var array<string, float>
      */
@@ -235,13 +234,14 @@ final class TrainingBaseline
 
         $race = ($this->activeRace)($user->id);
         $longRunCapKm = $this->longRunCapKm($race, max($weeklyVolumeKm, $race === null ? 0.0 : (float) $season?->volume_floor_km), $user, $asOf);
+        $longRunProgressionCapKm = $this->recentLongRunCapKm($user, $asOf, $seed);
 
         return [
             'sessions_per_week' => $sessionsPerWeek,
             'weekly_volume_km' => $weeklyVolumeKm,
-            'long_run_km' => $this->longRunKm($race, $weeklyVolumeKm, $season, $longRunCapKm, $sessionsPerWeek, $asOf),
+            'long_run_km' => $this->longRunKm($race, $weeklyVolumeKm, $season, $longRunCapKm, $longRunProgressionCapKm, $sessionsPerWeek, $asOf),
             'long_run_cap_km' => $longRunCapKm,
-            'long_run_progression_cap_km' => $this->recentLongRunCapKm($user, $asOf, $seed),
+            'long_run_progression_cap_km' => $longRunProgressionCapKm,
             'self_scaled' => $race === null,
         ];
     }
@@ -338,7 +338,7 @@ final class TrainingBaseline
      * raises it only as far as its three floors ask. A block whose increases
      * are held takes the volume floor alone, over its flat curve.
      */
-    private function longRunKm(?RaceGoal $race, float $weeklyVolumeKm, ?Season $season, float $capKm, int $sessionsPerWeek, Carbon $asOf): float
+    private function longRunKm(?RaceGoal $race, float $weeklyVolumeKm, ?Season $season, float $capKm, float $progressionCapKm, int $sessionsPerWeek, Carbon $asOf): float
     {
         $block = $race !== null && $season !== null ? $this->block($race, $season) : null;
         $selfScaledAnchorKm = $race === null ? $season?->anchor_weekly_volume_km : null;
@@ -348,7 +348,7 @@ final class TrainingBaseline
                 ? $weeklyVolumeKm * self::longRunShare($weeklyVolumeKm)
                 : $this->selfScaledBaselineKm($selfScaledAnchorKm, $sessionsPerWeek, $asOf),
             $block === null || $season->increases_held ? 0.0 : self::longRunTargetFloorKm($race, $block, $capKm),
-            $block === null ? 0.0 : $this->volumeFloorKm($race, $block, $season, $sessionsPerWeek),
+            $block === null ? 0.0 : $this->volumeFloorKm($race, $block, $season, $sessionsPerWeek, $capKm, $progressionCapKm),
         );
 
         return max(round(min($derived, $capKm), 1), self::MIN_LONG_RUN_KM);
@@ -468,11 +468,12 @@ final class TrainingBaseline
 
     /**
      * The baseline at which the block's weeks, as {@see WeekPlanBuilder} lays
-     * them out and {@see SegmentGenerator::coreKmFor()} sizes them, average
-     * the season's volume floor. Every session scales linearly off the
-     * baseline except race day, which is the race distance whatever the
-     * baseline, so the floor solves in one step. Deload and Taper weeks sit
-     * under the floor; the Build and Peak weeks carry the difference.
+     * them out and {@see SegmentGenerator::coreKmFor()} sizes them under
+     * `long_run_cap_km` and `long_run_progression_cap_km`, average the
+     * season's volume floor. Deload and Taper weeks sit under the floor; the
+     * Build and Peak weeks carry the difference. Where those ceilings hold
+     * the block under the floor at every baseline, it is the smallest
+     * baseline that reaches the most they allow.
      *
      * A block holding its increases has no ramp to carry that difference, and
      * its training weeks may not go above habit to make it up, so the floor
@@ -481,15 +482,15 @@ final class TrainingBaseline
      *
      * @param  list<array{week_start: Carbon, phase: PlanPhase, multiplier: float}>  $block
      */
-    private function volumeFloorKm(RaceGoal $race, array $block, Season $season, int $sessionsPerWeek): float
+    private function volumeFloorKm(RaceGoal $race, array $block, Season $season, int $sessionsPerWeek, float $longRunCapKm, float $progressionCapKm): float
     {
-        $key = self::blockKey($race, $season).'|'.($season->volume_floor_km ?? 'null').'|'.$sessionsPerWeek;
+        $key = implode('|', [self::blockKey($race, $season), $season->volume_floor_km ?? 'null', $sessionsPerWeek, $longRunCapKm, $progressionCapKm]);
 
-        return $this->volumeFloorMemo[$key] ??= $this->computeVolumeFloorKm($race, $block, $season, $sessionsPerWeek);
+        return $this->volumeFloorMemo[$key] ??= $this->computeVolumeFloorKm($race, $block, $season, $sessionsPerWeek, $longRunCapKm, $progressionCapKm);
     }
 
     /** @param  list<array{week_start: Carbon, phase: PlanPhase, multiplier: float}>  $block */
-    private function computeVolumeFloorKm(RaceGoal $race, array $block, Season $season, int $sessionsPerWeek): float
+    private function computeVolumeFloorKm(RaceGoal $race, array $block, Season $season, int $sessionsPerWeek, float $longRunCapKm, float $progressionCapKm): float
     {
         $floorKm = $season->volume_floor_km;
         if ($season->increases_held) {
@@ -502,7 +503,7 @@ final class TrainingBaseline
             return 0.0;
         }
 
-        return $this->baselineAveragingKm($floorKm, $block, $sessionsPerWeek, $race);
+        return $this->baselineAveragingKm($floorKm, $block, $sessionsPerWeek, $race, $longRunCapKm, $progressionCapKm);
     }
 
     /**
@@ -526,14 +527,18 @@ final class TrainingBaseline
     }
 
     /**
-     * The baseline at which $weeks average $targetKm. Every session scales
-     * linearly off the baseline except race day, so it solves in one step.
+     * The baseline at which $weeks average $targetKm. Uncapped, every session
+     * scales linearly off the baseline except race day, so it solves in one
+     * step. Where the ceilings cut that figure's weeks, the block is no longer
+     * linear in the baseline and the solve bisects for the smallest baseline
+     * reaching the target, or the most the ceilings allow when that is less.
      *
      * @param  list<array{week_start: Carbon, phase: PlanPhase, multiplier: float}>  $weeks
      */
-    private function baselineAveragingKm(float $targetKm, array $weeks, int $sessionsPerWeek, ?RaceGoal $race): float
+    private function baselineAveragingKm(float $targetKm, array $weeks, int $sessionsPerWeek, ?RaceGoal $race, float $longRunCapKm = INF, float $progressionCapKm = INF): float
     {
         $raceDistanceM = $race === null ? null : (float) $race->distance_m;
+        $sessions = [];
         $kmPerBaselineKm = 0.0;
         $raceKm = 0.0;
         foreach ($weeks as $week) {
@@ -543,6 +548,7 @@ final class TrainingBaseline
             foreach ($days as $day) {
                 $isPrimaryEasy = $day['session_type'] === SessionType::Easy && ! $primaryEasySeen;
                 $primaryEasySeen = $primaryEasySeen || $isPrimaryEasy;
+                $sessions[] = [$day['session_type'], $isPrimaryEasy, $week['multiplier']];
                 if ($day['session_type'] === SessionType::Race) {
                     $raceKm += SegmentGenerator::coreKmFor(SessionType::Race, false, 0.0, 1.0, INF, $raceDistanceM);
 
@@ -556,7 +562,34 @@ final class TrainingBaseline
             return 0.0;
         }
 
-        return ceil(max(0.0, $targetKm * count($weeks) - $raceKm) / $kmPerBaselineKm * 10) / 10;
+        $targetBlockKm = $targetKm * count($weeks);
+        $linearKm = ceil(max(0.0, $targetBlockKm - $raceKm) / $kmPerBaselineKm * 10) / 10;
+
+        $blockKm = static fn (float $baselineKm, float $longRunCapKm, float $progressionCapKm): float => array_sum(array_map(
+            static fn (array $session): float => SegmentGenerator::coreKmFor($session[0], $session[1], $baselineKm, $session[2], $longRunCapKm, $raceDistanceM, $progressionCapKm),
+            $sessions,
+        ));
+        $cappedKm = static fn (float $baselineKm): float => $blockKm($baselineKm, $longRunCapKm, $progressionCapKm);
+        if ($cappedKm($linearKm) >= $blockKm($linearKm, INF, INF)) {
+            return $linearKm;
+        }
+
+        $reachableKm = min($targetBlockKm, $cappedKm(INF));
+        $low = 0.0;
+        $high = $linearKm;
+        while ($cappedKm($high) < $reachableKm) {
+            [$low, $high] = [$high, $high * 2];
+        }
+        for ($i = 0; $i < 30; $i++) {
+            $middle = ($low + $high) / 2;
+            if ($cappedKm($middle) >= $reachableKm) {
+                $high = $middle;
+            } else {
+                $low = $middle;
+            }
+        }
+
+        return ceil($high * 10) / 10;
     }
 
     private static function readinessLongRunKm(float $raceDistanceM): float
