@@ -7,7 +7,6 @@ namespace App\Services\Run\Story;
 use App\Models\AI\Analysis;
 use App\Models\RunCard;
 use App\Services\AI\AnalysisType;
-use App\Enums\Mood;
 
 class CardPresenter
 {
@@ -44,11 +43,6 @@ class CardPresenter
             'special_move' => $card->special_move,
             'badges' => $card->badges,
         ];
-    }
-
-    public function mood(RunCard $card): Mood
-    {
-        return $card->activity->postRunStoryLine->mood ?? Temari::moodForActivityOrDefault($card->activity);
     }
 
     /**

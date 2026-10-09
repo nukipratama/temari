@@ -2,13 +2,11 @@
 
 declare(strict_types=1);
 
-use App\Enums\Mood;
 use App\Enums\Rarity;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
 use App\Models\RunCard;
-use App\Models\StoryLine;
 use App\Models\User;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
@@ -55,26 +53,6 @@ it('whitelists the card columns, never internal ones', function (): void {
         'special_move' => $card->special_move,
         'badges' => $card->badges,
     ]);
-});
-
-it('prefers the post-run story line mood', function (): void {
-    $user = User::factory()->create();
-    $card = presenterCard($user, Rarity::Common);
-    StoryLine::factory()->create([
-        'user_id' => $user->id,
-        'activity_id' => $card->activity_id,
-        'kind' => StoryLine::KIND_POST_RUN,
-        'mood' => 'wobbly',
-    ]);
-
-    expect(app(CardPresenter::class)->mood($card->fresh()))->toBe(Mood::Wobbly);
-});
-
-it('falls back to the derived mood when there is no post-run story line', function (): void {
-    $user = User::factory()->create();
-    $card = presenterCard($user, Rarity::Common);
-
-    expect(app(CardPresenter::class)->mood($card))->toBeInstanceOf(Mood::class);
 });
 
 it('shapes the card flavor analysis payload', function (): void {
