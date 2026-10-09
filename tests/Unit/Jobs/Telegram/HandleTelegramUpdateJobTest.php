@@ -149,7 +149,7 @@ it('does not link and replies generically on a garbage token', function (): void
     runUpdate(startUpdate(555, 'garbage-token'));
 
     $this->assertDatabaseMissing('telegram_connections', ['chat_id' => 555]);
-    Http::assertSent(fn ($request): bool => str_contains((string) $request['text'], 'Connect Telegram'));
+    Http::assertSent(fn ($request): bool => str_contains((string) $request['text'], 'tap Telegram to link up'));
 });
 
 it('refuses to link the demo account even with a valid token', function (): void {
@@ -161,7 +161,7 @@ it('refuses to link the demo account even with a valid token', function (): void
 
     expect(TelegramConnection::query()->count())->toBe(0);
     Bus::assertNotDispatched(SendTelegramLinkWelcomeJob::class);
-    Http::assertSent(fn ($request): bool => str_contains((string) $request['text'], 'Connect Telegram'));
+    Http::assertSent(fn ($request): bool => str_contains((string) $request['text'], 'tap Telegram to link up'));
 });
 
 it('revokes the connection and confirms on /stop', function (): void {
@@ -176,7 +176,7 @@ it('revokes the connection and confirms on /stop', function (): void {
 it('replies generically to any other message', function (): void {
     runUpdate(['message' => ['chat' => ['id' => 777], 'text' => 'halo bot']]);
 
-    Http::assertSent(fn ($request): bool => str_contains((string) $request['text'], 'Connect Telegram'));
+    Http::assertSent(fn ($request): bool => str_contains((string) $request['text'], 'tap Telegram to link up'));
 });
 
 it('ignores an update with no message', function (): void {

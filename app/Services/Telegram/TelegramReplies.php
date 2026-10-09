@@ -18,14 +18,13 @@ class TelegramReplies
      */
     public static function welcome(string $name): string
     {
-        return "Hey {$name}, I'm temari. Your Telegram is now linked to your Temari account. "
+        return "Hey {$name}, I'm temari. Your Telegram is now linked to your temari account. "
             . "From here on, I'll ping you after every run and with your weekly recap.";
     }
 
     public static function expired(): string
     {
-        return "That link isn't valid anymore (expired, or already used). Open your profile page "
-            . 'in Temari and tap "Connect Telegram" again, and I\'ll send you a fresh one.';
+        return "That link isn't valid anymore (expired, or already used). Open Settings in temari and tap Telegram again for a fresh link.";
     }
 
     public static function linkedElsewhere(): string
@@ -36,12 +35,12 @@ class TelegramReplies
 
     public static function generic(): string
     {
-        return 'Hey! I\'m temari. Open Temari and tap "Connect Telegram" to link up.';
+        return 'Hey! I\'m temari. Open Settings in temari and tap Telegram to link up.';
     }
 
     public static function disconnected(): string
     {
-        return "Done, I've disconnected Telegram from your Temari account. Whenever you want to reconnect, I'm here.";
+        return "Done, I've disconnected Telegram from your temari account. Whenever you want to reconnect, I'm here.";
     }
 
     /** Sent by the "Send test notification" button on the Profile page. */
