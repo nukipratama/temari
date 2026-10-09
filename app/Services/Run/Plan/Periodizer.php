@@ -214,7 +214,7 @@ final readonly class Periodizer
                 $inputs->fallOffTilt,
             );
             if ($ceilingKm !== null) {
-                [$week['multiplier'], $ceilingKm] = self::boundResumedWeek($weekRows, $week['multiplier'], $inputs, $ceilingKm);
+                [$week['multiplier'], $ceilingKm] = self::boundResumedWeek($weekRows, $week['phase'], $week['multiplier'], $inputs, $ceilingKm);
             }
             $trial = $trials->forWeek($week['week_start'], $week['phase']);
             $trialRows = $trial === null ? null : $this->withIntensityPrescriptions($weekRows, $week['multiplier'], $inputs, $week['week_start'], $rows, trial: $trial);
@@ -235,16 +235,19 @@ final readonly class Periodizer
     /**
      * Lowers a week resumed after a race revision to the volume ceiling, never raising it. Returns the
      * multiplier to use and the next week's ceiling, or a null ceiling once the arc's own value is reached.
+     * A Deload under the ceiling keeps it, so the week after a recovery week cannot jump past it.
      *
      * @param array<string, array{session_type: SessionType, ...}> $weekRows
      * @return array{0: float, 1: float|null}
      */
-    private static function boundResumedWeek(array $weekRows, float $multiplier, PlanInputs $inputs, float $ceilingKm): array
+    private static function boundResumedWeek(array $weekRows, PlanPhase $phase, float $multiplier, PlanInputs $inputs, float $ceilingKm): array
     {
         $weekKm = static fn (float $m): float => array_sum(self::plannedKmByDate($weekRows, $m, $inputs));
-        if (array_any($weekRows, static fn (array $row): bool => $row['session_type'] === SessionType::Race)
-            || $weekKm($multiplier) <= $ceilingKm) {
+        if (array_any($weekRows, static fn (array $row): bool => $row['session_type'] === SessionType::Race)) {
             return [$multiplier, null];
+        }
+        if ($weekKm($multiplier) <= $ceilingKm) {
+            return [$multiplier, $phase === PlanPhase::Deload ? $ceilingKm : null];
         }
 
         $low = 0.0;
