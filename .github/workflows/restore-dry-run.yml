@@ -309,6 +309,16 @@ jobs:
           db_analytics_database=$(restore_env DB_ANALYTICS_DATABASE || true)
           app_key="base64:$(head -c 32 /dev/urandom | base64)"
 
+          single_quotable() {
+            case "$2" in
+              *"'"* | *'\') echo "::error::$1 holds a single quote or a trailing backslash, which the generated env file can't carry"; exit 1 ;;
+            esac
+          }
+          single_quotable DB_DATABASE "$db_database"
+          single_quotable DB_USERNAME "$db_username"
+          single_quotable DB_PASSWORD "$db_password"
+          single_quotable DB_ANALYTICS_DATABASE "$db_analytics_database"
+
           umask 077
           {
             echo "DB_HOST='mysql_restore'"

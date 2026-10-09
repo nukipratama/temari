@@ -336,6 +336,30 @@ it('writes only allowlisted keys to a private env file, read from the throwaway 
         ->and($written['custom'][0])->toContain("DB_ANALYTICS_DATABASE='analytics_db'");
 })->group('structure');
 
+it('refuses a value the single-quoted env file cannot carry, without printing it', function (): void {
+    $step = restoreDryRunStep('restore-dry-run', 'name', 'Write the rehearsal env file');
+    $fake = 'for last; do :; done; printenv "$last"';
+
+    foreach (["ab'cd-secret", 'secret-tail\\'] as $password) {
+        $file = sys_get_temp_dir().'/temari-rehearsal-'.uniqid();
+        [$process, $bin] = runWithFakeDocker($step['run'], $fake, [
+            'RESTORE_PROJECT' => 'temari-restore',
+            'RESTORE_COMPOSE_FILE' => 'deploy/restore-dry-run-compose.yml',
+            'RESTORE_SERVICE' => 'mysql_restore',
+            'DB_DATABASE' => 'temari',
+            'DB_USERNAME' => 'temari_app',
+            'DB_PASSWORD' => $password,
+            'REHEARSAL_ENV_FILE' => $file,
+        ]);
+        File::deleteDirectory($bin);
+
+        expect($process->getExitCode())->toBe(1, $password)
+            ->and($process->getOutput())->toContain('::error::DB_PASSWORD holds a single quote or a trailing backslash')
+            ->and($process->getOutput().$process->getErrorOutput())->not->toContain('secret')
+            ->and(file_exists($file))->toBeFalse();
+    }
+})->group('structure');
+
 it('migrates both sets on the ref image, then fails loudly naming any connection with pending migrations', function (): void {
     $steps = restoreDryRunWorkflow()['jobs']['restore-dry-run']['steps'];
     $names = array_map(fn (array $step): string => $step['name'] ?? $step['uses'] ?? '', $steps);
