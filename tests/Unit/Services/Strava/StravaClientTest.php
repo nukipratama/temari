@@ -28,6 +28,8 @@ use Illuminate\Support\Facades\RateLimiter;
 uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
+    Carbon::setTestNow(Carbon::parse('2026-10-06 03:05:00', 'UTC'));
+
     config([
         'services.strava.client_id' => 'test-client-id',
         'services.strava.client_secret' => 'test-client-secret',
