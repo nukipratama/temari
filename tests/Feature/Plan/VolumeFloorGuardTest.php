@@ -149,6 +149,23 @@ it('renders a fall-off-tilted block at the mean the floor solve lays out for it'
         ->and($stored->avg())->toEqualWithDelta($block->avg('planned_km'), 0.05);
 });
 
+it('renders a block on the athlete\'s own run days at the mean the floor solve lays out for it', function (): void {
+    $user = flooredAthlete();
+    TrainingPreference::query()->where('user_id', $user->id)->update(['run_days' => [0, 2, 4, 6]]);
+
+    app(Periodizer::class)->regenerate($user, Carbon::today());
+    $season = Season::query()->where('user_id', $user->id)->firstOrFail();
+    $block = array_filter(
+        app(SeasonSummaryBuilder::class)->plannedWeeks($user, $season),
+        fn (array $week): bool => $week['zone'] === PhaseSchedule::ZONE_BLOCK,
+    );
+    $stored = storedBlockWeeksKm($user, $season);
+
+    expect($stored)->toHaveCount(count($block))
+        ->and(array_sum($stored) / count($stored))->toEqualWithDelta(array_sum(array_column($block, 'planned_km')) / count($block), 0.05)
+        ->and(array_sum($stored) / count($stored))->toBeGreaterThanOrEqual(25.91);
+});
+
 it('backs off under the floor for a strong current concern, and says so on the plan', function (): void {
     $user = flooredAthlete();
     RecoveryFeedback::query()->create([

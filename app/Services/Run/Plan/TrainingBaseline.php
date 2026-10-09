@@ -56,7 +56,7 @@ use App\Actions\Run\Plan\ResolveSeasonAction;
  * numbers regardless of what they claim; real behavior still wins the
  * moment any exists.
  *
- * @phpstan-type WeekLayout array{projected_race_seconds: float|null, fall_off_tilt: FallOffTilt|null}
+ * @phpstan-type WeekLayout array{projected_race_seconds: float|null, fall_off_tilt: FallOffTilt|null, run_days: list<int>|null, long_run_day: int|null, two_run_quality_eligible: bool}
  */
 final class TrainingBaseline
 {
@@ -261,11 +261,19 @@ final class TrainingBaseline
     public function weekLayout(User $user, Carbon $asOf): array
     {
         $race = ($this->activeRace)($user->id);
+        $preference = ($this->trainingPreference)($user->id);
         $estimate = $this->vdotEstimator->estimate($user, $asOf);
+        $weekStart = $asOf->copy()->startOfWeek(Carbon::MONDAY);
+        $weeks = ($this->weeklySnapshots)($user->id, $asOf->toDateString(), self::TRAILING_WEEKS + 1)
+            ->filter(static fn (WeeklySnapshot $week): bool => $week->week_ending->lt($weekStart) && $week->week_ending->gte($weekStart->copy()->subWeeks(self::TRAILING_WEEKS)));
 
         return [
             'projected_race_seconds' => $race === null ? null : (float) $this->ambition->assess($user, $race, $asOf)->prescribedTimeSec(),
             'fall_off_tilt' => FallOffTilt::fromFallOff($estimate['k'] ?? null, $estimate['k_fitted'] ?? false),
+            'run_days' => $preference?->run_days,
+            'long_run_day' => $preference?->long_run_day,
+            'two_run_quality_eligible' => $this->paceCalculator->fromVdotResult($estimate) !== null && $weeks->count() >= self::TRAILING_WEEKS
+                && $weeks->every(static fn (WeeklySnapshot $week): bool => $week->runs >= 2),
         ];
     }
 
@@ -576,7 +584,7 @@ final class TrainingBaseline
         $kmPerBaselineKm = 0.0;
         $raceKm = 0.0;
         foreach ($weeks as $week) {
-            $days = $this->weekPlanBuilder->build($week['week_start'], $week['phase'], $sessionsPerWeek, [], $raceDistanceM, $race === null, projectedRaceSeconds: $layout['projected_race_seconds'], raceDate: $race?->race_date, fallOffTilt: $layout['fall_off_tilt']);
+            $days = $this->weekPlanBuilder->build($week['week_start'], $week['phase'], $sessionsPerWeek, [], $raceDistanceM, $race === null, preferredOffsets: $layout['run_days'], preferredLongOffset: $layout['long_run_day'], projectedRaceSeconds: $layout['projected_race_seconds'], raceDate: $race?->race_date, twoRunQualityEligible: $layout['two_run_quality_eligible'], fallOffTilt: $layout['fall_off_tilt']);
             ksort($days);
             $primaryEasySeen = false;
             foreach ($days as $day) {

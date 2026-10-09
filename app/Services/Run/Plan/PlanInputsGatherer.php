@@ -6,7 +6,6 @@ namespace App\Services\Run\Plan;
 
 use App\Actions\Run\Metrics\ResolveHardEffortsAction;
 use App\Actions\Run\Plan\ResolveActiveRaceAction;
-use App\Actions\Run\Plan\ResolveTrainingPreferenceAction;
 use App\Enums\IntentVerdict;
 use App\Enums\PaceBand;
 use App\Enums\PlannedSessionStatus;
@@ -46,7 +45,6 @@ final readonly class PlanInputsGatherer
         private SeasonService $seasonService,
         private PlanAdapter $planAdapter,
         private ResolveActiveRaceAction $activeRace,
-        private ResolveTrainingPreferenceAction $trainingPreference,
         private VdotEstimator $vdotEstimator,
         private TrainingPaceCalculator $paceCalculator,
         private RecentTrainingStress $trainingStress,
@@ -72,7 +70,6 @@ final readonly class PlanInputsGatherer
         $race = ($this->activeRace)($user->id);
         $trialDistanceM = TimeTrial::distanceFor($race === null ? null : (float) $race->distance_m);
         $ambition = $race === null ? null : $this->ambition->assess($user, $race, $today);
-        $preference = ($this->trainingPreference)($user->id);
         $baseline = $this->baseline->forUser($user, $today);
         $layout = $this->baseline->weekLayout($user, $today);
         $estimate = $this->vdotEstimator->estimate($user, $today);
@@ -96,8 +93,8 @@ final readonly class PlanInputsGatherer
             raceDate: $race?->race_date,
             raceDistanceM: $race === null ? null : (float) $race->distance_m,
             sessionsPerWeek: $baseline['sessions_per_week'],
-            runDays: $preference?->run_days,
-            longRunDay: $preference?->long_run_day,
+            runDays: $layout['run_days'],
+            longRunDay: $layout['long_run_day'],
             adaptation: $this->planAdapter->forWeek($user, $currentWeekStart, $today, $race, $ambition),
             pinnedDates: $pinnedDates,
             // A day that already carries a verdict is the record of what was
@@ -120,8 +117,7 @@ final readonly class PlanInputsGatherer
             recentPrescriptions: $this->recentPrescriptions($user, $today),
             fixedSessions: $fixedSessions,
             actualSessions: $actualSessions,
-            twoRunQualityEligible: $paces !== null && $weeks->count() >= 6
-                && $weeks->every(static fn (WeeklySnapshot $week): bool => $week->runs >= 2),
+            twoRunQualityEligible: $layout['two_run_quality_eligible'],
             resumeTrailingMeanKm: $this->resumeTrailingMeanKm($race, $weeks, $currentWeekStart),
             fallOffTilt: $layout['fall_off_tilt'],
             raceAmbitionState: $ambition?->state,

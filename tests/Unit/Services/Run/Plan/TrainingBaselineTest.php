@@ -628,7 +628,7 @@ function volumeFloorKmFor(TrainingBaseline $baseline, RaceGoal $race, array $blo
 {
     $method = new ReflectionMethod(TrainingBaseline::class, 'volumeFloorKm');
 
-    return $method->invoke($baseline, $race, $block, $season, $sessionsPerWeek, $longRunCapKm, $progressionCapKm, ['projected_race_seconds' => null, 'fall_off_tilt' => null]);
+    return $method->invoke($baseline, $race, $block, $season, $sessionsPerWeek, $longRunCapKm, $progressionCapKm, ['projected_race_seconds' => null, 'fall_off_tilt' => null, 'run_days' => null, 'long_run_day' => null, 'two_run_quality_eligible' => false]);
 }
 
 it('never solves the floor past what the session ceilings let the block reach', function (): void {
@@ -697,7 +697,7 @@ it('sizes a self-scaled cycle so its four weeks average the anchor unless a long
     $user = User::factory()->create();
     weeksOf($user, array_fill(0, 6, $anchorKm), $sessions);
     completedRun($user, $anchorKm * 0.45, Carbon::today()->subDays(5));
-    TrainingPreference::factory()->for($user)->create(['sessions_per_week' => $sessions]);
+    TrainingPreference::factory()->for($user)->create(['sessions_per_week' => $sessions, 'run_days' => null, 'long_run_day' => null]);
     $season = Season::factory()->for($user)->create([
         'anchor_weekly_volume_km' => $anchorKm,
         'starts_at' => '2026-08-10',
@@ -719,7 +719,7 @@ it('lets a long-run cap hold a self-scaled cycle under its anchor', function (fl
     $user = User::factory()->create();
     weeksOf($user, array_fill(0, 6, $anchorKm), $sessions);
     completedRun($user, $anchorKm * 0.45, Carbon::today()->subDays(5));
-    TrainingPreference::factory()->for($user)->create(['sessions_per_week' => $sessions]);
+    TrainingPreference::factory()->for($user)->create(['sessions_per_week' => $sessions, 'run_days' => null, 'long_run_day' => null]);
     Season::factory()->for($user)->create([
         'anchor_weekly_volume_km' => $anchorKm,
         'starts_at' => '2026-08-10',
@@ -739,7 +739,7 @@ it('lets the sessions under the progression cap carry a self-scaled cycle to its
     $user = User::factory()->create();
     weeksOf($user, array_fill(0, 6, $anchorKm), $sessions);
     completedRun($user, $longestKm, Carbon::today()->subDays(5));
-    TrainingPreference::factory()->for($user)->create(['sessions_per_week' => $sessions]);
+    TrainingPreference::factory()->for($user)->create(['sessions_per_week' => $sessions, 'run_days' => null, 'long_run_day' => null]);
     $season = Season::factory()->for($user)->create([
         'anchor_weekly_volume_km' => $anchorKm,
         'starts_at' => '2026-08-10',
