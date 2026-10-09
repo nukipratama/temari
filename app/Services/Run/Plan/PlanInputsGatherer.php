@@ -7,7 +7,6 @@ namespace App\Services\Run\Plan;
 use App\Actions\Run\Metrics\ResolveHardEffortsAction;
 use App\Actions\Run\Plan\ResolveActiveRaceAction;
 use App\Actions\Run\Plan\ResolveTrainingPreferenceAction;
-use App\Enums\FallOffTilt;
 use App\Enums\IntentVerdict;
 use App\Enums\PaceBand;
 use App\Enums\PlannedSessionStatus;
@@ -124,7 +123,7 @@ final readonly class PlanInputsGatherer
             twoRunQualityEligible: $paces !== null && $weeks->count() >= 6
                 && $weeks->every(static fn (WeeklySnapshot $week): bool => $week->runs >= 2),
             resumeTrailingMeanKm: $this->resumeTrailingMeanKm($race, $weeks, $currentWeekStart),
-            fallOffTilt: FallOffTilt::fromFallOff($estimate['k'] ?? null, $estimate['k_fitted'] ?? false),
+            fallOffTilt: $layout['fall_off_tilt'],
             raceAmbitionState: $ambition?->state,
             raceAmbitionGapPct: $ambition?->gapPct,
             raceSteppingStoneTimeSec: $ambition?->steppingStoneTimeSec,

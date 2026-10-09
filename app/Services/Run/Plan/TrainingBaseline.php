@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Run\Plan;
 
+use App\Enums\FallOffTilt;
 use App\Enums\PlanPhase;
 use App\Enums\RaceSupport;
 use App\Enums\SessionType;
@@ -55,7 +56,7 @@ use App\Actions\Run\Plan\ResolveSeasonAction;
  * numbers regardless of what they claim; real behavior still wins the
  * moment any exists.
  *
- * @phpstan-type WeekLayout array{projected_race_seconds: float|null}
+ * @phpstan-type WeekLayout array{projected_race_seconds: float|null, fall_off_tilt: FallOffTilt|null}
  */
 final class TrainingBaseline
 {
@@ -260,9 +261,11 @@ final class TrainingBaseline
     public function weekLayout(User $user, Carbon $asOf): array
     {
         $race = ($this->activeRace)($user->id);
+        $estimate = $this->vdotEstimator->estimate($user, $asOf);
 
         return [
             'projected_race_seconds' => $race === null ? null : (float) $this->ambition->assess($user, $race, $asOf)->prescribedTimeSec(),
+            'fall_off_tilt' => FallOffTilt::fromFallOff($estimate['k'] ?? null, $estimate['k_fitted'] ?? false),
         ];
     }
 
@@ -573,19 +576,19 @@ final class TrainingBaseline
         $kmPerBaselineKm = 0.0;
         $raceKm = 0.0;
         foreach ($weeks as $week) {
-            $days = $this->weekPlanBuilder->build($week['week_start'], $week['phase'], $sessionsPerWeek, [], $raceDistanceM, $race === null, projectedRaceSeconds: $layout['projected_race_seconds'], raceDate: $race?->race_date);
+            $days = $this->weekPlanBuilder->build($week['week_start'], $week['phase'], $sessionsPerWeek, [], $raceDistanceM, $race === null, projectedRaceSeconds: $layout['projected_race_seconds'], raceDate: $race?->race_date, fallOffTilt: $layout['fall_off_tilt']);
             ksort($days);
             $primaryEasySeen = false;
             foreach ($days as $day) {
                 $isPrimaryEasy = $day['session_type'] === SessionType::Easy && ! $primaryEasySeen;
                 $primaryEasySeen = $primaryEasySeen || $isPrimaryEasy;
-                $sessions[] = [$day['session_type'], $isPrimaryEasy, $week['multiplier']];
+                $sessions[] = [$day['session_type'], $isPrimaryEasy, $week['multiplier'], $day['fall_off_tilt'] ?? null];
                 if ($day['session_type'] === SessionType::Race) {
                     $raceKm += SegmentGenerator::coreKmFor(SessionType::Race, false, 0.0, 1.0, INF, $raceDistanceM);
 
                     continue;
                 }
-                $kmPerBaselineKm += SegmentGenerator::coreKmFor($day['session_type'], $isPrimaryEasy, self::REFERENCE_BASELINE_KM, $week['multiplier'], INF) / self::REFERENCE_BASELINE_KM;
+                $kmPerBaselineKm += SegmentGenerator::coreKmFor($day['session_type'], $isPrimaryEasy, self::REFERENCE_BASELINE_KM, $week['multiplier'], INF, fallOffTilt: $day['fall_off_tilt'] ?? null) / self::REFERENCE_BASELINE_KM;
             }
         }
 
@@ -597,7 +600,7 @@ final class TrainingBaseline
         $linearKm = ceil(max(0.0, $targetBlockKm - $raceKm) / $kmPerBaselineKm * 10) / 10;
 
         $blockKm = static fn (float $baselineKm, float $longRunCapKm, float $progressionCapKm): float => array_sum(array_map(
-            static fn (array $session): float => SegmentGenerator::coreKmFor($session[0], $session[1], $baselineKm, $session[2], $longRunCapKm, $raceDistanceM, $progressionCapKm),
+            static fn (array $session): float => SegmentGenerator::coreKmFor($session[0], $session[1], $baselineKm, $session[2], $longRunCapKm, $raceDistanceM, $progressionCapKm, $session[3]),
             $sessions,
         ));
         $cappedKm = static fn (float $baselineKm): float => $blockKm($baselineKm, $longRunCapKm, $progressionCapKm);

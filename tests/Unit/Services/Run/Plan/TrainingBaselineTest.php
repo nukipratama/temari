@@ -628,7 +628,7 @@ function volumeFloorKmFor(TrainingBaseline $baseline, RaceGoal $race, array $blo
 {
     $method = new ReflectionMethod(TrainingBaseline::class, 'volumeFloorKm');
 
-    return $method->invoke($baseline, $race, $block, $season, $sessionsPerWeek, $longRunCapKm, $progressionCapKm, ['projected_race_seconds' => null]);
+    return $method->invoke($baseline, $race, $block, $season, $sessionsPerWeek, $longRunCapKm, $progressionCapKm, ['projected_race_seconds' => null, 'fall_off_tilt' => null]);
 }
 
 it('never solves the floor past what the session ceilings let the block reach', function (): void {
