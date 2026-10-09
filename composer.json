@@ -80,7 +80,7 @@
         "inertia-props:update": [
             "Composer\\Config::disableProcessTimeout",
             "@putenv UPDATE_INERTIA_PROP_FIXTURES=1",
-            "@php vendor/bin/pest tests/Feature/Inertia/PagePropsContractTest.php"
+            "@php vendor/bin/pest tests/Unit/Console/Commands/DemoSeedCommandTest.php"
         ],
         "post-autoload-dump": [
             "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",
