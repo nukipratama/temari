@@ -13,6 +13,8 @@ code_refs:
 
 > **Partly superseded (2026-10-02) by [[a-season-averages-its-anchor-and-no-session-outruns-recent-capacity]].** The ceiling now bounds every running session, not only `Long`, and with no recent run it is the cold-start long run, not absent. The rest of this decision stands.
 
+> **Partly superseded (2026-10-09) by [[a-race-floor-solves-under-the-session-caps]].** When a race block's volume floor binds, the baseline now rises so uncapped sessions carry the km the cap removes; the cap itself is unchanged.
+
 # Recent single-run capacity stages long-run progression
 
 **Status:** Accepted (2026-09-21)

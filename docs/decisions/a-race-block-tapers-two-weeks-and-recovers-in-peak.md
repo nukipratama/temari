@@ -10,7 +10,7 @@ code_refs:
   - app/Services/Run/Plan/Periodizer.php
 ---
 
-> **Fact update, 2026-10-09.** The volume floor's solver now sizes the block under the progression cap, so a block whose long run that cap holds still averages the floor, with its other sessions carrying the km the cap removes; the cap still outranks the floor, which falls short only where the caps leave no baseline that reaches it.
+> **Fact update, 2026-10-09, per [[a-race-floor-solves-under-the-session-caps]].** A block whose long run the progression cap holds now still averages the floor, its other sessions carrying the km the cap removes; the floor falls short only where the caps leave no baseline that reaches it.
 
 # A race block tapers two weeks and recovers in Peak
 
