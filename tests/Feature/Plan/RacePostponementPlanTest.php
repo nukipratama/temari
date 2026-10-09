@@ -65,7 +65,7 @@ it('keeps the season and asks for no catch-up when a race is postponed out of it
         ->and(currentWeekKm($this->user))->toBeLessThanOrEqual(40.0 * 1.10);
 });
 
-function planTaperThenMoveRace(User $user, bool $viaRevision = true): array
+function planTaperThenMoveRace(User $user, bool $viaRevision = true, string $newRaceDate = '2026-10-31'): array
 {
     $races = app(RaceGoalService::class);
     $season = Season::factory()->for($user)->create([
@@ -77,9 +77,9 @@ function planTaperThenMoveRace(User $user, bool $viaRevision = true): array
     $taperKm = currentWeekKm($user);
 
     if ($viaRevision) {
-        $races->submit($user, ['race_date' => '2026-10-31', 'distance_m' => 10_000, 'goal_time_sec' => 3000, 'name' => null], RaceIntent::Update);
+        $races->submit($user, ['race_date' => $newRaceDate, 'distance_m' => 10_000, 'goal_time_sec' => 3000, 'name' => null], RaceIntent::Update);
     } else {
-        $race->update(['race_date' => '2026-10-31']);
+        $race->update(['race_date' => $newRaceDate]);
     }
     app(Periodizer::class)->regenerate($user, Carbon::today());
 
@@ -109,6 +109,15 @@ it('ramps each later week by no more than 10% until the arc value is reached', f
 
     expect($second)->toBeGreaterThan($first)
         ->and($second)->toBeLessThanOrEqual($first * 1.10 + 0.1);
+});
+
+it('keeps the ceiling for the week after a revision that resumes in a deload week', function (): void {
+    planTaperThenMoveRace($this->user, newRaceDate: '2026-11-07');
+
+    $resumedPhase = PlannedSession::query()->where('user_id', $this->user->id)->whereDate('date', '2026-10-05')->value('phase');
+
+    expect($resumedPhase)->toBe(PlanPhase::Deload)
+        ->and(weekKm($this->user, '2026-10-12'))->toBeLessThanOrEqual(40.0 * 1.10 + 0.1);
 });
 
 it('leaves a plan regenerated without a recent revision as the arc says', function (): void {
