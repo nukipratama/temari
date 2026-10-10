@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Run\Metrics;
 
-use App\Models\ActivityDetail;
+use App\Actions\Run\Metrics\ResolveRecentStreamSummariesAction;
 use App\Models\User;
 use Illuminate\Support\Carbon;
 
@@ -20,6 +20,10 @@ final readonly class TimeInZoneSummary
 {
     public const int WINDOW_WEEKS = 12;
 
+    public function __construct(private ResolveRecentStreamSummariesAction $recentStreamSummaries)
+    {
+    }
+
     /**
      * Percent of recorded zone time per zone, keyed `Z1`..`Z5` and summing to
      * 100. Empty when no run in the window recorded heart rate, which is the
@@ -29,24 +33,17 @@ final readonly class TimeInZoneSummary
      */
     public function forUser(User $user, ?Carbon $today = null): array
     {
-        $since = ($today ?? Carbon::today())->copy()->subWeeks(self::WINDOW_WEEKS)->startOfDay();
-
         $minutes = array_fill_keys(HeartRateZones::KEYS, 0.0);
         $total = 0.0;
 
-        ActivityDetail::query()
-            ->whereHas('activity', fn ($q) => $q->where('user_id', $user->id))
-            ->where('start_date_local', '>=', $since)
-            ->whereNotNull('stream_summary')
-            ->select(['id', 'stream_summary'])
-            ->each(function (ActivityDetail $detail) use (&$minutes, &$total): void {
-                $perZone = StreamSummary::fromArray($detail->stream_summary)->zoneMinutes() ?? [];
-                foreach (HeartRateZones::KEYS as $zone) {
-                    $value = (float) ($perZone[$zone] ?? 0);
-                    $minutes[$zone] += $value;
-                    $total += $value;
-                }
-            });
+        foreach (($this->recentStreamSummaries)($user, $today ?? Carbon::today(), self::WINDOW_WEEKS * 7) as $summary) {
+            $perZone = $summary->zoneMinutes() ?? [];
+            foreach (HeartRateZones::KEYS as $zone) {
+                $value = (float) ($perZone[$zone] ?? 0);
+                $minutes[$zone] += $value;
+                $total += $value;
+            }
+        }
 
         if ($total <= 0.0) {
             return [];

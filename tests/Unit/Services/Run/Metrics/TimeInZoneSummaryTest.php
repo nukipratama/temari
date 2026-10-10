@@ -2,12 +2,15 @@
 
 declare(strict_types=1);
 
+use App\Actions\Run\Metrics\EstimateThresholdAction;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\User;
 use App\Services\Run\Metrics\TimeInZoneSummary;
+use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 
 uses(RefreshDatabase::class);
 
@@ -27,7 +30,7 @@ it('sums zone minutes across the window and normalises them to percentages', fun
     zoneRun($user, '2026-05-25', ['Z1' => 10.0, 'Z2' => 20.0, 'Z3' => 5.0]);
     zoneRun($user, '2026-05-18', ['Z2' => 20.0, 'Z4' => 5.0, 'Z5' => 5.0]);
 
-    expect(new TimeInZoneSummary()->forUser($user, $today))->toBe([
+    expect(app(TimeInZoneSummary::class)->forUser($user, $today))->toBe([
         'Z1' => 15.4,
         'Z2' => 61.5,
         'Z3' => 7.7,
@@ -43,7 +46,7 @@ it('ignores runs older than the twelve-week window', function (): void {
     zoneRun($user, '2026-05-30', ['Z2' => 30.0]);
     zoneRun($user, '2026-01-01', ['Z5' => 90.0]);
 
-    expect(new TimeInZoneSummary()->forUser($user, $today))->toBe([
+    expect(app(TimeInZoneSummary::class)->forUser($user, $today))->toBe([
         'Z1' => 0.0,
         'Z2' => 100.0,
         'Z3' => 0.0,
@@ -59,7 +62,7 @@ it('ignores another athlete\'s runs', function (): void {
     zoneRun($user, '2026-05-30', ['Z3' => 40.0]);
     zoneRun(User::factory()->create(), '2026-05-30', ['Z1' => 400.0]);
 
-    expect(new TimeInZoneSummary()->forUser($user, $today)['Z3'])->toBe(100.0);
+    expect(app(TimeInZoneSummary::class)->forUser($user, $today)['Z3'])->toBe(100.0);
 });
 
 it('returns nothing when no run in the window recorded heart rate', function (): void {
@@ -71,5 +74,21 @@ it('returns nothing when no run in the window recorded heart rate', function ():
         'stream_summary' => ['best_5min_pace' => '4:30'],
     ]);
 
-    expect(new TimeInZoneSummary()->forUser($user, Carbon::parse('2026-06-01')))->toBe([]);
+    expect(app(TimeInZoneSummary::class)->forUser($user, Carbon::parse('2026-06-01')))->toBe([]);
+});
+
+it('reads the stream summaries once for the zone summary and the threshold estimate', function (): void {
+    $user = User::factory()->create();
+    zoneRun($user, Carbon::today()->subDays(3)->toDateString(), ['Z2' => 30.0]);
+    $reads = 0;
+    DB::listen(function (QueryExecuted $query) use (&$reads): void {
+        if (str_contains($query->sql, 'stream_summary')) {
+            $reads++;
+        }
+    });
+
+    app(EstimateThresholdAction::class)($user, Carbon::today());
+    app(TimeInZoneSummary::class)->forUser($user, Carbon::today());
+
+    expect($reads)->toBe(1);
 });
