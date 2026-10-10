@@ -33,16 +33,20 @@ final class SessionEditRules
     /**
      * @param  Collection<int, PlannedSession>  $rows  the day's {@see self::window()}
      * @param  list<string>  $ranDates  Y-m-d of every day in that window a run landed on
-     * @return array{move: bool, skip: bool, restore: bool}
+     * @return array{actions: array{move: bool, skip: bool, restore: bool}, move_targets: list<string>}
      */
-    public static function actionsFor(PlannedSession $day, PlannedSessionStatus $status, Collection $rows, array $ranDates, Carbon $today): array
+    public static function rulesFor(PlannedSession $day, PlannedSessionStatus $status, Collection $rows, array $ranDates, Carbon $today): array
     {
         $toggles = self::canToggleSkip($day, $status, $today);
+        $moveTargets = self::canMoveFrom($day, $status, $today) ? self::moveTargets($day, $rows, $ranDates, $today) : [];
 
         return [
-            'move' => self::canMoveFrom($day, $status, $today) && self::moveTargets($day, $rows, $ranDates, $today) !== [],
-            'skip' => $toggles && ! $day->skipped,
-            'restore' => $toggles && $day->skipped,
+            'actions' => [
+                'move' => $moveTargets !== [],
+                'skip' => $toggles && ! $day->skipped,
+                'restore' => $toggles && $day->skipped,
+            ],
+            'move_targets' => $moveTargets,
         ];
     }
 

@@ -3,7 +3,7 @@ title: Plan — deterministic periodizer and the Plan tab
 description: The rules-only training periodizer that fills the Plan tab, its two modes, the render-time readiness clamp, and the render-time volume redistribution
 tags: [feature, run]
 status: living
-reviewed: 2026-10-09
+reviewed: 2026-10-10
 code_refs:
   - app/Services/Run/Plan/Periodizer.php
   - app/Services/Run/Plan/PlanRegenerationService.php
@@ -23,6 +23,7 @@ code_refs:
   - app/Services/Run/Plan/PostRaceRecovery.php
   - app/Services/Run/Plan/RaceOutcomeService.php
   - app/Services/Run/Plan/PlanPageAssembler.php
+  - app/Services/Run/Plan/PlanBriefingContext.php
   - app/Services/Run/Plan/PhaseSchedule.php
   - app/Services/Run/Plan/WeekPlanBuilder.php
   - app/Services/Run/Plan/TrainingBaseline.php
@@ -86,7 +87,7 @@ The training instrument's forward half: a rules-only periodizer that fills a per
 
 Nothing outside `App\Services\Run\Plan` assembles the plan itself. Two entry points stand between the engine and its callers:
 
-- **The page.** [PlanPageAssembler](app/Services/Run/Plan/PlanPageAssembler.php) owns every prop `/plan` renders — race, baseline session count, the multi-week arc with the readiness clamp and volume redistribution applied ([::weeks()](app/Services/Run/Plan/PlanPageAssembler.php)), the season trio, the adaptation explanation and the narration payloads. [PlanController::index()](app/Http/Controllers/PlanController.php) decides only which of them Inertia defers. The assembler is bound `scoped()` because Inertia's partial reload runs the action a second time and three props want the same ensured season. Until then the controller reached for eleven `Run\Plan` primitives directly, the only consumer outside the namespace to do so.
+- **The page.** [PlanPageAssembler](app/Services/Run/Plan/PlanPageAssembler.php) owns every prop `/plan` renders — race, baseline session count, the multi-week arc with the readiness clamp and volume redistribution applied ([::weeks()](app/Services/Run/Plan/PlanPageAssembler.php)), the season trio, the adaptation explanation and the narration payloads. [PlanController::index()](app/Http/Controllers/PlanController.php) decides only which of them Inertia defers. The assembler is bound `scoped()` because Inertia's partial reload runs the action a second time and three props want the same ensured season. The readiness context the weeks and the current-week total both read comes from [PlanBriefingContext](app/Services/Run/Plan/PlanBriefingContext.php), also `scoped()`, so a deferred render builds it once. Until then the controller reached for eleven `Run\Plan` primitives directly, the only consumer outside the namespace to do so.
 - **The plan.** [PlanInputs](app/Services/Run/Plan/PlanInputs.php) is the whole database read a regeneration needs — season window, active race and its projection, stated preferences, behavioral session count, the days the athlete pinned or already ran, and the adapter's verdict — gathered by [PlanInputsGatherer::forUser()](app/Services/Run/Plan/PlanInputsGatherer.php). [Periodizer::rowsFor()](app/Services/Run/Plan/Periodizer.php) turns those inputs into a row per calendar day and touches neither the database nor the clock; [::regenerate()](app/Services/Run/Plan/Periodizer.php) is gather-then-persist over it. The arc's ramp, deload, taper and peak behaviour is therefore asserted against hand-built inputs in `tests/Unit/Services/Run/Plan/PlanInputsTest.php`, with the feature suite left to prove what only persistence can — that the season stays anchored across successive Mondays.
 
 ## Shown recommendation history

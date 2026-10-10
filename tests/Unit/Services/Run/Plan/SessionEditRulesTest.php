@@ -67,25 +67,25 @@ it('gives an unrun today move, skip and restore like a day still ahead', functio
     $rows = editRulesWeek();
     $today = editRulesDay($rows, '2026-08-12');
 
-    expect(SessionEditRules::actionsFor($today, PlannedSessionStatus::Planned, $rows, [], Carbon::today()))
+    expect(SessionEditRules::rulesFor($today, PlannedSessionStatus::Planned, $rows, [], Carbon::today())['actions'])
         ->toBe(['move' => true, 'skip' => true, 'restore' => false]);
 
     $today->skipped = true;
-    expect(SessionEditRules::actionsFor($today, PlannedSessionStatus::Planned, $rows, [], Carbon::today()))
+    expect(SessionEditRules::rulesFor($today, PlannedSessionStatus::Planned, $rows, [], Carbon::today())['actions'])
         ->toBe(['move' => true, 'skip' => false, 'restore' => true]);
 });
 
 it('gives a today a run has credited no action at all', function (PlannedSessionStatus $status): void {
     $rows = editRulesWeek();
 
-    expect(SessionEditRules::actionsFor(editRulesDay($rows, '2026-08-12'), $status, $rows, ['2026-08-12'], Carbon::today()))
+    expect(SessionEditRules::rulesFor(editRulesDay($rows, '2026-08-12'), $status, $rows, ['2026-08-12'], Carbon::today())['actions'])
         ->toBe(['move' => false, 'skip' => false, 'restore' => false]);
 })->with([PlannedSessionStatus::Done, PlannedSessionStatus::Partial, PlannedSessionStatus::Overreached]);
 
 it('gives an unrun past day of this week move only', function (PlannedSessionStatus $status): void {
     $rows = editRulesWeek();
 
-    expect(SessionEditRules::actionsFor(editRulesDay($rows, '2026-08-11'), $status, $rows, [], Carbon::today()))
+    expect(SessionEditRules::rulesFor(editRulesDay($rows, '2026-08-11'), $status, $rows, [], Carbon::today())['actions'])
         ->toBe(['move' => true, 'skip' => false, 'restore' => false]);
 })->with([PlannedSessionStatus::Planned, PlannedSessionStatus::Missed]);
 
@@ -94,7 +94,7 @@ it('keeps a credited or excused past day final', function (PlannedSessionStatus 
     $day = editRulesDay($rows, '2026-08-11');
     $day->skipped = $skipped;
 
-    expect(SessionEditRules::actionsFor($day, $status, $rows, [], Carbon::today()))
+    expect(SessionEditRules::rulesFor($day, $status, $rows, [], Carbon::today())['actions'])
         ->toBe(['move' => false, 'skip' => false, 'restore' => false]);
 })->with([
     'done' => [PlannedSessionStatus::Done, false],
@@ -107,21 +107,21 @@ it('keeps a credited or excused past day final', function (PlannedSessionStatus 
 it('never moves a day from last week', function (): void {
     $rows = editRulesWeek(['2026-08-09' => SessionType::Easy]);
 
-    expect(SessionEditRules::actionsFor(editRulesDay($rows, '2026-08-09'), PlannedSessionStatus::Missed, $rows, [], Carbon::today()))
+    expect(SessionEditRules::rulesFor(editRulesDay($rows, '2026-08-09'), PlannedSessionStatus::Missed, $rows, [], Carbon::today())['actions'])
         ->toBe(['move' => false, 'skip' => false, 'restore' => false]);
 });
 
 it('offers nothing on a rest day', function (): void {
     $rows = editRulesWeek();
 
-    expect(SessionEditRules::actionsFor(editRulesDay($rows, '2026-08-13'), PlannedSessionStatus::Planned, $rows, [], Carbon::today()))
+    expect(SessionEditRules::rulesFor(editRulesDay($rows, '2026-08-13'), PlannedSessionStatus::Planned, $rows, [], Carbon::today())['actions'])
         ->toBe(['move' => false, 'skip' => false, 'restore' => false]);
 });
 
 it('offers no move when no target remains', function (): void {
     $rows = editRulesWeek(['2026-08-13' => SessionType::Easy, '2026-08-15' => SessionType::Easy]);
 
-    expect(SessionEditRules::actionsFor(editRulesDay($rows, '2026-08-14'), PlannedSessionStatus::Planned, $rows, [], Carbon::today()))
+    expect(SessionEditRules::rulesFor(editRulesDay($rows, '2026-08-14'), PlannedSessionStatus::Planned, $rows, [], Carbon::today())['actions'])
         ->toBe(['move' => false, 'skip' => true, 'restore' => false]);
 });
 
@@ -197,10 +197,41 @@ it('moves a day still ahead within its own week, from today on', function (): vo
         editRulesRow('2026-08-24', SessionType::Rest),
     ]);
 
-    expect(SessionEditRules::actionsFor(editRulesDay($rows, '2026-08-18'), PlannedSessionStatus::Planned, $rows, [], Carbon::today()))
+    expect(SessionEditRules::rulesFor(editRulesDay($rows, '2026-08-18'), PlannedSessionStatus::Planned, $rows, [], Carbon::today())['actions'])
         ->toBe(['move' => true, 'skip' => true, 'restore' => false])
         ->and(SessionEditRules::moveTargets(editRulesDay($rows, '2026-08-18'), $rows, [], Carbon::today()))
         ->toBe(['2026-08-19']);
+});
+
+it('returns a day\'s move targets beside its actions, scanning the rows once', function (): void {
+    $rows = new class (editRulesWeek()->all()) extends Collection {
+        public int $maps = 0;
+
+        public function map(callable $callback): static
+        {
+            $this->maps++;
+
+            return parent::map($callback);
+        }
+    };
+
+    $rules = SessionEditRules::rulesFor(editRulesDay($rows, '2026-08-12'), PlannedSessionStatus::Planned, $rows, [], Carbon::today());
+
+    expect($rules)->toBe([
+        'actions' => ['move' => true, 'skip' => true, 'restore' => false],
+        'move_targets' => ['2026-08-13', '2026-08-15'],
+    ])
+        ->and($rows->maps)->toBe(1);
+});
+
+it('returns no move targets, and scans nothing, for a day that cannot move', function (): void {
+    $rows = editRulesWeek();
+
+    expect(SessionEditRules::rulesFor(editRulesDay($rows, '2026-08-13'), PlannedSessionStatus::Planned, $rows, [], Carbon::today()))
+        ->toBe([
+            'actions' => ['move' => false, 'skip' => false, 'restore' => false],
+            'move_targets' => [],
+        ]);
 });
 
 it('never targets a day a make-up already emptied', function (): void {
@@ -216,7 +247,7 @@ it('keeps a made-up session where it was linked', function (): void {
     $madeUp = editRulesDay($rows, '2026-08-11');
     $madeUp->made_up_from_id = 7;
 
-    expect(SessionEditRules::actionsFor($madeUp, PlannedSessionStatus::Missed, $rows, [], Carbon::today())['move'])->toBeFalse();
+    expect(SessionEditRules::rulesFor($madeUp, PlannedSessionStatus::Missed, $rows, [], Carbon::today())['actions']['move'])->toBeFalse();
 });
 
 it('gives a make-up linked onto today no skip or restore', function (bool $skipped): void {
@@ -225,7 +256,7 @@ it('gives a make-up linked onto today no skip or restore', function (bool $skipp
     $madeUp->made_up_from_id = 7;
     $madeUp->skipped = $skipped;
 
-    expect(SessionEditRules::actionsFor($madeUp, PlannedSessionStatus::Planned, $rows, [], Carbon::today()))
+    expect(SessionEditRules::rulesFor($madeUp, PlannedSessionStatus::Planned, $rows, [], Carbon::today())['actions'])
         ->toBe(['move' => false, 'skip' => false, 'restore' => false]);
 })->with([false, true]);
 

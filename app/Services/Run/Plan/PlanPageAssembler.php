@@ -10,13 +10,10 @@ use App\Enums\PlannedSessionStatus;
 use App\Models\PlannedSession;
 use App\Models\Season;
 use App\Models\User;
-use App\Services\Run\Ingest\HydrationBacklog;
 use App\Services\Gamification\SeasonPayloadBuilder;
 use App\Services\Run\Metrics\ReadinessCeiling;
-use App\Services\Run\Metrics\TrainingLoad;
 use App\Services\Run\Metrics\TrainingPaceCalculator;
 use App\Services\Run\Metrics\VdotEstimator;
-use App\Services\Run\Story\BriefingContext;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use LogicException;
@@ -40,7 +37,6 @@ final class PlanPageAssembler
 
     public function __construct(
         private readonly TrainingBaseline $baseline,
-        private readonly TrainingLoad $trainingLoad,
         private readonly VdotEstimator $vdotEstimator,
         private readonly TrainingPaceCalculator $paceCalculator,
         private readonly SeasonService $seasonService,
@@ -51,7 +47,7 @@ final class PlanPageAssembler
         private readonly PlanRegenerateCooldown $regenerateCooldown,
         private readonly ResolveActiveRaceAction $activeRace,
         private readonly ResolveWeekAdaptationAction $weekAdaptation,
-        private readonly HydrationBacklog $hydrationBacklog,
+        private readonly PlanBriefingContext $briefing,
         private readonly CurrentWeekVolumeProjector $volumeProjector,
         private readonly RaceAmbitionAssessor $ambition,
     ) {
@@ -157,13 +153,8 @@ final class PlanPageAssembler
         $race = ($this->activeRace)($user->id);
         $baselineData = $this->baseline->forUser($user, $today);
         $paces = $this->paceCalculator->fromVdotResult($this->vdotEstimator->estimate($user));
-        $loadPending = $this->hydrationBacklog->recentLoadAwaitsScoring($user->id, $today);
-        $briefingContext = BriefingContext::forUser(
-            $user,
-            $today,
-            $loadPending ? null : $this->trainingLoad->summary($user, $today),
-            historyLoading: $loadPending,
-        );
+        $briefingContext = $this->briefing->forUser($user, $today);
+        $loadPending = $briefingContext->historyLoading;
         $ceiling = ReadinessCeiling::from($briefingContext->readinessCeiling);
         $raceDistanceM = $race !== null ? (float) $race->distance_m : null;
 
@@ -274,12 +265,8 @@ final class PlanPageAssembler
         $fromKey = $from->toDateString();
         $toKey = $to->toDateString();
         $window = $ruleRowsByDate->filter(fn (PlannedSession $row, string $date): bool => $date >= $fromKey && $date <= $toKey)->values();
-        $actions = SessionEditRules::actionsFor($day, $status, $window, $ranDates, $today);
 
-        return [
-            'actions' => $actions,
-            'move_targets' => $actions['move'] ? SessionEditRules::moveTargets($day, $window, $ranDates, $today) : [],
-        ];
+        return SessionEditRules::rulesFor($day, $status, $window, $ranDates, $today);
     }
 
     private function currentSeason(User $user, Carbon $today): Season
