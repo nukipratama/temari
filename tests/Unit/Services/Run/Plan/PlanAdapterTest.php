@@ -15,7 +15,6 @@ use App\Models\ActivityDetail;
 use App\Models\PlannedSession;
 use App\Models\RaceGoal;
 use App\Models\User;
-use App\Services\Run\Ingest\HydrationBacklog;
 use App\Services\Run\Metrics\ReadinessCeiling;
 use App\Services\Run\Metrics\RiegelProjector;
 use App\Services\Run\Metrics\TrainingLoad;
@@ -27,7 +26,6 @@ use Illuminate\Support\Carbon;
 uses(RefreshDatabase::class);
 
 function decide(
-    ReadinessCeiling $ceiling = ReadinessCeiling::QualityOk,
     int $adherencePct = 100,
     int $stimulusAdherencePct = 100,
     int $stimulusMisses = 0,
@@ -36,7 +34,7 @@ function decide(
     int $egregiousEasyDays = 0,
     ?float $raceGapRatio = null,
 ): array {
-    return PlanAdapter::decide($ceiling, $adherencePct, $stimulusAdherencePct, $stimulusMisses, $stimulusMissesInWindow ?: $stimulusMisses, $raggedDays, $egregiousEasyDays, $raceGapRatio);
+    return PlanAdapter::decide($adherencePct, $stimulusAdherencePct, $stimulusMisses, $stimulusMissesInWindow ?: $stimulusMisses, $raggedDays, $egregiousEasyDays, $raceGapRatio);
 }
 
 it('leaves a healthy, fully adhered week alone', function (): void {
@@ -47,13 +45,6 @@ it('leaves a healthy, fully adhered week alone', function (): void {
         'adherence_pct' => 100,
         'stimulus_adherence_pct' => 100,
     ]);
-});
-
-it('deloads when readiness bottoms out at rest', function (): void {
-    $decision = decide(ceiling: ReadinessCeiling::Rest);
-
-    expect($decision['reason'])->toBe(AdaptationReason::LowReadiness)
-        ->and($decision['deload'])->toBeTrue();
 });
 
 it('treats a mostly missed week as a re-entry deload, not a catch-up', function (): void {
@@ -180,9 +171,9 @@ it('holds steady inside the race-gap margin', function (): void {
 });
 
 it('never lets chasing a goal time override a safety deload', function (): void {
-    $decision = decide(ceiling: ReadinessCeiling::Rest, raceGapRatio: 1.5);
+    $decision = decide(adherencePct: 20, raceGapRatio: 1.5);
 
-    expect($decision['reason'])->toBe(AdaptationReason::LowReadiness)
+    expect($decision['reason'])->toBe(AdaptationReason::MissedWeek)
         ->and($decision['quality_delta'])->toBe(0);
 });
 
@@ -209,12 +200,7 @@ it('reads last week\'s persisted compliance scores and the live signals to reach
         ]);
     }
 
-    $trainingLoad = Mockery::mock(TrainingLoad::class);
-    $trainingLoad->shouldReceive('summary')->andReturn([
-        'monotony' => 1.1, 'strain' => 300.0, 'ctl_42d' => 30.0, 'form' => 5.0, 'form_status' => 'optimal',
-    ]);
-
-    $adapter = new PlanAdapter($trainingLoad, app(RiegelProjector::class), app(HydrationBacklog::class));
+    $adapter = new PlanAdapter(app(RiegelProjector::class));
     $decision = $adapter->forWeek($user, $weekStart, Carbon::parse('2026-08-10'), null);
 
     expect($decision['reason'])->toBe(AdaptationReason::MissedWeek)
@@ -239,12 +225,7 @@ it('reads adherence on distance alone, so a week of intent misses at full distan
         ]);
     }
 
-    $trainingLoad = Mockery::mock(TrainingLoad::class);
-    $trainingLoad->shouldReceive('summary')->andReturn([
-        'monotony' => 1.1, 'strain' => 300.0, 'ctl_42d' => 30.0, 'form' => 5.0, 'form_status' => 'optimal',
-    ]);
-
-    $decision = new PlanAdapter($trainingLoad, app(RiegelProjector::class), app(HydrationBacklog::class))->forWeek($user, $weekStart, Carbon::parse('2026-08-10'), null);
+    $decision = new PlanAdapter(app(RiegelProjector::class))->forWeek($user, $weekStart, Carbon::parse('2026-08-10'), null);
 
     expect($decision['adherence_pct'])->toBe(100)
         ->and($decision['reason'])->not->toBe(AdaptationReason::MissedWeek);
@@ -398,12 +379,7 @@ it('averages last week\'s scores, capping an overreached day at 100 rather than 
         'skipped' => true,
     ]);
 
-    $trainingLoad = Mockery::mock(TrainingLoad::class);
-    $trainingLoad->shouldReceive('summary')->andReturn([
-        'monotony' => 1.1, 'strain' => 300.0, 'ctl_42d' => 30.0, 'form' => 5.0, 'form_status' => 'optimal',
-    ]);
-
-    $adapter = new PlanAdapter($trainingLoad, app(RiegelProjector::class), app(HydrationBacklog::class));
+    $adapter = new PlanAdapter(app(RiegelProjector::class));
     $decision = $adapter->forWeek($user, $weekStart, Carbon::parse('2026-08-10'), null);
 
     // (min(100,180) + 0) / 2 = 50, not (180+0)/2 = 90 — the overreached day is
@@ -417,12 +393,7 @@ it('reads perfect adherence when nothing from last week was scoreable yet', func
     Carbon::setTestNow('2026-08-10 08:00:00');
     $user = User::factory()->create();
 
-    $trainingLoad = Mockery::mock(TrainingLoad::class);
-    $trainingLoad->shouldReceive('summary')->andReturn([
-        'monotony' => 1.1, 'strain' => 100.0, 'ctl_42d' => 30.0, 'form' => 5.0, 'form_status' => 'optimal',
-    ]);
-
-    $adapter = new PlanAdapter($trainingLoad, app(RiegelProjector::class), app(HydrationBacklog::class));
+    $adapter = new PlanAdapter(app(RiegelProjector::class));
     $decision = $adapter->forWeek($user, Carbon::parse('2026-08-10'), Carbon::parse('2026-08-10'), null);
 
     expect($decision['adherence_pct'])->toBe(100)
@@ -440,17 +411,13 @@ it('adds no work when the race projection is slower than the goal time', functio
         'race_date' => '2026-11-01',
     ]);
 
-    $trainingLoad = Mockery::mock(TrainingLoad::class);
-    $trainingLoad->shouldReceive('summary')->andReturn([
-        'monotony' => 1.1, 'strain' => 100.0, 'ctl_42d' => 30.0, 'form' => 5.0, 'form_status' => 'optimal',
-    ]);
     $riegel = Mockery::mock(RiegelProjector::class);
     $riegel->shouldReceive('project')->andReturn([
         'predicted_sec' => 7200.0, 'low_sec' => 6800.0, 'high_sec' => 7600.0,
         'exponent' => 1.06, 'sample_size' => 3, 'confidence' => 'medium',
     ]);
 
-    $adapter = new PlanAdapter($trainingLoad, $riegel, app(HydrationBacklog::class));
+    $adapter = new PlanAdapter($riegel);
     $decision = $adapter->forWeek($user, Carbon::parse('2026-08-10'), Carbon::parse('2026-08-10'), $race);
 
     expect($decision['reason'])->toBe(AdaptationReason::Steady)
@@ -468,10 +435,6 @@ it('does not chase an unsupported race ambition with extra quality', function ()
         'race_date' => '2026-09-07',
     ]);
 
-    $trainingLoad = Mockery::mock(TrainingLoad::class);
-    $trainingLoad->shouldReceive('summary')->andReturn([
-        'monotony' => 1.1, 'strain' => 100.0, 'ctl_42d' => 30.0, 'form' => 5.0, 'form_status' => 'optimal',
-    ]);
     $riegel = Mockery::mock(RiegelProjector::class);
     $riegel->shouldReceive('project')->andReturn([
         'predicted_sec' => 4200.0, 'low_sec' => 4000.0, 'high_sec' => 4400.0,
@@ -479,7 +442,7 @@ it('does not chase an unsupported race ambition with extra quality', function ()
     ]);
     $unsupported = new RaceAmbition(RaceAmbitionState::Unsupported, 3000, 300, 4200, 420, 28.6, 'confirmed');
 
-    $adapter = new PlanAdapter($trainingLoad, $riegel, app(HydrationBacklog::class));
+    $adapter = new PlanAdapter($riegel);
     $decision = $adapter->forWeek($user, Carbon::parse('2026-08-10'), Carbon::parse('2026-08-10'), $race, $unsupported);
 
     expect($decision['reason'])->toBe(AdaptationReason::Steady)
@@ -493,14 +456,10 @@ it('ignores the race projection when the athlete has no usable PR to anchor it',
     $user = User::factory()->create();
     $race = RaceGoal::factory()->for($user)->create(['goal_time_sec' => 6000, 'race_date' => '2026-11-01']);
 
-    $trainingLoad = Mockery::mock(TrainingLoad::class);
-    $trainingLoad->shouldReceive('summary')->andReturn([
-        'monotony' => 1.1, 'strain' => 100.0, 'ctl_42d' => 30.0, 'form' => 5.0, 'form_status' => 'optimal',
-    ]);
     $riegel = Mockery::mock(RiegelProjector::class);
     $riegel->shouldReceive('project')->andReturnNull();
 
-    $adapter = new PlanAdapter($trainingLoad, $riegel, app(HydrationBacklog::class));
+    $adapter = new PlanAdapter($riegel);
 
     expect($adapter->forWeek($user, Carbon::parse('2026-08-10'), Carbon::parse('2026-08-10'), $race)['reason'])
         ->toBe(AdaptationReason::Steady);
@@ -537,13 +496,9 @@ function planAdapterCreditedDay(User $user, string $date, SessionType $type): vo
     ]);
 }
 
-/** @param  array<string, mixed>  $load */
-function planAdapterFor(array $load = ['monotony' => 1.1, 'strain' => 300.0, 'ctl_42d' => 30.0, 'form' => 5.0, 'form_status' => 'optimal']): PlanAdapter
+function planAdapterFor(): PlanAdapter
 {
-    $trainingLoad = Mockery::mock(TrainingLoad::class);
-    $trainingLoad->shouldReceive('summary')->andReturn($load);
-
-    return new PlanAdapter($trainingLoad, app(RiegelProjector::class), app(HydrationBacklog::class));
+    return new PlanAdapter(app(RiegelProjector::class));
 }
 
 it('reads two easy days run over the heart-rate cap as how the week was run', function (): void {
@@ -865,22 +820,6 @@ it('neither rests nor deloads a steady four-run athlete in the six weeks after h
 
     Carbon::setTestNow();
 });
-
-it('reads no load while the window it decides from still awaits hydration', function (bool $pending, int $summaryReads): void {
-    Carbon::setTestNow('2026-08-10 08:00:00');
-    $user = User::factory()->create();
-    planAdapterLoadRun($user, Carbon::parse('2026-08-03'), 0, 80.0, pending: $pending);
-    $trainingLoad = Mockery::mock(TrainingLoad::class);
-    $trainingLoad->shouldReceive('summary')->times($summaryReads)->andReturn(['form' => 5.0, 'form_status' => 'optimal']);
-
-    new PlanAdapter($trainingLoad, app(RiegelProjector::class), app(HydrationBacklog::class))
-        ->forWeek($user, Carbon::parse('2026-08-10'), Carbon::parse('2026-08-10'), null);
-
-    Carbon::setTestNow();
-})->with([
-    'a run in the window awaits hydration' => [true, 0],
-    'the window is fully analysed' => [false, 1],
-]);
 
 it('stores no low-readiness deload for a race season opened mid-backfill, and reads the full series once it lands', function (): void {
     $user = User::factory()->create();

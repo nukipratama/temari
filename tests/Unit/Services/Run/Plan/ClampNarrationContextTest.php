@@ -129,21 +129,40 @@ it('reads a recorded snapshot that carries a retired feedback input and reason c
     $user = User::factory()->create();
     $session = clampDay($user);
     $session->forceFill([
-        'rest_clamped_at' => Carbon::today()->setTime(0, 1),
+        'clamped_km' => 3.6,
         'readiness_assessment' => [
-            'ceiling' => 'rest',
-            'reasons' => ['illness_reported', 'stale_recovery_feedback_not_applied'],
-            'inputs' => ['recovery_feedback' => ['freshness' => 'current', 'illness' => true]],
+            'ceiling' => 'easy_only',
+            'reasons' => ['severe_fatigue_or_soreness_reported', 'stale_recovery_feedback_not_applied'],
+            'inputs' => ['recovery_feedback' => ['freshness' => 'current', 'fatigue' => 'severe']],
         ],
     ])->save();
 
     $context = resolveClamp($user);
 
     expect($context['decision_source'])->toBe('recorded')
-        ->and($context['ceiling'])->toBe(ReadinessCeiling::Rest)
-        ->and($context['clamped_to'])->toBe(SessionType::Rest)
-        ->and($context['readiness_reasons'])->toBe(['illness_reported', 'stale_recovery_feedback_not_applied'])
+        ->and($context['ceiling'])->toBe(ReadinessCeiling::EasyOnly)
+        ->and($context['clamped_to'])->toBe(SessionType::Easy)
+        ->and($context['readiness_reasons'])->toBe(['severe_fatigue_or_soreness_reported', 'stale_recovery_feedback_not_applied'])
         ->and($context['readiness_inputs'])->toHaveKey('recovery_feedback');
+});
+
+it('reads a row left with a rest snapshot from before the rest clamp was removed live', function (): void {
+    $user = tiredUser();
+    $session = clampDay($user);
+    $session->forceFill([
+        'readiness_assessment' => [
+            'ceiling' => 'rest',
+            'reasons' => ['illness_reported'],
+            'inputs' => ['recovery_feedback' => ['freshness' => 'current', 'illness' => true]],
+        ],
+    ])->save();
+
+    $context = resolveClamp($user);
+
+    expect($context['decision_source'])->toBe('live')
+        ->and($context['ceiling'])->not->toBe(ReadinessCeiling::Rest)
+        ->and($context['clamped_to'])->toBe(SessionType::Easy)
+        ->and($context['readiness_reasons'])->not->toContain('illness_reported');
 });
 
 it('resolves nothing when there is no session, or no user at all', function (): void {

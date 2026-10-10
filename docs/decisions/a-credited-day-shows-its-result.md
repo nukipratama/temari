@@ -12,6 +12,8 @@ code_refs:
   - resources/js/components/plan/DayDetail.tsx
 ---
 
+> **The full-rest clamp case is superseded (noted 2026-10-10) by decision #2078.** No clamp reaches a full rest any more, so only an athlete's skip, or advice shown as a rest day, excuses a day.
+
 # A credited day shows its result, not a second menu
 
 **Status:** Accepted (2026-09-16)

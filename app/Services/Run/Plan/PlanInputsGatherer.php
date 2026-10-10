@@ -249,7 +249,7 @@ final readonly class PlanInputsGatherer
                 ->orWhere('status', '!=', PlannedSessionStatus::Planned)
                 ->orWhere('date', '<', $today->toDateString()))
             ->orderBy('date')
-            ->get(['date', 'pinned', 'skipped', 'status', 'session_type', 'prescribed_hard_minutes', 'prescribed_pace_band', 'prescribed_pace_sec_per_km', 'phase', 'volume_multiplier', 'race_distance_m', 'clamped_km', 'rest_clamped_at', 'eased_pace_sec_per_km', 'readiness_assessment', 'prescription_race_context', 'intent_evidence', 'fall_off_tilt']);
+            ->get(['date', 'pinned', 'skipped', 'status', 'session_type', 'prescribed_hard_minutes', 'prescribed_pace_band', 'prescribed_pace_sec_per_km', 'phase', 'volume_multiplier', 'race_distance_m', 'clamped_km', 'eased_pace_sec_per_km', 'readiness_assessment', 'prescription_race_context', 'intent_evidence', 'fall_off_tilt']);
 
         $pinned = [];
         $settled = [];
@@ -286,8 +286,8 @@ final readonly class PlanInputsGatherer
                     $prescription = new IntensityPrescription($row->prescribed_hard_minutes ?? 0, $row->prescribed_pace_band, $row->prescribed_pace_sec_per_km ?? ($row->prescribed_pace_band === null ? null : $paces[$row->prescribed_pace_band->value]), null, $row->prescription_race_context);
                     $segments = SegmentGenerator::forPrescription($row->session_type, $row->phase, $km, $paces, $prescription);
                     $fixed[$date]['duration_minutes'] = array_sum(array_map(static fn (SessionSegment $segment): float => $segment->minutes ?? 0.0, $segments));
-                    if ($row->rest_clamped_at !== null || $row->eased_pace_sec_per_km !== null) {
-                        $fixed[$date] = ['session_type' => SessionType::Easy, 'prescribed_hard_minutes' => 0, 'prescribed_pace_band' => null, 'duration_minutes' => $row->rest_clamped_at === null ? $km * $paces['easy'] / 60 : 0.0];
+                    if ($row->eased_pace_sec_per_km !== null) {
+                        $fixed[$date] = ['session_type' => SessionType::Easy, 'prescribed_hard_minutes' => 0, 'prescribed_pace_band' => null, 'duration_minutes' => $km * $paces['easy'] / 60];
                     }
                 }
             }

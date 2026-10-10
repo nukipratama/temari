@@ -25,7 +25,6 @@ afterEach(fn () => Carbon::setTestNow());
 
 const MAKE_UP_CLAMP = [
     'clamped_km' => 3.0,
-    'rest_clamped_at' => '2026-08-11 06:00:00',
     'eased_pace_sec_per_km' => 420,
     'readiness_assessment' => ['ceiling' => 'easy_only', 'reasons' => [], 'inputs' => []],
 ];
@@ -75,7 +74,6 @@ it('links the two days and clears the clamp state on both', function (): void {
 
     foreach ([$vacated->fresh(), $target->fresh()] as $row) {
         expect($row->clamped_km)->toBeNull()
-            ->and($row->rest_clamped_at)->toBeNull()
             ->and($row->eased_pace_sec_per_km)->toBeNull()
             ->and($row->readiness_assessment)->toBeNull();
     }

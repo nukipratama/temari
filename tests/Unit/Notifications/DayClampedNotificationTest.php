@@ -22,12 +22,12 @@ uses(RefreshDatabase::class);
 beforeEach(function (): void {
     config(['services.telegram.bot_token' => 'test-bot-token']);
     $this->date = '2026-09-08';
-    $this->note = "Recovery's still catching up, today's a full rest.";
+    $this->note = 'you completed a demanding session within the last day, so quality can wait.';
 });
 
-function clampNotification(SessionType $clampedTo = SessionType::Rest): DayClampedNotification
+function clampNotification(): DayClampedNotification
 {
-    return new DayClampedNotification(test()->date, $clampedTo, test()->note);
+    return new DayClampedNotification(test()->date, test()->note);
 }
 
 // A clamp is advisory and the briefing path records it at 00:01, so a lock
@@ -44,14 +44,9 @@ it('records a row that opens the home page', function (): void {
     $message = clampNotification()->toInbox(User::factory()->create());
 
     expect($message->kind)->toBe(NotificationKind::PlanClamp)
-        ->and($message->title)->toBe("Today's a full rest")
+        ->and($message->title)->toBe('Today eases off')
         ->and($message->body)->toBe($this->note)
         ->and($message->payload)->toBe(['url' => route('dashboard')]);
-});
-
-it('names an eased day as eased rather than rested', function (): void {
-    expect(clampNotification(SessionType::Easy)->toInbox(User::factory()->create())->title)
-        ->toBe('Today eases off');
 });
 
 // A repeated morning briefing must not stack a second clamp row for the day.
@@ -65,10 +60,10 @@ it('prefers the clamp narration once one has landed', function (): void {
     PlannedSession::factory()->for($user)->create([
         'date' => $this->date,
         'session_type' => SessionType::Interval,
-        'rest_clamped_at' => Carbon::parse($this->date),
+        'clamped_km' => 6.0,
         'readiness_assessment' => [
-            'ceiling' => 'rest',
-            'reasons' => ['illness_reported'],
+            'ceiling' => 'moderate_ok',
+            'reasons' => ['demanding_session_within_24h'],
             'inputs' => ['form_status' => null],
         ],
     ]);
@@ -78,12 +73,12 @@ it('prefers the clamp narration once one has landed', function (): void {
         'analysis_type' => AnalysisType::PlanClampVoice,
         'discriminator' => $this->date,
         'status' => AnalysisStatus::Done,
-        'content' => 'you reported feeling ill, so today is a full rest.',
-        'content_fingerprint' => MaterialFingerprint::forClamp(ReadinessCeiling::Rest, SessionType::Rest, false, ['illness_reported']),
+        'content' => "today's an easy run, the intervals can wait after yesterday's hard session.",
+        'content_fingerprint' => MaterialFingerprint::forClamp(ReadinessCeiling::ModerateOk, SessionType::Easy, false, ['demanding_session_within_24h']),
     ]);
 
     expect(clampNotification()->toInbox($user)->body)
-        ->toBe('you reported feeling ill, so today is a full rest.');
+        ->toBe("today's an easy run, the intervals can wait after yesterday's hard session.");
 });
 
 it('keeps the factual fallback when a completed narration has no matching decision', function (): void {

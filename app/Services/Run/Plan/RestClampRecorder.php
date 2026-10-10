@@ -18,18 +18,18 @@ use App\Services\Run\Story\BriefingContext;
 use Illuminate\Support\Carbon;
 
 /**
- * Records the clamp outcomes that have to outlive the render: a today
- * downgraded to a full rest, the eased distance a lighter downgrade asked for
- * instead, and — on a day that already clears the ceiling but only just — the
- * eased pace {@see ReadinessClamp::paceEaseApplies()} asks for.
+ * Records the clamp outcomes that have to outlive the render: the eased
+ * distance a downgrade asked for, and — on a day that already clears the
+ * ceiling but only just — the eased pace
+ * {@see ReadinessClamp::paceEaseApplies()} asks for.
  *
  * {@see ReadinessClamp} is otherwise deliberately render-only, and that works
  * because every other consumer recomputes it. Compliance cannot — it runs the
  * next morning, and the ceiling is derived from
  * {@see TrainingLoad::summary()}, which counts the day's own runs, so the
  * ceiling that produced an 08:00 clamp no longer exists at 00:03. Without a
- * record, an athlete who took the rest the card prescribed is graded against
- * the session it replaced and scores `missed` for complying.
+ * record, an athlete who ran the eased session the card prescribed is graded
+ * against the session it replaced.
  *
  * Called by daily-briefing side effects.
  */
@@ -122,18 +122,13 @@ final readonly class RestClampRecorder
         );
 
         $adjustment = [
-            'rest_clamped_at' => null,
             'clamped_km' => null,
             'eased_pace_sec_per_km' => null,
         ];
-        $notification = null;
+        $note = null;
         if ($clamp !== null) {
-            if ($clamp['session_type'] === SessionType::Rest) {
-                $adjustment['rest_clamped_at'] = $session->rest_clamped_at ?? Carbon::now();
-            } else {
-                $adjustment['clamped_km'] = $clamp['core_km'];
-            }
-            $notification = ['session_type' => $clamp['session_type'], 'note' => $clamp['note']];
+            $adjustment['clamped_km'] = $clamp['core_km'];
+            $note = $clamp['note'];
         } elseif (ReadinessClamp::paceEaseApplies($session->session_type, $ceiling)) {
             $easedPace = $this->paceCalculator->easySlowEndFromVdotResult($this->vdotEstimator->estimate($user, $today));
             if ($easedPace !== null) {
@@ -153,15 +148,13 @@ final readonly class RestClampRecorder
             && $session->readiness_assessment['reasons'] === $assessment['reasons']) {
             $assessment = $session->readiness_assessment;
         }
-        $hasAdjustment = $adjustment['rest_clamped_at'] !== null
-            || $adjustment['clamped_km'] !== null
+        $hasAdjustment = $adjustment['clamped_km'] !== null
             || $adjustment['eased_pace_sec_per_km'] !== null;
         $attributes = [
             ...$adjustment,
             'readiness_assessment' => $hasAdjustment ? $assessment : null,
         ];
-        $changed = $session->rest_clamped_at != $attributes['rest_clamped_at']
-            || $session->clamped_km != $attributes['clamped_km']
+        $changed = $session->clamped_km != $attributes['clamped_km']
             || $session->eased_pace_sec_per_km !== $attributes['eased_pace_sec_per_km']
             || $session->readiness_assessment !== $attributes['readiness_assessment'];
         if (! $changed) {
@@ -170,23 +163,19 @@ final readonly class RestClampRecorder
 
         $oldClampedKm = $session->clamped_km;
         $oldDose = $session->readiness_assessment['adjustment']['quality_dose'] ?? null;
-        $oldSessionType = $session->rest_clamped_at !== null
-            ? SessionType::Rest
-            : ($session->clamped_km !== null ? SessionType::Easy : $session->session_type);
-        $newSessionType = $adjustment['rest_clamped_at'] !== null
-            ? SessionType::Rest
-            : ($adjustment['clamped_km'] !== null ? SessionType::Easy : $session->session_type);
+        $oldSessionType = $session->clamped_km !== null ? SessionType::Easy : $session->session_type;
+        $newSessionType = $adjustment['clamped_km'] !== null ? SessionType::Easy : $session->session_type;
         $session->update($attributes);
 
-        if ($notification !== null && ($oldSessionType !== $newSessionType || $oldClampedKm != $adjustment['clamped_km'] || $oldDose != ($assessment['adjustment']['quality_dose'] ?? null))) {
-            $this->tell($user, $today, $notification['session_type'], $notification['note']);
+        if ($note !== null && ($oldSessionType !== $newSessionType || $oldClampedKm != $adjustment['clamped_km'] || $oldDose != ($assessment['adjustment']['quality_dose'] ?? null))) {
+            $this->tell($user, $today, $note);
         }
 
         return true;
     }
 
-    private function tell(User $user, Carbon $today, SessionType $clampedTo, string $note): void
+    private function tell(User $user, Carbon $today, string $note): void
     {
-        $user->notify(new DayClampedNotification($today->toDateString(), $clampedTo, $note));
+        $user->notify(new DayClampedNotification($today->toDateString(), $note));
     }
 }

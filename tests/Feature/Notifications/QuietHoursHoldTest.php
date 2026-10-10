@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use App\Enums\NotificationDeliveryStatus;
-use App\Enums\SessionType;
 use App\Jobs\Notifications\RetryStaleWebPushNotificationJob;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
@@ -86,7 +85,7 @@ function expectQuietDeliveries(int $inbox, int $telegram, int $push): void
 dataset('notification types', function (): array {
     $types = [
         'post-run story' => [fn (User $user): Notification => quietPostRun($user), 1, true],
-        'day clamped' => [fn (User $user): Notification => new DayClampedNotification('2026-10-06', SessionType::Rest, 'a full rest today.'), 1, false],
+        'day clamped' => [fn (User $user): Notification => new DayClampedNotification('2026-10-06', 'quality can wait.'), 1, false],
         'fitness improved' => [fn (User $user): Notification => new FitnessImprovedNotification(10_000.0, 3_570, 3_640, 5_000, '2026-09-20', '2026-10-05'), 1, true],
         'morning briefing' => [fn (User $user): Notification => new MorningBriefingNotification(Analysis::factory()->done('easy 5k.')->create([
             'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,

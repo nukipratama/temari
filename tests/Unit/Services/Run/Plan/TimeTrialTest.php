@@ -93,7 +93,7 @@ it('reads a trial as skipped when excused, not run, or eased to easy or rest', f
     'excused' => [['skipped' => true], true, true],
     'nothing run' => [[], false, true],
     'eased to easy' => [['clamped_km' => 6.0], true, true],
-    'rested' => [['rest_clamped_at' => '2026-10-06 07:00:00'], true, true],
+    'shown rest when run' => [['intent_evidence' => ['effective_type' => 'rest']], true, true],
     'shown easy when run' => [['intent_evidence' => ['effective_type' => 'easy']], true, true],
 ]);
 

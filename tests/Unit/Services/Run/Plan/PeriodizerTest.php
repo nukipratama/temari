@@ -849,8 +849,7 @@ it('carries a recorded easy clamp onto today\'s recreated row', function (): voi
 
     $fresh = PlannedSession::query()->where('user_id', $user->id)->where('date', Carbon::today()->toDateString())->firstOrFail();
     expect($fresh->id)->not->toBe($today->id)
-        ->and($fresh->clamped_km)->toBe(3.6)
-        ->and($fresh->rest_clamped_at)->toBeNull();
+        ->and($fresh->clamped_km)->toBe(3.6);
 
     $effective = EffectiveSession::of($fresh, 8.0);
     expect($effective->sessionType)->toBe(SessionType::Easy)
@@ -871,10 +870,9 @@ it('carries a recorded pace ease onto today\'s recreated row', function (): void
     $fresh = PlannedSession::query()->where('user_id', $user->id)->where('date', Carbon::today()->toDateString())->firstOrFail();
     expect($fresh->id)->not->toBe($today->id)
         ->and($fresh->eased_pace_sec_per_km)->toBe(375)
-        ->and($fresh->clamped_km)->toBeNull()
-        ->and($fresh->rest_clamped_at)->toBeNull();
+        ->and($fresh->clamped_km)->toBeNull();
 
-    // Unlike clamped_km/rest_clamped_at, a pace ease never overrides the
+    // Unlike clamped_km, a pace ease never overrides the
     // session type it rides along on — EffectiveSession reads it back
     // against whatever type the regenerated row actually carries.
     $effective = EffectiveSession::of($fresh, 20.0);
@@ -882,23 +880,6 @@ it('carries a recorded pace ease onto today\'s recreated row', function (): void
         ->and($effective->coreKm)->toBe(20.0)
         ->and($effective->isPaceEased())->toBeTrue()
         ->and($effective->easedPaceSecPerKm)->toBe(375);
-});
-
-it('carries a recorded rest clamp onto today\'s recreated row, keeping the day excused', function (): void {
-    $user = User::factory()->create();
-    seedPeriodizerBaseline($user);
-    $today = PlannedSession::factory()->for($user)->create([
-        'date' => Carbon::today()->toDateString(),
-        'session_type' => SessionType::Long,
-        'rest_clamped_at' => Carbon::now(),
-    ]);
-
-    $this->periodizer->regenerate($user, Carbon::today());
-
-    $fresh = PlannedSession::query()->where('user_id', $user->id)->where('date', Carbon::today()->toDateString())->firstOrFail();
-    expect($fresh->id)->not->toBe($today->id)
-        ->and($fresh->rest_clamped_at)->not->toBeNull()
-        ->and($fresh->isExcused())->toBeTrue();
 });
 
 it('deletes plan_day feedback for exactly the rows a regenerate deletes, keeping flags elsewhere', function (): void {

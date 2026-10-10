@@ -32,8 +32,7 @@ class PlanClampVoiceNarrator
 
         stepped_down_to is the session the athlete is running today. Name it as today's session, as
         a plain fact, and mention planned only as what it replaced. Then give the reason using only
-        readiness_reasons. Never infer fatigue from the ceiling or time since the last run. When
-        stepped_down_to is rest, today is a rest day.
+        readiness_reasons. Never infer fatigue from the ceiling or time since the last run.
 
         Steady and matter-of-fact. An eased day is a normal part of training, not a failure and not
         a scolding. Never imply they did something wrong, and never tell them to see a doctor or

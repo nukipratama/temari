@@ -315,7 +315,7 @@ final readonly class Periodizer
             // it, and the clamp only ever subtracts — so it survives onto the
             // row that replaces it rather than vanishing with the delete.
             $carriedClamps = $toDelete
-                ->filter(fn (PlannedSession $session): bool => $session->clamped_km !== null || $session->rest_clamped_at !== null || $session->eased_pace_sec_per_km !== null)
+                ->filter(fn (PlannedSession $session): bool => $session->clamped_km !== null || $session->eased_pace_sec_per_km !== null)
                 ->keyBy(fn (PlannedSession $session): string => $session->date->toDateString());
             $candidateIds = $toDelete->pluck('id');
 
@@ -370,7 +370,6 @@ final readonly class Periodizer
                     'pinned' => false,
                     'status' => PlannedSessionStatus::Planned,
                     'clamped_km' => $carriedClamp?->clamped_km,
-                    'rest_clamped_at' => $carriedClamp?->rest_clamped_at,
                     'eased_pace_sec_per_km' => $carriedClamp?->eased_pace_sec_per_km,
                     'readiness_assessment' => $carriedClamp?->readiness_assessment,
                 ];
@@ -431,7 +430,7 @@ final readonly class Periodizer
             ->lockForUpdate()
             ->get([
                 'id', 'date', 'pinned', 'status', 'session_type', 'prescribed_hard_minutes', 'prescribed_pace_band',
-                'clamped_km', 'rest_clamped_at', 'eased_pace_sec_per_km', 'readiness_assessment', 'prescribed_pace_sec_per_km', 'prescription_race_context', 'intent_evidence',
+                'clamped_km', 'eased_pace_sec_per_km', 'readiness_assessment', 'prescribed_pace_sec_per_km', 'prescription_race_context', 'intent_evidence',
             ]);
     }
 

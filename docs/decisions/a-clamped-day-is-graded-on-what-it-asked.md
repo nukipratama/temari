@@ -12,6 +12,8 @@ code_refs:
   - app/Models/PlannedSession.php
 ---
 
+> **The full-rest exception this builds on is superseded (noted 2026-10-10) by decision #2078.** No readiness ceiling reaches `Rest` any more and `rest_clamped_at` is dropped; the `clamped_km` grading stands.
+
 # A clamped day is graded on what it actually asked for
 
 **Status:** Accepted (2026-09-08). Narrows [[readiness-clamp-is-advisory]], which stands otherwise.

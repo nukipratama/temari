@@ -12,6 +12,8 @@ code_refs:
   - app/Services/Run/Plan/ReadinessClamp.php
 ---
 
+> **Decision 1's `Rest` reservation is superseded (noted 2026-10-10) by decision #2078.** Reported pain or illness was the only route to `Rest`, and the recovery check-in is removed, so no ceiling reaches `Rest` and nothing produces a `low_readiness` deload. With that, `PlanAdapter::forWeek()` reads no readiness or load at all, so decision 5's gate there is gone; the plan page keeps it. Stored `low_readiness` weeks still read.
+
 > **Partly superseded (2026-10-02) by [[monotony-and-strain-describe-a-week-they-never-deload-it]].** Strain is no longer a deload trigger, so decision 5's strain-ratio warm-up guard is gone. The hydration gate stands, as does the rest of this decision.
 
 # A load label supports a concern, it never decides one

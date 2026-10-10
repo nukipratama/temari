@@ -28,7 +28,7 @@ use Override;
  * around and never overwrite; volume redistribution and segment structure
  * ({@see \App\Services\Run\Plan\SegmentGenerator}) are render-time-only and
  * never stored, but the readiness clamp outcome (`clamped_km`/
- * `rest_clamped_at`/`eased_pace_sec_per_km`) and its assessment are persisted by
+ * `eased_pace_sec_per_km`) and its assessment are persisted by
  * {@see \App\Services\Run\Plan\RestClampRecorder} (see
  * `docs/features/plan-periodizer.md`). `status`/`compliance_score`/
  * `ran_anyway` are written once, by `plan:score-compliance`
@@ -78,7 +78,6 @@ use Override;
  * @property IntentVerdict|null $intent_verdict
  * @property array<string, int|float|string>|null $intent_evidence
  * @property bool $ran_anyway
- * @property Carbon|null $rest_clamped_at
  * @property-read User $user
  */
 #[Fillable([
@@ -109,7 +108,6 @@ use Override;
     'readiness_assessment',
     'volume_multiplier',
     'ran_anyway',
-    'rest_clamped_at',
 ])]
 class PlannedSession extends Model
 {
@@ -137,7 +135,7 @@ class PlannedSession extends Model
 
         static::saved(static function (PlannedSession $row) use ($bust): void {
             $bust($row);
-            if ($row->wasRecentlyCreated || $row->wasChanged(['date', 'session_type', 'skipped', 'rest_clamped_at'])) {
+            if ($row->wasRecentlyCreated || $row->wasChanged(['date', 'session_type', 'skipped'])) {
                 PastYouTrendBuilder::clearCacheForUserId($row->user_id);
             }
         });
@@ -162,15 +160,13 @@ class PlannedSession extends Model
 
     /**
      * Whether this day is exempt from being graded: the athlete excused it
-     * ahead of time, or the readiness clamp downgraded it to a full rest and
-     * {@see \App\Services\Run\Plan\RestClampRecorder} recorded that. Both
-     * resolve to {@see PlannedSessionStatus::Skip} — uncredited, but never
-     * counted against the week's adherence, since neither is a day the
-     * athlete failed to turn up for.
+     * ahead of time. It resolves to {@see PlannedSessionStatus::Skip} —
+     * uncredited, but never counted against the week's adherence, since it is
+     * not a day the athlete failed to turn up for.
      */
     public function isExcused(): bool
     {
-        return $this->skipped || $this->rest_clamped_at !== null;
+        return $this->skipped === true;
     }
 
     /** @return array<string, string> */
@@ -205,7 +201,6 @@ class PlannedSession extends Model
             'readiness_assessment' => 'array',
             'volume_multiplier' => 'float',
             'ran_anyway' => 'boolean',
-            'rest_clamped_at' => 'datetime',
         ];
     }
 }

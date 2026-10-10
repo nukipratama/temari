@@ -102,8 +102,7 @@ it('never clamps or requests clamp narration after a run today', function (): vo
 
     fire($activity);
 
-    expect($session->fresh()->rest_clamped_at)->toBeNull()
-        ->and($session->fresh()->clamped_km)->toBeNull()
+    expect($session->fresh()->clamped_km)->toBeNull()
         ->and(Analysis::query()->where('analysis_type', AnalysisType::PlanClampVoice)->exists())->toBeFalse();
     Notification::assertNotSentTo($activity->user, DayClampedNotification::class);
 });

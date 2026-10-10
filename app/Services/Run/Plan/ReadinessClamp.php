@@ -91,12 +91,6 @@ final class ReadinessClamp
         }
 
         return match ($ceiling) {
-            ReadinessCeiling::Rest => [
-                'session_type' => SessionType::Rest,
-                'segments' => [],
-                'core_km' => 0.0,
-                'note' => self::noteFor($sessionType, $ceiling, $reasons) ?? self::restNote($sessionType),
-            ],
             // Long requires ModerateOk, so an EasyOnly ceiling — stricter than
             // ModerateOk — does send a Long day through this arm too.
             ReadinessCeiling::EasyOnly => [
@@ -120,32 +114,15 @@ final class ReadinessClamp
                 'core_km' => SegmentGenerator::coreKmFor($sessionType, false, $longRunBaselineKm, $volumeMultiplier, $longRunCapKm),
                 'note' => self::noteFor($sessionType, $ceiling, $reasons) ?? self::moderateOkNote(),
             ],
-            ReadinessCeiling::QualityOk => null, // unreachable: nothing requires more than QualityOk
+            ReadinessCeiling::Rest, ReadinessCeiling::QualityOk => null, // unreachable: no assessment caps to Rest, and nothing requires more than QualityOk
         };
     }
 
     /**
-     * Whether today's ceiling would downgrade this session all the way to a
-     * full rest — the one clamp outcome compliance has to know about, since
-     * an athlete who takes the rest the card prescribed would otherwise be
-     * graded against the session it replaced and score `missed` for
-     * complying. Shares {@see self::requiredRank()} with {@see self::apply()}
-     * so the two can never disagree about what the ceiling permits, and needs
-     * neither paces nor a volume multiplier: the `Rest` arm of `apply()` uses
-     * neither. See `docs/decisions/readiness-clamp-is-advisory.md`.
-     */
-    public static function clampsToRest(SessionType $sessionType, ReadinessCeiling $ceiling): bool
-    {
-        return $ceiling === ReadinessCeiling::Rest
-            && self::requiredRank($sessionType) > $ceiling->rank();
-    }
-
-    /**
      * What today's ceiling would downgrade this session to, or null when the
-     * session already fits under it. The general form of
-     * {@see self::clampsToRest()}, and it exists for the same reason: a caller
-     * that needs only the OUTCOME should not have to build a segment list to
-     * learn it. {@see \App\Services\Run\Plan\ClampNarrationContext} narrates the
+     * session already fits under it. A caller that needs only the OUTCOME
+     * should not have to build a segment list to learn it.
+     * {@see \App\Services\Run\Plan\ClampNarrationContext} narrates the
      * downgrade and has neither paces nor a volume multiplier to hand.
      *
      * Shares {@see self::requiredRank()} with {@see self::apply()}, so the two
@@ -158,9 +135,8 @@ final class ReadinessClamp
         }
 
         return match ($ceiling) {
-            ReadinessCeiling::Rest => SessionType::Rest,
             ReadinessCeiling::EasyOnly, ReadinessCeiling::ModerateOk => SessionType::Easy,
-            ReadinessCeiling::QualityOk => null,
+            ReadinessCeiling::Rest, ReadinessCeiling::QualityOk => null,
         };
     }
 
@@ -245,10 +221,9 @@ final class ReadinessClamp
         }
 
         return match ($ceiling) {
-            ReadinessCeiling::Rest => self::restNote($sessionType),
             ReadinessCeiling::EasyOnly => self::easyOnlyNote($sessionType),
             ReadinessCeiling::ModerateOk => self::moderateOkNote(),
-            ReadinessCeiling::QualityOk => null,
+            ReadinessCeiling::Rest, ReadinessCeiling::QualityOk => null,
         };
     }
 
@@ -256,7 +231,6 @@ final class ReadinessClamp
     private static function specificNote(array $reasons): ?string
     {
         foreach ([
-            'training_form_overreaching' => "your current training form is showing overreaching, so today's a full rest instead.",
             'already_ran_today' => "you already ran today, so this one stays easy instead of the planned session.",
             'demanding_session_within_24h' => "you completed a demanding session within the last day, so quality can wait.",
             'closely_spaced_demanding_sessions' => 'hard sessions have landed close together, so quality can wait.',
@@ -289,15 +263,6 @@ final class ReadinessClamp
         $cause = $cause === null ? '' : str_replace('quality can wait.', 'reduce the quality dose.', $cause).' ';
 
         return $cause."keep the {$sessionType->value} intent with {$minutes} hard minutes instead of {$originalMinutes}.";
-    }
-
-    private static function restNote(SessionType $original): string
-    {
-        return match ($original) {
-            SessionType::Long => "You're carrying a lot right now, today's a full rest instead of the long run.",
-            SessionType::Tempo, SessionType::Interval => "Recovery's still catching up, quality work waits, today's a full rest.",
-            default => "Recovery's still catching up, today's a full rest instead.",
-        };
     }
 
     private static function easyOnlyNote(SessionType $original): string

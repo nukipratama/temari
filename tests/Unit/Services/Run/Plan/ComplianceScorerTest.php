@@ -258,23 +258,19 @@ it('measures an eased long day against the eased distance, not the stored one', 
         ->and($row->prescribed_km)->toBe(4.0);
 });
 
-/**
- * A readiness clamp that downgraded the day to a full rest makes it excused,
- * and no crediting rule may reach past that into a verdict.
- */
-it('leaves a rest-clamped day excused however the day was actually run', function (): void {
+it('still excuses a day whose shown advice was a full-rest clamp from before the rest clamp was removed', function (): void {
     $user = User::factory()->create();
-    $row = scorerDay($user, '2026-08-05', [
-        'session_type' => SessionType::Long,
-        'rest_clamped_at' => Carbon::parse('2026-08-05 00:01:00'),
+    $row = scorerDay($user, '2026-08-05', ['session_type' => SessionType::Long]);
+    showAdvice($user, '2026-08-05', ['session_type' => 'long'], [
+        'session_type' => 'rest', 'distance_km' => 0.0, 'segments' => [], 'paces' => SHOWN_PACES, 'skipped' => false, 'reason' => "Recovery's still catching up, today's a full rest instead.",
+        'readiness_assessment' => ['ceiling' => 'rest', 'reasons' => ['illness_reported'], 'inputs' => []],
     ]);
-    scorerRun($user, '2026-08-05', 2.0);
-    scorerRun($user, '2026-08-05', 2.0);
+    shownRun($user, '2026-08-05', 4.0, 1600);
 
-    $verdicts = app(ComplianceScorer::class)->verdictsFor($user, PlannedSession::query()->whereKey($row->id)->get(), Carbon::parse('2026-08-20'));
+    $verdict = scorerVerdict($user, $row);
 
-    expect($verdicts['2026-08-05']['status'])->toBe(PlannedSessionStatus::Skip)
-        ->and($verdicts['2026-08-05']['score'])->toBeNull();
+    expect($verdict['status'])->toBe(PlannedSessionStatus::Skip)
+        ->and($verdict['score'])->toBeNull();
 });
 
 /** @return array{easy: int, marathon: int, threshold: int, interval: int} */

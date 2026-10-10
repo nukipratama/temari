@@ -8,8 +8,10 @@ namespace App\Enums;
  * Why the periodizer changed this week from what the phase schedule alone
  * would have produced ({@see \App\Services\Run\Plan\PlanAdapter}). Exactly
  * one reason wins per week, in the priority order the adapter evaluates
- * them: safety signals first, adherence next, then how last week was actually
- * run, missed stimulus, and race-pace feedback last.
+ * them: adherence first, then how last week was actually run, missed
+ * stimulus, and race-pace feedback last. `LowReadiness`, `HighMonotony`,
+ * `HighStrain` and `BehindRacePace` are no longer produced; stored weeks may
+ * still carry them.
  */
 enum AdaptationReason: string
 {

@@ -20,6 +20,8 @@ code_refs:
   - resources/js/components/plan/WeekView.tsx
 ---
 
+> **The `rest_clamped_at` rule is superseded (noted 2026-10-10) by decision #2078.** No readiness ceiling reaches `Rest` any more, so the column is dropped and a recorded ease is `clamped_km` or `eased_pace_sec_per_km` alone.
+
 > **Partly superseded (2026-10-07) by [[a-plan-day-has-no-narrated-read]].** The `plan_day_voice` re-narration on credit and `PlanDayTool` are gone; a credited eased day has no narrated read, and the rest of this decision stands.
 
 > **Amendment moot (2026-10-02).** [[the-advised-session-leads-every-day]] makes today lead with the ease too, so the today-before-credit exception no longer applies.
