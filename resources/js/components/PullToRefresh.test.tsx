@@ -11,23 +11,26 @@ type ReloadOptions = {
     onFinish: () => void;
 };
 
-function stubReducedMotion(reduced: boolean) {
+function stubMedia({ reduced = false, coarse = true } = {}) {
     vi.stubGlobal(
         'matchMedia',
-        vi.fn(() => ({
-            matches: reduced,
+        vi.fn((query: string) => ({
+            matches: query.includes('coarse') ? coarse : reduced,
             addEventListener: vi.fn(),
             removeEventListener: vi.fn(),
         })),
     );
 }
 
-function renderShell() {
+async function renderShell() {
     render(
         <PullToRefresh>
             <p>page body</p>
         </PullToRefresh>,
     );
+    await act(async () => {
+        await vi.dynamicImportSettled();
+    });
     return screen.getByTestId('pull-to-refresh-content');
 }
 
@@ -56,7 +59,7 @@ function reloadOptions(): ReloadOptions {
 
 beforeEach(() => {
     vi.mocked(router.reload).mockClear();
-    stubReducedMotion(false);
+    stubMedia();
 });
 
 afterEach(() => {
@@ -64,16 +67,16 @@ afterEach(() => {
 });
 
 describe('PullToRefresh', () => {
-    it('renders its children with no indicator or transform at rest', () => {
-        const content = renderShell();
+    it('renders its children with no indicator or transform at rest', async () => {
+        const content = await renderShell();
 
         expect(screen.getByText('page body')).toBeInTheDocument();
         expect(screen.queryByRole('status')).not.toBeInTheDocument();
         expect(content.style.transform).toBe('');
     });
 
-    it('slides the content down with the pull and shows the gap indicator', () => {
-        const content = renderShell();
+    it('slides the content down with the pull and shows the gap indicator', async () => {
+        const content = await renderShell();
 
         drag(content, 160);
 
@@ -81,8 +84,8 @@ describe('PullToRefresh', () => {
         expect(screen.getByRole('status')).toHaveTextContent('pull to refresh');
     });
 
-    it('reloads the page when released past the threshold and holds the gap', () => {
-        const content = renderShell();
+    it('reloads the page when released past the threshold and holds the gap', async () => {
+        const content = await renderShell();
 
         pullAndRelease(content);
 
@@ -91,8 +94,8 @@ describe('PullToRefresh', () => {
         expect(content.style.transform).toBe('translateY(56px)');
     });
 
-    it('does not reload when released short of the threshold', () => {
-        const content = renderShell();
+    it('does not reload when released short of the threshold', async () => {
+        const content = await renderShell();
 
         drag(content, 130);
         release(content);
@@ -101,8 +104,8 @@ describe('PullToRefresh', () => {
         expect(screen.queryByRole('status')).not.toBeInTheDocument();
     });
 
-    it('ignores a new pull while a refresh is in flight', () => {
-        const content = renderShell();
+    it('ignores a new pull while a refresh is in flight', async () => {
+        const content = await renderShell();
         pullAndRelease(content);
 
         pullAndRelease(content);
@@ -110,22 +113,19 @@ describe('PullToRefresh', () => {
         expect(router.reload).toHaveBeenCalledTimes(1);
     });
 
-    it('settles back and drops the transform when the reload finishes', () => {
-        const content = renderShell();
+    it('settles back and drops the transform when the reload finishes', async () => {
+        const content = await renderShell();
         pullAndRelease(content);
 
         act(() => reloadOptions().onFinish());
 
         expect(screen.queryByRole('status')).not.toBeInTheDocument();
-        expect(content.style.transform).toBe('translateY(0px)');
-
-        fireEvent.transitionEnd(content);
-
         expect(content.style.transform).toBe('');
+        expect(content).toHaveClass('transition-transform');
     });
 
-    it('settles back when the reload is cancelled', () => {
-        const content = renderShell();
+    it('settles back when the reload is cancelled', async () => {
+        const content = await renderShell();
         pullAndRelease(content);
 
         act(() => reloadOptions().onCancel());
@@ -135,8 +135,8 @@ describe('PullToRefresh', () => {
 
     it.each(['onNetworkError', 'onHttpException'] as const)(
         'suppresses the default error modal on %s and shows the failure notice',
-        (handler) => {
-            const content = renderShell();
+        async (handler) => {
+            const content = await renderShell();
             pullAndRelease(content);
 
             let suppressed: unknown;
@@ -154,9 +154,9 @@ describe('PullToRefresh', () => {
         },
     );
 
-    it('drops the failure notice after a few seconds', () => {
+    it('drops the failure notice after a few seconds', async () => {
         vi.useFakeTimers();
-        const content = renderShell();
+        const content = await renderShell();
         pullAndRelease(content);
         act(() => {
             reloadOptions().onNetworkError();
@@ -170,8 +170,8 @@ describe('PullToRefresh', () => {
         expect(screen.queryByRole('status')).not.toBeInTheDocument();
     });
 
-    it('allows another pull while the failure notice shows', () => {
-        const content = renderShell();
+    it('allows another pull while the failure notice shows', async () => {
+        const content = await renderShell();
         pullAndRelease(content);
         act(() => {
             reloadOptions().onNetworkError();
@@ -184,9 +184,9 @@ describe('PullToRefresh', () => {
         expect(screen.getByRole('status')).toHaveTextContent('refreshing');
     });
 
-    it('shows only the indicator under reduced motion, without sliding the content', () => {
-        stubReducedMotion(true);
-        const content = renderShell();
+    it('shows only the indicator under reduced motion, without sliding the content', async () => {
+        stubMedia({ reduced: true });
+        const content = await renderShell();
 
         drag(content, 160);
 
@@ -200,6 +200,17 @@ describe('PullToRefresh', () => {
 
         expect(router.reload).toHaveBeenCalledTimes(1);
         expect(screen.getByRole('status')).toHaveTextContent('refreshing');
+        expect(content.style.transform).toBe('');
+    });
+
+    it('never loads the gesture on a fine pointer', async () => {
+        stubMedia({ coarse: false });
+        const content = await renderShell();
+
+        pullAndRelease(content);
+
+        expect(router.reload).not.toHaveBeenCalled();
+        expect(screen.queryByRole('status')).not.toBeInTheDocument();
         expect(content.style.transform).toBe('');
     });
 });

@@ -1,5 +1,5 @@
 import { router } from '@inertiajs/react';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { makeUser, setMockPage } from '@/test/setup';
@@ -245,14 +245,25 @@ describe('AppShell', () => {
         expect(target).toHaveAttribute('tabindex', '-1');
     });
 
-    it('reloads the page when the content is pulled down from the top', () => {
+    it('reloads the page when the content is pulled down from the top', async () => {
         vi.mocked(router.reload).mockClear();
+        vi.stubGlobal(
+            'matchMedia',
+            vi.fn((query: string) => ({
+                matches: query.includes('coarse'),
+                addEventListener: vi.fn(),
+                removeEventListener: vi.fn(),
+            })),
+        );
         setMockPage({ auth: { user: makeUser() } }, '/inbox', 'Inbox');
         render(
             <AppShell>
                 <p>child content</p>
             </AppShell>,
         );
+        await act(async () => {
+            await vi.dynamicImportSettled();
+        });
         const child = screen.getByText('child content');
 
         fireEvent.touchStart(child, {
