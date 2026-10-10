@@ -22,6 +22,8 @@ code_refs:
 
 **Status:** Accepted (2026-10-05). Decision #1803, layer 5 of #1804. Partly supersedes [[a-day-is-graded-on-distance-and-intent]] (how an easy or long day is judged) and [[decoupling-describes-a-run-and-a-deletion-re-grades-its-day]] (what makes a day ragged). Heat is out of scope: no forecast, no heat nudge and no heat band, because a forecast cannot know when or where the athlete runs.
 
+> **Item 6 is superseded (noted 2026-10-10) by decision #2078.** Only recovery feedback could trigger the mild 3% quality-pace slowdown, and that check-in has been removed, so the slowdown no longer exists. The heart-rate rules are unaffected.
+
 ## Context
 
 Easy and long runs were prescribed as a pace and judged on pace, with heart rate only able to rescue a run faster than marathon pace when no more than 20% of its zone time sat above Z2. A pace target on an easy day asks a tired, hot or hilly athlete to run harder than the day is for, and a share of zone time cannot tell a warm-up spike from a run held over the line for half an hour. Quality sessions at a mild readiness concern lost a quarter of their minutes, the same as at a strong one.
