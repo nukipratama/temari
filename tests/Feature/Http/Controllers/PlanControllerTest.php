@@ -10,6 +10,7 @@ use App\Enums\IntentVerdict;
 use App\Enums\SessionType;
 use App\Http\Controllers\PlanController;
 use App\Http\Requests\UpdatePlannedSessionRequest;
+use App\Jobs\AI\AnalyzeActivityJob;
 use App\Jobs\AI\AnalyzeBriefingMascotVoiceJob;
 use App\Jobs\AI\AnalyzePlanSeasonVoiceJob;
 use App\Jobs\Run\RegeneratePlanJob;
@@ -1101,6 +1102,31 @@ it('credits the run a skipped session is made up onto, rather than excusing it',
         ->and($monday->status->isCredited())->toBeTrue()
         ->and($monday->distance_score)->toBeGreaterThan(0);
 });
+
+it('re-narrates the made-up day\'s run and today\'s briefing after a make-up move, never for the demo athlete', function (bool $demo): void {
+    Carbon::setTestNow('2026-08-12 08:00:00');
+    Bus::fake();
+    $user = User::factory()->create(['is_demo' => $demo]);
+    $rows = planWeekRows($user, ['2026-08-11' => 'easy', '2026-08-12' => 'rest'], [
+        '2026-08-11' => ['status' => PlannedSessionStatus::Missed, 'compliance_score' => 0, 'distance_score' => 0],
+    ]);
+    makeUpRun($user, '2026-08-12', 5.0);
+    $run = Activity::query()->where('user_id', $user->id)->sole();
+
+    $this->actingAs($user)
+        ->patch("/plan/sessions/{$rows['2026-08-11']->id}", ['date' => '2026-08-12'])
+        ->assertSessionHasNoErrors();
+
+    expect($rows['2026-08-11']->fresh()->made_up_on->toDateString())->toBe('2026-08-12');
+    if ($demo) {
+        Bus::assertNotDispatched(AnalyzeActivityJob::class);
+        Bus::assertNotDispatched(AnalyzeBriefingMascotVoiceJob::class);
+    } else {
+        Bus::assertDispatched(fn (AnalyzeActivityJob $job): bool => $job->subjectId === $run->id
+            && $job->delay === AnalysisService::PLAN_EDIT_DELAY_SECONDS);
+        Bus::assertDispatched(fn (AnalyzeBriefingMascotVoiceJob $job): bool => $job->delay === AnalysisService::PLAN_EDIT_DELAY_SECONDS);
+    }
+})->with(['athlete' => [false], 'demo' => [true]]);
 
 it('counts only plan edits against the plan-edit budget, and answers the 21st within a minute with 429', function (): void {
     Carbon::setTestNow('2026-08-12 08:00:00');
