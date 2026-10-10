@@ -247,6 +247,49 @@ describe('AppShell', () => {
         expect(skip).toHaveAttribute('href', '#main-content');
         expect(target).toHaveAttribute('tabindex', '-1');
     });
+
+    it('reloads the page when the content is pulled down from the top', async () => {
+        vi.mocked(router.reload).mockClear();
+        vi.stubGlobal(
+            'matchMedia',
+            vi.fn((query: string) => ({
+                matches: query.includes('coarse'),
+                addEventListener: vi.fn(),
+                removeEventListener: vi.fn(),
+            })),
+        );
+        setMockPage({ auth: { user: makeUser() } }, '/inbox', 'Inbox');
+        render(
+            <AppShell>
+                <p>child content</p>
+            </AppShell>,
+        );
+        await act(async () => {
+            await vi.dynamicImportSettled();
+        });
+        const child = screen.getByText('child content');
+
+        fireEvent.touchStart(child, {
+            touches: [{ identifier: 1, clientX: 10, clientY: 100 }],
+        });
+        fireEvent.touchMove(child, {
+            touches: [{ identifier: 1, clientX: 10, clientY: 220 }],
+        });
+        fireEvent.touchEnd(child, { changedTouches: [] });
+
+        expect(router.reload).toHaveBeenCalledTimes(1);
+    });
+
+    it('keeps the top bar outside the pulled content', () => {
+        setMockPage({ auth: { user: makeUser() } }, '/inbox', 'Inbox');
+        render(<AppShell>content</AppShell>);
+
+        expect(
+            screen
+                .getByTestId('pull-to-refresh-content')
+                .contains(screen.getByTestId('mobile-top-bar')),
+        ).toBe(false);
+    });
 });
 
 function routerHandler<T extends 'start' | 'finish'>(name: T) {

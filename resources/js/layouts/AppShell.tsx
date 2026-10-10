@@ -13,6 +13,7 @@ import TodaySkeleton from '@/components/home/TodaySkeleton';
 import MobileBottomNav from '@/components/MobileBottomNav';
 import MobileTopBar from '@/components/MobileTopBar';
 import PlanSkeleton from '@/components/plan/PlanSkeleton';
+import PullToRefresh from '@/components/PullToRefresh';
 import StravaPausedBanner from '@/components/StravaPausedBanner';
 import StravaZoneReconnectBanner from '@/components/StravaZoneReconnectBanner';
 import TrendsSkeleton from '@/components/trends/TrendsSkeleton';
@@ -59,7 +60,7 @@ export default function AppShell({ children }: Readonly<AppShellProps>) {
 
             {/* No clearance padding: MobileTopBar is in normal flow and
                 reserves its own space. */}
-            <div>
+            <PullToRefresh>
                 <ErrorBanner />
                 <FlashNotice />
                 <StravaZoneReconnectBanner />
@@ -89,7 +90,7 @@ export default function AppShell({ children }: Readonly<AppShellProps>) {
                     )}
                     <div hidden={skeleton !== null}>{children}</div>
                 </main>
-            </div>
+            </PullToRefresh>
 
             <MobileBottomNav />
         </div>

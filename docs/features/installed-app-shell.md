@@ -14,6 +14,9 @@ code_refs:
   - resources/js/hooks/useTabSkeleton.ts
   - resources/js/components/ui/Overlay.tsx
   - resources/js/hooks/useOverlayHistory.ts
+  - resources/js/hooks/usePullToRefresh.ts
+  - resources/js/components/PullToRefresh.tsx
+  - resources/js/components/PullToRefreshGesture.tsx
   - resources/css/app.css
   - scripts/build-splash-screens.php
   - resources/brand/build-og.mjs
@@ -362,13 +365,26 @@ the next tap, and `app.css` additionally kills
 duration is set to 180ms — quicker than the UA default, since this replaces a
 progress bar and should read as the page arriving rather than as an animation.
 
+## Pull-to-refresh
+
+`overscroll-behavior-y: none` stays on `html` and `body` (see the note in
+`resources/css/app.css`), so the browser never reloads on its own: the app is
+all-dynamic and uncached, and an accidental pull re-runs every controller. The
+one refresh gesture is `PullToRefresh`, mounted once in `AppShell` around
+everything below `MobileTopBar` (so `BareShell` screens never get it). The
+gesture itself, `PullToRefreshGesture`, is a lazy chunk fetched only when the
+primary pointer is coarse, which keeps it out of every page's first paint.
+`usePullToRefresh` reads touch events only, starts only at the top of the
+document, and ignores a pull that starts inside a horizontally scrollable
+element or one marked `data-no-pull-refresh` (the scrubbing charts). A release
+past the threshold calls `router.reload()`; a failed reload suppresses Inertia's
+error modal for that request and shows a short notice in the gap. Under reduced
+motion the content does not slide.
+
 ## Deliberately absent
 
 - **Haptics.** iOS Safari does not implement `navigator.vibrate`, so any haptics
   code would be dead on the primary target device.
-- **Pull-to-refresh.** `overscroll-behavior-y: none` is set on purpose; the app
-  is all-dynamic and uncached, so an accidental pull re-runs every controller.
-  See the note in `resources/css/app.css`.
 - **Keyed, self-animated page transitions.** Removed in #396 and not coming
   back. Keying `<main>` tore down the whole content subtree on every visit (25
   card mounts on Collection), and the enter animation it existed to replay

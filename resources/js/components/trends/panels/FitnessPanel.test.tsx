@@ -188,4 +188,12 @@ describe('FitnessPanel', () => {
             }),
         ).toBeInTheDocument();
     });
+
+    it('opts out of pull-to-refresh so a scrub is not read as a pull', () => {
+        render(<FitnessPanel trend={pointsOverDays(10)} />);
+
+        expect(screen.getByRole('img', { name: /now at/ })).toHaveAttribute(
+            'data-no-pull-refresh',
+        );
+    });
 });

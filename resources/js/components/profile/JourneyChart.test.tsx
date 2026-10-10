@@ -198,4 +198,12 @@ describe('JourneyChart', () => {
             screen.queryByRole('link', { name: /open run/ }),
         ).not.toBeInTheDocument();
     });
+
+    it('opts out of pull-to-refresh so a scrub is not read as a pull', () => {
+        render(<JourneyChart weeks={WEEKS} timesSec={TIMES} />);
+
+        expect(screen.getByRole('slider')).toHaveAttribute(
+            'data-no-pull-refresh',
+        );
+    });
 });

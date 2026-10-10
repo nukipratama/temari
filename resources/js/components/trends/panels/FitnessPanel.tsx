@@ -372,6 +372,7 @@ export default function FitnessPanel({
                 aria-label={`Long-term load over ${visible.length} days, now at ${latest.ctl.toFixed(1)}.`}
                 className="mt-2 h-[10.5rem]"
                 style={{ touchAction: 'pan-y' }}
+                data-no-pull-refresh
             >
                 <Suspense
                     fallback={<Skeleton className="h-full w-full rounded-lg" />}
