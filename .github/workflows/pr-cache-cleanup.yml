@@ -1,0 +1,32 @@
+name: PR cache cleanup
+
+on:
+  pull_request:
+    types: [closed]
+
+permissions:
+  packages: write
+
+jobs:
+  delete-pr-buildcache:
+    runs-on: ubuntu-26.04-arm
+    timeout-minutes: 2
+    steps:
+      - name: Delete this PR's buildcache tag
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OWNER: ${{ github.repository_owner }}
+          PACKAGE: ${{ github.event.repository.name }}%2Fapp
+          TAG: buildcache-pr-${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          versions="/users/$OWNER/packages/container/$PACKAGE/versions"
+          ids=$(gh api --paginate "$versions?per_page=100" --jq ".[] | select(.metadata.container.tags | index(\"$TAG\")) | .id")
+          if [ -z "$ids" ]; then
+            echo "No $TAG version to delete."
+            exit 0
+          fi
+          for id in $ids; do
+            gh api -X DELETE "$versions/$id"
+            echo "Deleted version $id ($TAG)."
+          done

@@ -173,8 +173,9 @@ it('builds the ref image on a hosted runner only when a ref is given, as ci.yml 
         ->and(array_diff($uses, $ciUses))->toBe([])
         ->and($push['with'])->not->toHaveKey('cache-to')
         ->and($push['with']['push'])->toBeTrue()
-        ->and(array_intersect_key($push['with'], array_flip(['context', 'file', 'platforms', 'labels', 'cache-from', 'provenance'])))
-        ->toBe(array_intersect_key($ciPush['with'], array_flip(['context', 'file', 'platforms', 'labels', 'cache-from', 'provenance'])));
+        ->and($push['with']['cache-from'])->toBe('type=registry,ref=${{ env.APP_IMAGE }}:buildcache')
+        ->and(array_intersect_key($push['with'], array_flip(['context', 'file', 'platforms', 'labels', 'provenance'])))
+        ->toBe(array_intersect_key($ciPush['with'], array_flip(['context', 'file', 'platforms', 'labels', 'provenance'])));
 })->group('structure');
 
 it('tags the ref image by its resolved sha, never the moving ref name', function (): void {

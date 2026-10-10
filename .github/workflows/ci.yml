@@ -280,8 +280,8 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # A PR build validates only: it reads the shared buildcache but never
-      # publishes a tag or writes the cache back, so it can't displace main's.
+      # A PR build never publishes a tag; it caches to its own buildcache-pr-<n>
+      # tag, which pr-cache-cleanup.yml deletes when the PR closes.
       - name: Build and push the runtime image
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
@@ -291,8 +291,10 @@ jobs:
           push: ${{ github.event_name == 'push' }}
           tags: ${{ env.APP_IMAGE }}:${{ github.sha }}
           labels: org.opencontainers.image.source=https://github.com/${{ github.repository }}
-          cache-from: type=registry,ref=${{ env.APP_IMAGE }}:buildcache
-          cache-to: ${{ github.event_name == 'push' && format('type=registry,ref={0}:buildcache,mode=max', env.APP_IMAGE) || '' }}
+          cache-from: |
+            ${{ github.event_name == 'pull_request' && format('type=registry,ref={0}:buildcache-pr-{1}', env.APP_IMAGE, github.event.pull_request.number) || '' }}
+            type=registry,ref=${{ env.APP_IMAGE }}:buildcache
+          cache-to: ${{ github.event_name == 'push' && format('type=registry,ref={0}:buildcache,mode=max', env.APP_IMAGE) || format('type=registry,ref={0}:buildcache-pr-{1},mode=max,ignore-error=true', env.APP_IMAGE, github.event.pull_request.number) }}
           provenance: false
 
       - name: Load the runtime image locally

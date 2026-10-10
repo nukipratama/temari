@@ -16,6 +16,7 @@ code_refs:
   - .github/workflows/maintainer-alert.yml
   - .github/workflows/backup-watchdog.yml
   - .github/workflows/container-health.yml
+  - .github/workflows/pr-cache-cleanup.yml
   - scripts/restore-db.sh
   - scripts/deploy/ensure-backup-user.sh
   - scripts/deploy/backup-password.sh
@@ -96,7 +97,7 @@ Why this matters: `plan:regenerate` can dispatch up to 9 rows per athlete, and t
 
 ## Where the image is built
 
-The `build` job ([.github/workflows/ci.yml](.github/workflows/ci.yml)) runs on `ubuntu-26.04` (x64, deliberately: it emits the `linux/amd64` image the homelab runs, while the other hosted jobs use the arm64 image), needs only `changes`, and builds whenever a docker, backend or frontend input changed, so it runs in parallel with the test jobs. On a `push` it pushes `ghcr.io/<owner>/<repo>/app:<git-sha>` (a PR build only validates) using the job's own `GITHUB_TOKEN` widened to `packages: write` — **no new repository secret**. Layer cache is a registry cache (`cache-from`/`cache-to` on a `:buildcache` tag in the same GHCR package), not `type=gha`: the Actions cache is one 10 GB per-repo LRU that the hot composer and `node_modules` entries would evict a ~1 GB image cache out of between deploys.
+The `build` job ([.github/workflows/ci.yml](.github/workflows/ci.yml)) runs on `ubuntu-26.04` (x64, deliberately: it emits the `linux/amd64` image the homelab runs, while the other hosted jobs use the arm64 image), needs only `changes`, and builds whenever a docker, backend or frontend input changed, so it runs in parallel with the test jobs. On a `push` it pushes `ghcr.io/<owner>/<repo>/app:<git-sha>` (a PR build only validates) using the job's own `GITHUB_TOKEN` widened to `packages: write` — **no new repository secret**. Layer cache is a registry cache (`cache-from`/`cache-to` on a `:buildcache` tag in the same GHCR package), not `type=gha`: the Actions cache is one 10 GB per-repo LRU that the hot composer and `node_modules` entries would evict a ~1 GB image cache out of between deploys. A PR build reads its own `:buildcache-pr-<n>` tag first, then `:buildcache`, and writes only its own tag, so a repeat push reuses the layers its last push built without displacing main's; [.github/workflows/pr-cache-cleanup.yml](.github/workflows/pr-cache-cleanup.yml) deletes that tag when the PR closes.
 
 This exists because the build used to run *inside* the deploy job on the homelab runner, putting a five-stage `docker build` on the same four cores that serve live prod traffic. The secondary win is an offsite image history: the host only ever held `:latest`/`:previous` locally, so recovering further back than one deploy meant rebuilding from the commit.
 
