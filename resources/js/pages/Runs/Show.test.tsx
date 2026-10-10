@@ -95,7 +95,6 @@ const storyLine: StoryLine = {
     kind: 'post_run',
     mood: 'blazing',
     speech: null,
-    sigil_pattern: 'ssss',
     for_date: null,
 };
 

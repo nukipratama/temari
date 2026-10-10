@@ -25,7 +25,6 @@ function moodLine(User $user, string $mood, Carbon $when, bool $withActivity = t
         'kind' => StoryLine::KIND_POST_RUN,
         'mood' => $mood,
         'speech' => null,
-        'sigil_pattern' => 'dddd',
     ]);
 
     // created_at is not fillable, so it has to be set after the insert.

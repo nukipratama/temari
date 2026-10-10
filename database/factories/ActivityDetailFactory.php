@@ -45,7 +45,6 @@ class ActivityDetailFactory extends Factory
             'weather_temp_c' => fake()->numberBetween(22, 32),
             'weather_humidity_pct' => fake()->numberBetween(60, 95),
             'weather_rain_detected' => false,
-            'vibe_state' => null,
         ];
     }
 }

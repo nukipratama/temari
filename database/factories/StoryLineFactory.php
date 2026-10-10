@@ -30,7 +30,6 @@ class StoryLineFactory extends Factory
             'for_date' => null,
             'mood' => fake()->randomElement(['blazing', 'easy', 'wobbly', 'gassed', 'overloaded', 'chill']),
             'speech' => fake()->sentence(10),
-            'sigil_pattern' => fake()->bothify('????'),
         ];
     }
 
