@@ -20,7 +20,7 @@ use Illuminate\Support\Carbon;
  * requester saw. The ceiling comes off {@see TrainingLoad}, which counts the
  * day's own runs, so it moves as the day goes on — and a clamp that has since
  * lifted should not be narrated at all. That is also why the row it backs is
- * fingerprinted coarsely; see {@see \App\Services\AI\MaterialFingerprint::forClamp()}.
+ * fingerprinted coarsely; see {@see self::fingerprint()}.
  */
 final readonly class ClampNarrationContext
 {
@@ -80,5 +80,29 @@ final readonly class ClampNarrationContext
             'readiness_inputs' => $assessment['inputs'],
             'decision_source' => $decisionSource,
         ];
+    }
+
+    /**
+     * What a clamp explanation actually speaks to, deliberately coarser than
+     * the clamp itself. The ceiling is recomputed from {@see TrainingLoad}
+     * on every ingest, so it drifts a little with each run logged; fingerprinting
+     * the exact figures would re-bill this line several times on the one kind of
+     * day it exists for. The band, the type it was downgraded to, and whether the
+     * athlete has already run are the whole substance of the sentence — a
+     * ceiling that slides within its own band changes nothing worth saying.
+     *
+     * @param  list<string>  $readinessReasons
+     */
+    public static function fingerprint(ReadinessCeiling $ceiling, SessionType $clampedTo, bool $hasRunToday, array $readinessReasons = []): string
+    {
+        $material = [
+            'ceiling' => $ceiling->value,
+            'clamped_to' => $clampedTo->value,
+            'has_run_today' => $hasRunToday,
+            ...($readinessReasons === [] ? [] : ['readiness_reasons' => $readinessReasons]),
+        ];
+        ksort($material);
+
+        return hash('xxh128', (string) json_encode($material));
     }
 }

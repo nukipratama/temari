@@ -3,10 +3,12 @@
 declare(strict_types=1);
 
 use App\Enums\AdaptationReason;
+use App\Enums\SessionType;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\StoryLine;
 use App\Services\AI\MaterialFingerprint;
+use App\Services\Run\Metrics\ReadinessCeiling;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
@@ -223,4 +225,11 @@ it('changes when the current week adaptation reason or deload changes', function
         ->not->toBe($steady)
         ->and(MaterialFingerprint::forSeason(false, AdaptationReason::Steady, true))
         ->not->toBe($steady);
+});
+
+it('pins the clamp fingerprint for a fixed fixture', function (): void {
+    expect(MaterialFingerprint::forClamp(ReadinessCeiling::Rest, SessionType::Rest, false, ['illness_reported']))
+        ->toBe('f4d1dfa16646207beb6922b3bffad62e')
+        ->and(MaterialFingerprint::forClamp(ReadinessCeiling::EasyOnly, SessionType::Easy, true))
+        ->toBe('646ce5aa2bead99e75aa41b22a1b4c08');
 });

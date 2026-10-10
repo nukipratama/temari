@@ -28,31 +28,6 @@ final readonly class PlanNarrationRequester
     ) {
     }
 
-    /**
-     * The narrated explanation for today's step-down, or null while none has
-     * landed. Callers fall back to the clamp's own templated note, which is why
-     * this returns only a Done row and never a pending one.
-     */
-    public function clampVoiceFor(User $user, Carbon $today): ?string
-    {
-        $context = $this->clampContext->forUserOn($user->id, $today);
-        if ($context === null) {
-            return null;
-        }
-
-        $analysis = Analysis::query()
-            ->forSubject(AnalysisType::PLAN_CLAMP_VOICE_SUBJECT_TYPE, $user->id, AnalysisType::PlanClampVoice, $today->toDateString())
-            ->where('status', AnalysisStatus::Done)
-            ->first(['content', 'content_fingerprint']);
-        if ($analysis === null) {
-            return null;
-        }
-
-        $expected = MaterialFingerprint::forClamp($context['ceiling'], $context['clamped_to'], $context['has_run_today'], $context['readiness_reasons']);
-
-        return $analysis->content_fingerprint === $expected ? $analysis->content : null;
-    }
-
     /** Requests a current clamp's explanation through the shared briefing side effects. */
     public function requestClampVoice(User $user, Carbon $today): bool
     {

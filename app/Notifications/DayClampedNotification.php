@@ -8,7 +8,7 @@ use App\Enums\NotificationKind;
 use App\Enums\SessionType;
 use App\Models\User;
 use App\Notifications\Messages\InboxMessage;
-use App\Services\AI\PlanNarrationRequester;
+use App\Services\Run\Plan\ClampVoiceReader;
 use App\Services\Notifications\ChannelRouter;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -79,6 +79,6 @@ class DayClampedNotification extends Notification implements ShouldQueue
      */
     private function body(User $notifiable): string
     {
-        return app(PlanNarrationRequester::class)->clampVoiceFor($notifiable, Carbon::parse($this->date)) ?? $this->note;
+        return app(ClampVoiceReader::class)->clampVoiceFor($notifiable, Carbon::parse($this->date)) ?? $this->note;
     }
 }

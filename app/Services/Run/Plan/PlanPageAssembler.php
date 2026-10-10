@@ -11,7 +11,6 @@ use App\Models\PlannedSession;
 use App\Models\Season;
 use App\Models\User;
 use App\Services\Run\Ingest\HydrationBacklog;
-use App\Services\AI\PlanNarrationRequester;
 use App\Services\Gamification\SeasonPayloadBuilder;
 use App\Services\Run\Metrics\ReadinessCeiling;
 use App\Services\Run\Metrics\TrainingLoad;
@@ -48,7 +47,7 @@ final class PlanPageAssembler
         private readonly SeasonPayloadBuilder $seasonPayloadBuilder,
         private readonly SeasonSummaryBuilder $seasonSummaryBuilder,
         private readonly SessionMatcher $sessionMatcher,
-        private readonly PlanNarrationRequester $narrationRequester,
+        private readonly ClampVoiceReader $clampVoiceReader,
         private readonly PlanRegenerateCooldown $regenerateCooldown,
         private readonly ResolveActiveRaceAction $activeRace,
         private readonly ResolveWeekAdaptationAction $weekAdaptation,
@@ -204,7 +203,7 @@ final class PlanPageAssembler
         // Falls back to the clamp's own templated note when no line has landed
         // yet, so the step-down is never unexplained.
         $clampVoice = EffectiveSession::clampVoiceNeeded($clamp, $todaySession)
-            ? $this->narrationRequester->clampVoiceFor($user, $today)
+            ? $this->clampVoiceReader->clampVoiceFor($user, $today)
             : null;
 
         $weekProjection = $this->volumeProjector->project(
