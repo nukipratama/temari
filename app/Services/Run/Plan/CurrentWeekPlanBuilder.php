@@ -8,7 +8,6 @@ use App\Enums\PlannedSessionStatus;
 use App\Enums\SessionType;
 use App\Models\PlannedSession;
 use App\Models\User;
-use App\Services\AI\PlanNarrationRequester;
 use Illuminate\Support\Carbon;
 
 /**
@@ -23,7 +22,7 @@ final readonly class CurrentWeekPlanBuilder
 {
     public function __construct(
         private CurrentWeekKm $currentWeekKm,
-        private PlanNarrationRequester $planNarration,
+        private ClampVoiceReader $clampVoiceReader,
         private RaceAmbitionAssessor $ambition,
     ) {
     }
@@ -45,7 +44,7 @@ final readonly class CurrentWeekPlanBuilder
         $resolvedStatuses = $week['statuses'];
 
         $clampVoice = EffectiveSession::clampVoiceNeeded($clamp, $week['today_session'])
-            ? $this->planNarration->clampVoiceFor($user, $today)
+            ? $this->clampVoiceReader->clampVoiceFor($user, $today)
             : null;
 
         $days = $currentWeekSessions->map(fn (PlannedSession $s): array => PlanRenderer::dayPayload(

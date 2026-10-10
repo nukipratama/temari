@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Services\AI\Agent\Tools;
 
 use App\Models\User;
-use App\Services\AI\HistoryNarrationGate;
+use App\Services\Run\Ingest\HydrationBacklog;
 use App\Services\Run\Metrics\TrainingLoad;
 use Illuminate\Support\Carbon;
 
@@ -39,7 +39,7 @@ final class TrainingLoadTool extends UserTool
     {
         // History still hydrating from a fresh connect: CTL/ATL/form would be
         // computed off an incomplete past — see docs/decisions/history-narrates-on-demand.md.
-        if (app(HistoryNarrationGate::class)->awaitsOlderHydration($this->user->id, $this->asOf)) {
+        if (app(HydrationBacklog::class)->awaitsOlderHydration($this->user->id, $this->asOf)) {
             return ['training_load' => null, 'history_loading' => true];
         }
 

@@ -10,7 +10,7 @@ use App\Models\AI\Analysis;
 use App\Models\User;
 use App\Services\AI\NarrationGate;
 use App\Services\AI\AnalysisStatus;
-use App\Services\AI\HistoryNarrationGate;
+use App\Services\Run\Ingest\HydrationBacklog;
 use App\Support\SharedPropCacheKey;
 use Closure;
 use Illuminate\Database\Eloquent\Builder;
@@ -25,7 +25,7 @@ final readonly class AiProps
 {
     public function __construct(
         private NarrationGate $gate,
-        private HistoryNarrationGate $history,
+        private HydrationBacklog $backlog,
     ) {
     }
 
@@ -71,7 +71,7 @@ final readonly class AiProps
      * Whether this user has at least one synced activity still waiting on its
      * per-activity narration (a backfill chain hasn't reached it yet, or a
      * failed attempt is still under retry budget), or has narration held
-     * behind the still-hydrating history gate ({@see HistoryNarrationGate::awaitsFullHydration()}),
+     * behind the still-hydrating history gate ({@see HydrationBacklog::awaitsFullHydration()}),
      * so the UI can show a soft "still catching up" reassurance instead of an
      * empty-looking run. `awaitsFullHydration()` is the widest of the gate's
      * checks — any unhydrated run at any age, not just one narrator's bounded
@@ -98,7 +98,7 @@ final readonly class AiProps
 
         return SharedPropCacheKey::AiCatchingUp->remember(
             $user->id,
-            fn (): bool => $this->history->awaitsFullHydration($user->id)
+            fn (): bool => $this->backlog->awaitsFullHydration($user->id)
                 || Analysis::query()
                     ->where('subject_type', Activity::class)
                     ->whereIn('analysis_type', array_column(AnalyzeActivityJob::groupedTypes(), 'value'))

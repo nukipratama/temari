@@ -142,7 +142,7 @@ there is nothing yet to narrate against. `users.backfilled_at` (stamped by `Kick
 right before it calls `afterBackfill()`) is null for exactly that window; `RequestTodaysBriefing`
 holds on it alone. Once it's set, the briefing narrates right away even if older history is
 still hydrating (#1054): `AnalysisService::markDone()` detects that live, at generation time
-([`HistoryNarrationGate::awaitsOlderHydration()`](../../app/Services/AI/HistoryNarrationGate.php)),
+([`HydrationBacklog::awaitsOlderHydration()`](../../app/Services/Run/Ingest/HydrationBacklog.php)),
 and flags the row for `SettleEarlyNarrationAction`'s one-time replay once that history lands — see
 [[history-narrates-on-demand]]. The once-per-day `Cache::add` guard in `afterBackfill()` only runs
 *after* the `backfilled_at` check, so a re-run of the connect chain before it's set never spends
@@ -197,7 +197,8 @@ and spends nothing. See [[demo-user-billing-exclusion]].
 
 `plan:score-compliance` is not on that list: its scoring is free, but a settled row marks the plan
 dirty, and the reconciliation that follows can request the plan narration for an active athlete
-([`PlanReconciliationService::drain()`](../../app/Services/Run/Plan/PlanReconciliationService.php)).
+([`PlanReconciliationService::drain()`](../../app/Services/Run/Plan/PlanReconciliationService.php) fires
+`PlanRegenerated`, and [`RequestPlanNarrationOnPlanRegenerated`](../../app/Listeners/RequestPlanNarrationOnPlanRegenerated.php) applies the active-athlete gate).
 It is classified as billing in the demo-exclusion tripwire.
 
 ### 2. Ingest cascade
@@ -215,9 +216,9 @@ then `ProfileVoice` keyed by the current ISO week with `invalidate: false` so it
 never re-bills. Both of those two narrate right away even while history their own narrator reads
 is still hydrating (#1054) — a fresh connect's early pass, per [[history-narrates-on-demand]]:
 `AnalysisService::markDone()` detects it live, at generation time (the briefing on past-you's
-bounded reach via [`HistoryNarrationGate::awaitsOlderHydration()`](../../app/Services/AI/HistoryNarrationGate.php),
+bounded reach via [`HydrationBacklog::awaitsOlderHydration()`](../../app/Services/Run/Ingest/HydrationBacklog.php),
 anchored on now rather than the ingested run's own date; the profile voice on the whole backlog via
-[`HistoryNarrationGate::awaitsFullHydration()`](../../app/Services/AI/HistoryNarrationGate.php),
+[`HydrationBacklog::awaitsFullHydration()`](../../app/Services/Run/Ingest/HydrationBacklog.php),
 since it reads lifetime stats and the full PR table), withholds load/form data from the narrator's
 tools, and flags the row for `SettleEarlyNarrationAction`'s one-time replay once that history
 lands. Both conditions are bounded by the same `ai.recap_hydration_grace_hours` window as the
@@ -241,10 +242,10 @@ narrate them once the window closes, which is why a pending recap row is not a b
   dispatch. See [[scoped-run-qa-not-an-analysis-row]] and [[run-qa-is-a-conversation-about-one-run]].
 - **`PlanController::regenerate`** — the Plan page's own regenerate button runs the *same*
   `requestForCurrentWeek()` as the Monday command, which touches only the season row
-  (`PlanSeasonVoice`). It is limited by its own 3600s cooldown inside `PlanNarrationRequester`, not by
+  (`PlanSeasonVoice`). It is limited by its own 3600s [`PlanRegenerateCooldown`](../../app/Services/Run/Plan/PlanRegenerateCooldown.php), not by
   the per-block cooldown every other trigger uses.
 - **`PlanController::update`, on a make-up move** — once the lock is released,
-  [`MakeUpService::notify()`](../../app/Services/Run/Plan/MakeUpService.php) re-requests the runs on both the made-up
+  [`RenarrateAfterMakeUp`](../../app/Actions/AI/RenarrateAfterMakeUp.php), called by the controller right after `MakeUpService::notify()`, re-requests the runs on both the made-up
   day and the day it emptied (`post_run_speech`, `run_insight`) and their `card_flavor` with
   `invalidate: true`, and re-requests
   today's `briefing_mascot_voice` with `invalidate: true` when the make-up lands on today or takes
@@ -361,7 +362,7 @@ Three more limits:
   [900s cooldown](../../app/Support/Cooldown.php) stops a human clicking twice, at the
   controller, before a job exists. The `Done` check at the top of
   [`AnalyzeRowJob::handle()`](../../app/Jobs/AI/AnalyzeRowJob.php) stops a UI trigger and a
-  Horizon retry racing into a double bill. Plan narration adds two more, separate ones inside `PlanNarrationRequester`: a 86400s per-athlete narration cooldown (`Cooldown::PLAN_NARRATION_WINDOW_SECONDS`) and the 3600s manual-regenerate cooldown.
+  Horizon retry racing into a double bill. Plan narration adds two more, separate ones inside `PlanNarrationRequester`: a 86400s per-athlete narration cooldown (`Cooldown::PLAN_NARRATION_WINDOW_SECONDS`) and, in [`PlanRegenerateCooldown`](../../app/Services/Run/Plan/PlanRegenerateCooldown.php), the 3600s manual-regenerate cooldown.
 
 Three further ceilings bound a call rather than stopping it: a per-user trigger rate limit of 8/min,
 a run-question limit of 4/min, and a per-run agent budget of 8 steps / 30k tokens — all in

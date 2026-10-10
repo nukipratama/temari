@@ -9,7 +9,7 @@ use App\Models\AI\Analysis;
 use App\Models\User;
 use App\Services\AI\AnalysisOrigin;
 use App\Services\AI\AnalysisService;
-use App\Services\AI\HistoryNarrationGate;
+use App\Services\Run\Ingest\HydrationBacklog;
 use App\Services\AI\NarrationOrigin;
 use App\Services\AI\TrendReadFingerprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -29,7 +29,7 @@ it('debounces by user and requests only an active athlete trend read', function 
     $listener = new RefreshTrendReadOnSnapshotsSettled(
         $service,
         new RecentlyActiveUsers(),
-        app(HistoryNarrationGate::class),
+        app(HydrationBacklog::class),
         app(TrendReadFingerprint::class),
     );
     $listener->handle(new TrendSnapshotsSettled($user->id));
@@ -46,7 +46,7 @@ it('does not read while a newer snapshot repair is still pending', function (): 
     $listener = new RefreshTrendReadOnSnapshotsSettled(
         $service,
         new RecentlyActiveUsers(),
-        app(HistoryNarrationGate::class),
+        app(HydrationBacklog::class),
         app(TrendReadFingerprint::class),
     );
 

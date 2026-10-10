@@ -8,7 +8,7 @@ use App\Models\ActivityDetail;
 use App\Models\PersonalRecord;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
-use App\Services\AI\HistoryNarrationGate;
+use App\Services\Run\Ingest\HydrationBacklog;
 use App\Services\Run\LifetimeStats;
 use Illuminate\Support\Carbon;
 
@@ -47,7 +47,7 @@ final class LifetimeStatsTool extends UserTool
         $firstRunAt = $lifetime['first_run_at'];
         // History still hydrating from a fresh connect: withhold the latest
         // form reading — see docs/decisions/history-narrates-on-demand.md.
-        $historyLoading = app(HistoryNarrationGate::class)->awaitsFullHydration($this->user->id);
+        $historyLoading = app(HydrationBacklog::class)->awaitsFullHydration($this->user->id);
 
         return [
             'name' => $this->user->first_name ?? $this->user->name,

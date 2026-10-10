@@ -17,7 +17,6 @@ use App\Models\ActivityDetail;
 use App\Models\ActivityStream;
 use App\Models\StravaConnection;
 use App\Models\User;
-use App\Services\AI\HistoryNarrationGate;
 use App\Services\Run\Metrics\PersonalRecords;
 use App\Services\Run\Metrics\HeartRateZones;
 use App\Services\Run\Metrics\StreamSummary;
@@ -60,7 +59,7 @@ class ActivityPipeline
         private readonly WeeklyAggregator $weeklyAggregator,
         private readonly DetectActivityMilestonesAction $milestoneDetector,
         private readonly AppConfig $config,
-        private readonly HistoryNarrationGate $history,
+        private readonly HydrationBacklog $backlog,
         private readonly SettleEarlyNarrationAction $settleEarlyNarration,
         private readonly DeleteIngestedRunAction $deleteIngestedRun,
     ) {
@@ -133,7 +132,7 @@ class ActivityPipeline
         // look like a best. Deferred here, made whole by
         // SettleEarlyNarrationAction once that history lands.
         $deferPrDetection = $detailModel->start_date_local !== null
-            && $this->history->awaitsOlderHydration($activity->user_id, $detailModel->start_date_local);
+            && $this->backlog->awaitsOlderHydration($activity->user_id, $detailModel->start_date_local);
 
         // Wrapped in a transaction so analyzed_at rolls back with the story layer:
         // a PR / card / Temari / milestone throw must leave the stub drainable,

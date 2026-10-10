@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Enums\PlanRegenerationReason;
+use App\Actions\AI\RenarrateAfterMakeUp;
 use App\Http\Requests\UpdatePlannedSessionRequest;
 use App\Models\PlannedSession;
 use App\Models\User;
@@ -12,6 +13,7 @@ use App\Services\AI\AnalysisService;
 use App\Services\AI\PlanNarrationRequester;
 use App\Services\Run\Plan\MakeUpService;
 use App\Services\Run\Plan\Periodizer;
+use App\Services\Run\Plan\PlanRegenerateCooldown;
 use App\Services\Run\Plan\PlanRegenerationService;
 use App\Services\Run\Plan\PlanPageAssembler;
 use App\Services\Run\Plan\SessionEditRules;
@@ -32,7 +34,7 @@ use Inertia\Response;
  */
 class PlanController extends Controller
 {
-    public function index(Request $request, PlanPageAssembler $plan): Response
+    public function index(Request $request, PlanPageAssembler $plan, PlanNarrationRequester $narration): Response
     {
         /** @var User $user */
         $user = $request->user();
@@ -51,17 +53,23 @@ class PlanController extends Controller
             'seasonAdherencePct' => Inertia::defer(fn (): ?int => $plan->seasonAdherencePct($user, $today)),
             'adaptation' => Inertia::defer(fn (): ?array => $plan->adaptation($user, $today)),
             'disclaimerLine' => TrainingDisclaimer::SHORT,
-            'planNarration' => Inertia::defer(fn (): array => $plan->planNarration($user)),
+            'planNarration' => Inertia::defer(function () use ($narration, $user): array {
+                if ($user->is_demo) {
+                    $narration->ensureDemoFilled($user);
+                }
+
+                return ['season' => $narration->seasonPayload($user)];
+            }),
             'regenerateCooldownSeconds' => fn (): ?int => $plan->regenerateCooldownSeconds($user),
         ]);
     }
 
-    public function regenerate(Request $request, PlanNarrationRequester $narrationRequester, PlanRegenerationService $regeneration): RedirectResponse
+    public function regenerate(Request $request, PlanRegenerateCooldown $cooldown, PlanRegenerationService $regeneration): RedirectResponse
     {
         /** @var User $user */
         $user = $request->user();
 
-        if ($narrationRequester->regenerateCooldownRemaining($user) !== null) {
+        if ($cooldown->remaining($user) !== null) {
             return back()->with('info', "Temari's still catching up on the last replan. Give it a little longer.");
         }
 
@@ -89,6 +97,7 @@ class PlanController extends Controller
         Periodizer $periodizer,
         SessionMatcher $sessionMatcher,
         MakeUpService $makeUps,
+        RenarrateAfterMakeUp $renarrateAfterMakeUp,
         AnalysisService $analysisService,
     ): RedirectResponse {
         $this->authorizeOwner($request, $plannedSession);
@@ -143,7 +152,8 @@ class PlanController extends Controller
         }
 
         if ($makeUpTarget !== null) {
-            $makeUps->notify($user, $session->date, $makeUpTarget->date, $today);
+            $makeUps->notify($user, $session->date, $makeUpTarget->date);
+            $renarrateAfterMakeUp($user, $session->date, $makeUpTarget->date, $today);
 
             return back();
         }

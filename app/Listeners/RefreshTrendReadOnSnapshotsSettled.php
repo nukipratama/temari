@@ -10,9 +10,9 @@ use App\Models\User;
 use App\Services\AI\AnalysisOrigin;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisType;
-use App\Services\AI\HistoryNarrationGate;
 use App\Services\AI\NarrationOrigin;
 use App\Services\AI\TrendReadFingerprint;
+use App\Services\Run\Ingest\HydrationBacklog;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Queue\Attributes\DebounceFor;
 
@@ -22,7 +22,7 @@ final readonly class RefreshTrendReadOnSnapshotsSettled implements ShouldQueue
     public function __construct(
         private AnalysisService $analysis,
         private RecentlyActiveUsers $activeUsers,
-        private HistoryNarrationGate $history,
+        private HydrationBacklog $backlog,
         private TrendReadFingerprint $fingerprint,
     ) {
     }
@@ -40,7 +40,7 @@ final readonly class RefreshTrendReadOnSnapshotsSettled implements ShouldQueue
         if (
             $user === null
             || ! $this->activeUsers->includes($user)
-            || $this->history->awaitsFullHydration($user->id)
+            || $this->backlog->awaitsFullHydration($user->id)
             || $user->trend_snapshots_pending_from !== null
             || $user->trend_snapshots_rebuilding_from !== null
         ) {

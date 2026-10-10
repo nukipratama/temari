@@ -14,6 +14,8 @@ code_refs:
 
 # The backfill drain hydrates oldest-first
 
+> **Superseded fact (2026-10-10):** `awaitsOlderHydration()` and `awaitsFullHydration()` now live on `HydrationBacklog` ([[run-ingest-pipeline]]), not `HistoryNarrationGate`; their behaviour is unchanged.
+
 **Status:** Accepted (2026-09-18). Supersedes the ordering half of
 [[background-hydration-drain]]; that note's headroom pacing, cadence, even
 split and give-up guard are unchanged and stay there.

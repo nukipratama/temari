@@ -88,3 +88,84 @@ it('ignores an unscored run outside the trailing CTL window', function (): void 
 
     expect(app(HydrationBacklog::class)->recentLoadAwaitsScoring($user->id, $today))->toBeFalse();
 });
+
+function hydrationAthleteConnectedAt(string $connectedAt = '2026-09-01 12:00:00'): User
+{
+    $user = User::factory()->create();
+    StravaConnection::factory()->for($user)->create(['created_at' => Carbon::parse($connectedAt)]);
+
+    return $user;
+}
+
+function hydrationRunFor(User $user, string $startedAt, IngestState $state = IngestState::Detailed): Activity
+{
+    $activity = Activity::factory()->for($user)->create([
+        'ingest_state' => $state,
+        'analyzed_at' => $state === IngestState::Detailed ? Carbon::now() : null,
+    ]);
+    ActivityDetail::factory()->for($activity)->create(['start_date_local' => Carbon::parse($startedAt)]);
+
+    return $activity;
+}
+
+describe('history hydration holds', function (): void {
+    beforeEach(function (): void {
+        Carbon::setTestNow('2026-09-15 09:00:00');
+    });
+
+    afterEach(function (): void {
+        Carbon::setTestNow();
+    });
+
+    it('holds automatic narration while an older run within past-you reach still hydrates, inside the grace window', function (): void {
+        $user = hydrationAthleteConnectedAt('2026-09-15 08:00:00');
+        hydrationRunFor($user, '2025-11-26 06:00:00', IngestState::Summary);
+
+        expect(app(HydrationBacklog::class)->awaitsOlderHydration($user->id, Carbon::parse('2026-09-13 06:00:00')))
+            ->toBeTrue();
+    });
+
+    it('releases automatic narration once the grace window after connecting has passed', function (): void {
+        $user = hydrationAthleteConnectedAt('2026-09-13 08:00:00');
+        hydrationRunFor($user, '2025-11-26 06:00:00', IngestState::Summary);
+
+        expect(app(HydrationBacklog::class)->awaitsOlderHydration($user->id, Carbon::parse('2026-09-12 06:00:00')))
+            ->toBeFalse();
+    });
+
+    it('does not hold automatic narration on history past past-you reach', function (): void {
+        $user = hydrationAthleteConnectedAt('2026-09-15 08:00:00');
+        hydrationRunFor($user, '2025-09-01 06:00:00', IngestState::Summary);
+
+        expect(app(HydrationBacklog::class)->awaitsOlderHydration($user->id, Carbon::parse('2026-09-13 06:00:00')))
+            ->toBeFalse();
+    });
+
+    it('holds full hydration while any run of the backlog is unhydrated, even outside past-you reach', function (): void {
+        $user = hydrationAthleteConnectedAt('2026-09-15 08:00:00');
+        hydrationRunFor($user, '2020-01-01 06:00:00', IngestState::Summary);
+
+        expect(app(HydrationBacklog::class)->awaitsFullHydration($user->id))->toBeTrue();
+    });
+
+    it('releases full hydration once every run of the backlog has hydrated', function (): void {
+        $user = hydrationAthleteConnectedAt('2026-09-15 08:00:00');
+        hydrationRunFor($user, '2020-01-01 06:00:00');
+
+        expect(app(HydrationBacklog::class)->awaitsFullHydration($user->id))->toBeFalse();
+    });
+
+    it('releases full hydration once the grace window after connecting has passed, despite a stuck backlog entry', function (): void {
+        $user = hydrationAthleteConnectedAt('2026-09-13 08:00:00');
+        hydrationRunFor($user, '2020-01-01 06:00:00', IngestState::Summary);
+
+        expect(app(HydrationBacklog::class)->awaitsFullHydration($user->id))->toBeFalse();
+    });
+
+    it('never holds full hydration for an athlete with no Strava connection', function (): void {
+        $user = User::factory()->create();
+        hydrationRunFor($user, '2020-01-01 06:00:00', IngestState::Summary);
+
+        expect(app(HydrationBacklog::class)->awaitsFullHydration($user->id))->toBeFalse();
+    });
+});

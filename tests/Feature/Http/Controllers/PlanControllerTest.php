@@ -3,12 +3,14 @@
 declare(strict_types=1);
 
 use Illuminate\Support\Collection;
+use App\Actions\AI\RenarrateAfterMakeUp;
 use App\Enums\PlanRegenerationReason;
 use App\Enums\PlannedSessionStatus;
 use App\Enums\IntentVerdict;
 use App\Enums\SessionType;
 use App\Http\Controllers\PlanController;
 use App\Http\Requests\UpdatePlannedSessionRequest;
+use App\Jobs\AI\AnalyzeActivityJob;
 use App\Jobs\AI\AnalyzeBriefingMascotVoiceJob;
 use App\Jobs\AI\AnalyzePlanSeasonVoiceJob;
 use App\Jobs\Run\RegeneratePlanJob;
@@ -27,7 +29,7 @@ use App\Models\AI\Analysis;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
-use App\Services\AI\PlanNarrationRequester;
+use App\Services\Run\Plan\PlanRegenerateCooldown;
 use App\Services\Run\Plan\ComplianceScorer;
 use App\Services\Run\Plan\MakeUpService;
 use App\Services\Run\Plan\Periodizer;
@@ -413,6 +415,7 @@ it('rejects a session edit when regeneration replaced its bound row', function (
         app(Periodizer::class),
         app(SessionMatcher::class),
         app(MakeUpService::class),
+        app(RenarrateAfterMakeUp::class),
         app(AnalysisService::class),
     ))->toThrow(HttpException::class, 'This plan changed while you were editing. Reload and try again.');
 
@@ -460,7 +463,7 @@ it('queues a manual regeneration when the per-user lock stays busy', function ()
     $lock->release();
     Bus::assertDispatched(fn (RegeneratePlanJob $job): bool =>
     $job->userId === $user->id && $job->reason === PlanRegenerationReason::Manual);
-    expect(app(PlanNarrationRequester::class)->regenerateCooldownRemaining($user))->not->toBeNull();
+    expect(app(PlanRegenerateCooldown::class)->remaining($user))->not->toBeNull();
 });
 
 it('clamps today\'s session against the readiness ceiling without mutating the stored row', function (): void {
@@ -635,6 +638,19 @@ it('paints the Plan shell and resolves its deferred props inside their query bud
     expect($queries)->toBeLessThanOrEqual(21);
     expect($readinessQueries)->toBe(['stress' => 1, 'feedback' => 1]);
 });
+
+it('fills the demo athlete\'s season block rule-based when the deferred planNarration prop resolves, and leaves a regular athlete\'s alone', function (bool $demo): void {
+    Bus::fake();
+    $user = User::factory()->create(['is_demo' => $demo]);
+    $this->actingAs($user)->get('/plan')->assertSuccessful();
+
+    $this->actingAs($user)
+        ->get('/plan', inertiaPartialHeaders($this->actingAs($user), '/plan', 'Plan', 'planNarration'))
+        ->assertSuccessful()
+        ->assertJsonPath($demo ? 'props.planNarration.season.status' : 'props.planNarration.season', $demo ? 'done' : null);
+
+    Bus::assertNotDispatched(AnalyzePlanSeasonVoiceJob::class);
+})->with(['demo' => [true], 'regular' => [false]]);
 
 function planBudgetFixture(): User
 {
@@ -1086,6 +1102,31 @@ it('credits the run a skipped session is made up onto, rather than excusing it',
         ->and($monday->status->isCredited())->toBeTrue()
         ->and($monday->distance_score)->toBeGreaterThan(0);
 });
+
+it('re-narrates the made-up day\'s run and today\'s briefing after a make-up move, never for the demo athlete', function (bool $demo): void {
+    Carbon::setTestNow('2026-08-12 08:00:00');
+    Bus::fake();
+    $user = User::factory()->create(['is_demo' => $demo]);
+    $rows = planWeekRows($user, ['2026-08-11' => 'easy', '2026-08-12' => 'rest'], [
+        '2026-08-11' => ['status' => PlannedSessionStatus::Missed, 'compliance_score' => 0, 'distance_score' => 0],
+    ]);
+    makeUpRun($user, '2026-08-12', 5.0);
+    $run = Activity::query()->where('user_id', $user->id)->sole();
+
+    $this->actingAs($user)
+        ->patch("/plan/sessions/{$rows['2026-08-11']->id}", ['date' => '2026-08-12'])
+        ->assertSessionHasNoErrors();
+
+    expect($rows['2026-08-11']->fresh()->made_up_on->toDateString())->toBe('2026-08-12');
+    if ($demo) {
+        Bus::assertNotDispatched(AnalyzeActivityJob::class);
+        Bus::assertNotDispatched(AnalyzeBriefingMascotVoiceJob::class);
+    } else {
+        Bus::assertDispatched(fn (AnalyzeActivityJob $job): bool => $job->subjectId === $run->id
+            && $job->delay === AnalysisService::PLAN_EDIT_DELAY_SECONDS);
+        Bus::assertDispatched(fn (AnalyzeBriefingMascotVoiceJob $job): bool => $job->delay === AnalysisService::PLAN_EDIT_DELAY_SECONDS);
+    }
+})->with(['athlete' => [false], 'demo' => [true]]);
 
 it('counts only plan edits against the plan-edit budget, and answers the 21st within a minute with 429', function (): void {
     Carbon::setTestNow('2026-08-12 08:00:00');

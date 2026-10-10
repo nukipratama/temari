@@ -6,6 +6,7 @@ namespace App\Services\AI;
 
 use App\Actions\AI\RecentlyActiveUsers;
 use App\Models\User;
+use App\Services\Run\Ingest\HydrationBacklog;
 use Illuminate\Support\Carbon;
 
 /**
@@ -25,6 +26,7 @@ final readonly class NarrationEligibility
     public function __construct(
         private BackfillAgeGate $ages,
         private HistoryNarrationGate $history,
+        private HydrationBacklog $backlog,
         private RecentlyActiveUsers $activeUsers,
     ) {
     }
@@ -36,7 +38,7 @@ final readonly class NarrationEligibility
             $this->ages->isTooOld($startedAt) => NarrationVerdict::TooOld,
             $this->history->isHistorical($user, $startedAt)
                 && ! $this->history->narratesAutomatically($startedAt) => NarrationVerdict::PreConnect,
-            $this->history->awaitsOlderHydration($user->id, $startedAt) => NarrationVerdict::AwaitingBacklog,
+            $this->backlog->awaitsOlderHydration($user->id, $startedAt) => NarrationVerdict::AwaitingBacklog,
             ! $this->activeUsers->includes($user) => NarrationVerdict::Inactive,
             default => NarrationVerdict::Eligible,
         };

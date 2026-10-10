@@ -4,19 +4,11 @@ declare(strict_types=1);
 
 use App\Enums\PlannedSessionStatus;
 use App\Enums\SessionType;
-use App\Jobs\AI\AnalyzeActivityJob;
-use App\Jobs\AI\AnalyzeBriefingMascotVoiceJob;
-use App\Jobs\AI\AnalyzeCardFlavorJob;
 use App\Jobs\Run\ReconcilePlanJob;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
-use App\Models\AI\Analysis;
 use App\Models\PlannedSession;
-use App\Models\RunCard;
 use App\Models\User;
-use App\Services\AI\AnalysisService;
-use App\Services\AI\AnalysisStatus;
-use App\Services\AI\AnalysisType;
 use App\Services\Run\Plan\MakeUpService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -40,7 +32,7 @@ const MAKE_UP_CLAMP = [
 
 /**
  * A missed Easy already swapped off `$vacatedDate` onto `$targetDate`, where
- * a 5 km run with its narration and card already landed.
+ * a 5 km run landed.
  *
  * @return array{User, PlannedSession, PlannedSession, Activity}
  */
@@ -66,10 +58,6 @@ function swappedMakeUp(string $vacatedDate, string $targetDate, array $userAttri
         'moving_time' => 1800,
         'elapsed_time' => 1800,
     ]);
-    $card = RunCard::factory()->create(['activity_id' => $activity->id]);
-    Analysis::factory()->done()->create(['subject_type' => Activity::class, 'subject_id' => $activity->id, 'analysis_type' => AnalysisType::PostRunSpeech, 'discriminator' => null]);
-    Analysis::factory()->done()->create(['subject_type' => RunCard::class, 'subject_id' => $card->id, 'analysis_type' => AnalysisType::CardFlavor, 'discriminator' => null]);
-    Analysis::factory()->done()->create(['subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE, 'subject_id' => $user->id, 'analysis_type' => AnalysisType::BriefingMascotVoice, 'discriminator' => '2026-08-12']);
 
     return [$user, $vacated, $target, $activity];
 }
@@ -77,7 +65,7 @@ function swappedMakeUp(string $vacatedDate, string $targetDate, array $userAttri
 function applyMakeUp(User $user, PlannedSession $vacated, PlannedSession $target): void
 {
     DB::transaction(fn () => app(MakeUpService::class)->apply($user, $vacated, $target, Carbon::today()));
-    app(MakeUpService::class)->notify($user, $vacated->date, $target->date, Carbon::today());
+    app(MakeUpService::class)->notify($user, $vacated->date, $target->date);
 }
 
 it('links the two days and clears the clamp state on both', function (): void {
@@ -117,63 +105,6 @@ it('marks the plan for reconciliation from the earlier of the two days', functio
     Bus::assertDispatched(ReconcilePlanJob::class);
 });
 
-it('invalidates the made-up day\'s run narration, and rebriefs when the make-up lands today', function (): void {
-    [$user, $vacated, $target, $activity] = swappedMakeUp('2026-08-11', '2026-08-12');
-
-    applyMakeUp($user, $vacated, $target);
-
-    expect(Analysis::query()->where('analysis_type', AnalysisType::PostRunSpeech)->sole()->status)->not->toBe(AnalysisStatus::Done)
-        ->and(Analysis::query()->where('analysis_type', AnalysisType::CardFlavor)->sole()->status)->not->toBe(AnalysisStatus::Done)
-        ->and(Analysis::query()->where('analysis_type', AnalysisType::BriefingMascotVoice)->sole()->status)->not->toBe(AnalysisStatus::Done);
-    Bus::assertDispatched(fn (AnalyzeActivityJob $job): bool => $job->subjectId === $activity->id);
-    Bus::assertDispatched(AnalyzeCardFlavorJob::class);
-    Bus::assertDispatched(AnalyzeBriefingMascotVoiceJob::class);
-});
-
-it('re-narrates the runs on the day the make-up emptied, never for the demo athlete', function (bool $demo): void {
-    [$user, $vacated, $target] = swappedMakeUp('2026-08-11', '2026-08-12', ['is_demo' => $demo]);
-    $emptiedDayRun = Activity::factory()->for($user)->create();
-    ActivityDetail::factory()->for($emptiedDayRun)->create([
-        'start_date_local' => Carbon::parse('2026-08-11 06:00:00'),
-        'distance' => 1500,
-        'moving_time' => 600,
-        'elapsed_time' => 600,
-    ]);
-    $card = RunCard::factory()->create(['activity_id' => $emptiedDayRun->id]);
-    $speech = Analysis::factory()->done()->create(['subject_type' => Activity::class, 'subject_id' => $emptiedDayRun->id, 'analysis_type' => AnalysisType::PostRunSpeech, 'discriminator' => null]);
-    $flavor = Analysis::factory()->done()->create(['subject_type' => RunCard::class, 'subject_id' => $card->id, 'analysis_type' => AnalysisType::CardFlavor, 'discriminator' => null]);
-
-    applyMakeUp($user, $vacated, $target);
-
-    expect($speech->fresh()->status === AnalysisStatus::Done)->toBe($demo)
-        ->and($flavor->fresh()->status === AnalysisStatus::Done)->toBe($demo);
-    if ($demo) {
-        Bus::assertNothingDispatched();
-    } else {
-        Bus::assertDispatched(fn (AnalyzeActivityJob $job): bool => $job->subjectId === $emptiedDayRun->id);
-        Bus::assertDispatched(fn (AnalyzeCardFlavorJob $job): bool => $job->analysisId === $flavor->id);
-    }
-})->with(['athlete' => [false], 'demo' => [true]]);
-
-it('leaves today\'s briefing alone when the make-up lands on an earlier day', function (): void {
-    Carbon::setTestNow('2026-08-13 08:00:00');
-    [$user, $vacated, $target] = swappedMakeUp('2026-08-11', '2026-08-12');
-
-    applyMakeUp($user, $vacated, $target);
-
-    Bus::assertNotDispatched(AnalyzeBriefingMascotVoiceJob::class);
-    expect(Analysis::query()->where('analysis_type', AnalysisType::BriefingMascotVoice)->sole()->status)->toBe(AnalysisStatus::Done);
-});
-
-it('rebriefs when today\'s own session is the one made up onto an earlier day', function (): void {
-    [$user, $vacated, $target] = swappedMakeUp('2026-08-12', '2026-08-11');
-
-    applyMakeUp($user, $vacated, $target);
-
-    Bus::assertDispatched(AnalyzeBriefingMascotVoiceJob::class);
-    expect(Analysis::query()->where('analysis_type', AnalysisType::BriefingMascotVoice)->sole()->status)->not->toBe(AnalysisStatus::Done);
-});
-
 it('keeps the demo athlete rule-based, with no LLM call and no reconciliation', function (): void {
     [$user, $vacated, $target] = swappedMakeUp('2026-08-11', '2026-08-12', ['is_demo' => true]);
 
@@ -181,21 +112,4 @@ it('keeps the demo athlete rule-based, with no LLM call and no reconciliation', 
 
     Bus::assertNothingDispatched();
     expect($target->fresh()->intent_evidence['advice_history'])->toBe('declared_after_run');
-});
-
-it('merges a burst of back-and-forth make-up moves into one delayed job per run group, card flavor and briefing', function (): void {
-    [$user, $vacated, $target, $activity] = swappedMakeUp('2026-08-11', '2026-08-12');
-    $service = app(MakeUpService::class);
-
-    $service->notify($user, $vacated->date, $target->date, Carbon::today());
-    $service->notify($user, $target->date, $vacated->date, Carbon::today());
-    $service->notify($user, $vacated->date, $target->date, Carbon::today());
-
-    $delayed = fn (object $job): bool => $job->delay === AnalysisService::PLAN_EDIT_DELAY_SECONDS;
-    Bus::assertDispatchedTimes(AnalyzeActivityJob::class, 1);
-    Bus::assertDispatched(fn (AnalyzeActivityJob $job): bool => $job->subjectId === $activity->id && $delayed($job));
-    Bus::assertDispatchedTimes(AnalyzeCardFlavorJob::class, 1);
-    Bus::assertDispatched(AnalyzeCardFlavorJob::class, $delayed);
-    Bus::assertDispatchedTimes(AnalyzeBriefingMascotVoiceJob::class, 1);
-    Bus::assertDispatched(AnalyzeBriefingMascotVoiceJob::class, $delayed);
 });

@@ -46,7 +46,7 @@ const BILLING = [
     'race:ask-outcome' => 'notDemo() on the race scan inside the command',
     'plan:settle-time-trials' => 'notDemo() on the trial scan inside the command',
     'fitness:notify-improvement' => 'notDemo() on the user scan inside the command',
-    'plan:score-compliance' => 'PlanReconciliationService::markDirty and drain scope to User::notDemo(), and the plan-narration requests it can reach are gated by RecentlyActiveUsers',
+    'plan:score-compliance' => 'PlanReconciliationService::markDirty and drain scope to User::notDemo(), and the plan-narration request it can reach goes through RequestPlanNarrationOnPlanRegenerated, which gates it by RecentlyActiveUsers',
     'ai:self-heal' => 'every sweep in SelfHealer draws from RecentlyActiveUsers, which applies User::notDemo()',
     'plan:regenerate' => 'RecentlyActiveUsers gates the plan-narration request only; the regenerate itself stays free and still runs for demo',
 ];
@@ -141,6 +141,6 @@ it('reads the demo exclusion straight out of each billing command source', funct
     'fitness:notify-improvement' => ['fitness:notify-improvement', 'app/Console/Commands/Run/FitnessNotifyImprovementCommand.php'],
     'strava:hydrate-backlog' => ['strava:hydrate-backlog', 'app/Console/Commands/Strava/HydrateBacklogCommand.php'],
     'plan:regenerate' => ['plan:regenerate', 'app/Console/Commands/Run/RegeneratePlanCommand.php', 'app/Actions/AI/RecentlyActiveUsers.php'],
-    'plan:score-compliance' => ['plan:score-compliance', 'app/Console/Commands/Run/ScoreComplianceCommand.php', 'app/Services/Run/Plan/PlanReconciliationService.php'],
+    'plan:score-compliance' => ['plan:score-compliance', 'app/Console/Commands/Run/ScoreComplianceCommand.php', 'app/Services/Run/Plan/PlanReconciliationService.php', 'app/Listeners/RequestPlanNarrationOnPlanRegenerated.php'],
     'ai:self-heal' => ['ai:self-heal', 'app/Console/Commands/AI/SelfHealCommand.php', 'app/Services/AI/SelfHealer.php', 'app/Actions/AI/RecentlyActiveUsers.php'],
 ]);

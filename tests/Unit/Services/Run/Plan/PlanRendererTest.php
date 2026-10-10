@@ -793,7 +793,7 @@ it('dayPayload leaves a pace-eased day paceless with no VDOT estimate, and still
 
 /**
  * `$clampVoice` is fetched for TODAY's date alone
- * ({@see \App\Services\AI\PlanNarrationRequester::clampVoiceFor()}), but every
+ * ({@see \App\Services\Run\Plan\ClampVoiceReader::clampVoiceFor()}), but every
  * day in the rendered range is built with the same value. A past eased day
  * that is still uncredited must not borrow today's narration — it would name
  * the wrong day's session.

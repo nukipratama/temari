@@ -28,7 +28,7 @@ use Illuminate\Support\Collection;
  * Every family sweeps only {@see RecentlyActiveUsers}: an athlete away from the
  * app is caught up by {@see \App\Jobs\AI\NarrateOnReturnJob} when they come back.
  * A run or card whose older history is still hydrating waits for a later sweep
- * ({@see HistoryNarrationGate::awaitsOlderHydration()}).
+ * ({@see HydrationBacklog::awaitsOlderHydration()}).
  */
 class SelfHealer
 {
@@ -58,7 +58,6 @@ class SelfHealer
         private readonly BackfillAgeGate $ages,
         private readonly RecapHydrationReadiness $readiness,
         private readonly RecentlyActiveUsers $activeUsers,
-        private readonly HistoryNarrationGate $history,
         private readonly HydrationBacklog $backlog,
         private readonly ResolveSeasonAction $seasons,
     ) {
@@ -167,7 +166,7 @@ class SelfHealer
                         continue;
                     }
 
-                    if ($this->history->awaitsOlderHydration((int) $row->user_id, $startedAt)) {
+                    if ($this->backlog->awaitsOlderHydration((int) $row->user_id, $startedAt)) {
                         continue;
                     }
 
@@ -351,7 +350,7 @@ class SelfHealer
             ->whereIn('activities.user_id', $this->activeUsers->query()->select('id'))
             ->orderBy('ai_analyses.subject_id')
             ->get(['ai_analyses.subject_id', 'activities.user_id', 'activity_details.start_date_local'])
-            ->reject(fn (Analysis $row): bool => $this->history->awaitsOlderHydration(
+            ->reject(fn (Analysis $row): bool => $this->backlog->awaitsOlderHydration(
                 (int) $row->getAttribute('user_id'),
                 Carbon::make($row->getAttribute('start_date_local')),
             ))

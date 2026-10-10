@@ -11,7 +11,6 @@ use App\Models\PlannedSession;
 use App\Models\Season;
 use App\Models\User;
 use App\Services\Run\Ingest\HydrationBacklog;
-use App\Services\AI\PlanNarrationRequester;
 use App\Services\Gamification\SeasonPayloadBuilder;
 use App\Services\Run\Metrics\ReadinessCeiling;
 use App\Services\Run\Metrics\TrainingLoad;
@@ -48,7 +47,8 @@ final class PlanPageAssembler
         private readonly SeasonPayloadBuilder $seasonPayloadBuilder,
         private readonly SeasonSummaryBuilder $seasonSummaryBuilder,
         private readonly SessionMatcher $sessionMatcher,
-        private readonly PlanNarrationRequester $narrationRequester,
+        private readonly ClampVoiceReader $clampVoiceReader,
+        private readonly PlanRegenerateCooldown $regenerateCooldown,
         private readonly ResolveActiveRaceAction $activeRace,
         private readonly ResolveWeekAdaptationAction $weekAdaptation,
         private readonly HydrationBacklog $hydrationBacklog,
@@ -130,25 +130,9 @@ final class PlanPageAssembler
         ];
     }
 
-    /**
-     * @return array<string, mixed>
-     */
-    public function planNarration(User $user): array
-    {
-        // Demo is excluded from plan:regenerate's real narration dispatch (no
-        // LLM billing for the public account), so its Plan page fills any gap
-        // with the same rule-based path its manual "Reread" already resolves
-        // through — otherwise the demo would show perpetually-Pending blocks.
-        if ($user->is_demo) {
-            $this->narrationRequester->ensureDemoFilled($user);
-        }
-
-        return ['season' => $this->narrationRequester->seasonPayload($user)];
-    }
-
     public function regenerateCooldownSeconds(User $user): ?int
     {
-        return $this->narrationRequester->regenerateCooldownRemaining($user);
+        return $this->regenerateCooldown->remaining($user);
     }
 
     /**
@@ -219,7 +203,7 @@ final class PlanPageAssembler
         // Falls back to the clamp's own templated note when no line has landed
         // yet, so the step-down is never unexplained.
         $clampVoice = EffectiveSession::clampVoiceNeeded($clamp, $todaySession)
-            ? $this->narrationRequester->clampVoiceFor($user, $today)
+            ? $this->clampVoiceReader->clampVoiceFor($user, $today)
             : null;
 
         $weekProjection = $this->volumeProjector->project(
