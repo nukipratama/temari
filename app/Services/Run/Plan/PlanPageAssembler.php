@@ -49,6 +49,7 @@ final class PlanPageAssembler
         private readonly SeasonSummaryBuilder $seasonSummaryBuilder,
         private readonly SessionMatcher $sessionMatcher,
         private readonly PlanNarrationRequester $narrationRequester,
+        private readonly PlanRegenerateCooldown $regenerateCooldown,
         private readonly ResolveActiveRaceAction $activeRace,
         private readonly ResolveWeekAdaptationAction $weekAdaptation,
         private readonly HydrationBacklog $hydrationBacklog,
@@ -148,7 +149,7 @@ final class PlanPageAssembler
 
     public function regenerateCooldownSeconds(User $user): ?int
     {
-        return $this->narrationRequester->regenerateCooldownRemaining($user);
+        return $this->regenerateCooldown->remaining($user);
     }
 
     /**

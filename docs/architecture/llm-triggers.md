@@ -241,7 +241,7 @@ narrate them once the window closes, which is why a pending recap row is not a b
   dispatch. See [[scoped-run-qa-not-an-analysis-row]] and [[run-qa-is-a-conversation-about-one-run]].
 - **`PlanController::regenerate`** — the Plan page's own regenerate button runs the *same*
   `requestForCurrentWeek()` as the Monday command, which touches only the season row
-  (`PlanSeasonVoice`). It is limited by its own 3600s cooldown inside `PlanNarrationRequester`, not by
+  (`PlanSeasonVoice`). It is limited by its own 3600s [`PlanRegenerateCooldown`](../../app/Services/Run/Plan/PlanRegenerateCooldown.php), not by
   the per-block cooldown every other trigger uses.
 - **`PlanController::update`, on a make-up move** — once the lock is released,
   [`RenarrateAfterMakeUp`](../../app/Actions/AI/RenarrateAfterMakeUp.php), called by the controller right after `MakeUpService::notify()`, re-requests the runs on both the made-up

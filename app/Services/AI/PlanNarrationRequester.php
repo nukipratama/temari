@@ -15,27 +15,11 @@ use Illuminate\Support\Carbon;
 use App\Actions\Run\Plan\ResolveSeasonAction;
 
 /**
- * Requests fresh season narration for the current week, reads it back for the
- * Plan page, and rate-limits how often
- * {@see \App\Http\Controllers\PlanController::regenerate()} may run — a
- * manual regenerate re-narrates the season, a real LLM cost per click.
- *
- * The regenerate cooldown is a dedicated key, not {@see \App\Models\AI\Analysis::cooldownKey()}
- * reused: every narration row's own completion unconditionally starts its
- * *own* (shorter, default) cooldown in {@see AnalysisService::markDone()}, so
- * reusing that same key here would have this class's longer window silently
- * overwritten within moments by the async job's own completion.
+ * Requests fresh season narration for the current week and reads it back for
+ * the Plan page.
  */
 final readonly class PlanNarrationRequester
 {
-    /**
-     * How long a manual regenerate is rate-limited for. Longer than the
-     * default {@see Cooldown::WINDOW_SECONDS} (15 min) used for a single
-     * narration block's own "Reread": a full regenerate is a heavier action,
-     * re-narrating the whole week at once rather than one block.
-     */
-    public const int REGENERATE_COOLDOWN_SECONDS = 3600;
-
     public function __construct(
         private AnalysisService $analysisService,
         private ClampNarrationContext $clampContext,
@@ -93,30 +77,6 @@ final readonly class PlanNarrationRequester
         );
 
         return true;
-    }
-
-    /**
-     * Seconds left before this user may regenerate again, or null if they may
-     * regenerate now.
-     */
-    public function regenerateCooldownRemaining(User $user): ?int
-    {
-        return $this->regenerateCooldown($user)->remaining();
-    }
-
-    /**
-     * Starts the regenerate cooldown immediately — not deferred to a
-     * narration job's completion, which would leave a queue-latency window
-     * where a second rapid click isn't yet blocked.
-     */
-    public function startRegenerateCooldown(User $user): void
-    {
-        $this->regenerateCooldown($user)->start();
-    }
-
-    private function regenerateCooldown(User $user): Cooldown
-    {
-        return new Cooldown("plan-regenerate:{$user->id}", self::REGENERATE_COOLDOWN_SECONDS);
     }
 
     /**

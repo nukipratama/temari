@@ -16,6 +16,7 @@ final readonly class PlanRegenerationService
     public function __construct(
         private Periodizer $periodizer,
         private PlanNarrationRequester $narrationRequester,
+        private PlanRegenerateCooldown $regenerateCooldown,
     ) {
     }
 
@@ -27,7 +28,7 @@ final readonly class PlanRegenerationService
             $this->periodizer->regenerate($user, $today, Periodizer::REQUEST_LOCK_WAIT_SECONDS);
         } catch (LockTimeoutException) {
             if ($reason === PlanRegenerationReason::Manual) {
-                $this->narrationRequester->startRegenerateCooldown($user);
+                $this->regenerateCooldown->start($user);
             }
 
             RegeneratePlanJob::dispatch($user->id, $reason)->afterCommit();
@@ -37,7 +38,7 @@ final readonly class PlanRegenerationService
 
         $this->requestNarration($user, $reason, $today);
         if ($reason === PlanRegenerationReason::Manual) {
-            $this->narrationRequester->startRegenerateCooldown($user);
+            $this->regenerateCooldown->start($user);
         }
 
         return true;

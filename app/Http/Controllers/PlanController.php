@@ -10,9 +10,9 @@ use App\Http\Requests\UpdatePlannedSessionRequest;
 use App\Models\PlannedSession;
 use App\Models\User;
 use App\Services\AI\AnalysisService;
-use App\Services\AI\PlanNarrationRequester;
 use App\Services\Run\Plan\MakeUpService;
 use App\Services\Run\Plan\Periodizer;
+use App\Services\Run\Plan\PlanRegenerateCooldown;
 use App\Services\Run\Plan\PlanRegenerationService;
 use App\Services\Run\Plan\PlanPageAssembler;
 use App\Services\Run\Plan\SessionEditRules;
@@ -57,12 +57,12 @@ class PlanController extends Controller
         ]);
     }
 
-    public function regenerate(Request $request, PlanNarrationRequester $narrationRequester, PlanRegenerationService $regeneration): RedirectResponse
+    public function regenerate(Request $request, PlanRegenerateCooldown $cooldown, PlanRegenerationService $regeneration): RedirectResponse
     {
         /** @var User $user */
         $user = $request->user();
 
-        if ($narrationRequester->regenerateCooldownRemaining($user) !== null) {
+        if ($cooldown->remaining($user) !== null) {
             return back()->with('info', "Temari's still catching up on the last replan. Give it a little longer.");
         }
 

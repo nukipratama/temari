@@ -229,26 +229,6 @@ describe('requestClampVoice', function (): void {
     });
 });
 
-describe('regenerate cooldown', function (): void {
-    it('reports no cooldown before one is started', function (): void {
-        $user = User::factory()->create();
-
-        expect($this->requester->regenerateCooldownRemaining($user))->toBeNull();
-    });
-
-    it('reports a cooldown once started, scoped per user', function (): void {
-        $user = User::factory()->create();
-        $otherUser = User::factory()->create();
-
-        $this->requester->startRegenerateCooldown($user);
-
-        expect($this->requester->regenerateCooldownRemaining($user))
-            ->toBeInt()
-            ->toBeGreaterThan(0)
-            ->and($this->requester->regenerateCooldownRemaining($otherUser))->toBeNull();
-    });
-});
-
 describe('seasonPayload', function (): void {
     /**
      * `Analysis::toPayload(null, ...)` reports Pending, which the UI draws as a

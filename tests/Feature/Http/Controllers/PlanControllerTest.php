@@ -28,7 +28,7 @@ use App\Models\AI\Analysis;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
-use App\Services\AI\PlanNarrationRequester;
+use App\Services\Run\Plan\PlanRegenerateCooldown;
 use App\Services\Run\Plan\ComplianceScorer;
 use App\Services\Run\Plan\MakeUpService;
 use App\Services\Run\Plan\Periodizer;
@@ -462,7 +462,7 @@ it('queues a manual regeneration when the per-user lock stays busy', function ()
     $lock->release();
     Bus::assertDispatched(fn (RegeneratePlanJob $job): bool =>
     $job->userId === $user->id && $job->reason === PlanRegenerationReason::Manual);
-    expect(app(PlanNarrationRequester::class)->regenerateCooldownRemaining($user))->not->toBeNull();
+    expect(app(PlanRegenerateCooldown::class)->remaining($user))->not->toBeNull();
 });
 
 it('clamps today\'s session against the readiness ceiling without mutating the stored row', function (): void {
