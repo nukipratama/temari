@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Queue;
 use App\Models\User;
 use Illuminate\Support\Carbon;
 use App\Models\RaceGoal;
+use App\Services\Run\Plan\PlanRegenerateCooldown;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
@@ -108,4 +109,16 @@ it('never narrates the demo plan even when the demo was seen today', function ()
     $this->artisan('plan:regenerate')->assertSuccessful();
 
     expect(seasonVoiceRowsFor($demo))->toBe(0);
+});
+
+it('starts the manual regenerate cooldown only for the athletes it narrates', function (): void {
+    Queue::fake();
+    $active = User::factory()->seenToday()->create();
+    $dormant = User::factory()->create(['last_seen_at' => Carbon::today()->subDays(30)]);
+
+    $this->artisan('plan:regenerate')->assertSuccessful();
+
+    $cooldown = new PlanRegenerateCooldown();
+    expect($cooldown->remaining($active))->not->toBeNull()
+        ->and($cooldown->remaining($dormant))->toBeNull();
 });
