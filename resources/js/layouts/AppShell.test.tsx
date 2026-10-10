@@ -1,7 +1,10 @@
+import type { GlobalEvent, PendingVisit } from '@inertiajs/core';
+
 import { router } from '@inertiajs/react';
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { pendingTabSnapshot } from '@/lib/pendingTab';
 import { makeUser, setMockPage } from '@/test/setup';
 
 import AppShell from './AppShell';
@@ -286,5 +289,182 @@ describe('AppShell', () => {
                 .getByTestId('pull-to-refresh-content')
                 .contains(screen.getByTestId('mobile-top-bar')),
         ).toBe(false);
+    });
+});
+
+function routerHandler<T extends 'start' | 'finish'>(name: T) {
+    const call = [...vi.mocked(router.on).mock.calls]
+        .reverse()
+        .find(([event]) => event === name);
+    if (!call) {
+        throw new Error(`router.on was never called for "${name}"`);
+    }
+    return call[1] as (event: GlobalEvent<T>) => void;
+}
+
+function pageVisit(href: string, overrides: Partial<PendingVisit> = {}) {
+    return {
+        url: new URL(href, 'http://localhost'),
+        method: 'get',
+        async: false,
+        prefetch: false,
+        ...overrides,
+    } as PendingVisit;
+}
+
+function startVisit(visit: PendingVisit) {
+    act(() => {
+        routerHandler('start')({ detail: { visit } } as GlobalEvent<'start'>);
+    });
+}
+
+function finishVisit(visit: PendingVisit) {
+    act(() => {
+        routerHandler('finish')({
+            detail: { visit },
+        } as GlobalEvent<'finish'>);
+    });
+}
+
+function tapTab(label: string, href: string) {
+    const visit = pageVisit(href);
+    act(() => {
+        fireEvent.click(screen.getByText(label).closest('a')!);
+        routerHandler('start')({ detail: { visit } } as GlobalEvent<'start'>);
+    });
+    return visit;
+}
+
+function renderShell(url: string, component: string) {
+    setMockPage(
+        { auth: { user: andiUser }, flash: {}, demoLoginEnabled: false },
+        url,
+        component,
+    );
+    return render(
+        <AppShell>
+            <p>current page</p>
+        </AppShell>,
+    );
+}
+
+describe('AppShell tab skeleton', () => {
+    beforeEach(() => {
+        vi.mocked(router.on).mockClear();
+        vi.stubGlobal('scrollTo', vi.fn());
+    });
+
+    afterEach(() => {
+        const left = pendingTabSnapshot();
+        if (left !== null) {
+            finishVisit(left.visit);
+        }
+    });
+
+    it.each([
+        ['Today', '/', 'today'],
+        ['Plan', '/plan', 'the weeks ahead.'],
+        ['Trends', '/trends', 'am i getting fitter,and at what cost?'],
+        ['History', '/history', 'every runhas a story.'],
+    ])(
+        'shows the %s skeleton in place of the page the moment its tab is tapped',
+        (label, href, title) => {
+            renderShell(
+                label === 'Today' ? '/plan' : '/',
+                label === 'Today' ? 'Plan' : 'Home',
+            );
+
+            tapTab(label, href);
+
+            expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
+                title,
+            );
+            expect(screen.getByText('current page')).not.toBeVisible();
+            expect(document.getElementById('main-content')).toHaveAttribute(
+                'aria-busy',
+                'true',
+            );
+            expect(
+                screen.getByRole('navigation', { name: 'Primary' }),
+            ).toBeInTheDocument();
+        },
+    );
+
+    it("draws History's calendar half when the tab returns to the calendar", () => {
+        renderShell('/', 'Home');
+
+        tapTab('History', '/history?view=calendar&month=2026-10');
+
+        expect(screen.getByText('calendar').closest('a')).toHaveClass(
+            'bg-card',
+        );
+    });
+
+    it('hands the page back when the visit ends without arriving', () => {
+        renderShell('/', 'Home');
+
+        const visit = tapTab('Plan', '/plan');
+        finishVisit(visit);
+
+        expect(screen.getByText('current page')).toBeVisible();
+        expect(screen.queryByRole('heading', { level: 1 })).toBeNull();
+        expect(document.getElementById('main-content')).not.toHaveAttribute(
+            'aria-busy',
+        );
+    });
+
+    it('gives way to the destination page as soon as it renders', () => {
+        const { rerender } = renderShell('/', 'Home');
+
+        tapTab('Trends', '/trends');
+        setMockPage(
+            { auth: { user: andiUser }, flash: {}, demoLoginEnabled: false },
+            '/trends',
+            'Trends',
+        );
+        rerender(
+            <AppShell>
+                <p>trends page</p>
+            </AppShell>,
+        );
+
+        expect(screen.getByText('trends page')).toBeVisible();
+        expect(screen.queryByText('am i getting fitter,')).toBeNull();
+    });
+
+    it('shows no skeleton when the current tab is tapped', () => {
+        renderShell('/plan', 'Plan');
+
+        tapTab('Plan', '/plan');
+
+        expect(screen.getByText('current page')).toBeVisible();
+        expect(screen.queryByRole('heading', { level: 1 })).toBeNull();
+    });
+
+    it.each([
+        [
+            'a partial reload',
+            pageVisit('/', { async: true, only: ['narration'] }),
+        ],
+        ['a full reload of the current page', pageVisit('/')],
+        ['a pull-to-refresh reload', pageVisit('/', { async: true })],
+    ])('shows no skeleton for %s', (_, visit) => {
+        renderShell('/', 'Home');
+
+        startVisit(visit);
+
+        expect(screen.getByText('current page')).toBeVisible();
+        expect(pendingTabSnapshot()).toBeNull();
+    });
+
+    it('shows no skeleton for a reload that starts between the tap and its visit', () => {
+        renderShell('/', 'Home');
+
+        act(() => {
+            fireEvent.click(screen.getByText('Plan').closest('a')!);
+        });
+        startVisit(pageVisit('/', { async: true }));
+
+        expect(screen.getByText('current page')).toBeVisible();
     });
 });

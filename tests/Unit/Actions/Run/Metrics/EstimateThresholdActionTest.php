@@ -13,7 +13,7 @@ uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
     $this->user = User::factory()->create();
-    $this->estimator = new EstimateThresholdAction();
+    $this->estimator = app(EstimateThresholdAction::class);
 });
 
 function seedDetail(User $user, array $summary, ?Carbon $startDate = null): void

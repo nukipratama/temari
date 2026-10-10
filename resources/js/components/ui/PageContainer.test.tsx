@@ -36,4 +36,17 @@ describe('PageContainer', () => {
         );
         expect(container.firstChild).toHaveClass(/pb-24/);
     });
+
+    it('lands with the shared entrance by default', () => {
+        const { container } = render(<PageContainer>x</PageContainer>);
+        expect(container.firstChild).toHaveClass('reveal');
+    });
+
+    it('can appear without the entrance', () => {
+        const { container } = render(
+            <PageContainer reveal={false}>x</PageContainer>,
+        );
+        expect(container.firstChild).not.toHaveClass('reveal');
+        expect(container.firstChild).toHaveClass('mx-auto', 'px-4');
+    });
 });

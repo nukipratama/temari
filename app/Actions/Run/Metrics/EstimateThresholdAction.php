@@ -4,11 +4,9 @@ declare(strict_types=1);
 
 namespace App\Actions\Run\Metrics;
 
-use App\Models\ActivityDetail;
 use App\Models\User;
 use App\Services\Run\Metrics\PaceFormatter;
 use App\Services\Run\Metrics\StreamSummary;
-use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Carbon;
 
 class EstimateThresholdAction
@@ -31,22 +29,16 @@ class EstimateThresholdAction
      */
     private const array SUSTAINED_WINDOWS = ['60min', '30min', '20min'];
 
+    public function __construct(private readonly ResolveRecentStreamSummariesAction $recentStreamSummaries)
+    {
+    }
+
     /**
      * @return array{pace_sec: float, confidence: 'high'|'medium'|'low', sample_size: int}|null
      */
     public function __invoke(User $user, ?Carbon $asOf = null): ?array
     {
-        $cutoff = ($asOf ?? Carbon::today())->copy()->subDays(self::LOOKBACK_DAYS)->toDateString();
-
-        /** @var Collection<int, ActivityDetail> $details */
-        $details = ActivityDetail::query()
-            ->whereHas('activity', fn ($q) => $q->where('user_id', $user->id))
-            ->where('start_date_local', '>=', $cutoff)
-            ->whereNotNull('stream_summary')
-            ->get(['id', 'stream_summary']);
-
-        $paces = $details
-            ->map(fn (ActivityDetail $detail): StreamSummary => StreamSummary::fromArray($detail->streamSummary()))
+        $paces = collect(($this->recentStreamSummaries)($user, $asOf ?? Carbon::today(), self::LOOKBACK_DAYS))
             ->filter(fn (StreamSummary $summary): bool => $this->isHardSession($summary))
             ->map(fn (StreamSummary $summary): ?float => $this->bestSustainedPace($summary))
             ->filter(fn (?float $pace): bool => $pace !== null)

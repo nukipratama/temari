@@ -11,15 +11,15 @@ import type {
 import type { PlanRecalibrationState } from '@/types/inertia';
 
 import AiOutageBanner from '@/components/AiOutageBanner';
+import PlanHeading from '@/components/plan/PlanHeading';
+import { PlanWeeksSkeleton } from '@/components/plan/PlanSkeleton';
 import SeasonHeaderCard from '@/components/plan/SeasonHeaderCard';
 import SeasonTimeline from '@/components/plan/SeasonTimeline';
 import EmptyPanel from '@/components/ui/EmptyPanel';
-import Eyebrow from '@/components/ui/Eyebrow';
 import { Icon } from '@/components/ui/Icon';
 import LaneStack from '@/components/ui/LaneStack';
 import PageContainer from '@/components/ui/PageContainer';
 import PillButton from '@/components/ui/PillButton';
-import { SkeletonRows, SkeletonStats } from '@/components/ui/Skeleton';
 import { useCooldownCountdown } from '@/hooks/useCooldownCountdown';
 import { appLayout } from '@/layouts/appLayout';
 import { cn } from '@/lib/cn';
@@ -135,42 +135,38 @@ export default function Plan({
             <Head title="Plan" />
             <AiOutageBanner />
             <PageContainer>
-                <Eyebrow token="hero" tone="ink-2">
-                    Plan
-                </Eyebrow>
-                <div className="mt-2 flex items-center justify-between gap-3">
-                    <h1 className="font-serif text-quote-lg text-foreground italic">
-                        the weeks <em className="text-horizon-ink">ahead.</em>
-                    </h1>
-                    <PillButton
-                        tone="muted"
-                        size="xs"
-                        className="flex-none"
-                        onClick={regenerate}
-                        disabled={regenerating || regenerateCooling}
-                        aria-label={
-                            regenerating
-                                ? 'replanning'
-                                : regenerateCooling
-                                  ? `regenerate, next in ${formatDurationHMS(regenerateCooldown)}`
-                                  : 'regenerate'
-                        }
-                    >
-                        <Icon
-                            icon={regenerateCooling ? Clock : RefreshCw}
-                            className={cn(
-                                'size-3.5',
-                                regenerating && 'animate-spin',
+                <PlanHeading
+                    action={
+                        <PillButton
+                            tone="muted"
+                            size="xs"
+                            className="flex-none"
+                            onClick={regenerate}
+                            disabled={regenerating || regenerateCooling}
+                            aria-label={
+                                regenerating
+                                    ? 'replanning'
+                                    : regenerateCooling
+                                      ? `regenerate, next in ${formatDurationHMS(regenerateCooldown)}`
+                                      : 'regenerate'
+                            }
+                        >
+                            <Icon
+                                icon={regenerateCooling ? Clock : RefreshCw}
+                                className={cn(
+                                    'size-3.5',
+                                    regenerating && 'animate-spin',
+                                )}
+                                aria-hidden
+                            />
+                            {regenerateCooling && (
+                                <span aria-hidden>
+                                    {formatDurationHMS(regenerateCooldown)}
+                                </span>
                             )}
-                            aria-hidden
-                        />
-                        {regenerateCooling && (
-                            <span aria-hidden>
-                                {formatDurationHMS(regenerateCooldown)}
-                            </span>
-                        )}
-                    </PillButton>
-                </div>
+                        </PillButton>
+                    }
+                />
                 <p className="mt-1 mb-4 text-xs text-text-2">
                     {race
                         ? `${race.name ?? 'your race'} · ${formatNaiveMonthDayId(race.race_date)}`
@@ -218,12 +214,7 @@ export default function Plan({
                         'seasonAdherencePct',
                         'adaptation',
                     ]}
-                    fallback={
-                        <div className="mt-6 flex flex-col gap-4">
-                            <SkeletonStats />
-                            <SkeletonRows count={4} />
-                        </div>
-                    }
+                    fallback={<PlanWeeksSkeleton />}
                 >
                     {() =>
                         weeks!.length === 0 || season === null ? (

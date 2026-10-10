@@ -10,6 +10,8 @@ code_refs:
   - resources/js/components/MobileTopBar.tsx
   - resources/js/components/MobileBottomNav.tsx
   - resources/js/lib/navigationMemory.ts
+  - resources/js/lib/pendingTab.ts
+  - resources/js/hooks/useTabSkeleton.ts
   - resources/js/components/ui/Overlay.tsx
   - resources/js/hooks/useOverlayHistory.ts
   - resources/js/hooks/usePullToRefresh.ts
@@ -294,11 +296,31 @@ saved state; explicit query URLs still open their requested view.
 A tap on any *other* tab lights that tab at once. The highlight used to be
 derived from `usePage().component` alone, so it did not move until the server
 answered — a native app moves it on touch-up, and the wait was the loudest tell
-the app had. The tapped tab is held as pending state and Inertia's `finish`
-event hands the highlight back to whatever page the app actually landed on, so
-a cancelled or failed visit cannot strand it. `aria-current` stays on the real
-page throughout: the guess is visual only, and a screen reader is never told it
-is somewhere it is not.
+the app had. The tap arms [pendingTab](../../resources/js/lib/pendingTab.ts),
+which turns pending when Inertia's `start` event fires for a full GET visit to
+that tab's path, and clears when that same visit's `finish` fires, however it
+ended. A second tap interrupts the first visit, whose `finish` clears it just
+before the second `start` sets the new tab. Async and partial reloads (AI
+polling, `router.reload()`) neither consume a tap nor show anything. So a
+cancelled or failed visit cannot strand the highlight. `aria-current` stays on
+the real page throughout: the guess is visual only, and a screen reader is
+never told it is somewhere it is not.
+
+The same pending state swaps the page for **the destination tab's skeleton**.
+`AppShell` renders it in `main` (marked `aria-busy`) and hides the current page
+rather than unmounting it, so a cancelled or failed visit brings it back with
+its state. [useTabSkeleton](../../resources/js/hooks/useTabSkeleton.ts) shows
+it only while the tapped-from page is still the one rendered. The real page
+therefore replaces it in the same commit Inertia swaps in, inside the route
+cross-fade. It also scrolls to the top while the skeleton shows, and back to
+where the reader was if the visit ends on the same page. Each skeleton keeps
+its page's real static header and reuses the fallbacks that page shows while
+its deferred props load (`TrendsSkeleton`, `PlanSkeleton`, `HistorySkeleton`,
+`TodaySkeleton` under `resources/js/components/`), so the first response causes
+no jump. Today has no deferred fallback, so its shapes approximate the three
+sections and shift by roughly the length of that day's narration. A tap on the
+current tab never shows one. Under reduced motion the shapes are static,
+through the `.skeleton` rule in `app.css`.
 
 ## The route cross-fade
 

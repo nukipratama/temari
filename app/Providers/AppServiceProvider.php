@@ -38,6 +38,7 @@ use Override;
 use SocialiteProviders\Manager\SocialiteWasCalled;
 use SocialiteProviders\Strava\StravaExtendSocialite;
 use App\Actions\Run\Metrics\ResolveDistanceRecordsAction;
+use App\Actions\Run\Metrics\ResolveRecentStreamSummariesAction;
 use App\Services\Run\Metrics\VdotEstimator;
 use App\Actions\Run\Plan\ResolveSeasonAction;
 use App\Actions\Run\Plan\ResolveRecentLongestRunAction;
@@ -100,6 +101,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->scoped(ResolveTrailingWeeksAction::class);
         $this->app->scoped(ResolveRecentLongestRunAction::class);
         $this->app->scoped(ResolveDistanceRecordsAction::class);
+        $this->app->scoped(ResolveRecentStreamSummariesAction::class);
         $this->app->scoped(VdotEstimator::class);
         $this->app->scoped(ResolveSeasonAction::class);
         $this->app->scoped(ResolveWeekAdaptationAction::class);

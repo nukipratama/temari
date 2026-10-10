@@ -12,6 +12,7 @@ import type {
 import AiOutageBanner from '@/components/AiOutageBanner';
 import EffortLegend from '@/components/history/EffortLegend';
 import HistoryHeader from '@/components/history/HistoryHeader';
+import { FeedRunsSkeleton } from '@/components/history/HistorySkeleton';
 import {
     RangeWidenedNote,
     WeekFocusNote,
@@ -25,7 +26,6 @@ import EmptyPanel from '@/components/ui/EmptyPanel';
 import { Icon } from '@/components/ui/Icon';
 import LaneStack from '@/components/ui/LaneStack';
 import PageContainer from '@/components/ui/PageContainer';
-import { SkeletonRows } from '@/components/ui/Skeleton';
 import { appLayout } from '@/layouts/appLayout';
 import { revealDelay } from '@/lib/styles';
 import { pillButtonVariants } from '@/lib/variants';
@@ -95,7 +95,7 @@ export default function RunsIndex({
 
                 <Deferred
                     data={['runs', 'notes', 'moods', 'weeklySnapshots']}
-                    fallback={<SkeletonRows count={4} className="mt-8" />}
+                    fallback={<FeedRunsSkeleton />}
                 >
                     {() =>
                         hasRuns ? (

@@ -5,6 +5,7 @@ import { cn } from '@/lib/cn';
 interface PageContainerProps {
     children: ReactNode;
     className?: string;
+    reveal?: boolean;
 }
 
 /**
@@ -21,6 +22,11 @@ const CONTAINER =
 export default function PageContainer({
     children,
     className,
+    reveal = true,
 }: Readonly<PageContainerProps>) {
-    return <div className={cn('reveal', CONTAINER, className)}>{children}</div>;
+    return (
+        <div className={cn(reveal && 'reveal', CONTAINER, className)}>
+            {children}
+        </div>
+    );
 }
