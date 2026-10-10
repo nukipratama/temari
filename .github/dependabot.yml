@@ -1,9 +1,14 @@
 version: 2
 updates:
   - package-ecosystem: github-actions
-    directory: /
+    directories:
+      - /
+      - /.github/actions/*
     schedule:
       interval: weekly
+    groups:
+      actions-minor-patch:
+        update-types: [minor, patch]
   - package-ecosystem: composer
     directory: /
     schedule:
