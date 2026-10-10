@@ -12,9 +12,7 @@ use App\Enums\SessionType;
 use App\Models\PlannedSession;
 use App\Models\RaceGoal;
 use App\Models\User;
-use App\Services\Run\Ingest\HydrationBacklog;
 use App\Services\Run\Metrics\ReadinessCeiling;
-use App\Services\Run\Metrics\TrainingLoad;
 use App\Services\Run\Metrics\TrainingPaceCalculator;
 use App\Services\Run\Metrics\VdotEstimator;
 use App\Services\Run\Story\BriefingContext;
@@ -34,14 +32,13 @@ final readonly class CurrentWeekKm
 {
     public function __construct(
         private TrainingBaseline $baseline,
-        private TrainingLoad $trainingLoad,
         private TrainingPaceCalculator $paceCalculator,
         private VdotEstimator $vdotEstimator,
         private SessionMatcher $sessionMatcher,
         private CurrentWeekVolumeProjector $volumeProjector,
         private ResolveActiveRaceAction $activeRace,
         private ResolvePlannedSessionsAction $plannedSessions,
-        private HydrationBacklog $hydrationBacklog,
+        private PlanBriefingContext $briefing,
     ) {
     }
 
@@ -77,13 +74,8 @@ final readonly class CurrentWeekKm
         $currentWeekMultiplier = $multiplierByWeek[$currentWeekKey] ?? 1.0;
 
         $paces = $this->paceCalculator->fromVdotResult($this->vdotEstimator->estimate($user, $today));
-        $loadPending = $this->hydrationBacklog->recentLoadAwaitsScoring($user->id, $today);
-        $briefingContext = BriefingContext::forUser(
-            $user,
-            $today,
-            $loadPending ? null : $this->trainingLoad->summary($user, $today),
-            historyLoading: $loadPending,
-        );
+        $briefingContext = $this->briefing->forUser($user, $today);
+        $loadPending = $briefingContext->historyLoading;
         $ceiling = ReadinessCeiling::from($briefingContext->readinessCeiling);
         $race = ($this->activeRace)($user->id);
         $raceDistanceM = $race !== null ? (float) $race->distance_m : null;

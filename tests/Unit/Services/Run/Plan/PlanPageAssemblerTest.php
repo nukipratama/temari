@@ -23,6 +23,7 @@ use App\Services\Run\Plan\TrainingBaseline;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\DB;
 
 uses(RefreshDatabase::class);
 
@@ -187,6 +188,23 @@ it('keeps a recommendation token on every plan day and ships no readiness assess
         ->and($days->contains(fn (array $day): bool => array_key_exists('readiness_assessment', $day)))->toBeFalse();
 });
 
+it('reads the briefing context once for the weeks and the season summary', function (): void {
+    $user = assemblerAthlete();
+    app(Periodizer::class)->regenerate($user, Carbon::today());
+    $today = Carbon::today();
+    $this->assembler->season($user, $today);
+    DB::flushQueryLog();
+    DB::enableQueryLog();
+
+    $this->assembler->weeks($user, $today);
+    $this->assembler->seasonSummary($user, $today);
+
+    $recoveryFeedbackReads = collect(DB::getQueryLog())->filter(fn (array $query): bool => str_contains($query['query'], 'from `recovery_feedback`'))->count();
+    DB::disableQueryLog();
+
+    expect($recoveryFeedbackReads)->toBe(1);
+});
+
 it('offers the same edit actions and move targets as scanning every row per day', function (): void {
     $user = assemblerAthlete();
     app(Periodizer::class)->regenerate($user, Carbon::today());
@@ -201,10 +219,10 @@ it('offers the same edit actions and move targets as scanning every row per day'
         [$from, $to] = SessionEditRules::window($row->date);
         $window = $rows->filter(fn (PlannedSession $r): bool => $r->date->betweenIncluded($from, $to));
         $status = PlannedSessionStatus::from($day['status']);
-        $actions = SessionEditRules::actionsFor($row, $status, $window, [], $today);
+        $targets = SessionEditRules::canMoveFrom($row, $status, $today) ? SessionEditRules::moveTargets($row, $window, [], $today) : [];
 
-        expect($day['actions'])->toBe($actions)
-            ->and($day['move_targets'])->toBe($actions['move'] ? SessionEditRules::moveTargets($row, $window, [], $today) : []);
+        expect($day['move_targets'])->toBe($targets)
+            ->and($day['actions']['move'])->toBe($targets !== []);
     }
     expect($days->contains(fn (array $day): bool => $day['actions']['move'] && $day['move_targets'] !== []))->toBeTrue();
 });
@@ -276,8 +294,9 @@ it('holds todays advisory clamp while a demanding run awaits hydration, then app
         ->firstWhere('type', 'current')['days'][0];
 
     $activity->update(['ingest_state' => IngestState::Detailed]);
+    app()->forgetScopedInstances();
 
-    $resumed = collect($this->assembler->weeks($user, Carbon::today()))
+    $resumed = collect(app(PlanPageAssembler::class)->weeks($user, Carbon::today()))
         ->firstWhere('type', 'current')['days'][0];
 
     expect($held['eased_from'])->toBeNull()

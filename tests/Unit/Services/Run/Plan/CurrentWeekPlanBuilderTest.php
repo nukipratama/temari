@@ -454,6 +454,7 @@ it('holds todays advisory clamp while a demanding run awaits hydration, then app
         ->firstWhere('date', Carbon::today()->toDateString());
 
     $activity->update(['ingest_state' => IngestState::Detailed]);
+    app()->forgetScopedInstances();
 
     $resumed = collect(app(CurrentWeekPlanBuilder::class)->forUser($user, Carbon::today())['days'])
         ->firstWhere('date', Carbon::today()->toDateString());

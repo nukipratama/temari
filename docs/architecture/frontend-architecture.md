@@ -94,6 +94,8 @@ Home reaches the same collaborators from six independent prop closures, so what 
 
 All three resolvers are bound [`scoped()`](app/Providers/AppServiceProvider.php) — the memo only bites if every caller is handed the same instance — and each is busted by a model `booted()` hook, with an explicit `forget()` at the mass-write sites that fire no model events.
 
+[`PlanBriefingContext`](app/Services/Run/Plan/PlanBriefingContext.php) is `scoped()` too, with no bust hook: Home reads it once, through the current-week total; the Plan tab's weeks and its current-week total share it, built once per athlete and day within a request.
+
 ## Route protection (the gate)
 
 The middleware stack is assembled in [bootstrap/app.php](bootstrap/app.php): trusted proxies are narrowed to the private/loopback ranges only ([bootstrap/app.php](bootstrap/app.php)) — enough to honor `X-Forwarded-Proto`/`-For`/`-Port` from the Cloudflare Tunnel's local forwarder (TLS terminates at the CF edge, so the immediate proxy the app sees is always a private address), without trusting a forwarded header spoofed from a public IP. `HandleInertiaRequests` is appended to the `web` group, and **three** paths are CSRF-exempted ([bootstrap/app.php](bootstrap/app.php)): `strava/webhook/*`, `telegram/webhook` and `client-errors` — each is unauthenticated by design and guarded by its own mechanism instead of a CSRF token (a secret callback-URL token plus subscription id, a secret-token header, and an IP rate limiter respectively). Routes themselves split into four groups in [routes/web.php](routes/web.php):

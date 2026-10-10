@@ -46,6 +46,7 @@ use App\Actions\Run\Plan\ResolveTrailingWeeksAction;
 use App\Actions\Run\Story\ResolveLastRunStartAction;
 use App\Actions\Run\Plan\ResolveTrainingPreferenceAction;
 use App\Services\Run\Metrics\TrainingLoad;
+use App\Services\Run\Plan\PlanBriefingContext;
 use App\Services\Run\Plan\PlanPageAssembler;
 use App\Services\Run\Plan\TrainingBaseline;
 use App\Actions\Run\Plan\ResolveWeekAdaptationAction;
@@ -93,6 +94,7 @@ class AppServiceProvider extends ServiceProvider
         // the distance PRs; the week's adaptation is asked for three times. The
         // assembler joins them because it memoizes the season three props want.
         $this->app->scoped(PlanPageAssembler::class);
+        $this->app->scoped(PlanBriefingContext::class);
         $this->app->scoped(TrainingBaseline::class);
         $this->app->scoped(ResolveTrainingPreferenceAction::class);
         $this->app->scoped(ResolveTrailingWeeksAction::class);
