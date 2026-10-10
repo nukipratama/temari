@@ -5,7 +5,6 @@ declare(strict_types=1);
 use App\Services\AI\AnalysisType;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\PlanNarrationRequester;
-use App\Services\AI\AnalysisService;
 use App\Actions\AI\SettleEarlyNarrationAction;
 use App\Actions\AI\RecentlyActiveUsers;
 
@@ -16,7 +15,6 @@ arch('Run does not take new dependencies on the AI namespaces')
         AnalysisType::class,
         AnalysisStatus::class,
         PlanNarrationRequester::class,
-        AnalysisService::class,
         SettleEarlyNarrationAction::class,
         RecentlyActiveUsers::class,
     ])

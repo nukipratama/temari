@@ -4,13 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services\Run\Plan;
 
-use App\Models\Activity;
 use App\Models\PlannedSession;
-use App\Models\RunCard;
 use App\Models\User;
-use App\Services\AI\AnalysisService;
-use App\Services\AI\AnalysisType;
-use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Carbon;
 
 /**
@@ -32,7 +27,6 @@ final readonly class MakeUpService
     public function __construct(
         private ComplianceScorer $scorer,
         private PlanReconciliationService $reconciliation,
-        private AnalysisService $analysisService,
     ) {
     }
 
@@ -51,33 +45,8 @@ final readonly class MakeUpService
         }
     }
 
-    public function notify(User $user, Carbon $vacatedDate, Carbon $targetDate, Carbon $today): void
+    public function notify(User $user, Carbon $vacatedDate, Carbon $targetDate): void
     {
         $this->reconciliation->markDirty($user->id, $vacatedDate->min($targetDate));
-
-        if ($user->is_demo) {
-            return;
-        }
-
-        foreach ([...$this->runsOn($user, $targetDate), ...$this->runsOn($user, $vacatedDate)] as $activity) {
-            $this->analysisService->requestActivityGroup($activity, invalidate: true, delaySeconds: AnalysisService::PLAN_EDIT_DELAY_SECONDS);
-            if ($activity->runCard !== null) {
-                $this->analysisService->request(RunCard::class, $activity->runCard->id, AnalysisType::CardFlavor, delaySeconds: AnalysisService::PLAN_EDIT_DELAY_SECONDS, invalidate: true);
-            }
-        }
-
-        if ($targetDate->isSameDay($today) || $vacatedDate->isSameDay($today)) {
-            $this->analysisService->requestBriefing($user, $today->toDateString(), invalidate: true, delaySeconds: AnalysisService::PLAN_EDIT_DELAY_SECONDS);
-        }
-    }
-
-    /** @return Collection<int, Activity> */
-    private function runsOn(User $user, Carbon $date): Collection
-    {
-        return Activity::analyzedJoinConstraint(Activity::query())
-            ->where('user_id', $user->id)
-            ->whereHas('detail', fn ($detail) => $detail->whereDate('start_date_local', $date->toDateString()))
-            ->with('runCard')
-            ->get();
     }
 }

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Enums\PlanRegenerationReason;
+use App\Actions\AI\RenarrateAfterMakeUp;
 use App\Http\Requests\UpdatePlannedSessionRequest;
 use App\Models\PlannedSession;
 use App\Models\User;
@@ -89,6 +90,7 @@ class PlanController extends Controller
         Periodizer $periodizer,
         SessionMatcher $sessionMatcher,
         MakeUpService $makeUps,
+        RenarrateAfterMakeUp $renarrateAfterMakeUp,
         AnalysisService $analysisService,
     ): RedirectResponse {
         $this->authorizeOwner($request, $plannedSession);
@@ -143,7 +145,8 @@ class PlanController extends Controller
         }
 
         if ($makeUpTarget !== null) {
-            $makeUps->notify($user, $session->date, $makeUpTarget->date, $today);
+            $makeUps->notify($user, $session->date, $makeUpTarget->date);
+            $renarrateAfterMakeUp($user, $session->date, $makeUpTarget->date, $today);
 
             return back();
         }

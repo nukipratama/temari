@@ -244,7 +244,7 @@ narrate them once the window closes, which is why a pending recap row is not a b
   (`PlanSeasonVoice`). It is limited by its own 3600s cooldown inside `PlanNarrationRequester`, not by
   the per-block cooldown every other trigger uses.
 - **`PlanController::update`, on a make-up move** — once the lock is released,
-  [`MakeUpService::notify()`](../../app/Services/Run/Plan/MakeUpService.php) re-requests the runs on both the made-up
+  [`RenarrateAfterMakeUp`](../../app/Actions/AI/RenarrateAfterMakeUp.php), called by the controller right after `MakeUpService::notify()`, re-requests the runs on both the made-up
   day and the day it emptied (`post_run_speech`, `run_insight`) and their `card_flavor` with
   `invalidate: true`, and re-requests
   today's `briefing_mascot_voice` with `invalidate: true` when the make-up lands on today or takes

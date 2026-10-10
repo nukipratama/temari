@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Illuminate\Support\Collection;
+use App\Actions\AI\RenarrateAfterMakeUp;
 use App\Enums\PlanRegenerationReason;
 use App\Enums\PlannedSessionStatus;
 use App\Enums\IntentVerdict;
@@ -413,6 +414,7 @@ it('rejects a session edit when regeneration replaced its bound row', function (
         app(Periodizer::class),
         app(SessionMatcher::class),
         app(MakeUpService::class),
+        app(RenarrateAfterMakeUp::class),
         app(AnalysisService::class),
     ))->toThrow(HttpException::class, 'This plan changed while you were editing. Reload and try again.');
 
