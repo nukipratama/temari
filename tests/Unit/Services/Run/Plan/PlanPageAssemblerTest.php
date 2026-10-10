@@ -219,10 +219,10 @@ it('offers the same edit actions and move targets as scanning every row per day'
         [$from, $to] = SessionEditRules::window($row->date);
         $window = $rows->filter(fn (PlannedSession $r): bool => $r->date->betweenIncluded($from, $to));
         $status = PlannedSessionStatus::from($day['status']);
-        $actions = SessionEditRules::canMoveFrom($row, $status, $today) ? SessionEditRules::moveTargets($row, $window, [], $today) : [];
+        $targets = SessionEditRules::canMoveFrom($row, $status, $today) ? SessionEditRules::moveTargets($row, $window, [], $today) : [];
 
-        expect($day['move_targets'])->toBe($actions)
-            ->and($day['actions']['move'])->toBe($actions !== []);
+        expect($day['move_targets'])->toBe($targets)
+            ->and($day['actions']['move'])->toBe($targets !== []);
     }
     expect($days->contains(fn (array $day): bool => $day['actions']['move'] && $day['move_targets'] !== []))->toBeTrue();
 });

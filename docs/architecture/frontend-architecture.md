@@ -94,7 +94,7 @@ Home reaches the same collaborators from six independent prop closures, so what 
 
 All three resolvers are bound [`scoped()`](app/Providers/AppServiceProvider.php) — the memo only bites if every caller is handed the same instance — and each is busted by a model `booted()` hook, with an explicit `forget()` at the mass-write sites that fire no model events.
 
-[`PlanBriefingContext`](app/Services/Run/Plan/PlanBriefingContext.php) is `scoped()` too, with no bust hook: the week plan and the current-week total ask for the same readiness context, and it is built once per athlete and day within a request.
+[`PlanBriefingContext`](app/Services/Run/Plan/PlanBriefingContext.php) is `scoped()` too, with no bust hook: Home reads it once, through the current-week total; the Plan tab's weeks and its current-week total share it, built once per athlete and day within a request.
 
 ## Route protection (the gate)
 
