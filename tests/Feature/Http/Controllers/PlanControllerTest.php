@@ -638,6 +638,19 @@ it('paints the Plan shell and resolves its deferred props inside their query bud
     expect($readinessQueries)->toBe(['stress' => 1, 'feedback' => 1]);
 });
 
+it('fills the demo athlete\'s season block rule-based when the deferred planNarration prop resolves, and leaves a regular athlete\'s alone', function (bool $demo): void {
+    Bus::fake();
+    $user = User::factory()->create(['is_demo' => $demo]);
+    $this->actingAs($user)->get('/plan')->assertSuccessful();
+
+    $this->actingAs($user)
+        ->get('/plan', inertiaPartialHeaders($this->actingAs($user), '/plan', 'Plan', 'planNarration'))
+        ->assertSuccessful()
+        ->assertJsonPath($demo ? 'props.planNarration.season.status' : 'props.planNarration.season', $demo ? 'done' : null);
+
+    Bus::assertNotDispatched(AnalyzePlanSeasonVoiceJob::class);
+})->with(['demo' => [true], 'regular' => [false]]);
+
 function planBudgetFixture(): User
 {
     $user = User::factory()->create();
