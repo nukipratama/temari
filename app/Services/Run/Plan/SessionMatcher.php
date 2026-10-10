@@ -58,7 +58,7 @@ final readonly class SessionMatcher
      *
      * @param  array<string, float>  $plannedKmByDate  Y-m-d => prescribed km (0.0 on a rest day)
      * @param  array<string, bool>  $excusedByDate  Y-m-d => whether this day is excused — the athlete skipped it,
-     *                                               or the readiness clamp downgraded it to a full rest
+     *                                               or the advice shown that day was a rest day
      * @return array<string, PlannedSessionStatus>  Y-m-d => status
      */
     public function statuses(User $user, array $plannedKmByDate, array $excusedByDate, Carbon $today): array
@@ -77,7 +77,7 @@ final readonly class SessionMatcher
      *
      * @param  array<string, float>  $plannedKmByDate  Y-m-d => prescribed km (0.0 on a rest day)
      * @param  array<string, bool>  $excusedByDate  Y-m-d => whether this day is excused — the athlete skipped it,
-     *                                               or the readiness clamp downgraded it to a full rest
+     *                                               or the advice shown that day was a rest day
      * @return array<string, array{status: PlannedSessionStatus, score: int|null, ran_anyway: bool}>
      * @param array<string, SessionType> $sessionTypesByDate
      */
@@ -113,9 +113,8 @@ final readonly class SessionMatcher
      * The single source of truth for turning a day's (prescribed km,
      * completed km) into a verdict. `$excused` always wins — an excused day
      * is never scored, regardless of what happened to be logged that date; it
-     * covers both an athlete's own skip and a readiness clamp that downgraded
-     * the day to a full rest. A
-     * rest day (`$plannedKm <= 0`) is always `Done`; whether something was
+     * covers both an athlete's own skip and a day whose shown advice was a
+     * rest day. A rest day (`$plannedKm <= 0`) is always `Done`; whether something was
      * logged anyway is reported separately via `ran_anyway` rather than
      * changing the status itself.
      *
