@@ -1,4 +1,4 @@
-import type { GlobalEvent } from '@inertiajs/core';
+import type { GlobalEvent, PendingVisit } from '@inertiajs/core';
 
 import { router } from '@inertiajs/react';
 import { act, fireEvent, render, screen } from '@testing-library/react';
@@ -11,6 +11,7 @@ import {
     tabMemorySnapshot,
     writeTabMemory,
 } from '@/lib/navigationMemory';
+import { pendingTabSnapshot, trackTabVisits } from '@/lib/pendingTab';
 import { setMockPage } from '@/test/setup';
 
 import MobileBottomNav from './MobileBottomNav';
@@ -25,31 +26,61 @@ function storedTab(tab: 'history' | 'plan') {
     return parseTabMemory(tabMemorySnapshot())[tab] ?? null;
 }
 
-function finishHandler() {
-    const call = vi
-        .mocked(router.on)
-        .mock.calls.find(([name]) => name === 'finish');
+function routerHandler<T extends 'start' | 'finish'>(name: T) {
+    const call = [...vi.mocked(router.on).mock.calls]
+        .reverse()
+        .find(([event]) => event === name);
     if (!call) {
-        throw new Error('router.on was never called for "finish"');
+        throw new Error(`router.on was never called for "${name}"`);
     }
-    return call[1] as (event: GlobalEvent<'finish'>) => void;
+    return call[1] as (event: GlobalEvent<T>) => void;
 }
 
-function fireFinish() {
+function tabVisit(href: string) {
+    return {
+        url: new URL(href, 'http://localhost'),
+        method: 'get',
+        async: false,
+        prefetch: false,
+    } as PendingVisit;
+}
+
+function fireStart(visit: PendingVisit) {
+    routerHandler('start')({ detail: { visit } } as GlobalEvent<'start'>);
+}
+
+function fireFinish(visit: PendingVisit) {
     act(() => {
-        finishHandler()({} as GlobalEvent<'finish'>);
+        routerHandler('finish')({ detail: { visit } } as GlobalEvent<'finish'>);
     });
 }
 
+function tap(label: string, href: string) {
+    const visit = tabVisit(href);
+    act(() => {
+        fireEvent.click(screen.getByText(label).closest('a')!);
+        fireStart(visit);
+    });
+    return visit;
+}
+
 describe('MobileBottomNav', () => {
+    let untrack: () => void;
+
     beforeEach(() => {
         vi.mocked(router.on).mockClear();
         vi.mocked(router.visit).mockClear();
         window.sessionStorage.clear();
         window.scrollY = 0;
+        untrack = trackTabVisits();
     });
 
     afterEach(() => {
+        const left = pendingTabSnapshot();
+        if (left !== null) {
+            fireFinish(left.visit);
+        }
+        untrack();
         window.sessionStorage.clear();
         window.scrollY = 0;
     });
@@ -319,7 +350,7 @@ describe('MobileBottomNav', () => {
         setMockPage({}, '/history', 'History');
         render(<MobileBottomNav />);
 
-        fireEvent.click(screen.getByText('Today').closest('a')!);
+        tap('Today', '/');
 
         expect(screen.getByText('Today').closest('a')).toHaveClass(
             'grow-[1.6]',
@@ -336,7 +367,7 @@ describe('MobileBottomNav', () => {
         setMockPage({}, '/history', 'History');
         render(<MobileBottomNav />);
 
-        fireEvent.click(screen.getByText('Today').closest('a')!);
+        tap('Today', '/');
 
         expect(screen.getByText('History').closest('a')).toHaveAttribute(
             'aria-current',
@@ -351,8 +382,8 @@ describe('MobileBottomNav', () => {
         setMockPage({}, '/history', 'History');
         render(<MobileBottomNav />);
 
-        fireEvent.click(screen.getByText('Today').closest('a')!);
-        fireFinish();
+        const visit = tap('Today', '/');
+        fireFinish(visit);
 
         expect(screen.getByText('History').closest('a')).toHaveClass(
             'grow-[1.6]',
@@ -366,18 +397,22 @@ describe('MobileBottomNav', () => {
         setMockPage({}, '/history', 'History');
         render(<MobileBottomNav />);
 
-        fireEvent.click(screen.getByText('Today').closest('a')!);
-        fireEvent.click(screen.getByText('Plan').closest('a')!);
-        // The interrupted first visit fires its own `finish` immediately.
-        fireFinish();
+        const first = tap('Today', '/');
+        const second = tabVisit('/plan');
+        act(() => {
+            fireEvent.click(screen.getByText('Plan').closest('a')!);
+            routerHandler('finish')({
+                detail: { visit: first },
+            } as GlobalEvent<'finish'>);
+            fireStart(second);
+        });
 
         expect(screen.getByText('Plan').closest('a')).toHaveClass('grow-[1.6]');
         expect(screen.getByText('History').closest('a')).not.toHaveClass(
             'grow-[1.6]',
         );
 
-        // The second visit's own `finish` then clears the pending state.
-        fireFinish();
+        fireFinish(second);
 
         expect(screen.getByText('History').closest('a')).toHaveClass(
             'grow-[1.6]',
@@ -389,6 +424,17 @@ describe('MobileBottomNav', () => {
 
     // The bell in the top bar is the labelled, actionable control; this is a
     // reason to look up, so it carries no count and is not announced.
+    it('lights nothing new when a tap is not followed by its visit', () => {
+        setMockPage({}, '/history', 'History');
+        render(<MobileBottomNav />);
+
+        fireEvent.click(screen.getByText('Today').closest('a')!);
+
+        expect(screen.getByText('Today').closest('a')).not.toHaveClass(
+            'grow-[1.6]',
+        );
+    });
+
     it('dots the today tab while the inbox has unread rows', () => {
         setMockPage({ unreadNotifications: 3 }, '/history', 'History');
         render(<MobileBottomNav />);

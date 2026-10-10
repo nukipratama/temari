@@ -1,17 +1,23 @@
-import type { ReactNode } from 'react';
+import type { ComponentType, ReactNode } from 'react';
 
 import { usePage } from '@inertiajs/react';
 
+import type { TabId } from '@/lib/nav';
 import type { SharedProps } from '@/types/inertia';
 
 import AiCatchingUpBanner from '@/components/AiCatchingUpBanner';
 import ErrorBanner from '@/components/ErrorBanner';
 import FlashNotice from '@/components/FlashNotice';
+import HistorySkeleton from '@/components/history/HistorySkeleton';
+import TodaySkeleton from '@/components/home/TodaySkeleton';
 import MobileBottomNav from '@/components/MobileBottomNav';
 import MobileTopBar from '@/components/MobileTopBar';
+import PlanSkeleton from '@/components/plan/PlanSkeleton';
 import StravaPausedBanner from '@/components/StravaPausedBanner';
 import StravaZoneReconnectBanner from '@/components/StravaZoneReconnectBanner';
+import TrendsSkeleton from '@/components/trends/TrendsSkeleton';
 import { useSystemTheme } from '@/hooks/useSystemTheme';
+import useTabSkeleton from '@/hooks/useTabSkeleton';
 import useViewTransitions from '@/hooks/useViewTransitions';
 import { cn } from '@/lib/cn';
 import { navTabFor } from '@/lib/nav';
@@ -20,11 +26,25 @@ interface AppShellProps {
     children: ReactNode;
 }
 
+const TAB_SKELETONS: Readonly<Record<TabId, ComponentType<{ href: string }>>> =
+    {
+        today: TodaySkeleton,
+        plan: PlanSkeleton,
+        trends: TrendsSkeleton,
+        history: HistorySkeleton,
+    };
+
+function TabSkeleton({ tab, href }: Readonly<{ tab: TabId; href: string }>) {
+    const Skeleton = TAB_SKELETONS[tab];
+    return <Skeleton href={href} />;
+}
+
 export default function AppShell({ children }: Readonly<AppShellProps>) {
     useSystemTheme();
     useViewTransitions();
     const { component } = usePage<SharedProps>();
     const hasBottomNav = navTabFor(component) !== null;
+    const skeleton = useTabSkeleton(component);
 
     return (
         <div className="min-h-screen bg-background pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] text-foreground">
@@ -56,6 +76,7 @@ export default function AppShell({ children }: Readonly<AppShellProps>) {
                 <main
                     id="main-content"
                     tabIndex={-1}
+                    aria-busy={skeleton !== null || undefined}
                     className={cn(
                         'outline-none',
                         hasBottomNav
@@ -63,7 +84,10 @@ export default function AppShell({ children }: Readonly<AppShellProps>) {
                             : 'pb-[calc(1.75rem+env(safe-area-inset-bottom))]',
                     )}
                 >
-                    {children}
+                    {skeleton !== null && (
+                        <TabSkeleton tab={skeleton.tab} href={skeleton.href} />
+                    )}
+                    <div hidden={skeleton !== null}>{children}</div>
                 </main>
             </div>
 

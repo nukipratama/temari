@@ -9,10 +9,14 @@ import CalendarGrid from '@/components/history/CalendarGrid';
 import ConsistencyLine from '@/components/history/ConsistencyLine';
 import EffortLegend from '@/components/history/EffortLegend';
 import HistoryHeader from '@/components/history/HistoryHeader';
+import {
+    CalendarGridSkeleton,
+    ConsistencyLineSkeleton,
+    MonthRecapSkeleton,
+} from '@/components/history/HistorySkeleton';
 import RecapCard from '@/components/history/RecapCard';
 import { Icon, IconComponent } from '@/components/ui/Icon';
 import PageContainer from '@/components/ui/PageContainer';
-import Skeleton, { SkeletonRows } from '@/components/ui/Skeleton';
 import { useHorizontalSwipe } from '@/hooks/useHorizontalSwipe';
 import { appLayout } from '@/layouts/appLayout';
 import { lazyIsland } from '@/lib/lazyIsland';
@@ -124,9 +128,7 @@ export default function Calendar({
                 >
                     <Deferred
                         data={['cells']}
-                        fallback={
-                            <Skeleton className="mx-auto mb-3 h-3 w-56" />
-                        }
+                        fallback={<ConsistencyLineSkeleton />}
                     >
                         {() => (
                             <ConsistencyLine
@@ -138,7 +140,7 @@ export default function Calendar({
 
                     <Deferred
                         data={['monthlyRecap']}
-                        fallback={<Skeleton className="mb-2.5 h-16 w-full" />}
+                        fallback={<MonthRecapSkeleton />}
                     >
                         {() =>
                             monthlyRecap && (
@@ -161,7 +163,7 @@ export default function Calendar({
                     <div className="rounded-md border border-border p-3">
                         <Deferred
                             data={['cells', 'weeklySnapshots']}
-                            fallback={<SkeletonRows count={6} />}
+                            fallback={<CalendarGridSkeleton />}
                         >
                             {() => (
                                 <CalendarGrid

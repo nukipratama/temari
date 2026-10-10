@@ -1,7 +1,7 @@
 import type { MouseEvent } from 'react';
 
 import { Link, router, usePage } from '@inertiajs/react';
-import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { useSyncExternalStore } from 'react';
 
 import type { TabId } from '@/lib/nav';
 import type { SharedProps } from '@/types/inertia';
@@ -16,6 +16,11 @@ import {
     tabMemorySnapshot,
 } from '@/lib/navigationMemory';
 import { useTodayIso } from '@/lib/pace';
+import {
+    armPendingTab,
+    pendingTabSnapshot,
+    subscribePendingTab,
+} from '@/lib/pendingTab';
 
 // Tapping the active tab scrolls to top instead of a full Inertia round-trip to the same page.
 function scrollToTop(event: MouseEvent<Element>) {
@@ -89,29 +94,17 @@ export default function MobileBottomNav() {
         ),
     );
     const planSelectedDay = tabs.plan?.selectedDay ?? null;
-    const [pending, setPending] = useState<TabId | null>(null);
-    // Counts visits still in flight rather than trusting any single `finish`:
-    // a second tap before the first answers interrupts that first visit, which
-    // fires its own `finish` immediately — clearing on that would snap the
-    // highlight back to `current` while the second visit is still pending.
-    const inFlightRef = useRef(0);
-
-    useEffect(
-        () =>
-            router.on('finish', () => {
-                inFlightRef.current = Math.max(0, inFlightRef.current - 1);
-                if (inFlightRef.current === 0) {
-                    setPending(null);
-                }
-            }),
-        [],
+    const pending = useSyncExternalStore(
+        subscribePendingTab,
+        pendingTabSnapshot,
+        () => null,
     );
 
     if (current === null) {
         return null;
     }
 
-    const active = pending ?? current;
+    const active = pending?.tab ?? current;
 
     return (
         <div className="pointer-events-none fixed inset-x-0 bottom-[max(0.875rem,calc(env(safe-area-inset-bottom)+0.25rem))] z-30 pl-[max(0.875rem,env(safe-area-inset-left))] pr-[max(0.875rem,env(safe-area-inset-right))]">
@@ -138,10 +131,7 @@ export default function MobileBottomNav() {
                                               today,
                                               planSelectedDay,
                                           )
-                                    : () => {
-                                          inFlightRef.current += 1;
-                                          setPending(item.id);
-                                      }
+                                    : () => armPendingTab(item.id, component)
                             }
                             className={cn(
                                 'pressable focus-ring flex flex-1 items-center justify-center gap-1.5 rounded-full py-2.5 text-text-3 no-underline transition-[flex-grow,background-color,color] duration-150',
