@@ -261,7 +261,8 @@ narrate them once the window closes, which is why a pending recap row is not a b
   [`AnalysisService`](../../app/Services/AI/AnalysisService.php)'s `dispatchRow()` hands back the
   existing row untouched, staging none, when the athlete's session on the briefing's date is skipped,
   before any pause check or cost-ceiling fill, so the kickoff, post-run, catch-up, self-heal and
-  Reread paths all pass it by. `briefing:morning-push` leaves an athlete whose today is skipped alone.
+  Reread paths all pass it by. `SelfHealer` leaves a stalled briefing on a skipped day out of its
+  earliest-row pick, so it never blocks a later one. `briefing:morning-push` leaves an athlete whose today is skipped alone.
 
 ### 4. Recovery
 

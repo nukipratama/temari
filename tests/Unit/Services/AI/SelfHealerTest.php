@@ -9,6 +9,7 @@ use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
 use App\Models\PlanAdaptation;
+use App\Models\PlannedSession;
 use App\Models\RunCard;
 use App\Models\Season;
 use App\Models\StravaConnection;
@@ -602,6 +603,25 @@ it('re-kicks the earliest stalled briefing suggestion per user with invalidate:f
         ->and($captured[0]['type'])->toBe(AnalysisType::BriefingMascotVoice)
         ->and($captured[0]['discriminator'])->toBe($earliest->discriminator)
         ->and($captured[0]['invalidate'])->toBeFalse();
+});
+
+it('passes over a stalled briefing parked on a skipped day and resumes the later one', function (): void {
+    $user = User::factory()->create();
+    PlannedSession::factory()->for($user)->create(['date' => '2026-05-18', 'skipped' => true]);
+    foreach (['2026-05-18', '2026-06-01'] as $day) {
+        Analysis::factory()->create([
+            'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
+            'subject_id' => $user->id,
+            'analysis_type' => AnalysisType::BriefingMascotVoice,
+            'discriminator' => $day,
+            'status' => AnalysisStatus::Pending,
+        ]);
+    }
+
+    $captured = [];
+
+    expect(selfHealer(captureResumeRequests($captured))->run())->toBe(1)
+        ->and(array_column($captured, 'discriminator'))->toBe(['2026-06-01']);
 });
 
 it('skips a demo user for the briefing suggestion so the resume net never auto-bills it', function (): void {
