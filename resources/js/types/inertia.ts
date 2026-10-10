@@ -395,7 +395,6 @@ export interface StoryLine {
     kind: string;
     mood: Mood;
     speech: string | null;
-    sigil_pattern: string;
     for_date: string | null;
 }
 
