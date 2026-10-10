@@ -140,7 +140,7 @@ class RunController extends Controller
                 ->where('activity_id', $activity->id)
                 ->where('kind', StoryLine::KIND_POST_RUN)
                 ->first()
-                ?->makeHidden(['created_at', 'updated_at', 'sigil_pattern']),
+                ?->makeHidden(['created_at', 'updated_at']),
             // Backend-computed mood for the (rare) window before the post-run
             // StoryLine lands, so the detail mascot matches the share card
             // instead of diverging into a frontend heuristic.
