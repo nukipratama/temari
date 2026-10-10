@@ -25,38 +25,6 @@ use App\Services\Run\Metrics\ReadinessCeiling;
  */
 final class ReadinessClamp
 {
-    public const float MILD_QUALITY_PACE_SLOWDOWN = 0.03;
-
-    /** @var list<string> */
-    private const array MILD_MODERATE_REASONS = [
-        'mild_fatigue_or_soreness_with_load_support',
-        'fair_sleep_with_load_support',
-        'poor_sleep_with_load_support',
-    ];
-
-    /** @var list<string> */
-    private const array STRONG_MODERATE_REASONS = [
-        'running_ahead_of_plan',
-        'weekly_load_above_personal_range',
-        'demanding_session_within_24h',
-        'closely_spaced_demanding_sessions',
-        'moderate_fatigue_or_soreness_reported',
-    ];
-
-    /**
-     * Whether a `ModerateOk` ceiling rests only on its mildest triggers:
-     * mild fatigue or soreness, or fair or poor sleep, alongside supporting
-     * load, with no stronger trigger that would cap the day by itself.
-     *
-     * @param  list<string>  $reasons
-     */
-    public static function isMildModerate(ReadinessCeiling $ceiling, array $reasons): bool
-    {
-        return $ceiling === ReadinessCeiling::ModerateOk
-            && array_intersect(self::MILD_MODERATE_REASONS, $reasons) !== []
-            && array_intersect(self::STRONG_MODERATE_REASONS, $reasons) === [];
-    }
-
     /**
      * @param  array{easy: int, marathon: int, threshold: int, interval: int}|null  $paces
      * @param  list<string>  $reasons
@@ -94,16 +62,6 @@ final class ReadinessClamp
 
                 return ['session_type' => SessionType::Easy, 'segments' => SegmentGenerator::easyBlock($km, $paces), 'core_km' => $km,
                     'note' => self::noteFor($sessionType, $ceiling, $reasons) ?? self::moderateOkNote()];
-            }
-            $basePace = $prescription->paceSecPerKm ?? $paces[$prescription->paceBand->value] ?? null;
-            if ($basePace !== null && self::isMildModerate($ceiling, $reasons) && ! GoalPaceWork::isGoalPace($prescription->raceContext)) {
-                $slowed = (int) round($basePace * (1 + self::MILD_QUALITY_PACE_SLOWDOWN));
-                $km = SegmentGenerator::coreKmFor($sessionType, false, $longRunBaselineKm, $volumeMultiplier, $longRunCapKm);
-                $segments = SegmentGenerator::forPrescription($sessionType, $phase, $km, $paces, new IntensityPrescription($prescription->hardMinutes, $prescription->paceBand, $slowed, $prescription->reason, $prescription->raceContext));
-
-                return ['session_type' => $sessionType, 'segments' => $segments, 'core_km' => $km,
-                    'note' => self::qualityDoseNote($sessionType, $reasons, $prescription->hardMinutes, $prescription->hardMinutes, $slowed),
-                    'quality_dose' => ['hard_minutes' => $prescription->hardMinutes, 'original_hard_minutes' => $prescription->hardMinutes, 'pace_band' => $prescription->paceBand->value, 'pace_sec_per_km' => $slowed]];
             }
             $minutes = max(1, (int) floor($prescription->hardMinutes * 0.75));
             $reduced = new IntensityPrescription($minutes, $prescription->paceBand, $prescription->paceSecPerKm, $prescription->reason, $prescription->raceContext);
@@ -230,7 +188,6 @@ final class ReadinessClamp
     public static function paceEaseNote(array $reasons = []): string
     {
         foreach ([
-            'severe_fatigue_or_soreness_reported' => 'you reported strong fatigue or soreness, so keep this one at the slower end of easy.',
             'training_form_fatigued' => 'your current training form is showing fatigue, so keep this one at the slower end of easy.',
             'demanding_session_within_24h' => 'you completed a demanding session within the last day, so keep this one at the slower end of easy.',
             'closely_spaced_demanding_sessions' => 'hard sessions have landed close together, so keep this one at the slower end of easy.',
@@ -299,9 +256,6 @@ final class ReadinessClamp
     private static function specificNote(array $reasons): ?string
     {
         foreach ([
-            'concerning_pain_reported' => "you reported concerning pain, so today's a full rest instead.",
-            'illness_reported' => "you reported feeling ill, so today's a full rest instead.",
-            'severe_fatigue_or_soreness_reported' => "you reported strong fatigue or soreness, so quality work can wait.",
             'training_form_overreaching' => "your current training form is showing overreaching, so today's a full rest instead.",
             'already_ran_today' => "you already ran today, so this one stays easy instead of the planned session.",
             'demanding_session_within_24h' => "you completed a demanding session within the last day, so quality can wait.",
@@ -311,10 +265,6 @@ final class ReadinessClamp
             'high_training_monotony' => 'your recent training load has been unusually uniform, so quality can wait.',
             'volume_increased_sharply' => "this week's running volume is well above last week's, so quality can wait.",
             'running_ahead_of_plan' => "you've run well past this week's plan so far, so quality can wait.",
-            'moderate_fatigue_or_soreness_reported' => 'you reported moderate fatigue or soreness, so quality can wait.',
-            'mild_fatigue_or_soreness_with_load_support' => 'you reported mild fatigue or soreness alongside elevated recent load, so ease this one.',
-            'fair_sleep_with_load_support' => 'you reported fair sleep alongside elevated recent load, so ease this one.',
-            'poor_sleep_with_load_support' => 'you reported poor sleep alongside elevated recent load, so ease this one.',
         ] as $reason => $note) {
             if (in_array($reason, $reasons, true)) {
                 return $note;

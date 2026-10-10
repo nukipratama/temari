@@ -8,7 +8,6 @@ use App\Enums\SessionType;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\PlannedSession;
-use App\Models\RecoveryFeedback;
 use App\Models\RaceGoal;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
@@ -462,36 +461,6 @@ it('holds todays advisory clamp while a demanding run awaits hydration, then app
     expect($held['eased_from'])->toBeNull()
         ->and($resumed['session_type'])->toBe('easy')
         ->and(weekPlanShownReadiness($resumed)['reasons'])->toContain('demanding_session_within_24h');
-
-    Carbon::setTestNow();
-});
-
-it('shows current illness advice while other recent training history is hydrating', function (): void {
-    Carbon::setTestNow('2026-08-12 08:00:00');
-    $user = User::factory()->create();
-    $weekStart = Carbon::today()->startOfWeek(Carbon::MONDAY);
-    seedWeekOfSessions($user, $weekStart);
-    PlannedSession::query()->where('user_id', $user->id)
-        ->whereDate('date', Carbon::today()->toDateString())
-        ->update(['session_type' => SessionType::Interval]);
-    $activity = Activity::factory()->summaryOnly()->for($user)->create();
-    ActivityDetail::factory()->for($activity)->create([
-        'start_date_local' => Carbon::today()->copy()->subDays(41)->setTime(7, 0),
-        'has_heartrate' => false,
-        'trimp_edwards' => null,
-    ]);
-    RecoveryFeedback::query()->create([
-        'user_id' => $user->id,
-        'date' => Carbon::today()->toDateString(),
-        'illness' => true,
-    ]);
-
-    $today = collect(app(CurrentWeekPlanBuilder::class)->forUser($user, Carbon::today())['days'])
-        ->firstWhere('date', Carbon::today()->toDateString());
-
-    expect($today['session_type'])->toBe('rest')
-        ->and(weekPlanShownReadiness($today)['inputs']['recent_training_stress']['sessions'])->toBe([])
-        ->and(weekPlanShownReadiness($today)['inputs']['weekly_trimp'])->toBeNull();
 
     Carbon::setTestNow();
 });

@@ -20,7 +20,6 @@ use App\Models\PersonalRecord;
 use App\Models\PlannedSession;
 use App\Models\RaceGoal;
 use App\Models\RecommendationView;
-use App\Models\RecoveryFeedback;
 use App\Models\Season;
 use App\Models\TrainingPreference;
 use App\Models\User;
@@ -468,11 +467,7 @@ it('queues a manual regeneration when the per-user lock stays busy', function ()
 
 it('clamps today\'s session against the readiness ceiling without mutating the stored row', function (): void {
     $user = User::factory()->create();
-    RecoveryFeedback::query()->create([
-        'user_id' => $user->id,
-        'date' => Carbon::today()->toDateString(),
-        'concerning_pain' => true,
-    ]);
+    seedDemandingRunYesterday($user);
     $today = PlannedSession::factory()->for($user)->create([
         'date' => Carbon::today()->toDateString(),
         'session_type' => 'interval',
@@ -488,8 +483,8 @@ it('clamps today\'s session against the readiness ceiling without mutating the s
         ->flatMap(fn (array $week): array => $week['days'])
         ->firstWhere('date', Carbon::today()->toDateString());
 
-    // Advisory: rest leads today, and the interval it was planned as is the context.
-    expect($todayDay['session_type'])->toBe('rest')
+    // Advisory: easy leads today, and the interval it was planned as is the context.
+    expect($todayDay['session_type'])->toBe('easy')
         ->and($todayDay['eased_from']['session_type'])->toBe('interval')
         ->and($todayDay['eased_from']['voice'])->not->toBeNull();
 
@@ -499,13 +494,9 @@ it('clamps today\'s session against the readiness ceiling without mutating the s
         ->and($fresh->pinned)->toBeFalse();
 });
 
-it('never clamps a future day, only today, even at the worst readiness ceiling', function (): void {
+it('never clamps a future day, only today, even under a restricted readiness ceiling', function (): void {
     $user = User::factory()->create();
-    RecoveryFeedback::query()->create([
-        'user_id' => $user->id,
-        'date' => Carbon::today()->toDateString(),
-        'concerning_pain' => true,
-    ]);
+    seedDemandingRunYesterday($user);
     PlannedSession::factory()->for($user)->create([
         'date' => Carbon::today()->addDays(2)->toDateString(),
         'session_type' => 'interval',
@@ -598,15 +589,12 @@ it('paints the Plan shell and resolves its deferred props inside their query bud
     $user = planBudgetFixture();
 
     $queries = 0;
-    $readinessQueries = ['stress' => 0, 'feedback' => 0];
+    $readinessQueries = ['stress' => 0];
     DB::listen(function (QueryExecuted $query) use (&$queries, &$readinessQueries): void {
         $queries++;
         if (str_contains($query->sql, '`activity_details`.`stream_summary`')
             && str_contains($query->sql, '`activity_details`.`has_heartrate`')) {
             $readinessQueries['stress']++;
-        }
-        if (str_contains($query->sql, '`recovery_feedback`')) {
-            $readinessQueries['feedback']++;
         }
     });
 
@@ -625,7 +613,7 @@ it('paints the Plan shell and resolves its deferred props inside their query bud
         'weeks,seasonSummary,seasonAdherencePct,adaptation,planNarration',
     );
     $queries = 0;
-    $readinessQueries = ['stress' => 0, 'feedback' => 0];
+    $readinessQueries = ['stress' => 0];
 
     $this->actingAs($user)->get('/plan', $headers)->assertSuccessful();
 
@@ -636,7 +624,7 @@ it('paints the Plan shell and resolves its deferred props inside their query bud
     // 20: BriefingContext::prescribedKmToDate reads this week's planned sessions.
     // 21: the supported VDOT reads the athlete's hard efforts.
     expect($queries)->toBeLessThanOrEqual(21);
-    expect($readinessQueries)->toBe(['stress' => 1, 'feedback' => 1]);
+    expect($readinessQueries)->toBe(['stress' => 1]);
 });
 
 it('fills the demo athlete\'s season block rule-based when the deferred planNarration prop resolves, and leaves a regular athlete\'s alone', function (bool $demo): void {
@@ -720,13 +708,9 @@ it('refuses to move a session onto a day that is not a rest day', function (): v
         ->and($to->fresh()->session_type->value)->toBe('race');
 });
 
-it('keeps a session the athlete pinned to today leading, with the safety advice as a note', function (): void {
+it('keeps a session the athlete pinned to today leading, with the readiness advice as a note', function (): void {
     $user = User::factory()->create();
-    RecoveryFeedback::query()->create([
-        'user_id' => $user->id,
-        'date' => Carbon::today()->toDateString(),
-        'concerning_pain' => true,
-    ]);
+    seedDemandingRunYesterday($user);
     PlannedSession::factory()->for($user)->pinned()->create([
         'date' => Carbon::today()->toDateString(),
         'session_type' => 'interval',
@@ -741,7 +725,7 @@ it('keeps a session the athlete pinned to today leading, with the safety advice 
 
     expect($todayDay['session_type'])->toBe('interval')
         ->and($todayDay['eased_from'])->toBeNull()
-        ->and($todayDay['advice_note'])->toContain('reported concerning pain');
+        ->and($todayDay['advice_note'])->toContain('demanding session within the last day');
 });
 
 /**

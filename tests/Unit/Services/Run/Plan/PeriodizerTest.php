@@ -16,7 +16,6 @@ use App\Models\PersonalRecord;
 use App\Models\PlanAdaptation;
 use App\Models\PlannedSession;
 use App\Models\RaceGoal;
-use App\Models\RecoveryFeedback;
 use App\Models\Season;
 use App\Models\TrainingPreference;
 use App\Models\User;
@@ -499,11 +498,6 @@ it('reconciles a settled key-session verdict from the current week', function ()
         ->toBe(AdaptationReason::MissedStimulus);
 });
 
-function reportIllnessToday(User $user): void
-{
-    RecoveryFeedback::query()->create(['user_id' => $user->id, 'date' => Carbon::today()->toDateString(), 'illness' => true]);
-}
-
 function currentWeekPhases(User $user): array
 {
     $weekStart = Carbon::today()->startOfWeek(Carbon::MONDAY);
@@ -517,25 +511,23 @@ function currentWeekPhases(User $user): array
         ->all();
 }
 
-it('turns the current week into a real deload when readiness says rest, with no floor for a goal-less season, and keeps it when a later reading looks healthy', function (): void {
+it('turns the current week into a real deload after a missed week, with no floor for a goal-less season, and keeps it on an unchanged reading', function (): void {
     $user = User::factory()->create();
     seedPeriodizerBaseline($user);
-    reportIllnessToday($user);
+    seedMissedLastWeek($user);
 
     app(Periodizer::class)->regenerate($user, Carbon::today());
 
     expect(currentWeekPhases($user))->toBe([PlanPhase::Deload])
         ->and(currentWeekQualityCount($user))->toBe(0)
         ->and(PlanAdaptation::query()->where('user_id', $user->id)->firstOrFail()->reason)
-        ->toBe(AdaptationReason::LowReadiness)
+        ->toBe(AdaptationReason::MissedWeek)
         ->and(floorOverriddenKm($user))->toBeNull();
-
-    RecoveryFeedback::query()->where('user_id', $user->id)->delete();
 
     expect($this->periodizer->regenerateIfChanged($user, Carbon::today()))->toBeFalse()
         ->and(currentWeekPhases($user))->toBe([PlanPhase::Deload])
         ->and(PlanAdaptation::query()->where('user_id', $user->id)->firstOrFail()->reason)
-        ->toBe(AdaptationReason::LowReadiness);
+        ->toBe(AdaptationReason::MissedWeek);
 });
 
 function floorOverriddenKm(User $user): ?float
@@ -547,7 +539,7 @@ it('records the volume floor a load deload takes the week under', function (): v
     $user = User::factory()->create();
     seedPeriodizerBaseline($user);
     RaceGoal::factory()->for($user)->create(['race_date' => Carbon::today()->addWeeks(11)->toDateString(), 'distance_m' => 10_000]);
-    reportIllnessToday($user);
+    seedMissedLastWeek($user);
 
     app(Periodizer::class)->regenerate($user, Carbon::today());
 
@@ -565,7 +557,7 @@ it('never deloads a taper week, and records no overridden floor when the week st
     $tapering = User::factory()->create();
     seedPeriodizerBaseline($tapering);
     RaceGoal::factory()->for($tapering)->create(['race_date' => Carbon::today()->addDays(5)->toDateString(), 'distance_m' => 10_000]);
-    reportIllnessToday($tapering);
+    seedMissedLastWeek($tapering);
     app(Periodizer::class)->regenerate($tapering, Carbon::today());
 
     expect(floorOverriddenKm($steady))->toBeNull()

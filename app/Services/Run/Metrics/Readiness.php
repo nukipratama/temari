@@ -26,7 +26,6 @@ final readonly class Readiness
      * @param  TrainingFormStatus|null  $formStatus  Current form status; null means unknown.
      * @param  int|null  $recoveryHours  Literal hours since any run, retained as context only.
      * @param  array<string, mixed>|null  $stressProfile  Actual recent activities, regardless of the planned session label.
-     * @param  array<string, mixed>|null  $feedback  Latest recovery feedback and its freshness.
      * @param  array{low: float, high: float}|null  $weeklyTrimpRange  Personal reference range, excluding the current window, when available.
      * @param  float|null  $aheadOfPlanPct  Actual km-to-date against prescribed km-to-date this week; null without a prescription.
      */
@@ -38,7 +37,6 @@ final readonly class Readiness
         ?float $volumeRampPct,
         string $fitnessTrend,
         ?array $stressProfile = null,
-        ?array $feedback = null,
         ?float $weeklyTrimp = null,
         ?array $weeklyTrimpRange = null,
         bool $formConflict = false,
@@ -50,12 +48,6 @@ final readonly class Readiness
             'demanding_within_24h' => 0,
             'demanding_within_48h' => 0,
         ];
-        $currentFeedback = ($feedback['freshness'] ?? null) === 'current' ? $feedback : null;
-        $fatigue = $currentFeedback['fatigue'] ?? null;
-        $soreness = $currentFeedback['soreness'] ?? null;
-        $sleep = $currentFeedback['sleep_quality'] ?? null;
-        $mildConcern = $fatigue === 'mild' || $soreness === 'mild' || $sleep === 'fair' || $sleep === 'poor';
-        $moderateConcern = $fatigue === 'moderate' || $soreness === 'moderate';
         $recentDemanding = (int) ($stressProfile['demanding_within_24h'] ?? 0) > 0;
         $closelySpacedDemanding = (int) ($stressProfile['demanding_within_48h'] ?? 0) > 1;
         $aheadOfPlan = $aheadOfPlanPct !== null && $aheadOfPlanPct > 15.0;
@@ -63,27 +55,10 @@ final readonly class Readiness
             && $weeklyTrimpRange !== null
             && $weeklyTrimp > $weeklyTrimpRange['high']
             && ($aheadOfPlanPct === null || $aheadOfPlanPct > 0.0);
-        $supportingLoad = in_array($formStatus, [TrainingFormStatus::Fatigued, TrainingFormStatus::Overreaching], true)
-            || $aheadOfPlan
-            || $recentDemanding
-            || $closelySpacedDemanding
-            || $loadAboveTypical;
 
         $ceiling = ReadinessCeiling::QualityOk;
         $reasons = [];
 
-        if (($currentFeedback['concerning_pain'] ?? false) === true) {
-            $ceiling = $ceiling->capTo(ReadinessCeiling::Rest);
-            $reasons[] = 'concerning_pain_reported';
-        }
-        if (($currentFeedback['illness'] ?? false) === true) {
-            $ceiling = $ceiling->capTo(ReadinessCeiling::Rest);
-            $reasons[] = 'illness_reported';
-        }
-        if ($fatigue === 'severe' || $soreness === 'severe') {
-            $ceiling = $ceiling->capTo(ReadinessCeiling::EasyOnly);
-            $reasons[] = 'severe_fatigue_or_soreness_reported';
-        }
         if ($ranToday) {
             $ceiling = $ceiling->capTo(ReadinessCeiling::EasyOnly);
             $reasons[] = 'already_ran_today';
@@ -103,22 +78,6 @@ final readonly class Readiness
         if ($closelySpacedDemanding) {
             $ceiling = $ceiling->capTo(ReadinessCeiling::ModerateOk);
             $reasons[] = 'closely_spaced_demanding_sessions';
-        }
-        if ($moderateConcern) {
-            $ceiling = $ceiling->capTo(ReadinessCeiling::ModerateOk);
-            $reasons[] = 'moderate_fatigue_or_soreness_reported';
-        } elseif ($mildConcern) {
-            $reasons[] = $supportingLoad
-                ? (in_array($fatigue, ['mild', 'moderate'], true) || in_array($soreness, ['mild', 'moderate'], true)
-                    ? 'mild_fatigue_or_soreness_with_load_support'
-                    : "{$sleep}_sleep_with_load_support")
-                : 'mild_feedback_without_load_support';
-            if ($supportingLoad) {
-                $ceiling = $ceiling->capTo(ReadinessCeiling::ModerateOk);
-            }
-        }
-        if ($feedback !== null && ($feedback['freshness'] ?? null) === 'stale') {
-            $reasons[] = 'stale_recovery_feedback_not_applied';
         }
         if ($formConflict) {
             $reasons[] = 'conflicting_form_signals';
@@ -140,7 +99,6 @@ final readonly class Readiness
                 'volume_ramp_pct' => $volumeRampPct,
                 'fitness_trend' => $fitnessTrend,
                 'recent_training_stress' => $stressProfile,
-                'recovery_feedback' => $feedback,
                 'weekly_trimp' => $weeklyTrimp,
                 'weekly_trimp_reference' => $weeklyTrimpRange,
                 'ahead_of_plan_pct' => $aheadOfPlanPct,

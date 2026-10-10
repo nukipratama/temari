@@ -51,7 +51,7 @@ it('ModerateOk leaves long days alone and reduces a quality day without replacin
         INF,
         CLAMP_PACES,
         ReadinessCeiling::ModerateOk,
-        reasons: ['moderate_fatigue_or_soreness_reported'],
+        reasons: ['demanding_session_within_24h'],
         prescription: $prescription,
     );
     $hardSegments = array_filter($clamp['segments'], static fn ($segment): bool => $segment->paceLabel !== PaceBand::Easy);
@@ -64,7 +64,7 @@ it('ModerateOk leaves long days alone and reduces a quality day without replacin
             'pace_band' => 'threshold',
             'pace_sec_per_km' => 270,
         ])
-        ->and($clamp['note'])->toContain('moderate fatigue or soreness');
+        ->and($clamp['note'])->toContain('demanding session within the last day');
 });
 
 function applyQualityClamp(IntensityPrescription $prescription, array $reasons, SessionType $type = SessionType::Tempo, ReadinessCeiling $ceiling = ReadinessCeiling::ModerateOk): ?array
@@ -72,42 +72,7 @@ function applyQualityClamp(IntensityPrescription $prescription, array $reasons, 
     return ReadinessClamp::apply($type, PlanPhase::Build, null, CLAMP_BASELINE_KM, CLAMP_MULTIPLIER, INF, CLAMP_PACES, $ceiling, reasons: $reasons, prescription: $prescription);
 }
 
-it('keeps a quality day\'s minutes and slows its pace by 3% at the mildest ModerateOk triggers', function (array $reasons): void {
-    $clamp = applyQualityClamp(new IntensityPrescription(20, PaceBand::Threshold, 270, 'planned quality'), $reasons);
-    $hard = array_values(array_filter($clamp['segments'], static fn ($segment): bool => $segment->paceLabel !== PaceBand::Easy));
-
-    expect($clamp['session_type'])->toBe(SessionType::Tempo)
-        ->and(array_sum(array_map(static fn ($segment): float => $segment->minutes ?? 0.0, $hard)))->toBe(20.0)
-        ->and($hard[0]->paceSecPerKm)->toBe(278)
-        ->and($clamp['quality_dose'])->toBe(['hard_minutes' => 20, 'original_hard_minutes' => 20, 'pace_band' => 'threshold', 'pace_sec_per_km' => 278])
-        ->and($clamp['note'])->toEndWith('keep all 20 hard minutes of the tempo work, a touch easier at 4:38/km.');
-})->with([
-    'mild fatigue with load' => [['mild_fatigue_or_soreness_with_load_support']],
-    'fair sleep with load' => [['fair_sleep_with_load_support']],
-    'poor sleep with load' => [['poor_sleep_with_load_support', 'conflicting_form_signals']],
-]);
-
-it('slows the band pace when a prescription carries none of its own', function (): void {
-    $clamp = applyQualityClamp(new IntensityPrescription(12, PaceBand::Interval, null, 'planned quality'), ['fair_sleep_with_load_support'], SessionType::Interval);
-
-    expect($clamp['quality_dose']['pace_sec_per_km'])->toBe(247);
-});
-
-it('keeps the 0.75x cut when a stronger trigger sits beside a mild one', function (): void {
-    $clamp = applyQualityClamp(new IntensityPrescription(20, PaceBand::Threshold, 270, 'planned quality'), ['demanding_session_within_24h', 'mild_fatigue_or_soreness_with_load_support']);
-
-    expect($clamp['quality_dose'])->toMatchArray(['hard_minutes' => 15, 'original_hard_minutes' => 20, 'pace_sec_per_km' => 270]);
-});
-
-it('keeps goal pace at a mild trigger and takes the 0.75x minutes cut instead', function (): void {
-    $goalPace = ['distance_m' => 21_097, 'goal_pace_sec_per_km' => 265, 'kind' => 'half', 'band' => 'on_track'];
-    $clamp = applyQualityClamp(new IntensityPrescription(20, PaceBand::Threshold, 265, 'planned quality', $goalPace), ['mild_fatigue_or_soreness_with_load_support']);
-
-    expect($clamp['session_type'])->toBe(SessionType::Tempo)
-        ->and($clamp['quality_dose'])->toMatchArray(['hard_minutes' => 15, 'original_hard_minutes' => 20, 'pace_sec_per_km' => 265]);
-});
-
-it('eases a time trial to an easy run of the trial distance at ModerateOk, mild trigger or not', function (array $reasons): void {
+it('eases a time trial to an easy run of the trial distance at ModerateOk', function (array $reasons): void {
     $trial = new TimeTrial(5_000, 1_500);
     $clamp = applyQualityClamp($trial->prescription(), $reasons, SessionType::Interval);
 
@@ -116,18 +81,20 @@ it('eases a time trial to an easy run of the trial distance at ModerateOk, mild 
         ->and($clamp)->not->toHaveKey('quality_dose')
         ->and($clamp['segments'][0]->paceLabel)->toBe(PaceBand::Easy);
 })->with([
-    'mild' => [['mild_fatigue_or_soreness_with_load_support']],
-    'strong' => [['moderate_fatigue_or_soreness_reported']],
+    'ahead of plan' => [['running_ahead_of_plan']],
+    'demanding session' => [['demanding_session_within_24h']],
 ]);
 
-it('reads only a ModerateOk ceiling resting on mild triggers alone as mild', function (ReadinessCeiling $ceiling, array $reasons, bool $mild): void {
-    expect(ReadinessClamp::isMildModerate($ceiling, $reasons))->toBe($mild);
+it('falls back to the generic note for a retired reason code from an older snapshot', function (string $reason): void {
+    expect(ReadinessClamp::noteFor(SessionType::Interval, ReadinessCeiling::Rest, [$reason]))
+        ->toBe(ReadinessClamp::noteFor(SessionType::Interval, ReadinessCeiling::Rest))
+        ->and(ReadinessClamp::paceEaseNote([$reason]))->toBe(ReadinessClamp::paceEaseNote());
 })->with([
-    'mild alone' => [ReadinessCeiling::ModerateOk, ['fair_sleep_with_load_support', 'stale_recovery_feedback_not_applied'], true],
-    'mild beside a load trigger' => [ReadinessCeiling::ModerateOk, ['running_ahead_of_plan', 'poor_sleep_with_load_support'], false],
-    'moderate fatigue' => [ReadinessCeiling::ModerateOk, ['moderate_fatigue_or_soreness_reported'], false],
-    'no reason at all' => [ReadinessCeiling::ModerateOk, [], false],
-    'easy only ceiling' => [ReadinessCeiling::EasyOnly, ['mild_fatigue_or_soreness_with_load_support'], false],
+    'pain' => ['concerning_pain_reported'],
+    'illness' => ['illness_reported'],
+    'severe fatigue' => ['severe_fatigue_or_soreness_reported'],
+    'mild sleep' => ['fair_sleep_with_load_support'],
+    'stale feedback' => ['stale_recovery_feedback_not_applied'],
 ]);
 
 it('preserves the event distance and gives a conservative effort note at ModerateOk', function (): void {
@@ -252,7 +219,7 @@ it('clampsToRest agrees with apply for every session type at the Rest ceiling', 
     }
 });
 
-it('leaves a race alone when readiness is clear but allows a strong-concern rest advisory', function (): void {
+it('leaves a race alone when readiness is clear but allows a rest advisory', function (): void {
     expect(applyClamp(SessionType::Race, ReadinessCeiling::QualityOk))->toBeNull()
         ->and(ReadinessClamp::clampsToRest(SessionType::Race, ReadinessCeiling::QualityOk))->toBeFalse()
         ->and(ReadinessClamp::downgradeFor(SessionType::Race, ReadinessCeiling::QualityOk))->toBeNull();
@@ -266,11 +233,9 @@ it('leaves a race alone when readiness is clear but allows a strong-concern rest
         INF,
         CLAMP_PACES,
         ReadinessCeiling::Rest,
-        reasons: ['concerning_pain_reported'],
     );
 
     expect($clamp['session_type'])->toBe(SessionType::Rest)
-        ->and($clamp['note'])->toContain('reported concerning pain')
         ->and(ReadinessClamp::clampsToRest(SessionType::Race, ReadinessCeiling::Rest))->toBeTrue()
         ->and(ReadinessClamp::downgradeFor(SessionType::Race, ReadinessCeiling::Rest))->toBe(SessionType::Rest);
 });

@@ -240,12 +240,12 @@ it('dayPayload leads today with the advised ease, the original session as contex
         ->and($unaffected['eased_from'])->toBeNull();
 });
 
-it('keeps a pinned race prescription beside strong-concern advice and snapshots its facts', function (): void {
+it('keeps a pinned race prescription beside conservative-effort advice and snapshots its facts', function (): void {
     $today = Carbon::parse('2026-10-01');
     $assessment = [
-        'ceiling' => 'rest',
-        'reasons' => ['concerning_pain_reported'],
-        'inputs' => ['recovery_feedback' => ['concerning_pain' => true]],
+        'ceiling' => 'moderate_ok',
+        'reasons' => ['demanding_session_within_24h'],
+        'inputs' => ['ran_today' => false],
     ];
     $session = PlannedSession::factory()->make([
         'date' => $today,
@@ -262,7 +262,7 @@ it('keeps a pinned race prescription beside strong-concern advice and snapshots 
         1.0,
         INF,
         RENDERER_PACES,
-        ReadinessCeiling::Rest,
+        ReadinessCeiling::ModerateOk,
         reasons: $assessment['reasons'],
     );
 
@@ -285,7 +285,7 @@ it('keeps a pinned race prescription beside strong-concern advice and snapshots 
     expect($payload['session_type'])->toBe('race')
         ->and($payload['pinned'])->toBeTrue()
         ->and($payload['eased_from'])->toBeNull()
-        ->and($payload['advice_note'])->toContain('reported concerning pain')
+        ->and($payload['advice_note'])->toContain('demanding session within the last day')
         ->and($payload)->not->toHaveKey('readiness_assessment')
         ->and($recommendation['policy_version'])->toBe(2)
         ->and($recommendation['effective']['readiness_assessment'])->toBe($assessment);
@@ -586,7 +586,7 @@ it('renders a recorded readiness dose beside the unchanged prescribed quality se
     ];
     $assessment = [
         'ceiling' => ReadinessCeiling::ModerateOk->value,
-        'reasons' => ['mild_fatigue_or_soreness_with_load_support'],
+        'reasons' => ['demanding_session_within_24h'],
         'inputs' => [],
         'adjustment' => ['quality_dose' => $qualityDose],
     ];
@@ -613,7 +613,7 @@ it('renders a recorded readiness dose beside the unchanged prescribed quality se
         ->and($session->prescribed_hard_minutes)->toBe(20);
 });
 
-it('renders a mild readiness nudge as the same quality minutes at the slowed pace, and shows that pace to grading', function (): void {
+it('renders a stored slowed-pace dose and an unrecognised legacy reason code from an older snapshot', function (): void {
     $today = Carbon::parse('2026-09-15');
     $qualityDose = ['hard_minutes' => 20, 'original_hard_minutes' => 20, 'pace_band' => PaceBand::Threshold->value, 'pace_sec_per_km' => 278];
     $assessment = ['ceiling' => ReadinessCeiling::ModerateOk->value, 'reasons' => ['fair_sleep_with_load_support'], 'inputs' => [], 'adjustment' => ['quality_dose' => $qualityDose]];
@@ -637,7 +637,7 @@ it('renders a mild readiness nudge as the same quality minutes at the slowed pac
         ->and(array_sum(array_column($hard, 'minutes')))->toBe(20.0)
         ->and(array_unique(array_column($hard, 'pace_sec_per_km')))->toBe([278])
         ->and(array_unique(array_column($shownHard, 'pace_sec_per_km')))->toBe([278])
-        ->and($payload['eased_from']['voice'])->toBe('you reported fair sleep alongside elevated recent load, so ease this one. keep all 20 hard minutes of the tempo work, a touch easier at 4:38/km.');
+        ->and($payload['eased_from']['voice'])->toBe('keep all 20 hard minutes of the tempo work, a touch easier at 4:38/km.');
 });
 
 it('carries the easy heart-rate cap on easy and long days only, and only when one is given', function (SessionType $type, PlanPhase $phase, ?int $cap, ?int $expected): void {
@@ -688,6 +688,31 @@ it('dayPayload leads a rest-clamped today with rest, the long day as context', f
             'distance_km' => 20.0,
             'voice' => ReadinessClamp::noteFor(SessionType::Long, ReadinessCeiling::Rest),
         ]);
+});
+
+it('dayPayload reads a stored rest ease whose snapshot carries a retired feedback input and reason codes', function (): void {
+    $today = Carbon::parse('2026-09-15');
+    $assessment = [
+        'ceiling' => 'rest',
+        'reasons' => ['concerning_pain_reported', 'stale_recovery_feedback_not_applied'],
+        'inputs' => ['recovery_feedback' => ['freshness' => 'current', 'concerning_pain' => true]],
+    ];
+    $session = PlannedSession::factory()->make([
+        'date' => $today,
+        'phase' => PlanPhase::Build,
+        'session_type' => SessionType::Long,
+        'pinned' => false,
+        'rest_clamped_at' => $today->copy()->setTime(0, 1),
+        'readiness_assessment' => $assessment,
+    ]);
+
+    $payload = PlanRenderer::dayPayload($session, $today, null, [], null, false, 20.0, 1.0, INF, RENDERER_PACES, PlannedSessionStatus::Planned);
+    $token = json_decode(Crypt::decryptString($payload['recommendation_token']), true, flags: JSON_THROW_ON_ERROR);
+
+    expect($payload['session_type'])->toBe('rest')
+        ->and($payload['eased_from']['session_type'])->toBe('long')
+        ->and($payload['eased_from']['voice'])->toBeString()
+        ->and($token['effective']['readiness_assessment'])->toBe($assessment);
 });
 
 it('dayPayload hands an eased day back to its own narration once it is credited', function (): void {

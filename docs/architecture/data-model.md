@@ -28,7 +28,6 @@ code_refs:
   - app/Models/TrendDailySnapshot.php
   - app/Models/RecommendationRevision.php
   - app/Models/RecommendationView.php
-  - app/Models/RecoveryFeedback.php
   - app/Models/TrainingPreference.php
   - app/Models/NotificationPreference.php
   - app/Models/InboxNotification.php
@@ -125,7 +124,6 @@ The sections below give every remaining model's relations, by domain.
 - [FitnessAnchor](app/Models/FitnessAnchor.php): one row per user (unique `user_id`), captured with the first VDOT estimate; its source activity ids are bare columns. See [[profile]].
 - [TrendDailySnapshot](app/Models/TrendDailySnapshot.php) (`belongsTo` User): one row per user per day, unique on `(user_id, snapshot_date)`, recomputed by [TrendSnapshotWriter](app/Services/Run/Trend/TrendSnapshotWriter.php). See [[trends]].
 - [RecommendationRevision](app/Models/RecommendationRevision.php) and [RecommendationView](app/Models/RecommendationView.php): the immutable history of what the plan showed. A revision is a day's original and effective recommendation, unique on `(user_id, date, fingerprint)`; a view records when one was shown (unique `observation_id`, cascading from its revision). Both throw on update and define no relation methods; [RecommendationHistory](app/Services/Run/Plan/RecommendationHistory.php) joins them so compliance grades a run against what was shown before it started. See [[plan-periodizer]].
-- [RecoveryFeedback](app/Models/RecoveryFeedback.php) (`belongsTo` User): the athlete's optional recovery check-in for a day, unique on `(user_id, date)`. See [[plan-periodizer]].
 - [TrainingPreference](app/Models/TrainingPreference.php) (`hasOne` from User, `belongsTo` User): explicit training overrides, every column nullable until the athlete sets it, falling back to the behaviour-derived baseline. See [[onboarding]] and [[plan-periodizer]].
 
 ## Notifications and Telegram (default connection)

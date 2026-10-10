@@ -7,7 +7,6 @@ use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
 use App\Models\PlannedSession;
-use App\Models\RecoveryFeedback;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisStatus;
@@ -96,11 +95,7 @@ it('creates nothing on a second run', function (): void {
 it('records and stages a current-day readiness clamp during catch-up', function (): void {
     $user = User::factory()->seenToday()->create();
     $lastWeek = WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-17', 'runs' => 4]);
-    RecoveryFeedback::query()->create([
-        'user_id' => $user->id,
-        'date' => Carbon::today()->toDateString(),
-        'concerning_pain' => true,
-    ]);
+    seedDemandingRunYesterday($user);
     $user->forceFill(['streak_settled_through' => $lastWeek->week_ending])->saveQuietly();
     $session = PlannedSession::factory()->for($user)->create([
         'date' => Carbon::today()->toDateString(),
@@ -110,7 +105,7 @@ it('records and stages a current-day readiness clamp during catch-up', function 
     app(KickoffCatchUp::class)();
 
     $clampVoice = rowFor(AnalysisType::PlanClampVoice, $user->id, '2026-05-18');
-    expect($session->fresh()->rest_clamped_at)->not->toBeNull()
+    expect($session->fresh()->clamped_km)->not->toBeNull()
         ->and($clampVoice?->status)->toBe(AnalysisStatus::Pending)
         ->and(Analysis::query()->where('analysis_type', AnalysisType::PlanClampVoice)->count())->toBe(1);
 

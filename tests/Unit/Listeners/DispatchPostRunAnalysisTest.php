@@ -19,7 +19,6 @@ use App\Listeners\DispatchPostRunAnalysis;
 use App\Models\PlannedSession;
 use App\Models\StoryLine;
 use App\Services\Run\Story\Temari;
-use App\Models\RecoveryFeedback;
 use App\Enums\PlannedSessionStatus;
 use App\Enums\SessionType;
 use App\Models\Activity;
@@ -86,10 +85,9 @@ function fire(Activity $activity): void
     app(DispatchPostRunAnalysis::class)->handle(new ActivityIngested($activity->id));
 }
 
-it('never rest-clamps or requests clamp narration after a run today, even with pain reported', function (): void {
+it('never clamps or requests clamp narration after a run today', function (): void {
     Notification::fake();
     $activity = analyzedActivity(Carbon::today()->setTime(7, 0)->toDateTimeString());
-    RecoveryFeedback::query()->create(['user_id' => $activity->user_id, 'date' => Carbon::today()->toDateString(), 'concerning_pain' => true]);
     $session = PlannedSession::factory()->for($activity->user)->create([
         'date' => Carbon::today()->toDateString(),
         'session_type' => SessionType::Long,
@@ -100,11 +98,12 @@ it('never rest-clamps or requests clamp narration after a run today, even with p
         app(TrainingLoad::class)->summary($activity->user, Carbon::today()),
     );
     expect($context->ranToday)->toBeTrue()
-        ->and($context->readinessCeiling)->toBe('rest');
+        ->and($context->readinessCeiling)->toBe('easy_only');
 
     fire($activity);
 
     expect($session->fresh()->rest_clamped_at)->toBeNull()
+        ->and($session->fresh()->clamped_km)->toBeNull()
         ->and(Analysis::query()->where('analysis_type', AnalysisType::PlanClampVoice)->exists())->toBeFalse();
     Notification::assertNotSentTo($activity->user, DayClampedNotification::class);
 });

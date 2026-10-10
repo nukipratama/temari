@@ -10,7 +10,6 @@ use App\Models\ActivityDetail;
 use App\Models\PlanAdaptation;
 use App\Enums\SessionType;
 use App\Models\PlannedSession;
-use App\Models\RecoveryFeedback;
 use App\Models\RaceGoal;
 use App\Models\Season;
 use App\Models\User;
@@ -199,10 +198,10 @@ it('reads the briefing context once for the weeks and the season summary', funct
     $this->assembler->weeks($user, $today);
     $this->assembler->seasonSummary($user, $today);
 
-    $recoveryFeedbackReads = collect(DB::getQueryLog())->filter(fn (array $query): bool => str_contains($query['query'], 'from `recovery_feedback`'))->count();
+    $stressReads = collect(DB::getQueryLog())->filter(fn (array $query): bool => str_contains($query['query'], '`activity_details`.`has_heartrate`'))->count();
     DB::disableQueryLog();
 
-    expect($recoveryFeedbackReads)->toBe(1);
+    expect($stressReads)->toBe(1);
 });
 
 it('offers the same edit actions and move targets as scanning every row per day', function (): void {
@@ -302,32 +301,6 @@ it('holds todays advisory clamp while a demanding run awaits hydration, then app
     expect($held['eased_from'])->toBeNull()
         ->and($resumed['session_type'])->toBe('easy')
         ->and(assemblerShownReadiness($resumed)['reasons'])->toContain('demanding_session_within_24h');
-});
-
-it('shows current pain advice while other recent training history is hydrating', function (): void {
-    $user = assemblerAthlete();
-    PlannedSession::factory()->for($user)->create([
-        'date' => Carbon::today()->toDateString(),
-        'session_type' => SessionType::Interval,
-    ]);
-    $activity = Activity::factory()->summaryOnly()->for($user)->create();
-    ActivityDetail::factory()->for($activity)->create([
-        'start_date_local' => Carbon::today()->copy()->subDays(41)->setTime(7, 0),
-        'has_heartrate' => false,
-        'trimp_edwards' => null,
-    ]);
-    RecoveryFeedback::query()->create([
-        'user_id' => $user->id,
-        'date' => Carbon::today()->toDateString(),
-        'concerning_pain' => true,
-    ]);
-
-    $day = collect($this->assembler->weeks($user, Carbon::today()))
-        ->firstWhere('type', 'current')['days'][0];
-
-    expect($day['session_type'])->toBe('rest')
-        ->and(assemblerShownReadiness($day)['inputs']['recent_training_stress']['sessions'])->toBe([])
-        ->and(assemblerShownReadiness($day)['inputs']['weekly_trimp'])->toBeNull();
 });
 
 it('reports the baseline session count the plan is built on', function (): void {

@@ -31,7 +31,7 @@ use Illuminate\Support\Carbon;
  * record, an athlete who took the rest the card prescribed is graded against
  * the session it replaced and scores `missed` for complying.
  *
- * Called by daily-briefing side effects and current-day feedback saves.
+ * Called by daily-briefing side effects.
  */
 final readonly class RestClampRecorder
 {
@@ -99,11 +99,7 @@ final readonly class RestClampRecorder
             $loadPending ? null : $this->trainingLoad->summary($user, $today),
             historyLoading: $loadPending,
         );
-        $strongHealthConcern = array_intersect(
-            $context->readinessAssessment['reasons'],
-            ['concerning_pain_reported', 'illness_reported'],
-        ) !== [];
-        if (($loadPending && ! $strongHealthConcern) || $context->ranToday) {
+        if ($loadPending || $context->ranToday) {
             return false;
         }
 

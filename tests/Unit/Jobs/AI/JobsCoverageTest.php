@@ -16,7 +16,6 @@ use App\Jobs\AI\AnalyzeTrendReadJob;
 use App\Jobs\AI\AnalyzeWeeklyRecapJob;
 use App\Models\AI\Analysis;
 use App\Models\PlannedSession;
-use App\Models\RecoveryFeedback;
 use App\Models\RunCard;
 use App\Models\Season;
 use App\Models\User;
@@ -249,11 +248,7 @@ it('AnalyzeTrendReadJob failed() marks a stranded row Failed', function (): void
 function clampedUser(): User
 {
     $user = User::factory()->create();
-    RecoveryFeedback::query()->create([
-        'user_id' => $user->id,
-        'date' => Carbon::today()->toDateString(),
-        'concerning_pain' => true,
-    ]);
+    seedDemandingRunYesterday($user);
     PlannedSession::factory()->for($user)->create([
         'date' => Carbon::today()->toDateString(),
         'session_type' => 'interval',
@@ -269,7 +264,7 @@ function clampRowOf(User $user): Analysis
 
 it('AnalyzePlanClampVoiceJob stores the clamp voice and the clamp fingerprint on a Done row', function (): void {
     $user = clampedUser();
-    mockNarrator(PlanClampVoiceNarrator::class, 'you reported pain, so today is a rest day.');
+    mockNarrator(PlanClampVoiceNarrator::class, 'you ran long yesterday, so today is an easy day.');
 
     $row = clampRowOf($user);
     new AnalyzePlanClampVoiceJob($row->id)->handle(app(AnalysisService::class));
@@ -277,7 +272,7 @@ it('AnalyzePlanClampVoiceJob stores the clamp voice and the clamp fingerprint on
     $context = app(ClampNarrationContext::class)->forUserOn($user->id, Carbon::today());
 
     expect($row->fresh()->status)->toBe(AnalysisStatus::Done)
-        ->and($row->fresh()->content)->toBe('you reported pain, so today is a rest day.')
+        ->and($row->fresh()->content)->toBe('you ran long yesterday, so today is an easy day.')
         ->and($row->fresh()->content_fingerprint)->toBe(MaterialFingerprint::forClamp(
             $context['ceiling'],
             $context['clamped_to'],

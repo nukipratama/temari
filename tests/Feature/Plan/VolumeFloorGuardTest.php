@@ -13,7 +13,6 @@ use App\Models\ActivityDetail;
 use App\Models\PlanAdaptation;
 use App\Models\PlannedSession;
 use App\Models\RaceGoal;
-use App\Models\RecoveryFeedback;
 use App\Models\Season;
 use App\Models\TrainingPreference;
 use App\Models\User;
@@ -196,13 +195,9 @@ it('renders a block on the athlete\'s own run days at the mean the floor solve l
         ->and(array_sum($stored) / count($stored))->toBeGreaterThanOrEqual(25.91);
 });
 
-it('backs off under the floor for a strong current concern, and says so on the plan', function (): void {
+it('backs off under the floor after a missed week, and says so on the plan', function (): void {
     $user = flooredAthlete();
-    RecoveryFeedback::query()->create([
-        'user_id' => $user->id,
-        'date' => Carbon::today()->toDateString(),
-        'illness' => true,
-    ]);
+    seedMissedLastWeek($user);
 
     app(Periodizer::class)->regenerate($user, Carbon::today());
 
@@ -210,7 +205,7 @@ it('backs off under the floor for a strong current concern, and says so on the p
 
     expect(thisWeekPhase($user))->toBe(PlanPhase::Deload)
         ->and(thisWeekKm($user))->toBeLessThan(25.91)
-        ->and($adaptation->reason)->toBe(AdaptationReason::LowReadiness)
+        ->and($adaptation->reason)->toBe(AdaptationReason::MissedWeek)
         ->and($adaptation->volume_floor_km)->toBe(25.91)
         ->and(app(PlanPageAssembler::class)->adaptation($user, Carbon::today())['detail'])
         ->toEndWith('that puts it under your usual 25.9 km a week, on purpose.');
@@ -218,19 +213,10 @@ it('backs off under the floor for a strong current concern, and says so on the p
 
 it('returns to the floor the week after the guard lets go', function (): void {
     $user = flooredAthlete();
-    RecoveryFeedback::query()->create([
-        'user_id' => $user->id,
-        'date' => Carbon::today()->toDateString(),
-        'illness' => true,
-    ]);
+    seedMissedLastWeek($user);
     app(Periodizer::class)->regenerate($user, Carbon::today());
 
     Carbon::setTestNow('2026-09-28 08:00:00');
-    RecoveryFeedback::query()->create([
-        'user_id' => $user->id,
-        'date' => Carbon::today()->toDateString(),
-        'illness' => false,
-    ]);
     app(Periodizer::class)->regenerate($user, Carbon::today());
 
     expect(thisWeekPhase($user))->not->toBe(PlanPhase::Deload)
