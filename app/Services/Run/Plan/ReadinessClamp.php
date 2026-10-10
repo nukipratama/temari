@@ -231,7 +231,6 @@ final class ReadinessClamp
     private static function specificNote(array $reasons): ?string
     {
         foreach ([
-            'training_form_overreaching' => "your current training form is showing overreaching, so today's a full rest instead.",
             'already_ran_today' => "you already ran today, so this one stays easy instead of the planned session.",
             'demanding_session_within_24h' => "you completed a demanding session within the last day, so quality can wait.",
             'closely_spaced_demanding_sessions' => 'hard sessions have landed close together, so quality can wait.',
