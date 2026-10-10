@@ -11,6 +11,8 @@ code_refs:
   - app/Services/Run/Plan/WeekPlanBuilder.php
 ---
 
+> **See also (2026-10-10):** [[trial-weeks-and-eased-taper-days-sit-outside-the-floor]] records trial weeks and eased taper days as exceptions to the floor.
+
 # The volume floor solves the weeks the plan lays out
 
 **Status:** Accepted (2026-10-09)

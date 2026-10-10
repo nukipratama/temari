@@ -149,6 +149,30 @@ it('renders a fall-off-tilted block at the mean the floor solve lays out for it'
         ->and($stored->avg())->toEqualWithDelta($block->avg('planned_km'), 0.05);
 });
 
+it('renders every block week without a trial or an eased taper day at its predicted km, and those weeks hold the floor', function (): void {
+    $user = tiltedAthlete();
+
+    app(Periodizer::class)->regenerate($user, Carbon::today());
+    $season = Season::query()->where('user_id', $user->id)->firstOrFail();
+    $exceptionWeeks = PlannedSession::query()->where('user_id', $user->id)->get()
+        ->filter(fn (PlannedSession $s): bool => TimeTrial::isTrial($s->prescription_race_context) || in_array($s->prescription_reason, [
+            'easy because the outing cannot safely fit the minimum quality structure',
+            'easy because the week has no safe room for meaningful quality',
+        ], true))
+        ->map(fn (PlannedSession $s): string => $s->date->copy()->startOfWeek(Carbon::MONDAY)->toDateString())->unique()->values()->all();
+    $predicted = collect(app(SeasonSummaryBuilder::class)->plannedWeeks($user, $season))
+        ->filter(fn (array $week): bool => $week['zone'] === PhaseSchedule::ZONE_BLOCK)
+        ->mapWithKeys(fn (array $week): array => [$week['week_start']->toDateString() => $week['planned_km']]);
+    $stored = collect(storedBlockWeeksKm($user, $season))->except($exceptionWeeks);
+
+    expect($exceptionWeeks)->not->toBeEmpty()
+        ->and($stored)->not->toBeEmpty();
+    foreach ($stored as $weekStart => $km) {
+        expect($km)->toEqualWithDelta($predicted[$weekStart], 0.05);
+    }
+    expect($stored->avg())->toBeGreaterThanOrEqual($season->volume_floor_km);
+});
+
 it('renders a block on the athlete\'s own run days at the mean the floor solve lays out for it', function (): void {
     $user = flooredAthlete();
     TrainingPreference::query()->where('user_id', $user->id)->update(['run_days' => [0, 2, 4, 6]]);
