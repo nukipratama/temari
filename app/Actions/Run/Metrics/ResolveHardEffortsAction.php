@@ -11,6 +11,7 @@ use App\Services\Run\Metrics\RunDistanceTimes;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 
 /**
  * The athlete's unconfirmed hard whole-run efforts and their other runs, read
@@ -47,7 +48,7 @@ class ResolveHardEffortsAction
         }
 
         /** @var CachedEfforts $cached */
-        $cached = Cache::remember(self::cacheKey($userId), self::CACHE_TTL_SECONDS, fn (): array => self::dehydrate($this->resolve($userId)));
+        $cached = DB::transaction(fn (): array => Cache::remember(self::cacheKey($userId), self::CACHE_TTL_SECONDS, fn (): array => self::dehydrate($this->resolve($userId))));
 
         return $this->memo[$userId] = self::hydrate($cached);
     }
