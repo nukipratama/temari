@@ -14,7 +14,7 @@ use App\Models\PlannedSession;
 use App\Models\User;
 use App\Services\AI\AnalysisOrigin;
 use App\Services\AI\AnalysisService;
-use App\Services\AI\HistoryNarrationGate;
+use App\Services\Run\Ingest\HydrationBacklog;
 use App\Services\AI\NarrationOrigin;
 use App\Services\AI\PlanNarrationRequester;
 use App\Services\Run\Plan\Periodizer;
@@ -56,7 +56,7 @@ class KickoffRecapsJob implements ShouldQueue
         AnalysisService $analysis,
         Periodizer $periodizer,
         RequestTodaysBriefing $briefing,
-        HistoryNarrationGate $history,
+        HydrationBacklog $backlog,
     ): void {
         app(NarrationOrigin::class)->set(AnalysisOrigin::Ingest);
 
@@ -74,7 +74,7 @@ class KickoffRecapsJob implements ShouldQueue
 
         $briefing->afterBackfill($user);
 
-        $this->kickoffTrendReads($analysis, $user, $history);
+        $this->kickoffTrendReads($analysis, $user, $backlog);
 
         if (PlannedSession::query()->where('user_id', $user->id)->exists()) {
             try {
@@ -97,9 +97,9 @@ class KickoffRecapsJob implements ShouldQueue
      * exactly once, by {@see \App\Actions\AI\SettleEarlyNarrationAction} the
      * moment the drain empties.
      */
-    private function kickoffTrendReads(AnalysisService $analysis, User $user, HistoryNarrationGate $history): void
+    private function kickoffTrendReads(AnalysisService $analysis, User $user, HydrationBacklog $backlog): void
     {
-        if ($history->awaitsFullHydration($user->id)) {
+        if ($backlog->awaitsFullHydration($user->id)) {
             return;
         }
 

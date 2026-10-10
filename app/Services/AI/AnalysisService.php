@@ -21,6 +21,7 @@ use App\Notifications\AnalysisReadyNotification;
 use App\Services\AI\RuleBased\RuleBasedNarrationFiller;
 use App\Services\Gamification\StreakSettlementService;
 use App\Services\Ops\MaintainerAlerter;
+use App\Services\Run\Ingest\HydrationBacklog;
 use App\Services\Telegram\NotificationEligibility;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Builder;
@@ -43,7 +44,7 @@ class AnalysisService
         private readonly ChainResolver $chains,
         private readonly CostCeilingLedger $ceilingLedger,
         private readonly NarrationOrigin $origin,
-        private readonly HistoryNarrationGate $history,
+        private readonly HydrationBacklog $backlog,
         private readonly StreakSettlementService $streakSettlement,
     ) {
     }
@@ -437,8 +438,8 @@ class AnalysisService
             AnalysisType::CardFlavor => $this->earlyPassForActivity(
                 RunCard::query()->with('activity.detail')->find($row->subject_id)?->activity,
             ),
-            AnalysisType::BriefingMascotVoice => $this->history->awaitsOlderHydration($row->subject_id, Carbon::now()),
-            AnalysisType::ProfileVoice => $this->history->awaitsFullHydration($row->subject_id),
+            AnalysisType::BriefingMascotVoice => $this->backlog->awaitsOlderHydration($row->subject_id, Carbon::now()),
+            AnalysisType::ProfileVoice => $this->backlog->awaitsFullHydration($row->subject_id),
             default => false,
         };
     }
@@ -448,7 +449,7 @@ class AnalysisService
         $startedAt = $activity?->detail?->start_date_local;
 
         return $activity !== null && $startedAt !== null
-            && $this->history->awaitsOlderHydration($activity->user_id, $startedAt);
+            && $this->backlog->awaitsOlderHydration($activity->user_id, $startedAt);
     }
 
     /**

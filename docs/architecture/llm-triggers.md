@@ -142,7 +142,7 @@ there is nothing yet to narrate against. `users.backfilled_at` (stamped by `Kick
 right before it calls `afterBackfill()`) is null for exactly that window; `RequestTodaysBriefing`
 holds on it alone. Once it's set, the briefing narrates right away even if older history is
 still hydrating (#1054): `AnalysisService::markDone()` detects that live, at generation time
-([`HistoryNarrationGate::awaitsOlderHydration()`](../../app/Services/AI/HistoryNarrationGate.php)),
+([`HydrationBacklog::awaitsOlderHydration()`](../../app/Services/Run/Ingest/HydrationBacklog.php)),
 and flags the row for `SettleEarlyNarrationAction`'s one-time replay once that history lands — see
 [[history-narrates-on-demand]]. The once-per-day `Cache::add` guard in `afterBackfill()` only runs
 *after* the `backfilled_at` check, so a re-run of the connect chain before it's set never spends
@@ -215,9 +215,9 @@ then `ProfileVoice` keyed by the current ISO week with `invalidate: false` so it
 never re-bills. Both of those two narrate right away even while history their own narrator reads
 is still hydrating (#1054) — a fresh connect's early pass, per [[history-narrates-on-demand]]:
 `AnalysisService::markDone()` detects it live, at generation time (the briefing on past-you's
-bounded reach via [`HistoryNarrationGate::awaitsOlderHydration()`](../../app/Services/AI/HistoryNarrationGate.php),
+bounded reach via [`HydrationBacklog::awaitsOlderHydration()`](../../app/Services/Run/Ingest/HydrationBacklog.php),
 anchored on now rather than the ingested run's own date; the profile voice on the whole backlog via
-[`HistoryNarrationGate::awaitsFullHydration()`](../../app/Services/AI/HistoryNarrationGate.php),
+[`HydrationBacklog::awaitsFullHydration()`](../../app/Services/Run/Ingest/HydrationBacklog.php),
 since it reads lifetime stats and the full PR table), withholds load/form data from the narrator's
 tools, and flags the row for `SettleEarlyNarrationAction`'s one-time replay once that history
 lands. Both conditions are bounded by the same `ai.recap_hydration_grace_hours` window as the

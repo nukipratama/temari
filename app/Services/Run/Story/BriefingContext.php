@@ -12,7 +12,7 @@ use App\Models\PlannedSession;
 use App\Models\RecoveryFeedback;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
-use App\Services\AI\HistoryNarrationGate;
+use App\Services\Run\Ingest\HydrationBacklog;
 use App\Services\Run\Metrics\DistanceFormatter;
 use App\Services\Run\Metrics\TrainingFormStatus;
 use App\Services\Run\Metrics\RecentTrainingStress;
@@ -202,7 +202,7 @@ final readonly class BriefingContext
     #[NoDiscard]
     public static function forBriefingNarrator(User $user, Carbon $asOf): self
     {
-        $historyLoading = app(HistoryNarrationGate::class)->awaitsOlderHydration($user->id, $asOf);
+        $historyLoading = app(HydrationBacklog::class)->awaitsOlderHydration($user->id, $asOf);
         $load = $historyLoading ? null : (app(TrainingLoad::class)->summary($user, $asOf) ?? []);
 
         return self::forUser($user, $asOf, $load, $historyLoading);

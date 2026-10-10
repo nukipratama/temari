@@ -7,7 +7,6 @@ namespace App\Services\AI;
 use App\Actions\AI\RecentlyActiveUsers;
 use App\Models\User;
 use App\Services\Run\Ingest\HydrationBacklog;
-use App\Services\Run\Story\PastYouMatcher;
 use Illuminate\Support\Carbon;
 
 /**
@@ -69,51 +68,6 @@ class HistoryNarrationGate
             return false;
         }
 
-        return $this->olderHistoryHydrating($user->id, $startedAt);
-    }
-
-    /**
-     * Whether narrating a run automatically now would read a history still
-     * filling in. Bounded by the grace window after the athlete connected: past
-     * it the run narrates whatever has landed, so a stuck drain cannot hold
-     * narration forever.
-     */
-    public function awaitsOlderHydration(int $userId, ?Carbon $startedAt): bool
-    {
-        if ($startedAt === null || ! $this->backlog->withinHydrationGrace($userId)) {
-            return false;
-        }
-
-        return $this->olderHistoryHydrating($userId, $startedAt);
-    }
-
-    /**
-     * A run inside past-you's reach before $startedAt still awaits hydration.
-     */
-    private function olderHistoryHydrating(int $userId, Carbon $startedAt): bool
-    {
-        return $this->backlog->awaitsHydrationBefore(
-            $userId,
-            $startedAt,
-            $startedAt->copy()->subDays(PastYouMatcher::MAX_GAP_DAYS),
-        );
-    }
-
-    /**
-     * Whether ANY of this athlete's runs, at any age, still await hydration —
-     * wider than {@see self::awaitsOlderHydration()}'s past-you-bounded reach.
-     * The profile voice reads the athlete's whole history (lifetime stats,
-     * full PR table, all-time plan adherence), so a run outside past-you's
-     * 365-day window can still be exactly the one it would misread. Bounded
-     * by the same connect-anchored grace window, so a stuck drain cannot hold
-     * it forever and a long-connected athlete is never affected.
-     */
-    public function awaitsFullHydration(int $userId): bool
-    {
-        if (! $this->backlog->withinHydrationGrace($userId)) {
-            return false;
-        }
-
-        return $this->backlog->awaitingHydration([$userId])->exists();
+        return $this->backlog->olderHistoryHydrating($user->id, $startedAt);
     }
 }

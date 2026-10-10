@@ -30,6 +30,8 @@ code_refs:
 
 # History narrates on demand
 
+> **Superseded fact (2026-10-10):** `awaitsOlderHydration()` and `awaitsFullHydration()` now live on `HydrationBacklog` ([[run-ingest-pipeline]]), not `HistoryNarrationGate`; their behaviour is unchanged.
+
 > **Superseded fact (2026-10-05):** the profile voice no longer narrates right away for a fresh connect; every automatic request waits until the athlete's streak is settled, about two hours at most with the hourly `streak:settle`, while the athlete's own Reread does not wait (see [[scheduler]]).
 
 **Status:** Accepted (documented 2026-09-15)

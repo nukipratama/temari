@@ -19,7 +19,6 @@ use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
 use App\Services\AI\BackfillAgeGate;
 use App\Services\AI\ChainResolver;
-use App\Services\AI\HistoryNarrationGate;
 use App\Services\Run\Ingest\HydrationBacklog;
 use App\Services\AI\RecapHydrationReadiness;
 use App\Services\AI\SelfHealer;
@@ -84,7 +83,7 @@ function nonDispatchingResumeService(): AnalysisService
 
 function selfHealer(AnalysisService $service): SelfHealer
 {
-    return new SelfHealer($service, new ChainResolver(), new BackfillAgeGate(), new RecapHydrationReadiness(new HydrationBacklog()), new RecentlyActiveUsers(), new HistoryNarrationGate(new BackfillAgeGate(), new HydrationBacklog()), new HydrationBacklog(), app(ResolveSeasonAction::class));
+    return new SelfHealer($service, new ChainResolver(), new BackfillAgeGate(), new RecapHydrationReadiness(new HydrationBacklog()), new RecentlyActiveUsers(), new HydrationBacklog(), app(ResolveSeasonAction::class));
 }
 
 /** Seed an activity for $user dated $startDate whose post-run speech is Pending. */

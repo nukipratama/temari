@@ -7,7 +7,7 @@ namespace App\Console\Commands\AI;
 use App\Actions\AI\RecentlyActiveUsers;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisType;
-use App\Services\AI\HistoryNarrationGate;
+use App\Services\Run\Ingest\HydrationBacklog;
 use App\Services\AI\TrendReadFingerprint;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
@@ -19,7 +19,7 @@ use App\Services\AI\NarrationOrigin;
 #[Description('Dispatch the Trends tab verdict — see routes/console.php')]
 class TrendReadCommand extends Command
 {
-    public function handle(AnalysisService $service, RecentlyActiveUsers $activeUsers, TrendReadFingerprint $fingerprint, HistoryNarrationGate $history): int
+    public function handle(AnalysisService $service, RecentlyActiveUsers $activeUsers, TrendReadFingerprint $fingerprint, HydrationBacklog $backlog): int
     {
         app(NarrationOrigin::class)->set(AnalysisOrigin::Scheduled);
 
@@ -35,7 +35,7 @@ class TrendReadCommand extends Command
         foreach ($users as $user) {
             // A load/fitness/form read of a backlog still hydrating (a fresh
             // connect) — the same hold the backfill-time request gets.
-            if ($history->awaitsFullHydration($user->id)) {
+            if ($backlog->awaitsFullHydration($user->id)) {
                 continue;
             }
 

@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Services\AI\Agent\Tools;
 
 use App\Models\WeeklySnapshot;
-use App\Services\AI\HistoryNarrationGate;
+use App\Services\Run\Ingest\HydrationBacklog;
 use App\Services\Run\Story\MoodMix;
 
 /**
@@ -43,7 +43,7 @@ final class PersonaMixTool extends UserTool
         $mix = MoodMix::merge($recent, $earlier);
         // History still hydrating from a fresh connect: withhold the latest
         // form reading — see docs/decisions/history-narrates-on-demand.md.
-        $historyLoading = app(HistoryNarrationGate::class)->awaitsFullHydration($this->user->id);
+        $historyLoading = app(HydrationBacklog::class)->awaitsFullHydration($this->user->id);
 
         return [
             'lookback_weeks' => self::LOOKBACK_WEEKS,

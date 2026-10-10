@@ -7,6 +7,7 @@ namespace App\Services\Run\Ingest;
 use App\Models\Activity;
 use App\Models\StravaConnection;
 use App\Services\Run\Metrics\TrainingLoad;
+use App\Services\Run\Story\PastYouMatcher;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 
@@ -88,6 +89,51 @@ class HydrationBacklog
         $graceHours = (int) config('ai.recap_hydration_grace_hours', 48);
 
         return $connectedAt !== null && Carbon::now()->lt($connectedAt->copy()->addHours($graceHours));
+    }
+
+    /**
+     * Whether narrating a run automatically now would read a history still
+     * filling in. Bounded by the grace window after the athlete connected: past
+     * it the run narrates whatever has landed, so a stuck drain cannot hold
+     * narration forever.
+     */
+    public function awaitsOlderHydration(int $userId, ?Carbon $startedAt): bool
+    {
+        if ($startedAt === null || ! $this->withinHydrationGrace($userId)) {
+            return false;
+        }
+
+        return $this->olderHistoryHydrating($userId, $startedAt);
+    }
+
+    /**
+     * A run inside past-you's reach before $startedAt still awaits hydration.
+     */
+    public function olderHistoryHydrating(int $userId, Carbon $startedAt): bool
+    {
+        return $this->awaitsHydrationBefore(
+            $userId,
+            $startedAt,
+            $startedAt->copy()->subDays(PastYouMatcher::MAX_GAP_DAYS),
+        );
+    }
+
+    /**
+     * Whether ANY of this athlete's runs, at any age, still await hydration —
+     * wider than {@see self::awaitsOlderHydration()}'s past-you-bounded reach.
+     * The profile voice reads the athlete's whole history (lifetime stats,
+     * full PR table, all-time plan adherence), so a run outside past-you's
+     * 365-day window can still be exactly the one it would misread. Bounded
+     * by the same connect-anchored grace window, so a stuck drain cannot hold
+     * it forever and a long-connected athlete is never affected.
+     */
+    public function awaitsFullHydration(int $userId): bool
+    {
+        if (! $this->withinHydrationGrace($userId)) {
+            return false;
+        }
+
+        return $this->awaitingHydration([$userId])->exists();
     }
 
     /**
