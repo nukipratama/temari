@@ -79,5 +79,9 @@ export function trackTabVisits(): () => void {
     return () => {
         offStart();
         offFinish();
+        armed = null;
+        if (pending !== null) {
+            setPending(null);
+        }
     };
 }

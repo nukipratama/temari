@@ -422,8 +422,6 @@ describe('MobileBottomNav', () => {
         );
     });
 
-    // The bell in the top bar is the labelled, actionable control; this is a
-    // reason to look up, so it carries no count and is not announced.
     it('lights nothing new when a tap is not followed by its visit', () => {
         setMockPage({}, '/history', 'History');
         render(<MobileBottomNav />);
@@ -435,6 +433,8 @@ describe('MobileBottomNav', () => {
         );
     });
 
+    // The bell in the top bar is the labelled, actionable control; this is a
+    // reason to look up, so it carries no count and is not announced.
     it('dots the today tab while the inbox has unread rows', () => {
         setMockPage({ unreadNotifications: 3 }, '/history', 'History');
         render(<MobileBottomNav />);

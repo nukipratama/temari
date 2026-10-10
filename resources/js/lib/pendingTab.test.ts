@@ -171,6 +171,21 @@ describe('pendingTab', () => {
         expect(listener).toHaveBeenCalledTimes(2);
     });
 
+    it('forgets the pending tab and the tap when untracked before its visit finishes', () => {
+        armPendingTab('plan', 'Home');
+        start(visit('/plan'));
+        armPendingTab('trends', 'Home');
+
+        untrack();
+        untrack = trackTabVisits();
+
+        expect(pendingTabSnapshot()).toBeNull();
+
+        start(visit('/trends'));
+
+        expect(pendingTabSnapshot()).toBeNull();
+    });
+
     it('removes both router listeners when untracked', () => {
         const offStart = vi.fn();
         const offFinish = vi.fn();
