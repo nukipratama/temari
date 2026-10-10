@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Enums\AdaptationReason;
 use App\Enums\IngestState;
+use App\Enums\PlannedSessionStatus;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\PlanAdaptation;
@@ -17,9 +18,11 @@ use App\Models\WeeklySnapshot;
 use App\Services\Run\Plan\Periodizer;
 use App\Services\Run\Plan\PlanPageAssembler;
 use App\Services\Run\Plan\PlanRenderer;
+use App\Services\Run\Plan\SessionEditRules;
 use App\Services\Run\Plan\TrainingBaseline;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Crypt;
 
 uses(RefreshDatabase::class);
 
@@ -41,6 +44,12 @@ function assemblerAthlete(): User
     }
 
     return $user;
+}
+
+/** @return array<string, mixed> */
+function assemblerShownReadiness(array $day): array
+{
+    return json_decode(Crypt::decryptString($day['recommendation_token']), true, flags: JSON_THROW_ON_ERROR)['effective']['readiness_assessment'];
 }
 
 it('returns no race payload when the athlete has no active goal', function (): void {
@@ -167,6 +176,39 @@ it('renders the generated weeks with the current one marked as such', function (
         ->and($current['days'])->toHaveCount(7);
 });
 
+it('keeps a recommendation token on every plan day and ships no readiness assessment beside it', function (): void {
+    $user = assemblerAthlete();
+    app(Periodizer::class)->regenerate($user, Carbon::today());
+
+    $days = collect($this->assembler->weeks($user, Carbon::today()))->pluck('days')->flatten(1);
+
+    expect($days->count())->toBeGreaterThan(28)
+        ->and($days->every(fn (array $day): bool => is_string($day['recommendation_token']) && $day['recommendation_token'] !== ''))->toBeTrue()
+        ->and($days->contains(fn (array $day): bool => array_key_exists('readiness_assessment', $day)))->toBeFalse();
+});
+
+it('offers the same edit actions and move targets as scanning every row per day', function (): void {
+    $user = assemblerAthlete();
+    app(Periodizer::class)->regenerate($user, Carbon::today());
+    $rows = PlannedSession::query()->where('user_id', $user->id)->orderBy('date')->get();
+    $today = Carbon::today();
+
+    $days = collect($this->assembler->weeks($user, $today))->pluck('days')->flatten(1);
+
+    expect($days->count())->toBeGreaterThan(28);
+    foreach ($days as $day) {
+        $row = $rows->first(fn (PlannedSession $r): bool => $r->date->toDateString() === $day['date']);
+        [$from, $to] = SessionEditRules::window($row->date);
+        $window = $rows->filter(fn (PlannedSession $r): bool => $r->date->betweenIncluded($from, $to));
+        $status = PlannedSessionStatus::from($day['status']);
+        $actions = SessionEditRules::actionsFor($row, $status, $window, [], $today);
+
+        expect($day['actions'])->toBe($actions)
+            ->and($day['move_targets'])->toBe($actions['move'] ? SessionEditRules::moveTargets($row, $window, [], $today) : []);
+    }
+    expect($days->contains(fn (array $day): bool => $day['actions']['move'] && $day['move_targets'] !== []))->toBeTrue();
+});
+
 it('renders ran_anyway true for a past, unscored rest day with a logged run', function (): void {
     $user = assemblerAthlete();
     $restDay = Carbon::today()->subWeek();
@@ -240,7 +282,7 @@ it('holds todays advisory clamp while a demanding run awaits hydration, then app
 
     expect($held['eased_from'])->toBeNull()
         ->and($resumed['session_type'])->toBe('easy')
-        ->and($resumed['readiness_assessment']['reasons'])->toContain('demanding_session_within_24h');
+        ->and(assemblerShownReadiness($resumed)['reasons'])->toContain('demanding_session_within_24h');
 });
 
 it('shows current pain advice while other recent training history is hydrating', function (): void {
@@ -265,8 +307,8 @@ it('shows current pain advice while other recent training history is hydrating',
         ->firstWhere('type', 'current')['days'][0];
 
     expect($day['session_type'])->toBe('rest')
-        ->and($day['readiness_assessment']['inputs']['recent_training_stress']['sessions'])->toBe([])
-        ->and($day['readiness_assessment']['inputs']['weekly_trimp'])->toBeNull();
+        ->and(assemblerShownReadiness($day)['inputs']['recent_training_stress']['sessions'])->toBe([])
+        ->and(assemblerShownReadiness($day)['inputs']['weekly_trimp'])->toBeNull();
 });
 
 it('reports the baseline session count the plan is built on', function (): void {

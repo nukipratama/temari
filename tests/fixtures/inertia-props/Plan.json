@@ -78,7 +78,6 @@
     "weeks[].days[].ran_anyway",
     "weeks[].days[].ran_hot",
     "weeks[].days[].ran_pace_sec_per_km",
-    "weeks[].days[].readiness_assessment",
     "weeks[].days[].recommendation_token",
     "weeks[].days[].result_note",
     "weeks[].days[].segments",

@@ -530,11 +530,6 @@ export interface PlanDayPaceEasedFrom {
  *  it — the same shape Plan's own day rows use. */
 export interface WeekPlanDay {
     recommendation_token?: string;
-    readiness_assessment?: {
-        ceiling: string;
-        reasons: string[];
-        inputs: Record<string, unknown>;
-    } | null;
     id: number;
     date: string;
     phase: string;

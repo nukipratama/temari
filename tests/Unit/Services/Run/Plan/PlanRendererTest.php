@@ -286,9 +286,17 @@ it('keeps a pinned race prescription beside strong-concern advice and snapshots 
         ->and($payload['pinned'])->toBeTrue()
         ->and($payload['eased_from'])->toBeNull()
         ->and($payload['advice_note'])->toContain('reported concerning pain')
-        ->and($payload['readiness_assessment'])->toBe($assessment)
+        ->and($payload)->not->toHaveKey('readiness_assessment')
         ->and($recommendation['policy_version'])->toBe(2)
         ->and($recommendation['effective']['readiness_assessment'])->toBe($assessment);
+});
+
+it('dayPayload omits the recommendation token when asked not to carry one', function (): void {
+    $session = PlannedSession::factory()->make(['date' => '2026-08-12', 'session_type' => SessionType::Easy]);
+    $render = fn (bool $withToken): array => PlanRenderer::dayPayload($session, Carbon::parse('2026-08-10'), null, [], null, false, 20.0, 1.0, INF, RENDERER_PACES, PlannedSessionStatus::Planned, includeRecommendationToken: $withToken);
+
+    expect($render(true))->toHaveKey('recommendation_token')
+        ->and($render(false))->not->toHaveKey('recommendation_token');
 });
 
 it('dayPayload applies a redistributed volume scale for a non-today day', function (): void {
@@ -599,7 +607,7 @@ it('renders a recorded readiness dose beside the unchanged prescribed quality se
         ->and($payload['eased_from']['session_type'])->toBe('tempo')
         ->and($payload['eased_from']['voice'])->toBe(ReadinessClamp::qualityDoseNote(SessionType::Tempo, $assessment['reasons'], 15, 20))
         ->and(array_sum(array_map(static fn (array $seg): int => in_array($seg['key'], ['main', 'interval'], true) ? (int) $seg['minutes'] : 0, $payload['segments'])))->toBeLessThan(20)
-        ->and($payload['readiness_assessment']['adjustment']['quality_dose'])->toBe($qualityDose)
+        ->and($payload)->not->toHaveKey('readiness_assessment')
         ->and($token['original']['hard_minutes'])->toBe(20)
         ->and($token['effective']['readiness_assessment']['adjustment']['quality_dose'])->toBe($qualityDose)
         ->and($session->prescribed_hard_minutes)->toBe(20);

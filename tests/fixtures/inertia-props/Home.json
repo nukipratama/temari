@@ -105,7 +105,6 @@
     "weekPlan.days[].ran_anyway",
     "weekPlan.days[].ran_hot",
     "weekPlan.days[].ran_pace_sec_per_km",
-    "weekPlan.days[].readiness_assessment",
     "weekPlan.days[].recommendation_token",
     "weekPlan.days[].result_note",
     "weekPlan.days[].segments",

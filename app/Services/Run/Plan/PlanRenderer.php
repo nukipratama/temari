@@ -256,6 +256,7 @@ final class PlanRenderer
         ?bool $ranAnyway = null,
         ?array $readinessAssessment = null,
         ?int $easyHrCapBpm = null,
+        bool $includeRecommendationToken = true,
     ): array {
         $isToday = $s->date->isSameDay($today);
         $volumeScale = $volumeScaleByDate[$s->date->toDateString()] ?? 1.0;
@@ -289,7 +290,7 @@ final class PlanRenderer
         if ($headlinesEase && $isToday && ! $status->isCredited()) {
             $shownClamp = self::stepDownFromEffective($effective, $paces, $recordedReasons, $s->phase);
         }
-        $recommendationToken = app(RecommendationHistory::class)->token($s->user_id, $s->date->toDateString(), [
+        $recommendationToken = $includeRecommendationToken ? app(RecommendationHistory::class)->token($s->user_id, $s->date->toDateString(), [
             'session_type' => $s->session_type->value,
             'phase' => $s->phase->value,
             'hard_minutes' => $s->prescribed_hard_minutes,
@@ -304,13 +305,12 @@ final class PlanRenderer
             'skipped' => $s->skipped,
             'reason' => $shownClamp['note'] ?? ($effective->isEased() ? ReadinessClamp::noteFor($s->session_type, $effective->impliedCeiling(), $readinessReasons) : $s->prescription_reason),
             'readiness_assessment' => $effective->isEased() ? $s->readiness_assessment : $currentReadinessAssessment,
-        ]);
+        ]) : null;
         $goalPace = self::goalPaceKindOf($s, $sessionType);
 
         return [
             'id' => $s->id,
-            'recommendation_token' => $recommendationToken,
-            'readiness_assessment' => $currentReadinessAssessment,
+            ...($recommendationToken === null ? [] : ['recommendation_token' => $recommendationToken]),
             'date' => $s->date->toDateString(),
             'phase' => $s->phase->value,
             'session_type' => $sessionType->value,
