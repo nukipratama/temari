@@ -8,6 +8,7 @@ use App\Actions\AI\RecentlyActiveUsers;
 use App\Models\User;
 use App\Services\AI\PlanNarrationRequester;
 use App\Services\Run\Plan\Periodizer;
+use App\Services\Run\Plan\PlanRegenerateCooldown;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
@@ -35,6 +36,7 @@ class RegeneratePlanCommand extends Command
         Periodizer $periodizer,
         PlanNarrationRequester $narrationRequester,
         RecentlyActiveUsers $activeUsers,
+        PlanRegenerateCooldown $regenerateCooldown,
     ): int {
         app(NarrationOrigin::class)->set(AnalysisOrigin::Scheduled);
 
@@ -59,6 +61,7 @@ class RegeneratePlanCommand extends Command
 
                 if (isset($narratable[$user->id])) {
                     $narrationRequester->requestForCurrentWeek($user, $today);
+                    $regenerateCooldown->start($user);
                 }
 
                 $count++;
