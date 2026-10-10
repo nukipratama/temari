@@ -1,5 +1,6 @@
-import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { router } from '@inertiajs/react';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
 
 import { setMockPage } from '@/test/setup';
 
@@ -129,5 +130,26 @@ describe('BareShell', () => {
     it('exposes a stable reference distinct from appLayout', () => {
         expect(bareLayout).toBe(bareLayout);
         expect(bareLayout).not.toBe(appLayout);
+    });
+
+    it('does not pull to refresh', () => {
+        vi.mocked(router.reload).mockClear();
+        setMockPage({ auth: { user: null } });
+        render(
+            <BareShell>
+                <p>only child</p>
+            </BareShell>,
+        );
+        const child = screen.getByText('only child');
+
+        fireEvent.touchStart(child, {
+            touches: [{ identifier: 1, clientX: 10, clientY: 100 }],
+        });
+        fireEvent.touchMove(child, {
+            touches: [{ identifier: 1, clientX: 10, clientY: 220 }],
+        });
+        fireEvent.touchEnd(child, { changedTouches: [] });
+
+        expect(router.reload).not.toHaveBeenCalled();
     });
 });

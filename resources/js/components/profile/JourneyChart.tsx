@@ -151,6 +151,7 @@ export default function JourneyChart({
         <div
             ref={chartRef}
             className="focus-ring relative mt-3.5 touch-pan-y"
+            data-no-pull-refresh
             tabIndex={0}
             role="slider"
             aria-label="Best time journey. Drag, hover or use the arrow keys to scrub between weeks."

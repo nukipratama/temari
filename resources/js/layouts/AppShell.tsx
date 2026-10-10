@@ -9,6 +9,7 @@ import ErrorBanner from '@/components/ErrorBanner';
 import FlashNotice from '@/components/FlashNotice';
 import MobileBottomNav from '@/components/MobileBottomNav';
 import MobileTopBar from '@/components/MobileTopBar';
+import PullToRefresh from '@/components/PullToRefresh';
 import StravaPausedBanner from '@/components/StravaPausedBanner';
 import StravaZoneReconnectBanner from '@/components/StravaZoneReconnectBanner';
 import { useSystemTheme } from '@/hooks/useSystemTheme';
@@ -39,7 +40,7 @@ export default function AppShell({ children }: Readonly<AppShellProps>) {
 
             {/* No clearance padding: MobileTopBar is in normal flow and
                 reserves its own space. */}
-            <div>
+            <PullToRefresh>
                 <ErrorBanner />
                 <FlashNotice />
                 <StravaZoneReconnectBanner />
@@ -65,7 +66,7 @@ export default function AppShell({ children }: Readonly<AppShellProps>) {
                 >
                     {children}
                 </main>
-            </div>
+            </PullToRefresh>
 
             <MobileBottomNav />
         </div>
