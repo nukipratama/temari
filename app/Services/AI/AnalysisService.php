@@ -15,6 +15,7 @@ use App\Models\Activity;
 use App\Models\AI\Analysis;
 use App\Models\AI\AnalysisVersion;
 use App\Models\Feedback;
+use App\Models\PlannedSession;
 use App\Models\RunCard;
 use App\Models\User;
 use App\Notifications\AnalysisReadyNotification;
@@ -530,6 +531,18 @@ class AnalysisService
             return $this->requestDeferred($subjectType, $subjectId, $type, $discriminator);
         }
 
+        if ($type === AnalysisType::BriefingMascotVoice && $this->sessionSkippedOn($subjectId, $discriminator)) {
+            return Analysis::query()->firstOrNew(
+                [
+                    'subject_type' => $subjectType,
+                    'subject_id' => $subjectId,
+                    'analysis_type' => $type,
+                    'discriminator' => $discriminator,
+                ],
+                ['status' => AnalysisStatus::Pending],
+            );
+        }
+
         $row = $this->upsertRow($subjectType, $subjectId, $type, $discriminator);
         $justCreated = $row->wasRecentlyCreated;
 
@@ -788,6 +801,15 @@ class AnalysisService
             ->each(function (Analysis $row) use ($createdValues): void {
                 $row->wasRecentlyCreated = in_array($row->analysis_type->value, $createdValues, true);
             });
+    }
+
+    private function sessionSkippedOn(int $userId, ?string $date): bool
+    {
+        return $date !== null && PlannedSession::query()
+            ->where('user_id', $userId)
+            ->whereDate('date', $date)
+            ->where('skipped', true)
+            ->exists();
     }
 
     /**

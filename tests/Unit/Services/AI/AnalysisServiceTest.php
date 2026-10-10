@@ -14,6 +14,7 @@ use App\Models\AI\Analysis;
 use App\Models\AI\AnalysisVersion;
 use App\Models\AI\TokenUsage;
 use App\Models\Feedback;
+use App\Models\PlannedSession;
 use App\Models\StravaConnection;
 use App\Models\TelegramConnection;
 use App\Models\User;
@@ -1096,6 +1097,41 @@ it('requestBriefing creates the suggestion row, dispatches one AnalyzeBriefingMa
         ->where('subject_id', $user->id)
         ->where('discriminator', '2026-05-18')
         ->count())->toBe(1);
+});
+
+it('generates no briefing for a skipped day, staging no row and leaving a narrated one untouched even when invalidated', function (): void {
+    $user = User::factory()->create();
+    PlannedSession::factory()->for($user)->create(['date' => '2026-05-18', 'skipped' => true]);
+
+    $staged = $this->service->requestBriefing($user, '2026-05-18');
+
+    expect($staged->exists)->toBeFalse()
+        ->and(Analysis::query()->where('subject_id', $user->id)->exists())->toBeFalse();
+
+    $narrated = Analysis::factory()->create([
+        'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
+        'subject_id' => $user->id,
+        'analysis_type' => AnalysisType::BriefingMascotVoice,
+        'discriminator' => '2026-05-18',
+        'status' => AnalysisStatus::Done,
+        'content' => 'easy run, 2.6 km.',
+    ]);
+
+    $this->service->requestBriefing($user, '2026-05-18', invalidate: true);
+    $this->service->request(AnalysisType::BRIEFING_SUBJECT_TYPE, $user->id, AnalysisType::BriefingMascotVoice, '2026-05-18', invalidate: true);
+
+    Bus::assertNotDispatched(AnalyzeBriefingMascotVoiceJob::class);
+    expect($narrated->fresh()->only(['status', 'content']))->toBe(['status' => AnalysisStatus::Done, 'content' => 'easy run, 2.6 km.']);
+});
+
+it('briefs a day whose session is not skipped while another day is', function (): void {
+    $user = User::factory()->create();
+    PlannedSession::factory()->for($user)->create(['date' => '2026-05-19', 'skipped' => true]);
+    PlannedSession::factory()->for($user)->create(['date' => '2026-05-18']);
+
+    $this->service->requestBriefing($user, '2026-05-18');
+
+    Bus::assertDispatchedTimes(AnalyzeBriefingMascotVoiceJob::class, 1);
 });
 
 it('rejects a duplicate (subject_type, subject_id, analysis_type, discriminator) at the DB level', function (): void {

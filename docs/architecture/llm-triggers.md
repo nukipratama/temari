@@ -254,10 +254,14 @@ narrate them once the window closes, which is why a pending recap row is not a b
 - **`PlanController::update`, on a plain move onto or off today**: re-requests today's
   `briefing_mascot_voice` with `invalidate: true`, so the briefing never describes a session that
   moved. The demo athlete is skipped.
-- **`PlanController::update`, on a skip or restore of today**: when the edit actually flips
-  today's `skipped`, re-requests today's `briefing_mascot_voice` with `invalidate: true`, so the
-  briefing never describes a session the athlete skipped or misses one they restored. The demo athlete
-  is skipped.
+- **`PlanController::update`, on a skip or restore of today**: a skip requests nothing and leaves
+  the stored briefing as it was. A restore requests today's `briefing_mascot_voice` once, without
+  `invalidate`, so it narrates only when today has no briefing yet; a narrated one shows again
+  unchanged. The demo athlete is skipped. **No trigger generates a briefing for a skipped day:**
+  [`AnalysisService`](../../app/Services/AI/AnalysisService.php)'s `dispatchRow()` hands back the
+  existing row untouched, staging none, when the athlete's session on the briefing's date is skipped,
+  before any pause check or cost-ceiling fill, so the kickoff, post-run, catch-up, self-heal and
+  Reread paths all pass it by. `briefing:morning-push` leaves an athlete whose today is skipped alone.
 
 ### 4. Recovery
 
