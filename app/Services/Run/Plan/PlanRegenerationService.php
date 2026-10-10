@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace App\Services\Run\Plan;
 
 use App\Enums\PlanRegenerationReason;
+use App\Events\PlanRegenerated;
 use App\Jobs\Run\RegeneratePlanJob;
 use App\Models\User;
-use App\Services\AI\PlanNarrationRequester;
 use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Support\Carbon;
 
@@ -15,7 +15,6 @@ final readonly class PlanRegenerationService
 {
     public function __construct(
         private Periodizer $periodizer,
-        private PlanNarrationRequester $narrationRequester,
         private PlanRegenerateCooldown $regenerateCooldown,
     ) {
     }
@@ -36,7 +35,7 @@ final readonly class PlanRegenerationService
             return false;
         }
 
-        $this->requestNarration($user, $reason, $today);
+        PlanRegenerated::dispatch($user, $today, $reason);
         if ($reason === PlanRegenerationReason::Manual) {
             $this->regenerateCooldown->start($user);
         }
@@ -46,29 +45,6 @@ final readonly class PlanRegenerationService
 
     public function requestNarrationAfterQueuedRegeneration(User $user, PlanRegenerationReason $reason): void
     {
-        $this->requestNarration($user, $reason, Carbon::today());
-    }
-
-    private function requestNarration(User $user, PlanRegenerationReason $reason, Carbon $today): void
-    {
-        if ($reason === PlanRegenerationReason::Manual) {
-            $this->narrationRequester->requestForCurrentWeek($user, $today);
-
-            return;
-        }
-
-        if ($reason === PlanRegenerationReason::Onboarding) {
-            if ($user->refresh()->backfilled_at !== null) {
-                $this->narrationRequester->requestForFirstWeek($user, $today);
-            }
-
-            return;
-        }
-
-        if ($user->is_demo) {
-            $this->narrationRequester->ensureDemoFilled($user);
-        } else {
-            $this->narrationRequester->requestForCurrentWeekUnlessCoolingDown($user, $today);
-        }
+        PlanRegenerated::dispatch($user, Carbon::today(), $reason);
     }
 }

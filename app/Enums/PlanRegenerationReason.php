@@ -9,4 +9,5 @@ enum PlanRegenerationReason: string
     case Manual = 'manual';
     case Settings = 'settings';
     case Onboarding = 'onboarding';
+    case Reconciliation = 'reconciliation';
 }

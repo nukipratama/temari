@@ -4,9 +4,7 @@ declare(strict_types=1);
 
 use App\Services\AI\AnalysisType;
 use App\Services\AI\AnalysisStatus;
-use App\Services\AI\PlanNarrationRequester;
 use App\Actions\AI\SettleEarlyNarrationAction;
-use App\Actions\AI\RecentlyActiveUsers;
 
 arch('Run does not take new dependencies on the AI namespaces')
     ->expect('App\Services\Run')
@@ -14,8 +12,6 @@ arch('Run does not take new dependencies on the AI namespaces')
     ->ignoring([
         AnalysisType::class,
         AnalysisStatus::class,
-        PlanNarrationRequester::class,
         SettleEarlyNarrationAction::class,
-        RecentlyActiveUsers::class,
     ])
     ->group('structure');

@@ -197,7 +197,8 @@ and spends nothing. See [[demo-user-billing-exclusion]].
 
 `plan:score-compliance` is not on that list: its scoring is free, but a settled row marks the plan
 dirty, and the reconciliation that follows can request the plan narration for an active athlete
-([`PlanReconciliationService::drain()`](../../app/Services/Run/Plan/PlanReconciliationService.php)).
+([`PlanReconciliationService::drain()`](../../app/Services/Run/Plan/PlanReconciliationService.php) fires
+`PlanRegenerated`, and [`RequestPlanNarrationOnPlanRegenerated`](../../app/Listeners/RequestPlanNarrationOnPlanRegenerated.php) applies the active-athlete gate).
 It is classified as billing in the demo-exclusion tripwire.
 
 ### 2. Ingest cascade
@@ -361,7 +362,7 @@ Three more limits:
   [900s cooldown](../../app/Support/Cooldown.php) stops a human clicking twice, at the
   controller, before a job exists. The `Done` check at the top of
   [`AnalyzeRowJob::handle()`](../../app/Jobs/AI/AnalyzeRowJob.php) stops a UI trigger and a
-  Horizon retry racing into a double bill. Plan narration adds two more, separate ones inside `PlanNarrationRequester`: a 86400s per-athlete narration cooldown (`Cooldown::PLAN_NARRATION_WINDOW_SECONDS`) and the 3600s manual-regenerate cooldown.
+  Horizon retry racing into a double bill. Plan narration adds two more, separate ones inside `PlanNarrationRequester`: a 86400s per-athlete narration cooldown (`Cooldown::PLAN_NARRATION_WINDOW_SECONDS`) and, in [`PlanRegenerateCooldown`](../../app/Services/Run/Plan/PlanRegenerateCooldown.php), the 3600s manual-regenerate cooldown.
 
 Three further ceilings bound a call rather than stopping it: a per-user trigger rate limit of 8/min,
 a run-question limit of 4/min, and a per-run agent budget of 8 steps / 30k tokens — all in
