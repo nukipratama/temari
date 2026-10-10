@@ -26,6 +26,7 @@ code_refs:
   - database/migrations/2026_10_01_000200_create_fitness_anchors.php
   - routes/web.php
   - app/Actions/Run/Metrics/EstimateThresholdAction.php
+  - app/Actions/Run/Metrics/ResolveRecentStreamSummariesAction.php
   - app/Services/Run/Metrics/TrainingPaceCalculator.php
   - app/Services/Run/Plan/WeekSessionTypesBuilder.php
   - app/Services/Gamification/SeasonPayloadBuilder.php
@@ -104,7 +105,7 @@ Both performance date and confirmation timestamp are checked against a caller-su
 
 ## Time in zone · last 12 weeks
 
-**P13.** [TimeInZoneBar](resources/js/components/profile/TimeInZoneBar.tsx) draws a segmented Z1-Z5 bar and a dot legend in the hero slot the behavioural persona mix used to occupy (`PersonaBar` and the `personaMix` prop were cut in `PP3`). The percentages come from [TimeInZoneSummary](app/Services/Run/Metrics/TimeInZoneSummary.php), which sums the per-run `time_in_zone_min` that [StreamAnalysis](app/Services/Run/Ingest/StreamAnalysis.php) already writes onto `activity_details.stream_summary` across the trailing 12 weeks and normalises them. Zone colours and labels are the shared `HR_ZONE_COLORS`/`HR_ZONE_LABELS` in [chartTokens](resources/js/lib/chartTokens.ts), the same pair the [[settings-hr-zones]] editor names its bands with.
+**P13.** [TimeInZoneBar](resources/js/components/profile/TimeInZoneBar.tsx) draws a segmented Z1-Z5 bar and a dot legend in the hero slot the behavioural persona mix used to occupy (`PersonaBar` and the `personaMix` prop were cut in `PP3`). The percentages come from [TimeInZoneSummary](app/Services/Run/Metrics/TimeInZoneSummary.php), which sums the per-run `time_in_zone_min` that [StreamAnalysis](app/Services/Run/Ingest/StreamAnalysis.php) already writes onto `activity_details.stream_summary` across the trailing 12 weeks and normalises them. The `timeInZone` and `fitness` props ride one deferred request, so it and [EstimateThresholdAction](app/Actions/Run/Metrics/EstimateThresholdAction.php) read those blobs through the `scoped()` [ResolveRecentStreamSummariesAction](app/Actions/Run/Metrics/ResolveRecentStreamSummariesAction.php): one query and one JSON decode serve both windows. Zone colours and labels are the shared `HR_ZONE_COLORS`/`HR_ZONE_LABELS` in [chartTokens](resources/js/lib/chartTokens.ts), the same pair the [[settings-hr-zones]] editor names its bands with.
 
 The whole block is absent — bar, legend and label — when no run in the window recorded heart rate, rather than drawing an empty rail. `PersonaMixTool` survives as narration context for the hero voice.
 
