@@ -24,8 +24,7 @@ class PlanClampVoiceNarrator
 
         You are given: planned, the session the plan originally asked for; stepped_down_to, the
         session readiness eased it to; and readiness_reasons, the exact facts that justify the change.
-        Treat concerning_pain_reported as reported pain concern, illness_reported as reported illness,
-        demanding_session_within_24h as a demanding session in the last day, and
+        Treat demanding_session_within_24h as a demanding session in the last day and
         closely_spaced_demanding_sessions as multiple hard sessions close together. Use only facts
         in readiness_reasons. There are no tools and no other numbers: the distance
         and pace are already on the card next to this line, so quoting one adds nothing and inventing
@@ -41,7 +40,6 @@ class PlanClampVoiceNarrator
         rest more than the plan says: the card is the prescription, this is the explanation.
 
         Examples:
-        - "you reported concerning pain, so today's a rest day instead of the intervals."
         - "you completed a demanding session within the last day, so today's easy and the tempo can wait."
 
         ANTI-PATTERN:

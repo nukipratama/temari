@@ -5,7 +5,6 @@ declare(strict_types=1);
 use App\Enums\SessionType;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
-use App\Models\RecoveryFeedback;
 use App\Models\PlannedSession;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
@@ -17,15 +16,10 @@ use Illuminate\Support\Carbon;
 
 uses(RefreshDatabase::class);
 
-/** A current pain report is a strong readiness concern. */
 function tiredUser(): User
 {
     $user = User::factory()->create();
-    RecoveryFeedback::query()->create([
-        'user_id' => $user->id,
-        'date' => Carbon::today()->toDateString(),
-        'concerning_pain' => true,
-    ]);
+    seedDemandingRunYesterday($user);
 
     return $user;
 }
@@ -52,8 +46,8 @@ it('resolves the facts a clamp explanation is written from', function (): void {
 
     expect($context)->not->toBeNull()
         ->and($context['original'])->toBe(SessionType::Interval)
-        ->and($context['clamped_to'])->toBe(SessionType::Rest)
-        ->and($context['ceiling'])->toBe(ReadinessCeiling::Rest)
+        ->and($context['clamped_to'])->toBe(SessionType::Easy)
+        ->and($context['ceiling'])->toBe(ReadinessCeiling::ModerateOk)
         ->and($context['has_run_today'])->toBeFalse();
 });
 
@@ -99,48 +93,61 @@ it('explains the step-down on a pinned day too, since the renderer advises it th
     expect(resolveClamp($user))->not->toBeNull();
 });
 
-it('keeps a pinned race prescription while carrying strong-concern advice facts', function (): void {
+it('keeps a pinned race prescription while carrying the advice facts', function (): void {
     $user = User::factory()->create();
     $session = clampDay($user, 'race', pinned: true);
-    RecoveryFeedback::query()->create([
-        'user_id' => $user->id,
-        'date' => Carbon::today()->toDateString(),
-        'concerning_pain' => true,
-    ]);
-
-    $context = resolveClamp($user);
-
-    expect($session->fresh()->session_type)->toBe(SessionType::Race)
-        ->and($context['clamped_to'])->toBe(SessionType::Rest)
-        ->and($context['readiness_reasons'])->toContain('concerning_pain_reported');
-});
-
-it('uses the recorded reason after a run and later feedback change', function (): void {
-    $user = User::factory()->create();
-    $session = clampDay($user);
-    $feedback = RecoveryFeedback::query()->create([
-        'user_id' => $user->id,
-        'date' => Carbon::today()->toDateString(),
-        'illness' => true,
-    ]);
-
-    app(RestClampRecorder::class)->record($user, Carbon::today());
-    $feedback->update(['illness' => false]);
     ActivityDetail::factory()->for(Activity::factory()->for($user))->create([
         'start_date_local' => Carbon::today()->setHour(7),
     ]);
 
     $context = resolveClamp($user);
 
-    expect($session->fresh()->readiness_assessment['reasons'])->toContain('illness_reported')
+    expect($session->fresh()->session_type)->toBe(SessionType::Race)
+        ->and($context['clamped_to'])->toBe(SessionType::Easy)
+        ->and($context['readiness_reasons'])->toContain('already_ran_today');
+});
+
+it('uses the recorded reason after a run', function (): void {
+    $user = tiredUser();
+    $session = clampDay($user);
+
+    app(RestClampRecorder::class)->record($user, Carbon::today());
+    ActivityDetail::factory()->for(Activity::factory()->for($user))->create([
+        'start_date_local' => Carbon::today()->setHour(7),
+    ]);
+
+    $context = resolveClamp($user);
+
+    expect($session->fresh()->readiness_assessment['reasons'])->toContain('demanding_session_within_24h')
         ->and($context['decision_source'])->toBe('recorded')
-        ->and($context['clamped_to'])->toBe(SessionType::Rest)
-        ->and($context['readiness_reasons'])->toContain('illness_reported')
+        ->and($context['clamped_to'])->toBe(SessionType::Easy)
+        ->and($context['readiness_reasons'])->toContain('demanding_session_within_24h')
         ->and($context['readiness_reasons'])->not->toContain('already_ran_today');
 });
 
+it('reads a recorded snapshot that carries a retired feedback input and reason codes', function (): void {
+    $user = User::factory()->create();
+    $session = clampDay($user);
+    $session->forceFill([
+        'rest_clamped_at' => Carbon::today()->setTime(0, 1),
+        'readiness_assessment' => [
+            'ceiling' => 'rest',
+            'reasons' => ['illness_reported', 'stale_recovery_feedback_not_applied'],
+            'inputs' => ['recovery_feedback' => ['freshness' => 'current', 'illness' => true]],
+        ],
+    ])->save();
+
+    $context = resolveClamp($user);
+
+    expect($context['decision_source'])->toBe('recorded')
+        ->and($context['ceiling'])->toBe(ReadinessCeiling::Rest)
+        ->and($context['clamped_to'])->toBe(SessionType::Rest)
+        ->and($context['readiness_reasons'])->toBe(['illness_reported', 'stale_recovery_feedback_not_applied'])
+        ->and($context['readiness_inputs'])->toHaveKey('recovery_feedback');
+});
+
 it('resolves nothing when there is no session, or no user at all', function (): void {
-    $user = tiredUser();
+    $user = User::factory()->create();
 
     expect(resolveClamp($user))->toBeNull()
         ->and(app(ClampNarrationContext::class)->forUserOn(404, Carbon::today()))->toBeNull();

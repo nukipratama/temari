@@ -6,8 +6,10 @@ use App\Services\Run\Story\Card\CardFacts;
 use OpenAI\Responses\Responses\CreateResponse;
 use OpenAI\Responses\Meta\MetaInformation;
 use App\Enums\PerformanceEvidenceKind;
+use App\Enums\PlannedSessionStatus;
 use App\Enums\SessionType;
 use App\Models\Activity;
+use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
 use App\Models\AI\TokenUsage;
 use App\Models\PerformanceEvidence;
@@ -520,6 +522,32 @@ function seedConfirmedEffort(User $user, int $meters, int $seconds, ?Carbon $on 
     return PerformanceEvidence::query()->create([
         'user_id' => $user->id, 'activity_id' => Activity::factory()->for($user)->create()->id, 'kind' => 'test', 'distance_m' => $meters, 'elapsed_time_sec' => $seconds,
         'performed_on' => $on->toDateString(), 'confirmed_at' => $on->copy()->startOfDay(),
+    ]);
+}
+
+/** A long run that ended within the last day, so readiness lands on moderate_ok; freezes the clock at 08:00 unless a test already did. */
+function seedDemandingRunYesterday(User $user): void
+{
+    if (! Carbon::hasTestNow()) {
+        Carbon::setTestNow(Carbon::today()->setTime(8, 0));
+    }
+
+    ActivityDetail::factory()->for(Activity::factory()->for($user))->create([
+        'start_date_local' => Carbon::today()->subDay()->setTime(12, 0),
+        'elapsed_time' => 6000,
+        'distance' => 12_000,
+    ]);
+}
+
+/** A scored-low previous week, which reads as a missed week and deloads the plan. */
+function seedMissedLastWeek(User $user): void
+{
+    PlannedSession::factory()->for($user)->create([
+        'date' => Carbon::today()->startOfWeek(Carbon::MONDAY)->subWeek()->addDay()->toDateString(),
+        'session_type' => SessionType::Easy,
+        'status' => PlannedSessionStatus::Missed,
+        'distance_score' => 10,
+        'compliance_score' => 10,
     ]);
 }
 

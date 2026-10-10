@@ -120,11 +120,7 @@ final readonly class CurrentWeekKm
         )->all();
 
         $todaySession = $currentWeekSessions->first(fn (PlannedSession $s): bool => $s->date->isSameDay($today));
-        $strongHealthConcern = array_intersect(
-            $briefingContext->readinessAssessment['reasons'],
-            ['concerning_pain_reported', 'illness_reported'],
-        ) !== [];
-        $clamp = ($todaySession !== null && (! $loadPending || $strongHealthConcern))
+        $clamp = ($todaySession !== null && ! $loadPending)
             ? ReadinessClamp::apply(
                 $todaySession->session_type,
                 $todaySession->phase,

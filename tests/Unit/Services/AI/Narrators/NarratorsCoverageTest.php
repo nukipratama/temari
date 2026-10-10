@@ -12,7 +12,6 @@ use App\Models\PersonalRecord;
 use App\Models\PlanAdaptation;
 use App\Models\PlannedSession;
 use App\Models\RunCard;
-use App\Models\RecoveryFeedback;
 use App\Models\Season;
 use App\Models\StoryLine;
 use App\Models\User;
@@ -778,22 +777,22 @@ function assertOneStepWithContext(ClientFake $client, array $context): void
 }
 
 it('PlanClampVoiceNarrator hands the eased session and its reasons in the user message and answers in one step with no tools', function (): void {
-    [$caller, $client] = capturingCaller(json_encode(['voice' => 'you reported pain, so today is a rest day.'], JSON_THROW_ON_ERROR));
+    [$caller, $client] = capturingCaller(json_encode(['voice' => 'you ran long yesterday, so today is an easy day.'], JSON_THROW_ON_ERROR));
 
     $voice = new PlanClampVoiceNarrator($caller)->generate([
-        'ceiling' => ReadinessCeiling::Rest,
+        'ceiling' => ReadinessCeiling::ModerateOk,
         'original' => SessionType::Interval,
-        'clamped_to' => SessionType::Rest,
+        'clamped_to' => SessionType::Easy,
         'has_run_today' => false,
-        'readiness_reasons' => ['concerning_pain_reported'],
+        'readiness_reasons' => ['demanding_session_within_24h'],
         'readiness_inputs' => [],
     ], 7);
 
-    expect($voice)->toBe('you reported pain, so today is a rest day.');
+    expect($voice)->toBe('you ran long yesterday, so today is an easy day.');
     assertOneStepWithContext($client, [
         'planned' => 'interval',
-        'stepped_down_to' => 'rest',
-        'readiness_reasons' => ['concerning_pain_reported'],
+        'stepped_down_to' => 'easy',
+        'readiness_reasons' => ['demanding_session_within_24h'],
     ]);
 });
 
@@ -1594,11 +1593,7 @@ it('BriefingMascotVoiceNarrator throws on missing mascot_voice key', function ()
 
 it('BriefingMascotVoiceNarrator clamps to a deterministic message when session_type exceeds readiness_ceiling', function (): void {
     $user = User::factory()->create();
-    RecoveryFeedback::query()->create([
-        'user_id' => $user->id,
-        'date' => Carbon::today()->toDateString(),
-        'fatigue' => 'severe',
-    ]);
+    seedDemandingRunYesterday($user);
 
     $narrator = bootMascotNarrator(json_encode([
         'mascot_voice' => "Easy long run, 8-12 km.\n\nThis week closes well on one long session.",
@@ -1607,7 +1602,7 @@ it('BriefingMascotVoiceNarrator clamps to a deterministic message when session_t
 
     $voice = $narrator->generate($user, Carbon::today());
 
-    expect($voice)->toContain('easy run, whatever feels comfortable')
+    expect($voice)->toContain('easy to moderate base run')
         ->and($voice)->not->toContain('Long run');
 });
 

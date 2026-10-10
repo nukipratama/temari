@@ -379,7 +379,7 @@ it('paints Home inside its query budget', function (): void {
 
     $queries = 0;
     $fitnessQueries = [];
-    $readinessQueries = ['stress' => 0, 'feedback' => 0];
+    $readinessQueries = ['stress' => 0];
     DB::listen(function (QueryExecuted $query) use (&$queries, &$fitnessQueries, &$readinessQueries): void {
         $queries++;
         foreach (['performance_evidence', 'fitness_anchors'] as $table) {
@@ -390,9 +390,6 @@ it('paints Home inside its query budget', function (): void {
         if (str_contains($query->sql, '`activity_details`.`stream_summary`')
             && str_contains($query->sql, '`activity_details`.`has_heartrate`')) {
             $readinessQueries['stress']++;
-        }
-        if (str_contains($query->sql, '`recovery_feedback`')) {
-            $readinessQueries['feedback']++;
         }
     });
 
@@ -412,7 +409,7 @@ it('paints Home inside its query budget', function (): void {
     // 28: Home asks about a time trial still waiting on its answer.
     expect($queries)->toBeLessThanOrEqual(28);
     expect($fitnessQueries)->toBe(['performance_evidence' => 1, 'fitness_anchors' => 1]);
-    expect($readinessQueries)->toBe(['stress' => 1, 'feedback' => 1]);
+    expect($readinessQueries)->toBe(['stress' => 1]);
 
     Carbon::setTestNow();
 });

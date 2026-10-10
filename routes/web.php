@@ -25,7 +25,6 @@ use App\Http\Controllers\NotificationTestController;
 use App\Http\Controllers\OnboardingController;
 use App\Http\Controllers\PlanController;
 use App\Http\Controllers\RecommendationViewController;
-use App\Http\Controllers\RecoveryFeedbackController;
 use App\Http\Controllers\PerceivedEffortController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RaceController;
@@ -153,9 +152,6 @@ Route::middleware(['auth', 'onboarded'])->group(function (): void {
         ->middleware(['throttle:20,1', 'block-demo-telegram'])
         ->whereNumber('plannedSession')
         ->name('plan.time-trials.answer');
-    Route::post('/recovery/feedback', RecoveryFeedbackController::class)
-        ->middleware(['throttle:10,1', 'block-demo-telegram'])
-        ->name('recovery.feedback.store');
     Route::get('/inbox', InboxController::class)->name('inbox');
 
     // "This is wrong" on a plan day or a narration. The block-demo-telegram

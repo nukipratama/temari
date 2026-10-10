@@ -172,11 +172,7 @@ final class PlanPageAssembler
         // Readiness clamp: TODAY's row only — a future day's readiness isn't
         // knowable today, so clamping never reaches past this one row.
         $todaySession = $sessions->first(fn (PlannedSession $s): bool => $s->date->isSameDay($today));
-        $strongHealthConcern = array_intersect(
-            $briefingContext->readinessAssessment['reasons'],
-            ['concerning_pain_reported', 'illness_reported'],
-        ) !== [];
-        $clamp = ($todaySession !== null && (! $loadPending || $strongHealthConcern))
+        $clamp = ($todaySession !== null && ! $loadPending)
             ? ReadinessClamp::apply(
                 $todaySession->session_type,
                 $todaySession->phase,

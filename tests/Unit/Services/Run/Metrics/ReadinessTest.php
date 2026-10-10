@@ -56,7 +56,7 @@ it('nudges a fresh but detraining runner to build, within the ceiling', function
 });
 
 it('never lets a build nudge override a red flag', function (): void {
-    $r = Readiness::assess(TrainingFormStatus::Fresh, 60, false, 1.0, 0.0, 'down', feedback: ['freshness' => 'current', 'fatigue' => 'moderate']);
+    $r = Readiness::assess(TrainingFormStatus::Fresh, 60, false, 1.0, 0.0, 'down', aheadOfPlanPct: 22.0);
 
     expect($r->ceiling)->toBe(ReadinessCeiling::ModerateOk)
         ->and($r->buildNudge)->toBeFalse();
@@ -125,7 +125,7 @@ it('lets optimal form clear quality at 45 hours after the last demanding session
         ->and($readiness->reasons)->toBe([]);
 });
 
-it('withholds hard advice for strong concerns while retaining the exact reason inputs', function (): void {
+it('records conflicting form signals without hiding them or withholding quality', function (): void {
     $readiness = Readiness::assess(
         formStatus: TrainingFormStatus::Optimal,
         recoveryHours: 45,
@@ -133,133 +133,17 @@ it('withholds hard advice for strong concerns while retaining the exact reason i
         monotony: 1.0,
         volumeRampPct: 0.0,
         fitnessTrend: 'up',
-        feedback: [
-            'date' => '2026-10-01',
-            'freshness' => 'current',
-            'sleep_quality' => 'good',
-            'fatigue' => 'none',
-            'soreness' => 'none',
-            'concerning_pain' => true,
-            'illness' => false,
-        ],
-    );
-
-    expect($readiness->ceiling)->toBe(ReadinessCeiling::Rest)
-        ->and($readiness->reasons)->toContain('concerning_pain_reported')
-        ->and($readiness->inputs['recovery_feedback']['concerning_pain'])->toBeTrue();
-});
-
-it('does not let a mild concern replace quality without supporting load evidence', function (): void {
-    $readiness = Readiness::assess(
-        formStatus: TrainingFormStatus::Optimal,
-        recoveryHours: 45,
-        ranToday: false,
-        monotony: 1.0,
-        volumeRampPct: 0.0,
-        fitnessTrend: 'up',
-        feedback: [
-            'date' => '2026-10-01',
-            'freshness' => 'current',
-            'sleep_quality' => 'good',
-            'fatigue' => 'none',
-            'soreness' => 'mild',
-            'concerning_pain' => false,
-            'illness' => false,
-        ],
-    );
-
-    expect($readiness->ceiling)->toBe(ReadinessCeiling::QualityOk)
-        ->and($readiness->reasons)->toContain('mild_feedback_without_load_support');
-});
-
-it('ignores stale feedback and records contradictory load signals without hiding them', function (): void {
-    $readiness = Readiness::assess(
-        formStatus: TrainingFormStatus::Optimal,
-        recoveryHours: 45,
-        ranToday: false,
-        monotony: 1.0,
-        volumeRampPct: 0.0,
-        fitnessTrend: 'up',
-        feedback: [
-            'date' => '2026-09-28',
-            'freshness' => 'stale',
-            'sleep_quality' => 'poor',
-            'fatigue' => 'severe',
-            'soreness' => 'severe',
-            'concerning_pain' => true,
-            'illness' => true,
-        ],
         formConflict: true,
     );
 
     expect($readiness->ceiling)->toBe(ReadinessCeiling::QualityOk)
-        ->and($readiness->reasons)->toContain('stale_recovery_feedback_not_applied')
-        ->and($readiness->reasons)->toContain('conflicting_form_signals')
-        ->and($readiness->inputs['recovery_feedback']['freshness'])->toBe('stale');
+        ->and($readiness->reasons)->toBe(['conflicting_form_signals'])
+        ->and($readiness->inputs['form_signals_conflict'])->toBeTrue();
 });
 
-it('treats sleep, fatigue, and soreness as independent feedback dimensions', function (array $feedback): void {
-    $readiness = Readiness::assess(
-        formStatus: TrainingFormStatus::Optimal,
-        recoveryHours: 45,
-        ranToday: false,
-        monotony: 1.0,
-        volumeRampPct: 0.0,
-        fitnessTrend: 'up',
-        feedback: ['freshness' => 'current', ...$feedback],
-    );
-
-    expect($readiness->reasons)->not->toContain('conflicting_recovery_feedback');
-})->with([
-    'good sleep with mild soreness' => [[
-        'sleep_quality' => 'good',
-        'fatigue' => 'none',
-        'soreness' => 'mild',
-    ]],
-    'no fatigue with mild soreness' => [[
-        'sleep_quality' => 'fair',
-        'fatigue' => 'none',
-        'soreness' => 'mild',
-    ]],
-]);
-
-it('treats mild soreness while running well ahead of plan as moderate rather than a full hard-day replacement', function (): void {
-    $readiness = Readiness::assess(
-        formStatus: TrainingFormStatus::Optimal,
-        recoveryHours: 48,
-        ranToday: false,
-        monotony: 1.0,
-        volumeRampPct: 22.0,
-        aheadOfPlanPct: 22.0,
-        fitnessTrend: 'up',
-        feedback: [
-            'freshness' => 'current',
-            'sleep_quality' => 'good',
-            'fatigue' => 'none',
-            'soreness' => 'mild',
-        ],
-    );
-
-    expect($readiness->ceiling)->toBe(ReadinessCeiling::ModerateOk)
-        ->and($readiness->reasons)->toContain('running_ahead_of_plan')
-        ->and($readiness->reasons)->toContain('mild_fatigue_or_soreness_with_load_support');
-});
-
-it('lets a load-based form label only support a mild concern, never force rest', function (TrainingFormStatus $form): void {
-    $alone = Readiness::assess($form, 60, false, 1.0, 0.0, 'plateau');
-    $withMildFatigue = Readiness::assess($form, 60, false, 1.0, 0.0, 'plateau', feedback: ['freshness' => 'current', 'fatigue' => 'mild']);
-
-    expect($alone->ceiling)->toBe(ReadinessCeiling::QualityOk)
-        ->and($alone->reasons)->not->toContain('training_form_overreaching')
-        ->and($withMildFatigue->ceiling)->toBe(ReadinessCeiling::ModerateOk)
-        ->and($withMildFatigue->reasons)->toContain('mild_fatigue_or_soreness_with_load_support');
-})->with([TrainingFormStatus::Fatigued, TrainingFormStatus::Overreaching]);
-
-it('reserves rest for reported concerning pain or illness', function (): void {
+it('never reaches rest from load evidence alone', function (): void {
     expect(Readiness::assess(TrainingFormStatus::Overreaching, 10, false, 2.5, 0.0, 'up', weeklyTrimp: 900.0, weeklyTrimpRange: ['low' => 300.0, 'high' => 400.0], aheadOfPlanPct: 60.0)->ceiling)
-        ->toBe(ReadinessCeiling::ModerateOk)
-        ->and(Readiness::assess(TrainingFormStatus::Fresh, 60, false, 1.0, 0.0, 'up', feedback: ['freshness' => 'current', 'illness' => true])->ceiling)
-        ->toBe(ReadinessCeiling::Rest);
+        ->toBe(ReadinessCeiling::ModerateOk);
 });
 
 it('withholds quality only when actual km-to-date runs well ahead of the prescription', function (?float $aheadOfPlanPct, ReadinessCeiling $expected): void {
@@ -289,10 +173,10 @@ it('does not read a steady week exactly at its reference as above range', functi
         ->toBe(ReadinessCeiling::QualityOk);
 });
 
-it('never counts monotony as load that supports a mild concern', function (): void {
-    $readiness = Readiness::assess(TrainingFormStatus::Optimal, 60, false, 3.5, 0.0, 'plateau', feedback: ['freshness' => 'current', 'fatigue' => 'mild']);
+it('never counts monotony as a concern', function (): void {
+    $readiness = Readiness::assess(TrainingFormStatus::Optimal, 60, false, 3.5, 0.0, 'plateau');
 
     expect($readiness->ceiling)->toBe(ReadinessCeiling::QualityOk)
-        ->and($readiness->reasons)->toContain('mild_feedback_without_load_support')
+        ->and($readiness->reasons)->toBe([])
         ->and($readiness->inputs['monotony'])->toBe(3.5);
 });

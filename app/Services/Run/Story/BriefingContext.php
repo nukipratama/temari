@@ -9,7 +9,6 @@ use App\Actions\Run\Plan\ResolveTrailingWeeksAction;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\PlannedSession;
-use App\Models\RecoveryFeedback;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\Run\Ingest\HydrationBacklog;
@@ -122,7 +121,6 @@ final readonly class BriefingContext
         $formStatus = $liveFormStatus ?? $snapshotFormStatus;
         $readinessMonotony = self::floatOrNull($load['monotony'] ?? null);
         $stressProfile = $historyLoading ? null : app(RecentTrainingStress::class)->forUser($user, $asOf);
-        $feedback = self::recoveryFeedback($user, $asOf);
         $weeklyTrimp = self::floatOrNull($load['weekly_trimp'] ?? null);
         $weeklyTrimpReference = self::trimpRange($load['weekly_trimp_reference'] ?? null);
         $prescribedKmToDate = $historyLoading ? null : self::prescribedKmToDate($user, $asOf);
@@ -141,7 +139,6 @@ final readonly class BriefingContext
             volumeRampPct: $volumeRampPct,
             fitnessTrend: $fitnessTrend,
             stressProfile: $stressProfile,
-            feedback: $feedback,
             weeklyTrimp: $weeklyTrimp,
             weeklyTrimpRange: $weeklyTrimpReference,
             formConflict: $formConflict,
@@ -336,30 +333,6 @@ final readonly class BriefingContext
         }
 
         return ['low' => (float) $value['low'], 'high' => (float) $value['high']];
-    }
-
-    /** @return array<string, mixed>|null */
-    private static function recoveryFeedback(User $user, Carbon $asOf): ?array
-    {
-        $feedback = RecoveryFeedback::query()
-            ->where('user_id', $user->id)
-            ->where('date', '<=', $asOf->toDateString())
-            ->orderByDesc('date')
-            ->first();
-
-        if ($feedback === null) {
-            return null;
-        }
-
-        return [
-            'date' => $feedback->date->toDateString(),
-            'freshness' => $feedback->date->isSameDay($asOf) ? 'current' : 'stale',
-            'sleep_quality' => $feedback->sleep_quality?->value,
-            'fatigue' => $feedback->fatigue?->value,
-            'soreness' => $feedback->soreness?->value,
-            'concerning_pain' => $feedback->concerning_pain,
-            'illness' => $feedback->illness,
-        ];
     }
 
     /**

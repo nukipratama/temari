@@ -13,7 +13,6 @@ use App\Services\AI\ServedBy;
 use App\Services\AI\AnalysisService;
 use App\Models\PlanAdaptation;
 use App\Models\PlannedSession;
-use App\Models\RecoveryFeedback;
 use App\Models\Season;
 use App\Enums\SessionType;
 use App\Models\User;
@@ -182,11 +181,7 @@ describe('requestClampVoice', function (): void {
     function tiredUserWithClampedDay(): User
     {
         $user = User::factory()->create();
-        RecoveryFeedback::query()->create([
-            'user_id' => $user->id,
-            'date' => Carbon::today()->toDateString(),
-            'concerning_pain' => true,
-        ]);
+        seedDemandingRunYesterday($user);
         PlannedSession::factory()->for($user)->create([
             'date' => Carbon::today()->toDateString(),
             'session_type' => SessionType::Interval,
