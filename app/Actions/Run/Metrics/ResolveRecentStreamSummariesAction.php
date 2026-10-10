@@ -7,12 +7,13 @@ namespace App\Actions\Run\Metrics;
 use App\Models\ActivityDetail;
 use App\Models\User;
 use App\Services\Run\Metrics\StreamSummary;
+use App\Services\Run\Metrics\TimeInZoneSummary;
 use Illuminate\Support\Carbon;
 use stdClass;
 
 class ResolveRecentStreamSummariesAction
 {
-    private const int READ_DAYS = 84;
+    private const int READ_DAYS = TimeInZoneSummary::WINDOW_WEEKS * 7;
 
     /** @var array<int, array{from: string, rows: list<array{started_at: string, summary: StreamSummary}>}> */
     private array $held = [];
