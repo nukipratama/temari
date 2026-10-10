@@ -27,6 +27,19 @@ function hardEffortRun(User $user, string $date, float $meters, int $secPerKm, ?
     return $activity;
 }
 
+function hardEffortsWithIsoDates(array $resolved): array
+{
+    return array_map(
+        static fn (array $rows): array => array_map(static fn (array $row): array => [...$row, 'date' => $row['date']->toIso8601String()], $rows),
+        $resolved,
+    );
+}
+
+function freshHardEfforts(User $user): array
+{
+    return new ResolveHardEffortsAction()($user->id);
+}
+
 it('keeps a whole-run record at its record distance and a Race-tagged run without one as a run', function (): void {
     $user = User::factory()->create();
     $race = hardEffortRun($user, '2026-09-01', 8_000, 330, 1, false);
@@ -69,4 +82,51 @@ it('reads once per request until forgotten', function (): void {
     $action->forget($user->id);
 
     expect($action($user->id)['efforts'])->toHaveCount(1);
+});
+
+it('serves a later request from the cache with the same result, without loading a detail', function (): void {
+    $user = User::factory()->create();
+    hardEffortRun($user, '2026-09-01', 8_000, 330, 1, false);
+    hardEffortRun($user, '2026-09-10', 5_200, 300);
+    $uncached = freshHardEfforts($user);
+
+    $loaded = 0;
+    ActivityDetail::retrieved(static function () use (&$loaded): void {
+        $loaded++;
+    });
+    $cached = freshHardEfforts($user);
+
+    expect($loaded)->toBe(0)
+        ->and($cached['efforts'])->toHaveCount(1)
+        ->and($cached['runs'])->toHaveCount(1)
+        ->and(hardEffortsWithIsoDates($cached))->toBe(hardEffortsWithIsoDates($uncached));
+});
+
+it('sees an ingested, updated or deleted run on the next request', function (): void {
+    $user = User::factory()->create();
+    hardEffortRun($user, '2026-09-01', 8_000, 330, 1, false);
+    expect(freshHardEfforts($user)['efforts'])->toBe([]);
+
+    $record = hardEffortRun($user, '2026-09-10', 5_000, 300);
+    expect(array_column(freshHardEfforts($user)['efforts'], 'activity_id'))->toBe([$record->id]);
+
+    $record->detail->update(['start_date_local' => '2026-08-20 06:00:00']);
+    expect(freshHardEfforts($user)['efforts'][0]['date']->toDateString())->toBe('2026-08-20');
+
+    $record->delete();
+    expect(freshHardEfforts($user)['efforts'])->toBe([]);
+});
+
+it('never shares a cached entry between users', function (): void {
+    $runner = User::factory()->create();
+    $other = User::factory()->create();
+    $record = hardEffortRun($runner, '2026-09-10', 5_000, 300);
+    $race = hardEffortRun($other, '2026-09-01', 8_000, 330, 1, false);
+
+    freshHardEfforts($runner);
+    $resolved = freshHardEfforts($other);
+
+    expect($resolved['efforts'])->toBe([])
+        ->and(array_column($resolved['runs'], 'activity_id'))->toBe([$race->id])
+        ->and(array_column(freshHardEfforts($runner)['efforts'], 'activity_id'))->toBe([$record->id]);
 });
