@@ -19,16 +19,12 @@ import MonthComparison from '@/components/trends/MonthComparison';
 import NarrationCard from '@/components/trends/NarrationCard';
 import RaceComparison from '@/components/trends/RaceComparison';
 import SupportedOverTime from '@/components/trends/SupportedOverTime';
+import TrendsHeading from '@/components/trends/TrendsHeading';
+import { TrendsSectionSkeleton } from '@/components/trends/TrendsSkeleton';
 import WeekComparison from '@/components/trends/WeekComparison';
-import Eyebrow from '@/components/ui/Eyebrow';
 import LaneStack from '@/components/ui/LaneStack';
 import PageContainer from '@/components/ui/PageContainer';
-import PageHero from '@/components/ui/PageHero';
-import {
-    SkeletonChart,
-    SkeletonProse,
-    SkeletonStats,
-} from '@/components/ui/Skeleton';
+import { SkeletonProse } from '@/components/ui/Skeleton';
 import { appLayout } from '@/layouts/appLayout';
 
 interface TrendsProps {
@@ -68,16 +64,7 @@ export default function Trends({
             <Head title="Trends" />
             <AiOutageBanner />
             <PageContainer>
-                <Eyebrow token="hero" tone="ink-2">
-                    Trends
-                </Eyebrow>
-                <PageHero size="quote-lg" italic className="mt-2">
-                    am i getting fitter,
-                    <br />
-                    <em className="italic text-icon-accent">
-                        and at what cost?
-                    </em>
-                </PageHero>
+                <TrendsHeading />
 
                 <LaneStack className="mt-6">
                     <Deferred data="narration" fallback={<SkeletonProse />}>
@@ -86,12 +73,7 @@ export default function Trends({
 
                     <Deferred
                         data={['weekComparison', 'load']}
-                        fallback={
-                            <div>
-                                <div className="h-4 w-32 rounded-xs bg-muted" />
-                                <SkeletonStats className="mt-2.5" />
-                            </div>
-                        }
+                        fallback={<TrendsSectionSkeleton />}
                     >
                         {() => (
                             <WeekComparison
@@ -103,12 +85,7 @@ export default function Trends({
 
                     <Deferred
                         data={['ctlTrend', 'chartAnnotations']}
-                        fallback={
-                            <div>
-                                <div className="h-4 w-32 rounded-xs bg-muted" />
-                                <SkeletonChart className="mt-2.5 h-[10.5rem]" />
-                            </div>
-                        }
+                        fallback={<TrendsSectionSkeleton chart />}
                     >
                         {() => (
                             <MonthComparison
@@ -120,12 +97,7 @@ export default function Trends({
 
                     <Deferred
                         data={['load', 'raceOutlook']}
-                        fallback={
-                            <div>
-                                <div className="h-4 w-32 rounded-xs bg-muted" />
-                                <SkeletonStats className="mt-2.5" />
-                            </div>
-                        }
+                        fallback={<TrendsSectionSkeleton />}
                     >
                         {() => (
                             <RaceComparison

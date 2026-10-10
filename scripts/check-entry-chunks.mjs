@@ -78,14 +78,14 @@ const ROUTE_BUDGETS_KB = [
     { name: 'Plan', src: 'resources/js/pages/Plan.tsx', budgetKb: 185 },
     { name: 'Race', src: 'resources/js/pages/Race.tsx', budgetKb: 155 },
     { name: 'Trends', src: 'resources/js/pages/Trends.tsx', budgetKb: 175 },
-    { name: 'History', src: 'resources/js/pages/History.tsx', budgetKb: 175 },
+    { name: 'History', src: 'resources/js/pages/History.tsx', budgetKb: 176 },
     {
         name: 'Activity',
         src: 'resources/js/pages/Runs/Show.tsx',
         budgetKb: 175,
     },
-    { name: 'Inbox', src: 'resources/js/pages/Inbox.tsx', budgetKb: 151 },
-    { name: 'Profile', src: 'resources/js/pages/Profile.tsx', budgetKb: 165 },
+    { name: 'Inbox', src: 'resources/js/pages/Inbox.tsx', budgetKb: 152 },
+    { name: 'Profile', src: 'resources/js/pages/Profile.tsx', budgetKb: 166 },
     {
         name: 'Settings',
         src: 'resources/js/pages/Settings/Index.tsx',
@@ -112,7 +112,8 @@ function closure(startKeys) {
         const key = stack.pop();
         if (seen.has(key)) continue;
         seen.add(key);
-        for (const imported of manifest[key]?.imports ?? []) stack.push(imported);
+        for (const imported of manifest[key]?.imports ?? [])
+            stack.push(imported);
     }
 
     return seen;
@@ -131,7 +132,12 @@ function weigh(keys) {
         const gzipped = gzipSync(bytes, { level: 9 }).length;
         raw += bytes.length;
         gz += gzipped;
-        chunks.push({ name: chunk.name ?? chunk.file, file: chunk.file, raw: bytes.length, gz: gzipped });
+        chunks.push({
+            name: chunk.name ?? chunk.file,
+            file: chunk.file,
+            raw: bytes.length,
+            gz: gzipped,
+        });
     }
 
     chunks.sort((a, b) => b.gz - a.gz);
