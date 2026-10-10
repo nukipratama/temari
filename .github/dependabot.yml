@@ -52,3 +52,4 @@ updates:
     ignore:
       - dependency-name: mysql
         versions: [">= 10"]
+      - dependency-name: temari/mysql
