@@ -7,6 +7,7 @@ use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
 use App\Models\HeldNotification;
 use App\Models\NotificationPreference;
+use App\Models\PlannedSession;
 use App\Models\TelegramConnection;
 use App\Models\User;
 use App\Notifications\MorningBriefingNotification;
@@ -61,6 +62,22 @@ it('pushes to an athlete whose usual start falls in this quarter hour', function
         ->assertSuccessful();
 
     Notification::assertSentTo($user, MorningBriefingNotification::class);
+});
+
+it('leaves an athlete alone on a day they skipped, and still pushes on a later skipped day', function (): void {
+    Notification::fake();
+
+    $skippedToday = morningAthlete();
+    PlannedSession::factory()->for($skippedToday)->create(['date' => '2026-05-24', 'skipped' => true]);
+    $skippedTomorrow = morningAthlete();
+    PlannedSession::factory()->for($skippedTomorrow)->create(['date' => '2026-05-25', 'skipped' => true]);
+
+    $this->artisan('briefing:morning-push')
+        ->expectsOutputToContain('Pushed the morning briefing to 1 athletes.')
+        ->assertSuccessful();
+
+    Notification::assertNotSentTo($skippedToday, MorningBriefingNotification::class);
+    Notification::assertSentTo($skippedTomorrow, MorningBriefingNotification::class);
 });
 
 it('leaves an athlete alone outside their own bucket', function (string $usualStart): void {

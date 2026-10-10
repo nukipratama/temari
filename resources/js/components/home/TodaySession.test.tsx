@@ -1,5 +1,6 @@
-import { render, screen } from '@testing-library/react';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { router } from '@inertiajs/react';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { BriefingResult, WeekPlanDay } from '@/types/inertia';
 
@@ -244,6 +245,45 @@ describe('TodaySession', () => {
             container.querySelector('section')?.children ?? [],
         ).filter((child) => child.tagName.toLowerCase() !== 'svg');
         expect(blocks).toHaveLength(1);
+    });
+
+    it('swaps the prescription and the voice for the skip and its restore on a skipped today', () => {
+        const { container } = render(
+            <TodaySession
+                briefing={briefing('Easy run, 2.6 km. Keep it chatty.')}
+                today={day({ skipped: true })}
+            />,
+        );
+
+        expect(screen.getByText('skipped today')).toBeInTheDocument();
+        expect(
+            screen.getByText("it won't be scored or count against your week."),
+        ).toBeInTheDocument();
+        expect(container.querySelector('#anchor-session-today')).toBeNull();
+        expect(container.querySelector('.text-stat')).toBeNull();
+        expect(screen.queryByText('Easy run, 2.6 km.')).toBeNull();
+    });
+
+    it('restores a skipped today through the plan session edit, holding the button while it sends', () => {
+        vi.mocked(router.patch).mockImplementationOnce(
+            (_url, _data, options) => {
+                options?.onStart?.({} as never);
+            },
+        );
+        render(
+            <TodaySession
+                briefing={briefing('Easy run, 2.6 km.')}
+                today={day({ id: 31, skipped: true })}
+            />,
+        );
+
+        fireEvent.click(screen.getByRole('button', { name: 'restore' }));
+
+        expect(vi.mocked(router.patch).mock.calls.at(-1)?.slice(0, 2)).toEqual([
+            '/plan/sessions/31',
+            { skipped: false, pinned: false },
+        ]);
+        expect(screen.getByRole('button', { name: 'restore' })).toBeDisabled();
     });
 
     it('labels the block as today', () => {

@@ -775,7 +775,7 @@ it('skips and restores today\'s unrun session', function (): void {
     expect($rows['2026-08-12']->fresh()->skipped)->toBeFalse();
 });
 
-it('rebriefs today only when a skip or restore changes today\'s session', function (string $date, bool $wasSkipped, bool $skipped, bool $demo, bool $rebriefs): void {
+it('briefs today only when a restore brings today\'s session back', function (string $date, bool $wasSkipped, bool $skipped, bool $demo, bool $rebriefs): void {
     Carbon::setTestNow('2026-08-12 08:00:00');
     Bus::fake();
     $user = User::factory()->create(['is_demo' => $demo]);
@@ -789,12 +789,25 @@ it('rebriefs today only when a skip or restore changes today\'s session', functi
 
     expect(Analysis::query()->where('analysis_type', AnalysisType::BriefingMascotVoice)->where('discriminator', '2026-08-12')->exists())->toBe($rebriefs);
 })->with([
-    'skip today' => ['2026-08-12', false, true, false, true],
+    'skip today' => ['2026-08-12', false, true, false, false],
     'restore today' => ['2026-08-12', true, false, false, true],
     'skip today again' => ['2026-08-12', true, true, false, false],
     'skip a later day' => ['2026-08-14', false, true, false, false],
-    'demo skips today' => ['2026-08-12', false, true, true, false],
+    'demo restores today' => ['2026-08-12', true, false, true, false],
 ]);
+
+it('briefs today once on a restore when no briefing was narrated', function (): void {
+    Carbon::setTestNow('2026-08-12 08:00:00');
+    Bus::fake();
+    $user = User::factory()->create();
+    $rows = planWeekRows($user, ['2026-08-12' => 'easy'], ['2026-08-12' => ['skipped' => true]]);
+
+    $this->actingAs($user)
+        ->patch("/plan/sessions/{$rows['2026-08-12']->id}", ['skipped' => false, 'pinned' => false])
+        ->assertSessionHasNoErrors();
+
+    Bus::assertDispatchedTimes(AnalyzeBriefingMascotVoiceJob::class, 1);
+});
 
 it('refuses move, skip and restore on a today a run has credited', function (array $payload, string $field): void {
     Carbon::setTestNow('2026-08-12 08:00:00');
@@ -1133,32 +1146,32 @@ it('counts only plan edits against the plan-edit budget, and answers the 21st wi
         ->assertTooManyRequests();
 });
 
-it('merges a burst of skip and restore toggles on today into one delayed briefing that reads the final plan', function (): void {
+it('leaves today\'s narrated briefing in place across skip and restore toggles', function (array $toggles): void {
     Carbon::setTestNow('2026-08-12 08:00:00');
     Bus::fake();
     $user = User::factory()->create();
     $rows = planWeekRows($user, ['2026-08-12' => 'easy']);
-    Analysis::factory()->done()->create([
+    $briefing = Analysis::factory()->done('easy run, 2.6 km.')->create([
         'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
         'subject_id' => $user->id,
         'analysis_type' => AnalysisType::BriefingMascotVoice,
         'discriminator' => '2026-08-12',
     ]);
 
-    foreach ([true, false, true] as $skipped) {
+    foreach ($toggles as $skipped) {
         $this->actingAs($user)
-            ->patch("/plan/sessions/{$rows['2026-08-12']->id}", ['skipped' => $skipped])
+            ->patch("/plan/sessions/{$rows['2026-08-12']->id}", ['skipped' => $skipped, 'pinned' => false])
             ->assertSessionHasNoErrors();
     }
 
-    $briefing = Analysis::query()->where('analysis_type', AnalysisType::BriefingMascotVoice)->where('discriminator', '2026-08-12')->sole();
-    Bus::assertDispatchedTimes(AnalyzeBriefingMascotVoiceJob::class, 1);
-    Bus::assertDispatched(fn (AnalyzeBriefingMascotVoiceJob $job): bool => $job->delay === AnalysisService::PLAN_EDIT_DELAY_SECONDS
-        && $job->analysisId === $briefing->id
-        && $job->generationToken === $briefing->generation_token);
-    expect($briefing->status)->toBe(AnalysisStatus::Queued)
-        ->and($rows['2026-08-12']->fresh()->skipped)->toBeTrue();
-});
+    Bus::assertNotDispatched(AnalyzeBriefingMascotVoiceJob::class);
+    expect($briefing->fresh()->only(['status', 'content']))->toBe(['status' => AnalysisStatus::Done, 'content' => 'easy run, 2.6 km.'])
+        ->and($rows['2026-08-12']->fresh()->skipped)->toBe(end($toggles));
+})->with([
+    'skip' => [[true]],
+    'skip then restore' => [[true, false]],
+    'skip, restore, skip' => [[true, false, true]],
+]);
 
 it('queues nothing for the demo athlete however often today is toggled', function (): void {
     Carbon::setTestNow('2026-08-12 08:00:00');

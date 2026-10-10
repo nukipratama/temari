@@ -6,6 +6,7 @@ namespace App\Console\Commands\Notifications;
 
 use App\Models\AI\Analysis;
 use App\Models\NotificationDelivery;
+use App\Models\PlannedSession;
 use App\Models\User;
 use App\Notifications\MorningBriefingNotification;
 use App\Services\AI\AnalysisStatus;
@@ -38,6 +39,7 @@ class MorningBriefingPushCommand extends Command
                 'notificationPreference',
                 fn (Builder $preference): Builder => $preference->where('notifications_enabled', false),
             )
+            ->whereNotIn('id', PlannedSession::query()->select('user_id')->whereDate('date', $today)->where('skipped', true))
             ->get();
 
         $sent = 0;

@@ -160,6 +160,23 @@ it('a second same-day run never re-bills a Done row', function (): void {
     Carbon::setTestNow();
 });
 
+it('generates no briefing for an athlete who skipped today, and still briefs the rest', function (): void {
+    Carbon::setTestNow('2026-05-11 00:01:00');
+    $skipped = User::factory()->seenToday()->create();
+    $planned = User::factory()->seenToday()->create();
+    PlannedSession::factory()->for($skipped)->create(['date' => Carbon::today(), 'skipped' => true]);
+    PlannedSession::factory()->for($planned)->create(['date' => Carbon::today()]);
+    Bus::fake();
+
+    $this->artisan('ai:daily-briefing')->assertSuccessful();
+
+    $briefed = Analysis::query()->where('analysis_type', AnalysisType::BriefingMascotVoice)->pluck('subject_id')->all();
+    expect($briefed)->toBe([$planned->id]);
+    Bus::assertDispatchedTimes(AnalyzeBriefingMascotVoiceJob::class, 1);
+
+    Carbon::setTestNow();
+});
+
 it('reports zero active users when nobody has opened the app recently', function (): void {
     Carbon::setTestNow('2026-05-11 12:00:00');
 

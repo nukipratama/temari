@@ -9,6 +9,7 @@ use App\Actions\Run\Plan\ResolveSeasonAction;
 use App\Jobs\AI\AnalyzeActivityJob;
 use App\Models\Activity;
 use App\Models\AI\Analysis;
+use App\Models\PlannedSession;
 use App\Models\RunCard;
 use App\Models\Season;
 use App\Models\WeeklySnapshot;
@@ -389,6 +390,12 @@ class SelfHealer
             ->where('analysis_type', $type)
             ->whereIn('subject_id', $this->activeUsers->query()->select('id'))
             ->when($onlyDiscriminator !== null, fn (Builder $query) => $query->where('discriminator', $onlyDiscriminator))
+            ->when($type === AnalysisType::BriefingMascotVoice, fn (Builder $query) => $query->whereNotExists(
+                PlannedSession::query()
+                    ->whereColumn('planned_sessions.user_id', 'ai_analyses.subject_id')
+                    ->whereColumn('planned_sessions.date', 'ai_analyses.discriminator')
+                    ->where('skipped', true),
+            ))
             ->orderBy('discriminator')
             ->get(['subject_id', 'discriminator'])
             ->unique('subject_id');

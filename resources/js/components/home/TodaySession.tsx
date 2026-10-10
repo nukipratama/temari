@@ -1,4 +1,5 @@
-import { useRef } from 'react';
+import { router } from '@inertiajs/react';
+import { useRef, useState } from 'react';
 
 import type {
     BriefingResult,
@@ -12,6 +13,7 @@ import { renderNarration } from '@/components/temari/Citation';
 import MascotWatermark from '@/components/temari/MascotWatermark';
 import { type MascotPose, writingPose } from '@/components/temari/TemariMascot';
 import Eyebrow from '@/components/ui/Eyebrow';
+import PillButton from '@/components/ui/PillButton';
 import { useRecommendationView } from '@/hooks/useRecommendationView';
 import { cn } from '@/lib/cn';
 import { formatPace } from '@/lib/pace';
@@ -224,6 +226,42 @@ function TodayPrescription({
     );
 }
 
+/** Today excused before it ran, shown in place of its prescription. */
+function SkippedToday({ day }: Readonly<{ day: WeekPlanDay }>) {
+    const [processing, setProcessing] = useState(false);
+
+    const restore = () => {
+        router.patch(
+            `/plan/sessions/${day.id}`,
+            { skipped: false, pinned: false },
+            {
+                preserveScroll: true,
+                onStart: () => setProcessing(true),
+                onFinish: () => setProcessing(false),
+            },
+        );
+    };
+
+    return (
+        <div className="mt-2">
+            <p className="text-base font-semibold text-foreground">
+                skipped today
+            </p>
+            <p className="mt-1 mb-2.5 text-xs leading-relaxed text-text-2">
+                it won&apos;t be scored or count against your week.
+            </p>
+            <PillButton
+                tone="horizon"
+                size="sm"
+                disabled={processing}
+                onClick={restore}
+            >
+                restore
+            </PillButton>
+        </div>
+    );
+}
+
 /**
  * The prototype's today message card, carrying the whole of today: Temari as
  * a watermark posed to today's vibe, the "today" eyebrow, the session the plan
@@ -246,10 +284,12 @@ export default function TodaySession({
     const voice = briefing.mascotVoice;
     const recommendationRef = useRef<HTMLElement>(null);
     useRecommendationView(recommendationRef, today?.recommendation_token);
+    const skipped = today?.skipped === true;
     const showsVoice =
-        briefing.firstRead ||
-        (voice.status !== 'pending' &&
-            !(voice.status === 'done' && voice.content === null));
+        !skipped &&
+        (briefing.firstRead ||
+            (voice.status !== 'pending' &&
+                !(voice.status === 'done' && voice.content === null)));
     const pose: MascotPose =
         today?.session_type === 'rest' ? 'sleepy' : briefing.mood;
 
@@ -265,12 +305,15 @@ export default function TodaySession({
             <Eyebrow as="h2" token="micro" className="text-icon-accent">
                 Today
             </Eyebrow>
-            {today !== null && (
-                <TodayPrescription
-                    day={today}
-                    restDayEasePace={restDayEasePace}
-                />
-            )}
+            {today !== null &&
+                (skipped ? (
+                    <SkippedToday day={today} />
+                ) : (
+                    <TodayPrescription
+                        day={today}
+                        restDayEasePace={restDayEasePace}
+                    />
+                ))}
             {showsVoice && (
                 <div className="mt-3">
                     <AnalysisStatus

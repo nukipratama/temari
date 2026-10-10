@@ -390,6 +390,23 @@ it('refreshes the daily briefing set on the second run of the day', function ():
     Carbon::setTestNow();
 });
 
+it('leaves today\'s briefing as narrated when a run lands on a day the athlete skipped', function (): void {
+    Carbon::setTestNow('2026-05-19 17:45:00');
+    $activity = analyzedActivity('2026-05-19 17:30:00');
+    PlannedSession::factory()->create(['user_id' => $activity->user_id, 'date' => '2026-05-19', 'skipped' => true]);
+    $briefing = Analysis::factory()->done('easy run, 2.6 km.')->create([
+        'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
+        'subject_id' => $activity->user_id,
+        'analysis_type' => AnalysisType::BriefingMascotVoice,
+        'discriminator' => '2026-05-19',
+    ]);
+
+    fire($activity);
+
+    Bus::assertNotDispatched(AnalyzeBriefingMascotVoiceJob::class);
+    expect($briefing->fresh()->only(['status', 'content']))->toBe(['status' => AnalysisStatus::Done, 'content' => 'easy run, 2.6 km.']);
+});
+
 it('does not re-bill the daily set when backfilling a previous-day run', function (): void {
     Carbon::setTestNow('2026-05-19 09:00:00');
     $today = analyzedActivity('2026-05-19 06:00:00');
