@@ -269,7 +269,7 @@ it('recomputes fresh training load instead of a pre-ingest cache entry', functio
         ->and($session->fresh()->readiness_assessment['reasons'])->toContain('weekly_load_above_personal_range');
 });
 
-it('tells the athlete when the day is only eased, naming what it eased to', function (): void {
+it('tells the athlete when the day is eased, in the clamp note', function (): void {
     Notification::fake();
     $user = User::factory()->create();
     seedDemandingRunYesterday($user);
@@ -280,8 +280,7 @@ it('tells the athlete when the day is only eased, naming what it eased to', func
     Notification::assertSentTo(
         $user,
         DayClampedNotification::class,
-        fn (DayClampedNotification $n): bool => $n->clampedTo === SessionType::Easy
-            && $n->note === ReadinessClamp::noteFor(SessionType::Interval, ReadinessCeiling::ModerateOk, ['demanding_session_within_24h']),
+        fn (DayClampedNotification $n): bool => $n->note === ReadinessClamp::noteFor(SessionType::Interval, ReadinessCeiling::ModerateOk, ['demanding_session_within_24h']),
     );
 });
 

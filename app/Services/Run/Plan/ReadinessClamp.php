@@ -91,12 +91,6 @@ final class ReadinessClamp
         }
 
         return match ($ceiling) {
-            ReadinessCeiling::Rest => [
-                'session_type' => SessionType::Rest,
-                'segments' => [],
-                'core_km' => 0.0,
-                'note' => self::noteFor($sessionType, $ceiling, $reasons) ?? self::restNote($sessionType),
-            ],
             // Long requires ModerateOk, so an EasyOnly ceiling — stricter than
             // ModerateOk — does send a Long day through this arm too.
             ReadinessCeiling::EasyOnly => [
@@ -120,32 +114,15 @@ final class ReadinessClamp
                 'core_km' => SegmentGenerator::coreKmFor($sessionType, false, $longRunBaselineKm, $volumeMultiplier, $longRunCapKm),
                 'note' => self::noteFor($sessionType, $ceiling, $reasons) ?? self::moderateOkNote(),
             ],
-            ReadinessCeiling::QualityOk => null, // unreachable: nothing requires more than QualityOk
+            ReadinessCeiling::Rest, ReadinessCeiling::QualityOk => null, // unreachable: no assessment caps to Rest, and nothing requires more than QualityOk
         };
     }
 
     /**
-     * Whether today's ceiling would downgrade this session all the way to a
-     * full rest — the one clamp outcome compliance has to know about, since
-     * an athlete who takes the rest the card prescribed would otherwise be
-     * graded against the session it replaced and score `missed` for
-     * complying. Shares {@see self::requiredRank()} with {@see self::apply()}
-     * so the two can never disagree about what the ceiling permits, and needs
-     * neither paces nor a volume multiplier: the `Rest` arm of `apply()` uses
-     * neither. See `docs/decisions/readiness-clamp-is-advisory.md`.
-     */
-    public static function clampsToRest(SessionType $sessionType, ReadinessCeiling $ceiling): bool
-    {
-        return $ceiling === ReadinessCeiling::Rest
-            && self::requiredRank($sessionType) > $ceiling->rank();
-    }
-
-    /**
      * What today's ceiling would downgrade this session to, or null when the
-     * session already fits under it. The general form of
-     * {@see self::clampsToRest()}, and it exists for the same reason: a caller
-     * that needs only the OUTCOME should not have to build a segment list to
-     * learn it. {@see \App\Services\Run\Plan\ClampNarrationContext} narrates the
+     * session already fits under it. A caller that needs only the OUTCOME
+     * should not have to build a segment list to learn it.
+     * {@see \App\Services\Run\Plan\ClampNarrationContext} narrates the
      * downgrade and has neither paces nor a volume multiplier to hand.
      *
      * Shares {@see self::requiredRank()} with {@see self::apply()}, so the two

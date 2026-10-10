@@ -180,64 +180,16 @@ it('a Long-downgrade is bigger than a Tempo/Interval-downgrade under EasyOnly', 
     expect($fromLong['segments'][0]->minutes)->toBeGreaterThan($fromTempo['segments'][0]->minutes);
 });
 
-it('Rest clamps every non-rest session to a full rest day with no segments', function (): void {
-    foreach ([SessionType::Easy, SessionType::Long, SessionType::Tempo, SessionType::Interval] as $type) {
-        $clamp = applyClamp($type, ReadinessCeiling::Rest);
-
-        expect($clamp['session_type'])->toBe(SessionType::Rest)
-            ->and($clamp['segments'])->toBe([])
-            ->and($clamp['note'])->toBeString()->not->toBe('');
-    }
-});
-
 it('gives distinct notes for a long-run downgrade versus a quality-work downgrade', function (): void {
-    $longNote = applyClamp(SessionType::Long, ReadinessCeiling::Rest)['note'];
-    $tempoNote = applyClamp(SessionType::Tempo, ReadinessCeiling::Rest)['note'];
+    $longNote = applyClamp(SessionType::Long, ReadinessCeiling::EasyOnly)['note'];
+    $tempoNote = applyClamp(SessionType::Tempo, ReadinessCeiling::EasyOnly)['note'];
 
     expect($longNote)->not->toBe($tempoNote);
 });
 
-it('clampsToRest only when the ceiling bottoms out and the session asks for more', function (): void {
-    expect(ReadinessClamp::clampsToRest(SessionType::Interval, ReadinessCeiling::Rest))->toBeTrue()
-        ->and(ReadinessClamp::clampsToRest(SessionType::Long, ReadinessCeiling::Rest))->toBeTrue()
-        ->and(ReadinessClamp::clampsToRest(SessionType::Easy, ReadinessCeiling::Rest))->toBeTrue()
-        // A rest day already fits under a Rest ceiling, so nothing is downgraded.
-        ->and(ReadinessClamp::clampsToRest(SessionType::Rest, ReadinessCeiling::Rest))->toBeFalse()
-        // Every other ceiling downgrades to Easy at worst, never to a full rest.
-        ->and(ReadinessClamp::clampsToRest(SessionType::Interval, ReadinessCeiling::EasyOnly))->toBeFalse()
-        ->and(ReadinessClamp::clampsToRest(SessionType::Interval, ReadinessCeiling::ModerateOk))->toBeFalse()
-        ->and(ReadinessClamp::clampsToRest(SessionType::Interval, ReadinessCeiling::QualityOk))->toBeFalse();
-});
-
-/** The predicate has to agree with what apply() would actually return. */
-it('clampsToRest agrees with apply for every session type at the Rest ceiling', function (): void {
-    foreach (SessionType::cases() as $type) {
-        $clamped = ReadinessClamp::apply($type, PlanPhase::Base, null, 20.0, 1.0, INF, null, ReadinessCeiling::Rest);
-
-        expect(ReadinessClamp::clampsToRest($type, ReadinessCeiling::Rest))
-            ->toBe($clamped !== null && $clamped['session_type'] === SessionType::Rest);
-    }
-});
-
-it('leaves a race alone when readiness is clear but allows a rest advisory', function (): void {
+it('leaves a race alone when readiness is clear', function (): void {
     expect(applyClamp(SessionType::Race, ReadinessCeiling::QualityOk))->toBeNull()
-        ->and(ReadinessClamp::clampsToRest(SessionType::Race, ReadinessCeiling::QualityOk))->toBeFalse()
         ->and(ReadinessClamp::downgradeFor(SessionType::Race, ReadinessCeiling::QualityOk))->toBeNull();
-
-    $clamp = ReadinessClamp::apply(
-        SessionType::Race,
-        PlanPhase::Build,
-        42_195.0,
-        CLAMP_BASELINE_KM,
-        CLAMP_MULTIPLIER,
-        INF,
-        CLAMP_PACES,
-        ReadinessCeiling::Rest,
-    );
-
-    expect($clamp['session_type'])->toBe(SessionType::Rest)
-        ->and(ReadinessClamp::clampsToRest(SessionType::Race, ReadinessCeiling::Rest))->toBeTrue()
-        ->and(ReadinessClamp::downgradeFor(SessionType::Race, ReadinessCeiling::Rest))->toBe(SessionType::Rest);
 });
 
 it('paceEaseApplies only for an Easy day at EasyOnly and a Long day at ModerateOk', function (): void {
@@ -270,9 +222,9 @@ it('paceEaseNote is a non-empty templated string', function (): void {
 // noteFor() is the same explanation apply() builds, reached without a segment
 // list. The pair only stays honest if every combination agrees, including which
 // ones have nothing to explain at all.
-it('gives the same note as apply for every session and ceiling', function (): void {
+it('gives the same note as apply for every session and assessable ceiling', function (): void {
     foreach (SessionType::cases() as $type) {
-        foreach (ReadinessCeiling::cases() as $ceiling) {
+        foreach ([ReadinessCeiling::EasyOnly, ReadinessCeiling::ModerateOk, ReadinessCeiling::QualityOk] as $ceiling) {
             expect(ReadinessClamp::noteFor($type, $ceiling))
                 ->toBe(applyClamp($type, $ceiling)['note'] ?? null, "{$type->value} under {$ceiling->value}");
         }

@@ -13,24 +13,19 @@ use App\Models\ActivityDetail;
 use App\Models\PlannedSession;
 use App\Models\RaceGoal;
 use App\Models\User;
-use App\Services\Run\Ingest\HydrationBacklog;
-use App\Services\Run\Metrics\ReadinessCeiling;
 use App\Services\Run\Metrics\RiegelProjector;
-use App\Services\Run\Metrics\TrainingLoad;
-use App\Services\Run\Story\BriefingContext;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Carbon;
 
 /**
  * Decides what the periodizer should do differently this week given what
- * actually happened last week, what the load numbers say, and how the race
- * projection compares to the goal time. Rules own every number, the same as
- * the rest of the plan engine.
+ * actually happened last week and how the race projection compares to the
+ * goal time. Rules own every number, the same as the rest of the plan engine.
  *
- * Priority is safety first: a deload trigger wins over adherence, and both
- * win over race-pace feedback, so chasing a goal time can never talk the
- * plan past a red flag. The race-pace arm is the only one that moves
- * prescribed work in either direction; the rest only ever reduce.
+ * Priority is adherence first: a missed-week deload wins over how the week
+ * was run, and both win over race-pace feedback, so chasing a goal time can
+ * never talk the plan past a red flag. The race-pace arm is the only one that
+ * moves prescribed work in either direction; the rest only ever reduce.
  */
 final readonly class PlanAdapter
 {
@@ -47,9 +42,7 @@ final readonly class PlanAdapter
     public const float RACE_GAP_MARGIN = 0.02;
 
     public function __construct(
-        private TrainingLoad $trainingLoad,
         private RiegelProjector $riegelProjector,
-        private HydrationBacklog $hydrationBacklog,
     ) {
     }
 
@@ -61,9 +54,6 @@ final readonly class PlanAdapter
      */
     public function forWeek(User $user, Carbon $weekStart, Carbon $today, ?RaceGoal $race, ?RaceAmbition $ambition = null): array
     {
-        $loadPending = $this->hydrationBacklog->recentLoadAwaitsScoring($user->id, $today);
-        $load = $loadPending ? null : $this->trainingLoad->summary($user, $today);
-        $ceiling = ReadinessCeiling::from(BriefingContext::forUser($user, $today, $load, historyLoading: $loadPending)->readinessCeiling);
         $execution = $this->previousWeekExecution($user, $weekStart);
         $currentStimulus = $this->currentWeekStimulus($user, $weekStart, $today);
         $stimulus = $currentStimulus['sessions'] > 0
@@ -71,7 +61,6 @@ final readonly class PlanAdapter
             : $this->previousWeekStimulus($user, $weekStart);
 
         return self::decide(
-            $ceiling,
             $this->previousWeekAdherencePct($user, $weekStart),
             $stimulus['adherence_pct'],
             $stimulus['misses'],
@@ -93,7 +82,6 @@ final readonly class PlanAdapter
      * @return array{reason: AdaptationReason, deload: bool, quality_delta: int, adherence_pct: int, stimulus_adherence_pct: int}
      */
     public static function decide(
-        ReadinessCeiling $ceiling,
         int $adherencePct,
         int $stimulusAdherencePct,
         int $stimulusMisses,
@@ -102,7 +90,7 @@ final readonly class PlanAdapter
         int $egregiousEasyDays,
         ?float $raceGapRatio,
     ): array {
-        $reason = self::reasonFor($ceiling, $adherencePct, $stimulusMisses, $raggedDays, $egregiousEasyDays, $raceGapRatio);
+        $reason = self::reasonFor($adherencePct, $stimulusMisses, $raggedDays, $egregiousEasyDays, $raceGapRatio);
 
         return [
             'reason' => $reason,
@@ -118,16 +106,12 @@ final readonly class PlanAdapter
     }
 
     private static function reasonFor(
-        ReadinessCeiling $ceiling,
         int $adherencePct,
         int $stimulusMisses,
         int $raggedDays,
         int $egregiousEasyDays,
         ?float $raceGapRatio,
     ): AdaptationReason {
-        if ($ceiling === ReadinessCeiling::Rest) {
-            return AdaptationReason::LowReadiness;
-        }
         if ($adherencePct / 100 < self::MISSED_WEEK_ADHERENCE) {
             return AdaptationReason::MissedWeek;
         }

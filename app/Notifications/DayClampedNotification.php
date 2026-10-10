@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Notifications;
 
 use App\Enums\NotificationKind;
-use App\Enums\SessionType;
 use App\Models\User;
 use App\Notifications\Messages\InboxMessage;
 use App\Services\Run\Plan\ClampVoiceReader;
@@ -40,7 +39,6 @@ class DayClampedNotification extends Notification implements ShouldQueue
 
     public function __construct(
         public readonly string $date,
-        public readonly SessionType $clampedTo,
         public readonly string $note,
     ) {
     }
@@ -57,18 +55,11 @@ class DayClampedNotification extends Notification implements ShouldQueue
     {
         return new InboxMessage(
             kind: NotificationKind::PlanClamp,
-            title: $this->title(),
+            title: 'Today eases off',
             body: $this->body($notifiable),
             payload: ['url' => route('dashboard')],
             dedupeKey: 'plan_clamp:'.$this->date,
         );
-    }
-
-    private function title(): string
-    {
-        return $this->clampedTo === SessionType::Rest
-            ? "Today's a full rest"
-            : 'Today eases off';
     }
 
     /**
