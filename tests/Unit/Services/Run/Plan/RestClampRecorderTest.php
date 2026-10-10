@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Enums\IngestState;
 use App\Enums\PaceBand;
+use App\Enums\PlanPhase;
 use App\Enums\SessionType;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
@@ -20,6 +21,7 @@ use App\Services\Run\Plan\ReadinessClamp;
 use App\Services\Run\Plan\RestClampRecorder;
 use App\Services\Run\Plan\EffectiveSession;
 use App\Services\Run\Plan\SegmentGenerator;
+use App\Services\Run\Plan\TrainingBaseline;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Bus;
@@ -167,6 +169,34 @@ it('records no eased target once the athlete has already run today', function ()
     // run. Either way the guarantee holds: a cap the athlete's own run caused
     // is never a target they were set.
     expect($session->fresh()->clamped_km)->toBeNull();
+});
+
+it('records the eased distance at the week\'s own volume multiplier, the one the render shows', function (): void {
+    $user = User::factory()->create();
+    seedDemandingRunYesterday($user);
+    $session = PlannedSession::factory()->for($user)->create([
+        'date' => Carbon::today()->toDateString(),
+        'phase' => PlanPhase::Build,
+        'session_type' => SessionType::Interval,
+        'volume_multiplier' => 1.3,
+    ]);
+
+    app(RestClampRecorder::class)->record($user, Carbon::today());
+
+    $baseline = app(TrainingBaseline::class)->forUser($user, Carbon::today());
+    $clampAt = static fn (float $multiplier): ?float => ReadinessClamp::apply(
+        SessionType::Interval,
+        PlanPhase::Build,
+        null,
+        (float) $baseline['long_run_km'],
+        $multiplier,
+        (float) $baseline['long_run_cap_km'],
+        null,
+        ReadinessCeiling::ModerateOk,
+    )['core_km'] ?? null;
+
+    expect($clampAt(1.3))->not->toBe($clampAt(1.0))
+        ->and($session->fresh()->clamped_km)->toBe($clampAt(1.3));
 });
 
 it('clears a current adjustment when readiness no longer calls for it', function (): void {
