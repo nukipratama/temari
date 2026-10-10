@@ -324,7 +324,6 @@ it('resolves each side of a comparison\'s effort from its matched planned sessio
 it('ignores and invalidates cache for excused planned session types', function (): void {
     foreach ([
         ['skipped' => true],
-        ['rest_clamped_at' => Carbon::today()->subDays(3)->setTime(6, 0)],
     ] as $excusal) {
         $user = User::factory()->create();
         $past = trendRun($user, 100, 4_400);

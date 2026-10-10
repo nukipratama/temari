@@ -22,10 +22,10 @@ beforeEach(function (): void {
     PlannedSession::factory()->for($this->user)->create([
         'date' => Carbon::today()->toDateString(),
         'session_type' => SessionType::Interval,
-        'rest_clamped_at' => Carbon::today(),
+        'clamped_km' => 6.0,
         'readiness_assessment' => [
-            'ceiling' => 'rest',
-            'reasons' => ['illness_reported'],
+            'ceiling' => 'moderate_ok',
+            'reasons' => ['demanding_session_within_24h'],
             'inputs' => ['form_status' => null],
         ],
     ]);
@@ -40,15 +40,15 @@ function clampVoiceRow(User $user, AnalysisStatus $status, string $fingerprint):
         'analysis_type' => AnalysisType::PlanClampVoice,
         'discriminator' => Carbon::today()->toDateString(),
         'status' => $status,
-        'content' => 'today is a full rest.',
+        'content' => 'today is an easy run.',
         'content_fingerprint' => $fingerprint,
     ]);
 }
 
 it('returns the narration of a Done row whose fingerprint matches the live clamp', function (): void {
-    clampVoiceRow($this->user, AnalysisStatus::Done, ClampNarrationContext::fingerprint(ReadinessCeiling::Rest, SessionType::Rest, false, ['illness_reported']));
+    clampVoiceRow($this->user, AnalysisStatus::Done, ClampNarrationContext::fingerprint(ReadinessCeiling::ModerateOk, SessionType::Easy, false, ['demanding_session_within_24h']));
 
-    expect(app(ClampVoiceReader::class)->clampVoiceFor($this->user, Carbon::today()))->toBe('today is a full rest.');
+    expect(app(ClampVoiceReader::class)->clampVoiceFor($this->user, Carbon::today()))->toBe('today is an easy run.');
 });
 
 it('returns null for a Done row fingerprinted against a different clamp', function (): void {
@@ -58,7 +58,7 @@ it('returns null for a Done row fingerprinted against a different clamp', functi
 });
 
 it('returns null while the row is still pending', function (): void {
-    clampVoiceRow($this->user, AnalysisStatus::Pending, ClampNarrationContext::fingerprint(ReadinessCeiling::Rest, SessionType::Rest, false, ['illness_reported']));
+    clampVoiceRow($this->user, AnalysisStatus::Pending, ClampNarrationContext::fingerprint(ReadinessCeiling::ModerateOk, SessionType::Easy, false, ['demanding_session_within_24h']));
 
     expect(app(ClampVoiceReader::class)->clampVoiceFor($this->user, Carbon::today()))->toBeNull();
 });

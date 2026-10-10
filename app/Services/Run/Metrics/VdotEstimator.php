@@ -649,7 +649,6 @@ class VdotEstimator
             ->where('intent_verdict', IntentVerdict::Hit)
             ->where('prescribed_hard_minutes', '>', 0)
             ->whereNull('clamped_km')
-            ->whereNull('rest_clamped_at')
             ->where('intent_evidence->advice_history', 'shown')
             ->orderBy('date')->get(['id', 'date']);
     }

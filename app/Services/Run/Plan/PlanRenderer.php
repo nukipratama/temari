@@ -689,7 +689,7 @@ final class PlanRenderer
     private static function stepDownFromEffective(EffectiveSession $effective, ?array $paces, array $reasons = [], PlanPhase $phase = PlanPhase::Build): array
     {
         $original = $effective->easedFromType ?? $effective->sessionType;
-        $segments = $effective->sessionType === SessionType::Rest ? [] : SegmentGenerator::easyBlock($effective->coreKm, $paces);
+        $segments = SegmentGenerator::easyBlock($effective->coreKm, $paces);
         $prescription = $effective->qualityPrescription();
         if ($prescription !== null) {
             $segments = SegmentGenerator::forPrescription(

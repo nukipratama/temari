@@ -86,8 +86,8 @@ it('eases a time trial to an easy run of the trial distance at ModerateOk', func
 ]);
 
 it('falls back to the generic note for a retired reason code from an older snapshot', function (string $reason): void {
-    expect(ReadinessClamp::noteFor(SessionType::Interval, ReadinessCeiling::Rest, [$reason]))
-        ->toBe(ReadinessClamp::noteFor(SessionType::Interval, ReadinessCeiling::Rest))
+    expect(ReadinessClamp::noteFor(SessionType::Interval, ReadinessCeiling::EasyOnly, [$reason]))
+        ->toBe(ReadinessClamp::noteFor(SessionType::Interval, ReadinessCeiling::EasyOnly))
         ->and(ReadinessClamp::paceEaseNote([$reason]))->toBe(ReadinessClamp::paceEaseNote());
 })->with([
     'pain' => ['concerning_pain_reported'],
@@ -222,9 +222,9 @@ it('paceEaseNote is a non-empty templated string', function (): void {
 // noteFor() is the same explanation apply() builds, reached without a segment
 // list. The pair only stays honest if every combination agrees, including which
 // ones have nothing to explain at all.
-it('gives the same note as apply for every session and assessable ceiling', function (): void {
+it('gives the same note as apply for every session and ceiling', function (): void {
     foreach (SessionType::cases() as $type) {
-        foreach ([ReadinessCeiling::EasyOnly, ReadinessCeiling::ModerateOk, ReadinessCeiling::QualityOk] as $ceiling) {
+        foreach (ReadinessCeiling::cases() as $ceiling) {
             expect(ReadinessClamp::noteFor($type, $ceiling))
                 ->toBe(applyClamp($type, $ceiling)['note'] ?? null, "{$type->value} under {$ceiling->value}");
         }

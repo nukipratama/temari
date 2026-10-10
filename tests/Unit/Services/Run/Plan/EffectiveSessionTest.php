@@ -13,7 +13,6 @@ use App\Enums\SegmentKey;
 use App\Enums\IntentVerdict;
 use App\Models\ActivityDetail;
 use App\Services\Run\Plan\SessionIntentJudge;
-use Illuminate\Support\Carbon;
 
 function effectiveRow(array $attributes): PlannedSession
 {
@@ -134,19 +133,6 @@ it('keeps a recorded readiness dose reduction in its original quality type', fun
         ->and($effective->distanceHeld())->toBeTrue();
 });
 
-it('is a rest day on a day clamped to rest', function (): void {
-    $effective = EffectiveSession::of(effectiveRow([
-        'session_type' => SessionType::Long,
-        'rest_clamped_at' => Carbon::parse('2026-09-15 00:01:00'),
-    ]), 12.0);
-
-    expect($effective->sessionType)->toBe(SessionType::Rest)
-        ->and($effective->coreKm)->toBe(0.0)
-        ->and($effective->easedFromType)->toBe(SessionType::Long)
-        ->and($effective->easedFromKm)->toBe(12.0)
-        ->and($effective->distanceHeld())->toBeFalse();
-});
-
 it('holds the distance when only the intensity was eased', function (): void {
     $effective = EffectiveSession::of(effectiveRow(['session_type' => SessionType::Tempo, 'clamped_km' => 6.4]), 6.4);
 
@@ -174,19 +160,13 @@ it('reads a session with no pace ease recorded as not pace-eased', function (): 
     expect(EffectiveSession::of(effectiveRow(['session_type' => SessionType::Easy]), 4.0)->isPaceEased())->toBeFalse();
 });
 
-/** A rest clamp and a distance ease are each their own lever; a pace ease never rides along on top. */
-it('a rest clamp or a recorded distance ease takes priority over a pace ease field', function (): void {
-    $restClamped = EffectiveSession::of(effectiveRow([
-        'session_type' => SessionType::Long,
-        'rest_clamped_at' => Carbon::now(),
-        'eased_pace_sec_per_km' => 375,
-    ]), 20.0);
+/** A distance ease is its own lever; a pace ease never rides along on top. */
+it('a recorded distance ease takes priority over a pace ease field', function (): void {
     $distanceEased = EffectiveSession::of(effectiveRow([
         'session_type' => SessionType::Tempo,
         'clamped_km' => 3.6,
         'eased_pace_sec_per_km' => 375,
     ]), 5.9);
 
-    expect($restClamped->isPaceEased())->toBeFalse()
-        ->and($distanceEased->isPaceEased())->toBeFalse();
+    expect($distanceEased->isPaceEased())->toBeFalse();
 });

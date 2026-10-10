@@ -261,7 +261,7 @@ final readonly class PlanAdapter
         $easyEffortDates = PlannedSession::query()
             ->where('user_id', $user->id)
             ->whereBetween('date', [$previousStart->toDateString(), $previousEnd->toDateString()])
-            ->get(['date', 'session_type', 'rest_clamped_at', 'clamped_km', 'eased_pace_sec_per_km', 'readiness_assessment', 'prescribed_hard_minutes', 'prescribed_pace_band', 'prescribed_pace_sec_per_km', 'prescription_race_context', 'intent_evidence'])
+            ->get(['date', 'session_type', 'clamped_km', 'eased_pace_sec_per_km', 'readiness_assessment', 'prescribed_hard_minutes', 'prescribed_pace_band', 'prescribed_pace_sec_per_km', 'prescription_race_context', 'intent_evidence'])
             ->filter(static fn (PlannedSession $session): bool => self::isEasyEffort($session))
             ->map(static fn (PlannedSession $session): string => $session->date->toDateString())
             ->flip();

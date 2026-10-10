@@ -311,11 +311,8 @@ it('keeps the single-run rule on a long day the clamp only eased the pace of', f
     expect($statuses['2026-08-03'])->toBe(PlannedSessionStatus::Partial);
 });
 
-/**
- * The readiness clamp writes `rest_clamped_at`, and an excused day is never
- * graded whatever crediting rule the session type would otherwise apply.
- */
-it('leaves a rest-clamped day excused rather than missed under every crediting rule', function (SessionType $type): void {
+/** An excused day is never graded whatever crediting rule the session type would otherwise apply. */
+it('leaves an excused day excused rather than missed under every crediting rule', function (SessionType $type): void {
     $user = User::factory()->create();
     prescribe($user, '2026-08-03', $type);
 

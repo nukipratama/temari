@@ -99,7 +99,6 @@ final readonly class ComplianceScorer
                 $recommendationsByDate[$date] = $recommendation;
                 $snapshot = clone $row;
                 $snapshot->session_type = SessionType::from($recommendation->effective['session_type']);
-                $snapshot->rest_clamped_at = null;
                 $snapshot->clamped_km = null;
                 $snapshot->eased_pace_sec_per_km = null;
                 $plannedKmByDate[$date] = (float) $recommendation->effective['distance_km'];

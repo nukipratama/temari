@@ -19,7 +19,6 @@ final readonly class MakeUpService
 {
     private const array CLAMP_RESET = [
         'clamped_km' => null,
-        'rest_clamped_at' => null,
         'eased_pace_sec_per_km' => null,
         'readiness_assessment' => null,
     ];

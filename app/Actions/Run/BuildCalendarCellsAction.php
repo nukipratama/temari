@@ -222,7 +222,7 @@ class BuildCalendarCellsAction
     }
 
     /**
-     * Planned rest days the athlete hasn't excused (skipped or clamped away),
+     * Planned rest days the athlete hasn't excused (skipped),
      * so an empty cell can still show the dashed rest bar rather than nothing.
      *
      * @return array<int, string>
@@ -233,7 +233,6 @@ class BuildCalendarCellsAction
             ->where('user_id', $user->id)
             ->where('session_type', SessionType::Rest->value)
             ->where('skipped', false)
-            ->whereNull('rest_clamped_at')
             ->whereBetween('date', [$gridStart->toDateString(), $gridEnd->toDateString()])
             ->get(['date'])
             ->map(fn (PlannedSession $session): string => $session->date->toDateString())

@@ -14,7 +14,7 @@ code_refs:
   - resources/js/components/home/WeekPlanWidget.tsx
 ---
 
-> **The full-rest scoring item is superseded (noted 2026-10-10) by decision #2078.** No readiness ceiling reaches `Rest` any more, so nothing records a full-rest clamp and `clampsToRest()` is gone.
+> **The full-rest scoring item is superseded (noted 2026-10-10) by decision #2078.** No readiness ceiling reaches `Rest` any more, so nothing records a full-rest clamp, `clampsToRest()` is gone and the `rest_clamped_at` column is dropped.
 
 > **Further superseded (2026-10-07) by [[a-plan-day-has-no-narrated-read]].** `plan_day_voice` and `PlanDayTool`, the narration half of the table below, are gone.
 

@@ -135,9 +135,8 @@ final class ReadinessClamp
         }
 
         return match ($ceiling) {
-            ReadinessCeiling::Rest => SessionType::Rest,
             ReadinessCeiling::EasyOnly, ReadinessCeiling::ModerateOk => SessionType::Easy,
-            ReadinessCeiling::QualityOk => null,
+            ReadinessCeiling::Rest, ReadinessCeiling::QualityOk => null,
         };
     }
 
@@ -222,10 +221,9 @@ final class ReadinessClamp
         }
 
         return match ($ceiling) {
-            ReadinessCeiling::Rest => self::restNote($sessionType),
             ReadinessCeiling::EasyOnly => self::easyOnlyNote($sessionType),
             ReadinessCeiling::ModerateOk => self::moderateOkNote(),
-            ReadinessCeiling::QualityOk => null,
+            ReadinessCeiling::Rest, ReadinessCeiling::QualityOk => null,
         };
     }
 
@@ -266,15 +264,6 @@ final class ReadinessClamp
         $cause = $cause === null ? '' : str_replace('quality can wait.', 'reduce the quality dose.', $cause).' ';
 
         return $cause."keep the {$sessionType->value} intent with {$minutes} hard minutes instead of {$originalMinutes}.";
-    }
-
-    private static function restNote(SessionType $original): string
-    {
-        return match ($original) {
-            SessionType::Long => "You're carrying a lot right now, today's a full rest instead of the long run.",
-            SessionType::Tempo, SessionType::Interval => "Recovery's still catching up, quality work waits, today's a full rest.",
-            default => "Recovery's still catching up, today's a full rest instead.",
-        };
     }
 
     private static function easyOnlyNote(SessionType $original): string

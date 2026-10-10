@@ -114,8 +114,7 @@ it('records the morning briefing clamp before the athlete runs', function (): vo
 
 /**
  * A data-less athlete sits at `moderate_ok`, which an interval day exceeds, so
- * the eased distance is what they were actually set. It is recorded instead of
- * a rest excusal: the day still asks for a run.
+ * the eased distance is what they were actually set.
  */
 it('records the eased distance on a downgrade that still asks for a run', function (): void {
     $user = User::factory()->create();
@@ -124,8 +123,7 @@ it('records the eased distance on a downgrade that still asks for a run', functi
 
     expect(app(RestClampRecorder::class)->record($user, Carbon::today()))->toBeTrue()
         ->and($session->fresh()->clamped_km)->toBeFloat()
-        ->and($session->fresh()->clamped_km)->toBeGreaterThan(0.0)
-        ->and($session->fresh()->rest_clamped_at)->toBeNull();
+        ->and($session->fresh()->clamped_km)->toBeGreaterThan(0.0);
 });
 
 /** An easy day needs only the floor above rest, so nothing downgrades it. */
@@ -134,8 +132,7 @@ it('leaves a day whose session already fits under the ceiling alone', function (
     $session = todaysSession($user, 'easy');
 
     expect(app(RestClampRecorder::class)->record($user, Carbon::today()))->toBeFalse()
-        ->and($session->fresh()->clamped_km)->toBeNull()
-        ->and($session->fresh()->rest_clamped_at)->toBeNull();
+        ->and($session->fresh()->clamped_km)->toBeNull();
 });
 
 /**

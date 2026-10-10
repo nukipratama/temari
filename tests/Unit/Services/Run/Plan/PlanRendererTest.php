@@ -669,28 +669,7 @@ it('dayPayload leads a distance-eased today with the easy run it recorded, even 
         ->and($payload['eased_from']['voice'])->toBe(ReadinessClamp::noteFor(SessionType::Tempo, ReadinessCeiling::EasyOnly));
 });
 
-it('dayPayload leads a rest-clamped today with rest, the long day as context', function (): void {
-    $today = Carbon::parse('2026-09-15');
-    $session = PlannedSession::factory()->make([
-        'date' => $today,
-        'phase' => PlanPhase::Build,
-        'session_type' => SessionType::Long,
-        'pinned' => false,
-        'rest_clamped_at' => $today->copy()->setTime(0, 1),
-    ]);
-
-    $payload = PlanRenderer::dayPayload($session, $today, null, [], null, false, 20.0, 1.0, INF, RENDERER_PACES, PlannedSessionStatus::Planned);
-
-    expect($payload['session_type'])->toBe('rest')
-        ->and($payload['distance_km'])->toBe(0.0)
-        ->and($payload['eased_from'])->toBe([
-            'session_type' => 'long',
-            'distance_km' => 20.0,
-            'voice' => ReadinessClamp::noteFor(SessionType::Long, ReadinessCeiling::Rest),
-        ]);
-});
-
-it('dayPayload reads a stored rest ease whose snapshot carries a retired feedback input and reason codes', function (): void {
+it('dayPayload reads a row left with a rest snapshot from before the rest clamp was removed as its stored session', function (): void {
     $today = Carbon::parse('2026-09-15');
     $assessment = [
         'ceiling' => 'rest',
@@ -702,17 +681,14 @@ it('dayPayload reads a stored rest ease whose snapshot carries a retired feedbac
         'phase' => PlanPhase::Build,
         'session_type' => SessionType::Long,
         'pinned' => false,
-        'rest_clamped_at' => $today->copy()->setTime(0, 1),
         'readiness_assessment' => $assessment,
     ]);
 
     $payload = PlanRenderer::dayPayload($session, $today, null, [], null, false, 20.0, 1.0, INF, RENDERER_PACES, PlannedSessionStatus::Planned);
-    $token = json_decode(Crypt::decryptString($payload['recommendation_token']), true, flags: JSON_THROW_ON_ERROR);
 
-    expect($payload['session_type'])->toBe('rest')
-        ->and($payload['eased_from']['session_type'])->toBe('long')
-        ->and($payload['eased_from']['voice'])->toBeString()
-        ->and($token['effective']['readiness_assessment'])->toBe($assessment);
+    expect($payload['session_type'])->toBe('long')
+        ->and($payload['distance_km'])->toBe(20.0)
+        ->and($payload['eased_from'])->toBeNull();
 });
 
 it('dayPayload hands an eased day back to its own narration once it is credited', function (): void {

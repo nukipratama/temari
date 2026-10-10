@@ -800,9 +800,9 @@ it('PlanClampVoiceNarrator throws on missing voice key', function (): void {
     $caller = fakeCaller(json_encode(['other' => 'x'], JSON_THROW_ON_ERROR));
 
     new PlanClampVoiceNarrator($caller)->generate([
-        'ceiling' => ReadinessCeiling::Rest,
+        'ceiling' => ReadinessCeiling::ModerateOk,
         'original' => SessionType::Interval,
-        'clamped_to' => SessionType::Rest,
+        'clamped_to' => SessionType::Easy,
         'has_run_today' => false,
         'readiness_reasons' => [],
         'readiness_inputs' => [],

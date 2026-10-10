@@ -49,7 +49,7 @@ final readonly class ClampNarrationContext
         }
 
         $recordedAssessment = $session->readiness_assessment;
-        $hasRecordedAdjustment = $session->rest_clamped_at !== null || $session->clamped_km !== null;
+        $hasRecordedAdjustment = $session->clamped_km !== null;
         if ($hasRecordedAdjustment && is_array($recordedAssessment) && is_string($recordedAssessment['ceiling'] ?? null)) {
             $assessment = $recordedAssessment;
             $decisionSource = 'recorded';
