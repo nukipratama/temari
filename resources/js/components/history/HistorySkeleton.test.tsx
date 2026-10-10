@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import Feed from '@/pages/Activities/Feed';
-import { setMockDeferred } from '@/test/setup';
+import { setMockDeferred, setMockPage } from '@/test/setup';
 
 import HistorySkeleton, {
     CalendarGridSkeleton,
@@ -59,5 +59,19 @@ describe('HistorySkeleton', () => {
         const { container } = render(<HistorySkeleton href="/history" />);
 
         expect(container.firstElementChild).not.toHaveClass('reveal');
+    });
+});
+
+describe('HistorySkeleton outage banner', () => {
+    it('shows the AI outage banner above the page while AI is paused', () => {
+        setMockPage({
+            auth: { user: null },
+            flash: {},
+            demoLoginEnabled: false,
+            aiPaused: true,
+        });
+        render(<HistorySkeleton href="/history" />);
+
+        expect(screen.getByText(/catching her breath/)).toBeInTheDocument();
     });
 });

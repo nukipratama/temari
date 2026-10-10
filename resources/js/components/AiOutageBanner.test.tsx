@@ -93,7 +93,7 @@ function reachableFrom(entry: string): Set<string> {
             /(?:import|export)\s+(?!type\s)(?:[^;'"]*?\sfrom\s+)?['"]([^'"]+)['"]/g,
         )) {
             const resolved = resolveImport(path, match[1]);
-            if (resolved !== null) {
+            if (resolved !== null && !resolved.startsWith('layouts/')) {
                 queue.push(resolved);
             }
         }

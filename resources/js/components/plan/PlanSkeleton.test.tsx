@@ -1,6 +1,8 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
+import { setMockPage } from '@/test/setup';
+
 import PlanSkeleton, { PlanWeeksSkeleton } from './PlanSkeleton';
 
 describe('PlanSkeleton', () => {
@@ -37,5 +39,19 @@ describe('PlanSkeleton', () => {
         const { container } = render(<PlanSkeleton />);
 
         expect(container.firstElementChild).not.toHaveClass('reveal');
+    });
+});
+
+describe('PlanSkeleton outage banner', () => {
+    it('shows the AI outage banner above the page while AI is paused', () => {
+        setMockPage({
+            auth: { user: null },
+            flash: {},
+            demoLoginEnabled: false,
+            aiPaused: true,
+        });
+        render(<PlanSkeleton />);
+
+        expect(screen.getByText(/catching her breath/)).toBeInTheDocument();
     });
 });

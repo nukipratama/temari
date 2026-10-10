@@ -1,3 +1,4 @@
+import AiOutageBanner from '@/components/AiOutageBanner';
 import HistoryHeader from '@/components/history/HistoryHeader';
 import PageContainer from '@/components/ui/PageContainer';
 import Skeleton, { SkeletonRows } from '@/components/ui/Skeleton';
@@ -41,9 +42,12 @@ export default function HistorySkeleton({ href }: Readonly<{ href: string }>) {
     const calendar = new URLSearchParams(query).get('view') === 'calendar';
 
     return (
-        <PageContainer reveal={false}>
-            <HistoryHeader active={calendar ? 'calendar' : 'feed'} />
-            {calendar ? <CalendarSkeleton /> : <FeedRunsSkeleton />}
-        </PageContainer>
+        <>
+            <AiOutageBanner />
+            <PageContainer reveal={false}>
+                <HistoryHeader active={calendar ? 'calendar' : 'feed'} />
+                {calendar ? <CalendarSkeleton /> : <FeedRunsSkeleton />}
+            </PageContainer>
+        </>
     );
 }

@@ -1,3 +1,4 @@
+import AiOutageBanner from '@/components/AiOutageBanner';
 import LaneStack from '@/components/ui/LaneStack';
 import PageContainer from '@/components/ui/PageContainer';
 import Skeleton, {
@@ -55,13 +56,16 @@ function PastYouSkeleton() {
 
 export default function TodaySkeleton() {
     return (
-        <PageContainer reveal={false}>
-            <h1 className="sr-only">today</h1>
-            <LaneStack>
-                <SessionSkeleton />
-                <WeekPlanSkeleton />
-                <PastYouSkeleton />
-            </LaneStack>
-        </PageContainer>
+        <>
+            <AiOutageBanner />
+            <PageContainer reveal={false}>
+                <h1 className="sr-only">today</h1>
+                <LaneStack>
+                    <SessionSkeleton />
+                    <WeekPlanSkeleton />
+                    <PastYouSkeleton />
+                </LaneStack>
+            </PageContainer>
+        </>
     );
 }

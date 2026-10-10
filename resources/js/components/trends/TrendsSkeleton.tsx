@@ -1,3 +1,4 @@
+import AiOutageBanner from '@/components/AiOutageBanner';
 import TrendsHeading from '@/components/trends/TrendsHeading';
 import LaneStack from '@/components/ui/LaneStack';
 import PageContainer from '@/components/ui/PageContainer';
@@ -24,14 +25,17 @@ export function TrendsSectionSkeleton({
 
 export default function TrendsSkeleton() {
     return (
-        <PageContainer reveal={false}>
-            <TrendsHeading />
-            <LaneStack className="mt-6">
-                <SkeletonProse />
-                <TrendsSectionSkeleton />
-                <TrendsSectionSkeleton chart />
-                <TrendsSectionSkeleton />
-            </LaneStack>
-        </PageContainer>
+        <>
+            <AiOutageBanner />
+            <PageContainer reveal={false}>
+                <TrendsHeading />
+                <LaneStack className="mt-6">
+                    <SkeletonProse />
+                    <TrendsSectionSkeleton />
+                    <TrendsSectionSkeleton chart />
+                    <TrendsSectionSkeleton />
+                </LaneStack>
+            </PageContainer>
+        </>
     );
 }

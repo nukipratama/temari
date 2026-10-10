@@ -1,6 +1,8 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
+import { setMockPage } from '@/test/setup';
+
 import TodaySkeleton from './TodaySkeleton';
 
 describe('TodaySkeleton', () => {
@@ -32,5 +34,19 @@ describe('TodaySkeleton', () => {
         const { container } = render(<TodaySkeleton />);
 
         expect(container.firstElementChild).not.toHaveClass('reveal');
+    });
+});
+
+describe('TodaySkeleton outage banner', () => {
+    it('shows the AI outage banner above the page while AI is paused', () => {
+        setMockPage({
+            auth: { user: null },
+            flash: {},
+            demoLoginEnabled: false,
+            aiPaused: true,
+        });
+        render(<TodaySkeleton />);
+
+        expect(screen.getByText(/catching her breath/)).toBeInTheDocument();
     });
 });

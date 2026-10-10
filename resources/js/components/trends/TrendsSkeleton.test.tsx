@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import Trends from '@/pages/Trends';
-import { setMockDeferred } from '@/test/setup';
+import { setMockDeferred, setMockPage } from '@/test/setup';
 
 import TrendsSkeleton, { TrendsSectionSkeleton } from './TrendsSkeleton';
 
@@ -59,5 +59,19 @@ describe('TrendsSectionSkeleton', () => {
         const { container } = render(<TrendsSectionSkeleton chart />);
 
         expect(container.querySelector('.h-\\[10\\.5rem\\]')).not.toBeNull();
+    });
+});
+
+describe('TrendsSkeleton outage banner', () => {
+    it('shows the AI outage banner above the page while AI is paused', () => {
+        setMockPage({
+            auth: { user: null },
+            flash: {},
+            demoLoginEnabled: false,
+            aiPaused: true,
+        });
+        render(<TrendsSkeleton />);
+
+        expect(screen.getByText(/catching her breath/)).toBeInTheDocument();
     });
 });
