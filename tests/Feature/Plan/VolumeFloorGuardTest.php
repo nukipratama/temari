@@ -113,6 +113,8 @@ function tiltedAthlete(): User
     }
     ActivityDetail::factory()->for(Activity::factory()->for($user)->analyzed()->create())->create([
         'distance' => 16_000,
+        'moving_time' => 5_120,
+        'elapsed_time' => 5_120,
         'start_date_local' => Carbon::parse('2026-09-19 07:00:00'),
     ]);
     TrainingPreference::query()->create([
@@ -154,18 +156,22 @@ it('renders every block week without a trial or an eased taper day at its predic
 
     app(Periodizer::class)->regenerate($user, Carbon::today());
     $season = Season::query()->where('user_id', $user->id)->firstOrFail();
-    $exceptionWeeks = PlannedSession::query()->where('user_id', $user->id)->get()
-        ->filter(fn (PlannedSession $s): bool => TimeTrial::isTrial($s->prescription_race_context) || in_array($s->prescription_reason, [
-            'easy because the outing cannot safely fit the minimum quality structure',
-            'easy because the week has no safe room for meaningful quality',
-        ], true))
+    $sessions = PlannedSession::query()->where('user_id', $user->id)->get();
+    $weeksHolding = fn (Closure $holds): array => $sessions->filter($holds)
         ->map(fn (PlannedSession $s): string => $s->date->copy()->startOfWeek(Carbon::MONDAY)->toDateString())->unique()->values()->all();
+    $trialWeeks = $weeksHolding(fn (PlannedSession $s): bool => TimeTrial::isTrial($s->prescription_race_context));
+    $easedTaperWeeks = $weeksHolding(fn (PlannedSession $s): bool => $s->phase === PlanPhase::Taper && in_array($s->prescription_reason, [
+        'easy because the outing cannot safely fit the minimum quality structure',
+        'easy because the week has no safe room for meaningful quality',
+    ], true));
     $predicted = collect(app(SeasonSummaryBuilder::class)->plannedWeeks($user, $season))
         ->filter(fn (array $week): bool => $week['zone'] === PhaseSchedule::ZONE_BLOCK)
         ->mapWithKeys(fn (array $week): array => [$week['week_start']->toDateString() => $week['planned_km']]);
-    $stored = collect(storedBlockWeeksKm($user, $season))->except($exceptionWeeks);
+    $block = collect(storedBlockWeeksKm($user, $season));
+    $stored = $block->except([...$trialWeeks, ...$easedTaperWeeks]);
 
-    expect($exceptionWeeks)->not->toBeEmpty()
+    expect($block->only($trialWeeks))->not->toBeEmpty()
+        ->and($block->only($easedTaperWeeks))->not->toBeEmpty()
         ->and($stored)->not->toBeEmpty();
     foreach ($stored as $weekStart => $km) {
         expect($km)->toEqualWithDelta($predicted[$weekStart], 0.05);

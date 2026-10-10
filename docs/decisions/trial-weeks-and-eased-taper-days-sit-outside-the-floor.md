@@ -1,6 +1,6 @@
 ---
 title: Trial weeks and eased taper days sit outside the volume floor
-description: The volume floor holds on every race block week except time-trial weeks and taper days the intensity step eases; both reductions are deliberate and cost 0.43–0.60 km a week on the measured profiles.
+description: The volume floor holds on every race block week except time-trial weeks and taper days the intensity step eases; both reductions are deliberate and cost 0.37–0.50 km a week on the measured profiles.
 tags: [decision, run, plan]
 status: accepted
 reviewed: 2026-10-10
@@ -21,15 +21,15 @@ code_refs:
 
 [TrainingBaseline::volumeFloorKm()](app/Services/Run/Plan/TrainingBaseline.php) lays the block out with `weekLayout()` and solves for the baseline at which its weeks average the season's `volume_floor_km`. The plan then makes two reductions that the solve does not lay out:
 
-- **Time-trial weeks.** [TimeTrialSchedule::forWeek()](app/Services/Run/Plan/TimeTrialSchedule.php) puts a trial in place of the week's first quality session, and the trial day is the trial distance alone ([[a-time-trial-every-six-weeks]]), shorter than the Tempo or Interval it replaces.
-- **Eased taper days.** [Periodizer](app/Services/Run/Plan/Periodizer.php)'s intensity step (`withIntensityPrescriptions()`) turns a short taper quality day Easy through either of two checks: the minimum-quality fit, when the outing cannot safely fit the minimum quality structure, and the hard-minute ceiling in [IntensityPrescriptionResolver::resolve()](app/Services/Run/Plan/IntensityPrescriptionResolver.php), when the week has no safe room for meaningful quality.
+- **Time-trial weeks.** [TimeTrialSchedule::forWeek()](app/Services/Run/Plan/TimeTrialSchedule.php) schedules a trial, the intensity step puts it in place of the week's first session still prescribed as quality, and the trial day is the trial distance alone ([[a-time-trial-every-six-weeks]]), shorter than the Tempo or Interval it replaces.
+- **Eased taper days.** [Periodizer](app/Services/Run/Plan/Periodizer.php)'s intensity step (`withIntensityPrescriptions()`) turns a short taper quality day Easy through either of two checks: the minimum-quality fit, when the outing cannot safely fit the minimum quality structure, and the hard-minute ceiling, when the minutes left under the week's 30% hard-time budget fall below the minimum [IntensityPrescriptionResolver::resolve()](app/Services/Run/Plan/IntensityPrescriptionResolver.php) accepts as meaningful quality.
 
 Measured on the stored plan against the season summary's prediction (km a week, block mean):
 
 | Profile | Floor | Predicted | Rendered | Under the floor | Trials | Eased taper days |
 |---|---|---|---|---|---|---|
 | `VolumeFloorGuardTest` race profile (no VDOT, so no trials) | 25.91 | 25.95 | 25.95 | none | 0 | 0 |
-| Tilted 10K at 45 km a week | 45.00 | 45.33 | 44.40 | 0.60 (1.3%) | −0.55 | −0.38 |
+| Tilted 10K at 45 km a week | 45.00 | 45.33 | 44.63 | 0.37 (0.8%) | −0.55 | −0.15 |
 | Demo athlete at 2026-10-09 | 38.58 | 38.74 | 38.15 | 0.43 (1.1%) | −0.59 | 0 |
 | Demo athlete at 2026-05-12 | 39.42 | 39.56 | 38.92 | 0.50 (1.3%) | −0.64 | 0 |
 
@@ -43,7 +43,7 @@ On every profile, each week with no trial and no eased day rendered exactly its 
 
 ## Consequences
 
-- On stored rows, "never below habit" holds for every block week without a trial or an eased day. A block with trials or eased taper days can average 1–1.3% under its floor (0.43–0.60 km a week on the measured profiles).
+- On stored rows, "never below habit" holds for every block week without a trial or an eased day. A block with trials or eased taper days can average 0.8–1.3% under its floor (0.37–0.50 km a week on the measured profiles).
 - `VolumeFloorGuardTest` asserts that each block week with no trial and no eased day renders its predicted km and that those weeks average at least the floor. A change to the layout that breaks this fails there.
 - If the trial schedule or the intensity step ever takes off much more than this, the cost of modelling them should be measured again.
 
