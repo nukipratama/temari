@@ -82,28 +82,32 @@ final class SessionEditRules
         [$windowStart, $windowEnd] = self::window($source->date);
         $weekStart = $windowStart->copy()->addDay()->toDateString();
         $weekEnd = $windowEnd->copy()->subDay()->toDateString();
-        $hardDates = $rows
-            ->filter(static fn (PlannedSession $row): bool => self::isHard($row->session_type) && $row->date->toDateString() !== $sourceDate)
-            ->map(static fn (PlannedSession $row): string => $row->date->toDateString())
-            ->all();
         $todayKey = $today->toDateString();
-
-        return array_values($rows
-            ->filter(static function (PlannedSession $row) use ($source, $sourceDate, $weekStart, $weekEnd, $hardDates, $ranDates, $todayKey): bool {
-                $date = $row->date->toDateString();
-                if ($date === $sourceDate || $date < $weekStart || $date > $weekEnd || $row->session_type !== SessionType::Rest || $row->made_up_on !== null) {
-                    return false;
+        $dated = $rows->map(static fn (PlannedSession $row): array => [$row->date->toDateString(), $row])->all();
+        $besideHard = [];
+        if (self::isHard($source->session_type)) {
+            foreach ($dated as [$date, $row]) {
+                if ($date !== $sourceDate && self::isHard($row->session_type)) {
+                    $day = Carbon::parse($date);
+                    $besideHard[$day->copy()->subDay()->toDateString()] = true;
+                    $besideHard[$day->addDay()->toDateString()] = true;
                 }
-                if ($date < $todayKey && ! in_array($date, $ranDates, true)) {
-                    return false;
-                }
+            }
+        }
 
-                return ! self::isHard($source->session_type)
-                    || array_intersect([$row->date->copy()->subDay()->toDateString(), $row->date->copy()->addDay()->toDateString()], $hardDates) === [];
-            })
-            ->map(static fn (PlannedSession $row): string => $row->date->toDateString())
-            ->sort()
-            ->all());
+        $targets = [];
+        foreach ($dated as [$date, $row]) {
+            if ($date === $sourceDate || $date < $weekStart || $date > $weekEnd || $row->session_type !== SessionType::Rest || $row->made_up_on !== null) {
+                continue;
+            }
+            if (($date < $todayKey && ! in_array($date, $ranDates, true)) || isset($besideHard[$date])) {
+                continue;
+            }
+            $targets[] = $date;
+        }
+        sort($targets);
+
+        return $targets;
     }
 
     /**

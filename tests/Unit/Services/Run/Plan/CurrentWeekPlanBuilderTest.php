@@ -19,6 +19,7 @@ use App\Services\Run\Plan\SegmentGenerator;
 use App\Services\Run\Plan\TrainingBaseline;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Crypt;
 
 uses(RefreshDatabase::class);
 
@@ -34,6 +35,12 @@ function seedWeekOfSessions(User $user, Carbon $weekStart, PlanPhase $phase = Pl
             'session_type' => SessionType::Easy,
         ]);
     }
+}
+
+/** @return array<string, mixed> */
+function weekPlanShownReadiness(array $day): array
+{
+    return json_decode(Crypt::decryptString($day['recommendation_token']), true, flags: JSON_THROW_ON_ERROR)['effective']['readiness_assessment'];
 }
 
 it('returns null when the current week has no planned sessions', function (): void {
@@ -58,6 +65,22 @@ it('builds sessions_this_week, phase, and one day payload per planned session', 
         ->and($result['phase'])->toBe('base')
         ->and($result['days'])->toHaveCount(7)
         ->and($result['days'][0]['date'])->toBe($weekStart->toDateString());
+
+    Carbon::setTestNow();
+});
+
+it('carries a recommendation token on today alone and ships no readiness assessment', function (): void {
+    Carbon::setTestNow('2026-08-12'); // a Wednesday
+    $user = User::factory()->create();
+    seedWeekOfSessions($user, Carbon::today()->startOfWeek(Carbon::MONDAY));
+
+    $days = collect(app(CurrentWeekPlanBuilder::class)->forUser($user, Carbon::today())['days']);
+    $others = $days->reject(fn (array $day): bool => $day['date'] === Carbon::today()->toDateString());
+
+    expect($days->firstWhere('date', Carbon::today()->toDateString())['recommendation_token'])->toBeString()->not->toBe('')
+        ->and($others)->toHaveCount(6)
+        ->and($others->contains(fn (array $day): bool => array_key_exists('recommendation_token', $day)))->toBeFalse()
+        ->and($days->contains(fn (array $day): bool => array_key_exists('readiness_assessment', $day)))->toBeFalse();
 
     Carbon::setTestNow();
 });
@@ -437,7 +460,7 @@ it('holds todays advisory clamp while a demanding run awaits hydration, then app
 
     expect($held['eased_from'])->toBeNull()
         ->and($resumed['session_type'])->toBe('easy')
-        ->and($resumed['readiness_assessment']['reasons'])->toContain('demanding_session_within_24h');
+        ->and(weekPlanShownReadiness($resumed)['reasons'])->toContain('demanding_session_within_24h');
 
     Carbon::setTestNow();
 });
@@ -466,8 +489,8 @@ it('shows current illness advice while other recent training history is hydratin
         ->firstWhere('date', Carbon::today()->toDateString());
 
     expect($today['session_type'])->toBe('rest')
-        ->and($today['readiness_assessment']['inputs']['recent_training_stress']['sessions'])->toBe([])
-        ->and($today['readiness_assessment']['inputs']['weekly_trimp'])->toBeNull();
+        ->and(weekPlanShownReadiness($today)['inputs']['recent_training_stress']['sessions'])->toBe([])
+        ->and(weekPlanShownReadiness($today)['inputs']['weekly_trimp'])->toBeNull();
 
     Carbon::setTestNow();
 });

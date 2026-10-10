@@ -149,6 +149,7 @@ final class PlanPageAssembler
             ->whereBetween('date', [$rangeStart->copy()->subDay()->toDateString(), $rangeEnd->copy()->addDay()->toDateString()])
             ->orderBy('date')
             ->get();
+        $ruleRowsByDate = $ruleRows->keyBy(fn (PlannedSession $row): string => $row->date->toDateString());
         $sessions = $ruleRows
             ->filter(fn (PlannedSession $s): bool => $s->date->betweenIncluded($rangeStart, $rangeEnd))
             ->values();
@@ -255,7 +256,7 @@ final class PlanPageAssembler
                     $fallbackVerdicts[$s->date->toDateString()]['ran_anyway'] ?? null,
                     $s->date->isSameDay($today) ? $briefingContext->readinessAssessment : null,
                     $user->runnerProfile?->easyHrCapBpm(),
-                ), ...$this->editRules($s, $fallbackVerdicts[$s->date->toDateString()]['status'] ?? $s->status, $ruleRows, $ranDates, $today), 'made_up_on' => $s->made_up_on?->toDateString()])->all(),
+                ), ...$this->editRules($s, $fallbackVerdicts[$s->date->toDateString()]['status'] ?? $s->status, $ruleRowsByDate, $ranDates, $today), 'made_up_on' => $s->made_up_on?->toDateString()])->all(),
             ];
         }
 
@@ -263,14 +264,16 @@ final class PlanPageAssembler
     }
 
     /**
-     * @param  Collection<int, PlannedSession>  $ruleRows
+     * @param  Collection<string, PlannedSession>  $ruleRowsByDate
      * @param  list<string>  $ranDates
      * @return array{actions: array{move: bool, skip: bool, restore: bool}, move_targets: list<string>}
      */
-    private function editRules(PlannedSession $day, PlannedSessionStatus $status, Collection $ruleRows, array $ranDates, Carbon $today): array
+    private function editRules(PlannedSession $day, PlannedSessionStatus $status, Collection $ruleRowsByDate, array $ranDates, Carbon $today): array
     {
         [$from, $to] = SessionEditRules::window($day->date);
-        $window = $ruleRows->filter(fn (PlannedSession $row): bool => $row->date->betweenIncluded($from, $to));
+        $fromKey = $from->toDateString();
+        $toKey = $to->toDateString();
+        $window = $ruleRowsByDate->filter(fn (PlannedSession $row, string $date): bool => $date >= $fromKey && $date <= $toKey)->values();
         $actions = SessionEditRules::actionsFor($day, $status, $window, $ranDates, $today);
 
         return [

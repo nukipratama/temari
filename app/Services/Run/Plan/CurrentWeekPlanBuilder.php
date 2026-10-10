@@ -66,6 +66,7 @@ final readonly class CurrentWeekPlanBuilder
             $week['fallback_verdicts'][$s->date->toDateString()]['ran_anyway'] ?? null,
             $s->date->isSameDay($today) ? $week['briefing']->readinessAssessment : null,
             $user->runnerProfile?->easyHrCapBpm(),
+            includeRecommendationToken: $s->date->isSameDay($today),
         ))->values()->all();
 
         // A rest day asks for nothing and always scores Done, so counting it
