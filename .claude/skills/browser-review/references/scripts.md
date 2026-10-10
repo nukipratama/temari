@@ -11,7 +11,7 @@
 
 ## Notes
 
-- Defaults to the **local** app. Driving production (`temari.caffeinecommit.my.id`) needs real
+- Defaults to the **local** app. Driving production needs real
   Strava auth — out of scope here.
 - This sweeps **pages**. Interactive states (e.g. the avatar logout menu) aren't auto-driven — spot-check those with a short one-off Playwright script that
   clicks the element, screenshots, and asserts its `boundingBox()` is within the viewport.
