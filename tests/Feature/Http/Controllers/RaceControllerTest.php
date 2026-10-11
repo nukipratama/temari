@@ -38,14 +38,62 @@ it('requires authentication for the index', function (): void {
     $this->get('/race')->assertRedirect('/login');
 });
 
-it('escapes a race name that would otherwise break out of the embedded page JSON', function (): void {
+it('keeps a race name out of the page HTML and returns it escaped once the deferred props load', function (): void {
     $user = User::factory()->create();
     RaceGoal::factory()->for($user)->create(['name' => '<!--<script>']);
 
     $this->withoutVite()->actingAs($user)->get('/race')
         ->assertSuccessful()
-        ->assertDontSee('<!--<script>', escape: false)
-        ->assertSee('"name":'.json_encode('<!--<script>', JSON_HEX_TAG), escape: false);
+        ->assertDontSee('<!--<script>', escape: false);
+
+    $this->actingAs($user)
+        ->get('/race', inertiaPartialHeaders($this->actingAs($user), '/race', 'Race', 'race'))
+        ->assertSuccessful()
+        ->assertJsonPath('props.race.name', '<!--<script>');
+});
+
+it('paints the shell with the race, projection and past races deferred', function (): void {
+    $user = User::factory()->create();
+    PersonalRecord::factory()->for($user)->create(['category' => '5km', 'value_sec' => 1_500.0]);
+    RaceGoal::factory()->for($user)->create(['distance_m' => 10_000, 'goal_time_sec' => 3_100]);
+
+    $this->actingAs($user)->get('/race')
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Race')
+            ->where('has_race', true)
+            ->missing('race')
+            ->missing('projection')
+            ->missing('past_races')
+            ->etc());
+});
+
+it('tells the shell there is no race without loading anything deferred', function (): void {
+    $user = User::factory()->create();
+    RaceGoal::factory()->create();
+
+    $this->actingAs($user)->get('/race')
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('has_race', false)
+            ->missing('race')
+            ->missing('projection')
+            ->missing('past_races')
+            ->etc());
+});
+
+it('loads the race, projection and past races together on the follow-up request', function (): void {
+    $user = User::factory()->create();
+    PersonalRecord::factory()->for($user)->create(['category' => '5km', 'value_sec' => 1_500.0]);
+    $race = RaceGoal::factory()->for($user)->create(['distance_m' => 10_000, 'goal_time_sec' => 3_100]);
+
+    $this->actingAs($user)
+        ->get('/race', inertiaPartialHeaders($this->actingAs($user), '/race', 'Race', 'race,projection,past_races'))
+        ->assertSuccessful()
+        ->assertJsonPath('props.race.id', $race->id)
+        ->assertJsonPath('props.projection.sample_size', 1)
+        ->assertJsonPath('props.past_races', [])
+        ->assertJsonMissingPath('props.has_race');
 });
 
 it('requires authentication for store', function (): void {
@@ -60,9 +108,11 @@ it('renders the page with no race and no projection for a fresh user, never surf
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
             ->component('Race')
-            ->where('race', null)
-            ->where('projection', null)
-            ->missing('ctlTrend'));
+            ->where('has_race', false)
+            ->missing('ctlTrend')
+            ->loadDeferredProps(fn (Assert $deferred) => $deferred
+                ->where('race', null)
+                ->where('projection', null)));
 });
 
 it('renders the active race and its projection when one exists', function (): void {
@@ -74,11 +124,12 @@ it('renders the active race and its projection when one exists', function (): vo
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
             ->component('Race')
-            ->where('race.id', $race->id)
-            ->where('race.distance_m', 10_000)
-            ->where('projection.sample_size', 1)
-            ->where('projection.confidence', 'low')
-            ->where('projection.window', 'all'));
+            ->loadDeferredProps(fn (Assert $deferred) => $deferred
+                ->where('race.id', $race->id)
+                ->where('race.distance_m', 10_000)
+                ->where('projection.sample_size', 1)
+                ->where('projection.confidence', 'low')
+                ->where('projection.window', 'all')));
 });
 
 it('creates the first race for a user with none and busts the shared active-race cache prop', function (): void {
@@ -163,13 +214,13 @@ it('shows the stated target beside the supported effort, the mode and the event 
     ]);
     $this->actingAs($user)->post('/race', racePayload(['goal_time_sec' => 3_000]))->assertRedirect();
 
-    $this->actingAs($user)->get('/race')->assertInertia(fn (Assert $page) => $page
+    $this->actingAs($user)->get('/race')->assertInertia(fn (Assert $page) => $page->loadDeferredProps(fn (Assert $deferred) => $deferred
         ->where('race.goal_time_sec', 3_000)
         ->where('race.ambition.state', 'unsupported')
         ->where('race.ambition.target_pace_sec_per_km', 300)
         ->where('race.support.mode', 'road')
         ->where('race.history.0.kind', 'created')
-        ->has('race.ambition.supported_time_sec'));
+        ->has('race.ambition.supported_time_sec')));
 });
 
 it('rejects an invalid submission and persists nothing', function (): void {

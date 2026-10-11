@@ -31,6 +31,7 @@ const RACE_INTENTS: { value: RaceIntent; label: string }[] = [
 ];
 
 interface RaceGoalFormProps {
+    hasRace: boolean;
     race: {
         race_date: string;
         distance_m: number;
@@ -57,6 +58,7 @@ const FIELD_LABEL = 'text-label-micro text-text-2';
  * the two warnings are derived rather than staged.
  */
 export default function RaceGoalForm({
+    hasRace,
     race,
     projection,
     onSaved,
@@ -84,10 +86,14 @@ export default function RaceGoalForm({
         guard,
     } = useDemoGuard();
 
-    const updating = race !== null && intent === 'update';
+    const updating = hasRace && intent === 'update';
 
     const chooseIntent = (next: RaceIntent) => {
         setIntent(next);
+        if (next === 'update' && race === null) {
+            return;
+        }
+
         const source = next === 'update' ? race : null;
         setRaceDate(source?.race_date ?? '');
         setDistanceKm(source ? source.distance_m / 1_000 : 10);
@@ -126,7 +132,7 @@ export default function RaceGoalForm({
                     distance_m: Math.round(distanceKm * 1_000),
                     goal_time_sec: goalTimeSec,
                     name: name.trim() === '' ? null : name.trim(),
-                    ...(race ? { intent } : {}),
+                    ...(hasRace ? { intent } : {}),
                 },
                 {
                     preserveScroll: true,
@@ -146,10 +152,10 @@ export default function RaceGoalForm({
             )}
         >
             <Eyebrow as="h2" token="micro" tone="ink-2">
-                {race ? 'edit your race' : 'set your race'}
+                {hasRace ? 'edit your race' : 'set your race'}
             </Eyebrow>
             <form onSubmit={submit} className="mt-3.5 flex flex-col gap-3.5">
-                {race && (
+                {hasRace && (
                     <div>
                         <span id="race_intent_label" className={FIELD_LABEL}>
                             what are you changing?
@@ -323,7 +329,7 @@ export default function RaceGoalForm({
                 >
                     {processing
                         ? 'saving…'
-                        : race
+                        : hasRace
                           ? updating
                               ? 'update race'
                               : 'add race'

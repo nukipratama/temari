@@ -30,7 +30,12 @@ function lastPostCall() {
 describe('RaceGoalForm', () => {
     it('labels itself for creating a race when there is none', () => {
         render(
-            <RaceGoalForm race={null} projection={null} onSaved={() => {}} />,
+            <RaceGoalForm
+                hasRace={false}
+                race={null}
+                projection={null}
+                onSaved={() => {}}
+            />,
         );
 
         expect(screen.getByText('set your race')).toBeInTheDocument();
@@ -41,7 +46,12 @@ describe('RaceGoalForm', () => {
 
     it('labels itself for editing once a race is set', () => {
         render(
-            <RaceGoalForm race={RACE} projection={null} onSaved={() => {}} />,
+            <RaceGoalForm
+                hasRace
+                race={RACE}
+                projection={null}
+                onSaved={() => {}}
+            />,
         );
 
         expect(screen.getByText('edit your race')).toBeInTheDocument();
@@ -52,7 +62,12 @@ describe('RaceGoalForm', () => {
 
     it('submits the form with distance in meters and goal time in seconds', () => {
         render(
-            <RaceGoalForm race={null} projection={null} onSaved={() => {}} />,
+            <RaceGoalForm
+                hasRace={false}
+                race={null}
+                projection={null}
+                onSaved={() => {}}
+            />,
         );
 
         fireEvent.change(screen.getByLabelText('Race day'), {
@@ -86,7 +101,12 @@ describe('RaceGoalForm', () => {
 
     it('accepts a custom distance typed directly, not just a preset pill', () => {
         render(
-            <RaceGoalForm race={null} projection={null} onSaved={() => {}} />,
+            <RaceGoalForm
+                hasRace={false}
+                race={null}
+                projection={null}
+                onSaved={() => {}}
+            />,
         );
 
         // race_date is required for the native form submit event to fire at
@@ -106,7 +126,12 @@ describe('RaceGoalForm', () => {
     it('reports a successful save to its owner', () => {
         const onSaved = vi.fn();
         render(
-            <RaceGoalForm race={RACE} projection={null} onSaved={onSaved} />,
+            <RaceGoalForm
+                hasRace
+                race={RACE}
+                projection={null}
+                onSaved={onSaved}
+            />,
         );
 
         fireEvent.click(screen.getByRole('button', { name: 'update race' }));
@@ -118,7 +143,12 @@ describe('RaceGoalForm', () => {
 
     it('sends a null name when left blank', () => {
         render(
-            <RaceGoalForm race={null} projection={null} onSaved={() => {}} />,
+            <RaceGoalForm
+                hasRace={false}
+                race={null}
+                projection={null}
+                onSaved={() => {}}
+            />,
         );
 
         fireEvent.change(screen.getByLabelText('Race day'), {
@@ -131,7 +161,12 @@ describe('RaceGoalForm', () => {
 
     it('shows a saving state between the router request starting and finishing', () => {
         render(
-            <RaceGoalForm race={null} projection={null} onSaved={() => {}} />,
+            <RaceGoalForm
+                hasRace={false}
+                race={null}
+                projection={null}
+                onSaved={() => {}}
+            />,
         );
 
         fireEvent.change(screen.getByLabelText('Race day'), {
@@ -155,7 +190,12 @@ describe('RaceGoalForm', () => {
 
     it('refuses to submit a goal time the server would reject outright', () => {
         render(
-            <RaceGoalForm race={null} projection={null} onSaved={() => {}} />,
+            <RaceGoalForm
+                hasRace={false}
+                race={null}
+                projection={null}
+                onSaved={() => {}}
+            />,
         );
 
         fireEvent.change(screen.getByLabelText('Minutes'), {
@@ -171,7 +211,12 @@ describe('RaceGoalForm', () => {
     it('stops the date picker short of a race day the server would reject', () => {
         setMockPage({ today: '2026-10-02' });
         render(
-            <RaceGoalForm race={null} projection={null} onSaved={() => {}} />,
+            <RaceGoalForm
+                hasRace={false}
+                race={null}
+                projection={null}
+                onSaved={() => {}}
+            />,
         );
 
         expect(screen.getByLabelText('Race day')).toHaveAttribute(
@@ -183,6 +228,7 @@ describe('RaceGoalForm', () => {
     it('warns without blocking submission when the goal implies an implausible pace', () => {
         render(
             <RaceGoalForm
+                hasRace
                 race={RACE}
                 projection={PROJECTION}
                 onSaved={() => {}}
@@ -208,6 +254,7 @@ describe('RaceGoalForm', () => {
     it("warns when the goal is well ahead of the athlete's own projected range for the same distance", () => {
         render(
             <RaceGoalForm
+                hasRace
                 race={RACE}
                 projection={PROJECTION}
                 onSaved={() => {}}
@@ -231,6 +278,7 @@ describe('RaceGoalForm', () => {
     it('stays quiet about ambition once the custom distance no longer matches the projection', () => {
         render(
             <RaceGoalForm
+                hasRace
                 race={RACE}
                 projection={PROJECTION}
                 onSaved={() => {}}
@@ -255,7 +303,12 @@ describe('RaceGoalForm', () => {
 
     it('pre-fills from the active race for editing', () => {
         render(
-            <RaceGoalForm race={RACE} projection={null} onSaved={() => {}} />,
+            <RaceGoalForm
+                hasRace
+                race={RACE}
+                projection={null}
+                onSaved={() => {}}
+            />,
         );
 
         expect(
@@ -272,7 +325,12 @@ describe('RaceGoalForm', () => {
 
     it('offers no choice of intent when there is no race to update', () => {
         render(
-            <RaceGoalForm race={null} projection={null} onSaved={() => {}} />,
+            <RaceGoalForm
+                hasRace={false}
+                race={null}
+                projection={null}
+                onSaved={() => {}}
+            />,
         );
 
         expect(
@@ -285,7 +343,12 @@ describe('RaceGoalForm', () => {
 
     it('defaults to updating the current race with its distance held', () => {
         render(
-            <RaceGoalForm race={RACE} projection={null} onSaved={() => {}} />,
+            <RaceGoalForm
+                hasRace
+                race={RACE}
+                projection={null}
+                onSaved={() => {}}
+            />,
         );
 
         expect(
@@ -315,7 +378,12 @@ describe('RaceGoalForm', () => {
 
     it('starts a blank new race on "add a new race" and posts that intent', () => {
         render(
-            <RaceGoalForm race={RACE} projection={null} onSaved={() => {}} />,
+            <RaceGoalForm
+                hasRace
+                race={RACE}
+                projection={null}
+                onSaved={() => {}}
+            />,
         );
 
         fireEvent.click(screen.getByRole('button', { name: 'add a new race' }));
@@ -361,6 +429,7 @@ describe('RaceGoalForm', () => {
             setMockPage({ errors: { [field]: message } });
             render(
                 <RaceGoalForm
+                    hasRace={false}
                     race={null}
                     projection={null}
                     onSaved={() => {}}
@@ -378,7 +447,12 @@ describe('RaceGoalForm', () => {
     it('shows the server error for intent beside the intent choice', () => {
         setMockPage({ errors: { intent: 'The selected intent is invalid.' } });
         render(
-            <RaceGoalForm race={RACE} projection={null} onSaved={() => {}} />,
+            <RaceGoalForm
+                hasRace
+                race={RACE}
+                projection={null}
+                onSaved={() => {}}
+            />,
         );
 
         const error = screen.getByText('The selected intent is invalid.');
@@ -389,7 +463,12 @@ describe('RaceGoalForm', () => {
 
     it('restores the current race when switching back to updating it', () => {
         render(
-            <RaceGoalForm race={RACE} projection={null} onSaved={() => {}} />,
+            <RaceGoalForm
+                hasRace
+                race={RACE}
+                projection={null}
+                onSaved={() => {}}
+            />,
         );
 
         fireEvent.click(screen.getByRole('button', { name: 'add a new race' }));
@@ -405,11 +484,94 @@ describe('RaceGoalForm', () => {
         ).toBeVisible();
     });
 
+    it('keeps the edit wording and typed values while the deferred race reloads', () => {
+        const { rerender } = render(
+            <RaceGoalForm
+                hasRace
+                race={RACE}
+                projection={PROJECTION}
+                onSaved={() => {}}
+            />,
+        );
+        fireEvent.change(screen.getByLabelText('Minutes'), {
+            target: { value: '45' },
+        });
+        fireEvent.change(screen.getByLabelText('Name (optional)'), {
+            target: { value: 'Typed name' },
+        });
+
+        rerender(
+            <RaceGoalForm
+                hasRace
+                race={null}
+                projection={null}
+                onSaved={() => {}}
+            />,
+        );
+
+        expect(screen.getByText('edit your race')).toBeInTheDocument();
+        expect(screen.queryByText('set your race')).not.toBeInTheDocument();
+        expect(
+            screen.getByRole('button', { name: 'update race' }),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByRole('button', { name: 'update this race' }),
+        ).toHaveAttribute('aria-pressed', 'true');
+        expect(screen.getByRole('button', { name: '5K' })).toBeDisabled();
+        expect(
+            (screen.getByLabelText('Minutes') as HTMLInputElement).value,
+        ).toBe('45');
+        expect(
+            (screen.getByLabelText('Name (optional)') as HTMLInputElement)
+                .value,
+        ).toBe('Typed name');
+        expect(
+            (screen.getByLabelText('Race day') as HTMLInputElement).value,
+        ).toBe('2026-12-06');
+    });
+
+    it('keeps the typed values when "update this race" is chosen mid-reload', () => {
+        const { rerender } = render(
+            <RaceGoalForm
+                hasRace
+                race={RACE}
+                projection={PROJECTION}
+                onSaved={() => {}}
+            />,
+        );
+        fireEvent.click(screen.getByRole('button', { name: 'add a new race' }));
+        fireEvent.change(screen.getByLabelText('Name (optional)'), {
+            target: { value: 'Typed name' },
+        });
+
+        rerender(
+            <RaceGoalForm
+                hasRace
+                race={null}
+                projection={null}
+                onSaved={() => {}}
+            />,
+        );
+        fireEvent.click(
+            screen.getByRole('button', { name: 'update this race' }),
+        );
+
+        expect(
+            (screen.getByLabelText('Name (optional)') as HTMLInputElement)
+                .value,
+        ).toBe('Typed name');
+    });
+
     it('shows a demo visitor the race demo-blocked modal instead of saving', async () => {
         setMockPage({ auth: { user: makeUser({ is_demo: true }) } });
         vi.mocked(router.post).mockClear();
         render(
-            <RaceGoalForm race={RACE} projection={null} onSaved={() => {}} />,
+            <RaceGoalForm
+                hasRace
+                race={RACE}
+                projection={null}
+                onSaved={() => {}}
+            />,
         );
 
         fireEvent.click(screen.getByRole('button', { name: 'update race' }));

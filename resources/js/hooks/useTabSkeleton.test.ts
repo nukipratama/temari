@@ -74,6 +74,38 @@ describe('useTabSkeleton', () => {
         expect(result.current).toMatchObject({ tab: 'plan', href: '/plan' });
     });
 
+    it('returns the plan tab for a link into /race from the page on screen', () => {
+        const { result } = renderHook(() => useTabSkeleton('Home'));
+
+        act(() => {
+            handler('start')({
+                detail: { visit: tabVisit('/race') },
+            } as GlobalEvent<'start'>);
+        });
+
+        expect(result.current).toMatchObject({
+            tab: 'plan',
+            from: 'Home',
+            href: '/race',
+        });
+    });
+
+    it('reads the page on screen at the time of the visit, not at mount', () => {
+        const { result, rerender } = renderHook(
+            ({ component }) => useTabSkeleton(component),
+            { initialProps: { component: 'Home' } },
+        );
+        rerender({ component: 'Trends' });
+
+        act(() => {
+            handler('start')({
+                detail: { visit: tabVisit('/race') },
+            } as GlobalEvent<'start'>);
+        });
+
+        expect(result.current).toMatchObject({ from: 'Trends' });
+    });
+
     it('yields to the destination page the moment it renders, before the visit finishes', () => {
         const { result, rerender } = renderHook(
             ({ component }) => useTabSkeleton(component),

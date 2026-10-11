@@ -1,6 +1,6 @@
 import { Deferred, Head, Link, router } from '@inertiajs/react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { Suspense, useMemo, useState } from 'react';
+import { type ReactNode, Suspense, useMemo, useState } from 'react';
 
 import type { AnalysisPayload, WeeklySnapshotWithRecap } from '@/types/inertia';
 
@@ -22,6 +22,7 @@ import { lazyIsland } from '@/lib/lazyIsland';
 import { consistencyOf } from '@/pages/Activities/calendarBars';
 
 import { useCalendar, type CalendarCell } from './useCalendar';
+import useMonthReload from './useMonthReload';
 import { snapshotsByWeekEnding } from './weekBuckets';
 
 /**
@@ -99,6 +100,7 @@ export default function Calendar({
         [weeklySnapshots],
     );
     const consistency = useMemo(() => consistencyOf(cells), [cells]);
+    const reloading = useMonthReload(MONTH_RELOAD_PROPS);
 
     const touchHandlers = useHorizontalSwipe((direction) => {
         router.visit(
@@ -130,7 +132,8 @@ export default function Calendar({
                     data-testid="calendar-swipe-area"
                     {...touchHandlers}
                 >
-                    <Deferred
+                    <MonthDeferred
+                        reloading={reloading}
                         data={['cells']}
                         fallback={<ConsistencyLineSkeleton />}
                     >
@@ -140,9 +143,10 @@ export default function Calendar({
                                 className="mb-3"
                             />
                         )}
-                    </Deferred>
+                    </MonthDeferred>
 
-                    <Deferred
+                    <MonthDeferred
+                        reloading={reloading}
                         data={['monthlyRecap']}
                         fallback={<MonthRecapSkeleton />}
                     >
@@ -160,10 +164,11 @@ export default function Calendar({
                                 />
                             )
                         }
-                    </Deferred>
+                    </MonthDeferred>
 
                     <div className="rounded-md border border-border p-3">
-                        <Deferred
+                        <MonthDeferred
+                            reloading={reloading}
                             data={['cells', 'weeklySnapshots']}
                             fallback={<CalendarGridSkeleton />}
                         >
@@ -181,7 +186,7 @@ export default function Calendar({
                                     }}
                                 />
                             )}
-                        </Deferred>
+                        </MonthDeferred>
                     </div>
                 </div>
 
@@ -204,6 +209,26 @@ export default function Calendar({
                 )}
             </PageContainer>
         </>
+    );
+}
+
+function MonthDeferred({
+    reloading,
+    data,
+    fallback,
+    children,
+}: Readonly<{
+    reloading: boolean;
+    data: string[];
+    fallback: ReactNode;
+    children: () => ReactNode;
+}>) {
+    return reloading ? (
+        fallback
+    ) : (
+        <Deferred data={data} fallback={fallback}>
+            {children}
+        </Deferred>
     );
 }
 

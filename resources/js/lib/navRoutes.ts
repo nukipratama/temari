@@ -2,10 +2,14 @@ export const TAB_IDS = ['today', 'plan', 'trends', 'history'] as const;
 
 export type TabId = (typeof TAB_IDS)[number];
 
+export const RACE_PATH = '/race';
+
+export const RACE_TAB: TabId = 'plan';
+
 const NAV_SCREENS: Readonly<Record<string, TabId>> = {
     Home: 'today',
     Plan: 'plan',
-    Race: 'plan',
+    Race: RACE_TAB,
     Trends: 'trends',
     History: 'history',
 };

@@ -38,11 +38,11 @@ it('requires authentication', function (): void {
 it('offers the matched run and confirms it', function (): void {
     $run = ownedRaceDayRun($this->user);
 
-    $this->actingAs($this->user)->get('/race')->assertInertia(fn (Assert $page) => $page
+    $this->actingAs($this->user)->get('/race')->assertInertia(fn (Assert $page) => $page->loadDeferredProps(fn (Assert $deferred) => $deferred
         ->where('past_races.0.id', $this->race->id)
         ->where('past_races.0.outcome.state', 'pending')
         ->where('past_races.0.outcome.suggestion.activity_id', $run->id)
-        ->where('past_races.0.outcome.suggestion.elapsed_time_sec', 2_950));
+        ->where('past_races.0.outcome.suggestion.elapsed_time_sec', 2_950)));
 
     $this->actingAs($this->user)
         ->post("/race/{$this->race->id}/outcome", ['outcome' => 'confirmed', 'activity_id' => $run->id])
@@ -53,10 +53,10 @@ it('offers the matched run and confirms it', function (): void {
         ->and($this->race->fresh()->finish_time_sec)->toBe(2_950)
         ->and(PerformanceEvidence::query()->where('race_goal_id', $this->race->id)->count())->toBe(1);
 
-    $this->actingAs($this->user)->get('/race')->assertInertia(fn (Assert $page) => $page
+    $this->actingAs($this->user)->get('/race')->assertInertia(fn (Assert $page) => $page->loadDeferredProps(fn (Assert $deferred) => $deferred
         ->where('past_races.0.outcome.state', 'confirmed')
         ->where('past_races.0.outcome.suggestion', null)
-        ->where('past_races.0.outcome.finish_time_sec', 2_950));
+        ->where('past_races.0.outcome.finish_time_sec', 2_950)));
 });
 
 it('confirms a manual time and marks did not run', function (): void {
@@ -107,7 +107,7 @@ it('never suggests another athlete\'s run', function (): void {
     ownedRaceDayRun(User::factory()->create());
 
     $this->actingAs($this->user)->get('/race')
-        ->assertInertia(fn (Assert $page) => $page->where('past_races.0.outcome.suggestion', null));
+        ->assertInertia(fn (Assert $page) => $page->loadDeferredProps(fn (Assert $deferred) => $deferred->where('past_races.0.outcome.suggestion', null)));
 });
 
 it('rejects a confirmation with neither a run nor a time, and an unknown outcome', function (): void {
@@ -124,7 +124,7 @@ it('shows only retired races that have passed and carry an outcome', function ()
     RaceGoal::factory()->for($this->user)->create(['race_date' => '2026-12-01', 'outcome' => RaceOutcome::Pending]);
     RaceGoal::factory()->for($this->user)->completed()->create(['race_date' => '2026-11-01', 'outcome' => RaceOutcome::Cancelled]);
 
-    $this->actingAs($this->user)->get('/race')->assertInertia(fn (Assert $page) => $page
+    $this->actingAs($this->user)->get('/race')->assertInertia(fn (Assert $page) => $page->loadDeferredProps(fn (Assert $deferred) => $deferred
         ->has('past_races', 1)
-        ->where('past_races.0.id', $this->race->id));
+        ->where('past_races.0.id', $this->race->id)));
 });

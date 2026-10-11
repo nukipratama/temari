@@ -34,9 +34,10 @@ class RaceController extends Controller
         $race = RaceGoal::query()->where('user_id', $user->id)->active()->first();
 
         return Inertia::render('Race', [
-            'race' => $race === null ? null : $presenter->present($user, $race),
-            'projection' => $race === null ? null : $projector->project($user, (float) $race->distance_m),
-            'past_races' => $this->pastRaces($user, $presenter),
+            'has_race' => $race !== null,
+            'race' => Inertia::defer(fn (): ?array => $race === null ? null : $presenter->present($user, $race)),
+            'projection' => Inertia::defer(fn (): ?array => $race === null ? null : $projector->project($user, (float) $race->distance_m)),
+            'past_races' => Inertia::defer(fn (): array => $this->pastRaces($user, $presenter)),
         ]);
     }
 

@@ -1,0 +1,8 @@
+{
+    "route": "/plan",
+    "steps": [
+        ["waitFor", "a[href='/race']"],
+        ["click", "a[href='/race']"],
+        ["wait", 2500]
+    ]
+}

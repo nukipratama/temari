@@ -246,11 +246,13 @@ it('serves a fresh user an empty fitness trend, a pending 7d verdict, empty char
     $outlook = $this->actingAs($user)
         ->get('/trends', inertiaPartialHeaders($this->actingAs($user), '/trends', 'Trends', 'raceOutlook'))
         ->json('props.raceOutlook');
-    $race = $this->actingAs($user)->get('/race')->assertInertia(fn ($page) => $page->has('race.ambition'));
+    $raceAmbition = $this->actingAs($user)
+        ->get('/race', inertiaPartialHeaders($this->actingAs($user), '/race', 'Race', 'race'))
+        ->json('props.race.ambition');
 
     expect($outlook['ambition']['state'])->toBe('unknown')
         ->and($outlook['support']['dedicated_preparation'])->toBeTrue()
-        ->and($outlook['ambition'])->toBe($race->viewData('page')['props']['race']['ambition']);
+        ->and($outlook['ambition'])->toBe($raceAmbition);
 });
 
 function supportedSnapshot(User $user, ?RaceGoal $race, string $date, ?int $supportedSec, ?int $sourceM = 5000, ?string $sourceOn = '2026-08-01'): void

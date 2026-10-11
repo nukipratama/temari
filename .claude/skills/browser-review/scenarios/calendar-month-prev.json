@@ -1,0 +1,8 @@
+{
+    "route": "/history?view=calendar",
+    "steps": [
+        ["waitFor", "a[aria-label='previous month']"],
+        ["click", "a[aria-label='previous month']"],
+        ["wait", 1500]
+    ]
+}

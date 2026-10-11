@@ -1,0 +1,9 @@
+{
+    "route": "/history",
+    "steps": [
+        ["waitFor", "a[href='/history?view=calendar']"],
+        ["click", "a[href='/history?view=calendar']"],
+        ["waitFor", "button[aria-label='effort key']"],
+        ["wait", 1200]
+    ]
+}
