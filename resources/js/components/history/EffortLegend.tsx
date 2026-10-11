@@ -27,10 +27,13 @@ export default function EffortLegend({
                         <span
                             aria-hidden
                             className={cn(
-                                'block h-1.5 w-8 flex-none rounded-full',
+                                'block w-8 flex-none',
                                 effort === 'rest'
-                                    ? 'border-t-2 border-dashed border-border-strong'
-                                    : EFFORT_FILL[effort],
+                                    ? 'h-0 border-t-[3px] border-dashed border-border-strong'
+                                    : cn(
+                                          'h-1.5 rounded-full',
+                                          EFFORT_FILL[effort],
+                                      ),
                             )}
                         />
                         {EFFORT_WORD[effort]}
