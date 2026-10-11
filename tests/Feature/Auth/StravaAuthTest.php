@@ -688,6 +688,14 @@ it('logs the user out, clears session data, and redirects to login', function ()
     $this->assertGuest();
 });
 
+it("keeps the account's remember token so other devices stay signed in", function (): void {
+    $user = User::factory()->create(['remember_token' => 'other-device-token']);
+
+    $this->actingAs($user)->startSession()->post(route('auth.logout'))->assertRedirect(route('login'));
+
+    expect($user->fresh()->remember_token)->toBe('other-device-token');
+});
+
 it('drops only the signing-out device push subscription on logout', function (): void {
     $user = User::factory()->create();
     $user->updatePushSubscription('https://fcm.googleapis.com/fcm/send/this-phone', 'k', 't');
