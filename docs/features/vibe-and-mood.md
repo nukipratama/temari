@@ -74,5 +74,3 @@ holds the picker if the surface ever returns.
 ## See also
 
 [[temari-mascot]] · [[gamification]] · [[dashboard]] · [[cards-collection]] · [[records]] · [[recaps]] · [[training-load-metrics]] · [[stream-analysis]] · [[ai-pipeline]]
-</content>
-</invoke>
