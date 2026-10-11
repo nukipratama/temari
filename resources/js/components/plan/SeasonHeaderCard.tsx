@@ -3,6 +3,7 @@ import { Link } from '@inertiajs/react';
 import type { SeasonSummaryWeek } from '@/lib/plan';
 import type { AnalysisPayload, PlanRaceCard } from '@/types/inertia';
 
+import AddRacePrompt from '@/components/plan/AddRacePrompt';
 import PhaseRibbon from '@/components/plan/PhaseRibbon';
 import TemariTake from '@/components/plan/TemariTake';
 import Eyebrow from '@/components/ui/Eyebrow';
@@ -14,26 +15,11 @@ import {
     weeksLabel,
 } from '@/lib/plan';
 import { raceDistanceLabel } from '@/lib/raceGoal';
-import { pillButtonVariants } from '@/lib/variants';
 
 function RaceSlot({ raceCard }: Readonly<{ raceCard: PlanRaceCard | null }>) {
     if (raceCard === null) {
         return (
-            <div className="mt-3 flex flex-col items-start gap-2 border-t border-dashed border-border pt-3">
-                <p className="text-sm text-text-2">
-                    add a race and the plan builds base → build → peak → taper
-                    to it.
-                </p>
-                <Link
-                    href="/race"
-                    className={pillButtonVariants({
-                        tone: 'muted',
-                        size: 'xs',
-                    })}
-                >
-                    + add a race
-                </Link>
-            </div>
+            <AddRacePrompt className="mt-3 border-t border-dashed border-border pt-3" />
         );
     }
 

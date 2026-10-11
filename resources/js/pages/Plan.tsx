@@ -15,6 +15,7 @@ import type {
 } from '@/types/inertia';
 
 import AiOutageBanner from '@/components/AiOutageBanner';
+import AddRacePrompt from '@/components/plan/AddRacePrompt';
 import PlanHeading from '@/components/plan/PlanHeading';
 import PlanRaceCard from '@/components/plan/PlanRaceCard';
 import { PlanWeeksSkeleton } from '@/components/plan/PlanSkeleton';
@@ -219,12 +220,17 @@ export default function Plan({
                 >
                     {() =>
                         weeks!.length === 0 || season === null ? (
-                            <EmptyPanel
-                                face
-                                title="no plan yet."
-                                body="hit regenerate and temari will lay out the weeks ahead."
-                                className="mt-6"
-                            />
+                            <>
+                                <EmptyPanel
+                                    face
+                                    title="no plan yet."
+                                    body="hit regenerate and temari will lay out the weeks ahead."
+                                    className="mt-6"
+                                />
+                                {raceCard === null && (
+                                    <AddRacePrompt className="mt-4" />
+                                )}
+                            </>
                         ) : (
                             <LaneStack className="mt-6">
                                 <SeasonHeaderCard

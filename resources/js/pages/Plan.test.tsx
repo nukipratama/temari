@@ -448,6 +448,14 @@ describe('Plan', () => {
         expect(screen.queryByText(/^week 1 of 12/)).toBeNull();
     });
 
+    it('still offers to add a race before a plan exists', () => {
+        renderPlan({ weeks: [] });
+
+        expect(
+            screen.getByRole('link', { name: '+ add a race' }),
+        ).toHaveAttribute('href', '/race');
+    });
+
     it('keeps the training disclaimer as a one-line footer with its legal link', () => {
         renderPlan();
 
