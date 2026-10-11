@@ -16,9 +16,10 @@ code_refs:
 > below is otherwise unchanged.
 
 > **Fact update, 2026-10-11.** The season band no longer collapses: it leads with the current phase
-> ("deload week.") and what's next over the phase ribbon, with Temari's take always shown and the
-> phase bars gone. The header's race summary and "race goal" link became a race card above it. See
-> [[plan-periodizer]]. The decision below is otherwise unchanged.
+> ("deload week.") and what's next over the phase ribbon, with the under-ready line and Temari's take
+> shown without a tap and the phase bars gone. The header's race summary and its "race goal" / "set a
+> race" link left the header: a set race gets a race card above the band, and with none the band
+> invites one. See [[plan-periodizer]]. The decision below is otherwise unchanged.
 
 ## Context
 
