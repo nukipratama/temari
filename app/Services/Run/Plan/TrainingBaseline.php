@@ -180,8 +180,8 @@ final class TrainingBaseline
     /** How far back the volume floor averages the athlete's actual weeks. */
     private const int VOLUME_FLOOR_WEEKS = 12;
 
-    /** Bump when the floor's solve or anything it calls changes: a cached floor outlives a deploy. */
-    private const int VOLUME_FLOOR_CACHE_VERSION = 1;
+    /** Bumped by `plan:forget-volume-floors` on every `artisan optimize`, so a deploy never reads a floor an older solve cached. */
+    public const string VOLUME_FLOOR_GENERATION_KEY = 'volume-floor:generation';
 
     private const int VOLUME_FLOOR_CACHE_TTL_SECONDS = 86_400;
 
@@ -214,6 +214,8 @@ final class TrainingBaseline
      * @var array<string, float>
      */
     private array $volumeFloorMemo = [];
+
+    private ?int $volumeFloorGeneration = null;
 
     /**
      * @return array{sessions_per_week: int, weekly_volume_km: float, long_run_km: float, long_run_cap_km: float, long_run_progression_cap_km: float, self_scaled: bool}
@@ -502,6 +504,16 @@ final class TrainingBaseline
         return ceil($targetKm / max($rampMultipliers) * 10) / 10;
     }
 
+    private function volumeFloorGeneration(): int
+    {
+        if ($this->volumeFloorGeneration === null) {
+            $generation = Cache::store('durable')->get(self::VOLUME_FLOOR_GENERATION_KEY);
+            $this->volumeFloorGeneration = is_numeric($generation) ? (int) $generation : 0;
+        }
+
+        return $this->volumeFloorGeneration;
+    }
+
     /**
      * The baseline at which the block's weeks, as {@see WeekPlanBuilder} lays
      * them out with {@see self::weekLayout()} and {@see SegmentGenerator::coreKmFor()}
@@ -521,7 +533,7 @@ final class TrainingBaseline
      */
     private function volumeFloorKm(RaceGoal $race, array $block, Season $season, int $sessionsPerWeek, float $longRunCapKm, float $progressionCapKm, array $layout): float
     {
-        $key = 'volume-floor:v'.self::VOLUME_FLOOR_CACHE_VERSION.':'.hash('xxh128', serialize([
+        $key = 'volume-floor:'.$this->volumeFloorGeneration().':'.hash('xxh128', serialize([
             $race->distance_m,
             $race->race_date->toDateString(),
             $season->starts_at->toDateString(),

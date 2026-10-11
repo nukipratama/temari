@@ -842,6 +842,22 @@ it('serves the race block\'s volume floor across requests from a cache that equa
         ->and($served)->toBe($solved);
 });
 
+it('solves the volume floor afresh once a deploy bumps the cache generation', function (): void {
+    $user = User::factory()->create();
+    flooredRaceSeason($user, 20.0, 27.0);
+    $before = volumeFloorCacheWrites();
+    $solved = baselineWithEasyPace(null)->forUser($user, Carbon::today());
+
+    $this->artisan('plan:forget-volume-floors')->assertSuccessful();
+    $after = volumeFloorCacheWrites();
+    $resolved = baselineWithEasyPace(null)->forUser($user, Carbon::today());
+
+    expect($before)->toHaveCount(2)
+        ->and($after)->toHaveCount(1)
+        ->and($after[0]->key)->not->toBe($before[0]->key)
+        ->and($resolved)->toBe($solved);
+});
+
 it('solves the volume floor afresh when an input to it changes', function (Closure $change): void {
     $user = User::factory()->create();
     $season = flooredRaceSeason($user, 20.0, 27.0);

@@ -122,6 +122,8 @@ class AppServiceProvider extends ServiceProvider
     {
         JsonResource::withoutWrapping();
 
+        $this->optimizes(optimize: 'plan:forget-volume-floors');
+
         // The analytics-schema migrations live outside the default path (they
         // run via `--path` against the `analytics` connection in dev/prod). In
         // testing the analytics connection shares the default test DB, so load
