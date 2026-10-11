@@ -17,7 +17,7 @@ const ICON_BUTTON_CLASS =
  * The same 44px target on a 20px box, so the control can sit on an eyebrow
  * line without the row growing around it.
  */
-const COMPACT_BUTTON_CLASS =
+export const COMPACT_BUTTON_CLASS =
     "relative inline-flex size-5 flex-none items-center justify-center rounded-full before:absolute before:-inset-3 before:content-['']";
 
 /**

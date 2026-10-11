@@ -229,10 +229,9 @@ export default function Plan({
                                 <SeasonHeaderCard
                                     weekIndex={season.week_index}
                                     totalWeeks={season.total_weeks}
-                                    startsAt={season.starts_at}
-                                    endsAt={season.ends_at}
                                     adherencePct={seasonAdherencePct}
                                     weeks={seasonSummary}
+                                    raceDate={race?.race_date ?? null}
                                     narration={planNarration.season}
                                     underReadyLine={season.under_ready_line}
                                 />

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import type { SeasonSummaryWeek } from '@/lib/plan';
@@ -63,65 +63,140 @@ function renderCard(
         <SeasonHeaderCard
             weekIndex={2}
             totalWeeks={12}
-            startsAt="2026-06-15"
-            endsAt="2026-09-04"
             adherencePct={82}
             weeks={RACE_SEASON}
+            raceDate={null}
             narration={null}
             {...overrides}
         />,
     );
 }
 
-function openBand() {
-    fireEvent.click(screen.getByRole('button', { name: /^week \d+ of \d+/ }));
-}
+const NARRATION = {
+    id: 1,
+    status: 'done',
+    content: 'base held together.',
+    type: 'plan_season_voice',
+    is_zone_dependent: false,
+    subject_type: 'season',
+    subject_id: 1,
+    discriminator: null,
+} as AnalysisPayload;
 
 describe('SeasonHeaderCard', () => {
-    it('pads the band toggle into a full-height hit area', () => {
-        renderCard();
-
-        expect(
-            screen.getByRole('button', { name: /^week \d+ of \d+/ }),
-        ).toHaveClass('hit-area');
-    });
-
     it('places the athlete in the season', () => {
         renderCard();
 
-        expect(screen.getByText('week 2 of 12 · build')).toBeInTheDocument();
-        expect(screen.queryByText('jun 15 – sep 4')).not.toBeInTheDocument();
-
-        openBand();
-
-        expect(screen.getByText('jun 15 – sep 4')).toBeInTheDocument();
+        expect(screen.getByText('season · week 2 of 12')).toBeInTheDocument();
     });
 
-    it('shows the season adherence figure', () => {
+    it('leads with the current phase as the headline', () => {
         renderCard();
 
-        expect(screen.getByText('82%')).toBeInTheDocument();
+        const headline = screen.getByRole('heading', { level: 2 });
+
+        expect(headline).toHaveTextContent('build week.');
+        expect(screen.getByText('week.')).toHaveClass('text-horizon-ink');
+    });
+
+    it('names the next phase and how many weeks away it starts', () => {
+        renderCard();
+
+        expect(screen.getByText(/next: peak in 1 week\b/)).toBeInTheDocument();
+    });
+
+    it('pluralises the weeks until the next phase', () => {
+        renderCard({
+            weeks: [
+                week({ phase: 'base', type: 'current' }),
+                week({ week_start: '2026-06-22', phase: 'base' }),
+                week({ week_start: '2026-06-29', phase: 'build' }),
+            ],
+        });
+
+        expect(screen.getByText(/next: build in 2 weeks/)).toBeInTheDocument();
+    });
+
+    it('omits "next" when the season stays in the current phase', () => {
+        renderCard({
+            weeks: [
+                week({ phase: 'peak', zone: 'block', type: 'current' }),
+                week({ week_start: '2026-06-22', phase: 'peak' }),
+            ],
+        });
+
+        expect(screen.queryByText(/next:/)).not.toBeInTheDocument();
+    });
+
+    it('counts the weeks to the race', () => {
+        renderCard({ raceDate: '2026-08-17' });
+
+        expect(
+            screen.getByText(/next: peak in 1 week · race in 8 weeks/),
+        ).toBeInTheDocument();
+    });
+
+    it('says "1 week" to the race, singular', () => {
+        renderCard({ raceDate: '2026-06-29' });
+
+        expect(screen.getByText(/race in 1 week\b/)).toBeInTheDocument();
+    });
+
+    it('says the race is this week when it falls in the current week', () => {
+        renderCard({ raceDate: '2026-06-28' });
+
+        expect(screen.getByText(/race this week/)).toBeInTheDocument();
+    });
+
+    it('omits the race for a season without one', () => {
+        renderCard({ raceDate: null });
+
+        expect(screen.queryByText(/race/)).not.toBeInTheDocument();
+    });
+
+    it('shows the season adherence figure in the accent colour', () => {
+        renderCard();
+
+        expect(screen.getByText('82%')).toHaveClass('text-horizon-ink');
         expect(screen.getByText(/adherence/)).toBeInTheDocument();
+    });
+
+    it('joins next, race and adherence on one meta line', () => {
+        renderCard({ raceDate: '2026-08-17' });
+
+        expect(
+            screen.getByText(
+                (_, element) =>
+                    element?.tagName === 'P' &&
+                    element.textContent ===
+                        'next: peak in 1 week · race in 8 weeks · 82% adherence',
+            ),
+        ).toBeInTheDocument();
     });
 
     it('omits adherence entirely when nothing has been scored yet', () => {
         renderCard({ adherencePct: null });
 
         expect(screen.queryByText(/adherence/)).not.toBeInTheDocument();
+        expect(screen.getByText(/^next: peak in 1 week$/)).toBeInTheDocument();
     });
 
-    it('draws one labelled bar per phase, tallest at the biggest volume', () => {
+    it('draws no meta line when there is nothing to put on it', () => {
+        renderCard({
+            adherencePct: null,
+            weeks: [week({ type: 'current' })],
+        });
+
+        expect(screen.queryByText(/next:|adherence|race/)).toBeNull();
+    });
+
+    it('is not collapsible and keeps no phase bars or date range', () => {
         const { container } = renderCard();
-        openBand();
 
-        expect(screen.getByText('base')).toBeInTheDocument();
-        expect(screen.getByText('build')).toBeInTheDocument();
-        expect(screen.getByText('peak')).toBeInTheDocument();
-
-        const bars = container.querySelectorAll('.rounded-t-xs');
-        expect(bars).toHaveLength(3);
-        expect(bars[0]).toHaveStyle({ height: '35%' });
-        expect(bars[2]).toHaveStyle({ height: '100%' });
+        expect(screen.queryByRole('button', { name: /^week/ })).toBeNull();
+        expect(container.querySelector('[aria-expanded]')).toBeNull();
+        expect(container.querySelector('.rounded-t-xs')).toBeNull();
+        expect(screen.queryByText(/ – /)).not.toBeInTheDocument();
     });
 
     it('states the under-ready line when the season carries one', () => {
@@ -129,14 +204,12 @@ describe('SeasonHeaderCard', () => {
             "Twelve weeks is tighter than I'd pick for this one, so we build what we can and race what we've built.";
 
         renderCard({ underReadyLine: line });
-        openBand();
 
         expect(screen.getByText(line)).toBeInTheDocument();
     });
 
     it('says nothing about readiness without the line', () => {
         renderCard({ underReadyLine: null });
-        openBand();
 
         expect(screen.queryByText(/tighter than/)).not.toBeInTheDocument();
     });
@@ -149,61 +222,50 @@ describe('SeasonHeaderCard', () => {
         ).toBeInTheDocument();
     });
 
-    it('omits the phase ribbon for a season with no race block', () => {
+    it('omits the phase ribbon and reads "maintain week." for a season with no race block', () => {
         renderCard({
             weeks: RACE_SEASON.map((w) => ({ ...w, zone: 'general' })),
         });
 
-        expect(
-            screen.queryByRole('button', { name: 'build' }),
-        ).not.toBeInTheDocument();
-        expect(
-            screen.queryByRole('button', { name: 'maintain' }),
-        ).not.toBeInTheDocument();
+        expect(screen.queryAllByRole('button')).toHaveLength(0);
+        expect(screen.getByRole('heading', { level: 2 })).toHaveTextContent(
+            'maintain week.',
+        );
+        expect(screen.queryByText(/next:/)).not.toBeInTheDocument();
     });
 
-    it('names the general zone in the header, spanning only the general run, while the current week is in it', () => {
-        renderCard({
-            startsAt: '2026-05-25',
-            endsAt: '2026-08-10',
-            weeks: GENERAL_ZONE_CURRENT,
-        });
-        openBand();
-
-        // Not the raw phase ('build'), and not the whole season's span
-        // ('2026-05-25 – 2026-08-10') — just the general run's own dates.
-        expect(screen.getByText('week 2 of 12 · maintain')).toBeInTheDocument();
-        expect(screen.getByText('may 25 – jun 7')).toBeInTheDocument();
-        expect(screen.queryByText(/· build$/)).not.toBeInTheDocument();
-    });
-
-    it('adds a "maintain" legend entry first, filled while the current week is in it', () => {
+    it('names the general zone as "maintain" while the current week is in it, and the block that follows as next', () => {
         renderCard({ weeks: GENERAL_ZONE_CURRENT });
-        openBand();
 
-        expect(screen.getByText('maintain')).toBeInTheDocument();
-        expect(screen.queryByText('build')).not.toBeInTheDocument();
-        expect(screen.queryByText('deload')).not.toBeInTheDocument();
+        expect(screen.getByRole('heading', { level: 2 })).toHaveTextContent(
+            'maintain week.',
+        );
+        expect(screen.getByText(/next: base in 2 weeks/)).toBeInTheDocument();
+        expect(screen.queryByText(/build|deload/)).not.toBeInTheDocument();
     });
 
-    it('renders Temari’s take when the season narration exists', () => {
-        renderCard({
-            narration: {
-                id: 1,
-                status: 'done',
-                content: 'base held together.',
-                type: 'plan_season_voice',
-                is_zone_dependent: false,
-                subject_type: 'season',
-                subject_id: 1,
-                discriminator: null,
-            } as AnalysisPayload,
-        });
-        expect(screen.queryByText("Temari's take")).not.toBeInTheDocument();
-
-        openBand();
+    it('renders Temari’s take, always visible, when the season narration exists', () => {
+        renderCard({ narration: NARRATION });
 
         expect(screen.getByText("Temari's take")).toBeInTheDocument();
         expect(screen.getByText('base held together.')).toBeInTheDocument();
+    });
+
+    it('puts the under-ready line above Temari’s take', () => {
+        renderCard({ underReadyLine: 'tight block.', narration: NARRATION });
+
+        const line = screen.getByText('tight block.');
+        const take = screen.getByText("Temari's take");
+
+        expect(
+            line.compareDocumentPosition(take) &
+                Node.DOCUMENT_POSITION_FOLLOWING,
+        ).toBeTruthy();
+    });
+
+    it('draws no take without narration', () => {
+        renderCard({ narration: null });
+
+        expect(screen.queryByText("Temari's take")).not.toBeInTheDocument();
     });
 });

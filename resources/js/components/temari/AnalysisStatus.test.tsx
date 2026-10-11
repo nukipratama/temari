@@ -636,6 +636,89 @@ describe('AnalysisStatus', () => {
         ).toContain('justify-end');
     });
 
+    describe('rereadAsIcon', () => {
+        const NOW = new Date('2026-07-07T12:00:00Z');
+        const doneAnalysis = (overrides: Partial<AnalysisPayload> = {}) =>
+            payload({
+                id: 7,
+                status: 'done',
+                content: 'Halo',
+                generated_at: new Date(
+                    NOW.getTime() - 5 * 60 * 1000,
+                ).toISOString(),
+                ...overrides,
+            });
+
+        it('draws reread as a text-less icon button on the "generated" stamp line', () => {
+            vi.useFakeTimers();
+            vi.setSystemTime(NOW);
+            render(<AnalysisStatus analysis={doneAnalysis()} rereadAsIcon />);
+
+            const reread = screen.getByRole('button', { name: 'reread' });
+
+            expect(reread).toHaveTextContent('');
+            expect(reread).not.toHaveClass('bg-muted');
+            expect(reread.parentElement).toBe(
+                screen.getByText(/generated 5 min ago/).parentElement,
+            );
+            expect(
+                screen.getByRole('button', { name: 'flag this read' })
+                    .parentElement,
+            ).toBe(reread.parentElement);
+            vi.useRealTimers();
+        });
+
+        it('keeps the pill by default', () => {
+            render(<AnalysisStatus analysis={doneAnalysis()} />);
+
+            expect(screen.getByRole('button', { name: 'reread' })).toHaveClass(
+                'bg-muted',
+            );
+        });
+
+        it('still names the cooldown and disables the icon while cooling', () => {
+            render(
+                <AnalysisStatus
+                    analysis={doneAnalysis({ retry_after_seconds: 125 })}
+                    rereadAsIcon
+                />,
+            );
+
+            expect(
+                screen.getByRole('button', { name: /Wait 2:05/ }),
+            ).toBeDisabled();
+            expect(screen.queryByText('next in 2:05')).not.toBeInTheDocument();
+        });
+
+        it('draws no reread icon when the block cannot be reread', () => {
+            render(
+                <AnalysisStatus
+                    analysis={doneAnalysis()}
+                    rereadAsIcon
+                    allowReanalyze={false}
+                />,
+            );
+
+            expect(
+                screen.queryByRole('button', { name: 'reread' }),
+            ).not.toBeInTheDocument();
+        });
+
+        it('keeps the icon on its own, right-aligned, when the block has no timestamp or id', () => {
+            render(
+                <AnalysisStatus
+                    analysis={doneAnalysis({ id: null, generated_at: null })}
+                    rereadAsIcon
+                />,
+            );
+
+            expect(
+                screen.getByRole('button', { name: 'reread' }).parentElement
+                    ?.className,
+            ).toContain('justify-end');
+        });
+    });
+
     it('highlights reread with a horizon ring and an accessible description when the block was filled while the athlete was away', () => {
         render(
             <AnalysisStatus

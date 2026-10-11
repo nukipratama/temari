@@ -128,7 +128,7 @@ race coming up?" prompt. Both link to `/race`.
 five-row layout (cut in `PP3`) with the prototype's small card: the current phase and date range,
 a segmented phase bar, and **one** goal progress line — the first goal still open, so the line
 tracks what is actually being worked toward. Phases are derived by `phasesOf` in
-[lib/plan](resources/js/lib/plan.ts), shared with Plan's own season header, over the week list
+[lib/plan](resources/js/lib/plan.ts), over the week list
 [SeasonSummaryBuilder](app/Services/Run/Plan/SeasonSummaryBuilder.php) builds; the goals come from
 [SeasonPayloadBuilder](app/Services/Gamification/SeasonPayloadBuilder.php)`::profileSeasonPayload`, which sends the season dates and goals but not the Plan-only fields or the season record.
 

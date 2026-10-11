@@ -15,8 +15,8 @@ import {
     deltaDirection,
     easedFromDelta,
     fallOffTiltWhy,
-    generalZoneSpan,
     isRaceWeek,
+    nextPhaseOf,
     judgedDayResult,
     paceEaseDelta,
     paceLabel,
@@ -30,7 +30,9 @@ import {
     targetLabel,
     volumeAdjustedFrom,
     weekdayLabel,
+    weeksLabel,
     weekRangeLabel,
+    weeksToRace,
     workLabel,
 } from './plan';
 
@@ -235,23 +237,75 @@ describe('phaseGroupKey', () => {
     });
 });
 
-describe('generalZoneSpan', () => {
-    it('spans the first general week’s Monday to the last one’s Sunday', () => {
-        expect(
-            generalZoneSpan([
-                week({ week_start: '2026-06-15', zone: 'general' }),
-                week({ week_start: '2026-06-22', zone: 'general' }),
-                week({ week_start: '2026-06-29', zone: 'block' }),
-            ]),
-        ).toEqual({ start: '2026-06-15', end: '2026-06-28' });
+describe('nextPhaseOf', () => {
+    it('names the first later phase and how many weeks away it starts', () => {
+        expect(nextPhaseOf(RACE_SEASON)).toEqual({ key: 'peak', inWeeks: 1 });
     });
 
-    it('returns null when the season has no general weeks', () => {
+    it('skips later weeks that share the current phase', () => {
         expect(
-            generalZoneSpan([
-                week({ week_start: '2026-06-15', zone: 'block' }),
+            nextPhaseOf([
+                week({ phase: 'base', type: 'current' }),
+                week({ week_start: '2026-06-22', phase: 'base' }),
+                week({ week_start: '2026-06-29', phase: 'build' }),
+            ]),
+        ).toEqual({ key: 'build', inWeeks: 2 });
+    });
+
+    it('reads every general-zone week as one phase, whatever its own build/deload', () => {
+        expect(
+            nextPhaseOf([
+                week({ zone: 'general', phase: 'build', type: 'current' }),
+                week({
+                    week_start: '2026-06-22',
+                    zone: 'general',
+                    phase: 'deload',
+                }),
+                week({
+                    week_start: '2026-06-29',
+                    zone: 'block',
+                    phase: 'base',
+                }),
+            ]),
+        ).toEqual({ key: 'base', inWeeks: 2 });
+    });
+
+    it('is null when the rest of the season stays in the current phase', () => {
+        expect(
+            nextPhaseOf([
+                week({ zone: 'general', phase: 'build', type: 'current' }),
+                week({
+                    week_start: '2026-06-22',
+                    zone: 'general',
+                    phase: 'deload',
+                }),
             ]),
         ).toBeNull();
+    });
+
+    it('is null when no week is current', () => {
+        expect(nextPhaseOf([week({ type: 'history' })])).toBeNull();
+    });
+});
+
+describe('weeksToRace', () => {
+    it('counts the calendar weeks from the current week to the race week', () => {
+        expect(weeksToRace('2026-06-22', '2026-08-17')).toBe(8);
+    });
+
+    it('is 0 when the race falls in the current week', () => {
+        expect(weeksToRace('2026-06-22', '2026-06-28')).toBe(0);
+    });
+
+    it('counts from the week start, not the day, across a month boundary', () => {
+        expect(weeksToRace('2026-06-29', '2026-07-12')).toBe(1);
+    });
+});
+
+describe('weeksLabel', () => {
+    it('is singular for one week and plural otherwise', () => {
+        expect(weeksLabel(1)).toBe('1 week');
+        expect(weeksLabel(2)).toBe('2 weeks');
     });
 });
 
