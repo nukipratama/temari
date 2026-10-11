@@ -134,7 +134,7 @@ class StravaAuthController extends Controller
             $user->deletePushSubscription($pushEndpoint);
         }
 
-        Auth::logout();
+        Auth::logoutCurrentDevice();
         $request->session()->invalidate();
 
         // Drops the AES key Inertia keeps in sessionStorage, so the back button
