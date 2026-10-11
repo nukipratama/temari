@@ -81,6 +81,7 @@ function summaryWeek(
 
 const BASE_PROPS: ComponentProps<typeof Plan> = {
     race: null,
+    raceCard: null,
     sessionsPerWeek: 5,
     weeks: [
         {
@@ -168,7 +169,10 @@ describe('Plan', () => {
             screen.getByText(/no race set · steady build and deload/i),
         ).toBeInTheDocument();
         expect(
-            screen.getByRole('link', { name: /set a race/i }),
+            screen.queryByRole('link', { name: /set a race/i }),
+        ).not.toBeInTheDocument();
+        expect(
+            screen.getByRole('link', { name: '+ add a race' }),
         ).toHaveAttribute('href', '/race');
     });
 
@@ -222,11 +226,47 @@ describe('Plan', () => {
 
         expect(screen.getByText(/jakarta half · oct 12/i)).toBeInTheDocument();
         expect(
-            screen.getByRole('link', { name: /race goal/i }),
-        ).toHaveAttribute('href', '/race');
-        expect(screen.getByRole('link', { name: /race goal/i })).toHaveClass(
-            'hit-area',
+            screen.queryByRole('link', { name: /race goal/i }),
+        ).not.toBeInTheDocument();
+    });
+
+    it('puts the race card above the season card, with the supported time once it loads', () => {
+        const raceCard = {
+            state: 'ahead' as const,
+            race_id: 3,
+            race_date: '2026-10-12',
+            distance_m: 21_097,
+            goal_time_sec: 7_200,
+            name: 'Jakarta Half',
+            days_to_race: 117,
+            finish_time_sec: null,
+        };
+        const { rerender } = renderPlan({
+            race: { race_date: '2026-10-12', name: 'Jakarta Half' },
+            raceCard,
+        });
+
+        const card = screen.getByRole('link', { name: /race · oct 12/i });
+        expect(card).toHaveAttribute('href', '/race');
+        expect(card).not.toHaveTextContent('supported');
+        expect(
+            card.compareDocumentPosition(screen.getByText(/season · week 1/i)),
+        ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+        expect(
+            screen.queryByRole('link', { name: '+ add a race' }),
+        ).not.toBeInTheDocument();
+
+        rerender(
+            <Plan
+                {...BASE_PROPS}
+                race={{ race_date: '2026-10-12', name: 'Jakarta Half' }}
+                raceCard={raceCard}
+                raceSupportedTimeSec={7_450}
+            />,
         );
+        expect(
+            screen.getByRole('link', { name: /race · oct 12/i }),
+        ).toHaveTextContent('half marathon 2:00:00 vs supported 2:04:10');
     });
 
     it('carries no schedule / race-goal tab switch; the race line links out instead', () => {

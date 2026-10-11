@@ -1,9 +1,12 @@
+import { Link } from '@inertiajs/react';
+
 import type { SeasonSummaryWeek } from '@/lib/plan';
-import type { AnalysisPayload } from '@/types/inertia';
+import type { AnalysisPayload, PlanRaceCard } from '@/types/inertia';
 
 import PhaseRibbon from '@/components/plan/PhaseRibbon';
 import TemariTake from '@/components/plan/TemariTake';
 import Eyebrow from '@/components/ui/Eyebrow';
+import { formatDurationHMS, formatNaiveMonthDayId } from '@/lib/pace';
 import {
     nextPhaseOf,
     PHASE_LABEL,
@@ -11,6 +14,55 @@ import {
     weeksLabel,
     weeksToRace,
 } from '@/lib/plan';
+import { raceDistanceLabel } from '@/lib/raceGoal';
+import { pillButtonVariants } from '@/lib/variants';
+
+function RaceSlot({ raceCard }: Readonly<{ raceCard: PlanRaceCard | null }>) {
+    if (raceCard === null) {
+        return (
+            <div className="mt-3 flex flex-col items-start gap-2 border-t border-dashed border-border pt-3">
+                <p className="text-sm text-text-2">
+                    add a race and the plan builds base → build → peak → taper
+                    to it.
+                </p>
+                <Link
+                    href="/race"
+                    className={pillButtonVariants({
+                        tone: 'muted',
+                        size: 'xs',
+                    })}
+                >
+                    + add a race
+                </Link>
+            </div>
+        );
+    }
+
+    if (
+        raceCard.state !== 'result_recorded' ||
+        raceCard.finish_time_sec === null
+    ) {
+        return null;
+    }
+
+    return (
+        <p className="mt-1 font-mono text-xs text-text-2 tabular-nums">
+            {formatNaiveMonthDayId(raceCard.race_date)} ·{' '}
+            {raceDistanceLabel(raceCard.distance_m)}{' '}
+            {formatDurationHMS(raceCard.finish_time_sec)}
+            {raceCard.finish_time_sec <= raceCard.goal_time_sec && (
+                <span className="text-horizon-ink"> ✓</span>
+            )}
+            {' · '}
+            <Link
+                href="/race"
+                className="focus-ring hit-area font-semibold text-horizon-ink"
+            >
+                next race ›
+            </Link>
+        </p>
+    );
+}
 
 /**
  * The season at a glance: the phase the athlete is in as a headline, what
@@ -24,6 +76,7 @@ export default function SeasonHeaderCard({
     adherencePct,
     weeks,
     raceDate,
+    raceCard,
     narration,
     underReadyLine = null,
 }: Readonly<{
@@ -32,6 +85,8 @@ export default function SeasonHeaderCard({
     adherencePct: number | null;
     weeks: SeasonSummaryWeek[];
     raceDate: string | null;
+    /** No race, or a result recorded this past week, shows under the meta line. */
+    raceCard: PlanRaceCard | null;
     narration: AnalysisPayload | null;
     /** Served once, when the season opened with less than a full race block left. */
     underReadyLine?: string | null;
@@ -78,6 +133,7 @@ export default function SeasonHeaderCard({
                     )}
                 </p>
             )}
+            <RaceSlot raceCard={raceCard} />
             <PhaseRibbon weeks={weeks} />
 
             {underReadyLine && (

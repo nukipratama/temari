@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import type { SeasonSummaryWeek } from '@/lib/plan';
-import type { AnalysisPayload } from '@/types/inertia';
+import type { AnalysisPayload, PlanRaceCard } from '@/types/inertia';
 
 import SeasonHeaderCard from './SeasonHeaderCard';
 
@@ -66,6 +66,7 @@ function renderCard(
             adherencePct={82}
             weeks={RACE_SEASON}
             raceDate={null}
+            raceCard={raceCard()}
             narration={null}
             {...overrides}
         />,
@@ -83,7 +84,87 @@ const NARRATION = {
     discriminator: null,
 } as AnalysisPayload;
 
+function raceCard(overrides: Partial<PlanRaceCard> = {}): PlanRaceCard {
+    return {
+        state: 'ahead',
+        race_id: 4,
+        race_date: '2026-12-06',
+        distance_m: 10_000,
+        goal_time_sec: 3_600,
+        name: null,
+        days_to_race: 56,
+        finish_time_sec: null,
+        ...overrides,
+    };
+}
+
 describe('SeasonHeaderCard', () => {
+    it('invites a race under the meta line when there is none', () => {
+        renderCard({ raceCard: null });
+
+        expect(
+            screen.getByText(
+                'add a race and the plan builds base → build → peak → taper to it.',
+            ).parentElement,
+        ).toHaveClass('border-dashed');
+        expect(
+            screen.getByRole('link', { name: '+ add a race' }),
+        ).toHaveAttribute('href', '/race');
+    });
+
+    it('shows nothing in the race slot while a race is set or its result is pending', () => {
+        for (const state of [
+            'ahead',
+            'week',
+            'day',
+            'result_pending',
+        ] as const) {
+            const { unmount } = renderCard({ raceCard: raceCard({ state }) });
+
+            expect(
+                screen.queryByRole('link', { name: '+ add a race' }),
+            ).not.toBeInTheDocument();
+            expect(
+                screen.queryByRole('link', { name: 'next race ›' }),
+            ).not.toBeInTheDocument();
+            unmount();
+        }
+    });
+
+    it('states a recorded result on one line, ticked when it beat the goal', () => {
+        renderCard({
+            raceCard: raceCard({
+                state: 'result_recorded',
+                days_to_race: null,
+                finish_time_sec: 3_521,
+            }),
+        });
+
+        const line = screen.getByText(/dec 6 · 10K 58:41/);
+        expect(line).toHaveTextContent('dec 6 · 10K 58:41 ✓ · next race ›');
+        expect(screen.getByText('✓')).toHaveClass('text-horizon-ink');
+        expect(
+            screen.getByRole('link', { name: 'next race ›' }),
+        ).toHaveAttribute('href', '/race');
+        expect(
+            screen.queryByRole('link', { name: '+ add a race' }),
+        ).not.toBeInTheDocument();
+    });
+
+    it('leaves the tick off a result slower than the goal', () => {
+        renderCard({
+            raceCard: raceCard({
+                state: 'result_recorded',
+                days_to_race: null,
+                finish_time_sec: 3_650,
+            }),
+        });
+
+        expect(screen.getByText(/dec 6 · 10K 1:00:50/)).toHaveTextContent(
+            'dec 6 · 10K 1:00:50 · next race ›',
+        );
+    });
+
     it('places the athlete in the season', () => {
         renderCard();
 

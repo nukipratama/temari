@@ -68,6 +68,9 @@ it('paints a fresh user\'s shell with the plan body deferred, creating the seaso
         ->assertInertia(fn (Assert $page) => $page
             ->component('Plan')
             ->has('race')
+            ->where('raceCard', null)
+            ->missing('raceSupportedTimeSec')
+            ->missing('raceOutcomeCandidate')
             ->has('sessionsPerWeek')
             ->has('season')
             ->where('season.week_index', 1)
@@ -100,6 +103,25 @@ it('paints a fresh user\'s shell with the plan body deferred, creating the seaso
     expect($response->json('props'))->toHaveKeys(['seasonSummary', 'seasonAdherencePct'])
         ->and($response->json('props'))->not->toHaveKey('season')
         ->and($response->json('props'))->not->toHaveKey('sessionsPerWeek');
+});
+
+it('paints the race card at once and loads its supported time and outcome run in their own deferred group', function (): void {
+    $user = User::factory()->create();
+    RaceGoal::factory()->for($user)->create(['race_date' => Carbon::today()->addWeeks(8)->toDateString(), 'distance_m' => 10_000, 'goal_time_sec' => 3_600]);
+
+    $this->actingAs($user)->get('/plan')
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('raceCard.state', 'ahead')
+            ->where('raceCard.days_to_race', 56)
+            ->missing('raceSupportedTimeSec')
+            ->missing('raceOutcomeCandidate')
+            ->loadDeferredProps('race', fn (Assert $reload) => $reload
+                ->has('raceSupportedTimeSec')
+                ->where('raceOutcomeCandidate', null)
+                ->missing('weeks')
+                ->missing('season')
+                ->etc()));
 });
 
 it('regenerating populates the plan, redirects with a success flash and renders the generated weeks', function (): void {
