@@ -72,8 +72,8 @@ describe('Activities/Feed', () => {
         expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
     });
 
-    it('explains the effort stripe and mood dot above the weeks', () => {
-        const { container } = render(
+    it('draws no effort or mood legend above the weeks, since each row names its own', () => {
+        render(
             <RunsIndex
                 runs={[run(101, 'Morning', '2026-05-19T06:00:00')]}
                 rangeFilter="8w"
@@ -81,13 +81,9 @@ describe('Activities/Feed', () => {
             />,
         );
 
-        expect(screen.getByText('effort')).toBeInTheDocument();
-        expect(screen.getByText('mood')).toBeInTheDocument();
-        expect(screen.getByText('hard')).toBeInTheDocument();
-        expect(screen.getByText('blazing')).toBeInTheDocument();
-        expect(container.textContent?.indexOf('effort')).toBeLessThan(
-            container.textContent?.indexOf('Morning') ?? 0,
-        );
+        expect(screen.getByText('Morning')).toBeInTheDocument();
+        expect(screen.queryByText('effort')).not.toBeInTheDocument();
+        expect(screen.queryByText('mood')).not.toBeInTheDocument();
     });
 
     it('renders the Feed ⇄ Calendar nav with feed active', () => {

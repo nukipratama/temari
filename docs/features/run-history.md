@@ -109,9 +109,11 @@ reveals a plain explanation inline (no popover, so nothing gets clipped by
 default with a deterministic, rule-based read instead of the general
 explanation.
 
-Above the week sections, the shared [EffortLegend](../../resources/js/components/history/EffortLegend.tsx)
-names the effort stripe and mood dot colours. Each run row also names its effort,
-and its mood when present, for screen readers.
+The Feed draws no legend. Each run row names its own effort and, when it has
+one, its mood on the time/pace/bpm line (`steady · felt overloaded · 35:14 · 6:31`),
+coloured with the effort's and mood's `-ink` class; an unscored run says
+`unscored`. The effort colour sits on the row's left border only, so the dashed
+divider between rows stays neutral.
 
 The data comes from `HistoryController`'s list branch in
 [HistoryController.php](../../app/Http/Controllers/HistoryController.php). It
@@ -153,7 +155,7 @@ week (`is_current_week`) waits for the scheduler. See [[recaps]] and
 ## Calendar — the weekly bar-chart grid
 
 [Calendar.tsx](../../resources/js/pages/Activities/Calendar.tsx) renders in this order:
-month nav → consistency line → monthly recap card → effort legend → grid
+month nav (with a `key` chip) → consistency line → monthly recap card → grid
 (the grid has a rounded outer frame, without day-column borders).
 (#1343 replaced the former bordered-box + mood-dot grid, prototype variant C
 on `prototype/calendar-redesign`). The consistency line (`consistencyOf` in
@@ -179,8 +181,9 @@ bar and the date below it; today's date carries a lime ring. A planned rest
 day with no run gets a dashed marker instead of a bar; a day with neither a
 run nor a plan shows only the baseline and a muted date. **Mood left the
 grid** — it now appears only as a word in the multi-run sheet and the run
-detail page; an on-page `EffortLegend` (words, not colour alone) replaced the
-old mood legend.
+detail page. The effort key (words, not colour alone) is
+[EffortLegend](../../resources/js/components/history/EffortLegend.tsx), a
+lazy-loaded bottom sheet the `key` chip in the month header opens.
 
 Tap behaviour is per-day: one run links straight to [[run-detail]], 2+ runs
 opens [DayRunsSheet](../../resources/js/components/history/DayRunsSheet.tsx)

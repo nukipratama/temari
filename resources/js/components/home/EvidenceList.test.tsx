@@ -122,7 +122,38 @@ describe('EvidenceList', () => {
             />,
         );
 
-        expect(screen.getByRole('link')).toHaveClass('border-ember');
+        expect(screen.getByRole('link')).toHaveClass('border-l-ember');
+    });
+
+    it("names the recent run's effort beside what made the pair comparable, in its ink class", () => {
+        render(
+            <EvidenceList
+                trend={trend([pair(2, 12, -6, 'better', 'pace', 'steady')])}
+            />,
+        );
+
+        const word = screen.getByText('steady');
+        expect(word).toHaveClass('text-citrus-ink');
+        expect(word.parentElement).toContainElement(
+            screen.getByText('8.2 km vs mar 14'),
+        );
+        expect(word.parentElement?.textContent).toBe(
+            '8.2 km vs mar 14 · steady',
+        );
+    });
+
+    it('says unscored when the recent run has no effort', () => {
+        render(<EvidenceList trend={trend([pair(2, 12, -6, 'better')])} />);
+
+        expect(screen.getByText('unscored')).toBeInTheDocument();
+    });
+
+    it('separates rows with a neutral dashed divider', () => {
+        render(<EvidenceList trend={trend([pair(2, 12, -6, 'better')])} />);
+
+        const list = screen.getByRole('list');
+        expect(list).toHaveClass('divide-dashed');
+        expect(list).toHaveClass('divide-border');
     });
 
     it('describes the whole row to assistive tech', () => {
@@ -130,7 +161,7 @@ describe('EvidenceList', () => {
 
         expect(
             screen.getByRole('link', {
-                name: '8.2 km vs mar 14, pace 7:12 to 7:00, HR 158 to 152 bpm, -12 s/km',
+                name: '8.2 km vs mar 14, unscored, pace 7:12 to 7:00, HR 158 to 152 bpm, -12 s/km',
             }),
         ).toBeInTheDocument();
     });

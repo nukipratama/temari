@@ -159,29 +159,58 @@ describe('RunListRow', () => {
 
     it("colors the row's leading-edge stripe by effort", () => {
         render(<RunListRow detail={detail({ effort: 'hard' })} />);
-        expect(screen.getByRole('link')).toHaveClass('border-ember');
+        expect(screen.getByRole('link')).toHaveClass('border-l-ember');
     });
 
-    it('names the effort and the visible mood dot for screen readers', () => {
+    it('keeps the stripe off the bottom divider: it colours the left border only', () => {
+        render(<RunListRow detail={detail({ effort: 'hard' })} />);
+        const link = screen.getByRole('link');
+        expect(link).not.toHaveClass('border-solid');
+        expect(link).not.toHaveClass('border-ember');
+    });
+
+    it('names the effort and the mood on the metrics line, in their ink classes', () => {
         render(
-            <RunListRow detail={detail({ effort: 'hard' })} mood="blazing" />,
+            <RunListRow
+                detail={detail({ effort: 'steady' })}
+                mood="overloaded"
+            />,
         );
-        expect(
-            screen.getByRole('link', { name: /hard effort, blazing mood/ }),
-        ).toBeInTheDocument();
+        const metricsLine = screen.getByText('150 bpm').parentElement;
+        expect(metricsLine).toContainElement(screen.getByText('steady'));
+        expect(screen.getByText('steady')).toHaveClass('text-citrus-ink');
+        expect(metricsLine).toContainElement(
+            screen.getByText('felt overloaded'),
+        );
+        expect(screen.getByText('felt overloaded')).toHaveClass(
+            'text-mood-overloaded-ink',
+        );
     });
 
-    it('names the effort without inventing a missing mood', () => {
+    it('puts the effort and mood words ahead of the time and pace', () => {
+        render(
+            <RunListRow detail={detail({ effort: 'easy' })} mood="blazing" />,
+        );
+        const metricsLine = screen.getByText('150 bpm').parentElement;
+        expect(metricsLine?.textContent).toMatch(
+            /^easy·felt blazing·1:00:00·6:00·150 bpm/,
+        );
+    });
+
+    it('omits the felt part when there is no mood', () => {
         render(<RunListRow detail={detail({ effort: 'easy' })} />);
-        expect(
-            screen.getByRole('link', { name: /easy effort/ }),
-        ).toBeInTheDocument();
-        expect(screen.getByRole('link')).not.toHaveAccessibleName(/mood/);
+        expect(screen.getByText('easy')).toBeInTheDocument();
+        expect(screen.queryByText(/^felt /)).not.toBeInTheDocument();
+    });
+
+    it('says unscored when the run has no effort', () => {
+        render(<RunListRow detail={detail({ effort: undefined })} />);
+        expect(screen.getByText('unscored')).toBeInTheDocument();
     });
 
     it('falls back to the unknown stripe when the detail carries no effort', () => {
         render(<RunListRow detail={detail({ effort: undefined })} />);
-        expect(screen.getByRole('link')).toHaveClass('border-border');
+        expect(screen.getByRole('link')).toHaveClass('border-l-border');
     });
 
     it('puts the date and time on the metrics line, not beside the title', () => {

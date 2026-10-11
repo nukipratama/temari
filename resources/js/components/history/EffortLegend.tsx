@@ -1,7 +1,7 @@
 import type { Effort } from '@/types/inertia';
 
+import Sheet from '@/components/ui/Sheet';
 import { cn } from '@/lib/cn';
-import { MOOD_FILL, MOOD_LABEL, MOOD_ORDER } from '@/lib/mood';
 import { EFFORT_FILL, EFFORT_WORD } from '@/pages/Activities/calendarBars';
 
 const EFFORTS: ReadonlyArray<Effort> = [
@@ -13,55 +13,30 @@ const EFFORTS: ReadonlyArray<Effort> = [
 ];
 
 export default function EffortLegend({
-    className,
-    withMood = false,
-}: Readonly<{ className?: string; withMood?: boolean }>) {
+    open,
+    onOpenChange,
+}: Readonly<{ open: boolean; onOpenChange: (open: boolean) => void }>) {
     return (
-        <div className={className}>
-            <span className="text-label-micro text-text-3">effort</span>
-            <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1.5">
+        <Sheet open={open} onOpenChange={onOpenChange} title="effort key">
+            <ul className="mt-3 flex flex-col gap-3">
                 {EFFORTS.map((effort) => (
-                    <span
+                    <li
                         key={effort}
-                        className="flex items-center gap-1.5 text-xs text-text-2"
+                        className="flex items-center gap-3 text-sm text-text-2"
                     >
                         <span
                             aria-hidden
                             className={cn(
-                                'block h-1.5 w-4 rounded-full',
+                                'block h-1.5 w-8 flex-none rounded-full',
                                 effort === 'rest'
                                     ? 'border-t-2 border-dashed border-border-strong'
                                     : EFFORT_FILL[effort],
                             )}
                         />
                         {EFFORT_WORD[effort]}
-                    </span>
+                    </li>
                 ))}
-            </div>
-            {withMood && (
-                <>
-                    <span className="mt-3 block text-label-micro text-text-3">
-                        mood
-                    </span>
-                    <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1.5">
-                        {MOOD_ORDER.map((mood) => (
-                            <span
-                                key={mood}
-                                className="flex items-center gap-1.5 text-xs text-text-2"
-                            >
-                                <span
-                                    aria-hidden
-                                    className={cn(
-                                        'size-[7px] rounded-full',
-                                        MOOD_FILL[mood],
-                                    )}
-                                />
-                                {MOOD_LABEL[mood]}
-                            </span>
-                        ))}
-                    </div>
-                </>
-            )}
-        </div>
+            </ul>
+        </Sheet>
     );
 }

@@ -6,8 +6,8 @@ import type { ActivityDetail, Mood, RunCard } from '@/types/inertia';
 
 import { Icon } from '@/components/ui/Icon';
 import { cn } from '@/lib/cn';
-import { EFFORT_STRIPE_CLASS } from '@/lib/effort';
-import { MOOD_FILL, MOOD_LABEL } from '@/lib/mood';
+import { EFFORT_ICON_CLASS, EFFORT_STRIPE_CLASS } from '@/lib/effort';
+import { MOOD_FILL, MOOD_INK, MOOD_LABEL } from '@/lib/mood';
 import {
     formatDurationHMS,
     formatKm,
@@ -51,7 +51,7 @@ function RunListRow({
     const knownMood: Mood | null = note?.mood ?? mood ?? null;
     const name = detail.name ?? 'Run';
     const startTime = formatNaiveTimeId(detail.start_date_local);
-    const stripeClass = EFFORT_STRIPE_CLASS[detail.effort ?? 'unknown'];
+    const effort = detail.effort ?? 'unknown';
 
     return (
         <Link
@@ -60,7 +60,7 @@ function RunListRow({
             viewTransition={morphRunCard(detail.activity_id)}
             className={cn(
                 'pressable block p-3.5 text-sm transition hover:bg-background',
-                stripeClass,
+                EFFORT_STRIPE_CLASS[effort],
             )}
         >
             <div className="flex min-w-0 items-center gap-1.5">
@@ -93,6 +93,30 @@ function RunListRow({
                 )}
             </div>
             <div className="mt-1.25 flex flex-wrap items-baseline gap-x-1.75 gap-y-0.5 font-mono tabular-nums">
+                <span
+                    className={cn(
+                        'text-xs leading-[1.2] font-extrabold',
+                        EFFORT_ICON_CLASS[effort],
+                    )}
+                >
+                    {EFFORT_WORD[effort]}
+                </span>
+                {knownMood !== null && (
+                    <>
+                        <span className="text-[0.6875rem] text-border-strong">
+                            ·
+                        </span>
+                        <span
+                            className={cn(
+                                'text-xs leading-[1.2] font-extrabold',
+                                MOOD_INK[knownMood],
+                            )}
+                        >
+                            felt {MOOD_LABEL[knownMood]}
+                        </span>
+                    </>
+                )}
+                <span className="text-[0.6875rem] text-border-strong">·</span>
                 <b className="text-xs leading-[1.2] font-extrabold text-foreground">
                     {formatDurationHMS(detail.elapsed_time)}
                 </b>
@@ -118,10 +142,6 @@ function RunListRow({
                     &quot;{renderBold(note.oneline)}&quot;
                 </p>
             )}
-            <span className="sr-only">
-                {`, ${EFFORT_WORD[detail.effort ?? 'unknown']} effort`}
-                {knownMood && `, ${MOOD_LABEL[knownMood]} mood`}
-            </span>
         </Link>
     );
 }

@@ -221,7 +221,14 @@ describe('formatRelativeId', () => {
         const iso = new Date(
             now.getTime() - 14 * 24 * 60 * 60 * 1000,
         ).toISOString();
-        expect(formatRelativeId(iso, now)).toBe('2 wk ago');
+        expect(formatRelativeId(iso, now)).toBe('2 weeks ago');
+    });
+
+    it('says "1 week ago" in the singular', () => {
+        const iso = new Date(
+            now.getTime() - 7 * 24 * 60 * 60 * 1000,
+        ).toISOString();
+        expect(formatRelativeId(iso, now)).toBe('1 week ago');
     });
 
     it('falls back to short date for old timestamps', () => {

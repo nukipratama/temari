@@ -1,5 +1,5 @@
 import { Deferred, Head, Link, router } from '@inertiajs/react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Info } from 'lucide-react';
 import { Suspense, useMemo, useState } from 'react';
 
 import type { AnalysisPayload, WeeklySnapshotWithRecap } from '@/types/inertia';
@@ -7,7 +7,6 @@ import type { AnalysisPayload, WeeklySnapshotWithRecap } from '@/types/inertia';
 import AiOutageBanner from '@/components/AiOutageBanner';
 import CalendarGrid from '@/components/history/CalendarGrid';
 import ConsistencyLine from '@/components/history/ConsistencyLine';
-import EffortLegend from '@/components/history/EffortLegend';
 import HistoryHeader from '@/components/history/HistoryHeader';
 import {
     CalendarGridSkeleton,
@@ -20,6 +19,7 @@ import PageContainer from '@/components/ui/PageContainer';
 import { useHorizontalSwipe } from '@/hooks/useHorizontalSwipe';
 import { appLayout } from '@/layouts/appLayout';
 import { lazyIsland } from '@/lib/lazyIsland';
+import { pillButtonVariants } from '@/lib/variants';
 import { consistencyOf } from '@/pages/Activities/calendarBars';
 
 import { useCalendar, type CalendarCell } from './useCalendar';
@@ -28,10 +28,13 @@ import { snapshotsByWeekEnding } from './weekBuckets';
 /**
  * DayRunsSheet pulls in Base UI's Overlay/Sheet chunk (~15KB gzipped): keep
  * it off Calendar's static import closure, loading it only once a multi-run
- * day is actually opened.
+ * day is actually opened. EffortLegend rides the same chunk.
  */
 const DayRunsSheet = lazyIsland(
     () => import('@/components/history/DayRunsSheet'),
+);
+const EffortLegend = lazyIsland(
+    () => import('@/components/history/EffortLegend'),
 );
 
 export { dominantMoodOf, type CalendarCell } from './useCalendar';
@@ -89,6 +92,8 @@ export default function Calendar({
     });
     const [openDay, setOpenDay] = useState<CalendarCell | null>(null);
     const [askedDayRuns, setAskedDayRuns] = useState(false);
+    const [keyOpen, setKeyOpen] = useState(false);
+    const [askedKey, setAskedKey] = useState(false);
 
     const snapshotsByWeek = useMemo(
         () => snapshotsByWeekEnding(weeklySnapshots),
@@ -118,6 +123,10 @@ export default function Calendar({
                         label={monthLabel}
                         prevMonth={prevMonth}
                         nextMonth={nextMonth}
+                        onOpenKey={() => {
+                            setAskedKey(true);
+                            setKeyOpen(true);
+                        }}
                     />
                 </div>
 
@@ -158,8 +167,6 @@ export default function Calendar({
                         }
                     </Deferred>
 
-                    <EffortLegend className="mt-3 mb-3" />
-
                     <div className="rounded-md border border-border p-3">
                         <Deferred
                             data={['cells', 'weeklySnapshots']}
@@ -179,6 +186,15 @@ export default function Calendar({
                     </div>
                 </div>
 
+                {askedKey && (
+                    <Suspense fallback={null}>
+                        <EffortLegend
+                            open={keyOpen}
+                            onOpenChange={setKeyOpen}
+                        />
+                    </Suspense>
+                )}
+
                 {askedDayRuns && (
                     <Suspense fallback={null}>
                         <DayRunsSheet
@@ -196,10 +212,12 @@ function MonthNav({
     label,
     prevMonth,
     nextMonth,
+    onOpenKey,
 }: Readonly<{
     label: string;
     prevMonth: string;
     nextMonth: string;
+    onOpenKey: () => void;
 }>) {
     return (
         <div className="flex w-full items-center justify-between gap-2">
@@ -208,9 +226,24 @@ function MonthNav({
                 icon={ChevronLeft}
                 label="previous month"
             />
-            <h2 className="font-serif text-[0.9375rem] leading-[1.2] font-semibold text-foreground">
-                {label}
-            </h2>
+            <div className="flex items-center gap-2">
+                <h2 className="font-serif text-[0.9375rem] leading-[1.2] font-semibold text-foreground">
+                    {label}
+                </h2>
+                <button
+                    type="button"
+                    aria-label="effort key"
+                    aria-haspopup="dialog"
+                    onClick={onOpenKey}
+                    className={pillButtonVariants({
+                        tone: 'muted',
+                        size: 'xs',
+                    })}
+                >
+                    key
+                    <Icon icon={Info} width={12} height={12} aria-hidden />
+                </button>
+            </div>
             <NavButton
                 month={nextMonth}
                 icon={ChevronRight}

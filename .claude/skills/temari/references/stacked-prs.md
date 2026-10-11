@@ -9,7 +9,7 @@ Parallel work splits by dependency:
 - parallel slices sharing a foundation: land the foundation as layer 1, build the rest in worktrees
   branched from it, then chain each onto the stack once its worktree is removed.
 
-**Layers.** One reviewable concern per layer, each with its own issue and `Closes #n`. Order:
+**Layers.** One reviewable concern per layer, each with its own issue and `Closes #n`; work executed directly in-session may use one issue per stack instead, with lower layers saying `Part of #n` and only the top layer carrying `Closes #n`. Order:
 foundation first (a new primitive, plus any sign-off gallery), then one surface group per layer,
 cleanup and docs last. Each PR body opens with `Part of stack #N: A → B → this`. Build the next
 layer without waiting for review, stopping only at gates agreed during planning or at a fork. A fix
