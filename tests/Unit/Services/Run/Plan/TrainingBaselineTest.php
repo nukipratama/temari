@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use App\Enums\ExperienceLevel;
-use App\Enums\FallOffTilt;
 use App\Enums\PlanPhase;
 use App\Enums\SessionType;
 use App\Services\Run\Plan\SegmentGenerator;
@@ -21,12 +20,8 @@ use App\Services\Run\Plan\PhaseSchedule;
 use App\Services\Run\Plan\RaceAmbitionAssessor;
 use App\Services\Run\Plan\TrainingBaseline;
 use App\Services\Run\Plan\SeasonSummaryBuilder;
-use Illuminate\Cache\Events\CacheHit;
-use Illuminate\Cache\Events\KeyWritten;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Event;
 use App\Actions\Run\Plan\ResolveSeasonAction;
 use App\Actions\Run\Plan\ResolveTrailingWeeksAction;
 use App\Actions\Run\Plan\ResolveRecentLongestRunAction;
@@ -791,124 +786,3 @@ it('caps the long run for a race beyond the marathon at the general aerobic ceil
     expect($this->baseline->forUser($marathoner, Carbon::today())['long_run_cap_km'])->toBe(35.0)
         ->and($this->baseline->forUser($ultraRunner, Carbon::today())['long_run_cap_km'])->toBe(22.0);
 });
-
-/** @return ArrayObject<int, KeyWritten> every volume-floor cache write from here on */
-function volumeFloorCacheWrites(): ArrayObject
-{
-    $writes = new ArrayObject();
-    Event::listen(KeyWritten::class, function (KeyWritten $event) use ($writes): void {
-        if (str_starts_with($event->key, 'volume-floor:')) {
-            $writes->append($event);
-        }
-    });
-
-    return $writes;
-}
-
-it('serves the race block\'s volume floor across requests from a cache that equals the uncached solve', function (): void {
-    $user = User::factory()->create();
-    $season = flooredRaceSeason($user, 20.0, 27.0);
-    $writes = volumeFloorCacheWrites();
-    $hits = new ArrayObject();
-    Event::listen(CacheHit::class, function (CacheHit $event) use ($hits): void {
-        if (str_starts_with($event->key, 'volume-floor:')) {
-            $hits->append($event);
-        }
-    });
-
-    $solved = baselineWithEasyPace(null)->forUser($user, Carbon::today());
-    $served = baselineWithEasyPace(null)->forUser($user, Carbon::today());
-
-    $uncached = baselineWithEasyPace(null);
-    $race = RaceGoal::query()->where('user_id', $user->id)->firstOrFail();
-    $block = new ReflectionMethod(TrainingBaseline::class, 'block')->invoke($uncached, $race, $season);
-    $floorKm = new ReflectionMethod(TrainingBaseline::class, 'computeVolumeFloorKm')->invoke(
-        $uncached,
-        $race,
-        $block,
-        $season,
-        $solved['sessions_per_week'],
-        $solved['long_run_cap_km'],
-        $solved['long_run_progression_cap_km'],
-        $uncached->weekLayout($user, Carbon::today()),
-    );
-
-    expect($writes)->toHaveCount(1)
-        ->and($hits)->toHaveCount(1)
-        ->and($hits[0]->key)->toBe($writes[0]->key)
-        ->and(Cache::get($writes[0]->key))->toBeNumeric()
-        ->and((float) Cache::get($writes[0]->key))->toBe($floorKm)
-        ->and($floorKm)->toBeGreaterThan(0.0)
-        ->and($served)->toBe($solved);
-});
-
-it('solves the volume floor afresh once a deploy bumps the cache generation', function (): void {
-    $user = User::factory()->create();
-    flooredRaceSeason($user, 20.0, 27.0);
-    $before = volumeFloorCacheWrites();
-    $solved = baselineWithEasyPace(null)->forUser($user, Carbon::today());
-
-    $this->artisan('plan:forget-volume-floors')->assertSuccessful();
-    $after = volumeFloorCacheWrites();
-    $resolved = baselineWithEasyPace(null)->forUser($user, Carbon::today());
-
-    expect($before)->toHaveCount(2)
-        ->and($after)->toHaveCount(1)
-        ->and($after[0]->key)->not->toBe($before[0]->key)
-        ->and($resolved)->toBe($solved);
-});
-
-it('solves the volume floor afresh when an input to it changes', function (Closure $change): void {
-    $user = User::factory()->create();
-    $season = flooredRaceSeason($user, 20.0, 27.0);
-    $race = RaceGoal::query()->where('user_id', $user->id)->firstOrFail();
-    $before = volumeFloorCacheWrites();
-    baselineWithEasyPace(null)->forUser($user, Carbon::today());
-
-    $change($user, $season, $race);
-    $after = volumeFloorCacheWrites();
-    $cached = baselineWithEasyPace(null)->forUser($user, Carbon::today());
-    foreach ($after as $write) {
-        Cache::forget($write->key);
-    }
-
-    expect($before)->toHaveCount(2)
-        ->and($after)->toHaveCount(1)
-        ->and($after[0]->key)->not->toBe($before[0]->key)
-        ->and($cached)->toBe(baselineWithEasyPace(null)->forUser($user, Carbon::today()));
-})->with([
-    'volume floor' => [fn (User $user, Season $season) => $season->update(['volume_floor_km' => 30.0])],
-    'increases held' => [fn (User $user, Season $season) => $season->update(['increases_held' => true])],
-    'season start' => [fn (User $user, Season $season) => $season->update(['starts_at' => '2026-08-03'])],
-    'race date' => [fn (User $user, Season $season, RaceGoal $race) => $race->update(['race_date' => '2026-11-15'])],
-    'race distance' => [fn (User $user, Season $season, RaceGoal $race) => $race->update(['distance_m' => 21_097])],
-    'sessions per week' => [fn (User $user) => TrainingPreference::factory()->for($user)->create(['sessions_per_week' => 5, 'run_days' => null, 'long_run_day' => null])],
-    'run days' => [fn (User $user) => TrainingPreference::factory()->for($user)->create(['sessions_per_week' => 4, 'run_days' => [0, 2, 4, 5], 'long_run_day' => 5])],
-    'long-run cap' => [fn (User $user, Season $season) => $season->update(['anchor_weekly_volume_km' => 30.0])],
-    'progression cap' => [fn (User $user) => completedRun($user, 20.0, Carbon::today()->subDays(2))],
-]);
-
-it('keys the cached volume floor on every field of the week layout', function (string $field, mixed $value): void {
-    $user = User::factory()->create();
-    $season = flooredRaceSeason($user, 20.0, 27.0);
-    $race = RaceGoal::query()->where('user_id', $user->id)->firstOrFail();
-    $layout = ['projected_race_seconds' => null, 'fall_off_tilt' => null, 'run_days' => null, 'long_run_day' => null, 'two_run_quality_eligible' => false];
-    $floorFor = function (array $layout) use ($race, $season): void {
-        $baseline = baselineWithEasyPace(null);
-        $block = new ReflectionMethod(TrainingBaseline::class, 'block')->invoke($baseline, $race, $season);
-        new ReflectionMethod(TrainingBaseline::class, 'volumeFloorKm')->invoke($baseline, $race, $block, $season, 4, 13.5, 15.4, $layout);
-    };
-    $writes = volumeFloorCacheWrites();
-
-    $floorFor($layout);
-    $floorFor([...$layout, $field => $value]);
-
-    expect($writes)->toHaveCount(2)
-        ->and($writes[1]->key)->not->toBe($writes[0]->key);
-})->with([
-    'projected race time' => ['projected_race_seconds', 2_900.0],
-    'fall-off tilt' => ['fall_off_tilt', FallOffTilt::cases()[0]],
-    'run days' => ['run_days', [0, 2, 4, 5]],
-    'long-run day' => ['long_run_day', 5],
-    'two-run quality' => ['two_run_quality_eligible', true],
-]);

@@ -19,7 +19,6 @@ use App\Services\Run\Metrics\TrainingPaceCalculator;
 use App\Services\Run\Metrics\VdotEstimator;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Cache;
 use App\Actions\Run\Plan\ResolveTrailingWeeksAction;
 use App\Actions\Run\Plan\ResolveTrainingPreferenceAction;
 use App\Actions\Run\Plan\ResolveSeasonAction;
@@ -180,11 +179,6 @@ final class TrainingBaseline
     /** How far back the volume floor averages the athlete's actual weeks. */
     private const int VOLUME_FLOOR_WEEKS = 12;
 
-    /** Bumped by `plan:forget-volume-floors` on every `artisan optimize`, so a deploy never reads a floor an older solve cached. */
-    public const string VOLUME_FLOOR_GENERATION_KEY = 'volume-floor:generation';
-
-    private const int VOLUME_FLOOR_CACHE_TTL_SECONDS = 86_400;
-
     public function __construct(
         private readonly VdotEstimator $vdotEstimator,
         private readonly TrainingPaceCalculator $paceCalculator,
@@ -208,14 +202,13 @@ final class TrainingBaseline
     private array $blockMemo = [];
 
     /**
-     * The block's volume floor, keyed on every input {@see self::computeVolumeFloorKm()}
-     * reads, the same key its cross-request cache entry carries.
+     * The block's volume floor, keyed on the block key plus the season's
+     * `volume_floor_km`, `sessionsPerWeek`, the two session ceilings and the
+     * week layout — the only other inputs {@see self::computeVolumeFloorKm()} reads.
      *
      * @var array<string, float>
      */
     private array $volumeFloorMemo = [];
-
-    private ?int $volumeFloorGeneration = null;
 
     /**
      * @return array{sessions_per_week: int, weekly_volume_km: float, long_run_km: float, long_run_cap_km: float, long_run_progression_cap_km: float, self_scaled: bool}
@@ -504,16 +497,6 @@ final class TrainingBaseline
         return ceil($targetKm / max($rampMultipliers) * 10) / 10;
     }
 
-    private function volumeFloorGeneration(): int
-    {
-        if ($this->volumeFloorGeneration === null) {
-            $generation = Cache::store('durable')->get(self::VOLUME_FLOOR_GENERATION_KEY);
-            $this->volumeFloorGeneration = is_numeric($generation) ? (int) $generation : 0;
-        }
-
-        return $this->volumeFloorGeneration;
-    }
-
     /**
      * The baseline at which the block's weeks, as {@see WeekPlanBuilder} lays
      * them out with {@see self::weekLayout()} and {@see SegmentGenerator::coreKmFor()}
@@ -533,30 +516,9 @@ final class TrainingBaseline
      */
     private function volumeFloorKm(RaceGoal $race, array $block, Season $season, int $sessionsPerWeek, float $longRunCapKm, float $progressionCapKm, array $layout): float
     {
-        $key = 'volume-floor:'.$this->volumeFloorGeneration().':'.hash('xxh128', serialize([
-            $race->distance_m,
-            $race->race_date->toDateString(),
-            $season->starts_at->toDateString(),
-            $season->increases_held,
-            $season->volume_floor_km,
-            $sessionsPerWeek,
-            $longRunCapKm,
-            $progressionCapKm,
-            $layout,
-        ]));
-        if (array_key_exists($key, $this->volumeFloorMemo)) {
-            return $this->volumeFloorMemo[$key];
-        }
+        $key = implode('|', [self::blockKey($race, $season), $season->volume_floor_km ?? 'null', $sessionsPerWeek, $longRunCapKm, $progressionCapKm, json_encode($layout, JSON_THROW_ON_ERROR)]);
 
-        $cached = Cache::get($key);
-        if (is_numeric($cached)) {
-            return $this->volumeFloorMemo[$key] = (float) $cached;
-        }
-
-        $floorKm = $this->computeVolumeFloorKm($race, $block, $season, $sessionsPerWeek, $longRunCapKm, $progressionCapKm, $layout);
-        Cache::put($key, $floorKm, self::VOLUME_FLOOR_CACHE_TTL_SECONDS);
-
-        return $this->volumeFloorMemo[$key] = $floorKm;
+        return $this->volumeFloorMemo[$key] ??= $this->computeVolumeFloorKm($race, $block, $season, $sessionsPerWeek, $longRunCapKm, $progressionCapKm, $layout);
     }
 
     /**

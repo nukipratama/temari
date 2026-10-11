@@ -120,7 +120,7 @@ The `deploy` job lives in its own workflow, [.github/workflows/deploy.yml](.gith
 8. Detect pending migrations in both schemas. Only when either has work, enable maintenance unless the owner already did.
 9. `migrate --force`, then `migrate --database=analytics --path=database/migrations/analytics --force` (one-shot `compose run --rm --no-deps app`).
 10. Roll `app horizon` onto the new image (`up -d --no-deps`) — the recreate gives Horizon fresh workers, so no separate `horizon:terminate`.
-11. `artisan optimize` (caches config inside the running container, where the real env is loaded, and runs `plan:forget-volume-floors`, which retires every cached volume-floor solve; it runs after the roll so the old code can no longer cache a floor under the new generation, and a cache outage there warns instead of failing the deploy).
+11. `artisan optimize` (caches config inside the running container, where the real env is loaded).
 12. Poll shallow `/ready`, then deep `/up`, and smoke-test `/login` (which must carry no `X-Powered-By` header) plus the PWA assets while maintenance is still active.
 13. Resume `scheduler`, roll `pulse`, then lift maintenance only if this deploy enabled it. Owner maintenance remains untouched.
 14. Prune SHA-tagged `temari/app` images that aren't `:latest`/`:previous`.
