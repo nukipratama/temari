@@ -234,14 +234,33 @@ describe('SeasonHeaderCard', () => {
         expect(screen.queryByText(/next:/)).not.toBeInTheDocument();
     });
 
-    it('names the general zone as "maintain" while the current week is in it, and the block that follows as next', () => {
+    it('names the general zone as "maintain" and its coming deload as next', () => {
         renderCard({ weeks: GENERAL_ZONE_CURRENT });
 
         expect(screen.getByRole('heading', { level: 2 })).toHaveTextContent(
             'maintain week.',
         );
-        expect(screen.getByText(/next: base in 2 weeks/)).toBeInTheDocument();
-        expect(screen.queryByText(/build|deload/)).not.toBeInTheDocument();
+        expect(screen.getByText(/next: deload in 1 week/)).toBeInTheDocument();
+        expect(screen.queryByText(/build/)).not.toBeInTheDocument();
+    });
+
+    it('reads a general-zone deload week as "deload week.", with maintain next', () => {
+        renderCard({
+            weeks: [
+                {
+                    ...GENERAL_ZONE_CURRENT[0],
+                    phase: 'deload',
+                },
+                { ...GENERAL_ZONE_CURRENT[1], phase: 'build' },
+            ],
+        });
+
+        expect(screen.getByRole('heading', { level: 2 })).toHaveTextContent(
+            'deload week.',
+        );
+        expect(
+            screen.getByText(/next: maintain in 1 week/),
+        ).toBeInTheDocument();
     });
 
     it('renders Temari’s take, always visible, when the season narration exists', () => {

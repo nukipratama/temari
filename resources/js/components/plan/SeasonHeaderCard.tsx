@@ -7,7 +7,7 @@ import Eyebrow from '@/components/ui/Eyebrow';
 import {
     nextPhaseOf,
     PHASE_LABEL,
-    phaseGroupKey,
+    seasonPhaseKey,
     weeksLabel,
     weeksToRace,
 } from '@/lib/plan';
@@ -38,7 +38,7 @@ export default function SeasonHeaderCard({
 }>) {
     const currentWeek = weeks.find((w) => w.type === 'current');
     const currentGroupKey =
-        currentWeek === undefined ? undefined : phaseGroupKey(currentWeek);
+        currentWeek === undefined ? undefined : seasonPhaseKey(currentWeek);
     const next = nextPhaseOf(weeks);
     const raceWeeks =
         currentWeek === undefined || raceDate === null

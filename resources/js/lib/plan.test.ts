@@ -252,7 +252,7 @@ describe('nextPhaseOf', () => {
         ).toEqual({ key: 'build', inWeeks: 2 });
     });
 
-    it('reads every general-zone week as one phase, whatever its own build/deload', () => {
+    it('reads a deload inside the general zone as the next phase', () => {
         expect(
             nextPhaseOf([
                 week({ zone: 'general', phase: 'build', type: 'current' }),
@@ -267,7 +267,20 @@ describe('nextPhaseOf', () => {
                     phase: 'base',
                 }),
             ]),
-        ).toEqual({ key: 'base', inWeeks: 2 });
+        ).toEqual({ key: 'deload', inWeeks: 1 });
+    });
+
+    it('reads the general weeks after a general-zone deload as maintain', () => {
+        expect(
+            nextPhaseOf([
+                week({ zone: 'general', phase: 'deload', type: 'current' }),
+                week({
+                    week_start: '2026-06-22',
+                    zone: 'general',
+                    phase: 'build',
+                }),
+            ]),
+        ).toEqual({ key: 'general', inWeeks: 1 });
     });
 
     it('is null when the rest of the season stays in the current phase', () => {
@@ -277,7 +290,7 @@ describe('nextPhaseOf', () => {
                 week({
                     week_start: '2026-06-22',
                     zone: 'general',
-                    phase: 'deload',
+                    phase: 'build',
                 }),
             ]),
         ).toBeNull();

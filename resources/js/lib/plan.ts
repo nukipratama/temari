@@ -122,6 +122,13 @@ export function phaseGroupKey(week: SeasonSummaryWeek): string {
     return week.zone === 'general' ? GENERAL_PHASE_KEY : week.phase;
 }
 
+/** The season card's phase: like phaseGroupKey, but a deload inside the general zone still reads as one. */
+export function seasonPhaseKey(week: SeasonSummaryWeek): string {
+    return week.zone === 'general' && week.phase === 'deload'
+        ? 'deload'
+        : phaseGroupKey(week);
+}
+
 export const PHASE_LABEL: Record<string, string> = {
     base: 'base',
     build: 'build',
@@ -140,9 +147,9 @@ export function nextPhaseOf(
         return null;
     }
 
-    const currentKey = phaseGroupKey(weeks[currentIndex]);
+    const currentKey = seasonPhaseKey(weeks[currentIndex]);
     for (let i = currentIndex + 1; i < weeks.length; i++) {
-        const key = phaseGroupKey(weeks[i]);
+        const key = seasonPhaseKey(weeks[i]);
         if (key !== currentKey) {
             return { key, inWeeks: i - currentIndex };
         }
