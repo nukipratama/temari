@@ -1,0 +1,11 @@
+{
+    "route": "/history?view=calendar",
+    "steps": [
+        ["waitFor", "button[aria-label='effort key']"],
+        ["click", "button[aria-label='effort key']"],
+        ["waitFor", "[role='dialog']"],
+        ["wait", 1200],
+        ["press", "Escape"],
+        ["wait", 800]
+    ]
+}
