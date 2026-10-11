@@ -196,6 +196,9 @@ vi.mock('@inertiajs/react', async () => {
         data: string | string[];
         fallback: ReactNode | (() => ReactNode);
     }) => {
+        if (!fallback) {
+            throw new Error('`<Deferred>` requires a `fallback` prop');
+        }
         const keys = Array.isArray(data) ? data : [data];
         if (keys.some((key) => mockPendingDeferred.has(key))) {
             return typeof fallback === 'function' ? fallback() : fallback;

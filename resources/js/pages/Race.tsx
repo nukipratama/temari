@@ -149,7 +149,7 @@ export default function Race({
                     </div>
                 )}
 
-                <Deferred data="past_races" fallback={null}>
+                <Deferred data="past_races" fallback={<></>}>
                     {() =>
                         pastRaces.map((past) => (
                             <RaceOutcomeCard
