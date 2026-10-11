@@ -8,7 +8,7 @@ import { cn } from '@/lib/cn';
 
 /**
  * Temari's take on the season — the labelled narration block in the plan's
- * season header.
+ * season header, with its freshness stamp and an icon Reread beside it.
  */
 export default function TemariTake({
     analysis,
@@ -27,6 +27,7 @@ export default function TemariTake({
                 <AnalysisStatus
                     analysis={analysis}
                     thinkingMark
+                    rereadAsIcon
                     inertiaReloadProps={['planNarration']}
                     size="sm"
                     renderContent={(content) => (

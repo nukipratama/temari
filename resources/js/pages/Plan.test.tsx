@@ -240,7 +240,7 @@ describe('Plan', () => {
     it('renders the season header card above the week and the weeks list', () => {
         renderPlan();
 
-        expect(screen.getByText(/^week 1 of 12/)).toBeInTheDocument();
+        expect(screen.getByText('season · week 1 of 12')).toBeInTheDocument();
         expect(screen.getByText('82%')).toBeInTheDocument();
         expect(
             screen.getByRole('list', { name: 'season weeks' }),

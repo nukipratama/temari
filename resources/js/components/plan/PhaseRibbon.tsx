@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 
 import { phaseColor } from '@/lib/chartTokens';
 import { cn } from '@/lib/cn';
@@ -39,6 +39,23 @@ export default function PhaseRibbon({
     weeks,
 }: Readonly<{ weeks: SeasonSummaryWeek[] }>) {
     const [activeIndex, setActiveIndex] = useState<number | null>(null);
+    const [tipLeft, setTipLeft] = useState(0);
+    const trackRef = useRef<HTMLDivElement>(null);
+    const tipRef = useRef<HTMLSpanElement>(null);
+
+    useLayoutEffect(() => {
+        const track = trackRef.current;
+        const tip = tipRef.current;
+        if (activeIndex === null || track === null || tip === null) {
+            return;
+        }
+
+        const centre = ((activeIndex + 0.5) / weeks.length) * track.clientWidth;
+        const maxLeft = Math.max(track.clientWidth - tip.offsetWidth, 0);
+        setTipLeft(
+            Math.min(Math.max(centre - tip.offsetWidth / 2, 0), maxLeft),
+        );
+    }, [activeIndex, weeks.length]);
 
     if (!weeks.some((week) => week.zone === 'block')) {
         return null;
@@ -51,8 +68,25 @@ export default function PhaseRibbon({
     const active = activeIndex === null ? null : weeks[activeIndex];
 
     return (
-        <div className="mt-3">
-            <div className="flex h-3 w-full rounded-full border border-border">
+        <div className="relative mt-3">
+            <p
+                aria-live="polite"
+                className="pointer-events-none absolute inset-x-0 bottom-full z-10 mb-1.5"
+            >
+                {active && (
+                    <span
+                        ref={tipRef}
+                        className="absolute bottom-0 rounded-full border border-border bg-popover px-2 py-0.5 text-label-micro whitespace-nowrap text-foreground shadow-e1"
+                        style={{ left: tipLeft }}
+                    >
+                        {cellLabel(active)}
+                    </span>
+                )}
+            </p>
+            <div
+                ref={trackRef}
+                className="flex h-3 w-full rounded-full border border-border"
+            >
                 {weeks.map((week, index) => (
                     <button
                         key={week.week_start}
@@ -78,9 +112,6 @@ export default function PhaseRibbon({
                     />
                 ))}
             </div>
-            <p className="mt-1 text-label-micro text-text-2" aria-live="polite">
-                {active ? cellLabel(active) : ' '}
-            </p>
         </div>
     );
 }

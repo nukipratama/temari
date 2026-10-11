@@ -51,4 +51,23 @@ describe('TemariTake', () => {
             screen.queryByText('Base has been steady, no red flags.'),
         ).not.toBeInTheDocument();
     });
+
+    it('draws reread as an icon button beside the freshness stamp', () => {
+        render(
+            <TemariTake
+                analysis={analysis({
+                    generated_at: new Date(
+                        Date.now() - 3 * 24 * 60 * 60 * 1000,
+                    ).toISOString(),
+                })}
+            />,
+        );
+
+        const reread = screen.getByRole('button', { name: 'reread' });
+
+        expect(reread).not.toHaveClass('bg-muted');
+        expect(reread.parentElement).toBe(
+            screen.getByText(/^generated /).parentElement,
+        );
+    });
 });

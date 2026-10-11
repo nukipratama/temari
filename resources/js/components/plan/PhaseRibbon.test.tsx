@@ -203,6 +203,27 @@ describe('PhaseRibbon', () => {
         expect(screen.getByText('peak')).toBeInTheDocument();
     });
 
+    it('floats the label above the ribbon in an absolutely positioned live region, adding no in-flow caption', () => {
+        const { container } = render(<PhaseRibbon weeks={RACE_SEASON} />);
+        const wrapper = container.firstElementChild as HTMLElement;
+        const inFlowChildren = () =>
+            Array.from(wrapper.children).filter(
+                (child) => !child.classList.contains('absolute'),
+            );
+
+        expect(inFlowChildren()).toHaveLength(1);
+
+        fireEvent.mouseEnter(screen.getByRole('button', { name: 'peak' }));
+
+        const label = screen.getByText('peak');
+        expect(label).toHaveClass('absolute', 'bg-popover', 'text-foreground');
+        expect(label.closest('[aria-live="polite"]')).toHaveClass(
+            'absolute',
+            'bottom-full',
+        );
+        expect(inFlowChildren()).toHaveLength(1);
+    });
+
     it('reveals the general band label on hover, not a general week’s own phase', () => {
         render(<PhaseRibbon weeks={RACE_SEASON} />);
 

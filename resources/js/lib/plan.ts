@@ -115,11 +115,18 @@ export const GENERAL_PHASE_KEY = 'general';
  * one shared "maintain" identity for every `zone: general` week — the
  * self-scaled cycle alternates Build/Deload before the block opens, and
  * naming that would read as noise rather than as the season's real arc. Used
- * everywhere a week's phase would otherwise be shown or grouped: the season
- * header, the phase legend ({@see phasesOf}), and the timeline's phase runs.
+ * everywhere a week's phase would otherwise be shown or grouped: the phase
+ * ribbon, the phase legend ({@see phasesOf}), and the timeline's phase runs.
  */
 export function phaseGroupKey(week: SeasonSummaryWeek): string {
     return week.zone === 'general' ? GENERAL_PHASE_KEY : week.phase;
+}
+
+/** The season card's phase: like phaseGroupKey, but a deload inside the general zone still reads as one. */
+export function seasonPhaseKey(week: SeasonSummaryWeek): string {
+    return week.zone === 'general' && week.phase === 'deload'
+        ? 'deload'
+        : phaseGroupKey(week);
 }
 
 export const PHASE_LABEL: Record<string, string> = {
@@ -131,28 +138,39 @@ export const PHASE_LABEL: Record<string, string> = {
     [GENERAL_PHASE_KEY]: 'maintain',
 };
 
-/**
- * The Monday-to-Sunday span the general zone covers — the first general
- * week's start through the last general week's end — or `null` when the
- * season has no general weeks (already inside the block, or goal-less).
- * Reading this off `weeks` rather than the season's own `starts_at`/`ends_at`
- * keeps the header from claiming "maintain" spans dates that are really the
- * race block's.
- */
-export function generalZoneSpan(
+/** The first later week whose phase identity differs from the current week's, and how many weeks away it is. */
+export function nextPhaseOf(
     weeks: SeasonSummaryWeek[],
-): { start: string; end: string } | null {
-    const generalWeeks = weeks.filter((week) => week.zone === 'general');
-    if (generalWeeks.length === 0) {
+): { key: string; inWeeks: number } | null {
+    const currentIndex = weeks.findIndex((week) => week.type === 'current');
+    if (currentIndex === -1) {
         return null;
     }
 
-    const last = generalWeeks[generalWeeks.length - 1];
+    const currentKey = seasonPhaseKey(weeks[currentIndex]);
+    for (let i = currentIndex + 1; i < weeks.length; i++) {
+        const key = seasonPhaseKey(weeks[i]);
+        if (key !== currentKey) {
+            return { key, inWeeks: i - currentIndex };
+        }
+    }
 
-    return {
-        start: generalWeeks[0].week_start,
-        end: isoDateLocal(sundayOf(mondayOf(last.week_start))),
-    };
+    return null;
+}
+
+const MS_PER_WEEK = 7 * 24 * 60 * 60 * 1000;
+
+/** Whole weeks from the week starting `weekStartIso` to the week the race date falls in; 0 in race week. */
+export function weeksToRace(weekStartIso: string, raceDateIso: string): number {
+    return Math.round(
+        (mondayOf(raceDateIso).getTime() - mondayOf(weekStartIso).getTime()) /
+            MS_PER_WEEK,
+    );
+}
+
+/** "1 week", "8 weeks". */
+export function weeksLabel(count: number): string {
+    return `${count} ${count === 1 ? 'week' : 'weeks'}`;
 }
 
 export const SESSION_TYPE_LABEL: Record<string, string> = {
