@@ -1,0 +1,169 @@
+{
+    "route": "/plan",
+    "steps": [
+        [
+            "waitFor",
+            "div.h-3.rounded-full > button"
+        ],
+        [
+            "hover",
+            "div.h-3.rounded-full > button:nth-child(1)"
+        ],
+        [
+            "wait",
+            260
+        ],
+        [
+            "hover",
+            "div.h-3.rounded-full > button:nth-child(2)"
+        ],
+        [
+            "wait",
+            260
+        ],
+        [
+            "hover",
+            "div.h-3.rounded-full > button:nth-child(3)"
+        ],
+        [
+            "wait",
+            260
+        ],
+        [
+            "hover",
+            "div.h-3.rounded-full > button:nth-child(4)"
+        ],
+        [
+            "wait",
+            260
+        ],
+        [
+            "hover",
+            "div.h-3.rounded-full > button:nth-child(5)"
+        ],
+        [
+            "wait",
+            260
+        ],
+        [
+            "hover",
+            "div.h-3.rounded-full > button:nth-child(6)"
+        ],
+        [
+            "wait",
+            260
+        ],
+        [
+            "hover",
+            "div.h-3.rounded-full > button:nth-child(7)"
+        ],
+        [
+            "wait",
+            260
+        ],
+        [
+            "hover",
+            "div.h-3.rounded-full > button:nth-child(8)"
+        ],
+        [
+            "wait",
+            260
+        ],
+        [
+            "hover",
+            "div.h-3.rounded-full > button:nth-child(9)"
+        ],
+        [
+            "wait",
+            260
+        ],
+        [
+            "hover",
+            "div.h-3.rounded-full > button:nth-child(10)"
+        ],
+        [
+            "wait",
+            260
+        ],
+        [
+            "hover",
+            "div.h-3.rounded-full > button:nth-child(11)"
+        ],
+        [
+            "wait",
+            260
+        ],
+        [
+            "hover",
+            "div.h-3.rounded-full > button:nth-child(12)"
+        ],
+        [
+            "wait",
+            260
+        ],
+        [
+            "hover",
+            "div.h-3.rounded-full > button:nth-child(13)"
+        ],
+        [
+            "wait",
+            260
+        ],
+        [
+            "hover",
+            "div.h-3.rounded-full > button:nth-child(12)"
+        ],
+        [
+            "wait",
+            260
+        ],
+        [
+            "hover",
+            "div.h-3.rounded-full > button:nth-child(10)"
+        ],
+        [
+            "wait",
+            260
+        ],
+        [
+            "hover",
+            "div.h-3.rounded-full > button:nth-child(8)"
+        ],
+        [
+            "wait",
+            260
+        ],
+        [
+            "hover",
+            "div.h-3.rounded-full > button:nth-child(5)"
+        ],
+        [
+            "wait",
+            260
+        ],
+        [
+            "hover",
+            "div.h-3.rounded-full > button:nth-child(3)"
+        ],
+        [
+            "wait",
+            260
+        ],
+        [
+            "hover",
+            "div.h-3.rounded-full > button:nth-child(1)"
+        ],
+        [
+            "wait",
+            260
+        ],
+        [
+            "hover",
+            "h1"
+        ],
+        [
+            "wait",
+            600
+        ]
+    ]
+}
