@@ -214,7 +214,10 @@ export default function PlanRaceCard({
                     go get your {goal}.
                 </p>
                 <p className="mt-1 font-mono text-xs text-sky-2 tabular-nums">
-                    {goalPace(card)} · start easy, finish strong
+                    {goalPace(card)}
+                </p>
+                <p className="font-mono text-xs text-sky-2">
+                    start easy, finish strong
                 </p>
             </Link>
         );
@@ -231,8 +234,9 @@ export default function PlanRaceCard({
                         : `race ${weekday(card.race_date)}`}
                 </Eyebrow>
                 <p className="mt-1 font-mono text-sm text-foreground tabular-nums">
-                    {distance} {goal} · pace {goalPace(card)} · stay fresh
+                    {distance} {goal} · pace {goalPace(card)}
                 </p>
+                <p className="font-mono text-xs text-text-2">stay fresh</p>
             </RaceLinkCard>
         );
     }
@@ -245,8 +249,11 @@ export default function PlanRaceCard({
             </Eyebrow>
             <p className="mt-1 font-mono text-sm text-foreground tabular-nums">
                 {distance} {goal}
-                {supportedTimeSec != null &&
-                    ` vs supported ${formatRaceTime(supportedTimeSec)}`}
+                {supportedTimeSec != null && (
+                    <span className="whitespace-nowrap">
+                        {` vs supported ${formatRaceTime(supportedTimeSec)}`}
+                    </span>
+                )}
             </p>
         </RaceLinkCard>
     );

@@ -80,6 +80,9 @@ describe('PlanRaceCard', () => {
         expect(screen.getByRole('link')).toHaveTextContent(
             '10K 60:00 vs supported 62:10',
         );
+        expect(screen.getByText('vs supported 62:10')).toHaveClass(
+            'whitespace-nowrap',
+        );
     });
 
     it('counts a race under two weeks out in days', () => {
@@ -114,9 +117,10 @@ describe('PlanRaceCard', () => {
         expect(link).toHaveAttribute('href', '/race');
         expect(link).toHaveClass('border-citrus');
         expect(link).toHaveTextContent('race saturday');
-        expect(link).toHaveTextContent(
-            '10K 60:00 · pace 6:00 /km · stay fresh',
-        );
+        expect(
+            screen.getByText('10K 60:00 · pace 6:00 /km'),
+        ).toBeInTheDocument();
+        expect(screen.getByText('stay fresh').tagName).toBe('P');
     });
 
     it('says seven days at the edge of race week', () => {
@@ -152,9 +156,10 @@ describe('PlanRaceCard', () => {
         expect(hero).toHaveClass('bg-horizon');
         expect(hero).toHaveTextContent('race day · 10K');
         expect(screen.getByText('go get your 50:00.')).toHaveClass('text-sky');
-        expect(
-            screen.getByText('5:00 /km · start easy, finish strong'),
-        ).toHaveClass('text-sky-2');
+        expect(screen.getByText('5:00 /km')).toHaveClass('text-sky-2');
+        expect(screen.getByText('start easy, finish strong')).toHaveClass(
+            'text-sky-2',
+        );
     });
 
     it('draws the result card with the neutral border, not the text colour', () => {
