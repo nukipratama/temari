@@ -155,7 +155,7 @@ week (`is_current_week`) waits for the scheduler. See [[recaps]] and
 ## Calendar — the weekly bar-chart grid
 
 [Calendar.tsx](../../resources/js/pages/Activities/Calendar.tsx) renders in this order:
-month nav (with a `key` chip) → consistency line → monthly recap card → grid
+month nav → consistency line → monthly recap card → grid
 (the grid has a rounded outer frame, without day-column borders).
 (#1343 replaced the former bordered-box + mood-dot grid, prototype variant C
 on `prototype/calendar-redesign`). The consistency line (`consistencyOf` in
@@ -183,7 +183,8 @@ run nor a plan shows only the baseline and a muted date. **Mood left the
 grid** — it now appears only as a word in the multi-run sheet and the run
 detail page. The effort key (words, not colour alone) is
 [EffortLegend](../../resources/js/components/history/EffortLegend.tsx), a
-lazy-loaded bottom sheet the `key` chip in the month header opens.
+lazy-loaded bottom sheet opened by the ⓘ button in the grid's empty top-left
+corner, on the `mon … sun` weekday row.
 
 Tap behaviour is per-day: one run links straight to [[run-detail]], 2+ runs
 opens [DayRunsSheet](../../resources/js/components/history/DayRunsSheet.tsx)

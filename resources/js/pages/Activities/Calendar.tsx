@@ -1,5 +1,5 @@
 import { Deferred, Head, Link, router } from '@inertiajs/react';
-import { ChevronLeft, ChevronRight, Info } from 'lucide-react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Suspense, useMemo, useState } from 'react';
 
 import type { AnalysisPayload, WeeklySnapshotWithRecap } from '@/types/inertia';
@@ -19,7 +19,6 @@ import PageContainer from '@/components/ui/PageContainer';
 import { useHorizontalSwipe } from '@/hooks/useHorizontalSwipe';
 import { appLayout } from '@/layouts/appLayout';
 import { lazyIsland } from '@/lib/lazyIsland';
-import { pillButtonVariants } from '@/lib/variants';
 import { consistencyOf } from '@/pages/Activities/calendarBars';
 
 import { useCalendar, type CalendarCell } from './useCalendar';
@@ -123,10 +122,6 @@ export default function Calendar({
                         label={monthLabel}
                         prevMonth={prevMonth}
                         nextMonth={nextMonth}
-                        onOpenKey={() => {
-                            setAskedKey(true);
-                            setKeyOpen(true);
-                        }}
                     />
                 </div>
 
@@ -176,6 +171,10 @@ export default function Calendar({
                                 <CalendarGrid
                                     weeks={weeks}
                                     snapshotsByWeek={snapshotsByWeek}
+                                    onOpenKey={() => {
+                                        setAskedKey(true);
+                                        setKeyOpen(true);
+                                    }}
                                     onOpenDay={(cell) => {
                                         setAskedDayRuns(true);
                                         setOpenDay(cell);
@@ -212,12 +211,10 @@ function MonthNav({
     label,
     prevMonth,
     nextMonth,
-    onOpenKey,
 }: Readonly<{
     label: string;
     prevMonth: string;
     nextMonth: string;
-    onOpenKey: () => void;
 }>) {
     return (
         <div className="flex w-full items-center justify-between gap-2">
@@ -226,24 +223,9 @@ function MonthNav({
                 icon={ChevronLeft}
                 label="previous month"
             />
-            <div className="flex items-center gap-2">
-                <h2 className="font-serif text-[0.9375rem] leading-[1.2] font-semibold text-foreground">
-                    {label}
-                </h2>
-                <button
-                    type="button"
-                    aria-label="effort key"
-                    aria-haspopup="dialog"
-                    onClick={onOpenKey}
-                    className={pillButtonVariants({
-                        tone: 'muted',
-                        size: 'xs',
-                    })}
-                >
-                    key
-                    <Icon icon={Info} width={12} height={12} aria-hidden />
-                </button>
-            </div>
+            <h2 className="font-serif text-[0.9375rem] leading-[1.2] font-semibold text-foreground">
+                {label}
+            </h2>
             <NavButton
                 month={nextMonth}
                 icon={ChevronRight}

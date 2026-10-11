@@ -144,12 +144,12 @@ describe('calendar', () => {
         expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
     });
 
-    it('renders the month label and the lowercase two-letter weekday header', () => {
+    it('renders the month label and the three-letter weekday header', () => {
         render(<Calendar {...BASE_PROPS} cells={TWO_WEEK_CELLS} />);
         expect(
             screen.getByRole('heading', { name: 'May 2026' }),
         ).toBeInTheDocument();
-        for (const day of ['mo', 'tu', 'we', 'th', 'fr', 'sa', 'su']) {
+        for (const day of ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']) {
             expect(screen.getByText(day)).toBeInTheDocument();
         }
     });
@@ -280,7 +280,7 @@ describe('calendar', () => {
         );
     });
 
-    it('keeps the effort key out of sight until the key chip is pressed', async () => {
+    it('keeps the effort key out of sight until the key button is pressed', async () => {
         render(<Calendar {...BASE_PROPS} cells={TWO_WEEK_CELLS} />);
 
         expect(screen.queryByText('unscored')).not.toBeInTheDocument();
@@ -303,12 +303,12 @@ describe('calendar', () => {
         expect(screen.queryByText('blazing')).not.toBeInTheDocument();
     });
 
-    it('puts the key chip in the month header beside the month name', () => {
+    it('puts the effort key button in the weekday header, not the month nav', () => {
         render(<Calendar {...BASE_PROPS} cells={TWO_WEEK_CELLS} />);
 
-        const chip = screen.getByRole('button', { name: 'effort key' });
-        expect(chip).toHaveTextContent('key');
-        expect(chip.parentElement).toContainElement(
+        const key = screen.getByRole('button', { name: 'effort key' });
+        expect(key.parentElement).toContainElement(screen.getByText('mon'));
+        expect(key.parentElement).not.toContainElement(
             screen.getByRole('heading', { name: 'May 2026' }),
         );
     });

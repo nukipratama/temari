@@ -1,5 +1,5 @@
 import { Link } from '@inertiajs/react';
-import { Sparkle } from 'lucide-react';
+import { Info, Sparkle } from 'lucide-react';
 import { type ReactNode, useState } from 'react';
 
 import type { WeeklySnapshotWithRecap } from '@/types/inertia';
@@ -27,7 +27,7 @@ import {
 
 import WeeklyStatLine from './WeeklyStatLine';
 
-const WEEKDAYS = ['mo', 'tu', 'we', 'th', 'fr', 'sa', 'su'] as const;
+const WEEKDAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const;
 const COLS = 'grid grid-cols-[3.25rem_repeat(7,minmax(0,1fr))] gap-x-1';
 
 /**
@@ -38,10 +38,12 @@ const COLS = 'grid grid-cols-[3.25rem_repeat(7,minmax(0,1fr))] gap-x-1';
 export default function CalendarGrid({
     weeks,
     snapshotsByWeek,
+    onOpenKey,
     onOpenDay,
 }: Readonly<{
     weeks: ReadonlyArray<WeekRow>;
     snapshotsByWeek: Map<string, WeeklySnapshotWithRecap>;
+    onOpenKey: () => void;
     onOpenDay: (cell: CalendarCell) => void;
 }>) {
     const [openWeek, setOpenWeek] = useState<string | null>(null);
@@ -49,8 +51,16 @@ export default function CalendarGrid({
 
     return (
         <div>
-            <div className={cn(COLS, 'mb-1')}>
-                <span aria-hidden />
+            <div className={cn(COLS, 'mb-1 items-center')}>
+                <button
+                    type="button"
+                    aria-label="effort key"
+                    aria-haspopup="dialog"
+                    onClick={onOpenKey}
+                    className="focus-ring hit-area justify-self-start rounded-full text-text-3 hover:text-foreground"
+                >
+                    <Icon icon={Info} width={14} height={14} aria-hidden />
+                </button>
                 {WEEKDAYS.map((label) => (
                     <span
                         key={label}
