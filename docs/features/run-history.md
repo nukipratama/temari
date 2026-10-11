@@ -110,7 +110,8 @@ default with a deterministic, rule-based read instead of the general
 explanation.
 
 The Feed draws no legend. Each run row names its own effort and, when it has
-one, its mood on the time/pace/bpm line (`steady · felt overloaded · 35:14 · 6:31`),
+one, its mood on a line of their own (`steady · felt overloaded`) above the
+time/pace/bpm line, so a phone-width wrap never strands a separator,
 coloured with the effort's and mood's `-ink` class; an unscored run says
 `unscored`. The effort colour sits on the row's left border only, so the dashed
 divider between rows stays neutral.

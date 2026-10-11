@@ -169,32 +169,29 @@ describe('RunListRow', () => {
         expect(link).not.toHaveClass('border-ember');
     });
 
-    it('names the effort and the mood on the metrics line, in their ink classes', () => {
+    it('names the effort and the mood in their ink classes', () => {
         render(
             <RunListRow
                 detail={detail({ effort: 'steady' })}
                 mood="overloaded"
             />,
         );
-        const metricsLine = screen.getByText('150 bpm').parentElement;
-        expect(metricsLine).toContainElement(screen.getByText('steady'));
         expect(screen.getByText('steady')).toHaveClass('text-citrus-ink');
-        expect(metricsLine).toContainElement(
-            screen.getByText('felt overloaded'),
-        );
         expect(screen.getByText('felt overloaded')).toHaveClass(
             'text-mood-overloaded-ink',
         );
     });
 
-    it('puts the effort and mood words ahead of the time and pace', () => {
+    it('gives the effort and mood words their own line above the time and pace', () => {
         render(
             <RunListRow detail={detail({ effort: 'easy' })} mood="blazing" />,
         );
+        const wordsLine = screen.getByText('easy').parentElement;
         const metricsLine = screen.getByText('150 bpm').parentElement;
-        expect(metricsLine?.textContent).toMatch(
-            /^easy·felt blazing·1:00:00·6:00·150 bpm/,
-        );
+        expect(wordsLine).not.toBe(metricsLine);
+        expect(wordsLine?.textContent).toBe('easy·felt blazing');
+        expect(metricsLine?.textContent).toMatch(/^1:00:00·6:00·150 bpm/);
+        expect(wordsLine?.nextElementSibling).toBe(metricsLine);
     });
 
     it('omits the felt part when there is no mood', () => {

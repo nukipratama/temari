@@ -92,7 +92,7 @@ function RunListRow({
                     />
                 )}
             </div>
-            <div className="mt-1.25 flex flex-wrap items-baseline gap-x-1.75 gap-y-0.5 font-mono tabular-nums">
+            <div className="mt-1.25 flex flex-wrap items-baseline gap-x-1.75 gap-y-0.5 font-mono">
                 <span
                     className={cn(
                         'text-xs leading-[1.2] font-extrabold',
@@ -116,7 +116,8 @@ function RunListRow({
                         </span>
                     </>
                 )}
-                <span className="text-[0.6875rem] text-border-strong">·</span>
+            </div>
+            <div className="mt-0.5 flex flex-wrap items-baseline gap-x-1.75 gap-y-0.5 font-mono tabular-nums">
                 <b className="text-xs leading-[1.2] font-extrabold text-foreground">
                     {formatDurationHMS(detail.elapsed_time)}
                 </b>
