@@ -7,7 +7,6 @@ import type { AnalysisPayload, WeeklySnapshotWithRecap } from '@/types/inertia';
 import AiOutageBanner from '@/components/AiOutageBanner';
 import CalendarGrid from '@/components/history/CalendarGrid';
 import ConsistencyLine from '@/components/history/ConsistencyLine';
-import EffortLegend from '@/components/history/EffortLegend';
 import HistoryHeader from '@/components/history/HistoryHeader';
 import {
     CalendarGridSkeleton,
@@ -28,10 +27,13 @@ import { snapshotsByWeekEnding } from './weekBuckets';
 /**
  * DayRunsSheet pulls in Base UI's Overlay/Sheet chunk (~15KB gzipped): keep
  * it off Calendar's static import closure, loading it only once a multi-run
- * day is actually opened.
+ * day is actually opened. EffortLegend rides the same chunk.
  */
 const DayRunsSheet = lazyIsland(
     () => import('@/components/history/DayRunsSheet'),
+);
+const EffortLegend = lazyIsland(
+    () => import('@/components/history/EffortLegend'),
 );
 
 export { dominantMoodOf, type CalendarCell } from './useCalendar';
@@ -89,6 +91,8 @@ export default function Calendar({
     });
     const [openDay, setOpenDay] = useState<CalendarCell | null>(null);
     const [askedDayRuns, setAskedDayRuns] = useState(false);
+    const [keyOpen, setKeyOpen] = useState(false);
+    const [askedKey, setAskedKey] = useState(false);
 
     const snapshotsByWeek = useMemo(
         () => snapshotsByWeekEnding(weeklySnapshots),
@@ -158,8 +162,6 @@ export default function Calendar({
                         }
                     </Deferred>
 
-                    <EffortLegend className="mt-3 mb-3" />
-
                     <div className="rounded-md border border-border p-3">
                         <Deferred
                             data={['cells', 'weeklySnapshots']}
@@ -169,6 +171,10 @@ export default function Calendar({
                                 <CalendarGrid
                                     weeks={weeks}
                                     snapshotsByWeek={snapshotsByWeek}
+                                    onOpenKey={() => {
+                                        setAskedKey(true);
+                                        setKeyOpen(true);
+                                    }}
                                     onOpenDay={(cell) => {
                                         setAskedDayRuns(true);
                                         setOpenDay(cell);
@@ -178,6 +184,15 @@ export default function Calendar({
                         </Deferred>
                     </div>
                 </div>
+
+                {askedKey && (
+                    <Suspense fallback={null}>
+                        <EffortLegend
+                            open={keyOpen}
+                            onOpenChange={setKeyOpen}
+                        />
+                    </Suspense>
+                )}
 
                 {askedDayRuns && (
                     <Suspense fallback={null}>

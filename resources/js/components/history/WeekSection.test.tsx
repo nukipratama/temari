@@ -279,4 +279,22 @@ describe('WeekSection', () => {
             'whitespace-nowrap',
         );
     });
+
+    it('keeps the dashed divider off the rows themselves, so it cannot dash their effort stripe', () => {
+        render(
+            <WeekSection
+                bucket={bucket([run(101, 'Morning'), run(102, 'Evening')])}
+                snapshot={null}
+                notes={{}}
+                moods={{}}
+            />,
+        );
+
+        for (const row of screen.getAllByTestId('run-row')) {
+            expect(row.parentElement).not.toHaveClass('divide-dashed');
+            expect(row.parentElement?.parentElement).toHaveClass(
+                'divide-dashed',
+            );
+        }
+    });
 });

@@ -1,11 +1,15 @@
 import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import EffortLegend from './EffortLegend';
 
 describe('EffortLegend', () => {
-    it('defaults to the calendar effort key without a mood key', () => {
-        render(<EffortLegend />);
+    it('names every effort in a sheet titled effort key', () => {
+        render(<EffortLegend open onOpenChange={vi.fn()} />);
+
+        expect(
+            screen.getByRole('dialog', { name: 'effort key' }),
+        ).toBeInTheDocument();
         for (const word of [
             'easy',
             'steady',
@@ -15,22 +19,27 @@ describe('EffortLegend', () => {
         ]) {
             expect(screen.getByText(word)).toBeInTheDocument();
         }
+    });
+
+    it('carries no mood key', () => {
+        render(<EffortLegend open onOpenChange={vi.fn()} />);
+
         expect(screen.queryByText('mood')).not.toBeInTheDocument();
         expect(screen.queryByText('blazing')).not.toBeInTheDocument();
     });
 
-    it('names every mood with a dot when requested by the feed', () => {
-        render(<EffortLegend withMood />);
-        expect(screen.getByText('mood')).toBeInTheDocument();
-        for (const word of [
-            'blazing',
-            'easy',
-            'wobbly',
-            'gassed',
-            'overloaded',
-            'chill',
-        ]) {
-            expect(screen.getAllByText(word).length).toBeGreaterThan(0);
-        }
+    it('draws planned rest as a flat dashed line, not a rounded pill', () => {
+        render(<EffortLegend open onOpenChange={vi.fn()} />);
+
+        const swatch = screen.getByText('planned rest').querySelector('span');
+
+        expect(swatch).toHaveClass('border-dashed', 'h-0');
+        expect(swatch).not.toHaveClass('rounded-full');
+    });
+
+    it('renders nothing while closed', () => {
+        render(<EffortLegend open={false} onOpenChange={vi.fn()} />);
+
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     });
 });

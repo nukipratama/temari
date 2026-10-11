@@ -58,7 +58,7 @@ The headline says which reading carried the call, from the payload's `verdict_me
 
 ## The evidence
 
-[EvidenceList](resources/js/components/home/EvidenceList.tsx) renders the 2 to 4 matched pairs the verdict was computed from, one row each: what made the pair comparable (distance, and the run it was matched against), the readings before and after, and the delta, toned by the pair's `direction`. Each row links to the run it was measured on.
+[EvidenceList](resources/js/components/home/EvidenceList.tsx) renders the 2 to 4 matched pairs the verdict was computed from, one row each: what made the pair comparable (distance, and the run it was matched against) with the recent run's effort word beside it (`5.4 km vs jun 4 · steady`), the readings before and after, and the delta, toned by the pair's `direction`. Each row links to the run it was measured on, and rows are split by a neutral dashed divider while the effort colour stays on the left bar.
 
 Every row shows **average pace and average HR for both runs** (HR is left off when either run has none), because an efficiency call is made from both. The delta pill follows the pair's own `metric` from the server ([deltaLabel](resources/js/lib/verdict.ts)): a pace-decided row shows a signed `s/km`, an efficiency-decided row says "less work" or "more work" in words, and a flat row says "holding".
 

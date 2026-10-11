@@ -1,5 +1,5 @@
 import { router } from '@inertiajs/react';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { makeUser, setMockDeferred, setMockPage } from '@/test/setup';
@@ -144,12 +144,12 @@ describe('calendar', () => {
         expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
     });
 
-    it('renders the month label and the lowercase two-letter weekday header', () => {
+    it('renders the month label and the three-letter weekday header', () => {
         render(<Calendar {...BASE_PROPS} cells={TWO_WEEK_CELLS} />);
         expect(
             screen.getByRole('heading', { name: 'May 2026' }),
         ).toBeInTheDocument();
-        for (const day of ['mo', 'tu', 'we', 'th', 'fr', 'sa', 'su']) {
+        for (const day of ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']) {
             expect(screen.getByText(day)).toBeInTheDocument();
         }
     });
@@ -280,8 +280,17 @@ describe('calendar', () => {
         );
     });
 
-    it('renders the effort legend with words, replacing the old mood legend', () => {
+    it('keeps the effort key out of sight until the key button is pressed', async () => {
         render(<Calendar {...BASE_PROPS} cells={TWO_WEEK_CELLS} />);
+
+        expect(screen.queryByText('unscored')).not.toBeInTheDocument();
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+
+        fireEvent.click(screen.getByRole('button', { name: 'effort key' }));
+
+        const dialog = await screen.findByRole('dialog', {
+            name: 'effort key',
+        });
         for (const word of [
             'easy',
             'steady',
@@ -289,9 +298,19 @@ describe('calendar', () => {
             'unscored',
             'planned rest',
         ]) {
-            expect(screen.getByText(word)).toBeInTheDocument();
+            expect(within(dialog).getByText(word)).toBeInTheDocument();
         }
         expect(screen.queryByText('blazing')).not.toBeInTheDocument();
+    });
+
+    it('puts the effort key button in the weekday header, not the month nav', () => {
+        render(<Calendar {...BASE_PROPS} cells={TWO_WEEK_CELLS} />);
+
+        const key = screen.getByRole('button', { name: 'effort key' });
+        expect(key.parentElement).toContainElement(screen.getByText('mon'));
+        expect(key.parentElement).not.toContainElement(
+            screen.getByRole('heading', { name: 'May 2026' }),
+        );
     });
 
     it('draws a run-less day as a plain numbered box', () => {
@@ -356,11 +375,13 @@ describe('calendar', () => {
         expect(
             screen.getByRole('heading', { name: 'May 2026' }),
         ).toBeInTheDocument();
-        expect(screen.getByText('easy')).toBeInTheDocument();
+        expect(
+            screen.getByRole('button', { name: 'effort key' }),
+        ).toBeInTheDocument();
     });
 
     describe('monthly recap card', () => {
-        it('places stats before the recap and the effort legend before the grid', () => {
+        it('places stats before the recap and the recap before the grid', () => {
             const { rerender } = render(
                 <Calendar
                     {...BASE_PROPS}
@@ -378,9 +399,6 @@ describe('calendar', () => {
             expect(consistency.compareDocumentPosition(pastRecap)).toBe(
                 Node.DOCUMENT_POSITION_FOLLOWING,
             );
-            expect(
-                screen.getByText('effort').compareDocumentPosition(grid),
-            ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
             expect(pastRecap.compareDocumentPosition(grid)).toBe(
                 Node.DOCUMENT_POSITION_FOLLOWING,
             );

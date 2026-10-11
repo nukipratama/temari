@@ -110,6 +110,7 @@ describe('CalendarGrid', () => {
             <CalendarGrid
                 weeks={[PLAIN_WEEK]}
                 snapshotsByWeek={new Map()}
+                onOpenKey={vi.fn()}
                 onOpenDay={vi.fn()}
             />,
         );
@@ -126,6 +127,7 @@ describe('CalendarGrid', () => {
             <CalendarGrid
                 weeks={[PLAIN_WEEK]}
                 snapshotsByWeek={new Map()}
+                onOpenKey={vi.fn()}
                 onOpenDay={vi.fn()}
             />,
         );
@@ -139,6 +141,7 @@ describe('CalendarGrid', () => {
             <CalendarGrid
                 weeks={[PLAIN_WEEK]}
                 snapshotsByWeek={new Map()}
+                onOpenKey={vi.fn()}
                 onOpenDay={vi.fn()}
             />,
         );
@@ -154,6 +157,7 @@ describe('CalendarGrid', () => {
             <CalendarGrid
                 weeks={[PLAIN_WEEK]}
                 snapshotsByWeek={new Map()}
+                onOpenKey={vi.fn()}
                 onOpenDay={vi.fn()}
             />,
         );
@@ -177,6 +181,7 @@ describe('CalendarGrid', () => {
             <CalendarGrid
                 weeks={[week]}
                 snapshotsByWeek={new Map()}
+                onOpenKey={vi.fn()}
                 onOpenDay={vi.fn()}
             />,
         );
@@ -191,6 +196,7 @@ describe('CalendarGrid', () => {
             <CalendarGrid
                 weeks={[PLAIN_WEEK]}
                 snapshotsByWeek={new Map()}
+                onOpenKey={vi.fn()}
                 onOpenDay={vi.fn()}
             />,
         );
@@ -208,6 +214,7 @@ describe('CalendarGrid', () => {
                 <CalendarGrid
                     weeks={[PLAIN_WEEK]}
                     snapshotsByWeek={new Map()}
+                    onOpenKey={vi.fn()}
                     onOpenDay={vi.fn()}
                 />,
             );
@@ -256,6 +263,7 @@ describe('CalendarGrid', () => {
                 <CalendarGrid
                     weeks={[week]}
                     snapshotsByWeek={new Map()}
+                    onOpenKey={vi.fn()}
                     onOpenDay={onOpenDay}
                 />,
             );
@@ -269,6 +277,7 @@ describe('CalendarGrid', () => {
                 <CalendarGrid
                     weeks={[PLAIN_WEEK]}
                     snapshotsByWeek={new Map()}
+                    onOpenKey={vi.fn()}
                     onOpenDay={vi.fn()}
                 />,
             );
@@ -277,11 +286,28 @@ describe('CalendarGrid', () => {
         });
     });
 
+    it('opens the effort key from the button in the weekday row', () => {
+        const onOpenKey = vi.fn();
+        render(
+            <CalendarGrid
+                weeks={[PLAIN_WEEK]}
+                snapshotsByWeek={new Map()}
+                onOpenKey={onOpenKey}
+                onOpenDay={vi.fn()}
+            />,
+        );
+
+        fireEvent.click(screen.getByRole('button', { name: 'effort key' }));
+
+        expect(onOpenKey).toHaveBeenCalledOnce();
+    });
+
     it('disables the week button when the week has no recap', () => {
         render(
             <CalendarGrid
                 weeks={[PLAIN_WEEK]}
                 snapshotsByWeek={new Map()}
+                onOpenKey={vi.fn()}
                 onOpenDay={vi.fn()}
             />,
         );
@@ -293,6 +319,7 @@ describe('CalendarGrid', () => {
             <CalendarGrid
                 weeks={[PLAIN_WEEK]}
                 snapshotsByWeek={new Map([[PLAIN_WEEK.weekEnding, snapshot()]])}
+                onOpenKey={vi.fn()}
                 onOpenDay={vi.fn()}
             />,
         );

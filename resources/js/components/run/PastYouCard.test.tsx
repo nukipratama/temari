@@ -45,7 +45,7 @@ describe('PastYouCard', () => {
         const { container } = render(
             <PastYouCard match={match({ effort: 'hard' })} />,
         );
-        expect(container.firstChild).toHaveClass('border-ember');
+        expect(container.firstChild).toHaveClass('border-l-ember');
     });
 
     it('leads with the pace delta and names the run it beat', () => {

@@ -13,16 +13,24 @@ const ALL_EFFORTS: Effort[] = ['easy', 'steady', 'hard', 'rest', 'unknown'];
 describe('effort', () => {
     describe('EFFORT_STRIPE_CLASS', () => {
         it('colors each effort per MASTER.md: easy leaf, steady citrus, hard ember', () => {
-            expect(EFFORT_STRIPE_CLASS.easy).toContain('border-leaf');
-            expect(EFFORT_STRIPE_CLASS.steady).toContain('border-citrus');
-            expect(EFFORT_STRIPE_CLASS.hard).toContain('border-ember');
+            expect(EFFORT_STRIPE_CLASS.easy).toContain('border-l-leaf');
+            expect(EFFORT_STRIPE_CLASS.steady).toContain('border-l-citrus');
+            expect(EFFORT_STRIPE_CLASS.hard).toContain('border-l-ember');
+        });
+
+        it('colours only the left border, so a divider on the same element keeps its own colour and style', () => {
+            for (const effort of ALL_EFFORTS) {
+                expect(EFFORT_STRIPE_CLASS[effort]).not.toMatch(
+                    /(^|\s)border-(solid|leaf|citrus|ember|border)(\s|$)/,
+                );
+            }
         });
 
         it('keeps rest and unknown achromatic, told apart only by border style', () => {
             expect(EFFORT_STRIPE_CLASS.rest).toContain('border-dashed');
-            expect(EFFORT_STRIPE_CLASS.rest).toContain('border-border');
-            expect(EFFORT_STRIPE_CLASS.unknown).toContain('border-solid');
-            expect(EFFORT_STRIPE_CLASS.unknown).toContain('border-border');
+            expect(EFFORT_STRIPE_CLASS.rest).toContain('border-l-border');
+            expect(EFFORT_STRIPE_CLASS.unknown).not.toContain('border-dashed');
+            expect(EFFORT_STRIPE_CLASS.unknown).toContain('border-l-border');
         });
 
         it('gives every stripe a square 3px leading edge, never a fill', () => {
@@ -35,14 +43,19 @@ describe('effort', () => {
     });
 
     describe('EFFORT_EDGE_CLASS', () => {
-        it('matches EFFORT_STRIPE_CLASS colors, moved to the bottom edge', () => {
-            for (const effort of ALL_EFFORTS) {
-                const stripe = EFFORT_STRIPE_CLASS[effort].replace(
-                    'border-l-[3px]',
-                    'border-b-[3px]',
-                );
+        it('matches EFFORT_STRIPE_CLASS colors and dash style, moved to the bottom edge', () => {
+            const colour = (classes: string) =>
+                /border-(?:[lb]-)?(leaf|citrus|ember|border)\b/.exec(
+                    classes,
+                )?.[1];
 
-                expect(EFFORT_EDGE_CLASS[effort]).toBe(stripe);
+            for (const effort of ALL_EFFORTS) {
+                expect(colour(EFFORT_EDGE_CLASS[effort])).toBe(
+                    colour(EFFORT_STRIPE_CLASS[effort]),
+                );
+                expect(
+                    EFFORT_EDGE_CLASS[effort].includes('border-dashed'),
+                ).toBe(EFFORT_STRIPE_CLASS[effort].includes('border-dashed'));
             }
         });
 

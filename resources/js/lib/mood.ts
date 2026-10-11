@@ -4,14 +4,14 @@ import { PALETTE } from '@/lib/chartTokens';
 
 export const MOOD_LABEL: Record<Mood, string> = {
     blazing: 'blazing',
-    easy: 'easy',
+    easy: 'smooth',
     gassed: 'gassed',
     wobbly: 'wobbly',
     overloaded: 'overloaded',
     chill: 'chill',
 };
 
-// Solid mood fill (bg-mood-{key}); used by the dots in MoodChip, EffortLegend and RunListRow.
+// Solid mood fill (bg-mood-{key}); used by the dots in MoodChip and RunListRow.
 export const MOOD_FILL: Record<Mood, string> = {
     blazing: 'bg-mood-blazing',
     easy: 'bg-mood-easy',

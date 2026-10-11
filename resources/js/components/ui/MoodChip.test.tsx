@@ -3,6 +3,8 @@ import { describe, expect, it } from 'vitest';
 
 import type { Mood } from '@/types/inertia';
 
+import { MOOD_LABEL } from '@/lib/mood';
+
 import MoodChip from './MoodChip';
 
 describe('MoodChip', () => {
@@ -16,7 +18,7 @@ describe('MoodChip', () => {
     ] satisfies Mood[])('renders default label for mood %s', (mood) => {
         const expected = {
             blazing: 'blazing',
-            easy: 'easy',
+            easy: 'smooth',
             gassed: 'gassed',
             wobbly: 'wobbly',
             overloaded: 'overloaded',
@@ -45,7 +47,7 @@ describe('MoodChip', () => {
         (mood) => {
             render(<MoodChip mood={mood} />);
 
-            const chip = screen.getByText(mood);
+            const chip = screen.getByText(MOOD_LABEL[mood]);
             expect(chip).toHaveClass(`text-mood-${mood}-ink`);
             expect(chip).not.toHaveClass('text-foreground');
         },

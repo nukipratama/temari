@@ -104,7 +104,6 @@ const CATALOGUED_FILES = new Set([
     'components/StravaSyncButton.tsx',
     'components/TemariMark.tsx',
     'components/UserAvatar.tsx',
-    'components/history/EffortLegend.tsx',
     'components/history/HistoryHeader.tsx',
     'components/history/RecapCard.tsx',
     'components/history/WeeklyStatLine.tsx',

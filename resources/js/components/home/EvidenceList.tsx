@@ -4,13 +4,14 @@ import type { PastYouTrend, TrendDirection } from '@/types/inertia';
 
 import Chip, { type ChipTone } from '@/components/ui/Chip';
 import { cn } from '@/lib/cn';
-import { EFFORT_STRIPE_CLASS } from '@/lib/effort';
+import { EFFORT_ICON_CLASS, EFFORT_STRIPE_CLASS } from '@/lib/effort';
 import { activityUrl } from '@/lib/routes';
 import {
     type EvidenceReading,
     type EvidenceRow,
     evidenceRows,
 } from '@/lib/verdict';
+import { EFFORT_WORD } from '@/pages/Activities/calendarBars';
 
 const DELTA_TONE: Record<TrendDirection, ChipTone> = {
     better: 'horizon',
@@ -33,7 +34,7 @@ export default function EvidenceList({
     }
 
     return (
-        <ul className="mt-3 flex flex-col divide-y divide-border">
+        <ul className="mt-3 flex flex-col divide-y divide-dashed divide-border">
             {rows.map((row) => (
                 <li key={row.activityId}>
                     <Link
@@ -45,7 +46,16 @@ export default function EvidenceList({
                         )}
                     >
                         <span className="font-sans text-xs text-foreground">
-                            {row.label}
+                            <span>{row.label}</span>
+                            {' · '}
+                            <span
+                                className={cn(
+                                    'font-semibold',
+                                    EFFORT_ICON_CLASS[row.effort ?? 'unknown'],
+                                )}
+                            >
+                                {EFFORT_WORD[row.effort ?? 'unknown']}
+                            </span>
                         </span>
                         <div className="mt-1 flex flex-wrap items-baseline gap-x-3 gap-y-1 font-mono tabular-nums">
                             <Reading reading={row.pace} unit="/km" />
@@ -69,7 +79,7 @@ export default function EvidenceList({
 function ariaLabel(row: EvidenceRow): string {
     const hr =
         row.hr === null ? '' : `, HR ${row.hr.then} to ${row.hr.now} bpm`;
-    return `${row.label}, pace ${row.pace.then} to ${row.pace.now}${hr}, ${row.delta}`;
+    return `${row.label}, ${EFFORT_WORD[row.effort ?? 'unknown']}, pace ${row.pace.then} to ${row.pace.now}${hr}, ${row.delta}`;
 }
 
 function Reading({

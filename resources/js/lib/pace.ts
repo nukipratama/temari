@@ -96,7 +96,7 @@ function relativeIdFromDelta(ms: number, iso: string): string {
     if (day === 1) return 'yesterday';
     if (day < 7) return `${day} days ago`;
     const week = Math.floor(day / 7);
-    if (week < 5) return `${week} wk ago`;
+    if (week < 5) return week === 1 ? '1 week ago' : `${week} weeks ago`;
     return formatIdDate(iso, 'short');
 }
 

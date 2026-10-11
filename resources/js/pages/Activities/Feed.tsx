@@ -10,7 +10,6 @@ import type {
 } from '@/types/inertia';
 
 import AiOutageBanner from '@/components/AiOutageBanner';
-import EffortLegend from '@/components/history/EffortLegend';
 import HistoryHeader from '@/components/history/HistoryHeader';
 import { FeedRunsSkeleton } from '@/components/history/HistorySkeleton';
 import {
@@ -105,8 +104,7 @@ export default function RunsIndex({
                                         rangeFilter={rangeFilter}
                                     />
                                 )}
-                                <EffortLegend withMood className="mt-8" />
-                                <LaneStack className="mt-6">
+                                <LaneStack className="mt-8">
                                     {buckets.map((bucket, index) => (
                                         <div
                                             key={bucket.weekStart}
