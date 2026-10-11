@@ -26,7 +26,7 @@ function setPending(next: PendingTab | null): void {
     listeners.forEach((listener) => listener());
 }
 
-/** Records a bottom-nav tap; the tab turns pending only once Inertia starts that tab's visit. */
+/** Records a tab tap from the bottom nav or the history toggle; the tab turns pending only once Inertia starts that tab's visit. */
 export function armPendingTab(tab: TabId, from: string): void {
     armed = { tab, from };
 }

@@ -165,6 +165,7 @@ export default function Race({
                     {editing && (
                         <Suspense fallback={null}>
                             <RaceGoalForm
+                                hasRace={hasRace}
                                 race={race}
                                 projection={projection}
                                 onSaved={() => setEditing(false)}
