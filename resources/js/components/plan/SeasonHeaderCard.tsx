@@ -6,7 +6,7 @@ import type { AnalysisPayload, PlanRaceCard } from '@/types/inertia';
 import PhaseRibbon from '@/components/plan/PhaseRibbon';
 import TemariTake from '@/components/plan/TemariTake';
 import Eyebrow from '@/components/ui/Eyebrow';
-import { formatDurationHMS, formatNaiveMonthDayId } from '@/lib/pace';
+import { formatNaiveMonthDayId, formatRaceTime } from '@/lib/pace';
 import {
     nextPhaseOf,
     PHASE_LABEL,
@@ -48,7 +48,7 @@ function RaceSlot({ raceCard }: Readonly<{ raceCard: PlanRaceCard | null }>) {
         <p className="mt-1 font-mono text-xs text-text-2 tabular-nums">
             {formatNaiveMonthDayId(raceCard.race_date)} ·{' '}
             {raceDistanceLabel(raceCard.distance_m)}{' '}
-            {formatDurationHMS(raceCard.finish_time_sec)}
+            {formatRaceTime(raceCard.finish_time_sec)}
             {raceCard.finish_time_sec <= raceCard.goal_time_sec && (
                 <span className="text-horizon-ink"> ✓</span>
             )}

@@ -15,10 +15,10 @@ import Skeleton from '@/components/ui/Skeleton';
 import { useDemoGuard } from '@/hooks/useDemoGuard';
 import { cn } from '@/lib/cn';
 import {
-    formatDurationHMS,
     formatKm,
     formatNaiveMonthDayId,
     formatPace,
+    formatRaceTime,
     parseNaiveLocalDate,
 } from '@/lib/pace';
 import { weeksLabel, weeksToRace } from '@/lib/plan';
@@ -41,14 +41,6 @@ function weekday(iso: string): string {
             ?.toLocaleDateString('en-US', { weekday: 'long' })
             .toLowerCase() ?? ''
     );
-}
-
-function raceTime(seconds: number): string {
-    const total = Math.round(seconds);
-
-    return total < 100 * 60
-        ? `${Math.floor(total / 60)}:${(total % 60).toString().padStart(2, '0')}`
-        : formatDurationHMS(total);
 }
 
 function goalPace(card: PlanRaceCardPayload): string {
@@ -121,7 +113,7 @@ function ResultPending({
                 <>
                     {candidate && (
                         <p className="mt-1 font-mono text-sm text-foreground tabular-nums">
-                            {`${candidate.name ?? 'run'} · ${formatKm(candidate.distance_m, 1)} km · ${raceTime(candidate.elapsed_time_sec)}`}
+                            {`${candidate.name ?? 'run'} · ${formatKm(candidate.distance_m, 1)} km · ${formatRaceTime(candidate.elapsed_time_sec)}`}
                         </p>
                     )}
                     <div className="mt-3 flex flex-wrap gap-2">
@@ -194,7 +186,7 @@ export default function PlanRaceCard({
     }
 
     const distance = raceDistanceLabel(card.distance_m);
-    const goal = raceTime(card.goal_time_sec);
+    const goal = formatRaceTime(card.goal_time_sec);
 
     if (card.state === 'result_pending') {
         return (
@@ -254,7 +246,7 @@ export default function PlanRaceCard({
             <p className="mt-1 font-mono text-sm text-foreground tabular-nums">
                 {distance} {goal}
                 {supportedTimeSec != null &&
-                    ` vs supported ${raceTime(supportedTimeSec)}`}
+                    ` vs supported ${formatRaceTime(supportedTimeSec)}`}
             </p>
         </RaceLinkCard>
     );

@@ -159,8 +159,8 @@ describe('SeasonHeaderCard', () => {
             }),
         });
 
-        expect(screen.getByText(/dec 6 · 10K 1:00:50/)).toHaveTextContent(
-            'dec 6 · 10K 1:00:50 · next race ›',
+        expect(screen.getByText(/dec 6 · 10K 60:50/)).toHaveTextContent(
+            'dec 6 · 10K 60:50 · next race ›',
         );
     });
 
