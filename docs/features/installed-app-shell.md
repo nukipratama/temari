@@ -322,7 +322,9 @@ its deferred props load (`TrendsSkeleton`, `PlanSkeleton`, `HistorySkeleton`,
 `RaceSkeleton`, `TodaySkeleton` under `resources/js/components/`), so the first
 response causes no jump. Today has no deferred fallback, so its shapes
 approximate the three sections and shift by roughly the length of that day's
-narration. A tap on the current tab never shows one.
+narration. A tap on the current tab never shows one, except on a sub-page
+such as Race, where it leaves for the tab's root (Race lights Plan, so a Plan
+tap there shows `PlanSkeleton`).
 
 Two visits besides a tab tap arm the same state. The feed/calendar pill
 ([HistoryNav](../../resources/js/components/history/HistoryNav.tsx)) arms the

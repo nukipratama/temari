@@ -340,6 +340,37 @@ describe('MobileBottomNav', () => {
         );
     });
 
+    it('shows the plan skeleton when the plan tab is tapped at top on Race', () => {
+        setMockPage({}, '/race', 'Race');
+        render(<MobileBottomNav />);
+
+        tap('Plan', '/plan');
+
+        expect(router.visit).toHaveBeenCalledWith('/plan', {
+            replace: true,
+            preserveState: false,
+        });
+        expect(pendingTabSnapshot()).toMatchObject({
+            tab: 'plan',
+            from: 'Race',
+            href: '/plan',
+        });
+    });
+
+    it('shows no skeleton when a Plan day is reset on the Plan page itself', () => {
+        writeTabMemory('plan', {
+            href: '/plan',
+            scrollY: 0,
+            selectedDay: '2026-06-16',
+        });
+        setMockPage({}, '/plan', 'Plan');
+        render(<MobileBottomNav />);
+
+        tap('Plan', '/plan');
+
+        expect(pendingTabSnapshot()).toBeNull();
+    });
+
     it('renders nothing on a pushed screen', () => {
         setMockPage({}, '/inbox', 'Inbox');
         const { container } = render(<MobileBottomNav />);

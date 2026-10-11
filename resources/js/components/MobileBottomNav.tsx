@@ -34,6 +34,7 @@ function scrollToTop(event: MouseEvent<Element>) {
 function handleActiveTabClick(
     event: MouseEvent<Element>,
     tab: TabId,
+    component: string,
     currentUrl: string,
     today: string,
     planSelectedDay: string | null,
@@ -50,6 +51,9 @@ function handleActiveTabClick(
         currentUrl !== href || (tab === 'plan' && planSelectedDay !== null);
 
     if (needsReset) {
+        if (currentUrl.split('?')[0] !== href.split('?')[0]) {
+            armPendingTab(tab, component);
+        }
         router.visit(href, { replace: true, preserveState: false });
         clearTabMemory(tab);
     }
@@ -127,6 +131,7 @@ export default function MobileBottomNav() {
                                           handleActiveTabClick(
                                               event,
                                               item.id,
+                                              component,
                                               url,
                                               today,
                                               planSelectedDay,
