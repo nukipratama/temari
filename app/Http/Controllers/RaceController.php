@@ -31,21 +31,12 @@ class RaceController extends Controller
         /** @var User $user */
         $user = $request->user();
 
-        $activeRace = null;
-        $activeRaceLoaded = false;
-        $loadActiveRace = static function () use (&$activeRace, &$activeRaceLoaded, $user): ?RaceGoal {
-            if (! $activeRaceLoaded) {
-                $activeRace = RaceGoal::query()->where('user_id', $user->id)->active()->first();
-                $activeRaceLoaded = true;
-            }
-
-            return $activeRace;
-        };
+        $race = RaceGoal::query()->where('user_id', $user->id)->active()->first();
 
         return Inertia::render('Race', [
-            'has_race' => fn (): bool => $loadActiveRace() !== null,
-            'race' => Inertia::defer(fn (): ?array => ($race = $loadActiveRace()) === null ? null : $presenter->present($user, $race)),
-            'projection' => Inertia::defer(fn (): ?array => ($race = $loadActiveRace()) === null ? null : $projector->project($user, (float) $race->distance_m)),
+            'has_race' => $race !== null,
+            'race' => Inertia::defer(fn (): ?array => $race === null ? null : $presenter->present($user, $race)),
+            'projection' => Inertia::defer(fn (): ?array => $race === null ? null : $projector->project($user, (float) $race->distance_m)),
             'past_races' => Inertia::defer(fn (): array => $this->pastRaces($user, $presenter)),
         ]);
     }
