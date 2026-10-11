@@ -4,8 +4,9 @@ import type { Effort } from '@/types/inertia';
  * The 3px leading-edge stripe MASTER.md gives every run row, keyed by
  * effort (design-system/temari/MASTER.md § Effort colors). Square corners,
  * border only — never a fill — so it composes under any row background.
- * The colour sits on the left border alone, so a row divider on the same
- * element keeps its own colour and style. `rest` and `unknown` are both
+ * The colour sits on the left border alone, so a row divider keeps its own
+ * colour; a dashed divider still needs a wrapper element, since its border
+ * style would dash the stripe too. `rest` and `unknown` are both
  * achromatic on purpose; the border style (dashed vs solid) is what tells
  * them apart, not a color.
  */

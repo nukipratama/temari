@@ -81,13 +81,14 @@ const WeekSection = memo(function WeekSection({
 
             <div className="divide-y divide-dashed divide-border">
                 {bucket.runs.map((activity) => (
-                    <RunListRow
-                        key={activity.id}
-                        detail={activity.detail}
-                        note={notes[activity.id] ?? null}
-                        mood={moods[activity.id] ?? null}
-                        runCard={activity.run_card ?? null}
-                    />
+                    <div key={activity.id}>
+                        <RunListRow
+                            detail={activity.detail}
+                            note={notes[activity.id] ?? null}
+                            mood={moods[activity.id] ?? null}
+                            runCard={activity.run_card ?? null}
+                        />
+                    </div>
                 ))}
             </div>
         </div>
