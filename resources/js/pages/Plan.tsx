@@ -227,7 +227,8 @@ export default function Plan({
                                     body="hit regenerate and temari will lay out the weeks ahead."
                                     className="mt-6"
                                 />
-                                {raceCard === null && (
+                                {(raceCard === null ||
+                                    raceCard.state === 'result_recorded') && (
                                     <AddRacePrompt className="mt-4" />
                                 )}
                             </>

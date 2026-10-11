@@ -456,6 +456,26 @@ describe('Plan', () => {
         ).toHaveAttribute('href', '/race');
     });
 
+    it('offers to add a race before a plan exists after a recorded result, which only the season card states', () => {
+        renderPlan({
+            weeks: [],
+            raceCard: {
+                state: 'result_recorded',
+                race_id: 3,
+                race_date: '2026-06-14',
+                distance_m: 10_000,
+                goal_time_sec: 3_600,
+                name: null,
+                days_to_race: null,
+                finish_time_sec: 3_521,
+            },
+        });
+
+        expect(
+            screen.getByRole('link', { name: '+ add a race' }),
+        ).toHaveAttribute('href', '/race');
+    });
+
     it('keeps the training disclaimer as a one-line footer with its legal link', () => {
         renderPlan();
 
