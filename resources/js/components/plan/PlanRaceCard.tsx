@@ -203,7 +203,7 @@ export default function PlanRaceCard({
             <Link
                 href="/race"
                 className={cn(
-                    'focus-ring block rounded-panel bg-horizon pad-hero',
+                    'focus-ring block rounded-panel bg-horizon pad-card',
                     className,
                 )}
             >
