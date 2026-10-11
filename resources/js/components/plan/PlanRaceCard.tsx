@@ -250,9 +250,12 @@ export default function PlanRaceCard({
             <p className="mt-1 font-mono text-sm text-foreground tabular-nums">
                 {distance} {goal}
                 {supportedTimeSec != null && (
-                    <span className="whitespace-nowrap">
-                        {` vs supported ${formatRaceTime(supportedTimeSec)}`}
-                    </span>
+                    <>
+                        {' '}
+                        <span className="whitespace-nowrap">
+                            {`vs supported ${formatRaceTime(supportedTimeSec)}`}
+                        </span>
+                    </>
                 )}
             </p>
         </RaceLinkCard>

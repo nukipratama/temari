@@ -80,9 +80,9 @@ describe('PlanRaceCard', () => {
         expect(screen.getByRole('link')).toHaveTextContent(
             '10K 60:00 vs supported 62:10',
         );
-        expect(screen.getByText('vs supported 62:10')).toHaveClass(
-            'whitespace-nowrap',
-        );
+        const supported = screen.getByText('vs supported 62:10');
+        expect(supported).toHaveClass('whitespace-nowrap');
+        expect(supported.textContent).toBe('vs supported 62:10');
     });
 
     it('counts a race under two weeks out in days', () => {
