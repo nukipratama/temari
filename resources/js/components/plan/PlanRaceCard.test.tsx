@@ -67,7 +67,7 @@ describe('PlanRaceCard', () => {
         const link = screen.getByRole('link');
         expect(link).toHaveAttribute('href', '/race');
         expect(link).toHaveTextContent('race · dec 6 · in 8 weeks');
-        expect(link).toHaveTextContent('10K 1:00:00');
+        expect(link).toHaveTextContent('10K 60:00');
         expect(link).not.toHaveTextContent('supported');
 
         rerender(
@@ -78,7 +78,7 @@ describe('PlanRaceCard', () => {
             />,
         );
         expect(screen.getByRole('link')).toHaveTextContent(
-            '10K 1:00:00 vs supported 1:02:10',
+            '10K 60:00 vs supported 62:10',
         );
     });
 
@@ -115,7 +115,7 @@ describe('PlanRaceCard', () => {
         expect(link).toHaveClass('border-citrus');
         expect(link).toHaveTextContent('race saturday');
         expect(link).toHaveTextContent(
-            '10K 1:00:00 · pace 6:00 /km · stay fresh',
+            '10K 60:00 · pace 6:00 /km · stay fresh',
         );
     });
 
@@ -155,6 +155,35 @@ describe('PlanRaceCard', () => {
         expect(
             screen.getByText('5:00 /km · start easy, finish strong'),
         ).toHaveClass('text-sky-2');
+    });
+
+    it('draws the result card with the neutral border, not the text colour', () => {
+        render(
+            <PlanRaceCard
+                card={card({ state: 'result_pending', days_to_race: null })}
+                today={TODAY}
+                candidate={null}
+            />,
+        );
+
+        expect(screen.getByLabelText('race result')).toHaveClass(
+            'border-border',
+        );
+    });
+
+    it('writes times under 100 minutes in minutes and longer ones with hours', () => {
+        const { rerender } = render(
+            <PlanRaceCard card={card({ goal_time_sec: 5999 })} today={TODAY} />,
+        );
+        expect(screen.getByRole('link')).toHaveTextContent('99:59');
+
+        rerender(
+            <PlanRaceCard
+                card={card({ distance_m: 21_097, goal_time_sec: 6900 })}
+                today={TODAY}
+            />,
+        );
+        expect(screen.getByRole('link')).toHaveTextContent('1:55:00');
     });
 
     it('holds the result question on a skeleton until the candidate run loads', () => {
@@ -221,7 +250,8 @@ describe('PlanRaceCard', () => {
             />,
         );
 
-        expect(screen.getByText('how did it go?')).toBeInTheDocument();
+        expect(screen.getByText(/dec 6 · how did it go\?/)).toBeInTheDocument();
+        expect(screen.queryByText(/is this your race/)).not.toBeInTheDocument();
         expect(
             screen.queryByRole('button', { name: 'yes' }),
         ).not.toBeInTheDocument();

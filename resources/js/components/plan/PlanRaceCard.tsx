@@ -43,6 +43,14 @@ function weekday(iso: string): string {
     );
 }
 
+function raceTime(seconds: number): string {
+    const total = Math.round(seconds);
+
+    return total < 100 * 60
+        ? `${Math.floor(total / 60)}:${(total % 60).toString().padStart(2, '0')}`
+        : formatDurationHMS(total);
+}
+
 function goalPace(card: PlanRaceCardPayload): string {
     return `${formatPace(card.goal_time_sec / (card.distance_m / 1000))} /km`;
 }
@@ -99,19 +107,23 @@ function ResultPending({
     const pickLabel = candidate ? 'pick another' : 'pick a run';
 
     return (
-        <section aria-label="race result" className={cn(CARD, className)}>
+        <section
+            aria-label="race result"
+            className={cn(CARD, 'border-border', className)}
+        >
             <Eyebrow token="micro" tone="ink-2">
-                {formatNaiveMonthDayId(card.race_date)} · is this your race?
+                {formatNaiveMonthDayId(card.race_date)} ·{' '}
+                {candidate === null ? 'how did it go?' : 'is this your race?'}
             </Eyebrow>
             {candidate === undefined ? (
                 <Skeleton className="mt-2 h-4 w-48" />
             ) : (
                 <>
-                    <p className="mt-1 font-mono text-sm text-foreground tabular-nums">
-                        {candidate
-                            ? `${candidate.name ?? 'run'} · ${formatKm(candidate.distance_m, 1)} km · ${formatDurationHMS(candidate.elapsed_time_sec)}`
-                            : 'how did it go?'}
-                    </p>
+                    {candidate && (
+                        <p className="mt-1 font-mono text-sm text-foreground tabular-nums">
+                            {`${candidate.name ?? 'run'} · ${formatKm(candidate.distance_m, 1)} km · ${raceTime(candidate.elapsed_time_sec)}`}
+                        </p>
+                    )}
                     <div className="mt-3 flex flex-wrap gap-2">
                         {candidate && (
                             <PillButton
@@ -182,7 +194,7 @@ export default function PlanRaceCard({
     }
 
     const distance = raceDistanceLabel(card.distance_m);
-    const goal = formatDurationHMS(card.goal_time_sec);
+    const goal = raceTime(card.goal_time_sec);
 
     if (card.state === 'result_pending') {
         return (
@@ -242,7 +254,7 @@ export default function PlanRaceCard({
             <p className="mt-1 font-mono text-sm text-foreground tabular-nums">
                 {distance} {goal}
                 {supportedTimeSec != null &&
-                    ` vs supported ${formatDurationHMS(supportedTimeSec)}`}
+                    ` vs supported ${raceTime(supportedTimeSec)}`}
             </p>
         </RaceLinkCard>
     );
