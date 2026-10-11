@@ -657,15 +657,16 @@ function weekPlanCharacterizationUser(bool $clampDay): User
 function weekPlanCharacterization(?array $payload): string
 {
     $ids = [];
-    $normalize = function (mixed $value) use (&$normalize, &$ids): mixed {
+    $normalize = function (mixed $value, string $path = '') use (&$normalize, &$ids): mixed {
         if (! is_array($value)) {
             return $value;
         }
         foreach ($value as $key => $child) {
+            $childPath = $path.'.'.(is_int($key) ? '*' : $key);
             $value[$key] = match (true) {
-                $key === 'recommendation_token' && is_string($child) => $normalize(json_decode(Crypt::decryptString($child), true, flags: JSON_THROW_ON_ERROR)),
-                is_string($key) && is_int($child) && preg_match('/(^|_)id$/', $key) === 1 => $ids[$key][$child] ??= count($ids[$key] ?? []) + 1,
-                default => $normalize($child),
+                $key === 'recommendation_token' && is_string($child) => $normalize(json_decode(Crypt::decryptString($child), true, flags: JSON_THROW_ON_ERROR), $childPath),
+                is_string($key) && is_int($child) && preg_match('/(^|_)id$/', $key) === 1 => $ids[$childPath][$child] ??= count($ids[$childPath] ?? []) + 1,
+                default => $normalize($child, $childPath),
             };
         }
 

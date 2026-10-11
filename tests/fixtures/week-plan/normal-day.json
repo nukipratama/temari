@@ -45,19 +45,19 @@
             "credited_km": 6.5,
             "activities": [
                 {
-                    "id": 2,
+                    "id": 1,
                     "km": 2.0,
                     "seconds": 680,
                     "started_at": "06:00"
                 },
                 {
-                    "id": 3,
+                    "id": 2,
                     "km": 3.0,
                     "seconds": 1020,
                     "started_at": "12:30"
                 },
                 {
-                    "id": 4,
+                    "id": 3,
                     "km": 1.5,
                     "seconds": 510,
                     "started_at": "18:00"
@@ -66,7 +66,7 @@
             "flagged": false
         },
         {
-            "id": 5,
+            "id": 2,
             "date": "2026-08-11",
             "phase": "build",
             "session_type": "interval",
@@ -113,7 +113,7 @@
             "credited_km": 7.1,
             "activities": [
                 {
-                    "id": 6,
+                    "id": 4,
                     "km": 7.1,
                     "seconds": 2414,
                     "started_at": "12:00"
@@ -122,7 +122,7 @@
             "flagged": false
         },
         {
-            "id": 7,
+            "id": 3,
             "recommendation_token": {
                 "user_id": 1,
                 "date": "2026-08-12",
@@ -328,7 +328,7 @@
             "flagged": false
         },
         {
-            "id": 8,
+            "id": 4,
             "date": "2026-08-13",
             "phase": "build",
             "session_type": "rest",
@@ -360,7 +360,7 @@
             "flagged": false
         },
         {
-            "id": 9,
+            "id": 5,
             "date": "2026-08-14",
             "phase": "build",
             "session_type": "easy",
@@ -401,7 +401,7 @@
             "flagged": false
         },
         {
-            "id": 10,
+            "id": 6,
             "date": "2026-08-15",
             "phase": "build",
             "session_type": "long",
@@ -442,7 +442,7 @@
             "flagged": false
         },
         {
-            "id": 11,
+            "id": 7,
             "date": "2026-08-16",
             "phase": "build",
             "session_type": "rest",
