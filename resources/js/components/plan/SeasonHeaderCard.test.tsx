@@ -142,10 +142,10 @@ describe('SeasonHeaderCard', () => {
         expect(screen.getByText(/race in 1 week\b/)).toBeInTheDocument();
     });
 
-    it('says the race is this week when it falls in the current week', () => {
+    it('omits the race when it falls in the current week', () => {
         renderCard({ raceDate: '2026-06-28' });
 
-        expect(screen.getByText(/race this week/)).toBeInTheDocument();
+        expect(screen.queryByText(/race/)).not.toBeInTheDocument();
     });
 
     it('omits the race for a season without one', () => {

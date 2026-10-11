@@ -49,10 +49,8 @@ export default function SeasonHeaderCard({
         next &&
             `next: ${PHASE_LABEL[next.key] ?? next.key} in ${weeksLabel(next.inWeeks)}`,
         raceWeeks !== null &&
-            raceWeeks >= 0 &&
-            (raceWeeks === 0
-                ? 'race this week'
-                : `race in ${weeksLabel(raceWeeks)}`),
+            raceWeeks > 0 &&
+            `race in ${weeksLabel(raceWeeks)}`,
     ].filter(Boolean);
 
     return (
