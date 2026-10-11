@@ -1,5 +1,5 @@
 import { Deferred, Head, Link, router } from '@inertiajs/react';
-import { ArrowRight, Clock, RefreshCw } from 'lucide-react';
+import { Clock, RefreshCw } from 'lucide-react';
 import { useState } from 'react';
 
 import type {
@@ -8,10 +8,16 @@ import type {
     PlanWeek,
     SeasonSummaryWeek,
 } from '@/lib/plan';
-import type { PlanRecalibrationState } from '@/types/inertia';
+import type {
+    PlanRaceCard as PlanRaceCardPayload,
+    PlanRecalibrationState,
+    RaceOutcomeCandidate,
+} from '@/types/inertia';
 
 import AiOutageBanner from '@/components/AiOutageBanner';
+import AddRacePrompt from '@/components/plan/AddRacePrompt';
 import PlanHeading from '@/components/plan/PlanHeading';
+import PlanRaceCard from '@/components/plan/PlanRaceCard';
 import { PlanWeeksSkeleton } from '@/components/plan/PlanSkeleton';
 import SeasonHeaderCard from '@/components/plan/SeasonHeaderCard';
 import SeasonTimeline from '@/components/plan/SeasonTimeline';
@@ -24,11 +30,7 @@ import { useCooldownCountdown } from '@/hooks/useCooldownCountdown';
 import { appLayout } from '@/layouts/appLayout';
 import { cn } from '@/lib/cn';
 import { readPlanSelectedDay } from '@/lib/navigationMemory';
-import {
-    formatDurationHMS,
-    formatNaiveMonthDayId,
-    useTodayIso,
-} from '@/lib/pace';
+import { formatDurationHMS, useTodayIso } from '@/lib/pace';
 
 interface SeasonSummary {
     starts_at: string;
@@ -47,6 +49,9 @@ interface PlanAdaptation {
 
 interface PlanProps {
     race: { race_date: string; name: string | null } | null;
+    raceCard: PlanRaceCardPayload | null;
+    raceSupportedTimeSec?: number | null;
+    raceOutcomeCandidate?: RaceOutcomeCandidate | null;
     sessionsPerWeek: number;
     weeks?: PlanWeek[];
     season: SeasonSummary | null;
@@ -76,6 +81,9 @@ const PLAN_NARRATION_DEFAULT: PlanNarration = {
 
 export default function Plan({
     race,
+    raceCard,
+    raceSupportedTimeSec,
+    raceOutcomeCandidate,
     sessionsPerWeek,
     weeks,
     season,
@@ -168,22 +176,16 @@ export default function Plan({
                     }
                 />
                 <p className="mt-1 mb-4 text-xs text-text-2">
-                    {race
-                        ? `${race.name ?? 'your race'} · ${formatNaiveMonthDayId(race.race_date)}`
-                        : 'no race set · steady build and deload'}
-                    {` · ${sessionsPerWeek} sessions a week · `}
-                    <Link
-                        href="/race"
-                        className="focus-ring hit-area inline-flex items-center gap-0.5 font-semibold text-horizon-ink"
-                    >
-                        {race ? 'race goal' : 'set a race'}
-                        <Icon
-                            icon={ArrowRight}
-                            className="size-3"
-                            aria-hidden
-                        />
-                    </Link>
+                    {sessionsPerWeek} sessions a week
                 </p>
+
+                <PlanRaceCard
+                    card={raceCard}
+                    today={today}
+                    supportedTimeSec={raceSupportedTimeSec}
+                    candidate={raceOutcomeCandidate}
+                    className="mb-4"
+                />
 
                 {planRecalibration?.pending && (
                     <div
@@ -218,12 +220,18 @@ export default function Plan({
                 >
                     {() =>
                         weeks!.length === 0 || season === null ? (
-                            <EmptyPanel
-                                face
-                                title="no plan yet."
-                                body="hit regenerate and temari will lay out the weeks ahead."
-                                className="mt-6"
-                            />
+                            <>
+                                <EmptyPanel
+                                    face
+                                    title="no plan yet."
+                                    body="hit regenerate and temari will lay out the weeks ahead."
+                                    className="mt-6"
+                                />
+                                {(raceCard === null ||
+                                    raceCard.state === 'result_recorded') && (
+                                    <AddRacePrompt className="mt-4" />
+                                )}
+                            </>
                         ) : (
                             <LaneStack className="mt-6">
                                 <SeasonHeaderCard
@@ -231,7 +239,7 @@ export default function Plan({
                                     totalWeeks={season.total_weeks}
                                     adherencePct={seasonAdherencePct}
                                     weeks={seasonSummary}
-                                    raceDate={race?.race_date ?? null}
+                                    raceCard={raceCard}
                                     narration={planNarration.season}
                                     underReadyLine={season.under_ready_line}
                                 />

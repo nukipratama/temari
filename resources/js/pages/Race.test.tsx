@@ -118,9 +118,9 @@ describe('Race', () => {
         );
 
         const headings = [
+            'plan',
             'Race',
             'your race.',
-            'plan',
             'your target',
             'supported',
             'Jakarta 10K',
@@ -235,17 +235,16 @@ describe('Race', () => {
         ).toHaveAttribute('aria-expanded', 'false');
     });
 
-    it('links across to the plan instead of drawing the schedule tabs', () => {
+    it('opens with a back link to the plan instead of drawing the schedule tabs', () => {
         render(<Race has_race={false} race={null} projection={null} />);
 
-        expect(screen.getByRole('link', { name: 'plan' })).toHaveAttribute(
-            'href',
-            '/plan',
+        const back = screen.getByRole('link', { name: 'plan' });
+        expect(back).toHaveAttribute('href', '/plan');
+        expect(back.compareDocumentPosition(screen.getByText('Race'))).toBe(
+            Node.DOCUMENT_POSITION_FOLLOWING,
         );
+        expect(screen.getAllByRole('link', { name: 'plan' })).toHaveLength(1);
         expect(screen.queryByText('race goal')).not.toBeInTheDocument();
-        expect(screen.getByRole('link', { name: 'plan' })).toHaveClass(
-            'hit-area',
-        );
     });
 
     it('gives clear race a padded hit area', () => {

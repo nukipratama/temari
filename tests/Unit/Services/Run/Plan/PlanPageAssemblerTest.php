@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Enums\AdaptationReason;
 use App\Enums\IngestState;
 use App\Enums\PlannedSessionStatus;
+use App\Enums\RaceOutcome;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\PlanAdaptation;
@@ -17,6 +18,7 @@ use App\Models\WeeklySnapshot;
 use App\Services\Run\Plan\Periodizer;
 use App\Services\Run\Plan\PlanPageAssembler;
 use App\Services\Run\Plan\PlanRenderer;
+use App\Services\Run\Plan\RaceAmbitionAssessor;
 use App\Services\Run\Plan\SessionEditRules;
 use App\Services\Run\Plan\TrainingBaseline;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -411,4 +413,174 @@ it('trims only the easy days when the week runs ahead, never the long run', func
 
     expect($days['2026-08-16']['distance_km'])->toBe($days['2026-08-16']['asked_km'])
         ->and($days['2026-08-15']['distance_km'])->toBeLessThan($days['2026-08-15']['asked_km']);
+});
+
+function freshAssembler(): PlanPageAssembler
+{
+    app()->forgetScopedInstances();
+
+    return app(PlanPageAssembler::class);
+}
+
+function assemblerPastRace(User $user, array $attributes): RaceGoal
+{
+    return RaceGoal::factory()->for($user)->completed()->create([
+        'race_date' => '2026-08-02',
+        'distance_m' => 10_000,
+        'goal_time_sec' => 3_000,
+        'outcome' => RaceOutcome::Pending,
+        ...$attributes,
+    ]);
+}
+
+it('shows no race card with no race at all', function (): void {
+    $user = User::factory()->create();
+
+    expect(freshAssembler()->raceCard($user, Carbon::today()))->toBeNull();
+});
+
+it('reads a race more than a week out as ahead, with the days to go', function (): void {
+    $user = User::factory()->create();
+    $race = RaceGoal::factory()->for($user)->create(['race_date' => '2026-08-18', 'distance_m' => 10_000, 'goal_time_sec' => 3_600, 'name' => 'City 10K']);
+
+    expect(freshAssembler()->raceCard($user, Carbon::today()))->toBe([
+        'state' => 'ahead',
+        'race_id' => $race->id,
+        'race_date' => '2026-08-18',
+        'distance_m' => 10_000,
+        'goal_time_sec' => 3_600,
+        'name' => 'City 10K',
+        'days_to_race' => 8,
+        'finish_time_sec' => null,
+    ]);
+});
+
+it('reads race week from seven days out down to the day before', function (string $raceDate, int $days): void {
+    $user = User::factory()->create();
+    RaceGoal::factory()->for($user)->create(['race_date' => $raceDate]);
+
+    expect(freshAssembler()->raceCard($user, Carbon::today()))
+        ->toMatchArray(['state' => 'week', 'days_to_race' => $days]);
+})->with([
+    'seven days out' => ['2026-08-17', 7],
+    'the day before' => ['2026-08-11', 1],
+]);
+
+it('reads race day on the race date', function (): void {
+    $user = User::factory()->create();
+    RaceGoal::factory()->for($user)->create(['race_date' => '2026-08-10']);
+
+    expect(freshAssembler()->raceCard($user, Carbon::today()))
+        ->toMatchArray(['state' => 'day', 'days_to_race' => 0]);
+});
+
+it('turns to race day at midnight on the app clock, not in UTC', function (): void {
+    expect(config('app.timezone'))->toBe('Asia/Jakarta');
+    $user = User::factory()->create();
+    RaceGoal::factory()->for($user)->create(['race_date' => '2026-08-10']);
+
+    Carbon::setTestNow(Carbon::parse('2026-08-09 23:59:59', 'Asia/Jakarta'));
+    expect(freshAssembler()->raceCard($user, Carbon::today())['state'])->toBe('week');
+
+    Carbon::setTestNow(Carbon::parse('2026-08-09 17:30:00', 'UTC'));
+    expect(freshAssembler()->raceCard($user, Carbon::today())['state'])->toBe('day');
+});
+
+it('asks about a past race whose result is still pending', function (): void {
+    $user = User::factory()->create();
+    $race = assemblerPastRace($user, []);
+
+    expect(freshAssembler()->raceCard($user, Carbon::today()))
+        ->toMatchArray(['state' => 'result_pending', 'race_id' => $race->id, 'race_date' => '2026-08-02', 'days_to_race' => null]);
+});
+
+it('asks about a pending result ahead of the next race, but not on race day', function (): void {
+    $user = User::factory()->create();
+    assemblerPastRace($user, []);
+    $next = RaceGoal::factory()->for($user)->create(['race_date' => '2026-08-13']);
+
+    expect(freshAssembler()->raceCard($user, Carbon::today())['state'])->toBe('result_pending');
+
+    $next->update(['race_date' => '2026-08-10']);
+    expect(freshAssembler()->raceCard($user, Carbon::today())['state'])->toBe('day');
+});
+
+it('asks only about the most recent past race', function (): void {
+    $user = User::factory()->create();
+    assemblerPastRace($user, ['race_date' => '2026-07-05']);
+    assemblerPastRace($user, ['race_date' => '2026-08-02', 'outcome' => RaceOutcome::DidNotRun]);
+
+    expect(freshAssembler()->raceCard($user, Carbon::today()))->toBeNull();
+});
+
+it('shows a confirmed result for seven days after it was recorded, while no race is set', function (string $recordedAt, ?string $state): void {
+    $user = User::factory()->create();
+    assemblerPastRace($user, ['outcome' => RaceOutcome::Confirmed, 'finish_time_sec' => 2_921, 'outcome_recorded_at' => $recordedAt]);
+
+    expect(freshAssembler()->raceCard($user, Carbon::today())['state'] ?? null)->toBe($state);
+})->with([
+    'recorded today' => ['2026-08-10 07:00:00', 'result_recorded'],
+    'recorded six days ago' => ['2026-08-04 00:00:00', 'result_recorded'],
+    'recorded seven days ago' => ['2026-08-03 23:59:59', null],
+]);
+
+it('carries the finish time only for a recorded result', function (): void {
+    $user = User::factory()->create();
+    assemblerPastRace($user, ['outcome' => RaceOutcome::Confirmed, 'finish_time_sec' => 2_921, 'outcome_recorded_at' => '2026-08-09 07:00:00']);
+
+    expect(freshAssembler()->raceCard($user, Carbon::today()))
+        ->toMatchArray(['state' => 'result_recorded', 'finish_time_sec' => 2_921, 'goal_time_sec' => 3_000]);
+});
+
+it('drops a recorded result once the next race is set', function (): void {
+    $user = User::factory()->create();
+    assemblerPastRace($user, ['outcome' => RaceOutcome::Confirmed, 'finish_time_sec' => 2_921, 'outcome_recorded_at' => '2026-08-09 07:00:00']);
+    RaceGoal::factory()->for($user)->create(['race_date' => '2026-10-04']);
+
+    expect(freshAssembler()->raceCard($user, Carbon::today())['state'])->toBe('ahead');
+});
+
+it('shows nothing for a race not run, called off, or confirmed without a time', function (array $attributes): void {
+    $user = User::factory()->create();
+    assemblerPastRace($user, ['outcome_recorded_at' => '2026-08-09 07:00:00', ...$attributes]);
+
+    expect(freshAssembler()->raceCard($user, Carbon::today()))->toBeNull();
+})->with([
+    'did not run' => [['outcome' => RaceOutcome::DidNotRun]],
+    'cancelled' => [['outcome' => RaceOutcome::Cancelled]],
+    'confirmed without a time' => [['outcome' => RaceOutcome::Confirmed, 'finish_time_sec' => null]],
+]);
+
+it('ignores a called-off race whose date is still ahead', function (): void {
+    $user = User::factory()->create();
+    assemblerPastRace($user, ['race_date' => '2026-09-06', 'outcome' => RaceOutcome::Cancelled]);
+
+    expect(freshAssembler()->raceCard($user, Carbon::today()))->toBeNull();
+});
+
+it('serves the supported time only for a race ahead', function (): void {
+    $user = User::factory()->create();
+    $race = RaceGoal::factory()->for($user)->create(['race_date' => '2026-10-04', 'distance_m' => 10_000]);
+    seedConfirmedEffort($user, 5_000, 1_320, Carbon::parse('2026-08-01'));
+
+    $supported = freshAssembler()->raceSupportedTimeSec($user, Carbon::today());
+
+    expect($supported)->toBeInt()->toBeGreaterThan(0)
+        ->and($supported)->toBe(app(RaceAmbitionAssessor::class)->assess($user, $race)->supportedTimeSec);
+
+    $race->update(['race_date' => '2026-08-14']);
+    expect(freshAssembler()->raceSupportedTimeSec($user, Carbon::today()))->toBeNull();
+});
+
+it('offers the best race-day run only while a result is pending', function (): void {
+    $user = User::factory()->create();
+    $race = assemblerPastRace($user, []);
+    $activity = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($activity)->create(['start_date_local' => '2026-08-02 06:30:00', 'distance' => 10_080.0, 'elapsed_time' => 2_921, 'moving_time' => 2_900]);
+
+    expect(freshAssembler()->raceOutcomeCandidate($user, Carbon::today()))
+        ->toMatchArray(['activity_id' => $activity->id, 'distance_m' => 10_080.0, 'elapsed_time_sec' => 2_921]);
+
+    $race->update(['outcome' => RaceOutcome::DidNotRun]);
+    expect(freshAssembler()->raceOutcomeCandidate($user, Carbon::today()))->toBeNull();
 });

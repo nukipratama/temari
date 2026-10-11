@@ -57,6 +57,15 @@ export function formatDurationHMS(seconds: number | null | undefined): string {
     return `${m}:${s.toString().padStart(2, '0')}`;
 }
 
+/** A race time as runners write it: whole minutes under 100 (60:00, 99:59), H:MM:SS beyond. */
+export function formatRaceTime(seconds: number): string {
+    const total = Math.round(seconds);
+
+    return total < 100 * 60
+        ? `${Math.floor(total / 60)}:${(total % 60).toString().padStart(2, '0')}`
+        : formatDurationHMS(total);
+}
+
 // Matches a naive Y-M-D[ H:M[:S]] wall-clock string component-by-component,
 // ignoring any trailing Z/offset. Backend datetimes here (Strava's
 // start_date_local) are naive wall-clock values that Laravel serializes with

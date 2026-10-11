@@ -171,6 +171,23 @@ export interface PastRace {
     outcome: RaceOutcomeSummary;
 }
 
+export type PlanRaceCardState =
+    'ahead' | 'week' | 'day' | 'result_pending' | 'result_recorded';
+
+/** The race state Plan shows: a card above the season, or the season card's result line. */
+export interface PlanRaceCard {
+    state: PlanRaceCardState;
+    race_id: number;
+    race_date: string;
+    distance_m: number;
+    goal_time_sec: number;
+    name: string | null;
+    /** Days from today to the race; null once it has passed. */
+    days_to_race: number | null;
+    /** Set only for a recorded result. */
+    finish_time_sec: number | null;
+}
+
 export interface PlanRecalibrationState {
     pending: boolean;
     started_at: string | null;

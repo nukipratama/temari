@@ -14,6 +14,7 @@ import {
     formatNaiveIdDate,
     formatNaiveTimeId,
     formatPace,
+    formatRaceTime,
     formatRelativeId,
     formatShortDateTimeId,
     formatWeekdayDayId,
@@ -64,6 +65,20 @@ describe('formatDuration', () => {
 
     it('falls back to seconds-only under a minute', () => {
         expect(formatDuration(45)).toBe('45 sec');
+    });
+});
+
+describe('formatRaceTime', () => {
+    it('writes a race under 100 minutes in whole minutes', () => {
+        expect(formatRaceTime(3600)).toBe('60:00');
+        expect(formatRaceTime(3650)).toBe('60:50');
+        expect(formatRaceTime(5999)).toBe('99:59');
+        expect(formatRaceTime(1500)).toBe('25:00');
+    });
+
+    it('switches to hours from 100 minutes', () => {
+        expect(formatRaceTime(6000)).toBe('1:40:00');
+        expect(formatRaceTime(6900)).toBe('1:55:00');
     });
 });
 

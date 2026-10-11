@@ -46,6 +46,9 @@ class PlanController extends Controller
         // what it asked for.
         return Inertia::render('Plan', [
             'race' => fn (): ?array => $plan->race($user),
+            'raceCard' => fn (): ?array => $plan->raceCard($user, $today),
+            'raceSupportedTimeSec' => Inertia::defer(fn (): ?int => $plan->raceSupportedTimeSec($user, $today), 'race'),
+            'raceOutcomeCandidate' => Inertia::defer(fn (): ?array => $plan->raceOutcomeCandidate($user, $today), 'race'),
             'sessionsPerWeek' => fn (): int => $plan->sessionsPerWeek($user, $today),
             'weeks' => Inertia::defer(fn (): array => $plan->weeks($user, $today)),
             'season' => fn (): ?array => $plan->season($user, $today),

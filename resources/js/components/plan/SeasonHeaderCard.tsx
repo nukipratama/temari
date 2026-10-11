@@ -1,21 +1,58 @@
-import type { SeasonSummaryWeek } from '@/lib/plan';
-import type { AnalysisPayload } from '@/types/inertia';
+import { Link } from '@inertiajs/react';
 
+import type { SeasonSummaryWeek } from '@/lib/plan';
+import type { AnalysisPayload, PlanRaceCard } from '@/types/inertia';
+
+import AddRacePrompt from '@/components/plan/AddRacePrompt';
 import PhaseRibbon from '@/components/plan/PhaseRibbon';
 import TemariTake from '@/components/plan/TemariTake';
 import Eyebrow from '@/components/ui/Eyebrow';
+import { formatNaiveMonthDayId, formatRaceTime } from '@/lib/pace';
 import {
     nextPhaseOf,
     PHASE_LABEL,
     seasonPhaseKey,
     weeksLabel,
-    weeksToRace,
 } from '@/lib/plan';
+import { raceDistanceLabel } from '@/lib/raceGoal';
+
+function RaceSlot({ raceCard }: Readonly<{ raceCard: PlanRaceCard | null }>) {
+    if (raceCard === null) {
+        return (
+            <AddRacePrompt className="mt-3 border-t border-dashed border-border pt-3" />
+        );
+    }
+
+    if (
+        raceCard.state !== 'result_recorded' ||
+        raceCard.finish_time_sec === null
+    ) {
+        return null;
+    }
+
+    return (
+        <p className="mt-1 font-mono text-xs text-text-2 tabular-nums">
+            {formatNaiveMonthDayId(raceCard.race_date)} ·{' '}
+            {raceDistanceLabel(raceCard.distance_m)}{' '}
+            {formatRaceTime(raceCard.finish_time_sec)}
+            {raceCard.finish_time_sec <= raceCard.goal_time_sec && (
+                <span className="text-horizon-ink"> ✓</span>
+            )}
+            {' · '}
+            <Link
+                href="/race"
+                className="focus-ring hit-area font-semibold text-horizon-ink"
+            >
+                next race ›
+            </Link>
+        </p>
+    );
+}
 
 /**
  * The season at a glance: the phase the athlete is in as a headline, what
- * comes next, how far off the race is and how closely the plan has been
- * followed, over the phase ribbon, then the under-ready line and Temari's read
+ * comes next and how closely the plan has been followed, over the phase
+ * ribbon, then the under-ready line and Temari's read
  * on the season so far.
  */
 export default function SeasonHeaderCard({
@@ -23,7 +60,7 @@ export default function SeasonHeaderCard({
     totalWeeks,
     adherencePct,
     weeks,
-    raceDate,
+    raceCard,
     narration,
     underReadyLine = null,
 }: Readonly<{
@@ -31,7 +68,8 @@ export default function SeasonHeaderCard({
     totalWeeks: number;
     adherencePct: number | null;
     weeks: SeasonSummaryWeek[];
-    raceDate: string | null;
+    /** No race, or a result recorded this past week, shows under the meta line. */
+    raceCard: PlanRaceCard | null;
     narration: AnalysisPayload | null;
     /** Served once, when the season opened with less than a full race block left. */
     underReadyLine?: string | null;
@@ -40,18 +78,9 @@ export default function SeasonHeaderCard({
     const currentGroupKey =
         currentWeek === undefined ? undefined : seasonPhaseKey(currentWeek);
     const next = nextPhaseOf(weeks);
-    const raceWeeks =
-        currentWeek === undefined || raceDate === null
-            ? null
-            : weeksToRace(currentWeek.week_start, raceDate);
-
-    const meta = [
+    const nextLine =
         next &&
-            `next: ${PHASE_LABEL[next.key] ?? next.key} in ${weeksLabel(next.inWeeks)}`,
-        raceWeeks !== null &&
-            raceWeeks > 0 &&
-            `race in ${weeksLabel(raceWeeks)}`,
-    ].filter(Boolean);
+        `next: ${PHASE_LABEL[next.key] ?? next.key} in ${weeksLabel(next.inWeeks)}`;
 
     return (
         <section>
@@ -64,10 +93,10 @@ export default function SeasonHeaderCard({
                     <em className="text-horizon-ink">week.</em>
                 </h2>
             )}
-            {(meta.length > 0 || adherencePct != null) && (
+            {(nextLine || adherencePct != null) && (
                 <p className="mt-1 font-mono text-xs text-text-2">
-                    {meta.join(' · ')}
-                    {meta.length > 0 && adherencePct != null && ' · '}
+                    {nextLine}
+                    {nextLine && adherencePct != null && ' · '}
                     {adherencePct != null && (
                         <>
                             <span className="font-bold tabular-nums text-horizon-ink">
@@ -78,6 +107,7 @@ export default function SeasonHeaderCard({
                     )}
                 </p>
             )}
+            <RaceSlot raceCard={raceCard} />
             <PhaseRibbon weeks={weeks} />
 
             {underReadyLine && (

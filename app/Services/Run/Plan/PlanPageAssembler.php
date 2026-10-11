@@ -7,7 +7,9 @@ namespace App\Services\Run\Plan;
 use App\Actions\Run\Plan\ResolveActiveRaceAction;
 use App\Actions\Run\Plan\ResolveWeekAdaptationAction;
 use App\Enums\PlannedSessionStatus;
+use App\Enums\RaceOutcome;
 use App\Models\PlannedSession;
+use App\Models\RaceGoal;
 use App\Models\Season;
 use App\Models\User;
 use App\Services\Gamification\SeasonPayloadBuilder;
@@ -28,12 +30,23 @@ use LogicException;
  * Bound `scoped()` in AppServiceProvider: the season is memoized because
  * three props want it and `ensureCurrent()` writes, and Inertia's partial
  * reload runs the whole action a second time.
+ *
+ * @phpstan-import-type Candidate from RaceOutcomeMatcher
  */
 final class PlanPageAssembler
 {
     private const int LOOKAHEAD_WEEKS = 4;
 
+    private const int RACE_WEEK_DAYS = 7;
+
+    private const int RESULT_SHOWN_DAYS = 7;
+
     private ?Season $season = null;
+
+    private bool $raceCardResolved = false;
+
+    /** @var array{state: string, race: RaceGoal, days_to_race: int|null}|null */
+    private ?array $raceCardRace = null;
 
     public function __construct(
         private readonly TrainingBaseline $baseline,
@@ -50,6 +63,7 @@ final class PlanPageAssembler
         private readonly PlanBriefingContext $briefing,
         private readonly CurrentWeekVolumeProjector $volumeProjector,
         private readonly RaceAmbitionAssessor $ambition,
+        private readonly RaceOutcomeMatcher $outcomeMatcher,
     ) {
     }
 
@@ -61,6 +75,55 @@ final class PlanPageAssembler
         $race = ($this->activeRace)($user->id);
 
         return $race === null ? null : ['race_date' => $race->race_date->toDateString(), 'name' => $race->name];
+    }
+
+    /**
+     * Race day, then a race result still to confirm, then race week or a race
+     * further ahead, then a result recorded in the last week while no race is
+     * set. Null when none of these holds.
+     *
+     * @return array{state: string, race_id: int, race_date: string, distance_m: int, goal_time_sec: int, name: string|null, days_to_race: int|null, finish_time_sec: int|null}|null
+     */
+    public function raceCard(User $user, Carbon $today): ?array
+    {
+        $card = $this->raceCardRace($user, $today);
+        if ($card === null) {
+            return null;
+        }
+
+        $race = $card['race'];
+
+        return [
+            'state' => $card['state'],
+            'race_id' => $race->id,
+            'race_date' => $race->race_date->toDateString(),
+            'distance_m' => $race->distance_m,
+            'goal_time_sec' => $race->goal_time_sec,
+            'name' => $race->name,
+            'days_to_race' => $card['days_to_race'],
+            'finish_time_sec' => $card['state'] === 'result_recorded' ? $race->finish_time_sec : null,
+        ];
+    }
+
+    public function raceSupportedTimeSec(User $user, Carbon $today): ?int
+    {
+        $card = $this->raceCardRace($user, $today);
+
+        return $card !== null && $card['state'] === 'ahead'
+            ? $this->ambition->assess($user, $card['race'])->supportedTimeSec
+            : null;
+    }
+
+    /**
+     * @return Candidate|null
+     */
+    public function raceOutcomeCandidate(User $user, Carbon $today): ?array
+    {
+        $card = $this->raceCardRace($user, $today);
+
+        return $card !== null && $card['state'] === 'result_pending'
+            ? $this->outcomeMatcher->candidates($card['race'])->first()
+            : null;
     }
 
     public function sessionsPerWeek(User $user, Carbon $today): int
@@ -263,6 +326,45 @@ final class PlanPageAssembler
         $window = $ruleRowsByDate->filter(fn (PlannedSession $row, string $date): bool => $date >= $fromKey && $date <= $toKey)->values();
 
         return SessionEditRules::rulesFor($day, $status, $window, $ranDates, $today);
+    }
+
+    /**
+     * @return array{state: string, race: RaceGoal, days_to_race: int|null}|null
+     */
+    private function raceCardRace(User $user, Carbon $today): ?array
+    {
+        if ($this->raceCardResolved) {
+            return $this->raceCardRace;
+        }
+        $this->raceCardResolved = true;
+
+        $active = ($this->activeRace)($user->id);
+        $daysToRace = $active === null ? null : (int) $today->diffInDays($active->race_date, false);
+        if ($active !== null && $daysToRace === 0) {
+            return $this->raceCardRace = ['state' => 'day', 'race' => $active, 'days_to_race' => 0];
+        }
+
+        $past = RaceGoal::query()
+            ->where('user_id', $user->id)
+            ->whereDate('race_date', '<', $today->toDateString())
+            ->orderByDesc('race_date')
+            ->orderByDesc('id')
+            ->first();
+
+        return $this->raceCardRace = match (true) {
+            $past?->outcome === RaceOutcome::Pending => ['state' => 'result_pending', 'race' => $past, 'days_to_race' => null],
+            $active !== null && $daysToRace > 0 => ['state' => $daysToRace <= self::RACE_WEEK_DAYS ? 'week' : 'ahead', 'race' => $active, 'days_to_race' => $daysToRace],
+            $active === null && $past !== null && $this->resultRecentlyRecorded($past, $today) => ['state' => 'result_recorded', 'race' => $past, 'days_to_race' => null],
+            default => null,
+        };
+    }
+
+    private function resultRecentlyRecorded(RaceGoal $race, Carbon $today): bool
+    {
+        return $race->outcome === RaceOutcome::Confirmed
+            && $race->finish_time_sec !== null
+            && $race->outcome_recorded_at !== null
+            && $race->outcome_recorded_at->copy()->startOfDay()->gt($today->copy()->subDays(self::RESULT_SHOWN_DAYS));
     }
 
     private function currentSeason(User $user, Carbon $today): Season
