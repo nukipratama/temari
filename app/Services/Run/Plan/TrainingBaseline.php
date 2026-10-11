@@ -19,6 +19,7 @@ use App\Services\Run\Metrics\TrainingPaceCalculator;
 use App\Services\Run\Metrics\VdotEstimator;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use App\Actions\Run\Plan\ResolveTrailingWeeksAction;
 use App\Actions\Run\Plan\ResolveTrainingPreferenceAction;
 use App\Actions\Run\Plan\ResolveSeasonAction;
@@ -179,6 +180,11 @@ final class TrainingBaseline
     /** How far back the volume floor averages the athlete's actual weeks. */
     private const int VOLUME_FLOOR_WEEKS = 12;
 
+    /** Bump when the floor's solve or anything it calls changes: a cached floor outlives a deploy. */
+    private const int VOLUME_FLOOR_CACHE_VERSION = 1;
+
+    private const int VOLUME_FLOOR_CACHE_TTL_SECONDS = 86_400;
+
     public function __construct(
         private readonly VdotEstimator $vdotEstimator,
         private readonly TrainingPaceCalculator $paceCalculator,
@@ -202,9 +208,8 @@ final class TrainingBaseline
     private array $blockMemo = [];
 
     /**
-     * The block's volume floor, keyed on the block key plus the season's
-     * `volume_floor_km`, `sessionsPerWeek`, the two session ceilings and the
-     * week layout — the only other inputs {@see self::computeVolumeFloorKm()} reads.
+     * The block's volume floor, keyed on every input {@see self::computeVolumeFloorKm()}
+     * reads, the same key its cross-request cache entry carries.
      *
      * @var array<string, float>
      */
@@ -516,9 +521,30 @@ final class TrainingBaseline
      */
     private function volumeFloorKm(RaceGoal $race, array $block, Season $season, int $sessionsPerWeek, float $longRunCapKm, float $progressionCapKm, array $layout): float
     {
-        $key = implode('|', [self::blockKey($race, $season), $season->volume_floor_km ?? 'null', $sessionsPerWeek, $longRunCapKm, $progressionCapKm, json_encode($layout, JSON_THROW_ON_ERROR)]);
+        $key = 'volume-floor:v'.self::VOLUME_FLOOR_CACHE_VERSION.':'.hash('xxh128', serialize([
+            $race->distance_m,
+            $race->race_date->toDateString(),
+            $season->starts_at->toDateString(),
+            $season->increases_held,
+            $season->volume_floor_km,
+            $sessionsPerWeek,
+            $longRunCapKm,
+            $progressionCapKm,
+            $layout,
+        ]));
+        if (array_key_exists($key, $this->volumeFloorMemo)) {
+            return $this->volumeFloorMemo[$key];
+        }
 
-        return $this->volumeFloorMemo[$key] ??= $this->computeVolumeFloorKm($race, $block, $season, $sessionsPerWeek, $longRunCapKm, $progressionCapKm, $layout);
+        $cached = Cache::get($key);
+        if (is_numeric($cached)) {
+            return $this->volumeFloorMemo[$key] = (float) $cached;
+        }
+
+        $floorKm = $this->computeVolumeFloorKm($race, $block, $season, $sessionsPerWeek, $longRunCapKm, $progressionCapKm, $layout);
+        Cache::put($key, $floorKm, self::VOLUME_FLOOR_CACHE_TTL_SECONDS);
+
+        return $this->volumeFloorMemo[$key] = $floorKm;
     }
 
     /**
