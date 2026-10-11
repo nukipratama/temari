@@ -5,6 +5,7 @@ import { router } from '@inertiajs/react';
 import type { TabId } from '@/lib/navRoutes';
 
 import { ITEMS } from '@/lib/nav';
+import { RACE_PATH, RACE_TAB } from '@/lib/navRoutes';
 
 export interface PendingTab {
     tab: TabId;
@@ -41,34 +42,55 @@ export function pendingTabSnapshot(): PendingTab | null {
     return pending;
 }
 
-function startedTabVisit(visit: PendingVisit): void {
+function pendingTarget(
+    path: string,
+    tapped: Pick<PendingTab, 'tab' | 'from'> | null,
+    currentComponent: () => string,
+): Pick<PendingTab, 'tab' | 'from'> | null {
+    const tabPath = ITEMS.find((item) => item.id === tapped?.tab)?.href;
+    if (tapped !== null && path === tabPath) {
+        return tapped;
+    }
+
+    const from = tapped?.from ?? currentComponent();
+
+    return path === RACE_PATH && from !== 'Race'
+        ? { tab: RACE_TAB, from }
+        : null;
+}
+
+function startedTabVisit(
+    visit: PendingVisit,
+    currentComponent: () => string,
+): void {
     if (visit.async || visit.prefetch) {
         return;
     }
 
     const tapped = armed;
     armed = null;
-    const tabPath = ITEMS.find((item) => item.id === tapped?.tab)?.href;
-    if (
-        tapped === null ||
-        visit.method !== 'get' ||
-        visit.url.pathname !== tabPath
-    ) {
+    if (visit.method !== 'get') {
+        return;
+    }
+
+    const path = visit.url.pathname;
+    const target = pendingTarget(path, tapped, currentComponent);
+    if (target === null) {
         return;
     }
 
     setPending({
-        ...tapped,
-        href: visit.url.pathname + visit.url.search,
+        ...target,
+        href: path + visit.url.search,
         scrollY: window.scrollY,
         visit,
     });
 }
 
 /** Follows Inertia's visit lifecycle; returns the unsubscribe. */
-export function trackTabVisits(): () => void {
+export function trackTabVisits(currentComponent: () => string): () => void {
     const offStart = router.on('start', (event) => {
-        startedTabVisit(event.detail.visit);
+        startedTabVisit(event.detail.visit, currentComponent);
     });
     const offFinish = router.on('finish', (event) => {
         if (pending !== null && pending.visit === event.detail.visit) {

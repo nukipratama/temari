@@ -32,7 +32,13 @@ export default function useTabSkeleton(component: string): PendingTab | null {
         null,
     );
 
-    useEffect(() => trackTabVisits(), []);
+    const componentRef = useRef(component);
+
+    useEffect(() => {
+        componentRef.current = component;
+    }, [component]);
+
+    useEffect(() => trackTabVisits(() => componentRef.current), []);
 
     useLayoutEffect(() => {
         if (shown) {

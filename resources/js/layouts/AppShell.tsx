@@ -14,6 +14,7 @@ import MobileBottomNav from '@/components/MobileBottomNav';
 import MobileTopBar from '@/components/MobileTopBar';
 import PlanSkeleton from '@/components/plan/PlanSkeleton';
 import PullToRefresh from '@/components/PullToRefresh';
+import RaceSkeleton from '@/components/race/RaceSkeleton';
 import StravaPausedBanner from '@/components/StravaPausedBanner';
 import StravaZoneReconnectBanner from '@/components/StravaZoneReconnectBanner';
 import TrendsSkeleton from '@/components/trends/TrendsSkeleton';
@@ -22,6 +23,7 @@ import useTabSkeleton from '@/hooks/useTabSkeleton';
 import useViewTransitions from '@/hooks/useViewTransitions';
 import { cn } from '@/lib/cn';
 import { navTabFor } from '@/lib/nav';
+import { RACE_PATH } from '@/lib/navRoutes';
 
 interface AppShellProps {
     children: ReactNode;
@@ -36,7 +38,8 @@ const TAB_SKELETONS: Readonly<Record<TabId, ComponentType<{ href: string }>>> =
     };
 
 function TabSkeleton({ tab, href }: Readonly<{ tab: TabId; href: string }>) {
-    const Skeleton = TAB_SKELETONS[tab];
+    const Skeleton =
+        href.split('?')[0] === RACE_PATH ? RaceSkeleton : TAB_SKELETONS[tab];
     return <Skeleton href={href} />;
 }
 

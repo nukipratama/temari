@@ -38,12 +38,15 @@ function finish(done: PendingVisit) {
     handler('finish')({ detail: { visit: done } } as GlobalEvent<'finish'>);
 }
 
+let currentComponent = 'Home';
+
 describe('pendingTab', () => {
     let untrack: () => void;
 
     beforeEach(() => {
+        currentComponent = 'Home';
         vi.mocked(router.on).mockClear();
-        untrack = trackTabVisits();
+        untrack = trackTabVisits(() => currentComponent);
     });
 
     afterEach(() => {
@@ -153,6 +156,63 @@ describe('pendingTab', () => {
         expect(pendingTabSnapshot()).toBeNull();
     });
 
+    it.each(['Home', 'Plan', 'Trends', 'Profile'])(
+        'marks a link into /race pending from %s, under the plan tab',
+        (from) => {
+            currentComponent = from;
+            window.scrollY = 120;
+            const raceVisit = visit('/race');
+            start(raceVisit);
+
+            expect(pendingTabSnapshot()).toEqual({
+                tab: 'plan',
+                from,
+                href: '/race',
+                scrollY: 120,
+                visit: raceVisit,
+            });
+        },
+    );
+
+    it('does not mark a visit to /race pending from Race itself', () => {
+        currentComponent = 'Race';
+        start(visit('/race'));
+
+        expect(pendingTabSnapshot()).toBeNull();
+    });
+
+    it.each([
+        ['an async partial reload', { async: true }],
+        ['a prefetch', { prefetch: true }],
+        ['a non-GET visit', { method: 'delete' as const }],
+    ])('does not mark %s of /race pending', (_, overrides) => {
+        start(visit('/race', overrides));
+
+        expect(pendingTabSnapshot()).toBeNull();
+    });
+
+    it('marks the plan tab tapped while it remembers /race as a visit into /race', () => {
+        armPendingTab('plan', 'Trends');
+        start(visit('/race'));
+
+        expect(pendingTabSnapshot()).toMatchObject({
+            tab: 'plan',
+            from: 'Trends',
+            href: '/race',
+        });
+    });
+
+    it('marks a history toggle pending with its query kept', () => {
+        armPendingTab('history', 'History');
+        start(visit('/history?view=calendar'));
+
+        expect(pendingTabSnapshot()).toMatchObject({
+            tab: 'history',
+            from: 'History',
+            href: '/history?view=calendar',
+        });
+    });
+
     it('notifies subscribers on every change and stops after unsubscribing', () => {
         const listener = vi.fn();
         const unsubscribe = subscribePendingTab(listener);
@@ -177,7 +237,7 @@ describe('pendingTab', () => {
         armPendingTab('trends', 'Home');
 
         untrack();
-        untrack = trackTabVisits();
+        untrack = trackTabVisits(() => currentComponent);
 
         expect(pendingTabSnapshot()).toBeNull();
 
@@ -193,7 +253,7 @@ describe('pendingTab', () => {
             .mockReturnValueOnce(offStart)
             .mockReturnValueOnce(offFinish);
 
-        trackTabVisits()();
+        trackTabVisits(() => currentComponent)();
 
         expect(offStart).toHaveBeenCalledOnce();
         expect(offFinish).toHaveBeenCalledOnce();

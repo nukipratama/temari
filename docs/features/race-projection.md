@@ -24,11 +24,12 @@ code_refs:
   - app/Http/Controllers/TrendsController.php
   - resources/js/components/race/RaceGoalForm.tsx
   - resources/js/pages/Race.tsx
+  - resources/js/components/race/RaceSkeleton.tsx
 ---
 
 # Race — goal race and Riegel projection
 
-The first genuinely user-authored object in the app: a race the user is training for, entered on [Race.tsx](resources/js/pages/Race.tsx) at `/race` and served by [RaceController](app/Http/Controllers/RaceController.php).
+The first genuinely user-authored object in the app: a race the user is training for, entered on [Race.tsx](resources/js/pages/Race.tsx) at `/race` and served by [RaceController](app/Http/Controllers/RaceController.php). The page paints its heading, the plan link and (through the eager `has_race` flag) the no-race state at once; `race`, `projection` and `past_races` are `Inertia::defer()` closures that arrive in one follow-up request, behind [RaceSkeleton](resources/js/components/race/RaceSkeleton.tsx), so the ambition assessment, the Riegel projection and the outcome matcher stay off the first response.
 
 ## Naming: "Race", not "Goal"
 

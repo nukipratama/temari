@@ -1,15 +1,16 @@
-import { Head, Link, router } from '@inertiajs/react';
-import { ArrowRight, CalendarX, Pencil } from 'lucide-react';
+import { Deferred, Head, router } from '@inertiajs/react';
+import { CalendarX, Pencil } from 'lucide-react';
 import { Suspense, useState } from 'react';
 
 import type { PastRace, RaceDetails, RaceProjection } from '@/types/inertia';
 
 import DemoBlockedModal from '@/components/DemoBlockedModal';
 import RaceDuel from '@/components/race/RaceDuel';
+import RaceHeading from '@/components/race/RaceHeading';
 import RaceOutcomeCard from '@/components/race/RaceOutcomeCard';
+import { RaceBodySkeleton } from '@/components/race/RaceSkeleton';
 import SteppingStoneCard from '@/components/race/SteppingStoneCard';
 import TemariNudgeModal from '@/components/temari/TemariNudgeModal';
-import Eyebrow from '@/components/ui/Eyebrow';
 import { Icon } from '@/components/ui/Icon';
 import PageContainer from '@/components/ui/PageContainer';
 import PillButton from '@/components/ui/PillButton';
@@ -24,8 +25,9 @@ interface ProjectionPayload extends RaceProjection {
 }
 
 interface RaceProps {
-    race: RaceDetails | null;
-    projection: ProjectionPayload | null;
+    has_race: boolean;
+    race?: RaceDetails | null;
+    projection?: ProjectionPayload | null;
     past_races?: PastRace[];
 }
 
@@ -39,8 +41,9 @@ const FORM_ID = 'race-goal-form';
  * The Riegel projection only backs the form's typed-goal warning.
  */
 export default function Race({
-    race,
-    projection,
+    has_race: hasRace,
+    race = null,
+    projection = null,
     past_races: pastRaces = [],
 }: Readonly<RaceProps>) {
     const [editing, setEditing] = useState(false);
@@ -55,82 +58,79 @@ export default function Race({
         <>
             <Head title="Race" />
             <PageContainer>
-                <Eyebrow token="hero" tone="ink-2">
-                    Race
-                </Eyebrow>
-                <div className="mt-2 flex items-center justify-between gap-3">
-                    <h1 className="font-serif text-quote-lg text-foreground italic">
-                        your <em className="text-horizon-ink">race.</em>
-                    </h1>
-                    <Link
-                        href="/plan"
-                        className="focus-ring hit-area inline-flex flex-none items-center gap-0.5 text-xs font-semibold text-horizon-ink"
-                    >
-                        plan
-                        <Icon
-                            icon={ArrowRight}
-                            className="size-3"
-                            aria-hidden
-                        />
-                    </Link>
-                </div>
+                <RaceHeading />
 
-                {race ? (
-                    <>
-                        <RaceDuel
-                            race={race}
-                            ambition={race.ambition}
-                            support={race.support}
-                            className="mt-4"
-                        />
-                        <SteppingStoneCard
-                            ambition={race.ambition}
-                            className="mt-4"
-                        />
-                        <div className="mt-3 flex items-center justify-between gap-3 border-t border-dashed border-border pt-3">
-                            <PillButton
-                                aria-expanded={editing}
-                                aria-controls={FORM_ID}
-                                onClick={() => setEditing((open) => !open)}
-                                tone="muted"
-                                size="xs"
-                            >
-                                <Icon
-                                    icon={Pencil}
-                                    className="size-3.5"
-                                    aria-hidden
-                                />
-                                edit race
-                            </PillButton>
-                            <button
-                                type="button"
-                                onClick={() => setConfirmingClear(true)}
-                                className="focus-ring hit-area rounded-xs p-1 text-xs font-bold text-ember-ink transition hover:opacity-80"
-                            >
-                                clear race
-                            </button>
-                        </div>
-                        <TemariNudgeModal
-                            open={confirmingClear}
-                            onClose={() => setConfirmingClear(false)}
-                            pose="concerned"
-                            title={`clear ${race.name ?? 'your race'}?`}
-                            body="your plan goes back to a steady rhythm with regular deloads."
-                            primaryLabel="clear race"
-                            primaryIcon={CalendarX}
-                            primaryTone="danger"
-                            secondaryLabel="keep it"
-                            onPrimary={() => {
-                                setConfirmingClear(false);
-                                guard(() => router.delete('/race'));
-                            }}
-                        />
-                        <DemoBlockedModal
-                            open={demoBlocked}
-                            onClose={() => setDemoBlocked(false)}
-                            {...RACE_DEMO_BLOCKED}
-                        />
-                    </>
+                {hasRace ? (
+                    <Deferred
+                        data={['race', 'projection']}
+                        fallback={<RaceBodySkeleton />}
+                    >
+                        {() =>
+                            race && (
+                                <>
+                                    <RaceDuel
+                                        race={race}
+                                        ambition={race.ambition}
+                                        support={race.support}
+                                        className="mt-4"
+                                    />
+                                    <SteppingStoneCard
+                                        ambition={race.ambition}
+                                        className="mt-4"
+                                    />
+                                    <div className="mt-3 flex items-center justify-between gap-3 border-t border-dashed border-border pt-3">
+                                        <PillButton
+                                            aria-expanded={editing}
+                                            aria-controls={FORM_ID}
+                                            onClick={() =>
+                                                setEditing((open) => !open)
+                                            }
+                                            tone="muted"
+                                            size="xs"
+                                        >
+                                            <Icon
+                                                icon={Pencil}
+                                                className="size-3.5"
+                                                aria-hidden
+                                            />
+                                            edit race
+                                        </PillButton>
+                                        <button
+                                            type="button"
+                                            onClick={() =>
+                                                setConfirmingClear(true)
+                                            }
+                                            className="focus-ring hit-area rounded-xs p-1 text-xs font-bold text-ember-ink transition hover:opacity-80"
+                                        >
+                                            clear race
+                                        </button>
+                                    </div>
+                                    <TemariNudgeModal
+                                        open={confirmingClear}
+                                        onClose={() =>
+                                            setConfirmingClear(false)
+                                        }
+                                        pose="concerned"
+                                        title={`clear ${race.name ?? 'your race'}?`}
+                                        body="your plan goes back to a steady rhythm with regular deloads."
+                                        primaryLabel="clear race"
+                                        primaryIcon={CalendarX}
+                                        primaryTone="danger"
+                                        secondaryLabel="keep it"
+                                        onPrimary={() => {
+                                            setConfirmingClear(false);
+                                            guard(() => router.delete('/race'));
+                                        }}
+                                    />
+                                    <DemoBlockedModal
+                                        open={demoBlocked}
+                                        onClose={() => setDemoBlocked(false)}
+                                        {...RACE_DEMO_BLOCKED}
+                                    />
+                                </>
+                            )
+                        }
+                    </Deferred>
                 ) : (
                     <div className="mt-4 flex flex-col items-start gap-3">
                         <p className="text-sm leading-relaxed text-text-2">
@@ -149,13 +149,17 @@ export default function Race({
                     </div>
                 )}
 
-                {pastRaces.map((past) => (
-                    <RaceOutcomeCard
-                        key={past.id}
-                        race={past}
-                        className="mt-4"
-                    />
-                ))}
+                <Deferred data="past_races" fallback={null}>
+                    {() =>
+                        pastRaces.map((past) => (
+                            <RaceOutcomeCard
+                                key={past.id}
+                                race={past}
+                                className="mt-4"
+                            />
+                        ))
+                    }
+                </Deferred>
 
                 <div id={FORM_ID}>
                     {editing && (

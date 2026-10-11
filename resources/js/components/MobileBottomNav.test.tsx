@@ -72,7 +72,7 @@ describe('MobileBottomNav', () => {
         vi.mocked(router.visit).mockClear();
         window.sessionStorage.clear();
         window.scrollY = 0;
-        untrack = trackTabVisits();
+        untrack = trackTabVisits(() => 'Home');
     });
 
     afterEach(() => {

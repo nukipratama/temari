@@ -12,6 +12,9 @@ code_refs:
   - resources/js/lib/navigationMemory.ts
   - resources/js/lib/pendingTab.ts
   - resources/js/hooks/useTabSkeleton.ts
+  - resources/js/components/race/RaceSkeleton.tsx
+  - resources/js/components/history/HistoryNav.tsx
+  - resources/js/pages/Activities/useMonthReload.ts
   - resources/js/components/ui/Overlay.tsx
   - resources/js/hooks/useOverlayHistory.ts
   - resources/js/hooks/usePullToRefresh.ts
@@ -316,11 +319,24 @@ cross-fade. It also scrolls to the top while the skeleton shows, and back to
 where the reader was if the visit ends on the same page. Each skeleton keeps
 its page's real static header and reuses the fallbacks that page shows while
 its deferred props load (`TrendsSkeleton`, `PlanSkeleton`, `HistorySkeleton`,
-`TodaySkeleton` under `resources/js/components/`), so the first response causes
-no jump. Today has no deferred fallback, so its shapes approximate the three
-sections and shift by roughly the length of that day's narration. A tap on the
-current tab never shows one. Under reduced motion the shapes are static,
-through the `.skeleton` rule in `app.css`.
+`RaceSkeleton`, `TodaySkeleton` under `resources/js/components/`), so the first
+response causes no jump. Today has no deferred fallback, so its shapes
+approximate the three sections and shift by roughly the length of that day's
+narration. A tap on the current tab never shows one.
+
+Two visits besides a tab tap arm the same state. The feed/calendar pill
+([HistoryNav](../../resources/js/components/history/HistoryNav.tsx)) arms the
+history tab when the other half is tapped, so `HistorySkeleton` draws that half
+from the visit's `?view=`. And any GET visit into `/race`, from wherever the link
+is (Plan, Home's outcome prompt, the Trends comparison, the profile race card),
+turns pending under the `plan` tab with no tap: `pendingTab` reads the page on
+screen from `useTabSkeleton`, and `AppShell` renders `RaceSkeleton` for an href
+on `/race` instead of the plan tab's. A visit to `/race` from Race itself shows
+nothing. Calendar's month prev/next and swipe are partial reloads, which never
+show a tab skeleton; [useMonthReload](../../resources/js/pages/Activities/useMonthReload.ts)
+instead swaps the consistency line, month recap and grid for their placeholders
+while a visit that reloads the month props is in flight. Under reduced motion
+the shapes are static, through the `.skeleton` rule in `app.css`.
 
 ## The route cross-fade
 

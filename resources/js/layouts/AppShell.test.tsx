@@ -4,6 +4,7 @@ import { router } from '@inertiajs/react';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import HistoryNav from '@/components/history/HistoryNav';
 import { pendingTabSnapshot } from '@/lib/pendingTab';
 import { makeUser, setMockPage } from '@/test/setup';
 
@@ -398,6 +399,64 @@ describe('AppShell tab skeleton', () => {
         expect(screen.getByText('calendar').closest('a')).toHaveClass(
             'bg-card',
         );
+    });
+
+    it.each([
+        ['Home', '/'],
+        ['Plan', '/plan'],
+        ['Trends', '/trends'],
+        ['Profile', '/profile'],
+    ])('shows the Race skeleton for a link into /race from %s', (from, url) => {
+        renderShell(url, from);
+
+        startVisit(pageVisit('/race'));
+
+        expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
+            'your race.',
+        );
+        expect(screen.getByText('current page')).not.toBeVisible();
+    });
+
+    it('shows no skeleton when /race is visited from Race itself', () => {
+        renderShell('/race', 'Race');
+
+        startVisit(pageVisit('/race'));
+
+        expect(screen.getByText('current page')).toBeVisible();
+    });
+
+    it("shows the other half's skeleton the moment the history toggle is tapped", () => {
+        setMockPage(
+            { auth: { user: andiUser }, flash: {}, demoLoginEnabled: false },
+            '/history',
+            'History',
+        );
+        render(
+            <AppShell>
+                <HistoryNav active="feed" />
+            </AppShell>,
+        );
+        const visit = pageVisit('/history?view=calendar');
+
+        act(() => {
+            fireEvent.click(screen.getByText('calendar').closest('a')!);
+            routerHandler('start')({
+                detail: { visit },
+            } as GlobalEvent<'start'>);
+        });
+
+        expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
+            'every runhas a story.',
+        );
+        expect(document.getElementById('main-content')).toHaveAttribute(
+            'aria-busy',
+            'true',
+        );
+        expect(
+            screen
+                .getAllByText('calendar')
+                .some((tab) => tab.closest('a')?.classList.contains('bg-card')),
+        ).toBe(true);
     });
 
     it('hands the page back when the visit ends without arriving', () => {

@@ -11,8 +11,9 @@ import { describe, expect, it, vi } from 'vitest';
 
 import type { PastRace, RaceDetails } from '@/types/inertia';
 
+import { RaceBodySkeleton } from '@/components/race/RaceSkeleton';
 import { RACE_DEMO_BLOCKED } from '@/lib/raceGoal';
-import { makeUser, setMockPage } from '@/test/setup';
+import { makeUser, setMockDeferred, setMockPage } from '@/test/setup';
 
 import Race from './Race';
 
@@ -68,6 +69,7 @@ describe('Race', () => {
     it('names the effort the supported time rests on, with no ask to confirm it', () => {
         render(
             <Race
+                has_race
                 race={{
                     ...RACE,
                     ambition: {
@@ -93,7 +95,7 @@ describe('Race', () => {
     });
 
     it('titles the page with exactly one h1', () => {
-        render(<Race race={RACE} projection={PROJECTION} />);
+        render(<Race has_race race={RACE} projection={PROJECTION} />);
 
         expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
     });
@@ -101,7 +103,9 @@ describe('Race', () => {
     it('shows nothing about an AI pause, since it renders no narration', () => {
         setMockPage({ aiPaused: true });
 
-        render(Race.layout(<Race race={RACE} projection={PROJECTION} />));
+        render(
+            Race.layout(<Race has_race race={RACE} projection={PROJECTION} />),
+        );
 
         expect(
             screen.queryByText(/catching her breath/),
@@ -110,7 +114,7 @@ describe('Race', () => {
 
     it('leads with the duel under a compact header once a race is set', () => {
         const { container } = render(
-            <Race race={RACE} projection={PROJECTION} />,
+            <Race has_race race={RACE} projection={PROJECTION} />,
         );
 
         const headings = [
@@ -133,6 +137,7 @@ describe('Race', () => {
     it('sets the stepping stone under the duel for an unsupported goal, and leaves the target as stated', () => {
         const { container } = render(
             <Race
+                has_race
                 race={{
                     ...RACE,
                     ambition: {
@@ -166,7 +171,7 @@ describe('Race', () => {
     });
 
     it('shows no stepping stone for a goal that is not unsupported', () => {
-        render(<Race race={RACE} projection={PROJECTION} />);
+        render(<Race has_race race={RACE} projection={PROJECTION} />);
 
         expect(
             screen.queryByRole('region', { name: 'stepping stone' }),
@@ -174,7 +179,7 @@ describe('Race', () => {
     });
 
     it('shows only a short line and a set-a-race button when no race is set', () => {
-        render(<Race race={null} projection={null} />);
+        render(<Race has_race={false} race={null} projection={null} />);
 
         expect(
             screen.getByText(/set a race and temari compares your target/),
@@ -187,7 +192,7 @@ describe('Race', () => {
     });
 
     it('expands the goal form from "set a race"', async () => {
-        render(<Race race={null} projection={null} />);
+        render(<Race has_race={false} race={null} projection={null} />);
 
         const toggle = screen.getByRole('button', { name: 'set a race' });
         expect(toggle).toHaveAttribute('aria-expanded', 'false');
@@ -199,7 +204,7 @@ describe('Race', () => {
     });
 
     it('keeps the goal form collapsed until "edit race" opens it', async () => {
-        render(<Race race={RACE} projection={PROJECTION} />);
+        render(<Race has_race race={RACE} projection={PROJECTION} />);
 
         expect(screen.queryByText('edit your race')).not.toBeInTheDocument();
         const toggle = screen.getByRole('button', { name: 'edit race' });
@@ -212,7 +217,7 @@ describe('Race', () => {
     });
 
     it('collapses the form again after a successful save', async () => {
-        render(<Race race={RACE} projection={PROJECTION} />);
+        render(<Race has_race race={RACE} projection={PROJECTION} />);
         fireEvent.click(screen.getByRole('button', { name: 'edit race' }));
 
         fireEvent.click(
@@ -231,7 +236,7 @@ describe('Race', () => {
     });
 
     it('links across to the plan instead of drawing the schedule tabs', () => {
-        render(<Race race={null} projection={null} />);
+        render(<Race has_race={false} race={null} projection={null} />);
 
         expect(screen.getByRole('link', { name: 'plan' })).toHaveAttribute(
             'href',
@@ -244,7 +249,7 @@ describe('Race', () => {
     });
 
     it('gives clear race a padded hit area', () => {
-        render(<Race race={RACE} projection={PROJECTION} />);
+        render(<Race has_race race={RACE} projection={PROJECTION} />);
 
         expect(screen.getByRole('button', { name: 'clear race' })).toHaveClass(
             'hit-area',
@@ -254,6 +259,7 @@ describe('Race', () => {
     it('shows the target alone when recent runs support no time yet', () => {
         render(
             <Race
+                has_race
                 race={{
                     ...RACE,
                     ambition: {
@@ -275,7 +281,7 @@ describe('Race', () => {
 
     it('draws no fitness chart — that block is cut (P26)', () => {
         const { container } = render(
-            <Race race={RACE} projection={PROJECTION} />,
+            <Race has_race race={RACE} projection={PROJECTION} />,
         );
 
         expect(container.querySelector('canvas')).toBeNull();
@@ -285,7 +291,7 @@ describe('Race', () => {
 
     it('draws Temari only as the duel card watermark when a race is set', () => {
         const { container } = render(
-            <Race race={RACE} projection={PROJECTION} />,
+            <Race has_race race={RACE} projection={PROJECTION} />,
         );
 
         const mascots = container.querySelectorAll('svg[data-mascot]');
@@ -294,19 +300,21 @@ describe('Race', () => {
     });
 
     it('draws no Temari when no race is set', () => {
-        const { container } = render(<Race race={null} projection={null} />);
+        const { container } = render(
+            <Race has_race={false} race={null} projection={null} />,
+        );
 
         expect(container.querySelector('svg[data-mascot]')).toBeNull();
     });
 
     it('states the gap between the target and the supported time', () => {
-        render(<Race race={RACE} projection={PROJECTION} />);
+        render(<Race has_race race={RACE} projection={PROJECTION} />);
 
         expect(screen.getByText('0:50 behind')).toBeInTheDocument();
     });
 
     it('asks through a concerned Temari before clearing the race', async () => {
-        render(<Race race={RACE} projection={PROJECTION} />);
+        render(<Race has_race race={RACE} projection={PROJECTION} />);
 
         fireEvent.click(screen.getByRole('button', { name: 'clear race' }));
 
@@ -325,7 +333,7 @@ describe('Race', () => {
 
     it('keeps the race when the confirmation is dismissed', async () => {
         const remove = vi.spyOn(router, 'delete').mockImplementation(() => {});
-        render(<Race race={RACE} projection={PROJECTION} />);
+        render(<Race has_race race={RACE} projection={PROJECTION} />);
 
         fireEvent.click(screen.getByRole('button', { name: 'clear race' }));
         fireEvent.click(
@@ -343,7 +351,13 @@ describe('Race', () => {
 
     it('clears through to the race endpoint once confirmed', async () => {
         const remove = vi.spyOn(router, 'delete').mockImplementation(() => {});
-        render(<Race race={{ ...RACE, name: null }} projection={PROJECTION} />);
+        render(
+            <Race
+                has_race
+                race={{ ...RACE, name: null }}
+                projection={PROJECTION}
+            />,
+        );
 
         fireEvent.click(screen.getByRole('button', { name: 'clear race' }));
         const dialog = await screen.findByRole('dialog');
@@ -359,7 +373,7 @@ describe('Race', () => {
     });
 
     it('draws no outcome card when no race has passed', () => {
-        render(<Race race={RACE} projection={PROJECTION} />);
+        render(<Race has_race race={RACE} projection={PROJECTION} />);
 
         expect(
             screen.queryByRole('region', { name: /outcome/ }),
@@ -367,7 +381,14 @@ describe('Race', () => {
     });
 
     it('asks how a passed race went, even with no active race', () => {
-        render(<Race race={null} projection={null} past_races={[PAST_RACE]} />);
+        render(
+            <Race
+                has_race={false}
+                race={null}
+                projection={null}
+                past_races={[PAST_RACE]}
+            />,
+        );
 
         expect(
             screen.getByRole('region', { name: 'Bandung Half outcome' }),
@@ -384,7 +405,7 @@ describe('Race', () => {
     it('shows a demo visitor the race demo-blocked modal instead of clearing', async () => {
         setMockPage({ auth: { user: makeUser({ is_demo: true }) } });
         const remove = vi.spyOn(router, 'delete').mockImplementation(() => {});
-        render(<Race race={RACE} projection={PROJECTION} />);
+        render(<Race has_race race={RACE} projection={PROJECTION} />);
 
         fireEvent.click(screen.getByRole('button', { name: 'clear race' }));
         fireEvent.click(
@@ -398,5 +419,30 @@ describe('Race', () => {
         ).toBeInTheDocument();
         expect(remove).not.toHaveBeenCalled();
         remove.mockRestore();
+    });
+
+    it('paints the heading and the race skeleton while the race is deferred', () => {
+        setMockDeferred(['race', 'projection', 'past_races']);
+        const { container } = render(<Race has_race />);
+
+        expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
+            'your race.',
+        );
+        expect(screen.getByRole('link', { name: 'plan' })).toHaveAttribute(
+            'href',
+            '/plan',
+        );
+        expect(container.innerHTML).toContain(
+            render(<RaceBodySkeleton />).container.innerHTML,
+        );
+        expect(screen.queryByText('edit race')).not.toBeInTheDocument();
+    });
+
+    it('shows the no-race state at once, without waiting for the deferred props', () => {
+        setMockDeferred(['race', 'projection', 'past_races']);
+        render(<Race has_race={false} />);
+
+        expect(screen.getByText('set a race')).toBeInTheDocument();
+        expect(screen.queryByRole('status')).not.toBeInTheDocument();
     });
 });
