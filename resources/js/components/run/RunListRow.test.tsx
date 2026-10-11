@@ -177,7 +177,7 @@ describe('RunListRow', () => {
             />,
         );
         expect(screen.getByText('steady')).toHaveClass('text-citrus-ink');
-        expect(screen.getByText('felt overloaded')).toHaveClass(
+        expect(screen.getByText('overloaded')).toHaveClass(
             'text-mood-overloaded-ink',
         );
     });
@@ -189,15 +189,16 @@ describe('RunListRow', () => {
         const wordsLine = screen.getByText('easy').parentElement;
         const metricsLine = screen.getByText('150 bpm').parentElement;
         expect(wordsLine).not.toBe(metricsLine);
-        expect(wordsLine?.textContent).toBe('easy·felt blazing');
+        expect(wordsLine?.textContent).toBe('easy·blazing');
         expect(metricsLine?.textContent).toMatch(/^1:00:00·6:00·150 bpm/);
         expect(wordsLine?.nextElementSibling).toBe(metricsLine);
     });
 
-    it('omits the felt part when there is no mood', () => {
+    it('omits the mood when the run has none', () => {
         render(<RunListRow detail={detail({ effort: 'easy' })} />);
-        expect(screen.getByText('easy')).toBeInTheDocument();
-        expect(screen.queryByText(/^felt /)).not.toBeInTheDocument();
+        expect(screen.getByText('easy').parentElement?.textContent).toBe(
+            'easy',
+        );
     });
 
     it('says unscored when the run has no effort', () => {

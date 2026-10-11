@@ -4,7 +4,7 @@ import { PALETTE } from '@/lib/chartTokens';
 
 export const MOOD_LABEL: Record<Mood, string> = {
     blazing: 'blazing',
-    easy: 'easy',
+    easy: 'smooth',
     gassed: 'gassed',
     wobbly: 'wobbly',
     overloaded: 'overloaded',

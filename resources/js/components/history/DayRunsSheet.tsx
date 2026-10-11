@@ -80,7 +80,7 @@ export default function DayRunsSheet({
                                         </span>
                                         {run.mood && (
                                             <span className="text-text-3">
-                                                felt {MOOD_LABEL[run.mood]}
+                                                {MOOD_LABEL[run.mood]}
                                             </span>
                                         )}
                                     </span>

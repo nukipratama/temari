@@ -48,7 +48,7 @@ describe('DayRunsSheet', () => {
         expect(screen.getByText('morning shakeout')).toBeInTheDocument();
         expect(screen.getByText('evening intervals')).toBeInTheDocument();
         expect(screen.getByText(/3\.2 km/)).toBeInTheDocument();
-        expect(screen.getByText('felt chill')).toBeInTheDocument();
+        expect(screen.getByText('chill')).toBeInTheDocument();
         expect(screen.getByText('hard')).toBeInTheDocument();
         expect(screen.getByText('easy')).toBeInTheDocument();
     });

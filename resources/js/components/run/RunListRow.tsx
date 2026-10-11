@@ -112,7 +112,7 @@ function RunListRow({
                                 MOOD_INK[knownMood],
                             )}
                         >
-                            felt {MOOD_LABEL[knownMood]}
+                            {MOOD_LABEL[knownMood]}
                         </span>
                     </>
                 )}
