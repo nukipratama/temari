@@ -270,7 +270,7 @@ describe('Plan', () => {
         ).toHaveTextContent('half marathon 2:00:00 vs supported 2:04:10');
     });
 
-    it('carries no schedule / race-goal tab switch; the race line links out instead', () => {
+    it('carries no schedule / race-goal tab switch', () => {
         renderPlan();
 
         expect(
