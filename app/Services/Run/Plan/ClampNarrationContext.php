@@ -29,10 +29,11 @@ final readonly class ClampNarrationContext
     }
 
     /**
+     * @param  array<string, mixed>|null  $liveAssessment  the day's live readiness assessment when the caller already built it
      * @return array{ceiling: ReadinessCeiling, original: SessionType, clamped_to: SessionType, has_run_today: bool, readiness_reasons: list<string>, readiness_inputs: array<string, mixed>, decision_source: string}|null
      *                                                                                                                   null when the day has no session, or already fits under the ceiling
      */
-    public function forUserOn(int $userId, Carbon $date): ?array
+    public function forUserOn(int $userId, Carbon $date, ?array $liveAssessment = null): ?array
     {
         $user = User::query()->find($userId);
         if ($user === null) {
@@ -54,7 +55,7 @@ final readonly class ClampNarrationContext
             $assessment = $recordedAssessment;
             $decisionSource = 'recorded';
         } else {
-            $assessment = BriefingContext::forUser($user, $date, $this->trainingLoad->summary($user, $date))->readinessAssessment;
+            $assessment = $liveAssessment ?? BriefingContext::forUser($user, $date, $this->trainingLoad->summary($user, $date))->readinessAssessment;
             $decisionSource = 'live';
         }
         $ceiling = ReadinessCeiling::from($assessment['ceiling']);

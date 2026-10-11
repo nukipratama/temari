@@ -74,7 +74,7 @@ final readonly class CurrentWeekKm
         $currentWeekMultiplier = $multiplierByWeek[$currentWeekKey] ?? 1.0;
 
         $paces = $this->paceCalculator->fromVdotResult($this->vdotEstimator->estimate($user, $today));
-        $briefingContext = $this->briefing->forUser($user, $today);
+        $briefingContext = $this->briefing->forUser($user, $today, $currentWeekSessions, $baselineData);
         $loadPending = $briefingContext->historyLoading;
         $ceiling = ReadinessCeiling::from($briefingContext->readinessCeiling);
         $race = ($this->activeRace)($user->id);

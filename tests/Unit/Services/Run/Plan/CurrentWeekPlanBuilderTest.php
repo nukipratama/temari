@@ -4,21 +4,31 @@ declare(strict_types=1);
 
 use App\Enums\IngestState;
 use App\Enums\PlanPhase;
+use App\Enums\PlannedSessionStatus;
 use App\Enums\SessionType;
+use App\Models\AI\Analysis;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\PlannedSession;
 use App\Models\RaceGoal;
+use App\Models\Season;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
+use App\Services\AI\AnalysisStatus;
+use App\Services\AI\AnalysisType;
+use App\Services\Run\Metrics\ReadinessCeiling;
+use App\Services\Run\Plan\ClampNarrationContext;
 use App\Services\Run\Plan\CurrentWeekPlanBuilder;
 use App\Services\Run\Plan\PlanPageAssembler;
 use App\Services\Run\Plan\PlanRenderer;
 use App\Services\Run\Plan\SegmentGenerator;
 use App\Services\Run\Plan\TrainingBaseline;
+use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
 
 uses(RefreshDatabase::class);
 
@@ -567,6 +577,187 @@ it('totals the partial first week of a Saturday signup, not the runs behind it',
     expect(array_column($result['days'], 'date'))->toBe(['2026-05-16', '2026-05-17'])
         ->and($result['sessions_this_week'])->toBe(2)
         ->and($result['planned_km_this_week'])->toBe(round(array_sum(array_column($result['days'], 'distance_km')), 1));
+
+    Carbon::setTestNow();
+});
+
+/**
+ * A half-marathon season with a volume floor, Wednesday of a Build week: Monday
+ * and Tuesday still unscored with their runs logged, and today either an easy
+ * day or a tempo eased by yesterday's hard run, its clamp voice narrated.
+ */
+function weekPlanCharacterizationUser(bool $clampDay): User
+{
+    $user = User::factory()->create();
+    $race = RaceGoal::factory()->for($user)->create(['distance_m' => 21_097, 'race_date' => '2026-10-18', 'goal_time_sec' => 6_900]);
+    Season::factory()->for($user)->create([
+        'race_goal_id' => $race->id,
+        'anchor_weekly_volume_km' => 24.0,
+        'volume_floor_km' => 27.0,
+        'starts_at' => '2026-07-06',
+        'ends_at' => '2026-10-18',
+    ]);
+
+    foreach ([0, 1, 2, 3, 4, 5, 6] as $weeksBack) {
+        WeeklySnapshot::factory()->for($user)->create([
+            'week_ending' => Carbon::parse('2026-08-16')->subWeeks($weeksBack)->toDateString(),
+            'runs' => $weeksBack === 0 ? 3 : 4,
+            'distance_km' => $weeksBack === 0 ? 17.5 : 22.0 + $weeksBack,
+            'form_status' => $clampDay && $weeksBack === 0 ? 'overreaching' : 'optimal',
+            'monotony' => 1.0,
+        ]);
+    }
+
+    $layout = [SessionType::Easy, SessionType::Interval, SessionType::Easy, SessionType::Rest, SessionType::Easy, SessionType::Long, SessionType::Rest];
+    foreach ([4, 3, 2, 1, 0] as $weeksBack) {
+        $weekStart = Carbon::parse('2026-08-10')->subWeeks($weeksBack);
+        foreach ($layout as $offset => $type) {
+            $date = $weekStart->copy()->addDays($offset);
+            PlannedSession::factory()->for($user)->create([
+                'date' => $date,
+                'phase' => $weeksBack === 1 ? PlanPhase::Deload : PlanPhase::Build,
+                'session_type' => $weeksBack === 0 && $offset === 2 && $clampDay ? SessionType::Tempo : $type,
+                'status' => $weeksBack === 0 ? PlannedSessionStatus::Planned : PlannedSessionStatus::Done,
+            ]);
+        }
+    }
+
+    foreach ([
+        ['2026-08-08 07:00:00', 12_400.0, null],
+        ['2026-08-10 06:00:00', 2_000.3, null],
+        ['2026-08-10 12:30:00', 3_000.1, null],
+        ['2026-08-10 18:00:00', 1_500.2, null],
+        ['2026-08-11 12:00:00', 7_100.0, $clampDay ? ['time_in_zone_min' => ['Z2' => 20, 'Z4' => 12]] : null],
+    ] as [$startedAt, $meters, $zones]) {
+        ActivityDetail::factory()->for(Activity::factory()->for($user)->analyzed())->create([
+            'start_date_local' => Carbon::parse($startedAt),
+            'distance' => $meters,
+            'moving_time' => (int) round($meters * 0.33),
+            'elapsed_time' => (int) round($meters * 0.34),
+            'trimp_edwards' => $zones === null ? 60.0 : 130.0,
+            'stream_summary' => $zones,
+        ]);
+    }
+
+    if ($clampDay) {
+        Analysis::factory()->create([
+            'subject_type' => AnalysisType::PLAN_CLAMP_VOICE_SUBJECT_TYPE,
+            'subject_id' => $user->id,
+            'analysis_type' => AnalysisType::PlanClampVoice,
+            'discriminator' => '2026-08-12',
+            'status' => AnalysisStatus::Done,
+            'content' => 'yesterday was hard, so today stays easy.',
+            'content_fingerprint' => ClampNarrationContext::fingerprint(ReadinessCeiling::ModerateOk, SessionType::Easy, false, ['demanding_session_within_24h']),
+        ]);
+    }
+
+    return $user;
+}
+
+function weekPlanCharacterization(?array $payload): string
+{
+    $ids = [];
+    $normalize = function (mixed $value, string $path = '') use (&$normalize, &$ids): mixed {
+        if (! is_array($value)) {
+            return $value;
+        }
+        foreach ($value as $key => $child) {
+            $childPath = $path.'.'.(is_int($key) ? '*' : $key);
+            $value[$key] = match (true) {
+                $key === 'recommendation_token' && is_string($child) => $normalize(json_decode(Crypt::decryptString($child), true, flags: JSON_THROW_ON_ERROR), $childPath),
+                is_string($key) && is_int($child) && preg_match('/(^|_)id$/', $key) === 1 => $ids[$childPath][$child] ??= count($ids[$childPath] ?? []) + 1,
+                default => $normalize($child, $childPath),
+            };
+        }
+
+        return $value;
+    };
+
+    return json_encode($normalize($payload), JSON_PRETTY_PRINT | JSON_PRESERVE_ZERO_FRACTION | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR)."\n";
+}
+
+it('renders the week plan payload its fixture records', function (bool $clampDay, string $fixture): void {
+    Carbon::setTestNow('2026-08-12 08:00:00');
+    $user = weekPlanCharacterizationUser($clampDay);
+    $file = base_path("tests/fixtures/week-plan/{$fixture}.json");
+
+    $cold = weekPlanCharacterization(app(CurrentWeekPlanBuilder::class)->forUser($user, Carbon::today()));
+    app()->forgetScopedInstances();
+    $warm = weekPlanCharacterization(app(CurrentWeekPlanBuilder::class)->forUser($user, Carbon::today()));
+
+    if (getenv('UPDATE_WEEK_PLAN_FIXTURES') === '1') {
+        File::ensureDirectoryExists(dirname($file));
+        File::put($file, $cold);
+    }
+
+    expect($cold)->toBe(File::get($file))
+        ->and($warm)->toBe($cold)
+        ->and(str_contains($cold, 'yesterday was hard, so today stays easy.'))->toBe($clampDay);
+
+    Carbon::setTestNow();
+})->with([
+    'normal day' => [false, 'normal-day'],
+    'clamp day' => [true, 'clamp-day'],
+]);
+
+it('builds the readiness context once on a live clamp day', function (): void {
+    Carbon::setTestNow('2026-08-12 08:00:00');
+    $user = weekPlanCharacterizationUser(true);
+    $lastWeekReads = 0;
+    DB::listen(function (QueryExecuted $query) use (&$lastWeekReads): void {
+        $lastWeekReads += str_contains($query->sql, 'as total_distance') ? 1 : 0;
+    });
+
+    $today = collect(app(CurrentWeekPlanBuilder::class)->forUser($user, Carbon::today())['days'])->firstWhere('date', '2026-08-12');
+
+    expect($today['eased_from']['voice'])->toBe('yesterday was hard, so today stays easy.')
+        ->and($lastWeekReads)->toBe(1);
+
+    Carbon::setTestNow();
+});
+
+it('reads a recorded ease with no stored assessment fresh while history is still loading', function (): void {
+    Carbon::setTestNow('2026-08-12 08:00:00');
+    $user = User::factory()->create();
+    seedWeekOfSessions($user, Carbon::today()->startOfWeek(Carbon::MONDAY));
+    [$row] = tempoToday($user);
+    $row->update(['clamped_km' => 5.0, 'readiness_assessment' => null]);
+    ActivityDetail::factory()->for(Activity::factory()->summaryOnly()->for($user))->create([
+        'start_date_local' => Carbon::today()->copy()->subDay()->setTime(12, 0),
+        'elapsed_time' => 3600,
+        'distance' => 10_000,
+        'has_heartrate' => true,
+        'trimp_edwards' => 130.0,
+        'stream_summary' => ['time_in_zone_min' => ['Z2' => 20, 'Z4' => 12]],
+    ]);
+    Analysis::factory()->create([
+        'subject_type' => AnalysisType::PLAN_CLAMP_VOICE_SUBJECT_TYPE,
+        'subject_id' => $user->id,
+        'analysis_type' => AnalysisType::PlanClampVoice,
+        'discriminator' => '2026-08-12',
+        'status' => AnalysisStatus::Done,
+        'content' => 'yesterday was hard, so today stays easy.',
+        'content_fingerprint' => ClampNarrationContext::fingerprint(ReadinessCeiling::ModerateOk, SessionType::Easy, false, ['demanding_session_within_24h']),
+    ]);
+
+    $result = app(CurrentWeekPlanBuilder::class)->forUser($user, Carbon::today());
+
+    expect(collect($result['days'])->firstWhere('date', '2026-08-12')['eased_from']['voice'])->toBe('yesterday was hard, so today stays easy.');
+
+    Carbon::setTestNow();
+});
+
+it('reads the current week\'s planned sessions once on home', function (): void {
+    Carbon::setTestNow('2026-08-12 08:00:00');
+    $user = weekPlanCharacterizationUser(false);
+    $sessionReads = 0;
+    DB::listen(function (QueryExecuted $query) use (&$sessionReads): void {
+        $sessionReads += str_starts_with($query->sql, 'select * from `planned_sessions`') ? 1 : 0;
+    });
+
+    app(CurrentWeekPlanBuilder::class)->forUser($user, Carbon::today());
+
+    expect($sessionReads)->toBe(1);
 
     Carbon::setTestNow();
 });

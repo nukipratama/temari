@@ -11,9 +11,11 @@ use App\Models\PlannedSession;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\Run\Metrics\WeeklyAggregator;
+use App\Services\Run\Plan\TrainingBaseline;
 use App\Services\Run\Story\BriefingContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 
 uses(RefreshDatabase::class);
 
@@ -447,4 +449,30 @@ it('has no prescription to compare against without planned sessions this week', 
     Carbon::setTestNow($asOf);
 
     expect(BriefingContext::prescribedKmToDate(User::factory()->create(), $asOf))->toBeNull();
+});
+
+it('sizes the prescription to date from the week rows and baseline its caller already read', function (): void {
+    $asOf = Carbon::create(2026, 5, 21, 8);
+    Carbon::setTestNow($asOf);
+    $user = User::factory()->create();
+    foreach (['2026-05-18' => SessionType::Easy, '2026-05-19' => SessionType::Tempo, '2026-05-21' => SessionType::Easy, '2026-05-24' => SessionType::Long] as $date => $type) {
+        PlannedSession::factory()->for($user)->create(['date' => $date, 'phase' => PlanPhase::Build, 'session_type' => $type]);
+    }
+    WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-24', 'runs' => 3, 'distance_km' => 14.0]);
+    $rows = PlannedSession::query()->where('user_id', $user->id)->orderBy('date')->get();
+    $baseline = app(TrainingBaseline::class)->forUser($user, $asOf);
+    $doubled = [...$baseline, 'long_run_km' => $baseline['long_run_km'] * 2];
+
+    DB::flushQueryLog();
+    DB::enableQueryLog();
+    $held = BriefingContext::prescribedKmToDate($user, $asOf, $rows, $baseline);
+    $queries = DB::getQueryLog();
+    DB::disableQueryLog();
+    $aheadOf = fn (?array $baseline): mixed => BriefingContext::forUser($user, $asOf, ['monotony' => 1.0], weekSessions: $rows, baseline: $baseline)->readinessAssessment['inputs']['ahead_of_plan_pct'];
+
+    expect($held)->toBe(BriefingContext::prescribedKmToDate($user, $asOf))
+        ->and($queries)->toBe([])
+        ->and(BriefingContext::prescribedKmToDate($user, $asOf, $rows, $doubled))->toBeGreaterThan($held)
+        ->and($aheadOf($baseline))->toBe(BriefingContext::forUser($user, $asOf, ['monotony' => 1.0])->readinessAssessment['inputs']['ahead_of_plan_pct'])
+        ->and($aheadOf($doubled))->toBeLessThan($aheadOf($baseline));
 });

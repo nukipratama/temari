@@ -213,22 +213,21 @@ final class PlanPageAssembler
             ->filter(fn (PlannedSession $s): bool => $s->date->betweenIncluded($rangeStart, $rangeEnd))
             ->values();
 
+        $sessionsByWeek = $sessions->groupBy(
+            fn (PlannedSession $s): string => $s->date->copy()->startOfWeek(Carbon::MONDAY)->toDateString(),
+        );
+        $currentWeekKey = $currentWeekStart->toDateString();
+
         $race = ($this->activeRace)($user->id);
         $baselineData = $this->baseline->forUser($user, $today);
         $paces = $this->paceCalculator->fromVdotResult($this->vdotEstimator->estimate($user));
-        $briefingContext = $this->briefing->forUser($user, $today);
+        $briefingContext = $this->briefing->forUser($user, $today, $sessionsByWeek->get($currentWeekKey), $baselineData);
         $loadPending = $briefingContext->historyLoading;
         $ceiling = ReadinessCeiling::from($briefingContext->readinessCeiling);
         $raceDistanceM = $race !== null ? (float) $race->distance_m : null;
 
-        $sessionsByWeek = $sessions->groupBy(
-            fn (PlannedSession $s): string => $s->date->copy()->startOfWeek(Carbon::MONDAY)->toDateString(),
-        );
-
         [$phaseByWeek, $multiplierByWeek] = PlanRenderer::weekPhasesAndMultipliers($sessionsByWeek, $baselineData['self_scaled']);
         $primaryEasyDateByWeek = $sessionsByWeek->map(fn (Collection $weekSessions): ?string => PlanRenderer::primaryEasyDate($weekSessions));
-
-        $currentWeekKey = $currentWeekStart->toDateString();
 
         $fallbackVerdicts = $this->fallbackVerdicts($user, $sessions, $today, $baselineData, $multiplierByWeek, $primaryEasyDateByWeek);
 
@@ -254,7 +253,7 @@ final class PlanPageAssembler
         // Falls back to the clamp's own templated note when no line has landed
         // yet, so the step-down is never unexplained.
         $clampVoice = EffectiveSession::clampVoiceNeeded($clamp, $todaySession)
-            ? $this->clampVoiceReader->clampVoiceFor($user, $today)
+            ? $this->clampVoiceReader->clampVoiceFor($user, $today, $briefingContext->historyLoading ? null : $briefingContext->readinessAssessment)
             : null;
 
         $weekProjection = $this->volumeProjector->project(

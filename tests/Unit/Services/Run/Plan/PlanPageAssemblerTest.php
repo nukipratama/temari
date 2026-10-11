@@ -6,6 +6,7 @@ use App\Enums\AdaptationReason;
 use App\Enums\IngestState;
 use App\Enums\PlannedSessionStatus;
 use App\Enums\RaceOutcome;
+use App\Models\AI\Analysis;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\PlanAdaptation;
@@ -15,12 +16,16 @@ use App\Models\RaceGoal;
 use App\Models\Season;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
+use App\Services\AI\AnalysisStatus;
+use App\Services\AI\AnalysisType;
+use App\Services\Run\Plan\ClampNarrationContext;
 use App\Services\Run\Plan\Periodizer;
 use App\Services\Run\Plan\PlanPageAssembler;
 use App\Services\Run\Plan\PlanRenderer;
 use App\Services\Run\Plan\RaceAmbitionAssessor;
 use App\Services\Run\Plan\SessionEditRules;
 use App\Services\Run\Plan\TrainingBaseline;
+use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Crypt;
@@ -583,4 +588,53 @@ it('offers the best race-day run only while a result is pending', function (): v
 
     $race->update(['outcome' => RaceOutcome::DidNotRun]);
     expect(freshAssembler()->raceOutcomeCandidate($user, Carbon::today()))->toBeNull();
+});
+
+it('builds the readiness context once on a live clamp day', function (): void {
+    $user = assemblerAthlete();
+    WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-08-09', 'runs' => 4, 'distance_km' => 30.0]);
+    WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-08-16', 'form_status' => 'overreaching', 'monotony' => 1.0]);
+    PlannedSession::factory()->for($user)->create(['date' => Carbon::today()->toDateString(), 'session_type' => SessionType::Interval]);
+    ActivityDetail::factory()->for(Activity::factory()->for($user)->analyzed())->create([
+        'start_date_local' => Carbon::today()->copy()->subDay()->setTime(12, 0),
+        'elapsed_time' => 3600,
+        'distance' => 10_000,
+        'has_heartrate' => true,
+        'trimp_edwards' => 130.0,
+        'stream_summary' => ['time_in_zone_min' => ['Z2' => 20, 'Z4' => 12]],
+    ]);
+    $fresh = app(ClampNarrationContext::class)->forUserOn($user->id, Carbon::today());
+    Analysis::factory()->create([
+        'subject_type' => AnalysisType::PLAN_CLAMP_VOICE_SUBJECT_TYPE,
+        'subject_id' => $user->id,
+        'analysis_type' => AnalysisType::PlanClampVoice,
+        'discriminator' => Carbon::today()->toDateString(),
+        'status' => AnalysisStatus::Done,
+        'content' => 'yesterday was hard, so today stays easy.',
+        'content_fingerprint' => ClampNarrationContext::fingerprint($fresh['ceiling'], $fresh['clamped_to'], $fresh['has_run_today'], $fresh['readiness_reasons']),
+    ]);
+    app()->forgetScopedInstances();
+    $lastWeekReads = 0;
+    DB::listen(function (QueryExecuted $query) use (&$lastWeekReads): void {
+        $lastWeekReads += str_contains($query->sql, 'as total_distance') ? 1 : 0;
+    });
+
+    $today = collect(app(PlanPageAssembler::class)->weeks($user, Carbon::today()))->firstWhere('type', 'current')['days'][0];
+
+    expect($fresh['decision_source'])->toBe('live')
+        ->and($today['eased_from']['voice'])->toBe('yesterday was hard, so today stays easy.')
+        ->and($lastWeekReads)->toBe(1);
+});
+
+it('sizes the prescription to date from the plan window it already read', function (): void {
+    $user = assemblerAthlete();
+    app(Periodizer::class)->regenerate($user, Carbon::today());
+    $currentWeekReads = 0;
+    DB::listen(function (QueryExecuted $query) use (&$currentWeekReads, $user): void {
+        $currentWeekReads += str_starts_with($query->sql, 'select * from `planned_sessions`') && $query->bindings === [$user->id, '2026-08-10', '2026-08-16'] ? 1 : 0;
+    });
+
+    $this->assembler->weeks($user, Carbon::today());
+
+    expect($currentWeekReads)->toBe(0);
 });

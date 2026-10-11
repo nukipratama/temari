@@ -66,3 +66,13 @@ it('returns null while the row is still pending', function (): void {
 it('returns null when the day has no clamp', function (): void {
     expect(app(ClampVoiceReader::class)->clampVoiceFor(User::factory()->create(), Carbon::today()))->toBeNull();
 });
+
+it('matches a live clamp against the readiness assessment its caller holds', function (): void {
+    $user = User::factory()->create();
+    PlannedSession::factory()->for($user)->create(['date' => Carbon::today()->toDateString(), 'session_type' => SessionType::Interval]);
+    clampVoiceRow($user, AnalysisStatus::Done, ClampNarrationContext::fingerprint(ReadinessCeiling::EasyOnly, SessionType::Easy, false, ['form_overreaching']));
+    $held = ['ceiling' => 'easy_only', 'reasons' => ['form_overreaching'], 'inputs' => []];
+
+    expect(app(ClampVoiceReader::class)->clampVoiceFor($user, Carbon::today()))->toBeNull()
+        ->and(app(ClampVoiceReader::class)->clampVoiceFor($user, Carbon::today(), $held))->toBe('today is an easy run.');
+});

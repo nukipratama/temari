@@ -44,7 +44,7 @@ final readonly class CurrentWeekPlanBuilder
         $resolvedStatuses = $week['statuses'];
 
         $clampVoice = EffectiveSession::clampVoiceNeeded($clamp, $week['today_session'])
-            ? $this->clampVoiceReader->clampVoiceFor($user, $today)
+            ? $this->clampVoiceReader->clampVoiceFor($user, $today, $week['briefing']->historyLoading ? null : $week['briefing']->readinessAssessment)
             : null;
 
         $days = $currentWeekSessions->map(fn (PlannedSession $s): array => PlanRenderer::dayPayload(
