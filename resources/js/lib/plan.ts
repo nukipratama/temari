@@ -115,8 +115,8 @@ export const GENERAL_PHASE_KEY = 'general';
  * one shared "maintain" identity for every `zone: general` week — the
  * self-scaled cycle alternates Build/Deload before the block opens, and
  * naming that would read as noise rather than as the season's real arc. Used
- * everywhere a week's phase would otherwise be shown or grouped: the season
- * header, the phase legend ({@see phasesOf}), and the timeline's phase runs.
+ * everywhere a week's phase would otherwise be shown or grouped: the phase
+ * ribbon, the phase legend ({@see phasesOf}), and the timeline's phase runs.
  */
 export function phaseGroupKey(week: SeasonSummaryWeek): string {
     return week.zone === 'general' ? GENERAL_PHASE_KEY : week.phase;
