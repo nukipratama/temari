@@ -171,3 +171,30 @@ it('resolves nothing when there is no session, or no user at all', function (): 
     expect(resolveClamp($user))->toBeNull()
         ->and(app(ClampNarrationContext::class)->forUserOn(404, Carbon::today()))->toBeNull();
 });
+
+it('decides a live day from the readiness assessment its caller already holds', function (): void {
+    $user = User::factory()->create();
+    clampDay($user);
+    $held = ['ceiling' => 'easy_only', 'reasons' => ['form_overreaching'], 'inputs' => ['form_status' => 'overreaching']];
+
+    $context = app(ClampNarrationContext::class)->forUserOn($user->id, Carbon::today(), $held);
+
+    expect(resolveClamp($user))->toBeNull()
+        ->and($context['ceiling'])->toBe(ReadinessCeiling::EasyOnly)
+        ->and($context['readiness_reasons'])->toBe(['form_overreaching'])
+        ->and($context['readiness_inputs'])->toBe(['form_status' => 'overreaching'])
+        ->and($context['decision_source'])->toBe('live');
+});
+
+it('keeps a recorded ease over the assessment its caller holds', function (): void {
+    $user = User::factory()->create();
+    clampDay($user)->update([
+        'clamped_km' => 6.0,
+        'readiness_assessment' => ['ceiling' => 'moderate_ok', 'reasons' => ['demanding_session_within_24h'], 'inputs' => []],
+    ]);
+
+    $context = app(ClampNarrationContext::class)->forUserOn($user->id, Carbon::today(), ['ceiling' => 'rest', 'reasons' => [], 'inputs' => []]);
+
+    expect($context['ceiling'])->toBe(ReadinessCeiling::ModerateOk)
+        ->and($context['decision_source'])->toBe('recorded');
+});

@@ -23,9 +23,11 @@ use App\Services\Run\Plan\PlanPageAssembler;
 use App\Services\Run\Plan\PlanRenderer;
 use App\Services\Run\Plan\SegmentGenerator;
 use App\Services\Run\Plan\TrainingBaseline;
+use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 
 uses(RefreshDatabase::class);
@@ -696,3 +698,50 @@ it('renders the week plan payload its fixture records', function (bool $clampDay
     'normal day' => [false, 'normal-day'],
     'clamp day' => [true, 'clamp-day'],
 ]);
+
+it('builds the readiness context once on a live clamp day', function (): void {
+    Carbon::setTestNow('2026-08-12 08:00:00');
+    $user = weekPlanCharacterizationUser(true);
+    $lastWeekReads = 0;
+    DB::listen(function (QueryExecuted $query) use (&$lastWeekReads): void {
+        $lastWeekReads += str_contains($query->sql, 'as total_distance') ? 1 : 0;
+    });
+
+    $today = collect(app(CurrentWeekPlanBuilder::class)->forUser($user, Carbon::today())['days'])->firstWhere('date', '2026-08-12');
+
+    expect($today['eased_from']['voice'])->toBe('yesterday was hard, so today stays easy.')
+        ->and($lastWeekReads)->toBe(1);
+
+    Carbon::setTestNow();
+});
+
+it('reads a recorded ease with no stored assessment fresh while history is still loading', function (): void {
+    Carbon::setTestNow('2026-08-12 08:00:00');
+    $user = User::factory()->create();
+    seedWeekOfSessions($user, Carbon::today()->startOfWeek(Carbon::MONDAY));
+    [$row] = tempoToday($user);
+    $row->update(['clamped_km' => 5.0, 'readiness_assessment' => null]);
+    ActivityDetail::factory()->for(Activity::factory()->summaryOnly()->for($user))->create([
+        'start_date_local' => Carbon::today()->copy()->subDay()->setTime(12, 0),
+        'elapsed_time' => 3600,
+        'distance' => 10_000,
+        'has_heartrate' => true,
+        'trimp_edwards' => 130.0,
+        'stream_summary' => ['time_in_zone_min' => ['Z2' => 20, 'Z4' => 12]],
+    ]);
+    Analysis::factory()->create([
+        'subject_type' => AnalysisType::PLAN_CLAMP_VOICE_SUBJECT_TYPE,
+        'subject_id' => $user->id,
+        'analysis_type' => AnalysisType::PlanClampVoice,
+        'discriminator' => '2026-08-12',
+        'status' => AnalysisStatus::Done,
+        'content' => 'yesterday was hard, so today stays easy.',
+        'content_fingerprint' => ClampNarrationContext::fingerprint(ReadinessCeiling::ModerateOk, SessionType::Easy, false, ['demanding_session_within_24h']),
+    ]);
+
+    $result = app(CurrentWeekPlanBuilder::class)->forUser($user, Carbon::today());
+
+    expect(collect($result['days'])->firstWhere('date', '2026-08-12')['eased_from']['voice'])->toBe('yesterday was hard, so today stays easy.');
+
+    Carbon::setTestNow();
+});

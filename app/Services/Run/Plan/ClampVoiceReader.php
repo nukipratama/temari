@@ -20,10 +20,12 @@ final readonly class ClampVoiceReader
      * The narrated explanation for today's step-down, or null while none has
      * landed. Callers fall back to the clamp's own templated note, which is why
      * this returns only a Done row and never a pending one.
+     *
+     * @param  array<string, mixed>|null  $liveAssessment  today's live readiness assessment when the caller already built it
      */
-    public function clampVoiceFor(User $user, Carbon $today): ?string
+    public function clampVoiceFor(User $user, Carbon $today, ?array $liveAssessment = null): ?string
     {
-        $context = $this->clampContext->forUserOn($user->id, $today);
+        $context = $this->clampContext->forUserOn($user->id, $today, $liveAssessment);
         if ($context === null) {
             return null;
         }
