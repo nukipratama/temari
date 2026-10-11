@@ -117,6 +117,8 @@ const CATALOGUED_FILES = new Set([
     'components/onboarding/SessionsDial.tsx',
     'components/plan/DayCell.tsx',
     'components/plan/DeltaPair.tsx',
+    'components/plan/PlanRaceCard.tsx',
+    'components/plan/SeasonHeaderCard.tsx',
     'components/profile/TimeInZoneBar.tsx',
 ]);
 
