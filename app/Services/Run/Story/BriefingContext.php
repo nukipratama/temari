@@ -21,6 +21,7 @@ use App\Services\Run\Plan\EffectiveSession;
 use App\Services\Run\Plan\PlanRenderer;
 use App\Services\Run\Plan\TrainingBaseline;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 
 /**
  * Extra signals the Briefing LLM should know about so its output sounds
@@ -74,9 +75,11 @@ final readonly class BriefingContext
      * @param  array<string, mixed>|null  $load  Live TrainingLoad summary (form_status/monotony);
      *                                            when null, readiness falls back to the weekly snapshot.
      * @param  bool  $historyLoading  A fresh connect's early pass: older history is still hydrating.
+     * @param  Collection<int, PlannedSession>|null  $weekSessions  passed through to {@see self::prescribedKmToDate()}
+     * @param  array{sessions_per_week: int, weekly_volume_km: float, long_run_km: float, long_run_cap_km: float, long_run_progression_cap_km: float, self_scaled: bool}|null  $baseline  passed through to {@see self::prescribedKmToDate()}
      */
     #[NoDiscard]
-    public static function forUser(User $user, Carbon $asOf, ?array $load = null, bool $historyLoading = false): self
+    public static function forUser(User $user, Carbon $asOf, ?array $load = null, bool $historyLoading = false, ?Collection $weekSessions = null, ?array $baseline = null): self
     {
         $weekRanges = self::weekToDateRanges($asOf);
         $thisWeekEnd = $weekRanges['this_week_end'];
@@ -123,7 +126,7 @@ final readonly class BriefingContext
         $stressProfile = $historyLoading ? null : app(RecentTrainingStress::class)->forUser($user, $asOf);
         $weeklyTrimp = self::floatOrNull($load['weekly_trimp'] ?? null);
         $weeklyTrimpReference = self::trimpRange($load['weekly_trimp_reference'] ?? null);
-        $prescribedKmToDate = $historyLoading ? null : self::prescribedKmToDate($user, $asOf);
+        $prescribedKmToDate = $historyLoading ? null : self::prescribedKmToDate($user, $asOf, $weekSessions, $baseline);
         $aheadOfPlanPct = $prescribedKmToDate === null || $prescribedKmToDate <= 0.0
             ? null
             : round(((($thisWeek->distance_km ?? 0.0) - $prescribedKmToDate) / $prescribedKmToDate) * 100, 1);
@@ -297,11 +300,14 @@ final readonly class BriefingContext
      * This week's prescribed km from Monday through $asOf, sized the way
      * grading sizes a day ({@see \App\Services\Run\Plan\ComplianceScorer});
      * null when the week has no planned sessions.
+     *
+     * @param  Collection<int, PlannedSession>|null  $weekSessions  this week's rows in date order, when the caller already read them
+     * @param  array{sessions_per_week: int, weekly_volume_km: float, long_run_km: float, long_run_cap_km: float, long_run_progression_cap_km: float, self_scaled: bool}|null  $baseline  {@see TrainingBaseline::forUser()} as of `$asOf`, when the caller already built it
      */
-    public static function prescribedKmToDate(User $user, Carbon $asOf): ?float
+    public static function prescribedKmToDate(User $user, Carbon $asOf, ?Collection $weekSessions = null, ?array $baseline = null): ?float
     {
         $weekStart = $asOf->copy()->startOfWeek(Carbon::MONDAY);
-        $weekRows = PlannedSession::query()
+        $weekRows = $weekSessions ?? PlannedSession::query()
             ->where('user_id', $user->id)
             ->whereBetween('date', [$weekStart->toDateString(), $weekStart->copy()->addDays(6)->toDateString()])
             ->orderBy('date')
@@ -310,7 +316,7 @@ final readonly class BriefingContext
             return null;
         }
 
-        $baseline = app(TrainingBaseline::class)->forUser($user, $asOf);
+        $baseline ??= app(TrainingBaseline::class)->forUser($user, $asOf);
         $kmByDate = PlanRenderer::plannedKmByDate(
             $weekRows,
             (float) $baseline['long_run_km'],

@@ -745,3 +745,18 @@ it('reads a recorded ease with no stored assessment fresh while history is still
 
     Carbon::setTestNow();
 });
+
+it('reads the current week\'s planned sessions once on home', function (): void {
+    Carbon::setTestNow('2026-08-12 08:00:00');
+    $user = weekPlanCharacterizationUser(false);
+    $sessionReads = 0;
+    DB::listen(function (QueryExecuted $query) use (&$sessionReads): void {
+        $sessionReads += str_starts_with($query->sql, 'select * from `planned_sessions`') ? 1 : 0;
+    });
+
+    app(CurrentWeekPlanBuilder::class)->forUser($user, Carbon::today());
+
+    expect($sessionReads)->toBe(1);
+
+    Carbon::setTestNow();
+});
