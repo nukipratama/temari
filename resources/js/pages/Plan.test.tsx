@@ -165,9 +165,8 @@ describe('Plan', () => {
         expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
             /the weeks\s*ahead\./i,
         );
-        expect(
-            screen.getByText(/no race set · steady build and deload/i),
-        ).toBeInTheDocument();
+        expect(screen.getByText('5 sessions a week')).toBeInTheDocument();
+        expect(screen.queryByText(/no race set/i)).not.toBeInTheDocument();
         expect(
             screen.queryByRole('link', { name: /set a race/i }),
         ).not.toBeInTheDocument();
@@ -219,12 +218,14 @@ describe('Plan', () => {
         expect(screen.getByRole('tablist')).toBeInTheDocument();
     });
 
-    it('names the race it is built around once one is set', () => {
+    it('leaves the race name, date and countdown to the race card once one is set', () => {
         renderPlan({
             race: { race_date: '2026-10-12', name: 'Jakarta Half' },
         });
 
-        expect(screen.getByText(/jakarta half · oct 12/i)).toBeInTheDocument();
+        expect(screen.getByText('5 sessions a week')).toBeInTheDocument();
+        expect(screen.queryByText(/jakarta half/i)).not.toBeInTheDocument();
+        expect(screen.queryByText(/race in \d/)).not.toBeInTheDocument();
         expect(
             screen.queryByRole('link', { name: /race goal/i }),
         ).not.toBeInTheDocument();

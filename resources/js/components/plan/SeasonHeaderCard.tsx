@@ -12,7 +12,6 @@ import {
     PHASE_LABEL,
     seasonPhaseKey,
     weeksLabel,
-    weeksToRace,
 } from '@/lib/plan';
 import { raceDistanceLabel } from '@/lib/raceGoal';
 import { pillButtonVariants } from '@/lib/variants';
@@ -66,8 +65,8 @@ function RaceSlot({ raceCard }: Readonly<{ raceCard: PlanRaceCard | null }>) {
 
 /**
  * The season at a glance: the phase the athlete is in as a headline, what
- * comes next, how far off the race is and how closely the plan has been
- * followed, over the phase ribbon, then the under-ready line and Temari's read
+ * comes next and how closely the plan has been followed, over the phase
+ * ribbon, then the under-ready line and Temari's read
  * on the season so far.
  */
 export default function SeasonHeaderCard({
@@ -75,7 +74,6 @@ export default function SeasonHeaderCard({
     totalWeeks,
     adherencePct,
     weeks,
-    raceDate,
     raceCard,
     narration,
     underReadyLine = null,
@@ -84,7 +82,6 @@ export default function SeasonHeaderCard({
     totalWeeks: number;
     adherencePct: number | null;
     weeks: SeasonSummaryWeek[];
-    raceDate: string | null;
     /** No race, or a result recorded this past week, shows under the meta line. */
     raceCard: PlanRaceCard | null;
     narration: AnalysisPayload | null;
@@ -95,18 +92,9 @@ export default function SeasonHeaderCard({
     const currentGroupKey =
         currentWeek === undefined ? undefined : seasonPhaseKey(currentWeek);
     const next = nextPhaseOf(weeks);
-    const raceWeeks =
-        currentWeek === undefined || raceDate === null
-            ? null
-            : weeksToRace(currentWeek.week_start, raceDate);
-
-    const meta = [
+    const nextLine =
         next &&
-            `next: ${PHASE_LABEL[next.key] ?? next.key} in ${weeksLabel(next.inWeeks)}`,
-        raceWeeks !== null &&
-            raceWeeks > 0 &&
-            `race in ${weeksLabel(raceWeeks)}`,
-    ].filter(Boolean);
+        `next: ${PHASE_LABEL[next.key] ?? next.key} in ${weeksLabel(next.inWeeks)}`;
 
     return (
         <section>
@@ -119,10 +107,10 @@ export default function SeasonHeaderCard({
                     <em className="text-horizon-ink">week.</em>
                 </h2>
             )}
-            {(meta.length > 0 || adherencePct != null) && (
+            {(nextLine || adherencePct != null) && (
                 <p className="mt-1 font-mono text-xs text-text-2">
-                    {meta.join(' · ')}
-                    {meta.length > 0 && adherencePct != null && ' · '}
+                    {nextLine}
+                    {nextLine && adherencePct != null && ' · '}
                     {adherencePct != null && (
                         <>
                             <span className="font-bold tabular-nums text-horizon-ink">

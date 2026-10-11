@@ -29,11 +29,7 @@ import { useCooldownCountdown } from '@/hooks/useCooldownCountdown';
 import { appLayout } from '@/layouts/appLayout';
 import { cn } from '@/lib/cn';
 import { readPlanSelectedDay } from '@/lib/navigationMemory';
-import {
-    formatDurationHMS,
-    formatNaiveMonthDayId,
-    useTodayIso,
-} from '@/lib/pace';
+import { formatDurationHMS, useTodayIso } from '@/lib/pace';
 
 interface SeasonSummary {
     starts_at: string;
@@ -179,10 +175,7 @@ export default function Plan({
                     }
                 />
                 <p className="mt-1 mb-4 text-xs text-text-2">
-                    {race
-                        ? `${race.name ?? 'your race'} · ${formatNaiveMonthDayId(race.race_date)}`
-                        : 'no race set · steady build and deload'}
-                    {` · ${sessionsPerWeek} sessions a week`}
+                    {sessionsPerWeek} sessions a week
                 </p>
 
                 <PlanRaceCard
@@ -239,7 +232,6 @@ export default function Plan({
                                     totalWeeks={season.total_weeks}
                                     adherencePct={seasonAdherencePct}
                                     weeks={seasonSummary}
-                                    raceDate={race?.race_date ?? null}
                                     raceCard={raceCard}
                                     narration={planNarration.season}
                                     underReadyLine={season.under_ready_line}

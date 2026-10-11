@@ -134,7 +134,7 @@ describe('PlanRaceCard', () => {
         expect(screen.getByRole('link')).toHaveTextContent('race in 7 days');
     });
 
-    it('turns into a lime hero on race day with dark text', () => {
+    it('turns into a lime hero on race day with dark text, linking to the race', () => {
         render(
             <PlanRaceCard
                 card={card({
@@ -147,14 +147,14 @@ describe('PlanRaceCard', () => {
             />,
         );
 
-        const hero = screen.getByRole('region', { name: 'race day' });
+        const hero = screen.getByRole('link');
+        expect(hero).toHaveAttribute('href', '/race');
         expect(hero).toHaveClass('bg-horizon');
         expect(hero).toHaveTextContent('race day · 10K');
         expect(screen.getByText('go get your 50:00.')).toHaveClass('text-sky');
         expect(
             screen.getByText('5:00 /km · start easy, finish strong'),
         ).toHaveClass('text-sky-2');
-        expect(screen.queryByRole('link')).not.toBeInTheDocument();
     });
 
     it('holds the result question on a skeleton until the candidate run loads', () => {

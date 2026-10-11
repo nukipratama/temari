@@ -159,8 +159,8 @@ function ResultPending({
 
 /**
  * The race Plan leads with: a quiet countdown card, race week in citrus with
- * the goal pace, a lime hero on race day, or, once the race has passed, the
- * run to confirm as its result. A recorded result belongs to the season card.
+ * the goal pace, a lime hero on race day, each linking to the race, or, once
+ * the race has passed, the run to confirm as its result. A recorded result belongs to the season card.
  */
 export default function PlanRaceCard({
     card,
@@ -196,9 +196,12 @@ export default function PlanRaceCard({
 
     if (card.state === 'day') {
         return (
-            <section
-                aria-label="race day"
-                className={cn('rounded-panel bg-horizon pad-hero', className)}
+            <Link
+                href="/race"
+                className={cn(
+                    'focus-ring block rounded-panel bg-horizon pad-hero',
+                    className,
+                )}
             >
                 <Eyebrow token="micro" className="text-sky">
                     race day · {distance}
@@ -209,7 +212,7 @@ export default function PlanRaceCard({
                 <p className="mt-1 font-mono text-xs text-sky-2 tabular-nums">
                     {goalPace(card)} · start easy, finish strong
                 </p>
-            </section>
+            </Link>
         );
     }
 

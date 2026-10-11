@@ -65,7 +65,6 @@ function renderCard(
             totalWeeks={12}
             adherencePct={82}
             weeks={RACE_SEASON}
-            raceDate={null}
             raceCard={raceCard()}
             narration={null}
             {...overrides}
@@ -209,32 +208,6 @@ describe('SeasonHeaderCard', () => {
         expect(screen.queryByText(/next:/)).not.toBeInTheDocument();
     });
 
-    it('counts the weeks to the race', () => {
-        renderCard({ raceDate: '2026-08-17' });
-
-        expect(
-            screen.getByText(/next: peak in 1 week · race in 8 weeks/),
-        ).toBeInTheDocument();
-    });
-
-    it('says "1 week" to the race, singular', () => {
-        renderCard({ raceDate: '2026-06-29' });
-
-        expect(screen.getByText(/race in 1 week\b/)).toBeInTheDocument();
-    });
-
-    it('omits the race when it falls in the current week', () => {
-        renderCard({ raceDate: '2026-06-28' });
-
-        expect(screen.queryByText(/race/)).not.toBeInTheDocument();
-    });
-
-    it('omits the race for a season without one', () => {
-        renderCard({ raceDate: null });
-
-        expect(screen.queryByText(/race/)).not.toBeInTheDocument();
-    });
-
     it('shows the season adherence figure in the accent colour', () => {
         renderCard();
 
@@ -242,17 +215,18 @@ describe('SeasonHeaderCard', () => {
         expect(screen.getByText(/adherence/)).toBeInTheDocument();
     });
 
-    it('joins next, race and adherence on one meta line', () => {
-        renderCard({ raceDate: '2026-08-17' });
+    it('joins next and adherence on one meta line, leaving the race countdown to the race card', () => {
+        renderCard();
 
         expect(
             screen.getByText(
                 (_, element) =>
                     element?.tagName === 'P' &&
                     element.textContent ===
-                        'next: peak in 1 week · race in 8 weeks · 82% adherence',
+                        'next: peak in 1 week · 82% adherence',
             ),
         ).toBeInTheDocument();
+        expect(screen.queryByText(/race in/)).not.toBeInTheDocument();
     });
 
     it('omits adherence entirely when nothing has been scored yet', () => {
