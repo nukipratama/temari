@@ -1,5 +1,7 @@
+import type { GlobalEvent, PendingVisit } from '@inertiajs/core';
+
 import { router } from '@inertiajs/react';
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { makeUser, setMockDeferred, setMockPage } from '@/test/setup';
@@ -232,6 +234,58 @@ describe('calendar', () => {
         expect(
             screen.getByRole('link', { name: 'next month' }),
         ).toHaveAttribute('href', '/history?view=calendar&month=2026-06');
+    });
+
+    it('swaps the month blocks for their skeletons while a month reload is in flight', () => {
+        render(
+            <Calendar
+                {...BASE_PROPS}
+                cells={TWO_WEEK_CELLS}
+                monthlyRecap={makeRecap()}
+            />,
+        );
+        const startCall = [...vi.mocked(router.on).mock.calls]
+            .reverse()
+            .find(([event]) => event === 'start')!;
+        const finishCall = [...vi.mocked(router.on).mock.calls]
+            .reverse()
+            .find(([event]) => event === 'finish')!;
+        const monthVisit = {
+            only: [
+                'month',
+                'monthLabel',
+                'prevMonth',
+                'nextMonth',
+                'cells',
+                'weeklySnapshots',
+                'monthlyRecap',
+            ],
+        } as PendingVisit;
+
+        expect(screen.queryByRole('status')).not.toBeInTheDocument();
+
+        act(() => {
+            (startCall[1] as (event: GlobalEvent<'start'>) => void)({
+                detail: { visit: monthVisit },
+            } as GlobalEvent<'start'>);
+        });
+
+        expect(screen.getAllByRole('status')).toHaveLength(1);
+        expect(
+            screen.queryByText(/May was full and the rhythm held steady\./),
+        ).not.toBeInTheDocument();
+        expect(screen.queryByText('mo')).not.toBeInTheDocument();
+
+        act(() => {
+            (finishCall[1] as (event: GlobalEvent<'finish'>) => void)({
+                detail: { visit: monthVisit },
+            } as GlobalEvent<'finish'>);
+        });
+
+        expect(screen.queryByRole('status')).not.toBeInTheDocument();
+        expect(
+            screen.getByText(/May was full and the rhythm held steady\./),
+        ).toBeInTheDocument();
     });
 
     it('swipes left to the next month via a partial reload', () => {

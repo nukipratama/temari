@@ -1,6 +1,9 @@
-import { Link } from '@inertiajs/react';
+import { Link, usePage } from '@inertiajs/react';
+
+import type { SharedProps } from '@/types/inertia';
 
 import { cn } from '@/lib/cn';
+import { armPendingTab } from '@/lib/pendingTab';
 
 export type HistoryTab = 'feed' | 'calendar';
 
@@ -19,6 +22,8 @@ export default function HistoryNav({
     active,
     className,
 }: Readonly<HistoryNavProps>) {
+    const { component } = usePage<SharedProps>();
+
     return (
         <nav className={cn('flex gap-1 rounded-full bg-muted p-1', className)}>
             {TABS.map((tab) => (
@@ -26,6 +31,11 @@ export default function HistoryNav({
                     key={tab.id}
                     href={tab.href}
                     preserveScroll
+                    onClick={
+                        tab.id === active
+                            ? undefined
+                            : () => armPendingTab('history', component)
+                    }
                     className={cn(
                         'flex-1 rounded-full py-2 text-center text-[0.71875rem] font-bold text-foreground transition',
                         tab.id === active && 'bg-card shadow-e1',
