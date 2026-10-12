@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Illuminate\Support\Facades\File;
+use Symfony\Component\Yaml\Yaml;
 
 dataset('dev and ci service manifests', [
     'compose.yaml',
@@ -36,4 +37,14 @@ it('keeps .nvmrc on the Node release the Dockerfile pins', function (): void {
 
     expect($pinned)->toHaveKey(1)
         ->and(trim((string) File::get(base_path('.nvmrc'))))->toBe($pinned[1]);
+})->group('structure');
+
+it('runs every workflow on one PHP minor that matches the Dockerfile header patch', function (): void {
+    $versions = collect(['ci.yml', 'backend-ci.yml', 'nightly-audit.yml', 'refresh-shards.yml'])
+        ->mapWithKeys(fn (string $workflow): array => [$workflow => Yaml::parseFile(base_path(".github/workflows/{$workflow}"))['env']['PHP_VERSION'] ?? null]);
+    preg_match('/^# = .*\(PHP (\d+\.\d+\.\d+)\)/m', (string) File::get(base_path('Dockerfile')), $header);
+
+    expect($versions->unique()->all())->toHaveCount(1)
+        ->and($header)->toHaveKey(1)
+        ->and(implode('.', array_slice(explode('.', $header[1]), 0, 2)))->toBe((string) $versions->first());
 })->group('structure');

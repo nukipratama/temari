@@ -336,3 +336,13 @@ jobs:
             diff <(echo "$expected") <(echo "$actual")
             exit 1
           fi
+
+      - name: Assert the Dockerfile header names the image's PHP patch
+        if: needs.changes.outputs.image == 'true'
+        run: |
+          header="$(sed -nE 's/^# = .*\(PHP ([0-9]+\.[0-9]+\.[0-9]+)\).*/\1/p' Dockerfile | head -n1)"
+          actual="$(docker run --rm --entrypoint php temari-app:contents -r 'echo PHP_VERSION;')"
+          if [ "$header" != "$actual" ]; then
+            echo "::error::The built image runs PHP ${actual} but the Dockerfile header says PHP ${header:-unreadable}. Update the '(PHP x.y.z)' header comment in the same PR that bumps the frankenphp digest."
+            exit 1
+          fi
