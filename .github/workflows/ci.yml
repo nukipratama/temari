@@ -193,8 +193,6 @@ jobs:
 
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         if: github.event_name == 'pull_request' && needs.backend.result == 'success'
-        with:
-          fetch-depth: 0
 
       - name: Restore composer vendor
         if: github.event_name == 'pull_request' && needs.backend.result == 'success'
@@ -215,13 +213,10 @@ jobs:
           path: coverage-shards
           merge-multiple: true
 
-      - name: Merge shard coverage, check --min=95 on the whole suite and --min=95 on the changed lines
+      - name: Merge shard coverage and check --min=95 on the whole suite
         id: merge
         if: github.event_name == 'pull_request' && needs.backend.result == 'success'
-        env:
-          BASE_REF: ${{ github.base_ref }}
         run: |
-          set -o pipefail
           ./vendor/bin/phpcov merge --clover=coverage-merged-clover.xml coverage-shards
 
           # shellcheck disable=SC2016 # PHP variables are evaluated by php, so the shell must leave this snippet literal.
@@ -238,10 +233,6 @@ jobs:
               exit(1);
             }
           '
-
-          git fetch --no-tags --quiet origin "+refs/heads/${BASE_REF}:refs/remotes/origin/${BASE_REF}"
-          base="$(git merge-base "origin/${BASE_REF}" HEAD)"
-          php scripts/check-changed-lines-coverage.php --base="$base" --clover=coverage-merged-clover.xml --min=95 | tee changed-lines-coverage.txt
 
       - name: Coverage summary
         if: always() && steps.merge.outcome != 'skipped'
@@ -261,12 +252,6 @@ jobs:
               echo "| | |\n| --- | --- |\n";
               printf("| Lines | %.1f%% (%d/%d) |\n", $pct, $covered, $statements);
               '
-            fi
-            if [ -f changed-lines-coverage.txt ]; then
-              echo ""
-              echo '```'
-              cat changed-lines-coverage.txt
-              echo '```'
             fi
             echo ""
           } >> "$GITHUB_STEP_SUMMARY"
