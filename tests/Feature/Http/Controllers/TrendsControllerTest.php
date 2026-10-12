@@ -305,43 +305,32 @@ it('plots only snapshots taken for the current race goal', function (): void {
     expect(array_column($history['points'], 'date'))->toBe(['2026-10-03', '2026-10-04']);
 });
 
-it('serves no supported history without an active race', function (): void {
+it('serves no supported history', function (Closure $arrange): void {
     Carbon::setTestNow('2026-10-05 09:00:00');
     $user = User::factory()->create();
-    $old = RaceGoal::factory()->for($user)->completed()->create();
-    supportedSnapshot($user, $old, '2026-10-03', 3_300);
-    supportedSnapshot($user, $old, '2026-10-04', 3_290);
+    $arrange($user);
 
     expect(supportedHistoryProp($this, $user))->toBeNull();
-});
-
-it('serves no supported history with fewer than two days of it', function (): void {
-    Carbon::setTestNow('2026-10-05 09:00:00');
-    $user = User::factory()->create();
-    $race = RaceGoal::factory()->for($user)->create();
-    supportedSnapshot($user, $race, '2026-10-04', 3_290);
-    supportedSnapshot($user, $race, '2026-10-05', null);
-
-    expect(supportedHistoryProp($this, $user))->toBeNull();
-});
-
-it('serves no supported history when the race has no supported time', function (): void {
-    Carbon::setTestNow('2026-10-05 09:00:00');
-    $user = User::factory()->create();
-    RaceGoal::factory()->for($user)->create(['distance_m' => 50_000, 'goal_time_sec' => 18_000]);
-    supportedSnapshot($user, null, '2026-10-04', null);
-    supportedSnapshot($user, null, '2026-10-05', null);
-
-    expect(supportedHistoryProp($this, $user))->toBeNull();
-});
-
-it('never surfaces another user\'s supported history', function (): void {
-    Carbon::setTestNow('2026-10-05 09:00:00');
-    $user = User::factory()->create();
-    $other = User::factory()->create();
-    $race = RaceGoal::factory()->for($other)->create();
-    supportedSnapshot($other, $race, '2026-10-03', 3_300);
-    supportedSnapshot($other, $race, '2026-10-04', 3_290);
-
-    expect(supportedHistoryProp($this, $user))->toBeNull();
-});
+})->with([
+    'without an active race' => [function (User $user): void {
+        $old = RaceGoal::factory()->for($user)->completed()->create();
+        supportedSnapshot($user, $old, '2026-10-03', 3_300);
+        supportedSnapshot($user, $old, '2026-10-04', 3_290);
+    }],
+    'with fewer than two days of it' => [function (User $user): void {
+        $race = RaceGoal::factory()->for($user)->create();
+        supportedSnapshot($user, $race, '2026-10-04', 3_290);
+        supportedSnapshot($user, $race, '2026-10-05', null);
+    }],
+    'when the race has no supported time' => [function (User $user): void {
+        RaceGoal::factory()->for($user)->create(['distance_m' => 50_000, 'goal_time_sec' => 18_000]);
+        supportedSnapshot($user, null, '2026-10-04', null);
+        supportedSnapshot($user, null, '2026-10-05', null);
+    }],
+    'for another user\'s race' => [function (): void {
+        $other = User::factory()->create();
+        $race = RaceGoal::factory()->for($other)->create();
+        supportedSnapshot($other, $race, '2026-10-03', 3_300);
+        supportedSnapshot($other, $race, '2026-10-04', 3_290);
+    }],
+]);

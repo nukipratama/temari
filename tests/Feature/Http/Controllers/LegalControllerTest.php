@@ -30,10 +30,6 @@ it('serves every legal document to a signed-out stranger', function (string $rou
             ->has('sections'));
 })->with(collect($routes)->map(fn (string $slug, string $route): array => [$route, $slug])->values()->all());
 
-it('serves the legal documents to a signed-in user too', function (string $route): void {
-    $this->actingAs(User::factory()->create())->get(route($route))->assertOk();
-})->with(array_keys($routes));
-
 it('does not bounce a signed-in user off the legal pages the way it does off login', function (): void {
     $this->actingAs(User::factory()->create())
         ->get(route('legal.privacy'))

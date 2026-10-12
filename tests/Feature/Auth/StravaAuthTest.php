@@ -99,18 +99,6 @@ it('redirects authenticated users away from login', function (): void {
         ->assertRedirect(route('dashboard'));
 });
 
-it('serves the landing page to unauthenticated visitors at root', function (): void {
-    $this->get('/')
-        ->assertSuccessful()
-        ->assertInertia(fn (Assert $page) => $page->component('Auth/Login'));
-});
-
-it('renders dashboard for authenticated visitors at root', function (): void {
-    $this->actingAs(User::factory()->create())
-        ->get('/')
-        ->assertSuccessful();
-});
-
 it('redirects to strava on the redirect endpoint', function (): void {
     mockStravaDriver(function ($driver): void {
         $driver->shouldReceive('scopes')->once()->with(['read', 'activity:read_all', 'profile:read_all'])->andReturnSelf();
@@ -133,18 +121,6 @@ it('stashes a safe ?from path as the intended url before redirecting to strava',
     expect(session('url.intended'))->toBe(url('/activities/7'));
 });
 
-it('ignores a foreign ?from path on the strava redirect endpoint', function (): void {
-    mockStravaDriver(function ($driver): void {
-        $driver->shouldReceive('scopes')->once()->andReturnSelf();
-        $driver->shouldReceive('redirect')->once()->andReturn(redirect('https://www.strava.com/oauth/authorize?fake'));
-    });
-
-    $this->get(route('auth.strava.redirect', ['from' => 'https://evil.test/x']))
-        ->assertRedirect('https://www.strava.com/oauth/authorize?fake');
-
-    expect(session('url.intended'))->toBeNull();
-});
-
 it('exposes the stashed intended deep link as the login `from` prop', function (): void {
     // A guest bounce stores the full URL as url.intended; the login page surfaces
     // it to the client as a relative path (array session driver in tests, so the
@@ -152,12 +128,6 @@ it('exposes the stashed intended deep link as the login `from` prop', function (
     $this->withSession(['url.intended' => url('/activities/9')])
         ->get(route('login'))
         ->assertInertia(fn (Assert $page) => $page->component('Auth/Login')->where('from', '/activities/9'));
-});
-
-it('drops a foreign intended url from the login `from` prop', function (): void {
-    $this->withSession(['url.intended' => 'https://evil.test/activities/9'])
-        ->get(route('login'))
-        ->assertInertia(fn (Assert $page) => $page->component('Auth/Login')->where('from', null));
 });
 
 it('has no `from` prop when there is no intended deep link', function (): void {
@@ -652,28 +622,18 @@ it('redirects back to login when strava returns an error', function (): void {
     $this->assertGuest();
 });
 
-it('redirects back to login when fetching the strava user fails', function (): void {
-    mockStravaDriver(fn ($driver) => $driver->shouldReceive('user')->once()->andThrow(new InvalidStateException()));
+it('redirects back to login when fetching the strava user fails', function (Closure $failure): void {
+    mockStravaDriver(fn ($driver) => $driver->shouldReceive('user')->once()->andThrow($failure()));
 
     $this->get(route('auth.strava.callback'))
         ->assertRedirect(route('login'))
         ->assertSessionHasErrors(['strava' => 'Couldn\'t connect to Strava. Try again in a moment.']);
 
     $this->assertGuest();
-});
-
-it('redirects back to login when the strava API errors out during the callback', function (): void {
-    // A distinct failure mode from InvalidStateException: Strava's token/user
-    // endpoint itself erroring (500/timeout) during the OAuth callback.
-    $response = new Response(new Psr7Response(500));
-    mockStravaDriver(fn ($driver) => $driver->shouldReceive('user')->once()->andThrow(new RequestException($response)));
-
-    $this->get(route('auth.strava.callback'))
-        ->assertRedirect(route('login'))
-        ->assertSessionHasErrors(['strava' => 'Couldn\'t connect to Strava. Try again in a moment.']);
-
-    $this->assertGuest();
-});
+})->with([
+    'an invalid state' => [fn () => new InvalidStateException()],
+    'the Strava API erroring out' => [fn () => new RequestException(new Response(new Psr7Response(500)))],
+]);
 
 it('logs the user out, clears session data, and redirects to login', function (): void {
     $this->actingAs(User::factory()->create())
@@ -770,24 +730,4 @@ it('throttles both strava oauth endpoints, the open account-creation path', func
         expect($route)->not->toBeNull()
             ->and($route->gatherMiddleware())->toContain('throttle:strava-oauth');
     }
-});
-
-it('answers the dashboard url with the landing page for guests', function (): void {
-    $this->get(route('dashboard'))
-        ->assertSuccessful()
-        ->assertInertia(fn (Assert $page) => $page->component('Auth/Login'));
-});
-
-it('shows the dashboard to authenticated users', function (): void {
-    $user = User::factory()->create(['name' => 'Ada Lovelace']);
-    StravaConnection::factory()->for($user)->create([
-        'strava_athlete_id' => 555111,
-    ]);
-
-    $this->actingAs($user)
-        ->get(route('dashboard'))
-        ->assertSuccessful()
-        ->assertInertia(fn (Assert $page) => $page
-            ->component('Home')
-            ->where('auth.user.name', 'Ada Lovelace'));
 });

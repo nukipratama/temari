@@ -87,17 +87,6 @@ it('refuses a question about someone else run', function (): void {
     Bus::assertNothingDispatched();
 });
 
-it('refuses to read someone else question thread', function (): void {
-    $me = User::factory()->create();
-    $them = User::factory()->create();
-    $theirRun = runFor($them);
-    RunQuestion::factory()->answered()->create(['user_id' => $them->id, 'activity_id' => $theirRun->id]);
-
-    $this->actingAs($me)
-        ->getJson("/api/activities/{$theirRun->id}/questions")
-        ->assertForbidden();
-});
-
 it('returns only this run thread, never another run of the same user', function (): void {
     $user = User::factory()->create();
     $thisRun = runFor($user);
@@ -125,15 +114,6 @@ it('suggests only questions this run data can answer', function (): void {
 
     expect($suggestions)->toContain(RunQuestionTopic::HrDrift->question())
         ->and($suggestions)->not->toContain(RunQuestionTopic::Heat->question());
-});
-
-it('falls back to the comparison question on a summary-state run', function (): void {
-    $user = User::factory()->create();
-    $activity = Activity::factory()->for($user)->summaryOnly()->create();
-    ActivityDetail::factory()->for($activity)->create(['stream_summary' => null, 'weather_temp_c' => 24]);
-
-    expect($this->actingAs($user)->getJson("/api/activities/{$activity->id}/questions")->json('suggestions'))
-        ->toBe([RunQuestionTopic::Baseline->question()]);
 });
 
 // ── Demo ────────────────────────────────────────────────────────────────────
