@@ -498,11 +498,11 @@ export function sessionPurpose(day: PlanDay): string | null {
         return `rehearsing your ${GOAL_PACE_RACE[day.goal_pace]} ${goalPaceLabel(day)}${closing}.`;
     }
     if (day.fast_finish !== null) {
-        const race = GOAL_PACE_RACE[day.fast_finish.pace_kind];
+        const label = fastFinishPaceLabel(day);
         const pace =
             day.fast_finish.pace_source === 'supported'
-                ? `supported ${race} pace`
-                : `${race} ${fastFinishPaceLabel(day)}`;
+                ? label
+                : `${GOAL_PACE_RACE[day.fast_finish.pace_kind]} ${label}`;
         return `the last fifth at your ${pace}. rehearses race pace on tired legs.`;
     }
     const hasWork = sessionHasWork(day);
