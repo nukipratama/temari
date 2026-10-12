@@ -24,6 +24,7 @@ import {
     easedFromDelta,
     fallOffTiltWhy,
     fastFinishPaceLabel,
+    raceLongPaceLabel,
     judgedDayResult,
     paceEaseDelta,
     prescriptionWhy,
@@ -396,7 +397,11 @@ export default function DayDetail({
             )}
             <SessionBarGraph
                 segments={day.segments}
-                workPaceLabel={workLabel(day) ?? fastFinishPaceLabel(day)}
+                workPaceLabel={
+                    workLabel(day) ??
+                    fastFinishPaceLabel(day) ??
+                    raceLongPaceLabel(day)
+                }
                 closesAtGoalPace={day.closes_at_goal_pace}
             />
             {day.activities.length > 0 && <RunList runs={day.activities} />}

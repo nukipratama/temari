@@ -601,6 +601,12 @@ export interface WeekPlanDay {
         pace_kind: '5k' | '10k' | 'half';
         pace_source: 'goal' | 'stepping_stone' | 'supported';
     } | null;
+    /** The source of the pace a marathon race long's work runs at, set
+     *  only while the session shown is that long run. */
+    race_long: {
+        pace_kind: 'marathon';
+        pace_source: 'goal' | 'stepping_stone' | 'supported';
+    } | null;
     /** The time trial this session is, set only while the session shown is
      *  that trial: its distance and the supported time to aim around. */
     time_trial: { distance_m: number; aim_time_sec: number } | null;

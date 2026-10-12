@@ -1358,6 +1358,29 @@ it('dayPayload names a fast-finish long run by the race and source of its fast b
         ->and(PlanRenderer::fastFinishForNarration($session(0), SessionType::Long))->toBe([]);
 });
 
+it('dayPayload names the pace a marathon race long\'s work runs at, only while it is shown as written', function (): void {
+    $session = fn (array $context, int $pace = 330, int $hardMinutes = 40): PlannedSession => PlannedSession::factory()->make([
+        'date' => '2026-08-12',
+        'phase' => PlanPhase::Peak,
+        'session_type' => SessionType::Long,
+        'prescribed_hard_minutes' => $hardMinutes,
+        'prescribed_pace_band' => $hardMinutes > 0 ? PaceBand::Marathon : null,
+        'prescribed_pace_sec_per_km' => $hardMinutes > 0 ? $pace : null,
+        'prescription_race_context' => ['distance_m' => 42_195, 'goal_pace_sec_per_km' => 330, 'kind' => 'marathon', ...$context],
+    ]);
+    $payload = fn (PlannedSession $s): array => PlanRenderer::dayPayload($s, Carbon::parse('2026-08-10'), null, [], 42_195.0, false, 20.0, 1.0, INF, RENDERER_PACES, PlannedSessionStatus::Planned);
+
+    expect($payload($session(['band' => 'on_track']))['race_long'])->toBe(['pace_kind' => 'marathon', 'pace_source' => 'goal'])
+        ->and($payload($session(['band' => 'unsupported']))['race_long'])->toBe(['pace_kind' => 'marathon', 'pace_source' => 'stepping_stone'])
+        ->and($payload($session([]))['race_long'])->toBe(['pace_kind' => 'marathon', 'pace_source' => 'goal'])
+        ->and($payload($session([], 345))['race_long'])->toBe(['pace_kind' => 'marathon', 'pace_source' => 'supported'])
+        ->and($payload($session([], 330, 0))['race_long'])->toBeNull()
+        ->and($payload($session(['band' => 'unsupported']))['goal_pace'])->toBeNull()
+        ->and(PlanRenderer::raceLongOf($session(['band' => 'on_track']), SessionType::Easy))->toBeNull()
+        ->and(PlanRenderer::raceLongForNarration($session(['band' => 'unsupported']), SessionType::Long))->toBe(['race_long' => ['pace_kind' => 'marathon', 'pace_source' => 'stepping_stone', 'minutes' => 40, 'pace_formatted' => '5:30']])
+        ->and(PlanRenderer::raceLongForNarration($session([], 330, 0), SessionType::Long))->toBe([]);
+});
+
 it('dayPayload names a time trial, sized as the trial alone at the aim, only while it is shown as written', function (): void {
     $trial = PlannedSession::factory()->make([
         'date' => '2026-08-12',

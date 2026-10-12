@@ -37,6 +37,7 @@ function day(overrides: Partial<EditablePlanDay> = {}): EditablePlanDay {
         stepping_stone: false,
         closes_at_goal_pace: false,
         fast_finish: null,
+        race_long: null,
         time_trial: null,
         hr_cap_bpm: null,
         advice_note: null,
@@ -303,6 +304,49 @@ describe('DayHeadline and DayDetail', () => {
         expect(
             screen.getByText(
                 'the last fifth at your supported 10K pace. rehearses race pace on tired legs.',
+            ),
+        ).toBeInTheDocument();
+        expect(screen.queryByText(/goal pace/)).not.toBeInTheDocument();
+    });
+
+    it('names an unsupported marathon race long by its stepping-stone pace', () => {
+        renderRow({
+            day: day({
+                session_type: 'long',
+                race_long: {
+                    pace_kind: 'marathon',
+                    pace_source: 'stepping_stone',
+                },
+                segments: [
+                    {
+                        key: 'easy',
+                        minutes: 90,
+                        zone: 'Z2',
+                        pace_label: 'easy',
+                        km: 14,
+                        pace_sec_per_km: 400,
+                    },
+                    {
+                        key: 'main',
+                        minutes: 40,
+                        zone: 'Z3',
+                        pace_label: 'marathon',
+                        km: 8,
+                        pace_sec_per_km: 330,
+                    },
+                ],
+            }),
+        });
+
+        expect(
+            screen.getByText('long run with stepping-stone work'),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByText('5:30/km · stepping-stone pace'),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByText(
+                'long run with a block at your marathon stepping-stone pace. rehearses race day on tired legs.',
             ),
         ).toBeInTheDocument();
         expect(screen.queryByText(/goal pace/)).not.toBeInTheDocument();
