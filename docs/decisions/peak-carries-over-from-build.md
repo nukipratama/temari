@@ -36,7 +36,7 @@ Goal-pace work forms its own progression family, so the first goal-pace week of 
 ## Consequences
 
 - The 10K athlete above starts Peak at 5 × 4 min at goal pace for an on-track goal. An ambitious goal is still capped at its halved target until layer 2 of #2116.
-- A marathon Build already runs race Tempo, so its Peak seed equals its own family history; the marathon plan is unchanged in practice.
+- A marathon's Peak race Tempo is seeded from the latest Build Tempo or Interval (`lastQualityMinutes()`), and takes the seed only when it is above the race Tempo's progressed or cold-start dose, capped at the Peak target. When that last session is the race Tempo, Peak starts no lower than Build's race Tempo. When it is an Interval, a longer Interval raises the race Tempo to its minutes, up to the target, and a shorter one never lowers it.
 - Rollout: the owner runs `plan:regenerate` after deploy. No regrade.
 
 ## See also
