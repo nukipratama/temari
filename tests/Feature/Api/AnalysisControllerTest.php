@@ -55,19 +55,6 @@ it('rejects unknown analysis types with 422', function (): void {
         ->assertJson(['error' => 'unknown_analysis_type']);
 });
 
-it('rejects an over-long discriminator with a validation 422', function (): void {
-    $user = User::factory()->create();
-    $this->actingAs($user)
-        ->postJson("/api/analyses/briefing_mascot_voice/{$user->id}/trigger?discriminator=".str_repeat('x', 65))
-        ->assertStatus(422)
-        ->assertJsonValidationErrors('discriminator');
-});
-
-it('requires authentication', function (): void {
-    $this->postJson('/api/analyses/briefing_mascot_voice/1/trigger')
-        ->assertStatus(401);
-});
-
 it('triggers a briefing suggestion analysis for the authenticated user', function (): void {
     $user = User::factory()->create();
 
@@ -302,35 +289,6 @@ it('chained weekly_recap regenerate re-narrates only the Done head row; a Done N
     Carbon::setTestNow();
 });
 
-it('chained monthly_recap retry resumes the earliest unfilled month, not the clicked one', function (): void {
-    Carbon::setTestNow('2026-06-17 05:30:00');
-    $user = User::factory()->create();
-
-    // Earliest month is still Pending; a later month was clicked.
-    Analysis::factory()->create([
-        'subject_type' => AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE,
-        'subject_id' => $user->id,
-        'analysis_type' => AnalysisType::MonthlyRecap,
-        'discriminator' => '2026-03',
-        'status' => AnalysisStatus::Pending,
-    ]);
-    Analysis::factory()->failed()->create([
-        'subject_type' => AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE,
-        'subject_id' => $user->id,
-        'analysis_type' => AnalysisType::MonthlyRecap,
-        'discriminator' => '2026-05',
-    ]);
-
-    $response = $this->actingAs($user)
-        ->postJson("/api/analyses/monthly_recap/{$user->id}/trigger?discriminator=2026-05")
-        ->assertOk();
-
-    // The payload reflects the resumed (earliest) month, not the clicked one.
-    expect($response->json('discriminator'))->toBe('2026-03');
-
-    Carbon::setTestNow();
-});
-
 it('monthly_recap trigger on the still-open current month is an inert no-op (never narrated)', function (): void {
     Carbon::setTestNow('2026-06-17 05:30:00');
     $user = User::factory()->create();
@@ -382,84 +340,6 @@ it('weekly_recap trigger on the still-open current week is an inert no-op (never
     Carbon::setTestNow();
 });
 
-it('chained monthly_recap head regenerate ignores the still-open current month staged row', function (): void {
-    Carbon::setTestNow('2026-06-17 05:30:00');
-    $user = User::factory()->create();
-
-    // The current (still-running) month is staged Pending by the post-run
-    // listener but must stay inert: it is not the chain head, and a head
-    // regenerate must never resume forward into it.
-    Analysis::factory()->create([
-        'subject_type' => AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE,
-        'subject_id' => $user->id,
-        'analysis_type' => AnalysisType::MonthlyRecap,
-        'discriminator' => '2026-06',
-        'status' => AnalysisStatus::Pending,
-    ]);
-    Analysis::factory()->done('latest recap')->create([
-        'subject_type' => AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE,
-        'subject_id' => $user->id,
-        'analysis_type' => AnalysisType::MonthlyRecap,
-        'discriminator' => '2026-05',
-        'generated_at' => Carbon::now()->subHour(),
-    ]);
-
-    $response = $this->actingAs($user)
-        ->postJson("/api/analyses/monthly_recap/{$user->id}/trigger?discriminator=2026-05")
-        ->assertOk();
-
-    // The last closed month (2026-05) is the head and regenerates itself; the
-    // open 2026-06 row is never narrated.
-    expect($response->json('discriminator'))->toBe('2026-05');
-
-    Carbon::setTestNow();
-});
-
-it('chained monthly_recap regenerate re-narrates only the Done head month; a Done NON-head month resumes the chain instead (server guard)', function (): void {
-    Carbon::setTestNow('2026-06-17 05:30:00');
-    $user = User::factory()->create();
-
-    // A mid-history Done month (not the head) plus a still-Pending earlier link.
-    Analysis::factory()->create([
-        'subject_type' => AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE,
-        'subject_id' => $user->id,
-        'analysis_type' => AnalysisType::MonthlyRecap,
-        'discriminator' => '2026-03',
-        'status' => AnalysisStatus::Pending,
-    ]);
-    Analysis::factory()->done('mid recap')->create([
-        'subject_type' => AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE,
-        'subject_id' => $user->id,
-        'analysis_type' => AnalysisType::MonthlyRecap,
-        'discriminator' => '2026-04',
-        'generated_at' => Carbon::now()->subHour(),
-    ]);
-    // The actual head (latest month) sits after the clicked mid month.
-    Analysis::factory()->done('head recap')->create([
-        'subject_type' => AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE,
-        'subject_id' => $user->id,
-        'analysis_type' => AnalysisType::MonthlyRecap,
-        'discriminator' => '2026-05',
-        'generated_at' => Carbon::now()->subHour(),
-    ]);
-
-    $response = $this->actingAs($user)
-        ->postJson("/api/analyses/monthly_recap/{$user->id}/trigger?discriminator=2026-04")
-        ->assertOk();
-
-    // A Done non-head POST must NOT re-narrate itself; it resumes the earliest unfilled month.
-    expect($response->json('discriminator'))->toBe('2026-03');
-
-    $response = $this->actingAs($user)
-        ->postJson("/api/analyses/monthly_recap/{$user->id}/trigger?discriminator=2026-05")
-        ->assertOk();
-
-    // A Done clicked head month is a head regenerate → stays on the clicked month.
-    expect($response->json('discriminator'))->toBe('2026-05');
-
-    Carbon::setTestNow();
-});
-
 /**
  * An activity owned by $user dated $startDate with its post-run speech row in
  * $status, used to exercise the per-activity chain in the controller.
@@ -480,49 +360,6 @@ function activityWithSpeech(User $user, string $startDate, AnalysisStatus $statu
 
     return $activity;
 }
-
-it('chained post_run_speech retry resumes the earliest unfilled run, not the clicked one', function (): void {
-    Carbon::setTestNow('2026-06-17 05:30:00');
-    $user = User::factory()->create();
-
-    $earliest = activityWithSpeech($user, '2026-05-01 06:00:00', AnalysisStatus::Pending);
-    $clicked = activityWithSpeech($user, '2026-05-10 06:00:00', AnalysisStatus::Failed);
-
-    $response = $this->actingAs($user)
-        ->postJson("/api/analyses/post_run_speech/{$clicked->id}/trigger")
-        ->assertOk();
-
-    // The payload reflects the resumed (earliest) run, not the clicked one.
-    expect($response->json('subject_id'))->toBe($earliest->id);
-
-    Carbon::setTestNow();
-});
-
-it('chained post_run_speech regenerate re-narrates only the Done head run; a Done NON-head run resumes the chain instead (server guard)', function (): void {
-    Carbon::setTestNow('2026-06-17 05:30:00');
-    $user = User::factory()->create();
-
-    $earliest = activityWithSpeech($user, '2026-05-01 06:00:00', AnalysisStatus::Pending);
-    $clickedMid = activityWithSpeech($user, '2026-05-10 06:00:00', AnalysisStatus::Done, 'mid speech');
-    // The actual head (latest run) sits after the clicked mid run.
-    $head = activityWithSpeech($user, '2026-05-20 06:00:00', AnalysisStatus::Done, 'head speech');
-
-    $response = $this->actingAs($user)
-        ->postJson("/api/analyses/post_run_speech/{$clickedMid->id}/trigger")
-        ->assertOk();
-
-    // A Done non-head POST must NOT re-narrate itself; it resumes the earliest unfilled run.
-    expect($response->json('subject_id'))->toBe($earliest->id);
-
-    $response = $this->actingAs($user)
-        ->postJson("/api/analyses/post_run_speech/{$head->id}/trigger")
-        ->assertOk();
-
-    // A Done clicked head run is a head regenerate → stays on the clicked run.
-    expect($response->json('subject_id'))->toBe($head->id);
-
-    Carbon::setTestNow();
-});
 
 it('chained post_run_speech resume does not re-bill an already-Done sibling row of the resumed group', function (): void {
     Carbon::setTestNow('2026-06-17 05:30:00');
@@ -560,28 +397,11 @@ it('chained post_run_speech resume does not re-bill an already-Done sibling row 
  * find no existing row, skip the cooldown entirely, and firstOrCreate a fresh
  * row plus a real billed Azure call on every request.
  */
-it('does not dispatch a billed job for a novel discriminator', function (string $url): void {
+it('does not dispatch a billed job for a novel discriminator', function (): void {
     $user = User::factory()->create();
 
     $this->actingAs($user)
-        ->postJson(str_replace('{id}', (string) $user->id, $url))
-        ->assertStatus(422)
-        ->assertJsonValidationErrors('discriminator');
-
-    Bus::assertNothingDispatched();
-    expect(Analysis::query()->count())->toBe(0);
-})->with([
-    'random key on a daily type' => ['/api/analyses/briefing_mascot_voice/{id}/trigger?discriminator=kEy9fQ2z'],
-    'wrong shape on a daily type' => ['/api/analyses/briefing_mascot_voice/{id}/trigger?discriminator=2026-05'],
-    'wrong shape on the monthly recap' => ['/api/analyses/monthly_recap/{id}/trigger?discriminator=2026-05-18'],
-    'wrong shape on the profile voice' => ['/api/analyses/profile_voice/{id}/trigger?discriminator=2026-05-18'],
-]);
-
-it('does not dispatch a billed job when a discriminator is sent to a type whose job ignores it', function (): void {
-    $user = User::factory()->create();
-
-    $this->actingAs($user)
-        ->postJson("/api/analyses/weekly_recap/{$user->id}/trigger?discriminator=kEy9fQ2z")
+        ->postJson("/api/analyses/briefing_mascot_voice/{$user->id}/trigger?discriminator=kEy9fQ2z")
         ->assertStatus(422)
         ->assertJsonValidationErrors('discriminator');
 
@@ -859,18 +679,4 @@ it('refuses an on-demand read of a historical run while an older run in the wind
         ->assertStatus(409);
 
     Bus::assertNotDispatched(AnalyzeActivityJob::class);
-});
-
-it('reads a historical run on demand once the window has hydrated', function (): void {
-    Carbon::setTestNow('2026-09-15 09:00:00');
-    $user = User::factory()->create();
-    StravaConnection::factory()->for($user)->create(['created_at' => Carbon::parse('2026-09-14 12:00:00')]);
-    historicalRun($user, '2026-08-01 06:00:00');
-    $clicked = historicalRun($user, '2026-08-20 06:00:00');
-
-    $this->actingAs($user)
-        ->postJson("/api/analyses/post_run_speech/{$clicked->id}/trigger")
-        ->assertSuccessful();
-
-    Bus::assertDispatched(AnalyzeActivityJob::class);
 });

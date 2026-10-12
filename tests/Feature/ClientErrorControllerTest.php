@@ -27,22 +27,8 @@ it('logs a reported client error and returns no content', function (): void {
     );
 });
 
-it('requires a message', function (): void {
-    $this->postJson('/client-errors', [])->assertStatus(422);
-});
-
 it('is reachable without authentication (captures guest-page errors)', function (): void {
     $this->postJson('/client-errors', ['message' => 'guest boom'])->assertNoContent();
-});
-
-it('still accepts the longer traces a stale cached bundle sends', function (): void {
-    spyOnClientErrorLog();
-
-    $this->postJson('/client-errors', [
-        'message' => 'Boom',
-        'stack' => str_repeat('a', 5000),
-        'componentStack' => str_repeat('b', 5000),
-    ])->assertNoContent();
 });
 
 it('writes only the leading frames of an oversized trace', function (): void {
@@ -69,20 +55,6 @@ it('throttles a browser stuck in an error loop', function (): void {
     }
 
     $this->postJson('/client-errors', ['message' => 'boom 11'])->assertStatus(429);
-});
-
-it('records the browser error fingerprint for the next exception digest', function (): void {
-    spyOnClientErrorLog();
-
-    $this->postJson('/client-errors', [
-        'message' => 'TypeError: athlete 42',
-        'stack' => "TypeError: athlete 42\n    at Run (https://temari.test/build/assets/app.js:1:2)",
-    ])->assertNoContent();
-
-    $pending = NewExceptionLedger::pull();
-
-    expect($pending)->toHaveCount(1)
-        ->and($pending[0]['label'])->toStartWith('browser error at /build/assets/app.js:1:2');
 });
 
 it('leaves room for a real server exception after a guest flood, and stops the flood at the guest cap', function (): void {

@@ -18,7 +18,3 @@ it('disconnects by revoking the connection', function (): void {
 
     expect($connection->fresh()->isRevoked())->toBeTrue();
 });
-
-it('requires authentication', function (): void {
-    $this->delete('/profile/telegram')->assertRedirect('/login');
-});

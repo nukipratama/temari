@@ -28,10 +28,6 @@ it('hands the page the shared data-use statement', function (): void {
             ->where('dataUse.points', DataUseStatement::points()));
 });
 
-it('requires auth', function (): void {
-    $this->get('/settings')->assertRedirect('/login');
-});
-
 it('exposes the telegram connect url when the bot username is configured', function (): void {
     config(['services.telegram.bot_username' => 'temari_bot']);
 

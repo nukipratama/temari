@@ -30,6 +30,9 @@ it('rejects a non-boolean flag', function (): void {
     ]))->toBeFalse();
 });
 
-it('rejects a partial payload missing a flag', function (): void {
-    expect(passesNotificationPreference(['notifications_enabled' => true]))->toBeFalse();
-});
+it('rejects a partial payload missing a flag', function (array $payload): void {
+    expect(passesNotificationPreference($payload))->toBeFalse();
+})->with([
+    'the channel mutes' => [['notifications_enabled' => true]],
+    'the master switch' => [['telegram_enabled' => true, 'push_enabled' => true]],
+]);

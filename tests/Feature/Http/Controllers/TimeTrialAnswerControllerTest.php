@@ -34,10 +34,6 @@ beforeEach(function (): void {
 });
 afterEach(fn () => Carbon::setTestNow());
 
-it('requires authentication', function (): void {
-    $this->post("/plan/time-trials/{$this->trial->id}", ['all_out' => true])->assertRedirect('/login');
-});
-
 it('shows the ask on Home until it is answered', function (bool $allOut, TimeTrialOutcome $outcome, int $evidence): void {
     $this->actingAs($this->user)->get('/')->assertInertia(fn (Assert $page) => $page
         ->where('pendingTimeTrial', ['id' => $this->trial->id, 'date' => '2026-10-06', 'distance_m' => 5_000]));

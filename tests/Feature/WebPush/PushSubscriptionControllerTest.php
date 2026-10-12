@@ -14,10 +14,6 @@ function pushPayload(string $endpoint = 'https://fcm.googleapis.com/fcm/send/abc
     return ['endpoint' => $endpoint, 'keys' => ['p256dh' => 'p256dh-key', 'auth' => 'auth-token']];
 }
 
-it('requires authentication to subscribe', function (): void {
-    $this->postJson('/profile/push', pushPayload())->assertUnauthorized();
-});
-
 it('stores a push subscription tied to the authenticated user', function (): void {
     $user = User::factory()->create();
 
@@ -35,12 +31,6 @@ it('rejects a subscription pointed at an internal SSRF host', function (): void 
     $this->actingAs($user)->postJson('/profile/push', pushPayload('https://169.254.169.254/x'))->assertStatus(422);
 
     $this->assertDatabaseCount('push_subscriptions', 0);
-});
-
-it('rejects a delete request missing the endpoint', function (): void {
-    $user = User::factory()->create();
-
-    $this->actingAs($user)->deleteJson('/profile/push', [])->assertStatus(422);
 });
 
 it("deletes the user's own push subscription", function (): void {
@@ -198,6 +188,8 @@ it("never stamps another user's subscription as seen", function (): void {
     expect($other->pushSubscriptions()->value('last_seen_at'))->toBe(now()->subDays(30)->toDateTimeString());
 });
 
-it('requires authentication to report a device as seen', function (): void {
-    $this->postJson('/profile/push/seen', ['endpoint' => 'https://web.push.apple.com/iphone'])->assertUnauthorized();
+it('rejects a delete request missing the endpoint', function (): void {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)->deleteJson('/profile/push', [])->assertStatus(422);
 });

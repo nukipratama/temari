@@ -86,13 +86,16 @@ it('stays ready once a run has landed, even if a later sync attempt failed', fun
     expect((stravaPropsFor($user)['stravaSync'])()['state'])->toBe('ready');
 });
 
-it('exposes the most recent Strava pull as last_synced_at', function (): void {
+it('exposes the most recent Strava pull as last_synced_at, counting un-analyzed stubs', function (): void {
     $user = User::factory()->create();
     StravaConnection::factory()->for($user)->create();
-    Activity::factory()->for($user)->create(['fetched_at' => Carbon::parse('2026-05-18 09:00:00')]);
+    Activity::factory()->for($user)->create(['fetched_at' => Carbon::parse('2026-05-01 03:00:00'), 'analyzed_at' => null]);
+    Activity::factory()->for($user)->create(['fetched_at' => Carbon::parse('2026-05-20 04:00:00'), 'analyzed_at' => null]);
 
-    expect((stravaPropsFor($user)['stravaSync'])()['last_synced_at'])
-        ->toBe(Carbon::parse('2026-05-18 09:00:00')->toIso8601String());
+    expect((stravaPropsFor($user)['stravaSync'])())->toBe([
+        'state' => 'syncing',
+        'last_synced_at' => Carbon::parse('2026-05-20 04:00:00')->toIso8601String(),
+    ]);
 });
 
 it('flags a live connection that never granted the zone scope', function (): void {
@@ -109,6 +112,10 @@ it('does not flag a connection that granted the zone scope', function (): void {
     expect((stravaPropsFor($user)['stravaZoneScopeMissing'])())->toBeFalse();
 });
 
+it('does not flag a user with no Strava connection', function (): void {
+    expect((stravaPropsFor(User::factory()->create())['stravaZoneScopeMissing'])())->toBeFalse();
+});
+
 it('never nudges the demo user, which does not sync zones from Strava', function (): void {
     $user = User::factory()->create(['is_demo' => true]);
     StravaConnection::factory()->for($user)->create(['scopes' => 'read,activity:read_all']);
@@ -120,11 +127,28 @@ it('returns a null zone marker when the user has no runner profile', function ()
     expect((stravaPropsFor(User::factory()->create())['hrZonesChangedAt'])())->toBeNull();
 });
 
+it('returns a null zone marker when the profile has never changed its zones', function (): void {
+    $user = User::factory()->create();
+    $profile = RunnerProfile::factory()->for($user)->create();
+    $profile->forceFill(['hr_zones_changed_at' => null])->saveQuietly();
+
+    expect((stravaPropsFor($user->fresh())['hrZonesChangedAt'])())->toBeNull();
+});
+
 it('returns the stored zone-change marker as ISO-8601', function (): void {
     $user = User::factory()->create();
-    RunnerProfile::factory()->for($user)->create(['max_hr' => 190]);
+    $changedAt = Carbon::parse('2026-05-20 04:00:00');
+    $profile = RunnerProfile::factory()->for($user)->create();
+    $profile->forceFill(['hr_zones_changed_at' => $changedAt])->saveQuietly();
 
-    expect((stravaPropsFor($user->fresh())['hrZonesChangedAt'])())->toBeString();
+    expect((stravaPropsFor($user->fresh())['hrZonesChangedAt'])())->toBe($changedAt->toIso8601String());
+});
+
+it('never reports a guest as paused, even with the kill-switch off', function (): void {
+    Cache::flush();
+    app(AppConfig::class)->set(AppConfigKey::StravaEnabled, false);
+
+    expect((stravaPropsFor(null)['stravaPaused'])())->toBeFalse();
 });
 
 it('mirrors the Strava kill-switch into stravaPaused', function (bool $enabled, bool $paused): void {

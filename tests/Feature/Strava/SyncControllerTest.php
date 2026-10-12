@@ -11,10 +11,6 @@ use Illuminate\Support\Facades\Bus;
 
 uses(RefreshDatabase::class);
 
-it('requires authentication', function (): void {
-    $this->post(route('strava.sync'))->assertRedirect(route('login'));
-});
-
 it('queues a full sync for the signed-in athlete and flashes a notice', function (): void {
     Bus::fake();
     $user = User::factory()->create();

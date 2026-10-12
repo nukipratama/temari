@@ -21,11 +21,6 @@ function flagPayload(PlannedSession $day, ?string $note = null): array
     ], fn (mixed $value): bool => $value !== null);
 }
 
-it('requires an authenticated user', function (): void {
-    $this->post(route('feedback.store'), ['subject_type' => 'plan_day', 'subject_id' => 1, 'reason' => 'too_hard'])
-        ->assertRedirect(route('login'));
-});
-
 it('records a flag with a note against the day it is about', function (): void {
     $user = User::factory()->create(['onboarded_at' => now()]);
     $day = PlannedSession::factory()->for($user)->create();
@@ -54,29 +49,6 @@ it('records a flag with no note at all', function (): void {
         ->assertRedirect(route('plan'));
 
     expect(Feedback::query()->sole()->note)->toBeNull();
-});
-
-it('rejects an unknown subject type', function (): void {
-    $user = User::factory()->create(['onboarded_at' => now()]);
-
-    $this->actingAs($user)
-        ->from(route('plan'))
-        ->post(route('feedback.store'), ['subject_type' => 'weather', 'subject_id' => 1, 'reason' => 'too_hard'])
-        ->assertSessionHasErrors('subject_type');
-
-    expect(Feedback::query()->count())->toBe(0);
-});
-
-it('rejects a note longer than the column', function (): void {
-    $user = User::factory()->create(['onboarded_at' => now()]);
-    $day = PlannedSession::factory()->for($user)->create();
-
-    $this->actingAs($user)
-        ->from(route('plan'))
-        ->post(route('feedback.store'), flagPayload($day, str_repeat('a', Feedback::MAX_NOTE_LENGTH + 1)))
-        ->assertSessionHasErrors('note');
-
-    expect(Feedback::query()->count())->toBe(0);
 });
 
 it('forbids flagging a plan day that belongs to someone else', function (): void {
@@ -115,30 +87,6 @@ it('throttles a runner hammering the endpoint', function (): void {
     $this->actingAs($user)
         ->post(route('feedback.store'), flagPayload($day))
         ->assertStatus(429);
-});
-
-it('rejects a reason that does not belong to the subject', function (): void {
-    $user = User::factory()->create(['onboarded_at' => now()]);
-    $day = PlannedSession::factory()->for($user)->create();
-
-    $this->actingAs($user)
-        ->from(route('plan'))
-        ->post(route('feedback.store'), [...flagPayload($day), 'reason' => 'tone_off'])
-        ->assertSessionHasErrors('reason');
-
-    expect(Feedback::query()->count())->toBe(0);
-});
-
-it('rejects a flag with neither a reason nor a note', function (): void {
-    $user = User::factory()->create(['onboarded_at' => now()]);
-    $day = PlannedSession::factory()->for($user)->create();
-
-    $this->actingAs($user)
-        ->from(route('plan'))
-        ->post(route('feedback.store'), ['subject_type' => 'plan_day', 'subject_id' => $day->id])
-        ->assertSessionHasErrors('note');
-
-    expect(Feedback::query()->count())->toBe(0);
 });
 
 it('records a something else flag as a note with no reason', function (): void {
@@ -199,4 +147,15 @@ it('lands a second flag on the row already there', function (): void {
 
     expect($feedback->reason)->toBe(FeedbackReason::TooHard)
         ->and($feedback->note)->toBe('first');
+});
+
+it('rejects an unknown subject type', function (): void {
+    $user = User::factory()->create(['onboarded_at' => now()]);
+
+    $this->actingAs($user)
+        ->from(route('plan'))
+        ->post(route('feedback.store'), ['subject_type' => 'weather', 'subject_id' => 1, 'reason' => 'too_hard'])
+        ->assertSessionHasErrors('subject_type');
+
+    expect(Feedback::query()->count())->toBe(0);
 });

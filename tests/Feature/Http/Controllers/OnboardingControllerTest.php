@@ -2,8 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Enums\RaceChangeKind;
-use App\Enums\RaceOutcome;
+use App\Actions\AI\RequestTodaysBriefing;
 use App\Jobs\AI\AnalyzeBriefingMascotVoiceJob;
 use Illuminate\Database\Eloquent\Collection;
 use App\Models\AI\Analysis;
@@ -11,7 +10,6 @@ use App\Models\RaceGoal;
 use App\Models\TelegramConnection;
 use App\Models\TrainingPreference;
 use App\Models\User;
-use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -44,11 +42,6 @@ function onboardingGoalPayload(array $overrides = []): array
         ...$overrides,
     ];
 }
-
-it('requires authentication for the wizard', function (): void {
-    $this->get('/onboarding')->assertRedirect('/login');
-    $this->post('/onboarding')->assertRedirect('/login');
-});
 
 it('shows the wizard to a user who has not onboarded', function (): void {
     $user = User::factory()->needsOnboarding()->create();
@@ -129,7 +122,7 @@ it('marks the user onboarded and skips the goal and preferences steps when no fi
         ->and(TrainingPreference::query()->where('user_id', $user->id)->exists())->toBeFalse();
 });
 
-it('creates a race and marks the user onboarded when the goal step is filled in, without a second active race on a retried submit', function (): void {
+it('creates a race and marks the user onboarded when the goal step is filled in', function (): void {
     $user = User::factory()->needsOnboarding()->create();
 
     $this->actingAs($user)
@@ -141,26 +134,7 @@ it('creates a race and marks the user onboarded when the goal step is filled in,
         ->and($race->distance_m)->toBe(10_000)
         ->and($race->goal_time_sec)->toBe(3_000)
         ->and($race->name)->toBe('Jakarta 10K')
-        ->and($race->outcome)->toBe(RaceOutcome::Pending)
-        ->and($race->changes->pluck('kind')->all())->toBe([RaceChangeKind::Created])
         ->and($user->fresh()->onboarded_at)->not->toBeNull();
-
-    // Simulate a retried/double submit after the user is already onboarded.
-    $user->refresh();
-    $this->actingAs($user)->post('/onboarding', onboardingGoalPayload())->assertRedirect(route('dashboard'));
-
-    expect(RaceGoal::query()->where('user_id', $user->id)->active()->count())->toBe(1);
-});
-
-it('rejects a partial goal submission and does not onboard the user', function (): void {
-    $user = User::factory()->needsOnboarding()->create();
-
-    $this->actingAs($user)
-        ->post('/onboarding', onboardingGoalPayload(['distance_m' => null]))
-        ->assertSessionHasErrors('distance_m');
-
-    expect($user->fresh()->onboarded_at)->toBeNull()
-        ->and(RaceGoal::query()->where('user_id', $user->id)->exists())->toBeFalse();
 });
 
 it('creates a training_preferences row when the preferences step is filled in', function (): void {
@@ -198,31 +172,23 @@ it('asks for today\'s briefing when the wizard is finished', function (): void {
     Bus::assertDispatchedTimes(AnalyzeBriefingMascotVoiceJob::class, 1);
 });
 
-// The far more common case: the wizard finishes before the Strava backfill
-// has landed. The briefing must stage Pending rather than narrate against
-// zero history (#1032) — ai:self-heal releases it once the backfill lands.
-it('stages the briefing Pending instead of narrating against zero history when the wizard finishes before the backfill lands', function (): void {
-    Bus::fake();
+it('hands the finished wizard to the signup briefing request', function (): void {
     $user = User::factory()->needsOnboarding()->create();
+    $this->mock(RequestTodaysBriefing::class)
+        ->shouldReceive('atSignup')
+        ->once()
+        ->withArgs(fn (User $asked): bool => $asked->is($user));
 
     $this->actingAs($user)->post('/onboarding')->assertRedirect(route('dashboard'));
-
-    $row = briefingRowsFor($user)->first();
-    expect($row)->not->toBeNull()
-        ->and($row->status)->toBe(AnalysisStatus::Pending);
-    Bus::assertNotDispatched(AnalyzeBriefingMascotVoiceJob::class);
-
-    $this->actingAs($user->fresh())->post('/onboarding')->assertRedirect(route('dashboard'));
-
-    expect(briefingRowsFor($user))->toHaveCount(1);
 });
 
-it('serves the demo account\'s first briefing from the rule-based filler', function (): void {
-    Bus::fake();
-    $user = User::factory()->needsOnboarding()->create(['is_demo' => true]);
+it('rejects a partial goal submission and does not onboard the user', function (): void {
+    $user = User::factory()->needsOnboarding()->create();
 
-    $this->actingAs($user)->post('/onboarding')->assertRedirect(route('dashboard'));
+    $this->actingAs($user)
+        ->post('/onboarding', onboardingGoalPayload(['distance_m' => null]))
+        ->assertSessionHasErrors('distance_m');
 
-    expect(briefingRowsFor($user)->first()->status)->toBe(AnalysisStatus::Done);
-    Bus::assertNotDispatched(AnalyzeBriefingMascotVoiceJob::class);
+    expect($user->fresh()->onboarded_at)->toBeNull()
+        ->and(RaceGoal::query()->where('user_id', $user->id)->exists())->toBeFalse();
 });

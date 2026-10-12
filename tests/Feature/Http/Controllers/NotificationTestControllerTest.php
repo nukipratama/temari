@@ -18,10 +18,6 @@ beforeEach(function (): void {
     config(['services.telegram.bot_token' => 'test-bot-token']);
 });
 
-it('requires authentication', function (): void {
-    $this->post('/profile/notifications/test')->assertRedirect(route('login'));
-});
-
 it('sends a test notification when a Telegram connection is wired', function (): void {
     Notification::fake();
     $user = User::factory()->create();

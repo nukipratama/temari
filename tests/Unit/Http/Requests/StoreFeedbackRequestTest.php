@@ -27,32 +27,28 @@ function feedbackRequest(array $input, ?User $user): StoreFeedbackRequest
     return $request;
 }
 
-it('rejects a subject the enum does not name', function (mixed $subjectType): void {
-    $data = ['subject_type' => $subjectType, 'subject_id' => 1, 'reason' => 'too_hard'];
-
+it('rejects a flag the rules refuse', function (array $data): void {
     expect(Validator::make($data, feedbackRules($data))->fails())->toBeTrue();
 })->with([
-    'missing' => [null],
-    'unknown' => ['weather'],
-    'not a string' => [['plan_day']],
-]);
-
-it('rejects a note longer than the column', function (): void {
-    $data = [
+    'a missing subject' => [['subject_type' => null, 'subject_id' => 1, 'reason' => 'too_hard']],
+    'an unknown subject' => [['subject_type' => 'weather', 'subject_id' => 1, 'reason' => 'too_hard']],
+    'a subject that is not a string' => [['subject_type' => ['plan_day'], 'subject_id' => 1, 'reason' => 'too_hard']],
+    'a note longer than the column' => [[
         'subject_type' => 'plan_day',
         'subject_id' => 1,
         'reason' => 'too_hard',
         'note' => str_repeat('a', Feedback::MAX_NOTE_LENGTH + 1),
-    ];
+    ]],
+    'no reason and no note' => [['subject_type' => 'plan_day', 'subject_id' => 3]],
+    'no reason and a whitespace-only note' => [['subject_type' => 'plan_day', 'subject_id' => 3, 'reason' => null, 'note' => '   ']],
+]);
 
-    expect(Validator::make($data, feedbackRules($data))->fails())->toBeTrue();
-});
-
-it('accepts a flag with no note at all', function (): void {
-    $data = ['subject_type' => 'narration', 'subject_id' => 3, 'reason' => 'tone_off'];
-
+it('accepts a flag the rules allow', function (array $data): void {
     expect(Validator::make($data, feedbackRules($data))->fails())->toBeFalse();
-});
+})->with([
+    'no note at all' => [['subject_type' => 'narration', 'subject_id' => 3, 'reason' => 'tone_off']],
+    'a something else flag, which carries its note instead of a reason' => [['subject_type' => 'plan_day', 'subject_id' => 3, 'reason' => null, 'note' => 'the pace is from another race']],
+]);
 
 it('accepts only the reasons the subject owns', function (string $subjectType, string $reason, bool $fails): void {
     $data = ['subject_type' => $subjectType, 'subject_id' => 3, 'reason' => $reason];
@@ -65,24 +61,6 @@ it('accepts only the reasons the subject owns', function (string $subjectType, s
     'a narration reason on a plan day' => ['plan_day', 'too_long', true],
     'a reason the enum does not name' => ['plan_day', 'too_wet', true],
 ]);
-
-it('requires a note when no reason is given', function (): void {
-    $data = ['subject_type' => 'plan_day', 'subject_id' => 3];
-
-    expect(Validator::make($data, feedbackRules($data))->fails())->toBeTrue();
-});
-
-it('refuses a reason-less flag whose note is only whitespace', function (): void {
-    $data = ['subject_type' => 'plan_day', 'subject_id' => 3, 'reason' => null, 'note' => '   '];
-
-    expect(Validator::make($data, feedbackRules($data))->fails())->toBeTrue();
-});
-
-it('accepts a something else flag, which carries its note instead of a reason', function (): void {
-    $data = ['subject_type' => 'plan_day', 'subject_id' => 3, 'reason' => null, 'note' => 'the pace is from another race'];
-
-    expect(Validator::make($data, feedbackRules($data))->fails())->toBeFalse();
-});
 
 it('reads a missing reason back as null', function (): void {
     $request = feedbackRequest(

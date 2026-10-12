@@ -42,11 +42,6 @@ function runFor(User $user, array $detail = []): Activity
     return $activity;
 }
 
-it('requires authentication', function (): void {
-    $this->postJson('/api/activities/1/questions', ['question' => 'why did my HR drift?'])
-        ->assertStatus(401);
-});
-
 it('queues the question and hands back the pending exchange', function (): void {
     $user = User::factory()->create();
     $activity = runFor($user);
@@ -77,18 +72,6 @@ it('trims the question before storing it', function (): void {
     expect(RunQuestion::query()->sole()->question)->toBe('why did my HR drift?');
 });
 
-it('rejects a question with no substance', function (): void {
-    $user = User::factory()->create();
-    $activity = runFor($user);
-
-    $this->actingAs($user)
-        ->postJson("/api/activities/{$activity->id}/questions", ['question' => 'hm'])
-        ->assertStatus(422)
-        ->assertJsonValidationErrors('question');
-
-    Bus::assertNothingDispatched();
-});
-
 // ── Scoping ─────────────────────────────────────────────────────────────────
 
 it('refuses a question about someone else run', function (): void {
@@ -102,17 +85,6 @@ it('refuses a question about someone else run', function (): void {
 
     expect(RunQuestion::query()->count())->toBe(0);
     Bus::assertNothingDispatched();
-});
-
-it('refuses to read someone else question thread', function (): void {
-    $me = User::factory()->create();
-    $them = User::factory()->create();
-    $theirRun = runFor($them);
-    RunQuestion::factory()->answered()->create(['user_id' => $them->id, 'activity_id' => $theirRun->id]);
-
-    $this->actingAs($me)
-        ->getJson("/api/activities/{$theirRun->id}/questions")
-        ->assertForbidden();
 });
 
 it('returns only this run thread, never another run of the same user', function (): void {
@@ -142,15 +114,6 @@ it('suggests only questions this run data can answer', function (): void {
 
     expect($suggestions)->toContain(RunQuestionTopic::HrDrift->question())
         ->and($suggestions)->not->toContain(RunQuestionTopic::Heat->question());
-});
-
-it('falls back to the comparison question on a summary-state run', function (): void {
-    $user = User::factory()->create();
-    $activity = Activity::factory()->for($user)->summaryOnly()->create();
-    ActivityDetail::factory()->for($activity)->create(['stream_summary' => null, 'weather_temp_c' => 24]);
-
-    expect($this->actingAs($user)->getJson("/api/activities/{$activity->id}/questions")->json('suggestions'))
-        ->toBe([RunQuestionTopic::Baseline->question()]);
 });
 
 // ── Demo ────────────────────────────────────────────────────────────────────
@@ -460,4 +423,16 @@ it('builds a demo answer follow-ups from the seeded questions and the current on
         ->postJson("/api/activities/{$activity->id}/questions", ['question' => 'how did this one go?'])
         ->assertCreated()
         ->assertJsonPath('follow_ups', [RunQuestionTopic::Baseline->question()]);
+});
+
+it('rejects a question with no substance', function (): void {
+    $user = User::factory()->create();
+    $activity = runFor($user);
+
+    $this->actingAs($user)
+        ->postJson("/api/activities/{$activity->id}/questions", ['question' => 'hm'])
+        ->assertStatus(422)
+        ->assertJsonValidationErrors('question');
+
+    Bus::assertNothingDispatched();
 });

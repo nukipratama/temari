@@ -44,39 +44,51 @@ it('passes valid ascending gapless zones within bounds', function (): void {
     expect(validateHrZones(hrZonePayload())->passes())->toBeTrue();
 });
 
-it('rejects non-ascending zones', function (): void {
-    $zones = [
+it('rejects zones that are not five gapless ascending bands around the resting and max rates', function (array $zones): void {
+    expect(validateHrZones(hrZonePayload(zones: $zones))->passes())->toBeFalse();
+})->with([
+    'non-ascending' => [[
         ['lo' => 116, 'hi' => 116],
         ['lo' => 116, 'hi' => 154],
         ['lo' => 154, 'hi' => 168],
         ['lo' => 168, 'hi' => 176],
         ['lo' => 176, 'hi' => 999],
-    ];
-
-    expect(validateHrZones(hrZonePayload(zones: $zones))->passes())->toBeFalse();
-});
-
-it('rejects gapped zones where hi does not equal the next lo', function (): void {
-    $zones = [
+    ]],
+    'gapped, where hi does not equal the next lo' => [[
         ['lo' => 116, 'hi' => 138],
         ['lo' => 140, 'hi' => 154],
         ['lo' => 154, 'hi' => 168],
         ['lo' => 168, 'hi' => 176],
         ['lo' => 176, 'hi' => 999],
-    ];
+    ]],
+    'Z1.lo below resting_hr' => [[
+        ['lo' => 50, 'hi' => 138],
+        ['lo' => 138, 'hi' => 154],
+        ['lo' => 154, 'hi' => 168],
+        ['lo' => 168, 'hi' => 176],
+        ['lo' => 176, 'hi' => 999],
+    ]],
+    'Z5.hi at or below max_hr' => [[
+        ['lo' => 116, 'hi' => 138],
+        ['lo' => 138, 'hi' => 154],
+        ['lo' => 154, 'hi' => 168],
+        ['lo' => 168, 'hi' => 176],
+        ['lo' => 176, 'hi' => 180],
+    ]],
+    'a zone count other than five' => [[
+        ['lo' => 116, 'hi' => 138],
+        ['lo' => 138, 'hi' => 154],
+    ]],
+]);
 
-    expect(validateHrZones(hrZonePayload(zones: $zones))->passes())->toBeFalse();
-});
-
-it('rejects a max_hr outside 120-220', function (): void {
-    expect(validateHrZones(hrZonePayload(['max_hr' => 119]))->passes())->toBeFalse()
-        ->and(validateHrZones(hrZonePayload(['max_hr' => 221]))->passes())->toBeFalse();
-});
-
-it('rejects a resting_hr outside 30-90', function (): void {
-    expect(validateHrZones(hrZonePayload(['resting_hr' => 29]))->passes())->toBeFalse()
-        ->and(validateHrZones(hrZonePayload(['resting_hr' => 91]))->passes())->toBeFalse();
-});
+it('rejects a max_hr outside 120-220 or a resting_hr outside 30-90', function (array $overrides): void {
+    expect(validateHrZones(hrZonePayload($overrides))->passes())->toBeFalse();
+})->with([
+    'max_hr below' => [['max_hr' => 119]],
+    'max_hr above' => [['max_hr' => 221]],
+    'resting_hr below' => [['resting_hr' => 29]],
+    'resting_hr above' => [['resting_hr' => 91]],
+]);
 
 it('accepts max_hr and resting_hr exactly at their inclusive between() boundaries', function (): void {
     $lowBoundary = array_values(HeartRateZones::derive(120, 30));
@@ -89,37 +101,4 @@ it('accepts max_hr and resting_hr exactly at their inclusive between() boundarie
 it('rejects a resting_hr greater than or equal to max_hr', function (): void {
     expect(validateHrZones(hrZonePayload(['max_hr' => 120, 'resting_hr' => 80]))->passes())->toBeTrue()
         ->and(validateHrZones(hrZonePayload(['max_hr' => 80, 'resting_hr' => 80]))->passes())->toBeFalse();
-});
-
-it('rejects Z1.lo below resting_hr', function (): void {
-    $zones = [
-        ['lo' => 50, 'hi' => 138],
-        ['lo' => 138, 'hi' => 154],
-        ['lo' => 154, 'hi' => 168],
-        ['lo' => 168, 'hi' => 176],
-        ['lo' => 176, 'hi' => 999],
-    ];
-
-    expect(validateHrZones(hrZonePayload(zones: $zones))->passes())->toBeFalse();
-});
-
-it('rejects Z5.hi less than or equal to max_hr', function (): void {
-    $zones = [
-        ['lo' => 116, 'hi' => 138],
-        ['lo' => 138, 'hi' => 154],
-        ['lo' => 154, 'hi' => 168],
-        ['lo' => 168, 'hi' => 176],
-        ['lo' => 176, 'hi' => 180],
-    ];
-
-    expect(validateHrZones(hrZonePayload(zones: $zones))->passes())->toBeFalse();
-});
-
-it('rejects a zone count other than five', function (): void {
-    $zones = [
-        ['lo' => 116, 'hi' => 138],
-        ['lo' => 138, 'hi' => 154],
-    ];
-
-    expect(validateHrZones(hrZonePayload(zones: $zones))->passes())->toBeFalse();
 });

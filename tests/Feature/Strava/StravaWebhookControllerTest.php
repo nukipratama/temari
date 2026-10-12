@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Http\Controllers\Strava\StravaWebhookController;
 use App\Jobs\Strava\CleanupDeletedActivityJob;
 use App\Jobs\Strava\ResyncActivityJob;
 use App\Jobs\Strava\SyncActivitiesJob;
@@ -50,23 +51,17 @@ it('echoes the challenge back when the verify token matches', function (): void 
         ->assertExactJson(['hub.challenge' => 'challenge-abc']);
 });
 
-it('rejects the handshake when the verify token does not match', function (): void {
+it('rejects the handshake when the verify token or the mode is wrong', function (string $mode, string $verifyToken): void {
     $this->getJson(route('strava.webhook.verify', [
         'token' => 'fake-callback-token',
-        'hub.mode' => 'subscribe',
-        'hub.verify_token' => 'wrong-token',
+        'hub.mode' => $mode,
+        'hub.verify_token' => $verifyToken,
         'hub.challenge' => 'challenge-abc',
     ]))->assertForbidden();
-});
-
-it('rejects the handshake when the mode is not subscribe', function (): void {
-    $this->getJson(route('strava.webhook.verify', [
-        'token' => 'fake-callback-token',
-        'hub.mode' => 'unsubscribe',
-        'hub.verify_token' => 'super-secret-token',
-        'hub.challenge' => 'challenge-abc',
-    ]))->assertForbidden();
-});
+})->with([
+    'wrong verify token' => ['subscribe', 'wrong-token'],
+    'mode is not subscribe' => ['unsubscribe', 'super-secret-token'],
+]);
 
 it('answers the handshake only on the tokenised callback URL', function (string $url): void {
     $this->getJson($url.'?'.http_build_query([
@@ -362,23 +357,22 @@ function postWebhookAspect(string $aspect): void
     ])->assertOk();
 }
 
-it('records the heartbeat under the reported aspect when it is a known one', function (string $aspect): void {
+it('keys the heartbeat by the reported aspect when it is a known one, and by a single bucket otherwise', function (string $aspect, string $key): void {
+    expect(StravaWebhookController::heartbeatKey($aspect))->toBe($key);
+})->with([
+    'create' => ['create', 'create'],
+    'update' => ['update', 'update'],
+    'delete' => ['delete', 'delete'],
+    'empty' => ['', 'unknown'],
+    'unknown verb' => ['subscribe', 'unknown'],
+    'per-request cardinality bomb' => ['create-8f3b1c2d-9a4e', 'unknown'],
+    'injection-ish' => ['<script>alert(1)</script>', 'unknown'],
+]);
+
+it('records the webhook heartbeat in Pulse under the keyed aspect', function (): void {
     stubPulseEntry();
 
-    postWebhookAspect($aspect);
-
-    Pulse::shouldHaveReceived('record')->with('strava_webhook', $aspect)->once();
-})->with(['create', 'update', 'delete']);
-
-it('collapses an unrecognised aspect_type into a single heartbeat bucket', function (string $aspect): void {
-    stubPulseEntry();
-
-    postWebhookAspect($aspect);
+    postWebhookAspect('subscribe');
 
     Pulse::shouldHaveReceived('record')->with('strava_webhook', 'unknown')->once();
-})->with([
-    'empty' => '',
-    'unknown verb' => 'subscribe',
-    'per-request cardinality bomb' => 'create-8f3b1c2d-9a4e',
-    'injection-ish' => '<script>alert(1)</script>',
-]);
+});

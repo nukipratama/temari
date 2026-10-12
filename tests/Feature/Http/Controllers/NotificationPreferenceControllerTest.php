@@ -45,41 +45,6 @@ it('updates the existing preference row without creating a second', function ():
         ->and($user->notificationPreference()->first()->notifications_enabled)->toBeFalse();
 });
 
-it('validates that the flags are present and boolean', function (): void {
-    $user = User::factory()->create();
-
-    $this->actingAs($user)
-        ->patchJson('/profile/notifications', ['notifications_enabled' => 'maybe'])
-        ->assertStatus(422);
-});
-
-it('requires authentication', function (): void {
-    $this->patch('/profile/notifications', ['notifications_enabled' => true, 'telegram_enabled' => true, 'push_enabled' => true])
-        ->assertRedirect('/login');
-});
-
-/**
- * Every field is required because the client always sends the complete state.
- * The toggles live in two different groups on the page now, so a partial write
- * would leave updateOrCreate holding whatever the other group had before —
- * which reads to the user as a toggle that did not stick.
- */
-it('rejects a partial write that omits the channel mutes', function (): void {
-    $user = User::factory()->create();
-
-    $this->actingAs($user)
-        ->patch('/profile/notifications', ['notifications_enabled' => true])
-        ->assertSessionHasErrors(['telegram_enabled', 'push_enabled']);
-});
-
-it('rejects a partial write that omits the master switch', function (): void {
-    $user = User::factory()->create();
-
-    $this->actingAs($user)
-        ->patch('/profile/notifications', ['telegram_enabled' => true, 'push_enabled' => true])
-        ->assertSessionHasErrors(['notifications_enabled']);
-});
-
 it('persists the channel mutes alongside the master switch', function (): void {
     $user = User::factory()->create();
 

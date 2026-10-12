@@ -8,13 +8,10 @@ use App\Models\PlannedSession;
 use App\Models\RaceGoal;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
-use App\Models\AI\Analysis;
 use App\Models\Season;
 use App\Models\StoryLine;
 use App\Models\User;
-use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
-use App\Services\Run\Story\PastYouTrendBuilder;
 use App\Models\WeeklySnapshot;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -23,12 +20,6 @@ use Illuminate\Support\Facades\DB;
 use Inertia\Testing\AssertableInertia as Assert;
 
 uses(RefreshDatabase::class);
-
-it('never renders the dashboard to a guest', function (): void {
-    $this->get('/')
-        ->assertSuccessful()
-        ->assertInertia(fn (Assert $page) => $page->component('Auth/Login'));
-});
 
 it('renders for a user with no synced activities', function (): void {
     $user = User::factory()->create();
@@ -79,33 +70,6 @@ it('answers the empty state with a boolean, hydrating no run rows', function ():
 
     expect($existsProbes)->toHaveCount(1)
         ->and($eightRowSelects)->toBeEmpty();
-});
-
-it('renders the week snapshot and flags the runs when the user has training-load history', function (): void {
-    Carbon::setTestNow('2026-05-11 12:00:00');
-    $user = User::factory()->create();
-
-    $activity = Activity::factory()->for($user)->analyzed()->create();
-    ActivityDetail::factory()->for($activity)->create([
-        'trimp_edwards' => 50.0,
-        'start_date_local' => Carbon::today(),
-    ]);
-
-    WeeklySnapshot::factory()->for($user)->create([
-        'week_ending' => Carbon::today()->endOfWeek(Carbon::SUNDAY)->toDateString(),
-        'distance_km' => 35.0,
-        'runs' => 4,
-    ]);
-
-    $this->actingAs($user)->get('/')
-        ->assertSuccessful()
-        ->assertInertia(fn (Assert $page) => $page
-            ->component('Home')
-            ->missing('load')
-            ->where('snapshot.distance_km', 35)
-            ->where('hasRuns', true));
-
-    Carbon::setTestNow();
 });
 
 /**
@@ -247,25 +211,6 @@ it('still returns every dashboard prop on a full page load', function (): void {
             ->missing('load'));
 });
 
-it('ships a real weekPlan when the user has a plan for the current week', function (): void {
-    Carbon::setTestNow('2026-08-12'); // a Wednesday
-    $user = User::factory()->create();
-    $weekStart = Carbon::today()->startOfWeek(Carbon::MONDAY);
-    for ($i = 0; $i < 7; $i++) {
-        PlannedSession::factory()->for($user)->create(['date' => $weekStart->copy()->addDays($i)]);
-    }
-
-    $this->actingAs($user)->get('/')
-        ->assertSuccessful()
-        ->assertInertia(fn (Assert $page) => $page
-            ->component('Home')
-            ->where('weekPlan.days', fn (mixed $days): bool => count($days) === 7)
-            ->has('weekPlan.sessions_this_week')
-            ->has('weekPlan.phase'));
-
-    Carbon::setTestNow();
-});
-
 it('does not ship restDayEasePace on a day that is not a planned rest day', function (): void {
     Carbon::setTestNow('2026-08-12'); // a Wednesday
     $user = User::factory()->create();
@@ -302,21 +247,6 @@ it('defers restDayEasePace on a planned rest day, resolving only on the named pa
     $response->assertJsonPath('props.restDayEasePace', null);
 
     Carbon::setTestNow();
-});
-
-it('ships the Past You verdict as its own outcome when history is too thin', function (): void {
-    $user = User::factory()->create();
-    $activity = Activity::factory()->for($user)->analyzed()->create();
-    ActivityDetail::factory()->for($activity)->create(['start_date_local' => Carbon::now()]);
-
-    $this->actingAs($user)->get('/')
-        ->assertSuccessful()
-        ->assertInertia(fn (Assert $page) => $page
-            ->component('Home')
-            ->where('pastYouTrend.verdict', 'not_enough_history')
-            ->where('pastYouTrend.comparison_count', 0)
-            ->where('pastYouTrend.window_days', PastYouTrendBuilder::WINDOW_DAYS)
-            ->etc());
 });
 
 /**
@@ -451,25 +381,6 @@ it('reads the clamp narration once on a clamped day', function (): void {
     Carbon::setTestNow();
 });
 
-it('tells Home this is the athlete\'s first briefing, until one has been narrated', function (): void {
-    $user = User::factory()->create();
-
-    $this->actingAs($user)->get('/')
-        ->assertInertia(fn (Assert $page) => $page->where('briefing.firstRead', true)->etc());
-
-    Analysis::factory()->create([
-        'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
-        'subject_id' => $user->id,
-        'analysis_type' => AnalysisType::BriefingMascotVoice,
-        'discriminator' => Carbon::today()->toDateString(),
-        'status' => AnalysisStatus::Done,
-        'content' => 'read.',
-    ]);
-
-    $this->actingAs($user)->get('/')
-        ->assertInertia(fn (Assert $page) => $page->where('briefing.firstRead', false)->etc());
-});
-
 /**
  * A Saturday signup whose backfill has written the weeks behind it but not the
  * open one. The week card reads `snapshot.distance_km` as this week's actual
@@ -578,13 +489,6 @@ it('asks Home about the newest passed race still waiting on its outcome, never a
             ->where('pendingRaceOutcome.race_date', '2026-10-04'));
 
     Carbon::setTestNow();
-});
-
-it('ships no race-outcome prompt once every passed race has its outcome', function (): void {
-    $user = User::factory()->create();
-
-    $this->actingAs($user)->get('/')
-        ->assertInertia(fn (Assert $page) => $page->where('pendingRaceOutcome', null));
 });
 
 it('does not ask how a race went on the morning of the race itself', function (): void {

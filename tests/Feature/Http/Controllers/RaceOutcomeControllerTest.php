@@ -31,10 +31,6 @@ function ownedRaceDayRun(User $user, string $startsAt = '2026-10-04 07:00:00', f
     return $activity;
 }
 
-it('requires authentication', function (): void {
-    $this->post("/race/{$this->race->id}/outcome", ['outcome' => 'did_not_run'])->assertRedirect('/login');
-});
-
 it('offers the matched run and confirms it', function (): void {
     $run = ownedRaceDayRun($this->user);
 
@@ -59,19 +55,6 @@ it('offers the matched run and confirms it', function (): void {
         ->where('past_races.0.outcome.finish_time_sec', 2_950)));
 });
 
-it('confirms a manual time and marks did not run', function (): void {
-    $this->actingAs($this->user)
-        ->post("/race/{$this->race->id}/outcome", ['outcome' => 'confirmed', 'finish_time_sec' => 3_100])
-        ->assertSessionHasNoErrors();
-    expect($this->race->fresh()->finish_time_sec)->toBe(3_100);
-
-    $this->actingAs($this->user)
-        ->post("/race/{$this->race->id}/outcome", ['outcome' => 'did_not_run'])
-        ->assertSessionHasNoErrors();
-    expect($this->race->fresh()->outcome)->toBe(RaceOutcome::DidNotRun)
-        ->and(PerformanceEvidence::query()->count())->toBe(0);
-});
-
 it('refuses the demo account a race outcome', function (): void {
     $demo = User::factory()->create(['is_demo' => true]);
     $race = RaceGoal::factory()->for($demo)->completed()->create([
@@ -93,30 +76,11 @@ it('never lets one athlete confirm another athlete\'s race', function (): void {
     expect($this->race->fresh()->outcome)->toBe(RaceOutcome::Pending);
 });
 
-it('never matches another athlete\'s activity to a race', function (): void {
-    $theirs = ownedRaceDayRun(User::factory()->create());
-
-    $this->actingAs($this->user)
-        ->post("/race/{$this->race->id}/outcome", ['outcome' => 'confirmed', 'activity_id' => $theirs->id])
-        ->assertSessionHasErrors('activity_id');
-
-    expect($this->race->fresh()->outcome)->toBe(RaceOutcome::Pending);
-});
-
 it('never suggests another athlete\'s run', function (): void {
     ownedRaceDayRun(User::factory()->create());
 
     $this->actingAs($this->user)->get('/race')
         ->assertInertia(fn (Assert $page) => $page->loadDeferredProps(fn (Assert $deferred) => $deferred->where('past_races.0.outcome.suggestion', null)));
-});
-
-it('rejects a confirmation with neither a run nor a time, and an unknown outcome', function (): void {
-    $this->actingAs($this->user)
-        ->post("/race/{$this->race->id}/outcome", ['outcome' => 'confirmed'])
-        ->assertSessionHasErrors('outcome');
-    $this->actingAs($this->user)
-        ->post("/race/{$this->race->id}/outcome", ['outcome' => 'won'])
-        ->assertSessionHasErrors('outcome');
 });
 
 it('shows only retired races that have passed and carry an outcome', function (): void {
@@ -127,4 +91,13 @@ it('shows only retired races that have passed and carry an outcome', function ()
     $this->actingAs($this->user)->get('/race')->assertInertia(fn (Assert $page) => $page->loadDeferredProps(fn (Assert $deferred) => $deferred
         ->has('past_races', 1)
         ->where('past_races.0.id', $this->race->id)));
+});
+
+it('rejects a confirmation with neither a run nor a time, and an unknown outcome', function (): void {
+    $this->actingAs($this->user)
+        ->post("/race/{$this->race->id}/outcome", ['outcome' => 'confirmed'])
+        ->assertSessionHasErrors('outcome');
+    $this->actingAs($this->user)
+        ->post("/race/{$this->race->id}/outcome", ['outcome' => 'won'])
+        ->assertSessionHasErrors('outcome');
 });

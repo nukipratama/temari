@@ -5,18 +5,20 @@ declare(strict_types=1);
 use App\Actions\AI\RecentlyActiveUsers;
 use App\Jobs\Strava\SyncActivitiesJob;
 use App\Models\AI\Analysis;
-use App\Models\AI\TokenUsage;
 use App\Models\Analytics\DevtoolsAction;
 use App\Models\User;
-use App\Services\AI\AnalysisOrigin;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
 use App\Services\AI\CeilingOverride;
+use App\Services\Devtools\AthleteNarrationReport;
+use App\Services\Devtools\ReArmNarrationAction;
+use App\Services\Devtools\ReplayNarrationAction;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Bus;
 use Inertia\Testing\AssertableInertia;
+use Mockery\MockInterface;
 
 uses(RefreshDatabase::class);
 
@@ -111,10 +113,16 @@ describe('show', function (): void {
             ->assertUnauthorized();
     });
 
-    it('filters the narration list by kind and status from the query string', function (): void {
+    it('hands the kind and status filters to the narration list', function (): void {
         $user = narrationAthlete();
-        narrationBlock($user, AnalysisType::TrendRead, ['status' => AnalysisStatus::Done, 'content' => 'kept']);
-        narrationBlock($user, AnalysisType::WeeklyRecap, ['status' => AnalysisStatus::Failed]);
+        $this->mock(AthleteNarrationReport::class, function (MockInterface $report) use ($user): void {
+            $report->shouldReceive('narrations')
+                ->once()
+                ->with($user->id, AnalysisType::TrendRead, AnalysisStatus::Done, null)
+                ->andReturn(['rows' => [], 'next_cursor' => null]);
+            $report->shouldReceive('header', 'costByKind', 'attention', 'audit')->andReturn([]);
+            $report->shouldReceive('activeOverride')->andReturnNull();
+        });
 
         $this->get(athletePath($user, '?kind=trend_read&status=done&tab=cost'))
             ->assertSuccessful()
@@ -122,7 +130,7 @@ describe('show', function (): void {
                 fn (AssertableInertia $page) => $page
                     ->where('tab', 'cost')
                     ->where('filters.kind', 'trend_read')
-                    ->has('narrations', 1)
+                    ->where('filters.status', 'done')
                     ->etc(),
             );
     });
@@ -153,14 +161,9 @@ describe('actions', function (): void {
             ->and($action->payload)->toBe(['blocks' => 1]);
     });
 
-    it('re-arms only the dead-lettered blocks and records the action', function (): void {
+    it('re-arms the dead-lettered blocks and records the action', function (): void {
         $user = narrationAthlete();
-        narrationBlock($user, AnalysisType::TrendRead, ['status' => AnalysisStatus::Failed, 'attempts' => 1]);
-        narrationBlock($user, AnalysisType::WeeklyRecap, [
-            'status' => AnalysisStatus::Failed,
-            'attempts' => Analysis::MAX_SELF_HEAL_ATTEMPTS,
-        ]);
-        $this->mock(AnalysisService::class)->shouldReceive('request')->once();
+        $this->mock(ReArmNarrationAction::class)->shouldReceive('reArmDeadLettered')->once()->with($user->id)->andReturn(1);
 
         $this->post(athletePath($user, '/re-arm'))->assertRedirect();
 
@@ -224,16 +227,9 @@ describe('replay', function (): void {
     it('refuses the replay once the daily replay cap is reached', function (): void {
         $user = narrationAthlete();
         $block = narrationBlock($user, AnalysisType::TrendRead, ['status' => AnalysisStatus::Done, 'content' => 'x']);
-        TokenUsage::query()->create([
-            'kind' => 'trend_read',
-            'origin' => AnalysisOrigin::Replay,
-            'prompt_tokens' => 500,
-            'completion_tokens' => 0,
-            'total_tokens' => 500,
-            'model' => 'gpt-test',
-            'created_at' => Carbon::now(),
-        ]);
-        $this->mock(AnalysisService::class)->shouldNotReceive('request');
+        $replay = $this->mock(ReplayNarrationAction::class);
+        $replay->shouldReceive('capReached')->andReturnTrue();
+        $replay->shouldNotReceive('replay');
 
         $this->post(athletePath($user, '/replay'), ['analysis_id' => $block->id])
             ->assertRedirect()
