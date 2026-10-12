@@ -31,7 +31,6 @@ use App\Services\Run\Story\Card\CardFacts;
 use App\Services\Run\Story\Card\RunForm;
 use Database\Seeders\Demo\DemoRunSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Foundation\Testing\RefreshDatabaseState;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Artisan;
@@ -86,17 +85,17 @@ function commitSharedDemoFixture(): void
     DB::connection('analytics')->commit();
     DB::connection('mysql')->beginTransaction();
     DB::connection('analytics')->beginTransaction();
+
+    sharedFixtureConnection(DB::connection('mysql')->getRawPdo());
 }
 
 /**
  * Seeds the bare demo dataset: a real `demo:seed` run, committed for good
  * outside any per-test transaction. Every test that needs the bare dataset
  * calls this first; whichever one finds the demo user missing pays the cost
- * (normally the first test below, in file order, but also any test that runs
- * after releaseSharedDemoFixture() wiped the schema), the rest see
- * already-committed rows. releaseSharedDemoFixture(), called by the last
- * test in this file, hands the schema back clean. Returns the console output
- * of the seed that built the fixture.
+ * (normally the first test below, in file order), the rest see
+ * already-committed rows. afterAll() below hands the database back clean.
+ * Returns the console output of the seed that built the fixture.
  */
 function ensureBareDemoSeeded(): string
 {
@@ -125,36 +124,35 @@ function ensureBareDemoSeeded(): string
     return $output;
 }
 
-/**
- * Commits the shared fixture connections one last time *without* reopening a
- * transaction, called at the end of the last test in this file. RefreshDatabase's
- * own teardown then finds each connection's PDO not mid-transaction and, per
- * its own beginDatabaseTransaction() callback, flips RefreshDatabaseState::$migrated
- * back to false — which makes the next RefreshDatabase test in this process
- * (whichever file that belongs to) run a fresh migrate:fresh before it does
- * anything else. That's Laravel's own schema-reset path, reused here instead
- * of hand-rolling a second one, so nothing this file committed for real
- * outlives it.
- */
-function releaseSharedDemoFixture(): void
+/** The PDO that committed the shared fixture, which afterAll() uses once the last test's application is gone. */
+function sharedFixtureConnection(?PDO $pdo = null): ?PDO
 {
-    DB::connection('mysql')->commit();
-    DB::connection('analytics')->commit();
+    static $connection = null;
+
+    return $connection ??= $pdo;
 }
 
-/**
- * Backstop for releaseSharedDemoFixture(): PHPUnit always calls afterAll()
- * once, after the last test of this file that actually ran — even when that
- * is not the test below (an earlier test fails before reaching it, or a
- * `--filter` run never selects it at all). Flipping the flag
- * directly needs no live Application, unlike a throwaway-Application
- * `migrate:fresh`: it is the same plain static property RefreshDatabase's own
- * teardown already reads before every test, so whichever RefreshDatabase test
- * this process runs next always re-migrates instead of trusting whatever this
- * file left committed.
- */
+/** Deletes every committed row except `migrations`, so the next RefreshDatabase test in this process finds the schema and no data. */
 afterAll(function (): void {
-    RefreshDatabaseState::$migrated = false;
+    $pdo = sharedFixtureConnection();
+
+    if ($pdo === null) {
+        return;
+    }
+
+    if ($pdo->inTransaction()) {
+        $pdo->rollBack();
+    }
+
+    $pdo->exec('SET FOREIGN_KEY_CHECKS=0');
+
+    foreach ($pdo->query('SHOW FULL TABLES WHERE Table_type = "BASE TABLE"')->fetchAll(PDO::FETCH_COLUMN) as $table) {
+        if ($table !== 'migrations') {
+            $pdo->exec("DELETE FROM `{$table}`");
+        }
+    }
+
+    $pdo->exec('SET FOREIGN_KEY_CHECKS=1');
 });
 
 /**
@@ -638,17 +636,13 @@ it('has a prop contract fixture for every page a controller renders', function (
 });
 
 it('leaves every analysis done and rule-based-served unless --with-edge-states is passed', function (): void {
-    try {
-        ensureBareDemoSeeded();
+    ensureBareDemoSeeded();
 
-        expect(Analysis::query()->where('status', '!=', AnalysisStatus::Done)->count())
-            ->toBe(0, 'The public demo must not render a pending or failed block.');
+    expect(Analysis::query()->where('status', '!=', AnalysisStatus::Done)->count())
+        ->toBe(0, 'The public demo must not render a pending or failed block.');
 
-        expect(Analysis::query()->where('served_by', ServedBy::Llm)->count())
-            ->toBe(0, 'The demo seed never calls the LLM, so no demo row may claim it did.')
-            ->and(Analysis::query()->where('served_by', ServedBy::RuleBased)->count())
-            ->toBeGreaterThan(0);
-    } finally {
-        releaseSharedDemoFixture();
-    }
+    expect(Analysis::query()->where('served_by', ServedBy::Llm)->count())
+        ->toBe(0, 'The demo seed never calls the LLM, so no demo row may claim it did.')
+        ->and(Analysis::query()->where('served_by', ServedBy::RuleBased)->count())
+        ->toBeGreaterThan(0);
 });
