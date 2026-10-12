@@ -16,56 +16,41 @@ it('authorizes the request', function (): void {
     expect(new UpdatePlannedSessionRequest()->authorize())->toBeTrue();
 });
 
-it('passes an empty payload, since every field is optional', function (): void {
-    expect(validatePlannedSessionUpdate([])->passes())->toBeTrue();
-});
+it('passes the optional fields it accepts', function (array $payload): void {
+    expect(validatePlannedSessionUpdate($payload)->passes())->toBeTrue();
+})->with([
+    'an empty payload, since every field is optional' => [[]],
+    'a valid move (date)' => [['date' => '2026-08-13']],
+    'a pin' => [['pinned' => true]],
+    'an unpin' => [['pinned' => false]],
+    'a skip' => [['skipped' => true]],
+    'an unskip' => [['skipped' => false]],
+]);
 
-it('passes a valid move (date)', function (): void {
-    expect(validatePlannedSessionUpdate(['date' => now()->addDay()->toDateString()])->passes())->toBeTrue();
-});
-
-it('rejects an invalid date', function (): void {
-    expect(validatePlannedSessionUpdate(['date' => 'not-a-date'])->fails())->toBeTrue();
-});
+it('rejects an invalid date or a non-boolean flag', function (array $payload): void {
+    expect(validatePlannedSessionUpdate($payload)->fails())->toBeTrue();
+})->with([
+    'an invalid date' => [['date' => 'not-a-date']],
+    'a non-boolean pinned value' => [['pinned' => 'yes']],
+    'a non-boolean skipped value' => [['skipped' => 'yes']],
+]);
 
 it('no longer validates session_type, block having been cut by P23', function (): void {
-    // Not a rule any more, so it neither passes nor fails — it is simply
-    // dropped, and PlanController never reads it.
     expect(validatePlannedSessionUpdate(['session_type' => 'sprint'])->validated())
         ->not->toHaveKey('session_type');
 });
 
-it('passes an explicit pin/unpin toggle', function (): void {
-    expect(validatePlannedSessionUpdate(['pinned' => true])->passes())->toBeTrue()
-        ->and(validatePlannedSessionUpdate(['pinned' => false])->passes())->toBeTrue();
-});
-
-it('rejects a non-boolean pinned value', function (): void {
-    expect(validatePlannedSessionUpdate(['pinned' => 'yes'])->fails())->toBeTrue();
-});
-
-it('passes an explicit skip/unskip toggle', function (): void {
-    expect(validatePlannedSessionUpdate(['skipped' => true])->passes())->toBeTrue()
-        ->and(validatePlannedSessionUpdate(['skipped' => false])->passes())->toBeTrue();
-});
-
-it('rejects a non-boolean skipped value', function (): void {
-    expect(validatePlannedSessionUpdate(['skipped' => 'yes'])->fails())->toBeTrue();
-});
-
-it('rejects a move that also sets skipped', function (bool $skipped): void {
-    $validator = validatePlannedSessionUpdate(['date' => now()->addDay()->toDateString(), 'skipped' => $skipped]);
+it('rejects a move that also sets skipped or pinned', function (string $flag, bool $value): void {
+    $validator = validatePlannedSessionUpdate(['date' => now()->addDay()->toDateString(), $flag => $value]);
 
     expect($validator->fails())->toBeTrue()
         ->and($validator->errors()->has('date'))->toBeTrue();
-})->with([true, false]);
-
-it('rejects a move that also sets pinned', function (bool $pinned): void {
-    $validator = validatePlannedSessionUpdate(['date' => now()->addDay()->toDateString(), 'pinned' => $pinned]);
-
-    expect($validator->fails())->toBeTrue()
-        ->and($validator->errors()->has('date'))->toBeTrue();
-})->with([true, false]);
+})->with([
+    'skipped' => ['skipped', true],
+    'unskipped' => ['skipped', false],
+    'pinned' => ['pinned', true],
+    'unpinned' => ['pinned', false],
+]);
 
 it('leaves which days a move may reach to the edit rules', function (): void {
     expect(validatePlannedSessionUpdate(['date' => now()->toDateString()])->passes())->toBeTrue()

@@ -35,10 +35,9 @@ it('defaults the week page cursor to two', function (mixed $query): void {
     expect(feedRequest($query)->weeks())->toBe(2);
 })->with(['', 'weeks=', 'weeks=nope', 'weeks=1', 'weeks=0', 'weeks=-5', 'weeks[]=8']);
 
-it('keeps a raised week page cursor', function (): void {
-    expect(feedRequest('weeks=6')->weeks())->toBe(6);
-});
-
-it('clamps the week page cursor to the ceiling', function (): void {
-    expect(feedRequest('weeks=9000')->weeks())->toBe(52);
-});
+it('keeps a raised week page cursor, clamped to the ceiling', function (string $query, int $weeks): void {
+    expect(feedRequest($query)->weeks())->toBe($weeks);
+})->with([
+    'a raised cursor' => ['weeks=6', 6],
+    'above the ceiling' => ['weeks=9000', 52],
+]);

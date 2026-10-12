@@ -118,7 +118,7 @@ it('accepts the discriminator shape its own dispatch sites write', function (str
  * fresh row and a fresh billed generation. Every shape outside the closed set
  * must be refused before it reaches the controller.
  */
-it('rejects a novel or malformed discriminator', function (string $type, string $discriminator): void {
+it('rejects a novel, malformed or out-of-range discriminator', function (string $type, string $discriminator): void {
     expect(triggerAnalysisPasses($type, $discriminator))->toBeFalse();
 })->with([
     'random string on a daily type' => ['briefing_mascot_voice', 'kEy9fQ2z'],
@@ -128,17 +128,6 @@ it('rejects a novel or malformed discriminator', function (string $type, string 
     'a day where a month belongs' => ['monthly_recap', '2026-05-18'],
     'a day where an ISO week belongs' => ['profile_voice', '2026-05-18'],
     'a malformed ISO week' => ['profile_voice', '2026-W3'],
-]);
-
-/**
- * A shape rule is not a closed set: date_format:Y-m-d admits ~3.6M days, each
- * of which firstOrCreate()s a permanent ai_analyses row at 8 requests a minute.
- * The period-keyed types carry a range too, so an out-of-range value is a 422
- * at the boundary rather than a row.
- */
-it('rejects a well-formed period outside the range a trigger may name', function (string $type, string $discriminator): void {
-    expect(triggerAnalysisPasses($type, $discriminator))->toBeFalse();
-})->with([
     'a day past the age cap' => ['briefing_mascot_voice', '2020-01-01'],
     'a day in the future' => ['briefing_mascot_voice', '2026-05-19'],
     'a month past the age cap' => ['monthly_recap', '2019-07'],

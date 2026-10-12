@@ -14,25 +14,20 @@ it('authorizes the request', function (): void {
     expect(new ShowNarrationOverviewRequest()->authorize())->toBeTrue();
 });
 
-it('accepts an empty payload (all fields optional)', function (): void {
-    expect(passesTokenUsage([]))->toBeTrue();
-});
+it('accepts the filters it knows', function (array $data): void {
+    expect(passesTokenUsage($data))->toBeTrue();
+})->with([
+    'an empty payload (all fields optional)' => [[]],
+    'a known range token' => [['range' => '30d']],
+    'a Y-m-d from/to pair' => [['from' => '2026-05-01', 'to' => '2026-05-19']],
+]);
 
-it('accepts a known range token', function (): void {
-    expect(passesTokenUsage(['range' => '30d']))->toBeTrue();
-});
-
-it('rejects an unknown range token', function (): void {
-    expect(passesTokenUsage(['range' => 'yesterday']))->toBeFalse();
-});
-
-it('rejects a malformed from date', function (): void {
-    expect(passesTokenUsage(['from' => 'yesterday']))->toBeFalse();
-});
-
-it('accepts a Y-m-d from/to pair', function (): void {
-    expect(passesTokenUsage(['from' => '2026-05-01', 'to' => '2026-05-19']))->toBeTrue();
-});
+it('rejects an unknown range token or a malformed from date', function (array $data): void {
+    expect(passesTokenUsage($data))->toBeFalse();
+})->with([
+    'an unknown range token' => [['range' => 'yesterday']],
+    'a malformed from date' => [['from' => 'yesterday']],
+]);
 
 it('accepts a numeric athlete filter and rejects a name', function (): void {
     expect(passesTokenUsage(['athlete' => '7']))->toBeTrue()
