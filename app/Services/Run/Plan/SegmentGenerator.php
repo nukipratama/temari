@@ -461,7 +461,8 @@ final class SegmentGenerator
      */
     private static function prescribedIntervalSegments(PlanPhase $phase, float $km, ?array $paces, IntensityPrescription $prescription): array
     {
-        [$repMinutes, $recoveryMinutes] = self::INTERVAL_REP_TABLE[$phase->value] ?? self::INTERVAL_REP_TABLE['build'];
+        [$tableRepMinutes, $recoveryMinutes] = self::INTERVAL_REP_TABLE[$phase->value] ?? self::INTERVAL_REP_TABLE['build'];
+        $repMinutes = GoalPaceWork::repMinutesOf($prescription->raceContext) ?? $tableRepMinutes;
         $reps = max(1, (int) floor($prescription->hardMinutes / $repMinutes));
         $warmup = self::bookend(SegmentKey::Warmup, self::WARMUP_MINUTES['interval'], $paces);
         $recovery = self::bookend(SegmentKey::Recovery, $recoveryMinutes, $paces);

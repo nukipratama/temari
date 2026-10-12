@@ -51,6 +51,7 @@ final readonly class GoalPaceWork
         public int $goalPaceSecPerKm,
         public RaceAmbitionState $band,
         public ?int $finalPaceSecPerKm = null,
+        public ?int $repMinutes = null,
     ) {
     }
 
@@ -76,6 +77,9 @@ final readonly class GoalPaceWork
             $inputs->raceAmbitionState,
             $inputs->raceAmbitionState === RaceAmbitionState::Ambitious && $inputs->raceGoalTimeSec !== null && $inputs->raceGoalTimeSec > 0
                 ? (int) round($inputs->raceGoalTimeSec / ($distanceM / 1000))
+                : null,
+            $phase === PlanPhase::Taper && self::formFor(self::kindFor($distanceM)) === SessionType::Interval
+                ? SegmentGenerator::workUnitMinutes(SessionType::Interval, PlanPhase::Peak, 0)
                 : null,
         );
     }
@@ -122,17 +126,17 @@ final readonly class GoalPaceWork
         };
     }
 
-    /** @return array{distance_m: int, goal_pace_sec_per_km: int, kind: string, band: string, final_pace_sec_per_km?: int} */
+    /** @return array{distance_m: int, goal_pace_sec_per_km: int, kind: string, band: string, final_pace_sec_per_km?: int, rep_minutes?: int} */
     public function context(): array
     {
-        $context = [
+        return array_filter([
             'distance_m' => $this->distanceM,
             'goal_pace_sec_per_km' => $this->goalPaceSecPerKm,
             'kind' => $this->kind,
             'band' => $this->band->value,
-        ];
-
-        return $this->finalPaceSecPerKm === null ? $context : [...$context, 'final_pace_sec_per_km' => $this->finalPaceSecPerKm];
+            'final_pace_sec_per_km' => $this->finalPaceSecPerKm,
+            'rep_minutes' => $this->repMinutes,
+        ], static fn (int|string|null $value): bool => $value !== null);
     }
 
     /**
@@ -167,6 +171,16 @@ final readonly class GoalPaceWork
     public static function closingMinutes(float $minutes): float
     {
         return max(1.0, round($minutes * self::CLOSING_SHARE));
+    }
+
+    /**
+     * The rep length a session keeps from Peak instead of its own phase's.
+     *
+     * @param  array<string, int|float|string>|null  $context
+     */
+    public static function repMinutesOf(?array $context): ?int
+    {
+        return isset($context['rep_minutes']) ? (int) $context['rep_minutes'] : null;
     }
 
     /**
