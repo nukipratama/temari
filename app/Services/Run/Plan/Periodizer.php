@@ -574,10 +574,11 @@ final readonly class Periodizer
             );
         };
 
+        $twoRunWeek = ($inputs->runDays === null ? $inputs->sessionsPerWeek : count($inputs->runDays)) === 2;
         $prescriptions = [];
         foreach ($rows as $date => $row) {
             $prescriptions[$date] = $resolve($date);
-            if (($inputs->runDays === null ? $inputs->sessionsPerWeek : count($inputs->runDays)) === 2) {
+            if ($twoRunWeek) {
                 $prescription = $prescriptions[$date];
                 $prescriptions[$date] = $row['session_type'] === SessionType::Tempo
                     ? new IntensityPrescription(min(10, $prescription->hardMinutes), $prescription->paceBand, $prescription->paceSecPerKm, 'modest quality for an established two-run week', $prescription->raceContext)
@@ -646,7 +647,7 @@ final readonly class Periodizer
         unset($row);
 
         $longDate = array_find_key($rows, static fn (array $row): bool => $row['session_type'] === SessionType::Long && $row['prescribed_hard_minutes'] === 0);
-        if ($fastFinish !== null && $longDate !== null && ! $unknownDemandingMinutes
+        if ($fastFinish !== null && $longDate !== null && ! $unknownDemandingMinutes && ! $twoRunWeek
             && $kmByDate[$longDate] <= $longestKm
             && ($inputs->recovery === null || ! $inputs->recovery->excludesQualityOn($longDate))) {
             $withFinish = $rows;

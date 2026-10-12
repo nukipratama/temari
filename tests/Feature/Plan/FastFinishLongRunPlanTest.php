@@ -166,6 +166,12 @@ it('keeps a fast finish off the week the hard-day budget is already full', funct
     expect(fastFinishes($rows))->toBe([]);
 });
 
+it('never gives a two-run week a fast finish', function (): void {
+    $rows = fastFinishPlan(fastFinishInputs(today: '2026-10-05', sessions: 2, longestSoFarKm: 40.0));
+
+    expect(fastFinishes($rows))->toBe([]);
+});
+
 it('keeps the cadence across regenerations from the last fast finish run', function (): void {
     $fresh = array_keys(fastFinishes(fastFinishPlan(fastFinishInputs(today: '2026-10-05'))));
     $first = Carbon::parse($fresh[0]);
