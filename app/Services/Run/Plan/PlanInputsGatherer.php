@@ -8,6 +8,7 @@ use App\Actions\Run\Metrics\ResolveHardEffortsAction;
 use App\Actions\Run\Plan\ResolveActiveRaceAction;
 use App\Enums\IntentVerdict;
 use App\Enums\PaceBand;
+use App\Enums\PlanPhase;
 use App\Enums\PlannedSessionStatus;
 use App\Enums\RaceChangeKind;
 use App\Enums\RaceOutcome;
@@ -126,6 +127,7 @@ final readonly class PlanInputsGatherer
             timeTrialAimSec: $this->timeTrialAimSec($estimate, $trialDistanceM),
             timeTrials: $this->timeTrials($user, $season->starts_at->copy()->startOfWeek(Carbon::MONDAY), $today),
             timeTrialEvidenceDates: $this->timeTrialEvidenceDates($user, $trialDistanceM, $currentWeekStart),
+            lastBuildQualityHardMinutes: $this->lastBuildQualityHardMinutes($user, $today),
         );
     }
 
@@ -302,6 +304,20 @@ final readonly class PlanInputsGatherer
         }
 
         return ['pinned' => $pinned, 'settled' => $settled, 'fixed' => $fixed];
+    }
+
+    private function lastBuildQualityHardMinutes(User $user, Carbon $today): ?int
+    {
+        return PlannedSession::query()
+            ->where('user_id', $user->id)
+            ->whereBetween('date', [$today->copy()->subDays(42)->toDateString(), $today->copy()->subDay()->toDateString()])
+            ->where('phase', PlanPhase::Build)
+            ->whereIn('session_type', [SessionType::Tempo, SessionType::Interval])
+            ->where('prescribed_hard_minutes', '>', 0)
+            ->latest('date')
+            ->get(['prescribed_hard_minutes', 'prescription_race_context'])
+            ->first(static fn (PlannedSession $session): bool => ! TimeTrial::isTrial($session->prescription_race_context))
+            ?->prescribed_hard_minutes;
     }
 
     /** @return array<string, array{verdict: IntentVerdict, hard_minutes: int}> */

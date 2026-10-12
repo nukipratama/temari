@@ -6,6 +6,7 @@ namespace App\Services\Run\Plan;
 
 use App\Enums\FallOffTilt;
 use App\Enums\FeedbackSubject;
+use App\Enums\IntentVerdict;
 use App\Enums\PaceBand;
 use App\Enums\PlanPhase;
 use App\Enums\PlannedSessionStatus;
@@ -188,6 +189,7 @@ final readonly class Periodizer
         $rows = [];
         $fixedDates = $inputs->pinnedDates + $inputs->settledDates;
         $ceilingKm = $inputs->resumeTrailingMeanKm === null ? null : $inputs->resumeTrailingMeanKm * self::RESUME_WEEKLY_GROWTH;
+        $buildQualityMinutes = $inputs->lastBuildQualityHardMinutes;
         $trials = new TimeTrialSchedule($inputs, array_values(array_map(
             static fn (array $week): string => $week['week_start']->toDateString(),
             array_filter($arc, static fn (array $week): bool => $week['phase'] === PlanPhase::Deload),
@@ -214,12 +216,15 @@ final readonly class Periodizer
                 [$week['multiplier'], $ceilingKm] = self::boundResumedWeek($weekRows, $week['phase'], $week['multiplier'], $inputs, $ceilingKm);
             }
             $trial = $trials->forWeek($week['week_start'], $week['phase']);
-            $trialRows = $trial === null ? null : $this->withIntensityPrescriptions($weekRows, $week['multiplier'], $inputs, $week['week_start'], $rows, trial: $trial);
+            $trialRows = $trial === null ? null : $this->withIntensityPrescriptions($weekRows, $week['multiplier'], $inputs, $week['week_start'], $rows, trial: $trial, buildQualityMinutes: $buildQualityMinutes);
             if ($trialRows !== null && array_any($trialRows, static fn (array $row): bool => TimeTrial::isTrial($row['prescription_race_context']))) {
                 $weekRows = $trialRows;
                 $trials->placedIn($week['week_start']);
             } else {
-                $weekRows = $this->withIntensityPrescriptions($weekRows, $week['multiplier'], $inputs, $week['week_start'], $rows, GoalPaceWork::forWeek($inputs, $week['week_start'], $week['phase']));
+                $weekRows = $this->withIntensityPrescriptions($weekRows, $week['multiplier'], $inputs, $week['week_start'], $rows, GoalPaceWork::forWeek($inputs, $week['week_start'], $week['phase']), buildQualityMinutes: $buildQualityMinutes);
+            }
+            if ($week['phase'] === PlanPhase::Build) {
+                $buildQualityMinutes = self::lastQualityMinutes($weekRows) ?? $buildQualityMinutes;
             }
             foreach ($weekRows as $date => $row) {
                 $rows[$date] = [...$row, 'volume_multiplier' => $week['multiplier'], 'fall_off_tilt' => $row['session_type'] === SessionType::Easy ? null : ($row['fall_off_tilt'] ?? null)];
@@ -227,6 +232,21 @@ final readonly class Periodizer
         }
 
         return $rows;
+    }
+
+    /**
+     * The hard minutes of the week's latest quality session, a time trial aside.
+     *
+     * @param  array<string, array{session_type: SessionType, prescribed_hard_minutes: int, prescription_race_context: array<string, int|float|string>|null, ...}>  $weekRows
+     */
+    private static function lastQualityMinutes(array $weekRows): ?int
+    {
+        $quality = array_filter($weekRows, static fn (array $row): bool => in_array($row['session_type'], [SessionType::Tempo, SessionType::Interval], true)
+            && $row['prescribed_hard_minutes'] > 0
+            && ! TimeTrial::isTrial($row['prescription_race_context']));
+        ksort($quality);
+
+        return $quality === [] ? null : array_last($quality)['prescribed_hard_minutes'];
     }
 
     /**
@@ -463,7 +483,7 @@ final readonly class Periodizer
      * @param array<string, array{session_type: SessionType, prescribed_hard_minutes: int, prescribed_pace_band: PaceBand|null, ...}> $priorRows
      * @return array<string, array{phase: PlanPhase, session_type: SessionType, prescribed_hard_minutes: int, prescribed_pace_band: PaceBand|null, prescribed_pace_sec_per_km: int|null, prescription_reason: string|null, prescription_race_context: array<string, int|float|string>|null, ...}>
      */
-    private function withIntensityPrescriptions(array $rows, float $multiplier, PlanInputs $inputs, Carbon $weekStart, array $priorRows, ?GoalPaceWork $goalPace = null, ?TimeTrial $trial = null): array
+    private function withIntensityPrescriptions(array $rows, float $multiplier, PlanInputs $inputs, Carbon $weekStart, array $priorRows, ?GoalPaceWork $goalPace = null, ?TimeTrial $trial = null, ?int $buildQualityMinutes = null): array
     {
         $workloadSessions = self::workloadSessions($inputs);
         $weekEnd = $weekStart->copy()->addDays(6)->toDateString();
@@ -473,7 +493,7 @@ final readonly class Periodizer
             && self::isHardDay($session));
         $kmByDate = self::plannedKmByDate($rows, $multiplier, $inputs);
         $goalPaceDate = $goalPace?->replacedDate($rows);
-        $resolve = function (string $date, ?int $hardMinutesAvailable = null) use ($rows, $inputs, $goalPace, $goalPaceDate): IntensityPrescription {
+        $resolve = function (string $date, ?int $hardMinutesAvailable = null) use ($rows, $inputs, $goalPace, $goalPaceDate, $buildQualityMinutes): IntensityPrescription {
             $row = $rows[$date];
             $work = $date === $goalPaceDate || ($row['session_type'] === SessionType::Long && $goalPace?->racesLongAtGoalPace() === true)
                 ? $goalPace
@@ -482,6 +502,11 @@ final readonly class Periodizer
                 ? IntensityPrescriptionResolver::familyKey($row['session_type'], $inputs->raceDistanceM, $inputs->raceGoalTimeSec)
                 : IntensityPrescriptionResolver::familyKeyForContext($row['session_type'], $work->context());
             $recent = $inputs->recentPrescriptions[$family] ?? null;
+            $carried = $row['phase'] === PlanPhase::Peak
+                && in_array($family, ['goal_pace', 'race_tempo'], true)
+                && ($recent['verdict'] ?? null) !== IntentVerdict::TooHard
+                ? $buildQualityMinutes
+                : null;
 
             return IntensityPrescriptionResolver::resolve(
                 $row['session_type'],
@@ -493,6 +518,7 @@ final readonly class Periodizer
                 $recent['hard_minutes'] ?? null,
                 $hardMinutesAvailable,
                 $work,
+                $carried,
             );
         };
 

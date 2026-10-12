@@ -6,6 +6,7 @@ use App\Enums\ExperienceLevel;
 use App\Enums\FallOffTilt;
 use App\Enums\IntentVerdict;
 use App\Enums\PaceBand;
+use App\Enums\PlanPhase;
 use App\Enums\PlannedSessionStatus;
 use App\Enums\RaceAmbitionState;
 use App\Enums\SessionType;
@@ -460,4 +461,20 @@ it('carries an unsupported goal\'s stepping-stone time for its goal-pace work', 
         ->and($inputs->raceSteppingStoneTimeSec)->toBe($ambition->steppingStoneTimeSec)
         ->and($inputs->raceSteppingStoneTimeSec)->toBe(RaceAmbitionAssessor::steppingStoneTimeSec($ambition->supportedTimeSec))
         ->and($inputs->raceGoalTimeSec)->toBe($ambition->supportedTimeSec);
+});
+
+it('carries the last build quality session the season prescribed, skipping trials, other phases and today onward', function (): void {
+    $user = gathererAthlete();
+    $session = static fn (string $date, PlanPhase $phase, SessionType $type, int $minutes, ?array $context = null): PlannedSession => PlannedSession::factory()->for($user)->create([
+        'date' => $date, 'phase' => $phase, 'session_type' => $type, 'prescribed_hard_minutes' => $minutes,
+        'prescribed_pace_band' => PaceBand::Threshold, 'prescription_race_context' => $context,
+    ]);
+    $session('2026-08-25', PlanPhase::Build, SessionType::Tempo, 20);
+    $session('2026-08-27', PlanPhase::Build, SessionType::Interval, 9);
+    $session('2026-08-29', PlanPhase::Build, SessionType::Long, 30);
+    $session('2026-09-01', PlanPhase::Build, SessionType::Tempo, 25, ['kind' => 'time_trial', 'distance_m' => 5000, 'aim_time_sec' => 1500]);
+    $session('2026-09-03', PlanPhase::Peak, SessionType::Interval, 16);
+    $session('2026-09-07', PlanPhase::Build, SessionType::Tempo, 30);
+
+    expect($this->gatherer->forUser($user, Carbon::today())->lastBuildQualityHardMinutes)->toBe(9);
 });
