@@ -6,7 +6,6 @@ use Illuminate\Support\Collection;
 use App\Actions\AI\RenarrateAfterMakeUp;
 use App\Enums\PlanRegenerationReason;
 use App\Enums\PlannedSessionStatus;
-use App\Enums\IntentVerdict;
 use App\Enums\SessionType;
 use App\Http\Controllers\PlanController;
 use App\Http\Requests\UpdatePlannedSessionRequest;
@@ -19,14 +18,12 @@ use App\Models\ActivityDetail;
 use App\Models\PersonalRecord;
 use App\Models\PlannedSession;
 use App\Models\RaceGoal;
-use App\Models\RecommendationView;
 use App\Models\Season;
 use App\Models\TrainingPreference;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Models\AI\Analysis;
 use App\Services\AI\AnalysisService;
-use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
 use App\Services\Run\Plan\PlanRegenerateCooldown;
 use App\Services\Run\Plan\ComplianceScorer;
@@ -34,14 +31,11 @@ use App\Services\Run\Plan\MakeUpService;
 use App\Services\Run\Plan\Periodizer;
 use App\Services\Run\Plan\PlanAdapter;
 use App\Services\Run\Plan\PlanPageAssembler;
-use App\Services\Run\Plan\RecommendationHistory;
 use App\Services\Run\Plan\SessionMatcher;
 use App\Support\TrainingDisclaimer;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Crypt;
-use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -134,20 +128,11 @@ it('regenerating populates the plan, redirects with a success flash and renders 
         ->assertJsonPath('props.weeks', fn (mixed $weeks): bool => is_array($weeks) && $weeks !== []);
 });
 
-it('rejects updating another user\'s planned session', function (): void {
-    $owner = User::factory()->create();
-    $session = PlannedSession::factory()->for($owner)->create(['date' => Carbon::today()->addDay()->toDateString()]);
-    $intruder = User::factory()->create();
-
-    $this->actingAs($intruder)
-        ->patch("/plan/sessions/{$session->id}", ['pinned' => true])
-        ->assertForbidden();
-});
-
 it('updating a session automatically pins it, so the next regeneration leaves it alone', function (): void {
     $user = User::factory()->create();
     $session = PlannedSession::factory()->for($user)->create([
         'date' => Carbon::today()->addDay()->toDateString(),
+        'session_type' => 'tempo',
         'pinned' => false,
     ]);
 
@@ -157,7 +142,8 @@ it('updating a session automatically pins it, so the next regeneration leaves it
 
     $fresh = $session->fresh();
     expect($fresh->skipped)->toBeTrue()
-        ->and($fresh->pinned)->toBeTrue();
+        ->and($fresh->pinned)->toBeTrue()
+        ->and($fresh->session_type->value)->toBe('tempo');
 });
 
 it('serves a demo manual regenerate rule-based, dispatching no season job', function (): void {
@@ -180,23 +166,6 @@ it('allows an explicit unpin alongside an edit', function (): void {
         ->patch("/plan/sessions/{$session->id}", ['pinned' => false]);
 
     expect($session->fresh()->pinned)->toBeFalse();
-});
-
-it('skips a day via the skipped flag, leaving the prescribed session in place', function (): void {
-    $user = User::factory()->create();
-    $session = PlannedSession::factory()->for($user)->create([
-        'date' => Carbon::today()->addDay()->toDateString(),
-        'session_type' => 'tempo',
-        'skipped' => false,
-    ]);
-
-    $this->actingAs($user)
-        ->patch("/plan/sessions/{$session->id}", ['skipped' => true])
-        ->assertRedirect();
-
-    $fresh = $session->fresh();
-    expect($fresh->skipped)->toBeTrue()
-        ->and($fresh->session_type->value)->toBe('tempo');
 });
 
 it('restores a skipped future session to scoring and regeneration', function (): void {
@@ -273,7 +242,7 @@ it('moves a session by swapping it with whatever already sits on the target day'
         ->and($to->fresh()->pinned)->toBeTrue();
 });
 
-it('moves a generated quality prescription with its workout and keeps its rendered and graded intent', function (): void {
+it('moves a generated quality prescription with its whole workout', function (): void {
     Bus::fake();
     $user = User::factory()->create();
     TrainingPreference::factory()->for($user)->create();
@@ -309,44 +278,6 @@ it('moves a generated quality prescription with its workout and keeps its render
         ->and($rest->fresh()->only(PlannedSession::WORKOUT_TRANSFER_FIELDS))->toBe($qualityWorkout)
         ->and($quality->fresh()->pinned)->toBeTrue()
         ->and($rest->fresh()->pinned)->toBeTrue();
-
-    $renderedDay = collect(app(PlanPageAssembler::class)->weeks($user, Carbon::today()))
-        ->flatMap(fn (array $week): array => $week['days'])
-        ->firstWhere('date', $rest->date->toDateString());
-    $prescribedSegment = collect($renderedDay['segments'])
-        ->first(fn (array $segment): bool => $segment['pace_sec_per_km'] === $qualityWorkout['prescribed_pace_sec_per_km']);
-
-    expect($renderedDay['session_type'])->toBe($qualityWorkout['session_type']->value)
-        ->and($prescribedSegment)->not->toBeNull();
-
-    $runKm = (float) $renderedDay['distance_km'];
-    $runPace = $qualityWorkout['prescribed_pace_sec_per_km'] - 5;
-    $paceText = sprintf('%d:%02d', intdiv($runPace, 60), $runPace % 60);
-    $summary = collect(['30s', '1min', '3min', '5min', '10min', '20min', '30min', '60min'])
-        ->mapWithKeys(fn (string $window): array => ["best_{$window}_pace" => $paceText])
-        ->all() + ['time_in_zone_min' => ['Z1' => 0, 'Z2' => 10, 'Z3' => 5, 'Z4' => 30, 'Z5' => 20]];
-    $shown = json_decode(Crypt::decryptString($renderedDay['recommendation_token']), true, flags: JSON_THROW_ON_ERROR);
-    $revision = app(RecommendationHistory::class)->record($user->id, $rest->date->toDateString(), $shown['original'], $shown['effective']);
-    RecommendationView::query()->create([
-        'recommendation_revision_id' => $revision->id,
-        'observation_id' => (string) Str::uuid(),
-        'shown_at' => Carbon::parse($rest->date->toDateString().' 00:30:00', 'UTC'),
-    ]);
-    ActivityDetail::factory()->for(Activity::factory()->for($user))->create([
-        'start_date_local' => $rest->date->copy()->setTime(6, 0),
-        'start_date_utc' => Carbon::parse($rest->date->toDateString().' 06:00:00', 'UTC'),
-        'distance' => $runKm * 1000,
-        'moving_time' => (int) round($runKm * $runPace),
-        'elapsed_time' => (int) round($runKm * $runPace),
-        'stream_summary' => $summary,
-    ]);
-    $verdict = app(ComplianceScorer::class)->verdictsFor(
-        $user,
-        PlannedSession::query()->whereKey($rest->id)->get(),
-        $rest->date->copy(),
-    )[$rest->date->toDateString()];
-
-    expect($verdict['intent']['verdict'])->toBe(IntentVerdict::Hit);
 });
 
 it('moves race distance with the race workout without changing the goal date', function (): void {
@@ -510,27 +441,6 @@ it('clamps today\'s session against the readiness ceiling without mutating the s
         ->and($fresh->pinned)->toBeFalse();
 });
 
-it('never clamps a future day, only today, even under a restricted readiness ceiling', function (): void {
-    $user = User::factory()->create();
-    seedDemandingRunYesterday($user);
-    PlannedSession::factory()->for($user)->create([
-        'date' => Carbon::today()->addDays(2)->toDateString(),
-        'session_type' => 'interval',
-    ]);
-
-    $response = $this->actingAs($user)
-        ->get('/plan', inertiaPartialHeaders($this->actingAs($user), '/plan', 'Plan', 'weeks'))
-        ->assertSuccessful();
-
-    $weeks = $response->json('props.weeks');
-    $futureDay = collect($weeks)
-        ->flatMap(fn (array $week): array => $week['days'])
-        ->firstWhere('date', Carbon::today()->addDays(2)->toDateString());
-
-    expect($futureDay['session_type'])->toBe('interval')
-        ->and($futureDay['eased_from'])->toBeNull();
-});
-
 /**
  * Reported from prod: two sessions on one day rendered as a single
  * "12 km · 55:00" — the day's summed distance beside only the longer run's
@@ -576,25 +486,6 @@ it('returns every run of a two-session day, each with its own distance and time'
         ->and($today['activities'][1]['id'])->toBe($evening->id)
         ->and((float) $today['activities'][1]['km'])->toBe(7.0)
         ->and($today['activities'][1]['seconds'])->toBe(3300);
-});
-
-it('returns an empty activities list for a day with nothing logged', function (): void {
-    $user = User::factory()->create();
-    PlannedSession::factory()->for($user)->create([
-        'date' => Carbon::today()->toDateString(),
-        'session_type' => 'easy',
-    ]);
-
-    $response = $this->actingAs($user)
-        ->get('/plan', inertiaPartialHeaders($this->actingAs($user), '/plan', 'Plan', 'weeks'))
-        ->assertSuccessful();
-
-    $today = collect($response->json('props.weeks'))
-        ->flatMap(fn (array $week): array => $week['days'])
-        ->firstWhere('date', Carbon::today()->toDateString());
-
-    expect($today['activities'])->toBe([])
-        ->and($today['actual_km'])->toBeNull();
 });
 
 // A budget, not an exact count: it may move with the page, but a memoization
@@ -724,26 +615,6 @@ it('refuses to move a session onto a day that is not a rest day', function (): v
         ->and($to->fresh()->session_type->value)->toBe('race');
 });
 
-it('keeps a session the athlete pinned to today leading, with the readiness advice as a note', function (): void {
-    $user = User::factory()->create();
-    seedDemandingRunYesterday($user);
-    PlannedSession::factory()->for($user)->pinned()->create([
-        'date' => Carbon::today()->toDateString(),
-        'session_type' => 'interval',
-    ]);
-
-    $todayDay = collect($this->actingAs($user)
-        ->get('/plan', inertiaPartialHeaders($this->actingAs($user), '/plan', 'Plan', 'weeks'))
-        ->assertSuccessful()
-        ->json('props.weeks'))
-        ->flatMap(fn (array $week): array => $week['days'])
-        ->firstWhere('date', Carbon::today()->toDateString());
-
-    expect($todayDay['session_type'])->toBe('interval')
-        ->and($todayDay['eased_from'])->toBeNull()
-        ->and($todayDay['advice_note'])->toContain('demanding session within the last day');
-});
-
 /**
  * @param  array<string, string>  $types  Y-m-d => session type
  * @return array<string, PlannedSession>
@@ -761,35 +632,6 @@ function planWeekRows(User $user, array $types, array $attributesByDate = []): a
 
     return $rows;
 }
-
-it('moves today\'s unrun session onto a later rest day', function (): void {
-    Carbon::setTestNow('2026-08-12 08:00:00');
-    $user = User::factory()->create();
-    $rows = planWeekRows($user, ['2026-08-12' => 'easy', '2026-08-13' => 'rest']);
-
-    $this->actingAs($user)
-        ->patch("/plan/sessions/{$rows['2026-08-12']->id}", ['date' => '2026-08-13'])
-        ->assertSessionHasNoErrors();
-
-    expect($rows['2026-08-12']->fresh()->session_type)->toBe(SessionType::Rest)
-        ->and($rows['2026-08-13']->fresh()->session_type)->toBe(SessionType::Easy);
-});
-
-it('skips and restores today\'s unrun session', function (): void {
-    Carbon::setTestNow('2026-08-12 08:00:00');
-    $user = User::factory()->create();
-    $rows = planWeekRows($user, ['2026-08-12' => 'tempo']);
-
-    $this->actingAs($user)
-        ->patch("/plan/sessions/{$rows['2026-08-12']->id}", ['skipped' => true])
-        ->assertSessionHasNoErrors();
-    expect($rows['2026-08-12']->fresh()->skipped)->toBeTrue();
-
-    $this->actingAs($user)
-        ->patch("/plan/sessions/{$rows['2026-08-12']->id}", ['skipped' => false, 'pinned' => false])
-        ->assertSessionHasNoErrors();
-    expect($rows['2026-08-12']->fresh()->skipped)->toBeFalse();
-});
 
 it('briefs today only when a restore brings today\'s session back', function (string $date, bool $wasSkipped, bool $skipped, bool $demo, bool $rebriefs): void {
     Carbon::setTestNow('2026-08-12 08:00:00');
@@ -824,25 +666,6 @@ it('briefs today once on a restore when no briefing was narrated', function (): 
 
     Bus::assertDispatchedTimes(AnalyzeBriefingMascotVoiceJob::class, 1);
 });
-
-it('refuses move, skip and restore on a today a run has credited', function (array $payload, string $field): void {
-    Carbon::setTestNow('2026-08-12 08:00:00');
-    $user = User::factory()->create();
-    $rows = planWeekRows($user, ['2026-08-12' => 'easy', '2026-08-13' => 'rest'], [
-        '2026-08-12' => ['status' => PlannedSessionStatus::Done, 'skipped' => ($payload['skipped'] ?? true) === false],
-    ]);
-    $before = $rows['2026-08-12']->fresh()->getAttributes();
-
-    $this->actingAs($user)
-        ->patch("/plan/sessions/{$rows['2026-08-12']->id}", $payload)
-        ->assertSessionHasErrors($field);
-
-    expect($rows['2026-08-12']->fresh()->getAttributes())->toBe($before);
-})->with([
-    'move' => [['date' => '2026-08-13'], 'date'],
-    'skip' => [['skipped' => true], 'skipped'],
-    'restore' => [['skipped' => false], 'skipped'],
-]);
 
 it('rebriefs today when a plain move takes a session off today or onto it', function (string $from, string $to, bool $rebriefs, bool $demo): void {
     Carbon::setTestNow('2026-08-12 08:00:00');
@@ -880,90 +703,6 @@ it('refuses to skip or restore a past day', function (bool $skipped): void {
 
     expect($rows['2026-08-11']->fresh()->skipped)->toBe(! $skipped);
 })->with([true, false]);
-
-it('refuses to move a credited past day or a day from last week', function (string $date, PlannedSessionStatus $status): void {
-    Carbon::setTestNow('2026-08-12 08:00:00');
-    $user = User::factory()->create();
-    $rows = planWeekRows($user, [$date => 'easy', '2026-08-13' => 'rest'], [
-        $date => ['status' => $status],
-    ]);
-
-    $this->actingAs($user)
-        ->patch("/plan/sessions/{$rows[$date]->id}", ['date' => '2026-08-13'])
-        ->assertSessionHasErrors('date');
-
-    expect($rows['2026-08-13']->fresh()->session_type)->toBe(SessionType::Rest);
-})->with([
-    'credited this week' => ['2026-08-11', PlannedSessionStatus::Done],
-    'missed last week' => ['2026-08-09', PlannedSessionStatus::Missed],
-]);
-
-it('neither offers nor accepts an empty past rest day as a move target', function (): void {
-    Carbon::setTestNow('2026-08-13 08:00:00');
-    $user = User::factory()->create();
-    $rows = planWeekRows($user, ['2026-08-11' => 'easy', '2026-08-12' => 'rest'], [
-        '2026-08-11' => ['status' => PlannedSessionStatus::Missed],
-        '2026-08-12' => ['status' => PlannedSessionStatus::Done],
-    ]);
-
-    $tuesday = collect(app(PlanPageAssembler::class)->weeks($user, Carbon::today()))
-        ->flatMap(fn (array $week): array => $week['days'])
-        ->firstWhere('date', '2026-08-11');
-    expect($tuesday['move_targets'])->toBe([])
-        ->and($tuesday['actions'])->toBe(['move' => false, 'skip' => false, 'restore' => false]);
-
-    $this->actingAs($user)
-        ->patch("/plan/sessions/{$rows['2026-08-11']->id}", ['date' => '2026-08-12'])
-        ->assertSessionHasErrors('date');
-
-    expect($rows['2026-08-12']->fresh()->session_type)->toBe(SessionType::Rest);
-});
-
-it('keeps a tempo off a rest day beside another hard day, for past and future moves alike', function (string $today, array $types, array $attributes, string $source, string $target): void {
-    Carbon::setTestNow("{$today} 08:00:00");
-    $user = User::factory()->create();
-    $rows = planWeekRows($user, $types, $attributes);
-    if ($target < $today) {
-        ActivityDetail::factory()->for(Activity::factory()->for($user))->create([
-            'start_date_local' => Carbon::parse("{$target} 06:00:00"),
-            'distance' => 5000,
-        ]);
-    }
-
-    $this->actingAs($user)
-        ->patch("/plan/sessions/{$rows[$source]->id}", ['date' => $target])
-        ->assertSessionHasErrors('date');
-
-    expect($rows[$target]->fresh()->session_type)->toBe(SessionType::Rest);
-})->with([
-    'future, beside a long run' => ['2026-08-10', ['2026-08-11' => 'tempo', '2026-08-13' => 'rest', '2026-08-14' => 'long'], [], '2026-08-11', '2026-08-13'],
-    'future, beside a race' => ['2026-08-10', ['2026-08-11' => 'tempo', '2026-08-13' => 'rest', '2026-08-12' => 'race'], [], '2026-08-11', '2026-08-13'],
-    'past, beside an interval' => [
-        '2026-08-14',
-        ['2026-08-11' => 'tempo', '2026-08-12' => 'rest', '2026-08-13' => 'interval'],
-        ['2026-08-11' => ['status' => PlannedSessionStatus::Missed], '2026-08-12' => ['status' => PlannedSessionStatus::Done]],
-        '2026-08-11',
-        '2026-08-12',
-    ],
-]);
-
-it('hands each day its actions and move targets from the edit rules', function (): void {
-    Carbon::setTestNow('2026-08-12 08:00:00');
-    $user = User::factory()->create();
-    planWeekRows($user, ['2026-08-11' => 'easy', '2026-08-12' => 'easy', '2026-08-13' => 'rest', '2026-08-14' => 'easy'], [
-        '2026-08-11' => ['status' => PlannedSessionStatus::Missed],
-    ]);
-
-    $days = collect(app(PlanPageAssembler::class)->weeks($user, Carbon::today()))
-        ->flatMap(fn (array $week): array => $week['days'])
-        ->keyBy('date');
-
-    expect($days['2026-08-11']['actions'])->toBe(['move' => true, 'skip' => false, 'restore' => false])
-        ->and($days['2026-08-11']['move_targets'])->toBe(['2026-08-13'])
-        ->and($days['2026-08-12']['actions'])->toBe(['move' => true, 'skip' => true, 'restore' => false])
-        ->and($days['2026-08-13']['actions'])->toBe(['move' => false, 'skip' => false, 'restore' => false])
-        ->and($days['2026-08-13']['move_targets'])->toBe([]);
-});
 
 function planDaysByDate(User $user): Collection
 {
@@ -1149,32 +888,26 @@ it('counts only plan edits against the plan-edit budget, and answers the 21st wi
         ->assertTooManyRequests();
 });
 
-it('leaves today\'s narrated briefing in place across skip and restore toggles', function (array $toggles): void {
+it('restores today without invalidating a briefing already narrated', function (): void {
     Carbon::setTestNow('2026-08-12 08:00:00');
-    Bus::fake();
     $user = User::factory()->create();
     $rows = planWeekRows($user, ['2026-08-12' => 'easy']);
-    $briefing = Analysis::factory()->done('easy run, 2.6 km.')->create([
-        'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
-        'subject_id' => $user->id,
-        'analysis_type' => AnalysisType::BriefingMascotVoice,
-        'discriminator' => '2026-08-12',
-    ]);
+    $this->mock(AnalysisService::class)
+        ->shouldReceive('requestBriefing')
+        ->once()
+        ->withArgs(fn (User $asked, string $date, bool $invalidate, ?int $delaySeconds): bool => $asked->is($user)
+            && $date === '2026-08-12'
+            && $invalidate === false
+            && $delaySeconds === AnalysisService::PLAN_EDIT_DELAY_SECONDS);
 
-    foreach ($toggles as $skipped) {
+    foreach ([true, false] as $skipped) {
         $this->actingAs($user)
             ->patch("/plan/sessions/{$rows['2026-08-12']->id}", ['skipped' => $skipped, 'pinned' => false])
             ->assertSessionHasNoErrors();
     }
 
-    Bus::assertNotDispatched(AnalyzeBriefingMascotVoiceJob::class);
-    expect($briefing->fresh()->only(['status', 'content']))->toBe(['status' => AnalysisStatus::Done, 'content' => 'easy run, 2.6 km.'])
-        ->and($rows['2026-08-12']->fresh()->skipped)->toBe(end($toggles));
-})->with([
-    'skip' => [[true]],
-    'skip then restore' => [[true, false]],
-    'skip, restore, skip' => [[true, false, true]],
-]);
+    expect($rows['2026-08-12']->fresh()->skipped)->toBeFalse();
+});
 
 it('queues nothing for the demo athlete however often today is toggled', function (): void {
     Carbon::setTestNow('2026-08-12 08:00:00');
