@@ -48,37 +48,27 @@ function hydrationReadyIds(WeeklySnapshot ...$snapshots): array
         ->all();
 }
 
-it('holds back a week that still holds a summary-only run', function (): void {
+it('holds back a week that still holds a run awaiting hydration', function (string $state): void {
     $user = User::factory()->create();
     $week = hydrationWeekOf($user);
-    hydrationRun($user, 'summaryOnly');
+    hydrationRun($user, $state);
 
     expect(hydrationReadyIds($week))->toBe([]);
-});
+})->with([
+    'a summary-only run' => ['summaryOnly'],
+    'an un-ingested stub' => ['stub'],
+]);
 
-it('holds back a week that still holds an un-ingested stub', function (): void {
+it('releases a week with nothing left to hydrate', function (string $state, int $failCount): void {
     $user = User::factory()->create();
     $week = hydrationWeekOf($user);
-    hydrationRun($user, 'stub');
-
-    expect(hydrationReadyIds($week))->toBe([]);
-});
-
-it('releases a week whose runs are all detailed', function (): void {
-    $user = User::factory()->create();
-    $week = hydrationWeekOf($user);
-    hydrationRun($user, 'analyzed');
+    hydrationRun($user, $state, failCount: $failCount);
 
     expect(hydrationReadyIds($week))->toBe([$week->id]);
-});
-
-it('releases a week whose only backlog is a run the pipeline has given up on', function (): void {
-    $user = User::factory()->create();
-    $week = hydrationWeekOf($user);
-    hydrationRun($user, 'summaryOnly', failCount: Activity::MAX_DETAIL_FETCH_ATTEMPTS);
-
-    expect(hydrationReadyIds($week))->toBe([$week->id]);
-});
+})->with([
+    'all runs detailed' => ['analyzed', 0],
+    'only backlog is a run the pipeline has given up on' => ['summaryOnly', Activity::MAX_DETAIL_FETCH_ATTEMPTS],
+]);
 
 it('holds back only the week the un-hydrated run falls in', function (): void {
     $user = User::factory()->create();

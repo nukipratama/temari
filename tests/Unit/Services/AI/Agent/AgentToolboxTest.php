@@ -34,17 +34,14 @@ it('passes decoded arguments through to the tool', function (): void {
     expect($toolbox->invoke('get_thing', '{"days":7}'))->toBe('{"echo":7}');
 });
 
-it('answers an invented tool name with an error instead of failing the block', function (): void {
-    $toolbox = new AgentToolbox([fakeAgentTool('get_thing', fn (): array => [])]);
-
-    expect($toolbox->invoke('get_nothing', '{}'))->toBe('{"error":"unknown tool: get_nothing"}');
-});
-
-it('answers malformed arguments with an error instead of failing the block', function (): void {
+it('answers a call it cannot serve with an error instead of failing the block', function (string $name, string $arguments, string $expected): void {
     $toolbox = new AgentToolbox([fakeAgentTool('get_thing', fn (): array => ['value' => 1])]);
 
-    expect($toolbox->invoke('get_thing', '{not json'))->toBe('{"error":"arguments were not valid JSON"}');
-});
+    expect($toolbox->invoke($name, $arguments))->toBe($expected);
+})->with([
+    'an invented tool name' => ['get_nothing', '{}', '{"error":"unknown tool: get_nothing"}'],
+    'malformed arguments' => ['get_thing', '{not json', '{"error":"arguments were not valid JSON"}'],
+]);
 
 it('answers a failing read with an error and logs it', function (): void {
     Log::spy();
