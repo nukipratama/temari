@@ -1,0 +1,117 @@
+name: Scratch shard probe
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/scratch-shard-probe.yml
+
+permissions:
+  contents: read
+
+env:
+  RUNNER_FILE: vendor/pestphp/pest/src/Plugins/Parallel/Paratest/WrapperRunner.php
+  INI: >-
+    opcache.enable=1,
+    opcache.enable_cli=1,
+    opcache.memory_consumption=256,
+    opcache.max_accelerated_files=20000,
+    opcache.validate_timestamps=0,
+    opcache.jit=disable,
+    opcache.jit_buffer_size=0
+
+jobs:
+  shard:
+    name: shard ${{ matrix.shard }}/3
+    runs-on: ubuntu-26.04-arm
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Start MySQL
+        run: |
+          docker run -d --name mysql --tmpfs /var/lib/mysql:rw -p 127.0.0.1::3306 \
+            -e MYSQL_ROOT_PASSWORD=password -e MYSQL_DATABASE=temari_testing \
+            -e MYSQL_USER=sail -e MYSQL_PASSWORD=password \
+            mysql:9.7@sha256:e2bde46db6563855d7177adb5f0b57b9dc663f5a20927a90f4259d3312068497 \
+            --innodb-flush-log-at-trx-commit=0 --innodb-doublewrite=0 --skip-log-bin --performance-schema=OFF \
+            > "$RUNNER_TEMP/mysql-start.log" 2>&1 &
+
+      - uses: ./.github/actions/start-redis
+        with:
+          wait: 'false'
+
+      - uses: ./.github/actions/setup-php
+        with:
+          php-version: '8.5'
+          coverage: pcov
+          classmap-authoritative: 'true'
+
+      - name: Stub .env for file-scanning tests
+        run: cp .env.example .env
+
+      - name: Wait for MySQL
+        timeout-minutes: 3
+        run: |
+          until docker exec mysql mysqladmin ping -h 127.0.0.1 -uroot -ppassword --silent 2>/dev/null; do
+            sleep 1
+          done
+          echo "DB_PORT=$(docker port mysql 3306/tcp | head -n1 | cut -d: -f2)" >> "$GITHUB_ENV"
+
+      - uses: ./.github/actions/wait-redis
+
+      - name: No-match shard overhead
+        env:
+          APP_ENV: testing
+          FILTER: NoSuchTestProfileProbe
+          SHARD: ${{ matrix.shard }}
+        run: |
+          t() { local l="$1"; shift; local s e; s=$(date +%s.%N); "$@" > /tmp/out.txt 2>&1 || true; e=$(date +%s.%N); printf 'PROBE %-44s %6.2fs\n' "$l" "$(echo "$e - $s" | bc)"; }
+          for round in 1 2 3; do
+            t "round$round list-tests (serial)" php vendor/bin/pest --list-tests
+            t "round$round shard=$SHARD/3 list-tests (serial)" php vendor/bin/pest --shard="$SHARD/3" --list-tests
+            t "round$round p=4 no-match, no shard" php vendor/bin/pest --parallel --processes=4 --filter="$FILTER" --exclude-group=structure
+            t "round$round p=4 no-match, shard=$SHARD/3" php vendor/bin/pest --parallel --processes=4 --shard="$SHARD/3" --filter="$FILTER" --exclude-group=structure
+          done
+          wc -c < tests/.pest/shards.json | sed 's/^/SHARDS.JSON bytes /'
+
+      - name: Real shard, unpatched vs CYCLE_SLEEP=100
+        env:
+          APP_ENV: testing
+          DB_CONNECTION: mysql
+          DB_HOST: 127.0.0.1
+          DB_DATABASE: temari_testing
+          DB_USERNAME: root
+          DB_PASSWORD: password
+          REDIS_HOST: 127.0.0.1
+          SESSION_DRIVER: array
+          SHARD: ${{ matrix.shard }}
+        run: |
+          run_shard() {
+            local label="$1" s e rc
+            s=$(date +%s.%N)
+            ./vendor/bin/pest --parallel --processes="$(nproc)" --shard="$SHARD/3" \
+              --coverage-php="coverage-shard-$SHARD.cov" --exclude-group=structure > /tmp/pest-out.txt 2>&1
+            rc=$?
+            e=$(date +%s.%N)
+            local clean tests duration
+            clean=$(sed -E 's/\x1b\[[0-9;]*[a-zA-Z]//g' /tmp/pest-out.txt)
+            tests=$(echo "$clean" | grep -E '^[[:space:]]*Tests:' | sed -E 's/^[[:space:]]*Tests:[[:space:]]*//')
+            duration=$(echo "$clean" | grep -E '^[[:space:]]*Duration:' | sed -E 's/^[[:space:]]*Duration:[[:space:]]*//')
+            printf 'RESULT %-24s wall=%.2fs duration=%s exit=%s tests=[%s]\n' "$label" "$(echo "$e - $s" | bc)" "$duration" "$rc" "$tests"
+          }
+          grep -n 'CYCLE_SLEEP = ' "$RUNNER_FILE" | sed 's/^/CYCLE /'
+          run_shard "1 unpatched"
+          sed -i 's/CYCLE_SLEEP = 10000;/CYCLE_SLEEP = 100;/' "$RUNNER_FILE"
+          grep -n 'CYCLE_SLEEP = ' "$RUNNER_FILE" | sed 's/^/CYCLE patched /'
+          run_shard "2 patched-100us"
+          sed -i 's/CYCLE_SLEEP = 100;/CYCLE_SLEEP = 10000;/' "$RUNNER_FILE"
+          grep -n 'CYCLE_SLEEP = ' "$RUNNER_FILE" | sed 's/^/CYCLE restored /'
+          run_shard "3 unpatched"
+          sed -i 's/CYCLE_SLEEP = 10000;/CYCLE_SLEEP = 100;/' "$RUNNER_FILE"
+          run_shard "4 patched-100us"
+          sed -i 's/CYCLE_SLEEP = 100;/CYCLE_SLEEP = 10000;/' "$RUNNER_FILE"
+          grep -n 'CYCLE_SLEEP = ' "$RUNNER_FILE" | sed 's/^/CYCLE restored /'
