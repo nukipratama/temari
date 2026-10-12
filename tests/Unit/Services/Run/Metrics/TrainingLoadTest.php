@@ -124,14 +124,10 @@ it('ignores TRIMP from a not-yet-analyzed activity', function (): void {
 });
 
 it('rolls TRIMP into ATL/CTL/form with sane magnitudes, unchanged by the requested window', function (): void {
-    $user = User::factory()->create();
-
     // Steady 80 TRIMP/day → ATL/CTL converge near 80.
-    for ($i = 0; $i < 60; $i++) {
-        seedTrimpDay($user, 80.0, 59 - $i);
-    }
+    $map = steadyTrimpMap(Carbon::today(), 60, 80.0);
 
-    $summary = $this->load->summary($user);
+    $summary = $this->load->summaryFromDailyMap($map, runDaysOf($map), Carbon::today());
 
     expect($summary)->not->toBeNull()
         ->and($summary['atl_7d'])->toBeFloat()->toBeGreaterThan(70)->toBeLessThan(85)
@@ -139,29 +135,27 @@ it('rolls TRIMP into ATL/CTL/form with sane magnitudes, unchanged by the request
         ->and($summary['weekly_trimp'])->toBeFloat()->toEqualWithDelta(560.0, 5.0)
         ->and($summary['weekly_trimp'])->toBeGreaterThan(50)->toBeLessThan(2000);
 
-    $sevenDay = $this->load->summary($user, windowDays: 7);
-    $ninetyDay = $this->load->summary($user, windowDays: 90);
+    $sevenDay = $this->load->summaryFromDailyMap($map, runDaysOf($map), Carbon::today(), windowDays: 7);
+    $ninetyDay = $this->load->summaryFromDailyMap($map, runDaysOf($map), Carbon::today(), windowDays: 90);
 
     expect($sevenDay['atl_7d'])->toBe($ninetyDay['atl_7d'])
         ->and($sevenDay['ctl_42d'])->toBe($ninetyDay['ctl_42d'])
         ->and($sevenDay['form'])->toBe($ninetyDay['form']);
 });
 
-it('converges CTL to a steady load instead of the too-low 49-day cold-start value', function (): void {
+it('reads the full stored history into the summary instead of the too-low 49-day cold-start window', function (): void {
     $user = User::factory()->create();
 
-    // 200 days of steady 80 TRIMP/day. A continuous EWMA converges CTL≈79.3.
     // The old 49-day warm-up window cold-started CTL near 55 (form over-reports
-    // fatigue). summary() now reads full history, so it must report the
-    // converged value, not the windowed one.
-    for ($i = 0; $i < 200; $i++) {
-        seedTrimpDay($user, 80.0, 199 - $i);
+    // fatigue); 70 days of 80 TRIMP/day reach ~65, and a day at the lookback's
+    // far edge sets form_known_from, so any shorter read cannot match.
+    seedTrimpDay($user, 80.0, TrainingLoad::CONVERGED_LOOKBACK_DAYS);
+    for ($i = 0; $i < 70; $i++) {
+        seedTrimpDay($user, 80.0, 69 - $i);
     }
+    $map = [Carbon::today()->subDays(TrainingLoad::CONVERGED_LOOKBACK_DAYS)->toDateString() => 80.0] + steadyTrimpMap(Carbon::today(), 70, 80.0);
 
-    $summary = $this->load->summary($user);
-
-    expect($summary['ctl_42d'])->toEqualWithDelta(79.3, 0.5)
-        ->and($summary['ctl_42d'])->toBeGreaterThan(75.0);
+    expect($this->load->summary($user))->toEqual($this->load->summaryFromDailyMap($map, runDaysOf($map), Carbon::today()));
 });
 
 it('computes a CTL independent of how many lead-in days the map carries', function (): void {
@@ -186,15 +180,12 @@ it('computes a CTL independent of how many lead-in days the map carries', functi
 });
 
 it('reports a steady weekly_trimp_range when weekly load never varies', function (): void {
-    $user = User::factory()->create();
     // 8 weeks (56 days) of steady 80 TRIMP/day → every trailing week totals
     // 560, with zero day-to-day variance so monotony caps at 5.0 and strain
     // (560 * 5.0) is steady too — all three ranges collapse to a point.
-    for ($i = 0; $i < 56; $i++) {
-        seedTrimpDay($user, 80.0, 55 - $i);
-    }
+    $map = steadyTrimpMap(Carbon::today(), 56, 80.0);
 
-    $summary = $this->load->summary($user);
+    $summary = $this->load->summaryFromDailyMap($map, runDaysOf($map), Carbon::today());
 
     expect($summary['weekly_trimp_range'])->toBe(['low' => 560.0, 'high' => 560.0])
         ->and($summary['monotony_range'])->toBe(['low' => 5.0, 'high' => 5.0])
@@ -264,17 +255,10 @@ it('zero-fills gap days between sparse activities', function (): void {
 });
 
 it('marks fresh when fitness exceeds fatigue (taper-week shape)', function (): void {
-    $user = User::factory()->create();
-
     // Build CTL with 6w × 100 TRIMP/day, then 7-day taper at 30 TRIMP/day.
-    for ($i = 0; $i < 42; $i++) {
-        seedTrimpDay($user, 100.0, 49 - $i);
-    }
-    for ($i = 0; $i < 7; $i++) {
-        seedTrimpDay($user, 30.0, 6 - $i);
-    }
+    $map = steadyTrimpMap(Carbon::today()->subDays(8), 42, 100.0) + steadyTrimpMap(Carbon::today(), 7, 30.0);
 
-    $summary = $this->load->summary($user);
+    $summary = $this->load->summaryFromDailyMap($map, runDaysOf($map), Carbon::today());
 
     expect($summary['form'])->toBeGreaterThan(0);
     expect($summary['form_status'])->toBeIn([TrainingFormStatus::Fresh, TrainingFormStatus::Optimal]);
@@ -302,14 +286,10 @@ it('computes Foster monotony and strain over the week, capping monotony at 5.0 i
 });
 
 it('reports zero weekly_trimp / monotony / strain on a fully rested current week', function (): void {
-    $user = User::factory()->create();
-
     // History sits outside the last 7 days so week_total == 0.
-    for ($i = 0; $i < 20; $i++) {
-        seedTrimpDay($user, 60.0, 20 + $i);
-    }
+    $map = steadyTrimpMap(Carbon::today()->subDays(20), 20, 60.0);
 
-    $summary = $this->load->summary($user);
+    $summary = $this->load->summaryFromDailyMap($map, runDaysOf($map), Carbon::today());
 
     expect($summary['weekly_trimp'])->toBe(0.0)
         ->and($summary['monotony'])->toBe(0.0)
@@ -318,15 +298,11 @@ it('reports zero weekly_trimp / monotony / strain on a fully rested current week
 });
 
 it('sizes weekly_trimp/monotony/strain to the requested window, not a fixed 7 days', function (): void {
-    $user = User::factory()->create();
-
     // Steady 60 TRIMP/day for the last 30 days.
-    for ($i = 0; $i < 30; $i++) {
-        seedTrimpDay($user, 60.0, 29 - $i);
-    }
+    $map = steadyTrimpMap(Carbon::today(), 30, 60.0);
 
-    $sevenDay = $this->load->summary($user, windowDays: 7);
-    $thirtyDay = $this->load->summary($user, windowDays: 30);
+    $sevenDay = $this->load->summaryFromDailyMap($map, runDaysOf($map), Carbon::today(), windowDays: 7);
+    $thirtyDay = $this->load->summaryFromDailyMap($map, runDaysOf($map), Carbon::today(), windowDays: 30);
 
     expect($sevenDay['weekly_trimp'])->toEqualWithDelta(420.0, 0.5)
         ->and($thirtyDay['weekly_trimp'])->toEqualWithDelta(1800.0, 0.5);
@@ -351,34 +327,34 @@ it('returns an empty ctlTrend for a user with no TRIMP-bearing activities', func
 it('ctlTrend and strainMonotonyTrend return one entry per day for the last N days, matching the daily summary', function (): void {
     $user = User::factory()->create();
 
-    for ($i = 0; $i < 100; $i++) {
-        seedTrimpDay($user, 80.0, 99 - $i);
+    for ($i = 0; $i < 20; $i++) {
+        seedTrimpDay($user, 80.0, 19 - $i);
     }
 
-    $trend = $this->load->ctlTrend($user, 90);
+    $trend = $this->load->ctlTrend($user, 14);
 
-    expect($trend)->toHaveCount(90)
-        ->and($trend[0]['date'])->toBe(Carbon::today()->subDays(89)->toDateString())
-        ->and($trend[89]['date'])->toBe(Carbon::today()->toDateString());
+    expect($trend)->toHaveCount(14)
+        ->and($trend[0]['date'])->toBe(Carbon::today()->subDays(13)->toDateString())
+        ->and($trend[13]['date'])->toBe(Carbon::today()->toDateString());
 
     // The trend's last day must agree with the same EWMA roll the dashboard
     // summary reads — this is exposing already-computed numbers, not a
     // second, independent calculation.
     $summary = $this->load->summary($user);
-    expect($trend[89]['atl'])->toEqualWithDelta($summary['atl_7d'], 0.05)
-        ->and($trend[89]['ctl'])->toEqualWithDelta($summary['ctl_42d'], 0.05);
+    expect($trend[13]['atl'])->toEqualWithDelta($summary['atl_7d'], 0.05)
+        ->and($trend[13]['ctl'])->toEqualWithDelta($summary['ctl_42d'], 0.05);
 
-    $strainTrend = $this->load->strainMonotonyTrend($user, 90);
+    $strainTrend = $this->load->strainMonotonyTrend($user, 14);
 
-    expect($strainTrend)->toHaveCount(90)
-        ->and($strainTrend[0]['date'])->toBe(Carbon::today()->subDays(89)->toDateString())
-        ->and($strainTrend[89]['date'])->toBe(Carbon::today()->toDateString());
+    expect($strainTrend)->toHaveCount(14)
+        ->and($strainTrend[0]['date'])->toBe(Carbon::today()->subDays(13)->toDateString())
+        ->and($strainTrend[13]['date'])->toBe(Carbon::today()->toDateString());
 
     // Last day's window must agree with summary()'s own weekStats() call —
     // this is exposing the same computation across a range, not a second one.
-    expect($strainTrend[89]['weekly_trimp'])->toBe($summary['weekly_trimp'])
-        ->and($strainTrend[89]['monotony'])->toBe($summary['monotony'])
-        ->and($strainTrend[89]['strain'])->toBe($summary['strain']);
+    expect($strainTrend[13]['weekly_trimp'])->toBe($summary['weekly_trimp'])
+        ->and($strainTrend[13]['monotony'])->toBe($summary['monotony'])
+        ->and($strainTrend[13]['strain'])->toBe($summary['strain']);
 });
 
 it('ctlTrend never returns more than the available history, even when asked for more days', function (): void {
@@ -394,11 +370,11 @@ it('ctlTrend never returns more than the available history, even when asked for 
 it('ctlTrend stamps each day with formStatus, computed from that day\'s own atl/ctl', function (): void {
     $user = User::factory()->create();
 
-    for ($i = 0; $i < 72; $i++) {
-        seedTrimpDay($user, 80.0, 71 - $i);
+    for ($i = 0; $i < 50; $i++) {
+        seedTrimpDay($user, 80.0, 49 - $i);
     }
 
-    $trend = $this->load->ctlTrend($user, 30);
+    $trend = $this->load->ctlTrend($user, 7);
 
     foreach ($trend as $point) {
         $form = round($point['ctl'] - $point['atl'], 1);

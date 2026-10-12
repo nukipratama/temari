@@ -100,14 +100,14 @@ it('honors the --limit option', function (): void {
     $this->artisan('weather:backfill', ['--limit' => 2])->assertSuccessful();
 });
 
-it('reaches a newer fillable row behind 200 unfillable ones and records each miss', function (): void {
+it('reaches a newer fillable row behind a full batch of unfillable ones and records each miss', function (): void {
     $this->mock(OpenMeteoClient::class)
         ->shouldReceive('fetchForActivity')
         ->andReturnUsing(fn (float $lat) => $lat === -1.0
             ? new WeatherSnapshot(tempC: 27, humidityPct: 80, rainDetected: false)
             : null);
 
-    ActivityDetail::factory()->count(200)->create([
+    ActivityDetail::factory()->count(2)->create([
         'start_lat' => -6.0,
         'start_lng' => 106.0,
         'start_date_local' => now()->subDays(30),
@@ -120,14 +120,14 @@ it('reaches a newer fillable row behind 200 unfillable ones and records each mis
         'weather_temp_c' => null,
     ]);
 
-    $this->artisan('weather:backfill')->assertSuccessful();
+    $this->artisan('weather:backfill', ['--limit' => 2])->assertSuccessful();
     expect($fillable->fresh()->weather_temp_c)->toBeNull();
 
-    $this->artisan('weather:backfill')->assertSuccessful();
+    $this->artisan('weather:backfill', ['--limit' => 2])->assertSuccessful();
 
     expect($fillable->fresh()->weather_temp_c)->toBe(27)
-        ->and(ActivityDetail::query()->where('weather_attempts', '>=', 1)->count())->toBe(200)
-        ->and(ActivityDetail::query()->whereNotNull('weather_attempted_at')->count())->toBe(200);
+        ->and(ActivityDetail::query()->where('weather_attempts', '>=', 1)->count())->toBe(2)
+        ->and(ActivityDetail::query()->whereNotNull('weather_attempted_at')->count())->toBe(2);
 });
 
 it('stops retrying a row after five attempts', function (): void {

@@ -224,9 +224,12 @@ final readonly class RuleBasedNarrationFiller
     private function postRunSpeech(int $activityId): string
     {
         $detail = $this->detailFor($activityId);
-        if ($detail === null) {
-            return "Done. That one's in the log.";
-        }
+
+        return $detail === null ? "Done. That one's in the log." : $this->postRunSpeechFor($detail, $activityId);
+    }
+
+    public function postRunSpeechFor(ActivityDetail $detail, int $activityId): string
+    {
         $km = DistanceFormatter::kmString($detail->distance) ?? '?';
 
         // Two slots under separate salts: the History feed shows these side by
@@ -425,19 +428,22 @@ final readonly class RuleBasedNarrationFiller
     }
 
 
+    private function cardFlavor(int $cardId): string
+    {
+        $card = RunCard::query()->with('activity.detail')->find($cardId);
+
+        return $card === null ? 'A quiet session, filed anyway.' : $this->cardFlavorFor($card);
+    }
+
     /**
      * Card flavor woven from the card's own context (rarity + special move +
      * distance + first badge), seeded by card id so each card reads differently
      * while staying deterministic. Mirrors the per-rarity pools of the real
      * {@see \App\Services\AI\Narrators\CardFlavorNarrator}, minus the LLM.
      */
-    private function cardFlavor(int $cardId): string
+    public function cardFlavorFor(RunCard $card): string
     {
-        $card = RunCard::query()->with('activity.detail')->find($cardId);
-        if ($card === null) {
-            return 'A quiet session, filed anyway.';
-        }
-
+        $cardId = $card->id;
         $move = $card->special_move;
         $distance = $card->activity->detail?->distance;
         $km = DistanceFormatter::kmString($distance !== null ? (float) $distance : null);

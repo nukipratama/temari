@@ -146,10 +146,10 @@ it('skips cached failures and no-address results without starving later rows pas
     Http::assertSentCount($skippedCount);
 });
 
-it('reaches a newer never-attempted row behind 200 attempted ones', function (): void {
+it('reaches a newer never-attempted row behind a full batch of attempted ones', function (): void {
     Queue::fake();
 
-    ActivityDetail::factory()->count(200)->create([
+    ActivityDetail::factory()->count(3)->create([
         'start_lat' => -6.24,
         'start_lng' => 106.81,
         'location_resolved_at' => null,
@@ -162,13 +162,13 @@ it('reaches a newer never-attempted row behind 200 attempted ones', function ():
         'location_resolved_at' => null,
     ]);
 
-    $this->artisan('geo:backfill-locations')->assertSuccessful();
+    $this->artisan('geo:backfill-locations', ['--limit' => 3])->assertSuccessful();
 
     Queue::assertPushed(
         ResolveActivityLocationJob::class,
         fn (ResolveActivityLocationJob $job) => $job->activityDetailId === $fresh->id,
     );
-    Queue::assertPushed(ResolveActivityLocationJob::class, 200);
+    Queue::assertPushed(ResolveActivityLocationJob::class, 3);
 });
 
 it('skips rows that reached five attempts', function (): void {

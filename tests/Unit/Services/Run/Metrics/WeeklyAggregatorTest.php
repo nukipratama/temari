@@ -317,6 +317,34 @@ it('rebuildForwardFrom returns null when the only run that week is not yet analy
     expect($snap)->toBeNull();
 });
 
+function seedSteadyTrimpHistory(User $user, Carbon $lastDay, int $days): void
+{
+    $now = Carbon::now();
+    DB::table('activities')->insert(array_map(fn (int $i): array => [
+        'user_id' => $user->id,
+        'strava_external_id' => 2_000_000_000 + $i,
+        'fetched_at' => $now,
+        'analyzed_at' => $now,
+        'ingest_state' => IngestState::Detailed->value,
+        'detail_fail_count' => 0,
+        'created_at' => $now,
+        'updated_at' => $now,
+    ], range(0, $days - 1)));
+
+    $activityIds = DB::table('activities')->where('user_id', $user->id)->orderBy('id')->pluck('id')->all();
+    DB::table('activity_details')->insert(array_map(fn (int $i): array => [
+        'activity_id' => $activityIds[$i],
+        'distance' => 8000,
+        'moving_time' => 2400,
+        'elapsed_time' => 2400,
+        'trimp_edwards' => 80.0,
+        'start_date_local' => $lastDay->copy()->subDays($days - 1 - $i)->toDateTimeString(),
+        'has_heartrate' => true,
+        'created_at' => $now,
+        'updated_at' => $now,
+    ], range(0, $days - 1)));
+}
+
 it('rebuildForwardFrom computes the converged CTL, not the too-low windowed value', function (): void {
     // 200 days of steady 80 TRIMP/day ending on a COMPLETED past week, so CTL is
     // measured as-of the last active day (no in-progress-week zero-decay). A
@@ -324,16 +352,7 @@ it('rebuildForwardFrom computes the converged CTL, not the too-low windowed valu
     // it near 55.
     $user = User::factory()->create();
     $weekEnding = Carbon::today()->subWeek()->endOfWeek(Carbon::SUNDAY)->startOfDay();
-    for ($i = 0; $i < 200; $i++) {
-        $activity = Activity::factory()->for($user)->analyzed()->create();
-        ActivityDetail::factory()->for($activity)->create([
-            'distance' => 8000,
-            'moving_time' => 2400,
-            'elapsed_time' => 2400,
-            'trimp_edwards' => 80.0,
-            'start_date_local' => $weekEnding->copy()->subDays(199 - $i),
-        ]);
-    }
+    seedSteadyTrimpHistory($user, $weekEnding, 200);
 
     $snap = $this->aggregator->rebuildForwardFrom($user, $weekEnding);
 
@@ -408,16 +427,7 @@ it('measures the in-progress week CTL as-of today, not the future Sunday', funct
     // Steady load up to today should leave CTL near convergence; rolling the
     // EWMA out to Sunday would zero-fill the unseen days and deflate it.
     $user = User::factory()->create();
-    for ($i = 0; $i < 200; $i++) {
-        $activity = Activity::factory()->for($user)->analyzed()->create();
-        ActivityDetail::factory()->for($activity)->create([
-            'distance' => 8000,
-            'moving_time' => 2400,
-            'elapsed_time' => 2400,
-            'trimp_edwards' => 80.0,
-            'start_date_local' => Carbon::today()->subDays(199 - $i),
-        ]);
-    }
+    seedSteadyTrimpHistory($user, Carbon::today(), 200);
 
     $snap = $this->aggregator->rebuildForwardFrom($user, Carbon::today());
 

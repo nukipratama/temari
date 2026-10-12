@@ -15,41 +15,6 @@ use App\Services\Run\Plan\PostRaceRecovery;
 use App\Services\Run\Plan\SegmentGenerator;
 use Illuminate\Support\Carbon;
 
-/** The Monday the arc opens on, and the Saturday the goal race is run. */
-const ARC_OPENS = '2026-09-07';
-
-const GOAL_RACE_DAY = '2026-10-31';
-
-/**
- * The prod athlete `tests/Feature/Plan` walks the arc for: experienced, four
- * sessions a week on Mon/Wed/Fri with a Saturday long run, chasing a 10K.
- * Stated as inputs rather than seeded, so the arc it trains is asserted
- * without a database.
- */
-function arcInputs(
-    string $today = ARC_OPENS,
-    bool $deload = false,
-    AdaptationReason $reason = AdaptationReason::Steady,
-    ?string $raceDay = GOAL_RACE_DAY,
-): PlanInputs {
-    return new PlanInputs(
-        userId: 1,
-        today: Carbon::parse($today),
-        seasonStart: Carbon::parse(ARC_OPENS),
-        seasonEnd: Carbon::parse($raceDay ?? '2026-11-29'),
-        recovery: null,
-        raceDate: $raceDay === null ? null : Carbon::parse($raceDay),
-        raceDistanceM: $raceDay === null ? null : 10_000.0,
-        sessionsPerWeek: 4,
-        runDays: [1, 3, 5, 6],
-        longRunDay: 6,
-        adaptation: ['reason' => $reason, 'deload' => $deload, 'quality_delta' => 0, 'adherence_pct' => 100, 'stimulus_adherence_pct' => 100],
-        pinnedDates: [],
-        settledDates: [],
-        projectedRaceSeconds: 3_540.0,
-    );
-}
-
 /**
  * The phase and multiplier the athlete is asked to train on each of the first
  * `$weeks` Mondays, read the way production does — one regeneration per week,
