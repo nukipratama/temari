@@ -75,10 +75,13 @@ final class IntensityPrescriptionResolver
             IntentVerdict::TooHard => 'stepped down after the latest comparable session was too hard',
             default => 'held after the latest comparable session',
         };
-        if ($carriedHardMinutes !== null && $carriedHardMinutes > $minutes) {
-            $unit = SegmentGenerator::workUnitMinutes($shape, $phase, $target);
-            $minutes = $shape === SessionType::Interval ? (int) ceil($carriedHardMinutes / $unit) * $unit : $carriedHardMinutes;
-            $reason = 'carried over from the last build quality session';
+        if ($carriedHardMinutes !== null) {
+            $rep = self::INTERVAL_REP_MINUTES[$phase->value] ?? 3;
+            $carried = min($target, $shape === SessionType::Interval ? (int) ceil($carriedHardMinutes / $rep) * $rep : $carriedHardMinutes);
+            if ($carried > $minutes) {
+                $minutes = $carried;
+                $reason = 'carried over from the last build quality session';
+            }
         }
 
         $minutes = min($target, $minutes);

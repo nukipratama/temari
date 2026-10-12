@@ -196,5 +196,7 @@ it('raises a prescription to carried-over minutes in whole reps, capped at the p
         ->and($carried(30)->hardMinutes)->toBe(24)
         ->and($carried(6)->hardMinutes)->toBe(8)
         ->and($carried(12, 16)->hardMinutes)->toBe(20)
-        ->and($carried(12, 16)->reason)->toBe('progressed after the latest comparable session was hit');
+        ->and($carried(12, 16)->reason)->toBe('progressed after the latest comparable session was hit')
+        ->and($carried(30, 20)->hardMinutes)->toBe(24)
+        ->and($carried(30, 20)->reason)->toBe('progressed after the latest comparable session was hit');
 });
