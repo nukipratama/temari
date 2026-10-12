@@ -402,20 +402,18 @@ it('anchors a real 22 km/week runner near 8 km, not on their one-off 24 km run',
         ->and($result['long_run_km'])->toBe(8.0);
 });
 
-it('an explicit sessions_per_week preference overrides the behavioral average', function (): void {
+it('an explicit sessions_per_week preference overrides the behavioral average and floor of 3', function (bool $withHistory): void {
     $user = User::factory()->create();
-    weeksOf($user, [40.0], runs: 6);
+    if ($withHistory) {
+        weeksOf($user, [40.0], runs: 6);
+    }
     TrainingPreference::factory()->for($user)->create(['sessions_per_week' => 2]);
 
     expect($this->baseline->forUser($user, Carbon::today())['sessions_per_week'])->toBe(2);
-});
-
-it('an explicit sessions_per_week preference bypasses the behavioral floor of 3 with zero history', function (): void {
-    $user = User::factory()->create();
-    TrainingPreference::factory()->for($user)->create(['sessions_per_week' => 2]);
-
-    expect($this->baseline->forUser($user, Carbon::today())['sessions_per_week'])->toBe(2);
-});
+})->with([
+    'with history' => true,
+    'with zero history' => false,
+]);
 
 it('seeds cold-start defaults from experience_level with zero history', function (): void {
     $user = User::factory()->create();

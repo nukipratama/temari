@@ -55,17 +55,25 @@ it('awards headwind at 20kmh and above', function (): void {
         ->toContain('headwind');
 });
 
+it('withholds headwind under 20kmh', function (): void {
+    expect(badgesFor(badgeDetail(['weather_temp_c' => 25, 'weather_wind_speed_kmh' => 19])))
+        ->not->toContain('headwind');
+});
+
 it('awards early_bird before 6am', function (): void {
     $detail = badgeDetail(['weather_temp_c' => 25, 'start_date_local' => Carbon::parse('2026-05-12 05:30:00')]);
 
     expect(badgesFor($detail))->toContain('early_bird');
 });
 
-it('awards night_owl before 5am or from 9pm', function (): void {
-    $night = badgeDetail(['weather_temp_c' => 25, 'start_date_local' => Carbon::parse('2026-05-12 21:00:00')]);
+it('awards night_owl before 5am or from 9pm', function (string $start): void {
+    $night = badgeDetail(['weather_temp_c' => 25, 'start_date_local' => Carbon::parse($start)]);
 
     expect(badgesFor($night))->toContain('night_owl');
-});
+})->with([
+    'from 9pm' => '2026-05-12 21:00:00',
+    'before 5am' => '2026-05-12 04:30:00',
+]);
 
 it('awards long_slow_distance on a 12km-plus hour-plus easy run', function (): void {
     $detail = badgeDetail(['weather_temp_c' => 25, 'distance' => 12_000.0, 'elapsed_time' => 3_600]);
@@ -89,6 +97,11 @@ it('awards held_back on a 10km-plus run under 10 percent hard zones', function (
 it('awards climber on total elevation gain', function (): void {
     expect(badgesFor(badgeDetail(['weather_temp_c' => 25, 'total_elevation_gain' => 200.0])))
         ->toContain('climber');
+});
+
+it('withholds climber on a flat run with a gentle grade', function (): void {
+    expect(badgesFor(badgeDetail(['weather_temp_c' => 25, 'total_elevation_gain' => 40.0]), ['max_grade_pct' => 2.0]))
+        ->not->toContain('climber');
 });
 
 it('awards climber on a steep max grade without big total gain', function (): void {
@@ -119,7 +132,7 @@ it('awards z2_master above 80 percent Z2', function (): void {
 });
 
 it('awards cold_runner at or below 20C', function (): void {
-    expect(badgesFor(badgeDetail(['weather_temp_c' => 20])))->toContain('cold_runner');
+    expect(badgesFor(badgeDetail(['weather_temp_c' => 20])))->toContain('cold_runner')->not->toContain('early_bird');
 });
 
 it('falls back to a pre-dawn window for cold_runner when no weather is stored', function (): void {

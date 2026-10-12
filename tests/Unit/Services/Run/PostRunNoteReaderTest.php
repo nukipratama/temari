@@ -34,28 +34,19 @@ it('returns mood + oneline for a single ready activity', function (): void {
         ->toBe(['oneline' => 'A strong morning run.', 'mood' => 'blazing']);
 });
 
-it('returns null for a single activity when the speech is not Done', function (): void {
+it('returns null for a single activity when the speech or mood is not ready', function (AnalysisStatus $status, string $content, ?string $mood): void {
     $activity = Activity::factory()->create();
-    StoryLine::factory()->for($activity)->create(['kind' => StoryLine::KIND_POST_RUN, 'mood' => 'chill']);
-    postRunSpeechFor($activity, AnalysisStatus::Pending, 'not ready');
+    if ($mood !== null) {
+        StoryLine::factory()->for($activity)->create(['kind' => StoryLine::KIND_POST_RUN, 'mood' => $mood]);
+    }
+    postRunSpeechFor($activity, $status, $content);
 
     expect(new PostRunNoteReader()->forActivity($activity->id))->toBeNull();
-});
-
-it('returns null for a single activity when the mood is missing', function (): void {
-    $activity = Activity::factory()->create();
-    postRunSpeechFor($activity, AnalysisStatus::Done, 'ada speech, tanpa mood');
-
-    expect(new PostRunNoteReader()->forActivity($activity->id))->toBeNull();
-});
-
-it('returns null for a single activity when the speech content is empty', function (): void {
-    $activity = Activity::factory()->create();
-    StoryLine::factory()->for($activity)->create(['kind' => StoryLine::KIND_POST_RUN, 'mood' => 'easy']);
-    postRunSpeechFor($activity, AnalysisStatus::Done, '');
-
-    expect(new PostRunNoteReader()->forActivity($activity->id))->toBeNull();
-});
+})->with([
+    'speech not Done' => [AnalysisStatus::Pending, 'not ready', 'chill'],
+    'mood missing' => [AnalysisStatus::Done, 'ada speech, tanpa mood', null],
+    'speech content empty' => [AnalysisStatus::Done, '', 'easy'],
+]);
 
 it('returns an empty array for an empty batch without querying', function (): void {
     expect(new PostRunNoteReader()->forActivities([]))->toBe([]);

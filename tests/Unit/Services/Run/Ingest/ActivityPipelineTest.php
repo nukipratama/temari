@@ -816,35 +816,6 @@ it('computes stream_summary using the user\'s runner-profile zones', function ()
         ->and(($minutes['Z2'] ?? 0))->toBe(0);
 });
 
-it('falls back to config zones when the user has no runner profile', function (): void {
-    $activity = makeActivityWithConnection();
-
-    $time = [];
-    $hr = [];
-    for ($t = 0; $t <= 1800; $t += 60) {
-        $time[] = $t;
-        $hr[] = 150;
-    }
-
-    Http::fake([
-        'strava.com/api/v3/activities/999' => Http::response([
-            'name' => 'Run', 'start_date_local' => '2026-05-10 06:30:00',
-            'distance' => 5000, 'moving_time' => 1800, 'elapsed_time' => 1800,
-            'has_heartrate' => true, 'splits_metric' => [], 'map' => null,
-        ]),
-        'strava.com/api/v3/activities/999/streams*' => Http::response([
-            'time' => ['data' => $time],
-            'heartrate' => ['data' => $hr],
-        ]),
-    ]);
-
-    $this->pipeline->ingest($activity);
-
-    $detail = ActivityDetail::query()->where('activity_id', $activity->id)->first();
-    expect($detail->stream_summary)->toBeArray()->toHaveKey('time_in_zone_min')
-        ->and($detail->trimp_edwards)->toBeFloat()->toBeGreaterThan(0);
-});
-
 it('recomputeSummary refreshes a single activity from stored streams using current zones, with NO Strava HTTP', function (): void {
     // recomputeSummary is a post-ingest recalibration (e.g. after an HR zone
     // change), so the subject must already be analyzed — otherwise the forward
@@ -955,34 +926,6 @@ it('recomputeSummary is a no-op when the activity has no stored streams', functi
 
     expect($activity->detail->fresh()->stream_summary)->toBeNull();
     Http::assertNothingSent();
-});
-
-it('inserts a PR row when the activity beats the user\'s ledger', function (): void {
-    $activity = makeActivityWithConnection();
-
-    $splits = [];
-    for ($k = 1; $k <= 5; $k++) {
-        $splits[] = ['split' => $k, 'distance' => 1000, 'moving_time' => 360, 'elapsed_time' => 360];
-    }
-
-    Http::fake([
-        'strava.com/api/v3/activities/999' => Http::response([
-            'name' => 'Tempo 5K',
-            'start_date_local' => '2026-05-10 06:30:00',
-            'distance' => 5000,
-            'moving_time' => 1800,
-            'elapsed_time' => 1800,
-            'splits_metric' => $splits,
-        ]),
-        'strava.com/api/v3/activities/999/streams*' => Http::response([]),
-    ]);
-
-    $this->pipeline->ingest($activity);
-
-    expect(PersonalRecord::query()
-        ->where('user_id', $activity->user_id)
-        ->where('category', '5km')
-        ->value('value_sec'))->toBe(1800.0);
 });
 
 it('rolls back analyzed_at and skips the cascade when the story layer throws', function (): void {

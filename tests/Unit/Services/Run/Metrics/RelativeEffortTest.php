@@ -33,22 +33,18 @@ function seedBaseline(User $user, Carbon $asOf, int $count, float $trimp): void
     }
 }
 
-it('returns null when the run has no TRIMP (HR-less)', function () use ($asOf): void {
-    [$activity, $detail] = effortRun(User::factory()->create(), $asOf(), null);
-
-    expect(app(RelativeEffort::class)->forRun($activity, $detail))->toBeNull();
-});
-
-it('returns null when the run has no start_date_local', function (): void {
-    $user = User::factory()->create();
-    $activity = Activity::factory()->for($user)->analyzed()->create();
+it('returns null when the run has no TRIMP or no start_date_local', function (?float $trimp, bool $dated) use ($asOf): void {
+    $activity = Activity::factory()->for(User::factory()->create())->analyzed()->create();
     $detail = ActivityDetail::factory()->for($activity)->create([
-        'start_date_local' => null,
-        'trimp_edwards' => 100.0,
+        'start_date_local' => $dated ? $asOf() : null,
+        'trimp_edwards' => $trimp,
     ]);
 
     expect(app(RelativeEffort::class)->forRun($activity, $detail))->toBeNull();
-});
+})->with([
+    'no TRIMP (HR-less)' => [null, true],
+    'no start_date_local' => [100.0, false],
+]);
 
 it('reports the raw TRIMP with no comparison when the baseline is too thin', function () use ($asOf): void {
     $user = User::factory()->create();

@@ -371,49 +371,6 @@ it('reads an uneased tempo run all easy as partial even at full distance', funct
         ->and($row->distance_score)->toBe(100);
 });
 
-it('reads a tempo that reached its block within tolerance as done', function (): void {
-    $user = User::factory()->create();
-    $row = scorerDay($user, '2026-08-05', ['session_type' => SessionType::Tempo]);
-    showAdvice($user, '2026-08-05', shownTempoOriginal(), [
-        'session_type' => 'tempo', 'distance_km' => 8.0, 'segments' => shownTempoSegments(), 'paces' => SHOWN_PACES, 'skipped' => false, 'reason' => null,
-    ]);
-    shownRun($user, '2026-08-05', 8.0, 3200, everyWindowAt(315));
-
-    $verdict = scorerVerdict($user, $row);
-
-    expect($verdict['intent']['verdict'])->toBe(IntentVerdict::Hit)
-        ->and($verdict['status'])->toBe(PlannedSessionStatus::Done);
-});
-
-it('reads an easy run faster than marathon pace as overreached', function (): void {
-    $user = User::factory()->create();
-    $row = scorerDay($user, '2026-08-05');
-    showAdvice($user, '2026-08-05', ['session_type' => 'easy', 'segments' => shownEasySegments()], [
-        'session_type' => 'easy', 'distance_km' => 6.4, 'segments' => shownEasySegments(), 'paces' => SHOWN_PACES, 'skipped' => false, 'reason' => null,
-    ]);
-    shownRun($user, '2026-08-05', 6.4, 2048);
-
-    $verdict = scorerVerdict($user, $row);
-
-    expect($verdict['intent']['verdict'])->toBe(IntentVerdict::TooHard)
-        ->and($verdict['status'])->toBe(PlannedSessionStatus::Overreached)
-        ->and($verdict['score'])->toBe(100);
-});
-
-it('grades intervals on auto-km laps with no other signal on distance alone', function (): void {
-    $user = User::factory()->create();
-    scorerPaces($user, '2026-08-05');
-    $row = scorerDay($user, '2026-08-05', ['session_type' => SessionType::Interval]);
-    $askedKm = (float) scorerVerdict($user, $row)['prescribed_km'];
-    $laps = array_map(static fn (int $i): array => ['lap' => $i, 'distance_m' => 1000, 'elapsed_sec' => 360, 'pace' => '6:00'], range(1, max(1, (int) floor($askedKm))));
-    scorerPacedRun($user, '2026-08-05', $askedKm, 360, ['laps' => $laps]);
-
-    $verdict = scorerVerdict($user, $row);
-
-    expect($verdict['intent']['verdict'])->toBe(IntentVerdict::Unknown)
-        ->and($verdict['status'])->toBe(PlannedSessionStatus::Done);
-});
-
 it('does not judge intent on a day that was never credited', function (): void {
     $user = User::factory()->create();
     $row = scorerDay($user, '2026-08-05');

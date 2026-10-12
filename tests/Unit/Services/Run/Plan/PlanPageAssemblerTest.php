@@ -441,12 +441,6 @@ function assemblerPastRace(User $user, array $attributes): RaceGoal
     ]);
 }
 
-it('shows no race card with no race at all', function (): void {
-    $user = User::factory()->create();
-
-    expect(freshAssembler()->raceCard($user, Carbon::today()))->toBeNull();
-});
-
 it('reads a race more than a week out as ahead, with the days to go', function (): void {
     $user = User::factory()->create();
     $race = RaceGoal::factory()->for($user)->create(['race_date' => '2026-08-18', 'distance_m' => 10_000, 'goal_time_sec' => 3_600, 'name' => 'City 10K']);
@@ -548,23 +542,20 @@ it('drops a recorded result once the next race is set', function (): void {
     expect(freshAssembler()->raceCard($user, Carbon::today())['state'])->toBe('ahead');
 });
 
-it('shows nothing for a race not run, called off, or confirmed without a time', function (array $attributes): void {
+it('shows no race card with no race, or one not run, called off, or confirmed without a time', function (?array $attributes): void {
     $user = User::factory()->create();
-    assemblerPastRace($user, ['outcome_recorded_at' => '2026-08-09 07:00:00', ...$attributes]);
+    if ($attributes !== null) {
+        assemblerPastRace($user, $attributes);
+    }
 
     expect(freshAssembler()->raceCard($user, Carbon::today()))->toBeNull();
 })->with([
-    'did not run' => [['outcome' => RaceOutcome::DidNotRun]],
-    'cancelled' => [['outcome' => RaceOutcome::Cancelled]],
-    'confirmed without a time' => [['outcome' => RaceOutcome::Confirmed, 'finish_time_sec' => null]],
+    'no race at all' => [null],
+    'did not run' => [['outcome_recorded_at' => '2026-08-09 07:00:00', 'outcome' => RaceOutcome::DidNotRun]],
+    'cancelled' => [['outcome_recorded_at' => '2026-08-09 07:00:00', 'outcome' => RaceOutcome::Cancelled]],
+    'confirmed without a time' => [['outcome_recorded_at' => '2026-08-09 07:00:00', 'outcome' => RaceOutcome::Confirmed, 'finish_time_sec' => null]],
+    'called off with its date still ahead' => [['race_date' => '2026-09-06', 'outcome' => RaceOutcome::Cancelled]],
 ]);
-
-it('ignores a called-off race whose date is still ahead', function (): void {
-    $user = User::factory()->create();
-    assemblerPastRace($user, ['race_date' => '2026-09-06', 'outcome' => RaceOutcome::Cancelled]);
-
-    expect(freshAssembler()->raceCard($user, Carbon::today()))->toBeNull();
-});
 
 it('serves the supported time only for a race ahead', function (): void {
     $user = User::factory()->create();

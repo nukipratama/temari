@@ -190,14 +190,21 @@ it('decides a pair under 20 minutes on pace even when both sides have heart rate
         ->and($context['direction'])->toBe('flat');
 });
 
-it('rejects matches less than 21 days apart', function (): void {
+it('rejects matches outside the age, pace band and distance windows', function (int $daysAgo, float $pastDistanceM, int $pastMovingSec, float $currentDistanceM, int $currentMovingSec): void {
     $user = User::factory()->create();
-    seedRun($user, Carbon::today()->subDays(10), 10_000, 4_200);
+    $temp = ['weather_temp_c' => 27];
+    seedRun($user, Carbon::today()->subDays($daysAgo), $pastDistanceM, $pastMovingSec, $temp);
 
-    $current = seedRun($user, Carbon::today(), 10_000, 4_200);
+    $current = seedRun($user, Carbon::today(), $currentDistanceM, $currentMovingSec, $temp);
 
     expect(app(PastYouMatcher::class)->findMatch($current->activity, $current))->toBeNull();
-});
+})->with([
+    'less than 21 days apart' => [10, 10_000, 4_200, 10_000, 4_200],
+    'exactly 20 days apart' => [20, 10_000, 4_200, 10_000, 4_200],
+    'a different pace band' => [60, 10_000, 3_300, 10_000, 4_200],
+    'outside the ±20% distance window' => [60, 5_000, 2_100, 10_000, 4_200],
+    '501m off' => [60, 10_501, 4_410, 10_000, 4_200],
+]);
 
 it('accepts a match exactly 21 days apart', function (): void {
     $user = User::factory()->create();
@@ -207,33 +214,6 @@ it('accepts a match exactly 21 days apart', function (): void {
     $current = seedRun($user, Carbon::today(), 10_000, 4_200, $temp);
 
     expect(app(PastYouMatcher::class)->findMatch($current->activity, $current))->not->toBeNull();
-});
-
-it('rejects a match exactly 20 days apart', function (): void {
-    $user = User::factory()->create();
-    seedRun($user, Carbon::today()->subDays(20), 10_000, 4_200);
-
-    $current = seedRun($user, Carbon::today(), 10_000, 4_200);
-
-    expect(app(PastYouMatcher::class)->findMatch($current->activity, $current))->toBeNull();
-});
-
-it('rejects matches in a different pace band', function (): void {
-    $user = User::factory()->create();
-    seedRun($user, Carbon::today()->subDays(60), 10_000, 3_300);
-
-    $current = seedRun($user, Carbon::today(), 10_000, 4_200);
-
-    expect(app(PastYouMatcher::class)->findMatch($current->activity, $current))->toBeNull();
-});
-
-it('rejects matches outside the ±20% distance window', function (): void {
-    $user = User::factory()->create();
-    seedRun($user, Carbon::today()->subDays(60), 5_000, 2_100);
-
-    $current = seedRun($user, Carbon::today(), 10_000, 4_200);
-
-    expect(app(PastYouMatcher::class)->findMatch($current->activity, $current))->toBeNull();
 });
 
 it('accepts a match exactly 500m off', function (): void {
@@ -246,23 +226,17 @@ it('accepts a match exactly 500m off', function (): void {
     expect(app(PastYouMatcher::class)->findMatch($current->activity, $current))->not->toBeNull();
 });
 
-it('rejects a match 501m off', function (): void {
+it('rejects matches outside the ±3°C temp window when both have weather', function (int $pastTemp, int $currentTemp): void {
     $user = User::factory()->create();
-    seedRun($user, Carbon::today()->subDays(60), 10_501, 4_410);
+    seedRun($user, Carbon::today()->subDays(60), 10_000, 4_200, ['weather_temp_c' => $pastTemp]);
 
-    $current = seedRun($user, Carbon::today(), 10_000, 4_200);
+    $current = seedRun($user, Carbon::today(), 10_000, 4_200, ['weather_temp_c' => $currentTemp]);
 
     expect(app(PastYouMatcher::class)->findMatch($current->activity, $current))->toBeNull();
-});
-
-it('rejects matches outside the ±3°C temp window when both have weather', function (): void {
-    $user = User::factory()->create();
-    seedRun($user, Carbon::today()->subDays(60), 10_000, 4_200, ['weather_temp_c' => 22]);
-
-    $current = seedRun($user, Carbon::today(), 10_000, 4_200, ['weather_temp_c' => 32]);
-
-    expect(app(PastYouMatcher::class)->findMatch($current->activity, $current))->toBeNull();
-});
+})->with([
+    '10°C off' => [22, 32],
+    '4°C off' => [23, 27],
+]);
 
 it('accepts a match exactly 3°C off', function (): void {
     $user = User::factory()->create();
@@ -271,15 +245,6 @@ it('accepts a match exactly 3°C off', function (): void {
     $current = seedRun($user, Carbon::today(), 10_000, 4_200, ['weather_temp_c' => 27]);
 
     expect(app(PastYouMatcher::class)->findMatch($current->activity, $current))->not->toBeNull();
-});
-
-it('rejects a match 4°C off', function (): void {
-    $user = User::factory()->create();
-    seedRun($user, Carbon::today()->subDays(60), 10_000, 4_200, ['weather_temp_c' => 23]);
-
-    $current = seedRun($user, Carbon::today(), 10_000, 4_200, ['weather_temp_c' => 27]);
-
-    expect(app(PastYouMatcher::class)->findMatch($current->activity, $current))->toBeNull();
 });
 
 it('accepts matches when one side is missing weather', function (): void {
