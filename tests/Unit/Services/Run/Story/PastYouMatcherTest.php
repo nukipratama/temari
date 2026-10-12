@@ -192,9 +192,10 @@ it('decides a pair under 20 minutes on pace even when both sides have heart rate
 
 it('rejects matches outside the age, pace band and distance windows', function (int $daysAgo, float $pastDistanceM, int $pastMovingSec, float $currentDistanceM, int $currentMovingSec): void {
     $user = User::factory()->create();
-    seedRun($user, Carbon::today()->subDays($daysAgo), $pastDistanceM, $pastMovingSec);
+    $temp = ['weather_temp_c' => 27];
+    seedRun($user, Carbon::today()->subDays($daysAgo), $pastDistanceM, $pastMovingSec, $temp);
 
-    $current = seedRun($user, Carbon::today(), $currentDistanceM, $currentMovingSec);
+    $current = seedRun($user, Carbon::today(), $currentDistanceM, $currentMovingSec, $temp);
 
     expect(app(PastYouMatcher::class)->findMatch($current->activity, $current))->toBeNull();
 })->with([
