@@ -68,25 +68,10 @@ it('dispatches oldest-first by activity id', function (): void {
     Queue::assertPushed(IngestActivityJob::class, 2);
 });
 
-it('skips activities that are already analyzed', function (): void {
+it('skips an activity that is not pending ingest and queues the one that is', function (Closure $makeSkipped): void {
     $user = User::factory()->create();
     StravaConnection::factory()->for($user)->create();
-    Activity::factory()->for($user)->analyzed()->create();
-    $pending = Activity::factory()->for($user)->stub()->create();
-
-    $this->artisan('strava:ingest')->assertSuccessful();
-
-    Queue::assertPushed(
-        IngestActivityJob::class,
-        fn (IngestActivityJob $job): bool => $job->activityId === $pending->id,
-    );
-    Queue::assertPushed(IngestActivityJob::class, 1);
-});
-
-it('skips activities whose detail_fail_count has reached the cap', function (): void {
-    $user = User::factory()->create();
-    StravaConnection::factory()->for($user)->create();
-    Activity::factory()->for($user)->stub()->create(['detail_fail_count' => 5]);
+    $makeSkipped($user);
     $pending = Activity::factory()->for($user)->stub()->create(['detail_fail_count' => 4]);
 
     $this->artisan('strava:ingest')->assertSuccessful();
@@ -96,7 +81,10 @@ it('skips activities whose detail_fail_count has reached the cap', function (): 
         fn (IngestActivityJob $job): bool => $job->activityId === $pending->id,
     );
     Queue::assertPushed(IngestActivityJob::class, 1);
-});
+})->with([
+    'already analyzed' => [fn (User $user) => Activity::factory()->for($user)->analyzed()->create()],
+    'detail_fail_count has reached the cap' => [fn (User $user) => Activity::factory()->for($user)->stub()->create(['detail_fail_count' => 5])],
+]);
 
 it('skips activities belonging to the demo user', function (): void {
     $demo = User::factory()->demo()->create();
@@ -108,24 +96,20 @@ it('skips activities belonging to the demo user', function (): void {
     Queue::assertNotPushed(IngestActivityJob::class);
 });
 
-it('skips activities of users whose Strava connection is revoked', function (): void {
-    $revokedUser = User::factory()->create();
-    StravaConnection::factory()->for($revokedUser)->revoked()->create();
-    Activity::factory()->for($revokedUser)->stub()->create();
-
-    $this->artisan('strava:ingest')->assertSuccessful();
-
-    Queue::assertNotPushed(IngestActivityJob::class);
-});
-
-it('skips activities of users who have no Strava connection', function (): void {
+it('skips the activities of a user without a usable Strava connection', function (bool $revoked): void {
     $user = User::factory()->create();
+    if ($revoked) {
+        StravaConnection::factory()->for($user)->revoked()->create();
+    }
     Activity::factory()->for($user)->stub()->create();
 
     $this->artisan('strava:ingest')->assertSuccessful();
 
     Queue::assertNotPushed(IngestActivityJob::class);
-});
+})->with([
+    'connection is revoked' => [true],
+    'no connection' => [false],
+]);
 
 it('reports when there are no pending activities to ingest', function (): void {
     $this->artisan('strava:ingest')

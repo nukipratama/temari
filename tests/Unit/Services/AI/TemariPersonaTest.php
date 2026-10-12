@@ -36,47 +36,21 @@ it('exposes the full persona system message', function (): void {
     expect($this->prompt)->toBeString()->not->toBe('');
 });
 
-it('introduces Temari in first person as the partner who keeps score', function (): void {
-    expect($this->prompt)
-        ->toContain("I'm temari")
-        ->toContain('I keep score');
-});
-
-it('pins the only opponent to the user themselves, never another runner', function (): void {
-    expect($this->prompt)
-        ->toContain('# Keeping score')
-        ->toContain('The only opponent is a past version of the user')
-        ->toContain('no percentiles, no cross-user anything');
-});
-
-it('lets Temari name a coast, but never when the data explains it', function (): void {
+it('persona prompt wording: who Temari is and how it addresses the user', function (string ...$needles): void {
+    foreach ($needles as $needle) {
+        expect($this->prompt)->toContain($needle);
+    }
+})->with([
+    'introduces Temari in first person as the partner who keeps score' => ["I'm temari", 'I keep score'],
+    'pins the only opponent to the user themselves, never another runner' => ['# Keeping score', 'The only opponent is a past version of the user', 'no percentiles, no cross-user anything'],
     // The register shift is only safe if the hard exclusion list travels with
     // it: calling a fatigued or overreaching runner lazy is the failure mode
     // this whole section exists to prevent.
-    expect($this->prompt)
-        ->toContain('# Calling a coast')
-        ->toContain('NEVER call it a coast when the data gives a real reason')
-        ->toContain('the first run back after a break');
-});
-
-it('keeps Temari a friend rather than software', function (): void {
-    expect($this->prompt)
-        ->toContain('NEVER call myself an AI')
-        ->toContain('never explain how I work');
-});
-
-it('bans corporate cheer outright and rations exclamation points', function (): void {
-    expect($this->prompt)
-        ->toContain('No corporate cheer')
-        ->toContain("you've got this")
-        ->toContain('Exclamation points are effectively banned');
-});
-
-it('locks the address forms — I for Temari, you for the user', function (): void {
-    expect($this->prompt)
-        ->toContain('Refer to myself as "I"')
-        ->toContain('Refer to the user as "you"');
-});
+    'lets Temari name a coast, but never when the data explains it' => ['# Calling a coast', 'NEVER call it a coast when the data gives a real reason', 'the first run back after a break'],
+    'keeps Temari a friend rather than software' => ['NEVER call myself an AI', 'never explain how I work'],
+    'bans corporate cheer outright and rations exclamation points' => ['No corporate cheer', "you've got this", 'Exclamation points are effectively banned'],
+    'locks the address forms — I for Temari, you for the user' => ['Refer to myself as "I"', 'Refer to the user as "you"'],
+]);
 
 it('keeps the Daybreak mood vocabulary inline so narrators reuse it verbatim', function (): void {
     foreach (['blazing', 'easy', 'wobbly', 'gassed', 'overloaded', 'chill'] as $mood) {
@@ -84,48 +58,36 @@ it('keeps the Daybreak mood vocabulary inline so narrators reuse it verbatim', f
     }
 });
 
-it('allows one bold emphasis but bans other markdown, em-dash, and clinical phrasing', function (): void {
-    expect($this->prompt)
-        ->toContain('**Bold**')
-        ->toContain('NO other markdown')
-        ->toContain('em dash')
-        ->toContain('clinical third person');
-});
-
-it('draws a hard line at profanity and shouting while allowing casual contractions', function (): void {
-    expect($this->prompt)
-        ->toContain('Hard line, never cross it')
-        ->toContain('no profanity or crude slang')
-        ->toContain('ALL CAPS')
-        ->toContain('"you\'re"')
-        ->toContain('"gonna"');
-});
-
-it('makes encouragement soft and optional, not a forced beat', function (): void {
-    expect($this->prompt)
-        ->toContain('OPTIONAL')
-        ->toContain("Don't force a positive note");
-});
-
-it('tells narrators to vary openers and never open with a continuity connector', function (): void {
-    expect($this->prompt)
-        ->toContain('Opening & variation')
-        ->toContain('still riding that')
-        ->toContain('Vary how you open');
-});
-
-it('forbids preachy / coach-mode phrasing like "you have to"', function (): void {
-    expect($this->prompt)
-        ->toContain('NEVER lecture or preach')
-        ->toContain('"you have to"');
-});
-
-it('grounds Temari in Indonesian running context', function (): void {
-    expect($this->prompt)
-        ->toContain('Early-morning runs are common')
-        ->toContain('31°C')
-        ->toContain('Rain is scheduled');
-});
+it('persona prompt wording: voice rules, formats and guards', function (string ...$needles): void {
+    foreach ($needles as $needle) {
+        expect($this->prompt)->toContain($needle);
+    }
+})->with([
+    'allows one bold emphasis but bans other markdown, em-dash, and clinical phrasing' => ['**Bold**', 'NO other markdown', 'em dash', 'clinical third person'],
+    'draws a hard line at profanity and shouting while allowing casual contractions' => ['Hard line, never cross it', 'no profanity or crude slang', 'ALL CAPS', '"you\'re"', '"gonna"'],
+    'makes encouragement soft and optional, not a forced beat' => ['OPTIONAL', "Don't force a positive note"],
+    'tells narrators to vary openers and never open with a continuity connector' => ['Opening & variation', 'still riding that', 'Vary how you open'],
+    'forbids preachy / coach-mode phrasing like "you have to"' => ['NEVER lecture or preach', '"you have to"'],
+    'grounds Temari in Indonesian running context' => ['Early-morning runs are common', '31°C', 'Rain is scheduled'],
+    // Prod output said "volume ramp dropped a lot" and "session intent-nya
+    // memang easy": column names read aloud as if they were words.
+    'forbids speaking internal field names, tidied or not' => ['Data field names', 'session_intent', 'your volume ramp'],
+    'pins numbers to period formatting so blocks stop disagreeing' => ['Decimals use a PERIOD', '90.3%'],
+    'asks for training-load jargon to be translated rather than dropped bare' => ['Training-load jargon', "what's normal for you"],
+    // Prod output said "mayoritas waktunya memang stay di Z2". The allow-list
+    // covers running terms; it never said the verbs around them stay plain.
+    'keeps distinct terms to the nouns, so verbs stop leaking in' => ['the NOUN, not the verb', 'camping in Z2'],
+    'caps decimals at one place so tool precision stops leaking through' => ['MAX one digit after the decimal point', '21.4 km'],
+    // Validated against prod: on a run with no HR the model correctly refused to
+    // invent one, then told the user so -- announcing, in effect, "the HR zone
+    // data would not read, so I am not going to make one up" -- in three of four
+    // blocks. It obeyed the don't-invent half and ignored the don't-announce
+    // half, so both are stated as separate hard rules with the observed
+    // sentences as the anti-examples. (Observed pre-swap, hence originally in
+    // Indonesian; the rules themselves are language-independent.)
+    'forbids announcing missing data, not just inventing it' => ['Two rules, both hard', 'NEVER announce it', "Cadence isn't showing up", "I don't want to guess"],
+    'forbids narrating its own reading process to the user' => ["narrate your own process", "talking to me"],
+]);
 
 it('mandates English output regardless of tool results, prior narration, or Indonesian context cues', function (): void {
     // Prod narration on the larger model went Indonesian for narrators with no
@@ -144,60 +106,4 @@ it('mandates English output regardless of tool results, prior narration, or Indo
 
     expect(mb_strpos($this->prompt, '# Language'))
         ->toBeLessThan(mb_strpos($this->prompt, '# Cultural awareness'));
-});
-
-it('forbids speaking internal field names, tidied or not', function (): void {
-    // Prod output said "volume ramp dropped a lot" and "session intent-nya
-    // memang easy": column names read aloud as if they were words.
-    expect($this->prompt)
-        ->toContain('Data field names')
-        ->toContain('session_intent')
-        ->toContain('your volume ramp');
-});
-
-it('pins numbers to period formatting so blocks stop disagreeing', function (): void {
-    expect($this->prompt)
-        ->toContain('Decimals use a PERIOD')
-        ->toContain('90.3%');
-});
-
-it('asks for training-load jargon to be translated rather than dropped bare', function (): void {
-    expect($this->prompt)
-        ->toContain('Training-load jargon')
-        ->toContain("what's normal for you");
-});
-
-it('keeps distinct terms to the nouns, so verbs stop leaking in', function (): void {
-    // Prod output said "mayoritas waktunya memang stay di Z2". The allow-list
-    // covers running terms; it never said the verbs around them stay plain.
-    expect($this->prompt)
-        ->toContain('the NOUN, not the verb')
-        ->toContain('camping in Z2');
-});
-
-it('caps decimals at one place so tool precision stops leaking through', function (): void {
-    expect($this->prompt)
-        ->toContain('MAX one digit after the decimal point')
-        ->toContain('21.4 km');
-});
-
-it('forbids announcing missing data, not just inventing it', function (): void {
-    // Validated against prod: on a run with no HR the model correctly refused to
-    // invent one, then told the user so -- announcing, in effect, "the HR zone
-    // data would not read, so I am not going to make one up" -- in three of four
-    // blocks. It obeyed the don't-invent half and ignored the don't-announce
-    // half, so both are stated as separate hard rules with the observed
-    // sentences as the anti-examples. (Observed pre-swap, hence originally in
-    // Indonesian; the rules themselves are language-independent.)
-    expect($this->prompt)
-        ->toContain('Two rules, both hard')
-        ->toContain('NEVER announce it')
-        ->toContain("Cadence isn't showing up")
-        ->toContain("I don't want to guess");
-});
-
-it('forbids narrating its own reading process to the user', function (): void {
-    expect($this->prompt)
-        ->toContain("narrate your own process")
-        ->toContain("talking to me");
 });

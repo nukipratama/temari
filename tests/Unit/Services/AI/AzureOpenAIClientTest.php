@@ -32,12 +32,6 @@ it('builds an openai client with no custom http client when timeout is 0', funct
 
 // ── deploymentFor(): per-narrator override vs general fallback ────────────
 
-it('uses the per-kind deployment override when one is set', function (): void {
-    config()->set('azure_openai.narrators.briefing', 'gpt-4o');
-
-    expect(new AzureOpenAIClient()->deploymentFor('briefing'))->toBe('gpt-4o');
-});
-
 it('prefers the per-kind override over the general deployment', function (): void {
     config()->set('azure_openai.deployment', 'gpt-general');
     config()->set('azure_openai.narrators.briefing', 'gpt-4o');

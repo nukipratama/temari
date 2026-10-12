@@ -47,39 +47,27 @@ it('skips the demo user', function (): void {
     $this->artisan('strava:sync-zones')->assertSuccessful();
 });
 
-it('skips a user whose runner_profile source is manual', function (): void {
+it('skips a user who is not eligible for a zone sync', function (Closure $makeEligibleOut): void {
     $user = User::factory()->create();
-    StravaConnection::factory()->for($user)->create(['scopes' => 'read,activity:read_all,profile:read_all']);
-    RunnerProfile::factory()->for($user)->create(['source' => 'manual']);
+    $makeEligibleOut($user);
 
     $fetcher = Mockery::mock(ZoneFetcher::class);
     $fetcher->shouldNotReceive('fetch');
     $this->app->instance(ZoneFetcher::class, $fetcher);
 
     $this->artisan('strava:sync-zones')->assertSuccessful();
-});
-
-it('skips a user whose connection lacks profile:read_all', function (): void {
-    $user = User::factory()->create();
-    StravaConnection::factory()->for($user)->create(['scopes' => 'read,activity:read_all']);
-
-    $fetcher = Mockery::mock(ZoneFetcher::class);
-    $fetcher->shouldNotReceive('fetch');
-    $this->app->instance(ZoneFetcher::class, $fetcher);
-
-    $this->artisan('strava:sync-zones')->assertSuccessful();
-});
-
-it('skips a revoked connection', function (): void {
-    $user = User::factory()->create();
-    StravaConnection::factory()->for($user)->revoked()->create(['scopes' => 'read,activity:read_all,profile:read_all']);
-
-    $fetcher = Mockery::mock(ZoneFetcher::class);
-    $fetcher->shouldNotReceive('fetch');
-    $this->app->instance(ZoneFetcher::class, $fetcher);
-
-    $this->artisan('strava:sync-zones')->assertSuccessful();
-});
+})->with([
+    'runner_profile source is manual' => [function (User $user): void {
+        StravaConnection::factory()->for($user)->create(['scopes' => 'read,activity:read_all,profile:read_all']);
+        RunnerProfile::factory()->for($user)->create(['source' => 'manual']);
+    }],
+    'connection lacks profile:read_all' => [function (User $user): void {
+        StravaConnection::factory()->for($user)->create(['scopes' => 'read,activity:read_all']);
+    }],
+    'connection is revoked' => [function (User $user): void {
+        StravaConnection::factory()->for($user)->revoked()->create(['scopes' => 'read,activity:read_all,profile:read_all']);
+    }],
+]);
 
 it('honors the --user filter', function (): void {
     $userA = User::factory()->create();

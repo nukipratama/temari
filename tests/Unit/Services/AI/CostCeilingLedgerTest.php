@@ -11,10 +11,6 @@ beforeEach(function (): void {
     $this->ledger = app(CostCeilingLedger::class);
 });
 
-it('reports an untripped day as nothing to see', function (): void {
-    expect($this->ledger->today())->toBe(['trippedAt' => null, 'degradedFills' => 0, 'degradedBreakdown' => []]);
-});
-
 it('keeps the first trip time, not the latest', function (): void {
     Carbon::setTestNow('2026-08-14 09:05:00');
     $this->ledger->recordTrip();

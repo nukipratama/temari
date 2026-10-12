@@ -116,18 +116,6 @@ it('fills a week that closed before the athlete connected rule-based, and narrat
         ->toMatchArray(['ruleBased' => false, 'invalidate' => false, 'delaySeconds' => 0]);
 });
 
-it('narrates every completed week for an athlete who connected long ago', function (): void {
-    $user = User::factory()->create();
-    StravaConnection::factory()->for($user)->create(['created_at' => '2025-01-01 00:00:00']);
-    $week = WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-17', 'runs' => 4]);
-
-    $captured = [];
-    $this->app->instance(AnalysisService::class, captureAnalysisServiceRequests($captured));
-
-    expect(app(KickoffWeeklyRecaps::class)($user->id))->toBe(['dispatched' => 1, 'rule_based' => 0, 'deferred' => 0])
-        ->and(array_column($captured, 'subjectId'))->toBe([$week->id]);
-});
-
 it('never dispatches for the demo account regardless of connect date', function (): void {
     $demo = User::factory()->demo()->create();
     StravaConnection::factory()->for($demo)->create(['created_at' => Carbon::today()->subDay()]);

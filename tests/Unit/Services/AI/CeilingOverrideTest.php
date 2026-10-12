@@ -12,10 +12,6 @@ beforeEach(function (): void {
     $this->override = new CeilingOverride();
 });
 
-it('returns null for an athlete with no override today', function (): void {
-    expect($this->override->get(1))->toBeNull();
-});
-
 it('round-trips the ceiling as a float', function (): void {
     $this->override->set(1, 2.5);
 

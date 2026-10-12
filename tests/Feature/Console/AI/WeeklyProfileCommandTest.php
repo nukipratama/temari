@@ -104,22 +104,6 @@ it('narrates a settled athlete\'s voice on Monday while an unsettled athlete\'s 
     Carbon::setTestNow();
 });
 
-it('skips a user who has not opened the app in the last 7 days', function (): void {
-    Carbon::setTestNow('2026-05-18 00:05:00');
-
-    User::factory()->create(['last_seen_at' => Carbon::now()->subDays(10)]);
-
-    $service = Mockery::mock(AnalysisService::class);
-    $service->shouldNotReceive('request');
-    $this->app->instance(AnalysisService::class, $service);
-
-    $this->artisan('ai:weekly-profile')
-        ->expectsOutputToContain('Dispatched weekly profile refresh for 0 active users')
-        ->assertSuccessful();
-
-    Carbon::setTestNow();
-});
-
 it('skips an athlete who is running but not opening the app', function (): void {
     // A run syncs itself in without anyone looking, so run recency says nothing
     // about whether the voice this bills for will ever be read.

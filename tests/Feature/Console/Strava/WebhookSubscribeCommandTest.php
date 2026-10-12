@@ -74,16 +74,19 @@ it('aborts create without calling Strava when the self-verify handshake fails', 
         && str_contains((string) $request->url(), 'push_subscriptions'));
 });
 
-it('fails to create when the verify token is missing', function (): void {
-    config(['services.strava.webhook_verify_token' => null]);
+it('fails without calling Strava when its required setting is missing', function (string $key, string $action, string $message): void {
+    config([$key => null]);
     Http::fake();
 
-    $this->artisan('strava:webhook-subscribe', ['--action' => 'create'])
-        ->expectsOutputToContain('STRAVA_WEBHOOK_VERIFY_TOKEN is not configured.')
+    $this->artisan('strava:webhook-subscribe', ['--action' => $action])
+        ->expectsOutputToContain($message)
         ->assertFailed();
 
     Http::assertNothingSent();
-});
+})->with([
+    'create without the verify token' => ['services.strava.webhook_verify_token', 'create', 'STRAVA_WEBHOOK_VERIFY_TOKEN is not configured.'],
+    'delete without an id' => ['services.strava.webhook_subscription_id', 'delete', 'Pass --id='],
+]);
 
 it('surfaces a Strava error when create is rejected', function (): void {
     Http::fake([
@@ -243,17 +246,6 @@ it('deletes a subscription by id, sending credentials in the query string', func
         && str_starts_with((string) $request->url(), 'https://www.strava.com/api/v3/push_subscriptions/555?')
         && str_contains((string) $request->url(), 'client_id=cid')
         && str_contains((string) $request->url(), 'client_secret=secret'));
-});
-
-it('fails to delete without an id', function (): void {
-    config(['services.strava.webhook_subscription_id' => null]);
-    Http::fake();
-
-    $this->artisan('strava:webhook-subscribe', ['--action' => 'delete'])
-        ->expectsOutputToContain('Pass --id=')
-        ->assertFailed();
-
-    Http::assertNothingSent();
 });
 
 it('rejects an unknown action', function (): void {

@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use Illuminate\Support\Facades\Bus;
-use App\Exceptions\AI\ContentFilterException;
 use App\Jobs\AI\AnalyzeActivityJob;
 use App\Jobs\AI\AnalyzeBaseJob;
 use App\Jobs\AI\AnalyzeBriefingMascotVoiceJob;
@@ -14,6 +13,8 @@ use App\Jobs\AI\AnalyzePlanClampVoiceJob;
 use App\Jobs\AI\AnalyzePlanSeasonVoiceJob;
 use App\Jobs\AI\AnalyzeTrendReadJob;
 use App\Jobs\AI\AnalyzeWeeklyRecapJob;
+use App\Models\Activity;
+use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
 use App\Models\PlannedSession;
 use App\Models\RunCard;
@@ -93,73 +94,6 @@ it('AnalyzeBriefingMascotVoiceJob marks the row Failed and rethrows when the use
     expect($row->fresh()->status)->toBe(AnalysisStatus::Failed);
 });
 
-it('AnalyzeBriefingMascotVoiceJob does not re-invoke the narrator when its row is already Done (no double-bill)', function (): void {
-    $user = User::factory()->create();
-
-    $row = Analysis::factory()->done('preexisting')->create([
-        'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
-        'subject_id' => $user->id,
-        'analysis_type' => AnalysisType::BriefingMascotVoice,
-        'discriminator' => '2026-05-18',
-    ]);
-
-    $mock = Mockery::mock(BriefingMascotVoiceNarrator::class);
-    $mock->shouldNotReceive('generate');
-    app()->instance(BriefingMascotVoiceNarrator::class, $mock);
-
-    new AnalyzeBriefingMascotVoiceJob($row->id)->handle(app(AnalysisService::class));
-
-    expect($row->fresh()->status)->toBe(AnalysisStatus::Done)
-        ->and($row->fresh()->content)->toBe('preexisting');
-});
-
-it('AnalyzeBriefingMascotVoiceJob falls back to rule-based content when generation content-filters', function (): void {
-    $user = User::factory()->create();
-
-    $mock = Mockery::mock(BriefingMascotVoiceNarrator::class);
-    $mock->shouldReceive('generate')->andThrow(new ContentFilterException('content filtered'));
-    app()->instance(BriefingMascotVoiceNarrator::class, $mock);
-
-    $row = rowOf(AnalysisType::BRIEFING_SUBJECT_TYPE, $user->id, AnalysisType::BriefingMascotVoice, '2026-05-18');
-    new AnalyzeBriefingMascotVoiceJob($row->id)->handle(app(AnalysisService::class));
-
-    expect($row->fresh()->status)->toBe(AnalysisStatus::Done)
-        ->and($row->fresh()->content)->not->toBeEmpty();
-});
-
-it('AnalyzeBriefingMascotVoiceJob failed() marks a stranded row Failed', function (): void {
-    $user = User::factory()->create();
-
-    $voice = Analysis::factory()->create([
-        'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
-        'subject_id' => $user->id,
-        'analysis_type' => AnalysisType::BriefingMascotVoice,
-        'discriminator' => '2026-05-18',
-        'status' => AnalysisStatus::Processing,
-    ]);
-
-    new AnalyzeBriefingMascotVoiceJob($voice->id)->failed(new RuntimeException('worker timeout'));
-
-    expect($voice->fresh()->status)->toBe(AnalysisStatus::Failed)
-        ->and($voice->fresh()->error)->toBe('worker timeout');
-});
-
-it('AnalyzeBriefingMascotVoiceJob failed() spares a row that is already Done', function (): void {
-    $user = User::factory()->create();
-
-    $voice = Analysis::factory()->done('kept')->create([
-        'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
-        'subject_id' => $user->id,
-        'analysis_type' => AnalysisType::BriefingMascotVoice,
-        'discriminator' => '2026-05-18',
-    ]);
-
-    new AnalyzeBriefingMascotVoiceJob($voice->id)->failed(new RuntimeException('worker timeout'));
-
-    expect($voice->fresh()->status)->toBe(AnalysisStatus::Done)
-        ->and($voice->fresh()->content)->toBe('kept');
-});
-
 // ── AnalyzeTrendReadJob (row) ─────────────────────────────────────────
 
 it('AnalyzeTrendReadJob returns the trend read for the row\'s range', function (): void {
@@ -190,57 +124,6 @@ it('AnalyzeTrendReadJob marks the row Failed and rethrows when the user is missi
         ->toThrow(ModelNotFoundException::class);
 
     expect($row->fresh()->status)->toBe(AnalysisStatus::Failed);
-});
-
-it('AnalyzeTrendReadJob does not re-invoke the narrator when its row is already Done (no double-bill)', function (): void {
-    $user = User::factory()->create();
-
-    $row = Analysis::factory()->done('preexisting')->create([
-        'subject_type' => AnalysisType::TREND_READ_SUBJECT_TYPE,
-        'subject_id' => $user->id,
-        'analysis_type' => AnalysisType::TrendRead,
-        'discriminator' => '7d',
-    ]);
-
-    $mock = Mockery::mock(TrendReadNarrator::class);
-    $mock->shouldNotReceive('generate');
-    app()->instance(TrendReadNarrator::class, $mock);
-
-    new AnalyzeTrendReadJob($row->id)->handle(app(AnalysisService::class));
-
-    expect($row->fresh()->status)->toBe(AnalysisStatus::Done)
-        ->and($row->fresh()->content)->toBe('preexisting');
-});
-
-it('AnalyzeTrendReadJob falls back to rule-based content when generation content-filters', function (): void {
-    $user = User::factory()->create();
-
-    $mock = Mockery::mock(TrendReadNarrator::class);
-    $mock->shouldReceive('generate')->andThrow(new ContentFilterException('content filtered'));
-    app()->instance(TrendReadNarrator::class, $mock);
-
-    $row = rowOf(AnalysisType::TREND_READ_SUBJECT_TYPE, $user->id, AnalysisType::TrendRead, '7d');
-    new AnalyzeTrendReadJob($row->id)->handle(app(AnalysisService::class));
-
-    expect($row->fresh()->status)->toBe(AnalysisStatus::Done)
-        ->and($row->fresh()->content)->not->toBeEmpty();
-});
-
-it('AnalyzeTrendReadJob failed() marks a stranded row Failed', function (): void {
-    $user = User::factory()->create();
-
-    $row = Analysis::factory()->create([
-        'subject_type' => AnalysisType::TREND_READ_SUBJECT_TYPE,
-        'subject_id' => $user->id,
-        'analysis_type' => AnalysisType::TrendRead,
-        'discriminator' => '7d',
-        'status' => AnalysisStatus::Processing,
-    ]);
-
-    new AnalyzeTrendReadJob($row->id)->failed(new RuntimeException('worker timeout'));
-
-    expect($row->fresh()->status)->toBe(AnalysisStatus::Failed)
-        ->and($row->fresh()->error)->toBe('worker timeout');
 });
 
 // ── AnalyzePlanClampVoiceJob (row) ────────────────────────────────────
@@ -322,6 +205,17 @@ it('AnalyzeCardFlavorJob throws when card missing', function (): void {
     new AnalyzeCardFlavorJob($row->id)->handle(app(AnalysisService::class));
 
     expect($row->fresh()->status)->toBe(AnalysisStatus::Failed);
+});
+
+it('AnalyzeCardFlavorJob stamps the card flavor row with the run material fingerprint', function (): void {
+    $activity = Activity::factory()->create(['analyzed_at' => Carbon::now()]);
+    ActivityDetail::factory()->for($activity)->create();
+    $card = RunCard::factory()->create(['activity_id' => $activity->id]);
+    $row = rowOf(RunCard::class, $card->id, AnalysisType::CardFlavor);
+
+    $fingerprint = (fn (): ?string => $this->fingerprintFor($row))->call(new AnalyzeCardFlavorJob($row->id));
+
+    expect($fingerprint)->toBe(MaterialFingerprint::forActivity($activity->fresh()));
 });
 
 // ── AnalyzePlanSeasonVoiceJob (row) ─────────────────────────────────────

@@ -200,3 +200,25 @@ it('offers the full stream reads once the run is detailed', function (): void {
         ->and($names)->toContain('get_hr_zones')
         ->and($names)->toContain('get_weather');
 });
+
+function runQuestionPrompt(): string
+{
+    return preg_replace('/\s+/', ' ', (string) new ReflectionClass(RunQuestionNarrator::class)->getConstant('SYSTEM_PROMPT'));
+}
+
+it('reads the thread when a question refers back, and offers unasked follow-ups', function (): void {
+    expect(runQuestionPrompt())
+        ->toContain('THREAD:')
+        ->toContain('call get_thread')
+        ->toContain('FOLLOW-UPS:')
+        ->toContain('nobody has asked yet');
+});
+
+it('treats athlete-supplied conditions as context, not excuses', function (): void {
+    expect(runQuestionPrompt())
+        ->toContain('ATHLETE-SUPPLIED CONTEXT')
+        ->toContain('Ga tidur malam')
+        ->toContain('not a night run')
+        ->toContain('never question it')
+        ->toContain('a diagnosis');
+});
