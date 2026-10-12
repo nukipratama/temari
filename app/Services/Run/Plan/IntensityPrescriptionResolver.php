@@ -7,7 +7,6 @@ namespace App\Services\Run\Plan;
 use App\Enums\IntentVerdict;
 use App\Enums\PaceBand;
 use App\Enums\PlanPhase;
-use App\Enums\RaceAmbitionState;
 use App\Enums\RaceSupport;
 use App\Enums\SessionType;
 
@@ -35,8 +34,6 @@ final class IntensityPrescriptionResolver
         GoalPaceWork::KIND_HALF => ['build' => 30, 'peak' => 40, 'taper' => 20],
     ];
 
-    private const int AMBITIOUS_DOSE_DIVISOR = 2;
-
     /**
      * @param array{easy: int, marathon: int, threshold: int, interval: int}|null $paces
      */
@@ -50,6 +47,8 @@ final class IntensityPrescriptionResolver
         ?int $previousHardMinutes = null,
         ?int $hardMinutesAvailable = null,
         ?GoalPaceWork $goalPace = null,
+        ?int $carriedHardMinutes = null,
+        ?int $peakHardMinutes = null,
     ): IntensityPrescription {
         if (! $type->isQuality()) {
             return new IntensityPrescription(0, null, null, null);
@@ -63,31 +62,41 @@ final class IntensityPrescriptionResolver
         }
 
         $shape = GoalPaceWork::shapeOf($type, $raceContext);
-        $coldStart = $shape === SessionType::Interval
-            ? 2 * (self::INTERVAL_REP_MINUTES[$phase->value] ?? 3)
-            : ($raceContext === null ? 20 : 15);
-        $minutes = $previousHardMinutes === null
-            ? min($target, $coldStart)
-            : self::progressed($previousHardMinutes, $previousVerdict, $shape, $phase, $target);
-        $reason = $previousHardMinutes === null ? 'conservative start with sparse comparable evidence' : match ($previousVerdict) {
-            IntentVerdict::Hit => 'progressed after the latest comparable session was hit',
-            IntentVerdict::TooHard => 'stepped down after the latest comparable session was too hard',
-            default => 'held after the latest comparable session',
-        };
+        $unit = $shape === SessionType::Interval
+            ? GoalPaceWork::repMinutesOf($raceContext) ?? self::INTERVAL_REP_MINUTES[$phase->value] ?? 3
+            : SegmentGenerator::workUnitMinutes($shape, $phase, $target);
+        $minimum = $shape === SessionType::Interval ? 2 * $unit : 10;
+        if ($peakHardMinutes !== null) {
+            $minutes = max($minimum, (int) round($peakHardMinutes / 2 / $unit) * $unit);
+            $reason = 'half the last peak session, at its pace and rep length';
+        } else {
+            $coldStart = $shape === SessionType::Interval ? $minimum : ($raceContext === null ? 20 : 15);
+            $minutes = $previousHardMinutes === null
+                ? min($target, $coldStart)
+                : self::progressed($previousHardMinutes, $previousVerdict, $shape, $unit);
+            $reason = $previousHardMinutes === null ? 'conservative start with sparse comparable evidence' : match ($previousVerdict) {
+                IntentVerdict::Hit => 'progressed after the latest comparable session was hit',
+                IntentVerdict::TooHard => 'stepped down after the latest comparable session was too hard',
+                default => 'held after the latest comparable session',
+            };
+            if ($carriedHardMinutes !== null) {
+                $carried = min($target, $shape === SessionType::Interval ? (int) ceil($carriedHardMinutes / $unit) * $unit : $carriedHardMinutes);
+                if ($carried > $minutes) {
+                    $minutes = $carried;
+                    $reason = 'carried over from the last build quality session';
+                }
+            }
+            $minutes = min($target, $minutes);
+        }
 
-        $minutes = min($target, $minutes);
         if ($hardMinutesAvailable !== null && $minutes > $hardMinutesAvailable) {
-            $minutes = self::wholeWorkUnits($shape, $phase, $target, $hardMinutesAvailable);
+            $minutes = intdiv(max(0, $hardMinutesAvailable), $unit) * $unit;
             $reason = 'bounded by this week’s easy-time reserve';
         }
         if ($shape === SessionType::Interval) {
-            $rep = self::INTERVAL_REP_MINUTES[$phase->value] ?? 3;
-            $minutes = intdiv($minutes, $rep) * $rep;
+            $minutes = intdiv($minutes, $unit) * $unit;
         }
 
-        $minimum = $shape === SessionType::Interval
-            ? 2 * (self::INTERVAL_REP_MINUTES[$phase->value] ?? 3)
-            : 10;
         if ($minutes < $minimum) {
             return new IntensityPrescription(0, null, null, 'easy because the week has no safe room for meaningful quality', $raceContext);
         }
@@ -97,7 +106,7 @@ final class IntensityPrescriptionResolver
     }
 
     /**
-     * @return array{0: int, 1: PaceBand, 2: array{distance_m: int, goal_pace_sec_per_km: int, kind: string, band: string}}
+     * @return array{0: int, 1: PaceBand, 2: array{distance_m: int, goal_pace_sec_per_km: int, kind: string, band: string, final_pace_sec_per_km?: int}}
      */
     private static function goalPaceTarget(SessionType $type, PlanPhase $phase, GoalPaceWork $goalPace): array
     {
@@ -106,12 +115,7 @@ final class IntensityPrescriptionResolver
             $type === SessionType::Long => self::RACE_LONG_TARGETS,
             default => self::RACE_TEMPO_TARGETS,
         };
-        $target = $targets[$phase->value] ?? 0;
-        if ($goalPace->band === RaceAmbitionState::Ambitious) {
-            $target = intdiv($target, self::AMBITIOUS_DOSE_DIVISOR);
-        }
-
-        return [$target, $goalPace->paceBand(), $goalPace->context()];
+        return [$targets[$phase->value] ?? 0, $goalPace->paceBand(), $goalPace->context()];
     }
 
     /**
@@ -139,32 +143,21 @@ final class IntensityPrescriptionResolver
         return [self::THRESHOLD_TARGETS[$phase->value] ?? 0, PaceBand::Threshold, null];
     }
 
-    private static function progressed(int $minutes, ?IntentVerdict $verdict, SessionType $type, PlanPhase $phase, int $target): int
+    private static function progressed(int $minutes, ?IntentVerdict $verdict, SessionType $type, int $unit): int
     {
         if ($type === SessionType::Interval) {
-            $rep = self::INTERVAL_REP_MINUTES[$phase->value] ?? 3;
-
             return match ($verdict) {
-                IntentVerdict::Hit => $minutes + $rep,
-                IntentVerdict::TooHard => max($rep, $minutes - $rep),
+                IntentVerdict::Hit => $minutes + $unit,
+                IntentVerdict::TooHard => max($unit, $minutes - $unit),
                 default => $minutes,
             };
         }
 
-        $workUnit = SegmentGenerator::workUnitMinutes($type, $phase, $target);
-
         return match ($verdict) {
             IntentVerdict::Hit => (int) round($minutes * 1.1),
-            IntentVerdict::TooHard => max(0, $minutes - $workUnit),
+            IntentVerdict::TooHard => max(0, $minutes - $unit),
             default => $minutes,
         };
-    }
-
-    private static function wholeWorkUnits(SessionType $type, PlanPhase $phase, int $target, int $available): int
-    {
-        $unit = SegmentGenerator::workUnitMinutes($type, $phase, $target);
-
-        return intdiv(max(0, $available), $unit) * $unit;
     }
 
     /**
@@ -220,6 +213,9 @@ final class IntensityPrescriptionResolver
         }
         if (TimeTrial::isTrial($raceContext)) {
             return TimeTrial::KIND;
+        }
+        if (FastFinishLongRun::isFastFinish($raceContext)) {
+            return FastFinishLongRun::KIND;
         }
         if (GoalPaceWork::isGoalPace($raceContext) && ($raceContext['kind'] ?? null) !== GoalPaceWork::KIND_MARATHON) {
             return 'goal_pace';

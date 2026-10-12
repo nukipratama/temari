@@ -17,6 +17,8 @@ code_refs:
   - tests/Feature/Plan/GoalPaceWorkPlanTest.php
 ---
 
+> **Fact update, 2026-10-12, per [[an-ambitious-goal-trains-at-the-stepping-stone-and-rehearses-the-goal]].** An ambitious goal's goal-pace work now also runs at the stepping-stone pace, closing at goal pace, under the same label, and the Race page card shows it to an ambitious goal too ([[race-specific-sessions-name-the-pace-they-run-at]]).
+
 # A stepping stone for an unsupported goal
 
 **Status:** Accepted (2026-10-05). Decision #1803, layer 6 of #1804. Partly supersedes rule 5 of [[goal-pace-work-in-the-last-weeks]]: an `unsupported` goal now gets goal-pace work at its stepping-stone pace. It also narrows decision 3 of [[one-race-model-drives-the-plan]] and the supported-effort rule of [[race-ambition-is-shown-and-capacity-is-prescribed]] for that work only.

@@ -35,23 +35,38 @@ describe('SteppingStoneCard', () => {
         ).toBeInTheDocument();
     });
 
-    it.each<RaceAmbitionState>([
-        'on_track',
-        'ambitious',
-        'low_evidence',
-        'unknown',
-    ])('renders nothing for a %s goal', (state) => {
-        const { container } = render(
+    it('tells an ambitious goal its race-pace sessions run here and close at its goal pace', () => {
+        render(
             <SteppingStoneCard
-                ambition={{
-                    ...UNSUPPORTED,
-                    state,
-                    stepping_stone_time_sec: null,
-                    stepping_stone_pace_sec_per_km: null,
-                }}
+                ambition={{ ...UNSUPPORTED, state: 'ambitious' }}
             />,
         );
 
-        expect(container).toBeEmptyDOMElement();
+        expect(
+            screen.getByRole('region', { name: 'stepping stone' }),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByText(
+                'the edge of on track, 3% faster than your supported time. your race-pace sessions run here and close at your goal pace. it moves as you get fitter.',
+            ),
+        ).toBeInTheDocument();
     });
+
+    it.each<RaceAmbitionState>(['on_track', 'low_evidence', 'unknown'])(
+        'renders nothing for a %s goal',
+        (state) => {
+            const { container } = render(
+                <SteppingStoneCard
+                    ambition={{
+                        ...UNSUPPORTED,
+                        state,
+                        stepping_stone_time_sec: null,
+                        stepping_stone_pace_sec_per_km: null,
+                    }}
+                />,
+            );
+
+            expect(container).toBeEmptyDOMElement();
+        },
+    );
 });

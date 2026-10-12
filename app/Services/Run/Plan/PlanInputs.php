@@ -35,6 +35,12 @@ final readonly class PlanInputs
      * @param  int|null  $timeTrialAimSec  the supported time at the season’s trial distance
      * @param  list<array{date: string, retry: bool, skipped: bool}>  $timeTrials  the trials already run, excused or fixed
      * @param  list<string>  $timeTrialEvidenceDates  Y-m-d of confirmed evidence or hard efforts at the trial distance
+     * @param  int|null  $lastBuildQualityHardMinutes  the hard minutes of the latest Build-phase quality session already behind the athlete
+     * @param  int|null  $lastPeakGoalPaceHardMinutes  the hard minutes of the latest Peak-phase goal-pace session already behind the athlete
+     * @param  int|null  $raceSupportedTimeSec  the time the athlete's fitness supports at the race distance
+     * @param  float  $longestRunSoFarKm  the longer of the longest run of the last 30 days and the longest long run the season has prescribed so far
+     * @param  string|null  $lastFastFinishDate  Y-m-d of the latest fast-finish long run already behind the athlete
+     * @param  int|null  $supportedTenKTimeSec  the time the athlete's fitness supports over 10K
      */
     public function __construct(
         public int $userId,
@@ -70,6 +76,12 @@ final readonly class PlanInputs
         public ?int $timeTrialAimSec = null,
         public array $timeTrials = [],
         public array $timeTrialEvidenceDates = [],
+        public ?int $lastBuildQualityHardMinutes = null,
+        public ?int $lastPeakGoalPaceHardMinutes = null,
+        public ?int $raceSupportedTimeSec = null,
+        public float $longestRunSoFarKm = 0.0,
+        public ?string $lastFastFinishDate = null,
+        public ?int $supportedTenKTimeSec = null,
     ) {
     }
 

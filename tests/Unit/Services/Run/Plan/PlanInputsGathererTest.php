@@ -6,6 +6,7 @@ use App\Enums\ExperienceLevel;
 use App\Enums\FallOffTilt;
 use App\Enums\IntentVerdict;
 use App\Enums\PaceBand;
+use App\Enums\PlanPhase;
 use App\Enums\PlannedSessionStatus;
 use App\Enums\RaceAmbitionState;
 use App\Enums\SessionType;
@@ -20,6 +21,8 @@ use App\Models\TrainingPreference;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\Run\Plan\PlanInputsGatherer;
+use App\Services\Run\Plan\SegmentGenerator;
+use App\Services\Run\Plan\TrainingBaseline;
 use App\Services\Run\Plan\RaceAmbitionAssessor;
 use App\Services\Run\Metrics\VdotEstimator;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -460,4 +463,104 @@ it('carries an unsupported goal\'s stepping-stone time for its goal-pace work', 
         ->and($inputs->raceSteppingStoneTimeSec)->toBe($ambition->steppingStoneTimeSec)
         ->and($inputs->raceSteppingStoneTimeSec)->toBe(RaceAmbitionAssessor::steppingStoneTimeSec($ambition->supportedTimeSec))
         ->and($inputs->raceGoalTimeSec)->toBe($ambition->supportedTimeSec);
+});
+
+it('carries the last build quality session the season prescribed, skipping trials, other phases and today onward', function (): void {
+    $user = gathererAthlete();
+    $session = static fn (string $date, PlanPhase $phase, SessionType $type, int $minutes, ?array $context = null): PlannedSession => PlannedSession::factory()->for($user)->create([
+        'date' => $date, 'phase' => $phase, 'session_type' => $type, 'prescribed_hard_minutes' => $minutes,
+        'prescribed_pace_band' => PaceBand::Threshold, 'prescription_race_context' => $context,
+    ]);
+    $session('2026-08-25', PlanPhase::Build, SessionType::Tempo, 20);
+    $session('2026-08-27', PlanPhase::Build, SessionType::Interval, 9);
+    $session('2026-08-29', PlanPhase::Build, SessionType::Long, 30);
+    $session('2026-09-01', PlanPhase::Build, SessionType::Tempo, 25, ['kind' => 'time_trial', 'distance_m' => 5000, 'aim_time_sec' => 1500]);
+    $session('2026-09-03', PlanPhase::Peak, SessionType::Interval, 16);
+    $session('2026-09-07', PlanPhase::Build, SessionType::Tempo, 30);
+
+    expect($this->gatherer->forUser($user, Carbon::today())->lastBuildQualityHardMinutes)->toBe(9);
+});
+
+it('carries an ambitious goal\'s stepping-stone time for its goal-pace work, the one the race payload shows', function (): void {
+    $user = gathererAthlete();
+    PerformanceEvidence::query()->create([
+        'user_id' => $user->id, 'activity_id' => Activity::factory()->for($user)->create()->id, 'kind' => 'test', 'distance_m' => 10_000, 'elapsed_time_sec' => 3_000,
+        'performed_on' => Carbon::today()->subWeek(), 'confirmed_at' => now(),
+    ]);
+    $race = RaceGoal::factory()->for($user)->create([
+        'race_date' => '2026-10-31',
+        'distance_m' => 10_000,
+        'goal_time_sec' => 2_880,
+    ]);
+    $inputs = $this->gatherer->forUser($user, Carbon::today());
+    $ambition = app(RaceAmbitionAssessor::class)->assess($user, $race, Carbon::today());
+
+    expect($inputs->raceAmbitionState)->toBe(RaceAmbitionState::Ambitious)
+        ->and($inputs->raceSteppingStoneTimeSec)->toBe(RaceAmbitionAssessor::steppingStoneTimeSec($ambition->supportedTimeSec))
+        ->and($ambition->steppingStoneTimeSec)->toBe($inputs->raceSteppingStoneTimeSec)
+        ->and($inputs->raceGoalTimeSec)->toBe(2_880);
+});
+
+it('carries the last peak goal-pace session the athlete was prescribed at the race distance, never a marathon tempo, another distance or another phase', function (): void {
+    $user = gathererAthlete();
+    RaceGoal::factory()->for($user)->create(['race_date' => '2026-09-19', 'distance_m' => 10_000, 'goal_time_sec' => 3_000]);
+    $session = static fn (string $date, PlanPhase $phase, int $minutes, ?array $context): PlannedSession => PlannedSession::factory()->for($user)->create([
+        'date' => $date, 'phase' => $phase, 'session_type' => SessionType::Interval, 'prescribed_hard_minutes' => $minutes,
+        'prescribed_pace_band' => PaceBand::Threshold, 'prescription_race_context' => $context,
+    ]);
+    $session('2026-08-25', PlanPhase::Peak, 20, ['distance_m' => 10_000, 'goal_pace_sec_per_km' => 300, 'kind' => '10k', 'band' => 'on_track']);
+    $session('2026-08-27', PlanPhase::Peak, 16, null);
+    $session('2026-08-29', PlanPhase::Peak, 35, ['distance_m' => 42_195, 'goal_pace_sec_per_km' => 300, 'kind' => 'marathon', 'band' => 'on_track']);
+    $session('2026-08-30', PlanPhase::Peak, 40, ['distance_m' => 21_098, 'goal_pace_sec_per_km' => 300, 'kind' => 'half', 'band' => 'on_track']);
+    $session('2026-09-01', PlanPhase::Taper, 12, ['distance_m' => 10_000, 'goal_pace_sec_per_km' => 300, 'kind' => '10k', 'band' => 'on_track']);
+
+    expect($this->gatherer->forUser($user, Carbon::today())->lastPeakGoalPaceHardMinutes)->toBe(20);
+});
+
+it('carries the longest run so far, the last fast finish and the supported race time the fast finish is sized and paced from', function (): void {
+    $user = gathererAthlete();
+    PerformanceEvidence::query()->create([
+        'user_id' => $user->id, 'activity_id' => Activity::factory()->for($user)->create()->id, 'kind' => 'test', 'distance_m' => 10_000, 'elapsed_time_sec' => 3_000,
+        'performed_on' => Carbon::today()->subWeek(), 'confirmed_at' => now(),
+    ]);
+    $race = RaceGoal::factory()->for($user)->create(['race_date' => '2026-10-31', 'distance_m' => 10_000, 'goal_time_sec' => 3_000]);
+    ActivityDetail::factory()->for(Activity::factory()->for($user)->analyzed()->create())->create([
+        'start_date_local' => '2026-09-01 07:00', 'distance' => 15_500,
+    ]);
+    $fastFinish = ['kind' => 'fast_finish', 'race_kind' => '10k', 'distance_m' => 10_000];
+    PlannedSession::factory()->for($user)->create(['date' => '2026-08-23', 'session_type' => SessionType::Long, 'prescribed_hard_minutes' => 20, 'prescribed_pace_band' => PaceBand::Threshold, 'prescription_race_context' => $fastFinish]);
+    PlannedSession::factory()->for($user)->create(['date' => '2026-08-30', 'session_type' => SessionType::Long, 'prescribed_hard_minutes' => 0, 'prescribed_pace_band' => null, 'prescription_race_context' => null]);
+    $inputs = $this->gatherer->forUser($user, Carbon::today());
+
+    expect($inputs->raceSupportedTimeSec)->toBe(app(RaceAmbitionAssessor::class)->assess($user, $race, Carbon::today())->supportedTimeSec)
+        ->and($inputs->raceSupportedTimeSec)->not->toBeNull()
+        ->and($inputs->longestRunSoFarKm)->toBe(15.5)
+        ->and($inputs->lastFastFinishDate)->toBe('2026-08-23');
+});
+
+it('carries the supported 10K time a 5K goal\'s fast finish is paced from', function (): void {
+    $user = gathererAthlete();
+    PerformanceEvidence::query()->create([
+        'user_id' => $user->id, 'activity_id' => Activity::factory()->for($user)->create()->id, 'kind' => 'test', 'distance_m' => 5_000, 'elapsed_time_sec' => 1_400,
+        'performed_on' => Carbon::today()->subWeek(), 'confirmed_at' => now(),
+    ]);
+    RaceGoal::factory()->for($user)->create(['race_date' => '2026-10-31', 'distance_m' => 5_000, 'goal_time_sec' => 1_400]);
+    $estimate = app(VdotEstimator::class)->estimate($user, Carbon::today());
+
+    expect($this->gatherer->forUser($user, Carbon::today())->supportedTenKTimeSec)
+        ->toBe((int) round(app(VdotEstimator::class)->raceTimeForVdot($estimate['vdot'], 10_000)))
+        ->not->toBeNull();
+});
+
+it('counts the season\'s longest prescribed long run, sized as the plan sizes it, toward the longest run so far', function (): void {
+    $user = gathererAthlete();
+    Season::factory()->for($user)->create(['starts_at' => '2026-08-03', 'ends_at' => '2026-10-25']);
+    PlannedSession::factory()->for($user)->create(['date' => '2026-07-26', 'session_type' => SessionType::Long, 'volume_multiplier' => 3.0]);
+    PlannedSession::factory()->for($user)->create(['date' => '2026-08-30', 'session_type' => SessionType::Long, 'volume_multiplier' => 1.2]);
+    PlannedSession::factory()->for($user)->create(['date' => '2026-08-31', 'session_type' => SessionType::Easy, 'volume_multiplier' => 3.0]);
+    $baseline = app(TrainingBaseline::class)->forUser($user, Carbon::today());
+
+    expect($this->gatherer->forUser($user, Carbon::today())->longestRunSoFarKm)
+        ->toBe(SegmentGenerator::coreKmFor(SessionType::Long, false, $baseline['long_run_km'], 1.2, $baseline['long_run_cap_km'], null, $baseline['long_run_progression_cap_km']))
+        ->toBeGreaterThan(0.0);
 });

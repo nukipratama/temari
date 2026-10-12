@@ -17,6 +17,12 @@ code_refs:
 
 > **Partly superseded (2026-10-05) by [[a-stepping-stone-for-an-unsupported-goal]].** Rule 5 no longer holds for an `unsupported` goal: its goal-pace work runs at the stepping-stone pace, 3% faster than the supported time, with the on-track dose, and an unsupported marathon runs its race Tempo and race long there. `low_evidence` and `unknown` are unchanged.
 
+> **Partly superseded (2026-10-12) by [[peak-carries-over-from-build]].** Rule 7 no longer holds for the Build→Peak seed: Peak's first race-specific session starts from the last Build quality session's hard minutes, capped at the phase target; later progression stays in the family.
+
+> **Partly superseded (2026-10-12) by [[an-ambitious-goal-trains-at-the-stepping-stone-and-rehearses-the-goal]].** Rules 3, 4 and 6 no longer hold for an `ambitious` goal: it gets the full dose at the stepping-stone pace, closing at goal pace, and its marathon race Tempo follows the same split.
+
+> **Partly superseded (2026-10-12) by [[a-taper-keeps-goal-pace-intensity-and-halves-its-dose]].** The Taper dose of rules 1 and 4 no longer holds for 5K to half: a Taper session takes about half the last Peak session's hard minutes at its pace, and 5K and 10K reps keep the 4-minute Peak rep.
+
 # Goal-pace work in the last weeks, dosed by the ambition band
 
 **Status:** Accepted (2026-10-05). Decision #1803, layer 3 of #1804. Partly supersedes [[race-ambition-is-shown-and-capacity-is-prescribed]]: for an on-track or ambitious goal, marathon-pace work inside the window now runs at the real goal pace instead of the slower of goal and supported marathon pace. [[one-race-model-drives-the-plan]] decision 3 still holds for every other band and outside the window.

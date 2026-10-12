@@ -16,14 +16,13 @@ import PillButton from '@/components/ui/PillButton';
 import { useHorizontalSwipe } from '@/hooks/useHorizontalSwipe';
 import { useRecommendationView } from '@/hooks/useRecommendationView';
 import { rememberPlanSelectedDay } from '@/lib/navigationMemory';
-import { formatKm, formatNaiveMonthDayId } from '@/lib/pace';
+import { formatKm, formatNaiveMonthDayId, weekRangeLabel } from '@/lib/pace';
 import {
     complianceTally,
     computeAdherence,
     deltaDirection,
     isRaceWeek,
     weekdayLabel,
-    weekRangeLabel,
 } from '@/lib/plan';
 
 function initialDate(

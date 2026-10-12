@@ -244,4 +244,133 @@ describe('zoneColor', () => {
     it('falls back to a neutral for an unknown zone', () => {
         expect(zoneColor('Z9')).toBe('var(--color-text-3)');
     });
+
+    describe('stepping-stone work that closes at goal pace', () => {
+        const rep = (pace: number, minutes = 4) =>
+            segment({
+                key: 'interval',
+                minutes,
+                km: 0.8,
+                zone: 'Z4',
+                pace_label: 'threshold',
+                pace_sec_per_km: pace,
+            });
+        const block = (pace: number, minutes: number, km: number) =>
+            segment({
+                key: 'main',
+                minutes,
+                km,
+                zone: 'Z4',
+                pace_label: 'threshold',
+                pace_sec_per_km: pace,
+            });
+        const recovery = segment({
+            key: 'recovery',
+            minutes: 2,
+            km: 0.3,
+            zone: 'Z1',
+        });
+        const renderClosing = (segments: PlanSessionSegment[]) =>
+            render(
+                <SessionBarGraph
+                    segments={segments}
+                    workPaceLabel="stepping-stone pace"
+                    closesAtGoalPace
+                />,
+            );
+
+        it('names the final rep at goal pace', () => {
+            renderClosing([
+                rep(306),
+                recovery,
+                rep(306),
+                recovery,
+                rep(306),
+                recovery,
+                rep(300),
+            ]);
+
+            expect(screen.getByText('4× interval')).toBeInTheDocument();
+            expect(
+                screen.getByText('5:06/km · stepping-stone pace'),
+            ).toBeInTheDocument();
+            expect(
+                screen.getByText('last at 5:00/km · goal pace'),
+            ).toBeInTheDocument();
+        });
+
+        it('counts a last rep split at its closing quarter as one rep', () => {
+            renderClosing([
+                rep(306),
+                recovery,
+                rep(306),
+                recovery,
+                rep(306, 3),
+                rep(300, 1),
+            ]);
+
+            expect(screen.getByText('3× interval')).toBeInTheDocument();
+            expect(
+                screen.getByText(
+                    'last quarter of the last rep at 5:00/km · goal pace',
+                ),
+            ).toBeInTheDocument();
+        });
+
+        it('counts each block with its closing quarter as one block', () => {
+            renderClosing([
+                block(304, 11, 2.2),
+                block(299, 4, 0.8),
+                recovery,
+                block(304, 11, 2.2),
+                block(299, 4, 0.8),
+            ]);
+
+            expect(screen.getByText('2× main set')).toBeInTheDocument();
+            expect(
+                screen.getByText('3 km · 15 min hard / 2 min easy'),
+            ).toBeInTheDocument();
+            expect(
+                screen.getByText('last quarter of each at 4:59/km · goal pace'),
+            ).toBeInTheDocument();
+        });
+
+        it('shows a single block with its closing quarter as one main set', () => {
+            renderClosing([
+                segment({ key: 'warmup', minutes: 10, km: 1.6, zone: 'Z1' }),
+                block(304, 30, 5.9),
+                block(299, 10, 2),
+                segment({ key: 'easy', minutes: 10, km: 1.6, zone: 'Z2' }),
+            ]);
+
+            expect(screen.getByText('main set')).toBeInTheDocument();
+            expect(screen.queryByText(/2× main set/)).not.toBeInTheDocument();
+            expect(screen.getByText('7.9 km · 40 min')).toBeInTheDocument();
+            expect(
+                screen.getByText('5:04/km · stepping-stone pace'),
+            ).toBeInTheDocument();
+            expect(
+                screen.getByText('last quarter at 4:59/km · goal pace'),
+            ).toBeInTheDocument();
+        });
+
+        it('says nothing about goal pace on work that does not close at it', () => {
+            render(
+                <SessionBarGraph
+                    segments={[
+                        rep(306),
+                        recovery,
+                        rep(306),
+                        recovery,
+                        rep(306),
+                        recovery,
+                        rep(306),
+                    ]}
+                    workPaceLabel="stepping-stone pace"
+                />,
+            );
+
+            expect(screen.queryByText(/goal pace/)).not.toBeInTheDocument();
+        });
+    });
 });

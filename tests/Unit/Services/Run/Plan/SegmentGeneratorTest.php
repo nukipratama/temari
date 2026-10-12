@@ -8,6 +8,7 @@ use App\Enums\PlanPhase;
 use App\Enums\SegmentKey;
 use App\Enums\SessionType;
 use App\Services\Run\Plan\SegmentGenerator;
+use App\Services\Run\Plan\SessionSegment;
 use App\Services\Run\Plan\IntensityPrescription;
 
 const PACES = ['easy' => 360, 'marathon' => 300, 'threshold' => 270, 'interval' => 240];
@@ -475,3 +476,45 @@ it('sizes a time trial day as the trial alone and writes it as one block at the 
         ->and($segments[0]->minutes)->toBe(25.0)
         ->and(SegmentGenerator::forPrescription($type, PlanPhase::Build, 9.0, PACES, new IntensityPrescription(25, PaceBand::Interval, 300, null, $context)))->toHaveCount(1);
 })->with([SessionType::Tempo, SessionType::Interval]);
+
+it('closes an ambitious session at its goal pace: the final rep of four or more, otherwise the closing quarter of each block or of the last rep', function (): void {
+    $paces = ['easy' => 380, 'marathon' => 320, 'threshold' => 295, 'interval' => 270];
+    $half = ['distance_m' => 21_098, 'goal_pace_sec_per_km' => 304, 'kind' => 'half', 'band' => 'ambitious', 'final_pace_sec_per_km' => 299];
+    $tenK = ['distance_m' => 10_000, 'goal_pace_sec_per_km' => 306, 'kind' => '10k', 'band' => 'ambitious', 'final_pace_sec_per_km' => 300];
+    $work = static fn (PlanPhase $phase, int $minutes, int $pace, array $context, SegmentKey $key): array => array_map(
+        static fn (SessionSegment $segment): array => [$segment->minutes, $segment->paceSecPerKm],
+        array_values(array_filter(
+            SegmentGenerator::forPrescription(SessionType::Tempo, $phase, 16.0, $paces, new IntensityPrescription($minutes, PaceBand::Threshold, $pace, null, $context)),
+            static fn (SessionSegment $segment): bool => $segment->key === $key,
+        )),
+    );
+
+    expect($work(PlanPhase::Build, 30, 304, $half, SegmentKey::Main))->toBe([[11.0, 304], [4.0, 299], [11.0, 304], [4.0, 299]])
+        ->and($work(PlanPhase::Peak, 40, 304, $half, SegmentKey::Main))->toBe([[30.0, 304], [10.0, 299]])
+        ->and($work(PlanPhase::Peak, 16, 306, $tenK, SegmentKey::Interval))->toBe([[4.0, 306], [4.0, 306], [4.0, 306], [4.0, 300]])
+        ->and($work(PlanPhase::Peak, 12, 306, $tenK, SegmentKey::Interval))->toBe([[4.0, 306], [4.0, 306], [3.0, 306], [1.0, 300]]);
+});
+
+it('writes goal-pace reps at the rep length their context carries, not the phase table', function (): void {
+    $paces = ['easy' => 380, 'marathon' => 320, 'threshold' => 295, 'interval' => 270];
+    $context = ['distance_m' => 10_000, 'goal_pace_sec_per_km' => 300, 'kind' => '10k', 'band' => 'on_track', 'rep_minutes' => 4];
+    $reps = array_values(array_filter(
+        SegmentGenerator::forPrescription(SessionType::Interval, PlanPhase::Taper, 10.0, $paces, new IntensityPrescription(12, PaceBand::Threshold, 300, null, $context)),
+        static fn (SessionSegment $segment): bool => $segment->key === SegmentKey::Interval,
+    ));
+
+    expect(array_map(static fn (SessionSegment $segment): ?float => $segment->minutes, $reps))->toBe([4.0, 4.0, 4.0]);
+});
+
+it('writes a fast-finish long run as an easy block then the fast block, with no easy finish', function (): void {
+    $paces = ['easy' => 380, 'marathon' => 320, 'threshold' => 295, 'interval' => 270];
+    $context = ['kind' => 'fast_finish', 'race_kind' => '10k', 'distance_m' => 10_000];
+    $segments = SegmentGenerator::forPrescription(SessionType::Long, PlanPhase::Peak, 20.0, $paces, new IntensityPrescription(20, PaceBand::Threshold, 300, null, $context));
+    $tooShort = SegmentGenerator::forPrescription(SessionType::Long, PlanPhase::Peak, 3.0, $paces, new IntensityPrescription(20, PaceBand::Threshold, 300, null, $context));
+
+    expect(array_map(static fn (SessionSegment $segment): array => [$segment->key, $segment->paceSecPerKm, $segment->km], $segments))->toBe([
+        [SegmentKey::Easy, 380, 16.0],
+        [SegmentKey::Main, 300, 4.0],
+    ])
+        ->and(array_map(static fn (SessionSegment $segment): PaceBand => $segment->paceLabel, $tooShort))->toBe([PaceBand::Easy]);
+});

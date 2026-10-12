@@ -144,6 +144,8 @@ const weekPlan: WeekPlan = {
             fall_off_tilt: null,
             goal_pace: null,
             stepping_stone: false,
+            closes_at_goal_pace: false,
+            fast_finish: null,
             time_trial: null,
             hr_cap_bpm: null,
             advice_note: null,

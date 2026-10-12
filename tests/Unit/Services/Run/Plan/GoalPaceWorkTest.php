@@ -61,7 +61,7 @@ it('exists only for supported bands, race phases and dedicated preparation insid
     expect(GoalPaceWork::forWeek(goalPaceWorkInputs($distanceM, $band, $goalTimeSec), Carbon::parse($monday), $phase) !== null)->toBe($exists);
 })->with([
     'on track' => [10_000.0, RaceAmbitionState::OnTrack, PlanPhase::Peak, '2026-11-16', 3000, true],
-    'ambitious' => [10_000.0, RaceAmbitionState::Ambitious, PlanPhase::Taper, '2026-12-14', 3000, true],
+    'ambitious without a stepping stone' => [10_000.0, RaceAmbitionState::Ambitious, PlanPhase::Taper, '2026-12-14', 3000, false],
     'unsupported without a stepping stone' => [10_000.0, RaceAmbitionState::Unsupported, PlanPhase::Peak, '2026-11-16', 3000, false],
     'low evidence' => [10_000.0, RaceAmbitionState::LowEvidence, PlanPhase::Peak, '2026-11-16', 3000, false],
     'unknown' => [10_000.0, RaceAmbitionState::Unknown, PlanPhase::Peak, '2026-11-16', 3000, false],
@@ -74,9 +74,9 @@ it('exists only for supported bands, race phases and dedicated preparation insid
 ]);
 
 it('carries the goal pace, kind and band it was generated with', function (): void {
-    $work = GoalPaceWork::forWeek(goalPaceWorkInputs(10_000.0, RaceAmbitionState::Ambitious), Carbon::parse('2026-11-16'), PlanPhase::Peak);
+    $work = GoalPaceWork::forWeek(goalPaceWorkInputs(10_000.0, RaceAmbitionState::OnTrack), Carbon::parse('2026-11-16'), PlanPhase::Peak);
 
-    expect($work?->context())->toBe(['distance_m' => 10_000, 'goal_pace_sec_per_km' => 300, 'kind' => '10k', 'band' => 'ambitious'])
+    expect($work?->context())->toBe(['distance_m' => 10_000, 'goal_pace_sec_per_km' => 300, 'kind' => '10k', 'band' => 'on_track'])
         ->and($work?->paceBand())->toBe(PaceBand::Threshold)
         ->and($work?->isMarathon())->toBeFalse()
         ->and($work?->racesLongAtGoalPace())->toBeFalse();
@@ -89,12 +89,32 @@ it('runs an unsupported goal at its stepping-stone pace, never the goal or the s
         ->and(GoalPaceWork::isSteppingStone($work?->context()))->toBeTrue();
 });
 
-it('names stepping-stone work only by the unsupported band it was generated with', function (?array $context, bool $steppingStone): void {
+it('runs an ambitious goal at its stepping-stone pace with the real goal pace for the final work unit', function (): void {
+    $work = GoalPaceWork::forWeek(goalPaceWorkInputs(10_000.0, RaceAmbitionState::Ambitious, 3000, 3104), Carbon::parse('2026-11-16'), PlanPhase::Peak);
+
+    expect($work?->context())->toBe(['distance_m' => 10_000, 'goal_pace_sec_per_km' => 310, 'kind' => '10k', 'band' => 'ambitious', 'final_pace_sec_per_km' => 300])
+        ->and(GoalPaceWork::isSteppingStone($work?->context()))->toBeTrue()
+        ->and(GoalPaceWork::finalPaceOf($work?->context()))->toBe(300);
+});
+
+it('carries the peak rep length into taper reps, and only there', function (float $distanceM, PlanPhase $phase, string $monday, ?int $repMinutes): void {
+    $work = GoalPaceWork::forWeek(goalPaceWorkInputs($distanceM, RaceAmbitionState::OnTrack), Carbon::parse($monday), $phase);
+
+    expect($work?->context()['rep_minutes'] ?? null)->toBe($repMinutes)
+        ->and(GoalPaceWork::repMinutesOf($work?->context()))->toBe($repMinutes);
+})->with([
+    '10K taper' => [10_000.0, PlanPhase::Taper, '2026-12-07', 4],
+    '10K peak' => [10_000.0, PlanPhase::Peak, '2026-11-16', null],
+    'half taper block' => [21_097.5, PlanPhase::Taper, '2026-12-07', null],
+]);
+
+it('names stepping-stone work by the band and final pace it was generated with', function (?array $context, bool $steppingStone): void {
     expect(GoalPaceWork::isSteppingStone($context))->toBe($steppingStone);
 })->with([
     'unsupported' => [['kind' => '10k', 'band' => 'unsupported'], true],
     'on track' => [['kind' => '10k', 'band' => 'on_track'], false],
-    'ambitious' => [['kind' => 'half', 'band' => 'ambitious'], false],
+    'ambitious with a goal-pace final unit' => [['kind' => 'half', 'band' => 'ambitious', 'final_pace_sec_per_km' => 299], true],
+    'ambitious generated before the final unit' => [['kind' => 'half', 'band' => 'ambitious'], false],
     'supported marathon tempo' => [['kind' => 'marathon'], false],
     'no context' => [null, false],
 ]);

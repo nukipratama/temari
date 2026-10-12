@@ -10,6 +10,7 @@ use App\Enums\SessionType;
 use App\Services\Run\Metrics\TrainingPaceCalculator;
 use App\Services\Run\Metrics\VdotEstimator;
 use App\Services\Run\Plan\GoalPaceWork;
+use App\Services\Run\Plan\IntensityPrescription;
 use App\Services\Run\Plan\IntensityPrescriptionResolver;
 
 const PRESCRIPTION_PACES = ['easy' => 360, 'marathon' => 300, 'threshold' => 270, 'interval' => 240];
@@ -116,7 +117,7 @@ it('never prescribes a marathon-pace block faster than the VDOT marathon equival
         ->toBeGreaterThanOrEqual(PRESCRIPTION_PACES['marathon']);
 })->with([SessionType::Long, SessionType::Tempo])->with([PlanPhase::Base, PlanPhase::Build, PlanPhase::Peak, PlanPhase::Taper]);
 
-it('targets goal-pace work from the table by kind and phase, halved when ambitious and full at a stepping stone', function (string $kind, SessionType $type, PlanPhase $phase, RaceAmbitionState $band, int $minutes): void {
+it('targets goal-pace work from the table by kind and phase, full for every band', function (string $kind, SessionType $type, PlanPhase $phase, RaceAmbitionState $band, int $minutes): void {
     $work = new GoalPaceWork($kind, 10_000, 285, $band);
     $prescription = IntensityPrescriptionResolver::resolve($type, $phase, 10_000, 2850, PRESCRIPTION_PACES, IntentVerdict::Hit, 60, goalPace: $work);
 
@@ -127,15 +128,15 @@ it('targets goal-pace work from the table by kind and phase, halved when ambitio
     ['5k', SessionType::Interval, PlanPhase::Build, RaceAmbitionState::OnTrack, 15],
     ['5k', SessionType::Interval, PlanPhase::Peak, RaceAmbitionState::OnTrack, 20],
     ['5k', SessionType::Interval, PlanPhase::Taper, RaceAmbitionState::OnTrack, 10],
-    ['5k', SessionType::Interval, PlanPhase::Taper, RaceAmbitionState::Ambitious, 4],
+    ['5k', SessionType::Interval, PlanPhase::Taper, RaceAmbitionState::Ambitious, 10],
     ['10k', SessionType::Interval, PlanPhase::Build, RaceAmbitionState::OnTrack, 21],
     ['10k', SessionType::Tempo, PlanPhase::Peak, RaceAmbitionState::OnTrack, 24],
-    ['10k', SessionType::Interval, PlanPhase::Taper, RaceAmbitionState::Ambitious, 6],
+    ['10k', SessionType::Interval, PlanPhase::Taper, RaceAmbitionState::Ambitious, 12],
     ['half', SessionType::Tempo, PlanPhase::Build, RaceAmbitionState::OnTrack, 30],
-    ['half', SessionType::Tempo, PlanPhase::Peak, RaceAmbitionState::Ambitious, 20],
+    ['half', SessionType::Tempo, PlanPhase::Peak, RaceAmbitionState::Ambitious, 40],
     ['half', SessionType::Interval, PlanPhase::Taper, RaceAmbitionState::OnTrack, 20],
     ['marathon', SessionType::Tempo, PlanPhase::Peak, RaceAmbitionState::OnTrack, 35],
-    ['marathon', SessionType::Tempo, PlanPhase::Peak, RaceAmbitionState::Ambitious, 17],
+    ['marathon', SessionType::Tempo, PlanPhase::Peak, RaceAmbitionState::Ambitious, 35],
     ['marathon', SessionType::Long, PlanPhase::Peak, RaceAmbitionState::OnTrack, 40],
     ['5k', SessionType::Interval, PlanPhase::Peak, RaceAmbitionState::Unsupported, 20],
     ['10k', SessionType::Interval, PlanPhase::Build, RaceAmbitionState::Unsupported, 21],
@@ -175,3 +176,44 @@ it('keeps goal-pace history in its own family and the marathon in its race famil
 it('keeps a time trial out of every progression family', function (SessionType $type): void {
     expect(IntensityPrescriptionResolver::familyKeyForContext($type, ['kind' => 'time_trial', 'distance_m' => 5_000, 'aim_time_sec' => 1_500, 'retry' => 0]))->toBe('time_trial');
 })->with([SessionType::Tempo, SessionType::Interval]);
+
+it('raises a prescription to carried-over minutes in whole reps, capped at the phase target, never lowering it', function (): void {
+    $work = new GoalPaceWork(GoalPaceWork::KIND_10K, 10_000, 300, RaceAmbitionState::OnTrack);
+    $carried = static fn (int $minutes, ?int $previous = null): IntensityPrescription => IntensityPrescriptionResolver::resolve(
+        SessionType::Tempo,
+        PlanPhase::Peak,
+        10_000,
+        3000,
+        PRESCRIPTION_PACES,
+        IntentVerdict::Hit,
+        $previous,
+        goalPace: $work,
+        carriedHardMinutes: $minutes,
+    );
+
+    expect($carried(18)->hardMinutes)->toBe(20)
+        ->and($carried(18)->reason)->toBe('carried over from the last build quality session')
+        ->and($carried(30)->hardMinutes)->toBe(24)
+        ->and($carried(6)->hardMinutes)->toBe(8)
+        ->and($carried(12, 16)->hardMinutes)->toBe(20)
+        ->and($carried(12, 16)->reason)->toBe('progressed after the latest comparable session was hit')
+        ->and($carried(30, 20)->hardMinutes)->toBe(24)
+        ->and($carried(30, 20)->reason)->toBe('progressed after the latest comparable session was hit');
+});
+
+it('tapers goal-pace work to about half the last peak session in whole peak-length reps, at least two', function (int $peakMinutes, int $taperMinutes): void {
+    $work = new GoalPaceWork(GoalPaceWork::KIND_10K, 10_000, 300, RaceAmbitionState::OnTrack, repMinutes: 4);
+    $taper = IntensityPrescriptionResolver::resolve(SessionType::Interval, PlanPhase::Taper, 10_000, 3000, PRESCRIPTION_PACES, IntentVerdict::Hit, 12, goalPace: $work, peakHardMinutes: $peakMinutes);
+
+    expect($taper->hardMinutes)->toBe($taperMinutes)
+        ->and($taper->reason)->toBe('half the last peak session, at its pace and rep length');
+})->with([
+    [24, 12],
+    [20, 12],
+    [16, 8],
+    [8, 8],
+]);
+
+it('keeps fast-finish long runs in their own comparable family', function (): void {
+    expect(IntensityPrescriptionResolver::familyKeyForContext(SessionType::Long, ['kind' => 'fast_finish', 'race_kind' => '10k', 'distance_m' => 10_000]))->toBe('fast_finish');
+});

@@ -6,6 +6,7 @@ namespace App\Services\Run\Plan;
 
 use App\Enums\FallOffTilt;
 use App\Enums\FeedbackSubject;
+use App\Enums\IntentVerdict;
 use App\Enums\PaceBand;
 use App\Enums\PlanPhase;
 use App\Enums\PlannedSessionStatus;
@@ -188,6 +189,11 @@ final readonly class Periodizer
         $rows = [];
         $fixedDates = $inputs->pinnedDates + $inputs->settledDates;
         $ceilingKm = $inputs->resumeTrailingMeanKm === null ? null : $inputs->resumeTrailingMeanKm * self::RESUME_WEEKLY_GROWTH;
+        $buildQualityMinutes = $inputs->lastBuildQualityHardMinutes;
+        $peakGoalPaceMinutes = $inputs->lastPeakGoalPaceHardMinutes;
+        $longestKm = $inputs->longestRunSoFarKm;
+        $lastFastFinishWeek = $inputs->lastFastFinishDate === null ? null : Carbon::parse($inputs->lastFastFinishDate)->startOfWeek(Carbon::MONDAY);
+        $fastFinishFrom = self::fastFinishFrom($arc);
         $trials = new TimeTrialSchedule($inputs, array_values(array_map(
             static fn (array $week): string => $week['week_start']->toDateString(),
             array_filter($arc, static fn (array $week): bool => $week['phase'] === PlanPhase::Deload),
@@ -213,13 +219,32 @@ final readonly class Periodizer
             if ($ceilingKm !== null) {
                 [$week['multiplier'], $ceilingKm] = self::boundResumedWeek($weekRows, $week['phase'], $week['multiplier'], $inputs, $ceilingKm);
             }
+            $goalPace = GoalPaceWork::forWeek($inputs, $week['week_start'], $week['phase']);
+            $fastFinish = $fastFinishFrom !== null
+                && in_array($week['phase'], [PlanPhase::Build, PlanPhase::Peak], true)
+                && $week['zone'] === PhaseSchedule::ZONE_BLOCK
+                && $week['week_start']->gte($fastFinishFrom)
+                && ($lastFastFinishWeek === null || $lastFastFinishWeek->diffInWeeks($week['week_start']) >= FastFinishLongRun::MIN_WEEKS_APART)
+                ? FastFinishLongRun::forWeek($inputs, $goalPace)
+                : null;
             $trial = $trials->forWeek($week['week_start'], $week['phase']);
-            $trialRows = $trial === null ? null : $this->withIntensityPrescriptions($weekRows, $week['multiplier'], $inputs, $week['week_start'], $rows, trial: $trial);
+            $trialRows = $trial === null ? null : $this->withIntensityPrescriptions($weekRows, $week['multiplier'], $inputs, $week['week_start'], $rows, trial: $trial, buildQualityMinutes: $buildQualityMinutes, peakGoalPaceMinutes: $peakGoalPaceMinutes, fastFinish: $fastFinish, longestKm: $longestKm);
             if ($trialRows !== null && array_any($trialRows, static fn (array $row): bool => TimeTrial::isTrial($row['prescription_race_context']))) {
                 $weekRows = $trialRows;
                 $trials->placedIn($week['week_start']);
             } else {
-                $weekRows = $this->withIntensityPrescriptions($weekRows, $week['multiplier'], $inputs, $week['week_start'], $rows, GoalPaceWork::forWeek($inputs, $week['week_start'], $week['phase']));
+                $weekRows = $this->withIntensityPrescriptions($weekRows, $week['multiplier'], $inputs, $week['week_start'], $rows, $goalPace, buildQualityMinutes: $buildQualityMinutes, peakGoalPaceMinutes: $peakGoalPaceMinutes, fastFinish: $fastFinish, longestKm: $longestKm);
+            }
+            if (array_any($weekRows, static fn (array $row): bool => $row['prescribed_hard_minutes'] > 0 && FastFinishLongRun::isFastFinish($row['prescription_race_context']))) {
+                $lastFastFinishWeek = $week['week_start'];
+            }
+            $longKm = array_intersect_key(self::plannedKmByDate($weekRows, $week['multiplier'], $inputs), array_filter($weekRows, static fn (array $row): bool => $row['session_type'] === SessionType::Long));
+            $longestKm = max([$longestKm, ...array_values($longKm)]);
+            if ($week['phase'] === PlanPhase::Build) {
+                $buildQualityMinutes = self::lastQualityMinutes($weekRows) ?? $buildQualityMinutes;
+            }
+            if ($week['phase'] === PlanPhase::Peak) {
+                $peakGoalPaceMinutes = self::goalPaceMinutes($weekRows) ?? $peakGoalPaceMinutes;
             }
             foreach ($weekRows as $date => $row) {
                 $rows[$date] = [...$row, 'volume_multiplier' => $week['multiplier'], 'fall_off_tilt' => $row['session_type'] === SessionType::Easy ? null : ($row['fall_off_tilt'] ?? null)];
@@ -227,6 +252,52 @@ final readonly class Periodizer
         }
 
         return $rows;
+    }
+
+    /**
+     * The first week a fast-finish long run may fall in: the second half of the
+     * block's Build weeks, or its first Peak week when it has no Build.
+     *
+     * @param  list<array{week_start: Carbon, phase: PlanPhase, zone: string}>  $arc
+     */
+    private static function fastFinishFrom(array $arc): ?Carbon
+    {
+        $block = array_filter($arc, static fn (array $week): bool => $week['zone'] === PhaseSchedule::ZONE_BLOCK);
+        $build = array_values(array_filter($block, static fn (array $week): bool => $week['phase'] === PlanPhase::Build));
+        if ($build !== []) {
+            return $build[intdiv(count($build), 2)]['week_start'];
+        }
+
+        return array_find($block, static fn (array $week): bool => $week['phase'] === PlanPhase::Peak)['week_start'] ?? null;
+    }
+
+    /**
+     * The hard minutes of the week's latest quality session, a time trial aside.
+     *
+     * @param  array<string, array{session_type: SessionType, prescribed_hard_minutes: int, prescription_race_context: array<string, int|float|string>|null, ...}>  $weekRows
+     */
+    private static function lastQualityMinutes(array $weekRows): ?int
+    {
+        $quality = array_filter($weekRows, static fn (array $row): bool => in_array($row['session_type'], [SessionType::Tempo, SessionType::Interval], true)
+            && $row['prescribed_hard_minutes'] > 0
+            && ! TimeTrial::isTrial($row['prescription_race_context']));
+        ksort($quality);
+
+        return $quality === [] ? null : array_last($quality)['prescribed_hard_minutes'];
+    }
+
+    /**
+     * The hard minutes of the week's 5K-to-half goal-pace session.
+     *
+     * @param  array<string, array{session_type: SessionType, prescribed_hard_minutes: int, prescription_race_context: array<string, int|float|string>|null, ...}>  $weekRows
+     */
+    private static function goalPaceMinutes(array $weekRows): ?int
+    {
+        $row = array_find($weekRows, static fn (array $row): bool => $row['prescribed_hard_minutes'] > 0
+            && in_array($row['session_type'], [SessionType::Tempo, SessionType::Interval], true)
+            && IntensityPrescriptionResolver::familyKeyForContext($row['session_type'], $row['prescription_race_context']) === 'goal_pace');
+
+        return $row['prescribed_hard_minutes'] ?? null;
     }
 
     /**
@@ -463,7 +534,7 @@ final readonly class Periodizer
      * @param array<string, array{session_type: SessionType, prescribed_hard_minutes: int, prescribed_pace_band: PaceBand|null, ...}> $priorRows
      * @return array<string, array{phase: PlanPhase, session_type: SessionType, prescribed_hard_minutes: int, prescribed_pace_band: PaceBand|null, prescribed_pace_sec_per_km: int|null, prescription_reason: string|null, prescription_race_context: array<string, int|float|string>|null, ...}>
      */
-    private function withIntensityPrescriptions(array $rows, float $multiplier, PlanInputs $inputs, Carbon $weekStart, array $priorRows, ?GoalPaceWork $goalPace = null, ?TimeTrial $trial = null): array
+    private function withIntensityPrescriptions(array $rows, float $multiplier, PlanInputs $inputs, Carbon $weekStart, array $priorRows, ?GoalPaceWork $goalPace = null, ?TimeTrial $trial = null, ?int $buildQualityMinutes = null, ?int $peakGoalPaceMinutes = null, ?FastFinishLongRun $fastFinish = null, float $longestKm = 0.0): array
     {
         $workloadSessions = self::workloadSessions($inputs);
         $weekEnd = $weekStart->copy()->addDays(6)->toDateString();
@@ -473,7 +544,7 @@ final readonly class Periodizer
             && self::isHardDay($session));
         $kmByDate = self::plannedKmByDate($rows, $multiplier, $inputs);
         $goalPaceDate = $goalPace?->replacedDate($rows);
-        $resolve = function (string $date, ?int $hardMinutesAvailable = null) use ($rows, $inputs, $goalPace, $goalPaceDate): IntensityPrescription {
+        $resolve = function (string $date, ?int $hardMinutesAvailable = null) use ($rows, $inputs, $goalPace, $goalPaceDate, $buildQualityMinutes, $peakGoalPaceMinutes): IntensityPrescription {
             $row = $rows[$date];
             $work = $date === $goalPaceDate || ($row['session_type'] === SessionType::Long && $goalPace?->racesLongAtGoalPace() === true)
                 ? $goalPace
@@ -482,6 +553,11 @@ final readonly class Periodizer
                 ? IntensityPrescriptionResolver::familyKey($row['session_type'], $inputs->raceDistanceM, $inputs->raceGoalTimeSec)
                 : IntensityPrescriptionResolver::familyKeyForContext($row['session_type'], $work->context());
             $recent = $inputs->recentPrescriptions[$family] ?? null;
+            $carried = $row['phase'] === PlanPhase::Peak
+                && in_array($family, ['goal_pace', 'race_tempo'], true)
+                && ($recent['verdict'] ?? null) !== IntentVerdict::TooHard
+                ? $buildQualityMinutes
+                : null;
 
             return IntensityPrescriptionResolver::resolve(
                 $row['session_type'],
@@ -493,13 +569,16 @@ final readonly class Periodizer
                 $recent['hard_minutes'] ?? null,
                 $hardMinutesAvailable,
                 $work,
+                $carried,
+                $row['phase'] === PlanPhase::Taper && $family === 'goal_pace' ? $peakGoalPaceMinutes : null,
             );
         };
 
+        $twoRunWeek = ($inputs->runDays === null ? $inputs->sessionsPerWeek : count($inputs->runDays)) === 2;
         $prescriptions = [];
         foreach ($rows as $date => $row) {
             $prescriptions[$date] = $resolve($date);
-            if (($inputs->runDays === null ? $inputs->sessionsPerWeek : count($inputs->runDays)) === 2) {
+            if ($twoRunWeek) {
                 $prescription = $prescriptions[$date];
                 $prescriptions[$date] = $row['session_type'] === SessionType::Tempo
                     ? new IntensityPrescription(min(10, $prescription->hardMinutes), $prescription->paceBand, $prescription->paceSecPerKm, 'modest quality for an established two-run week', $prescription->raceContext)
@@ -566,6 +645,19 @@ final readonly class Periodizer
             $row = [...$row, ...$prescription->toArray()];
         }
         unset($row);
+
+        $longDate = array_find_key($rows, static fn (array $row): bool => $row['session_type'] === SessionType::Long && $row['prescribed_hard_minutes'] === 0);
+        if ($fastFinish !== null && $longDate !== null && ! $unknownDemandingMinutes && ! $twoRunWeek
+            && $kmByDate[$longDate] <= $longestKm
+            && ($inputs->recovery === null || ! $inputs->recovery->excludesQualityOn($longDate))) {
+            $withFinish = $rows;
+            $withFinish[$longDate] = [...$rows[$longDate], ...$fastFinish->prescription($kmByDate[$longDate])->toArray()];
+            $asPrescriptions = array_map(static fn (array $row): IntensityPrescription => new IntensityPrescription($row['prescribed_hard_minutes'], $row['prescribed_pace_band'], $row['prescribed_pace_sec_per_km'], $row['prescription_reason'], $row['prescription_race_context']), $withFinish);
+            $ceiling = $this->hardCeiling($withFinish, $kmByDate, $asPrescriptions, $inputs, $weekStart, $workloadSessions);
+            if ($ceiling === null || array_sum(array_column($withFinish, 'prescribed_hard_minutes')) <= $ceiling) {
+                $rows = $withFinish;
+            }
+        }
 
         return self::capQualityAroundWeeklyHardDays($rows, $workloadSessions + $priorRows, $weekStart);
     }
@@ -638,9 +730,6 @@ final readonly class Periodizer
 
         $qualityDates = array_keys(array_filter($rows, static fn (array $row): bool =>
             in_array($row['session_type'], [SessionType::Tempo, SessionType::Interval], true) && $row['prescribed_hard_minutes'] > 0));
-        if ($qualityDates === []) {
-            return $rows;
-        }
 
         $protectedOffsets = array_values(array_unique([...$fixedHardOffsets, ...$longOffsets]));
         $recoveryByDate = [];
@@ -681,6 +770,28 @@ final readonly class Periodizer
             ];
         }
 
+        $hardDates = [...$fixedHardOffsets, ...$generatedHardLongDates, ...$keptHardOffsets];
+        foreach ($rows as $date => $row) {
+            if ($row['session_type'] !== SessionType::Long || $row['prescribed_hard_minutes'] === 0 || ! FastFinishLongRun::isFastFinish($row['prescription_race_context'])) {
+                continue;
+            }
+            $tooCloseToHardDay = array_any($hardDates, static fn (string $hardDate): bool => self::daysApart($date, $hardDate) < 2);
+            if (count($hardDates) < 2 && ! $tooCloseToHardDay) {
+                $hardDates[] = $date;
+
+                continue;
+            }
+
+            $rows[$date] = [
+                ...$row,
+                'prescribed_hard_minutes' => 0,
+                'prescribed_pace_band' => null,
+                'prescribed_pace_sec_per_km' => null,
+                'prescription_reason' => null,
+                'prescription_race_context' => null,
+            ];
+        }
+
         return $rows;
     }
 
@@ -701,7 +812,7 @@ final readonly class Periodizer
             || (in_array($row['session_type'], [SessionType::Tempo, SessionType::Interval], true)
                 && ($row['prescribed_hard_minutes'] > 0 || (array_key_exists('hard_minutes', $row) && $row['hard_minutes'] === null)))
             || ($row['session_type'] === SessionType::Long
-                && $row['prescribed_pace_band'] === PaceBand::Marathon
+                && $row['prescribed_pace_band'] !== null
                 && $row['prescribed_hard_minutes'] > 0);
     }
 

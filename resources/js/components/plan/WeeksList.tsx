@@ -6,13 +6,9 @@ import Chip from '@/components/ui/Chip';
 import Eyebrow from '@/components/ui/Eyebrow';
 import { Icon } from '@/components/ui/Icon';
 import { cn } from '@/lib/cn';
-import { formatKm } from '@/lib/pace';
-import {
-    computeAdherence,
-    PHASE_LABEL,
-    phaseGroupKey,
-    weekRangeLabel,
-} from '@/lib/plan';
+import { formatKm, weekRangeLabel } from '@/lib/pace';
+import { computeAdherence } from '@/lib/plan';
+import { PHASE_LABEL, phaseGroupKey } from '@/lib/planPhases';
 
 function weekKm(week: SeasonSummaryWeek): string {
     if (week.type !== 'history') {

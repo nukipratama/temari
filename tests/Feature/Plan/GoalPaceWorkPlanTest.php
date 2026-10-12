@@ -9,11 +9,13 @@ use App\Enums\PlanPhase;
 use App\Enums\RaceAmbitionState;
 use App\Enums\SegmentKey;
 use App\Enums\SessionType;
+use App\Services\Run\Plan\FastFinishLongRun;
 use App\Services\Run\Plan\IntensityPrescription;
 use App\Services\Run\Plan\Periodizer;
 use App\Services\Run\Plan\PlanInputs;
 use App\Services\Run\Plan\RaceAmbitionAssessor;
 use App\Services\Run\Plan\SegmentGenerator;
+use App\Services\Run\Plan\SessionSegment;
 use Illuminate\Support\Carbon;
 
 const GOAL_PACE_RACE_DAY = '2026-12-19';
@@ -27,6 +29,9 @@ const GOAL_PACE_MARATHON = 42_195.0;
 /** Goal paces of 4:36, 5:00, 4:59 and 5:10 per km, against a supported marathon pace of 5:20; an unsupported goal's supported times. */
 const GOAL_PACE_TIMES = [5_000 => 1380, 10_000 => 3000, 21_097 => 6300, 42_195 => 13_080];
 
+/** An ambitious goal's supported time, as a multiple of its goal time. */
+const GOAL_PACE_AMBITIOUS_SUPPORTED = 1.05;
+
 /**
  * @param  array<string, array{verdict: IntentVerdict, hard_minutes: int}>  $recent
  */
@@ -37,6 +42,9 @@ function goalPaceInputs(
     int $sessions = 4,
     array $recent = [],
     float $longRunKm = 18.0,
+    ?float $projectedSec = null,
+    ?int $lastBuildQualityMinutes = null,
+    ?int $lastPeakGoalPaceMinutes = null,
 ): PlanInputs {
     $raceDate = Carbon::parse(GOAL_PACE_RACE_DAY);
     $goalTimeSec = GOAL_PACE_TIMES[(int) $distanceM];
@@ -55,14 +63,20 @@ function goalPaceInputs(
         adaptation: ['reason' => AdaptationReason::Steady, 'deload' => false, 'quality_delta' => 0, 'adherence_pct' => 100, 'stimulus_adherence_pct' => 100],
         pinnedDates: [],
         settledDates: [],
-        projectedRaceSeconds: (float) $goalTimeSec,
+        projectedRaceSeconds: $projectedSec ?? (float) $goalTimeSec,
         raceGoalTimeSec: $goalTimeSec,
         paces: ['easy' => 380, 'marathon' => 320, 'threshold' => 295, 'interval' => 270],
         longRunBaselineKm: $longRunKm,
         longRunCapKm: 32.0,
         recentPrescriptions: $recent,
         raceAmbitionState: $band,
-        raceSteppingStoneTimeSec: $band === RaceAmbitionState::Unsupported ? RaceAmbitionAssessor::steppingStoneTimeSec($goalTimeSec) : null,
+        raceSteppingStoneTimeSec: match ($band) {
+            RaceAmbitionState::Unsupported => RaceAmbitionAssessor::steppingStoneTimeSec($goalTimeSec),
+            RaceAmbitionState::Ambitious => RaceAmbitionAssessor::steppingStoneTimeSec((int) round($goalTimeSec * GOAL_PACE_AMBITIOUS_SUPPORTED)),
+            default => null,
+        },
+        lastBuildQualityHardMinutes: $lastBuildQualityMinutes,
+        lastPeakGoalPaceHardMinutes: $lastPeakGoalPaceMinutes,
     );
 }
 
@@ -101,13 +115,28 @@ function goalPaceWeeks(array $rows): array
  */
 function hardDates(array $rows): array
 {
-    return array_keys(array_filter($rows, static fn (array $row): bool => $row['prescribed_hard_minutes'] > 0));
+    return array_keys(array_filter($rows, static fn (array $row): bool => $row['prescribed_hard_minutes'] > 0
+        && ! FastFinishLongRun::isFastFinish($row['prescription_race_context'])));
 }
 
 /** @return array{verdict: IntentVerdict, hard_minutes: int} */
 function goalPaceHit(int $minutes): array
 {
     return ['verdict' => IntentVerdict::Hit, 'hard_minutes' => $minutes];
+}
+
+/**
+ * @param  array<string, array<string, mixed>>  $rows
+ * @return array<string, int>
+ */
+function qualityMinutesInPhase(array $rows, PlanPhase $phase): array
+{
+    return array_map(
+        static fn (array $row): int => $row['prescribed_hard_minutes'],
+        array_filter($rows, static fn (array $row): bool => $row['phase'] === $phase
+            && in_array($row['session_type'], [SessionType::Tempo, SessionType::Interval], true)
+            && $row['prescribed_hard_minutes'] > 0),
+    );
 }
 
 it('opens the 10K window six weeks out, race week included', function (): void {
@@ -131,16 +160,16 @@ it('opens the half window eight weeks out and keeps the deload week inside it ea
         ->and(hardDates($deloadWeek))->toBe([]);
 });
 
-it('doses the half by band and phase, taper included', function (RaceAmbitionState $band, array $minutes): void {
+it('doses the half by band and phase, taper included', function (RaceAmbitionState $band, array $minutes, int $taperPace): void {
     $rows = goalPacePlan(goalPaceInputs(GOAL_PACE_HALF, $band, recent: ['goal_pace' => goalPaceHit(40)]));
 
     expect([$rows['2026-11-05']['prescribed_hard_minutes'], $rows['2026-11-19']['prescribed_hard_minutes'], $rows['2026-12-10']['prescribed_hard_minutes']])
         ->toBe($minutes)
         ->and($rows['2026-12-10']['phase'])->toBe(PlanPhase::Taper)
-        ->and($rows['2026-12-10']['prescribed_pace_sec_per_km'])->toBe(299);
+        ->and($rows['2026-12-10']['prescribed_pace_sec_per_km'])->toBe($taperPace);
 })->with([
-    'on track' => [RaceAmbitionState::OnTrack, [30, 40, 20]],
-    'ambitious' => [RaceAmbitionState::Ambitious, [15, 20, 10]],
+    'on track' => [RaceAmbitionState::OnTrack, [30, 40, 20], 299],
+    'ambitious' => [RaceAmbitionState::Ambitious, [30, 40, 20], 304],
 ]);
 
 it('doses 5K and 10K goal-pace reps by band', function (float $distanceM, RaceAmbitionState $band, int $peakMinutes): void {
@@ -150,9 +179,9 @@ it('doses 5K and 10K goal-pace reps by band', function (float $distanceM, RaceAm
         ->and($peak['prescription_race_context']['band'])->toBe($band->value);
 })->with([
     '5K on track' => [5_000.0, RaceAmbitionState::OnTrack, 20],
-    '5K ambitious' => [5_000.0, RaceAmbitionState::Ambitious, 8],
+    '5K ambitious' => [5_000.0, RaceAmbitionState::Ambitious, 20],
     '10K on track' => [GOAL_PACE_10K, RaceAmbitionState::OnTrack, 24],
-    '10K ambitious' => [GOAL_PACE_10K, RaceAmbitionState::Ambitious, 12],
+    '10K ambitious' => [GOAL_PACE_10K, RaceAmbitionState::Ambitious, 24],
 ]);
 
 it('gives low-evidence and unknown 10K and half goals no goal-pace work', function (float $distanceM, RaceAmbitionState $band): void {
@@ -200,7 +229,8 @@ it('learns unsupported goal-pace progression from goal-pace history, not interva
     $fromIntervals = goalPacePlan(goalPaceInputs(GOAL_PACE_10K, RaceAmbitionState::Unsupported, '2026-10-26', recent: ['interval' => goalPaceHit(16)]));
     $fromGoalPace = goalPacePlan(goalPaceInputs(GOAL_PACE_10K, RaceAmbitionState::Unsupported, '2026-10-26', recent: ['goal_pace' => goalPaceHit(16)]));
 
-    expect($fromIntervals['2026-11-26']['prescribed_hard_minutes'])->toBe(8)
+    expect($fromIntervals['2026-11-26']['prescribed_hard_minutes'])->toBe(12)
+        ->and($fromIntervals['2026-11-26']['prescription_reason'])->toBe('carried over from the last build quality session')
         ->and($fromGoalPace['2026-11-26']['prescribed_hard_minutes'])->toBe(20);
 });
 
@@ -233,12 +263,14 @@ it('runs an on-track marathon tempo and race long at goal pace inside the window
         ->and($rows['2026-11-01']['prescribed_pace_sec_per_km'])->toBe(310);
 });
 
-it('gives an ambitious marathon goal pace only through a halved tempo, keeping the race long at supported pace', function (): void {
+it('gives an ambitious marathon the full race tempo at the stepping-stone pace with a goal-pace final unit, keeping the race long at supported pace', function (): void {
     $rows = goalPacePlan(goalPaceInputs(GOAL_PACE_MARATHON, RaceAmbitionState::Ambitious, recent: ['race_tempo' => goalPaceHit(40)]));
+    $onTrack = goalPacePlan(goalPaceInputs(GOAL_PACE_MARATHON, RaceAmbitionState::OnTrack, recent: ['race_tempo' => goalPaceHit(40)]));
 
-    expect($rows['2026-10-29']['prescribed_pace_sec_per_km'])->toBe(310)
-        ->and($rows['2026-10-29']['prescribed_hard_minutes'])->toBe(12)
-        ->and($rows['2026-11-05']['prescribed_hard_minutes'])->toBe(17)
+    expect($rows['2026-10-29']['prescribed_pace_sec_per_km'])->toBe(316)
+        ->and($rows['2026-10-29']['prescription_race_context']['final_pace_sec_per_km'])->toBe(310)
+        ->and($rows['2026-10-29']['prescribed_hard_minutes'])->toBe($onTrack['2026-10-29']['prescribed_hard_minutes'])
+        ->and($rows['2026-11-05']['prescribed_hard_minutes'])->toBe($onTrack['2026-11-05']['prescribed_hard_minutes'])
         ->and($rows['2026-11-01']['prescribed_pace_sec_per_km'])->toBe(320)
         ->and($rows['2026-11-01']['prescription_race_context'])->not->toHaveKey('band');
 });
@@ -270,7 +302,7 @@ it('keeps goal-pace progression apart from interval history', function (): void 
     $fromIntervals = goalPacePlan(goalPaceInputs(GOAL_PACE_10K, RaceAmbitionState::OnTrack, '2026-10-26', recent: ['interval' => goalPaceHit(16)]));
     $fromGoalPace = goalPacePlan(goalPaceInputs(GOAL_PACE_10K, RaceAmbitionState::OnTrack, '2026-10-26', recent: ['goal_pace' => goalPaceHit(16)]));
 
-    expect($fromIntervals['2026-11-26']['prescribed_hard_minutes'])->toBe(8)
+    expect($fromIntervals['2026-11-26']['prescribed_hard_minutes'])->toBe(12)
         ->and($fromIntervals['2026-11-05']['prescribed_hard_minutes'])->toBe(12)
         ->and($fromGoalPace['2026-11-26']['prescribed_hard_minutes'])->toBe(20)
         ->and($fromGoalPace['2026-11-05']['prescribed_hard_minutes'])->toBe(6);
@@ -283,4 +315,149 @@ it('trims goal-pace reps to the distance a short day holds instead of dropping t
         ->and($peak['prescribed_hard_minutes'])->toBeGreaterThan(0)->toBeLessThan(24)
         ->and($peak['prescribed_hard_minutes'] % 4)->toBe(0)
         ->and($peak['prescription_reason'])->toBe('bounded by the distance this day holds');
+});
+
+it('carries the last build quality minutes into peak goal-pace work instead of the cold start', function (): void {
+    $rows = goalPacePlan(goalPaceInputs(GOAL_PACE_10K, RaceAmbitionState::OnTrack, projectedSec: 4200.0));
+    $build = qualityMinutesInPhase($rows, PlanPhase::Build);
+    $peak = qualityMinutesInPhase($rows, PlanPhase::Peak);
+
+    expect(array_last($build))->toBe(20)
+        ->and(array_values($peak))->toBe([20, 20, 20])
+        ->and(array_keys(goalPaceSessions(array_intersect_key($rows, $peak))))->toBe(array_keys($peak))
+        ->and($rows[array_key_first($peak)]['prescription_reason'])->toBe('carried over from the last build quality session');
+});
+
+it('caps the carried-over minutes at the peak goal-pace target', function (): void {
+    $rows = goalPacePlan(goalPaceInputs(GOAL_PACE_10K, RaceAmbitionState::OnTrack, projectedSec: 4200.0, recent: ['tempo' => goalPaceHit(30)]));
+    $build = qualityMinutesInPhase($rows, PlanPhase::Build);
+
+    expect(array_last($build))->toBe(30)
+        ->and(array_values(qualityMinutesInPhase($rows, PlanPhase::Peak)))->toBe([24, 24, 24]);
+});
+
+it('carries the persisted last build quality minutes once build is behind the athlete', function (): void {
+    $rows = goalPacePlan(goalPaceInputs(GOAL_PACE_10K, RaceAmbitionState::OnTrack, '2026-11-23', lastBuildQualityMinutes: 16));
+
+    expect(array_values(qualityMinutesInPhase($rows, PlanPhase::Peak)))->toBe([16, 16]);
+});
+
+it('keeps later peak progression in the goal-pace family', function (IntentVerdict $verdict, int $peakMinutes): void {
+    $recent = ['goal_pace' => ['verdict' => $verdict, 'hard_minutes' => 20]];
+    $rows = goalPacePlan(goalPaceInputs(GOAL_PACE_10K, RaceAmbitionState::OnTrack, '2026-11-23', recent: $recent, lastBuildQualityMinutes: 20));
+
+    expect(array_values(qualityMinutesInPhase($rows, PlanPhase::Peak)))->toBe([$peakMinutes, $peakMinutes]);
+})->with([
+    'hit' => [IntentVerdict::Hit, 24],
+    'too hard' => [IntentVerdict::TooHard, 16],
+]);
+
+it('keeps peak quality level with build in a two-quality week', function (): void {
+    $rows = goalPacePlan(goalPaceInputs(GOAL_PACE_10K, RaceAmbitionState::OnTrack, sessions: 5, recent: ['interval' => goalPaceHit(12)]));
+    $weekly = static function (array $minutes): array {
+        $byWeek = [];
+        foreach ($minutes as $date => $hard) {
+            $week = Carbon::parse($date)->startOfWeek(Carbon::MONDAY)->toDateString();
+            $byWeek[$week] = ($byWeek[$week] ?? 0) + $hard;
+        }
+
+        return $byWeek;
+    };
+    $build = $weekly(qualityMinutesInPhase($rows, PlanPhase::Build));
+
+    expect(min($weekly(qualityMinutesInPhase($rows, PlanPhase::Peak))))->toBeGreaterThanOrEqual(array_last($build));
+});
+
+it('gives ambitious and unsupported goals the same goal-pace dose', function (float $distanceM): void {
+    $minutes = static fn (RaceAmbitionState $band): array => array_map(
+        static fn (array $row): int => $row['prescribed_hard_minutes'],
+        goalPaceSessions(goalPacePlan(goalPaceInputs($distanceM, $band, '2026-10-26', recent: ['goal_pace' => goalPaceHit(24)]))),
+    );
+
+    expect($minutes(RaceAmbitionState::Ambitious))->toBe($minutes(RaceAmbitionState::Unsupported))
+        ->and($minutes(RaceAmbitionState::Ambitious))->not->toBe([]);
+})->with([5_000.0, GOAL_PACE_10K, GOAL_PACE_HALF]);
+
+it('runs every ambitious work unit but the last at the stepping-stone pace and the last at the goal pace', function (): void {
+    $peak = goalPacePlan(goalPaceInputs(GOAL_PACE_10K, RaceAmbitionState::Ambitious, '2026-10-26', recent: ['goal_pace' => goalPaceHit(24)]))['2026-11-26'];
+    $prescription = new IntensityPrescription($peak['prescribed_hard_minutes'], $peak['prescribed_pace_band'], $peak['prescribed_pace_sec_per_km'], null, $peak['prescription_race_context']);
+    $reps = array_values(array_filter(
+        SegmentGenerator::forPrescription($peak['session_type'], $peak['phase'], 16.0, ['easy' => 380, 'marathon' => 320, 'threshold' => 295, 'interval' => 270], $prescription),
+        static fn ($segment): bool => $segment->key === SegmentKey::Interval,
+    ));
+
+    expect($peak['prescribed_pace_sec_per_km'])->toBe(306)
+        ->and(array_map(static fn ($rep): ?int => $rep->paceSecPerKm, $reps))->toBe([306, 306, 306, 306, 306, 300]);
+});
+
+it('gives a 10K ambitious four-run plan at least the last build quality minutes in every peak week', function (): void {
+    $rows = goalPacePlan(goalPaceInputs(GOAL_PACE_10K, RaceAmbitionState::Ambitious, projectedSec: 4200.0));
+    $build = qualityMinutesInPhase($rows, PlanPhase::Build);
+
+    expect(array_last($build))->toBe(20)
+        ->and(array_values(qualityMinutesInPhase($rows, PlanPhase::Peak)))->toBe([20, 20, 20]);
+});
+
+it('closes an ambitious half peak block with its last quarter at the goal pace', function (): void {
+    $peak = goalPacePlan(goalPaceInputs(GOAL_PACE_HALF, RaceAmbitionState::Ambitious, recent: ['goal_pace' => goalPaceHit(40)]))['2026-11-19'];
+    $prescription = new IntensityPrescription($peak['prescribed_hard_minutes'], $peak['prescribed_pace_band'], $peak['prescribed_pace_sec_per_km'], null, $peak['prescription_race_context']);
+    $blocks = array_values(array_filter(
+        SegmentGenerator::forPrescription($peak['session_type'], $peak['phase'], 16.0, ['easy' => 380, 'marathon' => 320, 'threshold' => 295, 'interval' => 270], $prescription),
+        static fn ($segment): bool => $segment->key === SegmentKey::Main,
+    ));
+
+    expect(array_map(static fn ($block): array => [$block->minutes, $block->paceSecPerKm], $blocks))->toBe([[30.0, 304], [10.0, 299]]);
+});
+
+/**
+ * @param  array<string, mixed>  $row
+ * @return list<SessionSegment>
+ */
+function goalPaceWorkUnits(array $row): array
+{
+    $prescription = new IntensityPrescription($row['prescribed_hard_minutes'], $row['prescribed_pace_band'], $row['prescribed_pace_sec_per_km'], null, $row['prescription_race_context']);
+
+    return array_values(array_filter(
+        SegmentGenerator::forPrescription($row['session_type'], $row['phase'], 16.0, ['easy' => 380, 'marathon' => 320, 'threshold' => 295, 'interval' => 270], $prescription),
+        static fn ($segment): bool => in_array($segment->key, [SegmentKey::Interval, SegmentKey::Main], true) && $segment->paceLabel !== PaceBand::Easy,
+    ));
+}
+
+it('tapers a 10K ambitious four-run plan to about half the last peak session at its pace and rep length', function (): void {
+    $rows = goalPacePlan(goalPaceInputs(GOAL_PACE_10K, RaceAmbitionState::Ambitious, projectedSec: 4200.0));
+    $peak = qualityMinutesInPhase($rows, PlanPhase::Peak);
+    $taper = qualityMinutesInPhase($rows, PlanPhase::Taper);
+    $unitsOf = static fn (string $date): array => array_map(static fn ($unit): array => [$unit->minutes, $unit->paceSecPerKm], goalPaceWorkUnits($rows[$date]));
+
+    expect(array_values($taper))->toBe([12])
+        ->and(array_last($peak))->toBe(20)
+        ->and($unitsOf(array_key_last($peak)))->toBe([[4.0, 306], [4.0, 306], [4.0, 306], [4.0, 306], [4.0, 300]])
+        ->and($unitsOf(array_key_first($taper)))->toBe([[4.0, 306], [4.0, 306], [3.0, 306], [1.0, 300]])
+        ->and($rows[array_key_first($taper)]['prescription_reason'])->toBe('half the last peak session, at its pace and rep length');
+});
+
+it('tapers from the persisted last peak session once peak is behind the athlete', function (): void {
+    $rows = goalPacePlan(goalPaceInputs(GOAL_PACE_10K, RaceAmbitionState::OnTrack, '2026-12-07', lastPeakGoalPaceMinutes: 24));
+
+    expect(array_values(qualityMinutesInPhase($rows, PlanPhase::Taper)))->toBe([12])
+        ->and(array_map(static fn ($unit): float => $unit->minutes, goalPaceWorkUnits($rows['2026-12-10'])))->toBe([4.0, 4.0, 4.0]);
+});
+
+it('keeps the minimum structure when half the peak session is less, and peak reps with no peak session behind it', function (?int $peakMinutes, int $taperMinutes): void {
+    $rows = goalPacePlan(goalPaceInputs(GOAL_PACE_10K, RaceAmbitionState::OnTrack, '2026-12-07', lastPeakGoalPaceMinutes: $peakMinutes));
+
+    expect($rows['2026-12-10']['prescribed_hard_minutes'])->toBe($taperMinutes)
+        ->and(array_unique(array_map(static fn ($unit): float => $unit->minutes, goalPaceWorkUnits($rows['2026-12-10']))))->toBe([4.0]);
+})->with([
+    'half of 8' => [8, 8],
+    'no peak session' => [null, 8],
+]);
+
+it('tapers a half block to about half the last peak block in whole taper blocks, at its pace', function (): void {
+    $rows = goalPacePlan(goalPaceInputs(GOAL_PACE_HALF, RaceAmbitionState::OnTrack, recent: ['goal_pace' => goalPaceHit(24)]));
+    $peak = qualityMinutesInPhase($rows, PlanPhase::Peak);
+
+    expect(array_last($peak))->toBe(26)
+        ->and($rows['2026-12-10']['prescribed_hard_minutes'])->toBe(10)
+        ->and($rows['2026-12-10']['prescribed_pace_sec_per_km'])->toBe($rows[array_key_last($peak)]['prescribed_pace_sec_per_km']);
 });
