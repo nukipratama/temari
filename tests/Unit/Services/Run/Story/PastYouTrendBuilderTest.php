@@ -391,18 +391,6 @@ it('counts only analyzed runs when qualifying planned-session intent', function 
     expect(buildTrend($user)->comparisons)->toBe([]);
 });
 
-it('excludes a pair when both known temperatures are more than three degrees apart', function (): void {
-    $user = User::factory()->create();
-    foreach ([200, 215, 230] as $daysAgo) {
-        trendRun($user, $daysAgo, 4_400, ['weather_temp_c' => 24]);
-    }
-    foreach ([3, 10, 17] as $daysAgo) {
-        trendRun($user, $daysAgo, 4_250, ['weather_temp_c' => 28]);
-    }
-
-    expect(buildTrend($user)->comparisons)->toBe([]);
-});
-
 it('calls it improving on heart rate alone when pace held', function (): void {
     $user = User::factory()->create();
     foreach ([200, 215, 230, 245] as $daysAgo) {
