@@ -746,6 +746,27 @@ it('counts the made-up day in next week\'s adherence and leaves the emptied day 
         ->and($adherence)->toBeGreaterThan(0);
 });
 
+it('never clamps a future day, only today, even under a restricted readiness ceiling', function (): void {
+    $user = User::factory()->create();
+    seedDemandingRunYesterday($user);
+    PlannedSession::factory()->for($user)->create([
+        'date' => Carbon::today()->addDays(2)->toDateString(),
+        'session_type' => 'interval',
+    ]);
+
+    $response = $this->actingAs($user)
+        ->get('/plan', inertiaPartialHeaders($this->actingAs($user), '/plan', 'Plan', 'weeks'))
+        ->assertSuccessful();
+
+    $weeks = $response->json('props.weeks');
+    $futureDay = collect($weeks)
+        ->flatMap(fn (array $week): array => $week['days'])
+        ->firstWhere('date', Carbon::today()->addDays(2)->toDateString());
+
+    expect($futureDay['session_type'])->toBe('interval')
+        ->and($futureDay['eased_from'])->toBeNull();
+});
+
 it('credits the run a skipped session is made up onto, rather than excusing it', function (): void {
     Carbon::setTestNow('2026-08-12 08:00:00');
     $user = User::factory()->create();
