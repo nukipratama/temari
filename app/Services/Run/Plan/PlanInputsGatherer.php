@@ -131,7 +131,7 @@ final readonly class PlanInputsGatherer
             timeTrials: $this->timeTrials($user, $season->starts_at->copy()->startOfWeek(Carbon::MONDAY), $today),
             timeTrialEvidenceDates: $this->timeTrialEvidenceDates($user, $trialDistanceM, $currentWeekStart),
             lastBuildQualityHardMinutes: $this->lastBuildQualityHardMinutes($user, $today),
-            lastPeakGoalPaceHardMinutes: $this->lastPeakGoalPaceHardMinutes($user, $today),
+            lastPeakGoalPaceHardMinutes: $race === null ? null : $this->lastPeakGoalPaceHardMinutes($user, $today, GoalPaceWork::kindFor((float) $race->distance_m)),
         );
     }
 
@@ -324,7 +324,7 @@ final readonly class PlanInputsGatherer
             ?->prescribed_hard_minutes;
     }
 
-    private function lastPeakGoalPaceHardMinutes(User $user, Carbon $today): ?int
+    private function lastPeakGoalPaceHardMinutes(User $user, Carbon $today, string $kind): ?int
     {
         return PlannedSession::query()
             ->where('user_id', $user->id)
@@ -334,7 +334,8 @@ final readonly class PlanInputsGatherer
             ->where('prescribed_hard_minutes', '>', 0)
             ->latest('date')
             ->get(['session_type', 'prescribed_hard_minutes', 'prescription_race_context'])
-            ->first(static fn (PlannedSession $session): bool => IntensityPrescriptionResolver::familyKeyForContext($session->session_type, $session->prescription_race_context) === 'goal_pace')
+            ->first(static fn (PlannedSession $session): bool => IntensityPrescriptionResolver::familyKeyForContext($session->session_type, $session->prescription_race_context) === 'goal_pace'
+                && ($session->prescription_race_context['kind'] ?? null) === $kind)
             ?->prescribed_hard_minutes;
     }
 
