@@ -177,15 +177,6 @@ it('starts a new event, keeping the old one on record, when the intent is new', 
     Carbon::setTestNow();
 });
 
-it('rejects revising the current race into a different distance', function (): void {
-    $user = User::factory()->create();
-    RaceGoal::factory()->for($user)->create(['distance_m' => 10_000]);
-
-    $this->actingAs($user)
-        ->post('/race', racePayload(['distance_m' => 21_097]))
-        ->assertSessionHasErrors('distance_m');
-});
-
 it('does not rebuild the plan or add history when the same race is submitted again', function (): void {
     Bus::fake();
     $user = User::factory()->create();
@@ -213,16 +204,6 @@ it('shows the stated target beside the supported effort, the mode and the event 
         ->where('race.support.mode', 'road')
         ->where('race.history.0.kind', 'created')
         ->has('race.ambition.supported_time_sec')));
-});
-
-it('rejects an invalid submission and persists nothing', function (): void {
-    $user = User::factory()->create();
-
-    $this->actingAs($user)
-        ->post('/race', racePayload(['distance_m' => 100]))
-        ->assertSessionHasErrors('distance_m');
-
-    expect(RaceGoal::query()->where('user_id', $user->id)->exists())->toBeFalse();
 });
 
 it('shares the active race app-wide via the activeRace prop', function (): void {

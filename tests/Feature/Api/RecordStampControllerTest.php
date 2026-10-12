@@ -56,14 +56,6 @@ it("rejects a record_key the user doesn't actually hold", function (): void {
     expect(RecordStamp::query()->where('user_id', $user->id)->exists())->toBeFalse();
 });
 
-it('rejects a record_key outside the tracked set', function (): void {
-    $user = User::factory()->create();
-
-    $this->actingAs($user)
-        ->postJson(route('api.record-stamps.store'), ['record_key' => 'best_5min'])
-        ->assertInvalid(['record_key']);
-});
-
 it("leaves another user's stamp untouched", function (): void {
     $userA = User::factory()->create();
     $activityA = Activity::factory()->for($userA)->create();

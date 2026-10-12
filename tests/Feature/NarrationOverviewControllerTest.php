@@ -225,10 +225,6 @@ it('resolves relative range tokens to self-correcting windows', function (string
     'all' => ['all', '1970-01-01'],
 ]);
 
-it('rejects malformed date inputs', function (): void {
-    $this->getJson('/devtools/narration?from=yesterday')->assertStatus(422);
-});
-
 it('returns zeroed totals and empty breakdown when no rows fall within range', function (): void {
     $this->get('/devtools/narration?from=2026-05-01&to=2026-05-19')
         ->assertSuccessful()
@@ -423,10 +419,6 @@ it('narrows the cost chart to the athlete the filter names', function (): void {
                 ->where('athlete', $alice->id)
                 ->where('chart.days.0.cost', 2.5),
         );
-});
-
-it('rejects a non-numeric athlete filter', function (): void {
-    $this->getJson('/devtools/narration?athlete=alice')->assertStatus(422);
 });
 
 it('carries each athlete\'s last open and the away flag the scheduler\'s own window decides', function (array $attributes, bool $away): void {

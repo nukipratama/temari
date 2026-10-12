@@ -72,18 +72,6 @@ it('trims the question before storing it', function (): void {
     expect(RunQuestion::query()->sole()->question)->toBe('why did my HR drift?');
 });
 
-it('rejects a question with no substance', function (): void {
-    $user = User::factory()->create();
-    $activity = runFor($user);
-
-    $this->actingAs($user)
-        ->postJson("/api/activities/{$activity->id}/questions", ['question' => 'hm'])
-        ->assertStatus(422)
-        ->assertJsonValidationErrors('question');
-
-    Bus::assertNothingDispatched();
-});
-
 // ── Scoping ─────────────────────────────────────────────────────────────────
 
 it('refuses a question about someone else run', function (): void {

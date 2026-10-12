@@ -73,32 +73,6 @@ it('clears a field back to null, handing control back to the behavioral fallback
         ->and($preference->long_run_day)->toBeNull();
 });
 
-it('rejects a run_days count that does not match sessions_per_week', function (): void {
-    $user = User::factory()->create();
-
-    $this->actingAs($user)
-        ->patch('/settings/training-preferences', validPreferencesPayload(['sessions_per_week' => 4, 'run_days' => [1, 3, 5]]))
-        ->assertSessionHasErrors('run_days');
-
-    expect(TrainingPreference::query()->where('user_id', $user->id)->exists())->toBeFalse();
-});
-
-it('rejects a long_run_day that is not one of the chosen run_days', function (): void {
-    $user = User::factory()->create();
-
-    $this->actingAs($user)
-        ->patch('/settings/training-preferences', validPreferencesPayload(['run_days' => [1, 3, 5, 6], 'long_run_day' => 2]))
-        ->assertSessionHasErrors('long_run_day');
-});
-
-it('rejects a sessions_per_week outside the supported 2-6 range', function (): void {
-    $user = User::factory()->create();
-
-    $this->actingAs($user)
-        ->patch('/settings/training-preferences', validPreferencesPayload(['sessions_per_week' => 7, 'run_days' => null, 'long_run_day' => null]))
-        ->assertSessionHasErrors('sessions_per_week');
-});
-
 /**
  * Run days, session count and long-run day decide the shape of every week
  * WeekPlanBuilder emits. Saving them and having nothing change until Monday

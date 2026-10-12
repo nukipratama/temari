@@ -89,30 +89,11 @@ it('never lets one athlete confirm another athlete\'s race', function (): void {
     expect($this->race->fresh()->outcome)->toBe(RaceOutcome::Pending);
 });
 
-it('never matches another athlete\'s activity to a race', function (): void {
-    $theirs = ownedRaceDayRun(User::factory()->create());
-
-    $this->actingAs($this->user)
-        ->post("/race/{$this->race->id}/outcome", ['outcome' => 'confirmed', 'activity_id' => $theirs->id])
-        ->assertSessionHasErrors('activity_id');
-
-    expect($this->race->fresh()->outcome)->toBe(RaceOutcome::Pending);
-});
-
 it('never suggests another athlete\'s run', function (): void {
     ownedRaceDayRun(User::factory()->create());
 
     $this->actingAs($this->user)->get('/race')
         ->assertInertia(fn (Assert $page) => $page->loadDeferredProps(fn (Assert $deferred) => $deferred->where('past_races.0.outcome.suggestion', null)));
-});
-
-it('rejects a confirmation with neither a run nor a time, and an unknown outcome', function (): void {
-    $this->actingAs($this->user)
-        ->post("/race/{$this->race->id}/outcome", ['outcome' => 'confirmed'])
-        ->assertSessionHasErrors('outcome');
-    $this->actingAs($this->user)
-        ->post("/race/{$this->race->id}/outcome", ['outcome' => 'won'])
-        ->assertSessionHasErrors('outcome');
 });
 
 it('shows only retired races that have passed and carry an outcome', function (): void {

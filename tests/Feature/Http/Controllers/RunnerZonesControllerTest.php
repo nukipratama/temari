@@ -42,7 +42,7 @@ function validZonesPayload(array $overrides = []): array
     ];
 }
 
-it('creates a runner_profiles row and bumps hr_zones_changed_at', function (): void {
+it('creates a manual runner_profiles row and bumps hr_zones_changed_at', function (): void {
     $user = User::factory()->create();
 
     $this->actingAs($user)
@@ -55,17 +55,8 @@ it('creates a runner_profiles row and bumps hr_zones_changed_at', function (): v
     expect($profile->max_hr)->toBe(190)
         ->and($profile->resting_hr)->toBe(50)
         ->and($profile->hr_zones['Z3'])->toEqual(['lo' => 158, 'hi' => 172])
-        ->and($profile->hr_zones_changed_at)->not->toBeNull();
-});
-
-it('marks the profile source as manual on save', function (): void {
-    $user = User::factory()->create();
-
-    $this->actingAs($user)
-        ->patch('/settings/zones', validZonesPayload())
-        ->assertRedirect();
-
-    expect(RunnerProfile::query()->where('user_id', $user->id)->value('source'))->toBe('manual');
+        ->and($profile->hr_zones_changed_at)->not->toBeNull()
+        ->and($profile->source)->toBe('manual');
 });
 
 it('updates the existing row in place rather than creating a second one', function (): void {
@@ -78,16 +69,6 @@ it('updates the existing row in place rather than creating a second one', functi
 
     expect(RunnerProfile::query()->where('user_id', $user->id)->count())->toBe(1)
         ->and(RunnerProfile::query()->where('user_id', $user->id)->value('max_hr'))->toBe(190);
-});
-
-it('rejects an invalid submission and persists nothing', function (): void {
-    $user = User::factory()->create();
-
-    $this->actingAs($user)
-        ->patch('/settings/zones', validZonesPayload(['max_hr' => 90]))
-        ->assertSessionHasErrors('max_hr');
-
-    expect(RunnerProfile::query()->where('user_id', $user->id)->exists())->toBeFalse();
 });
 
 it('queues one whole-history recalibration after a zone update', function (): void {

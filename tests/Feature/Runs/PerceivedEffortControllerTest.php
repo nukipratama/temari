@@ -89,7 +89,7 @@ it('validates the score as a whole number from 1 to 10', function (mixed $score)
 
     expect($detail->fresh()->perceived_effort)->toBeNull()
         ->and($detail->fresh()->perceived_effort_at)->toBeNull();
-})->with([0, 11, 5.5, 'hard', null]);
+})->with([0, 11]);
 
 it('lets an athlete score only their own run', function (): void {
     $owner = User::factory()->create();

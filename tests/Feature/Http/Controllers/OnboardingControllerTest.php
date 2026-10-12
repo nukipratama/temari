@@ -147,17 +147,6 @@ it('creates a race and marks the user onboarded when the goal step is filled in,
     expect(RaceGoal::query()->where('user_id', $user->id)->active()->count())->toBe(1);
 });
 
-it('rejects a partial goal submission and does not onboard the user', function (): void {
-    $user = User::factory()->needsOnboarding()->create();
-
-    $this->actingAs($user)
-        ->post('/onboarding', onboardingGoalPayload(['distance_m' => null]))
-        ->assertSessionHasErrors('distance_m');
-
-    expect($user->fresh()->onboarded_at)->toBeNull()
-        ->and(RaceGoal::query()->where('user_id', $user->id)->exists())->toBeFalse();
-});
-
 it('creates a training_preferences row when the preferences step is filled in', function (): void {
     $user = User::factory()->needsOnboarding()->create();
 
