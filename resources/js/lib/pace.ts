@@ -304,3 +304,16 @@ export function parsePaceSec(s: string): number {
     if (!Number.isFinite(m) || !Number.isFinite(sec)) return Number.NaN;
     return m * 60 + sec;
 }
+
+/** "jun 12–18" for a week start, collapsing the month when both ends share it. */
+export function weekRangeLabel(weekStartIso: string): string {
+    const monday = mondayOf(weekStartIso);
+    const sunday = sundayOf(monday);
+    if (monday.getMonth() === sunday.getMonth()) {
+        const month = monday
+            .toLocaleDateString('en-US', { month: 'short' })
+            .toLowerCase();
+        return `${month} ${monday.getDate()}–${sunday.getDate()}`;
+    }
+    return `${formatMonthDayId(monday)}–${formatMonthDayId(sunday)}`;
+}

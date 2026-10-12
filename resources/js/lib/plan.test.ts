@@ -15,13 +15,12 @@ import {
     deltaDirection,
     easedFromDelta,
     fallOffTiltWhy,
+    fastFinishPaceLabel,
     isRaceWeek,
     nextPhaseOf,
     judgedDayResult,
     paceEaseDelta,
     paceLabel,
-    phaseGroupKey,
-    phasesOf,
     prescriptionWhy,
     sessionHint,
     sessionLabel,
@@ -31,7 +30,6 @@ import {
     volumeAdjustedFrom,
     weekdayLabel,
     weeksLabel,
-    weekRangeLabel,
     weeksToRace,
     workLabel,
 } from './plan';
@@ -123,20 +121,6 @@ describe('complianceTally', () => {
     });
 });
 
-describe('weekRangeLabel', () => {
-    it('names the month once when the week does not cross one', () => {
-        expect(weekRangeLabel('2026-06-15')).toBe('jun 15–21');
-    });
-
-    it('names both months when the week crosses one', () => {
-        expect(weekRangeLabel('2026-06-29')).toBe('jun 29–jul 5');
-    });
-
-    it('snaps a mid-week date back to its Monday', () => {
-        expect(weekRangeLabel('2026-06-18')).toBe(weekRangeLabel('2026-06-15'));
-    });
-});
-
 describe('weekdayLabel', () => {
     it('names the weekday a date falls on', () => {
         expect(weekdayLabel('2026-06-15')).toBe('Mon');
@@ -145,95 +129,6 @@ describe('weekdayLabel', () => {
 
     it('returns an empty string for an unparseable date', () => {
         expect(weekdayLabel('not-a-date')).toBe('');
-    });
-});
-
-describe('phasesOf', () => {
-    it('averages each phase’s weekly volume', () => {
-        const phases = phasesOf([
-            week({ phase: 'base', planned_km: 30 }),
-            week({ week_start: '2026-06-22', phase: 'base', planned_km: 40 }),
-        ]);
-
-        expect(phases).toEqual([{ key: 'base', avgKm: 35, state: 'done' }]);
-    });
-
-    it('marks the phase holding the current week as current', () => {
-        expect(phasesOf(RACE_SEASON).map((p) => p.state)).toEqual([
-            'done',
-            'current',
-            'upcoming',
-        ]);
-    });
-
-    it('keeps a self-scaled season’s repeating build/deload cycle as two phases, not four', () => {
-        const phases = phasesOf([
-            week({ phase: 'build', type: 'history' }),
-            week({
-                week_start: '2026-06-22',
-                phase: 'deload',
-                type: 'current',
-            }),
-            week({
-                week_start: '2026-06-29',
-                phase: 'build',
-                type: 'lookahead',
-            }),
-        ]);
-
-        expect(phases.map((p) => p.key)).toEqual(['build', 'deload']);
-    });
-
-    it('merges every general-zone week into one "general" entry, ignoring its own build/deload phase', () => {
-        const phases = phasesOf([
-            week({ zone: 'general', phase: 'build', type: 'history' }),
-            week({
-                week_start: '2026-06-22',
-                zone: 'general',
-                phase: 'deload',
-                type: 'current',
-            }),
-            week({
-                week_start: '2026-06-29',
-                zone: 'block',
-                phase: 'base',
-                type: 'lookahead',
-            }),
-        ]);
-
-        expect(phases.map((p) => p.key)).toEqual(['general', 'base']);
-        expect(phases[0].state).toBe('current');
-    });
-
-    it('puts the general entry first, ahead of the block phases it precedes', () => {
-        const phases = phasesOf([
-            week({ zone: 'general', phase: 'build' }),
-            week({
-                week_start: '2026-06-22',
-                zone: 'block',
-                phase: 'base',
-                type: 'current',
-            }),
-        ]);
-
-        expect(phases.map((p) => p.key)).toEqual(['general', 'base']);
-    });
-});
-
-describe('phaseGroupKey', () => {
-    it('reads a block week’s own phase', () => {
-        expect(phaseGroupKey(week({ zone: 'block', phase: 'peak' }))).toBe(
-            'peak',
-        );
-    });
-
-    it('collapses any general-zone week to the shared "general" key, whatever its own phase', () => {
-        expect(phaseGroupKey(week({ zone: 'general', phase: 'build' }))).toBe(
-            'general',
-        );
-        expect(phaseGroupKey(week({ zone: 'general', phase: 'deload' }))).toBe(
-            'general',
-        );
     });
 });
 
@@ -419,6 +314,8 @@ function planDay(overrides: Partial<PlanDay> = {}): PlanDay {
         fall_off_tilt: null,
         goal_pace: null,
         stepping_stone: false,
+        closes_at_goal_pace: false,
+        fast_finish: null,
         time_trial: null,
         hr_cap_bpm: null,
         advice_note: null,
@@ -973,6 +870,81 @@ describe('stepping-stone work', () => {
                 }),
             ),
         ).toBe('rehearsing your marathon stepping-stone pace.');
+    });
+});
+
+describe('ambitious stepping-stone work', () => {
+    it('says it closes at goal pace, under the stepping-stone label', () => {
+        const ambitious = planDay({
+            session_type: 'interval',
+            goal_pace: '10k',
+            stepping_stone: true,
+            closes_at_goal_pace: true,
+        });
+
+        expect(sessionLabel(ambitious)).toBe('stepping-stone pace');
+        expect(sessionPurpose(ambitious)).toBe(
+            'rehearsing your 10K stepping-stone pace, closing at goal pace.',
+        );
+    });
+});
+
+describe('a fast-finish long run', () => {
+    const fastFinish = (
+        pace_source: 'goal' | 'stepping_stone' | 'supported',
+        pace_kind: '5k' | '10k' | 'half' = '10k',
+    ) =>
+        planDay({
+            session_type: 'long',
+            fast_finish: { pace_kind, pace_source },
+            segments: [
+                {
+                    key: 'easy',
+                    minutes: 80,
+                    zone: 'Z2',
+                    pace_label: 'easy',
+                    km: 12,
+                    pace_sec_per_km: 400,
+                },
+                {
+                    key: 'main',
+                    minutes: 20,
+                    zone: 'Z4',
+                    pace_label: 'threshold',
+                    km: 4,
+                    pace_sec_per_km: 290,
+                },
+            ],
+        });
+
+    it('is named a long run with a fast finish', () => {
+        expect(sessionLabel(fastFinish('supported'))).toBe(
+            'long run with a fast finish',
+        );
+        expect(workLabel(fastFinish('goal'))).toBeUndefined();
+    });
+
+    it('names the fast block by the pace it actually runs at', () => {
+        expect(fastFinishPaceLabel(fastFinish('goal'))).toBe('goal pace');
+        expect(fastFinishPaceLabel(fastFinish('stepping_stone'))).toBe(
+            'stepping-stone pace',
+        );
+        expect(fastFinishPaceLabel(fastFinish('supported'))).toBe(
+            'supported 10K pace',
+        );
+        expect(fastFinishPaceLabel(planDay({}))).toBeUndefined();
+    });
+
+    it('says where the fast finish runs, never goal-pace work unless it is', () => {
+        expect(sessionPurpose(fastFinish('goal', 'half'))).toBe(
+            'the last fifth at your half marathon goal pace. rehearses race pace on tired legs.',
+        );
+        expect(sessionPurpose(fastFinish('stepping_stone'))).toBe(
+            'the last fifth at your 10K stepping-stone pace. rehearses race pace on tired legs.',
+        );
+        expect(sessionPurpose(fastFinish('supported'))).toBe(
+            'the last fifth at your supported 10K pace. rehearses race pace on tired legs.',
+        );
     });
 });
 

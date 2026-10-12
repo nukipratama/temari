@@ -1317,6 +1317,47 @@ it('dayPayload names the race a goal-pace session rehearses, at the goal pace, o
         ->and(PlanRenderer::goalPaceKindOf($goalPace, SessionType::Easy))->toBeNull();
 });
 
+it('dayPayload marks stepping-stone work that closes at an ambitious goal\'s pace, and hands narration that goal pace', function (): void {
+    $session = fn (string $band, ?int $finalPace): PlannedSession => PlannedSession::factory()->make([
+        'date' => '2026-08-12',
+        'phase' => PlanPhase::Peak,
+        'session_type' => SessionType::Interval,
+        'prescribed_hard_minutes' => 16,
+        'prescribed_pace_band' => PaceBand::Threshold,
+        'prescribed_pace_sec_per_km' => 306,
+        'prescription_race_context' => array_filter(['distance_m' => 10_000, 'goal_pace_sec_per_km' => 306, 'kind' => '10k', 'band' => $band, 'final_pace_sec_per_km' => $finalPace]),
+    ]);
+    $payload = fn (PlannedSession $s): array => PlanRenderer::dayPayload($s, Carbon::parse('2026-08-10'), null, [], 10_000.0, false, 20.0, 1.0, INF, RENDERER_PACES, PlannedSessionStatus::Planned);
+
+    expect($payload($session('ambitious', 296))['closes_at_goal_pace'])->toBeTrue()
+        ->and($payload($session('ambitious', 296))['stepping_stone'])->toBeTrue()
+        ->and($payload($session('unsupported', null))['closes_at_goal_pace'])->toBeFalse()
+        ->and($payload($session('on_track', null))['closes_at_goal_pace'])->toBeFalse()
+        ->and(PlanRenderer::goalPaceForNarration($session('ambitious', 296), SessionType::Interval))->toBe(['stepping_stone' => '10k', 'closing_goal_pace_formatted' => '4:56'])
+        ->and(PlanRenderer::goalPaceForNarration($session('unsupported', null), SessionType::Interval))->toBe(['stepping_stone' => '10k']);
+});
+
+it('dayPayload names a fast-finish long run by the race and source of its fast block\'s pace, only while it is shown as written', function (): void {
+    $session = fn (int $hardMinutes, string $source = 'supported'): PlannedSession => PlannedSession::factory()->make([
+        'date' => '2026-08-12',
+        'phase' => PlanPhase::Build,
+        'session_type' => SessionType::Long,
+        'prescribed_hard_minutes' => $hardMinutes,
+        'prescribed_pace_band' => $hardMinutes > 0 ? PaceBand::Threshold : null,
+        'prescribed_pace_sec_per_km' => $hardMinutes > 0 ? 290 : null,
+        'prescription_race_context' => $hardMinutes > 0 ? ['kind' => 'fast_finish', 'race_kind' => '5k', 'distance_m' => 5_000, 'pace_kind' => '10k', 'pace_source' => $source] : null,
+    ]);
+    $payload = fn (PlannedSession $s): array => PlanRenderer::dayPayload($s, Carbon::parse('2026-08-10'), null, [], 5_000.0, false, 20.0, 1.0, INF, RENDERER_PACES, PlannedSessionStatus::Planned);
+
+    expect($payload($session(20))['fast_finish'])->toBe(['pace_kind' => '10k', 'pace_source' => 'supported'])
+        ->and($payload($session(20))['goal_pace'])->toBeNull()
+        ->and($payload($session(20, 'goal'))['fast_finish'])->toBe(['pace_kind' => '10k', 'pace_source' => 'goal'])
+        ->and($payload($session(0))['fast_finish'])->toBeNull()
+        ->and(PlanRenderer::fastFinishOf($session(20), SessionType::Easy))->toBeNull()
+        ->and(PlanRenderer::fastFinishForNarration($session(20), SessionType::Long))->toBe(['fast_finish' => ['pace_kind' => '10k', 'pace_source' => 'supported', 'minutes' => 20, 'pace_formatted' => '4:50']])
+        ->and(PlanRenderer::fastFinishForNarration($session(0), SessionType::Long))->toBe([]);
+});
+
 it('dayPayload names a time trial, sized as the trial alone at the aim, only while it is shown as written', function (): void {
     $trial = PlannedSession::factory()->make([
         'date' => '2026-08-12',

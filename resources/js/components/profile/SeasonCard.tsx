@@ -7,7 +7,7 @@ import Eyebrow from '@/components/ui/Eyebrow';
 import { Icon } from '@/components/ui/Icon';
 import { cn } from '@/lib/cn';
 import { formatNaiveMonthDayId } from '@/lib/pace';
-import { PHASE_LABEL, phasesOf } from '@/lib/plan';
+import { PHASE_LABEL, phasesOf } from '@/lib/planPhases';
 
 export interface SeasonGoal {
     id: number;

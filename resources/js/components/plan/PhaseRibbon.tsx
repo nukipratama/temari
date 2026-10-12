@@ -1,8 +1,10 @@
 import { useLayoutEffect, useRef, useState } from 'react';
 
+import type { SeasonSummaryWeek } from '@/lib/plan';
+
 import { phaseColor } from '@/lib/chartTokens';
 import { cn } from '@/lib/cn';
-import { PHASE_LABEL, phaseGroupKey, type SeasonSummaryWeek } from '@/lib/plan';
+import { PHASE_LABEL, phaseGroupKey } from '@/lib/planPhases';
 
 /** What a cell's hover/tap/focus reveals: its phase name, plus that it's the current week. */
 function cellLabel(week: SeasonSummaryWeek): string {

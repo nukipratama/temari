@@ -13,6 +13,8 @@ code_refs:
   - tests/Feature/Plan/GoalPaceWorkPlanTest.php
 ---
 
+> **Superseded in part (2026-10-12) by [[race-specific-sessions-name-the-pace-they-run-at]].** Rules 3 and 4: the race payload and the Race page now carry an ambitious goal's stepping stone, and its purpose line says the session closes at goal pace.
+
 # An ambitious goal trains at the stepping stone and rehearses the goal
 
 **Status:** Accepted (2026-10-12). Decision 2 of #2116, layer 2. Partly supersedes rules 3, 4 and 6 of [[goal-pace-work-in-the-last-weeks]] for an `ambitious` goal, and extends the stepping-stone pace of [[a-stepping-stone-for-an-unsupported-goal]] to the plan work of that band.

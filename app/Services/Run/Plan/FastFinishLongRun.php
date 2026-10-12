@@ -20,11 +20,18 @@ final readonly class FastFinishLongRun
 
     public const int MIN_WEEKS_APART = 2;
 
+    public const string PACE_GOAL = 'goal';
+
+    public const string PACE_STEPPING_STONE = 'stepping_stone';
+
+    public const string PACE_SUPPORTED = 'supported';
+
     public function __construct(
         public string $raceKind,
         public int $distanceM,
         public int $paceSecPerKm,
         public string $paceKind,
+        public string $paceSource,
     ) {
     }
 
@@ -43,7 +50,9 @@ final readonly class FastFinishLongRun
         }
         $raceKind = GoalPaceWork::kindFor($distanceM);
         if ($goalPace !== null) {
-            return new self($raceKind, (int) round($distanceM), $goalPace->goalPaceSecPerKm, $raceKind);
+            $source = GoalPaceWork::isSteppingStone($goalPace->context()) ? self::PACE_STEPPING_STONE : self::PACE_GOAL;
+
+            return new self($raceKind, (int) round($distanceM), $goalPace->goalPaceSecPerKm, $raceKind, $source);
         }
         [$supportedSec, $paceDistanceM] = $raceKind === GoalPaceWork::KIND_5K
             ? [$inputs->supportedTenKTimeSec, 10_000.0]
@@ -52,7 +61,7 @@ final readonly class FastFinishLongRun
             return null;
         }
 
-        return new self($raceKind, (int) round($distanceM), (int) round($supportedSec / ($paceDistanceM / 1000)), GoalPaceWork::kindFor($paceDistanceM));
+        return new self($raceKind, (int) round($distanceM), (int) round($supportedSec / ($paceDistanceM / 1000)), GoalPaceWork::kindFor($paceDistanceM), self::PACE_SUPPORTED);
     }
 
     public function prescription(float $longKm): IntensityPrescription
@@ -67,10 +76,10 @@ final readonly class FastFinishLongRun
         return $this->paceKind === GoalPaceWork::KIND_5K ? PaceBand::Interval : PaceBand::Threshold;
     }
 
-    /** @return array{kind: string, race_kind: string, distance_m: int} */
+    /** @return array{kind: string, race_kind: string, distance_m: int, pace_kind: string, pace_source: string} */
     public function context(): array
     {
-        return ['kind' => self::KIND, 'race_kind' => $this->raceKind, 'distance_m' => $this->distanceM];
+        return ['kind' => self::KIND, 'race_kind' => $this->raceKind, 'distance_m' => $this->distanceM, 'pace_kind' => $this->paceKind, 'pace_source' => $this->paceSource];
     }
 
     /** @param  array<string, int|float|string>|null  $context */

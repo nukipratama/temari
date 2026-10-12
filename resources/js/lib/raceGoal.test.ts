@@ -183,7 +183,7 @@ describe('ambitionNote', () => {
         ['on_track', /^on track: your target is within 3%/],
         [
             'ambitious',
-            /^ambitious: your target is 1\.6% faster.*trains at your target/,
+            /^ambitious: your target is 1\.6% faster.*race-pace work runs at your stepping stone and closes at your target pace\.$/,
         ],
         ['unsupported', /^unsupported: .*trains at the supported effort/],
         ['low_evidence', /^low evidence: .*less than half this distance/],

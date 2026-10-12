@@ -589,9 +589,18 @@ export interface WeekPlanDay {
     /** The race whose goal pace this session rehearses, set only while the
      *  session shown is that goal-pace work. */
     goal_pace: '5k' | '10k' | 'half' | 'marathon' | null;
-    /** True when that goal-pace work runs at an unsupported goal's
-     *  stepping-stone pace rather than the goal pace itself. */
+    /** True when that goal-pace work runs at an unsupported or ambitious
+     *  goal's stepping-stone pace rather than the goal pace itself. */
     stepping_stone: boolean;
+    /** True when that stepping-stone work closes at an ambitious goal's
+     *  pace. */
+    closes_at_goal_pace: boolean;
+    /** The race and source of the pace a fast-finish long run's fast block
+     *  runs at, set only while the session shown is that long run. */
+    fast_finish: {
+        pace_kind: '5k' | '10k' | 'half';
+        pace_source: 'goal' | 'stepping_stone' | 'supported';
+    } | null;
     /** The time trial this session is, set only while the session shown is
      *  that trial: its distance and the supported time to aim around. */
     time_trial: { distance_m: number; aim_time_sec: number } | null;

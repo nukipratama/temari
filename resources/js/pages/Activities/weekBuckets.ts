@@ -4,8 +4,7 @@ import type {
     WeeklySnapshotWithRecap,
 } from '@/types/inertia';
 
-import { isoDateLocal, mondayOf, sundayOf } from '@/lib/pace';
-import { weekRangeLabel } from '@/lib/plan';
+import { isoDateLocal, mondayOf, sundayOf, weekRangeLabel } from '@/lib/pace';
 
 export type RunWithDetail = Activity & { detail: ActivityDetail };
 

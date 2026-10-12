@@ -15,6 +15,7 @@ use App\Enums\PlanPhase;
 use App\Enums\PlannedSessionStatus;
 use App\Models\PlannedSession;
 use App\Services\Run\Metrics\DurationFormatter;
+use App\Services\Run\Metrics\PaceFormatter;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use LogicException;
@@ -328,6 +329,8 @@ final class PlanRenderer
             'fall_off_tilt' => $fallOffTilt?->value,
             'goal_pace' => $goalPace,
             'stepping_stone' => $goalPace !== null && GoalPaceWork::isSteppingStone($s->prescription_race_context),
+            'closes_at_goal_pace' => $goalPace !== null && GoalPaceWork::finalPaceOf($s->prescription_race_context) !== null,
+            'fast_finish' => self::fastFinishOf($s, $sessionType),
             'time_trial' => self::timeTrialOf($s, $sessionType),
             'advice_note' => $advisoryClamp !== null && $keepsPrescription ? $clampVoice ?? $advisoryClamp['note'] : null,
             'eased_from' => match (true) {
@@ -551,19 +554,62 @@ final class PlanRenderer
 
     /**
      * The goal-pace label the plan tools hand a narrator: `stepping_stone`
-     * for an unsupported goal's stepping-stone pace, `goal_pace` otherwise.
+     * for an unsupported or ambitious goal's stepping-stone pace, with the
+     * goal pace an ambitious goal's work closes at, `goal_pace` otherwise.
      *
-     * @return array{goal_pace?: string, stepping_stone?: string}
+     * @return array{goal_pace?: string, stepping_stone?: string, closing_goal_pace_formatted?: string}
      */
     public static function goalPaceForNarration(PlannedSession $s, SessionType $shownType): array
     {
         $kind = self::goalPaceKindOf($s, $shownType);
+        $finalPace = GoalPaceWork::finalPaceOf($s->prescription_race_context);
 
         return match (true) {
             $kind === null => [],
+            $finalPace !== null => ['stepping_stone' => $kind, 'closing_goal_pace_formatted' => PaceFormatter::format((float) $finalPace)],
             GoalPaceWork::isSteppingStone($s->prescription_race_context) => ['stepping_stone' => $kind],
             default => ['goal_pace' => $kind],
         };
+    }
+
+    /**
+     * The race and the source of the pace a fast-finish long run's fast
+     * block runs at, or null on any other session.
+     *
+     * @return array{pace_kind: string, pace_source: string}|null
+     */
+    public static function fastFinishOf(PlannedSession $s, SessionType $shownType): ?array
+    {
+        $context = $s->prescription_race_context;
+        $paceKind = $context['pace_kind'] ?? null;
+        $paceSource = $context['pace_source'] ?? null;
+        if ($shownType !== $s->session_type
+            || $shownType !== SessionType::Long
+            || ! FastFinishLongRun::isFastFinish($context)
+            || IntensityPrescription::fromSession($s)?->isEasy() !== false
+            || ! is_string($paceKind)
+            || ! is_string($paceSource)) {
+            return null;
+        }
+
+        return ['pace_kind' => $paceKind, 'pace_source' => $paceSource];
+    }
+
+    /**
+     * The fast finish the plan tools hand a narrator: its race, pace source,
+     * minutes and pace.
+     *
+     * @return array{fast_finish?: array{pace_kind: string, pace_source: string, minutes: int, pace_formatted: string|null}}
+     */
+    public static function fastFinishForNarration(PlannedSession $s, SessionType $shownType): array
+    {
+        $fastFinish = self::fastFinishOf($s, $shownType);
+
+        return $fastFinish === null ? [] : ['fast_finish' => [
+            ...$fastFinish,
+            'minutes' => (int) $s->prescribed_hard_minutes,
+            'pace_formatted' => $s->prescribed_pace_sec_per_km === null ? null : PaceFormatter::format((float) $s->prescribed_pace_sec_per_km),
+        ]];
     }
 
     /**

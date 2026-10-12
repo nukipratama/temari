@@ -82,7 +82,14 @@ final class PlanContextTool extends UserTool
             .'work, not tempo or intervals. stepping_stone, when present instead, names the race whose '
             .'stepping-stone pace the session rehearses, and the target pace is that stepping-stone pace: '
             .'the edge of on track, 3% faster than the time their running supports, not their goal. Call '
-            .'it stepping-stone work, never goal pace, tempo or intervals. '
+            .'it stepping-stone work, never goal pace, tempo or intervals. closing_goal_pace_formatted, when '
+            .'present with stepping_stone, is their goal pace, which the session closes at: its last rep, '
+            .'or the last quarter of each block or of its last rep, runs there; say it closes at goal pace. '
+            .'fast_finish, when present on a long run, means its last fast_finish.minutes run faster, at '
+            .'fast_finish.pace_formatted: the goal pace (pace_source goal), the stepping-stone pace '
+            .'(stepping_stone) or the pace their running supports (supported) for the race in '
+            .'fast_finish.pace_kind, while the target pace is the easy running before it. Call it a long '
+            .'run with a fast finish, and call the pace goal pace only when pace_source is goal. '
             .'time_trial, when present, means the day is an all-out time '
             .'trial over time_trial.distance_km after a warmup, aiming around time_trial.aim_time, the '
             .'supported time at that distance: call it a time trial, not tempo or intervals; it checks '
@@ -128,6 +135,7 @@ final class PlanContextTool extends UserTool
                 $shownType = $session->date->lt($today) ? null : ($shownTypeByDate[$session->date->toDateString()] ?? null);
                 $sessionType = $shownType ?? (! $effective->isEased() && IntensityPrescription::isEasyQualityDay($session, $effective->sessionType) ? SessionType::Easy : $effective->sessionType);
                 $goalPace = PlanRenderer::goalPaceForNarration($session, $sessionType);
+                $fastFinish = PlanRenderer::fastFinishForNarration($session, $sessionType);
                 $timeTrial = PlanRenderer::timeTrialOf($session, $sessionType);
                 $targetPaceSec = $goalPace === [] && $timeTrial === null
                     ? self::targetPaceSec($session, $sessionType, $paces)
@@ -144,6 +152,7 @@ final class PlanContextTool extends UserTool
                     'date' => $session->date->toDateString(),
                     'session_type' => $sessionType->value,
                     ...$goalPace,
+                    ...$fastFinish,
                     ...($timeTrial === null ? [] : ['time_trial' => PlanRenderer::timeTrialForNarration($timeTrial)]),
                     'phase' => $session->phase->value,
                     'distance_km' => match (true) {

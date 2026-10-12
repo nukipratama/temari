@@ -35,6 +35,8 @@ function day(overrides: Partial<EditablePlanDay> = {}): EditablePlanDay {
         fall_off_tilt: null,
         goal_pace: null,
         stepping_stone: false,
+        closes_at_goal_pace: false,
+        fast_finish: null,
         time_trial: null,
         hr_cap_bpm: null,
         advice_note: null,
@@ -263,6 +265,64 @@ describe('DayHeadline and DayDetail', () => {
             screen.getByText('rehearsing your 10K stepping-stone pace.'),
         ).toBeInTheDocument();
         expect(screen.queryByText(/goal pace/)).not.toBeInTheDocument();
+    });
+
+    it('names a fast-finish long run in its headline, its fast block at the pace it runs at', () => {
+        renderRow({
+            day: day({
+                session_type: 'long',
+                fast_finish: { pace_kind: '10k', pace_source: 'supported' },
+                hr_cap_bpm: 150,
+                segments: [
+                    {
+                        key: 'easy',
+                        minutes: 80,
+                        zone: 'Z2',
+                        pace_label: 'easy',
+                        km: 12,
+                        pace_sec_per_km: 400,
+                    },
+                    {
+                        key: 'main',
+                        minutes: 20,
+                        zone: 'Z4',
+                        pace_label: 'threshold',
+                        km: 4,
+                        pace_sec_per_km: 290,
+                    },
+                ],
+            }),
+        });
+
+        expect(
+            screen.getByText('long run with a fast finish'),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByText('4:50/km · supported 10K pace'),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByText(
+                'the last fifth at your supported 10K pace. rehearses race pace on tired legs.',
+            ),
+        ).toBeInTheDocument();
+        expect(screen.queryByText(/goal pace/)).not.toBeInTheDocument();
+    });
+
+    it('says ambitious stepping-stone work closes at goal pace', () => {
+        renderRow({
+            day: day({
+                session_type: 'interval',
+                goal_pace: '10k',
+                stepping_stone: true,
+                closes_at_goal_pace: true,
+            }),
+        });
+
+        expect(
+            screen.getByText(
+                'rehearsing your 10K stepping-stone pace, closing at goal pace.',
+            ),
+        ).toBeInTheDocument();
     });
 
     /**
