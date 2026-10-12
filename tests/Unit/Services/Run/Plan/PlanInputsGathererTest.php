@@ -478,3 +478,23 @@ it('carries the last build quality session the season prescribed, skipping trial
 
     expect($this->gatherer->forUser($user, Carbon::today())->lastBuildQualityHardMinutes)->toBe(9);
 });
+
+it('carries an ambitious goal\'s stepping-stone time for its goal-pace work without adding one to the race payload', function (): void {
+    $user = gathererAthlete();
+    PerformanceEvidence::query()->create([
+        'user_id' => $user->id, 'activity_id' => Activity::factory()->for($user)->create()->id, 'kind' => 'test', 'distance_m' => 10_000, 'elapsed_time_sec' => 3_000,
+        'performed_on' => Carbon::today()->subWeek(), 'confirmed_at' => now(),
+    ]);
+    $race = RaceGoal::factory()->for($user)->create([
+        'race_date' => '2026-10-31',
+        'distance_m' => 10_000,
+        'goal_time_sec' => 2_880,
+    ]);
+    $inputs = $this->gatherer->forUser($user, Carbon::today());
+    $ambition = app(RaceAmbitionAssessor::class)->assess($user, $race, Carbon::today());
+
+    expect($inputs->raceAmbitionState)->toBe(RaceAmbitionState::Ambitious)
+        ->and($inputs->raceSteppingStoneTimeSec)->toBe(RaceAmbitionAssessor::steppingStoneTimeSec($ambition->supportedTimeSec))
+        ->and($ambition->steppingStoneTimeSec)->toBeNull()
+        ->and($inputs->raceGoalTimeSec)->toBe(2_880);
+});

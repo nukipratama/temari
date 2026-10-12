@@ -70,6 +70,7 @@ final class SessionIntentJudge
             return self::reading(IntentVerdict::Unknown);
         }
 
+        $blockPaces = [$block->paceSecPerKm, ...array_map(static fn (SessionSegment $segment): int => $segment->paceSecPerKm ?? $block->paceSecPerKm, $blocks)];
         $anchor = self::longest($runs);
         $summary = self::summaryOf($anchor);
         $totalMinutes = array_sum(array_map(static fn (SessionSegment $segment): float => $segment->minutes ?? 0.0, $blocks));
@@ -90,10 +91,10 @@ final class SessionIntentJudge
         }
         if ($coveredSeconds !== null && $windowPace !== null) {
             $stimulus = self::stimulus('tempo', $coveredSeconds / 60, 'window');
-            if ($windowPace < $block->paceSecPerKm * (1 - self::EXCESSIVE_FRACTION)) {
+            if ($windowPace < min($blockPaces) * (1 - self::EXCESSIVE_FRACTION)) {
                 return self::reading(IntentVerdict::TooHard, $evidence + ['basis' => 'pace', 'control' => 'excessive'] + $stimulus);
             }
-            if ($windowPace <= $block->paceSecPerKm + self::PACE_TOLERANCE_SEC) {
+            if ($windowPace <= max($blockPaces) + self::PACE_TOLERANCE_SEC) {
                 return $coveredSeconds >= $totalMinutes * 60 * self::MIN_COVERAGE
                     ? self::reading(IntentVerdict::Hit, $evidence + ['basis' => 'pace', 'control' => 'controlled'] + $stimulus)
                     : self::onHeartRateOrUnknown($summary, $runs, $block->zone, $totalMinutes, $evidence, ['basis' => 'pace'] + $stimulus, 'tempo');
@@ -124,7 +125,9 @@ final class SessionIntentJudge
             return self::reading(IntentVerdict::Unknown);
         }
 
-        $ceiling = $repPace + self::PACE_TOLERANCE_SEC;
+        $repPaces = array_map(static fn (SessionSegment $segment): int => $segment->paceSecPerKm ?? $repPace, $reps);
+        $paceRange = [$repPace, ...$repPaces];
+        $ceiling = max($paceRange) + self::PACE_TOLERANCE_SEC;
         $needed = max(1, count($reps) - 1);
         $anchor = self::longest($runs);
         $summary = self::summaryOf($anchor);
@@ -144,14 +147,16 @@ final class SessionIntentJudge
         $lapPaces = self::lapPaces($laps);
         $work = IntervalDetector::detect($lapPaces);
         if ($work !== []) {
-            $counted = array_values(array_filter($work, static fn (int $position): bool => $lapPaces[$position] <= $ceiling
+            $targetOf = static fn (int $index): int => $repPaces[min($index, count($repPaces) - 1)];
+            $counted = array_filter($work, static fn (int $position, int $index): bool => $lapPaces[$position] <= $targetOf($index) + self::PACE_TOLERANCE_SEC
                 && is_numeric($laps[$position]['elapsed_sec'] ?? null)
-                && (float) $laps[$position]['elapsed_sec'] >= $repMinutes * 60 * self::MIN_COVERAGE));
+                && (float) $laps[$position]['elapsed_sec'] >= $repMinutes * 60 * self::MIN_COVERAGE, ARRAY_FILTER_USE_BOTH);
             $evidence['reps_at_pace'] = count($counted);
             if (count($counted) >= $needed) {
                 $meanPace = array_sum(array_map(static fn (int $position): float => $lapPaces[$position], $counted)) / count($counted);
+                $meanTarget = array_sum(array_map($targetOf, array_keys($counted))) / count($counted);
                 $stimulus = self::stimulus('interval', count($counted) * $repMinutes, 'laps');
-                if ($meanPace < $repPace * (1 - self::EXCESSIVE_FRACTION)) {
+                if ($meanPace < $meanTarget * (1 - self::EXCESSIVE_FRACTION)) {
                     return self::reading(IntentVerdict::TooHard, $evidence + ['basis' => 'laps', 'control' => 'excessive'] + $stimulus);
                 }
 
@@ -168,7 +173,7 @@ final class SessionIntentJudge
         }
         if ($coveredSeconds !== null && $windowPace !== null) {
             $stimulus = self::stimulus('interval', $coveredSeconds / 60, 'window');
-            if ($windowPace < $repPace * (1 - self::EXCESSIVE_FRACTION)) {
+            if ($windowPace < min($paceRange) * (1 - self::EXCESSIVE_FRACTION)) {
                 return self::reading(IntentVerdict::TooHard, $evidence + ['basis' => 'window', 'control' => 'excessive'] + $stimulus);
             }
             if ($windowPace <= $ceiling) {

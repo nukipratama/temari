@@ -7,7 +7,6 @@ namespace App\Services\Run\Plan;
 use App\Enums\IntentVerdict;
 use App\Enums\PaceBand;
 use App\Enums\PlanPhase;
-use App\Enums\RaceAmbitionState;
 use App\Enums\RaceSupport;
 use App\Enums\SessionType;
 
@@ -34,8 +33,6 @@ final class IntensityPrescriptionResolver
         GoalPaceWork::KIND_10K => ['build' => 21, 'peak' => 24, 'taper' => 12],
         GoalPaceWork::KIND_HALF => ['build' => 30, 'peak' => 40, 'taper' => 20],
     ];
-
-    private const int AMBITIOUS_DOSE_DIVISOR = 2;
 
     /**
      * @param array{easy: int, marathon: int, threshold: int, interval: int}|null $paces
@@ -106,7 +103,7 @@ final class IntensityPrescriptionResolver
     }
 
     /**
-     * @return array{0: int, 1: PaceBand, 2: array{distance_m: int, goal_pace_sec_per_km: int, kind: string, band: string}}
+     * @return array{0: int, 1: PaceBand, 2: array{distance_m: int, goal_pace_sec_per_km: int, kind: string, band: string, final_pace_sec_per_km?: int}}
      */
     private static function goalPaceTarget(SessionType $type, PlanPhase $phase, GoalPaceWork $goalPace): array
     {
@@ -115,12 +112,7 @@ final class IntensityPrescriptionResolver
             $type === SessionType::Long => self::RACE_LONG_TARGETS,
             default => self::RACE_TEMPO_TARGETS,
         };
-        $target = $targets[$phase->value] ?? 0;
-        if ($goalPace->band === RaceAmbitionState::Ambitious) {
-            $target = intdiv($target, self::AMBITIOUS_DOSE_DIVISOR);
-        }
-
-        return [$target, $goalPace->paceBand(), $goalPace->context()];
+        return [$targets[$phase->value] ?? 0, $goalPace->paceBand(), $goalPace->context()];
     }
 
     /**

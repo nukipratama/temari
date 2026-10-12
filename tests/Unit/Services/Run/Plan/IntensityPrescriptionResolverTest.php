@@ -117,7 +117,7 @@ it('never prescribes a marathon-pace block faster than the VDOT marathon equival
         ->toBeGreaterThanOrEqual(PRESCRIPTION_PACES['marathon']);
 })->with([SessionType::Long, SessionType::Tempo])->with([PlanPhase::Base, PlanPhase::Build, PlanPhase::Peak, PlanPhase::Taper]);
 
-it('targets goal-pace work from the table by kind and phase, halved when ambitious and full at a stepping stone', function (string $kind, SessionType $type, PlanPhase $phase, RaceAmbitionState $band, int $minutes): void {
+it('targets goal-pace work from the table by kind and phase, full for every band', function (string $kind, SessionType $type, PlanPhase $phase, RaceAmbitionState $band, int $minutes): void {
     $work = new GoalPaceWork($kind, 10_000, 285, $band);
     $prescription = IntensityPrescriptionResolver::resolve($type, $phase, 10_000, 2850, PRESCRIPTION_PACES, IntentVerdict::Hit, 60, goalPace: $work);
 
@@ -128,15 +128,15 @@ it('targets goal-pace work from the table by kind and phase, halved when ambitio
     ['5k', SessionType::Interval, PlanPhase::Build, RaceAmbitionState::OnTrack, 15],
     ['5k', SessionType::Interval, PlanPhase::Peak, RaceAmbitionState::OnTrack, 20],
     ['5k', SessionType::Interval, PlanPhase::Taper, RaceAmbitionState::OnTrack, 10],
-    ['5k', SessionType::Interval, PlanPhase::Taper, RaceAmbitionState::Ambitious, 4],
+    ['5k', SessionType::Interval, PlanPhase::Taper, RaceAmbitionState::Ambitious, 10],
     ['10k', SessionType::Interval, PlanPhase::Build, RaceAmbitionState::OnTrack, 21],
     ['10k', SessionType::Tempo, PlanPhase::Peak, RaceAmbitionState::OnTrack, 24],
-    ['10k', SessionType::Interval, PlanPhase::Taper, RaceAmbitionState::Ambitious, 6],
+    ['10k', SessionType::Interval, PlanPhase::Taper, RaceAmbitionState::Ambitious, 12],
     ['half', SessionType::Tempo, PlanPhase::Build, RaceAmbitionState::OnTrack, 30],
-    ['half', SessionType::Tempo, PlanPhase::Peak, RaceAmbitionState::Ambitious, 20],
+    ['half', SessionType::Tempo, PlanPhase::Peak, RaceAmbitionState::Ambitious, 40],
     ['half', SessionType::Interval, PlanPhase::Taper, RaceAmbitionState::OnTrack, 20],
     ['marathon', SessionType::Tempo, PlanPhase::Peak, RaceAmbitionState::OnTrack, 35],
-    ['marathon', SessionType::Tempo, PlanPhase::Peak, RaceAmbitionState::Ambitious, 17],
+    ['marathon', SessionType::Tempo, PlanPhase::Peak, RaceAmbitionState::Ambitious, 35],
     ['marathon', SessionType::Long, PlanPhase::Peak, RaceAmbitionState::OnTrack, 40],
     ['5k', SessionType::Interval, PlanPhase::Peak, RaceAmbitionState::Unsupported, 20],
     ['10k', SessionType::Interval, PlanPhase::Build, RaceAmbitionState::Unsupported, 21],

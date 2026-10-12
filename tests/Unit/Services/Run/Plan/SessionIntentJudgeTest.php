@@ -494,3 +494,22 @@ it('judges stepping-stone work against the prescribed stepping-stone pace, not t
         ->and($atSupported['verdict'])->not->toBe(IntentVerdict::Hit)
         ->and($atSupported['evidence'])->toMatchArray(['target_pace_sec' => 290]);
 });
+
+it('judges each rep of a stepping-stone session against its own pace, the goal-pace final rep included', function (): void {
+    $segments = [new SessionSegment(SegmentKey::Warmup, 12.0, 'Z2', PaceBand::Easy, 400, 1.8)];
+    foreach ([300, 300, 300, 290] as $i => $pace) {
+        $segments[] = new SessionSegment(SegmentKey::Interval, 3.0, 'Z4', PaceBand::Threshold, $pace, 0.6);
+        if ($i < 3) {
+            $segments[] = new SessionSegment(SegmentKey::Recovery, 2.0, 'Z2', PaceBand::Easy, 400, 0.3);
+        }
+    }
+    $run = static fn (int $finalRepM): ActivityDetail => judgeRun(6.6, 2300, ['laps' => lapRows([[2000, 800], [590, 180], [300, 130], [590, 180], [300, 130], [562, 180], [300, 130], [$finalRepM, 180], [1000, 400]])]);
+
+    $finalAtSteppingStone = SessionIntentJudge::judge(SessionType::Interval, $segments, JUDGE_PACES, [$run(590)]);
+    $finalAtGoal = SessionIntentJudge::judge(SessionType::Interval, $segments, JUDGE_PACES, [$run(610)]);
+
+    expect($finalAtSteppingStone['verdict'])->not->toBe(IntentVerdict::Hit)
+        ->and($finalAtSteppingStone['evidence'])->toMatchArray(['reps_at_pace' => 2])
+        ->and($finalAtGoal['verdict'])->toBe(IntentVerdict::Hit)
+        ->and($finalAtGoal['evidence'])->toMatchArray(['reps_at_pace' => 3]);
+});

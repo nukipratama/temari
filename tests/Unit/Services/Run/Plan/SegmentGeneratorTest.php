@@ -8,6 +8,7 @@ use App\Enums\PlanPhase;
 use App\Enums\SegmentKey;
 use App\Enums\SessionType;
 use App\Services\Run\Plan\SegmentGenerator;
+use App\Services\Run\Plan\SessionSegment;
 use App\Services\Run\Plan\IntensityPrescription;
 
 const PACES = ['easy' => 360, 'marathon' => 300, 'threshold' => 270, 'interval' => 240];
@@ -475,3 +476,18 @@ it('sizes a time trial day as the trial alone and writes it as one block at the 
         ->and($segments[0]->minutes)->toBe(25.0)
         ->and(SegmentGenerator::forPrescription($type, PlanPhase::Build, 9.0, PACES, new IntensityPrescription(25, PaceBand::Interval, 300, null, $context)))->toHaveCount(1);
 })->with([SessionType::Tempo, SessionType::Interval]);
+
+it('runs the final work unit of a stepping-stone session at its goal pace, reps and blocks alike', function (): void {
+    $paces = ['easy' => 380, 'marathon' => 320, 'threshold' => 295, 'interval' => 270];
+    $half = ['distance_m' => 21_098, 'goal_pace_sec_per_km' => 304, 'kind' => 'half', 'band' => 'ambitious', 'final_pace_sec_per_km' => 299];
+    $tenK = ['distance_m' => 10_000, 'goal_pace_sec_per_km' => 306, 'kind' => '10k', 'band' => 'ambitious', 'final_pace_sec_per_km' => 300];
+    $work = static fn (PlanPhase $phase, int $minutes, int $pace, array $context, SegmentKey $key): array => array_values(array_filter(
+        SegmentGenerator::forPrescription(SessionType::Tempo, $phase, 14.0, $paces, new IntensityPrescription($minutes, PaceBand::Threshold, $pace, null, $context)),
+        static fn (SessionSegment $segment): bool => $segment->key === $key,
+    ));
+    $reps = $work(PlanPhase::Peak, 16, 306, $tenK, SegmentKey::Interval);
+
+    expect(array_map(static fn (SessionSegment $segment): ?int => $segment->paceSecPerKm, $work(PlanPhase::Build, 30, 304, $half, SegmentKey::Main)))->toBe([304, 299])
+        ->and(array_map(static fn (SessionSegment $segment): ?int => $segment->paceSecPerKm, $reps))->toBe([306, 306, 306, 300])
+        ->and(array_last($reps)->km)->toBe(0.8);
+});
