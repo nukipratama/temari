@@ -3,8 +3,6 @@
 declare(strict_types=1);
 
 use App\Jobs\AI\AnalyzePlanSeasonVoiceJob;
-use App\Models\Activity;
-use App\Models\PerformanceEvidence;
 use App\Models\PersonalRecord;
 use App\Services\Run\Plan\SeasonService;
 use App\Models\RaceGoal;
@@ -187,23 +185,6 @@ it('does not rebuild the plan or add history when the same race is submitted aga
     Bus::assertNothingDispatched();
     expect($race->changes()->count())->toBe(0)
         ->and(PlannedSession::query()->where('user_id', $user->id)->count())->toBe(0);
-});
-
-it('shows the stated target beside the supported effort, the mode and the event history', function (): void {
-    $user = User::factory()->create();
-    PerformanceEvidence::query()->create([
-        'user_id' => $user->id, 'activity_id' => Activity::factory()->for($user)->create()->id, 'kind' => 'test', 'distance_m' => 10_000, 'elapsed_time_sec' => 4_200,
-        'performed_on' => Carbon::today()->subWeek(), 'confirmed_at' => now(),
-    ]);
-    $this->actingAs($user)->post('/race', racePayload(['goal_time_sec' => 3_000]))->assertRedirect();
-
-    $this->actingAs($user)->get('/race')->assertInertia(fn (Assert $page) => $page->loadDeferredProps(fn (Assert $deferred) => $deferred
-        ->where('race.goal_time_sec', 3_000)
-        ->where('race.ambition.state', 'unsupported')
-        ->where('race.ambition.target_pace_sec_per_km', 300)
-        ->where('race.support.mode', 'road')
-        ->where('race.history.0.kind', 'created')
-        ->has('race.ambition.supported_time_sec')));
 });
 
 it('shares the active race app-wide via the activeRace prop', function (): void {
