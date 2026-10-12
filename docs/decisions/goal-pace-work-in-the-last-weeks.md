@@ -19,7 +19,7 @@ code_refs:
 
 > **Partly superseded (2026-10-12) by [[peak-carries-over-from-build]].** Rule 7 no longer holds for the Build→Peak seed: Peak's first race-specific session starts from the last Build quality session's hard minutes, capped at the phase target; later progression stays in the family.
 
-> **Partly superseded (2026-10-12) by [[an-ambitious-goal-trains-at-the-stepping-stone-and-rehearses-the-goal]].** Rules 3, 4 and 6 no longer hold for an `ambitious` goal: it gets the full dose, every work unit but the last at the stepping-stone pace and the last at goal pace, and its marathon race Tempo follows the same split.
+> **Partly superseded (2026-10-12) by [[an-ambitious-goal-trains-at-the-stepping-stone-and-rehearses-the-goal]].** Rules 3, 4 and 6 no longer hold for an `ambitious` goal: it gets the full dose at the stepping-stone pace, closing at goal pace, and its marathon race Tempo follows the same split.
 
 # Goal-pace work in the last weeks, dosed by the ambition band
 

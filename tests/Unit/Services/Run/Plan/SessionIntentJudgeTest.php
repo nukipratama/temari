@@ -513,3 +513,27 @@ it('judges each rep of a stepping-stone session against its own pace, the goal-p
         ->and($finalAtGoal['verdict'])->toBe(IntentVerdict::Hit)
         ->and($finalAtGoal['evidence'])->toMatchArray(['reps_at_pace' => 3]);
 });
+
+it('reads a rep or block closing at goal pace as one rep or one block', function (): void {
+    $repDay = [
+        new SessionSegment(SegmentKey::Warmup, 12.0, 'Z2', PaceBand::Easy, 400, 1.8),
+        new SessionSegment(SegmentKey::Interval, 4.0, 'Z4', PaceBand::Threshold, 300, 0.8),
+        new SessionSegment(SegmentKey::Recovery, 2.0, 'Z2', PaceBand::Easy, 400, 0.3),
+        new SessionSegment(SegmentKey::Interval, 3.0, 'Z4', PaceBand::Threshold, 300, 0.6),
+        new SessionSegment(SegmentKey::Interval, 1.0, 'Z4', PaceBand::Threshold, 290, 0.2),
+    ];
+    $blockDay = [
+        new SessionSegment(SegmentKey::Warmup, 10.0, 'Z2', PaceBand::Easy, 400, 1.5),
+        new SessionSegment(SegmentKey::Main, 15.0, 'Z4', PaceBand::Threshold, 300, 3.0),
+        new SessionSegment(SegmentKey::Main, 5.0, 'Z4', PaceBand::Threshold, 290, 1.0),
+    ];
+    $laps = lapRows([[2000, 800], [810, 240], [300, 130], [815, 240], [1000, 400]]);
+
+    $reps = SessionIntentJudge::judge(SessionType::Interval, $repDay, JUDGE_PACES, [judgeRun(4.9, 1810, ['laps' => $laps])]);
+    $block = SessionIntentJudge::judge(SessionType::Tempo, $blockDay, JUDGE_PACES, [judgeRun(8.0, 2800, ['best_20min_pace' => '5:00'])]);
+
+    expect($reps['evidence'])->toMatchArray(['reps_prescribed' => 2, 'rep_minutes' => 4.0, 'reps_at_pace' => 2])
+        ->and($reps['verdict'])->toBe(IntentVerdict::Hit)
+        ->and($block['verdict'])->toBe(IntentVerdict::Hit)
+        ->and($block['evidence'])->toMatchArray(['window' => '20min', 'block_minutes' => 20.0]);
+});

@@ -392,3 +392,14 @@ it('gives a 10K ambitious four-run plan at least the last build quality minutes 
     expect(array_last($build))->toBe(20)
         ->and(array_values(qualityMinutesInPhase($rows, PlanPhase::Peak)))->toBe([20, 20, 20]);
 });
+
+it('closes an ambitious half peak block with its last quarter at the goal pace', function (): void {
+    $peak = goalPacePlan(goalPaceInputs(GOAL_PACE_HALF, RaceAmbitionState::Ambitious, recent: ['goal_pace' => goalPaceHit(40)]))['2026-11-19'];
+    $prescription = new IntensityPrescription($peak['prescribed_hard_minutes'], $peak['prescribed_pace_band'], $peak['prescribed_pace_sec_per_km'], null, $peak['prescription_race_context']);
+    $blocks = array_values(array_filter(
+        SegmentGenerator::forPrescription($peak['session_type'], $peak['phase'], 16.0, ['easy' => 380, 'marathon' => 320, 'threshold' => 295, 'interval' => 270], $prescription),
+        static fn ($segment): bool => $segment->key === SegmentKey::Main,
+    ));
+
+    expect(array_map(static fn ($block): array => [$block->minutes, $block->paceSecPerKm], $blocks))->toBe([[30.0, 304], [10.0, 299]]);
+});

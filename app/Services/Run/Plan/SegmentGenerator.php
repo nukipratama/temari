@@ -431,19 +431,21 @@ final class SegmentGenerator
         $warmup = self::bookend(SegmentKey::Warmup, self::WARMUP_MINUTES['tempo'], $paces);
         $recovery = self::bookend(SegmentKey::Recovery, $recoveryMinutes, $paces);
         $baseMinutes = round($prescription->hardMinutes / $blocks, 1);
-        $spentMinutes = 0.0;
-        $hardKm = self::kmForPrescription($prescription, $prescription->hardMinutes - ($blocks - 1) * $baseMinutes);
+        $blockMinutes = [...array_fill(0, $blocks - 1, $baseMinutes), $prescription->hardMinutes - ($blocks - 1) * $baseMinutes];
+        $closesAtGoal = GoalPaceWork::finalPaceOf($prescription->raceContext) !== null;
+        $closingMinutes = $closesAtGoal ? array_map(GoalPaceWork::closingMinutes(...), $blockMinutes) : array_fill(0, $blocks, 0.0);
+        $hardKm = self::kmForPrescription($prescription, array_sum($closingMinutes));
         $usedKm = ($warmup->km ?? INF) + $hardKm + ($blocks - 1) * ($recovery->km ?? INF);
         if ($paces !== null && (! is_finite($usedKm) || $usedKm > $km)) {
             return self::easyBlock($km, $paces);
         }
 
         $segments = [$warmup];
-        for ($i = 0; $i < $blocks; $i++) {
-            $isLast = $i === $blocks - 1;
-            $minutes = $isLast ? $prescription->hardMinutes - $spentMinutes : $baseMinutes;
-            $segments[] = self::prescribedBlock(SegmentKey::Main, $minutes, $prescription, $isLast);
-            $spentMinutes += $minutes;
+        foreach ($blockMinutes as $i => $minutes) {
+            $segments[] = self::prescribedBlock(SegmentKey::Main, $minutes - $closingMinutes[$i], $prescription);
+            if ($closesAtGoal) {
+                $segments[] = self::prescribedBlock(SegmentKey::Main, $closingMinutes[$i], $prescription, true);
+            }
             if ($i < $blocks - 1) {
                 $segments[] = $recovery;
             }
@@ -463,7 +465,13 @@ final class SegmentGenerator
         $reps = max(1, (int) floor($prescription->hardMinutes / $repMinutes));
         $warmup = self::bookend(SegmentKey::Warmup, self::WARMUP_MINUTES['interval'], $paces);
         $recovery = self::bookend(SegmentKey::Recovery, $recoveryMinutes, $paces);
-        $hardKm = self::kmForPrescription($prescription, $repMinutes);
+        $closesAtGoal = GoalPaceWork::finalPaceOf($prescription->raceContext) !== null;
+        $closingMinutes = match (true) {
+            ! $closesAtGoal => 0.0,
+            $reps >= GoalPaceWork::MIN_REPS_FOR_A_GOAL_PACE_REP => $repMinutes,
+            default => GoalPaceWork::closingMinutes($repMinutes),
+        };
+        $hardKm = self::kmForPrescription($prescription, $closingMinutes);
         $usedKm = ($warmup->km ?? INF) + $hardKm + ($reps - 1) * ($recovery->km ?? INF);
         if ($paces !== null && (! is_finite($usedKm) || $usedKm > $km)) {
             return self::easyBlock($km, $paces);
@@ -471,8 +479,12 @@ final class SegmentGenerator
 
         $segments = [$warmup];
         for ($i = 0; $i < $reps; $i++) {
-            $segments[] = self::prescribedBlock(SegmentKey::Interval, $repMinutes, $prescription, $i === $reps - 1);
-            if ($i < $reps - 1) {
+            $isLast = $i === $reps - 1;
+            if ($isLast && $closingMinutes > 0.0 && $closingMinutes < $repMinutes) {
+                $segments[] = self::prescribedBlock(SegmentKey::Interval, $repMinutes - $closingMinutes, $prescription);
+            }
+            $segments[] = self::prescribedBlock(SegmentKey::Interval, $isLast && $closingMinutes > 0.0 ? $closingMinutes : $repMinutes, $prescription, $isLast && $closingMinutes > 0.0);
+            if (! $isLast) {
                 $segments[] = $recovery;
             }
         }

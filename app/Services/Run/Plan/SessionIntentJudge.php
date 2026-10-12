@@ -64,7 +64,7 @@ final class SessionIntentJudge
      */
     private static function tempo(array $segments, array $runs): array
     {
-        $blocks = array_values(array_filter($segments, static fn (SessionSegment $segment): bool => $segment->key === SegmentKey::Main && in_array($segment->paceLabel, [PaceBand::Threshold, PaceBand::Marathon], true)));
+        $blocks = self::workUnits($segments, SegmentKey::Main);
         $block = $blocks[0] ?? null;
         if ($block?->minutes === null || $block->paceSecPerKm === null) {
             return self::reading(IntentVerdict::Unknown);
@@ -104,6 +104,42 @@ final class SessionIntentJudge
         return self::onHeartRate($summary, $runs, $block->zone, $totalMinutes, $coveredSeconds !== null && $windowPace !== null, $evidence, 'tempo', 'window');
     }
 
+    /**
+     * The work of one key, where back-to-back segments with no recovery between
+     * them are one rep or block at their combined pace.
+     *
+     * @param  list<SessionSegment>  $segments
+     * @return list<SessionSegment>
+     */
+    private static function workUnits(array $segments, SegmentKey $key): array
+    {
+        $units = [];
+        $joinsPrevious = false;
+        foreach ($segments as $segment) {
+            if ($segment->key !== $key || $segment->paceLabel === PaceBand::Easy) {
+                $joinsPrevious = false;
+
+                continue;
+            }
+            $previous = $joinsPrevious ? array_pop($units) : null;
+            $units[] = $previous === null ? $segment : self::joined($previous, $segment);
+            $joinsPrevious = true;
+        }
+
+        return $units;
+    }
+
+    private static function joined(SessionSegment $first, SessionSegment $second): SessionSegment
+    {
+        if ($first->minutes === null || $second->minutes === null || $first->paceSecPerKm === null || $second->paceSecPerKm === null) {
+            return $first;
+        }
+        $minutes = $first->minutes + $second->minutes;
+        $km = $first->minutes * 60 / $first->paceSecPerKm + $second->minutes * 60 / $second->paceSecPerKm;
+
+        return new SessionSegment($first->key, $minutes, $first->zone, $first->paceLabel, (int) round($minutes * 60 / $km), round($km, 1));
+    }
+
     /** @param list<SessionSegment> $segments */
     private static function hasHardBlock(array $segments): bool
     {
@@ -117,7 +153,7 @@ final class SessionIntentJudge
      */
     private static function interval(array $segments, array $runs): array
     {
-        $reps = array_values(array_filter($segments, static fn (SessionSegment $segment): bool => $segment->key === SegmentKey::Interval));
+        $reps = self::workUnits($segments, SegmentKey::Interval);
         $rep = $reps[0] ?? null;
         $repMinutes = $rep?->minutes;
         $repPace = $rep?->paceSecPerKm;

@@ -17,7 +17,7 @@ code_refs:
   - tests/Feature/Plan/GoalPaceWorkPlanTest.php
 ---
 
-> **Fact update, 2026-10-12, per [[an-ambitious-goal-trains-at-the-stepping-stone-and-rehearses-the-goal]].** An ambitious goal's goal-pace work now also runs at the stepping-stone pace, ending on one work unit at goal pace, under the same label; the Race page card stays unsupported-only.
+> **Fact update, 2026-10-12, per [[an-ambitious-goal-trains-at-the-stepping-stone-and-rehearses-the-goal]].** An ambitious goal's goal-pace work now also runs at the stepping-stone pace, closing at goal pace, under the same label; the Race page card stays unsupported-only.
 
 # A stepping stone for an unsupported goal
 

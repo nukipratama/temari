@@ -35,6 +35,10 @@ final readonly class GoalPaceWork
 
     public const string KIND_MARATHON = 'marathon';
 
+    public const float CLOSING_SHARE = 0.25;
+
+    public const int MIN_REPS_FOR_A_GOAL_PACE_REP = 4;
+
     private const array BANDS = [RaceAmbitionState::OnTrack, RaceAmbitionState::Ambitious, RaceAmbitionState::Unsupported];
 
     private const array STEPPING_STONE_BANDS = [RaceAmbitionState::Ambitious, RaceAmbitionState::Unsupported];
@@ -157,6 +161,12 @@ final readonly class GoalPaceWork
     public static function isSteppingStone(?array $context): bool
     {
         return ($context['band'] ?? null) === RaceAmbitionState::Unsupported->value || self::finalPaceOf($context) !== null;
+    }
+
+    /** The goal-pace close of a block or rep that otherwise runs at the stepping-stone pace, in whole minutes. */
+    public static function closingMinutes(float $minutes): float
+    {
+        return max(1.0, round($minutes * self::CLOSING_SHARE));
     }
 
     /**
