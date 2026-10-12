@@ -135,7 +135,7 @@ export type PlanPhaseKey = keyof typeof PHASE_COLORS;
 /**
  * A phase's fill, falling back to the same neutral fill the general zone's
  * own band uses (`bg-muted`) for a key `PHASE_COLORS` doesn't cover — chiefly
- * `plan.ts`'s `GENERAL_PHASE_KEY`, which the phase legend and ribbon both
+ * `planPhases.ts`'s `GENERAL_PHASE_KEY`, which the phase legend and ribbon both
  * group every general-zone week under regardless of its own build/deload
  * phase.
  */

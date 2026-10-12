@@ -8,12 +8,8 @@ import PhaseRibbon from '@/components/plan/PhaseRibbon';
 import TemariTake from '@/components/plan/TemariTake';
 import Eyebrow from '@/components/ui/Eyebrow';
 import { formatNaiveMonthDayId, formatRaceTime } from '@/lib/pace';
-import {
-    nextPhaseOf,
-    PHASE_LABEL,
-    seasonPhaseKey,
-    weeksLabel,
-} from '@/lib/plan';
+import { nextPhaseOf, weeksLabel } from '@/lib/plan';
+import { PHASE_LABEL, seasonPhaseKey } from '@/lib/planPhases';
 import { raceDistanceLabel } from '@/lib/raceGoal';
 
 function RaceSlot({ raceCard }: Readonly<{ raceCard: PlanRaceCard | null }>) {

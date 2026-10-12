@@ -26,24 +26,8 @@ import {
     mondayOf,
     parseNaiveLocalDate,
     sundayOf,
-    weekRangeLabel,
 } from '@/lib/pace';
-import {
-    GENERAL_PHASE_KEY,
-    PHASE_LABEL,
-    phaseGroupKey,
-    phasesOf,
-    seasonPhaseKey,
-} from '@/lib/planPhases';
-export type { Phase, PhaseState } from '@/lib/planPhases';
-export { weekRangeLabel };
-export {
-    GENERAL_PHASE_KEY,
-    PHASE_LABEL,
-    phaseGroupKey,
-    phasesOf,
-    seasonPhaseKey,
-};
+import { seasonPhaseKey } from '@/lib/planPhases';
 
 /** The Plan page's day rows read the same payload Home's week widget does. */
 export type PlanDay = WeekPlanDay;

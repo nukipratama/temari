@@ -13,8 +13,7 @@ export interface Phase {
  * mean weekly volume and where the athlete stands in it. Built from the real
  * phase sequence rather than a fixed base/build/peak/taper four, so a
  * self-scaled season's repeating build/deload cycle renders honestly. Read by
- * Plan's season header and Profile's season card, which draw the same sequence
- * differently.
+ * Profile's season card.
  */
 export function phasesOf(weeks: SeasonSummaryWeek[]): Phase[] {
     const order: string[] = [];
