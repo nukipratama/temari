@@ -193,7 +193,6 @@ describe('week deep link', function (): void {
             ->assertJsonCount(1, 'props.weeklySnapshots')
             ->assertJsonPath('props.weeklySnapshots.0.is_chain_head', false);
     });
-
 });
 
 it('auto-widens the range and flags it when the newest run is outside the default window', function (): void {

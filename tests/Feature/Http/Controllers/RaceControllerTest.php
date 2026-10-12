@@ -143,7 +143,7 @@ it('creates the first race for a user with none and busts the shared active-race
 it('starts a new event when the intent is new', function (): void {
     Carbon::setTestNow('2026-09-08 10:00:00');
     $user = User::factory()->create();
-    $old = RaceGoal::factory()->for($user)->create(['name' => 'Old race', 'race_date' => Carbon::today()->addWeeks(20)->toDateString()]);
+    RaceGoal::factory()->for($user)->create(['name' => 'Old race', 'race_date' => Carbon::today()->addWeeks(20)->toDateString()]);
 
     $this->actingAs($user)
         ->post('/race', racePayload(['name' => 'New race', 'intent' => 'new']))
