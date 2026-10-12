@@ -50,6 +50,7 @@ final class IntensityPrescriptionResolver
         ?int $previousHardMinutes = null,
         ?int $hardMinutesAvailable = null,
         ?GoalPaceWork $goalPace = null,
+        ?int $carriedHardMinutes = null,
     ): IntensityPrescription {
         if (! $type->isQuality()) {
             return new IntensityPrescription(0, null, null, null);
@@ -74,6 +75,14 @@ final class IntensityPrescriptionResolver
             IntentVerdict::TooHard => 'stepped down after the latest comparable session was too hard',
             default => 'held after the latest comparable session',
         };
+        if ($carriedHardMinutes !== null) {
+            $rep = self::INTERVAL_REP_MINUTES[$phase->value] ?? 3;
+            $carried = min($target, $shape === SessionType::Interval ? (int) ceil($carriedHardMinutes / $rep) * $rep : $carriedHardMinutes);
+            if ($carried > $minutes) {
+                $minutes = $carried;
+                $reason = 'carried over from the last build quality session';
+            }
+        }
 
         $minutes = min($target, $minutes);
         if ($hardMinutesAvailable !== null && $minutes > $hardMinutesAvailable) {

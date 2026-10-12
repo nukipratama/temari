@@ -10,6 +10,7 @@ use App\Enums\SessionType;
 use App\Services\Run\Metrics\TrainingPaceCalculator;
 use App\Services\Run\Metrics\VdotEstimator;
 use App\Services\Run\Plan\GoalPaceWork;
+use App\Services\Run\Plan\IntensityPrescription;
 use App\Services\Run\Plan\IntensityPrescriptionResolver;
 
 const PRESCRIPTION_PACES = ['easy' => 360, 'marathon' => 300, 'threshold' => 270, 'interval' => 240];
@@ -175,3 +176,27 @@ it('keeps goal-pace history in its own family and the marathon in its race famil
 it('keeps a time trial out of every progression family', function (SessionType $type): void {
     expect(IntensityPrescriptionResolver::familyKeyForContext($type, ['kind' => 'time_trial', 'distance_m' => 5_000, 'aim_time_sec' => 1_500, 'retry' => 0]))->toBe('time_trial');
 })->with([SessionType::Tempo, SessionType::Interval]);
+
+it('raises a prescription to carried-over minutes in whole reps, capped at the phase target, never lowering it', function (): void {
+    $work = new GoalPaceWork(GoalPaceWork::KIND_10K, 10_000, 300, RaceAmbitionState::OnTrack);
+    $carried = static fn (int $minutes, ?int $previous = null): IntensityPrescription => IntensityPrescriptionResolver::resolve(
+        SessionType::Tempo,
+        PlanPhase::Peak,
+        10_000,
+        3000,
+        PRESCRIPTION_PACES,
+        IntentVerdict::Hit,
+        $previous,
+        goalPace: $work,
+        carriedHardMinutes: $minutes,
+    );
+
+    expect($carried(18)->hardMinutes)->toBe(20)
+        ->and($carried(18)->reason)->toBe('carried over from the last build quality session')
+        ->and($carried(30)->hardMinutes)->toBe(24)
+        ->and($carried(6)->hardMinutes)->toBe(8)
+        ->and($carried(12, 16)->hardMinutes)->toBe(20)
+        ->and($carried(12, 16)->reason)->toBe('progressed after the latest comparable session was hit')
+        ->and($carried(30, 20)->hardMinutes)->toBe(24)
+        ->and($carried(30, 20)->reason)->toBe('progressed after the latest comparable session was hit');
+});

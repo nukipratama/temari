@@ -37,6 +37,8 @@ function goalPaceInputs(
     int $sessions = 4,
     array $recent = [],
     float $longRunKm = 18.0,
+    ?float $projectedSec = null,
+    ?int $lastBuildQualityMinutes = null,
 ): PlanInputs {
     $raceDate = Carbon::parse(GOAL_PACE_RACE_DAY);
     $goalTimeSec = GOAL_PACE_TIMES[(int) $distanceM];
@@ -55,7 +57,7 @@ function goalPaceInputs(
         adaptation: ['reason' => AdaptationReason::Steady, 'deload' => false, 'quality_delta' => 0, 'adherence_pct' => 100, 'stimulus_adherence_pct' => 100],
         pinnedDates: [],
         settledDates: [],
-        projectedRaceSeconds: (float) $goalTimeSec,
+        projectedRaceSeconds: $projectedSec ?? (float) $goalTimeSec,
         raceGoalTimeSec: $goalTimeSec,
         paces: ['easy' => 380, 'marathon' => 320, 'threshold' => 295, 'interval' => 270],
         longRunBaselineKm: $longRunKm,
@@ -63,6 +65,7 @@ function goalPaceInputs(
         recentPrescriptions: $recent,
         raceAmbitionState: $band,
         raceSteppingStoneTimeSec: $band === RaceAmbitionState::Unsupported ? RaceAmbitionAssessor::steppingStoneTimeSec($goalTimeSec) : null,
+        lastBuildQualityHardMinutes: $lastBuildQualityMinutes,
     );
 }
 
@@ -108,6 +111,20 @@ function hardDates(array $rows): array
 function goalPaceHit(int $minutes): array
 {
     return ['verdict' => IntentVerdict::Hit, 'hard_minutes' => $minutes];
+}
+
+/**
+ * @param  array<string, array<string, mixed>>  $rows
+ * @return array<string, int>
+ */
+function qualityMinutesInPhase(array $rows, PlanPhase $phase): array
+{
+    return array_map(
+        static fn (array $row): int => $row['prescribed_hard_minutes'],
+        array_filter($rows, static fn (array $row): bool => $row['phase'] === $phase
+            && in_array($row['session_type'], [SessionType::Tempo, SessionType::Interval], true)
+            && $row['prescribed_hard_minutes'] > 0),
+    );
 }
 
 it('opens the 10K window six weeks out, race week included', function (): void {
@@ -200,7 +217,8 @@ it('learns unsupported goal-pace progression from goal-pace history, not interva
     $fromIntervals = goalPacePlan(goalPaceInputs(GOAL_PACE_10K, RaceAmbitionState::Unsupported, '2026-10-26', recent: ['interval' => goalPaceHit(16)]));
     $fromGoalPace = goalPacePlan(goalPaceInputs(GOAL_PACE_10K, RaceAmbitionState::Unsupported, '2026-10-26', recent: ['goal_pace' => goalPaceHit(16)]));
 
-    expect($fromIntervals['2026-11-26']['prescribed_hard_minutes'])->toBe(8)
+    expect($fromIntervals['2026-11-26']['prescribed_hard_minutes'])->toBe(12)
+        ->and($fromIntervals['2026-11-26']['prescription_reason'])->toBe('carried over from the last build quality session')
         ->and($fromGoalPace['2026-11-26']['prescribed_hard_minutes'])->toBe(20);
 });
 
@@ -270,7 +288,7 @@ it('keeps goal-pace progression apart from interval history', function (): void 
     $fromIntervals = goalPacePlan(goalPaceInputs(GOAL_PACE_10K, RaceAmbitionState::OnTrack, '2026-10-26', recent: ['interval' => goalPaceHit(16)]));
     $fromGoalPace = goalPacePlan(goalPaceInputs(GOAL_PACE_10K, RaceAmbitionState::OnTrack, '2026-10-26', recent: ['goal_pace' => goalPaceHit(16)]));
 
-    expect($fromIntervals['2026-11-26']['prescribed_hard_minutes'])->toBe(8)
+    expect($fromIntervals['2026-11-26']['prescribed_hard_minutes'])->toBe(12)
         ->and($fromIntervals['2026-11-05']['prescribed_hard_minutes'])->toBe(12)
         ->and($fromGoalPace['2026-11-26']['prescribed_hard_minutes'])->toBe(20)
         ->and($fromGoalPace['2026-11-05']['prescribed_hard_minutes'])->toBe(6);
@@ -283,4 +301,55 @@ it('trims goal-pace reps to the distance a short day holds instead of dropping t
         ->and($peak['prescribed_hard_minutes'])->toBeGreaterThan(0)->toBeLessThan(24)
         ->and($peak['prescribed_hard_minutes'] % 4)->toBe(0)
         ->and($peak['prescription_reason'])->toBe('bounded by the distance this day holds');
+});
+
+it('carries the last build quality minutes into peak goal-pace work instead of the cold start', function (): void {
+    $rows = goalPacePlan(goalPaceInputs(GOAL_PACE_10K, RaceAmbitionState::OnTrack, projectedSec: 4200.0));
+    $build = qualityMinutesInPhase($rows, PlanPhase::Build);
+    $peak = qualityMinutesInPhase($rows, PlanPhase::Peak);
+
+    expect(array_last($build))->toBe(20)
+        ->and(array_values($peak))->toBe([20, 20, 20])
+        ->and(array_keys(goalPaceSessions(array_intersect_key($rows, $peak))))->toBe(array_keys($peak))
+        ->and($rows[array_key_first($peak)]['prescription_reason'])->toBe('carried over from the last build quality session');
+});
+
+it('caps the carried-over minutes at the peak goal-pace target', function (): void {
+    $rows = goalPacePlan(goalPaceInputs(GOAL_PACE_10K, RaceAmbitionState::OnTrack, projectedSec: 4200.0, recent: ['tempo' => goalPaceHit(30)]));
+    $build = qualityMinutesInPhase($rows, PlanPhase::Build);
+
+    expect(array_last($build))->toBe(30)
+        ->and(array_values(qualityMinutesInPhase($rows, PlanPhase::Peak)))->toBe([24, 24, 24]);
+});
+
+it('carries the persisted last build quality minutes once build is behind the athlete', function (): void {
+    $rows = goalPacePlan(goalPaceInputs(GOAL_PACE_10K, RaceAmbitionState::OnTrack, '2026-11-23', lastBuildQualityMinutes: 16));
+
+    expect(array_values(qualityMinutesInPhase($rows, PlanPhase::Peak)))->toBe([16, 16]);
+});
+
+it('keeps later peak progression in the goal-pace family', function (IntentVerdict $verdict, int $peakMinutes): void {
+    $recent = ['goal_pace' => ['verdict' => $verdict, 'hard_minutes' => 20]];
+    $rows = goalPacePlan(goalPaceInputs(GOAL_PACE_10K, RaceAmbitionState::OnTrack, '2026-11-23', recent: $recent, lastBuildQualityMinutes: 20));
+
+    expect(array_values(qualityMinutesInPhase($rows, PlanPhase::Peak)))->toBe([$peakMinutes, $peakMinutes]);
+})->with([
+    'hit' => [IntentVerdict::Hit, 24],
+    'too hard' => [IntentVerdict::TooHard, 16],
+]);
+
+it('keeps peak quality level with build in a two-quality week', function (): void {
+    $rows = goalPacePlan(goalPaceInputs(GOAL_PACE_10K, RaceAmbitionState::OnTrack, sessions: 5, recent: ['interval' => goalPaceHit(12)]));
+    $weekly = static function (array $minutes): array {
+        $byWeek = [];
+        foreach ($minutes as $date => $hard) {
+            $week = Carbon::parse($date)->startOfWeek(Carbon::MONDAY)->toDateString();
+            $byWeek[$week] = ($byWeek[$week] ?? 0) + $hard;
+        }
+
+        return $byWeek;
+    };
+    $build = $weekly(qualityMinutesInPhase($rows, PlanPhase::Build));
+
+    expect(min($weekly(qualityMinutesInPhase($rows, PlanPhase::Peak))))->toBeGreaterThanOrEqual(array_last($build));
 });
