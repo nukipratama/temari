@@ -14,7 +14,8 @@ use Illuminate\Support\Carbon;
 /**
  * The race-pace rehearsal one quality session a week becomes in the last
  * weeks before a race, at the goal pace, or at the stepping-stone pace for
- * an unsupported goal. See `docs/decisions/goal-pace-work-in-the-last-weeks.md`.
+ * an unsupported or ambitious goal, an ambitious one ending on a work unit at
+ * the goal pace. See `docs/decisions/goal-pace-work-in-the-last-weeks.md`.
  */
 final readonly class GoalPaceWork
 {
@@ -34,7 +35,13 @@ final readonly class GoalPaceWork
 
     public const string KIND_MARATHON = 'marathon';
 
+    public const float CLOSING_SHARE = 0.25;
+
+    public const int MIN_REPS_FOR_A_GOAL_PACE_REP = 4;
+
     private const array BANDS = [RaceAmbitionState::OnTrack, RaceAmbitionState::Ambitious, RaceAmbitionState::Unsupported];
+
+    private const array STEPPING_STONE_BANDS = [RaceAmbitionState::Ambitious, RaceAmbitionState::Unsupported];
 
     private const array PHASES = [PlanPhase::Build, PlanPhase::Peak, PlanPhase::Taper];
 
@@ -43,13 +50,14 @@ final readonly class GoalPaceWork
         public int $distanceM,
         public int $goalPaceSecPerKm,
         public RaceAmbitionState $band,
+        public ?int $finalPaceSecPerKm = null,
     ) {
     }
 
     public static function forWeek(PlanInputs $inputs, Carbon $weekStart, PlanPhase $phase): ?self
     {
         $distanceM = $inputs->raceDistanceM;
-        $goalTimeSec = $inputs->raceAmbitionState === RaceAmbitionState::Unsupported
+        $goalTimeSec = in_array($inputs->raceAmbitionState, self::STEPPING_STONE_BANDS, true)
             ? $inputs->raceSteppingStoneTimeSec
             : $inputs->raceGoalTimeSec;
         if ($inputs->raceDate === null || $distanceM === null || $goalTimeSec === null || $goalTimeSec <= 0
@@ -66,6 +74,9 @@ final readonly class GoalPaceWork
             (int) round($distanceM),
             (int) round($goalTimeSec / ($distanceM / 1000)),
             $inputs->raceAmbitionState,
+            $inputs->raceAmbitionState === RaceAmbitionState::Ambitious && $inputs->raceGoalTimeSec !== null && $inputs->raceGoalTimeSec > 0
+                ? (int) round($inputs->raceGoalTimeSec / ($distanceM / 1000))
+                : null,
         );
     }
 
@@ -111,15 +122,17 @@ final readonly class GoalPaceWork
         };
     }
 
-    /** @return array{distance_m: int, goal_pace_sec_per_km: int, kind: string, band: string} */
+    /** @return array{distance_m: int, goal_pace_sec_per_km: int, kind: string, band: string, final_pace_sec_per_km?: int} */
     public function context(): array
     {
-        return [
+        $context = [
             'distance_m' => $this->distanceM,
             'goal_pace_sec_per_km' => $this->goalPaceSecPerKm,
             'kind' => $this->kind,
             'band' => $this->band->value,
         ];
+
+        return $this->finalPaceSecPerKm === null ? $context : [...$context, 'final_pace_sec_per_km' => $this->finalPaceSecPerKm];
     }
 
     /**
@@ -147,7 +160,23 @@ final readonly class GoalPaceWork
     /** @param  array<string, int|float|string>|null  $context */
     public static function isSteppingStone(?array $context): bool
     {
-        return ($context['band'] ?? null) === RaceAmbitionState::Unsupported->value;
+        return ($context['band'] ?? null) === RaceAmbitionState::Unsupported->value || self::finalPaceOf($context) !== null;
+    }
+
+    /** The goal-pace close of a block or rep that otherwise runs at the stepping-stone pace, in whole minutes. */
+    public static function closingMinutes(float $minutes): float
+    {
+        return max(1.0, round($minutes * self::CLOSING_SHARE));
+    }
+
+    /**
+     * The pace of the session's last work unit when it differs from the rest.
+     *
+     * @param  array<string, int|float|string>|null  $context
+     */
+    public static function finalPaceOf(?array $context): ?int
+    {
+        return isset($context['final_pace_sec_per_km']) ? (int) $context['final_pace_sec_per_km'] : null;
     }
 
     /**
