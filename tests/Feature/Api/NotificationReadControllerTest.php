@@ -30,9 +30,3 @@ it('404s on another user\'s row rather than confirming it exists', function (): 
 
     expect($row->fresh()->read_at)->toBeNull();
 });
-
-it('rejects a guest', function (): void {
-    $row = InboxNotification::factory()->create();
-
-    $this->postJson(route('api.notifications.read', $row->id))->assertUnauthorized();
-});

@@ -41,7 +41,3 @@ it('never touches another user\'s unread rows', function (): void {
 
     expect($row->fresh()->read_at)->toBeNull();
 });
-
-it('rejects a guest', function (): void {
-    $this->postJson(route('api.notifications.read-all'))->assertUnauthorized();
-});

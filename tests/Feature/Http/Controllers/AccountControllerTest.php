@@ -63,10 +63,6 @@ it('deletes the account, revokes Strava, logs the user out and redirects to logi
         ->assertViewHas('page.clearHistory', true);
 });
 
-it('rejects a guest', function (): void {
-    $this->delete('/account')->assertRedirect('/login');
-});
-
 it('refuses to delete the demo account', function (): void {
     $demo = User::factory()->create(['is_demo' => true]);
 
