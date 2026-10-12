@@ -156,7 +156,7 @@ export function ambitionNote(
         case 'unsupported':
             return `${label}: your target is ${gap}% faster than your recent runs support, so the plan trains at the supported effort, with race-pace work at a stepping stone between the two. your target stays yours.`;
         case 'ambitious':
-            return `${label}: your target is ${gap}% faster than your recent runs support. the plan trains at your stepping stone and rehearses your target.`;
+            return `${label}: your target is ${gap}% faster than your recent runs support, so race-pace work runs at your stepping stone and closes at your target pace.`;
         default:
             return `${label}: your target is within 3% of what your recent runs support.`;
     }
