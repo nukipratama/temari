@@ -97,6 +97,17 @@ it('runs an ambitious goal at its stepping-stone pace with the real goal pace fo
         ->and(GoalPaceWork::finalPaceOf($work?->context()))->toBe(300);
 });
 
+it('carries the peak rep length into taper reps, and only there', function (float $distanceM, PlanPhase $phase, string $monday, ?int $repMinutes): void {
+    $work = GoalPaceWork::forWeek(goalPaceWorkInputs($distanceM, RaceAmbitionState::OnTrack), Carbon::parse($monday), $phase);
+
+    expect($work?->context()['rep_minutes'] ?? null)->toBe($repMinutes)
+        ->and(GoalPaceWork::repMinutesOf($work?->context()))->toBe($repMinutes);
+})->with([
+    '10K taper' => [10_000.0, PlanPhase::Taper, '2026-12-07', 4],
+    '10K peak' => [10_000.0, PlanPhase::Peak, '2026-11-16', null],
+    'half taper block' => [21_097.5, PlanPhase::Taper, '2026-12-07', null],
+]);
+
 it('names stepping-stone work by the band and final pace it was generated with', function (?array $context, bool $steppingStone): void {
     expect(GoalPaceWork::isSteppingStone($context))->toBe($steppingStone);
 })->with([

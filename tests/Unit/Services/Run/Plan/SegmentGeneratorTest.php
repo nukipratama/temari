@@ -494,3 +494,14 @@ it('closes an ambitious session at its goal pace: the final rep of four or more,
         ->and($work(PlanPhase::Peak, 16, 306, $tenK, SegmentKey::Interval))->toBe([[4.0, 306], [4.0, 306], [4.0, 306], [4.0, 300]])
         ->and($work(PlanPhase::Peak, 12, 306, $tenK, SegmentKey::Interval))->toBe([[4.0, 306], [4.0, 306], [3.0, 306], [1.0, 300]]);
 });
+
+it('writes goal-pace reps at the rep length their context carries, not the phase table', function (): void {
+    $paces = ['easy' => 380, 'marathon' => 320, 'threshold' => 295, 'interval' => 270];
+    $context = ['distance_m' => 10_000, 'goal_pace_sec_per_km' => 300, 'kind' => '10k', 'band' => 'on_track', 'rep_minutes' => 4];
+    $reps = array_values(array_filter(
+        SegmentGenerator::forPrescription(SessionType::Interval, PlanPhase::Taper, 10.0, $paces, new IntensityPrescription(12, PaceBand::Threshold, 300, null, $context)),
+        static fn (SessionSegment $segment): bool => $segment->key === SegmentKey::Interval,
+    ));
+
+    expect(array_map(static fn (SessionSegment $segment): ?float => $segment->minutes, $reps))->toBe([4.0, 4.0, 4.0]);
+});

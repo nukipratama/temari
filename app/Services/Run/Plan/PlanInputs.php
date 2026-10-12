@@ -36,6 +36,7 @@ final readonly class PlanInputs
      * @param  list<array{date: string, retry: bool, skipped: bool}>  $timeTrials  the trials already run, excused or fixed
      * @param  list<string>  $timeTrialEvidenceDates  Y-m-d of confirmed evidence or hard efforts at the trial distance
      * @param  int|null  $lastBuildQualityHardMinutes  the hard minutes of the latest Build-phase quality session already behind the athlete
+     * @param  int|null  $lastPeakGoalPaceHardMinutes  the hard minutes of the latest Peak-phase goal-pace session already behind the athlete
      */
     public function __construct(
         public int $userId,
@@ -72,6 +73,7 @@ final readonly class PlanInputs
         public array $timeTrials = [],
         public array $timeTrialEvidenceDates = [],
         public ?int $lastBuildQualityHardMinutes = null,
+        public ?int $lastPeakGoalPaceHardMinutes = null,
     ) {
     }
 

@@ -200,3 +200,16 @@ it('raises a prescription to carried-over minutes in whole reps, capped at the p
         ->and($carried(30, 20)->hardMinutes)->toBe(24)
         ->and($carried(30, 20)->reason)->toBe('progressed after the latest comparable session was hit');
 });
+
+it('tapers goal-pace work to about half the last peak session in whole peak-length reps, at least two', function (int $peakMinutes, int $taperMinutes): void {
+    $work = new GoalPaceWork(GoalPaceWork::KIND_10K, 10_000, 300, RaceAmbitionState::OnTrack, repMinutes: 4);
+    $taper = IntensityPrescriptionResolver::resolve(SessionType::Interval, PlanPhase::Taper, 10_000, 3000, PRESCRIPTION_PACES, IntentVerdict::Hit, 12, goalPace: $work, peakHardMinutes: $peakMinutes);
+
+    expect($taper->hardMinutes)->toBe($taperMinutes)
+        ->and($taper->reason)->toBe('half the last peak session, at its pace and rep length');
+})->with([
+    [24, 12],
+    [20, 12],
+    [16, 8],
+    [8, 8],
+]);

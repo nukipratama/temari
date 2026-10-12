@@ -498,3 +498,17 @@ it('carries an ambitious goal\'s stepping-stone time for its goal-pace work with
         ->and($ambition->steppingStoneTimeSec)->toBeNull()
         ->and($inputs->raceGoalTimeSec)->toBe(2_880);
 });
+
+it('carries the last peak goal-pace session the athlete was prescribed, never a marathon tempo or another phase', function (): void {
+    $user = gathererAthlete();
+    $session = static fn (string $date, PlanPhase $phase, int $minutes, ?array $context): PlannedSession => PlannedSession::factory()->for($user)->create([
+        'date' => $date, 'phase' => $phase, 'session_type' => SessionType::Interval, 'prescribed_hard_minutes' => $minutes,
+        'prescribed_pace_band' => PaceBand::Threshold, 'prescription_race_context' => $context,
+    ]);
+    $session('2026-08-25', PlanPhase::Peak, 20, ['distance_m' => 10_000, 'goal_pace_sec_per_km' => 300, 'kind' => '10k', 'band' => 'on_track']);
+    $session('2026-08-27', PlanPhase::Peak, 16, null);
+    $session('2026-08-29', PlanPhase::Peak, 35, ['distance_m' => 42_195, 'goal_pace_sec_per_km' => 300, 'kind' => 'marathon', 'band' => 'on_track']);
+    $session('2026-09-01', PlanPhase::Taper, 12, ['distance_m' => 10_000, 'goal_pace_sec_per_km' => 300, 'kind' => '10k', 'band' => 'on_track']);
+
+    expect($this->gatherer->forUser($user, Carbon::today())->lastPeakGoalPaceHardMinutes)->toBe(20);
+});

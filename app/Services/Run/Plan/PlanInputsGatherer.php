@@ -131,6 +131,7 @@ final readonly class PlanInputsGatherer
             timeTrials: $this->timeTrials($user, $season->starts_at->copy()->startOfWeek(Carbon::MONDAY), $today),
             timeTrialEvidenceDates: $this->timeTrialEvidenceDates($user, $trialDistanceM, $currentWeekStart),
             lastBuildQualityHardMinutes: $this->lastBuildQualityHardMinutes($user, $today),
+            lastPeakGoalPaceHardMinutes: $this->lastPeakGoalPaceHardMinutes($user, $today),
         );
     }
 
@@ -320,6 +321,20 @@ final readonly class PlanInputsGatherer
             ->latest('date')
             ->get(['prescribed_hard_minutes', 'prescription_race_context'])
             ->first(static fn (PlannedSession $session): bool => ! TimeTrial::isTrial($session->prescription_race_context))
+            ?->prescribed_hard_minutes;
+    }
+
+    private function lastPeakGoalPaceHardMinutes(User $user, Carbon $today): ?int
+    {
+        return PlannedSession::query()
+            ->where('user_id', $user->id)
+            ->whereBetween('date', [$today->copy()->subDays(42)->toDateString(), $today->copy()->subDay()->toDateString()])
+            ->where('phase', PlanPhase::Peak)
+            ->whereIn('session_type', [SessionType::Tempo, SessionType::Interval])
+            ->where('prescribed_hard_minutes', '>', 0)
+            ->latest('date')
+            ->get(['session_type', 'prescribed_hard_minutes', 'prescription_race_context'])
+            ->first(static fn (PlannedSession $session): bool => IntensityPrescriptionResolver::familyKeyForContext($session->session_type, $session->prescription_race_context) === 'goal_pace')
             ?->prescribed_hard_minutes;
     }
 
