@@ -9,6 +9,7 @@ use App\Enums\PlanPhase;
 use App\Enums\RaceAmbitionState;
 use App\Enums\SegmentKey;
 use App\Enums\SessionType;
+use App\Services\Run\Plan\FastFinishLongRun;
 use App\Services\Run\Plan\IntensityPrescription;
 use App\Services\Run\Plan\Periodizer;
 use App\Services\Run\Plan\PlanInputs;
@@ -114,7 +115,8 @@ function goalPaceWeeks(array $rows): array
  */
 function hardDates(array $rows): array
 {
-    return array_keys(array_filter($rows, static fn (array $row): bool => $row['prescribed_hard_minutes'] > 0));
+    return array_keys(array_filter($rows, static fn (array $row): bool => $row['prescribed_hard_minutes'] > 0
+        && ! FastFinishLongRun::isFastFinish($row['prescription_race_context'])));
 }
 
 /** @return array{verdict: IntentVerdict, hard_minutes: int} */

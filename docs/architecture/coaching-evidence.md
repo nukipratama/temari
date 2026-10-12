@@ -43,6 +43,7 @@ code_refs:
   - app/Services/Run/Plan/SessionIntentJudge.php
   - resources/js/lib/plan.ts
   - resources/js/components/race/SteppingStoneCard.tsx
+  - app/Services/Run/Plan/FastFinishLongRun.php
 ---
 
 # Coaching evidence
@@ -112,6 +113,7 @@ ADRs, feature notes and code docblocks cite a source here as `[[coaching-evidenc
 | An unsupported goal is given a nearer, moderately hard stepping stone beside it rather than being rewritten: the target stays as stated and the stepping stone moves with the supported time; low-evidence and unknown goals get none | [RaceAmbitionAssessor.php](app/Services/Run/Plan/RaceAmbitionAssessor.php), [SteppingStoneCard.tsx](resources/js/components/race/SteppingStoneCard.tsx) | measured | [[#KylloLanders1995]], [[#BanduraSchunk1981]] (mechanism only) |
 | The stepping stone is the supported time × 0.97, rounded to whole seconds: the on-track edge from #1803, not a research number | [RaceAmbitionAssessor.php](app/Services/Run/Plan/RaceAmbitionAssessor.php) | product definition | — |
 | An unsupported 5K to half goal's goal-pace work runs at the stepping-stone pace with the full on-track dose, and an unsupported marathon's race Tempo and race long run there with the existing minutes, because the stepping-stone pace equals the on-track edge | [GoalPaceWork.php](app/Services/Run/Plan/GoalPaceWork.php) | heuristic | [[#PfitzingerDouglas2019]], [[#PfitzingerLatter2015]], [[#Daniels2022]] |
+| From mid-Build through Peak, at least two weeks apart, a 5K-to-half goal's long run ends with its last fifth at race-specific pace (a 5K goal's at its supported 10K pace outside goal-pace weeks); it is a hard day that yields to Tempo and Interval days, never falls in a recovery or taper week and never on a long run longer than any run so far | [FastFinishLongRun.php](app/Services/Run/Plan/FastFinishLongRun.php), [Periodizer.php](app/Services/Run/Plan/Periodizer.php) | heuristic (no trial compares long-run content) | [[#PfitzingerLatter2015]], [[#PfitzingerDouglas2019]], [[#Haugen2022]], [[#Fokkema2020]], [[#Frandsen2025]] |
 | A time trial is 5K, or 10K for a half marathon or longer goal; it falls 4 weeks before race week, then every 6 weeks earlier, never in the last 3 weeks before a race, and a season with no race starts in its third week, then every 6 weeks; a trial due in a scheduled Deload week falls due the week before it | [TimeTrial.php](app/Services/Run/Plan/TimeTrial.php), [TimeTrialSchedule.php](app/Services/Run/Plan/TimeTrialSchedule.php) | heuristic | [[#Kiely2018]] |
 | Confirmed evidence or a hard effort within ±10% of the trial distance, dated from 4 weeks before a trial's due week, skips that trial | [TimeTrialSchedule.php](app/Services/Run/Plan/TimeTrialSchedule.php) | heuristic | — |
 | A time trial replaces the week's first quality session and never adds a hard day; a skipped trial is offered once more the following week, and a skipped retry or a trial answered "no" is not | [Periodizer.php](app/Services/Run/Plan/Periodizer.php), [TimeTrialSchedule.php](app/Services/Run/Plan/TimeTrialSchedule.php) | product choice | — |
@@ -331,3 +333,6 @@ Arcelli E, Canova R. Marathon training book, 1999; the title is not verified her
 
 ### Mujika2010
 Mujika I. Intense training: the key to optimal performance before and during the taper. *Scand J Med Sci Sports* 2010;20(Suppl 2):24–31. https://doi.org/10.1111/j.1600-0838.2010.01189.x. Training intensity is what maintains adaptations through a taper while volume is cut. Grade REV · access NR.
+
+### Fokkema2020
+Fokkema T, van Damme AADN, Fornerod MWJ, de Vos RJ, Bierma-Zeinstra SMA, van Middelkoop M. Training for a (half-)marathon: training volume and longest endurance run related to performance and running injuries. *Scand J Med Sci Sports* 2020;30(9):1692–1704. https://doi.org/10.1111/sms.13725. In recreational (half-)marathon runners, a longer longest training run went with faster finish times; the study did not look at what pace the long runs held. Grade COH · access NR.

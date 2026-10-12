@@ -501,16 +501,23 @@ final class SegmentGenerator
     private static function prescribedLongSegments(float $km, ?array $paces, IntensityPrescription $prescription): array
     {
         $hardKm = self::kmForPrescription($prescription);
-        $finishKm = self::kmFor(10.0, PaceBand::Easy, $paces) ?? INF;
+        $fastFinish = FastFinishLongRun::isFastFinish($prescription->raceContext);
+        $finishKm = $fastFinish ? 0.0 : self::kmFor(10.0, PaceBand::Easy, $paces) ?? INF;
         if ($paces === null) {
             return [
                 self::unmeasuredEasy(),
                 self::prescribedBlock(SegmentKey::Main, $prescription->hardMinutes, $prescription),
-                self::unmeasuredEasy(),
+                ...($fastFinish ? [] : [self::unmeasuredEasy()]),
             ];
         }
         if (! is_finite($finishKm) || $hardKm + $finishKm >= $km) {
             return self::easyBlock($km, $paces);
+        }
+        if ($fastFinish) {
+            return [
+                self::block(SegmentKey::Easy, round($km - round($hardKm, 1), 1), PaceBand::Easy, $paces),
+                self::prescribedBlock(SegmentKey::Main, $prescription->hardMinutes, $prescription),
+            ];
         }
 
         return [

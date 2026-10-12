@@ -214,6 +214,9 @@ final class IntensityPrescriptionResolver
         if (TimeTrial::isTrial($raceContext)) {
             return TimeTrial::KIND;
         }
+        if (FastFinishLongRun::isFastFinish($raceContext)) {
+            return FastFinishLongRun::KIND;
+        }
         if (GoalPaceWork::isGoalPace($raceContext) && ($raceContext['kind'] ?? null) !== GoalPaceWork::KIND_MARATHON) {
             return 'goal_pace';
         }
