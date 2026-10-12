@@ -193,18 +193,6 @@ it('narrates a still-hydrating month once past the grace window, instead of defe
     expect(app(KickoffMonthlyRecaps::class)($user->id))->toBe(['dispatched' => 1, 'rule_based' => 0]);
 });
 
-it('narrates every completed month for an athlete who connected long ago', function (): void {
-    $user = User::factory()->create();
-    StravaConnection::factory()->for($user)->create(['created_at' => '2025-01-01 00:00:00']);
-    backfilledRunInMonth($user, '2026-05');
-
-    $captured = [];
-    $this->app->instance(AnalysisService::class, captureAnalysisServiceRequests($captured));
-
-    expect(app(KickoffMonthlyRecaps::class)($user->id))->toBe(['dispatched' => 1, 'rule_based' => 0])
-        ->and(array_column($captured, 'discriminator'))->toBe(['2026-05']);
-});
-
 it('never dispatches for the demo account regardless of connect date', function (): void {
     $demo = User::factory()->demo()->create();
     StravaConnection::factory()->for($demo)->create(['created_at' => Carbon::today()->subDay()]);

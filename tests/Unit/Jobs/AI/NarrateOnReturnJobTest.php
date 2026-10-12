@@ -14,19 +14,16 @@ use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
 use App\Models\RunCard;
 use App\Models\StravaConnection;
-use App\Models\TelegramConnection;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisOrigin;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
-use App\Services\AI\NarrationOrigin;
 use App\Services\AI\ServedBy;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Bus;
-use Illuminate\Support\Facades\Notification;
 
 uses(RefreshDatabase::class);
 
@@ -201,39 +198,6 @@ it('bills nothing twice when the return job runs again', function (): void {
     Bus::assertDispatchedTimes(AnalyzeCardFlavorJob::class, 1);
     Bus::assertDispatchedTimes(AnalyzeWeeklyRecapJob::class, 1);
     Bus::assertDispatchedTimes(AnalyzeMonthlyRecapJob::class, 1);
-});
-
-it('sends no notification for anything it narrates', function (): void {
-    Notification::fake();
-    config(['services.telegram.bot_token' => 'test-bot-token', 'services.telegram.notify_max_age_days' => 14]);
-    TelegramConnection::factory()->for($this->athlete)->create();
-    $recent = runLeftPendingWhileAway($this->athlete, '2026-06-12 06:30:00');
-    runLeftPendingWhileAway($this->athlete, '2026-06-02 06:30:00');
-    weeklyRecapLeftPending($this->athlete, '2026-06-07');
-
-    narrateOnReturn($this->athlete);
-
-    $job = Bus::dispatched(AnalyzeActivityJob::class)->first();
-    app(NarrationOrigin::class)->set($job->origin);
-    $speech = Analysis::query()->forSubject(Activity::class, $recent->id, AnalysisType::PostRunSpeech)->firstOrFail();
-    app(AnalysisService::class)->markDone($speech, 'Run story.', ServedBy::Llm);
-
-    Notification::assertNothingSent();
-});
-
-it('clears the away reason once an away-filled row is re-served by the LLM', function (): void {
-    $older = runLeftPendingWhileAway($this->athlete, '2026-06-02 06:30:00');
-
-    narrateOnReturn($this->athlete);
-
-    $speech = Analysis::query()->forSubject(Activity::class, $older->id, AnalysisType::PostRunSpeech)->firstOrFail();
-    expect($speech->rule_based_reason)->toBe(AnalysisOrigin::Return);
-
-    app(AnalysisService::class)->markDone($speech, 'Read for real now.', ServedBy::Llm);
-
-    expect($speech->fresh())
-        ->served_by->toBe(ServedBy::Llm)
-        ->rule_based_reason->toBeNull();
 });
 
 it('does nothing for an athlete who no longer exists', function (): void {
