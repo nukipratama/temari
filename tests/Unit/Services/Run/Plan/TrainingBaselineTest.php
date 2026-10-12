@@ -572,8 +572,8 @@ it('leaves the long run to the share and the readiness distance when the season 
     flooredRaceSeason($user, 20.0, null);
 
     // Half of a 20 km anchor caps the 12 km readiness long run at 10, and the
-    // twelve-week block peaks at 1.075^3: 10 / 1.242297 rounds up to 8.1.
-    expect($this->baseline->forUser($user, Carbon::today())['long_run_km'])->toBe(8.1);
+    // twelve-week block peaks at 1.075^2: 10 / 1.155625 rounds up to 8.7.
+    expect($this->baseline->forUser($user, Carbon::today())['long_run_km'])->toBe(8.7);
 });
 
 it('sizes the half-the-anchor cap off the floor when the floor asks for the bigger week', function (): void {
@@ -653,8 +653,8 @@ it('solves a capped floor to the smallest tenth that reaches it', function (): v
         return volumeFloorKmFor($this->baseline, $race, $block, $season, 4, INF, 6.0);
     };
 
-    expect($floorFor(17.4))->toBe(7.0)
-        ->and($floorFor(22.14))->toBe(12.5);
+    expect($floorFor(17.4))->toBe(7.3)
+        ->and($floorFor(22.14))->toBe(12.9);
 });
 
 it('does not rebuild the race block on a second forUser() call in the same scope', function (): void {

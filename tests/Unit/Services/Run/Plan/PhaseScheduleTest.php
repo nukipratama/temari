@@ -219,7 +219,7 @@ it('volumeMultipliers leaves a 12-week block untouched by the ramp cap', functio
         array_map(fn (array $w): PlanPhase => $w['phase'], $arc),
     );
 
-    expect(max($multipliers))->toEqualWithDelta(1.075 ** 3, 0.001);
+    expect(max($multipliers))->toEqualWithDelta(1.075 ** 2, 0.001);
 });
 
 it('holds a self-scaled arc at 1.0 outside its deload dips', function (): void {
@@ -313,11 +313,55 @@ it('marks every self-scaled week as general', function (): void {
 it('moves a recovery week off the last week before the taper so a Peak week leads into it', function (): void {
     $arcStart = Carbon::parse('2026-09-14');
 
+    $phases = array_column(PhaseSchedule::forRace($arcStart, $arcStart->copy()->addWeeks(13), 10_000.0), 'phase');
+
+    expect(array_map(fn (PlanPhase $p): string => $p->value, $phases))->toBe([
+        'base', 'base', 'base', 'deload', 'build', 'build', 'build', 'deload', 'build', 'peak', 'deload', 'peak', 'taper', 'taper',
+    ]);
+});
+
+it('moves a recovery week off the first Peak week into the last Build week', function (): void {
+    $arcStart = Carbon::parse('2026-09-14');
+
+    $phases = array_column(PhaseSchedule::forRace($arcStart, $arcStart->copy()->addWeeks(11), 5_000.0), 'phase');
+
+    expect(array_map(fn (PlanPhase $p): string => $p->value, $phases))->toBe([
+        'base', 'base', 'build', 'deload', 'build', 'build', 'deload', 'peak', 'peak', 'peak', 'taper', 'taper',
+    ]);
+});
+
+it('drops a recovery week that moving would put two weeks after the previous one', function (): void {
+    $arcStart = Carbon::parse('2026-09-14');
+
     $phases = array_column(PhaseSchedule::forRace($arcStart, Carbon::parse('2026-11-22'), 10_000.0), 'phase');
 
     expect(array_map(fn (PlanPhase $p): string => $p->value, $phases))->toBe([
-        'base', 'base', 'build', 'deload', 'build', 'build', 'deload', 'peak', 'taper', 'taper',
+        'base', 'base', 'build', 'deload', 'build', 'build', 'peak', 'peak', 'taper', 'taper',
     ]);
+});
+
+it('opens Peak on a Peak week and keeps every planned Peak week', function (int $weeks, float $distanceM): void {
+    $arcStart = Carbon::parse('2026-08-10');
+    $arc = PhaseSchedule::forRace($arcStart, $arcStart->copy()->addWeeks($weeks - 1), $distanceM);
+    $phases = array_column($arc, 'phase');
+
+    $rampWeeks = count(array_filter(
+        $arc,
+        fn (array $week): bool => $week['zone'] === PhaseSchedule::ZONE_BLOCK && $week['phase'] !== PlanPhase::Taper,
+    ));
+    $firstPeak = array_search(PlanPhase::Peak, $phases, true);
+    $peakRun = array_slice($phases, $firstPeak, array_search(PlanPhase::Taper, $phases, true) - $firstPeak);
+
+    expect(count($peakRun))->toBe(max(1, (int) round($rampWeeks * 0.25)));
+})->with(function (): array {
+    $cases = [];
+    foreach ([5_000.0, 10_000.0, 21_097.0, 42_195.0] as $distanceM) {
+        foreach (range(8, 20) as $weeks) {
+            $cases["{$distanceM} m, {$weeks} weeks"] = [$weeks, $distanceM];
+        }
+    }
+
+    return $cases;
 });
 
 it('takes a recovery week inside Peak off the build level and returns to it after', function (): void {
@@ -365,8 +409,8 @@ it('never lets a race block reach Taper straight out of a recovery week', functi
 
 dataset('race blocks', function (): array {
     $cases = [];
-    foreach ([21_097.0, 42_195.0] as $distanceM) {
-        foreach ([8, 10, 12, 16, 20, 30] as $weeks) {
+    foreach ([5_000.0, 10_000.0, 21_097.0, 42_195.0] as $distanceM) {
+        foreach ([...range(8, 20), 30] as $weeks) {
             $cases["{$distanceM} m, {$weeks} weeks"] = [$weeks, $distanceM];
         }
     }
