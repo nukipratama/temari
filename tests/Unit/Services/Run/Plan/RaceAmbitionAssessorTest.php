@@ -133,7 +133,7 @@ it('names the effort the supported time rests on', function (): void {
     expect($ambition->basis)->toBe(['distance_m' => 10_000, 'performed_on' => '2026-09-24', 'activity_id' => PerformanceEvidence::query()->sole()->activity_id]);
 });
 
-it('sets the stepping stone 3 percent faster than supported for an unsupported goal only', function (int $goalSec, bool $steppingStone): void {
+it('sets the stepping stone 3 percent faster than supported for an unsupported or ambitious goal only', function (int $goalSec, bool $steppingStone): void {
     tenKEvidence($this->user, 4200);
 
     $ambition = $this->assessor->assess($this->user, tenKRace($this->user, $goalSec));
@@ -143,7 +143,7 @@ it('sets the stepping stone 3 percent faster than supported for an unsupported g
         ->and($ambition->targetTimeSec)->toBe($goalSec);
 })->with([
     'unsupported' => [3000, true],
-    'ambitious' => [4000, false],
+    'ambitious' => [4000, true],
     'on track' => [4200, false],
 ]);
 

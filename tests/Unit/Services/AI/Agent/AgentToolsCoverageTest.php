@@ -1545,3 +1545,47 @@ it('names stepping-stone work and its pace to the plan tools, never as goal pace
         ->and($days[0]['target_pace_sec'])->toBe(291)
         ->and($days[0]['target_pace_formatted'])->toBe('4:51');
 });
+
+it('tells the plan tools where ambitious stepping-stone work closes at goal pace', function (): void {
+    $user = User::factory()->create();
+    $monday = Carbon::parse('2026-09-07');
+    PlannedSession::factory()->for($user)->create([
+        'date' => $monday->toDateString(),
+        'session_type' => SessionType::Interval,
+        'prescribed_hard_minutes' => 16,
+        'prescribed_pace_band' => PaceBand::Threshold,
+        'prescribed_pace_sec_per_km' => 306,
+        'prescription_race_context' => ['distance_m' => 10_000, 'goal_pace_sec_per_km' => 306, 'kind' => '10k', 'band' => 'ambitious', 'final_pace_sec_per_km' => 296],
+    ]);
+
+    $tool = planContextTool($user, $monday, $monday);
+    $days = $tool->handle([])['days'];
+
+    expect($days[0]['stepping_stone'])->toBe('10k')
+        ->and($days[0]['closing_goal_pace_formatted'])->toBe('4:56')
+        ->and($days[0])->not->toHaveKey('goal_pace')
+        ->and($days[0]['target_pace_formatted'])->toBe('5:06')
+        ->and($tool->description())->toContain('closing_goal_pace_formatted');
+});
+
+it('names a fast-finish long run to the plan tools by its fast block, never as goal-pace work', function (): void {
+    $user = User::factory()->create();
+    $sunday = Carbon::parse('2026-09-13');
+    PlannedSession::factory()->for($user)->create([
+        'date' => $sunday->toDateString(),
+        'session_type' => SessionType::Long,
+        'prescribed_hard_minutes' => 20,
+        'prescribed_pace_band' => PaceBand::Threshold,
+        'prescribed_pace_sec_per_km' => 290,
+        'prescription_race_context' => ['kind' => 'fast_finish', 'race_kind' => '5k', 'distance_m' => 5_000, 'pace_kind' => '10k', 'pace_source' => 'supported'],
+    ]);
+
+    $tool = planContextTool($user, $sunday, $sunday);
+    $days = $tool->handle([])['days'];
+
+    expect($days[0]['session_type'])->toBe('long')
+        ->and($days[0]['fast_finish'])->toBe(['pace_kind' => '10k', 'pace_source' => 'supported', 'minutes' => 20, 'pace_formatted' => '4:50'])
+        ->and($days[0])->not->toHaveKey('goal_pace')
+        ->and($days[0])->not->toHaveKey('stepping_stone')
+        ->and($tool->description())->toContain('fast_finish');
+});

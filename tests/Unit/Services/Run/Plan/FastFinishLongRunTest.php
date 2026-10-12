@@ -62,12 +62,22 @@ it('exists only for a 5K-to-half race with a pace to run', function (?float $dis
 ]);
 
 it('sizes the fast block at a fifth of the long run at its pace, in its pace\'s band', function (): void {
-    $tenK = new FastFinishLongRun(GoalPaceWork::KIND_10K, 10_000, 300, GoalPaceWork::KIND_10K)->prescription(24.0);
-    $fiveK = new FastFinishLongRun(GoalPaceWork::KIND_5K, 5_000, 276, GoalPaceWork::KIND_5K)->prescription(24.0);
+    $tenK = new FastFinishLongRun(GoalPaceWork::KIND_10K, 10_000, 300, GoalPaceWork::KIND_10K, FastFinishLongRun::PACE_GOAL)->prescription(24.0);
+    $fiveK = new FastFinishLongRun(GoalPaceWork::KIND_5K, 5_000, 276, GoalPaceWork::KIND_5K, FastFinishLongRun::PACE_GOAL)->prescription(24.0);
 
-    expect([$tenK->hardMinutes, $tenK->paceBand, $tenK->paceSecPerKm, $tenK->raceContext])->toBe([24, PaceBand::Threshold, 300, ['kind' => 'fast_finish', 'race_kind' => '10k', 'distance_m' => 10_000]])
+    expect([$tenK->hardMinutes, $tenK->paceBand, $tenK->paceSecPerKm, $tenK->raceContext])->toBe([24, PaceBand::Threshold, 300, ['kind' => 'fast_finish', 'race_kind' => '10k', 'distance_m' => 10_000, 'pace_kind' => '10k', 'pace_source' => 'goal']])
         ->and([$fiveK->hardMinutes, $fiveK->paceBand])->toBe([22, PaceBand::Interval])
         ->and(FastFinishLongRun::isFastFinish($tenK->raceContext))->toBeTrue()
         ->and(FastFinishLongRun::isFastFinish(['kind' => '10k', 'band' => 'on_track']))->toBeFalse()
         ->and(FastFinishLongRun::isFastFinish(null))->toBeFalse();
+});
+
+it('stamps the race and the source of the pace its fast block runs at', function (): void {
+    $context = static fn (?GoalPaceWork $goalPace, float $distanceM = 10_000.0): ?array => FastFinishLongRun::forWeek(fastFinishUnitInputs($distanceM, RaceAmbitionState::OnTrack, 3100, 2900), $goalPace)?->context();
+
+    expect($context(new GoalPaceWork(GoalPaceWork::KIND_10K, 10_000, 296, RaceAmbitionState::OnTrack)))->toMatchArray(['pace_kind' => '10k', 'pace_source' => 'goal'])
+        ->and($context(new GoalPaceWork(GoalPaceWork::KIND_10K, 10_000, 306, RaceAmbitionState::Ambitious, 296)))->toMatchArray(['pace_kind' => '10k', 'pace_source' => 'stepping_stone'])
+        ->and($context(new GoalPaceWork(GoalPaceWork::KIND_10K, 10_000, 306, RaceAmbitionState::Unsupported)))->toMatchArray(['pace_kind' => '10k', 'pace_source' => 'stepping_stone'])
+        ->and($context(null))->toMatchArray(['pace_kind' => '10k', 'pace_source' => 'supported'])
+        ->and($context(null, 5_000.0))->toMatchArray(['race_kind' => '5k', 'pace_kind' => '10k', 'pace_source' => 'supported']);
 });

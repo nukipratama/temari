@@ -15,6 +15,7 @@ import {
     deltaDirection,
     easedFromDelta,
     fallOffTiltWhy,
+    fastFinishPaceLabel,
     isRaceWeek,
     nextPhaseOf,
     judgedDayResult,
@@ -419,6 +420,8 @@ function planDay(overrides: Partial<PlanDay> = {}): PlanDay {
         fall_off_tilt: null,
         goal_pace: null,
         stepping_stone: false,
+        closes_at_goal_pace: false,
+        fast_finish: null,
         time_trial: null,
         hr_cap_bpm: null,
         advice_note: null,
@@ -973,6 +976,81 @@ describe('stepping-stone work', () => {
                 }),
             ),
         ).toBe('rehearsing your marathon stepping-stone pace.');
+    });
+});
+
+describe('ambitious stepping-stone work', () => {
+    it('says it closes at goal pace, under the stepping-stone label', () => {
+        const ambitious = planDay({
+            session_type: 'interval',
+            goal_pace: '10k',
+            stepping_stone: true,
+            closes_at_goal_pace: true,
+        });
+
+        expect(sessionLabel(ambitious)).toBe('stepping-stone pace');
+        expect(sessionPurpose(ambitious)).toBe(
+            'rehearsing your 10K stepping-stone pace, closing at goal pace.',
+        );
+    });
+});
+
+describe('a fast-finish long run', () => {
+    const fastFinish = (
+        pace_source: 'goal' | 'stepping_stone' | 'supported',
+        pace_kind: '5k' | '10k' | 'half' = '10k',
+    ) =>
+        planDay({
+            session_type: 'long',
+            fast_finish: { pace_kind, pace_source },
+            segments: [
+                {
+                    key: 'easy',
+                    minutes: 80,
+                    zone: 'Z2',
+                    pace_label: 'easy',
+                    km: 12,
+                    pace_sec_per_km: 400,
+                },
+                {
+                    key: 'main',
+                    minutes: 20,
+                    zone: 'Z4',
+                    pace_label: 'threshold',
+                    km: 4,
+                    pace_sec_per_km: 290,
+                },
+            ],
+        });
+
+    it('is named a long run with a fast finish', () => {
+        expect(sessionLabel(fastFinish('supported'))).toBe(
+            'long run with a fast finish',
+        );
+        expect(workLabel(fastFinish('goal'))).toBeUndefined();
+    });
+
+    it('names the fast block by the pace it actually runs at', () => {
+        expect(fastFinishPaceLabel(fastFinish('goal'))).toBe('goal pace');
+        expect(fastFinishPaceLabel(fastFinish('stepping_stone'))).toBe(
+            'stepping-stone pace',
+        );
+        expect(fastFinishPaceLabel(fastFinish('supported'))).toBe(
+            'supported 10K pace',
+        );
+        expect(fastFinishPaceLabel(planDay({}))).toBeUndefined();
+    });
+
+    it('says where the fast finish runs, never goal-pace work unless it is', () => {
+        expect(sessionPurpose(fastFinish('goal', 'half'))).toBe(
+            'the last fifth at your half marathon goal pace. rehearses race pace on tired legs.',
+        );
+        expect(sessionPurpose(fastFinish('stepping_stone'))).toBe(
+            'the last fifth at your 10K stepping-stone pace. rehearses race pace on tired legs.',
+        );
+        expect(sessionPurpose(fastFinish('supported'))).toBe(
+            'the last fifth at your supported 10K pace. rehearses race pace on tired legs.',
+        );
     });
 });
 

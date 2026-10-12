@@ -9,7 +9,7 @@ interface SteppingStoneCardProps {
     className?: string;
 }
 
-/** An unsupported goal's stepping stone: the edge of on track, where its goal-pace work runs. */
+/** An unsupported or ambitious goal's stepping stone: the edge of on track, where its goal-pace work runs. */
 export default function SteppingStoneCard({
     ambition,
     className,
@@ -40,9 +40,9 @@ export default function SteppingStoneCard({
                 </span>
             </p>
             <p className="mt-2 text-xs leading-relaxed text-text-2">
-                the edge of on track, 3% faster than your supported time. your
-                stepping-stone sessions run here, and it moves as you get
-                fitter.
+                {ambition.state === 'ambitious'
+                    ? 'the edge of on track, 3% faster than your supported time. you train here and close each session at your goal pace, and it moves as you get fitter.'
+                    : 'the edge of on track, 3% faster than your supported time. your stepping-stone sessions run here, and it moves as you get fitter.'}
             </p>
         </section>
     );

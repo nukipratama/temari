@@ -395,6 +395,8 @@ const GOAL_PACE_RACE: Record<NonNullable<PlanDay['goal_pace']>, string> = {
 
 export const TIME_TRIAL_LABEL = 'time trial';
 
+export const FAST_FINISH_LABEL = 'long run with a fast finish';
+
 function goalPaceLabel(
     day: Pick<PlanDay, 'goal_pace' | 'stepping_stone'>,
 ): string | undefined {
@@ -405,15 +407,38 @@ function goalPaceLabel(
     return day.stepping_stone ? STEPPING_STONE_LABEL : GOAL_PACE_LABEL;
 }
 
-/** The session's name: a time trial or goal-pace work by its own, every other day by its type. */
+/** The pace a fast-finish long run's fast block runs at, if the day is one. */
+export function fastFinishPaceLabel(
+    day: Pick<PlanDay, 'fast_finish'>,
+): string | undefined {
+    switch (day.fast_finish?.pace_source) {
+        case undefined:
+            return undefined;
+        case 'goal':
+            return GOAL_PACE_LABEL;
+        case 'stepping_stone':
+            return STEPPING_STONE_LABEL;
+        case 'supported':
+            return `supported ${GOAL_PACE_RACE[day.fast_finish.pace_kind]} pace`;
+    }
+}
+
+/** The session's name: a time trial, goal-pace work or a fast-finish long run by its own, every other day by its type. */
 export function sessionLabel(
     day: Pick<
         PlanDay,
-        'session_type' | 'goal_pace' | 'stepping_stone' | 'time_trial'
+        | 'session_type'
+        | 'goal_pace'
+        | 'stepping_stone'
+        | 'time_trial'
+        | 'fast_finish'
     >,
 ): string {
     if (day.time_trial !== null) {
         return TIME_TRIAL_LABEL;
+    }
+    if (day.fast_finish !== null) {
+        return FAST_FINISH_LABEL;
     }
 
     return (
@@ -469,7 +494,16 @@ export function sessionPurpose(day: PlanDay): string | null {
         return `aim around ${formatDurationHMS(day.time_trial.aim_time_sec)}. checks your fitness so your paces stay honest.`;
     }
     if (day.goal_pace !== null) {
-        return `rehearsing your ${GOAL_PACE_RACE[day.goal_pace]} ${goalPaceLabel(day)}.`;
+        const closing = day.closes_at_goal_pace ? ', closing at goal pace' : '';
+        return `rehearsing your ${GOAL_PACE_RACE[day.goal_pace]} ${goalPaceLabel(day)}${closing}.`;
+    }
+    if (day.fast_finish !== null) {
+        const race = GOAL_PACE_RACE[day.fast_finish.pace_kind];
+        const pace =
+            day.fast_finish.pace_source === 'supported'
+                ? `supported ${race} pace`
+                : `${race} ${fastFinishPaceLabel(day)}`;
+        return `the last fifth at your ${pace}. rehearses race pace on tired legs.`;
     }
     const hasWork = sessionHasWork(day);
     switch (day.session_type) {

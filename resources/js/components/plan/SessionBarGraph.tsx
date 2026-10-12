@@ -2,6 +2,7 @@ import type { PlanSessionSegment } from '@/types/inertia';
 
 import { HR_ZONE_COLORS, type HrZoneKey } from '@/lib/chartTokens';
 import { formatPace } from '@/lib/pace';
+import { GOAL_PACE_LABEL } from '@/lib/plan';
 
 export function zoneColor(zone: string): string {
     return HR_ZONE_COLORS[zone as HrZoneKey] ?? 'var(--color-text-3)';
@@ -40,17 +41,81 @@ function paceSub(segment: PlanSessionSegment, label: string): string {
         : `${formatPace(segment.pace_sec_per_km)}/km · ${label}`;
 }
 
+/** Back-to-back segments of the same work key, with no recovery between them, as one rep or block. */
+function legendGroups(segments: PlanSessionSegment[]): PlanSessionSegment[][] {
+    const groups: PlanSessionSegment[][] = [];
+    for (const segment of segments) {
+        const previous = groups.at(-1);
+        if (
+            previous !== undefined &&
+            (segment.key === 'interval' || segment.key === 'main') &&
+            previous[0].key === segment.key
+        ) {
+            previous.push(segment);
+        } else {
+            groups.push([segment]);
+        }
+    }
+
+    return groups;
+}
+
+function joined(group: PlanSessionSegment[]): PlanSessionSegment {
+    if (group.length === 1) {
+        return group[0];
+    }
+    const sum = (values: (number | null)[]) =>
+        values.some((value) => value == null)
+            ? null
+            : Math.round(
+                  values.reduce<number>(
+                      (total, value) => total + (value ?? 0),
+                      0,
+                  ) * 10,
+              ) / 10;
+
+    return {
+        ...group[0],
+        km: sum(group.map((segment) => segment.km)),
+        minutes: sum(group.map((segment) => segment.minutes)),
+    };
+}
+
+function closingNote(units: PlanSessionSegment[][]): string | undefined {
+    const last = units.at(-1);
+    if (last === undefined) {
+        return undefined;
+    }
+    const closing = last.at(-1);
+    if (closing?.pace_sec_per_km == null) {
+        return undefined;
+    }
+    const at = `${formatPace(closing.pace_sec_per_km)}/km · ${GOAL_PACE_LABEL}`;
+    if (last.length === 1) {
+        return units.length > 1 ? `last at ${at}` : undefined;
+    }
+    if (units.length === 1) {
+        return `last quarter at ${at}`;
+    }
+
+    return units.every((unit) => unit.length > 1)
+        ? `last quarter of each at ${at}`
+        : `last quarter of the last rep at ${at}`;
+}
+
 function LegendItem({
     label,
     zone,
     figure,
     sub,
+    note,
     wide = false,
 }: Readonly<{
     label: string;
     zone: string;
     figure: string;
     sub: string;
+    note?: string;
     wide?: boolean;
 }>) {
     return (
@@ -67,6 +132,7 @@ function LegendItem({
                 {figure}
             </div>
             <div className="text-xs text-text-2">{sub}</div>
+            {note && <div className="text-xs text-text-2">{note}</div>}
         </div>
     );
 }
@@ -80,7 +146,12 @@ function LegendItem({
 export default function SessionBarGraph({
     segments,
     workPaceLabel,
-}: Readonly<{ segments: PlanSessionSegment[]; workPaceLabel?: string }>) {
+    closesAtGoalPace = false,
+}: Readonly<{
+    segments: PlanSessionSegment[];
+    workPaceLabel?: string;
+    closesAtGoalPace?: boolean;
+}>) {
     const total = segments.reduce((sum, s) => sum + (s.minutes ?? 0), 0);
     const subFor = (segment: PlanSessionSegment) =>
         paceSub(
@@ -98,13 +169,17 @@ export default function SessionBarGraph({
     // repeated work blocks around recoveries. Collapse whichever is present
     // rather than listing every block, which would be six legend items on a
     // Base tempo day.
-    const reps = segments.filter((s) => s.key === 'interval');
-    const mains = segments.filter((s) => s.key === 'main');
+    const groups = legendGroups(segments);
+    const reps = groups.filter((g) => g[0].key === 'interval');
+    const mains = groups.filter((g) => g[0].key === 'main');
     const repeats = reps.length > 0 ? reps : mains.length > 1 ? mains : [];
     const warmup = segments.find((s) => s.key === 'warmup');
-    const work = repeats[0];
+    const work = repeats[0] === undefined ? undefined : joined(repeats[0]);
     const recovery = segments.find((s) => s.key === 'recovery');
     const easy = segments.filter((s) => s.key === 'easy');
+    const note = closesAtGoalPace
+        ? closingNote(repeats.length > 0 ? repeats : mains)
+        : undefined;
 
     return (
         <div className="mt-2.5">
@@ -138,6 +213,7 @@ export default function SessionBarGraph({
                             zone={work.zone}
                             figure={`${figureText(work)} hard / ${recovery?.minutes ?? 0} min easy`}
                             sub={subFor(work)}
+                            note={note}
                         />
                         {easy.map((segment) => (
                             <LegendItem
@@ -150,15 +226,21 @@ export default function SessionBarGraph({
                         ))}
                     </>
                 ) : (
-                    Array.from({ length: segments.length }, (_, index) => (
-                        <LegendItem
-                            key={index}
-                            label={SEGMENT_LABEL[segments[index].key]}
-                            zone={segments[index].zone}
-                            figure={figureText(segments[index])}
-                            sub={subFor(segments[index])}
-                        />
-                    ))
+                    Array.from({ length: groups.length }, (_, index) => {
+                        const unit = joined(groups[index]);
+                        return (
+                            <LegendItem
+                                key={index}
+                                label={SEGMENT_LABEL[unit.key]}
+                                zone={unit.zone}
+                                figure={figureText(unit)}
+                                sub={subFor(unit)}
+                                note={
+                                    groups[index].length > 1 ? note : undefined
+                                }
+                            />
+                        );
+                    })
                 )}
             </div>
         </div>

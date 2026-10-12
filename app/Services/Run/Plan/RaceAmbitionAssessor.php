@@ -45,7 +45,7 @@ final readonly class RaceAmbitionAssessor
             $gap <= self::AMBITIOUS_WITHIN => RaceAmbitionState::Ambitious,
             default => RaceAmbitionState::Unsupported,
         };
-        $steppingStoneSec = $state === RaceAmbitionState::Unsupported ? self::steppingStoneTimeSec($supportedSec) : null;
+        $steppingStoneSec = in_array($state, [RaceAmbitionState::Ambitious, RaceAmbitionState::Unsupported], true) ? self::steppingStoneTimeSec($supportedSec) : null;
 
         return new RaceAmbition(
             $state,

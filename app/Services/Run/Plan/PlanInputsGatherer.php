@@ -11,7 +11,6 @@ use App\Enums\IntentVerdict;
 use App\Enums\PaceBand;
 use App\Enums\PlanPhase;
 use App\Enums\PlannedSessionStatus;
-use App\Enums\RaceAmbitionState;
 use App\Enums\RaceChangeKind;
 use App\Enums\RaceOutcome;
 use App\Enums\SessionType;
@@ -126,9 +125,7 @@ final readonly class PlanInputsGatherer
             fallOffTilt: $layout['fall_off_tilt'],
             raceAmbitionState: $ambition?->state,
             raceAmbitionGapPct: $ambition?->gapPct,
-            raceSteppingStoneTimeSec: $ambition?->state === RaceAmbitionState::Ambitious && $ambition->supportedTimeSec !== null
-                ? RaceAmbitionAssessor::steppingStoneTimeSec($ambition->supportedTimeSec)
-                : $ambition?->steppingStoneTimeSec,
+            raceSteppingStoneTimeSec: $ambition?->steppingStoneTimeSec,
             timeTrialAimSec: $this->supportedTimeSec($estimate, $trialDistanceM),
             timeTrials: $this->timeTrials($user, $season->starts_at->copy()->startOfWeek(Carbon::MONDAY), $today),
             timeTrialEvidenceDates: $this->timeTrialEvidenceDates($user, $trialDistanceM, $currentWeekStart),
