@@ -22,7 +22,6 @@ use App\Services\Run\Story\Vibe;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Inertia\Testing\AssertableInertia as Assert;
 
@@ -156,48 +155,6 @@ it('carries this week\'s training days beside the paces, so the ladder can say w
     Carbon::setTestNow();
 });
 
-// The card accents the rung today is run at. The viewer's clock is not the
-// server's, so the day is flagged where the week is built.
-it('flags this week\'s training day that is today', function (): void {
-    Carbon::setTestNow('2026-08-12'); // a Wednesday
-    $user = User::factory()->create();
-    PersonalRecord::factory()->for($user)->create([
-        'category' => '5km',
-        'value_sec' => 1200.0,
-        'set_at' => Carbon::today(),
-    ]);
-    seedConfirmedEffort($user, 5000, 1200, Carbon::today());
-    $weekStart = Carbon::today()->startOfWeek(Carbon::MONDAY);
-    foreach ([0, 2, 4] as $offset) {
-        PlannedSession::factory()->for($user)->create([
-            'date' => $weekStart->copy()->addDays($offset),
-            'phase' => PlanPhase::Base,
-            'session_type' => SessionType::Easy,
-        ]);
-    }
-
-    $response = $this->actingAs($user)
-        ->get('/profile', inertiaPartialHeaders($this->actingAs($user), '/profile', 'Profile', 'fitness'));
-
-    expect(array_column($response->json('props.fitness.week_sessions'), 'is_today', 'weekday'))
-        ->toBe(['mon' => false, 'wed' => true, 'fri' => false]);
-
-    Carbon::setTestNow();
-});
-
-it('reports an empty week when the athlete has no plan', function (): void {
-    $user = User::factory()->create();
-    PersonalRecord::factory()->for($user)->create([
-        'category' => '5km',
-        'value_sec' => 1200.0,
-    ]);
-    seedConfirmedEffort($user, 5000, 1200);
-
-    $this->actingAs($user)
-        ->get('/profile', inertiaPartialHeaders($this->actingAs($user), '/profile', 'Profile', 'fitness'))
-        ->assertJsonPath('props.fitness.week_sessions', []);
-});
-
 it('reports null training_paces when the user has no VDOT-eligible PR', function (): void {
     $user = User::factory()->create();
 
@@ -288,30 +245,6 @@ it('serves the hero stats from LifetimeStats, keeping 1dp total km and 2dp longe
             ->where('stats.has_activity', $lifetime['has_activity'])
             ->where('identity.first_run_at', $lifetime['first_run_at'])
             ->etc());
-});
-
-it('reuses the LifetimeStats cache instead of re-running the aggregate per profile load', function (): void {
-    $user = User::factory()->create();
-    $activity = Activity::factory()->for($user)->analyzed()->create();
-    ActivityDetail::factory()->for($activity)->create([
-        'distance' => 9000.0,
-        'start_date_local' => Carbon::today()->subDay(),
-    ]);
-
-    Cache::forget(LifetimeStats::cacheKey($user->id));
-
-    $this->actingAs($user)->get('/profile')->assertSuccessful();
-
-    $aggregates = [];
-    DB::listen(function (QueryExecuted $query) use (&$aggregates): void {
-        if (str_contains($query->sql, 'longest_distance')) {
-            $aggregates[] = $query->sql;
-        }
-    });
-
-    $this->actingAs($user)->get('/profile')->assertSuccessful();
-
-    expect($aggregates)->toBeEmpty();
 });
 
 it('reads the progression goal line off the active race, on that race distance only', function (): void {

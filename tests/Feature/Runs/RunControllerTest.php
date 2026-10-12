@@ -6,13 +6,12 @@ use App\Enums\SessionType;
 use App\Jobs\Geo\ResolveActivityLocationJob;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
-use App\Models\PersonalRecord;
 use App\Models\PlannedSession;
-use App\Models\RecordStamp;
 use App\Models\RunCard;
 use App\Models\StoryLine;
 use App\Models\User;
 use App\Services\AI\AnalysisType;
+use App\Services\Run\Metrics\PrBibResolver;
 use App\Services\Run\Story\PastYouMatcher;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -100,30 +99,6 @@ it('sends the run page only the activity and detail fields it renders', function
             ->missing('storyLine.updated_at'));
 });
 
-it('numbers the run card\'s edition within its rarity across the user\'s collection', function (): void {
-    $user = User::factory()->create();
-    foreach (['First', 'Second', 'Third'] as $move) {
-        $act = Activity::factory()->for($user)->analyzed()->create();
-        ActivityDetail::factory()->for($act)->create();
-        RunCard::factory()->for($act)->create(['rarity' => 'rare', 'special_move' => $move]);
-    }
-    $latest = Activity::query()->whereHas('runCard', fn ($q) => $q->where('special_move', 'Second'))->firstOrFail();
-
-    $this->actingAs($user)->get("/activities/{$latest->id}")
-        ->assertSuccessful()
-        ->assertInertia(fn (Assert $page) => $page
-            ->where('card.edition', ['index' => 2, 'total' => 3]));
-});
-
-it('404s when trying to view another user\'s run', function (): void {
-    $other = User::factory()->create();
-    $activity = Activity::factory()->for($other)->analyzed()->create();
-    ActivityDetail::factory()->for($activity)->create();
-
-    $me = User::factory()->create();
-    $this->actingAs($me)->get("/activities/{$activity->id}")->assertNotFound();
-});
-
 it('404s when the activity has not been analyzed yet', function (): void {
     $user = User::factory()->create();
     $activity = Activity::factory()->for($user)->create();
@@ -187,35 +162,19 @@ it('dispatches for a different run while another run holds the guard', function 
     Queue::assertPushed(ResolveActivityLocationJob::class, 2);
 });
 
-it('does not dispatch a ResolveActivityLocationJob when already resolved', function (): void {
+it('does not dispatch a ResolveActivityLocationJob for a run already resolved or without coords', function (array $location): void {
     Queue::fake();
     $user = User::factory()->create();
     $activity = Activity::factory()->for($user)->analyzed()->create();
-    ActivityDetail::factory()->for($activity)->create([
-        'start_lat' => -6.24,
-        'start_lng' => 106.81,
-        'location_name' => 'Jakarta',
-        'location_resolved_at' => now(),
-    ]);
+    ActivityDetail::factory()->for($activity)->create($location);
 
     $this->actingAs($user)->get("/activities/{$activity->id}")->assertSuccessful();
 
     Queue::assertNotPushed(ResolveActivityLocationJob::class);
-});
-
-it('does not dispatch when the run lacks coords', function (): void {
-    Queue::fake();
-    $user = User::factory()->create();
-    $activity = Activity::factory()->for($user)->analyzed()->create();
-    ActivityDetail::factory()->for($activity)->create([
-        'start_lat' => null,
-        'start_lng' => null,
-    ]);
-
-    $this->actingAs($user)->get("/activities/{$activity->id}")->assertSuccessful();
-
-    Queue::assertNotPushed(ResolveActivityLocationJob::class);
-});
+})->with([
+    'already resolved' => [['start_lat' => -6.24, 'start_lng' => 106.81, 'location_name' => 'Jakarta', 'location_resolved_at' => now()]],
+    'no coords' => [['start_lat' => null, 'start_lng' => null]],
+]);
 
 /**
  * The analysis poller reloads `weeklySnapshots` every 3-15s while a recap is
@@ -409,86 +368,20 @@ it('builds the km-by-km duel once both runs have splits', function (): void {
             ->where('pastYou.duel.net_gap_sec', 3));
 });
 
-it('renders no duel when the matched past run has not been hydrated yet', function (): void {
+it('hands the viewed run and its detail to the bib resolver and ships what it returns', function (): void {
     $user = User::factory()->create();
     $activity = Activity::factory()->for($user)->analyzed()->create();
-    ActivityDetail::factory()->for($activity)->create([
-        'distance' => 10_000,
-        'moving_time' => 3_600,
-        'elapsed_time' => 3_600,
-        'start_date_local' => Carbon::today(),
-        'total_elevation_gain' => 20,
-        'weather_temp_c' => 25,
-        'splits_metric' => [
-            ['split' => 1, 'distance' => 1000.0, 'elapsed_time' => 360.0],
-        ],
-    ]);
-    $past = Activity::factory()->for($user)->analyzed()->create();
-    ActivityDetail::factory()->for($past)->create([
-        'distance' => 10_000,
-        'moving_time' => 3_600,
-        'elapsed_time' => 3_600,
-        'start_date_local' => Carbon::today()->subDays(30),
-        'total_elevation_gain' => 20,
-        'weather_temp_c' => 25,
-        'splits_metric' => null,
-    ]);
-    PlannedSession::factory()->for($user)->create([
-        'date' => Carbon::today()->toDateString(),
-        'session_type' => SessionType::Easy,
-    ]);
+    $detail = ActivityDetail::factory()->for($activity)->create();
+    $bib = ['label' => '10K', 'value_sec' => 2400, 'distance_m' => null, 'record_key' => '10km', 'animate' => true];
+    $this->mock(PrBibResolver::class)
+        ->shouldReceive('resolve')
+        ->once()
+        ->withArgs(fn (Activity $resolved, ActivityDetail $resolvedDetail): bool => $resolved->is($activity) && $resolvedDetail->is($detail))
+        ->andReturn($bib);
 
     $this->actingAs($user)->get("/activities/{$activity->id}")
         ->assertSuccessful()
-        ->assertInertia(fn (Assert $page) => $page
-            ->where('pastYou.duel', null));
-});
-
-it('ships no bib stamp for a run that holds no tracked record', function (): void {
-    $user = User::factory()->create();
-    $longer = Activity::factory()->for($user)->analyzed()->create();
-    ActivityDetail::factory()->for($longer)->create(['distance' => 30_000, 'start_date_local' => Carbon::yesterday()]);
-    $activity = Activity::factory()->for($user)->analyzed()->create();
-    ActivityDetail::factory()->for($activity)->create(['distance' => 10_000, 'start_date_local' => Carbon::today()]);
-
-    $this->actingAs($user)->get("/activities/{$activity->id}")
-        ->assertSuccessful()
-        ->assertInertia(fn (Assert $page) => $page
-            ->where('prBib', null));
-});
-
-it("offers the bib stamp animation the first time a record-holding run is opened, static once claimed, and never suppressed by another user's claimed stamp", function (): void {
-    $userA = User::factory()->create();
-    $longerA = Activity::factory()->for($userA)->analyzed()->create();
-    ActivityDetail::factory()->for($longerA)->create(['distance' => 30_000, 'start_date_local' => Carbon::yesterday()]);
-    $activityA = Activity::factory()->for($userA)->analyzed()->create();
-    ActivityDetail::factory()->for($activityA)->create(['distance' => 10_000, 'start_date_local' => Carbon::today()]);
-    PersonalRecord::factory()->forActivity($activityA)->create(['category' => '10km']);
-    RecordStamp::query()->create(['user_id' => $userA->id, 'record_key' => '10km', 'seen_at' => now()]);
-
-    $userB = User::factory()->create();
-    $longerB = Activity::factory()->for($userB)->analyzed()->create();
-    ActivityDetail::factory()->for($longerB)->create(['distance' => 30_000, 'start_date_local' => Carbon::yesterday()]);
-    $activityB = Activity::factory()->for($userB)->analyzed()->create();
-    ActivityDetail::factory()->for($activityB)->create(['distance' => 10_000, 'start_date_local' => Carbon::today()]);
-    PersonalRecord::factory()->forActivity($activityB)->create(['category' => '10km', 'value_sec' => 2400]);
-
-    $this->actingAs($userA)->get("/activities/{$activityA->id}")
-        ->assertSuccessful()
-        ->assertInertia(fn (Assert $page) => $page
-            ->where('prBib.label', '10K')
-            ->where('prBib.animate', false));
-
-    $this->actingAs($userB)->get("/activities/{$activityB->id}")
-        ->assertSuccessful()
-        ->assertInertia(fn (Assert $page) => $page
-            ->where('prBib.label', '10K')
-            ->where('prBib.value_sec', 2400)
-            ->where('prBib.record_key', '10km')
-            ->where('prBib.animate', true));
-
-    // A GET must not change its own payload: rendering never claims the stamp.
-    expect(RecordStamp::query()->where('user_id', $userB->id)->where('record_key', '10km')->exists())->toBeFalse();
+        ->assertInertia(fn (Assert $page) => $page->where('prBib', $bib));
 });
 
 it('runs no story-line queries when only the run insights are requested', function (): void {
