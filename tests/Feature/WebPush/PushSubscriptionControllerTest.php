@@ -187,3 +187,9 @@ it("never stamps another user's subscription as seen", function (): void {
 
     expect($other->pushSubscriptions()->value('last_seen_at'))->toBe(now()->subDays(30)->toDateTimeString());
 });
+
+it('rejects a delete request missing the endpoint', function (): void {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)->deleteJson('/profile/push', [])->assertStatus(422);
+});

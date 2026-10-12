@@ -424,3 +424,15 @@ it('builds a demo answer follow-ups from the seeded questions and the current on
         ->assertCreated()
         ->assertJsonPath('follow_ups', [RunQuestionTopic::Baseline->question()]);
 });
+
+it('rejects a question with no substance', function (): void {
+    $user = User::factory()->create();
+    $activity = runFor($user);
+
+    $this->actingAs($user)
+        ->postJson("/api/activities/{$activity->id}/questions", ['question' => 'hm'])
+        ->assertStatus(422)
+        ->assertJsonValidationErrors('question');
+
+    Bus::assertNothingDispatched();
+});

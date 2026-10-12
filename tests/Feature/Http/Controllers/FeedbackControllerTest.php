@@ -148,3 +148,14 @@ it('lands a second flag on the row already there', function (): void {
     expect($feedback->reason)->toBe(FeedbackReason::TooHard)
         ->and($feedback->note)->toBe('first');
 });
+
+it('rejects an unknown subject type', function (): void {
+    $user = User::factory()->create(['onboarded_at' => now()]);
+
+    $this->actingAs($user)
+        ->from(route('plan'))
+        ->post(route('feedback.store'), ['subject_type' => 'weather', 'subject_id' => 1, 'reason' => 'too_hard'])
+        ->assertSessionHasErrors('subject_type');
+
+    expect(Feedback::query()->count())->toBe(0);
+});

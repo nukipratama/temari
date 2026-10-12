@@ -383,3 +383,7 @@ it('carries each athlete\'s last open and the away flag the scheduler\'s own win
     'never seen' => [['last_seen_at' => null], true],
     'demo' => [['is_demo' => true, 'last_seen_at' => null], false],
 ]);
+
+it('rejects a non-numeric athlete filter', function (): void {
+    $this->getJson('/devtools/narration?athlete=alice')->assertStatus(422);
+});

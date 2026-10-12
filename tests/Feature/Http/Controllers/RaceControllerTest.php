@@ -297,3 +297,13 @@ it('does nothing when there is no race of its own to clear, never clearing anoth
     expect($theirs->fresh()->completed_at)->toBeNull()
         ->and(PlannedSession::query()->where('user_id', $user->id)->count())->toBe(0);
 });
+
+it('rejects an invalid submission and persists nothing', function (): void {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)
+        ->post('/race', racePayload(['distance_m' => 100]))
+        ->assertSessionHasErrors('distance_m');
+
+    expect(RaceGoal::query()->where('user_id', $user->id)->exists())->toBeFalse();
+});

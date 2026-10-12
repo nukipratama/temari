@@ -92,3 +92,12 @@ it('shows only retired races that have passed and carry an outcome', function ()
         ->has('past_races', 1)
         ->where('past_races.0.id', $this->race->id)));
 });
+
+it('rejects a confirmation with neither a run nor a time, and an unknown outcome', function (): void {
+    $this->actingAs($this->user)
+        ->post("/race/{$this->race->id}/outcome", ['outcome' => 'confirmed'])
+        ->assertSessionHasErrors('outcome');
+    $this->actingAs($this->user)
+        ->post("/race/{$this->race->id}/outcome", ['outcome' => 'won'])
+        ->assertSessionHasErrors('outcome');
+});

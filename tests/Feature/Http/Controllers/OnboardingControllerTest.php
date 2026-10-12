@@ -181,3 +181,14 @@ it('hands the finished wizard to the signup briefing request', function (): void
 
     $this->actingAs($user)->post('/onboarding')->assertRedirect(route('dashboard'));
 });
+
+it('rejects a partial goal submission and does not onboard the user', function (): void {
+    $user = User::factory()->needsOnboarding()->create();
+
+    $this->actingAs($user)
+        ->post('/onboarding', onboardingGoalPayload(['distance_m' => null]))
+        ->assertSessionHasErrors('distance_m');
+
+    expect($user->fresh()->onboarded_at)->toBeNull()
+        ->and(RaceGoal::query()->where('user_id', $user->id)->exists())->toBeFalse();
+});

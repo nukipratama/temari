@@ -79,3 +79,11 @@ it("leaves another user's stamp untouched", function (): void {
 it('rejects a guest', function (): void {
     $this->postJson(route('api.record-stamps.store'), ['record_key' => '10km'])->assertUnauthorized();
 });
+
+it('rejects a record_key outside the tracked set', function (): void {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)
+        ->postJson(route('api.record-stamps.store'), ['record_key' => 'best_5min'])
+        ->assertInvalid(['record_key']);
+});

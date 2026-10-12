@@ -144,3 +144,11 @@ it('never bills narration for the demo account', function (): void {
 
     Carbon::setTestNow();
 });
+
+it('rejects a sessions_per_week outside the supported 2-6 range', function (): void {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)
+        ->patch('/settings/training-preferences', validPreferencesPayload(['sessions_per_week' => 7, 'run_days' => null, 'long_run_day' => null]))
+        ->assertSessionHasErrors('sessions_per_week');
+});
