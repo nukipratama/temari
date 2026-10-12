@@ -72,19 +72,15 @@ it('reports the after-rest easy pace as slower when it runs hotter', function ()
     ]);
 });
 
-it('returns null when the after-rest side has fewer than 5 samples', function () use ($asOf): void {
+it('returns null when either side has fewer than 5 samples', function (int $afterRest, int $otherEasy) use ($asOf): void {
     $user = User::factory()->create();
-    seedEaseSamples($user, $asOf(), 4, 400.0, 5, 412.0);
+    seedEaseSamples($user, $asOf(), $afterRest, 400.0, $otherEasy, 412.0);
 
     expect(app(RestDayEasePace::class)->forUser($user, $asOf()))->toBeNull();
-});
-
-it('returns null when the other-easy-run side has fewer than 5 samples', function () use ($asOf): void {
-    $user = User::factory()->create();
-    seedEaseSamples($user, $asOf(), 5, 400.0, 4, 412.0);
-
-    expect(app(RestDayEasePace::class)->forUser($user, $asOf()))->toBeNull();
-});
+})->with([
+    'the after-rest side' => [4, 5],
+    'the other-easy-run side' => [5, 4],
+]);
 
 it('returns null with no running history at all', function () use ($asOf): void {
     $user = User::factory()->create();

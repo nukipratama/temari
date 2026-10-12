@@ -126,24 +126,16 @@ it('prefers the rarer record when a run holds more than one, leaving the other u
         ->and(RecordStamp::query()->where('user_id', $user->id)->where('record_key', '10km')->exists())->toBeFalse();
 });
 
-it('ignores best-effort pace categories, which are not tracked bib records', function (): void {
+it('ignores categories that are not tracked bib records', function (string $category, int $distance): void {
     $user = User::factory()->create();
     $decoy = Activity::factory()->for($user)->create();
     ActivityDetail::factory()->for($decoy)->create(['distance' => 30_000]);
     $activity = Activity::factory()->for($user)->create();
-    $detail = ActivityDetail::factory()->for($activity)->create(['distance' => 10_000]);
-    PersonalRecord::factory()->forActivity($activity)->create(['category' => 'best_5min']);
+    $detail = ActivityDetail::factory()->for($activity)->create(['distance' => $distance]);
+    PersonalRecord::factory()->forActivity($activity)->create(['category' => $category]);
 
     expect($this->resolver->resolve($activity, $detail))->toBeNull();
-});
-
-it('ignores the 1km fastest-km category', function (): void {
-    $user = User::factory()->create();
-    $decoy = Activity::factory()->for($user)->create();
-    ActivityDetail::factory()->for($decoy)->create(['distance' => 30_000]);
-    $activity = Activity::factory()->for($user)->create();
-    $detail = ActivityDetail::factory()->for($activity)->create(['distance' => 1_000]);
-    PersonalRecord::factory()->forActivity($activity)->create(['category' => '1km']);
-
-    expect($this->resolver->resolve($activity, $detail))->toBeNull();
-});
+})->with([
+    'a best-effort pace category' => ['best_5min', 10_000],
+    'the 1km fastest-km category' => ['1km', 1_000],
+]);

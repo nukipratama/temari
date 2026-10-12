@@ -590,58 +590,15 @@ it('returns null best-effort pace when the run is too short', function (): void 
     expect($this->analysis->bestEffortPace([0, 30, 60], [2.5, 2.5, 2.5], 300))->toBeNull();
 });
 
-it('keeps best-effort pace at the true rate for a steady run (no window inflation)', function (): void {
-    // Constant 3.0 m/s (= 333.3 s/km = 5:33/km) for 20 min. The best 5-min
-    // window must report the steady pace, not an inflated one from a window
-    // whose distance slightly overshoots the target.
-    $time = [];
-    $velocity = [];
-    for ($t = 0; $t <= 1200; $t += 60) {
-        $time[] = $t;
-        $velocity[] = 3.0;
-    }
+it('keeps best-effort pace at the true 5:33 rate without window inflation', function (array $time): void {
+    $velocity = array_fill(0, count($time), 3.0);
 
     expect($this->analysis->bestEffortPace($time, $velocity, 300))->toBe('5:33');
-});
-
-it('keeps best-effort pace true on sparse 120s sampling (no window overshoot inflation)', function (): void {
-    // Constant 3.0 m/s (= 5:33/km) sampled every 120s. With a 300s target each
-    // window spans 360s and overshoots by a whole 120s segment; crediting the
-    // full distance to 300s would report ~4:38. The trailing-edge trim must
-    // bring it back to the true 5:33.
-    $time = [];
-    $velocity = [];
-    for ($t = 0; $t <= 1200; $t += 120) {
-        $time[] = $t;
-        $velocity[] = 3.0;
-    }
-
-    expect($this->analysis->bestEffortPace($time, $velocity, 300))->toBe('5:33');
-});
-
-it('keeps best-effort pace true across an 11s mid-run gap (auto-pause)', function (): void {
-    // Constant 3.0 m/s (= 5:33/km), 1 Hz, with one 11s time jump mid-run
-    // (a Strava auto-pause gap). The overshooting trailing segment is trimmed
-    // so the reported pace stays 5:33.
-    $time = [];
-    $velocity = [];
-    $cursor = 0;
-    for ($k = 0; $k < 150; $k++) {
-        $time[] = $cursor;
-        $velocity[] = 3.0;
-        $cursor += 1;
-    }
-    $time[] = $cursor;
-    $velocity[] = 3.0;
-    $cursor += 11;
-    for ($k = 0; $k < 200; $k++) {
-        $time[] = $cursor;
-        $velocity[] = 3.0;
-        $cursor += 1;
-    }
-
-    expect($this->analysis->bestEffortPace($time, $velocity, 300))->toBe('5:33');
-});
+})->with([
+    'a steady run' => [range(0, 1200, 60)],
+    'sparse 120s sampling' => [range(0, 1200, 120)],
+    'an 11s mid-run gap (auto-pause)' => [[...range(0, 150), ...range(161, 360)]],
+]);
 
 it('emits the best_30min_pace window from compute()', function (): void {
     // Steady 3.0 m/s for >30min so the 1800s window qualifies. The key name

@@ -160,19 +160,6 @@ it('calls it plateaued when every pair lands inside the noise band', function ()
         ->and($trend->comparisons)->toHaveCount(4);
 });
 
-it('calls it plateaued when the pairs disagree with each other', function (): void {
-    $user = User::factory()->create();
-    foreach ([200, 215, 230, 245] as $daysAgo) {
-        trendRun($user, $daysAgo, 4_400);
-    }
-    trendRun($user, 3, 4_250);
-    trendRun($user, 10, 4_250);
-    trendRun($user, 17, 4_480, ['average_heartrate' => 158.0]);
-    trendRun($user, 24, 4_480, ['average_heartrate' => 158.0]);
-
-    expect(buildTrend($user)->verdict)->toBe(TrendVerdict::Mixed);
-});
-
 it('will not call it improving when one bad pair outweighs a majority of small gains', function (): void {
     $user = User::factory()->create();
     foreach ([200, 215, 230] as $daysAgo) {
@@ -203,84 +190,30 @@ it('does not claim a direction with only two qualifying pairs', function (): voi
         ->and($trend->comparisons)->toHaveCount(2);
 });
 
-it('allows two faster pairs and one flat pair to claim improvement', function (): void {
+it('reads the verdict from the mix of faster, flat and slower pairs', function (array $recent, TrendVerdict $expected, ?array $directions): void {
     $user = User::factory()->create();
-    foreach ([200, 215, 230] as $daysAgo) {
+    foreach (array_slice([200, 215, 230, 245], 0, count($recent)) as $daysAgo) {
         trendRun($user, $daysAgo, 4_400);
     }
-    trendRun($user, 3, 4_200);
-    trendRun($user, 10, 4_200);
-    trendRun($user, 17, 4_400);
-
-    expect(buildTrend($user)->verdict)->toBe(TrendVerdict::Improving);
-});
-
-it('holds two barely-better pairs and one flat pair at plateaued, since the window mean stays under one threshold', function (): void {
-    $user = User::factory()->create();
-    foreach ([200, 215, 230] as $daysAgo) {
-        trendRun($user, $daysAgo, 4_400);
+    foreach ($recent as $i => [$movingTimeSec, $heartRate]) {
+        trendRun($user, [3, 10, 17, 24][$i], $movingTimeSec, $heartRate === null ? [] : ['average_heartrate' => $heartRate]);
     }
-    trendRun($user, 3, 4_250);
-    trendRun($user, 10, 4_250);
-    trendRun($user, 17, 4_400);
 
     $trend = buildTrend($user);
 
-    expect(array_map(fn ($c): string => $c->direction()->value, $trend->comparisons))
-        ->toBe(['better', 'better', 'flat'])
-        ->and($trend->verdict)->toBe(TrendVerdict::Plateaued);
-});
-
-it('allows three faster pairs and one flat pair to claim improvement', function (): void {
-    $user = User::factory()->create();
-    foreach ([200, 215, 230, 245] as $daysAgo) {
-        trendRun($user, $daysAgo, 4_400);
+    expect($trend->verdict)->toBe($expected);
+    if ($directions !== null) {
+        expect(array_map(fn ($c): string => $c->direction()->value, $trend->comparisons))->toBe($directions);
     }
-    foreach ([3, 10, 17] as $daysAgo) {
-        trendRun($user, $daysAgo, 4_200);
-    }
-    trendRun($user, 24, 4_400);
-
-    expect(buildTrend($user)->verdict)->toBe(TrendVerdict::Improving);
-});
-
-it('keeps two faster pairs and two flat pairs at plateaued', function (): void {
-    $user = User::factory()->create();
-    foreach ([200, 215, 230, 245] as $daysAgo) {
-        trendRun($user, $daysAgo, 4_400);
-    }
-    trendRun($user, 3, 4_250);
-    trendRun($user, 10, 4_250);
-    trendRun($user, 17, 4_400);
-    trendRun($user, 24, 4_400);
-
-    expect(buildTrend($user)->verdict)->toBe(TrendVerdict::Plateaued);
-});
-
-it('keeps two faster pairs and one slower pair at mixed', function (): void {
-    $user = User::factory()->create();
-    foreach ([200, 215, 230] as $daysAgo) {
-        trendRun($user, $daysAgo, 4_400);
-    }
-    trendRun($user, 3, 4_250);
-    trendRun($user, 10, 4_250);
-    trendRun($user, 17, 4_480, ['average_heartrate' => 158.0]);
-
-    expect(buildTrend($user)->verdict)->toBe(TrendVerdict::Mixed);
-});
-
-it('calls mixed when three pairs are faster and one is slower', function (): void {
-    $user = User::factory()->create();
-    foreach ([200, 215, 230, 245] as $daysAgo) {
-        trendRun($user, $daysAgo, 4_400);
-    }
-    foreach ([3, 10, 17] as $daysAgo) {
-        trendRun($user, $daysAgo, 4_250);
-    }
-    trendRun($user, 24, 4_480, ['average_heartrate' => 158.0]);
-
-    expect(buildTrend($user)->verdict)->toBe(TrendVerdict::Mixed);
-});
+})->with([
+    'pairs that disagree with each other' => [[[4_250, null], [4_250, null], [4_480, 158.0], [4_480, 158.0]], TrendVerdict::Mixed, null],
+    'two faster pairs and one flat pair claim improvement' => [[[4_200, null], [4_200, null], [4_400, null]], TrendVerdict::Improving, null],
+    'two barely-better pairs and one flat pair hold at plateaued' => [[[4_250, null], [4_250, null], [4_400, null]], TrendVerdict::Plateaued, ['better', 'better', 'flat']],
+    'three faster pairs and one flat pair claim improvement' => [[[4_200, null], [4_200, null], [4_200, null], [4_400, null]], TrendVerdict::Improving, null],
+    'two faster pairs and two flat pairs stay plateaued' => [[[4_250, null], [4_250, null], [4_400, null], [4_400, null]], TrendVerdict::Plateaued, null],
+    'two faster pairs and one slower pair stay mixed' => [[[4_250, null], [4_250, null], [4_480, 158.0]], TrendVerdict::Mixed, null],
+    'three faster pairs and one slower pair are mixed' => [[[4_250, null], [4_250, null], [4_250, null], [4_480, 158.0]], TrendVerdict::Mixed, null],
+]);
 
 it('never pairs a single-run planned tempo date with a single-run easy date', function (): void {
     $user = User::factory()->create();
