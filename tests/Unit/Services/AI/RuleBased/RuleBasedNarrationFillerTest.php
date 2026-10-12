@@ -38,17 +38,13 @@ function fillerRow(AnalysisType $type, int $subjectId, ?string $discriminator = 
     return $row;
 }
 
-function seededCard(Rarity $rarity, string $move, array $badges = [], float $distance = 8000.0): RunCard
+function seededCard(Rarity $rarity, string $move, array $badges = [], float $distance = 8000.0, int $id = 1): RunCard
 {
-    $activity = Activity::factory()->create();
-    ActivityDetail::factory()->create(['activity_id' => $activity->id, 'distance' => $distance]);
+    $activity = new Activity()->setRelation('detail', new ActivityDetail()->forceFill(['distance' => $distance]));
 
-    return RunCard::factory()->create([
-        'activity_id' => $activity->id,
-        'rarity' => $rarity,
-        'special_move' => $move,
-        'badges' => $badges,
-    ]);
+    return new RunCard()
+        ->forceFill(['id' => $id, 'rarity' => $rarity, 'special_move' => $move, 'badges' => $badges])
+        ->setRelation('activity', $activity);
 }
 
 function monthlyRunForFiller(User $user, string $date, float $distance): void
@@ -63,7 +59,7 @@ function monthlyRunForFiller(User $user, string $date, float $distance): void
 it('weaves the card context (move or distance) into the flavor', function (): void {
     $card = seededCard(Rarity::Epic, 'Threshold Hold', [], 10_010.0);
 
-    $flavor = app(RuleBasedNarrationFiller::class)->fillFor(fillerRow(AnalysisType::CardFlavor, $card->id));
+    $flavor = app(RuleBasedNarrationFiller::class)->cardFlavorFor($card);
 
     // Every template carries either the move name or the formatted distance.
     expect($flavor === '' ? '' : $flavor)
@@ -76,8 +72,8 @@ it('is deterministic for the same card', function (): void {
     $card = seededCard(Rarity::Rare, 'Steady Tempo');
     $filler = app(RuleBasedNarrationFiller::class);
 
-    $first = $filler->fillFor(fillerRow(AnalysisType::CardFlavor, $card->id));
-    $second = $filler->fillFor(fillerRow(AnalysisType::CardFlavor, $card->id));
+    $first = $filler->cardFlavorFor($card);
+    $second = $filler->cardFlavorFor($card);
 
     expect($first)->toBe($second);
 });
@@ -86,7 +82,7 @@ it('varies the flavor across rarities', function (): void {
     $filler = app(RuleBasedNarrationFiller::class);
     $flavors = collect(Rarity::cases())
         ->map(fn (Rarity $r): RunCard => seededCard($r, $r->value . ' Move'))
-        ->map(fn (RunCard $c): string => $filler->fillFor(fillerRow(AnalysisType::CardFlavor, $c->id)));
+        ->map(fn (RunCard $c): string => $filler->cardFlavorFor($c));
 
     // Distinct pools per rarity + distinct moves → no two cards read the same.
     expect($flavors->unique()->count())->toBe(5);
@@ -95,7 +91,7 @@ it('varies the flavor across rarities', function (): void {
 it('appends a badge coda when the card carries a known badge', function (): void {
     $card = seededCard(Rarity::Uncommon, 'Closing Kick', [Badge::NegativeSplit->value]);
 
-    $flavor = app(RuleBasedNarrationFiller::class)->fillFor(fillerRow(AnalysisType::CardFlavor, $card->id));
+    $flavor = app(RuleBasedNarrationFiller::class)->cardFlavorFor($card);
 
     expect($flavor)->toContain('Second half');
 });
@@ -103,7 +99,7 @@ it('appends a badge coda when the card carries a known badge', function (): void
 it('appends the headwind badge coda', function (): void {
     $card = seededCard(Rarity::Uncommon, 'Wind Breaker', [Badge::Headwind->value]);
 
-    $flavor = app(RuleBasedNarrationFiller::class)->fillFor(fillerRow(AnalysisType::CardFlavor, $card->id));
+    $flavor = app(RuleBasedNarrationFiller::class)->cardFlavorFor($card);
 
     expect($flavor)->toContain('Headwind the whole way.');
 });
@@ -296,21 +292,18 @@ it('renders the same post-run speech every time for one activity', function (): 
 
 it('keeps the post-run speech distinct and inside the narrated register across a long feed scroll', function (): void {
     $filler = app(RuleBasedNarrationFiller::class);
-    $activityIds = [];
+    $details = [];
     for ($i = 0; $i < 300; $i++) {
-        $activity = Activity::factory()->create();
-        ActivityDetail::factory()->create([
-            'activity_id' => $activity->id,
+        $details[$i + 1] = new ActivityDetail()->forceFill([
             'distance' => 3000.0 + ($i * 137.0),
             'stream_summary' => [],
             'weather_temp_c' => 24,
             'weather_rain_detected' => false,
         ]);
-        $activityIds[] = $activity->id;
     }
     $linesFor = fn (): array => array_map(
-        fn (int $activityId): string => $filler->fillFor(fillerRow(AnalysisType::PostRunSpeech, $activityId)),
-        $activityIds,
+        fn (int $activityId): string => $filler->postRunSpeechFor($details[$activityId], $activityId),
+        array_keys($details),
     );
 
     $lines = $linesFor();
@@ -325,7 +318,9 @@ it('keeps the post-run speech distinct and inside the narrated register across a
 
     // The opener and closer slots are salted separately, so the only variation
     // left when the distance is constant is the slot pairing itself.
-    ActivityDetail::query()->whereIn('activity_id', $activityIds)->update(['distance' => 8000.0]);
+    foreach ($details as $detail) {
+        $detail->distance = 8000.0;
+    }
 
     expect(count(array_unique($linesFor())))->toBeGreaterThanOrEqual(150);
 });
@@ -334,8 +329,7 @@ it('keeps the widened common flavor pool inside the narrated register', function
     $filler = app(RuleBasedNarrationFiller::class);
     $flavors = [];
     for ($i = 0; $i < 40; $i++) {
-        $card = seededCard(Rarity::Common, "Move {$i}", [], 4000.0 + ($i * 211.0));
-        $flavors[] = $filler->fillFor(fillerRow(AnalysisType::CardFlavor, $card->id));
+        $flavors[] = $filler->cardFlavorFor(seededCard(Rarity::Common, "Move {$i}", [], 4000.0 + ($i * 211.0), $i + 1));
     }
 
     foreach ($flavors as $flavor) {
@@ -648,8 +642,8 @@ it('omits the badge coda when the card carries only unknown badges', function ()
     $unknown = seededCard(Rarity::Rare, 'Mystery session', ['not_a_real_badge']);
     $filler = app(RuleBasedNarrationFiller::class);
 
-    $withCoda = $filler->fillFor(fillerRow(AnalysisType::CardFlavor, $known->id));
-    $withoutCoda = $filler->fillFor(fillerRow(AnalysisType::CardFlavor, $unknown->id));
+    $withCoda = $filler->cardFlavorFor($known);
+    $withoutCoda = $filler->cardFlavorFor($unknown);
 
     // Known badge appends a coda sentence; unknown badge appends nothing, so the
     // bare-base copy is strictly shorter than its sibling's badge-decorated copy.
@@ -664,7 +658,7 @@ it('keeps all copy free of em-dashes', function (): void {
     $season = Season::factory()->create();
 
     $samples = [
-        $filler->fillFor(fillerRow(AnalysisType::CardFlavor, $card->id)),
+        $filler->cardFlavorFor($card),
         $filler->fillFor(fillerRow(AnalysisType::BriefingMascotVoice, $card->id)),
         $filler->fillFor(fillerRow(AnalysisType::PlanSeasonVoice, $season->id)),
     ];
