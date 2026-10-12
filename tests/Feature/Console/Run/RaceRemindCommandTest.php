@@ -93,34 +93,24 @@ it('claims a rescheduled race again for its new date', function (): void {
     expect($race->fresh()->reminded_for_date?->toDateString())->toBe('2026-05-31');
 });
 
-it('skips a race that is not tomorrow', function (string $raceDate): void {
-    Notification::fake();
-
-    $user = User::factory()->create();
-    RaceGoal::factory()->for($user)->create(['race_date' => $raceDate]);
-
-    $this->artisan('race:remind')->assertSuccessful();
-
-    Notification::assertNothingSent();
-})->with([
-    'today' => '2026-05-23',
-    'in a week' => '2026-05-30',
-    'already run' => '2026-05-01',
-]);
-
-it('skips a race the athlete has already retired', function (): void {
+it('skips a race that is not tomorrow or that the athlete has already retired', function (string $raceDate, bool $retired): void {
     Notification::fake();
 
     $user = User::factory()->create();
     RaceGoal::factory()->for($user)->create([
-        'race_date' => '2026-05-24',
-        'completed_at' => Carbon::now(),
+        'race_date' => $raceDate,
+        'completed_at' => $retired ? Carbon::now() : null,
     ]);
 
     $this->artisan('race:remind')->assertSuccessful();
 
     Notification::assertNothingSent();
-});
+})->with([
+    'today' => ['2026-05-23', false],
+    'in a week' => ['2026-05-30', false],
+    'already run' => ['2026-05-01', false],
+    'tomorrow but retired' => ['2026-05-24', true],
+]);
 
 it('leaves alone an athlete who turned the master switch off', function (): void {
     Notification::fake();

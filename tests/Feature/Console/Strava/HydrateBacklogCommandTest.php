@@ -163,23 +163,21 @@ it('skips a permanently-stuck old run and continues draining newer ones in date 
         ->and($queued)->not->toContain($stuck->id);
 });
 
-it('never spends a Strava read on the demo account', function (): void {
-    backlogRun(drainUser(isDemo: true));
+it('never spends a Strava read on a user it must not hydrate', function (Closure $makeUser): void {
+    backlogRun($makeUser());
 
     $this->artisan('strava:hydrate-backlog')->assertSuccessful();
 
     Queue::assertNothingPushed();
-});
+})->with([
+    'the demo account' => [fn (): User => drainUser(isDemo: true)],
+    'a user whose Strava connection is revoked' => [function (): User {
+        $user = User::factory()->create();
+        StravaConnection::factory()->for($user)->revoked()->create();
 
-it('skips users whose Strava connection is revoked', function (): void {
-    $user = User::factory()->create();
-    StravaConnection::factory()->for($user)->revoked()->create();
-    backlogRun($user);
-
-    $this->artisan('strava:hydrate-backlog')->assertSuccessful();
-
-    Queue::assertNothingPushed();
-});
+        return $user;
+    }],
+]);
 
 it('splits the tick evenly so one deep archive cannot starve another user', function (): void {
     $deep = drainUser();

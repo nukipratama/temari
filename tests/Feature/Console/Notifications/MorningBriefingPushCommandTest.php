@@ -52,8 +52,9 @@ function morningAthlete(string $usualStart = '06:00:00', ?AnalysisStatus $briefi
     return $user;
 }
 
-it('pushes to an athlete whose usual start falls in this quarter hour', function (): void {
+it('pushes to an athlete whose usual start falls in this quarter hour or twenty minutes before the tick', function (string $now): void {
     Notification::fake();
+    Carbon::setTestNow($now);
 
     $user = morningAthlete();
 
@@ -62,7 +63,10 @@ it('pushes to an athlete whose usual start falls in this quarter hour', function
         ->assertSuccessful();
 
     Notification::assertSentTo($user, MorningBriefingNotification::class);
-});
+})->with([
+    'the same quarter hour' => '2026-05-24 06:05:00',
+    'twenty minutes after the bucket' => '2026-05-24 06:20:00',
+]);
 
 it('leaves an athlete alone on a day they skipped, and still pushes on a later skipped day', function (): void {
     Notification::fake();
@@ -80,8 +84,9 @@ it('leaves an athlete alone on a day they skipped, and still pushes on a later s
     Notification::assertSentTo($skippedTomorrow, MorningBriefingNotification::class);
 });
 
-it('leaves an athlete alone outside their own bucket', function (string $usualStart): void {
+it('leaves an athlete alone outside their own bucket', function (string $usualStart, string $now): void {
     Notification::fake();
+    Carbon::setTestNow($now);
 
     morningAthlete($usualStart);
 
@@ -91,9 +96,10 @@ it('leaves an athlete alone outside their own bucket', function (string $usualSt
 
     Notification::assertNothingSent();
 })->with([
-    'ninety-five minutes before' => '04:30:00',
-    'the quarter hour after' => '06:20:00',
-    'the evening' => '19:00:00',
+    'ninety-five minutes before' => ['04:30:00', '2026-05-24 06:05:00'],
+    'the quarter hour after' => ['06:20:00', '2026-05-24 06:05:00'],
+    'the evening' => ['19:00:00', '2026-05-24 06:05:00'],
+    'ninety minutes after the bucket' => ['06:00:00', '2026-05-24 07:30:00'],
 ]);
 
 // Fewer than five runs is the 06:00 fallback, which this bucket happens to be,
@@ -219,32 +225,6 @@ it('excludes the demo account, like every other kickoff', function (): void {
     $user->update(['is_demo' => true]);
 
     $this->artisan('briefing:morning-push')->assertSuccessful();
-
-    Notification::assertNothingSent();
-});
-
-it('still pushes a run twenty minutes after the bucket', function (): void {
-    Notification::fake();
-    Carbon::setTestNow('2026-05-24 06:20:00');
-
-    $user = morningAthlete();
-
-    $this->artisan('briefing:morning-push')
-        ->expectsOutputToContain('Pushed the morning briefing to 1 athletes.')
-        ->assertSuccessful();
-
-    Notification::assertSentTo($user, MorningBriefingNotification::class);
-});
-
-it('does not push a run ninety minutes after the bucket', function (): void {
-    Notification::fake();
-    Carbon::setTestNow('2026-05-24 07:30:00');
-
-    morningAthlete();
-
-    $this->artisan('briefing:morning-push')
-        ->expectsOutputToContain('Pushed the morning briefing to 0 athletes.')
-        ->assertSuccessful();
 
     Notification::assertNothingSent();
 });

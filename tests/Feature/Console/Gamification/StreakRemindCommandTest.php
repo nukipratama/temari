@@ -57,10 +57,11 @@ it('nudges a push-only user who has never linked Telegram', function (): void {
     Notification::assertSentTo($user, StreakReminderNotification::class);
 });
 
-it('skips a user with no channel wired at all', function (): void {
+it('skips a user it cannot reach', function (Closure $makeUnreachable): void {
     Notification::fake();
 
     $user = User::factory()->create();
+    $makeUnreachable($user);
     WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-17', 'runs' => 3]);
 
     $this->artisan('streak:remind')
@@ -68,7 +69,14 @@ it('skips a user with no channel wired at all', function (): void {
         ->assertSuccessful();
 
     Notification::assertNothingSent();
-});
+})->with([
+    'no channel wired at all' => [function (User $user): void {
+    }],
+    'the notification master switch is off' => [function (User $user): void {
+        TelegramConnection::factory()->for($user)->create();
+        NotificationPreference::factory()->for($user)->create(['notifications_enabled' => false]);
+    }],
+]);
 
 it('counts a user wired on both channels only once', function (): void {
     Notification::fake();
@@ -122,21 +130,6 @@ it('skips a user with no live streak', function (): void {
     WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-10', 'runs' => 2]);
 
     $this->artisan('streak:remind')->assertSuccessful();
-
-    Notification::assertNothingSent();
-});
-
-it('skips a user who turned the notification master switch off', function (): void {
-    Notification::fake();
-
-    $user = User::factory()->create();
-    TelegramConnection::factory()->for($user)->create();
-    NotificationPreference::factory()->for($user)->create(['notifications_enabled' => false]);
-    WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-17', 'runs' => 3]);
-
-    $this->artisan('streak:remind')
-        ->expectsOutputToContain('Dispatched streak-at-risk reminder to 0 users.')
-        ->assertSuccessful();
 
     Notification::assertNothingSent();
 });

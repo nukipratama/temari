@@ -9,22 +9,15 @@ use Illuminate\Support\Facades\Artisan;
 
 uses(RefreshDatabase::class);
 
-it('recommends the floor at zero athletes', function (): void {
-    expect(HorizonRecommendAiProcessesCommand::recommend(0))->toBe(2);
-});
-
-it('recommends the floor just under the first threshold', function (): void {
-    expect(HorizonRecommendAiProcessesCommand::recommend(10))->toBe(2);
-});
-
-it('recommends one process per five athletes, rounding up', function (): void {
-    expect(HorizonRecommendAiProcessesCommand::recommend(11))->toBe(3)
-        ->and(HorizonRecommendAiProcessesCommand::recommend(25))->toBe(5);
-});
-
-it('caps the recommendation at the ceiling regardless of athlete count', function (): void {
-    expect(HorizonRecommendAiProcessesCommand::recommend(1000))->toBe(6);
-});
+it('recommends one process per five athletes between the floor and the ceiling', function (int $athletes, int $recommended): void {
+    expect(HorizonRecommendAiProcessesCommand::recommend($athletes))->toBe($recommended);
+})->with([
+    'the floor at zero athletes' => [0, 2],
+    'the floor just under the first threshold' => [10, 2],
+    'one more than the floor rounds up' => [11, 3],
+    'rounding up at 25' => [25, 5],
+    'the ceiling regardless of athlete count' => [1000, 6],
+]);
 
 it('prints the athlete count, recommendation and configured value', function (): void {
     config(['horizon.ai_processes' => 2]);
