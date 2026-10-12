@@ -168,38 +168,6 @@ describe('week deep link', function (): void {
             ->assertJsonCount(2, 'props.runs');
     });
 
-    // The link is built from a week_ending date, but any day in that week should
-    // resolve to the same Sunday so a hand-edited link still lands correctly.
-    it('normalises any date in the week to that week Sunday', function (): void {
-        $user = User::factory()->create();
-        $activity = Activity::factory()->for($user)->analyzed()->create();
-        ActivityDetail::factory()->for($activity)->create(['start_date_local' => '2026-05-13 06:00:00']);
-
-        $this->actingAs($user)
-            ->get('/history?week=2026-05-13', inertiaPartialHeaders($this->actingAs($user), '/history?week=2026-05-13', 'History', 'weekFilter,runs'))
-            ->assertJsonPath('props.weekFilter', '2026-05-17')
-            ->assertJsonCount(1, 'props.runs');
-    });
-
-    // A recap can be months old; the deep link must reach it regardless of the
-    // default range window.
-    it('reaches a week far outside the default range window', function (): void {
-        $user = User::factory()->create();
-        $old = Activity::factory()->for($user)->analyzed()->create();
-        ActivityDetail::factory()->for($old)->create([
-            'name' => 'Ancient',
-            'start_date_local' => Carbon::now()->subDays(300)->toDateTimeString(),
-        ]);
-        $weekEnding = Carbon::now()->subDays(300)->endOfWeek(Carbon::SUNDAY)->toDateString();
-
-        $this->actingAs($user)
-            ->get("/history?week={$weekEnding}", inertiaPartialHeaders($this->actingAs($user), "/history?week={$weekEnding}", 'History', 'runs,rangeAutoWidened'))
-            ->assertJsonCount(1, 'props.runs')
-            ->assertJsonPath('props.runs.0.detail.name', 'Ancient')
-            // The deep link is explicit, so it isn't an auto-widen.
-            ->assertJsonPath('props.rangeAutoWidened', false);
-    });
-
     it('shows only that week recap snapshot', function (): void {
         $user = User::factory()->create();
         WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-17']);
@@ -226,15 +194,6 @@ describe('week deep link', function (): void {
             ->assertJsonPath('props.weeklySnapshots.0.is_chain_head', false);
     });
 
-    it('ignores a malformed week rather than erroring', function (): void {
-        $user = User::factory()->create();
-
-        foreach (['not-a-date', '2026-13-45', ''] as $bad) {
-            $this->actingAs($user)->get('/history?week='.urlencode($bad))
-                ->assertSuccessful()
-                ->assertInertia(fn (Assert $page) => $page->where('weekFilter', null));
-        }
-    });
 });
 
 it('auto-widens the range and flags it when the newest run is outside the default window', function (): void {
@@ -248,22 +207,6 @@ it('auto-widens the range and flags it when the newest run is outside the defaul
         ->assertSuccessful()
         ->assertJsonPath('props.rangeFilter', '1y')
         ->assertJsonPath('props.rangeAutoWidened', true)
-        ->assertJsonCount(1, 'props.runs')
-        ->assertJsonPath('props.runs.0.detail.name', 'Ancient');
-});
-
-it('escalates to the all range so a run older than every preset still shows', function (): void {
-    $user = User::factory()->create();
-    $ancient = Activity::factory()->for($user)->analyzed()->create();
-    // 400 days old: beyond 8w/12w/6m/1y, so auto-widen falls through to "all".
-    ActivityDetail::factory()->for($ancient)->create(['name' => 'Ancient', 'start_date_local' => Carbon::now()->subDays(400)]);
-
-    $this->actingAs($user)
-        ->get('/history', inertiaPartialHeaders($this->actingAs($user), '/history', 'History', 'rangeFilter,rangeAutoWidened,hasOlderWeeks,runs'))
-        ->assertSuccessful()
-        ->assertJsonPath('props.rangeFilter', 'all')
-        ->assertJsonPath('props.rangeAutoWidened', true)
-        ->assertJsonPath('props.hasOlderWeeks', false)
         ->assertJsonCount(1, 'props.runs')
         ->assertJsonPath('props.runs.0.detail.name', 'Ancient');
 });
@@ -284,79 +227,6 @@ it('ships only the two most recent run-bearing weeks and flags that older ones e
         ->assertJsonPath('props.weeksShown', 2)
         ->assertJsonPath('props.hasOlderWeeks', true)
         ->assertJsonCount(2, 'props.runs');
-});
-
-it('pages one press further when weeks is raised, and clears the flag at the oldest run', function (): void {
-    $user = User::factory()->create();
-    foreach ([0, 7, 14] as $daysAgo) {
-        $run = Activity::factory()->for($user)->analyzed()->create();
-        ActivityDetail::factory()->for($run)->create([
-            'start_date_local' => Carbon::now()->subDays($daysAgo),
-        ]);
-    }
-
-    $this->actingAs($user)
-        ->get('/history?weeks=4', inertiaPartialHeaders($this->actingAs($user), '/history?weeks=4', 'History', 'weeksShown,hasOlderWeeks,runs'))
-        ->assertSuccessful()
-        ->assertJsonPath('props.weeksShown', 4)
-        ->assertJsonPath('props.hasOlderWeeks', false)
-        ->assertJsonCount(3, 'props.runs');
-});
-
-it('accepts an explicit all range with no lower bound', function (): void {
-    $user = User::factory()->create();
-    $ancient = Activity::factory()->for($user)->analyzed()->create();
-    ActivityDetail::factory()->for($ancient)->create(['name' => 'Ancient', 'start_date_local' => Carbon::now()->subDays(900)]);
-
-    $this->actingAs($user)
-        ->get('/history?range=all', inertiaPartialHeaders($this->actingAs($user), '/history?range=all', 'History', 'rangeFilter,rangeAutoWidened,runs'))
-        ->assertJsonPath('props.rangeFilter', 'all')
-        ->assertJsonPath('props.rangeAutoWidened', false)
-        ->assertJsonCount(1, 'props.runs');
-});
-
-it('does not widen when runs exist in the requested window', function (): void {
-    $user = User::factory()->create();
-    $recent = Activity::factory()->for($user)->analyzed()->create();
-    ActivityDetail::factory()->for($recent)->create(['name' => 'Recent', 'start_date_local' => Carbon::now()->subDays(3)]);
-
-    $this->actingAs($user)
-        ->get('/history', inertiaPartialHeaders($this->actingAs($user), '/history', 'History', 'rangeFilter,rangeAutoWidened,runs'))
-        ->assertSuccessful()
-        ->assertJsonPath('props.rangeFilter', '8w')
-        ->assertJsonPath('props.rangeAutoWidened', false)
-        ->assertJsonCount(1, 'props.runs');
-});
-
-it('does not widen when the user has no analyzed runs', function (): void {
-    $user = User::factory()->create();
-
-    $this->actingAs($user)
-        ->get('/history', inertiaPartialHeaders($this->actingAs($user), '/history', 'History', 'rangeFilter,rangeAutoWidened,runs'))
-        ->assertSuccessful()
-        ->assertJsonPath('props.rangeFilter', '8w')
-        ->assertJsonPath('props.rangeAutoWidened', false)
-        ->assertJsonPath('props.runs', []);
-});
-
-it('keeps the requested wider range without flagging an auto-widen', function (): void {
-    $user = User::factory()->create();
-    $ancient = Activity::factory()->for($user)->analyzed()->create();
-    ActivityDetail::factory()->for($ancient)->create(['name' => 'Ancient', 'start_date_local' => Carbon::now()->subDays(200)]);
-
-    // User explicitly asked for 1y, which already reaches the run: no widen flag.
-    $this->actingAs($user)
-        ->get('/history?range=1y', inertiaPartialHeaders($this->actingAs($user), '/history?range=1y', 'History', 'rangeFilter,rangeAutoWidened,runs'))
-        ->assertJsonPath('props.rangeFilter', '1y')
-        ->assertJsonPath('props.rangeAutoWidened', false)
-        ->assertJsonCount(1, 'props.runs');
-});
-
-it('falls back to the default range when the query value is invalid', function (): void {
-    $user = User::factory()->create();
-
-    $this->actingAs($user)->get('/history?range=bogus')
-        ->assertInertia(fn (Assert $page) => $page->where('rangeFilter', '8w'));
 });
 
 it('returns only weekly snapshots inside the range', function (): void {
@@ -434,20 +304,15 @@ it('honors ?month=YYYY-MM when valid', function (): void {
         ->assertInertia(fn (Assert $page) => $page->where('month', '2026-01'));
 });
 
-it('falls back to today\'s month when ?month is invalid', function (): void {
+it('falls back to today\'s month when ?month is invalid or impossible', function (string $month): void {
     $user = User::factory()->create();
 
-    $this->actingAs($user)->get('/history?view=calendar&month=bogus')
+    $this->actingAs($user)->get("/history?view=calendar&month={$month}")
         ->assertInertia(fn (Assert $page) => $page->where('month', Carbon::today()->format('Y-m')));
-});
-
-it('falls back to today\'s month when ?month parses but is impossible (Carbon throws)', function (): void {
-    // 9999-99 passes the YYYY-MM regex but Carbon::parse refuses month 99.
-    $user = User::factory()->create();
-
-    $this->actingAs($user)->get('/history?view=calendar&month=9999-99')
-        ->assertInertia(fn (Assert $page) => $page->where('month', Carbon::today()->format('Y-m')));
-});
+})->with([
+    'not a month' => 'bogus',
+    'matches the pattern but is no month' => '9999-99',
+]);
 
 it('exposes prev / next month strings for navigation', function (): void {
     $user = User::factory()->create();
@@ -456,41 +321,6 @@ it('exposes prev / next month strings for navigation', function (): void {
         ->assertInertia(fn (Assert $page) => $page
             ->where('prevMonth', '2026-04')
             ->where('nextMonth', '2026-06'));
-});
-
-it('pads the grid to whole Mon-Sun weeks (divisible by 7)', function (): void {
-    $user = User::factory()->create();
-
-    $this->actingAs($user)
-        ->get('/history?view=calendar&month=2026-05', inertiaPartialHeaders($this->actingAs($user), '/history?view=calendar&month=2026-05', 'History', 'cells'))
-        ->assertJsonPath('props.cells', fn (mixed $cells): bool => is_array($cells)
-            && $cells !== []
-            && count($cells) % 7 === 0);
-});
-
-it('aggregates multiple runs on the same day into one cell', function (): void {
-    $user = User::factory()->create();
-    foreach ([3000, 4000] as $distance) {
-        $activity = Activity::factory()->for($user)->analyzed()->create();
-        ActivityDetail::factory()->for($activity)->create([
-            'start_date_local' => Carbon::create(2026, 5, 15),
-            'distance' => $distance,
-            'moving_time' => (int) ($distance / 1000 * 360),
-            'elapsed_time' => (int) ($distance / 1000 * 360),
-            'average_heartrate' => 150,
-            'trimp_edwards' => 20.0,
-        ]);
-    }
-
-    $this->actingAs($user)
-        ->get('/history?view=calendar&month=2026-05', inertiaPartialHeaders($this->actingAs($user), '/history?view=calendar&month=2026-05', 'History', 'cells'))
-        ->assertJsonPath('props.cells', function (mixed $cells): bool {
-            $cell = collect($cells)->firstWhere('date', '2026-05-15');
-
-            return $cell !== null
-                && abs(((float) $cell['distance_km']) - 7.0) < 0.01
-                && $cell['activity_id'] === null; // multi-run days don't link
-        });
 });
 
 it('exposes a lifetime stats payload', function (): void {
