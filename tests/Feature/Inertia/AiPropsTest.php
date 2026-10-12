@@ -38,17 +38,17 @@ function unhydratedRunFor(User $user, string $startedAt): Activity
     return $activity;
 }
 
-it('keeps the pause signal a closure so a partial reload can skip it', function (): void {
-    expect(aiPropsFor(User::factory()->create())['aiPaused'])->toBeInstanceOf(Closure::class);
-});
+it('keeps each pipeline signal a closure so a partial reload can skip it', function (string $key): void {
+    expect(aiPropsFor(User::factory()->create())[$key])->toBeInstanceOf(Closure::class);
+})->with(['aiPaused', 'aiCatchingUp']);
 
-it('never asks the pipeline about a guest', function (): void {
+it('never asks the pipeline about a guest', function (string $key): void {
     $analyses = Mockery::mock(NarrationGate::class);
     $analyses->shouldNotReceive('generationPaused');
     app()->instance(NarrationGate::class, $analyses);
 
-    expect((aiPropsFor(null)['aiPaused'])())->toBeFalse();
-});
+    expect((aiPropsFor(null)[$key])())->toBeFalse();
+})->with(['aiPaused', 'aiCatchingUp']);
 
 it('shares the pause fact for a signed-in user', function (bool $paused): void {
     $analyses = Mockery::mock(NarrationGate::class);
@@ -67,18 +67,6 @@ function fakeGenerationPaused(bool $paused): void
     $analyses->shouldReceive('generationPaused')->andReturn($paused);
     app()->instance(NarrationGate::class, $analyses);
 }
-
-it('keeps the catching-up signal a closure so a partial reload can skip it', function (): void {
-    expect(aiPropsFor(User::factory()->create())['aiCatchingUp'])->toBeInstanceOf(Closure::class);
-});
-
-it('never asks the pipeline about a guest for the catching-up signal', function (): void {
-    $analyses = Mockery::mock(NarrationGate::class);
-    $analyses->shouldNotReceive('generationPaused');
-    app()->instance(NarrationGate::class, $analyses);
-
-    expect((aiPropsFor(null)['aiCatchingUp'])())->toBeFalse();
-});
 
 it('is false while generation is globally paused, regardless of pending narration', function (): void {
     fakeGenerationPaused(true);
