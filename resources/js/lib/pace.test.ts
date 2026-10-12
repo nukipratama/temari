@@ -25,6 +25,7 @@ import {
     parsePaceSec,
     sundayOf,
     useTodayIso,
+    weekRangeLabel,
 } from './pace';
 
 describe('formatPace', () => {
@@ -446,5 +447,19 @@ describe('mondayOf / sundayOf / isoDateLocal', () => {
     it('isoDateLocal composes YYYY-MM-DD from local fields (does not roll across UTC)', () => {
         const d = new Date(2026, 0, 3); // 3 January 2026 local
         expect(isoDateLocal(d)).toBe('2026-01-03');
+    });
+});
+
+describe('weekRangeLabel', () => {
+    it('names the month once when the week does not cross one', () => {
+        expect(weekRangeLabel('2026-06-15')).toBe('jun 15–21');
+    });
+
+    it('names both months when the week crosses one', () => {
+        expect(weekRangeLabel('2026-06-29')).toBe('jun 29–jul 5');
+    });
+
+    it('snaps a mid-week date back to its Monday', () => {
+        expect(weekRangeLabel('2026-06-18')).toBe(weekRangeLabel('2026-06-15'));
     });
 });

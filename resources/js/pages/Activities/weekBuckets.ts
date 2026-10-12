@@ -5,7 +5,7 @@ import type {
 } from '@/types/inertia';
 
 import { isoDateLocal, mondayOf, sundayOf } from '@/lib/pace';
-import { weekRangeLabel } from '@/lib/plan';
+import { weekRangeLabel } from '@/lib/pace';
 
 export type RunWithDetail = Activity & { detail: ActivityDetail };
 
