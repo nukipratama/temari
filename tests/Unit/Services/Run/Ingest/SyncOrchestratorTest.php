@@ -106,13 +106,13 @@ it('records the Strava reads a backfill actually spent', function (): void {
     StravaConnection::factory()->for($user)->create();
 
     $fetcher = Mockery::mock(ActivityFetcher::class);
-    $fetcher->shouldReceive('fetchNewSummaries')->andReturn(summaryResult(range(1, 250), apiCalls: 2));
+    $fetcher->shouldReceive('fetchNewSummaries')->andReturn(summaryResult(range(1, 101), apiCalls: 2));
 
     orchestrator($fetcher)->syncUser($user);
 
-    // 250 runs of history for 2 reads — no per-activity detail call at sync time.
+    // 101 runs of history for 2 reads — no per-activity detail call at sync time.
     expect((int) StravaSyncLog::query()->where('user_id', $user->id)->sum('api_calls_used'))->toBe(2)
-        ->and(Activity::query()->where('user_id', $user->id)->count())->toBe(250);
+        ->and(Activity::query()->where('user_id', $user->id)->count())->toBe(101);
 });
 
 it('rolls the weekly snapshots forward once for the whole backfill', function (): void {
