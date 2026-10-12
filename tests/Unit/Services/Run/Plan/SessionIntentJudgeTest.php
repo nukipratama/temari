@@ -537,3 +537,16 @@ it('reads a rep or block closing at goal pace as one rep or one block', function
         ->and($block['verdict'])->toBe(IntentVerdict::Hit)
         ->and($block['evidence'])->toMatchArray(['window' => '20min', 'block_minutes' => 20.0]);
 });
+
+it('judges a fast-finish long run on its fast block, 5K pace included, and holds the easy running to the cap', function (): void {
+    $segments = [
+        new SessionSegment(SegmentKey::Easy, 80.0, 'Z2', PaceBand::Easy, 400, 12.0),
+        new SessionSegment(SegmentKey::Main, 20.0, 'Z5', PaceBand::Interval, 285, 4.2),
+    ];
+    $held = judgeRun(16.2, 6000, ['best_20min_pace' => '4:50', 'easy_cap_bpm' => 150, 'over_easy_cap_sec' => 20 * 60 + 300]);
+
+    $reading = SessionIntentJudge::judge(SessionType::Long, $segments, JUDGE_PACES, [$held], heartRateCapped: true);
+
+    expect($reading['verdict'])->toBe(IntentVerdict::Hit)
+        ->and($reading['evidence'])->toMatchArray(['target_pace_sec' => 285, 'block_minutes' => 20.0, 'easy_parts' => 'held']);
+});

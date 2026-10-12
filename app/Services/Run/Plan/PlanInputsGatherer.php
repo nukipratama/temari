@@ -6,6 +6,7 @@ namespace App\Services\Run\Plan;
 
 use App\Actions\Run\Metrics\ResolveHardEffortsAction;
 use App\Actions\Run\Plan\ResolveActiveRaceAction;
+use App\Actions\Run\Plan\ResolveRecentLongestRunAction;
 use App\Enums\IntentVerdict;
 use App\Enums\PaceBand;
 use App\Enums\PlanPhase;
@@ -54,6 +55,7 @@ final readonly class PlanInputsGatherer
         private RaceAmbitionAssessor $ambition,
         private RaceOutcomeMatcher $raceOutcomes,
         private ResolveHardEffortsAction $hardEfforts,
+        private ResolveRecentLongestRunAction $recentLongestRun,
     ) {
     }
 
@@ -127,11 +129,15 @@ final readonly class PlanInputsGatherer
             raceSteppingStoneTimeSec: $ambition?->state === RaceAmbitionState::Ambitious && $ambition->supportedTimeSec !== null
                 ? RaceAmbitionAssessor::steppingStoneTimeSec($ambition->supportedTimeSec)
                 : $ambition?->steppingStoneTimeSec,
-            timeTrialAimSec: $this->timeTrialAimSec($estimate, $trialDistanceM),
+            timeTrialAimSec: $this->supportedTimeSec($estimate, $trialDistanceM),
             timeTrials: $this->timeTrials($user, $season->starts_at->copy()->startOfWeek(Carbon::MONDAY), $today),
             timeTrialEvidenceDates: $this->timeTrialEvidenceDates($user, $trialDistanceM, $currentWeekStart),
             lastBuildQualityHardMinutes: $this->lastBuildQualityHardMinutes($user, $today),
             lastPeakGoalPaceHardMinutes: $race === null ? null : $this->lastPeakGoalPaceHardMinutes($user, $today, GoalPaceWork::kindFor((float) $race->distance_m)),
+            raceSupportedTimeSec: $ambition?->supportedTimeSec,
+            longestRunSoFarKm: $this->longestRunSoFarKm($user, $today, $season->starts_at, $baseline),
+            lastFastFinishDate: $this->lastFastFinishDate($user, $today),
+            supportedTenKTimeSec: $this->supportedTimeSec($estimate, 10_000),
         );
     }
 
@@ -157,7 +163,7 @@ final readonly class PlanInputsGatherer
     }
 
     /** @param  array{vdot: float, ...}|null  $estimate */
-    private function timeTrialAimSec(?array $estimate, int $distanceM): ?int
+    private function supportedTimeSec(?array $estimate, int $distanceM): ?int
     {
         $seconds = $estimate === null ? null : $this->vdotEstimator->raceTimeForVdot($estimate['vdot'], $distanceM);
 
@@ -337,6 +343,39 @@ final readonly class PlanInputsGatherer
             ->first(static fn (PlannedSession $session): bool => IntensityPrescriptionResolver::familyKeyForContext($session->session_type, $session->prescription_race_context) === 'goal_pace'
                 && ($session->prescription_race_context['kind'] ?? null) === $kind)
             ?->prescribed_hard_minutes;
+    }
+
+    /**
+     * The longer of the longest run of the last 30 days and the longest long
+     * run this season has prescribed before today, sized as the plan sizes it.
+     *
+     * @param  array{long_run_km: float, long_run_cap_km: float, long_run_progression_cap_km: float, ...}  $baseline
+     */
+    private function longestRunSoFarKm(User $user, Carbon $today, Carbon $seasonStart, array $baseline): float
+    {
+        $actualKm = (($this->recentLongestRun)($user->id, $today, 30) ?? 0.0) / 1000;
+        $prescribedKm = PlannedSession::query()
+            ->where('user_id', $user->id)
+            ->whereBetween('date', [$seasonStart->toDateString(), $today->copy()->subDay()->toDateString()])
+            ->where('session_type', SessionType::Long)
+            ->get(['volume_multiplier', 'fall_off_tilt'])
+            ->map(static fn (PlannedSession $session): float => SegmentGenerator::coreKmFor(SessionType::Long, false, $baseline['long_run_km'], (float) $session->volume_multiplier, $baseline['long_run_cap_km'], null, $baseline['long_run_progression_cap_km'], $session->fall_off_tilt))
+            ->max();
+
+        return max($actualKm, (float) ($prescribedKm ?? 0.0));
+    }
+
+    private function lastFastFinishDate(User $user, Carbon $today): ?string
+    {
+        return PlannedSession::query()
+            ->where('user_id', $user->id)
+            ->whereBetween('date', [$today->copy()->subDays(21)->toDateString(), $today->copy()->subDay()->toDateString()])
+            ->where('session_type', SessionType::Long)
+            ->where('prescribed_hard_minutes', '>', 0)
+            ->where('prescription_race_context->kind', FastFinishLongRun::KIND)
+            ->latest('date')
+            ->first(['date'])
+            ?->date->toDateString();
     }
 
     /** @return array<string, array{verdict: IntentVerdict, hard_minutes: int}> */

@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Enums\Mood;
+use App\Enums\PaceBand;
 use App\Enums\Effort;
 use App\Enums\IntentVerdict;
 use App\Enums\PlannedSessionStatus;
@@ -496,6 +497,19 @@ it('follows the graded verdict on a quality day: done as asked is blazing, harde
 })->with([
     'hit' => [IntentVerdict::Hit, Mood::Blazing],
     'too hard' => [IntentVerdict::TooHard, Mood::Overloaded],
+]);
+
+it('reads a long run with planned hard work as a quality day', function (array $day): void {
+    [$activity, $detail] = qualityDayRun(
+        ['session_type' => SessionType::Long, 'prescribed_hard_minutes' => 16, 'status' => PlannedSessionStatus::Done, 'intent_verdict' => IntentVerdict::Hit, ...$day],
+        ['Z2' => 70.0, 'Z3' => 20.0, 'Z4' => 10.0],
+        negativeSplit: true,
+    );
+
+    expect(app(Temari::class)->postRunLine($activity, $detail)->mood)->toBe(Mood::Blazing);
+})->with([
+    'marathon-pace work' => [['prescribed_pace_band' => PaceBand::Marathon]],
+    'fast finish' => [['prescribed_pace_band' => PaceBand::Threshold, 'prescription_race_context' => ['kind' => 'fast_finish', 'race_kind' => '10k', 'distance_m' => 10000]]],
 ]);
 
 it('does not call a tempo whose hard part never happened a quality win', function (): void {

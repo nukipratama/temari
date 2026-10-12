@@ -20,6 +20,7 @@ use App\Services\Run\Metrics\RunEffort;
 use App\Services\Run\Metrics\SessionIntent;
 use App\Services\Run\Metrics\StreamSummary;
 use App\Services\Run\Plan\EffectiveSession;
+use App\Services\Run\Plan\FastFinishLongRun;
 use App\Services\Run\Plan\PlannedSessionTypes;
 use Illuminate\Support\Carbon;
 use App\Services\Weather\WeatherSnapshot;
@@ -110,7 +111,8 @@ class Temari
     {
         $plannedType = $planDay === null ? null : EffectiveSession::settledTypeOf($planDay);
         $qualityDay = $planDay !== null && (in_array($plannedType, [SessionType::Tempo, SessionType::Interval, SessionType::Race], true)
-            || ($plannedType === SessionType::Long && $planDay->prescribed_pace_band === PaceBand::Marathon && $planDay->prescribed_hard_minutes > 0));
+            || ($plannedType === SessionType::Long && $planDay->prescribed_hard_minutes > 0
+                && ($planDay->prescribed_pace_band === PaceBand::Marathon || FastFinishLongRun::isFastFinish($planDay->prescription_race_context))));
         $summary = StreamSummary::fromArray($detail->streamSummary());
         $hardShare = $summary->hardZoneShare();
         $decoupling = $summary->steadyEffortDecouplingPct();

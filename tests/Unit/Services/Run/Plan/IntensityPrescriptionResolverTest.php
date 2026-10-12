@@ -213,3 +213,7 @@ it('tapers goal-pace work to about half the last peak session in whole peak-leng
     [16, 8],
     [8, 8],
 ]);
+
+it('keeps fast-finish long runs in their own comparable family', function (): void {
+    expect(IntensityPrescriptionResolver::familyKeyForContext(SessionType::Long, ['kind' => 'fast_finish', 'race_kind' => '10k', 'distance_m' => 10_000]))->toBe('fast_finish');
+});

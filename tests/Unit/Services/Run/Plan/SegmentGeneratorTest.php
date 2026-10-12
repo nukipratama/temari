@@ -505,3 +505,16 @@ it('writes goal-pace reps at the rep length their context carries, not the phase
 
     expect(array_map(static fn (SessionSegment $segment): ?float => $segment->minutes, $reps))->toBe([4.0, 4.0, 4.0]);
 });
+
+it('writes a fast-finish long run as an easy block then the fast block, with no easy finish', function (): void {
+    $paces = ['easy' => 380, 'marathon' => 320, 'threshold' => 295, 'interval' => 270];
+    $context = ['kind' => 'fast_finish', 'race_kind' => '10k', 'distance_m' => 10_000];
+    $segments = SegmentGenerator::forPrescription(SessionType::Long, PlanPhase::Peak, 20.0, $paces, new IntensityPrescription(20, PaceBand::Threshold, 300, null, $context));
+    $tooShort = SegmentGenerator::forPrescription(SessionType::Long, PlanPhase::Peak, 3.0, $paces, new IntensityPrescription(20, PaceBand::Threshold, 300, null, $context));
+
+    expect(array_map(static fn (SessionSegment $segment): array => [$segment->key, $segment->paceSecPerKm, $segment->km], $segments))->toBe([
+        [SegmentKey::Easy, 380, 16.0],
+        [SegmentKey::Main, 300, 4.0],
+    ])
+        ->and(array_map(static fn (SessionSegment $segment): PaceBand => $segment->paceLabel, $tooShort))->toBe([PaceBand::Easy]);
+});
