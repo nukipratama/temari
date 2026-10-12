@@ -112,7 +112,8 @@ it('records the Strava reads a backfill actually spent', function (): void {
 
     // 101 runs of history for 2 reads — no per-activity detail call at sync time.
     expect((int) StravaSyncLog::query()->where('user_id', $user->id)->sum('api_calls_used'))->toBe(2)
-        ->and(Activity::query()->where('user_id', $user->id)->count())->toBe(101);
+        ->and(Activity::query()->where('user_id', $user->id)->count())->toBe(101)
+        ->and(ActivityDetail::query()->forUser($user->id)->count())->toBe(101);
 });
 
 it('rolls the weekly snapshots forward once for the whole backfill', function (): void {
