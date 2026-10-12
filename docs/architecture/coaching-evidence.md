@@ -326,5 +326,5 @@ Haugen T, Sandbakk Ø, Seiler S, Tønnessen E. The training characteristics of w
 Casado A, González-Mohíno F, González-Ravé JM, Foster C. Training periodization, methods, intensity distribution, and volume in highly trained and elite distance runners: a systematic review. *Int J Sports Physiol Perform* 2022;17(6):820–833. https://doi.org/10.1123/ijspp.2021-0435. Observational studies of highly trained and elite runners describe race-specific intensity rising into the competition phase. Grade SR · access NR.
 
 ### ArcelliCanova1999
-Arcelli E, Canova R. *Maratona: allenamento moderno e scientifico.* Edi-Ermes, 1999. Book, no DOI. The funnel model: training narrows toward race pace from both sides as the race nears. Grade NONE · access NR.
+Arcelli E, Canova R. Marathon training book, 1999; the title is not verified here, and secondary summaries name it "Marathon Training: A Scientific Approach" (IAF). Book, no DOI. Cited from secondary summaries: the funnel model, where training narrows toward race pace from both sides as the race nears. Grade NONE · access NR (secondary summaries only).
 
