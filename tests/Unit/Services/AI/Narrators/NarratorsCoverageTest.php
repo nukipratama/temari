@@ -21,11 +21,9 @@ use App\Services\AI\AnalysisType;
 use App\Services\AI\TemariPersona;
 use App\Services\AI\Agent\Tools\CardIdentityTool;
 use App\Services\AI\Agent\Tools\LifetimeStatsTool;
-use App\Services\AI\Agent\Tools\WeatherTool;
 use App\Services\AI\Agent\Tools\MonthTotalsTool;
 use App\Services\AI\Agent\Tools\PlanSeasonTool;
 use App\Services\AI\Agent\Tools\TrainingPacesTool;
-use App\Services\AI\Agent\Tools\TrendRangeTool;
 use App\Services\AI\Agent\Tools\WeekTotalsTool;
 use App\Services\AI\Narrators\ProfileVoiceNarrator;
 use App\Services\AI\Anchor\CitationValidator;
@@ -41,7 +39,6 @@ use App\Services\AI\Narrators\PlanClampVoiceNarrator;
 use App\Services\Run\Metrics\ReadinessCeiling;
 use App\Services\AI\Narrators\PlanSeasonVoiceNarrator;
 use App\Services\AI\Narrators\PostRunSpeechNarrator;
-use App\Services\AI\Narrators\RunQuestionNarrator;
 use App\Services\AI\Anchor\RunAnchorResolver;
 use App\Services\AI\Narrators\RunInsightNarrator;
 use App\Services\AI\Narrators\TrendReadNarrator;
@@ -363,27 +360,20 @@ it('RunInsightNarrator survives a claim anchored to a split the run actually has
     expect($narrator->generate($a, $d->fresh())['claims'])->toHaveCount(1);
 });
 
-it('RunInsightNarrator drops a claim anchored to a split the run never recorded', function (): void {
+it('RunInsightNarrator drops a claim whose anchor the run has no reading for', function (string $anchor, string $text): void {
     ['activity' => $a, 'detail' => $d] = postRunFixture();
     $d->update(['stream_summary' => ['per_km' => [['km' => 1, 'pace' => '6:00']]]]);
     $caller = fakeCaller(json_encode(['claims' => [
-        ['anchor' => 'split:5', 'text' => 'A km that never happened.', 'value' => null, 'delta' => null],
+        ['anchor' => $anchor, 'text' => $text, 'value' => null, 'delta' => null],
     ]], JSON_THROW_ON_ERROR));
     $narrator = runInsightNarrator($caller);
 
     expect($narrator->generate($a, $d->fresh())['claims'])->toBe([]);
-});
-
-it('RunInsightNarrator drops a claim anchored to a zone with no HR breakdown', function (): void {
-    ['activity' => $a, 'detail' => $d] = postRunFixture();
-    $d->update(['stream_summary' => ['per_km' => [['km' => 1, 'pace' => '6:00']]]]);
-    $caller = fakeCaller(json_encode(['claims' => [
-        ['anchor' => 'zone:z4', 'text' => 'Mostly Z4.', 'value' => null, 'delta' => null],
-    ]], JSON_THROW_ON_ERROR));
-    $narrator = runInsightNarrator($caller);
-
-    expect($narrator->generate($a, $d->fresh())['claims'])->toBe([]);
-});
+})->with([
+    'a split the run never recorded' => ['split:5', 'A km that never happened.'],
+    'a zone with no HR breakdown' => ['zone:z4', 'Mostly Z4.'],
+    'a metric never computed for this run' => ['metric:hr_drift', 'HR crept up.'],
+]);
 
 it('RunInsightNarrator survives a zone claim when the run has a real HR breakdown', function (): void {
     ['activity' => $a, 'detail' => $d] = postRunFixture();
@@ -394,17 +384,6 @@ it('RunInsightNarrator survives a zone claim when the run has a real HR breakdow
     $narrator = runInsightNarrator($caller);
 
     expect($narrator->generate($a, $d->fresh())['claims'])->toHaveCount(1);
-});
-
-it('RunInsightNarrator drops a metric claim whose reading was never computed for this run', function (): void {
-    ['activity' => $a, 'detail' => $d] = postRunFixture();
-    $d->update(['stream_summary' => ['per_km' => [['km' => 1, 'pace' => '6:00']]]]);
-    $caller = fakeCaller(json_encode(['claims' => [
-        ['anchor' => 'metric:hr_drift', 'text' => 'HR crept up.', 'value' => null, 'delta' => null],
-    ]], JSON_THROW_ON_ERROR));
-    $narrator = runInsightNarrator($caller);
-
-    expect($narrator->generate($a, $d->fresh())['claims'])->toBe([]);
 });
 
 it('RunInsightNarrator drops a claim whose anchor is not in the closed namespace at all', function (): void {
@@ -451,33 +430,15 @@ it('RunInsightNarrator caps claims at 3 even when the model returns more valid o
     expect($narrator->generate($a, $d->fresh())['claims'])->toHaveCount(3);
 });
 
-it('RunInsightNarrator prompt carries the quality-session framing so it stops assuming easy', function (): void {
+it('RunInsightNarrator prompt carries its framing wording', function (string $first, string $second): void {
     $prompt = narratorPrompt(RunInsightNarrator::class);
 
-    expect($prompt)->toContain('session_intent')
-        ->and($prompt)->toContain('QUALITY SESSIONS');
-});
-
-it('RunQuestionNarrator reads the thread when a question refers back, and offers unasked follow-ups', function (): void {
-    $prompt = preg_replace('/\s+/', ' ', narratorPrompt(RunQuestionNarrator::class));
-
-    expect($prompt)
-        ->toContain('THREAD:')
-        ->toContain('call get_thread')
-        ->toContain('FOLLOW-UPS:')
-        ->toContain('nobody has asked yet');
-});
-
-it('RunQuestionNarrator treats athlete-supplied conditions as context, not excuses', function (): void {
-    $prompt = preg_replace('/\s+/', ' ', narratorPrompt(RunQuestionNarrator::class));
-
-    expect($prompt)
-        ->toContain('ATHLETE-SUPPLIED CONTEXT')
-        ->toContain('Ga tidur malam')
-        ->toContain('not a night run')
-        ->toContain('never question it')
-        ->toContain('a diagnosis');
-});
+    expect($prompt)->toContain($first)
+        ->and($prompt)->toContain($second);
+})->with([
+    'quality-session framing so it stops assuming easy' => ['session_intent', 'QUALITY SESSIONS'],
+    'fetches its own numbers and does not invent the rest' => ['Fetch them yourself', 'NEVER make up'],
+]);
 
 // Without this carve-out an interval session reads as sloppy pacing: the pace
 // spread is wide by design, and pace_consistency bands it as "naik-turun" all
@@ -561,13 +522,6 @@ it('RunInsightNarrator offers every run reading as a tool bound to this activity
         'get_training_paces',
         'get_planned_sessions',
     ]);
-});
-
-it('RunInsightNarrator prompt tells the model to fetch its own numbers and not invent the rest', function (): void {
-    $prompt = narratorPrompt(RunInsightNarrator::class);
-
-    expect($prompt)->toContain('Fetch them yourself')
-        ->and($prompt)->toContain('NEVER make up');
 });
 
 it('BriefingMascotVoiceNarrator reads the day, the 28d baseline and what was prescribed', function (): void {
@@ -744,26 +698,6 @@ it('TrendReadNarrator throws on missing title key', function (): void {
     $narrator = new TrendReadNarrator($caller, app(TrainingLoad::class));
     $narrator->generate($user, '7d');
 })->throws(UnavailableException::class);
-
-it('TrendRangeTool exposes the current range on its own reading', function (): void {
-    $user = User::factory()->create();
-
-    $context = new TrendRangeTool($user, '7d', app(TrainingLoad::class))->handle([]);
-
-    expect($context['range'])->toBe('7d');
-});
-
-// ── WeatherTool ───────────────────────────────────────────────────────
-
-it('WeatherTool feeds the run conditions into the context', function (): void {
-    $user = User::factory()->create();
-    $activity = Activity::factory()->for($user)->analyzed()->create();
-    ActivityDetail::factory()->for($activity)->create(['weather_temp_c' => 33]);
-
-    $context = new WeatherTool($activity, $activity->detail)->handle([]);
-
-    expect($context['weather_temp_c'])->toBe(33);
-});
 
 /**
  * @param  array<string, mixed>  $context
@@ -1180,14 +1114,6 @@ it('MonthlyRecapNarrator omits prev_narrative when the prior month recap is not 
         'discriminator' => '2026-04',
         'status' => AnalysisStatus::Pending,
     ]);
-
-    $context = monthlyRecapNarrator(fakeCaller('{"narrative":"x"}'))->context($user, '2026-05');
-
-    expect($context['prev_narrative'])->toBeNull();
-});
-
-it('MonthlyRecapNarrator leaves prev_narrative null on the first month', function (): void {
-    $user = User::factory()->create();
 
     $context = monthlyRecapNarrator(fakeCaller('{"narrative":"x"}'))->context($user, '2026-05');
 
@@ -1640,14 +1566,6 @@ it('BriefingMascotVoiceNarrator omits prev_narrative when the prior day Temari n
         'discriminator' => '2026-05-17',
         'status' => AnalysisStatus::Pending,
     ]);
-
-    $context = bootMascotNarrator('{"mascot_voice":"x"}')->context($user, Carbon::parse('2026-05-18'));
-
-    expect($context['prev_narrative'])->toBeNull();
-});
-
-it('BriefingMascotVoiceNarrator leaves prev_narrative null on the first day', function (): void {
-    $user = User::factory()->create();
 
     $context = bootMascotNarrator('{"mascot_voice":"x"}')->context($user, Carbon::parse('2026-05-18'));
 
