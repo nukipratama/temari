@@ -127,7 +127,7 @@ foreach ($changed as $path => $lines) {
 }
 
 $covered = $total - count($uncovered);
-$pct = $total > 0 ? ($covered / $total) * 100 : 100.0;
+$pct = $total > 0 ? $covered * 100 / $total : 100.0;
 
 printf("Changed-lines coverage: %.1f%% (%d/%d executable lines changed under app/), minimum %.1f%%\n", $pct, $covered, $total, $min);
 

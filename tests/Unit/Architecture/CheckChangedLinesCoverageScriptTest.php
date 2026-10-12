@@ -21,8 +21,10 @@ function runChangedLinesGuard(array $baseFiles, array $headFiles, array $stateme
     $root = sys_get_temp_dir().'/changed-lines-guard-'.uniqid();
     File::ensureDirectoryExists($root);
 
-    $git = static function (string ...$arguments) use ($root): void {
-        $process = new Process(['git', '-c', 'user.name=test', '-c', 'user.email=test@example.test', ...$arguments], $root, ['GIT_DIR' => false, 'GIT_WORK_TREE' => false]);
+    $environment = ['GIT_DIR' => false, 'GIT_WORK_TREE' => false, 'GIT_INDEX_FILE' => false];
+
+    $git = static function (string ...$arguments) use ($root, $environment): void {
+        $process = new Process(['git', '-c', 'user.name=test', '-c', 'user.email=test@example.test', ...$arguments], $root, $environment);
         $process->mustRun();
     };
 
@@ -57,7 +59,7 @@ function runChangedLinesGuard(array $baseFiles, array $headFiles, array $stateme
             '--base=HEAD~1',
             '--clover='.$root.'/clover.xml',
             '--min='.$min,
-        ], $root);
+        ], $root, $environment);
         $process->run();
 
         return [$process->getExitCode(), $process->getOutput().$process->getErrorOutput()];
