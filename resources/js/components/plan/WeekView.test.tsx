@@ -148,7 +148,7 @@ describe('WeekView', () => {
         expect(screen.getByText('Week 3')).toBeInTheDocument();
         expect(screen.getByText('jun 15–21')).toBeInTheDocument();
         expect(
-            screen.getByText('30 km target · 5 sessions · 50%'),
+            screen.getByText('30.4 km target · 5 sessions · 50%'),
         ).toBeInTheDocument();
     });
 
@@ -157,8 +157,8 @@ describe('WeekView', () => {
             week: summaryWeek({ planned_km: 24.6, eased_from_km: 26.9 }),
         });
 
-        expect(screen.getByText('27')).toBeInTheDocument();
-        expect(screen.getByText('25 km target')).toBeInTheDocument();
+        expect(screen.getByText('26.9')).toBeInTheDocument();
+        expect(screen.getByText('24.6 km target')).toBeInTheDocument();
     });
 
     it('marks a deload week and the race week in words', () => {

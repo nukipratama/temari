@@ -91,10 +91,10 @@ describe('WeeksList', () => {
     it('shows what was run for a week behind and what is planned otherwise', () => {
         const { rows } = renderList();
 
-        expect(rows[0]).toHaveTextContent('28 km');
+        expect(rows[0]).toHaveTextContent('27.6 km');
         expect(rows[1]).toHaveTextContent('—');
-        expect(rows[2]).toHaveTextContent('30 km');
-        expect(rows[3]).toHaveTextContent('30 km');
+        expect(rows[2]).toHaveTextContent('30.4 km');
+        expect(rows[3]).toHaveTextContent('30.4 km');
     });
 
     it('gives a scored week behind its adherence, and no other week one', () => {
