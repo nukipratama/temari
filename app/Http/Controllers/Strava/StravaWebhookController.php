@@ -216,7 +216,7 @@ class StravaWebhookController extends Controller
      * so anything off the known set collapses to a single bucket rather than
      * minting a new Pulse key per request.
      */
-    private static function heartbeatKey(string $aspectType): string
+    public static function heartbeatKey(string $aspectType): string
     {
         return in_array($aspectType, self::HEARTBEAT_ASPECTS, true) ? $aspectType : 'unknown';
     }
