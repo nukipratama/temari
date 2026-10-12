@@ -282,9 +282,10 @@ it('holds todays advisory clamp while a demanding run awaits hydration, then app
         'form_status' => 'overreaching',
         'monotony' => 1.0,
     ]);
-    PlannedSession::factory()->for($user)->create([
+    $stored = PlannedSession::factory()->for($user)->create([
         'date' => Carbon::today()->toDateString(),
         'session_type' => SessionType::Interval,
+        'pinned' => false,
     ]);
     $activity = Activity::factory()->summaryOnly()->for($user)->create();
     ActivityDetail::factory()->for($activity)->create([
@@ -307,7 +308,9 @@ it('holds todays advisory clamp while a demanding run awaits hydration, then app
 
     expect($held['eased_from'])->toBeNull()
         ->and($resumed['session_type'])->toBe('easy')
-        ->and(assemblerShownReadiness($resumed)['reasons'])->toContain('demanding_session_within_24h');
+        ->and(assemblerShownReadiness($resumed)['reasons'])->toContain('demanding_session_within_24h')
+        ->and($stored->fresh()->session_type)->toBe(SessionType::Interval)
+        ->and($stored->fresh()->pinned)->toBeFalse();
 });
 
 it('reports the baseline session count the plan is built on', function (): void {

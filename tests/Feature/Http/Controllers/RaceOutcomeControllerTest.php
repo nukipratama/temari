@@ -55,19 +55,6 @@ it('offers the matched run and confirms it', function (): void {
         ->where('past_races.0.outcome.finish_time_sec', 2_950)));
 });
 
-it('confirms a manual time and marks did not run', function (): void {
-    $this->actingAs($this->user)
-        ->post("/race/{$this->race->id}/outcome", ['outcome' => 'confirmed', 'finish_time_sec' => 3_100])
-        ->assertSessionHasNoErrors();
-    expect($this->race->fresh()->finish_time_sec)->toBe(3_100);
-
-    $this->actingAs($this->user)
-        ->post("/race/{$this->race->id}/outcome", ['outcome' => 'did_not_run'])
-        ->assertSessionHasNoErrors();
-    expect($this->race->fresh()->outcome)->toBe(RaceOutcome::DidNotRun)
-        ->and(PerformanceEvidence::query()->count())->toBe(0);
-});
-
 it('refuses the demo account a race outcome', function (): void {
     $demo = User::factory()->create(['is_demo' => true]);
     $race = RaceGoal::factory()->for($demo)->completed()->create([

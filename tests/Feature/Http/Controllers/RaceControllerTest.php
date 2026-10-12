@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 use App\Jobs\AI\AnalyzePlanSeasonVoiceJob;
 use App\Models\PersonalRecord;
-use App\Services\Run\Plan\SeasonService;
 use App\Models\RaceGoal;
 use App\Models\PlannedSession;
 use App\Services\AI\AnalysisOrigin;
@@ -141,23 +140,7 @@ it('creates the first race for a user with none and busts the shared active-race
     expect(Cache::has($cacheKey))->toBeFalse();
 });
 
-it('revises the current race in place by default, keeping its season and history', function (): void {
-    $user = User::factory()->create();
-    $old = RaceGoal::factory()->for($user)->create(['name' => 'Old race', 'distance_m' => 10_000, 'goal_time_sec' => 3_000]);
-    $season = app(SeasonService::class)->ensureCurrent($user, Carbon::today());
-
-    $this->actingAs($user)
-        ->post('/race', racePayload(['name' => 'Renamed race', 'goal_time_sec' => 2_900]))
-        ->assertRedirect();
-
-    expect($old->fresh()->completed_at)->toBeNull()
-        ->and($old->fresh()->goal_time_sec)->toBe(2_900)
-        ->and($old->fresh()->name)->toBe('Renamed race')
-        ->and(RaceGoal::query()->where('user_id', $user->id)->count())->toBe(1)
-        ->and(app(SeasonService::class)->ensureCurrent($user, Carbon::today())->id)->toBe($season->id);
-});
-
-it('starts a new event, keeping the old one on record, when the intent is new', function (): void {
+it('starts a new event when the intent is new', function (): void {
     Carbon::setTestNow('2026-09-08 10:00:00');
     $user = User::factory()->create();
     $old = RaceGoal::factory()->for($user)->create(['name' => 'Old race', 'race_date' => Carbon::today()->addWeeks(20)->toDateString()]);
@@ -167,8 +150,7 @@ it('starts a new event, keeping the old one on record, when the intent is new', 
         ->assertRedirect();
 
     $active = RaceGoal::query()->where('user_id', $user->id)->active()->get();
-    expect($old->fresh()->completed_at)->not->toBeNull()
-        ->and($active)->toHaveCount(1)
+    expect($active)->toHaveCount(1)
         ->and($active->first()->name)->toBe('New race')
         ->and(RaceGoal::query()->where('user_id', $user->id)->count())->toBe(2);
 

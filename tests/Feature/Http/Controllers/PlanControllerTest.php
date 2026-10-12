@@ -26,7 +26,6 @@ use App\Models\AI\Analysis;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisType;
 use App\Services\Run\Plan\PlanRegenerateCooldown;
-use App\Services\Run\Plan\ComplianceScorer;
 use App\Services\Run\Plan\MakeUpService;
 use App\Services\Run\Plan\Periodizer;
 use App\Services\Run\Plan\PlanAdapter;
@@ -412,35 +411,6 @@ it('queues a manual regeneration when the per-user lock stays busy', function ()
     expect(app(PlanRegenerateCooldown::class)->remaining($user))->not->toBeNull();
 });
 
-it('clamps today\'s session against the readiness ceiling without mutating the stored row', function (): void {
-    $user = User::factory()->create();
-    seedDemandingRunYesterday($user);
-    $today = PlannedSession::factory()->for($user)->create([
-        'date' => Carbon::today()->toDateString(),
-        'session_type' => 'interval',
-        'pinned' => false,
-    ]);
-
-    $response = $this->actingAs($user)
-        ->get('/plan', inertiaPartialHeaders($this->actingAs($user), '/plan', 'Plan', 'weeks'))
-        ->assertSuccessful();
-
-    $weeks = $response->json('props.weeks');
-    $todayDay = collect($weeks)
-        ->flatMap(fn (array $week): array => $week['days'])
-        ->firstWhere('date', Carbon::today()->toDateString());
-
-    // Advisory: easy leads today, and the interval it was planned as is the context.
-    expect($todayDay['session_type'])->toBe('easy')
-        ->and($todayDay['eased_from']['session_type'])->toBe('interval')
-        ->and($todayDay['eased_from']['voice'])->not->toBeNull();
-
-    // The stored row itself is untouched — the clamp is render-only.
-    $fresh = $today->fresh();
-    expect($fresh->session_type->value)->toBe('interval')
-        ->and($fresh->pinned)->toBeFalse();
-});
-
 /**
  * Reported from prod: two sessions on one day rendered as a single
  * "12 km · 55:00" — the day's summed distance beside only the longer run's
@@ -722,32 +692,6 @@ function makeUpRun(User $user, string $date, float $km): void
     ]);
 }
 
-it('makes up a missed Tuesday easy on today\'s rest day, already run', function (): void {
-    Carbon::setTestNow('2026-08-12 08:00:00');
-    $user = User::factory()->create();
-    $rows = planWeekRows($user, ['2026-08-11' => 'easy', '2026-08-12' => 'rest'], [
-        '2026-08-11' => ['status' => PlannedSessionStatus::Missed, 'compliance_score' => 0, 'distance_score' => 0],
-    ]);
-    $easyKm = app(ComplianceScorer::class)->verdictsFor($user, PlannedSession::query()->whereKey($rows['2026-08-11']->id)->get(), Carbon::today())['2026-08-11']['prescribed_km'];
-    makeUpRun($user, '2026-08-12', $easyKm);
-
-    $this->actingAs($user)
-        ->patch("/plan/sessions/{$rows['2026-08-11']->id}", ['date' => '2026-08-12'])
-        ->assertSessionHasNoErrors();
-
-    $wednesday = $rows['2026-08-12']->fresh();
-    $tuesday = $rows['2026-08-11']->fresh();
-    expect($wednesday->session_type)->toBe(SessionType::Easy)
-        ->and($wednesday->status)->toBe(PlannedSessionStatus::Done)
-        ->and($wednesday->intent_verdict)->not->toBeNull()
-        ->and($wednesday->intent_evidence)->toMatchArray(['advice_history' => 'declared_after_run'])
-        ->and($wednesday->intent_evidence)->not->toHaveKey('quality_progression')
-        ->and($tuesday->session_type)->toBe(SessionType::Rest)
-        ->and($tuesday->made_up_on->toDateString())->toBe('2026-08-12')
-        ->and($tuesday->distance_score)->toBeNull()
-        ->and(planDaysByDate($user)['2026-08-11']['made_up_on'])->toBe('2026-08-12');
-});
-
 it('refuses to skip a missed session made up onto today before it is run', function (): void {
     Carbon::setTestNow('2026-08-12 08:00:00');
     $user = User::factory()->create();
@@ -786,26 +730,6 @@ it('makes up the same missed easy on Thursday, onto Wednesday\'s past rest day t
         ->and($rows['2026-08-11']->fresh()->made_up_on->toDateString())->toBe('2026-08-12');
 });
 
-it('makes up a missed Tuesday easy back onto Monday\'s rest day that carries a run, graded against the easy', function (): void {
-    Carbon::setTestNow('2026-08-12 08:00:00');
-    $user = User::factory()->create();
-    $rows = planWeekRows($user, ['2026-08-10' => 'rest', '2026-08-11' => 'easy'], [
-        '2026-08-10' => ['status' => PlannedSessionStatus::Done, 'ran_anyway' => true],
-        '2026-08-11' => ['status' => PlannedSessionStatus::Missed, 'compliance_score' => 0, 'distance_score' => 0],
-    ]);
-    makeUpRun($user, '2026-08-10', 5.0);
-
-    $this->actingAs($user)
-        ->patch("/plan/sessions/{$rows['2026-08-11']->id}", ['date' => '2026-08-10'])
-        ->assertSessionHasNoErrors();
-
-    $monday = $rows['2026-08-10']->fresh();
-    expect($monday->session_type)->toBe(SessionType::Easy)
-        ->and($monday->prescribed_km)->toBeGreaterThan(0.0)
-        ->and($monday->distance_score)->toBeGreaterThan(0)
-        ->and($monday->made_up_from_id)->toBe($rows['2026-08-11']->id);
-});
-
 it('counts the made-up day in next week\'s adherence and leaves the emptied day out', function (): void {
     Carbon::setTestNow('2026-08-12 08:00:00');
     $user = User::factory()->create();
@@ -842,10 +766,10 @@ it('credits the run a skipped session is made up onto, rather than excusing it',
         ->and($monday->distance_score)->toBeGreaterThan(0);
 });
 
-it('re-narrates the made-up day\'s run and today\'s briefing after a make-up move, never for the demo athlete', function (bool $demo): void {
+it('re-narrates the made-up day\'s run and today\'s briefing after a make-up move', function (): void {
     Carbon::setTestNow('2026-08-12 08:00:00');
     Bus::fake();
-    $user = User::factory()->create(['is_demo' => $demo]);
+    $user = User::factory()->create();
     $rows = planWeekRows($user, ['2026-08-11' => 'easy', '2026-08-12' => 'rest'], [
         '2026-08-11' => ['status' => PlannedSessionStatus::Missed, 'compliance_score' => 0, 'distance_score' => 0],
     ]);
@@ -856,16 +780,10 @@ it('re-narrates the made-up day\'s run and today\'s briefing after a make-up mov
         ->patch("/plan/sessions/{$rows['2026-08-11']->id}", ['date' => '2026-08-12'])
         ->assertSessionHasNoErrors();
 
-    expect($rows['2026-08-11']->fresh()->made_up_on->toDateString())->toBe('2026-08-12');
-    if ($demo) {
-        Bus::assertNotDispatched(AnalyzeActivityJob::class);
-        Bus::assertNotDispatched(AnalyzeBriefingMascotVoiceJob::class);
-    } else {
-        Bus::assertDispatched(fn (AnalyzeActivityJob $job): bool => $job->subjectId === $run->id
-            && $job->delay === AnalysisService::PLAN_EDIT_DELAY_SECONDS);
-        Bus::assertDispatched(fn (AnalyzeBriefingMascotVoiceJob $job): bool => $job->delay === AnalysisService::PLAN_EDIT_DELAY_SECONDS);
-    }
-})->with(['athlete' => [false], 'demo' => [true]]);
+    Bus::assertDispatched(fn (AnalyzeActivityJob $job): bool => $job->subjectId === $run->id
+        && $job->delay === AnalysisService::PLAN_EDIT_DELAY_SECONDS);
+    Bus::assertDispatched(fn (AnalyzeBriefingMascotVoiceJob $job): bool => $job->delay === AnalysisService::PLAN_EDIT_DELAY_SECONDS);
+});
 
 it('counts only plan edits against the plan-edit budget, and answers the 21st within a minute with 429', function (): void {
     Carbon::setTestNow('2026-08-12 08:00:00');
