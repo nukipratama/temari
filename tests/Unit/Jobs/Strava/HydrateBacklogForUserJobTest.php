@@ -73,18 +73,6 @@ it('queues that user\'s summary-only backlog at background priority the moment i
     );
 });
 
-it('hydrates that user oldest-first', function (): void {
-    $user = drainJobUser();
-    $oldest = drainJobBacklogRun($user, '2020-05-01 06:00:00');
-    $newest = drainJobBacklogRun($user, '2026-08-01 06:00:00');
-
-    runHydrateBacklogForUser($user->id);
-
-    $order = Queue::pushed(IngestActivityJob::class)->map(fn (IngestActivityJob $job): int => $job->activityId)->all();
-
-    expect($order)->toBe([$oldest->id, $newest->id]);
-});
-
 it('hydrates the last 7 days before older history, then stays oldest-first within each half', function (): void {
     $this->travelTo('2026-09-19 12:00:00');
     $user = drainJobUser();

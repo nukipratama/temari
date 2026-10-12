@@ -95,17 +95,11 @@ it('does not hold the trend read past the hydration grace window', function (): 
     Carbon::setTestNow();
 });
 
-it('rejects a range outside AnalysisType::TREND_READ_RANGES', function (): void {
-    $this->artisan('ai:trend-read', ['range' => '14d'])
-        ->expectsOutputToContain('range must be one of: 7d')
-        ->assertFailed();
-});
-
-it('rejects a retired range now that only 7d is scheduled', function (string $range): void {
+it('rejects a range outside AnalysisType::TREND_READ_RANGES, including the retired ones', function (string $range): void {
     $this->artisan('ai:trend-read', ['range' => $range])
         ->expectsOutputToContain('range must be one of: 7d')
         ->assertFailed();
-})->with(['30d', '90d', '12mo']);
+})->with(['14d', '30d', '90d', '12mo']);
 
 it('skips the demo user even with recent activity', function (): void {
     Carbon::setTestNow('2026-08-17 12:00:00');

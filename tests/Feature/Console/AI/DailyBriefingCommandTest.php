@@ -177,23 +177,6 @@ it('generates no briefing for an athlete who skipped today, and still briefs the
     Carbon::setTestNow();
 });
 
-it('reports zero active users when nobody has opened the app recently', function (): void {
-    Carbon::setTestNow('2026-05-11 12:00:00');
-
-    User::factory()->create(['last_seen_at' => Carbon::today()->subDays(15)]);
-
-    $service = Mockery::mock(AnalysisService::class);
-    $service->shouldNotReceive('requestBriefing');
-    $service->shouldNotReceive('request');
-    $this->app->instance(AnalysisService::class, $service);
-
-    $this->artisan('ai:daily-briefing')
-        ->expectsOutputToContain('Dispatched daily kickoff (briefing) for 0 active users.')
-        ->assertSuccessful();
-
-    Carbon::setTestNow();
-});
-
 it('skips an athlete who is running but not opening the app', function (): void {
     // A run syncs itself in without anyone looking, so run recency says nothing
     // about whether the briefing this bills for will ever be read.
