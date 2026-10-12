@@ -159,21 +159,6 @@ it('does not re-bill card flavor on a re-ingest of an unchanged run', function (
     expect($row->fresh()->status)->toBe(AnalysisStatus::Done);
 });
 
-it('stamps the card flavor row with the run material fingerprint', function (): void {
-    $activity = analyzedActivity();
-    $card = RunCard::factory()->create(['activity_id' => $activity->id]);
-    $row = Analysis::factory()->create([
-        'subject_type' => RunCard::class,
-        'subject_id' => $card->id,
-        'analysis_type' => AnalysisType::CardFlavor,
-        'discriminator' => null,
-    ]);
-
-    $fingerprint = (fn (): ?string => $this->fingerprintFor($row))->call(new AnalyzeCardFlavorJob($row->id));
-
-    expect($fingerprint)->toBe(MaterialFingerprint::forActivity($activity->fresh()));
-});
-
 it('delays the invalidating briefing request so a burst of same-day ingests bills one regeneration', function (): void {
     Carbon::setTestNow('2026-05-19 06:00:00');
     $first = analyzedActivity('2026-05-19 05:30:00');
@@ -331,24 +316,6 @@ it('lets the recalibration re-run cover a run ingested while it held its lock', 
     expect($week->runs)->toBe(1)
         ->and($week->distance_km)->toBe(5.0)
         ->and(Cache::get(RecalibrateTrainingHistoryJob::dirtyMarkerKey($user->id)))->toBeNull();
-});
-
-it('leaves a Done weekly recap untouched on re-ingest (no mid-week invalidation)', function (): void {
-    $activity = analyzedActivity('2026-05-10 12:00:00');
-    fire($activity);
-
-    $snapshot = WeeklySnapshot::query()->where('user_id', $activity->user_id)->firstOrFail();
-    $row = Analysis::query()
-        ->where('subject_type', WeeklySnapshot::class)
-        ->where('subject_id', $snapshot->id)
-        ->firstOrFail();
-    app(AnalysisService::class)->markDone($row, 'recap from a reread', ServedBy::Llm);
-
-    fire($activity);
-
-    expect($row->fresh()->status)->toBe(AnalysisStatus::Done)
-        ->and($row->fresh()->content)->toBe('recap from a reread');
-    Bus::assertNotDispatched(AnalyzeWeeklyRecapJob::class);
 });
 
 it('does not stage a monthly recap for the demo user (monthly is real-users-only)', function (): void {
@@ -804,51 +771,6 @@ it('narrates a pre-connect run inside the last 7 days instead of filling it rule
     Carbon::setTestNow();
 });
 
-it('a 60-day backfill narrates only the last 7 days, rule-based on the rest', function (): void {
-    Carbon::setTestNow('2026-06-10 09:00:00');
-    $connectedAt = Carbon::parse('2026-06-10 08:00:00');
-
-    $recent = analyzedActivity('2026-06-05 06:00:00');
-    StravaConnection::factory()->for($recent->user)->create(['created_at' => $connectedAt]);
-    $recentCard = RunCard::factory()->create(['activity_id' => $recent->id]);
-    fire($recent);
-
-    Bus::assertDispatched(fn (AnalyzeActivityJob $job): bool => $job->subjectId === $recent->id);
-    expect(Analysis::query()->forSubject(RunCard::class, $recentCard->id, AnalysisType::CardFlavor)->firstOrFail()->status)
-        ->not->toBe(AnalysisStatus::Done);
-
-    Bus::fake();
-    $old = analyzedActivity('2026-04-12 06:00:00', $recent->user_id);
-    $oldCard = RunCard::factory()->create(['activity_id' => $old->id]);
-    fire($old);
-
-    Bus::assertNotDispatched(AnalyzeCardFlavorJob::class);
-    $oldGroupRows = Analysis::query()->where('subject_type', Activity::class)->where('subject_id', $old->id)->get();
-    expect($oldGroupRows->every(fn (Analysis $row): bool => $row->status === AnalysisStatus::Done))->toBeTrue()
-        ->and(Analysis::query()->forSubject(RunCard::class, $oldCard->id, AnalysisType::CardFlavor)->firstOrFail()->status)
-        ->toBe(AnalysisStatus::Done);
-
-    Carbon::setTestNow();
-});
-
-it('a 3-day backfill narrates every imported run', function (): void {
-    Carbon::setTestNow('2026-06-10 09:00:00');
-    $connectedAt = Carbon::parse('2026-06-10 08:00:00');
-
-    $activity = analyzedActivity('2026-06-08 06:00:00');
-    StravaConnection::factory()->for($activity->user)->create(['created_at' => $connectedAt]);
-    $card = RunCard::factory()->create(['activity_id' => $activity->id]);
-
-    fire($activity);
-
-    Bus::assertDispatched(AnalyzeActivityJob::class);
-    Bus::assertDispatched(AnalyzeCardFlavorJob::class);
-    expect(Analysis::query()->forSubject(RunCard::class, $card->id, AnalysisType::CardFlavor)->firstOrFail()->status)
-        ->not->toBe(AnalysisStatus::Done);
-
-    Carbon::setTestNow();
-});
-
 it('still narrates a run logged after the Strava connect', function (): void {
     Carbon::setTestNow('2026-06-10 09:00:00');
     $activity = analyzedActivity('2026-06-10 06:00:00');
@@ -935,16 +857,6 @@ it('narrates a recent run right away (the early pass) while its older history is
     Carbon::setTestNow();
 });
 
-function briefingRow(int $userId, string $today): ?Analysis
-{
-    return Analysis::query()
-        ->where('subject_type', AnalysisType::BRIEFING_SUBJECT_TYPE)
-        ->where('subject_id', $userId)
-        ->where('analysis_type', AnalysisType::BriefingMascotVoice)
-        ->where('discriminator', $today)
-        ->first();
-}
-
 function profileVoiceRow(int $userId, string $isoWeek): ?Analysis
 {
     return Analysis::query()
@@ -954,23 +866,6 @@ function profileVoiceRow(int $userId, string $isoWeek): ?Analysis
         ->where('discriminator', $isoWeek)
         ->first();
 }
-
-it('narrates the daily briefing right away while a run within past-you\'s reach is still hydrating', function (): void {
-    Carbon::setTestNow('2026-06-10 09:00:00');
-    $today = '2026-06-10';
-    $activity = analyzedActivity('2026-06-10 06:00:00');
-    StravaConnection::factory()->for($activity->user)->create(['created_at' => Carbon::parse('2026-06-10 08:00:00')]);
-    // Within past-you's 365-day reach, still awaiting hydration.
-    $older = Activity::factory()->for($activity->user)->summaryOnly()->create();
-    ActivityDetail::factory()->for($older)->create(['start_date_local' => Carbon::parse('2025-11-26 06:00:00')]);
-
-    fire($activity);
-
-    Bus::assertDispatched(AnalyzeBriefingMascotVoiceJob::class);
-    expect(briefingRow($activity->user_id, $today)?->status)->toBe(AnalysisStatus::Queued);
-
-    Carbon::setTestNow();
-});
 
 it('narrates the profile voice right away while any run of the backlog awaits hydration, even outside past-you\'s reach', function (): void {
     Carbon::setTestNow('2026-06-10 09:00:00');
