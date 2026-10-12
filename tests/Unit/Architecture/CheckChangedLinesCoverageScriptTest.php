@@ -177,5 +177,5 @@ it('runs the changed-lines check in the ci-gate merge step with full git history
 
     expect($checkout['with']['fetch-depth'])->toBe(0)
         ->and($steps->firstWhere('id', 'merge')['run'])->toContain('scripts/check-changed-lines-coverage.php')
-        ->toContain('--min=90');
+        ->toContain('--min=95');
 });

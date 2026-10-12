@@ -41,7 +41,7 @@ code_refs:
 
 > **Fact update, 2026-10-12.** The `ci-gate` merge step also runs
 > [check-changed-lines-coverage.php](../../scripts/check-changed-lines-coverage.php) on the merged
-> Clover: at least 90% of the executable lines a PR adds or modifies under `app/` must be covered, and
+> Clover: at least 95% of the executable lines a PR adds or modifies under `app/` must be covered, and
 > a PR with none passes. The 95% whole-suite minimum is unchanged.
 
 Coverage roughly doubled backend tests on every pull request (186–340s vs ~145s on a push),

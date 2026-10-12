@@ -215,7 +215,7 @@ jobs:
           path: coverage-shards
           merge-multiple: true
 
-      - name: Merge shard coverage, check --min=95 on the whole suite and --min=90 on the changed lines
+      - name: Merge shard coverage, check --min=95 on the whole suite and --min=95 on the changed lines
         id: merge
         if: github.event_name == 'pull_request' && needs.backend.result == 'success'
         env:
@@ -241,7 +241,7 @@ jobs:
 
           git fetch --no-tags --quiet origin "+refs/heads/${BASE_REF}:refs/remotes/origin/${BASE_REF}"
           base="$(git merge-base "origin/${BASE_REF}" HEAD)"
-          php scripts/check-changed-lines-coverage.php --base="$base" --clover=coverage-merged-clover.xml --min=90 | tee changed-lines-coverage.txt
+          php scripts/check-changed-lines-coverage.php --base="$base" --clover=coverage-merged-clover.xml --min=95 | tee changed-lines-coverage.txt
 
       - name: Coverage summary
         if: always() && steps.merge.outcome != 'skipped'
