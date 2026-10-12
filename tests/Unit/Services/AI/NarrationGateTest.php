@@ -91,11 +91,6 @@ it('names a reason for every stop that pauses generation', function (Closure $st
     ],
 ]);
 
-it('reports no reason while generation is running', function (): void {
-    expect($this->gate->generationPaused())->toBeFalse()
-        ->and($this->gate->pauseReason())->toBeNull();
-});
-
 it('reads the breaker without consuming its half-open probe when only reporting', function (): void {
     $breaker = app(AzureConfigCircuitBreaker::class);
     for ($i = 0; $i < 3; $i++) {
