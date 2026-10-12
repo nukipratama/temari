@@ -201,8 +201,8 @@ jobs:
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: vendor
-          key: composer-${{ runner.os }}-${{ runner.arch }}-php${{ env.PHP_VERSION }}-authoritativetrue-${{ hashFiles('composer.lock') }}
-          restore-keys: composer-${{ runner.os }}-${{ runner.arch }}-php${{ env.PHP_VERSION }}-authoritativetrue-
+          key: composer-${{ runner.os }}-${{ runner.arch }}-php${{ env.PHP_VERSION }}-${{ hashFiles('composer.lock') }}
+          restore-keys: composer-${{ runner.os }}-${{ runner.arch }}-php${{ env.PHP_VERSION }}-
 
       - name: Install composer deps
         if: github.event_name == 'pull_request' && needs.backend.result == 'success'

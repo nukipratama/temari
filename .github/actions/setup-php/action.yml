@@ -25,14 +25,12 @@ runs:
           opcache.jit_buffer_size=0
 
     - name: Cache composer vendor
-      id: vendor-cache
       uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: vendor
-        key: composer-${{ runner.os }}-${{ runner.arch }}-php${{ inputs.php-version }}-authoritative${{ inputs.classmap-authoritative }}-${{ hashFiles('composer.lock') }}
-        restore-keys: composer-${{ runner.os }}-${{ runner.arch }}-php${{ inputs.php-version }}-authoritative${{ inputs.classmap-authoritative }}-
+        key: composer-${{ runner.os }}-${{ runner.arch }}-php${{ inputs.php-version }}-${{ hashFiles('composer.lock') }}
+        restore-keys: composer-${{ runner.os }}-${{ runner.arch }}-php${{ inputs.php-version }}-
 
     - name: Install composer deps
-      if: steps.vendor-cache.outputs.cache-hit != 'true'
       shell: bash
       run: composer install --prefer-dist --no-interaction --no-progress ${{ inputs.classmap-authoritative == 'true' && '--classmap-authoritative' || '' }}
