@@ -84,8 +84,8 @@ jobs:
           for i in 1 2 3; do
             echo "== round $i"
             echo -n "artisan --version: "; { time php artisan --version >/dev/null 2>&1; } 2>&1
-            echo -n "pest --list-tests (collection): "; { time ./vendor/bin/pest --list-tests --exclude-group=structure >/dev/null 2>&1; } 2>&1
-            echo -n "pest --parallel no-match (collection + worker boot): "; { time ./vendor/bin/pest --parallel --processes="$(nproc)" --shard="${{ matrix.shard }}/${SHARD_TOTAL}" --filter=NoSuchTestProfileProbe --exclude-group=structure >/dev/null 2>&1; } 2>&1
+            echo -n "pest --list-tests (collection): "; { time ./vendor/bin/pest --list-tests --exclude-group=structure >/dev/null 2>&1 || true; } 2>&1
+            echo -n "pest --parallel no-match (collection + worker boot): "; { time ./vendor/bin/pest --parallel --processes="$(nproc)" --shard="${{ matrix.shard }}/${SHARD_TOTAL}" --filter=NoSuchTestProfileProbe --exclude-group=structure >/dev/null 2>&1 || true; } 2>&1
           done
 
       - name: Tests
