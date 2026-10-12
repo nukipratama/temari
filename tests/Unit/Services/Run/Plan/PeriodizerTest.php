@@ -600,7 +600,7 @@ it('counts a race-pace Long against the weekly hard-day limit', function (): voi
 });
 
 it('caps future quality around a settled tempo and a race-pace Long in the current week', function (): void {
-    $rows = periodizerRows('2026-09-03', '2026-09-27', [
+    $rows = periodizerRows('2026-09-03', '2026-09-28', [
         'sessionsPerWeek' => 6,
         'projectedRaceSeconds' => 12_000.0,
         'raceGoalTimeSec' => 12_000,
