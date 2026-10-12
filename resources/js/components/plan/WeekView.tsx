@@ -16,7 +16,7 @@ import PillButton from '@/components/ui/PillButton';
 import { useHorizontalSwipe } from '@/hooks/useHorizontalSwipe';
 import { useRecommendationView } from '@/hooks/useRecommendationView';
 import { rememberPlanSelectedDay } from '@/lib/navigationMemory';
-import { formatNaiveMonthDayId, weekRangeLabel } from '@/lib/pace';
+import { formatKm, formatNaiveMonthDayId, weekRangeLabel } from '@/lib/pace';
 import {
     complianceTally,
     computeAdherence,
@@ -160,12 +160,15 @@ export default function WeekView({
                     </span>
                     <span className="mt-0.5 block text-label-micro text-text-3">
                         {week.eased_from_km == null ? (
-                            `${Math.round(week.planned_km)} km target · `
+                            `${formatKm(week.planned_km * 1000, 1)} km target · `
                         ) : (
                             <>
                                 <DeltaPair
-                                    from={`${Math.round(week.eased_from_km)}`}
-                                    to={`${Math.round(week.planned_km)} km target`}
+                                    from={formatKm(
+                                        week.eased_from_km * 1000,
+                                        1,
+                                    )}
+                                    to={`${formatKm(week.planned_km * 1000, 1)} km target`}
                                     direction={deltaDirection(
                                         week.eased_from_km,
                                         week.planned_km,
