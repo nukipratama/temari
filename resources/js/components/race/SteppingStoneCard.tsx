@@ -41,7 +41,7 @@ export default function SteppingStoneCard({
             </p>
             <p className="mt-2 text-xs leading-relaxed text-text-2">
                 {ambition.state === 'ambitious'
-                    ? 'the edge of on track, 3% faster than your supported time. you train here and close each session at your goal pace, and it moves as you get fitter.'
+                    ? 'the edge of on track, 3% faster than your supported time. your race-pace sessions run here and close at your goal pace. it moves as you get fitter.'
                     : 'the edge of on track, 3% faster than your supported time. your stepping-stone sessions run here, and it moves as you get fitter.'}
             </p>
         </section>

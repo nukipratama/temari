@@ -35,7 +35,7 @@ describe('SteppingStoneCard', () => {
         ).toBeInTheDocument();
     });
 
-    it('tells an ambitious goal it trains here and closes at its goal pace', () => {
+    it('tells an ambitious goal its race-pace sessions run here and close at its goal pace', () => {
         render(
             <SteppingStoneCard
                 ambition={{ ...UNSUPPORTED, state: 'ambitious' }}
@@ -47,7 +47,7 @@ describe('SteppingStoneCard', () => {
         ).toBeInTheDocument();
         expect(
             screen.getByText(
-                'the edge of on track, 3% faster than your supported time. you train here and close each session at your goal pace, and it moves as you get fitter.',
+                'the edge of on track, 3% faster than your supported time. your race-pace sessions run here and close at your goal pace. it moves as you get fitter.',
             ),
         ).toBeInTheDocument();
     });
