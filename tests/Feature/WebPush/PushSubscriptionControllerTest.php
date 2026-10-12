@@ -14,10 +14,6 @@ function pushPayload(string $endpoint = 'https://fcm.googleapis.com/fcm/send/abc
     return ['endpoint' => $endpoint, 'keys' => ['p256dh' => 'p256dh-key', 'auth' => 'auth-token']];
 }
 
-it('requires authentication to subscribe', function (): void {
-    $this->postJson('/profile/push', pushPayload())->assertUnauthorized();
-});
-
 it('stores a push subscription tied to the authenticated user', function (): void {
     $user = User::factory()->create();
 
@@ -196,8 +192,4 @@ it("never stamps another user's subscription as seen", function (): void {
     $this->actingAs($user)->postJson('/profile/push/seen', ['endpoint' => 'https://web.push.apple.com/someone-else'])->assertNotFound();
 
     expect($other->pushSubscriptions()->value('last_seen_at'))->toBe(now()->subDays(30)->toDateTimeString());
-});
-
-it('requires authentication to report a device as seen', function (): void {
-    $this->postJson('/profile/push/seen', ['endpoint' => 'https://web.push.apple.com/iphone'])->assertUnauthorized();
 });

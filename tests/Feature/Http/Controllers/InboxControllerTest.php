@@ -29,10 +29,6 @@ function inboxRows(object $actingAs, string $url = '/inbox'): array
     return $data;
 }
 
-it('requires authentication', function (): void {
-    $this->get('/inbox')->assertRedirect('/login');
-});
-
 it('paints the shell with every heavy block deferred', function (): void {
     $user = User::factory()->create();
     InboxNotification::factory()->for($user)->create();

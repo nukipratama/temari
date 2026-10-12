@@ -63,11 +63,6 @@ it('rejects an over-long discriminator with a validation 422', function (): void
         ->assertJsonValidationErrors('discriminator');
 });
 
-it('requires authentication', function (): void {
-    $this->postJson('/api/analyses/briefing_mascot_voice/1/trigger')
-        ->assertStatus(401);
-});
-
 it('triggers a briefing suggestion analysis for the authenticated user', function (): void {
     $user = User::factory()->create();
 

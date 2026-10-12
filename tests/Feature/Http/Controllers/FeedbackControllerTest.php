@@ -21,11 +21,6 @@ function flagPayload(PlannedSession $day, ?string $note = null): array
     ], fn (mixed $value): bool => $value !== null);
 }
 
-it('requires an authenticated user', function (): void {
-    $this->post(route('feedback.store'), ['subject_type' => 'plan_day', 'subject_id' => 1, 'reason' => 'too_hard'])
-        ->assertRedirect(route('login'));
-});
-
 it('records a flag with a note against the day it is about', function (): void {
     $user = User::factory()->create(['onboarded_at' => now()]);
     $day = PlannedSession::factory()->for($user)->create();

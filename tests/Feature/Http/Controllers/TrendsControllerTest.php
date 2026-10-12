@@ -31,10 +31,6 @@ function seedTrendsTrimpDay(User $user, float $trimp): void
     ]);
 }
 
-it('requires authentication', function (): void {
-    $this->get('/trends')->assertRedirect('/login');
-});
-
 it('retired /records and /badges outright', function (): void {
     $user = User::factory()->create();
 

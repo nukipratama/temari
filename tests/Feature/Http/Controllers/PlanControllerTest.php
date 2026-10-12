@@ -54,12 +54,6 @@ uses(RefreshDatabase::class);
 beforeEach(fn () => Carbon::setTestNow('2026-08-10 08:00:00'));
 afterEach(fn () => Carbon::setTestNow());
 
-it('requires authentication for every plan route', function (): void {
-    $this->get('/plan')->assertRedirect('/login');
-    $this->post('/plan/regenerate')->assertRedirect('/login');
-    $this->patch('/plan/sessions/1')->assertRedirect('/login');
-});
-
 it('paints a fresh user\'s shell with the plan body deferred, creating the season and its 5 goals, then serves the deferred props alone', function (): void {
     $user = User::factory()->create();
 

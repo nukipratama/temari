@@ -204,3 +204,36 @@ it('renders the marker run to its own owner, so the sweeps are not vacuous', fun
     expect(deferredBodyFor($this->actingAs($this->victim), '/history', $html))
         ->toContain((string) $this->marker);
 });
+
+it('turns every signed-in route away from a guest', function (): void {
+    $notRedirected = [];
+    $notUnauthorised = [];
+    $checked = 0;
+
+    foreach (authenticatedRoutes() as $route) {
+        if ($route->uri() === '/') {
+            continue;
+        }
+
+        $uri = '/'.ltrim((string) preg_replace('/\{(\w+)\??\}/', '1', $route->uri()), '/');
+        $method = collect($route->methods())
+            ->reject(fn (string $verb): bool => in_array($verb, ['HEAD', 'OPTIONS'], true))
+            ->firstOrFail();
+
+        $page = $this->call($method, $uri);
+        if (! $page->isRedirect(url('/login'))) {
+            $notRedirected[] = "{$method} {$uri} answered {$page->getStatusCode()}";
+        }
+
+        $json = $this->json($method, $uri);
+        if ($json->getStatusCode() !== 401) {
+            $notUnauthorised[] = "{$method} {$uri} answered {$json->getStatusCode()}";
+        }
+
+        $checked++;
+    }
+
+    expect($notRedirected)->toBe([], "These routes did not redirect a guest to /login:\n  ".implode("\n  ", $notRedirected));
+    expect($notUnauthorised)->toBe([], "These routes did not answer a guest's JSON request with 401:\n  ".implode("\n  ", $notUnauthorised));
+    expect($checked)->toBeGreaterThan(0);
+});

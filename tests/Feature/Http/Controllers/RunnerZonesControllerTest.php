@@ -42,10 +42,6 @@ function validZonesPayload(array $overrides = []): array
     ];
 }
 
-it('requires authentication for the update', function (): void {
-    $this->patch('/settings/zones', validZonesPayload())->assertRedirect('/login');
-});
-
 it('creates a runner_profiles row and bumps hr_zones_changed_at', function (): void {
     $user = User::factory()->create();
 

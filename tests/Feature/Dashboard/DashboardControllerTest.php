@@ -24,12 +24,6 @@ use Inertia\Testing\AssertableInertia as Assert;
 
 uses(RefreshDatabase::class);
 
-it('never renders the dashboard to a guest', function (): void {
-    $this->get('/')
-        ->assertSuccessful()
-        ->assertInertia(fn (Assert $page) => $page->component('Auth/Login'));
-});
-
 it('renders for a user with no synced activities', function (): void {
     $user = User::factory()->create();
 

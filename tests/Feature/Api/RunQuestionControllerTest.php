@@ -42,11 +42,6 @@ function runFor(User $user, array $detail = []): Activity
     return $activity;
 }
 
-it('requires authentication', function (): void {
-    $this->postJson('/api/activities/1/questions', ['question' => 'why did my HR drift?'])
-        ->assertStatus(401);
-});
-
 it('queues the question and hands back the pending exchange', function (): void {
     $user = User::factory()->create();
     $activity = runFor($user);

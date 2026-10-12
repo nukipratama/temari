@@ -45,11 +45,6 @@ function onboardingGoalPayload(array $overrides = []): array
     ];
 }
 
-it('requires authentication for the wizard', function (): void {
-    $this->get('/onboarding')->assertRedirect('/login');
-    $this->post('/onboarding')->assertRedirect('/login');
-});
-
 it('shows the wizard to a user who has not onboarded', function (): void {
     $user = User::factory()->needsOnboarding()->create();
 

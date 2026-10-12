@@ -86,10 +86,6 @@ it('paints a fresh athlete\'s identity, empty stats, chill pose and voice while 
             ->etc());
 });
 
-it('requires auth', function (): void {
-    $this->get('/profile')->assertRedirect('/login');
-});
-
 it('never ensures or mutates a season of its own', function (): void {
     Carbon::setTestNow('2026-08-10 08:00:00');
     $user = User::factory()->create();

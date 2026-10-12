@@ -31,10 +31,6 @@ function ownedRaceDayRun(User $user, string $startsAt = '2026-10-04 07:00:00', f
     return $activity;
 }
 
-it('requires authentication', function (): void {
-    $this->post("/race/{$this->race->id}/outcome", ['outcome' => 'did_not_run'])->assertRedirect('/login');
-});
-
 it('offers the matched run and confirms it', function (): void {
     $run = ownedRaceDayRun($this->user);
 

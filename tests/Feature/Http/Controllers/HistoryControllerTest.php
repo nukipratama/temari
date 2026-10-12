@@ -24,10 +24,6 @@ beforeEach(function (): void {
     config(['services.telegram.bot_token' => 'test-bot-token']);
 });
 
-it('requires authentication for /history', function (): void {
-    $this->get('/history')->assertRedirect('/login');
-});
-
 it('retired the standalone /activities and /calendar routes outright', function (): void {
     $user = User::factory()->create();
 

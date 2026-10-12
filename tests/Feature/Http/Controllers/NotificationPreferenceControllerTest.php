@@ -53,11 +53,6 @@ it('validates that the flags are present and boolean', function (): void {
         ->assertStatus(422);
 });
 
-it('requires authentication', function (): void {
-    $this->patch('/profile/notifications', ['notifications_enabled' => true, 'telegram_enabled' => true, 'push_enabled' => true])
-        ->assertRedirect('/login');
-});
-
 /**
  * Every field is required because the client always sends the complete state.
  * The toggles live in two different groups on the page now, so a partial write

@@ -30,10 +30,6 @@ function validPreferencesPayload(array $overrides = []): array
     ];
 }
 
-it('requires authentication for the update', function (): void {
-    $this->patch('/settings/training-preferences', validPreferencesPayload())->assertRedirect('/login');
-});
-
 it('creates a training_preferences row', function (): void {
     $user = User::factory()->create();
 

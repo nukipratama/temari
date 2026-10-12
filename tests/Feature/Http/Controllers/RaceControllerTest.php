@@ -34,10 +34,6 @@ function racePayload(array $overrides = []): array
     ];
 }
 
-it('requires authentication for the index', function (): void {
-    $this->get('/race')->assertRedirect('/login');
-});
-
 it('keeps a race name out of the page HTML and returns it escaped once the deferred props load', function (): void {
     $user = User::factory()->create();
     RaceGoal::factory()->for($user)->create(['name' => '<!--<script>']);
@@ -94,10 +90,6 @@ it('loads the race, projection and past races together on the follow-up request'
         ->assertJsonPath('props.projection.sample_size', 1)
         ->assertJsonPath('props.past_races', [])
         ->assertJsonMissingPath('props.has_race');
-});
-
-it('requires authentication for store', function (): void {
-    $this->post('/race', racePayload())->assertRedirect('/login');
 });
 
 it('renders the page with no race and no projection for a fresh user, never surfacing another user\'s race', function (): void {
