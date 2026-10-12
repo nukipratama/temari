@@ -147,11 +147,13 @@ it('reads the full stored history into the summary instead of the too-low 49-day
     $user = User::factory()->create();
 
     // The old 49-day warm-up window cold-started CTL near 55 (form over-reports
-    // fatigue); 70 days of 80 TRIMP/day reach ~65, so a shorter read cannot match.
+    // fatigue); 70 days of 80 TRIMP/day reach ~65, and a day at the lookback's
+    // far edge sets form_known_from, so any shorter read cannot match.
+    seedTrimpDay($user, 80.0, TrainingLoad::CONVERGED_LOOKBACK_DAYS);
     for ($i = 0; $i < 70; $i++) {
         seedTrimpDay($user, 80.0, 69 - $i);
     }
-    $map = steadyTrimpMap(Carbon::today(), 70, 80.0);
+    $map = [Carbon::today()->subDays(TrainingLoad::CONVERGED_LOOKBACK_DAYS)->toDateString() => 80.0] + steadyTrimpMap(Carbon::today(), 70, 80.0);
 
     expect($this->load->summary($user))->toEqual($this->load->summaryFromDailyMap($map, runDaysOf($map), Carbon::today()));
 });
