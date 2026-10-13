@@ -615,9 +615,9 @@ final class PlanRenderer
 
     /**
      * The source of the pace a marathon race long's work runs at: the goal
-     * pace, the stepping-stone pace, or the marathon pace the athlete's
-     * running supports when that is slower than the goal. Null on any other
-     * session.
+     * pace (also when no fitness estimate priced the block), the
+     * stepping-stone pace, or the marathon pace the athlete's running
+     * supports when that is slower than the goal. Null on any other session.
      *
      * @return array{pace_kind: string, pace_source: string}|null
      */
@@ -633,7 +633,9 @@ final class PlanRenderer
 
         $paceSource = match (true) {
             GoalPaceWork::isSteppingStone($context) => FastFinishLongRun::PACE_STEPPING_STONE,
-            GoalPaceWork::isGoalPace($context) || $s->prescribed_pace_sec_per_km === (int) ($context['goal_pace_sec_per_km'] ?? 0) => FastFinishLongRun::PACE_GOAL,
+            GoalPaceWork::isGoalPace($context),
+            $s->prescribed_pace_sec_per_km === null,
+            $s->prescribed_pace_sec_per_km === (int) ($context['goal_pace_sec_per_km'] ?? 0) => FastFinishLongRun::PACE_GOAL,
             default => FastFinishLongRun::PACE_SUPPORTED,
         };
 

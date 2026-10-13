@@ -1359,7 +1359,7 @@ it('dayPayload names a fast-finish long run by the race and source of its fast b
 });
 
 it('dayPayload names the pace a marathon race long\'s work runs at, only while it is shown as written', function (): void {
-    $session = fn (array $context, int $pace = 330, int $hardMinutes = 40): PlannedSession => PlannedSession::factory()->make([
+    $session = fn (array $context, ?int $pace = 330, int $hardMinutes = 40): PlannedSession => PlannedSession::factory()->make([
         'date' => '2026-08-12',
         'phase' => PlanPhase::Peak,
         'session_type' => SessionType::Long,
@@ -1374,6 +1374,7 @@ it('dayPayload names the pace a marathon race long\'s work runs at, only while i
         ->and($payload($session(['band' => 'unsupported']))['race_long'])->toBe(['pace_kind' => 'marathon', 'pace_source' => 'stepping_stone'])
         ->and($payload($session([]))['race_long'])->toBe(['pace_kind' => 'marathon', 'pace_source' => 'goal'])
         ->and($payload($session([], 345))['race_long'])->toBe(['pace_kind' => 'marathon', 'pace_source' => 'supported'])
+        ->and($payload($session([], null))['race_long'])->toBe(['pace_kind' => 'marathon', 'pace_source' => 'goal'])
         ->and($payload($session([], 330, 0))['race_long'])->toBeNull()
         ->and($payload($session(['band' => 'unsupported']))['goal_pace'])->toBeNull()
         ->and(PlanRenderer::raceLongOf($session(['band' => 'on_track']), SessionType::Easy))->toBeNull()
