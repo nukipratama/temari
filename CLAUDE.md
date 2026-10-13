@@ -2,6 +2,7 @@
 
 ## Agent workflow
 
+- Single-PR work runs in one session with no stack, worktree or build agents. Stacks and parallel agents are for milestones with two or more independent slices.
 - Multi-slice work ships as a GitHub stack (`gh stack`): one PR per layer, merged by the owner. Read the `temari` skill's [stacked-prs reference](.claude/skills/temari/references/stacked-prs.md) before starting one.
 - Worktrees (`EnterWorktree`/`ExitWorktree`, `scripts/worktree create|adopt|remove|prune|info`): read the `temari` skill's [parallel-worktrees reference](.claude/skills/temari/references/parallel-worktrees.md) before creating or removing one, or starting a second Sail stack. Read a checkout's slot and ports with `scripts/worktree info [path]`, never from `.env`.
 - Never `artisan tinker <file>`, use `--execute`. Stop tests, builds, and servers when their task ends.
