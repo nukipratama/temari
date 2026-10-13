@@ -15,8 +15,6 @@ use Illuminate\Contracts\Queue\ShouldBeUniqueUntilProcessing;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Queue\Middleware\WithoutOverlapping;
-use App\Services\AI\AnalysisOrigin;
-use App\Services\AI\NarrationOrigin;
 
 #[Backoff([30, 120])]
 #[MaxExceptions(3)]
@@ -47,8 +45,6 @@ final class ReconcilePlanJob implements ShouldBeUniqueUntilProcessing, ShouldQue
 
     public function handle(PlanReconciliationService $reconciliation): void
     {
-        app(NarrationOrigin::class)->set(AnalysisOrigin::Ingest);
-
         if (User::query()->notDemo()->whereKey($this->userId)->doesntExist()) {
             return;
         }

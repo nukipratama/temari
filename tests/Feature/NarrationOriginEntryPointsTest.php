@@ -3,13 +3,10 @@
 declare(strict_types=1);
 
 use App\Jobs\Run\RecalibrateTrainingHistoryJob;
-use App\Jobs\Run\ReconcilePlanJob;
-use App\Jobs\Run\RegeneratePlanJob;
 use App\Jobs\Strava\CleanupDeletedActivityJob;
 use App\Jobs\Strava\HydrateBacklogForUserJob;
 use App\Jobs\Strava\IngestActivityJob;
 use App\Jobs\Strava\ResyncActivityJob;
-use App\Enums\PlanRegenerationReason;
 use App\Services\AI\AnalysisOrigin;
 use App\Services\AI\NarrationOrigin;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -29,10 +26,8 @@ dataset('queued entry points that can reach a narrator', [
     'ingest' => [fn () => new IngestActivityJob(0), AnalysisOrigin::Ingest],
     'webhook resync' => [fn () => new ResyncActivityJob(0), AnalysisOrigin::Ingest],
     'deleted-activity cleanup' => [fn () => new CleanupDeletedActivityJob(0, 0), AnalysisOrigin::Ingest],
-    'plan reconciliation' => [fn () => new ReconcilePlanJob(0), AnalysisOrigin::Ingest],
     'training history recalibration' => [fn () => new RecalibrateTrainingHistoryJob(0), AnalysisOrigin::Ingest],
     'backlog hydration' => [fn () => new HydrateBacklogForUserJob(0), AnalysisOrigin::Ingest],
-    'queued plan regeneration' => [fn () => new RegeneratePlanJob(0, PlanRegenerationReason::Manual), AnalysisOrigin::User],
 ]);
 
 dataset('console entry points that can reach a narrator', [
@@ -43,8 +38,6 @@ dataset('console entry points that can reach a narrator', [
     'ai:catch-up' => ['ai:catch-up', [], AnalysisOrigin::Scheduled],
     'ai:self-heal' => ['ai:self-heal', [], AnalysisOrigin::Recovery],
     'ai:recover' => ['ai:recover', [], AnalysisOrigin::Recovery],
-    'plan:regenerate' => ['plan:regenerate', [], AnalysisOrigin::Scheduled],
-    'plan:score-compliance' => ['plan:score-compliance', [], AnalysisOrigin::Scheduled],
     'strava:hydrate-backlog' => ['strava:hydrate-backlog', [], AnalysisOrigin::Ingest],
     'strava:resync-activity' => ['strava:resync-activity', ['activity' => 0], AnalysisOrigin::Recovery],
     'run:rebuild-splits' => ['run:rebuild-splits', [], AnalysisOrigin::Recovery],

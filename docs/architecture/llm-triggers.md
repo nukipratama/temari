@@ -179,7 +179,7 @@ and spends nothing. See [[demo-user-billing-exclusion]].
 
 `plan:score-compliance` reaches no model either: a settled row marks the plan dirty, and the
 reconciliation that follows ([`PlanReconciliationService::drain()`](../../app/Services/Run/Plan/PlanReconciliationService.php))
-only regenerates the plan. It and `plan:regenerate` are still classified as billing in the
+only regenerates the plan. Both it and `plan:regenerate` are classified as non-billing in the
 demo-exclusion tripwire.
 
 ### 2. Ingest cascade

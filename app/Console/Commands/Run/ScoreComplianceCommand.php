@@ -16,8 +16,6 @@ use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
-use App\Services\AI\AnalysisOrigin;
-use App\Services\AI\NarrationOrigin;
 
 /**
  * Daily compliance pass (see `routes/console.php`): every user's
@@ -39,8 +37,6 @@ class ScoreComplianceCommand extends Command
 {
     public function handle(ComplianceScorer $scorer, PlanReconciliationService $reconciliation, MaintainerAlerter $alerter): int
     {
-        app(NarrationOrigin::class)->set(AnalysisOrigin::Scheduled);
-
         $today = Carbon::today();
         $userOption = $this->option('user');
         $limit = (int) $this->option('limit');
