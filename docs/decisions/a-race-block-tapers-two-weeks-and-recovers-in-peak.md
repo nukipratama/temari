@@ -10,6 +10,8 @@ code_refs:
   - app/Services/Run/Plan/Periodizer.php
 ---
 
+> **Fact update, 2026-10-13 (#2120).** A recovery week no longer takes the first Peak week either: it moves into the last Build week, the cadence counts on from there, and a move that would land within two weeks of the previous recovery week drops it, leaving Taper as the recovery. A 12-week block now runs `base ×2, build, deload, build ×2, deload, peak ×3, taper ×2` at a 1.16× build level, and a 10-week block drops its second recovery week. In a 12-week block the week four before race week is no longer a recovery week, so rule 3 leaves its time trial where it falls.
+
 > **Fact update, 2026-10-09, per [[a-race-floor-solves-under-the-session-caps]].** A block whose long run the progression cap holds now still averages the floor, its other sessions carrying the km the cap removes; the floor falls short only where the caps leave no baseline that reaches it.
 
 # A race block tapers two weeks and recovers in Peak

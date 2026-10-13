@@ -310,8 +310,10 @@ final class PhaseSchedule
      * Turns every fourth week of the Base/Build/Peak run into a recovery week.
      * Taper is untouched, and a race arc short enough to hold fewer than
      * {@see self::DELOAD_EVERY_WEEKS} weeks before it has nothing to recover from
-     * yet. A recovery week never takes the last week before Taper: it moves one
-     * week earlier, so the block reaches Taper off a Peak week.
+     * yet. A recovery week never takes the last week before Taper or the first
+     * Peak week: it moves earlier, so the block reaches Taper off a Peak week and
+     * Peak opens on one, and the cadence counts on from where it landed. A move
+     * that would put it within two weeks of the previous one drops it instead.
      *
      * @param  list<PlanPhase>  $phases
      * @param  int  $rampWeeks  how many leading weeks are Base, Build or Peak
@@ -319,8 +321,17 @@ final class PhaseSchedule
      */
     private static function withScheduledDeloads(array $phases, int $rampWeeks): array
     {
-        for ($i = self::DELOAD_EVERY_WEEKS - 1; $i < $rampWeeks; $i += self::DELOAD_EVERY_WEEKS) {
-            $phases[$i === $rampWeeks - 1 ? $i - 1 : $i] = PlanPhase::Deload;
+        $firstPeak = array_search(PlanPhase::Peak, $phases, true);
+        $previous = -1;
+        for ($slot = self::DELOAD_EVERY_WEEKS - 1; $slot < $rampWeeks; $slot = $week + self::DELOAD_EVERY_WEEKS) {
+            $week = $slot;
+            while ($week === $rampWeeks - 1 || $week === $firstPeak) {
+                $week--;
+            }
+            if ($week - $previous >= self::DELOAD_EVERY_WEEKS - 1) {
+                $phases[$week] = PlanPhase::Deload;
+                $previous = $week;
+            }
         }
 
         return array_values($phases);
