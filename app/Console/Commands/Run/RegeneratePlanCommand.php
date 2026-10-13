@@ -6,27 +6,18 @@ namespace App\Console\Commands\Run;
 
 use App\Actions\AI\RecentlyActiveUsers;
 use App\Models\User;
-use App\Services\AI\PlanNarrationRequester;
 use App\Services\Run\Plan\Periodizer;
 use App\Services\Run\Plan\PlanRegenerateCooldown;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
 use Throwable;
-use App\Services\AI\AnalysisOrigin;
-use App\Services\AI\NarrationOrigin;
 
 /**
  * Weekly regeneration for every user's periodized plan (see
- * `routes/console.php`). The regenerate itself is deterministic and free —
- * it runs for every user, demo included, same as before. Requesting fresh
- * season plan narration for the week it just wrote is real LLM cost, though
- * (a day's own read is requested separately, once it has a run — see #939),
- * so that part is skipped for the demo user and for anyone who has not
- * opened the app inside {@see RecentlyActiveUsers::ACTIVE_WINDOW_DAYS} — see
- * `docs/features/plan-periodizer.md`.
+ * `routes/console.php`). The regenerate is deterministic and free, and runs
+ * for every user, demo included.
  */
 #[Signature('plan:regenerate {--user= : Limit to one user id}')]
 #[Description('Regenerate every user\'s periodized plan today-forward')]
@@ -34,14 +25,10 @@ class RegeneratePlanCommand extends Command
 {
     public function handle(
         Periodizer $periodizer,
-        PlanNarrationRequester $narrationRequester,
         RecentlyActiveUsers $activeUsers,
         PlanRegenerateCooldown $regenerateCooldown,
     ): int {
-        app(NarrationOrigin::class)->set(AnalysisOrigin::Scheduled);
-
         $userId = $this->option('user');
-        $today = Carbon::today();
 
         $users = User::query()
             ->when($userId !== null, fn ($query) => $query->where('id', (int) $userId))
@@ -60,7 +47,6 @@ class RegeneratePlanCommand extends Command
                 $periodizer->regenerate($user);
 
                 if (isset($narratable[$user->id])) {
-                    $narrationRequester->requestForCurrentWeek($user, $today);
                     $regenerateCooldown->start($user);
                 }
 

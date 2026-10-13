@@ -2,17 +2,14 @@
 
 declare(strict_types=1);
 
-use App\Enums\AdaptationReason;
 use App\Models\AI\Analysis;
 use App\Services\AI\StructuredChatCaller;
 use App\Exceptions\AI\UnavailableException;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\PersonalRecord;
-use App\Models\PlanAdaptation;
 use App\Models\PlannedSession;
 use App\Models\RunCard;
-use App\Models\Season;
 use App\Models\StoryLine;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
@@ -22,7 +19,6 @@ use App\Services\AI\TemariPersona;
 use App\Services\AI\Agent\Tools\CardIdentityTool;
 use App\Services\AI\Agent\Tools\LifetimeStatsTool;
 use App\Services\AI\Agent\Tools\MonthTotalsTool;
-use App\Services\AI\Agent\Tools\PlanSeasonTool;
 use App\Services\AI\Agent\Tools\TrainingPacesTool;
 use App\Services\AI\Agent\Tools\WeekTotalsTool;
 use App\Services\AI\Narrators\ProfileVoiceNarrator;
@@ -37,14 +33,12 @@ use App\Services\AI\Narrators\MonthlyRecapNarrator;
 use App\Enums\SessionType;
 use App\Services\AI\Narrators\PlanClampVoiceNarrator;
 use App\Services\Run\Metrics\ReadinessCeiling;
-use App\Services\AI\Narrators\PlanSeasonVoiceNarrator;
 use App\Services\AI\Narrators\PostRunSpeechNarrator;
 use App\Services\AI\Anchor\RunAnchorResolver;
 use App\Services\AI\Narrators\RunInsightNarrator;
 use App\Services\AI\Narrators\TrendReadNarrator;
 use App\Services\AI\Narrators\WeeklyRecapNarrator;
 use App\Services\AI\RuleBased\RuleBasedNarrationFiller;
-use App\Services\Run\Plan\SustainedAheadOfRacePace;
 use App\Services\Run\Plan\TrainingBaseline;
 use App\Services\Run\LifetimeStats;
 use App\Services\Run\Metrics\PaceFormatter;
@@ -812,78 +806,6 @@ it('TrendReadNarrator offers exactly the readings its prompt describes', functio
     }
 
     expect($prompt)->toContain('COMMIT FIRST');
-});
-
-// ── PlanSeasonVoiceNarrator ───────────────────────────────────────────
-
-it('PlanSeasonVoiceNarrator returns voice on valid JSON', function (): void {
-    $user = User::factory()->create();
-    $season = Season::factory()->for($user)->create();
-    $caller = fakeCaller(json_encode(['voice' => 'a self-scaled block.'], JSON_THROW_ON_ERROR));
-    $narrator = new PlanSeasonVoiceNarrator($caller, app(SustainedAheadOfRacePace::class));
-    expect($narrator->generate($season))->toBe('a self-scaled block.');
-});
-
-it('PlanSeasonVoiceNarrator hands the season in the user message and answers in one step with no tools', function (): void {
-    $season = Season::factory()->for(User::factory()->create())->create();
-    [$caller, $client] = capturingCaller(json_encode(['voice' => 'a self-scaled block.'], JSON_THROW_ON_ERROR));
-
-    new PlanSeasonVoiceNarrator($caller, app(SustainedAheadOfRacePace::class))->generate($season);
-
-    assertOneStepWithContext($client, new PlanSeasonTool($season, app(SustainedAheadOfRacePace::class))->handle([]));
-    expect(narratorPrompt(PlanSeasonVoiceNarrator::class))->not->toMatch('/\bget_[a-z_]+/');
-});
-
-it('PlanSeasonVoiceNarrator throws on missing voice key', function (): void {
-    $user = User::factory()->create();
-    $season = Season::factory()->for($user)->create();
-    $caller = fakeCaller(json_encode(['other' => 'x'], JSON_THROW_ON_ERROR));
-    $narrator = new PlanSeasonVoiceNarrator($caller, app(SustainedAheadOfRacePace::class));
-    $narrator->generate($season);
-})->throws(UnavailableException::class);
-
-it('PlanSeasonVoiceNarrator prompt raises the goal only once it has held, never as a prescription', function (): void {
-    $prompt = narratorPrompt(PlanSeasonVoiceNarrator::class);
-
-    expect($prompt)->toContain('sustained_ahead_of_race_pace')
-        ->and($prompt)->toContain('GOAL MAY BE CONSERVATIVE')
-        ->and($prompt)->toContain('never as a decision already made')
-        ->and($prompt)->toContain('Raising the goal after only one ahead-of-pace week');
-});
-
-it('PlanSeasonTool reports self-scaled seasons with no race attached', function (): void {
-    $user = User::factory()->create();
-    $season = Season::factory()->for($user)->create(['race_goal_id' => null]);
-
-    $context = new PlanSeasonTool($season, app(SustainedAheadOfRacePace::class))->handle([]);
-
-    expect($context['is_race_oriented'])->toBeFalse()
-        ->and($context['race_name'])->toBeNull()
-        ->and($context['goals'])->toBeArray()
-        ->and($context['sustained_ahead_of_race_pace'])->toBeFalse()
-        ->and($context['current_week_adaptation'])->toBeNull();
-});
-
-it('PlanSeasonTool reports the sustained-ahead signal only once two consecutive weeks earn it', function (): void {
-    $user = User::factory()->create();
-    $season = Season::factory()->for($user)->create();
-    $weekStart = Carbon::today()->startOfWeek(Carbon::MONDAY);
-
-    PlanAdaptation::factory()->for($user)->create([
-        'week_start' => $weekStart->toDateString(),
-        'reason' => AdaptationReason::AheadOfRacePace,
-    ]);
-    $context = new PlanSeasonTool($season, app(SustainedAheadOfRacePace::class))->handle([]);
-    expect($context['sustained_ahead_of_race_pace'])->toBeFalse()
-        ->and($context['current_week_adaptation']['reason'])->toBe(AdaptationReason::AheadOfRacePace->value);
-
-    PlanAdaptation::factory()->for($user)->create([
-        'week_start' => $weekStart->copy()->subWeek()->toDateString(),
-        'reason' => AdaptationReason::AheadOfRacePace,
-    ]);
-    $context = new PlanSeasonTool($season, app(SustainedAheadOfRacePace::class))->handle([]);
-    expect($context['sustained_ahead_of_race_pace'])->toBeTrue()
-        ->and($context['current_week_adaptation'])->not->toHaveKey('quality_delta');
 });
 
 it('WeeklyRecapNarrator sends only the continuity line and reads the week', function (): void {

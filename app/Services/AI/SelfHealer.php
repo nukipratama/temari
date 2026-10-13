@@ -5,13 +5,11 @@ declare(strict_types=1);
 namespace App\Services\AI;
 
 use App\Actions\AI\RecentlyActiveUsers;
-use App\Actions\Run\Plan\ResolveSeasonAction;
 use App\Jobs\AI\AnalyzeActivityJob;
 use App\Models\Activity;
 use App\Models\AI\Analysis;
 use App\Models\PlannedSession;
 use App\Models\RunCard;
-use App\Models\Season;
 use App\Models\WeeklySnapshot;
 use App\Services\Run\Ingest\HydrationBacklog;
 use Illuminate\Database\Eloquent\Builder;
@@ -60,7 +58,6 @@ class SelfHealer
         private readonly RecapHydrationReadiness $readiness,
         private readonly RecentlyActiveUsers $activeUsers,
         private readonly HydrationBacklog $backlog,
-        private readonly ResolveSeasonAction $seasons,
     ) {
     }
 
@@ -79,8 +76,7 @@ class SelfHealer
             + $this->resumeSingleRowType(AnalysisType::BriefingMascotVoice)
             + $this->resumeSingleRowType(AnalysisType::ProfileVoice)
             + $this->resumeSingleRowType(AnalysisType::TrendRead)
-            + $this->resumeSingleRowType(AnalysisType::PlanClampVoice, Carbon::today()->toDateString())
-            + $this->resumeCurrentSeasonVoice();
+            + $this->resumeSingleRowType(AnalysisType::PlanClampVoice, Carbon::today()->toDateString());
     }
 
     /**
@@ -410,28 +406,5 @@ class SelfHealer
         ));
 
         return $earliestPerUser->count();
-    }
-
-    private function resumeCurrentSeasonVoice(): int
-    {
-        $current = Analysis::query()
-            ->stalled()
-            ->where('ai_analyses.subject_type', Season::class)
-            ->where('ai_analyses.analysis_type', AnalysisType::PlanSeasonVoice)
-            ->join('seasons', 'seasons.id', '=', 'ai_analyses.subject_id')
-            ->whereIn('seasons.user_id', $this->activeUsers->query()->select('id'))
-            ->orderBy('ai_analyses.subject_id')
-            ->get(['ai_analyses.subject_id', 'seasons.user_id'])
-            ->filter(fn (Analysis $row): bool => $this->seasons->latest((int) $row->getAttribute('user_id'))?->id === (int) $row->subject_id);
-
-        $current->values()->each(fn (Analysis $row, int $index) => $this->service->request(
-            subjectOrType: Season::class,
-            subjectId: (int) $row->subject_id,
-            type: AnalysisType::PlanSeasonVoice,
-            delaySeconds: $index * self::SWEEP_SPACING_SECONDS,
-            invalidate: false,
-        ));
-
-        return $current->count();
     }
 }

@@ -12,7 +12,6 @@ use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
 use App\Models\PlannedSession;
 use App\Models\RunCard;
-use App\Models\Season;
 use App\Models\WeeklySnapshot;
 use App\Models\User;
 use App\Services\AI\AnalysisType;
@@ -25,7 +24,6 @@ use App\Services\Run\Plan\IntentOutcome;
 use App\Services\Run\Plan\PlanRenderer;
 use App\Services\Run\Plan\SessionMatcher;
 use App\Services\Run\Plan\TimeTrial;
-use App\Services\Run\Plan\SustainedAheadOfRacePace;
 use App\Services\Run\Plan\TrainingBaseline;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
@@ -63,7 +61,6 @@ final readonly class RuleBasedNarrationFiller
     ];
 
     public function __construct(
-        private SustainedAheadOfRacePace $sustainedAheadOfRacePace,
         private TrainingBaseline $trainingBaseline,
     ) {
     }
@@ -82,7 +79,6 @@ final readonly class RuleBasedNarrationFiller
             AnalysisType::MonthlyRecap => $this->monthlyRecap($row->subject_id, $row->discriminator, $seed),
             AnalysisType::TrendRead => $this->trendRead($seed),
             AnalysisType::PlanClampVoice => $this->planClampVoice($seed),
-            AnalysisType::PlanSeasonVoice => $this->planSeasonVoice($row),
         };
     }
 
@@ -580,37 +576,6 @@ final readonly class RuleBasedNarrationFiller
             "The pattern reads disciplined: mostly **chill**, pushed on occasion, and your total built out of steady volume rather than one heroic run. Nothing in here is accidental.",
             "You're early and the mix is still thin, but you've come back more than once already. That's a start with a number attached. The reading gets sharper the more you feed it.",
         ], $seed);
-    }
-
-    private function planSeasonVoice(Analysis $row): string
-    {
-        $season = Season::query()->find($row->subject_id);
-        if ($season === null) {
-            return 'a new training arc, just getting started.';
-        }
-
-        $race = $season->raceGoal;
-        if ($race !== null) {
-            $raceName = $race->name ?? 'the race';
-            $seed = $this->seedFor($row);
-
-            if ($this->sustainedAheadOfRacePace->forUser($season->user_id, Carbon::today()->startOfWeek(Carbon::MONDAY))) {
-                return $this->select([
-                    "building toward {$raceName}. you've been sitting inside your goal time for a couple of weeks now — that number might be worth revisiting.",
-                    "the arc that gets you to {$raceName}. your pace has held ahead of goal for a while, so the goal itself might be worth a second look.",
-                ], $seed);
-            }
-
-            return $this->select([
-                "building toward {$raceName}.",
-                "the arc that gets you to {$raceName}.",
-            ], $seed);
-        }
-
-        return $this->select([
-            "no race on the books right now, so this one's about building a base.",
-            'a self-scaled block, building your running with no countdown attached.',
-        ], $this->seedFor($row));
     }
 
     private function trendRead(int $seed): string

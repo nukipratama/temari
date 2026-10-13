@@ -69,10 +69,7 @@ class BackfillAgeGate
             AnalysisType::TrendRead,
             // The clamp is about this moment's readiness and nothing else, so
             // there is no old material for it to reach.
-            AnalysisType::PlanClampVoice,
-            // Same shape: season narration is always about the current season
-            // as of now, never a fixed past date to age out.
-            AnalysisType::PlanSeasonVoice => false,
+            AnalysisType::PlanClampVoice => false,
         };
     }
 

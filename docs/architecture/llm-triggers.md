@@ -18,7 +18,7 @@ code_refs:
   - app/Http/Controllers/Api/RunQuestionController.php
   - app/Services/AI/SelfHealer.php
   - app/Actions/AI/RequestTodaysBriefing.php
-  - app/Services/AI/PlanNarrationRequester.php
+  - app/Services/AI/ClampVoiceRequester.php
   - app/Services/AI/BackfillAgeGate.php
   - app/Models/AI/TokenUsage.php
   - app/Actions/AI/RecordTokenUsageAction.php
@@ -85,7 +85,6 @@ everyone. See [[narration-spends-only-on-active-athletes]].
 | daily 00:01 | [`ai:daily-briefing`](../../routes/console.php) | one `BriefingMascotVoice` per active non-demo user — narrates right away even for a first connect whose backlog is still draining ([[history-narrates-on-demand]], #1054) |
 | Mon 00:16 | [`ai:weekly-recap`](../../routes/console.php) | `WeeklyRecap`, oldest unfinished link first; `ai:self-heal` usually narrates it at 00:00 |
 | Mon 00:21 | [`ai:weekly-profile`](../../routes/console.php) | `ProfileVoice`, keyed by ISO week — every automatic request waits until that athlete's streak is settled through the closed week and not dirty; the athlete's own Reread does not wait |
-| **Mon 00:26** | [**`plan:regenerate`**](../../routes/console.php) | **one row per user, the season voice — see below** |
 | daily 06:00 | [`ai:trend-read 7d`](../../routes/console.php) | `TrendRead`, discriminator `7d` — the only range since #967 |
 | first connect | [`KickoffRecapsJob`](../../app/Jobs/AI/KickoffRecapsJob.php) | the `trend_read` row, so a new account isn't a day behind |
 | hourly | [`ai:self-heal`](../../routes/console.php) | recovery only — see origin 4; also the only scheduled path for `MonthlyRecap`, which it narrates from the ingest-staged row once the month closes |
@@ -112,13 +111,9 @@ The pre-connect test is one classifier,
 shared by both kickoffs, the self-heal recap sweeps (origin 4) and `NarrateOnReturnJob` (origin 5).
 See [[deferred-recap-windowing]] and [[history-narrates-on-demand]].
 
-**`plan:regenerate` is the one to know about.** The periodizer it runs is deterministic and free,
-and it still runs for every athlete. The narration half then calls
-[`requestForCurrentWeek()`](../../app/Services/AI/PlanNarrationRequester.php) for each
-recently-active athlete, touching one row: `PlanSeasonVoice`. Its fingerprint includes the
-sustained-ahead signal and the current week's adaptation reason/deload, so a Monday plan change
-re-reads the season only when that material changes. There is no per-day read
-([[a-plan-day-has-no-narrated-read]]).
+**`plan:regenerate` calls no model.** The periodizer it runs is deterministic and free, and there
+is no season read ([[the-season-has-no-narrated-read]]) or per-day read
+([[a-plan-day-has-no-narrated-read]]) for it to request.
 
 **A brand-new account also gets today's briefing on the day it signs up.** `BriefingMascotVoice`
 is keyed by the day, and the only thing that used to stage it was the 00:01 kickoff, so an account
@@ -148,14 +143,6 @@ and flags the row for `SettleEarlyNarrationAction`'s one-time replay once that h
 *after* the `backfilled_at` check, so a re-run of the connect chain before it's set never spends
 the day's one real request; it just re-stages the same idempotent row.
 
-**A brand-new account narrates its season once, off-schedule.** Onboarding and the first-connect
-backfill chain race, and whichever finishes second calls
-[`requestForFirstWeek()`](../../app/Services/AI/PlanNarrationRequester.php) — onboarding when
-`users.backfilled_at` is already stamped, [`KickoffRecapsJob`](../../app/Jobs/AI/KickoffRecapsJob.php)
-when a plan already exists. Since #939 that touches only `PlanSeasonVoice`: a first week has no run
-in it yet, so there is no day to narrate ahead of time. That path never invalidates, so the
-interleaving where both fire re-bills nothing.
-
 **The Trends read is kicked from the same link, for a different reason.** Its own cron only reaches
 athletes who already existed when it last ran, so a Friday signup had no read at all for up to a day,
 on exactly the day a new account forms its impression. `KickoffRecapsJob` requests it once the backfill
@@ -175,14 +162,9 @@ form figure (TRIMP, CTL, VDOT, monotony, strain) to whole numbers — and invali
 when that digest has moved since [`AnalyzeTrendReadJob::fingerprintFor()`](../../app/Jobs/AI/AnalyzeTrendReadJob.php)
 last stamped it. Each range's cadence above still decides *when* the check runs; the fingerprint only
 decides whether that tick spends. A row with no stored fingerprint — every row generated before this
-landed — counts as **changed**, matching [`PlanNarrationRequester`](../../app/Services/AI/PlanNarrationRequester.php)'s
-season rule below rather than the opposite null-handling `DispatchPostRunAnalysis` uses for
+landed — counts as **changed**, the opposite of the null-handling `DispatchPostRunAnalysis` uses for
 `PostRunSpeech`: each pre-existing Done read refreshes once on its next scheduled run, and the
 fingerprint gate takes over from there.
-
-**The season read re-bills only where its material moved.** `PlanSeasonVoice` carries a
-[`MaterialFingerprint`](../../app/Services/AI/MaterialFingerprint.php) for the time-varying
-season signals above; unchanged season material relies on `AnalysisService`'s own idempotency.
 
 A row with **no** stored fingerprint counts as changed — the inverse of the per-run rule in
 `DispatchPostRunAnalysis`, and deliberately so. Only the rule-based paths leave the column null (a
@@ -195,11 +177,10 @@ Everything else on the schedule (`strava:sync`, `geo:backfill-locations`, `weath
 `AnalysisService::withoutDispatching()`, so the demo account's content is filled deterministically
 and spends nothing. See [[demo-user-billing-exclusion]].
 
-`plan:score-compliance` is not on that list: its scoring is free, but a settled row marks the plan
-dirty, and the reconciliation that follows can request the plan narration for an active athlete
-([`PlanReconciliationService::drain()`](../../app/Services/Run/Plan/PlanReconciliationService.php) fires
-`PlanRegenerated`, and [`RequestPlanNarrationOnPlanRegenerated`](../../app/Listeners/RequestPlanNarrationOnPlanRegenerated.php) applies the active-athlete gate).
-It is classified as billing in the demo-exclusion tripwire.
+`plan:score-compliance` reaches no model either: a settled row marks the plan dirty, and the
+reconciliation that follows ([`PlanReconciliationService::drain()`](../../app/Services/Run/Plan/PlanReconciliationService.php))
+only regenerates the plan. Both it and `plan:regenerate` are classified as non-billing in the
+demo-exclusion tripwire.
 
 ### 2. Ingest cascade
 
@@ -240,10 +221,6 @@ narrate them once the window closes, which is why a pending recap row is not a b
   instead. It still goes through `StructuredChatCaller`, so persona, budget, retries and metering are
   unchanged. A per-run daily cap refuses the eleventh question on one run before anything could
   dispatch. See [[scoped-run-qa-not-an-analysis-row]] and [[run-qa-is-a-conversation-about-one-run]].
-- **`PlanController::regenerate`** — the Plan page's own regenerate button runs the *same*
-  `requestForCurrentWeek()` as the Monday command, which touches only the season row
-  (`PlanSeasonVoice`). It is limited by its own 3600s [`PlanRegenerateCooldown`](../../app/Services/Run/Plan/PlanRegenerateCooldown.php), not by
-  the per-block cooldown every other trigger uses.
 - **`PlanController::update`, on a make-up move** — once the lock is released,
   [`RenarrateAfterMakeUp`](../../app/Actions/AI/RenarrateAfterMakeUp.php), called by the controller right after `MakeUpService::notify()`, re-requests the runs on both the made-up
   day and the day it emptied (`post_run_speech`, `run_insight`) and their `card_flavor` with
@@ -270,8 +247,7 @@ narrate them once the window closes, which is why a pending recap row is not a b
 flight, then resumes the earliest stalled link per user per family. **Every dispatch is
 `invalidate: false`**, so recovery never re-bills content that already exists, and every sweep
 covers only [`RecentlyActiveUsers`](../../app/Actions/AI/RecentlyActiveUsers.php), so demo and
-athletes away from the app are excluded. The plan clamp voice resumes only today's row, and the
-plan season voice only the athlete's current season. A stalled weekly or monthly recap link that is past the
+athletes away from the app are excluded. The plan clamp voice resumes only today's row. A stalled weekly or monthly recap link that is past the
 backfill age cutoff, or whose period closed before the athlete connected, is filled with
 `requestRuleBased()` instead of being resumed, so recovery never bills the LLM for history Temari
 never watched; a too-old or pre-connect weekly link still waits for its week to finish hydrating
@@ -295,9 +271,9 @@ well as a latest closed month that ended before the athlete connected. An older 
 origin is `return`, and `AnalysisService::markDone()` sends no notification for it. See
 [[narration-spends-only-on-active-athletes]].
 
-## The eleven surfaces
+## The ten surfaces
 
-Ten [`AnalysisType`](../../app/Services/AI/AnalysisType.php) cases plus the scoped run Q&A, which
+Nine [`AnalysisType`](../../app/Services/AI/AnalysisType.php) cases plus the scoped run Q&A, which
 is not an Analysis row. Every case is dispatched by at least one origin above, and every case is
 rendered somewhere a user can see — both directions matter, and only one of them used to be checked.
 
@@ -312,7 +288,6 @@ rendered somewhere a user can see — both directions matter, and only one of th
 | `profile_voice` | `ProfileVoiceNarrator` | synthetic user · ISO week | scheduled + ingest | `ProfileHero` |
 | `trend_read` | `TrendReadNarrator` | synthetic user+range · `7d` | scheduled | `NarrationCard` on Trends |
 | `plan_clamp_voice` | `PlanClampVoiceNarrator` | synthetic user+day · `Y-m-d` | 00:01 briefing; hourly catch-up staging | an eased day's voice before credit, or an unrecorded step-down, on both surfaces |
-| `plan_season_voice` | `PlanSeasonVoiceNarrator` | `Season` · none | `plan:regenerate`, Plan page, first week | `SeasonHeaderCard`, always visible |
 | *(not an Analysis row)* | `RunQuestionNarrator` | `RunQuestion` rows per activity | user | `AskAboutRun` on the run page |
 
 ## What stops a call
@@ -367,7 +342,7 @@ Three more limits:
   [900s cooldown](../../app/Support/Cooldown.php) stops a human clicking twice, at the
   controller, before a job exists. The `Done` check at the top of
   [`AnalyzeRowJob::handle()`](../../app/Jobs/AI/AnalyzeRowJob.php) stops a UI trigger and a
-  Horizon retry racing into a double bill. Plan narration adds two more, separate ones inside `PlanNarrationRequester`: a 86400s per-athlete narration cooldown (`Cooldown::PLAN_NARRATION_WINDOW_SECONDS`) and, in [`PlanRegenerateCooldown`](../../app/Services/Run/Plan/PlanRegenerateCooldown.php), the 3600s manual-regenerate cooldown.
+  Horizon retry racing into a double bill.
 
 Three further ceilings bound a call rather than stopping it: a per-user trigger rate limit of 8/min,
 a run-question limit of 4/min, and a per-run agent budget of 8 steps / 30k tokens — all in
@@ -375,9 +350,8 @@ a run-question limit of 4/min, and a per-run agent budget of 8 steps / 30k token
 
 ## Cost shape
 
-**Every narrator but the three plan voices is a tool-calling agent run.** The clamp, day and season
-voices are plain single-turn calls with no toolbox (the day and season voices get their one bound
-read in the context instead); every other block is a multi-turn loop, and each turn re-sends the
+**Every narrator but the plan clamp voice is a tool-calling agent run.** The clamp voice is a plain
+single-turn call with no toolbox; every other block is a multi-turn loop, and each turn re-sends the
 whole prefix. That single fact drives everything below.
 
 | narrator | tools | max steps | max output | temp | deployment key |
@@ -392,7 +366,6 @@ whole prefix. That single fact drives everything below.
 | `MonthlyRecapNarrator` | 2 | **6** | 1500 | 0.7 | `monthly_recap` |
 | `TrendReadNarrator` | 2 | **6** | 1200 | 0.7 | `trend_read` |
 | `PlanClampVoiceNarrator` | 0 | 1 (plain call) | 200 | 0.7 | `plan_clamp_voice` |
-| `PlanSeasonVoiceNarrator` | 0 | 1 (plain call) | 400 | 0.7 | `plan_season_voice` |
 
 Every kind has its own `azure_openai.narrators.*` override key, each defaulting to
 `AZURE_OPENAI_DEPLOYMENT`. Routing is env-only; no code decides which model a narrator gets.
@@ -455,7 +428,6 @@ inline in its `toolbox()` method.
 | `MonthTotalsTool` · `get_month_totals` | `month`, `total_runs`, `total_distance_km`, `longest_run_km`, `pr_count`, `weekly_distance_km`, `mood_mix`, `fitness` (`ctl_start`, `ctl_end`, `form_status_end`) | `DistanceFormatter`, `MoodMix`, stored `WeeklySnapshot` rows |
 | `TrendRangeTool` · `get_trend_range_totals` | `range`, `current` and `comparison` (`runs`, `distance_km`, `trimp_total`), `ctl_start`, `ctl_end`, `vdot_start`, `vdot_end`, `avg_monotony`, `avg_strain` | `TrainingLoad::ctlTrend()` / `::strainMonotonyTrend()`, `TrendDailySnapshot` |
 | `CardIdentityTool` · `get_card_identity` | `rarity`, `rarity_label`, `special_move`, `badges` | stored `RunCard` attributes; labels from `Badge::promptLabelsFor()` |
-| `PlanSeasonTool` · `get_season` | `starts_at`, `ends_at`, `is_race_oriented`, `race_name`, `race_date`, `race_distance_m`, `goals` | stored `Season`, `RaceGoal` and `SeasonGoal` rows |
 | `PlanContextTool` · `get_planned_sessions` | `days[]` of `date`, `session_type`, `phase`, `distance_km`, `target_pace_sec`, `skipped`, `status`, `compliance_score`, `ran_anyway` | `PlannedSession` rows over the bound span; `SegmentGenerator::coreKmFor()` for days `ComplianceScorer` has not yet written `prescribed_km` on; `VdotEstimator` into `TrainingPaceCalculator` for the pace |
 | `GetThreadTool` · `get_thread` | `thread`: up to 6 × `{question, answer}`, this run's earlier settled exchanges, oldest first, without the question being answered | stored `RunQuestion` rows for the bound activity and its owner |
 | `PlanAdherenceTool` · `get_plan_adherence` | `from`, `through`, `prescribed`, `done`, `partial`, `missed`, `overreached`, `excused`, `ran_anyway`, `mean_compliance` | `PlannedSession` rows up to the as-of date, counted by `PlannedSessionStatus`; a null `from` means the athlete's whole history |
@@ -473,11 +445,10 @@ inline in its `toolbox()` method.
 | `WeeklyRecapNarrator` | `WeekTotalsTool`, `PlanContextTool` |
 | `MonthlyRecapNarrator` | `MonthTotalsTool`, `PlanContextTool` |
 | `TrendReadNarrator` | `TrendRangeTool`, `PlanAdherenceTool` |
-| `PlanSeasonVoiceNarrator` | none; `PlanSeasonTool`'s payload in the context |
 
-Every one of the 24 tools is used by at least one narrator; none is orphaned. Two of them
-(`CardIdentityTool`, `PlanSeasonTool`) are read into the context rather than offered
-as tools, since the model had no choice to make about calling them.
+Every one of the 23 tools is used by at least one narrator; none is orphaned. One of them,
+`CardIdentityTool`, is read into the context rather than offered as a tool, since the model had no
+choice to make about calling it.
 
 ## The deterministic half
 
@@ -511,14 +482,13 @@ Three-way, and **proposed, not ruled** — the reasoning is here so the call can
 | `monthly_recap` | earns it | Same shape, same 6-step budget. |
 | `profile_voice` | earns it | Once a week, four reads, genuinely synthetic. |
 | `trend_read` | earns it | 2 tools and a 6-step budget, one call per active athlete per day since `30d`/`90d`/`12mo` retired (#967). |
-| `plan_season_voice` | earns it | One plain call with the season in the context, and idempotent, so it neither re-bills nor over-runs. |
 | run Q&A | earns it | A free-form question about one run is exactly what rules cannot answer. |
 | `TemariPersona` | earns it | ~4,000 tokens on every turn, but it *is* the product, and the per-kind prompt cache already serves roughly half of it at a tenth of the rate. The largest available lever, and the last one to reach for. |
 
 **Tool shortlist** — flagged rather than ruled, since only a handful are worth acting on:
 
-- `PlanSeasonTool` returns one bound read with nothing for the model to decide, so its narrator
-  hands the payload straight to the prompt and skips the tool round trip. `CardFlavorNarrator` does the same with `CardIdentityTool`.
+- `CardIdentityTool` returns one bound read with nothing for the model to decide, so
+  `CardFlavorNarrator` hands the payload straight to the prompt and skips the tool round trip.
 - `PlanContextTool` is the one plan read bound to a *span* rather than a row, so a narrator with no
   `PlannedSession` in hand can still say what was prescribed. The four per-run narrators bind it to
   a single day, the date of the run they are describing; the weekly and monthly recaps bind it to
@@ -536,9 +506,19 @@ Three-way, and **proposed, not ruled** — the reasoning is here so the call can
 active user per week). It ranks surfaces against each other; it is not a dollar figure:
 
 `run_insight` › `briefing_mascot_voice` › `post_run_speech` › run Q&A › `card_flavor` ›
-`profile_voice` › `trend_read` › `weekly_recap` › `monthly_recap` › `plan_season_voice`
+`profile_voice` › `trend_read` › `weekly_recap` › `monthly_recap`
 
 ## Retired surfaces
+
+**`plan_season_voice`** (cut 2026-10-13, #2133, [[the-season-has-no-narrated-read]]). The season
+header's "Temari's take" was judged not worth its place under the phase bar or its LLM spend. The
+enum case, `PlanSeasonVoiceNarrator`, `AnalyzePlanSeasonVoiceJob`, its `PlanSeasonTool`,
+`SustainedAheadOfRacePace`, `MaterialFingerprint::forSeason()`, the authorizer, age-gate, self-heal
+and rule-based arms, the routing key, the `PlanRegenerated` event and its listener, the 24-hour
+settings cooldown, the demo fill and every request site (manual regenerate, settings and race
+changes, reconciliation, onboarding, the backfill's first week and `plan:regenerate`) are all gone.
+The clamp voice moved to its own `ClampVoiceRequester`. A migration deleted the stored rows and the
+`narration` flags on them; `ai_token_usages` keeps their cost history.
 
 **`plan_day_voice`** (cut 2026-10-07, #1912, [[a-plan-day-has-no-narrated-read]]). The per-day
 "Temari's read" mostly repeated the day card and the run detail, cost an LLM call per credited day

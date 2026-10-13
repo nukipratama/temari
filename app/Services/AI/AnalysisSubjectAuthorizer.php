@@ -6,7 +6,6 @@ namespace App\Services\AI;
 
 use App\Models\Activity;
 use App\Models\RunCard;
-use App\Models\Season;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -42,7 +41,6 @@ final class AnalysisSubjectAuthorizer
                 ->whereKey($subjectId)
                 ->forUser($user->id)
                 ->exists(),
-            AnalysisType::PlanSeasonVoice => self::userOwns(Season::query(), $subjectId, $user->id),
         };
 
         if (! $authorized) {

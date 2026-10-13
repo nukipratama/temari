@@ -16,12 +16,10 @@ use App\Services\AI\AnalysisOrigin;
 use App\Services\AI\AnalysisService;
 use App\Services\Run\Ingest\HydrationBacklog;
 use App\Services\AI\NarrationOrigin;
-use App\Services\AI\PlanNarrationRequester;
 use App\Services\Run\Plan\Periodizer;
 use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
-use Illuminate\Support\Carbon;
 
 /**
  * The last link of the first-connect chain: weekly + monthly recap and Trends
@@ -37,7 +35,7 @@ use Illuminate\Support\Carbon;
  * Being last, it is also where `users.backfilled_at` is stamped — the marker
  * nothing else could supply, since the chain's own position is unreadable from
  * outside it — and where the first week is re-sized against the history that
- * just landed, then narrated, if onboarding already wrote a plan. Today's
+ * just landed, if onboarding already wrote a plan. Today's
  * briefing, asked for at signup against a history that had not arrived yet, is
  * re-requested here so it reads the runs instead.
  */
@@ -52,7 +50,6 @@ class KickoffRecapsJob implements ShouldQueue
     public function handle(
         KickoffWeeklyRecaps $weekly,
         KickoffMonthlyRecaps $monthly,
-        PlanNarrationRequester $planNarration,
         AnalysisService $analysis,
         Periodizer $periodizer,
         RequestTodaysBriefing $briefing,
@@ -81,11 +78,7 @@ class KickoffRecapsJob implements ShouldQueue
                 $periodizer->regenerate($user);
             } catch (LockTimeoutException) {
                 RegeneratePlanJob::dispatch($user->id, PlanRegenerationReason::Onboarding)->afterCommit();
-
-                return;
             }
-
-            $planNarration->requestForFirstWeek($user, Carbon::today());
         }
     }
 

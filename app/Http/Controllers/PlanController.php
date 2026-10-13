@@ -10,7 +10,6 @@ use App\Http\Requests\UpdatePlannedSessionRequest;
 use App\Models\PlannedSession;
 use App\Models\User;
 use App\Services\AI\AnalysisService;
-use App\Services\AI\PlanNarrationRequester;
 use App\Services\Run\Plan\MakeUpService;
 use App\Services\Run\Plan\Periodizer;
 use App\Services\Run\Plan\PlanRegenerateCooldown;
@@ -34,7 +33,7 @@ use Inertia\Response;
  */
 class PlanController extends Controller
 {
-    public function index(Request $request, PlanPageAssembler $plan, PlanNarrationRequester $narration): Response
+    public function index(Request $request, PlanPageAssembler $plan): Response
     {
         /** @var User $user */
         $user = $request->user();
@@ -56,13 +55,6 @@ class PlanController extends Controller
             'seasonAdherencePct' => Inertia::defer(fn (): ?int => $plan->seasonAdherencePct($user, $today)),
             'adaptation' => Inertia::defer(fn (): ?array => $plan->adaptation($user, $today)),
             'disclaimerLine' => TrainingDisclaimer::SHORT,
-            'planNarration' => Inertia::defer(function () use ($narration, $user): array {
-                if ($user->is_demo) {
-                    $narration->ensureDemoFilled($user);
-                }
-
-                return ['season' => $narration->seasonPayload($user)];
-            }),
             'regenerateCooldownSeconds' => fn (): ?int => $plan->regenerateCooldownSeconds($user),
         ]);
     }

@@ -134,7 +134,6 @@ describe('AiOutageBanner placement', () => {
         expect(mounting).toEqual(
             expect.arrayContaining([
                 'pages/Home.tsx',
-                'pages/Plan.tsx',
                 'pages/Profile.tsx',
                 'pages/Trends.tsx',
                 'pages/History.tsx',
@@ -144,6 +143,7 @@ describe('AiOutageBanner placement', () => {
         expect(mounting).not.toContain('pages/Settings/Index.tsx');
         expect(mounting).not.toContain('pages/Inbox.tsx');
         expect(mounting).not.toContain('pages/Race.tsx');
+        expect(mounting).not.toContain('pages/Plan.tsx');
     });
 });
 

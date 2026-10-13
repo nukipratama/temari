@@ -2,19 +2,13 @@ import { Deferred, Head, Link, router } from '@inertiajs/react';
 import { Clock, RefreshCw } from 'lucide-react';
 import { useState } from 'react';
 
-import type {
-    PlanDay,
-    PlanNarration,
-    PlanWeek,
-    SeasonSummaryWeek,
-} from '@/lib/plan';
+import type { PlanDay, PlanWeek, SeasonSummaryWeek } from '@/lib/plan';
 import type {
     PlanRaceCard as PlanRaceCardPayload,
     PlanRecalibrationState,
     RaceOutcomeCandidate,
 } from '@/types/inertia';
 
-import AiOutageBanner from '@/components/AiOutageBanner';
 import AddRacePrompt from '@/components/plan/AddRacePrompt';
 import PlanHeading from '@/components/plan/PlanHeading';
 import PlanRaceCard from '@/components/plan/PlanRaceCard';
@@ -60,7 +54,6 @@ interface PlanProps {
     adaptation?: PlanAdaptation | null;
     /** Served from App\Support\TrainingDisclaimer, shared with the legal pages. */
     disclaimerLine: string;
-    planNarration?: PlanNarration;
     /** Seconds left before Regenerate may run again, or null when it's free to click. */
     regenerateCooldownSeconds?: number | null;
     planRecalibration?: PlanRecalibrationState;
@@ -75,10 +68,6 @@ function requestedDay(): string | null {
     return day !== null && ISO_DATE.test(day) ? day : null;
 }
 
-const PLAN_NARRATION_DEFAULT: PlanNarration = {
-    season: null,
-};
-
 export default function Plan({
     race,
     raceCard,
@@ -91,7 +80,6 @@ export default function Plan({
     seasonAdherencePct = null,
     adaptation = null,
     disclaimerLine,
-    planNarration = PLAN_NARRATION_DEFAULT,
     regenerateCooldownSeconds = null,
     planRecalibration,
 }: Readonly<PlanProps>) {
@@ -141,7 +129,6 @@ export default function Plan({
     return (
         <>
             <Head title="Plan" />
-            <AiOutageBanner />
             <PageContainer>
                 <PlanHeading
                     action={
@@ -240,7 +227,6 @@ export default function Plan({
                                     adherencePct={seasonAdherencePct}
                                     weeks={seasonSummary}
                                     raceCard={raceCard}
-                                    narration={planNarration.season}
                                     underReadyLine={season.under_ready_line}
                                 />
                                 <SeasonTimeline

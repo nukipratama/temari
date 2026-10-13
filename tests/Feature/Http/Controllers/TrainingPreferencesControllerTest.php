@@ -4,14 +4,11 @@ declare(strict_types=1);
 
 use App\Enums\ExperienceLevel;
 use App\Enums\GoalType;
-use App\Jobs\AI\AnalyzePlanSeasonVoiceJob;
 use App\Models\TrainingPreference;
 use App\Models\PlannedSession;
-use App\Services\AI\AnalysisOrigin;
 use Illuminate\Support\Carbon;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Bus;
 
 uses(RefreshDatabase::class);
 
@@ -102,45 +99,6 @@ it('reshapes the plan onto the run days just saved', function (): void {
         ->all();
 
     expect($trainingDows)->toBe([1, 3, 5]);
-
-    Carbon::setTestNow();
-});
-
-/**
- * #939: saving preferences re-narrates only the season, never any day — a
- * freshly regenerated week has no run in it yet for a day's read to speak to.
- */
-it('attributes a saved preference\'s re-narration to the athlete, so it re-arms the row\'s retry budget', function (): void {
-    Bus::fake();
-    Carbon::setTestNow('2026-09-08 10:00:00'); // a Tuesday
-    $user = User::factory()->create();
-
-    $this->actingAs($user)
-        ->patch('/settings/training-preferences', validPreferencesPayload())
-        ->assertSessionHasNoErrors();
-
-    Bus::assertDispatched(fn (AnalyzePlanSeasonVoiceJob $job): bool => $job->origin === AnalysisOrigin::User);
-
-    Carbon::setTestNow();
-});
-
-/**
- * The demo login is public and credential-free — a real narration dispatch
- * here would be an unauthenticated path to the Azure bill, the exact gap
- * `plan:regenerate` and `shouldServeRuleBased()` already guard against
- * everywhere else the plan is regenerated.
- */
-it('never bills narration for the demo account', function (): void {
-    Bus::fake();
-    Carbon::setTestNow('2026-09-08 10:00:00'); // a Tuesday
-    $user = User::factory()->create(['is_demo' => true]);
-
-    $this->actingAs($user)
-        ->patch('/settings/training-preferences', validPreferencesPayload())
-        ->assertSessionHasNoErrors();
-
-    Bus::assertNotDispatched(AnalyzePlanSeasonVoiceJob::class);
-    expect(PlannedSession::query()->where('user_id', $user->id)->count())->toBeGreaterThan(0);
 
     Carbon::setTestNow();
 });

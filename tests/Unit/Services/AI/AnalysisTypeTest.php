@@ -5,9 +5,7 @@ declare(strict_types=1);
 use App\Jobs\AI\AnalyzeActivityJob;
 use App\Jobs\AI\AnalyzeProfileVoiceJob;
 use App\Jobs\AI\AnalyzeMonthlyRecapJob;
-use App\Jobs\AI\AnalyzePlanSeasonVoiceJob;
 use App\Jobs\AI\AnalyzeTrendReadJob;
-use App\Models\Season;
 use App\Services\AI\AnalysisType;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Validator;
@@ -24,7 +22,6 @@ it('pins the exact case list, so adding or retiring a type is a deliberate edit'
         'monthly_recap',
         'trend_read',
         'plan_clamp_voice',
-        'plan_season_voice',
     ], implode(' ', [
         'The AnalysisType case list changed. Update this list only after settling the call sites that',
         'read the cases as a set rather than one case at a time: Analysis::knownType(), which decides',
@@ -48,11 +45,6 @@ it('maps MonthlyRecap to its job + subject type', function (): void {
 it('maps TrendRead to its job + subject type', function (): void {
     expect(AnalysisType::TrendRead->jobClass())->toBe(AnalyzeTrendReadJob::class)
         ->and(AnalysisType::TrendRead->subjectType())->toBe(AnalysisType::TREND_READ_SUBJECT_TYPE);
-});
-
-it('maps PlanSeasonVoice to its job + subject type', function (): void {
-    expect(AnalysisType::PlanSeasonVoice->jobClass())->toBe(AnalyzePlanSeasonVoiceJob::class)
-        ->and(AnalysisType::PlanSeasonVoice->subjectType())->toBe(Season::class);
 });
 
 it('flags exactly the heart-rate-zone-derived types as zone-dependent', function (AnalysisType $type, bool $expected): void {
@@ -110,7 +102,6 @@ it('prohibits a discriminator on the types that key off subject_id alone', funct
     'run insight' => [AnalysisType::RunInsight],
     'weekly recap' => [AnalysisType::WeeklyRecap],
     'card flavor' => [AnalysisType::CardFlavor],
-    'plan season voice' => [AnalysisType::PlanSeasonVoice],
 ]);
 
 it('requires the date shape each keyed type dispatches with', function (AnalysisType $type, string $rule): void {

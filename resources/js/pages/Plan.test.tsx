@@ -142,12 +142,14 @@ describe('Plan', () => {
         expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
     });
 
-    it('shows the AI pause banner while generation is paused', () => {
+    it('leaves the AI pause banner out, since the page renders no narration', () => {
         setMockPage({ today: '2026-06-17', aiPaused: true }, '/plan', 'Plan');
 
         renderPlan();
 
-        expect(screen.getByText(/catching her breath/)).toBeInTheDocument();
+        expect(
+            screen.queryByText(/catching her breath/),
+        ).not.toBeInTheDocument();
     });
 
     it("takes a day's actions from the server whatever the device clock reads", () => {

@@ -21,6 +21,8 @@ code_refs:
 > race" link left the header: a set race gets a race card above the band, and with none the band
 > invites one. See [[plan-periodizer]]. The decision below is otherwise unchanged.
 
+> **Partly superseded (2026-10-13) by [[the-season-has-no-narrated-read]].** The season band no longer carries Temari's take; the rest of this decision stands.
+
 ## Context
 
 The prototype-parity program (`PS4`, decisions P22–P24) gave the Plan page one nested timeline: a season card, then a rail of week cards, with the current week open onto a volume chart and seven stacked day rows. The owner's review (#1143) found three faults:

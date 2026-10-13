@@ -46,9 +46,7 @@ const BILLING = [
     'race:ask-outcome' => 'notDemo() on the race scan inside the command',
     'plan:settle-time-trials' => 'notDemo() on the trial scan inside the command',
     'fitness:notify-improvement' => 'notDemo() on the user scan inside the command',
-    'plan:score-compliance' => 'PlanReconciliationService::markDirty and drain scope to User::notDemo(), and the plan-narration request it can reach goes through RequestPlanNarrationOnPlanRegenerated, which gates it by RecentlyActiveUsers',
     'ai:self-heal' => 'every sweep in SelfHealer draws from RecentlyActiveUsers, which applies User::notDemo()',
-    'plan:regenerate' => 'RecentlyActiveUsers gates the plan-narration request only; the regenerate itself stays free and still runs for demo',
 ];
 
 /**
@@ -79,6 +77,8 @@ const NON_BILLING = [
     'ai:spend-digest' => 'reads today\'s ai_token_usages rows and pushes one maintainer summary, no LLM and no Strava call',
     'exceptions:digest' => 'reads cached exception fingerprints and pushes one maintainer summary, touches no user',
     'briefing:morning-push' => 'sends a briefing ai:daily-briefing already generated and never generates one, no LLM and no Strava call; the demo identity has no outbound channel anyway',
+    'plan:score-compliance' => 'scores settled sessions and reconciles the plan, no LLM and no Strava call',
+    'plan:regenerate' => 'rewrites plans and starts the regenerate cooldown, no LLM and no Strava call',
 ];
 
 /**
@@ -140,7 +140,5 @@ it('reads the demo exclusion straight out of each billing command source', funct
     'plan:settle-time-trials' => ['plan:settle-time-trials', 'app/Console/Commands/Run/TimeTrialSettleCommand.php'],
     'fitness:notify-improvement' => ['fitness:notify-improvement', 'app/Console/Commands/Run/FitnessNotifyImprovementCommand.php'],
     'strava:hydrate-backlog' => ['strava:hydrate-backlog', 'app/Console/Commands/Strava/HydrateBacklogCommand.php'],
-    'plan:regenerate' => ['plan:regenerate', 'app/Console/Commands/Run/RegeneratePlanCommand.php', 'app/Actions/AI/RecentlyActiveUsers.php'],
-    'plan:score-compliance' => ['plan:score-compliance', 'app/Console/Commands/Run/ScoreComplianceCommand.php', 'app/Services/Run/Plan/PlanReconciliationService.php', 'app/Listeners/RequestPlanNarrationOnPlanRegenerated.php'],
     'ai:self-heal' => ['ai:self-heal', 'app/Console/Commands/AI/SelfHealCommand.php', 'app/Services/AI/SelfHealer.php', 'app/Actions/AI/RecentlyActiveUsers.php'],
 ]);

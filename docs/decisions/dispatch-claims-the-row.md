@@ -8,7 +8,6 @@ code_refs:
   - app/Services/AI/AnalysisService.php
   - app/Models/AI/Analysis.php
   - app/Http/Controllers/Api/AnalysisController.php
-  - app/Services/AI/PlanNarrationRequester.php
 ---
 
 # Dispatch claims the row, and only a person re-arms its budget

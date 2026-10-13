@@ -12,7 +12,6 @@ import {
 
 import type { IconComponent } from '@/components/ui/Icon';
 import type {
-    AnalysisPayload,
     PlanDayEasedFrom,
     PlanDayPaceEasedFrom,
     PlanSessionSegment,
@@ -50,10 +49,6 @@ export interface SeasonSummaryWeek {
     eased_from_km?: number | null;
     actual_km: number | null;
     sessions: number;
-}
-
-export interface PlanNarration {
-    season: AnalysisPayload | null;
 }
 
 /** The first later week whose phase identity differs from the current week's, and how many weeks away it is. */

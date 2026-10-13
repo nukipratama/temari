@@ -58,7 +58,7 @@ Every hero, Today and every recap card carries its own **watermark**; smaller pl
 | Sleepy inline | the `sleepy` pose beside the copy | EmptyPanel, EmptyRunsState (`thinking` while a sync runs) |
 | Hero + draw-in | 72px, traced in once | Onboarding's connected step, TemariNudgeModal (its `pose` prop: `neutral` for the notification and demo nudges, `concerned` for Settings' delete-account confirmation) |
 | Face only | the face as the centre of a ring | Onboarding's required-pace ring |
-| Thinking mark | 40px `thinking` beside AnalysisStatus's skeleton, opt-in via `thinkingMark` | Plan's TemariTake, the calendar's weekly recap |
+| Thinking mark | 40px `thinking` beside AnalysisStatus's skeleton, opt-in via `thinkingMark` | the calendar's weekly recap |
 
 It is **absent from the Login, Trends and Settings pages**, which must not gain one. The one exception is a modal opened *from* Settings (the delete-account confirmation), which has always drawn Temari.
 

@@ -5,11 +5,12 @@ tags: [decision, ai, plan]
 status: accepted
 reviewed: 2026-10-07
 code_refs:
-  - app/Services/AI/PlanNarrationRequester.php
   - app/Services/Run/Plan/PlanPageAssembler.php
   - resources/js/components/plan/DayDetail.tsx
   - database/migrations/2026_10_07_010000_delete_plan_day_voice_analyses.php
 ---
+
+> **Partly superseded (2026-10-13) by [[the-season-has-no-narrated-read]].** The season voice this decision kept is gone too; the rest of this decision stands.
 
 # A plan day has no narrated read
 

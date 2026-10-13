@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Enums\AdaptationReason;
 use App\Enums\Badge;
 use App\Enums\IntentVerdict;
 use App\Enums\PlannedSessionStatus;
@@ -11,11 +10,8 @@ use App\Enums\SessionType;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
-use App\Models\PlanAdaptation;
 use App\Models\PlannedSession;
-use App\Models\RaceGoal;
 use App\Models\RunCard;
-use App\Models\Season;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisType;
@@ -561,49 +557,6 @@ it('stores no verdict label or markdown in any post-run verdict line', function 
     'unknown' => [IntentVerdict::Unknown, SessionType::Interval, []],
 ]);
 
-it('names the race for a race-oriented season', function (): void {
-    $race = RaceGoal::factory()->create(['name' => 'Jakarta Half']);
-    $season = Season::factory()->create(['race_goal_id' => $race->id]);
-
-    $voice = app(RuleBasedNarrationFiller::class)->fillFor(fillerRow(AnalysisType::PlanSeasonVoice, $season->id));
-
-    expect($voice)->toContain('Jakarta Half');
-});
-
-it('mentions the goal only once sustained-ahead has actually held', function (): void {
-    $race = RaceGoal::factory()->create(['name' => 'Jakarta Half']);
-    $season = Season::factory()->create(['race_goal_id' => $race->id]);
-    $weekStart = Carbon::today()->startOfWeek(Carbon::MONDAY);
-
-    PlanAdaptation::factory()->for($season->user)->create([
-        'week_start' => $weekStart->toDateString(),
-        'reason' => AdaptationReason::AheadOfRacePace,
-    ]);
-
-    $notYetSustained = app(RuleBasedNarrationFiller::class)->fillFor(fillerRow(AnalysisType::PlanSeasonVoice, $season->id));
-    expect($notYetSustained)->not->toContain('worth revisiting')
-        ->and($notYetSustained)->not->toContain('second look');
-
-    PlanAdaptation::factory()->for($season->user)->create([
-        'week_start' => $weekStart->copy()->subWeek()->toDateString(),
-        'reason' => AdaptationReason::AheadOfRacePace,
-    ]);
-
-    $sustained = app(RuleBasedNarrationFiller::class)->fillFor(
-        fillerRow(AnalysisType::PlanSeasonVoice, $season->id, 'again'),
-    );
-    expect($sustained)->toContain('Jakarta Half')
-        ->and($sustained)->toMatch('/worth revisiting|second look/');
-});
-
-it('frames a self-scaled season as base-building, not a countdown', function (): void {
-    $season = Season::factory()->create(['race_goal_id' => null]);
-
-    $voice = app(RuleBasedNarrationFiller::class)->fillFor(fillerRow(AnalysisType::PlanSeasonVoice, $season->id));
-
-    expect($voice)->toMatch('/no race on the books|self-scaled block/');
-});
-
 it('adds a real-signal coda to the post-run speech (negative split)', function (): void {
     $activity = Activity::factory()->create();
     ActivityDetail::factory()->create([
@@ -655,12 +608,9 @@ it('keeps all copy free of em-dashes', function (): void {
     $card = seededCard(Rarity::Legendary, 'Personal Best', [Badge::LongSlowDistance->value], 42_195.0);
     $filler = app(RuleBasedNarrationFiller::class);
 
-    $season = Season::factory()->create();
-
     $samples = [
         $filler->cardFlavorFor($card),
         $filler->fillFor(fillerRow(AnalysisType::BriefingMascotVoice, $card->id)),
-        $filler->fillFor(fillerRow(AnalysisType::PlanSeasonVoice, $season->id)),
     ];
 
     foreach ($samples as $sample) {

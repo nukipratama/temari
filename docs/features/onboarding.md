@@ -13,7 +13,6 @@ code_refs:
   - app/Models/User.php
   - app/Http/Controllers/Auth/StravaAuthController.php
   - app/Jobs/AI/KickoffRecapsJob.php
-  - app/Services/AI/PlanNarrationRequester.php
   - app/Services/Run/Ingest/DetailHydrator.php
   - resources/js/pages/Onboarding/Index.tsx
   - resources/js/components/onboarding/StepProgress.tsx
@@ -55,9 +54,9 @@ The goal form only offers submissions the server can accept. [raceGoal.ts](../..
 
 `OnboardingController::store` creates the `RaceGoal` through `RaceGoalService::createUnlessActive` (if goal fields were sent), upserts `TrainingPreference` (if any preference field was sent) and calls `User::markOnboarded()`, then builds the athlete's first plan and redirects to `dashboard`.
 
-## The first week's voice
+## The first week's resize
 
-Onboarding and the Strava backfill race: the wizard writes a plan the moment signup finishes, while the connect chain is still importing history. Whoever finishes second narrates that first week. Onboarding requests narration, through the `PlanRegenerated` event's listener, only when `users.backfilled_at` is already stamped; otherwise it writes the rows and stops, and [KickoffRecapsJob](../../app/Jobs/AI/KickoffRecapsJob.php) — the chain's last link, which stamps that column — re-sizes that plan against the history it just imported and then narrates it, once it finds a plan waiting. Regenerating first matters: narrating first would describe a week that is about to be replaced. Both end in [PlanNarrationRequester::requestForFirstWeek()](../../app/Services/AI/PlanNarrationRequester.php), which never invalidates a row, so the interleaving where both fire costs nothing extra. Until one fires the Plan page has no `Analysis` row to render and omits the day rather than drawing a skeleton over a job nobody queued. See [[plan-periodizer]] and [[strava-connect]].
+Onboarding and the Strava backfill race: the wizard writes a plan the moment signup finishes, while the connect chain is still importing history. [KickoffRecapsJob](../../app/Jobs/AI/KickoffRecapsJob.php), the chain's last link, which stamps `users.backfilled_at`, re-sizes that plan against the history it just imported once it finds a plan waiting. Neither side narrates the first week, since the season has no narrated read ([[the-season-has-no-narrated-read]]). See [[plan-periodizer]] and [[strava-connect]].
 
 ## Today's first briefing
 

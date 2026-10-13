@@ -43,7 +43,7 @@ describe('PlanSkeleton', () => {
 });
 
 describe('PlanSkeleton outage banner', () => {
-    it('shows the AI outage banner above the page while AI is paused', () => {
+    it('leaves the AI outage banner out, matching the Plan page', () => {
         setMockPage({
             auth: { user: null },
             flash: {},
@@ -52,6 +52,8 @@ describe('PlanSkeleton outage banner', () => {
         });
         render(<PlanSkeleton />);
 
-        expect(screen.getByText(/catching her breath/)).toBeInTheDocument();
+        expect(
+            screen.queryByText(/catching her breath/),
+        ).not.toBeInTheDocument();
     });
 });

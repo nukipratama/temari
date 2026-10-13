@@ -169,7 +169,6 @@ function demoSurfaceCounts(User $user): array
         'weekly snapshots' => WeeklySnapshot::query()->where('user_id', $user->id)->count(),
         'personal records' => PersonalRecord::query()->where('user_id', $user->id)->count(),
         'planned sessions' => PlannedSession::query()->where('user_id', $user->id)->count(),
-        'plan season voices' => Analysis::query()->where('analysis_type', AnalysisType::PlanSeasonVoice)->count(),
         'trend reads' => Analysis::query()
             ->where('subject_type', AnalysisType::TREND_READ_SUBJECT_TYPE)
             ->where('subject_id', $user->id)
@@ -185,7 +184,6 @@ it('converges a same-day re-seed without duplicating rows and heals a stale Stra
 
     expect($counts)->each->toBeGreaterThan(0)
         ->and($counts['demo users'])->toBe(1)
-        ->and($counts['plan season voices'])->toBe(1)
         ->and($counts['trend reads'])->toBe(count(AnalysisType::TREND_READ_RANGES));
 
     // Simulate a stale connection (expired + revoked); re-seed must heal it.
@@ -314,9 +312,6 @@ it('seeds a complete, login-ready demo dataset', function (): void {
             ->where('date', '>=', Carbon::today()->toDateString())
             ->where('status', '!=', PlannedSessionStatus::Planned)
             ->count())->toBe(0);
-
-    // F7: season narration filled rule-based for the active season.
-    expect(Analysis::query()->where('analysis_type', AnalysisType::PlanSeasonVoice)->where('status', 'done')->count())->toBe(1);
 
     // F7: trend_read narrated for every live window (just 7d since #967).
     expect(Analysis::query()

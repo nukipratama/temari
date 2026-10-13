@@ -12,7 +12,6 @@ code_refs:
   - app/Services/Run/Plan/PlanPageAssembler.php
   - app/Services/Run/Plan/SeasonSummaryBuilder.php
   - app/Services/AI/Agent/Tools/PlanContextTool.php
-  - app/Services/AI/PlanNarrationRequester.php
   - app/Services/AI/Narrators/PlanClampVoiceNarrator.php
   - resources/js/components/plan/DayDetail.tsx
   - resources/js/components/home/TodaySession.tsx
