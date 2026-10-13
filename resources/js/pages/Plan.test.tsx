@@ -47,6 +47,7 @@ function day(overrides: Partial<EditablePlanDay> = {}): EditablePlanDay {
         stepping_stone: false,
         closes_at_goal_pace: false,
         fast_finish: null,
+        race_long: null,
         time_trial: null,
         hr_cap_bpm: null,
         advice_note: null,

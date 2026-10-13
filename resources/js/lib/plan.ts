@@ -312,11 +312,19 @@ function goalPaceLabel(
     return day.stepping_stone ? STEPPING_STONE_LABEL : GOAL_PACE_LABEL;
 }
 
-/** The pace a fast-finish long run's fast block runs at, if the day is one. */
-export function fastFinishPaceLabel(
-    day: Pick<PlanDay, 'fast_finish'>,
+const RACE_LONG_LABEL: Record<
+    NonNullable<PlanDay['race_long']>['pace_source'],
+    string
+> = {
+    goal: 'long run with goal-pace work',
+    stepping_stone: 'long run with stepping-stone work',
+    supported: 'long run with marathon-pace work',
+};
+
+function paceSourceLabel(
+    pace: PlanDay['fast_finish'] | PlanDay['race_long'],
 ): string | undefined {
-    switch (day.fast_finish?.pace_source) {
+    switch (pace?.pace_source) {
         case undefined:
             return undefined;
         case 'goal':
@@ -324,11 +332,25 @@ export function fastFinishPaceLabel(
         case 'stepping_stone':
             return STEPPING_STONE_LABEL;
         case 'supported':
-            return `supported ${GOAL_PACE_RACE[day.fast_finish.pace_kind]} pace`;
+            return `supported ${GOAL_PACE_RACE[pace.pace_kind]} pace`;
     }
 }
 
-/** The session's name: a time trial, goal-pace work or a fast-finish long run by its own, every other day by its type. */
+/** The pace a fast-finish long run's fast block runs at, if the day is one. */
+export function fastFinishPaceLabel(
+    day: Pick<PlanDay, 'fast_finish'>,
+): string | undefined {
+    return paceSourceLabel(day.fast_finish);
+}
+
+/** The pace a marathon race long's work runs at, if the day is one. */
+export function raceLongPaceLabel(
+    day: Pick<PlanDay, 'race_long'>,
+): string | undefined {
+    return paceSourceLabel(day.race_long);
+}
+
+/** The session's name: a time trial, goal-pace work, a fast-finish long run or a marathon race long by its own, every other day by its type. */
 export function sessionLabel(
     day: Pick<
         PlanDay,
@@ -337,6 +359,7 @@ export function sessionLabel(
         | 'stepping_stone'
         | 'time_trial'
         | 'fast_finish'
+        | 'race_long'
     >,
 ): string {
     if (day.time_trial !== null) {
@@ -344,6 +367,9 @@ export function sessionLabel(
     }
     if (day.fast_finish !== null) {
         return FAST_FINISH_LABEL;
+    }
+    if (day.race_long !== null) {
+        return RACE_LONG_LABEL[day.race_long.pace_source];
     }
 
     return (
@@ -409,6 +435,14 @@ export function sessionPurpose(day: PlanDay): string | null {
                 ? label
                 : `${GOAL_PACE_RACE[day.fast_finish.pace_kind]} ${label}`;
         return `the last fifth at your ${pace}. rehearses race pace on tired legs.`;
+    }
+    if (day.race_long !== null) {
+        const label = raceLongPaceLabel(day);
+        const pace =
+            day.race_long.pace_source === 'supported'
+                ? label
+                : `marathon ${label}`;
+        return `long run with a block at your ${pace}. rehearses race day on tired legs.`;
     }
     const hasWork = sessionHasWork(day);
     switch (day.session_type) {

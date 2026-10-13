@@ -90,6 +90,11 @@ final class PlanContextTool extends UserTool
             .'(stepping_stone) or the pace their running supports (supported) for the race in '
             .'fast_finish.pace_kind, while the target pace is the easy running before it. Call it a long '
             .'run with a fast finish, and call the pace goal pace only when pace_source is goal. '
+            .'race_long, when present on a marathon long run, means race_long.minutes of it run at '
+            .'race_long.pace_formatted: the marathon goal pace (pace_source goal), the stepping-stone '
+            .'pace (stepping_stone) or the marathon pace their running supports (supported), while the '
+            .'target pace is the easy running around it. Call it a long run with goal-pace, stepping-stone '
+            .'or marathon-pace work by that source, and call the pace goal pace only when pace_source is goal. '
             .'time_trial, when present, means the day is an all-out time '
             .'trial over time_trial.distance_km after a warmup, aiming around time_trial.aim_time, the '
             .'supported time at that distance: call it a time trial, not tempo or intervals; it checks '
@@ -136,6 +141,7 @@ final class PlanContextTool extends UserTool
                 $sessionType = $shownType ?? (! $effective->isEased() && IntensityPrescription::isEasyQualityDay($session, $effective->sessionType) ? SessionType::Easy : $effective->sessionType);
                 $goalPace = PlanRenderer::goalPaceForNarration($session, $sessionType);
                 $fastFinish = PlanRenderer::fastFinishForNarration($session, $sessionType);
+                $raceLong = PlanRenderer::raceLongForNarration($session, $sessionType);
                 $timeTrial = PlanRenderer::timeTrialOf($session, $sessionType);
                 $targetPaceSec = $goalPace === [] && $timeTrial === null
                     ? self::targetPaceSec($session, $sessionType, $paces)
@@ -153,6 +159,7 @@ final class PlanContextTool extends UserTool
                     'session_type' => $sessionType->value,
                     ...$goalPace,
                     ...$fastFinish,
+                    ...$raceLong,
                     ...($timeTrial === null ? [] : ['time_trial' => PlanRenderer::timeTrialForNarration($timeTrial)]),
                     'phase' => $session->phase->value,
                     'distance_km' => match (true) {

@@ -1589,3 +1589,24 @@ it('names a fast-finish long run to the plan tools by its fast block, never as g
         ->and($days[0])->not->toHaveKey('stepping_stone')
         ->and($tool->description())->toContain('fast_finish');
 });
+
+it('names an unsupported marathon race long to the plan tools by its stepping-stone pace', function (): void {
+    $user = User::factory()->create();
+    $sunday = Carbon::parse('2026-09-13');
+    PlannedSession::factory()->for($user)->create([
+        'date' => $sunday->toDateString(),
+        'session_type' => SessionType::Long,
+        'prescribed_hard_minutes' => 40,
+        'prescribed_pace_band' => PaceBand::Marathon,
+        'prescribed_pace_sec_per_km' => 330,
+        'prescription_race_context' => ['distance_m' => 42_195, 'goal_pace_sec_per_km' => 330, 'kind' => 'marathon', 'band' => 'unsupported'],
+    ]);
+
+    $tool = planContextTool($user, $sunday, $sunday);
+    $days = $tool->handle([])['days'];
+
+    expect($days[0]['session_type'])->toBe('long')
+        ->and($days[0]['race_long'])->toBe(['pace_kind' => 'marathon', 'pace_source' => 'stepping_stone', 'minutes' => 40, 'pace_formatted' => '5:30'])
+        ->and($days[0])->not->toHaveKey('goal_pace')
+        ->and($tool->description())->toContain('race_long');
+});

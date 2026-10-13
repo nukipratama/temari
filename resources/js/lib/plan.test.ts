@@ -22,6 +22,7 @@ import {
     paceEaseDelta,
     paceLabel,
     prescriptionWhy,
+    raceLongPaceLabel,
     sessionHint,
     sessionLabel,
     sessionPurpose,
@@ -316,6 +317,7 @@ function planDay(overrides: Partial<PlanDay> = {}): PlanDay {
         stepping_stone: false,
         closes_at_goal_pace: false,
         fast_finish: null,
+        race_long: null,
         time_trial: null,
         hr_cap_bpm: null,
         advice_note: null,
@@ -944,6 +946,67 @@ describe('a fast-finish long run', () => {
         );
         expect(sessionPurpose(fastFinish('supported'))).toBe(
             'the last fifth at your supported 10K pace. rehearses race pace on tired legs.',
+        );
+    });
+});
+
+describe('a marathon race long', () => {
+    const raceLong = (pace_source: 'goal' | 'stepping_stone' | 'supported') =>
+        planDay({
+            session_type: 'long',
+            race_long: { pace_kind: 'marathon', pace_source },
+            segments: [
+                {
+                    key: 'easy',
+                    minutes: 90,
+                    zone: 'Z2',
+                    pace_label: 'easy',
+                    km: 14,
+                    pace_sec_per_km: 400,
+                },
+                {
+                    key: 'main',
+                    minutes: 40,
+                    zone: 'Z3',
+                    pace_label: 'marathon',
+                    km: 8,
+                    pace_sec_per_km: 330,
+                },
+            ],
+        });
+
+    it('is named by the pace its work runs at', () => {
+        expect(sessionLabel(raceLong('goal'))).toBe(
+            'long run with goal-pace work',
+        );
+        expect(sessionLabel(raceLong('stepping_stone'))).toBe(
+            'long run with stepping-stone work',
+        );
+        expect(sessionLabel(raceLong('supported'))).toBe(
+            'long run with marathon-pace work',
+        );
+    });
+
+    it('names the block by the pace it actually runs at', () => {
+        expect(raceLongPaceLabel(raceLong('goal'))).toBe('goal pace');
+        expect(raceLongPaceLabel(raceLong('stepping_stone'))).toBe(
+            'stepping-stone pace',
+        );
+        expect(raceLongPaceLabel(raceLong('supported'))).toBe(
+            'supported marathon pace',
+        );
+        expect(raceLongPaceLabel(planDay({}))).toBeUndefined();
+    });
+
+    it('says where the block runs, never goal pace unless it is', () => {
+        expect(sessionPurpose(raceLong('goal'))).toBe(
+            'long run with a block at your marathon goal pace. rehearses race day on tired legs.',
+        );
+        expect(sessionPurpose(raceLong('stepping_stone'))).toBe(
+            'long run with a block at your marathon stepping-stone pace. rehearses race day on tired legs.',
+        );
+        expect(sessionPurpose(raceLong('supported'))).toBe(
+            'long run with a block at your supported marathon pace. rehearses race day on tired legs.',
         );
     });
 });

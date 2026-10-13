@@ -331,6 +331,7 @@ final class PlanRenderer
             'stepping_stone' => $goalPace !== null && GoalPaceWork::isSteppingStone($s->prescription_race_context),
             'closes_at_goal_pace' => $goalPace !== null && GoalPaceWork::finalPaceOf($s->prescription_race_context) !== null,
             'fast_finish' => self::fastFinishOf($s, $sessionType),
+            'race_long' => self::raceLongOf($s, $sessionType),
             'time_trial' => self::timeTrialOf($s, $sessionType),
             'advice_note' => $advisoryClamp !== null && $keepsPrescription ? $clampVoice ?? $advisoryClamp['note'] : null,
             'eased_from' => match (true) {
@@ -607,6 +608,52 @@ final class PlanRenderer
 
         return $fastFinish === null ? [] : ['fast_finish' => [
             ...$fastFinish,
+            'minutes' => (int) $s->prescribed_hard_minutes,
+            'pace_formatted' => $s->prescribed_pace_sec_per_km === null ? null : PaceFormatter::format((float) $s->prescribed_pace_sec_per_km),
+        ]];
+    }
+
+    /**
+     * The source of the pace a marathon race long's work runs at: the goal
+     * pace (also when no fitness estimate priced the block), the
+     * stepping-stone pace, or the marathon pace the athlete's running
+     * supports when that is slower than the goal. Null on any other session.
+     *
+     * @return array{pace_kind: string, pace_source: string}|null
+     */
+    public static function raceLongOf(PlannedSession $s, SessionType $shownType): ?array
+    {
+        $context = $s->prescription_race_context;
+        if ($shownType !== $s->session_type
+            || $shownType !== SessionType::Long
+            || ($context['kind'] ?? null) !== GoalPaceWork::KIND_MARATHON
+            || IntensityPrescription::fromSession($s)?->isEasy() !== false) {
+            return null;
+        }
+
+        $paceSource = match (true) {
+            GoalPaceWork::isSteppingStone($context) => FastFinishLongRun::PACE_STEPPING_STONE,
+            GoalPaceWork::isGoalPace($context),
+            $s->prescribed_pace_sec_per_km === null,
+            $s->prescribed_pace_sec_per_km === (int) ($context['goal_pace_sec_per_km'] ?? 0) => FastFinishLongRun::PACE_GOAL,
+            default => FastFinishLongRun::PACE_SUPPORTED,
+        };
+
+        return ['pace_kind' => GoalPaceWork::KIND_MARATHON, 'pace_source' => $paceSource];
+    }
+
+    /**
+     * The race long the plan tools hand a narrator: its pace source, minutes
+     * and pace.
+     *
+     * @return array{race_long?: array{pace_kind: string, pace_source: string, minutes: int, pace_formatted: string|null}}
+     */
+    public static function raceLongForNarration(PlannedSession $s, SessionType $shownType): array
+    {
+        $raceLong = self::raceLongOf($s, $shownType);
+
+        return $raceLong === null ? [] : ['race_long' => [
+            ...$raceLong,
             'minutes' => (int) $s->prescribed_hard_minutes,
             'pace_formatted' => $s->prescribed_pace_sec_per_km === null ? null : PaceFormatter::format((float) $s->prescribed_pace_sec_per_km),
         ]];
