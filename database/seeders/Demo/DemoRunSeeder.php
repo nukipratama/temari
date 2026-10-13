@@ -30,7 +30,6 @@ use App\Notifications\Messages\InboxMessage;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
-use App\Services\AI\PlanNarrationRequester;
 use App\Services\AI\RecapPeriod;
 use App\Services\AI\RuleBased\RuleBasedNarrationFiller;
 use App\Services\AI\RunQuestion\RunQuestionSeeds;
@@ -78,7 +77,6 @@ class DemoRunSeeder
         private readonly RuleBasedNarrationFiller $filler,
         private readonly Periodizer $periodizer,
         private readonly TrainingBaseline $trainingBaseline,
-        private readonly PlanNarrationRequester $planNarrationRequester,
         private readonly TrendSnapshotWriter $trendSnapshots,
         private readonly PolylineEncoder $polylineEncoder = new PolylineEncoder(),
     ) {
@@ -485,10 +483,6 @@ class DemoRunSeeder
                 ],
             );
         }
-
-        // Fills plan_season_voice (the active Season) rule-based, mirroring the
-        // demo Plan page's own "Reread" path — see PlanNarrationRequester::ensureDemoFilled's docblock.
-        $this->planNarrationRequester->ensureDemoFilled($user);
     }
 
     /** The current season's daily trend snapshots, supported race time included. */

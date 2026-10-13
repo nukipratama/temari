@@ -10,7 +10,6 @@ use App\Jobs\AI\AnalyzeProfileVoiceJob;
 use App\Jobs\AI\AnalyzeCardFlavorJob;
 use App\Jobs\AI\AnalyzeMonthlyRecapJob;
 use App\Jobs\AI\AnalyzePlanClampVoiceJob;
-use App\Jobs\AI\AnalyzePlanSeasonVoiceJob;
 use App\Jobs\AI\AnalyzeTrendReadJob;
 use App\Jobs\AI\AnalyzeWeeklyRecapJob;
 use App\Models\Activity;
@@ -18,7 +17,6 @@ use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
 use App\Models\PlannedSession;
 use App\Models\RunCard;
-use App\Models\Season;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisService;
@@ -31,7 +29,6 @@ use App\Services\AI\Narrators\BriefingMascotVoiceNarrator;
 use App\Services\AI\Narrators\CardFlavorNarrator;
 use App\Services\AI\Narrators\MonthlyRecapNarrator;
 use App\Services\AI\Narrators\PlanClampVoiceNarrator;
-use App\Services\AI\Narrators\PlanSeasonVoiceNarrator;
 use App\Services\Run\Plan\ClampNarrationContext;
 use App\Services\AI\Narrators\TrendReadNarrator;
 use App\Services\AI\Narrators\WeeklyRecapNarrator;
@@ -216,26 +213,6 @@ it('AnalyzeCardFlavorJob stamps the card flavor row with the run material finger
     $fingerprint = (fn (): ?string => $this->fingerprintFor($row))->call(new AnalyzeCardFlavorJob($row->id));
 
     expect($fingerprint)->toBe(MaterialFingerprint::forActivity($activity->fresh()));
-});
-
-// ── AnalyzePlanSeasonVoiceJob (row) ─────────────────────────────────────
-
-it('AnalyzePlanSeasonVoiceJob returns voice', function (): void {
-    $user = User::factory()->create();
-    $season = Season::factory()->for($user)->create();
-    mockNarrator(PlanSeasonVoiceNarrator::class, 'a self-scaled block.');
-
-    $row = rowOf(Season::class, $season->id, AnalysisType::PlanSeasonVoice);
-    new AnalyzePlanSeasonVoiceJob($row->id)->handle(app(AnalysisService::class));
-
-    expect($row->fresh()->content)->toBe('a self-scaled block.');
-});
-
-it('AnalyzePlanSeasonVoiceJob throws when season missing', function (): void {
-    $row = rowOf(Season::class, 99999, AnalysisType::PlanSeasonVoice);
-    new AnalyzePlanSeasonVoiceJob($row->id)->handle(app(AnalysisService::class));
-
-    expect($row->fresh()->status)->toBe(AnalysisStatus::Failed);
 });
 
 // ── AnalyzeWeeklyRecapJob (row) ──────────────────────────────────────

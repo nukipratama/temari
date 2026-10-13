@@ -11,7 +11,6 @@ use App\Http\Controllers\PlanController;
 use App\Http\Requests\UpdatePlannedSessionRequest;
 use App\Jobs\AI\AnalyzeActivityJob;
 use App\Jobs\AI\AnalyzeBriefingMascotVoiceJob;
-use App\Jobs\AI\AnalyzePlanSeasonVoiceJob;
 use App\Jobs\Run\RegeneratePlanJob;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
@@ -71,7 +70,6 @@ it('paints a fresh user\'s shell with the plan body deferred, creating the seaso
             ->missing('seasonSummary')
             ->missing('seasonAdherencePct')
             ->missing('adaptation')
-            ->missing('planNarration')
             ->etc());
 
     $season = Season::query()->where('user_id', $user->id)->sole();
@@ -143,16 +141,6 @@ it('updating a session automatically pins it, so the next regeneration leaves it
     expect($fresh->skipped)->toBeTrue()
         ->and($fresh->pinned)->toBeTrue()
         ->and($fresh->session_type->value)->toBe('tempo');
-});
-
-it('serves a demo manual regenerate rule-based, dispatching no season job', function (): void {
-    Bus::fake();
-    $user = User::factory()->create(['is_demo' => true]);
-    Season::factory()->for($user)->create();
-
-    $this->actingAs($user)->post('/plan/regenerate');
-
-    Bus::assertNotDispatched(AnalyzePlanSeasonVoiceJob::class);
 });
 
 it('allows an explicit unpin alongside an edit', function (): void {
@@ -487,7 +475,7 @@ it('paints the Plan shell and resolves its deferred props inside their query bud
         $this->actingAs($user),
         '/plan',
         'Plan',
-        'weeks,seasonSummary,seasonAdherencePct,adaptation,planNarration',
+        'weeks,seasonSummary,seasonAdherencePct,adaptation',
     );
     $queries = 0;
     $readinessQueries = ['stress' => 0];
@@ -503,19 +491,6 @@ it('paints the Plan shell and resolves its deferred props inside their query bud
     expect($queries)->toBeLessThanOrEqual(21);
     expect($readinessQueries)->toBe(['stress' => 1]);
 });
-
-it('fills the demo athlete\'s season block rule-based when the deferred planNarration prop resolves, and leaves a regular athlete\'s alone', function (bool $demo): void {
-    Bus::fake();
-    $user = User::factory()->create(['is_demo' => $demo]);
-    $this->actingAs($user)->get('/plan')->assertSuccessful();
-
-    $this->actingAs($user)
-        ->get('/plan', inertiaPartialHeaders($this->actingAs($user), '/plan', 'Plan', 'planNarration'))
-        ->assertSuccessful()
-        ->assertJsonPath($demo ? 'props.planNarration.season.status' : 'props.planNarration.season', $demo ? 'done' : null);
-
-    Bus::assertNotDispatched(AnalyzePlanSeasonVoiceJob::class);
-})->with(['demo' => [true], 'regular' => [false]]);
 
 function planBudgetFixture(): User
 {

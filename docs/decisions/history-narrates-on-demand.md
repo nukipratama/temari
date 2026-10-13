@@ -20,7 +20,6 @@ code_refs:
   - app/Console/Commands/Strava/HydrateBacklogCommand.php
   - app/Jobs/AI/KickoffRecapsJob.php
   - app/Actions/AI/KickoffMonthlyRecaps.php
-  - app/Services/AI/PlanNarrationRequester.php
   - app/Jobs/Strava/HydrateBacklogForUserJob.php
 ---
 

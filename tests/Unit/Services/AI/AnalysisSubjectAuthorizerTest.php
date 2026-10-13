@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 use App\Models\Activity;
 use App\Models\RunCard;
-use App\Models\Season;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisSubjectAuthorizer;
@@ -30,7 +29,6 @@ it('lets the owner through and rejects a stranger for every AnalysisType', funct
         AnalysisType::CardFlavor => RunCard::factory()
             ->for(Activity::factory()->for($owner))
             ->create()->id,
-        AnalysisType::PlanSeasonVoice => Season::factory()->for($owner)->create()->id,
     };
 
     expect(fn () => AnalysisSubjectAuthorizer::authorize($owner, $type, $subjectId))

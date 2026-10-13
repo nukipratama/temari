@@ -2,10 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Models\AI\Analysis;
 use App\Models\PlannedSession;
-use App\Models\Season;
-use App\Services\AI\AnalysisType;
 use Illuminate\Support\Facades\Queue;
 use App\Models\User;
 use Illuminate\Support\Carbon;
@@ -68,27 +65,7 @@ it('regenerates a user whose race day has passed instead of throwing', function 
     Carbon::setTestNow();
 });
 
-/**
- * #939: the sweep only ever narrates the season now — a freshly regenerated
- * week has no run in it yet for a day's own read to speak to. Season rows are
- * keyed by the season's own id, not the user's, so the season has to be
- * resolved first.
- */
-function seasonVoiceRowsFor(User $user): int
-{
-    $seasonId = Season::query()->where('user_id', $user->id)->value('id');
-    if ($seasonId === null) {
-        return 0;
-    }
-
-    return Analysis::query()
-        ->where('subject_type', Season::class)
-        ->where('subject_id', $seasonId)
-        ->where('analysis_type', AnalysisType::PlanSeasonVoice)
-        ->count();
-}
-
-it('regenerates the plan for a dormant athlete but narrates only the active one', function (): void {
+it('regenerates the plan for a dormant athlete too', function (): void {
     Queue::fake();
     $active = User::factory()->seenToday()->create();
     $dormant = User::factory()->create(['last_seen_at' => Carbon::today()->subDays(30)]);
@@ -97,21 +74,10 @@ it('regenerates the plan for a dormant athlete but narrates only the active one'
         ->expectsOutputToContain('Regenerated the plan for 2 user(s).')
         ->assertSuccessful();
 
-    expect(seasonVoiceRowsFor($active))->toBeGreaterThan(0)
-        ->and(seasonVoiceRowsFor($dormant))->toBe(0)
-        ->and(PlannedSession::query()->where('user_id', $dormant->id)->exists())->toBeTrue();
+    expect(PlannedSession::query()->where('user_id', $dormant->id)->exists())->toBeTrue();
 });
 
-it('never narrates the demo plan even when the demo was seen today', function (): void {
-    Queue::fake();
-    $demo = User::factory()->demo()->seenToday()->create();
-
-    $this->artisan('plan:regenerate')->assertSuccessful();
-
-    expect(seasonVoiceRowsFor($demo))->toBe(0);
-});
-
-it('starts the manual regenerate cooldown only for the athletes it narrates', function (): void {
+it('starts the manual regenerate cooldown only for recently active athletes', function (): void {
     Queue::fake();
     $active = User::factory()->seenToday()->create();
     $dormant = User::factory()->create(['last_seen_at' => Carbon::today()->subDays(30)]);

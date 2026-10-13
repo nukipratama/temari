@@ -98,10 +98,7 @@ $alertOnFailure(Schedule::command('plan:score-compliance')->hourlyAt(9)->without
 // then held for the rest of the ISO week; the flags live on the durable
 // Redis — see the Monday window in docs/architecture/scheduler.md.
 //
-// The periodizer is deterministic and free, but this command is NOT LLM-free:
-// it then calls PlanNarrationRequester::requestForCurrentWeek() per non-demo
-// user, which touches one row: plan_season_voice, re-read only when its
-// content fingerprint changed. See docs/architecture/llm-triggers.md.
+// The periodizer is deterministic and free, and this command is LLM-free.
 $alertOnFailure(Schedule::command('plan:regenerate')->mondays()->hourlyAt(26)->withoutOverlapping(45)
     ->when(static fn (): bool => SchedulerChain::prerequisitesMet(SchedulerChain::PLAN_REGENERATE)
         && ! SchedulerChain::isDoneThisWeek(SchedulerChain::PLAN_REGENERATE)), 'plan:regenerate')

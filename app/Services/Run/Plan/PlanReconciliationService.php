@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace App\Services\Run\Plan;
 
-use App\Enums\PlanRegenerationReason;
-use App\Events\PlanRegenerated;
 use App\Jobs\Run\ReconcilePlanJob;
 use App\Models\User;
 use Illuminate\Support\Carbon;
@@ -82,10 +80,7 @@ final readonly class PlanReconciliationService
 
         $today = Carbon::today();
         if (self::dateCanAffectPlan($from, $today)) {
-            $changed = $this->periodizer->regenerateIfChanged($user, $today);
-            if ($changed) {
-                PlanRegenerated::dispatch($user, $today, PlanRegenerationReason::Reconciliation);
-            }
+            $this->periodizer->regenerateIfChanged($user, $today);
         }
 
         $again = $this->finish($userId);

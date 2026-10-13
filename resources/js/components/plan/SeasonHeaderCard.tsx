@@ -1,11 +1,10 @@
 import { Link } from '@inertiajs/react';
 
 import type { SeasonSummaryWeek } from '@/lib/plan';
-import type { AnalysisPayload, PlanRaceCard } from '@/types/inertia';
+import type { PlanRaceCard } from '@/types/inertia';
 
 import AddRacePrompt from '@/components/plan/AddRacePrompt';
 import PhaseRibbon from '@/components/plan/PhaseRibbon';
-import TemariTake from '@/components/plan/TemariTake';
 import Eyebrow from '@/components/ui/Eyebrow';
 import { formatNaiveMonthDayId, formatRaceTime } from '@/lib/pace';
 import { nextPhaseOf, weeksLabel } from '@/lib/plan';
@@ -48,8 +47,7 @@ function RaceSlot({ raceCard }: Readonly<{ raceCard: PlanRaceCard | null }>) {
 /**
  * The season at a glance: the phase the athlete is in as a headline, what
  * comes next and how closely the plan has been followed, over the phase
- * ribbon, then the under-ready line and Temari's read
- * on the season so far.
+ * ribbon, then the under-ready line.
  */
 export default function SeasonHeaderCard({
     weekIndex,
@@ -57,7 +55,6 @@ export default function SeasonHeaderCard({
     adherencePct,
     weeks,
     raceCard,
-    narration,
     underReadyLine = null,
 }: Readonly<{
     weekIndex: number;
@@ -66,7 +63,6 @@ export default function SeasonHeaderCard({
     weeks: SeasonSummaryWeek[];
     /** No race, or a result recorded this past week, shows under the meta line. */
     raceCard: PlanRaceCard | null;
-    narration: AnalysisPayload | null;
     /** Served once, when the season opened with less than a full race block left. */
     underReadyLine?: string | null;
 }>) {
@@ -108,13 +104,6 @@ export default function SeasonHeaderCard({
 
             {underReadyLine && (
                 <p className="mt-3 text-xs text-text-2">{underReadyLine}</p>
-            )}
-
-            {narration && (
-                <TemariTake
-                    analysis={narration}
-                    className="mt-3 border-t border-dashed border-border pt-3"
-                />
             )}
         </section>
     );

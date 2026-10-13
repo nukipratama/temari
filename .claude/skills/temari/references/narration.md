@@ -25,7 +25,7 @@ Briefing and analysis narration is LLM-backed via Azure OpenAI through openai-ph
 Miss one and it fails loudly: `php artisan` breaks on enum match exhaustiveness (PHPStan), or
 the structure / coverage gates fail. **Model the shape on an existing sibling and mirror it** —
 per-user follows `TrendRead` (`AnalyzeTrendReadJob`); per-activity group follows `PostRunSpeech` + `RunInsight` (`AnalyzeActivityJob`); per-row-model
-follows `WeeklyRecap` / `CardFlavor` / `PlanSeasonVoice`. Let `Name` = StudlyCase, `snake` = snake_case.
+follows `WeeklyRecap` / `CardFlavor`. Let `Name` = StudlyCase, `snake` = snake_case.
 
 1. **Narrator** — `app/Services/AI/Narrators/{Name}Narrator.php`. Inject `StructuredChatCaller`;
    expose `generate(...)` returning the narrated string. Build `$context` from real metrics

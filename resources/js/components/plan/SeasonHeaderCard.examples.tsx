@@ -46,7 +46,7 @@ export default {
     name: 'SeasonHeaderCard',
     description:
         "Plan's season card: the current phase leads, then what's next and adherence over one phase ribbon. With no race it invites one; for a week after a recorded race it shows the result.",
-    usage: `<SeasonHeaderCard weekIndex={4} totalWeeks={12} adherencePct={83} weeks={seasonSummary} raceCard={raceCard} narration={null} />`,
+    usage: `<SeasonHeaderCard weekIndex={4} totalWeeks={12} adherencePct={83} weeks={seasonSummary} raceCard={raceCard} />`,
     states: [
         {
             name: 'race season',
@@ -66,7 +66,6 @@ export default {
                         days_to_race: 28,
                         finish_time_sec: null,
                     }}
-                    narration={null}
                 />
             ),
         },
@@ -79,7 +78,6 @@ export default {
                     adherencePct={83}
                     weeks={GOALLESS_SEASON}
                     raceCard={null}
-                    narration={null}
                 />
             ),
         },
@@ -101,7 +99,6 @@ export default {
                         days_to_race: null,
                         finish_time_sec: 3521,
                     }}
-                    narration={null}
                 />
             ),
         },

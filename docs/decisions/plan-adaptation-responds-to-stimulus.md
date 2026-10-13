@@ -16,6 +16,8 @@ code_refs:
   - database/migrations/2026_09_23_000001_add_plan_reconciliation_markers_to_users_table.php
 ---
 
+> **Partly superseded (2026-10-13) by [[the-season-has-no-narrated-read]].** A changed plan no longer refreshes any season narration; the rest of this decision stands.
+
 # Plan adaptation responds to missed training stimulus
 
 **Status:** Accepted (2026-09-23). Supersedes the weekly-adaptation half of [[a-day-is-graded-on-distance-and-intent]].

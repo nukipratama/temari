@@ -11,7 +11,6 @@ use DateTimeInterface;
 use App\Enums\PlanRegenerationReason;
 use App\Models\User;
 use App\Services\Run\Plan\Periodizer;
-use App\Services\Run\Plan\PlanRegenerationService;
 use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Contracts\Queue\ShouldBeUniqueUntilProcessing;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -42,7 +41,7 @@ final class RegeneratePlanJob implements ShouldBeUniqueUntilProcessing, ShouldQu
         return now()->addMinutes(10);
     }
 
-    public function handle(Periodizer $periodizer, PlanRegenerationService $regeneration): void
+    public function handle(Periodizer $periodizer): void
     {
         app(NarrationOrigin::class)->set(AnalysisOrigin::User);
 
@@ -55,10 +54,6 @@ final class RegeneratePlanJob implements ShouldBeUniqueUntilProcessing, ShouldQu
             $periodizer->regenerate($user);
         } catch (LockTimeoutException) {
             $this->release(10);
-
-            return;
         }
-
-        $regeneration->requestNarrationAfterQueuedRegeneration($user, $this->reason);
     }
 }

@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import type { SeasonSummaryWeek } from '@/lib/plan';
-import type { AnalysisPayload, PlanRaceCard } from '@/types/inertia';
+import type { PlanRaceCard } from '@/types/inertia';
 
 import SeasonHeaderCard from './SeasonHeaderCard';
 
@@ -66,22 +66,10 @@ function renderCard(
             adherencePct={82}
             weeks={RACE_SEASON}
             raceCard={raceCard()}
-            narration={null}
             {...overrides}
         />,
     );
 }
-
-const NARRATION = {
-    id: 1,
-    status: 'done',
-    content: 'base held together.',
-    type: 'plan_season_voice',
-    is_zone_dependent: false,
-    subject_type: 'season',
-    subject_id: 1,
-    discriminator: null,
-} as AnalysisPayload;
 
 function raceCard(overrides: Partial<PlanRaceCard> = {}): PlanRaceCard {
     return {
@@ -316,30 +304,5 @@ describe('SeasonHeaderCard', () => {
         expect(
             screen.getByText(/next: maintain in 1 week/),
         ).toBeInTheDocument();
-    });
-
-    it('renders Temari’s take, always visible, when the season narration exists', () => {
-        renderCard({ narration: NARRATION });
-
-        expect(screen.getByText("Temari's take")).toBeInTheDocument();
-        expect(screen.getByText('base held together.')).toBeInTheDocument();
-    });
-
-    it('puts the under-ready line above Temari’s take', () => {
-        renderCard({ underReadyLine: 'tight block.', narration: NARRATION });
-
-        const line = screen.getByText('tight block.');
-        const take = screen.getByText("Temari's take");
-
-        expect(
-            line.compareDocumentPosition(take) &
-                Node.DOCUMENT_POSITION_FOLLOWING,
-        ).toBeTruthy();
-    });
-
-    it('draws no take without narration', () => {
-        renderCard({ narration: null });
-
-        expect(screen.queryByText("Temari's take")).not.toBeInTheDocument();
     });
 });

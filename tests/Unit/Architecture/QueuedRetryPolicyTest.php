@@ -7,7 +7,6 @@ use App\Jobs\AI\AnalyzeBriefingMascotVoiceJob;
 use App\Jobs\AI\AnalyzeCardFlavorJob;
 use App\Jobs\AI\AnalyzeMonthlyRecapJob;
 use App\Jobs\AI\AnalyzePlanClampVoiceJob;
-use App\Jobs\AI\AnalyzePlanSeasonVoiceJob;
 use App\Jobs\AI\AnalyzeProfileVoiceJob;
 use App\Jobs\AI\AnalyzeTrendReadJob;
 use App\Jobs\AI\AnalyzeWeeklyRecapJob;
@@ -114,7 +113,6 @@ $expectedRetryPolicies = [
     AnalyzeCardFlavorJob::class => [3, '10,60', null, null, null],
     AnalyzeMonthlyRecapJob::class => [3, '10,60', null, null, null],
     AnalyzePlanClampVoiceJob::class => [3, '10,60', null, null, null],
-    AnalyzePlanSeasonVoiceJob::class => [3, '10,60', null, null, null],
     AnalyzeProfileVoiceJob::class => [3, '10,60', null, null, null],
     AnalyzeTrendReadJob::class => [3, '10,60', null, null, null],
     AnalyzeWeeklyRecapJob::class => [3, '10,60', null, null, null],

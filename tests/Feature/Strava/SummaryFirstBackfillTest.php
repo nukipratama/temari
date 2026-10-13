@@ -19,7 +19,6 @@ use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisType;
 use App\Services\Run\Ingest\HydrationBacklog;
-use App\Services\AI\PlanNarrationRequester;
 use App\Services\Run\Ingest\SyncOrchestrator;
 use App\Services\Run\Plan\Periodizer;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -228,7 +227,6 @@ it('defers backfilled recap history until hydration finishes, without one extra 
     new KickoffRecapsJob($user->id)->handle(
         app(KickoffWeeklyRecaps::class),
         app(KickoffMonthlyRecaps::class),
-        app(PlanNarrationRequester::class),
         app(AnalysisService::class),
         app(Periodizer::class),
         app(RequestTodaysBriefing::class),

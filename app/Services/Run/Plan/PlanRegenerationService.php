@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Services\Run\Plan;
 
 use App\Enums\PlanRegenerationReason;
-use App\Events\PlanRegenerated;
 use App\Jobs\Run\RegeneratePlanJob;
 use App\Models\User;
 use Illuminate\Contracts\Cache\LockTimeoutException;
@@ -35,16 +34,10 @@ final readonly class PlanRegenerationService
             return false;
         }
 
-        PlanRegenerated::dispatch($user, $today, $reason);
         if ($reason === PlanRegenerationReason::Manual) {
             $this->regenerateCooldown->start($user);
         }
 
         return true;
-    }
-
-    public function requestNarrationAfterQueuedRegeneration(User $user, PlanRegenerationReason $reason): void
-    {
-        PlanRegenerated::dispatch($user, Carbon::today(), $reason);
     }
 }

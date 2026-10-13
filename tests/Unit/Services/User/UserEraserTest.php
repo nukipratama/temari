@@ -71,8 +71,8 @@ function analysesForEverySubjectShape(User $user): void
         [AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE, $user->id, AnalysisType::MonthlyRecap],
         [AnalysisType::TREND_READ_SUBJECT_TYPE, $user->id, AnalysisType::TrendRead],
         [AnalysisType::PLAN_CLAMP_VOICE_SUBJECT_TYPE, $user->id, AnalysisType::PlanClampVoice],
-        [Season::class, $season->id, AnalysisType::PlanSeasonVoice],
-        [PlanAdaptation::class, $adaptation->id, AnalysisType::PlanSeasonVoice],
+        [Season::class, $season->id, AnalysisType::BriefingMascotVoice],
+        [PlanAdaptation::class, $adaptation->id, AnalysisType::BriefingMascotVoice],
     ] as [$subjectType, $subjectId, $type]) {
         Analysis::factory()->done('x')->create([
             'subject_type' => $subjectType,
