@@ -9,7 +9,6 @@ import type {
     RaceOutcomeCandidate,
 } from '@/types/inertia';
 
-import AiOutageBanner from '@/components/AiOutageBanner';
 import AddRacePrompt from '@/components/plan/AddRacePrompt';
 import PlanHeading from '@/components/plan/PlanHeading';
 import PlanRaceCard from '@/components/plan/PlanRaceCard';
@@ -130,7 +129,6 @@ export default function Plan({
     return (
         <>
             <Head title="Plan" />
-            <AiOutageBanner />
             <PageContainer>
                 <PlanHeading
                     action={
