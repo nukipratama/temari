@@ -22,7 +22,7 @@ import { cn } from '@/lib/cn';
 import { formatDurationHMS, formatRelativeId } from '@/lib/pace';
 import { renderBold } from '@/lib/richText';
 
-import FlagWrong, { COMPACT_BUTTON_CLASS } from './FlagWrong';
+import FlagWrong from './FlagWrong';
 import UnavailableNote from './UnavailableNote';
 
 export type AnalysisStatusSize = 'sm' | 'md';
@@ -99,8 +99,6 @@ interface Props {
     isChainHead?: boolean;
     /** Show Temari thinking beside the skeleton, for a block no mascot sits near. */
     thinkingMark?: boolean;
-    /** Draw Reread as a small icon beside the "generated" stamp instead of the filled pill below it. */
-    rereadAsIcon?: boolean;
 }
 
 const TEXT_SIZE: Record<AnalysisStatusSize, string> = {
@@ -169,7 +167,6 @@ export default function AnalysisStatus({
     chained = false,
     isChainHead = false,
     thinkingMark = false,
-    rereadAsIcon = false,
 }: Readonly<Props>) {
     const {
         status,
@@ -202,45 +199,31 @@ export default function AnalysisStatus({
             generatedAt,
             hrZonesChangedAt,
         );
-        const iconReread = canRegenerate && rereadAsIcon;
         const rereadButton = canRegenerate && (
             <button
                 type="button"
                 onClick={trigger}
                 disabled={cooling || pending}
-                aria-label={
-                    cooldownAriaLabel(cooldownRemaining, 'reread') ??
-                    (rereadAsIcon ? 'reread' : undefined)
-                }
+                aria-label={cooldownAriaLabel(cooldownRemaining, 'reread')}
                 aria-describedby={
                     unreadWhileAway ? awayDescriptionId : undefined
                 }
-                className={
-                    rereadAsIcon
-                        ? cn(
-                              COMPACT_BUTTON_CLASS,
-                              'focus-ring pressable text-text-3 transition-colors hover:text-foreground disabled:pointer-events-none disabled:opacity-60',
-                              unreadWhileAway && 'text-horizon-ink',
-                          )
-                        : cn(
-                              TRIGGER_CLASS,
-                              TRIGGER_TONE,
-                              unreadWhileAway && 'ring-[1.5px] ring-horizon/45',
-                          )
-                }
+                className={cn(
+                    TRIGGER_CLASS,
+                    TRIGGER_TONE,
+                    unreadWhileAway && 'ring-[1.5px] ring-horizon/45',
+                )}
             >
                 <Icon
                     icon={cooling ? Clock : RefreshCw}
-                    className={rereadAsIcon ? 'size-4' : 'size-3'}
+                    className="size-3"
                     aria-hidden
                 />
-                {!rereadAsIcon && (
-                    <span>
-                        {cooling
-                            ? `next in ${formatDurationHMS(cooldownRemaining)}`
-                            : 'reread'}
-                    </span>
-                )}
+                <span>
+                    {cooling
+                        ? `next in ${formatDurationHMS(cooldownRemaining)}`
+                        : 'reread'}
+                </span>
                 {unreadWhileAway && (
                     <span id={awayDescriptionId} className="sr-only">
                         temari hasn&apos;t read this one yet
@@ -262,9 +245,7 @@ export default function AnalysisStatus({
                 ) : (
                     staleZones && <StaleZonesBadge />
                 )}
-                {(generatedAt !== null ||
-                    analysis.id !== null ||
-                    iconReread) && (
+                {(generatedAt !== null || analysis.id !== null) && (
                     <div
                         className={cn(
                             'flex items-center gap-1.5',
@@ -276,7 +257,6 @@ export default function AnalysisStatus({
                                 generated {formatRelativeId(generatedAt)}
                             </span>
                         )}
-                        {iconReread && rereadButton}
                         {analysis.id !== null && (
                             <FlagWrong
                                 subjectType="narration"
@@ -288,7 +268,7 @@ export default function AnalysisStatus({
                         )}
                     </div>
                 )}
-                {canRegenerate && !rereadAsIcon && (
+                {canRegenerate && (
                     <div className="flex items-center justify-end gap-2">
                         {rereadButton}
                     </div>
