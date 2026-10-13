@@ -89,6 +89,9 @@ const EXPERIENCE_OPTIONS: ReadonlyArray<{
     },
 ];
 
+const EXPERIENCE_NOTE =
+    'this only sets your first weeks. once your runs sync, they set the plan.';
+
 const SESSIONS_OPTIONS = [2, 3, 4, 5, 6] as const;
 
 const GOAL_OPTIONS: ReadonlyArray<{
@@ -402,6 +405,7 @@ export default function OnboardingIndex({
                                         you&rsquo;re at?
                                     </>
                                 }
+                                note={EXPERIENCE_NOTE}
                             >
                                 <ChoiceList>
                                     {EXPERIENCE_OPTIONS.map((option, index) => (
@@ -827,15 +831,16 @@ function BackButton({ onClick }: Readonly<{ onClick: () => void }>) {
 /** One preferences sub-question: heading, options, then the skip link. */
 function PreferenceQuestion({
     heading,
+    note,
     children,
-}: Readonly<{ heading: ReactNode; children: ReactNode }>) {
+}: Readonly<{ heading: ReactNode; note?: string; children: ReactNode }>) {
     return (
         <div>
             <h2 className="font-serif text-quote-lg text-foreground italic">
                 {heading}
             </h2>
             <p className="mt-2 mb-5 text-xs leading-relaxed text-text-2">
-                you can change this anytime in settings.
+                {note && `${note} `}you can change this anytime in settings.
             </p>
             {children}
         </div>

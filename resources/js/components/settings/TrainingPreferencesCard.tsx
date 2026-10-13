@@ -203,6 +203,10 @@ export default function TrainingPreferencesCard({
             </p>
 
             <FieldGroup label="Experience level">
+                <p className="mb-2 font-sans text-xs leading-relaxed text-text-2">
+                    this only sets your first weeks. once your runs sync, they
+                    set the plan.
+                </p>
                 <div className="flex flex-col gap-1.5">
                     {EXPERIENCE_OPTIONS.map((option) => (
                         <IconChoiceCard

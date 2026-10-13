@@ -38,6 +38,16 @@ describe('TrainingPreferencesCard', () => {
         ).toBeInTheDocument();
     });
 
+    it('says the experience level only sets the first weeks', () => {
+        render(<TrainingPreferencesCard trainingPreferences={EMPTY_PAYLOAD} />);
+
+        expect(
+            screen.getByText(
+                'this only sets your first weeks. once your runs sync, they set the plan.',
+            ),
+        ).toBeInTheDocument();
+    });
+
     it('seeds every control from the current stored preferences', () => {
         render(<TrainingPreferencesCard trainingPreferences={SET_PAYLOAD} />);
 

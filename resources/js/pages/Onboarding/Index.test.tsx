@@ -76,6 +76,19 @@ describe('Onboarding/Index', () => {
         ).toBeInTheDocument();
     });
 
+    it('says the experience level only sets the first weeks', () => {
+        setMockPage({ auth: { user: makeUser() } });
+        render(<OnboardingIndex />);
+
+        fireEvent.click(screen.getByRole('button', { name: 'continue' }));
+
+        expect(
+            screen.getByText(
+                'this only sets your first weeks. once your runs sync, they set the plan. you can change this anytime in settings.',
+            ),
+        ).toBeInTheDocument();
+    });
+
     it('advances to the goal step from preferences', () => {
         setMockPage({ auth: { user: makeUser() } });
         render(<OnboardingIndex />);
