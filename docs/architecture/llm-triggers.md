@@ -271,9 +271,9 @@ well as a latest closed month that ended before the athlete connected. An older 
 origin is `return`, and `AnalysisService::markDone()` sends no notification for it. See
 [[narration-spends-only-on-active-athletes]].
 
-## The eleven surfaces
+## The ten surfaces
 
-Ten [`AnalysisType`](../../app/Services/AI/AnalysisType.php) cases plus the scoped run Q&A, which
+Nine [`AnalysisType`](../../app/Services/AI/AnalysisType.php) cases plus the scoped run Q&A, which
 is not an Analysis row. Every case is dispatched by at least one origin above, and every case is
 rendered somewhere a user can see — both directions matter, and only one of them used to be checked.
 
