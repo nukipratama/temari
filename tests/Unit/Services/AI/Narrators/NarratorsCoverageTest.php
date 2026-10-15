@@ -783,6 +783,12 @@ it('hands the speech, the insight and the post-run brief the same plan verdict r
     sentSystemPromptCarriesPlanVerdictRule($briefClient);
 });
 
+it('RunInsightNarrator leaves whether the effort matched the ask to the verdict, not the intensity label', function (): void {
+    expect(narratorPrompt(RunInsightNarrator::class))
+        ->toContain('belongs to the day\'s verdict from')
+        ->not->toContain('source of truth for how intense this session was');
+});
+
 it('RunInsightNarrator keeps the grey-zone nudge off an easy day the verdict says stayed easy', function (): void {
     expect(narratorPrompt(RunInsightNarrator::class))
         ->toContain('says the day stayed at the easy effort it asked')

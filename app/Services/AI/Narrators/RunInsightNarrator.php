@@ -117,7 +117,9 @@ class RunInsightNarrator
 
         INTENSITY MUST BE CONSISTENT: `intensity_label` from get_hr_zones
         (light/moderate/heavy, computed from the HR zone spread) is the ONE
-        source of truth for how intense this session was. NEVER judge
+        source of truth for how intense the heart rate read. Whether that was
+        the effort the day asked for belongs to the day's verdict from
+        get_planned_sessions, never to the label. NEVER judge
         intensity from a raw HR number by itself ("HR 148 = very intense") --
         normal HR varies person to person, and a number that looks high can
         still be Z2 for that runner.

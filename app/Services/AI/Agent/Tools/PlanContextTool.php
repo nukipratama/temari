@@ -188,13 +188,17 @@ final class PlanContextTool extends UserTool
                         : IntentOutcome::outcome($session->intent_verdict, $session->intent_evidence ?? []),
                     'intent_detail' => $session->intent_verdict === null
                         ? null
-                        : IntentOutcome::detail($session->intent_verdict, $session->intent_evidence ?? [], null),
+                        : IntentOutcome::detail(
+                            $session->intent_verdict,
+                            $session->intent_evidence ?? [],
+                            SessionMatcher::ranPaceSecPerKmFromRuns($session->session_type, $runDistances['runs'] ?? [], TimeTrial::of($session) !== null),
+                        ),
                 ];
             })->all(),
         ];
     }
 
-    /** @return array<string, array{sum: float, longest: float}> */
+    /** @return array<string, array{sum: float, longest: float, runs: list<array{id: int, km: float, seconds: int|null, started_at: string}>}> */
     private function runDistancesByDate(): array
     {
         $details = Activity::analyzedJoinConstraint(
@@ -204,15 +208,23 @@ final class PlanContextTool extends UserTool
             ->where('activities.ingest_state', IngestState::Detailed->value)
             ->whereNotNull('activity_details.start_date_local')
             ->whereBetween('activity_details.start_date_local', [$this->asOf->copy()->startOfDay(), $this->through->copy()->endOfDay()])
-            ->get(['activity_details.start_date_local', 'activity_details.distance']);
+            ->get(['activity_details.activity_id', 'activity_details.start_date_local', 'activity_details.distance', 'activity_details.elapsed_time']);
 
         $metersByDate = [];
+        $runsByDate = [];
         foreach ($details as $detail) {
             $startDateLocal = $detail->getAttribute('start_date_local');
             if ($startDateLocal === null) {
                 continue;
             }
-            $date = Carbon::parse((string) $startDateLocal)->toDateString();
+            $startedAt = Carbon::parse((string) $startDateLocal);
+            $date = $startedAt->toDateString();
+            $runsByDate[$date][] = [
+                'id' => (int) $detail->activity_id,
+                'km' => DistanceFormatter::km((float) $detail->distance),
+                'seconds' => $detail->elapsed_time,
+                'started_at' => $startedAt->format('H:i'),
+            ];
 
             $metersByDate[$date] = [
                 'sum' => ($metersByDate[$date]['sum'] ?? 0.0) + (float) $detail->distance,
@@ -220,10 +232,16 @@ final class PlanContextTool extends UserTool
             ];
         }
 
-        return array_map(static fn (array $distances): array => [
-            'sum' => DistanceFormatter::km($distances['sum']),
-            'longest' => DistanceFormatter::km($distances['longest']),
-        ], $metersByDate);
+        $byDate = [];
+        foreach ($metersByDate as $date => $distances) {
+            $byDate[$date] = [
+                'sum' => DistanceFormatter::km($distances['sum']),
+                'longest' => DistanceFormatter::km($distances['longest']),
+                'runs' => $runsByDate[$date],
+            ];
+        }
+
+        return $byDate;
     }
 
     /**

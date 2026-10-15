@@ -1052,6 +1052,23 @@ it('carries the numbers behind a judged quality day beside its verdict', functio
         ->and($reading['intent_detail'])->toBe('best 20-minute stretch averaged 5:30/km, well quicker than the 6:03/km target pace');
 });
 
+it('quotes the pace the run showed beside the hill-adjusted pace the verdict judged', function (): void {
+    $user = User::factory()->create();
+    $today = Carbon::today();
+    $activity = Activity::factory()->for($user)->create();
+    ActivityDetail::factory()->for($activity)->create(['start_date_local' => $today, 'distance' => 10_000, 'elapsed_time' => 4_000]);
+    PlannedSession::factory()->for($user)->create([
+        'date' => $today->toDateString(),
+        'session_type' => SessionType::Easy,
+        'status' => PlannedSessionStatus::Done,
+        'intent_verdict' => IntentVerdict::Hit,
+        'intent_evidence' => ['pace_sec' => 360, 'ceiling_pace_sec' => 408, 'basis' => 'pace'],
+    ]);
+
+    expect(planContextTool($user, $today, $today)->handle([])['days'][0]['intent_detail'])
+        ->toBe('averaged 6:40/km; effort-adjusted for hills that is 6:00/km');
+});
+
 it('keeps total distance separate from the distance credited on a multi-run tempo day', function (): void {
     $user = User::factory()->create();
     $today = Carbon::today();
