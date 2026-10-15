@@ -38,6 +38,7 @@ function day(overrides: Partial<PlanDay> = {}): PlanDay {
         ran_hot: false,
         result_note: null,
         ran_pace_sec_per_km: null,
+        ran_label: null,
         actual_km: null,
         credited_km: null,
         activities: [],

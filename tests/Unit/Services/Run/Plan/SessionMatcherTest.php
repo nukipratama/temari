@@ -391,6 +391,22 @@ it('carries each run\'s local start time', function (): void {
     expect($byDate['2026-08-03']['runs'][0]['started_at'])->toBe('05:42');
 });
 
+it('carries each run\'s average heart rate, and null when the run has none', function (): void {
+    $user = User::factory()->create();
+    foreach ([146.4, null] as $index => $heartRate) {
+        ActivityDetail::factory()->create([
+            'activity_id' => Activity::factory()->for($user)->create()->id,
+            'start_date_local' => Carbon::parse('2026-08-03 0'.(6 + $index).':00:00'),
+            'distance' => 5_000.0,
+            'average_heartrate' => $heartRate,
+        ]);
+    }
+
+    $runs = app(SessionMatcher::class)->activityByDate($user, Carbon::parse('2026-08-03'), Carbon::parse('2026-08-03'))['2026-08-03']['runs'];
+
+    expect(array_column($runs, 'avg_hr'))->toBe([146, null]);
+});
+
 it('quotes a stopped run on elapsed pace', function (): void {
     $user = User::factory()->create();
     $activity = Activity::factory()->for($user)->create();

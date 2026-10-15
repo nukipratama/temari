@@ -49,6 +49,7 @@ function day(overrides: Partial<EditablePlanDay> = {}): EditablePlanDay {
         ran_hot: false,
         result_note: null,
         ran_pace_sec_per_km: null,
+        ran_label: null,
         actual_km: null,
         credited_km: null,
         activities: [],

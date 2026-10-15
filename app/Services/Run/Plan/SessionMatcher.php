@@ -201,7 +201,7 @@ final readonly class SessionMatcher
      * total distance with one run's duration, which read as a single
      * impossible run.
      *
-     * @return array<string, array{km: float, meters: float, runs: list<array{id: int, km: float, seconds: int|null, started_at: string}>}>
+     * @return array<string, array{km: float, meters: float, runs: list<array{id: int, km: float, seconds: int|null, started_at: string, avg_hr: int|null}>}>
      */
     public function activityByDate(User $user, Carbon $from, Carbon $to): array
     {
@@ -216,7 +216,7 @@ final readonly class SessionMatcher
             ->whereNotNull('activity_details.start_date_local')
             ->whereBetween('activity_details.start_date_local', [$from->copy()->startOfDay(), $to->copy()->endOfDay()])
             ->orderBy('activity_details.start_date_local')
-            ->get(['activity_details.activity_id', 'activity_details.start_date_local', 'activity_details.distance', 'activity_details.elapsed_time']);
+            ->get(['activity_details.activity_id', 'activity_details.start_date_local', 'activity_details.distance', 'activity_details.elapsed_time', 'activity_details.average_heartrate']);
 
         $byDate = [];
         $metersByDate = [];
@@ -233,6 +233,7 @@ final readonly class SessionMatcher
                 'km' => $km,
                 'seconds' => $row->elapsed_time,
                 'started_at' => $row->start_date_local->format('H:i'),
+                'avg_hr' => $row->average_heartrate === null ? null : (int) round((float) $row->average_heartrate),
             ];
         }
 

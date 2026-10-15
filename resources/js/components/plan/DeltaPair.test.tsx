@@ -123,28 +123,27 @@ describe('ChangeRow', () => {
 });
 
 describe('AskedRanResult', () => {
-    it('regroups by side, distance and pace together, every number labelled', () => {
+    it('regroups by side, distance and the work together, every number labelled', () => {
         render(
             <AskedRanResult
-                askedKm={6.4}
-                askedPace="7:30/km"
-                ranKm={5.3}
-                ranPace="6:43/km"
+                askedKm={7.3}
+                asked="2 × 10 min at 6:03/km"
+                ranKm={7.3}
+                ran="2 × 10 min at 5:39/km"
             />,
         );
 
-        expect(screen.getByText('asked 6.4 km · 7:30/km')).toBeInTheDocument();
-        expect(screen.getByText('ran 5.3 km · 6:43/km')).toBeInTheDocument();
+        expect(
+            screen.getByText('asked 7.3 km · 2 × 10 min at 6:03/km'),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByText('ran 7.3 km · 2 × 10 min at 5:39/km'),
+        ).toBeInTheDocument();
     });
 
     it('drops a side pace that has no figure behind it', () => {
         render(
-            <AskedRanResult
-                askedKm={6}
-                askedPace={null}
-                ranKm={0}
-                ranPace={null}
-            />,
+            <AskedRanResult askedKm={6} asked={null} ranKm={0} ran={null} />,
         );
 
         expect(screen.getByText('asked 6 km')).toBeInTheDocument();

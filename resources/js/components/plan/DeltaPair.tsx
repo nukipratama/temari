@@ -110,32 +110,36 @@ export function ChangeRow({
 
 /**
  * A credited day, paired by side rather than by figure: what was asked
- * (distance and its effective pace together) and what was run (distance and
- * the pace over the credited runs). No arrows — the plan did not change,
- * this states what happened.
+ * (distance and the work it was judged on) and what was run (distance and
+ * the same work as run). No arrows — the plan did not change, this states
+ * what happened.
  */
 export function AskedRanResult({
     askedKm,
-    askedPace,
+    asked,
     ranKm,
-    ranPace,
+    ran,
 }: Readonly<{
     askedKm: number;
-    askedPace: string | null;
+    asked: string | null;
     ranKm: number;
-    ranPace: string | null;
+    ran: string | null;
 }>) {
-    const asked = [`asked ${askedKm} km`, askedPace]
+    const askedLine = [`asked ${askedKm} km`, asked]
         .filter((part): part is string => part !== null)
         .join(' · ');
-    const ran = [`ran ${ranKm} km`, ranPace]
+    const ranLine = [`ran ${ranKm} km`, ran]
         .filter((part): part is string => part !== null)
         .join(' · ');
 
     return (
         <span className="mt-0.5 block text-xs text-text-2">
-            <span className="block font-semibold text-foreground">{asked}</span>
-            <span className="block font-semibold text-foreground">{ran}</span>
+            <span className="block font-semibold text-foreground">
+                {askedLine}
+            </span>
+            <span className="block font-semibold text-foreground">
+                {ranLine}
+            </span>
         </span>
     );
 }

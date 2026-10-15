@@ -53,9 +53,9 @@ export default {
             render: () => (
                 <AskedRanResult
                     askedKm={6}
-                    askedPace="7:00/km"
+                    asked="under 150 bpm"
                     ranKm={6.4}
-                    ranPace="6:52/km"
+                    ran="avg 146 bpm · 6:52/km"
                 />
             ),
         },

@@ -633,6 +633,10 @@ export interface WeekPlanDay {
      *  `SessionMatcher::ranPaceSecPerKmFromRuns()`. Null until the day is
      *  credited, or when the credited runs carry no moving time. */
     ran_pace_sec_per_km: number | null;
+    /** What a credited day ran, in the terms it was asked in: the blocks or
+     *  reps of a quality day, heart rate beside the pace on an easy or long
+     *  day, from `DayRanLabel::of()`. Null until the day is credited. */
+    ran_label: string | null;
     /** Total km actually run that day — null when nothing was logged. */
     actual_km: number | null;
     /** Distance used by the plan's distance score: longest run for Tempo/Interval, total otherwise. */

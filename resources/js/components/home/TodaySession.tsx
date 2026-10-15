@@ -159,9 +159,9 @@ function TodayPrescription({
             {judged !== null && (
                 <AskedRanResult
                     askedKm={judged.askedKm}
-                    askedPace={judged.askedPace}
+                    asked={judged.asked}
                     ranKm={judged.ranKm}
-                    ranPace={judged.ranPace}
+                    ran={judged.ran}
                 />
             )}
             {day.result_note && (

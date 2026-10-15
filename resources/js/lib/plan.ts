@@ -604,12 +604,113 @@ export function paceLabel(day: Pick<PlanDay, 'segments'>): string | null {
     return sec == null ? null : `${formatPace(sec)}/km`;
 }
 
-/** What an unrun day is run to: under its heart-rate cap on an easy or long
- *  run, otherwise its core pace. */
+interface WorkUnit {
+    minutes: number | null;
+    km: number | null;
+    paceSecPerKm: number | null;
+}
+
+function oneDecimal(value: number): number {
+    return Math.round(value * 10) / 10;
+}
+
+function joined(first: WorkUnit, second: WorkUnit): WorkUnit {
+    if (
+        first.minutes === null ||
+        second.minutes === null ||
+        first.paceSecPerKm === null ||
+        second.paceSecPerKm === null
+    ) {
+        return first;
+    }
+    const minutes = first.minutes + second.minutes;
+    const km =
+        (first.minutes * 60) / first.paceSecPerKm +
+        (second.minutes * 60) / second.paceSecPerKm;
+
+    return {
+        minutes,
+        km: oneDecimal(km),
+        paceSecPerKm: Math.round((minutes * 60) / km),
+    };
+}
+
+/** The work segments, where back-to-back ones with no recovery between them
+ *  are one rep or block at their combined pace, as the judge reads them. */
+function workUnits(segments: PlanSessionSegment[]): WorkUnit[] {
+    const units: WorkUnit[] = [];
+    let joinsPrevious = false;
+    for (const segment of segments) {
+        const isWork =
+            (segment.key === 'main' || segment.key === 'interval') &&
+            segment.pace_label !== 'easy';
+        if (!isWork) {
+            joinsPrevious = false;
+            continue;
+        }
+        const unit = {
+            minutes: segment.minutes,
+            km: segment.km,
+            paceSecPerKm: segment.pace_sec_per_km,
+        };
+        const previous = joinsPrevious ? units.pop() : undefined;
+        units.push(previous === undefined ? unit : joined(previous, unit));
+        joinsPrevious = true;
+    }
+
+    return units;
+}
+
+/** What a day is run to, in the terms it is judged in: the blocks or reps of
+ *  a tempo or interval day, the block and the cap on a long run that has
+ *  one, the heart-rate cap on an easy or long run, and the pace of a time
+ *  trial or race. */
 export function targetLabel(day: PlanDay): string | null {
-    return day.hr_cap_bpm !== null && !sessionHasWork(day)
-        ? `under ${day.hr_cap_bpm} bpm`
-        : paceLabel(day);
+    if (day.time_trial !== null || day.session_type === 'race') {
+        return paceLabel(day);
+    }
+
+    const units = workUnits(day.segments);
+    if (units.length === 0) {
+        return day.hr_cap_bpm !== null
+            ? `under ${day.hr_cap_bpm} bpm`
+            : paceLabel(day);
+    }
+
+    const pace =
+        units[0].paceSecPerKm === null
+            ? ''
+            : ` at ${formatPace(units[0].paceSecPerKm)}/km`;
+    if (day.session_type === 'long') {
+        const km = oneDecimal(
+            units.reduce((sum, unit) => sum + (unit.km ?? 0), 0),
+        );
+        const minutes = oneDecimal(
+            units.reduce((sum, unit) => sum + (unit.minutes ?? 0), 0),
+        );
+        const length = km > 0 ? `${km} km` : `${minutes} min`;
+        const block = `${day.fast_finish !== null ? 'last ' : ''}${length}${pace}`;
+
+        return day.hr_cap_bpm !== null
+            ? `${block} · easy part under ${day.hr_cap_bpm} bpm`
+            : block;
+    }
+
+    const minutes = units.flatMap((unit) =>
+        unit.minutes === null ? [] : [unit.minutes],
+    );
+    if (minutes.length < units.length) {
+        return paceLabel(day);
+    }
+    const total = minutes.reduce((sum, value) => sum + value, 0);
+    const work =
+        minutes.length === 1
+            ? `${Math.round(total)} min`
+            : Math.max(...minutes) - Math.min(...minutes) <= 1
+              ? `${minutes.length} × ${Math.round(total / minutes.length)} min`
+              : `${minutes.map((value) => Math.round(value)).join(' + ')} min`;
+
+    return `${work}${pace}`;
 }
 
 /**
@@ -641,18 +742,18 @@ export function paceEaseDelta(
 
 /**
  * A day the plan has judged, paired by side rather than by figure: what it
- * asked for (distance and its effective pace together) and what was run
- * (distance and the pace over the credited runs). The asked pace is the
- * effective target — the eased pace on a pace-eased day, since `segments`
- * already carries it (#932/#965); the ran pace is the pace over the runs
- * `SessionMatcher` credits (#962). Null on a day still ahead, which shows the
- * ask alone instead.
+ * asked for and what was run, each in the same terms. The ask is
+ * {@see targetLabel}, read off the effective segments, so a pace-eased day
+ * shows its eased pace (#932/#965); the answer is `ran_label`, read off the
+ * judge's evidence, falling back to the pace over the runs `SessionMatcher`
+ * credits (#962). Null on a day still ahead, which shows the ask alone
+ * instead.
  */
 export interface JudgedDayResult {
     askedKm: number;
-    askedPace: string | null;
+    asked: string | null;
     ranKm: number;
-    ranPace: string | null;
+    ran: string | null;
 }
 
 export function judgedDayResult(day: PlanDay): JudgedDayResult | null {
@@ -662,12 +763,13 @@ export function judgedDayResult(day: PlanDay): JudgedDayResult | null {
 
     return {
         askedKm: day.prescribed_km,
-        askedPace: paceLabel(day),
+        asked: targetLabel(day),
         ranKm: day.actual_km ?? 0,
-        ranPace:
-            day.ran_pace_sec_per_km == null
+        ran:
+            day.ran_label ??
+            (day.ran_pace_sec_per_km == null
                 ? null
-                : `${formatPace(day.ran_pace_sec_per_km)}/km`,
+                : `${formatPace(day.ran_pace_sec_per_km)}/km`),
     };
 }
 
