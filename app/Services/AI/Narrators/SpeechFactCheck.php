@@ -74,7 +74,7 @@ final class SpeechFactCheck
      */
     private static function sourced(array $facts): array
     {
-        $figures = QuotedFigures::in((string) json_encode($facts, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
+        $figures = QuotedFigures::in((string) json_encode($facts, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PARTIAL_OUTPUT_ON_ERROR));
 
         foreach ($figures as $figure) {
             if (! str_contains($figure, ':')) {

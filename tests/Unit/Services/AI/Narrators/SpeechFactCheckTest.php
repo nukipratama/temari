@@ -36,6 +36,15 @@ it('rejects a distance, pace or share no tool returned', function (string $speec
     'made-up share' => ['72% of it sat in Z3.', '72'],
 ]);
 
+it('keeps the sourced figures when one tool value cannot be encoded', function (mixed $unencodable): void {
+    $facts = [...speechFacts(), 'get_weather' => ['summary' => $unencodable]];
+
+    expect(SpeechFactCheck::complaint('7.3 km at 6:27, 60% in Z3.', $facts, null))->toBeNull();
+})->with([
+    'invalid UTF-8' => ["\xB1\x31"],
+    'not a number' => [NAN],
+]);
+
 it('leaves figures other than paces, distances and shares to the prompt', function (): void {
     expect(SpeechFactCheck::complaint('25°C, 12 straight weeks, 3 runs this week.', speechFacts(), null))->toBeNull();
 });
