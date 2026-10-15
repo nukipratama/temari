@@ -1240,6 +1240,7 @@ it('dayPayload paces a tempo day eased to easy over every run the judge graded, 
     );
 
     expect($payload['ran_pace_sec_per_km'])->toBe(384)
+        ->and($payload['credited_km'])->toBe(10.0)
         ->and($payload['result_note'])->toBe('it ran harder than the easy effort the day asked for; averaged 6:24/km, quicker than the easy limit of 6:48/km.');
 });
 

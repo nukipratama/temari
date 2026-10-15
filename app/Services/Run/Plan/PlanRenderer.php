@@ -373,7 +373,7 @@ final class PlanRenderer
             $longestRunKm = $longestRunKm === null ? $run['km'] : max($longestRunKm, $run['km']);
         }
 
-        return $activity === null || $longestRunKm === null ? null : round(SessionMatcher::creditedKm($s->session_type, [
+        return $activity === null || $longestRunKm === null ? null : round(SessionMatcher::creditedKm(EffectiveSession::settledTypeOf($s), [
             'sum' => $activity['km'],
             'longest' => $longestRunKm,
         ], TimeTrial::of($s) !== null), 1);
