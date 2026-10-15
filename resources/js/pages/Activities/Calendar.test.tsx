@@ -288,17 +288,9 @@ describe('calendar', () => {
         ).toBeInTheDocument();
     });
 
-    it('swipes left to the next month via a partial reload', () => {
-        render(
-            <Calendar
-                {...BASE_PROPS}
-                cells={TWO_WEEK_CELLS}
-                monthlyRecap={makeRecap()}
-            />,
-        );
-        const target = screen.getByText(
-            /May was full and the rhythm held steady\./,
-        );
+    it('does not change month on a horizontal swipe', () => {
+        render(<Calendar {...BASE_PROPS} cells={TWO_WEEK_CELLS} />);
+        const target = screen.getByTestId('calendar-month-area');
 
         fireEvent.touchStart(target, {
             touches: [{ identifier: 1, clientX: 200, clientY: 100 }],
@@ -307,31 +299,7 @@ describe('calendar', () => {
             changedTouches: [{ identifier: 1, clientX: 100, clientY: 100 }],
         });
 
-        expect(router.visit).toHaveBeenCalledWith(
-            '/history?view=calendar&month=2026-06',
-            expect.objectContaining({
-                only: expect.arrayContaining(['cells']),
-            }),
-        );
-    });
-
-    it('swipes right to the previous month via a partial reload', () => {
-        render(<Calendar {...BASE_PROPS} cells={TWO_WEEK_CELLS} />);
-        const target = screen.getByTestId('calendar-swipe-area');
-
-        fireEvent.touchStart(target, {
-            touches: [{ identifier: 1, clientX: 100, clientY: 100 }],
-        });
-        fireEvent.touchEnd(target, {
-            changedTouches: [{ identifier: 1, clientX: 200, clientY: 100 }],
-        });
-
-        expect(router.visit).toHaveBeenCalledWith(
-            '/history?view=calendar&month=2026-04',
-            expect.objectContaining({
-                only: expect.arrayContaining(['cells']),
-            }),
-        );
+        expect(router.visit).not.toHaveBeenCalled();
     });
 
     it('keeps the effort key out of sight until the key button is pressed', async () => {
@@ -447,7 +415,7 @@ describe('calendar', () => {
             const pastRecap = screen.getByText(
                 /May was full and the rhythm held steady\./,
             );
-            const pastMonthArea = screen.getByTestId('calendar-swipe-area');
+            const pastMonthArea = screen.getByTestId('calendar-month-area');
             const consistency = screen.getByText(/3 runs · 16 km/);
             const grid = screen.getByText('week 1');
             expect(consistency.compareDocumentPosition(pastRecap)).toBe(
@@ -472,7 +440,7 @@ describe('calendar', () => {
                 />,
             );
             expect(screen.queryByText(/May was full/)).not.toBeInTheDocument();
-            expect(screen.getByTestId('calendar-swipe-area')).not.toBe(
+            expect(screen.getByTestId('calendar-month-area')).not.toBe(
                 pastMonthArea,
             );
             const awaitingRecap = screen.getByText(

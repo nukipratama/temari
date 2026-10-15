@@ -214,9 +214,8 @@ P12) — a badge for the week's **rarest** earned card, tinted by rarity. A week
 with no snapshot leaves the column disabled. The badge lives here and nowhere
 else on the screen; it is not a day-cell affordance.
 
-**Month nav** is prev/next `Link`s plus a horizontal swipe on the recap and grid on
-mobile (`useHorizontalSwipe`, which already starts its gesture away from the
-screen edges). Both paths do a **partial reload** (`only: [month, monthLabel,
+**Month nav** is prev/next `Link`s; there is no swipe, so a horizontal drag
+while scrolling never changes the month. They do a **partial reload** (`only: [month, monthLabel,
 prevMonth, nextMonth, cells, weeklySnapshots, monthlyRecap]`) so the header
 doesn't flash, while still pushing one URL per month so Back works.
 
