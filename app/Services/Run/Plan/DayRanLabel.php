@@ -47,7 +47,7 @@ final class DayRanLabel
     private static function blocks(int $paceSec, array $evidence): string
     {
         $count = max(1, (int) ($evidence['blocks_prescribed'] ?? 1));
-        $minutes = self::minutes((float) $evidence['block_minutes'] / $count);
+        $minutes = (int) round((float) $evidence['block_minutes'] / $count);
 
         return ($count > 1 ? "{$count} × {$minutes} min" : "{$minutes} min").' at '.self::pace($paceSec);
     }

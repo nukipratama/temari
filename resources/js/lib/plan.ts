@@ -674,7 +674,7 @@ export function targetLabel(day: PlanDay): string | null {
             : block;
     }
 
-    const minutes = units.map((unit) => oneDecimal(unit.minutes));
+    const minutes = units.map((unit) => Math.round(unit.minutes));
     const work =
         minutes.length === 1
             ? `${minutes[0]} min`

@@ -1161,6 +1161,23 @@ describe('targetLabel on a day with work', () => {
         ).toBe('12 + 8 min at 6:03/km');
     });
 
+    it('counts blocks a rounding remainder apart as the same length', () => {
+        expect(
+            targetLabel(
+                planDay({
+                    session_type: 'tempo',
+                    segments: [
+                        work(6.7, 349),
+                        recovery,
+                        work(6.7, 349),
+                        recovery,
+                        work(6.6, 349),
+                    ],
+                }),
+            ),
+        ).toBe('3 × 7 min at 5:49/km');
+    });
+
     it('reads back-to-back work with no recovery between as one block', () => {
         expect(
             targetLabel(
