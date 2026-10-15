@@ -32,13 +32,13 @@ A deterministic verdict already existed for all of these. [SessionIntentJudge](a
 **The stored verdict is the one effort judgement, and every run narrator repeats it.**
 
 - `PlanContextTool` adds `intent_detail` beside `intent`: the numbers behind the verdict, already compared, from `IntentOutcome::detail()`. The run's own pace is not passed in, so an average it quotes is the judged pace.
-- [PlanVerdictRule::RULE](app/Services/AI/Narrators/PlanVerdictRule.php) is appended to the speech, the insight and the post-run briefing prompts (the morning briefing has no finished day to judge). It says:
+- [PlanVerdictRule::RULE](app/Services/AI/Narrators/PlanVerdictRule.php) is set inside the plan block of the speech and insight prompts and the data block of the post-run briefing prompt (the morning briefing has no finished day to judge). It says:
   - never contradict or soften the verdict;
   - never compare the overall average pace with the target pace, because a quality day's target covers only the hard work; take numbers from `intent_detail`;
   - name an easing (`eased_from`) once, and say when the original session was run anyway;
   - on an easy or long day, heart rate that ran hot beside an easy verdict is "the heart rate ran hot", never "the day stopped being easy";
   - a day of several runs is judged on the day's total;
-  - with no verdict, hand down none.
+  - with no verdict, or one that says the data can't tell, hand down none.
 - The insight's grey-zone nudge toward easy pace also stands down when the verdict says the day stayed at the easy effort it asked for.
 
 The rule ships as a prompt, so the next layer of #2138 adds a code check on the speech (cited figures and verdict direction) before it is saved.

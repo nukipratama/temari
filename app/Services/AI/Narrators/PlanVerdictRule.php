@@ -35,11 +35,11 @@ final class PlanVerdictRule
           Heart rate sitting in Z3 on a hot day can stand beside an easy verdict:
           say the heart rate ran hot while the effort stayed easy, never that the
           day stopped being easy, unless intent says it ran harder than asked.
-        - completed_km and credited_km cover every run that day. When this run
-          is one of several, say what the day came to, not this run on its own.
-        - A null intent means the day isn't judged or the data can't tell. Then
-          hand down no verdict of your own on whether the effort was too hard or
-          too easy.
+        - completed_km covers every run that day. When this run is one of
+          several, say what the day came to, not this run on its own.
+        - A null intent means the day isn't judged yet, and an intent that says
+          the data can't tell means just that. Either way, hand down no verdict
+          of your own on whether the effort was too hard or too easy.
         PROMPT;
 
     /** The prompt with the rule set inside its own plan block, where the model reads it. */
