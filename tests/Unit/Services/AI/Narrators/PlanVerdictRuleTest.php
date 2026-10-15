@@ -12,3 +12,8 @@ it('makes the judged intent the one effort verdict every run narrator repeats', 
         ->toContain('eased_from')
         ->toContain('completed_km');
 });
+
+it('sets the rule where a prompt marks its place', function (): void {
+    expect(PlanVerdictRule::into("THE PLAN: read it.\n\n{plan_verdict}\n\nRAIN: hedge."))
+        ->toBe("THE PLAN: read it.\n\n".PlanVerdictRule::RULE."\n\nRAIN: hedge.");
+});

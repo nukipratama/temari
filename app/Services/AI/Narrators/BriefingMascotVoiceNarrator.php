@@ -301,6 +301,8 @@ class BriefingMascotVoiceNarrator
         If there is no plan row, acknowledge the completed distance without
         inventing a planned target.
 
+        {plan_verdict}
+
         REQUIRED STRUCTURE (3 parts separated by `\n\n`):
         LINE 1, TITLE: acknowledge what was planned and what was done. Include
           whether the distance met the plan and what intent says, in plain
@@ -369,7 +371,7 @@ class BriefingMascotVoiceNarrator
         $ceiling = ReadinessCeiling::from((string) $context['readiness_ceiling']);
         $postRun = $context['ran_today'] === true && $this->hasDetailedRunToday($user, $asOf);
         $systemPrompt = $postRun
-            ? self::POST_RUN_SYSTEM_PROMPT."\n\n".PlanVerdictRule::RULE
+            ? PlanVerdictRule::into(self::POST_RUN_SYSTEM_PROMPT)
             : self::SYSTEM_PROMPT;
 
         $decoded = $this->caller->call(

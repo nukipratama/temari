@@ -41,4 +41,10 @@ final class PlanVerdictRule
           hand down no verdict of your own on whether the effort was too hard or
           too easy.
         PROMPT;
+
+    /** The prompt with the rule set inside its own plan block, where the model reads it. */
+    public static function into(string $prompt): string
+    {
+        return str_replace('{plan_verdict}', self::RULE, $prompt);
+    }
 }

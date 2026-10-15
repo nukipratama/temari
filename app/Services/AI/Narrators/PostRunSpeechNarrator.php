@@ -83,6 +83,8 @@ class PostRunSpeechNarrator
         session, that is not this block. An empty list means no plan covered that
         day, so say nothing about a plan at all.
 
+        {plan_verdict}
+
         COASTING: if the week is thinner than the last few and nothing in the data
         explains it, you may name it once, flatly, then move on. NEVER name it when
         the data gives a reason (a heavy load balance, heat, a first run
@@ -145,7 +147,7 @@ class PostRunSpeechNarrator
     {
         $decoded = $this->caller->call(
             kind: 'post_run_speech',
-            systemPrompt: self::SYSTEM_PROMPT."\n\n".PlanVerdictRule::RULE."\n\n".NarratorContinuity::RULE,
+            systemPrompt: PlanVerdictRule::into(self::SYSTEM_PROMPT)."\n\n".NarratorContinuity::RULE,
             context: $this->context($activity, $detail, $mood),
             schemaName: 'TemariPostRunSpeech',
             requiredKeys: ['speech'],

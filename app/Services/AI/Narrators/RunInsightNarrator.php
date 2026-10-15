@@ -151,6 +151,8 @@ class RunInsightNarrator
         split, zone or metric, and let the prescription say what it means. An
         empty list means no plan covered that day.
 
+        {plan_verdict}
+
         STRUCTURED SESSION: if get_laps gives a rep_count, the laps alternate
         fast-slow, meaning up-and-down pace IS the shape of the session by
         design, not messy pacing. A split-anchored claim about a "slow" km on
@@ -233,11 +235,11 @@ class RunInsightNarrator
     /** The prompt's "high decoupling" line, reading the same band the plan and the mood read. */
     private static function systemPrompt(): string
     {
-        return str_replace(
+        return PlanVerdictRule::into(str_replace(
             '{decoupling_high}',
             DecimalFormatter::trimmed(DecouplingBands::HIGH),
             self::SYSTEM_PROMPT,
-        );
+        ));
     }
 
     /**
@@ -247,7 +249,7 @@ class RunInsightNarrator
     {
         $decoded = $this->caller->call(
             kind: 'run_insight',
-            systemPrompt: self::systemPrompt()."\n\n".PlanVerdictRule::RULE."\n\n".NarratorContinuity::RULE,
+            systemPrompt: self::systemPrompt()."\n\n".NarratorContinuity::RULE,
             context: $this->context($activity, $detail),
             schemaName: 'TemariRunInsight',
             requiredKeys: ['claims'],
