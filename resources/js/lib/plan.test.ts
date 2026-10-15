@@ -1189,6 +1189,48 @@ describe('targetLabel on a day with work', () => {
         ).toBe('20 min at 6:03/km');
     });
 
+    it('quotes a block that closes at goal pace at the combined pace the judge grades it on', () => {
+        expect(
+            targetLabel(
+                planDay({
+                    session_type: 'tempo',
+                    segments: [
+                        work(7, 290),
+                        work(3, 300),
+                        recovery,
+                        work(7, 290),
+                        work(3, 300),
+                    ],
+                }),
+            ),
+        ).toBe('2 × 10 min at 4:53/km');
+    });
+
+    it('says nothing of the work when no pace estimate sized its minutes', () => {
+        const unsized = { ...work(0, 0), minutes: null, pace_sec_per_km: null };
+
+        expect(
+            targetLabel(
+                planDay({
+                    session_type: 'tempo',
+                    segments: [unsized, recovery, unsized],
+                }),
+            ),
+        ).toBeNull();
+        expect(
+            targetLabel(
+                planDay({
+                    session_type: 'long',
+                    hr_cap_bpm: 150,
+                    segments: [
+                        { ...recovery, key: 'easy', minutes: null, km: null },
+                        { ...work(16, 320), km: null },
+                    ],
+                }),
+            ),
+        ).toBe('16 min at 5:20/km · easy part under 150 bpm');
+    });
+
     it('names a fast finish by its last kilometres', () => {
         expect(
             targetLabel(

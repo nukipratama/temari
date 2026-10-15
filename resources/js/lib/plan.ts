@@ -605,13 +605,38 @@ export function paceLabel(day: Pick<PlanDay, 'segments'>): string | null {
 }
 
 interface WorkUnit {
-    minutes: number;
-    km: number;
+    minutes: number | null;
+    km: number | null;
     paceSecPerKm: number | null;
 }
 
+function oneDecimal(value: number): number {
+    return Math.round(value * 10) / 10;
+}
+
+function joined(first: WorkUnit, second: WorkUnit): WorkUnit {
+    if (
+        first.minutes === null ||
+        second.minutes === null ||
+        first.paceSecPerKm === null ||
+        second.paceSecPerKm === null
+    ) {
+        return first;
+    }
+    const minutes = first.minutes + second.minutes;
+    const km =
+        (first.minutes * 60) / first.paceSecPerKm +
+        (second.minutes * 60) / second.paceSecPerKm;
+
+    return {
+        minutes,
+        km: oneDecimal(km),
+        paceSecPerKm: Math.round((minutes * 60) / km),
+    };
+}
+
 /** The work segments, where back-to-back ones with no recovery between them
- *  are one rep or block, as the judge reads them. */
+ *  are one rep or block at their combined pace, as the judge reads them. */
 function workUnits(segments: PlanSessionSegment[]): WorkUnit[] {
     const units: WorkUnit[] = [];
     let joinsPrevious = false;
@@ -623,26 +648,17 @@ function workUnits(segments: PlanSessionSegment[]): WorkUnit[] {
             joinsPrevious = false;
             continue;
         }
-        const minutes = segment.minutes ?? 0;
-        const km = segment.km ?? 0;
+        const unit = {
+            minutes: segment.minutes,
+            km: segment.km,
+            paceSecPerKm: segment.pace_sec_per_km,
+        };
         const previous = joinsPrevious ? units.pop() : undefined;
-        units.push(
-            previous === undefined
-                ? { minutes, km, paceSecPerKm: segment.pace_sec_per_km }
-                : {
-                      minutes: previous.minutes + minutes,
-                      km: previous.km + km,
-                      paceSecPerKm: previous.paceSecPerKm,
-                  },
-        );
+        units.push(previous === undefined ? unit : joined(previous, unit));
         joinsPrevious = true;
     }
 
     return units;
-}
-
-function oneDecimal(value: number): number {
-    return Math.round(value * 10) / 10;
 }
 
 /** What a day is run to, in the terms it is judged in: the blocks or reps of
@@ -666,15 +682,26 @@ export function targetLabel(day: PlanDay): string | null {
             ? ''
             : ` at ${formatPace(units[0].paceSecPerKm)}/km`;
     if (day.session_type === 'long') {
-        const km = oneDecimal(units.reduce((sum, unit) => sum + unit.km, 0));
-        const block = `${day.fast_finish !== null ? 'last ' : ''}${km} km${pace}`;
+        const km = oneDecimal(
+            units.reduce((sum, unit) => sum + (unit.km ?? 0), 0),
+        );
+        const minutes = oneDecimal(
+            units.reduce((sum, unit) => sum + (unit.minutes ?? 0), 0),
+        );
+        const length = km > 0 ? `${km} km` : `${minutes} min`;
+        const block = `${day.fast_finish !== null ? 'last ' : ''}${length}${pace}`;
 
         return day.hr_cap_bpm !== null
             ? `${block} · easy part under ${day.hr_cap_bpm} bpm`
             : block;
     }
 
-    const minutes = units.map((unit) => Math.round(unit.minutes));
+    const minutes = units.flatMap((unit) =>
+        unit.minutes === null ? [] : [Math.round(unit.minutes)],
+    );
+    if (minutes.length < units.length) {
+        return paceLabel(day);
+    }
     const work =
         minutes.length === 1
             ? `${minutes[0]} min`
