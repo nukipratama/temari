@@ -86,9 +86,9 @@ final class SessionIntent
         return ['intent' => self::EASY, 'source' => $easyDay ? self::PLANNED : self::NONE];
     }
 
-    public static function isIntendedHard(ActivityDetail $detail, ?SessionType $planned = null): bool
+    public static function isIntendedHard(ActivityDetail $detail): bool
     {
-        $intent = self::forDetail($detail, $planned)['intent'];
+        $intent = self::forDetail($detail)['intent'];
 
         return $intent === self::RACE || $intent === self::WORKOUT;
     }

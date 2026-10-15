@@ -126,7 +126,3 @@ it('keeps an easy day easy when it has no zone data to read', function (): void 
     expect(SessionIntent::forDetail(intentDetail(['workout_type' => null, 'stream_summary' => null]), SessionType::Easy))
         ->toBe(['intent' => SessionIntent::EASY, 'source' => 'planned']);
 });
-
-it('treats a planned tempo as intended-hard even on an easy-looking run', function (): void {
-    expect(SessionIntent::isIntendedHard(intentDetail(['workout_type' => null] + zones(['Z2' => 95])), SessionType::Tempo))->toBeTrue();
-});

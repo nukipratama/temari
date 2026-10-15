@@ -138,14 +138,9 @@ final class MaterialFingerprint
             'gap_pace' => $summary->gapPace(),
             'partial_pace' => $summary->partialSplit()['pace'] ?? null,
             'mood' => self::mood($activity),
-            'session_intent' => SessionIntent::forDetail($detail, self::plannedType($activity, $detail))['intent'],
+            'session_intent' => SessionIntent::forDetail($detail, PlannedSessionTypes::forRun($activity->user_id, $detail->start_date_local))['intent'],
             'has_pr' => PersonalRecord::query()->where('activity_id', $activity->id)->exists(),
         ];
-    }
-
-    private static function plannedType(Activity $activity, ActivityDetail $detail): ?SessionType
-    {
-        return $detail->start_date_local === null ? null : PlannedSessionTypes::forRun($activity->user_id, $detail->start_date_local);
     }
 
     /**

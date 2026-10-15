@@ -25,8 +25,12 @@ final class PlannedSessionTypes
         );
     }
 
-    public static function forRun(int $userId, Carbon $startedAt): ?SessionType
+    public static function forRun(int $userId, ?Carbon $startedAt): ?SessionType
     {
+        if ($startedAt === null) {
+            return null;
+        }
+
         return self::byDate($userId, $startedAt->copy()->startOfDay(), $startedAt->copy()->endOfDay())[$startedAt->toDateString()] ?? null;
     }
 

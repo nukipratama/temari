@@ -44,5 +44,6 @@ No new threshold is introduced: the lap rule reuses `IntervalDetector::REP_PACE_
 - The narrator's quality-session rules in `RunInsightNarrator` now fire on planned tempo and interval days, whatever their zones show.
 - The menu verdict itself is unchanged: [SessionIntentJudge](app/Services/Run/Plan/SessionIntentJudge.php) already grades all of a day's runs against the effective session, and `IntentOutcome` already words it. Feeding that verdict to every narrator is the next layer of #2138, not a second judge.
 - Changing a plan after a run was narrated changes that run's fingerprint, so a later re-read narrates it again.
+- The lap rule also reaches the callers that pass no plan: the effort colour's unplanned-day fallback in `RunEffort` and `isIntendedHard()` in `Temari` read an untagged rep session as hard.
 
 Related: [[a-day-is-graded-on-distance-and-intent]], [[grading-follows-shown-advice-and-actual-stimulus]].

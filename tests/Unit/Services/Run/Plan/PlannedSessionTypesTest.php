@@ -81,5 +81,6 @@ it('reads the settled planned type for the day a run started on', function (): v
 
     expect(PlannedSessionTypes::forRun($user->id, Carbon::parse('2026-09-10 07:00:00')))->toBe(SessionType::Tempo)
         ->and(PlannedSessionTypes::forRun($user->id, Carbon::parse('2026-09-11 07:00:00')))->toBe(SessionType::Easy)
-        ->and(PlannedSessionTypes::forRun($user->id, Carbon::parse('2026-09-12 07:00:00')))->toBeNull();
+        ->and(PlannedSessionTypes::forRun($user->id, Carbon::parse('2026-09-12 07:00:00')))->toBeNull()
+        ->and(PlannedSessionTypes::forRun($user->id, null))->toBeNull();
 });

@@ -41,10 +41,7 @@ final class EffortContextTool extends ActivityTool
         $decouplingPct = $this->summary()->steadyEffortDecouplingPct();
 
         return [
-            'session_intent' => SessionIntent::forDetail(
-                $this->detail,
-                $this->detail->start_date_local === null ? null : PlannedSessionTypes::forRun($this->activity->user_id, $this->detail->start_date_local),
-            ),
+            'session_intent' => SessionIntent::forDetail($this->detail, PlannedSessionTypes::forRun($this->activity->user_id, $this->detail->start_date_local)),
             'relative_effort' => $this->relativeEffort->forRun($this->activity, $this->detail),
             'decoupling' => $decouplingPct === null ? null : [
                 'pct' => abs($decouplingPct),
