@@ -145,7 +145,7 @@ class PostRunSpeechNarrator
     {
         $decoded = $this->caller->call(
             kind: 'post_run_speech',
-            systemPrompt: self::SYSTEM_PROMPT."\n\n".NarratorContinuity::RULE,
+            systemPrompt: self::SYSTEM_PROMPT."\n\n".PlanVerdictRule::RULE."\n\n".NarratorContinuity::RULE,
             context: $this->context($activity, $detail, $mood),
             schemaName: 'TemariPostRunSpeech',
             requiredKeys: ['speech'],

@@ -369,7 +369,7 @@ class BriefingMascotVoiceNarrator
         $ceiling = ReadinessCeiling::from((string) $context['readiness_ceiling']);
         $postRun = $context['ran_today'] === true && $this->hasDetailedRunToday($user, $asOf);
         $systemPrompt = $postRun
-            ? self::POST_RUN_SYSTEM_PROMPT
+            ? self::POST_RUN_SYSTEM_PROMPT."\n\n".PlanVerdictRule::RULE
             : self::SYSTEM_PROMPT;
 
         $decoded = $this->caller->call(

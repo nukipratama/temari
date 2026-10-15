@@ -27,6 +27,7 @@ use App\Services\AI\Anchor\DayAnchorResolver;
 use App\Services\AI\Narrators\BriefingMascotVoiceNarrator;
 use App\Services\AI\Narrators\CardFlavorNarrator;
 use App\Services\AI\Narrators\NarratorContinuity;
+use App\Services\AI\Narrators\PlanVerdictRule;
 use App\Services\AI\Narrators\OutcomeLabels;
 use App\Services\AI\Narrators\QuotedFigures;
 use App\Services\AI\Narrators\MonthlyRecapNarrator;
@@ -759,6 +760,34 @@ it('OutcomeLabels catches a verdict label, and passes a described outcome', func
     'hit as a verb' => ['you hit the tempo block right on 5:00/km.', false],
     'a described too-hard day' => ['10 against an easy 7, harder than the day asked for.', false],
 ]);
+
+function sentSystemPromptCarriesPlanVerdictRule(ClientFake $client): void
+{
+    $client->assertSent(Responses::class, fn (string $method, array $params): bool => str_contains((string) $params['input'][0]['content'], PlanVerdictRule::RULE));
+}
+
+it('hands the speech, the insight and the post-run brief the same plan verdict rule', function (): void {
+    ['activity' => $a, 'detail' => $d] = postRunFixture();
+
+    [$speechCaller, $speechClient] = capturingCaller(json_encode(['speech' => 'x'], JSON_THROW_ON_ERROR));
+    postRunNarrator($speechCaller)->generate($a, $d, 'easy');
+
+    [$insightCaller, $insightClient] = capturingCaller(json_encode(['claims' => []], JSON_THROW_ON_ERROR));
+    runInsightNarrator($insightCaller)->generate($a, $d);
+
+    [$briefCaller, $briefClient] = capturingCaller(json_encode(['mascot_voice' => '5 km logged, no plan for today.', 'session_type' => 'rest'], JSON_THROW_ON_ERROR));
+    bootMascotNarratorWithCaller($briefCaller)->generate($a->user, Carbon::today());
+
+    sentSystemPromptCarriesPlanVerdictRule($speechClient);
+    sentSystemPromptCarriesPlanVerdictRule($insightClient);
+    sentSystemPromptCarriesPlanVerdictRule($briefClient);
+});
+
+it('RunInsightNarrator keeps the grey-zone nudge off an easy day the verdict says stayed easy', function (): void {
+    expect(narratorPrompt(RunInsightNarrator::class))
+        ->toContain('says the day stayed at the easy effort it asked')
+        ->toContain('Skip it too if');
+});
 
 it('BriefingMascotVoiceNarrator re-asks a post-run block that labels the intent', function (): void {
     $user = User::factory()->create();

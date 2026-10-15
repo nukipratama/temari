@@ -69,7 +69,7 @@ final class PlanContextTool extends UserTool
             .'distance-only percentage, and compliance_score after the intent adjustment, '
             .'intent when the day was judged: plain words for whether the session did the job it '
             .'was written for, already decided, so repeat its meaning and never re-judge or label '
-            .'it; and ran_anyway true '
+            .'it; intent_detail, when present, the numbers behind that verdict, already compared; and ran_anyway true '
             .'when they ran a day they had excused themselves from. skipped true means they excused '
             .'the day. eased_from means '
             .'readiness eased the day: session_type, distance_km and the pace are the eased session '
@@ -186,6 +186,9 @@ final class PlanContextTool extends UserTool
                     'intent' => $session->intent_verdict === null
                         ? null
                         : IntentOutcome::outcome($session->intent_verdict, $session->intent_evidence ?? []),
+                    'intent_detail' => $session->intent_verdict === null
+                        ? null
+                        : IntentOutcome::detail($session->intent_verdict, $session->intent_evidence ?? [], null),
                 ];
             })->all(),
         ];

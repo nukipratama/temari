@@ -166,7 +166,9 @@ class RunInsightNarrator
         nudge toward the easy pace is fair (convert easy_pace_sec from
         get_training_paces to minutes:seconds per km if you have it). SKIP
         ENTIRELY if session_intent.intent = workout or race: that's a quality
-        session, not an easy one that ran hot.
+        session, not an easy one that ran hot. Skip it too if
+        get_planned_sessions says the day stayed at the easy effort it asked
+        for: the verdict already read that heart rate.
 
         QUALITY SESSIONS: if session_intent.intent = workout or race, high
         HR, lots of Z3-Z4, and rising decoupling are EXPECTED and exactly the
@@ -245,7 +247,7 @@ class RunInsightNarrator
     {
         $decoded = $this->caller->call(
             kind: 'run_insight',
-            systemPrompt: self::systemPrompt()."\n\n".NarratorContinuity::RULE,
+            systemPrompt: self::systemPrompt()."\n\n".PlanVerdictRule::RULE."\n\n".NarratorContinuity::RULE,
             context: $this->context($activity, $detail),
             schemaName: 'TemariRunInsight',
             requiredKeys: ['claims'],
