@@ -30,4 +30,22 @@ enum SessionType: string
             default => false,
         };
     }
+
+    /**
+     * The CR-10 session-RPE range this session usually feels like, or null where
+     * no range applies (a race is run all out, a rest day isn't run). See
+     * `docs/decisions/a-first-effort-score-re-narrates-the-run.md`.
+     *
+     * @return array{low: int, high: int}|null
+     */
+    public function perceivedEffortTarget(): ?array
+    {
+        return match ($this) {
+            self::Easy => ['low' => 2, 'high' => 4],
+            self::Long => ['low' => 3, 'high' => 5],
+            self::Tempo => ['low' => 6, 'high' => 7],
+            self::Interval => ['low' => 8, 'high' => 9],
+            self::Race, self::Rest => null,
+        };
+    }
 }

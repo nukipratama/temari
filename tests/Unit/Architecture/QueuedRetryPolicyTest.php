@@ -14,6 +14,7 @@ use App\Jobs\AI\AnswerRunQuestionJob;
 use App\Jobs\AI\FlushDeadLetterAlertJob;
 use App\Jobs\AI\KickoffRecapsJob;
 use App\Jobs\AI\NarrateOnReturnJob;
+use App\Jobs\AI\RecheckEffortScoreNarrationJob;
 use App\Jobs\AI\SendMaintainerAlertJob;
 use App\Jobs\Gamification\SettleStreakWeeksJob;
 use App\Jobs\Geo\ResolveActivityLocationJob;
@@ -120,6 +121,7 @@ $expectedRetryPolicies = [
     FlushDeadLetterAlertJob::class => [null, null, null, null, null],
     KickoffRecapsJob::class => [null, null, null, null, null],
     NarrateOnReturnJob::class => [null, null, null, null, null],
+    RecheckEffortScoreNarrationJob::class => [null, null, null, null, null],
     SendMaintainerAlertJob::class => [null, null, null, null, null],
     SettleStreakWeeksJob::class => [3, '30,120', null, null, 3600],
     ResolveActivityLocationJob::class => [null, null, null, null, 1200],

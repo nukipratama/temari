@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Actions\AI\RenarrateAfterEffortScore;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\User;
@@ -12,7 +13,7 @@ use Illuminate\Http\Request;
 
 class PerceivedEffortController extends Controller
 {
-    public function update(Request $request, Activity $activity): RedirectResponse
+    public function update(Request $request, Activity $activity, RenarrateAfterEffortScore $renarrate): RedirectResponse
     {
         $detail = $this->ownRun($request, $activity);
         $validated = $request->validate([
@@ -20,6 +21,7 @@ class PerceivedEffortController extends Controller
         ]);
 
         $detail->update(['perceived_effort' => (int) $validated['score'], 'perceived_effort_at' => now()]);
+        $renarrate($activity);
 
         return back();
     }

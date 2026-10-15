@@ -139,6 +139,7 @@ final class MaterialFingerprint
             'partial_pace' => $summary->partialSplit()['pace'] ?? null,
             'mood' => self::mood($activity),
             'session_intent' => SessionIntent::forDetail($detail, PlannedSessionTypes::forRun($activity->user_id, $detail->start_date_local))['intent'],
+            'has_effort_score' => $detail->perceived_effort !== null,
             'has_pr' => PersonalRecord::query()->where('activity_id', $activity->id)->exists(),
         ];
     }

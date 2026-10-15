@@ -131,6 +131,7 @@ ADRs, feature notes and code docblocks cite a source here as `[[coaching-evidenc
 | A run's fallback mood follows the same effort scale as its colour | [Temari.php](app/Services/Run/Story/Temari.php) | product choice | — |
 | Ordinary recalibration recomputes metrics and the future plan but keeps past prescriptions and shown-advice grades | [PlanRecalibrationService.php](app/Services/Run/Plan/PlanRecalibrationService.php) | product choice (#1511) | — |
 | One pre-launch reset rebuilds derived history once under the current policy | `CoachingReset::reset()` (removed 2026-10-08) | product choice (#1541) | — |
+| The run narration reads an effort score against the CR-10 range its planned session usually feels: easy 2–4, long 3–5, tempo 6–7, interval 8–9, none for a race or rest day | [SessionType::perceivedEffortTarget()](app/Enums/SessionType.php), [PerceivedEffortTool.php](app/Services/AI/Agent/Tools/PerceivedEffortTool.php) | heuristic (zone cut-offs published in skiers; bounds inside them and the long-run lift are chosen) | [[#SeilerKjerland2006]], [[#Foster2001]], [[#Haddad2017]] |
 
 ## Sources
 
@@ -252,7 +253,7 @@ Nes BM, Janszky I, Wisløff U, Støylen A, Karlsen T. Age-predicted maximal hear
 Robergs RA, Landwehr R. The surprising history of the "HRmax = 220 − age" equation. *J Exerc Physiol Online* 2002;5(2):1–10. https://www.asep.org/asep/asep/Robergs2.pdf (no DOI). The 220 − age equation was fitted by eye to about eleven heterogeneous sources and carries a 7–11 bpm prediction error. Grade REV · access ABS.
 
 ### Foster2001
-Foster C, Florhaug JA, Franklin J, Gottschall L, Hrovatin LA, Parker S, Doleshal P, Dodge C. A new approach to monitoring exercise training. *J Strength Cond Res* 2001;15(1):109–115. https://pubmed.ncbi.nlm.nih.gov/11708692/. Session RPE (CR-10 × minutes) related consistently to a heart-rate zone method in cycling and basketball, so it works across modes. Grade CT · access ABS. No rule reads it yet: it is the basis for #1577, which decides what coaching does with the effort score ([[an-effort-score-is-collected-on-every-run]]).
+Foster C, Florhaug JA, Franklin J, Gottschall L, Hrovatin LA, Parker S, Doleshal P, Dodge C. A new approach to monitoring exercise training. *J Strength Cond Res* 2001;15(1):109–115. https://pubmed.ncbi.nlm.nih.gov/11708692/. Session RPE (CR-10 × minutes) related consistently to a heart-rate zone method in cycling and basketball, so it works across modes. Grade CT · access ABS. Basis for reading the effort score as a whole-session rating in [[a-first-effort-score-re-narrates-the-run]]; load, readiness and the plan still read none ([[an-effort-score-is-collected-on-every-run]]).
 
 ### Haddad2017
 Haddad M, Stylianides G, Djaoui L, Dellal A, Chamari K. Session-RPE method for training load monitoring: validity, ecological usefulness, and influencing factors. *Front Neurosci* 2017;11:612. https://doi.org/10.3389/fnins.2017.00612. Across 36 studies session RPE was valid, reliable and internally consistent in many sports, ages and both sexes. Grade SR · access ABS. Basis for #1577.
@@ -294,7 +295,7 @@ Sylta, Tønnessen & Seiler. *IJSPP* 2014;9:100–107. https://doi.org/10.1123/ij
 Esteve-Lanao J, Foster C, Seiler S, Lucia A. Impact of training intensity distribution on performance in endurance athletes. *J Strength Cond Res* 2007;21(3):943–949. https://doi.org/10.1519/R-19725.1. Over five months, runners training ~80% below the ventilatory threshold (~12% between thresholds, ~8% above) improved a 10.4 km time more than runners at ~67% / 25% / 8%. Grade RCT · access ABS.
 
 ### SeilerKjerland2006
-Seiler & Kjerland. *Scand J Med Sci Sports* 2006. https://doi.org/10.1111/j.1600-0838.2004.00418.x. Session goal compared with time in zone; it gives no per-session limit. Grade XS · access NR.
+Seiler & Kjerland. *Scand J Med Sci Sports* 2006. https://doi.org/10.1111/j.1600-0838.2004.00418.x. Session goal compared with time in zone; it gives no per-session limit. In junior cross-country skiers it split Foster's CR-10 session RPE into zone 1 ≤ 4, zone 2 between 4 and 7, and zone 3 ≥ 7, with the second ventilatory threshold falling between 6 and 7 (cut-offs from the lab's pilot work, not runners). Grade XS · access NR (cut-offs from secondary summaries of the paper).
 
 ### Hunt2015
 Hunt, Fankhauser & Saengsuwan. *BioMed Eng OnLine* 2015;14:117. https://doi.org/10.1186/s12938-015-0112-7. Heart-rate on-kinetics τ ≈ 58 s, so about 95% of the steady value in roughly 3 minutes. Grade LAB · access NR.

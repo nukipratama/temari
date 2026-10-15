@@ -10,6 +10,7 @@ use App\Models\ActivityDetail;
 use App\Models\PlannedSession;
 use App\Services\AI\Agent\AgentTool;
 use App\Services\AI\Agent\AgentToolbox;
+use App\Services\AI\Agent\Tools\PerceivedEffortTool;
 use App\Services\AI\Agent\Tools\PersonalRecordsTool;
 use App\Services\AI\Agent\Tools\PlanContextTool;
 use App\Services\AI\Agent\Tools\RunSummaryTool;
@@ -86,6 +87,17 @@ class PostRunSpeechNarrator
         words, never as a grade or a score out of anything. NEVER prescribe the next
         session, that is not this block. An empty list means no plan covered that
         day, so say nothing about a plan at all.
+
+        HOW IT FELT: get_perceived_effort carries the effort score the athlete
+        gave this run, out of 10, when they logged one, and where it sits
+        against the range the day's session usually feels (relation). That is
+        their own word on how hard it was, so it belongs to you. When there is
+        a score, say once how it sat against that range, in plain words ("a 6
+        on a tempo that usually feels 6 or 7"), never against the plan:
+        "easier than planned" or "harder than asked" is the verdict's call. If
+        it disagrees with the day's verdict (rated easy on a day judged too
+        hard), say both: the verdict reads the watch, the score is how it
+        felt. No score means they gave none: never guess one.
 
         {plan_verdict}
 
@@ -227,6 +239,7 @@ class PostRunSpeechNarrator
             new PersonalRecordsTool($activity, $detail),
             new WeekStateTool($activity->user, $asOf),
             new PlanContextTool($activity->user, $asOf, $asOf, $this->trainingBaseline, $this->vdotEstimator, $this->paceCalculator),
+            new PerceivedEffortTool($activity, $detail),
         ];
     }
 

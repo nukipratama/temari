@@ -7,6 +7,9 @@ use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
+use App\Services\AI\MaterialFingerprint;
+use App\Services\AI\AnalysisType;
+use App\Services\AI\AnalysisStatus;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Queue;
@@ -111,4 +114,20 @@ it('keeps a demo score local, with no narration requested', function (): void {
     expect($detail->fresh()->perceived_effort)->toBe(4)
         ->and(Analysis::query()->count())->toBe(0);
     Queue::assertNothingPushed();
+});
+
+it('re-narrates the run when its first effort score is saved', function (): void {
+    $user = User::factory()->create();
+    [$activity] = perceivedEffortRun($user);
+    $speech = Analysis::factory()->done()->create([
+        'subject_type' => Activity::class,
+        'subject_id' => $activity->id,
+        'analysis_type' => AnalysisType::PostRunSpeech,
+        'discriminator' => null,
+        'content_fingerprint' => MaterialFingerprint::forActivity($activity->fresh()),
+    ]);
+
+    $this->actingAs($user)->patch(route('activities.effort.update', $activity), ['score' => 6]);
+
+    expect($speech->fresh()->status)->not->toBe(AnalysisStatus::Done);
 });
