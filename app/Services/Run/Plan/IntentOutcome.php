@@ -24,6 +24,8 @@ final class IntentOutcome
 
     private const string REPS = 'reps';
 
+    private const string ESTIMATED_ZONES = 'the heart-rate zones behind this are estimated, so it is a rough read';
+
     private const array ORDINALS = ['first', 'second', 'third', 'fourth', 'fifth', 'sixth'];
 
     /**
@@ -73,8 +75,23 @@ final class IntentOutcome
             };
 
         return ($evidence['zones'] ?? null) === 'estimated'
-            ? ($detail === null ? '' : "{$detail}; ").'the heart-rate zones behind this are estimated, so it is a rough read'
+            ? ($detail === null ? '' : "{$detail}; ").self::ESTIMATED_ZONES
             : $detail;
+    }
+
+    /**
+     * The detail the day card adds under its ran line: a quality day's block
+     * and rep figures already sit on that line, so only the zones caveat stays.
+     *
+     * @param  array<string, int|float|string>  $evidence
+     */
+    public static function cardDetail(IntentVerdict $verdict, array $evidence, ?int $ranPaceSec): ?string
+    {
+        if (isset($evidence['original_completed']) || ! in_array(self::family($evidence), [self::BLOCK, self::REPS], true)) {
+            return self::detail($verdict, $evidence, $ranPaceSec);
+        }
+
+        return ($evidence['zones'] ?? null) === 'estimated' ? self::ESTIMATED_ZONES : null;
     }
 
     /**

@@ -232,7 +232,7 @@ final class PlanRenderer
      * @param  array<string, float>  $volumeScaleByDate  date => scale, from {@see VolumeRedistributor::redistribute()}
      * @param  bool  $isPrimaryEasy  whether this is the week's first (bigger) Easy day — see {@see SegmentGenerator::coreKmFor()}
      * @param  array{easy: int, marathon: int, threshold: int, interval: int}|null  $paces
-     * @param  array{km: float, runs: list<array{id: int, km: float, seconds: int|null, started_at: string}>}|null  $activity  every run logged that day, for the planned-vs-actual bar and the links out
+     * @param  array{km: float, runs: list<array{id: int, km: float, seconds: int|null, started_at: string, avg_hr: int|null}>}|null  $activity  every run logged that day, for the planned-vs-actual bar and the links out
      * @param  ?int  $raceGoalTimeSec  the active race's `goal_time_sec` — what race day is prescribed at
      * @param  ?bool  $ranAnyway  live verdict override for an unscored day; null keeps the row's own stored value
      * @param  array<string, mixed>|null  $readinessAssessment  today's deterministic inputs and reasons
@@ -351,6 +351,9 @@ final class PlanRenderer
             'ran_hot' => self::ranHot($s, $status),
             'result_note' => self::resultNote($s, $status, $ranPaceSecPerKm),
             'ran_pace_sec_per_km' => $ranPaceSecPerKm,
+            'ran_label' => $status->isCredited() && $sessionType !== SessionType::Rest
+                ? DayRanLabel::of(EffectiveSession::settledTypeOf($s), TimeTrial::of($s) !== null, $s->intent_evidence ?? [], $ranPaceSecPerKm, $segments, $activity['runs'] ?? [])
+                : null,
             'actual_km' => $activity['km'] ?? null,
             'credited_km' => $creditedKm,
             'activities' => array_map(
@@ -364,7 +367,7 @@ final class PlanRenderer
     /**
      * The km a day's runs earn it, or null when nothing ran.
      *
-     * @param  array{km: float, runs: list<array{id: int, km: float, seconds: int|null, started_at: string}>}|null  $activity
+     * @param  array{km: float, runs: list<array{id: int, km: float, seconds: int|null, started_at: string, avg_hr: int|null}>}|null  $activity
      */
     public static function creditedKmOf(PlannedSession $s, ?array $activity): ?float
     {
@@ -828,7 +831,7 @@ final class PlanRenderer
      * volume arrived in pieces. Only that case has something to explain —
      * every other verdict is already said by its own numbers.
      *
-     * @param  array{km: float, runs: list<array{id: int, km: float, seconds: int|null, started_at: string}>}|null  $activity
+     * @param  array{km: float, runs: list<array{id: int, km: float, seconds: int|null, started_at: string, avg_hr: int|null}>}|null  $activity
      */
     private static function creditNote(SessionType $sessionType, PlannedSessionStatus $status, float $askedKm, ?array $activity): ?string
     {
@@ -868,7 +871,7 @@ final class PlanRenderer
         return match ($s->intent_verdict) {
             IntentVerdict::TooHard => self::clauses(
                 IntentOutcome::outcome(IntentVerdict::TooHard, $evidence),
-                IntentOutcome::detail(IntentVerdict::TooHard, $evidence, $ranPaceSecPerKm),
+                IntentOutcome::cardDetail(IntentVerdict::TooHard, $evidence, $ranPaceSecPerKm),
             ),
             IntentVerdict::Unknown => IntentOutcome::outcome(IntentVerdict::Unknown, $evidence).', so the day counts its distance only.',
             default => null,

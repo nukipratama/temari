@@ -64,6 +64,7 @@ function day(overrides: Partial<WeekPlanDay> = {}): WeekPlanDay {
         ran_hot: false,
         result_note: null,
         ran_pace_sec_per_km: null,
+        ran_label: null,
         actual_km: null,
         credited_km: null,
         activities: [],
@@ -402,7 +403,7 @@ describe('TodaySession', () => {
             />,
         );
 
-        expectSession('8', 'goal pace · 4:59/km');
+        expectSession('8', 'goal pace · 30 min at 4:59/km');
         expect(
             screen.getByText('rehearsing your half marathon goal pace.'),
         ).toBeInTheDocument();
@@ -430,7 +431,7 @@ describe('TodaySession', () => {
             />,
         );
 
-        expectSession('8', 'stepping-stone pace · 4:50/km');
+        expectSession('8', 'stepping-stone pace · 30 min at 4:50/km');
         expect(
             screen.getByText(
                 'rehearsing your half marathon stepping-stone pace.',

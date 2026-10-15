@@ -327,6 +327,7 @@ function planDay(overrides: Partial<PlanDay> = {}): PlanDay {
         ran_hot: false,
         result_note: null,
         ran_pace_sec_per_km: null,
+        ran_label: null,
         actual_km: null,
         credited_km: null,
         activities: [],
@@ -350,10 +351,22 @@ describe('judgedDayResult', () => {
             ),
         ).toEqual({
             askedKm: 6,
-            askedPace: '6:00/km',
+            asked: '6:00/km',
             ranKm: 5.4,
-            ranPace: '6:43/km',
+            ran: '6:43/km',
         });
+    });
+
+    it("answers in the judge's own terms when the day carries a ran label", () => {
+        expect(
+            judgedDayResult(
+                planDay({
+                    prescribed_km: 7.3,
+                    ran_pace_sec_per_km: 387,
+                    ran_label: '2 × 10 min at 5:39/km',
+                }),
+            )?.ran,
+        ).toBe('2 × 10 min at 5:39/km');
     });
 
     it('reads a judged day nothing was run on as zero, not as blank', () => {
@@ -369,7 +382,7 @@ describe('judgedDayResult', () => {
                     prescribed_km: 0,
                     ran_pace_sec_per_km: 403,
                 }),
-            )?.askedPace,
+            )?.asked,
         ).toBeNull();
     });
 
@@ -377,7 +390,7 @@ describe('judgedDayResult', () => {
         expect(
             judgedDayResult(
                 planDay({ prescribed_km: 6, ran_pace_sec_per_km: null }),
-            )?.ranPace,
+            )?.ran,
         ).toBeNull();
     });
 });
@@ -1049,7 +1062,9 @@ describe('heart-rate capped easy and long runs', () => {
             targetLabel(planDay({ session_type: 'long', hr_cap_bpm: 152 })),
         ).toBe('under 152 bpm');
         expect(targetLabel(planDay())).toBe('6:00/km');
-        expect(targetLabel(marathonPaceLong)).toBe('5:00/km');
+        expect(targetLabel(marathonPaceLong)).toBe(
+            '6 km at 5:00/km · easy part under 152 bpm',
+        );
     });
 
     it('turns the pace into a hint beside the cap', () => {
@@ -1106,5 +1121,82 @@ describe('heart-rate capped easy and long runs', () => {
         expect(sessionHint(marathonPaceLong)).toBe(
             'keep the easy running around it under 152 bpm.',
         );
+    });
+});
+
+describe('targetLabel on a day with work', () => {
+    const work = (minutes: number, pace: number) => ({
+        key: 'main' as const,
+        minutes,
+        zone: 'Z4',
+        pace_label: 'threshold' as const,
+        km: 1.7,
+        pace_sec_per_km: pace,
+    });
+    const recovery = {
+        key: 'recovery' as const,
+        minutes: 2,
+        zone: 'Z2',
+        pace_label: 'easy' as const,
+        km: 0.3,
+        pace_sec_per_km: 432,
+    };
+
+    it('names a tempo by its blocks, never the bare pace beside the whole distance', () => {
+        expect(
+            targetLabel(
+                planDay({
+                    session_type: 'tempo',
+                    segments: [work(10, 363), recovery, work(10, 363)],
+                }),
+            ),
+        ).toBe('2 × 10 min at 6:03/km');
+        expect(
+            targetLabel(
+                planDay({
+                    session_type: 'tempo',
+                    segments: [work(12, 363), recovery, work(8, 363)],
+                }),
+            ),
+        ).toBe('12 + 8 min at 6:03/km');
+    });
+
+    it('reads back-to-back work with no recovery between as one block', () => {
+        expect(
+            targetLabel(
+                planDay({
+                    session_type: 'tempo',
+                    segments: [work(10, 363), work(10, 363)],
+                }),
+            ),
+        ).toBe('20 min at 6:03/km');
+    });
+
+    it('names a fast finish by its last kilometres', () => {
+        expect(
+            targetLabel(
+                planDay({
+                    session_type: 'long',
+                    hr_cap_bpm: 150,
+                    fast_finish: { pace_kind: '10k', pace_source: 'goal' },
+                    segments: [
+                        { ...recovery, key: 'easy', minutes: 80, km: 13 },
+                        { ...work(16, 320), km: 3 },
+                    ],
+                }),
+            ),
+        ).toBe('last 3 km at 5:20/km · easy part under 150 bpm');
+    });
+
+    it('keeps a time trial on its pace', () => {
+        expect(
+            targetLabel(
+                planDay({
+                    session_type: 'tempo',
+                    time_trial: { distance_m: 3000, aim_time_sec: 900 },
+                    segments: [work(20, 300)],
+                }),
+            ),
+        ).toBe('5:00/km');
     });
 });

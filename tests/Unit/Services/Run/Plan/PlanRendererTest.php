@@ -1244,6 +1244,30 @@ it('dayPayload paces a tempo day eased to easy over every run the judge graded, 
         ->and($payload['result_note'])->toBe('it ran harder than the easy effort the day asked for; averaged 6:24/km, quicker than the easy limit of 6:48/km.');
 });
 
+it('dayPayload answers a judged tempo in its blocks, and keeps the block figures off the result note', function (): void {
+    $payload = resultNotePayload(
+        Carbon::parse('2026-08-10'),
+        ['session_type' => SessionType::Tempo, 'compliance_score' => 100, 'intent_evidence' => [
+            'block_minutes' => 20, 'target_pace_sec' => 363, 'blocks_prescribed' => 2, 'blocks_at_pace' => 2,
+            'block_paces' => '329,350', 'block_targets' => '363,363', 'block_pace_sec' => 339, 'basis' => 'pace', 'control' => 'excessive',
+        ]],
+        PlannedSessionStatus::Overreached,
+        ['km' => 7.3, 'runs' => [['id' => 1, 'km' => 7.3, 'seconds' => 2_825, 'started_at' => '06:00', 'avg_hr' => 158]]],
+    );
+
+    expect($payload['ran_label'])->toBe('2 × 10 min at 5:39/km')
+        ->and($payload['result_note'])->toBe('the first block ran well past the effort it asked for; the second held near target.');
+});
+
+it('dayPayload answers an easy day in heart rate beside its pace, and nothing on a day not yet run', function (): void {
+    $today = Carbon::parse('2026-08-10');
+    $run = ['km' => 8.0, 'runs' => [['id' => 1, 'km' => 8.0, 'seconds' => 3_296, 'started_at' => '06:00', 'avg_hr' => 141]]];
+
+    expect(resultNotePayload($today, ['compliance_score' => 100, 'intent_verdict' => IntentVerdict::Hit, 'intent_evidence' => ['basis' => 'pace', 'pace_sec' => 412, 'ceiling_pace_sec' => 408]], PlannedSessionStatus::Done, $run)['ran_label'])
+        ->toBe('avg 141 bpm · 6:52/km')
+        ->and(resultNotePayload($today, ['intent_verdict' => null], PlannedSessionStatus::Planned)['ran_label'])->toBeNull();
+});
+
 it('dayPayload names the tilt that lengthened a long run, and none once the cap swallows it', function (): void {
     $session = PlannedSession::factory()->make([
         'date' => '2026-08-12',

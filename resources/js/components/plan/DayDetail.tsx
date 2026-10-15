@@ -221,9 +221,9 @@ export function DayHeadline({ day }: Readonly<{ day: PlanDay }>) {
             {!isRest && judged !== null && (
                 <AskedRanResult
                     askedKm={judged.askedKm}
-                    askedPace={judged.askedPace}
+                    asked={judged.asked}
                     ranKm={judged.ranKm}
-                    ranPace={judged.ranPace}
+                    ran={judged.ran}
                 />
             )}
             {!isRest && judged === null && (

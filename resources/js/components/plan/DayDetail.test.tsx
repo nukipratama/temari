@@ -47,6 +47,7 @@ function day(overrides: Partial<EditablePlanDay> = {}): EditablePlanDay {
         ran_hot: false,
         result_note: null,
         ran_pace_sec_per_km: null,
+        ran_label: null,
         actual_km: null,
         credited_km: null,
         activities: [],
@@ -148,7 +149,9 @@ describe('DayHeadline and DayDetail', () => {
         renderRow();
 
         expect(screen.getByText('tempo')).toBeInTheDocument();
-        expect(screen.getByText('8 km · 5:00/km')).toBeInTheDocument();
+        expect(
+            screen.getByText('8 km · 30 min at 5:00/km'),
+        ).toBeInTheDocument();
     });
 
     it('heads a capped long run with its heart rate and says the pace may slow late', () => {
@@ -233,7 +236,7 @@ describe('DayHeadline and DayDetail', () => {
         expect(screen.getByText('goal pace')).toBeInTheDocument();
         expect(screen.queryByText('interval')).not.toBeInTheDocument();
         expect(screen.getByText('5:00/km · goal pace')).toBeInTheDocument();
-        expect(screen.getByText('8 km · 5:00/km')).toBeInTheDocument();
+        expect(screen.getByText('8 km · 4 min at 5:00/km')).toBeInTheDocument();
         expect(
             screen.getByText('rehearsing your 10K goal pace.'),
         ).toBeInTheDocument();
@@ -921,7 +924,9 @@ describe('DayHeadline and DayDetail', () => {
             }),
         });
 
-        expect(screen.getByText('9.1 km · 5:00/km')).toBeInTheDocument();
+        expect(
+            screen.getByText('9.1 km · 30 min at 5:00/km'),
+        ).toBeInTheDocument();
         expect(screen.queryByText('eased today')).not.toBeInTheDocument();
         expect(
             screen.getByText('Eased off, you slept badly.'),
@@ -1155,7 +1160,9 @@ describe('DayHeadline and DayDetail', () => {
             day: day({ prescribed_km: 6, actual_km: 5, distance_km: 8 }),
         });
 
-        expect(screen.getByText('asked 6 km · 5:00/km')).toBeInTheDocument();
+        expect(
+            screen.getByText('asked 6 km · 30 min at 5:00/km'),
+        ).toBeInTheDocument();
         expect(screen.getByText('ran 5 km')).toBeInTheDocument();
         expect(screen.queryByText(/8 km/)).not.toBeInTheDocument();
     });
@@ -1165,7 +1172,9 @@ describe('DayHeadline and DayDetail', () => {
             day: day({ prescribed_km: 9, actual_km: 12, distance_km: 8 }),
         });
 
-        expect(screen.getByText('asked 9 km · 5:00/km')).toBeInTheDocument();
+        expect(
+            screen.getByText('asked 9 km · 30 min at 5:00/km'),
+        ).toBeInTheDocument();
         expect(screen.getByText('ran 12 km')).toBeInTheDocument();
     });
 
@@ -1201,7 +1210,9 @@ describe('DayHeadline and DayDetail', () => {
             }),
         });
 
-        expect(screen.getByText('asked 6.4 km · 5:32/km')).toBeInTheDocument();
+        expect(
+            screen.getByText('asked 6.4 km · 30 min at 5:32/km'),
+        ).toBeInTheDocument();
         expect(screen.getByText('ran 5.3 km · 6:43/km')).toBeInTheDocument();
     });
 
@@ -1214,7 +1225,9 @@ describe('DayHeadline and DayDetail', () => {
             }),
         });
 
-        expect(screen.getByText('8 km · 5:00/km')).toBeInTheDocument();
+        expect(
+            screen.getByText('8 km · 30 min at 5:00/km'),
+        ).toBeInTheDocument();
         expect(screen.queryByText(/target/)).not.toBeInTheDocument();
         expect(screen.queryByText(/ran \d+:\d+\/km/)).not.toBeInTheDocument();
     });
