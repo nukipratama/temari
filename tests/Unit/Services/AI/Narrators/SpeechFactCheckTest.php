@@ -68,3 +68,9 @@ it('accepts a speech that tells the verdict the same way round', function (?Inte
     'no plan' => [null, 'harder than planned, maybe.'],
     'not about the plan' => [IntentVerdict::Hit, 'the heat made it harder than it looked.'],
 ]);
+
+it('accepts the start time a tool returned, quoted without its seconds', function (): void {
+    $facts = ['get_run_summary' => ['started_at_local' => '2026-10-15 06:00:00', 'pace_formatted' => '6:37']];
+
+    expect(SpeechFactCheck::complaint('6:37/km at 6:00 a.m., and already warm.', $facts, null))->toBeNull();
+});

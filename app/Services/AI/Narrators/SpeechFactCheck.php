@@ -67,7 +67,7 @@ final class SpeechFactCheck
 
     /**
      * Every figure the tools returned, plus each decimal rounded to the
-     * precision a sentence quotes it at.
+     * precision a sentence quotes it at and each h:mm:ss clock read as h:mm.
      *
      * @param  array<string, mixed>  $facts
      * @return list<string>
@@ -77,7 +77,10 @@ final class SpeechFactCheck
         $figures = QuotedFigures::in((string) json_encode($facts, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PARTIAL_OUTPUT_ON_ERROR));
 
         foreach ($figures as $figure) {
-            if (! str_contains($figure, ':')) {
+            $parts = explode(':', $figure);
+            if (count($parts) === 3) {
+                $figures[] = $parts[0].':'.$parts[1];
+            } elseif (count($parts) === 1) {
                 $figures[] = (string) (int) round((float) $figure);
                 $figures = [...$figures, ...QuotedFigures::in((string) round((float) $figure, 1))];
             }
