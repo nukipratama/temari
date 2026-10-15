@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services\Run\Metrics;
 
+use App\Services\Run\Ingest\KmSplitBuilder;
+
 /**
  * Pure interval-detection heuristic, extracted from
  * {@see \App\Services\AI\Agent\Tools\LapsTool::reps()} so the periodizer and
@@ -47,5 +49,30 @@ final class IntervalDetector
         }
 
         return $work;
+    }
+
+    /**
+     * Each lap's pace, keyed by position; empty when the laps are just the
+     * device's automatic kilometre grid.
+     *
+     * @param  array<int, array<string, mixed>>  $laps
+     * @return array<int, float>
+     */
+    public static function lapPaces(array $laps): array
+    {
+        $distances = array_map(static fn (array $lap): float => is_numeric($lap['distance_m'] ?? null) ? (float) $lap['distance_m'] : 0.0, $laps);
+        if (KmSplitBuilder::isPlainKmGrid(array_values($distances))) {
+            return [];
+        }
+
+        $paces = [];
+        foreach ($laps as $position => $lap) {
+            $pace = PaceCalculator::secPerKm($distances[$position], is_numeric($lap['elapsed_sec'] ?? null) ? (float) $lap['elapsed_sec'] : null);
+            if ($pace !== null) {
+                $paces[$position] = $pace;
+            }
+        }
+
+        return $paces;
     }
 }

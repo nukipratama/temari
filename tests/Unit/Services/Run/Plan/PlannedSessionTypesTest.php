@@ -71,3 +71,16 @@ it('reads an eased session as the easy run it was eased to, and keeps the row fo
     expect(plannedTypesWindow($user))->toBe(['2026-09-10' => SessionType::Easy])
         ->and(PlannedSessionTypes::sessionsByDate($user->id, Carbon::parse('2026-09-01'), Carbon::parse('2026-09-30 23:59:59'))['2026-09-10']->session_type)->toBe(SessionType::Tempo);
 });
+
+it('reads the settled planned type for the day a run started on', function (): void {
+    $user = User::factory()->create();
+    PlannedSession::factory()->for($user)->create(['date' => '2026-09-10', 'session_type' => SessionType::Tempo]);
+    PlannedSession::factory()->for($user)->create(['date' => '2026-09-11', 'session_type' => SessionType::Tempo, 'clamped_km' => 5.0]);
+    plannedTypesRun($user, '2026-09-10 07:00:00');
+    plannedTypesRun($user, '2026-09-11 07:00:00');
+
+    expect(PlannedSessionTypes::forRun($user->id, Carbon::parse('2026-09-10 07:00:00')))->toBe(SessionType::Tempo)
+        ->and(PlannedSessionTypes::forRun($user->id, Carbon::parse('2026-09-11 07:00:00')))->toBe(SessionType::Easy)
+        ->and(PlannedSessionTypes::forRun($user->id, Carbon::parse('2026-09-12 07:00:00')))->toBeNull()
+        ->and(PlannedSessionTypes::forRun($user->id, null))->toBeNull();
+});

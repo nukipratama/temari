@@ -12,6 +12,8 @@ code_refs:
 
 > **Fact update, 2026-10-12, per [[a-fast-finish-long-run-for-5k-to-half-goals]].** A long run with a fast finish is a quality day too.
 
+> **Fact update, 2026-10-15, per [[session-intent-reads-the-plan]].** Without a plan, "intended hard" also reads a rep structure in the laps.
+
 # A quality session's mood follows its purpose
 
 **Status:** Accepted (2026-10-02). Builds on [[a-runs-mood-follows-its-effort]], which it does not replace.

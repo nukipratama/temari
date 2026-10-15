@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Run\Metrics;
 
+use App\Enums\SessionType;
 use App\Models\ActivityDetail;
 
 /**
@@ -11,10 +12,12 @@ use App\Models\ActivityDetail;
  * versus an easy/recovery effort. High HR, TRIMP, and aerobic decoupling are the
  * point of a quality session, so mood + narration must not read them as fatigue.
  *
- * Intent anchors on the Strava `workout_type` the runner tagged; when untagged it
- * is inferred from the HR-zone distribution (Z3-Z4 heavy = threshold work). Zone
- * shape is used rather than pace or pace-variability because a real tempo often
- * carries an easy warm-up/cool-down that inflates both and hides the hard block.
+ * Intent reads, in order: the Strava `workout_type` the runner tagged, the day's
+ * settled planned session, a fast/slow rep structure in the laps, then the
+ * HR-zone distribution (Z3-Z4 heavy = threshold work). Zone shape is used rather
+ * than pace or pace-variability because a real tempo often carries an easy
+ * warm-up/cool-down that inflates both and hides the hard block. See
+ * `docs/decisions/session-intent-reads-the-plan.md`.
  */
 final class SessionIntent
 {
@@ -31,6 +34,10 @@ final class SessionIntent
     public const string TAGGED = 'tagged';
 
     public const string INFERRED = 'inferred';
+
+    public const string PLANNED = 'planned';
+
+    public const string LAPS = 'laps';
 
     public const string NONE = 'none';
 
@@ -50,15 +57,25 @@ final class SessionIntent
     /**
      * @return array{intent: string, source: string}
      */
-    public static function forDetail(ActivityDetail $detail): array
+    public static function forDetail(ActivityDetail $detail, ?SessionType $planned = null): array
     {
         $tagged = self::fromWorkoutType($detail->workout_type);
         if ($tagged !== null) {
             return ['intent' => $tagged, 'source' => self::TAGGED];
         }
 
+        $plannedIntent = self::fromPlannedType($planned);
+        if ($plannedIntent !== null) {
+            return ['intent' => $plannedIntent, 'source' => self::PLANNED];
+        }
+
         $summary = StreamSummary::fromArray($detail->streamSummary());
-        if ($summary->zonePct() === []) {
+        if (IntervalDetector::detect(IntervalDetector::lapPaces($summary->laps() ?? [])) !== []) {
+            return ['intent' => self::WORKOUT, 'source' => self::LAPS];
+        }
+
+        $easyDay = $planned === SessionType::Easy;
+        if ($summary->zonePct() === [] && ! $easyDay) {
             return ['intent' => self::UNKNOWN, 'source' => self::NONE];
         }
 
@@ -66,7 +83,7 @@ final class SessionIntent
             return ['intent' => self::WORKOUT, 'source' => self::INFERRED];
         }
 
-        return ['intent' => self::EASY, 'source' => self::NONE];
+        return ['intent' => self::EASY, 'source' => $easyDay ? self::PLANNED : self::NONE];
     }
 
     public static function isIntendedHard(ActivityDetail $detail): bool
@@ -82,6 +99,16 @@ final class SessionIntent
             self::STRAVA_RACE => self::RACE,
             self::STRAVA_WORKOUT => self::WORKOUT,
             self::STRAVA_LONG_RUN => self::LONG_RUN,
+            default => null,
+        };
+    }
+
+    private static function fromPlannedType(?SessionType $planned): ?string
+    {
+        return match ($planned) {
+            SessionType::Tempo, SessionType::Interval => self::WORKOUT,
+            SessionType::Race => self::RACE,
+            SessionType::Long => self::LONG_RUN,
             default => null,
         };
     }

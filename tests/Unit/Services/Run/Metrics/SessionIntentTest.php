@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\SessionType;
 use App\Models\ActivityDetail;
 use App\Services\Run\Metrics\SessionIntent;
 
@@ -17,6 +18,18 @@ function intentDetail(array $attrs): ActivityDetail
 function zones(array $zonePct): array
 {
     return ['stream_summary' => ['time_in_zone_pct' => $zonePct]];
+}
+
+/** @param array<string, float> $zonePct */
+function zonesWithReps(array $zonePct): array
+{
+    return ['stream_summary' => ['time_in_zone_pct' => $zonePct, 'laps' => [
+        ['distance_m' => 1000, 'elapsed_sec' => 300],
+        ['distance_m' => 400, 'elapsed_sec' => 180],
+        ['distance_m' => 1000, 'elapsed_sec' => 300],
+        ['distance_m' => 400, 'elapsed_sec' => 180],
+        ['distance_m' => 1000, 'elapsed_sec' => 300],
+    ]]];
 }
 
 it('reads a tagged Strava workout_type as the authoritative intent', function (int $code, string $intent): void {
@@ -71,4 +84,45 @@ it('treats race and workout as intended-hard, everything else as not', function 
         ->and(SessionIntent::isIntendedHard(intentDetail(['workout_type' => 2] + zones(['Z2' => 95]))))->toBeFalse()
         ->and(SessionIntent::isIntendedHard(intentDetail(['workout_type' => null] + zones(['Z2' => 95]))))->toBeFalse()
         ->and(SessionIntent::isIntendedHard(intentDetail(['workout_type' => null, 'stream_summary' => null])))->toBeFalse();
+});
+
+it('reads the planned session type when the run is untagged', function (SessionType $planned, string $intent): void {
+    $result = SessionIntent::forDetail(intentDetail(['workout_type' => null] + zones(['Z2' => 95])), $planned);
+
+    expect($result)->toBe(['intent' => $intent, 'source' => 'planned']);
+})->with([
+    'tempo' => [SessionType::Tempo, SessionIntent::WORKOUT],
+    'interval' => [SessionType::Interval, SessionIntent::WORKOUT],
+    'race' => [SessionType::Race, SessionIntent::RACE],
+    'long' => [SessionType::Long, SessionIntent::LONG_RUN],
+    'easy' => [SessionType::Easy, SessionIntent::EASY],
+]);
+
+it('lets a Strava tag outrank the plan', function (): void {
+    $result = SessionIntent::forDetail(intentDetail(['workout_type' => 2] + zones(['Z2' => 95])), SessionType::Tempo);
+
+    expect($result)->toBe(['intent' => SessionIntent::LONG_RUN, 'source' => 'tagged']);
+});
+
+it('reads structured rep laps as a workout on an easy or unplanned day', function (?SessionType $planned): void {
+    $result = SessionIntent::forDetail(intentDetail(['workout_type' => null] + zonesWithReps(['Z2' => 95])), $planned);
+
+    expect($result)->toBe(['intent' => SessionIntent::WORKOUT, 'source' => 'laps']);
+})->with([
+    'easy day' => [SessionType::Easy],
+    'unplanned' => [null],
+]);
+
+it('falls back to the zone shape on an easy day run as threshold work', function (): void {
+    $result = SessionIntent::forDetail(
+        intentDetail(['workout_type' => null] + zones(['Z1' => 15, 'Z2' => 40, 'Z3' => 20, 'Z4' => 25])),
+        SessionType::Easy,
+    );
+
+    expect($result)->toBe(['intent' => SessionIntent::WORKOUT, 'source' => 'inferred']);
+});
+
+it('keeps an easy day easy when it has no zone data to read', function (): void {
+    expect(SessionIntent::forDetail(intentDetail(['workout_type' => null, 'stream_summary' => null]), SessionType::Easy))
+        ->toBe(['intent' => SessionIntent::EASY, 'source' => 'planned']);
 });

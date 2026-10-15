@@ -9,6 +9,7 @@ use App\Models\ActivityDetail;
 use App\Services\Run\Metrics\DecouplingBands;
 use App\Services\Run\Metrics\RelativeEffort;
 use App\Services\Run\Metrics\SessionIntent;
+use App\Services\Run\Plan\PlannedSessionTypes;
 
 final class EffortContextTool extends ActivityTool
 {
@@ -28,7 +29,7 @@ final class EffortContextTool extends ActivityTool
     public function description(): string
     {
         return 'How hard this session was relative to its intent and to the last 28 days\' habits: '
-            .'session_intent (workout/race/easy/unknown, tagged or inferred), relative_effort band, '
+            .'session_intent (workout/race/long_run/easy/unknown; source tagged, planned, laps or inferred), relative_effort band, '
             .'and decoupling, its own pct plus a relation (up/down/flat -- up means HR drifted up for '
             .'the same pace, there is no sign to read it from yourself). If decoupling is missing, '
             ."this run was too short to measure it, so don't make it up.";
@@ -40,7 +41,7 @@ final class EffortContextTool extends ActivityTool
         $decouplingPct = $this->summary()->steadyEffortDecouplingPct();
 
         return [
-            'session_intent' => SessionIntent::forDetail($this->detail),
+            'session_intent' => SessionIntent::forDetail($this->detail, PlannedSessionTypes::forRun($this->activity->user_id, $this->detail->start_date_local)),
             'relative_effort' => $this->relativeEffort->forRun($this->activity, $this->detail),
             'decoupling' => $decouplingPct === null ? null : [
                 'pct' => abs($decouplingPct),

@@ -617,6 +617,18 @@ it('infers a workout intent from a Z3-Z4 heavy untagged run', function (): void 
         ->toBe(['intent' => 'workout', 'source' => 'inferred']);
 });
 
+it('reads an untagged run on a planned tempo day as a planned workout', function (): void {
+    ['activity' => $a, 'detail' => $d] = agentToolFixture();
+    $d->update([
+        'workout_type' => null,
+        'stream_summary' => ['time_in_zone_pct' => ['Z2' => 90, 'Z3' => 10]],
+    ]);
+    PlannedSession::factory()->for($a->user)->create(['date' => $d->start_date_local->toDateString(), 'session_type' => SessionType::Tempo]);
+
+    expect(new EffortContextTool($a, $d->fresh(), app(RelativeEffort::class))->handle([])['session_intent'])
+        ->toBe(['intent' => 'workout', 'source' => 'planned']);
+});
+
 it('reads relative effort with no comparison when the history is still one run deep', function (): void {
     ['activity' => $a, 'detail' => $d] = agentToolFixture();
     $d->update(['trimp_edwards' => 92.4]);

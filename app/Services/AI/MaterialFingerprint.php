@@ -13,6 +13,7 @@ use App\Services\Run\Metrics\ReadinessCeiling;
 use App\Services\Run\Metrics\SessionIntent;
 use App\Services\Run\Metrics\StreamSummary;
 use App\Services\Run\Plan\ClampNarrationContext;
+use App\Services\Run\Plan\PlannedSessionTypes;
 use App\Enums\Mood;
 
 /**
@@ -137,7 +138,7 @@ final class MaterialFingerprint
             'gap_pace' => $summary->gapPace(),
             'partial_pace' => $summary->partialSplit()['pace'] ?? null,
             'mood' => self::mood($activity),
-            'session_intent' => SessionIntent::forDetail($detail)['intent'],
+            'session_intent' => SessionIntent::forDetail($detail, PlannedSessionTypes::forRun($activity->user_id, $detail->start_date_local))['intent'],
             'has_pr' => PersonalRecord::query()->where('activity_id', $activity->id)->exists(),
         ];
     }
