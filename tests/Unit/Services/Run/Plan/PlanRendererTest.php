@@ -1228,6 +1228,21 @@ it('dayPayload quotes the card\'s elapsed pace in the result note, naming the hi
         ->and($render(3_200))->toBe('it ran harder than the easy effort the day asked for; averaged 6:40/km; effort-adjusted for hills that is 6:20/km, quicker than the easy limit of 6:48/km.');
 });
 
+it('dayPayload paces a tempo day eased to easy over every run the judge graded, not the best one', function (): void {
+    $payload = resultNotePayload(
+        Carbon::parse('2026-08-10'),
+        ['session_type' => SessionType::Tempo, 'compliance_score' => 103, 'intent_evidence' => ['basis' => 'pace', 'pace_sec' => 384, 'ceiling_pace_sec' => 408, 'effective_type' => 'easy']],
+        PlannedSessionStatus::Overreached,
+        ['km' => 10.0, 'runs' => [
+            ['id' => 1, 'km' => 8.0, 'seconds' => 2_880, 'started_at' => '06:00'],
+            ['id' => 2, 'km' => 2.0, 'seconds' => 960, 'started_at' => '17:00'],
+        ]],
+    );
+
+    expect($payload['ran_pace_sec_per_km'])->toBe(384)
+        ->and($payload['result_note'])->toBe('it ran harder than the easy effort the day asked for; averaged 6:24/km, quicker than the easy limit of 6:48/km.');
+});
+
 it('dayPayload names the tilt that lengthened a long run, and none once the cap swallows it', function (): void {
     $session = PlannedSession::factory()->make([
         'date' => '2026-08-12',
