@@ -169,3 +169,34 @@ it('marks a heart-rate read on estimated zones as rough, with or without a numer
         ->and(IntentOutcome::detail(IntentVerdict::TooHard, array_diff_key($steady, ['zones' => 0]), 400))
         ->toBe('averaged 6:40/km, and 30% of the run sat above Z2');
 });
+
+it('names the block that drove a too-hard verdict on a multi-block day', function (string $paces, string $expected): void {
+    $evidence = ['block_minutes' => 20, 'target_pace_sec' => 363, 'block_paces' => $paces, 'block_targets' => '363,363,363', 'block_pace_sec' => 339, 'control' => 'excessive', 'basis' => 'pace'];
+
+    expect(IntentOutcome::outcome(IntentVerdict::TooHard, $evidence))->toBe($expected);
+})->with([
+    'first quick, second near' => ['329,350', 'the first block ran well past the effort it asked for; the second held near target'],
+    'every block quick' => ['329,330', 'the hard blocks ran well past the effort they asked for'],
+    'first and third quick, second slow' => ['329,380,330', 'the first and third blocks ran well past the effort they asked for; the second fell short of target pace'],
+    'one block' => ['329', 'the hard block ran well past the effort it asked for'],
+]);
+
+it('quotes each block beside their average, and the average across every rep', function (): void {
+    $blocks = IntentOutcome::detail(IntentVerdict::TooHard, ['block_minutes' => 20, 'target_pace_sec' => 363, 'block_paces' => '329,350', 'block_pace_sec' => 339, 'control' => 'excessive', 'basis' => 'pace'], null);
+    $block = IntentOutcome::detail(IntentVerdict::Hit, ['block_minutes' => 20, 'target_pace_sec' => 363, 'block_paces' => '360', 'block_pace_sec' => 360, 'basis' => 'pace'], null);
+    $reps = IntentOutcome::detail(IntentVerdict::Hit, ['reps_prescribed' => 5, 'reps_needed' => 4, 'reps_at_pace' => 4, 'rep_pace_sec' => 286, 'target_pace_sec' => 290, 'basis' => 'laps'], null);
+
+    expect($blocks)->toBe('the blocks averaged 5:39/km (5:29, 5:50), well quicker than the 6:03/km target pace')
+        ->and($block)->toBe('the block averaged 6:00/km, on the 6:03/km target pace')
+        ->and($reps)->toBe('4 of 5 reps landed on the 4:50/km rep pace, averaging 4:46/km');
+});
+
+it('compares the blocks\' average with the target by its own numbers when too few blocks held pace', function (): void {
+    $evidence = ['block_minutes' => 30, 'target_pace_sec' => 310, 'block_paces' => '250,330,330', 'block_pace_sec' => 303, 'blocks_at_pace' => 1, 'basis' => 'heart_rate', 'zone' => 'Z3', 'zone_minutes' => 12];
+    $slowAverage = ['block_paces' => '315,318,380', 'block_pace_sec' => 338, 'blocks_at_pace' => 2, 'basis' => 'pace', 'control' => 'controlled'] + $evidence;
+
+    expect(IntentOutcome::detail(IntentVerdict::Missed, $evidence, null))
+        ->toBe('the blocks averaged 5:03/km (4:10, 5:30, 5:30), on the 5:10/km target pace, and heart rate spent only 12 of the 30 minutes asked in Z3 or above')
+        ->and(IntentOutcome::detail(IntentVerdict::Hit, $slowAverage, null))
+        ->toBe('the blocks averaged 5:38/km (5:15, 5:18, 6:20), slower than the 5:10/km target pace');
+});

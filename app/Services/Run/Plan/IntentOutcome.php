@@ -24,6 +24,8 @@ final class IntentOutcome
 
     private const string REPS = 'reps';
 
+    private const array ORDINALS = ['first', 'second', 'third', 'fourth', 'fifth', 'sixth'];
+
     /**
      * The verdict as a clause that stands on its own.
      *
@@ -152,9 +154,11 @@ final class IntentOutcome
         }
 
         if (($evidence['control'] ?? null) === 'excessive') {
-            return $family === self::REPS
-                ? 'the reps ran well past the effort they asked for'
-                : 'the hard block ran well past the effort it asked for';
+            return match (true) {
+                $family === self::REPS => 'the reps ran well past the effort they asked for',
+                count(self::blocks($evidence)) > 1 => self::blockByBlock(self::blocks($evidence)),
+                default => 'the hard block ran well past the effort it asked for',
+            };
         }
 
         return ($evidence['stimulus_family'] ?? null) === 'hard' && $family === self::STEADY
@@ -214,17 +218,26 @@ final class IntentOutcome
         $excessive = ($evidence['control'] ?? null) === 'excessive';
         $parts = [];
 
+        $onPace = is_numeric($evidence['block_pace_sec'] ?? null)
+            ? (int) $evidence['block_pace_sec'] <= (int) ($evidence['target_pace_sec'] ?? 0) + SessionIntentJudge::PACE_TOLERANCE_SEC
+            : $hit && ($evidence['basis'] ?? null) !== 'heart_rate';
+        $comparison = match (true) {
+            $excessive => "well quicker than the {$target} {$targetName}",
+            $onPace => "on the {$target} {$targetName}",
+            default => "slower than the {$target} {$targetName}",
+        };
+
         if (is_numeric($evidence['reps_at_pace'] ?? null) && $target !== null) {
-            $parts[] = $excessive
+            $parts[] = ($excessive
                 ? "{$evidence['reps_at_pace']} of {$evidence['reps_prescribed']} reps ran well quicker than the {$target} {$targetName}"
-                : ($hit ? '' : 'only ')."{$evidence['reps_at_pace']} of {$evidence['reps_prescribed']} reps landed on the {$target} {$targetName}";
+                : ($hit ? '' : 'only ')."{$evidence['reps_at_pace']} of {$evidence['reps_prescribed']} reps landed on the {$target} {$targetName}")
+                .(is_numeric($evidence['rep_pace_sec'] ?? null) ? ', averaging '.self::pace((int) $evidence['rep_pace_sec']) : '');
+        } elseif (is_numeric($evidence['block_pace_sec'] ?? null) && $target !== null) {
+            $blocks = self::blocks($evidence);
+            $parts[] = count($blocks) > 1
+                ? 'the blocks averaged '.self::pace((int) $evidence['block_pace_sec']).' ('.implode(', ', array_map(static fn (array $block): string => PaceFormatter::format((float) $block['pace']), $blocks))."), {$comparison}"
+                : 'the block averaged '.self::pace((int) $evidence['block_pace_sec']).", {$comparison}";
         } elseif (isset($evidence['window']) && is_numeric($evidence['window_pace_sec'] ?? null) && $target !== null) {
-            $onPace = $hit && ($evidence['basis'] ?? null) !== 'heart_rate';
-            $comparison = match (true) {
-                $excessive => "well quicker than the {$target} {$targetName}",
-                $onPace => "on the {$target} {$targetName}",
-                default => "slower than the {$target} {$targetName}",
-            };
             $parts[] = 'best '.self::windowWords((string) $evidence['window']).' stretch averaged '.self::pace((int) $evidence['window_pace_sec']).", {$comparison}";
         }
 
@@ -242,6 +255,55 @@ final class IntentOutcome
         }
 
         return $parts === [] ? null : implode($hit ? ', but ' : ', and ', $parts);
+    }
+
+    /**
+     * Each measured block's pace beside the target it was run against.
+     *
+     * @param  array<string, int|float|string>  $evidence
+     * @return list<array{pace: int, target: int}>
+     */
+    private static function blocks(array $evidence): array
+    {
+        if (! isset($evidence['block_paces']) || ! is_numeric($evidence['target_pace_sec'] ?? null)) {
+            return [];
+        }
+
+        $paces = array_map(intval(...), explode(',', (string) $evidence['block_paces']));
+        $targets = isset($evidence['block_targets']) ? array_map(intval(...), explode(',', (string) $evidence['block_targets'])) : [];
+
+        return array_map(static fn (int $pace, int $index): array => ['pace' => $pace, 'target' => $targets[$index] ?? (int) $evidence['target_pace_sec']], $paces, array_keys($paces));
+    }
+
+    /**
+     * Which blocks drove a too-hard verdict, in the order they were run.
+     *
+     * @param  list<array{pace: int, target: int}>  $blocks
+     */
+    private static function blockByBlock(array $blocks): string
+    {
+        $groups = [];
+        foreach ($blocks as $index => $block) {
+            $groups[match (true) {
+                $block['pace'] < $block['target'] * (1 - SessionIntentJudge::EXCESSIVE_FRACTION) => 'ran well past the effort it asked for',
+                $block['pace'] <= $block['target'] + SessionIntentJudge::PACE_TOLERANCE_SEC => 'held near target',
+                default => 'fell short of target pace',
+            }][] = $index;
+        }
+
+        if (array_keys($groups) === ['ran well past the effort it asked for']) {
+            return 'the hard blocks ran well past the effort they asked for';
+        }
+
+        $clauses = [];
+        foreach ($groups as $words => $indexes) {
+            $named = array_map(static fn (int $index): string => self::ORDINALS[$index] ?? 'block '.($index + 1), $indexes);
+            $clauses[] = count($named) > 1
+                ? 'the '.implode(', ', array_slice($named, 0, -1)).' and '.end($named).' blocks '.str_replace('it asked', 'they asked', $words)
+                : 'the '.$named[0].($clauses === [] ? ' block ' : ' ').$words;
+        }
+
+        return implode('; ', $clauses);
     }
 
     /** @param  array<string, int|float|string>  $evidence */

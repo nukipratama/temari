@@ -26,6 +26,8 @@ code_refs:
 
 > **Partly superseded (2026-10-08) by [[grading-follows-shown-advice-and-actual-stimulus]].** "Reaching pace there is `hit`" now holds only when the rep-length window covers about 90% of the requested work, which on a kilometre grid means a day needing one rep. On a longer day a window at pace is `hit` only when heart rate at or above the rep zone covers the requested minutes, and `unknown` otherwise. A window short of pace is still `missed`. A tempo day of several blocks is measured against all of them the same way.
 
+> **Partly superseded (2026-10-15) by [[a-quality-day-is-judged-on-every-block]].** A tempo's blocks are measured one by one, off autosplit-merged laps or the raw stream, and read the way reps are; the best-window reading stands only when neither works.
+
 > **Partly superseded (2026-10-09) by [[plan-adaptation-responds-to-stimulus]].** "The weekly adaptation keeps reading distance alone" no longer holds: `PlanAdapter::adapt` also takes the stimulus adherence of the key sessions and reduces quality on `AdaptationReason::MissedStimulus`; the day-level verdict is unchanged.
 
 ## Context

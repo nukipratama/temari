@@ -12,6 +12,7 @@ use App\Enums\PaceBand;
 use App\Enums\SegmentKey;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
+use App\Models\ActivityStream;
 use App\Models\PlannedSession;
 use App\Models\RecommendationRevision;
 use App\Models\User;
@@ -180,15 +181,16 @@ final readonly class ComplianceScorer
 
                 continue;
             }
+            $streams = $effectiveType === SessionType::Easy && $row->session_type === SessionType::Easy ? [] : self::streamsOf($runsByDate[$date] ?? []);
             if (isset($declaredAfterRunDates[$date])) {
-                $intents[$date] = $this->madeUpIntent($user, $row, $effectiveType, $plannedKmByDate[$date], $runsByDate[$date] ?? [], $heartRateCapped);
+                $intents[$date] = $this->madeUpIntent($user, $row, $effectiveType, $plannedKmByDate[$date], $runsByDate[$date] ?? [], $heartRateCapped, $streams);
 
                 continue;
             }
             $recommendation = $recommendationsByDate[$date] ?? null;
             $intents[$date] = $recommendation === null
                 ? ['verdict' => IntentVerdict::Unknown, 'evidence' => ['advice_history' => 'unknown']]
-                : self::shownIntent($recommendation, $runsByDate[$date] ?? [], $heartRateCapped);
+                : self::shownIntent($recommendation, $runsByDate[$date] ?? [], $heartRateCapped, $streams);
         }
 
         return $intents;
@@ -201,9 +203,10 @@ final readonly class ComplianceScorer
      * stays distinguishable from a plain miss.
      *
      * @param  list<ActivityDetail>  $runs
+     * @param  array<int, array<string, mixed>>  $streams
      * @return array{verdict: IntentVerdict, evidence: array<string, int|float|string>}
      */
-    private static function shownIntent(RecommendationRevision $recommendation, array $runs, bool $heartRateCapped): array
+    private static function shownIntent(RecommendationRevision $recommendation, array $runs, bool $heartRateCapped, array $streams): array
     {
         $effectiveType = SessionType::from($recommendation->effective['session_type']);
         $effectiveSegments = self::segmentsOf($recommendation->effective['segments'] ?? []);
@@ -214,7 +217,7 @@ final readonly class ComplianceScorer
         $eased = $originalHardMinutes > 0.0
             && ($originalType !== $effectiveType || self::hardMinutes($effectiveSegments) < $originalHardMinutes);
 
-        $reading = SessionIntentJudge::judge($effectiveType, $effectiveSegments, $paces, $runs, $heartRateCapped);
+        $reading = SessionIntentJudge::judge($effectiveType, $effectiveSegments, $paces, $runs, $heartRateCapped, $streams);
         $evidence = $reading['evidence'] + ['recommendation_revision_id' => $recommendation->id, 'advice_history' => 'shown', 'effective_type' => $effectiveType->value];
         $verdict = $reading['verdict'];
 
@@ -229,7 +232,7 @@ final readonly class ComplianceScorer
 
         $evidence['eased_from'] = $originalType->value;
         $evidence['concern'] = self::concernOf($recommendation->effective['readiness_assessment'] ?? null);
-        $original = SessionIntentJudge::judge($originalType, $originalSegments, $paces, $runs, $heartRateCapped);
+        $original = SessionIntentJudge::judge($originalType, $originalSegments, $paces, $runs, $heartRateCapped, $streams);
         if (in_array($original['verdict'], [IntentVerdict::Hit, IntentVerdict::TooHard], true)
             && in_array($original['evidence']['stimulus_family'] ?? null, ['tempo', 'interval', 'hard'], true)) {
             $evidence['original_completed'] = $original['evidence']['control'] ?? 'controlled';
@@ -260,16 +263,17 @@ final readonly class ComplianceScorer
      * declared after the run, so it never teaches quality progression.
      *
      * @param  list<ActivityDetail>  $runs
+     * @param  array<int, array<string, mixed>>  $streams
      * @return array{verdict: IntentVerdict, evidence: array<string, int|float|string>}
      */
-    private function madeUpIntent(User $user, PlannedSession $row, SessionType $type, float $coreKm, array $runs, bool $heartRateCapped): array
+    private function madeUpIntent(User $user, PlannedSession $row, SessionType $type, float $coreKm, array $runs, bool $heartRateCapped, array $streams): array
     {
         $paces = $this->paceCalculator->fromVdotResult($this->vdotEstimator->estimate($user, $row->date));
         $prescription = IntensityPrescription::fromSession($row);
         $segments = $prescription !== null && $type->isQuality()
             ? SegmentGenerator::forPrescription($type, $row->phase, $coreKm, $paces, $prescription)
             : SegmentGenerator::forCoreKm($type, $row->phase, $row->race_distance_m === null ? null : (float) $row->race_distance_m, $coreKm, $paces);
-        $reading = SessionIntentJudge::judge($type, $segments, $paces, $runs, $heartRateCapped);
+        $reading = SessionIntentJudge::judge($type, $segments, $paces, $runs, $heartRateCapped, $streams);
 
         return [
             'verdict' => $reading['verdict'],
@@ -350,6 +354,26 @@ final readonly class ComplianceScorer
     private static function hardMinutes(array $segments): float
     {
         return array_sum(array_map(static fn (SessionSegment $segment): float => $segment->paceLabel === PaceBand::Easy ? 0.0 : ($segment->minutes ?? 0.0), $segments));
+    }
+
+    /**
+     * The day's raw streams, keyed by activity id, for the judge to find blocks
+     * the laps don't mark.
+     *
+     * @param  list<ActivityDetail>  $runs
+     * @return array<int, array<string, mixed>>
+     */
+    private static function streamsOf(array $runs): array
+    {
+        if ($runs === []) {
+            return [];
+        }
+
+        return ActivityStream::query()
+            ->whereIn('activity_id', array_map(static fn (ActivityDetail $run): int => $run->activity_id, $runs))
+            ->get(['activity_id', 'data'])
+            ->mapWithKeys(static fn (ActivityStream $stream): array => [$stream->activity_id => $stream->data])
+            ->all();
     }
 
     /**

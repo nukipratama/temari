@@ -14,6 +14,7 @@ use App\Services\Run\Metrics\HeartRateZones;
 use App\Services\Run\Metrics\IntervalDetector;
 use App\Services\Run\Metrics\PaceFormatter;
 use App\Services\Run\Metrics\StreamSummary;
+use App\Services\Run\Metrics\WorkBlocks;
 
 /**
  * Whether a graded day's runs did what its session was written for, measured
@@ -35,9 +36,10 @@ final class SessionIntentJudge
      * @param  array{easy: int, marathon: int, threshold: int, interval: int}|null  $paces
      * @param  list<ActivityDetail>  $runs  every run logged on the day
      * @param  bool  $heartRateCapped  whether the athlete's zones are their own, so easy effort is capped by heart rate
+     * @param  array<int, array<string, mixed>>  $streams  raw Strava streams dicts, keyed by activity id
      * @return array{verdict: IntentVerdict, evidence: array<string, int|float|string>}
      */
-    public static function judge(SessionType $sessionType, array $segments, ?array $paces, array $runs, bool $heartRateCapped = false): array
+    public static function judge(SessionType $sessionType, array $segments, ?array $paces, array $runs, bool $heartRateCapped = false, array $streams = []): array
     {
         if ($paces === null || $runs === []) {
             return self::reading(IntentVerdict::Unknown);
@@ -45,10 +47,10 @@ final class SessionIntentJudge
 
         return match ($sessionType) {
             SessionType::Tempo, SessionType::Interval => array_any($segments, static fn (SessionSegment $segment): bool => $segment->key === SegmentKey::Interval)
-                ? self::interval($segments, $runs)
-                : self::tempo($segments, $runs),
+                ? self::interval($segments, $runs, $paces['easy'], $streams)
+                : self::tempo($segments, $runs, $paces['easy'], $streams),
             SessionType::Long => self::hasHardBlock($segments) && count($segments) > 1
-                ? self::withEasyParts(self::tempo($segments, $runs), $segments, $runs, $heartRateCapped)
+                ? self::withEasyParts(self::tempo($segments, $runs, $paces['easy'], $streams), $segments, $runs, $heartRateCapped)
                 : self::steady($segments, $paces, $runs, $heartRateCapped),
             SessionType::Easy => self::steady($segments, $paces, $runs, $heartRateCapped),
             SessionType::Rest, SessionType::Race => self::reading(IntentVerdict::Unknown),
@@ -58,13 +60,17 @@ final class SessionIntentJudge
     /**
      * @param  list<SessionSegment>  $segments
      * @param  non-empty-list<ActivityDetail>  $runs
+     * @param  array<int, array<string, mixed>>  $streams
      * @return array{verdict: IntentVerdict, evidence: array<string, int|float|string>}
      */
-    private static function tempo(array $segments, array $runs): array
+    private static function tempo(array $segments, array $runs, int $easyPaceSec, array $streams): array
     {
         $blocks = self::workUnits($segments, SegmentKey::Main);
-        $block = $blocks[0] ?? null;
-        if ($block?->minutes === null || $block->paceSecPerKm === null) {
+        if ($blocks === []) {
+            return self::reading(IntentVerdict::Unknown);
+        }
+        $block = $blocks[0];
+        if ($block->minutes === null || $block->paceSecPerKm === null) {
             return self::reading(IntentVerdict::Unknown);
         }
 
@@ -80,6 +86,11 @@ final class SessionIntentJudge
 
         if (self::cannotCover($runs, $anchor, $longestMinutes)) {
             return self::unknownWithHeartRate($evidence, $runs, $block->zone, 'tempo');
+        }
+
+        $measured = self::measured($anchor, $summary, $blocks, $easyPaceSec, $streams);
+        if ($measured !== null) {
+            return self::blocksReading($measured, $blocks, $summary, $runs, $block->zone, $totalMinutes, $evidence);
         }
 
         [$window, $windowPace, $windowSeconds] = self::bestWindow($summary, $longestMinutes);
@@ -100,6 +111,122 @@ final class SessionIntentJudge
         }
 
         return self::onHeartRate($summary, $runs, $block->zone, $totalMinutes, $coveredSeconds !== null && $windowPace !== null, $evidence, 'tempo', 'window');
+    }
+
+    /**
+     * The prescribed blocks as run: off the laps when they line up with the
+     * prescription, else the quickest non-overlapping block-length stretches
+     * of the stream, else null.
+     *
+     * @param  non-empty-list<SessionSegment>  $blocks
+     * @param  array<int, array<string, mixed>>  $streams
+     * @return array{source: string, units: list<array{seconds: float, km: float}>}|null
+     */
+    private static function measured(ActivityDetail $anchor, StreamSummary $summary, array $blocks, int $easyPaceSec, array $streams): ?array
+    {
+        $prescribed = array_map(static fn (SessionSegment $block): array => [
+            'seconds' => ($block->minutes ?? 0.0) * 60,
+            'km' => $block->km ?? ($block->paceSecPerKm > 0 ? ($block->minutes ?? 0.0) * 60 / $block->paceSecPerKm : 0.0),
+        ], $blocks);
+        $slowest = max(array_map(static fn (SessionSegment $block): int => (int) $block->paceSecPerKm, $blocks));
+
+        $fromLaps = WorkBlocks::fromLaps($summary->laps() ?? [], $prescribed, $slowest, $easyPaceSec);
+        if ($fromLaps !== null) {
+            return ['source' => 'laps', 'units' => $fromLaps];
+        }
+
+        $stream = $streams[$anchor->activity_id] ?? null;
+        $fromStream = $stream === null ? null : WorkBlocks::fromStream($stream, array_map(static fn (array $block): int => (int) round($block['seconds']), $prescribed));
+
+        return $fromStream === null ? null : ['source' => 'stream', 'units' => $fromStream];
+    }
+
+    /**
+     * Every block measured, read the way reps are: all but one on pace (one
+     * when only one or two were asked) did the work, unless their
+     * time-weighted pace beat the target by more than
+     * {@see self::EXCESSIVE_FRACTION}; short of that, heart rate decides.
+     *
+     * @param  array{source: string, units: list<array{seconds: float, km: float}>}  $measured
+     * @param  non-empty-list<SessionSegment>  $blocks
+     * @param  non-empty-list<ActivityDetail>  $runs
+     * @param  array<string, int|float|string>  $evidence
+     * @return array{verdict: IntentVerdict, evidence: array<string, int|float|string>}
+     */
+    private static function blocksReading(array $measured, array $blocks, StreamSummary $summary, array $runs, string $zone, float $totalMinutes, array $evidence): array
+    {
+        $paces = [];
+        $targets = [];
+        $atPace = 0;
+        $seconds = 0.0;
+        $km = 0.0;
+        $targetSeconds = 0.0;
+        foreach ($measured['units'] as $index => $unit) {
+            $pace = (int) round($unit['seconds'] / $unit['km']);
+            $target = $blocks[$index]->paceSecPerKm ?? (int) $blocks[0]->paceSecPerKm;
+            $paces[] = $pace;
+            $targets[] = $target;
+            $atPace += $pace <= $target + self::PACE_TOLERANCE_SEC ? 1 : 0;
+            $seconds += $unit['seconds'];
+            $km += $unit['km'];
+            $targetSeconds += $target * $unit['km'];
+        }
+        $meanPace = (int) round($seconds / $km);
+        $source = $measured['source'] === 'laps' ? 'laps' : 'window';
+        $evidence += [
+            'blocks_prescribed' => count($blocks),
+            'blocks_at_pace' => $atPace,
+            'block_paces' => implode(',', $paces),
+            'block_targets' => implode(',', $targets),
+            'block_pace_sec' => $meanPace,
+            'block_source' => $measured['source'],
+        ];
+
+        if ($atPace < max(1, count($blocks) - 1)) {
+            return self::onHeartRate($summary, $runs, $zone, $totalMinutes, true, $evidence, 'tempo', $source);
+        }
+
+        $stimulus = self::stimulus('tempo', $seconds / 60, $source);
+        if ($meanPace < $targetSeconds / $km * (1 - self::EXCESSIVE_FRACTION)) {
+            return self::reading(IntentVerdict::TooHard, $evidence + ['basis' => 'pace', 'control' => 'excessive'] + $stimulus);
+        }
+
+        return self::reading(IntentVerdict::Hit, $evidence + ['basis' => 'pace', 'control' => 'controlled'] + $stimulus);
+    }
+
+    /**
+     * Reps found in the stream when no laps mark them, read the same way lap
+     * reps are. A stretch counts as a rep run at all when it was quicker than
+     * halfway between rep and easy pace, and only those make the average.
+     *
+     * @param  list<array{seconds: float, km: float}>  $found
+     * @param  callable(int): int  $targetOf
+     * @param  non-empty-list<ActivityDetail>  $runs
+     * @param  array<string, int|float|string>  $evidence
+     * @return array{verdict: IntentVerdict, evidence: array<string, int|float|string>}
+     */
+    private static function repsFromStream(array $found, callable $targetOf, float $workThreshold, int $needed, float $repMinutes, StreamSummary $summary, array $runs, string $zone, array $evidence): array
+    {
+        $paces = array_map(static fn (array $stretch): int => (int) round($stretch['seconds'] / $stretch['km']), $found);
+        $run = array_values(array_filter($paces, static fn (int $pace): bool => $pace <= $workThreshold));
+        $counted = array_filter($paces, static fn (int $pace, int $index): bool => $pace <= $targetOf($index) + self::PACE_TOLERANCE_SEC, ARRAY_FILTER_USE_BOTH);
+        $evidence['reps_at_pace'] = count($counted);
+        if ($run !== []) {
+            $evidence['rep_pace_sec'] = (int) round(array_sum($run) / count($run));
+        }
+
+        if (count($counted) < $needed) {
+            return self::onHeartRate($summary, $runs, $zone, $needed * $repMinutes, true, $evidence, 'interval', 'window');
+        }
+
+        $meanPace = array_sum($counted) / count($counted);
+        $meanTarget = array_sum(array_map($targetOf, array_keys($counted))) / count($counted);
+        $stimulus = self::stimulus('interval', count($counted) * $repMinutes, 'window');
+        if ($meanPace < $meanTarget * (1 - self::EXCESSIVE_FRACTION)) {
+            return self::reading(IntentVerdict::TooHard, $evidence + ['basis' => 'window', 'control' => 'excessive'] + $stimulus);
+        }
+
+        return self::reading(IntentVerdict::Hit, $evidence + ['basis' => 'window', 'control' => 'controlled'] + $stimulus);
     }
 
     /**
@@ -147,15 +274,19 @@ final class SessionIntentJudge
     /**
      * @param  list<SessionSegment>  $segments
      * @param  non-empty-list<ActivityDetail>  $runs
+     * @param  array<int, array<string, mixed>>  $streams
      * @return array{verdict: IntentVerdict, evidence: array<string, int|float|string>}
      */
-    private static function interval(array $segments, array $runs): array
+    private static function interval(array $segments, array $runs, int $easyPaceSec, array $streams): array
     {
         $reps = self::workUnits($segments, SegmentKey::Interval);
-        $rep = $reps[0] ?? null;
-        $repMinutes = $rep?->minutes;
-        $repPace = $rep?->paceSecPerKm;
-        if ($rep === null || $repMinutes === null || $repPace === null) {
+        if ($reps === []) {
+            return self::reading(IntentVerdict::Unknown);
+        }
+        $rep = $reps[0];
+        $repMinutes = $rep->minutes;
+        $repPace = $rep->paceSecPerKm;
+        if ($repMinutes === null || $repPace === null) {
             return self::reading(IntentVerdict::Unknown);
         }
 
@@ -177,11 +308,12 @@ final class SessionIntentJudge
             return self::unknownWithHeartRate($evidence, $runs, $rep->zone, 'interval');
         }
 
+        $targetOf = static fn (int $index): int => $repPaces[min($index, count($repPaces) - 1)];
         $laps = $summary->laps() ?? [];
         $lapPaces = IntervalDetector::lapPaces($laps);
         $work = IntervalDetector::detect($lapPaces);
         if ($work !== []) {
-            $targetOf = static fn (int $index): int => $repPaces[min($index, count($repPaces) - 1)];
+            $evidence['rep_pace_sec'] = (int) round(array_sum(array_map(static fn (int $position): float => $lapPaces[$position], $work)) / count($work));
             $counted = array_filter($work, static fn (int $position, int $index): bool => $lapPaces[$position] <= $targetOf($index) + self::PACE_TOLERANCE_SEC
                 && is_numeric($laps[$position]['elapsed_sec'] ?? null)
                 && (float) $laps[$position]['elapsed_sec'] >= $repMinutes * 60 * self::MIN_COVERAGE, ARRAY_FILTER_USE_BOTH);
@@ -198,6 +330,12 @@ final class SessionIntentJudge
             }
 
             return self::onHeartRate($summary, $runs, $rep->zone, $needed * $repMinutes, true, $evidence, 'interval', 'laps');
+        }
+
+        $stream = $streams[$anchor->activity_id] ?? null;
+        $found = $stream === null ? null : WorkBlocks::fromStream($stream, array_map(static fn (SessionSegment $segment): int => (int) round(($segment->minutes ?? $repMinutes) * 60), $reps));
+        if ($found !== null) {
+            return self::repsFromStream($found, $targetOf, (max($repPaces) + $easyPaceSec) / 2, $needed, $repMinutes, $summary, $runs, $rep->zone, $evidence);
         }
 
         [$window, $windowPace, $windowSeconds] = self::bestWindow($summary, $repMinutes);

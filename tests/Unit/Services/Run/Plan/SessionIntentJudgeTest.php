@@ -550,3 +550,114 @@ it('judges a fast-finish long run on its fast block, 5K pace included, and holds
     expect($reading['verdict'])->toBe(IntentVerdict::Hit)
         ->and($reading['evidence'])->toMatchArray(['target_pace_sec' => 285, 'block_minutes' => 20.0, 'easy_parts' => 'held']);
 });
+
+/**
+ * A 1 Hz raw stream run segment by segment at the given pace.
+ *
+ * @param  list<array{0: int, 1: int}>  $segments  [seconds, pace sec/km]
+ * @return array<string, mixed>
+ */
+function judgeStream(array $segments): array
+{
+    $time = [];
+    $velocity = [];
+    $clock = 0;
+    foreach ($segments as [$seconds, $pace]) {
+        for ($i = 0; $i < $seconds; $i++) {
+            $time[] = $clock++;
+            $velocity[] = 1000 / $pace;
+        }
+    }
+
+    return ['time' => ['data' => $time], 'velocity_smooth' => ['data' => $velocity]];
+}
+
+/**
+ * @param  list<array{0: int, 1: int}>  $first  [distance_m, elapsed_sec] laps run inside the first block
+ * @param  list<array{0: int, 1: int}>  $second  the same for the second
+ */
+function twoBlockLapRun(array $first, array $second): ActivityDetail
+{
+    return judgeRun(8.0, 2900, ['laps' => lapRows([[1500, 600], ...$first, [400, 180], ...$second, [1000, 400], [800, 330]])]);
+}
+
+it('reads each tempo block off laps an autosplit cut in two, and calls the day too hard on their average', function (): void {
+    $run = twoBlockLapRun([[1000, 280], [1000, 285]], [[1000, 300], [1000, 305]]);
+
+    $reading = SessionIntentJudge::judge(SessionType::Tempo, tempoBlocksDay(blocks: 2), JUDGE_PACES, [$run]);
+
+    expect($reading['verdict'])->toBe(IntentVerdict::TooHard)
+        ->and($reading['evidence'])->toMatchArray([
+            'basis' => 'pace',
+            'control' => 'excessive',
+            'blocks_prescribed' => 2,
+            'blocks_at_pace' => 2,
+            'block_paces' => '283,303',
+            'block_targets' => '310,310',
+            'block_pace_sec' => 293,
+            'block_source' => 'laps',
+            'stimulus_source' => 'laps',
+        ])
+        ->and($reading['evidence'])->not->toHaveKey('window');
+});
+
+it('keeps blocks within five percent of target controlled', function (): void {
+    $run = twoBlockLapRun([[1000, 300], [1000, 300]], [[1000, 305], [1000, 305]]);
+
+    $reading = SessionIntentJudge::judge(SessionType::Tempo, tempoBlocksDay(blocks: 2), JUDGE_PACES, [$run]);
+
+    expect($reading['verdict'])->toBe(IntentVerdict::Hit)
+        ->and($reading['evidence'])->toMatchArray(['control' => 'controlled', 'block_pace_sec' => 303]);
+});
+
+it('needs all but one of three blocks on pace, and lets heart rate decide when two fall short', function (): void {
+    $laps = static fn (int $secondPace, int $thirdPace): ActivityDetail => judgeRun(10.0, 3600, ['laps' => lapRows([
+        [1500, 600], [2000, 610], [400, 180], [2000, $secondPace * 2], [400, 180], [2000, $thirdPace * 2], [1000, 400],
+    ])]);
+
+    $oneSlow = SessionIntentJudge::judge(SessionType::Tempo, tempoBlocksDay(), JUDGE_PACES, [$laps(340, 310)]);
+    $twoSlow = SessionIntentJudge::judge(SessionType::Tempo, tempoBlocksDay(), JUDGE_PACES, [$laps(340, 340)]);
+
+    expect($oneSlow['verdict'])->toBe(IntentVerdict::Hit)
+        ->and($oneSlow['evidence'])->toMatchArray(['blocks_at_pace' => 2, 'block_paces' => '305,340,310'])
+        ->and($twoSlow['verdict'])->toBe(IntentVerdict::Missed)
+        ->and($twoSlow['evidence'])->toMatchArray(['blocks_at_pace' => 1]);
+});
+
+it('finds each block in the raw stream when the laps cannot mark them', function (): void {
+    $run = judgeRun(8.0, 2880)->forceFill(['activity_id' => 7]);
+    $stream = judgeStream([[600, 400], [600, 300], [180, 450], [600, 305], [900, 400]]);
+
+    $reading = SessionIntentJudge::judge(SessionType::Tempo, tempoBlocksDay(blocks: 2), JUDGE_PACES, [$run], streams: [7 => $stream]);
+
+    expect($reading['verdict'])->toBe(IntentVerdict::Hit)
+        ->and($reading['evidence'])->toMatchArray([
+            'block_paces' => '300,305',
+            'block_source' => 'stream',
+            'stimulus_source' => 'window',
+            'stimulus_minutes' => 20.0,
+        ]);
+});
+
+it('averages every lap rep, the slow one included', function (): void {
+    $laps = lapRows([[2000, 800], [630, 180], [300, 130], [620, 180], [300, 130], [640, 180], [300, 130], [560, 180], [1000, 400]]);
+
+    $reading = SessionIntentJudge::judge(SessionType::Interval, intervalDay(), JUDGE_PACES, [judgeRun(6.6, 2300, ['laps' => $laps])]);
+
+    expect($reading['evidence'])->toMatchArray(['reps_at_pace' => 3, 'rep_pace_sec' => 295]);
+});
+
+it('finds reps in the raw stream when no laps mark them, averaging only the stretches that were run as reps', function (): void {
+    $run = judgeRun(6.0, 2520)->forceFill(['activity_id' => 7]);
+    $rep = [[180, 280], [120, 450]];
+    $all = judgeStream([[720, 400], ...$rep, ...$rep, ...$rep, ...$rep, [600, 400]]);
+    $half = judgeStream([[720, 400], ...$rep, ...$rep, [180, 400], [120, 450], [180, 400], [120, 450], [600, 400]]);
+
+    $done = SessionIntentJudge::judge(SessionType::Interval, intervalDay(), JUDGE_PACES, [$run], streams: [7 => $all]);
+    $short = SessionIntentJudge::judge(SessionType::Interval, intervalDay(), JUDGE_PACES, [$run], streams: [7 => $half]);
+
+    expect($done['verdict'])->toBe(IntentVerdict::Hit)
+        ->and($done['evidence'])->toMatchArray(['basis' => 'window', 'reps_at_pace' => 4, 'rep_pace_sec' => 280])
+        ->and($short['verdict'])->toBe(IntentVerdict::Missed)
+        ->and($short['evidence'])->toMatchArray(['reps_at_pace' => 2, 'rep_pace_sec' => 280]);
+});
