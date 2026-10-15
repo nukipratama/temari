@@ -94,7 +94,7 @@ final readonly class SessionMatcher
             $isPast = Carbon::parse($date)->lt($today);
             $day = $completed[$date] ?? ['sum' => 0.0, 'longest' => 0.0];
             $session = $sessionByDate[$date] ?? null;
-            $type = $sessionTypesByDate[$date] ?? $session?->session_type;
+            $type = $sessionTypesByDate[$date] ?? ($session === null ? null : EffectiveSession::settledTypeOf($session));
             $timeTrial = $session !== null && $type === $session->session_type && TimeTrial::of($session) !== null;
             $creditedKm = self::creditedKm($type, $day, $timeTrial);
             $results[$date] = self::scoreFor(

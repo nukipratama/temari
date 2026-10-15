@@ -295,6 +295,23 @@ it('grades a long day the clamp eased to an easy run on the day total alone', fu
         ->and($verdict['score'])->toBe(119);
 });
 
+it('sums a quality day the clamp eased to an easy run rather than crediting its best run', function (SessionType $type): void {
+    $user = User::factory()->create();
+    PlannedSession::factory()->for($user)->create([
+        'date' => '2026-08-03',
+        'phase' => PlanPhase::Build,
+        'session_type' => $type,
+        'clamped_km' => 8.0,
+    ]);
+    logRun($user, '2026-08-03', 6.0);
+    logRun($user, '2026-08-03', 3.0);
+
+    $verdict = app(SessionMatcher::class)->scoreRange($user, ['2026-08-03' => 8.0], [], Carbon::parse('2026-08-10'))['2026-08-03'];
+
+    expect($verdict['status'])->toBe(PlannedSessionStatus::Done)
+        ->and($verdict['score'])->toBe(113);
+})->with([[SessionType::Tempo], [SessionType::Interval]]);
+
 it('keeps the single-run rule on a long day the clamp only eased the pace of', function (): void {
     $user = User::factory()->create();
     PlannedSession::factory()->for($user)->create([
