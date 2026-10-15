@@ -82,7 +82,25 @@ it('changes nothing the second time it runs', function (): void {
     expect($row->refresh()->only(['status', 'compliance_score', 'distance_score', 'intent_verdict', 'prescribed_km', 'ran_anyway', 'updated_at']))->toEqual($first);
 });
 
-it('leaves today and the days before the season alone', function (): void {
+it('regrades a day already credited today, rewriting its stale intent evidence', function (): void {
+    $row = regradeFastEasyDay($this->user, '2026-08-20', PlannedSessionStatus::Done);
+    $row->update(['intent_verdict' => IntentVerdict::Hit, 'intent_evidence' => ['stale' => 1]]);
+
+    $this->artisan('plan:regrade-season')
+        ->expectsOutputToContain('Regraded 1 planned session(s) across 1 season(s).')
+        ->assertSuccessful();
+
+    expect($row->refresh()->status)->toBe(PlannedSessionStatus::Done)
+        ->and($row->compliance_score)->toBe(100)
+        ->and($row->intent_verdict)->toBe(IntentVerdict::Unknown)
+        ->and($row->intent_evidence)->not->toHaveKey('stale');
+
+    $this->artisan('plan:regrade-season')
+        ->expectsOutputToContain('Regraded 0 planned session(s) across 1 season(s).')
+        ->assertSuccessful();
+});
+
+it('leaves an uncredited today and the days before the season alone', function (): void {
     $before = regradeFastEasyDay($this->user, '2026-07-29', PlannedSessionStatus::Done);
     $today = regradeFastEasyDay($this->user, '2026-08-20', PlannedSessionStatus::Planned);
 

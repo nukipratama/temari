@@ -14,13 +14,14 @@ use Illuminate\Support\Carbon;
 
 /**
  * One-off regrade of every past day in each athlete's current season under
- * the distance-and-intent rule. Deterministic, so re-running it writes nothing
- * to the plan rows themselves. See
+ * the distance-and-intent rule, plus today when it is already credited, which
+ * goes through ComplianceScorer::creditIfEarned() so today only ever moves up.
+ * Deterministic, so re-running it writes nothing to the plan rows themselves. See
  * `docs/decisions/a-day-is-graded-on-distance-and-intent.md`. Run once after
  * deploy: `./vendor/bin/sail artisan plan:regrade-season`.
  */
 #[Signature('plan:regrade-season {--user= : Limit to one user id}')]
-#[Description("Regrade every past day of each athlete's current season on distance and intent")]
+#[Description("Regrade every past day, and a credited today, of each athlete's current season on distance and intent")]
 class RegradeSeasonCommand extends Command
 {
     public function handle(ComplianceScorer $scorer): int
@@ -43,10 +44,6 @@ class RegradeSeasonCommand extends Command
                 ->whereBetween('date', [$season->starts_at->toDateString(), $today->copy()->subDay()->toDateString()])
                 ->orderBy('date')
                 ->get();
-            if ($rows->isEmpty()) {
-                continue;
-            }
-
             $verdicts = $scorer->verdictsFor($season->user, $rows, $today);
             foreach ($rows as $row) {
                 $verdict = $verdicts[$row->date->toDateString()] ?? null;
@@ -56,6 +53,16 @@ class RegradeSeasonCommand extends Command
 
                 ComplianceScorer::applyVerdict($row, $verdict);
                 $regraded += $row->wasChanged() ? 1 : 0;
+            }
+
+            $todayRow = PlannedSession::query()
+                ->where('user_id', $season->user_id)
+                ->where('date', $today->toDateString())
+                ->first();
+            if ($todayRow?->status->isCredited()) {
+                $before = $todayRow->getAttributes();
+                $scorer->creditIfEarned($season->user, $today, $today);
+                $regraded += $todayRow->refresh()->getAttributes() != $before ? 1 : 0;
             }
         }
 
