@@ -1176,6 +1176,14 @@ describe('targetLabel on a day with work', () => {
                 }),
             ),
         ).toBe('3 × 7 min at 5:49/km');
+        expect(
+            targetLabel(
+                planDay({
+                    session_type: 'tempo',
+                    segments: [work(13.4, 349), recovery, work(14.2, 349)],
+                }),
+            ),
+        ).toBe('2 × 14 min at 5:49/km');
     });
 
     it('reads back-to-back work with no recovery between as one block', () => {

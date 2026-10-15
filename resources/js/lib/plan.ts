@@ -697,17 +697,18 @@ export function targetLabel(day: PlanDay): string | null {
     }
 
     const minutes = units.flatMap((unit) =>
-        unit.minutes === null ? [] : [Math.round(unit.minutes)],
+        unit.minutes === null ? [] : [unit.minutes],
     );
     if (minutes.length < units.length) {
         return paceLabel(day);
     }
+    const total = minutes.reduce((sum, value) => sum + value, 0);
     const work =
         minutes.length === 1
-            ? `${minutes[0]} min`
-            : minutes.every((value) => value === minutes[0])
-              ? `${minutes.length} × ${minutes[0]} min`
-              : `${minutes.join(' + ')} min`;
+            ? `${Math.round(total)} min`
+            : Math.max(...minutes) - Math.min(...minutes) <= 1
+              ? `${minutes.length} × ${Math.round(total / minutes.length)} min`
+              : `${minutes.map((value) => Math.round(value)).join(' + ')} min`;
 
     return `${work}${pace}`;
 }
