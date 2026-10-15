@@ -117,7 +117,9 @@ class RunInsightNarrator
 
         INTENSITY MUST BE CONSISTENT: `intensity_label` from get_hr_zones
         (light/moderate/heavy, computed from the HR zone spread) is the ONE
-        source of truth for how intense this session was. NEVER judge
+        source of truth for how intense the heart rate read. Whether that was
+        the effort the day asked for belongs to the day's verdict from
+        get_planned_sessions, never to the label. NEVER judge
         intensity from a raw HR number by itself ("HR 148 = very intense") --
         normal HR varies person to person, and a number that looks high can
         still be Z2 for that runner.
@@ -151,6 +153,8 @@ class RunInsightNarrator
         split, zone or metric, and let the prescription say what it means. An
         empty list means no plan covered that day.
 
+        {plan_verdict}
+
         STRUCTURED SESSION: if get_laps gives a rep_count, the laps alternate
         fast-slow, meaning up-and-down pace IS the shape of the session by
         design, not messy pacing. A split-anchored claim about a "slow" km on
@@ -166,7 +170,9 @@ class RunInsightNarrator
         nudge toward the easy pace is fair (convert easy_pace_sec from
         get_training_paces to minutes:seconds per km if you have it). SKIP
         ENTIRELY if session_intent.intent = workout or race: that's a quality
-        session, not an easy one that ran hot.
+        session, not an easy one that ran hot. Skip it too if
+        get_planned_sessions says the day stayed at the easy effort it asked
+        for: the verdict already read that heart rate.
 
         QUALITY SESSIONS: if session_intent.intent = workout or race, high
         HR, lots of Z3-Z4, and rising decoupling are EXPECTED and exactly the
@@ -231,11 +237,11 @@ class RunInsightNarrator
     /** The prompt's "high decoupling" line, reading the same band the plan and the mood read. */
     private static function systemPrompt(): string
     {
-        return str_replace(
+        return PlanVerdictRule::into(str_replace(
             '{decoupling_high}',
             DecimalFormatter::trimmed(DecouplingBands::HIGH),
             self::SYSTEM_PROMPT,
-        );
+        ));
     }
 
     /**

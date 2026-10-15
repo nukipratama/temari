@@ -1035,6 +1035,40 @@ it('carries a detailed run and persisted intent beside the plan row', function (
         ->and($reading['intent'])->toBe('it ran harder than the easy effort the day asked for');
 });
 
+it('carries the numbers behind a judged quality day beside its verdict', function (): void {
+    $user = User::factory()->create();
+    $today = Carbon::today();
+    PlannedSession::factory()->for($user)->create([
+        'date' => $today->toDateString(),
+        'session_type' => SessionType::Tempo,
+        'status' => PlannedSessionStatus::Overreached,
+        'intent_verdict' => IntentVerdict::TooHard,
+        'intent_evidence' => ['block_minutes' => 20, 'target_pace_sec' => 363, 'window' => '20min', 'window_pace_sec' => 330, 'control' => 'excessive'],
+    ]);
+
+    $reading = planContextTool($user, $today, $today)->handle([])['days'][0];
+
+    expect($reading['intent'])->toBe('the hard block ran well past the effort it asked for')
+        ->and($reading['intent_detail'])->toBe('best 20-minute stretch averaged 5:30/km, well quicker than the 6:03/km target pace');
+});
+
+it('quotes the pace the run showed beside the hill-adjusted pace the verdict judged', function (): void {
+    $user = User::factory()->create();
+    $today = Carbon::today();
+    $activity = Activity::factory()->for($user)->create();
+    ActivityDetail::factory()->for($activity)->create(['start_date_local' => $today, 'distance' => 10_000, 'elapsed_time' => 4_000]);
+    PlannedSession::factory()->for($user)->create([
+        'date' => $today->toDateString(),
+        'session_type' => SessionType::Easy,
+        'status' => PlannedSessionStatus::Done,
+        'intent_verdict' => IntentVerdict::Hit,
+        'intent_evidence' => ['pace_sec' => 360, 'ceiling_pace_sec' => 408, 'basis' => 'pace'],
+    ]);
+
+    expect(planContextTool($user, $today, $today)->handle([])['days'][0]['intent_detail'])
+        ->toBe('averaged 6:40/km; effort-adjusted for hills that is 6:00/km');
+});
+
 it('keeps total distance separate from the distance credited on a multi-run tempo day', function (): void {
     $user = User::factory()->create();
     $today = Carbon::today();
