@@ -102,7 +102,7 @@ it('checks again once a narration still being written has landed', function (): 
     app(RenarrateAfterEffortScore::class)($activity->fresh());
 
     Bus::assertDispatched(fn (RecheckEffortScoreNarrationJob $job): bool => $job->activityId === $activity->id
-        && $job->delay !== null);
+        && $job->delay === (int) config('horizon.defaults.supervisor-ai.timeout'));
 });
 
 it('checks again only once', function (): void {

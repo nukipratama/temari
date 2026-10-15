@@ -21,9 +21,6 @@ use App\Services\AI\MaterialFingerprint;
  */
 final readonly class RenarrateAfterEffortScore
 {
-    /** Long enough for a speech being written when the score landed to have finished. */
-    public const int RECHECK_DELAY_SECONDS = 300;
-
     public function __construct(private AnalysisService $analysisService)
     {
     }
@@ -38,7 +35,7 @@ final readonly class RenarrateAfterEffortScore
             ->forSubject(Activity::class, $activity->id, AnalysisType::PostRunSpeech)
             ->first();
         if ($speech?->status === AnalysisStatus::Processing && $recheck) {
-            RecheckEffortScoreNarrationJob::dispatch($activity->id)->delay(now()->addSeconds(self::RECHECK_DELAY_SECONDS));
+            RecheckEffortScoreNarrationJob::dispatch($activity->id)->delay((int) config('horizon.defaults.supervisor-ai.timeout'));
 
             return;
         }
