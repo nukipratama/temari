@@ -33,3 +33,24 @@ it('returns empty when two work laps are adjacent', function (): void {
 
     expect(IntervalDetector::detect($paces))->toBe([]);
 });
+
+it('reads lap paces from normalised lap rows, skipping unreadable laps', function (): void {
+    $laps = [
+        ['distance_m' => 1000, 'elapsed_sec' => 300],
+        ['distance_m' => 400, 'elapsed_sec' => 180],
+        ['distance_m' => 0, 'elapsed_sec' => 60],
+        ['distance_m' => 1000, 'elapsed_sec' => null],
+    ];
+
+    expect(IntervalDetector::lapPaces($laps))->toBe([0 => 300.0, 1 => 450.0]);
+});
+
+it('reads no lap paces from a plain kilometre grid', function (): void {
+    $laps = [
+        ['distance_m' => 1000, 'elapsed_sec' => 300],
+        ['distance_m' => 1000, 'elapsed_sec' => 420],
+        ['distance_m' => 500, 'elapsed_sec' => 150],
+    ];
+
+    expect(IntervalDetector::lapPaces($laps))->toBe([]);
+});

@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Enums\SessionType;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
+use App\Models\PlannedSession;
 use App\Models\StoryLine;
 use App\Services\AI\MaterialFingerprint;
 use App\Services\Run\Metrics\ReadinessCeiling;
@@ -118,6 +119,15 @@ it('changes when the mood flips', function (): void {
     $before = fingerprint($activity->id);
 
     StoryLine::query()->where('activity_id', $activity->id)->update(['mood' => 'blazing']);
+
+    expect(fingerprint($activity->id))->not->toBe($before);
+});
+
+it('changes when the day turns out to be a planned tempo', function (): void {
+    $activity = fingerprintActivity(['start_date_local' => '2026-09-14 06:00:00', 'workout_type' => null]);
+    $before = fingerprint($activity->id);
+
+    PlannedSession::factory()->for($activity->user)->create(['date' => '2026-09-14', 'session_type' => SessionType::Tempo]);
 
     expect(fingerprint($activity->id))->not->toBe($before);
 });

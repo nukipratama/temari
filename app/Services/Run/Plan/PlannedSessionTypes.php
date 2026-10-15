@@ -25,6 +25,11 @@ final class PlannedSessionTypes
         );
     }
 
+    public static function forRun(int $userId, Carbon $startedAt): ?SessionType
+    {
+        return self::byDate($userId, $startedAt->copy()->startOfDay(), $startedAt->copy()->endOfDay())[$startedAt->toDateString()] ?? null;
+    }
+
     /**
      * The non-rest, non-excused planned session for each date on which exactly one run landed,
      * since a day with two runs cannot say which of them was the session.

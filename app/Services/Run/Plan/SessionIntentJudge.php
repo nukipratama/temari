@@ -9,11 +9,9 @@ use App\Enums\PaceBand;
 use App\Enums\SegmentKey;
 use App\Enums\SessionType;
 use App\Models\ActivityDetail;
-use App\Services\Run\Ingest\KmSplitBuilder;
 use App\Services\Run\Ingest\StreamAnalysis;
 use App\Services\Run\Metrics\HeartRateZones;
 use App\Services\Run\Metrics\IntervalDetector;
-use App\Services\Run\Metrics\PaceCalculator;
 use App\Services\Run\Metrics\PaceFormatter;
 use App\Services\Run\Metrics\StreamSummary;
 
@@ -180,7 +178,7 @@ final class SessionIntentJudge
         }
 
         $laps = $summary->laps() ?? [];
-        $lapPaces = self::lapPaces($laps);
+        $lapPaces = IntervalDetector::lapPaces($laps);
         $work = IntervalDetector::detect($lapPaces);
         if ($work !== []) {
             $targetOf = static fn (int $index): int => $repPaces[min($index, count($repPaces) - 1)];
@@ -415,28 +413,6 @@ final class SessionIntentJudge
         $seconds = $pace === null ? null : PaceFormatter::parse($pace);
 
         return [$label, $seconds === null ? null : (int) round($seconds), $length];
-    }
-
-    /**
-     * @param  array<int, array<string, mixed>>  $laps
-     * @return array<int, float>
-     */
-    private static function lapPaces(array $laps): array
-    {
-        $distances = array_map(static fn (array $lap): float => is_numeric($lap['distance_m'] ?? null) ? (float) $lap['distance_m'] : 0.0, $laps);
-        if (KmSplitBuilder::isPlainKmGrid(array_values($distances))) {
-            return [];
-        }
-
-        $paces = [];
-        foreach ($laps as $position => $lap) {
-            $pace = PaceCalculator::secPerKm($distances[$position], is_numeric($lap['elapsed_sec'] ?? null) ? (float) $lap['elapsed_sec'] : null);
-            if ($pace !== null) {
-                $paces[$position] = $pace;
-            }
-        }
-
-        return $paces;
     }
 
     /** @param  non-empty-list<ActivityDetail>  $runs */

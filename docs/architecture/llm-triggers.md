@@ -404,7 +404,7 @@ inline in its `toolbox()` method.
 | `HrZonesTool` · `get_hr_zones` | `zone_pct`, `time_in_zone_min`, `trimp`, `hr_drift` (`{bpm, relation}`, no bare sign — #1009), `intensity_label` | stored `stream_summary` via `StreamSummary`; the label thresholds in-tool |
 | `TerrainTool` · `get_terrain` | `elevation_gain_m`, `max_grade` (`{pct, relation}`, no bare sign — #1009), `gap_pace` | stored detail attributes and `stream_summary` |
 | `WeatherTool` · `get_weather` | `weather_temp_c`, `weather_humidity_pct`, `weather_rain`, `weather_rain_source`, `weather_wind_speed_kmh`, `weather_wind_gust_kmh`, `weather_wind_direction_deg` | `ActivityNarrationContext` over the stored weather snapshot |
-| `EffortContextTool` · `get_effort_context` | `session_intent`, `relative_effort`, `decoupling` (`{pct, relation}`, no bare sign — #1009) | `SessionIntent`, `RelativeEffort`; decoupling from `stream_summary`, relation via `DecouplingBands::relationFor()` |
+| `EffortContextTool` · `get_effort_context` | `session_intent`, `relative_effort`, `decoupling` (`{pct, relation}`, no bare sign — #1009) | `SessionIntent` (fed the day's settled planned type by `PlannedSessionTypes::forRun()`), `RelativeEffort`; decoupling from `stream_summary`, relation via `DecouplingBands::relationFor()` |
 | `PersonalRecordsTool` · `get_personal_records` | `personal_records`: list of `{category, value_sec}` | stored `PersonalRecord` rows, written by `PersonalRecords` |
 
 ### Bound to a user and an as-of date (`UserTool`)
