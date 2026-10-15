@@ -283,7 +283,7 @@ final class PlanRenderer
 
         $creditedKm = self::creditedKmOf($s, $activity);
         $ranPaceSecPerKm = $status->isCredited() && $sessionType !== SessionType::Rest
-            ? SessionMatcher::ranPaceSecPerKmFromRuns($s->session_type, $activity['runs'] ?? [], TimeTrial::of($s) !== null)
+            ? SessionMatcher::ranPaceSecPerKmFromRuns(EffectiveSession::settledTypeOf($s), $activity['runs'] ?? [], TimeTrial::of($s) !== null)
             : null;
 
         $originalSegments = self::segmentsFor($s, $s->session_type, $s->phase, $raceDistanceM, $isPrimaryEasy, $longRunKm, $multiplier, $longRunCapKm, $paces, $volumeScale, $raceGoalTimeSec, $longRunProgressionCapKm);
@@ -373,7 +373,7 @@ final class PlanRenderer
             $longestRunKm = $longestRunKm === null ? $run['km'] : max($longestRunKm, $run['km']);
         }
 
-        return $activity === null || $longestRunKm === null ? null : round(SessionMatcher::creditedKm($s->session_type, [
+        return $activity === null || $longestRunKm === null ? null : round(SessionMatcher::creditedKm(EffectiveSession::settledTypeOf($s), [
             'sum' => $activity['km'],
             'longest' => $longestRunKm,
         ], TimeTrial::of($s) !== null), 1);
