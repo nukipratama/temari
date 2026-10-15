@@ -218,9 +218,12 @@ final class IntentOutcome
         $excessive = ($evidence['control'] ?? null) === 'excessive';
         $parts = [];
 
+        $onPace = is_numeric($evidence['block_pace_sec'] ?? null)
+            ? (int) $evidence['block_pace_sec'] <= (int) ($evidence['target_pace_sec'] ?? 0) + SessionIntentJudge::PACE_TOLERANCE_SEC
+            : $hit && ($evidence['basis'] ?? null) !== 'heart_rate';
         $comparison = match (true) {
             $excessive => "well quicker than the {$target} {$targetName}",
-            $hit && ($evidence['basis'] ?? null) !== 'heart_rate' => "on the {$target} {$targetName}",
+            $onPace => "on the {$target} {$targetName}",
             default => "slower than the {$target} {$targetName}",
         };
 

@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace App\Services\Run\Metrics;
 
-use App\Services\Run\Ingest\KmSplitBuilder;
-
 /**
  * Where a run's prescribed work blocks or reps actually happened: read off the
  * laps when they line up with the prescription, else found in the raw stream.
@@ -30,8 +28,8 @@ final class WorkBlocks
     public static function fromLaps(array $laps, array $prescribed, int $workPaceSec, int $easyPaceSec): ?array
     {
         $laps = array_values($laps);
-        $metres = array_map(static fn (array $lap): float => is_numeric($lap['distance_m'] ?? null) ? (float) $lap['distance_m'] : 0.0, $laps);
-        if (count($laps) < 2 || KmSplitBuilder::isPlainKmGrid($metres)) {
+        $paces = IntervalDetector::lapPaces($laps);
+        if (count($laps) < 2 || $paces === []) {
             return null;
         }
 
@@ -39,9 +37,8 @@ final class WorkBlocks
         $blocks = [];
         $current = null;
         foreach ($laps as $position => $lap) {
-            $seconds = is_numeric($lap['elapsed_sec'] ?? null) ? (float) $lap['elapsed_sec'] : null;
-            $pace = PaceCalculator::secPerKm($metres[$position], $seconds);
-            if ($seconds === null || $pace === null || $pace > $threshold) {
+            $pace = $paces[$position] ?? null;
+            if ($pace === null || $pace > $threshold) {
                 if ($current !== null) {
                     $blocks[] = $current;
                     $current = null;
@@ -50,8 +47,8 @@ final class WorkBlocks
                 continue;
             }
             $current = [
-                'seconds' => ($current['seconds'] ?? 0.0) + $seconds,
-                'km' => ($current['km'] ?? 0.0) + $metres[$position] / 1000,
+                'seconds' => ($current['seconds'] ?? 0.0) + (float) $lap['elapsed_sec'],
+                'km' => ($current['km'] ?? 0.0) + (float) $lap['distance_m'] / 1000,
             ];
         }
         if ($current !== null) {
