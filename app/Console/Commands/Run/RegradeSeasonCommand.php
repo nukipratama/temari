@@ -44,7 +44,7 @@ class RegradeSeasonCommand extends Command
                 ->whereBetween('date', [$season->starts_at->toDateString(), $today->copy()->subDay()->toDateString()])
                 ->orderBy('date')
                 ->get();
-            $verdicts = $rows->isEmpty() ? [] : $scorer->verdictsFor($season->user, $rows, $today);
+            $verdicts = $scorer->verdictsFor($season->user, $rows, $today);
             foreach ($rows as $row) {
                 $verdict = $verdicts[$row->date->toDateString()] ?? null;
                 if ($verdict === null) {
