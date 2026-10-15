@@ -13,6 +13,7 @@ use App\Models\WeeklySnapshot;
 use App\Services\AI\Agent\Tools\WeekTotalsTool;
 use App\Services\AI\Agent\Tools\CardIdentityTool;
 use App\Services\AI\Agent\Tools\EffortContextTool;
+use App\Services\AI\Agent\Tools\PerceivedEffortTool;
 use App\Services\AI\Agent\Tools\GetThreadTool;
 use App\Models\AI\RunQuestion;
 use App\Services\AI\Agent\Tools\HrZonesTool;
@@ -96,6 +97,7 @@ it('names every tool in snake_case with a description the model can choose on', 
         new TerrainTool($a, $d),
         new WeatherTool($a, $d),
         new EffortContextTool($a, $d, app(RelativeEffort::class)),
+        new PerceivedEffortTool($a, $d),
         new TrainingLoadTool($a->user, $d->start_date_local, new TrainingLoad()),
         new RecentBaselineTool($a->user, $d->start_date_local, new ResolveRunBaselineAction()),
         new TrainingPacesTool($a->user, $d->start_date_local, app(VdotEstimator::class), app(TrainingPaceCalculator::class)),
@@ -627,6 +629,38 @@ it('reads an untagged run on a planned tempo day as a planned workout', function
 
     expect(new EffortContextTool($a, $d->fresh(), app(RelativeEffort::class))->handle([])['session_intent'])
         ->toBe(['intent' => 'workout', 'source' => 'planned']);
+});
+
+it('reads the athlete\'s effort score against the range the day\'s session usually feels', function (int $score, string $relation): void {
+    ['activity' => $a, 'detail' => $d] = agentToolFixture();
+    $d->update(['perceived_effort' => $score]);
+    PlannedSession::factory()->for($a->user)->create(['date' => $d->start_date_local->toDateString(), 'session_type' => SessionType::Tempo]);
+
+    expect(new PerceivedEffortTool($a, $d->fresh())->handle([]))->toBe([
+        'score' => $score,
+        'session_type' => 'tempo',
+        'target' => ['low' => 6, 'high' => 7],
+        'relation' => $relation,
+    ]);
+})->with([
+    'below' => [4, 'below'],
+    'within' => [6, 'within'],
+    'above' => [9, 'above'],
+]);
+
+it('reads an effort score with no range when no plan covered the day', function (): void {
+    ['activity' => $a, 'detail' => $d] = agentToolFixture();
+    $d->update(['perceived_effort' => 5]);
+
+    expect(new PerceivedEffortTool($a, $d->fresh())->handle([]))
+        ->toBe(['score' => 5, 'session_type' => null, 'target' => null, 'relation' => null]);
+});
+
+it('says plainly when no effort score was logged', function (): void {
+    ['activity' => $a, 'detail' => $d] = agentToolFixture();
+    $d->update(['perceived_effort' => null]);
+
+    expect(new PerceivedEffortTool($a, $d->fresh())->handle([]))->toBe(['score' => null]);
 });
 
 it('reads relative effort with no comparison when the history is still one run deep', function (): void {

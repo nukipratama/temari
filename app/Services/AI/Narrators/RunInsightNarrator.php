@@ -11,6 +11,7 @@ use App\Services\AI\Agent\AgentToolbox;
 use App\Services\AI\Agent\Tools\EffortContextTool;
 use App\Services\AI\Agent\Tools\HrZonesTool;
 use App\Services\AI\Agent\Tools\KmSplitsTool;
+use App\Services\AI\Agent\Tools\PerceivedEffortTool;
 use App\Services\AI\Agent\Tools\LapsTool;
 use App\Services\AI\Agent\Tools\PlanContextTool;
 use App\Services\AI\Agent\Tools\RecentBaselineTool;
@@ -151,7 +152,11 @@ class RunInsightNarrator
         plan itself has no anchor, so a claim whose subject is the plan is
         dropped by the gate above and wastes the whole claim. Anchor to the
         split, zone or metric, and let the prescription say what it means. An
-        empty list means no plan covered that day.
+        empty list means no plan covered that day. get_perceived_effort is the
+        athlete's own effort score for this run, read the same way: it can say
+        what a reading meant (a heavy zone share the athlete scored 3, below
+        the range the day usually feels, is heart rate running hot, not the
+        effort), but it has no anchor, so it is never a claim's subject.
 
         {plan_verdict}
 
@@ -350,6 +355,7 @@ class RunInsightNarrator
             new RecentBaselineTool($activity->user, $asOf, $this->baseline, $activity->id),
             new TrainingPacesTool($activity->user, $asOf, $this->vdotEstimator, $this->trainingPaceCalculator),
             new PlanContextTool($activity->user, $asOf, $asOf, $this->trainingBaseline, $this->vdotEstimator, $this->trainingPaceCalculator),
+            new PerceivedEffortTool($activity, $detail),
         ]);
     }
 }

@@ -356,7 +356,7 @@ whole prefix. That single fact drives everything below.
 
 | narrator | tools | max steps | max output | temp | deployment key |
 |---|---|---|---|---|---|
-| `RunInsightNarrator` | 11 | default (10) | 3000 | 0.7 | `run_insight` |
+| `RunInsightNarrator` | 12 | default (10) | 3000 | 0.7 | `run_insight` |
 | `RunQuestionNarrator` | up to 12 | default (10) | 1200 | 0.7 | `run_question` |
 | `CardFlavorNarrator` | up to 6 | default (10) | 400 | 0.8 | `card_flavor` |
 | `PostRunSpeechNarrator` | 7 | default (10) | 1500 | 0.8 | `post_run_speech` |
@@ -405,6 +405,7 @@ inline in its `toolbox()` method.
 | `TerrainTool` · `get_terrain` | `elevation_gain_m`, `max_grade` (`{pct, relation}`, no bare sign — #1009), `gap_pace` | stored detail attributes and `stream_summary` |
 | `WeatherTool` · `get_weather` | `weather_temp_c`, `weather_humidity_pct`, `weather_rain`, `weather_rain_source`, `weather_wind_speed_kmh`, `weather_wind_gust_kmh`, `weather_wind_direction_deg` | `ActivityNarrationContext` over the stored weather snapshot |
 | `EffortContextTool` · `get_effort_context` | `session_intent`, `relative_effort`, `decoupling` (`{pct, relation}`, no bare sign — #1009) | `SessionIntent` (fed the day's settled planned type by `PlannedSessionTypes::forRun()`), `RelativeEffort`; decoupling from `stream_summary`, relation via `DecouplingBands::relationFor()` |
+| `PerceivedEffortTool` · `get_perceived_effort` | `score`, and when a plan covered the day `session_type`, `target` (`{low, high}`) and `relation` (below/within/above, no signed gap) | `activity_details.perceived_effort`; `PlannedSessionTypes::forRun()` into `SessionType::perceivedEffortTarget()` |
 | `PersonalRecordsTool` · `get_personal_records` | `personal_records`: list of `{category, value_sec}` | stored `PersonalRecord` rows, written by `PersonalRecords` |
 
 ### Bound to a user and an as-of date (`UserTool`)
@@ -436,9 +437,9 @@ inline in its `toolbox()` method.
 
 | narrator | tools |
 |---|---|
-| `RunInsightNarrator` | `RunSummaryTool`, `KmSplitsTool`, `LapsTool`, `HrZonesTool`, `TerrainTool`, `WeatherTool`, `EffortContextTool`, `TrainingLoadTool`, `RecentBaselineTool`, `TrainingPacesTool`, `PlanContextTool` |
+| `RunInsightNarrator` | `RunSummaryTool`, `KmSplitsTool`, `LapsTool`, `HrZonesTool`, `TerrainTool`, `WeatherTool`, `EffortContextTool`, `TrainingLoadTool`, `RecentBaselineTool`, `TrainingPacesTool`, `PlanContextTool`, `PerceivedEffortTool` |
 | `RunQuestionNarrator` | `RunSummaryTool`, `GetThreadTool`, `TrainingLoadTool`, `RecentBaselineTool`, `TrainingPacesTool`, `PlanContextTool` always; `KmSplitsTool`, `LapsTool`, `HrZonesTool`, `TerrainTool`, `WeatherTool`, `EffortContextTool` only once the run is `Detailed` |
-| `PostRunSpeechNarrator` | `RunSummaryTool`, `TerrainTool`, `WeatherTool`, `PersonalRecordsTool`, `WeekStateTool`, `PlanContextTool` |
+| `PostRunSpeechNarrator` | `RunSummaryTool`, `TerrainTool`, `WeatherTool`, `PersonalRecordsTool`, `WeekStateTool`, `PlanContextTool`, `PerceivedEffortTool` |
 | `CardFlavorNarrator` | `CardIdentityTool`'s payload in the context, always; `RunSummaryTool`, `KmSplitsTool`, `WeatherTool`, `EffortContextTool`, `PersonalRecordsTool`, `PlanContextTool` when the run has detail |
 | `BriefingMascotVoiceNarrator` | `WeekStateTool`, `RecentRunsTool`, `TrainingLoadTool`, `RecentBaselineTool`, `PlanContextTool` |
 | `ProfileVoiceNarrator` | `LifetimeStatsTool`, `PersonaMixTool`, `TrainingPacesTool`, `ProgressionSignalTool`, `PlanAdherenceTool` |

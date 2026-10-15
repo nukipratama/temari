@@ -13,6 +13,8 @@ code_refs:
 
 # An effort score is collected on every run
 
+> **Narration half superseded (2026-10-15)** by [[a-first-effort-score-re-narrates-the-run]]: the run narration now reads the score, and a first score re-narrates the run. Load, readiness and the plan still read none.
+
 > **Amended (2026-10-02):** the Today prompt was removed and the run-page picker moved to the top of the page, above the hero, while the run is unscored (#1581).
 
 **Status:** Accepted (2026-10-02). Built in #1554 after the owner's scope change on that issue. Leaves [[unscored-load-is-null-not-zero]] unchanged: a run without heart rate is still unscored for load.

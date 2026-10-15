@@ -123,6 +123,18 @@ it('changes when the mood flips', function (): void {
     expect(fingerprint($activity->id))->not->toBe($before);
 });
 
+it('changes when the first effort score is logged, and not when the score is edited', function (): void {
+    $activity = fingerprintActivity(['perceived_effort' => null]);
+    $before = fingerprint($activity->id);
+
+    $activity->detail->update(['perceived_effort' => 6]);
+    $scored = fingerprint($activity->id);
+    $activity->detail->update(['perceived_effort' => 8]);
+
+    expect($scored)->not->toBe($before)
+        ->and(fingerprint($activity->id))->toBe($scored);
+});
+
 it('changes when the day turns out to be a planned tempo', function (): void {
     $activity = fingerprintActivity(['start_date_local' => '2026-09-14 06:00:00', 'workout_type' => null]);
     $before = fingerprint($activity->id);

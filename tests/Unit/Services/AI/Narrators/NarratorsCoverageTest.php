@@ -294,6 +294,7 @@ it('PostRunSpeechNarrator is not offered the splits or zones its insights alread
         'get_personal_records',
         'get_week_state',
         'get_planned_sessions',
+        'get_perceived_effort',
     ]);
 });
 
@@ -517,6 +518,7 @@ it('RunInsightNarrator offers every run reading as a tool bound to this activity
         'get_recent_baseline',
         'get_training_paces',
         'get_planned_sessions',
+        'get_perceived_effort',
     ]);
 });
 
