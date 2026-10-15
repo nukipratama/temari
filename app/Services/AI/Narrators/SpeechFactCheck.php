@@ -67,7 +67,8 @@ final class SpeechFactCheck
 
     /**
      * Every figure the tools returned, plus each decimal rounded to the
-     * precision a sentence quotes it at and each h:mm:ss clock read as h:mm.
+     * precision a sentence quotes it at and each h:mm:ss clock read as h:mm,
+     * on a 12-hour clock too.
      *
      * @param  array<string, mixed>  $facts
      * @return list<string>
@@ -80,6 +81,9 @@ final class SpeechFactCheck
             $parts = explode(':', $figure);
             if (count($parts) === 3) {
                 $figures[] = $parts[0].':'.$parts[1];
+                if ((int) $parts[0] > 12) {
+                    $figures[] = ((int) $parts[0] - 12).':'.$parts[1];
+                }
             } elseif (count($parts) === 1) {
                 $figures[] = (string) (int) round((float) $figure);
                 $figures = [...$figures, ...QuotedFigures::in((string) round((float) $figure, 1))];

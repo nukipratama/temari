@@ -74,3 +74,10 @@ it('accepts the start time a tool returned, quoted without its seconds', functio
 
     expect(SpeechFactCheck::complaint('6:37/km at 6:00 a.m., and already warm.', $facts, null))->toBeNull();
 });
+
+it('accepts an afternoon start quoted on a 12-hour clock', function (): void {
+    $facts = ['get_run_summary' => ['started_at_local' => '2026-10-13 17:30:00']];
+
+    expect(SpeechFactCheck::complaint('out at 5:30 p.m. in 33°C.', $facts, null))->toBeNull()
+        ->and(SpeechFactCheck::complaint('out at 17:30 in 33°C.', $facts, null))->toBeNull();
+});
