@@ -169,3 +169,24 @@ it('marks a heart-rate read on estimated zones as rough, with or without a numer
         ->and(IntentOutcome::detail(IntentVerdict::TooHard, array_diff_key($steady, ['zones' => 0]), 400))
         ->toBe('averaged 6:40/km, and 30% of the run sat above Z2');
 });
+
+it('names the block that drove a too-hard verdict on a multi-block day', function (string $paces, string $expected): void {
+    $evidence = ['block_minutes' => 20, 'target_pace_sec' => 363, 'block_paces' => $paces, 'block_targets' => '363,363,363', 'block_pace_sec' => 339, 'control' => 'excessive', 'basis' => 'pace'];
+
+    expect(IntentOutcome::outcome(IntentVerdict::TooHard, $evidence))->toBe($expected);
+})->with([
+    'first quick, second near' => ['329,350', 'the first block ran well past the effort it asked for; the second held near target'],
+    'every block quick' => ['329,330', 'the hard blocks ran well past the effort they asked for'],
+    'first and third quick, second slow' => ['329,380,330', 'the first and third blocks ran well past the effort they asked for; the second fell short of target pace'],
+    'one block' => ['329', 'the hard block ran well past the effort it asked for'],
+]);
+
+it('quotes each block beside their average, and the average across every rep', function (): void {
+    $blocks = IntentOutcome::detail(IntentVerdict::TooHard, ['block_minutes' => 20, 'target_pace_sec' => 363, 'block_paces' => '329,350', 'block_pace_sec' => 339, 'control' => 'excessive', 'basis' => 'pace'], null);
+    $block = IntentOutcome::detail(IntentVerdict::Hit, ['block_minutes' => 20, 'target_pace_sec' => 363, 'block_paces' => '360', 'block_pace_sec' => 360, 'basis' => 'pace'], null);
+    $reps = IntentOutcome::detail(IntentVerdict::Hit, ['reps_prescribed' => 5, 'reps_needed' => 4, 'reps_at_pace' => 4, 'rep_pace_sec' => 286, 'target_pace_sec' => 290, 'basis' => 'laps'], null);
+
+    expect($blocks)->toBe('the blocks averaged 5:39/km (5:29, 5:50), well quicker than the 6:03/km target pace')
+        ->and($block)->toBe('the block averaged 6:00/km, on the 6:03/km target pace')
+        ->and($reps)->toBe('4 of 5 reps landed on the 4:50/km rep pace, averaging 4:46/km');
+});

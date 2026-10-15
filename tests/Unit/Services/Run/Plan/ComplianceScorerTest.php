@@ -10,6 +10,7 @@ use App\Enums\PlannedSessionStatus;
 use App\Enums\SessionType;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
+use App\Models\ActivityStream;
 use App\Models\PersonalRecord;
 use App\Models\PlannedSession;
 use App\Models\RecommendationRevision;
@@ -943,4 +944,21 @@ it('grades the day a make-up emptied as rest, whatever it was shown or run', fun
     expect($verdict['status'])->toBe(PlannedSessionStatus::Done)
         ->and($verdict['distance_score'])->toBeNull()
         ->and($verdict['intent'])->toBeNull();
+});
+
+it('hands the judge the run\'s raw stream, so a block the laps never marked is still found', function (): void {
+    $user = User::factory()->create();
+    $row = scorerDay($user, '2026-08-05', ['session_type' => SessionType::Tempo]);
+    showAdvice($user, '2026-08-05', shownTempoOriginal(), [
+        'session_type' => 'tempo', 'distance_km' => 8.0, 'segments' => shownTempoSegments(), 'paces' => SHOWN_PACES, 'skipped' => false, 'reason' => null,
+    ]);
+    $run = shownRun($user, '2026-08-05', 8.0, 3000);
+    $time = range(0, 2999);
+    $velocity = array_map(static fn (int $second): float => 1000 / ($second >= 600 && $second < 1800 ? 305 : 420), $time);
+    ActivityStream::query()->create(['activity_id' => $run->activity_id, 'data' => ['time' => ['data' => $time], 'velocity_smooth' => ['data' => $velocity]]]);
+
+    $intent = scorerVerdict($user, $row)['intent'];
+
+    expect($intent['verdict'])->toBe(IntentVerdict::Hit)
+        ->and($intent['evidence'])->toMatchArray(['block_source' => 'stream', 'block_paces' => '305']);
 });
