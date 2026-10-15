@@ -42,5 +42,5 @@ Falling back rather than failing is deliberate. A failed row is retried by the h
 
 - At most one extra model turn per rejected speech (the rewrite runs with tools forbidden), plus one re-read of the speech's tools.
 - The lexicon is a heuristic: a contradiction worded differently still passes, and the prompt rule stays the first line of defence.
-- A speech quoting a time of day as `h:mm` is rejected unless a tool returned that figure, since it reads as a pace.
+- A time of day reads as a pace. Every `h:mm:ss` a tool returned also counts as `h:mm`, so the start time is accepted to the minute ("6:00" for `06:00:00`), and a pace that happens to equal it passes too. An afternoon start quoted on a 12-hour clock ("6:30 p.m." for `18:30:00`) is still rejected.
 - Only the activity group catches the new exception. The post-run briefing and the profile voice validators keep failing terminally on a second rejection, as before.
