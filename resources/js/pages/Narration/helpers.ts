@@ -146,12 +146,14 @@ export const REASON_LABEL: Record<keyof RuleBasedReasons, string> = {
     capped: 'daily ceiling reached',
     return: 'return backfill',
     content_filter: 'content filter tripped',
+    rejected_output: 'rejected twice by its check',
     unattributed: 'no reason recorded',
 };
 
 /** Reasons whose presence signals something worth a look, not routine cover. */
 export const FLAGGED_REASONS: ReadonlySet<keyof RuleBasedReasons> = new Set([
     'content_filter',
+    'rejected_output',
     'unattributed',
 ]);
 

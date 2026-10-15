@@ -507,7 +507,7 @@ it('splits done narration by its producer, counting a null served_by as unknown'
         'llm' => 2,
         'rule_based' => 1,
         'unknown' => 1,
-        'reasons' => ['demo' => 0, 'capped' => 0, 'return' => 0, 'content_filter' => 0, 'unattributed' => 1],
+        'reasons' => ['demo' => 0, 'capped' => 0, 'return' => 0, 'content_filter' => 0, 'rejected_output' => 0, 'unattributed' => 1],
     ]);
 });
 
@@ -517,6 +517,7 @@ it('groups a rule-based fill by its stored reason', function () use ($range): vo
     seedDoneNarration($alice->id, ServedBy::RuleBased, Carbon::parse('2026-05-12'), AnalysisOrigin::Return);
     seedDoneNarration($alice->id, ServedBy::RuleBased, Carbon::parse('2026-05-14'), AnalysisOrigin::ContentFilter);
     seedDoneNarration($alice->id, ServedBy::RuleBased, Carbon::parse('2026-05-15'), null);
+    seedDoneNarration($alice->id, ServedBy::RuleBased, Carbon::parse('2026-05-13'), AnalysisOrigin::RejectedOutput);
 
     [$from, $to] = $range();
     $row = collect($this->report->athletes($from, $to))->firstWhere('user_id', $alice->id);
@@ -526,6 +527,7 @@ it('groups a rule-based fill by its stored reason', function () use ($range): vo
         'capped' => 1,
         'return' => 1,
         'content_filter' => 1,
+        'rejected_output' => 1,
         'unattributed' => 1,
     ]);
 });
@@ -543,6 +545,7 @@ it('counts every one of a demo athlete\'s rule-based fills as demo, whatever rea
         'capped' => 0,
         'return' => 0,
         'content_filter' => 0,
+        'rejected_output' => 0,
         'unattributed' => 0,
     ]);
 });

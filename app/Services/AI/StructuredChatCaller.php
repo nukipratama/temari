@@ -6,6 +6,7 @@ namespace App\Services\AI;
 
 use App\Actions\AI\RecordTokenUsageAction;
 use App\Exceptions\AI\ContentFilterException;
+use App\Exceptions\AI\RejectedOutputException;
 use App\Exceptions\AI\UnavailableException;
 use App\Services\AI\Agent\AgentBudget;
 use App\Services\AI\Agent\AgentLoop;
@@ -163,7 +164,7 @@ final readonly class StructuredChatCaller
                     $complaint = ($options->validator)($decoded);
 
                     if ($complaint !== null) {
-                        throw new UnavailableException('Azure OpenAI structured output rejected twice: '.$complaint);
+                        throw new RejectedOutputException('Azure OpenAI structured output rejected twice: '.$complaint);
                     }
                 }
             }

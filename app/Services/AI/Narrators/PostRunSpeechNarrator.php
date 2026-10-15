@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace App\Services\AI\Narrators;
 
+use App\Enums\IntentVerdict;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
+use App\Models\PlannedSession;
+use App\Services\AI\Agent\AgentTool;
 use App\Services\AI\Agent\AgentToolbox;
 use App\Services\AI\Agent\Tools\PersonalRecordsTool;
 use App\Services\AI\Agent\Tools\PlanContextTool;
@@ -21,6 +24,7 @@ use App\Services\Run\Metrics\TrainingPaceCalculator;
 use App\Services\Run\Metrics\VdotEstimator;
 use App\Services\Run\Plan\TrainingBaseline;
 use Illuminate\Support\Carbon;
+use Throwable;
 
 class PostRunSpeechNarrator
 {
@@ -145,6 +149,10 @@ class PostRunSpeechNarrator
 
     public function generate(Activity $activity, ActivityDetail $detail, string $mood, ?int $deadlineSeconds = null): string
     {
+        $tools = $this->tools($activity, $detail);
+        $verdict = self::dayVerdict($activity, $detail);
+        $facts = null;
+
         $decoded = $this->caller->call(
             kind: 'post_run_speech',
             systemPrompt: PlanVerdictRule::into(self::SYSTEM_PROMPT)."\n\n".NarratorContinuity::RULE,
@@ -155,7 +163,12 @@ class PostRunSpeechNarrator
                 temperature: 0.8,
                 userId: $activity->user_id,
                 maxTokens: 1500,
-                toolbox: $this->toolbox($activity, $detail),
+                toolbox: new AgentToolbox($tools),
+                validator: function (array $answer) use ($tools, $verdict, &$facts): ?string {
+                    $facts ??= self::facts($tools);
+
+                    return SpeechFactCheck::complaint((string) $answer['speech'], $facts, $verdict);
+                },
                 deadlineSeconds: $deadlineSeconds,
             ),
         );
@@ -199,15 +212,55 @@ class PostRunSpeechNarrator
      */
     public function toolbox(Activity $activity, ActivityDetail $detail): AgentToolbox
     {
+        return new AgentToolbox($this->tools($activity, $detail));
+    }
+
+    /** @return list<AgentTool> */
+    private function tools(Activity $activity, ActivityDetail $detail): array
+    {
         $asOf = $detail->start_date_local ?? Carbon::now();
 
-        return new AgentToolbox([
+        return [
             new RunSummaryTool($activity, $detail),
             new TerrainTool($activity, $detail),
             new WeatherTool($activity, $detail),
             new PersonalRecordsTool($activity, $detail),
             new WeekStateTool($activity->user, $asOf),
             new PlanContextTool($activity->user, $asOf, $asOf, $this->trainingBaseline, $this->vdotEstimator, $this->paceCalculator),
-        ]);
+        ];
+    }
+
+    /**
+     * What every tool would have returned, read again for the speech check
+     * rather than recorded from the call.
+     *
+     * @param  list<AgentTool>  $tools
+     * @return array<string, mixed>
+     */
+    private static function facts(array $tools): array
+    {
+        $facts = [];
+        foreach ($tools as $tool) {
+            try {
+                $facts[$tool->name()] = $tool->handle([]);
+            } catch (Throwable) {
+                continue;
+            }
+        }
+
+        return $facts;
+    }
+
+    private static function dayVerdict(Activity $activity, ActivityDetail $detail): ?IntentVerdict
+    {
+        if ($detail->start_date_local === null) {
+            return null;
+        }
+
+        return PlannedSession::query()
+            ->where('user_id', $activity->user_id)
+            ->whereDate('date', $detail->start_date_local->toDateString())
+            ->first()
+            ?->intent_verdict;
     }
 }

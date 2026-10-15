@@ -6,7 +6,7 @@ use App\Services\AI\AnalysisOrigin;
 
 it('covers the six ways a call starts, an unattributed default, and the rule-based-only reasons', function (): void {
     expect(array_column(AnalysisOrigin::cases(), 'value'))
-        ->toBe(['scheduled', 'ingest', 'user', 'recovery', 'replay', 'return', 'unknown', 'demo', 'capped', 'content_filter']);
+        ->toBe(['scheduled', 'ingest', 'user', 'recovery', 'replay', 'return', 'unknown', 'demo', 'capped', 'content_filter', 'rejected_output']);
 });
 
 it('labels every case for the usage dashboard', function (AnalysisOrigin $origin, string $label): void {
@@ -22,4 +22,5 @@ it('labels every case for the usage dashboard', function (AnalysisOrigin $origin
     'demo' => [AnalysisOrigin::Demo, 'Demo account'],
     'capped' => [AnalysisOrigin::Capped, 'Daily ceiling reached'],
     'content_filter' => [AnalysisOrigin::ContentFilter, 'Content filter fallback'],
+    'rejected_output' => [AnalysisOrigin::RejectedOutput, 'Rejected output fallback'],
 ]);

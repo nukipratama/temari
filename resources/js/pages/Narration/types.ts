@@ -125,6 +125,7 @@ export interface RuleBasedReasons {
     capped: number;
     return: number;
     content_filter: number;
+    rejected_output: number;
     /** No reason recorded: a null `rule_based_reason`, e.g. a pre-widening row. */
     unattributed: number;
 }
