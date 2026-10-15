@@ -31,6 +31,7 @@ function athlete(overrides: Partial<AthleteRow> = {}): AthleteRow {
                 capped: 0,
                 return: 0,
                 content_filter: 0,
+                rejected_output: 0,
                 unattributed: 0,
             },
         },
@@ -78,6 +79,7 @@ describe('RuleBasedPanel', () => {
                                 capped: 31,
                                 return: 14,
                                 content_filter: 4,
+                                rejected_output: 0,
                                 unattributed: 2,
                             },
                         },
@@ -94,6 +96,7 @@ describe('RuleBasedPanel', () => {
                                 capped: 0,
                                 return: 6,
                                 content_filter: 3,
+                                rejected_output: 0,
                                 unattributed: 0,
                             },
                         },
@@ -110,7 +113,7 @@ describe('RuleBasedPanel', () => {
         expect(screen.getByText('Nuki 14 · Rani 6')).toBeInTheDocument();
     });
 
-    it('flags content-filter and unattributed rows', () => {
+    it('flags content-filter, rejected-output and unattributed rows', () => {
         render(
             <RuleBasedPanel
                 athletes={[
@@ -124,6 +127,7 @@ describe('RuleBasedPanel', () => {
                                 capped: 0,
                                 return: 0,
                                 content_filter: 4,
+                                rejected_output: 1,
                                 unattributed: 2,
                             },
                         },
@@ -133,6 +137,9 @@ describe('RuleBasedPanel', () => {
         );
 
         expect(screen.getByText('content filter tripped')).toHaveClass(
+            'text-ember-ink',
+        );
+        expect(screen.getByText('rejected twice by its check')).toHaveClass(
             'text-ember-ink',
         );
         expect(screen.getByText('no reason recorded')).toHaveClass(
@@ -154,6 +161,7 @@ describe('RuleBasedPanel', () => {
                                 capped: 3,
                                 return: 0,
                                 content_filter: 0,
+                                rejected_output: 0,
                                 unattributed: 0,
                             },
                         },
@@ -184,6 +192,7 @@ describe('RuleBasedPanel', () => {
                                 capped: 1,
                                 return: 0,
                                 content_filter: 0,
+                                rejected_output: 0,
                                 unattributed: 0,
                             },
                         },

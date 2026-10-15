@@ -225,12 +225,14 @@ describe('reason and pause labels', () => {
             'capped',
             'return',
             'content_filter',
+            'rejected_output',
             'unattributed',
         ]);
     });
 
     it('flags only the reasons that want explaining', () => {
         expect(FLAGGED_REASONS.has('content_filter')).toBe(true);
+        expect(FLAGGED_REASONS.has('rejected_output')).toBe(true);
         expect(FLAGGED_REASONS.has('unattributed')).toBe(true);
         expect(FLAGGED_REASONS.has('demo')).toBe(false);
         expect(FLAGGED_REASONS.has('capped')).toBe(false);

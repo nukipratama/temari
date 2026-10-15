@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Jobs\AI;
 
 use App\Exceptions\AI\ContentFilterException;
+use App\Exceptions\AI\RejectedOutputException;
 use App\Exceptions\AI\UnavailableException;
 use App\Models\AI\Analysis;
 use App\Services\AI\AnalysisOrigin;
@@ -142,19 +143,21 @@ abstract class AnalyzeGroupJob extends AnalyzeBaseJob
             )) {
                 $this->afterGroupDone($service);
             }
-        } catch (ContentFilterException) {
-            // Even the continuity-stripped retry content-filtered. Fill every
-            // pending row from the rule-based narrator so the group settles Done
-            // with benign content instead of dead-lettering the whole briefing.
+        } catch (ContentFilterException|RejectedOutputException $e) {
+            // Even the continuity-stripped retry content-filtered, or the
+            // validator rejected the rewrite too. Fill every pending row from the
+            // rule-based narrator so the group settles Done with benign content
+            // instead of dead-lettering or re-billing the whole group.
+            $reason = $e instanceof ContentFilterException ? AnalysisOrigin::ContentFilter : AnalysisOrigin::RejectedOutput;
             if ($this->finalizePending(
                 $pending,
                 $service,
                 $this->ruleBasedPayload($pending),
                 ServedBy::RuleBased,
                 $fingerprint,
-                AnalysisOrigin::ContentFilter,
+                $reason,
             )) {
-                Log::info('narrator.ai.content_filter_fallback', [
+                Log::info('narrator.ai.'.$reason->value.'_fallback', [
                     'kind' => static::subjectType(),
                     'subject' => $this->subjectId,
                 ]);

@@ -28,6 +28,7 @@ use App\Services\AI\Narrators\BriefingMascotVoiceNarrator;
 use App\Services\AI\Narrators\CardFlavorNarrator;
 use App\Services\AI\Narrators\NarratorContinuity;
 use App\Services\AI\Narrators\PlanVerdictRule;
+use App\Enums\IntentVerdict;
 use App\Services\AI\Narrators\OutcomeLabels;
 use App\Services\AI\Narrators\QuotedFigures;
 use App\Services\AI\Narrators\MonthlyRecapNarrator;
@@ -765,6 +766,34 @@ function sentSystemPromptCarriesPlanVerdictRule(ClientFake $client): void
 {
     $client->assertSent(Responses::class, fn (string $method, array $params): bool => str_contains((string) $params['input'][0]['content'], PlanVerdictRule::RULE));
 }
+
+it('PostRunSpeechNarrator re-asks a speech that quotes a distance no tool returned', function (): void {
+    ['activity' => $a, 'detail' => $d] = postRunFixture();
+    $client = new ClientFake([
+        fakeAzureResponse(json_encode(['speech' => '5 km, and 0.9 km more than last time.'], JSON_THROW_ON_ERROR)),
+        fakeAzureResponse(json_encode(['speech' => '5 km on a quiet morning.'], JSON_THROW_ON_ERROR)),
+    ]);
+
+    expect(postRunNarrator(fakeStructuredCaller($client))->generate($a, $d, 'easy'))
+        ->toBe('5 km on a quiet morning.');
+    $client->assertSent(Responses::class, fn (string $method, array $params): bool => str_contains((string) end($params['input'])['content'], 'it quotes 0.9, which no tool returned'));
+});
+
+it('PostRunSpeechNarrator re-asks a speech that turns the day\'s verdict around', function (): void {
+    ['activity' => $a, 'detail' => $d] = postRunFixture();
+    PlannedSession::factory()->for($a->user)->create([
+        'date' => $d->start_date_local->toDateString(),
+        'session_type' => SessionType::Tempo,
+        'intent_verdict' => IntentVerdict::TooHard,
+    ]);
+    $client = new ClientFake([
+        fakeAzureResponse(json_encode(['speech' => 'this one came in easier than written.'], JSON_THROW_ON_ERROR)),
+        fakeAzureResponse(json_encode(['speech' => 'the block ran past what it asked.'], JSON_THROW_ON_ERROR)),
+    ]);
+
+    expect(postRunNarrator(fakeStructuredCaller($client))->generate($a, $d, 'overloaded'))
+        ->toBe('the block ran past what it asked.');
+});
 
 it('hands the speech, the insight and the post-run brief the same plan verdict rule', function (): void {
     ['activity' => $a, 'detail' => $d] = postRunFixture();

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Illuminate\Support\Facades\Bus;
 use App\Exceptions\AI\ContentFilterException;
+use App\Exceptions\AI\RejectedOutputException;
 use App\Exceptions\AI\UnavailableException;
 use App\Jobs\AI\AnalyzeActivityJob;
 use App\Models\Activity;
@@ -522,4 +523,28 @@ it('keeps the generated insight and fills only filtered speech from the rule-bas
         ->and($rows[AnalysisType::PostRunSpeech->value]->status)->toBe(AnalysisStatus::Done)
         ->and($rows[AnalysisType::PostRunSpeech->value]->served_by)->toBe(ServedBy::RuleBased)
         ->and($rows[AnalysisType::PostRunSpeech->value]->rule_based_reason)->toBe(AnalysisOrigin::ContentFilter);
+});
+
+it('fills the speech rule-based when it was rejected twice, keeping the generated insight', function (): void {
+    $activity = seedActivityForJob();
+
+    $speechMock = Mockery::mock(PostRunSpeechNarrator::class);
+    $speechMock->shouldReceive('generate')->andThrow(new RejectedOutputException('rejected twice'));
+    app()->instance(PostRunSpeechNarrator::class, $speechMock);
+    mockInsightNarrator([sampleClaim()]);
+
+    new AnalyzeActivityJob($activity->id)->handle(app(AnalysisService::class));
+
+    $rows = Analysis::query()
+        ->where('subject_type', Activity::class)
+        ->where('subject_id', $activity->id)
+        ->get()
+        ->keyBy(fn (Analysis $row): string => $row->analysis_type->value);
+
+    expect($rows)->toHaveCount(2)
+        ->and($rows[AnalysisType::RunInsight->value]->status)->toBe(AnalysisStatus::Done)
+        ->and($rows[AnalysisType::RunInsight->value]->served_by)->toBe(ServedBy::Llm)
+        ->and($rows[AnalysisType::PostRunSpeech->value]->status)->toBe(AnalysisStatus::Done)
+        ->and($rows[AnalysisType::PostRunSpeech->value]->served_by)->toBe(ServedBy::RuleBased)
+        ->and($rows[AnalysisType::PostRunSpeech->value]->rule_based_reason)->toBe(AnalysisOrigin::RejectedOutput);
 });

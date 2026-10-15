@@ -17,6 +17,7 @@ const REASON_ORDER: ReadonlyArray<keyof RuleBasedReasons> = [
     'capped',
     'return',
     'content_filter',
+    'rejected_output',
     'unattributed',
 ];
 

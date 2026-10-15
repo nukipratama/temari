@@ -54,6 +54,7 @@ const ATHLETE: AthleteRow = {
             capped: 0,
             return: 0,
             content_filter: 0,
+            rejected_output: 0,
             unattributed: 1,
         },
     },

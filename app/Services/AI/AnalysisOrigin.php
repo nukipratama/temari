@@ -32,6 +32,7 @@ enum AnalysisOrigin: string
     case Demo = 'demo';
     case Capped = 'capped';
     case ContentFilter = 'content_filter';
+    case RejectedOutput = 'rejected_output';
 
     public function label(): string
     {
@@ -46,6 +47,7 @@ enum AnalysisOrigin: string
             self::Demo => 'Demo account',
             self::Capped => 'Daily ceiling reached',
             self::ContentFilter => 'Content filter fallback',
+            self::RejectedOutput => 'Rejected output fallback',
         };
     }
 }

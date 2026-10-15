@@ -8,6 +8,7 @@ use OpenAI\Responses\Responses\CreateResponse;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Database\QueryException;
 use App\Exceptions\AI\ContentFilterException;
+use App\Exceptions\AI\RejectedOutputException;
 use App\Exceptions\AI\TransientUpstreamException;
 use App\Exceptions\AI\UnavailableException;
 use App\Services\AI\Narrators\NarratorContinuity;
@@ -853,7 +854,7 @@ it('throws when the answer the validator asked for is rejected too', function ()
 
     expect(fn () => fakeStructuredCaller($client)->call('briefing', 'sys', [], 'schema', ['headline'], options: new ChatCallOptions(
         validator: fn (array $answer): ?string => 'still wrong',
-    )))->toThrow(UnavailableException::class, 'rejected twice: still wrong');
+    )))->toThrow(RejectedOutputException::class, 'rejected twice: still wrong');
 });
 
 // ── metering: joining a usage row back to the block it paid for ────────
