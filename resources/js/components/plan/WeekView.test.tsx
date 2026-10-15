@@ -262,9 +262,10 @@ describe('WeekView', () => {
         expect(selectedTab()).toHaveAttribute('aria-controls', panel.id);
     });
 
-    it('changes the selected day when the panel is swiped horizontally', () => {
+    it('keeps the selected day when the panel is swiped horizontally', () => {
         renderWeek();
         const panel = screen.getByRole('tabpanel');
+        const before = selectedTab()!.getAttribute('aria-label');
 
         fireEvent.touchStart(panel, {
             touches: [{ identifier: 1, clientX: 200, clientY: 100 }],
@@ -273,47 +274,7 @@ describe('WeekView', () => {
             changedTouches: [{ identifier: 1, clientX: 100, clientY: 105 }],
         });
 
-        expect(selectedTab()).toHaveAttribute(
-            'aria-label',
-            'Thu, 8.0 km, tempo',
-        );
-        expect(panel).toHaveTextContent('Thu · jun 18');
-        expect(readPlanSelectedDay()).toBe('2026-06-18');
-    });
-
-    it('does not wrap before Monday', () => {
-        renderWeek({ focusDay: '2026-06-15' });
-        const panel = screen.getByRole('tabpanel');
-
-        fireEvent.touchStart(panel, {
-            touches: [{ identifier: 1, clientX: 100, clientY: 100 }],
-        });
-        fireEvent.touchEnd(panel, {
-            changedTouches: [{ identifier: 1, clientX: 200, clientY: 100 }],
-        });
-
-        expect(selectedTab()).toHaveAttribute(
-            'aria-label',
-            'Mon, 6.0 km, done',
-        );
-    });
-
-    it('does not wrap past Sunday', () => {
-        const sunday = day({ id: 7, date: '2026-06-21' });
-        renderWeek({ days: [...WEEK, sunday], focusDay: sunday.date });
-        const panel = screen.getByRole('tabpanel');
-
-        fireEvent.touchStart(panel, {
-            touches: [{ identifier: 2, clientX: 200, clientY: 100 }],
-        });
-        fireEvent.touchEnd(panel, {
-            changedTouches: [{ identifier: 2, clientX: 100, clientY: 100 }],
-        });
-
-        expect(selectedTab()).toHaveAttribute(
-            'aria-label',
-            'Sun, 6.0 km, easy',
-        );
+        expect(selectedTab()).toHaveAttribute('aria-label', before);
     });
 
     it('opens on the day /plan?day= asked for and scrolls the panel into view', () => {

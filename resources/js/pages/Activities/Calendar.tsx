@@ -1,4 +1,4 @@
-import { Deferred, Head, Link, router } from '@inertiajs/react';
+import { Deferred, Head, Link } from '@inertiajs/react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { type ReactNode, Suspense, useMemo, useState } from 'react';
 
@@ -16,7 +16,6 @@ import {
 import RecapCard from '@/components/history/RecapCard';
 import { Icon, IconComponent } from '@/components/ui/Icon';
 import PageContainer from '@/components/ui/PageContainer';
-import { useHorizontalSwipe } from '@/hooks/useHorizontalSwipe';
 import { appLayout } from '@/layouts/appLayout';
 import { lazyIsland } from '@/lib/lazyIsland';
 import { consistencyOf } from '@/pages/Activities/calendarBars';
@@ -102,13 +101,6 @@ export default function Calendar({
     const consistency = useMemo(() => consistencyOf(cells), [cells]);
     const reloading = useMonthReload(MONTH_RELOAD_PROPS);
 
-    const touchHandlers = useHorizontalSwipe((direction) => {
-        router.visit(
-            calendarMonthUrl(direction === 'left' ? nextMonth : prevMonth),
-            { only: MONTH_RELOAD_PROPS, preserveScroll: true },
-        );
-    });
-
     return (
         <>
             <Head title={`History · Calendar · ${monthLabel}`} />
@@ -127,11 +119,7 @@ export default function Calendar({
                     />
                 </div>
 
-                <div
-                    key={month}
-                    data-testid="calendar-swipe-area"
-                    {...touchHandlers}
-                >
+                <div key={month} data-testid="calendar-month-area">
                     <MonthDeferred
                         reloading={reloading}
                         data={['cells']}

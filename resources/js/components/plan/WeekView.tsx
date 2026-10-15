@@ -13,7 +13,6 @@ import FlagWrong from '@/components/temari/FlagWrong';
 import Chip from '@/components/ui/Chip';
 import { Icon } from '@/components/ui/Icon';
 import PillButton from '@/components/ui/PillButton';
-import { useHorizontalSwipe } from '@/hooks/useHorizontalSwipe';
 import { useRecommendationView } from '@/hooks/useRecommendationView';
 import { rememberPlanSelectedDay } from '@/lib/navigationMemory';
 import { formatKm, formatNaiveMonthDayId, weekRangeLabel } from '@/lib/pace';
@@ -124,13 +123,6 @@ export default function WeekView({
         setSelectedDate(date);
         rememberPlanSelectedDay(date);
     };
-    const touchHandlers = useHorizontalSwipe((direction) => {
-        const index = days.findIndex((day) => day.date === selectedDate);
-        const next = index + (direction === 'left' ? 1 : -1);
-        if (next >= 0 && next < days.length) {
-            selectDate(days[next].date);
-        }
-    });
     const tally = complianceTally(days);
     const adherence = computeAdherence(days);
 
@@ -215,8 +207,7 @@ export default function WeekView({
                         role="tabpanel"
                         id={panelId}
                         aria-labelledby={tabId(selected.date)}
-                        className="touch-pan-y border-t border-dashed border-border pt-3"
-                        {...touchHandlers}
+                        className="border-t border-dashed border-border pt-3"
                     >
                         <div className="flex items-start gap-2">
                             <div className="min-w-0 flex-1">
