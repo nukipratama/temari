@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Actions\AI\RenarrateAfterEffortScore;
+use App\Jobs\AI\RecheckEffortScoreNarrationJob;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
@@ -91,4 +92,25 @@ it('waits for a narration that has not landed yet instead of requesting another'
     app(RenarrateAfterEffortScore::class)($activity->fresh());
 
     Bus::assertNothingDispatched();
+});
+
+it('checks again once a narration still being written has landed', function (): void {
+    $activity = effortScoreNarratedRun();
+    speechRowOf($activity)->update(['status' => AnalysisStatus::Processing]);
+    $activity->detail->update(['perceived_effort' => 6, 'perceived_effort_at' => now()]);
+
+    app(RenarrateAfterEffortScore::class)($activity->fresh());
+
+    Bus::assertDispatched(fn (RecheckEffortScoreNarrationJob $job): bool => $job->activityId === $activity->id
+        && $job->delay !== null);
+});
+
+it('checks again only once', function (): void {
+    $activity = effortScoreNarratedRun();
+    speechRowOf($activity)->update(['status' => AnalysisStatus::Processing]);
+    $activity->detail->update(['perceived_effort' => 6, 'perceived_effort_at' => now()]);
+
+    app(RenarrateAfterEffortScore::class)($activity->fresh(), recheck: false);
+
+    Bus::assertNotDispatched(RecheckEffortScoreNarrationJob::class);
 });

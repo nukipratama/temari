@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Actions\AI;
 
+use App\Jobs\AI\RecheckEffortScoreNarrationJob;
 use App\Models\Activity;
 use App\Models\AI\Analysis;
 use App\Services\AI\AnalysisService;
@@ -20,11 +21,14 @@ use App\Services\AI\MaterialFingerprint;
  */
 final readonly class RenarrateAfterEffortScore
 {
+    /** Long enough for a speech being written when the score landed to have finished. */
+    public const int RECHECK_DELAY_SECONDS = 300;
+
     public function __construct(private AnalysisService $analysisService)
     {
     }
 
-    public function __invoke(Activity $activity): void
+    public function __invoke(Activity $activity, bool $recheck = true): void
     {
         if ($activity->user->is_demo) {
             return;
@@ -33,6 +37,12 @@ final readonly class RenarrateAfterEffortScore
         $speech = Analysis::query()
             ->forSubject(Activity::class, $activity->id, AnalysisType::PostRunSpeech)
             ->first();
+        if ($speech?->status === AnalysisStatus::Processing && $recheck) {
+            RecheckEffortScoreNarrationJob::dispatch($activity->id)->delay(now()->addSeconds(self::RECHECK_DELAY_SECONDS));
+
+            return;
+        }
+
         if ($speech?->status !== AnalysisStatus::Done
             || $speech->content_fingerprint === null
             || $speech->content_fingerprint === MaterialFingerprint::forActivity($activity)) {
