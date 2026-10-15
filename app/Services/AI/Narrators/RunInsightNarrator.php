@@ -11,8 +11,8 @@ use App\Services\AI\Agent\AgentToolbox;
 use App\Services\AI\Agent\Tools\EffortContextTool;
 use App\Services\AI\Agent\Tools\HrZonesTool;
 use App\Services\AI\Agent\Tools\KmSplitsTool;
-use App\Services\AI\Agent\Tools\PerceivedEffortTool;
 use App\Services\AI\Agent\Tools\LapsTool;
+use App\Services\AI\Agent\Tools\PerceivedEffortTool;
 use App\Services\AI\Agent\Tools\PlanContextTool;
 use App\Services\AI\Agent\Tools\RecentBaselineTool;
 use App\Services\AI\Agent\Tools\RunSummaryTool;
@@ -156,7 +156,8 @@ class RunInsightNarrator
         athlete's own effort score for this run, read the same way: it can say
         what a reading meant (a heavy zone share the athlete scored 3, below
         the range the day usually feels, is heart rate running hot, not the
-        effort), but it has no anchor, so it is never a claim's subject.
+        effort, unless intent says it ran harder than asked), but it has no
+        anchor, so it is never a claim's subject.
 
         {plan_verdict}
 

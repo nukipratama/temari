@@ -21,7 +21,7 @@ class PerceivedEffortController extends Controller
         ]);
 
         $detail->update(['perceived_effort' => (int) $validated['score'], 'perceived_effort_at' => now()]);
-        $renarrate($activity->setRelation('detail', $detail));
+        $renarrate($activity);
 
         return back();
     }

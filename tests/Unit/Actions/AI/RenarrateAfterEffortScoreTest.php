@@ -72,6 +72,17 @@ it('never narrates the demo athlete', function (): void {
     expect(speechRowOf($activity)->status)->toBe(AnalysisStatus::Done);
 });
 
+it('leaves a speech that was never stamped alone', function (): void {
+    $activity = effortScoreNarratedRun();
+    speechRowOf($activity)->update(['content_fingerprint' => null]);
+    $activity->detail->update(['perceived_effort' => 6, 'perceived_effort_at' => now()]);
+
+    app(RenarrateAfterEffortScore::class)($activity->fresh());
+
+    expect(speechRowOf($activity)->status)->toBe(AnalysisStatus::Done);
+    Bus::assertNothingDispatched();
+});
+
 it('waits for a narration that has not landed yet instead of requesting another', function (): void {
     $activity = effortScoreNarratedRun();
     speechRowOf($activity)->update(['status' => AnalysisStatus::Pending]);

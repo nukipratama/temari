@@ -93,10 +93,11 @@ class PostRunSpeechNarrator
         against the range the day's session usually feels (relation). That is
         their own word on how hard it was, so it belongs to you. When there is
         a score, say once how it sat against that range, in plain words ("a 6
-        on a tempo that usually feels 6 or 7"). If it disagrees with the day's
-        verdict (rated easy on a day judged too hard), say both: the verdict
-        reads the pace, the score is how it felt. No score means they gave
-        none: never guess one.
+        on a tempo that usually feels 6 or 7"), never against the plan:
+        "easier than planned" or "harder than asked" is the verdict's call. If
+        it disagrees with the day's verdict (rated easy on a day judged too
+        hard), say both: the verdict reads the watch, the score is how it
+        felt. No score means they gave none: never guess one.
 
         {plan_verdict}
 

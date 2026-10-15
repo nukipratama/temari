@@ -30,7 +30,7 @@ An athlete can give any run an effort score out of 10 ([[an-effort-score-is-coll
 - that type's range from [SessionType::perceivedEffortTarget()](app/Enums/SessionType.php);
 - a relation word (below, within or above), never a signed gap.
 
-The speech says once how the score sat against the range, and names a disagreement with the day's verdict as two readings, pace and feel. The insight uses the score only to read a reading, since it has no anchor of its own.
+The speech says once how the score sat against the range, and names a disagreement with the day's verdict as two readings, the watch and the feel. The insight uses the score only to read a reading, since it has no anchor of its own.
 
 **The ranges (CR-10 session RPE):**
 
@@ -49,5 +49,6 @@ The zone cut-offs are published, but they were derived in junior cross-country s
 ## Consequences
 
 - Each first score on a narrated run costs one speech and one insight generation, under the athlete's daily cost ceiling.
-- A run scored before this shipped carries a narration stamped without `has_effort_score`. Its fingerprint differs, so its next ingest-time refresh, or a new score, re-narrates it.
+- The new key changes every fingerprint stamped before this shipped, scored or not. Such a narration re-narrates once at its next ingest-time refresh or the next score saved on its run. A rule-based narration, never stamped, is left alone.
+- A run card's flavor is stamped with the same fingerprint but does not read the score, so after a first score it re-narrates once at the run's next re-sync.
 - With no plan for the day, or two runs on it, the score has no range and the narration reports it plainly.

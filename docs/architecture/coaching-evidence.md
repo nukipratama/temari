@@ -73,7 +73,6 @@ ADRs, feature notes and code docblocks cite a source here as `[[coaching-evidenc
 | Readiness reads load as unknown while the CTL window still awaits hydration | [BriefingContext.php](app/Services/Run/Story/BriefingContext.php) | product choice | — |
 | Monotony and strain describe a week; neither deloads it nor caps readiness | [PlanAdapter.php](app/Services/Run/Plan/PlanAdapter.php), [Readiness.php](app/Services/Run/Metrics/Readiness.php) | evidence-supported | [[#Foster1998]], [[#JonesCM2017]] |
 | A return after a gap is handled once, by the missed-week adaptation and the ramp, never as a separate strain deload | [PlanAdapter.php](app/Services/Run/Plan/PlanAdapter.php) | evidence-supported | [[#Frandsen2025]], [[#Impellizzeri2020]] |
-| The run narration reads an effort score against the CR-10 range its planned session usually feels: easy 2–4, long 3–5, tempo 6–7, interval 8–9, none for a race or rest day | [SessionType::perceivedEffortTarget()](app/Enums/SessionType.php), [PerceivedEffortTool.php](app/Services/AI/Agent/Tools/PerceivedEffortTool.php) | heuristic (zone cut-offs published in skiers; bounds inside them and the long-run lift are chosen) | [[#SeilerKjerland2006]], [[#Foster2001]], [[#Haddad2017]] |
 | No generated running session exceeds 110% of the longest run in the prior 30 days; with none, the cap is the cold-start long run | [SegmentGenerator.php](app/Services/Run/Plan/SegmentGenerator.php), [TrainingBaseline.php](app/Services/Run/Plan/TrainingBaseline.php) | evidence-supported | [[#Frandsen2025]] |
 | A race block holding its increases averages its training weeks at the volume floor, each within 10% of it | [TrainingBaseline.php](app/Services/Run/Plan/TrainingBaseline.php) | heuristic | [[#Gabbett2016]], [[#Impellizzeri2020]] |
 | A goal-less season's four-week cycle averages its frozen anchor, unless a long-run cap binds | [TrainingBaseline.php](app/Services/Run/Plan/TrainingBaseline.php) | heuristic | [[#Doherty2020]], [[#Coyle1984]], [[#MujikaPadilla2000a]] |
@@ -132,6 +131,7 @@ ADRs, feature notes and code docblocks cite a source here as `[[coaching-evidenc
 | A run's fallback mood follows the same effort scale as its colour | [Temari.php](app/Services/Run/Story/Temari.php) | product choice | — |
 | Ordinary recalibration recomputes metrics and the future plan but keeps past prescriptions and shown-advice grades | [PlanRecalibrationService.php](app/Services/Run/Plan/PlanRecalibrationService.php) | product choice (#1511) | — |
 | One pre-launch reset rebuilds derived history once under the current policy | `CoachingReset::reset()` (removed 2026-10-08) | product choice (#1541) | — |
+| The run narration reads an effort score against the CR-10 range its planned session usually feels: easy 2–4, long 3–5, tempo 6–7, interval 8–9, none for a race or rest day | [SessionType::perceivedEffortTarget()](app/Enums/SessionType.php), [PerceivedEffortTool.php](app/Services/AI/Agent/Tools/PerceivedEffortTool.php) | heuristic (zone cut-offs published in skiers; bounds inside them and the long-run lift are chosen) | [[#SeilerKjerland2006]], [[#Foster2001]], [[#Haddad2017]] |
 
 ## Sources
 

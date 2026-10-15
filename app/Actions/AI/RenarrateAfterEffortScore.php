@@ -33,7 +33,9 @@ final readonly class RenarrateAfterEffortScore
         $speech = Analysis::query()
             ->forSubject(Activity::class, $activity->id, AnalysisType::PostRunSpeech)
             ->first();
-        if ($speech?->status !== AnalysisStatus::Done || $speech->content_fingerprint === MaterialFingerprint::forActivity($activity)) {
+        if ($speech?->status !== AnalysisStatus::Done
+            || $speech->content_fingerprint === null
+            || $speech->content_fingerprint === MaterialFingerprint::forActivity($activity)) {
             return;
         }
 
