@@ -19,6 +19,7 @@
     "athletes[].served.reasons.capped",
     "athletes[].served.reasons.content_filter",
     "athletes[].served.reasons.demo",
+    "athletes[].served.reasons.rejected_output",
     "athletes[].served.reasons.return",
     "athletes[].served.reasons.unattributed",
     "athletes[].served.rule_based",
