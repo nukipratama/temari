@@ -10,6 +10,7 @@ import {
     formatDurationHMS,
     formatIdDate,
     formatKm,
+    formatPaceWithRange,
     formatMonthDayId,
     formatNaiveIdDate,
     formatNaiveTimeId,
@@ -461,5 +462,21 @@ describe('weekRangeLabel', () => {
 
     it('snaps a mid-week date back to its Monday', () => {
         expect(weekRangeLabel('2026-06-18')).toBe(weekRangeLabel('2026-06-15'));
+    });
+});
+
+describe('formatPaceWithRange', () => {
+    it('puts the window beside the target, fast end first', () => {
+        expect(
+            formatPaceWithRange(349, {
+                fast_sec_per_km: 332,
+                slow_sec_per_km: 359,
+            }),
+        ).toBe('5:49/km (5:32–5:59)');
+    });
+
+    it('shows the bare pace without a window', () => {
+        expect(formatPaceWithRange(349, null)).toBe('5:49/km');
+        expect(formatPaceWithRange(349, undefined)).toBe('5:49/km');
     });
 });

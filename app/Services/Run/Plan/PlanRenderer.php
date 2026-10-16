@@ -258,6 +258,7 @@ final class PlanRenderer
         ?array $readinessAssessment = null,
         ?int $easyHrCapBpm = null,
         bool $includeRecommendationToken = true,
+        ?int $easySlowEndSecPerKm = null,
     ): array {
         $isToday = $s->date->isSameDay($today);
         $volumeScale = $volumeScaleByDate[$s->date->toDateString()] ?? 1.0;
@@ -315,7 +316,7 @@ final class PlanRenderer
             'date' => $s->date->toDateString(),
             'phase' => $s->phase->value,
             'session_type' => $sessionType->value,
-            'segments' => array_map(static fn (SessionSegment $segment): array => $segment->toArray(), $segments),
+            'segments' => self::segmentsWithRanges($segments, $sessionType === SessionType::Race || TimeTrial::of($s) !== null, $paces['marathon'] ?? null, $easySlowEndSecPerKm),
             'hr_cap_bpm' => self::heartRateCapOf($sessionType, $segments, $easyHrCapBpm),
             'distance_km' => $distanceKm,
             'asked_km' => $askedKm,
@@ -881,5 +882,17 @@ final class PlanRenderer
     private static function clauses(string $outcome, ?string $detail): string
     {
         return $detail === null ? "{$outcome}." : "{$outcome}; {$detail}.";
+    }
+
+    /**
+     * @param  list<SessionSegment>  $segments
+     * @return list<array{key: string, minutes: float|null, km: float|null, zone: string, pace_label: string, pace_sec_per_km: int|null, pace_range: array{fast_sec_per_km: int, slow_sec_per_km: int}|null}>
+     */
+    private static function segmentsWithRanges(array $segments, bool $raceEffort, ?int $marathonSecPerKm, ?int $easySlowEndSecPerKm): array
+    {
+        return array_map(static fn (SessionSegment $segment): array => [
+            ...$segment->toArray(),
+            'pace_range' => PaceRange::forSegment($segment, $raceEffort, $marathonSecPerKm, $easySlowEndSecPerKm)?->toArray(),
+        ], $segments);
     }
 }

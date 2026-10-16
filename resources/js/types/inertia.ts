@@ -521,6 +521,13 @@ export interface PlanSessionSegment {
     zone: string;
     pace_label: 'easy' | 'marathon' | 'threshold' | 'interval';
     pace_sec_per_km: number | null;
+    /** The window the step is run in, fast end first; see `PaceRange`. */
+    pace_range?: PaceRange | null;
+}
+
+export interface PaceRange {
+    fast_sec_per_km: number;
+    slow_sec_per_km: number;
 }
 
 /** What a readiness-eased day was eased from, from `PlanRenderer::easedFromPayload()`. */

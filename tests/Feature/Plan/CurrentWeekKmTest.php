@@ -166,3 +166,17 @@ it('gives the narrator a later easy-prescribed interval as the easy run the page
     expect($friday['session_type'])->toBe('easy')
         ->and([$narrated['session_type'], $narrated['distance_km']])->toBe([$friday['session_type'], $friday['distance_km']]);
 });
+
+it('hands the week plan each run day\'s pace window from the athlete\'s VDOT', function (): void {
+    $user = issueWeek(4.4);
+    $this->partialMock(VdotEstimator::class)->shouldReceive('estimate')->andReturn(['vdot' => 45.0]);
+    $calculator = app(TrainingPaceCalculator::class);
+    $marathon = $calculator->fromVdot(45.0)['marathon'];
+    $slowEnd = $calculator->easySlowEndSecPerKm(45.0);
+
+    $week = app(CurrentWeekKm::class)->forUser($user, Carbon::today());
+    $today = collect(app(CurrentWeekPlanBuilder::class)->forUser($user, Carbon::today())['days'])->firstWhere('date', WEEK_KM_TODAY);
+
+    expect($week['easy_slow_end_sec_per_km'])->toBe($slowEnd)
+        ->and($today['segments'][0]['pace_range'])->toBe(['fast_sec_per_km' => $marathon, 'slow_sec_per_km' => $slowEnd]);
+});

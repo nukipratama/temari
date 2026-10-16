@@ -374,3 +374,25 @@ describe('zoneColor', () => {
         });
     });
 });
+
+describe('SessionBarGraph pace window', () => {
+    it("puts each step's window beside its pace in the legend", () => {
+        render(
+            <SessionBarGraph
+                segments={[
+                    segment({
+                        pace_sec_per_km: 432,
+                        pace_range: {
+                            fast_sec_per_km: 393,
+                            slow_sec_per_km: 452,
+                        },
+                    }),
+                ]}
+            />,
+        );
+
+        expect(
+            screen.getByText('7:12/km (6:33–7:32) · easy'),
+        ).toBeInTheDocument();
+    });
+});

@@ -67,6 +67,7 @@ final readonly class CurrentWeekPlanBuilder
             $s->date->isSameDay($today) ? $week['briefing']->readinessAssessment : null,
             $user->runnerProfile?->easyHrCapBpm(),
             includeRecommendationToken: $s->date->isSameDay($today),
+            easySlowEndSecPerKm: $week['easy_slow_end_sec_per_km'],
         ))->values()->all();
 
         // A rest day asks for nothing and always scores Done, so counting it
