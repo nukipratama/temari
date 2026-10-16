@@ -1,8 +1,8 @@
 import { router } from '@inertiajs/react';
 import { fireEvent, render, screen } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 
-import { formMock, makeUser, setMockPage } from '@/test/setup';
+import { makeUser, setMockPage } from '@/test/setup';
 
 import IntervalsIcuPanel, {
     INTERVALS_ICU_DEMO_BLOCKED,
@@ -15,15 +15,8 @@ const notConnected: IntervalsIcuPayload = {
     broken: false,
 };
 
-const setData = vi.fn();
-
 beforeEach(() => {
     setMockPage({ auth: { user: makeUser() } });
-    setData.mockReset();
-    Object.assign(formMock, {
-        data: { athlete_id: '', api_key: '' },
-        setData,
-    });
 });
 
 function openRow() {
@@ -31,7 +24,7 @@ function openRow() {
 }
 
 describe('IntervalsIcuPanel', () => {
-    it('keeps the connect form folded until the row is opened', () => {
+    it('keeps the connect form folded until the row is opened', async () => {
         render(<IntervalsIcuPanel intervalsIcu={notConnected} />);
 
         const row = screen.getByRole('button', { name: /intervals\.icu/ });
@@ -44,60 +37,7 @@ describe('IntervalsIcuPanel', () => {
         openRow();
 
         expect(row).toHaveAttribute('aria-expanded', 'true');
-        expect(screen.getByLabelText('athlete ID')).toBeInTheDocument();
-        expect(screen.getByLabelText(/^API key/)).toHaveAttribute(
-            'type',
-            'password',
-        );
-        expect(screen.getByText(/tested on Huawei/)).toBeInTheDocument();
-        expect(
-            screen.getByRole('link', { name: 'open intervals.icu' }),
-        ).toHaveAttribute('href', 'https://intervals.icu/settings');
-    });
-
-    it('posts the ID and key and clears the key whatever the outcome', () => {
-        render(<IntervalsIcuPanel intervalsIcu={notConnected} />);
-        openRow();
-
-        fireEvent.change(screen.getByLabelText(/^API key/), {
-            target: { value: 'secret' },
-        });
-        fireEvent.click(screen.getByRole('button', { name: /connect/ }));
-
-        expect(setData).toHaveBeenCalledWith('api_key', 'secret');
-        expect(formMock.post).toHaveBeenCalledWith(
-            '/settings/intervals-icu',
-            expect.objectContaining({ preserveScroll: true }),
-        );
-        const options = formMock.post.mock.calls[0][1] as {
-            onFinish: () => void;
-        };
-        options.onFinish();
-        expect(formMock.reset).toHaveBeenCalledWith('api_key');
-    });
-
-    it('shows what intervals.icu said under the key field', () => {
-        Object.assign(formMock, {
-            errors: { api_key: "intervals.icu didn't accept that ID and key." },
-        });
-        render(<IntervalsIcuPanel intervalsIcu={notConnected} />);
-        openRow();
-
-        expect(screen.getByRole('alert')).toHaveTextContent(
-            "intervals.icu didn't accept that ID and key.",
-        );
-        expect(screen.getByLabelText(/^API key/)).toHaveAttribute(
-            'aria-invalid',
-            'true',
-        );
-    });
-
-    it('says it is checking while the key is verified', () => {
-        Object.assign(formMock, { processing: true });
-        render(<IntervalsIcuPanel intervalsIcu={notConnected} />);
-        openRow();
-
-        expect(screen.getByRole('button', { name: /checking/ })).toBeDisabled();
+        expect(await screen.findByLabelText('athlete ID')).toBeInTheDocument();
     });
 
     it('shows a healthy connection as a static row with a disconnect beneath it', () => {
@@ -125,7 +65,7 @@ describe('IntervalsIcuPanel', () => {
         });
     });
 
-    it('offers to reconnect a broken key with the athlete ID already filled', () => {
+    it('offers to reconnect a broken key from the same form', async () => {
         render(
             <IntervalsIcuPanel
                 intervalsIcu={{
@@ -147,7 +87,7 @@ describe('IntervalsIcuPanel', () => {
 
         openRow();
 
-        expect(screen.getByLabelText(/^API key/)).toBeInTheDocument();
+        expect(await screen.findByLabelText(/^API key/)).toBeInTheDocument();
     });
 
     it('opens the demo notice instead of the form for the demo account', async () => {

@@ -10,6 +10,7 @@ code_refs:
   - app/Models/IntervalsIcuConnection.php
   - app/Services/IntervalsIcu/IntervalsIcuClient.php
   - resources/js/components/settings/IntervalsIcuPanel.tsx
+  - resources/js/components/settings/IntervalsIcuConnectForm.tsx
 ---
 
 # intervals.icu connection
