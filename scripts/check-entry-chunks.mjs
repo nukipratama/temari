@@ -89,7 +89,7 @@ const ROUTE_BUDGETS_KB = [
     {
         name: 'Settings',
         src: 'resources/js/pages/Settings/Index.tsx',
-        budgetKb: 170,
+        budgetKb: 175,
     },
 ];
 

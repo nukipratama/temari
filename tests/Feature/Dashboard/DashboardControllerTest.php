@@ -2,8 +2,10 @@
 
 declare(strict_types=1);
 
+use App\Enums\IntervalsIcuSyncStatus;
 use App\Enums\RaceOutcome;
 use App\Enums\SessionType;
+use App\Models\IntervalsIcuConnection;
 use App\Models\PlannedSession;
 use App\Models\RaceGoal;
 use App\Models\Activity;
@@ -510,3 +512,19 @@ it('ships no effort prompt to Today, even with an unscored run', function (): vo
     $this->actingAs($user)->get('/')
         ->assertInertia(fn (Assert $page) => $page->missing('effortPrompt'));
 });
+
+it("ships where today's intervals.icu workout stands", function (Closure $connect, ?string $expected): void {
+    Carbon::setTestNow('2026-10-14 09:00:00');
+    $user = User::factory()->create();
+    $connect($user);
+
+    $this->actingAs($user)->get('/')
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page->where('intervalsIcu', $expected));
+})->with([
+    'not connected' => [fn (User $user) => null, null],
+    'sent today' => [fn (User $user) => IntervalsIcuConnection::factory()->for($user)->create(['synced_on' => '2026-10-14', 'sync_status' => IntervalsIcuSyncStatus::Sent]), 'sent'],
+    'not sent today' => [fn (User $user) => IntervalsIcuConnection::factory()->for($user)->create(['synced_on' => '2026-10-14', 'sync_status' => IntervalsIcuSyncStatus::NoThresholdHeartRate]), 'no_threshold_hr'],
+    'only synced yesterday' => [fn (User $user) => IntervalsIcuConnection::factory()->for($user)->create(['synced_on' => '2026-10-13', 'sync_status' => IntervalsIcuSyncStatus::Sent]), null],
+    'broken key' => [fn (User $user) => IntervalsIcuConnection::factory()->for($user)->broken()->create(), 'broken'],
+]);

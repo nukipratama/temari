@@ -285,6 +285,13 @@ Schedule::command('fitness:notify-improvement')->dailyAt('10:00')->withoutOverla
 // has no outbound channel.
 $alertOnFailure(Schedule::command('briefing:morning-push')->everyFifteenMinutes()->withoutOverlapping(14), 'briefing:morning-push');
 
+// Every 15 minutes: queue one job per athlete with a working intervals.icu
+// connection, which sends today's workout, updates it in place when today
+// changes, or removes it when today stops being a run. The HTTP calls run on
+// the queue, so this tick only reads the connection list. Demo excluded
+// (notDemo() on the user scan).
+$alertOnFailure(Schedule::command('intervals-icu:sync')->everyFifteenMinutes()->withoutOverlapping(14), 'intervals-icu:sync');
+
 // Every 5 minutes: record Horizon's throughput, runtime and wait per queue and
 // job for its Metrics tab, trimmed by horizon.metrics.trim_snapshots.
 $alertOnFailure(Schedule::command('horizon:snapshot')->everyFiveMinutes()->withoutOverlapping(4), 'horizon:snapshot');

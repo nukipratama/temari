@@ -57,6 +57,7 @@ The notification classes live in `app/Notifications/`. What differs between them
 | [TimeTrialNotification](app/Notifications/TimeTrialNotification.php) | `plan:settle-time-trials`, 09:05 | inbox + outbound | yes | — | — |
 | [FitnessImprovedNotification](app/Notifications/FitnessImprovedNotification.php) | `fitness:notify-improvement`, 10:00 | inbox + outbound | yes | — | — |
 | [StravaDisconnectedNotification](app/Notifications/StravaDisconnectedNotification.php) | [`StravaConnection::markRevoked()`](app/Models/StravaConnection.php), except on account deletion | inbox + outbound | no | — | — |
+| [IntervalsIcuDisconnectedNotification](app/Notifications/IntervalsIcuDisconnectedNotification.php) | [`IntervalsIcuSync`](app/Services/IntervalsIcu/IntervalsIcuSync.php), once when a sync first meets a 401/403 | inbox + outbound | no | — | — |
 | [DayClampedNotification](app/Notifications/DayClampedNotification.php) | the readiness clamp recorder | inbox only | no | — | — |
 | [TestNotification](app/Notifications/TestNotification.php) | the Settings page's test send | inbox + outbound | no | — | — |
 

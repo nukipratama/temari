@@ -11,6 +11,7 @@ use App\Enums\ExperienceLevel;
 use App\Enums\FeedbackReason;
 use App\Enums\FeedbackSubject;
 use App\Enums\GoalType;
+use App\Enums\IntervalsIcuSyncStatus;
 use App\Enums\Mood;
 use App\Enums\NotificationKind;
 use App\Enums\PerformanceEvidenceKind;
@@ -49,6 +50,7 @@ final class GenerateTypeScriptEnumsCommand extends Command
         AnalysisStatus::class,
         AnalysisType::class,
         NotificationKind::class,
+        IntervalsIcuSyncStatus::class,
         PlannedSessionStatus::class,
         ExperienceLevel::class,
         GoalType::class,

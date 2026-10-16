@@ -10,6 +10,7 @@ import {
     RefreshCwOff,
     Timer,
     TrendingUp,
+    Watch,
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -35,6 +36,7 @@ const KIND_LABEL: Record<NotificationKind, string> = {
     streak_reminder: 'Streak',
     plan_clamp: 'Plan',
     strava_disconnected: 'Strava',
+    intervals_icu_disconnected: 'intervals.icu',
     race_tomorrow: 'Race',
     race_outcome: 'Race',
     fitness_improved: 'Race',
@@ -49,6 +51,7 @@ const KIND_ICON: Record<NotificationKind, IconComponent> = {
     streak_reminder: Flame,
     plan_clamp: Moon,
     strava_disconnected: RefreshCwOff,
+    intervals_icu_disconnected: Watch,
     race_tomorrow: Flag,
     race_outcome: Flag,
     fitness_improved: TrendingUp,
@@ -63,6 +66,7 @@ const KIND_TONE: Record<NotificationKind, Tone> = {
     streak_reminder: 'accent',
     plan_clamp: 'neutral',
     strava_disconnected: 'neutral',
+    intervals_icu_disconnected: 'neutral',
     race_tomorrow: 'accent',
     race_outcome: 'accent',
     fitness_improved: 'accent',

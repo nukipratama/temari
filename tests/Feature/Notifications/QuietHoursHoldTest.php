@@ -17,6 +17,7 @@ use App\Models\User;
 use App\Notifications\AnalysisReadyNotification;
 use App\Notifications\DayClampedNotification;
 use App\Notifications\FitnessImprovedNotification;
+use App\Notifications\IntervalsIcuDisconnectedNotification;
 use App\Notifications\MorningBriefingNotification;
 use App\Notifications\RaceOutcomeNotification;
 use App\Notifications\RaceTomorrowNotification;
@@ -87,6 +88,7 @@ dataset('notification types', function (): array {
         'post-run story' => [fn (User $user): Notification => quietPostRun($user), 1, true],
         'day clamped' => [fn (User $user): Notification => new DayClampedNotification('2026-10-06', 'quality can wait.'), 1, false],
         'fitness improved' => [fn (User $user): Notification => new FitnessImprovedNotification(10_000.0, 3_570, 3_640, 5_000, '2026-09-20', '2026-10-05'), 1, true],
+        'intervals.icu disconnected' => [fn (User $user): Notification => new IntervalsIcuDisconnectedNotification(now()), 1, true],
         'morning briefing' => [fn (User $user): Notification => new MorningBriefingNotification(Analysis::factory()->done('easy 5k.')->create([
             'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
             'subject_id' => $user->id,

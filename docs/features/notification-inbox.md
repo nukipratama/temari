@@ -34,6 +34,7 @@ Where a row goes is the router's call ([[inbox-is-an-always-on-channel]]), never
 | `streak_reminder` | Saturday 18:00, one per at-risk week | inbox · Telegram · push | the dashboard |
 | `plan_clamp` | a rest day being stepped down | inbox only | the dashboard |
 | `strava_disconnected` | the Strava grant being revoked | inbox · Telegram · push | the profile, where the reconnect button is |
+| `intervals_icu_disconnected` | intervals.icu rejecting the athlete's key during a sync | inbox · Telegram · push | Settings, where the reconnect form is |
 | `race_tomorrow` | 18:00 the evening before an active race goal's date | inbox · Telegram · push | the race page |
 | `race_outcome` | 09:00 the morning after a race whose outcome is still pending | inbox · Telegram · push | the race page, where the athlete confirms a run, enters a time or says they did not run |
 | `fitness_improved` | 10:00 daily, when the supported VDOT has risen at least 0.5 above the last noted one, at most once a week ([[supported-race-time-from-recent-efforts]]) | inbox · Telegram · push | the race page |
@@ -80,7 +81,7 @@ each race for its date the same way through its own `outcome_asked_for_date` col
 A passed date is not participation, so the copy is neutral and says nothing is counted until the
 athlete answers. The demo account and athletes with the master switch off are never asked.
 
-**`strava_disconnected` is the one kind the master switch does not govern.** Until it notified, the
+**`strava_disconnected` and `intervals_icu_disconnected` are the kinds the master switch does not govern.** Until it notified, the
 only surface that admitted a dead grant was the empty-runs hero, a screen an athlete with runs on
 the dashboard never sees, so their history just stopped growing with no page saying why.
 `notifications_enabled` names what it covers in its own Settings description (the story, the recaps,

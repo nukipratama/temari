@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Enums\IntervalsIcuSyncStatus;
 use Database\Factories\IntervalsIcuConnectionFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
@@ -20,6 +21,10 @@ use Override;
  * @property string $api_key
  * @property Carbon $verified_at
  * @property Carbon|null $broken_at
+ * @property Carbon|null $synced_on
+ * @property IntervalsIcuSyncStatus|null $sync_status
+ * @property string|null $event_id
+ * @property string|null $payload_hash
  * @property-read User $user
  */
 #[Fillable([
@@ -28,6 +33,10 @@ use Override;
     'api_key',
     'verified_at',
     'broken_at',
+    'synced_on',
+    'sync_status',
+    'event_id',
+    'payload_hash',
 ])]
 #[Hidden(['api_key'])]
 class IntervalsIcuConnection extends Model
@@ -48,6 +57,12 @@ class IntervalsIcuConnection extends Model
         return $this->broken_at !== null;
     }
 
+    /** Where the workout for `$day` stands, null before the sync has looked at that day. */
+    public function statusOn(Carbon $day): ?IntervalsIcuSyncStatus
+    {
+        return $this->synced_on?->isSameDay($day) === true ? $this->sync_status : null;
+    }
+
     /**
      * @return array<string, string>
      */
@@ -59,6 +74,8 @@ class IntervalsIcuConnection extends Model
             'api_key' => 'encrypted',
             'verified_at' => 'datetime',
             'broken_at' => 'datetime',
+            'synced_on' => 'date',
+            'sync_status' => IntervalsIcuSyncStatus::class,
         ];
     }
 }

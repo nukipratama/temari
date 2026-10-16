@@ -47,6 +47,7 @@ const BILLING = [
     'plan:settle-time-trials' => 'notDemo() on the trial scan inside the command',
     'fitness:notify-improvement' => 'notDemo() on the user scan inside the command',
     'ai:self-heal' => 'every sweep in SelfHealer draws from RecentlyActiveUsers, which applies User::notDemo()',
+    'intervals-icu:sync' => 'notDemo() on the user scan; calls intervals.icu per athlete',
 ];
 
 /**
@@ -141,4 +142,5 @@ it('reads the demo exclusion straight out of each billing command source', funct
     'fitness:notify-improvement' => ['fitness:notify-improvement', 'app/Console/Commands/Run/FitnessNotifyImprovementCommand.php'],
     'strava:hydrate-backlog' => ['strava:hydrate-backlog', 'app/Console/Commands/Strava/HydrateBacklogCommand.php'],
     'ai:self-heal' => ['ai:self-heal', 'app/Console/Commands/AI/SelfHealCommand.php', 'app/Services/AI/SelfHealer.php', 'app/Actions/AI/RecentlyActiveUsers.php'],
+    'intervals-icu:sync' => ['intervals-icu:sync', 'app/Console/Commands/IntervalsIcu/SyncCommand.php'],
 ]);

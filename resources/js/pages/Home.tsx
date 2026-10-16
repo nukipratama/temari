@@ -10,6 +10,7 @@ import type {
 
 import AiOutageBanner from '@/components/AiOutageBanner';
 import EvidenceList from '@/components/home/EvidenceList';
+import { type TodayIntervalsIcu } from '@/components/home/IntervalsIcuStatus';
 import NoPlanCard from '@/components/home/NoPlanCard';
 import NoVerdictPanel from '@/components/home/NoVerdictPanel';
 import RaceOutcomePrompt, {
@@ -38,6 +39,7 @@ interface HomeProps {
     restDayEasePace?: RestDayEasePace | null;
     pendingRaceOutcome?: PendingRaceOutcome | null;
     pendingTimeTrial?: PendingTimeTrial | null;
+    intervalsIcu?: TodayIntervalsIcu | null;
 }
 
 /**
@@ -55,6 +57,7 @@ export default function Home({
     restDayEasePace = null,
     pendingRaceOutcome = null,
     pendingTimeTrial = null,
+    intervalsIcu = null,
 }: Readonly<HomeProps>) {
     const todayIso = useTodayIso();
     const todayPlan =
@@ -84,6 +87,7 @@ export default function Home({
                             briefing={briefing}
                             today={todayPlan}
                             restDayEasePace={restDayEasePace}
+                            intervalsIcu={intervalsIcu}
                             drawnAnchors={drawnHomeAnchors(weekPlan, todayIso)}
                         />
 

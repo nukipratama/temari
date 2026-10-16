@@ -3,7 +3,11 @@
 declare(strict_types=1);
 
 use App\Enums\IntervalsIcuVerification;
+use App\Models\IntervalsIcuConnection;
+use App\Services\IntervalsIcu\Exceptions\IntervalsIcuRejectedException;
+use App\Services\IntervalsIcu\Exceptions\IntervalsIcuUnreachableException;
 use App\Services\IntervalsIcu\IntervalsIcuClient;
+use App\Services\IntervalsIcu\IntervalsIcuWorkout;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
@@ -35,3 +39,103 @@ it('reads a connection failure as unreachable', function (): void {
 
     expect(new IntervalsIcuClient()->verify('i123456', 'secret-key'))->toBe(IntervalsIcuVerification::Unreachable);
 });
+
+function clientConnection(): IntervalsIcuConnection
+{
+    return IntervalsIcuConnection::factory()->make(['user_id' => 1, 'athlete_id' => 'i123456', 'api_key' => 'secret-key']);
+}
+
+function clientWorkout(): IntervalsIcuWorkout
+{
+    return new IntervalsIcuWorkout('Easy 8 km', "from temari\n\n- 8km 6:33-7:32/km Pace intensity=active");
+}
+
+it('reads the run threshold heart rate from the run sport settings', function (): void {
+    Http::fake(['intervals.icu/*' => Http::response(['sportSettings' => [
+        ['types' => ['Ride', 'VirtualRide'], 'lthr' => 150],
+        ['types' => ['Run', 'TrailRun'], 'lthr' => 163],
+    ]])]);
+
+    expect(new IntervalsIcuClient()->runThresholdHeartRate(clientConnection()))->toBe(163);
+});
+
+it('reads no run threshold as null', function (array $settings): void {
+    Http::fake(['intervals.icu/*' => Http::response(['sportSettings' => $settings])]);
+
+    expect(new IntervalsIcuClient()->runThresholdHeartRate(clientConnection()))->toBeNull();
+})->with([
+    'no run sport' => [[['types' => ['Ride'], 'lthr' => 150]]],
+    'run without threshold' => [[['types' => ['Run'], 'lthr' => null]]],
+    'zero threshold' => [[['types' => ['Run'], 'lthr' => 0]]],
+]);
+
+it('creates a whole-day run workout and returns its id', function (): void {
+    Http::fake(['intervals.icu/*' => Http::response(['id' => 98765])]);
+
+    $id = new IntervalsIcuClient()->createEvent(clientConnection(), '2026-10-17', clientWorkout());
+
+    expect($id)->toBe('98765');
+    Http::assertSent(fn (Request $request): bool => $request->method() === 'POST'
+        && $request->url() === 'https://intervals.icu/api/v1/athlete/i123456/events'
+        && $request->data() === [
+            'category' => 'WORKOUT',
+            'type' => 'Run',
+            'start_date_local' => '2026-10-17T00:00:00',
+            'name' => 'Easy 8 km',
+            'description' => "from temari\n\n- 8km 6:33-7:32/km Pace intensity=active",
+        ]);
+});
+
+it('updates an event in place by its id', function (): void {
+    Http::fake(['intervals.icu/*' => Http::response(['id' => 98765])]);
+
+    expect(new IntervalsIcuClient()->updateEvent(clientConnection(), '98765', '2026-10-17', clientWorkout()))->toBeTrue();
+    Http::assertSent(fn (Request $request): bool => $request->method() === 'PUT'
+        && $request->url() === 'https://intervals.icu/api/v1/athlete/i123456/events/98765'
+        && $request['name'] === 'Easy 8 km');
+});
+
+it('reports an update to a deleted event as gone', function (): void {
+    Http::fake(['intervals.icu/*' => Http::response('', 404)]);
+
+    expect(new IntervalsIcuClient()->updateEvent(clientConnection(), '98765', '2026-10-17', clientWorkout()))->toBeFalse();
+});
+
+it('deletes an event, and takes an already deleted one as done', function (int $status): void {
+    Http::fake(['intervals.icu/*' => Http::response('', $status)]);
+
+    new IntervalsIcuClient()->deleteEvent(clientConnection(), '98765');
+
+    Http::assertSent(fn (Request $request): bool => $request->method() === 'DELETE'
+        && $request->url() === 'https://intervals.icu/api/v1/athlete/i123456/events/98765');
+})->with([200, 404]);
+
+it('throws rejected on an auth answer from any call', function (string $call, int $status): void {
+    Http::fake(['intervals.icu/*' => Http::response('', $status)]);
+    $client = new IntervalsIcuClient();
+
+    match ($call) {
+        'threshold' => $client->runThresholdHeartRate(clientConnection()),
+        'create' => $client->createEvent(clientConnection(), '2026-10-17', clientWorkout()),
+        'update' => $client->updateEvent(clientConnection(), '1', '2026-10-17', clientWorkout()),
+        'delete' => $client->deleteEvent(clientConnection(), '1'),
+    };
+})->with(['threshold', 'create', 'update', 'delete'])->with([401, 403])->throws(IntervalsIcuRejectedException::class);
+
+it('throws rejected when the athlete is gone', function (): void {
+    Http::fake(['intervals.icu/*' => Http::response('', 404)]);
+
+    new IntervalsIcuClient()->runThresholdHeartRate(clientConnection());
+})->throws(IntervalsIcuRejectedException::class);
+
+it('throws unreachable on a server error', function (): void {
+    Http::fake(['intervals.icu/*' => Http::response('', 503)]);
+
+    new IntervalsIcuClient()->createEvent(clientConnection(), '2026-10-17', clientWorkout());
+})->throws(IntervalsIcuUnreachableException::class);
+
+it('throws unreachable on a dropped connection', function (): void {
+    Http::fake(['intervals.icu/*' => fn () => throw new ConnectionException('timed out')]);
+
+    new IntervalsIcuClient()->createEvent(clientConnection(), '2026-10-17', clientWorkout());
+})->throws(IntervalsIcuUnreachableException::class);
