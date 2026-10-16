@@ -27,7 +27,7 @@ const SHAPES_HEART_RATE = [
     ],
 ];
 
-const STEP_LINE = '/^- ((\d+h)?(\d+m)?(\d+s)?|\d+(\.\d+)?km) (\d+:\d\d-\d+:\d\d\/km Pace|\d+-\d+% LTHR) intensity=(warmup|active|recovery|cooldown)$/';
+const STEP_LINE = '/^- ((?=\d)(\d+h)?(\d+m)?(\d+s)?|\d+(\.\d+)?km) (\d+:\d\d-\d+:\d\d\/km Pace|\d+-\d+% LTHR) intensity=(warmup|active|recovery|cooldown)$/';
 
 /**
  * @param  array{easy: int, marathon: int, threshold: int, interval: int}|null  $paces
