@@ -247,13 +247,13 @@ describe('an athlete without paces', function (): void {
             ]));
     });
 
-    it('names a tempo day by its blocks\' distance, which is all they know', function () use ($heartRate): void {
+    it('names a tempo day by its work\'s total distance, which is all it knows', function () use ($heartRate): void {
         $block = icuSegment('main', null, 5.2, 'threshold', null, 'Z4');
         $twoBlocks = icuDay('tempo', 12.0, [icuSegment('warmup', 10.0, null, 'easy', null), $block, icuSegment('recovery', 2.0, null, 'easy', null), $block]);
         $unequal = icuDay('tempo', 12.0, [$block, icuSegment('recovery', 2.0, null, 'easy', null), icuSegment('main', null, 3.4, 'threshold', null, 'Z4')]);
 
         /** @phpstan-ignore argument.type */
-        expect(IntervalsIcuWorkoutMapper::map($twoBlocks, $heartRate)?->name)->toBe('Tempo 2×5.2 km')
+        expect(IntervalsIcuWorkoutMapper::map($twoBlocks, $heartRate)?->name)->toBe('Tempo 10.4 km')
             /** @phpstan-ignore argument.type */
             ->and(IntervalsIcuWorkoutMapper::map($unequal, $heartRate)?->name)->toBe('Tempo 8.6 km');
     });

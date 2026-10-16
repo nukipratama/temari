@@ -229,19 +229,23 @@ final class IntervalsIcuWorkoutMapper
     }
 
     /**
-     * "3×8 min" when the work is equal blocks, otherwise its total; in km
-     * when the work has no minutes, as for an athlete without paces.
+     * "3×8 min" when the work is equal blocks, otherwise its total; the total
+     * km when the work has no minutes, as for an athlete without paces.
      *
      * @param  list<Segment>  $segments
      */
     private static function workShape(array $segments): string
     {
-        $byKm = array_any($segments, static fn (array $segment): bool => self::isWork($segment) && $segment['minutes'] === null);
+        $work = array_filter($segments, self::isWork(...));
+        if (array_any($work, static fn (array $segment): bool => $segment['minutes'] === null)) {
+            return DecimalFormatter::trimmed(array_sum(array_map(static fn (array $segment): float => (float) $segment['km'], $work)), 2).' km';
+        }
+
         $units = [];
         $current = null;
         foreach ($segments as $segment) {
             if (self::isWork($segment)) {
-                $current = ($current ?? 0.0) + (float) ($byKm ? $segment['km'] : $segment['minutes']);
+                $current = ($current ?? 0.0) + (float) $segment['minutes'];
             } elseif ($current !== null) {
                 $units[] = $current;
                 $current = null;
@@ -251,20 +255,12 @@ final class IntervalsIcuWorkoutMapper
             $units[] = $current;
         }
 
-        if ($byKm) {
-            $amounts = array_map(static fn (float $unit): string => DecimalFormatter::trimmed($unit, 2), $units);
-            $total = DecimalFormatter::trimmed(array_sum($units), 2);
-            $unit = 'km';
-        } else {
-            $amounts = array_map(static fn (float $unit): int => (int) round($unit), $units);
-            $total = array_sum($amounts);
-            $unit = 'min';
-        }
-        if (count($amounts) > 1 && count(array_unique($amounts)) === 1) {
-            return count($amounts).'×'.$amounts[0].' '.$unit;
+        $minutes = array_map(static fn (float $unit): int => (int) round($unit), $units);
+        if (count($minutes) > 1 && count(array_unique($minutes)) === 1) {
+            return count($minutes).'×'.$minutes[0].' min';
         }
 
-        return "{$total} {$unit}";
+        return array_sum($minutes).' min';
     }
 
     private static function raceDistance(float $km): string
