@@ -90,6 +90,7 @@ despite that.
 | `plan:settle-time-trials` | daily 09:05 | 15 | yes | one indexed sweep of the last week's unsettled time-trial rows for non-demo athletes, at most one evidence write or one notify each; a settled row is never selected again | not measured — added with the time trials (#1808) |
 | `fitness:notify-improvement` | daily 10:00 | 30 | yes | one estimate per non-demo athlete against their last noted VDOT, one notify for each improvement of at least 0.5 a week apart; the first run only records baselines | not measured — added with the supported-race-time model; the estimate reads each athlete's runs once |
 | `briefing:morning-push` | every 15 min | 14 | yes | one median-start-time sweep, sized like the other quarter-hourly drain; sends only, generates nothing | not measured — added after this pass; the median is cached per athlete per day (`UsualRunTime`), so only the first tick to see a given athlete that day pays the indexed read, every later tick that day is a cache hit |
+| `intervals-icu:sync` | every 15 min | 14 | yes | one indexed read of working intervals.icu connections, one queued job per athlete; the HTTP calls run on the queue, not in the tick | not measured — added with the intervals.icu sync (#2160) |
 | `streak:remind` | Sat 18:00 | 15 | yes | one push-eligibility sweep | ~2.0s — dispatched to 0 users |
 | `streak:settle` | hourly | 20 | yes | queues chronological per-user settlement for the athletes still behind or marked dirty; one query when nobody is | queues one settlement job per athlete behind |
 | `schedule:monday-check` | Mon 06:00 | 10 | yes | one indexed count plus the chain flags, at most one alert per week | not measured — added with the Monday catch-up |
@@ -117,7 +118,7 @@ minute one after another, in registration order, because no entry uses `runInBac
 entry therefore delays every entry registered after it in the same minute, though not the next
 minute's run. The :00 tick is the busy one: `ai:self-heal`, `ai:catch-up`, `geo:backfill-locations`
 and `streak:settle` every hour, the five- and fifteen-minute entries (`notifications:*`,
-`strava:ingest`, `strava:hydrate-backlog`, `briefing:morning-push`, `schedule:check-late`), and on
+`strava:ingest`, `strava:hydrate-backlog`, `briefing:morning-push`, `intervals-icu:sync`, `schedule:check-late`), and on
 their hours `ai:trend-read 7d`, `schedule:monday-check`, `race:ask-outcome`,
 `fitness:notify-improvement`, `race:remind`, `streak:remind` and the 21:00 digests.
 

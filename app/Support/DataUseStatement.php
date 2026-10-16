@@ -12,7 +12,7 @@ final class DataUseStatement
 {
     public const string HEADLINE = 'your data';
 
-    public const string INTERVALS_ICU = 'You connected intervals.icu, so your planned runs for the next week go to your intervals.icu calendar, and from there to your watch app. Disconnect it in Settings and Temari stops sending them.';
+    public const string INTERVALS_ICU = "You connected intervals.icu, so today's planned run goes to your intervals.icu calendar, and from there to your watch app. Disconnect it in Settings and Temari stops sending it.";
 
     private const string POLICY_POINTER = 'The privacy policy spells out the details.';
 

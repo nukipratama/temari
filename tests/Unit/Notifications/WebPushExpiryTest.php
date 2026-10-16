@@ -9,6 +9,7 @@ use App\Models\RaceGoal;
 use App\Models\User;
 use App\Notifications\AnalysisReadyNotification;
 use App\Notifications\MorningBriefingNotification;
+use App\Notifications\IntervalsIcuDisconnectedNotification;
 use App\Notifications\RaceOutcomeNotification;
 use App\Notifications\RaceTomorrowNotification;
 use App\Notifications\StravaDisconnectedNotification;
@@ -78,7 +79,7 @@ it('expires the streak push on Sunday 23:59 and replaces an older one', function
         ->and($options['topic'])->toBe('streak');
 });
 
-it('keeps the recap, race outcome, strava and test pushes for their fixed windows', function (): void {
+it('keeps the recap, race outcome, strava, intervals.icu and test pushes for their fixed windows', function (): void {
     $user = User::factory()->create();
     $analysis = briefingOn($user, '2026-05-24');
     $race = RaceGoal::factory()->for($user)->completed()->create();
@@ -86,6 +87,7 @@ it('keeps the recap, race outcome, strava and test pushes for their fixed window
     expect(pushOptions(new AnalysisReadyNotification($analysis), $user)['TTL'])->toBe(3 * 86400)
         ->and(pushOptions(new RaceOutcomeNotification($race), $user)['TTL'])->toBe(3 * 86400)
         ->and(pushOptions(new StravaDisconnectedNotification(now()), $user)['TTL'])->toBe(7 * 86400)
+        ->and(pushOptions(new IntervalsIcuDisconnectedNotification(now()), $user)['TTL'])->toBe(7 * 86400)
         ->and(pushOptions(new TestNotification(), $user)['TTL'])->toBe(300);
 });
 

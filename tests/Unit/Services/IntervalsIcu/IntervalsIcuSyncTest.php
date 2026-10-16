@@ -1,0 +1,185 @@
+<?php
+
+declare(strict_types=1);
+
+use App\Enums\IntervalsIcuSyncStatus;
+use App\Enums\PlanPhase;
+use App\Enums\SessionType;
+use App\Models\IntervalsIcuConnection;
+use App\Models\PlannedSession;
+use App\Models\User;
+use App\Notifications\IntervalsIcuDisconnectedNotification;
+use App\Services\IntervalsIcu\IntervalsIcuSync;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\Request;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Notification;
+
+uses(RefreshDatabase::class);
+
+beforeEach(function (): void {
+    Carbon::setTestNow('2026-10-14 06:00:00');
+    Notification::fake();
+    test()->icu = ['threshold' => 163, 'status' => 200, 'put' => 200, 'id' => 501];
+    Http::fake(fn (Request $request) => match (true) {
+        test()->icu['status'] !== 200 => Http::response('', test()->icu['status']),
+        $request->method() === 'GET' => Http::response(['sportSettings' => [['types' => ['Run'], 'lthr' => test()->icu['threshold']]]]),
+        $request->method() === 'POST' => Http::response(['id' => test()->icu['id']]),
+        $request->method() === 'PUT' => Http::response('', test()->icu['put']),
+        default => Http::response([]),
+    });
+});
+
+function syncedAthlete(SessionType $today = SessionType::Easy): IntervalsIcuConnection
+{
+    $user = User::factory()->create();
+    PlannedSession::factory()->for($user)->create(['date' => '2026-10-14', 'phase' => PlanPhase::Base, 'session_type' => $today]);
+
+    return IntervalsIcuConnection::factory()->for($user)->create(['athlete_id' => 'i42']);
+}
+
+/** @param  array<string, int|null>  $state */
+function intervalsIcuAnswers(array $state): void
+{
+    test()->icu = [...test()->icu, ...$state];
+    Http::fake();
+}
+
+/** @return list<string> */
+function writesSent(): array
+{
+    return Http::recorded()
+        ->map(fn (array $pair): string => $pair[0]->method().' '.str_replace('https://intervals.icu/api/v1', '', $pair[0]->url()))
+        ->reject(fn (string $call): bool => str_starts_with($call, 'GET'))
+        ->values()
+        ->all();
+}
+
+function runSync(IntervalsIcuConnection $connection): IntervalsIcuConnection
+{
+    app(IntervalsIcuSync::class)->sync($connection, Carbon::today());
+
+    return $connection->refresh();
+}
+
+it("sends today's run once and keeps its id", function (): void {
+
+    $connection = runSync(syncedAthlete());
+
+    expect(writesSent())->toBe(['POST /athlete/i42/events'])
+        ->and($connection->event_id)->toBe('501')
+        ->and($connection->synced_on?->toDateString())->toBe('2026-10-14')
+        ->and($connection->sync_status)->toBe(IntervalsIcuSyncStatus::Sent)
+        ->and($connection->payload_hash)->toHaveLength(64);
+    Http::assertSent(fn (Request $request): bool => $request->method() === 'POST'
+        && $request['start_date_local'] === '2026-10-14T00:00:00'
+        && str_contains((string) $request['description'], '% LTHR'));
+});
+
+it('sends nothing when today is unchanged', function (): void {
+    $connection = runSync(syncedAthlete());
+    intervalsIcuAnswers([]);
+
+    runSync($connection);
+
+    expect(writesSent())->toBe([]);
+});
+
+it('updates the same event in place when today changes', function (): void {
+    $connection = runSync(syncedAthlete());
+    intervalsIcuAnswers(['threshold' => 170]);
+
+    $connection = runSync($connection);
+
+    expect(writesSent())->toBe(['PUT /athlete/i42/events/501'])
+        ->and($connection->event_id)->toBe('501');
+});
+
+it('sends a new event when the athlete deleted the one it would update', function (): void {
+    $connection = runSync(syncedAthlete());
+    intervalsIcuAnswers(['threshold' => 170, 'put' => 404, 'id' => 777]);
+
+    $connection = runSync($connection);
+
+    expect(writesSent())->toBe(['PUT /athlete/i42/events/501', 'POST /athlete/i42/events'])
+        ->and($connection->event_id)->toBe('777');
+});
+
+it('removes the event when today becomes a rest day or is skipped', function (array $change): void {
+    $connection = runSync(syncedAthlete());
+    PlannedSession::query()->where('user_id', $connection->user_id)->sole()->update($change);
+    intervalsIcuAnswers([]);
+
+    $connection = runSync($connection);
+
+    expect(writesSent())->toBe(['DELETE /athlete/i42/events/501'])
+        ->and($connection->event_id)->toBeNull()
+        ->and($connection->sync_status)->toBeNull();
+})->with([
+    'rest' => [['session_type' => SessionType::Rest]],
+    'skipped' => [['skipped' => true]],
+]);
+
+it('sends nothing on a rest day', function (): void {
+
+    $connection = runSync(syncedAthlete(SessionType::Rest));
+
+    expect(Http::recorded())->toHaveCount(0)
+        ->and($connection->sync_status)->toBeNull();
+});
+
+it('does not send a day without paces when intervals.icu has no run threshold', function (): void {
+    intervalsIcuAnswers(['threshold' => null]);
+
+    $connection = runSync(syncedAthlete());
+
+    expect(writesSent())->toBe([])
+        ->and($connection->event_id)->toBeNull()
+        ->and($connection->sync_status)->toBe(IntervalsIcuSyncStatus::NoThresholdHeartRate);
+});
+
+it("leaves yesterday's event and sends a new one for today", function (): void {
+    $connection = syncedAthlete();
+    $connection->update(['synced_on' => '2026-10-13', 'event_id' => '400', 'payload_hash' => str_repeat('a', 64), 'sync_status' => IntervalsIcuSyncStatus::Sent]);
+
+    $connection = runSync($connection);
+
+    expect(writesSent())->toBe(['POST /athlete/i42/events'])
+        ->and($connection->event_id)->toBe('501');
+});
+
+it('marks a rejected key broken and tells the athlete once', function (): void {
+    intervalsIcuAnswers(['status' => 401]);
+    $connection = syncedAthlete();
+
+    runSync($connection);
+    $connection = runSync($connection);
+
+    expect($connection->broken_at)->not->toBeNull()
+        ->and(Http::recorded())->toHaveCount(1);
+    Notification::assertSentToTimes($connection->user, IntervalsIcuDisconnectedNotification::class, 1);
+});
+
+it('keeps the event and marks today unreachable when intervals.icu fails', function (): void {
+    $connection = runSync(syncedAthlete());
+    intervalsIcuAnswers(['status' => 503]);
+
+    $connection = runSync($connection);
+
+    expect($connection->event_id)->toBe('501')
+        ->and($connection->sync_status)->toBe(IntervalsIcuSyncStatus::Unreachable)
+        ->and($connection->broken_at)->toBeNull();
+});
+
+it("removes only today's event on request", function (string $syncedOn, array $writes): void {
+    $connection = syncedAthlete();
+    $connection->update(['synced_on' => $syncedOn, 'event_id' => '400']);
+
+    app(IntervalsIcuSync::class)->removeToday($connection, Carbon::today());
+
+    expect(writesSent())->toBe($writes);
+})->with([
+    'today' => ['2026-10-14', ['DELETE /athlete/i42/events/400']],
+    'yesterday' => ['2026-10-13', []],
+]);

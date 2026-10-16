@@ -2,10 +2,14 @@
 
 declare(strict_types=1);
 
+use App\Enums\IntervalsIcuSyncStatus;
+use App\Jobs\IntervalsIcu\SyncIntervalsIcuWorkoutJob;
 use App\Models\IntervalsIcuConnection;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Queue;
 
 uses(RefreshDatabase::class);
 
@@ -103,4 +107,66 @@ it('keeps the demo account from connecting or disconnecting', function (): void 
 
     Http::assertNothingSent();
     expect(IntervalsIcuConnection::query()->count())->toBe(1);
+});
+
+it("queues today's sync on connect", function (): void {
+    Http::fake(['intervals.icu/*' => Http::response(['id' => 'i123456'])]);
+    Queue::fake();
+    $user = User::factory()->create();
+
+    $this->actingAs($user)->post('/settings/intervals-icu', ['athlete_id' => 'i123456', 'api_key' => 'secret-key']);
+
+    Queue::assertPushed(SyncIntervalsIcuWorkoutJob::class, fn (SyncIntervalsIcuWorkoutJob $job): bool => $job->userId === $user->id);
+});
+
+it("keeps today's workout on a reconnect to the same athlete and forgets it for a different one", function (string $athleteId, ?string $eventId): void {
+    Http::fake(['intervals.icu/*' => Http::response(['id' => $athleteId])]);
+    Queue::fake();
+    $user = User::factory()->create();
+    IntervalsIcuConnection::factory()->for($user)->broken()->create([
+        'athlete_id' => 'i123456',
+        'synced_on' => now()->toDateString(),
+        'sync_status' => IntervalsIcuSyncStatus::Sent,
+        'event_id' => '501',
+    ]);
+
+    $this->actingAs($user)->post('/settings/intervals-icu', ['athlete_id' => $athleteId, 'api_key' => 'new-key']);
+
+    expect(IntervalsIcuConnection::query()->sole()->event_id)->toBe($eventId);
+})->with([
+    'same athlete' => ['i123456', '501'],
+    'different athlete' => ['i654321', null],
+]);
+
+it("removes today's workout from intervals.icu on disconnect", function (): void {
+    Http::fake(['intervals.icu/*' => Http::response()]);
+    $user = User::factory()->create();
+    IntervalsIcuConnection::factory()->for($user)->create(['athlete_id' => 'i42', 'synced_on' => now()->toDateString(), 'event_id' => '501']);
+
+    $this->actingAs($user)->delete('/settings/intervals-icu')->assertRedirect();
+
+    Http::assertSent(fn (Request $request): bool => $request->method() === 'DELETE'
+        && $request->url() === 'https://intervals.icu/api/v1/athlete/i42/events/501');
+    expect(IntervalsIcuConnection::query()->count())->toBe(0);
+});
+
+it('disconnects even when intervals.icu cannot remove the workout', function (int $status): void {
+    Http::fake(['intervals.icu/*' => Http::response('', $status)]);
+    $user = User::factory()->create();
+    IntervalsIcuConnection::factory()->for($user)->create(['synced_on' => now()->toDateString(), 'event_id' => '501']);
+
+    $this->actingAs($user)->delete('/settings/intervals-icu')->assertRedirect();
+
+    expect(IntervalsIcuConnection::query()->count())->toBe(0);
+})->with([401, 503]);
+
+it('calls nothing on disconnecting a broken key', function (): void {
+    Http::fake();
+    $user = User::factory()->create();
+    IntervalsIcuConnection::factory()->for($user)->broken()->create(['synced_on' => now()->toDateString(), 'event_id' => '501']);
+
+    $this->actingAs($user)->delete('/settings/intervals-icu')->assertRedirect();
+
+    Http::assertNothingSent();
+    expect(IntervalsIcuConnection::query()->count())->toBe(0);
 });

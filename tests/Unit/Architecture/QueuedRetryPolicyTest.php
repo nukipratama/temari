@@ -18,6 +18,7 @@ use App\Jobs\AI\RecheckEffortScoreNarrationJob;
 use App\Jobs\AI\SendMaintainerAlertJob;
 use App\Jobs\Gamification\SettleStreakWeeksJob;
 use App\Jobs\Geo\ResolveActivityLocationJob;
+use App\Jobs\IntervalsIcu\SyncIntervalsIcuWorkoutJob;
 use App\Jobs\Notifications\RetryStaleWebPushNotificationJob;
 use App\Jobs\Run\RebuildTrendSnapshotsJob;
 use App\Jobs\Run\RecalibrateTrainingHistoryJob;
@@ -38,6 +39,7 @@ use App\Jobs\Telegram\SendTelegramLinkWelcomeJob;
 use App\Notifications\AnalysisReadyNotification;
 use App\Notifications\DayClampedNotification;
 use App\Notifications\FitnessImprovedNotification;
+use App\Notifications\IntervalsIcuDisconnectedNotification;
 use App\Notifications\MorningBriefingNotification;
 use App\Notifications\RaceOutcomeNotification;
 use App\Notifications\RaceTomorrowNotification;
@@ -125,6 +127,7 @@ $expectedRetryPolicies = [
     SendMaintainerAlertJob::class => [null, null, null, null, null],
     SettleStreakWeeksJob::class => [3, '30,120', null, null, 3600],
     ResolveActivityLocationJob::class => [null, null, null, null, 1200],
+    SyncIntervalsIcuWorkoutJob::class => [1, null, null, null, 900],
     RetryStaleWebPushNotificationJob::class => [3, '30,120', null, null, null],
     RebuildTrendSnapshotsJob::class => [3, '30,120', null, null, 3600],
     RecalibrateTrainingHistoryJob::class => [null, '30,120', 120, 3, 3600],
@@ -145,6 +148,7 @@ $expectedRetryPolicies = [
     AnalysisReadyNotification::class => [3, '30,120', null, null, null],
     DayClampedNotification::class => [3, '30,120', null, null, null],
     FitnessImprovedNotification::class => [3, '30,120', null, null, null],
+    IntervalsIcuDisconnectedNotification::class => [3, '30,120', null, null, null],
     MorningBriefingNotification::class => [3, '30,120', null, null, null],
     RaceOutcomeNotification::class => [3, '30,120', null, null, null],
     RaceTomorrowNotification::class => [3, '30,120', null, null, null],
