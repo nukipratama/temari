@@ -56,6 +56,7 @@ function day(overrides: Partial<WeekPlanDay> = {}): WeekPlanDay {
         fast_finish: null,
         race_long: null,
         time_trial: null,
+        purpose: null,
         hr_cap_bpm: null,
         advice_note: null,
         eased_from: null,
@@ -352,6 +353,8 @@ describe('TodaySession', () => {
             <TodaySession
                 briefing={briefing('Trial today.')}
                 today={day({
+                    purpose:
+                        'aim around 23:30. checks your fitness so your paces stay honest.',
                     session_type: 'interval',
                     distance_km: 5,
                     time_trial: { distance_m: 5_000, aim_time_sec: 1_410 },
@@ -387,6 +390,7 @@ describe('TodaySession', () => {
             <TodaySession
                 briefing={briefing('Goal pace today.')}
                 today={day({
+                    purpose: 'rehearsing your half marathon goal pace.',
                     session_type: 'tempo',
                     goal_pace: 'half',
                     segments: [
@@ -414,6 +418,8 @@ describe('TodaySession', () => {
             <TodaySession
                 briefing={briefing('Stepping stone today.')}
                 today={day({
+                    purpose:
+                        'rehearsing your half marathon stepping-stone pace.',
                     session_type: 'tempo',
                     goal_pace: 'half',
                     stepping_stone: true,
@@ -713,6 +719,8 @@ describe('TodaySession', () => {
             <TodaySession
                 briefing={briefing('fine.')}
                 today={day({
+                    purpose:
+                        'comfortably hard. teaches you to hold a pace without tipping over.',
                     session_type: 'tempo',
                     prescription_reason:
                         'stepped down after the latest comparable session was too hard',
@@ -756,6 +764,8 @@ describe('TodaySession', () => {
             <TodaySession
                 briefing={briefing('fine.')}
                 today={day({
+                    purpose:
+                        "easy means easy. slow enough to talk, that's the whole point.",
                     status: 'done',
                     prescribed_km: 8,
                     actual_km: 8,

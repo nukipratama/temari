@@ -71,6 +71,7 @@
     "weeks[].days[].pinned",
     "weeks[].days[].prescribed_km",
     "weeks[].days[].prescription_reason",
+    "weeks[].days[].purpose",
     "weeks[].days[].race_long",
     "weeks[].days[].ran_anyway",
     "weeks[].days[].ran_hot",

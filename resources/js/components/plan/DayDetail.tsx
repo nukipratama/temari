@@ -31,7 +31,6 @@ import {
     ranHot,
     sessionHint,
     sessionLabel,
-    sessionPurpose,
     STATUS_LABEL,
     STATUS_MEANING,
     targetLabel,
@@ -144,7 +143,7 @@ function dayChanges(day: PlanDay) {
 function dayPoint(day: PlanDay) {
     return {
         purpose: ['long', 'tempo', 'interval'].includes(day.session_type)
-            ? sessionPurpose(day)
+            ? day.purpose
             : null,
         doseWhy: prescriptionWhy(day),
         tiltWhy: fallOffTiltWhy(day),

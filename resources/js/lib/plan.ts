@@ -20,7 +20,6 @@ import type {
 } from '@/types/inertia';
 
 import {
-    formatDurationHMS,
     formatPace,
     formatPaceWithRange,
     isoDateLocal,
@@ -416,56 +415,6 @@ export function sessionHint(
 
     return pace === null ? null : `about ${pace}.`;
 }
-/** What a session is for and how it should feel, in one line. */
-export function sessionPurpose(day: PlanDay): string | null {
-    if (day.time_trial !== null) {
-        return `aim around ${formatDurationHMS(day.time_trial.aim_time_sec)}. checks your fitness so your paces stay honest.`;
-    }
-    if (day.goal_pace !== null) {
-        const closing = day.closes_at_goal_pace ? ', closing at goal pace' : '';
-        return `rehearsing your ${GOAL_PACE_RACE[day.goal_pace]} ${goalPaceLabel(day)}${closing}.`;
-    }
-    if (day.fast_finish !== null) {
-        const label = fastFinishPaceLabel(day);
-        const pace =
-            day.fast_finish.pace_source === 'supported'
-                ? label
-                : `${GOAL_PACE_RACE[day.fast_finish.pace_kind]} ${label}`;
-        return `the last fifth at your ${pace}. rehearses race pace on tired legs.`;
-    }
-    if (day.race_long !== null) {
-        const label = raceLongPaceLabel(day);
-        const pace =
-            day.race_long.pace_source === 'supported'
-                ? label
-                : `marathon ${label}`;
-        return `long run with a block at your ${pace}. rehearses race day on tired legs.`;
-    }
-    const hasWork = sessionHasWork(day);
-    switch (day.session_type) {
-        case 'long':
-            return hasWork
-                ? 'long run with goal-pace work. rehearses race day on tired legs.'
-                : 'time on feet. builds the engine the race runs on. chatty effort the whole way.';
-        case 'tempo':
-            return hasWork
-                ? 'comfortably hard. teaches you to hold a pace without tipping over.'
-                : null;
-        case 'interval':
-            return hasWork
-                ? 'short, hard reps. lifts your ceiling so race pace feels roomier.'
-                : null;
-        case 'easy':
-            return "easy means easy. slow enough to talk, that's the whole point.";
-        case 'rest':
-            return 'rest day. this is where the training actually lands.';
-        case 'race':
-            return 'race day. trust the work, and start slower than you want to.';
-        default:
-            return null;
-    }
-}
-
 function segmentLabel(segment: PlanSessionSegment): string {
     const minutes =
         segment.minutes == null ? null : `${Math.round(segment.minutes)} min`;

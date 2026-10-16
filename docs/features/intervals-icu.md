@@ -11,6 +11,7 @@ code_refs:
   - app/Services/IntervalsIcu/IntervalsIcuClient.php
   - resources/js/components/settings/IntervalsIcuPanel.tsx
   - resources/js/components/settings/IntervalsIcuConnectForm.tsx
+  - app/Services/IntervalsIcu/IntervalsIcuWorkoutMapper.php
 ---
 
 # intervals.icu connection
@@ -34,6 +35,17 @@ One row per user in `intervals_icu_connections` (`IntervalsIcuConnection`), with
 - **broken** (`broken_at` set): the row says the key stopped working and folds open to the same form with the ID prefilled. Nothing sets this state yet; the sync job will set it on a 401/403.
 
 Disconnecting deletes the row. The demo account can't connect or disconnect: both routes carry `block-demo-telegram`, and the row opens the demo notice instead of the form.
+
+## The workout sent
+
+[IntervalsIcuWorkoutMapper::map()](app/Services/IntervalsIcu/IntervalsIcuWorkoutMapper.php) turns a day exactly as Plan and Today show it (`PlanRenderer::dayPayload()`) into an intervals.icu workout: a name such as "Easy 8 km", "Long run 14 km", "Tempo 3×8 min", "Intervals 5×3 min", "Race 10K" or "Time trial 3K", and a description that opens with the day's purpose line (`SessionPurpose::of()`, the same line Plan and Today show), then `IntervalsIcuWorkoutMapper::OWNER` ("from temari · changes with your plan"), then the step lines intervals.icu parses. Huawei Health shows the two plain lines above the steps; there is no way to hide them.
+
+- **Targets.** A step runs to its `pace_range` (see [[plan-periodizer]]), since the watch alerts outside the band and a single pace becomes a zero-width band. A step without one (an athlete with no VDOT yet) gets its temari heart-rate zone as a share of the athlete's intervals.icu threshold heart rate (`% LTHR`). Without that threshold the day is not sent (`needsHeartRate()`). A step without a target would be dropped by the watch export. A workout keeps one target kind: when easy steps carried heart rate and the work carried pace, Huawei dropped every pace step, so easy running stays on pace and the athlete's own watch alert covers heart rate (owner decision, 2026-10-17).
+- **Lengths.** Easy running and race efforts run to a distance, always written in `km` because intervals.icu reads `m` as minutes; warm-ups, jogs and quality work run to time. The open-ended "easy for the rest" step has no length and is left out. For an athlete without paces, the easy running around a long run's harder block is open-ended too, so only the block is sent (owner decision, 2026-10-17).
+- **Step types.** `warmup` → warm-up, `recovery` → recovery (Huawei labels it Walk but keeps the pace), everything else → active. On a long run with a harder block, the easy running before it is warm-up and after it cool-down. `intensity=rest` is never used, since Huawei drops it.
+- **Repeats.** Identical rep and recovery pairs become one `Nx` block. temari has no jog after the last rep; the repeat adds one. A last rep at a different pace stays outside the block.
+
+Checked live on 2026-10-17: all nine shapes parsed into the intended steps, ranges, repeats and `% LTHR` targets in intervals.icu, and synced to Huawei Health with every step, target and repeat intact.
 
 ## Privacy
 

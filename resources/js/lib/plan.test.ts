@@ -25,7 +25,6 @@ import {
     raceLongPaceLabel,
     sessionHint,
     sessionLabel,
-    sessionPurpose,
     sessionShape,
     targetLabel,
     volumeAdjustedFrom,
@@ -319,6 +318,7 @@ function planDay(overrides: Partial<PlanDay> = {}): PlanDay {
         fast_finish: null,
         race_long: null,
         time_trial: null,
+        purpose: null,
         hr_cap_bpm: null,
         advice_note: null,
         eased_from: null,
@@ -625,28 +625,6 @@ describe('sessionShape', () => {
     });
 });
 
-describe('sessionPurpose', () => {
-    it('only calls a tempo comfortably hard when it has work above Z2', () => {
-        expect(
-            sessionPurpose(
-                planDay({
-                    session_type: 'tempo',
-                    segments: [
-                        {
-                            key: 'main',
-                            minutes: 40,
-                            zone: 'Z2',
-                            pace_label: 'easy',
-                            km: 6,
-                            pace_sec_per_km: 400,
-                        },
-                    ],
-                }),
-            ),
-        ).toBeNull();
-    });
-});
-
 describe('prescriptionWhy', () => {
     const easyBlock = [
         {
@@ -823,41 +801,6 @@ describe('a time trial', () => {
         );
         expect(sessionHint(planDay({}))).toBeNull();
     });
-
-    it('says the time to aim around and what the trial is for', () => {
-        expect(
-            sessionPurpose(
-                planDay({ session_type: 'interval', time_trial: trial }),
-            ),
-        ).toBe(
-            'aim around 23:30. checks your fitness so your paces stay honest.',
-        );
-    });
-});
-
-describe('sessionPurpose on goal-pace work', () => {
-    it('says which goal pace the session rehearses', () => {
-        expect(
-            sessionPurpose(
-                planDay({ session_type: 'interval', goal_pace: '5k' }),
-            ),
-        ).toBe('rehearsing your 5K goal pace.');
-        expect(
-            sessionPurpose(
-                planDay({ session_type: 'tempo', goal_pace: '10k' }),
-            ),
-        ).toBe('rehearsing your 10K goal pace.');
-        expect(
-            sessionPurpose(
-                planDay({ session_type: 'tempo', goal_pace: 'half' }),
-            ),
-        ).toBe('rehearsing your half marathon goal pace.');
-        expect(
-            sessionPurpose(
-                planDay({ session_type: 'tempo', goal_pace: 'marathon' }),
-            ),
-        ).toBe('rehearsing your marathon goal pace.');
-    });
 });
 
 describe('stepping-stone work', () => {
@@ -871,25 +814,10 @@ describe('stepping-stone work', () => {
         expect(sessionLabel(steppingStone)).toBe('stepping-stone pace');
         expect(workLabel(steppingStone)).toBe('stepping-stone pace');
     });
-
-    it('says which stepping-stone pace the session rehearses', () => {
-        expect(sessionPurpose(steppingStone)).toBe(
-            'rehearsing your 10K stepping-stone pace.',
-        );
-        expect(
-            sessionPurpose(
-                planDay({
-                    session_type: 'tempo',
-                    goal_pace: 'marathon',
-                    stepping_stone: true,
-                }),
-            ),
-        ).toBe('rehearsing your marathon stepping-stone pace.');
-    });
 });
 
 describe('ambitious stepping-stone work', () => {
-    it('says it closes at goal pace, under the stepping-stone label', () => {
+    it('is named stepping-stone pace', () => {
         const ambitious = planDay({
             session_type: 'interval',
             goal_pace: '10k',
@@ -898,9 +826,6 @@ describe('ambitious stepping-stone work', () => {
         });
 
         expect(sessionLabel(ambitious)).toBe('stepping-stone pace');
-        expect(sessionPurpose(ambitious)).toBe(
-            'rehearsing your 10K stepping-stone pace, closing at goal pace.',
-        );
     });
 });
 
@@ -948,18 +873,6 @@ describe('a fast-finish long run', () => {
             'supported 10K pace',
         );
         expect(fastFinishPaceLabel(planDay({}))).toBeUndefined();
-    });
-
-    it('says where the fast finish runs, never goal-pace work unless it is', () => {
-        expect(sessionPurpose(fastFinish('goal', 'half'))).toBe(
-            'the last fifth at your half marathon goal pace. rehearses race pace on tired legs.',
-        );
-        expect(sessionPurpose(fastFinish('stepping_stone'))).toBe(
-            'the last fifth at your 10K stepping-stone pace. rehearses race pace on tired legs.',
-        );
-        expect(sessionPurpose(fastFinish('supported'))).toBe(
-            'the last fifth at your supported 10K pace. rehearses race pace on tired legs.',
-        );
     });
 });
 
@@ -1009,18 +922,6 @@ describe('a marathon race long', () => {
             'supported marathon pace',
         );
         expect(raceLongPaceLabel(planDay({}))).toBeUndefined();
-    });
-
-    it('says where the block runs, never goal pace unless it is', () => {
-        expect(sessionPurpose(raceLong('goal'))).toBe(
-            'long run with a block at your marathon goal pace. rehearses race day on tired legs.',
-        );
-        expect(sessionPurpose(raceLong('stepping_stone'))).toBe(
-            'long run with a block at your marathon stepping-stone pace. rehearses race day on tired legs.',
-        );
-        expect(sessionPurpose(raceLong('supported'))).toBe(
-            'long run with a block at your supported marathon pace. rehearses race day on tired legs.',
-        );
     });
 });
 
