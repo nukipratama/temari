@@ -24,9 +24,9 @@ function icuSegment(string $key, ?float $minutes, ?float $km, string $label, ?ar
  * @param  array{distance_m: float|int, aim_time_sec: int}|null  $timeTrial
  * @return array<string, mixed>
  */
-function icuDay(string $type, float $km, array $segments, ?array $timeTrial = null): array
+function icuDay(string $type, float $km, array $segments, ?array $timeTrial = null, ?string $purpose = null): array
 {
-    return ['session_type' => $type, 'distance_km' => $km, 'segments' => $segments, 'time_trial' => $timeTrial];
+    return ['session_type' => $type, 'distance_km' => $km, 'segments' => $segments, 'time_trial' => $timeTrial, 'purpose' => $purpose];
 }
 
 /** @param  array<string, mixed>  $day */
@@ -35,9 +35,9 @@ function icuSteps(array $day): string
     /** @phpstan-ignore argument.type */
     $workout = IntervalsIcuWorkoutMapper::map($day, null);
     expect($workout)->not->toBeNull()
-        ->and($workout?->description)->toStartWith(IntervalsIcuWorkoutMapper::SUMMARY."\n\n");
+        ->and($workout?->description)->toStartWith(IntervalsIcuWorkoutMapper::OWNER."\n\n");
 
-    return substr((string) $workout?->description, strlen(IntervalsIcuWorkoutMapper::SUMMARY) + 2);
+    return substr((string) $workout?->description, strlen(IntervalsIcuWorkoutMapper::OWNER) + 2);
 }
 
 /** @param  array<string, mixed>  $day */
@@ -52,6 +52,18 @@ it('sends an easy run as one active step run to a distance', function (): void {
 
     expect(icuName($day))->toBe('Easy 8 km')
         ->and(icuSteps($day))->toBe('- 8km 6:33-7:32/km Pace intensity=active');
+});
+
+it('opens the description with the day\'s purpose, then who owns the workout', function (): void {
+    $day = icuDay('easy', 8.0, [icuSegment('main', 58.0, 8.0, 'easy', EASY_WINDOW)], purpose: 'easy means easy.');
+
+    /** @phpstan-ignore argument.type */
+    expect(IntervalsIcuWorkoutMapper::map($day, null)?->description)->toBe(implode("\n", [
+        'easy means easy.',
+        'from temari · changes with your plan',
+        '',
+        '- 8km 6:33-7:32/km Pace intensity=active',
+    ]));
 });
 
 it('sends a plain long run as one active step', function (): void {

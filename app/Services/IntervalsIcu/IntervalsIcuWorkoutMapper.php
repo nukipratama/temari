@@ -9,7 +9,8 @@ use App\Services\Run\Metrics\PaceFormatter;
 
 /**
  * Turns a day as Plan and Today show it ({@see \App\Services\Run\Plan\PlanRenderer::dayPayload()})
- * into an intervals.icu workout: a name, then a description whose step lines
+ * into an intervals.icu workout: a name, then a description that opens with
+ * the day's purpose and who owns the workout, followed by step lines
  * intervals.icu parses into the structured workout it forwards to the watch.
  * In that syntax `m` means minutes, so distances are always written in `km`,
  * and a step without a target is dropped by the watch export, so every step
@@ -17,13 +18,13 @@ use App\Services\Run\Metrics\PaceFormatter;
  * their intervals.icu threshold heart rate.
  *
  * @phpstan-type Segment array{key: string, minutes: float|null, km: float|null, zone: string, pace_label: string, pace_sec_per_km: int|null, pace_range?: array{fast_sec_per_km: int, slow_sec_per_km: int}|null}
- * @phpstan-type Day array{session_type: string, distance_km: float|int|null, segments: list<Segment>, time_trial: array{distance_m: float|int, aim_time_sec: int}|null}
+ * @phpstan-type Day array{session_type: string, distance_km: float|int|null, segments: list<Segment>, time_trial: array{distance_m: float|int, aim_time_sec: int}|null, purpose: string|null}
  * @phpstan-type HeartRate array{threshold_bpm: int, max_hr: int, hr_zones: array<string, array{lo: int, hi: int}>}
  * @phpstan-type Step array{line: string, work: bool, recovery: bool}
  */
 final class IntervalsIcuWorkoutMapper
 {
-    public const string SUMMARY = 'Planned by temari. temari updates this run when your plan changes.';
+    public const string OWNER = 'from temari · changes with your plan';
 
     private const array WORK_KEYS = ['main', 'interval'];
 
@@ -50,7 +51,9 @@ final class IntervalsIcuWorkoutMapper
             ];
         }
 
-        return new IntervalsIcuWorkout(self::name($day, $segments), self::SUMMARY."\n\n".self::text($steps));
+        $note = ($day['purpose'] === null ? '' : $day['purpose']."\n").self::OWNER;
+
+        return new IntervalsIcuWorkout(self::name($day, $segments), $note."\n\n".self::text($steps));
     }
 
     /**
