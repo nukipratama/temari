@@ -164,6 +164,14 @@ class User extends Authenticatable
     }
 
     /**
+     * @return HasOne<IntervalsIcuConnection, $this>
+     */
+    public function intervalsIcuConnection(): HasOne
+    {
+        return $this->hasOne(IntervalsIcuConnection::class);
+    }
+
+    /**
      * @return HasOne<NotificationPreference, $this>
      */
     public function notificationPreference(): HasOne

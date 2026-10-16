@@ -24,9 +24,10 @@ class SettingsController extends Controller
         return Inertia::render('Settings/Index', [
             'dataUse' => [
                 'headline' => DataUseStatement::HEADLINE,
-                'points' => DataUseStatement::points(),
+                'points' => DataUseStatement::points(intervalsIcuConnected: $user->intervalsIcuConnection !== null),
             ],
             'telegram' => $this->resolveTelegram($user, $telegramLinkToken),
+            'intervalsIcu' => $this->resolveIntervalsIcu($user),
             'notificationPrefs' => $this->resolveNotificationPrefs($user),
             // Lets the test button render a countdown instead of failing on a
             // 429 the UI cannot explain.
@@ -97,6 +98,22 @@ class SettingsController extends Controller
             'connected' => $connected,
             'username' => $connected ? $connection->username : null,
             'connect_url' => $connectUrl,
+        ];
+    }
+
+    /**
+     * The athlete ID only: the API key never leaves the server.
+     *
+     * @return array{connected: bool, athlete_id: string|null, broken: bool}
+     */
+    private function resolveIntervalsIcu(User $user): array
+    {
+        $connection = $user->intervalsIcuConnection;
+
+        return [
+            'connected' => $connection !== null,
+            'athlete_id' => $connection?->athlete_id,
+            'broken' => $connection?->isBroken() ?? false,
         ];
     }
 

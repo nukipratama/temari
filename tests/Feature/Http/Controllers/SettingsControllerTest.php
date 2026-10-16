@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Models\IntervalsIcuConnection;
 use App\Models\NotificationPreference;
 use App\Models\RunnerProfile;
 use App\Models\StravaConnection;
@@ -150,4 +151,23 @@ it('hands the page the stored training preferences', function (): void {
             ->where('trainingPreferences.sessions_per_week', 5)
             ->where('trainingPreferences.run_days', [0, 1, 3, 5, 6])
             ->where('trainingPreferences.long_run_day', 6));
+});
+
+it('hands the page an unconnected intervals.icu state by default', function (): void {
+    $this->actingAs(User::factory()->create())->get('/settings')
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('intervalsIcu', ['connected' => false, 'athlete_id' => null, 'broken' => false])
+            ->where('dataUse.points', DataUseStatement::points()));
+});
+
+it('shows a connected intervals.icu athlete without ever sending the key', function (): void {
+    $user = User::factory()->create();
+    IntervalsIcuConnection::factory()->for($user)->broken()->create(['athlete_id' => 'i123456', 'api_key' => 'never-shown']);
+
+    $response = $this->actingAs($user)->get('/settings');
+
+    $response->assertInertia(fn (Assert $page) => $page
+        ->where('intervalsIcu', ['connected' => true, 'athlete_id' => 'i123456', 'broken' => true])
+        ->where('dataUse.points', DataUseStatement::points(intervalsIcuConnected: true)));
+    expect($response->getContent())->not->toContain('never-shown');
 });

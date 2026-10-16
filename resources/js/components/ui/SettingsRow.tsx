@@ -1,5 +1,5 @@
 import { Link } from '@inertiajs/react';
-import { ChevronRight } from 'lucide-react';
+import { ChevronDown, ChevronRight } from 'lucide-react';
 import { type MouseEventHandler, type ReactNode } from 'react';
 
 import { Icon, IconComponent } from '@/components/ui/Icon';
@@ -24,6 +24,8 @@ interface SettingsRowProps {
     openInNewTab?: boolean;
     /** Click handler for button-style row */
     onClick?: MouseEventHandler<HTMLButtonElement>;
+    /** Makes an `onClick` row a disclosure: a down chevron and `aria-expanded`. */
+    expanded?: boolean;
     /**
      * Trailing control (e.g. a `<Toggle>`) rendered where the chevron would be.
      *
@@ -52,6 +54,7 @@ export default function SettingsRow({
     externalHref,
     openInNewTab = false,
     onClick,
+    expanded,
     control,
     tone = 'default',
     children,
@@ -88,10 +91,13 @@ export default function SettingsRow({
             </span>
             {control ?? (
                 <Icon
-                    icon={ChevronRight}
+                    icon={expanded === undefined ? ChevronRight : ChevronDown}
                     width={18}
                     height={18}
-                    className="shrink-0 text-text-3"
+                    className={cn(
+                        'shrink-0 text-text-3 transition-transform',
+                        expanded && 'rotate-180',
+                    )}
                     aria-hidden
                 />
             )}
@@ -145,6 +151,7 @@ export default function SettingsRow({
                 <button
                     type="button"
                     onClick={onClick}
+                    aria-expanded={expanded}
                     className={cn(tappableClasses, 'w-full text-left')}
                 >
                     {content}

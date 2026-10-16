@@ -70,6 +70,7 @@ describe('Settings', () => {
         for (const label of [
             'Appearance',
             'Notifications',
+            'Integrations',
             'Running',
             'The fine print',
             'Account',
