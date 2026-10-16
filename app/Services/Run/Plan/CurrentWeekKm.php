@@ -43,7 +43,7 @@ final readonly class CurrentWeekKm
     }
 
     /**
-     * @return array{sessions: Collection<int, PlannedSession>, phase: PlanPhase, multiplier: float, baseline: array{sessions_per_week: int, weekly_volume_km: float, long_run_km: float, long_run_cap_km: float, long_run_progression_cap_km: float, self_scaled: bool}, paces: array{easy: int, marathon: int, threshold: int, interval: int}|null, briefing: BriefingContext, race: RaceGoal|null, race_distance_m: float|null, primary_easy_date: string|null, today_session: PlannedSession|null, clamp: array{session_type: SessionType, segments: list<SessionSegment>, core_km: float, note: string, quality_dose?: array{hard_minutes: int, original_hard_minutes: int, pace_band: string, pace_sec_per_km: int|null}|null}|null, scale_by_date: array<string, float>, activity_by_date: array<string, array{km: float, meters: float, runs: list<array{id: int, km: float, seconds: int|null, started_at: string, avg_hr: int|null}>}>, statuses: array<string, PlannedSessionStatus>, fallback_verdicts: array<string, array<string, mixed>>, km_by_date: array<string, float>, type_by_date: array<string, SessionType>, total_km: float, eased_from_total_km: float|null}|null
+     * @return array{sessions: Collection<int, PlannedSession>, phase: PlanPhase, multiplier: float, baseline: array{sessions_per_week: int, weekly_volume_km: float, long_run_km: float, long_run_cap_km: float, long_run_progression_cap_km: float, self_scaled: bool}, paces: array{easy: int, marathon: int, threshold: int, interval: int}|null, easy_slow_end_sec_per_km: int|null, briefing: BriefingContext, race: RaceGoal|null, race_distance_m: float|null, primary_easy_date: string|null, today_session: PlannedSession|null, clamp: array{session_type: SessionType, segments: list<SessionSegment>, core_km: float, note: string, quality_dose?: array{hard_minutes: int, original_hard_minutes: int, pace_band: string, pace_sec_per_km: int|null}|null}|null, scale_by_date: array<string, float>, activity_by_date: array<string, array{km: float, meters: float, runs: list<array{id: int, km: float, seconds: int|null, started_at: string, avg_hr: int|null}>}>, statuses: array<string, PlannedSessionStatus>, fallback_verdicts: array<string, array<string, mixed>>, km_by_date: array<string, float>, type_by_date: array<string, SessionType>, total_km: float, eased_from_total_km: float|null}|null
      */
     public function forUser(User $user, Carbon $today): ?array
     {
@@ -73,7 +73,8 @@ final readonly class CurrentWeekKm
         }
         $currentWeekMultiplier = $multiplierByWeek[$currentWeekKey] ?? 1.0;
 
-        $paces = $this->paceCalculator->fromVdotResult($this->vdotEstimator->estimate($user, $today));
+        $vdot = $this->vdotEstimator->estimate($user, $today);
+        $paces = $this->paceCalculator->fromVdotResult($vdot);
         $briefingContext = $this->briefing->forUser($user, $today, $currentWeekSessions, $baselineData);
         $loadPending = $briefingContext->historyLoading;
         $ceiling = ReadinessCeiling::from($briefingContext->readinessCeiling);
@@ -193,6 +194,7 @@ final readonly class CurrentWeekKm
             'multiplier' => $currentWeekMultiplier,
             'baseline' => $baselineData,
             'paces' => $paces,
+            'easy_slow_end_sec_per_km' => $this->paceCalculator->easySlowEndFromVdotResult($vdot),
             'briefing' => $briefingContext,
             'race' => $race,
             'race_distance_m' => $raceDistanceM,

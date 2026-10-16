@@ -1,6 +1,6 @@
 import { usePage } from '@inertiajs/react';
 
-import type { SharedProps } from '@/types/inertia';
+import type { PaceRange, SharedProps } from '@/types/inertia';
 
 // Mirrors App\Services\Run\Metrics\PaceFormatter::format().
 export function formatPace(secPerKm: number): string {
@@ -8,6 +8,17 @@ export function formatPace(secPerKm: number): string {
     const m = Math.floor(total / 60);
     const s = total - m * 60;
     return `${m}:${s.toString().padStart(2, '0')}`;
+}
+
+/** A target with the window it is run in, e.g. "5:49/km (5:32–5:59)". */
+export function formatPaceWithRange(
+    secPerKm: number,
+    range: PaceRange | null | undefined,
+): string {
+    const pace = `${formatPace(secPerKm)}/km`;
+    return range == null
+        ? pace
+        : `${pace} (${formatPace(range.fast_sec_per_km)}–${formatPace(range.slow_sec_per_km)})`;
 }
 
 // Distance in meters → "5.00" with em-dash fallback. Stat-row callers add the

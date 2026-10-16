@@ -219,7 +219,7 @@ it('dayPayload leads today with the advised ease, the original session as contex
 
     expect($payload['session_type'])->toBe('easy')
         ->and($payload['distance_km'])->toBe($clamp['core_km'])
-        ->and($payload['segments'])->toBe(array_map(static fn (SessionSegment $seg): array => $seg->toArray(), $clampSegments))
+        ->and($payload['segments'])->toBe(array_map(static fn (SessionSegment $seg): array => [...$seg->toArray(), 'pace_range' => null], $clampSegments))
         ->and($payload['eased_from'])->toBe([
             'session_type' => 'long',
             'distance_km' => SegmentGenerator::coreKmFor(SessionType::Long, false, 20.0, 1.0, INF),
@@ -311,6 +311,47 @@ it('dayPayload applies a redistributed volume scale for a non-today day', functi
     $scaled = PlanRenderer::dayPayload($session, Carbon::parse('2026-08-10'), null, ['2026-08-12' => 0.5], null, false, 20.0, 1.0, INF, RENDERER_PACES, PlannedSessionStatus::Planned);
 
     expect($scaled['distance_km'])->toBe(round($unscaled['distance_km'] * 0.5, 1));
+});
+
+it('dayPayload gives every paced step the window it is graded in', function (): void {
+    $session = PlannedSession::factory()->make([
+        'date' => '2026-08-10',
+        'phase' => PlanPhase::Build,
+        'session_type' => SessionType::Tempo,
+    ]);
+
+    $payload = PlanRenderer::dayPayload(
+        $session,
+        Carbon::parse('2026-08-01'),
+        null,
+        [],
+        null,
+        false,
+        20.0,
+        1.0,
+        INF,
+        RENDERER_PACES,
+        PlannedSessionStatus::Planned,
+        easySlowEndSecPerKm: 380,
+    );
+
+    $ranges = array_column($payload['segments'], 'pace_range', 'key');
+    expect($ranges['warmup'])->toBe(['fast_sec_per_km' => 300, 'slow_sec_per_km' => 380])
+        ->and($ranges['main'])->toBe(['fast_sec_per_km' => 257, 'slow_sec_per_km' => 280]);
+});
+
+it('dayPayload runs race day steps on the hard window even at marathon pace', function (): void {
+    $session = PlannedSession::factory()->make([
+        'date' => '2026-08-10',
+        'phase' => PlanPhase::Taper,
+        'session_type' => SessionType::Race,
+        'race_distance_m' => 42_195,
+    ]);
+
+    $payload = PlanRenderer::dayPayload($session, Carbon::parse('2026-08-01'), null, [], 42_195.0, false, 20.0, 1.0, INF, RENDERER_PACES, PlannedSessionStatus::Planned, null, null, 14_400);
+
+    $pace = $payload['segments'][0]['pace_sec_per_km'];
+    expect($payload['segments'][0]['pace_range'])->toBe(['fast_sec_per_km' => (int) round($pace * 0.95), 'slow_sec_per_km' => $pace + 10]);
 });
 
 it('dayPayload prescribes race day at the athlete\'s goal pace', function (): void {

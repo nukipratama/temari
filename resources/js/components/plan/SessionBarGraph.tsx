@@ -1,7 +1,7 @@
 import type { PlanSessionSegment } from '@/types/inertia';
 
 import { HR_ZONE_COLORS, type HrZoneKey } from '@/lib/chartTokens';
-import { formatPace } from '@/lib/pace';
+import { formatPace, formatPaceWithRange } from '@/lib/pace';
 import { GOAL_PACE_LABEL } from '@/lib/plan';
 
 export function zoneColor(zone: string): string {
@@ -38,7 +38,7 @@ function figureText(segment: PlanSessionSegment): string {
 function paceSub(segment: PlanSessionSegment, label: string): string {
     return segment.pace_sec_per_km == null
         ? label
-        : `${formatPace(segment.pace_sec_per_km)}/km · ${label}`;
+        : `${formatPaceWithRange(segment.pace_sec_per_km, segment.pace_range)} · ${label}`;
 }
 
 /** Back-to-back segments of the same work key, with no recovery between them, as one rep or block. */

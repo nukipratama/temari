@@ -220,7 +220,9 @@ final class PlanPageAssembler
 
         $race = ($this->activeRace)($user->id);
         $baselineData = $this->baseline->forUser($user, $today);
-        $paces = $this->paceCalculator->fromVdotResult($this->vdotEstimator->estimate($user));
+        $vdot = $this->vdotEstimator->estimate($user);
+        $paces = $this->paceCalculator->fromVdotResult($vdot);
+        $easySlowEnd = $this->paceCalculator->easySlowEndFromVdotResult($vdot);
         $briefingContext = $this->briefing->forUser($user, $today, $sessionsByWeek->get($currentWeekKey), $baselineData);
         $loadPending = $briefingContext->historyLoading;
         $ceiling = ReadinessCeiling::from($briefingContext->readinessCeiling);
@@ -305,6 +307,7 @@ final class PlanPageAssembler
                     $fallbackVerdicts[$s->date->toDateString()]['ran_anyway'] ?? null,
                     $s->date->isSameDay($today) ? $briefingContext->readinessAssessment : null,
                     $user->runnerProfile?->easyHrCapBpm(),
+                    easySlowEndSecPerKm: $easySlowEnd,
                 ), ...$this->editRules($s, $fallbackVerdicts[$s->date->toDateString()]['status'] ?? $s->status, $ruleRowsByDate, $ranDates, $today), 'made_up_on' => $s->made_up_on?->toDateString()])->all(),
             ];
         }

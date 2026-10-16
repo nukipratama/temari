@@ -13,6 +13,7 @@ import {
 import type { IconComponent } from '@/components/ui/Icon';
 import type {
     PlanDayEasedFrom,
+    PaceRange,
     PlanDayPaceEasedFrom,
     PlanSessionSegment,
     WeekPlanDay,
@@ -21,6 +22,7 @@ import type {
 import {
     formatDurationHMS,
     formatPace,
+    formatPaceWithRange,
     isoDateLocal,
     mondayOf,
     parseNaiveLocalDate,
@@ -587,15 +589,24 @@ export function fallOffTiltWhy(day: PlanDay): string | null {
     );
 }
 
+function coreSegment(
+    day: Pick<PlanDay, 'segments'>,
+): PlanSessionSegment | undefined {
+    return day.segments.find((s) => s.key === 'main' || s.key === 'interval');
+}
+
 /** The core segment's own pace, in seconds/km — the number every pace figure
  *  on a day (the target, a pace-ease delta) reads from. Null with no VDOT
  *  estimate to size one. */
 function corePaceSecPerKm(day: Pick<PlanDay, 'segments'>): number | null {
-    const core = day.segments.find(
-        (s) => s.key === 'main' || s.key === 'interval',
-    );
+    return coreSegment(day)?.pace_sec_per_km ?? null;
+}
 
-    return core?.pace_sec_per_km ?? null;
+function corePaceWithRange(day: Pick<PlanDay, 'segments'>): string | null {
+    const core = coreSegment(day);
+    return core?.pace_sec_per_km == null
+        ? null
+        : formatPaceWithRange(core.pace_sec_per_km, core.pace_range);
 }
 
 /** The core set's pace target, which is the one pace an unrun day is read at. */
@@ -608,6 +619,7 @@ interface WorkUnit {
     minutes: number | null;
     km: number | null;
     paceSecPerKm: number | null;
+    paceRange: PaceRange | null;
 }
 
 function oneDecimal(value: number): number {
@@ -632,6 +644,19 @@ function joined(first: WorkUnit, second: WorkUnit): WorkUnit {
         minutes,
         km: oneDecimal(km),
         paceSecPerKm: Math.round((minutes * 60) / km),
+        paceRange:
+            first.paceRange === null || second.paceRange === null
+                ? null
+                : {
+                      fast_sec_per_km: Math.min(
+                          first.paceRange.fast_sec_per_km,
+                          second.paceRange.fast_sec_per_km,
+                      ),
+                      slow_sec_per_km: Math.max(
+                          first.paceRange.slow_sec_per_km,
+                          second.paceRange.slow_sec_per_km,
+                      ),
+                  },
     };
 }
 
@@ -652,6 +677,7 @@ function workUnits(segments: PlanSessionSegment[]): WorkUnit[] {
             minutes: segment.minutes,
             km: segment.km,
             paceSecPerKm: segment.pace_sec_per_km,
+            paceRange: segment.pace_range ?? null,
         };
         const previous = joinsPrevious ? units.pop() : undefined;
         units.push(previous === undefined ? unit : joined(previous, unit));
@@ -667,20 +693,20 @@ function workUnits(segments: PlanSessionSegment[]): WorkUnit[] {
  *  trial or race. */
 export function targetLabel(day: PlanDay): string | null {
     if (day.time_trial !== null || day.session_type === 'race') {
-        return paceLabel(day);
+        return corePaceWithRange(day);
     }
 
     const units = workUnits(day.segments);
     if (units.length === 0) {
         return day.hr_cap_bpm !== null
             ? `under ${day.hr_cap_bpm} bpm`
-            : paceLabel(day);
+            : corePaceWithRange(day);
     }
 
     const pace =
         units[0].paceSecPerKm === null
             ? ''
-            : ` at ${formatPace(units[0].paceSecPerKm)}/km`;
+            : ` at ${formatPaceWithRange(units[0].paceSecPerKm, units[0].paceRange)}`;
     if (day.session_type === 'long') {
         const km = oneDecimal(
             units.reduce((sum, unit) => sum + (unit.km ?? 0), 0),
@@ -700,7 +726,7 @@ export function targetLabel(day: PlanDay): string | null {
         unit.minutes === null ? [] : [unit.minutes],
     );
     if (minutes.length < units.length) {
-        return paceLabel(day);
+        return corePaceWithRange(day);
     }
     const total = minutes.reduce((sum, value) => sum + value, 0);
     const work =

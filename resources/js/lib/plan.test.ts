@@ -1267,3 +1267,81 @@ describe('targetLabel on a day with work', () => {
         ).toBe('5:00/km');
     });
 });
+
+describe('targetLabel with pace ranges', () => {
+    const range = (fast: number, slow: number) => ({
+        fast_sec_per_km: fast,
+        slow_sec_per_km: slow,
+    });
+    const block = (
+        key: PlanSessionSegment['key'],
+        pace: number,
+        paceRange: ReturnType<typeof range>,
+        label: PlanSessionSegment['pace_label'] = 'threshold',
+    ): PlanSessionSegment => ({
+        key,
+        minutes: 7,
+        zone: label === 'easy' ? 'Z2' : 'Z4',
+        pace_label: label,
+        km: 1.2,
+        pace_sec_per_km: pace,
+        pace_range: paceRange,
+    });
+
+    it('puts the window beside the pace of an easy day', () => {
+        expect(
+            targetLabel(
+                planDay({
+                    segments: [block('main', 432, range(393, 452), 'easy')],
+                }),
+            ),
+        ).toBe('7:12/km (6:33–7:32)');
+    });
+
+    it('puts the window beside the pace of repeated work blocks', () => {
+        const recovery = block('recovery', 432, range(393, 452), 'easy');
+        expect(
+            targetLabel(
+                planDay({
+                    session_type: 'tempo',
+                    segments: [
+                        block('main', 349, range(332, 359)),
+                        recovery,
+                        block('main', 349, range(332, 359)),
+                        recovery,
+                        block('main', 349, range(332, 359)),
+                    ],
+                }),
+            ),
+        ).toBe('3 × 7 min at 5:49/km (5:32–5:59)');
+    });
+
+    it('spans both windows when back-to-back blocks are read as one', () => {
+        expect(
+            targetLabel(
+                planDay({
+                    session_type: 'tempo',
+                    segments: [
+                        block('main', 360, range(342, 370)),
+                        block('main', 340, range(323, 350)),
+                    ],
+                }),
+            ),
+        ).toBe('14 min at 5:50/km (5:23–6:10)');
+    });
+
+    it('puts the window beside race pace', () => {
+        expect(
+            targetLabel(
+                planDay({
+                    session_type: 'race',
+                    segments: [block('main', 354, range(336, 364))],
+                }),
+            ),
+        ).toBe('5:54/km (5:36–6:04)');
+    });
+
+    it('shows the bare pace while no window is known', () => {
+        expect(targetLabel(planDay())).toBe('6:00/km');
+    });
+});

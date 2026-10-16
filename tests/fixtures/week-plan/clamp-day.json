@@ -17,7 +17,8 @@
                     "km": 8.8,
                     "zone": "Z2",
                     "pace_label": "easy",
-                    "pace_sec_per_km": null
+                    "pace_sec_per_km": null,
+                    "pace_range": null
                 }
             ],
             "hr_cap_bpm": null,
@@ -81,7 +82,8 @@
                     "km": null,
                     "zone": "Z2",
                     "pace_label": "easy",
-                    "pace_sec_per_km": null
+                    "pace_sec_per_km": null,
+                    "pace_range": null
                 },
                 {
                     "key": "interval",
@@ -89,7 +91,8 @@
                     "km": null,
                     "zone": "Z5",
                     "pace_label": "interval",
-                    "pace_sec_per_km": null
+                    "pace_sec_per_km": null,
+                    "pace_range": null
                 }
             ],
             "hr_cap_bpm": null,
@@ -334,7 +337,8 @@
                     "km": 8.8,
                     "zone": "Z2",
                     "pace_label": "easy",
-                    "pace_sec_per_km": null
+                    "pace_sec_per_km": null,
+                    "pace_range": null
                 }
             ],
             "hr_cap_bpm": null,
@@ -419,7 +423,8 @@
                     "km": 5.4,
                     "zone": "Z2",
                     "pace_label": "easy",
-                    "pace_sec_per_km": null
+                    "pace_sec_per_km": null,
+                    "pace_range": null
                 }
             ],
             "hr_cap_bpm": null,
@@ -464,7 +469,8 @@
                     "km": 13.5,
                     "zone": "Z2",
                     "pace_label": "easy",
-                    "pace_sec_per_km": null
+                    "pace_sec_per_km": null,
+                    "pace_range": null
                 }
             ],
             "hr_cap_bpm": null,
