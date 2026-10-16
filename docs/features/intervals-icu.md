@@ -1,9 +1,9 @@
 ---
 title: intervals.icu connection
-description: Connecting an athlete's intervals.icu account from Settings → Integrations, so their planned runs can reach their watch.
+description: Connecting an athlete's intervals.icu account from Settings → Integrations, and keeping today's planned run on their intervals.icu calendar so it reaches their watch.
 tags: [feature, integrations]
 status: living
-reviewed: 2026-10-16
+reviewed: 2026-10-17
 code_refs:
   - app/Http/Controllers/IntervalsIcu/IntervalsIcuConnectionController.php
   - app/Http/Requests/StoreIntervalsIcuConnectionRequest.php
@@ -12,11 +12,16 @@ code_refs:
   - resources/js/components/settings/IntervalsIcuPanel.tsx
   - resources/js/components/settings/IntervalsIcuConnectForm.tsx
   - app/Services/IntervalsIcu/IntervalsIcuWorkoutMapper.php
+  - app/Services/IntervalsIcu/IntervalsIcuSync.php
+  - app/Jobs/IntervalsIcu/SyncIntervalsIcuWorkoutJob.php
+  - app/Console/Commands/IntervalsIcu/SyncCommand.php
+  - resources/js/components/home/IntervalsIcuStatus.tsx
+  - app/Livewire/Pulse/IntervalsIcuHealth.php
 ---
 
 # intervals.icu connection
 
-Huawei offers third parties no way to put a workout on a watch, but intervals.icu forwards the next planned run on its calendar to HUAWEI Health (and Garmin, COROS and others) through its own watch connections. temari writes the plan to the athlete's intervals.icu calendar, and the athlete taps once in their watch app to send the run to the watch. Scope, rules and the proof of concept are in issue #2155.
+Huawei offers third parties no way to put a workout on a watch, but intervals.icu forwards the next planned run on its calendar to HUAWEI Health (and Garmin, COROS and others) through its own watch connections. temari writes today's run to the athlete's intervals.icu calendar, and the athlete taps once in their watch app to send the run to the watch. Scope, rules and the proof of concept are in issue #2155.
 
 ## Connecting
 
@@ -32,9 +37,9 @@ One row per user in `intervals_icu_connections` (`IntervalsIcuConnection`), with
 
 - **not connected**: the row folds open to the form.
 - **connected**: a static row showing the athlete ID, with a demoted disconnect beneath it, like Telegram in [[settings]].
-- **broken** (`broken_at` set): the row says the key stopped working and folds open to the same form with the ID prefilled. Nothing sets this state yet; the sync job will set it on a 401/403.
+- **broken** (`broken_at` set): the row says the key stopped working and folds open to the same form with the ID prefilled. The sync sets it on a 401/403 (see below).
 
-Disconnecting deletes the row. The demo account can't connect or disconnect: both routes carry `block-demo-telegram`, and the row opens the demo notice instead of the form.
+Disconnecting removes today's temari workout from the calendar, then deletes the row; if intervals.icu can't be reached, the row goes anyway and the workout stays. The demo account can't connect or disconnect: both routes carry `block-demo-telegram`, and the row opens the demo notice instead of the form.
 
 ## The workout sent
 
@@ -47,9 +52,24 @@ Disconnecting deletes the row. The demo account can't connect or disconnect: bot
 
 Checked live on 2026-10-17: all nine shapes parsed into the intended steps, ranges, repeats and `% LTHR` targets in intervals.icu, and synced to Huawei Health with every step, target and repeat intact.
 
+## The sync
+
+Only today's run is ever sent (decision #2160): Huawei Health shows just the next upcoming workout, so a week of them would add nothing on the watch and leave six to go stale.
+
+Every 15 minutes `intervals-icu:sync` queues one `SyncIntervalsIcuWorkoutJob` per non-demo athlete with a working connection, and connecting queues one straight away. The job runs `IntervalsIcuSync::sync()`, which builds today exactly as Today shows it (`CurrentWeekPlanBuilder`), maps it, and hashes the workout's name and description:
+
+- **first send of the day**: `POST` the event and keep its id (`event_id`, `synced_on`, `payload_hash` on the connection row);
+- **hash changed** (a clamp, a regenerated plan, a skipped rep): `PUT` the same event in place. If the athlete deleted it, a new one is created;
+- **unchanged**: no call at all, except that a day without paces reads the athlete's run threshold heart rate each time, so a threshold they change on intervals.icu is used on the next tick;
+- **today becomes a rest day, is skipped, or can't be sent**: the event is deleted. The watch may still hold a course it already received; that is accepted.
+
+Workouts from earlier days stay on the calendar, and temari never touches events the athlete made. A 401/403 marks the connection broken (`broken_at`), stops its syncs, and sends `IntervalsIcuDisconnectedNotification` once; reconnecting clears it. Any other failure sets the day's status to unreachable and the next tick tries again.
+
+`sync_status` (`IntervalsIcuSyncStatus`) drives the chip beside the session on Today (`IntervalsIcuStatus.tsx`): green "on intervals.icu" when sent, and a warning "not sent" with a reason line when there is no threshold heart rate, intervals.icu is unreachable, or the key is broken. Rest days show no chip. The `IntervalsIcuHealth` Pulse card counts working and broken connections, today's statuses, and the sends, updates, removals, failures and broken keys recorded under `intervals_icu_sync`.
+
 ## Privacy
 
-The privacy policy (`LegalDocuments::privacy`) lists intervals.icu as a recipient of the coming week's planned runs, only if the athlete connects it, and lists the stored athlete ID and encrypted key. The Settings data-use section adds `DataUseStatement::INTERVALS_ICU` only while a connection exists.
+The privacy policy (`LegalDocuments::privacy`) lists intervals.icu as a recipient of today's planned run, only if the athlete connects it, and lists the stored athlete ID and encrypted key. The Settings data-use section adds `DataUseStatement::INTERVALS_ICU` only while a connection exists.
 
 ## See also
 

@@ -69,6 +69,8 @@
 
     <livewire:pulse.strava-health cols="6" rows="3" />
 
+    <livewire:pulse.intervals-icu-health cols="6" rows="2" />
+
     {{-- The two budgets that stop the app when they run out. --}}
     <livewire:pulse.burn-down cols="6" rows="2" />
 
