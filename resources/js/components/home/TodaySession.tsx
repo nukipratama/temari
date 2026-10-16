@@ -118,6 +118,7 @@ function TodayPrescription({
     const hint = judged === null ? sessionHint(day) : null;
     const doseWhy = judged === null ? prescriptionWhy(day) : null;
     const sync = day.session_type === 'rest' ? null : intervalsIcu;
+    const syncReason = sync === null ? null : intervalsIcuReason(sync);
 
     return (
         <div id="anchor-session-today" className="mt-2">
@@ -169,9 +170,9 @@ function TodayPrescription({
                     {hint}
                 </p>
             )}
-            {sync !== null && intervalsIcuReason(sync) !== null && (
+            {syncReason && (
                 <p className="mt-1 text-xs leading-relaxed text-text-2">
-                    {intervalsIcuReason(sync)}
+                    {syncReason}
                 </p>
             )}
             {judged !== null && (

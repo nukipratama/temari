@@ -73,9 +73,10 @@ final readonly class IntervalsIcuSync
         $status = null;
 
         if ($day !== null) {
-            $heartRate = IntervalsIcuWorkoutMapper::needsHeartRate($day) ? $this->heartRate($connection) : null;
+            $needsHeartRate = IntervalsIcuWorkoutMapper::needsHeartRate($day);
+            $heartRate = $needsHeartRate ? $this->heartRate($connection) : null;
             $workout = IntervalsIcuWorkoutMapper::map($day, $heartRate);
-            if ($workout === null && $heartRate === null && IntervalsIcuWorkoutMapper::needsHeartRate($day)) {
+            if ($needsHeartRate && $heartRate === null) {
                 $status = IntervalsIcuSyncStatus::NoThresholdHeartRate;
             }
         }
