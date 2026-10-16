@@ -37,11 +37,16 @@ class StoreIntervalsIcuConnectionRequest extends FormRequest
     #[Override]
     protected function prepareForValidation(): void
     {
-        $athleteId = strtolower(trim((string) $this->input('athlete_id')));
+        $athleteId = $this->input('athlete_id');
+        $apiKey = $this->input('api_key');
 
-        $this->merge([
-            'athlete_id' => preg_match('/^\d+$/', $athleteId) === 1 ? 'i'.$athleteId : $athleteId,
-            'api_key' => trim((string) $this->input('api_key')),
-        ]);
+        if (is_string($athleteId)) {
+            $athleteId = strtolower(trim($athleteId));
+            $this->merge(['athlete_id' => preg_match('/^\d+$/', $athleteId) === 1 ? 'i'.$athleteId : $athleteId]);
+        }
+
+        if (is_string($apiKey)) {
+            $this->merge(['api_key' => trim($apiKey)]);
+        }
     }
 }

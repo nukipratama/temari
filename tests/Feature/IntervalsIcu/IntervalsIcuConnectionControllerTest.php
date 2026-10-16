@@ -71,6 +71,16 @@ it('rejects a malformed athlete ID without calling intervals.icu', function (): 
     Http::assertNothingSent();
 });
 
+it('answers a validation error, not a server error, when the fields arrive as arrays', function (): void {
+    Http::fake();
+
+    $this->actingAs(User::factory()->create())
+        ->post('/settings/intervals-icu', ['athlete_id' => ['i123456'], 'api_key' => ['secret-key']])
+        ->assertSessionHasErrors(['athlete_id', 'api_key']);
+
+    Http::assertNothingSent();
+});
+
 it('disconnects by deleting the stored key', function (): void {
     $user = User::factory()->create();
     IntervalsIcuConnection::factory()->for($user)->create();
