@@ -309,6 +309,11 @@ final class PlanRenderer
             'readiness_assessment' => $effective->isEased() ? $s->readiness_assessment : $currentReadinessAssessment,
         ]) : null;
         $goalPace = self::goalPaceKindOf($s, $sessionType);
+        $steppingStone = $goalPace !== null && GoalPaceWork::isSteppingStone($s->prescription_race_context);
+        $closesAtGoalPace = $goalPace !== null && GoalPaceWork::finalPaceOf($s->prescription_race_context) !== null;
+        $fastFinish = self::fastFinishOf($s, $sessionType);
+        $raceLong = self::raceLongOf($s, $sessionType);
+        $timeTrial = self::timeTrialOf($s, $sessionType);
 
         return [
             'id' => $s->id,
@@ -329,11 +334,12 @@ final class PlanRenderer
             'prescription_reason' => $s->prescription_reason,
             'fall_off_tilt' => $fallOffTilt?->value,
             'goal_pace' => $goalPace,
-            'stepping_stone' => $goalPace !== null && GoalPaceWork::isSteppingStone($s->prescription_race_context),
-            'closes_at_goal_pace' => $goalPace !== null && GoalPaceWork::finalPaceOf($s->prescription_race_context) !== null,
-            'fast_finish' => self::fastFinishOf($s, $sessionType),
-            'race_long' => self::raceLongOf($s, $sessionType),
-            'time_trial' => self::timeTrialOf($s, $sessionType),
+            'stepping_stone' => $steppingStone,
+            'closes_at_goal_pace' => $closesAtGoalPace,
+            'fast_finish' => $fastFinish,
+            'race_long' => $raceLong,
+            'time_trial' => $timeTrial,
+            'purpose' => SessionPurpose::of($sessionType, $segments, $goalPace, $steppingStone, $closesAtGoalPace, $fastFinish, $raceLong, $timeTrial),
             'advice_note' => $advisoryClamp !== null && $keepsPrescription ? $clampVoice ?? $advisoryClamp['note'] : null,
             'eased_from' => match (true) {
                 $headlinesEase => self::easedFromPayload($effective, $status, $isToday ? $clampVoice : null, $easedFromKm, $recordedReasons),

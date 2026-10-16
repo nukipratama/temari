@@ -24,7 +24,6 @@ import {
     prescriptionWhy,
     sessionHint,
     sessionLabel,
-    sessionPurpose,
     sessionShape,
     targetLabel,
 } from '@/lib/plan';
@@ -105,7 +104,7 @@ function TodayPrescription({
         parts.push(pace);
     }
     const shape = judged === null ? sessionShape(day.segments) : null;
-    const purpose = judged === null ? sessionPurpose(day) : null;
+    const purpose = judged === null ? day.purpose : null;
     const hint = judged === null ? sessionHint(day) : null;
     const doseWhy = judged === null ? prescriptionWhy(day) : null;
 

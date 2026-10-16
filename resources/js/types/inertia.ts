@@ -617,6 +617,9 @@ export interface WeekPlanDay {
     /** The time trial this session is, set only while the session shown is
      *  that trial: its distance and the supported time to aim around. */
     time_trial: { distance_m: number; aim_time_sec: number } | null;
+    /** What the session is for and how it should feel, in one line;
+     *  null on a tempo or interval day with no work above Z2. */
+    purpose: string | null;
     /** Today's safety advice on a pinned or race day, whose prescription
      *  keeps leading. Null on every other day. */
     advice_note: string | null;

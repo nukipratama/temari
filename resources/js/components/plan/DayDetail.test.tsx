@@ -39,6 +39,7 @@ function day(overrides: Partial<EditablePlanDay> = {}): EditablePlanDay {
         fast_finish: null,
         race_long: null,
         time_trial: null,
+        purpose: null,
         hr_cap_bpm: null,
         advice_note: null,
         eased_from: null,
@@ -184,6 +185,8 @@ describe('DayHeadline and DayDetail', () => {
     it('names a time trial in its headline and bar graph, with the aim and what it checks', () => {
         renderRow({
             day: day({
+                purpose:
+                    'aim around 52:05. checks your fitness so your paces stay honest.',
                 session_type: 'tempo',
                 distance_km: 10,
                 time_trial: { distance_m: 10_000, aim_time_sec: 3_125 },
@@ -218,6 +221,7 @@ describe('DayHeadline and DayDetail', () => {
     it('names goal-pace work in its headline, at the goal pace, with the race it rehearses', () => {
         renderRow({
             day: day({
+                purpose: 'rehearsing your 10K goal pace.',
                 session_type: 'interval',
                 goal_pace: '10k',
                 segments: [
@@ -245,6 +249,7 @@ describe('DayHeadline and DayDetail', () => {
     it('names stepping-stone work in its headline, at the stepping-stone pace, never as goal pace', () => {
         renderRow({
             day: day({
+                purpose: 'rehearsing your 10K stepping-stone pace.',
                 session_type: 'interval',
                 goal_pace: '10k',
                 stepping_stone: true,
@@ -274,6 +279,8 @@ describe('DayHeadline and DayDetail', () => {
     it('names a fast-finish long run in its headline, its fast block at the pace it runs at', () => {
         renderRow({
             day: day({
+                purpose:
+                    'the last fifth at your supported 10K pace. rehearses race pace on tired legs.',
                 session_type: 'long',
                 fast_finish: { pace_kind: '10k', pace_source: 'supported' },
                 hr_cap_bpm: 150,
@@ -315,6 +322,8 @@ describe('DayHeadline and DayDetail', () => {
     it('names an unsupported marathon race long by its stepping-stone pace', () => {
         renderRow({
             day: day({
+                purpose:
+                    'long run with a block at your marathon stepping-stone pace. rehearses race day on tired legs.',
                 session_type: 'long',
                 race_long: {
                     pace_kind: 'marathon',
@@ -358,6 +367,8 @@ describe('DayHeadline and DayDetail', () => {
     it('says ambitious stepping-stone work closes at goal pace', () => {
         renderRow({
             day: day({
+                purpose:
+                    'rehearsing your 10K stepping-stone pace, closing at goal pace.',
                 session_type: 'interval',
                 goal_pace: '10k',
                 stepping_stone: true,
@@ -533,6 +544,8 @@ describe('DayHeadline and DayDetail', () => {
     it("says what a quality session is for, and why today's dose moved", () => {
         renderRow({
             day: day({
+                purpose:
+                    'comfortably hard. teaches you to hold a pace without tipping over.',
                 prescription_reason:
                     'progressed after the latest comparable session was hit',
             }),
@@ -552,6 +565,8 @@ describe('DayHeadline and DayDetail', () => {
     it('never shows an engine placeholder as a reason', () => {
         renderRow({
             day: day({
+                purpose:
+                    'time on feet. builds the engine the race runs on. chatty effort the whole way.',
                 session_type: 'long',
                 segments: [
                     {
