@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Services\IntervalsIcu;
 
+use App\Services\Run\Metrics\DecimalFormatter;
+use App\Services\Run\Metrics\PaceFormatter;
+
 /**
  * Turns a day as Plan and Today show it ({@see \App\Services\Run\Plan\PlanRenderer::dayPayload()})
  * into an intervals.icu workout: a name, then a description whose step lines
@@ -92,7 +95,7 @@ final class IntervalsIcuWorkoutMapper
             || $day['time_trial'] !== null;
 
         if ($segment['km'] !== null && ($byDistance || $segment['minutes'] === null)) {
-            return self::kilometres($segment['km']).'km';
+            return DecimalFormatter::trimmed($segment['km'], 2).'km';
         }
 
         return self::duration((float) $segment['minutes']);
@@ -106,7 +109,7 @@ final class IntervalsIcuWorkoutMapper
     {
         $range = $segment['pace_range'] ?? null;
         if ($range !== null) {
-            return self::pace($range['fast_sec_per_km']).'-'.self::pace($range['slow_sec_per_km']).'/km Pace';
+            return PaceFormatter::format($range['fast_sec_per_km']).'-'.PaceFormatter::format($range['slow_sec_per_km']).'/km Pace';
         }
 
         /** @var HeartRate $heartRate */
@@ -210,7 +213,7 @@ final class IntervalsIcuWorkoutMapper
             return 'Time trial '.self::raceDistance($day['time_trial']['distance_m'] / 1000);
         }
 
-        $km = self::kilometres((float) $day['distance_km']);
+        $km = DecimalFormatter::trimmed((float) $day['distance_km'], 2);
 
         return match ($day['session_type']) {
             'race' => 'Race '.self::raceDistance((float) $day['distance_km']),
@@ -257,13 +260,8 @@ final class IntervalsIcuWorkoutMapper
             abs($km - 42.2) < 0.3 => 'Marathon',
             abs($km - 21.1) < 0.2 => 'Half marathon',
             abs($km - round($km)) < 0.05 => ((int) round($km)).'K',
-            default => self::kilometres($km).' km',
+            default => DecimalFormatter::trimmed($km, 2).' km',
         };
-    }
-
-    private static function kilometres(float $km): string
-    {
-        return rtrim(rtrim(number_format($km, 2, '.', ''), '0'), '.');
     }
 
     private static function duration(float $minutes): string
@@ -274,10 +272,5 @@ final class IntervalsIcuWorkoutMapper
         $secs = $seconds % 60;
 
         return ($hours > 0 ? "{$hours}h" : '').($mins > 0 ? "{$mins}m" : '').($secs > 0 ? "{$secs}s" : '');
-    }
-
-    private static function pace(int $secPerKm): string
-    {
-        return intdiv($secPerKm, 60).':'.str_pad((string) ($secPerKm % 60), 2, '0', STR_PAD_LEFT);
     }
 }
