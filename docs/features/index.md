@@ -21,6 +21,7 @@ _Pages_
 - [[profile]] — persona, profile voice
 - [[settings]] — Settings hub (Telegram toggles, HR-zone entry, account deletion)
 - [[settings-hr-zones]] — HR zones (Karvonen zones)
+- [[intervals-icu]] — intervals.icu connection (Settings → Integrations)
 - [[legal-pages]] — the three public documents (terms, privacy, training disclaimer)
 - [[narration-devtools]] — narration spend + per-athlete overview (ops-gated)
 - [[narration-athlete-page]] — one athlete's narration: spend, per-block cost and tool trace, the operator actions, and flag-to-replay (ops-gated)

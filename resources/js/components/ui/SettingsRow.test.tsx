@@ -64,6 +64,23 @@ describe('SettingsRow', () => {
         expect(screen.getByText('Child Element')).toBeInTheDocument();
     });
 
+    it('marks a button row as a disclosure when it carries an expanded state', () => {
+        const { rerender } = render(
+            <SettingsRow
+                {...defaultProps}
+                onClick={vi.fn()}
+                expanded={false}
+            />,
+        );
+        const button = screen.getByRole('button');
+        expect(button).toHaveAttribute('aria-expanded', 'false');
+        expect(button.lastElementChild).not.toHaveClass('rotate-180');
+
+        rerender(<SettingsRow {...defaultProps} onClick={vi.fn()} expanded />);
+        expect(button).toHaveAttribute('aria-expanded', 'true');
+        expect(button.lastElementChild).toHaveClass('rotate-180');
+    });
+
     it('renders a plain div row when no trigger is provided', () => {
         render(<SettingsRow {...defaultProps} />);
         expect(screen.getByText(defaultProps.label)).toBeInTheDocument();

@@ -37,3 +37,9 @@ it('keeps the copy free of em-dashes like the rest of the voice', function (): v
     expect(DataUseStatement::HEADLINE.' '.implode(' ', DataUseStatement::points()))
         ->not->toContain('—');
 });
+
+it('names intervals.icu as a recipient only once the athlete connects it', function (): void {
+    expect(DataUseStatement::points())->not->toContain(DataUseStatement::INTERVALS_ICU)
+        ->and(DataUseStatement::points(intervalsIcuConnected: true))->toContain(DataUseStatement::INTERVALS_ICU)
+        ->and(DataUseStatement::points(intervalsIcuConnected: true)[3])->toBe(DataUseStatement::points()[2]);
+});

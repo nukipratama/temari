@@ -18,6 +18,7 @@ use App\Http\Controllers\DevtoolsIndexController;
 use App\Http\Controllers\FeedbackController;
 use App\Http\Controllers\HistoryController;
 use App\Http\Controllers\InboxController;
+use App\Http\Controllers\IntervalsIcu\IntervalsIcuConnectionController;
 use App\Http\Controllers\LegalController;
 use App\Http\Controllers\NarrationAthleteController;
 use App\Http\Controllers\NotificationPreferenceController;
@@ -189,6 +190,8 @@ Route::middleware(['auth', 'onboarded'])->group(function (): void {
     Route::delete('/settings/zones', [RunnerZonesController::class, 'resetToDefault'])->name('settings.zones.reset');
     Route::post('/settings/zones/resync-strava', [RunnerZonesController::class, 'resyncFromStrava'])->middleware('block-demo-telegram')->name('settings.zones.resync');
     Route::patch('/settings/training-preferences', [TrainingPreferencesController::class, 'update'])->name('settings.training-preferences.update');
+    Route::post('/settings/intervals-icu', [IntervalsIcuConnectionController::class, 'store'])->middleware(['throttle:6,1', 'block-demo-telegram'])->name('intervals-icu.connect');
+    Route::delete('/settings/intervals-icu', [IntervalsIcuConnectionController::class, 'destroy'])->middleware('block-demo-telegram')->name('intervals-icu.disconnect');
 
     Route::post('/strava/sync', SyncController::class)
         ->middleware(['throttle:strava-sync', 'block-demo-telegram'])

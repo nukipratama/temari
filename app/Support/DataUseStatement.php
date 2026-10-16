@@ -12,18 +12,21 @@ final class DataUseStatement
 {
     public const string HEADLINE = 'your data';
 
+    public const string INTERVALS_ICU = 'You connected intervals.icu, so your planned runs for the next week go to your intervals.icu calendar, and from there to your watch app. Disconnect it in Settings and Temari stops sending them.';
+
     private const string POLICY_POINTER = 'The privacy policy spells out the details.';
 
     /**
      * @return list<string>
      */
-    public static function points(bool $pointToPrivacyPolicy = true): array
+    public static function points(bool $pointToPrivacyPolicy = true, bool $intervalsIcuConnected = false): array
     {
         $deletion = 'Delete your account from Settings and your runs, cards and notes go with it, and your Strava connection is unlinked.';
 
         return [
             'Temari reads your Strava activities to build your dashboard, your cards, and the notes it writes about your running. Your activity data is only ever shown back to you: no other account can see it.',
             'To write those notes, your run stats go to a third-party AI service and come back as text. It reads them only to write the note: neither Temari nor that service trains any AI model on your data.',
+            ...($intervalsIcuConnected ? [self::INTERVALS_ICU] : []),
             $pointToPrivacyPolicy ? $deletion.' '.self::POLICY_POINTER : $deletion,
         ];
     }

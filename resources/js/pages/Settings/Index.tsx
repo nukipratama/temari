@@ -15,6 +15,9 @@ import AppearanceCard from '@/components/settings/AppearanceCard';
 import HrZonesDisclosure, {
     type HrZonesPayload,
 } from '@/components/settings/HrZonesDisclosure';
+import IntervalsIcuPanel, {
+    type IntervalsIcuPayload,
+} from '@/components/settings/IntervalsIcuPanel';
 import TrainingPreferencesCard, {
     type TrainingPreferencesPayload,
 } from '@/components/settings/TrainingPreferencesCard';
@@ -58,6 +61,7 @@ interface DataUsePayload {
 interface SettingsProps {
     dataUse?: DataUsePayload;
     telegram?: TelegramPayload;
+    intervalsIcu?: IntervalsIcuPayload;
     notificationPrefs?: NotificationPrefs;
     /** Seconds left on the test-send cooldown, or null when it is not cooling. */
     testCooldownSeconds?: number | null;
@@ -75,6 +79,12 @@ const TELEGRAM_DEFAULT: TelegramPayload = {
     connected: false,
     username: null,
     connect_url: null,
+};
+
+const INTERVALS_ICU_DEFAULT: IntervalsIcuPayload = {
+    connected: false,
+    athlete_id: null,
+    broken: false,
 };
 
 const PREFS_DEFAULT: NotificationPrefs = {
@@ -114,6 +124,7 @@ const TRAINING_PREFERENCES_DEFAULT: TrainingPreferencesPayload = {
 export default function Settings({
     dataUse,
     telegram = TELEGRAM_DEFAULT,
+    intervalsIcu = INTERVALS_ICU_DEFAULT,
     notificationPrefs = PREFS_DEFAULT,
     testCooldownSeconds = null,
     hrZones = HR_ZONES_DEFAULT,
@@ -154,6 +165,15 @@ export default function Settings({
                                 telegram={telegram}
                                 testCooldownSeconds={testCooldownSeconds}
                             />
+                        </div>
+                    </section>
+
+                    <section>
+                        <Eyebrow as="h2" token="small" tone="ink-2">
+                            Integrations
+                        </Eyebrow>
+                        <div className="mt-3 flex flex-col">
+                            <IntervalsIcuPanel intervalsIcu={intervalsIcu} />
                         </div>
                     </section>
 
