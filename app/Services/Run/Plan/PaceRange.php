@@ -16,8 +16,6 @@ use App\Enums\PaceBand;
  */
 final readonly class PaceRange
 {
-    public const float HARD_FAST_FRACTION = 0.95;
-
     private function __construct(
         public int $fastSecPerKm,
         public int $slowSecPerKm,
@@ -47,7 +45,7 @@ final readonly class PaceRange
             return new self($target - SessionIntentJudge::PACE_TOLERANCE_SEC, $target + SessionIntentJudge::PACE_TOLERANCE_SEC);
         }
 
-        return new self((int) round($target * self::HARD_FAST_FRACTION), $target + SessionIntentJudge::PACE_TOLERANCE_SEC);
+        return new self((int) round($target * (1 - SessionIntentJudge::EXCESSIVE_FRACTION)), $target + SessionIntentJudge::PACE_TOLERANCE_SEC);
     }
 
     /** @return array{fast_sec_per_km: int, slow_sec_per_km: int} */

@@ -589,15 +589,15 @@ export function fallOffTiltWhy(day: PlanDay): string | null {
     );
 }
 
-/** The core segment's own pace, in seconds/km — the number every pace figure
- *  on a day (the target, a pace-ease delta) reads from. Null with no VDOT
- *  estimate to size one. */
 function coreSegment(
     day: Pick<PlanDay, 'segments'>,
 ): PlanSessionSegment | undefined {
     return day.segments.find((s) => s.key === 'main' || s.key === 'interval');
 }
 
+/** The core segment's own pace, in seconds/km — the number every pace figure
+ *  on a day (the target, a pace-ease delta) reads from. Null with no VDOT
+ *  estimate to size one. */
 function corePaceSecPerKm(day: Pick<PlanDay, 'segments'>): number | null {
     return coreSegment(day)?.pace_sec_per_km ?? null;
 }
