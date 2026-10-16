@@ -62,6 +62,11 @@ class DashboardController extends Controller
             'hasRuns' => fn (): bool => ActivityDetail::query()->forUser($user->id)->exists(),
             'pastYouTrend' => fn (): array => $pastYouTrend->payload($user, $today),
             'weekPlan' => fn (): ?array => $weekPlanBuilder->forUser($user, $today),
+            'intervalsIcu' => function () use ($user, $today): ?string {
+                $connection = $user->intervalsIcuConnection;
+
+                return $connection?->isBroken() === true ? 'broken' : $connection?->statusOn($today)?->value;
+            },
             'pendingRaceOutcome' => function () use ($user, $today): ?array {
                 $race = RaceGoal::query()
                     ->where('user_id', $user->id)

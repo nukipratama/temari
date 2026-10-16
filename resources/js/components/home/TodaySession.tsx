@@ -7,6 +7,11 @@ import type {
     WeekPlanDay,
 } from '@/types/inertia';
 
+import {
+    intervalsIcuReason,
+    IntervalsIcuChip,
+    type TodayIntervalsIcu,
+} from '@/components/home/IntervalsIcuStatus';
 import { AskedRanResult, ChangeRow } from '@/components/plan/DeltaPair';
 import AnalysisStatus from '@/components/temari/AnalysisStatus';
 import { renderNarration } from '@/components/temari/Citation';
@@ -88,7 +93,12 @@ function SessionVoice({
 function TodayPrescription({
     day,
     restDayEasePace,
-}: Readonly<{ day: WeekPlanDay; restDayEasePace: RestDayEasePace | null }>) {
+    intervalsIcu,
+}: Readonly<{
+    day: WeekPlanDay;
+    restDayEasePace: RestDayEasePace | null;
+    intervalsIcu: TodayIntervalsIcu | null;
+}>) {
     const judged = judgedDayResult(day);
     const pace = judged === null ? targetLabel(day) : null;
     const sessionDelta = day.eased_from
@@ -107,6 +117,7 @@ function TodayPrescription({
     const purpose = judged === null ? day.purpose : null;
     const hint = judged === null ? sessionHint(day) : null;
     const doseWhy = judged === null ? prescriptionWhy(day) : null;
+    const sync = day.session_type === 'rest' ? null : intervalsIcu;
 
     return (
         <div id="anchor-session-today" className="mt-2">
@@ -120,14 +131,17 @@ function TodayPrescription({
                     </span>
                 </p>
             )}
-            <p
+            <div
                 className={cn(
-                    'text-sm font-semibold text-foreground',
+                    'flex flex-wrap items-center gap-x-2 gap-y-1',
                     heroKm && 'mt-1',
                 )}
             >
-                {parts.join(' · ')}
-            </p>
+                <p className="text-sm font-semibold text-foreground">
+                    {parts.join(' · ')}
+                </p>
+                {sync !== null && <IntervalsIcuChip status={sync} />}
+            </div>
             {day.session_type === 'rest' && restDayEasePace !== null && (
                 <p className="mt-1 text-xs leading-relaxed text-text-2">
                     your easy runs after a rest day go{' '}
@@ -153,6 +167,11 @@ function TodayPrescription({
             {hint && (
                 <p className="mt-1 text-xs leading-relaxed text-text-2">
                     {hint}
+                </p>
+            )}
+            {sync !== null && intervalsIcuReason(sync) !== null && (
+                <p className="mt-1 text-xs leading-relaxed text-text-2">
+                    {intervalsIcuReason(sync)}
                 </p>
             )}
             {judged !== null && (
@@ -270,6 +289,7 @@ export default function TodaySession({
     briefing,
     today = null,
     restDayEasePace = null,
+    intervalsIcu = null,
     drawnAnchors = new Set<string>(),
 }: Readonly<{
     briefing: BriefingResult;
@@ -277,6 +297,8 @@ export default function TodaySession({
     today?: WeekPlanDay | null;
     /** Deferred; only ever set alongside a rest-day `today`. */
     restDayEasePace?: RestDayEasePace | null;
+    /** Null when intervals.icu is not connected or has not seen today yet. */
+    intervalsIcu?: TodayIntervalsIcu | null;
     /** From {@link drawnHomeAnchors} — which citations this page can honour. */
     drawnAnchors?: ReadonlySet<string>;
 }>) {
@@ -311,6 +333,7 @@ export default function TodaySession({
                     <TodayPrescription
                         day={today}
                         restDayEasePace={restDayEasePace}
+                        intervalsIcu={intervalsIcu}
                     />
                 ))}
             {showsVoice && (

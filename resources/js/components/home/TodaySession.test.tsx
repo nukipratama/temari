@@ -157,6 +157,49 @@ describe('TodaySession', () => {
         expect(screen.queryByText(/bpm/)).toBeNull();
     });
 
+    it('marks a sent workout beside the session with no line beneath', () => {
+        render(
+            <TodaySession
+                briefing={briefing('Easy 6k.')}
+                today={day()}
+                intervalsIcu="sent"
+            />,
+        );
+
+        expectSession('8', 'easy · 6:00/km');
+        expect(screen.getByText('on intervals.icu')).toBeInTheDocument();
+        expect(screen.queryByText(/not sent/)).toBeNull();
+    });
+
+    it('marks a workout that did not go out and says why', () => {
+        render(
+            <TodaySession
+                briefing={briefing('Easy 6k.')}
+                today={day()}
+                intervalsIcu="no_threshold_hr"
+            />,
+        );
+
+        expect(screen.getByText('not sent')).toBeInTheDocument();
+        expect(
+            screen.getByText(
+                'not sent to intervals.icu: set your threshold heart rate there first.',
+            ),
+        ).toBeInTheDocument();
+    });
+
+    it('shows no intervals.icu mark on a rest day', () => {
+        render(
+            <TodaySession
+                briefing={briefing('Rest.')}
+                today={day({ session_type: 'rest', segments: [] })}
+                intervalsIcu="broken"
+            />,
+        );
+
+        expect(screen.queryByText('not sent')).toBeNull();
+    });
+
     it('sets the session straight on the section, with no box nested inside', () => {
         const { container } = render(
             <TodaySession briefing={briefing('Easy 6k.')} today={day()} />,
