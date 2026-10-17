@@ -1,11 +1,12 @@
-import { router, usePage } from '@inertiajs/react';
+import { router } from '@inertiajs/react';
 import { LoaderCircle, RefreshCw } from 'lucide-react';
 import { Suspense, useState } from 'react';
 
-import type { SharedProps, StravaSyncState } from '@/types/inertia';
+import type { StravaSyncState } from '@/types/inertia';
 
 import StravaAction from '@/components/StravaAction';
 import { Icon, StravaIcon } from '@/components/ui/Icon';
+import { useSharedProps } from '@/hooks/useSharedProps';
 import { cn } from '@/lib/cn';
 import { lazyIsland } from '@/lib/lazyIsland';
 import { pillButtonVariants } from '@/lib/variants';
@@ -35,7 +36,7 @@ export default function StravaSyncButton({
     className,
 }: Readonly<StravaSyncButtonProps>) {
     const [pending, setPending] = useState(false);
-    const isDemo = usePage<SharedProps>().props.auth.user?.is_demo ?? false;
+    const isDemo = useSharedProps().auth.user?.is_demo ?? false;
     const [demoBlocked, setDemoBlocked] = useState(false);
 
     if (state === 'disconnected' || state === 'revoked') {

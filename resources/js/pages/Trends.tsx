@@ -1,4 +1,4 @@
-import { Deferred, Head, usePage } from '@inertiajs/react';
+import { Deferred, Head } from '@inertiajs/react';
 
 import type {
     FitnessChartAnnotations,
@@ -9,7 +9,6 @@ import type {
     AnalysisPayload,
     RaceAmbition,
     RaceSupport,
-    SharedProps,
     TrainingLoad,
     WeekComparison as WeekComparisonPayload,
 } from '@/types/inertia';
@@ -25,6 +24,7 @@ import WeekComparison from '@/components/trends/WeekComparison';
 import LaneStack from '@/components/ui/LaneStack';
 import PageContainer from '@/components/ui/PageContainer';
 import { SkeletonProse } from '@/components/ui/Skeleton';
+import { useSharedProps } from '@/hooks/useSharedProps';
 import { appLayout } from '@/layouts/appLayout';
 
 interface TrendsProps {
@@ -57,7 +57,7 @@ export default function Trends({
     raceOutlook,
     supportedHistory,
 }: Readonly<TrendsProps>) {
-    const { activeRace } = usePage<SharedProps>().props;
+    const { activeRace } = useSharedProps();
 
     return (
         <>
