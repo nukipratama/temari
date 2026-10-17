@@ -16,8 +16,10 @@ use App\Models\Scopes\KnownAnalysisTypeScope;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisType;
+use App\Services\IntervalsIcu\IntervalsIcuSync;
 use App\Services\Strava\StravaGrantReleaseService;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -42,7 +44,7 @@ use Illuminate\Support\Facades\DB;
  */
 final readonly class UserEraser
 {
-    public function __construct(private StravaGrantReleaseService $grantReleases)
+    public function __construct(private StravaGrantReleaseService $grantReleases, private IntervalsIcuSync $intervalsIcu)
     {
     }
 
@@ -75,6 +77,10 @@ final readonly class UserEraser
         $this->snapshotIdentityOntoUsage($user);
         if (! $stravaGrantAlreadyAttempted) {
             $this->releaseStravaGrant($user);
+        }
+
+        if ($user->intervalsIcuConnection !== null) {
+            $this->intervalsIcu->removeTodayBestEffort($user->intervalsIcuConnection, Carbon::today());
         }
 
         DB::transaction(function () use ($id, $user): void {
