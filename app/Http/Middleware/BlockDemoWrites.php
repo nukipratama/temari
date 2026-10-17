@@ -8,7 +8,7 @@ use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
-class BlockDemoTelegramWrites
+class BlockDemoWrites
 {
     /**
      * Blocks mutating requests from the shared demo account on routes that opt in.
