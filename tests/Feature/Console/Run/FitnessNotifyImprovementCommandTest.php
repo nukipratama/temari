@@ -165,6 +165,16 @@ it('checks and stamps an athlete with a run analysed since the last check', func
     expect($user->fresh()->fitness_checked_at->toDateTimeString())->toBe('2026-10-05 10:00:00');
 });
 
+it('checks an athlete whose run was analysed in the same second as the last stamp', function (): void {
+    Notification::fake();
+    $user = athleteWithTenK(3_500, ['last_notified_vdot' => tenKVdot(3_500) - 0.5, 'fitness_checked_at' => '2026-10-05 08:00:00']);
+    Activity::factory()->for($user)->create(['analyzed_at' => '2026-10-05 08:00:00']);
+
+    $this->artisan('fitness:notify-improvement')->assertSuccessful();
+
+    Notification::assertSentTo($user, FitnessImprovedNotification::class);
+});
+
 it('checks and stamps an athlete who was never checked', function (): void {
     Notification::fake();
     $user = athleteWithTenK(3_500, ['last_notified_vdot' => tenKVdot(3_500) - 0.5]);

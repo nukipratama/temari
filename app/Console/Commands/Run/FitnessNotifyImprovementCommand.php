@@ -73,7 +73,7 @@ class FitnessNotifyImprovementCommand extends Command
     {
         $query->whereNull('fitness_checked_at')->orWhereHas(
             'activities',
-            fn (Builder $activities): Builder => $activities->whereColumn('activities.analyzed_at', '>', 'users.fitness_checked_at'),
+            fn (Builder $activities): Builder => $activities->whereColumn('activities.analyzed_at', '>=', 'users.fitness_checked_at'),
         );
     }
 
