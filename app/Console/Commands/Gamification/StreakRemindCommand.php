@@ -29,7 +29,7 @@ class StreakRemindCommand extends Command
         // scopeReachable() must know about channel mutes, or this silently
         // enqueues notifications whose via() then returns [].
         $users = User::query()
-            ->where('is_demo', false)
+            ->notDemo()
             ->whereDoesntHave('notificationPreference', fn (Builder $query): Builder => $query->where('notifications_enabled', false))
             ->where(app(ChannelRouter::class)->scopeReachable(...))
             ->get();
