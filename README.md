@@ -171,7 +171,7 @@ Create `/opt/temari/.env` with:
 | `MYSQL_ROOT_PASSWORD` | strong random — used on first mysql init only; cannot be changed after the volume exists            |
 | `STRAVA_CLIENT_ID`    | from your Strava developer app                                                                       |
 | `STRAVA_CLIENT_SECRET`| from your Strava developer app                                                                       |
-| `AZURE_OPENAI_URI`    | Optional. Full Azure OpenAI deployment URL (incl. api-version). Empty = rule-based narration silently |
+| `AZURE_OPENAI_URI`    | Optional. Azure OpenAI endpoint host only, e.g. `https://my-res.openai.azure.com`. Empty = rule-based narration silently |
 | `AZURE_OPENAI_API_KEY`| Optional. Pairs with `AZURE_OPENAI_URI`. Empty = rule-based silently. Job failures mark that Analysis block `failed` with a per-block retry button |
 | `DEMO_LOGIN_ENABLED`  | Optional. `true` renders the "Try the demo" button on `/login`. Default `true`                       |
 | `ONBOARDING_FORCE_SHOW` | Optional. `true` re-renders the dashboard first-run tooltip on every mount (QA / demos). Default `false` |
