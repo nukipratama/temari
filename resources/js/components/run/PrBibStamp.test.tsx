@@ -26,6 +26,17 @@ function bib(overrides: Partial<PrBib> = {}): PrBib {
 }
 
 describe('PrBibStamp', () => {
+    it('swallows a failed stamp claim', async () => {
+        const pending = Promise.reject(new TypeError('offline'));
+        const catchSpy = vi.spyOn(pending, 'catch');
+        vi.mocked(postJson).mockReturnValueOnce(pending);
+
+        render(<PrBibStamp bib={bib({ animate: true })} />);
+        await new Promise((resolve) => setTimeout(resolve, 0));
+
+        expect(catchSpy).toHaveBeenCalled();
+    });
+
     it('renders nothing when there is no bib to show', () => {
         const { container } = render(<PrBibStamp bib={null} />);
         expect(container).toBeEmptyDOMElement();

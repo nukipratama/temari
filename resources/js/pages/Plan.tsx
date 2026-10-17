@@ -74,7 +74,7 @@ export default function Plan({
     raceSupportedTimeSec,
     raceOutcomeCandidate,
     sessionsPerWeek,
-    weeks,
+    weeks = [],
     season,
     seasonSummary = [],
     seasonAdherencePct = null,
@@ -206,7 +206,7 @@ export default function Plan({
                     fallback={<PlanWeeksSkeleton />}
                 >
                     {() =>
-                        weeks!.length === 0 || season === null ? (
+                        weeks.length === 0 || season === null ? (
                             <>
                                 <EmptyPanel
                                     face
@@ -232,7 +232,7 @@ export default function Plan({
                                 <SeasonTimeline
                                     weeks={seasonSummary}
                                     detailByWeekStart={Object.fromEntries(
-                                        weeks!.map((week) => [
+                                        weeks.map((week) => [
                                             week.week_start,
                                             week,
                                         ]),

@@ -165,6 +165,23 @@ describe('useAnalysisTrigger', () => {
         expect(result.current.error).toBeTruthy();
     });
 
+    it('rejects a body missing the fields consumers read', async () => {
+        fetchMock.mockResolvedValue({
+            ok: true,
+            json: async () => ({ status: 'done' }),
+        });
+
+        const onUpdate = vi.fn();
+        const { result } = renderHook(() =>
+            useAnalysisTrigger(payload(), [], { onUpdate }),
+        );
+        await act(async () => {
+            await result.current.trigger();
+        });
+        await waitFor(() => expect(result.current.status).toBe('failed'));
+        expect(onUpdate).not.toHaveBeenCalled();
+    });
+
     it('falls back to empty CSRF when meta tag is missing', async () => {
         document.head.innerHTML = '';
         fetchMock.mockResolvedValue({

@@ -29,15 +29,19 @@ vi.mock('react-leaflet', () => ({
 vi.mock('@mapbox/polyline', () => ({
     default: {
         decode: (s: string) =>
-            s === 'empty'
-                ? []
-                : s === 'one'
-                  ? [[1, 2]]
-                  : [
-                        [1, 2],
-                        [3, 4],
-                        [5, 6],
-                    ],
+            s === 'boom'
+                ? (() => {
+                      throw new Error('bad polyline');
+                  })()
+                : s === 'empty'
+                  ? []
+                  : s === 'one'
+                    ? [[1, 2]]
+                    : [
+                          [1, 2],
+                          [3, 4],
+                          [5, 6],
+                      ],
     },
 }));
 
@@ -52,6 +56,11 @@ describe('RouteMap', () => {
         expect(screen.getByTestId('polyline').getAttribute('data-points')).toBe(
             '3',
         );
+    });
+
+    it('shows the fallback instead of throwing when decoding fails', () => {
+        render(<RouteMap polyline="boom" />);
+        expect(screen.getByText('route not available')).toBeInTheDocument();
     });
 
     it('sizes the map in rem so it scales with the type step', () => {

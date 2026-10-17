@@ -3,6 +3,7 @@ import {
     Fragment,
     useEffect,
     useLayoutEffect,
+    useMemo,
     useRef,
     useState,
     type KeyboardEvent as ReactKeyboardEvent,
@@ -15,6 +16,8 @@ import { formatDurationHMS, formatNaiveMonthDayId } from '@/lib/pace';
 const VIEW_W = 300;
 const VIEW_H = 78;
 const VIEW_PAD_X = 8;
+
+const NO_ACTIVITY_IDS: ReadonlyArray<number | null> = [];
 
 interface Point {
     x: number;
@@ -39,7 +42,7 @@ interface Point {
 export default function JourneyChart({
     weeks,
     timesSec,
-    activityIds = [],
+    activityIds = NO_ACTIVITY_IDS,
 }: Readonly<{
     weeks: ReadonlyArray<string>;
     timesSec: ReadonlyArray<number | null>;
@@ -50,7 +53,10 @@ export default function JourneyChart({
     const draggingRef = useRef(false);
     const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
 
-    const points = buildPoints(weeks, timesSec, activityIds);
+    const points = useMemo(
+        () => buildPoints(weeks, timesSec, activityIds),
+        [weeks, timesSec, activityIds],
+    );
 
     useEffect(() => {
         function close(event: MouseEvent) {

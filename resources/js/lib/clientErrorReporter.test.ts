@@ -18,6 +18,22 @@ describe('clientErrorReporter', () => {
         vi.restoreAllMocks();
     });
 
+    it('swallows a rejected report fetch', async () => {
+        vi.resetModules();
+        const fresh = await import('./clientErrorReporter');
+        const pending = Promise.reject(new TypeError('offline'));
+        const catchSpy = vi.spyOn(pending, 'catch');
+        vi.stubGlobal(
+            'fetch',
+            vi.fn(() => pending),
+        );
+
+        fresh.reportClientError({ message: 'rejected-fetch-case' });
+        await new Promise((resolve) => setTimeout(resolve, 0));
+
+        expect(catchSpy).toHaveBeenCalled();
+    });
+
     it('POSTs the error payload to /client-errors', () => {
         reportClientError({
             message: 'boom',
