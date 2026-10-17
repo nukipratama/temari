@@ -1,7 +1,5 @@
-import { Head, router, usePage } from '@inertiajs/react';
+import { Head, router } from '@inertiajs/react';
 import { useState } from 'react';
-
-import type { SharedProps } from '@/types/inertia';
 
 import ConnectedStep from '@/components/onboarding/ConnectedStep';
 import GoalStep from '@/components/onboarding/GoalStep';
@@ -13,12 +11,13 @@ import {
     onboardingPayload,
     useOnboardingDraft,
 } from '@/hooks/useOnboardingDraft';
+import { useSharedProps } from '@/hooks/useSharedProps';
 import { bareLayout } from '@/layouts/BareShell';
 
 export default function OnboardingIndex({
     telegramConnectUrl = null,
 }: Readonly<{ telegramConnectUrl?: string | null }>) {
-    const page = usePage<SharedProps>().props;
+    const page = useSharedProps();
     const firstName = page.auth.user?.first_name ?? '';
     const errors = page.errors ?? {};
     const [draft, dispatch] = useOnboardingDraft();

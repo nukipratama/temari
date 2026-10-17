@@ -1,8 +1,8 @@
-import { router, usePage } from '@inertiajs/react';
+import { router } from '@inertiajs/react';
 import { CircleAlert } from 'lucide-react';
 import { type FormEvent, useState } from 'react';
 
-import type { RaceProjection, SharedProps } from '@/types/inertia';
+import type { RaceProjection } from '@/types/inertia';
 
 import DemoBlockedModal from '@/components/DemoBlockedModal';
 import DateField from '@/components/ui/DateField';
@@ -16,6 +16,7 @@ import { Icon } from '@/components/ui/Icon';
 import PillButton from '@/components/ui/PillButton';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { useDemoGuard } from '@/hooks/useDemoGuard';
+import { useSharedProps } from '@/hooks/useSharedProps';
 import { cn } from '@/lib/cn';
 import { useTodayIso } from '@/lib/pace';
 import {
@@ -81,7 +82,7 @@ export default function RaceGoalForm({
     const [processing, setProcessing] = useState(false);
     const [intent, setIntent] = useState<RaceIntent>('update');
     const today = useTodayIso();
-    const errors = usePage<SharedProps>().props.errors ?? {};
+    const errors = useSharedProps().errors ?? {};
     const {
         open: demoBlocked,
         setOpen: setDemoBlocked,
