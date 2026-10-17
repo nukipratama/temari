@@ -270,3 +270,17 @@ it('rejects an invalid submission and persists nothing', function (): void {
 
     expect(RaceGoal::query()->where('user_id', $user->id)->exists())->toBeFalse();
 });
+
+it('answers the 11th race save or clear within a minute with 429, counting nothing else against it', function (string $method): void {
+    $user = User::factory()->create();
+
+    foreach (range(1, 5) as $view) {
+        $this->actingAs($user)->postJson('/plan/recommendations/shown', [])->assertUnprocessable();
+    }
+
+    foreach (range(1, 10) as $attempt) {
+        $this->actingAs($user)->{$method}('/race', [])->assertStatus($method === 'deleteJson' ? 302 : 422);
+    }
+
+    $this->actingAs($user)->{$method}('/race', [])->assertTooManyRequests();
+})->with(['save' => ['postJson'], 'clear' => ['deleteJson']]);
