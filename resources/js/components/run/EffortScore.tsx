@@ -109,7 +109,7 @@ export function EffortPicker({
     const [processing, setProcessing] = useState(false);
 
     return (
-        <div className="rounded-panel bg-stat-tile px-4 pb-3 pt-3.5 text-foreground">
+        <div className="rounded-panel bg-stat-ground px-4 pb-3 pt-3.5 text-foreground">
             <div className="grid grid-cols-[44px_minmax(0,1fr)] items-center gap-x-2.5">
                 <TemariMascot pose={effortPose(draft)} size={44} />
                 <div className="min-w-0">

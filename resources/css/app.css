@@ -244,7 +244,7 @@
     --color-primary-foreground: #16181b; /* ink — already validated: text on gold CTA */
     --color-secondary: #e2e8ee; /* surface-sunken */
     --color-secondary-foreground: #16181b;
-    --color-stat-tile: #e2e8ee; /* surface-sunken; sky on dark */
+    --color-stat-ground: #e2e8ee; /* surface-sunken; sky on dark */
     --color-muted: #e2e8ee;
     --color-muted-foreground: #60666d; /* ink-3 */
     --color-accent: #e2e8ee;
@@ -1033,7 +1033,7 @@ body {
         --color-popover-foreground: #f1f5f8;
         --color-secondary: #26303d;
         --color-secondary-foreground: #f1f5f8;
-        --color-stat-tile: #171f28; /* sky */
+        --color-stat-ground: #171f28; /* sky */
         --color-muted: #26303d;
         --color-muted-foreground: #9c9ea7; /* = ink-on-sky, already 5:1+ on every dark surface */
         --color-accent: #26303d;

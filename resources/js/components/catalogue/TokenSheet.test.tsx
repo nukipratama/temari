@@ -20,7 +20,7 @@ const TOKENS: Record<string, string> = {
     '--color-muted': '#ece2ce',
     '--color-accent': '#f8f0dd',
     '--color-secondary': '#ece2ce',
-    '--color-stat-tile': '#ece2ce',
+    '--color-stat-ground': '#ece2ce',
     '--color-rarity-legendary': '#f5a623',
     '--color-rarity-legendary-ink': '#865b13',
     // Tailwind's own palette, pulled in by a vendored view: emitted, but not Pewter.

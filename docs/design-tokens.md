@@ -212,7 +212,7 @@ Settings.
 | `text-2` / `text-3` | = `ink-2` / `ink-3` | derived, lighter than `muted-foreground` / equal to it | A secondary/tertiary text pair distinct from `ink-2`/`ink-3` |
 | `border-strong` | line | one step lighter than sky-2 | A stronger separator (e.g. Login) |
 | `today-accent` | horizon-ink at 30% over the card | transparent | The Today card's accent edge — no added edge needed on dark |
-| `stat-tile` | surface-sunken | sky | The gut-check tile (`EffortScore`): the stat-tile ground on light, the sky panel on dark. Equals `secondary` on light only |
+| `stat-ground` | surface-sunken | sky | The gut-check tile (`EffortScore`): the stat-tile ground on light, the sky panel on dark. Equals `secondary` on light only |
 | `btn-primary-bg` / `btn-primary-fg` | horizon-ink / white | horizon / ink | Settings' solid "primary" pill |
 | `mood-*-bg` / `mood-*-ink` | pastel cell / darkened label | fill at 15% over sky-deep / lightened label | The six mood cells and their labels, derived as a pair |
 | `chart-1`..`chart-5` | horizon-ink, sky-2, leaf, ember, citrus-ink | same | Unused by Chart.js (see above); reserved for any future SVG/shadcn chart primitive |

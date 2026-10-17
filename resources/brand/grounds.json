@@ -9,7 +9,7 @@
         "muted",
         "popover",
         "secondary",
-        "stat-tile",
+        "stat-ground",
         "surface",
         "surface-sunken"
     ],
@@ -54,7 +54,7 @@
         "rarity-uncommon-ink",
         "secondary",
         "secondary-foreground",
-        "stat-tile",
+        "stat-ground",
         "text-2",
         "text-3",
         "today-accent"
