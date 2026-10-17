@@ -70,6 +70,12 @@ jobs:
       - name: Audit npm dependencies (prod, high+)
         run: npm audit --omit=dev --audit-level=high --package-lock-only
 
+      # Dev tooling runs on CI runners and developer machines, so a critical
+      # advisory there is worth seeing, but it never ships and does not page.
+      - name: Audit npm dependencies (dev included, critical, non-blocking)
+        continue-on-error: true
+        run: npm audit --audit-level=critical --package-lock-only
+
   # DF-7/D3: scripts/restore-db.sh had no automated exercise — the deploy doc
   # said outright that restore has never fired even in prod, so the first real
   # use would also be its first test. This runs the script's real code path

@@ -35,7 +35,7 @@ jobs:
               --shard="${{ matrix.shard }}/${FRONTEND_SHARD_TOTAL}" \
               --sequence.shuffle --sequence.seed="${{ github.run_id }}" \
               --coverage \
-              --coverage.thresholds.lines=0 --coverage.thresholds.functions=0 \
+              --coverage.thresholds.lines=0 --coverage.thresholds.functions=0 --coverage.thresholds.branches=0 \
               --reporter=blob --reporter=default \
               --outputFile=".vitest-reports/blob-${{ matrix.shard }}.json"
           else

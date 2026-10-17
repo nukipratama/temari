@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { projectPolyline } from './route';
+import { decodePolyline, projectPolyline } from './route';
 
 const SAMPLE = '_p~iF~ps|U_ulLnnqC_mqNvxq`@';
 const SINGLE_POINT = '_p~iF~ps|U';
@@ -34,5 +34,15 @@ describe('projectPolyline', () => {
             throw new Error('expected a projected route');
         }
         expect(out.points.length).toBeLessThanOrEqual(3); // <= maxPoints + the appended last
+    });
+});
+
+describe('decodePolyline', () => {
+    it('decodes a polyline into lat/lng pairs', () => {
+        expect(decodePolyline(SAMPLE)).toHaveLength(3);
+    });
+
+    it('returns [] for an empty string', () => {
+        expect(decodePolyline('')).toEqual([]);
     });
 });

@@ -55,12 +55,12 @@ class RecoverCommand extends Command
     {
         $rows = Analysis::query()->deadLettered()->get();
         $ownerIds = AnalysisSubjectMap::ownerIdsForRows($rows);
-        $demoUserIds = User::query()->where('is_demo', true)->pluck('id')->flip();
+        $athleteIds = User::query()->notDemo()->whereIn('id', array_filter($ownerIds))->pluck('id')->flip();
 
         $rearmed = 0;
         foreach ($rows as $row) {
             $ownerId = $ownerIds[$row->id] ?? null;
-            if ($ownerId === null || $demoUserIds->has($ownerId)) {
+            if ($ownerId === null || ! $athleteIds->has($ownerId)) {
                 continue;
             }
 

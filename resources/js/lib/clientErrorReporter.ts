@@ -43,7 +43,7 @@ export function reportClientError(payload: ClientErrorPayload): void {
                     payload.componentStack?.slice(0, MAX_TRACE_CHARS) ?? null,
             }),
             keepalive: true,
-        });
+        }).catch(() => undefined);
     } catch {
         // Telemetry must never throw and break the page further.
     }

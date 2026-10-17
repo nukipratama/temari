@@ -21,6 +21,7 @@ jobs:
     outputs:
       failure_note: ${{ steps.failure_note.outputs.note }}
     permissions:
+      actions: read
       contents: read
       packages: read
     concurrency:
@@ -77,10 +78,25 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        if: steps.tip.outputs.current == 'true'
+        with:
+          name: app-image-digest
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: ${{ runner.temp }}/app-image-digest
+
       - name: Pull the image built on the hosted runner
         if: steps.tip.outputs.current == 'true'
         timeout-minutes: 15
-        run: docker pull "$APP_IMAGE:${{ github.event.workflow_run.head_sha }}"
+        run: |
+          digest=$(cat "$RUNNER_TEMP/app-image-digest/image-digest.txt")
+          if ! [[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+            echo "::error::CI recorded no valid image digest (got '$digest')"
+            exit 1
+          fi
+          docker pull "$APP_IMAGE@$digest"
+          docker tag "$APP_IMAGE@$digest" "$APP_IMAGE:${{ github.event.workflow_run.head_sha }}"
 
       - name: Tag current :latest as :previous (rollback target)
         if: steps.tip.outputs.current == 'true'
@@ -97,6 +113,9 @@ jobs:
           else
             docker tag temari/app:latest temari/app:previous
           fi
+          previous=$(docker image inspect temari/app:previous --format '{{range .RepoTags}}{{println .}}{{end}}' 2>/dev/null \
+            | sed -nE "s|^$APP_IMAGE:([0-9a-f]{40})$|\1|p" | head -n1)
+          echo "PREVIOUS_SHA=$previous" >> "$GITHUB_ENV"
 
       - name: Tag the pulled image as :latest
         if: steps.tip.outputs.current == 'true'
@@ -148,10 +167,12 @@ jobs:
         if: steps.tip.outputs.current == 'true'
         timeout-minutes: 5
         run: |
+          umask 077
           set -o pipefail
           DB_BACKUP_PASSWORD=$(scripts/deploy/backup-password.sh)
           export DB_BACKUP_PASSWORD
           mkdir -p "$BACKUP_DIR"
+          chmod 700 "$BACKUP_DIR"
           out="$BACKUP_DIR/pre-deploy-$BACKUP_SUFFIX.sql.gz"
           if [ -e "$out" ]; then
             echo "::error::backup already exists, refusing to overwrite: $out"
@@ -171,6 +192,7 @@ jobs:
         if: steps.tip.outputs.current == 'true'
         timeout-minutes: 5
         run: |
+          umask 077
           DB_BACKUP_PASSWORD=$(scripts/deploy/backup-password.sh)
           export DB_BACKUP_PASSWORD
           out="$BACKUP_DIR/analytics-pre-deploy-$BACKUP_SUFFIX.sql.gz"
@@ -310,7 +332,8 @@ jobs:
 
           # App rollback is safe only when no migration ran this deploy.
           if [ "${MIGRATIONS_APPLIED:-true}" = "true" ]; then
-            echo "::error::Deploy failed on the migration path — not auto-rolling back and leaving maintenance active. Recover with the 'Rollback prod' workflow, plus ./scripts/restore-db.sh <backup> if a migration was destructive."
+            echo "::error::Deploy failed on the migration path — not auto-rolling back and leaving maintenance active. Recover with the commands in the job summary."
+            scripts/deploy/print-recovery-commands.sh | tee -a "$GITHUB_STEP_SUMMARY"
           elif docker image inspect temari/app:previous >/dev/null 2>&1; then
             docker tag temari/app:previous temari/app:latest
             $COMPOSE up -d --no-deps app horizon pulse scheduler

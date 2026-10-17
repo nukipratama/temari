@@ -81,4 +81,9 @@ on a later unlucky run. Reproduce a red shard locally with
 match one shard); a red PR shard writes that exact command to its job summary. A re-run keeps the run id and
 so the order, so only a new push reshuffles. The merge-reports coverage job and main-push shards stay in file order.
 
+PR backend shards do the same with Pest's `--order-by=random --random-order-seed=<run id>`, echo
+`Pest random order seed: <id>`, and a red shard writes its reproduce command to the job summary.
+Sharding stays stable under it: Pest lists and partitions the test files before PHPUnit sorts them, and
+every shard gets the same seed. Main-push shards stay in file order.
+
 See also: [[deployment]].

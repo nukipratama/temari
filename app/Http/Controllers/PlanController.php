@@ -203,7 +203,7 @@ class PlanController extends Controller
         /** @var User $user */
         $user = $request->user();
         if ($plannedSession->user_id !== $user->id) {
-            abort(403);
+            abort(404);
         }
     }
 }

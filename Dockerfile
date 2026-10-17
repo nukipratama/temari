@@ -25,17 +25,19 @@ FROM frankenphp-base AS dev
 WORKDIR /var/www/html
 
 # pcov is dev-stage only: local coverage runs need a coverage driver. The
-# runtime stage below stays driver-free.
+# runtime stage below stays driver-free. PECL extensions are version-pinned
+# (bundled ones follow the base image's PHP); bump the runtime stage's redis
+# with this one.
 RUN install-php-extensions \
         pdo_mysql \
-        redis \
+        redis-6.3.0 \
         intl \
         bcmath \
         gmp \
         opcache \
         pcntl \
-        imagick \
-        pcov
+        imagick-3.8.1 \
+        pcov-1.0.12
 
 # librsvg is ImageMagick's SVG delegate — scripts/build-splash-screens.php
 # (Imagick) and resources/brand/build-og.mjs (the `magick` CLI) rasterise SVG
@@ -147,7 +149,7 @@ ENV FRANKENPHP_NUM_THREADS=4 \
 
 RUN install-php-extensions \
         pdo_mysql \
-        redis \
+        redis-6.3.0 \
         intl \
         bcmath \
         gmp \
