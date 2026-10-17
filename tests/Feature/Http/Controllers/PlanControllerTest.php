@@ -143,6 +143,19 @@ it('updating a session automatically pins it, so the next regeneration leaves it
         ->and($fresh->session_type->value)->toBe('tempo');
 });
 
+it('answers an edit to another athlete\'s session with 404, leaving it untouched', function (): void {
+    $session = PlannedSession::factory()->create([
+        'date' => Carbon::today()->addDay()->toDateString(),
+        'skipped' => false,
+    ]);
+
+    $this->actingAs(User::factory()->create())
+        ->patch("/plan/sessions/{$session->id}", ['skipped' => true])
+        ->assertNotFound();
+
+    expect($session->fresh()->skipped)->toBeFalse();
+});
+
 it('allows an explicit unpin alongside an edit', function (): void {
     $user = User::factory()->create();
     $session = PlannedSession::factory()->for($user)->pinned()->create([
