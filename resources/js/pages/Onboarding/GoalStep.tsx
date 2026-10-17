@@ -76,7 +76,7 @@ export default function GoalStep({
     };
 
     return (
-        <div key="goal" className="reveal">
+        <div className="reveal">
             <div className="mb-5 flex h-11 items-center">
                 <BackButton
                     onClick={() =>

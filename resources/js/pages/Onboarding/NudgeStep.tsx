@@ -19,7 +19,7 @@ export default function NudgeStep({
     onFinish: () => void;
 }>) {
     return (
-        <div key="nudge" className="reveal">
+        <div className="reveal">
             <div className="mb-5 flex h-11 items-center justify-between">
                 <BackButton onClick={onBack} />
                 <PillButton

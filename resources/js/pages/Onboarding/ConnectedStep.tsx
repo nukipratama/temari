@@ -30,10 +30,7 @@ export default function ConnectedStep({
     onContinue,
 }: Readonly<{ firstName: string; onContinue: () => void }>) {
     return (
-        <div
-            key="connected"
-            className="reveal flex flex-col items-center gap-5 py-2 text-center"
-        >
+        <div className="reveal flex flex-col items-center gap-5 py-2 text-center">
             <div className="relative flex items-center justify-center">
                 <div
                     aria-hidden
