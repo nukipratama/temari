@@ -149,7 +149,7 @@ describe('ShareCardModal', () => {
 
     it('walks the rack with the arrow keys', async () => {
         await openModal();
-        const stage = screen.getByRole('group', { name: 'print style' });
+        const stage = screen.getByRole('toolbar', { name: 'print style' });
 
         fireEvent.keyDown(stage, { key: 'ArrowRight' });
         expect(screen.getByRole('button', { name: 'ticket' })).toHaveAttribute(
@@ -171,7 +171,7 @@ describe('ShareCardModal', () => {
 
     it('swipes between prints', async () => {
         await openModal();
-        const stage = screen.getByRole('group', { name: 'print style' });
+        const stage = screen.getByRole('toolbar', { name: 'print style' });
 
         fireEvent.touchStart(stage, {
             touches: [{ identifier: 1, clientX: 200, clientY: 100 }],
@@ -201,7 +201,7 @@ describe('ShareCardModal', () => {
 
     it('only applies carousel transitions in the motion-safe path', async () => {
         await openModal();
-        const stage = screen.getByRole('group', { name: 'print style' });
+        const stage = screen.getByRole('toolbar', { name: 'print style' });
         const rack = stage.firstElementChild as HTMLDivElement;
 
         expect(rack).toHaveClass(
@@ -213,7 +213,7 @@ describe('ShareCardModal', () => {
 
     it('does not treat vertical or diagonal-dominant movement as a swipe', async () => {
         await openModal();
-        const stage = screen.getByRole('group', { name: 'print style' });
+        const stage = screen.getByRole('toolbar', { name: 'print style' });
 
         fireEvent.touchStart(stage, {
             touches: [{ identifier: 1, clientX: 200, clientY: 100 }],
@@ -236,7 +236,7 @@ describe('ShareCardModal', () => {
 
     it('abandons a swipe when a second finger joins and resets cancellation', async () => {
         await openModal();
-        const stage = screen.getByRole('group', { name: 'print style' });
+        const stage = screen.getByRole('toolbar', { name: 'print style' });
         const first = { identifier: 1, clientX: 200, clientY: 100 };
         const second = { identifier: 2, clientX: 100, clientY: 100 };
 

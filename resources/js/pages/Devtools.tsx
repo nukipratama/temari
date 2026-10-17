@@ -61,7 +61,11 @@ export default function Devtools() {
                     {LINKS.map((link) => (
                         <li key={link.href}>
                             <Card
-                                render={<a href={link.href} />}
+                                render={(props) => (
+                                    <a href={link.href} {...props}>
+                                        {props.children}
+                                    </a>
+                                )}
                                 className="focus-ring flex items-center gap-4 transition hover:border-horizon/40"
                             >
                                 <span

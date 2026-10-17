@@ -45,7 +45,11 @@ export default {
             name: 'rendered as a link',
             render: () => (
                 <Card
-                    render={<a href="#" />}
+                    render={(props) => (
+                        <a href="/plan" {...props}>
+                            {props.children}
+                        </a>
+                    )}
                     className="focus-ring pressable block"
                 >
                     <span className="text-sm text-foreground">
