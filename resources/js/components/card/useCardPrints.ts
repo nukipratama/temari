@@ -24,11 +24,32 @@ type Result = { key: string; print: Print | null };
 
 type States = Record<CardStyle, PrintState>;
 
+/** Four tuples of three styles: the one on screen plus the last few toggles a user flips back through. */
+const MAX_MEMO = 12;
+
+/** Revokes the oldest prints beyond the bound, sparing the pinned keys, and returns the evicted keys. */
+function evictOldest(
+    memo: Map<string, Print>,
+    pinned: ReadonlySet<string>,
+): string[] {
+    const evicted: string[] = [];
+    for (const [key, print] of memo) {
+        if (memo.size - evicted.length <= MAX_MEMO) break;
+        if (pinned.has(key)) continue;
+        URL.revokeObjectURL(print.url);
+        evicted.push(key);
+    }
+    for (const key of evicted) memo.delete(key);
+
+    return evicted;
+}
+
 /**
  * Draws all three prints for the current aspect and fact toggles, current style
  * first so the hero lands before its neighbours, and memoises every result by
  * `{style, aspect, facts}` — switching back to a tuple already drawn is a map
- * lookup, not a redraw.
+ * lookup, not a redraw. The memo is bounded to {@link MAX_MEMO} prints; the
+ * oldest beyond it are revoked, never the tuple on screen or a style's last print.
  */
 export function useCardPrints(
     facts: CardFactsPayload | null,
@@ -43,6 +64,8 @@ export function useCardPrints(
     const [attempt, setAttempt] = useState(0);
     const memoRef = useRef(new Map<string, Print>());
     const openRef = useRef(true);
+    const currentRef = useRef(new Set<string>());
+    const lastDrawnRef = useRef<Partial<Record<CardStyle, string>>>({});
 
     useEffect(() => {
         const cache = memoRef.current;
@@ -59,6 +82,9 @@ export function useCardPrints(
         if (facts === null) return;
 
         let live = true;
+        currentRef.current = new Set(
+            CARD_STYLES.map((each) => printKey(each, aspect, options)),
+        );
         // The style on screen is drawn first; the two peeking past the stage
         // edge can arrive a beat later without anyone noticing.
         const order = [style, ...CARD_STYLES.filter((each) => each !== style)];
@@ -66,7 +92,12 @@ export function useCardPrints(
         void (async () => {
             for (const each of order) {
                 const key = printKey(each, aspect, options);
-                if (memoRef.current.has(key)) continue;
+                const memoised = memoRef.current.get(key);
+                if (memoised !== undefined) {
+                    memoRef.current.delete(key);
+                    memoRef.current.set(key, memoised);
+                    continue;
+                }
 
                 let print: Print | null = null;
                 try {
@@ -83,10 +114,23 @@ export function useCardPrints(
                         return;
                     }
                     memoRef.current.set(key, print);
+                    const evicted = evictOldest(
+                        memoRef.current,
+                        new Set([
+                            ...currentRef.current,
+                            ...Object.values(lastDrawnRef.current),
+                        ]),
+                    );
                     const kept = print;
-                    setPrints((prev) => ({ ...prev, [key]: kept }));
+                    setPrints((prev) => {
+                        const next = { ...prev, [key]: kept };
+                        for (const gone of evicted) delete next[gone];
+
+                        return next;
+                    });
                 }
                 if (!live) return;
+                lastDrawnRef.current[each] = key;
                 setResults((prev) => ({ ...prev, [each]: { key, print } }));
             }
         })();

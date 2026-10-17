@@ -88,16 +88,22 @@ jobs:
           REDIS_HOST: 127.0.0.1
           SESSION_DRIVER: array
         run: |
-          coverage_args=()
+          pr_args=()
           if [ "${{ github.event_name }}" = "pull_request" ]; then
-            coverage_args+=(--coverage-php="coverage-shard-${{ matrix.shard }}.cov")
+            echo "Pest random order seed: ${{ github.run_id }}"
+            pr_args+=(--coverage-php="coverage-shard-${{ matrix.shard }}.cov")
+            pr_args+=(--order-by=random --random-order-seed="${{ github.run_id }}")
           fi
 
           ./vendor/bin/pest --parallel --processes="$(nproc)" \
             --shard="${{ matrix.shard }}/${SHARD_TOTAL}" \
-            "${coverage_args[@]}" \
+            "${pr_args[@]}" \
             --exclude-group=structure 2>&1 | tee /tmp/pest-output.txt
           exit "${PIPESTATUS[0]}"
+
+      - name: Random order seed hint
+        if: failure() && github.event_name == 'pull_request'
+        run: echo "Pest ran in random order (seed ${{ github.run_id }}). Reproduce with \`./vendor/bin/sail bin pest --parallel --order-by=random --random-order-seed=${{ github.run_id }} --shard=${{ matrix.shard }}/${SHARD_TOTAL} --exclude-group=structure\`. A re-run reuses the seed, so push to get a new order." >> "$GITHUB_STEP_SUMMARY"
 
       - name: Pest summary
         if: always()

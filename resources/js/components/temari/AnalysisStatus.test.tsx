@@ -9,9 +9,17 @@ import { describe, expect, it, vi } from 'vitest';
 
 import type { AnalysisPayload } from '@/types/inertia';
 
+import * as analysisTrigger from '@/hooks/useAnalysisTrigger';
 import { setMockPage } from '@/test/setup';
 
 import AnalysisStatus, { rendersNothing } from './AnalysisStatus';
+
+vi.mock('@/hooks/useAnalysisTrigger', async (importActual) => {
+    const actual =
+        await importActual<typeof import('@/hooks/useAnalysisTrigger')>();
+
+    return { ...actual, useAnalysisTrigger: vi.fn(actual.useAnalysisTrigger) };
+});
 
 const BADGE_TEXT = /calculated with old zones/;
 const OLD_TS = '2026-01-01T00:00:00+00:00';
@@ -32,6 +40,17 @@ function payload(overrides: Partial<AnalysisPayload> = {}): AnalysisPayload {
 }
 
 describe('AnalysisStatus', () => {
+    it('hands the trigger hook the same reload list on every render', () => {
+        const { rerender } = render(<AnalysisStatus analysis={payload()} />);
+        rerender(<AnalysisStatus analysis={payload()} />);
+
+        const lists = vi
+            .mocked(analysisTrigger.useAnalysisTrigger)
+            .mock.calls.map(([, reloadProps]) => reloadProps);
+        expect(lists.length).toBeGreaterThan(1);
+        expect(new Set(lists).size).toBe(1);
+    });
+
     it('renders done content with the reanalyze button by default', () => {
         render(
             <AnalysisStatus

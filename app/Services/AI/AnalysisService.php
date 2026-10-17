@@ -543,6 +543,12 @@ class AnalysisService
             );
         }
 
+        $ownerId = AnalysisSubjectMap::ownerId($subjectType, $subjectId);
+
+        if ($this->servesOwnerRuleBased($ownerId)) {
+            return $this->requestRuleBased($subjectType, $subjectId, $type, $discriminator, refillDone: $invalidate);
+        }
+
         $row = $this->upsertRow($subjectType, $subjectId, $type, $discriminator);
         $justCreated = $row->wasRecentlyCreated;
 
@@ -550,8 +556,6 @@ class AnalysisService
         // honest -> a fresh row rests Pending for the empty state, an existing
         // Done keeps its real prose, and ai:self-heal resumes it once generation
         // is back. The spend ceiling is the one pause that degrades instead.
-        $ownerId = AnalysisSubjectMap::ownerId($subjectType, $subjectId);
-
         if (! $this->gate->autoDispatchEnabled($ownerId)) {
             if ($this->gate->costCeilingDegraded($ownerId)) {
                 $this->degradeToRuleBased($row);
@@ -591,8 +595,17 @@ class AnalysisService
         bool $invalidate,
         ?int $delaySeconds,
     ): void {
-        $rows = $this->upsertGroupRows($jobClass::subjectType(), $subjectId, $discriminator, $jobClass::groupedTypes());
         $ownerId = AnalysisSubjectMap::ownerId($jobClass::subjectType(), $subjectId);
+
+        if ($this->servesOwnerRuleBased($ownerId)) {
+            foreach ($jobClass::groupedTypes() as $type) {
+                $this->requestRuleBased($jobClass::subjectType(), $subjectId, $type, $discriminator, refillDone: $invalidate);
+            }
+
+            return;
+        }
+
+        $rows = $this->upsertGroupRows($jobClass::subjectType(), $subjectId, $discriminator, $jobClass::groupedTypes());
 
         if (! $this->gate->autoDispatchEnabled($ownerId)) {
             if ($this->gate->costCeilingDegraded($ownerId)) {
@@ -665,6 +678,22 @@ class AnalysisService
         }
 
         $this->dispatchPending($this->stamped(new $jobClass($subjectId, $discriminator, $generationToken)), $delaySeconds);
+    }
+
+    /**
+     * Whether a dispatch for this owner must be filled rule-based rather than
+     * billed. A suppressed dispatch (the demo seed) keeps staging Pending rows,
+     * which the seed fills itself.
+     */
+    private function servesOwnerRuleBased(?int $ownerId): bool
+    {
+        if ($ownerId === null || $this->gate->dispatchSuppressed()) {
+            return false;
+        }
+
+        $owner = User::query()->find($ownerId);
+
+        return $owner !== null && $this->gate->shouldServeRuleBased($owner);
     }
 
     /**

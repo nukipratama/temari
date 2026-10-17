@@ -1,7 +1,6 @@
-import { usePage } from '@inertiajs/react';
 import { useState } from 'react';
 
-import type { SharedProps } from '@/types/inertia';
+import { useSharedProps } from '@/hooks/useSharedProps';
 
 /**
  * Front-door for the demo write-guard: a demo visitor's guarded write (Telegram, race, time-trial answer, sync now, zones resync) opens
@@ -9,7 +8,7 @@ import type { SharedProps } from '@/types/inertia';
  * `block-demo-telegram` 403/redirect. Non-demo users pass straight through.
  */
 export function useDemoGuard() {
-    const isDemo = usePage<SharedProps>().props.auth.user?.is_demo ?? false;
+    const isDemo = useSharedProps().auth.user?.is_demo ?? false;
     const [open, setOpen] = useState(false);
 
     const guard = (action: () => void) => {

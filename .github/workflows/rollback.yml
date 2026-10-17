@@ -1,10 +1,17 @@
 name: Rollback prod
 
-# Manual code-only rollback. Re-tags :previous → :latest and re-rolls services.
-# Migrations are out of scope — see the run summary if a DB restore is needed.
+# Manual code-only rollback. Re-tags :previous (or the GHCR image of a given
+# sha) → :latest and re-rolls services. Migrations are out of scope — see the
+# run summary if a DB restore is needed.
 
 on:
   workflow_dispatch:
+    inputs:
+      sha:
+        description: 'Full commit sha whose GHCR image to roll back to; empty rolls back to :previous'
+        type: string
+        required: false
+        default: ''
 
 concurrency:
   # Shares the deploy-prod group so a rollback cannot race a deploy.
@@ -18,19 +25,47 @@ jobs:
   rollback:
     runs-on: [self-hosted, homelab]
     timeout-minutes: 20
+    permissions:
+      contents: read
+      packages: read
     env:
       COMPOSE: docker compose -f compose.prod.yaml
+      APP_IMAGE: ghcr.io/${{ github.repository }}/app
+      SHA: ${{ inputs.sha }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Verify :previous image exists
+      - name: Resolve the rollback target
         run: |
-          if ! docker image inspect temari/app:previous >/dev/null 2>&1; then
-            echo "::error::temari/app:previous not found on this runner — nothing to roll back to."
+          if [ -z "$SHA" ]; then
+            echo "TARGET=temari/app:previous" >> "$GITHUB_ENV"
+          elif [[ "$SHA" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "TARGET=$APP_IMAGE:$SHA" >> "$GITHUB_ENV"
+          else
+            echo "::error::sha must be a full 40-character lowercase commit sha (got '$SHA')."
             exit 1
           fi
-          echo "Rolling back to:"
-          docker image inspect temari/app:previous --format '  id: {{.Id}}  created: {{.Created}}'
+
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        if: inputs.sha != ''
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pull the requested image from GHCR
+        if: inputs.sha != ''
+        timeout-minutes: 15
+        run: docker pull "$TARGET"
+
+      - name: Verify the rollback image exists
+        run: |
+          if ! docker image inspect "$TARGET" >/dev/null 2>&1; then
+            echo "::error::$TARGET not found on this runner — nothing to roll back to."
+            exit 1
+          fi
+          echo "Rolling back to $TARGET:"
+          docker image inspect "$TARGET" --format '  id: {{.Id}}  created: {{.Created}}'
 
       - name: Capture current :latest SHA (for the summary)
         id: current
@@ -38,8 +73,8 @@ jobs:
           sha=$(docker image inspect temari/app:latest --format '{{.Id}}' 2>/dev/null || echo "unknown")
           echo "sha=$sha" >> "$GITHUB_OUTPUT"
 
-      - name: Re-tag :previous as :latest
-        run: docker tag temari/app:previous temari/app:latest
+      - name: Re-tag the rollback image as :latest
+        run: docker tag "$TARGET" temari/app:latest
 
       - name: Roll app, horizon, scheduler, pulse onto rolled-back image
         # The image does not bake config:cache (see the Dockerfile), so the
@@ -76,6 +111,7 @@ jobs:
             echo "| | |"
             echo "| --- | --- |"
             echo "| Rolled from | \`${{ steps.current.outputs.sha }}\` |"
+            echo "| Rolled to | \`${TARGET:-unresolved}\` |"
             echo "| Status | ${{ job.status == 'success' && '✅ Rolled back' || '❌ Failed' }} |"
             echo ""
             echo "⚠️ This rolls back **code only**. Migrations from the failed deploy are still applied."

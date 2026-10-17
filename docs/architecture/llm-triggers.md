@@ -324,7 +324,9 @@ Three more limits:
   and every `SelfHealer` sweep, and
   [`shouldServeRuleBased()`](../../app/Services/AI/NarrationGate.php) serves a demo user's
   manual trigger from the filler *before* any pause check — so the public demo spends nothing while
-  still feeling live. See [[demo-triggers-served-rule-based]].
+  still feeling live. [AnalysisService](../../app/Services/AI/AnalysisService.php) asks it again
+  inside every row and group dispatch, so a demo-owned row reaching dispatch from any caller is
+  filled rule-based rather than queued (refilling a Done row only when the trigger invalidates). See [[demo-triggers-served-rule-based]].
 - **The backfill age gate**, [84 days](../../config/ai.php). The only limit that gates automatic
   dispatch *and* manual triggers: [`isTooOld()`](../../app/Services/AI/BackfillAgeGate.php) for
   the ingest fan-out, [`blocksManualTrigger()`](../../app/Services/AI/BackfillAgeGate.php) for

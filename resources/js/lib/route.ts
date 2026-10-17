@@ -1,5 +1,14 @@
 import polylineCodec from '@mapbox/polyline';
 
+/** Decode a Google-encoded polyline into lat/lng pairs; `[]` when empty or undecodable. */
+export function decodePolyline(polyline: string): Array<[number, number]> {
+    try {
+        return polylineCodec.decode(polyline) as Array<[number, number]>;
+    } catch {
+        return [];
+    }
+}
+
 /**
  * Decode + normalize a Google-encoded polyline into points fitted to a
  * `width`×`height` box (0-origin), preserving aspect ratio and flipping
@@ -20,12 +29,7 @@ export function projectPolyline(
         return null;
     }
 
-    let pts: Array<[number, number]>;
-    try {
-        pts = polylineCodec.decode(polyline) as Array<[number, number]>;
-    } catch {
-        return null;
-    }
+    let pts = decodePolyline(polyline);
     if (pts.length < 2) {
         return null;
     }

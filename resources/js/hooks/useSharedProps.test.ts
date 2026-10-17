@@ -30,4 +30,14 @@ describe('useSharedProps', () => {
         expect(result.current.aiPaused).toBe(true);
         expect(result.current.today).toBe('2026-06-17');
     });
+
+    it('returns the same object across re-renders while the props are unchanged', () => {
+        setMockPage({ aiPaused: true });
+
+        const { result, rerender } = renderHook(() => useSharedProps());
+        const first = result.current;
+        rerender();
+
+        expect(result.current).toBe(first);
+    });
 });

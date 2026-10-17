@@ -120,6 +120,28 @@ describe('RunLenses', () => {
         expect(screen.getByText('-2% vs 28d avg')).toBeInTheDocument();
     });
 
+    it('drops parsed claims that are not well-formed objects', () => {
+        render(
+            <RunLenses
+                mood="easy"
+                story={makeAnalysis(1, 'post_run_speech', 'done')}
+                insight={makeAnalysis(
+                    2,
+                    'run_insight',
+                    'done',
+                    JSON.stringify([
+                        null,
+                        'junk',
+                        { anchor: 'split:1' },
+                        { anchor: 'split:3', text: 'Km 3 was the fastest.' },
+                    ]),
+                )}
+            />,
+        );
+
+        expect(screen.getByText('Km 3 was the fastest.')).toBeInTheDocument();
+    });
+
     it('renders multiple claims in order', () => {
         const props = {
             ...defaultProps,

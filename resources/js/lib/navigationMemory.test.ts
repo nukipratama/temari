@@ -53,6 +53,42 @@ const PLAN_PAGE: NavigationPage = {
     props: { auth: { user: { id: 7 } } },
 };
 
+describe('with a blocked sessionStorage', () => {
+    beforeEach(() => {
+        for (const method of ['getItem', 'setItem', 'removeItem'] as const) {
+            vi.spyOn(Storage.prototype, method).mockImplementation(() => {
+                throw new DOMException('blocked', 'SecurityError');
+            });
+        }
+    });
+
+    afterEach(() => {
+        vi.restoreAllMocks();
+    });
+
+    it('starts the back session without throwing', () => {
+        expect(() =>
+            startContextualBackSession(
+                { component: 'Home', url: '/', props: {} },
+                router,
+            ),
+        ).not.toThrow();
+    });
+
+    it('reads, writes and clears memory as if it were empty', () => {
+        expect(readTabMemory('plan')).toBeNull();
+        expect(readContextualOrigin()).toBeNull();
+        expect(tabMemorySnapshot()).toBeNull();
+        expect(() =>
+            writeTabMemory('plan', { href: '/plan', scrollY: 0 }),
+        ).not.toThrow();
+        expect(() =>
+            writeContextualOrigin({ href: '/plan', scrollY: 0, tab: 'plan' }),
+        ).not.toThrow();
+        expect(() => clearNavigationMemory()).not.toThrow();
+    });
+});
+
 describe('navigationMemory', () => {
     beforeEach(() => {
         window.sessionStorage.clear();

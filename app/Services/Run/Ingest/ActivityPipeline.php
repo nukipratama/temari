@@ -37,7 +37,6 @@ use App\Support\Config\AppConfigKey;
 use App\Services\Weather\OpenMeteoClient;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Client\RequestException;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use RuntimeException;
@@ -241,41 +240,9 @@ class ActivityPipeline
      */
     private function storeDetail(Activity $activity, array $detail): ActivityDetail
     {
-        $start = $detail['start_date_local'] ?? $detail['start_date'] ?? null;
-        // start_latlng is null/empty for non-GPS activities (treadmill, manual).
-        $latlng = is_array($detail['start_latlng'] ?? null) && count($detail['start_latlng']) === 2
-            ? $detail['start_latlng']
-            : null;
-
         return ActivityDetail::query()->updateOrCreate(
             ['activity_id' => $activity->id],
-            [
-                'name' => $detail['name'] ?? null,
-                'start_date_local' => is_string($start) ? Carbon::parse($start) : null,
-                'start_date_utc' => is_string($detail['start_date'] ?? null) && $detail['start_date'] !== '' ? Carbon::parse($detail['start_date'])->utc()->toDateTimeString() : null,
-                'distance' => $detail['distance'] ?? null,
-                'moving_time' => $detail['moving_time'] ?? null,
-                'elapsed_time' => $detail['elapsed_time'] ?? null,
-                'average_speed' => $detail['average_speed'] ?? null,
-                'total_elevation_gain' => $detail['total_elevation_gain'] ?? null,
-                'has_heartrate' => (bool) ($detail['has_heartrate'] ?? false),
-                'average_heartrate' => $detail['average_heartrate'] ?? null,
-                'max_heartrate' => $detail['max_heartrate'] ?? null,
-                'average_cadence' => $detail['average_cadence'] ?? null,
-                'calories' => $detail['calories'] ?? null,
-                'splits_metric' => $detail['splits_metric'] ?? null,
-                'laps' => $detail['laps'] ?? null,
-                'summary_polyline' => $detail['map']['summary_polyline'] ?? null,
-                'start_lat' => $latlng === null ? null : (float) $latlng[0],
-                'start_lng' => $latlng === null ? null : (float) $latlng[1],
-                'suffer_score' => $detail['suffer_score'] ?? null,
-                'workout_type' => $detail['workout_type'] ?? null,
-                'elev_high' => $detail['elev_high'] ?? null,
-                'elev_low' => $detail['elev_low'] ?? null,
-                'device_name' => $detail['device_name'] ?? null,
-                'average_watts' => $detail['average_watts'] ?? null,
-                'max_speed' => $detail['max_speed'] ?? null,
-            ],
+            StravaDetailMapper::detail($detail),
         );
     }
 

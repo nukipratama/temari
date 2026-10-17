@@ -1,8 +1,6 @@
-import { Head, usePage } from '@inertiajs/react';
+import { Head } from '@inertiajs/react';
 import { Hash } from 'lucide-react';
 import { useState } from 'react';
-
-import type { SharedProps } from '@/types/inertia';
 
 import AthletesPanel from '@/components/narration/AthletesPanel';
 import CostChart from '@/components/narration/CostChart';
@@ -18,6 +16,7 @@ import TodayPanel from '@/components/narration/TodayPanel';
 import UsageFilters from '@/components/narration/UsageFilters';
 import PageContainer from '@/components/ui/PageContainer';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { useSharedProps } from '@/hooks/useSharedProps';
 import { navigate } from '@/pages/Narration/helpers';
 
 import type { NarrationOverviewProps } from './types';
@@ -44,7 +43,7 @@ export default function Overview({
     cappedToday,
     pauseReason,
 }: Readonly<NarrationOverviewProps>) {
-    const flashInfo = usePage<SharedProps>().props.flash?.info;
+    const flashInfo = useSharedProps().flash?.info;
     const [tab, setTab] = useState<Tab>('overview');
     const currency = budget.currency;
 

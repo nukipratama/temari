@@ -95,6 +95,23 @@ describe('RaceOutcomeCard', () => {
         });
     });
 
+    it('keeps an emptied finish field empty while typing and counts it as 0', () => {
+        render(<RaceOutcomeCard race={pastRace()} />);
+        const minutes = screen.getByLabelText(
+            'Finish minutes',
+        ) as HTMLInputElement;
+        fireEvent.change(minutes, { target: { value: '51' } });
+
+        fireEvent.change(minutes, { target: { value: '' } });
+        expect(minutes.value).toBe('');
+        expect(
+            screen.getByRole('button', { name: 'save time' }),
+        ).toBeDisabled();
+
+        fireEvent.blur(minutes);
+        expect(minutes.value).toBe('0');
+    });
+
     it('lets the time fields and save button wrap instead of running past a narrow card', () => {
         render(<RaceOutcomeCard race={pastRace()} />);
 
