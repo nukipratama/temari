@@ -1,6 +1,5 @@
-import { router } from '@inertiajs/react';
-import { act, fireEvent, render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { describe, expect, it } from 'vitest';
 
 import { setMockPage } from '@/test/setup';
 
@@ -86,37 +85,25 @@ describe('FlashNotice', () => {
         expect(screen.queryByRole('status')).not.toBeInTheDocument();
     });
 
-    it('stays dismissed when a partial reload replays the same flash', () => {
-        setMockPage({
-            ...base,
-            flash: { info: 'Just sent. Give it a moment.' },
-        });
+    it('stays dismissed when a partial reload keeps the same flash', () => {
+        const flash = { info: 'Just sent. Give it a moment.' };
+        setMockPage({ ...base, flash });
         const { rerender } = render(<FlashNotice />);
         fireEvent.click(screen.getByLabelText('Close'));
 
-        setMockPage({
-            ...base,
-            flash: { info: 'Just sent. Give it a moment.' },
-        });
+        setMockPage({ ...base, flash, unreadNotifications: 2 });
         rerender(<FlashNotice />);
         expect(screen.queryByRole('status')).not.toBeInTheDocument();
     });
 
-    it('shows the same text again on the next Inertia visit', () => {
+    it('shows the same text again when the next visit flashes it anew', () => {
         const flash = { info: 'Just sent. Give it a moment.' };
         setMockPage({ ...base, flash });
         const { rerender } = render(<FlashNotice />);
         fireEvent.click(screen.getByLabelText('Close'));
         expect(screen.queryByRole('status')).not.toBeInTheDocument();
 
-        const [, onNavigate] = vi
-            .mocked(router.on)
-            .mock.calls.filter(([event]) => event === 'navigate')
-            .at(-1)!;
         setMockPage({ ...base, flash: { ...flash } });
-        act(() => {
-            (onNavigate as () => void)();
-        });
         rerender(<FlashNotice />);
 
         expect(screen.getByRole('status')).toHaveTextContent(
@@ -124,7 +111,7 @@ describe('FlashNotice', () => {
         );
     });
 
-    it('re-shows for a fresh flash on the next visit after a prior dismissal', () => {
+    it('re-shows for a fresh flash on a same-page redirect after a prior dismissal', () => {
         setMockPage({
             ...base,
             flash: { info: 'Turn on notifications first.' },
@@ -133,16 +120,9 @@ describe('FlashNotice', () => {
         fireEvent.click(screen.getByLabelText('Close'));
         expect(screen.queryByRole('status')).not.toBeInTheDocument();
 
-        const [, onNavigate] = vi
-            .mocked(router.on)
-            .mock.calls.filter(([event]) => event === 'navigate')
-            .at(-1)!;
         setMockPage({
             ...base,
             flash: { success: 'Sending you a test notification.' },
-        });
-        act(() => {
-            (onNavigate as () => void)();
         });
         rerender(<FlashNotice />);
         expect(screen.getByRole('status')).toHaveTextContent(
