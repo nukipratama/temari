@@ -212,6 +212,7 @@ Settings.
 | `text-2` / `text-3` | = `ink-2` / `ink-3` | derived, lighter than `muted-foreground` / equal to it | A secondary/tertiary text pair distinct from `ink-2`/`ink-3` |
 | `border-strong` | line | one step lighter than sky-2 | A stronger separator (e.g. Login) |
 | `today-accent` | horizon-ink at 30% over the card | transparent | The Today card's accent edge — no added edge needed on dark |
+| `stat-tile` | surface-sunken | sky | The gut-check tile (`EffortScore`): the stat-tile ground on light, the sky panel on dark. Equals `secondary` on light only |
 | `btn-primary-bg` / `btn-primary-fg` | horizon-ink / white | horizon / ink | Settings' solid "primary" pill |
 | `mood-*-bg` / `mood-*-ink` | pastel cell / darkened label | fill at 15% over sky-deep / lightened label | The six mood cells and their labels, derived as a pair |
 | `chart-1`..`chart-5` | horizon-ink, sky-2, leaf, ember, citrus-ink | same | Unused by Chart.js (see above); reserved for any future SVG/shadcn chart primitive |
@@ -334,6 +335,16 @@ The resting step ships inside `Card` ([card.tsx](../resources/js/components/ui/c
 every card carries it already — do not re-apply `shadow-e1` at a call site. Elevation
 applies once per stack: a tile nested inside a card stays flat, because the card it sits in already
 carries the resting step.
+
+### Fixed overlay and fill tokens
+
+Three more tokens hold one value on both grounds, so they sit outside the ground-reactive layer.
+
+| Token | Value | Use |
+|---|---|---|
+| `--scrim` | `rgba(0, 0, 0, 0.5)` | Modal backdrop behind the share-card sheet and the Temari nudge dialog, read as `var(--scrim)`: no `bg-*` utility, so it stays outside the literal-hex colour guard |
+| `on-fill` | `#ffffff` | The switch thumb: a mark on a saturated fill, never on paper. Not for text on `leaf` (4.02:1, under the 4.5:1 guard) |
+| `shadow-glow` | `0 2px 10px -2px rgba(173, 224, 71, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.25)` | The active bottom-nav tab's lime glow |
 
 ## Motion
 

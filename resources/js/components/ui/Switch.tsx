@@ -42,7 +42,7 @@ export default function Switch({
         >
             <span
                 className={cn(
-                    'absolute top-0.5 h-5 w-5 rounded-full bg-white motion-safe:transition-[left] motion-safe:duration-150 motion-safe:ease-[cubic-bezier(0.34,1.1,0.64,1)]',
+                    'absolute top-0.5 h-5 w-5 rounded-full bg-on-fill motion-safe:transition-[left] motion-safe:duration-150 motion-safe:ease-[cubic-bezier(0.34,1.1,0.64,1)]',
                     checked ? 'left-[1.375rem]' : 'left-0.5',
                 )}
             />

@@ -219,7 +219,7 @@ export default function ShareCardModal({
             backdropProps={{
                 className: 'backdrop-reveal fixed inset-0 z-[50]',
                 style: {
-                    background: 'rgba(0,0,0,0.5)',
+                    background: 'var(--scrim)',
                     backdropFilter: 'blur(6px)',
                 },
             }}

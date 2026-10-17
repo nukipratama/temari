@@ -9,6 +9,7 @@
         "muted",
         "popover",
         "secondary",
+        "stat-tile",
         "surface",
         "surface-sunken"
     ],
@@ -53,6 +54,7 @@
         "rarity-uncommon-ink",
         "secondary",
         "secondary-foreground",
+        "stat-tile",
         "text-2",
         "text-3",
         "today-accent"
@@ -89,6 +91,7 @@
         "mood-gassed",
         "mood-overloaded",
         "mood-wobbly",
+        "on-fill",
         "primary",
         "rarity-common",
         "rarity-epic",
