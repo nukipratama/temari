@@ -47,7 +47,7 @@ final readonly class RenarrateAfterMakeUp
     {
         return Activity::analyzedJoinConstraint(Activity::query())
             ->where('user_id', $user->id)
-            ->whereHas('detail', fn ($detail) => $detail->whereDate('start_date_local', $date->toDateString()))
+            ->whereHas('detail', fn ($detail) => $detail->startedOn($date))
             ->with('runCard')
             ->get();
     }

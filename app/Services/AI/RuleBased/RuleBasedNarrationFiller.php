@@ -143,7 +143,7 @@ final readonly class RuleBasedNarrationFiller
         $activities = Activity::query()
             ->where('user_id', $userId)
             ->detailed()
-            ->whereHas('detail', fn ($query) => $query->whereDate('start_date_local', $date))
+            ->whereHas('detail', fn ($query) => $query->startedOn($date))
             ->with('detail')
             ->get();
         if ($activities->isEmpty()) {
@@ -158,7 +158,7 @@ final readonly class RuleBasedNarrationFiller
         $actual = DistanceFormatter::kmString($actualMeters) ?? '0.0';
         $planned = PlannedSession::query()
             ->where('user_id', $userId)
-            ->whereDate('date', $date)
+            ->where('date', $date)
             ->first();
         $plannedKm = $planned?->prescribed_km;
         if ($planned !== null && $plannedKm === null) {

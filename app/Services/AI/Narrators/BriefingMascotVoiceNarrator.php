@@ -360,7 +360,7 @@ class BriefingMascotVoiceNarrator
         return Activity::query()
             ->where('user_id', $user->id)
             ->detailed()
-            ->whereHas('detail', fn ($query) => $query->whereDate('start_date_local', $asOf->toDateString()))
+            ->whereHas('detail', fn ($query) => $query->startedOn($asOf))
             ->exists();
     }
 

@@ -33,7 +33,7 @@ class CloseFinishedRacesCommand extends Command
     {
         $closed = RaceGoal::query()
             ->active()
-            ->whereDate('race_date', '<', Carbon::today()->toDateString())
+            ->where('race_date', '<', Carbon::today()->toDateString())
             ->update(['completed_at' => Carbon::now()]);
 
         $this->info(sprintf('Closed %d finished race goal(s).', $closed));

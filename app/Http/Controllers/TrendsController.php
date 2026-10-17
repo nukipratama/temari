@@ -102,8 +102,8 @@ class TrendsController extends Controller
             ->where('user_id', $user->id)
             ->where('race_goal_id', $race->id)
             ->whereNotNull('supported_time_sec')
-            ->when($seasonStart, fn ($query, string $start) => $query->whereDate('snapshot_date', '>=', $start))
-            ->whereDate('snapshot_date', '<=', $today->toDateString())
+            ->when($seasonStart, fn ($query, string $start) => $query->where('snapshot_date', '>=', $start))
+            ->where('snapshot_date', '<=', $today->toDateString())
             ->orderBy('snapshot_date')
             ->get(['snapshot_date', 'supported_time_sec', 'supported_source_distance_m', 'supported_source_date']);
 

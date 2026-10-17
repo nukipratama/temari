@@ -71,7 +71,7 @@ class DashboardController extends Controller
                 $race = RaceGoal::query()
                     ->where('user_id', $user->id)
                     ->where('outcome', RaceOutcome::Pending)
-                    ->whereDate('race_date', '<', $today->toDateString())
+                    ->where('race_date', '<', $today->toDateString())
                     ->orderByDesc('race_date')
                     ->first();
 

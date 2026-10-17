@@ -14,7 +14,7 @@ interface DemoBlockedModalProps {
 
 /**
  * Friendly front door for a demo visitor hitting a blocked write. The
- * `block-demo-telegram` middleware is the real guard; this is the soft
+ * `block-demo-writes` middleware is the real guard; this is the soft
  * upsell shown instead of a silent 403/redirect. The copy defaults to the
  * Telegram wording. Uses the shared {@see TemariNudgeModal} shell (a calm
  * nudge, not a win celebration).

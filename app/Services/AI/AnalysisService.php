@@ -854,7 +854,7 @@ class AnalysisService
     {
         return $date !== null && PlannedSession::query()
             ->where('user_id', $userId)
-            ->whereDate('date', $date)
+            ->where('date', $date)
             ->where('skipped', true)
             ->exists();
     }

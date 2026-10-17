@@ -13,6 +13,8 @@ use App\Models\Analytics\StravaSyncLog;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
 
 /**
@@ -28,16 +30,18 @@ class PruneAnalyticsCommand extends Command
 {
     private const int RETENTION_DAYS = 90;
 
+    private const int CHUNK_SIZE = 1000;
+
     public function handle(): int
     {
         $cutoff = Carbon::now()->subDays(self::RETENTION_DAYS);
 
-        $tokenUsages = TokenUsage::query()->where('created_at', '<', $cutoff)->delete();
-        $stravaReads = StravaRead::query()->where('read_at', '<', $cutoff)->delete();
-        $syncLogs = StravaSyncLog::query()->where('synced_at', '<', $cutoff)->delete();
-        $versions = AnalysisVersion::query()->where('created_at', '<', $cutoff)->delete();
-        $devtoolsActions = DevtoolsAction::query()->where('created_at', '<', $cutoff)->delete();
-        $runLogs = ScheduledTaskRunLog::query()->where('started_at', '<', $cutoff)->delete();
+        $tokenUsages = $this->prune(TokenUsage::query()->where('created_at', '<', $cutoff));
+        $stravaReads = $this->prune(StravaRead::query()->where('read_at', '<', $cutoff));
+        $syncLogs = $this->prune(StravaSyncLog::query()->where('synced_at', '<', $cutoff));
+        $versions = $this->prune(AnalysisVersion::query()->where('created_at', '<', $cutoff));
+        $devtoolsActions = $this->prune(DevtoolsAction::query()->where('created_at', '<', $cutoff));
+        $runLogs = $this->prune(ScheduledTaskRunLog::query()->where('started_at', '<', $cutoff));
 
         $this->info(sprintf(
             'Pruned %d ai_token_usages, %d strava_reads, %d strava_sync_logs, %d analysis_versions, %d devtools_actions and %d scheduled_task_run_logs row(s) older than %d days.',
@@ -51,5 +55,22 @@ class PruneAnalyticsCommand extends Command
         ));
 
         return self::SUCCESS;
+    }
+
+    /**
+     * @template TModel of Model
+     *
+     * @param  Builder<TModel>  $expired
+     */
+    private function prune(Builder $expired): int
+    {
+        $total = 0;
+
+        do {
+            $deleted = (clone $expired)->limit(self::CHUNK_SIZE)->delete();
+            $total += $deleted;
+        } while ($deleted === self::CHUNK_SIZE);
+
+        return $total;
     }
 }

@@ -34,7 +34,7 @@ class IntervalsIcuHealth extends Card
 
         $today = IntervalsIcuConnection::query()
             ->whereNull('broken_at')
-            ->whereDate('synced_on', Carbon::today())
+            ->where('synced_on', Carbon::today()->toDateString())
             ->whereNotNull('sync_status')
             ->selectRaw('sync_status, COUNT(*) AS total')
             ->groupBy('sync_status')

@@ -112,7 +112,7 @@ class PlanController extends Controller
                 fn (): array => DB::transaction(function () use ($user, $plannedSession, $attributes, $today, $sessionMatcher, $makeUps): array {
                     $session = PlannedSession::query()
                         ->where('user_id', $user->id)
-                        ->whereDate('date', $plannedSession->date->toDateString())
+                        ->where('date', $plannedSession->date->toDateString())
                         ->lockForUpdate()
                         ->first();
 
