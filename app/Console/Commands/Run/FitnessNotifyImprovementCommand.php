@@ -13,6 +13,7 @@ use App\Services\Run\Metrics\VdotEstimator;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Throwable;
@@ -30,19 +31,25 @@ class FitnessNotifyImprovementCommand extends Command
     public function handle(VdotEstimator $estimator, MaintainerAlerter $alerter): int
     {
         $today = Carbon::today();
+        $checkedAt = Carbon::now();
         $seeded = 0;
         $sent = 0;
         $failed = 0;
 
-        User::query()->notDemo()->chunkById(self::CHUNK_SIZE, function (Collection $users) use ($estimator, $today, &$seeded, &$sent, &$failed): void {
+        User::query()->notDemo()->where($this->hasRunSinceCheck(...))->chunkById(self::CHUNK_SIZE, function (Collection $users) use ($estimator, $today, $checkedAt, &$seeded, &$sent, &$failed): void {
             foreach ($users as $user) {
                 /** @var User $user */
                 try {
-                    match ($this->check($estimator, $user, $today)) {
+                    $outcome = $this->check($estimator, $user, $today);
+                    match ($outcome) {
                         'seeded' => $seeded++,
                         'sent' => $sent++,
                         default => null,
                     };
+                    // A rise held back by the weekly note interval stays unchecked, so the next run retries it.
+                    if ($outcome !== 'held') {
+                        User::query()->whereKey($user->id)->update(['fitness_checked_at' => $checkedAt]);
+                    }
                 } catch (Throwable $e) {
                     $failed++;
                     report($e);
@@ -59,6 +66,15 @@ class FitnessNotifyImprovementCommand extends Command
         $this->info("Seeded {$seeded} baselines and noted an improvement for {$sent} users.");
 
         return self::SUCCESS;
+    }
+
+    /** @param  Builder<User>  $query */
+    private function hasRunSinceCheck(Builder $query): void
+    {
+        $query->whereNull('fitness_checked_at')->orWhereHas(
+            'activities',
+            fn (Builder $activities): Builder => $activities->whereColumn('activities.analyzed_at', '>', 'users.fitness_checked_at'),
+        );
     }
 
     private function check(VdotEstimator $estimator, User $user, Carbon $today): ?string
@@ -80,8 +96,12 @@ class FitnessNotifyImprovementCommand extends Command
             return 'seeded';
         }
 
-        if (round($vdot - $last, 1) < self::IMPROVEMENT_THRESHOLD_VDOT || $this->notedRecently($user, $today)) {
+        if (round($vdot - $last, 1) < self::IMPROVEMENT_THRESHOLD_VDOT) {
             return null;
+        }
+
+        if ($this->notedRecently($user, $today)) {
+            return 'held';
         }
 
         $user->notify(new FitnessImprovedNotification(
