@@ -225,12 +225,14 @@ narrate them once the window closes, which is why a pending recap row is not a b
   [`RenarrateAfterMakeUp`](../../app/Actions/AI/RenarrateAfterMakeUp.php), called by the controller right after `MakeUpService::notify()`, re-requests the runs on both the made-up
   day and the day it emptied (`post_run_speech`, `run_insight`) and their `card_flavor` with
   `invalidate: true`, and re-requests
-  today's `briefing_mascot_voice` with `invalidate: true` when the make-up lands on today or takes
-  today's session away. The demo athlete gets no re-request. See
+  today's `briefing_mascot_voice` through `AnalysisService::rebriefAfterPlanEdit()` when the make-up
+  lands on today or takes today's session away. The demo athlete gets no re-request. See
   [[a-make-up-is-graded-against-the-moved-session]].
 - **`PlanController::update`, on a plain move onto or off today**: re-requests today's
-  `briefing_mascot_voice` with `invalidate: true`, so the briefing never describes a session that
-  moved. The demo athlete is skipped.
+  `briefing_mascot_voice` through `AnalysisService::rebriefAfterPlanEdit()`, with `invalidate: true`,
+  so the briefing follows the move. Inside the briefing's Reread cooldown
+  (`Analysis::cooldownRemaining()`), a move onto or off today, plain or make-up, keeps the current
+  briefing and bills nothing, so it can briefly describe the old day. The demo athlete is skipped.
 - **`PlanController::update`, on a skip or restore of today**: a skip requests nothing and leaves
   the stored briefing as it was. A restore requests today's `briefing_mascot_voice` once, without
   `invalidate`, so it narrates only when today has no briefing yet; a narrated one shows again

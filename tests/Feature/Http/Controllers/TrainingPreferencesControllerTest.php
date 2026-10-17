@@ -110,3 +110,13 @@ it('rejects a sessions_per_week outside the supported 2-6 range', function (): v
         ->patch('/settings/training-preferences', validPreferencesPayload(['sessions_per_week' => 7, 'run_days' => null, 'long_run_day' => null]))
         ->assertSessionHasErrors('sessions_per_week');
 });
+
+it('answers the 11th preferences save within a minute with 429', function (): void {
+    $user = User::factory()->create();
+
+    foreach (range(1, 10) as $attempt) {
+        $this->actingAs($user)->patchJson('/settings/training-preferences', ['sessions_per_week' => 9])->assertUnprocessable();
+    }
+
+    $this->actingAs($user)->patchJson('/settings/training-preferences', ['sessions_per_week' => 9])->assertTooManyRequests();
+});

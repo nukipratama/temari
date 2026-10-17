@@ -105,7 +105,7 @@ Route::middleware(['auth'])->group(function (): void {
     // Reachable regardless of onboarding status: the wizard itself, and
     // logout (a user stuck mid-wizard must still be able to sign out).
     Route::get('/onboarding', [OnboardingController::class, 'show'])->name('onboarding.show');
-    Route::post('/onboarding', [OnboardingController::class, 'store'])->name('onboarding.store');
+    Route::post('/onboarding', [OnboardingController::class, 'store'])->middleware('throttle:10,1,plan-regenerate')->name('onboarding.store');
 
     Route::post('/logout', [StravaAuthController::class, 'logout'])
         ->name('auth.logout');
@@ -134,8 +134,8 @@ Route::middleware(['auth', 'onboarded'])->group(function (): void {
     Route::get('/trends', TrendsController::class)->name('trends');
 
     Route::get('/race', [RaceController::class, 'index'])->name('race');
-    Route::post('/race', [RaceController::class, 'store'])->middleware('block-demo-writes')->name('race.store');
-    Route::delete('/race', [RaceController::class, 'destroy'])->middleware('block-demo-writes')->name('race.destroy');
+    Route::post('/race', [RaceController::class, 'store'])->middleware(['throttle:10,1,plan-regenerate', 'block-demo-writes'])->name('race.store');
+    Route::delete('/race', [RaceController::class, 'destroy'])->middleware(['throttle:10,1,plan-regenerate', 'block-demo-writes'])->name('race.destroy');
     Route::post('/race/{race}/outcome', [RaceOutcomeController::class, 'store'])
         ->middleware(['throttle:20,1', 'block-demo-writes'])
         ->whereNumber('race')
@@ -188,8 +188,8 @@ Route::middleware(['auth', 'onboarded'])->group(function (): void {
 
     Route::patch('/settings/zones', [RunnerZonesController::class, 'update'])->name('settings.zones.update');
     Route::delete('/settings/zones', [RunnerZonesController::class, 'resetToDefault'])->name('settings.zones.reset');
-    Route::post('/settings/zones/resync-strava', [RunnerZonesController::class, 'resyncFromStrava'])->middleware('block-demo-writes')->name('settings.zones.resync');
-    Route::patch('/settings/training-preferences', [TrainingPreferencesController::class, 'update'])->name('settings.training-preferences.update');
+    Route::post('/settings/zones/resync-strava', [RunnerZonesController::class, 'resyncFromStrava'])->middleware(['throttle:strava-sync', 'block-demo-writes'])->name('settings.zones.resync');
+    Route::patch('/settings/training-preferences', [TrainingPreferencesController::class, 'update'])->middleware('throttle:10,1,plan-regenerate')->name('settings.training-preferences.update');
     Route::post('/settings/intervals-icu', [IntervalsIcuConnectionController::class, 'store'])->middleware(['throttle:6,1', 'block-demo-writes'])->name('intervals-icu.connect');
     Route::delete('/settings/intervals-icu', [IntervalsIcuConnectionController::class, 'destroy'])->middleware('block-demo-writes')->name('intervals-icu.disconnect');
 
