@@ -3,6 +3,10 @@ import { useState } from 'react';
 
 import type { SharedProps } from '@/types/inertia';
 
+import ConnectedStep from '@/components/onboarding/ConnectedStep';
+import GoalStep from '@/components/onboarding/GoalStep';
+import NudgeStep from '@/components/onboarding/NudgeStep';
+import PreferencesStep from '@/components/onboarding/PreferencesStep';
 import StepProgress from '@/components/onboarding/StepProgress';
 import PageContainer from '@/components/ui/PageContainer';
 import {
@@ -10,11 +14,6 @@ import {
     useOnboardingDraft,
 } from '@/hooks/useOnboardingDraft';
 import { bareLayout } from '@/layouts/BareShell';
-
-import ConnectedStep from './ConnectedStep';
-import GoalStep from './GoalStep';
-import NudgeStep from './NudgeStep';
-import PreferencesStep from './PreferencesStep';
 
 export default function OnboardingIndex({
     telegramConnectUrl = null,

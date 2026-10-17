@@ -379,7 +379,7 @@ describe('Race', () => {
         ).not.toBeInTheDocument();
     });
 
-    it('asks how a passed race went, even with no active race', async () => {
+    it('asks how a passed race went, even with no active race', () => {
         render(
             <Race
                 has_race={false}
@@ -390,7 +390,7 @@ describe('Race', () => {
         );
 
         expect(
-            await screen.findByRole('region', { name: 'Bandung Half outcome' }),
+            screen.getByRole('region', { name: 'Bandung Half outcome' }),
         ).toBeInTheDocument();
         fireEvent.click(
             screen.getByRole('button', { name: 'i did not run it' }),
