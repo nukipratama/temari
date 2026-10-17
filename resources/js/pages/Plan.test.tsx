@@ -182,6 +182,12 @@ describe('Plan', () => {
         ).toHaveAttribute('href', '/race');
     });
 
+    it('shows the empty state when weeks is absent', () => {
+        renderPlan({ weeks: undefined });
+
+        expect(screen.getByText('no plan yet.')).toBeInTheDocument();
+    });
+
     it('paints the header and disclaimer while the plan body is still deferred', () => {
         setMockDeferred([
             'weeks',

@@ -79,7 +79,9 @@ export default function PushNotificationToggle({
     const [status, setStatus] = useState('');
 
     useEffect(() => {
-        void resolvePushState().then(setState);
+        resolvePushState()
+            .then(setState)
+            .catch(() => setState('unsupported'));
     }, []);
 
     const runSubscribe = () =>
