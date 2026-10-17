@@ -556,7 +556,6 @@ class AnalysisService
         // honest -> a fresh row rests Pending for the empty state, an existing
         // Done keeps its real prose, and ai:self-heal resumes it once generation
         // is back. The spend ceiling is the one pause that degrades instead.
-
         if (! $this->gate->autoDispatchEnabled($ownerId)) {
             if ($this->gate->costCeilingDegraded($ownerId)) {
                 $this->degradeToRuleBased($row);
