@@ -6,6 +6,7 @@ namespace App\Console\Commands\Gamification;
 
 use App\Models\User;
 use App\Services\Notifications\ChannelRouter;
+use App\Services\Ops\MaintainerAlerter;
 use App\Notifications\StreakReminderNotification;
 use App\Models\WeeklySnapshot;
 use Illuminate\Console\Attributes\Description;
@@ -20,7 +21,7 @@ use Throwable;
 #[Description('Nudge users whose live weekly streak has no run yet this week, before the week closes and the streak breaks')]
 class StreakRemindCommand extends Command
 {
-    public function handle(): int
+    public function handle(MaintainerAlerter $alerter): int
     {
         $weekEnding = Carbon::today()->endOfWeek(Carbon::SUNDAY)->startOfDay();
 
@@ -29,46 +30,59 @@ class StreakRemindCommand extends Command
         // scopeReachable() must know about channel mutes, or this silently
         // enqueues notifications whose via() then returns [].
         $users = User::query()
-            ->where('is_demo', false)
+            ->notDemo()
             ->whereDoesntHave('notificationPreference', fn (Builder $query): Builder => $query->where('notifications_enabled', false))
             ->where(app(ChannelRouter::class)->scopeReachable(...))
             ->get();
 
         $sent = 0;
+        $failed = 0;
 
         foreach ($users as $user) {
-            $streak = WeeklySnapshot::consecutiveWeekStreak($user->id);
-            if ($streak < 1) {
-                continue;
-            }
-
-            $currentWeekRuns = (int) WeeklySnapshot::query()
-                ->where('user_id', $user->id)
-                ->where('week_ending', $weekEnding->toDateString())
-                ->value('runs');
-
-            if ($currentWeekRuns > 0) {
-                continue;
-            }
-
-            if (! $this->claim($user->id, $weekEnding)) {
-                continue;
-            }
-
             try {
-                $user->notify(new StreakReminderNotification($streak));
+                $sent += $this->remind($user, $weekEnding) ? 1 : 0;
             } catch (Throwable $e) {
-                $this->releaseClaim($user->id, $weekEnding);
-
-                throw $e;
+                $failed++;
+                report($e);
             }
+        }
 
-            $sent++;
+        if ($failed > 0) {
+            $alerter->athletesFailed('streak:remind', $failed);
+        } else {
+            $alerter->athletesRecovered('streak:remind');
         }
 
         $this->info("Dispatched streak-at-risk reminder to {$sent} users.");
 
         return self::SUCCESS;
+    }
+
+    private function remind(User $user, Carbon $weekEnding): bool
+    {
+        $streak = WeeklySnapshot::consecutiveWeekStreak($user->id);
+        if ($streak < 1) {
+            return false;
+        }
+
+        $currentWeekRuns = (int) WeeklySnapshot::query()
+            ->where('user_id', $user->id)
+            ->where('week_ending', $weekEnding->toDateString())
+            ->value('runs');
+
+        if ($currentWeekRuns > 0 || ! $this->claim($user->id, $weekEnding)) {
+            return false;
+        }
+
+        try {
+            $user->notify(new StreakReminderNotification($streak));
+        } catch (Throwable $e) {
+            $this->releaseClaim($user->id, $weekEnding);
+
+            throw $e;
+        }
+
+        return true;
     }
 
     /**

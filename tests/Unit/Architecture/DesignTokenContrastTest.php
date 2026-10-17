@@ -651,6 +651,7 @@ it('keeps every label on an opaque fill above AA', function (): void {
     $pairs = paintedOpaqueFillText($tokens);
 
     expect($pairs)->not->toBeEmpty();
+    expect($pairs)->toHaveKey('bg-leaf-deep + text-on-fill');
 
     $under = [];
     foreach ($pairs as $pair => $ratio) {

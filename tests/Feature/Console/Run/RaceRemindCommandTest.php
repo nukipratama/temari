@@ -182,3 +182,18 @@ it('still reminds at the window\'s last hour when the first hour was missed', fu
 
     Notification::assertSentToTimes($user, RaceTomorrowNotification::class, 1);
 });
+
+it('finds tomorrow\'s race at both edges of the day', function (string $now): void {
+    Notification::fake();
+    Carbon::setTestNow($now);
+    $user = User::factory()->create();
+    raceTomorrow($user);
+    RaceGoal::factory()->for(User::factory()->create())->create(['race_date' => '2026-05-25']);
+    RaceGoal::factory()->for(User::factory()->create())->create(['race_date' => '2026-05-23']);
+
+    $this->artisan('race:remind')
+        ->expectsOutputToContain('Dispatched race-day reminder to 1 users.')
+        ->assertSuccessful();
+
+    Notification::assertSentTo($user, RaceTomorrowNotification::class);
+})->with(['midnight' => '2026-05-23 00:00:00', 'last second' => '2026-05-23 23:59:59']);

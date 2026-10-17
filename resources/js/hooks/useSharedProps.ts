@@ -1,5 +1,5 @@
 import { usePage } from '@inertiajs/react';
-import { createContext, use } from 'react';
+import { createContext, use, useMemo } from 'react';
 
 import type { SharedProps } from '@/types/inertia';
 
@@ -12,5 +12,5 @@ export function useSharedProps(): SharedProps {
     const props = usePage<SharedProps>().props;
     const override = use(SharedPropsOverrideContext);
 
-    return { ...props, ...override };
+    return useMemo(() => ({ ...props, ...override }), [props, override]);
 }

@@ -42,7 +42,7 @@ final readonly class ClampNarrationContext
 
         $session = PlannedSession::query()
             ->where('user_id', $userId)
-            ->whereDate('date', $date->toDateString())
+            ->where('date', $date->toDateString())
             ->first();
 
         if ($session === null) {
@@ -75,7 +75,7 @@ final readonly class ClampNarrationContext
             'clamped_to' => $clampedTo,
             'has_run_today' => Activity::query()
                 ->where('user_id', $userId)
-                ->whereHas('detail', fn ($q) => $q->whereDate('start_date_local', $date->toDateString()))
+                ->whereHas('detail', fn ($q) => $q->startedOn($date))
                 ->exists(),
             'readiness_reasons' => $assessment['reasons'],
             'readiness_inputs' => $assessment['inputs'],

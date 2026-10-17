@@ -143,6 +143,19 @@ it('updating a session automatically pins it, so the next regeneration leaves it
         ->and($fresh->session_type->value)->toBe('tempo');
 });
 
+it('answers an edit to another athlete\'s session with 404, leaving it untouched', function (): void {
+    $session = PlannedSession::factory()->create([
+        'date' => Carbon::today()->addDay()->toDateString(),
+        'skipped' => false,
+    ]);
+
+    $this->actingAs(User::factory()->create())
+        ->patch("/plan/sessions/{$session->id}", ['skipped' => true])
+        ->assertNotFound();
+
+    expect($session->fresh()->skipped)->toBeFalse();
+});
+
 it('allows an explicit unpin alongside an edit', function (): void {
     $user = User::factory()->create();
     $session = PlannedSession::factory()->for($user)->pinned()->create([
@@ -838,3 +851,40 @@ it('queues nothing for the demo athlete however often today is toggled', functio
     Bus::assertNotDispatched(AnalyzeBriefingMascotVoiceJob::class);
     expect(Analysis::query()->where('analysis_type', AnalysisType::BriefingMascotVoice)->exists())->toBeFalse();
 });
+
+it('rebriefs a narrated today on a move onto or off it only once its Reread cooldown has run out', function (string $from, string $to, bool $cooling): void {
+    Carbon::setTestNow('2026-08-12 08:00:00');
+    Bus::fake();
+    $user = User::factory()->create();
+    $rows = planWeekRows($user, [
+        '2026-08-12' => $from === '2026-08-12' ? 'easy' : 'rest',
+        '2026-08-13' => 'rest',
+        '2026-08-14' => 'easy',
+    ]);
+    $briefing = Analysis::factory()->done('easy run, 2.6 km.')->create([
+        'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
+        'subject_id' => $user->id,
+        'analysis_type' => AnalysisType::BriefingMascotVoice,
+        'discriminator' => '2026-08-12',
+    ]);
+    if ($cooling) {
+        $briefing->startCooldown();
+    }
+
+    $this->actingAs($user)
+        ->patch("/plan/sessions/{$rows[$from]->id}", ['date' => $to])
+        ->assertSessionHasNoErrors();
+
+    if ($cooling) {
+        Bus::assertNotDispatched(AnalyzeBriefingMascotVoiceJob::class);
+        expect($briefing->fresh()->only(['status', 'content', 'updated_at']))->toEqual($briefing->only(['status', 'content', 'updated_at']));
+    } else {
+        Bus::assertDispatched(fn (AnalyzeBriefingMascotVoiceJob $job): bool => $job->analysisId === $briefing->id
+            && $job->delay === AnalysisService::PLAN_EDIT_DELAY_SECONDS);
+    }
+})->with([
+    'today away, cooled' => ['2026-08-12', '2026-08-13', false],
+    'onto today, cooled' => ['2026-08-14', '2026-08-12', false],
+    'today away, cooling' => ['2026-08-12', '2026-08-13', true],
+    'onto today, cooling' => ['2026-08-14', '2026-08-12', true],
+]);

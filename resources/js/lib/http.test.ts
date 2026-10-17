@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { csrfToken, getJson, postJson } from './http';
+import { csrfToken, getJson, postJson, sendJson } from './http';
 
 afterEach(() => {
     document.head.innerHTML = '';
@@ -108,5 +108,38 @@ describe('getJson', () => {
     it('rejects a network error rather than swallowing it', async () => {
         vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('offline')));
         await expect(getJson('/api/x')).rejects.toThrow('offline');
+    });
+});
+
+describe('sendJson', () => {
+    it('sends the method, CSRF headers and JSON body', async () => {
+        const meta = document.createElement('meta');
+        meta.name = 'csrf-token';
+        meta.content = 'tok-send';
+        document.head.appendChild(meta);
+        const fetchMock = vi.fn().mockResolvedValue(new Response('{}'));
+        vi.stubGlobal('fetch', fetchMock);
+
+        await sendJson('DELETE', '/x', { a: 1 });
+
+        expect(fetchMock).toHaveBeenCalledWith('/x', {
+            method: 'DELETE',
+            credentials: 'same-origin',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': 'tok-send',
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            body: '{"a":1}',
+        });
+    });
+
+    it('sends no body when none is given', async () => {
+        const fetchMock = vi.fn().mockResolvedValue(new Response('{}'));
+        vi.stubGlobal('fetch', fetchMock);
+
+        await sendJson('POST', '/x');
+
+        expect(fetchMock.mock.calls[0][1].body).toBeUndefined();
     });
 });

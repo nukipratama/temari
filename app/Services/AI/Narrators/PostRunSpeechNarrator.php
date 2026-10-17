@@ -272,7 +272,7 @@ class PostRunSpeechNarrator
 
         return PlannedSession::query()
             ->where('user_id', $activity->user_id)
-            ->whereDate('date', $detail->start_date_local->toDateString())
+            ->where('date', $detail->start_date_local->toDateString())
             ->first()
             ?->intent_verdict;
     }

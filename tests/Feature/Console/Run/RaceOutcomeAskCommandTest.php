@@ -154,3 +154,18 @@ it('still asks at the window\'s last hour when the first hour was missed', funct
 
     Notification::assertSentToTimes($user, RaceOutcomeNotification::class, 1);
 });
+
+it('finds yesterday\'s race at both edges of the day', function (string $now): void {
+    Notification::fake();
+    Carbon::setTestNow($now);
+    $user = User::factory()->create();
+    raceYesterday($user);
+    RaceGoal::factory()->for(User::factory()->create())->completed()->create(['race_date' => '2026-10-03', 'distance_m' => 21_097, 'outcome' => RaceOutcome::Pending]);
+    RaceGoal::factory()->for(User::factory()->create())->completed()->create(['race_date' => '2026-10-05', 'distance_m' => 21_097, 'outcome' => RaceOutcome::Pending]);
+
+    $this->artisan('race:ask-outcome')
+        ->expectsOutputToContain('Asked 1 users how their race went.')
+        ->assertSuccessful();
+
+    Notification::assertSentTo($user, RaceOutcomeNotification::class);
+})->with(['midnight' => '2026-10-05 00:00:00', 'last second' => '2026-10-05 23:59:59']);

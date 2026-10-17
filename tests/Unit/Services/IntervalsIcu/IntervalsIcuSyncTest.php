@@ -14,6 +14,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
 
 uses(RefreshDatabase::class);
@@ -183,3 +184,29 @@ it("removes only today's event on request", function (string $syncedOn, array $w
     'today' => ['2026-10-14', ['DELETE /athlete/i42/events/400']],
     'yesterday' => ['2026-10-13', []],
 ]);
+
+it('removes today best effort and logs a failure instead of throwing', function (int $status, array $writes): void {
+    intervalsIcuAnswers(['status' => $status]);
+    Log::spy();
+    $connection = syncedAthlete();
+    $connection->update(['synced_on' => '2026-10-14', 'event_id' => '400']);
+
+    app(IntervalsIcuSync::class)->removeTodayBestEffort($connection, Carbon::today());
+
+    expect(writesSent())->toBe($writes);
+    $status === 200 ? Log::shouldNotHaveReceived('warning') : Log::shouldHaveReceived('warning')->once();
+})->with([
+    'accepted' => [200, ['DELETE /athlete/i42/events/400']],
+    'rejected' => [401, ['DELETE /athlete/i42/events/400']],
+    'unreachable' => [503, ['DELETE /athlete/i42/events/400']],
+]);
+
+it('skips a broken connection when removing best effort', function (): void {
+    Http::fake();
+    $connection = syncedAthlete();
+    $connection->update(['broken_at' => now(), 'synced_on' => '2026-10-14', 'event_id' => '400']);
+
+    app(IntervalsIcuSync::class)->removeTodayBestEffort($connection, Carbon::today());
+
+    Http::assertNothingSent();
+});

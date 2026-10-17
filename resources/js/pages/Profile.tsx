@@ -1,4 +1,4 @@
-import { Deferred, Head, usePage } from '@inertiajs/react';
+import { Deferred, Head } from '@inertiajs/react';
 import { Footprints, Gauge, Route, Timer, Trophy } from 'lucide-react';
 import { Suspense } from 'react';
 
@@ -7,7 +7,7 @@ import type { ProgressionSeries } from '@/components/profile/ProgressionCard';
 import type { ProfileSeason } from '@/components/profile/SeasonCard';
 import type { TimeInZone } from '@/components/profile/TimeInZoneBar';
 import type { SeasonSummaryWeek } from '@/lib/plan';
-import type { AnalysisPayload, Mood, SharedProps } from '@/types/inertia';
+import type { AnalysisPayload, Mood } from '@/types/inertia';
 
 import AiOutageBanner from '@/components/AiOutageBanner';
 import PaceTargetsCard, {
@@ -25,6 +25,7 @@ import PageContainer from '@/components/ui/PageContainer';
 import PageHero from '@/components/ui/PageHero';
 import { SkeletonChart, SkeletonRows } from '@/components/ui/Skeleton';
 import UserAvatar from '@/components/UserAvatar';
+import { useSharedProps } from '@/hooks/useSharedProps';
 import { appLayout } from '@/layouts/appLayout';
 import { lazyIsland } from '@/lib/lazyIsland';
 import { formatPace } from '@/lib/pace';
@@ -82,7 +83,7 @@ export default function Profile({
     season,
     seasonWeeks,
 }: Readonly<ProfileProps>) {
-    const { auth, activeRace, stravaSync } = usePage<SharedProps>().props;
+    const { auth, activeRace, stravaSync } = useSharedProps();
     const sharedUser = auth.user;
     const firstName =
         sharedUser?.first_name ?? identity.name.split(' ')[0] ?? '';

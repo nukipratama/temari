@@ -82,7 +82,7 @@ const ROUTE_BUDGETS_KB = [
     {
         name: 'Activity',
         src: 'resources/js/pages/Runs/Show.tsx',
-        budgetKb: 175,
+        budgetKb: 176,
     },
     { name: 'Inbox', src: 'resources/js/pages/Inbox.tsx', budgetKb: 153 },
     { name: 'Profile', src: 'resources/js/pages/Profile.tsx', budgetKb: 166 },

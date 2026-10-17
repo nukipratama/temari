@@ -219,7 +219,7 @@ export default function ShareCardModal({
             backdropProps={{
                 className: 'backdrop-reveal fixed inset-0 z-[50]',
                 style: {
-                    background: 'rgba(0,0,0,0.5)',
+                    background: 'var(--scrim)',
                     backdropFilter: 'blur(6px)',
                 },
             }}
@@ -287,7 +287,7 @@ export default function ShareCardModal({
             {/* The prints, racked side by side and clipped by the stage, so
                     the neighbours bleed off the sheet instead of widening it. */}
             <div
-                role="group"
+                role="toolbar"
                 aria-label="print style"
                 tabIndex={0}
                 onKeyDown={(event) => {

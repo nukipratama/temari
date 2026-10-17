@@ -112,6 +112,20 @@ describe('JourneyChart', () => {
         expect(screen.getByText(/jun 8 · 51:57/)).toBeInTheDocument();
     });
 
+    it('keeps the readout position across re-renders with unchanged props', () => {
+        const { container, rerender } = render(
+            <JourneyChart weeks={WEEKS} timesSec={TIMES} />,
+        );
+        fireEvent.keyDown(screen.getByRole('slider'), { key: 'ArrowLeft' });
+        const tip = container.querySelector<HTMLElement>('[style*="left"]');
+        if (tip === null) throw new Error('expected a positioned readout');
+        tip.style.left = '1px';
+
+        rerender(<JourneyChart weeks={WEEKS} timesSec={TIMES} />);
+
+        expect(tip.style.left).toBe('1px');
+    });
+
     it('closes the readout with Escape', () => {
         render(<JourneyChart weeks={WEEKS} timesSec={TIMES} />);
         const chart = screen.getByRole('slider');

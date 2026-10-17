@@ -52,7 +52,7 @@ class ResolveSeasonAction
 
         return $this->asOf[$key] = Season::query()
             ->where('user_id', $userId)
-            ->whereDate('starts_at', '<=', $date)
+            ->where('starts_at', '<=', $date)
             ->orderByDesc('starts_at')
             ->first();
     }

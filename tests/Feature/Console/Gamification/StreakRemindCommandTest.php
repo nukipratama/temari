@@ -7,6 +7,7 @@ use App\Models\TelegramConnection;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Notifications\StreakReminderNotification;
+use App\Services\Ops\MaintainerAlerter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Notification;
@@ -154,17 +155,42 @@ it('releases the week claim when dispatch throws, so the next run sends', functi
     TelegramConnection::factory()->for($user)->create();
     WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-17', 'runs' => 3]);
     Notification::shouldReceive('send')->once()->andThrow(new RuntimeException('Redis is down'));
+    $alerter = Mockery::mock(MaintainerAlerter::class);
+    $alerter->shouldReceive('athletesFailed')->once()->with('streak:remind', 1);
+    $this->app->instance(MaintainerAlerter::class, $alerter);
 
-    expect(fn () => $this->artisan('streak:remind')->run())->toThrow(RuntimeException::class, 'Redis is down');
+    $this->artisan('streak:remind')->assertSuccessful();
     $this->assertDatabaseMissing('streak_reminders', ['user_id' => $user->id]);
 
     Notification::fake();
+    $alerter = Mockery::mock(MaintainerAlerter::class);
+    $alerter->shouldReceive('athletesRecovered')->once()->with('streak:remind');
+    $this->app->instance(MaintainerAlerter::class, $alerter);
     $this->artisan('streak:remind')
         ->expectsOutputToContain('Dispatched streak-at-risk reminder to 1 users.')
         ->assertSuccessful();
 
     Notification::assertSentToTimes($user, StreakReminderNotification::class, 1);
     $this->assertDatabaseHas('streak_reminders', ['user_id' => $user->id, 'week_ending' => '2026-05-24']);
+});
+
+it('keeps reminding the other users when one user throws, and alerts once', function (): void {
+    $users = User::factory()->count(2)->create();
+    foreach ($users as $user) {
+        TelegramConnection::factory()->for($user)->create();
+        WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-17', 'runs' => 3]);
+    }
+    Notification::shouldReceive('send')->once()->andThrow(new RuntimeException('Redis is down'));
+    Notification::shouldReceive('send')->once();
+    $alerter = Mockery::mock(MaintainerAlerter::class);
+    $alerter->shouldReceive('athletesFailed')->once()->with('streak:remind', 1);
+    $this->app->instance(MaintainerAlerter::class, $alerter);
+
+    $this->artisan('streak:remind')
+        ->expectsOutputToContain('Dispatched streak-at-risk reminder to 1 users.')
+        ->assertSuccessful();
+
+    $this->assertDatabaseCount('streak_reminders', 1);
 });
 
 /**

@@ -29,7 +29,7 @@ Full feature map: [docs/features/index.md](docs/features/index.md).
 - **Async**: Horizon (queues) · Scheduler
 - **Observability**: Pulse (perf) · Horizon (queues)
 - **LLM**: Azure OpenAI via `openai-php/laravel` for briefing/verdict narration; when credentials are unset, narration silently falls back to deterministic rule-based content. Per-block `AnalysisStatus` (pending / failed + a "Try again" retry button) is the source of truth — there is no global emergency-mode chip
-- **Tests**: Pest 5 (95% line coverage gate) · Vitest (95% lines + functions gate)
+- **Tests**: Pest 5 (95% line coverage gate) · Vitest (95% lines + functions, 93% branches gate)
 - **AI dev**: Laravel Boost — `CLAUDE.md` + `.claude/skills/*` for AI-paired work
 
 ## Quick start
@@ -67,7 +67,7 @@ Day-to-day commands (all inside Sail):
 ./vendor/bin/sail bin pest           # PHP tests
 ./vendor/bin/sail bin pest --parallel    # parallel (works locally; test user is granted per-process DB rights)
 ./vendor/bin/sail npm run test       # FE tests (Vitest)
-./vendor/bin/sail npm run test:coverage  # FE tests with 95% line+function gate
+./vendor/bin/sail npm run test:coverage  # FE tests with 95% line+function, 93% branch gate
 ./vendor/bin/sail bin pint           # format
 ./vendor/bin/sail bin phpstan analyse    # static analysis
 ./vendor/bin/sail bin rector --dry-run   # refactor suggestions
@@ -90,7 +90,7 @@ The test stack (`mysql_test`, `redis_test`) runs on the compose network only —
 
 **PHP** — Pest 5 against a dedicated test stack: `mysql_test` (tmpfs-backed, ephemeral) and `redis_test`, configured in `phpunit.xml`. Same image versions as prod for parity. `RefreshDatabase` resets schema per test class. 1:1 class↔test convention — every class file has its own test (mocking siblings is encouraged).
 
-**Frontend** — Vitest with jsdom against React 19 + Inertia components. Same 1:1 convention. Gates: 95% lines + 95% functions ([vitest.config.ts](vitest.config.ts)). Branches relaxed because hitting every `?? null` fallback in defensive code is contortionist, not signal.
+**Frontend** — Vitest with jsdom against React 19 + Inertia components. Same 1:1 convention. Gates: 95% lines + 95% functions, and a 93% branches ratchet just under the measured 93.59% ([vitest.config.ts](vitest.config.ts)). Branches stay below 95 because hitting every `?? null` fallback in defensive code is contortionist, not signal; the ratchet only stops them sliding.
 
 CI starts containers (`mysql:9.7` + `redis:8.10-alpine`) for the PHP suite — every workflow run gets a fresh DB. FE suite is pure-node, no services.
 
@@ -105,7 +105,7 @@ Nothing is excluded from coverage: `phpunit.xml` measures all of `app/`, service
 | pre-push        | Block direct pushes to `main` (force or not). Use feature branch + PR  |
 | CI — `lint`     | `pint --test`, `phpstan`, `rector --dry-run` (no DB, fast)             |
 | CI — `pest`     | `pest` against mysql:9.7 + redis:8.10-alpine — `--coverage --min=95` on pull requests, bare on the `main` push |
-| CI — `vitest`   | `npm run test:coverage` — 95% lines + functions, jsdom only            |
+| CI — `vitest`   | `npm run test:coverage` — 95% lines + functions, 93% branches, jsdom only            |
 | CI — `deploy`   | On push to `main`: build, migration-only maintenance, migrate, roll, check `/ready` + `/up` |
 | Nightly         | `composer audit` + `npm audit` (prod deps, high+) — scheduled, off the PR/deploy path so an upstream advisory can't block an unrelated change |
 
@@ -171,7 +171,7 @@ Create `/opt/temari/.env` with:
 | `MYSQL_ROOT_PASSWORD` | strong random — used on first mysql init only; cannot be changed after the volume exists            |
 | `STRAVA_CLIENT_ID`    | from your Strava developer app                                                                       |
 | `STRAVA_CLIENT_SECRET`| from your Strava developer app                                                                       |
-| `AZURE_OPENAI_URI`    | Optional. Full Azure OpenAI deployment URL (incl. api-version). Empty = rule-based narration silently |
+| `AZURE_OPENAI_URI`    | Optional. Azure OpenAI endpoint host only, e.g. `https://my-res.openai.azure.com`. Empty = rule-based narration silently |
 | `AZURE_OPENAI_API_KEY`| Optional. Pairs with `AZURE_OPENAI_URI`. Empty = rule-based silently. Job failures mark that Analysis block `failed` with a per-block retry button |
 | `DEMO_LOGIN_ENABLED`  | Optional. `true` renders the "Try the demo" button on `/login`. Default `true`                       |
 | `ONBOARDING_FORCE_SHOW` | Optional. `true` re-renders the dashboard first-run tooltip on every mount (QA / demos). Default `false` |
@@ -189,6 +189,8 @@ Every successful deploy leaves two extra image tags on the host:
 - `temari/app:<git-sha>` — addressable artifact for any prior commit.
 
 Non-running images older than 7 days are pruned automatically.
+
+The `Rollback prod` workflow runs these steps for you: `gh workflow run rollback.yml` rolls back to `:previous`, and `-f sha=<full commit sha>` pulls that commit's image from GHCR instead.
 
 **Roll back the most recent deploy** (most common case):
 ```bash

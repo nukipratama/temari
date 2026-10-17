@@ -4,7 +4,6 @@ import { useMemo } from 'react';
 
 import type {
     Mood,
-    SharedProps,
     StravaSyncState,
     WeeklySnapshotWithRecap,
 } from '@/types/inertia';
@@ -25,6 +24,7 @@ import EmptyPanel from '@/components/ui/EmptyPanel';
 import { Icon } from '@/components/ui/Icon';
 import LaneStack from '@/components/ui/LaneStack';
 import PageContainer from '@/components/ui/PageContainer';
+import { useSharedProps } from '@/hooks/useSharedProps';
 import { appLayout } from '@/layouts/appLayout';
 import { revealDelay } from '@/lib/styles';
 import { pillButtonVariants } from '@/lib/variants';
@@ -197,7 +197,7 @@ const EMPTY_COPY: Record<StravaSyncState, { line: string; sub: string }> = {
 };
 
 function EmptyState() {
-    const { stravaSync } = usePage<SharedProps>().props;
+    const { stravaSync } = useSharedProps();
     const state: StravaSyncState = stravaSync?.state ?? 'disconnected';
     const { line, sub } = EMPTY_COPY[state];
 

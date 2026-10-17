@@ -1478,3 +1478,52 @@ it('drains 5+ runs recent-first then oldest-first, settling the replay exactly o
         ->pluck('discriminator')
         ->all())->toEqualCanonicalizing(AnalysisType::TREND_READ_RANGES);
 });
+
+it('maps every detail payload field onto the detail row', function (): void {
+    $activity = makeActivityWithConnection();
+    Http::fake([
+        'strava.com/api/v3/activities/999' => Http::response([
+            'name' => 'Full map',
+            'start_date' => '2026-05-09T23:30:00Z',
+            'start_date_local' => '2026-05-10 06:30:00',
+            'distance' => 10120.5, 'moving_time' => 3300, 'elapsed_time' => 3400,
+            'average_speed' => 3.07, 'max_speed' => 4.2,
+            'total_elevation_gain' => 62.0, 'elev_high' => 88.1, 'elev_low' => 26.4,
+            'has_heartrate' => true, 'average_heartrate' => 156.2, 'max_heartrate' => 178,
+            'average_cadence' => 82.5, 'workout_type' => 2,
+            'calories' => 600.0, 'suffer_score' => 90, 'device_name' => 'Watch', 'average_watts' => 250.5,
+            'splits_metric' => [['split' => 1]], 'laps' => [['lap_index' => 1]],
+            'map' => ['summary_polyline' => 'abc123'], 'start_latlng' => [-6.2, 106.8],
+        ]),
+        'strava.com/api/v3/activities/999/streams*' => Http::response([]),
+    ]);
+
+    $this->pipeline->ingest($activity);
+
+    $detail = ActivityDetail::query()->where('activity_id', $activity->id)->firstOrFail();
+    expect($detail->name)->toBe('Full map')
+        ->and($detail->getRawOriginal('start_date_utc'))->toBe('2026-05-09 23:30:00')
+        ->and($detail->start_date_local?->toDateTimeString())->toBe('2026-05-10 06:30:00')
+        ->and($detail->distance)->toBe(10120.5)
+        ->and($detail->moving_time)->toBe(3300)
+        ->and($detail->elapsed_time)->toBe(3400)
+        ->and($detail->average_speed)->toBe(3.07)
+        ->and($detail->max_speed)->toBe(4.2)
+        ->and($detail->total_elevation_gain)->toBe(62.0)
+        ->and($detail->elev_high)->toBe(88.1)
+        ->and($detail->elev_low)->toBe(26.4)
+        ->and($detail->has_heartrate)->toBeTrue()
+        ->and($detail->average_heartrate)->toBe(156.2)
+        ->and($detail->max_heartrate)->toBe(178)
+        ->and($detail->average_cadence)->toBe(82.5)
+        ->and($detail->workout_type)->toBe(2)
+        ->and($detail->calories)->toBe(600.0)
+        ->and($detail->suffer_score)->toBe(90)
+        ->and($detail->device_name)->toBe('Watch')
+        ->and($detail->average_watts)->toBe(250.5)
+        ->and($detail->splits_metric)->toBe([['split' => 1]])
+        ->and($detail->laps)->toBe([['lap_index' => 1]])
+        ->and($detail->summary_polyline)->toBe('abc123')
+        ->and($detail->start_lat)->toBe(-6.2)
+        ->and($detail->start_lng)->toBe(106.8);
+});

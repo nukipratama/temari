@@ -21,7 +21,7 @@ services:
             MYSQL_ROOT_HOST: '%'
             MYSQL_ALLOW_EMPTY_PASSWORD: 1
         healthcheck:
-            test: ['CMD', 'mysqladmin', 'ping', '-p${DB_PASSWORD}']
+            test: ['CMD-SHELL', 'MYSQL_PWD="$$MYSQL_ROOT_PASSWORD" mysqladmin ping']
             retries: 3
             timeout: 5s
         volumes:
@@ -65,7 +65,7 @@ services:
         tmpfs:
             - /var/lib/mysql
         healthcheck:
-            test: ['CMD', 'mysqladmin', 'ping', '-p${DB_PASSWORD}']
+            test: ['CMD-SHELL', 'MYSQL_PWD="$$MYSQL_ROOT_PASSWORD" mysqladmin ping']
             retries: 3
             timeout: 5s
         volumes:

@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Services\Devtools;
 
 use App\Models\AI\Analysis;
-use App\Models\User;
 use App\Services\AI\AnalysisOrigin;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\LlmCostCalculator;
@@ -50,24 +49,13 @@ class ReplayNarrationAction
     }
 
     /**
-     * Re-dispatch the block. The demo athlete is served from the rule-based
-     * filler like every other demo trigger, so a public demo account can never
-     * be replayed onto the bill.
+     * Re-dispatch the block. {@see AnalysisService} serves the demo athlete from
+     * the rule-based filler, so a public demo account can never be replayed onto
+     * the bill.
      */
-    public function replay(Analysis $row, User $athlete): void
+    public function replay(Analysis $row): void
     {
         $this->origin->set(AnalysisOrigin::Replay);
-
-        if ($this->service->shouldServeRuleBased($athlete)) {
-            $this->service->requestRuleBased(
-                $row->subject_type,
-                $row->subject_id,
-                $row->analysis_type,
-                $row->discriminator,
-            );
-
-            return;
-        }
 
         $this->service->request(
             subjectOrType: $row->subject_type,

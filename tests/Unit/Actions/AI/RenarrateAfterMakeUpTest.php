@@ -122,3 +122,15 @@ it('merges a burst of back-and-forth make-up moves into one delayed job per run 
     Bus::assertDispatchedTimes(AnalyzeBriefingMascotVoiceJob::class, 1);
     Bus::assertDispatched(AnalyzeBriefingMascotVoiceJob::class, $delayed);
 });
+
+it('keeps today\'s briefing while its Reread cooldown runs, still re-narrating the made-up run', function (): void {
+    [$user, $vacated, $target, $activity] = makeUpNarrationFixture('2026-08-11', '2026-08-12');
+    $briefing = Analysis::query()->where('analysis_type', AnalysisType::BriefingMascotVoice)->sole();
+    $briefing->startCooldown();
+
+    app(RenarrateAfterMakeUp::class)($user, $vacated, $target, Carbon::today());
+
+    Bus::assertNotDispatched(AnalyzeBriefingMascotVoiceJob::class);
+    Bus::assertDispatched(fn (AnalyzeActivityJob $job): bool => $job->subjectId === $activity->id);
+    expect($briefing->fresh()->only(['status', 'content', 'updated_at']))->toEqual($briefing->only(['status', 'content', 'updated_at']));
+});

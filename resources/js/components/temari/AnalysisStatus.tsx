@@ -25,6 +25,8 @@ import { renderBold } from '@/lib/richText';
 import FlagWrong from './FlagWrong';
 import UnavailableNote from './UnavailableNote';
 
+const NO_RELOAD_PROPS: string[] = [];
+
 export type AnalysisStatusSize = 'sm' | 'md';
 
 /**
@@ -158,7 +160,7 @@ export function rendersNothing(
 
 export default function AnalysisStatus({
     analysis,
-    inertiaReloadProps = [],
+    inertiaReloadProps = NO_RELOAD_PROPS,
     size = 'md',
     renderContent,
     allowReanalyze = true,

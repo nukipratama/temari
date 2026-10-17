@@ -17,11 +17,9 @@ class AzureOpenAIClient
 
         $factory = OpenAI::factory()
             ->withHttpHeader('api-key', (string) config('azure_openai.api_key'))
-            ->withHttpHeader('User-Agent', 'Temari/1.0')
-            // Azure's OpenAI-compatible v1 surface: an evergreen api-version (no
-            // dated value to maintain); the deployment is selected by the request
-            // body's `model` field, not the URL path.
-            ->withQueryParam('api-version', 'preview');
+            // Azure's OpenAI-compatible v1 GA surface needs no api-version; the
+            // deployment is selected by the request body's `model` field.
+            ->withHttpHeader('User-Agent', 'Temari/1.0');
 
         if ($endpoint !== '') {
             $factory = $factory->withBaseUri("{$endpoint}/openai/v1");

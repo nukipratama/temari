@@ -30,6 +30,17 @@ it('builds an openai client with no custom http client when timeout is 0', funct
     expect(new AzureOpenAIClient()->client())->toBeInstanceOf(ClientContract::class);
 });
 
+it('targets the v1 GA surface with no api-version query parameter', function (): void {
+    $client = new AzureOpenAIClient()->client();
+
+    $transporter = new ReflectionProperty($client, 'transporter')->getValue($client);
+    $baseUri = new ReflectionProperty($transporter, 'baseUri')->getValue($transporter);
+    $queryParams = new ReflectionProperty($transporter, 'queryParams')->getValue($transporter);
+
+    expect($baseUri->toString())->toBe('https://my-res.openai.azure.com/openai/v1/')
+        ->and($queryParams->toArray())->not->toHaveKey('api-version');
+});
+
 // ── deploymentFor(): per-narrator override vs general fallback ────────────
 
 it('prefers the per-kind override over the general deployment', function (): void {

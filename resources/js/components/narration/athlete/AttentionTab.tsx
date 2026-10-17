@@ -1,4 +1,4 @@
-import { router, usePage } from '@inertiajs/react';
+import { router } from '@inertiajs/react';
 import {
     CircleAlert,
     Clock,
@@ -13,11 +13,11 @@ import type {
     AuditRow,
     CeilingOverride,
 } from '@/pages/Narration/types';
-import type { SharedProps } from '@/types/inertia';
 
 import { Card } from '@/components/ui/card';
 import { Icon, type IconComponent } from '@/components/ui/Icon';
 import PillButton from '@/components/ui/PillButton';
+import { useSharedProps } from '@/hooks/useSharedProps';
 import { formatCost, formatTimestamp } from '@/pages/Narration/helpers';
 
 import ConfirmAction from './ConfirmAction';
@@ -159,7 +159,7 @@ function CeilingOverrideCard({
     const base = `/devtools/narration/athletes/${athleteId}`;
     const [armed, setArmed] = useState(false);
     const [ceiling, setCeiling] = useState('');
-    const error = usePage<SharedProps>().props.errors?.ceiling;
+    const error = useSharedProps().errors?.ceiling;
 
     return (
         <Card className="bg-popover">

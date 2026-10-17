@@ -112,7 +112,7 @@ class PlanController extends Controller
                 fn (): array => DB::transaction(function () use ($user, $plannedSession, $attributes, $today, $sessionMatcher, $makeUps): array {
                     $session = PlannedSession::query()
                         ->where('user_id', $user->id)
-                        ->whereDate('date', $plannedSession->date->toDateString())
+                        ->where('date', $plannedSession->date->toDateString())
                         ->lockForUpdate()
                         ->first();
 
@@ -155,8 +155,14 @@ class PlanController extends Controller
 
         $movedOntoOrOffToday = $occupant !== null && ($session->date->isSameDay($today) || $occupant->date->isSameDay($today));
         $restoredToday = $session->date->isSameDay($today) && $session->wasChanged('skipped') && ! $session->skipped;
-        if (! $user->is_demo && ($movedOntoOrOffToday || $restoredToday)) {
-            $analysisService->requestBriefing($user, $today->toDateString(), invalidate: $movedOntoOrOffToday, delaySeconds: AnalysisService::PLAN_EDIT_DELAY_SECONDS);
+        if ($user->is_demo) {
+            return back();
+        }
+
+        if ($movedOntoOrOffToday) {
+            $analysisService->rebriefAfterPlanEdit($user, $today->toDateString());
+        } elseif ($restoredToday) {
+            $analysisService->requestBriefing($user, $today->toDateString(), delaySeconds: AnalysisService::PLAN_EDIT_DELAY_SECONDS);
         }
 
         return back();
@@ -203,7 +209,7 @@ class PlanController extends Controller
         /** @var User $user */
         $user = $request->user();
         if ($plannedSession->user_id !== $user->id) {
-            abort(403);
+            abort(404);
         }
     }
 }

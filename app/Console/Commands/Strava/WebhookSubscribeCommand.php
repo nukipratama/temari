@@ -10,6 +10,7 @@ use App\Services\Strava\StravaClient;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
+use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Facades\Http;
 
 /**
@@ -26,6 +27,11 @@ class WebhookSubscribeCommand extends Command
     private static function subscriptionsUrl(): string
     {
         return StravaClient::apiBaseUrl().'/push_subscriptions';
+    }
+
+    private static function http(): PendingRequest
+    {
+        return Http::connectTimeout(StravaClient::HTTP_CONNECT_TIMEOUT_SECONDS)->timeout(StravaClient::HTTP_TIMEOUT_SECONDS);
     }
 
     public function handle(): int
@@ -107,7 +113,7 @@ class WebhookSubscribeCommand extends Command
 
         $this->info('Self-verify passed: callback echoed the challenge.');
 
-        $response = Http::asForm()->post(self::subscriptionsUrl(), [
+        $response = self::http()->asForm()->post(self::subscriptionsUrl(), [
             'client_id' => $clientId,
             'client_secret' => $clientSecret,
             'callback_url' => $callbackUrl,
@@ -166,7 +172,7 @@ class WebhookSubscribeCommand extends Command
         // Strava reads the credentials from the query string on DELETE (as it
         // does for the GET list); sending them in the form body leaves the
         // client unidentified and Strava answers 404 for an existing id.
-        $response = Http::withQueryParameters([
+        $response = self::http()->withQueryParameters([
             'client_id' => $clientId,
             'client_secret' => $clientSecret,
         ])->delete(self::subscriptionsUrl().'/'.$id);
@@ -190,7 +196,7 @@ class WebhookSubscribeCommand extends Command
      */
     private function fetchSubscriptions(string $clientId, string $clientSecret): ?array
     {
-        $response = Http::get(self::subscriptionsUrl(), [
+        $response = self::http()->get(self::subscriptionsUrl(), [
             'client_id' => $clientId,
             'client_secret' => $clientSecret,
         ]);

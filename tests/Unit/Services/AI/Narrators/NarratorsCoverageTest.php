@@ -739,7 +739,7 @@ it('PlanClampVoiceNarrator throws on missing voice key', function (): void {
         'readiness_reasons' => [],
         'readiness_inputs' => [],
     ], 7);
-})->throws(UnavailableException::class);
+})->throws(UnavailableException::class)->covers(PlanClampVoiceNarrator::class);
 
 it('PlanClampVoiceNarrator names the eased session as the one being run today', function (): void {
     $prompt = narratorPrompt(PlanClampVoiceNarrator::class);
@@ -762,7 +762,7 @@ it('OutcomeLabels catches a verdict label, and passes a described outcome', func
     'a described hit' => ['8 easy km at 7:22/km, kept properly easy the whole way.', false],
     'hit as a verb' => ['you hit the tempo block right on 5:00/km.', false],
     'a described too-hard day' => ['10 against an easy 7, harder than the day asked for.', false],
-]);
+])->covers(OutcomeLabels::class);
 
 function sentSystemPromptCarriesPlanVerdictRule(ClientFake $client): void
 {
@@ -1267,7 +1267,7 @@ it('QuotedFigures reads every figure format a paragraph can carry', function ():
         ->and(QuotedFigures::in('6,247.50 km across 635 runs at 52% chill'))->toBe(['6247.5', '635', '52'])
         ->and(QuotedFigures::in('19.2% and 5.2km and 11bpm'))->toBe(['19.2', '5.2', '11'])
         ->and(QuotedFigures::in('no numbers here'))->toBe([]);
-});
+})->covers(QuotedFigures::class);
 
 it('QuotedFigures counts a figure any allowed entry accounts for as allowed', function (): void {
     expect(QuotedFigures::outside('26:47 and 28 weeks', ['26:47 off the marathon', '28 weeks in a row']))->toBe([])
@@ -1585,10 +1585,10 @@ it('keeps diagnosis and fitness claims out of the load-reading narrator prompts'
         ->and($prompt)->not->toContain('overreaching')
         ->and($prompt)->not->toContain('fully back');
 })->with([
-    TrendReadNarrator::class,
-    MonthlyRecapNarrator::class,
-    WeeklyRecapNarrator::class,
-    BriefingMascotVoiceNarrator::class,
+    TrendReadNarrator::class => [TrendReadNarrator::class],
+    MonthlyRecapNarrator::class => [MonthlyRecapNarrator::class],
+    WeeklyRecapNarrator::class => [WeeklyRecapNarrator::class],
+    BriefingMascotVoiceNarrator::class => [BriefingMascotVoiceNarrator::class],
 ]);
 
 it('has the recap and briefing narrators read the three load balance states', function (string $class): void {
@@ -1848,11 +1848,11 @@ it('invites iterative tool follow-up instead of front-loading everything into on
         ->not->toContain('call several at once in a single turn')
         ->toContain("Don't front-load every tool into one turn out of habit");
 })->with([
-    'RunInsightNarrator' => [RunInsightNarrator::class],
-    'PostRunSpeechNarrator' => [PostRunSpeechNarrator::class],
-    'ProfileVoiceNarrator' => [ProfileVoiceNarrator::class],
-    'CardFlavorNarrator' => [CardFlavorNarrator::class],
-    'BriefingMascotVoiceNarrator' => [BriefingMascotVoiceNarrator::class],
+    RunInsightNarrator::class => [RunInsightNarrator::class],
+    PostRunSpeechNarrator::class => [PostRunSpeechNarrator::class],
+    ProfileVoiceNarrator::class => [ProfileVoiceNarrator::class],
+    CardFlavorNarrator::class => [CardFlavorNarrator::class],
+    BriefingMascotVoiceNarrator::class => [BriefingMascotVoiceNarrator::class],
 ]);
 
 // The same prod audit found a different problem for these three: 6-27% of

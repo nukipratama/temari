@@ -57,6 +57,10 @@ class OnboardingController extends Controller
         /** @var User $user */
         $user = $request->user();
 
+        if ($user->onboarded_at !== null) {
+            return redirect()->route('dashboard');
+        }
+
         if ($request->filled('race_date')) {
             $races->createUnlessActive($user, [
                 'race_date' => $request->validated('race_date'),

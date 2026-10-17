@@ -93,6 +93,20 @@ it('never redirects an already-onboarded user back into the wizard, and lets the
     $this->actingAs($user)->get('/')->assertSuccessful();
 });
 
+it('sends an already-onboarded user home from a replayed wizard submit, changing nothing', function (): void {
+    $onboardedAt = Carbon::now()->subWeek()->startOfSecond();
+    $user = User::factory()->create(['onboarded_at' => $onboardedAt]);
+    $this->mock(RequestTodaysBriefing::class)->shouldNotReceive('atSignup');
+
+    $this->actingAs($user)
+        ->post('/onboarding', onboardingGoalPayload())
+        ->assertRedirect(route('dashboard'))
+        ->assertSessionMissing('success');
+
+    expect(RaceGoal::query()->where('user_id', $user->id)->exists())->toBeFalse()
+        ->and($user->fresh()->onboarded_at->equalTo($onboardedAt))->toBeTrue();
+});
+
 it('redirects an unboarded user away from the rest of the app back to the wizard, but lets them subscribe to push and log out', function (): void {
     $user = User::factory()->needsOnboarding()->create();
 
@@ -191,4 +205,14 @@ it('rejects a partial goal submission and does not onboard the user', function (
 
     expect($user->fresh()->onboarded_at)->toBeNull()
         ->and(RaceGoal::query()->where('user_id', $user->id)->exists())->toBeFalse();
+});
+
+it('answers the 11th wizard submit within a minute with 429', function (): void {
+    $user = User::factory()->needsOnboarding()->create();
+
+    foreach (range(1, 10) as $attempt) {
+        $this->actingAs($user)->postJson('/onboarding', onboardingGoalPayload(['distance_m' => null]))->assertUnprocessable();
+    }
+
+    $this->actingAs($user)->postJson('/onboarding', onboardingGoalPayload(['distance_m' => null]))->assertTooManyRequests();
 });
