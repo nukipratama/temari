@@ -88,7 +88,9 @@ export default function JourneyChart({
         tipRef.current.style.left = `${clamped}px`;
     }, [selectedIndex, points]);
 
-    if (points.length === 0) {
+    const first = points[0];
+    const last = points.at(-1);
+    if (first === undefined || last === undefined) {
         return (
             <EmptyPanel title="not enough runs at this distance yet to draw a journey line." />
         );
@@ -150,12 +152,6 @@ export default function JourneyChart({
             const next = event.key === 'ArrowLeft' ? base - 1 : base + 1;
             return Math.min(Math.max(next, 0), points.length - 1);
         });
-    }
-
-    const first = points[0];
-    const last = points.at(-1);
-    if (first === undefined || last === undefined) {
-        return null;
     }
 
     const path = points.map((p) => `${p.x},${p.y}`).join(' ');

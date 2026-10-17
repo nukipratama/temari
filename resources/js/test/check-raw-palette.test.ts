@@ -104,7 +104,7 @@ describe('check-raw-palette rules', () => {
 });
 
 describe('ground-fixed gradient stop', () => {
-    // defined(RULES[4]) — appended, so the indices above stay put. Fixtures are
+    // RULES[4] — appended, so the indices above stay put. Fixtures are
     // concatenated for the reason given at the top of this file: the scanner
     // reads this very file, so a contiguous literal would trip the rule it
     // tests.
