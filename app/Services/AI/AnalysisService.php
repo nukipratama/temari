@@ -197,6 +197,24 @@ class AnalysisService
         );
     }
 
+    /**
+     * Re-narrates the day's briefing after a plan edit moved a session onto or
+     * off that day, unless the briefing's Reread cooldown is still running: then
+     * the current briefing stays, so repeated moves never bill past it.
+     */
+    public function rebriefAfterPlanEdit(User $user, string $date): void
+    {
+        $briefing = Analysis::query()
+            ->forSubject(AnalysisType::BRIEFING_SUBJECT_TYPE, $user->id, AnalysisType::BriefingMascotVoice, $date)
+            ->first();
+
+        if ($briefing?->cooldownRemaining() !== null) {
+            return;
+        }
+
+        $this->requestBriefing($user, $date, invalidate: true, delaySeconds: self::PLAN_EDIT_DELAY_SECONDS);
+    }
+
     public function requestProfileVoice(User $user, string $isoWeek, bool $invalidate = false): Analysis
     {
         return $this->request(
