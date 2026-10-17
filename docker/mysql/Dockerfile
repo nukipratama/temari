@@ -7,7 +7,7 @@
 # swap the stateful DB engine out from under a rebuild without a reviewable diff.
 # = mysql:9.7 (9.7.2). Refresh after a bump with:
 #   docker buildx imagetools inspect mysql:9.7 --format '{{.Manifest.Digest}}'
-FROM mysql:9.7@sha256:e2bde46db6563855d7177adb5f0b57b9dc663f5a20927a90f4259d3312068497
+FROM mysql:9.7@sha256:c7cb87a9822f499375287930cbff71d6d3b201e346b45108b1115b435ee2df13
 COPY init/01-databases.sh /docker-entrypoint-initdb.d/01-databases.sh
 # mysqlbinlog ships in the client package, not the minimal server: install the one matching
 # this server's exact version so scripts/deploy/replay-binlogs.sh finds it, with no network at recovery time.
