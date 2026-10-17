@@ -336,7 +336,7 @@
     --shadow-panel: 0 4px 6px -1px rgba(23, 31, 40, 0.11), 0 2px 4px -2px rgba(23, 31, 40, 0.08);
 
     /* Fixed on both grounds: the modal backdrop, the mark on a saturated fill
-       (switch thumb) and the active bottom-nav tab's glow. */
+       (switch thumb, skip link label) and the active bottom-nav tab's glow. */
     --scrim: rgba(0, 0, 0, 0.5);
     --color-on-fill: #ffffff;
     --shadow-glow:

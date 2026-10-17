@@ -343,7 +343,7 @@ Three more tokens hold one value on both grounds, so they sit outside the ground
 | Token | Value | Use |
 |---|---|---|
 | `--scrim` | `rgba(0, 0, 0, 0.5)` | Modal backdrop behind the share-card sheet and the Temari nudge dialog, read as `var(--scrim)`: no `bg-*` utility, so it stays outside the literal-hex colour guard |
-| `on-fill` | `#ffffff` | The switch thumb: a mark on a saturated fill, never on paper. Not for text on `leaf` (4.02:1, under the 4.5:1 guard) |
+| `on-fill` | `#ffffff` | The switch thumb and the skip link label on `leaf-deep` (6.07:1): a mark on a saturated fill, never on paper. Not for text on `leaf` (4.02:1, under the 4.5:1 guard) |
 | `shadow-glow` | `0 2px 10px -2px rgba(173, 224, 71, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.25)` | The active bottom-nav tab's lime glow |
 
 ## Motion

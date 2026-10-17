@@ -54,7 +54,7 @@ export default function AppShell({ children }: Readonly<AppShellProps>) {
         <div className="min-h-screen bg-background pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] text-foreground">
             <a
                 href="#main-content"
-                className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-leaf focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-white focus:shadow-e2"
+                className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-leaf-deep focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-on-fill focus:shadow-e2"
             >
                 Skip to content
             </a>
