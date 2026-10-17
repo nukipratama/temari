@@ -57,15 +57,16 @@ export function nextPhaseOf(
     weeks: SeasonSummaryWeek[],
 ): { key: string; inWeeks: number } | null {
     const currentIndex = weeks.findIndex((week) => week.type === 'current');
-    if (currentIndex === -1) {
+    const current = weeks[currentIndex];
+    if (current === undefined) {
         return null;
     }
 
-    const currentKey = seasonPhaseKey(weeks[currentIndex]);
-    for (let i = currentIndex + 1; i < weeks.length; i++) {
-        const key = seasonPhaseKey(weeks[i]);
+    const currentKey = seasonPhaseKey(current);
+    for (const [offset, week] of weeks.slice(currentIndex + 1).entries()) {
+        const key = seasonPhaseKey(week);
         if (key !== currentKey) {
-            return { key, inWeeks: i - currentIndex };
+            return { key, inWeeks: offset + 1 };
         }
     }
 
@@ -459,19 +460,22 @@ export function sessionShape(segments: PlanSessionSegment[]): string | null {
     const parts: string[] = [];
     for (let i = 0; i < segments.length; i++) {
         const work = segments[i];
+        if (work === undefined) {
+            continue;
+        }
         let reps = 1;
-        while (
-            work.zone > 'Z2' &&
-            segments[i + 1]?.key === 'recovery' &&
-            segments[i + 2] !== undefined &&
-            sameWork(work, segments[i + 2])
-        ) {
+        while (work.zone > 'Z2' && segments[i + 1]?.key === 'recovery') {
+            const repeat = segments[i + 2];
+            if (repeat === undefined || !sameWork(work, repeat)) {
+                break;
+            }
             reps++;
             i += 2;
         }
-        if (reps > 1) {
+        const recovery = segments[i - 1];
+        if (reps > 1 && recovery !== undefined) {
             parts.push(
-                `${reps} × ${segmentLabel(work)}, ${segmentLabel(segments[i - 1])} between`,
+                `${reps} × ${segmentLabel(work)}, ${segmentLabel(recovery)} between`,
             );
         } else {
             parts.push(segmentLabel(work));
@@ -646,16 +650,17 @@ export function targetLabel(day: PlanDay): string | null {
     }
 
     const units = workUnits(day.segments);
-    if (units.length === 0) {
+    const [firstUnit] = units;
+    if (firstUnit === undefined) {
         return day.hr_cap_bpm !== null
             ? `under ${day.hr_cap_bpm} bpm`
             : corePaceWithRange(day);
     }
 
     const pace =
-        units[0].paceSecPerKm === null
+        firstUnit.paceSecPerKm === null
             ? ''
-            : ` at ${formatPaceWithRange(units[0].paceSecPerKm, units[0].paceRange)}`;
+            : ` at ${formatPaceWithRange(firstUnit.paceSecPerKm, firstUnit.paceRange)}`;
     if (day.session_type === 'long') {
         const km = oneDecimal(
             units.reduce((sum, unit) => sum + (unit.km ?? 0), 0),
@@ -753,7 +758,7 @@ const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 /** The weekday a Y-m-d falls on, as the day rows label it. */
 export function weekdayLabel(iso: string): string {
     const date = parseNaiveLocalDate(iso);
-    return date === null ? '' : WEEKDAYS[date.getDay()];
+    return date === null ? '' : (WEEKDAYS[date.getDay()] ?? '');
 }
 
 /** A Plan page day row with the edits `SessionEditRules` allows on it. */

@@ -3,6 +3,8 @@ import { describe, expect, it, vi } from 'vitest';
 
 import type { EditablePlanDay } from '@/lib/plan';
 
+import { defined } from '@/test/defined';
+
 import DayDetail, { DayHeadline, hasDayDetail } from './DayDetail';
 
 const TODAY = '2026-06-17';
@@ -87,7 +89,7 @@ const WEEK: EditablePlanDay[] = [
 /** The headline over its detail, as the day panel draws them. */
 function renderRow(overrides: Partial<Parameters<typeof DayDetail>[0]> = {}) {
     const props = {
-        day: WEEK[0],
+        day: defined(WEEK[0]),
         weekDays: WEEK,
         onMove: vi.fn(),
         onSkip: vi.fn(),

@@ -3,6 +3,8 @@ import { describe, expect, it, vi } from 'vitest';
 
 import type { EditablePlanDay, PlanWeek, SeasonSummaryWeek } from '@/lib/plan';
 
+import { defined } from '@/test/defined';
+
 import WeeksList from './WeeksList';
 
 function week(overrides: Partial<SeasonSummaryWeek> = {}): SeasonSummaryWeek {
@@ -108,15 +110,17 @@ describe('WeeksList', () => {
     it('marks the current week', () => {
         const { rows } = renderList();
 
-        expect(within(rows[2]).getByText('this week')).toBeInTheDocument();
+        expect(
+            within(defined(rows[2])).getByText('this week'),
+        ).toBeInTheDocument();
         expect(rows[1]).not.toHaveTextContent('this week');
     });
 
     it('shows a loaded week when its row is picked, and says which one is shown', () => {
         const { onShow, rows } = renderList();
-        const behind = within(rows[1]).getByRole('button');
+        const behind = within(defined(rows[1])).getByRole('button');
 
-        expect(within(rows[2]).getByRole('button')).toHaveAttribute(
+        expect(within(defined(rows[2])).getByRole('button')).toHaveAttribute(
             'aria-pressed',
             'true',
         );
@@ -130,8 +134,12 @@ describe('WeeksList', () => {
     it('leaves a week outside the loaded window as a plain row', () => {
         const { rows } = renderList();
 
-        expect(within(rows[0]).queryByRole('button')).not.toBeInTheDocument();
-        expect(within(rows[4]).queryByRole('button')).not.toBeInTheDocument();
+        expect(
+            within(defined(rows[0])).queryByRole('button'),
+        ).not.toBeInTheDocument();
+        expect(
+            within(defined(rows[4])).queryByRole('button'),
+        ).not.toBeInTheDocument();
         expect(screen.getAllByRole('button')).toHaveLength(3);
     });
 });

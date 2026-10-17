@@ -84,7 +84,11 @@ function strainMeaning(strain: number | null, range: WeeklyRange): string {
     return `over your last 7 days. a steady week for you sits around ${range.low} to ${range.high}.`;
 }
 
-function dateParts(iso: string): { day: number; month: string; year: string } {
+function dateParts(iso: string): {
+    day: number;
+    month: string | undefined;
+    year: string | undefined;
+} {
     const [year, month, day] = iso.split('-');
 
     return { day: Number(day), month: ID_MONTH_SHORT[Number(month) - 1], year };

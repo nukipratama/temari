@@ -132,8 +132,9 @@ function splitLocationLines(location: string): [string, string | null] {
     if (parts.length <= 1) {
         return [location, null];
     }
+    const [first = '', second = null] = parts;
     if (parts.length === 2) {
-        return [parts[0], parts[1]];
+        return [first, second];
     }
     return [parts.slice(0, -2).join(', '), parts.slice(-2).join(', ')];
 }

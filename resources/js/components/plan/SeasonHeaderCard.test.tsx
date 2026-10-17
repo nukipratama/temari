@@ -4,6 +4,8 @@ import { describe, expect, it } from 'vitest';
 import type { SeasonSummaryWeek } from '@/lib/plan';
 import type { PlanRaceCard } from '@/types/inertia';
 
+import { defined } from '@/test/defined';
+
 import SeasonHeaderCard from './SeasonHeaderCard';
 
 function week(overrides: Partial<SeasonSummaryWeek> = {}): SeasonSummaryWeek {
@@ -291,10 +293,10 @@ describe('SeasonHeaderCard', () => {
         renderCard({
             weeks: [
                 {
-                    ...GENERAL_ZONE_CURRENT[0],
+                    ...defined(GENERAL_ZONE_CURRENT[0]),
                     phase: 'deload',
                 },
-                { ...GENERAL_ZONE_CURRENT[1], phase: 'build' },
+                { ...defined(GENERAL_ZONE_CURRENT[1]), phase: 'build' },
             ],
         });
 

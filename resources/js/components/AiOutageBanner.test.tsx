@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
+import { defined } from '@/test/defined';
 import { setMockPage } from '@/test/setup';
 
 import AiOutageBanner from './AiOutageBanner';
@@ -92,7 +93,7 @@ function reachableFrom(entry: string): Set<string> {
         for (const match of text.matchAll(
             /(?:import|export)\s+(?!type\s)(?:[^;'"]*?\sfrom\s+)?['"]([^'"]+)['"]/g,
         )) {
-            const resolved = resolveImport(path, match[1]);
+            const resolved = resolveImport(path, defined(match[1]));
             if (
                 resolved !== null &&
                 !resolved.startsWith('layouts/') &&

@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
+import { defined } from '@/test/defined';
+
 import { run } from './runFixture';
 import { groupByWeek, type RunWithDetail } from './weekBuckets';
 
@@ -15,10 +17,10 @@ describe('groupByWeek', () => {
             '2026-05-18',
             '2026-05-11',
         ]);
-        expect(buckets[0].weekEnding).toBe('2026-05-24');
-        expect(buckets[0].runs.length).toBe(2);
-        expect(buckets[0].totalKm).toBeCloseTo(10);
-        expect(buckets[0].totalTrimp).toBe(100);
+        expect(defined(buckets[0]).weekEnding).toBe('2026-05-24');
+        expect(defined(buckets[0]).runs.length).toBe(2);
+        expect(defined(buckets[0]).totalKm).toBeCloseTo(10);
+        expect(defined(buckets[0]).totalTrimp).toBe(100);
     });
 
     it('collects dateless runs into one bucket at the end', () => {
@@ -52,7 +54,8 @@ describe('groupByWeek', () => {
         bare.detail.distance = null;
         bare.detail.trimp_edwards = null;
 
-        const [bucket] = groupByWeek([bare]);
+        const [maybeBucket] = groupByWeek([bare]);
+        const bucket = defined(maybeBucket);
         expect(bucket.totalKm).toBe(0);
         expect(bucket.totalTrimp).toBeNull();
     });
@@ -62,7 +65,12 @@ describe('groupByWeek', () => {
         const unscored = run(102, 'No HR', '2026-05-12T06:00:00');
         unscored.detail.trimp_edwards = null;
 
-        const [scoredWeek, unscoredWeek] = groupByWeek([scored, unscored]);
+        const [maybeScoredWeek, maybeUnscoredWeek] = groupByWeek([
+            scored,
+            unscored,
+        ]);
+        const scoredWeek = defined(maybeScoredWeek);
+        const unscoredWeek = defined(maybeUnscoredWeek);
 
         expect(scoredWeek.totalTrimp).toBe(50);
         expect(unscoredWeek.totalTrimp).toBeNull();

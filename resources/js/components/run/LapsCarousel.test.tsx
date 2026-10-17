@@ -12,6 +12,7 @@ import {
 import type { StreamSummaryLap } from '@/types/inertia';
 
 import { SCROLL_FADE_MASK } from '@/hooks/useScrollFade';
+import { defined } from '@/test/defined';
 
 import LapsCarousel from './LapsCarousel';
 
@@ -88,7 +89,7 @@ describe('LapsCarousel', () => {
 
     it('shows heart rate and cadence per lap', () => {
         render(<LapsCarousel laps={laps} />);
-        const first = screen.getAllByRole('listitem')[0];
+        const first = defined(screen.getAllByRole('listitem')[0]);
         expect(within(first).getByText('♡ 149')).toBeInTheDocument();
         expect(within(first).getByText('175')).toBeInTheDocument();
     });

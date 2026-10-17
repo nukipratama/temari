@@ -12,6 +12,8 @@ import {
 } from '@brand/build-tokens.mjs';
 import { contrast, darkGrounds, KINDS, luminance } from '@brand/grounds.mjs';
 
+import { defined } from '@/test/defined';
+
 /**
  * Proof for R1's mitigation (plan/README.md): before any of these values are
  * baked into app.css, this pins that the dark-ground derivation math itself
@@ -51,8 +53,14 @@ describe('dark-ground token derivation (build-tokens.mjs)', () => {
             Number.parseInt(hex.slice(3, 5), 16),
             Number.parseInt(hex.slice(5, 7), 16),
         ];
-        const [er, eg, eb] = toRgb(ember);
-        const [lr, lg, lb] = toRgb(lightened);
+        const [maybeEr, maybeEg, maybeEb] = toRgb(ember);
+        const er = defined(maybeEr);
+        const eg = defined(maybeEg);
+        const eb = defined(maybeEb);
+        const [maybeLr, maybeLg, maybeLb] = toRgb(lightened);
+        const lr = defined(maybeLr);
+        const lg = defined(maybeLg);
+        const lb = defined(maybeLb);
         expect(lr).toBeGreaterThanOrEqual(er);
         expect(lg).toBeGreaterThanOrEqual(eg);
         expect(lb).toBeGreaterThanOrEqual(eb);
@@ -76,9 +84,13 @@ describe('dark-ground token derivation (build-tokens.mjs)', () => {
         'keeps %s-ink (dark) at %s:1 on its own tint over every dark ground',
         (family, target) => {
             for (const bg of grounds) {
-                const tint = tintOnDark(COLOR[family], bg, KINDS.tint[family]);
+                const tint = tintOnDark(
+                    defined(COLOR[family]),
+                    bg,
+                    defined(KINDS.tint[family]),
+                );
                 expect(
-                    contrast(DARK_INK[family], tint),
+                    contrast(defined(DARK_INK[family]), tint),
                     `${family}-ink (dark) ${DARK_INK[family]} on ${family}/${KINDS.tint[family]} over ${bg}`,
                 ).toBeGreaterThanOrEqual(target);
             }
@@ -104,9 +116,9 @@ describe('dark-ground token derivation (build-tokens.mjs)', () => {
             expect(
                 luminance(hex),
                 `mood-${mood}-bg (dark) ${hex} vs fill ${MOOD[mood]}`,
-            ).toBeLessThan(luminance(MOOD[mood]));
+            ).toBeLessThan(luminance(defined(MOOD[mood])));
             expect(luminance(hex)).toBeLessThan(
-                luminance(MOOD_BG[`mood-${mood}-bg`]),
+                luminance(defined(MOOD_BG[`mood-${mood}-bg`])),
             );
         }
     });
@@ -115,7 +127,7 @@ describe('dark-ground token derivation (build-tokens.mjs)', () => {
         // The cell is the ground the label most often lands on, and it is the
         // one a Sky-only sweep would miss.
         for (const [mood, hex] of Object.entries(MOOD_INK_DARK)) {
-            for (const bg of [...grounds, MOOD_BG_DARK[mood]]) {
+            for (const bg of [...grounds, defined(MOOD_BG_DARK[mood])]) {
                 expect(
                     contrast(hex, bg),
                     `mood-${mood}-ink (dark) ${hex} on ${bg}`,

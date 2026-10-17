@@ -73,6 +73,9 @@ export default function JourneyChart({
             return;
         }
         const point = points[selectedIndex];
+        if (point === undefined) {
+            return;
+        }
         const halfTip = tipRef.current.offsetWidth / 2;
         const containerWidth = chartRef.current.clientWidth || VIEW_W;
         const rawX =
@@ -149,8 +152,14 @@ export default function JourneyChart({
         });
     }
 
+    const first = points[0];
+    const last = points.at(-1);
+    if (first === undefined || last === undefined) {
+        return null;
+    }
+
     const path = points.map((p) => `${p.x},${p.y}`).join(' ');
-    const summary = `from ${formatDurationHMS(points[0].time)} on ${points[0].label} to ${formatDurationHMS(points.at(-1)!.time)} on ${points.at(-1)!.label}.`;
+    const summary = `from ${formatDurationHMS(first.time)} on ${first.label} to ${formatDurationHMS(last.time)} on ${last.label}.`;
     const selected = selectedIndex !== null ? points[selectedIndex] : null;
 
     return (
@@ -315,21 +324,24 @@ function buildPoints(
             } => row.time != null,
         );
 
-    if (recorded.length === 0) return [];
+    const firstRow = recorded[0];
+    const lastRow = recorded.at(-1);
+    if (firstRow === undefined || lastRow === undefined) return [];
 
-    const days = recorded.map((row) => Date.parse(row.week) / 86_400_000);
-    const daySpan = days.at(-1)! - days[0];
+    const dayOf = (week: string) => Date.parse(week) / 86_400_000;
+    const firstDay = dayOf(firstRow.week);
+    const daySpan = dayOf(lastRow.week) - firstDay;
     const times = recorded.map((row) => row.time);
     const slowest = Math.max(...times);
     const fastest = Math.min(...times);
     const timeSpan = slowest - fastest;
     const best = recorded.reduce((a, b) => (b.time < a.time ? b : a));
 
-    return recorded.map((row, index) => ({
+    return recorded.map((row) => ({
         x:
             daySpan === 0
                 ? VIEW_W / 2
-                : ((days[index] - days[0]) / daySpan) * VIEW_W,
+                : ((dayOf(row.week) - firstDay) / daySpan) * VIEW_W,
         // 8px of headroom top and bottom so a marker never clips the viewBox.
         y:
             timeSpan === 0

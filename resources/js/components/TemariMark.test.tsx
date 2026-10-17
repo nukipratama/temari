@@ -1,6 +1,8 @@
 import { render } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
+import { defined } from '@/test/defined';
+
 import TemariMark from './TemariMark';
 
 function arcsOf(container: HTMLElement): SVGPathElement[] {
@@ -13,8 +15,12 @@ describe('TemariMark', () => {
         const [outer, inner] = arcsOf(container);
 
         expect(arcsOf(container)).toHaveLength(2);
-        expect(outer.getAttribute('stroke')).toBe('var(--color-horizon)');
-        expect(inner.getAttribute('stroke')).toBe('var(--color-foreground)');
+        expect(defined(outer).getAttribute('stroke')).toBe(
+            'var(--color-horizon)',
+        );
+        expect(defined(inner).getAttribute('stroke')).toBe(
+            'var(--color-foreground)',
+        );
         expect(container.querySelector('g')?.getAttribute('fill')).toBe('none');
     });
 
@@ -30,8 +36,12 @@ describe('TemariMark', () => {
         const { container } = render(<TemariMark color="var(--color-cream)" />);
         const [outer, inner] = arcsOf(container);
 
-        expect(outer.getAttribute('stroke')).toBe('var(--color-horizon)');
-        expect(inner.getAttribute('stroke')).toBe('var(--color-cream)');
+        expect(defined(outer).getAttribute('stroke')).toBe(
+            'var(--color-horizon)',
+        );
+        expect(defined(inner).getAttribute('stroke')).toBe(
+            'var(--color-cream)',
+        );
     });
 
     it('is decorative, so it carries no accessible name', () => {

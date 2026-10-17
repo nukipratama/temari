@@ -93,11 +93,12 @@ export default function WeekStrip({
                 End: days.length - 1,
             } as Record<string, number | undefined>
         )[event.key];
-        if (target === undefined) {
+        const day = target === undefined ? undefined : days[target];
+        if (target === undefined || day === undefined) {
             return;
         }
         event.preventDefault();
-        onSelect(days[target].date);
+        onSelect(day.date);
         tabsRef.current[target]?.focus();
     };
 

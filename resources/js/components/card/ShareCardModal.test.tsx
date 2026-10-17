@@ -11,6 +11,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Print } from '@/lib/card/print';
 
 import { makeCardFacts } from '@/test/cardFacts';
+import { defined } from '@/test/defined';
 
 import ShareCardModal, { type ShareCardTarget } from './ShareCardModal';
 
@@ -292,7 +293,7 @@ describe('ShareCardModal', () => {
         );
 
         renderPrint.mockResolvedValue(print());
-        fireEvent.click(screen.getAllByText('try again')[0]);
+        fireEvent.click(defined(screen.getAllByText('try again')[0]));
 
         await waitFor(() =>
             expect(screen.getAllByRole('img').length).toBeGreaterThan(0),
@@ -314,9 +315,9 @@ describe('ShareCardModal', () => {
         fireEvent.click(screen.getByRole('button', { name: /share/ }));
 
         await waitFor(() => expect(share).toHaveBeenCalled());
-        const files = share.mock.calls[0][0].files as File[];
-        expect(files[0].type).toBe('image/png');
-        expect(files[0].name).toBe('counter-kick-broadsheet.png');
+        const files = defined(share.mock.calls[0])[0].files as File[];
+        expect(defined(files[0]).type).toBe('image/png');
+        expect(defined(files[0]).name).toBe('counter-kick-broadsheet.png');
     });
 
     it('falls back to the run link when the sheet will not take a file', async () => {
@@ -334,7 +335,7 @@ describe('ShareCardModal', () => {
         fireEvent.click(screen.getByRole('button', { name: /share/ }));
 
         await waitFor(() => expect(share).toHaveBeenCalled());
-        expect(share.mock.calls[0][0].url).toBe('/activities/7');
+        expect(defined(share.mock.calls[0])[0].url).toBe('/activities/7');
     });
 
     it('copies the link when the browser has no share sheet at all', async () => {

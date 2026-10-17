@@ -1,5 +1,7 @@
 import { RULES, rulesFor } from '@scripts/check-raw-palette.mjs';
 
+import { defined } from '@/test/defined';
+
 // Every fixture below is built via concatenation rather than written as one
 // literal, in code AND in comments — check-raw-palette.mjs itself scans
 // resources/js line by line with no comment-stripping, so a fixture (or a
@@ -18,15 +20,17 @@ const canvasFont = ['700 30px "JetBrains', 'Mono"'].join(' ');
 
 describe('check-raw-palette rules', () => {
     it('still flags a raw Tailwind palette shade', () => {
-        expect(rawShade.match(RULES[0].re)).toEqual([rawShade]);
+        expect(rawShade.match(defined(RULES[0]).re)).toEqual([rawShade]);
     });
 
     it('still flags an off-token shadow utility', () => {
-        expect(offTokenShadow.match(RULES[1].re)).toEqual([offTokenShadow]);
+        expect(offTokenShadow.match(defined(RULES[1]).re)).toEqual([
+            offTokenShadow,
+        ]);
     });
 
     it('does not false-positive a legitimate token that ends in a digit', () => {
-        expect(legitToken.match(RULES[0].re)).toBeNull();
+        expect(legitToken.match(defined(RULES[0]).re)).toBeNull();
     });
 
     /**
@@ -37,11 +41,13 @@ describe('check-raw-palette rules', () => {
      * matched anything.
      */
     it('flags a px font-size utility', () => {
-        expect(pxFontSize.match(RULES[2].re)).toEqual([pxFontSize]);
+        expect(pxFontSize.match(defined(RULES[2]).re)).toEqual([pxFontSize]);
     });
 
     it('flags an inline px font-size style prop', () => {
-        expect(inlinePxFont.match(RULES[3].re)).toEqual([inlinePxFont]);
+        expect(inlinePxFont.match(defined(RULES[3]).re)).toEqual([
+            inlinePxFont,
+        ]);
     });
 
     it('leaves rem font-sizes at the 11px floor alone, since those scale with the root', () => {
@@ -98,11 +104,11 @@ describe('check-raw-palette rules', () => {
 });
 
 describe('ground-fixed gradient stop', () => {
-    // RULES[4] — appended, so the indices above stay put. Fixtures are
+    // defined(RULES[4]) — appended, so the indices above stay put. Fixtures are
     // concatenated for the reason given at the top of this file: the scanner
     // reads this very file, so a contiguous literal would trip the rule it
     // tests.
-    const rule = RULES[4].re;
+    const rule = defined(RULES[4]).re;
     const fixedFrom = ['from', 'surface', 'warm'].join('-');
     const fixedTo = ['to', 'surface', 'elev'].join('-');
     const reactiveFrom = ['from', 'popover'].join('-');
@@ -143,7 +149,7 @@ describe('ground-fixed gradient stop', () => {
 });
 
 describe('sub-11px rem font-size', () => {
-    const rule = RULES[5].re;
+    const rule = defined(RULES[5]).re;
     const remSize = (value: string) => ['text', `[${value}rem]`].join('-');
 
     it.each([
@@ -187,7 +193,7 @@ describe('sub-11px rem font-size', () => {
 });
 
 describe('bare rounded utility', () => {
-    const rule = RULES[6].re;
+    const rule = defined(RULES[6]).re;
     const bare = ['round', 'ed'].join('');
     const matches = (classes: string) => classes.match(rule) ?? [];
 

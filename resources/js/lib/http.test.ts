@@ -1,5 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { defined } from '@/test/defined';
+
 import { csrfToken, getJson, postJson, sendJson } from './http';
 
 afterEach(() => {
@@ -44,7 +46,7 @@ describe('postJson', () => {
         await postJson('/api/markers/seen');
 
         expect(fetchMock).toHaveBeenCalledTimes(1);
-        const [url, init] = fetchMock.mock.calls[0];
+        const [url, init] = defined(fetchMock.mock.calls[0]);
         expect(url).toBe('/api/markers/seen');
         expect(init.method).toBe('POST');
         expect(init.body).toBe('{}');
@@ -77,7 +79,7 @@ describe('postJson', () => {
 
         await postJson('/api/x', { question: 'why did my HR drift?' });
 
-        expect(fetchMock.mock.calls[0][1].body).toBe(
+        expect(defined(fetchMock.mock.calls[0])[1].body).toBe(
             '{"question":"why did my HR drift?"}',
         );
     });
@@ -90,7 +92,7 @@ describe('getJson', () => {
 
         await getJson('/api/activities/9/questions');
 
-        const [url, init] = fetchMock.mock.calls[0];
+        const [url, init] = defined(fetchMock.mock.calls[0]);
         expect(url).toBe('/api/activities/9/questions');
         expect(init.method).toBe('GET');
         expect(init.credentials).toBe('same-origin');
@@ -140,6 +142,6 @@ describe('sendJson', () => {
 
         await sendJson('POST', '/x');
 
-        expect(fetchMock.mock.calls[0][1].body).toBeUndefined();
+        expect(defined(fetchMock.mock.calls[0])[1].body).toBeUndefined();
     });
 });

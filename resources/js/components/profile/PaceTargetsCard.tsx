@@ -96,8 +96,9 @@ function hintFor(rung: (typeof RUNGS)[number], week: WeekSession[]): string {
     if (days.length === 0) {
         return 'none this week';
     }
-    if (days.length === 1) {
-        return `${days[0].weekday}${distanceLabel(days[0].distance_km)}`;
+    const [only] = days;
+    if (only !== undefined && days.length === 1) {
+        return `${only.weekday}${distanceLabel(only.distance_km)}`;
     }
 
     return days.map((session) => session.weekday).join(', ');

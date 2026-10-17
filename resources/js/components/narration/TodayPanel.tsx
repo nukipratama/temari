@@ -31,7 +31,7 @@ export default function TodayPanel({
         days.length > 0
             ? Math.round(median(days.map((day) => day.tokens)))
             : null;
-    const yesterdayDay = days.length > 1 ? days[days.length - 2] : null;
+    const yesterdayDay = days.at(-2) ?? null;
     const yesterday = yesterdayDay?.cost ?? null;
     const priorDays = days.slice(0, -1);
     const busiestDay =
