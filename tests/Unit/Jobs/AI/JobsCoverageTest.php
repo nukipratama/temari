@@ -420,15 +420,22 @@ it('AnalyzeMonthlyRecapJob does not advance when no later Pending month exists',
     Bus::assertNotDispatched(AnalyzeMonthlyRecapJob::class);
 });
 
-it('sends every analyze job to the narration queue, whichever base it extends', function (): void {
+it('sends every analyze job to the narration queue, whichever base it extends', function (string $job): void {
     // Not configurable and not the dispatcher's business: a tool-calling run
     // needs the longer timeout only supervisor-ai gives it.
     Queue::fake();
 
-    AnalyzeBriefingMascotVoiceJob::dispatch(1);
-    AnalyzeActivityJob::dispatch(1);
+    $job::dispatch(1);
 
-    Queue::assertPushedOn('ai', AnalyzeBriefingMascotVoiceJob::class);
-    Queue::assertPushedOn('ai', AnalyzeActivityJob::class);
+    Queue::assertPushedOn('ai', $job);
     expect(AnalyzeBaseJob::QUEUE)->toBe('ai');
-});
+})->with([
+    AnalyzeActivityJob::class => [AnalyzeActivityJob::class],
+    AnalyzeBriefingMascotVoiceJob::class => [AnalyzeBriefingMascotVoiceJob::class],
+    AnalyzeCardFlavorJob::class => [AnalyzeCardFlavorJob::class],
+    AnalyzeMonthlyRecapJob::class => [AnalyzeMonthlyRecapJob::class],
+    AnalyzePlanClampVoiceJob::class => [AnalyzePlanClampVoiceJob::class],
+    AnalyzeProfileVoiceJob::class => [AnalyzeProfileVoiceJob::class],
+    AnalyzeTrendReadJob::class => [AnalyzeTrendReadJob::class],
+    AnalyzeWeeklyRecapJob::class => [AnalyzeWeeklyRecapJob::class],
+]);
