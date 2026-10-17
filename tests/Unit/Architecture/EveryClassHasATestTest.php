@@ -59,13 +59,15 @@ function aggregateSuiteMarksClass(string $source, string $class): bool
         PhpToken::tokenize($source),
         fn (PhpToken $token): bool => ! $token->is([T_WHITESPACE, T_COMMENT, T_DOC_COMMENT, T_OPEN_TAG]),
     ));
-    $calls = [];
+    $open = [];
 
     foreach ($tokens as $i => $token) {
         if ($token->text === '(') {
-            $calls[] = $i > 0 && $tokens[$i - 1]->is(T_STRING) ? $tokens[$i - 1]->text : '';
-        } elseif ($token->text === ')') {
-            array_pop($calls);
+            $open[] = $i > 0 && $tokens[$i - 1]->is(T_STRING) ? $tokens[$i - 1]->text : '';
+        } elseif (in_array($token->text, ['[', '#['], true)) {
+            $open[] = '[';
+        } elseif (in_array($token->text, [')', ']'], true)) {
+            array_pop($open);
         } elseif ($token->is([T_STRING, T_NAME_QUALIFIED, T_NAME_FULLY_QUALIFIED])
             && ($tokens[$i + 1] ?? null)?->is(T_DOUBLE_COLON)
             && ($tokens[$i + 2] ?? null)?->is(T_CLASS)) {
@@ -74,9 +76,11 @@ function aggregateSuiteMarksClass(string $source, string $class): bool
                 ? ltrim($token->text, '\\')
                 : ($aliases->has($first) ? $aliases[$first].substr($token->text, strlen($first)) : $token->text);
 
-            $isDatasetKey = ($tokens[$i + 3] ?? null)?->is(T_DOUBLE_ARROW) && array_intersect(['with', 'dataset'], $calls) !== [];
+            $isDatasetKey = ($tokens[$i + 3] ?? null)?->is(T_DOUBLE_ARROW)
+                && in_array(array_slice($open, -2), [['with', '['], ['dataset', '[']], true)
+                && array_diff(array_slice($open, 0, -2), ['describe']) === [];
 
-            if ($resolved === $class && (end($calls) === 'covers' || $isDatasetKey)) {
+            if ($resolved === $class && (end($open) === 'covers' || $isDatasetKey)) {
                 return true;
             }
         }
@@ -149,7 +153,7 @@ it('has a test class for every concrete app class', function (): void {
 
     $unnamed = collect($aggregateSuites)
         ->flatMap(function (array $suites, string $prefix) use ($testedBasenames): array {
-            $source = collect($suites)->map(fn (string $suite): string => File::get(base_path('tests/'.$suite)))->implode("\n");
+            $sources = collect($suites)->map(fn (string $suite): string => File::get(base_path('tests/'.$suite)));
 
             return collect(File::allFiles(app_path(str_replace('\\', '/', substr($prefix, strlen('App\\'))))))
                 ->filter(fn ($file): bool => $file->getExtension() === 'php')
@@ -157,7 +161,7 @@ it('has a test class for every concrete app class', function (): void {
                 ->filter(fn (string $class): bool => class_exists($class) && ! new ReflectionClass($class)->isAbstract())
                 ->reject(fn (string $class): bool => new ReflectionClass($class)->isEnum() || is_subclass_of($class, Throwable::class))
                 ->reject(fn (string $class): bool => $testedBasenames->has(class_basename($class)))
-                ->reject(fn (string $class): bool => aggregateSuiteMarksClass($source, $class))
+                ->reject(fn (string $class): bool => $sources->contains(fn (string $source): bool => aggregateSuiteMarksClass($source, $class)))
                 ->all();
         })
         ->values();
@@ -203,6 +207,8 @@ it('rejects an aggregate suite that names a class only in words', function (stri
     'an import and a bare reference' => ["<?php\nuse App\\Jobs\\AI\\FooJob;\nit('runs', fn () => expect(new FooJob)->toBeObject());\n"],
     'a key outside a dataset' => ["<?php\nuse App\\Jobs\\AI\\FooJob;\nit('runs', function () { expect([FooJob::class => 1])->toHaveCount(1); });\n"],
     'another class sharing the short name' => ["<?php\nuse App\\Other\\FooJob;\nit('runs', fn () => true)->with([FooJob::class => [1]]);\n"],
+    'a key inside a dataset value' => ["<?php\nuse App\\Jobs\\AI\\FooJob;\nit('runs', fn (array \$map) => true)->with(['map' => [[FooJob::class => 1]]]);\n"],
+    'a mock argument inside a test' => ["<?php\nuse App\\Jobs\\AI\\FooJob;\nit('runs', function () { Mockery::mock()->shouldReceive('push')->with([FooJob::class => 1]); });\n"],
 ])->group('structure');
 
 it('accepts an aggregate suite that keys a dataset entry by the class or covers it', function (string $source): void {
@@ -212,5 +218,6 @@ it('accepts an aggregate suite that keys a dataset entry by the class or covers 
     'a named dataset key' => ["<?php\nuse App\\Jobs\\AI\\FooJob;\ndataset('jobs', [FooJob::class => [1]]);\n"],
     'a fully qualified key' => ["<?php\nit('runs', fn (int \$n) => expect(\$n)->toBe(1))->with([\\App\\Jobs\\AI\\FooJob::class => [1]]);\n"],
     'an aliased import' => ["<?php\nuse App\\Jobs\\AI\\FooJob as Job;\nit('runs', fn (int \$n) => expect(\$n)->toBe(1))->with([Job::class => [1]]);\n"],
+    'a closure dataset inside describe()' => ["<?php\nuse App\\Jobs\\AI\\FooJob;\ndescribe('jobs', function () { it('runs', fn (int \$n) => expect(\$n)->toBe(1))->with(fn () => [FooJob::class => [1]]); });\n"],
     'covers()' => ["<?php\nuse App\\Jobs\\AI\\FooJob;\ncovers(FooJob::class);\n"],
 ])->group('structure');
