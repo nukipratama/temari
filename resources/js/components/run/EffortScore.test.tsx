@@ -35,8 +35,7 @@ describe('EffortPicker', () => {
         const { container } = renderPicker();
 
         expect(container.firstElementChild).toHaveClass(
-            'bg-secondary',
-            'dark:bg-sky',
+            'bg-stat-ground',
             'rounded-panel',
         );
         expect(container.firstElementChild).not.toHaveAttribute('data-theme');
