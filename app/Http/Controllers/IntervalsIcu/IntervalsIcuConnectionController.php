@@ -9,8 +9,6 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreIntervalsIcuConnectionRequest;
 use App\Jobs\IntervalsIcu\SyncIntervalsIcuWorkoutJob;
 use App\Models\User;
-use App\Services\IntervalsIcu\Exceptions\IntervalsIcuRejectedException;
-use App\Services\IntervalsIcu\Exceptions\IntervalsIcuUnreachableException;
 use App\Services\IntervalsIcu\IntervalsIcuClient;
 use App\Services\IntervalsIcu\IntervalsIcuSync;
 use Illuminate\Http\RedirectResponse;
@@ -20,7 +18,7 @@ use Illuminate\Validation\ValidationException;
 
 class IntervalsIcuConnectionController extends Controller
 {
-    public function store(StoreIntervalsIcuConnectionRequest $request, IntervalsIcuClient $client): RedirectResponse
+    public function store(StoreIntervalsIcuConnectionRequest $request, IntervalsIcuClient $client, IntervalsIcuSync $sync): RedirectResponse
     {
         /** @var User $user */
         $user = $request->user();
@@ -41,7 +39,11 @@ class IntervalsIcuConnectionController extends Controller
             ]);
         }
 
-        $sameAthlete = $user->intervalsIcuConnection?->athlete_id === $validated['athlete_id'];
+        $existing = $user->intervalsIcuConnection;
+        $sameAthlete = $existing?->athlete_id === $validated['athlete_id'];
+        if ($existing !== null && ! $sameAthlete) {
+            $sync->removeTodayBestEffort($existing, Carbon::today());
+        }
 
         $user->intervalsIcuConnection()->updateOrCreate([], [
             'athlete_id' => $validated['athlete_id'],
@@ -65,13 +67,7 @@ class IntervalsIcuConnectionController extends Controller
             return back();
         }
 
-        if (! $connection->isBroken()) {
-            try {
-                $sync->removeToday($connection, Carbon::today());
-            } catch (IntervalsIcuRejectedException|IntervalsIcuUnreachableException) {
-                // The connection goes either way; today's workout then stays on their calendar.
-            }
-        }
+        $sync->removeTodayBestEffort($connection, Carbon::today());
         $connection->delete();
 
         return back();
