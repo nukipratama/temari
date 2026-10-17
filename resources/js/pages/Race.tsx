@@ -7,7 +7,6 @@ import type { PastRace, RaceDetails, RaceProjection } from '@/types/inertia';
 import DemoBlockedModal from '@/components/DemoBlockedModal';
 import RaceDuel from '@/components/race/RaceDuel';
 import RaceHeading from '@/components/race/RaceHeading';
-import RaceOutcomeCard from '@/components/race/RaceOutcomeCard';
 import { RaceBodySkeleton } from '@/components/race/RaceSkeleton';
 import SteppingStoneCard from '@/components/race/SteppingStoneCard';
 import TemariNudgeModal from '@/components/temari/TemariNudgeModal';
@@ -32,6 +31,9 @@ interface RaceProps {
 }
 
 const RaceGoalForm = lazyIsland(() => import('@/components/race/RaceGoalForm'));
+const RaceOutcomeCard = lazyIsland(
+    () => import('@/components/race/RaceOutcomeCard'),
+);
 
 const FORM_ID = 'race-goal-form';
 
@@ -150,15 +152,17 @@ export default function Race({
                 )}
 
                 <Deferred data="past_races" fallback={<></>}>
-                    {() =>
-                        pastRaces.map((past) => (
-                            <RaceOutcomeCard
-                                key={past.id}
-                                race={past}
-                                className="mt-4"
-                            />
-                        ))
-                    }
+                    {() => (
+                        <Suspense fallback={null}>
+                            {pastRaces.map((past) => (
+                                <RaceOutcomeCard
+                                    key={past.id}
+                                    race={past}
+                                    className="mt-4"
+                                />
+                            ))}
+                        </Suspense>
+                    )}
                 </Deferred>
 
                 <div id={FORM_ID}>
