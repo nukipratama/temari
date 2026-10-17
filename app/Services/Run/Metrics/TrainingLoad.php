@@ -51,7 +51,7 @@ class TrainingLoad
      */
     private const int SUMMARY_CACHE_SECONDS = 300;
 
-    private const int SUMMARY_CACHE_VERSION = 4;
+    private const int SUMMARY_CACHE_VERSION = 5;
 
     /**
      * @param  int  $windowDays  the trailing window `weekly_trimp`/monotony/strain
@@ -68,14 +68,14 @@ class TrainingLoad
             return $this->summaryMemo[$cacheKey];
         }
 
-        return $this->summaryMemo[$cacheKey] = Cache::remember($cacheKey, self::SUMMARY_CACHE_SECONDS, function () use ($user, $today, $windowDays): ?array {
+        // Wrapped so a null summary is cached too: Cache::remember treats a bare null as a miss.
+        return $this->summaryMemo[$cacheKey] = Cache::remember($cacheKey, self::SUMMARY_CACHE_SECONDS, function () use ($user, $today, $windowDays): array {
             ['trimp' => $dailyTrimp, 'runDays' => $runDays] = $this->loadDailyHistory($user, $today);
-            if ($dailyTrimp === []) {
-                return null;
-            }
 
-            return $this->summaryFromDailyMap($dailyTrimp, $runDays, $today, windowDays: $windowDays);
-        });
+            return ['summary' => $dailyTrimp === []
+                ? null
+                : $this->summaryFromDailyMap($dailyTrimp, $runDays, $today, windowDays: $windowDays)];
+        })['summary'];
     }
 
     /**

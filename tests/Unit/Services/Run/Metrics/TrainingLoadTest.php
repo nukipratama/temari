@@ -482,6 +482,19 @@ it('memoizes a null summary within the same instance until clearSummaryCache for
     expect($this->load->summary($user))->not->toBeNull();
 });
 
+it('caches a null summary across instances, so an athlete with no TRIMP history reads it from the cache', function (): void {
+    $user = User::factory()->create();
+    expect($this->load->summary($user))->toBeNull();
+
+    $queries = 0;
+    DB::listen(function () use (&$queries): void {
+        $queries++;
+    });
+
+    expect(new TrainingLoad()->summary($user))->toBeNull()
+        ->and($queries)->toBe(0);
+});
+
 it('memoizes a real summary within the same instance, ignoring one an earlier build cached under the unversioned key', function (): void {
     $user = User::factory()->create();
     seedTrimpDay($user, 80.0, 0);
