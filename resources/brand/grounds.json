@@ -115,8 +115,7 @@
         "gradient-to-br",
         "gradient-to-l",
         "gradient-to-r",
-        "transparent",
-        "white"
+        "transparent"
     ],
     "__panel": "Every bg-<token>/<alpha> the components paint. A translucent panel is not the token it tints: it is that token composited over whatever it is mounted on, which is the one fact no scan can see. `over` records it per call site, because the same panel class is a hero-panel tile in one file and a page-ground tile in another and only the second is a bug — so a new file painting it is a new claim to check, not a silent reuse. `text` is every text token that lands on the panel; the same-class-string scan finds most, a child element's text is added by hand. Empty text means nothing prints on it, so nothing scores it.",
     "panel": {
