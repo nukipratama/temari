@@ -5,7 +5,7 @@ import type { AthleteRow } from '@/pages/Narration/types';
 import EmptyState from '@/components/narration/EmptyState';
 import LastOpen from '@/components/narration/LastOpen';
 import SectionHeading from '@/components/narration/SectionHeading';
-import Sparkline from '@/components/narration/Sparkline';
+import SpendBars from '@/components/narration/SpendBars';
 import { Card } from '@/components/ui/card';
 import Chip from '@/components/ui/Chip';
 import ProgressBar from '@/components/ui/ProgressBar';
@@ -169,7 +169,7 @@ function AthleteRowView({
                     30-day shape
                 </span>
                 <div className="mt-1">
-                    <Sparkline
+                    <SpendBars
                         values={row.sparkline.map((point) => point.cost)}
                         ariaLabel={`${label}: daily spend over the last 30 days`}
                     />

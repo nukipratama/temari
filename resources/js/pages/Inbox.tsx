@@ -1,8 +1,8 @@
-import { Deferred, Head, Link, router, usePage } from '@inertiajs/react';
+import { Deferred, Head, Link, router } from '@inertiajs/react';
 import { ChevronDown } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
-import type { InboxItem, SharedProps } from '@/types/inertia';
+import type { InboxItem } from '@/types/inertia';
 
 import { BUCKET_LABEL, groupByBucket } from '@/components/inbox/inboxBuckets';
 import InboxRow from '@/components/inbox/InboxRow';
@@ -12,6 +12,7 @@ import { Icon } from '@/components/ui/Icon';
 import PageContainer from '@/components/ui/PageContainer';
 import PageHero from '@/components/ui/PageHero';
 import { SkeletonRows } from '@/components/ui/Skeleton';
+import { useSharedProps } from '@/hooks/useSharedProps';
 import { appLayout } from '@/layouts/appLayout';
 import { postJson } from '@/lib/http';
 import { useTodayIso } from '@/lib/pace';
@@ -46,7 +47,7 @@ export default function Inbox({
     hasOlder,
     focusId,
 }: Readonly<InboxProps>) {
-    const { props } = usePage<SharedProps>();
+    const props = useSharedProps();
     const unread = props.unreadNotifications ?? 0;
     const today = useTodayIso();
 

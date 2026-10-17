@@ -1,14 +1,15 @@
-import { Link, usePage, usePoll } from '@inertiajs/react';
+import { Link, usePoll } from '@inertiajs/react';
 import { ChartLine } from 'lucide-react';
 import { useEffect } from 'react';
 
-import type { SharedProps, StravaSyncState } from '@/types/inertia';
+import type { StravaSyncState } from '@/types/inertia';
 
 import StravaSyncButton from '@/components/StravaSyncButton';
 import TemariMascot from '@/components/temari/TemariMascot';
 import { Card } from '@/components/ui/card';
 import Eyebrow from '@/components/ui/Eyebrow';
 import { Icon } from '@/components/ui/Icon';
+import { useSharedProps } from '@/hooks/useSharedProps';
 
 const HERO: Record<
     StravaSyncState,
@@ -51,7 +52,7 @@ const ACTIONS = [
 ] as const;
 
 export default function EmptyRunsState() {
-    const { stravaSync } = usePage<SharedProps>().props;
+    const { stravaSync } = useSharedProps();
     const state: StravaSyncState = stravaSync?.state ?? 'disconnected';
     const hero = HERO[state];
     const isSyncing = state === 'syncing';

@@ -1,8 +1,5 @@
-import { usePage } from '@inertiajs/react';
-
-import type { SharedProps } from '@/types/inertia';
-
 import Chip from '@/components/ui/Chip';
+import { useSharedProps } from '@/hooks/useSharedProps';
 import { formatRelativeId } from '@/lib/pace';
 
 interface LastOpenProps {
@@ -28,7 +25,7 @@ export default function LastOpen({
     away,
     isDemo,
 }: Readonly<LastOpenProps>) {
-    const { today } = usePage<SharedProps>().props;
+    const { today } = useSharedProps();
 
     if (isDemo) {
         return <p className="text-xs text-text-3">demo (never stamped)</p>;

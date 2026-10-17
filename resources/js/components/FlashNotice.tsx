@@ -1,5 +1,6 @@
+import { router } from '@inertiajs/react';
 import { CircleAlert, CircleCheck, Info } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import Banner, { type BannerTone } from '@/components/ui/Banner';
 import { type IconComponent } from '@/components/ui/Icon';
@@ -30,14 +31,8 @@ export default function FlashNotice() {
         ) ?? null;
     const message = tone === null ? null : (flash?.[tone] ?? null);
     const [dismissed, setDismissed] = useState(false);
-    const [lastMessage, setLastMessage] = useState(message);
 
-    // A fresh flash (new message) re-shows the banner after a prior dismissal.
-    // Adjusted during render (React-endorsed) rather than in an effect.
-    if (message !== lastMessage) {
-        setLastMessage(message);
-        setDismissed(false);
-    }
+    useEffect(() => router.on('navigate', () => setDismissed(false)), []);
 
     if (tone === null || message === null || dismissed) {
         return null;

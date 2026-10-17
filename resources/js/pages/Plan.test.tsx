@@ -1,7 +1,7 @@
 import type { ComponentProps } from 'react';
 
 import { router } from '@inertiajs/react';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { EditablePlanDay, SeasonSummaryWeek } from '@/lib/plan';
@@ -13,6 +13,20 @@ import {
 import { setMockDeferred, setMockPage } from '@/test/setup';
 
 import Plan from './Plan';
+
+const raceCardRenders = vi.hoisted(() => vi.fn());
+vi.mock('@/components/plan/PlanRaceCard', async (importOriginal) => {
+    const original =
+        await importOriginal<typeof import('@/components/plan/PlanRaceCard')>();
+
+    return {
+        default: (props: ComponentProps<typeof original.default>) => {
+            raceCardRenders();
+
+            return original.default(props);
+        },
+    };
+});
 
 const DISCLAIMER_LINE =
     'temari plans from your runs, not a check-up. if something hurts, rest and see a pro.';
@@ -385,6 +399,25 @@ describe('Plan', () => {
 
         const button = screen.getByRole('button', { name: /next in/i });
         expect(button).toBeDisabled();
+    });
+
+    it('ticks the cooldown without re-rendering the rest of the page', () => {
+        vi.useFakeTimers();
+        try {
+            renderPlan({ regenerateCooldownSeconds: 3600 });
+            const rendersBefore = raceCardRenders.mock.calls.length;
+
+            act(() => {
+                vi.advanceTimersByTime(3000);
+            });
+
+            expect(
+                screen.getByRole('button', { name: /next in 59:57/i }),
+            ).toBeInTheDocument();
+            expect(raceCardRenders).toHaveBeenCalledTimes(rendersBefore);
+        } finally {
+            vi.useRealTimers();
+        }
     });
 
     it('skips a session through the sessions endpoint', () => {

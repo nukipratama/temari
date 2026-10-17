@@ -1,6 +1,6 @@
-import { usePage } from '@inertiajs/react';
+import type { PaceRange } from '@/types/inertia';
 
-import type { PaceRange, SharedProps } from '@/types/inertia';
+import { useSharedProps } from '@/hooks/useSharedProps';
 
 // Mirrors App\Services\Run\Metrics\PaceFormatter::format().
 export function formatPace(secPerKm: number): string {
@@ -302,7 +302,7 @@ export function isoDateLocal(d: Date): string {
 
 /** The server's calendar day as YYYY-MM-DD. */
 export function useTodayIso(): string {
-    return usePage<SharedProps>().props.today;
+    return useSharedProps().today;
 }
 
 // Inverse of formatPace: parses "M:SS" (or "MM:SS") back to seconds-per-km.

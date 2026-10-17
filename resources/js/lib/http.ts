@@ -27,6 +27,27 @@ export function postJson(url: string, body?: unknown): Promise<Response> {
 }
 
 /**
+ * Send a JSON body with any method. Same "caller owns the error policy"
+ * contract as {@see postJson}; an absent body sends no payload.
+ */
+export function sendJson(
+    method: string,
+    url: string,
+    body?: unknown,
+): Promise<Response> {
+    return fetch(url, {
+        method,
+        credentials: 'same-origin',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': csrfToken(),
+            'X-Requested-With': 'XMLHttpRequest',
+        },
+        body: body === undefined ? undefined : JSON.stringify(body),
+    });
+}
+
+/**
  * GET a plain-JSON endpoint. Same "caller owns the error policy" contract as
  * {@see postJson}: resolves with the raw `Response`, rejects on network error.
  */

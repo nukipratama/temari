@@ -18,7 +18,7 @@ export interface UsageRow {
     reasoning_pct: number | null;
 }
 
-export interface UsageTotals {
+interface UsageTotals {
     prompt: number;
     completion: number;
     total: number;
@@ -94,7 +94,7 @@ export interface ContentFilterSummary {
 }
 
 /** One day of spend, split by the narrator kind that billed it. */
-export interface ChartDay {
+interface ChartDay {
     day: string;
     cost: number;
     /** Prompt + completion tokens billed that day, across every kind. */
@@ -102,7 +102,7 @@ export interface ChartDay {
     byKind: Record<string, number>;
 }
 
-export interface ChartKind {
+interface ChartKind {
     kind: string;
     label: string;
     cost: number;
@@ -114,7 +114,7 @@ export interface CostChart {
     days: ChartDay[];
 }
 
-export interface SparklinePoint {
+interface SparklinePoint {
     day: string;
     cost: number;
 }
@@ -131,7 +131,7 @@ export interface RuleBasedReasons {
 }
 
 /** How a period's Done narration was produced, per athlete. */
-export interface ServedSplit {
+interface ServedSplit {
     llm: number;
     rule_based: number;
     /** Narrated before `served_by` existed. Not the same as rule-based. */
@@ -190,18 +190,18 @@ export interface NarrationOverviewProps {
     pauseReason: string | null;
 }
 
-export interface CostBucket {
+interface CostBucket {
     cost: number;
     calls: number;
 }
 
-export interface AthleteToolCall {
+interface AthleteToolCall {
     tool: string;
     arguments_summary: string;
     duration_ms: number;
 }
 
-export interface NarrationFlag {
+interface NarrationFlag {
     reason: string | null;
     note: string | null;
     at: string | null;
@@ -267,7 +267,7 @@ export interface AttentionBlock {
     at: string;
 }
 
-export interface AttentionData {
+interface AttentionData {
     failed: AttentionBlock[];
     dead_lettered: AttentionBlock[];
     stuck: AttentionBlock[];

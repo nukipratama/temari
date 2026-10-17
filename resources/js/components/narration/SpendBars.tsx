@@ -1,4 +1,4 @@
-interface SparklineProps {
+interface SpendBarsProps {
     values: readonly number[];
     ariaLabel: string;
 }
@@ -11,10 +11,10 @@ const GAP = 0.25;
  * Inline SVG bar sparkline. Deliberately not a chart library: one of these
  * renders per athlete row, and the whole vocabulary here is "how tall".
  */
-export default function Sparkline({
+export default function SpendBars({
     values,
     ariaLabel,
-}: Readonly<SparklineProps>) {
+}: Readonly<SpendBarsProps>) {
     const peak = Math.max(...values, 0);
     const slot = values.length > 0 ? VIEW_WIDTH / values.length : VIEW_WIDTH;
 

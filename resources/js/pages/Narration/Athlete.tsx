@@ -1,6 +1,4 @@
-import { Head, Link, usePage } from '@inertiajs/react';
-
-import type { SharedProps } from '@/types/inertia';
+import { Head, Link } from '@inertiajs/react';
 
 import AthleteHeader from '@/components/narration/athlete/AthleteHeader';
 import AttentionTab from '@/components/narration/athlete/AttentionTab';
@@ -11,6 +9,7 @@ import FlashBanner from '@/components/narration/FlashBanner';
 import LastOpen from '@/components/narration/LastOpen';
 import PageContainer from '@/components/ui/PageContainer';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { useSharedProps } from '@/hooks/useSharedProps';
 
 import type { AthletePageProps, AthleteTab } from './types';
 
@@ -34,7 +33,7 @@ export default function Athlete({
     override,
     replayBudget,
 }: Readonly<AthletePageProps>) {
-    const flashInfo = usePage<SharedProps>().props.flash?.info;
+    const flashInfo = useSharedProps().flash?.info;
     const athleteId = header.athlete.id;
     const currency = header.currency;
 

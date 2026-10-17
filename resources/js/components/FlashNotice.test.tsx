@@ -1,5 +1,6 @@
-import { fireEvent, render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { router } from '@inertiajs/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
 
 import { setMockPage } from '@/test/setup';
 
@@ -101,7 +102,29 @@ describe('FlashNotice', () => {
         expect(screen.queryByRole('status')).not.toBeInTheDocument();
     });
 
-    it('re-shows for a fresh flash after a prior dismissal', () => {
+    it('shows the same text again on the next Inertia visit', () => {
+        const flash = { info: 'Just sent. Give it a moment.' };
+        setMockPage({ ...base, flash });
+        const { rerender } = render(<FlashNotice />);
+        fireEvent.click(screen.getByLabelText('Close'));
+        expect(screen.queryByRole('status')).not.toBeInTheDocument();
+
+        const [, onNavigate] = vi
+            .mocked(router.on)
+            .mock.calls.filter(([event]) => event === 'navigate')
+            .at(-1)!;
+        setMockPage({ ...base, flash: { ...flash } });
+        act(() => {
+            (onNavigate as () => void)();
+        });
+        rerender(<FlashNotice />);
+
+        expect(screen.getByRole('status')).toHaveTextContent(
+            'Just sent. Give it a moment.',
+        );
+    });
+
+    it('re-shows for a fresh flash on the next visit after a prior dismissal', () => {
         setMockPage({
             ...base,
             flash: { info: 'Turn on notifications first.' },
@@ -110,9 +133,16 @@ describe('FlashNotice', () => {
         fireEvent.click(screen.getByLabelText('Close'));
         expect(screen.queryByRole('status')).not.toBeInTheDocument();
 
+        const [, onNavigate] = vi
+            .mocked(router.on)
+            .mock.calls.filter(([event]) => event === 'navigate')
+            .at(-1)!;
         setMockPage({
             ...base,
             flash: { success: 'Sending you a test notification.' },
+        });
+        act(() => {
+            (onNavigate as () => void)();
         });
         rerender(<FlashNotice />);
         expect(screen.getByRole('status')).toHaveTextContent(
