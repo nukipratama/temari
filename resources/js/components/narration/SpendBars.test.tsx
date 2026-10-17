@@ -1,6 +1,8 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
+import { defined } from '@/test/defined';
+
 import SpendBars from './SpendBars';
 
 describe('SpendBars', () => {
@@ -19,8 +21,8 @@ describe('SpendBars', () => {
 
         const [first, second] = Array.from(container.querySelectorAll('rect'));
 
-        expect(Number(first.getAttribute('height'))).toBeLessThan(
-            Number(second.getAttribute('height')),
+        expect(Number(defined(first).getAttribute('height'))).toBeLessThan(
+            Number(defined(second).getAttribute('height')),
         );
     });
 
@@ -31,7 +33,7 @@ describe('SpendBars', () => {
 
         const [empty] = Array.from(container.querySelectorAll('rect'));
 
-        expect(empty.getAttribute('class')).toContain('fill-border');
+        expect(defined(empty).getAttribute('class')).toContain('fill-border');
     });
 
     it('survives an all-zero window without dividing by the peak', () => {

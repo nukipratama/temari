@@ -4,6 +4,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { AnalysisPayload } from '@/types/inertia';
 
+import { defined } from '@/test/defined';
+
 import { triggerAnalysis, useAnalysisTrigger } from './useAnalysisTrigger';
 
 const fetchMock = vi.fn();
@@ -64,7 +66,7 @@ describe('useAnalysisTrigger', () => {
         await act(async () => {
             await result.current.trigger();
         });
-        const url = fetchMock.mock.calls[0][0] as string;
+        const url = defined(fetchMock.mock.calls[0])[0] as string;
         expect(url).toContain('?discriminator=2026-05-19');
     });
 
@@ -193,7 +195,7 @@ describe('useAnalysisTrigger', () => {
         await act(async () => {
             await result.current.trigger();
         });
-        const init = fetchMock.mock.calls[0][1] as RequestInit;
+        const init = defined(fetchMock.mock.calls[0])[1] as RequestInit;
         expect((init.headers as Record<string, string>)['X-CSRF-TOKEN']).toBe(
             '',
         );

@@ -37,8 +37,9 @@ export function projectPolyline(
     if (pts.length > maxPoints) {
         const stride = Math.ceil(pts.length / maxPoints);
         const sampled = pts.filter((_, i) => i % stride === 0);
-        if (sampled[sampled.length - 1] !== pts[pts.length - 1]) {
-            sampled.push(pts[pts.length - 1]);
+        const last = pts.at(-1);
+        if (last !== undefined && sampled.at(-1) !== last) {
+            sampled.push(last);
         }
         pts = sampled;
     }
@@ -61,5 +62,9 @@ export function projectPolyline(
         offX + (p[1] - minLng) * scale,
         offY + (maxLat - p[0]) * scale, // flip y: higher latitude = higher on screen
     ]);
-    return { points, start: points[0] };
+    const start = points[0];
+    if (start === undefined) {
+        return null;
+    }
+    return { points, start };
 }

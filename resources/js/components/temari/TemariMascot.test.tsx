@@ -1,6 +1,8 @@
 import { render } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
+import { defined } from '@/test/defined';
+
 import TemariMascot, {
     type MascotPose,
     POSES,
@@ -103,7 +105,9 @@ describe('TemariMascot', () => {
         );
         const [outer] = arcs(svg, 'outer');
 
-        expect(outer.getAttribute('class') ?? '').not.toContain('draw-in');
+        expect(defined(outer).getAttribute('class') ?? '').not.toContain(
+            'draw-in',
+        );
         expect(
             svg
                 .querySelector('[data-arc="outer"]')

@@ -2,6 +2,8 @@ import { router } from '@inertiajs/react';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
+import { defined } from '@/test/defined';
+
 import RegenerateButton from './RegenerateButton';
 
 describe('RegenerateButton', () => {
@@ -20,8 +22,9 @@ describe('RegenerateButton', () => {
     it('reads as replanning and disables while the request runs', () => {
         render(<RegenerateButton cooldownSeconds={null} />);
         fireEvent.click(screen.getByRole('button', { name: 'regenerate' }));
-        const { onStart, onFinish } = vi.mocked(router.post).mock
-            .calls[0][2] as { onStart: () => void; onFinish: () => void };
+        const { onStart, onFinish } = defined(
+            vi.mocked(router.post).mock.calls[0],
+        )[2] as { onStart: () => void; onFinish: () => void };
 
         act(() => onStart());
         expect(

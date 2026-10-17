@@ -84,6 +84,7 @@ function capitalisedWord(text: string): string | null {
             /(?:^|[.!?]\s+)([A-Z][a-z]+)|\b(Temari)\b|(?<![\w-])(I)(?=['’&\s,.!?]|$)/g,
         )) {
         const word = match[1] ?? match[2] ?? match[3];
+        if (word === undefined) continue;
         if (word === 'Temari' || word === 'I' || !PROPER_NOUNS.has(word)) {
             return word;
         }

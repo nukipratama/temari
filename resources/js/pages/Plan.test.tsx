@@ -10,6 +10,7 @@ import {
     clearNavigationMemory,
     rememberPlanSelectedDay,
 } from '@/lib/navigationMemory';
+import { defined } from '@/test/defined';
 import { setMockDeferred, setMockPage } from '@/test/setup';
 
 import Plan from './Plan';
@@ -435,7 +436,7 @@ describe('Plan', () => {
         renderPlan({
             weeks: [
                 {
-                    ...BASE_PROPS.weeks![0],
+                    ...defined(BASE_PROPS.weeks![0]),
                     days: [
                         day({
                             skipped: true,

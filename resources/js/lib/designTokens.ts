@@ -99,7 +99,9 @@ function composite(fill: string, alpha: number, ground: string): string {
     if (!f || !g) {
         return '';
     }
-    return `rgb(${f.map((v, i) => Math.round(v * alpha + g[i] * (1 - alpha))).join(', ')})`;
+    const mix = (top: number, under: number) =>
+        Math.round(top * alpha + under * (1 - alpha));
+    return `rgb(${mix(f[0], g[0])}, ${mix(f[1], g[1])}, ${mix(f[2], g[2])})`;
 }
 
 /**
@@ -118,8 +120,9 @@ function groundsForInk(
     const grounds = [...papers];
 
     const own = `${family}-bg`;
-    if (GROUND_KINDS.scoped.includes(own) && values[`--color-${own}`]) {
-        grounds.push({ name: own, value: values[`--color-${own}`] });
+    const ownValue = values[`--color-${own}`];
+    if (GROUND_KINDS.scoped.includes(own) && ownValue) {
+        grounds.push({ name: own, value: ownValue });
     }
 
     const alpha = (GROUND_KINDS.tint as Record<string, number>)[family];
@@ -186,7 +189,7 @@ export function groupColorFamilies(
             continue;
         }
         const rest = name.slice('--color-'.length);
-        const family = rest.split('-')[0];
+        const [family = ''] = rest.split('-');
         families.set(family, [...(families.get(family) ?? []), name]);
     }
 
@@ -196,27 +199,31 @@ export function groupColorFamilies(
 function channels(hex: string): [number, number, number] | null {
     const short = /^#([0-9a-f])([0-9a-f])([0-9a-f])$/i.exec(hex);
     if (short) {
-        return [
-            parseInt(short[1] + short[1], 16),
-            parseInt(short[2] + short[2], 16),
-            parseInt(short[3] + short[3], 16),
-        ];
+        const [, r = '', g = '', b = ''] = short;
+        return [parseInt(r + r, 16), parseInt(g + g, 16), parseInt(b + b, 16)];
     }
 
     const long = /^#([0-9a-f]{6})(?:[0-9a-f]{2})?$/i.exec(hex);
     if (long) {
-        const n = parseInt(long[1], 16);
+        const [, hex = ''] = long;
+        const n = parseInt(hex, 16);
         return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
     }
 
     const rgb = /^rgba?\(([^)]+)\)$/i.exec(hex);
     if (rgb) {
-        const parts = rgb[1]
+        const [, body = ''] = rgb;
+        const [r, g, b] = body
             .split(/[\s,/]+/)
             .filter(Boolean)
             .map(Number);
-        if (parts.length >= 3 && parts.slice(0, 3).every(Number.isFinite)) {
-            return [parts[0], parts[1], parts[2]];
+        if (
+            r !== undefined &&
+            g !== undefined &&
+            b !== undefined &&
+            [r, g, b].every(Number.isFinite)
+        ) {
+            return [r, g, b];
         }
     }
 
@@ -229,11 +236,15 @@ export function luminance(color: string): number | null {
     if (!rgb) {
         return null;
     }
-    const [r, g, b] = rgb.map((v) => {
+    const linear = (v: number) => {
         const c = v / 255;
         return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
-    });
-    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    };
+    return (
+        0.2126 * linear(rgb[0]) +
+        0.7152 * linear(rgb[1]) +
+        0.0722 * linear(rgb[2])
+    );
 }
 
 /** WCAG contrast ratio, or null when either colour is not parseable. */
@@ -248,7 +259,7 @@ export function contrastRatio(a: string, b: string): number | null {
 
 /** `token` or `token/alpha`, the way grounds.json spells a panel and its text. */
 function splitAlpha(spec: string): { name: string; alpha: number } {
-    const [name, alpha] = spec.split('/');
+    const [name = '', alpha] = spec.split('/');
     return { name, alpha: alpha === undefined ? 1 : Number(alpha) };
 }
 
@@ -396,7 +407,7 @@ const KNOWN_GROUND_NAMES: ReadonlySet<string> = new Set(GROUND_KINDS.paper);
 
 /** A `token` or `token/alpha` spec flips with the ground. */
 function isReactive(spec: string): boolean {
-    return REACTIVE_NAMES.has(spec.split('/')[0]);
+    return REACTIVE_NAMES.has(splitAlpha(spec).name);
 }
 
 /**

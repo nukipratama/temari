@@ -34,7 +34,13 @@ type ZoneKey = (typeof ZONE_KEYS)[number];
  * Karvonen %HRR breakpoints, mirrored from {@link UpdateHrZonesRequest} so the
  * "auto-calculate" result matches the server derivation byte for byte.
  */
-const ZONE_BREAKPOINTS = [0.488, 0.664, 0.792, 0.904, 0.968] as const;
+const ZONE_BREAKPOINTS: Record<ZoneKey, number> = {
+    Z1: 0.488,
+    Z2: 0.664,
+    Z3: 0.792,
+    Z4: 0.904,
+    Z5: 0.968,
+};
 const Z5_SENTINEL_HI = 999;
 
 type ZoneSource = 'default' | 'observed' | 'strava' | 'manual';
@@ -69,8 +75,8 @@ type ZoneBounds = Record<ZoneKey, number>;
 function deriveBounds(maxHr: number, restingHr: number): ZoneBounds {
     const reserve = maxHr - restingHr;
     const bounds = {} as ZoneBounds;
-    ZONE_KEYS.forEach((key, index) => {
-        bounds[key] = Math.round(restingHr + ZONE_BREAKPOINTS[index] * reserve);
+    ZONE_KEYS.forEach((key) => {
+        bounds[key] = Math.round(restingHr + ZONE_BREAKPOINTS[key] * reserve);
     });
     return bounds;
 }
@@ -81,13 +87,13 @@ function deriveBounds(maxHr: number, restingHr: number): ZoneBounds {
  * server enforces exactly that — and Z5 gets the open-ended sentinel.
  */
 function toZonePairs(bounds: ZoneBounds): Array<Record<string, number>> {
-    return ZONE_KEYS.map((key, index) => ({
-        lo: bounds[key],
-        hi:
-            index === ZONE_KEYS.length - 1
-                ? Z5_SENTINEL_HI
-                : bounds[ZONE_KEYS[index + 1]],
-    }));
+    return ZONE_KEYS.map((key, index) => {
+        const next = ZONE_KEYS[index + 1];
+        return {
+            lo: bounds[key],
+            hi: next === undefined ? Z5_SENTINEL_HI : bounds[next],
+        };
+    });
 }
 
 function boundsFromProfile(zones: HrZones): ZoneBounds {

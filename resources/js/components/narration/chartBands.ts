@@ -16,5 +16,5 @@ const BANDS = [
 ] as const;
 
 export function band(index: number): string {
-    return BANDS[index % BANDS.length];
+    return BANDS[index % BANDS.length] ?? BANDS[0];
 }

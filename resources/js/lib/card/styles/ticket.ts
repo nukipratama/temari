@@ -160,12 +160,13 @@ function bib(
     rarity: string,
 ): string {
     let svg = '';
-    for (const [px, py] of [
+    const corners: Point[] = [
         [tx + 46, ty + bandHeight + 40],
         [tx + tw - 46, ty + bandHeight + 40],
         [tx + 46, perfY - 40],
         [tx + tw - 46, perfY - 40],
-    ]) {
+    ];
+    for (const [px, py] of corners) {
         svg += circle(px, py, 15, {
             fill: CREAM_DEEP,
             stroke: LINE,
@@ -391,7 +392,10 @@ function window(
         stroke: accent,
         strokeWidth: 9,
     });
-    svg += circle(points[0][0], points[0][1], 12, {
+    const start = points[0];
+    if (start === undefined) return svg + cancelled(x, y, width, height);
+
+    svg += circle(start[0], start[1], 12, {
         fill: SURFACE_ELEV,
         stroke: INK,
         strokeWidth: 5,

@@ -49,11 +49,11 @@ export function renderNarration(
     const nodes: ReactNode[] = [];
 
     for (let i = 0; i < parts.length; i += 3) {
-        nodes.push(<Fragment key={i}>{renderBold(parts[i])}</Fragment>);
+        nodes.push(<Fragment key={i}>{renderBold(parts[i] ?? '')}</Fragment>);
 
-        if (i + 2 < parts.length) {
-            const words = parts[i + 1];
-            const anchor = parts[i + 2];
+        const words = parts[i + 1];
+        const anchor = parts[i + 2];
+        if (words !== undefined && anchor !== undefined) {
             nodes.push(
                 drawn.has(anchor) ? (
                     <Citation key={i + 1} anchor={anchor}>

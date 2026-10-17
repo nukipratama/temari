@@ -9,6 +9,7 @@ import {
 } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { defined } from '@/test/defined';
 import { settle } from '@/test/overlayHistory';
 import { makeUser, setMockPage } from '@/test/setup';
 
@@ -41,7 +42,7 @@ async function openSheet() {
 function lastPostOptions() {
     const call = vi.mocked(router.post).mock.calls[0];
 
-    return call[2] as { onSuccess?: () => void };
+    return defined(call)[2] as { onSuccess?: () => void };
 }
 
 describe('FlagWrong', () => {

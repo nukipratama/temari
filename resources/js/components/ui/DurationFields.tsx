@@ -19,7 +19,8 @@ const UNITS: ReadonlyArray<{ unit: Unit; max: number; suffix: string }> = [
     { unit: 'seconds', max: 59, suffix: 'sec' },
 ];
 
-const capitalise = (text: string) => text[0].toUpperCase() + text.slice(1);
+const capitalise = (text: string) =>
+    text.charAt(0).toUpperCase() + text.slice(1);
 
 export function durationSec({ hours, minutes, seconds }: Duration): number {
     return hours * 3_600 + minutes * 60 + seconds;

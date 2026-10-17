@@ -77,7 +77,7 @@ describe('cn', () => {
             .map(([, block]) => block)
             .join('\n');
         const tokens = [...theme.matchAll(/--(text-[\w-]+)\s*:/g)]
-            .map(([, name]) => name)
+            .flatMap(([, name]) => name ?? [])
             .filter(
                 (name) =>
                     !name.endsWith('--line-height') &&

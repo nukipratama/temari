@@ -5,6 +5,7 @@ import {
     initialOnboardingDraft,
     type OnboardingDraft,
 } from '@/hooks/useOnboardingDraft';
+import { defined } from '@/test/defined';
 
 import PreferencesStep from './PreferencesStep';
 
@@ -67,7 +68,9 @@ describe('Onboarding/PreferencesStep', () => {
         expect(screen.getByRole('button', { name: 'continue' })).toBeDisabled();
 
         // The second row of day buttons is the long-run picker.
-        fireEvent.click(screen.getAllByRole('button', { name: 'Wed' })[1]);
+        fireEvent.click(
+            defined(screen.getAllByRole('button', { name: 'Wed' })[1]),
+        );
         expect(dispatch).toHaveBeenCalledWith({
             type: 'setLongRunDay',
             offset: 2,

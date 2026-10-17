@@ -229,9 +229,11 @@ function route(
     });
 
     const first = points[0];
+    const last = points.at(-1);
+    if (first === undefined || last === undefined) return svg;
+
     svg += circle(first[0], first[1], 15, { fill: HORIZON });
     if (!closed) {
-        const last = points[points.length - 1];
         svg += circle(last[0], last[1], 15, { fill: rarity });
     }
     if (heavy) {

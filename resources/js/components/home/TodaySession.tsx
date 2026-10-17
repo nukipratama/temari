@@ -45,15 +45,18 @@ function leadAndBody(text: string): readonly [string, string] {
         .map((part) => part.trim())
         .filter(Boolean);
 
-    if (paragraphs.length > 1) {
-        const [first, ...rest] = paragraphs;
+    const [first = '', ...rest] = paragraphs;
+    if (rest.length > 0) {
         return [first, rest.join(' ')];
     }
 
-    const single = paragraphs[0] ?? '';
-    const sentence = /^(.+?[.!?])\s+(.*)$/s.exec(single);
+    const sentence = /^(.+?[.!?])\s+(.*)$/s.exec(first);
+    const lead = sentence?.[1];
+    const body = sentence?.[2];
 
-    return sentence ? [sentence[1], sentence[2]] : [single, ''];
+    return lead !== undefined && body !== undefined
+        ? [lead, body]
+        : [first, ''];
 }
 
 /**
