@@ -170,3 +170,43 @@ it('calls nothing on disconnecting a broken key', function (): void {
     Http::assertNothingSent();
     expect(IntervalsIcuConnection::query()->count())->toBe(0);
 });
+
+it("removes the old athlete's workout before switching to a different athlete", function (): void {
+    Http::fake(['intervals.icu/*' => Http::response(['id' => 'i654321'])]);
+    Queue::fake();
+    $user = User::factory()->create();
+    IntervalsIcuConnection::factory()->for($user)->create(['athlete_id' => 'i123456', 'synced_on' => now()->toDateString(), 'event_id' => '501']);
+
+    $this->actingAs($user)->post('/settings/intervals-icu', ['athlete_id' => 'i654321', 'api_key' => 'new-key']);
+
+    Http::assertSent(fn (Request $request): bool => $request->method() === 'DELETE'
+        && $request->url() === 'https://intervals.icu/api/v1/athlete/i123456/events/501');
+    expect(IntervalsIcuConnection::query()->sole()->athlete_id)->toBe('i654321');
+});
+
+it("never removes today's workout on a reconnect to the same athlete", function (): void {
+    Http::fake(['intervals.icu/*' => Http::response(['id' => 'i123456'])]);
+    Queue::fake();
+    $user = User::factory()->create();
+    IntervalsIcuConnection::factory()->for($user)->create(['athlete_id' => 'i123456', 'synced_on' => now()->toDateString(), 'event_id' => '501']);
+
+    $this->actingAs($user)->post('/settings/intervals-icu', ['athlete_id' => 'i123456', 'api_key' => 'new-key']);
+
+    Http::assertNotSent(fn (Request $request): bool => $request->method() === 'DELETE');
+});
+
+it('still switches athlete when the old workout cannot be removed', function (): void {
+    Http::fake([
+        'intervals.icu/api/v1/athlete/i123456/events/*' => Http::response('', 503),
+        'intervals.icu/*' => Http::response(['id' => 'i654321']),
+    ]);
+    Queue::fake();
+    $user = User::factory()->create();
+    IntervalsIcuConnection::factory()->for($user)->create(['athlete_id' => 'i123456', 'synced_on' => now()->toDateString(), 'event_id' => '501']);
+
+    $this->actingAs($user)->post('/settings/intervals-icu', ['athlete_id' => 'i654321', 'api_key' => 'new-key'])->assertSessionHasNoErrors();
+
+    $connection = IntervalsIcuConnection::query()->sole();
+    expect($connection->athlete_id)->toBe('i654321')
+        ->and($connection->event_id)->toBeNull();
+});

@@ -47,7 +47,9 @@ export default function PrBibStamp({
         if (typeof navigator.vibrate === 'function') {
             navigator.vibrate(40);
         }
-        void postJson('/api/record-stamps', { record_key: bib.record_key });
+        postJson('/api/record-stamps', { record_key: bib.record_key }).catch(
+            () => undefined,
+        );
     }, [bib]);
 
     if (bib === null) {

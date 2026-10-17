@@ -33,6 +33,7 @@ function summaryPayload(int $id, array $overrides = []): array
         'has_heartrate' => true,
         'average_heartrate' => 156.2,
         'max_heartrate' => 178,
+        'average_cadence' => 82.5,
         'workout_type' => 0,
         'map' => ['summary_polyline' => 'abc123'],
         'start_latlng' => [-6.2, 106.8],
@@ -84,6 +85,7 @@ it('maps every field the summary endpoint carries onto the detail row', function
         ->and($detail->has_heartrate)->toBeTrue()
         ->and($detail->average_heartrate)->toBe(156.2)
         ->and($detail->max_heartrate)->toBe(178)
+        ->and($detail->average_cadence)->toBe(82.5)
         ->and($detail->workout_type)->toBe(0)
         ->and($detail->summary_polyline)->toBe('abc123')
         ->and($detail->start_lat)->toBe(-6.2)

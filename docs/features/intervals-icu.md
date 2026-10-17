@@ -39,7 +39,7 @@ One row per user in `intervals_icu_connections` (`IntervalsIcuConnection`), with
 - **connected**: a static row showing the athlete ID, with a demoted disconnect beneath it, like Telegram in [[settings]].
 - **broken** (`broken_at` set): the row says the key stopped working and folds open to the same form with the ID prefilled. The sync sets it on a 401/403 (see below).
 
-Disconnecting removes today's temari workout from the calendar, then deletes the row; if intervals.icu can't be reached, the row goes anyway and the workout stays. The demo account can't connect or disconnect: both routes carry `block-demo-telegram`, and the row opens the demo notice instead of the form.
+Disconnecting removes today's temari workout from the calendar, then deletes the row; if intervals.icu can't be reached, the row goes anyway, the failure is logged and the workout stays. Connecting a different athlete ID, and deleting the account through [UserEraser](app/Services/User/UserEraser.php), remove today's workout the same way, before the old credentials are replaced or deleted; reconnecting the same athlete leaves it alone. The demo account can't connect or disconnect: both routes carry `block-demo-telegram`, and the row opens the demo notice instead of the form.
 
 ## The workout sent
 

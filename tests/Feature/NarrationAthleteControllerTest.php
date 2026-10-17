@@ -213,7 +213,6 @@ describe('replay', function (): void {
         ]);
 
         $service = $this->mock(AnalysisService::class);
-        $service->shouldReceive('shouldServeRuleBased')->andReturnFalse();
         $service->shouldReceive('request')->once();
 
         $this->post(athletePath($user, '/replay'), ['analysis_id' => $block->id])

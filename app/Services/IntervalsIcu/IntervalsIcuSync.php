@@ -12,6 +12,7 @@ use App\Services\IntervalsIcu\Exceptions\IntervalsIcuRejectedException;
 use App\Services\IntervalsIcu\Exceptions\IntervalsIcuUnreachableException;
 use App\Services\Run\Plan\CurrentWeekPlanBuilder;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Log;
 use Laravel\Pulse\Facades\Pulse;
 
 /**
@@ -64,6 +65,23 @@ final readonly class IntervalsIcuSync
 
         $this->client->deleteEvent($connection, $connection->event_id);
         Pulse::record('intervals_icu_sync', 'deleted')->count();
+    }
+
+    /**
+     * {@see self::removeToday()} for a caller that must carry on whatever
+     * intervals.icu answers: a broken key is skipped, a failure is logged.
+     */
+    public function removeTodayBestEffort(IntervalsIcuConnection $connection, Carbon $today): void
+    {
+        if ($connection->isBroken()) {
+            return;
+        }
+
+        try {
+            $this->removeToday($connection, $today);
+        } catch (IntervalsIcuRejectedException|IntervalsIcuUnreachableException $e) {
+            Log::warning('intervals.icu could not remove the workout', ['user_id' => $connection->user_id, 'exception' => $e::class]);
+        }
     }
 
     private function reconcile(IntervalsIcuConnection $connection, Carbon $today): void

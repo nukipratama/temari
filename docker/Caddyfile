@@ -16,11 +16,26 @@
 	admin off
 	servers {
 		trusted_proxies static private_ranges
+		# write covers the handler too, so it sits above Cloudflare's 100s origin
+		# timeout: Caddy never cuts a response the edge would still deliver.
+		timeouts {
+			read_header 10s
+			read_body 30s
+			write 120s
+			idle 5m
+		}
 	}
 }
 
 :7001 {
 	root * /var/www/html/public
+
+	# The app takes no file uploads; its largest bodies are validated text
+	# fields of tens of kilobytes, so 1MB rejects only abuse.
+	request_body {
+		max_size 1MB
+	}
+
 	# Cloudflare re-compresses at the edge with brotli, so brotli on the
 	# origin is wasted CPU. zstd for tunnel transport, gzip as fallback.
 	encode zstd gzip
@@ -75,6 +90,8 @@
 		header X-Frame-Options "DENY"
 		header X-Content-Type-Options "nosniff"
 		header Referrer-Policy "strict-origin-when-cross-origin"
+		header Permissions-Policy "accelerometer=(), autoplay=(), camera=(), clipboard-read=(), clipboard-write=(self), display-capture=(), encrypted-media=(), fullscreen=(), geolocation=(), gyroscope=(), hid=(), idle-detection=(), magnetometer=(), microphone=(), midi=(), payment=(), picture-in-picture=(), publickey-credentials-get=(), screen-wake-lock=(), serial=(), usb=(), web-share=(self), xr-spatial-tracking=()"
+		header Cross-Origin-Opener-Policy "same-origin"
 		header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline' https://fonts.bunny.net; font-src 'self' data: https://fonts.bunny.net; img-src 'self' data: https: blob:; connect-src 'self' https://cloudflareinsights.com; worker-src 'self'; manifest-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'"
 		php_server
 	}
@@ -88,11 +105,15 @@
 		header X-Frame-Options "DENY"
 		header X-Content-Type-Options "nosniff"
 		header Referrer-Policy "strict-origin-when-cross-origin"
+		header Permissions-Policy "accelerometer=(), autoplay=(), camera=(), clipboard-read=(), clipboard-write=(self), display-capture=(), encrypted-media=(), fullscreen=(), geolocation=(), gyroscope=(), hid=(), idle-detection=(), magnetometer=(), microphone=(), midi=(), payment=(), picture-in-picture=(), publickey-credentials-get=(), screen-wake-lock=(), serial=(), usb=(), web-share=(self), xr-spatial-tracking=()"
+		header Cross-Origin-Opener-Policy "same-origin"
 		# Enforced. script-src allows inline (Cloudflare's automatic Web Analytics /
 		# Rocket Loader inject inline scripts whose hash changes per page, so they can't
 		# be pinned) plus CF's external beacon host; connect-src allows the beacon POST.
 		# mdi icons are bundled offline; fonts are self-hosted (font-src 'self'); style unsafe-inline for
 		# lib-injected <style>; img https: for OSM tiles. All other directives stay strict.
+		# Permissions-Policy allows only what the card share sheet uses (web-share,
+		# clipboard-write); push and notifications are not policy-controlled.
 		header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: https: blob:; connect-src 'self' https://cloudflareinsights.com; worker-src 'self'; manifest-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'"
 		php_server
 	}

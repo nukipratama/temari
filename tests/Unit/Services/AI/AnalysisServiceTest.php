@@ -1984,3 +1984,67 @@ it('degrades again once the override is cleared', function (): void {
     expect($row->status)->toBe(AnalysisStatus::Done);
     Bus::assertNotDispatched(AnalyzeWeeklyRecapJob::class);
 });
+
+it('serves a demo-owned row from the filler instead of dispatching', function (): void {
+    $snap = WeeklySnapshot::factory()->for(User::factory()->demo())->create();
+
+    $row = $this->service->request(
+        subjectOrType: WeeklySnapshot::class,
+        subjectId: $snap->id,
+        type: AnalysisType::WeeklyRecap,
+    );
+
+    expect($row->status)->toBe(AnalysisStatus::Done)
+        ->and($row->fresh()->served_by)->toBe(ServedBy::RuleBased);
+    Bus::assertNotDispatched(AnalyzeWeeklyRecapJob::class);
+});
+
+it('serves a demo-owned activity group from the filler instead of dispatching', function (): void {
+    $activity = Activity::factory()->for(User::factory()->demo())->create();
+
+    $this->service->requestActivityGroup($activity);
+
+    $rows = Analysis::query()->where('subject_id', $activity->id)->get();
+    expect($rows)->toHaveCount(2)
+        ->and($rows->every(fn (Analysis $row): bool => $row->served_by === ServedBy::RuleBased))->toBeTrue();
+    Bus::assertNotDispatched(AnalyzeActivityJob::class);
+});
+
+it('serves a demo-owned row from the filler even while generation is paused', function (): void {
+    app(AppConfig::class)->set(AppConfigKey::AiEnabled, false);
+    $demo = User::factory()->demo()->create();
+
+    $row = $this->service->requestBriefing($demo, Carbon::today()->toDateString());
+
+    expect($row->status)->toBe(AnalysisStatus::Done)
+        ->and($row->fresh()->served_by)->toBe(ServedBy::RuleBased);
+});
+
+it('refills a demo-owned Done row only when the trigger invalidates', function (): void {
+    $snap = WeeklySnapshot::factory()->for(User::factory()->demo())->create();
+    Analysis::factory()->done('seeded recap')->create([
+        'subject_type' => WeeklySnapshot::class,
+        'subject_id' => $snap->id,
+        'analysis_type' => AnalysisType::WeeklyRecap,
+        'discriminator' => null,
+    ]);
+
+    $kept = $this->service->request(WeeklySnapshot::class, $snap->id, AnalysisType::WeeklyRecap);
+    expect($kept->content)->toBe('seeded recap');
+
+    $refilled = $this->service->request(WeeklySnapshot::class, $snap->id, AnalysisType::WeeklyRecap, invalidate: true);
+    expect($refilled->content)->not->toBe('seeded recap')
+        ->and($refilled->fresh()->served_by)->toBe(ServedBy::RuleBased);
+    Bus::assertNotDispatched(AnalyzeWeeklyRecapJob::class);
+});
+
+it('leaves a demo-owned row Pending under withoutDispatching, for the demo seed to fill', function (): void {
+    $snap = WeeklySnapshot::factory()->for(User::factory()->demo())->create();
+    $row = null;
+
+    $this->service->withoutDispatching(function () use ($snap, &$row): void {
+        $row = $this->service->request(WeeklySnapshot::class, $snap->id, AnalysisType::WeeklyRecap);
+    });
+
+    expect($row->status)->toBe(AnalysisStatus::Pending);
+});

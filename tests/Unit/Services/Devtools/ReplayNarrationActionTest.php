@@ -98,7 +98,6 @@ it('re-dispatches the block with the replay origin, invalidating the done row', 
     $block = replayBlock($user);
 
     $service = $this->mock(AnalysisService::class);
-    $service->shouldReceive('shouldServeRuleBased')->andReturnFalse();
     $service->shouldReceive('request')->once()->withArgs(
         fn (...$args): bool => $args[0] === $block->subject_type
             && $args[1] === $block->subject_id
@@ -106,7 +105,7 @@ it('re-dispatches the block with the replay origin, invalidating the done row', 
             && $args[5] === true,
     );
 
-    app(ReplayNarrationAction::class)->replay($block, $user);
+    app(ReplayNarrationAction::class)->replay($block);
 
     expect(app(NarrationOrigin::class)->current())->toBe(AnalysisOrigin::Replay);
 });
@@ -115,7 +114,7 @@ it('serves the demo athlete from the rule-based filler, archiving the narration 
     $demo = User::factory()->create(['is_demo' => true]);
     $block = replayBlock($demo);
 
-    app(ReplayNarrationAction::class)->replay($block, $demo);
+    app(ReplayNarrationAction::class)->replay($block);
 
     $version = AnalysisVersion::query()->where('analysis_id', $block->id)->sole();
 

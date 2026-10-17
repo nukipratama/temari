@@ -29,11 +29,11 @@ function runUpdate(array $update): void
     );
 }
 
-function startUpdate(int $chatId, string $token, ?string $username = null): array
+function startUpdate(int $chatId, string $token, ?string $username = null, string $chatType = 'private'): array
 {
     return [
         'message' => [
-            'chat' => ['id' => $chatId],
+            'chat' => ['id' => $chatId, 'type' => $chatType],
             'from' => ['username' => $username],
             'text' => '/start ' . $token,
         ],
@@ -163,6 +163,19 @@ it('refuses to link the demo account even with a valid token', function (): void
     Bus::assertNotDispatched(SendTelegramLinkWelcomeJob::class);
     Http::assertSent(fn ($request): bool => str_contains((string) $request['text'], 'tap Telegram to link up'));
 });
+
+it('links only from a private chat, asking a group to link from a direct chat and leaving the token unused', function (string $chatType): void {
+    Bus::fake();
+    $user = User::factory()->create();
+    $token = app(TelegramLinkToken::class)->mint($user->id);
+
+    runUpdate(startUpdate(-100555, $token, 'budi_runs', $chatType));
+
+    expect(TelegramConnection::query()->count())->toBe(0)
+        ->and(TelegramLinkTokenUse::query()->whereKey(hash('sha256', $token))->exists())->toBeFalse();
+    Bus::assertNotDispatched(SendTelegramLinkWelcomeJob::class);
+    Http::assertSent(fn ($request): bool => $request['text'] === TelegramReplies::privateChatOnly());
+})->with(['group', 'supergroup', 'channel']);
 
 it('revokes the connection and confirms on /stop', function (): void {
     $connection = TelegramConnection::factory()->create(['chat_id' => 777]);
