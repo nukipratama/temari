@@ -14,7 +14,6 @@ use App\Services\AI\RunQuestion\RunQuestionTopic;
 use App\Support\Config\AppConfig;
 use App\Support\Config\AppConfigKey;
 use Database\Seeders\Demo\DemoRunSeeder;
-use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Bus;
@@ -317,17 +316,17 @@ it('accepts the tenth question on a run today and refuses the eleventh without a
     expect(RunQuestion::query()->count())->toBe(10);
 });
 
-it('counts and stores a question only while holding the run cap lock', function (): void {
+it('turns a question away with a transient 429, not the run cap, while another holds the run cap lock', function (): void {
     Sleep::fake(syncWithCarbon: true);
     $user = User::factory()->create();
     $activity = runFor($user);
     $held = Cache::lock("run-question-cap:{$user->id}:{$activity->id}", 30);
     $held->get();
 
-    expect(fn () => $this->withoutExceptionHandling()
-        ->actingAs($user)
-        ->postJson("/api/activities/{$activity->id}/questions", ['question' => 'racing the cap?']))
-        ->toThrow(LockTimeoutException::class);
+    $this->actingAs($user)
+        ->postJson("/api/activities/{$activity->id}/questions", ['question' => 'racing the cap?'])
+        ->assertStatus(429)
+        ->assertExactJson(['error' => 'rate_limited']);
     $held->release();
 
     Bus::assertNotDispatched(AnswerRunQuestionJob::class);

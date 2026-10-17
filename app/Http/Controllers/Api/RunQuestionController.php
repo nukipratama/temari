@@ -20,6 +20,7 @@ use App\Services\AI\RunQuestion\RunQuestionSeeds;
 use App\Services\AI\RunQuestion\RunQuestionTopic;
 use Database\Seeders\Demo\DemoRunSeeder;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -74,35 +75,39 @@ class RunQuestionController extends Controller
             return $this->created($this->statelessDemoAnswer($user, $activity, $question, $detail));
         }
 
-        // Held from the cap count to the insert, so two concurrent asks can't both pass the cap.
-        return Cache::lock("run-question-cap:{$user->id}:{$activity}", 10)->block(
-            5,
-            function () use ($gate, $ledger, $user, $activity, $question, $detail): JsonResponse {
-                if ($this->atRunCap($user, $activity)) {
-                    return response()->json(['error' => 'run_cap'], 429);
-                }
+        try {
+            // Held from the cap count to the insert, so two concurrent asks can't both pass the cap.
+            return Cache::lock("run-question-cap:{$user->id}:{$activity}", 10)->block(
+                5,
+                function () use ($gate, $ledger, $user, $activity, $question, $detail): JsonResponse {
+                    if ($this->atRunCap($user, $activity)) {
+                        return response()->json(['error' => 'run_cap'], 429);
+                    }
 
-                if ($gate->costCeilingDegraded($user->id)) {
-                    $ledger->recordDegradedFill('run_question', $user->id);
+                    if ($gate->costCeilingDegraded($user->id)) {
+                        $ledger->recordDegradedFill('run_question', $user->id);
 
-                    return $this->created($this->record(
-                        $user,
-                        $activity,
-                        $question,
-                        $this->ruleBasedAnswer($detail, $question, RunQuestion::askedAbout($activity)),
-                    ));
-                }
+                        return $this->created($this->record(
+                            $user,
+                            $activity,
+                            $question,
+                            $this->ruleBasedAnswer($detail, $question, RunQuestion::askedAbout($activity)),
+                        ));
+                    }
 
-                if ($gate->generationPaused($user->id)) {
-                    return response()->json(['error' => 'generation_paused'], 409);
-                }
+                    if ($gate->generationPaused($user->id)) {
+                        return response()->json(['error' => 'generation_paused'], 409);
+                    }
 
-                $row = $this->record($user, $activity, $question, ['status' => AnalysisStatus::Queued]);
-                AnswerRunQuestionJob::dispatch($row->id)->afterCommit();
+                    $row = $this->record($user, $activity, $question, ['status' => AnalysisStatus::Queued]);
+                    AnswerRunQuestionJob::dispatch($row->id)->afterCommit();
 
-                return $this->created($row);
-            },
-        );
+                    return $this->created($row);
+                },
+            );
+        } catch (LockTimeoutException) {
+            return response()->json(['error' => 'rate_limited'], 429);
+        }
     }
 
     /**

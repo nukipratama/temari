@@ -119,7 +119,9 @@ limit. [`store()`](app/Http/Controllers/Api/RunQuestionController.php) checks
 it before the cost-ceiling and pause branches, so past it there is no agent run,
 no rule-based answer and no row: the response is `429` with
 `{"error": "run_cap"}`. The count and the insert run under one per-run cache lock, so two
-concurrent questions cannot both pass the cap. Every row counts, including a failed one. The demo is
+concurrent questions cannot both pass the cap. A question that cannot take the lock
+within five seconds is answered `429` with `{"error": "rate_limited"}`, the client's
+retry-later error, never `run_cap`, which would close the thread for the day. Every row counts, including a failed one. The demo is
 exempt because it never bills.
 
 ## The demo never bills
