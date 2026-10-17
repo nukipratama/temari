@@ -38,7 +38,7 @@ final readonly class RenarrateAfterMakeUp
         }
 
         if ($targetDate->isSameDay($today) || $vacatedDate->isSameDay($today)) {
-            $this->analysisService->requestBriefing($user, $today->toDateString(), invalidate: true, delaySeconds: AnalysisService::PLAN_EDIT_DELAY_SECONDS);
+            $this->analysisService->rebriefAfterPlanEdit($user, $today->toDateString());
         }
     }
 

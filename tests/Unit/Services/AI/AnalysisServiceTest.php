@@ -2048,3 +2048,34 @@ it('leaves a demo-owned row Pending under withoutDispatching, for the demo seed 
 
     expect($row->status)->toBe(AnalysisStatus::Pending);
 });
+
+it('rebriefs after a plan edit only once the briefing\'s Reread cooldown has run out', function (bool $cooling): void {
+    $user = User::factory()->create();
+    $briefing = Analysis::factory()->done('easy run, 2.6 km.')->create([
+        'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
+        'subject_id' => $user->id,
+        'analysis_type' => AnalysisType::BriefingMascotVoice,
+        'discriminator' => '2026-05-18',
+    ]);
+    if ($cooling) {
+        $briefing->startCooldown();
+    }
+
+    $this->service->rebriefAfterPlanEdit($user, '2026-05-18');
+
+    if ($cooling) {
+        Bus::assertNotDispatched(AnalyzeBriefingMascotVoiceJob::class);
+        expect($briefing->fresh()->only(['status', 'content']))->toBe(['status' => AnalysisStatus::Done, 'content' => 'easy run, 2.6 km.']);
+    } else {
+        Bus::assertDispatched(fn (AnalyzeBriefingMascotVoiceJob $job): bool => $job->analysisId === $briefing->id
+            && $job->delay === AnalysisService::PLAN_EDIT_DELAY_SECONDS);
+    }
+})->with(['cooled' => [false], 'cooling' => [true]]);
+
+it('rebriefs after a plan edit when no briefing was narrated yet', function (): void {
+    $user = User::factory()->create();
+
+    $this->service->rebriefAfterPlanEdit($user, '2026-05-18');
+
+    Bus::assertDispatchedTimes(AnalyzeBriefingMascotVoiceJob::class, 1);
+});

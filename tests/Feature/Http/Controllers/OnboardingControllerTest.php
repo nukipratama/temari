@@ -206,3 +206,13 @@ it('rejects a partial goal submission and does not onboard the user', function (
     expect($user->fresh()->onboarded_at)->toBeNull()
         ->and(RaceGoal::query()->where('user_id', $user->id)->exists())->toBeFalse();
 });
+
+it('answers the 11th wizard submit within a minute with 429', function (): void {
+    $user = User::factory()->needsOnboarding()->create();
+
+    foreach (range(1, 10) as $attempt) {
+        $this->actingAs($user)->postJson('/onboarding', onboardingGoalPayload(['distance_m' => null]))->assertUnprocessable();
+    }
+
+    $this->actingAs($user)->postJson('/onboarding', onboardingGoalPayload(['distance_m' => null]))->assertTooManyRequests();
+});

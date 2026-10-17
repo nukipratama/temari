@@ -105,7 +105,7 @@ Route::middleware(['auth'])->group(function (): void {
     // Reachable regardless of onboarding status: the wizard itself, and
     // logout (a user stuck mid-wizard must still be able to sign out).
     Route::get('/onboarding', [OnboardingController::class, 'show'])->name('onboarding.show');
-    Route::post('/onboarding', [OnboardingController::class, 'store'])->name('onboarding.store');
+    Route::post('/onboarding', [OnboardingController::class, 'store'])->middleware('throttle:10,1,plan-regenerate')->name('onboarding.store');
 
     Route::post('/logout', [StravaAuthController::class, 'logout'])
         ->name('auth.logout');
@@ -134,10 +134,10 @@ Route::middleware(['auth', 'onboarded'])->group(function (): void {
     Route::get('/trends', TrendsController::class)->name('trends');
 
     Route::get('/race', [RaceController::class, 'index'])->name('race');
-    Route::post('/race', [RaceController::class, 'store'])->middleware('block-demo-telegram')->name('race.store');
-    Route::delete('/race', [RaceController::class, 'destroy'])->middleware('block-demo-telegram')->name('race.destroy');
+    Route::post('/race', [RaceController::class, 'store'])->middleware(['throttle:10,1,plan-regenerate', 'block-demo-writes'])->name('race.store');
+    Route::delete('/race', [RaceController::class, 'destroy'])->middleware(['throttle:10,1,plan-regenerate', 'block-demo-writes'])->name('race.destroy');
     Route::post('/race/{race}/outcome', [RaceOutcomeController::class, 'store'])
-        ->middleware(['throttle:20,1', 'block-demo-telegram'])
+        ->middleware(['throttle:20,1', 'block-demo-writes'])
         ->whereNumber('race')
         ->name('race.outcome.store');
 
@@ -150,16 +150,16 @@ Route::middleware(['auth', 'onboarded'])->group(function (): void {
         ->middleware('throttle:20,1,plan-edit')
         ->name('plan.sessions.update');
     Route::post('/plan/time-trials/{plannedSession}', TimeTrialAnswerController::class)
-        ->middleware(['throttle:20,1', 'block-demo-telegram'])
+        ->middleware(['throttle:20,1', 'block-demo-writes'])
         ->whereNumber('plannedSession')
         ->name('plan.time-trials.answer');
     Route::get('/inbox', InboxController::class)->name('inbox');
 
-    // "This is wrong" on a plan day or a narration. The block-demo-telegram
+    // "This is wrong" on a plan day or a narration. The block-demo-writes
     // guard is behaviourally generic (it blocks any demo mutation), so it also
     // keeps the shared sandbox from filling the table with visitor noise.
     Route::post('/feedback', FeedbackController::class)
-        ->middleware(['throttle:10,1', 'block-demo-telegram'])
+        ->middleware(['throttle:10,1', 'block-demo-writes'])
         ->name('feedback.store');
 
     Route::get('/profile', ProfileController::class)->name('profile');
@@ -167,20 +167,20 @@ Route::middleware(['auth', 'onboarded'])->group(function (): void {
     // The demo is otherwise a fully-interactive shared sandbox (drift resets on
     // demo:seed). Notifications are the one area worth guarding: a visitor could
     // disconnect the shared bot or spam real messages via the send/test endpoints.
-    // The block-demo-telegram guard is behaviourally generic (it blocks any demo
+    // The block-demo-writes guard is behaviourally generic (it blocks any demo
     // mutation), so it also covers the channel-neutral preference + test writes.
-    Route::patch('/profile/notifications', NotificationPreferenceController::class)->middleware('block-demo-telegram')->name('notifications.preferences.update');
-    Route::delete('/profile/telegram', [TelegramConnectionController::class, 'destroy'])->middleware('block-demo-telegram')->name('telegram.disconnect');
-    Route::post('/profile/notifications/test', NotificationTestController::class)->middleware(['throttle:6,1', 'block-demo-telegram'])->name('notifications.test');
+    Route::patch('/profile/notifications', NotificationPreferenceController::class)->middleware('block-demo-writes')->name('notifications.preferences.update');
+    Route::delete('/profile/telegram', [TelegramConnectionController::class, 'destroy'])->middleware('block-demo-writes')->name('telegram.disconnect');
+    Route::post('/profile/notifications/test', NotificationTestController::class)->middleware(['throttle:6,1', 'block-demo-writes'])->name('notifications.test');
 
     // Browser push subscription, managed via fetch from the installed PWA. Allow-listed
     // by name in EnsureOnboarded so the wizard's last step can subscribe before the
-    // `onboarded` gate would otherwise redirect it. The block-demo-telegram guard is
+    // `onboarded` gate would otherwise redirect it. The block-demo-writes guard is
     // behaviourally generic (it blocks any demo mutation); the throttle caps abuse of
     // the push send path a subscription feeds.
-    Route::post('/profile/push', [PushSubscriptionController::class, 'store'])->middleware(['throttle:6,1', 'block-demo-telegram'])->name('push.subscribe');
-    Route::delete('/profile/push', [PushSubscriptionController::class, 'destroy'])->middleware(['throttle:6,1', 'block-demo-telegram'])->name('push.unsubscribe');
-    Route::post('/profile/push/seen', [PushSubscriptionController::class, 'seen'])->middleware(['throttle:6,1', 'block-demo-telegram'])->name('push.seen');
+    Route::post('/profile/push', [PushSubscriptionController::class, 'store'])->middleware(['throttle:6,1', 'block-demo-writes'])->name('push.subscribe');
+    Route::delete('/profile/push', [PushSubscriptionController::class, 'destroy'])->middleware(['throttle:6,1', 'block-demo-writes'])->name('push.unsubscribe');
+    Route::post('/profile/push/seen', [PushSubscriptionController::class, 'seen'])->middleware(['throttle:6,1', 'block-demo-writes'])->name('push.seen');
 
     Route::get('/settings', SettingsController::class)->name('settings');
 
@@ -188,13 +188,13 @@ Route::middleware(['auth', 'onboarded'])->group(function (): void {
 
     Route::patch('/settings/zones', [RunnerZonesController::class, 'update'])->name('settings.zones.update');
     Route::delete('/settings/zones', [RunnerZonesController::class, 'resetToDefault'])->name('settings.zones.reset');
-    Route::post('/settings/zones/resync-strava', [RunnerZonesController::class, 'resyncFromStrava'])->middleware('block-demo-telegram')->name('settings.zones.resync');
-    Route::patch('/settings/training-preferences', [TrainingPreferencesController::class, 'update'])->name('settings.training-preferences.update');
-    Route::post('/settings/intervals-icu', [IntervalsIcuConnectionController::class, 'store'])->middleware(['throttle:6,1', 'block-demo-telegram'])->name('intervals-icu.connect');
-    Route::delete('/settings/intervals-icu', [IntervalsIcuConnectionController::class, 'destroy'])->middleware('block-demo-telegram')->name('intervals-icu.disconnect');
+    Route::post('/settings/zones/resync-strava', [RunnerZonesController::class, 'resyncFromStrava'])->middleware(['throttle:strava-sync', 'block-demo-writes'])->name('settings.zones.resync');
+    Route::patch('/settings/training-preferences', [TrainingPreferencesController::class, 'update'])->middleware('throttle:10,1,plan-regenerate')->name('settings.training-preferences.update');
+    Route::post('/settings/intervals-icu', [IntervalsIcuConnectionController::class, 'store'])->middleware(['throttle:6,1', 'block-demo-writes'])->name('intervals-icu.connect');
+    Route::delete('/settings/intervals-icu', [IntervalsIcuConnectionController::class, 'destroy'])->middleware('block-demo-writes')->name('intervals-icu.disconnect');
 
     Route::post('/strava/sync', SyncController::class)
-        ->middleware(['throttle:strava-sync', 'block-demo-telegram'])
+        ->middleware(['throttle:strava-sync', 'block-demo-writes'])
         ->name('strava.sync');
 
     Route::post('/api/notifications/{notification}/read', NotificationReadController::class)
