@@ -45,8 +45,9 @@ follows `WeeklyRecap` / `CardFlavor`. Let `Name` = StudlyCase, `snake` = snake_c
    model-scoped → `self::userOwns(...)`.
 5. **Aggregate suites** — register the narrator in
    `tests/Unit/Services/AI/Narrators/NarratorsCoverageTest.php` and the job in
-   `tests/Unit/Jobs/AI/JobsCoverageTest.php`. The structure test exempts these namespaces on the
-   basis that these suites cover them.
+   `tests/Unit/Jobs/AI/JobsCoverageTest.php` with a dataset entry keyed by its `::class` (the job
+   goes in the narration-queue test). The structure test accepts that key as the marker; see the
+   testing reference's "Aggregate suites".
 6. **Frontend** — render the block through `resources/js/components/temari/AnalysisStatus.tsx` on
    the page that shows it, so pending / failed / retry states are handled.
 
