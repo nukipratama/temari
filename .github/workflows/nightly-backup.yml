@@ -51,10 +51,12 @@ jobs:
       - name: Backup DB
         timeout-minutes: 10
         run: |
+          umask 077
           set -o pipefail
           DB_BACKUP_PASSWORD=$(scripts/deploy/backup-password.sh)
           export DB_BACKUP_PASSWORD
           mkdir -p "$BACKUP_DIR"
+          chmod 700 "$BACKUP_DIR"
           out="$BACKUP_DIR/nightly-$NIGHTLY_TIMESTAMP.sql.gz"
           manifest="$BACKUP_DIR/nightly-$NIGHTLY_TIMESTAMP.manifest"
           db_sql() {
@@ -81,6 +83,7 @@ jobs:
       - name: Backup analytics schema
         timeout-minutes: 10
         run: |
+          umask 077
           DB_BACKUP_PASSWORD=$(scripts/deploy/backup-password.sh)
           export DB_BACKUP_PASSWORD
           out="$BACKUP_DIR/analytics-nightly-$NIGHTLY_TIMESTAMP.sql.gz"
