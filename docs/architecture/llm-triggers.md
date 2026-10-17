@@ -232,7 +232,8 @@ narrate them once the window closes, which is why a pending recap row is not a b
   `briefing_mascot_voice` through `AnalysisService::rebriefAfterPlanEdit()`, with `invalidate: true`,
   so the briefing follows the move. Inside the briefing's Reread cooldown
   (`Analysis::cooldownRemaining()`), a move onto or off today, plain or make-up, keeps the current
-  briefing and bills nothing, so it can briefly describe the old day. The demo athlete is skipped.
+  briefing and bills nothing, so it can describe the old day until a Reread, a run or a later move
+  re-narrates it. The demo athlete is skipped.
 - **`PlanController::update`, on a skip or restore of today**: a skip requests nothing and leaves
   the stored briefing as it was. A restore requests today's `briefing_mascot_voice` once, without
   `invalidate`, so it narrates only when today has no briefing yet; a narrated one shows again
