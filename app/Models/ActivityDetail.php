@@ -150,6 +150,21 @@ class ActivityDetail extends Model
     }
 
     /**
+     * Details that started on this local day: a plain range, so the index on
+     * `start_date_local` stays usable.
+     *
+     * @param  Builder<ActivityDetail>  $query
+     * @return Builder<ActivityDetail>
+     */
+    #[Scope]
+    protected function startedOn(Builder $query, Carbon|string $day): Builder
+    {
+        $day = Carbon::parse($day);
+
+        return $query->whereBetween('activity_details.start_date_local', [$day->copy()->startOfDay(), $day->copy()->setTime(23, 59, 59)]);
+    }
+
+    /**
      * Detail rows owned by the given user (i.e. whose activity belongs to them).
      *
      * @param  Builder<ActivityDetail>  $query

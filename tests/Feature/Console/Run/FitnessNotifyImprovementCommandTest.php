@@ -6,6 +6,7 @@ use App\Models\InboxNotification;
 use App\Models\PerformanceEvidence;
 use App\Models\User;
 use App\Notifications\FitnessImprovedNotification;
+use App\Services\Ops\MaintainerAlerter;
 use App\Services\Run\Metrics\VdotEstimator;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -124,4 +125,19 @@ it('leaves an athlete with no supported time alone', function (): void {
     $this->artisan('fitness:notify-improvement')->assertSuccessful();
 
     expect($user->fresh()->last_notified_vdot)->toBeNull();
+});
+
+it('keeps checking the other athletes when one throws, and alerts once', function (): void {
+    $attributes = ['last_notified_vdot' => tenKVdot(3_500) - 0.5];
+    athleteWithTenK(3_500, $attributes);
+    athleteWithTenK(3_500, $attributes);
+    Notification::shouldReceive('send')->once()->andThrow(new RuntimeException('boom'));
+    Notification::shouldReceive('send')->once();
+    $alerter = Mockery::mock(MaintainerAlerter::class);
+    $alerter->shouldReceive('athletesFailed')->once()->with('fitness:notify-improvement', 1);
+    $this->app->instance(MaintainerAlerter::class, $alerter);
+
+    $this->artisan('fitness:notify-improvement')
+        ->expectsOutputToContain('noted an improvement for 1 users.')
+        ->assertSuccessful();
 });

@@ -122,3 +122,16 @@ it('limits the pass to one athlete when asked', function (): void {
 
     expect($row->refresh()->status)->toBe(PlannedSessionStatus::Done);
 });
+
+it('includes a season starting or ending today at both edges of the day', function (string $now): void {
+    Carbon::setTestNow($now);
+    Season::query()->delete();
+    Season::factory()->for($this->user)->create(['starts_at' => '2026-08-20', 'ends_at' => '2026-10-25']);
+    Season::factory()->for(User::factory()->create())->create(['starts_at' => '2026-06-01', 'ends_at' => '2026-08-20']);
+    Season::factory()->for(User::factory()->create())->create(['starts_at' => '2026-08-21', 'ends_at' => '2026-10-25']);
+    Season::factory()->for(User::factory()->create())->create(['starts_at' => '2026-06-01', 'ends_at' => '2026-08-19']);
+
+    $this->artisan('plan:regrade-season')
+        ->expectsOutputToContain('across 2 season(s).')
+        ->assertSuccessful();
+})->with(['midnight' => '2026-08-20 00:00:00', 'last second' => '2026-08-20 23:59:59']);

@@ -30,8 +30,8 @@ class RegradeSeasonCommand extends Command
         $userOption = $this->option('user');
 
         $seasons = Season::query()
-            ->whereDate('starts_at', '<=', $today)
-            ->whereDate('ends_at', '>=', $today)
+            ->where('starts_at', '<=', $today->toDateString())
+            ->where('ends_at', '>=', $today->toDateString())
             ->when($userOption !== null, fn ($query) => $query->where('user_id', (int) $userOption))
             ->with('user')
             ->orderBy('user_id')

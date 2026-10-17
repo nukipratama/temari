@@ -24,7 +24,7 @@ class RaceRemindCommand extends Command
     {
         $races = RaceGoal::query()
             ->active()
-            ->whereDate('race_date', Carbon::tomorrow())
+            ->where('race_date', Carbon::tomorrow()->toDateString())
             ->whereIn('user_id', User::query()->notDemo()->where($this->wantsNotifications(...))->select('id'))
             ->with('user')
             ->get();

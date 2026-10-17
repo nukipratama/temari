@@ -50,7 +50,7 @@ class RaceController extends Controller
             ->where('user_id', $user->id)
             ->whereNotNull('outcome')
             ->whereNotNull('completed_at')
-            ->whereDate('race_date', '<=', Carbon::today()->toDateString())
+            ->where('race_date', '<=', Carbon::today()->toDateString())
             ->orderByDesc('race_date')
             ->orderByDesc('id')
             ->limit(self::PAST_RACES_SHOWN)

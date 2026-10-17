@@ -127,7 +127,7 @@ class RaceTomorrowNotification extends Notification implements ShouldQueue
     {
         $today = PlannedSession::query()
             ->where('user_id', $notifiable->id)
-            ->whereDate('date', Carbon::today())
+            ->where('date', Carbon::today()->toDateString())
             ->value('session_type');
 
         return $today === SessionType::Rest ? 'the plan rests you today, so leave it rested.' : null;

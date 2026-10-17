@@ -133,3 +133,18 @@ it('streamSummary falls back to an empty array when stream_summary is null', fun
     expect($withSummary->streamSummary())->toBe(['decoupling_pct' => 5.5])
         ->and($withoutSummary->streamSummary())->toBe([]);
 });
+
+it('startedOn matches the whole local day and nothing outside it', function (string|Carbon $day): void {
+    $user = User::factory()->create();
+    $at = fn (string $start): int => ActivityDetail::factory()->for(Activity::factory()->for($user))->create(['start_date_local' => $start])->id;
+    $at('2026-05-23 23:59:59');
+    $first = $at('2026-05-24 00:00:00');
+    $noon = $at('2026-05-24 12:00:00');
+    $last = $at('2026-05-24 23:59:59');
+    $at('2026-05-25 00:00:00');
+
+    expect(ActivityDetail::query()->startedOn($day)->orderBy('id')->pluck('id')->all())->toBe([$first, $noon, $last]);
+})->with([
+    'a date string' => '2026-05-24',
+    'a Carbon with a time of day' => fn () => Carbon::parse('2026-05-24 15:30:00'),
+]);

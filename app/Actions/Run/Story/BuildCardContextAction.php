@@ -175,7 +175,7 @@ final readonly class BuildCardContextAction
             ActivityDetail::query()->join('activities', 'activities.id', '=', 'activity_details.activity_id'),
         )
             ->where('activities.user_id', $activity->user_id)
-            ->whereDate('start_date_local', '<', $startDate->toDateString())
+            ->where('start_date_local', '<', $startDate->toDateString())
             ->selectRaw('DISTINCT DATE(start_date_local) as run_date')
             ->orderByDesc('run_date')
             ->limit(self::STREAK_LOOKBACK_DAYS)

@@ -348,7 +348,7 @@ final class PlanPageAssembler
 
         $past = RaceGoal::query()
             ->where('user_id', $user->id)
-            ->whereDate('race_date', '<', $today->toDateString())
+            ->where('race_date', '<', $today->toDateString())
             ->orderByDesc('race_date')
             ->orderByDesc('id')
             ->first();

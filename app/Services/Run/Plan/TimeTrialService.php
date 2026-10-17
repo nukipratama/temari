@@ -86,7 +86,7 @@ final readonly class TimeTrialService
     private function runsOn(PlannedSession $session, TimeTrial $trial): Collection
     {
         return ActivityDetail::query()->forUser($session->user_id)
-            ->whereDate('activity_details.start_date_local', $session->date->toDateString())
+            ->startedOn($session->date)
             ->orderByRaw('ABS(activity_details.distance - ?) asc', [$trial->distanceM])
             ->orderByDesc('activity_details.distance')
             ->orderBy('activity_details.activity_id')

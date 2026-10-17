@@ -43,7 +43,7 @@ final class WeekTotalsTool extends NoArgumentTool
     {
         $previous = WeeklySnapshot::query()
             ->where('user_id', $this->snapshot->user_id)
-            ->whereDate('week_ending', $this->snapshot->week_ending->copy()->subWeek())
+            ->where('week_ending', $this->snapshot->week_ending->copy()->subWeek()->toDateString())
             ->first();
 
         $pace = self::paceFor($this->snapshot);
