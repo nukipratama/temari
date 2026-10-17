@@ -118,7 +118,8 @@ One athlete may ask `ai.run_question_daily_cap_per_run` ([config/ai.php](config/
 limit. [`store()`](app/Http/Controllers/Api/RunQuestionController.php) checks
 it before the cost-ceiling and pause branches, so past it there is no agent run,
 no rule-based answer and no row: the response is `429` with
-`{"error": "run_cap"}`. Every row counts, including a failed one. The demo is
+`{"error": "run_cap"}`. The count and the insert run under one per-run cache lock, so two
+concurrent questions cannot both pass the cap. Every row counts, including a failed one. The demo is
 exempt because it never bills.
 
 ## The demo never bills
