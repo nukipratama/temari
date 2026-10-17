@@ -16,7 +16,10 @@ use App\Support\Config\AppConfigKey;
 use Database\Seeders\Demo\DemoRunSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Sleep;
 use Illuminate\Support\Facades\RateLimiter;
 
 uses(RefreshDatabase::class);
@@ -312,6 +315,23 @@ it('accepts the tenth question on a run today and refuses the eleventh without a
 
     Bus::assertDispatchedTimes(AnswerRunQuestionJob::class, 1);
     expect(RunQuestion::query()->count())->toBe(10);
+});
+
+it('counts and stores a question only while holding the run cap lock', function (): void {
+    Sleep::fake(syncWithCarbon: true);
+    $user = User::factory()->create();
+    $activity = runFor($user);
+    $held = Cache::lock("run-question-cap:{$user->id}:{$activity->id}", 30);
+    $held->get();
+
+    expect(fn () => $this->withoutExceptionHandling()
+        ->actingAs($user)
+        ->postJson("/api/activities/{$activity->id}/questions", ['question' => 'racing the cap?']))
+        ->toThrow(LockTimeoutException::class);
+    $held->release();
+
+    Bus::assertNotDispatched(AnswerRunQuestionJob::class);
+    expect(RunQuestion::query()->count())->toBe(0);
 });
 
 it('says the run is capped when the thread is read at the cap, and not below it', function (): void {
