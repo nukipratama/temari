@@ -48,6 +48,11 @@ use App\Services\Run\Metrics\TrainingLoad;
 use App\Services\Run\Metrics\TrainingPaceCalculator;
 use App\Services\Run\Metrics\VdotEstimator;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use App\Services\AI\Agent\AgentTool;
+use App\Services\AI\Agent\Tools\LifetimeStatsTool;
+use App\Services\AI\Agent\Tools\MonthTotalsTool;
+use App\Services\AI\Agent\Tools\TrendRangeTool;
+use App\Services\Run\LifetimeStats;
 use App\Services\AI\Agent\Tools\ProgressionSignalTool;
 use App\Services\AI\Agent\Tools\PersonaMixTool;
 use App\Services\Run\ProgressionSeriesBuilder;
@@ -75,41 +80,70 @@ function agentToolFixture(): array
 
 // ── the shape every tool shares ───────────────────────────────────────
 
-it('declares an argument-free schema, so no tool can be pointed at another run', function (): void {
+function agentToolFor(string $class): AgentTool
+{
     ['activity' => $a, 'detail' => $d] = agentToolFixture();
+    $user = $a->user;
+    $today = $d->start_date_local;
 
-    expect(new RunSummaryTool($a, $d)->parameters())->toEqual([
+    return match ($class) {
+        HrZonesTool::class, KmSplitsTool::class, LapsTool::class, PerceivedEffortTool::class,
+        PersonalRecordsTool::class, RunSummaryTool::class, TerrainTool::class, WeatherTool::class => new $class($a, $d),
+        PersonaMixTool::class, WeekStateTool::class => new $class($user, $today),
+        EffortContextTool::class => new EffortContextTool($a, $d, app(RelativeEffort::class)),
+        GetThreadTool::class => new GetThreadTool($a, 1),
+        CardIdentityTool::class => new CardIdentityTool(RunCard::factory()->create(['activity_id' => $a->id])),
+        WeekTotalsTool::class => new WeekTotalsTool(WeeklySnapshot::factory()->for($user)->create()),
+        MonthTotalsTool::class => new MonthTotalsTool($user, $today->format('Y-m')),
+        TrendRangeTool::class => new TrendRangeTool($user, '7d', new TrainingLoad()),
+        LifetimeStatsTool::class => new LifetimeStatsTool($user, $today, app(LifetimeStats::class)),
+        PlanAdherenceTool::class => new PlanAdherenceTool($user, $today, null),
+        PlanContextTool::class => planContextTool($user, $today, $today),
+        ProgressionSignalTool::class => new ProgressionSignalTool($user, $today, app(ProgressionSeriesBuilder::class)),
+        RecentBaselineTool::class => new RecentBaselineTool($user, $today, new ResolveRunBaselineAction()),
+        RecentRunsTool::class => new RecentRunsTool($user, $today, app(VerdictNarrator::class)),
+        TrainingLoadTool::class => new TrainingLoadTool($user, $today, new TrainingLoad()),
+        TrainingPacesTool::class => new TrainingPacesTool($user, $today, app(VdotEstimator::class), app(TrainingPaceCalculator::class)),
+    };
+}
+
+it('gives every tool an argument-free schema, so none can be pointed at another run, and a snake_case name and description the model can choose on', function (string $class): void {
+    $tool = agentToolFor($class);
+
+    expect($tool->parameters())->toEqual([
         'type' => 'object',
         'properties' => (object) [],
         'required' => [],
         'additionalProperties' => false,
-    ]);
-});
-
-it('names every tool in snake_case with a description the model can choose on', function (): void {
-    ['activity' => $a, 'detail' => $d] = agentToolFixture();
-
-    $tools = [
-        new RunSummaryTool($a, $d),
-        new KmSplitsTool($a, $d),
-        new LapsTool($a, $d),
-        new HrZonesTool($a, $d),
-        new TerrainTool($a, $d),
-        new WeatherTool($a, $d),
-        new EffortContextTool($a, $d, app(RelativeEffort::class)),
-        new PerceivedEffortTool($a, $d),
-        new TrainingLoadTool($a->user, $d->start_date_local, new TrainingLoad()),
-        new RecentBaselineTool($a->user, $d->start_date_local, new ResolveRunBaselineAction()),
-        new TrainingPacesTool($a->user, $d->start_date_local, app(VdotEstimator::class), app(TrainingPaceCalculator::class)),
-        planContextTool($a->user, $d->start_date_local, $d->start_date_local),
-        new GetThreadTool($a, 1),
-    ];
-
-    foreach ($tools as $tool) {
-        expect($tool->name())->toMatch('/^get_[a-z_]+$/')
-            ->and($tool->description())->not->toBe('');
-    }
-});
+    ])
+        ->and($tool->name())->toMatch('/^get_[a-z_]+$/')
+        ->and($tool->description())->not->toBe('');
+})->with([
+    CardIdentityTool::class => [CardIdentityTool::class],
+    EffortContextTool::class => [EffortContextTool::class],
+    GetThreadTool::class => [GetThreadTool::class],
+    HrZonesTool::class => [HrZonesTool::class],
+    KmSplitsTool::class => [KmSplitsTool::class],
+    LapsTool::class => [LapsTool::class],
+    LifetimeStatsTool::class => [LifetimeStatsTool::class],
+    MonthTotalsTool::class => [MonthTotalsTool::class],
+    PerceivedEffortTool::class => [PerceivedEffortTool::class],
+    PersonaMixTool::class => [PersonaMixTool::class],
+    PersonalRecordsTool::class => [PersonalRecordsTool::class],
+    PlanAdherenceTool::class => [PlanAdherenceTool::class],
+    PlanContextTool::class => [PlanContextTool::class],
+    ProgressionSignalTool::class => [ProgressionSignalTool::class],
+    RecentBaselineTool::class => [RecentBaselineTool::class],
+    RecentRunsTool::class => [RecentRunsTool::class],
+    RunSummaryTool::class => [RunSummaryTool::class],
+    TerrainTool::class => [TerrainTool::class],
+    TrainingLoadTool::class => [TrainingLoadTool::class],
+    TrainingPacesTool::class => [TrainingPacesTool::class],
+    TrendRangeTool::class => [TrendRangeTool::class],
+    WeatherTool::class => [WeatherTool::class],
+    WeekStateTool::class => [WeekStateTool::class],
+    WeekTotalsTool::class => [WeekTotalsTool::class],
+]);
 
 // ── GetThreadTool ─────────────────────────────────────────────────────
 
