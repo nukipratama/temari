@@ -4,13 +4,13 @@
 # syntax out from under us (a worker-directive rename took prod down once).
 # = dunglas/frankenphp:1.13.0-php8.5-alpine (PHP 8.5.11). Refresh after a bump with:
 #   docker buildx imagetools inspect dunglas/frankenphp:1-php8.5-alpine --format '{{.Manifest.Digest}}'
-FROM dunglas/frankenphp:1.13.0-php8.5-alpine@sha256:b64048cc72ee412fd7247f45d70011c385850c0bfd0b467cd26cdccc99e158ca AS frankenphp-base
+FROM dunglas/frankenphp:1.13.1-php8.5-alpine@sha256:16d4703cd476758d5cf54b558bfc7458b933b6fe2b9db0a6a4a9b0f11d2ff3cc AS frankenphp-base
 
 # Single pinned Node toolchain reused by the dev stage (copied in) and the
 # assets build, so dev/CI/prod all run the same Node. node:26.10.0-alpine.
 # Refresh after a version bump with:
 #   docker buildx imagetools inspect node:<ver>-alpine --format '{{.Manifest.Digest}}'
-FROM node:26.10.0-alpine@sha256:0b36e8c136b94cd4fcf02188228e76c31ad5872eef3fec8cbd2eee500cfd9e80 AS node-src
+FROM node:26.11.1-alpine@sha256:143494b1da2945f061539253adc65e4f1569ddf07da2d384c022c791a9d90a4a AS node-src
 
 # Single pinned Composer, copied into the dev stage and built on by the vendor stage.
 # = composer:2.10.3. Refresh after a bump with:
