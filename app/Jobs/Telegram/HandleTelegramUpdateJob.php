@@ -76,6 +76,12 @@ class HandleTelegramUpdateJob implements ShouldQueue
         string $text,
         array $message,
     ): void {
+        if (($message['chat']['type'] ?? null) !== 'private') {
+            $client->sendMessage($chatId, TelegramReplies::privateChatOnly());
+
+            return;
+        }
+
         $token = trim((string) substr($text, strlen('/start')));
 
         if ($token === '') {

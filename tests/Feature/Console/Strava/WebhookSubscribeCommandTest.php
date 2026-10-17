@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Http\Controllers\Strava\StravaWebhookController;
+use App\Services\Strava\StravaClient;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Http;
@@ -246,6 +247,30 @@ it('deletes a subscription by id, sending credentials in the query string', func
         && str_starts_with((string) $request->url(), 'https://www.strava.com/api/v3/push_subscriptions/555?')
         && str_contains((string) $request->url(), 'client_id=cid')
         && str_contains((string) $request->url(), 'client_secret=secret'));
+});
+
+it('bounds every Strava subscription call with the connect and total timeouts', function (): void {
+    $options = [];
+    $echo = fakeCallbackEchoes();
+    Http::fake(function ($request, array $sent) use (&$options, $echo) {
+        if (! str_contains((string) $request->url(), 'push_subscriptions')) {
+            return $echo($request);
+        }
+
+        $options[$request->method()] = $sent;
+
+        return $request->method() === 'POST' ? Http::response(['id' => 555], 201) : Http::response([]);
+    });
+
+    $this->artisan('strava:webhook-subscribe', ['--action' => 'create'])->assertSuccessful();
+    $this->artisan('strava:webhook-subscribe', ['--action' => 'view'])->assertSuccessful();
+    $this->artisan('strava:webhook-subscribe', ['--action' => 'delete', '--id' => '555'])->assertSuccessful();
+
+    expect(array_keys($options))->toEqualCanonicalizing(['POST', 'GET', 'DELETE']);
+    foreach ($options as $sent) {
+        expect($sent['connect_timeout'] ?? null)->toBe(StravaClient::HTTP_CONNECT_TIMEOUT_SECONDS)
+            ->and($sent['timeout'] ?? null)->toBe(StravaClient::HTTP_TIMEOUT_SECONDS);
+    }
 });
 
 it('rejects an unknown action', function (): void {
