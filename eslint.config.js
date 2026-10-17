@@ -1,6 +1,7 @@
 import { defineConfig } from 'eslint/config';
 import tseslint from 'typescript-eslint';
 import eslintReact from '@eslint-react/eslint-plugin';
+import jsxA11y from 'eslint-plugin-jsx-a11y';
 import reactHooks from 'eslint-plugin-react-hooks';
 import perfectionist from 'eslint-plugin-perfectionist';
 
@@ -12,6 +13,7 @@ export default defineConfig(
         extends: [
             eslintReact.configs['recommended-typescript'],
             reactHooks.configs.flat['recommended-latest'],
+            jsxA11y.flatConfigs.recommended,
         ],
         plugins: {
             perfectionist,
