@@ -3,6 +3,7 @@ import { type Dispatch, type FormEvent, Suspense } from 'react';
 import TemariMascot from '@/components/temari/TemariMascot';
 import Chip from '@/components/ui/Chip';
 import DateField from '@/components/ui/DateField';
+import DurationFields from '@/components/ui/DurationFields';
 import FieldError from '@/components/ui/FieldError';
 import PageHero from '@/components/ui/PageHero';
 import PillButton from '@/components/ui/PillButton';
@@ -201,46 +202,17 @@ export default function GoalStep({
 
                     <div>
                         <span className={FIELD_LABEL}>goal time</span>
-                        <div className="mt-1.5 flex items-center gap-1.5">
-                            <input
-                                type="number"
-                                min={0}
-                                max={71}
-                                value={hours}
-                                onChange={(e) =>
-                                    dispatch({
-                                        type: 'setGoalTime',
-                                        hours: Number(e.target.value),
-                                        minutes,
-                                    })
-                                }
-                                aria-label="Hours"
-                                className={cn(
-                                    inputVariants({ size: 'sm' }),
-                                    'w-16 text-center',
-                                )}
-                            />
-                            <span className={FIELD_LABEL}>hr</span>
-                            <input
-                                type="number"
-                                min={0}
-                                max={59}
-                                value={minutes}
-                                onChange={(e) =>
-                                    dispatch({
-                                        type: 'setGoalTime',
-                                        hours,
-                                        minutes: Number(e.target.value),
-                                    })
-                                }
-                                aria-label="Minutes"
-                                className={cn(
-                                    inputVariants({ size: 'sm' }),
-                                    'w-16 text-center',
-                                )}
-                            />
-                            <span className={FIELD_LABEL}>min</span>
-                        </div>
+                        <DurationFields
+                            value={{ hours, minutes, seconds: 0 }}
+                            onChange={(next) =>
+                                dispatch({
+                                    type: 'setGoalTime',
+                                    hours: next.hours,
+                                    minutes: next.minutes,
+                                })
+                            }
+                            className="mt-1.5"
+                        />
                         <FieldError
                             message={goalTimeIssue ?? errors.goal_time_sec}
                         />

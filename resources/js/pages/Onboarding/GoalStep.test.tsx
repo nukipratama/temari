@@ -77,6 +77,20 @@ describe('Onboarding/GoalStep', () => {
         });
     });
 
+    it('keeps an emptied goal-time field empty while typing', () => {
+        const dispatch = renderStep();
+        const minutes = screen.getByLabelText('Minutes') as HTMLInputElement;
+
+        fireEvent.change(minutes, { target: { value: '' } });
+
+        expect(minutes.value).toBe('');
+        expect(dispatch).toHaveBeenCalledWith({
+            type: 'setGoalTime',
+            hours: 0,
+            minutes: 0,
+        });
+    });
+
     it('renders server errors beside their fields', () => {
         renderStep({}, { race_date: 'Race day has to be in the future.' });
 
