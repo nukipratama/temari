@@ -369,7 +369,6 @@ function inertiaVersionFor(TestCase $actingAs, string $url): string
 {
     $html = $actingAs->get($url)->getContent();
     preg_match('/type="application\/json">(.*?)<\/script>/s', (string) $html, $matches);
-    /** @var array<string, mixed>|null $page */
     $page = json_decode(html_entity_decode($matches[1] ?? ''), true);
     $version = is_array($page) ? ($page['version'] ?? '') : '';
 
@@ -466,8 +465,7 @@ function stravaBadRequest(string $resource, string $field): array
  * A share-card fixture built straight from the value object, so a style test
  * asserts on what it draws rather than on how a run resolves into facts (that
  * is CardFactsTest's job). Override any field by name.
- */
-/**
+ *
  * @param  list<string>  $badges
  * @param  list<array{string, string}>  $splits
  * @param  list<float>  $paceProfile
