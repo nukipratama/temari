@@ -23,10 +23,10 @@ use App\Services\Telegram\AnalysisMessagePresenter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Notifications\ChannelManager;
 use Illuminate\Notifications\SendQueuedNotifications;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Queue;
 use Minishlink\WebPush\Encryption;
 use NotificationChannels\WebPush\WebPushChannel;
-use Illuminate\Support\Collection;
 
 uses(RefreshDatabase::class);
 

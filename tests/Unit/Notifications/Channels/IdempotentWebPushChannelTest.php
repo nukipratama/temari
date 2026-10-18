@@ -95,7 +95,6 @@ it('skips a queued web push when muted and does not claim it', function (): void
     NotificationPreference::factory()->for($user)->create(['push_enabled' => false]);
 
     /** @var WebPushChannel&MockInterface $inner */
-
     $inner = Mockery::mock(WebPushChannel::class);
     $inner->shouldNotReceive('send');
     idempotentChannel($inner)->send($user, new AnalysisReadyNotification($analysis));
@@ -147,7 +146,6 @@ it('reclaims and sends a stale web push once with the new claim version', functi
     ]);
 
     /** @var WebPushChannel&MockInterface $inner */
-
     $inner = Mockery::mock(WebPushChannel::class);
     $inner->shouldReceive('send')->once();
     idempotentChannel($inner)->send(pushUser(), new AnalysisReadyNotification($analysis));

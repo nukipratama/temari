@@ -750,7 +750,7 @@ it('fills a pre-connect run rule-based and dispatches no LLM job for it', functi
     $cardRow = Analysis::query()->forSubject(RunCard::class, $card->id, AnalysisType::CardFlavor)->firstOrFail();
     expect($cardRow->status)->toBe(AnalysisStatus::Done)
         ->and($cardRow->content)->toBeString()
-            ->and($cardRow->content)->not->toBeEmpty();
+        ->and($cardRow->content)->not->toBeEmpty();
 
     Carbon::setTestNow();
 });
