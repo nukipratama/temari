@@ -15,6 +15,7 @@ use Psr\Http\Client\ClientExceptionInterface;
 
 /**
  * @param  array<string, string>  $extra
+ * @param  array<string, string>  $headers
  */
 function azureError(int $status, string $message = 'boom', array $extra = [], array $headers = []): ErrorException
 {
@@ -22,6 +23,11 @@ function azureError(int $status, string $message = 'boom', array $extra = [], ar
         ['message' => $message, 'type' => 'invalid_request_error'] + $extra,
         new Psr7Response($status, $headers),
     );
+}
+
+function retryAfterOf(Throwable $e): ?int
+{
+    return $e instanceof TransientUpstreamException ? $e->retryAfterSeconds : throw $e;
 }
 
 function transporterFailure(string $message = 'read timed out'): TransporterException
@@ -66,17 +72,17 @@ it('maps a RateLimitException to a transient failure carrying Retry-After', func
     $mapped = AzureFailureMapper::map(new RateLimitException(new Psr7Response(429, ['Retry-After' => '17'])));
 
     expect($mapped)->toBeInstanceOf(TransientUpstreamException::class)
-        ->and($mapped->retryAfterSeconds)->toBe(17);
+        ->and(retryAfterOf($mapped))->toBe(17);
 });
 
 it('leaves Retry-After null when the header is absent', function (): void {
-    expect(AzureFailureMapper::map(new RateLimitException(new Psr7Response(429)))->retryAfterSeconds)->toBeNull();
+    expect(retryAfterOf(AzureFailureMapper::map(new RateLimitException(new Psr7Response(429)))))->toBeNull();
 });
 
 it('leaves Retry-After null when the header is an HTTP date rather than delta-seconds', function (): void {
     $mapped = AzureFailureMapper::map(new RateLimitException(new Psr7Response(429, ['Retry-After' => 'Wed, 21 Oct 2026 07:28:00 GMT'])));
 
-    expect($mapped->retryAfterSeconds)->toBeNull();
+    expect(retryAfterOf($mapped))->toBeNull();
 });
 
 it('maps a ServerException to a transient failure', function (): void {
@@ -88,7 +94,7 @@ it('maps an ErrorException carrying a 429 to a transient failure with its Retry-
     $mapped = AzureFailureMapper::map(azureError(429, 'slow down', [], ['Retry-After' => '5']));
 
     expect($mapped)->toBeInstanceOf(TransientUpstreamException::class)
-        ->and($mapped->retryAfterSeconds)->toBe(5);
+        ->and(retryAfterOf($mapped))->toBe(5);
 });
 
 it('maps an ErrorException carrying a 5xx to a transient failure', function (): void {
@@ -99,7 +105,7 @@ it('maps a TransporterException to a transient failure with no delay', function 
     $mapped = AzureFailureMapper::map(transporterFailure());
 
     expect($mapped)->toBeInstanceOf(TransientUpstreamException::class)
-        ->and($mapped->retryAfterSeconds)->toBeNull();
+        ->and(retryAfterOf($mapped))->toBeNull();
 });
 
 it('keeps a permanent 4xx terminal', function (): void {

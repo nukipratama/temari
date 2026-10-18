@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Services\AI\Anchor\RunAnchorResolver;
 use App\Services\Run\Metrics\StreamSummary;
 
+/** @param  array<string, mixed>  $overrides */
 function runAnchorSummary(array $overrides = []): StreamSummary
 {
     return StreamSummary::fromArray(array_merge([

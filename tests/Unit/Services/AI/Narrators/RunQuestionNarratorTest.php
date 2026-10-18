@@ -30,7 +30,10 @@ beforeEach(function (): void {
     config()->set('azure_openai.max_completion_tokens', 400);
 });
 
-/** @param  string|list<CreateResponse>  $responses */
+/**
+ * @param  string|list<CreateResponse>  $responses
+ * @param-out ClientFake $client
+ */
 function runQuestionNarrator(string|array $responses, ?ClientFake &$client = null): RunQuestionNarrator
 {
     $client = new ClientFake(is_string($responses) ? [fakeAzureResponse($responses)] : $responses);
@@ -46,7 +49,11 @@ function runQuestionNarrator(string|array $responses, ?ClientFake &$client = nul
     );
 }
 
-/** @return array{0: Activity, 1: ActivityDetail} */
+/**
+ * @return array{0: Activity, 1: ActivityDetail}
+ *
+ * @param  array<string, mixed>  $streamSummary
+ */
 function runQuestionFixture(?User $user = null, float $distance = 8000.0, ?array $streamSummary = null): array
 {
     $activity = Activity::factory()->for($user ?? User::factory())->create();
@@ -203,7 +210,10 @@ it('offers the full stream reads once the run is detailed', function (): void {
 
 function runQuestionPrompt(): string
 {
-    return preg_replace('/\s+/', ' ', (string) new ReflectionClass(RunQuestionNarrator::class)->getConstant('SYSTEM_PROMPT'));
+    $prompt = new ReflectionClass(RunQuestionNarrator::class)->getConstant('SYSTEM_PROMPT');
+    assert(is_string($prompt));
+
+    return nonNull(preg_replace('/\s+/', ' ', $prompt));
 }
 
 it('reads the thread when a question refers back, and offers unasked follow-ups', function (): void {

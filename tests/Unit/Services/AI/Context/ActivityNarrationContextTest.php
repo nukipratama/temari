@@ -6,6 +6,7 @@ use App\Models\ActivityDetail;
 use App\Services\AI\Context\ActivityNarrationContext;
 use Illuminate\Support\Carbon;
 
+/** @param  array<string, mixed>  $attributes */
 function narrationDetail(array $attributes = []): ActivityDetail
 {
     return ActivityDetail::factory()->make([

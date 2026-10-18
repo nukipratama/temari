@@ -56,6 +56,8 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use OpenAI\Resources\Responses;
 use OpenAI\Testing\ClientFake;
+use Illuminate\Support\Arr;
+use App\Support\Numeric;
 
 uses(RefreshDatabase::class);
 
@@ -121,6 +123,7 @@ function runInsightNarrator(StructuredChatCaller $caller): RunInsightNarrator
 
 // ── PostRunSpeechNarrator ─────────────────────────────────────────────
 
+/** @return array{activity: Activity, detail: ActivityDetail} */
 function postRunFixture(): array
 {
     $user = User::factory()->create();
@@ -169,7 +172,7 @@ it('PostRunSpeechNarrator does not fatal when the stream summary is null', funct
     $d->update(['stream_summary' => null]);
     $caller = fakeCaller(json_encode(['speech' => 'Mantap'], JSON_THROW_ON_ERROR));
     $narrator = postRunNarrator($caller);
-    expect($narrator->generate($a, $d->fresh(), 'dim'))->toBe('Mantap');
+    expect($narrator->generate($a, $d->refresh(), 'dim'))->toBe('Mantap');
 });
 
 it('PostRunSpeechNarrator narrates a run with a populated stream summary', function (): void {
@@ -181,7 +184,7 @@ it('PostRunSpeechNarrator narrates a run with a populated stream summary', funct
     ]]);
     $caller = fakeCaller(json_encode(['speech' => 'Base solid'], JSON_THROW_ON_ERROR));
     $narrator = postRunNarrator($caller);
-    expect($narrator->generate($a, $d->fresh(), 'blazing'))->toBe('Base solid');
+    expect($narrator->generate($a, $d->refresh(), 'blazing'))->toBe('Base solid');
 });
 
 // The speech used to be handed all three insight blocks as prose to synthesize.
@@ -193,7 +196,7 @@ it('PostRunSpeechNarrator is not handed the insight blocks it used to retell', f
     ['activity' => $a, 'detail' => $d] = postRunFixture();
 
     $context = postRunNarrator(fakeCaller('{"speech":"x"}'))
-        ->context($a, $d->fresh(), 'blazing');
+        ->context($a, $d->refresh(), 'blazing');
 
     expect($context)->not->toHaveKey('insights');
 });
@@ -225,7 +228,7 @@ it('PostRunSpeechNarrator feeds prev_narrative from the prior activity post-run 
     ['activity' => $a, 'detail' => $d] = postRunFixture();
     priorActivityWithDoneAnalysis($a->user, AnalysisType::PostRunSpeech, 'The run yesterday was very easy.');
 
-    $context = postRunNarrator(fakeCaller('{"speech":"x"}'))->context($a, $d->fresh(), 'blazing');
+    $context = postRunNarrator(fakeCaller('{"speech":"x"}'))->context($a, $d->refresh(), 'blazing');
 
     expect($context['prev_narrative'])->toBe('The run yesterday was very easy.')
         // prev_opener is the first few words, so the model can steer away from it.
@@ -245,7 +248,7 @@ it('PostRunSpeechNarrator leaves prev_narrative null when there is no prior Done
         'status' => AnalysisStatus::Pending,
     ]);
 
-    $context = postRunNarrator(fakeCaller('{"speech":"x"}'))->context($a, $d->fresh(), 'blazing');
+    $context = postRunNarrator(fakeCaller('{"speech":"x"}'))->context($a, $d->refresh(), 'blazing');
 
     expect($context['prev_narrative'])->toBeNull()
         ->and($context['prev_opener'])->toBeNull();
@@ -259,17 +262,17 @@ it('PostRunSpeechNarrator truncates prev_opener to the first few words of a long
         'Still carrying yesterday, and this time your close was livelier with a tidier finishing pace.',
     );
 
-    $context = postRunNarrator(fakeCaller('{"speech":"x"}'))->context($a, $d->fresh(), 'blazing');
+    $context = postRunNarrator(fakeCaller('{"speech":"x"}'))->context($a, $d->refresh(), 'blazing');
 
     expect($context['prev_opener'])->toBe('Still carrying yesterday, and this time your close was livelier')
-        ->and(str_word_count((string) $context['prev_opener']))->toBeLessThanOrEqual(10);
+        ->and(str_word_count(Arr::string($context, 'prev_opener')))->toBeLessThanOrEqual(10);
 });
 
 it('PostRunSpeechNarrator keeps only what no tool can serve in the context', function (): void {
     ['activity' => $a, 'detail' => $d] = postRunFixture();
 
     $context = postRunNarrator(fakeCaller('{"speech":"x"}'))
-        ->context($a, $d->fresh(), 'blazing');
+        ->context($a, $d->refresh(), 'blazing');
 
     // mood is the call's own argument, so it is not readable from anywhere.
     expect(array_keys($context))
@@ -314,7 +317,7 @@ it('RunInsightNarrator returns the claims payload on valid JSON, dropping only t
     ]], JSON_THROW_ON_ERROR));
     $narrator = runInsightNarrator($caller);
 
-    $payload = $narrator->generate($a, $d->fresh());
+    $payload = $narrator->generate($a, $d->refresh());
 
     expect($payload['claims'])->toHaveCount(2)
         ->and($payload['claims'][0])->toBe(['anchor' => 'split:2', 'text' => 'Km 2 was the fastest.', 'value' => '5:50/km', 'delta' => null])
@@ -336,7 +339,7 @@ it('RunInsightNarrator does not fatal when the stream summary is null, and rende
     ]], JSON_THROW_ON_ERROR));
     $narrator = runInsightNarrator($caller);
 
-    $payload = $narrator->generate($a, $d->fresh());
+    $payload = $narrator->generate($a, $d->refresh());
 
     // Every anchor kind is stream-summary-derived, so a run with no stream
     // summary at all can never resolve a claim -- same "nothing to say"
@@ -354,7 +357,7 @@ it('RunInsightNarrator survives a claim anchored to a split the run actually has
     ]], JSON_THROW_ON_ERROR));
     $narrator = runInsightNarrator($caller);
 
-    expect($narrator->generate($a, $d->fresh())['claims'])->toHaveCount(1);
+    expect($narrator->generate($a, $d->refresh())['claims'])->toHaveCount(1);
 });
 
 it('RunInsightNarrator drops a claim whose anchor the run has no reading for', function (string $anchor, string $text): void {
@@ -365,7 +368,7 @@ it('RunInsightNarrator drops a claim whose anchor the run has no reading for', f
     ]], JSON_THROW_ON_ERROR));
     $narrator = runInsightNarrator($caller);
 
-    expect($narrator->generate($a, $d->fresh())['claims'])->toBe([]);
+    expect($narrator->generate($a, $d->refresh())['claims'])->toBe([]);
 })->with([
     'a split the run never recorded' => ['split:5', 'A km that never happened.'],
     'a zone with no HR breakdown' => ['zone:z4', 'Mostly Z4.'],
@@ -380,7 +383,7 @@ it('RunInsightNarrator survives a zone claim when the run has a real HR breakdow
     ]], JSON_THROW_ON_ERROR));
     $narrator = runInsightNarrator($caller);
 
-    expect($narrator->generate($a, $d->fresh())['claims'])->toHaveCount(1);
+    expect($narrator->generate($a, $d->refresh())['claims'])->toHaveCount(1);
 });
 
 it('RunInsightNarrator drops a claim whose anchor is not in the closed namespace at all', function (): void {
@@ -391,7 +394,7 @@ it('RunInsightNarrator drops a claim whose anchor is not in the closed namespace
     ]], JSON_THROW_ON_ERROR));
     $narrator = runInsightNarrator($caller);
 
-    expect($narrator->generate($a, $d->fresh())['claims'])->toBe([]);
+    expect($narrator->generate($a, $d->refresh())['claims'])->toBe([]);
 });
 
 it('RunInsightNarrator renders nothing when every claim in the response is invalid', function (): void {
@@ -404,7 +407,7 @@ it('RunInsightNarrator renders nothing when every claim in the response is inval
     ]], JSON_THROW_ON_ERROR));
     $narrator = runInsightNarrator($caller);
 
-    expect($narrator->generate($a, $d->fresh())['claims'])->toBe([]);
+    expect($narrator->generate($a, $d->refresh())['claims'])->toBe([]);
 });
 
 it('RunInsightNarrator caps claims at 3 even when the model returns more valid ones', function (): void {
@@ -424,7 +427,7 @@ it('RunInsightNarrator caps claims at 3 even when the model returns more valid o
     ]], JSON_THROW_ON_ERROR));
     $narrator = runInsightNarrator($caller);
 
-    expect($narrator->generate($a, $d->fresh())['claims'])->toHaveCount(3);
+    expect($narrator->generate($a, $d->refresh())['claims'])->toHaveCount(3);
 });
 
 it('RunInsightNarrator prompt carries its framing wording', function (string $first, string $second): void {
@@ -477,7 +480,7 @@ it('RunInsightNarrator feeds prev_narrative from the prior activity run-insight 
     priorActivityWithDoneAnalysis($a->user, AnalysisType::RunInsight, 'Cadence was 168 yesterday, starting to improve.');
 
     $narrator = runInsightNarrator(fakeCaller('{"claims":[]}'));
-    $context = $narrator->context($a, $d->fresh());
+    $context = $narrator->context($a, $d->refresh());
 
     expect($context['prev_narrative'])->toBe('Cadence was 168 yesterday, starting to improve.');
 });
@@ -486,7 +489,7 @@ it('RunInsightNarrator leaves prev_narrative null when no prior run-insight is D
     ['activity' => $a, 'detail' => $d] = postRunFixture();
 
     $narrator = runInsightNarrator(fakeCaller('{"claims":[]}'));
-    $context = $narrator->context($a, $d->fresh());
+    $context = $narrator->context($a, $d->refresh());
 
     expect($context['prev_narrative'])->toBeNull();
 });
@@ -496,7 +499,7 @@ it('RunInsightNarrator sends no run data in the context, only the continuity the
 
     $narrator = runInsightNarrator(fakeCaller('{"claims":[]}'));
 
-    expect(array_keys($narrator->context($a, $d->fresh())))
+    expect(array_keys($narrator->context($a, $d->refresh())))
         ->toBe(NarratorContinuity::CONTEXT_KEYS);
 });
 
@@ -586,8 +589,8 @@ it('WeekTotalsTool reads the previous week deltas when a prior snapshot exists',
     expect($context['prev_distance_km'])->toBe(20.0)
         ->and($context['prev_runs'])->toBe(3)
         ->and($context['prev_pace_sec_per_km'])->not->toBeNull()
-        ->and($context['pace_formatted'])->toBe(PaceFormatter::format($context['pace_sec_per_km']))
-        ->and($context['prev_pace_formatted'])->toBe(PaceFormatter::format($context['prev_pace_sec_per_km']));
+        ->and($context['pace_formatted'])->toBe(PaceFormatter::format(Numeric::float($context['pace_sec_per_km'])))
+        ->and($context['prev_pace_formatted'])->toBe(PaceFormatter::format(Numeric::float($context['prev_pace_sec_per_km'])));
 });
 
 it('WeeklyRecapNarrator leaves previous-week deltas null on the first week', function (): void {
@@ -784,7 +787,7 @@ it('PostRunSpeechNarrator re-asks a speech that quotes a distance no tool return
 it('PostRunSpeechNarrator re-asks a speech that turns the day\'s verdict around', function (): void {
     ['activity' => $a, 'detail' => $d] = postRunFixture();
     PlannedSession::factory()->for($a->user)->create([
-        'date' => $d->start_date_local->toDateString(),
+        'date' => nonNull($d->start_date_local)->toDateString(),
         'session_type' => SessionType::Tempo,
         'intent_verdict' => IntentVerdict::TooHard,
     ]);
@@ -817,7 +820,7 @@ it('hands the speech, the insight and the post-run brief the same plan verdict r
 it('RunInsightNarrator leaves whether the effort matched the ask to the verdict, not the intensity label', function (): void {
     expect(narratorPrompt(RunInsightNarrator::class))
         ->toContain('belongs to the day\'s verdict from')
-        ->not->toContain('source of truth for how intense this session was');
+        ->and(narratorPrompt(RunInsightNarrator::class))->not->toContain('source of truth for how intense this session was');
 });
 
 it('RunInsightNarrator keeps the grey-zone nudge off an easy day the verdict says stayed easy', function (): void {
@@ -847,11 +850,11 @@ it('BriefingMascotVoiceNarrator re-asks a post-run block that labels the intent'
 });
 
 it('BriefingMascotVoiceNarrator post-run prompt shows outcomes in words, not verdict labels', function (): void {
-    $prompt = (string) new ReflectionClass(BriefingMascotVoiceNarrator::class)->getConstant('POST_RUN_SYSTEM_PROMPT');
+    $prompt = narratorConstant(BriefingMascotVoiceNarrator::class, 'POST_RUN_SYSTEM_PROMPT');
 
     expect($prompt)->toContain('and it stayed easy.')
-        ->not->toContain('planned, intent hit.')
-        ->not->toContain('intent too hard.');
+        ->and($prompt)->not->toContain('planned, intent hit.')
+        ->and($prompt)->not->toContain('intent too hard.');
 });
 
 /**
@@ -865,9 +868,11 @@ it('TrendReadNarrator offers exactly the readings its prompt describes', functio
     $schema = new ReflectionClass(TrendReadNarrator::class)->getConstant('READING_PROPERTY_SCHEMA');
     $prompt = narratorPrompt(TrendReadNarrator::class);
 
-    expect($schema['reading']['enum'])->toBe(['load', 'long_term_load', 'vdot', 'shape', 'adherence']);
+    expect(data_get($schema, 'reading.enum'))->toBe(['load', 'long_term_load', 'vdot', 'shape', 'adherence']);
 
-    foreach ($schema['reading']['enum'] as $reading) {
+    foreach (arrayOf(data_get($schema, 'reading.enum')) as $reading) {
+        expect($reading)->toBeString();
+        assert(is_string($reading));
         expect($prompt)->toContain("`{$reading}`:");
     }
 
@@ -947,14 +952,14 @@ it('CardFlavorNarrator leaves the run reads optional and no longer offers the ca
 
 it('CardFlavorNarrator writes a never-detailed card from its identity in one step with no tools', function (): void {
     $card = cardFixture();
-    $card->activity->detail->delete();
+    nonNull($card->activity->detail)->delete();
     $card = $card->fresh();
     [$caller, $client] = capturingCaller('{"flavor":"x"}');
 
-    cardFlavorNarrator($caller)->generate($card);
+    cardFlavorNarrator($caller)->generate(nonNull($card));
 
     // Offering tools that can only answer null teaches the model to distrust them.
-    assertOneStepWithContext($client, new CardIdentityTool($card)->handle([]));
+    assertOneStepWithContext($client, new CardIdentityTool(nonNull($card))->handle([]));
 });
 
 it('CardFlavorNarrator throws on missing flavor key', function (): void {
@@ -986,7 +991,7 @@ it('MonthTotalsTool reads month totals and the mood mix', function (): void {
     expect($context['total_runs'])->toBe(1);
     expect($context['total_distance_km'])->toBe(8.0);
     expect($context['longest_run_km'])->toBe(8.0);
-    expect($context['mood_mix'][0]['mood'])->toBe('blazing');
+    expect(data_get($context, 'mood_mix.0.mood'))->toBe('blazing');
     expect($context['pr_count'])->toBe(0);
     expect($context['weekly_distance_km'])->toBeArray();
 
@@ -1013,8 +1018,8 @@ it('MonthTotalsTool counts PRs and buckets distance by week within the month', f
     $context = new MonthTotalsTool($user, $month)->handle([]);
 
     expect($context['pr_count'])->toBe(1)
-        ->and($context['weekly_distance_km'][0])->toBe(6.0)
-        ->and($context['weekly_distance_km'][2])->toBe(10.0);
+        ->and(data_get($context, 'weekly_distance_km.0'))->toBe(6.0)
+        ->and(data_get($context, 'weekly_distance_km.2'))->toBe(10.0);
 });
 
 it('MonthTotalsTool reads the long-term load arc from the month snapshots', function (): void {
@@ -1166,7 +1171,7 @@ it('ProfileVoiceNarrator builds context from user stats', function (): void {
     $caller = fakeCaller(profileVoiceJson('x'));
     $narrator = new ProfileVoiceNarrator($caller, app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(ProgressionSeriesBuilder::class), app(LifetimeStats::class));
 
-    $context = new LifetimeStatsTool($user->fresh(), Carbon::now(), app(LifetimeStats::class))->handle([]);
+    $context = new LifetimeStatsTool($user->refresh(), Carbon::now(), app(LifetimeStats::class))->handle([]);
     expect($context['total_runs'])->toBe(1)
         ->and($context['total_km'])->toBe(5.0)
         ->and($context['longest_run_km'])->toBe(5.0)
@@ -1193,7 +1198,7 @@ it('ProfileVoiceNarrator reads the weekly streak and the most common run time', 
         ]);
     }
 
-    $context = new LifetimeStatsTool($user->fresh(), Carbon::now(), app(LifetimeStats::class))->handle([]);
+    $context = new LifetimeStatsTool($user->refresh(), Carbon::now(), app(LifetimeStats::class))->handle([]);
 
     expect($context['weekly_streak'])->toBe(2)
         ->and($context['favorite_time'])->toBe('night');
@@ -1206,7 +1211,7 @@ it('ProfileVoiceNarrator feeds the latest load_balance as the consistency spine'
         'runs' => 3, 'form_status' => 'overreaching',
     ]);
 
-    $context = new LifetimeStatsTool($user->fresh(), Carbon::now(), app(LifetimeStats::class))->handle([]);
+    $context = new LifetimeStatsTool($user->refresh(), Carbon::now(), app(LifetimeStats::class))->handle([]);
 
     expect($context['load_balance'])->toBe('heavy');
 });
@@ -1250,9 +1255,9 @@ it('ProfileVoiceNarrator bounds its quotable numbers to two schema slots', funct
         ->toContain('COMMIT TO IT FIRST')
         ->toContain('delta_formatted')
         ->toContain('Take the direction from relation alone')
-        ->not->toContain('a bigger delta means')
-        ->not->toContain('a falling delta_sec')
-        ->not->toContain('fine to use as evidence of consistency');
+        ->and(narratorPrompt(ProfileVoiceNarrator::class))->not->toContain('a bigger delta means')
+        ->and(narratorPrompt(ProfileVoiceNarrator::class))->not->toContain('a falling delta_sec')
+        ->and(narratorPrompt(ProfileVoiceNarrator::class))->not->toContain('fine to use as evidence of consistency');
 });
 
 /**
@@ -1290,7 +1295,7 @@ it('ProfileVoiceNarrator lets the paragraph quote a mood percentage without a sl
     $caller = fakeCaller(profileVoiceJson('blazing takes 60% of your runs, and 6247.5 km says why.'));
     $narrator = new ProfileVoiceNarrator($caller, app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(ProgressionSeriesBuilder::class), app(LifetimeStats::class));
 
-    expect($narrator->generate($user->fresh()))->toBe('blazing takes 60% of your runs, and 6247.5 km says why.');
+    expect($narrator->generate($user->refresh()))->toBe('blazing takes 60% of your runs, and 6247.5 km says why.');
 });
 
 it('ProfileVoiceNarrator lets the paragraph quote persona window and total figures without a slot', function (string $paragraph): void {
@@ -1334,8 +1339,8 @@ it('ProfileVoiceNarrator re-asks once when the paragraph quotes a figure no slot
         return $method === 'create'
             && is_array($last)
             && ($last['role'] ?? null) === 'user'
-            && str_contains((string) $last['content'], 'The paragraph quotes 28')
-            && str_contains((string) $last['content'], '6247.5 km');
+            && str_contains(Arr::string($last, 'content'), 'The paragraph quotes 28')
+            && str_contains(Arr::string($last, 'content'), '6247.5 km');
     });
 });
 
@@ -1355,7 +1360,7 @@ it('ProfileVoiceNarrator feeds the four training paces derived from the runner V
     seedConfirmedEffort($user, 5000, 1200);
     PersonalRecord::factory()->for($user)->create(['category' => '5km', 'value_sec' => 1200]);
 
-    $context = new TrainingPacesTool($user->fresh(), Carbon::now(), app(VdotEstimator::class), app(TrainingPaceCalculator::class))->handle([]);
+    $context = new TrainingPacesTool($user->refresh(), Carbon::now(), app(VdotEstimator::class), app(TrainingPaceCalculator::class))->handle([]);
 
     expect($context['easy_pace_sec'])->toBeInt()
         ->and($context['marathon_pace_sec'])->toBeInt()
@@ -1366,7 +1371,7 @@ it('ProfileVoiceNarrator feeds the four training paces derived from the runner V
 it('ProfileVoiceNarrator leaves training paces null when the user has no VDOT-eligible PR', function (): void {
     $user = User::factory()->create();
 
-    $context = new TrainingPacesTool($user->fresh(), Carbon::now(), app(VdotEstimator::class), app(TrainingPaceCalculator::class))->handle([]);
+    $context = new TrainingPacesTool($user->refresh(), Carbon::now(), app(VdotEstimator::class), app(TrainingPaceCalculator::class))->handle([]);
 
     expect($context['easy_pace_sec'])->toBeNull()
         ->and($context['marathon_pace_sec'])->toBeNull()
@@ -1479,7 +1484,7 @@ it('BriefingMascotVoiceNarrator uses rule-based recovery if the model recommends
     expect($copy)
         ->toContain('10.0 km logged, 5.0 km credited against 8.0 km planned')
         ->toContain('recovery')
-        ->not->toContain('go run again');
+        ->and($copy)->not->toContain('go run again');
 });
 
 /**
@@ -1569,10 +1574,21 @@ it('BriefingMascotVoiceNarrator omits prev_narrative when the prior day Temari n
  */
 function narratorPrompt(string $class): string
 {
-    $reflection = new ReflectionClass($class);
-    $name = $reflection->hasConstant('SYSTEM_PROMPT') ? 'SYSTEM_PROMPT' : 'SYSTEM_PROMPT_TEMPLATE';
+    assert(class_exists($class));
+    $name = new ReflectionClass($class)->hasConstant('SYSTEM_PROMPT') ? 'SYSTEM_PROMPT' : 'SYSTEM_PROMPT_TEMPLATE';
 
-    return (string) $reflection->getConstant($name);
+    return narratorConstant($class, $name);
+}
+
+function narratorConstant(string $class, string $name): string
+{
+    expect(class_exists($class))->toBeTrue();
+    assert(class_exists($class));
+    $value = new ReflectionClass($class)->getConstant($name);
+    expect($value)->toBeString();
+    assert(is_string($value));
+
+    return $value;
 }
 
 it('keeps diagnosis and fitness claims out of the load-reading narrator prompts', function (string $class): void {
@@ -1602,7 +1618,7 @@ it('has the persona call the load numbers long-term load, short-term load and lo
         ->toContain('short-term load')
         ->toContain('load balance')
         ->toContain('Never call them fitness, fatigue, readiness or overreaching')
-        ->not->toContain('overreaching, too much for too long');
+        ->and(TemariPersona::SYSTEM_PROMPT)->not->toContain('overreaching, too much for too long');
 });
 
 /**
@@ -1645,7 +1661,7 @@ function toolNamesByClass(): array
  * registered tool (CardFlavor varies its own by whether the run has detail)
  * counts as carried.
  *
- * @return array<string, array{0: class-string, 1: list<string>}>
+ * @return array<string, array{0: string, 1: list<string>}>
  */
 function narratorToolboxes(): array
 {
@@ -1721,7 +1737,7 @@ it('no narrator prompt names a tool its own toolbox does not carry', function (s
 // is a content change rather than a saving; at or above the global default the
 // override buys nothing and would only raise the ceiling.
 it('per-narrator step budgets cover two full read passes and only exist where they beat the default', function (): void {
-    $default = (int) config('ai.agent.max_steps');
+    $default = config()->integer('ai.agent.max_steps');
     $declared = [];
 
     foreach (narratorToolboxes() as $narrator => [$class, $tools]) {
@@ -1764,7 +1780,7 @@ it('MonthlyRecapNarrator prompt makes the mood step conditional on mood_mix', fu
     expect($prompt)
         ->toContain('ONLY if mood_mix is populated')
         ->toContain('SKIP this step silently')
-        ->not->toContain('—');
+        ->and($prompt)->not->toContain('—');
 });
 
 it('recap prompts give storytelling room (3-4 sentences, no rigid word cap)', function (string $narrator): void {
@@ -1804,7 +1820,7 @@ it('WeeklyRecapNarrator prompt caps the number count so the recap stops reading 
         ->toContain('max 3 numbers across the ENTIRE output')
         ->toContain('for YOU TO READ')
         ->toContain("That's a table, not a story.")
-        ->not->toContain('Sebutkan 1-2');
+        ->and($prompt)->not->toContain('Sebutkan 1-2');
 });
 
 it('CardFlavorNarrator prompt refuses badge and move names stitched together', function (): void {
@@ -1825,7 +1841,7 @@ it('RunInsightNarrator prompt steers toward plain, natural phrasing while keepin
         ->toContain('LANGUAGE:')
         ->toContain('plain and conversational, not clinical')
         ->toContain('negative split')
-        ->not->toContain('—');
+        ->and($prompt)->not->toContain('—');
 });
 
 // Superseded by this slice: the fixed 3-slot schema needed the prompt itself
@@ -1876,11 +1892,11 @@ it('CardFlavorNarrator prompt names rarity in English, not Indonesian', function
 
     expect($prompt)
         ->toContain('Common, Uncommon, Rare, Epic, Legendary')
-        ->not->toContain('Biasa')
-        ->not->toContain('Berkesan')
-        ->not->toContain('Langka')
-        ->not->toContain('Istimewa')
-        ->not->toContain('Legendaris');
+        ->and($prompt)->not->toContain('Biasa')
+        ->and($prompt)->not->toContain('Berkesan')
+        ->and($prompt)->not->toContain('Langka')
+        ->and($prompt)->not->toContain('Istimewa')
+        ->and($prompt)->not->toContain('Legendaris');
 });
 
 // ── Structural guard: no swept narrator invites a past-run comparison (#1009, decision) ──
@@ -1902,8 +1918,8 @@ it('never invites a past-run comparison and never wires the retired past-you too
 
     expect($prompt)
         ->toContain('NEVER compare')
-        ->not->toContain('get_past_you')
-        ->not->toContain('get_latest_past_you');
+        ->and($prompt)->not->toContain('get_past_you')
+        ->and($prompt)->not->toContain('get_latest_past_you');
 })->with([
     'PostRunSpeechNarrator' => [PostRunSpeechNarrator::class],
     'BriefingMascotVoiceNarrator' => [BriefingMascotVoiceNarrator::class],

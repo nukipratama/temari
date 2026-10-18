@@ -19,16 +19,19 @@ use OpenAI\Resources\Responses;
 use OpenAI\Responses\Meta\MetaInformation;
 use OpenAI\Responses\Responses\CreateResponse;
 use OpenAI\Testing\ClientFake;
+use Mockery\MockInterface;
 
 /**
- * @param  array<array-key, mixed>  $responses  queued ClientFake responses/throwables
+ * @param array<array-key, CreateResponse|Throwable|string> $responses queued ClientFake responses/throwables
  * @return array{0: AgentLoop, 1: ClientFake, 2: Mockery\MockInterface}
  */
 function agentLoopWith(array $responses): array
 {
     $client = new ClientFake($responses);
+    /** @var AzureOpenAIClient&MockInterface $azure */
     $azure = Mockery::mock(AzureOpenAIClient::class);
     $azure->shouldReceive('client')->andReturn($client);
+    /** @var AzureConfigCircuitBreaker&MockInterface $breaker */
     $breaker = Mockery::mock(AzureConfigCircuitBreaker::class);
     $breaker->shouldReceive('recordSuccess')->andReturnNull();
     $breaker->shouldReceive('recordFailure')->andReturnNull();
@@ -37,7 +40,7 @@ function agentLoopWith(array $responses): array
 }
 
 /**
- * @return array<string, mixed>
+ * @return array{model: string, input: list<array{role: string, content: string}>, max_output_tokens: int}
  */
 function agentLoopPayload(): array
 {
@@ -134,7 +137,9 @@ it('meters a recorded reasoning-model response carrying cache-write token detail
         }
         JSON, true, flags: JSON_THROW_ON_ERROR);
 
-    [$loop] = agentLoopWith([CreateResponse::from($recorded, MetaInformation::from([]))]);
+    /** @var Closure(array<string, mixed>, MetaInformation): CreateResponse $fromRecorded */
+    $fromRecorded = CreateResponse::from(...);
+    [$loop] = agentLoopWith([$fromRecorded($recorded, MetaInformation::from([]))]);
     $budget = agentLoopBudget();
 
     [$response] = $loop->converse('briefing', agentLoopPayload(), null, $budget, microtime(true));
@@ -159,7 +164,7 @@ it('feeds a tool reading back into the conversation before the model answers', f
 
     [, $input] = $loop->converse('run_insight', agentLoopPayload(), $toolbox, $budget, microtime(true));
 
-    $last = end($input);
+    $last = arrayOf(end($input));
     expect($budget->steps())->toBe(2)
         ->and($last['type'])->toBe('function_call_output')
         ->and($last['output'])->toBe('{"value":42}');
@@ -180,7 +185,7 @@ it('returns the first turn that asks for no tools', function (): void {
 });
 
 it('forbids tools once the step ceiling is hit and returns the forced answer', function (): void {
-    Log::spy();
+    $log = Log::spy();
 
     [$loop, $client] = agentLoopWith([
         fakeAzureToolCallResponse([['name' => 'get_thing']]),
@@ -197,10 +202,10 @@ it('forbids tools once the step ceiling is hit and returns the forced answer', f
     $client->assertSent(Responses::class, fn (string $method, array $params): bool => $method === 'create'
         && $params['tool_choice'] === 'none');
 
-    Log::shouldHaveReceived('warning')->with('narrator.ai.agent_capped', Mockery::on(
+    $log->shouldHaveReceived('warning')->with('narrator.ai.agent_capped', Mockery::on(
         fn (array $ctx): bool => $ctx['reason'] === AgentBudget::REASON_STEPS && $ctx['kind'] === 'run_insight',
     ));
-    Log::shouldHaveReceived('info')->with('narrator.ai.tool_step', Mockery::on(
+    $log->shouldHaveReceived('info')->with('narrator.ai.tool_step', Mockery::on(
         fn (array $ctx): bool => $ctx['tools'] === ['get_thing'],
     ));
 });
@@ -222,10 +227,13 @@ it('keeps the turns it already billed when a later turn throws', function (): vo
 
 it('blocks on the local throttle before every Azure call', function (): void {
     $client = new ClientFake([fakeAzureResponse('{}'), fakeAzureResponse('{}')]);
+    /** @var AzureOpenAIClient&MockInterface $azure */
     $azure = Mockery::mock(AzureOpenAIClient::class);
     $azure->shouldReceive('client')->andReturn($client);
+    /** @var AzureConfigCircuitBreaker&MockInterface $breaker */
     $breaker = Mockery::mock(AzureConfigCircuitBreaker::class);
     $breaker->shouldReceive('recordSuccess')->andReturnNull();
+    /** @var AzureCallThrottle&MockInterface $throttle */
     $throttle = Mockery::mock(AzureCallThrottle::class);
     $throttle->shouldReceive('block')->twice();
     $loop = new AgentLoop($azure, $breaker, $throttle);
@@ -283,7 +291,7 @@ it('maps an upstream failure through the Azure failure taxonomy', function (): v
 });
 
 it('counts a config/auth failure toward the breaker and logs the failed call', function (): void {
-    Log::spy();
+    $log = Log::spy();
 
     [$loop, , $breaker] = agentLoopWith([new ErrorException(['message' => 'unauthorized', 'type' => 'invalid_api_key'], new Psr7Response(401))]);
 
@@ -292,7 +300,7 @@ it('counts a config/auth failure toward the breaker and logs the failed call', f
 
     $breaker->shouldHaveReceived('recordFailure')->once();
     $breaker->shouldNotHaveReceived('recordSuccess');
-    Log::shouldHaveReceived('warning')->with('narrator.ai.call', Mockery::on(
+    $log->shouldHaveReceived('warning')->with('narrator.ai.call', Mockery::on(
         fn (array $ctx): bool => $ctx['status'] === 'fail' && $ctx['kind'] === 'briefing',
     ));
 });
@@ -366,7 +374,7 @@ it('runs every step it is allowed when no deadline bounds the wall clock', funct
 });
 
 it('gives up before starting a step once the run passes its deadline', function (): void {
-    Log::spy();
+    $log = Log::spy();
     Carbon::setTestNow('2026-09-09 06:00:00');
 
     [$loop, $client] = agentLoopWith(array_fill(0, 10, fakeAzureToolCallResponse([['name' => 'get_thing']])));
@@ -379,7 +387,7 @@ it('gives up before starting a step once the run passes its deadline', function 
 
     $client->assertSent(Responses::class, 3);
 
-    Log::shouldHaveReceived('warning')->with('narrator.ai.agent_deadline', Mockery::on(
+    $log->shouldHaveReceived('warning')->with('narrator.ai.agent_deadline', Mockery::on(
         fn (array $ctx): bool => $ctx['kind'] === 'run_insight' && $ctx['steps'] === 3,
     ));
 });
@@ -402,10 +410,13 @@ it('gives up when the wait for a throttle slot is what spends the deadline', fun
     Carbon::setTestNow('2026-09-09 06:00:00');
 
     $client = new ClientFake([fakeAzureResponse('{}')]);
+    /** @var AzureOpenAIClient&MockInterface $azure */
     $azure = Mockery::mock(AzureOpenAIClient::class);
     $azure->shouldReceive('client')->andReturn($client);
+    /** @var AzureConfigCircuitBreaker&MockInterface $breaker */
     $breaker = Mockery::mock(AzureConfigCircuitBreaker::class);
     $breaker->shouldReceive('recordSuccess')->andReturnNull();
+    /** @var AzureCallThrottle&MockInterface $throttle */
     $throttle = Mockery::mock(AzureCallThrottle::class);
     $throttle->shouldReceive('block')->once()->andReturnUsing(function (): void {
         Carbon::setTestNow(Carbon::now()->addSeconds(241));

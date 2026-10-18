@@ -7,47 +7,48 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Sleep;
 
-beforeEach(function (): void {
-    $this->ledger = app(CostCeilingLedger::class);
-});
+function costCeilingLedger(): CostCeilingLedger
+{
+    return app(CostCeilingLedger::class);
+}
 
 it('keeps the first trip time, not the latest', function (): void {
     Carbon::setTestNow('2026-08-14 09:05:00');
-    $this->ledger->recordTrip();
+    costCeilingLedger()->recordTrip();
 
     Carbon::setTestNow('2026-08-14 17:40:00');
-    $this->ledger->recordTrip();
+    costCeilingLedger()->recordTrip();
 
-    expect($this->ledger->today()['trippedAt'])->toStartWith('2026-08-14T09:05:00');
+    expect(costCeilingLedger()->today()['trippedAt'])->toStartWith('2026-08-14T09:05:00');
 });
 
 it('counts every degraded fill of the day', function (): void {
     Carbon::setTestNow('2026-08-14 09:05:00');
-    $this->ledger->recordDegradedFill('run_insight', 1);
-    $this->ledger->recordDegradedFill('run_insight', 1);
-    $this->ledger->recordDegradedFill('run_insight', 1);
+    costCeilingLedger()->recordDegradedFill('run_insight', 1);
+    costCeilingLedger()->recordDegradedFill('run_insight', 1);
+    costCeilingLedger()->recordDegradedFill('run_insight', 1);
 
-    expect($this->ledger->today()['degradedFills'])->toBe(3);
+    expect(costCeilingLedger()->today()['degradedFills'])->toBe(3);
 });
 
 it('starts each day clean rather than carrying yesterday forward', function (): void {
     Carbon::setTestNow('2026-08-14 22:00:00');
-    $this->ledger->recordTrip();
-    $this->ledger->recordDegradedFill('run_insight', 1);
+    costCeilingLedger()->recordTrip();
+    costCeilingLedger()->recordDegradedFill('run_insight', 1);
 
     Carbon::setTestNow('2026-08-15 00:30:00');
 
-    expect($this->ledger->today())->toBe(['trippedAt' => null, 'degradedFills' => 0, 'degradedBreakdown' => []]);
+    expect(costCeilingLedger()->today())->toBe(['trippedAt' => null, 'degradedFills' => 0, 'degradedBreakdown' => []]);
 });
 
 it('breaks the day down by kind and athlete', function (): void {
     Carbon::setTestNow('2026-08-14 09:05:00');
-    $this->ledger->recordDegradedFill('run_insight', 1);
-    $this->ledger->recordDegradedFill('run_insight', 1);
-    $this->ledger->recordDegradedFill('run_insight', 2);
-    $this->ledger->recordDegradedFill('run_question', 1);
+    costCeilingLedger()->recordDegradedFill('run_insight', 1);
+    costCeilingLedger()->recordDegradedFill('run_insight', 1);
+    costCeilingLedger()->recordDegradedFill('run_insight', 2);
+    costCeilingLedger()->recordDegradedFill('run_question', 1);
 
-    expect($this->ledger->today()['degradedBreakdown'])->toBe([
+    expect(costCeilingLedger()->today()['degradedBreakdown'])->toBe([
         ['kind' => 'run_insight', 'userId' => 1, 'count' => 2],
         ['kind' => 'run_insight', 'userId' => 2, 'count' => 1],
         ['kind' => 'run_question', 'userId' => 1, 'count' => 1],
@@ -59,8 +60,8 @@ it('still counts a fill when the breakdown lock is held elsewhere', function ():
     $held->get();
     Sleep::fake(syncWithCarbon: true);
 
-    $this->ledger->recordDegradedFill('run_insight', 1);
+    costCeilingLedger()->recordDegradedFill('run_insight', 1);
 
-    expect($this->ledger->today())->toMatchArray(['degradedFills' => 1, 'degradedBreakdown' => []]);
+    expect(costCeilingLedger()->today())->toMatchArray(['degradedFills' => 1, 'degradedBreakdown' => []]);
     $held->release();
 });
