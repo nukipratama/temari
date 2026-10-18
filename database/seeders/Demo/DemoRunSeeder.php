@@ -52,6 +52,7 @@ use App\Services\Run\Trend\TrendSnapshotWriter;
 use App\Support\Numeric;
 use Closure;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Random\Engine\Mt19937;
 use Random\Randomizer;
 
@@ -292,7 +293,7 @@ class DemoRunSeeder
         // so the demo caps weekly recaps at the last fully-closed week to match
         // real narration instead of seeding an open-week recap.
         $lastClosedWeekEnding = RecapPeriod::lastClosedWeekEnding();
-        /** @var \Illuminate\Support\Collection<int, int> $closedWeeklies */
+        /** @var Collection<int, int> $closedWeeklies */
         $closedWeeklies = WeeklySnapshot::query()
             ->where('user_id', $user->id)
             ->whereDate('week_ending', '<=', $lastClosedWeekEnding)

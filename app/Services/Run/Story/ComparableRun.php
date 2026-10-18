@@ -60,7 +60,7 @@ final readonly class ComparableRun
             paceSecPerKm: $pace,
             averageHeartrate: isset($row['average_heartrate']) ? Numeric::float($row['average_heartrate']) : null,
             elevationGainM: isset($row['total_elevation_gain']) ? Numeric::float($row['total_elevation_gain']) : null,
-            ingestState: IngestState::from((string) $row['ingest_state']),
+            ingestState: IngestState::from($row['ingest_state']),
             plannedSessionType: is_string($row['planned_session_type'] ?? null)
                 ? SessionType::tryFrom($row['planned_session_type'])
                 : null,

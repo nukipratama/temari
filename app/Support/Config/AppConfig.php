@@ -38,7 +38,7 @@ class AppConfig
         assert($stored === null || is_string($stored));
         $resolved = $stored === null
             ? $key->default()
-            : $key->cast(json_decode((string) $stored, true));
+            : $key->cast(json_decode($stored, true));
 
         $this->cache($key, $resolved);
 

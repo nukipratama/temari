@@ -54,7 +54,7 @@ class SelfHealAttempts extends Card
             ->filter(fn (int $total, int $attempts): bool => $attempts >= $max)
             ->sum();
         assert(is_int($deadLettered));
-        $buckets[] = ['label' => 'dead-letter', 'count' => (int) $deadLettered, 'tone' => 'alert'];
+        $buckets[] = ['label' => 'dead-letter', 'count' => $deadLettered, 'tone' => 'alert'];
 
         return View::make('livewire.pulse.self-heal-attempts', [
             'cols' => $this->cols,
