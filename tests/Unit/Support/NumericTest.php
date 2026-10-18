@@ -14,6 +14,13 @@ it('casts numeric values the same way a plain cast does', function (mixed $value
     'null' => [null, 0.0, 0],
 ]);
 
-it('rejects a non-numeric value where assertions run', function (): void {
-    Numeric::float('seven');
-})->throws(AssertionError::class);
+it('rejects a non-numeric value only where assertions run, and casts as before elsewhere', function (): void {
+    if (ini_get('zend.assertions') === '1') {
+        expect(fn () => Numeric::float('seven'))->toThrow(AssertionError::class);
+
+        return;
+    }
+
+    expect(Numeric::float('seven'))->toBe(0.0)
+        ->and(Numeric::int('seven'))->toBe(0);
+});
