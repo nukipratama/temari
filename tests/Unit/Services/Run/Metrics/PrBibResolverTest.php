@@ -12,9 +12,10 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
 
-beforeEach(function (): void {
-    $this->resolver = new PrBibResolver();
-});
+function prBibResolver(): PrBibResolver
+{
+    return new PrBibResolver();
+}
 
 it('stamps a run that currently holds a tracked distance PR, animating since nothing has claimed it yet', function (): void {
     $user = User::factory()->create();
@@ -25,7 +26,7 @@ it('stamps a run that currently holds a tracked distance PR, animating since not
         'value_sec' => 2400.0,
     ]);
 
-    $bib = $this->resolver->resolve($activity, $detail);
+    $bib = prBibResolver()->resolve($activity, $detail);
 
     expect($bib)->toBe(['label' => '10K', 'value_sec' => 2400.0, 'distance_m' => null, 'record_key' => '10km', 'animate' => true]);
 });
@@ -36,8 +37,8 @@ it('never writes a RecordStamp row: resolving is a plain read', function (): voi
     $detail = ActivityDetail::factory()->for($activity)->create(['distance' => 10_000]);
     PersonalRecord::factory()->forActivity($activity)->create(['category' => '10km']);
 
-    $this->resolver->resolve($activity, $detail);
-    $this->resolver->resolve($activity, $detail);
+    prBibResolver()->resolve($activity, $detail);
+    prBibResolver()->resolve($activity, $detail);
 
     expect(RecordStamp::query()->count())->toBe(0);
 });
@@ -50,9 +51,9 @@ it('stops animating once something else has claimed the stamp for that record', 
     $detail = ActivityDetail::factory()->for($activity)->create(['distance' => 10_000]);
     PersonalRecord::factory()->forActivity($activity)->create(['category' => '10km']);
 
-    $first = $this->resolver->resolve($activity, $detail);
+    $first = nonNull(prBibResolver()->resolve($activity, $detail));
     RecordStamp::query()->create(['user_id' => $user->id, 'record_key' => '10km', 'seen_at' => now()]);
-    $second = $this->resolver->resolve($activity, $detail);
+    $second = nonNull(prBibResolver()->resolve($activity, $detail));
 
     expect($first['animate'])->toBeTrue()
         ->and($second)->not->toBeNull()
@@ -76,7 +77,7 @@ it("does not let one user's claimed stamp suppress another user's animation", fu
     $detailB = ActivityDetail::factory()->for($activityB)->create(['distance' => 10_000]);
     PersonalRecord::factory()->forActivity($activityB)->create(['category' => '10km']);
 
-    expect($this->resolver->resolve($activityB, $detailB)['animate'])->toBeTrue();
+    expect(nonNull(prBibResolver()->resolve($activityB, $detailB))['animate'])->toBeTrue();
 });
 
 it('does not stamp a run that no longer holds the record', function (): void {
@@ -88,7 +89,7 @@ it('does not stamp a run that no longer holds the record', function (): void {
     $newerActivity = Activity::factory()->for($user)->create();
     PersonalRecord::factory()->forActivity($newerActivity)->create(['category' => '10km']);
 
-    expect($this->resolver->resolve($olderActivity, $olderDetail))->toBeNull();
+    expect(prBibResolver()->resolve($olderActivity, $olderDetail))->toBeNull();
 });
 
 it('stamps a new longest run', function (): void {
@@ -98,7 +99,7 @@ it('stamps a new longest run', function (): void {
     $longest = Activity::factory()->for($user)->create();
     $longestDetail = ActivityDetail::factory()->for($longest)->create(['distance' => 21_100]);
 
-    $bib = $this->resolver->resolve($longest, $longestDetail);
+    $bib = prBibResolver()->resolve($longest, $longestDetail);
 
     expect($bib)->toBe(['label' => 'Longest Run', 'value_sec' => null, 'distance_m' => 21_100.0, 'record_key' => 'longest_run', 'animate' => true]);
 });
@@ -110,7 +111,7 @@ it('does not stamp a run shorter than the account\'s longest', function (): void
     $shorter = Activity::factory()->for($user)->create();
     $shorterDetail = ActivityDetail::factory()->for($shorter)->create(['distance' => 10_000]);
 
-    expect($this->resolver->resolve($shorter, $shorterDetail))->toBeNull();
+    expect(prBibResolver()->resolve($shorter, $shorterDetail))->toBeNull();
 });
 
 it('prefers the rarer record when a run holds more than one, leaving the other unseen', function (): void {
@@ -120,7 +121,7 @@ it('prefers the rarer record when a run holds more than one, leaving the other u
     PersonalRecord::factory()->forActivity($activity)->create(['category' => 'marathon']);
     PersonalRecord::factory()->forActivity($activity)->create(['category' => '10km']);
 
-    $bib = $this->resolver->resolve($activity, $detail);
+    $bib = nonNull(prBibResolver()->resolve($activity, $detail));
 
     expect($bib['label'])->toBe('FM')
         ->and(RecordStamp::query()->where('user_id', $user->id)->where('record_key', '10km')->exists())->toBeFalse();
@@ -134,7 +135,7 @@ it('ignores categories that are not tracked bib records', function (string $cate
     $detail = ActivityDetail::factory()->for($activity)->create(['distance' => $distance]);
     PersonalRecord::factory()->forActivity($activity)->create(['category' => $category]);
 
-    expect($this->resolver->resolve($activity, $detail))->toBeNull();
+    expect(prBibResolver()->resolve($activity, $detail))->toBeNull();
 })->with([
     'a best-effort pace category' => ['best_5min', 10_000],
     'the 1km fastest-km category' => ['1km', 1_000],

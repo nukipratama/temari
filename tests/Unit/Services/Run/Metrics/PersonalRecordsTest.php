@@ -12,6 +12,7 @@ use App\Services\Run\Metrics\PaceFormatter;
 use App\Services\Run\Metrics\PersonalRecords;
 use Illuminate\Support\Carbon;
 use App\Services\Run\Metrics\VdotEstimator;
+use App\Support\Numeric;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
 
@@ -19,8 +20,12 @@ uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
     Bus::fake();
-    $this->records = app(PersonalRecords::class);
 });
+
+function personalRecords(): PersonalRecords
+{
+    return app(PersonalRecords::class);
+}
 
 /**
  * `stream_summary.per_km` rows as KmSplitBuilder writes them.
@@ -49,7 +54,7 @@ it('inserts a fresh distance PR when none exists', function (): void {
         'stream_summary' => ['per_km' => evenPerKm(5, 380)],
     ]);
 
-    $broken = $this->records->detectAndStore($activity, $detail);
+    $broken = personalRecords()->detectAndStore($activity, $detail);
 
     expect($broken)->toContain('5km')
         ->and(PersonalRecord::query()->where([
@@ -68,7 +73,7 @@ it('lifts the guide by at most one VDOT when a faster run overwrites the only PR
         'start_date_local' => '2026-06-01 07:00:00',
         'stream_summary' => ['per_km' => evenPerKm(5, 360)],
     ]);
-    $this->records->detectAndStore($oldActivity, $oldDetail);
+    personalRecords()->detectAndStore($oldActivity, $oldDetail);
     $estimator = app(VdotEstimator::class);
     $before = $estimator->estimate($user);
 
@@ -79,13 +84,13 @@ it('lifts the guide by at most one VDOT when a faster run overwrites the only PR
         'start_date_local' => '2026-09-01 07:00:00',
         'stream_summary' => ['per_km' => evenPerKm(5, 300)],
     ]);
-    $this->records->detectAndStore($newActivity, $newDetail);
-    $after = $estimator->estimate($user);
+    personalRecords()->detectAndStore($newActivity, $newDetail);
+    $after = nonNull($estimator->estimate($user));
     Carbon::setTestNow();
 
     expect(PersonalRecord::query()->where('user_id', $user->id)->where('category', '5km')->value('activity_id'))
         ->toBe($newActivity->id)
-        ->and($after['vdot'])->toBe(round($before['vdot'] + VdotEstimator::RISE_CAP_VDOT_PER_WEEK, 1));
+        ->and(data_get($after, 'vdot'))->toBe(round(Numeric::float(data_get($before, 'vdot')) + VdotEstimator::RISE_CAP_VDOT_PER_WEEK, 1));
 });
 
 it('drops the estimate at once when its source activity is deleted', function (): void {
@@ -96,8 +101,8 @@ it('drops the estimate at once when its source activity is deleted', function ()
         'start_date_local' => now()->subWeeks(4),
         'stream_summary' => ['per_km' => evenPerKm(5, 300)],
     ]);
-    $this->records->detectAndStore($fastActivity, $fastDetail);
-    $fastVdot = app(VdotEstimator::class)->estimate($user)['vdot'];
+    personalRecords()->detectAndStore($fastActivity, $fastDetail);
+    $fastVdot = nonNull(app(VdotEstimator::class)->estimate($user))['vdot'];
 
     $survivingActivity = Activity::factory()->for($user)->create();
     $survivingDetail = ActivityDetail::factory()->for($survivingActivity)->create([
@@ -105,13 +110,13 @@ it('drops the estimate at once when its source activity is deleted', function ()
         'start_date_local' => now()->subWeeks(5),
         'stream_summary' => ['per_km' => evenPerKm(5, 420)],
     ]);
-    $this->records->detectAndStore($survivingActivity, $survivingDetail);
+    personalRecords()->detectAndStore($survivingActivity, $survivingDetail);
 
     $fastActivity->delete();
-    $this->records->rebuildForUser($user);
+    personalRecords()->rebuildForUser($user);
 
-    $estimate = app(VdotEstimator::class)->estimate($user);
-    expect($estimate['source_activity_id'])->toBe($survivingActivity->id)
+    $estimate = nonNull(app(VdotEstimator::class)->estimate($user));
+    expect(data_get($estimate, 'source_activity_id'))->toBe($survivingActivity->id)
         ->and($estimate['vdot'])->toBeLessThan($fastVdot);
 });
 
@@ -123,14 +128,14 @@ it('lowers the estimate when a corrected source activity is rebuilt', function (
         'start_date_local' => now()->subWeeks(2),
         'stream_summary' => ['per_km' => evenPerKm(5, 300)],
     ]);
-    $this->records->detectAndStore($activity, $detail);
-    $fastVdot = app(VdotEstimator::class)->estimate($user)['vdot'];
+    personalRecords()->detectAndStore($activity, $detail);
+    $fastVdot = nonNull(app(VdotEstimator::class)->estimate($user))['vdot'];
 
     $detail->update(['stream_summary' => ['per_km' => evenPerKm(5, 420)]]);
-    $this->records->rebuildForUser($user);
+    personalRecords()->rebuildForUser($user);
 
-    $estimate = app(VdotEstimator::class)->estimate($user);
-    expect($estimate['source_value_sec'])->toBe(2100.0)
+    $estimate = nonNull(app(VdotEstimator::class)->estimate($user));
+    expect(data_get($estimate, 'source_value_sec'))->toBe(2100.0)
         ->and($estimate['vdot'])->toBeLessThan($fastVdot);
 });
 
@@ -149,13 +154,13 @@ it('drops a quality source after its activity is deleted', function (): void {
         'start_date_local' => now()->subWeeks(3),
         'stream_summary' => ['per_km' => [...evenPerKm(5, 335), ...evenPerKm(7, 600)]],
     ]);
-    $this->records->rebuildForUser($user);
+    personalRecords()->rebuildForUser($user);
     $estimator = app(VdotEstimator::class);
-    $before = $estimator->estimate($user);
+    $before = nonNull($estimator->estimate($user));
 
     $fiveK->delete();
-    $this->records->rebuildForUser($user);
-    $after = $estimator->estimate($user);
+    personalRecords()->rebuildForUser($user);
+    $after = nonNull($estimator->estimate($user));
 
     expect($before['quality_vdot'])->toBeGreaterThan($before['vdot'])
         ->and($after['quality_vdot'])->toBe($after['vdot'])
@@ -175,7 +180,7 @@ it('reaches a target that lands inside the trailing sub-km leftover', function (
         ],
     ]);
 
-    $broken = $this->records->detectAndStore($activity, $detail);
+    $broken = personalRecords()->detectAndStore($activity, $detail);
 
     expect($broken)->toContain('half_marathon')
         ->and(PersonalRecord::query()->where('user_id', $user->id)->where('category', 'half_marathon')->value('value_sec'))
@@ -195,7 +200,7 @@ it('does not break a PR when the new time is slower', function (): void {
         'stream_summary' => ['per_km' => evenPerKm(5, 360)],
     ]);
 
-    $broken = $this->records->detectAndStore($activity, $detail);
+    $broken = personalRecords()->detectAndStore($activity, $detail);
 
     expect($broken)->not->toContain('5km');
 });
@@ -215,7 +220,7 @@ it('breaks an effort PR when stream_summary has a faster best-N pace', function 
         ],
     ]);
 
-    $broken = $this->records->detectAndStore($activity, $detail);
+    $broken = personalRecords()->detectAndStore($activity, $detail);
 
     expect($broken)->toContain('best_5min')
         ->and(PersonalRecord::query()->where([
@@ -235,7 +240,7 @@ it('ignores effort pace strings that do not match M:SS format', function (): voi
         ],
     ]);
 
-    $broken = $this->records->detectAndStore($activity, $detail);
+    $broken = personalRecords()->detectAndStore($activity, $detail);
 
     expect($broken)->toContain('best_10min')
         ->and($broken)->not->toContain('best_5min');
@@ -255,7 +260,7 @@ it('respects per-user scoping (PR break for user A does not affect user B)', fun
         'stream_summary' => ['per_km' => evenPerKm(5, 380)],
     ]);
 
-    $broken = $this->records->detectAndStore($activity, $detail);
+    $broken = personalRecords()->detectAndStore($activity, $detail);
 
     expect($broken)->toContain('5km')
         ->and(PersonalRecord::query()->where('user_id', $userB->id)->where('category', '5km')->value('value_sec'))
@@ -274,7 +279,7 @@ it('stages no analysis row of its own, leaving the fan-out to DispatchPostRunAna
         'stream_summary' => ['per_km' => evenPerKm(5, 280)],
     ]);
 
-    expect($this->records->detectAndStore($activity, $detail))->toContain('5km')
+    expect(personalRecords()->detectAndStore($activity, $detail))->toContain('5km')
         ->and(Analysis::query()->count())->toBe(0);
 });
 
@@ -296,9 +301,9 @@ it('rebuildForUser drops orphaned records and re-detects from surviving runs', f
         'start_date_local' => now(),
     ]);
 
-    $this->records->rebuildForUser($user);
+    personalRecords()->rebuildForUser($user);
 
-    $km = PersonalRecord::query()->where('user_id', $user->id)->where('category', '1km')->first();
+    $km = nonNull(PersonalRecord::query()->where('user_id', $user->id)->where('category', '1km')->first());
     expect($km)->not->toBeNull()
         ->and($km->value_sec)->toEqualWithDelta(300.0, 0.01)
         ->and($km->activity_id)->toBe($activity->id);
@@ -320,7 +325,7 @@ it('names the runs that set a record on their own day, judged against every earl
     $faster = $run('2026-02-01 07:00:00', 300);
     $easy = $run('2026-09-01 07:00:00', 430);
 
-    $setters = $this->records->recordSettingActivityIds($user);
+    $setters = personalRecords()->recordSettingActivityIds($user);
 
     expect($setters)->toBe([$first->id, $faster->id])
         ->and($setters)->not->toContain($easy->id)

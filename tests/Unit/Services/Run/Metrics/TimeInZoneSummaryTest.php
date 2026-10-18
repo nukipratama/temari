@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\DB;
 
 uses(RefreshDatabase::class);
 
+/** @param array<string, float|int> $minutes */
 function zoneRun(User $user, string $date, array $minutes): void
 {
     $activity = Activity::factory()->for($user)->analyzed()->create();
