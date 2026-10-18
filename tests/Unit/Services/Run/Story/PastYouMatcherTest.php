@@ -63,8 +63,7 @@ it('matches the oldest qualifying easy run within ±20% distance', function (): 
     $current = seedRun($user, Carbon::today(), 10_000, 4_140, $temp);
     $match = nonNull(app(PastYouMatcher::class)->findMatch($current->activity, $current));
 
-    expect($match)->not->toBeNull()
-        ->and(nonNull($match['past']->start_date_local)->toDateString())->toBe(Carbon::today()->subDays(90)->toDateString())
+    expect(nonNull($match['past']->start_date_local)->toDateString())->toBe(Carbon::today()->subDays(90)->toDateString())
         ->and($match['days_ago'])->toBe(90)
         ->and($match['pace_diff_sec'])->toBeFloat()->toBeGreaterThan(0);
 });
@@ -110,8 +109,7 @@ it('reports direction=worse when the current run is slower at the same heart rat
 it('exposes findMatchContext with relation=faster and no signed field on a faster run', function (): void {
     $context = nonNull(heroContext(4_200, 150.0, 4_050, 150.0));
 
-    expect($context)->not->toBeNull()
-        ->and($context)->not->toHaveKeys(['pace_diff_sec', 'time_diff_sec', 'hr_diff_bpm', 'pace_change_pct'])
+    expect($context)->not->toHaveKeys(['pace_diff_sec', 'time_diff_sec', 'hr_diff_bpm', 'pace_change_pct'])
         ->and(data_get($context, 'pace.seconds_per_km'))->toBe(15.0)
         ->and(data_get($context, 'pace.relation'))->toBe('faster')
         ->and(data_get($context, 'time.relation'))->toBe('faster')
@@ -371,8 +369,7 @@ it('still matches a run just inside the year boundary', function (): void {
 
     $match = nonNull(app(PastYouMatcher::class)->findMatch($current->activity, $current));
 
-    expect($match)->not->toBeNull()
-        ->and($match['days_ago'])->toBe(360);
+    expect($match['days_ago'])->toBe(360);
 });
 
 it('prefers a run inside the window over an older one', function (): void {
@@ -523,8 +520,7 @@ it('picks the most comparable candidate, not the nearest in time', function (): 
         matcherRun('2025-07-10 06:00:00', 430.0, 10_000.0, 155.0, 50.0, 12),
     ]));
 
-    expect($comparison)->not->toBeNull()
-        ->and($comparison->past->activityId)->toBe(12)
+    expect($comparison->past->activityId)->toBe(12)
         ->and($comparison->paceDeltaSec)->toBe(10.0);
 });
 

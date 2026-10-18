@@ -160,8 +160,7 @@ it('stores detail and streams on successful fetch', function (): void {
     activityPipeline()->ingest($activity);
 
     $detail = nonNull(ActivityDetail::query()->where('activity_id', $activity->id)->first());
-    expect($detail)->not->toBeNull()
-        ->and($detail->name)->toBe('Morning Run')
+    expect($detail->name)->toBe('Morning Run')
         ->and($detail->distance)->toEqualWithDelta(10000.0, 0.01)
         ->and($detail->summary_polyline)->toBe('poly123')
         ->and($detail->laps)->toEqual([['lap_index' => 1, 'distance' => 1000.0, 'elapsed_time' => 360, 'moving_time' => 360]])
@@ -169,8 +168,7 @@ it('stores detail and streams on successful fetch', function (): void {
         ->and($detail->start_lng)->toEqualWithDelta(106.8090, 1e-5);
 
     $stream = nonNull(ActivityStream::query()->where('activity_id', $activity->id)->first());
-    expect($stream)->not->toBeNull()
-        ->and(data_get($stream, 'data.time.data'))->toBe([0, 60, 120]);
+    expect(data_get($stream, 'data.time.data'))->toBe([0, 60, 120]);
 
     expect(nonNull($activity->fresh())->analyzed_at)->not->toBeNull()
         ->and(nonNull($activity->fresh())->detail_fail_count)->toBe(0);
@@ -1205,8 +1203,7 @@ it('creates a profile from the observed peak when the athlete has no runner prof
     activityPipeline()->ingest($activity);
 
     $profile = nonNull(nonNull($activity->user->fresh())->runnerProfile);
-    expect($profile)->not->toBeNull()
-        ->and($profile->max_hr)->toBe(192)
+    expect($profile->max_hr)->toBe(192)
         ->and($profile->hr_zones['Z2']['lo'])->toBeGreaterThan(config()->integer('runner.hr_zones.Z2.lo'));
 });
 

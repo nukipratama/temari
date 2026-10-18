@@ -63,8 +63,7 @@ it('builds the weekly-best series scaled to the target distance', function (): v
 
     $series = nonNull(new ProgressionSeriesBuilder()->build($user, $featured, 2_400));
 
-    expect($series)->not->toBeNull()
-        ->and($series['category'])->toBe('10km')
+    expect($series['category'])->toBe('10km')
         ->and($series['weeks'])->toHaveCount(2)
         ->and($series['times_sec'])->toHaveCount(2)
         ->and($series['activity_ids'])->toBe($activityIds)

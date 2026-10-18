@@ -27,8 +27,7 @@ function comparableRow(array $attributes = [], IngestState $ingestState = Ingest
 it('projects a query row onto the summary-only fields', function (): void {
     $run = nonNull(ComparableRun::fromRow(comparableRow()));
 
-    expect($run)->not->toBeNull()
-        ->and($run->activityId)->toBe(7)
+    expect($run->activityId)->toBe(7)
         ->and($run->distanceM)->toBe(10_000.0)
         ->and($run->elapsedTimeSec)->toBe(3_000)
         ->and($run->paceSecPerKm)->toBe(300.0)
