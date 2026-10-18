@@ -3,9 +3,10 @@ includes:
     - phpstan-baseline.neon
 
 parameters:
-    level: 8
+    level: 9
     paths:
         - app/
+        - database/
     tmpDir: .phpstan-cache
 
     # Sail's memory_limit=-1 lets workers grow until OOM-killer hits; cap them.
