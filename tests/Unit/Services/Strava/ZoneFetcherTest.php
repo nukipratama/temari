@@ -19,6 +19,7 @@ function zoneFetcher(): ZoneFetcher
     return new ZoneFetcher(new StravaClient(), app(AppConfig::class));
 }
 
+/** @param array<string, mixed> $overrides */
 function stravaZonesConnection(array $overrides = []): StravaConnection
 {
     return StravaConnection::factory()->create([
@@ -76,6 +77,8 @@ it('lifts a rest-anchored Z1 floor up to the resting HR', function (): void {
 
     $zones = zoneFetcher()->fetch(stravaZonesConnection(), 56);
 
+    expect($zones)->not->toBeNull();
+    assert($zones !== null);
     expect($zones['Z1'])->toBe(['lo' => 56, 'hi' => 137])
         ->and($zones['Z2'])->toBe(['lo' => 137, 'hi' => 153]);
 });
@@ -98,6 +101,8 @@ it('leaves Z1 untouched when Strava already starts it above resting', function (
 
     $zones = zoneFetcher()->fetch(stravaZonesConnection(), 55);
 
+    expect($zones)->not->toBeNull();
+    assert($zones !== null);
     expect($zones['Z1'])->toBe(['lo' => 100, 'hi' => 120]);
 });
 
