@@ -12,33 +12,36 @@ use Illuminate\Support\Carbon;
 
 uses(RefreshDatabase::class);
 
-beforeEach(function (): void {
-    $this->gate = app(NarrationGate::class);
-});
+function narrationGate(): NarrationGate
+{
+    return app(NarrationGate::class);
+}
 
 it('binds NarrationGate as scoped, so a leaked withoutDispatching() flag ends with its request', function (): void {
-    expect(app(NarrationGate::class))->toBe($this->gate);
+    $gate = narrationGate();
+
+    expect(app(NarrationGate::class))->toBe($gate);
 
     app()->forgetScopedInstances();
 
-    expect(app(NarrationGate::class))->not->toBe($this->gate);
+    expect(app(NarrationGate::class))->not->toBe($gate);
 });
 
 it('never reports a spent athlete as a global pause, since nothing shared has stopped', function (): void {
     $snap = WeeklySnapshot::factory()->create();
     breachTheCeilingFor($snap->user_id);
 
-    expect($this->gate->generationPaused($snap->user_id))->toBeTrue()
-        ->and($this->gate->generationPaused())->toBeFalse()
-        ->and($this->gate->pauseReason())->toBeNull();
+    expect(narrationGate()->generationPaused($snap->user_id))->toBeTrue()
+        ->and(narrationGate()->generationPaused())->toBeFalse()
+        ->and(narrationGate()->pauseReason())->toBeNull();
 });
 
 it('reports the app-wide ceiling as a genuine global pause', function (): void {
     $snap = WeeklySnapshot::factory()->create();
     breachTheTotalCeilingWith($snap->user_id);
 
-    expect($this->gate->generationPaused())->toBeTrue()
-        ->and($this->gate->pauseReason())->toBe('cost_ceiling');
+    expect(narrationGate()->generationPaused())->toBeTrue()
+        ->and(narrationGate()->pauseReason())->toBe('cost_ceiling');
 });
 
 it('pauses generation and reports the config reason when the config breaker is tripped', function (): void {
@@ -50,8 +53,8 @@ it('pauses generation and reports the config reason when the config breaker is t
         $breaker->recordFailure();
     }
 
-    expect($this->gate->generationPaused())->toBeTrue()
-        ->and($this->gate->pauseReason())->toBe('config');
+    expect(narrationGate()->generationPaused())->toBeTrue()
+        ->and(narrationGate()->pauseReason())->toBe('config');
 });
 
 it('resumes generation for free once the config breaker resets (env fixed)', function (): void {
@@ -61,21 +64,21 @@ it('resumes generation for free once the config breaker resets (env fixed)', fun
     for ($i = 0; $i < 3; $i++) {
         $breaker->recordFailure();
     }
-    expect($this->gate->generationPaused())->toBeTrue();
+    expect(narrationGate()->generationPaused())->toBeTrue();
 
     // A successful probe (or an operator reset) closes the breaker; self-heal's
     // generationPaused() gate then clears and dispatch resumes.
     $breaker->reset();
 
-    expect($this->gate->generationPaused())->toBeFalse()
-        ->and($this->gate->pauseReason())->toBeNull();
+    expect(narrationGate()->generationPaused())->toBeFalse()
+        ->and(narrationGate()->pauseReason())->toBeNull();
 });
 
 it('names a reason for every stop that pauses generation', function (Closure $stop, string $reason): void {
     $stop();
 
-    expect($this->gate->generationPaused())->toBeTrue()
-        ->and($this->gate->pauseReason())->toBe($reason);
+    expect(narrationGate()->generationPaused())->toBeTrue()
+        ->and(narrationGate()->pauseReason())->toBe($reason);
 })->with([
     'kill switch off' => [
         fn () => app(AppConfig::class)->set(AppConfigKey::AiEnabled, false),
@@ -98,10 +101,10 @@ it('reads the breaker without consuming its half-open probe when only reporting'
     }
     Carbon::setTestNow(Carbon::now()->addHour());
 
-    expect($this->gate->pauseReason())->toBeNull()
+    expect(narrationGate()->pauseReason())->toBeNull()
         ->and($breaker->state())->toBe(AzureConfigCircuitBreaker::STATE_OPEN);
 
-    expect($this->gate->generationPaused())->toBeFalse()
+    expect(narrationGate()->generationPaused())->toBeFalse()
         ->and($breaker->state())->toBe(AzureConfigCircuitBreaker::STATE_HALF_OPEN);
 
     Carbon::setTestNow();

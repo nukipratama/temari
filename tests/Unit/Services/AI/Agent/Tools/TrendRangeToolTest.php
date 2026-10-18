@@ -15,8 +15,13 @@ uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
     Carbon::setTestNow('2026-08-17 12:00:00');
-    $this->trainingLoad = new TrainingLoad();
 });
+
+function trendRangeTrainingLoad(): TrainingLoad
+{
+    return new TrainingLoad();
+}
+
 afterEach(fn () => Carbon::setTestNow());
 
 function seedTrendRun(User $user, int $daysAgo, float $trimp, float $distanceM = 5000.0): void
@@ -42,7 +47,7 @@ function seedUnanalyzedTrendRun(User $user, int $daysAgo, float $trimp, float $d
 it('reports the requested range on its own reading', function (): void {
     $user = User::factory()->create();
 
-    $context = new TrendRangeTool($user, '7d', $this->trainingLoad)->handle([]);
+    $context = new TrendRangeTool($user, '7d', trendRangeTrainingLoad())->handle([]);
 
     expect($context['range'])->toBe('7d');
 });
@@ -52,7 +57,7 @@ it('splits 7d into current (last 7 days) vs comparison (the 7 days before that)'
     seedTrendRun($user, 2, 100.0, 5000.0);   // inside current
     seedTrendRun($user, 10, 80.0, 4000.0);   // inside comparison
 
-    $context = new TrendRangeTool($user, '7d', $this->trainingLoad)->handle([]);
+    $context = new TrendRangeTool($user, '7d', trendRangeTrainingLoad())->handle([]);
 
     expect($context['current']['runs'])->toBe(1)
         ->and($context['current']['distance_km'])->toBe(5.0)
@@ -68,17 +73,17 @@ it('reads ctl_start/ctl_end from the same rolled series ctlTrend already exposes
         seedTrendRun($user, 13 - $i, 80.0);
     }
 
-    $context = new TrendRangeTool($user, '7d', $this->trainingLoad)->handle([]);
-    $ctlSeries = $this->trainingLoad->ctlTrend($user, 7);
+    $context = new TrendRangeTool($user, '7d', trendRangeTrainingLoad())->handle([]);
+    $ctlSeries = trendRangeTrainingLoad()->ctlTrend($user, 7);
 
     expect($context['ctl_start'])->toBe($ctlSeries[0]['ctl'])
-        ->and($context['ctl_end'])->toBe(array_last($ctlSeries)['ctl']);
+        ->and($context['ctl_end'])->toBe(nonNull(array_last($ctlSeries))['ctl']);
 });
 
 it('returns null vdot_start/vdot_end when there is no snapshot history yet', function (): void {
     $user = User::factory()->create();
 
-    $context = new TrendRangeTool($user, '7d', $this->trainingLoad)->handle([]);
+    $context = new TrendRangeTool($user, '7d', trendRangeTrainingLoad())->handle([]);
 
     expect($context['vdot_start'])->toBeNull()
         ->and($context['vdot_end'])->toBeNull();
@@ -89,7 +94,7 @@ it('reads real vdot_start/vdot_end from TrendDailySnapshot rows', function (): v
     TrendDailySnapshot::factory()->for($user)->create(['snapshot_date' => Carbon::today()->subDays(6), 'vdot' => 42.0]);
     TrendDailySnapshot::factory()->for($user)->create(['snapshot_date' => Carbon::today(), 'vdot' => 45.5]);
 
-    $context = new TrendRangeTool($user, '7d', $this->trainingLoad)->handle([]);
+    $context = new TrendRangeTool($user, '7d', trendRangeTrainingLoad())->handle([]);
 
     expect($context['vdot_start'])->toBe(42.0)
         ->and($context['vdot_end'])->toBe(45.5);
@@ -101,7 +106,7 @@ it('averages monotony/strain across the current period only, ignoring nulls', fu
         seedTrendRun($user, 13 - $i, 80.0);
     }
 
-    $context = new TrendRangeTool($user, '7d', $this->trainingLoad)->handle([]);
+    $context = new TrendRangeTool($user, '7d', trendRangeTrainingLoad())->handle([]);
 
     expect($context['avg_monotony'])->toBeFloat()
         ->and($context['avg_strain'])->toBeFloat();
@@ -110,7 +115,7 @@ it('averages monotony/strain across the current period only, ignoring nulls', fu
 it('returns null averages for a user with no history at all', function (): void {
     $user = User::factory()->create();
 
-    $context = new TrendRangeTool($user, '7d', $this->trainingLoad)->handle([]);
+    $context = new TrendRangeTool($user, '7d', trendRangeTrainingLoad())->handle([]);
 
     expect($context['avg_monotony'])->toBeNull()
         ->and($context['avg_strain'])->toBeNull()
@@ -123,7 +128,7 @@ it('excludes a not-yet-analyzed activity from the period totals', function (): v
     seedTrendRun($user, 2, 100.0, 5000.0);
     seedUnanalyzedTrendRun($user, 3, 999.0, 9000.0);
 
-    $context = new TrendRangeTool($user, '7d', $this->trainingLoad)->handle([]);
+    $context = new TrendRangeTool($user, '7d', trendRangeTrainingLoad())->handle([]);
 
     expect($context['current']['runs'])->toBe(1)
         ->and($context['current']['distance_km'])->toBe(5.0)

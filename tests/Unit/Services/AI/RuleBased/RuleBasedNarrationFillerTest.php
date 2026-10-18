@@ -34,6 +34,7 @@ function fillerRow(AnalysisType $type, int $subjectId, ?string $discriminator = 
     return $row;
 }
 
+/** @param  list<string>  $badges */
 function seededCard(Rarity $rarity, string $move, array $badges = [], float $distance = 8000.0, int $id = 1): RunCard
 {
     $activity = new Activity()->setRelation('detail', new ActivityDetail()->forceFill(['distance' => $distance]));
@@ -144,9 +145,9 @@ it('uses a post-run briefing when a detailed run lands against a credited plan r
         ->toContain('10.0 km logged, 5.0 km credited against 8.0 km planned')
         ->toContain('distance partial')
         ->toContain('the session did the job it was written for')
-        ->not->toContain('intent hit')
+        ->and($copy)->not->toContain('intent hit')
         ->toContain('recovery')
-        ->not->toContain('Easy tempo');
+        ->and($copy)->not->toContain('Easy tempo');
 });
 
 it("states each month's distance, run count, longest run, and volume band", function (): void {
@@ -353,7 +354,7 @@ it('reads the run-insight claims off the run itself, not a seeded variant', func
         'stream_summary' => ['drift_metric_version' => 2, 'steady_effort_decoupling_pct' => 6.5],
     ]);
 
-    $expected = RuleBasedRunInsights::claims($detail->fresh());
+    $expected = RuleBasedRunInsights::claims($detail->refresh());
     $insight = app(RuleBasedNarrationFiller::class)->fillFor(fillerRow(AnalysisType::RunInsight, $activity->id));
 
     expect($expected)->not->toBe([])
@@ -391,7 +392,7 @@ function scoredRunForFiller(User $user, string $date): void
 }
 
 it('surfaces a scored week past the form-known date that is missing its form_status', function (): void {
-    Log::spy();
+    $log = Log::spy();
     $user = User::factory()->create();
     scoredRunForFiller($user, '2026-06-01 07:00:00');
 
@@ -406,7 +407,7 @@ it('surfaces a scored week past the form-known date that is missing its form_sta
     $recap = app(RuleBasedNarrationFiller::class)->fillFor(fillerRow(AnalysisType::WeeklyRecap, $snapshot->id));
 
     expect($recap)->toContain("steady. that's the read.");
-    Log::shouldHaveReceived('warning')
+    $log->shouldHaveReceived('warning')
         ->with('narrator.recap.form_status_missing', Mockery::on(
             fn (array $context): bool => $context['snapshot_id'] === $snapshot->id && $context['runs'] === 5,
         ))
@@ -414,7 +415,7 @@ it('surfaces a scored week past the form-known date that is missing its form_sta
 });
 
 it('does not log for a ran week with no scored run', function (): void {
-    Log::spy();
+    $log = Log::spy();
 
     $snapshot = WeeklySnapshot::factory()->create([
         'distance_km' => 44.7,
@@ -426,11 +427,11 @@ it('does not log for a ran week with no scored run', function (): void {
     $recap = app(RuleBasedNarrationFiller::class)->fillFor(fillerRow(AnalysisType::WeeklyRecap, $snapshot->id));
 
     expect($recap)->toContain("steady. that's the read.");
-    Log::shouldNotHaveReceived('warning');
+    $log->shouldNotHaveReceived('warning');
 });
 
 it('does not log for a scored week inside the first 42 days of the athlete\'s load history', function (): void {
-    Log::spy();
+    $log = Log::spy();
     $user = User::factory()->create();
     scoredRunForFiller($user, '2026-08-03 07:00:00');
 
@@ -444,11 +445,11 @@ it('does not log for a scored week inside the first 42 days of the athlete\'s lo
 
     app(RuleBasedNarrationFiller::class)->fillFor(fillerRow(AnalysisType::WeeklyRecap, $snapshot->id));
 
-    Log::shouldNotHaveReceived('warning');
+    $log->shouldNotHaveReceived('warning');
 });
 
 it('does not log for a normally-resolved form_status', function (): void {
-    Log::spy();
+    $log = Log::spy();
 
     $snapshot = WeeklySnapshot::factory()->create([
         'distance_km' => 24.6,
@@ -458,7 +459,7 @@ it('does not log for a normally-resolved form_status', function (): void {
 
     app(RuleBasedNarrationFiller::class)->fillFor(fillerRow(AnalysisType::WeeklyRecap, $snapshot->id));
 
-    Log::shouldNotHaveReceived('warning');
+    $log->shouldNotHaveReceived('warning');
 });
 
 it('does not praise a week that is well below the athlete\'s usual', function (): void {

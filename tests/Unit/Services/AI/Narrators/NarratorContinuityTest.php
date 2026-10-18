@@ -10,7 +10,7 @@ it('states the continuity rule in terms of avoiding repetition, not forcing a ca
         ->toContain('prev_opener')
         ->toContain('AVOID repetition')
         // The old crutch phrasing must not creep back in.
-        ->not->toContain('lanjutkan benang');
+        ->and(NarratorContinuity::RULE)->not->toContain('lanjutkan benang');
 });
 
 it('derives an opener from the first few words of a previous narrative', function (): void {

@@ -91,7 +91,7 @@ it('returns null group job for non-grouped types', function (AnalysisType $type)
 
 it('gives every type a discriminator rule set', function (): void {
     foreach (AnalysisType::cases() as $case) {
-        expect($case->discriminatorRules())->toBeArray()->not->toBeEmpty();
+        expect($case->discriminatorRules())->toBeArray()->and($case->discriminatorRules())->not->toBeEmpty();
     }
 });
 
@@ -133,6 +133,7 @@ it('bounds every discriminator it permits, by range or by ownership', function (
     // featured-card voice, the only resource-keyed discriminator there has ever
     // been; the escape hatch stays because the rule above still names ownership
     // as a legitimate bound.
+    /** @var list<AnalysisType> $boundedByOwnership */
     $boundedByOwnership = [];
 
     foreach (AnalysisType::cases() as $type) {

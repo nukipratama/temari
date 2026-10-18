@@ -437,6 +437,31 @@ function socialiteUserMock(string $token, string $refreshToken, int $expiresIn):
     return $user;
 }
 
+/**
+ * Fails the test on null, so a nullable model read can be used without `?->`.
+ *
+ * @template T
+ *
+ * @param  T|null  $value
+ * @return T
+ */
+function nonNull(mixed $value): mixed
+{
+    expect($value)->not->toBeNull();
+    assert($value !== null);
+
+    return $value;
+}
+
+/** @return array<mixed> */
+function arrayOf(mixed $value): array
+{
+    expect($value)->toBeArray();
+    assert(is_array($value));
+
+    return $value;
+}
+
 function mockStravaDriver(callable $configure): MockInterface
 {
     $driver = Mockery::mock(AbstractProvider::class);

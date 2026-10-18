@@ -44,13 +44,13 @@ it('answers a call it cannot serve with an error instead of failing the block', 
 ]);
 
 it('answers a failing read with an error and logs it', function (): void {
-    Log::spy();
+    $log = Log::spy();
     $toolbox = new AgentToolbox([fakeAgentTool('get_thing', function (): array {
         throw new RuntimeException('the database went away');
     })]);
 
     expect($toolbox->invoke('get_thing', '{}'))->toBe('{"error":"this reading is unavailable"}');
-    Log::shouldHaveReceived('warning')->once()->with('narrator.ai.tool_failed', Mockery::on(
+    $log->shouldHaveReceived('warning')->once()->with('narrator.ai.tool_failed', Mockery::on(
         fn (array $ctx): bool => $ctx['tool'] === 'get_thing' && $ctx['error'] === 'the database went away',
     ));
 });

@@ -28,9 +28,11 @@ use App\Services\AI\Agent\AgentBudget;
 use App\Actions\AI\RecordTokenUsageAction;
 use GuzzleHttp\Psr7\Response as Psr7Response;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Mockery\MockInterface;
 use OpenAI\Exceptions\ErrorException;
 use OpenAI\Exceptions\RateLimitException;
 use OpenAI\Testing\ClientFake;
+use PHPUnit\Framework\Assert;
 
 uses(RefreshDatabase::class);
 
@@ -51,7 +53,7 @@ function structuredCaller(string $content, ?array $usage = null, string $finishR
 }
 
 /**
- * @param  array<array-key, mixed>  $responses  queued ClientFake responses/throwables
+ * @param  array<array-key, CreateResponse|Throwable|string>  $responses  queued ClientFake responses/throwables
  */
 function callerWithResponses(array $responses): StructuredChatCaller
 {
@@ -79,9 +81,8 @@ it('records the turn it already paid for even when the response is malformed', f
     expect(fn () => structuredCaller('{not valid json')->call('kind', 'sys', [], 'schema', ['headline']))
         ->toThrow(UnavailableException::class);
 
-    $row = TokenUsage::query()->first();
-    expect($row)->not->toBeNull()
-        ->and($row->prompt_tokens)->toBe(10)
+    $row = nonNull(TokenUsage::query()->first());
+    expect($row->prompt_tokens)->toBe(10)
         ->and($row->completion_tokens)->toBe(5)
         ->and($row->steps)->toBe(1);
 });
@@ -167,9 +168,8 @@ it('records a token-usage row on successful call', function (): void {
         ['prompt_tokens' => 120, 'completion_tokens' => 45, 'total_tokens' => 165],
     )->call('briefing', 'sys', [], 'schema', ['headline']);
 
-    $row = TokenUsage::query()->first();
-    expect($row)->not->toBeNull()
-        ->and($row->kind)->toBe('briefing')
+    $row = nonNull(TokenUsage::query()->first());
+    expect($row->kind)->toBe('briefing')
         ->and($row->prompt_tokens)->toBe(120)
         ->and($row->completion_tokens)->toBe(45)
         ->and($row->total_tokens)->toBe(165)
@@ -187,11 +187,11 @@ it('records user_id when passed by the narrator', function (): void {
         ['prompt_tokens' => 10, 'completion_tokens' => 5, 'total_tokens' => 15],
     )->call('briefing', 'sys', [], 'schema', ['headline'], options: new ChatCallOptions(userId: 42));
 
-    expect(TokenUsage::query()->first()->user_id)->toBe(42);
+    expect(nonNull(TokenUsage::query()->first())->user_id)->toBe(42);
 });
 
 it('flags truncated=true when the response stays length-truncated after the single retry', function (): void {
-    Log::spy();
+    $log = Log::spy();
 
     $truncated = fakeAzureResponse(json_encode(['headline' => 'hi'], JSON_THROW_ON_ERROR), 'incomplete', 'max_output_tokens', 80, 200);
 
@@ -200,10 +200,10 @@ it('flags truncated=true when the response stays length-truncated after the sing
     callerWithResponses([$truncated, $truncated])
         ->call('briefing', 'sys', [], 'schema', ['headline']);
 
-    $row = TokenUsage::query()->first();
+    $row = nonNull(TokenUsage::query()->first());
     expect($row->truncated)->toBeTrue();
-    Log::shouldHaveReceived('warning')->with('narrator.ai.truncated', Mockery::any());
-    Log::shouldHaveReceived('warning')->with('narrator.ai.truncated_retry', Mockery::any());
+    $log->shouldHaveReceived('warning')->with('narrator.ai.truncated', Mockery::any());
+    $log->shouldHaveReceived('warning')->with('narrator.ai.truncated_retry', Mockery::any());
 });
 
 it('records the completed turns when the run dies part-way through the tool loop', function (): void {
@@ -220,9 +220,8 @@ it('records the completed turns when the run dies part-way through the tool loop
 
     // Turn one was answered and billed before turn two failed, so it must reach
     // the table the daily cost ceiling reads.
-    $row = TokenUsage::query()->first();
-    expect($row)->not->toBeNull()
-        ->and($row->prompt_tokens)->toBe(40)
+    $row = nonNull(TokenUsage::query()->first());
+    expect($row->prompt_tokens)->toBe(40)
         ->and($row->completion_tokens)->toBe(10)
         ->and($row->steps)->toBe(1);
 });
@@ -237,7 +236,7 @@ it('records the cached and reasoning breakdown summed across the run', function 
     fakeStructuredCaller($client)
         ->call('briefing', 'sys', [], 'schema', ['headline'], options: new ChatCallOptions(toolbox: $toolbox));
 
-    $row = TokenUsage::query()->first();
+    $row = nonNull(TokenUsage::query()->first());
     expect($row->cached_tokens)->toBe(150)
         ->and($row->reasoning_tokens)->toBe(20)
         ->and($row->steps)->toBe(2);
@@ -246,6 +245,7 @@ it('records the cached and reasoning breakdown summed across the run', function 
 it('meters the call against the origin the entry point declared, not the narrator', function (): void {
     $client = new ClientFake([fakeAzureResponse(json_encode(['headline' => 'hi'], JSON_THROW_ON_ERROR), 'completed', null, 10, 5)]);
 
+    /** @var AzureOpenAIClient&MockInterface $azure */
     $azure = Mockery::mock(AzureOpenAIClient::class);
     $azure->shouldReceive('deploymentFor')->andReturn('gpt-test');
     $azure->shouldReceive('client')->andReturn($client);
@@ -255,7 +255,7 @@ it('meters the call against the origin the entry point declared, not the narrato
     new StructuredChatCaller($azure, app(RecordTokenUsageAction::class), new AgentLoop($azure, app(AzureConfigCircuitBreaker::class), app(AzureCallThrottle::class)), app(NarrationOrigin::class), app(NarratedAnalysis::class))
         ->call('briefing', 'sys', [], 'schema', ['headline']);
 
-    expect(TokenUsage::query()->first()->origin)->toBe(AnalysisOrigin::Recovery);
+    expect(nonNull(TokenUsage::query()->first())->origin)->toBe(AnalysisOrigin::Recovery);
 });
 
 it('records trend_read analytics with the initiating ingest or recovery origin', function (AnalysisOrigin $origin): void {
@@ -285,6 +285,7 @@ it('records trend_read analytics with the initiating ingest or recovery origin',
 it('meters an undeclared entry point as unattributed rather than guessing', function (): void {
     $client = new ClientFake([fakeAzureResponse(json_encode(['headline' => 'hi'], JSON_THROW_ON_ERROR), 'completed', null, 10, 5)]);
 
+    /** @var AzureOpenAIClient&MockInterface $azure */
     $azure = Mockery::mock(AzureOpenAIClient::class);
     $azure->shouldReceive('deploymentFor')->andReturn('gpt-test');
     $azure->shouldReceive('client')->andReturn($client);
@@ -292,10 +293,11 @@ it('meters an undeclared entry point as unattributed rather than guessing', func
     new StructuredChatCaller($azure, app(RecordTokenUsageAction::class), new AgentLoop($azure, app(AzureConfigCircuitBreaker::class), app(AzureCallThrottle::class)), app(NarrationOrigin::class), app(NarratedAnalysis::class))
         ->call('briefing', 'sys', [], 'schema', ['headline']);
 
-    expect(TokenUsage::query()->first()->origin)->toBe(AnalysisOrigin::Unknown);
+    expect(nonNull(TokenUsage::query()->first())->origin)->toBe(AnalysisOrigin::Unknown);
 });
 
 it('does not record usage when Azure call fails', function (): void {
+    /** @var AzureOpenAIClient&MockInterface $azure */
     $azure = Mockery::mock(AzureOpenAIClient::class);
     $azure->shouldReceive('deploymentFor')->andReturn('gpt-test');
     $azure->shouldReceive('client')->andThrow(new RuntimeException('network down'));
@@ -311,6 +313,7 @@ it('does not record usage when Azure call fails', function (): void {
 it('routes the per-kind client and records the resolved deployment', function (): void {
     $client = new ClientFake([fakeAzureResponse(json_encode(['headline' => 'hi'], JSON_THROW_ON_ERROR), 'completed', null, 10, 5)]);
 
+    /** @var AzureOpenAIClient&MockInterface $azure */
     $azure = Mockery::mock(AzureOpenAIClient::class);
     // The kind routes through deploymentFor(): its resolved value is the request
     // body's `model` and the recorded usage row. The v1 client itself is the same
@@ -321,7 +324,7 @@ it('routes the per-kind client and records the resolved deployment', function ()
     new StructuredChatCaller($azure, app(RecordTokenUsageAction::class), new AgentLoop($azure, app(AzureConfigCircuitBreaker::class), app(AzureCallThrottle::class)), app(NarrationOrigin::class), app(NarratedAnalysis::class))
         ->call('briefing', 'sys', [], 'schema', ['headline']);
 
-    expect(TokenUsage::query()->first()->model)->toBe('gpt-4o-briefing');
+    expect(nonNull(TokenUsage::query()->first())->model)->toBe('gpt-4o-briefing');
 });
 
 it('records null deployment when the resolved deployment is empty', function (): void {
@@ -329,27 +332,28 @@ it('records null deployment when the resolved deployment is empty', function ():
 
     fakeStructuredCaller($client, deployment: '')->call('briefing', 'sys', [], 'schema', ['headline']);
 
-    expect(TokenUsage::query()->first()->model)->toBeNull();
+    expect(nonNull(TokenUsage::query()->first())->model)->toBeNull();
 });
 
 it('RecordTokenUsageAction logs a warning when the DB insert throws', function (): void {
-    Log::spy();
+    $log = Log::spy();
 
     $usage = new AgentBudget(8, 30_000);
     $usage->recordStep(10, 5, 15);
 
     app(RecordTokenUsageAction::class)('briefing', $usage, str_repeat('m', 129));
 
-    Log::shouldHaveReceived('warning')
+    $log->shouldHaveReceived('warning')
         ->once()
         ->with('token_usage.record_failed', Mockery::on(fn (array $ctx) => $ctx['kind'] === 'briefing'));
 });
 
 it('RecordTokenUsageAction alerts the maintainer once when the DB insert throws, without propagating', function (): void {
-    Log::spy();
+    $log = Log::spy();
 
     $oversizedModel = str_repeat('m', 129);
 
+    /** @var MaintainerAlerter&MockInterface $alerter */
     $alerter = Mockery::mock(MaintainerAlerter::class);
     app()->instance(MaintainerAlerter::class, $alerter);
 
@@ -363,19 +367,27 @@ it('RecordTokenUsageAction alerts the maintainer once when the DB insert throws,
     expect(fn () => app(RecordTokenUsageAction::class)('briefing', $usage, $oversizedModel, userId: 42))
         ->not->toThrow(Throwable::class);
 
-    Log::shouldHaveReceived('warning')->once()->with('token_usage.record_failed', Mockery::any());
+    $log->shouldHaveReceived('warning')->once()->with('token_usage.record_failed', Mockery::any());
 });
 
 // ── B1: transient vs terminal Azure-failure classification ────────────
 
+function retryAfterOfTransientUpstream(Closure $call): ?int
+{
+    try {
+        $call();
+    } catch (TransientUpstreamException $e) {
+        return $e->retryAfterSeconds;
+    }
+
+    Assert::fail('Expected a TransientUpstreamException.');
+}
+
 it('maps a 429 rate-limit into a retryable TransientUpstreamException carrying Retry-After', function (): void {
     $response = new Psr7Response(429, ['Retry-After' => '17']);
 
-    expect(fn () => callerWithResponses([new RateLimitException($response)])
-        ->call('briefing', 'sys', [], 'schema', ['headline']))
-        ->toThrow(function (TransientUpstreamException $e): void {
-            expect($e->retryAfterSeconds)->toBe(17);
-        });
+    expect(retryAfterOfTransientUpstream(fn () => callerWithResponses([new RateLimitException($response)])
+        ->call('briefing', 'sys', [], 'schema', ['headline'])))->toBe(17);
 
     expect(TokenUsage::query()->count())->toBe(0);
 });
@@ -388,6 +400,7 @@ it('keeps a schema/JSON failure terminal even though the HTTP call succeeded', f
 
 // ── E0-11: config/auth failures feed the Azure config circuit breaker ──
 
+/** @return array{state: string, failures: int, opened_at: string|null} */
 function configBreakerSnapshot(): array
 {
     return new AzureConfigCircuitBreaker(new AppConfig())->snapshot();
@@ -441,7 +454,7 @@ it('resets the config-breaker streak on a successful call', function (): void {
 // ── B3: single higher-token retry on truncation ───────────────────────
 
 it('retries once at a higher token cap when the first response is truncated', function (): void {
-    Log::spy();
+    $log = Log::spy();
 
     // First response truncated, second (retry) is complete and valid.
     $caller = callerWithResponses([
@@ -452,7 +465,7 @@ it('retries once at a higher token cap when the first response is truncated', fu
     $payload = $caller->call('briefing', 'sys', [], 'schema', ['headline'], new ChatCallOptions(maxTokens: 200));
 
     expect($payload)->toBe(['headline' => 'complete']);
-    Log::shouldHaveReceived('warning')
+    $log->shouldHaveReceived('warning')
         ->once()
         ->with('narrator.ai.truncated_retry', Mockery::on(
             fn (array $ctx): bool => $ctx['max_output_tokens'] === 200 && $ctx['retry_max_output_tokens'] === 300,
@@ -481,9 +494,8 @@ it('records the truncated first turn when the higher-cap retry itself blows up',
     expect(fn () => $caller->call('briefing', 'sys', [], 'schema', ['headline'], new ChatCallOptions(maxTokens: 200)))
         ->toThrow(UnavailableException::class);
 
-    $row = TokenUsage::query()->first();
-    expect($row)->not->toBeNull()
-        ->and($row->prompt_tokens)->toBe(80)
+    $row = nonNull(TokenUsage::query()->first());
+    expect($row->prompt_tokens)->toBe(80)
         ->and($row->completion_tokens)->toBe(200)
         ->and($row->steps)->toBe(1);
 });
@@ -508,7 +520,7 @@ it('maps a content_filter ErrorException into a terminal ContentFilterException'
 });
 
 it('strips continuity context and retries once when the first attempt content-filters', function (): void {
-    Log::spy();
+    $log = Log::spy();
 
     $client = new ClientFake([
         contentFilterError(),
@@ -534,7 +546,7 @@ it('strips continuity context and retries once when the first attempt content-fi
             && str_contains($userMessage, 'Nuki');
     });
 
-    Log::shouldHaveReceived('info')->with('narrator.ai.content_filter_retry', Mockery::on(
+    $log->shouldHaveReceived('info')->with('narrator.ai.content_filter_retry', Mockery::on(
         fn (array $ctx): bool => $ctx['kind'] === 'briefing_mascot_voice'
             && $ctx['stripped_keys'] === NarratorContinuity::CONTEXT_KEYS,
     ));
@@ -565,15 +577,14 @@ it('maps an output-filtered 200 response into a terminal ContentFilterException'
         ->call('briefing_mascot_voice', 'sys', ['name' => 'Nuki'], 'schema', ['speech']))
         ->toThrow(ContentFilterException::class, 'output filtered');
 
-    $row = TokenUsage::query()->first();
-    expect($row)->not->toBeNull()
-        ->and($row->prompt_tokens)->toBe(10)
+    $row = nonNull(TokenUsage::query()->first());
+    expect($row->prompt_tokens)->toBe(10)
         ->and($row->completion_tokens)->toBe(5)
         ->and($row->steps)->toBe(1);
 });
 
 it('strips continuity and retries when the first response is output-filtered', function (): void {
-    Log::spy();
+    $log = Log::spy();
 
     $payload = callerWithResponses([
         outputFilteredResponse(),
@@ -588,7 +599,7 @@ it('strips continuity and retries when the first response is output-filtered', f
 
     expect($payload)->toBe(['speech' => 'clean']);
 
-    Log::shouldHaveReceived('info')->with('narrator.ai.content_filter_retry', Mockery::on(
+    $log->shouldHaveReceived('info')->with('narrator.ai.content_filter_retry', Mockery::on(
         fn (array $ctx): bool => $ctx['stripped_keys'] === NarratorContinuity::CONTEXT_KEYS,
     ));
 });
@@ -605,9 +616,8 @@ it('meters both the filtered turn and the strip-retry that followed it', functio
         ['speech'],
     );
 
-    $row = TokenUsage::query()->first();
-    expect($row)->not->toBeNull()
-        ->and($row->prompt_tokens)->toBe(20)
+    $row = nonNull(TokenUsage::query()->first());
+    expect($row->prompt_tokens)->toBe(20)
         ->and($row->completion_tokens)->toBe(10)
         ->and($row->steps)->toBe(2);
 });
@@ -620,7 +630,7 @@ it('propagates ContentFilterException when the output-filtered retry is still fi
 });
 
 it('does not retry truncation once the bumped cap would hit the ceiling', function (): void {
-    Log::spy();
+    $log = Log::spy();
 
     // maxTokens already at the ceiling: 1.5x cannot exceed it, so no retry fires.
     $caller = callerWithResponses([
@@ -630,7 +640,7 @@ it('does not retry truncation once the bumped cap would hit the ceiling', functi
     $payload = $caller->call('briefing', 'sys', [], 'schema', ['headline'], new ChatCallOptions(maxTokens: 4000));
 
     expect($payload)->toBe(['headline' => 'capped']);
-    Log::shouldNotHaveReceived('warning', ['narrator.ai.truncated_retry', Mockery::any()]);
+    $log->shouldNotHaveReceived('warning', ['narrator.ai.truncated_retry', Mockery::any()]);
 });
 
 // ── agent loop: tools, and the per-block ceiling on them ──────────────
@@ -689,7 +699,7 @@ it('sums token usage across every step of an agent run into one metering row', f
     fakeStructuredCaller($client)
         ->call('run_insight', 'sys', [], 'schema', ['headline'], new ChatCallOptions(toolbox: $toolbox));
 
-    $row = TokenUsage::query()->first();
+    $row = nonNull(TokenUsage::query()->first());
     expect($row->prompt_tokens)->toBe(300)
         ->and($row->completion_tokens)->toBe(30)
         ->and($row->total_tokens)->toBe(330)
@@ -697,7 +707,7 @@ it('sums token usage across every step of an agent run into one metering row', f
 });
 
 it('stops offering tools at the step ceiling and still returns narration', function (): void {
-    Log::spy();
+    $log = Log::spy();
     config()->set('ai.agent.max_steps', 2);
 
     $client = new ClientFake([
@@ -711,18 +721,18 @@ it('stops offering tools at the step ceiling and still returns narration', funct
         ->call('run_insight', 'sys', [], 'schema', ['headline'], new ChatCallOptions(toolbox: $toolbox));
 
     expect($payload)->toBe(['headline' => 'capped but written'])
-        ->and(TokenUsage::query()->first()->total_tokens)->toBe(45);
+        ->and(nonNull(TokenUsage::query()->first())->total_tokens)->toBe(45);
 
     $client->assertSent(Responses::class, fn (string $method, array $params): bool => $method === 'create'
         && $params['tool_choice'] === 'none');
 
-    Log::shouldHaveReceived('warning')->with('narrator.ai.agent_capped', Mockery::on(
+    $log->shouldHaveReceived('warning')->with('narrator.ai.agent_capped', Mockery::on(
         fn (array $ctx): bool => $ctx['reason'] === 'max_steps' && $ctx['kind'] === 'run_insight',
     ));
 });
 
 it('lets a narrator tighten the step ceiling below the global default', function (): void {
-    Log::spy();
+    $log = Log::spy();
     config()->set('ai.agent.max_steps', 8);
 
     $client = new ClientFake([
@@ -743,13 +753,13 @@ it('lets a narrator tighten the step ceiling below the global default', function
 
     expect($payload)->toBe(['headline' => 'capped early']);
 
-    Log::shouldHaveReceived('warning')->with('narrator.ai.agent_capped', Mockery::on(
+    $log->shouldHaveReceived('warning')->with('narrator.ai.agent_capped', Mockery::on(
         fn (array $ctx): bool => $ctx['reason'] === 'max_steps' && $ctx['steps'] === 2,
     ));
 });
 
 it('stops offering tools at the token ceiling and still returns narration', function (): void {
-    Log::spy();
+    $log = Log::spy();
     config()->set('ai.agent.max_tokens', 50);
 
     $client = new ClientFake([
@@ -762,7 +772,7 @@ it('stops offering tools at the token ceiling and still returns narration', func
         ->call('run_insight', 'sys', [], 'schema', ['headline'], new ChatCallOptions(toolbox: $toolbox));
 
     expect($payload)->toBe(['headline' => 'capped']);
-    Log::shouldHaveReceived('warning')->with('narrator.ai.agent_capped', Mockery::on(
+    $log->shouldHaveReceived('warning')->with('narrator.ai.agent_capped', Mockery::on(
         fn (array $ctx): bool => $ctx['reason'] === 'max_tokens',
     ));
 });
@@ -786,7 +796,7 @@ it('keeps the budget across a content-filter retry so the strip cannot double th
     );
 
     expect($payload)->toBe(['speech' => 'clean'])
-        ->and(TokenUsage::query()->first()->total_tokens)->toBe(100);
+        ->and(nonNull(TokenUsage::query()->first())->total_tokens)->toBe(100);
 });
 
 // ── Prompt cache key ─────────────────────────────────────────────────
@@ -853,7 +863,7 @@ it('throws when the answer the validator asked for is rejected too', function ()
     ]);
 
     expect(fn () => fakeStructuredCaller($client)->call('briefing', 'sys', [], 'schema', ['headline'], options: new ChatCallOptions(
-        validator: fn (array $answer): ?string => 'still wrong',
+        validator: fn (array $answer): string => 'still wrong',
     )))->toThrow(RejectedOutputException::class, 'rejected twice: still wrong');
 });
 
@@ -867,7 +877,7 @@ it('stamps the analysis row being narrated onto the usage row', function (): voi
         fn (): array => $caller->call('briefing', 'sys', [], 'schema', ['headline']),
     );
 
-    expect(TokenUsage::query()->first()->analysis_id)->toBe(77);
+    expect(nonNull(TokenUsage::query()->first())->analysis_id)->toBe(77);
 });
 
 it('stamps the run question being answered onto the usage row', function (): void {
@@ -878,14 +888,14 @@ it('stamps the run question being answered onto the usage row', function (): voi
         fn (): array => $caller->call('run_question', 'sys', [], 'schema', ['headline']),
     );
 
-    expect(TokenUsage::query()->first()->run_question_id)->toBe(31);
+    expect(nonNull(TokenUsage::query()->first())->run_question_id)->toBe(31);
 });
 
 it('leaves analysis_id null for a call made outside a narration', function (): void {
     structuredCaller(json_encode(['headline' => 'ok'], JSON_THROW_ON_ERROR))
         ->call('run_question', 'sys', [], 'schema', ['headline']);
 
-    expect(TokenUsage::query()->first()->analysis_id)->toBeNull();
+    expect(nonNull(TokenUsage::query()->first())->analysis_id)->toBeNull();
 });
 
 it('writes the run tool trace onto the usage row, in call order', function (): void {
@@ -902,16 +912,16 @@ it('writes the run tool trace onto the usage row, in call order', function (): v
     fakeStructuredCaller($client)
         ->call('run_insight', 'sys', [], 'schema', ['headline'], new ChatCallOptions(toolbox: $toolbox));
 
-    $trace = TokenUsage::query()->first()->tool_calls;
+    $trace = arrayOf(nonNull(TokenUsage::query()->first())->tool_calls);
 
     expect(array_column($trace, 'tool'))->toBe(['get_thing', 'get_other'])
-        ->and($trace[0]['arguments_summary'])->toBe('{"id":1}')
-        ->and($trace[0]['duration_ms'])->toBeInt();
+        ->and(data_get($trace, '0.arguments_summary'))->toBe('{"id":1}')
+        ->and(data_get($trace, '0.duration_ms'))->toBeInt();
 });
 
 it('leaves tool_calls null for a one-shot call that used no tools', function (): void {
     structuredCaller(json_encode(['headline' => 'ok'], JSON_THROW_ON_ERROR))
         ->call('briefing', 'sys', [], 'schema', ['headline']);
 
-    expect(TokenUsage::query()->first()->tool_calls)->toBeNull();
+    expect(nonNull(TokenUsage::query()->first())->tool_calls)->toBeNull();
 });

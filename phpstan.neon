@@ -26,6 +26,7 @@ parameters:
         - tests/Feature/Auth
         - tests/Unit/Listeners
         - tests/Unit/Notifications
+        - tests/Unit/Services/AI
         - tests/Unit/Services/Devtools
         - tests/Unit/Services/Gamification
         - tests/Unit/Services/IntervalsIcu

@@ -16,7 +16,7 @@ it('keeps a citation whose anchor resolves', function () use ($always): void {
 });
 
 it('unwraps a citation that does not resolve, leaving the words', function () use ($never): void {
-    Log::spy();
+    $log = Log::spy();
 
     $out = new CitationValidator()->keepResolving(
         'keeping this to [an easy run](session:today) today',
@@ -25,7 +25,7 @@ it('unwraps a citation that does not resolve, leaving the words', function () us
     );
 
     expect($out)->toBe('keeping this to an easy run today');
-    Log::shouldHaveReceived('info')->once();
+    $log->shouldHaveReceived('info')->once();
 });
 
 /** The voice allows one marked span per block; the model may still mark two. */
