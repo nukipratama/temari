@@ -13,6 +13,7 @@ use App\Services\Notifications\UsualRunTime;
 use App\Services\Run\Metrics\TrainingLoad;
 use App\Services\Run\Metrics\WeeklyAggregator;
 use App\Services\Run\Story\PastYouTrendBuilder;
+use App\Support\Numeric;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -25,14 +26,18 @@ uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
     Carbon::setTestNow('2026-05-11 12:00:00');
-    $this->aggregator = new WeeklyAggregator(app(TrainingLoad::class));
 });
+
+function weeklyAggregator(): WeeklyAggregator
+{
+    return new WeeklyAggregator(app(TrainingLoad::class));
+}
 afterEach(fn () => Carbon::setTestNow());
 
 it('returns 0 and creates no rows when the user has no analyzed runs', function (): void {
     $user = User::factory()->create();
 
-    expect($this->aggregator->rebuildFor($user))->toBe(0)
+    expect(weeklyAggregator()->rebuildFor($user))->toBe(0)
         ->and(WeeklySnapshot::query()->where('user_id', $user->id)->count())->toBe(0);
 });
 
@@ -44,7 +49,7 @@ it('ignores a not-yet-analyzed activity entirely, including as the sole run', fu
         'start_date_local' => Carbon::today(),
     ]);
 
-    expect($this->aggregator->rebuildFor($user))->toBe(0)
+    expect(weeklyAggregator()->rebuildFor($user))->toBe(0)
         ->and(WeeklySnapshot::query()->where('user_id', $user->id)->count())->toBe(0);
 });
 
@@ -62,7 +67,7 @@ it('upserts one snapshot per ISO week from first run through today', function ()
         ]);
     }
 
-    $written = $this->aggregator->rebuildFor($user);
+    $written = weeklyAggregator()->rebuildFor($user);
 
     // Frozen at 2026-05-11 (Mon); 21 days back spans 4 ISO weeks ending Sunday.
     expect($written)->toBe(4)
@@ -89,7 +94,7 @@ it('aggregates distance, runs, and avg decoupling per week', function (): void {
         ]);
     }
 
-    $this->aggregator->rebuildFor($user);
+    weeklyAggregator()->rebuildFor($user);
     $snapshot = WeeklySnapshot::query()
         ->where('user_id', $user->id)
         ->where('week_ending', $weekEnding->toDateString())
@@ -113,7 +118,7 @@ it('writes null avg_decoupling when no runs in the week have decoupling_pct', fu
         'stream_summary' => ['time_in_zone_min' => ['Z2' => 25]],
     ]);
 
-    $this->aggregator->rebuildFor($user);
+    weeklyAggregator()->rebuildFor($user);
 
     $snapshot = WeeklySnapshot::query()->where('user_id', $user->id)->latest('week_ending')->firstOrFail();
     expect($snapshot->avg_decoupling)->toBeNull();
@@ -134,7 +139,7 @@ it('writes no weekly decoupling average when a single run is all there is to ave
         'stream_summary' => ['decoupling_pct' => 12.4],
     ]);
 
-    $this->aggregator->rebuildFor($user);
+    weeklyAggregator()->rebuildFor($user);
 
     $snapshot = WeeklySnapshot::query()->where('user_id', $user->id)->latest('week_ending')->firstOrFail();
     expect($snapshot->runs)->toBe(1)
@@ -159,7 +164,7 @@ it('does not mix versionless history into the version 2 weekly average', functio
         ]);
     }
 
-    $this->aggregator->rebuildFor($user);
+    weeklyAggregator()->rebuildFor($user);
 
     $snapshot = WeeklySnapshot::query()->where('user_id', $user->id)->latest('week_ending')->firstOrFail();
     expect($snapshot->avg_decoupling)->toBe(13.5)
@@ -180,7 +185,7 @@ it('leaves load unknown, not zero, when no run scored a TRIMP', function (): voi
         'start_date_local' => Carbon::today(),
     ]);
 
-    $this->aggregator->rebuildFor($user);
+    weeklyAggregator()->rebuildFor($user);
 
     $snapshot = WeeklySnapshot::query()->where('user_id', $user->id)->latest('week_ending')->firstOrFail();
     expect($snapshot->runs)->toBe(1)
@@ -203,7 +208,7 @@ it('keeps pre-HR load unknown after later scored runs arrive', function (string 
         'trimp_edwards' => null,
         'start_date_local' => $preHrDay,
     ]);
-    $before = $this->aggregator->rebuildForwardFrom($user, $preHrDay);
+    $before = nonNull(weeklyAggregator()->rebuildForwardFrom($user, $preHrDay));
     $loadFields = ['atl_7d', 'ctl_42d', 'form', 'form_status'];
     expect($before->only($loadFields))->toBe(array_fill_keys($loadFields, null));
 
@@ -214,12 +219,13 @@ it('keeps pre-HR load unknown after later scored runs arrive', function (string 
     ]);
 
     match ($rebuild) {
-        'full' => $this->aggregator->rebuildFor($user),
-        'forward' => $this->aggregator->rebuildForwardFrom($user, $preHrDay),
-        'dirty' => $this->aggregator->rollForwardFrom($user, $preHrDay),
+        'full' => weeklyAggregator()->rebuildFor($user),
+        'forward' => weeklyAggregator()->rebuildForwardFrom($user, $preHrDay),
+        'dirty' => weeklyAggregator()->rollForwardFrom($user, $preHrDay),
+        default => throw new InvalidArgumentException("Unknown rebuild {$rebuild}"),
     };
 
-    $snapshot = $before->fresh();
+    $snapshot = $before->refresh();
     expect($snapshot->only($loadFields))->toBe(array_fill_keys($loadFields, null));
     $recapTotals = new WeekTotalsTool($snapshot)->handle([]);
     expect($recapTotals['load_balance'])->toBeNull();
@@ -247,7 +253,7 @@ it('persists a scored, a rest and an unscored week as three different facts', fu
     $seed($unscoredWeek->copy()->subDays(4), null);
     $seed($unscoredWeek->copy()->subDays(1), null);
 
-    $this->aggregator->rebuildFor($user);
+    weeklyAggregator()->rebuildFor($user);
 
     $rowFor = fn (Carbon $weekEnding): WeeklySnapshot => WeeklySnapshot::query()
         ->where('user_id', $user->id)
@@ -287,10 +293,10 @@ it('is idempotent — re-running upserts the same week without duplicating', fun
         'start_date_local' => Carbon::today()->subDays(3),
     ]);
 
-    $this->aggregator->rebuildFor($user);
+    weeklyAggregator()->rebuildFor($user);
     $first = WeeklySnapshot::query()->where('user_id', $user->id)->count();
 
-    $this->aggregator->rebuildFor($user);
+    weeklyAggregator()->rebuildFor($user);
     $second = WeeklySnapshot::query()->where('user_id', $user->id)->count();
 
     expect($second)->toBe($first);
@@ -299,7 +305,7 @@ it('is idempotent — re-running upserts the same week without duplicating', fun
 it('rebuildForwardFrom returns null when user has no runs', function (): void {
     $user = User::factory()->create();
 
-    $snap = $this->aggregator->rebuildForwardFrom($user, Carbon::today());
+    $snap = weeklyAggregator()->rebuildForwardFrom($user, Carbon::today());
 
     expect($snap)->toBeNull();
 });
@@ -312,7 +318,7 @@ it('rebuildForwardFrom returns null when the only run that week is not yet analy
         'start_date_local' => Carbon::today(),
     ]);
 
-    $snap = $this->aggregator->rebuildForwardFrom($user, Carbon::today());
+    $snap = weeklyAggregator()->rebuildForwardFrom($user, Carbon::today());
 
     expect($snap)->toBeNull();
 });
@@ -354,10 +360,9 @@ it('rebuildForwardFrom computes the converged CTL, not the too-low windowed valu
     $weekEnding = Carbon::today()->subWeek()->endOfWeek(Carbon::SUNDAY)->startOfDay();
     seedSteadyTrimpHistory($user, $weekEnding, 200);
 
-    $snap = $this->aggregator->rebuildForwardFrom($user, $weekEnding);
+    $snap = nonNull(weeklyAggregator()->rebuildForwardFrom($user, $weekEnding));
 
-    expect($snap)->not->toBeNull()
-        ->and((float) $snap->ctl_42d)->toBeGreaterThan(75.0);
+    expect((float) $snap->ctl_42d)->toBeGreaterThan(75.0);
 });
 
 it('rebuildForwardFrom rebuilds every week from the anchor through today', function (): void {
@@ -373,7 +378,7 @@ it('rebuildForwardFrom rebuilds every week from the anchor through today', funct
         ]);
     }
 
-    $this->aggregator->rebuildForwardFrom($user, Carbon::today()->subDays(21));
+    weeklyAggregator()->rebuildForwardFrom($user, Carbon::today()->subDays(21));
 
     // Frozen Mon 2026-05-11; 21 days back spans 4 ISO weeks ending Sunday.
     expect(WeeklySnapshot::query()->where('user_id', $user->id)->count())->toBe(4);
@@ -392,13 +397,13 @@ it('rebuildForwardFrom propagates a backdated activity forward into later weeks 
             'start_date_local' => Carbon::today()->subDays(34 - $i),
         ]);
     }
-    $this->aggregator->rebuildFor($user);
+    weeklyAggregator()->rebuildFor($user);
 
     $latestWeekEnding = Carbon::today()->endOfWeek(Carbon::SUNDAY)->toDateString();
-    $ctlBefore = (float) WeeklySnapshot::query()
+    $ctlBefore = Numeric::float(WeeklySnapshot::query()
         ->where('user_id', $user->id)
         ->where('week_ending', $latestWeekEnding)
-        ->value('ctl_42d');
+        ->value('ctl_42d'));
 
     // Backdate a big TRIMP day into the oldest week (webhook old-upload case).
     $backdate = Carbon::today()->subDays(33);
@@ -411,12 +416,12 @@ it('rebuildForwardFrom propagates a backdated activity forward into later weeks 
         'start_date_local' => $backdate,
     ]);
 
-    $this->aggregator->rebuildForwardFrom($user, $backdate);
+    weeklyAggregator()->rebuildForwardFrom($user, $backdate);
 
-    $ctlAfter = (float) WeeklySnapshot::query()
+    $ctlAfter = Numeric::float(WeeklySnapshot::query()
         ->where('user_id', $user->id)
         ->where('week_ending', $latestWeekEnding)
-        ->value('ctl_42d');
+        ->value('ctl_42d'));
 
     // A cumulative CTL must carry the backdated load forward to the latest week.
     expect($ctlAfter)->toBeGreaterThan($ctlBefore);
@@ -429,10 +434,9 @@ it('measures the in-progress week CTL as-of today, not the future Sunday', funct
     $user = User::factory()->create();
     seedSteadyTrimpHistory($user, Carbon::today(), 200);
 
-    $snap = $this->aggregator->rebuildForwardFrom($user, Carbon::today());
+    $snap = nonNull(weeklyAggregator()->rebuildForwardFrom($user, Carbon::today()));
 
-    expect($snap)->not->toBeNull()
-        ->and((float) $snap->ctl_42d)->toBeGreaterThan(75.0);
+    expect((float) $snap->ctl_42d)->toBeGreaterThan(75.0);
 });
 
 it('rebuildForwardFrom returns the anchor week snapshot', function (): void {
@@ -447,7 +451,7 @@ it('rebuildForwardFrom returns the anchor week snapshot', function (): void {
         'start_date_local' => $anchor,
     ]);
 
-    $snap = $this->aggregator->rebuildForwardFrom($user, $anchor);
+    $snap = nonNull(weeklyAggregator()->rebuildForwardFrom($user, $anchor));
 
     expect($snap)->toBeInstanceOf(WeeklySnapshot::class)
         ->and($snap->week_ending->toDateString())
@@ -474,7 +478,7 @@ it('projects only the columns the roll-up reads, never the whole detail row', fu
         }
     });
 
-    $this->aggregator->rebuildForwardFrom($user, Carbon::today()->subDays(7));
+    weeklyAggregator()->rebuildForwardFrom($user, Carbon::today()->subDays(7));
 
     expect($selects)->not->toBeEmpty();
     foreach ($selects as $sql) {
@@ -500,10 +504,9 @@ it('still computes decoupling and sums from the narrowed projection', function (
         ]);
     }
 
-    $snapshot = $this->aggregator->rebuildForwardFrom($user, Carbon::today());
+    $snapshot = nonNull(weeklyAggregator()->rebuildForwardFrom($user, Carbon::today()));
 
-    expect($snapshot)->not->toBeNull()
-        ->and((float) $snapshot->distance_km)->toBe(14.0)
+    expect((float) $snapshot->distance_km)->toBe(14.0)
         ->and($snapshot->runs)->toBe(2)
         ->and($snapshot->elapsed_time_sec)->toBe(4800)
         ->and($snapshot->avg_decoupling)->toBe(4.0);
@@ -525,9 +528,10 @@ it('drops the caches derived from the history it just rebuilt', function (string
     Cache::put(UsualRunTime::cacheKey($user->id, $today), 999);
 
     match ($rebuild) {
-        'rebuildFor' => $this->aggregator->rebuildFor($user),
-        'rollForwardFrom' => $this->aggregator->rollForwardFrom($user, Carbon::today()),
-        'rebuildForwardFrom' => $this->aggregator->rebuildForwardFrom($user, Carbon::today()),
+        'rebuildFor' => weeklyAggregator()->rebuildFor($user),
+        'rollForwardFrom' => weeklyAggregator()->rollForwardFrom($user, Carbon::today()),
+        'rebuildForwardFrom' => weeklyAggregator()->rebuildForwardFrom($user, Carbon::today()),
+        default => throw new InvalidArgumentException("Unknown rebuild {$rebuild}"),
     };
 
     expect(Cache::has(PastYouTrendBuilder::cacheKey($user->id, $today)))->toBeFalse()
@@ -549,9 +553,10 @@ it('replays the snapshot saved hooks its upsert skips', function (string $rebuil
     expect($trailingWeeks($user->id, $today, 6))->toBeEmpty();
 
     match ($rebuild) {
-        'rebuildFor' => $this->aggregator->rebuildFor($user),
-        'rollForwardFrom' => $this->aggregator->rollForwardFrom($user, Carbon::today()->subDays(7)),
-        'rebuildForwardFrom' => $this->aggregator->rebuildForwardFrom($user, Carbon::today()->subDays(7)),
+        'rebuildFor' => weeklyAggregator()->rebuildFor($user),
+        'rollForwardFrom' => weeklyAggregator()->rollForwardFrom($user, Carbon::today()->subDays(7)),
+        'rebuildForwardFrom' => weeklyAggregator()->rebuildForwardFrom($user, Carbon::today()->subDays(7)),
+        default => throw new InvalidArgumentException("Unknown rebuild {$rebuild}"),
     };
 
     expect($trailingWeeks($user->id, $today, 6)->pluck('runs')->all())->toContain(1)
@@ -568,9 +573,9 @@ it('keeps created_at and casts on a rewritten week while moving updated_at', fun
         'start_date_local' => Carbon::today()->subDays(7),
     ]);
 
-    $this->aggregator->rebuildForwardFrom($user, Carbon::today()->subDays(7));
+    weeklyAggregator()->rebuildForwardFrom($user, Carbon::today()->subDays(7));
     Carbon::setTestNow('2026-05-11 13:00:00');
-    $snapshot = $this->aggregator->rebuildForwardFrom($user, Carbon::today()->subDays(7));
+    $snapshot = weeklyAggregator()->rebuildForwardFrom($user, Carbon::today()->subDays(7));
 
     expect($snapshot)->not->toBeNull()
         ->and($snapshot?->created_at?->toDateTimeString())->toBe('2026-05-11 12:00:00')
@@ -594,9 +599,10 @@ it('waits for the athlete lock and gives up while another rebuild holds it', fun
         'start_date_local' => Carbon::today()->subDays(7),
     ]);
     $run = fn (): mixed => match ($rebuild) {
-        'rebuildFor' => $this->aggregator->rebuildFor($user),
-        'rollForwardFrom' => $this->aggregator->rollForwardFrom($user, Carbon::today()->subDays(7)),
-        'rebuildForwardFrom' => $this->aggregator->rebuildForwardFrom($user, Carbon::today()->subDays(7)),
+        'rebuildFor' => weeklyAggregator()->rebuildFor($user),
+        'rollForwardFrom' => weeklyAggregator()->rollForwardFrom($user, Carbon::today()->subDays(7)),
+        'rebuildForwardFrom' => weeklyAggregator()->rebuildForwardFrom($user, Carbon::today()->subDays(7)),
+        default => throw new InvalidArgumentException("Unknown rebuild {$rebuild}"),
     };
     $held = Cache::lock(WeeklyAggregator::lockKey($user->id), 300);
     $held->get();
@@ -622,11 +628,11 @@ it('holds the athlete lock until the surrounding transaction commits', function 
         'trimp_edwards' => 60.0,
         'start_date_local' => Carbon::today()->subDays(7),
     ]);
-    $lockFree = fn (): bool => tap(Cache::lock(WeeklyAggregator::lockKey($user->id), 1), fn ($probe) => $probe->get() && $probe->release())->get();
+    $lockFree = fn (): bool => tap(Cache::lock(WeeklyAggregator::lockKey($user->id), 1), fn ($probe) => $probe->get() && $probe->release())->get() === true;
     $heldInside = null;
 
     DB::transaction(function () use ($user, $lockFree, &$heldInside): void {
-        $this->aggregator->rebuildForwardFrom($user, Carbon::today()->subDays(7));
+        weeklyAggregator()->rebuildForwardFrom($user, Carbon::today()->subDays(7));
         $heldInside = ! $lockFree();
     });
 
@@ -645,7 +651,7 @@ it('releases the athlete lock when the surrounding transaction rolls back', func
     ]);
 
     expect(fn () => DB::transaction(function () use ($user): void {
-        $this->aggregator->rebuildForwardFrom($user, Carbon::today()->subDays(7));
+        weeklyAggregator()->rebuildForwardFrom($user, Carbon::today()->subDays(7));
 
         throw new RuntimeException('caller failed after the rebuild');
     }))->toThrow(RuntimeException::class);
@@ -665,8 +671,8 @@ it('lets a second rebuild in the same transaction reuse the athlete lock it alre
     ]);
 
     DB::transaction(function () use ($user): void {
-        $this->aggregator->rebuildForwardFrom($user, Carbon::today()->subDays(7));
-        $this->aggregator->rebuildFor($user);
+        weeklyAggregator()->rebuildForwardFrom($user, Carbon::today()->subDays(7));
+        weeklyAggregator()->rebuildFor($user);
     });
 
     expect(WeeklySnapshot::query()->where('user_id', $user->id)->exists())->toBeTrue()
@@ -676,11 +682,11 @@ it('lets a second rebuild in the same transaction reuse the athlete lock it alre
 it('keeps the earliest dirty week however the marks arrive', function (): void {
     $user = User::factory()->create();
 
-    $this->aggregator->markDirty($user, Carbon::parse('2026-04-15'));
-    $this->aggregator->markDirty($user, Carbon::parse('2026-03-03'));
-    $this->aggregator->markDirty($user, Carbon::parse('2026-04-29'));
+    weeklyAggregator()->markDirty($user, Carbon::parse('2026-04-15'));
+    weeklyAggregator()->markDirty($user, Carbon::parse('2026-03-03'));
+    weeklyAggregator()->markDirty($user, Carbon::parse('2026-04-29'));
 
-    expect($user->fresh()->weekly_snapshots_dirty_from->toDateString())->toBe('2026-03-08');
+    expect(nonNull($user->refresh()->weekly_snapshots_dirty_from)->toDateString())->toBe('2026-03-08');
 });
 
 it('rolls forward from the earliest dirty week and clears the mark', function (): void {
@@ -694,14 +700,14 @@ it('rolls forward from the earliest dirty week and clears the mark', function ()
             'start_date_local' => Carbon::parse($day.' 07:00'),
         ]);
     }
-    $this->aggregator->markDirty($user, Carbon::parse('2026-04-15'));
-    $this->aggregator->markDirty($user, Carbon::parse('2026-03-03'));
+    weeklyAggregator()->markDirty($user, Carbon::parse('2026-04-15'));
+    weeklyAggregator()->markDirty($user, Carbon::parse('2026-03-03'));
 
-    $this->aggregator->rollForwardDirty($user);
+    weeklyAggregator()->rollForwardDirty($user);
 
     expect(WeeklySnapshot::query()->where('user_id', $user->id)->min('week_ending'))->toBe('2026-03-08')
         ->and(WeeklySnapshot::query()->where('user_id', $user->id)->max('week_ending'))->toBe('2026-05-17')
-        ->and($user->fresh()->weekly_snapshots_dirty_from)->toBeNull();
+        ->and($user->refresh()->weekly_snapshots_dirty_from)->toBeNull();
 });
 
 it('writes nothing when no week is dirty', function (): void {
@@ -709,7 +715,7 @@ it('writes nothing when no week is dirty', function (): void {
     $activity = Activity::factory()->for($user)->analyzed()->create();
     ActivityDetail::factory()->for($activity)->create(['start_date_local' => Carbon::today()]);
 
-    $this->aggregator->rollForwardDirty($user);
+    weeklyAggregator()->rollForwardDirty($user);
 
     expect(WeeklySnapshot::query()->where('user_id', $user->id)->exists())->toBeFalse();
 });
@@ -720,12 +726,12 @@ it('rolls forward from whichever is earlier, the given run or a week already dir
         $activity = Activity::factory()->for($user)->analyzed()->create();
         ActivityDetail::factory()->for($activity)->create(['start_date_local' => Carbon::parse($day.' 07:00')]);
     }
-    $this->aggregator->markDirty($user, Carbon::parse('2026-03-03'));
+    weeklyAggregator()->markDirty($user, Carbon::parse('2026-03-03'));
 
-    $this->aggregator->rollForwardFrom($user, Carbon::parse('2026-04-15'));
+    weeklyAggregator()->rollForwardFrom($user, Carbon::parse('2026-04-15'));
 
     expect(WeeklySnapshot::query()->where('user_id', $user->id)->min('week_ending'))->toBe('2026-03-08')
-        ->and($user->fresh()->weekly_snapshots_dirty_from)->toBeNull();
+        ->and($user->refresh()->weekly_snapshots_dirty_from)->toBeNull();
 });
 
 it('leaves the week dirty when the roll forward dies mid-rebuild', function (): void {
@@ -738,8 +744,8 @@ it('leaves the week dirty when the roll forward dies mid-rebuild', function (): 
         }
     });
 
-    expect(fn () => $this->aggregator->rollForwardFrom($user, Carbon::parse('2026-04-15')))->toThrow(RuntimeException::class)
-        ->and($user->fresh()->weekly_snapshots_dirty_from->toDateString())->toBe('2026-04-19');
+    expect(fn () => weeklyAggregator()->rollForwardFrom($user, Carbon::parse('2026-04-15')))->toThrow(RuntimeException::class)
+        ->and(nonNull($user->refresh()->weekly_snapshots_dirty_from)->toDateString())->toBe('2026-04-19');
 });
 
 function seedWeeklyAggregatorMultiYearHistory(User $user): void
@@ -811,7 +817,7 @@ it('rebuilds a multi-year history into the same snapshot rows', function (Closur
     $user = User::factory()->create();
     seedWeeklyAggregatorMultiYearHistory($user);
 
-    $rebuild($this->aggregator, $user);
+    $rebuild(weeklyAggregator(), $user);
 
     expect(weeklySnapshotFingerprint($user))->toBe($fingerprint);
 })->with([
@@ -837,7 +843,7 @@ it('finishes a rebuild that crosses midnight partway through', function (): void
 
         return $beforeMidnight->copy();
     });
-    $this->aggregator->rebuildFor($user);
+    weeklyAggregator()->rebuildFor($user);
     $totalCalls = $calls;
 
     $failures = [];
@@ -848,7 +854,7 @@ it('finishes a rebuild that crosses midnight partway through', function (): void
         });
 
         try {
-            $this->aggregator->rebuildFor($user);
+            weeklyAggregator()->rebuildFor($user);
         } catch (Throwable $e) {
             $failures[] = "{$crossAfter}: {$e->getMessage()}";
         }

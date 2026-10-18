@@ -27,7 +27,7 @@ it('round-trips format() through parse()', function (): void {
     expect(PaceFormatter::parse(PaceFormatter::format(300.0)))->toBe(300.0);
 });
 
-it('returns null for a malformed label', function (?string $label): void {
+it('returns null for a malformed label', function (string $label): void {
     expect(PaceFormatter::parse($label))->toBeNull();
 })->with([
     'not a pace at all' => ['not a pace'],

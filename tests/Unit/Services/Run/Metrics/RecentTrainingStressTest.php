@@ -43,6 +43,7 @@ it('excludes future starts and gives no recovery credit before a session ends', 
         ->and($profile['last_demanding_hours'])->toBe(0);
 });
 
+/** @param array<string, mixed> $attributes */
 function recentStressRun(User $user, string $start, array $attributes = []): ActivityDetail
 {
     $activity = Activity::factory()->for($user)->analyzed()->create();
@@ -123,9 +124,9 @@ it('recognises sustained threshold laps without heart-rate data', function (): v
         'set_at' => '2026-09-01',
     ]);
     seedConfirmedEffort($user, 5000, 1200, Carbon::parse('2026-09-01'));
-    $thresholdPace = app(TrainingPaceCalculator::class)->fromVdotResult(
+    $thresholdPace = nonNull(app(TrainingPaceCalculator::class)->fromVdotResult(
         app(VdotEstimator::class)->estimate($user, $asOf),
-    )['threshold'];
+    ))['threshold'];
     $pace = sprintf('%d:%02d', intdiv($thresholdPace, 60), $thresholdPace % 60);
 
     recentStressRun($user, '2026-09-30 07:00', [
@@ -159,9 +160,9 @@ it('recognises threshold grade-adjusted pace when heart-rate data is absent', fu
         'set_at' => '2026-09-01',
     ]);
     seedConfirmedEffort($user, 5000, 1200, Carbon::parse('2026-09-01'));
-    $thresholdPace = app(TrainingPaceCalculator::class)->fromVdotResult(
+    $thresholdPace = nonNull(app(TrainingPaceCalculator::class)->fromVdotResult(
         app(VdotEstimator::class)->estimate($user, $asOf),
-    )['threshold'];
+    ))['threshold'];
     $gapPace = sprintf('%d:%02d', intdiv($thresholdPace, 60), $thresholdPace % 60);
 
     recentStressRun($user, '2026-09-30 07:00', [
