@@ -312,6 +312,7 @@ it('carries the card id and rarity so the reveal can be replayed', function (): 
 it('leaves the card fields null when the run has no card', function (): void {
     $user = User::factory()->create();
     $message = new AnalysisReadyNotification(postRunAnalysis($user))->toInbox($user);
+    expect($message)->not->toBeNull();
     assert($message !== null);
     $payload = $message->payload;
 
@@ -330,10 +331,12 @@ it('carries only the deep link for a recap, which has no card to reveal', functi
     ]);
 
     $message = new AnalysisReadyNotification($analysis)->toInbox($user);
+    expect($message)->not->toBeNull();
+    assert($message !== null);
 
-    expect($message?->kind)->toBe(NotificationKind::WeeklyRecap)
-        ->and($message?->payload)->toHaveKeys(['analysis_id', 'url'])
-        ->and($message?->payload)->not->toHaveKey('run_card_id');
+    expect($message->kind)->toBe(NotificationKind::WeeklyRecap)
+        ->and($message->payload)->toHaveKeys(['analysis_id', 'url'])
+        ->and($message->payload)->not->toHaveKey('run_card_id');
 });
 
 it('has no inbox message for an analysis type that never notifies', function (): void {

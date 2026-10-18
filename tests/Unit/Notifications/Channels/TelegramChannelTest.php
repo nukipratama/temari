@@ -217,6 +217,7 @@ it('abandons a stale claim without sending again and fences its late finisher', 
     $analysisId = Analysis::factory()->create()->id;
     $claim = app(NotificationDeliveryClaim::class);
     $version = $claim->claim($analysisId, 'telegram');
+    expect($version)->not->toBeNull();
     assert($version !== null);
     DB::table('notification_deliveries')
         ->where('analysis_id', $analysisId)
