@@ -25,6 +25,8 @@ The trimmed weekly mean correctly describes normal training, but a race-readines
 
 ## Decision
 
+> **Superseded in part (2026-10-18), #2191:** the thirty days now end before the plan date, so a run on that day never resizes its own session.
+
 [TrainingBaseline](app/Services/Run/Plan/TrainingBaseline.php) reads the longest completed run in the thirty days through the plan date and exposes 110% of it as `long_run_progression_cap_km`. [SegmentGenerator::coreKmFor()](app/Services/Run/Plan/SegmentGenerator.php) applies that ceiling only to `Long`; the weekly-volume-derived baseline and the distances of Tempo, Interval and Easy sessions do not move.
 
 The existing race-distance, time-on-feet and half-the-week safeguards remain independent, so the tightest Long ceiling wins. With no recent run, the progression ceiling is absent and the conservative cold-start baseline remains usable. A very short recent run cannot push a Long below the existing 3 km minimum.
