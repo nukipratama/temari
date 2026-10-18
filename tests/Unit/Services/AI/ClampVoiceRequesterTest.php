@@ -30,6 +30,7 @@ function clampVoiceRequester(): ClampVoiceRequester
 {
     return app(ClampVoiceRequester::class);
 }
+
 afterEach(fn () => Carbon::setTestNow());
 
 function tiredUserWithClampedDay(): User

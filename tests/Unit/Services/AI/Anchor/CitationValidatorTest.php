@@ -48,7 +48,7 @@ it('leaves narration carrying no citation untouched', function () use ($always):
 
 /** A URL is not an anchor, and the resolver is what says so. */
 it('unwraps a link the model invented', function (): void {
-    $log = Log::spy();
+    Log::spy();
 
     $out = new CitationValidator()->keepResolving(
         'see [the plan](https://example.com/plan) for more',

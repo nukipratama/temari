@@ -721,7 +721,7 @@ it('records the trip time and the degraded-fill count for /devtools/narration', 
         );
     }
 
-    $today = nonNull(app(CostCeilingLedger::class)->today());
+    $today = app(CostCeilingLedger::class)->today();
 
     expect($today['trippedAt'])->toBe(Carbon::now()->toIso8601String())
         ->and($today['degradedFills'])->toBe(2);
@@ -1613,7 +1613,7 @@ it('requestRuleBased fills a row rule-based with no reason, without dispatching 
     $first = analysisService()->requestRuleBased(WeeklySnapshot::class, $snap->id, AnalysisType::WeeklyRecap);
 
     expect($first->status)->toBe(AnalysisStatus::Done)
-        ->and($first->content)->toBeString()->and($first->status)->not->toBeEmpty()
+        ->and($first->content)->toBeString()->and($first->content)->not->toBeEmpty()
         ->and($first->generated_at)->not->toBeNull()
         ->and($first->cooldownRemaining())->toBeNull()
         ->and(nonNull($first->fresh())->served_by)->toBe(ServedBy::RuleBased)

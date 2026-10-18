@@ -21,6 +21,7 @@ function trendRangeTrainingLoad(): TrainingLoad
 {
     return new TrainingLoad();
 }
+
 afterEach(fn () => Carbon::setTestNow());
 
 function seedTrendRun(User $user, int $daysAgo, float $trimp, float $distanceM = 5000.0): void

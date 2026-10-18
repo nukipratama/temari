@@ -28,10 +28,10 @@ use App\Services\AI\Agent\AgentBudget;
 use App\Actions\AI\RecordTokenUsageAction;
 use GuzzleHttp\Psr7\Response as Psr7Response;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Mockery\MockInterface;
 use OpenAI\Exceptions\ErrorException;
 use OpenAI\Exceptions\RateLimitException;
 use OpenAI\Testing\ClientFake;
-use Mockery\MockInterface;
 use PHPUnit\Framework\Assert;
 
 uses(RefreshDatabase::class);
@@ -53,7 +53,7 @@ function structuredCaller(string $content, ?array $usage = null, string $finishR
 }
 
 /**
- * @param array<array-key, CreateResponse|Throwable|string> $responses queued ClientFake responses/throwables
+ * @param  array<array-key, CreateResponse|Throwable|string>  $responses  queued ClientFake responses/throwables
  */
 function callerWithResponses(array $responses): StructuredChatCaller
 {
@@ -82,8 +82,7 @@ it('records the turn it already paid for even when the response is malformed', f
         ->toThrow(UnavailableException::class);
 
     $row = nonNull(TokenUsage::query()->first());
-    expect($row)->not->toBeNull()
-        ->and($row->prompt_tokens)->toBe(10)
+    expect($row->prompt_tokens)->toBe(10)
         ->and($row->completion_tokens)->toBe(5)
         ->and($row->steps)->toBe(1);
 });
@@ -170,8 +169,7 @@ it('records a token-usage row on successful call', function (): void {
     )->call('briefing', 'sys', [], 'schema', ['headline']);
 
     $row = nonNull(TokenUsage::query()->first());
-    expect($row)->not->toBeNull()
-        ->and($row->kind)->toBe('briefing')
+    expect($row->kind)->toBe('briefing')
         ->and($row->prompt_tokens)->toBe(120)
         ->and($row->completion_tokens)->toBe(45)
         ->and($row->total_tokens)->toBe(165)
@@ -223,8 +221,7 @@ it('records the completed turns when the run dies part-way through the tool loop
     // Turn one was answered and billed before turn two failed, so it must reach
     // the table the daily cost ceiling reads.
     $row = nonNull(TokenUsage::query()->first());
-    expect($row)->not->toBeNull()
-        ->and($row->prompt_tokens)->toBe(40)
+    expect($row->prompt_tokens)->toBe(40)
         ->and($row->completion_tokens)->toBe(10)
         ->and($row->steps)->toBe(1);
 });
@@ -403,7 +400,7 @@ it('keeps a schema/JSON failure terminal even though the HTTP call succeeded', f
 
 // ── E0-11: config/auth failures feed the Azure config circuit breaker ──
 
-/** @return array<string, mixed> */
+/** @return array{state: string, failures: int, opened_at: string|null} */
 function configBreakerSnapshot(): array
 {
     return new AzureConfigCircuitBreaker(new AppConfig())->snapshot();
@@ -498,8 +495,7 @@ it('records the truncated first turn when the higher-cap retry itself blows up',
         ->toThrow(UnavailableException::class);
 
     $row = nonNull(TokenUsage::query()->first());
-    expect($row)->not->toBeNull()
-        ->and($row->prompt_tokens)->toBe(80)
+    expect($row->prompt_tokens)->toBe(80)
         ->and($row->completion_tokens)->toBe(200)
         ->and($row->steps)->toBe(1);
 });
@@ -582,8 +578,7 @@ it('maps an output-filtered 200 response into a terminal ContentFilterException'
         ->toThrow(ContentFilterException::class, 'output filtered');
 
     $row = nonNull(TokenUsage::query()->first());
-    expect($row)->not->toBeNull()
-        ->and($row->prompt_tokens)->toBe(10)
+    expect($row->prompt_tokens)->toBe(10)
         ->and($row->completion_tokens)->toBe(5)
         ->and($row->steps)->toBe(1);
 });
@@ -622,8 +617,7 @@ it('meters both the filtered turn and the strip-retry that followed it', functio
     );
 
     $row = nonNull(TokenUsage::query()->first());
-    expect($row)->not->toBeNull()
-        ->and($row->prompt_tokens)->toBe(20)
+    expect($row->prompt_tokens)->toBe(20)
         ->and($row->completion_tokens)->toBe(10)
         ->and($row->steps)->toBe(2);
 });

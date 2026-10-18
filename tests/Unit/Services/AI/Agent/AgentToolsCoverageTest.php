@@ -1288,7 +1288,10 @@ it('leaves an un-eased day with no easing to explain', function (): void {
     $today = Carbon::today();
     PlannedSession::factory()->for($user)->create(['date' => $today->toDateString(), 'session_type' => SessionType::Tempo]);
 
-    expect(data_get(planContextTool($user, $today, $today)->handle([]), 'days.0'))->not->toHaveKey('eased_from');
+    $reading = planContextTool($user, $today, $today)->handle([]);
+
+    expect($reading)->toHaveKey('days.0')
+        ->and(data_get($reading, 'days.0'))->not->toHaveKey('eased_from');
 });
 
 /** A pace-only ease keeps session_type unchanged and swaps the target pace, naming what it replaced. */
@@ -1322,7 +1325,10 @@ it('leaves an un-pace-eased day with no pace easing to explain', function (): vo
     $today = Carbon::today();
     PlannedSession::factory()->for($user)->create(['date' => $today->toDateString(), 'session_type' => SessionType::Easy]);
 
-    expect(data_get(planContextTool($user, $today, $today)->handle([]), 'days.0'))->not->toHaveKey('pace_eased_from');
+    $reading = planContextTool($user, $today, $today)->handle([]);
+
+    expect($reading)->toHaveKey('days.0')
+        ->and(data_get($reading, 'days.0'))->not->toHaveKey('pace_eased_from');
 });
 
 it('prefers the scored distance once the scorer has written one', function (): void {
@@ -1617,6 +1623,7 @@ it('names goal-pace work and its goal pace to the plan tools, and nothing on an 
     expect(data_get($days, '0.goal_pace'))->toBe('10k')
         ->and(data_get($days, '0.target_pace_sec'))->toBe(300)
         ->and(data_get($days, '0.target_pace_formatted'))->toBe('5:00')
+        ->and($days)->toHaveKey('1')
         ->and(data_get($days, '1'))->not->toHaveKey('goal_pace');
 });
 
@@ -1643,6 +1650,7 @@ it('names a time trial, its distance and its aim to the plan tools, and nothing 
     expect(data_get($days, '0.time_trial'))->toBe(['distance_km' => 5.0, 'aim_time' => '25:00'])
         ->and(data_get($days, '0.target_pace_sec'))->toBe(300)
         ->and(data_get($days, '0.distance_km'))->toBe(5.0)
+        ->and($days)->toHaveKey('1')
         ->and(data_get($days, '1'))->not->toHaveKey('time_trial');
 });
 

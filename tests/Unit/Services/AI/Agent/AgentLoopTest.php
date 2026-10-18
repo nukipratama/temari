@@ -14,15 +14,15 @@ use App\Services\AI\AzureOpenAIClient;
 use GuzzleHttp\Psr7\Response as Psr7Response;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
+use Mockery\MockInterface;
 use OpenAI\Exceptions\ErrorException;
 use OpenAI\Resources\Responses;
 use OpenAI\Responses\Meta\MetaInformation;
 use OpenAI\Responses\Responses\CreateResponse;
 use OpenAI\Testing\ClientFake;
-use Mockery\MockInterface;
 
 /**
- * @param array<array-key, CreateResponse|Throwable|string> $responses queued ClientFake responses/throwables
+ * @param  array<array-key, CreateResponse|Throwable|string>  $responses  queued ClientFake responses/throwables
  * @return array{0: AgentLoop, 1: ClientFake, 2: Mockery\MockInterface}
  */
 function agentLoopWith(array $responses): array

@@ -50,9 +50,8 @@ function runQuestionNarrator(string|array $responses, ?ClientFake &$client = nul
 }
 
 /**
+ * @param  array<string, mixed>|null  $streamSummary
  * @return array{0: Activity, 1: ActivityDetail}
- *
- * @param  array<string, mixed>  $streamSummary
  */
 function runQuestionFixture(?User $user = null, float $distance = 8000.0, ?array $streamSummary = null): array
 {

@@ -52,12 +52,12 @@ use App\Services\Run\Metrics\VdotEstimator;
 use App\Services\Run\ProgressionSeriesBuilder;
 use App\Services\Run\Story\Contracts\VerdictNarrator;
 use App\Services\Run\Story\Vibe;
+use App\Support\Numeric;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
 use OpenAI\Resources\Responses;
 use OpenAI\Testing\ClientFake;
-use Illuminate\Support\Arr;
-use App\Support\Numeric;
 
 uses(RefreshDatabase::class);
 
