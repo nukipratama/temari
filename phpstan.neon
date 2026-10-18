@@ -2,11 +2,30 @@ includes:
     - vendor/larastan/larastan/extension.neon
     - phpstan-baseline.neon
 
+services:
+    -
+        class: Tests\PHPStan\PestClosureThisExtension
+        tags:
+            - phpstan.functionParameterClosureThisExtension
+            - phpstan.methodParameterClosureThisExtension
+    -
+        class: Tests\PHPStan\PestTestFunctionReturnTypeExtension
+        tags:
+            - phpstan.broker.dynamicFunctionReturnTypeExtension
+    -
+        class: Tests\PHPStan\ArtisanReturnTypeExtension
+        tags:
+            - phpstan.broker.dynamicMethodReturnTypeExtension
+
 parameters:
     level: 9
     paths:
         - app/
         - database/
+        - tests/Pest.php
+        - tests/Feature/Auth
+        - tests/Unit/Listeners
+        - tests/Unit/Notifications
     tmpDir: .phpstan-cache
 
     # Sail's memory_limit=-1 lets workers grow until OOM-killer hits; cap them.

@@ -23,6 +23,7 @@ beforeEach(function (): void {
     config(['services.telegram.bot_token' => 'test-bot-token']);
 });
 
+/** @return array<int, class-string> */
 function streakVia(User $user): array
 {
     return new StreakReminderNotification(3)->via($user);
@@ -142,11 +143,11 @@ it('sends until its week closes and skips after', function (): void {
     Carbon::setTestNow('2026-05-24 23:30:00');
     expect($notification->shouldSend($user, IdempotentWebPushChannel::class))->toBeTrue();
 
-    Log::spy();
+    $log = Log::spy();
     Carbon::setTestNow('2026-05-25 00:10:00');
     expect($notification->shouldSend($user, IdempotentWebPushChannel::class))->toBeFalse()
         ->and($notification->shouldSend($user, InAppChannel::class))->toBeTrue();
-    Log::shouldHaveReceived('info')->withArgs(fn (string $message, array $context): bool => $message === 'notifications.stale_skipped'
+    $log->shouldHaveReceived('info')->withArgs(fn (string $message, array $context): bool => $message === 'notifications.stale_skipped'
         && $context['type'] === StreakReminderNotification::class)->once();
 
     Carbon::setTestNow();
@@ -172,7 +173,7 @@ it('judges a replayed streak nudge as of the moment it was held', function (): v
 it('goes stale when the week closes', function (): void {
     Carbon::setTestNow('2026-05-20 18:00:00');
 
-    expect(new StreakReminderNotification(4)->staleAfter->toDateTimeString())->toBe('2026-05-24 23:59:59');
+    expect(new StreakReminderNotification(4)->staleAfter?->toDateTimeString())->toBe('2026-05-24 23:59:59');
 
     Carbon::setTestNow();
 });

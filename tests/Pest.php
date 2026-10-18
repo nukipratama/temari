@@ -44,6 +44,7 @@ use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\RateLimiter;
 use Laravel\Socialite\Facades\Socialite;
 use Laravel\Socialite\Two\AbstractProvider;
+use Laravel\Socialite\Two\User as SocialiteUser;
 use Mockery\MockInterface;
 use OpenAI\Testing\ClientFake;
 use Tests\TestCase;
@@ -64,7 +65,7 @@ pest()->extend(TestCase::class)->in('Feature', 'Unit');
 pest()->beforeEach(function (): void {
     // A Faker generator reseeds mt_rand at random from its destructor, so a stale per-test one collected mid-test would undo this seed.
     gc_collect_cycles();
-    fake()->seed(crc32(static::class.$this->name()));
+    fake()->seed(crc32($this::class.$this->name()));
     WeeklySnapshotFactory::resetSequence();
     TrendDailySnapshotFactory::resetSequence();
     $this->app->bind(AzureCallThrottle::class, fn (): AzureCallThrottle => new AzureCallThrottle(function (int $seconds): void {
@@ -89,6 +90,7 @@ pest()->beforeEach(function (): void {
     // Bind a default ClientFake so any unmocked AzureOpenAIClient::client() call
     // fails deterministically instead of hitting the network.
     $this->app->bind(AzureOpenAIClient::class, function (): AzureOpenAIClient {
+        /** @var AzureOpenAIClient&MockInterface $mock */
         $mock = Mockery::mock(AzureOpenAIClient::class);
         $mock->shouldReceive('client')->andReturnUsing(fn () => new ClientFake([]));
         $mock->shouldReceive('deploymentFor')->andReturn('test-deployment');
@@ -101,6 +103,8 @@ pest()->beforeEach(function (): void {
  * Build a clean Azure Responses-API result for ClientFake. `from()` is used (not
  * ::fake(), whose recursive merge mangles outputText) so the decoded text is
  * exactly $content.
+ *
+ * @param  'completed'|'failed'|'in_progress'|'incomplete'  $status
  */
 function fakeAzureResponse(
     string $content,
@@ -114,7 +118,7 @@ function fakeAzureResponse(
     return CreateResponse::from([
         'id' => 'resp_test', 'object' => 'response', 'created_at' => 0, 'status' => $status, 'error' => null,
         'incomplete_details' => $truncateReason !== null ? ['reason' => $truncateReason] : null,
-        'instructions' => null, 'max_output_tokens' => null, 'model' => 'test',
+        'instructions' => null, 'max_output_tokens' => null, 'model' => 'test', 'output_text' => null, 'prompt' => null,
         'output' => [[
             'type' => 'message', 'id' => 'msg_test', 'status' => 'completed', 'role' => 'assistant',
             'content' => [['type' => 'output_text', 'text' => $content, 'annotations' => []]],
@@ -199,7 +203,7 @@ function fakeAzureToolCallResponse(
     return CreateResponse::from([
         'id' => 'resp_test', 'object' => 'response', 'created_at' => 0, 'status' => 'completed', 'error' => null,
         'incomplete_details' => null,
-        'instructions' => null, 'max_output_tokens' => null, 'model' => 'test',
+        'instructions' => null, 'max_output_tokens' => null, 'model' => 'test', 'output_text' => null, 'prompt' => null,
         'output' => $output,
         'parallel_tool_calls' => true, 'previous_response_id' => null, 'reasoning' => null, 'store' => true,
         'temperature' => 1.0, 'text' => ['format' => ['type' => 'text']], 'tool_choice' => 'auto', 'tools' => [],
@@ -220,6 +224,7 @@ function fakeAzureToolCallResponse(
  */
 function fakeStructuredCaller(ClientFake $client, string $deployment = 'gpt-test'): StructuredChatCaller
 {
+    /** @var AzureOpenAIClient&MockInterface $azure */
     $azure = Mockery::mock(AzureOpenAIClient::class);
     $azure->shouldReceive('client')->andReturn($client);
     $azure->shouldReceive('deploymentFor')->andReturn($deployment);
@@ -243,6 +248,7 @@ function fakeStructuredCaller(ClientFake $client, string $deployment = 'gpt-test
  */
 function captureAnalysisServiceRequests(array &$captured): AnalysisService
 {
+    /** @var AnalysisService&MockInterface $service */
     $service = Mockery::mock(AnalysisService::class);
     $service->shouldReceive('request')
         ->andReturnUsing(function (string $subjectOrType, int $subjectId, AnalysisType $type, ?string $discriminator = null, ?int $delaySeconds = null, bool $invalidate = false) use (&$captured): Analysis {
@@ -357,15 +363,16 @@ expect()->extend('toBeOne', fn () => $this->toBe(1));
  * text content of a <script type="application/json"> block (a CSP measure),
  * not as a data-page attribute.
  *
- * @param  object  $actingAs  The authenticated test case.
+ * @param  TestCase  $actingAs  The authenticated test case.
  */
-function inertiaVersionFor(object $actingAs, string $url): string
+function inertiaVersionFor(TestCase $actingAs, string $url): string
 {
     $html = $actingAs->get($url)->getContent();
     preg_match('/type="application\/json">(.*?)<\/script>/s', (string) $html, $matches);
     $page = json_decode(html_entity_decode($matches[1] ?? ''), true);
+    $version = is_array($page) ? ($page['version'] ?? '') : '';
 
-    return is_array($page) ? (string) ($page['version'] ?? '') : '';
+    return is_scalar($version) ? (string) $version : '';
 }
 
 /**
@@ -374,10 +381,10 @@ function inertiaVersionFor(object $actingAs, string $url): string
  * response is bare JSON rather than the HTML page object, so assert it with
  * assertJsonPath()/json() rather than assertInertia()/viewData().
  *
- * @param  object  $actingAs  The authenticated test case.
+ * @param  TestCase  $actingAs  The authenticated test case.
  * @return array<string, string>
  */
-function inertiaPartialHeaders(object $actingAs, string $url, string $component, string $props): array
+function inertiaPartialHeaders(TestCase $actingAs, string $url, string $component, string $props): array
 {
     return [
         'X-Inertia' => 'true',
@@ -418,6 +425,18 @@ function seedPastSeasonWeeks(User $user, RaceGoal $race): void
     }
 }
 
+/** A Strava OAuth user carrying the token fields Socialite sets on a real one. */
+function socialiteUserMock(string $token, string $refreshToken, int $expiresIn): SocialiteUser&MockInterface
+{
+    /** @var SocialiteUser&MockInterface $user */
+    $user = Mockery::mock(SocialiteUser::class);
+    $user->token = $token;
+    $user->refreshToken = $refreshToken;
+    $user->expiresIn = $expiresIn;
+
+    return $user;
+}
+
 function mockStravaDriver(callable $configure): MockInterface
 {
     $driver = Mockery::mock(AbstractProvider::class);
@@ -446,6 +465,10 @@ function stravaBadRequest(string $resource, string $field): array
  * A share-card fixture built straight from the value object, so a style test
  * asserts on what it draws rather than on how a run resolves into facts (that
  * is CardFactsTest's job). Override any field by name.
+ *
+ * @param  list<string>  $badges
+ * @param  list<array{string, string}>  $splits
+ * @param  list<float>  $paceProfile
  */
 function cardFacts(
     RunForm $form = RunForm::Easy,

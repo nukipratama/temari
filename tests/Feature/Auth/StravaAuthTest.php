@@ -31,7 +31,6 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
 use Inertia\Testing\AssertableInertia as Assert;
 use Laravel\Socialite\Two\InvalidStateException;
-use Laravel\Socialite\Two\User as SocialiteUser;
 
 uses(RefreshDatabase::class);
 
@@ -136,10 +135,7 @@ it('has no `from` prop when there is no intended deep link', function (): void {
 });
 
 it('sends a fresh connection to onboarding, ignoring an intended deep link', function (): void {
-    $stravaUser = Mockery::mock(SocialiteUser::class);
-    $stravaUser->token = 'access-token';
-    $stravaUser->refreshToken = 'refresh-token';
-    $stravaUser->expiresIn = 21600;
+    $stravaUser = socialiteUserMock('access-token', 'refresh-token', 21600);
     $stravaUser->shouldReceive('getId')->andReturn('424242');
     $stravaUser->shouldReceive('getName')->andReturn('Deep Link');
     $stravaUser->shouldReceive('getEmail')->andReturn('deep@example.test');
@@ -160,10 +156,7 @@ it('returns an existing, already-onboarded user to their intended deep link', fu
         'strava_athlete_id' => 424242,
     ]);
 
-    $stravaUser = Mockery::mock(SocialiteUser::class);
-    $stravaUser->token = 'access-token';
-    $stravaUser->refreshToken = 'refresh-token';
-    $stravaUser->expiresIn = 21600;
+    $stravaUser = socialiteUserMock('access-token', 'refresh-token', 21600);
     $stravaUser->shouldReceive('getId')->andReturn('424242');
     $stravaUser->shouldReceive('getName')->andReturn('Deep Link');
     $stravaUser->shouldReceive('getEmail')->andReturn('deep@example.test');
@@ -179,10 +172,7 @@ it('returns an existing, already-onboarded user to their intended deep link', fu
 });
 
 it('creates a new user from the strava callback and logs them in', function (): void {
-    $stravaUser = Mockery::mock(SocialiteUser::class);
-    $stravaUser->token = 'access-token-xyz';
-    $stravaUser->refreshToken = 'refresh-token-xyz';
-    $stravaUser->expiresIn = 21600;
+    $stravaUser = socialiteUserMock('access-token-xyz', 'refresh-token-xyz', 21600);
     $stravaUser->shouldReceive('getId')->andReturn('987654');
     $stravaUser->shouldReceive('getName')->andReturn('Ada Lovelace');
     $stravaUser->shouldReceive('getEmail')->andReturn('athlete@example.test');
@@ -233,10 +223,7 @@ it('refuses a strava callback matching a demo connection without changing its us
     $userBefore = $demo->refresh()->getAttributes();
     $connectionBefore = $connection->refresh()->getAttributes();
 
-    $stravaUser = Mockery::mock(SocialiteUser::class);
-    $stravaUser->token = 'incoming-access-token';
-    $stravaUser->refreshToken = 'incoming-refresh-token';
-    $stravaUser->expiresIn = 21600;
+    $stravaUser = socialiteUserMock('incoming-access-token', 'incoming-refresh-token', 21600);
     $stravaUser->shouldReceive('getId')->andReturn((string) $connection->strava_athlete_id);
     $stravaUser->shouldReceive('getName')->andReturn('Incoming Athlete');
     $stravaUser->shouldReceive('getEmail')->andReturn('incoming@example.test');
@@ -246,8 +233,8 @@ it('refuses a strava callback matching a demo connection without changing its us
     $response = $this->get(route('auth.strava.callback'));
 
     $this->assertGuest();
-    expect($demo->fresh()->getAttributes())->toBe($userBefore)
-        ->and($connection->fresh()->getAttributes())->toBe($connectionBefore);
+    expect($demo->fresh()?->getAttributes())->toBe($userBefore)
+        ->and($connection->fresh()?->getAttributes())->toBe($connectionBefore);
     $response->assertRedirect(route('login'))
         ->assertSessionHasErrors(['strava' => 'We can\'t connect this Strava account because it matches the shared demo account.']);
     Bus::assertNothingDispatched();
@@ -263,13 +250,10 @@ it('records a maintenance refusal and hands the grant back to Strava', function 
         ]),
         'https://www.strava.com/oauth/deauthorize' => Http::response(['access_token' => 'revoked-token']),
     ]);
-    Log::spy();
+    $log = Log::spy();
     app()->maintenanceMode()->activate([]);
 
-    $stravaUser = Mockery::mock(SocialiteUser::class);
-    $stravaUser->token = 'access-token-xyz';
-    $stravaUser->refreshToken = 'refresh-token-xyz';
-    $stravaUser->expiresIn = 21600;
+    $stravaUser = socialiteUserMock('access-token-xyz', 'refresh-token-xyz', 21600);
     $stravaUser->shouldReceive('getId')->andReturn('987654');
     $stravaUser->shouldReceive('getName')->andReturn('Ada Lovelace');
     $stravaUser->shouldReceive('getEmail')->andReturn('athlete@example.test');
@@ -287,7 +271,7 @@ it('records a maintenance refusal and hands the grant back to Strava', function 
         ->toBe([StravaGrantEventType::RefusedInMaintenance, StravaGrantEventType::Released]);
     Http::assertSent(fn (HttpRequest $request): bool => $request->url() === 'https://www.strava.com/oauth/deauthorize'
         && $request['access_token'] === 'access-token-xyz');
-    Log::shouldHaveReceived('info')->with('strava.registration.refused_during_maintenance', ['deauthorized' => true]);
+    $log->shouldHaveReceived('info')->with('strava.registration.refused_during_maintenance', ['deauthorized' => true]);
     Bus::assertNothingDispatched();
 
     // The redirect lands the refused guest on the maintenance page.
@@ -306,10 +290,7 @@ it('keeps a maintenance-refused grant when Strava refuses release', function ():
     ]);
     app()->maintenanceMode()->activate([]);
 
-    $stravaUser = Mockery::mock(SocialiteUser::class);
-    $stravaUser->token = 'access-token-xyz';
-    $stravaUser->refreshToken = 'refresh-token-xyz';
-    $stravaUser->expiresIn = 21600;
+    $stravaUser = socialiteUserMock('access-token-xyz', 'refresh-token-xyz', 21600);
     $stravaUser->shouldReceive('getId')->andReturn('987654');
     $stravaUser->shouldReceive('getName')->andReturn('Ada Lovelace');
     $stravaUser->shouldReceive('getEmail')->andReturn('athlete@example.test');
@@ -330,10 +311,7 @@ it('signs a returning athlete in during maintenance', function (): void {
     StravaConnection::factory()->for($existingUser)->create(['strava_athlete_id' => 987654]);
     app()->maintenanceMode()->activate([]);
 
-    $stravaUser = Mockery::mock(SocialiteUser::class);
-    $stravaUser->token = 'new-access';
-    $stravaUser->refreshToken = 'new-refresh';
-    $stravaUser->expiresIn = 21600;
+    $stravaUser = socialiteUserMock('new-access', 'new-refresh', 21600);
     $stravaUser->shouldReceive('getId')->andReturn('987654');
     $stravaUser->shouldReceive('getName')->andReturn('Ada Lovelace');
     $stravaUser->shouldReceive('getEmail')->andReturn('athlete@example.test');
@@ -354,10 +332,7 @@ it('still connects on a fresh connect while the strava kill switch is off, witho
     Http::fake();
     app(AppConfig::class)->set(AppConfigKey::StravaEnabled, false);
 
-    $stravaUser = Mockery::mock(SocialiteUser::class);
-    $stravaUser->token = 'access-token-paused';
-    $stravaUser->refreshToken = 'refresh-token-paused';
-    $stravaUser->expiresIn = 21600;
+    $stravaUser = socialiteUserMock('access-token-paused', 'refresh-token-paused', 21600);
     $stravaUser->shouldReceive('getId')->andReturn('551122');
     $stravaUser->shouldReceive('getName')->andReturn('Paused Runner');
     $stravaUser->shouldReceive('getEmail')->andReturn('paused@example.test');
@@ -375,12 +350,9 @@ it('still connects on a fresh connect while the strava kill switch is off, witho
 });
 
 it('stores only the granted scopes and logs when a required scope is declined', function (): void {
-    Log::spy();
+    $log = Log::spy();
 
-    $stravaUser = Mockery::mock(SocialiteUser::class);
-    $stravaUser->token = 'access-token-partial';
-    $stravaUser->refreshToken = 'refresh-token-partial';
-    $stravaUser->expiresIn = 21600;
+    $stravaUser = socialiteUserMock('access-token-partial', 'refresh-token-partial', 21600);
     $stravaUser->shouldReceive('getId')->andReturn('555111');
     $stravaUser->shouldReceive('getName')->andReturn('Partial Grant');
     $stravaUser->shouldReceive('getEmail')->andReturn('partial@example.test');
@@ -395,7 +367,7 @@ it('stores only the granted scopes and logs when a required scope is declined', 
     $connection = StravaConnection::where('strava_athlete_id', 555111)->firstOrFail();
     expect($connection->scopes)->toBe('read');
 
-    Log::shouldHaveReceived('warning')->once()->with('strava.scopes.partial', [
+    $log->shouldHaveReceived('warning')->once()->with('strava.scopes.partial', [
         'user_id' => $connection->user_id,
         'granted' => 'read',
         'missing' => ['activity:read_all', 'profile:read_all'],
@@ -410,10 +382,7 @@ it('updates an existing user on subsequent strava callbacks', function (): void 
         'refresh_token' => 'old-refresh',
     ]);
 
-    $stravaUser = Mockery::mock(SocialiteUser::class);
-    $stravaUser->token = 'new-access';
-    $stravaUser->refreshToken = 'new-refresh';
-    $stravaUser->expiresIn = 21600;
+    $stravaUser = socialiteUserMock('new-access', 'new-refresh', 21600);
     $stravaUser->shouldReceive('getId')->andReturn('987654');
     $stravaUser->shouldReceive('getName')->andReturn('New Name');
     $stravaUser->shouldReceive('getEmail')->andReturn('athlete@example.test');
@@ -427,11 +396,13 @@ it('updates an existing user on subsequent strava callbacks', function (): void 
         ->and(StravaConnection::count())->toBe(1);
 
     $existingUser->refresh()->load('stravaConnection');
+    $refreshedConnection = $existingUser->stravaConnection;
+    assert($refreshedConnection !== null);
     expect($existingUser->name)->toBe('New Name')
-        ->and($existingUser->stravaConnection->access_token)->toBe('new-access')
-        ->and($existingUser->stravaConnection->refresh_token)->toBe('new-refresh')
-        ->and($existingUser->stravaConnection->credential_version)->toBe(1)
-        ->and($existingUser->stravaConnection->revoked_at)->toBeNull();
+        ->and($refreshedConnection->access_token)->toBe('new-access')
+        ->and($refreshedConnection->refresh_token)->toBe('new-refresh')
+        ->and($refreshedConnection->credential_version)->toBe(1)
+        ->and($refreshedConnection->revoked_at)->toBeNull();
 
     expect(StravaGrantToken::query()->where('strava_athlete_id', 987654)->sole()->refresh_token)->toBe('new-refresh')
         ->and(StravaGrantEvent::query()->where('strava_athlete_id', 987654)->orderBy('id')->get()->map(fn (StravaGrantEvent $event) => $event->event)->all())
@@ -460,10 +431,7 @@ it('reaches the callback and upgrades scopes when an authenticated user reconnec
         'scopes' => 'read,activity:read_all', // granted before profile:read_all existed
     ]);
 
-    $stravaUser = Mockery::mock(SocialiteUser::class);
-    $stravaUser->token = 'new-access';
-    $stravaUser->refreshToken = 'new-refresh';
-    $stravaUser->expiresIn = 21600;
+    $stravaUser = socialiteUserMock('new-access', 'new-refresh', 21600);
     $stravaUser->shouldReceive('getId')->andReturn('424242');
     $stravaUser->shouldReceive('getName')->andReturn('Nuki');
     $stravaUser->shouldReceive('getEmail')->andReturn('nuki@example.test');
@@ -475,7 +443,7 @@ it('reaches the callback and upgrades scopes when an authenticated user reconnec
         ->get(route('auth.strava.callback', ['scope' => 'read,activity:read_all,profile:read_all']))
         ->assertRedirect();
 
-    expect($user->stravaConnection()->first()->scopes)->toBe('read,activity:read_all,profile:read_all');
+    expect($user->stravaConnection()->first()?->scopes)->toBe('read,activity:read_all,profile:read_all');
     Bus::assertDispatched(fn (SyncZonesJob $job): bool => $job->userId === $user->id);
 });
 
@@ -488,10 +456,7 @@ it('dispatches SyncZonesJob when a reconnect newly grants profile:read_all', fun
         'scopes' => 'read,activity:read_all',
     ]);
 
-    $stravaUser = Mockery::mock(SocialiteUser::class);
-    $stravaUser->token = 'new-access';
-    $stravaUser->refreshToken = 'new-refresh';
-    $stravaUser->expiresIn = 21600;
+    $stravaUser = socialiteUserMock('new-access', 'new-refresh', 21600);
     $stravaUser->shouldReceive('getId')->andReturn('987654');
     $stravaUser->shouldReceive('getName')->andReturn('Existing Runner');
     $stravaUser->shouldReceive('getEmail')->andReturn('athlete@example.test');
@@ -515,10 +480,7 @@ it('does not re-dispatch SyncZonesJob on a reconnect that grants no new scopes',
         'scopes' => 'read,activity:read_all,profile:read_all',
     ]);
 
-    $stravaUser = Mockery::mock(SocialiteUser::class);
-    $stravaUser->token = 'new-access';
-    $stravaUser->refreshToken = 'new-refresh';
-    $stravaUser->expiresIn = 21600;
+    $stravaUser = socialiteUserMock('new-access', 'new-refresh', 21600);
     $stravaUser->shouldReceive('getId')->andReturn('987654');
     $stravaUser->shouldReceive('getName')->andReturn('Existing Runner');
     $stravaUser->shouldReceive('getEmail')->andReturn('athlete@example.test');
@@ -540,10 +502,7 @@ it('reactivates a revoked connection and dispatches one incremental sync', funct
         'scopes' => 'read,activity:read_all,profile:read_all',
     ]);
 
-    $stravaUser = Mockery::mock(SocialiteUser::class);
-    $stravaUser->token = 'reactivated-access';
-    $stravaUser->refreshToken = 'reactivated-refresh';
-    $stravaUser->expiresIn = 21600;
+    $stravaUser = socialiteUserMock('reactivated-access', 'reactivated-refresh', 21600);
     $stravaUser->shouldReceive('getId')->andReturn('987654');
     $stravaUser->shouldReceive('getName')->andReturn('Existing Runner');
     $stravaUser->shouldReceive('getEmail')->andReturn('athlete@example.test');
@@ -589,10 +548,7 @@ it('advances the grant version when an athlete reconnects after account deletion
     );
     $oldUser->delete();
 
-    $stravaUser = Mockery::mock(SocialiteUser::class);
-    $stravaUser->token = 'new-access';
-    $stravaUser->refreshToken = 'new-refresh';
-    $stravaUser->expiresIn = 21600;
+    $stravaUser = socialiteUserMock('new-access', 'new-refresh', 21600);
     $stravaUser->shouldReceive('getId')->andReturn('876543');
     $stravaUser->shouldReceive('getName')->andReturn('Reconnected Runner');
     $stravaUser->shouldReceive('getEmail')->andReturn('reconnected@example.test');
@@ -653,7 +609,7 @@ it("keeps the account's remember token so other devices stay signed in", functio
 
     $this->actingAs($user)->startSession()->post(route('auth.logout'))->assertRedirect(route('login'));
 
-    expect($user->fresh()->remember_token)->toBe('other-device-token');
+    expect($user->fresh()?->remember_token)->toBe('other-device-token');
 });
 
 it('drops only the signing-out device push subscription on logout', function (): void {
@@ -719,15 +675,17 @@ it('encrypts the page object written to history state', function (): void {
     preg_match('/type="application\/json">(.*?)<\/script>/s', $html, $matches);
     $page = json_decode($matches[1] ?? '', true);
 
-    expect($page)->toBeArray()
-        ->and($page['encryptHistory'] ?? false)->toBeTrue();
+    expect($page)->toBeArray();
+    assert(is_array($page));
+    expect($page['encryptHistory'] ?? false)->toBeTrue();
 });
 
 it('throttles both strava oauth endpoints, the open account-creation path', function (): void {
     foreach (['auth.strava.redirect', 'auth.strava.callback'] as $name) {
         $route = Route::getRoutes()->getByName($name);
 
-        expect($route)->not->toBeNull()
-            ->and($route->gatherMiddleware())->toContain('throttle:strava-oauth');
+        expect($route)->not->toBeNull();
+        assert($route !== null);
+        expect($route->gatherMiddleware())->toContain('throttle:strava-oauth');
     }
 });

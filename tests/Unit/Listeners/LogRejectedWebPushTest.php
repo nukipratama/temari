@@ -29,11 +29,11 @@ function rejectedPush(?Response $response, string $reason): NotificationFailed
 }
 
 it('logs one warning with the status, reason, push host, subscription and user', function (): void {
-    Log::spy();
+    $log = Log::spy();
 
     event(rejectedPush(new Response(410, [], ''), 'Gone'));
 
-    Log::shouldHaveReceived('warning')->once()->with('webpush.rejected', [
+    $log->shouldHaveReceived('warning')->once()->with('webpush.rejected', [
         'status' => 410,
         'reason' => 'Gone',
         'push_host' => 'web.push.apple.com',
@@ -43,11 +43,11 @@ it('logs one warning with the status, reason, push host, subscription and user',
 });
 
 it('logs a transport failure with no status and strips the endpoint path from the reason', function (): void {
-    Log::spy();
+    $log = Log::spy();
 
     event(rejectedPush(null, 'cURL error 28: Operation timed out for https://web.push.apple.com/QSecretDeviceToken123'));
 
-    Log::shouldHaveReceived('warning')->once()->withArgs(function (string $message, array $context): bool {
+    $log->shouldHaveReceived('warning')->once()->withArgs(function (string $message, array $context): bool {
         $logged = json_encode($context, JSON_THROW_ON_ERROR);
 
         return $message === 'webpush.rejected'
@@ -61,11 +61,11 @@ it('logs a transport failure with no status and strips the endpoint path from th
 });
 
 it('truncates a long reason', function (): void {
-    Log::spy();
+    $log = Log::spy();
 
     event(rejectedPush(new Response(400, [], ''), str_repeat('x', 1000)));
 
-    Log::shouldHaveReceived('warning')->once()->withArgs(
+    $log->shouldHaveReceived('warning')->once()->withArgs(
         fn (string $message, array $context): bool => mb_strlen((string) $context['reason']) <= 203,
     );
 });
