@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\IntervalsIcu;
 
 use App\Enums\IntervalsIcuSyncStatus;
+use App\Enums\PlannedSessionStatus;
 use App\Models\IntervalsIcuConnection;
 use App\Models\User;
 use App\Notifications\IntervalsIcuDisconnectedNotification;
@@ -18,7 +19,8 @@ use Laravel\Pulse\Facades\Pulse;
  * Keeps today's workout on the athlete's intervals.icu calendar matching
  * today as Today shows it: sent once, updated in place when it changes,
  * removed when today becomes a rest day, is skipped or cannot be sent.
- * Earlier days' workouts stay where they are.
+ * Once today's run is credited the workout stays as it was sent, and
+ * earlier days' workouts stay where they are.
  *
  * @phpstan-import-type Day from IntervalsIcuWorkoutMapper
  * @phpstan-import-type HeartRate from IntervalsIcuWorkoutMapper
@@ -68,7 +70,12 @@ final readonly class IntervalsIcuSync
 
     private function reconcile(IntervalsIcuConnection $connection, Carbon $today): void
     {
-        $day = $this->runToday($connection->user, $today);
+        $shown = $this->today($connection->user, $today);
+        if ($shown !== null && self::alreadyRun($shown)) {
+            return;
+        }
+
+        $day = self::runOf($shown);
         $workout = null;
         $status = null;
 
@@ -108,27 +115,50 @@ final readonly class IntervalsIcuSync
     }
 
     /**
-     * Today's run as Today shows it, or null when today has none to send: no
-     * plan covers it, it is a rest day, or the athlete skipped it.
+     * Today as Today shows it, or null when no plan covers today.
      *
-     * @return Day|null
+     * @return array<string, mixed>|null
      */
-    private function runToday(User $user, Carbon $today): ?array
+    private function today(User $user, Carbon $today): ?array
     {
         $date = $today->toDateString();
         foreach ($this->weekPlan->forUser($user, $today)['days'] ?? [] as $day) {
-            if ($day['date'] !== $date) {
-                continue;
+            if ($day['date'] === $date) {
+                return $day;
             }
-            if ($day['session_type'] === 'rest' || $day['skipped'] === true) {
-                return null;
-            }
-
-            /** @var Day $day */
-            return $day;
         }
 
         return null;
+    }
+
+    /**
+     * Once today's run is credited the workout on the watch is history, so a
+     * later change to the day (the run itself feeding the plan) leaves it be.
+     *
+     * @param  array<string, mixed>  $shown
+     */
+    private static function alreadyRun(array $shown): bool
+    {
+        return $shown['session_type'] !== 'rest'
+            && is_string($shown['status'])
+            && PlannedSessionStatus::from($shown['status'])->isCredited();
+    }
+
+    /**
+     * Today's run to send, or null when there is none: no plan, a rest day,
+     * or a skipped day.
+     *
+     * @param  array<string, mixed>|null  $shown
+     * @return Day|null
+     */
+    private static function runOf(?array $shown): ?array
+    {
+        if ($shown === null || $shown['session_type'] === 'rest' || $shown['skipped'] === true) {
+            return null;
+        }
+
+        /** @var Day $shown */
+        return $shown;
     }
 
     /**
