@@ -71,7 +71,7 @@ return new class () extends Migration {
             ->select(['id', 'badges'])
             ->chunkById(500, function ($rows) use ($map): void {
                 foreach ($rows as $row) {
-                    /** @var list<string>|null $badges */
+                    /** @var array<string>|null $badges */
                     $badges = json_decode((string) $row->badges, true);
 
                     if (! is_array($badges)) {
@@ -89,7 +89,7 @@ return new class () extends Migration {
 
                     DB::table('run_cards')
                         ->where('id', $row->id)
-                        ->update(['badges' => json_encode($renamed)]);
+                        ->update(['badges' => json_encode(array_values($renamed))]);
                 }
             });
     }
