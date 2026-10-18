@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Schema;
 return new class () extends Migration {
     public function up(): void
     {
-        Schema::connection(config('webpush.database_connection'))->create(config('webpush.table_name'), function (Blueprint $table): void {
+        Schema::connection(config()->string('webpush.database_connection'))->create(config()->string('webpush.table_name'), function (Blueprint $table): void {
             $table->bigIncrements('id');
             $table->morphs('subscribable', 'push_subscriptions_subscribable_morph_idx');
             $table->string('endpoint', 500)->unique();
@@ -22,6 +22,6 @@ return new class () extends Migration {
 
     public function down(): void
     {
-        Schema::connection(config('webpush.database_connection'))->dropIfExists(config('webpush.table_name'));
+        Schema::connection(config()->string('webpush.database_connection'))->dropIfExists(config()->string('webpush.table_name'));
     }
 };

@@ -89,7 +89,7 @@ return new class () extends Migration {
 
                     DB::table('run_cards')
                         ->where('id', $row->id)
-                        ->update(['badges' => json_encode(array_values($renamed))]);
+                        ->update(['badges' => json_encode($renamed)]);
                 }
             });
     }

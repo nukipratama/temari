@@ -49,6 +49,7 @@ use App\Services\Run\Story\RunCardFactory;
 use App\Services\Run\Story\Temari;
 use App\Services\Run\Story\Vibe;
 use App\Services\Run\Trend\TrendSnapshotWriter;
+use App\Support\Numeric;
 use Closure;
 use Illuminate\Support\Carbon;
 use Random\Engine\Mt19937;
@@ -269,6 +270,7 @@ class DemoRunSeeder
     private function stagePendingAnalyses(User $user): void
     {
         $activities = Activity::query()->where('user_id', $user->id)->get();
+        /** @var list<int> $cardIds */
         $cardIds = RunCard::query()->whereIn('activity_id', $activities->pluck('id'))->pluck('id')->all();
 
         $today = Carbon::today()->toDateString();
@@ -290,6 +292,7 @@ class DemoRunSeeder
         // so the demo caps weekly recaps at the last fully-closed week to match
         // real narration instead of seeding an open-week recap.
         $lastClosedWeekEnding = RecapPeriod::lastClosedWeekEnding();
+        /** @var \Illuminate\Support\Collection<int, int> $closedWeeklies */
         $closedWeeklies = WeeklySnapshot::query()
             ->where('user_id', $user->id)
             ->whereDate('week_ending', '<=', $lastClosedWeekEnding)
@@ -381,7 +384,7 @@ class DemoRunSeeder
             [
                 'race_date' => Carbon::today()->addWeeks(12),
                 'distance_m' => 10_000,
-                'goal_time_sec' => (int) (round($km10BestSec * 0.97 / 15) * 15),
+                'goal_time_sec' => (int) (round(Numeric::float($km10BestSec) * 0.97 / 15) * 15),
                 'name' => 'City 10K',
             ],
         );
@@ -491,7 +494,7 @@ class DemoRunSeeder
         $today = Carbon::today();
         $season = Season::query()->where('user_id', $user->id)->orderByDesc('starts_at')->first();
 
-        $this->trendSnapshots->writeRange($user, $season?->starts_at ?? $today, $today);
+        $this->trendSnapshots->writeRange($user, $season->starts_at ?? $today, $today);
     }
 
     /**
@@ -902,7 +905,7 @@ class DemoRunSeeder
     {
         /** @var array<string, array{lo: int, hi: int}> $hrZones */
         $hrZones = config('runner.hr_zones');
-        $optimalCadence = (int) config('runner.optimal_cadence_spm');
+        $optimalCadence = config()->integer('runner.optimal_cadence_spm');
 
         $summary = $this->streamAnalysis->compute(
             $streams,
