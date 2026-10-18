@@ -12,11 +12,11 @@ class AzureOpenAIClient
 {
     public function client(): ClientContract
     {
-        $endpoint = rtrim((string) config('azure_openai.uri'), '/');
-        $timeout = (int) config('azure_openai.timeout');
+        $endpoint = rtrim(config()->string('azure_openai.uri'), '/');
+        $timeout = config()->integer('azure_openai.timeout');
 
         $factory = OpenAI::factory()
-            ->withHttpHeader('api-key', (string) config('azure_openai.api_key'))
+            ->withHttpHeader('api-key', config()->string('azure_openai.api_key'))
             // Azure's OpenAI-compatible v1 GA surface needs no api-version; the
             // deployment is selected by the request body's `model` field.
             ->withHttpHeader('User-Agent', 'Temari/1.0');
@@ -39,7 +39,8 @@ class AzureOpenAIClient
     public function deploymentFor(?string $kind): string
     {
         $perKind = $kind === null ? null : config("azure_openai.narrators.{$kind}");
+        assert($perKind === null || is_string($perKind));
 
-        return (string) ($perKind ?: config('azure_openai.deployment'));
+        return $perKind ?: config()->string('azure_openai.deployment');
     }
 }

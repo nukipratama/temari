@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Gamification;
 
+use Illuminate\Support\Collection;
 use App\Enums\RaceOutcome;
 use App\Enums\SessionType;
 use App\Models\Activity;
@@ -13,6 +14,7 @@ use App\Models\Season;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\Run\Metrics\TrainingLoad;
+use App\Support\Numeric;
 use Illuminate\Support\Carbon;
 
 /**
@@ -108,10 +110,13 @@ final readonly class SeasonGamificationContext
 
     private static function peakWeeklyKm(int $userId, Season $season): float
     {
-        return (float) WeeklySnapshot::query()
+        $peak = WeeklySnapshot::query()
             ->where('user_id', $userId)
             ->whereBetween('week_ending', [$season->starts_at->toDateString(), $season->ends_at->toDateString()])
             ->max('distance_km');
+        assert($peak === null || is_numeric($peak));
+
+        return (float) $peak;
     }
 
     /** @return array<string, float> local date (Y-m-d) => longest logged distance that day, in km */
@@ -175,11 +180,13 @@ final readonly class SeasonGamificationContext
 
     private static function consistentWeeks(int $userId, Season $season, Carbon $rangeEnd): int
     {
-        $actualByWeekEnding = WeeklySnapshot::query()
+        /** @var Collection<string, float|null> $distanceByWeekEnding */
+        $distanceByWeekEnding = WeeklySnapshot::query()
             ->where('user_id', $userId)
             ->whereBetween('week_ending', [$season->starts_at->toDateString(), $rangeEnd->toDateString()])
-            ->pluck('distance_km', 'week_ending')
-            ->mapWithKeys(static fn (mixed $km, string $weekEnding): array => [Carbon::parse($weekEnding)->toDateString() => (float) $km]);
+            ->pluck('distance_km', 'week_ending');
+        $actualByWeekEnding = $distanceByWeekEnding
+            ->mapWithKeys(static fn (?float $km, string $weekEnding): array => [Carbon::parse($weekEnding)->toDateString() => (float) $km]);
 
         $prescribedByWeekEnding = PlannedSession::query()
             ->where('user_id', $userId)
@@ -187,7 +194,7 @@ final readonly class SeasonGamificationContext
             ->whereBetween('date', [$season->starts_at->copy()->startOfWeek(Carbon::MONDAY)->toDateString(), $rangeEnd->toDateString()])
             ->get(['date', 'prescribed_km'])
             ->groupBy(static fn (PlannedSession $session): string => $session->date->copy()->endOfWeek(Carbon::SUNDAY)->toDateString())
-            ->map(static fn ($week): float => (float) $week->sum('prescribed_km'));
+            ->map(static fn ($week): float => Numeric::float($week->sum('prescribed_km')));
 
         return $prescribedByWeekEnding
             ->filter(static fn (float $prescribed, string $weekEnding): bool => $prescribed > 0.0

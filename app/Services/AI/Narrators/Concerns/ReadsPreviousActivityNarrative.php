@@ -48,10 +48,14 @@ trait ReadsPreviousActivityNarrative
         if ($previousActivityId === null) {
             return null;
         }
+        assert(is_numeric($previousActivityId));
 
-        return Analysis::query()
+        $content = Analysis::query()
             ->forSubject(Activity::class, (int) $previousActivityId, $kind)
             ->where('status', AnalysisStatus::Done)
             ->value('content');
+        assert($content === null || is_string($content));
+
+        return $content;
     }
 }

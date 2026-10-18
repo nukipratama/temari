@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\AI\RuleBased;
 
+use Illuminate\Support\Collection;
 use App\Enums\Badge;
 use App\Enums\IntentVerdict;
 use App\Enums\PlannedSessionStatus;
@@ -154,6 +155,7 @@ final readonly class RuleBasedNarrationFiller
             fn (Activity $activity): float => (float) $activity->detail?->distance,
         );
         $actualMeters = $distancesM->sum();
+        assert(is_float($actualMeters) || is_int($actualMeters));
         $actualKm = DistanceFormatter::km($actualMeters);
         $actual = DistanceFormatter::kmString($actualMeters) ?? '0.0';
         $planned = PlannedSession::query()
@@ -381,6 +383,7 @@ final readonly class RuleBasedNarrationFiller
             ->where('activities.user_id', $snapshot->user_id)
             ->whereNotNull('activity_details.trimp_edwards')
             ->min('activity_details.start_date_local');
+        assert($firstScored === null || is_string($firstScored));
 
         return $firstScored !== null
             && $snapshot->week_ending->toDateString() >= Carbon::parse((string) $firstScored)->addDays(TrainingLoad::CTL_TAU)->toDateString();
@@ -393,13 +396,14 @@ final readonly class RuleBasedNarrationFiller
      */
     private function usualWeeklyKm(WeeklySnapshot $snapshot): ?float
     {
-        $distances = WeeklySnapshot::query()
+        /** @var Collection<int, float|null> $priorDistances */
+        $priorDistances = WeeklySnapshot::query()
             ->where('user_id', $snapshot->user_id)
             ->where('week_ending', '<', $snapshot->week_ending)
             ->orderByDesc('week_ending')
             ->limit(6)
-            ->pluck('distance_km')
-            ->filter(fn (?float $km): bool => $km !== null);
+            ->pluck('distance_km');
+        $distances = $priorDistances->filter(fn (?float $km): bool => $km !== null);
 
         return $distances->isEmpty() ? null : (float) $distances->avg();
     }
@@ -611,9 +615,13 @@ final readonly class RuleBasedNarrationFiller
         $runs = $details->count();
         $runWord = $runs === 1 ? 'run' : 'runs';
         $sessionWord = $runs === 1 ? 'session' : 'sessions';
-        $totalKm = DistanceFormatter::km((float) $details->sum('distance'));
+        $totalDistance = $details->sum('distance');
+        assert(is_numeric($totalDistance));
+        $longestDistance = $details->max('distance');
+        assert($longestDistance === null || is_numeric($longestDistance));
+        $totalKm = DistanceFormatter::km((float) $totalDistance);
         $km = DecimalFormatter::decimal($totalKm);
-        $longestKm = DistanceFormatter::kmString((float) $details->max('distance'));
+        $longestKm = DistanceFormatter::kmString((float) $longestDistance);
         $usualKm = $this->usualMonthlyKm($userId, $start);
         $closer = $usualKm === null
             ? 'no usual month yet to compare it with. this one sets the line.'

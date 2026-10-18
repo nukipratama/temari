@@ -13,6 +13,7 @@ use App\Services\Run\Metrics\DistanceFormatter;
 use App\Services\Run\Metrics\DurationFormatter;
 use App\Services\Run\Metrics\PaceCalculator;
 use App\Services\Run\Metrics\PaceFormatter;
+use DateTimeInterface;
 use Illuminate\Support\Carbon;
 
 /**
@@ -139,6 +140,7 @@ class AnalysisMessagePresenter
         $weekEnding = WeeklySnapshot::query()
             ->whereKey($analysis->subject_id)
             ->value('week_ending');
+        assert($weekEnding === null || $weekEnding instanceof DateTimeInterface);
 
         return $weekEnding === null
             ? route('history')

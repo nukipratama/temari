@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Run\Plan;
 
+use Illuminate\Support\Collection;
 use App\Enums\PlanPhase;
 use App\Enums\SessionType;
 use App\Models\PlannedSession;
@@ -51,11 +52,13 @@ final readonly class SeasonSummaryBuilder
      */
     public function adherencePct(User $user, Season $season): ?int
     {
-        $scores = PlannedSession::query()
+        /** @var Collection<int, int> $complianceScores */
+        $complianceScores = PlannedSession::query()
             ->where('user_id', $user->id)
             ->whereBetween('date', [$season->starts_at->toDateString(), $season->ends_at->toDateString()])
             ->whereNotNull('compliance_score')
-            ->pluck('compliance_score')
+            ->pluck('compliance_score');
+        $scores = $complianceScores
             ->map(fn (int $score): int => min(100, $score));
 
         return $scores->isEmpty() ? null : (int) round((float) $scores->avg());

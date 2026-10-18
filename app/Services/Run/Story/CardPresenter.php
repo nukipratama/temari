@@ -7,6 +7,7 @@ namespace App\Services\Run\Story;
 use App\Models\AI\Analysis;
 use App\Models\RunCard;
 use App\Services\AI\AnalysisType;
+use App\Support\Numeric;
 
 class CardPresenter
 {
@@ -24,8 +25,8 @@ class CardPresenter
             ->first();
 
         return [
-            'index' => (int) $stats?->getAttribute('edition_index'),
-            'total' => (int) $stats?->getAttribute('total'),
+            'index' => Numeric::int($stats?->getAttribute('edition_index')),
+            'total' => Numeric::int($stats?->getAttribute('total')),
         ];
     }
 

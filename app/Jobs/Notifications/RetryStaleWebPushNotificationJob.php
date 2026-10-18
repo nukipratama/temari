@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Jobs\Notifications;
 
+use DateTimeInterface;
 use Illuminate\Queue\Attributes\Backoff;
 use Illuminate\Queue\Attributes\Tries;
 use Illuminate\Foundation\Queue\Queueable;
@@ -61,6 +62,7 @@ class RetryStaleWebPushNotificationJob implements ShouldQueue
                 ->where('channel', 'webpush')
                 ->value('created_at');
             if ($claimedAt !== null) {
+                assert(is_string($claimedAt) || $claimedAt instanceof DateTimeInterface);
                 $notification->triggeredAt = CarbonImmutable::parse($claimedAt);
             }
         }

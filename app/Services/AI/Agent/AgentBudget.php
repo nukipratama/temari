@@ -63,14 +63,14 @@ final class AgentBudget
      */
     public static function fromConfig(?int $maxSteps = null, ?int $deadlineCeilingSeconds = null): self
     {
-        $deadlineSeconds = (int) config('ai.agent.deadline_seconds');
+        $deadlineSeconds = config()->integer('ai.agent.deadline_seconds');
         if ($deadlineCeilingSeconds !== null) {
             $deadlineSeconds = min($deadlineSeconds, max(1, $deadlineCeilingSeconds));
         }
 
         return new self(
-            $maxSteps ?? (int) config('ai.agent.max_steps'),
-            (int) config('ai.agent.max_tokens'),
+            $maxSteps ?? config()->integer('ai.agent.max_steps'),
+            config()->integer('ai.agent.max_tokens'),
             $deadlineSeconds,
         );
     }

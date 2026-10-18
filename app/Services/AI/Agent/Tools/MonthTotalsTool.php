@@ -49,12 +49,16 @@ final class MonthTotalsTool extends NoArgumentTool
             ->whereHas('activity', fn ($query) => $query->where('user_id', $this->user->id))
             ->whereBetween('start_date_local', [$start, $end])
             ->get(['start_date_local', 'distance']);
+        $totalDistance = $details->sum('distance');
+        assert(is_numeric($totalDistance));
+        $longestDistance = $details->max('distance');
+        assert($longestDistance === null || is_numeric($longestDistance));
 
         return [
             'month' => $this->month,
             'total_runs' => $details->count(),
-            'total_distance_km' => DistanceFormatter::km((float) $details->sum('distance')),
-            'longest_run_km' => DistanceFormatter::km((float) $details->max('distance'), DistanceFormatter::EXACT),
+            'total_distance_km' => DistanceFormatter::km((float) $totalDistance),
+            'longest_run_km' => DistanceFormatter::km((float) $longestDistance, DistanceFormatter::EXACT),
             'pr_count' => PersonalRecord::query()
                 ->where('user_id', $this->user->id)
                 ->whereBetween('set_at', [$start, $end])

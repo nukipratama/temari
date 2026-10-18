@@ -8,6 +8,7 @@ use App\Enums\SessionType;
 use App\Enums\PaceBand;
 use App\Models\PlannedSession;
 use App\Services\Run\Metrics\ReadinessCeiling;
+use Illuminate\Support\Arr;
 
 /**
  * The session a day actually asks for, read off persisted state alone: a
@@ -39,7 +40,8 @@ final readonly class EffectiveSession
     public static function of(PlannedSession $session, float $storedCoreKm): self
     {
         if ($session->clamped_km !== null) {
-            $dose = $session->readiness_assessment['adjustment']['quality_dose'] ?? null;
+            /** @var array{hard_minutes: int, original_hard_minutes: int, pace_band: string, pace_sec_per_km: int|null}|null $dose */
+            $dose = Arr::get($session->readiness_assessment ?? [], 'adjustment.quality_dose');
             if ($dose !== null && $session->session_type->isQuality() && $session->prescribed_hard_minutes !== 0) {
                 $dose['hard_minutes'] = min($dose['hard_minutes'], $session->prescribed_hard_minutes ?? $dose['hard_minutes']);
                 if ($session->prescribed_hard_minutes !== null && $session->prescribed_pace_band !== null) {

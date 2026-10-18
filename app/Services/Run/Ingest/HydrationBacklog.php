@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace App\Services\Run\Ingest;
 
+use Illuminate\Support\Collection;
 use App\Models\Activity;
 use App\Models\StravaConnection;
 use App\Services\Run\Metrics\TrainingLoad;
 use App\Services\Run\Story\PastYouMatcher;
+use DateTimeInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 
@@ -23,6 +25,7 @@ class HydrationBacklog
     public function connectedAt(int $userId): ?Carbon
     {
         $connectedAt = StravaConnection::query()->where('user_id', $userId)->value('created_at');
+        assert($connectedAt === null || $connectedAt instanceof DateTimeInterface || is_string($connectedAt));
 
         return $connectedAt === null ? null : Carbon::parse($connectedAt);
     }
@@ -33,11 +36,12 @@ class HydrationBacklog
      */
     public function connectedAtFor(array $userIds): array
     {
-        return StravaConnection::query()
+        /** @var Collection<int, Carbon> $createdAt */
+        $createdAt = StravaConnection::query()
             ->whereIn('user_id', $userIds)
-            ->pluck('created_at', 'user_id')
-            ->map(fn (mixed $at): Carbon => Carbon::parse($at))
-            ->all();
+            ->pluck('created_at', 'user_id');
+
+        return $createdAt->map(fn (Carbon $at): Carbon => Carbon::parse($at))->all();
     }
 
     /**
@@ -86,7 +90,7 @@ class HydrationBacklog
     public function withinHydrationGrace(int $userId): bool
     {
         $connectedAt = $this->connectedAt($userId);
-        $graceHours = (int) config('ai.recap_hydration_grace_hours', 48);
+        $graceHours = config()->integer('ai.recap_hydration_grace_hours', 48);
 
         return $connectedAt !== null && Carbon::now()->lt($connectedAt->copy()->addHours($graceHours));
     }

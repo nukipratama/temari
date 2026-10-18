@@ -27,6 +27,7 @@ class ResolveRecentLongestRunAction
                 $asOf->copy()->endOfDay(),
             ])
             ->max('distance');
+        assert($distanceM === null || is_numeric($distanceM));
 
         return $this->memo[$key] = $distanceM === null ? null : (float) $distanceM;
     }

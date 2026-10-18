@@ -39,7 +39,7 @@ class WebhookSubscribeCommand extends Command
         $clientId = config('services.strava.client_id');
         $clientSecret = config('services.strava.client_secret');
 
-        if (blank($clientId) || blank($clientSecret)) {
+        if (! is_scalar($clientId) || ! is_scalar($clientSecret) || blank($clientId) || blank($clientSecret)) {
             $this->error('Strava client_id / client_secret are not configured.');
 
             return self::FAILURE;
@@ -70,7 +70,7 @@ class WebhookSubscribeCommand extends Command
 
         foreach ($subscriptions as $subscription) {
             if (($subscription['callback_url'] ?? null) === $callbackUrl) {
-                $this->info("Already subscribed (id={$subscription['id']}), callback ".StravaWebhookController::maskWebhookSecrets($callbackUrl).'.');
+                $this->info('Already subscribed (id='.($subscription['id'] ?? '').'), callback '.StravaWebhookController::maskWebhookSecrets($callbackUrl).'.');
 
                 return self::SUCCESS;
             }
@@ -78,8 +78,8 @@ class WebhookSubscribeCommand extends Command
 
         if ($subscriptions !== []) {
             $existing = $subscriptions[0];
-            $this->warn('A subscription already exists with a different callback ('.StravaWebhookController::maskWebhookSecrets((string) $existing['callback_url']).", id={$existing['id']}).");
-            $this->line("Strava allows one subscription per app — delete it first: php artisan strava:webhook-subscribe --action=delete --id={$existing['id']}");
+            $this->warn('A subscription already exists with a different callback ('.StravaWebhookController::maskWebhookSecrets($existing['callback_url'] ?? '').', id='.($existing['id'] ?? '').').');
+            $this->line('Strava allows one subscription per app — delete it first: php artisan strava:webhook-subscribe --action=delete --id='.($existing['id'] ?? ''));
 
             return self::FAILURE;
         }
@@ -90,7 +90,7 @@ class WebhookSubscribeCommand extends Command
     private function create(string $clientId, string $clientSecret): int
     {
         $verifyToken = config('services.strava.webhook_verify_token');
-        if (blank($verifyToken)) {
+        if (! is_scalar($verifyToken) || blank($verifyToken)) {
             $this->error('STRAVA_WEBHOOK_VERIFY_TOKEN is not configured.');
 
             return self::FAILURE;
@@ -132,7 +132,7 @@ class WebhookSubscribeCommand extends Command
         }
 
         $id = $response->json('id');
-        $this->info("Subscription created with id {$id}.");
+        $this->info('Subscription created with id '.(is_scalar($id) ? $id : '').'.');
         $this->line('Set STRAVA_WEBHOOK_SUBSCRIPTION_ID in your env to record it.');
 
         return self::SUCCESS;
@@ -154,7 +154,7 @@ class WebhookSubscribeCommand extends Command
         foreach ($subscriptions as $subscription) {
             $id = $subscription['id'] ?? '?';
             $callback = $subscription['callback_url'] ?? '?';
-            $this->line("id={$id}  callback=".StravaWebhookController::maskWebhookSecrets((string) $callback));
+            $this->line("id={$id}  callback=".StravaWebhookController::maskWebhookSecrets($callback));
         }
 
         return self::SUCCESS;
@@ -163,7 +163,7 @@ class WebhookSubscribeCommand extends Command
     private function delete(string $clientId, string $clientSecret): int
     {
         $id = $this->option('id') ?? config('services.strava.webhook_subscription_id');
-        if (blank($id)) {
+        if (! is_scalar($id) || blank($id)) {
             $this->error('Pass --id=<subscription id> (or set STRAVA_WEBHOOK_SUBSCRIPTION_ID).');
 
             return self::FAILURE;
@@ -192,7 +192,7 @@ class WebhookSubscribeCommand extends Command
      * Fetch the app's current push subscriptions (0 or 1). Returns null on a
      * failed request so callers can short-circuit; an empty list is a success.
      *
-     * @return list<array<string, mixed>>|null
+     * @return list<array{id?: int, callback_url?: string}>|null
      */
     private function fetchSubscriptions(string $clientId, string $clientSecret): ?array
     {
@@ -207,6 +207,7 @@ class WebhookSubscribeCommand extends Command
             return null;
         }
 
+        /** @var array<array-key, array{id?: int, callback_url?: string}>|null $subscriptions */
         $subscriptions = $response->json();
 
         return is_array($subscriptions) ? array_values($subscriptions) : [];

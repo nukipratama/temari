@@ -91,7 +91,7 @@ class HistoryController extends Controller
         /** @var array{notes: array<int, array{oneline: string, mood: string}>, moods: array<int, string>}|null $loadedNotes */
         $loadedNotes = null;
         $loadNotes = function () use ($loadRuns, &$loadedNotes): array {
-            $loadedNotes ??= $this->noteReader->bundleFor($loadRuns()->pluck('id')->all());
+            $loadedNotes ??= $this->noteReader->bundleFor($loadRuns()->map(fn (Activity $run): int => $run->id)->all());
 
             return $loadedNotes;
         };
@@ -191,12 +191,15 @@ class HistoryController extends Controller
      */
     private function latestNarratedWeekId(User $user, Carbon $currentWeekEnding): ?int
     {
-        return WeeklySnapshot::query()
+        $weekId = WeeklySnapshot::query()
             ->where('user_id', $user->id)
             ->where('runs', '>', 0)
             ->where('week_ending', '!=', $currentWeekEnding->toDateString())
             ->orderByDesc('week_ending')
             ->value('id');
+        assert($weekId === null || is_int($weekId));
+
+        return $weekId;
     }
 
     /**
@@ -228,7 +231,7 @@ class HistoryController extends Controller
         return Analysis::payloadsForSubjects(
             WeeklySnapshot::class,
             AnalysisType::WeeklyRecap,
-            collect($snapshots)->pluck('id')->all(),
+            array_map(fn (WeeklySnapshot $snapshot): int => $snapshot->id, $snapshots),
         );
     }
 
@@ -308,6 +311,7 @@ class HistoryController extends Controller
             ->whereNotNull('start_date_local')
             ->where('start_date_local', '<', $currentMonthStart)
             ->max('start_date_local');
+        assert($latestDate === null || is_string($latestDate));
 
         return $latestDate === null ? null : Carbon::parse($latestDate)->format('Y-m');
     }

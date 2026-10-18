@@ -73,7 +73,7 @@ class TriggerAnalysisRequest extends FormRequest
 
     public function discriminator(): ?string
     {
-        $value = (string) $this->validated('discriminator', '');
+        $value = $this->safe()->string('discriminator')->toString();
 
         return $value === '' ? null : $value;
     }

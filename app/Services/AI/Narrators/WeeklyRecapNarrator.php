@@ -149,7 +149,9 @@ class WeeklyRecapNarrator
             ),
         );
 
-        return (string) $decoded['narrative'];
+        assert(is_string($decoded['narrative']));
+
+        return $decoded['narrative'];
     }
 
     /**
@@ -189,10 +191,13 @@ class WeeklyRecapNarrator
             return null;
         }
 
-        return Analysis::query()
+        $content = Analysis::query()
             ->forSubject(WeeklySnapshot::class, $previousLink->id, AnalysisType::WeeklyRecap)
             ->where('status', AnalysisStatus::Done)
             ->value('content');
+        assert($content === null || is_string($content));
+
+        return $content;
     }
 
 

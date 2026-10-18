@@ -208,13 +208,12 @@ class SelfHealer
     private function resumeWeekly(): int
     {
         $stalled = $this->chains->stalledWeeklyLinkPerUser();
-        /** @var array<int, int> $activeWeekOwners */
-        $activeWeekOwners = WeeklySnapshot::query()
+        /** @var Collection<int, int|string> $weekOwners */
+        $weekOwners = WeeklySnapshot::query()
             ->whereIn('id', $stalled->map(fn (ChainLink $link): int => $link->subjectId)->all())
             ->whereIn('user_id', $this->activeUsers->query()->select('id'))
-            ->pluck('user_id', 'id')
-            ->map(fn (mixed $userId): int => (int) $userId)
-            ->all();
+            ->pluck('user_id', 'id');
+        $activeWeekOwners = $weekOwners->map(fn (int|string $userId): int => (int) $userId)->all();
         $links = $stalled->filter(fn (ChainLink $link): bool => isset($activeWeekOwners[$link->subjectId]));
         $connectedAt = $this->backlog->connectedAtFor(array_values(array_unique($activeWeekOwners)));
         $preConnect = fn (ChainLink $link): bool => $link->discriminator !== null
@@ -268,7 +267,7 @@ class SelfHealer
             ->whereIn('id', $links->map(fn (ChainLink $link): int => $link->subjectId)->all())
             ->get();
 
-        return $this->readiness->ready($snapshots)->pluck('id')->flip();
+        return $this->readiness->ready($snapshots)->map(fn (WeeklySnapshot $snapshot): int => $snapshot->id)->flip();
     }
 
     private function resumeMonthly(): int
@@ -347,10 +346,15 @@ class SelfHealer
             ->whereIn('activities.user_id', $this->activeUsers->query()->select('id'))
             ->orderBy('ai_analyses.subject_id')
             ->get(['ai_analyses.subject_id', 'activities.user_id', 'activity_details.start_date_local'])
-            ->reject(fn (Analysis $row): bool => $this->backlog->awaitsOlderHydration(
-                (int) $row->getAttribute('user_id'),
-                Carbon::make($row->getAttribute('start_date_local')),
-            ))
+            ->reject(function (Analysis $row): bool {
+                $userId = $row->getAttribute('user_id');
+                assert(is_numeric($userId));
+
+                return $this->backlog->awaitsOlderHydration(
+                    (int) $userId,
+                    Carbon::make($row->getAttribute('start_date_local')),
+                );
+            })
             ->groupBy('user_id')
             ->flatMap(fn ($rows) => $rows->take(self::NONCASCADING_DRAIN_BATCH));
 

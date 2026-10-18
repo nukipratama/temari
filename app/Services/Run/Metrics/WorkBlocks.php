@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services\Run\Metrics;
 
+use App\Support\Numeric;
+
 /**
  * Where a run's prescribed work blocks or reps actually happened: read off the
  * laps when they line up with the prescription, else found in the raw stream.
@@ -47,8 +49,8 @@ final class WorkBlocks
                 continue;
             }
             $current = [
-                'seconds' => ($current['seconds'] ?? 0.0) + (float) $lap['elapsed_sec'],
-                'km' => ($current['km'] ?? 0.0) + (float) $lap['distance_m'] / 1000,
+                'seconds' => ($current['seconds'] ?? 0.0) + Numeric::float($lap['elapsed_sec']),
+                'km' => ($current['km'] ?? 0.0) + Numeric::float($lap['distance_m']) / 1000,
             ];
         }
         if ($current !== null) {
@@ -78,8 +80,8 @@ final class WorkBlocks
      */
     public static function fromStream(array $stream, array $lengths): ?array
     {
-        $time = array_map(floatval(...), self::series($stream, 'time'));
-        $velocity = array_map(floatval(...), self::series($stream, 'velocity_smooth'));
+        $time = array_map(Numeric::float(...), self::series($stream, 'time'));
+        $velocity = array_map(Numeric::float(...), self::series($stream, 'velocity_smooth'));
         $count = min(count($time), count($velocity));
         if ($count < 2) {
             return null;

@@ -7,6 +7,7 @@ namespace App\Services\Run\Ingest;
 use App\Enums\IngestState;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
+use App\Support\Numeric;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -63,7 +64,7 @@ class SummaryIngest
 
         $byExternalId = [];
         foreach ($summaries as $summary) {
-            $externalId = (int) ($summary['id'] ?? 0);
+            $externalId = Numeric::int($summary['id'] ?? 0);
             if ($externalId > 0) {
                 $byExternalId[$externalId] = $summary;
             }

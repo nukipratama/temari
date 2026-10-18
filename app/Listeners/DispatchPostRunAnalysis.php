@@ -230,7 +230,7 @@ class DispatchPostRunAnalysis implements ShouldQueue
             return false;
         }
 
-        $thresholdHours = (int) config('ai.backfill_threshold_hours', 24);
+        $thresholdHours = config()->integer('ai.backfill_threshold_hours', 24);
 
         return Carbon::now()->diffInHours($startedAt, absolute: true) >= $thresholdHours;
     }

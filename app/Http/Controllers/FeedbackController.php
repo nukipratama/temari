@@ -26,7 +26,7 @@ class FeedbackController extends Controller
         $flag = Feedback::query()->firstOrNew([
             'user_id' => $request->user()?->id,
             'subject_type' => $request->subject(),
-            'subject_id' => (int) $request->validated('subject_id'),
+            'subject_id' => $request->safe()->integer('subject_id'),
         ]);
 
         if ($flag->exists && $flag->superseded_at === null) {

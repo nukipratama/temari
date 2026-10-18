@@ -18,7 +18,8 @@ class EnsureDevtoolsAccess
             return $next($request);
         }
 
-        $password = (string) config('devtools.password');
+        $configuredPassword = config('devtools.password');
+        $password = is_string($configuredPassword) ? $configuredPassword : '';
 
         if ($password !== '' && hash_equals($password, (string) $request->getPassword())) {
             return $next($request);

@@ -48,10 +48,12 @@ class CostCeilingLedger
     public function today(): array
     {
         $trippedAt = Cache::get($this->key('tripped_at'));
+        $fills = Cache::get($this->key('fills'), 0);
+        assert(is_numeric($fills));
 
         return [
             'trippedAt' => is_string($trippedAt) ? $trippedAt : null,
-            'degradedFills' => (int) Cache::get($this->key('fills'), 0),
+            'degradedFills' => (int) $fills,
             'degradedBreakdown' => array_values($this->breakdown()),
         ];
     }
@@ -59,6 +61,7 @@ class CostCeilingLedger
     /** @return array<string, array{kind: string, userId: int|null, count: int}> */
     private function breakdown(): array
     {
+        /** @var array<string, array{kind: string, userId: int|null, count: int}>|null $stored */
         $stored = Cache::get($this->key('breakdown'), []);
 
         return is_array($stored) ? $stored : [];

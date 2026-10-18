@@ -25,6 +25,7 @@ use App\Services\Run\Metrics\TrainingPaceCalculator;
 use App\Services\Run\Metrics\VdotEstimator;
 use App\Services\Run\Metrics\RecentTrainingStress;
 use App\Actions\Run\Plan\ResolveTrailingWeeksAction;
+use App\Support\Numeric;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -149,7 +150,7 @@ final readonly class PlanInputsGatherer
 
         foreach ($races as $race) {
             $distanceRunM = $race->outcome === RaceOutcome::Confirmed
-                ? (float) (ActivityDetail::query()->where('activity_id', $race->outcome_activity_id)->value('distance') ?? $race->distance_m)
+                ? Numeric::float(ActivityDetail::query()->where('activity_id', $race->outcome_activity_id)->value('distance') ?? $race->distance_m)
                 : $this->raceOutcomes->candidates($race)->first()['distance_m'] ?? null;
             if ($distanceRunM !== null) {
                 return PostRaceRecovery::after($race->race_date, $distanceRunM);
@@ -185,10 +186,12 @@ final readonly class PlanInputsGatherer
             return [];
         }
 
-        $ranOn = ActivityDetail::query()->forUser($user->id)
+        /** @var Collection<int, Carbon> $startedAts */
+        $startedAts = ActivityDetail::query()->forUser($user->id)
             ->whereBetween('activity_details.start_date_local', [$trials->first()->date->copy()->startOfDay(), $today->copy()->endOfDay()])
-            ->pluck('activity_details.start_date_local')
-            ->mapWithKeys(static fn (mixed $startedAt): array => [Carbon::parse($startedAt)->toDateString() => true])
+            ->pluck('activity_details.start_date_local');
+        $ranOn = $startedAts
+            ->mapWithKeys(static fn (Carbon $startedAt): array => [Carbon::parse($startedAt)->toDateString() => true])
             ->all();
 
         return array_values($trials->map(static fn (PlannedSession $trial): array => [

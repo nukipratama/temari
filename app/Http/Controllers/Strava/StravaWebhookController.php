@@ -42,7 +42,7 @@ class StravaWebhookController extends Controller
     {
         self::abortUnlessCallbackToken($callbackToken);
 
-        $expected = (string) config('services.strava.webhook_verify_token');
+        $expected = self::configuredString('services.strava.webhook_verify_token');
         $mode = (string) $request->query('hub_mode', '');
         $token = (string) $request->query('hub_verify_token', '');
         $challenge = $request->query('hub_challenge');
@@ -65,10 +65,10 @@ class StravaWebhookController extends Controller
         self::abortUnlessCallbackToken($callbackToken);
         abort_unless(self::isOurSubscription($request), Response::HTTP_NOT_FOUND);
 
-        $objectType = (string) $request->input('object_type', '');
-        $aspectType = (string) $request->input('aspect_type', '');
-        $objectId = (int) $request->input('object_id');
-        $athleteId = (int) $request->input('owner_id');
+        $objectType = $request->string('object_type')->toString();
+        $aspectType = $request->string('aspect_type')->toString();
+        $objectId = $request->integer('object_id');
+        $athleteId = $request->integer('owner_id');
 
         // Heartbeat: a flatline on the /pulse Strava-health card means Strava
         // stopped delivering and we're silently leaning on the hourly poll.
@@ -181,7 +181,7 @@ class StravaWebhookController extends Controller
 
     public static function callbackUrl(): string
     {
-        return route('strava.webhook.verify', ['token' => (string) config('services.strava.webhook_callback_token')]);
+        return route('strava.webhook.verify', ['token' => self::configuredString('services.strava.webhook_callback_token')]);
     }
 
     public static function maskWebhookSecrets(string $text): string
@@ -193,14 +193,21 @@ class StravaWebhookController extends Controller
         );
     }
 
+    private static function configuredString(string $key): string
+    {
+        $value = config($key);
+
+        return is_string($value) ? $value : '';
+    }
+
     private static function abortUnlessCallbackToken(string $token): void
     {
-        abort_unless(hash_equals((string) config('services.strava.webhook_callback_token'), $token), Response::HTTP_NOT_FOUND);
+        abort_unless(hash_equals(self::configuredString('services.strava.webhook_callback_token'), $token), Response::HTTP_NOT_FOUND);
     }
 
     private static function isOurSubscription(Request $request): bool
     {
-        $expected = (string) config('services.strava.webhook_subscription_id');
+        $expected = self::configuredString('services.strava.webhook_subscription_id');
         $given = $request->input('subscription_id');
 
         return $expected !== '' && is_scalar($given) && (string) $given === $expected;

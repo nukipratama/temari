@@ -131,7 +131,9 @@ class MonthlyRecapNarrator
             ),
         );
 
-        return (string) $decoded['narrative'];
+        assert(is_string($decoded['narrative']));
+
+        return $decoded['narrative'];
     }
 
     /**
@@ -164,9 +166,12 @@ class MonthlyRecapNarrator
             return null;
         }
 
-        return Analysis::query()
+        $content = Analysis::query()
             ->forSubject(AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE, $user->id, AnalysisType::MonthlyRecap, $previousMonth)
             ->where('status', AnalysisStatus::Done)
             ->value('content');
+        assert($content === null || is_string($content));
+
+        return $content;
     }
 }

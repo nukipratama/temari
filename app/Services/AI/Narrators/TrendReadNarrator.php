@@ -144,6 +144,8 @@ class TrendReadNarrator
         );
 
         // `reading` is a commitment device: it is never rendered, only required.
-        return trim((string) $decoded['title']."\n\n".(string) $decoded['description']);
+        assert(is_string($decoded['title']) && is_string($decoded['description']));
+
+        return trim($decoded['title']."\n\n".$decoded['description']);
     }
 }

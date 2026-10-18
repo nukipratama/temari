@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Run\Metrics;
 
+use App\Support\Numeric;
 use Carbon\CarbonInterface;
 use App\Actions\Run\Plan\ResolveTrailingWeeksAction;
 use App\Models\Activity;
@@ -332,9 +333,9 @@ class WeeklyAggregator
      */
     private function weekRow(User $user, Carbon $weekEnding, Enumerable $weekDetails, array $dailyTrimp, array $runDays, array $loadSeries, Carbon $today): array
     {
-        $distanceKm = DistanceFormatter::km((float) $weekDetails->sum('distance'));
+        $distanceKm = DistanceFormatter::km(Numeric::float($weekDetails->sum('distance')));
         $runs = $weekDetails->count();
-        $elapsedTimeSec = (int) round((float) $weekDetails->sum('elapsed_time'));
+        $elapsedTimeSec = (int) round(Numeric::float($weekDetails->sum('elapsed_time')));
         $avgDecoupling = $this->averageDecoupling($weekDetails);
         $avgDecouplingV2 = $this->averageSegmentDecoupling($weekDetails);
 

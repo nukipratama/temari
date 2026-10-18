@@ -59,7 +59,7 @@ class AnalyzeActivityJob extends AnalyzeGroupJob
     {
         $this->workerDeadlineAt = CarbonImmutable::now()->addSeconds(max(
             0,
-            (int) config('horizon.defaults.supervisor-ai.timeout') - self::WORKER_TIMEOUT_SAFETY_MARGIN_SECONDS,
+            config()->integer('horizon.defaults.supervisor-ai.timeout') - self::WORKER_TIMEOUT_SAFETY_MARGIN_SECONDS,
         ));
     }
 
@@ -195,7 +195,7 @@ class AnalyzeActivityJob extends AnalyzeGroupJob
         // group must fail before the speech LLM is ever billed, not after.
         $insight = $this->resolveInsight($subject, $detail, $persistGenerated);
 
-        $availableWorkerSeconds = $this->remainingWorkerSeconds() - (int) config('azure_openai.timeout');
+        $availableWorkerSeconds = $this->remainingWorkerSeconds() - config()->integer('azure_openai.timeout');
         if ($availableWorkerSeconds < self::MINIMUM_SPEECH_DEADLINE_SECONDS) {
             $speech = Analysis::query()
                 ->forSubject(Activity::class, $subject->id, AnalysisType::PostRunSpeech)
@@ -209,7 +209,7 @@ class AnalyzeActivityJob extends AnalyzeGroupJob
             return [AnalysisType::RunInsight->value => $insight];
         }
 
-        $speechDeadlineSeconds = min((int) config('ai.agent.deadline_seconds'), $availableWorkerSeconds);
+        $speechDeadlineSeconds = min(config()->integer('ai.agent.deadline_seconds'), $availableWorkerSeconds);
         $speech = $this->narrating(
             AnalysisType::PostRunSpeech,
             fn (): string => app(PostRunSpeechNarrator::class)->generate(
@@ -259,8 +259,8 @@ class AnalyzeActivityJob extends AnalyzeGroupJob
 
     private function narratorDeadlineSeconds(): int
     {
-        $available = $this->remainingWorkerSeconds() - (int) config('azure_openai.timeout');
-        $available = min((int) config('ai.agent.deadline_seconds'), $available);
+        $available = $this->remainingWorkerSeconds() - config()->integer('azure_openai.timeout');
+        $available = min(config()->integer('ai.agent.deadline_seconds'), $available);
         if ($available <= 0) {
             throw new UnavailableException('Activity narration reached the worker safety deadline');
         }

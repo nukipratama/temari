@@ -99,6 +99,7 @@ class PlanController extends Controller
 
         /** @var User $user */
         $user = $request->user();
+        /** @var array{date?: string, skipped?: bool|int|string, pinned?: bool|int|string} $attributes */
         $attributes = $request->validated();
         if (! array_key_exists('pinned', $attributes)) {
             $attributes['pinned'] = true;

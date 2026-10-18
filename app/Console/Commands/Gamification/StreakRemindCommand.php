@@ -65,10 +65,12 @@ class StreakRemindCommand extends Command
             return false;
         }
 
-        $currentWeekRuns = (int) WeeklySnapshot::query()
+        $runs = WeeklySnapshot::query()
             ->where('user_id', $user->id)
             ->where('week_ending', $weekEnding->toDateString())
             ->value('runs');
+        assert($runs === null || is_int($runs));
+        $currentWeekRuns = (int) $runs;
 
         if ($currentWeekRuns > 0 || ! $this->claim($user->id, $weekEnding)) {
             return false;

@@ -143,6 +143,7 @@ class ActivityDetail extends Model
             }
 
             $userId = Activity::withStubs()->whereKey($detail->activity_id)->value('user_id');
+            assert($userId === null || is_numeric($userId));
             if ($userId !== null) {
                 PastYouTrendBuilder::clearCacheForUserId((int) $userId);
             }

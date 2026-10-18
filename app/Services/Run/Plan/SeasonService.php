@@ -16,6 +16,7 @@ use App\Models\WeeklySnapshot;
 use App\Services\Run\Ingest\HydrationBacklog;
 use App\Services\Gamification\SeasonGamificationContext;
 use App\Services\Gamification\SeasonRecordBuilder;
+use App\Support\Numeric;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -241,17 +242,17 @@ final readonly class SeasonService
             ->whereNotNull('prescribed_km')
             ->get(['date', 'prescribed_km'])
             ->groupBy(fn (PlannedSession $session): string => $session->date->copy()->endOfWeek(Carbon::SUNDAY)->toDateString())
-            ->map(fn ($sessions): float => (float) $sessions->sum('prescribed_km'));
+            ->map(fn ($sessions): float => Numeric::float($sessions->sum('prescribed_km')));
         if ($prescribedKmByWeek->isEmpty()) {
             return null;
         }
 
-        $actualKm = (float) WeeklySnapshot::query()
+        $actualKm = Numeric::float(WeeklySnapshot::query()
             ->where('user_id', $user->id)
             ->whereIn('week_ending', $prescribedKmByWeek->keys()->all())
-            ->sum('distance_km');
+            ->sum('distance_km'));
 
-        return $actualKm >= $prescribedKmByWeek->sum() * (1 - self::REANCHOR_COLLAPSE_FRACTION);
+        return $actualKm >= array_sum($prescribedKmByWeek->all()) * (1 - self::REANCHOR_COLLAPSE_FRACTION);
     }
 
     /**

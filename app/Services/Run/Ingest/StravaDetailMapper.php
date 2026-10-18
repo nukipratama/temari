@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services\Run\Ingest;
 
+use App\Support\Numeric;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
 
 /**
@@ -41,9 +43,9 @@ final class StravaDetailMapper
             'max_heartrate' => $payload['max_heartrate'] ?? null,
             'average_cadence' => $payload['average_cadence'] ?? null,
             'workout_type' => $payload['workout_type'] ?? null,
-            'summary_polyline' => $payload['map']['summary_polyline'] ?? null,
-            'start_lat' => $latlng === null ? null : (float) $latlng[0],
-            'start_lng' => $latlng === null ? null : (float) $latlng[1],
+            'summary_polyline' => Arr::get($payload, 'map.summary_polyline'),
+            'start_lat' => $latlng === null ? null : Numeric::float($latlng[0]),
+            'start_lng' => $latlng === null ? null : Numeric::float($latlng[1]),
         ];
     }
 

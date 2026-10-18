@@ -37,10 +37,12 @@ use Illuminate\Support\Collection;
  * LLM may suggest at or below it, never above. `fitnessTrend` and
  * `buildNudge` give it trajectory (is the runner ramping, or coasting into
  * detraining) so it stops defaulting to easy/recovery for lack of context.
+ *
+ * @phpstan-import-type Assessment from Readiness
  */
 final readonly class BriefingContext
 {
-    /** @param array<string, mixed> $readinessAssessment */
+    /** @param Assessment $readinessAssessment */
     public function __construct(
         public ?int $thisWeekRuns,
         /** Last week's real runs through the same weekday $asOf falls on this week, not the full week. */

@@ -16,10 +16,12 @@ return new class () extends PulseMigration {
         $connection = DB::connection($this->getConnection());
 
         foreach (['pulse_values', 'pulse_entries', 'pulse_aggregates'] as $table) {
-            $expression = (string) $connection->scalar(
+            $generationExpression = $connection->scalar(
                 'SELECT GENERATION_EXPRESSION FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?',
                 [$table, 'key_hash'],
             );
+            assert($generationExpression === null || is_string($generationExpression));
+            $expression = (string) $generationExpression;
 
             if (! str_contains(strtolower($expression), 'md5')) {
                 continue;

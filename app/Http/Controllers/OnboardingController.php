@@ -62,11 +62,13 @@ class OnboardingController extends Controller
         }
 
         if ($request->filled('race_date')) {
+            $name = $request->validated('name');
+            assert($name === null || is_string($name));
             $races->createUnlessActive($user, [
-                'race_date' => $request->validated('race_date'),
-                'distance_m' => (int) $request->validated('distance_m'),
-                'goal_time_sec' => (int) $request->validated('goal_time_sec'),
-                'name' => $request->validated('name'),
+                'race_date' => $request->safe()->string('race_date')->toString(),
+                'distance_m' => $request->safe()->integer('distance_m'),
+                'goal_time_sec' => $request->safe()->integer('goal_time_sec'),
+                'name' => $name,
             ]);
         }
 

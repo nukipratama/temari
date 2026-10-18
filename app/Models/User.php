@@ -225,10 +225,10 @@ class User extends Authenticatable
         $hrZones = config('runner.hr_zones');
 
         return [
-            'max_hr' => (int) config('runner.max_hr'),
-            'resting_hr' => (int) config('runner.resting_hr'),
+            'max_hr' => config()->integer('runner.max_hr'),
+            'resting_hr' => config()->integer('runner.resting_hr'),
             'hr_zones' => $hrZones,
-            'optimal_cadence_spm' => (int) config('runner.optimal_cadence_spm'),
+            'optimal_cadence_spm' => config()->integer('runner.optimal_cadence_spm'),
         ];
     }
 

@@ -32,7 +32,7 @@ final readonly class AgentToolbox
      * The Responses API tool declarations. Function tools are flat there — name
      * and parameters sit on the tool object itself, not under a `function` key.
      *
-     * @return list<array<string, mixed>>
+     * @return list<array{type: string, name: string, description: string, parameters: array<string, mixed>, strict: bool}>
      */
     public function definitions(): array
     {

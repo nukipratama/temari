@@ -41,7 +41,8 @@ class TelegramLinkToken
      */
     public function connectUrl(int $userId): ?string
     {
-        $botUsername = (string) config('services.telegram.bot_username');
+        $configuredUsername = config('services.telegram.bot_username');
+        $botUsername = is_string($configuredUsername) ? $configuredUsername : '';
 
         if ($botUsername === '') {
             return null;
@@ -120,7 +121,9 @@ class TelegramLinkToken
 
     private function sign(string $body): string
     {
-        return substr(hash_hmac('sha256', $body, (string) config('app.key'), binary: true), 0, self::SIGNATURE_BYTES);
+        $appKey = config('app.key');
+
+        return substr(hash_hmac('sha256', $body, is_string($appKey) ? $appKey : '', binary: true), 0, self::SIGNATURE_BYTES);
     }
 
     private function base64UrlEncode(string $binary): string

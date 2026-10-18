@@ -48,7 +48,7 @@ class RecapHydrationReadiness
         }
 
         /** @var list<int> $userIds */
-        $userIds = $snapshots->pluck('user_id')->map(fn (mixed $id): int => (int) $id)->unique()->values()->all();
+        $userIds = $snapshots->map(fn (WeeklySnapshot $snapshot): int => (int) $snapshot->user_id)->unique()->values()->all();
 
         $awaiting = $this->weeksAwaitingHydration($userIds);
         $connectedAt = $this->backlog->connectedAtFor($userIds);
@@ -101,7 +101,7 @@ class RecapHydrationReadiness
             $anchor = $connectedAt->copy();
         }
 
-        return $anchor->addHours((int) config('ai.recap_hydration_grace_hours', 48));
+        return $anchor->addHours(config()->integer('ai.recap_hydration_grace_hours', 48));
     }
 
     /**
@@ -117,14 +117,19 @@ class RecapHydrationReadiness
     {
         return $this->backlog->awaitingHydration($userIds)
             ->get(['activities.user_id', 'activity_details.start_date_local'])
-            ->mapWithKeys(fn (Activity $activity): array => [
-                $this->key(
-                    (int) $activity->user_id,
-                    Carbon::parse((string) $activity->getAttribute('start_date_local'))
-                        ->endOfWeek(Carbon::SUNDAY)
-                        ->toDateString(),
-                ) => true,
-            ])
+            ->mapWithKeys(function (Activity $activity): array {
+                $startDateLocal = $activity->getAttribute('start_date_local');
+                assert($startDateLocal === null || is_string($startDateLocal));
+
+                return [
+                    $this->key(
+                        (int) $activity->user_id,
+                        Carbon::parse((string) $startDateLocal)
+                            ->endOfWeek(Carbon::SUNDAY)
+                            ->toDateString(),
+                    ) => true,
+                ];
+            })
             ->all();
     }
 

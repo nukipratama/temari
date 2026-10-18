@@ -27,7 +27,8 @@ class TelegramWebhookController extends Controller
 {
     public function handle(Request $request): JsonResponse
     {
-        $expected = (string) config('services.telegram.webhook_secret');
+        $configuredSecret = config('services.telegram.webhook_secret');
+        $expected = is_string($configuredSecret) ? $configuredSecret : '';
         $provided = (string) $request->header('X-Telegram-Bot-Api-Secret-Token', '');
 
         if ($expected === '' || ! hash_equals($expected, $provided)) {

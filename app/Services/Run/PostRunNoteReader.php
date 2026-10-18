@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Run;
 
+use Illuminate\Support\Collection;
 use App\Models\Activity;
 use App\Models\AI\Analysis;
 use App\Models\StoryLine;
@@ -33,6 +34,7 @@ class PostRunNoteReader
             ->where('kind', StoryLine::KIND_POST_RUN)
             ->where('activity_id', $activityId)
             ->value('mood');
+        assert($mood === null || $mood instanceof Mood);
 
         $speech = Analysis::query()
             ->where('subject_type', Activity::class)
@@ -77,6 +79,7 @@ class PostRunNoteReader
 
         $moodByActivity = $this->moodsFor($activityIds);
 
+        /** @var Collection<int, string|null> $speechByActivity */
         $speechByActivity = Analysis::query()
             ->where('subject_type', Activity::class)
             ->where('analysis_type', AnalysisType::PostRunSpeech)
@@ -112,11 +115,12 @@ class PostRunNoteReader
             return [];
         }
 
-        return StoryLine::query()
+        /** @var Collection<int, Mood> $moods */
+        $moods = StoryLine::query()
             ->where('kind', StoryLine::KIND_POST_RUN)
             ->whereIn('activity_id', $activityIds)
-            ->pluck('mood', 'activity_id')
-            ->map(fn (Mood $mood): string => $mood->value)
-            ->all();
+            ->pluck('mood', 'activity_id');
+
+        return $moods->map(fn (Mood $mood): string => $mood->value)->all();
     }
 }

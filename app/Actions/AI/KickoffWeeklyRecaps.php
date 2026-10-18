@@ -83,7 +83,7 @@ class KickoffWeeklyRecaps
         // A week that closed before the athlete connected Strava is history
         // Temari never watched — filled rule-based, same as a week too old.
         /** @var list<int> $userIds */
-        $userIds = $candidates->pluck('user_id')->map(fn (mixed $id): int => (int) $id)->unique()->values()->all();
+        $userIds = $candidates->map(fn (WeeklySnapshot $snapshot): int => (int) $snapshot->user_id)->unique()->values()->all();
         $connectedAt = $this->backlog->connectedAtFor($userIds);
         $preConnectCandidates = $candidates->filter(fn (WeeklySnapshot $snapshot): bool => RecapPeriod::weekClosedBeforeConnect(
             $snapshot->week_ending,
@@ -103,7 +103,7 @@ class KickoffWeeklyRecaps
 
         $snapshots = $this->readiness->ready($eligible);
 
-        $stagger = (int) config('ai.backfill_stagger_seconds', 360);
+        $stagger = config()->integer('ai.backfill_stagger_seconds', 360);
 
         $snapshots->each(function (WeeklySnapshot $snapshot, int $index) use ($stagger): void {
             $this->service->request(

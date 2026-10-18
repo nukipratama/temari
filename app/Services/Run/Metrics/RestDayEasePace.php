@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Run\Metrics;
 
+use Illuminate\Support\Collection;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\User;
@@ -82,6 +83,7 @@ class RestDayEasePace
      */
     private function runDates(int $userId, Carbon $from, Carbon $to): array
     {
+        /** @var Collection<int, string> $rows */
         $rows = Activity::analyzedJoinConstraint(
             ActivityDetail::query()->join('activities', 'activities.id', '=', 'activity_details.activity_id'),
         )

@@ -184,6 +184,7 @@ class Activity extends Model
             ->whereNotNull('activity_details.start_date_local')
             ->orderByDesc('activity_details.start_date_local')
             ->value('activities.id');
+        assert($id === null || is_numeric($id));
 
         return $id === null ? null : (int) $id;
     }

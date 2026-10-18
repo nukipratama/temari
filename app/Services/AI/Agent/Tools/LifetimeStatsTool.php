@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\AI\Agent\Tools;
 
+use Illuminate\Support\Collection;
 use App\Models\ActivityDetail;
 use App\Models\PersonalRecord;
 use App\Models\User;
@@ -72,6 +73,7 @@ final class LifetimeStatsTool extends UserTool
      */
     private function favoriteTimeBucket(): ?string
     {
+        /** @var Collection<int, int|string> $byHour */
         $byHour = ActivityDetail::query()
             ->whereHas('activity', fn ($query) => $query->where('user_id', $this->user->id))
             ->whereNotNull('start_date_local')

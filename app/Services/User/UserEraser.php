@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\User;
 
+use Illuminate\Database\Eloquent\Model;
 use App\Models\Activity;
 use App\Models\AI\Analysis;
 use App\Models\AI\TokenUsage;
@@ -87,10 +88,10 @@ final readonly class UserEraser
             // Resolved inside the transaction rather than reused from any
             // caller's preview: rows can be created for this user (a Strava
             // webhook, say) between a confirmation prompt and this point.
-            $activityIds = Activity::query()->where('user_id', $id)->pluck('id');
-            $cardIds = RunCard::query()->whereIn('activity_id', $activityIds)->pluck('id');
-            $snapshotIds = WeeklySnapshot::query()->where('user_id', $id)->pluck('id');
-            $personalRecordIds = PersonalRecord::query()->where('user_id', $id)->pluck('id');
+            $activityIds = self::ids(Activity::query()->where('user_id', $id));
+            $cardIds = self::ids(RunCard::query()->whereIn('activity_id', $activityIds));
+            $snapshotIds = self::ids(WeeklySnapshot::query()->where('user_id', $id));
+            $personalRecordIds = self::ids(PersonalRecord::query()->where('user_id', $id));
 
             self::analysisQuery($id, $activityIds, $cardIds, $snapshotIds, $personalRecordIds)->delete();
             self::pushSubscriptionQuery($user)->delete();
@@ -174,15 +175,15 @@ final readonly class UserEraser
     public function orphanCounts(User $user): array
     {
         $id = $user->id;
-        $activityIds = Activity::query()->where('user_id', $id)->pluck('id');
+        $activityIds = self::ids(Activity::query()->where('user_id', $id));
 
         return [
             'ai_analyses' => self::analysisQuery(
                 $id,
                 $activityIds,
-                RunCard::query()->whereIn('activity_id', $activityIds)->pluck('id'),
-                WeeklySnapshot::query()->where('user_id', $id)->pluck('id'),
-                PersonalRecord::query()->where('user_id', $id)->pluck('id'),
+                self::ids(RunCard::query()->whereIn('activity_id', $activityIds)),
+                self::ids(WeeklySnapshot::query()->where('user_id', $id)),
+                self::ids(PersonalRecord::query()->where('user_id', $id)),
             )->count(),
             'push_subscriptions' => self::pushSubscriptionQuery($user)->count(),
         ];
@@ -221,13 +222,30 @@ final readonly class UserEraser
     }
 
     /**
+     * Primary keys are cast to int on an Eloquent pluck.
+     *
+     * @param Builder<covariant Model> $query
+     * @return Collection<int, int>
+     */
+    private static function ids(Builder $query): Collection
+    {
+        /** @var Collection<int, int> $ids */
+        $ids = $query->pluck('id');
+
+        return $ids;
+    }
+
+    /**
      * The user's web-push endpoints. The table is a `subscribable` morph with
      * no foreign key, so nothing removes these on its own.
      */
     private static function pushSubscriptionQuery(User $user): \Illuminate\Database\Query\Builder
     {
-        return DB::connection(config('webpush.database_connection'))
-            ->table((string) config('webpush.table_name'))
+        $connection = config('webpush.database_connection');
+        assert($connection === null || is_string($connection));
+
+        return DB::connection($connection)
+            ->table(config()->string('webpush.table_name'))
             ->where('subscribable_type', $user->getMorphClass())
             ->where('subscribable_id', $user->id);
     }

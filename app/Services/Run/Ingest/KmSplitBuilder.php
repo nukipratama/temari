@@ -6,6 +6,7 @@ namespace App\Services\Run\Ingest;
 
 use App\Services\Run\Metrics\PaceCalculator;
 use App\Services\Run\Metrics\PaceFormatter;
+use App\Support\Numeric;
 
 /**
  * Canonical per-km derivation, on the watch's own time basis.
@@ -79,8 +80,8 @@ final class KmSplitBuilder
     {
         $rows = [];
         foreach (self::usableLaps($laps) as $i => $lap) {
-            $distance = (float) $lap['distance'];
-            $elapsed = (float) $lap['elapsed_time'];
+            $distance = Numeric::float($lap['distance']);
+            $elapsed = Numeric::float($lap['elapsed_time']);
             $rows[] = [
                 'lap' => $i + 1,
                 'distance_m' => (int) round($distance),
@@ -104,8 +105,8 @@ final class KmSplitBuilder
 
         return array_values(array_filter(
             $laps,
-            fn (array $lap): bool => (float) ($lap['distance'] ?? 0) > 0
-                && (float) ($lap['elapsed_time'] ?? 0) > 0,
+            fn (array $lap): bool => Numeric::float($lap['distance'] ?? 0) > 0
+                && Numeric::float($lap['elapsed_time'] ?? 0) > 0,
         ));
     }
 
@@ -121,11 +122,11 @@ final class KmSplitBuilder
 
         $rows = [];
         foreach ($laps as $i => $lap) {
-            $distance = (float) $lap['distance'];
+            $distance = Numeric::float($lap['distance']);
             if ($distance < self::FULL_KM_MIN_DISTANCE_M) {
                 continue;
             }
-            $rows[] = self::row($i + 1, (float) $lap['elapsed_time'], $distance) + self::averages($lap);
+            $rows[] = self::row($i + 1, Numeric::float($lap['elapsed_time']), $distance) + self::averages($lap);
         }
 
         return $rows;
@@ -141,7 +142,7 @@ final class KmSplitBuilder
     private static function isKmGrid(array $laps): bool
     {
         return self::isPlainKmGrid(array_map(
-            fn (array $lap): float => (float) $lap['distance'],
+            fn (array $lap): float => Numeric::float($lap['distance']),
             $laps,
         ));
     }
@@ -202,7 +203,7 @@ final class KmSplitBuilder
         $rows = [];
         $index = 1;
         $startIndex = 0;
-        $startTime = (float) $time[0];
+        $startTime = Numeric::float($time[0]);
         for ($km = 1; $km <= $kmCount; $km++) {
             $target = $km * self::METRES_PER_KM / $scale;
             while ($index < $n - 1 && $cumulative[$index] < $target) {
@@ -242,10 +243,10 @@ final class KmSplitBuilder
             return 0.0;
         }
 
-        $lat1 = deg2rad((float) $from[0]);
-        $lat2 = deg2rad((float) $to[0]);
+        $lat1 = deg2rad(Numeric::float($from[0]));
+        $lat2 = deg2rad(Numeric::float($to[0]));
         $dLat = $lat2 - $lat1;
-        $dLng = deg2rad((float) $to[1] - (float) $from[1]);
+        $dLng = deg2rad(Numeric::float($to[1]) - Numeric::float($from[1]));
         $h = sin($dLat / 2) ** 2 + cos($lat1) * cos($lat2) * sin($dLng / 2) ** 2;
 
         return 2 * self::EARTH_RADIUS_M * asin(min(1.0, sqrt($h)));
@@ -265,7 +266,7 @@ final class KmSplitBuilder
         $fraction = $span > 0 ? ($target - $cumulative[$previous]) / $span : 0.0;
         $fraction = max(0.0, min(1.0, $fraction));
 
-        return (float) $time[$previous] + $fraction * ((float) $time[$index] - (float) $time[$previous]);
+        return Numeric::float($time[$previous]) + $fraction * (Numeric::float($time[$index]) - Numeric::float($time[$previous]));
     }
 
     /**
@@ -278,7 +279,7 @@ final class KmSplitBuilder
         $count = 0;
         for ($i = $from; $i < $to; $i++) {
             if (isset($heartrate[$i])) {
-                $sum += (float) $heartrate[$i];
+                $sum += Numeric::float($heartrate[$i]);
                 $count++;
             }
         }
@@ -298,12 +299,12 @@ final class KmSplitBuilder
 
         $rows = [];
         foreach ($splits as $split) {
-            $distance = (float) ($split['distance'] ?? 0);
-            $elapsed = (float) ($split['elapsed_time'] ?? 0);
+            $distance = Numeric::float($split['distance'] ?? 0);
+            $elapsed = Numeric::float($split['elapsed_time'] ?? 0);
             if ($distance < self::FULL_KM_MIN_DISTANCE_M || $elapsed <= 0) {
                 continue;
             }
-            $rows[] = self::row((int) ($split['split'] ?? 0), $elapsed, $distance) + self::averages($split);
+            $rows[] = self::row(Numeric::int($split['split'] ?? 0), $elapsed, $distance) + self::averages($split);
         }
 
         return $rows;
@@ -330,10 +331,10 @@ final class KmSplitBuilder
     {
         $averages = [];
         if (isset($source['average_heartrate'])) {
-            $averages['avg_hr'] = (int) round((float) $source['average_heartrate']);
+            $averages['avg_hr'] = (int) round(Numeric::float($source['average_heartrate']));
         }
         if (isset($source['average_cadence'])) {
-            $averages['avg_cadence_spm'] = (int) round((float) $source['average_cadence'] * 2);
+            $averages['avg_cadence_spm'] = (int) round(Numeric::float($source['average_cadence']) * 2);
         }
 
         return $averages;

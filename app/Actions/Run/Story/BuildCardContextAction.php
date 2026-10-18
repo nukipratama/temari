@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Actions\Run\Story;
 
+use Illuminate\Support\Collection;
 use App\Enums\SegmentKey;
 use App\Enums\SessionType;
 use App\Models\Activity;
@@ -171,7 +172,8 @@ final readonly class BuildCardContextAction
 
         // Fetch the last 30 distinct run dates in one query, then count
         // consecutive days in PHP. Much cheaper than N queries for long streaks.
-        $dates = Activity::analyzedJoinConstraint(
+        /** @var Collection<int, string> $runDates */
+        $runDates = Activity::analyzedJoinConstraint(
             ActivityDetail::query()->join('activities', 'activities.id', '=', 'activity_details.activity_id'),
         )
             ->where('activities.user_id', $activity->user_id)
@@ -179,7 +181,8 @@ final readonly class BuildCardContextAction
             ->selectRaw('DISTINCT DATE(start_date_local) as run_date')
             ->orderByDesc('run_date')
             ->limit(self::STREAK_LOOKBACK_DAYS)
-            ->pluck('run_date')
+            ->pluck('run_date');
+        $dates = $runDates
             ->map(fn (string $d): string => Carbon::parse($d)->toDateString())
             ->flip();
 

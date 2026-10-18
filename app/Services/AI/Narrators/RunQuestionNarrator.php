@@ -137,8 +137,10 @@ class RunQuestionNarrator
             propertySchema: self::FOLLOW_UPS_PROPERTY_SCHEMA,
         );
 
+        assert(is_string($decoded['answer']));
+
         return [
-            'answer' => (string) $decoded['answer'],
+            'answer' => $decoded['answer'],
             'follow_ups' => self::followUps($decoded['follow_ups']),
         ];
     }

@@ -91,7 +91,7 @@ class AnalyzeMonthlyRecapJob extends AnalyzeRowJob
     {
         $lastClosedMonth = RecapPeriod::lastClosedMonth();
 
-        return Analysis::query()
+        $next = Analysis::query()
             ->where('subject_type', AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE)
             ->where('subject_id', $userId)
             ->where('analysis_type', AnalysisType::MonthlyRecap)
@@ -100,5 +100,8 @@ class AnalyzeMonthlyRecapJob extends AnalyzeRowJob
             ->where('discriminator', '<=', $lastClosedMonth)
             ->orderBy('discriminator')
             ->value('discriminator');
+        assert($next === null || is_string($next));
+
+        return $next;
     }
 }

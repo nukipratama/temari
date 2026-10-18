@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Support\Config\AppConfig;
 use App\Support\Config\AppConfigKey;
 use App\Support\SharedPropCacheKey;
+use Carbon\CarbonInterface;
 use Closure;
 
 /**
@@ -150,6 +151,7 @@ final readonly class StravaProps
             ->whereNotNull('fetched_at')
             ->orderByDesc('fetched_at')
             ->value('fetched_at');
+        assert($latest === null || $latest instanceof CarbonInterface);
 
         // "ready" once at least one run is fully ingested; the scope already
         // restricts to analyzed rows, so exists() answers that directly.

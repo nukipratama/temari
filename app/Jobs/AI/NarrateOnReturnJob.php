@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Jobs\AI;
 
+use Illuminate\Support\Collection;
 use App\Actions\AI\RecentlyActiveUsers;
 use App\Models\Activity;
 use App\Models\AI\Analysis;
@@ -99,8 +100,10 @@ class NarrateOnReturnJob implements ShouldQueue
 
         foreach ($pending as $row) {
             $cardId = (int) $row->subject_id;
+            $startDateLocal = $row->getAttribute('start_date_local');
+            assert($startDateLocal === null || is_string($startDateLocal));
 
-            if (Carbon::parse($row->getAttribute('start_date_local'))->lt($windowStart)) {
+            if (Carbon::parse($startDateLocal)->lt($windowStart)) {
                 $service->requestRuleBased(RunCard::class, $cardId, AnalysisType::CardFlavor, refillDone: false, reason: AnalysisOrigin::Return);
 
                 continue;
@@ -141,6 +144,7 @@ class NarrateOnReturnJob implements ShouldQueue
     private function catchUpMonthlyRecaps(AnalysisService $service, HydrationBacklog $backlog, User $user): void
     {
         $lastClosed = RecapPeriod::lastClosedMonth();
+        /** @var Collection<int, string> $months */
         $months = Analysis::query()
             ->where('subject_type', AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE)
             ->where('subject_id', $user->id)

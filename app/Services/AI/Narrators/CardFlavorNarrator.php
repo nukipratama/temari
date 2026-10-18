@@ -125,7 +125,9 @@ class CardFlavorNarrator
             ),
         );
 
-        return (string) $decoded['flavor'];
+        assert(is_string($decoded['flavor']));
+
+        return $decoded['flavor'];
     }
 
     /**

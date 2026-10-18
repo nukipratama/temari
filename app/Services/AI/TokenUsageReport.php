@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\AI;
 
+use Illuminate\Support\Collection;
 use App\Actions\AI\RecentlyActiveUsers;
 use App\Models\AI\Analysis;
 use App\Models\AI\ContentFilterEvent;
@@ -76,7 +77,9 @@ class TokenUsageReport
 
         $aggregate = $this->aggregate($baseQuery);
         $perUserCeiling = config('azure_openai.daily_cost_ceiling_per_user');
+        assert($perUserCeiling === null || is_numeric($perUserCeiling));
         $totalCeiling = config('azure_openai.daily_cost_ceiling_total');
+        assert($totalCeiling === null || is_numeric($totalCeiling));
         // `dailyCeiling` is the per-athlete slice times the athlete count: what
         // the bill would reach if every athlete spent theirs. `totalCeiling` is
         // the configured app-wide stop that binds before it.
@@ -313,6 +316,8 @@ class TokenUsageReport
 
     private static function stringOrNull(mixed $value): ?string
     {
+        assert($value === null || is_scalar($value));
+
         return $value === null || $value === '' ? null : (string) $value;
     }
 
@@ -372,11 +377,14 @@ class TokenUsageReport
      */
     private function availableOrigins(Carbon $from, Carbon $to): array
     {
-        return array_values(TokenUsage::query()->toBase()
+        /** @var Collection<int, string> $origins */
+        $origins = TokenUsage::query()->toBase()
             ->whereBetween('created_at', [$from, $to])
             ->distinct()
             ->orderBy('origin')
-            ->pluck('origin')
+            ->pluck('origin');
+
+        return array_values($origins
             ->map(fn (string $o): array => [
                 'value' => $o,
                 'label' => AnalysisOrigin::tryFrom($o)?->label() ?? $o,
@@ -391,11 +399,14 @@ class TokenUsageReport
      */
     private function availableKinds(Carbon $from, Carbon $to): array
     {
-        return array_values(TokenUsage::query()->toBase()
+        /** @var Collection<int, string> $kinds */
+        $kinds = TokenUsage::query()->toBase()
             ->whereBetween('created_at', [$from, $to])
             ->distinct()
             ->orderBy('kind')
-            ->pluck('kind')
+            ->pluck('kind');
+
+        return array_values($kinds
             ->map(fn (string $k): array => [
                 'value' => $k,
                 'label' => AnalysisType::tryFrom($k)?->name ?? $k,
@@ -520,6 +531,7 @@ class TokenUsageReport
         $flags = $this->flagCounts($from, $to);
         $deadLettered = $this->deadLetterCounts();
         $configCeiling = config('azure_openai.daily_cost_ceiling_per_user');
+        assert($configCeiling === null || is_numeric($configCeiling));
 
         foreach ($spend as $userId => $entry) {
             $identities[$userId] ??= [
@@ -720,16 +732,14 @@ class TokenUsageReport
      */
     private function flagCounts(Carbon $from, Carbon $to): array
     {
-        /** @var array<int, int> $counts */
-        $counts = Feedback::query()
+        /** @var Collection<int, int|string> $flags */
+        $flags = Feedback::query()
             ->whereBetween('created_at', [$from, $to])
             ->selectRaw('user_id, COUNT(*) as flags')
             ->groupBy('user_id')
-            ->pluck('flags', 'user_id')
-            ->map(fn (mixed $flags): int => (int) $flags)
-            ->all();
+            ->pluck('flags', 'user_id');
 
-        return $counts;
+        return $flags->map(fn (int|string $count): int => (int) $count)->all();
     }
 
     /**

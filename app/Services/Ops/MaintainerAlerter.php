@@ -12,6 +12,7 @@ use App\Models\TelegramConnection;
 use App\Services\Telegram\TelegramClient;
 use App\Support\Config\AppConfig;
 use App\Support\Config\AppConfigKey;
+use App\Support\Numeric;
 use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
@@ -125,7 +126,7 @@ class MaintainerAlerter
     public function flushDeadLetterWindow(): void
     {
         $count = $this->withDeadLetterLock(function (): int {
-            $count = (int) Cache::get(self::DEAD_LETTER_WINDOW_CACHE_KEY, 0);
+            $count = Numeric::int(Cache::get(self::DEAD_LETTER_WINDOW_CACHE_KEY, 0));
             Cache::forget(self::DEAD_LETTER_WINDOW_CACHE_KEY);
 
             return $count;

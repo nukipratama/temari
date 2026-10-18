@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Run\Story;
 
+use App\Support\Numeric;
 use Illuminate\Database\Eloquent\Collection;
 use App\Actions\Run\Story\ResolveLastRunStartAction;
 use App\Models\ActivityDetail;
@@ -71,7 +72,7 @@ class Vibe
         $decoupling = $this->avgDecouplingPct($user, $asOf);
 
         return $this->memo[$key] = VibeMatrix::pick([
-            'form' => (float) ($load['form'] ?? 0.0),
+            'form' => Numeric::float($load['form'] ?? 0.0),
             'form_status' => $load['form_status'] ?? TrainingFormStatus::Optimal,
             'days_since_run' => $daysSinceRun,
             'recent_pr' => $recentPr,

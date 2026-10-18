@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use Illuminate\Support\Collection;
 use Database\Factories\StreakRestTokenFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -49,10 +50,12 @@ class StreakRestToken extends Model
      */
     public static function forgivenWeekEndings(int $userId): array
     {
-        $weekEndings = self::query()
+        /** @var Collection<int, Carbon> $spentFor */
+        $spentFor = self::query()
             ->where('user_id', $userId)
             ->whereNotNull('spent_for_week_ending')
-            ->pluck('spent_for_week_ending')
+            ->pluck('spent_for_week_ending');
+        $weekEndings = $spentFor
             ->map(fn (Carbon $date): string => $date->toDateString())
             ->all();
 

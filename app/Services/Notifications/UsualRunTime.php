@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Notifications;
 
+use Illuminate\Support\Collection;
 use App\Models\Activity;
 use App\Models\User;
 use Illuminate\Support\Carbon;
@@ -62,13 +63,15 @@ final class UsualRunTime
 
     private function computeForUser(int $userId): int
     {
-        $minutes = Activity::query()
+        /** @var Collection<int, string> $starts */
+        $starts = Activity::query()
             ->join('activity_details', 'activity_details.activity_id', '=', 'activities.id')
             ->where('activities.user_id', $userId)
             ->whereNotNull('activity_details.start_date_local')
             ->orderByDesc('activity_details.start_date_local')
             ->limit(self::SAMPLE_SIZE)
-            ->pluck('activity_details.start_date_local')
+            ->pluck('activity_details.start_date_local');
+        $minutes = $starts
             ->map(function (string $start): int {
                 $at = Carbon::parse($start);
 

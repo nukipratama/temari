@@ -56,7 +56,9 @@ final class PlanRenderer
      * stamped at all — otherwise this would re-apply the race-arc ramp
      * {@see TrainingBaseline}'s `self_scaled` flag exists to hold at 1.0.
      *
-     * @param  Collection<string, mixed>  $sessionsByWeek
+     * @template TWeek of Collection<int, PlannedSession>
+     *
+     * @param  Collection<array-key, TWeek>  $sessionsByWeek
      * @return array{0: Collection<string, PlanPhase>, 1: array<string, float>}
      */
     public static function weekPhasesAndMultipliers(Collection $sessionsByWeek, bool $selfScaled): array
@@ -420,6 +422,7 @@ final class PlanRenderer
         $currentReadinessAssessment = $isToday && ! $status->isCredited()
             ? ($readinessAssessment ?? $s->readiness_assessment)
             : $s->readiness_assessment;
+        /** @var list<string> $readinessReasons */
         $readinessReasons = $currentReadinessAssessment['reasons'] ?? [];
 
         // The row's own distance on race day, the active race's everywhere
@@ -430,6 +433,7 @@ final class PlanRenderer
         // screens just disagreeing with no explanation.
         $askedKm = SegmentGenerator::coreKmFor($s->session_type, $isPrimaryEasy, $longRunKm, $multiplier, $longRunCapKm, $raceDistanceM, $longRunProgressionCapKm, $s->fall_off_tilt, $s->prescription_race_context);
         $effective = EffectiveSession::of($s, $askedKm);
+        /** @var list<string> $recordedReasons */
         $recordedReasons = $s->readiness_assessment['reasons'] ?? $readinessReasons;
         $headlinesEase = $effective->isEased();
         $advisoryClamp = $isToday && ! $status->isCredited() && ! $headlinesEase ? $clamp : null;
