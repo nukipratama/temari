@@ -109,8 +109,8 @@ class ActivityPipeline
 
             return;
         }
-        /** @var array<string, mixed> $detail */
 
+        /** @var array<string, mixed> $detail */
         if (RunSportType::isExplicitlyNotRun($detail)) {
             $this->rejectNonRunUpload($activity, $detail);
 
@@ -262,8 +262,8 @@ class ActivityPipeline
             if (! is_array($streams)) {
                 return null;
             }
-            /** @var array<string, mixed> $streams */
 
+            /** @var array<string, mixed> $streams */
             return $streams;
         } catch (StravaRateLimitedException|StravaCircuitOpenException $e) {
             // The detail is already stored; re-queue the job rather than

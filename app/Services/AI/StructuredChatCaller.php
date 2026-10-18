@@ -219,8 +219,8 @@ final readonly class StructuredChatCaller
         if (! is_array($decoded)) {
             throw new UnavailableException('Azure OpenAI structured output not an object');
         }
-        /** @var array<string, mixed> $decoded */
 
+        /** @var array<string, mixed> $decoded */
         $missingLabel = $this->missingKeyLabel($decoded, $requiredKeys, $propertySchema);
         if ($missingLabel !== null) {
             throw new UnavailableException("Azure OpenAI structured output missing {$missingLabel}");
