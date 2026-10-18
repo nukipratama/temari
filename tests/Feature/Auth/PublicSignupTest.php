@@ -32,16 +32,12 @@ beforeEach(function (): void {
  */
 function strangerAthlete(int $athleteId = 4_411_902): SocialiteUser
 {
-    $athlete = Mockery::mock(SocialiteUser::class);
-    $athlete->token = 'stranger-access';
-    $athlete->refreshToken = 'stranger-refresh';
-    $athlete->expiresIn = 21_600;
+    $athlete = socialiteUserMock('stranger-access', 'stranger-refresh', 21_600);
     $athlete->shouldReceive('getId')->andReturn((string) $athleteId);
     $athlete->shouldReceive('getName')->andReturn('Rin Okumura');
     $athlete->shouldReceive('getEmail')->andReturn("athlete-{$athleteId}@example.test");
     $athlete->shouldReceive('getAvatar')->andReturn('https://strava.test/rin.png');
 
-    /** @var SocialiteUser */
     return $athlete;
 }
 
