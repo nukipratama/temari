@@ -53,6 +53,7 @@ function channelSend(User $user, TelegramMessage $message): void
     app(TelegramChannel::class)->send($user, $notification);
 }
 
+/** @param array<string, mixed> $attributes */
 function connectedUser(array $attributes = []): User
 {
     $user = User::factory()->create();
@@ -166,7 +167,7 @@ it('abandons a keyed delivery whose connection failed, without a retry or a reta
         'claim_version' => 1,
     ]);
     expect(app(NotificationDeliveryClaim::class)->claim($analysisId, 'telegram'))->toBeNull()
-        ->and($user->telegramConnection->fresh()->isRevoked())->toBeFalse();
+        ->and($user->telegramConnection?->fresh()?->isRevoked())->toBeFalse();
 });
 
 it('rethrows a keyless delivery whose connection failed, so its retry can resend', function (): void {
@@ -186,11 +187,11 @@ it('revokes the connection and does not retry when the bot is blocked (403)', fu
 
     channelSend($user, new TelegramMessage(text: 'Diblokir', deliveryKey: $analysisId));
 
-    expect($user->telegramConnection->fresh()->isRevoked())->toBeTrue();
+    expect($user->telegramConnection?->fresh()?->isRevoked())->toBeTrue();
 });
 
 it('logs when a newer claim fences its send result', function (): void {
-    Log::spy();
+    $log = Log::spy();
     $user = connectedUser();
     $analysisId = Analysis::factory()->create()->id;
     Http::fake(['api.telegram.org/*' => function () use ($analysisId) {
@@ -204,7 +205,7 @@ it('logs when a newer claim fences its send result', function (): void {
 
     channelSend($user, new TelegramMessage(text: 'Overtaken', deliveryKey: $analysisId));
 
-    Log::shouldHaveReceived('info')->once()->with('telegram.delivery_record.fenced', [
+    $log->shouldHaveReceived('info')->once()->with('telegram.delivery_record.fenced', [
         'delivery_key' => $analysisId,
         'claim_version' => 1,
     ]);
@@ -216,6 +217,7 @@ it('abandons a stale claim without sending again and fences its late finisher', 
     $analysisId = Analysis::factory()->create()->id;
     $claim = app(NotificationDeliveryClaim::class);
     $version = $claim->claim($analysisId, 'telegram');
+    assert($version !== null);
     DB::table('notification_deliveries')
         ->where('analysis_id', $analysisId)
         ->where('channel', 'telegram')
@@ -251,7 +253,7 @@ it('still revokes on a permanent failure for a keyless message', function (): vo
 
     channelSend($user, new TelegramMessage(text: 'Nudge'));
 
-    expect($user->telegramConnection->fresh()->isRevoked())->toBeTrue();
+    expect($user->telegramConnection?->fresh()?->isRevoked())->toBeTrue();
 });
 
 it('revokes the connection when the chat is not found (400)', function (): void {
@@ -260,7 +262,7 @@ it('revokes the connection when the chat is not found (400)', function (): void 
 
     channelSend($user, new TelegramMessage(text: 'Hilang'));
 
-    expect($user->telegramConnection->fresh()->isRevoked())->toBeTrue();
+    expect($user->telegramConnection?->fresh()?->isRevoked())->toBeTrue();
 });
 
 it('keeps the link, alerts the maintainer once, and rethrows on a bad bot token', function (int $status, string $description): void {
@@ -275,8 +277,8 @@ it('keeps the link, alerts the maintainer once, and rethrows on a bad bot token'
     expect(fn () => channelSend($second, new TelegramMessage(text: 'Token')))
         ->toThrow(TelegramApiException::class);
 
-    expect($first->telegramConnection->fresh()->isRevoked())->toBeFalse()
-        ->and($second->telegramConnection->fresh()->isRevoked())->toBeFalse();
+    expect($first->telegramConnection?->fresh()?->isRevoked())->toBeFalse()
+        ->and($second->telegramConnection?->fresh()?->isRevoked())->toBeFalse();
     $this->assertDatabaseHas('notification_deliveries', [
         'analysis_id' => $analysisId,
         'status' => NotificationDeliveryStatus::Failed->value,
@@ -289,19 +291,19 @@ it('keeps the link, alerts the maintainer once, and rethrows on a bad bot token'
 
 it('keeps the link and does not retry when Telegram rejects the message itself', function (string $description): void {
     Bus::fake([SendMaintainerAlertJob::class]);
-    Log::spy();
+    $log = Log::spy();
     Http::fake(['api.telegram.org/*' => Http::response(['ok' => false, 'description' => $description], 400)]);
     $user = connectedUser();
     $analysisId = Analysis::factory()->create()->id;
 
     channelSend($user, new TelegramMessage(text: 'Rusak', deliveryKey: $analysisId));
 
-    expect($user->telegramConnection->fresh()->isRevoked())->toBeFalse();
+    expect($user->telegramConnection?->fresh()?->isRevoked())->toBeFalse();
     $this->assertDatabaseHas('notification_deliveries', [
         'analysis_id' => $analysisId,
         'status' => NotificationDeliveryStatus::Failed->value,
     ]);
-    Log::shouldHaveReceived('warning')->with('telegram.send.rejected', Mockery::type('array'))->once();
+    $log->shouldHaveReceived('warning')->with('telegram.send.rejected', Mockery::type('array'))->once();
     Bus::assertNothingDispatched();
 })->with([
     'parse error' => ["Bad Request: can't parse entities"],
@@ -315,5 +317,5 @@ it('keeps the link on a 403 that is not about this chat', function (): void {
 
     channelSend($user, new TelegramMessage(text: 'Nudge'));
 
-    expect($user->telegramConnection->fresh()->isRevoked())->toBeFalse();
+    expect($user->telegramConnection?->fresh()?->isRevoked())->toBeFalse();
 });

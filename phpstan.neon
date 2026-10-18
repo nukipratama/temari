@@ -24,6 +24,8 @@ parameters:
         - database/
         - tests/Pest.php
         - tests/Feature/Auth
+        - tests/Unit/Listeners
+        - tests/Unit/Notifications
     tmpDir: .phpstan-cache
 
     # Sail's memory_limit=-1 lets workers grow until OOM-killer hits; cap them.

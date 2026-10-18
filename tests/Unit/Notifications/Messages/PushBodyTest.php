@@ -27,8 +27,10 @@ it('takes a sentence that ends exactly on the cap', function (): void {
 it('does not treat a decimal point as a sentence boundary', function (): void {
     $narration = 'you ran 10.5 km ' . str_repeat('steady ', 30) . 'and that was it.';
 
-    expect(PushBody::excerpt($narration))->toEndWith('…')
-        ->not->toBe('you ran 10.');
+    $excerpt = PushBody::excerpt($narration);
+
+    expect($excerpt)->toEndWith('…')
+        ->and($excerpt)->not->toBe('you ran 10.');
 });
 
 it('cuts a first sentence longer than the cap at a word boundary and appends an ellipsis', function (): void {

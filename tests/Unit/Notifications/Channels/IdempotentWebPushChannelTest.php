@@ -21,6 +21,8 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Minishlink\WebPush\VAPID;
 use NotificationChannels\WebPush\WebPushChannel;
+use Mockery\MockInterface;
+use PHPUnit\Framework\Assert;
 
 uses(RefreshDatabase::class);
 
@@ -39,6 +41,7 @@ function pushUser(): User
 
 it('claims the analysis on the webpush channel and delegates to the package channel', function (): void {
     $analysis = Analysis::factory()->create();
+    /** @var WebPushChannel&MockInterface $inner */
     $inner = Mockery::mock(WebPushChannel::class);
     $inner->shouldReceive('send')->once();
 
@@ -50,6 +53,7 @@ it('claims the analysis on the webpush channel and delegates to the package chan
 
 it('is idempotent — a second send for the same analysis does not re-deliver', function (): void {
     $analysis = Analysis::factory()->create();
+    /** @var WebPushChannel&MockInterface $inner */
     $inner = Mockery::mock(WebPushChannel::class);
     $inner->shouldReceive('send')->once();
     $channel = idempotentChannel($inner);
@@ -61,8 +65,9 @@ it('is idempotent — a second send for the same analysis does not re-deliver', 
 });
 
 it('logs when a newer claim fences its send result', function (): void {
-    Log::spy();
+    $log = Log::spy();
     $analysis = Analysis::factory()->create();
+    /** @var WebPushChannel&MockInterface $inner */
     $inner = Mockery::mock(WebPushChannel::class);
     $inner->shouldReceive('send')->once()->andReturnUsing(function () use ($analysis): array {
         DB::table('notification_deliveries')
@@ -75,7 +80,7 @@ it('logs when a newer claim fences its send result', function (): void {
 
     idempotentChannel($inner)->send(pushUser(), new AnalysisReadyNotification($analysis));
 
-    Log::shouldHaveReceived('info')->once()->with('webpush.delivery_record.fenced', [
+    $log->shouldHaveReceived('info')->once()->with('webpush.delivery_record.fenced', [
         'delivery_key' => $analysis->id,
         'claim_version' => 1,
     ]);
@@ -89,6 +94,8 @@ it('skips a queued web push when muted and does not claim it', function (): void
     expect(app(ChannelRouter::class)->channelsFor($user))->toContain(IdempotentWebPushChannel::class);
     NotificationPreference::factory()->for($user)->create(['push_enabled' => false]);
 
+    /** @var WebPushChannel&MockInterface $inner */
+
     $inner = Mockery::mock(WebPushChannel::class);
     $inner->shouldNotReceive('send');
     idempotentChannel($inner)->send($user, new AnalysisReadyNotification($analysis));
@@ -98,6 +105,7 @@ it('skips a queued web push when muted and does not claim it', function (): void
 
 it('settles the claim as failed with its error so a retry can resend', function (): void {
     $analysis = Analysis::factory()->create();
+    /** @var WebPushChannel&MockInterface $inner */
     $inner = Mockery::mock(WebPushChannel::class);
     $inner->shouldReceive('send')->andThrow(new RuntimeException('push boom'));
 
@@ -114,6 +122,7 @@ it('settles the claim as failed with its error so a retry can resend', function 
 });
 
 it('sends a keyless notification (no deliveryKey) without claiming', function (): void {
+    /** @var WebPushChannel&MockInterface $inner */
     $inner = Mockery::mock(WebPushChannel::class);
     $inner->shouldReceive('send')->once();
     $notification = new class () extends Notification {};
@@ -137,6 +146,8 @@ it('reclaims and sends a stale web push once with the new claim version', functi
         'telegram_abandoned' => 0,
     ]);
 
+    /** @var WebPushChannel&MockInterface $inner */
+
     $inner = Mockery::mock(WebPushChannel::class);
     $inner->shouldReceive('send')->once();
     idempotentChannel($inner)->send(pushUser(), new AnalysisReadyNotification($analysis));
@@ -156,7 +167,11 @@ function encryptablePushUser(string ...$endpoints): User
     config(['webpush.vapid.public_key' => $vapid['publicKey'], 'webpush.vapid.private_key' => $vapid['privateKey']]);
     $user = User::factory()->create();
     foreach ($endpoints as $endpoint) {
-        $device = openssl_pkey_get_details(openssl_pkey_new(['curve_name' => 'prime256v1', 'private_key_type' => OPENSSL_KEYTYPE_EC]))['ec'];
+        $key = openssl_pkey_new(['curve_name' => 'prime256v1', 'private_key_type' => OPENSSL_KEYTYPE_EC]);
+        assert($key !== false);
+        $details = openssl_pkey_get_details($key);
+        assert($details !== false);
+        $device = $details['ec'];
         $user->updatePushSubscription(
             $endpoint,
             Base64Url::encode("\x04".str_pad($device['x'], 32, "\0", STR_PAD_LEFT).str_pad($device['y'], 32, "\0", STR_PAD_LEFT)),
@@ -167,8 +182,21 @@ function encryptablePushUser(string ...$endpoints): User
     return $user;
 }
 
+function retryAfterOfTransientFailure(Closure $send): ?int
+{
+    try {
+        $send();
+    } catch (TransientWebPushException $e) {
+        return $e->retryAfterSeconds;
+    }
+
+    Assert::fail('Expected a TransientWebPushException.');
+}
+
+/** @return object{status: string, error: string|null} */
 function webPushDelivery(Analysis $analysis): object
 {
+    /** @var object{status: string, error: string|null} */
     return DB::table('notification_deliveries')
         ->where('analysis_id', $analysis->id)
         ->where('channel', 'webpush')
@@ -195,8 +223,7 @@ it('records a throttled push as failed and throws a retryable exception carrying
     $analysis = Analysis::factory()->create();
     $user = encryptablePushUser('https://push.example/endpoint');
 
-    expect(fn () => app(IdempotentWebPushChannel::class)->send($user, new AnalysisReadyNotification($analysis)))
-        ->toThrow(fn (TransientWebPushException $e) => expect($e->retryAfterSeconds)->toBe(120));
+    expect(retryAfterOfTransientFailure(fn () => app(IdempotentWebPushChannel::class)->send($user, new AnalysisReadyNotification($analysis))))->toBe(120);
 
     $delivery = webPushDelivery($analysis);
     expect($delivery->status)->toBe(NotificationDeliveryStatus::Failed->value)
@@ -209,8 +236,7 @@ it('reads a Retry-After given as an HTTP date', function (): void {
     Http::fake(['push.example/*' => Http::response('', 503, ['Retry-After' => now()->addMinutes(5)->toRfc7231String()])]);
     $user = encryptablePushUser('https://push.example/endpoint');
 
-    expect(fn () => app(IdempotentWebPushChannel::class)->send($user, new AnalysisReadyNotification(Analysis::factory()->create())))
-        ->toThrow(fn (TransientWebPushException $e) => expect($e->retryAfterSeconds)->toBe(300));
+    expect(retryAfterOfTransientFailure(fn () => app(IdempotentWebPushChannel::class)->send($user, new AnalysisReadyNotification(Analysis::factory()->create()))))->toBe(300);
 });
 
 it('records a server error or network failure as failed and throws a retryable exception without a delay', function (Closure $response, string $recorded): void {
@@ -218,8 +244,7 @@ it('records a server error or network failure as failed and throws a retryable e
     $analysis = Analysis::factory()->create();
     $user = encryptablePushUser('https://push.example/endpoint');
 
-    expect(fn () => app(IdempotentWebPushChannel::class)->send($user, new AnalysisReadyNotification($analysis)))
-        ->toThrow(fn (TransientWebPushException $e) => expect($e->retryAfterSeconds)->toBeNull());
+    expect(retryAfterOfTransientFailure(fn () => app(IdempotentWebPushChannel::class)->send($user, new AnalysisReadyNotification($analysis))))->toBeNull();
 
     $delivery = webPushDelivery($analysis);
     expect($delivery->status)->toBe(NotificationDeliveryStatus::Failed->value)
@@ -281,8 +306,7 @@ it('retries when no subscription accepted and any rejection is retryable', funct
     $analysis = Analysis::factory()->create();
     $user = encryptablePushUser('https://push.example/forbidden', 'https://push.example/busy');
 
-    expect(fn () => app(IdempotentWebPushChannel::class)->send($user, new AnalysisReadyNotification($analysis)))
-        ->toThrow(fn (TransientWebPushException $e) => expect($e->retryAfterSeconds)->toBe(60));
+    expect(retryAfterOfTransientFailure(fn () => app(IdempotentWebPushChannel::class)->send($user, new AnalysisReadyNotification($analysis))))->toBe(60);
 
     expect(webPushDelivery($analysis)->status)->toBe(NotificationDeliveryStatus::Failed->value);
 });

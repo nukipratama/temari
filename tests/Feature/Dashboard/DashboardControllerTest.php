@@ -20,6 +20,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Inertia\Testing\AssertableInertia as Assert;
+use Tests\TestCase;
 
 uses(RefreshDatabase::class);
 
@@ -257,10 +258,10 @@ it('defers restDayEasePace on a planned rest day, resolving only on the named pa
  * tests/Feature/Runs/RunControllerTest.php for why the version is read off a
  * real HTML response.
  *
- * @param  object  $actingAs  The authenticated test case.
+ * @param  TestCase  $actingAs  The authenticated test case.
  * @return array<string, string>
  */
-function briefingOnlyHeaders(object $actingAs): array
+function briefingOnlyHeaders(TestCase $actingAs): array
 {
     return [
         'X-Inertia' => 'true',
