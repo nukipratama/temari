@@ -34,15 +34,17 @@ uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
     Queue::fake();
-    $this->client = Mockery::mock(StravaClient::class);
-    $this->client->shouldReceive('rateLimitRemaining')->andReturn(['15min' => 200, 'daily' => 2000]);
 });
 
-function orchestrator(ActivityFetcher|MockInterface $fetcher, ?MaintainerAlerter $alerter = null): SyncOrchestrator
+function orchestrator(ActivityFetcher $fetcher, ?MaintainerAlerter $alerter = null): SyncOrchestrator
 {
+    /** @var StravaClient&MockInterface $client */
+    $client = Mockery::mock(StravaClient::class);
+    $client->shouldReceive('rateLimitRemaining')->andReturn(['15min' => 200, 'daily' => 2000]);
+
     return new SyncOrchestrator(
         $fetcher,
-        test()->client,
+        $client,
         app(SummaryIngest::class),
         app(WeeklyAggregator::class),
         $alerter ?? app(MaintainerAlerter::class),
@@ -74,6 +76,7 @@ it('inserts oldest-first so DB ids are chronological', function (): void {
     $user = User::factory()->create();
     StravaConnection::factory()->for($user)->create();
 
+    /** @var ActivityFetcher&MockInterface $fetcher */
     $fetcher = Mockery::mock(ActivityFetcher::class);
     $fetcher->shouldReceive('fetchNewSummaries')->andReturn(summaryResult([10, 20, 30]));
 
@@ -88,6 +91,7 @@ it('stores visible summary-only runs without dispatching a per-activity detail f
     $user = User::factory()->create();
     StravaConnection::factory()->for($user)->create();
 
+    /** @var ActivityFetcher&MockInterface $fetcher */
     $fetcher = Mockery::mock(ActivityFetcher::class);
     $fetcher->shouldReceive('fetchNewSummaries')->andReturn(summaryResult([10, 20]));
 
@@ -105,6 +109,7 @@ it('records the Strava reads a backfill actually spent', function (): void {
     $user = User::factory()->create();
     StravaConnection::factory()->for($user)->create();
 
+    /** @var ActivityFetcher&MockInterface $fetcher */
     $fetcher = Mockery::mock(ActivityFetcher::class);
     $fetcher->shouldReceive('fetchNewSummaries')->andReturn(summaryResult(range(1, 101), apiCalls: 2));
 
@@ -120,6 +125,7 @@ it('rolls the weekly snapshots forward once for the whole backfill', function ()
     $user = User::factory()->create();
     StravaConnection::factory()->for($user)->create();
 
+    /** @var ActivityFetcher&MockInterface $fetcher */
     $fetcher = Mockery::mock(ActivityFetcher::class);
     $fetcher->shouldReceive('fetchNewSummaries')->andReturn(summaryResult([10]));
 
@@ -142,6 +148,7 @@ it('rolls the weekly snapshots forward once for the whole backfill', function ()
 it('returns 0 and does not query Strava when user has no connection', function (): void {
     $user = User::factory()->create();
 
+    /** @var ActivityFetcher&MockInterface $fetcher */
     $fetcher = Mockery::mock(ActivityFetcher::class);
     $fetcher->shouldNotReceive('fetchNewSummaries');
 
@@ -155,6 +162,7 @@ it('logs an error and rethrows on an unexpected exception during syncUser', func
     $user = User::factory()->create();
     StravaConnection::factory()->for($user)->create();
 
+    /** @var ActivityFetcher&MockInterface $fetcher */
     $fetcher = Mockery::mock(ActivityFetcher::class);
     $fetcher->shouldReceive('fetchNewSummaries')->andThrow(new RuntimeException('boom'));
 
@@ -172,6 +180,7 @@ it('returns 0 when another sync holds the lock', function (): void {
     $lock = Cache::lock("strava-sync:user-{$user->id}", 60);
     $lock->get();
 
+    /** @var ActivityFetcher&MockInterface $fetcher */
     $fetcher = Mockery::mock(ActivityFetcher::class);
     $fetcher->shouldNotReceive('fetchNewSummaries');
 
@@ -188,6 +197,7 @@ it('returns 0 when fetcher finds no new activities', function (): void {
     $user = User::factory()->create();
     StravaConnection::factory()->for($user)->create();
 
+    /** @var ActivityFetcher&MockInterface $fetcher */
     $fetcher = Mockery::mock(ActivityFetcher::class);
     $fetcher->shouldReceive('fetchNewSummaries')->andReturn(summaryResult([]));
 
@@ -199,6 +209,7 @@ it('skips a revoked connection without querying Strava', function (): void {
     $user = User::factory()->create();
     StravaConnection::factory()->for($user)->revoked()->create();
 
+    /** @var ActivityFetcher&MockInterface $fetcher */
     $fetcher = Mockery::mock(ActivityFetcher::class);
     $fetcher->shouldNotReceive('fetchNewSummaries');
 
@@ -211,6 +222,7 @@ it('revokes the connection and returns 0 (no rethrow) when the API rejects the t
     $user = User::factory()->create();
     $connection = StravaConnection::factory()->for($user)->create();
 
+    /** @var ActivityFetcher&MockInterface $fetcher */
     $fetcher = Mockery::mock(ActivityFetcher::class);
     $fetcher->shouldReceive('fetchNewSummaries')
         ->andThrow(new StravaConnectionRevokedException('Strava rejected the access token with 401'));
@@ -218,7 +230,7 @@ it('revokes the connection and returns 0 (no rethrow) when the API rejects the t
     $inserted = orchestrator($fetcher)->syncUser($user);
 
     expect($inserted)->toBe(0)
-        ->and($connection->fresh()->revoked_at)->not->toBeNull();
+        ->and(nonNull($connection->fresh())->revoked_at)->not->toBeNull();
     Queue::assertNothingPushed();
     Notification::assertSentTo($user, StravaDisconnectedNotification::class);
 });
@@ -227,6 +239,7 @@ it('ignores a stale API 401 after credentials change during the summary fetch', 
     $user = User::factory()->create();
     $connection = StravaConnection::factory()->for($user)->create(['credential_version' => 2]);
 
+    /** @var ActivityFetcher&MockInterface $fetcher */
     $fetcher = Mockery::mock(ActivityFetcher::class);
     $fetcher->shouldReceive('fetchNewSummaries')->once()->andReturnUsing(function () use ($connection): never {
         $connection->update(['credential_version' => 3, 'revoked_at' => null]);
@@ -236,7 +249,7 @@ it('ignores a stale API 401 after credentials change during the summary fetch', 
     Pulse::shouldReceive('record')->never();
 
     expect(orchestrator($fetcher)->syncUser($user))->toBe(0)
-        ->and($connection->fresh()->isRevoked())->toBeFalse();
+        ->and(nonNull($connection->fresh())->isRevoked())->toBeFalse();
 });
 
 it('syncUser no-ops when the Strava kill-switch is off', function (): void {
@@ -244,6 +257,7 @@ it('syncUser no-ops when the Strava kill-switch is off', function (): void {
     StravaConnection::factory()->for($user)->create();
     app(AppConfig::class)->set(AppConfigKey::StravaEnabled, false);
 
+    /** @var ActivityFetcher&MockInterface $fetcher */
     $fetcher = Mockery::mock(ActivityFetcher::class);
     $fetcher->shouldNotReceive('fetchNewSummaries');
 
@@ -256,6 +270,7 @@ it('syncSingleActivity no-ops when the Strava kill-switch is off', function (): 
     StravaConnection::factory()->for($user)->create();
     app(AppConfig::class)->set(AppConfigKey::StravaEnabled, false);
 
+    /** @var ActivityFetcher&MockInterface $fetcher */
     $fetcher = Mockery::mock(ActivityFetcher::class);
 
     expect(orchestrator($fetcher)->syncSingleActivity($user, 9_001))->toBeFalse();
@@ -267,6 +282,7 @@ it('passes the --since lower bound through to the fetcher', function (): void {
     StravaConnection::factory()->for($user)->create();
     $since = CarbonImmutable::parse('2026-05-01');
 
+    /** @var ActivityFetcher&MockInterface $fetcher */
     $fetcher = Mockery::mock(ActivityFetcher::class);
     $fetcher->shouldReceive('fetchNewSummaries')
         ->once()
@@ -282,6 +298,7 @@ it('records the sync as poll by default', function (): void {
     $user = User::factory()->create();
     StravaConnection::factory()->for($user)->create();
 
+    /** @var ActivityFetcher&MockInterface $fetcher */
     $fetcher = Mockery::mock(ActivityFetcher::class);
     $fetcher->shouldReceive('fetchNewSummaries')->andReturn(summaryResult([10]));
 
@@ -295,6 +312,7 @@ it('records the sync source passed in for a manual trigger', function (): void {
     $user = User::factory()->create();
     StravaConnection::factory()->for($user)->create();
 
+    /** @var ActivityFetcher&MockInterface $fetcher */
     $fetcher = Mockery::mock(ActivityFetcher::class);
     $fetcher->shouldReceive('fetchNewSummaries')->andReturn(summaryResult([10]));
 
@@ -308,6 +326,7 @@ it('records a single-activity sync as webhook by default', function (): void {
     $user = User::factory()->create();
     StravaConnection::factory()->for($user)->create();
 
+    /** @var ActivityFetcher&MockInterface $fetcher */
     $fetcher = Mockery::mock(ActivityFetcher::class);
     $fetcher->shouldNotReceive('fetchNewSummaries');
 
@@ -321,6 +340,7 @@ it('inserts and queues exactly one IngestActivityJob for a single webhook activi
     $user = User::factory()->create();
     StravaConnection::factory()->for($user)->create();
 
+    /** @var ActivityFetcher&MockInterface $fetcher */
     $fetcher = Mockery::mock(ActivityFetcher::class);
     $fetcher->shouldNotReceive('fetchNewSummaries');
 
@@ -336,6 +356,7 @@ it('re-uses the existing row when a webhook update arrives for a known activity'
     StravaConnection::factory()->for($user)->create();
     Activity::factory()->for($user)->stub()->create(['strava_external_id' => 9_002]);
 
+    /** @var ActivityFetcher&MockInterface $fetcher */
     $fetcher = Mockery::mock(ActivityFetcher::class);
 
     orchestrator($fetcher)->syncSingleActivity($user, 9_002);
@@ -349,6 +370,7 @@ it('skips re-ingest on a duplicate webhook delivery for an already-analyzed acti
     StravaConnection::factory()->for($user)->create();
     Activity::factory()->for($user)->analyzed()->create(['strava_external_id' => 9_010]);
 
+    /** @var ActivityFetcher&MockInterface $fetcher */
     $fetcher = Mockery::mock(ActivityFetcher::class);
     $fetcher->shouldNotReceive('fetchNewSummaries');
 
@@ -364,6 +386,7 @@ it('queues a live detail ingest for a run the poll stored only as a summary', fu
     StravaConnection::factory()->for($user)->create();
     $summary = Activity::factory()->for($user)->summaryOnly()->create(['strava_external_id' => 9_012]);
 
+    /** @var ActivityFetcher&MockInterface $fetcher */
     $fetcher = Mockery::mock(ActivityFetcher::class);
     $fetcher->shouldNotReceive('fetchNewSummaries');
 
@@ -378,6 +401,7 @@ it('still dispatches re-ingest for a stub (un-analyzed) activity on a webhook de
     StravaConnection::factory()->for($user)->create();
     Activity::factory()->for($user)->stub()->create(['strava_external_id' => 9_011]);
 
+    /** @var ActivityFetcher&MockInterface $fetcher */
     $fetcher = Mockery::mock(ActivityFetcher::class);
     $fetcher->shouldNotReceive('fetchNewSummaries');
 
@@ -391,6 +415,7 @@ it('does not sync a single activity for a revoked connection', function (): void
     $user = User::factory()->create();
     StravaConnection::factory()->for($user)->revoked()->create();
 
+    /** @var ActivityFetcher&MockInterface $fetcher */
     $fetcher = Mockery::mock(ActivityFetcher::class);
 
     expect(orchestrator($fetcher)->syncSingleActivity($user, 9_003))->toBeFalse();
@@ -403,9 +428,11 @@ it('offers the shared 15-minute read budget to the maintainer alerter after a sy
     $user = User::factory()->create();
     StravaConnection::factory()->for($user)->create();
 
+    /** @var MaintainerAlerter&MockInterface $alerter */
     $alerter = Mockery::mock(MaintainerAlerter::class);
     $alerter->shouldReceive('stravaBudgetLow')->once()->with(200, StravaClient::RATE_LIMIT_15MIN_MAX);
 
+    /** @var ActivityFetcher&MockInterface $fetcher */
     $fetcher = Mockery::mock(ActivityFetcher::class);
     $fetcher->shouldReceive('fetchNewSummaries')->andReturn(summaryResult([10]));
 
@@ -418,9 +445,11 @@ it('offers the shared budget after a failed sync too', function (): void {
     $user = User::factory()->create();
     StravaConnection::factory()->for($user)->create();
 
+    /** @var MaintainerAlerter&MockInterface $alerter */
     $alerter = Mockery::mock(MaintainerAlerter::class);
     $alerter->shouldReceive('stravaBudgetLow')->once()->with(200, StravaClient::RATE_LIMIT_15MIN_MAX);
 
+    /** @var ActivityFetcher&MockInterface $fetcher */
     $fetcher = Mockery::mock(ActivityFetcher::class);
     $fetcher->shouldReceive('fetchNewSummaries')->andThrow(new RuntimeException('boom'));
 
@@ -433,6 +462,7 @@ it('walks a bounded slice from the given cursor, stores it, and hands back the r
     $user = User::factory()->create();
     StravaConnection::factory()->for($user)->create();
 
+    /** @var ActivityFetcher&MockInterface $fetcher */
     $fetcher = Mockery::mock(ActivityFetcher::class);
     $fetcher->shouldReceive('fetchNewSummaries')
         ->once()

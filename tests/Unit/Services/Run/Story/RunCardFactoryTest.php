@@ -105,14 +105,14 @@ it('does not downgrade a PR-minted card when a later run beats that PR on resync
 
     $card = app(RunCardFactory::class)->build($activity, $detail);
     expect($card->rarity)->toBe(Rarity::Rare)
-        ->and($card->fresh()->pr_set)->toBeTrue();
+        ->and(nonNull($card->fresh())->pr_set)->toBeTrue();
 
     // A later, faster run reassigns the 10km PR to another activity.
     $faster = Activity::factory()->for($user)->analyzed()->create();
     $pr->update(['activity_id' => $faster->id, 'value_sec' => 3_000]);
 
     // Rebuilding the earlier card keeps the sticky +3 PR contribution and its tier.
-    $rebuilt = app(RunCardFactory::class)->build($activity->fresh(), $detail->fresh());
+    $rebuilt = app(RunCardFactory::class)->build($activity->refresh(), $detail->refresh());
 
     expect($rebuilt->rarity)->toBe(Rarity::Rare)
         ->and($rebuilt->pr_set)->toBeTrue();

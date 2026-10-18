@@ -240,18 +240,18 @@ it('resolves each side of a comparison\'s effort from its matched planned sessio
     $past = trendRun($user, 100, 4_400);
     $current = trendRun($user, 3, 4_250);
     PlannedSession::factory()->for($user)->create([
-        'date' => $past->start_date_local->toDateString(),
+        'date' => nonNull($past->start_date_local)->toDateString(),
         'session_type' => SessionType::Easy,
     ]);
     PlannedSession::factory()->for($user)->create([
-        'date' => $current->start_date_local->toDateString(),
+        'date' => nonNull($current->start_date_local)->toDateString(),
         'session_type' => SessionType::Easy,
     ]);
 
-    $comparison = app(PastYouTrendBuilder::class)->payload($user)['comparisons'][0];
+    $comparison = data_get(app(PastYouTrendBuilder::class)->payload($user), 'comparisons.0');
 
-    expect($comparison['current']['effort'])->toBe('easy')
-        ->and($comparison['past']['effort'])->toBe('easy');
+    expect(data_get($comparison, 'current.effort'))->toBe('easy')
+        ->and(data_get($comparison, 'past.effort'))->toBe('easy');
 });
 
 it('ignores and invalidates cache for excused planned session types', function (): void {
@@ -262,11 +262,11 @@ it('ignores and invalidates cache for excused planned session types', function (
         $past = trendRun($user, 100, 4_400);
         $current = trendRun($user, 3, 4_250);
         PlannedSession::factory()->for($user)->create([
-            'date' => $past->start_date_local->toDateString(),
+            'date' => nonNull($past->start_date_local)->toDateString(),
             'session_type' => SessionType::Easy,
         ]);
         $currentSession = PlannedSession::factory()->for($user)->create([
-            'date' => $current->start_date_local->toDateString(),
+            'date' => nonNull($current->start_date_local)->toDateString(),
             'session_type' => SessionType::Tempo,
         ]);
         $builder = app(PastYouTrendBuilder::class);
@@ -484,8 +484,8 @@ it('matches runs that are still summary-only, with no streams to read', function
 
     expect($trend->verdict)->toBe(TrendVerdict::Improving)
         ->and($trend->comparisons)->toHaveCount(4)
-        ->and(collect($payload['comparisons'])->pluck('current.ingest_state')->unique()->all())->toBe(['summary'])
-        ->and(collect($payload['comparisons'])->pluck('past.ingest_state')->unique()->all())->toBe(['summary'])
+        ->and(collect(arrayOf($payload['comparisons']))->pluck('current.ingest_state')->unique()->all())->toBe(['summary'])
+        ->and(collect(arrayOf($payload['comparisons']))->pluck('past.ingest_state')->unique()->all())->toBe(['summary'])
         ->and($payload['fitness_delta_ctl'])->toBeNull()
         ->and($payload['pace_consistency_now'])->toBeNull();
 });
@@ -662,11 +662,11 @@ it('rebuilds the cached trend when planned sessions are added or changed', funct
     expect($builder->payload($user)['comparison_count'])->toBe(1);
 
     $currentSession = PlannedSession::factory()->for($user)->create([
-        'date' => $current->start_date_local->toDateString(),
+        'date' => nonNull($current->start_date_local)->toDateString(),
         'session_type' => SessionType::Tempo,
     ]);
     PlannedSession::factory()->for($user)->create([
-        'date' => $past->start_date_local->toDateString(),
+        'date' => nonNull($past->start_date_local)->toDateString(),
         'session_type' => SessionType::Easy,
     ]);
 

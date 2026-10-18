@@ -46,7 +46,7 @@ it('carries the verdict, its evidence and the supporting readings', function ():
         'fitness_delta_ctl' => 3.2,
         'pace_consistency_now' => 'sangat rata',
         'pace_consistency_then' => 'agak naik-turun',
-    ])->and($trend->toArray()['comparisons'][0]['direction'])->toBe('better');
+    ])->and(data_get($trend->toArray(), 'comparisons.0.direction'))->toBe('better');
 });
 
 it('builds the empty state as an outcome, not an error', function (): void {
