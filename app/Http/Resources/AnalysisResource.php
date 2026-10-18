@@ -27,6 +27,8 @@ class AnalysisResource extends JsonResource
     #[Override]
     public function toArray(Request $request): array
     {
+        assert($this->resource === null || $this->resource instanceof Analysis);
+
         return Analysis::toPayload($this->resource, $this->type, $this->type->subjectType(), $this->subjectId, $this->discriminator);
     }
 }

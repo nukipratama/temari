@@ -203,7 +203,7 @@ abstract class AnalyzeBaseJob implements ShouldQueue
      * before markProcessing, so no `attempts` burn) for ai:self-heal to
      * re-dispatch once generation resumes.
      *
-     * @param  iterable<Analysis>  $rows
+     * @param  iterable<array-key, Analysis>  $rows
      */
     protected function haltForPausedGeneration(AnalysisService $service, iterable $rows): bool
     {

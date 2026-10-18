@@ -77,7 +77,7 @@ class RunQuestionController extends Controller
 
         try {
             // Held from the cap count to the insert, so two concurrent asks can't both pass the cap.
-            return Cache::lock("run-question-cap:{$user->id}:{$activity}", 10)->block(
+            $response = Cache::lock("run-question-cap:{$user->id}:{$activity}", 10)->block(
                 5,
                 function () use ($gate, $ledger, $user, $activity, $question, $detail): JsonResponse {
                     if ($this->atRunCap($user, $activity)) {
@@ -105,6 +105,9 @@ class RunQuestionController extends Controller
                     return $this->created($row);
                 },
             );
+            assert($response instanceof JsonResponse);
+
+            return $response;
         } catch (LockTimeoutException) {
             return response()->json(['error' => 'rate_limited'], 429);
         }
@@ -159,7 +162,7 @@ class RunQuestionController extends Controller
             ->where('user_id', $user->id)
             ->where('activity_id', $activityId)
             ->where('created_at', '>=', Carbon::today())
-            ->count() >= (int) config('ai.run_question_daily_cap_per_run');
+            ->count() >= config()->integer('ai.run_question_daily_cap_per_run');
     }
 
     /**

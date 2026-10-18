@@ -41,6 +41,7 @@ final readonly class SharedProps
     {
         /** @var User|null $user */
         $user = $request->user();
+        $vapidPublicKey = config('webpush.vapid.public_key');
 
         return [
             'auth' => [
@@ -62,7 +63,7 @@ final readonly class SharedProps
                 && ! app(AppConfig::class)->boolean(AppConfigKey::MaintenanceEnabled),
             // Public VAPID key only — the client needs it to subscribe; the private
             // key never leaves the server.
-            'webPushPublicKey' => (string) config('webpush.vapid.public_key'),
+            'webPushPublicKey' => is_string($vapidPublicKey) ? $vapidPublicKey : '',
             'today' => Carbon::today()->toDateString(),
             'planRecalibration' => fn (): array => $this->planRecalibrationFor($user),
             ...$this->gamification->forUser($user),

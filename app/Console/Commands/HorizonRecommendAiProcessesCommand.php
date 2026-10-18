@@ -26,7 +26,7 @@ class HorizonRecommendAiProcessesCommand extends Command
     {
         $athletes = User::query()->notDemo()->count();
         $recommended = self::recommend($athletes);
-        $configured = (int) config('horizon.ai_processes');
+        $configured = config()->integer('horizon.ai_processes');
 
         $this->info("Athletes: {$athletes}");
         $this->info("Recommended HORIZON_AI_PROCESSES: {$recommended}");

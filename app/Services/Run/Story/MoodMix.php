@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Run\Story;
 
 use App\Models\StoryLine;
+use App\Support\Numeric;
 use Illuminate\Support\Carbon;
 
 /**
@@ -38,7 +39,7 @@ final class MoodMix
             ->selectRaw('story_lines.mood as mood, COUNT(*) as c')
             ->groupBy('story_lines.mood')
             ->pluck('c', 'mood')
-            ->map(fn (mixed $count): int => (int) $count)
+            ->map(fn (mixed $count): int => Numeric::int($count))
             ->all();
 
         return self::shape($counts);

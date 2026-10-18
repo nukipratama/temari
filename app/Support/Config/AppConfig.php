@@ -20,6 +20,7 @@ class AppConfig
 
     public const int CACHE_TTL_SECONDS = 60;
 
+    /** @return bool|int|string|null */
     public function get(AppConfigKey $key): mixed
     {
         try {
@@ -34,6 +35,7 @@ class AppConfig
 
         $stored = DB::table(self::TABLE)->where('key', $key->value)->value('value');
 
+        assert($stored === null || is_string($stored));
         $resolved = $stored === null
             ? $key->default()
             : $key->cast(json_decode((string) $stored, true));

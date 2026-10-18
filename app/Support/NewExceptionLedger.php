@@ -160,6 +160,7 @@ final class NewExceptionLedger
      */
     private static function pending(string $key): array
     {
+        /** @var array<string, array{label: string, first_seen: string, count: int}>|null $pending */
         $pending = Cache::get($key);
 
         return is_array($pending) ? $pending : [];

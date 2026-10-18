@@ -33,6 +33,8 @@ use Illuminate\Support\Carbon;
  * {@see PlanRenderer::weekPhasesAndMultipliers()} read it as an isolated
  * week 1 and silently drop whatever Build ramp it is actually deep into, so
  * the prescribed km every verdict is measured against would be wrong.
+ *
+ * @phpstan-import-type Segment from RecommendationRevision
  */
 final readonly class ComplianceScorer
 {
@@ -71,6 +73,7 @@ final readonly class ComplianceScorer
         // A run's own local date can read a calendar day ahead of the server's,
         // for an athlete east of the app's timezone just after their midnight.
         $rangeEnd = $rows->pluck('date')->max();
+        assert($rangeEnd === null || $rangeEnd instanceof Carbon);
         if ($rangeEnd === null || $rangeEnd->lessThan($today)) {
             $rangeEnd = $today;
         }
@@ -329,13 +332,15 @@ final readonly class ComplianceScorer
     private static function concernOf(?array $assessment): string
     {
         $stoppingCeiling = in_array($assessment['ceiling'] ?? null, [ReadinessCeiling::Rest->value, ReadinessCeiling::EasyOnly->value], true);
-        $severe = array_intersect(self::STRONG_CONCERN_REASONS, $assessment['reasons'] ?? []) !== [];
+        /** @var list<string> $reasons */
+        $reasons = $assessment['reasons'] ?? [];
+        $severe = array_intersect(self::STRONG_CONCERN_REASONS, $reasons) !== [];
 
         return $stoppingCeiling && $severe ? 'strong' : 'mild';
     }
 
     /**
-     * @param  list<array<string, mixed>>  $segments
+     * @param  list<Segment>  $segments
      * @return list<SessionSegment>
      */
     private static function segmentsOf(array $segments): array

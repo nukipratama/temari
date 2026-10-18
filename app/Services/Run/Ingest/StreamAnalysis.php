@@ -6,6 +6,7 @@ namespace App\Services\Run\Ingest;
 
 use App\Services\Run\Metrics\IntervalDetector;
 use App\Services\Run\Metrics\PaceFormatter;
+use App\Support\Numeric;
 
 class StreamAnalysis
 {
@@ -123,7 +124,7 @@ class StreamAnalysis
         $altitude = $this->data($streams, 'altitude');
         $distance = $this->data($streams, 'distance');
         $grade = $this->data($streams, 'grade_smooth');
-        $latlng = $this->data($streams, 'latlng');
+        $latlng = $this->samples($streams, 'latlng');
 
         $seconds = self::floats($time);
         $intervals = self::intervals($seconds);
@@ -182,6 +183,18 @@ class StreamAnalysis
      * @return list<float|int>
      */
     private function data(array $streams, string $key): array
+    {
+        /** @var list<float|int> $values */
+        $values = $this->samples($streams, $key);
+
+        return $values;
+    }
+
+    /**
+     * @param  array<string, mixed>  $streams
+     * @return list<mixed>
+     */
+    private function samples(array $streams, string $key): array
     {
         $payload = $streams[$key] ?? null;
         if (! is_array($payload)) {
@@ -606,8 +619,8 @@ class StreamAnalysis
      */
     private function fullKmPaceSec(array $split): ?float
     {
-        $distance = (float) ($split['distance'] ?? 0);
-        $moving = (float) ($split['moving_time'] ?? 0);
+        $distance = Numeric::float($split['distance'] ?? 0);
+        $moving = Numeric::float($split['moving_time'] ?? 0);
 
         if ($distance < self::FULL_KM_MIN_DISTANCE_M || $moving <= 0) {
             return null;
@@ -624,7 +637,7 @@ class StreamAnalysis
     {
         return array_values(array_filter(
             $splits,
-            fn (array $s): bool => (float) ($s['distance'] ?? 0) >= self::FULL_KM_MIN_DISTANCE_M,
+            fn (array $s): bool => Numeric::float($s['distance'] ?? 0) >= self::FULL_KM_MIN_DISTANCE_M,
         ));
     }
 
@@ -645,7 +658,7 @@ class StreamAnalysis
             if ($warmupSplits >= 1 && $warmupTime >= $warmupTarget) {
                 break;
             }
-            $warmupTime += max(0.0, (float) ($split['moving_time'] ?? 0));
+            $warmupTime += max(0.0, Numeric::float($split['moving_time'] ?? 0));
             $warmupSplits++;
         }
 
@@ -716,7 +729,7 @@ class StreamAnalysis
     private static function movingTimeSec(array $splits): float
     {
         return array_sum(array_map(
-            fn (array $split): float => max(0.0, (float) ($split['moving_time'] ?? 0)),
+            fn (array $split): float => max(0.0, Numeric::float($split['moving_time'] ?? 0)),
             $splits,
         ));
     }
@@ -731,7 +744,7 @@ class StreamAnalysis
         $movingSeconds = 0.0;
         $flatEquivalentDistance = 0.0;
         foreach ($splits as $split) {
-            $splitMovingTime = (float) ($split['moving_time'] ?? 0);
+            $splitMovingTime = Numeric::float($split['moving_time'] ?? 0);
             $bpm = $split['average_heartrate'] ?? null;
             if (! is_numeric($bpm)
                 || (float) $bpm < self::HR_PLAUSIBLE_MIN_BPM
@@ -766,8 +779,8 @@ class StreamAnalysis
      */
     private function fullKmGradeAdjustedPaceSec(array $split): ?float
     {
-        $distance = (float) ($split['distance'] ?? 0);
-        $moving = (float) ($split['moving_time'] ?? 0);
+        $distance = Numeric::float($split['distance'] ?? 0);
+        $moving = Numeric::float($split['moving_time'] ?? 0);
         $elevationDifference = $split['elevation_difference'] ?? null;
         if ($distance < self::FULL_KM_MIN_DISTANCE_M || $moving <= 0 || ! is_numeric($elevationDifference)) {
             return null;
@@ -838,7 +851,7 @@ class StreamAnalysis
         }
 
         $analysed = (float) $time[$n] - (float) $time[0];
-        $stopped = (float) ($summary['stopped_time_sec'] ?? 0);
+        $stopped = Numeric::float($summary['stopped_time_sec'] ?? 0);
 
         return ($analysed - $stopped) >= self::DECOUPLING_MIN_MOVING_SEC;
     }
@@ -1040,8 +1053,8 @@ class StreamAnalysis
         if (! is_array($last)) {
             return [];
         }
-        $distance = (float) ($last['distance'] ?? 0);
-        $moving = (float) ($last['moving_time'] ?? 0);
+        $distance = Numeric::float($last['distance'] ?? 0);
+        $moving = Numeric::float($last['moving_time'] ?? 0);
         if ($distance >= self::FULL_KM_MIN_DISTANCE_M || $distance < self::PARTIAL_SPLIT_MIN_DISTANCE_M || $moving <= 0) {
             return [];
         }
@@ -1051,12 +1064,12 @@ class StreamAnalysis
             'pace' => PaceFormatter::format($paceSec),
         ];
         if (isset($last['average_heartrate'])) {
-            $row['avg_hr'] = (int) round((float) $last['average_heartrate']);
+            $row['avg_hr'] = (int) round(Numeric::float($last['average_heartrate']));
         }
         if (isset($last['average_cadence'])) {
-            $row['avg_cadence_spm'] = (int) round((float) $last['average_cadence'] * 2);
+            $row['avg_cadence_spm'] = (int) round(Numeric::float($last['average_cadence']) * 2);
         }
-        $km = (int) ($last['split'] ?? 0);
+        $km = Numeric::int($last['split'] ?? 0);
         if (! isset($row['avg_cadence_spm']) && isset($cadenceByKm[$km])) {
             $row['avg_cadence_spm'] = $cadenceByKm[$km];
         }
@@ -1127,7 +1140,7 @@ class StreamAnalysis
             if (isset($row['avg_cadence_spm'])) {
                 continue;
             }
-            $km = (int) ($row['km'] ?? 0);
+            $km = Numeric::int($row['km'] ?? 0);
             if (isset($cadenceByKm[$km])) {
                 $rows[$i]['avg_cadence_spm'] = $cadenceByKm[$km];
             }
@@ -1153,7 +1166,7 @@ class StreamAnalysis
         if (count($full) < 2) {
             return [];
         }
-        $movingTime = array_sum(array_map(fn (array $s): float => (float) ($s['moving_time'] ?? 0), $full));
+        $movingTime = array_sum(array_map(fn (array $s): float => Numeric::float($s['moving_time'] ?? 0), $full));
         if ($movingTime < self::DECOUPLING_MIN_MOVING_SEC) {
             return [];
         }
@@ -1163,7 +1176,7 @@ class StreamAnalysis
             return [];
         }
 
-        return ['hr_drift_bpm' => round((float) $last - (float) $first, 1)];
+        return ['hr_drift_bpm' => round(Numeric::float($last) - Numeric::float($first), 1)];
     }
 
     /**
@@ -1183,7 +1196,7 @@ class StreamAnalysis
         }
 
         // cadence_drop_spm: how much SPM dropped from start to end (positive = slowed)
-        return ['cadence_drop_spm' => round(((float) $first - (float) $last) * 2, 1)];
+        return ['cadence_drop_spm' => round((Numeric::float($first) - Numeric::float($last)) * 2, 1)];
     }
 
     /**

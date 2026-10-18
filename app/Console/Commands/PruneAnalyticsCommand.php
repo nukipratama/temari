@@ -68,6 +68,7 @@ class PruneAnalyticsCommand extends Command
 
         do {
             $deleted = (clone $expired)->limit(self::CHUNK_SIZE)->delete();
+            assert(is_int($deleted));
             $total += $deleted;
         } while ($deleted === self::CHUNK_SIZE);
 

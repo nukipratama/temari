@@ -86,7 +86,12 @@ class ChainResolver
             ->orderBy('weekly_snapshots.week_ending')
             ->get(['ai_analyses.subject_id', 'weekly_snapshots.user_id', 'weekly_snapshots.week_ending'])
             ->unique('user_id')
-            ->map(fn (Analysis $row): ChainLink => new ChainLink((int) $row->subject_id, (string) $row->getAttribute('week_ending')))
+            ->map(function (Analysis $row): ChainLink {
+                $weekEnding = $row->getAttribute('week_ending');
+                assert(is_string($weekEnding));
+
+                return new ChainLink((int) $row->subject_id, $weekEnding);
+            })
             ->values();
     }
 
@@ -178,6 +183,7 @@ class ChainResolver
         $headId = $this->narratableWeeks($user)
             ->orderByDesc('week_ending')
             ->value('id');
+        assert($headId === null || is_numeric($headId));
 
         return $headId === null ? null : (int) $headId;
     }
@@ -189,13 +195,16 @@ class ChainResolver
      */
     private function monthlyChainHeadMonth(User $user): ?string
     {
-        return Analysis::query()
+        $month = Analysis::query()
             ->where('subject_type', AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE)
             ->where('subject_id', $user->id)
             ->where('analysis_type', AnalysisType::MonthlyRecap)
             ->where('discriminator', '<=', RecapPeriod::lastClosedMonth())
             ->orderByDesc('discriminator')
             ->value('discriminator');
+        assert($month === null || is_string($month));
+
+        return $month;
     }
 
     /** @return Builder<WeeklySnapshot> */

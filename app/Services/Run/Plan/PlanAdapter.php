@@ -146,6 +146,7 @@ final readonly class PlanAdapter
     private function previousWeekAdherencePct(User $user, Carbon $weekStart): int
     {
         [$previousStart, $previousEnd] = self::previousWeekBounds($weekStart);
+        /** @var \Illuminate\Support\Collection<int, int> $scores */
         $scores = PlannedSession::query()
             ->where('user_id', $user->id)
             ->whereBetween('date', [$previousStart->toDateString(), $previousEnd->toDateString()])

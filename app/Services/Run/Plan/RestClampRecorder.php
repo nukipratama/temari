@@ -15,6 +15,7 @@ use App\Services\Run\Metrics\TrainingLoad;
 use App\Services\Run\Metrics\TrainingPaceCalculator;
 use App\Services\Run\Metrics\VdotEstimator;
 use App\Services\Run\Story\BriefingContext;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
 
 /**
@@ -162,12 +163,12 @@ final readonly class RestClampRecorder
         }
 
         $oldClampedKm = $session->clamped_km;
-        $oldDose = $session->readiness_assessment['adjustment']['quality_dose'] ?? null;
+        $oldDose = Arr::get($session->readiness_assessment ?? [], 'adjustment.quality_dose');
         $oldSessionType = $session->clamped_km !== null ? SessionType::Easy : $session->session_type;
         $newSessionType = $adjustment['clamped_km'] !== null ? SessionType::Easy : $session->session_type;
         $session->update($attributes);
 
-        if ($note !== null && ($oldSessionType !== $newSessionType || $oldClampedKm != $adjustment['clamped_km'] || $oldDose != ($assessment['adjustment']['quality_dose'] ?? null))) {
+        if ($note !== null && ($oldSessionType !== $newSessionType || $oldClampedKm != $adjustment['clamped_km'] || $oldDose != Arr::get($assessment, 'adjustment.quality_dose'))) {
             $this->tell($user, $today, $note);
         }
 

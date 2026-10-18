@@ -61,7 +61,7 @@ final readonly class StructuredChatCaller
     ): array {
         $options ??= new ChatCallOptions();
         $startedAt = microtime(true);
-        $effectiveMaxTokens = $options->maxTokens ?? (int) config('azure_openai.max_completion_tokens');
+        $effectiveMaxTokens = $options->maxTokens ?? config()->integer('azure_openai.max_completion_tokens');
         $deployment = $this->azure->deploymentFor($kind);
         $toolbox = $options->toolbox !== null && ! $options->toolbox->isEmpty() ? $options->toolbox : null;
         $budget = AgentBudget::fromConfig($options->maxSteps, $options->deadlineSeconds);
@@ -219,6 +219,7 @@ final readonly class StructuredChatCaller
         if (! is_array($decoded)) {
             throw new UnavailableException('Azure OpenAI structured output not an object');
         }
+        /** @var array<string, mixed> $decoded */
 
         $missingLabel = $this->missingKeyLabel($decoded, $requiredKeys, $propertySchema);
         if ($missingLabel !== null) {

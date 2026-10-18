@@ -8,6 +8,7 @@ use App\Enums\SessionType;
 use App\Models\Activity;
 use App\Models\PlannedSession;
 use App\Models\User;
+use App\Services\Run\Metrics\Readiness;
 use App\Services\Run\Metrics\ReadinessCeiling;
 use App\Services\Run\Metrics\TrainingLoad;
 use App\Services\Run\Story\BriefingContext;
@@ -21,6 +22,8 @@ use Illuminate\Support\Carbon;
  * day's own runs, so it moves as the day goes on — and a clamp that has since
  * lifted should not be narrated at all. That is also why the row it backs is
  * fingerprinted coarsely; see {@see self::fingerprint()}.
+ *
+ * @phpstan-import-type Assessment from Readiness
  */
 final readonly class ClampNarrationContext
 {
@@ -29,7 +32,7 @@ final readonly class ClampNarrationContext
     }
 
     /**
-     * @param  array<string, mixed>|null  $liveAssessment  the day's live readiness assessment when the caller already built it
+     * @param  Assessment|null  $liveAssessment  the day's live readiness assessment when the caller already built it
      * @return array{ceiling: ReadinessCeiling, original: SessionType, clamped_to: SessionType, has_run_today: bool, readiness_reasons: list<string>, readiness_inputs: array<string, mixed>, decision_source: string}|null
      *                                                                                                                   null when the day has no session, or already fits under the ceiling
      */
@@ -52,6 +55,7 @@ final readonly class ClampNarrationContext
         $recordedAssessment = $session->readiness_assessment;
         $hasRecordedAdjustment = $session->clamped_km !== null;
         if ($hasRecordedAdjustment && is_array($recordedAssessment) && is_string($recordedAssessment['ceiling'] ?? null)) {
+            /** @var Assessment $assessment */
             $assessment = $recordedAssessment;
             $decisionSource = 'recorded';
         } else {

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Livewire\Pulse;
 
+use Illuminate\Support\Collection;
 use App\Models\AI\Analysis;
 use App\Services\AI\AnalysisStatus;
 use Illuminate\Contracts\Support\Renderable;
@@ -26,6 +27,7 @@ class SelfHealAttempts extends Card
     {
         $max = Analysis::MAX_SELF_HEAL_ATTEMPTS;
 
+        /** @var Collection<int, int> $byAttempt */
         $byAttempt = Analysis::query()
             ->where('status', AnalysisStatus::Failed)
             ->selectRaw('attempts, COUNT(*) as total')
@@ -51,6 +53,7 @@ class SelfHealAttempts extends Card
         $deadLettered = collect($byAttempt)
             ->filter(fn (int $total, int $attempts): bool => $attempts >= $max)
             ->sum();
+        assert(is_int($deadLettered));
         $buckets[] = ['label' => 'dead-letter', 'count' => (int) $deadLettered, 'tone' => 'alert'];
 
         return View::make('livewire.pulse.self-heal-attempts', [

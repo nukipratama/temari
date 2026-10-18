@@ -25,6 +25,6 @@ class SeenPushSubscriptionRequest extends FormRequest
 
     public function endpoint(): string
     {
-        return (string) $this->validated('endpoint');
+        return $this->safe()->string('endpoint')->toString();
     }
 }

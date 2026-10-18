@@ -181,7 +181,11 @@ class RunController extends Controller
             $summary = Arr::except($summary, self::UNREAD_STREAM_SUMMARY_KEYS);
             if (is_array($summary['per_km'] ?? null)) {
                 $summary['per_km'] = array_map(
-                    fn (array $km): array => Arr::except($km, self::UNREAD_PER_KM_KEYS),
+                    function (mixed $km): array {
+                        assert(is_array($km));
+
+                        return Arr::except($km, self::UNREAD_PER_KM_KEYS);
+                    },
                     $summary['per_km'],
                 );
             }

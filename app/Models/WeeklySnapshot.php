@@ -167,10 +167,13 @@ class WeeklySnapshot extends Model
      */
     public static function latestFormStatus(int $userId): ?TrainingFormStatus
     {
-        return self::query()
+        $status = self::query()
             ->where('user_id', $userId)
             ->orderByDesc('week_ending')
             ->value('form_status');
+        assert($status === null || $status instanceof TrainingFormStatus);
+
+        return $status;
     }
 
     /**

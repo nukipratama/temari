@@ -51,7 +51,7 @@ class VerifyDependencies
                 $readBack = $redis->get($sentinel);
                 $redis->del($sentinel);
 
-                if ((string) $readBack !== '1') {
+                if (! is_scalar($readBack) || (string) $readBack !== '1') {
                     throw new RuntimeException('sentinel read-back mismatch');
                 }
             } catch (Throwable $e) {

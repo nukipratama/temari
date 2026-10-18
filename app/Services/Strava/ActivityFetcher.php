@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Services\Strava;
 
+use Illuminate\Support\Collection;
 use App\Enums\StravaReadSource;
 use App\Models\Activity;
 use App\Models\StravaConnection;
+use App\Support\Numeric;
 use Carbon\CarbonImmutable;
 
 class ActivityFetcher
@@ -59,12 +61,12 @@ class ActivityFetcher
         ?int $before = null,
         ?int $maxPages = null,
     ): array {
-        $existing = Activity::query()
+        /** @var Collection<int, int|string> $externalIds */
+        $externalIds = Activity::query()
             ->withStubs()
             ->where('user_id', $connection->user_id)
-            ->pluck('strava_external_id')
-            ->map(fn (int|string $id): int => (int) $id)
-            ->all();
+            ->pluck('strava_external_id');
+        $existing = $externalIds->map(fn (int|string $id): int => (int) $id)->all();
         $existingSet = array_flip($existing);
         $windowStart = CarbonImmutable::now()->subDays(self::DISCOVERY_WINDOW_DAYS);
 
@@ -101,7 +103,7 @@ class ActivityFetcher
         }
 
         // Strava paginates newest-first; reverse so the caller stores oldest-first.
-        usort($summaries, fn (array $a, array $b): int => (int) $a['id'] <=> (int) $b['id']);
+        usort($summaries, fn (array $a, array $b): int => Numeric::int($a['id']) <=> Numeric::int($b['id']));
 
         return ['summaries' => $summaries, 'api_calls' => $apiCalls, 'resume_before' => $resumeBefore];
     }
@@ -133,7 +135,7 @@ class ActivityFetcher
     private function collectNewSummaries(array $items, array $existingSet, CarbonImmutable $windowStart, ?CarbonImmutable $since, array &$summaries, bool $stopOnKnown): bool
     {
         foreach ($items as $item) {
-            $id = (int) ($item['id'] ?? 0);
+            $id = Numeric::int($item['id'] ?? 0);
             if ($id <= 0) {
                 continue;
             }

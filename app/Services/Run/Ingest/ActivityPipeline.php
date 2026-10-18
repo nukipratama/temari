@@ -109,6 +109,7 @@ class ActivityPipeline
 
             return;
         }
+        /** @var array<string, mixed> $detail */
 
         if (RunSportType::isExplicitlyNotRun($detail)) {
             $this->rejectNonRunUpload($activity, $detail);
@@ -258,8 +259,12 @@ class ActivityPipeline
                     'key_by_type' => 'true',
                 ])
                 ->json();
+            if (! is_array($streams)) {
+                return null;
+            }
+            /** @var array<string, mixed> $streams */
 
-            return is_array($streams) ? $streams : null;
+            return $streams;
         } catch (StravaRateLimitedException|StravaCircuitOpenException $e) {
             // The detail is already stored; re-queue the job rather than
             // silently drop the streams.
@@ -348,12 +353,12 @@ class ActivityPipeline
         // or a Strava sync with custom zones), so compare against the effective
         // default too — keying off the row alone would leave that majority
         // never corrected.
-        $currentMax = $profile->max_hr ?? (int) config('runner.max_hr');
+        $currentMax = $profile->max_hr ?? config()->integer('runner.max_hr');
         if ($observed <= $currentMax) {
             return;
         }
 
-        $restingHr = $profile->resting_hr ?? (int) config('runner.resting_hr');
+        $restingHr = $profile->resting_hr ?? config()->integer('runner.resting_hr');
 
         if ($profile === null) {
             $user->runnerProfile()->create([
@@ -361,7 +366,7 @@ class ActivityPipeline
                 'max_hr' => $observed,
                 'resting_hr' => $restingHr,
                 'hr_zones' => HeartRateZones::derive($observed, $restingHr),
-                'optimal_cadence_spm' => (int) config('runner.optimal_cadence_spm'),
+                'optimal_cadence_spm' => config()->integer('runner.optimal_cadence_spm'),
             ]);
 
             // The relation cached a null before the row existed.
@@ -394,6 +399,7 @@ class ActivityPipeline
             ->where('activities.user_id', $user->id)
             ->whereBetween('activity_details.max_heartrate', [HeartRateZones::MIN_MAX_HR, HeartRateZones::MAX_MAX_HR])
             ->max('activity_details.max_heartrate');
+        assert($max === null || is_numeric($max));
 
         return $max === null ? null : (int) round((float) $max);
     }

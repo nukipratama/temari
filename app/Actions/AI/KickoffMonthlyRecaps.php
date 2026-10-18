@@ -48,8 +48,9 @@ class KickoffMonthlyRecaps
         $lastClosedMonth = RecapPeriod::lastClosedMonth();
         $oldestRealMonth = $this->ages->cutoffMonth();
 
-        $stagger = (int) config('ai.backfill_stagger_seconds', 360);
+        $stagger = config()->integer('ai.backfill_stagger_seconds', 360);
 
+        /** @var Collection<int, int|string> $userIds */
         $userIds = $this->activeUsers->query()
             ->when($userId !== null, fn (Builder $query): Builder => $query->whereKey($userId))
             ->pluck('id');
@@ -129,12 +130,14 @@ class KickoffMonthlyRecaps
      */
     private function completedMonthsNotDone(int $userId, string $lastClosedMonth): Collection
     {
+        /** @var Collection<int, string> $months */
         $months = ActivityDetail::query()
             ->whereHas('activity', fn ($query) => $query->where('user_id', $userId))
             ->whereNotNull('start_date_local')
             ->selectRaw("DISTINCT DATE_FORMAT(start_date_local, '%Y-%m') as month")
             ->orderBy('month')
-            ->pluck('month')
+            ->pluck('month');
+        $months = $months
             ->filter(fn (string $month): bool => $month <= $lastClosedMonth)
             ->values();
 

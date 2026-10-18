@@ -15,6 +15,9 @@ use Illuminate\Support\Carbon;
  * The range a Trends narration is about — just `7d` since #967 (was
  * 7d/30d/90d/12mo), read as of now. The comparison is against the
  * immediately preceding 7-day period.
+ *
+ * @phpstan-type PeriodTotals array{runs: int, distance_km: float, trimp_total: float|null}
+ * @phpstan-type RangeTotals array{range: string, current: PeriodTotals, comparison: PeriodTotals, ctl_start: float|null, ctl_end: float|null, vdot_start: float|null, vdot_end: float|null, avg_monotony: float|null, avg_strain: float|null}
  */
 final class TrendRangeTool extends NoArgumentTool
 {
@@ -43,7 +46,7 @@ final class TrendRangeTool extends NoArgumentTool
             .'where the underlying week is unscored, which is not the same as zero.';
     }
 
-    /** @return array<string, mixed> */
+    /** @return RangeTotals */
     public function handle(array $arguments): array
     {
         $days = self::RANGE_DAYS[$this->range];
@@ -99,6 +102,7 @@ final class TrendRangeTool extends NoArgumentTool
         $value = $ascending
             ? $query->where('snapshot_date', '>=', $date->toDateString())->orderBy('snapshot_date')->value('vdot')
             : $query->where('snapshot_date', '<=', $date->toDateString())->orderByDesc('snapshot_date')->value('vdot');
+        assert($value === null || is_numeric($value));
 
         return $value === null ? null : (float) $value;
     }

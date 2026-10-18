@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Services\Run\Plan\ComplianceScorer;
 use App\Services\Run\Plan\PlanReconciliationService;
 use App\Services\Ops\MaintainerAlerter;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 use Illuminate\Console\Attributes\Description;
@@ -41,6 +42,7 @@ class ScoreComplianceCommand extends Command
         $userOption = $this->option('user');
         $limit = (int) $this->option('limit');
 
+        /** @var Collection<int, int|string> $userIds */
         $userIds = PlannedSession::query()
             ->where('status', PlannedSessionStatus::Planned)
             ->where('date', '<', $today->toDateString())

@@ -179,13 +179,17 @@ class PostRunSpeechNarrator
                 validator: function (array $answer) use ($tools, $verdict, &$facts): ?string {
                     $facts ??= self::facts($tools);
 
-                    return SpeechFactCheck::complaint((string) $answer['speech'], $facts, $verdict);
+                    assert(is_string($answer['speech']));
+
+                    return SpeechFactCheck::complaint($answer['speech'], $facts, $verdict);
                 },
                 deadlineSeconds: $deadlineSeconds,
             ),
         );
 
-        return (string) $decoded['speech'];
+        assert(is_string($decoded['speech']));
+
+        return $decoded['speech'];
     }
 
     /**

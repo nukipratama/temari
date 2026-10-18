@@ -122,10 +122,13 @@ class DetectActivityMilestonesAction
     {
         // "Before" keys on start_date_local, not Activity.id: Strava history can
         // sync out of chronological order (e.g. a year-long backfill).
-        return ActivityDetail::query()
+        $longest = ActivityDetail::query()
             ->whereHas('activity', fn ($q) => $q->where('user_id', $activity->user_id)->where('id', '!=', $activity->id))
             ->where('start_date_local', '<', $detail->start_date_local)
             ->max('distance');
+        assert($longest === null || is_float($longest) || is_int($longest));
+
+        return $longest;
     }
 
     /**

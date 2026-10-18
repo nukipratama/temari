@@ -31,7 +31,7 @@ class StoreFeedbackRequest extends FormRequest
 
         $subject = $this->subjectType();
 
-        return $subject === null || $subject->isOwnedBy($user, (int) $this->input('subject_id'));
+        return $subject === null || $subject->isOwnedBy($user, $this->integer('subject_id'));
     }
 
     /**
@@ -63,12 +63,12 @@ class StoreFeedbackRequest extends FormRequest
 
     public function subject(): FeedbackSubject
     {
-        return FeedbackSubject::from((string) $this->validated('subject_type'));
+        return FeedbackSubject::from($this->safe()->string('subject_type')->toString());
     }
 
     public function note(): ?string
     {
-        $note = trim((string) $this->validated('note'));
+        $note = trim($this->safe()->string('note')->toString());
 
         return $note === '' ? null : $note;
     }

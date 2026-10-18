@@ -69,6 +69,7 @@ class VerdictTimeline implements VerdictNarrator
             return [];
         }
 
+        /** @var \Illuminate\Support\Collection<int, string|null> $speechByActivity */
         $speechByActivity = Analysis::query()
             ->where('subject_type', Activity::class)
             ->where('analysis_type', AnalysisType::PostRunSpeech)

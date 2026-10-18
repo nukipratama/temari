@@ -10,6 +10,7 @@ use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
 
 #[Signature('intervals-icu:sync')]
 #[Description("Queue a sync of today's workout to intervals.icu for every athlete with a working connection")]
@@ -17,6 +18,7 @@ class SyncCommand extends Command
 {
     public function handle(): int
     {
+        /** @var Collection<int, int|string> $userIds */
         $userIds = User::query()
             ->notDemo()
             ->whereHas('intervalsIcuConnection', fn (Builder $query): Builder => $query->whereNull('broken_at'))

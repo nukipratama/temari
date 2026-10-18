@@ -9,6 +9,7 @@ use App\Models\ActivityDetail;
 use App\Models\PersonalRecord;
 use App\Models\StoryLine;
 use App\Enums\SessionType;
+use App\Services\AI\Agent\Tools\TrendRangeTool;
 use App\Services\Run\Metrics\ReadinessCeiling;
 use App\Services\Run\Metrics\SessionIntent;
 use App\Services\Run\Metrics\StreamSummary;
@@ -25,6 +26,8 @@ use App\Enums\Mood;
  * real correction (a shifted split, a mood flip) does. Cross-activity inputs
  * (training load, 28-day baseline, chain continuity) are deliberately excluded:
  * they move on their own from other runs and aren't a signal that THIS run changed.
+ *
+ * @phpstan-import-type RangeTotals from TrendRangeTool
  */
 final class MaterialFingerprint
 {
@@ -47,7 +50,7 @@ final class MaterialFingerprint
      * precision. A scheduled re-read only spends its cadence when one of those
      * figures has actually moved.
      *
-     * @param  array<string, mixed>  $totals
+     * @param  RangeTotals  $totals
      * @param  array<string, mixed>  $adherence
      */
     public static function forTrendRead(array $totals, array $adherence = []): string
@@ -71,6 +74,9 @@ final class MaterialFingerprint
      */
     private static function roundedAdherence(array $adherence): array
     {
+        $meanCompliance = $adherence['mean_compliance'] ?? null;
+        assert($meanCompliance === null || is_int($meanCompliance) || is_float($meanCompliance));
+
         return [
             'prescribed' => $adherence['prescribed'] ?? null,
             'done' => $adherence['done'] ?? null,
@@ -79,7 +85,7 @@ final class MaterialFingerprint
             'overreached' => $adherence['overreached'] ?? null,
             'excused' => $adherence['excused'] ?? null,
             'ran_anyway' => $adherence['ran_anyway'] ?? null,
-            'mean_compliance' => self::bucket($adherence['mean_compliance'] ?? null),
+            'mean_compliance' => self::bucket($meanCompliance),
         ];
     }
 
@@ -161,10 +167,13 @@ final class MaterialFingerprint
 
     private static function mood(Activity $activity): ?Mood
     {
-        return StoryLine::query()
+        $mood = StoryLine::query()
             ->where('activity_id', $activity->id)
             ->where('kind', StoryLine::KIND_POST_RUN)
             ->value('mood');
+        assert($mood === null || $mood instanceof Mood);
+
+        return $mood;
     }
 
     /** Round to the nearest $step (default 1), or null. */

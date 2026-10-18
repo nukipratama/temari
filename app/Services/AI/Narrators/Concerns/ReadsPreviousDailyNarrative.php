@@ -26,7 +26,7 @@ trait ReadsPreviousDailyNarrative
      */
     private function previousDailyNarrative(string $subjectType, int $userId, AnalysisType $kind, Carbon $currentDay): ?string
     {
-        return Analysis::query()
+        $content = Analysis::query()
             ->where('subject_type', $subjectType)
             ->where('subject_id', $userId)
             ->where('analysis_type', $kind)
@@ -34,5 +34,8 @@ trait ReadsPreviousDailyNarrative
             ->where('discriminator', '<', $currentDay->toDateString())
             ->orderByDesc('discriminator')
             ->value('content');
+        assert($content === null || is_string($content));
+
+        return $content;
     }
 }

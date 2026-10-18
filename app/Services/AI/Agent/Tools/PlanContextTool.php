@@ -24,6 +24,7 @@ use App\Services\Run\Plan\TimeTrial;
 use App\Services\Run\Plan\SegmentGenerator;
 use App\Services\Run\Plan\TrainingBaseline;
 use App\Services\Run\Plan\WeekPlanBuilder;
+use Carbon\CarbonInterface;
 use Illuminate\Support\Carbon;
 
 /**
@@ -217,6 +218,7 @@ final class PlanContextTool extends UserTool
             if ($startDateLocal === null) {
                 continue;
             }
+            assert(is_string($startDateLocal) || $startDateLocal instanceof CarbonInterface);
             $startedAt = Carbon::parse((string) $startDateLocal);
             $date = $startedAt->toDateString();
             $runsByDate[$date][] = [

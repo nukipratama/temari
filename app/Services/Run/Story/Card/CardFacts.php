@@ -14,6 +14,7 @@ use App\Services\Run\Metrics\PaceCalculator;
 use App\Services\Run\Metrics\PaceFormatter;
 use App\Services\Run\Metrics\StreamSummary;
 use App\Services\Run\Story\BadgeEvaluator;
+use App\Support\Numeric;
 
 /**
  * Everything a card prints, resolved once server-side and shipped with the run
@@ -94,7 +95,7 @@ final readonly class CardFacts
             dateShort: $detail?->start_date_local?->format('d.m.y') ?? '',
             clock: $detail?->start_date_local?->format('H:i') ?? '',
             badges: self::badgeNames($card->badges ?? []),
-            serial: sprintf('TMR-%04d', (int) $card->getKey()),
+            serial: sprintf('TMR-%04d', Numeric::int($card->getKey())),
             polyline: $polyline,
             raceName: $isRace ? mb_strtoupper(trim($detail->name ?? '') ?: 'race') : null,
             raceDistance: $isRace ? self::raceDistanceLabel($distance) : null,
@@ -247,8 +248,8 @@ final readonly class CardFacts
             $seconds = 0;
             $lastKm = 0;
             foreach ($chunk as $row) {
-                $seconds += (int) ($row['elapsed_sec'] ?? 0);
-                $lastKm = (int) ($row['km'] ?? $lastKm);
+                $seconds += Numeric::int($row['elapsed_sec'] ?? 0);
+                $lastKm = Numeric::int($row['km'] ?? $lastKm);
             }
             $splits[] = [$lastKm.'K', DurationFormatter::hms($seconds)];
         }
@@ -266,8 +267,8 @@ final readonly class CardFacts
     private static function paceProfile(?ActivityDetail $detail): array
     {
         $seconds = array_values(array_map(
-            fn (array $row): int => (int) ($row['elapsed_sec'] ?? 0),
-            array_filter(self::perKm($detail), fn (array $row): bool => (int) ($row['elapsed_sec'] ?? 0) > 0),
+            fn (array $row): int => Numeric::int($row['elapsed_sec'] ?? 0),
+            array_filter(self::perKm($detail), fn (array $row): bool => Numeric::int($row['elapsed_sec'] ?? 0) > 0),
         ));
         if (count($seconds) < 3) {
             return [];

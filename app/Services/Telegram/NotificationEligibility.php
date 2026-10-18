@@ -53,7 +53,7 @@ class NotificationEligibility
             return true;
         }
 
-        $maxDays = (int) config('services.telegram.notify_max_age_days');
+        $maxDays = config()->integer('services.telegram.notify_max_age_days');
 
         return $reference->diffInDays($triggeredAt ?? Carbon::now(), absolute: true) <= $maxDays;
     }
@@ -73,6 +73,7 @@ class NotificationEligibility
         };
     }
 
+    /** @param  Carbon|string|null  $date */
     private function carbonOrNull(mixed $date): ?Carbon
     {
         return $date === null ? null : Carbon::parse($date);

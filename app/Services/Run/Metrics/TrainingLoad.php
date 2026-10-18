@@ -12,9 +12,13 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
+/**
+ * @phpstan-type Range array{low: float, high: float}
+ * @phpstan-type LoadSummary array{weekly_trimp: float|null, weekly_trimp_range: Range|null, weekly_trimp_reference: Range|null, atl_7d: float, ctl_42d: float, form: float, form_status: TrainingFormStatus|null, form_known_from: string, monotony: float|null, monotony_range: Range|null, strain: float|null, strain_range: Range|null}
+ */
 class TrainingLoad
 {
-    /** @var array<string, array<string, mixed>|null> */
+    /** @var array<string, LoadSummary|null> */
     private array $summaryMemo = [];
 
     /** Time constants (days) for the EWMA decay. */
@@ -57,7 +61,7 @@ class TrainingLoad
      * @param  int  $windowDays  the trailing window `weekly_trimp`/monotony/strain
      *                           are computed over. ATL/CTL/form are EWMA time
      *                           constants and never move with it.
-     * @return array<string, mixed>|null
+     * @return LoadSummary|null
      */
     public function summary(User $user, ?Carbon $asOf = null, int $windowDays = 7): ?array
     {
@@ -69,13 +73,16 @@ class TrainingLoad
         }
 
         // Wrapped so a null summary is cached too: Cache::remember treats a bare null as a miss.
-        return $this->summaryMemo[$cacheKey] = Cache::remember($cacheKey, self::SUMMARY_CACHE_SECONDS, function () use ($user, $today, $windowDays): array {
+        /** @var array{summary: LoadSummary|null} $cached */
+        $cached = Cache::remember($cacheKey, self::SUMMARY_CACHE_SECONDS, function () use ($user, $today, $windowDays): array {
             ['trimp' => $dailyTrimp, 'runDays' => $runDays] = $this->loadDailyHistory($user, $today);
 
             return ['summary' => $dailyTrimp === []
                 ? null
                 : $this->summaryFromDailyMap($dailyTrimp, $runDays, $today, windowDays: $windowDays)];
-        })['summary'];
+        });
+
+        return $this->summaryMemo[$cacheKey] = $cached['summary'];
     }
 
     /**
@@ -88,7 +95,7 @@ class TrainingLoad
      * @param  array<string, float>  $dailyTrimp  scored days only
      * @param  array<string, true>  $runDays  every day the runner logged a run, scored or not
      * @param  array<string, array{0: float, 1: float}>|null  $loadSeries  {@see rollDailySeries} of the same $dailyTrimp, rolled through at least $loadAsOf
-     * @return array<string, mixed>|null
+     * @return LoadSummary|null
      */
     public function summaryFromDailyMap(array $dailyTrimp, array $runDays, Carbon $asOf, ?Carbon $loadAsOf = null, int $windowDays = 7, ?array $loadSeries = null): ?array
     {

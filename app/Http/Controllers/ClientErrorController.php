@@ -22,6 +22,7 @@ class ClientErrorController extends Controller
 
     public function __invoke(ReportClientErrorRequest $request): Response
     {
+        /** @var array{message: string, stack?: string|null, url?: string|null, componentStack?: string|null} $validated */
         $validated = $request->validated();
 
         Log::channel('client-errors')->warning('client-error', [

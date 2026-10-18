@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Run;
 
+use Illuminate\Support\Collection;
 use App\Http\Requests\FeedFilterRequest;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
@@ -63,6 +64,7 @@ class FeedQuery
         // Sunday counts whatever time the run started.
         $weekEnd = $filters->week?->copy()->addDay();
 
+        /** @var Collection<int, Carbon> $dates */
         $dates = ActivityDetail::query()
             ->forUser($user->id)
             ->whereNotNull('start_date_local')
@@ -139,6 +141,7 @@ class FeedQuery
             ->forUser($user->id)
             ->whereNotNull('start_date_local')
             ->max('start_date_local');
+        assert($latestDate === null || is_string($latestDate));
 
         if ($latestDate === null) {
             return null;

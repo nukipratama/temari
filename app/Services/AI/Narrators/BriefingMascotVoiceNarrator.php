@@ -368,7 +368,8 @@ class BriefingMascotVoiceNarrator
     {
         $asOf ??= Carbon::today();
         $context = $this->context($user, $asOf);
-        $ceiling = ReadinessCeiling::from((string) $context['readiness_ceiling']);
+        assert(is_string($context['readiness_ceiling']));
+        $ceiling = ReadinessCeiling::from($context['readiness_ceiling']);
         $postRun = $context['ran_today'] === true && $this->hasDetailedRunToday($user, $asOf);
         $systemPrompt = $postRun
             ? PlanVerdictRule::into(self::POST_RUN_SYSTEM_PROMPT)
@@ -391,7 +392,8 @@ class BriefingMascotVoiceNarrator
             ),
         );
 
-        $sessionType = ReadinessCeiling::tryFrom((string) $decoded['session_type']);
+        assert(is_string($decoded['session_type']) && is_string($decoded['mascot_voice']));
+        $sessionType = ReadinessCeiling::tryFrom($decoded['session_type']);
         if ($postRun && $sessionType !== ReadinessCeiling::Rest) {
             Log::warning('narrator.briefing.post_run_session_violation', [
                 'user_id' => $user->id,
@@ -414,7 +416,7 @@ class BriefingMascotVoiceNarrator
         $today = $this->plannedToday($user, $asOf);
 
         return $this->citations->keepResolving(
-            (string) $decoded['mascot_voice'],
+            $decoded['mascot_voice'],
             fn (string $anchor): bool => $this->dayAnchors->resolves($anchor, $today),
             'briefing_mascot_voice',
         );

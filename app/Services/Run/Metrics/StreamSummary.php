@@ -54,7 +54,10 @@ final readonly class StreamSummary
      */
     public function zonePct(): array
     {
-        return $this->array('time_in_zone_pct') ?? [];
+        /** @var array<string, float|int>|null $zonePct */
+        $zonePct = $this->array('time_in_zone_pct');
+
+        return $zonePct ?? [];
     }
 
     /**
@@ -64,7 +67,10 @@ final readonly class StreamSummary
      */
     public function zoneMinutes(): ?array
     {
-        return $this->array('time_in_zone_min');
+        /** @var array<string, float|int>|null $zoneMinutes */
+        $zoneMinutes = $this->array('time_in_zone_min');
+
+        return $zoneMinutes;
     }
 
     /**
@@ -126,7 +132,10 @@ final readonly class StreamSummary
      */
     public function perKm(): ?array
     {
-        return $this->array('per_km');
+        /** @var array<int, array<string, mixed>>|null $perKm */
+        $perKm = $this->array('per_km');
+
+        return $perKm;
     }
 
     /**
@@ -138,7 +147,10 @@ final readonly class StreamSummary
      */
     public function laps(): ?array
     {
-        return $this->array('laps');
+        /** @var array<int, array<string, mixed>>|null $laps */
+        $laps = $this->array('laps');
+
+        return $laps;
     }
 
     /**
@@ -215,7 +227,10 @@ final readonly class StreamSummary
      */
     public function cadenceDistributionPct(): array
     {
-        return $this->array('cadence_distribution_pct') ?? [];
+        /** @var array<string, float|int>|null $cadenceDistributionPct */
+        $cadenceDistributionPct = $this->array('cadence_distribution_pct');
+
+        return $cadenceDistributionPct ?? [];
     }
 
     public function maxGradePct(): ?float

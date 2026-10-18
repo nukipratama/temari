@@ -37,6 +37,6 @@ class StoreRecordStampRequest extends FormRequest
 
     public function recordKey(): string
     {
-        return (string) $this->validated('record_key');
+        return $this->safe()->string('record_key')->toString();
     }
 }

@@ -25,6 +25,7 @@ class NarrationOverviewController extends Controller
 
     public function show(ShowNarrationOverviewRequest $request): Response
     {
+        /** @var array{range?: string, from?: string, to?: string, kind?: string, origin?: string, athlete?: int|string} $validated */
         $validated = $request->validated();
 
         [$range, $from, $to] = $this->resolveRange($validated);

@@ -50,7 +50,10 @@ final readonly class Cooldown
      */
     public function attempt(): bool
     {
-        return RateLimiter::attempt($this->key, 1, fn (): bool => true, $this->window);
+        $attempted = RateLimiter::attempt($this->key, 1, fn (): bool => true, $this->window);
+        assert(is_bool($attempted));
+
+        return $attempted;
     }
 
     /**
@@ -96,7 +99,9 @@ final readonly class Cooldown
             $timerKeys[$key] = RateLimiter::cleanRateLimiterKey($key).':timer';
         }
 
-        $availableAt = Cache::driver(config('cache.limiter'))->many(array_values($timerKeys));
+        $limiterStore = config('cache.limiter');
+        assert($limiterStore === null || is_string($limiterStore));
+        $availableAt = Cache::driver($limiterStore)->many(array_values($timerKeys));
         $now = Carbon::now()->getTimestamp();
 
         $remaining = [];

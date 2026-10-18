@@ -53,10 +53,15 @@ class ResolveRecentStreamSummariesAction
             ->orderBy('id')
             ->toBase()
             ->get(['start_date_local', 'stream_summary'])
-            ->map(fn (stdClass $row): array => [
-                'started_at' => (string) $row->start_date_local,
-                'summary' => StreamSummary::fromArray(json_decode($row->stream_summary, true)),
-            ])
+            ->map(function (stdClass $row): array {
+                /** @var array<string, mixed>|null $summary */
+                $summary = json_decode($row->stream_summary, true);
+
+                return [
+                    'started_at' => (string) $row->start_date_local,
+                    'summary' => StreamSummary::fromArray($summary),
+                ];
+            })
             ->all();
 
         return array_values($rows);

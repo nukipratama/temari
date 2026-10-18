@@ -37,8 +37,8 @@ class AzureCallThrottle
 
     public function block(): void
     {
-        $maxPerMinute = max(1, (int) config('ai.azure_calls_per_minute'));
-        $blockCapSeconds = max(1, (int) config('ai.azure_block_cap_seconds'));
+        $maxPerMinute = max(1, config()->integer('ai.azure_calls_per_minute'));
+        $blockCapSeconds = max(1, config()->integer('ai.azure_block_cap_seconds'));
         $waited = 0;
 
         while (! RateLimiter::attempt(self::KEY, $maxPerMinute, fn (): bool => true, 60)) {

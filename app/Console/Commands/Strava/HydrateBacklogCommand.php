@@ -78,12 +78,13 @@ class HydrateBacklogCommand extends Command
     /** Reads no Strava data, so it runs ahead of the kill-switch and headroom checks. */
     private function rollDirtyWeeksForward(): void
     {
-        User::query()
+        /** @var Collection<int, int|string> $userIds */
+        $userIds = User::query()
             ->notDemo()
             ->whereNotNull('weekly_snapshots_dirty_from')
             ->orderBy('id')
-            ->pluck('id')
-            ->each(fn (mixed $id) => RollWeeklySnapshotsForwardJob::dispatch((int) $id));
+            ->pluck('id');
+        $userIds->each(fn (int|string $id) => RollWeeklySnapshotsForwardJob::dispatch((int) $id));
     }
 
     /**
@@ -110,14 +111,15 @@ class HydrateBacklogCommand extends Command
      */
     private function usersWithBacklog(): Collection
     {
-        return User::query()
+        /** @var Collection<int, int|string> $userIds */
+        $userIds = User::query()
             ->where('is_demo', false)
             ->whereHas('stravaConnection', fn ($query) => $query->whereNull('revoked_at'))
             ->whereHas('activities', $this->hydratable(...))
             ->orderBy('id')
-            ->pluck('id')
-            ->map(fn (mixed $id): int => (int) $id)
-            ->values();
+            ->pluck('id');
+
+        return $userIds->map(fn (int|string $id): int => (int) $id)->values();
     }
 
     /**
@@ -138,7 +140,8 @@ class HydrateBacklogCommand extends Command
      */
     public function hydrateFor(DetailHydrator $hydrator, int $userId, int $take, bool $recentFirst = false): int
     {
-        return Activity::query()
+        /** @var Collection<int, int|string> $activityIds */
+        $activityIds = Activity::query()
             ->where('user_id', $userId)
             ->tap($this->hydratable(...))
             ->when($recentFirst, fn (Builder $query) => $query->orderByRaw(
@@ -152,9 +155,9 @@ class HydrateBacklogCommand extends Command
                     ->whereColumn('activity_details.activity_id', 'activities.id')
             )
             ->limit($take)
-            ->pluck('id')
-            ->filter(fn (mixed $id): bool => $hydrator->hydrate((int) $id))
-            ->count();
+            ->pluck('id');
+
+        return $activityIds->filter(fn (int|string $id): bool => $hydrator->hydrate((int) $id))->count();
     }
 
     /**

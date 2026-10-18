@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Run\Story;
 
 use App\Models\ActivityDetail;
+use App\Support\Numeric;
 
 /**
  * The km-by-km duel inside {@see \App\Http\Controllers\RunController}'s
@@ -75,9 +76,9 @@ final class PastYouDuelBuilder
 
         $byKm = [];
         foreach ($splits as $split) {
-            $km = (int) ($split['split'] ?? 0);
-            $distance = (float) ($split['distance'] ?? 0);
-            $elapsed = (float) ($split['elapsed_time'] ?? 0);
+            $km = Numeric::int($split['split'] ?? 0);
+            $distance = Numeric::float($split['distance'] ?? 0);
+            $elapsed = Numeric::float($split['elapsed_time'] ?? 0);
             if ($km < 1 || $distance < self::FULL_KM_MIN_DISTANCE_M || $elapsed <= 0) {
                 continue;
             }

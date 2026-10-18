@@ -8,6 +8,7 @@ use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\PersonalRecord;
 use App\Models\RecordStamp;
+use App\Support\Numeric;
 
 /**
  * The run hero's "PR bib" stamp: whether the viewed run currently holds one
@@ -103,6 +104,6 @@ class PrBibResolver
             ->where('activities.id', '!=', $activity->id)
             ->max('activity_details.distance');
 
-        return $distance > (float) ($maxOther ?? 0);
+        return $distance > Numeric::float($maxOther ?? 0);
     }
 }
