@@ -5,6 +5,7 @@ import type { Print } from '@/lib/card/print';
 
 import { ALL_FACTS, CARD_STYLES, type CardOptions } from '@/lib/card/types';
 import { makeCardFacts } from '@/test/cardFacts';
+import { defined } from '@/test/defined';
 
 import { useCardPrints } from './useCardPrints';
 
@@ -175,7 +176,7 @@ describe('useCardPrints', () => {
         const { result, rerender } = renderHook(
             ({ options }: { options: CardOptions }) =>
                 useCardPrints(facts, options, 'story', 'broadsheet'),
-            { initialProps: { options: tuples[0] } },
+            { initialProps: { options: defined(tuples[0]) } },
         );
         await waitFor(() => expect(renderPrint).toHaveBeenCalledTimes(3));
 

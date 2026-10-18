@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import type { ActivityDetail, StoryLine } from '@/types/inertia';
 
 import { makeCardFacts } from '@/test/cardFacts';
+import { defined } from '@/test/defined';
 
 import { useRunShow, type RunCardDetail } from './useRunShow';
 
@@ -119,7 +120,7 @@ describe('useRunShow', () => {
             ),
         );
         expect(result.current.laps).toHaveLength(1);
-        expect(result.current.laps[0].distance_m).toBe(647);
+        expect(defined(result.current.laps[0]).distance_m).toBe(647);
     });
 
     it('falls back to an empty stream summary when the run has none', () => {

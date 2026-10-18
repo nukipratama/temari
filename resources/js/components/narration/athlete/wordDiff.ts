@@ -22,27 +22,25 @@ export function wordDiff(before: string, after: string): DiffToken[] {
     let j = 0;
 
     while (i < a.length && j < b.length) {
-        if (a[i] === b[j]) {
-            push(out, 'same', a[i]);
+        const wordA = a[i];
+        const wordB = b[j];
+        if (wordA === undefined || wordB === undefined) break;
+
+        if (wordA === wordB) {
+            push(out, 'same', wordA);
             i++;
             j++;
-        } else if (lcs[i + 1][j] >= lcs[i][j + 1]) {
-            push(out, 'removed', a[i]);
+        } else if (cell(lcs, i + 1, j) >= cell(lcs, i, j + 1)) {
+            push(out, 'removed', wordA);
             i++;
         } else {
-            push(out, 'added', b[j]);
+            push(out, 'added', wordB);
             j++;
         }
     }
 
-    while (i < a.length) {
-        push(out, 'removed', a[i]);
-        i++;
-    }
-    while (j < b.length) {
-        push(out, 'added', b[j]);
-        j++;
-    }
+    for (const word of a.slice(i)) push(out, 'removed', word);
+    for (const word of b.slice(j)) push(out, 'added', word);
 
     return out;
 }
@@ -61,17 +59,24 @@ function push(out: DiffToken[], op: DiffOp, word: string): void {
     out.push({ id: out.length, op, text: word });
 }
 
+function cell(table: number[][], row: number, column: number): number {
+    return table[row]?.[column] ?? 0;
+}
+
 function lcsTable(a: string[], b: string[]): number[][] {
     const table: number[][] = Array.from({ length: a.length + 1 }, () =>
         new Array<number>(b.length + 1).fill(0),
     );
 
     for (let i = a.length - 1; i >= 0; i--) {
+        const row = table[i];
+        if (row === undefined) continue;
+
         for (let j = b.length - 1; j >= 0; j--) {
-            table[i][j] =
+            row[j] =
                 a[i] === b[j]
-                    ? table[i + 1][j + 1] + 1
-                    : Math.max(table[i + 1][j], table[i][j + 1]);
+                    ? cell(table, i + 1, j + 1) + 1
+                    : Math.max(cell(table, i + 1, j), cell(table, i, j + 1));
         }
     }
 

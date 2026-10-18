@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { defined } from '@/test/defined';
+
 import {
     installGlobalErrorReporting,
     reportClientError,
@@ -46,13 +48,12 @@ describe('clientErrorReporter', () => {
             '/client-errors',
             expect.objectContaining({ method: 'POST', keepalive: true }),
         );
-        const body = JSON.parse(
-            (
-                fetch as unknown as {
-                    mock: { calls: [string, { body: string }][] };
-                }
-            ).mock.calls[0][1].body,
-        );
+        const call = (
+            fetch as unknown as {
+                mock: { calls: [string, { body: string }][] };
+            }
+        ).mock.calls[0];
+        const body = JSON.parse(defined(call)[1].body);
         expect(body).toMatchObject({
             message: 'boom',
             url: 'https://t/activities',

@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { defined } from '@/test/defined';
+
 import {
     currentSubscription,
     isIos,
@@ -384,7 +386,7 @@ describe('reportSeen', () => {
         await reportSeen(athlete);
 
         expect(fetchCalls()).toHaveLength(1);
-        const [url, init] = fetchCalls()[0];
+        const [url, init] = defined(fetchCalls()[0]);
         expect(url).toBe('/profile/push/seen');
         expect(JSON.parse(init.body as string)).toEqual({
             endpoint: fakeSubscription.endpoint,
@@ -412,9 +414,9 @@ describe('reportSeen', () => {
             '/profile/push/seen',
             '/profile/push',
         ]);
-        expect(JSON.parse(fetchCalls()[1][1].body as string)).toMatchObject(
-            fakeSubscription.toJSON(),
-        );
+        expect(
+            JSON.parse(defined(fetchCalls()[1])[1].body as string),
+        ).toMatchObject(fakeSubscription.toJSON());
         expect(localStorage.getItem('temari-push-endpoint')).toBe(
             fakeSubscription.endpoint,
         );

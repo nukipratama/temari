@@ -1,6 +1,8 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { defined } from '@/test/defined';
+
 import JourneyChart from './JourneyChart';
 
 const WEEKS = ['2026-05-25', '2026-06-08', '2026-06-22'];
@@ -95,7 +97,7 @@ describe('JourneyChart', () => {
             'line[vector-effect="non-scaling-stroke"]',
         );
 
-        expect(markers[1].getAttribute('stroke-width')).toBe('10');
+        expect(defined(markers[1]).getAttribute('stroke-width')).toBe('10');
     });
 
     it('moves the readout between weeks with the arrow keys, most recent first', () => {

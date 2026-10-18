@@ -28,7 +28,7 @@ const EYEBROW_LABEL = "Temari's read · last 7 days";
  * rule-based fallback or an older row doesn't carry the blank-line split.
  */
 function splitContent(content: string): { title: string; description: string } {
-    const [title, ...rest] = content.split('\n\n');
+    const [title = '', ...rest] = content.split('\n\n');
     return { title: title.trim(), description: rest.join('\n\n').trim() };
 }
 

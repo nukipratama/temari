@@ -81,8 +81,8 @@ function measureSurfaces(
     tokens: Record<string, string>,
 ): SurfaceRow[] {
     const reference = {
-        radii: tokensWithPrefix(Object.keys(tokens), '--radius-').map(
-            (name) => tokens[name],
+        radii: tokensWithPrefix(Object.keys(tokens), '--radius-').flatMap(
+            (name) => tokens[name] ?? [],
         ),
         shadows: Array.from(
             root.querySelectorAll<HTMLElement>('[data-shadow-probe]'),
@@ -175,7 +175,7 @@ export default function TokenSheet() {
                             <Swatch
                                 key={name}
                                 name={name}
-                                value={tokens[name]}
+                                value={tokens[name] ?? ''}
                             />
                         ))}
                     </div>

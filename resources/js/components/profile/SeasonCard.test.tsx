@@ -3,6 +3,8 @@ import { describe, expect, it } from 'vitest';
 
 import type { SeasonSummaryWeek } from '@/lib/plan';
 
+import { defined } from '@/test/defined';
+
 import SeasonCard, { type ProfileSeason } from './SeasonCard';
 
 function week(overrides: Partial<SeasonSummaryWeek> = {}): SeasonSummaryWeek {
@@ -70,7 +72,7 @@ describe('SeasonCard', () => {
                 season={{
                     ...SEASON,
                     goals: [
-                        { ...SEASON.goals[0], is_completed: true },
+                        { ...defined(SEASON.goals[0]), is_completed: true },
                         {
                             id: 2,
                             title: 'Honor your rest days',

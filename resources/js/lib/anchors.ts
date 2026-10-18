@@ -42,8 +42,9 @@ interface ParsedAnchor {
 function parseAnchor(anchor: string): ParsedAnchor | null {
     for (const kind of ANCHOR_KIND_VALUES) {
         const match = VALUE_REGEX[kind].exec(anchor);
-        if (match) {
-            return { kind, value: match[1] };
+        const value = match?.[1];
+        if (value !== undefined) {
+            return { kind, value };
         }
     }
 

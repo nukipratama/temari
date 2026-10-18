@@ -118,6 +118,7 @@ function strokeVerticalAt(
     dash: number[] = [],
 ): void {
     const { ctx, chartArea, scales } = chart;
+    if (!scales.x) return;
     const x = scales.x.getPixelForValue(index);
     ctx.save();
     ctx.strokeStyle = color;
@@ -147,6 +148,7 @@ const fitnessOverlayPlugin: Plugin<'line'> = {
         }
 
         const { ctx, chartArea } = chart;
+        if (!chart.scales.x) return;
         const x0 = chart.scales.x.getPixelForValue(
             Math.max(0, total - highlightDays),
         );
@@ -265,7 +267,7 @@ export default function FitnessPanel({
                 chart: Chart,
             ): void => {
                 const overlay = overlayOf(chart);
-                const index = elements.length > 0 ? elements[0].index : null;
+                const index = elements[0]?.index ?? null;
                 if (!overlay || overlay.cursorIndex === index) return;
                 overlay.cursorIndex = index;
                 chart.draw();
@@ -316,7 +318,8 @@ export default function FitnessPanel({
         [runs],
     );
 
-    if (trend.length === 0) {
+    const latest = visible.at(-1);
+    if (trend.length === 0 || latest === undefined) {
         return (
             <p className={className ?? 'text-sm text-text-2'}>
                 not enough training history yet to draw a trend.
@@ -324,7 +327,6 @@ export default function FitnessPanel({
         );
     }
 
-    const latest = visible[visible.length - 1];
     const rangeStart = visible[0];
     const activePoint = cursorIndex !== null ? visible[cursorIndex] : null;
     const delta = rangeStart ? latest.ctl - rangeStart.ctl : null;

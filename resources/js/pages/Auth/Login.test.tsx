@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
+import { defined } from '@/test/defined';
 import { formMock, setMockPage } from '@/test/setup';
 
 import Login from './Login';
@@ -140,7 +141,9 @@ describe('Login', () => {
         const userEvent = (await import('@testing-library/user-event')).default;
         setMockPage({ demoLoginEnabled: true });
         render(<Login authStravaUrl="/x" />);
-        await userEvent.setup().click(screen.getAllByText('try the demo')[0]);
+        await userEvent
+            .setup()
+            .click(defined(screen.getAllByText('try the demo')[0]));
         expect(formMock.post).toHaveBeenCalledWith('/auth/demo');
     });
 
@@ -206,12 +209,12 @@ describe('Login', () => {
             name: /how your data is used · details/,
         });
         expect(trigger).toHaveAttribute('aria-expanded', 'false');
-        expect(screen.getByText(DATA_USE.points[0])).not.toBeVisible();
+        expect(screen.getByText(defined(DATA_USE.points[0]))).not.toBeVisible();
 
         await userEvent.setup().click(trigger);
 
         expect(trigger).toHaveAttribute('aria-expanded', 'true');
-        expect(screen.getByText(DATA_USE.points[0])).toBeVisible();
+        expect(screen.getByText(defined(DATA_USE.points[0]))).toBeVisible();
     });
 
     it('caps the hero copy to the same centred column as the sign-in lanes', () => {

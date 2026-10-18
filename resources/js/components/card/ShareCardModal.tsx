@@ -118,7 +118,8 @@ export default function ShareCardModal({
 
     const step = (delta: number) => {
         const next = index + delta;
-        if (next >= 0 && next < CARD_STYLES.length) setStyle(CARD_STYLES[next]);
+        const target = CARD_STYLES[next];
+        if (target !== undefined) setStyle(target);
     };
 
     const touchHandlers = useHorizontalSwipe((direction) =>

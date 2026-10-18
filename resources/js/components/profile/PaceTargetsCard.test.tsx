@@ -1,6 +1,8 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
+import { defined } from '@/test/defined';
+
 import PaceTargetsCard, { type WeekSession } from './PaceTargetsCard';
 
 const PACES = { easy: 370, marathon: 320, threshold: 292, interval: 268 };
@@ -93,7 +95,7 @@ describe('PaceTargetsCard', () => {
 
         expect(accented).toHaveLength(1);
         expect(screen.getAllByRole('listitem')[2]).toContainElement(
-            accented[0],
+            defined(accented[0]),
         );
     });
 
@@ -130,9 +132,9 @@ describe('PaceTargetsCard', () => {
 
         expect(easy).toBe(12);
         expect(interval).toBe(100);
-        expect(marathon).toBeGreaterThan(easy);
-        expect(tempo).toBeGreaterThan(marathon);
-        expect(tempo).toBeLessThan(interval);
+        expect(marathon).toBeGreaterThan(defined(easy));
+        expect(tempo).toBeGreaterThan(defined(marathon));
+        expect(tempo).toBeLessThan(defined(interval));
     });
 
     it('fills every bar equally when all four paces are identical', () => {

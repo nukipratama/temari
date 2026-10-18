@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
+import { defined } from '@/test/defined';
+
 import { addMonths, isSameMonth, monthGrid, WEEKDAYS } from './monthGrid';
 
 describe('monthGrid', () => {
@@ -22,8 +24,8 @@ describe('monthGrid', () => {
     it('leads with the trailing days of the previous month', () => {
         // 2026-09-01 is a Tuesday, so exactly one leading day is borrowed.
         const weeks = monthGrid('2026-09-01');
-        expect(weeks[0][0]).toBe('2026-08-31');
-        expect(weeks[0][1]).toBe('2026-09-01');
+        expect(defined(weeks[0])[0]).toBe('2026-08-31');
+        expect(defined(weeks[0])[1]).toBe('2026-09-01');
     });
 
     it('covers every day of the month it is given', () => {

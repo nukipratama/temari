@@ -1,6 +1,8 @@
 import { renderHook } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
+import { defined } from '@/test/defined';
+
 import {
     chunkIntoWeeks,
     dominantMoodOf,
@@ -94,12 +96,12 @@ describe('chunkIntoWeeks', () => {
             weekNumber: 1,
             weekStart: '2026-05-01',
         });
-        expect(weeks[0].days).toHaveLength(7);
+        expect(defined(weeks[0]).days).toHaveLength(7);
         expect(weeks[1]).toMatchObject({
             weekNumber: 2,
             weekStart: '2026-05-08',
         });
-        expect(weeks[1].days).toHaveLength(3);
+        expect(defined(weeks[1]).days).toHaveLength(3);
     });
 
     // The row sits beside that week's own ISO-week recap, so it counts the
@@ -120,7 +122,8 @@ describe('chunkIntoWeeks', () => {
             { date: '2026-05-02', day: 2, distance_km: 0 },
             { date: '2026-05-03', day: 3 },
         ]);
-        const [week] = chunkIntoWeeks(cells);
+        const [maybeWeek] = chunkIntoWeeks(cells);
+        const week = defined(maybeWeek);
         expect(week.totalKm).toBe(15);
     });
 
@@ -134,7 +137,8 @@ describe('chunkIntoWeeks', () => {
             { date: '2026-05-09', day: 9 },
             { date: '2026-05-10', day: 10 },
         ]);
-        const [week] = chunkIntoWeeks(cells);
+        const [maybeWeek] = chunkIntoWeeks(cells);
+        const week = defined(maybeWeek);
         expect(week.rarity).toBe('epic');
         expect(week.weekEnding).toBe('2026-05-10');
     });
@@ -147,7 +151,8 @@ describe('chunkIntoWeeks', () => {
         const cells = cellsFor([
             { date: '2026-05-01', day: 1, distance_km: 5, trimp: null },
         ]);
-        const [week] = chunkIntoWeeks(cells);
+        const [maybeWeek] = chunkIntoWeeks(cells);
+        const week = defined(maybeWeek);
         expect(week.totalTrimp).toBeNull();
     });
 
@@ -162,7 +167,8 @@ describe('chunkIntoWeeks', () => {
             },
             { date: '2026-05-02', day: 2, trimp: 10 },
         ]);
-        const [week] = chunkIntoWeeks(cells);
+        const [maybeWeek] = chunkIntoWeeks(cells);
+        const week = defined(maybeWeek);
         expect(week.totalTrimp).toBe(150);
     });
 });

@@ -41,9 +41,11 @@ function paceSub(segment: PlanSessionSegment, label: string): string {
         : `${formatPaceWithRange(segment.pace_sec_per_km, segment.pace_range)} · ${label}`;
 }
 
+type SegmentGroup = [PlanSessionSegment, ...PlanSessionSegment[]];
+
 /** Back-to-back segments of the same work key, with no recovery between them, as one rep or block. */
-function legendGroups(segments: PlanSessionSegment[]): PlanSessionSegment[][] {
-    const groups: PlanSessionSegment[][] = [];
+function legendGroups(segments: PlanSessionSegment[]): SegmentGroup[] {
+    const groups: SegmentGroup[] = [];
     for (const segment of segments) {
         const previous = groups.at(-1);
         if (
@@ -60,9 +62,10 @@ function legendGroups(segments: PlanSessionSegment[]): PlanSessionSegment[][] {
     return groups;
 }
 
-function joined(group: PlanSessionSegment[]): PlanSessionSegment {
+function joined(group: SegmentGroup): PlanSessionSegment {
+    const [first] = group;
     if (group.length === 1) {
-        return group[0];
+        return first;
     }
     const sum = (values: (number | null)[]) =>
         values.some((value) => value == null)
@@ -75,13 +78,13 @@ function joined(group: PlanSessionSegment[]): PlanSessionSegment {
               ) / 10;
 
     return {
-        ...group[0],
+        ...first,
         km: sum(group.map((segment) => segment.km)),
         minutes: sum(group.map((segment) => segment.minutes)),
     };
 }
 
-function closingNote(units: PlanSessionSegment[][]): string | undefined {
+function closingNote(units: SegmentGroup[]): string | undefined {
     const last = units.at(-1);
     if (last === undefined) {
         return undefined;
@@ -184,14 +187,14 @@ export default function SessionBarGraph({
     return (
         <div className="mt-2.5">
             <div className="flex h-8 items-end gap-0.5">
-                {Array.from({ length: segments.length }, (_, index) => (
+                {Array.from(segments.entries(), ([index, segment]) => (
                     <div
                         key={index}
                         className="rounded-t-xs"
                         style={{
-                            width: `${((segments[index].minutes ?? 0) / total) * 100}%`,
-                            height: `${ZONE_HEIGHT_PCT[segments[index].zone] ?? 50}%`,
-                            backgroundColor: zoneColor(segments[index].zone),
+                            width: `${((segment.minutes ?? 0) / total) * 100}%`,
+                            height: `${ZONE_HEIGHT_PCT[segment.zone] ?? 50}%`,
+                            backgroundColor: zoneColor(segment.zone),
                         }}
                     />
                 ))}
@@ -226,8 +229,8 @@ export default function SessionBarGraph({
                         ))}
                     </>
                 ) : (
-                    Array.from({ length: groups.length }, (_, index) => {
-                        const unit = joined(groups[index]);
+                    Array.from(groups.entries(), ([index, group]) => {
+                        const unit = joined(group);
                         return (
                             <LegendItem
                                 key={index}
@@ -235,9 +238,7 @@ export default function SessionBarGraph({
                                 zone={unit.zone}
                                 figure={figureText(unit)}
                                 sub={subFor(unit)}
-                                note={
-                                    groups[index].length > 1 ? note : undefined
-                                }
+                                note={group.length > 1 ? note : undefined}
                             />
                         );
                     })

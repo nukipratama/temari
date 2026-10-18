@@ -350,10 +350,11 @@ export type Point = [number, number];
 
 /** A route path out of already-projected points. */
 export function polylinePath(points: Point[], close = false): string {
-    if (points.length === 0) return '';
+    const [first, ...rest] = points;
+    if (first === undefined) return '';
 
-    let d = `M${num(points[0][0])},${num(points[0][1])}`;
-    for (const [x, y] of points.slice(1)) {
+    let d = `M${num(first[0])},${num(first[1])}`;
+    for (const [x, y] of rest) {
         d += `L${num(x)},${num(y)}`;
     }
 
@@ -387,20 +388,28 @@ export function closedLoop(
     wobble = 0.16,
 ): string {
     const random = seeded(seed + 3);
-    const amplitudes = [wobble, wobble * 0.6, wobble * 0.35];
-    const harmonics = [
+    const amplitudes: [number, number, number] = [
+        wobble,
+        wobble * 0.6,
+        wobble * 0.35,
+    ];
+    const harmonics: [number, number, number] = [
         2 + Math.trunc(random() * 3),
         4 + Math.trunc(random() * 3),
         7 + Math.trunc(random() * 3),
     ];
-    const phases = [random() * 6.3, random() * 6.3, random() * 6.3];
+    const phases: [number, number, number] = [
+        random() * 6.3,
+        random() * 6.3,
+        random() * 6.3,
+    ];
 
     const points: Point[] = [];
     const steps = 46;
     for (let i = 0; i < steps; i++) {
         const theta = (i / steps) * Math.PI * 2;
         let magnitude = 1;
-        for (let h = 0; h < 3; h++) {
+        for (const h of [0, 1, 2] as const) {
             magnitude +=
                 amplitudes[h] * Math.sin(harmonics[h] * theta + phases[h]);
         }
@@ -419,9 +428,9 @@ export function along(points: Point[], count: number): Point[] {
 
     const picked: Point[] = [];
     for (let i = 1; i <= count; i++) {
-        picked.push(
-            points[Math.round((points.length - 1) * (i / (count + 1)))],
-        );
+        const point =
+            points[Math.round((points.length - 1) * (i / (count + 1)))];
+        if (point !== undefined) picked.push(point);
     }
 
     return picked;
@@ -436,10 +445,11 @@ export function isClosedLoop(
     width: number,
     height: number,
 ): boolean {
-    if (points.length < 2) return false;
-
     const first = points[0];
-    const last = points[points.length - 1];
+    const last = points.at(-1);
+    if (points.length < 2 || first === undefined || last === undefined) {
+        return false;
+    }
 
     return (
         Math.hypot(last[0] - first[0], last[1] - first[1]) <=
