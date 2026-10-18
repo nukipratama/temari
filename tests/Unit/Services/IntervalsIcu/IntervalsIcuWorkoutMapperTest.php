@@ -54,6 +54,7 @@ it('sends an easy run as one active step run to a distance', function (): void {
 
 it('opens the description with the day\'s purpose, then who owns the workout', function (): void {
     $day = icuDay('easy', 8.0, [icuSegment('main', 58.0, 8.0, 'easy', EASY_WINDOW)], purpose: 'easy means easy.');
+
     expect(IntervalsIcuWorkoutMapper::map($day, null)?->description)->toBe(implode("\n", [
         'easy means easy.',
         'from temari · changes with your plan',
@@ -246,6 +247,7 @@ describe('an athlete without paces', function (): void {
         $block = icuSegment('main', null, 5.2, 'threshold', null, 'Z4');
         $twoBlocks = icuDay('tempo', 12.0, [icuSegment('warmup', 10.0, null, 'easy', null), $block, icuSegment('recovery', 2.0, null, 'easy', null), $block]);
         $unequal = icuDay('tempo', 12.0, [$block, icuSegment('recovery', 2.0, null, 'easy', null), icuSegment('main', null, 3.4, 'threshold', null, 'Z4')]);
+
         expect(IntervalsIcuWorkoutMapper::map($twoBlocks, $heartRate)?->name)->toBe('Tempo 10.4 km')
             ->and(IntervalsIcuWorkoutMapper::map($unequal, $heartRate)?->name)->toBe('Tempo 8.6 km');
     });

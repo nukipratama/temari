@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-use App\Support\Numeric;
 use App\Models\Activity;
 use App\Models\StravaConnection;
 use App\Models\User;
 use App\Enums\StravaReadSource;
 use App\Services\Strava\ActivityFetcher;
 use App\Services\Strava\StravaClient;
+use App\Support\Numeric;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
