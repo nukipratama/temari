@@ -103,13 +103,14 @@ it('rechecks current preferences before a queued channel sends', function (): vo
         fn (SendQueuedNotifications $queued): bool => $queued->channels === [IdempotentWebPushChannel::class],
     );
     expect($job)->toBeInstanceOf(SendQueuedNotifications::class);
+    assert($job instanceof SendQueuedNotifications);
 
     NotificationPreference::factory()->for($user)->create(['notifications_enabled' => false]);
     $webPush = Mockery::mock(WebPushChannel::class);
     $webPush->shouldNotReceive('send');
     app()->instance(WebPushChannel::class, $webPush);
 
-    $job?->handle(app(ChannelManager::class));
+    $job->handle(app(ChannelManager::class));
 
     $this->assertDatabaseMissing('notification_deliveries', [
         'analysis_id' => $analysis->id,
@@ -135,6 +136,7 @@ it('preserves a queued inbox notification when outbound preferences change', fun
     );
     expect($inboxJob)->toBeInstanceOf(SendQueuedNotifications::class)
         ->and($pushJob)->toBeInstanceOf(SendQueuedNotifications::class);
+    assert($inboxJob instanceof SendQueuedNotifications && $pushJob instanceof SendQueuedNotifications);
 
     NotificationPreference::factory()->for($user)->create(['notifications_enabled' => false]);
     $webPush = Mockery::mock(WebPushChannel::class);
@@ -142,8 +144,8 @@ it('preserves a queued inbox notification when outbound preferences change', fun
     app()->instance(WebPushChannel::class, $webPush);
 
     $channelManager = app(ChannelManager::class);
-    $pushJob?->handle($channelManager);
-    $inboxJob?->handle($channelManager);
+    $pushJob->handle($channelManager);
+    $inboxJob->handle($channelManager);
 
     $this->assertDatabaseHas('notifications', ['user_id' => $user->id]);
     $this->assertDatabaseMissing('notification_deliveries', [

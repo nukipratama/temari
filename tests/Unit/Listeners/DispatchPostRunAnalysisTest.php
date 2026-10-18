@@ -310,7 +310,9 @@ it('lets the recalibration re-run cover a run ingested while it held its lock', 
         return $job->userId === $user->id;
     });
 
-    $rerun?->handle(app(PlanRecalibrationService::class));
+    expect($rerun)->toBeInstanceOf(RecalibrateTrainingHistoryJob::class);
+    assert($rerun instanceof RecalibrateTrainingHistoryJob);
+    $rerun->handle(app(PlanRecalibrationService::class));
 
     $week = WeeklySnapshot::query()->where('user_id', $user->id)->where('week_ending', '2026-05-10')->firstOrFail();
     expect($week->runs)->toBe(1)
@@ -909,7 +911,10 @@ it('narrates a long-connected athlete\'s briefing and profile voice on schedule 
 it('refreshes the run mood once its plan day is graded, before narration reads it', function (): void {
     $activity = analyzedActivity();
     PlannedSession::factory()->for($activity->user)->create(['date' => '2026-05-10', 'session_type' => SessionType::Tempo]);
-    $activity->detail?->update(['stream_summary' => ['time_in_zone_pct' => ['Z2' => 25.0, 'Z3' => 45.0, 'Z4' => 30.0], 'negative_split' => false], 'weather_temp_c' => 24]);
+    $detail = $activity->detail;
+    expect($detail)->not->toBeNull();
+    assert($detail !== null);
+    $detail->update(['stream_summary' => ['time_in_zone_pct' => ['Z2' => 25.0, 'Z3' => 45.0, 'Z4' => 30.0], 'negative_split' => false], 'weather_temp_c' => 24]);
     StoryLine::query()->create(['user_id' => $activity->user_id, 'activity_id' => $activity->id, 'kind' => StoryLine::KIND_POST_RUN, 'mood' => Mood::Easy]);
 
     fire($activity);
