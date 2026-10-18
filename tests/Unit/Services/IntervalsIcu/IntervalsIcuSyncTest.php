@@ -119,6 +119,7 @@ it('removes the event when today becomes a rest day or is skipped', function (ar
         ->and($connection->sync_status)->toBeNull();
 })->with([
     'rest' => [['session_type' => SessionType::Rest]],
+    'rest already scored done' => [['session_type' => SessionType::Rest, 'status' => PlannedSessionStatus::Done]],
     'skipped' => [['skipped' => true]],
 ]);
 
