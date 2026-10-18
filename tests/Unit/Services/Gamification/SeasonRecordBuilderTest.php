@@ -20,10 +20,13 @@ uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
     Carbon::setTestNow('2026-10-20 08:00:00');
-    $this->builder = app(SeasonRecordBuilder::class);
-    $this->user = User::factory()->create();
 });
 afterEach(fn () => Carbon::setTestNow());
+
+function seasonRecordBuilder(): SeasonRecordBuilder
+{
+    return app(SeasonRecordBuilder::class);
+}
 
 function raceSeason(User $user, ?RaceOutcome $outcome, ?int $finishTimeSec = null): Season
 {
@@ -43,7 +46,8 @@ function raceSeason(User $user, ?RaceOutcome $outcome, ?int $finishTimeSec = nul
 }
 
 it('scores process from the training goals alone, so a missed time goal cannot erase progress', function (): void {
-    $record = $this->builder->build($this->user, raceSeason($this->user, RaceOutcome::Confirmed, 3_600), Carbon::today());
+    $user = User::factory()->create();
+    $record = seasonRecordBuilder()->build($user, raceSeason($user, RaceOutcome::Confirmed, 3_600), Carbon::today());
 
     expect($record['process']['pct'])->toBe(100)
         ->and($record['process']['goals_met'])->toBe(1)
@@ -54,14 +58,16 @@ it('scores process from the training goals alone, so a missed time goal cannot e
 });
 
 it('reports a finish within the margin as met', function (): void {
-    $record = $this->builder->build($this->user, raceSeason($this->user, RaceOutcome::Confirmed, 3_100), Carbon::today());
+    $user = User::factory()->create();
+    $record = seasonRecordBuilder()->build($user, raceSeason($user, RaceOutcome::Confirmed, 3_100), Carbon::today());
 
     expect($record['performance']['state'])->toBe('met')
         ->and($record['performance']['margin_pct'])->toBe(3.3);
 });
 
 it('reports pending, did not run and cancelled without any result or miss', function (RaceOutcome $outcome, string $state): void {
-    $record = $this->builder->build($this->user, raceSeason($this->user, $outcome), Carbon::today());
+    $user = User::factory()->create();
+    $record = seasonRecordBuilder()->build($user, raceSeason($user, $outcome), Carbon::today());
 
     expect($record['performance']['state'])->toBe($state)
         ->and($record['performance']['finish_time_sec'])->toBeNull()
@@ -74,48 +80,58 @@ it('reports pending, did not run and cancelled without any result or miss', func
 ]);
 
 it('does not claim an outcome for a legacy race without one', function (): void {
-    expect($this->builder->build($this->user, raceSeason($this->user, null), Carbon::today())['performance']['state'])->toBe('unrecorded');
+    $user = User::factory()->create();
+    expect(seasonRecordBuilder()->build($user, raceSeason($user, null), Carbon::today())['performance']['state'])->toBe('unrecorded');
 });
 
 it('reports no performance for a season without a race', function (): void {
-    $season = Season::factory()->for($this->user)->create(['starts_at' => '2026-10-05', 'ends_at' => '2026-12-28']);
+    $user = User::factory()->create();
+    $season = Season::factory()->for($user)->create(['starts_at' => '2026-10-05', 'ends_at' => '2026-12-28']);
 
-    expect($this->builder->build($this->user, $season, Carbon::today()))->toMatchArray([
+    expect(seasonRecordBuilder()->build($user, $season, Carbon::today()))->toMatchArray([
         'process' => ['pct' => null, 'goals_met' => 0, 'goals_total' => 0],
         'performance' => ['state' => 'none', 'target_time_sec' => null, 'finish_time_sec' => null, 'margin_pct' => null],
     ]);
 });
 
 it('stores the record when a season is settled, and the same call again changes nothing', function (): void {
-    $season = raceSeason($this->user, RaceOutcome::Pending);
+    $user = User::factory()->create();
+    $season = raceSeason($user, RaceOutcome::Pending);
 
-    $this->builder->settle($this->user, $season, Carbon::today());
+    seasonRecordBuilder()->settle($user, $season, Carbon::today());
     $first = $season->fresh();
-    $this->builder->settle($this->user, $season->fresh(), Carbon::today());
+    seasonRecordBuilder()->settle($user, $season->refresh(), Carbon::today());
 
-    expect($first->process_pct)->toBe(100)
-        ->and($first->performance_state)->toBe(SeasonPerformance::Pending)
-        ->and($first->record_settled_at)->not->toBeNull()
-        ->and($season->fresh()->performance_state)->toBe(SeasonPerformance::Pending);
+    expect($first?->process_pct)->toBe(100)
+        ->and($first?->performance_state)->toBe(SeasonPerformance::Pending)
+        ->and($first?->record_settled_at)->not->toBeNull()
+        ->and($season->fresh()?->performance_state)->toBe(SeasonPerformance::Pending);
 });
 
 it('updates only the performance of settled seasons when the race is confirmed late', function (): void {
-    $season = raceSeason($this->user, RaceOutcome::Pending);
-    $this->builder->settle($this->user, $season, Carbon::today());
+    $user = User::factory()->create();
+    $season = raceSeason($user, RaceOutcome::Pending);
+    seasonRecordBuilder()->settle($user, $season, Carbon::today());
     $race = $season->raceGoal;
+    expect($race)->not->toBeNull();
+    assert($race !== null);
     $race->update(['outcome' => RaceOutcome::Confirmed, 'finish_time_sec' => 3_050]);
 
-    $this->builder->settleForRace($race->fresh());
+    seasonRecordBuilder()->settleForRace($race->refresh());
 
-    expect($season->fresh()->performance_state)->toBe(SeasonPerformance::Met)
-        ->and($season->fresh()->process_pct)->toBe(100);
+    expect($season->fresh()?->performance_state)->toBe(SeasonPerformance::Met)
+        ->and($season->fresh()?->process_pct)->toBe(100);
 });
 
 it('leaves a season that was never settled for its own close to settle', function (): void {
-    $season = raceSeason($this->user, RaceOutcome::Pending);
+    $user = User::factory()->create();
+    $season = raceSeason($user, RaceOutcome::Pending);
 
-    $this->builder->settleForRace($season->raceGoal);
+    $race = $season->raceGoal;
+    expect($race)->not->toBeNull();
+    assert($race !== null);
+    seasonRecordBuilder()->settleForRace($race);
 
-    expect($season->fresh()->record_settled_at)->toBeNull()
-        ->and($season->fresh()->performance_state)->toBeNull();
+    expect($season->refresh()->record_settled_at)->toBeNull()
+        ->and($season->refresh()->performance_state)->toBeNull();
 });

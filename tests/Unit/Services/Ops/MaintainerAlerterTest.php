@@ -18,6 +18,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Config;
+use Mockery\MockInterface;
 
 uses(RefreshDatabase::class);
 
@@ -26,9 +27,14 @@ beforeEach(function (): void {
     Config::set('services.telegram.bot_token', 'test-bot-token');
 });
 
-/** Bind a mock TelegramClient and return it for assertions. */
+/**
+ * Bind a mock TelegramClient and return it for assertions.
+ *
+ * @return TelegramClient&MockInterface
+ */
 function fakeTelegram(): TelegramClient
 {
+    /** @var TelegramClient&MockInterface $client */
     $client = Mockery::mock(TelegramClient::class);
     app()->instance(TelegramClient::class, $client);
 

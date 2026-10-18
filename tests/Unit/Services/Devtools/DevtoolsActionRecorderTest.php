@@ -36,12 +36,12 @@ it('records the basic-auth username as the actor', function (): void {
 });
 
 it('logs and swallows a write failure, so a successful action never 500s on its audit row', function (): void {
-    Log::spy();
+    $log = Log::spy();
 
     new DevtoolsActionRecorder()->record('ai_usage.recover', 7, ['blocks' => "\xB1\x31"]);
 
     expect(DevtoolsAction::query()->count())->toBe(0);
-    Log::shouldHaveReceived('warning')->once()->withArgs(
+    $log->shouldHaveReceived('warning')->once()->withArgs(
         fn (string $message): bool => $message === 'devtools_action.record_failed',
     );
 });

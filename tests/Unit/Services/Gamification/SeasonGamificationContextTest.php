@@ -20,7 +20,6 @@ uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
     Carbon::setTestNow('2026-08-10 08:00:00');
-    $this->trainingLoad = app(TrainingLoad::class);
 });
 afterEach(fn () => Carbon::setTestNow());
 

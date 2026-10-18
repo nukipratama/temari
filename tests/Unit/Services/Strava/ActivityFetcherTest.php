@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Support\Numeric;
 use App\Models\Activity;
 use App\Models\StravaConnection;
 use App\Models\User;
@@ -56,7 +57,7 @@ function fetchIds(StravaConnection $connection, ?CarbonImmutable $since = null):
 {
     $summaries = new ActivityFetcher(new StravaClient())->fetchNewSummaries($connection, StravaReadSource::Manual, $since)['summaries'];
 
-    return array_map(fn (array $summary): int => (int) $summary['id'], $summaries);
+    return array_map(fn (array $summary): int => Numeric::int($summary['id']), $summaries);
 }
 
 it('returns new run ids sorted ascending', function (): void {

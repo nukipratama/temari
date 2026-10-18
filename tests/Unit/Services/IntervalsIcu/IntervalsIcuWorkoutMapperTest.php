@@ -20,19 +20,18 @@ function icuSegment(string $key, ?float $minutes, ?float $km, string $label, ?ar
 }
 
 /**
- * @param  list<array<string, mixed>>  $segments
+ * @param  list<array{key: string, minutes: float|null, km: float|null, zone: string, pace_label: string, pace_sec_per_km: int|null, pace_range?: array{fast_sec_per_km: int, slow_sec_per_km: int}|null}>  $segments
  * @param  array{distance_m: float|int, aim_time_sec: int}|null  $timeTrial
- * @return array<string, mixed>
+ * @return array{session_type: string, distance_km: float|int|null, segments: list<array{key: string, minutes: float|null, km: float|null, zone: string, pace_label: string, pace_sec_per_km: int|null, pace_range?: array{fast_sec_per_km: int, slow_sec_per_km: int}|null}>, time_trial: array{distance_m: float|int, aim_time_sec: int}|null, purpose: string|null}
  */
 function icuDay(string $type, float $km, array $segments, ?array $timeTrial = null, ?string $purpose = null): array
 {
     return ['session_type' => $type, 'distance_km' => $km, 'segments' => $segments, 'time_trial' => $timeTrial, 'purpose' => $purpose];
 }
 
-/** @param  array<string, mixed>  $day */
+/** @param  array{session_type: string, distance_km: float|int|null, segments: list<array{key: string, minutes: float|null, km: float|null, zone: string, pace_label: string, pace_sec_per_km: int|null, pace_range?: array{fast_sec_per_km: int, slow_sec_per_km: int}|null}>, time_trial: array{distance_m: float|int, aim_time_sec: int}|null, purpose: string|null}  $day */
 function icuSteps(array $day): string
 {
-    /** @phpstan-ignore argument.type */
     $workout = IntervalsIcuWorkoutMapper::map($day, null);
     expect($workout)->not->toBeNull()
         ->and($workout?->description)->toStartWith(IntervalsIcuWorkoutMapper::OWNER."\n\n");
@@ -40,10 +39,9 @@ function icuSteps(array $day): string
     return substr((string) $workout?->description, strlen(IntervalsIcuWorkoutMapper::OWNER) + 2);
 }
 
-/** @param  array<string, mixed>  $day */
+/** @param  array{session_type: string, distance_km: float|int|null, segments: list<array{key: string, minutes: float|null, km: float|null, zone: string, pace_label: string, pace_sec_per_km: int|null, pace_range?: array{fast_sec_per_km: int, slow_sec_per_km: int}|null}>, time_trial: array{distance_m: float|int, aim_time_sec: int}|null, purpose: string|null}  $day */
 function icuName(array $day): string
 {
-    /** @phpstan-ignore argument.type */
     return (string) IntervalsIcuWorkoutMapper::map($day, null)?->name;
 }
 
@@ -56,8 +54,6 @@ it('sends an easy run as one active step run to a distance', function (): void {
 
 it('opens the description with the day\'s purpose, then who owns the workout', function (): void {
     $day = icuDay('easy', 8.0, [icuSegment('main', 58.0, 8.0, 'easy', EASY_WINDOW)], purpose: 'easy means easy.');
-
-    /** @phpstan-ignore argument.type */
     expect(IntervalsIcuWorkoutMapper::map($day, null)?->description)->toBe(implode("\n", [
         'easy means easy.',
         'from temari · changes with your plan',
@@ -234,7 +230,6 @@ describe('an athlete without paces', function (): void {
     ]);
 
     it('gets heart-rate targets as a share of their threshold heart rate', function () use ($day, $heartRate): void {
-        /** @phpstan-ignore argument.type */
         $workout = IntervalsIcuWorkoutMapper::map($day, $heartRate);
 
         expect(IntervalsIcuWorkoutMapper::needsHeartRate($day))->toBeTrue()
@@ -251,15 +246,11 @@ describe('an athlete without paces', function (): void {
         $block = icuSegment('main', null, 5.2, 'threshold', null, 'Z4');
         $twoBlocks = icuDay('tempo', 12.0, [icuSegment('warmup', 10.0, null, 'easy', null), $block, icuSegment('recovery', 2.0, null, 'easy', null), $block]);
         $unequal = icuDay('tempo', 12.0, [$block, icuSegment('recovery', 2.0, null, 'easy', null), icuSegment('main', null, 3.4, 'threshold', null, 'Z4')]);
-
-        /** @phpstan-ignore argument.type */
         expect(IntervalsIcuWorkoutMapper::map($twoBlocks, $heartRate)?->name)->toBe('Tempo 10.4 km')
-            /** @phpstan-ignore argument.type */
             ->and(IntervalsIcuWorkoutMapper::map($unequal, $heartRate)?->name)->toBe('Tempo 8.6 km');
     });
 
     it('is not sent while their threshold heart rate is unknown', function () use ($day): void {
-        /** @phpstan-ignore argument.type */
         expect(IntervalsIcuWorkoutMapper::map($day, null))->toBeNull();
     });
 });

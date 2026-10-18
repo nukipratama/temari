@@ -15,8 +15,12 @@ uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
     config(['services.telegram.bot_token' => 'test-bot-token']);
-    $this->router = new ChannelRouter();
 });
+
+function channelRouter(): ChannelRouter
+{
+    return new ChannelRouter();
+}
 
 function userWithTelegram(): User
 {
@@ -38,7 +42,7 @@ it('routes to every wired channel by default', function (): void {
     $user = userWithTelegram();
     $user->updatePushSubscription('https://push.example/endpoint', 'key', 'auth');
 
-    expect($this->router->channelsFor($user->fresh()))
+    expect(channelRouter()->channelsFor($user->refresh()))
         ->toBe([InAppChannel::class, TelegramChannel::class, IdempotentWebPushChannel::class]);
 });
 
@@ -46,7 +50,7 @@ it('treats a missing preference row as all-on, so adding the columns mutes nobod
     $user = userWithTelegram();
 
     expect($user->notificationPreference)->toBeNull()
-        ->and($this->router->channelsFor($user))->toBe([InAppChannel::class, TelegramChannel::class]);
+        ->and(channelRouter()->channelsFor($user))->toBe([InAppChannel::class, TelegramChannel::class]);
 });
 
 it('drops a muted channel while leaving the other alone', function (): void {
@@ -54,7 +58,7 @@ it('drops a muted channel while leaving the other alone', function (): void {
     $user->updatePushSubscription('https://push.example/endpoint', 'key', 'auth');
     NotificationPreference::factory()->for($user)->create(['telegram_enabled' => false]);
 
-    expect($this->router->channelsFor($user->fresh()))->toBe([InAppChannel::class, IdempotentWebPushChannel::class]);
+    expect(channelRouter()->channelsFor($user->refresh()))->toBe([InAppChannel::class, IdempotentWebPushChannel::class]);
 });
 
 it('drops push when push is the muted one', function (): void {
@@ -62,7 +66,7 @@ it('drops push when push is the muted one', function (): void {
     $user->updatePushSubscription('https://push.example/endpoint', 'key', 'auth');
     NotificationPreference::factory()->for($user)->create(['push_enabled' => false]);
 
-    expect($this->router->channelsFor($user->fresh()))->toBe([InAppChannel::class, TelegramChannel::class]);
+    expect(channelRouter()->channelsFor($user->refresh()))->toBe([InAppChannel::class, TelegramChannel::class]);
 });
 
 /**
@@ -73,15 +77,15 @@ it('leaves the connection intact when a channel is muted', function (): void {
     $user = userWithTelegram();
     NotificationPreference::factory()->for($user)->create(['telegram_enabled' => false]);
 
-    expect($this->router->channelsFor($user->fresh()))->toBe([InAppChannel::class])
-        ->and($user->telegramConnection->isRevoked())->toBeFalse();
+    expect(channelRouter()->channelsFor($user->refresh()))->toBe([InAppChannel::class])
+        ->and($user->telegramConnection?->isRevoked())->toBeFalse();
 });
 
 it('cannot reach a user whose only channel is muted', function (): void {
     $user = userWithTelegram();
     NotificationPreference::factory()->for($user)->create(['telegram_enabled' => false]);
 
-    expect($this->router->canReach($user->fresh()))->toBeFalse();
+    expect(channelRouter()->canReach($user->refresh()))->toBeFalse();
 });
 
 /**
@@ -92,14 +96,14 @@ it('will not route to Telegram without a configured bot token', function (): voi
     config(['services.telegram.bot_token' => '']);
     $user = userWithTelegram();
 
-    expect($this->router->channelsFor($user))->toBe([InAppChannel::class]);
+    expect(channelRouter()->channelsFor($user))->toBe([InAppChannel::class]);
 });
 
 it('still routes to push when Telegram is unconfigured', function (): void {
     config(['services.telegram.bot_token' => '']);
     $user = userWithPush();
 
-    expect($this->router->channelsFor($user->fresh()))->toBe([InAppChannel::class, IdempotentWebPushChannel::class]);
+    expect(channelRouter()->channelsFor($user->refresh()))->toBe([InAppChannel::class, IdempotentWebPushChannel::class]);
 });
 
 describe('scopeReachable', function (): void {
@@ -108,7 +112,7 @@ describe('scopeReachable', function (): void {
         $viaPush = userWithPush();
         User::factory()->create(); // wired to nothing
 
-        $ids = User::query()->where($this->router->scopeReachable(...))->pluck('id');
+        $ids = User::query()->where(channelRouter()->scopeReachable(...))->pluck('id');
 
         expect($ids)->toHaveCount(2)
             ->and($ids)->toContain($viaTelegram->id)
@@ -123,7 +127,7 @@ describe('scopeReachable', function (): void {
         $user = userWithTelegram();
         NotificationPreference::factory()->for($user)->create(['telegram_enabled' => false]);
 
-        expect(User::query()->where($this->router->scopeReachable(...))->count())->toBe(0);
+        expect(User::query()->where(channelRouter()->scopeReachable(...))->count())->toBe(0);
     });
 
     it('keeps a user muted on one channel but wired on the other', function (): void {
@@ -131,7 +135,7 @@ describe('scopeReachable', function (): void {
         $user->updatePushSubscription('https://push.example/endpoint', 'key', 'auth');
         NotificationPreference::factory()->for($user)->create(['telegram_enabled' => false]);
 
-        expect(User::query()->where($this->router->scopeReachable(...))->pluck('id')->all())
+        expect(User::query()->where(channelRouter()->scopeReachable(...))->pluck('id')->all())
             ->toBe([$user->id]);
     });
 
@@ -139,7 +143,7 @@ describe('scopeReachable', function (): void {
         config(['services.telegram.bot_token' => '']);
         userWithTelegram();
 
-        expect(User::query()->where($this->router->scopeReachable(...))->count())->toBe(0);
+        expect(User::query()->where(channelRouter()->scopeReachable(...))->count())->toBe(0);
     });
 
     it('excludes the demo identity even when it is fully wired', function (): void {
@@ -147,7 +151,7 @@ describe('scopeReachable', function (): void {
         $demo->forceFill(['is_demo' => true])->save();
         $demo->updatePushSubscription('https://push.example/endpoint', 'key', 'auth');
 
-        expect(User::query()->where($this->router->scopeReachable(...))->count())->toBe(0);
+        expect(User::query()->where(channelRouter()->scopeReachable(...))->count())->toBe(0);
     });
 
     // The query filter and the per-user check must not disagree, or the command
@@ -163,11 +167,11 @@ describe('scopeReachable', function (): void {
         $demo = userWithTelegram();
         $demo->forceFill(['is_demo' => true])->save();
 
-        $selected = User::query()->where($this->router->scopeReachable(...))->pluck('id')->all();
+        $selected = User::query()->where(channelRouter()->scopeReachable(...))->pluck('id')->all();
 
         foreach ([$both, $telegramOnly, $pushOnly, $muted, $none, $demo] as $user) {
             expect(in_array($user->id, $selected, true))
-                ->toBe($this->router->canReach($user->fresh()));
+                ->toBe(channelRouter()->canReach($user->refresh()));
         }
     });
 });
@@ -184,17 +188,17 @@ describe('the in-app inbox', function (): void {
             'push_enabled' => false,
         ]);
 
-        expect($this->router->channelsFor($user->fresh()))->toBe([InAppChannel::class]);
+        expect(channelRouter()->channelsFor($user->refresh()))->toBe([InAppChannel::class]);
     });
 
     it('is what inAppOnly returns for a notification that is a record, not an interruption', function (): void {
-        expect($this->router->inAppOnly())->toBe([InAppChannel::class]);
+        expect(channelRouter()->inAppOnly())->toBe([InAppChannel::class]);
     });
 
     // canReach() gates the test send and the streak nudge. If the always-on
     // inbox counted, both would think every user is reachable.
     it('does not make canReach trivially true', function (): void {
-        expect($this->router->canReach(User::factory()->create()))->toBeFalse();
+        expect(channelRouter()->canReach(User::factory()->create()))->toBeFalse();
     });
 
     // The public demo shows the notification centre populated. It is still never
@@ -205,8 +209,8 @@ describe('the in-app inbox', function (): void {
         $demo->forceFill(['is_demo' => true])->save();
         $demo->updatePushSubscription('https://push.example/endpoint', 'key', 'auth');
 
-        expect($this->router->channelsFor($demo->fresh()))->toBe([InAppChannel::class])
-            ->and($this->router->canReach($demo->fresh()))->toBeFalse();
+        expect(channelRouter()->channelsFor($demo->refresh()))->toBe([InAppChannel::class])
+            ->and(channelRouter()->canReach($demo->refresh()))->toBeFalse();
     });
 });
 
@@ -217,12 +221,12 @@ describe('outbound alone', function (): void {
         $user = userWithTelegram();
         $user->updatePushSubscription('https://push.example/endpoint', 'key', 'auth');
 
-        expect($this->router->outboundOnly($user->fresh()))
+        expect(channelRouter()->outboundOnly($user->refresh()))
             ->toBe([TelegramChannel::class, IdempotentWebPushChannel::class]);
     });
 
     it('routes nobody with nothing wired', function (): void {
-        expect($this->router->outboundOnly(User::factory()->create()))->toBe([]);
+        expect(channelRouter()->outboundOnly(User::factory()->create()))->toBe([]);
     });
 
     it('routes nobody who muted the channel', function (): void {
@@ -230,13 +234,13 @@ describe('outbound alone', function (): void {
         $user->updatePushSubscription('https://push.example/endpoint', 'key', 'auth');
         NotificationPreference::factory()->for($user)->create(['push_enabled' => false]);
 
-        expect($this->router->outboundOnly($user->fresh()))->toBe([]);
+        expect(channelRouter()->outboundOnly($user->refresh()))->toBe([]);
     });
 
     it('routes the demo identity nowhere, wired or not', function (): void {
         $demo = User::factory()->create(['is_demo' => true]);
         $demo->updatePushSubscription('https://push.example/endpoint', 'key', 'auth');
 
-        expect($this->router->outboundOnly($demo->fresh()))->toBe([]);
+        expect(channelRouter()->outboundOnly($demo->refresh()))->toBe([]);
     });
 });
