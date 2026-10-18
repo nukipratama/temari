@@ -56,7 +56,6 @@ it('stops animating once something else has claimed the stamp for that record', 
     $second = nonNull(prBibResolver()->resolve($activity, $detail));
 
     expect($first['animate'])->toBeTrue()
-        ->and($second)->not->toBeNull()
         ->and($second['label'])->toBe('10K')
         ->and($second['animate'])->toBeFalse();
 });

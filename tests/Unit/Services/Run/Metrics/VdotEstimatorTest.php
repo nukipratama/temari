@@ -303,15 +303,15 @@ it('gives the same capped answer for a past day whether read then or after later
         'set_at' => '2026-07-01', 'captured_at' => '2026-07-02 08:00:00',
     ]);
     recordRun($user, '2026-08-01', 10_000, 3_300);
-    $then = vdotEstimator()->estimate($user, Carbon::parse('2026-08-12'));
+    $then = nonNull(vdotEstimator()->estimate($user, Carbon::parse('2026-08-12')));
 
     recordRun($user, '2026-08-20', 10_000, 3_000);
     $fresh = app(VdotEstimator::class);
     $fresh->forget($user);
     $later = nonNull($fresh->estimate($user, Carbon::parse('2026-10-01')));
 
-    expect(nonNull($fresh->estimate($user, Carbon::parse('2026-08-12')))['vdot'])->toBe(data_get($then, 'vdot'))
-        ->and(data_get($later, 'vdot'))->toBeGreaterThan(Numeric::float(data_get($then, 'vdot')));
+    expect(nonNull($fresh->estimate($user, Carbon::parse('2026-08-12')))['vdot'])->toBe($then['vdot'])
+        ->and($later['vdot'])->toBeGreaterThan($then['vdot']);
 });
 
 it('falls back to the newest older effort, labelled stale, when nothing qualifies in 16 weeks', function (): void {
@@ -502,10 +502,10 @@ it('exposes the fall-off it projected with and whether it was fitted', function 
     $singleEstimate = nonNull(vdotEstimator()->estimate($single));
 
     expect(data_get($fittedEstimate, 'k_fitted'))->toBeTrue()
-        ->and(data_get($fittedEstimate, 'k'))->toBe(FallOffExponent::fit([
+        ->and(data_get($fittedEstimate, 'k'))->toBe(nonNull(FallOffExponent::fit([
             ['date' => Carbon::parse('2026-09-01'), 'distance_m' => 5_000.0, 'time_sec' => 1_650.0],
             ['date' => Carbon::parse('2026-09-10'), 'distance_m' => 15_000.0, 'time_sec' => 5_700.0],
-        ]))
+        ])))
         ->and(data_get($singleEstimate, 'k_fitted'))->toBeFalse()
         ->and(data_get($singleEstimate, 'k'))->toBe(FallOffExponent::DEFAULT_UP_TO_10K);
 });

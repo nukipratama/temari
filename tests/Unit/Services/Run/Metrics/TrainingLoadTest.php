@@ -7,7 +7,6 @@ use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\User;
 use App\Services\Run\Metrics\TrainingLoad;
-use App\Support\Numeric;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
@@ -134,8 +133,7 @@ it('rolls TRIMP into ATL/CTL/form with sane magnitudes, unchanged by the request
 
     $summary = nonNull(loadCalculator()->summaryFromDailyMap($map, runDaysOf($map), Carbon::today()));
 
-    expect($summary)->not->toBeNull()
-        ->and($summary['atl_7d'])->toBeFloat()->toBeGreaterThan(70)->toBeLessThan(85)
+    expect($summary['atl_7d'])->toBeFloat()->toBeGreaterThan(70)->toBeLessThan(85)
         ->and($summary['ctl_42d'])->toBeFloat()->toBeGreaterThan(60)->toBeLessThan(85)
         ->and($summary['weekly_trimp'])->toBeFloat()->toEqualWithDelta(560.0, 5.0)
         ->and($summary['weekly_trimp'])->toBeGreaterThan(50)->toBeLessThan(2000);
@@ -143,9 +141,9 @@ it('rolls TRIMP into ATL/CTL/form with sane magnitudes, unchanged by the request
     $sevenDay = nonNull(loadCalculator()->summaryFromDailyMap($map, runDaysOf($map), Carbon::today(), windowDays: 7));
     $ninetyDay = nonNull(loadCalculator()->summaryFromDailyMap($map, runDaysOf($map), Carbon::today(), windowDays: 90));
 
-    expect(nonNull(data_get($sevenDay, 'atl_7d')))->toBe(data_get($ninetyDay, 'atl_7d'))
-        ->and(nonNull(data_get($sevenDay, 'ctl_42d')))->toBe(data_get($ninetyDay, 'ctl_42d'))
-        ->and(nonNull(data_get($sevenDay, 'form')))->toBe(data_get($ninetyDay, 'form'));
+    expect($sevenDay['atl_7d'])->toBe($ninetyDay['atl_7d'])
+        ->and($sevenDay['ctl_42d'])->toBe($ninetyDay['ctl_42d'])
+        ->and($sevenDay['form'])->toBe($ninetyDay['form']);
 });
 
 it('reads the full stored history into the summary instead of the too-low 49-day cold-start window', function (): void {
@@ -357,9 +355,9 @@ it('ctlTrend and strainMonotonyTrend return one entry per day for the last N day
 
     // Last day's window must agree with summary()'s own weekStats() call —
     // this is exposing the same computation across a range, not a second one.
-    expect(nonNull($strainTrend[13])['weekly_trimp'])->toBe($summary['weekly_trimp'])
-        ->and(nonNull($strainTrend[13])['monotony'])->toBe($summary['monotony'])
-        ->and(nonNull($strainTrend[13])['strain'])->toBe($summary['strain']);
+    expect($strainTrend[13]['weekly_trimp'])->toBe($summary['weekly_trimp'])
+        ->and($strainTrend[13]['monotony'])->toBe($summary['monotony'])
+        ->and($strainTrend[13]['strain'])->toBe($summary['strain']);
 });
 
 it('ctlTrend never returns more than the available history, even when asked for more days', function (): void {
@@ -468,23 +466,24 @@ it('strainMonotonyTrend tells an unscored week apart from a rested one, same as 
 
 it('memoizes a null summary within the same instance until clearSummaryCache forces a recompute', function (): void {
     $user = User::factory()->create();
-    $this->instance(TrainingLoad::class, loadCalculator());
+    $load = loadCalculator();
+    $this->instance(TrainingLoad::class, $load);
 
     $queries = 0;
     DB::listen(function () use (&$queries): void {
         $queries++;
     });
 
-    expect(loadCalculator()->summary($user))->toBeNull()
-        ->and(loadCalculator()->summary($user))->toBeNull()
-        ->and(loadCalculator()->summary($user))->toBeNull();
+    expect($load->summary($user))->toBeNull()
+        ->and($load->summary($user))->toBeNull()
+        ->and($load->summary($user))->toBeNull();
 
     expect($queries)->toBe(1);
 
     seedTrimpDay($user, 80.0, 0);
     TrainingLoad::clearSummaryCache($user);
 
-    expect(loadCalculator()->summary($user))->not->toBeNull();
+    expect($load->summary($user))->not->toBeNull();
 });
 
 it('caches a null summary across instances, so an athlete with no TRIMP history reads it from the cache', function (): void {
@@ -505,7 +504,8 @@ it('memoizes a real summary within the same instance, ignoring one an earlier bu
     seedTrimpDay($user, 80.0, 0);
     Cache::put("training-load:{$user->id}:".Carbon::today()->toDateString().':7', ['atl_7d' => 1.0]);
 
-    $first = loadCalculator()->summary($user);
+    $load = loadCalculator();
+    $first = $load->summary($user);
     expect($first)->toHaveKey('weekly_trimp_range');
 
     $queries = 0;
@@ -513,7 +513,7 @@ it('memoizes a real summary within the same instance, ignoring one an earlier bu
         $queries++;
     });
 
-    $second = loadCalculator()->summary($user);
+    $second = $load->summary($user);
 
     expect($queries)->toBe(0)
         ->and($second)->toBe($first);
@@ -529,14 +529,15 @@ it('keeps distinct memo entries per user, date and window so they do not collide
     $asOfA = Carbon::today();
     $asOfB = Carbon::today()->subDay();
 
-    $summaryA = nonNull(loadCalculator()->summary($userA, $asOfA, windowDays: 7));
-    $summaryB = loadCalculator()->summary($userB, $asOfA, windowDays: 7);
-    $summaryADifferentDate = loadCalculator()->summary($userA, $asOfB, windowDays: 7);
-    $summaryADifferentWindow = nonNull(loadCalculator()->summary($userA, $asOfA, windowDays: 30));
+    $load = loadCalculator();
+    $summaryA = nonNull($load->summary($userA, $asOfA, windowDays: 7));
+    $summaryB = $load->summary($userB, $asOfA, windowDays: 7);
+    $summaryADifferentDate = $load->summary($userA, $asOfB, windowDays: 7);
+    $summaryADifferentWindow = nonNull($load->summary($userA, $asOfA, windowDays: 30));
 
     expect($summaryA)->not->toBe($summaryB)
         ->and($summaryA)->not->toBe($summaryADifferentDate)
-        ->and(nonNull(data_get($summaryA, 'weekly_trimp')))->not->toBe(data_get($summaryADifferentWindow, 'weekly_trimp'));
+        ->and(nonNull($summaryA['weekly_trimp']))->not->toBe($summaryADifferentWindow['weekly_trimp']);
 });
 
 /**
@@ -603,10 +604,7 @@ it('never reads fresher after more TRIMP on the last day', function (float $dail
     for ($extra = 0.0; $extra <= 600.0; $extra += 10.0) {
         $map = $base + [$asOf->toDateString() => $extra];
         $summary = nonNull(loadCalculator()->summaryFromDailyMap($map, runDaysOf($map), $asOf));
-        $formStatus = data_get($summary, 'form_status');
-        expect($formStatus)->toBeInstanceOf(TrainingFormStatus::class);
-        assert($formStatus instanceof TrainingFormStatus);
-        $status = $formStatus->value;
+        $status = nonNull($summary['form_status'])->value;
 
         expect($severity[$status])->toBeGreaterThanOrEqual($previous);
         $previous = $severity[$status];
@@ -627,8 +625,10 @@ it('checks the personal range against an unrounded reference that leaves out the
     $steadySummary = nonNull(loadCalculator()->summaryFromDailyMap($steady, runDaysOf($steady), $asOf));
     $spikingSummary = nonNull(loadCalculator()->summaryFromDailyMap($spiking, runDaysOf($spiking), $asOf));
 
+    $steadyReference = nonNull($steadySummary['weekly_trimp_reference']);
+
     expect($steadySummary['weekly_trimp_range'])->toBe(['low' => 590.0, 'high' => 590.0])
-        ->and(data_get($steadySummary['weekly_trimp_reference'], 'high'))->toEqualWithDelta(592.0, 0.001)
-        ->and($steadySummary['weekly_trimp'])->toBeLessThanOrEqual(Numeric::float(data_get($steadySummary['weekly_trimp_reference'], 'high')) + 0.001)
-        ->and(data_get($spikingSummary['weekly_trimp_reference'], 'high'))->toEqualWithDelta(592.0, 0.001);
+        ->and($steadyReference['high'])->toEqualWithDelta(592.0, 0.001)
+        ->and($steadySummary['weekly_trimp'])->toBeLessThanOrEqual($steadyReference['high'] + 0.001)
+        ->and(nonNull($spikingSummary['weekly_trimp_reference'])['high'])->toEqualWithDelta(592.0, 0.001);
 });

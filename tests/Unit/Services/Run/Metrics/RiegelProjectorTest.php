@@ -27,8 +27,7 @@ it('falls back to the default 1.06 exponent with a wide range for a single PR', 
 
     $result = nonNull(riegelProjector()->project($user, 10_000.0));
 
-    expect($result)->not->toBeNull()
-        ->and($result['sample_size'])->toBe(1)
+    expect($result['sample_size'])->toBe(1)
         ->and($result['exponent'])->toBe(1.06)
         ->and($result['confidence'])->toBe('low')
         ->and($result['window'])->toBe('all')
@@ -50,8 +49,7 @@ it('fits an exponent from 3 realistic PRs and projects a plausible marathon time
 
     $result = nonNull(riegelProjector()->project($user, 42_195.0));
 
-    expect($result)->not->toBeNull()
-        ->and($result['sample_size'])->toBe(3)
+    expect($result['sample_size'])->toBe(3)
         ->and($result['confidence'])->toBe('medium');
 
     // Plausible range: slower than exactly double the half-marathon time (a

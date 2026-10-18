@@ -12,7 +12,6 @@ use App\Services\Run\Metrics\PaceFormatter;
 use App\Services\Run\Metrics\PersonalRecords;
 use Illuminate\Support\Carbon;
 use App\Services\Run\Metrics\VdotEstimator;
-use App\Support\Numeric;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
 
@@ -75,7 +74,7 @@ it('lifts the guide by at most one VDOT when a faster run overwrites the only PR
     ]);
     personalRecords()->detectAndStore($oldActivity, $oldDetail);
     $estimator = app(VdotEstimator::class);
-    $before = $estimator->estimate($user);
+    $before = nonNull($estimator->estimate($user));
 
     Carbon::setTestNow('2026-09-01 09:00:00');
     $newActivity = Activity::factory()->for($user)->create();
@@ -90,7 +89,7 @@ it('lifts the guide by at most one VDOT when a faster run overwrites the only PR
 
     expect(PersonalRecord::query()->where('user_id', $user->id)->where('category', '5km')->value('activity_id'))
         ->toBe($newActivity->id)
-        ->and(data_get($after, 'vdot'))->toBe(round(Numeric::float(data_get($before, 'vdot')) + VdotEstimator::RISE_CAP_VDOT_PER_WEEK, 1));
+        ->and($after['vdot'])->toBe(round($before['vdot'] + VdotEstimator::RISE_CAP_VDOT_PER_WEEK, 1));
 });
 
 it('drops the estimate at once when its source activity is deleted', function (): void {
@@ -304,8 +303,7 @@ it('rebuildForUser drops orphaned records and re-detects from surviving runs', f
     personalRecords()->rebuildForUser($user);
 
     $km = nonNull(PersonalRecord::query()->where('user_id', $user->id)->where('category', '1km')->first());
-    expect($km)->not->toBeNull()
-        ->and($km->value_sec)->toEqualWithDelta(300.0, 0.01)
+    expect($km->value_sec)->toEqualWithDelta(300.0, 0.01)
         ->and($km->activity_id)->toBe($activity->id);
 });
 

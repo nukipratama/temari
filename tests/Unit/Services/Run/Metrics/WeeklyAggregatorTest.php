@@ -225,7 +225,7 @@ it('keeps pre-HR load unknown after later scored runs arrive', function (string 
         default => throw new InvalidArgumentException("Unknown rebuild {$rebuild}"),
     };
 
-    $snapshot = nonNull($before->fresh());
+    $snapshot = $before->refresh();
     expect($snapshot->only($loadFields))->toBe(array_fill_keys($loadFields, null));
     $recapTotals = new WeekTotalsTool($snapshot)->handle([]);
     expect($recapTotals['load_balance'])->toBeNull();
@@ -362,8 +362,7 @@ it('rebuildForwardFrom computes the converged CTL, not the too-low windowed valu
 
     $snap = nonNull(weeklyAggregator()->rebuildForwardFrom($user, $weekEnding));
 
-    expect($snap)->not->toBeNull()
-        ->and((float) $snap->ctl_42d)->toBeGreaterThan(75.0);
+    expect((float) $snap->ctl_42d)->toBeGreaterThan(75.0);
 });
 
 it('rebuildForwardFrom rebuilds every week from the anchor through today', function (): void {
@@ -437,8 +436,7 @@ it('measures the in-progress week CTL as-of today, not the future Sunday', funct
 
     $snap = nonNull(weeklyAggregator()->rebuildForwardFrom($user, Carbon::today()));
 
-    expect($snap)->not->toBeNull()
-        ->and((float) $snap->ctl_42d)->toBeGreaterThan(75.0);
+    expect((float) $snap->ctl_42d)->toBeGreaterThan(75.0);
 });
 
 it('rebuildForwardFrom returns the anchor week snapshot', function (): void {
@@ -508,8 +506,7 @@ it('still computes decoupling and sums from the narrowed projection', function (
 
     $snapshot = nonNull(weeklyAggregator()->rebuildForwardFrom($user, Carbon::today()));
 
-    expect($snapshot)->not->toBeNull()
-        ->and((float) $snapshot->distance_km)->toBe(14.0)
+    expect((float) $snapshot->distance_km)->toBe(14.0)
         ->and($snapshot->runs)->toBe(2)
         ->and($snapshot->elapsed_time_sec)->toBe(4800)
         ->and($snapshot->avg_decoupling)->toBe(4.0);
@@ -689,7 +686,7 @@ it('keeps the earliest dirty week however the marks arrive', function (): void {
     weeklyAggregator()->markDirty($user, Carbon::parse('2026-03-03'));
     weeklyAggregator()->markDirty($user, Carbon::parse('2026-04-29'));
 
-    expect(nonNull(nonNull($user->fresh())->weekly_snapshots_dirty_from)->toDateString())->toBe('2026-03-08');
+    expect(nonNull($user->refresh()->weekly_snapshots_dirty_from)->toDateString())->toBe('2026-03-08');
 });
 
 it('rolls forward from the earliest dirty week and clears the mark', function (): void {
@@ -710,7 +707,7 @@ it('rolls forward from the earliest dirty week and clears the mark', function ()
 
     expect(WeeklySnapshot::query()->where('user_id', $user->id)->min('week_ending'))->toBe('2026-03-08')
         ->and(WeeklySnapshot::query()->where('user_id', $user->id)->max('week_ending'))->toBe('2026-05-17')
-        ->and(nonNull($user->fresh())->weekly_snapshots_dirty_from)->toBeNull();
+        ->and($user->refresh()->weekly_snapshots_dirty_from)->toBeNull();
 });
 
 it('writes nothing when no week is dirty', function (): void {
@@ -734,7 +731,7 @@ it('rolls forward from whichever is earlier, the given run or a week already dir
     weeklyAggregator()->rollForwardFrom($user, Carbon::parse('2026-04-15'));
 
     expect(WeeklySnapshot::query()->where('user_id', $user->id)->min('week_ending'))->toBe('2026-03-08')
-        ->and(nonNull($user->fresh())->weekly_snapshots_dirty_from)->toBeNull();
+        ->and($user->refresh()->weekly_snapshots_dirty_from)->toBeNull();
 });
 
 it('leaves the week dirty when the roll forward dies mid-rebuild', function (): void {
@@ -748,7 +745,7 @@ it('leaves the week dirty when the roll forward dies mid-rebuild', function (): 
     });
 
     expect(fn () => weeklyAggregator()->rollForwardFrom($user, Carbon::parse('2026-04-15')))->toThrow(RuntimeException::class)
-        ->and(nonNull(nonNull($user->fresh())->weekly_snapshots_dirty_from)->toDateString())->toBe('2026-04-19');
+        ->and(nonNull($user->refresh()->weekly_snapshots_dirty_from)->toDateString())->toBe('2026-04-19');
 });
 
 function seedWeeklyAggregatorMultiYearHistory(User $user): void
