@@ -61,16 +61,17 @@ it('matches the oldest qualifying easy run within ±20% distance', function (): 
     seedRun($user, Carbon::today()->subDays(60), 10_000, 4_200, $temp);
 
     $current = seedRun($user, Carbon::today(), 10_000, 4_140, $temp);
-    $match = app(PastYouMatcher::class)->findMatch($current->activity, $current);
+    $match = nonNull(app(PastYouMatcher::class)->findMatch($current->activity, $current));
 
     expect($match)->not->toBeNull()
-        ->and($match['past']->start_date_local->toDateString())->toBe(Carbon::today()->subDays(90)->toDateString())
+        ->and(nonNull($match['past']->start_date_local)->toDateString())->toBe(Carbon::today()->subDays(90)->toDateString())
         ->and($match['days_ago'])->toBe(90)
         ->and($match['pace_diff_sec'])->toBeFloat()->toBeGreaterThan(0);
 });
 
 /**
- * @return array<string, mixed>|null
+ * @param array<string, mixed> $pastExtra
+ * @return array{days_ago: int, pace: array{seconds_per_km: float, relation: string}, time: array{seconds: float, relation: string}, hr: array{bpm: float, relation: string}|null, direction: string, past_km: float, past_activity_id: int, past_name: string|null}|null
  */
 function heroContext(int $pastMovingSec, ?float $pastHr, int $currentMovingSec, ?float $currentHr, float $distanceM = 10_000.0, array $pastExtra = []): ?array
 {
@@ -88,7 +89,7 @@ it('reports direction=better when the current run is faster at the same heart ra
     seedRun($user, Carbon::today()->subDays(60), 10_000, 4_200, $shared);
 
     $current = seedRun($user, Carbon::today(), 10_000, 4_050, $shared);
-    $match = app(PastYouMatcher::class)->findMatch($current->activity, $current);
+    $match = nonNull(app(PastYouMatcher::class)->findMatch($current->activity, $current));
 
     expect($match['pace_diff_sec'])->toBeGreaterThan(0.0)
         ->and($match['direction'])->toBe('better');
@@ -100,21 +101,21 @@ it('reports direction=worse when the current run is slower at the same heart rat
     seedRun($user, Carbon::today()->subDays(60), 10_000, 4_200, $shared);
 
     $current = seedRun($user, Carbon::today(), 10_000, 4_350, $shared);
-    $match = app(PastYouMatcher::class)->findMatch($current->activity, $current);
+    $match = nonNull(app(PastYouMatcher::class)->findMatch($current->activity, $current));
 
     expect($match['pace_diff_sec'])->toBeLessThan(0.0)
         ->and($match['direction'])->toBe('worse');
 });
 
 it('exposes findMatchContext with relation=faster and no signed field on a faster run', function (): void {
-    $context = heroContext(4_200, 150.0, 4_050, 150.0);
+    $context = nonNull(heroContext(4_200, 150.0, 4_050, 150.0));
 
     expect($context)->not->toBeNull()
         ->and($context)->not->toHaveKeys(['pace_diff_sec', 'time_diff_sec', 'hr_diff_bpm', 'pace_change_pct'])
-        ->and($context['pace']['seconds_per_km'])->toBe(15.0)
-        ->and($context['pace']['relation'])->toBe('faster')
-        ->and($context['time']['relation'])->toBe('faster')
-        ->and($context['hr']['relation'])->toBe('same')
+        ->and(data_get($context, 'pace.seconds_per_km'))->toBe(15.0)
+        ->and(data_get($context, 'pace.relation'))->toBe('faster')
+        ->and(data_get($context, 'time.relation'))->toBe('faster')
+        ->and(data_get($context, 'hr.relation'))->toBe('same')
         ->and($context['direction'])->toBe('better');
 });
 
@@ -124,7 +125,7 @@ it('exposes past_activity_id and past_name so a caller can link to the matched r
     $past = seedRun($user, Carbon::today()->subDays(60), 10_000, 4_200, array_merge($temp, ['name' => 'Evening tempo']));
 
     $current = seedRun($user, Carbon::today(), 10_000, 4_140, $temp);
-    $context = app(PastYouMatcher::class)->findMatchContext($current->activity, $current);
+    $context = nonNull(app(PastYouMatcher::class)->findMatchContext($current->activity, $current));
 
     expect($context)->not->toHaveKey('past_date')
         ->and($context['past_activity_id'])->toBe($past->activity_id)
@@ -132,51 +133,51 @@ it('exposes past_activity_id and past_name so a caller can link to the matched r
 });
 
 it('exposes findMatchContext with relation=slower on a slower run', function (): void {
-    $context = heroContext(4_200, 150.0, 4_350, 150.0);
+    $context = nonNull(heroContext(4_200, 150.0, 4_350, 150.0));
 
-    expect($context['pace']['seconds_per_km'])->toBe(15.0)
-        ->and($context['pace']['relation'])->toBe('slower')
-        ->and($context['time']['relation'])->toBe('slower')
+    expect(data_get($context, 'pace.seconds_per_km'))->toBe(15.0)
+        ->and(data_get($context, 'pace.relation'))->toBe('slower')
+        ->and(data_get($context, 'time.relation'))->toBe('slower')
         ->and($context['direction'])->toBe('worse');
 });
 
 it('calls a pace gap inside 2% the same pace and a heart-rate gap under half a beat the same heart rate', function (): void {
-    $context = heroContext(4_220, 150.3, 4_200, 150.0);
+    $context = nonNull(heroContext(4_220, 150.3, 4_200, 150.0));
 
-    expect($context['pace']['relation'])->toBe('same')
-        ->and($context['hr']['relation'])->toBe('same')
+    expect(data_get($context, 'pace.relation'))->toBe('same')
+        ->and(data_get($context, 'hr.relation'))->toBe('same')
         ->and($context['direction'])->toBe('flat');
 });
 
 it('names a one-beat heart-rate gap as the card shows it rather than hiding it inside a band', function (): void {
-    $context = heroContext(4_200, 151.0, 4_200, 150.0);
+    $context = nonNull(heroContext(4_200, 151.0, 4_200, 150.0));
 
     expect($context['hr'])->toBe(['bpm' => 1.0, 'relation' => 'lower'])
         ->and($context['direction'])->toBe('flat');
 });
 
 it('calls a run faster at a proportionally higher heart rate flat, while still naming both facts', function (): void {
-    $context = heroContext(4_200, 150.0, 4_000, 157.5);
+    $context = nonNull(heroContext(4_200, 150.0, 4_000, 157.5));
 
-    expect($context['pace']['relation'])->toBe('faster')
-        ->and($context['hr']['relation'])->toBe('higher')
+    expect(data_get($context, 'pace.relation'))->toBe('faster')
+        ->and(data_get($context, 'hr.relation'))->toBe('higher')
         ->and($context['direction'])->toBe('flat');
 });
 
 it('calls a slower run at a much lower heart rate better on efficiency, with pace and heart rate each told straight', function (): void {
-    $context = heroContext(4_070, 166.0, 4_200, 150.0);
+    $context = nonNull(heroContext(4_070, 166.0, 4_200, 150.0));
 
-    expect($context['pace']['relation'])->toBe('slower')
-        ->and($context['hr']['relation'])->toBe('lower')
+    expect(data_get($context, 'pace.relation'))->toBe('slower')
+        ->and(data_get($context, 'hr.relation'))->toBe('lower')
         ->and($context['direction'])->toBe('better');
 });
 
 it('decides a pair on pace at the 2% line when one side has no heart rate', function (int $currentMovingSec, string $direction, string $relation): void {
-    $context = heroContext(4_200, null, $currentMovingSec, 150.0);
+    $context = nonNull(heroContext(4_200, null, $currentMovingSec, 150.0));
 
     expect($context['hr'])->toBeNull()
         ->and($context['direction'])->toBe($direction)
-        ->and($context['pace']['relation'])->toBe($relation);
+        ->and(data_get($context, 'pace.relation'))->toBe($relation);
 })->with([
     '1.9% faster' => [4_120, 'flat', 'same'],
     '2.0% faster' => [4_116, 'better', 'faster'],
@@ -184,9 +185,9 @@ it('decides a pair on pace at the 2% line when one side has no heart rate', func
 ]);
 
 it('decides a pair under 20 minutes on pace even when both sides have heart rate', function (): void {
-    $context = heroContext(1_050, 160.0, 1_050, 150.0, 2_500.0);
+    $context = nonNull(heroContext(1_050, 160.0, 1_050, 150.0, 2_500.0));
 
-    expect($context['hr']['relation'])->toBe('lower')
+    expect(data_get($context, 'hr.relation'))->toBe('lower')
         ->and($context['direction'])->toBe('flat');
 });
 
@@ -269,7 +270,7 @@ it('reports HR diff when both sides have it', function (): void {
         'weather_temp_c' => 27,
     ]);
 
-    $match = app(PastYouMatcher::class)->findMatch($current->activity, $current);
+    $match = nonNull(app(PastYouMatcher::class)->findMatch($current->activity, $current));
     expect($match['hr_diff_bpm'])->toBeFloat()->toEqualWithDelta(-8.0, 0.01);
 });
 
@@ -330,7 +331,7 @@ it('reports a null hr_diff when one side is missing average_heartrate', function
         'weather_temp_c' => 27,
     ]);
 
-    $match = app(PastYouMatcher::class)->findMatch($current->activity, $current);
+    $match = nonNull(app(PastYouMatcher::class)->findMatch($current->activity, $current));
 
     expect($match['hr_diff_bpm'])->toBeNull();
 });
@@ -368,7 +369,7 @@ it('still matches a run just inside the year boundary', function (): void {
     seedRun($user, Carbon::today()->subDays(360), 10_000, 4_400, ['weather_temp_c' => 27]);
     $current = seedRun($user, Carbon::today(), 10_000, 4_200, ['weather_temp_c' => 27]);
 
-    $match = app(PastYouMatcher::class)->findMatch($current->activity, $current);
+    $match = nonNull(app(PastYouMatcher::class)->findMatch($current->activity, $current));
 
     expect($match)->not->toBeNull()
         ->and($match['days_ago'])->toBe(360);
@@ -380,7 +381,7 @@ it('prefers a run inside the window over an older one', function (): void {
     seedRun($user, Carbon::today()->subDays(300), 10_000, 4_400, ['weather_temp_c' => 27]);
     $current = seedRun($user, Carbon::today(), 10_000, 4_200, ['weather_temp_c' => 27]);
 
-    $match = app(PastYouMatcher::class)->findMatch($current->activity, $current);
+    $match = nonNull(app(PastYouMatcher::class)->findMatch($current->activity, $current));
 
     expect($match['days_ago'])->toBe(300);
 });
@@ -491,7 +492,7 @@ it('penalises a pairing run at a very different hour', function (): void {
     $evening = matcherRun('2026-01-15 18:00:00', 420.0);
 
     expect($matcher->similarity($current, $morning))
-        ->toBeGreaterThan($matcher->similarity($current, $evening));
+        ->toBeGreaterThan(nonNull($matcher->similarity($current, $evening)));
 });
 
 it('treats midnight as a wrap-around rather than a twelve-hour gap', function (): void {
@@ -501,7 +502,7 @@ it('treats midnight as a wrap-around rather than a twelve-hour gap', function ()
     $distant = matcherRun('2026-01-15 11:30:00', 420.0);
 
     expect($matcher->similarity($current, $nearby))
-        ->toBeGreaterThan($matcher->similarity($current, $distant));
+        ->toBeGreaterThan(nonNull($matcher->similarity($current, $distant)));
 });
 
 it('prefers a pairing from the same season', function (): void {
@@ -511,16 +512,16 @@ it('prefers a pairing from the same season', function (): void {
     $offSeason = matcherRun('2025-12-15 06:00:00', 420.0);
 
     expect($matcher->similarity($current, $sameSeason))
-        ->toBeGreaterThan($matcher->similarity($current, $offSeason));
+        ->toBeGreaterThan(nonNull($matcher->similarity($current, $offSeason)));
 });
 
 it('picks the most comparable candidate, not the nearest in time', function (): void {
     $matcher = new PastYouMatcher();
     $current = matcherRun('2026-06-15 06:00:00', 420.0);
-    $comparison = $matcher->bestMatch($current, [
+    $comparison = nonNull($matcher->bestMatch($current, [
         matcherRun('2026-05-01 18:00:00', 420.0, 10_450.0, 155.0, 50.0, 11),
         matcherRun('2025-07-10 06:00:00', 430.0, 10_000.0, 155.0, 50.0, 12),
-    ]);
+    ]));
 
     expect($comparison)->not->toBeNull()
         ->and($comparison->past->activityId)->toBe(12)
@@ -530,10 +531,10 @@ it('picks the most comparable candidate, not the nearest in time', function (): 
 it('breaks a tie towards the older run', function (): void {
     $matcher = new PastYouMatcher();
     $current = matcherRun('2026-06-15 06:00:00', 420.0);
-    $comparison = $matcher->bestMatch($current, [
+    $comparison = nonNull($matcher->bestMatch($current, [
         matcherRun('2026-04-15 06:00:00', 420.0, 10_000.0, 155.0, 50.0, 21),
         matcherRun('2025-08-15 06:00:00', 420.0, 10_000.0, 155.0, 50.0, 22),
-    ]);
+    ]));
 
     expect($comparison->past->activityId)->toBe(22);
 });

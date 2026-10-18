@@ -61,7 +61,7 @@ it('builds the weekly-best series scaled to the target distance', function (): v
         $activityIds[] = $a->id;
     }
 
-    $series = new ProgressionSeriesBuilder()->build($user, $featured, 2_400);
+    $series = nonNull(new ProgressionSeriesBuilder()->build($user, $featured, 2_400));
 
     expect($series)->not->toBeNull()
         ->and($series['category'])->toBe('10km')
@@ -84,7 +84,7 @@ it('snaps the activity id to the record when the best time is snapped', function
         'start_date_local' => Carbon::parse('2026-05-04 07:00:00'),
     ]);
 
-    $series = new ProgressionSeriesBuilder()->build($user, $featured, 2_400);
+    $series = nonNull(new ProgressionSeriesBuilder()->build($user, $featured, 2_400));
 
     expect($series['activity_ids'])->toBe([$featured->activity_id]);
 });
@@ -103,7 +103,10 @@ it('snaps the series best to the authoritative PR time so the chart matches the 
         'start_date_local' => Carbon::parse('2026-05-04 07:00:00'),
     ]);
 
-    $series = new ProgressionSeriesBuilder()->build($user, $featured, 2_400);
+    $series = nonNull(new ProgressionSeriesBuilder()->build($user, $featured, 2_400));
+
+    expect($series['times_sec'])->not->toBeEmpty();
+    assert($series['times_sec'] !== []);
 
     expect(min($series['times_sec']))->toBe(2_400)
         ->and($series['times_sec'])->toContain(2_400);
@@ -122,7 +125,7 @@ it('does not stamp the PR time onto a more recent week when the PR predates the 
         'start_date_local' => Carbon::parse('2026-05-04 07:00:00'),
     ]);
 
-    $series = new ProgressionSeriesBuilder()->build($user, $featured, 1_485);
+    $series = nonNull(new ProgressionSeriesBuilder()->build($user, $featured, 1_485));
 
     expect($series['times_sec'])->toBe([1_550])
         ->and($series['times_sec'])->not->toContain(1_500);
@@ -141,7 +144,7 @@ it('keeps only the best (lowest) scaled time per week', function (): void {
         ]);
     }
 
-    $series = new ProgressionSeriesBuilder()->build($user, $featured, 1_485);
+    $series = nonNull(new ProgressionSeriesBuilder()->build($user, $featured, 1_485));
 
     expect($series['weeks'])->toHaveCount(1)
         ->and($series['times_sec'][0])->toBe(1_500);

@@ -132,7 +132,7 @@ it('awards z2_master above 80 percent Z2', function (): void {
 });
 
 it('awards cold_runner at or below 20C', function (): void {
-    expect(badgesFor(badgeDetail(['weather_temp_c' => 20])))->toContain('cold_runner')->not->toContain('early_bird');
+    expect(badgesFor(badgeDetail(['weather_temp_c' => 20])))->toContain('cold_runner')->and(badgesFor(badgeDetail(['weather_temp_c' => 20])))->not->toContain('early_bird');
 });
 
 it('falls back to a pre-dawn window for cold_runner when no weather is stored', function (): void {
@@ -144,7 +144,7 @@ it('falls back to a pre-dawn window for cold_runner when no weather is stored', 
 it('does not award cold_runner on a warm pre-dawn run', function (): void {
     $detail = badgeDetail(['weather_temp_c' => 28, 'start_date_local' => Carbon::parse('2026-05-12 04:30:00')]);
 
-    expect(badgesFor($detail))->toContain('early_bird')->not->toContain('cold_runner');
+    expect(badgesFor($detail))->toContain('early_bird')->and(badgesFor($detail))->not->toContain('cold_runner');
 });
 
 it('awards all_out above 85 percent of the athlete max HR', function (): void {
@@ -158,13 +158,14 @@ it('awards easy_miles below 78 percent of the athlete max HR', function (): void
 
     expect(badgesFor($detail, [], badgeContext(maxHr: 190)))
         ->toContain('easy_miles')
-        ->not->toContain('all_out');
+        ->and(badgesFor($detail, [], badgeContext(maxHr: 190)))->not->toContain('all_out');
 });
 
 it('awards no effort badge when the context carries no athlete max HR', function (): void {
     $detail = badgeDetail(['weather_temp_c' => 25, 'average_heartrate' => 170.0]);
 
-    expect(badgesFor($detail))->not->toContain('all_out')->not->toContain('easy_miles');
+    expect(badgesFor($detail))->not->toContain('all_out')
+        ->and(badgesFor($detail))->not->toContain('easy_miles');
 });
 
 it('reads aerobic discipline off distance and hard-zone share', function (): void {

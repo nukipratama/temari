@@ -73,7 +73,7 @@ it('skips a story line whose detail has no start date', function (): void {
     $user = User::factory()->create();
     seedVerdict($user, Carbon::parse('2026-05-10 06:00:00'), Mood::Blazing, 'kemarin', 5000.0);
     $undated = seedVerdict($user, Carbon::parse('2026-05-09 06:00:00'), Mood::Easy, 'tanpa tanggal', 5000.0);
-    $undated->detail->update(['start_date_local' => null]);
+    nonNull($undated->detail)->update(['start_date_local' => null]);
 
     $items = app(VerdictTimeline::class)->recent($user);
 

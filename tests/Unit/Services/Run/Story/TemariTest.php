@@ -29,6 +29,7 @@ beforeEach(function (): void {
     Bus::fake();
 });
 
+/** @return array{drift_metric_version: int, steady_effort_decoupling_pct: float} */
 function steadyDrift(float $pct): array
 {
     return [
@@ -306,7 +307,7 @@ it('never gives a planned tempo run the rest-day chill mood beside its moderate 
 
     expect(RunEffort::forDetails($user->id, collect([$detail]))[$activity->id])->toBe(Effort::Steady)
         ->and(app(Temari::class)->postRunLine($activity, $detail)->mood)->toBe(Mood::Easy)
-        ->and(Temari::moodForActivityOrDefault($activity->fresh()))->toBe(Mood::Easy);
+        ->and(Temari::moodForActivityOrDefault($activity->refresh()))->toBe(Mood::Easy);
 });
 
 it('keeps chill for an easy run with nothing else to say', function (): void {
@@ -388,7 +389,7 @@ it('emits a daily greeting story line per (user, date) with null speech, dispatc
 
     expect($line->kind)->toBe(StoryLine::KIND_DAILY_GREETING)
         ->and($line->activity_id)->toBeNull()
-        ->and($line->for_date->toDateString())->toBe('2026-05-11')
+        ->and(nonNull($line->for_date)->toDateString())->toBe('2026-05-11')
         ->and($line->speech)->toBeNull();
 
     // No LLM dispatch on page-load greeting — analyses are user-triggered.
@@ -448,6 +449,7 @@ it('moodForActivityOrDefault falls back to chill when the activity has no detail
 /**
  * @param  array<string, mixed>  $day
  * @param  array<string, float>  $zones
+ * @return array{0: Activity, 1: ActivityDetail}
  */
 function qualityDayRun(array $day, array $zones, bool $negativeSplit = false): array
 {
@@ -473,7 +475,7 @@ it('reads a planned tempo that shows threshold work as a session gone after, not
     );
 
     expect(app(Temari::class)->postRunLine($activity, $detail)->mood)->toBe(Mood::Blazing)
-        ->and(Temari::moodForActivityOrDefault($activity->fresh()))->toBe(Mood::Blazing);
+        ->and(Temari::moodForActivityOrDefault($activity->refresh()))->toBe(Mood::Blazing);
 });
 
 it('keeps a negative-split tempo a quality win rather than an easy run', function (): void {

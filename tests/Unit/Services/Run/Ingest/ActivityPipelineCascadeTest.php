@@ -25,8 +25,12 @@ beforeEach(function (): void {
     // pipeline's job is simply to emit the event once the run is persisted.
     Event::fake([ActivityIngested::class]);
     Bus::fake();
-    $this->pipeline = app(ActivityPipeline::class);
 });
+
+function cascadePipeline(): ActivityPipeline
+{
+    return app(ActivityPipeline::class);
+}
 
 function ingestSeed(): Activity
 {
@@ -59,7 +63,7 @@ function ingestSeed(): Activity
 it('emits ActivityIngested with the activity id after a successful ingest', function (): void {
     $activity = ingestSeed();
 
-    $this->pipeline->ingest($activity);
+    cascadePipeline()->ingest($activity);
 
     Event::assertDispatched(fn (ActivityIngested $event): bool => $event->activityId === $activity->id);
 });
@@ -67,7 +71,7 @@ it('emits ActivityIngested with the activity id after a successful ingest', func
 it('queues no AI job from inside the ingest transaction', function (): void {
     $activity = ingestSeed();
 
-    $this->pipeline->ingest($activity);
+    cascadePipeline()->ingest($activity);
 
     // The story layer runs inside DB::transaction; every fan-out analysis
     // request now belongs to the post-commit listener, so nothing from it is
@@ -86,7 +90,9 @@ it('dispatches nothing when the ingest transaction rolls back', function (): voi
     $milestones->shouldReceive('__invoke')->andThrow(new RuntimeException('story layer blew up'));
     $this->app->instance(DetectActivityMilestonesAction::class, $milestones);
 
-    expect(fn (): mixed => app(ActivityPipeline::class)->ingest($activity))
+    expect(function () use ($activity): void {
+        app(ActivityPipeline::class)->ingest($activity);
+    })
         ->toThrow(RuntimeException::class);
 
     Bus::assertNothingDispatched();
@@ -103,7 +109,7 @@ it('does not emit ActivityIngested when the detail fetch fails', function (): vo
     ]);
     Http::fake(['strava.com/api/v3/activities/999' => Http::response(['error' => 'down'], 500)]);
 
-    $this->pipeline->ingest($activity);
+    cascadePipeline()->ingest($activity);
 
     Event::assertNotDispatched(ActivityIngested::class);
 });

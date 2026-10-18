@@ -59,10 +59,10 @@ it('preserves UTC start separately from the local calendar and never guesses mis
         summaryPayload(111, ['start_date' => '2026-05-09T23:00:00Z', 'start_date_local' => '2026-05-10T06:00:00Z']),
         summaryPayload(222, ['start_date' => '']),
     ]);
-    $known = Activity::query()->where('strava_external_id', 111)->firstOrFail()->detail;
-    $unknown = Activity::query()->where('strava_external_id', 222)->firstOrFail()->detail;
+    $known = nonNull(Activity::query()->where('strava_external_id', 111)->firstOrFail()->detail);
+    $unknown = nonNull(Activity::query()->where('strava_external_id', 222)->firstOrFail()->detail);
     expect($known->getRawOriginal('start_date_utc'))->toBe('2026-05-09 23:00:00')
-        ->and($known->start_date_local->toDateString())->toBe('2026-05-10')
+        ->and(nonNull($known->start_date_local)->toDateString())->toBe('2026-05-10')
         ->and($unknown->start_date_utc)->toBeNull();
 });
 
