@@ -8,9 +8,9 @@ use App\Services\Run\Plan\IntentOutcome;
 it('words every verdict as a clause with no enum token in it', function (IntentVerdict $verdict, array $evidence, string $expected): void {
     $outcome = IntentOutcome::outcome($verdict, $evidence);
 
-    expect($outcome)->toBe($expected)
-        ->not->toContain('_')
-        ->not->toMatch('/\b(hit|too hard|unknown)\b/');
+    expect($outcome)->not->toContain('_')
+        ->and($outcome)->not->toMatch('/\b(hit|too hard|unknown)\b/')
+        ->toBe($expected);
 })->with([
     'easy day hit' => [IntentVerdict::Hit, ['pace_sec' => 449, 'ceiling_pace_sec' => 408, 'basis' => 'pace'], 'it stayed at the easy effort the day asked for'],
     'tempo block hit' => [IntentVerdict::Hit, ['block_minutes' => 20, 'target_pace_sec' => 300], 'the hard block got done at the effort it asked for'],
@@ -27,8 +27,8 @@ it('words every verdict as a clause with no enum token in it', function (IntentV
 it('quotes the moving pace on an easy day that stayed easy, with the hill-adjusted one named as such', function (): void {
     $detail = IntentOutcome::detail(IntentVerdict::Hit, ['pace_sec' => 449, 'ceiling_pace_sec' => 408, 'basis' => 'pace'], 442);
 
-    expect($detail)->toBe('averaged 7:22/km; effort-adjusted for hills that is 7:29/km')
-        ->not->toContain('6:48');
+    expect($detail)->not->toContain('6:48')
+        ->toBe('averaged 7:22/km; effort-adjusted for hills that is 7:29/km');
 });
 
 it('quotes only the moving pace when the hill-adjusted one barely differs', function (): void {
@@ -125,8 +125,8 @@ it('names the marathon limit, not an easy one, on a marathon-pace long run', fun
 it('words a controlled original session completed against eased advice, by concern', function (string $from, string $concern, string $expected): void {
     $evidence = ['eased_from' => $from, 'concern' => $concern, 'original_completed' => 'controlled', 'stimulus_family' => $from, 'pace_sec' => 350, 'ceiling_pace_sec' => 340, 'basis' => 'pace'];
 
-    expect(IntentOutcome::outcome(IntentVerdict::TooHard, $evidence))->toBe($expected)
-        ->not->toContain('_');
+    expect(IntentOutcome::outcome(IntentVerdict::TooHard, $evidence))->not->toContain('_')
+        ->toBe($expected);
 })->with([
     'mild tempo' => ['tempo', 'mild', 'tempo completed, though it exceeded the recovery advice shown'],
     'mild intervals' => ['interval', 'mild', 'intervals completed, though they exceeded the recovery advice shown'],

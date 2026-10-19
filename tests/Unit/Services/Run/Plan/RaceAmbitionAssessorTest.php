@@ -16,10 +16,13 @@ uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
     Carbon::setTestNow('2026-10-01 08:00:00');
-    $this->assessor = app(RaceAmbitionAssessor::class);
-    $this->user = User::factory()->create();
 });
 afterEach(fn () => Carbon::setTestNow());
+
+function raceAmbitionAssessor(): RaceAmbitionAssessor
+{
+    return app(RaceAmbitionAssessor::class);
+}
 
 function tenKEvidence(User $user, int $seconds): void
 {
@@ -37,9 +40,10 @@ function tenKRace(User $user, int $goalSec, int $weeks = 4): RaceGoal
 }
 
 it('classifies a 50 minute 10K ambition against 70 minute capacity as unsupported and prescribes the supported effort', function (): void {
-    tenKEvidence($this->user, 4200);
+    $user = User::factory()->create();
+    tenKEvidence($user, 4200);
 
-    $ambition = $this->assessor->assess($this->user, tenKRace($this->user, 3000));
+    $ambition = raceAmbitionAssessor()->assess($user, tenKRace($user, 3000));
 
     expect($ambition->state)->toBe(RaceAmbitionState::Unsupported)
         ->and($ambition->targetTimeSec)->toBe(3000)
@@ -51,9 +55,10 @@ it('classifies a 50 minute 10K ambition against 70 minute capacity as unsupporte
 });
 
 it('bands the target against supported pace at 3 and 6 percent', function (int $goalSec, RaceAmbitionState $state): void {
-    tenKEvidence($this->user, 4200);
+    $user = User::factory()->create();
+    tenKEvidence($user, 4200);
 
-    expect($this->assessor->assess($this->user, tenKRace($this->user, $goalSec))->state)->toBe($state);
+    expect(raceAmbitionAssessor()->assess($user, tenKRace($user, $goalSec))->state)->toBe($state);
 })->with([
     'slower than supported' => [4400, RaceAmbitionState::OnTrack],
     'exactly supported' => [4200, RaceAmbitionState::OnTrack],
@@ -64,13 +69,15 @@ it('bands the target against supported pace at 3 and 6 percent', function (int $
 ]);
 
 it('keeps the athlete\'s own target when on track or ambitious', function (): void {
-    tenKEvidence($this->user, 4200);
+    $user = User::factory()->create();
+    tenKEvidence($user, 4200);
 
-    expect($this->assessor->assess($this->user, tenKRace($this->user, 4000))->prescribedTimeSec())->toBe(4000);
+    expect(raceAmbitionAssessor()->assess($user, tenKRace($user, 4000))->prescribedTimeSec())->toBe(4000);
 });
 
 it('does not classify without fitness evidence and keeps the target', function (): void {
-    $ambition = $this->assessor->assess($this->user, tenKRace($this->user, 3000));
+    $user = User::factory()->create();
+    $ambition = raceAmbitionAssessor()->assess($user, tenKRace($user, 3000));
 
     expect($ambition->state)->toBe(RaceAmbitionState::Unknown)
         ->and($ambition->supportedTimeSec)->toBeNull()
@@ -78,10 +85,11 @@ it('does not classify without fitness evidence and keeps the target', function (
 });
 
 it('does not classify a race beyond the marathon', function (): void {
-    tenKEvidence($this->user, 4200);
-    $race = RaceGoal::factory()->for($this->user)->create(['distance_m' => 80_000, 'goal_time_sec' => 36_000]);
+    $user = User::factory()->create();
+    tenKEvidence($user, 4200);
+    $race = RaceGoal::factory()->for($user)->create(['distance_m' => 80_000, 'goal_time_sec' => 36_000]);
 
-    expect($this->assessor->assess($this->user, $race)->state)->toBe(RaceAmbitionState::Unknown);
+    expect(raceAmbitionAssessor()->assess($user, $race)->state)->toBe(RaceAmbitionState::Unknown);
 });
 
 function evidenceAt(User $user, int $distanceM, int $seconds): void
@@ -100,8 +108,9 @@ function marathonRace(User $user, int $goalSec): RaceGoal
 }
 
 it('reads a marathon assessed from 10K evidence alone as low evidence and prescribes the supported time', function (): void {
-    tenKEvidence($this->user, 2_700);
-    $ambition = $this->assessor->assess($this->user, marathonRace($this->user, 12_000));
+    $user = User::factory()->create();
+    tenKEvidence($user, 2_700);
+    $ambition = raceAmbitionAssessor()->assess($user, marathonRace($user, 12_000));
 
     expect($ambition->state)->toBe(RaceAmbitionState::LowEvidence)
         ->and($ambition->supportedTimeSec)->not->toBeNull()
@@ -109,36 +118,40 @@ it('reads a marathon assessed from 10K evidence alone as low evidence and prescr
 });
 
 it('never prescribes a low-evidence time faster than the athlete\'s own target', function (): void {
-    tenKEvidence($this->user, 2_700);
-    $ambition = $this->assessor->assess($this->user, marathonRace($this->user, 18_000));
+    $user = User::factory()->create();
+    tenKEvidence($user, 2_700);
+    $ambition = raceAmbitionAssessor()->assess($user, marathonRace($user, 18_000));
 
     expect($ambition->state)->toBe(RaceAmbitionState::LowEvidence)
         ->and($ambition->prescribedTimeSec())->toBe(18_000);
 });
 
 it('applies the bands once the evidence covers at least half the race distance', function (int $evidenceM, RaceAmbitionState $state): void {
-    evidenceAt($this->user, $evidenceM, (int) round($evidenceM * 0.27));
+    $user = User::factory()->create();
+    evidenceAt($user, $evidenceM, (int) round($evidenceM * 0.27));
 
-    expect($this->assessor->assess($this->user, tenKRace($this->user, 2_000))->state)->toBe($state);
+    expect(raceAmbitionAssessor()->assess($user, tenKRace($user, 2_000))->state)->toBe($state);
 })->with([
     'a 5K covers half a 10K' => [5_000, RaceAmbitionState::Unsupported],
     'a 3K does not' => [3_000, RaceAmbitionState::LowEvidence],
 ]);
 
 it('names the effort the supported time rests on', function (): void {
-    tenKEvidence($this->user, 4200);
+    $user = User::factory()->create();
+    tenKEvidence($user, 4200);
 
-    $ambition = $this->assessor->assess($this->user, tenKRace($this->user, 4000));
+    $ambition = raceAmbitionAssessor()->assess($user, tenKRace($user, 4000));
 
     expect($ambition->basis)->toBe(['distance_m' => 10_000, 'performed_on' => '2026-09-24', 'activity_id' => PerformanceEvidence::query()->sole()->activity_id]);
 });
 
 it('sets the stepping stone 3 percent faster than supported for an unsupported or ambitious goal only', function (int $goalSec, bool $steppingStone): void {
-    tenKEvidence($this->user, 4200);
+    $user = User::factory()->create();
+    tenKEvidence($user, 4200);
 
-    $ambition = $this->assessor->assess($this->user, tenKRace($this->user, $goalSec));
+    $ambition = raceAmbitionAssessor()->assess($user, tenKRace($user, $goalSec));
 
-    expect($ambition->steppingStoneTimeSec)->toBe($steppingStone ? RaceAmbitionAssessor::steppingStoneTimeSec($ambition->supportedTimeSec) : null)
+    expect($ambition->steppingStoneTimeSec)->toBe($steppingStone ? RaceAmbitionAssessor::steppingStoneTimeSec(nonNull($ambition->supportedTimeSec)) : null)
         ->and($ambition->steppingStonePaceSecPerKm)->toBe($steppingStone ? (int) round($ambition->steppingStoneTimeSec / 10) : null)
         ->and($ambition->targetTimeSec)->toBe($goalSec);
 })->with([
@@ -148,12 +161,13 @@ it('sets the stepping stone 3 percent faster than supported for an unsupported o
 ]);
 
 it('gives a low-evidence or unknown goal no stepping stone', function (): void {
-    $unknown = $this->assessor->assess($this->user, tenKRace($this->user, 3000));
+    $user = User::factory()->create();
+    $unknown = raceAmbitionAssessor()->assess($user, tenKRace($user, 3000));
     PerformanceEvidence::query()->create([
-        'user_id' => $this->user->id, 'activity_id' => Activity::factory()->for($this->user)->create()->id, 'kind' => 'test', 'distance_m' => 5_000, 'elapsed_time_sec' => 2000,
+        'user_id' => $user->id, 'activity_id' => Activity::factory()->for($user)->create()->id, 'kind' => 'test', 'distance_m' => 5_000, 'elapsed_time_sec' => 2000,
         'performed_on' => Carbon::today()->subWeek(), 'confirmed_at' => now(),
     ]);
-    $lowEvidence = $this->assessor->assess($this->user, RaceGoal::factory()->for($this->user)->create([
+    $lowEvidence = raceAmbitionAssessor()->assess($user, RaceGoal::factory()->for($user)->create([
         'distance_m' => 42_195, 'goal_time_sec' => 10_800, 'race_date' => Carbon::today()->addWeeks(12)->toDateString(),
     ]));
 
@@ -164,19 +178,20 @@ it('gives a low-evidence or unknown goal no stepping stone', function (): void {
 });
 
 it('moves the stepping stone with the supported time', function (): void {
-    tenKEvidence($this->user, 4200);
-    $race = tenKRace($this->user, 3000);
-    $before = $this->assessor->assess($this->user, $race);
+    $user = User::factory()->create();
+    tenKEvidence($user, 4200);
+    $race = tenKRace($user, 3000);
+    $before = raceAmbitionAssessor()->assess($user, $race);
     PerformanceEvidence::query()->create([
-        'user_id' => $this->user->id, 'activity_id' => Activity::factory()->for($this->user)->create()->id, 'kind' => 'test', 'distance_m' => 10_000, 'elapsed_time_sec' => 3900,
+        'user_id' => $user->id, 'activity_id' => Activity::factory()->for($user)->create()->id, 'kind' => 'test', 'distance_m' => 10_000, 'elapsed_time_sec' => 3900,
         'performed_on' => Carbon::today(), 'confirmed_at' => now(),
     ]);
     app()->forgetInstance(VdotEstimator::class);
-    $after = app(RaceAmbitionAssessor::class)->assess($this->user, $race);
+    $after = app(RaceAmbitionAssessor::class)->assess($user, $race);
 
-    expect($after->supportedTimeSec)->toBeLessThan($before->supportedTimeSec)
-        ->and($after->steppingStoneTimeSec)->toBe(RaceAmbitionAssessor::steppingStoneTimeSec($after->supportedTimeSec))
-        ->and($after->steppingStoneTimeSec)->toBeLessThan($before->steppingStoneTimeSec)
+    expect($after->supportedTimeSec)->toBeLessThan(nonNull($before->supportedTimeSec))
+        ->and($after->steppingStoneTimeSec)->toBe(RaceAmbitionAssessor::steppingStoneTimeSec(nonNull($after->supportedTimeSec)))
+        ->and($after->steppingStoneTimeSec)->toBeLessThan(nonNull($before->steppingStoneTimeSec))
         ->and($after->targetTimeSec)->toBe(3000);
 });
 

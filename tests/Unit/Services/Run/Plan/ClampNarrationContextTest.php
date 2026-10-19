@@ -33,6 +33,7 @@ function clampDay(User $user, string $type = 'interval', bool $pinned = false): 
     ]);
 }
 
+/** @return array{ceiling: ReadinessCeiling, original: SessionType, clamped_to: SessionType, has_run_today: bool, readiness_reasons: list<string>, readiness_inputs: array<string, mixed>, decision_source: string}|null */
 function resolveClamp(User $user): ?array
 {
     return app(ClampNarrationContext::class)->forUserOn($user->id, Carbon::today());
@@ -42,10 +43,9 @@ it('resolves the facts a clamp explanation is written from', function (): void {
     $user = tiredUser();
     clampDay($user);
 
-    $context = resolveClamp($user);
+    $context = nonNull(resolveClamp($user));
 
-    expect($context)->not->toBeNull()
-        ->and($context['original'])->toBe(SessionType::Interval)
+    expect($context['original'])->toBe(SessionType::Interval)
         ->and($context['clamped_to'])->toBe(SessionType::Easy)
         ->and($context['ceiling'])->toBe(ReadinessCeiling::ModerateOk)
         ->and($context['has_run_today'])->toBeFalse();
@@ -58,7 +58,7 @@ it('reports a run already logged today, which is usually the reason', function (
         'start_date_local' => Carbon::today()->setHour(7),
     ]);
 
-    expect(resolveClamp($user)['has_run_today'])->toBeTrue();
+    expect(nonNull(resolveClamp($user))['has_run_today'])->toBeTrue();
 });
 
 it('resolves nothing when the day already fits under the ceiling', function (): void {
@@ -100,9 +100,9 @@ it('keeps a pinned race prescription while carrying the advice facts', function 
         'start_date_local' => Carbon::today()->setHour(7),
     ]);
 
-    $context = resolveClamp($user);
+    $context = nonNull(resolveClamp($user));
 
-    expect($session->fresh()->session_type)->toBe(SessionType::Race)
+    expect($session->refresh()->session_type)->toBe(SessionType::Race)
         ->and($context['clamped_to'])->toBe(SessionType::Easy)
         ->and($context['readiness_reasons'])->toContain('already_ran_today');
 });
@@ -116,9 +116,9 @@ it('uses the recorded reason after a run', function (): void {
         'start_date_local' => Carbon::today()->setHour(7),
     ]);
 
-    $context = resolveClamp($user);
+    $context = nonNull(resolveClamp($user));
 
-    expect($session->fresh()->readiness_assessment['reasons'])->toContain('demanding_session_within_24h')
+    expect(data_get($session->refresh()->readiness_assessment, 'reasons'))->toContain('demanding_session_within_24h')
         ->and($context['decision_source'])->toBe('recorded')
         ->and($context['clamped_to'])->toBe(SessionType::Easy)
         ->and($context['readiness_reasons'])->toContain('demanding_session_within_24h')
@@ -137,7 +137,7 @@ it('reads a recorded snapshot that carries a retired feedback input and reason c
         ],
     ])->save();
 
-    $context = resolveClamp($user);
+    $context = nonNull(resolveClamp($user));
 
     expect($context['decision_source'])->toBe('recorded')
         ->and($context['ceiling'])->toBe(ReadinessCeiling::EasyOnly)
@@ -157,7 +157,7 @@ it('reads a row left with a rest snapshot from before the rest clamp was removed
         ],
     ])->save();
 
-    $context = resolveClamp($user);
+    $context = nonNull(resolveClamp($user));
 
     expect($context['decision_source'])->toBe('live')
         ->and($context['ceiling'])->not->toBe(ReadinessCeiling::Rest)
@@ -177,7 +177,7 @@ it('decides a live day from the readiness assessment its caller already holds', 
     clampDay($user);
     $held = ['ceiling' => 'easy_only', 'reasons' => ['form_overreaching'], 'inputs' => ['form_status' => 'overreaching']];
 
-    $context = app(ClampNarrationContext::class)->forUserOn($user->id, Carbon::today(), $held);
+    $context = nonNull(app(ClampNarrationContext::class)->forUserOn($user->id, Carbon::today(), $held));
 
     expect(resolveClamp($user))->toBeNull()
         ->and($context['ceiling'])->toBe(ReadinessCeiling::EasyOnly)
@@ -193,7 +193,7 @@ it('keeps a recorded ease over the assessment its caller holds', function (): vo
         'readiness_assessment' => ['ceiling' => 'moderate_ok', 'reasons' => ['demanding_session_within_24h'], 'inputs' => []],
     ]);
 
-    $context = app(ClampNarrationContext::class)->forUserOn($user->id, Carbon::today(), ['ceiling' => 'rest', 'reasons' => [], 'inputs' => []]);
+    $context = nonNull(app(ClampNarrationContext::class)->forUserOn($user->id, Carbon::today(), ['ceiling' => 'rest', 'reasons' => [], 'inputs' => []]));
 
     expect($context['ceiling'])->toBe(ReadinessCeiling::ModerateOk)
         ->and($context['decision_source'])->toBe('recorded');

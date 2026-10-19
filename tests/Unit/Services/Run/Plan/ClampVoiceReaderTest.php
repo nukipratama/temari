@@ -18,8 +18,13 @@ uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
     Carbon::setTestNow('2026-08-31 08:00:00');
-    $this->user = User::factory()->create();
-    PlannedSession::factory()->for($this->user)->create([
+});
+afterEach(fn () => Carbon::setTestNow());
+
+function clampedAthlete(): User
+{
+    $user = User::factory()->create();
+    PlannedSession::factory()->for($user)->create([
         'date' => Carbon::today()->toDateString(),
         'session_type' => SessionType::Interval,
         'clamped_km' => 6.0,
@@ -29,8 +34,9 @@ beforeEach(function (): void {
             'inputs' => ['form_status' => null],
         ],
     ]);
-});
-afterEach(fn () => Carbon::setTestNow());
+
+    return $user;
+}
 
 function clampVoiceRow(User $user, AnalysisStatus $status, string $fingerprint): void
 {
@@ -46,21 +52,24 @@ function clampVoiceRow(User $user, AnalysisStatus $status, string $fingerprint):
 }
 
 it('returns the narration of a Done row whose fingerprint matches the live clamp', function (): void {
-    clampVoiceRow($this->user, AnalysisStatus::Done, ClampNarrationContext::fingerprint(ReadinessCeiling::ModerateOk, SessionType::Easy, false, ['demanding_session_within_24h']));
+    $user = clampedAthlete();
+    clampVoiceRow($user, AnalysisStatus::Done, ClampNarrationContext::fingerprint(ReadinessCeiling::ModerateOk, SessionType::Easy, false, ['demanding_session_within_24h']));
 
-    expect(app(ClampVoiceReader::class)->clampVoiceFor($this->user, Carbon::today()))->toBe('today is an easy run.');
+    expect(app(ClampVoiceReader::class)->clampVoiceFor($user, Carbon::today()))->toBe('today is an easy run.');
 });
 
 it('returns null for a Done row fingerprinted against a different clamp', function (): void {
-    clampVoiceRow($this->user, AnalysisStatus::Done, ClampNarrationContext::fingerprint(ReadinessCeiling::EasyOnly, SessionType::Easy, true));
+    $user = clampedAthlete();
+    clampVoiceRow($user, AnalysisStatus::Done, ClampNarrationContext::fingerprint(ReadinessCeiling::EasyOnly, SessionType::Easy, true));
 
-    expect(app(ClampVoiceReader::class)->clampVoiceFor($this->user, Carbon::today()))->toBeNull();
+    expect(app(ClampVoiceReader::class)->clampVoiceFor($user, Carbon::today()))->toBeNull();
 });
 
 it('returns null while the row is still pending', function (): void {
-    clampVoiceRow($this->user, AnalysisStatus::Pending, ClampNarrationContext::fingerprint(ReadinessCeiling::ModerateOk, SessionType::Easy, false, ['demanding_session_within_24h']));
+    $user = clampedAthlete();
+    clampVoiceRow($user, AnalysisStatus::Pending, ClampNarrationContext::fingerprint(ReadinessCeiling::ModerateOk, SessionType::Easy, false, ['demanding_session_within_24h']));
 
-    expect(app(ClampVoiceReader::class)->clampVoiceFor($this->user, Carbon::today()))->toBeNull();
+    expect(app(ClampVoiceReader::class)->clampVoiceFor($user, Carbon::today()))->toBeNull();
 });
 
 it('returns null when the day has no clamp', function (): void {

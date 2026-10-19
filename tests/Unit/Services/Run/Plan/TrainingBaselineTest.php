@@ -20,8 +20,10 @@ use App\Services\Run\Plan\PhaseSchedule;
 use App\Services\Run\Plan\RaceAmbitionAssessor;
 use App\Services\Run\Plan\TrainingBaseline;
 use App\Services\Run\Plan\SeasonSummaryBuilder;
+use App\Support\Numeric;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Mockery\MockInterface;
 use App\Actions\Run\Plan\ResolveSeasonAction;
 use App\Actions\Run\Plan\ResolveTrailingWeeksAction;
 use App\Actions\Run\Plan\ResolveRecentLongestRunAction;
@@ -36,10 +38,12 @@ uses(RefreshDatabase::class);
  */
 function baselineWithEasyPace(?int $easySecPerKm): TrainingBaseline
 {
+    /** @var VdotEstimator&MockInterface $vdot */
     $vdot = Mockery::mock(VdotEstimator::class);
     $vdot->shouldReceive('estimate')->andReturn($easySecPerKm === null ? null : ['vdot' => 45.0]);
     $vdot->shouldReceive('raceTimeForVdot')->andReturnNull();
 
+    /** @var TrainingPaceCalculator&MockInterface $paces */
     $paces = Mockery::mock(TrainingPaceCalculator::class);
     $paces->shouldReceive('fromVdotResult')->andReturn(
         $easySecPerKm === null
@@ -59,6 +63,7 @@ function baselineWithEasyPace(?int $easySecPerKm): TrainingBaseline
     );
 }
 
+/** @param  list<float>  $volumesKm */
 function weeksOf(User $user, array $volumesKm, int $runs = 4): void
 {
     foreach ($volumesKm as $i => $km) {
@@ -81,14 +86,14 @@ function completedRun(User $user, float $distanceKm, Carbon $startedAt): void
 
 beforeEach(function (): void {
     Carbon::setTestNow('2026-08-10 12:00:00');
-    $this->baseline = baselineWithEasyPace(null);
 });
 afterEach(fn () => Carbon::setTestNow());
 
 it('falls back to the floor of 3 sessions/week and a default volume with no history', function (): void {
+    $trainingBaseline = baselineWithEasyPace(null);
     $user = User::factory()->create();
 
-    $result = $this->baseline->forUser($user, Carbon::today());
+    $result = $trainingBaseline->forUser($user, Carbon::today());
 
     expect($result['sessions_per_week'])->toBe(3)
         ->and($result['weekly_volume_km'])->toBe(15.0)
@@ -97,10 +102,11 @@ it('falls back to the floor of 3 sessions/week and a default volume with no hist
 });
 
 it('clamps sessions_per_week to the trailing average, floored at 3 and capped at 6', function (): void {
+    $trainingBaseline = baselineWithEasyPace(null);
     $user = User::factory()->create();
     weeksOf($user, [40.0, 40.0, 40.0, 40.0], runs: 7);
 
-    expect($this->baseline->forUser($user, Carbon::today())['sessions_per_week'])->toBe(6);
+    expect($trainingBaseline->forUser($user, Carbon::today())['sessions_per_week'])->toBe(6);
 });
 
 /**
@@ -108,48 +114,54 @@ it('clamps sessions_per_week to the trailing average, floored at 3 and capped at
  * allowed to set every session in the plan.
  */
 it('trims the highest and lowest week out of weekly_volume_km', function (): void {
+    $trainingBaseline = baselineWithEasyPace(null);
     $user = User::factory()->create();
     weeksOf($user, [20.0, 22.0, 24.0, 25.0, 18.0, 44.7]);
 
-    expect($this->baseline->forUser($user, Carbon::today())['weekly_volume_km'])->toBe(22.75);
+    expect($trainingBaseline->forUser($user, Carbon::today())['weekly_volume_km'])->toBe(22.75);
 });
 
 it('takes the plain mean when there are too few weeks to trim', function (): void {
+    $trainingBaseline = baselineWithEasyPace(null);
     $user = User::factory()->create();
     weeksOf($user, [20.0, 30.0]);
 
-    expect($this->baseline->forUser($user, Carbon::today())['weekly_volume_km'])->toBe(25.0);
+    expect($trainingBaseline->forUser($user, Carbon::today())['weekly_volume_km'])->toBe(25.0);
 });
 
 it('trims as soon as a third week exists', function (): void {
+    $trainingBaseline = baselineWithEasyPace(null);
     $user = User::factory()->create();
     weeksOf($user, [10.0, 20.0, 90.0]);
 
-    expect($this->baseline->forUser($user, Carbon::today())['weekly_volume_km'])->toBe(20.0);
+    expect($trainingBaseline->forUser($user, Carbon::today())['weekly_volume_km'])->toBe(20.0);
 });
 
 it('still tracks a genuine ramp rather than lagging like a median', function (): void {
+    $trainingBaseline = baselineWithEasyPace(null);
     $user = User::factory()->create();
     weeksOf($user, [50.0, 45.0, 40.0, 35.0, 30.0, 25.0]);
 
-    expect($this->baseline->forUser($user, Carbon::today())['weekly_volume_km'])->toBe(37.5);
+    expect($trainingBaseline->forUser($user, Carbon::today())['weekly_volume_km'])->toBe(37.5);
 });
 
 it('reads only the trailing six weeks', function (): void {
+    $trainingBaseline = baselineWithEasyPace(null);
     $user = User::factory()->create();
     weeksOf($user, [20.0, 20.0, 20.0, 20.0, 20.0, 20.0, 200.0, 200.0]);
 
-    expect($this->baseline->forUser($user, Carbon::today())['weekly_volume_km'])->toBe(20.0);
+    expect($trainingBaseline->forUser($user, Carbon::today())['weekly_volume_km'])->toBe(20.0);
 });
 
 it('derives the long run as a share of weekly volume that rises as volume falls', function (
     float $weeklyKm,
     float $expectedLongRunKm,
 ): void {
+    $trainingBaseline = baselineWithEasyPace(null);
     $user = User::factory()->create();
     weeksOf($user, array_fill(0, 6, $weeklyKm));
 
-    expect($this->baseline->forUser($user, Carbon::today())['long_run_km'])->toBe($expectedLongRunKm);
+    expect($trainingBaseline->forUser($user, Carbon::today())['long_run_km'])->toBe($expectedLongRunKm);
 })->with([
     'under 30 km/wk takes 35%' => [20.0, 7.0],
     '30-60 km/wk takes 30%' => [45.0, 13.5],
@@ -160,11 +172,12 @@ it('caps the long run by race distance, the ratio inverting as the race lengthen
     int $raceDistanceM,
     float $expectedCapKm,
 ): void {
+    $trainingBaseline = baselineWithEasyPace(null);
     $user = User::factory()->create();
     weeksOf($user, array_fill(0, 6, 200.0));
     RaceGoal::factory()->for($user)->create(['distance_m' => $raceDistanceM]);
 
-    expect($this->baseline->forUser($user, Carbon::today())['long_run_km'])->toBe($expectedCapKm);
+    expect($trainingBaseline->forUser($user, Carbon::today())['long_run_km'])->toBe($expectedCapKm);
 })->with([
     '5K' => [5_000, 16.0],
     '10K' => [10_000, 20.0],
@@ -174,6 +187,7 @@ it('caps the long run by race distance, the ratio inverting as the race lengthen
 ]);
 
 it('floors the long run so the arc reaches its readiness distance at its own peak', function (): void {
+    $trainingBaseline = baselineWithEasyPace(null);
     $user = User::factory()->create();
     weeksOf($user, array_fill(0, 6, 26.0));
     RaceGoal::factory()->for($user)->create(['distance_m' => 10_000, 'race_date' => '2026-10-03']);
@@ -187,10 +201,11 @@ it('floors the long run so the arc reaches its readiness distance at its own pea
     // only ever ramps to 1.075. A 10K's readiness long run is 12 km, under
     // this athlete's 13 km half-the-anchor cap, so the floor lifts the baseline
     // to 12 / 1.075 = 11.2 and the ramp carries it to 12 at the peak.
-    expect($this->baseline->forUser($user, Carbon::today())['long_run_km'])->toBe(11.2);
+    expect($trainingBaseline->forUser($user, Carbon::today())['long_run_km'])->toBe(11.2);
 });
 
 it('stages the long-run climb when a race block starts above recent capacity', function (): void {
+    $trainingBaseline = baselineWithEasyPace(null);
     $user = User::factory()->create();
     weeksOf($user, array_fill(0, 6, 26.0));
     completedRun($user, 8.0, Carbon::today()->subDays(12));
@@ -201,7 +216,7 @@ it('stages the long-run climb when a race block starts above recent capacity', f
         'ends_at' => '2026-10-03',
     ]);
 
-    $result = $this->baseline->forUser($user, Carbon::today());
+    $result = $trainingBaseline->forUser($user, Carbon::today());
 
     expect($result['weekly_volume_km'])->toBe(26.0)
         ->and($result['long_run_km'])->toBe(11.2)
@@ -230,6 +245,7 @@ it('stages the long-run climb when a race block starts above recent capacity', f
 });
 
 it('does not jump toward a race floor when only a taper remains', function (): void {
+    $trainingBaseline = baselineWithEasyPace(null);
     $user = User::factory()->create();
     weeksOf($user, array_fill(0, 6, 26.0));
     completedRun($user, 5.0, Carbon::today()->subDays(6));
@@ -240,18 +256,19 @@ it('does not jump toward a race floor when only a taper remains', function (): v
         'ends_at' => '2026-08-16',
     ]);
 
-    $result = $this->baseline->forUser($user, Carbon::today());
+    $result = $trainingBaseline->forUser($user, Carbon::today());
 
     expect($result['long_run_km'])->toBe(9.1)
         ->and($result['long_run_progression_cap_km'])->toBe(5.5);
 });
 
 it('ignores runs older than the recent-capacity window', function (): void {
+    $trainingBaseline = baselineWithEasyPace(null);
     $user = User::factory()->create();
     weeksOf($user, array_fill(0, 6, 40.0));
     completedRun($user, 5.0, Carbon::today()->subDays(31));
 
-    $result = $this->baseline->forUser($user, Carbon::today());
+    $result = $trainingBaseline->forUser($user, Carbon::today());
 
     expect($result['long_run_km'])->toBe(12.0)
         ->and($result['long_run_cap_km'])->toBe(20.0)
@@ -259,10 +276,11 @@ it('ignores runs older than the recent-capacity window', function (): void {
 });
 
 it('keeps the minimum viable long run with only a very short recent run', function (): void {
+    $trainingBaseline = baselineWithEasyPace(null);
     $user = User::factory()->create();
     completedRun($user, 2.0, Carbon::today()->subDays(4));
 
-    $result = $this->baseline->forUser($user, Carbon::today());
+    $result = $trainingBaseline->forUser($user, Carbon::today());
 
     expect($result['weekly_volume_km'])->toBe(15.0)
         ->and($result['long_run_km'])->toBe(5.3)
@@ -270,11 +288,12 @@ it('keeps the minimum viable long run with only a very short recent run', functi
 });
 
 it('lets existing safeguards bind when a recent outlier is higher', function (): void {
+    $trainingBaseline = baselineWithEasyPace(null);
     $user = User::factory()->create();
     weeksOf($user, array_fill(0, 6, 40.0));
     completedRun($user, 50.0, Carbon::today()->subDays(7));
 
-    $result = $this->baseline->forUser($user, Carbon::today());
+    $result = $trainingBaseline->forUser($user, Carbon::today());
 
     expect($result['weekly_volume_km'])->toBe(40.0)
         ->and($result['long_run_km'])->toBe(12.0)
@@ -283,6 +302,7 @@ it('lets existing safeguards bind when a recent outlier is higher', function ():
 });
 
 it('leaves an ordinary long-run prescription unchanged when recent capacity already covers it', function (): void {
+    $trainingBaseline = baselineWithEasyPace(null);
     $user = User::factory()->create();
     weeksOf($user, array_fill(0, 6, 26.0));
     completedRun($user, 12.0, Carbon::today()->subDays(8));
@@ -293,13 +313,14 @@ it('leaves an ordinary long-run prescription unchanged when recent capacity alre
         'ends_at' => '2026-10-03',
     ]);
 
-    $result = $this->baseline->forUser($user, Carbon::today());
+    $result = $trainingBaseline->forUser($user, Carbon::today());
 
     expect($result['long_run_km'])->toBe(11.2)
         ->and($result['long_run_progression_cap_km'])->toBe(13.2);
 });
 
 it('sizes the race floor off the block ramp alone, not the general weeks before it', function (): void {
+    $trainingBaseline = baselineWithEasyPace(null);
     $user = User::factory()->create();
     weeksOf($user, array_fill(0, 6, 40.0));
     RaceGoal::factory()->for($user)->create(['distance_m' => 21_097, 'race_date' => '2027-03-08']);
@@ -311,10 +332,11 @@ it('sizes the race floor off the block ramp alone, not the general weeks before 
 
     // The half's 16-week block peaks at 1.075^4, so 21.1 km / 1.3355 rounds up to 15.8.
     // Ramping the general weeks too would reach the 1.4 cap and floor at 15.1.
-    expect($this->baseline->forUser($user, Carbon::today())['long_run_km'])->toBe(15.8);
+    expect($trainingBaseline->forUser($user, Carbon::today())['long_run_km'])->toBe(15.8);
 });
 
 it('floors a marathon at its readiness distance rather than the race distance, within half the anchor', function (): void {
+    $trainingBaseline = baselineWithEasyPace(null);
     $user = User::factory()->create();
     weeksOf($user, array_fill(0, 6, 26.0));
     RaceGoal::factory()->for($user)->create(['distance_m' => 42_195, 'race_date' => '2026-10-03']);
@@ -325,10 +347,11 @@ it('floors a marathon at its readiness distance rather than the race distance, w
     ]);
 
     // 30 km readiness, bounded by the 13 km half-the-anchor cap, never 42 km.
-    expect($this->baseline->forUser($user, Carbon::today())['long_run_km'])->toBe(13.0);
+    expect($trainingBaseline->forUser($user, Carbon::today())['long_run_km'])->toBe(13.0);
 });
 
 it('never lets the floor take more than half the anchor', function (): void {
+    $trainingBaseline = baselineWithEasyPace(null);
     $user = User::factory()->create();
     weeksOf($user, array_fill(0, 6, 12.0));
     RaceGoal::factory()->for($user)->create(['distance_m' => 10_000, 'race_date' => '2026-10-05']);
@@ -338,22 +361,24 @@ it('never lets the floor take more than half the anchor', function (): void {
         'ends_at' => '2026-10-05',
     ]);
 
-    expect($this->baseline->forUser($user, Carbon::today())['long_run_km'])->toBe(6.0);
+    expect($trainingBaseline->forUser($user, Carbon::today())['long_run_km'])->toBe(6.0);
 });
 
 it('applies no race-distance floor without a season to place the week in', function (): void {
+    $trainingBaseline = baselineWithEasyPace(null);
     $user = User::factory()->create();
     weeksOf($user, array_fill(0, 6, 26.0));
     RaceGoal::factory()->for($user)->create(['distance_m' => 10_000, 'race_date' => '2026-10-05']);
 
-    expect($this->baseline->forUser($user, Carbon::today())['long_run_km'])->toBe(9.1);
+    expect($trainingBaseline->forUser($user, Carbon::today())['long_run_km'])->toBe(9.1);
 });
 
 it('falls back to the half-marathon cap when no race is set', function (): void {
+    $trainingBaseline = baselineWithEasyPace(null);
     $user = User::factory()->create();
     weeksOf($user, array_fill(0, 6, 200.0));
 
-    expect($this->baseline->forUser($user, Carbon::today())['long_run_km'])->toBe(22.0);
+    expect($trainingBaseline->forUser($user, Carbon::today())['long_run_km'])->toBe(22.0);
 });
 
 it('caps the long run at 2.5 hours of easy running when a VDOT exists', function (): void {
@@ -374,17 +399,19 @@ it('lets the race band bind when it is tighter than the time cap', function (): 
 });
 
 it('skips the time cap entirely for an athlete with no VDOT', function (): void {
+    $trainingBaseline = baselineWithEasyPace(null);
     $user = User::factory()->create();
     weeksOf($user, array_fill(0, 6, 40.0));
 
-    expect($this->baseline->forUser($user, Carbon::today())['long_run_km'])->toBe(12.0);
+    expect($trainingBaseline->forUser($user, Carbon::today())['long_run_km'])->toBe(12.0);
 });
 
 it('never prescribes a long run below the floor', function (): void {
+    $trainingBaseline = baselineWithEasyPace(null);
     $user = User::factory()->create();
     weeksOf($user, array_fill(0, 6, 5.0));
 
-    expect($this->baseline->forUser($user, Carbon::today())['long_run_km'])->toBe(3.0);
+    expect($trainingBaseline->forUser($user, Carbon::today())['long_run_km'])->toBe(3.0);
 });
 
 /**
@@ -392,53 +419,58 @@ it('never prescribes a long run below the floor', function (): void {
  * 24 km long run — a one-off event — which scaled the whole week to ~59 km.
  */
 it('anchors a real 22 km/week runner near 8 km, not on their one-off 24 km run', function (): void {
+    $trainingBaseline = baselineWithEasyPace(null);
     $user = User::factory()->create();
     weeksOf($user, [20.0, 22.0, 24.0, 25.0, 18.0, 44.7]);
     RaceGoal::factory()->for($user)->create(['distance_m' => 10_000]);
 
-    $result = $this->baseline->forUser($user, Carbon::today());
+    $result = $trainingBaseline->forUser($user, Carbon::today());
 
     expect($result['weekly_volume_km'])->toBe(22.75)
         ->and($result['long_run_km'])->toBe(8.0);
 });
 
 it('an explicit sessions_per_week preference overrides the behavioral average and floor of 3', function (bool $withHistory): void {
+    $trainingBaseline = baselineWithEasyPace(null);
     $user = User::factory()->create();
     if ($withHistory) {
         weeksOf($user, [40.0], runs: 6);
     }
     TrainingPreference::factory()->for($user)->create(['sessions_per_week' => 2]);
 
-    expect($this->baseline->forUser($user, Carbon::today())['sessions_per_week'])->toBe(2);
+    expect($trainingBaseline->forUser($user, Carbon::today())['sessions_per_week'])->toBe(2);
 })->with([
     'with history' => true,
     'with zero history' => false,
 ]);
 
 it('seeds cold-start defaults from experience_level with zero history', function (): void {
+    $trainingBaseline = baselineWithEasyPace(null);
     $user = User::factory()->create();
     TrainingPreference::factory()->for($user)->create([
         'experience_level' => ExperienceLevel::NewToRunning,
         'sessions_per_week' => null,
     ]);
 
-    $result = $this->baseline->forUser($user, Carbon::today());
+    $result = $trainingBaseline->forUser($user, Carbon::today());
 
     expect($result['sessions_per_week'])->toBe(3)
         ->and($result['weekly_volume_km'])->toBe(8.0);
 });
 
 it('seeds an experienced athlete conservatively rather than on their say-so', function (): void {
+    $trainingBaseline = baselineWithEasyPace(null);
     $user = User::factory()->create();
     TrainingPreference::factory()->for($user)->create([
         'experience_level' => ExperienceLevel::Experienced,
         'sessions_per_week' => null,
     ]);
 
-    expect($this->baseline->forUser($user, Carbon::today())['weekly_volume_km'])->toBe(22.0);
+    expect($trainingBaseline->forUser($user, Carbon::today())['weekly_volume_km'])->toBe(22.0);
 });
 
 it('real logged behavior wins over an experience_level seed once any history exists', function (): void {
+    $trainingBaseline = baselineWithEasyPace(null);
     $user = User::factory()->create();
     TrainingPreference::factory()->for($user)->create([
         'experience_level' => ExperienceLevel::Experienced,
@@ -446,7 +478,7 @@ it('real logged behavior wins over an experience_level seed once any history exi
     ]);
     weeksOf($user, [22.0]);
 
-    expect($this->baseline->forUser($user, Carbon::today())['weekly_volume_km'])->toBe(22.0);
+    expect($trainingBaseline->forUser($user, Carbon::today())['weekly_volume_km'])->toBe(22.0);
 });
 
 /**
@@ -458,7 +490,8 @@ it('real logged behavior wins over an experience_level seed once any history exi
  * asks of them. Less runway must never buy a bigger long run.
  */
 it('prescribes less for a race one week out than for one twelve weeks out', function (): void {
-    $withRaceOn = function (string $raceDate): float {
+    $trainingBaseline = baselineWithEasyPace(null);
+    $withRaceOn = function (string $raceDate) use ($trainingBaseline): float {
         $user = User::factory()->create();
         weeksOf($user, array_fill(0, 6, 20.0));
         RaceGoal::factory()->for($user)->create(['distance_m' => 10_000, 'race_date' => $raceDate]);
@@ -468,13 +501,14 @@ it('prescribes less for a race one week out than for one twelve weeks out', func
             'ends_at' => $raceDate,
         ]);
 
-        return $this->baseline->forUser($user, Carbon::today())['long_run_km'];
+        return $trainingBaseline->forUser($user, Carbon::today())['long_run_km'];
     };
 
     expect($withRaceOn('2026-08-16'))->toBeLessThan($withRaceOn('2026-11-01'));
 });
 
 it('applies no race-distance floor on a taper-only arc with nothing to ramp', function (): void {
+    $trainingBaseline = baselineWithEasyPace(null);
     $user = User::factory()->create();
     weeksOf($user, array_fill(0, 6, 26.0));
     RaceGoal::factory()->for($user)->create(['distance_m' => 10_000, 'race_date' => '2026-08-16']);
@@ -484,7 +518,7 @@ it('applies no race-distance floor on a taper-only arc with nothing to ramp', fu
         'ends_at' => '2026-08-16',
     ]);
 
-    expect($this->baseline->forUser($user, Carbon::today())['long_run_km'])->toBe(9.1);
+    expect($trainingBaseline->forUser($user, Carbon::today())['long_run_km'])->toBe(9.1);
 });
 
 /**
@@ -493,6 +527,7 @@ it('applies no race-distance floor on a taper-only arc with nothing to ramp', fu
  * 52-week-out 10K prescribed a 31.1 km long run and a 20.2 km tempo.
  */
 it('never prescribes a long run past the race band however long the arc is', function (): void {
+    $trainingBaseline = baselineWithEasyPace(null);
     $user = User::factory()->create();
     weeksOf($user, array_fill(0, 6, 60.0));
     RaceGoal::factory()->for($user)->create(['distance_m' => 10_000, 'race_date' => '2027-08-09']);
@@ -502,7 +537,7 @@ it('never prescribes a long run past the race band however long the arc is', fun
         'ends_at' => '2027-08-09',
     ]);
 
-    $baselineData = $this->baseline->forUser($user, Carbon::today());
+    $baselineData = $trainingBaseline->forUser($user, Carbon::today());
     $phases = array_map(
         fn (array $week): PlanPhase => $week['phase'],
         PhaseSchedule::forRace(Carbon::parse('2026-08-10'), Carbon::parse('2027-08-09'), 10_000.0),
@@ -520,18 +555,19 @@ it('never prescribes a long run past the race band however long the arc is', fun
 });
 
 it('reports self_scaled true with no active race and false with one', function (): void {
+    $trainingBaseline = baselineWithEasyPace(null);
     $withoutRace = User::factory()->create();
     $withRace = User::factory()->create();
     RaceGoal::factory()->for($withRace)->create(['distance_m' => 10_000, 'race_date' => '2027-08-09']);
 
-    expect($this->baseline->forUser($withoutRace, Carbon::today())['self_scaled'])->toBeTrue()
-        ->and($this->baseline->forUser($withRace, Carbon::today())['self_scaled'])->toBeFalse();
+    expect($trainingBaseline->forUser($withoutRace, Carbon::today())['self_scaled'])->toBeTrue()
+        ->and($trainingBaseline->forUser($withRace, Carbon::today())['self_scaled'])->toBeFalse();
 });
 
 function blockMeanKm(User $user, Season $season): float
 {
     $block = array_filter(
-        app(SeasonSummaryBuilder::class)->plannedWeeks($user, $season->fresh()),
+        app(SeasonSummaryBuilder::class)->plannedWeeks($user, $season->refresh()),
         fn (array $week): bool => $week['zone'] === PhaseSchedule::ZONE_BLOCK,
     );
 
@@ -568,30 +604,34 @@ it('lifts the long run until the race block averages the season\'s volume floor'
 });
 
 it('leaves the long run to the share and the readiness distance when the season has no floor', function (): void {
+    $trainingBaseline = baselineWithEasyPace(null);
     $user = User::factory()->create();
     flooredRaceSeason($user, 20.0, null);
 
     // Half of a 20 km anchor caps the 12 km readiness long run at 10, and the
     // twelve-week block peaks at 1.075^2: 10 / 1.155625 rounds up to 8.7.
-    expect($this->baseline->forUser($user, Carbon::today())['long_run_km'])->toBe(8.7);
+    expect($trainingBaseline->forUser($user, Carbon::today())['long_run_km'])->toBe(8.7);
 });
 
 it('sizes the half-the-anchor cap off the floor when the floor asks for the bigger week', function (): void {
+    $trainingBaseline = baselineWithEasyPace(null);
     $user = User::factory()->create();
     flooredRaceSeason($user, 20.0, 27.0);
 
-    expect($this->baseline->forUser($user, Carbon::today())['long_run_cap_km'])->toBe(13.5);
+    expect($trainingBaseline->forUser($user, Carbon::today())['long_run_cap_km'])->toBe(13.5);
 });
 
 it('averages the last twelve logged weeks, plainly, for the floor', function (): void {
+    $trainingBaseline = baselineWithEasyPace(null);
     $user = User::factory()->create();
     weeksOf($user, [...array_fill(0, 11, 20.0), 44.0, 90.0]);
 
-    expect($this->baseline->recentWeeklyMeanKm($user, Carbon::today()))->toBe(22.0)
-        ->and($this->baseline->recentWeeklyMeanKm(User::factory()->create(), Carbon::today()))->toBeNull();
+    expect($trainingBaseline->recentWeeklyMeanKm($user, Carbon::today()))->toBe(22.0)
+        ->and($trainingBaseline->recentWeeklyMeanKm(User::factory()->create(), Carbon::today()))->toBeNull();
 });
 
 it('averages the floor over its training weeks, none more than 10% above it, while its increases are held', function (): void {
+    $trainingBaseline = baselineWithEasyPace(null);
     $held = User::factory()->create();
     flooredRaceSeason($held, 20.0, 27.0)->update(['increases_held' => true]);
     $released = User::factory()->create();
@@ -601,40 +641,44 @@ it('averages the floor over its training weeks, none more than 10% above it, whi
     $trainingWeeksKm = array_column(array_filter($weeks, fn (array $week): bool => ! in_array($week['phase'], [PlanPhase::Deload, PlanPhase::Taper], true)), 'planned_km');
 
     expect(array_sum($trainingWeeksKm) / count($trainingWeeksKm))->toBeGreaterThanOrEqual(27.0)
-        ->and(max($trainingWeeksKm))->toBeLessThanOrEqual(27.0 * 1.10)
-        ->and($this->baseline->forUser($held, Carbon::today())['long_run_km'])
-        ->toBeLessThan($this->baseline->forUser($released, Carbon::today())['long_run_km']);
+        ->and(collect($trainingWeeksKm)->max())->toBeLessThanOrEqual(27.0 * 1.10)
+        ->and($trainingBaseline->forUser($held, Carbon::today())['long_run_km'])
+        ->toBeLessThan($trainingBaseline->forUser($released, Carbon::today())['long_run_km']);
 });
 
 it('drops the readiness climb while a floorless block\'s increases are held', function (): void {
+    $trainingBaseline = baselineWithEasyPace(null);
     $user = User::factory()->create();
     flooredRaceSeason($user, 20.0, null)->update(['increases_held' => true]);
 
     // 20 x 0.35 = 7.0 km, with neither the 12 km readiness target nor the 10 km race distance lifting it.
-    expect($this->baseline->forUser($user, Carbon::today())['long_run_km'])->toBe(7.0);
+    expect($trainingBaseline->forUser($user, Carbon::today())['long_run_km'])->toBe(7.0);
 });
 
+/** @return array<mixed> */
 function trainingBaselineMemo(TrainingBaseline $baseline, string $property): array
 {
-    return new ReflectionProperty(TrainingBaseline::class, $property)->getValue($baseline);
+    return arrayOf(new ReflectionProperty(TrainingBaseline::class, $property)->getValue($baseline));
 }
 
+/** @param  array<mixed>  $block */
 function volumeFloorKmFor(TrainingBaseline $baseline, RaceGoal $race, array $block, Season $season, int $sessionsPerWeek, float $longRunCapKm = INF, float $progressionCapKm = INF): float
 {
     $method = new ReflectionMethod(TrainingBaseline::class, 'volumeFloorKm');
 
-    return $method->invoke($baseline, $race, $block, $season, $sessionsPerWeek, $longRunCapKm, $progressionCapKm, ['projected_race_seconds' => null, 'fall_off_tilt' => null, 'run_days' => null, 'long_run_day' => null, 'two_run_quality_eligible' => false]);
+    return Numeric::float($method->invoke($baseline, $race, $block, $season, $sessionsPerWeek, $longRunCapKm, $progressionCapKm, ['projected_race_seconds' => null, 'fall_off_tilt' => null, 'run_days' => null, 'long_run_day' => null, 'two_run_quality_eligible' => false]));
 }
 
 it('never solves the floor past what the session ceilings let the block reach', function (): void {
+    $trainingBaseline = baselineWithEasyPace(null);
     $user = User::factory()->create();
     $season = flooredRaceSeason($user, 20.0, 27.0);
     $race = RaceGoal::query()->where('user_id', $user->id)->firstOrFail();
-    $block = new ReflectionMethod(TrainingBaseline::class, 'block')->invoke($this->baseline, $race, $season);
-    $floorFor = function (float $floorKm, float $progressionCapKm) use ($race, $block, $season): float {
+    $block = arrayOf(new ReflectionMethod(TrainingBaseline::class, 'block')->invoke($trainingBaseline, $race, $season));
+    $floorFor = function (float $floorKm, float $progressionCapKm) use ($trainingBaseline, $race, $block, $season): float {
         $season->volume_floor_km = $floorKm;
 
-        return volumeFloorKmFor($this->baseline, $race, $block, $season, 4, INF, $progressionCapKm);
+        return volumeFloorKmFor($trainingBaseline, $race, $block, $season, 4, INF, $progressionCapKm);
     };
 
     expect($floorFor(27.0, 3.0))->toBe($floorFor(50.0, 3.0))
@@ -643,14 +687,15 @@ it('never solves the floor past what the session ceilings let the block reach', 
 });
 
 it('solves a capped floor to the smallest tenth that reaches it', function (): void {
+    $trainingBaseline = baselineWithEasyPace(null);
     $user = User::factory()->create();
     $season = flooredRaceSeason($user, 20.0, 27.0);
     $race = RaceGoal::query()->where('user_id', $user->id)->firstOrFail();
-    $block = new ReflectionMethod(TrainingBaseline::class, 'block')->invoke($this->baseline, $race, $season);
-    $floorFor = function (float $floorKm) use ($race, $block, $season): float {
+    $block = arrayOf(new ReflectionMethod(TrainingBaseline::class, 'block')->invoke($trainingBaseline, $race, $season));
+    $floorFor = function (float $floorKm) use ($trainingBaseline, $race, $block, $season): float {
         $season->volume_floor_km = $floorKm;
 
-        return volumeFloorKmFor($this->baseline, $race, $block, $season, 4, INF, 6.0);
+        return volumeFloorKmFor($trainingBaseline, $race, $block, $season, 4, INF, 6.0);
     };
 
     expect($floorFor(17.4))->toBe(7.3)
@@ -658,37 +703,40 @@ it('solves a capped floor to the smallest tenth that reaches it', function (): v
 });
 
 it('does not rebuild the race block on a second forUser() call in the same scope', function (): void {
+    $trainingBaseline = baselineWithEasyPace(null);
     $user = User::factory()->create();
     flooredRaceSeason($user, 20.0, 27.0);
 
-    $this->baseline->forUser($user, Carbon::today());
-    $this->baseline->forUser($user, Carbon::today());
+    $trainingBaseline->forUser($user, Carbon::today());
+    $trainingBaseline->forUser($user, Carbon::today());
 
-    expect(trainingBaselineMemo($this->baseline, 'blockMemo'))->toHaveCount(1)
-        ->and(trainingBaselineMemo($this->baseline, 'volumeFloorMemo'))->toHaveCount(1);
+    expect(trainingBaselineMemo($trainingBaseline, 'blockMemo'))->toHaveCount(1)
+        ->and(trainingBaselineMemo($trainingBaseline, 'volumeFloorMemo'))->toHaveCount(1);
 });
 
 it('recomputes the block and floor when a key input changes', function (): void {
+    $trainingBaseline = baselineWithEasyPace(null);
     $user = User::factory()->create();
     $season = flooredRaceSeason($user, 20.0, 27.0);
     $race = RaceGoal::query()->where('user_id', $user->id)->firstOrFail();
 
     $blockMethod = new ReflectionMethod(TrainingBaseline::class, 'block');
-    $block = $blockMethod->invoke($this->baseline, $race, $season);
+    $block = arrayOf($blockMethod->invoke($trainingBaseline, $race, $season));
 
-    $first = volumeFloorKmFor($this->baseline, $race, $block, $season, 4);
-    $repeat = volumeFloorKmFor($this->baseline, $race, $block, $season, 4);
+    $first = volumeFloorKmFor($trainingBaseline, $race, $block, $season, 4);
+    $repeat = volumeFloorKmFor($trainingBaseline, $race, $block, $season, 4);
 
     expect($repeat)->toBe($first)
-        ->and(trainingBaselineMemo($this->baseline, 'blockMemo'))->toHaveCount(1)
-        ->and(trainingBaselineMemo($this->baseline, 'volumeFloorMemo'))->toHaveCount(1);
+        ->and(trainingBaselineMemo($trainingBaseline, 'blockMemo'))->toHaveCount(1)
+        ->and(trainingBaselineMemo($trainingBaseline, 'volumeFloorMemo'))->toHaveCount(1);
 
-    volumeFloorKmFor($this->baseline, $race, $block, $season, 5);
+    volumeFloorKmFor($trainingBaseline, $race, $block, $season, 5);
 
-    expect(trainingBaselineMemo($this->baseline, 'volumeFloorMemo'))->toHaveCount(2);
+    expect(trainingBaselineMemo($trainingBaseline, 'volumeFloorMemo'))->toHaveCount(2);
 });
 
 it('sizes a self-scaled cycle so its four weeks average the anchor unless a long-run cap binds', function (float $anchorKm, int $sessions): void {
+    $trainingBaseline = baselineWithEasyPace(null);
     $user = User::factory()->create();
     weeksOf($user, array_fill(0, 6, $anchorKm), $sessions);
     completedRun($user, $anchorKm * 0.45, Carbon::today()->subDays(5));
@@ -701,7 +749,7 @@ it('sizes a self-scaled cycle so its four weeks average the anchor unless a long
 
     $plannedKm = array_column(app(SeasonSummaryBuilder::class)->plannedWeeks($user, $season), 'planned_km');
     $meanKm = array_sum($plannedKm) / count($plannedKm);
-    $baseline = $this->baseline->forUser($user, Carbon::today());
+    $baseline = $trainingBaseline->forUser($user, Carbon::today());
 
     if ($baseline['long_run_km'] < $baseline['long_run_cap_km']) {
         expect($meanKm)->toBeGreaterThanOrEqual($anchorKm * 0.95)->toBeLessThanOrEqual($anchorKm * 1.05);
@@ -711,6 +759,7 @@ it('sizes a self-scaled cycle so its four weeks average the anchor unless a long
 })->with([20.0, 70.0])->with([2, 3, 4, 5, 6]);
 
 it('lets a long-run cap hold a self-scaled cycle under its anchor', function (float $anchorKm, int $sessions): void {
+    $trainingBaseline = baselineWithEasyPace(null);
     $user = User::factory()->create();
     weeksOf($user, array_fill(0, 6, $anchorKm), $sessions);
     completedRun($user, $anchorKm * 0.45, Carbon::today()->subDays(5));
@@ -721,7 +770,7 @@ it('lets a long-run cap hold a self-scaled cycle under its anchor', function (fl
         'ends_at' => '2026-09-06',
     ]);
 
-    $baseline = $this->baseline->forUser($user, Carbon::today());
+    $baseline = $trainingBaseline->forUser($user, Carbon::today());
 
     expect($baseline['long_run_km'])->toBe($baseline['long_run_cap_km']);
 })->with([
@@ -731,6 +780,7 @@ it('lets a long-run cap hold a self-scaled cycle under its anchor', function (fl
 ]);
 
 it('lets the sessions under the progression cap carry a self-scaled cycle to its anchor', function (float $anchorKm, int $sessions, float $longestKm): void {
+    $trainingBaseline = baselineWithEasyPace(null);
     $user = User::factory()->create();
     weeksOf($user, array_fill(0, 6, $anchorKm), $sessions);
     completedRun($user, $longestKm, Carbon::today()->subDays(5));
@@ -742,7 +792,7 @@ it('lets the sessions under the progression cap carry a self-scaled cycle to its
     ]);
 
     $plannedKm = array_column(app(SeasonSummaryBuilder::class)->plannedWeeks($user, $season), 'planned_km');
-    $baseline = $this->baseline->forUser($user, Carbon::today());
+    $baseline = $trainingBaseline->forUser($user, Carbon::today());
 
     expect(array_sum($plannedKm) / count($plannedKm))->toBeGreaterThanOrEqual($anchorKm)
         ->and($baseline['long_run_progression_cap_km'])->toBe(round($longestKm * 1.1, 1));
@@ -753,6 +803,7 @@ it('lets the sessions under the progression cap carry a self-scaled cycle to its
 ]);
 
 it('takes a self-scaled baseline to its own cap when the progression cap leaves the anchor out of reach', function (): void {
+    $trainingBaseline = baselineWithEasyPace(null);
     $user = User::factory()->create();
     weeksOf($user, array_fill(0, 6, 30.0), 4);
     completedRun($user, 7.0, Carbon::today()->subDays(5));
@@ -764,13 +815,14 @@ it('takes a self-scaled baseline to its own cap when the progression cap leaves 
     ]);
 
     $plannedKm = array_column(app(SeasonSummaryBuilder::class)->plannedWeeks($user, $season), 'planned_km');
-    $baseline = $this->baseline->forUser($user, Carbon::today());
+    $baseline = $trainingBaseline->forUser($user, Carbon::today());
 
     expect($baseline['long_run_km'])->toBe($baseline['long_run_cap_km'])
         ->and(array_sum($plannedKm) / count($plannedKm))->toBeLessThan(30.0);
 });
 
 it('caps the long run for a race beyond the marathon at the general aerobic ceiling, not the marathon one', function (): void {
+    $trainingBaseline = baselineWithEasyPace(null);
     $marathoner = User::factory()->create();
     weeksOf($marathoner, array_fill(0, 6, 90.0));
     RaceGoal::factory()->for($marathoner)->create(['distance_m' => 42_195, 'race_date' => Carbon::today()->addWeeks(10)]);
@@ -781,6 +833,6 @@ it('caps the long run for a race beyond the marathon at the general aerobic ceil
     RaceGoal::factory()->for($ultraRunner)->create(['distance_m' => 80_000, 'race_date' => Carbon::today()->addWeeks(10)]);
     Season::factory()->for($ultraRunner)->create(['anchor_weekly_volume_km' => 90.0, 'starts_at' => Carbon::today(), 'ends_at' => Carbon::today()->addWeeks(10)]);
 
-    expect($this->baseline->forUser($marathoner, Carbon::today())['long_run_cap_km'])->toBe(35.0)
-        ->and($this->baseline->forUser($ultraRunner, Carbon::today())['long_run_cap_km'])->toBe(22.0);
+    expect($trainingBaseline->forUser($marathoner, Carbon::today())['long_run_cap_km'])->toBe(35.0)
+        ->and($trainingBaseline->forUser($ultraRunner, Carbon::today())['long_run_cap_km'])->toBe(22.0);
 });

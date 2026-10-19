@@ -36,6 +36,7 @@ parameters:
         - tests/Unit/Services/Ops
         - tests/Unit/Services/Run/Ingest
         - tests/Unit/Services/Run/Metrics
+        - tests/Unit/Services/Run/Plan
         - tests/Unit/Services/Run/Story
         - tests/Unit/Services/Run/Trend
         - tests/Unit/Services/Run/FeedQueryTest.php

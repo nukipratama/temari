@@ -30,6 +30,11 @@ function purposeWorkBlock(): SessionSegment
 }
 
 it('says what each session type is for', function (SessionType $type, array $segments, string $purpose): void {
+    $segments = array_values(array_map(
+        static fn (mixed $segment): SessionSegment => $segment instanceof SessionSegment ? $segment : throw new InvalidArgumentException('Segment is not a SessionSegment.'),
+        $segments,
+    ));
+
     expect(purposeOf($type, $segments))->toBe($purpose);
 })->with([
     'easy' => [SessionType::Easy, [purposeEasyBlock()], "easy means easy. slow enough to talk, that's the whole point."],

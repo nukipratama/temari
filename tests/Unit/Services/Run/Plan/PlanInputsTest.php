@@ -10,7 +10,6 @@ use App\Enums\PlanPhase;
 use App\Enums\SessionType;
 use App\Services\Run\Plan\IntensityPrescription;
 use App\Services\Run\Plan\Periodizer;
-use App\Services\Run\Plan\PlanInputs;
 use App\Services\Run\Plan\PostRaceRecovery;
 use App\Services\Run\Plan\SegmentGenerator;
 use Illuminate\Support\Carbon;
@@ -125,7 +124,7 @@ it('builds a self-scaled cycle of its own when the athlete has no race', functio
 
 it('holds a race block flat outside its dips while its increases are held', function (): void {
     $held = arcInputs();
-    $held = new PlanInputs(...[...get_object_vars($held), 'increasesHeld' => true]);
+    $held = planInputsWith($held, ['increasesHeld' => true]);
 
     $multipliers = array_unique(array_map(
         fn (array $row): float => round($row['volume_multiplier'], 3),
@@ -138,8 +137,7 @@ it('holds a race block flat outside its dips while its increases are held', func
 
 it('keeps prescribed hard work inside the real weekly time budget', function (): void {
     $inputs = arcInputs(today: '2026-09-21');
-    $inputs = new PlanInputs(...[
-        ...get_object_vars($inputs),
+    $inputs = planInputsWith($inputs, [
         'sessionsPerWeek' => 5,
         'raceDistanceM' => 10_000.0,
         'raceGoalTimeSec' => 3_600,
@@ -198,8 +196,7 @@ it('keeps prescribed hard work inside the real weekly time budget', function ():
 });
 
 it('spends completed off-menu hard minutes before allocating remaining quality', function (): void {
-    $inputs = new PlanInputs(...[
-        ...get_object_vars(arcInputs(today: '2026-09-23')),
+    $inputs = planInputsWith(arcInputs(today: '2026-09-23'), [
         'paces' => ['easy' => 360, 'marathon' => 300, 'threshold' => 270, 'interval' => 240],
         'longRunBaselineKm' => 12.0,
         'actualSessions' => [
@@ -212,8 +209,7 @@ it('spends completed off-menu hard minutes before allocating remaining quality',
 });
 
 it('uses prior-week demanding actuals without a circular hypothetical long-run veto', function (): void {
-    $inputs = new PlanInputs(...[
-        ...get_object_vars(arcInputs(today: '2026-09-21')),
+    $inputs = planInputsWith(arcInputs(today: '2026-09-21'), [
         'runDays' => [0, 2, 4],
         'longRunDay' => 4,
         'actualSessions' => [['date' => '2026-09-20', 'duration_minutes' => 90, 'hard_minutes' => null, 'demanding' => true]],
@@ -223,8 +219,7 @@ it('uses prior-week demanding actuals without a circular hypothetical long-run v
 });
 
 it('allows established two-run athletes only a modest tempo and an easy long run', function (): void {
-    $inputs = new PlanInputs(...[
-        ...get_object_vars(arcInputs(today: '2026-09-21', raceDay: null)),
+    $inputs = planInputsWith(arcInputs(today: '2026-09-21', raceDay: null), [
         'sessionsPerWeek' => 2, 'runDays' => [2, 5], 'longRunDay' => 5,
         'twoRunQualityEligible' => true,
         'paces' => ['easy' => 360, 'marathon' => 300, 'threshold' => 270, 'interval' => 240],
@@ -237,8 +232,7 @@ it('allows established two-run athletes only a modest tempo and an easy long run
 });
 
 it('uses performed easy effort instead of the original settled tempo dose', function (): void {
-    $inputs = new PlanInputs(...[
-        ...get_object_vars(arcInputs(today: '2026-09-23')),
+    $inputs = planInputsWith(arcInputs(today: '2026-09-23'), [
         'runDays' => [0, 3, 5], 'longRunDay' => 5,
         'paces' => ['easy' => 360, 'marathon' => 300, 'threshold' => 270, 'interval' => 240],
         'longRunBaselineKm' => 12.0,
@@ -250,8 +244,7 @@ it('uses performed easy effort instead of the original settled tempo dose', func
 });
 
 it('does not treat missing effort evidence on a completed quality slot as measured easy work', function (): void {
-    $inputs = new PlanInputs(...[
-        ...get_object_vars(arcInputs(today: '2026-09-23')),
+    $inputs = planInputsWith(arcInputs(today: '2026-09-23'), [
         'runDays' => [0, 3, 5], 'longRunDay' => 5,
         'paces' => ['easy' => 360, 'marathon' => 300, 'threshold' => 270, 'interval' => 240],
         'longRunBaselineKm' => 12.0,
@@ -264,8 +257,7 @@ it('does not treat missing effort evidence on a completed quality slot as measur
 });
 
 it('includes measured hard minutes even when only one completed hard day exists', function (): void {
-    $inputs = new PlanInputs(...[
-        ...get_object_vars(arcInputs(today: '2026-09-23')),
+    $inputs = planInputsWith(arcInputs(today: '2026-09-23'), [
         'runDays' => [0, 3, 5], 'longRunDay' => 5,
         'paces' => ['easy' => 360, 'marathon' => 300, 'threshold' => 270, 'interval' => 240],
         'longRunBaselineKm' => 10.0,
@@ -275,8 +267,7 @@ it('includes measured hard minutes even when only one completed hard day exists'
 });
 
 it('reserves unknown demanding work without inventing measured hard minutes', function (bool $hasPaces): void {
-    $inputs = new PlanInputs(...[
-        ...get_object_vars(arcInputs(today: '2026-09-23')),
+    $inputs = planInputsWith(arcInputs(today: '2026-09-23'), [
         'runDays' => [0, 3, 5], 'longRunDay' => 5,
         'paces' => $hasPaces ? ['easy' => 360, 'marathon' => 300, 'threshold' => 270, 'interval' => 240] : null,
         'longRunBaselineKm' => 12.0,
@@ -286,8 +277,7 @@ it('reserves unknown demanding work without inventing measured hard minutes', fu
 })->with(['known paces' => true, 'unknown paces' => false]);
 
 it('respects known demanding days beyond the next week boundary', function (): void {
-    $inputs = new PlanInputs(...[
-        ...get_object_vars(arcInputs(today: '2026-09-21')),
+    $inputs = planInputsWith(arcInputs(today: '2026-09-21'), [
         'runDays' => [3, 5, 6], 'longRunDay' => 3,
         'paces' => ['easy' => 360, 'marathon' => 300, 'threshold' => 270, 'interval' => 240],
         'longRunBaselineKm' => 12.0,
@@ -298,15 +288,14 @@ it('respects known demanding days beyond the next week boundary', function (): v
 
 it('keeps current-week quality reductions out of later weeks', function (): void {
     $inputs = arcInputs(today: '2026-09-21', raceDay: null);
-    $inputs = new PlanInputs(...[...get_object_vars($inputs), 'adaptation' => [...$inputs->adaptation, 'quality_delta' => -1], 'longRunBaselineKm' => 12.0]);
+    $inputs = planInputsWith($inputs, ['adaptation' => [...$inputs->adaptation, 'quality_delta' => -1], 'longRunBaselineKm' => 12.0]);
     $rows = app(Periodizer::class)->rowsFor($inputs);
     expect($rows['2026-09-24']['session_type'])->toBe(SessionType::Easy)
         ->and($rows['2026-10-08']['session_type'])->toBe(SessionType::Tempo);
 });
 
 it('releases a race-pace long prescription budget after credible easy execution', function (): void {
-    $inputs = new PlanInputs(...[
-        ...get_object_vars(arcInputs(today: '2026-09-23')),
+    $inputs = planInputsWith(arcInputs(today: '2026-09-23'), [
         'runDays' => [0, 3, 5], 'longRunDay' => 5,
         'paces' => ['easy' => 360, 'marathon' => 300, 'threshold' => 270, 'interval' => 240],
         'longRunBaselineKm' => 12.0,
@@ -317,8 +306,7 @@ it('releases a race-pace long prescription budget after credible easy execution'
 });
 
 it('spends retained future prescription minutes together with generated work', function (): void {
-    $inputs = new PlanInputs(...[
-        ...get_object_vars(arcInputs(today: '2026-09-23')),
+    $inputs = planInputsWith(arcInputs(today: '2026-09-23'), [
         'runDays' => [0, 3, 5], 'longRunDay' => 5,
         'paces' => ['easy' => 360, 'marathon' => 300, 'threshold' => 270, 'interval' => 240],
         'longRunBaselineKm' => 12.0,
@@ -329,8 +317,7 @@ it('spends retained future prescription minutes together with generated work', f
 });
 
 it('distinguishes credible easy race execution from unknown completed race effort', function (?float $minutes, bool $withheld): void {
-    $inputs = new PlanInputs(...[
-        ...get_object_vars(arcInputs(today: '2026-09-23')),
+    $inputs = planInputsWith(arcInputs(today: '2026-09-23'), [
         'runDays' => [0, 3, 5], 'longRunDay' => 5,
         'paces' => ['easy' => 360, 'marathon' => 300, 'threshold' => 270, 'interval' => 240],
         'longRunBaselineKm' => 12.0,
@@ -349,19 +336,18 @@ it('distinguishes credible easy race execution from unknown completed race effor
 
 it('carries an endurance tilt onto the Build week\'s quality day and long run, and lengthens only the long run', function (): void {
     $weekStart = '2026-09-21';
-    $base = [
-        ...get_object_vars(arcInputs(today: $weekStart)),
+    $base = planInputsWith(arcInputs(today: $weekStart), [
         'raceGoalTimeSec' => 3_540,
         'paces' => ['easy' => 380, 'marathon' => 330, 'threshold' => 305, 'interval' => 280],
         'longRunBaselineKm' => 14.0,
-    ];
+    ]);
     $week = static fn (array $rows): array => array_filter(
         $rows,
         static fn (string $date): bool => $date >= $weekStart && $date <= Carbon::parse($weekStart)->addDays(6)->toDateString(),
         ARRAY_FILTER_USE_KEY,
     );
-    $neutral = $week(app(Periodizer::class)->rowsFor(new PlanInputs(...$base)));
-    $tilted = $week(app(Periodizer::class)->rowsFor(new PlanInputs(...[...$base, 'fallOffTilt' => FallOffTilt::Endurance])));
+    $neutral = $week(app(Periodizer::class)->rowsFor($base));
+    $tilted = $week(app(Periodizer::class)->rowsFor(planInputsWith($base, ['fallOffTilt' => FallOffTilt::Endurance])));
 
     $types = static fn (array $rows): array => array_map(static fn (array $row): array => [$row['session_type'], $row['fall_off_tilt']], $rows);
 
@@ -385,16 +371,14 @@ it('carries an endurance tilt onto the Build week\'s quality day and long run, a
 });
 
 it('drops the tilt from a tilted quality day the week then keeps easy', function (): void {
-    $base = [
-        ...get_object_vars(arcInputs(today: '2026-09-21')),
+    $base = planInputsWith(arcInputs(today: '2026-09-21'), [
         'raceGoalTimeSec' => 3_540,
         'paces' => ['easy' => 380, 'marathon' => 330, 'threshold' => 305, 'interval' => 280],
         'longRunBaselineKm' => 14.0,
         'fallOffTilt' => FallOffTilt::Endurance,
-    ];
-    $kept = app(Periodizer::class)->rowsFor(new PlanInputs(...$base))['2026-09-24'];
-    $recovering = app(Periodizer::class)->rowsFor(new PlanInputs(...[
-        ...$base,
+    ]);
+    $kept = app(Periodizer::class)->rowsFor($base)['2026-09-24'];
+    $recovering = app(Periodizer::class)->rowsFor(planInputsWith($base, [
         'recovery' => new PostRaceRecovery(Carbon::parse('2026-09-19'), Carbon::parse('2026-09-27'), null),
     ]))['2026-09-24'];
 
