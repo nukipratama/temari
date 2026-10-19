@@ -294,7 +294,7 @@ class ActivityPipeline
                 ->json();
 
             return is_array($streams) ? $streams : null;
-        } catch (StravaRateLimitedException|StravaCircuitOpenException $e) {
+        } catch (StravaRateLimitedException|StravaCircuitOpenException|ConnectionException $e) {
             // The detail is already stored; re-queue the job rather than
             // silently drop the streams.
             throw $e;

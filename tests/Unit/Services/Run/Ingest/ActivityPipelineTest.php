@@ -353,6 +353,22 @@ it('propagates a rate-limit exception from the streams fetch, with the detail al
         ->and($activity->fresh()->analyzed_at)->toBeNull();
 });
 
+it('propagates a connect failure from the streams fetch, with the detail already stored', function (): void {
+    $activity = makeActivityWithConnection();
+
+    Http::fake([
+        'strava.com/api/v3/activities/999/streams*' => Http::failedConnection(),
+        'strava.com/api/v3/activities/999' => Http::response(['name' => 'R', 'distance' => 5000]),
+    ]);
+
+    expect(fn () => $this->pipeline->ingest($activity))
+        ->toThrow(ConnectionException::class);
+
+    expect(ActivityDetail::query()->where('activity_id', $activity->id)->exists())->toBeTrue()
+        ->and($activity->fresh()->analyzed_at)->toBeNull()
+        ->and($activity->fresh()->detail_fail_count)->toBe(0);
+});
+
 it('still stores detail when streams 404 (best-effort)', function (): void {
     $activity = makeActivityWithConnection();
 
