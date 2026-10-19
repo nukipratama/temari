@@ -10,16 +10,17 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Inertia\Testing\AssertableInertia as Assert;
+use Tests\TestCase;
 
 uses(RefreshDatabase::class);
 
 /**
  * The deferred row window, fetched the way `<Deferred>` fetches it.
  *
- * @param  object  $actingAs  The authenticated test case.
+ * @param  TestCase  $actingAs  The authenticated test case.
  * @return array<int, array<string, mixed>>
  */
-function inboxRows(object $actingAs, string $url = '/inbox'): array
+function inboxRows(TestCase $actingAs, string $url = '/inbox'): array
 {
     /** @var array<int, array<string, mixed>> $data */
     $data = $actingAs->get($url, inertiaPartialHeaders($actingAs, $url, 'Inbox', 'notifications'))
@@ -107,7 +108,7 @@ it('leaves a row with no payload with no handles', function (): void {
 it('opens on the page holding the deep-linked row', function (): void {
     $user = User::factory()->create();
     $rows = InboxNotification::factory()->for($user)->count(25)->create();
-    $oldest = $rows->first();
+    $oldest = nonNull($rows->first());
 
     $this->actingAs($user)->get('/inbox?item='.$oldest->id)
         ->assertSuccessful()

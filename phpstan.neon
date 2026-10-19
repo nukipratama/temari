@@ -25,7 +25,10 @@ parameters:
         - tests/Pest.php
         - tests/Feature/Auth
         - tests/Feature/Compliance
+        - tests/Feature/Api
         - tests/Feature/Console
+        - tests/Feature/Http
+        - tests/Feature/Inertia
         - tests/Feature/Plan
         - tests/Feature/Runs
         - tests/Feature/Strava

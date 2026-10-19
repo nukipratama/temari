@@ -19,9 +19,8 @@ it('creates a preference row on the first write', function (): void {
         ])
         ->assertRedirect();
 
-    $preference = $user->notificationPreference()->first();
-    expect($preference)->not->toBeNull()
-        ->and($preference->notifications_enabled)->toBeFalse()
+    $preference = nonNull($user->notificationPreference()->first());
+    expect($preference->notifications_enabled)->toBeFalse()
         ->and($preference->telegram_enabled)->toBeTrue();
 });
 
@@ -42,7 +41,7 @@ it('updates the existing preference row without creating a second', function ():
         ->assertRedirect();
 
     expect($user->notificationPreference()->count())->toBe(1)
-        ->and($user->notificationPreference()->first()->notifications_enabled)->toBeFalse();
+        ->and(nonNull($user->notificationPreference()->first())->notifications_enabled)->toBeFalse();
 });
 
 it('persists the channel mutes alongside the master switch', function (): void {
@@ -56,7 +55,7 @@ it('persists the channel mutes alongside the master switch', function (): void {
         ])
         ->assertSessionHasNoErrors();
 
-    $preference = $user->fresh()->notificationPreference;
+    $preference = nonNull($user->refresh()->notificationPreference);
 
     expect($preference->telegram_enabled)->toBeFalse()
         ->and($preference->push_enabled)->toBeTrue()

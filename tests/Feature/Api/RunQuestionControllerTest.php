@@ -29,6 +29,7 @@ beforeEach(function (): void {
     config()->set('azure_openai.api_key', 'fake-key');
 });
 
+/** @param  array<string, mixed>  $detail */
 function runFor(User $user, array $detail = []): Activity
 {
     $activity = Activity::factory()->for($user)->create();
@@ -158,7 +159,7 @@ it('shows a fresh demo session only the seeded questions', function (): void {
         'weather_temp_c' => 32,
         'stream_summary' => ['drift_metric_version' => 2, 'steady_effort_hr_drift_bpm' => 6.4],
     ]);
-    $seeded = DemoRunSeeder::seededExchanges($activity->detail);
+    $seeded = DemoRunSeeder::seededExchanges(nonNull($activity->detail));
     foreach ($seeded as $question => $answer) {
         RunQuestion::factory()->create([
             'user_id' => $demo->id, 'activity_id' => $activity->id,
@@ -172,7 +173,7 @@ it('shows a fresh demo session only the seeded questions', function (): void {
         'user_id' => $demo->id, 'activity_id' => $activity->id, 'question' => array_key_first($seeded),
     ]);
 
-    $questions = $this->actingAs($demo)->getJson("/api/activities/{$activity->id}/questions")->json('questions');
+    $questions = arrayOf($this->actingAs($demo)->getJson("/api/activities/{$activity->id}/questions")->json('questions'));
 
     expect($seeded)->toHaveCount(2)
         ->and(array_column($questions, 'question'))->toBe(array_keys($seeded))
@@ -428,7 +429,7 @@ it('builds a demo answer follow-ups from the seeded questions and the current on
         'weather_temp_c' => 32,
         'stream_summary' => ['drift_metric_version' => 2, 'steady_effort_hr_drift_bpm' => 6.4],
     ]);
-    foreach (DemoRunSeeder::seededExchanges($activity->detail) as $question => $answer) {
+    foreach (DemoRunSeeder::seededExchanges(nonNull($activity->detail)) as $question => $answer) {
         RunQuestion::factory()->create([
             'user_id' => $demo->id, 'activity_id' => $activity->id,
             'question' => $question, 'answer' => $answer, 'status' => AnalysisStatus::Done,

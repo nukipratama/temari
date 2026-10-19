@@ -8,6 +8,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
 
+/** @return array<string, Closure> */
 function gamificationPropsFor(?User $user): array
 {
     return app(GamificationProps::class)->forUser($user);

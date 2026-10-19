@@ -31,7 +31,7 @@ it('stamps last_seen_at on the first authenticated request', function (): void {
 
     stampFor($user);
 
-    expect($user->fresh()->last_seen_at?->toDateTimeString())->toBe('2026-09-15 08:00:00');
+    expect($user->refresh()->last_seen_at?->toDateTimeString())->toBe('2026-09-15 08:00:00');
 });
 
 it('does not re-stamp later the same day', function (): void {
@@ -42,7 +42,7 @@ it('does not re-stamp later the same day', function (): void {
     Carbon::setTestNow('2026-09-15 23:59:00');
     stampFor($user->fresh());
 
-    expect($user->fresh()->last_seen_at?->toDateTimeString())->toBe('2026-09-15 08:00:00');
+    expect($user->refresh()->last_seen_at?->toDateTimeString())->toBe('2026-09-15 08:00:00');
 });
 
 it('re-stamps once the date rolls', function (): void {
@@ -52,7 +52,7 @@ it('re-stamps once the date rolls', function (): void {
     Carbon::setTestNow('2026-09-16 00:30:00');
     stampFor($user->fresh());
 
-    expect($user->fresh()->last_seen_at?->toDateTimeString())->toBe('2026-09-16 00:30:00');
+    expect($user->refresh()->last_seen_at?->toDateTimeString())->toBe('2026-09-16 00:30:00');
 });
 
 it('leaves the demo identity unstamped', function (): void {
@@ -61,7 +61,7 @@ it('leaves the demo identity unstamped', function (): void {
 
     stampFor($demo);
 
-    expect($demo->fresh()->last_seen_at)->toBeNull();
+    expect($demo->refresh()->last_seen_at)->toBeNull();
 });
 
 it('queues the return narration on the first visit after a gap, and only once that day', function (): void {
@@ -126,5 +126,5 @@ it('is wired into the web group, so a real page view stamps', function (): void 
 
     $this->actingAs($user)->get('/privacy')->assertSuccessful();
 
-    expect($user->fresh()->last_seen_at?->toDateTimeString())->toBe('2026-09-15 08:00:00');
+    expect($user->refresh()->last_seen_at?->toDateTimeString())->toBe('2026-09-15 08:00:00');
 });

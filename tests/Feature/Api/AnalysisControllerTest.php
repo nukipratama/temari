@@ -132,7 +132,7 @@ it('returns the current state via GET show as a flat payload, not a resource-wra
         ->assertJsonPath('status', AnalysisStatus::Done->value)
         ->assertJsonPath('content', 'content here');
 
-    expect(array_keys($response->json()))->toEqualCanonicalizing([
+    expect(array_keys(arrayOf($response->json())))->toEqualCanonicalizing([
         'id', 'status', 'content', 'type', 'is_zone_dependent',
         'subject_type', 'subject_id', 'discriminator', 'attempts',
         'generated_at', 'retry_after_seconds', 'flagged', 'unread_while_away',
@@ -386,8 +386,8 @@ it('chained post_run_speech resume does not re-bill an already-Done sibling row 
         ->postJson("/api/analyses/post_run_speech/{$clicked->id}/trigger")
         ->assertOk();
 
-    expect($doneSibling->fresh()->status)->toBe(AnalysisStatus::Done)
-        ->and($doneSibling->fresh()->content)->toBe('zones read');
+    expect($doneSibling->refresh()->status)->toBe(AnalysisStatus::Done)
+        ->and($doneSibling->refresh()->content)->toBe('zones read');
 
     Carbon::setTestNow();
 });
@@ -423,7 +423,7 @@ it('serves the demo account a rule-based narration instead of dispatching a bill
         ->assertJson(['status' => 'done']);
 
     Bus::assertNothingDispatched();
-    expect($response->json('content'))->toBeString()->not->toBeEmpty();
+    expect($response->json('content'))->toBeString()->and($response->json('content'))->not->toBeEmpty();
 
     $row = Analysis::query()->sole();
     expect($row->status)->toBe(AnalysisStatus::Done)
@@ -468,8 +468,8 @@ it('leaves an existing row untouched when a paused trigger is refused', function
         ->assertJson(['status' => 'done', 'content' => 'narasi lama']);
 
     Bus::assertNothingDispatched();
-    expect($row->fresh()->status)->toBe(AnalysisStatus::Done)
-        ->and($row->fresh()->content)->toBe('narasi lama');
+    expect($row->refresh()->status)->toBe(AnalysisStatus::Done)
+        ->and($row->refresh()->content)->toBe('narasi lama');
 });
 
 it('still serves the demo account a rule-based narration while narration is paused', function (): void {
@@ -482,7 +482,7 @@ it('still serves the demo account a rule-based narration while narration is paus
         ->assertJson(['status' => 'done']);
 
     Bus::assertNothingDispatched();
-    expect($response->json('content'))->toBeString()->not->toBeEmpty();
+    expect($response->json('content'))->toBeString()->and($response->json('content'))->not->toBeEmpty();
 });
 
 // ── trigger → narration age cutoff ──────────────────────────────────────────
@@ -511,7 +511,7 @@ it('serves a manual retry rule-based when the run is past the narration cutoff',
         ->assertSuccessful()
         ->assertJson(['status' => 'done']);
 
-    expect($response->json('content'))->toBeString()->not->toBeEmpty();
+    expect($response->json('content'))->toBeString()->and($response->json('content'))->not->toBeEmpty();
 
     Bus::assertNothingDispatched();
 });

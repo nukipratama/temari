@@ -47,7 +47,7 @@ it('does not block a normal user from the same notification-preference write', f
         ->assertRedirect()
         ->assertSessionDoesntHaveErrors();
 
-    expect($user->notificationPreference->notifications_enabled)->toBeFalse();
+    expect(nonNull($user->notificationPreference)->notifications_enabled)->toBeFalse();
 });
 
 it('does not block a demo user from an unguarded write (interactive sandbox)', function (): void {

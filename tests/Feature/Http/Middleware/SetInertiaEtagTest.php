@@ -10,6 +10,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Testing\TestResponse;
+use Symfony\Component\HttpFoundation\Response;
 
 uses(RefreshDatabase::class);
 
@@ -31,6 +32,8 @@ function currentInertiaVersion(): string
 
 /**
  * A full Inertia page visit (no partial headers), optionally revalidating.
+ *
+ * @return TestResponse<Response>
  */
 function etagVisit(string $url, ?string $ifNoneMatch = null): TestResponse
 {
@@ -109,7 +112,7 @@ it('misses when the page data moves', function (): void {
 
     $etag = etagVisit("/activities/{$activity->id}")->assertSuccessful()->headers->get('ETag');
 
-    $activity->detail->update(['name' => 'A different evening run']);
+    nonNull($activity->detail)->update(['name' => 'A different evening run']);
 
     expect(etagVisit("/activities/{$activity->id}", $etag)->assertSuccessful()->getStatusCode())->toBe(200);
 });
