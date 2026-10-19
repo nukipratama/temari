@@ -211,11 +211,11 @@ final readonly class AgentLoop
     private static function usageOf(CreateResponse $response): array
     {
         return [
-            (int) ($response->usage->inputTokens ?? 0),
-            (int) ($response->usage->outputTokens ?? 0),
-            (int) ($response->usage->totalTokens ?? 0),
-            (int) ($response->usage->inputTokensDetails->cachedTokens ?? 0),
-            (int) ($response->usage->outputTokensDetails->reasoningTokens ?? 0),
+            $response->usage->inputTokens ?? 0,
+            $response->usage->outputTokens ?? 0,
+            $response->usage->totalTokens ?? 0,
+            $response->usage->inputTokensDetails->cachedTokens ?? 0,
+            $response->usage->outputTokensDetails->reasoningTokens ?? 0,
         ];
     }
 

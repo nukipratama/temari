@@ -358,7 +358,7 @@ class TrainingLoad
      */
     private static function formKnownFrom(array $dailyTrimp): string
     {
-        return Carbon::parse((string) array_key_first($dailyTrimp))->addDays(self::CTL_TAU)->toDateString();
+        return Carbon::parse(array_key_first($dailyTrimp))->addDays(self::CTL_TAU)->toDateString();
     }
 
     /**

@@ -215,7 +215,7 @@ it('slows a projection with the athlete\'s own fall-off fitted from a close clus
     $user = User::factory()->create();
     RaceGoal::factory()->for($user)->create(['distance_m' => 21_098, 'race_date' => '2026-12-01']);
     recordRun($user, '2026-09-01', 5_000, 1_500);
-    recordRun($user, '2026-09-20', 10_000, 3_000 * 1);
+    recordRun($user, '2026-09-20', 10_000, 3_000);
     $fitted = FallOffExponent::fit([
         ['date' => Carbon::parse('2026-09-01'), 'distance_m' => 5_000.0, 'time_sec' => 1_500.0],
         ['date' => Carbon::parse('2026-09-20'), 'distance_m' => 10_000.0, 'time_sec' => 3_000.0],

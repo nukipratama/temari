@@ -57,7 +57,7 @@ it('averages TRIMP over runs that have one and counts them', function () use ($a
     $user = User::factory()->create();
     baselineRun($user, $asOf()->copy()->subDays(5), 5000.0, 1500, 150.0, 6.0, 120.0);
     baselineRun($user, $asOf()->copy()->subDays(10), 8000.0, 2400, 155.0, 7.0, 160.0);
-    baselineRun($user, $asOf()->copy()->subDays(15), 3000.0, 900, null, null, null); // no TRIMP
+    baselineRun($user, $asOf()->copy()->subDays(15), 3000.0, 900, null, null); // no TRIMP
 
     $result = nonNull(new ResolveRunBaselineAction()($user->id, $asOf()));
 
@@ -68,7 +68,7 @@ it('averages TRIMP over runs that have one and counts them', function () use ($a
 
 it('nulls avg_trimp and zeroes trimp_runs when no run carries a TRIMP', function () use ($asOf): void {
     $user = User::factory()->create();
-    baselineRun($user, $asOf()->copy()->subDays(5), 5000.0, 1500, 150.0, 6.0, null);
+    baselineRun($user, $asOf()->copy()->subDays(5), 5000.0, 1500, 150.0, 6.0);
 
     $result = nonNull(new ResolveRunBaselineAction()($user->id, $asOf()));
 

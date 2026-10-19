@@ -74,7 +74,7 @@ it('AnalyzeBriefingMascotVoiceJob falls back to today when discriminator is null
     $user = User::factory()->create();
     mockNarrator(BriefingMascotVoiceNarrator::class, 'today mascot voice');
 
-    $row = rowOf(AnalysisType::BRIEFING_SUBJECT_TYPE, $user->id, AnalysisType::BriefingMascotVoice, null);
+    $row = rowOf(AnalysisType::BRIEFING_SUBJECT_TYPE, $user->id, AnalysisType::BriefingMascotVoice);
     new AnalyzeBriefingMascotVoiceJob($row->id)->handle(app(AnalysisService::class));
 
     expect($row->refresh()->content)->toBe('today mascot voice')
@@ -372,7 +372,7 @@ it('AnalyzeMonthlyRecapJob fails when user missing', function (): void {
 
 it('AnalyzeMonthlyRecapJob fails when discriminator is missing', function (): void {
     $user = User::factory()->create();
-    $row = rowOf(AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE, $user->id, AnalysisType::MonthlyRecap, null);
+    $row = rowOf(AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE, $user->id, AnalysisType::MonthlyRecap);
     new AnalyzeMonthlyRecapJob($row->id)->handle(app(AnalysisService::class));
 
     expect($row->refresh()->status)->toBe(AnalysisStatus::Failed);

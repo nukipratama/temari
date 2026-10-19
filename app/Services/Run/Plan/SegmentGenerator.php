@@ -598,7 +598,7 @@ final class SegmentGenerator
 
     private static function unmeasuredEasy(): SessionSegment
     {
-        return new SessionSegment(SegmentKey::Easy, null, self::zoneFor(PaceBand::Easy), PaceBand::Easy, null, null);
+        return new SessionSegment(SegmentKey::Easy, null, self::zoneFor(PaceBand::Easy), PaceBand::Easy, null);
     }
 
     /**

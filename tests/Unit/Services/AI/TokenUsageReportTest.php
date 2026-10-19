@@ -43,8 +43,8 @@ beforeEach(function (): void {
     // can't straddle the Asia/Jakarta midnight boundary and flake the todayCost.
     $this->freezeTime();
 
-    config()->set('azure_openai.daily_cost_ceiling_per_user', null);
-    config()->set('azure_openai.daily_cost_ceiling_total', null);
+    config()->set('azure_openai.daily_cost_ceiling_per_user');
+    config()->set('azure_openai.daily_cost_ceiling_total');
 
     // Deterministic manual rates: gpt-4o = 2.50 in / 10.00 out, gpt-4o-mini =
     // 0.15 / 0.60 (per 1M).
@@ -521,7 +521,7 @@ it('groups a rule-based fill by its stored reason', function () use ($range): vo
     seedDoneNarration($alice->id, ServedBy::RuleBased, Carbon::parse('2026-05-11'), AnalysisOrigin::Capped);
     seedDoneNarration($alice->id, ServedBy::RuleBased, Carbon::parse('2026-05-12'), AnalysisOrigin::Return);
     seedDoneNarration($alice->id, ServedBy::RuleBased, Carbon::parse('2026-05-14'), AnalysisOrigin::ContentFilter);
-    seedDoneNarration($alice->id, ServedBy::RuleBased, Carbon::parse('2026-05-15'), null);
+    seedDoneNarration($alice->id, ServedBy::RuleBased, Carbon::parse('2026-05-15'));
     seedDoneNarration($alice->id, ServedBy::RuleBased, Carbon::parse('2026-05-13'), AnalysisOrigin::RejectedOutput);
 
     [$from, $to] = $range();
@@ -539,7 +539,7 @@ it('groups a rule-based fill by its stored reason', function () use ($range): vo
 
 it('counts every one of a demo athlete\'s rule-based fills as demo, whatever reason (if any) was stored', function () use ($range): void {
     $demo = User::factory()->create(['is_demo' => true]);
-    seedDoneNarration($demo->id, ServedBy::RuleBased, Carbon::parse('2026-05-11'), null);
+    seedDoneNarration($demo->id, ServedBy::RuleBased, Carbon::parse('2026-05-11'));
     seedDoneNarration($demo->id, ServedBy::RuleBased, Carbon::parse('2026-05-12'), AnalysisOrigin::Capped);
 
     [$from, $to] = $range();

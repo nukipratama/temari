@@ -160,13 +160,11 @@ class AnalysisMessagePresenter
             return 'Temari';
         }
 
-        $phrase = match ($analysis->analysis_type) {
+        return match ($analysis->analysis_type) {
             AnalysisType::PostRunSpeech => $this->postRunTitle($analysis),
             AnalysisType::MonthlyRecap => $this->monthlyRecapTitle($analysis),
             default => $meta['title'],
         };
-
-        return $phrase;
     }
 
     /** "Your 8.2K run is in", dropping the distance when it's unknown. */

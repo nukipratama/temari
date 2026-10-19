@@ -111,7 +111,7 @@ final class NarrationEvalChecks
                 continue;
             }
             $other = (float) $candidate;
-            if (abs($value - $other) < self::NUMBER_TOLERANCE || ($isWhole && (float) round($other) === $value)) {
+            if (abs($value - $other) < self::NUMBER_TOLERANCE || ($isWhole && round($other) === $value)) {
                 return true;
             }
         }

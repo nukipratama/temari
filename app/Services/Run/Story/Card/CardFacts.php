@@ -225,7 +225,7 @@ final readonly class CardFacts
             abs($meters - 21_097.5) < 400 => 'HALF',
             abs($meters - 10_000) < 250 => '10K',
             abs($meters - 5_000) < 150 => '5K',
-            default => (string) (int) round($meters / 1000).'K',
+            default => (int) round($meters / 1000).'K',
         };
     }
 

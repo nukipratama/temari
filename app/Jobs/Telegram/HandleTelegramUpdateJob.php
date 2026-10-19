@@ -84,7 +84,7 @@ class HandleTelegramUpdateJob implements ShouldQueue
             return;
         }
 
-        $token = trim((string) substr($text, strlen('/start')));
+        $token = trim(substr($text, strlen('/start')));
 
         if ($token === '') {
             $client->sendMessage($chatId, TelegramReplies::generic());

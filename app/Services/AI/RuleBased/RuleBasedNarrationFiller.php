@@ -87,7 +87,7 @@ final readonly class RuleBasedNarrationFiller
     {
         $date = $date->toDateString();
 
-        return $this->postRunBriefingFor($user->id, $date, $user->id + (int) crc32($date));
+        return $this->postRunBriefingFor($user->id, $date, $user->id + crc32($date));
     }
 
     /**
@@ -103,7 +103,7 @@ final readonly class RuleBasedNarrationFiller
             return $row->subject_id;
         }
 
-        return $row->subject_id + (int) crc32($row->discriminator);
+        return $row->subject_id + crc32($row->discriminator);
     }
 
 
@@ -232,8 +232,8 @@ final readonly class RuleBasedNarrationFiller
 
         // Two slots under separate salts: the History feed shows these side by
         // side, and one pool of whole sentences repeats verbatim within a screen.
-        $opener = strtr($this->select(self::POST_RUN_OPENERS, (int) crc32('post_run_speech_open_'.$activityId)), ['{km}' => $km]);
-        $closer = $this->select(self::POST_RUN_CLOSERS, (int) crc32('post_run_speech_close_'.$activityId));
+        $opener = strtr($this->select(self::POST_RUN_OPENERS, crc32('post_run_speech_open_'.$activityId)), ['{km}' => $km]);
+        $closer = $this->select(self::POST_RUN_CLOSERS, crc32('post_run_speech_close_'.$activityId));
 
         return $opener.' '.$closer.$this->postRunCoda($detail, $activityId);
     }
@@ -319,7 +319,7 @@ final readonly class RuleBasedNarrationFiller
         $detail = $this->detailFor($activityId);
         $claims = $detail === null ? [] : RuleBasedRunInsights::claims($detail);
 
-        return (string) json_encode($claims, JSON_THROW_ON_ERROR);
+        return json_encode($claims, JSON_THROW_ON_ERROR);
     }
 
     private function weeklyRecap(int $snapshotId): string
@@ -386,7 +386,7 @@ final readonly class RuleBasedNarrationFiller
         assert($firstScored === null || is_string($firstScored));
 
         return $firstScored !== null
-            && $snapshot->week_ending->toDateString() >= Carbon::parse((string) $firstScored)->addDays(TrainingLoad::CTL_TAU)->toDateString();
+            && $snapshot->week_ending->toDateString() >= Carbon::parse($firstScored)->addDays(TrainingLoad::CTL_TAU)->toDateString();
     }
 
     /**
@@ -459,7 +459,7 @@ final readonly class RuleBasedNarrationFiller
         // Fold the badge set into the base pick (not just the appended clause) so
         // two commons that differ only by badge don't also land on the identical
         // base sentence. Badgeless cards fold a constant, so they still vary by id.
-        $flavorSeed = $cardId + (int) crc32(implode(',', $card->badges ?? []));
+        $flavorSeed = $cardId + crc32(implode(',', $card->badges ?? []));
         $base = strtr($this->select($templates, $flavorSeed), ['{move}' => $move, '{km}' => (string) $km]);
         $badgeClause = $this->badgeClause($card->badges, $cardId);
 
