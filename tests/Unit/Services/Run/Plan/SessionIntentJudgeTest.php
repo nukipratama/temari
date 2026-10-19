@@ -241,7 +241,11 @@ it('falls back to a rep-length window when the laps are just the kilometres, a h
         ->and($oneRepNeeded['evidence'])->toMatchArray(['basis' => 'window', 'reps_needed' => 1]);
 });
 
-/** One 3-minute surge in a 5 x 3 minute day on auto-km laps, the rest at 6:40/km. */
+/**
+ * One 3-minute surge in a 5 x 3 minute day on auto-km laps, the rest at 6:40/km.
+ *
+ * @param  array<string, float|int>  $zones
+ */
 function oneSurgeIntervalRun(array $zones = []): ActivityDetail
 {
     $laps = lapRows([[1000, 400], [1000, 400], [1000, 330], [1000, 400], [1000, 400], [1000, 400]]);
@@ -249,7 +253,11 @@ function oneSurgeIntervalRun(array $zones = []): ActivityDetail
     return judgeRun(6.0, 2330, ['laps' => $laps, 'best_3min_pace' => '4:50'] + ($zones === [] ? [] : ['time_in_zone_min' => $zones]));
 }
 
-/** One 10-minute block at threshold in a 3 x 10 minute tempo day. */
+/**
+ * One 10-minute block at threshold in a 3 x 10 minute tempo day.
+ *
+ * @param  array<string, float|int>  $zones
+ */
 function oneBlockTempoRun(array $zones = []): ActivityDetail
 {
     return judgeRun(9.0, 3300, ['best_10min_pace' => '5:10'] + ($zones === [] ? [] : ['time_in_zone_min' => $zones]));
@@ -469,8 +477,8 @@ it('records self-added hard work on an easy day with the minutes over the cap su
 it('records no hard minutes when a too-fast easy run carries no heart rate', function (): void {
     $reading = SessionIntentJudge::judge(SessionType::Easy, easyDay(), JUDGE_PACES, [judgeRun(6.0, 1980)]);
 
-    expect($reading['evidence'])->toMatchArray(['stimulus_family' => 'hard', 'stimulus_source' => 'pace'])
-        ->not->toHaveKey('stimulus_minutes');
+    expect($reading['evidence'])->not->toHaveKey('stimulus_minutes')
+        ->toMatchArray(['stimulus_family' => 'hard', 'stimulus_source' => 'pace']);
 });
 
 it('judges goal-pace reps on a tempo day as intervals and a goal-pace block on an interval day as a tempo', function (): void {

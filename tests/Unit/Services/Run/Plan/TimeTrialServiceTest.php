@@ -28,11 +28,14 @@ uses(RefreshDatabase::class);
 beforeEach(function (): void {
     Carbon::setTestNow('2026-10-07 09:05:00');
     Notification::fake();
-    $this->trials = app(TimeTrialService::class);
-    $this->user = User::factory()->create();
 });
 
 afterEach(fn () => Carbon::setTestNow());
+
+function timeTrialService(): TimeTrialService
+{
+    return app(TimeTrialService::class);
+}
 
 /** @param  array<string, mixed>  $attributes */
 function trialDay(User $user, array $attributes = []): PlannedSession
@@ -65,11 +68,12 @@ function trialRun(User $user, float $meters, int $seconds, ?float $heartRate = n
 }
 
 it('counts a run that clears the gate as test evidence with no question asked', function (float $meters, int $seconds, ?float $heartRate): void {
-    $session = trialDay($this->user);
-    $run = trialRun($this->user, $meters, $seconds, $heartRate);
+    $user = User::factory()->create();
+    $session = trialDay($user);
+    $run = trialRun($user, $meters, $seconds, $heartRate);
 
-    expect($this->trials->settle($session))->toBe(TimeTrialOutcome::Confirmed)
-        ->and($session->fresh()->time_trial_outcome)->toBe(TimeTrialOutcome::Confirmed)
+    expect(timeTrialService()->settle($session))->toBe(TimeTrialOutcome::Confirmed)
+        ->and($session->refresh()->time_trial_outcome)->toBe(TimeTrialOutcome::Confirmed)
         ->and(PerformanceEvidence::query()->sole()->only(['kind', 'distance_m', 'elapsed_time_sec', 'activity_id']))->toBe([
             'kind' => PerformanceEvidenceKind::Test,
             'distance_m' => (int) $meters,
@@ -83,26 +87,28 @@ it('counts a run that clears the gate as test evidence with no question asked', 
 ]);
 
 it('asks once about a run on the day that misses the gate', function (float $meters, int $seconds): void {
-    $session = trialDay($this->user);
-    trialRun($this->user, $meters, $seconds, 150.0);
+    $user = User::factory()->create();
+    $session = trialDay($user);
+    trialRun($user, $meters, $seconds, 150.0);
 
-    expect($this->trials->settle($session))->toBe(TimeTrialOutcome::Asked)
-        ->and($this->trials->settle($session->fresh()))->toBeNull()
+    expect(timeTrialService()->settle($session))->toBe(TimeTrialOutcome::Asked)
+        ->and(timeTrialService()->settle($session->refresh()))->toBeNull()
         ->and(PerformanceEvidence::query()->count())->toBe(0);
-    Notification::assertSentToTimes($this->user, TimeTrialNotification::class, 1);
+    Notification::assertSentToTimes($user, TimeTrialNotification::class, 1);
 })->with([
     'too slow' => [5_000.0, 1_800],
     'the wrong distance' => [8_000.0, 2_400],
 ]);
 
 it('leaves a trial that was not run, excused or eased to the plan\'s retry', function (array $attributes, bool $ran): void {
-    $session = trialDay($this->user, $attributes);
+    $user = User::factory()->create();
+    $session = trialDay($user, $attributes);
     if ($ran) {
-        trialRun($this->user, 5_000.0, 1_500);
+        trialRun($user, 5_000.0, 1_500);
     }
 
-    expect($this->trials->settle($session))->toBeNull()
-        ->and($session->fresh()->time_trial_outcome)->toBeNull();
+    expect(timeTrialService()->settle($session))->toBeNull()
+        ->and($session->refresh()->time_trial_outcome)->toBeNull();
     Notification::assertNothingSent();
 })->with([
     'nothing run' => [[], false],
@@ -111,81 +117,90 @@ it('leaves a trial that was not run, excused or eased to the plan\'s retry', fun
 ]);
 
 it('leaves the trial unsettled while a run on its day is still only a summary', function (): void {
-    $session = trialDay($this->user);
-    trialRun($this->user, 5_020.0, 1_560)->update(['ingest_state' => IngestState::Summary]);
+    $user = User::factory()->create();
+    $session = trialDay($user);
+    trialRun($user, 5_020.0, 1_560)->update(['ingest_state' => IngestState::Summary]);
 
-    expect($this->trials->settle($session))->toBeNull()
-        ->and($session->fresh()->time_trial_outcome)->toBeNull()
+    expect(timeTrialService()->settle($session))->toBeNull()
+        ->and($session->refresh()->time_trial_outcome)->toBeNull()
         ->and(PerformanceEvidence::query()->count())->toBe(0);
     Notification::assertNothingSent();
 });
 
 it('ignores a day that is no longer a trial', function (): void {
-    $session = trialDay($this->user, ['prescription_race_context' => null]);
-    trialRun($this->user, 5_000.0, 1_500);
+    $user = User::factory()->create();
+    $session = trialDay($user, ['prescription_race_context' => null]);
+    trialRun($user, 5_000.0, 1_500);
 
-    expect($this->trials->settle($session))->toBeNull();
+    expect(timeTrialService()->settle($session))->toBeNull();
 });
 
 it('asks rather than counting an implausible run that passed on heart rate', function (): void {
-    $session = trialDay($this->user);
-    trialRun($this->user, 5_000.0, 7_000, 180.0);
+    $user = User::factory()->create();
+    $session = trialDay($user);
+    trialRun($user, 5_000.0, 7_000, 180.0);
 
-    expect($this->trials->settle($session))->toBe(TimeTrialOutcome::Asked)
+    expect(timeTrialService()->settle($session))->toBe(TimeTrialOutcome::Asked)
         ->and(PerformanceEvidence::query()->count())->toBe(0);
 });
 
 it('counts the asked run when the athlete says it was all-out', function (): void {
-    $session = trialDay($this->user, ['time_trial_outcome' => TimeTrialOutcome::Asked]);
-    trialRun($this->user, 2_000.0, 600, at: '2026-10-06 06:00:00');
-    $run = trialRun($this->user, 5_000.0, 1_700);
+    $user = User::factory()->create();
+    $session = trialDay($user, ['time_trial_outcome' => TimeTrialOutcome::Asked]);
+    trialRun($user, 2_000.0, 600, at: '2026-10-06 06:00:00');
+    $run = trialRun($user, 5_000.0, 1_700);
 
-    expect($this->trials->answer($this->user, $session, true))->toBe(TimeTrialOutcome::Confirmed)
+    expect(timeTrialService()->answer($user, $session, true))->toBe(TimeTrialOutcome::Confirmed)
         ->and(PerformanceEvidence::query()->sole()->activity_id)->toBe($run->id)
-        ->and($session->fresh()->time_trial_outcome)->toBe(TimeTrialOutcome::Confirmed);
+        ->and($session->refresh()->time_trial_outcome)->toBe(TimeTrialOutcome::Confirmed);
 });
 
 it('grades an asked trial the athlete confirms as a hit, not as the missed gate it was scored with', function (): void {
-    $session = trialDay($this->user, [
+    $user = User::factory()->create();
+    $session = trialDay($user, [
         'time_trial_outcome' => TimeTrialOutcome::Asked,
         'status' => PlannedSessionStatus::Partial,
         'intent_verdict' => IntentVerdict::Missed,
     ]);
-    trialRun($this->user, 5_000.0, 1_700);
+    trialRun($user, 5_000.0, 1_700);
 
-    $this->trials->answer($this->user, $session, true);
+    timeTrialService()->answer($user, $session, true);
 
-    expect($session->fresh()->intent_verdict)->toBe(IntentVerdict::Hit)
-        ->and($session->fresh()->status)->not->toBe(PlannedSessionStatus::Partial);
+    expect($session->refresh()->intent_verdict)->toBe(IntentVerdict::Hit)
+        ->and($session->refresh()->status)->not->toBe(PlannedSessionStatus::Partial);
 });
 
 it('closes the trial with nothing counted when the athlete says it was not all-out', function (): void {
-    $session = trialDay($this->user, ['time_trial_outcome' => TimeTrialOutcome::Asked]);
-    trialRun($this->user, 5_000.0, 1_700);
+    $user = User::factory()->create();
+    $session = trialDay($user, ['time_trial_outcome' => TimeTrialOutcome::Asked]);
+    trialRun($user, 5_000.0, 1_700);
 
-    expect($this->trials->answer($this->user, $session, false))->toBe(TimeTrialOutcome::Declined)
+    expect(timeTrialService()->answer($user, $session, false))->toBe(TimeTrialOutcome::Declined)
         ->and(PerformanceEvidence::query()->count())->toBe(0)
-        ->and($session->fresh()->time_trial_outcome)->toBe(TimeTrialOutcome::Declined);
+        ->and($session->refresh()->time_trial_outcome)->toBe(TimeTrialOutcome::Declined);
 });
 
 it('takes one answer per trial', function (TimeTrialOutcome $outcome): void {
-    $session = trialDay($this->user, ['time_trial_outcome' => $outcome]);
-    trialRun($this->user, 5_000.0, 1_700);
+    $user = User::factory()->create();
+    $session = trialDay($user, ['time_trial_outcome' => $outcome]);
+    trialRun($user, 5_000.0, 1_700);
 
-    expect(fn () => $this->trials->answer($this->user, $session, true))->toThrow(ValidationException::class);
+    expect(fn () => timeTrialService()->answer($user, $session, true))->toThrow(ValidationException::class);
 })->with([TimeTrialOutcome::Confirmed, TimeTrialOutcome::Declined]);
 
 it('refuses a yes with no run left on the day to count', function (): void {
-    $session = trialDay($this->user, ['time_trial_outcome' => TimeTrialOutcome::Asked]);
+    $user = User::factory()->create();
+    $session = trialDay($user, ['time_trial_outcome' => TimeTrialOutcome::Asked]);
 
-    expect(fn () => $this->trials->answer($this->user, $session, true))->toThrow(ValidationException::class)
-        ->and($session->fresh()->time_trial_outcome)->toBe(TimeTrialOutcome::Asked);
+    expect(fn () => timeTrialService()->answer($user, $session, true))->toThrow(ValidationException::class)
+        ->and($session->refresh()->time_trial_outcome)->toBe(TimeTrialOutcome::Asked);
 });
 
 it('refuses another athlete\'s trial', function (): void {
+    $user = User::factory()->create();
     $session = trialDay(User::factory()->create(), ['time_trial_outcome' => TimeTrialOutcome::Asked]);
 
-    expect(fn () => $this->trials->answer($this->user, $session, false))->toThrow(AuthorizationException::class);
+    expect(fn () => timeTrialService()->answer($user, $session, false))->toThrow(AuthorizationException::class);
 });
 
 function trialRunWithSplits(User $user, int $trialSecPerKm, bool $splits = true): Activity
@@ -210,31 +225,34 @@ function trialRunWithSplits(User $user, int $trialSecPerKm, bool $splits = true)
 }
 
 it('counts a warmup and trial recorded as one run by its trial split when the split clears the gate', function (): void {
-    $session = trialDay($this->user);
-    $run = trialRunWithSplits($this->user, 290);
+    $user = User::factory()->create();
+    $session = trialDay($user);
+    $run = trialRunWithSplits($user, 290);
 
-    expect($this->trials->settle($session))->toBe(TimeTrialOutcome::Confirmed)
+    expect(timeTrialService()->settle($session))->toBe(TimeTrialOutcome::Confirmed)
         ->and(PerformanceEvidence::query()->sole()->only(['distance_m', 'elapsed_time_sec', 'activity_id']))
         ->toBe(['distance_m' => 5_000, 'elapsed_time_sec' => 1_450, 'activity_id' => $run->id]);
     Notification::assertNothingSent();
 });
 
 it('asks about a trial split that misses the gate, and a yes records the split, never the whole run', function (): void {
-    $session = trialDay($this->user);
-    trialRunWithSplits($this->user, 340);
+    $user = User::factory()->create();
+    $session = trialDay($user);
+    trialRunWithSplits($user, 340);
 
-    expect($this->trials->settle($session))->toBe(TimeTrialOutcome::Asked)
-        ->and($this->trials->answer($this->user, $session->fresh(), true))->toBe(TimeTrialOutcome::Confirmed)
+    expect(timeTrialService()->settle($session))->toBe(TimeTrialOutcome::Asked)
+        ->and(timeTrialService()->answer($user, $session->refresh(), true))->toBe(TimeTrialOutcome::Confirmed)
         ->and(PerformanceEvidence::query()->sole()->only(['distance_m', 'elapsed_time_sec']))
         ->toBe(['distance_m' => 5_000, 'elapsed_time_sec' => 1_700]);
 });
 
 it('asks about a long run with no split at the trial distance, and a yes records the run as it is', function (): void {
-    $session = trialDay($this->user);
-    trialRunWithSplits($this->user, 290, splits: false);
+    $user = User::factory()->create();
+    $session = trialDay($user);
+    trialRunWithSplits($user, 290, splits: false);
 
-    expect($this->trials->settle($session))->toBe(TimeTrialOutcome::Asked)
-        ->and($this->trials->answer($this->user, $session->fresh(), true))->toBe(TimeTrialOutcome::Confirmed)
+    expect(timeTrialService()->settle($session))->toBe(TimeTrialOutcome::Asked)
+        ->and(timeTrialService()->answer($user, $session->refresh(), true))->toBe(TimeTrialOutcome::Confirmed)
         ->and(PerformanceEvidence::query()->sole()->only(['distance_m', 'elapsed_time_sec']))
         ->toBe(['distance_m' => 7_000, 'elapsed_time_sec' => 2_250]);
 });

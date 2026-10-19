@@ -11,6 +11,7 @@ use Illuminate\Support\Collection;
 
 const EDIT_RULES_TODAY = '2026-08-12';
 
+/** @param  array<string, mixed>  $extra */
 function editRulesRow(string $date, SessionType $type, array $extra = []): PlannedSession
 {
     return new PlannedSession()->forceFill([
@@ -48,9 +49,10 @@ function editRulesWeek(array $overrides = []): Collection
     return collect($types)->map(fn (SessionType $type, string $date): PlannedSession => editRulesRow($date, $type))->values();
 }
 
+/** @param  Collection<int, PlannedSession>  $rows */
 function editRulesDay(Collection $rows, string $date): PlannedSession
 {
-    return $rows->first(fn (PlannedSession $row): bool => $row->date->toDateString() === $date);
+    return nonNull($rows->first(fn (PlannedSession $row): bool => $row->date->toDateString() === $date));
 }
 
 beforeEach(fn () => Carbon::setTestNow(EDIT_RULES_TODAY.' 08:00:00'));
@@ -263,7 +265,7 @@ it('gives a make-up linked onto today no skip or restore', function (bool $skipp
 it('reads a move from a past day, or onto a day a run landed on, as a make-up', function (string $source, string $target, array $ranDates, bool $makeUp): void {
     $rows = editRulesWeek(['2026-08-10' => SessionType::Rest]);
 
-    expect(SessionEditRules::isMakeUp(editRulesDay($rows, $source), editRulesDay($rows, $target), $ranDates, Carbon::today()))
+    expect(SessionEditRules::isMakeUp(editRulesDay($rows, $source), editRulesDay($rows, $target), array_values(array_map(static fn (mixed $date): string => is_string($date) ? $date : throw new InvalidArgumentException('Ran date is not a string.'), $ranDates)), Carbon::today()))
         ->toBe($makeUp);
 })->with([
     'past source onto a later rest day' => ['2026-08-11', '2026-08-13', [], true],

@@ -32,9 +32,13 @@ uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
     Carbon::setTestNow('2026-09-07 08:00:00');
-    $this->gatherer = app(PlanInputsGatherer::class);
 });
 afterEach(fn () => Carbon::setTestNow());
+
+function planInputsGatherer(): PlanInputsGatherer
+{
+    return app(PlanInputsGatherer::class);
+}
 
 it('budgets actual marathon-band minutes without escalating threshold readiness stress', function (): void {
     $user = gathererAthlete();
@@ -42,7 +46,7 @@ it('budgets actual marathon-band minutes without escalating threshold readiness 
         'start_date_local' => '2026-09-06 07:00', 'elapsed_time' => 3600,
         'stream_summary' => ['time_in_zone_min' => ['Z1' => 0, 'Z2' => 30, 'Z3' => 30, 'Z4' => 0, 'Z5' => 0]],
     ]);
-    expect($this->gatherer->forUser($user, Carbon::today())->actualSessions)->toBe([
+    expect(planInputsGatherer()->forUser($user, Carbon::today())->actualSessions)->toBe([
         ['date' => '2026-09-06', 'duration_minutes' => 60, 'hard_minutes' => 30.0, 'demanding' => true],
     ]);
 });
@@ -52,13 +56,13 @@ it('requires six recent consistent running weeks and credible paces for two-run 
     $weeks = collect(range(0, 5))->map(fn (int $offset) => WeeklySnapshot::factory()->for($user)->create([
         'week_ending' => Carbon::today()->subDay()->subWeeks($offset), 'runs' => 2, 'distance_km' => 12.0,
     ]));
-    expect($this->gatherer->forUser($user, Carbon::today())->twoRunQualityEligible)->toBeFalse();
+    expect(planInputsGatherer()->forUser($user, Carbon::today())->twoRunQualityEligible)->toBeFalse();
     PersonalRecord::factory()->for($user)->create(['category' => '10km', 'value_sec' => 3000, 'set_at' => Carbon::today()]);
     seedConfirmedEffort($user, 10_000, 3000, Carbon::today());
     app(VdotEstimator::class)->forget($user);
-    expect($this->gatherer->forUser($user, Carbon::today())->twoRunQualityEligible)->toBeTrue();
-    $weeks->last()->update(['runs' => 1]);
-    expect($this->gatherer->forUser($user, Carbon::today())->twoRunQualityEligible)->toBeFalse();
+    expect(planInputsGatherer()->forUser($user, Carbon::today())->twoRunQualityEligible)->toBeTrue();
+    nonNull($weeks->last())->update(['runs' => 1]);
+    expect(planInputsGatherer()->forUser($user, Carbon::today())->twoRunQualityEligible)->toBeFalse();
 });
 
 it('removes skipped prescriptions from workload and restores them only after unskipping', function (): void {
@@ -67,9 +71,9 @@ it('removes skipped prescriptions from workload and restores them only after uns
         'date' => '2026-09-09', 'session_type' => SessionType::Tempo,
         'skipped' => true, 'prescribed_hard_minutes' => 20, 'prescribed_pace_band' => PaceBand::Threshold,
     ]);
-    expect($this->gatherer->forUser($user, Carbon::today())->fixedSessions)->not->toHaveKey('2026-09-09');
+    expect(planInputsGatherer()->forUser($user, Carbon::today())->fixedSessions)->not->toHaveKey('2026-09-09');
     $session->update(['skipped' => false, 'pinned' => true]);
-    expect($this->gatherer->forUser($user, Carbon::today())->fixedSessions)->toHaveKey('2026-09-09');
+    expect(planInputsGatherer()->forUser($user, Carbon::today())->fixedSessions)->toHaveKey('2026-09-09');
 });
 
 function gathererAthlete(): User
@@ -89,7 +93,7 @@ function gathererAthlete(): User
 it('opens a season for an athlete who does not have one yet', function (): void {
     $user = gathererAthlete();
 
-    $inputs = $this->gatherer->forUser($user, Carbon::today());
+    $inputs = planInputsGatherer()->forUser($user, Carbon::today());
 
     expect(Season::query()->where('user_id', $user->id)->count())->toBe(1)
         ->and($inputs->seasonStart->lte(Carbon::today()))->toBeTrue()
@@ -104,7 +108,7 @@ it('reads the active race and what it projects to take this athlete', function (
         'goal_time_sec' => 3_540,
     ]);
 
-    $inputs = $this->gatherer->forUser($user, Carbon::today());
+    $inputs = planInputsGatherer()->forUser($user, Carbon::today());
 
     expect($inputs->raceDate?->toDateString())->toBe('2026-10-31')
         ->and($inputs->raceDistanceM)->toBe(10_000.0)
@@ -112,7 +116,7 @@ it('reads the active race and what it projects to take this athlete', function (
 });
 
 it('leaves the plan self-scaled when no race is set', function (): void {
-    $inputs = $this->gatherer->forUser(gathererAthlete(), Carbon::today());
+    $inputs = planInputsGatherer()->forUser(gathererAthlete(), Carbon::today());
 
     expect($inputs->raceDate)->toBeNull()
         ->and($inputs->raceDistanceM)->toBeNull()
@@ -130,7 +134,7 @@ it('carries the weekdays the athlete chose to run on', function (): void {
         'long_run_day' => 6,
     ]);
 
-    $inputs = $this->gatherer->forUser($user, Carbon::today());
+    $inputs = planInputsGatherer()->forUser($user, Carbon::today());
 
     expect($inputs->runDays)->toBe([1, 3, 5, 6])
         ->and($inputs->longRunDay)->toBe(6)
@@ -167,7 +171,7 @@ it('collects fixed session prescriptions across the horizon without making past 
         'prescribed_pace_band' => PaceBand::Interval,
     ]);
 
-    $inputs = $this->gatherer->forUser($user, Carbon::today());
+    $inputs = planInputsGatherer()->forUser($user, Carbon::today());
 
     expect(array_keys($inputs->pinnedDates))->toBe([$tomorrow, $nextWeek])
         ->and(array_keys($inputs->settledDates))->toBe([$inTwoDays])
@@ -191,7 +195,7 @@ it('collects fixed session prescriptions across the horizon without making past 
 });
 
 it('states what the adapter decided about the week being planned', function (): void {
-    $inputs = $this->gatherer->forUser(gathererAthlete(), Carbon::today());
+    $inputs = planInputsGatherer()->forUser(gathererAthlete(), Carbon::today());
 
     expect($inputs->adaptation)->toHaveKeys(['reason', 'deload', 'quality_delta', 'adherence_pct', 'stimulus_adherence_pct']);
 });
@@ -214,7 +218,7 @@ it('uses each historical row race context when finding comparable hard work', fu
         'prescription_race_context' => null,
     ]);
 
-    $inputs = $this->gatherer->forUser($user, Carbon::today());
+    $inputs = planInputsGatherer()->forUser($user, Carbon::today());
 
     expect($inputs->recentPrescriptions)->toHaveKey('tempo')
         ->and($inputs->recentPrescriptions)->not->toHaveKey('race_tempo');
@@ -232,7 +236,7 @@ it('does not progress hard minutes from a hit without shown-advice history', fun
         'prescribed_hard_minutes' => 20,
     ]);
 
-    $inputs = $this->gatherer->forUser($user, Carbon::today());
+    $inputs = planInputsGatherer()->forUser($user, Carbon::today());
 
     expect($inputs->recentPrescriptions)->not->toHaveKey('tempo');
 });
@@ -257,7 +261,7 @@ it('ignores a newer unknown-history overreach and keeps the latest shown quality
         'prescribed_hard_minutes' => 26,
     ]);
 
-    $inputs = $this->gatherer->forUser($user, Carbon::today());
+    $inputs = planInputsGatherer()->forUser($user, Carbon::today());
 
     expect($inputs->recentPrescriptions['tempo'])->toBe([
         'verdict' => IntentVerdict::Hit,
@@ -278,7 +282,7 @@ it('does not progress the abandoned tempo dose from an eased tempo completed eas
         'prescribed_hard_minutes' => 20,
     ]);
 
-    expect($this->gatherer->forUser($user, Carbon::today())->recentPrescriptions)->not->toHaveKey('tempo');
+    expect(planInputsGatherer()->forUser($user, Carbon::today())->recentPrescriptions)->not->toHaveKey('tempo');
 });
 
 it('budgets a settled eased tempo as the easy day it became, without the abandoned tempo minutes', function (): void {
@@ -296,7 +300,7 @@ it('budgets a settled eased tempo as the easy day it became, without the abandon
         'intent_evidence' => ['advice_history' => 'shown', 'effective_type' => 'easy', 'eased_from' => 'tempo', 'concern' => 'mild', 'stimulus_family' => 'easy'],
     ]);
 
-    expect($this->gatherer->forUser($user, Carbon::today())->fixedSessions[$yesterday])->toBe([
+    expect(planInputsGatherer()->forUser($user, Carbon::today())->fixedSessions[$yesterday])->toBe([
         'session_type' => SessionType::Easy,
         'prescribed_hard_minutes' => 0,
         'prescribed_pace_band' => null,
@@ -316,7 +320,7 @@ it('budgets a settled eased tempo with no shown-advice evidence by its recorded 
         'prescribed_pace_band' => PaceBand::Threshold,
     ]);
 
-    expect($this->gatherer->forUser($user, Carbon::today())->fixedSessions[$yesterday]['session_type'])->toBe(SessionType::Easy);
+    expect(planInputsGatherer()->forUser($user, Carbon::today())->fixedSessions[$yesterday]['session_type'])->toBe(SessionType::Easy);
 });
 
 it('counts self-added hard work on a settled easy day as demanding, with its measured minutes', function (): void {
@@ -331,7 +335,7 @@ it('counts self-added hard work on a settled easy day as demanding, with its mea
         'intent_evidence' => ['advice_history' => 'shown', 'effective_type' => 'easy', 'concern' => 'none', 'stimulus_family' => 'hard', 'stimulus_minutes' => 23.0, 'stimulus_source' => 'heart_rate'],
     ]);
 
-    expect($this->gatherer->forUser($user, Carbon::today())->fixedSessions[$yesterday])->toBe([
+    expect(planInputsGatherer()->forUser($user, Carbon::today())->fixedSessions[$yesterday])->toBe([
         'session_type' => SessionType::Easy,
         'prescribed_hard_minutes' => 0,
         'prescribed_pace_band' => null,
@@ -355,7 +359,7 @@ it('counts a controlled original tempo completed against eased advice as a deman
         'intent_evidence' => ['advice_history' => 'shown', 'effective_type' => 'easy', 'eased_from' => 'tempo', 'concern' => 'mild', 'original_completed' => 'controlled', 'stimulus_family' => 'tempo', 'stimulus_minutes' => 20.0, 'stimulus_source' => 'window'],
     ]);
 
-    expect($this->gatherer->forUser($user, Carbon::today())->fixedSessions[$yesterday])->toMatchArray([
+    expect(planInputsGatherer()->forUser($user, Carbon::today())->fixedSessions[$yesterday])->toMatchArray([
         'session_type' => SessionType::Easy,
         'prescribed_hard_minutes' => 0,
         'hard_minutes' => 20.0,
@@ -371,7 +375,7 @@ it('sizes the race by the time the plan trains for, not a separate Riegel projec
         'goal_time_sec' => 3_540,
     ]);
 
-    $inputs = $this->gatherer->forUser($user, Carbon::today());
+    $inputs = planInputsGatherer()->forUser($user, Carbon::today());
 
     expect($inputs->projectedRaceSeconds)->toBe((float) $inputs->raceGoalTimeSec);
 });
@@ -383,7 +387,7 @@ it('tilts the plan only by a fitted fall-off, and only outside the neutral band'
         seedConfirmedEffort($user, 15_000, $fifteenKSec, Carbon::today()->subWeeks(2));
     }
 
-    expect($this->gatherer->forUser($user, Carbon::today())->fallOffTilt)->toBe($expected);
+    expect(planInputsGatherer()->forUser($user, Carbon::today())->fallOffTilt)->toBe($expected);
 })->with([
     'slow fall-off' => [(int) round(1_500 * 3 ** 1.13), FallOffTilt::Endurance],
     'flat fall-off' => [(int) round(1_500 * 3 ** 1.03), FallOffTilt::Speed],
@@ -393,13 +397,13 @@ it('tilts the plan only by a fitted fall-off, and only outside the neutral band'
 
 it('carries the race ambition band and gap the goal-pace work is gated on, and none without a race', function (): void {
     $user = gathererAthlete();
-    $withoutRace = $this->gatherer->forUser($user, Carbon::today());
+    $withoutRace = planInputsGatherer()->forUser($user, Carbon::today());
     $race = RaceGoal::factory()->for($user)->create([
         'race_date' => '2026-10-31',
         'distance_m' => 10_000,
         'goal_time_sec' => 3_540,
     ]);
-    $inputs = $this->gatherer->forUser($user, Carbon::today());
+    $inputs = planInputsGatherer()->forUser($user, Carbon::today());
     $ambition = app(RaceAmbitionAssessor::class)->assess($user, $race, Carbon::today());
 
     expect($withoutRace->raceAmbitionState)->toBeNull()
@@ -431,11 +435,11 @@ it('carries the trial aim, the season\'s fixed trials read as run or skipped, an
         'start_date_local' => '2026-08-28 06:00:00', 'distance' => 5_100.0, 'elapsed_time' => 1_480, 'moving_time' => 1_480,
         'stream_summary' => ['per_km' => array_map(static fn (int $km): array => ['km' => $km, 'pace' => '4:50', 'elapsed_sec' => 290, 'distance_m' => 1000], range(1, 5))],
     ]);
-    $estimate = app(VdotEstimator::class)->estimate($user, Carbon::today());
+    $estimate = nonNull(app(VdotEstimator::class)->estimate($user, Carbon::today()));
 
-    $inputs = $this->gatherer->forUser($user, Carbon::today());
+    $inputs = planInputsGatherer()->forUser($user, Carbon::today());
 
-    expect($inputs->timeTrialAimSec)->toBe((int) round(app(VdotEstimator::class)->raceTimeForVdot($estimate['vdot'], 5_000)))
+    expect($inputs->timeTrialAimSec)->toBe((int) round(nonNull(app(VdotEstimator::class)->raceTimeForVdot($estimate['vdot'], 5_000))))
         ->and($inputs->timeTrials)->toBe([
             ['date' => '2026-08-18', 'retry' => false, 'skipped' => true],
             ['date' => '2026-08-25', 'retry' => true, 'skipped' => false],
@@ -456,12 +460,12 @@ it('carries an unsupported goal\'s stepping-stone time for its goal-pace work', 
         'distance_m' => 10_000,
         'goal_time_sec' => 2_400,
     ]);
-    $inputs = $this->gatherer->forUser($user, Carbon::today());
+    $inputs = planInputsGatherer()->forUser($user, Carbon::today());
     $ambition = app(RaceAmbitionAssessor::class)->assess($user, $race, Carbon::today());
 
     expect($inputs->raceAmbitionState)->toBe(RaceAmbitionState::Unsupported)
         ->and($inputs->raceSteppingStoneTimeSec)->toBe($ambition->steppingStoneTimeSec)
-        ->and($inputs->raceSteppingStoneTimeSec)->toBe(RaceAmbitionAssessor::steppingStoneTimeSec($ambition->supportedTimeSec))
+        ->and($inputs->raceSteppingStoneTimeSec)->toBe(RaceAmbitionAssessor::steppingStoneTimeSec(nonNull($ambition->supportedTimeSec)))
         ->and($inputs->raceGoalTimeSec)->toBe($ambition->supportedTimeSec);
 });
 
@@ -478,7 +482,7 @@ it('carries the last build quality session the season prescribed, skipping trial
     $session('2026-09-03', PlanPhase::Peak, SessionType::Interval, 16);
     $session('2026-09-07', PlanPhase::Build, SessionType::Tempo, 30);
 
-    expect($this->gatherer->forUser($user, Carbon::today())->lastBuildQualityHardMinutes)->toBe(9);
+    expect(planInputsGatherer()->forUser($user, Carbon::today())->lastBuildQualityHardMinutes)->toBe(9);
 });
 
 it('carries an ambitious goal\'s stepping-stone time for its goal-pace work, the one the race payload shows', function (): void {
@@ -492,11 +496,11 @@ it('carries an ambitious goal\'s stepping-stone time for its goal-pace work, the
         'distance_m' => 10_000,
         'goal_time_sec' => 2_880,
     ]);
-    $inputs = $this->gatherer->forUser($user, Carbon::today());
+    $inputs = planInputsGatherer()->forUser($user, Carbon::today());
     $ambition = app(RaceAmbitionAssessor::class)->assess($user, $race, Carbon::today());
 
     expect($inputs->raceAmbitionState)->toBe(RaceAmbitionState::Ambitious)
-        ->and($inputs->raceSteppingStoneTimeSec)->toBe(RaceAmbitionAssessor::steppingStoneTimeSec($ambition->supportedTimeSec))
+        ->and($inputs->raceSteppingStoneTimeSec)->toBe(RaceAmbitionAssessor::steppingStoneTimeSec(nonNull($ambition->supportedTimeSec)))
         ->and($ambition->steppingStoneTimeSec)->toBe($inputs->raceSteppingStoneTimeSec)
         ->and($inputs->raceGoalTimeSec)->toBe(2_880);
 });
@@ -514,7 +518,7 @@ it('carries the last peak goal-pace session the athlete was prescribed at the ra
     $session('2026-08-30', PlanPhase::Peak, 40, ['distance_m' => 21_098, 'goal_pace_sec_per_km' => 300, 'kind' => 'half', 'band' => 'on_track']);
     $session('2026-09-01', PlanPhase::Taper, 12, ['distance_m' => 10_000, 'goal_pace_sec_per_km' => 300, 'kind' => '10k', 'band' => 'on_track']);
 
-    expect($this->gatherer->forUser($user, Carbon::today())->lastPeakGoalPaceHardMinutes)->toBe(20);
+    expect(planInputsGatherer()->forUser($user, Carbon::today())->lastPeakGoalPaceHardMinutes)->toBe(20);
 });
 
 it('carries the longest run so far, the last fast finish and the supported race time the fast finish is sized and paced from', function (): void {
@@ -530,7 +534,7 @@ it('carries the longest run so far, the last fast finish and the supported race 
     $fastFinish = ['kind' => 'fast_finish', 'race_kind' => '10k', 'distance_m' => 10_000];
     PlannedSession::factory()->for($user)->create(['date' => '2026-08-23', 'session_type' => SessionType::Long, 'prescribed_hard_minutes' => 20, 'prescribed_pace_band' => PaceBand::Threshold, 'prescription_race_context' => $fastFinish]);
     PlannedSession::factory()->for($user)->create(['date' => '2026-08-30', 'session_type' => SessionType::Long, 'prescribed_hard_minutes' => 0, 'prescribed_pace_band' => null, 'prescription_race_context' => null]);
-    $inputs = $this->gatherer->forUser($user, Carbon::today());
+    $inputs = planInputsGatherer()->forUser($user, Carbon::today());
 
     expect($inputs->raceSupportedTimeSec)->toBe(app(RaceAmbitionAssessor::class)->assess($user, $race, Carbon::today())->supportedTimeSec)
         ->and($inputs->raceSupportedTimeSec)->not->toBeNull()
@@ -545,11 +549,10 @@ it('carries the supported 10K time a 5K goal\'s fast finish is paced from', func
         'performed_on' => Carbon::today()->subWeek(), 'confirmed_at' => now(),
     ]);
     RaceGoal::factory()->for($user)->create(['race_date' => '2026-10-31', 'distance_m' => 5_000, 'goal_time_sec' => 1_400]);
-    $estimate = app(VdotEstimator::class)->estimate($user, Carbon::today());
+    $estimate = nonNull(app(VdotEstimator::class)->estimate($user, Carbon::today()));
 
-    expect($this->gatherer->forUser($user, Carbon::today())->supportedTenKTimeSec)
-        ->toBe((int) round(app(VdotEstimator::class)->raceTimeForVdot($estimate['vdot'], 10_000)))
-        ->not->toBeNull();
+    expect(nonNull(planInputsGatherer()->forUser($user, Carbon::today())->supportedTenKTimeSec))
+        ->toBe((int) round(nonNull(app(VdotEstimator::class)->raceTimeForVdot($estimate['vdot'], 10_000))));
 });
 
 it('counts the season\'s longest prescribed long run, sized as the plan sizes it, toward the longest run so far', function (): void {
@@ -560,7 +563,7 @@ it('counts the season\'s longest prescribed long run, sized as the plan sizes it
     PlannedSession::factory()->for($user)->create(['date' => '2026-08-31', 'session_type' => SessionType::Easy, 'volume_multiplier' => 3.0]);
     $baseline = app(TrainingBaseline::class)->forUser($user, Carbon::today());
 
-    expect($this->gatherer->forUser($user, Carbon::today())->longestRunSoFarKm)
+    expect(planInputsGatherer()->forUser($user, Carbon::today())->longestRunSoFarKm)
         ->toBe(SegmentGenerator::coreKmFor(SessionType::Long, false, $baseline['long_run_km'], 1.2, $baseline['long_run_cap_km'], null, $baseline['long_run_progression_cap_km']))
         ->toBeGreaterThan(0.0);
 });

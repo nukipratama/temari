@@ -20,6 +20,7 @@ function plannedTypesRun(User $user, string $at, bool $analyzed = true): void
     ActivityDetail::factory()->for($activity)->create(['start_date_local' => $at]);
 }
 
+/** @return array<string, SessionType> */
 function plannedTypesWindow(User $user): array
 {
     return PlannedSessionTypes::byDate($user->id, Carbon::parse('2026-09-01'), Carbon::parse('2026-09-30 23:59:59'));

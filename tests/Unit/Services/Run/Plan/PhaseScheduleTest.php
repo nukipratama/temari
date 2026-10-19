@@ -205,7 +205,7 @@ it('volumeMultipliers caps the compounding build ramp at 1.4', function (): void
         array_map(fn (array $w): PlanPhase => $w['phase'], $arc),
     );
 
-    expect(max($multipliers))->toBeLessThanOrEqual(1.4);
+    expect(collect($multipliers)->max())->toBeLessThanOrEqual(1.4);
 });
 
 it('volumeMultipliers leaves a 12-week block untouched by the ramp cap', function (): void {
@@ -219,7 +219,7 @@ it('volumeMultipliers leaves a 12-week block untouched by the ramp cap', functio
         array_map(fn (array $w): PlanPhase => $w['phase'], $arc),
     );
 
-    expect(max($multipliers))->toEqualWithDelta(1.075 ** 2, 0.001);
+    expect(collect($multipliers)->max())->toEqualWithDelta(1.075 ** 2, 0.001);
 });
 
 it('holds a self-scaled arc at 1.0 outside its deload dips', function (): void {
@@ -270,7 +270,7 @@ it('runs the general cycle until block open and counts the race ramp from there'
     $standaloneBlock = PhaseSchedule::forRace($blockOpen, $raceDay, 10_000.0);
 
     expect(array_count_values($zones))->toBe([PhaseSchedule::ZONE_GENERAL => 12, PhaseSchedule::ZONE_BLOCK => 16])
-        ->and(end($arc)['week_start']->toDateString())->toBe($raceDay->toDateString())
+        ->and(nonNull(collect($arc)->last())['week_start']->toDateString())->toBe($raceDay->toDateString())
         ->and($block[0]['week_start']->toDateString())->toBe($blockOpen->toDateString())
         ->and(array_column($general, 'phase'))->toBe(array_column(PhaseSchedule::selfScaled($arcStart, 12), 'phase'))
         ->and(array_column($block, 'phase'))->toBe(array_column($standaloneBlock, 'phase'))
@@ -349,7 +349,7 @@ it('opens Peak on a Peak week and keeps every planned Peak week', function (int 
         $arc,
         fn (array $week): bool => $week['zone'] === PhaseSchedule::ZONE_BLOCK && $week['phase'] !== PlanPhase::Taper,
     ));
-    $firstPeak = array_search(PlanPhase::Peak, $phases, true);
+    $firstPeak = nonNull(array_find_key($phases, static fn (PlanPhase $phase): bool => $phase === PlanPhase::Peak));
     $peakRun = array_slice($phases, $firstPeak, array_search(PlanPhase::Taper, $phases, true) - $firstPeak);
 
     expect(count($peakRun))->toBe(max(1, (int) round($rampWeeks * 0.25)));

@@ -23,6 +23,7 @@ use App\Services\Run\Plan\PlanPageAssembler;
 use App\Services\Run\Plan\PlanRenderer;
 use App\Services\Run\Plan\SegmentGenerator;
 use App\Services\Run\Plan\TrainingBaseline;
+use App\Support\Numeric;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -46,10 +47,48 @@ function seedWeekOfSessions(User $user, Carbon $weekStart, PlanPhase $phase = Pl
     }
 }
 
-/** @return array<string, mixed> */
+/**
+ * @param  array<string, mixed>  $day
+ * @return array<mixed>
+ */
 function weekPlanShownReadiness(array $day): array
 {
-    return json_decode(Crypt::decryptString($day['recommendation_token']), true, flags: JSON_THROW_ON_ERROR)['effective']['readiness_assessment'];
+    $token = $day['recommendation_token'];
+    $payload = Crypt::decryptString(is_string($token) ? $token : throw new InvalidArgumentException('Day recommendation_token is not a string.'));
+
+    return arrayOf(data_get(json_decode($payload, true, flags: JSON_THROW_ON_ERROR), 'effective.readiness_assessment'));
+}
+
+/** @return array{sessions_this_week: int, phase: string, planned_km_this_week: float, planned_km_eased_from: float|null, credited_this_week: int, days: array<int, array<string, mixed>>} */
+function weekPlanHome(User $user): array
+{
+    return nonNull(app(CurrentWeekPlanBuilder::class)->forUser($user, Carbon::today()));
+}
+
+/**
+ * @param  array<int, array<string, mixed>>  $days
+ * @return array<string, mixed>
+ */
+function weekPlanDay(array $days, string $date): array
+{
+    return nonNull(collect($days)->firstWhere('date', $date));
+}
+
+/** @return list<array<mixed>> */
+function weekPlanPlanDays(PlanPageAssembler $assembler, User $user): array
+{
+    $week = nonNull(collect($assembler->weeks($user, Carbon::today()))->firstWhere('type', 'current'));
+
+    return array_values(array_map(arrayOf(...), arrayOf($week['days'])));
+}
+
+/**
+ * @param  array<array<mixed>>  $days
+ * @return array<array<mixed>>
+ */
+function weekPlanDaysByDate(array $days): array
+{
+    return array_column($days, null, 'date');
 }
 
 it('returns null when the current week has no planned sessions', function (): void {
@@ -68,10 +107,9 @@ it('builds sessions_this_week, phase, and one day payload per planned session', 
     $weekStart = Carbon::today()->startOfWeek(Carbon::MONDAY);
     seedWeekOfSessions($user, $weekStart);
 
-    $result = app(CurrentWeekPlanBuilder::class)->forUser($user, Carbon::today());
+    $result = weekPlanHome($user);
 
-    expect($result)->not->toBeNull()
-        ->and($result['phase'])->toBe('base')
+    expect($result['phase'])->toBe('base')
         ->and($result['days'])->toHaveCount(7)
         ->and($result['days'][0]['date'])->toBe($weekStart->toDateString());
 
@@ -83,10 +121,10 @@ it('carries a recommendation token on today alone and ships no readiness assessm
     $user = User::factory()->create();
     seedWeekOfSessions($user, Carbon::today()->startOfWeek(Carbon::MONDAY));
 
-    $days = collect(app(CurrentWeekPlanBuilder::class)->forUser($user, Carbon::today())['days']);
+    $days = collect(weekPlanHome($user)['days']);
     $others = $days->reject(fn (array $day): bool => $day['date'] === Carbon::today()->toDateString());
 
-    expect($days->firstWhere('date', Carbon::today()->toDateString())['recommendation_token'])->toBeString()->not->toBe('')
+    expect(weekPlanDay($days->all(), Carbon::today()->toDateString())['recommendation_token'])->not->toBe('')->toBeString()
         ->and($others)->toHaveCount(6)
         ->and($others->contains(fn (array $day): bool => array_key_exists('recommendation_token', $day)))->toBeFalse()
         ->and($days->contains(fn (array $day): bool => array_key_exists('readiness_assessment', $day)))->toBeFalse();
@@ -118,35 +156,33 @@ it('shares the current week surplus projection between Home and Plan without wri
     }
 
     $assembler = app(PlanPageAssembler::class);
-    $initialWeek = collect($assembler->weeks($user, Carbon::today()))->firstWhere('type', 'current');
-    $monday = collect($initialWeek['days'])
-        ->firstWhere('date', $weekStart->toDateString());
+    $monday = nonNull(collect(weekPlanPlanDays($assembler, $user))->firstWhere('date', $weekStart->toDateString()));
+    $mondayAskedKm = Numeric::float($monday['asked_km']);
     $activity = Activity::factory()->for($user)->create();
     ActivityDetail::factory()->for($activity)->create([
         'start_date_local' => $weekStart->copy()->setTime(6, 0),
-        'distance' => ($monday['asked_km'] + 10.0) * 1000,
+        'distance' => ($mondayAskedKm + 10.0) * 1000,
     ]);
 
-    $planWeek = collect($assembler->weeks($user, Carbon::today()))->firstWhere('type', 'current');
-    $planDays = collect($planWeek['days'])->keyBy('date');
-    $home = app(CurrentWeekPlanBuilder::class)->forUser($user, Carbon::today());
-    $homeDays = collect($home['days'])->keyBy('date');
+    $planDays = weekPlanDaysByDate(weekPlanPlanDays($assembler, $user));
+    $home = weekPlanHome($user);
+    $homeDays = weekPlanDaysByDate($home['days']);
     $saturday = $weekStart->copy()->addDays(5)->toDateString();
     $friday = $weekStart->copy()->addDays(4)->toDateString();
     $sunday = $weekStart->copy()->addDays(6)->toDateString();
     $futureSaturday = PlannedSession::query()->where('user_id', $user->id)->whereDate('date', $saturday)->firstOrFail();
     $homeTotal = round(array_sum(array_column($home['days'], 'distance_km')), 1);
-    $planTotal = round(array_sum(array_column($planDays->all(), 'distance_km')), 1);
+    $planTotal = round(array_sum(array_column($planDays, 'distance_km')), 1);
     $mondayDate = $weekStart->toDateString();
 
     expect($homeDays[$saturday]['session_type'])->toBe($planDays[$saturday]['session_type'])
         ->and($homeDays[$saturday]['distance_km'])->toBe($planDays[$saturday]['distance_km'])
         ->and($homeDays[$saturday]['segments'])->toEqual($planDays[$saturday]['segments'])
-        ->and($planDays[$saturday]['distance_km'])->toBeLessThan($planDays[$saturday]['asked_km'])
+        ->and($planDays[$saturday]['distance_km'])->toBeLessThan(Numeric::float($planDays[$saturday]['asked_km']))
         ->and($homeDays[$friday]['distance_km'])->toBe($homeDays[$friday]['asked_km'])
         ->and($homeDays[$sunday]['distance_km'])->toBe($homeDays[$sunday]['asked_km'])
-        ->and($homeDays[$mondayDate]['credited_km'])->toBe(round($monday['asked_km'] + 10.0, 1))
-        ->and($home['planned_km_this_week'])->toBe(round($homeTotal - $homeDays[$mondayDate]['distance_km'] + $homeDays[$mondayDate]['credited_km'], 1))
+        ->and($homeDays[$mondayDate]['credited_km'])->toBe(round($mondayAskedKm + 10.0, 1))
+        ->and($home['planned_km_this_week'])->toBe(round($homeTotal - Numeric::float($homeDays[$mondayDate]['distance_km']) + Numeric::float($homeDays[$mondayDate]['credited_km']), 1))
         ->and($planTotal)->toBe($homeTotal)
         ->and($homeDays[$saturday]['eased_from'])->toBeNull()
         ->and($planDays[$saturday]['eased_from'])->toBeNull()
@@ -179,10 +215,9 @@ it('does not add missed or readiness-reduced volume to future easy runs', functi
         ]);
     }
 
-    $planWeek = collect(app(PlanPageAssembler::class)->weeks($user, Carbon::today()))->firstWhere('type', 'current');
-    $planDays = collect($planWeek['days'])->keyBy('date');
-    $home = app(CurrentWeekPlanBuilder::class)->forUser($user, Carbon::today());
-    $homeDays = collect($home['days'])->keyBy('date');
+    $planDays = weekPlanDaysByDate(weekPlanPlanDays(app(PlanPageAssembler::class), $user));
+    $home = weekPlanHome($user);
+    $homeDays = weekPlanDaysByDate($home['days']);
     $saturday = $weekStart->copy()->addDays(5)->toDateString();
 
     expect($homeDays[$saturday]['distance_km'])->toBe($planDays[$saturday]['distance_km'])
@@ -215,11 +250,12 @@ it('never prices an old race day at a newer race goal\'s time', function (): voi
         'goal_time_sec' => 14_400,
     ]);
 
-    $result = app(CurrentWeekPlanBuilder::class)->forUser($user, Carbon::today());
+    $result = weekPlanHome($user);
 
-    $raceDay = collect($result['days'])->firstWhere('date', $weekStart->copy()->addDay()->toDateString());
+    $raceDay = weekPlanDay($result['days'], $weekStart->copy()->addDay()->toDateString());
     expect($raceDay['session_type'])->toBe('race')
-        ->and($raceDay['segments'][0]['pace_sec_per_km'])->toBeNull();
+        ->and($raceDay)->toHaveKey('segments.0.pace_sec_per_km')
+        ->and(data_get($raceDay, 'segments.0.pace_sec_per_km'))->toBeNull();
 
     Carbon::setTestNow();
 });
@@ -272,7 +308,7 @@ it('credits a past day whose completed distance met the prescribed km', function
         'distance' => $mondayTargetKm * 1000,
     ]);
 
-    $result = app(CurrentWeekPlanBuilder::class)->forUser($user, Carbon::today());
+    $result = weekPlanHome($user);
 
     expect($result['credited_this_week'])->toBeGreaterThanOrEqual(1)
         ->and($result['days'][0]['status'])->toBe('done');
@@ -296,8 +332,8 @@ it('renders ran_anyway true for a past, unscored rest day with a logged run', fu
         'distance' => 5_000.0,
     ]);
 
-    $result = app(CurrentWeekPlanBuilder::class)->forUser($user, Carbon::today());
-    $day = collect($result['days'])->firstWhere('date', $monday->toDateString());
+    $result = weekPlanHome($user);
+    $day = weekPlanDay($result['days'], $monday->toDateString());
 
     expect($day['status'])->toBe('done')
         ->and($day['ran_anyway'])->toBeTrue();
@@ -320,7 +356,7 @@ it('applies the multi-week Build ramp, not an isolated week-1 multiplier', funct
         seedWeekOfSessions($user, $currentWeekStart->copy()->subWeeks($w), PlanPhase::Build);
     }
 
-    $result = app(CurrentWeekPlanBuilder::class)->forUser($user, Carbon::today());
+    $result = weekPlanHome($user);
 
     // The 4th consecutive Build week (0-indexed k=3): BUILD_WEEKLY_RAMP ** 3.
     // A week computed in isolation (no trailing history) would wrongly see
@@ -363,7 +399,7 @@ it('counts only training days, so a week off never credits itself', function ():
         ]);
     }
 
-    $result = app(CurrentWeekPlanBuilder::class)->forUser($user, Carbon::today());
+    $result = weekPlanHome($user);
 
     expect($result['sessions_this_week'])->toBe(2)
         ->and($result['credited_this_week'])->toBe(0);
@@ -387,7 +423,7 @@ it('sizes the ring by the days the week actually holds, not the weekly target', 
         ]);
     }
 
-    $result = app(CurrentWeekPlanBuilder::class)->forUser($user, Carbon::today());
+    $result = weekPlanHome($user);
 
     expect($result['sessions_this_week'])->toBe(2);
 
@@ -414,8 +450,8 @@ it('credits today once the run already clears the bar, without waiting for the n
         'distance' => 30_000,
     ]);
 
-    $result = app(CurrentWeekPlanBuilder::class)->forUser($user, Carbon::today());
-    $today = collect($result['days'])->firstWhere('date', Carbon::today()->toDateString());
+    $result = weekPlanHome($user);
+    $today = weekPlanDay($result['days'], Carbon::today()->toDateString());
 
     expect($today['status'])->toBe('overreached')
         ->and($today['actual_km'])->toBe(30.0)
@@ -430,7 +466,7 @@ it('reports the km it renders from today on, so a clamped today cannot disagree 
     $user = User::factory()->create();
     seedWeekOfSessions($user, Carbon::today()->startOfWeek(Carbon::MONDAY));
 
-    $result = app(CurrentWeekPlanBuilder::class)->forUser($user, Carbon::today());
+    $result = weekPlanHome($user);
     $fromToday = array_filter($result['days'], static fn (array $day): bool => $day['date'] >= Carbon::today()->toDateString());
 
     expect($result['planned_km_this_week'])
@@ -459,14 +495,12 @@ it('holds todays advisory clamp while a demanding run awaits hydration, then app
         'stream_summary' => ['time_in_zone_min' => ['Z2' => 20, 'Z4' => 12]],
     ]);
 
-    $held = collect(app(CurrentWeekPlanBuilder::class)->forUser($user, Carbon::today())['days'])
-        ->firstWhere('date', Carbon::today()->toDateString());
+    $held = weekPlanDay(weekPlanHome($user)['days'], Carbon::today()->toDateString());
 
     $activity->update(['ingest_state' => IngestState::Detailed]);
     app()->forgetScopedInstances();
 
-    $resumed = collect(app(CurrentWeekPlanBuilder::class)->forUser($user, Carbon::today())['days'])
-        ->firstWhere('date', Carbon::today()->toDateString());
+    $resumed = weekPlanDay(weekPlanHome($user)['days'], Carbon::today()->toDateString());
 
     expect($held['eased_from'])->toBeNull()
         ->and($resumed['session_type'])->toBe('easy')
@@ -493,13 +527,14 @@ it('leads Home today with a tempo day eased to easy, tempo only as context', fun
     [$row, $storedKm] = tempoToday($user);
     $row->update(['clamped_km' => $storedKm]);
 
-    $result = app(CurrentWeekPlanBuilder::class)->forUser($user, Carbon::today());
-    $today = collect($result['days'])->firstWhere('date', Carbon::today()->toDateString());
+    $result = weekPlanHome($user);
+    $today = weekPlanDay($result['days'], Carbon::today()->toDateString());
 
     expect($today['session_type'])->toBe('easy')
         ->and($today['distance_km'])->toBe($storedKm)
-        ->and($today['eased_from']['session_type'])->toBe('tempo')
-        ->and($today['eased_from']['distance_km'])->toBeNull()
+        ->and(data_get($today, 'eased_from.session_type'))->toBe('tempo')
+        ->and($today)->toHaveKey('eased_from.distance_km')
+        ->and(data_get($today, 'eased_from.distance_km'))->toBeNull()
         ->and($result['planned_km_eased_from'])->toBeNull();
 
     Carbon::setTestNow();
@@ -513,8 +548,8 @@ it('takes todays recorded ease off the week total, with the un-eased total as ea
     [$row, $storedKm] = tempoToday($user);
     $row->update(['clamped_km' => 1.0]);
 
-    $result = app(CurrentWeekPlanBuilder::class)->forUser($user, Carbon::today());
-    $today = collect($result['days'])->firstWhere('date', Carbon::today()->toDateString());
+    $result = weekPlanHome($user);
+    $today = weekPlanDay($result['days'], Carbon::today()->toDateString());
     $fromToday = array_filter($result['days'], static fn (array $day): bool => $day['date'] >= Carbon::today()->toDateString());
     $total = round(array_sum(array_column($fromToday, 'distance_km')), 1);
 
@@ -537,8 +572,8 @@ it('credits an eased today run to its eased distance, so a compliant week never 
         'distance' => 1000,
     ]);
 
-    $result = app(CurrentWeekPlanBuilder::class)->forUser($user, Carbon::today());
-    $today = collect($result['days'])->firstWhere('date', Carbon::today()->toDateString());
+    $result = weekPlanHome($user);
+    $today = weekPlanDay($result['days'], Carbon::today()->toDateString());
 
     expect($today['status'])->toBe('done')
         ->and($today['distance_km'])->toBe(1.0);
@@ -572,7 +607,7 @@ it('totals the partial first week of a Saturday signup, not the runs behind it',
         ]);
     }
 
-    $result = app(CurrentWeekPlanBuilder::class)->forUser($user, Carbon::today());
+    $result = weekPlanHome($user);
 
     expect(array_column($result['days'], 'date'))->toBe(['2026-05-16', '2026-05-17'])
         ->and($result['sessions_this_week'])->toBe(2)
@@ -654,6 +689,7 @@ function weekPlanCharacterizationUser(bool $clampDay): User
     return $user;
 }
 
+/** @param  array<string, mixed>|null  $payload */
 function weekPlanCharacterization(?array $payload): string
 {
     $ids = [];
@@ -708,9 +744,9 @@ it('builds the readiness context once on a live clamp day', function (): void {
         $lastWeekReads += str_contains($query->sql, 'as total_distance') ? 1 : 0;
     });
 
-    $today = collect(app(CurrentWeekPlanBuilder::class)->forUser($user, Carbon::today())['days'])->firstWhere('date', '2026-08-12');
+    $today = weekPlanDay(weekPlanHome($user)['days'], '2026-08-12');
 
-    expect($today['eased_from']['voice'])->toBe('yesterday was hard, so today stays easy.')
+    expect(data_get($today, 'eased_from.voice'))->toBe('yesterday was hard, so today stays easy.')
         ->and($lastWeekReads)->toBe(1);
 
     Carbon::setTestNow();
@@ -740,9 +776,9 @@ it('reads a recorded ease with no stored assessment fresh while history is still
         'content_fingerprint' => ClampNarrationContext::fingerprint(ReadinessCeiling::ModerateOk, SessionType::Easy, false, ['demanding_session_within_24h']),
     ]);
 
-    $result = app(CurrentWeekPlanBuilder::class)->forUser($user, Carbon::today());
+    $result = weekPlanHome($user);
 
-    expect(collect($result['days'])->firstWhere('date', '2026-08-12')['eased_from']['voice'])->toBe('yesterday was hard, so today stays easy.');
+    expect(data_get(weekPlanDay($result['days'], '2026-08-12'), 'eased_from.voice'))->toBe('yesterday was hard, so today stays easy.');
 
     Carbon::setTestNow();
 });
