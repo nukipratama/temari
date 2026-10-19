@@ -283,7 +283,7 @@ it('queues a verification job on athlete deauthorization instead of revoking on 
     ])->assertOk();
 
     // The forgeable body must NOT revoke synchronously; a verification job does.
-    expect($connection->refresh()->isRevoked())->toBeFalse();
+    expect(nonNull($connection->fresh())->isRevoked())->toBeFalse();
     Bus::assertDispatched(fn (VerifyStravaRevocationJob $job): bool => $job->connectionId === $connection->id
         && $job->source === 'webhook_deauth'
         && $job->credentialVersion === $connection->credential_version);
