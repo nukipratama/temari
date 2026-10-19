@@ -34,6 +34,7 @@ use App\Services\Weather\OpenMeteoClient;
 use App\Support\Config\AppConfig;
 use App\Support\Config\AppConfigKey;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Event;
@@ -352,6 +353,22 @@ it('propagates a rate-limit exception from the streams fetch, with the detail al
         ->and($activity->fresh()->analyzed_at)->toBeNull();
 });
 
+it('propagates a connect failure from the streams fetch, with the detail already stored', function (): void {
+    $activity = makeActivityWithConnection();
+
+    Http::fake([
+        'strava.com/api/v3/activities/999/streams*' => Http::failedConnection(),
+        'strava.com/api/v3/activities/999' => Http::response(['name' => 'R', 'distance' => 5000]),
+    ]);
+
+    expect(fn () => $this->pipeline->ingest($activity))
+        ->toThrow(ConnectionException::class);
+
+    expect(ActivityDetail::query()->where('activity_id', $activity->id)->exists())->toBeTrue()
+        ->and($activity->fresh()->analyzed_at)->toBeNull()
+        ->and($activity->fresh()->detail_fail_count)->toBe(0);
+});
+
 it('still stores detail when streams 404 (best-effort)', function (): void {
     $activity = makeActivityWithConnection();
 
@@ -615,6 +632,21 @@ it('rethrows a transient token refresh blip so the job retries, without revoking
 
     expect($connection->fresh()->isRevoked())->toBeFalse()
         ->and($activity->fresh()->detail_fail_count)->toBe(0);
+});
+
+it('rethrows a connect failure so the job retries, without burning the detail budget', function (): void {
+    $activity = makeActivityWithConnection();
+    $activity->update(['detail_fail_count' => 4]);
+
+    Http::fake([
+        'strava.com/api/v3/activities/999' => Http::failedConnection(),
+    ]);
+
+    expect(fn () => $this->pipeline->ingest($activity))
+        ->toThrow(ConnectionException::class);
+
+    expect($activity->fresh()->detail_fail_count)->toBe(4)
+        ->and($activity->fresh()->analyzed_at)->toBeNull();
 });
 
 it('computes stream_summary + Edwards TRIMP from the streams blob', function (): void {

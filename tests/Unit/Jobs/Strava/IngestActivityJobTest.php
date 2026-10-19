@@ -10,6 +10,7 @@ use App\Services\Run\Ingest\ActivityPipeline;
 use App\Services\Strava\Exceptions\StravaRateLimitedException;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Queue\Middleware\ThrottlesExceptions;
 use Illuminate\Support\Facades\Log;
 
@@ -197,4 +198,26 @@ it('logs the stuck activity when the job is finally marked failed', function ():
             && $context['activity_id'] === 123
             && $context['reason'] === 'boom',
     );
+});
+
+it('backs off on a connect failure instead of counting it as a genuine failure', function (): void {
+    $fakeJob = new class () {
+        public int $releaseCount = 0;
+
+        public function release(int $delay): void
+        {
+            $this->releaseCount++;
+        }
+
+        public function uuid(): string
+        {
+            return 'job-uuid';
+        }
+    };
+
+    new IngestActivityJob(1)->middleware()[0]->handle($fakeJob, function (): never {
+        throw new ConnectionException('cURL error 28: Connection timed out');
+    });
+
+    expect($fakeJob->releaseCount)->toBe(1);
 });
