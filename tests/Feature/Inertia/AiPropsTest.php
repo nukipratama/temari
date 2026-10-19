@@ -18,6 +18,7 @@ use Illuminate\Support\Carbon;
 
 uses(RefreshDatabase::class);
 
+/** @return array<string, Closure> */
 function aiPropsFor(?User $user): array
 {
     return app(AiProps::class)->forUser($user);

@@ -16,6 +16,7 @@ use Inertia\Testing\AssertableInertia as Assert;
 uses(RefreshDatabase::class);
 
 /**
+ * @param  array<string, mixed>  $overrides
  * @return array<string, mixed>
  */
 function racePayload(array $overrides = []): array
@@ -129,9 +130,8 @@ it('creates the first race for a user with none and busts the shared active-race
         ->assertRedirect()
         ->assertSessionHas('success');
 
-    $race = RaceGoal::query()->where('user_id', $user->id)->active()->first();
-    expect($race)->not->toBeNull()
-        ->and($race->distance_m)->toBe(10_000)
+    $race = nonNull(RaceGoal::query()->where('user_id', $user->id)->active()->first());
+    expect($race->distance_m)->toBe(10_000)
         ->and($race->goal_time_sec)->toBe(3_000)
         ->and($race->name)->toBe('Jakarta 10K');
 
@@ -149,7 +149,7 @@ it('starts a new event when the intent is new', function (): void {
 
     $active = RaceGoal::query()->where('user_id', $user->id)->active()->get();
     expect($active)->toHaveCount(1)
-        ->and($active->first()->name)->toBe('New race')
+        ->and(nonNull($active->first())->name)->toBe('New race')
         ->and(RaceGoal::query()->where('user_id', $user->id)->count())->toBe(2);
 
     Carbon::setTestNow();
@@ -215,7 +215,7 @@ it('refuses the demo account a race save or clear, billing nothing and writing n
 
     Bus::assertNothingDispatched();
     expect(RaceGoal::query()->where('user_id', $demo->id)->sole()->name)->toBe('Seeded half')
-        ->and($race->fresh()->completed_at)->toBeNull();
+        ->and($race->refresh()->completed_at)->toBeNull();
 });
 
 /**
@@ -236,7 +236,7 @@ it('clears the active race, keeping it on record, and rebuilds the plan without 
 
     $this->actingAs($user)->delete('/race')->assertSessionHasNoErrors();
 
-    expect($race->fresh()->completed_at)->not->toBeNull()
+    expect($race->refresh()->completed_at)->not->toBeNull()
         ->and(RaceGoal::query()->where('user_id', $user->id)->active()->exists())->toBeFalse()
         ->and(PlannedSession::query()->where('user_id', $user->id)->count())->toBeGreaterThan(0)
         ->and(RaceGoal::query()->where('user_id', $user->id)->count())->toBe(1);
@@ -257,7 +257,7 @@ it('does nothing when there is no race of its own to clear, never clearing anoth
 
     $this->actingAs($user)->delete('/race')->assertSessionHasNoErrors();
 
-    expect($theirs->fresh()->completed_at)->toBeNull()
+    expect($theirs->refresh()->completed_at)->toBeNull()
         ->and(PlannedSession::query()->where('user_id', $user->id)->count())->toBe(0);
 });
 

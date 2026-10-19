@@ -16,6 +16,7 @@ use Inertia\Testing\AssertableInertia as Assert;
 uses(RefreshDatabase::class);
 
 /**
+ * @param  array<string, mixed>  $overrides
  * @return array<string, mixed>
  */
 function validZonesPayload(array $overrides = []): array

@@ -17,7 +17,7 @@ it('marks every unread row for the user read in one request', function (): void 
         ->assertOk()
         ->assertJson(['unread' => 0]);
 
-    $rows->each(fn (InboxNotification $row) => expect($row->fresh()->read_at)->not->toBeNull());
+    $rows->each(fn (InboxNotification $row) => expect($row->refresh()->read_at)->not->toBeNull());
 });
 
 it('leaves an already-read row\'s timestamp alone', function (): void {
@@ -27,7 +27,7 @@ it('leaves an already-read row\'s timestamp alone', function (): void {
 
     $this->actingAs($user)->postJson(route('api.notifications.read-all'))->assertOk();
 
-    expect($row->fresh()->read_at->equalTo($readAt))->toBeTrue();
+    expect($row->refresh()->read_at?->equalTo($readAt))->toBeTrue();
 });
 
 it('never touches another user\'s unread rows', function (): void {
@@ -39,5 +39,5 @@ it('never touches another user\'s unread rows', function (): void {
         ->assertOk()
         ->assertJson(['unread' => 0]);
 
-    expect($row->fresh()->read_at)->toBeNull();
+    expect($row->refresh()->read_at)->toBeNull();
 });

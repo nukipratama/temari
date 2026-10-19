@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Symfony\Component\HttpFoundation\Response;
 use App\Models\InboxNotification;
 use App\Models\StravaConnection;
 use App\Models\User;
@@ -20,7 +21,6 @@ uses(RefreshDatabase::class);
  * write path that can move one of the cached props, each asserting the *next*
  * request already sees the change rather than waiting out the TTL.
  */
-
 /**
  * One full page load, which warms every cached shared prop.
  *
@@ -28,10 +28,12 @@ uses(RefreshDatabase::class);
  * is handed, so a relation lazy-loaded during one request would stay memoised on
  * that object for the next one — an artefact of the test harness, not of a real
  * request, which rebuilds the user from the session every time.
+ *
+ * @return TestResponse<Response>
  */
 function visitAs(User $user): TestResponse
 {
-    return test()->actingAs($user->fresh())->get('/profile');
+    return test()->actingAs(nonNull($user->fresh()))->get('/profile');
 }
 
 function warmSharedProps(User $user): void

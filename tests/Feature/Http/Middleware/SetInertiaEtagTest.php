@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Symfony\Component\HttpFoundation\Response;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
@@ -31,6 +32,8 @@ function currentInertiaVersion(): string
 
 /**
  * A full Inertia page visit (no partial headers), optionally revalidating.
+ *
+ * @return TestResponse<Response>
  */
 function etagVisit(string $url, ?string $ifNoneMatch = null): TestResponse
 {
@@ -109,7 +112,7 @@ it('misses when the page data moves', function (): void {
 
     $etag = etagVisit("/activities/{$activity->id}")->assertSuccessful()->headers->get('ETag');
 
-    $activity->detail->update(['name' => 'A different evening run']);
+    nonNull($activity->detail)->update(['name' => 'A different evening run']);
 
     expect(etagVisit("/activities/{$activity->id}", $etag)->assertSuccessful()->getStatusCode())->toBe(200);
 });

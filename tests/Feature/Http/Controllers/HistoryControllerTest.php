@@ -13,6 +13,7 @@ use App\Services\Run\LifetimeStats;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Inertia\Testing\AssertableInertia as Assert;
+use Tests\TestCase;
 
 uses(RefreshDatabase::class);
 
@@ -493,10 +494,10 @@ function isRunFetch(string $sql): bool
  * Partial-reload headers mimicking the analysis poller's
  * `router.reload({ only: ['weeklySnapshots'] })`.
  *
- * @param  object  $actingAs  The authenticated test case.
+ * @param  TestCase  $actingAs  The authenticated test case.
  * @return array<string, string>
  */
-function snapshotOnlyHeaders(object $actingAs): array
+function snapshotOnlyHeaders(TestCase $actingAs): array
 {
     return [
         'X-Inertia' => 'true',
