@@ -276,8 +276,7 @@ it('keeps every -ink token above AA on every ground it lands on', function (): v
     $papers = paperGrounds($tokens);
     $scoped = groundNames('scoped');
     $tints = arrayOf(data_get(groundKinds(), 'tint'));
-    $darkestPaper = collect($papers)->sortBy(fn (string $hex): float => tokenLuminance($hex))->first();
-    $darkestPaper = nonNull($darkestPaper);
+    $darkestPaper = nonNull(collect($papers)->sortBy(fn (string $hex): float => tokenLuminance($hex))->first());
 
     $inks = array_filter(
         $tokens,

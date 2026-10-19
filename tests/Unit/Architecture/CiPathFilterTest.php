@@ -103,7 +103,7 @@ function ciDirectoryProbes(string $path): array
         ->all();
 }
 
-/** @return array<int, string> */
+/** @return list<string> */
 function ciRepoPathsReadBy(string $testSource): array
 {
     $roots = ['base' => '', 'resource' => 'resources/', 'public' => 'public/'];
@@ -111,7 +111,7 @@ function ciRepoPathsReadBy(string $testSource): array
     preg_match_all("/\b(base|resource|public)_path\('([^'$]+)'\)/", $testSource, $calls, PREG_SET_ORDER);
     preg_match_all("/^const [A-Z_]+ = '([^'$]+)';/m", $testSource, $constants);
 
-    return collect($calls)
+    return array_values(collect($calls)
         ->map(fn (array $call): string => $roots[$call[1]].$call[2])
         ->merge($constants[1])
         ->reject(fn (string $path): bool => str_starts_with($path, 'vendor/'))
@@ -126,8 +126,7 @@ function ciRepoPathsReadBy(string $testSource): array
             return ciDirectoryProbes($path);
         })
         ->unique()
-        ->values()
-        ->all();
+        ->all());
 }
 
 function ciRunsOnlyStructureTests(string $testSource): bool

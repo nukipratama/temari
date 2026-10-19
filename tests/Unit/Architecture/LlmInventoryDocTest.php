@@ -20,24 +20,22 @@ function llmInventoryDoc(): string
     return File::get(base_path('docs/architecture/llm-triggers.md'));
 }
 
-/** @return array<int, string> */
+/** @return list<string> */
 function narratorClassNames(): array
 {
-    return collect(File::files(app_path('Services/AI/Narrators')))
+    return array_values(collect(File::files(app_path('Services/AI/Narrators')))
         ->map(fn ($file): string => $file->getFilenameWithoutExtension())
         ->filter(fn (string $name): bool => str_ends_with($name, 'Narrator'))
-        ->values()
-        ->all();
+        ->all());
 }
 
-/** @return array<int, string> */
+/** @return list<string> */
 function concreteToolClassNames(): array
 {
-    return collect(File::files(app_path('Services/AI/Agent/Tools')))
+    return array_values(collect(File::files(app_path('Services/AI/Agent/Tools')))
         ->reject(fn ($file): bool => str_contains($file->getContents(), 'abstract class'))
         ->map(fn ($file): string => $file->getFilenameWithoutExtension())
-        ->values()
-        ->all();
+        ->all());
 }
 
 it('documents every narrator that can reach the model', function (): void {
