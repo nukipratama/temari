@@ -34,5 +34,7 @@ it('produces the pending pseudo-payload when the row is null', function (): void
 it('serializes as a flat top-level array, without a "data" wrapper', function (): void {
     $resource = new AnalysisResource(null, AnalysisType::BriefingMascotVoice, 1, null);
 
-    expect(json_decode(json_encode($resource), true))->toBe($resource->toArray(Request::create('/')));
+    $json = json_encode($resource);
+
+    expect(json_decode($json === false ? throw new InvalidArgumentException('Resource is not encodable.') : $json, true))->toBe($resource->toArray(Request::create('/')));
 });

@@ -221,12 +221,11 @@ it('resolves the row the weekly kickoff wrote for the current ISO week', functio
 
 it('serves the hero stats from LifetimeStats, keeping 1dp total km and 2dp longest run', function (): void {
     $user = User::factory()->create();
-    $activities = Activity::factory()->for($user)->analyzed()->count(2)->create();
     // 7,777 m and 10,126 m: total 17.903 km -> 17.9 at 1dp, longest 10.126 km
     // -> 10.13 at 2dp. Both digits differ from the other precision, so a
     // silently swapped rounding would fail here.
     foreach ([7777.0, 10126.0] as $idx => $distance) {
-        ActivityDetail::factory()->for($activities[$idx])->create([
+        ActivityDetail::factory()->for(Activity::factory()->for($user)->analyzed())->create([
             'distance' => $distance,
             'start_date_local' => Carbon::today()->subDays(5 - $idx),
         ]);

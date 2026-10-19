@@ -39,7 +39,7 @@ it('serializes week_ending as a plain Y-m-d string under a non-UTC timezone', fu
     try {
         $snap = WeeklySnapshot::factory()->make(['user_id' => 1, 'week_ending' => '2026-06-14']);
 
-        $serialized = $snap->toArray()['week_ending'];
+        $serialized = data_get($snap->toArray(), 'week_ending');
 
         expect($serialized)->toBe('2026-06-14')
             ->and($serialized)->not->toContain('T')

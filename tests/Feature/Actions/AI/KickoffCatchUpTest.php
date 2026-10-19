@@ -105,7 +105,7 @@ it('records and stages a current-day readiness clamp during catch-up', function 
     app(KickoffCatchUp::class)();
 
     $clampVoice = rowFor(AnalysisType::PlanClampVoice, $user->id, '2026-05-18');
-    expect($session->fresh()->clamped_km)->not->toBeNull()
+    expect($session->refresh()->clamped_km)->not->toBeNull()
         ->and($clampVoice?->status)->toBe(AnalysisStatus::Pending)
         ->and(Analysis::query()->where('analysis_type', AnalysisType::PlanClampVoice)->count())->toBe(1);
 

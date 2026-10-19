@@ -31,7 +31,11 @@ beforeEach(function (): void {
     $this->withHeaders(['Authorization' => 'Basic '.base64_encode('devtools:secret')]);
 });
 
-/** The devtools gate only challenges in production; arm it, CSRF and all. */
+/**
+ * The devtools gate only challenges in production; arm it, CSRF and all.
+ *
+ * @return array<string, string>
+ */
 function armDevtoolsGate(): array
 {
     app()->detectEnvironment(fn (): string => 'production');
@@ -259,7 +263,7 @@ it('re-arms and re-dispatches a user\'s dead-lettered blocks on retry, auditing 
     $this->post("/devtools/narration/athletes/{$user->id}/retry-failed")
         ->assertRedirect();
 
-    $fresh = $row->fresh();
+    $fresh = $row->refresh();
     expect($fresh->attempts)->toBe(0)                          // budget re-armed
         ->and($fresh->status)->toBe(AnalysisStatus::Queued);   // re-dispatched
     Bus::assertDispatched(AnalyzeWeeklyRecapJob::class);
@@ -289,7 +293,7 @@ it('retries a dead-lettered group for a hard-deleted user instead of 404ing', fu
     $this->post("/devtools/narration/athletes/{$userId}/retry-failed")
         ->assertRedirect();
 
-    $fresh = $row->fresh();
+    $fresh = $row->refresh();
     expect($fresh->attempts)->toBe(0)                          // budget re-armed
         ->and($fresh->status)->toBe(AnalysisStatus::Queued);   // re-dispatched
     Bus::assertDispatched(AnalyzeBriefingMascotVoiceJob::class);
@@ -333,7 +337,7 @@ it('also re-arms a user\'s under-budget Failed blocks on retry (not only dead-le
 
     $this->post("/devtools/narration/athletes/{$user->id}/retry-failed")->assertRedirect();
 
-    $fresh = $underBudget->fresh();
+    $fresh = $underBudget->refresh();
     expect($fresh->attempts)->toBe(0)
         ->and($fresh->status)->toBe(AnalysisStatus::Queued);
     Bus::assertDispatched(AnalyzeWeeklyRecapJob::class);
@@ -347,7 +351,7 @@ it('runs the recover command, flashes a confirmation and audits the run', functi
         ->assertRedirect()
         ->assertSessionHas('info');
 
-    $fresh = $row->fresh();
+    $fresh = $row->refresh();
     expect($fresh->attempts)->toBe(0)
         ->and($fresh->status)->toBe(AnalysisStatus::Queued);
     Bus::assertDispatched(AnalyzeWeeklyRecapJob::class);
@@ -371,7 +375,8 @@ it('carries each athlete\'s last open and the away flag the scheduler\'s own win
     $this->get('/devtools/narration')
         ->assertSuccessful()
         ->assertInertia(function (AssertableInertia $page) use ($user, $away): void {
-            $row = collect($page->toArray()['props']['athletes'])->firstWhere('user_id', $user->id);
+            $props = arrayOf(arrayOf($page->toArray())['props']);
+            $row = arrayOf(collect(arrayOf($props['athletes']))->firstWhere('user_id', $user->id));
 
             expect($row['last_seen_at'])->toBe($user->last_seen_at?->toIso8601String())
                 ->and($row['away'])->toBe($away)

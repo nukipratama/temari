@@ -6,6 +6,7 @@ use App\Http\Requests\CompleteOnboardingRequest;
 use Illuminate\Support\Facades\Validator;
 
 /**
+ * @param  array<string, mixed>  $overrides
  * @return array<string, mixed>
  */
 function onboardingRequestPayload(array $overrides = []): array
@@ -19,6 +20,9 @@ function onboardingRequestPayload(array $overrides = []): array
     ];
 }
 
+/**
+ * @param  array<string, mixed>  $payload
+ */
 function validateOnboarding(array $payload): Illuminate\Validation\Validator
 {
     $request = new CompleteOnboardingRequest();

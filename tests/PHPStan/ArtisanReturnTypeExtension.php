@@ -27,7 +27,7 @@ final class ArtisanReturnTypeExtension implements DynamicMethodReturnTypeExtensi
             && $methodReflection->getDeclaringClass()->hasTraitUse(InteractsWithConsole::class);
     }
 
-    public function getTypeFromMethodCall(MethodReflection $methodReflection, MethodCall $methodCall, Scope $scope): ?Type
+    public function getTypeFromMethodCall(MethodReflection $methodReflection, MethodCall $methodCall, Scope $scope): Type
     {
         return new ObjectType(PendingCommand::class);
     }

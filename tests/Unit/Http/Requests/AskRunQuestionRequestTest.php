@@ -6,6 +6,9 @@ use App\Http\Requests\AskRunQuestionRequest;
 use App\Models\AI\RunQuestion;
 use Illuminate\Support\Facades\Validator;
 
+/**
+ * @return array<string, mixed>
+ */
 function askRules(): array
 {
     return new AskRunQuestionRequest()->rules();

@@ -20,7 +20,7 @@ it('forUser scopes to details whose activity belongs to the user', function (): 
     $details = ActivityDetail::query()->forUser($user->id)->get();
 
     expect($details->pluck('id')->all())->toBe([$mine->id])
-        ->and($details->first()->activity_id)->toBe($mine->activity_id);
+        ->and($details->first()?->activity_id)->toBe($mine->activity_id);
 });
 
 it('forUser keeps the columns a caller asks for', function (): void {
@@ -31,7 +31,7 @@ it('forUser keeps the columns a caller asks for', function (): void {
     $dates = ActivityDetail::query()->forUser($user->id)->toBase()->pluck('start_date_local');
 
     expect(array_keys($row->getAttributes()))->toBe(['distance'])
-        ->and($dates->all())->toBe([$detail->start_date_local->format('Y-m-d H:i:s')])
+        ->and($dates->all())->toBe([nonNull($detail->start_date_local)->format('Y-m-d H:i:s')])
         ->and(ActivityDetail::query()->forUser($user->id)->count())->toBe(1)
         ->and(ActivityDetail::query()->forUser($user->id)->toSql())->toStartWith('select `activity_details`.*');
 });
@@ -60,7 +60,7 @@ it('casts numeric, boolean, datetime, and json columns', function (): void {
     ]);
 
     expect($detail->start_date_local)->toBeInstanceOf(Carbon::class)
-        ->and($detail->start_date_local->toDateTimeString())->toBe('2026-04-26 16:20:08')
+        ->and($detail->start_date_local?->toDateTimeString())->toBe('2026-04-26 16:20:08')
         ->and($detail->distance)->toBeFloat()->toEqualWithDelta(10001.23, 0.01)
         ->and($detail->moving_time)->toBe(3600)
         ->and($detail->has_heartrate)->toBeTrue()
@@ -76,7 +76,7 @@ it('serializes start_date_local as the verbatim wall-clock, not a UTC-shifted in
     // the app-tz (Asia/Jakarta) value to its UTC instant (06:20 -> 23:20 prev day).
     $detail = new ActivityDetail(['start_date_local' => '2026-01-01 06:20:30']);
 
-    expect($detail->toArray()['start_date_local'])->toBe('2026-01-01T06:20:30');
+    expect(data_get($detail->toArray(), 'start_date_local'))->toBe('2026-01-01T06:20:30');
 });
 
 it('belongs to one activity', function (): void {

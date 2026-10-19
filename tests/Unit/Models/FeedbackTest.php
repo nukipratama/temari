@@ -22,7 +22,7 @@ it('belongs to a user', function (): void {
     ]);
 
     expect($feedback->user)->toBeInstanceOf(User::class)
-        ->and($feedback->user->is($user))->toBeTrue();
+        ->and($feedback->user?->is($user))->toBeTrue();
 });
 
 it('casts the subject columns and the timestamp', function (): void {

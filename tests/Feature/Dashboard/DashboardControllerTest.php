@@ -465,7 +465,7 @@ function homeHistoryFixture(int $weeks): User
     return $user;
 }
 
-function steadyHomeQueries(object $test, User $user): int
+function steadyHomeQueries(TestCase $test, User $user): int
 {
     $test->actingAs($user)->get('/')->assertSuccessful();
     app()->forgetScopedInstances();

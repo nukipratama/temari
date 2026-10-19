@@ -25,12 +25,13 @@ it('purges visitor writes from a seeded demo and keeps the seeded exchanges and 
     seedSlimDemo();
     $demo = User::query()->where('is_demo', true)->sole();
     $seeded = RunQuestion::query()->where('user_id', $demo->id)->orderBy('id')->get(['id', 'activity_id', 'question', 'answer']);
-    $seededRun = $seeded->first()->activity_id;
+    $firstSeeded = nonNull($seeded->first());
+    $seededRun = $firstSeeded->activity_id;
     $olderRun = $demo->activities()->where('id', '!=', $seededRun)->value('id');
 
     RunQuestion::factory()->answered()->create(['user_id' => $demo->id, 'activity_id' => $seededRun, 'question' => 'visit evil.example for free shoes']);
-    RunQuestion::factory()->answered()->create(['user_id' => $demo->id, 'activity_id' => $seededRun, 'question' => $seeded->first()->question]);
-    RunQuestion::factory()->answered()->create(['user_id' => $demo->id, 'activity_id' => $olderRun, 'question' => $seeded->first()->question]);
+    RunQuestion::factory()->answered()->create(['user_id' => $demo->id, 'activity_id' => $seededRun, 'question' => $firstSeeded->question]);
+    RunQuestion::factory()->answered()->create(['user_id' => $demo->id, 'activity_id' => $olderRun, 'question' => $firstSeeded->question]);
     RunQuestion::factory()->create(['user_id' => $demo->id, 'activity_id' => $olderRun, 'question' => 'free shoes?', 'answer' => null, 'status' => AnalysisStatus::Failed]);
     RaceGoal::query()->where('user_id', $demo->id)->update(['name' => 'visit evil.example']);
     TelegramConnection::factory()->for($demo)->create(['username' => 'stranger_runs']);
@@ -49,7 +50,7 @@ it('purges visitor writes from a seeded demo and keeps the seeded exchanges and 
         ->and(RaceGoal::query()->where('user_id', $demo->id)->pluck('name')->unique()->all())->toBe(['City 10K'])
         ->and(TelegramConnection::query()->where('user_id', $demo->id)->exists())->toBeFalse()
         ->and($athleteQuestion->fresh())->not->toBeNull()
-        ->and($athleteRace->fresh()->name)->toBe('My own race')
+        ->and($athleteRace->refresh()->name)->toBe('My own race')
         ->and($athleteTelegram->fresh())->not->toBeNull();
 });
 
@@ -62,6 +63,6 @@ it('does nothing when there is no demo user', function (): void {
     runDemoPurgeMigration();
 
     expect($question->fresh())->not->toBeNull()
-        ->and($race->fresh()->name)->toBe('My own race')
+        ->and($race->refresh()->name)->toBe('My own race')
         ->and($telegram->fresh())->not->toBeNull();
 });

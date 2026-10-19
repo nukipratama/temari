@@ -5,6 +5,9 @@ declare(strict_types=1);
 use App\Http\Requests\UpdatePlannedSessionRequest;
 use Illuminate\Support\Facades\Validator;
 
+/**
+ * @param  array<string, mixed>  $payload
+ */
 function validatePlannedSessionUpdate(array $payload): Illuminate\Validation\Validator
 {
     $request = new UpdatePlannedSessionRequest();

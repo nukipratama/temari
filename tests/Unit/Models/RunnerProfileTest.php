@@ -33,7 +33,7 @@ it('bumps hr_zones_changed_at when max_hr changes', function (): void {
 
     $profile->update(['hr_zones_changed_at' => null, 'max_hr' => 185]);
 
-    expect($profile->fresh()->hr_zones_changed_at)->toBeInstanceOf(Carbon::class);
+    expect($profile->refresh()->hr_zones_changed_at)->toBeInstanceOf(Carbon::class);
 });
 
 it('bumps hr_zones_changed_at when hr_zones changes', function (): void {
@@ -48,19 +48,19 @@ it('bumps hr_zones_changed_at when hr_zones changes', function (): void {
         'Z5' => ['lo' => 175, 'hi' => 999],
     ]]);
 
-    expect($profile->fresh()->hr_zones_changed_at)->toBeInstanceOf(Carbon::class);
+    expect($profile->refresh()->hr_zones_changed_at)->toBeInstanceOf(Carbon::class);
 });
 
 it('leaves hr_zones_changed_at untouched when only optimal_cadence_spm changes', function (): void {
     $profile = RunnerProfile::factory()->create();
     $profile->forceFill(['hr_zones_changed_at' => null])->saveQuietly();
 
-    expect($profile->fresh()->hr_zones_changed_at)->toBeNull();
+    expect(nonNull($profile->fresh())->hr_zones_changed_at)->toBeNull();
 
     $profile->update(['optimal_cadence_spm' => 175]);
 
-    expect($profile->fresh()->hr_zones_changed_at)->toBeNull()
-        ->and($profile->fresh()->optimal_cadence_spm)->toBe(175);
+    expect($profile->refresh()->hr_zones_changed_at)->toBeNull()
+        ->and($profile->refresh()->optimal_cadence_spm)->toBe(175);
 });
 
 it('forgets the shared hr-zones-changed-at cache prop on every save', function (): void {
@@ -87,6 +87,7 @@ it('treats a synced or hand-set source as the athlete stating their own zones', 
     'default is nobody talking' => ['default', false],
 ]);
 
+/** @return array<string, array{lo: int, hi: int}> */
 function stravaSyncedZones(): array
 {
     return [
@@ -126,7 +127,7 @@ it('reports no change when the zones already match', function (): void {
     $other = User::factory()->create();
 
     expect(RunnerProfile::applyStravaZones($user->id, stravaSyncedZones()))->toBeFalse()
-        ->and(RunnerProfile::applyStravaZones($other->id, config('runner.hr_zones')))->toBeFalse()
+        ->and(RunnerProfile::applyStravaZones($other->id, $other->hrProfile()['hr_zones']))->toBeFalse()
         ->and(RunnerProfile::query()->where('user_id', $other->id)->exists())->toBeFalse();
 });
 
