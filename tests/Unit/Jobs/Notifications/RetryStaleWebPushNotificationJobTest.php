@@ -116,8 +116,8 @@ it('leaves a stale claim pending for after quiet hours instead of settling it', 
         app(NotificationEligibility::class),
     );
 
-    expect($delivery->fresh()->status)->toBe(NotificationDeliveryStatus::Pending)
-        ->and($delivery->fresh()->claim_version)->toBe(1);
+    expect($delivery->refresh()->status)->toBe(NotificationDeliveryStatus::Pending)
+        ->and($delivery->refresh()->claim_version)->toBe(1);
 });
 
 it('does not deliver a stale retry for a run past the recency window', function (): void {

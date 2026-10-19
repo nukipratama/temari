@@ -23,6 +23,7 @@ use Illuminate\Contracts\Queue\Job as JobContract;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Queue;
+use Mockery\MockInterface;
 
 uses(RefreshDatabase::class);
 
@@ -31,6 +32,7 @@ beforeEach(function (): void {
     config()->set('azure_openai.api_key', 'fake-key');
 });
 
+/** @param  array{user?: array<string, mixed>, question?: array<string, mixed>}  $attributes */
 function questionRow(array $attributes = []): RunQuestion
 {
     $user = User::factory()->create($attributes['user'] ?? []);
@@ -46,6 +48,7 @@ function questionRow(array $attributes = []): RunQuestion
 
 function fakeQuestionNarrator(mixed $result): RunQuestionNarrator
 {
+    /** @var RunQuestionNarrator&MockInterface $mock */
     $mock = Mockery::mock(RunQuestionNarrator::class);
     $expectation = $mock->shouldReceive('generate');
     match (true) {
@@ -66,6 +69,7 @@ function fakeQuestionNarrator(mixed $result): RunQuestionNarrator
 function questionDelivery(int $rowId, int $attempts, ?ArrayObject $released = null): AnswerRunQuestionJob
 {
     $released ??= new ArrayObject();
+    /** @var JobContract&MockInterface $fake */
     $fake = Mockery::mock(JobContract::class);
     $fake->shouldReceive('attempts')->andReturn($attempts);
     $fake->shouldReceive('release')->andReturnUsing(function (int $delay) use ($released): void {
@@ -87,6 +91,7 @@ function questionDelivery(int $rowId, int $attempts, ?ArrayObject $released = nu
  */
 function countingQuestionNarrator(ArrayObject $calls, string $answer, ?Closure $during = null, ?Throwable $throw = null): RunQuestionNarrator
 {
+    /** @var RunQuestionNarrator&MockInterface $mock */
     $mock = Mockery::mock(RunQuestionNarrator::class);
     $mock->shouldReceive('generate')->andReturnUsing(function () use ($calls, $answer, $during, $throw): array {
         $calls->append($answer);
@@ -118,6 +123,7 @@ it('answers the question and marks it done', function (): void {
 it('holds the question id for the length of the narrator call so its usage row can be joined back', function (): void {
     $row = questionRow();
     $seen = null;
+    /** @var RunQuestionNarrator&MockInterface $narrator */
     $narrator = Mockery::mock(RunQuestionNarrator::class);
     $narrator->shouldReceive('generate')->andReturnUsing(function () use (&$seen): array {
         $seen = app(NarratedAnalysis::class)->currentRunQuestion();
@@ -145,6 +151,7 @@ it('keeps the follow-ups the answer offered on the row', function (): void {
 it('passes athlete-supplied context to the narrator unchanged', function (): void {
     $question = 'Ga tidur malam';
     $row = questionRow(['question' => ['question' => $question]]);
+    /** @var RunQuestionNarrator&MockInterface $narrator */
     $narrator = Mockery::mock(RunQuestionNarrator::class);
     $narrator->shouldReceive('generate')
         ->once()
@@ -167,6 +174,7 @@ it('runs on the ai queue', function (): void {
 it('leaves an already-answered question alone rather than re-billing it', function (): void {
     $row = questionRow(['question' => ['status' => AnalysisStatus::Done, 'answer' => 'already said']]);
 
+    /** @var RunQuestionNarrator&MockInterface $narrator */
     $narrator = Mockery::mock(RunQuestionNarrator::class);
     $narrator->shouldNotReceive('generate');
 
@@ -179,6 +187,7 @@ it('refuses to bill while generation is paused, and says so on the row', functio
     app(AppConfig::class)->set(AppConfigKey::AiEnabled, false);
     $row = questionRow();
 
+    /** @var RunQuestionNarrator&MockInterface $narrator */
     $narrator = Mockery::mock(RunQuestionNarrator::class);
     $narrator->shouldNotReceive('generate');
 
@@ -200,6 +209,7 @@ it('serves the deterministic answer when the daily cost ceiling is the only stop
         'total_tokens' => 1_000_000, 'model' => 'gpt-4o', 'created_at' => Carbon::now(),
     ]);
 
+    /** @var RunQuestionNarrator&MockInterface $narrator */
     $narrator = Mockery::mock(RunQuestionNarrator::class);
     $narrator->shouldNotReceive('generate');
 
@@ -207,10 +217,11 @@ it('serves the deterministic answer when the daily cost ceiling is the only stop
 
     expect($row->refresh()->status)->toBe(AnalysisStatus::Done)
         ->and($row->error)->toBeNull()
-        ->and($row->answer)->toBeString()->not->toBeEmpty()
+        ->and($row->answer)->toBeString()
+        ->and($row->answer)->not->toBeEmpty()
         ->and($row->follow_ups)->toBe(array_map(
             fn (RunQuestionTopic $topic): string => $topic->question(),
-            RunQuestionSeeds::for($row->activity->detail),
+            RunQuestionSeeds::for(nonNull($row->activity->detail)),
         ))
         ->and(app(CostCeilingLedger::class)->today()['degradedBreakdown'])->toBe([
             ['kind' => 'run_question', 'userId' => $row->user_id, 'count' => 1],
@@ -254,6 +265,7 @@ it('rethrows an unexpected failure after settling the row, so the queue records 
 it('re-queues and releases a transient upstream failure while a try remains', function (): void {
     $row = questionRow();
 
+    /** @var AnswerRunQuestionJob&MockInterface $job */
     $job = Mockery::mock(AnswerRunQuestionJob::class.'[attempts,release]', [$row->id]);
     $job->shouldAllowMockingProtectedMethods();
     $job->shouldReceive('attempts')->andReturn(1);
@@ -270,6 +282,7 @@ it('re-queues and releases a transient upstream failure while a try remains', fu
 it('fails a transient upstream failure once the tries are spent', function (): void {
     $row = questionRow();
 
+    /** @var AnswerRunQuestionJob&MockInterface $job */
     $job = Mockery::mock(AnswerRunQuestionJob::class.'[attempts,release]', [$row->id]);
     $job->shouldAllowMockingProtectedMethods();
     $job->shouldReceive('attempts')->andReturn(3);
@@ -298,6 +311,7 @@ it('leaves an answered row alone when the failed hook fires late', function (): 
 });
 
 it('does nothing when the question row is gone', function (): void {
+    /** @var RunQuestionNarrator&MockInterface $narrator */
     $narrator = Mockery::mock(RunQuestionNarrator::class);
     $narrator->shouldNotReceive('generate');
 
@@ -337,11 +351,13 @@ it('lets only one of two retries that read the same stale claim win the row', fu
         $job = questionDelivery($row->id, 2);
         $method = new ReflectionMethod($job, 'claim');
 
-        return $method->invoke($job, $reader);
+        $token = $method->invoke($job, $reader);
+
+        return $token === null || is_string($token) ? $token : throw new InvalidArgumentException('Claim token is not a string.');
     };
 
-    $readerA = RunQuestion::query()->find($row->id);
-    $readerB = RunQuestion::query()->find($row->id);
+    $readerA = nonNull(RunQuestion::query()->find($row->id));
+    $readerB = nonNull(RunQuestion::query()->find($row->id));
 
     $tokenA = $claim($readerA);
     $tokenB = $claim($readerB);
@@ -355,6 +371,7 @@ it('answers a duplicated delivery of the same job once', function (): void {
     $calls = new ArrayObject();
     $job = new AnswerRunQuestionJob($row->id);
     $duplicate = unserialize(serialize($job));
+    $duplicate = $duplicate instanceof AnswerRunQuestionJob ? $duplicate : throw new InvalidArgumentException('Unserialized job is not an AnswerRunQuestionJob.');
 
     $job->handle(app(NarrationGate::class), countingQuestionNarrator($calls, 'answered'));
     $duplicate->handle(app(NarrationGate::class), countingQuestionNarrator($calls, 'again'));

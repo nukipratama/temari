@@ -48,7 +48,7 @@ abstract class AnalyzeBaseJob implements ShouldQueue
      */
     public AnalysisOrigin $origin = AnalysisOrigin::Unknown;
 
-    public ?string $generationToken = null;
+    final public ?string $generationToken = null;
 
     public function __construct(?string $generationToken = null)
     {

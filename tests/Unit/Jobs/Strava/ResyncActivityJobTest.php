@@ -14,6 +14,7 @@ use App\Services\Run\Plan\ComplianceScorer;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Queue\Middleware\ThrottlesExceptions;
+use Mockery\MockInterface;
 
 uses(RefreshDatabase::class);
 
@@ -25,6 +26,7 @@ it('re-ingests the activity', function (): void {
         'start_date_local' => now(),
     ]);
 
+    /** @var ActivityPipeline&MockInterface $pipeline */
     $pipeline = Mockery::mock(ActivityPipeline::class);
     $pipeline->shouldReceive('ingest')
         ->once()
@@ -34,6 +36,7 @@ it('re-ingests the activity', function (): void {
 });
 
 it('quietly no-ops if the activity was deleted before the job runs', function (): void {
+    /** @var ActivityPipeline&MockInterface $pipeline */
     $pipeline = Mockery::mock(ActivityPipeline::class);
     $pipeline->shouldNotReceive('ingest');
 
@@ -56,6 +59,7 @@ it('clears the stale intent evidence of the day an edited run moved away from', 
         'intent_evidence' => ['advice_history' => 'shown'],
     ]);
 
+    /** @var ActivityPipeline&MockInterface $pipeline */
     $pipeline = Mockery::mock(ActivityPipeline::class);
     $pipeline->shouldReceive('ingest')->once()->andReturnUsing(static function () use ($detail, $oldDay): void {
         $detail->update(['start_date_local' => $oldDay->copy()->addDays(2)->setTime(6, 0)]);
@@ -88,5 +92,5 @@ it('is governed by a retry window, not a fixed $tries cap', function (): void {
 
     expect($job->retryUntil())->toBeInstanceOf(DateTimeInterface::class)
         ->and($job->retryUntil()->getTimestamp())->toBeGreaterThan(now()->getTimestamp())
-        ->and(property_exists($job, 'tries') ? $job->tries : null)->toBeNull();
+        ->and(data_get($job, 'tries'))->toBeNull();
 });

@@ -39,7 +39,11 @@ function mockInsightNarrator(array $claims): void
     app()->instance(RunInsightNarrator::class, $mock);
 }
 
-/** A single deterministic claim, so tests don't need to spell out the shape every time. */
+/**
+ * A single deterministic claim, so tests don't need to spell out the shape every time.
+ *
+ * @return array{anchor: string, text: string, value: string|null, delta: string|null}
+ */
 function sampleClaim(string $text = 'sample claim'): array
 {
     return ['anchor' => 'metric:decoupling', 'text' => $text, 'value' => null, 'delta' => null];
@@ -98,8 +102,8 @@ it('writes speech + insight rows Done from one job run', function (): void {
         ->keyBy(fn (Analysis $r): string => $r->analysis_type->value);
 
     expect($rows)->toHaveCount(2)
-        ->and($rows[AnalysisType::PostRunSpeech->value]->content)->toBe('nice run')
-        ->and(json_decode((string) $rows[AnalysisType::RunInsight->value]->content, true))
+        ->and(nonNull($rows[AnalysisType::PostRunSpeech->value])->content)->toBe('nice run')
+        ->and(json_decode((string) nonNull($rows[AnalysisType::RunInsight->value])->content, true))
         ->toBe([sampleClaim('tech text')]);
 
     foreach ($rows as $row) {
@@ -185,11 +189,11 @@ it('persists insight and leaves speech Pending when less than its minimum deadli
             ->get()
             ->keyBy(fn (Analysis $row): string => $row->analysis_type->value);
 
-        expect($rows[AnalysisType::RunInsight->value]->status)->toBe(AnalysisStatus::Done)
-            ->and($rows[AnalysisType::RunInsight->value]->attempts)->toBe(1)
-            ->and($rows[AnalysisType::PostRunSpeech->value]->status)->toBe(AnalysisStatus::Pending)
-            ->and($rows[AnalysisType::PostRunSpeech->value]->attempts)->toBe(0)
-            ->and($rows[AnalysisType::PostRunSpeech->value]->content)->toBeNull();
+        expect(nonNull($rows[AnalysisType::RunInsight->value])->status)->toBe(AnalysisStatus::Done)
+            ->and(nonNull($rows[AnalysisType::RunInsight->value])->attempts)->toBe(1)
+            ->and(nonNull($rows[AnalysisType::PostRunSpeech->value])->status)->toBe(AnalysisStatus::Pending)
+            ->and(nonNull($rows[AnalysisType::PostRunSpeech->value])->attempts)->toBe(0)
+            ->and(nonNull($rows[AnalysisType::PostRunSpeech->value])->content)->toBeNull();
     } finally {
         Carbon::setTestNow();
     }
@@ -234,7 +238,7 @@ it('stamps every group row with the activity material fingerprint at generation'
 
     new AnalyzeActivityJob($activity->id)->handle(app(AnalysisService::class));
 
-    $expected = MaterialFingerprint::forActivity($activity->fresh(['detail']));
+    $expected = MaterialFingerprint::forActivity(nonNull($activity->fresh(['detail'])));
     $rows = Analysis::query()
         ->where('subject_type', Activity::class)
         ->where('subject_id', $activity->id)
@@ -317,8 +321,8 @@ it('reuses the Done insight row instead of re-billing RunInsightNarrator on a st
         ->get()
         ->keyBy(fn (Analysis $r): string => $r->analysis_type->value);
 
-    expect($rows[AnalysisType::PostRunSpeech->value]->content)->toBe('new story')
-        ->and(json_decode((string) $rows[AnalysisType::RunInsight->value]->content, true))
+    expect(nonNull($rows[AnalysisType::PostRunSpeech->value])->content)->toBe('new story')
+        ->and(json_decode((string) nonNull($rows[AnalysisType::RunInsight->value])->content, true))
         ->toBe([sampleClaim('stored claim')]);
 });
 
@@ -392,9 +396,9 @@ it('keeps the completed insight Done when speech generation throws', function ()
         ->get()
         ->keyBy(fn (Analysis $row): string => $row->analysis_type->value);
 
-    expect($rows[AnalysisType::RunInsight->value]->status)->toBe(AnalysisStatus::Done)
-        ->and($rows[AnalysisType::PostRunSpeech->value]->status)->toBe(AnalysisStatus::Failed)
-        ->and($rows[AnalysisType::PostRunSpeech->value]->error)->toBe('boom');
+    expect(nonNull($rows[AnalysisType::RunInsight->value])->status)->toBe(AnalysisStatus::Done)
+        ->and(nonNull($rows[AnalysisType::PostRunSpeech->value])->status)->toBe(AnalysisStatus::Failed)
+        ->and(nonNull($rows[AnalysisType::PostRunSpeech->value])->error)->toBe('boom');
 });
 
 /**
@@ -495,10 +499,10 @@ it('marks a group the LLM answered as LLM-served, each narrator call attributed 
         ->get()
         ->keyBy(fn (Analysis $r): string => $r->analysis_type->value);
 
-    expect($seen[AnalysisType::PostRunSpeech->value])->toBe($rows[AnalysisType::PostRunSpeech->value]->id)
-        ->and($seen[AnalysisType::RunInsight->value])->toBe($rows[AnalysisType::RunInsight->value]->id)
-        ->and($rows[AnalysisType::PostRunSpeech->value]->served_by)->toBe(ServedBy::Llm)
-        ->and($rows[AnalysisType::RunInsight->value]->served_by)->toBe(ServedBy::Llm);
+    expect($seen[AnalysisType::PostRunSpeech->value])->toBe(nonNull($rows[AnalysisType::PostRunSpeech->value])->id)
+        ->and($seen[AnalysisType::RunInsight->value])->toBe(nonNull($rows[AnalysisType::RunInsight->value])->id)
+        ->and(nonNull($rows[AnalysisType::PostRunSpeech->value])->served_by)->toBe(ServedBy::Llm)
+        ->and(nonNull($rows[AnalysisType::RunInsight->value])->served_by)->toBe(ServedBy::Llm);
 });
 
 it('keeps the generated insight and fills only filtered speech from the rule-based narrator', function (): void {
@@ -518,11 +522,11 @@ it('keeps the generated insight and fills only filtered speech from the rule-bas
         ->keyBy(fn (Analysis $row): string => $row->analysis_type->value);
 
     expect($rows)->toHaveCount(2)
-        ->and($rows[AnalysisType::RunInsight->value]->status)->toBe(AnalysisStatus::Done)
-        ->and($rows[AnalysisType::RunInsight->value]->served_by)->toBe(ServedBy::Llm)
-        ->and($rows[AnalysisType::PostRunSpeech->value]->status)->toBe(AnalysisStatus::Done)
-        ->and($rows[AnalysisType::PostRunSpeech->value]->served_by)->toBe(ServedBy::RuleBased)
-        ->and($rows[AnalysisType::PostRunSpeech->value]->rule_based_reason)->toBe(AnalysisOrigin::ContentFilter);
+        ->and(nonNull($rows[AnalysisType::RunInsight->value])->status)->toBe(AnalysisStatus::Done)
+        ->and(nonNull($rows[AnalysisType::RunInsight->value])->served_by)->toBe(ServedBy::Llm)
+        ->and(nonNull($rows[AnalysisType::PostRunSpeech->value])->status)->toBe(AnalysisStatus::Done)
+        ->and(nonNull($rows[AnalysisType::PostRunSpeech->value])->served_by)->toBe(ServedBy::RuleBased)
+        ->and(nonNull($rows[AnalysisType::PostRunSpeech->value])->rule_based_reason)->toBe(AnalysisOrigin::ContentFilter);
 });
 
 it('fills the speech rule-based when it was rejected twice, keeping the generated insight', function (): void {
@@ -542,9 +546,9 @@ it('fills the speech rule-based when it was rejected twice, keeping the generate
         ->keyBy(fn (Analysis $row): string => $row->analysis_type->value);
 
     expect($rows)->toHaveCount(2)
-        ->and($rows[AnalysisType::RunInsight->value]->status)->toBe(AnalysisStatus::Done)
-        ->and($rows[AnalysisType::RunInsight->value]->served_by)->toBe(ServedBy::Llm)
-        ->and($rows[AnalysisType::PostRunSpeech->value]->status)->toBe(AnalysisStatus::Done)
-        ->and($rows[AnalysisType::PostRunSpeech->value]->served_by)->toBe(ServedBy::RuleBased)
-        ->and($rows[AnalysisType::PostRunSpeech->value]->rule_based_reason)->toBe(AnalysisOrigin::RejectedOutput);
+        ->and(nonNull($rows[AnalysisType::RunInsight->value])->status)->toBe(AnalysisStatus::Done)
+        ->and(nonNull($rows[AnalysisType::RunInsight->value])->served_by)->toBe(ServedBy::Llm)
+        ->and(nonNull($rows[AnalysisType::PostRunSpeech->value])->status)->toBe(AnalysisStatus::Done)
+        ->and(nonNull($rows[AnalysisType::PostRunSpeech->value])->served_by)->toBe(ServedBy::RuleBased)
+        ->and(nonNull($rows[AnalysisType::PostRunSpeech->value])->rule_based_reason)->toBe(AnalysisOrigin::RejectedOutput);
 });

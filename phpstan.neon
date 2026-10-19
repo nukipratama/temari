@@ -26,6 +26,7 @@ parameters:
         - tests/Feature/Auth
         - tests/Feature/Console
         - tests/Unit/Architecture
+        - tests/Unit/Jobs
         - tests/Unit/Listeners
         - tests/Unit/Notifications
         - tests/Unit/Services/AI

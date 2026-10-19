@@ -23,7 +23,6 @@ use App\Services\Telegram\AnalysisMessagePresenter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Notifications\ChannelManager;
 use Illuminate\Notifications\SendQueuedNotifications;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Queue;
 use Minishlink\WebPush\Encryption;
 use NotificationChannels\WebPush\WebPushChannel;
@@ -93,17 +92,14 @@ it('rechecks current preferences before a queued channel sends', function (): vo
     $user = User::factory()->create();
     $user->updatePushSubscription('https://push.example/endpoint', 'key', 'auth');
     $analysis = postRunAnalysis($user);
-    $queue = Queue::fake();
+    Queue::fake();
 
     $user->notify(new AnalysisReadyNotification($analysis));
 
-    /** @var Collection<int, SendQueuedNotifications> $pushed */
-    $pushed = $queue->pushed(SendQueuedNotifications::class);
-    $job = $pushed->first(
+    $job = nonNull(pushedJobs(SendQueuedNotifications::class)->first(
         fn (SendQueuedNotifications $queued): bool => $queued->channels === [IdempotentWebPushChannel::class],
-    );
+    ));
     expect($job)->toBeInstanceOf(SendQueuedNotifications::class);
-    assert($job instanceof SendQueuedNotifications);
 
     NotificationPreference::factory()->for($user)->create(['notifications_enabled' => false]);
     $webPush = Mockery::mock(WebPushChannel::class);
@@ -122,21 +118,19 @@ it('preserves a queued inbox notification when outbound preferences change', fun
     $user = User::factory()->create();
     $user->updatePushSubscription('https://push.example/endpoint', 'key', 'auth');
     $analysis = postRunAnalysis($user);
-    $queue = Queue::fake();
+    Queue::fake();
 
     $user->notify(new AnalysisReadyNotification($analysis));
 
-    /** @var Collection<int, SendQueuedNotifications> $pushed */
-    $pushed = $queue->pushed(SendQueuedNotifications::class);
-    $inboxJob = $pushed->first(
+    $pushed = pushedJobs(SendQueuedNotifications::class);
+    $inboxJob = nonNull($pushed->first(
         fn (SendQueuedNotifications $queued): bool => $queued->channels === [InAppChannel::class],
-    );
-    $pushJob = $pushed->first(
+    ));
+    $pushJob = nonNull($pushed->first(
         fn (SendQueuedNotifications $queued): bool => $queued->channels === [IdempotentWebPushChannel::class],
-    );
+    ));
     expect($inboxJob)->toBeInstanceOf(SendQueuedNotifications::class)
         ->and($pushJob)->toBeInstanceOf(SendQueuedNotifications::class);
-    assert($inboxJob instanceof SendQueuedNotifications && $pushJob instanceof SendQueuedNotifications);
 
     NotificationPreference::factory()->for($user)->create(['notifications_enabled' => false]);
     $webPush = Mockery::mock(WebPushChannel::class);
