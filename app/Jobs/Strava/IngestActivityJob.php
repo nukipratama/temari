@@ -16,6 +16,7 @@ use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Queue\Attributes\MaxExceptions;
 use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Queue\Middleware\ThrottlesExceptions;
 use Illuminate\Support\Facades\Log;
 use App\Services\AI\AnalysisOrigin;
@@ -80,7 +81,7 @@ class IngestActivityJob implements ShouldBeUnique, ShouldQueue
     public function middleware(): array
     {
         return [
-            // Both a 429 and an open circuit mean "back off and retry later"
+            // A 429, an open circuit and a network blip all mean "back off and retry later"
             // rather than burn the failure budget — the throttle re-queues with a
             // delay that comfortably outlasts the breaker cooldown. The key is
             // per priority tier: ThrottlesExceptions releases every job sharing a
@@ -88,7 +89,8 @@ class IngestActivityJob implements ShouldBeUnique, ShouldQueue
             // browsing burst hold back live ingest it never competed with.
             new ThrottlesExceptions(self::RATE_LIMIT_MAX_ATTEMPTS, self::RATE_LIMIT_DECAY_SECONDS)
                 ->when(fn (Throwable $e): bool => $e instanceof StravaRateLimitedException
-                    || $e instanceof StravaCircuitOpenException)
+                    || $e instanceof StravaCircuitOpenException
+                    || $e instanceof ConnectionException)
                 ->backoff(self::RATE_LIMIT_BACKOFF_MINUTES)
                 ->by($this->priority->throttleKey()),
         ];

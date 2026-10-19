@@ -36,6 +36,7 @@ use App\Support\Config\AppConfig;
 use App\Support\Config\AppConfigKey;
 use App\Services\Weather\OpenMeteoClient;
 use Carbon\CarbonImmutable;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -98,6 +99,10 @@ class ActivityPipeline
             // A momentary token-endpoint blip (401 / 429 / 5xx / timeout) is not a
             // deauthorization: rethrow so IngestActivityJob retries with backoff
             // instead of revoking a healthy connection.
+            throw $e;
+        } catch (ConnectionException $e) {
+            // A network blip says nothing about this activity, so it must not
+            // spend the detail budget: rethrow for the job's backoff instead.
             throw $e;
         } catch (Throwable $e) {
             $this->settleIfGaveUp($activity, $this->handleDetailFailure($activity, $e));

@@ -13,6 +13,7 @@ use App\Services\Run\Ingest\ActivityPipeline;
 use App\Services\Run\Plan\ComplianceScorer;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Queue\Middleware\ThrottlesExceptions;
 
 uses(RefreshDatabase::class);
@@ -89,4 +90,26 @@ it('is governed by a retry window, not a fixed $tries cap', function (): void {
     expect($job->retryUntil())->toBeInstanceOf(DateTimeInterface::class)
         ->and($job->retryUntil()->getTimestamp())->toBeGreaterThan(now()->getTimestamp())
         ->and(property_exists($job, 'tries') ? $job->tries : null)->toBeNull();
+});
+
+it('backs off on a connect failure instead of counting it as a genuine failure', function (): void {
+    $fakeJob = new class () {
+        public int $releaseCount = 0;
+
+        public function release(int $delay): void
+        {
+            $this->releaseCount++;
+        }
+
+        public function uuid(): string
+        {
+            return 'job-uuid';
+        }
+    };
+
+    new ResyncActivityJob(1)->middleware()[0]->handle($fakeJob, function (): never {
+        throw new ConnectionException('cURL error 28: Connection timed out');
+    });
+
+    expect($fakeJob->releaseCount)->toBe(1);
 });
