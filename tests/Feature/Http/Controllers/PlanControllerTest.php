@@ -883,7 +883,7 @@ it('rebriefs a narrated today on a move onto or off it only once its Reread cool
 
     if ($cooling) {
         Bus::assertNotDispatched(AnalyzeBriefingMascotVoiceJob::class);
-        expect(nonNull($briefing->refresh())->only(['status', 'content', 'updated_at']))->toEqual($briefing->only(['status', 'content', 'updated_at']));
+        expect(nonNull($briefing->fresh())->only(['status', 'content', 'updated_at']))->toEqual($briefing->only(['status', 'content', 'updated_at']));
     } else {
         Bus::assertDispatched(fn (AnalyzeBriefingMascotVoiceJob $job): bool => $job->analysisId === $briefing->id
             && $job->delay === AnalysisService::PLAN_EDIT_DELAY_SECONDS);

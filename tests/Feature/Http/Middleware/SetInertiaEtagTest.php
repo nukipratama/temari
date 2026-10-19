@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use Symfony\Component\HttpFoundation\Response;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
@@ -11,6 +10,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Testing\TestResponse;
+use Symfony\Component\HttpFoundation\Response;
 
 uses(RefreshDatabase::class);
 

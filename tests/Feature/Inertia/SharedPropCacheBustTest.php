@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use Symfony\Component\HttpFoundation\Response;
 use App\Models\InboxNotification;
 use App\Models\StravaConnection;
 use App\Models\User;
@@ -12,6 +11,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Testing\TestResponse;
 use Inertia\Testing\AssertableInertia as Assert;
+use Symfony\Component\HttpFoundation\Response;
 
 uses(RefreshDatabase::class);
 
@@ -21,6 +21,7 @@ uses(RefreshDatabase::class);
  * write path that can move one of the cached props, each asserting the *next*
  * request already sees the change rather than waiting out the TTL.
  */
+
 /**
  * One full page load, which warms every cached shared prop.
  *
