@@ -55,7 +55,7 @@ it('leaves hr_zones_changed_at untouched when only optimal_cadence_spm changes',
     $profile = RunnerProfile::factory()->create();
     $profile->forceFill(['hr_zones_changed_at' => null])->saveQuietly();
 
-    expect($profile->refresh()->hr_zones_changed_at)->toBeNull();
+    expect(nonNull($profile->fresh())->hr_zones_changed_at)->toBeNull();
 
     $profile->update(['optimal_cadence_spm' => 175]);
 
