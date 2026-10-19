@@ -59,7 +59,7 @@ it('averages TRIMP over runs that have one and counts them', function () use ($a
     baselineRun($user, $asOf()->copy()->subDays(10), 8000.0, 2400, 155.0, 7.0, 160.0);
     baselineRun($user, $asOf()->copy()->subDays(15), 3000.0, 900, null, null, null); // no TRIMP
 
-    $result = new ResolveRunBaselineAction()($user->id, $asOf());
+    $result = nonNull(new ResolveRunBaselineAction()($user->id, $asOf()));
 
     expect($result['runs'])->toBe(3)
         ->and($result['avg_trimp'])->toBe(140) // (120 + 160) / 2
@@ -70,7 +70,7 @@ it('nulls avg_trimp and zeroes trimp_runs when no run carries a TRIMP', function
     $user = User::factory()->create();
     baselineRun($user, $asOf()->copy()->subDays(5), 5000.0, 1500, 150.0, 6.0, null);
 
-    $result = new ResolveRunBaselineAction()($user->id, $asOf());
+    $result = nonNull(new ResolveRunBaselineAction()($user->id, $asOf()));
 
     expect($result['avg_trimp'])->toBeNull()
         ->and($result['trimp_runs'])->toBe(0);
@@ -82,7 +82,7 @@ it('excludes the current activity and runs outside the 28-day window', function 
     baselineRun($user, $asOf()->copy()->subDays(40), 12000.0, 4800, 145.0, 4.0);        // out of window
     baselineRun($user, $asOf()->copy()->subDays(3), 6000.0, 1800, 150.0, 6.0);          // the only one that counts
 
-    $result = new ResolveRunBaselineAction()($user->id, $asOf(), $current->id);
+    $result = nonNull(new ResolveRunBaselineAction()($user->id, $asOf(), $current->id));
 
     expect($result['runs'])->toBe(1)
         ->and($result['avg_pace_sec_per_km'])->toBe(300) // 1800 / 6 km
@@ -93,7 +93,7 @@ it('counts runs but nulls metrics that have no data', function () use ($asOf): v
     $user = User::factory()->create();
     baselineRun($user, $asOf()->copy()->subDays(5), 5000.0, 1500, null, null);
 
-    $result = new ResolveRunBaselineAction()($user->id, $asOf());
+    $result = nonNull(new ResolveRunBaselineAction()($user->id, $asOf()));
 
     expect($result['runs'])->toBe(1)
         ->and($result['avg_pace_sec_per_km'])->toBe(300)
@@ -104,9 +104,9 @@ it('counts runs but nulls metrics that have no data', function () use ($asOf): v
 it('does not use versionless whole-run decoupling in a new baseline', function () use ($asOf): void {
     $user = User::factory()->create();
     $activity = baselineRun($user, $asOf()->copy()->subDays(5), 5000.0, 1500, 150.0, 12.0);
-    $activity->detail->update(['stream_summary' => ['decoupling_pct' => 12.0]]);
+    nonNull($activity->detail)->update(['stream_summary' => ['decoupling_pct' => 12.0]]);
 
-    expect(new ResolveRunBaselineAction()($user->id, $asOf())['avg_decoupling_pct'])->toBeNull();
+    expect(nonNull(new ResolveRunBaselineAction()($user->id, $asOf()))['avg_decoupling_pct'])->toBeNull();
 });
 
 it('counts a run with zero moving_time toward runs but leaves pace null', function () use ($asOf): void {
@@ -116,7 +116,7 @@ it('counts a run with zero moving_time toward runs but leaves pace null', functi
     $user = User::factory()->create();
     baselineRun($user, $asOf()->copy()->subDays(5), 5000.0, 0, 150.0, null);
 
-    $result = new ResolveRunBaselineAction()($user->id, $asOf());
+    $result = nonNull(new ResolveRunBaselineAction()($user->id, $asOf()));
 
     expect($result['runs'])->toBe(1)
         ->and($result['avg_pace_sec_per_km'])->toBeNull()
@@ -165,8 +165,8 @@ it('keeps answers apart when only the excluded activity differs', function () us
 
     $baseline = new ResolveRunBaselineAction();
 
-    $includingSelf = ($baseline)($user->id, $asOf());
-    $excludingSelf = ($baseline)($user->id, $asOf(), $own->id);
+    $includingSelf = nonNull(($baseline)($user->id, $asOf()));
+    $excludingSelf = nonNull(($baseline)($user->id, $asOf(), $own->id));
 
     expect($includingSelf['runs'])->toBe(2)
         ->and($excludingSelf['runs'])->toBe(1);
@@ -178,7 +178,7 @@ it('keeps answers apart when only the as-of moment differs', function () use ($a
 
     $baseline = new ResolveRunBaselineAction();
 
-    $now = ($baseline)($user->id, $asOf());
+    $now = nonNull(($baseline)($user->id, $asOf()));
     $longBefore = ($baseline)($user->id, $asOf()->copy()->subDays(20));
 
     expect($now['runs'])->toBe(1)

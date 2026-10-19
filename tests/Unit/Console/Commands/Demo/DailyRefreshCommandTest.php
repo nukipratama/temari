@@ -50,8 +50,9 @@ function expectDemoDateKeyedNarrationDone(User $user): void
             ->where('discriminator', $discriminator)
             ->first();
 
-        expect($row)->not->toBeNull("missing {$type->value} row for {$discriminator}")
-            ->and($row->status)->toBe(AnalysisStatus::Done)
+        expect($row)->not->toBeNull("missing {$type->value} row for {$discriminator}");
+        $row = nonNull($row);
+        expect($row->status)->toBe(AnalysisStatus::Done)
             ->and($row->content)->not->toBeEmpty();
     }
 }

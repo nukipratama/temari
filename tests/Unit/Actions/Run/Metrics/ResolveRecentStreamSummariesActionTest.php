@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\DB;
 
 uses(RefreshDatabase::class);
 
+/** @param  array<string, mixed>|null  $summary */
 function streamRun(User $user, string $startedAt, ?array $summary): void
 {
     $activity = Activity::factory()->for($user)->analyzed()->create();

@@ -89,5 +89,5 @@ it('keeps a race result the athlete confirmed from the run', function (): void {
 
     app(DeleteIngestedRunAction::class)($doomed);
 
-    expect($race->fresh()->activity_id)->toBeNull();
+    expect($race->refresh()->activity_id)->toBeNull();
 });

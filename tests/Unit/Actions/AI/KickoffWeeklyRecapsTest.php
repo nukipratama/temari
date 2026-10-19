@@ -40,8 +40,8 @@ it('narrates only the named user when given a user id', function (): void {
 
     expect($result)->toBe(['dispatched' => 1, 'rule_based' => 0, 'deferred' => 0])
         ->and(array_column($captured, 'subjectId'))
-        ->toBe([$myWeek->id])
-        ->not->toContain($theirWeek->id);
+        ->not->toContain($theirWeek->id)
+        ->toBe([$myWeek->id]);
 });
 
 it('sweeps every non-demo user when given no user id', function (): void {
@@ -93,7 +93,7 @@ it('fills a week past the backfill depth cap rule-based and narrates the rest', 
 
     expect(app(KickoffWeeklyRecaps::class)($user->id))->toBe(['dispatched' => 1, 'rule_based' => 1, 'deferred' => 0]);
 
-    expect(collect($captured)->firstWhere('subjectId', $tooOld->id)['ruleBased'])->toBeTrue()
+    expect(data_get(collect($captured)->firstWhere('subjectId', $tooOld->id), 'ruleBased'))->toBeTrue()
         ->and(collect($captured)->firstWhere('subjectId', $recent->id))
         ->toMatchArray(['ruleBased' => false, 'invalidate' => false, 'delaySeconds' => 0]);
 });
@@ -111,7 +111,7 @@ it('fills a week that closed before the athlete connected rule-based, and narrat
 
     expect(app(KickoffWeeklyRecaps::class)($user->id))->toBe(['dispatched' => 1, 'rule_based' => 1, 'deferred' => 0]);
 
-    expect(collect($captured)->firstWhere('subjectId', $preConnect->id)['ruleBased'])->toBeTrue()
+    expect(data_get(collect($captured)->firstWhere('subjectId', $preConnect->id), 'ruleBased'))->toBeTrue()
         ->and(collect($captured)->firstWhere('subjectId', $postConnect->id))
         ->toMatchArray(['ruleBased' => false, 'invalidate' => false, 'delaySeconds' => 0]);
 });
@@ -317,7 +317,7 @@ it('fills the deferred pre-connect week rule-based on the next run once hydratio
     $activity->update(['ingest_state' => IngestState::Detailed]);
 
     expect(app(KickoffWeeklyRecaps::class)($user->id))->toBe(['dispatched' => 0, 'rule_based' => 1, 'deferred' => 0])
-        ->and(collect($captured)->firstWhere('subjectId', $week->id)['ruleBased'])->toBeTrue();
+        ->and(data_get(collect($captured)->firstWhere('subjectId', $week->id), 'ruleBased'))->toBeTrue();
 });
 
 it('never defers or dispatches for the demo account, backlog or not', function (): void {

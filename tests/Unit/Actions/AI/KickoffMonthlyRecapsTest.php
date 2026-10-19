@@ -21,7 +21,7 @@ function backfilledRunInMonth(User $user, string $month): void
 {
     $activity = Activity::factory()->for($user)->create();
     ActivityDetail::factory()->for($activity)->create([
-        'start_date_local' => Carbon::createFromFormat('Y-m', $month)->startOfMonth()->addDays(10)->setTime(6, 30),
+        'start_date_local' => nonNull(Carbon::createFromFormat('Y-m', $month))->startOfMonth()->addDays(10)->setTime(6, 30),
     ]);
 }
 
@@ -30,7 +30,7 @@ function unhydratedRunInMonth(User $user, string $month): void
 {
     $activity = Activity::factory()->for($user)->summaryOnly()->create();
     ActivityDetail::factory()->for($activity)->create([
-        'start_date_local' => Carbon::createFromFormat('Y-m', $month)->startOfMonth()->addDays(10)->setTime(6, 30),
+        'start_date_local' => nonNull(Carbon::createFromFormat('Y-m', $month))->startOfMonth()->addDays(10)->setTime(6, 30),
     ]);
 }
 
@@ -119,7 +119,7 @@ it('fills a month past the backfill depth cap rule-based and narrates the rest, 
 
     expect(app(KickoffMonthlyRecaps::class)($user->id))->toBe(['dispatched' => 2, 'rule_based' => 1]);
 
-    expect(collect($captured)->firstWhere('discriminator', '2025-09')['ruleBased'])->toBeTrue()
+    expect(data_get(collect($captured)->firstWhere('discriminator', '2025-09'), 'ruleBased'))->toBeTrue()
         ->and(collect($captured)->where('ruleBased', false)->pluck('discriminator')->all())
         ->toBe(['2026-04', '2026-05'])
         ->and(collect($captured)->where('ruleBased', false)->pluck('delaySeconds')->all())
@@ -139,7 +139,7 @@ it('fills a month that closed before the athlete connected rule-based, and narra
 
     expect(app(KickoffMonthlyRecaps::class)($user->id))->toBe(['dispatched' => 1, 'rule_based' => 1]);
 
-    expect(collect($captured)->firstWhere('discriminator', '2026-04')['ruleBased'])->toBeTrue()
+    expect(data_get(collect($captured)->firstWhere('discriminator', '2026-04'), 'ruleBased'))->toBeTrue()
         ->and(collect($captured)->firstWhere('discriminator', '2026-05'))
         ->toMatchArray(['ruleBased' => false, 'invalidate' => false, 'delaySeconds' => 0]);
 });

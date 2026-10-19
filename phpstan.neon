@@ -26,9 +26,16 @@ parameters:
         - tests/Feature/Auth
         - tests/Feature/Console
         - tests/Unit/Architecture
+        - tests/Unit/Actions
+        - tests/Unit/Config
+        - tests/Unit/Console
+        - tests/Unit/Enums
+        - tests/Unit/Geo
         - tests/Unit/Jobs
         - tests/Unit/Listeners
         - tests/Unit/Notifications
+        - tests/Unit/Providers
+        - tests/Unit/Seeders
         - tests/Unit/Services/AI
         - tests/Unit/Services/Devtools
         - tests/Unit/Services/Gamification
@@ -48,6 +55,7 @@ parameters:
         - tests/Unit/Services/Telegram
         - tests/Unit/Services/User
         - tests/Unit/Services/Weather
+        - tests/Unit/Support
     tmpDir: .phpstan-cache
 
     # Sail's memory_limit=-1 lets workers grow until OOM-killer hits; cap them.
