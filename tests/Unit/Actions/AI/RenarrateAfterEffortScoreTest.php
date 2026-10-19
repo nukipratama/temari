@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
 use App\Services\AI\MaterialFingerprint;
+use App\Support\Numeric;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Bus;
@@ -23,7 +24,11 @@ beforeEach(function (): void {
 });
 afterEach(fn () => Carbon::setTestNow());
 
-/** A narrated run whose speech was stamped before any effort score was logged. */
+/**
+ * A narrated run whose speech was stamped before any effort score was logged.
+ *
+ * @param  array<string, mixed>  $userAttributes
+ */
 function effortScoreNarratedRun(array $userAttributes = []): Activity
 {
     $activity = Activity::factory()->for(User::factory()->create($userAttributes))->analyzed()->create();
@@ -33,7 +38,7 @@ function effortScoreNarratedRun(array $userAttributes = []): Activity
         'subject_id' => $activity->id,
         'analysis_type' => AnalysisType::PostRunSpeech,
         'discriminator' => null,
-        'content_fingerprint' => MaterialFingerprint::forActivity($activity->fresh()),
+        'content_fingerprint' => MaterialFingerprint::forActivity($activity->refresh()),
     ]);
 
     return $activity;
@@ -46,29 +51,29 @@ function speechRowOf(Activity $activity): Analysis
 
 it('re-narrates a run once its first effort score lands', function (): void {
     $activity = effortScoreNarratedRun();
-    $activity->detail->update(['perceived_effort' => 6, 'perceived_effort_at' => now()]);
+    nonNull($activity->detail)->update(['perceived_effort' => 6, 'perceived_effort_at' => now()]);
 
-    app(RenarrateAfterEffortScore::class)($activity->fresh());
+    app(RenarrateAfterEffortScore::class)($activity->refresh());
 
     expect(speechRowOf($activity)->status)->not->toBe(AnalysisStatus::Done);
 });
 
 it('leaves the narration alone when the score only changes', function (): void {
     $activity = effortScoreNarratedRun();
-    $activity->detail->update(['perceived_effort' => 6, 'perceived_effort_at' => now()]);
-    speechRowOf($activity)->update(['content_fingerprint' => MaterialFingerprint::forActivity($activity->fresh())]);
-    $activity->detail->update(['perceived_effort' => 8]);
+    nonNull($activity->detail)->update(['perceived_effort' => 6, 'perceived_effort_at' => now()]);
+    speechRowOf($activity)->update(['content_fingerprint' => MaterialFingerprint::forActivity($activity->refresh())]);
+    nonNull($activity->detail)->update(['perceived_effort' => 8]);
 
-    app(RenarrateAfterEffortScore::class)($activity->fresh());
+    app(RenarrateAfterEffortScore::class)($activity->refresh());
 
     expect(speechRowOf($activity)->status)->toBe(AnalysisStatus::Done);
 });
 
 it('never narrates the demo athlete', function (): void {
     $activity = effortScoreNarratedRun(['is_demo' => true]);
-    $activity->detail->update(['perceived_effort' => 6, 'perceived_effort_at' => now()]);
+    nonNull($activity->detail)->update(['perceived_effort' => 6, 'perceived_effort_at' => now()]);
 
-    app(RenarrateAfterEffortScore::class)($activity->fresh());
+    app(RenarrateAfterEffortScore::class)($activity->refresh());
 
     expect(speechRowOf($activity)->status)->toBe(AnalysisStatus::Done);
 });
@@ -76,9 +81,9 @@ it('never narrates the demo athlete', function (): void {
 it('leaves a speech that was never stamped alone', function (): void {
     $activity = effortScoreNarratedRun();
     speechRowOf($activity)->update(['content_fingerprint' => null]);
-    $activity->detail->update(['perceived_effort' => 6, 'perceived_effort_at' => now()]);
+    nonNull($activity->detail)->update(['perceived_effort' => 6, 'perceived_effort_at' => now()]);
 
-    app(RenarrateAfterEffortScore::class)($activity->fresh());
+    app(RenarrateAfterEffortScore::class)($activity->refresh());
 
     expect(speechRowOf($activity)->status)->toBe(AnalysisStatus::Done);
     Bus::assertNothingDispatched();
@@ -87,9 +92,9 @@ it('leaves a speech that was never stamped alone', function (): void {
 it('waits for a narration that has not landed yet instead of requesting another', function (): void {
     $activity = effortScoreNarratedRun();
     speechRowOf($activity)->update(['status' => AnalysisStatus::Pending]);
-    $activity->detail->update(['perceived_effort' => 6, 'perceived_effort_at' => now()]);
+    nonNull($activity->detail)->update(['perceived_effort' => 6, 'perceived_effort_at' => now()]);
 
-    app(RenarrateAfterEffortScore::class)($activity->fresh());
+    app(RenarrateAfterEffortScore::class)($activity->refresh());
 
     Bus::assertNothingDispatched();
 });
@@ -97,20 +102,20 @@ it('waits for a narration that has not landed yet instead of requesting another'
 it('checks again once a narration still being written has landed', function (): void {
     $activity = effortScoreNarratedRun();
     speechRowOf($activity)->update(['status' => AnalysisStatus::Processing]);
-    $activity->detail->update(['perceived_effort' => 6, 'perceived_effort_at' => now()]);
+    nonNull($activity->detail)->update(['perceived_effort' => 6, 'perceived_effort_at' => now()]);
 
-    app(RenarrateAfterEffortScore::class)($activity->fresh());
+    app(RenarrateAfterEffortScore::class)($activity->refresh());
 
     Bus::assertDispatched(fn (RecheckEffortScoreNarrationJob $job): bool => $job->activityId === $activity->id
-        && $job->delay === (int) config('horizon.defaults.supervisor-ai.timeout'));
+        && $job->delay === Numeric::int(config('horizon.defaults.supervisor-ai.timeout')));
 });
 
 it('checks again only once', function (): void {
     $activity = effortScoreNarratedRun();
     speechRowOf($activity)->update(['status' => AnalysisStatus::Processing]);
-    $activity->detail->update(['perceived_effort' => 6, 'perceived_effort_at' => now()]);
+    nonNull($activity->detail)->update(['perceived_effort' => 6, 'perceived_effort_at' => now()]);
 
-    app(RenarrateAfterEffortScore::class)($activity->fresh(), recheck: false);
+    app(RenarrateAfterEffortScore::class)($activity->refresh(), recheck: false);
 
     Bus::assertNotDispatched(RecheckEffortScoreNarrationJob::class);
 });

@@ -8,6 +8,7 @@ use App\Models\ActivityDetail;
 use App\Models\User;
 use App\Services\Run\Metrics\PaceFormatter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 
 uses(RefreshDatabase::class);
 
@@ -27,6 +28,10 @@ function hardEffortRun(User $user, string $date, float $meters, int $secPerKm, ?
     return $activity;
 }
 
+/**
+ * @param  array{efforts: list<array{activity_id: int, date: Carbon, distance_m: float, time_sec: float, basis: string}>, runs: list<array{activity_id: int, date: Carbon, distance_m: float, time_sec: float}>}  $resolved
+ * @return array{efforts: list<array{activity_id: int, date: string, distance_m: float, time_sec: float, basis: string}>, runs: list<array{activity_id: int, date: string, distance_m: float, time_sec: float}>}
+ */
 function hardEffortsWithIsoDates(array $resolved): array
 {
     return array_map(
@@ -35,6 +40,7 @@ function hardEffortsWithIsoDates(array $resolved): array
     );
 }
 
+/** @return array{efforts: list<array{activity_id: int, date: Carbon, distance_m: float, time_sec: float, basis: string}>, runs: list<array{activity_id: int, date: Carbon, distance_m: float, time_sec: float}>} */
 function freshHardEfforts(User $user): array
 {
     return new ResolveHardEffortsAction()($user->id);
@@ -110,7 +116,7 @@ it('sees an ingested, updated or deleted run on the next request', function (): 
     $record = hardEffortRun($user, '2026-09-10', 5_000, 300);
     expect(array_column(freshHardEfforts($user)['efforts'], 'activity_id'))->toBe([$record->id]);
 
-    $record->detail->update(['start_date_local' => '2026-08-20 06:00:00']);
+    nonNull($record->detail)->update(['start_date_local' => '2026-08-20 06:00:00']);
     expect(freshHardEfforts($user)['efforts'][0]['date']->toDateString())->toBe('2026-08-20');
 
     $record->delete();

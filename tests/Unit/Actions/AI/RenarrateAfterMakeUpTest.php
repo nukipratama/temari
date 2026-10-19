@@ -29,6 +29,7 @@ afterEach(fn () => Carbon::setTestNow());
 /**
  * A 5 km run on `$targetDate` with its narration and card already landed.
  *
+ * @param  array<string, mixed>  $userAttributes
  * @return array{User, Carbon, Carbon, Activity}
  */
 function makeUpNarrationFixture(string $vacatedDate, string $targetDate, array $userAttributes = []): array
@@ -77,8 +78,8 @@ it('re-narrates the runs on the day the make-up emptied, never for the demo athl
 
     app(RenarrateAfterMakeUp::class)($user, $vacated, $target, Carbon::today());
 
-    expect($speech->fresh()->status === AnalysisStatus::Done)->toBe($demo)
-        ->and($flavor->fresh()->status === AnalysisStatus::Done)->toBe($demo);
+    expect($speech->refresh()->status === AnalysisStatus::Done)->toBe($demo)
+        ->and($flavor->refresh()->status === AnalysisStatus::Done)->toBe($demo);
     if ($demo) {
         Bus::assertNothingDispatched();
     } else {
@@ -114,7 +115,7 @@ it('merges a burst of back-and-forth make-up moves into one delayed job per run 
     $renarrate($user, $target, $vacated, Carbon::today());
     $renarrate($user, $vacated, $target, Carbon::today());
 
-    $delayed = fn (object $job): bool => $job->delay === AnalysisService::PLAN_EDIT_DELAY_SECONDS;
+    $delayed = fn (AnalyzeActivityJob|AnalyzeCardFlavorJob|AnalyzeBriefingMascotVoiceJob $job): bool => $job->delay === AnalysisService::PLAN_EDIT_DELAY_SECONDS;
     Bus::assertDispatchedTimes(AnalyzeActivityJob::class, 1);
     Bus::assertDispatched(fn (AnalyzeActivityJob $job): bool => $job->subjectId === $activity->id && $delayed($job));
     Bus::assertDispatchedTimes(AnalyzeCardFlavorJob::class, 1);
@@ -132,5 +133,5 @@ it('keeps today\'s briefing while its Reread cooldown runs, still re-narrating t
 
     Bus::assertNotDispatched(AnalyzeBriefingMascotVoiceJob::class);
     Bus::assertDispatched(fn (AnalyzeActivityJob $job): bool => $job->subjectId === $activity->id);
-    expect($briefing->fresh()->only(['status', 'content', 'updated_at']))->toEqual($briefing->only(['status', 'content', 'updated_at']));
+    expect(nonNull($briefing->fresh())->only(['status', 'content', 'updated_at']))->toEqual($briefing->only(['status', 'content', 'updated_at']));
 });

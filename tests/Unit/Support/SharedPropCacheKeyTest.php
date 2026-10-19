@@ -114,7 +114,7 @@ it('round-trips every scalar type intact on the stores a test run can reach', fu
 
     expect(SharedPropCacheKey::UnreadNotifications->remember(1, fn (): int => 99))->toBe(5)
         ->and(SharedPropCacheKey::StravaZoneScopeMissing->remember(1, fn (): bool => true))->toBeFalse()
-        ->and(SharedPropCacheKey::HrZonesChangedAt->remember(1, fn (): ?string => 'recomputed'))->toBeNull();
+        ->and(SharedPropCacheKey::HrZonesChangedAt->remember(1, fn (): string => 'recomputed'))->toBeNull();
 })->with(['array', 'file']);
 
 it('keeps a value its own type on a store that does not preserve scalars', function (): void {

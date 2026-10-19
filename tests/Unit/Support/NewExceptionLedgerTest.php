@@ -86,7 +86,7 @@ it('keys an exception thrown inside vendor on the first app frame that reached i
     $labels = array_column(NewExceptionLedger::pull(), 'label');
 
     expect($labels)->toHaveCount(2)
-        ->and($labels[0])->toBe('RuntimeException at tests/Unit/Support/NewExceptionLedgerTest.php:'.$fromOneCaller->getTrace()[0]['line'])
+        ->and($labels[0])->toBe('RuntimeException at tests/Unit/Support/NewExceptionLedgerTest.php:'.($fromOneCaller->getTrace()[0]['line'] ?? 0))
         ->and(implode(' ', $labels))->not->toContain('vendor/');
 });
 
