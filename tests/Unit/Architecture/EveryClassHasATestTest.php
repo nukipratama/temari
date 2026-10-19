@@ -71,7 +71,7 @@ function aggregateSuiteMarksClass(string $source, string $class): bool
         } elseif ($token->is([T_STRING, T_NAME_QUALIFIED, T_NAME_FULLY_QUALIFIED])
             && ($tokens[$i + 1] ?? null)?->is(T_DOUBLE_COLON)
             && ($tokens[$i + 2] ?? null)?->is(T_CLASS)) {
-            $first = strtok($token->text, '\\');
+            $first = strtok($token->text, '\\') ?: throw new InvalidArgumentException('Class token is empty.');
             $resolved = $token->is(T_NAME_FULLY_QUALIFIED)
                 ? ltrim($token->text, '\\')
                 : ($aliases->has($first) ? $aliases[$first].substr($token->text, strlen($first)) : $token->text);

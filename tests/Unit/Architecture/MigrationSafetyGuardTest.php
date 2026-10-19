@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Symfony\Component\Process\Process;
 use Symfony\Component\Yaml\Yaml;
 
+/** @param  list<string>  $files */
 function migrationGuard(array $files): Process
 {
     $process = new Process([
@@ -19,12 +20,12 @@ function migrationGuard(array $files): Process
 }
 
 it('runs the migration guard from the unconditional repository checks with full git history', function (): void {
-    $job = Yaml::parseFile(base_path('.github/workflows/ci.yml'))['jobs']['repo-guards'];
-    $checkout = $job['steps'][0];
-    $guard = collect($job['steps'])->firstWhere('name', 'Reject unmarked destructive migrations');
+    $job = data_get(Yaml::parseFile(base_path('.github/workflows/ci.yml')), 'jobs.repo-guards');
+    $checkout = data_get($job, 'steps.0');
+    $guard = collect(arrayOf(data_get($job, 'steps')))->firstWhere('name', 'Reject unmarked destructive migrations');
 
-    expect($checkout['with']['fetch-depth'])->toBe(0)
-        ->and($guard['run'])->toContain('scripts/check-migration-safety.php --base');
+    expect(data_get($checkout, 'with.fetch-depth'))->toBe(0)
+        ->and(data_get($guard, 'run'))->toContain('scripts/check-migration-safety.php --base');
 });
 
 it('rejects the historical destructive migration patterns that motivated the guard', function (string $file): void {

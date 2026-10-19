@@ -47,17 +47,24 @@ function regradeFastEasyDay(User $user, string $date, PlannedSessionStatus $stat
 
 beforeEach(function (): void {
     Carbon::setTestNow('2026-08-20 09:00:00');
-    $this->user = User::factory()->create();
-    PersonalRecord::factory()->for($this->user)->create(['category' => '5km', 'value_sec' => 1500, 'set_at' => '2026-07-01']);
-    Season::factory()->for($this->user)->create(['starts_at' => '2026-08-03', 'ends_at' => '2026-10-25']);
 });
+
+function regradeAthlete(): User
+{
+    $user = User::factory()->create();
+    PersonalRecord::factory()->for($user)->create(['category' => '5km', 'value_sec' => 1500, 'set_at' => '2026-07-01']);
+    Season::factory()->for($user)->create(['starts_at' => '2026-08-03', 'ends_at' => '2026-10-25']);
+
+    return $user;
+}
 
 afterEach(function (): void {
     Carbon::setTestNow();
 });
 
 it('regrades the current season\'s past days on distance, leaving intent unknown without shown advice', function (): void {
-    $row = regradeFastEasyDay($this->user, '2026-08-05', PlannedSessionStatus::Done);
+    $user = regradeAthlete();
+    $row = regradeFastEasyDay($user, '2026-08-05', PlannedSessionStatus::Done);
 
     $this->artisan('plan:regrade-season')
         ->expectsOutputToContain('Regraded 1 planned session(s) across 1 season(s).')
@@ -70,7 +77,8 @@ it('regrades the current season\'s past days on distance, leaving intent unknown
 });
 
 it('changes nothing the second time it runs', function (): void {
-    $row = regradeFastEasyDay($this->user, '2026-08-05', PlannedSessionStatus::Done);
+    $user = regradeAthlete();
+    $row = regradeFastEasyDay($user, '2026-08-05', PlannedSessionStatus::Done);
     $this->artisan('plan:regrade-season')->assertSuccessful();
     $first = $row->refresh()->only(['status', 'compliance_score', 'distance_score', 'intent_verdict', 'prescribed_km', 'ran_anyway', 'updated_at']);
 
@@ -83,7 +91,8 @@ it('changes nothing the second time it runs', function (): void {
 });
 
 it('regrades a day already credited today, rewriting its stale intent evidence', function (): void {
-    $row = regradeFastEasyDay($this->user, '2026-08-20', PlannedSessionStatus::Done);
+    $user = regradeAthlete();
+    $row = regradeFastEasyDay($user, '2026-08-20', PlannedSessionStatus::Done);
     $row->update(['intent_verdict' => IntentVerdict::Hit, 'intent_evidence' => ['stale' => 1]]);
 
     $this->artisan('plan:regrade-season')
@@ -101,8 +110,9 @@ it('regrades a day already credited today, rewriting its stale intent evidence',
 });
 
 it('leaves an uncredited today and the days before the season alone', function (): void {
-    $before = regradeFastEasyDay($this->user, '2026-07-29', PlannedSessionStatus::Done);
-    $today = regradeFastEasyDay($this->user, '2026-08-20', PlannedSessionStatus::Planned);
+    $user = regradeAthlete();
+    $before = regradeFastEasyDay($user, '2026-07-29', PlannedSessionStatus::Done);
+    $today = regradeFastEasyDay($user, '2026-08-20', PlannedSessionStatus::Planned);
 
     $this->artisan('plan:regrade-season')->assertSuccessful();
 
@@ -112,9 +122,10 @@ it('leaves an uncredited today and the days before the season alone', function (
 });
 
 it('limits the pass to one athlete when asked', function (): void {
+    $user = regradeAthlete();
     $other = User::factory()->create();
     Season::factory()->for($other)->create(['starts_at' => '2026-08-03', 'ends_at' => '2026-10-25']);
-    $row = regradeFastEasyDay($this->user, '2026-08-05', PlannedSessionStatus::Done);
+    $row = regradeFastEasyDay($user, '2026-08-05', PlannedSessionStatus::Done);
 
     $this->artisan('plan:regrade-season', ['--user' => $other->id])
         ->expectsOutputToContain('Regraded 0 planned session(s) across 1 season(s).')
@@ -124,9 +135,10 @@ it('limits the pass to one athlete when asked', function (): void {
 });
 
 it('includes a season starting or ending today at both edges of the day', function (string $now): void {
+    $user = regradeAthlete();
     Carbon::setTestNow($now);
     Season::query()->delete();
-    Season::factory()->for($this->user)->create(['starts_at' => '2026-08-20', 'ends_at' => '2026-10-25']);
+    Season::factory()->for($user)->create(['starts_at' => '2026-08-20', 'ends_at' => '2026-10-25']);
     Season::factory()->for(User::factory()->create())->create(['starts_at' => '2026-06-01', 'ends_at' => '2026-08-20']);
     Season::factory()->for(User::factory()->create())->create(['starts_at' => '2026-08-21', 'ends_at' => '2026-10-25']);
     Season::factory()->for(User::factory()->create())->create(['starts_at' => '2026-06-01', 'ends_at' => '2026-08-19']);

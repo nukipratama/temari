@@ -150,7 +150,7 @@ it('re-dispatches a done 7d read whose stored fingerprint is null, exactly once'
     $this->artisan('ai:trend-read', ['range' => '7d'])->assertSuccessful();
 
     Bus::assertDispatchedTimes(AnalyzeTrendReadJob::class, 1);
-    expect($row->fresh()->status)->toBe(AnalysisStatus::Queued);
+    expect($row->refresh()->status)->toBe(AnalysisStatus::Queued);
 
     Carbon::setTestNow();
 });
@@ -209,7 +209,7 @@ it('re-dispatches a done read once when its range material has changed', functio
     $this->artisan('ai:trend-read', ['range' => '7d'])->assertSuccessful();
 
     Bus::assertDispatchedTimes(AnalyzeTrendReadJob::class, 1);
-    expect($row->fresh()->status)->toBe(AnalysisStatus::Queued);
+    expect($row->refresh()->status)->toBe(AnalysisStatus::Queued);
 
     Carbon::setTestNow();
 });

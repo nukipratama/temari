@@ -22,32 +22,36 @@ it('never lets a prod compose up or run start, build or recreate mysql', functio
     expect($commands[0])->toBeArray();
 
     foreach ($commands[0] as $command) {
-        expect($command)->toContain('--no-deps')->not->toMatch('/\smysql\b/');
+        expect($command)->toContain('--no-deps')->and($command)->not->toMatch('/\smysql\b/');
     }
 })->with('prod workflows')->group('structure');
 
 it('checks mysql is running before the deploy pulls anything, without bringing it up', function (): void {
-    $steps = Yaml::parseFile(base_path('.github/workflows/deploy.yml'))['jobs']['deploy']['steps'];
-    $names = array_map(fn (array $step): string => $step['name'] ?? $step['uses'] ?? '', $steps);
+    $steps = arrayOf(data_get(Yaml::parseFile(base_path('.github/workflows/deploy.yml')), 'jobs.deploy.steps'));
+    $names = array_map(fn (mixed $step): mixed => data_get($step, 'name') ?? data_get($step, 'uses') ?? '', $steps);
     $guard = array_search('Require a running mysql (deploys never create or recreate it)', $names, true);
     $pull = array_search('Pull the image built on the hosted runner', $names, true);
 
     expect($guard)->toBeInt()
-        ->and($pull)->toBeInt()
-        ->and($guard)->toBeLessThan($pull)
-        ->and($steps[$guard]['run'])->toContain('$COMPOSE ps -q mysql')
+        ->and($pull)->toBeInt();
+
+    $guardIndex = is_int($guard) ? $guard : throw new InvalidArgumentException('The mysql guard step is missing.');
+    $pullIndex = is_int($pull) ? $pull : throw new InvalidArgumentException('The pull step is missing.');
+
+    expect($guardIndex)->toBeLessThan($pullIndex)
+        ->and(data_get($steps[$guardIndex], 'run'))->toContain('$COMPOSE ps -q mysql')
         ->toContain('exit 1')
-        ->not->toMatch('/\$COMPOSE\s+(?:up|run|create|start|restart)\b/');
+        ->and(data_get($steps[$guardIndex], 'run'))->not->toMatch('/\$COMPOSE\s+(?:up|run|create|start|restart)\b/');
 })->group('structure');
 
 it('tags the prod mysql image with the version its Dockerfile builds, and never pulls it', function (): void {
     preg_match('/^FROM mysql:(\d+\.\d+)@/m', (string) File::get(base_path('docker/mysql/Dockerfile')), $from);
-    $prod = Yaml::parseFile(base_path('compose.prod.yaml'))['services']['mysql'];
-    $restore = Yaml::parseFile(base_path('deploy/restore-dry-run-compose.yml'))['services']['mysql_restore'];
+    $prod = data_get(Yaml::parseFile(base_path('compose.prod.yaml')), 'services.mysql');
+    $restore = data_get(Yaml::parseFile(base_path('deploy/restore-dry-run-compose.yml')), 'services.mysql_restore');
 
     expect($from)->toHaveKey(1)
-        ->and($prod['image'])->toBe("temari/mysql:{$from[1]}")
-        ->and($prod['build']['context'])->toBe('./docker/mysql')
-        ->and($restore['image'])->toBe($prod['image'])
-        ->and($restore['pull_policy'])->toBe('never');
+        ->and(data_get($prod, 'image'))->toBe('temari/mysql:'.($from[1] ?? throw new InvalidArgumentException('The mysql Dockerfile names no version.')))
+        ->and(data_get($prod, 'build.context'))->toBe('./docker/mysql')
+        ->and(data_get($restore, 'image'))->toBe(data_get($prod, 'image'))
+        ->and(data_get($restore, 'pull_policy'))->toBe('never');
 })->group('structure');

@@ -20,7 +20,7 @@ function llmInventoryDoc(): string
     return File::get(base_path('docs/architecture/llm-triggers.md'));
 }
 
-/** @return list<string> */
+/** @return array<int, string> */
 function narratorClassNames(): array
 {
     return collect(File::files(app_path('Services/AI/Narrators')))
@@ -30,7 +30,7 @@ function narratorClassNames(): array
         ->all();
 }
 
-/** @return list<string> */
+/** @return array<int, string> */
 function concreteToolClassNames(): array
 {
     return collect(File::files(app_path('Services/AI/Agent/Tools')))

@@ -31,10 +31,10 @@ beforeEach(function (): void {
         'services.telegram.bot_token' => 'test-bot-token',
     ]);
     Http::fake(['api.telegram.org/*' => Http::response(['ok' => true, 'result' => true])]);
-    $this->pushes = 0;
+    webPushSends()->exchangeArray([]);
     $push = Mockery::mock(WebPushChannel::class);
     $push->shouldReceive('send')->andReturnUsing(function (): array {
-        $this->pushes++;
+        webPushSends()->append(true);
 
         return [];
     });
@@ -43,13 +43,21 @@ beforeEach(function (): void {
 
 afterEach(fn () => Carbon::setTestNow());
 
+/** @return ArrayObject<int, true> */
+function webPushSends(): ArrayObject
+{
+    static $sends = new ArrayObject();
+
+    return $sends;
+}
+
 function heldAthlete(): User
 {
     $user = User::factory()->create();
     TelegramConnection::factory()->for($user)->create(['chat_id' => 4242, 'revoked_at' => null]);
     $user->updatePushSubscription('https://push.example/endpoint', str_repeat('a', 87), str_repeat('b', 22));
 
-    return $user->fresh();
+    return $user->refresh();
 }
 
 function holdAt(string $at, User $user, Closure $make): void
@@ -61,10 +69,9 @@ function holdAt(string $at, User $user, Closure $make): void
 /** @return list<string> */
 function sentTelegramTitles(): array
 {
-    return Http::recorded()
-        ->map(fn (array $pair): string => strtok((string) $pair[0]['text'], "\n"))
-        ->values()
-        ->all();
+    return array_values(Http::recorded()
+        ->map(fn (array $pair): string => strtok(telegramRequestText($pair[0]), "\n") ?: '')
+        ->all());
 }
 
 it('releases every held item once, in the order it was triggered', function (): void {
@@ -81,7 +88,7 @@ it('releases every held item once, in the order it was triggered', function (): 
     expect(sentTelegramTitles())->toBe(['Your 4-week streak is on the edge', 'Strava stopped syncing', 'Race day is tomorrow'])
         ->and(InboxNotification::query()->orderBy('id')->pluck('title')->all())
         ->toBe(['Your 4-week streak is on the edge', 'Strava stopped syncing', 'Race day is tomorrow'])
-        ->and($this->pushes)->toBe(3)
+        ->and(webPushSends()->count())->toBe(3)
         ->and(HeldNotification::query()->count())->toBe(0);
 });
 
@@ -96,7 +103,7 @@ it('delivers nothing twice when the release runs again', function (): void {
         ->assertExitCode(0);
 
     expect(Http::recorded()->count())->toBe(1)
-        ->and($this->pushes)->toBe(1)
+        ->and(webPushSends()->count())->toBe(1)
         ->and(InboxNotification::query()->count())->toBe(1);
 });
 
@@ -147,7 +154,7 @@ it('respects a mute the athlete set while the item was held', function (): void 
     Carbon::setTestNow('2026-10-06 04:00:00');
     $this->artisan('notifications:release-held')->assertExitCode(0);
 
-    expect($this->pushes)->toBe(0)
+    expect(webPushSends()->count())->toBe(0)
         ->and(Http::recorded()->count())->toBe(1)
         ->and(InboxNotification::query()->count())->toBe(1)
         ->and(HeldNotification::query()->count())->toBe(0);
@@ -177,7 +184,7 @@ it('judges a released race reminder as of when it was held, not when it was rele
     $this->artisan('notifications:release-held')->assertExitCode(0);
 
     expect(sentTelegramTitles())->toBe(['Race day is tomorrow'])
-        ->and($this->pushes)->toBe(1);
+        ->and(webPushSends()->count())->toBe(1);
 });
 
 it('judges a released briefing as of when it was held, not when it was released', function (): void {
@@ -203,11 +210,11 @@ it('judges a released briefing as of when it was held, not when it was released'
     $this->artisan('notifications:release-held')->assertExitCode(0);
 
     expect(sentTelegramTitles())->toBe(['Your briefing for today'])
-        ->and($this->pushes)->toBe(1);
+        ->and(webPushSends()->count())->toBe(1);
 });
 
 it('drops a held row that can never be restored, releases the rest and fails the run', function (Closure $poison, string $storedClass): void {
-    Log::spy();
+    $log = Log::spy();
     $user = heldAthlete();
     holdAt('2026-10-05 22:30:00', $user, fn () => new StreakReminderNotification(4));
     holdAt('2026-10-05 23:00:00', $user, fn () => new StravaDisconnectedNotification(now()));
@@ -223,7 +230,7 @@ it('drops a held row that can never be restored, releases the rest and fails the
         ->and(InboxNotification::query()->pluck('title')->all())->toBe(['Strava stopped syncing'])
         ->and(HeldNotification::query()->count())->toBe(0);
     foreach ($poisoned as $held) {
-        Log::shouldHaveReceived('error')->with('notifications.held.unrestorable', ['held_id' => $held->id, 'class' => $storedClass]);
+        $log->shouldHaveReceived('error')->with('notifications.held.unrestorable', ['held_id' => $held->id, 'class' => $storedClass]);
     }
 })->with([
     'renamed class' => [
@@ -235,14 +242,14 @@ it('drops a held row that can never be restored, releases the rest and fails the
 ]);
 
 it('keeps a held row whose release fails for another reason, releases the rest and fails the run', function (): void {
-    Log::spy();
+    $log = Log::spy();
     $sends = 0;
     $push = Mockery::mock(WebPushChannel::class);
     $push->shouldReceive('send')->andReturnUsing(function () use (&$sends): array {
         if ($sends++ === 0) {
             throw new RuntimeException('push service down');
         }
-        $this->pushes++;
+        webPushSends()->append(true);
 
         return [];
     });
@@ -259,7 +266,7 @@ it('keeps a held row whose release fails for another reason, releases the rest a
     $kept = HeldNotification::query()->sole();
     expect($kept->channel)->toBe(IdempotentWebPushChannel::class)
         ->and($kept->held_at->toDateTimeString())->toBe('2026-10-05 22:30:00')
-        ->and($this->pushes)->toBe(1)
+        ->and(webPushSends()->count())->toBe(1)
         ->and(sentTelegramTitles())->toBe(['Your 4-week streak is on the edge', 'Strava stopped syncing']);
-    Log::shouldHaveReceived('error')->with('notifications.held.release_failed', Mockery::on(fn (array $context): bool => $context['held_id'] === $kept->id));
+    $log->shouldHaveReceived('error')->with('notifications.held.release_failed', Mockery::on(fn (array $context): bool => $context['held_id'] === $kept->id));
 });

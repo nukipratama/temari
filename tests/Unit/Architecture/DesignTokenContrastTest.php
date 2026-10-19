@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Support\Numeric;
 use Illuminate\Support\Facades\File;
 
 /**
@@ -46,7 +47,7 @@ function designTokens(): array
     $css = File::get(resource_path('css/app.css'));
 
     preg_match('/@theme static \{.*?\n\}/s', $css, $theme);
-    preg_match_all('/--color-([a-z0-9-]+):\s*(#[0-9a-f]{6});/', $theme[0], $found, PREG_SET_ORDER);
+    preg_match_all('/--color-([a-z0-9-]+):\s*(#[0-9a-f]{6});/', $theme[0] ?? throw new InvalidArgumentException('app.css has no @theme static block.'), $found, PREG_SET_ORDER);
 
     $tokens = [];
     foreach ($found as [, $name, $value]) {
@@ -56,12 +57,55 @@ function designTokens(): array
     return ['tokens' => $tokens];
 }
 
-/**
- * @return array{paper: list<string>, scoped: list<string>, fill: list<string>, keyword: list<string>, tint: array<string, float>}
- */
+/** @return array<mixed> */
 function groundKinds(): array
 {
     return File::json(resource_path('brand/grounds.json'));
+}
+
+/** @return list<string> */
+function groundStrings(mixed $names): array
+{
+    return array_values(array_map(
+        fn (mixed $name): string => is_string($name) ? $name : throw new InvalidArgumentException('grounds.json holds a non-string name.'),
+        arrayOf($names),
+    ));
+}
+
+/** @return list<string> */
+function groundNames(string $kind): array
+{
+    return groundStrings(data_get(groundKinds(), $kind));
+}
+
+/** @return array<string, array{over?: array<string, list<string>>, text: list<string>, graphic?: bool}> */
+function groundPanels(): array
+{
+    $panels = [];
+
+    foreach (arrayOf(data_get(groundKinds(), 'panel')) as $spec => $entry) {
+        $panel = ['text' => groundStrings(data_get($entry, 'text'))];
+
+        if (data_get($entry, 'over') !== null) {
+            $panel['over'] = array_map(groundStrings(...), arrayOf(data_get($entry, 'over')));
+        }
+        if (data_get($entry, 'graphic') !== null) {
+            $panel['graphic'] = data_get($entry, 'graphic') === true;
+        }
+
+        $panels[(string) $spec] = $panel;
+    }
+
+    return $panels;
+}
+
+/** @return array<string, float> */
+function groundLedger(string $ground): array
+{
+    return array_map(
+        fn (mixed $pinned): float => is_int($pinned) || is_float($pinned) ? (float) $pinned : throw new InvalidArgumentException("grounds.json belowAa.{$ground} holds a non-number."),
+        arrayOf(data_get(groundKinds(), "belowAa.{$ground}")),
+    );
 }
 
 /** @return list<string> */
@@ -103,13 +147,18 @@ function paintedInkTints(): array
                 if (preg_match('/text-'.preg_quote($name, '/').'-ink\b/', $literal) !== 1) {
                     continue;
                 }
-                $alpha = $match[2] !== '' ? (float) $match[2] : (float) $match[3] / 100;
+                $alpha = alphaModifier($match[2] ?? '', $match[3] ?? '');
                 $heaviest[$name] = max($heaviest[$name] ?? 0.0, $alpha);
             }
         }
     }
 
     return $heaviest;
+}
+
+function alphaModifier(string $bracket, string $percent): float
+{
+    return $bracket !== '' ? (float) $bracket : (float) ($percent !== '' ? $percent : throw new InvalidArgumentException('Alpha modifier has no value.')) / 100;
 }
 
 /** `$fill` at `$alpha` over `$ground`, the way the compositor does it. */
@@ -169,7 +218,7 @@ function paintedBackgrounds(): array
 function paperGrounds(array $tokens): array
 {
     $grounds = [];
-    foreach (groundKinds()['paper'] as $name) {
+    foreach (groundNames('paper') as $name) {
         $grounds[$name] = $tokens[$name];
     }
 
@@ -177,8 +226,7 @@ function paperGrounds(array $tokens): array
 }
 
 it('classifies every background the components paint', function (): void {
-    $kinds = groundKinds();
-    $known = array_merge($kinds['paper'], $kinds['scoped'], $kinds['fill'], $kinds['keyword']);
+    $known = array_merge(groundNames('paper'), groundNames('scoped'), groundNames('fill'), groundNames('keyword'));
 
     $unclassified = array_values(array_diff(paintedBackgrounds(), $known));
 
@@ -192,10 +240,8 @@ it('classifies every background the components paint', function (): void {
 
 it('backs every classified colour ground with a declared token', function (): void {
     ['tokens' => $tokens] = designTokens();
-    $kinds = groundKinds();
-
     $missing = [];
-    foreach ([...$kinds['paper'], ...$kinds['scoped']] as $name) {
+    foreach ([...groundNames('paper'), ...groundNames('scoped')] as $name) {
         if (! isset($tokens[$name])) {
             $missing[] = $name;
         }
@@ -222,14 +268,16 @@ it('records the tint every ink actually prints on', function (): void {
     // grounds.json carries the alphas because the live audit runs in a browser
     // and cannot read the components. This is what keeps that copy honest: a
     // heavier tint, or a new one, goes red until it is recorded.
-    expect(groundKinds()['tint'])->toEqual(paintedInkTints());
+    expect(data_get(groundKinds(), 'tint'))->toEqual(paintedInkTints());
 })->group('structure');
 
 it('keeps every -ink token above AA on every ground it lands on', function (): void {
     ['tokens' => $tokens] = designTokens();
     $papers = paperGrounds($tokens);
-    ['scoped' => $scoped, 'tint' => $tints] = groundKinds();
+    $scoped = groundNames('scoped');
+    $tints = arrayOf(data_get(groundKinds(), 'tint'));
     $darkestPaper = collect($papers)->sortBy(fn (string $hex): float => tokenLuminance($hex))->first();
+    $darkestPaper = nonNull($darkestPaper);
 
     $inks = array_filter(
         $tokens,
@@ -255,7 +303,7 @@ it('keeps every -ink token above AA on every ground it lands on', function (): v
         // A chip painted bg-<family>/<alpha> prints on the tint, not on the
         // paper under it. Composited over the darkest paper it can sit on.
         if (isset($tints[$family], $tokens[$family])) {
-            $alpha = $tints[$family];
+            $alpha = Numeric::float($tints[$family]);
             $grounds["{$family}/{$alpha} on paper"] = compositeOver($tokens[$family], $alpha, $darkestPaper);
         }
 
@@ -279,7 +327,11 @@ it('keeps the separator above its floor on every ground', function (): void {
     }
 })->group('structure');
 
-/** A `token/alpha` spec, or a bare token at full opacity. */
+/**
+ * A `token/alpha` spec, or a bare token at full opacity.
+ *
+ * @return array{string, float}
+ */
 function splitAlpha(string $spec): array
 {
     $parts = explode('/', $spec);
@@ -326,7 +378,7 @@ function paintedAlphaPanelSites(array $tokens): array
             if (! isset($tokens[$match[1]])) {
                 continue;
             }
-            $alpha = ($match[2] ?? '') !== '' ? (float) $match[2] : (float) $match[3] / 100;
+            $alpha = alphaModifier($match[2] ?? '', $match[3] ?? '');
             $sites[alphaSpec($match[1], $alpha)][$relative] = true;
         }
     }
@@ -395,7 +447,7 @@ function paintedPanelText(array $tokens): array
                     'variant' => $match[1],
                     'spec' => $bracket === '' && $plain === ''
                         ? $match[2]
-                        : alphaSpec($match[2], $bracket !== '' ? (float) $bracket : (float) $plain / 100),
+                        : alphaSpec($match[2], alphaModifier($bracket, $plain)),
                 ];
             }
 
@@ -403,7 +455,7 @@ function paintedPanelText(array $tokens): array
                 if (! isset($tokens[$panel[2]])) {
                     continue;
                 }
-                $alpha = ($panel[3] ?? '') !== '' ? (float) $panel[3] : (float) $panel[4] / 100;
+                $alpha = alphaModifier($panel[3] ?? '', $panel[4] ?? '');
                 $key = alphaSpec($panel[2], $alpha);
 
                 // A `hover:bg-*` tint is painted in the hover state, so the text
@@ -446,11 +498,11 @@ function paintedPanelText(array $tokens): array
  */
 function panelPairRatios(array $tokens): array
 {
-    $reactive = groundKinds()['reactiveTokens'];
+    $reactive = groundNames('reactiveTokens');
     $papers = paperGrounds($tokens);
 
     $ratios = [];
-    foreach (groundKinds()['panel'] as $spec => $entry) {
+    foreach (groundPanels() as $spec => $entry) {
         if ($entry['text'] === [] || ! isset($entry['over'])) {
             continue;
         }
@@ -481,7 +533,7 @@ function panelPairRatios(array $tokens): array
                 $ratio = tokenContrast(compositeOver($tokens[$ink], $inkAlpha, $ground), $ground);
                 $worst = $worst === null ? $ratio : min($worst, $ratio);
             }
-            $ratios["{$spec} + {$text}"] = round($worst, 2);
+            $ratios["{$spec} + {$text}"] = round(nonNull($worst), 2);
         }
     }
 
@@ -490,7 +542,7 @@ function panelPairRatios(array $tokens): array
 
 it('registers every translucent panel call site', function (): void {
     ['tokens' => $tokens] = designTokens();
-    $registry = groundKinds()['panel'];
+    $registry = groundPanels();
     $painted = paintedAlphaPanelSites($tokens);
 
     $unregistered = [];
@@ -536,7 +588,7 @@ it('registers every translucent panel call site', function (): void {
 
 it('records every panel/text pair painted in one class string', function (): void {
     ['tokens' => $tokens] = designTokens();
-    $registry = groundKinds()['panel'];
+    $registry = groundPanels();
 
     $missing = [];
     foreach (paintedPanelText($tokens) as $spec => $labels) {
@@ -561,13 +613,13 @@ it('scores every chip tone tint on every surface a chip can land on', function (
 
     expect($entries)->not->toBeEmpty();
 
-    $registry = groundKinds()['panel'];
+    $registry = groundPanels();
     $narrowed = [];
     foreach ($entries as [, $tone, $classes]) {
         if (preg_match('/\bbg-([a-z][a-z0-9]*(?:-[a-z0-9]+)*)\/(?:\[([0-9.]+)\]|([0-9]{1,3}))/', $classes, $tint) !== 1) {
             continue;
         }
-        $spec = alphaSpec($tint[1], ($tint[2] ?? '') !== '' ? (float) $tint[2] : (float) $tint[3] / 100);
+        $spec = alphaSpec($tint[1], alphaModifier($tint[2] ?? '', $tint[3] ?? ''));
         $expected = $tone === 'onSky' ? ['sky'] : ['paper'];
         $mounts = $registry[$spec]['over']['resources/js/lib/variants.ts'] ?? [];
         if ($mounts !== $expected) {
@@ -684,14 +736,14 @@ function groundTokenSets(): array
 it('scores the panels against both grounds', function (): void {
     $sets = groundTokenSets();
 
-    expect(array_keys($sets))->toBe(array_keys(groundKinds()['belowAa']))
+    expect(array_keys($sets))->toBe(array_keys(arrayOf(data_get(groundKinds(), 'belowAa'))))
         ->and($sets['dark'])->not->toBe($sets['light']);
 })->group('structure');
 
 it('keeps every panel/text pair above AA on each ground, or pinned in that ground\'s ledger', function (string $ground): void {
     $ratios = panelPairRatios(groundTokenSets()[$ground]);
-    $ledger = groundKinds()['belowAa'][$ground];
-    $panels = groundKinds()['panel'];
+    $ledger = groundLedger($ground);
+    $panels = groundPanels();
 
     $under = array_filter(
         $ratios,
@@ -710,7 +762,7 @@ it('keeps every panel/text pair above AA on each ground, or pinned in that groun
 
     foreach ($ledger as $pair => $pinned) {
         expect($ratios[$pair])->toBe(
-            (float) $pinned,
+            $pinned,
             "{$pair} measures {$ratios[$pair]}:1 on the {$ground} ground, pinned at {$pinned}:1 in grounds.json's belowAa ledger.",
         );
     }
@@ -725,7 +777,7 @@ it('declares every @theme static colour as literal hex, never var() or color-mix
     $css = File::get(resource_path('css/app.css'));
     preg_match('/@theme static \{(.*?)\n\}/s', $css, $block);
 
-    $declarations = array_filter(array_map(trim(...), explode("\n", $block[1])), fn (string $l): bool => $l !== '');
+    $declarations = array_filter(array_map(trim(...), explode("\n", $block[1] ?? throw new InvalidArgumentException('app.css has no @theme static block.'))), fn (string $l): bool => $l !== '');
     $notLiteralHex = array_values(array_filter(
         $declarations,
         fn (string $line): bool => str_starts_with($line, '--color-')
@@ -814,7 +866,7 @@ it('classifies exactly the tokens the dark ground redefines as reactive', functi
         darkThemeBlock(File::get(resource_path('css/app.css'))),
         $found,
     );
-    $declared = groundKinds()['reactiveTokens'];
+    $declared = groundNames('reactiveTokens');
     $redefined = array_unique($found[1]);
     sort($declared);
     sort($redefined);

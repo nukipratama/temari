@@ -19,6 +19,7 @@ beforeEach(fn () => Carbon::setTestNow('2026-10-05 10:00:00'));
 
 afterEach(fn () => Carbon::setTestNow());
 
+/** @param array<string, mixed> $attributes */
 function athleteWithTenK(int $seconds, array $attributes = []): User
 {
     $user = User::factory()->create([...$attributes, 'last_notified_race_m' => 10_000]);
@@ -32,7 +33,7 @@ function athleteWithTenK(int $seconds, array $attributes = []): User
 
 function tenKVdot(int $seconds): float
 {
-    return round(app(VdotEstimator::class)->vdotFromTimeAndDistance($seconds, 10_000), 1);
+    return round(nonNull(app(VdotEstimator::class)->vdotFromTimeAndDistance($seconds, 10_000)), 1);
 }
 
 it('records the first baseline without telling anyone', function (): void {
@@ -44,7 +45,7 @@ it('records the first baseline without telling anyone', function (): void {
         ->assertSuccessful();
 
     Notification::assertNothingSent();
-    expect($user->fresh()->last_notified_vdot)->toBe(tenKVdot(3_600));
+    expect($user->refresh()->last_notified_vdot)->toBe(tenKVdot(3_600));
 });
 
 it('notes an improvement of half a VDOT point and moves the baseline', function (): void {
@@ -58,7 +59,7 @@ it('notes an improvement of half a VDOT point and moves the baseline', function 
         && $note->basisDistanceM === 10_000
         && $note->basisOn === '2026-09-27'
         && $note->notedOn === '2026-10-05');
-    expect($user->fresh()->last_notified_vdot)->toBe(tenKVdot(3_500));
+    expect($user->refresh()->last_notified_vdot)->toBe(tenKVdot(3_500));
 });
 
 it('stays quiet below the threshold and keeps the baseline', function (): void {
@@ -69,7 +70,7 @@ it('stays quiet below the threshold and keeps the baseline', function (): void {
     $this->artisan('fitness:notify-improvement')->assertSuccessful();
 
     Notification::assertNothingSent();
-    expect($user->fresh()->last_notified_vdot)->toBe($baseline);
+    expect($user->refresh()->last_notified_vdot)->toBe($baseline);
 });
 
 it('re-seeds the baseline silently when the race distance changes', function (): void {
@@ -82,9 +83,8 @@ it('re-seeds the baseline silently when the race distance changes', function ():
         ->assertSuccessful();
 
     Notification::assertNothingSent();
-    expect($user->fresh())
-        ->last_notified_vdot->toBe(tenKVdot(3_500))
-        ->last_notified_race_m->toBe(10_000);
+    expect($user->refresh()->last_notified_vdot)->toBe(tenKVdot(3_500))
+        ->and($user->last_notified_race_m)->toBe(10_000);
 });
 
 it('notes at most once a week', function (): void {
@@ -98,7 +98,7 @@ it('notes at most once a week', function (): void {
     $this->artisan('fitness:notify-improvement')->assertSuccessful();
 
     Notification::assertNothingSent();
-    expect($user->fresh()->last_notified_vdot)->toBe($baseline);
+    expect($user->refresh()->last_notified_vdot)->toBe($baseline);
 
     Carbon::setTestNow('2026-10-06 10:00:00');
     app(VdotEstimator::class)->forget($user);
@@ -116,7 +116,7 @@ it('skips the demo user', function (): void {
         ->assertSuccessful();
 
     Notification::assertNothingSent();
-    expect($demo->fresh()->last_notified_vdot)->toBe(30.0);
+    expect($demo->refresh()->last_notified_vdot)->toBe(30.0);
 });
 
 it('leaves an athlete with no supported time alone', function (): void {
@@ -125,7 +125,7 @@ it('leaves an athlete with no supported time alone', function (): void {
 
     $this->artisan('fitness:notify-improvement')->assertSuccessful();
 
-    expect($user->fresh()->last_notified_vdot)->toBeNull();
+    expect($user->refresh()->last_notified_vdot)->toBeNull();
 });
 
 it('keeps checking the other athletes when one throws, and alerts once', function (): void {
@@ -151,7 +151,7 @@ it('skips an athlete with no run analysed since the last check', function (): vo
     $this->artisan('fitness:notify-improvement')->assertSuccessful();
 
     Notification::assertNothingSent();
-    expect($user->fresh()->fitness_checked_at->toDateTimeString())->toBe('2026-10-05 08:00:00');
+    expect(nonNull($user->refresh()->fitness_checked_at)->toDateTimeString())->toBe('2026-10-05 08:00:00');
 });
 
 it('checks and stamps an athlete with a run analysed since the last check', function (): void {
@@ -162,7 +162,7 @@ it('checks and stamps an athlete with a run analysed since the last check', func
     $this->artisan('fitness:notify-improvement')->assertSuccessful();
 
     Notification::assertSentTo($user, FitnessImprovedNotification::class);
-    expect($user->fresh()->fitness_checked_at->toDateTimeString())->toBe('2026-10-05 10:00:00');
+    expect(nonNull($user->refresh()->fitness_checked_at)->toDateTimeString())->toBe('2026-10-05 10:00:00');
 });
 
 it('checks an athlete whose run was analysed in the same second as the last stamp', function (): void {
@@ -182,7 +182,7 @@ it('checks and stamps an athlete who was never checked', function (): void {
     $this->artisan('fitness:notify-improvement')->assertSuccessful();
 
     Notification::assertSentTo($user, FitnessImprovedNotification::class);
-    expect($user->fresh()->fitness_checked_at->toDateTimeString())->toBe('2026-10-05 10:00:00');
+    expect(nonNull($user->refresh()->fitness_checked_at)->toDateTimeString())->toBe('2026-10-05 10:00:00');
 });
 
 it('leaves the stamp alone when the check fails, so the next run retries', function (): void {
@@ -204,5 +204,5 @@ it('does not stamp an athlete whose rise is held back by the weekly note interva
 
     $this->artisan('fitness:notify-improvement')->assertSuccessful();
 
-    expect($user->fresh()->fitness_checked_at)->toBeNull();
+    expect($user->refresh()->fitness_checked_at)->toBeNull();
 });

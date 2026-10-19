@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\File;
 use Symfony\Component\Process\Process;
 use Symfony\Component\Yaml\Yaml;
 
+/** @param  array<string, string>  $env */
 function recoveryCommands(array $env): string
 {
     $process = new Process([base_path('scripts/deploy/print-recovery-commands.sh')], null, $env + ['GITHUB_REPOSITORY' => 'owner/repo']);
@@ -42,15 +43,15 @@ it('falls back to :previous and leaves owner maintenance alone when the deploy f
 
     expect($output)->toContain('This run wrote no pre-deploy dump')
         ->toContain("gh workflow run rollback.yml --repo owner/repo\n")
-        ->not->toContain('-f sha=')
-        ->not->toContain('php artisan up');
+        ->and($output)->not->toContain('-f sha=')
+        ->and($output)->not->toContain('php artisan up');
 });
 
 it('prints the recovery commands from the deploy rollback step on the migration path', function (): void {
-    $steps = collect(Yaml::parseFile(base_path('.github/workflows/deploy.yml'))['jobs']['deploy']['steps']);
+    $steps = collect(arrayOf(data_get(Yaml::parseFile(base_path('.github/workflows/deploy.yml')), 'jobs.deploy.steps')));
 
-    expect($steps->firstWhere('name', 'Roll back on failure')['run'])
+    expect(data_get($steps->firstWhere('name', 'Roll back on failure'), 'run'))
         ->toContain('scripts/deploy/print-recovery-commands.sh | tee -a "$GITHUB_STEP_SUMMARY"')
-        ->and($steps->firstWhere('name', 'Tag current :latest as :previous (rollback target)')['run'])
+        ->and(data_get($steps->firstWhere('name', 'Tag current :latest as :previous (rollback target)'), 'run'))
         ->toContain('PREVIOUS_SHA=');
 });

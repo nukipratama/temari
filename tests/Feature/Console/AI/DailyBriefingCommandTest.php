@@ -64,10 +64,10 @@ it('continues dispatching later briefings after one athlete fails and alerts onc
     expect($requested)->toBe([[$later->id, Carbon::today()->toDateString()]]);
     Http::assertSentCount(1);
     Http::assertSent(static fn (Request $request): bool =>
-        str_contains((string) $request['text'], 'ai:daily-briefing')
-        && str_contains((string) $request['text'], '1 athlete')
-        && ! str_contains((string) $request['text'], 'Private Failed Athlete')
-        && ! str_contains((string) $request['text'], 'Private Later Athlete'));
+        str_contains(telegramRequestText($request), 'ai:daily-briefing')
+        && str_contains(telegramRequestText($request), '1 athlete')
+        && ! str_contains(telegramRequestText($request), 'Private Failed Athlete')
+        && ! str_contains(telegramRequestText($request), 'Private Later Athlete'));
 
     Carbon::setTestNow();
 });
