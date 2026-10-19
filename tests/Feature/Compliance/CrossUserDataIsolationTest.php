@@ -14,6 +14,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Routing\Route as RegisteredRoute;
 use Illuminate\Routing\RedirectController;
 use Illuminate\Support\Facades\Route;
+use Tests\TestCase;
 
 uses(RefreshDatabase::class);
 
@@ -22,20 +23,30 @@ uses(RefreshDatabase::class);
  * user since Nov 2024. These sweeps are generative on the route table rather
  * than a list of today's endpoints, so a new endpoint is covered the moment it
  * is registered: an unmapped route parameter fails the first test outright.
+ *
+ * @return array{marker: string, victim: User, attacker: User, victimActivity: Activity, victimCard: RunCard, victimSession: PlannedSession, victimSnapshot: WeeklySnapshot, victimNotification: InboxNotification, victimRace: RaceGoal}
  */
-beforeEach(function (): void {
-    $this->marker = 'CrossUserIsolationMarkerRun';
-    $this->victim = User::factory()->create();
-    $this->attacker = User::factory()->create();
+function crossUserFixture(): array
+{
+    $marker = 'CrossUserIsolationMarkerRun';
+    $victim = User::factory()->create();
+    $attacker = User::factory()->create();
 
-    $this->victimActivity = Activity::factory()->for($this->victim)->create();
-    ActivityDetail::factory()->for($this->victimActivity)->create(['name' => $this->marker]);
-    $this->victimCard = RunCard::factory()->for($this->victimActivity)->create();
-    $this->victimSession = PlannedSession::factory()->for($this->victim)->create();
-    $this->victimSnapshot = WeeklySnapshot::factory()->for($this->victim)->create();
-    $this->victimNotification = InboxNotification::factory()->for($this->victim)->create();
-    $this->victimRace = RaceGoal::factory()->for($this->victim)->completed()->create();
-});
+    $victimActivity = Activity::factory()->for($victim)->create();
+    ActivityDetail::factory()->for($victimActivity)->create(['name' => $marker]);
+
+    return [
+        'marker' => $marker,
+        'victim' => $victim,
+        'attacker' => $attacker,
+        'victimActivity' => $victimActivity,
+        'victimCard' => RunCard::factory()->for($victimActivity)->create(),
+        'victimSession' => PlannedSession::factory()->for($victim)->create(),
+        'victimSnapshot' => WeeklySnapshot::factory()->for($victim)->create(),
+        'victimNotification' => InboxNotification::factory()->for($victim)->create(),
+        'victimRace' => RaceGoal::factory()->for($victim)->completed()->create(),
+    ];
+}
 
 /**
  * Every route that answers a signed-in user. `onboarded` counts alongside `auth`
@@ -46,17 +57,16 @@ beforeEach(function (): void {
  */
 function authenticatedRoutes(): array
 {
-    return collect(Route::getRoutes()->getRoutes())
+    return array_values(collect(Route::getRoutes()->getRoutes())
         ->filter(fn (RegisteredRoute $route): bool => array_intersect(
             ['auth', 'onboarded'],
             $route->gatherMiddleware(),
         ) !== [])
         ->reject(fn (RegisteredRoute $route): bool => str_starts_with(
-            ltrim((string) $route->getAction('controller'), '\\'),
+            ltrim($route->getActionName(), '\\'),
             RedirectController::class,
         ))
-        ->values()
-        ->all();
+        ->all());
 }
 
 /**
@@ -64,9 +74,9 @@ function authenticatedRoutes(): array
  * block that only arrives on the follow-up request would otherwise leave the
  * sweep blind to whatever it renders.
  *
- * @param  object  $actingAs  The authenticated test case.
+ * @param  TestCase  $actingAs  The authenticated test case.
  */
-function deferredBodyFor(object $actingAs, string $uri, string $html): string
+function deferredBodyFor(TestCase $actingAs, string $uri, string $html): string
 {
     preg_match('/type="application\/json">(.*?)<\/script>/s', $html, $matches);
     $page = json_decode(html_entity_decode($matches[1] ?? ''), true);
@@ -75,29 +85,36 @@ function deferredBodyFor(object $actingAs, string $uri, string $html): string
         return '';
     }
 
-    $deferred = collect($page['deferredProps'] ?? [])->flatten()->all();
+    $deferred = collect(arrayOf($page['deferredProps'] ?? []))
+        ->flatten()
+        ->map(fn (mixed $prop): string => is_string($prop) ? $prop : throw new InvalidArgumentException('Deferred prop is not a string.'))
+        ->all();
 
     if ($deferred === []) {
         return '';
     }
 
+    $version = $page['version'] ?? '';
+    $component = $page['component'] ?? '';
+
     return (string) $actingAs->get($uri, [
         'X-Inertia' => 'true',
-        'X-Inertia-Version' => (string) ($page['version'] ?? ''),
-        'X-Inertia-Partial-Component' => (string) ($page['component'] ?? ''),
+        'X-Inertia-Version' => is_string($version) ? $version : throw new InvalidArgumentException('Inertia version is not a string.'),
+        'X-Inertia-Partial-Component' => is_string($component) ? $component : throw new InvalidArgumentException('Inertia component is not a string.'),
         'X-Inertia-Partial-Data' => implode(',', $deferred),
     ])->getContent();
 }
 
 it('refuses every authenticated route that is handed another user\'s resource id', function (): void {
+    $fixture = crossUserFixture();
     $ownedParameters = [
-        'activity' => fn (): int => $this->victimActivity->id,
-        'card' => fn (): int => $this->victimCard->id,
-        'plannedSession' => fn (): int => $this->victimSession->id,
-        'notification' => fn (): int => $this->victimNotification->id,
-        'snapshot' => fn (): int => $this->victimSnapshot->id,
-        'race' => fn (): int => $this->victimRace->id,
-        'subjectId' => fn (): int => $this->victimActivity->id,
+        'activity' => fn (): int => $fixture['victimActivity']->id,
+        'card' => fn (): int => $fixture['victimCard']->id,
+        'plannedSession' => fn (): int => $fixture['victimSession']->id,
+        'notification' => fn (): int => $fixture['victimNotification']->id,
+        'snapshot' => fn (): int => $fixture['victimSnapshot']->id,
+        'race' => fn (): int => $fixture['victimRace']->id,
+        'subjectId' => fn (): int => $fixture['victimActivity']->id,
     ];
 
     // Parameters that name no owner: the controller keys its lookup on the
@@ -137,7 +154,7 @@ it('refuses every authenticated route that is handed another user\'s resource id
             ->reject(fn (string $verb): bool => in_array($verb, ['HEAD', 'OPTIONS'], true))
             ->firstOrFail();
 
-        $response = $this->actingAs($this->attacker)->call($method, $uri);
+        $response = $this->actingAs($fixture['attacker'])->call($method, $uri);
         $status = $response->getStatusCode();
         $body = (string) $response->getContent();
 
@@ -145,7 +162,7 @@ it('refuses every authenticated route that is handed another user\'s resource id
             $reachable[] = "{$method} {$uri} answered {$status}";
         }
 
-        if (str_contains($body, (string) $this->marker)) {
+        if (str_contains($body, $fixture['marker'])) {
             $leaked[] = "{$method} {$uri}";
         }
 
@@ -170,6 +187,7 @@ it('refuses every authenticated route that is handed another user\'s resource id
 });
 
 it('never renders another user\'s activity data on a shared page', function (): void {
+    $fixture = crossUserFixture();
     $leaked = [];
     $visited = 0;
 
@@ -179,10 +197,10 @@ it('never renders another user\'s activity data on a shared page', function (): 
         }
 
         $uri = '/'.ltrim($route->uri(), '/');
-        $body = (string) $this->actingAs($this->attacker)->get($uri)->getContent();
-        $body .= deferredBodyFor($this->actingAs($this->attacker), $uri, $body);
+        $body = (string) $this->actingAs($fixture['attacker'])->get($uri)->getContent();
+        $body .= deferredBodyFor($this->actingAs($fixture['attacker']), $uri, $body);
 
-        if (str_contains($body, (string) $this->marker)) {
+        if (str_contains($body, $fixture['marker'])) {
             $leaked[] = $uri;
         }
 
@@ -197,15 +215,17 @@ it('never renders another user\'s activity data on a shared page', function (): 
 });
 
 it('renders the marker run to its own owner, so the sweeps are not vacuous', function (): void {
-    $html = (string) $this->actingAs($this->victim)->get('/history')
+    $fixture = crossUserFixture();
+    $html = (string) $this->actingAs($fixture['victim'])->get('/history')
         ->assertSuccessful()
         ->getContent();
 
-    expect(deferredBodyFor($this->actingAs($this->victim), '/history', $html))
-        ->toContain((string) $this->marker);
+    expect(deferredBodyFor($this->actingAs($fixture['victim']), '/history', $html))
+        ->toContain($fixture['marker']);
 });
 
 it('turns every signed-in route away from a guest', function (): void {
+    crossUserFixture();
     $notRedirected = [];
     $notUnauthorised = [];
     $checked = 0;

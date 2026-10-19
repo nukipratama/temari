@@ -24,7 +24,11 @@ parameters:
         - database/
         - tests/Pest.php
         - tests/Feature/Auth
+        - tests/Feature/Compliance
         - tests/Feature/Console
+        - tests/Feature/Plan
+        - tests/Feature/Runs
+        - tests/Feature/Strava
         - tests/Unit/Architecture
         - tests/Unit/Actions
         - tests/Unit/Config

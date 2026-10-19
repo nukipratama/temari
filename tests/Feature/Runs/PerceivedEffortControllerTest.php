@@ -21,7 +21,10 @@ beforeEach(function (): void {
     $this->travelTo(Carbon::parse('2026-06-10 18:00:00'));
 });
 
-/** @return array{0: Activity, 1: ActivityDetail} */
+/**
+ * @param  array<string, mixed>  $attributes
+ * @return array{0: Activity, 1: ActivityDetail}
+ */
 function perceivedEffortRun(User $user, array $attributes = []): array
 {
     $activity = Activity::factory()->for($user)->analyzed()->create();
@@ -63,8 +66,8 @@ it('scores a run that carries heart rate without touching its TRIMP', function (
 
     $this->actingAs($user)->patch(route('activities.effort.update', $activity), ['score' => 9])->assertSessionHasNoErrors();
 
-    expect($detail->fresh()->perceived_effort)->toBe(9)
-        ->and($detail->fresh()->trimp_edwards)->toBe(70.0);
+    expect($detail->refresh()->perceived_effort)->toBe(9)
+        ->and($detail->refresh()->trimp_edwards)->toBe(70.0);
 });
 
 it('scores, changes and clears a run of any age', function (): void {
@@ -72,16 +75,16 @@ it('scores, changes and clears a run of any age', function (): void {
     [$activity, $detail] = perceivedEffortRun($user, ['start_date_local' => Carbon::parse('2026-03-01 06:00:00')]);
 
     $this->actingAs($user)->patch(route('activities.effort.update', $activity), ['score' => 4])->assertSessionHasNoErrors();
-    expect($detail->fresh()->perceived_effort)->toBe(4);
+    expect($detail->refresh()->perceived_effort)->toBe(4);
 
     $this->travel(2)->days();
     $this->actingAs($user)->patch(route('activities.effort.update', $activity), ['score' => 7])->assertSessionHasNoErrors();
-    expect($detail->fresh()->perceived_effort)->toBe(7)
-        ->and($detail->fresh()->perceived_effort_at?->toDateTimeString())->toBe('2026-06-12 18:00:00');
+    expect($detail->refresh()->perceived_effort)->toBe(7)
+        ->and($detail->refresh()->perceived_effort_at?->toDateTimeString())->toBe('2026-06-12 18:00:00');
 
     $this->actingAs($user)->delete(route('activities.effort.destroy', $activity))->assertSessionHasNoErrors();
-    expect($detail->fresh()->perceived_effort)->toBeNull()
-        ->and($detail->fresh()->perceived_effort_at)->toBeNull();
+    expect($detail->refresh()->perceived_effort)->toBeNull()
+        ->and($detail->refresh()->perceived_effort_at)->toBeNull();
 });
 
 it('validates the score as a whole number from 1 to 10', function (mixed $score): void {
@@ -90,8 +93,8 @@ it('validates the score as a whole number from 1 to 10', function (mixed $score)
 
     $this->actingAs($user)->patch(route('activities.effort.update', $activity), ['score' => $score])->assertSessionHasErrors('score');
 
-    expect($detail->fresh()->perceived_effort)->toBeNull()
-        ->and($detail->fresh()->perceived_effort_at)->toBeNull();
+    expect($detail->refresh()->perceived_effort)->toBeNull()
+        ->and($detail->refresh()->perceived_effort_at)->toBeNull();
 })->with([0, 11, 5.5, 'hard', null]);
 
 it('lets an athlete score only their own run', function (): void {
@@ -102,7 +105,7 @@ it('lets an athlete score only their own run', function (): void {
     $this->actingAs(User::factory()->create())->patch(route('activities.effort.update', $activity), ['score' => 6])->assertNotFound();
     $this->actingAs(User::factory()->create())->delete(route('activities.effort.destroy', $activity))->assertNotFound();
 
-    expect($detail->fresh()->perceived_effort)->toBeNull();
+    expect($detail->refresh()->perceived_effort)->toBeNull();
 });
 
 it('keeps a demo score local, with no narration requested', function (): void {
@@ -111,7 +114,7 @@ it('keeps a demo score local, with no narration requested', function (): void {
 
     $this->actingAs($user)->patch(route('activities.effort.update', $activity), ['score' => 4])->assertRedirect();
 
-    expect($detail->fresh()->perceived_effort)->toBe(4)
+    expect($detail->refresh()->perceived_effort)->toBe(4)
         ->and(Analysis::query()->count())->toBe(0);
     Queue::assertNothingPushed();
 });
@@ -124,10 +127,10 @@ it('re-narrates the run when its first effort score is saved', function (): void
         'subject_id' => $activity->id,
         'analysis_type' => AnalysisType::PostRunSpeech,
         'discriminator' => null,
-        'content_fingerprint' => MaterialFingerprint::forActivity($activity->fresh()),
+        'content_fingerprint' => MaterialFingerprint::forActivity($activity->refresh()),
     ]);
 
     $this->actingAs($user)->patch(route('activities.effort.update', $activity), ['score' => 6]);
 
-    expect($speech->fresh()->status)->not->toBe(AnalysisStatus::Done);
+    expect($speech->refresh()->status)->not->toBe(AnalysisStatus::Done);
 });

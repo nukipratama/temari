@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Enums\AdaptationReason;
+use App\Enums\FallOffTilt;
 use App\Enums\PaceBand;
 use App\Enums\PlanPhase;
 use App\Enums\RaceAmbitionState;
@@ -65,15 +66,15 @@ function fastFinishInputs(
     );
 }
 
-/** @return array<string, array<string, mixed>> */
+/** @return array<string, array{phase: PlanPhase, session_type: SessionType, volume_multiplier: float, fall_off_tilt: FallOffTilt|null, prescribed_hard_minutes: int, prescribed_pace_band: PaceBand|null, prescribed_pace_sec_per_km: int|null, prescription_reason: string|null, prescription_race_context: array<string, int|float|string>|null, ...}> */
 function fastFinishPlan(PlanInputs $inputs): array
 {
     return app(Periodizer::class)->rowsFor($inputs);
 }
 
 /**
- * @param  array<string, array<string, mixed>>  $rows
- * @return array<string, array<string, mixed>>
+ * @param  array<string, array{phase: PlanPhase, session_type: SessionType, volume_multiplier: float, fall_off_tilt: FallOffTilt|null, prescribed_hard_minutes: int, prescribed_pace_band: PaceBand|null, prescribed_pace_sec_per_km: int|null, prescription_reason: string|null, prescription_race_context: array<string, int|float|string>|null, ...}>  $rows
+ * @return array<string, array{phase: PlanPhase, session_type: SessionType, volume_multiplier: float, fall_off_tilt: FallOffTilt|null, prescribed_hard_minutes: int, prescribed_pace_band: PaceBand|null, prescribed_pace_sec_per_km: int|null, prescription_reason: string|null, prescription_race_context: array<string, int|float|string>|null, ...}>
  */
 function fastFinishes(array $rows): array
 {
@@ -83,7 +84,7 @@ function fastFinishes(array $rows): array
 }
 
 /**
- * @param  array<string, array<string, mixed>>  $rows
+ * @param  array<string, array{phase: PlanPhase, session_type: SessionType, volume_multiplier: float, fall_off_tilt: FallOffTilt|null, prescribed_hard_minutes: int, prescribed_pace_band: PaceBand|null, prescribed_pace_sec_per_km: int|null, prescription_reason: string|null, prescription_race_context: array<string, int|float|string>|null, ...}>  $rows
  * @return array<string, float>
  */
 function fastFinishLongKm(array $rows): array
@@ -121,7 +122,7 @@ it('shows two to three fast-finish long runs from mid-build through peak, none i
 
 it('runs the last fifth of the long run at the race-specific pace, an easy block then the fast block', function (): void {
     $rows = fastFinishPlan(fastFinishInputs(today: '2026-10-05'));
-    $date = array_key_last(fastFinishes($rows));
+    $date = nonNull(array_key_last(fastFinishes($rows)));
     $row = $rows[$date];
     $prescription = new IntensityPrescription($row['prescribed_hard_minutes'], $row['prescribed_pace_band'], $row['prescribed_pace_sec_per_km'], null, $row['prescription_race_context']);
     $km = fastFinishLongKm($rows)[$date];
@@ -156,8 +157,8 @@ it('paces a 5K goal\'s fast finish at its goal-pace work inside the window and a
         $byPhase[$row['phase']->value][] = [$row['prescribed_pace_sec_per_km'], $row['prescribed_pace_band']];
     }
 
-    expect(array_values(array_unique($byPhase[PlanPhase::Build->value], SORT_REGULAR)))->toBe([[290, PaceBand::Threshold]])
-        ->and(array_values(array_unique($byPhase[PlanPhase::Peak->value], SORT_REGULAR)))->toBe([[276, PaceBand::Interval]]);
+    expect(array_values(array_unique($byPhase[PlanPhase::Build->value] ?? [], SORT_REGULAR)))->toBe([[290, PaceBand::Threshold]])
+        ->and(array_values(array_unique($byPhase[PlanPhase::Peak->value] ?? [], SORT_REGULAR)))->toBe([[276, PaceBand::Interval]]);
 });
 
 it('keeps a fast finish off the week the hard-day budget is already full', function (): void {
@@ -195,5 +196,5 @@ it('gives 5K and half goals fast finishes and a marathon none, its race long kee
         ->and(fastFinishes(fastFinishPlan(fastFinishInputs(21_097.5, today: '2026-10-05'))))->not->toBe([])
         ->and(fastFinishes($marathon))->toBe([])
         ->and($raceLongs)->not->toBe([])
-        ->and(array_values(array_unique(array_map(static fn (array $row): PaceBand => $row['prescribed_pace_band'], $raceLongs), SORT_REGULAR)))->toBe([PaceBand::Marathon]);
+        ->and(array_values(array_unique(array_map(static fn (array $row): ?PaceBand => $row['prescribed_pace_band'], $raceLongs), SORT_REGULAR)))->toBe([PaceBand::Marathon]);
 });
