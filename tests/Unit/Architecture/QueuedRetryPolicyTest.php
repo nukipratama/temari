@@ -57,6 +57,7 @@ use Illuminate\Queue\Attributes\UniqueFor;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Queue;
+use Mockery\MockInterface;
 
 /**
  * @return list<class-string>
@@ -80,28 +81,27 @@ function queuedClassesUnder(string ...$directories): array
     return $classes;
 }
 
-/**
- * @param  class-string  $class
- * @return list<mixed>
- */
+/** @return list<mixed> */
 function resolvedRetryPolicy(string $class): array
 {
-    $instance = new ReflectionClass($class)->newInstanceWithoutConstructor();
+    $instance = (class_exists($class) ? new ReflectionClass($class) : throw new InvalidArgumentException("{$class} is not a class."))->newInstanceWithoutConstructor();
     $job = $instance instanceof Notification
         ? new SendQueuedNotifications(new Collection(), $instance, ['mail'])
         : $instance;
 
     $queue = Queue::connection('sync');
-    $payload = Closure::bind(fn (object $job): array => $this->createPayloadArray($job, 'default'), $queue, $queue::class)($job);
+    $payload = Closure::bind(fn (object $job): array => $this->createPayloadArray($job, 'default'), $queue, \Illuminate\Queue\Queue::class)($job);
 
     $uniqueFor = null;
 
     if ($instance instanceof ShouldBeUnique) {
+        /** @var Repository&MockInterface $cache */
+        $cache = Mockery::mock(Repository::class);
         $uniqueFor = Closure::bind(
             fn (object $job): mixed => method_exists($job, 'uniqueFor')
                 ? $job->uniqueFor()
                 : ($this->getAttributeValue($job, UniqueFor::class, 'uniqueFor') ?? 0),
-            new UniqueLock(Mockery::mock(Repository::class)),
+            new UniqueLock($cache),
             UniqueLock::class,
         )($instance);
     }

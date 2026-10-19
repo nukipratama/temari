@@ -191,10 +191,11 @@ it('never prints the raw callback or verify token', function (string $action, Cl
 
     Artisan::call('strava:webhook-subscribe', ['--action' => $action]);
 
-    expect(Artisan::output())
-        ->toContain('/strava/webhook/****')
-        ->not->toContain('fake-callback-token')
-        ->not->toContain('verify-tok');
+    $output = Artisan::output();
+
+    expect($output)->not->toContain('fake-callback-token')
+        ->and($output)->not->toContain('verify-tok')
+        ->and($output)->toContain('/strava/webhook/****');
 })->with([
     'create' => ['create', fn (): array => [
         StravaWebhookController::callbackUrl().'*' => fakeCallbackEchoes(),

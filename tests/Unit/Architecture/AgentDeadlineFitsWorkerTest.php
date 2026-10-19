@@ -11,9 +11,9 @@ use Symfony\Component\Yaml\Yaml;
  * remains after reserving its request timeout.
  */
 it('fits one narrator and the minimum speech pass inside the worker', function (): void {
-    $deadline = (int) config('ai.agent.deadline_seconds');
-    $requestTimeout = (int) config('azure_openai.timeout');
-    $workerTimeout = (int) config('horizon.defaults.supervisor-ai.timeout');
+    $deadline = config()->integer('ai.agent.deadline_seconds');
+    $requestTimeout = config()->integer('azure_openai.timeout');
+    $workerTimeout = config()->integer('horizon.defaults.supervisor-ai.timeout');
     $safetyMargin = AnalyzeActivityJob::WORKER_TIMEOUT_SAFETY_MARGIN_SECONDS;
     $singleCallWorstCase = $deadline + $requestTimeout;
     $minimumSpeechCall = AnalyzeActivityJob::MINIMUM_SPEECH_DEADLINE_SECONDS + $requestTimeout;
@@ -36,7 +36,7 @@ it('fits one narrator and the minimum speech pass inside the worker', function (
  * and the whole run is billed twice.
  */
 it('keeps the queue retry window above every worker timeout', function (): void {
-    $retryAfter = (int) config('queue.connections.redis.retry_after');
+    $retryAfter = config()->integer('queue.connections.redis.retry_after');
 
     /** @var array<string, array{timeout?: int}> $supervisors */
     $supervisors = config('horizon.defaults');
@@ -50,10 +50,11 @@ it('keeps the queue retry window above every worker timeout', function (): void 
 })->group('structure');
 
 it('gives Horizon a stop grace above the ai worker timeout', function (): void {
-    $grace = Yaml::parseFile(base_path('compose.prod.yaml'))['services']['horizon']['stop_grace_period'];
-    $graceSeconds = (int) rtrim((string) $grace, 's');
-    $workerTimeout = (int) config('horizon.defaults.supervisor-ai.timeout');
-    $singleCallWorstCase = (int) config('ai.agent.deadline_seconds') + (int) config('azure_openai.timeout');
+    $configured = data_get(Yaml::parseFile(base_path('compose.prod.yaml')), 'services.horizon.stop_grace_period');
+    $grace = is_string($configured) ? $configured : throw new InvalidArgumentException('horizon stop_grace_period is not a string.');
+    $graceSeconds = (int) rtrim($grace, 's');
+    $workerTimeout = config()->integer('horizon.defaults.supervisor-ai.timeout');
+    $singleCallWorstCase = config()->integer('ai.agent.deadline_seconds') + config()->integer('azure_openai.timeout');
 
     expect($grace)->toMatch('/^\d+s$/')
         ->and($graceSeconds)->toBeGreaterThan($workerTimeout, "horizon stop_grace_period ({$grace}) must exceed the supervisor-ai timeout ({$workerTimeout}).")

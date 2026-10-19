@@ -19,7 +19,9 @@ use App\Models\Season;
 use App\Models\User;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisOrigin;
+use Illuminate\Http\Client\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use App\Services\AI\AnalysisType;
 use App\Enums\AdaptationReason;
 use App\Services\Run\Plan\PlanInputs;
@@ -41,6 +43,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Testing\Fakes\QueueFake;
 use Illuminate\Support\Facades\RateLimiter;
 use Laravel\Socialite\Facades\Socialite;
 use Laravel\Socialite\Two\AbstractProvider;
@@ -462,6 +465,13 @@ function arrayOf(mixed $value): array
     return $value;
 }
 
+function telegramRequestText(Request $request): string
+{
+    $text = $request['text'];
+
+    return is_string($text) ? $text : throw new InvalidArgumentException('Telegram text is not a string.');
+}
+
 function mockStravaDriver(callable $configure): MockInterface
 {
     $driver = Mockery::mock(AbstractProvider::class);
@@ -677,4 +687,23 @@ function arcInputs(
 function planInputsWith(PlanInputs $base, array $overrides): PlanInputs
 {
     return new ReflectionClass(PlanInputs::class)->newInstanceArgs([...get_object_vars($base), ...$overrides]);
+}
+
+/**
+ * @template T of object
+ *
+ * @param  class-string<T>  $job
+ * @return Collection<int, T>
+ */
+function pushedJobs(string $job): Collection
+{
+    $queue = Queue::getFacadeRoot();
+
+    if (! $queue instanceof QueueFake) {
+        throw new InvalidArgumentException('Queue is not faked.');
+    }
+
+    return $queue->pushed($job)->values()->map(
+        fn (mixed $pushed) => $pushed instanceof $job ? $pushed : throw new InvalidArgumentException("Pushed job is not a {$job}."),
+    );
 }

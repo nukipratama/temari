@@ -55,11 +55,11 @@ it('says nothing a second time for the same race', function (): void {
     $this->artisan('race:remind')->assertSuccessful();
     $this->artisan('race:remind')->expectsOutputToContain('Dispatched race-day reminder to 0 users.')->assertSuccessful();
 
-    $queued = Queue::pushed(SendQueuedNotifications::class)
+    $queued = pushedJobs(SendQueuedNotifications::class)
         ->filter(fn (SendQueuedNotifications $job): bool => $job->notification instanceof RaceTomorrowNotification);
     expect($queued)->not->toBeEmpty()
-        ->and($queued->map(fn (SendQueuedNotifications $job): string => $job->notification->id)->unique())->toHaveCount(1)
-        ->and($race->fresh()->reminded_for_date?->toDateString())->toBe('2026-05-24');
+        ->and($queued->map(fn (SendQueuedNotifications $job): string => nonNull($job->notification->id))->unique())->toHaveCount(1)
+        ->and($race->refresh()->reminded_for_date?->toDateString())->toBe('2026-05-24');
 });
 
 it('releases the claim when dispatch throws, so the next run sends', function (): void {
@@ -68,13 +68,13 @@ it('releases the claim when dispatch throws, so the next run sends', function ()
     Notification::shouldReceive('send')->once()->andThrow(new RuntimeException('Redis is down'));
 
     expect(fn () => $this->artisan('race:remind')->run())->toThrow(RuntimeException::class, 'Redis is down');
-    expect($race->fresh()->reminded_for_date)->toBeNull();
+    expect($race->refresh()->reminded_for_date)->toBeNull();
 
     Notification::fake();
     $this->artisan('race:remind')->assertSuccessful();
 
     Notification::assertSentToTimes($user, RaceTomorrowNotification::class, 1);
-    expect($race->fresh()->reminded_for_date?->toDateString())->toBe('2026-05-24');
+    expect($race->refresh()->reminded_for_date?->toDateString())->toBe('2026-05-24');
 });
 
 it('claims a rescheduled race again for its new date', function (): void {
@@ -90,7 +90,7 @@ it('claims a rescheduled race again for its new date', function (): void {
     $this->artisan('race:remind')->expectsOutputToContain('Dispatched race-day reminder to 0 users.')->assertSuccessful();
 
     Notification::assertSentToTimes($user, RaceTomorrowNotification::class, 2);
-    expect($race->fresh()->reminded_for_date?->toDateString())->toBe('2026-05-31');
+    expect($race->refresh()->reminded_for_date?->toDateString())->toBe('2026-05-31');
 });
 
 it('skips a race that is not tomorrow or that the athlete has already retired', function (string $raceDate, bool $retired): void {
@@ -142,7 +142,7 @@ it('excludes the demo account, like every other kickoff', function (): void {
 function raceRemindIsDueAt(string $at): bool
 {
     Carbon::setTestNow($at);
-    $event = collect(app(Schedule::class)->events())->first(fn (Event $e): bool => str_ends_with((string) $e->command, 'race:remind'));
+    $event = nonNull(collect(app(Schedule::class)->events())->first(fn (Event $e): bool => str_ends_with((string) $e->command, 'race:remind')));
 
     return $event->isDue(app()) && $event->filtersPass(app());
 }

@@ -6,9 +6,17 @@ use Illuminate\Support\Facades\File;
 use Symfony\Component\Process\Process;
 use Symfony\Component\Yaml\Yaml;
 
+/** @return array<mixed> */
 function restoreDryRunWorkflow(): array
 {
-    return Yaml::parseFile(base_path('.github/workflows/restore-dry-run.yml'));
+    return arrayOf(Yaml::parseFile(base_path('.github/workflows/restore-dry-run.yml')));
+}
+
+function restoreDryRunStepRun(mixed $step): string
+{
+    $run = data_get($step, 'run');
+
+    return is_string($run) ? $run : throw new InvalidArgumentException('The step has no run block.');
 }
 
 /**
@@ -17,13 +25,13 @@ function restoreDryRunWorkflow(): array
  */
 function runRestorePick(string $backupDir, array $env): array
 {
-    $pick = collect(restoreDryRunWorkflow()['jobs']['restore-dry-run']['steps'])->firstWhere('id', 'pick');
+    $pick = collect(arrayOf(data_get(restoreDryRunWorkflow(), 'jobs.restore-dry-run.steps')))->firstWhere('id', 'pick');
     $output = tempnam(sys_get_temp_dir(), 'restore-pick-output-');
     if ($output === false) {
         throw new RuntimeException('Could not create the GITHUB_OUTPUT fixture.');
     }
 
-    $process = new Process(['sh', '-c', $pick['run']], null, [
+    $process = new Process(['sh', '-c', restoreDryRunStepRun($pick)], null, [
         'BACKUP_DIR' => $backupDir,
         'GITHUB_OUTPUT' => $output,
         'KIND' => 'nightly',
@@ -60,26 +68,26 @@ function restoreBackupFixture(): string
 
 it('runs weekly on the homelab runner inside the deploy-prod group, defaulting to the nightly kind', function (): void {
     $workflow = restoreDryRunWorkflow();
-    $pick = collect($workflow['jobs']['restore-dry-run']['steps'])->firstWhere('id', 'pick');
-    $kind = $workflow['on']['workflow_dispatch']['inputs']['kind'];
+    $pick = collect(arrayOf(data_get($workflow, 'jobs.restore-dry-run.steps')))->firstWhere('id', 'pick');
+    $kind = data_get($workflow, 'on.workflow_dispatch.inputs.kind');
 
-    expect($workflow['on']['schedule'][0]['cron'])->toBe('7 21 * * 6')
-        ->and($kind['options'])->toBe(['nightly', 'pre-deploy'])
-        ->and($kind['default'])->toBe('nightly')
-        ->and($pick['env']['KIND'])->toBe("\${{ inputs.kind || 'nightly' }}")
+    expect(data_get($workflow, 'on.schedule.0.cron'))->toBe('7 21 * * 6')
+        ->and(data_get($kind, 'options'))->toBe(['nightly', 'pre-deploy'])
+        ->and(data_get($kind, 'default'))->toBe('nightly')
+        ->and(data_get($pick, 'env.KIND'))->toBe("\${{ inputs.kind || 'nightly' }}")
         ->and($workflow)->not->toHaveKey('concurrency')
-        ->and($workflow['jobs']['restore-dry-run']['concurrency'])->toBe(['group' => 'deploy-prod', 'cancel-in-progress' => false])
-        ->and($workflow['jobs']['restore-dry-run']['runs-on'])->toBe(['self-hosted', 'homelab']);
+        ->and(data_get($workflow, 'jobs.restore-dry-run.concurrency'))->toBe(['group' => 'deploy-prod', 'cancel-in-progress' => false])
+        ->and(data_get($workflow, 'jobs.restore-dry-run.runs-on'))->toBe(['self-hosted', 'homelab']);
 })->group('structure');
 
 it('alerts through the hosted maintainer-alert workflow when the dry-run fails', function (): void {
-    $notify = restoreDryRunWorkflow()['jobs']['notify'];
+    $notify = data_get(restoreDryRunWorkflow(), 'jobs.notify');
 
-    expect($notify['needs'])->toBe(['build', 'restore-dry-run'])
-        ->and($notify['if'])->toBe("always() && (needs.build.result == 'failure' || needs.restore-dry-run.result == 'failure')")
-        ->and($notify['with']['message'])->toContain("format(', ref {0}', inputs.ref)")
-        ->and($notify['uses'])->toBe('./.github/workflows/maintainer-alert.yml')
-        ->and(array_keys($notify['secrets']))->toBe(['TELEGRAM_BOT_TOKEN', 'TELEGRAM_MAINTAINER_CHAT_ID']);
+    expect(data_get($notify, 'needs'))->toBe(['build', 'restore-dry-run'])
+        ->and(data_get($notify, 'if'))->toBe("always() && (needs.build.result == 'failure' || needs.restore-dry-run.result == 'failure')")
+        ->and(data_get($notify, 'with.message'))->toContain("format(', ref {0}', inputs.ref)")
+        ->and(data_get($notify, 'uses'))->toBe('./.github/workflows/maintainer-alert.yml')
+        ->and(array_keys(arrayOf(data_get($notify, 'secrets'))))->toBe(['TELEGRAM_BOT_TOKEN', 'TELEGRAM_MAINTAINER_CHAT_ID']);
 })->group('structure');
 
 it('picks the newest nightly pair for kind=nightly', function (): void {
@@ -125,10 +133,10 @@ it('fails the pick when the analytics sibling is missing, a sha is given for nig
         ->and($noDump->getOutput())->toContain('no nightly-*.sql.gz found');
 })->group('structure');
 
-/** @return array<string, mixed> */
+/** @return array<mixed> */
 function restoreDryRunStep(string $job, string $key, string $value): array
 {
-    return collect(restoreDryRunWorkflow()['jobs'][$job]['steps'])->firstWhere($key, $value) ?? [];
+    return arrayOf(collect(arrayOf(data_get(restoreDryRunWorkflow(), "jobs.{$job}.steps")))->firstWhere($key, $value) ?? []);
 }
 
 /**
@@ -158,43 +166,46 @@ function runWithFakeDocker(string $script, string $fakeDocker, array $env): arra
 it('builds the ref image on a hosted runner only when a ref is given, as ci.yml builds it but without a cache write', function (): void {
     $workflow = restoreDryRunWorkflow();
     $ci = Yaml::parseFile(base_path('.github/workflows/ci.yml'));
-    $build = $workflow['jobs']['build'];
+    $build = data_get($workflow, 'jobs.build');
     $push = restoreDryRunStep('build', 'name', 'Build and push the rehearsal image');
-    $ciPush = collect($ci['jobs']['build']['steps'])->firstWhere('name', 'Build and push the runtime image');
-    $uses = collect($build['steps'])->pluck('uses')->filter()->values()->all();
-    $ciUses = collect($ci['jobs']['build']['steps'])->pluck('uses')->filter()->unique()->values()->all();
+    $pushWith = arrayOf(data_get($push, 'with'));
+    $ciSteps = collect(arrayOf(data_get($ci, 'jobs.build.steps')));
+    $ciPushWith = arrayOf(data_get($ciSteps->firstWhere('name', 'Build and push the runtime image'), 'with'));
+    $uses = collect(arrayOf(data_get($build, 'steps')))->pluck('uses')->filter()->values()->all();
+    $ciUses = $ciSteps->pluck('uses')->filter()->unique()->values()->all();
 
-    expect($workflow['on']['workflow_dispatch']['inputs']['ref'])->toMatchArray(['required' => false, 'default' => ''])
-        ->and($build['if'])->toBe("inputs.ref != ''")
-        ->and($build['runs-on'])->toBe('ubuntu-26.04')
-        ->and($build['permissions'])->toBe(['contents' => 'read', 'packages' => 'write'])
-        ->and($build['env']['APP_IMAGE'])->toBe($ci['env']['APP_IMAGE'])
-        ->and($build['steps'][0]['with']['ref'])->toBe('${{ inputs.ref }}')
-        ->and(array_diff($uses, $ciUses))->toBe([])
-        ->and($push['with'])->not->toHaveKey('cache-to')
-        ->and($push['with']['push'])->toBeTrue()
-        ->and(array_intersect_key($push['with'], array_flip(['context', 'file', 'platforms', 'labels', 'cache-from', 'provenance'])))
-        ->toBe(array_intersect_key($ciPush['with'], array_flip(['context', 'file', 'platforms', 'labels', 'cache-from', 'provenance'])));
+    expect(data_get($workflow, 'on.workflow_dispatch.inputs.ref'))->toMatchArray(['required' => false, 'default' => ''])
+        ->and(data_get($build, 'if'))->toBe("inputs.ref != ''")
+        ->and(data_get($build, 'runs-on'))->toBe('ubuntu-26.04')
+        ->and(data_get($build, 'permissions'))->toBe(['contents' => 'read', 'packages' => 'write'])
+        ->and(data_get($build, 'env.APP_IMAGE'))->toBe(data_get($ci, 'env.APP_IMAGE'))
+        ->and(data_get($build, 'steps.0.with.ref'))->toBe('${{ inputs.ref }}')
+        ->and(collect($uses)->diff($ciUses)->all())->toBe([])
+        ->and($pushWith)->not->toHaveKey('cache-to')
+        ->and(data_get($pushWith, 'push'))->toBeTrue()
+        ->and(array_intersect_key($pushWith, array_flip(['context', 'file', 'platforms', 'labels', 'cache-from', 'provenance'])))
+        ->toBe(array_intersect_key($ciPushWith, array_flip(['context', 'file', 'platforms', 'labels', 'cache-from', 'provenance'])));
 })->group('structure');
 
 it('tags the ref image by its resolved sha, never the moving ref name', function (): void {
     $workflow = restoreDryRunWorkflow();
-    $build = $workflow['jobs']['build'];
+    $build = data_get($workflow, 'jobs.build');
     $push = restoreDryRunStep('build', 'name', 'Build and push the rehearsal image');
 
     expect(restoreDryRunStep('build', 'id', 'resolve')['run'])->toBe('echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"')
-        ->and($build['outputs'])->toBe([
+        ->and(data_get($build, 'outputs'))->toBe([
             'sha' => '${{ steps.resolve.outputs.sha }}',
             'image' => '${{ env.APP_IMAGE }}:${{ steps.resolve.outputs.sha }}',
         ])
-        ->and($push['with']['tags'])->toBe('${{ env.APP_IMAGE }}:${{ steps.resolve.outputs.sha }}')
-        ->and($workflow['jobs']['restore-dry-run']['env']['REHEARSAL_IMAGE'])->toBe('${{ needs.build.outputs.image }}')
-        ->and($workflow['jobs']['restore-dry-run']['env']['REHEARSAL_SHA'])->toBe('${{ needs.build.outputs.sha }}');
+        ->and(data_get($push, 'with.tags'))->toBe('${{ env.APP_IMAGE }}:${{ steps.resolve.outputs.sha }}')
+        ->and(data_get($workflow, 'jobs.restore-dry-run.env.REHEARSAL_IMAGE'))->toBe('${{ needs.build.outputs.image }}')
+        ->and(data_get($workflow, 'jobs.restore-dry-run.env.REHEARSAL_SHA'))->toBe('${{ needs.build.outputs.sha }}');
 })->group('structure');
 
 it('reuses an image tag that already exists instead of re-pushing a tag deploy.yml pulls', function (): void {
-    $steps = collect(restoreDryRunWorkflow()['jobs']['build']['steps']);
+    $steps = collect(arrayOf(data_get(restoreDryRunWorkflow(), 'jobs.build.steps')));
     $check = restoreDryRunStep('build', 'id', 'existing');
+    $checkRun = restoreDryRunStepRun($check);
     $fake = <<<'SH'
         case "$FAKE_INSPECT" in
           exists) exit 0 ;;
@@ -206,14 +217,17 @@ it('reuses an image tag that already exists instead of re-pushing a tag deploy.y
 
     $results = [];
     foreach (['exists', 'missing', 'denied'] as $case) {
-        [$process, $bin] = runWithFakeDocker($check['run'], $fake, [...$env, 'FAKE_INSPECT' => $case]);
+        [$process, $bin] = runWithFakeDocker($checkRun, $fake, [...$env, 'FAKE_INSPECT' => $case]);
         $results[$case] = [$process, (string) file_get_contents("{$bin}/github-output")];
         File::deleteDirectory($bin);
     }
 
-    expect($check['run'])->toContain('docker buildx imagetools inspect "$image"')
-        ->and($steps->search(fn (array $step): bool => ($step['id'] ?? null) === 'existing'))
-        ->toBeLessThan($steps->search(fn (array $step): bool => ($step['name'] ?? null) === 'Build and push the rehearsal image'))
+    $existingAt = $steps->search(fn (mixed $step): bool => data_get($step, 'id') === 'existing');
+    $buildAt = $steps->search(fn (mixed $step): bool => data_get($step, 'name') === 'Build and push the rehearsal image');
+
+    expect($checkRun)->toContain('docker buildx imagetools inspect "$image"')
+        ->and(is_int($existingAt) ? $existingAt : throw new InvalidArgumentException('The existing-tag step is missing.'))
+        ->toBeLessThan(is_int($buildAt) ? $buildAt : throw new InvalidArgumentException('The rehearsal build step is missing.'))
         ->and(restoreDryRunStep('build', 'name', 'Build and push the rehearsal image')['if'])->toBe("steps.existing.outputs.exists == 'false'")
         ->and($results['exists'][0]->getExitCode())->toBe(0, $results['exists'][0]->getErrorOutput())
         ->and($results['exists'][1])->toBe("exists=true\n")
@@ -225,26 +239,26 @@ it('reuses an image tag that already exists instead of re-pushing a tag deploy.y
 })->group('structure');
 
 it('keeps every job but the build and notify on the homelab runner, under the deploy-prod lock', function (): void {
-    $jobs = restoreDryRunWorkflow()['jobs'];
-    $offHomelab = collect($jobs)->reject(fn (array $job): bool => ($job['runs-on'] ?? null) === ['self-hosted', 'homelab'])->keys()->all();
+    $jobs = arrayOf(data_get(restoreDryRunWorkflow(), 'jobs'));
+    $offHomelab = collect($jobs)->reject(fn (mixed $job): bool => data_get($job, 'runs-on') === ['self-hosted', 'homelab'])->keys()->all();
     $homelab = $jobs['restore-dry-run'];
 
     expect($offHomelab)->toBe(['build', 'notify'])
-        ->and($homelab['needs'])->toBe(['build'])
-        ->and($homelab['if'])->toBe("\${{ !cancelled() && (needs.build.result == 'success' || needs.build.result == 'skipped') }}")
-        ->and($homelab['permissions'])->toBe(['contents' => 'read', 'packages' => 'read'])
-        ->and($homelab['timeout-minutes'])->toBe(45)
+        ->and(data_get($homelab, 'needs'))->toBe(['build'])
+        ->and(data_get($homelab, 'if'))->toBe("\${{ !cancelled() && (needs.build.result == 'success' || needs.build.result == 'skipped') }}")
+        ->and(data_get($homelab, 'permissions'))->toBe(['contents' => 'read', 'packages' => 'read'])
+        ->and(data_get($homelab, 'timeout-minutes'))->toBe(45)
         ->and($jobs['build'])->not->toHaveKey('concurrency');
 })->group('structure');
 
 it('runs the ref image as a hardened overlay service with no outside env file, ports or route out', function (): void {
     $base = Yaml::parseFile(base_path('deploy/restore-dry-run-compose.yml'));
     $overlay = Yaml::parseFile(base_path('deploy/restore-dry-run-rehearsal-compose.yml'));
-    $app = $overlay['services']['app_rehearsal'];
+    $app = arrayOf(data_get($overlay, 'services.app_rehearsal'));
 
-    expect(array_keys($overlay['services']))->toBe(['app_rehearsal'])
+    expect(array_keys(arrayOf(data_get($overlay, 'services'))))->toBe(['app_rehearsal'])
         ->and($overlay)->not->toHaveKey('networks')
-        ->and($base['services'])->not->toHaveKey('app_rehearsal')
+        ->and(data_get($base, 'services'))->not->toHaveKey('app_rehearsal')
         ->and($app['image'])->toBe('${REHEARSAL_IMAGE:?}')
         ->and($app['pull_policy'])->toBe('never')
         ->and($app['env_file'])->toBe(['${REHEARSAL_ENV_FILE:?}'])
@@ -253,34 +267,37 @@ it('runs the ref image as a hardened overlay service with no outside env file, p
         ->and($app['cap_drop'])->toBe(['ALL'])
         ->and($app['security_opt'])->toBe(['no-new-privileges:true'])
         ->and($app['networks'])->toBe(['restore'])
-        ->and($base['services']['mysql_restore']['networks'])->toBe(['restore'])
-        ->and($base['networks'])->toBe(['restore' => ['internal' => true]]);
+        ->and(data_get($base, 'services.mysql_restore.networks'))->toBe(['restore'])
+        ->and(data_get($base, 'networks'))->toBe(['restore' => ['internal' => true]]);
 })->group('structure');
 
 it('loads the overlay only through the ref-gated rehearsal compose command', function (): void {
     $workflow = restoreDryRunWorkflow();
     $text = (string) File::get(base_path('.github/workflows/restore-dry-run.yml'));
-    $steps = $workflow['jobs']['restore-dry-run']['steps'];
+    $steps = arrayOf(data_get($workflow, 'jobs.restore-dry-run.steps'));
 
     expect(substr_count($text, 'restore-dry-run-rehearsal-compose.yml'))->toBe(1)
-        ->and($workflow['jobs']['restore-dry-run']['env']['REHEARSAL_COMPOSE'])
+        ->and(data_get($workflow, 'jobs.restore-dry-run.env.REHEARSAL_COMPOSE'))
         ->toBe('docker compose -p temari-restore -f deploy/restore-dry-run-compose.yml -f deploy/restore-dry-run-rehearsal-compose.yml');
 
     foreach ($steps as $step) {
-        if (! str_contains($step['run'] ?? '', '$REHEARSAL_COMPOSE')) {
+        $run = data_get($step, 'run', '');
+        if (! str_contains(is_string($run) ? $run : throw new InvalidArgumentException('A step run block is not a string.'), '$REHEARSAL_COMPOSE')) {
             continue;
         }
-        if ($step['name'] === 'Tear down the throwaway stack') {
-            expect($step['run'])->toMatch('/if \[ -n "\$REF" \]; then\s+\$REHEARSAL_COMPOSE down -v/');
+        $name = data_get($step, 'name');
+        if ($name === 'Tear down the throwaway stack') {
+            expect($run)->toMatch('/if \[ -n "\$REF" \]; then\s+\$REHEARSAL_COMPOSE down -v/');
 
             continue;
         }
-        expect($step['if'] ?? null)->toBe("inputs.ref != ''", $step['name']);
+        expect(data_get($step, 'if'))->toBe("inputs.ref != ''", is_string($name) ? $name : throw new InvalidArgumentException('A rehearsal compose step has no name.'));
     }
 })->group('structure');
 
 it('writes only allowlisted keys to a private env file, read from the throwaway mysql', function (): void {
     $step = restoreDryRunStep('restore-dry-run', 'name', 'Write the rehearsal env file');
+    $run = restoreDryRunStepRun($step);
     $fake = 'for last; do :; done; printenv "$last"';
     $base = [
         'RESTORE_PROJECT' => 'temari-restore',
@@ -300,7 +317,7 @@ it('writes only allowlisted keys to a private env file, read from the throwaway 
     $written = [];
     foreach (['fallback' => ['DB_ANALYTICS_DATABASE' => false], 'custom' => ['DB_ANALYTICS_DATABASE' => 'analytics_db']] as $case => $extra) {
         $file = sys_get_temp_dir().'/temari-rehearsal-'.uniqid();
-        [$process, $bin] = runWithFakeDocker($step['run'], $fake, [...$base, ...$extra, 'REHEARSAL_ENV_FILE' => $file]);
+        [$process, $bin] = runWithFakeDocker($run, $fake, [...$base, ...$extra, 'REHEARSAL_ENV_FILE' => $file]);
         expect($process->getExitCode())->toBe(0, $process->getErrorOutput());
         clearstatcache();
         $written[$case] = [(string) file_get_contents($file), fileperms($file) & 0777];
@@ -310,10 +327,10 @@ it('writes only allowlisted keys to a private env file, read from the throwaway 
 
     [$content, $mode] = $written['fallback'];
     $lines = explode("\n", trim($content));
-    $keys = array_map(fn (string $line): string => strstr($line, '=', true), $lines);
+    $keys = array_map(fn (string $line): string => strstr($line, '=', true) ?: throw new InvalidArgumentException('An env line has no key.'), $lines);
 
     expect($step['if'])->toBe("inputs.ref != ''")
-        ->and($step['env']['REHEARSAL_ENV_FILE'])->toBe('${{ runner.temp }}/rehearsal-app-env')
+        ->and(data_get($step, 'env.REHEARSAL_ENV_FILE'))->toBe('${{ runner.temp }}/rehearsal-app-env')
         ->and($keys)->toBe([
             'DB_HOST', 'DB_DATABASE', 'DB_USERNAME', 'DB_PASSWORD', 'DB_ANALYTICS_DATABASE', 'APP_KEY',
             'QUEUE_CONNECTION', 'CACHE_STORE', 'SESSION_DRIVER', 'MAIL_MAILER', 'BROADCAST_CONNECTION', 'PULSE_ENABLED',
@@ -330,19 +347,20 @@ it('writes only allowlisted keys to a private env file, read from the throwaway 
         ->toContain("BROADCAST_CONNECTION='null'")
         ->toContain("PULSE_ENABLED='false'")
         ->and($content)->toMatch("~^APP_KEY='base64:[A-Za-z0-9+/]{43}='$~m")
-        ->not->toContain('prod-key')
-        ->not->toContain('secret')
+        ->and($content)->not->toContain('prod-key')
+        ->and($content)->not->toContain('secret')
         ->and($mode)->toBe(0600)
         ->and($written['custom'][0])->toContain("DB_ANALYTICS_DATABASE='analytics_db'");
 })->group('structure');
 
 it('refuses a value the single-quoted env file cannot carry, without printing it', function (): void {
     $step = restoreDryRunStep('restore-dry-run', 'name', 'Write the rehearsal env file');
+    $run = restoreDryRunStepRun($step);
     $fake = 'for last; do :; done; printenv "$last"';
 
     foreach (["ab'cd-secret", 'secret-tail\\'] as $password) {
         $file = sys_get_temp_dir().'/temari-rehearsal-'.uniqid();
-        [$process, $bin] = runWithFakeDocker($step['run'], $fake, [
+        [$process, $bin] = runWithFakeDocker($run, $fake, [
             'RESTORE_PROJECT' => 'temari-restore',
             'RESTORE_COMPOSE_FILE' => 'deploy/restore-dry-run-compose.yml',
             'RESTORE_SERVICE' => 'mysql_restore',
@@ -361,9 +379,9 @@ it('refuses a value the single-quoted env file cannot carry, without printing it
 })->group('structure');
 
 it('migrates both sets on the ref image, then fails loudly naming any connection with pending migrations', function (): void {
-    $steps = restoreDryRunWorkflow()['jobs']['restore-dry-run']['steps'];
-    $names = array_map(fn (array $step): string => $step['name'] ?? $step['uses'] ?? '', $steps);
-    $order = array_map(fn (string $name): int|false => array_search($name, $names, true), [
+    $steps = arrayOf(data_get(restoreDryRunWorkflow(), 'jobs.restore-dry-run.steps'));
+    $names = array_map(fn (mixed $step): mixed => data_get($step, 'name') ?? data_get($step, 'uses') ?? '', $steps);
+    $order = array_map(fn (string $name): int|string|false => array_search($name, $names, true), [
         'Verify the restore',
         "Pull the ref's image",
         'Write the rehearsal env file',
@@ -372,41 +390,49 @@ it('migrates both sets on the ref image, then fails loudly naming any connection
         'Require no pending migrations on either connection',
         'Tear down the throwaway stack',
     ]);
-    $byName = collect($steps)->keyBy(fn (array $step): string => $step['name'] ?? $step['uses']);
-    $pending = $byName['Require no pending migrations on either connection'];
+    $byName = collect($steps)->keyBy(function (mixed $step): string {
+        $name = data_get($step, 'name') ?? data_get($step, 'uses');
+
+        return is_string($name) ? $name : throw new InvalidArgumentException('A step has neither a name nor a uses.');
+    });
+    $pendingRun = restoreDryRunStepRun($byName['Require no pending migrations on either connection']);
     $fake = 'case "$*" in *--database=analytics*) exit "$FAKE_ANALYTICS" ;; *) exit "$FAKE_DEFAULT" ;; esac';
     $env = ['REHEARSAL_COMPOSE' => 'docker compose -p temari-restore'];
 
-    [$clean, $bin0] = runWithFakeDocker($pending['run'], $fake, [...$env, 'FAKE_DEFAULT' => '0', 'FAKE_ANALYTICS' => '0']);
-    [$analytics, $bin] = runWithFakeDocker($pending['run'], $fake, [...$env, 'FAKE_DEFAULT' => '0', 'FAKE_ANALYTICS' => '1']);
-    [$default, $bin2] = runWithFakeDocker($pending['run'], $fake, [...$env, 'FAKE_DEFAULT' => '1', 'FAKE_ANALYTICS' => '0']);
+    [$clean, $bin0] = runWithFakeDocker($pendingRun, $fake, [...$env, 'FAKE_DEFAULT' => '0', 'FAKE_ANALYTICS' => '0']);
+    [$analytics, $bin] = runWithFakeDocker($pendingRun, $fake, [...$env, 'FAKE_DEFAULT' => '0', 'FAKE_ANALYTICS' => '1']);
+    [$default, $bin2] = runWithFakeDocker($pendingRun, $fake, [...$env, 'FAKE_DEFAULT' => '1', 'FAKE_ANALYTICS' => '0']);
     File::deleteDirectory($bin0);
     File::deleteDirectory($bin);
     File::deleteDirectory($bin2);
 
     expect($order)->toBe(array_values(array_filter($order, is_int(...))))
         ->and($order)->toEqual(collect($order)->sort()->values()->all())
-        ->and($byName["Migrate the restore on the ref's image"]['run'])->toBe('$REHEARSAL_COMPOSE run --rm --no-deps app_rehearsal php artisan migrate --force')
-        ->and($byName["Migrate the restore's analytics schema"]['run'])->toBe('$REHEARSAL_COMPOSE run --rm --no-deps app_rehearsal php artisan migrate --database=analytics --path=database/migrations/analytics --force')
-        ->and($byName["Pull the ref's image"]['run'])->toBe('docker pull "$REHEARSAL_IMAGE"')
+        ->and(data_get($byName["Migrate the restore on the ref's image"], 'run'))->toBe('$REHEARSAL_COMPOSE run --rm --no-deps app_rehearsal php artisan migrate --force')
+        ->and(data_get($byName["Migrate the restore's analytics schema"], 'run'))->toBe('$REHEARSAL_COMPOSE run --rm --no-deps app_rehearsal php artisan migrate --database=analytics --path=database/migrations/analytics --force')
+        ->and(data_get($byName["Pull the ref's image"], 'run'))->toBe('docker pull "$REHEARSAL_IMAGE"')
         ->and(collect([
             "Pull the ref's image" => 15,
             "Migrate the restore on the ref's image" => 10,
             "Migrate the restore's analytics schema" => 10,
             'Require no pending migrations on either connection' => 2,
-        ])->every(fn (int $minutes, string $name): bool => $byName[$name]['timeout-minutes'] === $minutes && $byName[$name]['if'] === "inputs.ref != ''"))->toBeTrue()
-        ->and($pending['run'])->toContain('migrate:status --pending=1')
+        ])->every(fn (int $minutes, string $name): bool => data_get($byName[$name], 'timeout-minutes') === $minutes && data_get($byName[$name], 'if') === "inputs.ref != ''"))->toBeTrue()
+        ->and($pendingRun)->toContain('migrate:status --pending=1')
         ->toContain('migrate:status --database=analytics --path=database/migrations/analytics --pending=1')
         ->and($clean->getExitCode())->toBe(0, $clean->getOutput())
         ->and($analytics->getExitCode())->toBe(1)
-        ->and($analytics->getOutput())->toContain('::error::analytics connection')->not->toContain('::error::default connection')
+        ->and($analytics->getOutput())->toContain('::error::analytics connection')
+        ->and($analytics->getOutput())->not->toContain('::error::default connection')
         ->and($default->getExitCode())->toBe(1)
-        ->and($default->getOutput())->toContain('::error::default connection')->not->toContain('::error::analytics connection');
+        ->and($default->getOutput())->toContain('::error::default connection')
+        ->and($default->getOutput())->not->toContain('::error::analytics connection');
 })->group('structure');
 
 it('tears down one-off containers before the stack, then removes the env file and a pulled image that is not latest or previous', function (): void {
     $teardown = restoreDryRunStep('restore-dry-run', 'name', 'Tear down the throwaway stack');
     $cleanup = restoreDryRunStep('restore-dry-run', 'name', 'Remove the rehearsal env file and image');
+    $cleanupRun = restoreDryRunStepRun($cleanup);
+    $teardownRun = restoreDryRunStepRun($teardown);
     $fake = <<<'SH'
         echo "$*" >> "$DOCKER_LOG"
         if [ "$1 $2" = "image inspect" ]; then
@@ -430,7 +456,7 @@ it('tears down one-off containers before the stack, then removes the env file an
     ] as $case => [$pulled, $latest, $previous]) {
         $envFile = sys_get_temp_dir().'/temari-rehearsal-'.uniqid();
         touch($envFile);
-        [$process, $bin] = runWithFakeDocker($cleanup['run'], $fake, [
+        [$process, $bin] = runWithFakeDocker($cleanupRun, $fake, [
             'REHEARSAL_IMAGE' => $image,
             'REHEARSAL_ENV_FILE' => $envFile,
             'FAKE_PULLED' => $pulled,
@@ -444,7 +470,7 @@ it('tears down one-off containers before the stack, then removes the env file an
     }
 
     $rmFails = 'echo "$*" >> "$DOCKER_LOG"; case "$1" in ps) echo one-off-id ;; rm) exit 1 ;; esac';
-    $teardownScript = "set -eo pipefail\n".preg_replace('/\$\{\{[^}]*\}\}/', 'failure', (string) $teardown['run']);
+    $teardownScript = "set -eo pipefail\n".preg_replace('/\$\{\{[^}]*\}\}/', 'failure', $teardownRun);
     [, $teardownBin] = runWithFakeDocker($teardownScript, $rmFails, [
         'RESTORE_PROJECT' => 'temari-restore',
         'RESTORE_COMPOSE_FILE' => 'deploy/restore-dry-run-compose.yml',
@@ -459,7 +485,7 @@ it('tears down one-off containers before the stack, then removes the env file an
 
     $summary = sys_get_temp_dir().'/temari-restore-summary-'.uniqid();
     $expressions = ['job.status' => 'failure', 'steps.verify.outcome' => 'success', 'steps.pick.outputs.label' => 'nightly-x.sql.gz'];
-    $rehearsalFailed = preg_replace_callback('/\$\{\{ ([^}]*) \}\}/', fn (array $m): string => $expressions[$m[1]], (string) $teardown['run']);
+    $rehearsalFailed = preg_replace_callback('/\$\{\{ ([^}]*) \}\}/', fn (array $m): string => $expressions[$m[1]], $teardownRun);
     [, $summaryBin] = runWithFakeDocker((string) $rehearsalFailed, '', [
         'RESTORE_PROJECT' => 'temari-restore',
         'RESTORE_COMPOSE_FILE' => 'deploy/restore-dry-run-compose.yml',
@@ -474,11 +500,14 @@ it('tears down one-off containers before the stack, then removes the env file an
 
     expect($written)->toContain('PASS — `nightly-x.sql.gz` restored clean')
         ->toContain('Rehearsal FAIL — `feature`')
-        ->not->toContain('see the Verify step above');
+        ->and($written)->not->toContain('see the Verify step above');
+
+    $oneOffAt = strpos($teardownRun, 'label=com.docker.compose.oneoff=True');
+    $downAt = strpos($teardownRun, 'down -v');
 
     expect($teardown['if'])->toBe('always()')
-        ->and(strpos((string) $teardown['run'], 'label=com.docker.compose.oneoff=True'))->toBeLessThan(strpos((string) $teardown['run'], 'down -v'))
-        ->and($teardown['run'])->toContain('label=com.docker.compose.project=$RESTORE_PROJECT')
+        ->and(is_int($oneOffAt) ? $oneOffAt : throw new InvalidArgumentException('The teardown never removes one-off containers.'))->toBeLessThan(is_int($downAt) ? $downAt : throw new InvalidArgumentException('The teardown never runs down -v.'))
+        ->and($teardownRun)->toContain('label=com.docker.compose.project=$RESTORE_PROJECT')
         ->toContain('xargs --no-run-if-empty docker rm -f')
         ->toContain('docker compose -p "$RESTORE_PROJECT" -f "$RESTORE_COMPOSE_FILE" down -v')
         ->toContain('$REF')

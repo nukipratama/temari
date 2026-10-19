@@ -25,6 +25,13 @@ function scheduledEvent(string $command): ?Event
     );
 }
 
+function requireEvent(?Event $event, string $message): Event
+{
+    expect($event)->not->toBeNull($message);
+
+    return nonNull($event);
+}
+
 /**
  * The Strava drains carry a bounded withoutOverlapping expiry so a stranded lock
  * self-releases instead of holding the default 24h. The bound tracks each command's
@@ -33,10 +40,9 @@ function scheduledEvent(string $command): ?Event
  * drain for the rest of the hour.
  */
 it('bounds the overlap expiry on the Strava drains', function (string $command, int $expiry): void {
-    $event = scheduledEvent($command);
+    $event = requireEvent(scheduledEvent($command), "scheduled command [{$command}] is not registered");
 
-    expect($event)->not->toBeNull("scheduled command [{$command}] is not registered")
-        ->and($event->withoutOverlapping)->toBeTrue("[{$command}] must use withoutOverlapping")
+    expect($event->withoutOverlapping)->toBeTrue("[{$command}] must use withoutOverlapping")
         ->and($event->expiresAt)->toBe($expiry, "[{$command}] overlap expiry must be bounded");
 })->with([
     'strava:ingest every 5 min' => ['strava:ingest', 10],
@@ -50,16 +56,15 @@ it('bounds the overlap expiry on the Strava drains', function (string $command, 
  * the same Analysis rows. Guards that the retention sweep stays scheduled.
  */
 it('schedules the failed_jobs retention prune', function (): void {
-    $event = scheduledEvent('queue:prune-failed');
+    $event = requireEvent(scheduledEvent('queue:prune-failed'), 'queue:prune-failed is not scheduled');
 
-    expect($event)->not->toBeNull('queue:prune-failed is not scheduled')
-        ->and($event->command)->toContain('--hours=168');
+    expect($event->command)->toContain('--hours=168');
 });
 
 it('preserves Telegram model namespaces in the scheduled prune commands', function (): void {
     $commands = collect(app(Schedule::class)->events())
         ->filter(fn (Event $event): bool => str_contains((string) $event->command, 'model:prune'))
-        ->pluck('command');
+        ->map(fn (Event $event): string => nonNull($event->command));
 
     expect($commands->filter(fn (string $command): bool => str_contains($command, TelegramUpdateReceipt::class)))->toHaveCount(1)
         ->and($commands->filter(fn (string $command): bool => str_contains($command, TelegramLinkTokenUse::class)))->toHaveCount(1);
@@ -76,12 +81,11 @@ it('schedules the analytics-connection retention prune', function (): void {
 });
 
 it('schedules daily retries for orphaned Strava grants', function (): void {
-    $event = collect(app(Schedule::class)->events())->first(
+    $event = requireEvent(collect(app(Schedule::class)->events())->first(
         fn (Event $event): bool => $event->getSummaryForDisplay() === RetryOrphanedStravaGrantReleasesJob::class,
-    );
+    ), 'orphaned Strava grant retries are not scheduled');
 
-    expect($event)->not->toBeNull('orphaned Strava grant retries are not scheduled')
-        ->and($event->expression)->toBe('40 2 * * *')
+    expect($event->expression)->toBe('40 2 * * *')
         ->and($event->withoutOverlapping)->toBeTrue()
         ->and($event->onOneServer)->toBeTrue();
 });
@@ -93,10 +97,9 @@ it('schedules daily retries for orphaned Strava grants', function (): void {
  * lives on the evictable cache store). Drop either and the healthcheck flaps.
  */
 it('schedules the liveness heartbeat every minute without an overlap lock', function (): void {
-    $event = scheduledEvent('schedule:heartbeat');
+    $event = requireEvent(scheduledEvent('schedule:heartbeat'), 'schedule:heartbeat must be scheduled');
 
-    expect($event)->not->toBeNull('schedule:heartbeat must be scheduled')
-        ->and($event->expression)->toBe('* * * * *', 'schedule:heartbeat must run every minute')
+    expect($event->expression)->toBe('* * * * *', 'schedule:heartbeat must run every minute')
         ->and($event->withoutOverlapping)->toBeFalse('schedule:heartbeat must not take the cache-backed scheduler mutex')
         ->and(ScheduleHeartbeatCommand::STALE_AFTER_SECONDS)->toBeGreaterThan(60, 'the staleness window needs headroom over the one-minute cadence');
 });
@@ -107,10 +110,9 @@ it('schedules the liveness heartbeat every minute without an overlap lock', func
  * actually scheduled (daily) with a bounded overlap lock.
  */
 it('schedules the weather:backfill self-repair sweep with a bounded overlap', function (): void {
-    $event = scheduledEvent('weather:backfill');
+    $event = requireEvent(scheduledEvent('weather:backfill'), 'weather:backfill must be scheduled');
 
-    expect($event)->not->toBeNull('weather:backfill must be scheduled')
-        ->and($event->withoutOverlapping)->toBeTrue('weather:backfill must use withoutOverlapping')
+    expect($event->withoutOverlapping)->toBeTrue('weather:backfill must use withoutOverlapping')
         ->and($event->expiresAt)->toBe(55, 'weather:backfill overlap expiry must be bounded');
 });
 
@@ -121,10 +123,9 @@ it('schedules the weather:backfill self-repair sweep with a bounded overlap', fu
  * it was clear how much of the shared Strava pool actually sits idle, so pin them.
  */
 it('runs the Strava drain and fallback poll on the cadences they were sized for', function (string $command, string $expression): void {
-    $event = scheduledEvent($command);
+    $event = requireEvent(scheduledEvent($command), "scheduled command [{$command}] is not registered");
 
-    expect($event)->not->toBeNull("scheduled command [{$command}] is not registered")
-        ->and($event->expression)->toBe($expression);
+    expect($event->expression)->toBe($expression);
 })->with([
     // Matches the read bucket's own decay window, so recovered headroom is never
     // left idle for most of an hour.
@@ -139,10 +140,9 @@ it('runs the Strava drain and fallback poll on the cadences they were sized for'
  * cadence so a future re-tier is a deliberate, visible change.
  */
 it('runs the 7d trend read daily', function (): void {
-    $sevenDay = scheduledEvent('ai:trend-read 7d');
+    $sevenDay = requireEvent(scheduledEvent('ai:trend-read 7d'), 'ai:trend-read 7d is not scheduled');
 
-    expect($sevenDay)->not->toBeNull('ai:trend-read 7d is not scheduled')
-        ->and($sevenDay->expression)->toBe('0 6 * * *');
+    expect($sevenDay->expression)->toBe('0 6 * * *');
 });
 
 it('no longer schedules the retired 30d/90d/12mo trend reads', function (string $command): void {

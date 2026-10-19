@@ -4,22 +4,31 @@ declare(strict_types=1);
 
 use Symfony\Component\Yaml\Yaml;
 
+/** @return array<mixed> */
 function deploySteps(): array
 {
-    return Yaml::parseFile(base_path('.github/workflows/deploy.yml'))['jobs']['deploy']['steps'];
+    return arrayOf(data_get(Yaml::parseFile(base_path('.github/workflows/deploy.yml')), 'jobs.deploy.steps'));
 }
 
+/** @return array<mixed> */
 function deployStep(string $name): array
 {
     foreach (deploySteps() as $step) {
-        if (($step['name'] ?? null) === $name) {
-            return $step;
+        if (data_get($step, 'name') === $name) {
+            return arrayOf($step);
         }
     }
 
     expect(false)->toBeTrue("Missing deploy step: {$name}");
 
     return [];
+}
+
+function deployStepIndex(string $name): int
+{
+    $index = array_search($name, array_column(deploySteps(), 'name'), true);
+
+    return is_int($index) ? $index : throw new InvalidArgumentException("Missing deploy step: {$name}");
 }
 
 it('uses maintenance only for pending migrations and preserves owner maintenance', function (): void {
@@ -38,16 +47,14 @@ it('uses maintenance only for pending migrations and preserves owner maintenance
 });
 
 it('enters maintenance before migrating and lifts it only after health and smoke checks', function (): void {
-    $names = array_column(deploySteps(), 'name');
-
-    expect(array_search('Enter maintenance for pending migrations', $names, true))
-        ->toBeLessThan(array_search('Migrate (one-shot, on the new image)', $names, true))
-        ->and(array_search('Healthcheck', $names, true))
-        ->toBeLessThan(array_search('Leave deploy-owned maintenance', $names, true))
-        ->and(array_search('Smoke test', $names, true))
-        ->toBeLessThan(array_search('Leave deploy-owned maintenance', $names, true))
-        ->and(array_search('Roll Pulse daemon (deploy green)', $names, true))
-        ->toBeLessThan(array_search('Leave deploy-owned maintenance', $names, true));
+    expect(deployStepIndex('Enter maintenance for pending migrations'))
+        ->toBeLessThan(deployStepIndex('Migrate (one-shot, on the new image)'))
+        ->and(deployStepIndex('Healthcheck'))
+        ->toBeLessThan(deployStepIndex('Leave deploy-owned maintenance'))
+        ->and(deployStepIndex('Smoke test'))
+        ->toBeLessThan(deployStepIndex('Leave deploy-owned maintenance'))
+        ->and(deployStepIndex('Roll Pulse daemon (deploy green)'))
+        ->toBeLessThan(deployStepIndex('Leave deploy-owned maintenance'));
 });
 
 it('keeps deploy-owned maintenance active when the migration path fails', function (): void {
@@ -55,7 +62,7 @@ it('keeps deploy-owned maintenance active when the migration path fails', functi
 
     expect($rollback)->toContain('MIGRATIONS_APPLIED')
         ->toContain('leaving maintenance active')
-        ->not->toContain('php artisan up');
+        ->and($rollback)->not->toContain('php artisan up');
 });
 
 it('uses shallow readiness for app lifecycle checks while retaining deep health separately', function (): void {
@@ -69,8 +76,6 @@ it('uses shallow readiness for app lifecycle checks while retaining deep health 
 });
 
 it('gives the quiesced scheduler a grace period longer than its slowest scheduled run', function (): void {
-    $scheduler = Yaml::parseFile(base_path('compose.prod.yaml'))['services']['scheduler'];
-
-    expect($scheduler['stop_grace_period'] ?? null)->toBe('120s')
+    expect(data_get(Yaml::parseFile(base_path('compose.prod.yaml')), 'services.scheduler.stop_grace_period'))->toBe('120s')
         ->and(deployStep('Quiesce scheduler + horizon before the roll')['run'])->not->toMatch('/\s-t\s|--timeout/');
 });

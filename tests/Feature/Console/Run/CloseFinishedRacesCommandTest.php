@@ -28,7 +28,7 @@ it('retires a race whose day has passed', function (): void {
 
     $this->artisan('plan:close-finished-races')->assertSuccessful();
 
-    expect($race->fresh()->completed_at)->not->toBeNull();
+    expect($race->refresh()->completed_at)->not->toBeNull();
     Carbon::setTestNow();
 });
 
@@ -41,8 +41,8 @@ it('leaves today\'s race and future races alone', function (): void {
 
     $this->artisan('plan:close-finished-races')->assertSuccessful();
 
-    expect($today->fresh()->completed_at)->toBeNull()
-        ->and($ahead->fresh()->completed_at)->toBeNull();
+    expect($today->refresh()->completed_at)->toBeNull()
+        ->and($ahead->refresh()->completed_at)->toBeNull();
     Carbon::setTestNow();
 });
 
@@ -50,11 +50,11 @@ it('never reopens or re-stamps a race already closed', function (): void {
     Carbon::setTestNow('2026-09-08 10:00:00');
     $race = raceOn(User::factory()->create(), Carbon::today()->subDays(30)->toDateString());
     $race->update(['completed_at' => Carbon::today()->subDays(29)]);
-    $stamped = $race->fresh()->completed_at;
+    $stamped = nonNull($race->refresh()->completed_at);
 
     $this->artisan('plan:close-finished-races')->assertSuccessful();
 
-    expect($race->fresh()->completed_at->equalTo($stamped))->toBeTrue();
+    expect(nonNull($race->refresh()->completed_at)->equalTo($stamped))->toBeTrue();
     Carbon::setTestNow();
 });
 
@@ -83,9 +83,9 @@ it('ends dated preparation without proving participation: the outcome stays pend
 
     $this->artisan('plan:close-finished-races')->assertSuccessful();
 
-    expect($race->fresh()->completed_at)->not->toBeNull()
-        ->and($race->fresh()->outcome)->toBe(RaceOutcome::Pending)
-        ->and($race->fresh()->finish_time_sec)->toBeNull()
-        ->and($legacy->fresh()->outcome)->toBeNull();
+    expect($race->refresh()->completed_at)->not->toBeNull()
+        ->and($race->refresh()->outcome)->toBe(RaceOutcome::Pending)
+        ->and($race->refresh()->finish_time_sec)->toBeNull()
+        ->and($legacy->refresh()->outcome)->toBeNull();
     Carbon::setTestNow();
 });

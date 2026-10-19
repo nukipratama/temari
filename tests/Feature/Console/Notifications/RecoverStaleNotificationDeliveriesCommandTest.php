@@ -42,11 +42,11 @@ it('recovers stale delivery claims for both outbound channels', function (): voi
         ->expectsOutput('Recovered stale deliveries: 1 web push retries queued, 1 Telegram abandoned.')
         ->assertExitCode(0);
 
-    expect($telegram->fresh()->status)->toBe(NotificationDeliveryStatus::Abandoned)
-        ->and($telegram->fresh()->claim_version)->toBe(2)
-        ->and($webpush->fresh()->status)->toBe(NotificationDeliveryStatus::Pending)
-        ->and($webpush->fresh()->claim_version)->toBe(1)
-        ->and($webpush->fresh()->claimed_at)->not->toBeNull();
+    expect($telegram->refresh()->status)->toBe(NotificationDeliveryStatus::Abandoned)
+        ->and($telegram->refresh()->claim_version)->toBe(2)
+        ->and($webpush->refresh()->status)->toBe(NotificationDeliveryStatus::Pending)
+        ->and($webpush->refresh()->claim_version)->toBe(1)
+        ->and($webpush->refresh()->claimed_at)->not->toBeNull();
 
     Queue::assertPushed(RetryStaleWebPushNotificationJob::class, fn (RetryStaleWebPushNotificationJob $job): bool =>
         $job->analysisId === $webpush->analysis_id && $job->claimVersion === 1);
@@ -77,7 +77,7 @@ it('queues and runs a web-push retry after the stale cutoff', function (): void 
         ->expectsOutput('Recovered stale deliveries: 1 web push retries queued, 0 Telegram abandoned.')
         ->assertExitCode(0);
 
-    $job = Queue::pushed(RetryStaleWebPushNotificationJob::class)->first();
+    $job = nonNull(pushedJobs(RetryStaleWebPushNotificationJob::class)->first());
     expect($job)->toBeInstanceOf(RetryStaleWebPushNotificationJob::class)
         ->and($job->analysisId)->toBe($analysis->id)
         ->and($job->claimVersion)->toBe(1);

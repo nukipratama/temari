@@ -28,13 +28,14 @@ function deployYamlText(): string
 function findDeployStepRun(string $stepName): string
 {
     $doc = Yaml::parseFile(base_path(DEPLOY_WORKFLOW_PATH));
-    $steps = $doc['jobs']['deploy']['steps'];
+    $steps = arrayOf(data_get($doc, 'jobs.deploy.steps'));
 
     foreach ($steps as $step) {
-        if (($step['name'] ?? null) === $stepName) {
-            expect($step['run'] ?? null)->not->toBeNull("Step '{$stepName}' has no run block.");
+        if (data_get($step, 'name') === $stepName) {
+            $run = data_get($step, 'run');
+            expect($run)->not->toBeNull("Step '{$stepName}' has no run block.");
 
-            return $step['run'];
+            return is_string($run) ? $run : throw new InvalidArgumentException("Step '{$stepName}' run block is not a string.");
         }
     }
 
@@ -92,11 +93,10 @@ it('skips re-tagging :previous when the incoming image already is :latest', func
 it('nightly-backup.yml matches the issue: cron 40 16 * * *, workflow_dispatch, self-hosted homelab, 14-day retention', function (): void {
     $doc = Yaml::parseFile(base_path(NIGHTLY_BACKUP_WORKFLOW_PATH));
 
-    expect($doc['on']['schedule'][0]['cron'])->toBe('40 16 * * *');
-    expect($doc['on'])->toHaveKey('workflow_dispatch');
+    expect(data_get($doc, 'on.schedule.0.cron'))->toBe('40 16 * * *');
+    expect(data_get($doc, 'on'))->toHaveKey('workflow_dispatch');
 
-    $job = $doc['jobs']['nightly-backup'];
-    expect($job['runs-on'])->toBe(['self-hosted', 'homelab']);
+    expect(data_get($doc, 'jobs.nightly-backup.runs-on'))->toBe(['self-hosted', 'homelab']);
 
     $yaml = File::get(base_path(NIGHTLY_BACKUP_WORKFLOW_PATH));
     expect(substr_count($yaml, 'verify-and-prune-backup.sh "Nightly'))->toBe(2);
@@ -106,20 +106,20 @@ it('nightly-backup.yml matches the issue: cron 40 16 * * *, workflow_dispatch, s
 
 it('nightly-backup.yml runs disk cleanup only after the backup steps, with continue-on-error so cleanup can never fail the backup', function (): void {
     $doc = Yaml::parseFile(base_path(NIGHTLY_BACKUP_WORKFLOW_PATH));
-    $steps = $doc['jobs']['nightly-backup']['steps'];
+    $steps = arrayOf(data_get($doc, 'jobs.nightly-backup.steps'));
 
-    $names = array_map(fn (array $s): string => $s['name'] ?? '', $steps);
+    $names = array_map(fn (mixed $step): mixed => data_get($step, 'name', ''), $steps);
     $backupIndex = array_search('Backup analytics schema', $names, true);
     $cleanupIndex = array_search('Reclaim disk — old sha-tagged images', $names, true);
 
     expect($backupIndex)->not->toBeFalse();
     expect($cleanupIndex)->not->toBeFalse();
-    expect($cleanupIndex)->toBeGreaterThan($backupIndex);
+    expect($cleanupIndex)->toBeGreaterThan(is_int($backupIndex) ? $backupIndex : throw new InvalidArgumentException('Backup analytics step index is not an int.'));
 
     foreach (['Reclaim disk — build cache', 'Reclaim disk — old sha-tagged images'] as $cleanupStepName) {
         foreach ($steps as $step) {
-            if (($step['name'] ?? null) === $cleanupStepName) {
-                expect($step['continue-on-error'] ?? false)->toBeTrue(
+            if (data_get($step, 'name') === $cleanupStepName) {
+                expect(data_get($step, 'continue-on-error', false))->toBeTrue(
                     "Cleanup step '{$cleanupStepName}' must set continue-on-error so it can never fail the backup job."
                 );
             }
@@ -240,8 +240,8 @@ it('select-images-to-prune.sh never selects :latest, :previous, or a non-sha tag
 
     foreach ($removed as $line) {
         expect($line)->not->toContain(':latest')
-            ->not->toContain(':previous')
-            ->not->toContain(':buildcache');
+            ->and($line)->not->toContain(':previous')
+            ->and($line)->not->toContain(':buildcache');
     }
 
     for ($i = 1; $i <= 5; $i++) {
@@ -272,5 +272,5 @@ it('select-images-to-prune.sh never selects an image IN_USE names, by id or by r
     $output = trim($process->getOutput());
 
     expect($output)->not->toContain('sha256:img1')
-        ->not->toContain('sha256:img2');
+        ->and($output)->not->toContain('sha256:img2');
 });

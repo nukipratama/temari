@@ -96,15 +96,13 @@ it('gives a block that failed during a pause one fresh attempt when generation r
     $this->artisan('ai:self-heal')->assertSuccessful();
 
     Bus::assertDispatchedTimes(AnalyzeWeeklyRecapJob::class, 1);
-    expect($during->fresh())
-        ->status->toBe(AnalysisStatus::Queued)
-        ->attempts->toBe(Analysis::MAX_SELF_HEAL_ATTEMPTS - 1)
-        ->and($longBefore->fresh())
-        ->status->toBe(AnalysisStatus::Failed)
-        ->attempts->toBe(Analysis::MAX_SELF_HEAL_ATTEMPTS);
+    expect($during->refresh()->status)->toBe(AnalysisStatus::Queued)
+        ->and($during->attempts)->toBe(Analysis::MAX_SELF_HEAL_ATTEMPTS - 1)
+        ->and($longBefore->refresh()->status)->toBe(AnalysisStatus::Failed)
+        ->and($longBefore->attempts)->toBe(Analysis::MAX_SELF_HEAL_ATTEMPTS);
 
     $service = app(AnalysisService::class);
-    $row = $during->fresh();
+    $row = $during->refresh();
     $service->markProcessing($row);
     $service->markFailed($row, 'still broken');
 
