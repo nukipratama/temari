@@ -14,6 +14,7 @@ use Illuminate\Notifications\DatabaseNotification;
 use Illuminate\Support\Facades\Http;
 use Laravel\Pulse\Entry;
 use Laravel\Pulse\Facades\Pulse;
+use Mockery\MockInterface;
 
 uses(RefreshDatabase::class);
 
@@ -28,34 +29,47 @@ beforeEach(function (): void {
     $pulseEntry->shouldReceive('count')->andReturnSelf();
     $pulseEntry->shouldReceive('sum')->andReturnSelf();
     Pulse::shouldReceive('record')->andReturn($pulseEntry)->zeroOrMoreTimes();
-
-    $this->demo = User::factory()->demo()->create();
-    $this->connection = StravaConnection::factory()->for($this->demo)->create(['strava_athlete_id' => 42]);
 });
+
+/** @return array{demo: User, connection: StravaConnection} */
+function demoStravaConnection(): array
+{
+    $demo = User::factory()->demo()->create();
+
+    return [
+        'demo' => $demo,
+        'connection' => StravaConnection::factory()->for($demo)->create(['strava_athlete_id' => 42]),
+    ];
+}
 
 function expectDemoConnectionUntouched(StravaConnection $connection): void
 {
-    expect($connection->fresh()->revoked_at)->toBeNull()
+    expect($connection->refresh()->revoked_at)->toBeNull()
         ->and(DatabaseNotification::query()->count())->toBe(0)
         ->and(StravaGrantEvent::query()->count())->toBe(0);
-    Pulse::shouldNotHaveReceived('record', ['strava_revoked', Mockery::any()]);
+    /** @var MockInterface $pulseMock */
+    $pulseMock = Pulse::getFacadeRoot();
+    $pulseMock->shouldNotHaveReceived('record', ['strava_revoked', Mockery::any()]);
     Http::assertNothingSent();
 }
 
 it('refuses a demo Sync now without touching the connection', function (): void {
-    $this->actingAs($this->demo)->post(route('strava.sync'))->assertForbidden();
+    ['demo' => $demo, 'connection' => $connection] = demoStravaConnection();
+    $this->actingAs($demo)->post(route('strava.sync'))->assertForbidden();
 
-    expectDemoConnectionUntouched($this->connection);
+    expectDemoConnectionUntouched($connection);
 });
 
 it('refuses a demo zones resync without touching the connection', function (): void {
-    $this->actingAs($this->demo)->post(route('settings.zones.resync'))->assertForbidden();
+    ['demo' => $demo, 'connection' => $connection] = demoStravaConnection();
+    $this->actingAs($demo)->post(route('settings.zones.resync'))->assertForbidden();
 
-    expectDemoConnectionUntouched($this->connection);
+    expectDemoConnectionUntouched($connection);
 });
 
 it('acks a webhook delivery for the demo athlete without touching the connection', function (string $aspect): void {
-    Activity::factory()->for($this->demo)->create(['strava_external_id' => 9_001]);
+    ['demo' => $demo, 'connection' => $connection] = demoStravaConnection();
+    Activity::factory()->for($demo)->create(['strava_external_id' => 9_001]);
 
     $this->postJson(route('strava.webhook.handle', ['token' => 'fake-callback-token']), [
         'subscription_id' => 424242,
@@ -65,17 +79,18 @@ it('acks a webhook delivery for the demo athlete without touching the connection
         'owner_id' => 42,
     ])->assertOk();
 
-    expectDemoConnectionUntouched($this->connection);
+    expectDemoConnectionUntouched($connection);
 })->with(['create', 'update']);
 
 it('skips every sync and ingest path for the demo user', function (): void {
-    $stub = Activity::factory()->stub()->for($this->demo)->create(['strava_external_id' => 9_002]);
+    ['demo' => $demo, 'connection' => $connection] = demoStravaConnection();
+    $stub = Activity::factory()->stub()->for($demo)->create(['strava_external_id' => 9_002]);
 
-    SyncActivitiesJob::dispatchSync($this->demo->id);
-    SyncActivitiesJob::dispatchSync($this->demo->id, 9_003);
+    SyncActivitiesJob::dispatchSync($demo->id);
+    SyncActivitiesJob::dispatchSync($demo->id, 9_003);
     ResyncActivityJob::dispatchSync($stub->id);
-    app(ActivityPipeline::class)->ingest($stub->fresh());
+    app(ActivityPipeline::class)->ingest($stub->refresh());
 
-    expectDemoConnectionUntouched($this->connection);
-    expect(Activity::withStubs()->where('user_id', $this->demo->id)->count())->toBe(1);
+    expectDemoConnectionUntouched($connection);
+    expect(Activity::withStubs()->where('user_id', $demo->id)->count())->toBe(1);
 });

@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Route;
 use Laravel\Pulse\Entry;
 use Laravel\Pulse\Facades\Pulse;
+use Mockery\MockInterface;
 
 uses(RefreshDatabase::class);
 
@@ -34,10 +35,9 @@ function stravaWebhookUrl(string $token = 'fake-callback-token'): string
 }
 
 it('rate-limits the public webhook POST route', function (): void {
-    $route = Route::getRoutes()->getByName('strava.webhook.handle');
+    $route = nonNull(Route::getRoutes()->getByName('strava.webhook.handle'));
 
-    expect($route)->not->toBeNull()
-        ->and($route->gatherMiddleware())->toContain('throttle:60,1');
+    expect($route->gatherMiddleware())->toContain('throttle:60,1');
 });
 
 it('echoes the challenge back when the verify token matches', function (): void {
@@ -283,7 +283,7 @@ it('queues a verification job on athlete deauthorization instead of revoking on 
     ])->assertOk();
 
     // The forgeable body must NOT revoke synchronously; a verification job does.
-    expect($connection->fresh()->isRevoked())->toBeFalse();
+    expect(nonNull($connection->fresh())->isRevoked())->toBeFalse();
     Bus::assertDispatched(fn (VerifyStravaRevocationJob $job): bool => $job->connectionId === $connection->id
         && $job->source === 'webhook_deauth'
         && $job->credentialVersion === $connection->credential_version);
@@ -303,7 +303,7 @@ it('revokes the connection when the verified deauthorization is genuine (Strava 
         'updates' => ['authorized' => 'false'],
     ])->assertOk();
 
-    expect($connection->fresh()->isRevoked())->toBeTrue();
+    expect($connection->refresh()->isRevoked())->toBeTrue();
 });
 
 it('does NOT revoke on a forged deauthorization when the grant is still live', function (): void {
@@ -320,7 +320,7 @@ it('does NOT revoke on a forged deauthorization when the grant is still live', f
         'updates' => ['authorized' => 'false'],
     ])->assertOk();
 
-    expect($connection->fresh()->isRevoked())->toBeFalse();
+    expect($connection->refresh()->isRevoked())->toBeFalse();
 });
 
 it('ignores an athlete update that is not a deauthorization', function (): void {
@@ -336,7 +336,7 @@ it('ignores an athlete update that is not a deauthorization', function (): void 
         'updates' => ['authorized' => 'true'],
     ])->assertOk();
 
-    expect($connection->fresh()->isRevoked())->toBeFalse();
+    expect($connection->refresh()->isRevoked())->toBeFalse();
 });
 
 function stubPulseEntry(): void
@@ -374,5 +374,7 @@ it('records the webhook heartbeat in Pulse under the keyed aspect', function ():
 
     postWebhookAspect('subscribe');
 
-    Pulse::shouldHaveReceived('record')->with('strava_webhook', 'unknown')->once();
+    /** @var MockInterface $pulseMock */
+    $pulseMock = Pulse::getFacadeRoot();
+    $pulseMock->shouldHaveReceived('record')->with('strava_webhook', 'unknown')->once();
 });

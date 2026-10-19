@@ -15,6 +15,7 @@ use App\Models\WeeklySnapshot;
 use App\Services\Run\Plan\CurrentWeekPlanBuilder;
 use App\Services\Run\Plan\Periodizer;
 use App\Services\Run\Plan\TrainingBaseline;
+use App\Support\Numeric;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 
@@ -117,7 +118,7 @@ function trainedArc(User $user, int $weeks, array $missedWeekIndexes = []): arra
         $trained[] = [
             'phase' => $mondaySession->phase,
             'multiplier' => round((float) $mondaySession->volume_multiplier, 3),
-            'planned_km' => $currentWeek->forUser($user, $monday->copy())['planned_km_this_week'],
+            'planned_km' => nonNull($currentWeek->forUser($user, $monday->copy()))['planned_km_this_week'],
             'anchor_km' => round($baseline->forUser($user, $monday->copy())['weekly_volume_km'], 2),
         ];
 
@@ -168,7 +169,7 @@ it('re-anchors the arc only once the athlete\'s own volume has collapsed away fr
     $periodizer->regenerate($user, Carbon::parse(ARC_START));
 
     $anchor = Season::query()->where('user_id', $user->id)->value('anchor_weekly_volume_km');
-    expect(round((float) $anchor, 2))->toBe(26.05);
+    expect(round(Numeric::float(nonNull($anchor)), 2))->toBe(26.05);
 
     // Four weeks of nothing run at all: a trimmed six-week mean this far
     // below the anchor is a layoff, not a down week.
@@ -179,7 +180,7 @@ it('re-anchors the arc only once the athlete\'s own volume has collapsed away fr
     Carbon::setTestNow($laterMonday->copy()->setTime(8, 0));
     $periodizer->regenerate($user, $laterMonday->copy());
 
-    expect((float) Season::query()->where('user_id', $user->id)->value('anchor_weekly_volume_km'))
+    expect(Numeric::float(nonNull(Season::query()->where('user_id', $user->id)->value('anchor_weekly_volume_km'))))
         ->toBeLessThan(26.05 * 0.75);
 });
 
@@ -195,6 +196,6 @@ it('never re-anchors upward, so the ramp cannot compound on its own output', fun
     Carbon::setTestNow($laterMonday->copy()->setTime(8, 0));
     $periodizer->regenerate($user, $laterMonday->copy());
 
-    expect(round((float) Season::query()->where('user_id', $user->id)->value('anchor_weekly_volume_km'), 2))
+    expect(round(Numeric::float(nonNull(Season::query()->where('user_id', $user->id)->value('anchor_weekly_volume_km'))), 2))
         ->toBe(26.05);
 });
