@@ -205,7 +205,7 @@ it('volumeMultipliers caps the compounding build ramp at 1.4', function (): void
         array_map(fn (array $w): PlanPhase => $w['phase'], $arc),
     );
 
-    expect(collect($multipliers)->max())->toBeLessThanOrEqual(1.4);
+    expect(nonNull(collect($multipliers)->max()))->toBeLessThanOrEqual(1.4);
 });
 
 it('volumeMultipliers leaves a 12-week block untouched by the ramp cap', function (): void {
