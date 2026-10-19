@@ -193,7 +193,7 @@ it('builds an Interval day as a warmup then alternating reps and recoveries, wit
     expect($intervalCount)->toBe(4)
         ->and($recoveryCount)->toBe(3) // one fewer recovery than reps — the day ends on work
         ->and($body[0]->key)->toBe(SegmentKey::Interval)
-        ->and(end($body)->key)->toBe(SegmentKey::Interval)
+        ->and(nonNull(collect($body)->last())->key)->toBe(SegmentKey::Interval)
         ->and($body[0]->minutes)->toBe(3.0)
         ->and($body[0]->paceLabel)->toBe(PaceBand::Interval)
         ->and($body[0]->zone)->toBe('Z5');
@@ -203,8 +203,8 @@ it('gives Interval days a longer rep and same recovery in Peak than in Build', f
     $build = SegmentGenerator::generate(SessionType::Interval, PlanPhase::Build, null, false, 16.0, 1.0, INF, PACES);
     $peak = SegmentGenerator::generate(SessionType::Interval, PlanPhase::Peak, null, false, 16.0, 1.0, INF, PACES);
 
-    $buildRep = array_first(array_filter($build, fn ($s) => $s->key === SegmentKey::Interval));
-    $peakRep = array_first(array_filter($peak, fn ($s) => $s->key === SegmentKey::Interval));
+    $buildRep = nonNull(array_first(array_filter($build, fn ($s) => $s->key === SegmentKey::Interval)));
+    $peakRep = nonNull(array_first(array_filter($peak, fn ($s) => $s->key === SegmentKey::Interval)));
 
     expect($buildRep->minutes)->toBe(3.0)
         ->and($peakRep->minutes)->toBe(4.0);
@@ -213,8 +213,8 @@ it('gives Interval days a longer rep and same recovery in Peak than in Build', f
 it('gives Interval days shorter reps and longer recovery in Taper, sharpening rather than grinding', function (): void {
     $segments = SegmentGenerator::generate(SessionType::Interval, PlanPhase::Taper, null, false, 16.0, 1.0, INF, PACES);
 
-    $rep = array_first(array_filter($segments, fn ($s) => $s->key === SegmentKey::Interval));
-    $recovery = array_first(array_filter($segments, fn ($s) => $s->key === SegmentKey::Recovery));
+    $rep = nonNull(array_first(array_filter($segments, fn ($s) => $s->key === SegmentKey::Interval)));
+    $recovery = nonNull(array_first(array_filter($segments, fn ($s) => $s->key === SegmentKey::Recovery)));
 
     expect($rep->minutes)->toBe(2.0)
         ->and($recovery->minutes)->toBe(3.0);
@@ -271,7 +271,7 @@ it('rounds a session\'s segment distances so they add up to the figure on the ca
                 $longRunKm = $tenths / 10;
                 $segments = SegmentGenerator::generate(SessionType::Tempo, $phase, $raceDistanceM, false, $longRunKm, 1.0, INF, PACES);
 
-                $shown = round(array_sum(array_map(fn ($s): float => $s->km, $segments)), 1);
+                $shown = round(array_sum(array_map(fn ($s): float => $s->km ?? throw new InvalidArgumentException('Segment has no km.'), $segments)), 1);
                 $headline = SegmentGenerator::coreKmFor(SessionType::Tempo, false, $longRunKm, 1.0, INF);
 
                 expect($shown)->toBe($headline, "{$phase->value}, {$label}, long_run_km {$longRunKm}");

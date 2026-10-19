@@ -37,7 +37,11 @@ function trialScheduleInputs(bool $race = true, array $trials = [], array $evide
     );
 }
 
-/** @return array<string, bool> week start => whether a trial is offered, in order */
+/**
+ * @param  list<string>  $weeks
+ * @param  list<string>  $deloads
+ * @return array<string, string> week start => whether a trial is offered, in order
+ */
 function offeredWeeks(TimeTrialSchedule $schedule, array $weeks, array $deloads = []): array
 {
     $offered = [];

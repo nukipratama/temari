@@ -670,3 +670,11 @@ function arcInputs(
         projectedRaceSeconds: 3_540.0,
     );
 }
+
+/**
+ * @param  array<string, mixed>  $overrides  PlanInputs constructor arguments by name
+ */
+function planInputsWith(PlanInputs $base, array $overrides): PlanInputs
+{
+    return new ReflectionClass(PlanInputs::class)->newInstanceArgs([...get_object_vars($base), ...$overrides]);
+}
