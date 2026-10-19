@@ -30,6 +30,7 @@ use App\Services\Strava\StravaClient;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -131,8 +132,8 @@ it('fires the replay when deleting the last backlog row empties it', function ()
     );
 
     Bus::assertDispatched(AnalyzeBriefingMascotVoiceJob::class);
-    expect($row->fresh()->narrated_early_at)->toBeNull()
-        ->and($row->fresh()->status)->toBe(AnalysisStatus::Queued);
+    expect($row->refresh()->narrated_early_at)->toBeNull()
+        ->and($row->refresh()->status)->toBe(AnalysisStatus::Queued);
 });
 
 it('purges a retired-type row too, not just the ones KnownAnalysisTypeScope shows by default', function (): void {
@@ -318,6 +319,7 @@ it('no-ops cleanly when the run was removed locally between retries', function (
     Http::assertSentCount(1);
 });
 
+/** @return array{0: Carbon, 1: PlannedSession, 2: float} */
 function pastEasyDay(User $user): array
 {
     $day = now()->startOfWeek()->subWeek()->addDay();
@@ -401,5 +403,5 @@ it('retracts the deleted run\'s time-trial evidence and keeps another run\'s', f
     );
 
     expect(PerformanceEvidence::query()->whereKey($test->id)->exists())->toBeFalse()
-        ->and($otherTest->fresh()->activity_id)->toBe($survivor->id);
+        ->and($otherTest->refresh()->activity_id)->toBe($survivor->id);
 });

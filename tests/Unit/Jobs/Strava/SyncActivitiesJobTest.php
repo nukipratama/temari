@@ -27,6 +27,7 @@ use Illuminate\Contracts\Queue\Job;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Log;
 use Laravel\Pulse\Facades\Pulse;
+use Mockery\MockInterface;
 
 uses(RefreshDatabase::class);
 
@@ -34,14 +35,14 @@ uses(RefreshDatabase::class);
  * Minimal stand-in for the underlying queue job so we can assert release() was
  * called with a delay without booting a real queue connection. Mocks the Job
  * contract so it satisfies SyncActivitiesJob::setJob()'s type hint; the captured
- * delay is exposed on the `releasedWith` property.
+ * delay is written to `$releasedWith`.
  */
-function fakeQueueJob(): Job
+function fakeQueueJob(?int &$releasedWith = null): Job
 {
+    /** @var Job&MockInterface $job */
     $job = Mockery::mock(Job::class);
-    $job->releasedWith = null;
-    $job->shouldReceive('release')->andReturnUsing(function (int $delay = 0) use ($job): void {
-        $job->releasedWith = $delay;
+    $job->shouldReceive('release')->andReturnUsing(function (int $delay = 0) use (&$releasedWith): void {
+        $releasedWith = $delay;
     });
     $job->shouldReceive('attempts')->andReturn(1);
     $job->shouldIgnoreMissing();
@@ -52,6 +53,7 @@ function fakeQueueJob(): Job
 it('forwards to the SyncOrchestrator for the resolved user', function (): void {
     $user = User::factory()->create();
 
+    /** @var SyncOrchestrator&MockInterface $orchestrator */
     $orchestrator = Mockery::mock(SyncOrchestrator::class);
     $orchestrator->shouldReceive('syncUserPages')
         ->once()
@@ -66,6 +68,7 @@ it('forwards to the SyncOrchestrator for the resolved user', function (): void {
 it('scopes to a single activity when a Strava activity id is given', function (): void {
     $user = User::factory()->create();
 
+    /** @var SyncOrchestrator&MockInterface $orchestrator */
     $orchestrator = Mockery::mock(SyncOrchestrator::class);
     $orchestrator->shouldReceive('syncSingleActivity')
         ->once()
@@ -81,6 +84,7 @@ it('revokes the connection and purges stubs when the token refresh permanently f
     $connection = StravaConnection::factory()->for($user)->create();
     $stub = Activity::factory()->stub()->for($user)->create();
 
+    /** @var SyncOrchestrator&MockInterface $orchestrator */
     $orchestrator = Mockery::mock(SyncOrchestrator::class);
     $orchestrator->shouldReceive('syncUserPages')
         ->once()
@@ -88,7 +92,7 @@ it('revokes the connection and purges stubs when the token refresh permanently f
 
     new SyncActivitiesJob($user->id)->handle($orchestrator);
 
-    expect($connection->fresh()->isRevoked())->toBeTrue()
+    expect($connection->refresh()->isRevoked())->toBeTrue()
         ->and(Activity::withStubs()->whereKey($stub->id)->exists())->toBeFalse();
 });
 
@@ -97,64 +101,68 @@ it('releases with backoff instead of revoking on a transient refresh failure', f
     $connection = StravaConnection::factory()->for($user)->create();
     $stub = Activity::factory()->stub()->for($user)->create();
 
+    /** @var SyncOrchestrator&MockInterface $orchestrator */
     $orchestrator = Mockery::mock(SyncOrchestrator::class);
     $orchestrator->shouldReceive('syncUserPages')
         ->once()
         ->andThrow(new StravaTokenRefreshTransientException('Strava 503'));
 
     $job = new SyncActivitiesJob($user->id);
-    $queueJob = fakeQueueJob();
+    $queueJob = fakeQueueJob($releasedWith);
     $job->setJob($queueJob);
 
     $job->handle($orchestrator);
 
     // Connection stays healthy and its un-ingested stub is preserved; the job is
     // released so a later attempt recovers the sync rather than destroying it.
-    expect($connection->fresh()->isRevoked())->toBeFalse()
+    expect($connection->refresh()->isRevoked())->toBeFalse()
         ->and(Activity::withStubs()->whereKey($stub->id)->exists())->toBeTrue()
-        ->and($queueJob->releasedWith)->toBe(60);
+        ->and($releasedWith)->toBe(60);
 });
 
 it('releases with a 60s backoff on a rate-limit exception', function (): void {
     $user = User::factory()->create();
 
+    /** @var SyncOrchestrator&MockInterface $orchestrator */
     $orchestrator = Mockery::mock(SyncOrchestrator::class);
     $orchestrator->shouldReceive('syncUserPages')
         ->once()
         ->andThrow(new StravaRateLimitedException('rate limited', availableIn: 120));
 
     $job = new SyncActivitiesJob($user->id);
-    $queueJob = fakeQueueJob();
+    $queueJob = fakeQueueJob($releasedWith);
     $job->setJob($queueJob);
 
     $job->handle($orchestrator);
 
-    expect($queueJob->releasedWith)->toBe(60);
+    expect($releasedWith)->toBe(60);
 });
 
 it('drops the run without releasing when the circuit breaker is open', function (): void {
     $user = User::factory()->create();
 
+    /** @var SyncOrchestrator&MockInterface $orchestrator */
     $orchestrator = Mockery::mock(SyncOrchestrator::class);
     $orchestrator->shouldReceive('syncUserPages')
         ->once()
         ->andThrow(new StravaCircuitOpenException('breaker open'));
 
     $job = new SyncActivitiesJob($user->id);
-    $queueJob = fakeQueueJob();
+    $queueJob = fakeQueueJob($releasedWith);
     $job->setJob($queueJob);
 
     $job->handle($orchestrator);
 
     // No retry scheduled — the hourly scheduled sync recovers once the breaker
     // half-opens, so this run is simply dropped rather than released.
-    expect($queueJob->releasedWith)->toBeNull();
+    expect($releasedWith)->toBeNull();
 });
 
 it('revokes the connection when the API rejects the token with a 401', function (): void {
     $user = User::factory()->create();
     $connection = StravaConnection::factory()->for($user)->create();
 
+    /** @var SyncOrchestrator&MockInterface $orchestrator */
     $orchestrator = Mockery::mock(SyncOrchestrator::class);
     $orchestrator->shouldReceive('syncUserPages')
         ->once()
@@ -162,13 +170,14 @@ it('revokes the connection when the API rejects the token with a 401', function 
 
     new SyncActivitiesJob($user->id)->handle($orchestrator);
 
-    expect($connection->fresh()->isRevoked())->toBeTrue();
+    expect($connection->refresh()->isRevoked())->toBeTrue();
 });
 
 it('ignores a stale API 401 after credentials change during the sync', function (): void {
     $user = User::factory()->create();
     $connection = StravaConnection::factory()->for($user)->create(['credential_version' => 2]);
 
+    /** @var SyncOrchestrator&MockInterface $orchestrator */
     $orchestrator = Mockery::mock(SyncOrchestrator::class);
     $orchestrator->shouldReceive('syncUserPages')->once()->andReturnUsing(function () use ($connection): never {
         $connection->update(['credential_version' => 3, 'revoked_at' => null]);
@@ -179,13 +188,14 @@ it('ignores a stale API 401 after credentials change during the sync', function 
 
     new SyncActivitiesJob($user->id)->handle($orchestrator);
 
-    expect($connection->fresh()->isRevoked())->toBeFalse();
+    expect($connection->refresh()->isRevoked())->toBeFalse();
 });
 
 it('ignores a stale refresh failure after credentials change during the sync', function (): void {
     $user = User::factory()->create();
     $connection = StravaConnection::factory()->for($user)->create(['credential_version' => 2]);
 
+    /** @var SyncOrchestrator&MockInterface $orchestrator */
     $orchestrator = Mockery::mock(SyncOrchestrator::class);
     $orchestrator->shouldReceive('syncUserPages')->once()->andReturnUsing(function () use ($connection): never {
         $connection->update(['credential_version' => 3, 'revoked_at' => null]);
@@ -196,10 +206,11 @@ it('ignores a stale refresh failure after credentials change during the sync', f
 
     new SyncActivitiesJob($user->id)->handle($orchestrator);
 
-    expect($connection->fresh()->isRevoked())->toBeFalse();
+    expect($connection->refresh()->isRevoked())->toBeFalse();
 });
 
 it('no-ops on a deleted user', function (): void {
+    /** @var SyncOrchestrator&MockInterface $orchestrator */
     $orchestrator = Mockery::mock(SyncOrchestrator::class);
     $orchestrator->shouldNotReceive('syncUserPages');
 
@@ -207,18 +218,18 @@ it('no-ops on a deleted user', function (): void {
 });
 
 it('logs and closes the sync log with a terminal status once $tries is exhausted', function (): void {
-    Log::spy();
+    $logSpy = Log::spy();
     $user = User::factory()->create();
 
     new SyncActivitiesJob($user->id)->failed(new RuntimeException('boom'));
 
-    Log::shouldHaveReceived('warning')->once()->withArgs(
+    $logSpy->shouldHaveReceived('warning')->once()->withArgs(
         fn (string $message, array $context): bool => $message === 'strava.sync.failed'
             && $context['user_id'] === $user->id
             && $context['reason'] === 'boom',
     );
 
-    $log = StravaSyncLog::query()->where('user_id', $user->id)->latest('id')->first();
+    $log = nonNull(StravaSyncLog::query()->where('user_id', $user->id)->latest('id')->first());
 
     expect($log->status)->toBe('failed')
         ->and($log->error_message)->toBe('boom');
@@ -240,7 +251,7 @@ it('records the failure against the given user even when nothing was ever resolv
  *
  * @param  array<int, int>  $statusByRead  1-based read number => forced HTTP status
  * @param  array<int, int>  $startOffsetByIndex  history index => start offset in hours, overriding the 12h spacing
- * @return list<array<string, mixed>>  the history, newest-first
+ * @return list<array{id: int, sport_type: string, name: string, start_date: string, start_date_local: string, distance: float, moving_time: int, elapsed_time: int, average_speed: float}>  the history, newest-first
  */
 function fakeSlowStravaHistory(int $runs, array $statusByRead = [], array $startOffsetByIndex = []): array
 {
@@ -281,6 +292,13 @@ function fakeSlowStravaHistory(int $runs, array $statusByRead = [], array $start
     ]);
 
     return $history;
+}
+
+function nextChainedSync(SyncActivitiesJob $job): SyncActivitiesJob
+{
+    $next = unserialize($job->chained[0]);
+
+    return $next instanceof SyncActivitiesJob ? $next : throw new InvalidArgumentException('Chained job is not a SyncActivitiesJob.');
 }
 
 function activityListReads(): int
@@ -330,7 +348,7 @@ it('walks at most PAGES_PER_ATTEMPT slow pages per attempt, chains a continuatio
         ->and(Activity::withStubs()->where('user_id', $user->id)->count())->toBe(SyncActivitiesJob::PAGES_PER_ATTEMPT * 200)
         ->and($job->chained)->toHaveCount(1);
 
-    $next = unserialize($job->chained[0]);
+    $next = nextChainedSync($job);
     $lastWalked = $history[SyncActivitiesJob::PAGES_PER_ATTEMPT * 200 - 1];
 
     expect($next)->toBeInstanceOf(SyncActivitiesJob::class)
@@ -353,7 +371,7 @@ it('chains a continuation that finds the per-user lock held again from the same 
     $job = new SyncActivitiesJob($user->id, before: 1_780_000_000);
     $job->handle(app(SyncOrchestrator::class));
 
-    $next = unserialize($job->chained[0]);
+    $next = nextChainedSync($job);
 
     expect(activityListReads())->toBe(0)
         ->and($job->chained)->toHaveCount(1)
@@ -408,12 +426,12 @@ it('releases a rate-limited continuation without chaining or storing, so the ret
     fakeSlowStravaHistory(SyncActivitiesJob::PAGES_PER_ATTEMPT * 200 + 250, statusByRead: [2 => 429]);
 
     $job = new SyncActivitiesJob($user->id, before: 1_780_000_000);
-    $queueJob = fakeQueueJob();
+    $queueJob = fakeQueueJob($releasedWith);
     $job->setJob($queueJob);
 
     $job->handle(app(SyncOrchestrator::class));
 
-    expect($queueJob->releasedWith)->toBe(60)
+    expect($releasedWith)->toBe(60)
         ->and($job->chained)->toBe([])
         ->and($job->before)->toBe(1_780_000_000)
         ->and(Activity::withStubs()->where('user_id', $user->id)->count())->toBe(0);

@@ -9,6 +9,7 @@ use App\Services\Strava\StravaGrantLedger;
 use App\Services\Strava\StravaGrantReleaseService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
+use Mockery\MockInterface;
 
 uses(RefreshDatabase::class);
 
@@ -17,6 +18,7 @@ it('delegates the retry sweep to the grant release service', function (): void {
     Http::fake();
     $releases = new StravaGrantReleaseService(new StravaClient(), app(StravaGrantLedger::class));
 
+    /** @var MaintainerAlerter&MockInterface $alerter */
     $alerter = Mockery::mock(MaintainerAlerter::class);
     $alerter->shouldReceive('jobRecovered')->once()->with('RetryOrphanedStravaGrantReleasesJob');
 
