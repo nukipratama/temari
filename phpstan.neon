@@ -22,47 +22,7 @@ parameters:
     paths:
         - app/
         - database/
-        - tests/Pest.php
-        - tests/Feature/Auth
-        - tests/Feature/Compliance
-        - tests/Feature/Api
-        - tests/Feature/Console
-        - tests/Feature/Http
-        - tests/Feature/Inertia
-        - tests/Feature/Plan
-        - tests/Feature/Runs
-        - tests/Feature/Strava
-        - tests/Unit/Architecture
-        - tests/Unit/Actions
-        - tests/Unit/Config
-        - tests/Unit/Console
-        - tests/Unit/Enums
-        - tests/Unit/Geo
-        - tests/Unit/Jobs
-        - tests/Unit/Listeners
-        - tests/Unit/Notifications
-        - tests/Unit/Providers
-        - tests/Unit/Seeders
-        - tests/Unit/Services/AI
-        - tests/Unit/Services/Devtools
-        - tests/Unit/Services/Gamification
-        - tests/Unit/Services/IntervalsIcu
-        - tests/Unit/Services/Notifications
-        - tests/Unit/Services/Ops
-        - tests/Unit/Services/Run/Ingest
-        - tests/Unit/Services/Run/Metrics
-        - tests/Unit/Services/Run/Plan
-        - tests/Unit/Services/Run/Story
-        - tests/Unit/Services/Run/Trend
-        - tests/Unit/Services/Run/FeedQueryTest.php
-        - tests/Unit/Services/Run/LifetimeStatsTest.php
-        - tests/Unit/Services/Run/PostRunNoteReaderTest.php
-        - tests/Unit/Services/Run/ProgressionSeriesBuilderTest.php
-        - tests/Unit/Services/Strava
-        - tests/Unit/Services/Telegram
-        - tests/Unit/Services/User
-        - tests/Unit/Services/Weather
-        - tests/Unit/Support
+        - tests/
     tmpDir: .phpstan-cache
 
     # Sail's memory_limit=-1 lets workers grow until OOM-killer hits; cap them.

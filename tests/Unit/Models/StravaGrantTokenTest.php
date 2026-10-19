@@ -20,7 +20,7 @@ it('encrypts the mirrored token and hides it from serialization', function (): v
     expect($token->strava_athlete_id)->toBe(987654)
         ->and($token->credential_version)->toBe(4)
         ->and($stored)->not->toBe('plain-refresh-token')
-        ->and(Crypt::decryptString($stored))->toBe('plain-refresh-token')
+        ->and(Crypt::decryptString(is_string($stored) ? $stored : throw new InvalidArgumentException('Stored refresh token is not a string.')))->toBe('plain-refresh-token')
         ->and($token->refresh_token)->toBe('plain-refresh-token')
         ->and($token->toArray())->not->toHaveKey('refresh_token');
 });
@@ -36,6 +36,6 @@ it('keeps an orphaned token and its user id after account deletion', function ()
 
     $user->delete();
 
-    expect($token->fresh()->user_id)->toBe($user->id)
-        ->and($token->fresh()->refresh_token)->toBe('refresh-token');
+    expect($token->refresh()->user_id)->toBe($user->id)
+        ->and($token->refresh()->refresh_token)->toBe('refresh-token');
 });

@@ -22,7 +22,7 @@ it('casts its kind, outcome and snapshot values', function (): void {
         'goal_time_sec' => '3000',
         'outcome' => RaceOutcome::Confirmed,
         'finish_time_sec' => '2950',
-    ])->fresh();
+    ])->refresh();
 
     expect($change->kind)->toBe(RaceChangeKind::Outcome)
         ->and($change->outcome)->toBe(RaceOutcome::Confirmed)
@@ -30,7 +30,7 @@ it('casts its kind, outcome and snapshot values', function (): void {
         ->and($change->goal_time_sec)->toBe(3000)
         ->and($change->finish_time_sec)->toBe(2950)
         ->and($change->created_at)->toBeInstanceOf(Carbon::class)
-        ->and($change->raceGoal->is($race))->toBeTrue();
+        ->and($change->raceGoal?->is($race))->toBeTrue();
 });
 
 it('is listed oldest first on its race and goes with it', function (): void {

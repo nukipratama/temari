@@ -17,11 +17,14 @@ uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
     Carbon::setTestNow('2026-08-10 08:00:00');
-    $this->service = app(SeasonService::class);
 });
 afterEach(fn () => Carbon::setTestNow());
 
-/** Everything the user owns, as the rows that actually record ownership. */
+/**
+ * Everything the user owns, as the rows that actually record ownership.
+ *
+ * @return array{records: array<int, mixed>, cards: array<int, mixed>}
+ */
 function ownedCollection(User $user): array
 {
     return [
@@ -42,14 +45,15 @@ function seedCollection(User $user): void
 }
 
 it('opens a new season with a fresh track once the twelve weeks elapse', function (): void {
+    $service = app(SeasonService::class);
     $user = User::factory()->create();
 
-    $first = $this->service->ensureCurrent($user, Carbon::today());
+    $first = $service->ensureCurrent($user, Carbon::today());
     $firstGoalIds = SeasonGoal::query()->where('season_id', $first->id)->pluck('id')->all();
 
     $afterBoundary = $first->ends_at->copy()->addDay();
     Carbon::setTestNow($afterBoundary->copy()->setTime(8, 0));
-    $second = $this->service->ensureCurrent($user, $afterBoundary);
+    $second = $service->ensureCurrent($user, $afterBoundary);
 
     expect($second->id)->not->toBe($first->id)
         ->and($second->starts_at->toDateString())->toBe($afterBoundary->toDateString())
@@ -58,20 +62,21 @@ it('opens a new season with a fresh track once the twelve weeks elapse', functio
     $secondGoalIds = SeasonGoal::query()->where('season_id', $second->id)->pluck('id')->all();
 
     expect($secondGoalIds)->toHaveCount(5)
-        ->and(array_intersect($firstGoalIds, $secondGoalIds))->toBe([])
+        ->and(collect($firstGoalIds)->intersect($secondGoalIds)->all())->toBe([])
         ->and(SeasonGoal::query()->whereIn('id', $firstGoalIds)->count())->toBe(5);
 });
 
 it('revokes nothing the user owns when a season boundary is crossed', function (): void {
+    $service = app(SeasonService::class);
     $user = User::factory()->create();
     seedCollection($user);
 
-    $first = $this->service->ensureCurrent($user, Carbon::today());
+    $first = $service->ensureCurrent($user, Carbon::today());
     $before = ownedCollection($user);
 
     $afterBoundary = $first->ends_at->copy()->addDay();
     Carbon::setTestNow($afterBoundary->copy()->setTime(8, 0));
-    $this->service->ensureCurrent($user, $afterBoundary);
+    $service->ensureCurrent($user, $afterBoundary);
 
     expect(ownedCollection($user))->toBe($before)
         ->and($before['records'])->toHaveCount(1)

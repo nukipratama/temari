@@ -31,11 +31,13 @@ beforeEach(function (): void {
     $this->withHeaders(['Authorization' => 'Basic '.base64_encode('devtools:secret')]);
 });
 
+/** @param  array<string, mixed>  $attributes */
 function narrationAthlete(array $attributes = []): User
 {
     return User::factory()->create($attributes);
 }
 
+/** @param  array<string, mixed>  $attributes */
 function narrationBlock(User $user, AnalysisType $type = AnalysisType::TrendRead, array $attributes = []): Analysis
 {
     return Analysis::factory()->create([

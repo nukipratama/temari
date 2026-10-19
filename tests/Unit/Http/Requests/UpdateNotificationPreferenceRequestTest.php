@@ -5,6 +5,9 @@ declare(strict_types=1);
 use App\Http\Requests\UpdateNotificationPreferenceRequest;
 use Illuminate\Support\Facades\Validator;
 
+/**
+ * @param  array<string, mixed>  $data
+ */
 function passesNotificationPreference(array $data): bool
 {
     return Validator::make($data, new UpdateNotificationPreferenceRequest()->rules())->passes();

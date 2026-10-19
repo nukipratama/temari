@@ -41,18 +41,27 @@ beforeEach(function (): void {
         'services.telegram.bot_token' => 'test-bot-token',
     ]);
     Http::fake(['api.telegram.org/*' => Http::response(['ok' => true, 'result' => true])]);
-    $this->pushes = 0;
-    $push = Mockery::mock(WebPushChannel::class);
-    $push->shouldReceive('send')->andReturnUsing(function (): array {
-        $this->pushes++;
-
-        return [];
-    });
-    app()->instance(WebPushChannel::class, $push);
     Carbon::setTestNow('2026-10-05 23:00:00');
 });
 
 afterEach(fn () => Carbon::setTestNow());
+
+/** @return Closure(): int */
+function quietWebPush(): Closure
+{
+    $sent = 0;
+    $push = Mockery::mock(WebPushChannel::class);
+    $push->shouldReceive('send')->andReturnUsing(function () use (&$sent): array {
+        $sent++;
+
+        return [];
+    });
+    app()->instance(WebPushChannel::class, $push);
+
+    return function () use (&$sent): int {
+        return $sent;
+    };
+}
 
 function quietAthlete(bool $demo = false): User
 {
@@ -60,7 +69,7 @@ function quietAthlete(bool $demo = false): User
     TelegramConnection::factory()->for($user)->create(['chat_id' => 4242, 'revoked_at' => null]);
     $user->updatePushSubscription('https://push.example/endpoint', str_repeat('a', 87), str_repeat('b', 22));
 
-    return $user->fresh();
+    return nonNull($user->fresh());
 }
 
 function quietPostRun(User $user, ?Carbon $startedAt = null): AnalysisReadyNotification
@@ -71,16 +80,12 @@ function quietPostRun(User $user, ?Carbon $startedAt = null): AnalysisReadyNotif
     return new AnalysisReadyNotification(doneAnalysisFor(Activity::class, $activity->id, AnalysisType::PostRunSpeech, content: 'steady one.'));
 }
 
-function quietPushCount(): int
-{
-    return test()->pushes;
-}
-
-function expectQuietDeliveries(int $inbox, int $telegram, int $push): void
+/** @param  Closure(): int  $pushes */
+function expectQuietDeliveries(Closure $pushes, int $inbox, int $telegram, int $push): void
 {
     expect(InboxNotification::query()->count())->toBe($inbox)
         ->and(Http::recorded()->count())->toBe($telegram)
-        ->and(quietPushCount())->toBe($push);
+        ->and($pushes())->toBe($push);
 }
 
 dataset('notification types', function (): array {
@@ -114,11 +119,12 @@ dataset('notification types', function (): array {
 });
 
 it('holds every channel inside the window and releases each once at 04:00', function (Closure $make, int $inbox, bool $outbound, bool $demo): void {
+    $pushes = quietWebPush();
     $user = quietAthlete($demo);
     $user->notify($make($user));
 
     $outboundSends = $outbound && ! $demo ? 1 : 0;
-    expectQuietDeliveries(0, 0, 0);
+    expectQuietDeliveries($pushes, 0, 0, 0);
     expect(HeldNotification::query()->count())->toBe($inbox + 2 * $outboundSends)
         ->and(NotificationDelivery::query()->count())->toBe(0);
 
@@ -126,20 +132,22 @@ it('holds every channel inside the window and releases each once at 04:00', func
     $this->artisan('notifications:release-held')->assertExitCode(0);
     $this->artisan('notifications:release-held')->assertExitCode(0);
 
-    expectQuietDeliveries($inbox, $outboundSends, $outboundSends);
+    expectQuietDeliveries($pushes, $inbox, $outboundSends, $outboundSends);
     expect(HeldNotification::query()->count())->toBe(0);
 })->with('notification types');
 
 it('sends the manual test notification at once inside the window', function (): void {
+    $pushes = quietWebPush();
     $user = quietAthlete();
 
     $user->notify(new TestNotification());
 
-    expectQuietDeliveries(1, 1, 1);
+    expectQuietDeliveries($pushes, 1, 1, 1);
     expect(HeldNotification::query()->count())->toBe(0);
 });
 
 it('holds from 22:00:00 and stops holding at 04:00:00', function (string $at, bool $held): void {
+    quietWebPush();
     Carbon::setTestNow($at);
     $user = quietAthlete();
 
@@ -155,6 +163,7 @@ it('holds from 22:00:00 and stops holding at 04:00:00', function (string $at, bo
 ]);
 
 it('takes no delivery claim while a keyed notification is held, and recovery leaves it alone', function (): void {
+    quietWebPush();
     $user = quietAthlete();
     $notification = quietPostRun($user);
     $user->notify($notification);
@@ -174,16 +183,18 @@ it('takes no delivery claim while a keyed notification is held, and recovery lea
 });
 
 it('never counts held time against the post-run recency gate', function (): void {
+    $pushes = quietWebPush();
     $user = quietAthlete();
     $user->notify(quietPostRun($user, now()->subDays(3)->addHour()));
 
     Carbon::setTestNow('2026-10-06 04:00:00');
     $this->artisan('notifications:release-held')->assertExitCode(0);
 
-    expectQuietDeliveries(1, 1, 1);
+    expectQuietDeliveries($pushes, 1, 1, 1);
 });
 
 it('holds a stale web-push retry that lands in the window instead of settling it', function (): void {
+    $pushes = quietWebPush();
     $user = quietAthlete();
     $notification = quietPostRun($user);
     $delivery = NotificationDelivery::query()->create([
@@ -197,13 +208,13 @@ it('holds a stale web-push retry that lands in the window instead of settling it
 
     $this->artisan('notifications:recover-deliveries')->assertExitCode(0);
 
-    expect(quietPushCount())->toBe(0)
-        ->and($delivery->fresh()->status)->toBe(NotificationDeliveryStatus::Pending)
-        ->and($delivery->fresh()->claim_version)->toBe(1);
+    expect($pushes())->toBe(0)
+        ->and($delivery->refresh()->status)->toBe(NotificationDeliveryStatus::Pending)
+        ->and($delivery->refresh()->claim_version)->toBe(1);
 
     Carbon::setTestNow('2026-10-06 04:00:00');
     $this->artisan('notifications:recover-deliveries')->assertExitCode(0);
 
-    expect(quietPushCount())->toBe(1)
-        ->and($delivery->fresh()->status)->toBe(NotificationDeliveryStatus::Sent);
+    expect($pushes())->toBe(1)
+        ->and($delivery->refresh()->status)->toBe(NotificationDeliveryStatus::Sent);
 });

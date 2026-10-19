@@ -15,7 +15,7 @@ it('casts for_date to Carbon', function (): void {
     $line = StoryLine::factory()->dailyGreeting('2026-05-10')->make(['user_id' => 1]);
 
     expect($line->for_date)->toBeInstanceOf(Carbon::class)
-        ->and($line->for_date->toDateString())->toBe('2026-05-10');
+        ->and($line->for_date?->toDateString())->toBe('2026-05-10');
 });
 
 it('serialises for_date as a plain date, unshifted under Asia/Jakarta', function (): void {
@@ -25,7 +25,7 @@ it('serialises for_date as a plain date, unshifted under Asia/Jakarta', function
     try {
         $line = StoryLine::factory()->dailyGreeting('2026-05-10')->make(['user_id' => 1]);
 
-        expect($line->toArray()['for_date'])->toBe('2026-05-10');
+        expect(data_get($line->toArray(), 'for_date'))->toBe('2026-05-10');
     } finally {
         date_default_timezone_set($original);
     }
@@ -39,7 +39,7 @@ it('belongs to a user and (optionally) an activity', function (): void {
 
     expect($line->user)->toBeInstanceOf(User::class)
         ->and($line->activity)->toBeInstanceOf(Activity::class)
-        ->and($line->activity->is($activity))->toBeTrue();
+        ->and($line->activity?->is($activity))->toBeTrue();
 });
 
 it('keeps the unique (user_id, activity_id) per post_run line', function (): void {

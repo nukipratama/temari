@@ -42,7 +42,7 @@ it('casts the week, the reason enum, the flag and both integers', function (): v
 it('serializes week_start as the naive date, not a UTC-shifted instant', function (): void {
     $adaptation = new PlanAdaptation(['week_start' => '2026-08-10']);
 
-    expect($adaptation->toArray()['week_start'])->toBe('2026-08-10');
+    expect(data_get($adaptation->toArray(), 'week_start'))->toBe('2026-08-10');
 });
 
 it('enforces one row per user per week', function (): void {

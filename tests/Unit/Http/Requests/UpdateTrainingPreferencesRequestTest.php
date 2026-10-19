@@ -6,6 +6,7 @@ use App\Http\Requests\UpdateTrainingPreferencesRequest;
 use Illuminate\Support\Facades\Validator;
 
 /**
+ * @param  array<string, mixed>  $overrides
  * @return array<string, mixed>
  */
 function trainingPreferencesPayload(array $overrides = []): array
@@ -20,6 +21,9 @@ function trainingPreferencesPayload(array $overrides = []): array
     ];
 }
 
+/**
+ * @param  array<string, mixed>  $payload
+ */
 function validateTrainingPreferences(array $payload): Illuminate\Validation\Validator
 {
     $request = new UpdateTrainingPreferencesRequest();

@@ -16,5 +16,5 @@ it('disconnects by revoking the connection', function (): void {
         ->delete('/profile/telegram')
         ->assertRedirect();
 
-    expect($connection->fresh()->isRevoked())->toBeTrue();
+    expect($connection->refresh()->isRevoked())->toBeTrue();
 });

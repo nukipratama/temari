@@ -7,6 +7,7 @@ use App\Services\Run\Metrics\HeartRateZones;
 use Illuminate\Support\Facades\Validator;
 
 /**
+ * @param  array<string, mixed>  $overrides
  * @param  array<int, array{lo:int, hi:int}>|null  $zones
  * @return array<string, mixed>
  */
@@ -26,6 +27,9 @@ function hrZonePayload(array $overrides = [], ?array $zones = null): array
     ];
 }
 
+/**
+ * @param  array<string, mixed>  $payload
+ */
 function validateHrZones(array $payload): Illuminate\Validation\Validator
 {
     $request = new UpdateHrZonesRequest();

@@ -31,5 +31,5 @@ it('is reachable as a hasOne from the user', function (): void {
     NotificationPreference::factory()->for($user)->create(['notifications_enabled' => false]);
 
     expect($user->notificationPreference)->toBeInstanceOf(NotificationPreference::class)
-        ->and($user->notificationPreference->notifications_enabled)->toBeFalse();
+        ->and($user->notificationPreference?->notifications_enabled)->toBeFalse();
 });

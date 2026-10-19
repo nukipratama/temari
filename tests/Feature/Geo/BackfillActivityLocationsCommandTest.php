@@ -18,7 +18,8 @@ uses(RefreshDatabase::class);
 it('queues a resolve job for each unresolved detail with coords', function (): void {
     Queue::fake();
 
-    [$a, $b] = Activity::factory()->count(2)->create();
+    $a = Activity::factory()->create();
+    $b = Activity::factory()->create();
     ActivityDetail::factory()->for($a)->create([
         'start_lat' => -6.24,
         'start_lng' => 106.81,
@@ -38,7 +39,9 @@ it('queues a resolve job for each unresolved detail with coords', function (): v
 it('skips already-resolved details and those without coords', function (): void {
     Queue::fake();
 
-    [$resolved, $missing, $unresolved] = Activity::factory()->count(3)->create();
+    $resolved = Activity::factory()->create();
+    $missing = Activity::factory()->create();
+    $unresolved = Activity::factory()->create();
     ActivityDetail::factory()->for($resolved)->create([
         'start_lat' => -6.24,
         'start_lng' => 106.81,
@@ -75,8 +78,8 @@ it('staggers resolve dispatches one second apart', function (): void {
 
     $this->artisan('geo:backfill-locations')->assertSuccessful();
 
-    $delays = Queue::pushed(ResolveActivityLocationJob::class)
-        ->map(fn ($job): int => (int) round(now()->diffInSeconds($job->delay)))
+    $delays = pushedJobs(ResolveActivityLocationJob::class)
+        ->map(fn (ResolveActivityLocationJob $job): int => (int) round(now()->diffInSeconds($job->delay instanceof DateTimeInterface ? $job->delay : throw new InvalidArgumentException('Job delay is not a date.'))))
         ->sort()
         ->values()
         ->all();
@@ -139,7 +142,7 @@ it('skips cached failures and no-address results without starving later rows pas
 
     $this->artisan('geo:backfill-locations', ['--limit' => $limit])->assertSuccessful();
 
-    $queuedIds = Queue::pushed(ResolveActivityLocationJob::class)
+    $queuedIds = pushedJobs(ResolveActivityLocationJob::class)
         ->map(fn (ResolveActivityLocationJob $job): int => $job->activityDetailId)
         ->all();
     expect($queuedIds)->toHaveCount($limit)->toBe($eligibleIds);
@@ -231,7 +234,7 @@ it('skips polyline backfill when the polyline is empty/malformed', function (): 
 
     $this->artisan('geo:backfill-locations')->assertSuccessful();
 
-    expect($detail->fresh()->start_lat)->toBeNull();
+    expect($detail->refresh()->start_lat)->toBeNull();
     Queue::assertNothingPushed();
 });
 

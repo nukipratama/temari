@@ -26,7 +26,7 @@ final class PestClosureThisExtension implements FunctionParameterClosureThisExte
         return $parameter->getName() === 'closure' && in_array($functionReflection->getName(), self::FUNCTIONS, true);
     }
 
-    public function getClosureThisTypeFromFunctionCall(FunctionReflection $functionReflection, FuncCall $functionCall, ParameterReflection $parameter, Scope $scope): ?Type
+    public function getClosureThisTypeFromFunctionCall(FunctionReflection $functionReflection, FuncCall $functionCall, ParameterReflection $parameter, Scope $scope): Type
     {
         return new ObjectType(TestCase::class);
     }
@@ -37,7 +37,7 @@ final class PestClosureThisExtension implements FunctionParameterClosureThisExte
             && in_array($methodReflection->getName(), ['beforeEach', 'afterEach'], true);
     }
 
-    public function getClosureThisTypeFromMethodCall(MethodReflection $methodReflection, MethodCall $methodCall, ParameterReflection $parameter, Scope $scope): ?Type
+    public function getClosureThisTypeFromMethodCall(MethodReflection $methodReflection, MethodCall $methodCall, ParameterReflection $parameter, Scope $scope): Type
     {
         return new ObjectType(TestCase::class);
     }

@@ -7,6 +7,7 @@ use App\Http\Requests\StoreRaceGoalRequest;
 use Illuminate\Support\Facades\Validator;
 
 /**
+ * @param  array<string, mixed>  $overrides
  * @return array<string, mixed>
  */
 function raceGoalPayload(array $overrides = []): array
@@ -20,6 +21,9 @@ function raceGoalPayload(array $overrides = []): array
     ];
 }
 
+/**
+ * @param  array<string, mixed>  $payload
+ */
 function validateRaceGoal(array $payload): Illuminate\Validation\Validator
 {
     $request = new StoreRaceGoalRequest();

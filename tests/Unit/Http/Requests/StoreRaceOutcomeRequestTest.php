@@ -11,6 +11,9 @@ use Illuminate\Support\Facades\Validator;
 
 uses(RefreshDatabase::class);
 
+/**
+ * @param  array<string, mixed>  $payload
+ */
 function validateRaceOutcome(array $payload): Illuminate\Validation\Validator
 {
     return Validator::make($payload, new StoreRaceOutcomeRequest()->rules());

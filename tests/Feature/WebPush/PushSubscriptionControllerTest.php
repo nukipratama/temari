@@ -9,6 +9,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
 
+/** @return array{endpoint: string, keys: array{p256dh: string, auth: string}} */
 function pushPayload(string $endpoint = 'https://fcm.googleapis.com/fcm/send/abc'): array
 {
     return ['endpoint' => $endpoint, 'keys' => ['p256dh' => 'p256dh-key', 'auth' => 'auth-token']];

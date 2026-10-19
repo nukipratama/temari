@@ -14,7 +14,7 @@ it('authorizes everyone and validates nothing', function (): void {
         ->and(feedRequest()->rules())->toBe([]);
 });
 
-it('falls back to the 8w range for missing or unknown values', function (mixed $query): void {
+it('falls back to the 8w range for missing or unknown values', function (string $query): void {
     expect(feedRequest($query)->range())->toBe('8w');
 })->with(['', 'range=', 'range=99y', 'range[]=1y']);
 
@@ -31,7 +31,7 @@ it('drops a malformed week', function (string $query): void {
     expect(feedRequest($query)->week())->toBeNull();
 })->with(['', 'week=', 'week=2026-6-1', 'week=yesterday', 'week=2026-13-45']);
 
-it('defaults the week page cursor to two', function (mixed $query): void {
+it('defaults the week page cursor to two', function (string $query): void {
     expect(feedRequest($query)->weeks())->toBe(2);
 })->with(['', 'weeks=', 'weeks=nope', 'weeks=1', 'weeks=0', 'weeks=-5', 'weeks[]=8']);
 

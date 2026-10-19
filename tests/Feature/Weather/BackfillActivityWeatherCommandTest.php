@@ -78,7 +78,7 @@ it('leaves the row null when the lookup still misses', function (): void {
 
     $this->artisan('weather:backfill')->assertSuccessful();
 
-    expect($detail->fresh()->weather_temp_c)->toBeNull();
+    expect($detail->refresh()->weather_temp_c)->toBeNull();
 });
 
 it('honors the --limit option', function (): void {
@@ -121,11 +121,11 @@ it('reaches a newer fillable row behind a full batch of unfillable ones and reco
     ]);
 
     $this->artisan('weather:backfill', ['--limit' => 2])->assertSuccessful();
-    expect($fillable->fresh()->weather_temp_c)->toBeNull();
+    expect($fillable->refresh()->weather_temp_c)->toBeNull();
 
     $this->artisan('weather:backfill', ['--limit' => 2])->assertSuccessful();
 
-    expect($fillable->fresh()->weather_temp_c)->toBe(27)
+    expect($fillable->refresh()->weather_temp_c)->toBe(27)
         ->and(ActivityDetail::query()->where('weather_attempts', '>=', 1)->count())->toBe(2)
         ->and(ActivityDetail::query()->whereNotNull('weather_attempted_at')->count())->toBe(2);
 });
@@ -144,7 +144,7 @@ it('stops retrying a row after five attempts', function (): void {
 
     $this->artisan('weather:backfill')->assertSuccessful();
 
-    expect($exhausted->fresh()->weather_attempts)->toBe(5);
+    expect($exhausted->refresh()->weather_attempts)->toBe(5);
 });
 
 it('tries the oldest attempt first among attempted rows', function (): void {
@@ -164,8 +164,8 @@ it('tries the oldest attempt first among attempted rows', function (): void {
 
     $this->artisan('weather:backfill', ['--limit' => 1])->assertSuccessful();
 
-    expect($older->fresh()->weather_temp_c)->toBe(27)
-        ->and($recent->fresh()->weather_temp_c)->toBeNull();
+    expect($older->refresh()->weather_temp_c)->toBe(27)
+        ->and($recent->refresh()->weather_temp_c)->toBeNull();
 });
 
 it('reports runs still missing weather 48 hours to 7 days after ingest, but not newer, older or demo ones', function (): void {
