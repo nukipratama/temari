@@ -58,8 +58,13 @@ then failed with *"this operation must be run in a work tree"*. Don't reintroduc
 `vitest --changed`'s base is resolved by
 [scripts/vitest-changed-base.sh](../../../../scripts/vitest-changed-base.sh), which fails the gate
 rather than falling back — a bare `vitest --changed` diffs the working tree against HEAD, which on a
-clean checkout selects nothing and exits 0. `GATE_BASE=<ref>` overrides the base for a slice targeting an epic branch (`sail exec -e GATE_BASE=origin/epic/x app sh scripts/gate.sh`, since `sail composer` forwards no host env); the recorded PR base (`branch.<name>.gh-merge-base`) is used next, then `origin/main`. Cost of getting that wrong: it found no git, reported
+clean checkout selects nothing and exits 0. Cost of getting that wrong: it found no git, reported
 `No test files found`, and the step passed having run zero frontend tests.
+
+The same base feeds every changed-file step: `GATE_BASE=<ref>` first, then the PR base `gh` recorded
+in `branch.<name>.gh-merge-base`, then `origin/main`. A slice targeting an epic branch sets
+`GATE_BASE` through `sail exec -e GATE_BASE=origin/epic/x app sh scripts/gate.sh`, since
+`sail composer` forwards no host env.
 
 **Dev commands:**
 - After changing a PHP enum exposed to TS: `./vendor/bin/sail artisan typescript:enums` (`--check` mirrors CI).

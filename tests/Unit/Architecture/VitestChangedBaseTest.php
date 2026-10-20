@@ -204,3 +204,12 @@ it('falls back to origin/main when the recorded PR base is not fetched locally',
         exec('rm -rf '.escapeshellarg($repo['dir']));
     }
 })->group('structure');
+
+it('points at the worktree mount when GATE_BASE is set and git cannot read the checkout', function (): void {
+    $process = new Process(['sh', base_path(BASE_SCRIPT)], base_path(), ['GIT_DIR' => '/nonexistent', 'GATE_BASE' => 'origin/main']);
+    $process->run();
+
+    expect($process->getExitCode())->not->toBe(0)
+        ->and($process->getErrorOutput())->toContain('GATE_BASE=origin/main')
+        ->and($process->getErrorOutput())->toContain('git cannot read this checkout');
+})->group('structure');
