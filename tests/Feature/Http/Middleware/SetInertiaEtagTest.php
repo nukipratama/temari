@@ -131,7 +131,7 @@ it('misses when a shared prop moves even though the page data did not', function
 
     $etag = etagVisit("/activities/{$activity->id}")->assertSuccessful()->headers->get('ETag');
 
-    $user->forceFill(['name' => 'Nama Baru'])->save();
+    $user->forceFill(['name' => 'New Name'])->save();
 
     expect(etagVisit("/activities/{$activity->id}", $etag)->assertSuccessful()->getStatusCode())->toBe(200);
 });
@@ -141,18 +141,18 @@ it('never serves a stale flash from a 304', function (): void {
     $activity = etagSeedRun($user);
     $this->actingAs($user);
 
-    $flashed = $this->withSession(['success' => 'Sinkron jalan.'])
+    $flashed = $this->withSession(['success' => 'Run synced.'])
         ->get("/activities/{$activity->id}", ['X-Inertia' => 'true', 'X-Inertia-Version' => currentInertiaVersion()])
         ->assertSuccessful();
 
-    expect($flashed->getContent())->toContain('Sinkron jalan.');
+    expect($flashed->getContent())->toContain('Run synced.');
 
     $this->flushSession();
 
     $quiet = etagVisit("/activities/{$activity->id}", $flashed->headers->get('ETag'))->assertSuccessful();
 
     expect($quiet->getStatusCode())->toBe(200)
-        ->and($quiet->getContent())->not->toContain('Sinkron jalan.');
+        ->and($quiet->getContent())->not->toContain('Run synced.');
 });
 
 it('keeps a partial reload out of every cache and leaves it untagged', function (): void {

@@ -134,11 +134,12 @@ class TrainingLoad
      * percentile across the last $weeks trailing 7-day windows, each reusing one {@see weekStats} call.
      * Null per figure when fewer than two windows are scorable.
      *
-     * @param  array<string, float>  $dailyTrimp  scored days only
-     * @param  array<string, true>  $runDays  every day the runner logged a run, scored or not
      * `weekly_trimp_reference` is the same TRIMP range unrounded and over the
      * $weeks windows before the current one, so a guard comparing the current
      * week against it neither trips on display rounding nor raises its own bar.
+     *
+     * @param  array<string, float>  $dailyTrimp  scored days only
+     * @param  array<string, true>  $runDays  every day the runner logged a run, scored or not
      *
      * @return array{weekly_trimp_range: array{low: float, high: float}|null, weekly_trimp_reference: array{low: float, high: float}|null, monotony_range: array{low: float, high: float}|null, strain_range: array{low: float, high: float}|null}
      */

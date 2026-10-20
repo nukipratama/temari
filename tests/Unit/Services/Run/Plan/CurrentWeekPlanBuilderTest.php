@@ -178,7 +178,7 @@ it('shares the current week surplus projection between Home and Plan without wri
     expect($homeDays[$saturday]['session_type'])->toBe($planDays[$saturday]['session_type'])
         ->and($homeDays[$saturday]['distance_km'])->toBe($planDays[$saturday]['distance_km'])
         ->and($homeDays[$saturday]['segments'])->toEqual($planDays[$saturday]['segments'])
-        ->and($planDays[$saturday]['distance_km'])->toBeLessThan(Numeric::float($planDays[$saturday]['asked_km']))
+        ->and(nonNull($planDays[$saturday]['distance_km']))->toBeLessThan(Numeric::float(nonNull($planDays[$saturday]['asked_km'])))
         ->and($homeDays[$friday]['distance_km'])->toBe($homeDays[$friday]['asked_km'])
         ->and($homeDays[$sunday]['distance_km'])->toBe($homeDays[$sunday]['asked_km'])
         ->and($homeDays[$mondayDate]['credited_km'])->toBe(round($mondayAskedKm + 10.0, 1))

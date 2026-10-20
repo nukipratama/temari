@@ -341,7 +341,6 @@ it('refreshes the daily briefing set on the second run of the day', function ():
     Analysis::query()
         ->whereIn('analysis_type', [
             AnalysisType::BriefingMascotVoice->value,
-            AnalysisType::BriefingMascotVoice->value,
         ])
         ->get()
         ->each(fn (Analysis $row) => app(AnalysisService::class)->markDone($row, 'done', ServedBy::Llm));
@@ -354,7 +353,6 @@ it('refreshes the daily briefing set on the second run of the day', function ():
     // A second run today re-narrates the whole daily set so each block reflects
     // both of today's runs, not just the morning one.
     Bus::assertDispatched(AnalyzeActivityJob::class);
-    Bus::assertDispatched(AnalyzeBriefingMascotVoiceJob::class);
     Bus::assertDispatched(AnalyzeBriefingMascotVoiceJob::class);
     Carbon::setTestNow();
 });
@@ -385,7 +383,6 @@ it('does not re-bill the daily set when backfilling a previous-day run', functio
     Analysis::query()
         ->whereIn('analysis_type', [
             AnalysisType::BriefingMascotVoice->value,
-            AnalysisType::BriefingMascotVoice->value,
         ])
         ->get()
         ->each(fn (Analysis $row) => app(AnalysisService::class)->markDone($row, 'done', ServedBy::Llm));
@@ -396,7 +393,6 @@ it('does not re-bill the daily set when backfilling a previous-day run', functio
     fire($backfill);
 
     Bus::assertDispatched(AnalyzeActivityJob::class);
-    Bus::assertNotDispatched(AnalyzeBriefingMascotVoiceJob::class);
     Bus::assertNotDispatched(AnalyzeBriefingMascotVoiceJob::class);
     Carbon::setTestNow();
 });

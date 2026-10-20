@@ -38,7 +38,6 @@ function expectDemoDateKeyedNarrationDone(User $user): void
 
     $cases = [
         [AnalysisType::BRIEFING_SUBJECT_TYPE, AnalysisType::BriefingMascotVoice, $today],
-        [AnalysisType::BRIEFING_SUBJECT_TYPE, AnalysisType::BriefingMascotVoice, $today],
         [AnalysisType::PROFILE_VOICE_SUBJECT_TYPE, AnalysisType::ProfileVoice, $week],
     ];
 

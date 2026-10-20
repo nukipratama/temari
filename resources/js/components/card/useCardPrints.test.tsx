@@ -204,9 +204,9 @@ describe('useCardPrints', () => {
             'blob:print-6',
         ]);
         for (const each of CARD_STYLES) {
-            expect(revoked).not.toContain(
-                result.current.states[each].print?.url,
-            );
+            const url = result.current.states[each].print?.url;
+            expect(url).toEqual(expect.any(String));
+            expect(revoked).not.toContain(url);
         }
     });
 });

@@ -288,10 +288,10 @@
 
     /* shadcn/prototype primitives reach for `rounded-2xl/3xl/4xl`, Tailwind's
        own keywords, so they are tokened here. A separate keyword vocabulary
-       from the xs-xl steps above (see
-       --radius-panel below, which sits above xl under its own name). Values
-       are the literal output of shadcn's `calc(var(--radius) * N)` scheme at
-       `--radius: 0.625rem`, hardcoded rather than introducing that base var. */
+       from the xs-xl steps above (see --radius-panel below, which sits above
+       xl under its own name). Values are the literal output of shadcn's
+       `calc(var(--radius) * N)` scheme at `--radius: 0.625rem`, hardcoded
+       rather than introducing that base var. */
     --radius-2xl: 18px;
     --radius-3xl: 22px;
     --radius-4xl: 26px;

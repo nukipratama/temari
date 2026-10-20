@@ -139,7 +139,13 @@ describe('RunLenses', () => {
             />,
         );
 
-        expect(screen.getByText('Km 3 was the fastest.')).toBeInTheDocument();
+        const claimText = screen.getByText('Km 3 was the fastest.');
+        expect(claimText).toBeInTheDocument();
+        expect(
+            claimText.closest('.narration')?.parentElement?.parentElement
+                ?.children,
+        ).toHaveLength(1);
+        expect(screen.queryByText('junk')).not.toBeInTheDocument();
     });
 
     it('renders multiple claims in order', () => {

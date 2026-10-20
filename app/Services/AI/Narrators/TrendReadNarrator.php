@@ -80,7 +80,7 @@ class TrendReadNarrator
 
         Title: one short sentence, the headline. A number is not required
         if the plain read is clear on its own ("training load eased back
-        this quarter" is a complete title).
+        this week" is a complete title).
         Description: 2-4 sentences explaining the title, all of them about
         the one thing you picked.
 

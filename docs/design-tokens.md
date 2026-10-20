@@ -18,7 +18,7 @@ rule there; change a scale value in `app.css`. The two are held together by
 `DesignTokenContrastTest`, which scores the shipped stylesheet against the derivation, and by
 `build-tokens-dark.test.ts`, which pins the dark-ground maps.
 
-`W2` removed that script's second job. It used to emit a `tokens.css` preview alongside a
+That script no longer has a second job. It used to emit a `tokens.css` preview alongside a
 duplicate copy of the four scales, neither of which anything read; the copies had drifted to a
 pre-Pewter palette and were the kind of unpinned duplicate `DesignTokenMirrorsTest` exists to
 prevent.
@@ -49,7 +49,7 @@ Three families, one job each:
 
 | Token | Family | Use |
 |---|---|---|
-| `font-serif` | Fraunces (italic) | Page titles and Temari's voice lines (a one-liner or verdict headline, two lines at most). Multi-sentence narrator prose is sans. Renamed from `font-display` in F3 to match the prototype's own token name. |
+| `font-serif` | Fraunces (italic) | Page titles and Temari's voice lines (a one-liner or verdict headline, two lines at most). Multi-sentence narrator prose is sans. Renamed from `font-display` to match the prototype's own token name. |
 | `font-sans` | Plus Jakarta Sans | Prose + UI (the readable **default** family) |
 | `font-mono` | JetBrains Mono | **Telemetry only** — numbers, stats, splits, uppercase metadata labels |
 
@@ -141,8 +141,8 @@ all of them and reports its **worst**. What counts as "all of them" is *derived*
 [grounds.mjs](../resources/brand/grounds.mjs): token values come out of the shipped `@theme`
 block and its `[data-theme]` overrides ([app.css](../resources/css/app.css):404), and the
 set of backgrounds in play comes out of every `bg-*` utility `resources/js` actually paints.
-The `body[data-time-of-day]` rules this once also read are gone — `PP3` cut dawn-shift and `W2`
-removed the reader.
+The `body[data-time-of-day]` rules this once also read are gone — dawn-shift was cut and the
+reader removed.
 [grounds.json](../resources/brand/grounds.json) records only what *kind* each background is, and
 one it does not classify **fails the build** rather than being skipped.
 
@@ -164,7 +164,7 @@ edge carries the contrast. Never darken them instead.
 
 | Family | Tokens | Role |
 |---|---|---|
-| Sky | `sky` (`#171f28`), `sky-deep` (`#0b1017`), `sky-2` (`#26303d`) | Structure, dark hero panels — and, since F2, the dark ground itself (`background`/`card`/`popover` map to this family under `[data-theme="dark"]`; see below). Pewter: cold near-black. |
+| Sky | `sky` (`#171f28`), `sky-deep` (`#0b1017`), `sky-2` (`#26303d`) | Structure, dark hero panels — and the dark ground itself (`background`/`card`/`popover` map to this family under `[data-theme="dark"]`; see below). Pewter: cold near-black. |
 | Horizon | `horizon` (`#ade047`), `horizon-deep`, `horizon-ink` | Primary CTA, "earned" / PR state, Temari accent. Pewter: lime. `horizon-ink` for the lime **as text**; `horizon-deep` is a *fill* and is never text. |
 | Cream | `cream` (`#f1f5f8`), `cream-deep` | Paper / secondary surface, on-dark text. Pewter: cold near-white. |
 | Ink | `ink` / `ink-2` / `ink-3` (+ `ink-on-sky`, `ink-on-rarity`) | 3-tier text contrast (primary / supporting / meta); `ink-on-sky` = muted label on a dark sky panel, `ink-on-rarity` = label on a vivid rarity fill |
@@ -178,7 +178,7 @@ Every Strava/Telegram connect and reconnect button uses the standard pill
 (`pillButtonVariants` in [variants.ts](../resources/js/lib/variants.ts)) with the vendor logo kept
 as the icon, per MASTER.md's Buttons component spec. The dedicated `strava-orange` /
 `strava-orange-hover` tokens retired once the login screen and every remaining connect/reconnect
-site moved off them (#1271).
+site moved off them.
 
 Chart.js and inline SVG cannot read CSS custom properties off a canvas, so a small
 hex bridge mirrors the tokens in [chartTokens.ts](../resources/js/lib/chartTokens.ts). Import
@@ -186,9 +186,9 @@ from there rather than pasting a hex; it is asserted against `app.css` by its ow
 graphic fills/accents (`PALETTE`) are single-valued and read fine on either ground unchanged; grid
 lines, axis/legend labels, a muted secondary-series stroke, and the ink-safe primary line several
 trend panels use are text-weight and genuinely flip — those live in `CHART_GROUND`'s `light`/`dark`
-pair instead, read live per chart via `useIsChartDark()` (F6).
+pair instead, read live per chart via `useIsChartDark()`.
 
-### Ground-reactive semantic layer (two grounds, F2)
+### Ground-reactive semantic layer (two grounds)
 
 The families above are the app's fixed-identity palette — the same value on every ground. A
 second layer sits above them: values that **flip** under `[data-theme="dark"]`, declared as
@@ -226,7 +226,7 @@ does not (`leaf-ink`, `ember-ink`, `rarity-common/rare/epic-ink`) — derived vi
 `ember-ink` and `leaf-ink` are also worst-cased against their own `bg-<family>/<alpha>` tint over each
 of those surfaces, because a status chip and a diff highlight print them on it; `leaf-ink` targets
 4.6:1 there for a rendered margin, which moved its dark value from `#57a581` to `#77b699` (owner
-decision on #1673, 2026-10-03).
+decision, 2026-10-03).
 `horizon-ink` was originally left out, on the reasoning that the app reaches for `icon-accent` on
 dark instead; 33 `text-horizon-ink` call sites rendering `#546d23` on `#0b1017` at 2.9:1 disproved
 that, and its dark value is now the vivid `#ade047`.
@@ -237,11 +237,11 @@ ground — `#d7ecdf` is `mood-easy` at ~15% over cream — so on Sky it is that 
 as the three Sky surfaces, because the cell is the ground the label most often lands on. Leaving the
 pastel behind is what put a pale-green pill on near-black in `RunHero`.
 
-**Season-phase identity colours** live in TypeScript, not in the token layer. `F2` promoted the
-prototype's `PHASE_COLOR` literals into four CSS colour tokens, but the periodization display went
+**Season-phase identity colours** live in TypeScript, not in the token layer. The
+prototype's `PHASE_COLOR` literals were promoted into four CSS colour tokens, but the periodization display went
 on reading [`PHASE_COLORS`](../resources/js/lib/chartTokens.ts) — a different set, with a fifth
-`deload` key those tokens never had. `W4` deleted the unread four rather than leave two disagreeing
-sources, and pinned the removal in `DesignTokenDocsTest`'s forbidden list so the name cannot come
+`deload` key those tokens never had. The unread four were deleted rather than leave two disagreeing
+sources, and the removal is pinned in `DesignTokenDocsTest`'s forbidden list so the name cannot come
 back quietly. The set that ships is validated colorblind-safe (CVD ΔE of at least 15 on every
 co-occurring pair) via the `dataviz` skill's palette checker — one adjacent pair sits at the
 CVD-separation floor, so any phase indicator needs a direct label or texture alongside the colour,
@@ -249,16 +249,16 @@ never hue alone.
 
 ### Text contrast tiers
 
-Since F3, components write the ground-reactive semantic classes below rather than the raw
+Components write the ground-reactive semantic classes below rather than the raw
 `text-ink`/`text-ink-2`/`text-ink-3` utilities (those still exist — the raw palette survives
-beneath the semantic layer per decision 4 — but they're fixed to the light-mode value and no
+beneath the semantic layer — but they're fixed to the light-mode value and no
 longer the call-site vocabulary):
 
 - `text-foreground` — primary text (body, headings, button labels, KPI values). Ground-reactive:
   `--color-ink` on the light ground, `--color-cream` on dark.
 - `text-text-2` — supporting body (subtitles, descriptive lines).
 - `text-text-3` — labels / timestamps / footnotes / metadata only; never body prose.
-- `text-ink-on-sky` — muted metadata label on dark sky panels. Unchanged by F3 (already
+- `text-ink-on-sky` — muted metadata label on dark sky panels. Unchanged (already
   ground-scoped by name, no semantic-layer equivalent needed).
 - `text-ink-on-rarity` — label printed on a vivid rarity fill (the rarity flag). Unchanged.
 
@@ -303,7 +303,7 @@ Section rhythm (unchanged): major section → next major `mt-10`; subsection →
 | `rounded-lg` | 18px | Larger panels, modals, sheets |
 | `rounded-xl` | 24px | Takeover surfaces, bottom sheets |
 | `rounded-full` | 9999px | Pills, chips, avatars, dots |
-| `rounded-2xl` | 18px | shadcn/prototype primitives (F2+) — a separate keyword vocabulary, not a continuation of the ladder above |
+| `rounded-2xl` | 18px | shadcn/prototype primitives — a separate keyword vocabulary, not a continuation of the ladder above |
 | `rounded-3xl` | 22px | shadcn/prototype primitives |
 | `rounded-4xl` | 26px | shadcn/prototype primitives — lands on the same corner as `rounded-panel`, independently |
 | `rounded-panel` | 26px | **The card corner** ([card.tsx](../resources/js/components/ui/card.tsx)) and the hero-panel corner (`ProfileHero`, `RunHero`). A separate name on purpose: `--radius-lg`/`--shadow-e*` are reused across ~170 unrelated call sites, so new surfaces opt in by name rather than moving shape on everything that already uses them. |
@@ -311,7 +311,7 @@ Section rhythm (unchanged): major section → next major `mt-10`; subsection →
 These replace Tailwind's values for the **named steps** above. They do not cover the whole
 namespace: bare `rounded` is not a step and would compile to Tailwind's 0.25rem (4px, under the
 6px floor), so `npm run check:palette` rejects it; use `rounded-xs`. `2xl`/`3xl`/`4xl` joined the
-scale in F2 to back the shadcn/prototype component set; before that they were rejected by the
+scale to back the shadcn/prototype component set; before that they were rejected by the
 source guard, which is how one screen ended up with four different card corners without them.
 Arbitrary radii (`rounded-[11px]`) are not guarded. By convention they belong to the collectible
 card art, which is drawn to its own geometry; the calendar's 3px bar caps are the one exception
@@ -389,18 +389,18 @@ end state.
    for one exit window and reverses the same keyframe.
 3. **Celebratory** — reserved for moments that are actually earned; never layered onto routine
    navigation or data loading. Nothing uses this tier: the overlays it was written for (the card
-   reveal, the unlock toast and the accessory takeover) were cut in `PP3`, and the mascot whose
-   fidget keyframes defined it in `PP2`.
+   reveal, the unlock toast and the accessory takeover) were cut, as was the mascot whose
+   fidget keyframes defined it.
 
 ## Gradients & atmospherics
 
 There is no gradient-text primitive any more. `GradientText` clipped a `linear-gradient` to a
-number at display sizes; no screen the prototype draws uses one, so `W2` swept it. Git history
+number at display sizes; no screen the prototype draws uses one, so it was swept. Git history
 holds it if the treatment is ever wanted back.
 
 The sky→horizon backdrop atmospherics (Login's inline `linear-gradient` / `radial-gradient`
 layers) are not yet re-tuned for the dark ground — that lands with the screen slice that ports
-Login, not with the token infrastructure in F2.
+Login, not with the token infrastructure.
 
 ## Component utilities
 
@@ -469,10 +469,10 @@ nests inside one. It is a single surface — `bg-card` on a `border` edge at `ro
 | Tone | What it is |
 |---|---|
 | `default` | The card. Every resting surface in the app. |
-| `empty` | The card standing in for content that is not there yet. `T3` found the prototype gives empty states no distinct treatment at all, so the invented dashed edge and 40%-opacity fill went; it keeps only a heavier `border-strong` edge to stay distinguishable from a resting card. |
+| `empty` | The card standing in for content that is not there yet. The prototype gives empty states no distinct treatment at all, so the invented dashed edge and 40%-opacity fill went; it keeps only a heavier `border-strong` edge to stay distinguishable from a resting card. |
 
 The `sky`, `onSky` and `narration` tones of the retired `cardVariants` had no product caller and
-went with it (#1416), as did `LegacyCard` and `LinkCard`: a card that is a link or a list item
+went with it, as did `LegacyCard` and `LinkCard`: a card that is a link or a list item
 passes the element as `render` (`<Card render={<Link href="/race" />}>`), the Base UI
 `useRender` convention.
 
@@ -519,4 +519,4 @@ plain `Record` lookups; do **not** fold those into cva.
 - **`text-text-3` on body prose.** The `ink-3` tier is for labels/timestamps/metadata only, never wrapping a `<p>` of running text. Sweep `grep text-text-3` before merging.
 - **Missing `tabular-nums` on stat displays.** Any big-number display must carry it so digits don't jitter as they change. The `.text-stat` / `.text-stat-sm` utilities include it; raw `font-mono` alone does not.
 - **`font-mono` omitted from uppercase labels.** Because `font-sans` is Tailwind's default, every `.text-label-micro` / `.text-label-small` utility needs an explicit `font-mono` — without it the label renders in the body font.
-- **Reaching for gradient text.** There is no `GradientText` primitive; `W2` swept it once no screen used one. A display-sized number carries its own weight.
+- **Reaching for gradient text.** There is no `GradientText` primitive; it was swept once no screen used one. A display-sized number carries its own weight.

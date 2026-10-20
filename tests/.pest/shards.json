@@ -96,7 +96,7 @@
         "Tests\\Feature\\Http\\Controllers\\TrendsControllerTest": 2.2299,
         "Tests\\Feature\\Http\\EnsureDevtoolsAccessTest": 0.4574,
         "Tests\\Feature\\Http\\EnsureOnboardedTest": 0.2796,
-        "Tests\\Feature\\Http\\Middleware\\BlockDemoTelegramWritesTest": 0.5699,
+        "Tests\\Feature\\Http\\Middleware\\BlockDemoWritesTest": 0.5699,
         "Tests\\Feature\\Http\\Middleware\\EnforceMaintenanceModeTest": 1.5482,
         "Tests\\Feature\\Http\\Middleware\\SetInertiaEtagTest": 1.386,
         "Tests\\Feature\\Http\\Middleware\\StampLastSeenTest": 0.7975,

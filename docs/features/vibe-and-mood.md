@@ -56,13 +56,13 @@ The bridge between the two systems is `moodForVibe` ([`Temari::moodForVibe()`](.
 ## How the vibe is consumed
 
 - **Mascot pose.** A run `Mood` picks Temari's pose on run surfaces (RunHero, RunLenses, [RecapCard](../../resources/js/components/history/RecapCard.tsx)). On Today and Profile the daily vibe does, collapsed onto a mood by `moodForVibe` below: Today reads `briefing.mood`, Profile its own `mood` prop. See [[temari-mascot]].
-- **Vibe bar.** Gone. It surfaced as text in `VitalBars`' "Vibe" row on `/trends`, until #967 deleted that component along with the range toggle it belonged to (see [[trends]]). `BriefingResult` no longer carries `vibeLabel`/`vibeEmoji` (nor does [Vibe](../../app/Services/Run/Story/Vibe.php) expose `label()`/`emoji()`/`LABELS`/`EMOJI` any more) — nothing rendered them once the bar was gone. The vibe itself still feeds `moodForVibe` below, but `BriefingResult` sends only the resulting `mood`, not the vibe key.
+- **Vibe bar.** Gone. It surfaced as text in `VitalBars`' "Vibe" row on `/trends`, until that component was deleted along with the range toggle it belonged to (see [[trends]]). `BriefingResult` no longer carries `vibeLabel`/`vibeEmoji` (nor does [Vibe](../../app/Services/Run/Story/Vibe.php) expose `label()`/`emoji()`/`LABELS`/`EMOJI` any more) — nothing rendered them once the bar was gone. The vibe itself still feeds `moodForVibe` below, but `BriefingResult` sends only the resulting `mood`, not the vibe key.
 - **LLM tone.** [BriefingComposer::compose](../../app/Services/Run/Story/BriefingComposer.php) resolves the vibe only to derive the briefing's mood; it does not hand the vibe to the narrator. [BriefingMascotVoiceNarrator](../../app/Services/AI/Narrators/BriefingMascotVoiceNarrator.php) calls `Vibe::current` itself, and the vibe *key* is a context field it keys its tone to: the mascot voice keys its register to the vibe band — energetic for `pumped`/`fresh`/`bouncy`, gentle for `worn_down`/`cooked`, coaxing for `hibernating`. The pipeline itself is documented in [[ai-pipeline]].
 
 ## Featured kartu
 
-**Gone.** `PP3` cut Today's featured-kartu panel (P29) along with the `featuredCardId` /
-`featuredKartuVoice` briefing props, and `W2` swept everything behind it: the resolver, the
+**Gone.** Today's featured-kartu panel was cut along with the `featuredCardId` /
+`featuredKartuVoice` briefing props, and everything behind it was swept: the resolver, the
 narrator, its job, its agent tool, the `briefing_featured_kartu_voice` enum case and the
 `ai:daily-briefing` dispatch that had gone on billing a narration nobody could read. Git history
 holds the picker if the surface ever returns.

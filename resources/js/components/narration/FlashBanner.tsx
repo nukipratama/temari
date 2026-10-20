@@ -4,9 +4,11 @@ import { useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Icon } from '@/components/ui/Icon';
 
-/** Inline confirmation for a `back()->with('info', …)` flash (e.g. a retry
+/**
+ * Inline confirmation for a `back()->with('info', …)` flash (e.g. a retry
  * confirmation). The narration pages render standalone, not under AppShell, so
- * each reads `flash.info` and passes it in as `message`. */
+ * each reads `flash.info` and passes it in as `message`.
+ */
 export default function FlashBanner({
     message,
 }: Readonly<{ message: string }>) {

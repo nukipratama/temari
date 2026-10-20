@@ -42,7 +42,7 @@ const ENTRY_ALLOWED = [
  */
 /*
  * One entry per screen a user can land on cold; each budget is the measured
- * weight plus ~10%, rounded up to 5. Operator pages (Devtools, Devtools/Design,
+ * weight plus ~10%. Operator pages (Devtools, Devtools/Design,
  * AiUsage) and the legal documents stay out.
  */
 const ROUTE_BUDGETS_KB = [

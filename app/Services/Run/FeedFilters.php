@@ -30,7 +30,7 @@ final readonly class FeedFilters
 
     /**
      * Week sections shown per page, and how many each "load older weeks" press
-     * adds. Two matches the prototype's own first paint.
+     * adds.
      */
     public const int WEEKS_PER_PAGE = 2;
 

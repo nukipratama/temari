@@ -444,7 +444,7 @@ it('trims only the easy days when the week runs ahead, never the long run', func
     $easy = nonNull($days['2026-08-15']);
 
     expect($long['distance_km'])->toBe($long['asked_km'])
-        ->and($easy['distance_km'])->toBeLessThan(Numeric::float($easy['asked_km']));
+        ->and(nonNull($easy['distance_km']))->toBeLessThan(Numeric::float(nonNull($easy['asked_km'])));
 });
 
 function freshAssembler(): PlanPageAssembler

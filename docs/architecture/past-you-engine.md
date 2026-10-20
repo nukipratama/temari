@@ -85,16 +85,16 @@ the card shows it: `same` only when it rounds to 0 bpm
 therefore read "faster" and "higher" with a `flat` direction, which is exactly
 the faster-at-a-proportionally-higher-HR case. `direction` travels alongside as
 the overall call. It was originally the
-`get_past_you` / `get_latest_past_you` tool payload, added by #1016 (a signed
-`pace_diff_sec`/`time_diff_sec`/`hr_diff_bpm` plus a `direction` composite)
-and reshaped by #1033 (the unsigned-plus-relation shape above) to stop a
+`get_past_you` / `get_latest_past_you` tool payload, first a signed
+`pace_diff_sec`/`time_diff_sec`/`hr_diff_bpm` plus a `direction` composite,
+then reshaped to the unsigned-plus-relation shape above to stop a
 narrator inverting a field's sign — on a mixed-signal pair (pace slower, HR
 lower), a model would read the lower HR as the headline, decide the run was
 better, and state the pace backwards to fit that story, overriding whatever
 composite verdict it was handed. Both re-encodings still let a live check
 catch the same inversion about half the time, because the model states the
 comparison to fit a mood it built from the rest of the context regardless of
-how the delta is shaped. **#1009's decision: no narrator states this
+how the delta is shaped. **The decision: no narrator states this
 comparison at all.** `get_past_you` and `get_latest_past_you` are retired (see
 [[llm-triggers]]'s Retired surfaces); `findMatchContext()` survives as a plain
 data source `RunController` reads directly to render the fact line
@@ -196,7 +196,7 @@ is now 2,000, above the 814 runs a twice-a-day runner could log in the range.
 [PaceConsistency](app/Services/Run/Metrics/PaceConsistency.php). Both need the
 detail pipeline, so both are null on a purely summary-state window. They sit
 beside the verdict; they never change it. `relative_effort_band` sat here too
-until `W2`: P18 cut relative effort's UI and the payload field outlived its
+until it was removed: relative effort's UI was cut and the payload field outlived its
 reader by a wave. [RelativeEffort](app/Services/Run/Metrics/RelativeEffort.php)
 itself is untouched, still feeding three narrators via `EffortContextTool`.
 

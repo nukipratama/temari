@@ -24,9 +24,8 @@ export const DAY_CELL_CLASS =
  * The shared day cell content for Today's week widget and Plan's week strip:
  * weekday, the session-type icon in its planned effort color, the km line, the
  * status glyph in the corner, and the square, full-width effort bar along the
- * bottom. The interactive wrapper
- * (a `Link` on Today, a tab `button` on Plan) and its selection/ring
- * treatment stay with each caller.
+ * bottom. The interactive wrapper (a `Link` on Today, a tab `button` on Plan)
+ * and its selection/ring treatment stay with each caller.
  */
 export function DayCellBody({
     day,

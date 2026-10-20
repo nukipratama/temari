@@ -42,9 +42,7 @@ const twMerge = extendTailwindMerge({
             ],
             // The --container-* widths behind PageContainer and the devtools
             // header. Unregistered, tailwind-merge keeps both sides of a
-            // conflict and CSS order silently wins: Onboarding's
-            // `max-w-[520px]` lost to `max-w-column-wide` and its Continue
-            // button rendered 982px wide.
+            // conflict and CSS order silently wins.
             'max-w': [
                 'max-w-page',
                 'max-w-page-2xl',

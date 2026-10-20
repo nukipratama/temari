@@ -65,22 +65,22 @@ before anything ships.
 
 Every one of these was reasoned from the spec, and every one was wrong on device:
 
-- **#395** pinned `theme-color` to the header's cream. iOS does not use
+- Pinned `theme-color` to the header's cream. iOS does not use
   `theme-color` for the standalone status bar at all — only Android/Chrome does,
   for its toolbar.
-- **#396** declared `color-scheme: light`, on the theory that a Dark Mode device
+- Declared `color-scheme: light`, on the theory that a Dark Mode device
   made the UA render its own strip dark. Worth keeping for form controls and
   scrollbars, but the band survived a fresh install.
-- **#397 and #398** switched to `black-translucent` — the right mechanism at the
+- Switched to `black-translucent` — the right mechanism at the
   time — then assumed the documented "forced white glyphs" behaviour and painted
   a dark backing for them: first a navy `MobileTopBar`, then a fading
   `StatusBarScrim`. The glyphs rendered **dark**, so that backing was itself the
   band being reported.
-- **#399** deleted the scrim and left the region unpainted. Correct until iOS 26.
-- **#733** read Safari 26's "chrome colour comes from the topmost element"
+- Deleted the scrim and left the region unpainted. Correct until iOS 26.
+- Read Safari 26's "chrome colour comes from the topmost element"
   rule as the cause of a new grey haze and reinstated an opaque scrim. It changed
   nothing, which was misread as proof that iOS composites over our content.
-- **#734** concluded from that the region was unconditionally iOS's and deleted
+- Concluded from that the region was unconditionally iOS's and deleted
   the scrim again. It was right that `black-translucent` was broken and wrong
   that the region is always iOS's — see the installer split below.
 
@@ -143,12 +143,12 @@ home indicator the way the no-nav branch beside it already did.
 ## The mobile top bar, and its back button
 
 [MobileTopBar](resources/js/components/MobileTopBar.tsx) is on **every** page.
-#398 briefly scoped it to Me on the argument that a decorative brand mark and
+It was once briefly scoped to Me on the argument that a decorative brand mark and
 an ambient sync chip did not justify permanent space on a phone. That
 under-weighted the sync chip: Strava freshness is time-sensitive and `revoked`
 is an actionable failure, so hiding it on the profile tab made a broken
 connection invisible until the user visited a tab they had no reason to open
-*because* nothing was syncing. It also quietly undid #396, which had moved
+*because* nothing was syncing. It also quietly undid an earlier change that had moved
 Settings and Log out into the avatar menu precisely so account actions were
 reachable everywhere.
 
@@ -157,8 +157,7 @@ identity, pushes show a way out. Which screens count is decided in
 [nav.ts](resources/js/lib/nav.ts), by Inertia page component rather than by URL
 prefix: exactly five components carry the bottom nav (Today, Plan, Race, Trends,
 History — Race lights the `plan` tab, being a sub-page of Plan), and **everything
-else routed through `AppShell` is pushed**. That inversion is the parity
-program's P6/P35, and it is what moved Profile, Settings, Inbox and activity
+else routed through `AppShell` is pushed**. That inversion is what moved Profile, Settings, Inbox and activity
 detail onto the back-chevron treatment.
 
 Two details worth keeping:
@@ -241,11 +240,11 @@ resolves every `asset()` call in the layout and asserts the file is on disk. It
 also counts the calls it resolved against the calls present, so a reference it
 cannot parse fails the suite instead of dropping out of the sweep.
 
-## Floating top bar (F4)
+## Floating top bar
 
 What used to be a single translucent bar is a row of separate pill chips (the
 wordmark or back button on the left, Strava/bell/avatar on the right), each
-carrying its own `bg-muted` backing. The *floating* half of F4 is gone — see
+carrying its own `bg-muted` backing. The *floating* half is gone — see
 above; the bar is in normal flow and scrolls away, which is what stopped content
 passing under the iOS status bar. `AppShell`
 no longer reserves clearance for it at all. `MobileBottomNav` keeps the floating
@@ -270,7 +269,7 @@ Three things carry it, and all three are invisible on a desktop browser:
   It also scopes `touch-action: manipulation`, which drops the ~300ms
   double-tap-zoom wait on controls while leaving pinch zoom intact on content.
   A stray comment terminator silently deleted this entire rule from the compiled
-  CSS between #395 and its fix — every control in the app was dead to the touch
+  CSS until it was fixed — every control in the app was dead to the touch
   in production and nothing failed. `resources/js/test/cssIntegrity.test.ts`
   guards against a repeat, since CI runs vitest but never a bundle build.
 - **16px form controls.** Safari force-zooms the page on focusing any control
@@ -359,7 +358,7 @@ hero ([RunHero](../../resources/js/components/run/RunHero.tsx)) the same
 `data-run-morph`, `app.css` runs the `.run-morph` class at 280ms against the
 page's 180ms, and the names are cleared when the transition finishes.
 
-This is not the thing #396 removed. That attempt keyed `<main>` and animated the
+This is not the keyed-transition approach that was removed. That attempt keyed `<main>` and animated the
 new subtree up from opacity 0, which needs the old page gone before the new one
 appears. A view transition snapshots the frame already on screen, swaps
 underneath it, and cross-fades the two — `<main>` stays unkeyed, nothing
@@ -403,7 +402,7 @@ motion the content does not slide.
 
 - **Haptics.** iOS Safari does not implement `navigator.vibrate`, so any haptics
   code would be dead on the primary target device.
-- **Keyed, self-animated page transitions.** Removed in #396 and not coming
+- **Keyed, self-animated page transitions.** Removed and not coming
   back. Keying `<main>` tore down the whole content subtree on every visit (25
   card mounts on Collection), and the enter animation it existed to replay
   started at opacity 0 — so a navigation read as "old page → blank → fade in".

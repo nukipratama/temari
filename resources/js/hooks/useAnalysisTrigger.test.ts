@@ -290,7 +290,7 @@ describe('useAnalysisTrigger', () => {
         expect(result.current.pollingRetired).toBe(true);
     });
 
-    it('does not evict a live replacement slot registered under the same key (FE-6 evict-race guard)', async () => {
+    it('does not evict a live replacement slot registered under the same key when a given-up slot unmounts', async () => {
         vi.useFakeTimers();
         // Slot A subscribes, then polls to the max-attempts give-up. Give-up
         // removes A from the registry but A's subscriber is still mounted.

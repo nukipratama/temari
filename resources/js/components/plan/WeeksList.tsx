@@ -22,9 +22,8 @@ function weekKm(week: SeasonSummaryWeek): string {
 /**
  * Every week of the season as one compact row: its number, dates, phase and
  * km (what was run for a week behind, what is planned otherwise), plus the
- * adherence of a scored week behind. A row the
- * page holds day rows for is a button that shows that week above; the rest
- * are plain summary rows.
+ * adherence of a scored week behind. A row the page holds day rows for is a
+ * button that shows that week above; the rest are plain summary rows.
  */
 export default function WeeksList({
     weeks,

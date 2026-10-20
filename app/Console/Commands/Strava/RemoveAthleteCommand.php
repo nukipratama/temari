@@ -39,6 +39,7 @@ class RemoveAthleteCommand extends Command
         if ($this->refuseDemoUser($user)) {
             return self::FAILURE;
         }
+
         $liveGrant = StravaGrantToken::query()->where('user_id', $user->id)->first();
 
         $activityCount = Activity::query()->where('user_id', $id)->count();

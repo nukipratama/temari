@@ -22,8 +22,7 @@ code_refs:
 
 # Trends
 
-The page answers one question: **"am I getting fitter, and at what cost?"** Direction A of the
-#914 design round, filed as #967. Server entry is [TrendsController](app/Http/Controllers/TrendsController.php)
+The page answers one question: **"am I getting fitter, and at what cost?"** Server entry is [TrendsController](app/Http/Controllers/TrendsController.php)
 (`__invoke`), rendering the [Trends](resources/js/pages/Trends.tsx) page.
 
 Top to bottom, the page reads as one argument: Temari's 7-day read is the only place a verdict is
@@ -113,7 +112,7 @@ the active race from its season's start
 race, no supported time, or fewer than two days of history the panel is absent. See
 [[supported-time-history-from-daily-trend-snapshots]].
 
-## Removed (#967)
+## Removed
 
 The `RangeToggle` (7d/30d/90d/12mo), the badges and the week streak, and the ATL line are gone from
 this page. Badges and the streak still render on Profile and run pages; nothing else read them from
@@ -126,7 +125,7 @@ caller when the range toggle's `load` section went and were deleted along with i
 `AnalysisType::TREND_READ_RANGES` is `['7d']` — `30d`/`90d`/`12mo` retired. Their schedule entries
 in [routes/console.php](routes/console.php) are gone, and stored rows under a retired discriminator
 are hidden by [KnownAnalysisTypeScope](app/Models/Scopes/KnownAnalysisTypeScope.php) the same way a
-retired *type* is (see #953's `plan_week_voice`), except keyed on `(analysis_type, discriminator)`
+retired *type* is (see `plan_week_voice`), except keyed on `(analysis_type, discriminator)`
 rather than `analysis_type` alone, since `trend_read` itself is still a live case. `UserEraser`'s
 `withoutGlobalScope` opt-out still reaches them for account erasure. See [[llm-triggers]] for the
 full schedule and [[training-load-metrics]] for the CTL/ATL engine the chart and the narrator's

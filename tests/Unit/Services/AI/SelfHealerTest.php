@@ -1001,7 +1001,7 @@ it('re-arms every active athlete block that failed since an hour before the paus
         ->and(nonNull($away->fresh())->attempts)->toBe(Analysis::MAX_SELF_HEAL_ATTEMPTS);
 });
 
-it('resumes both a briefing and a profile-voice row for a long-connected athlete despite a stuck old backlog entry (#1032)', function (): void {
+it('resumes both a briefing and a profile-voice row for a long-connected athlete despite a stuck old backlog entry', function (): void {
     $user = User::factory()->create();
     // Connected well past the hydration grace window (default 48h).
     StravaConnection::factory()->for($user)->create(['created_at' => Carbon::parse('2026-01-01 00:00:00')]);

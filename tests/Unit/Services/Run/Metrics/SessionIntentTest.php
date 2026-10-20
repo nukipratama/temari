@@ -49,7 +49,7 @@ it('reads a tagged Strava workout_type as the authoritative intent', function (i
 ]);
 
 it('infers workout from a Z3-Z4 dominant untagged run (hard-zone share >= 80)', function (): void {
-    // The activity 276 shape: 81.7% in Z3-Z4-Z5, high pace variability, untagged.
+    // A hard run logged without a tag: 81.7% in Z3-Z4-Z5, high pace variability, untagged.
     $result = SessionIntent::forDetail(intentDetail(
         ['workout_type' => null] + zones(['Z1' => 4.7, 'Z2' => 13.5, 'Z3' => 47.1, 'Z4' => 34, 'Z5' => 0.6]),
     ));
