@@ -71,8 +71,8 @@ final class TrainingBaseline
 
     /**
      * Long-run share of weekly volume, as `[volume_below_km, share]` ascending, with the flat
-     * high-volume share past the last band; the share rises as volume falls, since Daniels' and
-     * Pfitzinger's 25% assumes more mileage than a beginner runs.
+     * high-volume share past the last band; the share rises as volume falls, since Daniels' 25%
+     * and Pfitzinger's 25-30% assume more mileage than a beginner runs.
      *
      * @var list<array{0: float, 1: float}>
      */
