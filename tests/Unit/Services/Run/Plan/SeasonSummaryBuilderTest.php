@@ -187,7 +187,7 @@ it('gives the current week the same target and eased-from figure as Home', funct
         ->and($weeks[2]['eased_from_km'])->toBeNull();
 });
 
-/** #1433: a reactive deload reads the same on Plan's header, the season list and Home, with the arc as eased-from. */
+/** A reactive deload reads the same on Plan's header, the season list and Home, with the arc as eased-from. */
 it('shows a reactively deloaded current week at its held target, the arc figure as eased-from, future weeks unchanged', function (): void {
     $user = User::factory()->create();
     $season = Season::factory()->for($user)->create([

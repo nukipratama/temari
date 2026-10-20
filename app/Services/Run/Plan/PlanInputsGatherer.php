@@ -101,11 +101,7 @@ final readonly class PlanInputsGatherer
             longRunDay: $layout['long_run_day'],
             adaptation: $this->planAdapter->forWeek($user, $currentWeekStart, $today, $race, $ambition),
             pinnedDates: $pinnedDates,
-            // A day that already carries a verdict is the record of what was
-            // run, not a slot left to plan. Since compliance lands at ingest
-            // rather than at 00:03 the next morning, regeneration can meet a
-            // settled row inside its own today-forward window — see
-            // `docs/decisions/a-day-is-scored-when-it-is-run.md`.
+            // A day that already carries a verdict is the record of what was run, not a slot left to plan.
             settledDates: $settledDates,
             // How long the race will take this athlete, not how far it is: the
             // same 10K is a VO2max event for one runner and a threshold event

@@ -98,7 +98,7 @@ it('has gapless HR zones in config so every boundary bpm lands in exactly one zo
 
 it('counts a boundary bpm second into a zone using the real config zones', function (): void {
     // 138 bpm is the Z1.hi / Z2.lo boundary. Under the gapless config it must
-    // land in Z2 and contribute its 60s; the old +1-gap config dropped it.
+    // land in Z2 and contribute its 60s.
     /** @var array<string, array{lo: int, hi: int}> $zones */
     $zones = config('runner.hr_zones');
 
@@ -348,7 +348,7 @@ it('detects a stop when velocity drops below 0.5 m/s', function (): void {
 
 // The published figure is grade-adjusted by contract, so the gradient is one of
 // the streams the reading is made of rather than an optional refinement. Where
-// it is missing the run used to be scored as though the ground were flat — the
+// it is missing the run must not be scored as though the ground were flat — the
 // exact reading the grade correction exists to refuse. The positive case with a
 // gradient present is asserted further down ("still reports drift on a flat run").
 it('publishes no decoupling when the run carries no gradient stream to correct pace with', function (): void {
@@ -663,8 +663,7 @@ it('measures pace variability as the spread of kilometre splits, not of the velo
         ['split' => 5, 'distance' => 1000, 'moving_time' => 458, 'average_speed' => 2.18],
     ];
 
-    // Splits spanning 26 seconds: a steady run. The old per-second definition
-    // scored this kind of run near 95, far past every "uneven" threshold.
+    // Splits spanning 26 seconds: a steady run, nowhere near an "uneven" threshold.
     $summary = streamAnalysis()->compute([], defaultZones(), $splits, 170);
 
     expect($summary['pace_variability_sec'])->toBeFloat()->toBeLessThan(15.0);
@@ -1077,7 +1076,7 @@ it('merges the laps-derived per_km rows in place of the splits_metric ones', fun
         ['km' => 1, 'pace' => '7:00', 'elapsed_sec' => 420, 'distance_m' => 1000, 'avg_hr' => 150],
         ['km' => 2, 'pace' => '7:10', 'elapsed_sec' => 430, 'distance_m' => 1000, 'avg_hr' => 155],
     ])
-        // partial_split keeps its own splits_metric basis, untouched by this slice.
+        // partial_split keeps its own splits_metric basis.
         ->and($summary['partial_split'])->toMatchArray(['distance_m' => 400]);
 });
 

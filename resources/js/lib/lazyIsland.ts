@@ -7,16 +7,12 @@ import { reloadDocument } from '@/lib/reloadDocument';
 const RELOADED_KEY = 'temari-chunk-reload';
 
 /**
- * A lazy chunk that 404s after a deploy cannot self-heal the way a navigation
- * does: Inertia's asset-version header only fires on a *visit*, and an island
- * inside an already-rendered page never makes one. Left alone the rejected
- * import reaches the app-wide ErrorBoundary and the whole screen turns into
- * the crash fallback. A full document reload picks up the new manifest.
+ * Reloads once when a lazy chunk 404s after a deploy: an island inside an
+ * already-rendered page never makes the visit Inertia's asset-version check
+ * needs, so the rejected import would otherwise crash the whole screen.
  *
- * The session flag makes that reload happen at most once, so a chunk that is
- * genuinely broken shows the crash fallback instead of looping. It is never
- * cleared: the price is that a second, unrelated chunk failure in the same
- * session falls through to the boundary.
+ * The session flag makes the reload happen at most once, so a genuinely broken
+ * chunk shows the crash fallback instead of looping. It is never cleared.
  *
  * Returns whether a reload was started.
  */

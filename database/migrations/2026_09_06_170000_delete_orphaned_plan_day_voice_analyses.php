@@ -10,8 +10,7 @@ use Illuminate\Support\Facades\DB;
  * days of the week even where no `PlannedSession` existed, which stranded rows
  * on days outside the athlete's plan. The requester now skips those days, but
  * the rows it already wrote stayed Failed forever: nothing can fill them, so
- * every self-heal sweep retried them and /ai-usage showed the athlete a block
- * "still auto-retrying" behind a Try again that could never succeed.
+ * every self-heal sweep retried them.
  *
  * Scoped by the condition itself rather than by id, so it clears the rows on
  * any environment without assuming which ones exist where.

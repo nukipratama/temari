@@ -27,10 +27,8 @@ class TrainingLoad
     public const int CTL_TAU = 42;
 
     /**
-     * Lower bound (days) on how far back the EWMA loads TRIMP. At 365 days a
-     * 42-day-tau CTL has converged to within ~0.02% of its steady state, so the
-     * cap is indistinguishable from full history yet keeps the query (and the
-     * roll loop) bounded instead of scanning a multi-year history every call.
+     * Lower bound (days) on how far back the EWMA loads TRIMP; a 42-day-tau CTL has converged to
+     * within ~0.02% of its steady state by 365 days.
      */
     public const int CONVERGED_LOOKBACK_DAYS = 365;
 
@@ -132,13 +130,9 @@ class TrainingLoad
     }
 
     /**
-     * The athlete's own "steady week" range for weekly TRIMP, monotony and
-     * strain — the 25th to 75th percentile across the last $weeks trailing
-     * 7-day windows, each reusing the one {@see weekStats} call, so Trends
-     * can read "a steady week for you sits around 400 to 500" instead of the
-     * raw number alone, for every one of the three (#1296). A window's three
-     * figures are null together (see weekStats), so one filtered pass covers
-     * all three. Null per figure when fewer than two windows are scorable.
+     * The athlete's own "steady week" range for weekly TRIMP, monotony and strain: the 25th to 75th
+     * percentile across the last $weeks trailing 7-day windows, each reusing one {@see weekStats} call.
+     * Null per figure when fewer than two windows are scorable.
      *
      * @param  array<string, float>  $dailyTrimp  scored days only
      * @param  array<string, true>  $runDays  every day the runner logged a run, scored or not
@@ -221,11 +215,9 @@ class TrainingLoad
     }
 
     /**
-     * Loads the full TRIMP history from the user's first-ever activity so the
-     * EWMA in rollLoads converges as a continuous, window-independent series,
-     * alongside the days the runner actually ran. A summary-only run (no HR
-     * stream, so no TRIMP) lands in `runDays` but not in `trimp`, which is the
-     * only way downstream can tell a rest day from an unscorable one.
+     * Loads the full TRIMP history from the user's first-ever activity so the EWMA in rollLoads
+     * converges as a window-independent series, alongside the days the runner actually ran (a
+     * summary-only run lands in `runDays` but not in `trimp`).
      *
      * @return array{trimp: array<string, float>, runDays: array<string, true>}
      */
@@ -279,10 +271,8 @@ class TrainingLoad
     }
 
     /**
-     * The last $days days of the daily ATL/CTL series, oldest first. Reuses
-     * the same EWMA roll {@see rollLoads} runs for the dashboard summary
-     * (which only returns the final day's pair) — this exposes every day the
-     * roll already computes along the way, not new computation.
+     * The last $days days of the daily ATL/CTL series, oldest first, from the same EWMA roll
+     * {@see rollLoads} runs for the dashboard summary.
      *
      * @return list<array{date: string, atl: float, ctl: float, form_status: TrainingFormStatus|null}>
      */
@@ -315,13 +305,8 @@ class TrainingLoad
     }
 
     /**
-     * The last $days days of the daily weekly-trimp/monotony/strain series
-     * (each day's own trailing-7-day window), oldest first. Reuses the exact
-     * {@see weekStats} computation `summaryFromDailyMap()` already runs for
-     * "this week" — this just runs it once per day across the range instead
-     * of once for today, the same "expose every day the computation already
-     * touches" pattern {@see ctlTrend} uses for `rollDailySeries`. No new
-     * metric math, no new storage.
+     * The last $days days of the daily weekly-trimp/monotony/strain series (each day's own
+     * trailing-7-day window), oldest first, via {@see weekStats}.
      *
      * @return list<array{date: string, weekly_trimp: float|null, monotony: float|null, strain: float|null}>
      */
@@ -384,13 +369,10 @@ class TrainingLoad
     }
 
     /**
-     * Rolls a continuous ATL/CTL EWMA from the first day of the supplied map
-     * through $today and returns only the final day's pair. Missing days
-     * contribute zero TRIMP so a rest day reduces fatigue but doesn't reduce
-     * fitness; an unscored run day is missing here too, which understates both
-     * averages rather than nulling them (see the ADR on unscored load). Callers
-     * pass the full TRIMP history (from the first-ever activity), so the EWMA
-     * state converges and the result is independent of any window length.
+     * Rolls a continuous ATL/CTL EWMA from the first day of the supplied map through $today and
+     * returns only the final day's pair. Missing days contribute zero TRIMP, so a rest day reduces
+     * fatigue but not fitness; callers pass the full TRIMP history so the result is independent of
+     * any window length.
      *
      * @param  array<string, float>  $dailyTrimp
      * @return array{0: float, 1: float}
@@ -432,10 +414,8 @@ class TrainingLoad
     }
 
     /**
-     * A window nobody ran scores an honest zero; a window whose runs all lack
-     * heart rate is unscorable and returns null, because "we have no reading"
-     * is a different fact from "you did nothing" and a zero would state the
-     * second.
+     * A window nobody ran scores an honest zero; a window whose runs all lack heart rate is
+     * unscorable and returns null.
      *
      * @param  array<string, float>  $dailyTrimp  scored days only
      * @param  array<string, true>  $runDays  every day the runner logged a run, scored or not

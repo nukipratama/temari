@@ -13,9 +13,8 @@ use Illuminate\Support\Facades\Auth;
  * read once per request. A flag whose narration was re-narrated is superseded
  * and no longer stands against the block.
  *
- * Bound `scoped()` in AppServiceProvider: a plan week ships 7 day payloads and
- * a page can draw a dozen narration blocks, each of which needs to know whether
- * its own subject carries a flag. One set covers all of them.
+ * Bound `scoped()` in AppServiceProvider so one set answers every narration
+ * block a page draws.
  */
 class ResolveFlaggedSubjectsAction
 {

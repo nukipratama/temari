@@ -14,12 +14,9 @@ use App\Services\Run\Metrics\TrainingLoad;
 use Illuminate\Support\Carbon;
 
 /**
- * "Temari's read" on the Trends tab: one narrated take on the user's
- * training over the last 7 days. Refreshed on a schedule (see
- * routes/console.php's ai:trend-read entry), never generated live per page
- * view — same never-bill-on-page-load rule every other narrator in the app
- * already follows. Used to also read 30d/90d/12mo windows; those retired
- * (#967) once the page settled on one verdict.
+ * "Temari's read" on the Trends tab: one narrated take on the user's training over the last 7 days.
+ * Refreshed on a schedule (see routes/console.php's ai:trend-read entry), never generated live per
+ * page view.
  */
 class TrendReadNarrator
 {

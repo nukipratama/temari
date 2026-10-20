@@ -1,13 +1,10 @@
 /**
  * A short vibration for the moments that deserve a physical confirmation — a
- * notification sent, a card revealed. Deliberately not
- * wired to every tap: the visual `.pressable` shrink is the cross-platform
- * touch feedback, this is the extra beat on a real commit.
+ * notification sent, a card revealed; not wired to every tap.
  *
- * Progressive enhancement only. **iOS Safari does not implement
- * `navigator.vibrate` at all**, so on the primary target (an installed iOS PWA)
- * these calls are silently inert; Android gets the buzz. That asymmetry is why
- * nothing in the UI is allowed to depend on haptics firing.
+ * Progressive enhancement only: **iOS Safari does not implement
+ * `navigator.vibrate`**, so on an installed iOS PWA these calls are silently
+ * inert and nothing in the UI may depend on haptics firing.
  */
 
 /** Milliseconds. Short enough to read as a tick, not a buzz. */

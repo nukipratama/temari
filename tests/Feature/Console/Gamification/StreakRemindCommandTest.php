@@ -42,8 +42,7 @@ it('nudges a user with a live streak and no run yet this week', function (): voi
     Notification::assertSentTo($user, StreakReminderNotification::class, fn (StreakReminderNotification $notification): bool => $notification->streakWeeks === 1);
 });
 
-// The command used to iterate TelegramConnection rows, so a push-only user was
-// never even a candidate. It iterates reachable users now.
+// The command iterates reachable users, so a push-only user is a candidate.
 it('nudges a push-only user who has never linked Telegram', function (): void {
     Notification::fake();
 

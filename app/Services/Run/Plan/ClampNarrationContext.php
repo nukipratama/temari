@@ -16,12 +16,9 @@ use Illuminate\Support\Carbon;
 
 /**
  * Resolves the same clamp facts for the shared briefing side effects and the narration job.
- *
- * It deliberately reads the ceiling **fresh** rather than trusting what the
- * requester saw. The ceiling comes off {@see TrainingLoad}, which counts the
- * day's own runs, so it moves as the day goes on — and a clamp that has since
- * lifted should not be narrated at all. That is also why the row it backs is
- * fingerprinted coarsely; see {@see self::fingerprint()}.
+ * It reads the ceiling fresh rather than trusting what the requester saw: the ceiling moves as the
+ * day's runs land, and a clamp that has since lifted should not be narrated. See
+ * {@see self::fingerprint()}.
  *
  * @phpstan-import-type Assessment from Readiness
  */
@@ -88,13 +85,9 @@ final readonly class ClampNarrationContext
     }
 
     /**
-     * What a clamp explanation actually speaks to, deliberately coarser than
-     * the clamp itself. The ceiling is recomputed from {@see TrainingLoad}
-     * on every ingest, so it drifts a little with each run logged; fingerprinting
-     * the exact figures would re-bill this line several times on the one kind of
-     * day it exists for. The band, the type it was downgraded to, and whether the
-     * athlete has already run are the whole substance of the sentence — a
-     * ceiling that slides within its own band changes nothing worth saying.
+     * What a clamp explanation speaks to, deliberately coarser than the clamp itself: the band, the
+     * type it was downgraded to, and whether the athlete has already run, so a ceiling drifting
+     * within its band does not re-bill the line.
      *
      * @param  list<string>  $readinessReasons
      */

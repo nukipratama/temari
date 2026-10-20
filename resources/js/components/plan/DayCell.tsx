@@ -21,8 +21,8 @@ export const DAY_CELL_CLASS =
     'focus-ring relative flex flex-col items-center gap-0.5 h-full pt-1.5 pb-2 transition-colors hover:bg-muted';
 
 /**
- * The shared day cell content for Today's week widget and Plan's week strip
- * (design/day-cell, #1295): weekday, the session-type icon in its planned
+ * The shared day cell content for Today's week widget and Plan's week strip:
+ * weekday, the session-type icon in its planned
  * effort color, the km line, the status glyph in the corner, and the
  * square, full-width effort bar along the bottom. The interactive wrapper
  * (a `Link` on Today, a tab `button` on Plan) and its selection/ring

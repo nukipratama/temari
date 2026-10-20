@@ -8,8 +8,7 @@ interface TemariMarkProps {
 /**
  * The brand mark: two nested open arcs, the outer one on horizon. Ported from
  * the frozen prototype's
- * {@link ../../brand/prototype/src/components/rack/TemariMark.tsx TemariMark},
- * which is the only logo it draws — on its topbar and its login screen.
+ * {@link ../../brand/prototype/src/components/rack/TemariMark.tsx TemariMark}.
  *
  * This is the app's single brand mark: the shell header, the wordmark lockup,
  * the Card route-glyph fallback and both share-card renderers all draw it.

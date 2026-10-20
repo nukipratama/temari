@@ -121,7 +121,7 @@ it('does not touch RunCard badges when correcting weather', function (): void {
 
 it('does not let a permanently-uncorrectable old row starve fresher rows', function (): void {
     // The archive still misses for the very old row (uncorrectable) but has a value
-    // for the newer one. Under the old ASC ordering + a tight limit, the stuck old
+    // for the newer one. Under an ASC ordering + a tight limit, the stuck old
     // row would sit at the head every run and the newer row would never correct.
     $this->mock(OpenMeteoClient::class)
         ->shouldReceive('fetchArchive')

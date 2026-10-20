@@ -14,14 +14,11 @@ const VB_W = 60;
 const VB_H = 10;
 
 /**
- * The thread-band rarity accent (Slice 9c): a small stitched cluster whose
- * density scales with tier (Common=1 stitch .. Legendary=5), the top two
- * tiers' extra stitches leaning the opposite way to cross the rest. Additive
- * to the existing rarity border/glow, not a re-hue — meant to sit in a
- * card's own border padding, clear of any dynamic content. Geometry from
- * `threadBandLines` in lib/runcard, shared with the canvas share-card
- * renderer so both draw the same pattern. Stroke color always follows the
- * rarity's own tint (`RARITY_HEX`), so callers only need to pass `rarity`.
+ * The thread-band rarity accent: a small stitched cluster whose density scales
+ * with tier (Common=1 stitch .. Legendary=5), the top two tiers' extra stitches
+ * leaning the opposite way. Geometry comes from `threadBandLines` in
+ * lib/runcard, shared with the canvas share-card renderer. Stroke color follows
+ * the rarity's own tint (`RARITY_HEX`), so callers only need to pass `rarity`.
  */
 export default function ThreadBandGlyph({
     rarity,

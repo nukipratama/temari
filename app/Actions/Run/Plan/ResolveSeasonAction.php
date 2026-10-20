@@ -10,11 +10,9 @@ use Illuminate\Support\Carbon;
 /**
  * The athlete's season arc, read once per request.
  *
- * Bound `scoped()` in AppServiceProvider — one deferred Plan render asks for
- * the latest season three times and for the arc covering today three more.
- * The dated read is derived from the latest one whenever that season has
- * already started, so both questions cost a single statement.
- * {@see Season::booted()} drops the memo on any write.
+ * Bound `scoped()` in AppServiceProvider. The dated read is derived from the
+ * latest season whenever that season has already started, so a Plan render
+ * costs a single statement. {@see Season::booted()} drops the memo on any write.
  */
 class ResolveSeasonAction
 {

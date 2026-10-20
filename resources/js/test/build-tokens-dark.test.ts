@@ -15,12 +15,11 @@ import { contrast, darkGrounds, KINDS, luminance } from '@brand/grounds.mjs';
 import { defined } from '@/test/defined';
 
 /**
- * Proof for R1's mitigation (plan/README.md): before any of these values are
- * baked into app.css, this pins that the dark-ground derivation math itself
- * is correct — worst-cased across every dark surface, not eyeballed against
- * one. DesignTokenContrastTest.php separately proves the *shipped CSS*
- * matches what this file proves is derivable; this file guards the
- * generator, that one guards the output.
+ * Proof that the dark-ground derivation math itself is correct, worst-cased
+ * across every dark surface rather than eyeballed against one.
+ * DesignTokenContrastTest.php separately proves the *shipped CSS* matches what
+ * this file proves is derivable; this file guards the generator, that one
+ * guards the output.
  */
 describe('dark-ground token derivation (build-tokens.mjs)', () => {
     const grounds = Object.values(GROUNDS_DARK);

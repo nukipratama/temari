@@ -214,11 +214,9 @@ class ActivityPipeline
     }
 
     /**
-     * The webhook fires for every activity type; the detail payload carries the
-     * authoritative sport_type. Rejects here so a ride / walk / swim never mints
-     * a PR / card / weekly snapshot or bills the AI narrator — the poll path
-     * filters these upstream, this is the webhook's equivalent choke point.
-     * A run already ingested and then re-typed on Strava heals like a delete.
+     * Rejects a non-run upload (the webhook fires for every activity type) before it mints a
+     * PR / card / weekly snapshot or bills the AI narrator. A run later re-typed on Strava heals
+     * like a delete.
      *
      * @param  array<string, mixed>  $detail
      */
@@ -325,19 +323,11 @@ class ActivityPipeline
     }
 
     /**
-     * Raise the athlete's max HR when their own history beats it. The athlete's
-     * own peak can never be an underestimate, so it always wins.
+     * Raise the athlete's max HR when their own history beats it. The ceiling is the highest
+     * plausible `max_heartrate` across the whole history, so ingest order does not matter.
      *
-     * Order-independent by construction: the ceiling is the highest plausible
-     * `max_heartrate` across the whole history, not a running maximum built up
-     * as ingest walks. `strava:hydrate-backlog` drains oldest-first, but this
-     * would reach the same answer walking either direction.
-     *
-     * Zones are only re-derived for a profile the athlete never spoke for. A
-     * `strava` or `manual` source states where the bands came from, and the
-     * percentage model must not silently replace it: real Strava zones are
-     * routinely nothing like it, and overwriting them left the settings card
-     * still captioned "Synced from Strava" over formula-derived numbers.
+     * Zones are re-derived only for a profile the athlete never spoke for; a `strava` or `manual`
+     * source is left alone.
      */
     private function reconcileMaxHeartRate(Activity $activity): void
     {
@@ -386,12 +376,8 @@ class ActivityPipeline
     }
 
     /**
-     * The athlete's highest believable peak across their whole history.
-     *
-     * Not AnalyzedScope-guarded on purpose: this runs from {@see computeAndStoreSummary},
-     * which fires before the transaction that sets the current activity's own
-     * `analyzed_at` — scoping it out would make the row being ingested right now
-     * invisible to its own max-HR reconciliation.
+     * The athlete's highest believable peak across their whole history. Not AnalyzedScope-guarded:
+     * it runs before the current activity's own `analyzed_at` is set.
      */
     private function highestPlausibleMaxHr(User $user): ?int
     {
@@ -443,16 +429,11 @@ class ActivityPipeline
     }
 
     /**
-     * Recompute a single activity's `stream_summary` / `trimp_edwards` from its
-     * ALREADY-STORED streams using the user's CURRENT heart-rate zones, then
-     * rebuild that week's snapshot forward. Forward-only: makes ZERO Strava HTTP
-     * calls, so a user-initiated "Reread" can refresh one block with new
-     * zones without re-ingesting from Strava. No-op when the activity has no
-     * stored streams or no detail row.
+     * Recompute a single activity's `stream_summary` / `trimp_edwards` from its already-stored
+     * streams using the user's current heart-rate zones, then rebuild that week's snapshot forward.
+     * Makes no Strava HTTP calls; no-op when the activity has no stored streams or detail row.
      *
-     * $rebuildAggregates is opt-out for batch callers only: the forward rebuild
-     * is O(weeks-forward) per activity, so a whole-history loop must switch it
-     * off and roll the snapshots once at the end instead.
+     * `$rebuildAggregates` is for batch callers to switch off and roll the snapshots once at the end.
      */
     public function recomputeSummary(Activity $activity, bool $rebuildAggregates = true, bool $reconcileMaxHeartRate = true): void
     {

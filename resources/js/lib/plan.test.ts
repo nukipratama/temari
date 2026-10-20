@@ -536,14 +536,10 @@ describe('paceEaseDelta', () => {
     });
 
     /**
-     * Regression: `eased_pace_sec_per_km` is the SLOW END of the easy band
-     * (`RestClampRecorder` writes `TrainingPaceCalculator::easySlowEndFromVdotResult()`
-     * there) and `PlanRenderer` builds the day's own `segments` from it — so
-     * the day's own pace (what the row reads via `corePaceSecPerKm`) is
-     * always the EASED, slower figure, never the original. `pace_eased_from`
-     * is independently recomputed from the athlete's un-eased paces, so it is
-     * always the faster, replaced one. A pace ease is never a speed-up: `to`
-     * (the day's own pace) must read slower than `from` (the replaced one).
+     * Regression: `eased_pace_sec_per_km` is the SLOW END of the easy band, so
+     * the day's own pace is always the eased, slower figure while
+     * `pace_eased_from` is recomputed from the un-eased paces. A pace ease is
+     * never a speed-up: `to` must read slower than `from`.
      */
     it('reads the day’s own (eased) pace as the slower figure, never the original', () => {
         const delta = paceEaseDelta(

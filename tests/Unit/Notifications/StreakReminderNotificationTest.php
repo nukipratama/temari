@@ -41,8 +41,7 @@ it('routes to Telegram for a connected, opted-in user', function (): void {
     expect(streakVia($user))->toBe([InAppChannel::class, TelegramChannel::class]);
 });
 
-// The gap this closes: a push-only user used to get recaps but never streak
-// nudges, because via() was hardcoded to Telegram.
+// A push-only user gets streak nudges: via() is not hardcoded to Telegram.
 it('routes to web push for a subscribed user with no Telegram connection', function (): void {
     $user = User::factory()->create();
     subscribeToPush($user);

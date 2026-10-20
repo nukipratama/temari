@@ -6,13 +6,10 @@ import { DISPLAY, MONO } from '@/lib/card/palette';
  * The drawing primitives the three card styles share, plus the geometry they
  * need (a fitted route path and a contour ring) and real text measurement.
  *
- * Everything emitted here is plain SVG a browser rasterises through an `Image`
- * onto a canvas: fills, strokes, gradients, clip paths and `feDropShadow`. No
- * external images, so the canvas stays untainted and `toBlob` works.
- *
- * Unlike the PHP renderer this replaces, a glyph advance can be measured here,
- * so a box, a budget or a step-down size is fitted to the text that goes in it
- * rather than guessed from a character count.
+ * Everything emitted is plain SVG a browser rasterises through an `Image` onto
+ * a canvas, with no external images, so the canvas stays untainted and `toBlob`
+ * works. A glyph advance is measured, so a box or budget is fitted to the text
+ * that goes in it.
  */
 
 export interface Font {
@@ -362,9 +359,8 @@ export function polylinePath(points: Point[], close = false): string {
 }
 
 /**
- * A deterministic 0..1 sequence — the same linear congruential generator the
- * design round drew its contours with, so a given seed always draws the same
- * landscape.
+ * A deterministic 0..1 sequence from a linear congruential generator, so a
+ * given seed always draws the same landscape.
  */
 function seeded(seed: number): () => number {
     let state = seed * 9301 + 49297;

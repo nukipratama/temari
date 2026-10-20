@@ -44,13 +44,7 @@ x-app-env: &app-env
   # dedicated `redis-cache` instance (DB 1 there), free to evict under pressure.
   SESSION_CONNECTION: default
   CACHE_STORE: redis
-  # Pin the session cookie name and the Redis/cache key prefixes to fixed
-  # literals instead of deriving them from APP_NAME (Str::slug(APP_NAME) plus
-  # "-session" / "-database-" / "-cache-"). A cosmetic APP_NAME or tagline edit
-  # would otherwise rename the cookie and shift every Redis key prefix, logging
-  # everyone out on that deploy (PR #21's rename did exactly this). The values
-  # below equal the current APP_NAME-derived slugs, so adopting them is a no-op
-  # for existing sessions.
+  # Fixed literals, not derived from APP_NAME: docs/decisions/fixed-session-cookie.md.
   SESSION_COOKIE: temari-setiap-langkah-berarti-session
   REDIS_PREFIX: temari-setiap-langkah-berarti-database-
   CACHE_PREFIX: temari-setiap-langkah-berarti-cache-
@@ -98,15 +92,8 @@ x-redis-prod-base: &redis-prod-base
   # regardless of the directory the deploy runs `docker compose` from.
   env_file: *app-env-file
   healthcheck:
-    # SET (not ping) so `up --wait` blocks until AOF replay finishes: Redis
-    # answers PONG while still LOADING the dataset into memory but rejects
-    # writes, so a write probe is what actually proves the keyspace is ready.
-    # Without this, app/horizon can connect mid-replay and read empty sessions.
-    # REDISCLI_AUTH authenticates the probe now that the server requires a
-    # password; $$ escapes Compose interpolation so the container shell expands
-    # REDIS_PASSWORD. Only export it when non-empty — a bare `REDISCLI_AUTH=""`
-    # still sends `AUTH ""`, which a passwordless server rejects, so the guard is
-    # what makes this degrade gracefully if the password is ever unset.
+    # SET (not ping): Redis answers PONG while still loading the AOF but rejects writes.
+    # REDISCLI_AUTH is exported only when REDIS_PASSWORD is non-empty, since a bare `AUTH ""` is rejected.
     test: ["CMD-SHELL", "if [ -n \"$$REDIS_PASSWORD\" ]; then export REDISCLI_AUTH=\"$$REDIS_PASSWORD\"; fi; redis-cli SET __hc__ 1 EX 5"]
     interval: 10s
     timeout: 3s
@@ -166,11 +153,8 @@ services:
     ports:
       # Loopback only — cloudflared on the host reaches it via 127.0.0.1:7001.
       - "127.0.0.1:7001:7001"
-    # FrankenPHP doesn't exit early while connections are open, so it always
-    # rides out the grace period under live traffic (measured at ~10.4s of an
-    # ~11.2s deploy outage against Docker's 10s default). 3s bounds that wait
-    # to what a normal page render finishes well inside, rather than the
-    # default cutting nothing and costing the full ten seconds every deploy.
+    # FrankenPHP doesn't exit early while connections are open, so it always rides out the grace
+    # period under live traffic; 3s bounds that wait to what a normal page render finishes inside.
     stop_grace_period: 3s
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:7001/ready"]
@@ -209,14 +193,8 @@ services:
         reservations:
           cpus: "0.25"
 
-  # Override the image's HTTP healthcheck: this container serves no HTTP, and a
-  # wedged or dead schedule:work is otherwise completely silent — every scheduled
-  # command just stops. `schedule:heartbeat` stamps a timestamp on the durable
-  # Redis every minute (routes/console.php); `--check` fails when that stamp is
-  # older than 300s. 300s = 5x the one-minute cadence, headroom for a host-load
-  # delayed tick without flapping; 3 retries at 60s means ~7min of real death
-  # before `unhealthy`. start_period covers container boot plus the wait for the
-  # next minute boundary before the first stamp lands.
+  # Replaces the image's HTTP healthcheck: `schedule:heartbeat --check` fails when the
+  # minute-cadence heartbeat stamp is older than 300s.
   scheduler:
     <<: *app-base
     command: ["php", "artisan", "schedule:work"]
@@ -238,21 +216,8 @@ services:
   # Combined Pulse daemon: pulse:check (Servers recorder) + pulse:work (ingest drain).
   # Bind-mounts an empty host directory on the root filesystem read-only, so the
   # disk metric reflects the real host disk.
-  # $$ (not $) on every PULSE_CHECK_PID/PULSE_WORK_PID reference below: Compose
-  # interpolates `$VAR` in `command:` itself before the container ever sees the
-  # script, and PULSE_CHECK_PID/PULSE_WORK_PID aren't real Compose variables — a
-  # live incident found `docker compose config` silently blanking them, which
-  # turned `kill $PULSE_CHECK_PID $PULSE_WORK_PID` into a no-op `kill` and left
-  # pulse:check running solo for hours with no container restart. `$$` escapes
-  # past Compose's interpolation so the container's own shell resolves them.
-  # Polls both PIDs rather than `wait -n` since this image's /bin/sh is busybox,
-  # where `wait -n` isn't guaranteed portable; polling was verified live.
-  # This shell is PID 1 (the base image's ENTRYPOINT execs straight into
-  # `command:`), and a PID-1 process ignores every signal it hasn't explicitly
-  # trapped — the kernel's default-ignore rule for init processes. Without the
-  # `trap` below, Docker's SIGTERM landed on nobody and the poll loop only ever
-  # woke up to SIGKILL at the end of `stop_grace_period`. The trap kills both
-  # children (a monitoring daemon has nothing to flush) and exits immediately.
+  # $$ escapes Compose interpolation of the PID variables. Polls both PIDs because busybox
+  # sh has no portable `wait -n`. The shell is PID 1, so the `trap` is what makes SIGTERM take effect.
   pulse:
     <<: *app-base
     command:
@@ -270,8 +235,7 @@ services:
         done
         kill $$PULSE_CHECK_PID $$PULSE_WORK_PID 2>/dev/null
         wait
-    # Trap makes SIGTERM exit near-instantly; this is only the backstop if it
-    # ever doesn't fire, so it's a fraction of the old 30s, not zero.
+    # Backstop only; the trap exits on SIGTERM.
     stop_grace_period: 10s
     volumes:
       - app_logs:/var/www/html/storage/logs
@@ -346,9 +310,7 @@ services:
   # (never silently drops a durable key):
   #   DB 0 = queue jobs + Horizon state + sessions
   #   DB 2 = Pulse ingest buffer (PULSE_REDIS_DB=2)
-  # Cache is NOT here anymore — it lives on the `redis-cache` instance below so
-  # cache growth can't push this store into noeviction and stall enqueues.
-  # AOF everysec provides queue durability without the fsync overhead of always.
+  # Cache lives on the `redis-cache` instance below. AOF everysec gives queue durability.
   redis:
     <<: *redis-prod-base
     # /bin/sh -c so the container shell expands REDIS_PASSWORD from env_file into
@@ -375,12 +337,9 @@ services:
         reservations:
           cpus: "0.25"
 
-  # Dedicated cache Redis, split off `redis` above (DBG-8). allkeys-lru lets it
-  # evict under memory pressure instead of ERRORing, so cache growth can never
-  # wedge the durable queue/session store. appendonly no: cache is ephemeral and
-  # rebuilds itself, so no AOF and no persistence volume (a restart = cold cache,
-  # which the app refills lazily). Reuses the redis-prod-base SET write-probe
-  # healthcheck (no AOF replay here, but the probe still proves writes are live).
+  # Dedicated cache Redis, split off `redis` above: allkeys-lru evicts under memory pressure,
+  # and there is no AOF or persistence volume (a restart is a cold cache). Reuses the
+  # redis-prod-base SET write-probe healthcheck.
   redis-cache:
     <<: *redis-prod-base
     # Same --requirepass wiring as `redis` above (uses REDIS_PASSWORD too — the

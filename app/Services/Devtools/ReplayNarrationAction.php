@@ -11,13 +11,12 @@ use App\Services\AI\LlmCostCalculator;
 use App\Services\AI\NarrationOrigin;
 
 /**
- * Re-narrate one flagged block as a QA replay: same subject, same narrator, a
- * fresh answer to compare against the one the athlete complained about.
+ * Re-narrate one flagged block as a QA replay: same subject, same narrator, a fresh answer to
+ * compare against the one the athlete complained about.
  *
- * A replay is the operator's spend, not the athlete's, so it is measured against
- * its own app-wide daily cap rather than the athlete's slice. The cap is enforced
- * again inside {@see AnalysisService} at dispatch; this reads the same numbers so
- * the button can refuse before asking for a confirmation it would not honour.
+ * A replay is the operator's spend, so it is measured against its own app-wide daily cap; {@see
+ * AnalysisService} enforces the cap again at dispatch, and this reads the same numbers so the
+ * button can refuse first.
  */
 class ReplayNarrationAction
 {

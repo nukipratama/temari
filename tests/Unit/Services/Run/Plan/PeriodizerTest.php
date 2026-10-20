@@ -672,7 +672,7 @@ it('lets the race projection move prescribed quality work in both directions', f
     regenerateWithProjectedFinish($user, 5000.0);
     $aheadOfGoal = currentWeekQualityCount($user);
 
-    // #933: being ahead of the goal time no longer touches the quality block
+    // Being ahead of the goal time does not touch the quality block
     // at all -- it stays exactly what the phase baseline already prescribes.
     // Only falling behind still moves it, and only upward.
     expect($steady)->toBe(2)

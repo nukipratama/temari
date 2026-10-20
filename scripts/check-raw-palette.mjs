@@ -14,8 +14,8 @@
  *   2. Elevation must use the warm-tinted `--shadow-e*` scale. Tailwind's
  *      defaults are neutral black, which reads dirty on a cream ground.
  *   3. Font size must resolve through a `--text-*` token, never a px literal in
- *      an arbitrary class. T2 stepped the root 20% at >=1280px; a px value opts
- *      out of that step while the type around it scales. A rem literal at or
+ *      an arbitrary class; the root steps up 20% at >=1280px and a px value
+ *      opts out of that step. A rem literal at or
  *      above the floor (rule 6) is fine.
  *   4. The same, for an inline `fontSize` style prop. Canvas `ctx.font` strings
  *      are deliberately not matched — a canvas is a fixed raster, so px is
@@ -23,12 +23,7 @@
  *   5. A gradient stop must use a ground-reactive token, on either side of the
  *      ground: a fixed-light stop (cream/surface/line/ink) is unreadable on the
  *      dark ground and a fixed-dark one (the Sky family) is the mirror bug on
- *      light. A deliberate fixed-ground gradient is an exemption to argue once,
- *      not a hole to leave open. A gradient is
- *      invisible to every contrast audit — contrast.mjs skips it for want of a
- *      flat colour, and an island scan misses it because `backgroundColor` on a
- *      gradient element is transparent — so a fixed-light stop under reactive
- *      text goes unreadable on the dark ground with nothing reporting it.
+ *      light. Contrast audits skip gradients, so nothing else reports it.
  *   6. A rem font-size literal must not fall below the 11px floor
  *      (`0.6875rem` at the 16px phone root). Card art under
  *      resources/js/components/card/ is exempt, as MASTER.md documents.
@@ -37,18 +32,8 @@
  *      stripping, a bare token counts as a class only beside a hyphenated or
  *      variant utility, or alone in quotes, so prose and variables pass.
  *
- * A third rule (off-scale radius: `rounded-2xl`/`3xl`/`4xl` sitting outside
- * the `--radius-*` scale) existed from the v2 token set until F2, which
- * tokened the rest of Tailwind's built-in radius keywords
- * (`--radius-2xl/3xl/4xl` joined the pre-existing xs/sm/md/lg/xl/full in
- * app.css). With the whole named scale now backed by a token, there is
- * nothing left in that closed vocabulary to reject — see the note above
- * `RULES` below, and `check-raw-palette.test.ts` for the regression test.
- *
- * Rule 2 is new with the v2 token set: before it there was no elevation scale
- * to point at, so it was only ever documented as a habit. Arbitrary radii
- * (`rounded-[11px]`) are still allowed — the collectible card art is drawn to
- * its own geometry and is not app chrome.
+ * Arbitrary radii (`rounded-[11px]`) are allowed: the collectible card art is
+ * drawn to its own geometry and is not app chrome.
  *
  * Colour matching requires a Tailwind palette family name *and* one of its real
  * numeric shade steps (50/100/.../950) — not just `-\d`, which would false-
@@ -159,17 +144,9 @@ const RULES = [
         fix: 'Use a `--text-*` token class instead of a `fontSize` style prop, so the value scales with the root at >=1280px. Canvas `ctx.font` strings are not matched — a canvas is a fixed raster.',
         re: /\bfontSize\s*[:=][\s{]*(?:['"`][0-9.]+px['"`]|[0-9.]+)/g,
     },
-    /* Rule 3 (off-scale radius utility) removed in F2: `--radius-2xl/3xl/4xl`
-       joined app.css's @theme static block alongside the pre-existing
-       xs/sm/md/lg/xl/full, so `rounded-2xl|3xl|4xl` are now legitimately
-       token-backed — every named Tailwind radius keyword resolves through
-       resources/css/app.css's scale. Nothing in that closed vocabulary is
-       off-scale any more; see check-raw-palette.test.ts for the regression
-       test proving this removal was deliberate, not the rule silently
-       going empty (risk R10 of the parity program). */
-    /* Appended rather than inserted: check-raw-palette.test.ts pins rules by
-       index, so a mid-array insert would silently repoint two assertions at
-       the wrong rule. */
+    /* No off-scale radius rule: every named Tailwind radius keyword is token-backed in
+       resources/css/app.css; check-raw-palette.test.ts proves the removal. */
+    /* Append only: check-raw-palette.test.ts pins rules by index. */
     {
         name: 'ground-fixed gradient stop',
         fix: 'Use a ground-reactive token for a gradient stop (`from-popover`, `from-card`, `to-background`). A gradient is invisible to every contrast audit — contrast.mjs skips it for want of a flat colour to score, and an island scan misses it because `backgroundColor` on a gradient element is transparent — so a fixed-light stop under reactive text is unreadable on the dark ground and nothing reports it. Both 1.00:1 bugs the wrong-ground audit found were exactly this shape.',

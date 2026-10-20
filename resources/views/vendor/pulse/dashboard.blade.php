@@ -1,14 +1,11 @@
 @php
     // Pulse's layout loads only the packaged pulse.css; app.css is what makes the
     // --color-* tokens resolve in the first-party cards below.
-    // Pulse's own Tailwind v3 build is unlayered and so outranks every layered
-    // rule app.css can write; the doubled class raises specificity above it
-    // without depending on stylesheet order. Its own dark steps are too dark to
-    // read on its gray-900 card, so the override is per ground.
-    // Pulse themes itself off `localStorage.theme` and a `dark` class, while the
-    // first-party cards below read the app's own --color-* tokens off
-    // `data-theme`. Both are driven from the app's stored ground so the console
-    // is one product rather than a light page hosting dark cards.
+    // Pulse's own unlayered Tailwind v3 build outranks every layered rule app.css
+    // can write, so the doubled class raises specificity, per ground.
+    // Pulse themes itself off `localStorage.theme` and a `dark` class while the
+    // first-party cards read `data-theme`; both are driven from the app's stored
+    // ground.
     $theme = <<<'HTML'
         <script>
             (() => {

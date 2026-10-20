@@ -263,12 +263,10 @@ export function easedFromDelta(
 
 /**
  * The current week's live volume redistribution can shrink an ungraded day's
- * `distance_km` below what it was originally sized at (`asked_km`) as the
- * athlete banks km elsewhere in the week. Returns that original figure only
- * when it has actually moved, so the day's header can say why its number
- * doesn't match what Home or its own narration says. A graded day
- * (`prescribed_km` set) already has a settled answer to this via
- * {@see judgedDayResult}.
+ * `distance_km` below what it was originally sized at (`asked_km`). Returns the
+ * original figure only when it has moved, so the day's header can say why its
+ * number differs from Home or its own narration. A graded day already has its
+ * answer via {@see judgedDayResult}.
  */
 export function volumeAdjustedFrom(day: PlanDay): number | null {
     if (day.prescribed_km != null || day.session_type === 'rest') {
@@ -723,11 +721,10 @@ export function paceEaseDelta(
 /**
  * A day the plan has judged, paired by side rather than by figure: what it
  * asked for and what was run, each in the same terms. The ask is
- * {@see targetLabel}, read off the effective segments, so a pace-eased day
- * shows its eased pace (#932/#965); the answer is `ran_label`, read off the
- * judge's evidence, falling back to the pace over the runs `SessionMatcher`
- * credits (#962). Null on a day still ahead, which shows the ask alone
- * instead.
+ * {@see targetLabel}, read off the effective segments; the answer is
+ * `ran_label`, read off the judge's evidence, falling back to the pace over the
+ * runs `SessionMatcher` credits. Null on a day still ahead, which shows the ask
+ * alone.
  */
 export interface JudgedDayResult {
     askedKm: number;

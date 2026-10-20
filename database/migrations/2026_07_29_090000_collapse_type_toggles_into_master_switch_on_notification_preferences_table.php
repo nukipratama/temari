@@ -10,10 +10,9 @@ use Illuminate\Support\Facades\Schema;
 /**
  * Collapses the three per-type flags on the *what* axis into one master switch.
  *
- * The *where* axis (`telegram_enabled`, `push_enabled`) is untouched: the two
- * axes stay independent, which is what stops this becoming a matrix of toggles
- * nobody wants to maintain. This shrinks the *what* axis from three to one, it
- * does not merge it into the channel mutes.
+ * The *where* axis (`telegram_enabled`, `push_enabled`) is untouched. This
+ * shrinks the *what* axis from three to one, it does not merge it into the
+ * channel mutes.
  *
  * Existing rows map by AND, not OR: the master goes on only for a user who had
  * all three on. Any explicit opt-out wins, because the one thing a collapse

@@ -51,11 +51,8 @@ class WeeklyAggregator
     ];
 
     /**
-     * The only ActivityDetail columns the weekly roll-up reads: the week filter
-     * and daily TRIMP map need the date, weekRow sums distance/elapsed_time,
-     * and averageDecoupling reads `stream_summary`. Everything else on the table
-     * (notably the `splits_metric` and `laps` blobs) would be a year of JSON
-     * pulled per ingest for nothing.
+     * The only ActivityDetail columns the weekly roll-up reads; the `splits_metric` and `laps` blobs
+     * would be a year of JSON pulled per ingest for nothing.
      *
      * @var list<string>
      */
@@ -392,12 +389,8 @@ class WeeklyAggregator
     }
 
     /**
-     * The week's average cardiac drift, or null when too few runs carry a
-     * reading. A mean over a single run is that run, and the plan and the
-     * history chips read this column as a statement about the week: one long
-     * run that drifted is a fact about Sunday, not about the seven days around
-     * it. Null is already the "no signal" value here, per
-     * {@see docs/decisions/unscored-load-is-null-not-zero.md}.
+     * The week's average cardiac drift, or null when too few runs carry a reading. Null is the "no
+     * signal" value here, per {@see docs/decisions/unscored-load-is-null-not-zero.md}.
      *
      * @param  Enumerable<int, ActivityDetail>  $details
      */

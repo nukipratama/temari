@@ -39,14 +39,11 @@ interface TrendsProps {
 
 /**
  * Trends answers one question: "am I getting fitter, and at what cost?"
- * Temari's 7-day verdict runs first — the only place a call is stated —
- * then three stacked comparisons carry the evidence, in the order a runner
- * would ask for it: vs last week, long-term load (the CTL chart lives
- * here), then vs race day (or, with no race, vs the athlete's own year).
- * Direction A of the #914 design round, filed as #967. Replaces the range
- * toggle, badges and streak (profile and run pages keep those) and the ATL
- * line. Laid out on MASTER.md's lane-divided sections, mirroring Home and
- * Plan.
+ * Temari's 7-day verdict runs first — the only place a call is stated — then
+ * three stacked comparisons carry the evidence: vs last week, long-term load
+ * (the CTL chart lives here), then vs race day (or, with no race, vs the
+ * athlete's own year). Laid out on MASTER.md's lane-divided sections, mirroring
+ * Home and Plan.
  */
 export default function Trends({
     ctlTrend,

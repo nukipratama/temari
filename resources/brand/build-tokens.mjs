@@ -2,9 +2,8 @@ import { KINDS, composite, contrast, darkest, darkGrounds, groundsForInk, paperG
 
 /* The colour derivation behind resources/css/app.css: the raw palette, and the
    -ink tiers derived from it per ground so a label always clears contrast on
-   whatever it lands on. The radius, spacing, elevation and type scales used to
-   live here too and were swept by W2 — app.css declares those directly, nothing
-   derives them, and keeping a second unread copy here was pure drift risk. */
+   whatever it lands on. app.css declares the radius, spacing, elevation and
+   type scales directly. */
 
 const COLOR = {
   // structure — Pewter: cold near-black
@@ -73,11 +72,8 @@ export function inkOn(hex, grounds, target = 4.5) {
 }
 
 /** Lighten until the colour clears `target` against every ground in `grounds`
- *  — the inverse move from inkOn(): on a dark ground the vivid fill already
- *  reads, so it is darkening (toward black) rather than lightening (toward
- *  white) that kills contrast. Returns the hex unchanged when it already
- *  clears every ground, so a fill that is already legible stays vivid rather
- *  than being needlessly bleached. */
+ *  — the inverse move from inkOn(). Returns the hex unchanged when it already
+ *  clears every ground, so a legible fill stays vivid. */
 export function inkOnDark(hex, grounds, target = 4.5) {
   const against = Object.values(grounds);
   if (against.every((bg) => contrast(hex, bg) >= target)) return hex;
@@ -130,20 +126,12 @@ for (const family of INK_FAMILIES) {
 }
 COLOR.line = inkOn(COLOR.line, GROUNDS, 1.4);
 
-/* Every accent family whose light -ink value inverts on the dark ground
-   (F2's "problem 1" — see plan/README.md's token model). horizon was excluded
-   on the reasoning that the app reaches for icon-accent instead on dark; 33
-   text-horizon-ink call sites say otherwise, and they were rendering #546d23
-   on #0b1017 at 2.9:1. inkOnDark returns the vivid fill unchanged here, so the
-   dark value is the #ade047 that reasoning assumed was already in use. */
+/* Every accent family whose light -ink value inverts on the dark ground. */
 const DARK_INK_FAMILIES = ['horizon', 'leaf', 'ember', 'citrus'];
 
-/* ember-ink's dark value was worst-cased only against the raw Sky surfaces,
-   before accent/muted/popover joined the reactive panel set the live audit
-   checks a translucent `bg-ember/<alpha>` chip against (ErrorBanner,
-   FlashNotice, the fatigued/overreaching training-load chip). accent/muted/
-   popover all resolve to sky-2 on dark, but a chip prints on the tint over
-   that ground, not on the ground itself, so the tint has to be a ground too. */
+/* A translucent chip prints on its tint over the ground, not on the ground
+   itself, so the tint is scored as a ground too (accent/muted/popover all
+   resolve to sky-2 on dark). */
 function darkTintGrounds(family) {
   const alpha = KINDS.tint[family];
   if (alpha === undefined) return GROUNDS_DARK;
@@ -169,12 +157,11 @@ export const RARITY_INK_DARK = Object.fromEntries(
   Object.entries(RARITY).map(([k, v]) => [k, inkOnDark(v, GROUNDS_DARK)]),
 );
 
-/* The mood cell inverts for the same reason the -ink tier does: #d7ecdf is the
-   easy fill barely tinted into cream, so on a Sky ground the equivalent is that
-   fill barely tinted into sky-deep, not the pastel. Its -ink partner has to
-   move with it — a dark cell under the light tier's #226748 label is the bug
-   this pair exists to avoid — so the cell is derived first and then handed to
-   inkOnDark as one more ground the label must clear. */
+/* The mood cell inverts for the same reason the -ink tier does: on a Sky
+   ground the equivalent of the easy fill barely tinted into cream is that fill
+   barely tinted into sky-deep. Its -ink partner has to move with it, so the
+   cell is derived first and then handed to inkOnDark as one more ground the
+   label must clear. */
 export function tintOnDark(hex, ground, alpha = 0.15) {
   const [fill, bg] = [toRgb(hex), toRgb(ground)];
   return toHex(fill.map((v, i) => v * alpha + bg[i] * (1 - alpha)));

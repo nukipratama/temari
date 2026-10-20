@@ -6,12 +6,6 @@ import { renderBold } from '@/lib/richText';
 /**
  * A span of narration that points at the thing proving it: the cited words
  * carry a dotted underline and nothing else.
- *
- * Chosen over a trailing chip and a superscript marker by building all three
- * against real narration in /devtools/design. The chip restated what the words
- * already said, cost a line of height and orphaned the punctuation after it;
- * the marker was too quiet to read as a control and never showed which words
- * it covered.
  */
 export default function Citation({
     anchor,

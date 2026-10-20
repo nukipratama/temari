@@ -14,15 +14,12 @@ use Illuminate\Support\Collection;
 class ChainResolver
 {
     /**
-     * Whether the clicked row is a legitimate head regenerate: a Done row that
-     * is the latest narrated link of the user's chain. Only the head may
-     * regenerate; re-narrating a mid-history link would desync later blocks.
-     * Returns false for non-Done rows and for unknown chained types (which fall
-     * through to the resume path).
+     * Whether the clicked row is a legitimate head regenerate: a Done row that is the latest
+     * narrated link of the user's chain. Returns false for non-Done rows and for unknown chained
+     * types.
      *
-     * Keying differs per kind: WeeklyRecap is keyed by the WeeklySnapshot
-     * subject id; MonthlyRecap is keyed by the discriminator month (Y-m) under a
-     * single user subject, so its head is matched on the discriminator.
+     * WeeklyRecap is keyed by the WeeklySnapshot subject id; MonthlyRecap by the discriminator
+     * month (Y-m) under a single user subject.
      */
     public function isHeadRegenerate(User $user, AnalysisType $type, int $subjectId, ?string $discriminator, ?Analysis $existing): bool
     {
@@ -59,17 +56,12 @@ class ChainResolver
     }
 
     /**
-     * Weekly chains: the earliest stalled WeeklyRecap per user (runs > 0) among
-     * the fully-closed weeks. "Stalled" = Pending or Failed under the retry
-     * budget ({@see Analysis::stalled()}), so this recovers a link a transient
-     * failure or cost-ceiling pause left behind without re-billing a block that
-     * has burned its budget. Capped at the latest closed week so the sweep never
-     * narrates the still-running current week on incomplete data (the weekly
-     * kickoff owns first-narration). Demo is excluded so it never auto-bills.
+     * Weekly chains: the earliest stalled WeeklyRecap per user (runs > 0) among the fully-closed
+     * weeks. "Stalled" = Pending or Failed under the retry budget ({@see Analysis::stalled()}).
+     * Capped at the latest closed week; the demo user is excluded.
      *
-     * The returned link's `discriminator` carries `week_ending` (unused
-     * otherwise for weekly links) so a caller can age-check against the
-     * backfill depth cap without a second query.
+     * The returned link's `discriminator` carries `week_ending` so a caller can age-check against
+     * the backfill depth cap without a second query.
      *
      * @return Collection<int, ChainLink>
      */
@@ -96,11 +88,9 @@ class ChainResolver
     }
 
     /**
-     * Monthly chains: the earliest stalled MonthlyRecap month per user among the
-     * fully-closed months. "Stalled" = Pending or Failed under the retry budget.
-     * Capped at the latest closed month so the sweep never narrates the
-     * still-running current month (the monthly kickoff owns first-narration).
-     * Demo never stages a monthly row, so it is naturally absent here.
+     * Monthly chains: the earliest stalled MonthlyRecap month per user among the fully-closed
+     * months. "Stalled" = Pending or Failed under the retry budget. Capped at the latest closed
+     * month; the demo never stages a monthly row.
      *
      * @return Collection<int, ChainLink>
      */
@@ -153,13 +143,9 @@ class ChainResolver
     }
 
     /**
-     * The per-activity chain's earliest unfilled (not Done) link for the clicked
-     * type. The chain is keyed by the Activity id (discriminator null) and
-     * ordered by start_date_local, so this walks the user's activities oldest
-     * first for the first one whose clicked-type row is not Done, resuming the
-     * group from there. Returns null when every activity's row is already Done
-     * (the clicked row is then used as-is, which the head-regenerate path
-     * handles).
+     * The per-activity chain's earliest unfilled (not Done) link for the clicked type, walking the
+     * user's activities oldest first by start_date_local. Returns null when every activity's row is
+     * already Done.
      */
     private function earliestUnfilledActivityLink(User $user, AnalysisType $type): ?ChainLink
     {

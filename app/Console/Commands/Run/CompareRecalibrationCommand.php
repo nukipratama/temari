@@ -22,10 +22,8 @@ use Illuminate\Console\Command;
  * Recomputes every stored run under the CURRENT rules and prints how the
  * distributions move, without writing anything.
  *
- * This only says something while both distributions exist: the stored
- * `stream_summary` was written by whatever rules were live at ingest, and the
- * recomputation applies today's. A re-ingest, or the account reset, overwrites
- * the stored side and the comparison is gone with it.
+ * Only meaningful while both distributions exist: a re-ingest, or the account
+ * reset, overwrites the stored `stream_summary` side.
  *
  * @phpstan-type Bands array{stored: array<string, int>, recomputed: array<string, int>}
  * @phpstan-type Counts array{stored: int, recomputed: int}

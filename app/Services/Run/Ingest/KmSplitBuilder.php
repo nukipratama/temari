@@ -9,20 +9,13 @@ use App\Services\Run\Metrics\PaceFormatter;
 use App\Support\Numeric;
 
 /**
- * Canonical per-km derivation, on the watch's own time basis.
+ * Canonical per-km derivation, on the watch's own time basis (Strava's `splits_metric.moving_time`
+ * and smoothed `distance` stream drift from the wrist). Three sources, first that yields rows:
  *
- * Strava's `splits_metric.moving_time` applies Strava's auto-pause heuristic and
- * its `distance` stream is a smoothed curve that drifts off raw GPS mid-run, so
- * splits derived from that pair disagree with the wrist by up to 86 s/km. Three
- * sources, first that yields rows:
- *
- *  1. Laps that already form a ~1 km grid — the watch's own `elapsed_time`,
- *     which matches the wrist exactly.
- *  2. Cumulative haversine over `latlng`, scaled to the device's own total
- *     distance and interpolated at each km boundary. Within ~2 s of the wrist,
- *     and the fallback whenever manual laps break the grid.
- *  3. `splits_metric` read on `elapsed_time` — last resort for a run with no
- *     GPS trace at all, e.g. a treadmill.
+ *  1. Laps that already form a ~1 km grid, on the watch's own `elapsed_time`.
+ *  2. Cumulative haversine over `latlng`, scaled to the device's own total distance and
+ *     interpolated at each km boundary; the fallback whenever manual laps break the grid.
+ *  3. `splits_metric` read on `elapsed_time`, for a run with no GPS trace (e.g. a treadmill).
  */
 final class KmSplitBuilder
 {
@@ -31,12 +24,7 @@ final class KmSplitBuilder
 
     /**
      * How far a lap may sit off 1000 m and still count as part of a km grid.
-     * Measured against every real lap this user has: a genuine auto-lap is
-     * always bit-exact 1000 m (the watch fires the lap on its own odometer
-     * crossing 1000, so it reports the target, not a re-measurement); the
-     * closest any manual lap has ever come to 1000 m is 904.53 m. 5 m only
-     * exists to tolerate a future device that reports e.g. 999.97 instead of
-     * a clean 1000 - it costs nothing against real manual laps either way.
+     * A genuine auto-lap is bit-exact 1000 m; the closest any manual lap has come is 904.53 m.
      */
     private const float KM_GRID_TOLERANCE_M = 5;
 

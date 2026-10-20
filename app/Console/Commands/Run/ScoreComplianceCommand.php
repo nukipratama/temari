@@ -27,10 +27,8 @@ use Illuminate\Support\Carbon;
  * no unscored rows) touches nothing. `--user`/`--limit` mirror
  * `plan:regenerate`'s own options.
  *
- * This settles the days that ended short. The days the athlete actually
- * earned are already recorded, the moment the run landed, by
- * {@see ComplianceScorer::creditIfEarned()} — which is also what stops a run
- * that syncs after this pass from being frozen out of its own day.
+ * The days the athlete actually earned are credited earlier, when the run
+ * lands, by {@see ComplianceScorer::creditIfEarned()}.
  */
 #[Signature('plan:score-compliance {--user= : Limit to one user id} {--limit=500 : Max users processed per run}')]
 #[Description("Score every user's past-due Planned sessions and persist the verdict")]

@@ -9,12 +9,9 @@ use App\Services\Run\Metrics\PaceConsistency;
 final class KmSplitsTool extends ActivityTool
 {
     /**
-     * Rows to sample from a long run before the two extremes are added back.
-     *
-     * Not a cost measure — a 21 km run's splits are a few hundred tokens. It is
-     * about shape: the narrator prompt asks for "1-2 km paling menarik", and
-     * handing it a forty-row table to scan is what invites reciting the table
-     * instead. Most runs are shorter than this and pass through untouched.
+     * Rows to sample from a long run before the two extremes are added back, so the narrator is not
+     * handed a table long enough to invite reciting it. Most runs are shorter and pass through
+     * untouched.
      */
     private const int SAMPLE_ROWS = 12;
 

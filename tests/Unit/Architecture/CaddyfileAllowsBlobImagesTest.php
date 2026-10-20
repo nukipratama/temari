@@ -8,8 +8,7 @@ use Illuminate\Support\Facades\File;
  * The share card is drawn in the browser and previewed from a `blob:` URL
  * (see resources/js/lib/card/print.ts). Production's CSP is only applied by
  * docker/Caddyfile — local Sail never sends this header, so a regression here
- * fails silently until a real deploy blocks every print. #983 was exactly
- * this: `img-src` allowed `data: https:` but not `blob:`.
+ * fails silently until a real deploy blocks every print.
  */
 it('allows blob: images in every img-src directive of the Caddyfile', function (): void {
     $caddyfile = (string) File::get(base_path('docker/Caddyfile'));

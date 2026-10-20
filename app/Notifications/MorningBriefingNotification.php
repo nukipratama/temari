@@ -26,12 +26,10 @@ use NotificationChannels\WebPush\WebPushMessage;
  * carries a row `ai:daily-briefing` already generated at 00:01 and generates
  * nothing itself.
  *
- * Outbound only. The briefing is already on the dashboard, so a second copy of
- * it in the inbox would be a record of nothing new; what this adds is the
- * timing, which Telegram carries as well as a push. Idempotency is the shared
- * per-(analysis, channel) claim, so each channel sends at most once via
- * {@see self::deliveryKey()} — the briefing row is per athlete per day, so that
- * claim is too.
+ * Outbound only: the briefing is already on the dashboard, so an inbox copy would
+ * record nothing new. Idempotency is the shared per-(analysis, channel) claim
+ * via {@see self::deliveryKey()}, so each channel sends at most once per
+ * athlete per day.
  */
 class MorningBriefingNotification extends Notification implements ShouldQueue
 {

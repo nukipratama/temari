@@ -19,18 +19,12 @@ use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
 
 /**
- * Records the clamp outcomes that have to outlive the render: the eased
- * distance a downgrade asked for, and — on a day that already clears the
- * ceiling but only just — the eased pace
- * {@see ReadinessClamp::paceEaseApplies()} asks for.
+ * Records the clamp outcomes that have to outlive the render: the eased distance a downgrade asked
+ * for, and the eased pace {@see ReadinessClamp::paceEaseApplies()} asks for.
  *
- * {@see ReadinessClamp} is otherwise deliberately render-only, and that works
- * because every other consumer recomputes it. Compliance cannot — it runs the
- * next morning, and the ceiling is derived from
- * {@see TrainingLoad::summary()}, which counts the day's own runs, so the
- * ceiling that produced an 08:00 clamp no longer exists at 00:03. Without a
- * record, an athlete who ran the eased session the card prescribed is graded
- * against the session it replaced.
+ * Compliance runs the next morning, when the ceiling that produced an 08:00 clamp no longer exists,
+ * so without a record an athlete who ran the eased session is graded against the session it
+ * replaced.
  *
  * Called by daily-briefing side effects.
  */
@@ -46,13 +40,9 @@ final readonly class RestClampRecorder
     }
 
     /**
-     * The week's volume multiplier, read the same way {@see CurrentWeekPlanBuilder}
-     * and {@see PlanPageAssembler} do — the same trailing
-     * window resolves to the same multiplier for the shared week. Needed so
-     * the eased distance recorded here matches the one the render actually
-     * showed: {@see ReadinessClamp::apply()}'s core_km scales with it, and a
-     * hardcoded 1.0 would only agree with the render by coincidence, in the
-     * one phase where the ramp has not moved off it yet.
+     * The week's volume multiplier, read the same way {@see CurrentWeekPlanBuilder} and
+     * {@see PlanPageAssembler} do, so the eased distance recorded matches the one the render showed
+     * ({@see ReadinessClamp::apply()}'s core_km scales with it).
      */
     private function volumeMultiplierFor(User $user, Carbon $today, bool $selfScaled): float
     {

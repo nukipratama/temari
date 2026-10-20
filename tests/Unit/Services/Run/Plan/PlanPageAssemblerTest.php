@@ -350,10 +350,9 @@ it('asks for no cooldown when the athlete has not just replanned', function (): 
 
 /**
  * A plan generated mid-week only stores rows from that day on, so its week
- * target sums three days while the completed figure was subtracted from the
- * calendar Monday — everything the athlete ran before the plan existed was
- * deducted from a target that never included it. The measured result was an
- * easy day of 1 km and a long run of 1.6.
+ * target sums three days, so the completed figure must not be subtracted from
+ * the calendar Monday — that would deduct everything the athlete ran before the
+ * plan existed from a target that never included it.
  */
 it('measures the week already run from the first planned day, not the calendar Monday', function (): void {
     Carbon::setTestNow('2026-08-14 08:00:00'); // Friday

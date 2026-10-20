@@ -168,8 +168,7 @@ describe('collectPaperGrounds', () => {
     });
 
     it('reaches past --color-surface', () => {
-        // The S2.9 blind spot in one assertion: cream-deep is the ground
-        // AppShell paints and the one the old scrape could never see.
+        // cream-deep is the ground AppShell paints.
         const grounds = collectPaperGrounds(paperValues);
 
         expect(grounds.map((g) => g.name)).toContain('cream-deep');

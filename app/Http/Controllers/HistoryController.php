@@ -70,9 +70,7 @@ class HistoryController extends Controller
     {
         $filters = $feed->filtersFor($user, $request);
         $weeks = $request->weeks();
-        // P3: "load older weeks" is a real page, not a client-side reveal — the
-        // server ships exactly the requested number of run-bearing week sections
-        // and says whether anything sits behind them.
+        // "Load older weeks" is a real page: the server ships exactly the requested number of run-bearing week sections and says whether anything sits behind them.
         ['since' => $since, 'hasOlder' => $hasOlderWeeks] = $feed->weekWindow($user, $filters, $weeks);
         $runsQuery = $feed->for($user, $filters, $since);
 
@@ -123,11 +121,9 @@ class HistoryController extends Controller
 
     /**
      * Resolves each row's effort once for the whole page batch and stamps it
-     * onto its `detail`, so `RunListRow` never recomputes it per row. The
-     * `stream_summary` column FeedQuery selects to make this possible is
-     * heavy (measured ~2.7KB average, ~9.9KB max per row on seeded demo
-     * data) and only needed server-side, so it's hidden again once the
-     * effort is resolved rather than shipped to the client unused.
+     * onto its `detail`, so `RunListRow` never recomputes it per row. The heavy
+     * `stream_summary` column FeedQuery selects for this is hidden again once
+     * the effort is resolved rather than shipped to the client.
      *
      * @param  Collection<int, Activity>  $runs
      */
@@ -179,15 +175,12 @@ class HistoryController extends Controller
     }
 
     /**
-     * The latest completed week the recap chain actually narrates (runs > 0,
-     * not the in-progress week, not a zero-run rest week — either would steal
-     * the head and hide "Reread" on the real latest recap). Only the head
-     * may regenerate, so re-narrating mid-history can't desync later links.
+     * The latest completed week the recap chain actually narrates (runs > 0, not
+     * the in-progress week, not a zero-run rest week). Only the head may
+     * regenerate.
      *
-     * Queried independently of the caller's own week range: a `week` deep link
-     * (an old weekly-recap notification, revisited after later weeks have
-     * closed) would otherwise narrow the candidate set to a single stale week
-     * and mislabel it as the head.
+     * Queried independently of the caller's own week range, so a `week` deep
+     * link cannot mislabel a stale week as the head.
      */
     private function latestNarratedWeekId(User $user, Carbon $currentWeekEnding): ?int
     {
@@ -258,7 +251,7 @@ class HistoryController extends Controller
             'cells' => Inertia::defer(fn (): array => ($this->calendarBuilder)($user, $gridStart, $gridEnd, $monthStart, $monthEnd)),
             'lifetime' => fn (): array => Arr::only($this->lifetimeStats->forUser($user), self::LIFETIME_FIELDS),
             // The grid's own weeks, so each week row can disclose Temari's
-            // weekly recap without leaving the calendar (prototype WeekRow).
+            // weekly recap without leaving the calendar.
             'weeklySnapshots' => Inertia::defer(fn (): SupportCollection => $this->weeklySnapshotPayload(
                 $user,
                 $gridStart,

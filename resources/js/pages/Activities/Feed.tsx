@@ -141,7 +141,7 @@ export default function RunsIndex({
 }
 
 /**
- * P3: a real page, not a reveal. Each press asks the server for two more week
+ * A real page, not a reveal. Each press asks the server for two more week
  * sections; `preserveScroll` keeps the weeks already read where they were, and
  * only the list props are refetched.
  */

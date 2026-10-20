@@ -354,7 +354,7 @@ function seedSteadyTrimpHistory(User $user, Carbon $lastDay, int $days): void
 it('rebuildForwardFrom computes the converged CTL, not the too-low windowed value', function (): void {
     // 200 days of steady 80 TRIMP/day ending on a COMPLETED past week, so CTL is
     // measured as-of the last active day (no in-progress-week zero-decay). A
-    // continuous CTL converges near 80; the old 49-day warm-up window cold-started
+    // continuous CTL converges near 80; a 49-day warm-up window cold-starts
     // it near 55.
     $user = User::factory()->create();
     $weekEnding = Carbon::today()->subWeek()->endOfWeek(Carbon::SUNDAY)->startOfDay();

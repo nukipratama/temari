@@ -123,10 +123,9 @@ class StreamSynthesizer
 
     /**
      * Per-sample gradient in percent, derived from the altitude and distance
-     * series rather than invented, so the hill metrics agree with the terrain
-     * the rest of the streams describe. Without this stream StreamAnalysis
-     * computes no `max_grade_pct` at all, and the vitals card's steepest-grade
-     * and flat-pace tiles are gated on it.
+     * series so the hill metrics agree with the terrain. StreamAnalysis's
+     * `max_grade_pct` and the vitals card's steepest-grade and flat-pace tiles
+     * are gated on it.
      *
      * @param  list<float>  $altitude
      * @param  list<float>  $distance

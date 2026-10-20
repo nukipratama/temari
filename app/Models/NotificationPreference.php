@@ -21,13 +21,8 @@ use Override;
  * the streak-at-risk nudge. The same switch gates Telegram and web push alike.
  *
  * **Where** it may go — `telegram_enabled`, `push_enabled` — is a non-destructive
- * mute. Off means the connection or subscription stays intact and simply
- * receives nothing, which is the whole point: the alternative was revoking the
- * Telegram link or dropping the push subscription, both expensive to undo (push
- * needs a fresh browser permission grant, unrecoverable on iOS once denied).
- *
- * Keeping the axes independent is deliberate. Crossing them would give a matrix
- * of toggles, which is more control than anyone wants to configure.
+ * mute: off means the connection or subscription stays intact and simply
+ * receives nothing. The two axes are independent.
  *
  * A missing row means all-on for both axes, so a user who never opened the
  * settings receives everything on every wired channel.

@@ -722,7 +722,7 @@ it('leaves weather columns null when Open-Meteo returns nothing', function (): v
 it('does NOT fail ingest when the weather lookup throws (best-effort)', function (): void {
     $activity = makeActivityWithConnection();
 
-    // Reproduce the prod incident: a __PHP_Incomplete_Class return surfaced as a
+    // A __PHP_Incomplete_Class return surfaces as a
     // TypeError. Weather must stay best-effort and never strand the activity.
     $this->mock(OpenMeteoClient::class)
         ->shouldReceive('fetchForActivity')
@@ -1446,9 +1446,8 @@ it('drains 5+ runs recent-first then oldest-first, settling the replay exactly o
 
     // rebuildForUser and the card recompute only ever run from
     // SettleEarlyNarrationAction, so Mockery's `once()` (it fails the test the
-    // moment a second call happens) is the direct proof the mid-drain
-    // re-billing loop is gone: on the old code this ran on nearly every one
-    // of the 5 ingests.
+    // moment a second call happens) is the direct proof there is no mid-drain
+    // re-billing loop across the 5 ingests.
     $personalRecords = $this->mock(PersonalRecords::class);
     $personalRecords->shouldReceive('detectAndStore')->andReturn([]);
     $personalRecords->shouldReceive('rebuildForUser')->once();

@@ -34,14 +34,11 @@ class AnalyzeWeeklyRecapJob extends AnalyzeRowJob
      * Chain propagation: once this week's recap is Done, dispatch the next
      * chronological week's recap for the same user whose row is still Pending.
      * Pre-staged Pending rows only (invalidate:false), so a tripped cost ceiling
-     * or AI-disabled env makes the dispatch a clean no-op and the chain pauses
-     * rather than injecting filler. This keeps each successor reading its
-     * predecessor's already-Done narrative.
+     * or AI-disabled env pauses the chain rather than injecting filler.
      *
-     * Best-effort: any failure here (DB blip, dispatch error) is logged and
-     * swallowed so it never flips this already-Done, already-billed row back to
-     * Failed (which would re-bill on retry). The daily resume sweep re-kicks any
-     * link this misses.
+     * Best-effort: any failure is logged and swallowed so it never flips this
+     * already-Done, already-billed row back to Failed (which would re-bill on
+     * retry). The daily resume sweep re-kicks any link this misses.
      */
     #[Override]
     protected function afterDone(Analysis $row, AnalysisService $service): void

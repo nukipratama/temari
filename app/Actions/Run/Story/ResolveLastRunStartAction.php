@@ -10,16 +10,10 @@ use Illuminate\Support\Carbon;
 /**
  * The athlete's most recent run start, read once per request.
  *
- * Bound `scoped()` in AppServiceProvider — {@see \App\Services\Run\Story\Vibe}
- * and {@see \App\Services\Run\Story\RecoveryWindow} ask the same question on
- * one Home render (today's vibe and the week plan's readiness clamp),
- * and the memo can only collapse them if they share an instance.
- *
- * A ceiling keeps the window as-of the caller's date, so a backdated recompute
- * (self-heal / dead-letter retry) never sees a later run. It costs a second
- * read only when the athlete's latest run is genuinely past the ceiling, which
- * on a live page never happens. {@see ActivityDetail::booted()} and
- * {@see \App\Models\Activity::booted()} drop the memo on any write.
+ * Bound `scoped()` in AppServiceProvider. A ceiling keeps the window as-of the
+ * caller's date, so a backdated recompute never sees a later run.
+ * {@see ActivityDetail::booted()} and {@see \App\Models\Activity::booted()}
+ * drop the memo on any write.
  */
 class ResolveLastRunStartAction
 {

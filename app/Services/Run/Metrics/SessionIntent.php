@@ -14,9 +14,7 @@ use App\Models\ActivityDetail;
  *
  * Intent reads, in order: the Strava `workout_type` the runner tagged, the day's
  * settled planned session, a fast/slow rep structure in the laps, then the
- * HR-zone distribution (Z3-Z4 heavy = threshold work). Zone shape is used rather
- * than pace or pace-variability because a real tempo often carries an easy
- * warm-up/cool-down that inflates both and hides the hard block. See
+ * HR-zone distribution (Z3-Z4 heavy = threshold work). See
  * `docs/decisions/session-intent-reads-the-plan.md`.
  */
 final class SessionIntent

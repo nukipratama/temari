@@ -130,13 +130,12 @@ it('runs the Strava drain and fallback poll on the cadences they were sized for'
     // Matches the read bucket's own decay window, so recovered headroom is never
     // left idle for most of an hour.
     'hydrate-backlog tracks the 15-minute bucket' => ['strava:hydrate-backlog', '*/15 * * * *'],
-    // Around the clock: the old 04-10/16-22 window left a five-hour overnight gap
-    // in which a missed webhook went unnoticed. At :07, off the serial :00 tick.
+    // Around the clock, so a missed webhook never goes unnoticed overnight. At :07, off the serial :00 tick.
     'sync polls hourly at :07 with no overnight gap' => ['strava:sync', '7 * * * *'],
 ]);
 
 /**
- * The 30d/90d/12mo trend reads retired (#967) — this pins the one survivor's
+ * The 30d/90d/12mo trend reads are retired; this pins the one survivor's
  * cadence so a future re-tier is a deliberate, visible change.
  */
 it('runs the 7d trend read daily', function (): void {

@@ -35,9 +35,9 @@ beforeEach(fn () => Carbon::setTestNow('2026-09-21 08:00:00'));
 afterEach(fn () => Carbon::setTestNow());
 
 /**
- * The #1000 audit's athlete, in shape: twelve weeks averaging 25.91 km with a
+ * An athlete in shape: twelve weeks averaging 25.91 km with a
  * 44.7 km week in them, a 24.4 km six-week trimmed anchor, four sessions and
- * a 10K twelve weeks out. The plan used to average 22.05 km across the block.
+ * a 10K twelve weeks out.
  */
 function flooredAthlete(): User
 {

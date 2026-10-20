@@ -169,7 +169,7 @@ it('awards the fastest pace tier crossed, not the slowest (regression for break-
 it('does not award sub-7:00 to a run just over the threshold (7:00.4/km)', function (): void {
     $user = User::factory()->create();
     // 5 km in 2102 s = 420.4 s/km = 7:00.4/km, genuinely slower than 7:00.
-    // Rounding down to 420 used to (wrongly) clear the <= 420 threshold.
+    // Rounding down to 420 must not clear the <= 420 threshold.
     [$activity, $detail] = buildActivity($user, '2026-05-21', 5_000, 2_102);
 
     $milestones = milestoneDetector()($activity, $detail);

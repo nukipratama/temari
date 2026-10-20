@@ -6,9 +6,9 @@ import { Fragment, type ReactNode } from 'react';
 const BOLD = /\*\*(.+?)\*\*/g;
 
 /**
- * Renders Temari narration text, converting `**bold**` spans to <strong>.
- * Only bold is supported on purpose: the TemariPersona prompt allows a single
- * bold emphasis but bans all other markdown, so a full parser is unwarranted.
+ * Renders Temari narration text, converting `**bold**` spans to <strong>. Only
+ * bold is supported: the TemariPersona prompt allows a single bold emphasis but
+ * bans all other markdown.
  *
  * Use this wherever LLM-generated narration is rendered, including inside a
  * caller's `renderContent` wrapper, so the emphasis lands instead of showing

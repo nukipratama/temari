@@ -22,13 +22,10 @@ class NarrationGate
     private bool $dispatchSuppressed = false;
 
     /**
-     * Memoized {@see self::dailyCostCeilingExceeded()} answers, keyed by the
-     * athlete the question was asked about (`'total'` for the app-wide one). The
-     * service is a `scoped` binding, so this lives exactly one HTTP request or
-     * one queue job: both the queue worker and Octane discard it via
-     * forgetScopedInstances(). Only the cost read is memoized -- the kill switch
-     * and the config breaker stay live, so a breaker reset still resumes
-     * generation within the scope.
+     * Memoized {@see self::dailyCostCeilingExceeded()} answers, keyed by the athlete the question
+     * was asked about (`'total'` for the app-wide one). The service is `scoped`, so this lives one
+     * HTTP request or one queue job. Only the cost read is memoized: the kill switch and the config
+     * breaker stay live, so a breaker reset still resumes generation within the scope.
      *
      * @var array<string, bool>
      */
@@ -134,13 +131,12 @@ class NarrationGate
     }
 
     /**
-     * The first condition stopping an auto-dispatch, or null when none does.
-     * `withBudget: false` drops the daily spend ceiling so the caller can tell a
-     * budget stop from every other one.
+     * The first condition stopping an auto-dispatch, or null when none does. `withBudget: false`
+     * drops the daily spend ceiling so the caller can tell a budget stop from every other one.
      *
-     * The breaker half-opens after a cooldown to allow a single probe, so a
-     * caller about to dispatch passes `probeBreaker: true` to take it; a caller
-     * only reporting passes false and reads the state without consuming it.
+     * The breaker half-opens after a cooldown to allow a single probe: a caller about to dispatch
+     * passes `probeBreaker: true` to take it, a caller only reporting passes false and reads the
+     * state without consuming it.
      */
     private function blockingReason(bool $withBudget, bool $probeBreaker, ?int $userId = null): ?string
     {
@@ -184,13 +180,12 @@ class NarrationGate
     }
 
     /**
-     * True when spend has already passed a ceiling that gates this caller: the
-     * app-wide total, which gates everyone including a caller with no athlete in
-     * hand (the /pulse status line, ai:self-heal), or this athlete's own slice
+     * True when spend has already passed a ceiling that gates this caller: the app-wide total,
+     * which gates everyone including a caller with no athlete in hand, or this athlete's own slice
      * underneath it. A ceiling left null never gates.
      *
-     * A replay swaps the athlete's slice for its own app-wide cap
-     * ({@see self::replayCapExceeded()}); the total still gates it.
+     * A replay swaps the athlete's slice for its own app-wide cap ({@see
+     * self::replayCapExceeded()}); the total still gates it.
      */
     private function dailyCostCeilingExceeded(?int $userId = null): bool
     {
@@ -245,14 +240,11 @@ class NarrationGate
     }
 
     /**
-     * A ceiling with today's spend already past it, memoized under `$memoKey`
-     * for the life of the scope. Null ceiling means that ceiling never gates
-     * dispatch.
+     * A ceiling with today's spend already past it, memoized under `$memoKey` for the life of the
+     * scope. A null ceiling never gates dispatch.
      *
-     * Both ceilings share this path so the per-athlete slice and the app-wide
-     * total can never diverge in what "past the ceiling" does. `$appWide` marks
-     * the total, whose trip is an incident worth a maintainer push rather than
-     * one athlete's ordinary day.
+     * Both ceilings share this path so they can never diverge in what "past the ceiling" does;
+     * `$appWide` marks the total, whose trip is an incident worth a maintainer push.
      */
     private function ceilingExceeded(string $memoKey, ?float $ceiling, ?int $userId, bool $appWide = false): bool
     {

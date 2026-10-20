@@ -285,7 +285,7 @@ it('no longer flags a moderately hard run (50% hard zone) as overloaded', functi
         ->toBe(Mood::Blazing);
 });
 
-/** #1527: the run's effort colour and its mood tell one story. */
+/** The run's effort colour and its mood tell one story. */
 it('never gives a planned tempo run the rest-day chill mood beside its moderate effort colour', function (): void {
     $user = User::factory()->create();
     PlannedSession::factory()->for($user)->create([

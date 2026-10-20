@@ -21,9 +21,8 @@ use Illuminate\Support\Collection;
  * backfill. A month that closes later narrates through ai:self-heal, from the
  * row the ingest cascade staged.
  *
- * A month that closed before the athlete connected Strava is filled
- * rule-based up front, the same as a month past the backfill depth cap —
- * Temari was not there for it.
+ * A month that closed before the athlete connected Strava, or lies past the
+ * backfill depth cap, is filled rule-based up front.
  *
  * @see docs/decisions/deferred-recap-windowing.md
  */

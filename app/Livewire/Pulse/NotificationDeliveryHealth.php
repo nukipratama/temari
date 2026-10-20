@@ -12,9 +12,7 @@ use Illuminate\Support\Facades\View;
 use Laravel\Pulse\Livewire\Card;
 
 /**
- * Notification delivery outcomes on the /pulse dashboard. Until the outcome
- * columns landed, a claim row proved only that a send was attempted, so a
- * Telegram push that never arrived was indistinguishable from one nobody read.
+ * Notification delivery outcomes on the /pulse dashboard.
  *
  * Not lazy: one grouped count over a small table, so deferring buys nothing.
  */

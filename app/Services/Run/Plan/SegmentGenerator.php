@@ -13,21 +13,16 @@ use App\Enums\SessionType;
 use App\Services\Run\Metrics\HeartRateZones;
 
 /**
- * Turns a day's `(session_type, phase)` into its full ordered list of
- * {@see SessionSegment}s — warmup, main effort, interval reps —
- * combining the athlete's CURRENT long-run baseline, phase-derived volume
- * multiplier and VDOT-derived paces. Render-time only, same as the
- * retired distance-band lookup before it: nothing here is stored on a row,
- * so a week rendered weeks after it was generated still reflects fitness gained
- * since (see `docs/features/plan-periodizer.md`). `WeekPlanBuilder` only
- * ever decides `session_type`/`phase`; every number below is computed here,
- * fresh, every render.
+ * Turns a day's `(session_type, phase)` into its full ordered list of {@see SessionSegment}s —
+ * warmup, main effort, interval reps — combining the athlete's CURRENT long-run baseline,
+ * phase-derived volume multiplier and VDOT-derived paces. Render-time only: nothing here is stored
+ * on a row (see `docs/features/plan-periodizer.md`). `WeekPlanBuilder` only decides
+ * `session_type`/`phase`.
  *
- * A day's distance is the WHOLE outing, warmup included — {@see self::kmFor()}
- * carves the fixed-duration warmup (and an Interval day's recovery jogs) out of
- * that budget rather than adding them on top of it, so what the card says and
- * what {@see SessionMatcher} grades are the same run. A cooldown is never
- * prescribed. See `docs/decisions/a-session-is-the-whole-outing.md`.
+ * A day's distance is the WHOLE outing, warmup included: {@see self::kmFor()} carves the
+ * fixed-duration warmup (and an Interval day's recovery jogs) out of that budget, so what the card
+ * says and what {@see SessionMatcher} grades are the same run. A cooldown is never prescribed. See
+ * `docs/decisions/a-session-is-the-whole-outing.md`.
  */
 final class SegmentGenerator
 {
@@ -43,31 +38,20 @@ final class SegmentGenerator
     ];
 
     /**
-     * A warmup never eats more than half its own session. The bookend is a
-     * fixed duration while the day's budget scales with the athlete, so on a
-     * taper week at the {@see TrainingBaseline} long-run floor the warmup
-     * would otherwise exceed the whole day and leave nothing to run.
+     * A warmup never eats more than half its own session: on a taper week at the long-run floor the
+     * fixed-duration warmup would otherwise exceed the whole day.
      */
     private const float MAX_WARMUP_SHARE = 0.5;
 
     /**
-     * Rep length / recovery length by phase, minutes. Interval only ever
-     * occurs in Build and in Peak/Taper for a non-marathon-distance race
-     * (see {@see WeekPlanBuilder::phaseQualitySlots()}) — Build introduces
-     * structured VO2max work, Peak sustains longer race-specific reps, Taper
-     * sharpens with short reps and generous recovery so the athlete arrives
-     * fresh rather than fatigued.
+     * Rep length / recovery length by phase, minutes. Interval only occurs in Build and in
+     * Peak/Taper for a non-marathon-distance race (see {@see WeekPlanBuilder::phaseQualitySlots()}).
      *
      * @var array<string, array{0: float, 1: float}>
      */
     /**
-     * Threshold blocks / recovery length by phase, minutes. Interval work
-     * already developed across a season through {@see self::INTERVAL_REP_TABLE}
-     * while a tempo day never changed shape — it was always one continuous
-     * block, growing only as weekly volume grew. A coach progresses threshold
-     * work the other way: several shorter blocks early, fewer and longer as the
-     * athlete adapts, one continuous effort at Peak. Taper breaks it up again so
-     * the session sharpens without draining.
+     * Threshold blocks / recovery length by phase, minutes: several shorter blocks early, fewer and
+     * longer as the athlete adapts, one continuous effort at Peak; Taper breaks it up again.
      *
      * @var array<string, array{0: int, 1: float}>
      */
@@ -100,18 +84,10 @@ final class SegmentGenerator
     }
 
     /**
-     * The WHOLE distance this session asks for, warmup included, before any
-     * redistribution scale — the direct replacement for the retired
-     * distance-band lookup. Pace-independent by construction, so
-     * {@see VolumeRedistributor} can sum a week without paces and an athlete
-     * with no VDOT estimate still gets a number.
-     *
-     * A `Race` day is the one session sized from outside the athlete's own
-     * training: it asks for the race distance, untouched by the volume
-     * multiplier, because the event is whatever length it is.
-     *
-     * The ceilings bind here, on the prescription every session type derives
-     * `$effectiveLong` from, rather than on the baseline alone.
+     * The WHOLE distance this session asks for, warmup included, before any redistribution scale.
+     * Pace-independent, so {@see VolumeRedistributor} can sum a week without paces. A `Race` day asks
+     * for the race distance, untouched by the volume multiplier. The ceilings bind here, on the
+     * prescription every session type derives `$effectiveLong` from.
      *
      * @param  float  $longRunCapKm  {@see TrainingBaseline}'s `long_run_cap_km`
      * @param  ?float  $raceDistanceM  the active {@see \App\Models\RaceGoal}'s distance, required only on a `Race` day
@@ -154,15 +130,10 @@ final class SegmentGenerator
     }
 
     /**
-     * What a generated session actually asks the athlete to run, or null when
-     * no VDOT estimate lets its fixed-duration parts become distance.
-     *
-     * Usually this is {@see self::coreKmFor()} again — an Easy day is one block
-     * of exactly that, and a Tempo day's closing block absorbs the rounding so
-     * its parts land on it. An Interval day cannot: its work is an integer
-     * number of fixed-duration reps, and no whole number of 3-minute reps hits
-     * an arbitrary kilometre budget. The budget is what sizes the week; this is
-     * what the day asks for.
+     * What a generated session actually asks the athlete to run, or null when no VDOT estimate lets
+     * its fixed-duration parts become distance. Usually {@see self::coreKmFor()} again; an Interval
+     * day's whole fixed-duration reps cannot hit an arbitrary budget, so this is what the day asks
+     * for while the budget sizes the week.
      *
      * @param  list<SessionSegment>  $segments
      */
@@ -185,9 +156,8 @@ final class SegmentGenerator
     }
 
     /**
-     * Carries the race DISTANCE rather than the marathon-or-not flag derived
-     * from it: a `Race` day needs the distance itself, and every pace decision
-     * that used the flag can still ask for it.
+     * Carries the race DISTANCE rather than the marathon-or-not flag derived from it, since a `Race`
+     * day needs the distance itself.
      *
      * @param  ?float  $raceDistanceM  the active {@see \App\Models\RaceGoal}'s distance, or null in self-scaled mode
      * @param  array{easy: int, marathon: int, threshold: int, interval: int}|null  $paces  seconds per kilometre; null when the athlete has no VDOT estimate yet
@@ -290,16 +260,10 @@ final class SegmentGenerator
     }
 
     /**
-     * The race, as one block at the pace the athlete is racing it at, and
-     * nothing else. No warmup is carved out and no cooldown prescribed: a
-     * race-day routine belongs to the athlete, the same reasoning that keeps
-     * a cooldown off every other session (see `docs/decisions/a-session-is-the-whole-outing.md`).
-     *
-     * The pace is the athlete's own goal, not a training zone: the goal time
-     * over the race distance. The band still labels which zone that effort
-     * sits in. Without a goal time — a race read back after
-     * `plan:close-finished-races` has retired the goal behind it — the band's
-     * own pace stands in.
+     * The race, as one block at the pace the athlete is racing it at, and nothing else: no warmup
+     * carved out and no cooldown prescribed (see `docs/decisions/a-session-is-the-whole-outing.md`).
+     * The pace is the goal time over the race distance and the band labels the zone; without a goal
+     * time the band's own pace stands in.
      *
      * @param  array{easy: int, marathon: int, threshold: int, interval: int}|null  $paces
      * @return list<SessionSegment>
@@ -323,10 +287,8 @@ final class SegmentGenerator
     }
 
     /**
-     * A single Easy-paced block sized at whatever `$originalType`'s own core
-     * km would have been — {@see ReadinessClamp}'s `ModerateOk` downgrade
-     * (Tempo/Interval only: keeps the day's original size, just re-paced to
-     * Easy, no warmup since it's a single continuous effort now).
+     * A single Easy-paced block sized at `$originalType`'s own core km, for {@see ReadinessClamp}'s
+     * `ModerateOk` downgrade (Tempo/Interval only; no warmup since it is one continuous effort).
      *
      * @param  array{easy: int, marathon: int, threshold: int, interval: int}|null  $paces
      * @return list<SessionSegment>
@@ -602,10 +564,8 @@ final class SegmentGenerator
     }
 
     /**
-     * The warmup's share of the day's budget — zero when there is no VDOT
-     * estimate to convert its fixed minutes into distance, which leaves the
-     * whole day to the main work exactly as it was before this became the
-     * whole outing.
+     * The warmup's share of the day's budget; zero when there is no VDOT estimate to convert its
+     * fixed minutes into distance.
      *
      * @param  array{easy: int, marathon: int, threshold: int, interval: int}|null  $paces
      */
@@ -628,12 +588,8 @@ final class SegmentGenerator
     }
 
     /**
-     * A race-simulation pace once the plan is close enough to race day that
-     * race-pace-specific work makes sense — mirrors the choice
-     * {@see WeekPlanBuilder} made for `long`/`tempo` before this class
-     * existed. Both are gated on the identical `Peak/Taper && isMarathonDistance`
-     * condition; they differ only in their non-race-pace fallback (Long
-     * falls back to Easy, Tempo to Threshold).
+     * A race-simulation pace once the plan is close enough to race day: gated on
+     * `Peak/Taper && isMarathonDistance`; Long otherwise falls back to Easy, Tempo to Threshold.
      *
      * @param  bool  $forTempo  selects Tempo's fallback (Threshold) over Long's (Easy)
      */
@@ -676,11 +632,8 @@ final class SegmentGenerator
     }
 
     /**
-     * Qualitative %HRR zone a pace target implies. No existing convention
-     * ties {@see PaceBand} to {@see HeartRateZones} — this is new work, a
-     * standard physiological mapping: Threshold sits at the top of the
-     * aerobic zone, Interval is VO2max-territory, Easy is the classic
-     * "conversational" zone most training guidance means by "easy".
+     * Qualitative %HRR zone a pace target implies: Threshold sits at the top of the aerobic zone,
+     * Interval is VO2max-territory, Easy is the conversational zone.
      */
     private static function zoneFor(PaceBand $pace): string
     {

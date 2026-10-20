@@ -5,13 +5,11 @@ import { extendTailwindMerge } from 'tailwind-merge';
  *
  * `.text-label-small` / `.text-label-micro` / `.text-label-hero` (defined in
  * resources/css/app.css) and the `--text-display-*` / `--text-headline-*` /
- * `--text-quote-*` / `--text-stat` / `--text-stat-tile` / `--text-stat-tile-fit` / `--text-stat-fluid` / `--text-stat-fluid-lg`
- * scale tokens (the `@theme` block) bundle font size (and sometimes family/tracking) but no
- * color. Out of the box tailwind-merge misreads their `text-` prefix as a
- * text-*color* and drops them when a real color (`text-text-2`) is merged in
- * the same call, silently stripping the styling — confirmed live in
- * StatTile's `lg` size (`text-stat` + a color) before this fix. Registering
- * them in the `font-size` group makes them coexist with a color again.
+ * `--text-quote-*` / `--text-stat*` scale tokens (the `@theme` block) bundle
+ * font size (and sometimes family/tracking) but no color. Out of the box
+ * tailwind-merge misreads their `text-` prefix as a text-*color* and drops them
+ * when a real color is merged in the same call; registering them in the
+ * `font-size` group makes them coexist with a color.
  */
 const twMerge = extendTailwindMerge({
     extend: {

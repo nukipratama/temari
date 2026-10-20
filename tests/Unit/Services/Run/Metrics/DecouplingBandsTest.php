@@ -16,10 +16,7 @@ it('draws the high line above the band ordinary runs occupy, and the controlled 
         ->and(DecouplingBands::CONTROLLED)->toBeLessThan(6.0);
 });
 
-// Regression for #1009 (reopened): a raw signed decoupling_pct reached
-// narrator prompts with no sign convention at all. relationFor() resolves
-// which way it points, reusing TIGHT ("barely moved") as the flat band
-// rather than inventing a new threshold.
+// relationFor() resolves which way a signed decoupling_pct points, using TIGHT ("barely moved") as the flat band.
 it('resolves relationFor using the existing TIGHT band as the flat threshold', function (): void {
     expect(DecouplingBands::relationFor(14.0))->toBe('up')
         ->and(DecouplingBands::relationFor(-14.0))->toBe('down')

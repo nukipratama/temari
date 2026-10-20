@@ -22,10 +22,9 @@ use Illuminate\Support\Carbon;
  * actually happened last week and how the race projection compares to the
  * goal time. Rules own every number, the same as the rest of the plan engine.
  *
- * Priority is adherence first: a missed-week deload wins over how the week
- * was run, and both win over race-pace feedback, so chasing a goal time can
- * never talk the plan past a red flag. The race-pace arm is the only one that
- * moves prescribed work in either direction; the rest only ever reduce.
+ * Priority is adherence first: a missed-week deload wins over how the week was run, and both win
+ * over race-pace feedback. The race-pace arm is the only one that moves prescribed work in either
+ * direction; the rest only ever reduce.
  */
 final readonly class PlanAdapter
 {
@@ -132,16 +131,9 @@ final readonly class PlanAdapter
     }
 
     /**
-     * Average of last week's persisted per-day `distance_score`, each day
-     * capped at 100 before averaging (an overreached day shouldn't mask a
-     * missed one — this is a "did you do enough" check, not a volume total).
-     * Distance alone, never the intent-widened `compliance_score`, so a week
-     * run too easily cannot read as a missed week and back the plan off.
-     * Rest/still-`Planned`/`Skip` days are excluded entirely: rest asks for
-     * nothing, an unscored row has no verdict yet, and a skipped day is
-     * excused by definition. No scoreable days at all (first week ever, or
-     * an all-rest week) reads as perfect adherence — never punish for
-     * nothing to judge.
+     * Average of last week's persisted per-day `distance_score`, each day capped at 100 before
+     * averaging. Distance alone, never the intent-widened `compliance_score`. Rest/still-`Planned`/
+     * `Skip` days are excluded; no scoreable days at all reads as perfect adherence.
      */
     private function previousWeekAdherencePct(User $user, Carbon $weekStart): int
     {
@@ -248,10 +240,8 @@ final readonly class PlanAdapter
      * far enough for one day to speak for the week. Steady-segment decoupling
      * is descriptive and never read here.
      *
-     * A day counts once however many runs it holds, because sessions are
-     * matched to days and not to individual runs, so its runs are read
-     * together. A run carrying no heart-rate stream reads as no signal rather
-     * than as a clean day.
+     * A day counts once however many runs it holds. A run carrying no heart-rate stream reads as no
+     * signal rather than as a clean day.
      *
      * @return array{ragged: int, egregious_easy: int}
      */

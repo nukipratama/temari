@@ -91,14 +91,9 @@ it('persona prompt wording: voice rules, formats and guards', function (string .
 ]);
 
 it('mandates English output regardless of tool results, prior narration, or Indonesian context cues', function (): void {
-    // Prod narration on the larger model went Indonesian for narrators with no
-    // Indonesian source data at all (profile_voice) -- the
-    // persona never actually said "write in English" anywhere, it only used
-    // "English" as register guidance ("casual running-app English"). This is
-    // the fix: an explicit, unmissable language mandate near the top of the
-    // prompt, positioned before any other guidance (including the cultural
-    // context section, which could otherwise read as license to answer in
-    // Indonesian).
+    // An explicit language mandate sits near the top of the prompt, before any
+    // other guidance (including the cultural context section, which could
+    // otherwise read as license to answer in Indonesian).
     expect(temariPrompt())
         ->toContain('# Language')
         ->toContain('Always write in English')

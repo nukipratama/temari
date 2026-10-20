@@ -120,7 +120,7 @@ interface WeekComparisonProps {
  * "vs last week" carries both halves of the page's question: km leads as
  * the section's hero number with its delta beside it, runs is a plain stat
  * line beneath it, and TRIMP/monotony/strain — three side-by-side secondary
- * numbers — stay stat tiles per MASTER.md (direction A, #967; #1275).
+ * numbers — stay stat tiles per MASTER.md.
  */
 export default function WeekComparison({
     weekComparison,

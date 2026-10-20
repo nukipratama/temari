@@ -37,17 +37,12 @@ it('limits to a single user via --user', function (): void {
 });
 
 /**
- * The crash this branch exists to stop: a race whose day had passed made
- * PhaseSchedule::forRace() count a negative number of weeks and array_fill()
- * throw. Because the command looped without a guard, that took every athlete
- * after the thrower in the same run with it — proven with a bystander before
- * fixing.
+ * A race whose day had passed made PhaseSchedule::forRace() count a negative
+ * number of weeks and array_fill() throw, taking every athlete after the thrower
+ * in the same run with it.
  *
- * The per-user try/catch that now contains such a failure has no test of its
- * own: every class in the plan chain is `final`, so no throw can be injected,
- * and no reachable data corruption I could construct still makes regenerate
- * throw. That robustness is why. The guard below covers the one cause that
- * was real.
+ * The per-user try/catch that contains such a failure has no test of its own:
+ * every class in the plan chain is `final`, so no throw can be injected.
  */
 it('regenerates a user whose race day has passed instead of throwing', function (): void {
     Carbon::setTestNow('2026-09-08 10:00:00');

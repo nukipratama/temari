@@ -11,22 +11,17 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 
 /**
- * The time of day an athlete usually starts running, as minutes since midnight
- * local. Derived from the runs they have already logged rather than asked for in
- * onboarding: the answer they would type is the time they *intend* to run, and
- * the whole point of the morning push is to land at the time they actually do.
+ * The time of day an athlete usually starts running, as minutes since midnight local. Derived from
+ * the runs they have already logged rather than asked for, because the answer they would type is
+ * the time they intend to run.
  *
- * The median, not the mean: one 21:00 night race would drag an average across
- * half an hour, and the median is unmoved by it.
+ * The median, not the mean, so one late-night race does not drag it.
  */
 final class UsualRunTime
 {
     /**
-     * A count-based window rather than a fixed number of days: at three runs a
-     * week a 28-day window leaves a light runner permanently under
-     * {@see self::MIN_SAMPLES} and permanently on the fallback, while twenty
-     * runs is roughly seven weeks for that same athlete and roughly two for a
-     * daily one — recent either way.
+     * A count-based window rather than a fixed number of days, so a light runner is not permanently
+     * under {@see self::MIN_SAMPLES} and on the fallback.
      */
     public const int SAMPLE_SIZE = 20;
 

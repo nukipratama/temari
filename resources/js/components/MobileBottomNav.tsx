@@ -60,30 +60,18 @@ function handleActiveTabClick(
 }
 
 /**
- * Floating frosted-glass pill, per the prototype's AppBottomNav.
- * `bottom-[max(...)]` positions the whole pill clear of the home-indicator area
- * rather than padding inside a full-bleed bar, since the pill no longer touches
- * the screen edges. The outer track spans the viewport so the pill can centre
- * on the content column instead of stretching to the full width the prototype's
- * own chrome uses — a recorded divergence, see plan/parity §P32.
- *
- * It tracks the content column at both steps. P32's reason for constraining it
- * at all was that four items spread across a *full-bleed* track read as far
- * apart; 1040 is still a bounded column, and the pill sitting narrower than the
- * content above it read as the more obviously wrong of the two.
+ * Floating frosted-glass pill, per the prototype's AppBottomNav, centred on the
+ * content column at both steps rather than spanning the viewport.
+ * `bottom-[max(...)]` keeps it clear of the home-indicator area.
  *
  * The pill lights the tapped tab immediately and reconciles on Inertia's
  * `finish`, so a cancelled or failed visit falls back to the page the app is
- * actually on rather than stranding the highlight on a tab it never reached.
+ * actually on.
  *
- * Today carries a dot while the inbox has unread rows: on mobile the bell sits
- * in a header a runner glancing at their dashboard need never scroll up to.
- * A dot rather than a count, and decorative rather than announced, because the
- * bell is the labelled, actionable control and this tab does not open the
- * inbox — it is a reason to look up, not a second way in. It borrows the
- * unread dot's own token from `InboxRow`, which is ground-reactive where the
- * bell's badge fill is not; the ring is what keeps it off the lime the active
- * tab tints its own icon with.
+ * Today carries a decorative dot while the inbox has unread rows; the bell is
+ * the labelled control, so the dot is a reason to look up, not a second way in.
+ * It borrows the unread dot's token from `InboxRow`; the ring keeps it off the
+ * lime the active tab tints its own icon with.
  */
 export default function MobileBottomNav() {
     const { component, props, url } = usePage<SharedProps>();

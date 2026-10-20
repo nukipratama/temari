@@ -10,9 +10,8 @@ use Illuminate\Support\Facades\Schema;
  * Who a usage row belonged to, captured at the moment the user is deleted.
  *
  * `ai_token_usages` lives on its own connection, so it has no foreign key to
- * `users` and survives the account being removed. Until now that left the rows
- * attributable only to a bare id whose owner no longer existed, so /ai-usage
- * could show the spend but not whose it was.
+ * `users` and survives the account being removed; this keeps its spend
+ * attributable.
  *
  * These are deliberately null for live users: their name and athlete id are
  * resolved from the source tables instead, so a rename is never stale here.

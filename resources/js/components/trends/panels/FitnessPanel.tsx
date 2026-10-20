@@ -38,8 +38,8 @@ const NO_ANNOTATIONS: FitnessChartAnnotations = { deload: [], race: [] };
 interface FitnessPanelProps {
     /** The full 365-day series ({@link FitnessTrendPoint}), oldest first. */
     trend: ReadonlyArray<FitnessTrendPoint>;
-    /** Only the deload marker is drawn here — direction A keeps race day off
-     *  this chart, see the "vs race day" comparison instead. */
+    /** Only the deload marker is drawn here; race day stays off this chart, see
+     *  the "vs race day" comparison instead. */
     annotations?: FitnessChartAnnotations;
     /** Trailing days to shade, so "a month ago" is a place on the line. */
     highlightDays?: number;
@@ -194,13 +194,11 @@ function monthShort(iso: string): string {
 }
 
 /**
- * The long-term load line "vs a month ago" owns: one CTL series with a categorical
- * load balance band beneath it, a range chip (1M/3M/1Y, default 3M) choosing how
- * much of the 365-day history is drawn, a headline reading the value now and
- * the change since the range's start, and a scrub cursor (hover or touch
- * drag) that swaps the headline for a per-day readout. No ATL line, no stat
- * tiles, no badge chips — those live in the comparison cards around it, or
- * off the page entirely (#967, #1296).
+ * The long-term load line "vs a month ago" owns: one CTL series with a
+ * categorical load balance band beneath it, a range chip (1M/3M/1Y, default 3M),
+ * a headline reading the value now and the change since the range's start, and
+ * a scrub cursor that swaps the headline for a per-day readout. No ATL line,
+ * stat tiles or badge chips.
  */
 export default function FitnessPanel({
     trend,

@@ -395,9 +395,9 @@ it('never redistributes a Long day through its hard ceilings', function (): void
 });
 
 /**
- * The old name `prescribedKm()` collided with `planned_sessions.prescribed_km`
- * — a persisted compliance denominator written once by ComplianceScorer —
- * while this only ever sums the segments it is handed.
+ * Unlike the persisted `planned_sessions.prescribed_km` (a compliance
+ * denominator written once by ComplianceScorer), this only ever sums the
+ * segments it is handed.
  */
 it('sums the segments it is given rather than reading a stored prescription', function (): void {
     $segments = SegmentGenerator::generate(SessionType::Tempo, PlanPhase::Build, null, false, 16.0, 1.0, INF, PACES);

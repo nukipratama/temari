@@ -32,9 +32,7 @@ use Illuminate\Support\Facades\Cache;
  *
  * A question is bound to one activity at the door and stays bound: the answering
  * toolbox is built from that activity alone, so there is no phrasing that widens
- * it. Answers are generated off the queue and polled from {@see self::index()},
- * because a tool-calling run takes several Azure round trips and can block on the
- * outbound throttle far longer than an HTTP request should live.
+ * it. Answers are generated off the queue and polled from {@see self::index()}.
  */
 class RunQuestionController extends Controller
 {

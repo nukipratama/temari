@@ -3,13 +3,10 @@ import { RULES, rulesFor } from '@scripts/check-raw-palette.mjs';
 import { defined } from '@/test/defined';
 
 // Every fixture below is built via concatenation rather than written as one
-// literal, in code AND in comments — check-raw-palette.mjs itself scans
-// resources/js line by line with no comment-stripping, so a fixture (or a
-// comment naming one) spelled out as a contiguous substring would trip the
-// very rule this file tests. grounds.mjs's/DesignTokenContrastTest's own
-// source scanners have the same blind spot for the `bg-*` family — an
-// unclassified fixture there would separately fail the backend's
-// "classifies every background the components paint" gate.
+// literal, in code AND in comments: check-raw-palette.mjs scans resources/js
+// line by line with no comment-stripping, so a contiguous fixture would trip the
+// very rule this file tests. grounds.mjs's/DesignTokenContrastTest's scanners
+// have the same blind spot for the `bg-*` family.
 const rawShade = ['bg', 'blue', '500'].join('-');
 const legitToken = ['bg', 'sky', '2'].join('-');
 const offTokenShadow = ['shadow', 'lg'].join('-');
@@ -34,11 +31,9 @@ describe('check-raw-palette rules', () => {
     });
 
     /**
-     * T2 stepped the root font-size 20% at >=1280px and left open that nothing
-     * stopped a new px literal from silently opting out of it. These two rules
-     * close that, and W4 added them while the tree held zero violations — so
-     * without a deliberate fixture they would pass forever whether or not they
-     * matched anything.
+     * These two rules guard px literals opting out of the root font-size step at
+     * >=1280px; they were added while the tree held zero violations, so without
+     * a deliberate fixture they would pass whether or not they matched anything.
      */
     it('flags a px font-size utility', () => {
         expect(pxFontSize.match(defined(RULES[2]).re)).toEqual([pxFontSize]);
@@ -67,12 +62,11 @@ describe('check-raw-palette rules', () => {
     });
 
     /**
-     * F2 removed the off-scale-radius rule after tokening the rest of
-     * Tailwind's radius keywords (--radius-2xl/3xl/4xl joined app.css's
-     * @theme static). This is the regression test for that removal: exactly
-     * two rules remain, and rounded-2xl/3xl/4xl are no longer matched by
-     * anything — proving the rule went away because it ran out of a
-     * violation to find, not because RULES was silently trimmed further.
+     * Regression test for the off-scale-radius rule's removal once the rest of
+     * Tailwind's radius keywords were tokened (--radius-2xl/3xl/4xl in app.css's
+     * @theme static): rounded-2xl/3xl/4xl are no longer matched by anything,
+     * proving the rule went away because it ran out of a violation to find, not
+     * because RULES was silently trimmed further.
      */
     it('has exactly the seven rules the docstring documents', () => {
         expect(RULES.map((rule) => rule.name)).toEqual([

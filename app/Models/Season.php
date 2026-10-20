@@ -31,8 +31,8 @@ use Override;
  * is the trailing weekly volume as it stood then, frozen so the ramp has
  * something fixed to ramp off, and moved mid-season only by
  * {@see \App\Services\Run\Plan\SeasonService::reanchorIfCollapsed()} — downward,
- * past a sustained collapse. Null on a season created before that decision
- * (and on a factory row); {@see \App\Services\Run\Plan\TrainingBaseline}
+ * past a sustained collapse. Null on a season created before the anchor
+ * existed (and on a factory row); {@see \App\Services\Run\Plan\TrainingBaseline}
  * falls back to the live trailing mean there.
  *
  * `volume_floor_km` is a race season's recent actual weekly mean as it stood

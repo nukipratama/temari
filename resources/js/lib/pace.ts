@@ -148,7 +148,7 @@ export function formatAbsoluteId(iso: string | null | undefined): string {
 /**
  * Dates render lowercase, as the prototype writes them (`12 jun`, not `Jun 12`).
  * Applied at every formatter's exit rather than at each call site, so a new
- * caller cannot reintroduce Title Case by accident. See P37.
+ * caller cannot reintroduce Title Case by accident.
  */
 function idCase(s: string): string {
     return s.toLowerCase();

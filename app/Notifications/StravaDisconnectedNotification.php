@@ -17,14 +17,13 @@ use Illuminate\Support\Carbon;
 use NotificationChannels\WebPush\WebPushMessage;
 
 /**
- * Says out loud that the Strava grant is gone, which nothing used to: the only
- * surface admitting it is the empty-runs hero, a screen an athlete with runs on
- * the dashboard never sees.
+ * Says out loud that the Strava grant is gone; the only other surface admitting
+ * it is the empty-runs hero, a screen an athlete with runs on the dashboard
+ * never sees.
  *
- * Deliberately not gated on the `notifications_enabled` master switch, whose
- * own description names what it covers (the post-run story, the recaps, the
- * streak nudge), all of it content Temari initiates. The per-channel mutes
- * still apply, since those answer where rather than whether.
+ * Deliberately not gated on the `notifications_enabled` master switch, which
+ * covers content Temari initiates. The per-channel mutes still apply, since
+ * those answer where rather than whether.
  */
 class StravaDisconnectedNotification extends Notification implements ShouldQueue
 {

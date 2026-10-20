@@ -304,7 +304,7 @@ it('does not recompute the lifetime totals on the request that only fetches the 
     $headers = inertiaPartialHeaders($this->actingAs($user), '/profile', 'Profile', 'timeInZone');
 
     // Profile's eager block is read-only, but Inertia's partial request re-runs
-    // the whole action, so it used to pay for the lifetime aggregate twice.
+    // the whole action, so the lifetime aggregate must not be paid for twice.
     $lifetime = Mockery::mock(LifetimeStats::class);
     $lifetime->shouldNotReceive('forUser');
     app()->instance(LifetimeStats::class, $lifetime);
@@ -357,15 +357,11 @@ it('resolves the deferred Profile props inside their query budget', function ():
 
     $this->actingAs($user)->get('/profile', $headers)->assertSuccessful();
 
-    // 21: was 18 before confirmed evidence, its preserved provisional anchor,
-    // and successful quality-session corroboration joined the profile read.
-    // This remains bounded across the season history rather than re-reading
-    // each source once per historical week. A fixture whose season started
-    // the same day as the request made SeasonGamificationContext's own early
-    // exit (no past days yet) skip its race-goal, peak-week and grouped
-    // activity reads entirely. The fixture now carries 9 real past weeks (see
-    // seedPastSeasonWeeks), so that work actually runs — once, not per day.
-    // 27: the current week's row reads the held week from
+    // The profile read stays bounded across the season history rather than re-reading
+    // each source once per historical week. The fixture carries 9 real past weeks (see
+    // seedPastSeasonWeeks), so SeasonGamificationContext runs its race-goal, peak-week
+    // and grouped activity reads — once, not per day.
+    // The current week's row reads the held week from
     // CurrentWeekPlanBuilder once, so the season list shows Home's week total.
     expect($queries)->toBeLessThanOrEqual(27);
 });

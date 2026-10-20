@@ -12,18 +12,12 @@ use App\Services\Run\Metrics\StreamSummary;
 use App\Services\Weather\WeatherSnapshot;
 
 /**
- * Deterministic run-insight claims for the demo seed and the unconfigured-Azure
- * path, read straight off the run's own stored summary.
+ * Deterministic run-insight claims for the demo seed and the unconfigured-Azure path, read straight
+ * off the run's own stored summary.
  *
- * This is a stand-in, not a second implementation of the narrator. It exists so
- * `demo:seed` can fill the run-insight block with the run's real numbers
- * instead of lorem, without spending LLM tokens. It deliberately stops at what
- * a single ActivityDetail can answer: no rolling pace average over the user's
- * history, no VDOT-derived easy-pace nudge. Real narration is
- * {@see \App\Services\AI\Narrators\RunInsightNarrator}, which reaches for that
- * history through its tools and picks claims with an LLM. Every claim this
- * class emits already anchors to real data, so it always survives the
- * narrator's own falsifiability check unchanged.
+ * A stand-in, not a second implementation of {@see \App\Services\AI\Narrators\RunInsightNarrator}:
+ * it stops at what a single ActivityDetail can answer, and every claim it emits anchors to real
+ * data, so it always survives the narrator's own falsifiability check.
  */
 final class RuleBasedRunInsights
 {

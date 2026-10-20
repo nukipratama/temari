@@ -5,16 +5,10 @@ declare(strict_types=1);
 namespace App\Services\AI;
 
 /**
- * Source of truth for who Temari is. Every LLM narrator goes through
- * {@see StructuredChatCaller} which prepends {@see self::systemPrompt()}
- * as the system message, so all surfaces (briefing, run narrative, recap,
- * trend, greetings, card flavor, PR context, HR zone notes) sound like
- * the same character.
- *
- * Per-narrator instructions still live in each narrator (domain vocab,
- * output schema reminders, mood-to-tone mapping) — those vary meaningfully
- * and resist a one-size DRY. But identity, voice, mood vocabulary, format
- * rules, and persona constraints all live here.
+ * Source of truth for who Temari is. Every LLM narrator goes through {@see StructuredChatCaller},
+ * which prepends {@see self::systemPrompt()} as the system message. Identity, voice, mood
+ * vocabulary, format rules and persona constraints live here; per-narrator instructions stay in
+ * each narrator.
  */
 final class TemariPersona
 {

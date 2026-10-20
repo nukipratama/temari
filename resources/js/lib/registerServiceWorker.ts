@@ -1,12 +1,10 @@
 /**
  * Register the service worker for every visitor on app load, so the offline
  * fallback works regardless of push-notification opt-in. {@see subscribe}
- * reuses whatever registration is already there for turning a push into a
- * notification.
+ * reuses whatever registration is already there.
  *
- * Deliberately fire-and-forget: nothing in the UI depends on this succeeding,
- * so a browser without service workers, a non-secure origin, or a blocked
- * registration all degrade silently.
+ * Fire-and-forget: nothing in the UI depends on it succeeding, so any failure
+ * degrades silently.
  */
 export function registerServiceWorker(): void {
     if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) {

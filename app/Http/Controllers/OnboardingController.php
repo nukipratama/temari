@@ -88,13 +88,9 @@ class OnboardingController extends Controller
         $user->markOnboarded();
 
         // The plan is built here, not on connect: `plan:regenerate` only runs
-        // Mondays, so before this a user who signed up on a Tuesday met an
-        // empty Plan tab and a "No plan yet." card until the following week.
-        // This is the first moment the preferences that shape a week — run
-        // days, sessions per week, the race goal above — actually exist.
-        // Strava's backfill may still be running, so a first week can be sized
-        // from TrainingBaseline's cold-start seeds; Monday's regeneration
-        // re-sizes it against the real history.
+        // Mondays, and the preferences that shape a week first exist now. A first
+        // week may be sized from TrainingBaseline's cold-start seeds; Monday's
+        // regeneration re-sizes it against the real history.
         $planReady = $regeneration->regenerateForRequest($user, PlanRegenerationReason::Onboarding);
 
         // Regeneration narrates if backfill has landed; otherwise KickoffRecapsJob

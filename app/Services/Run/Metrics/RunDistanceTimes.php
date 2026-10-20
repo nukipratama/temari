@@ -79,12 +79,9 @@ final class RunDistanceTimes
     }
 
     /**
-     * The run's segments in order: every full kilometre, then the trailing
-     * sub-km leftover. The window needs that leftover to reach a target that
-     * lands inside it — a 42.6 km run only covers 42 full kilometres, so the
-     * marathon PR sits in the final 600 m. The leftover's time is recovered
-     * from its already-normalized pace, the one place Strava's `moving_time`
-     * still shows through until KmSplitBuilder derives the partial itself.
+     * The run's segments in order: every full kilometre, then the trailing sub-km leftover, so a
+     * target inside it (the marathon on a 42.6 km run) is reachable. The leftover's time is recovered
+     * from its already-normalized pace.
      *
      * @return list<array<string, mixed>>
      */

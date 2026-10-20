@@ -24,18 +24,14 @@ enum SharedPropCacheKey: string
     case UnreadNotifications = 'unread-notifications';
 
     /**
-     * Short TTL for the Strava-sync share. The two queries it runs fire on
-     * every page load, while the "last synced" marker only moves when a sync
-     * ingests a new activity (minutes apart at most), so a brief cache trades
-     * a tiny staleness window for far fewer per-request queries.
+     * Short TTL for the Strava-sync share, whose two queries fire on every page load while the
+     * "last synced" marker only moves when a sync ingests a new activity.
      */
     private const int STRAVA_SYNC_SECONDS = 120;
 
     /**
-     * TTL for the HR-zones-changed marker. It only moves when the user saves
-     * their zones (which busts the cache via {@see \App\Models\RunnerProfile}),
-     * so the TTL is just a safety net; the win is skipping a runnerProfile
-     * lookup on every page load for the common case of no custom profile.
+     * TTL for the HR-zones-changed marker. It only moves when the user saves their zones (which
+     * busts the cache via {@see \App\Models\RunnerProfile}), so the TTL is a safety net.
      */
     private const int HR_ZONES_CHANGED_SECONDS = 300;
 
@@ -47,19 +43,16 @@ enum SharedPropCacheKey: string
     private const int ACTIVE_RACE_SECONDS = 300;
 
     /**
-     * TTL for the global AI-pause signal. `generationPaused()` can run a handful
-     * of queries (app_config lookup, the config circuit breaker, and the daily
-     * cost tally when a ceiling is set), so caching it briefly keeps it off the
-     * per-request hot path. It is a single global signal, so the cache key is not
-     * per-user, and a 60s staleness window is fine for a soft reassurance banner.
+     * TTL for the global AI-pause signal. `generationPaused()` can run several queries, so it is
+     * cached briefly; it is a single global signal, so the key is not per-user, and a 60s staleness
+     * window is fine for a soft banner.
      */
     private const int AI_PAUSED_SECONDS = 60;
 
     /**
-     * TTL for the per-user "narration still catching up" signal. Backfill
-     * chains advance one link at a time, so this moves faster than the
-     * settings-shaped signals below but still doesn't need to be query-fresh
-     * for a soft reassurance banner.
+     * TTL for the per-user "narration still catching up" signal. Backfill chains advance one link
+     * at a time, so it moves faster than the settings-shaped signals below but need not be query-
+     * fresh.
      */
     private const int AI_CATCHING_UP_SECONDS = 120;
 
@@ -71,13 +64,9 @@ enum SharedPropCacheKey: string
     private const int STRAVA_PAUSED_SECONDS = 60;
 
     /**
-     * TTL shared by the settings-shaped signals:
-     * the missing Strava zone scope and the unread inbox count. Each moves only
-     * on an explicit write — a Strava connect or revoke, an inbox write or
-     * read — and every one of those paths busts the key, so like the HR-zone marker the
-     * TTL is a safety net rather than the mechanism. The win is dropping their
-     * per-page-load queries, which is why they get a TTL at all instead of
-     * bust-only caching: a missed bust must self-heal in minutes, not never.
+     * TTL shared by the settings-shaped signals (the missing Strava zone scope and the unread inbox
+     * count). Each moves only on an explicit write that busts the key, so the TTL is a safety net:
+     * a missed bust must self-heal in minutes, not never.
      */
     private const int SETTINGS_SIGNAL_SECONDS = 300;
 

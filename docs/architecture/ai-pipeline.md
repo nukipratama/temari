@@ -45,7 +45,7 @@ The full catalogue of copy kinds lives in the [AnalysisType](app/Services/AI/Ana
 - How often a type (re)generates isn't a property on the enum: per-activity types fire on every ingest via the post-ingest cascade, daily/weekly/monthly types are deferred to the scheduled commands in [routes/console.php](routes/console.php) so a multi-run window isn't re-billed per run, and on-demand types only fire on an explicit user click. See [[llm-triggers]] for the origin each type actually dispatches from.
 - `jobClass()` maps the type to its concrete [AnalyzeBaseJob](app/Jobs/AI/AnalyzeBaseJob.php) subclass.
 - `subjectType()` maps it to a model class or a synthetic string subject (e.g. `briefing_user_day`, `monthly_recap_user_month`) — the subject for daily/weekly/monthly copy is a user+period token, not a row.
-- `isChained()`, `isZoneDependent()` are flags consumed below.
+- `isChained()`, `isZoneDependent()` are flags consumed below. RunInsight is zone-dependent unconditionally: its row carries no flag saying whether a `zone:<z>` claim was used, and a false "calculated with old zones" hint costs nothing while a missed one would show numbers computed under zones the user has since changed.
 
 Recurring recap windows are modelled by [RecapPeriod](app/Services/AI/RecapPeriod.php) — it resolves the current open period's boundaries (e.g. which ISO week is "this week", which calendar month is "this month") and is used by the scheduled commands and `AnalysisController::trigger()` to gate deferred dispatch (see [[deferred-recap-windowing]]).
 

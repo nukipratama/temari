@@ -3,11 +3,9 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/lib/cn';
 
 /**
- * Thin horizontal progress/fill bar. Replaces the three hand-rolled goal/splits
- * bars (Today GoalsCard, Goals GoalCard, Runs/Show splits). `size` swaps the
- * track height + tint: `md` is the goal bar on a paper surface (cream-deep
- * track), `sm` the splits bar on a sky panel (glass track). `tone` colors the
- * fill.
+ * Thin horizontal progress/fill bar. `size` swaps the track height + tint: `md`
+ * is the goal bar on a paper surface (cream-deep track), `sm` the splits bar on
+ * a sky panel (glass track). `tone` colors the fill.
  */
 const progressTrackVariants = cva('overflow-hidden rounded-full', {
     variants: {

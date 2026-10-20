@@ -149,7 +149,7 @@ it('rolls TRIMP into ATL/CTL/form with sane magnitudes, unchanged by the request
 it('reads the full stored history into the summary instead of the too-low 49-day cold-start window', function (): void {
     $user = User::factory()->create();
 
-    // The old 49-day warm-up window cold-started CTL near 55 (form over-reports
+    // A 49-day warm-up window cold-starts CTL near 55 (form over-reports
     // fatigue); 70 days of 80 TRIMP/day reach ~65, and a day at the lookback's
     // far edge sets form_known_from, so any shorter read cannot match.
     seedTrimpDay($user, 80.0, TrainingLoad::CONVERGED_LOOKBACK_DAYS);

@@ -8,9 +8,8 @@ use App\Services\Run\Ingest\KmSplitBuilder;
 
 /**
  * Pure interval-detection heuristic, extracted from
- * {@see \App\Services\AI\Agent\Tools\LapsTool::reps()} so the periodizer and
- * other session-structure code can reuse it without going through the LLM
- * tool layer. No behavior change from the original inline logic.
+ * {@see \App\Services\AI\Agent\Tools\LapsTool::reps()} so the periodizer and other session-structure
+ * code can reuse it without going through the LLM tool layer.
  */
 final class IntervalDetector
 {
@@ -23,9 +22,8 @@ final class IntervalDetector
 
     /**
      * Positions of the work laps, when the laps repeat a fast/slow structure at
-     * all: at least two quick laps, none of them back to back, and a spread wide
-     * enough that the split into quick and easy means something. An even set of
-     * manual laps comes back empty, which is the reading "no structure here".
+     * all: at least two quick laps, none of them back to back, and a spread wide enough that the
+     * split into quick and easy means something.
      *
      * @param  array<int, float>  $paces  pace in sec/km, keyed by lap position
      * @return list<int>

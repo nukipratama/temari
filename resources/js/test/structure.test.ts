@@ -24,9 +24,8 @@ const EXEMPT = new Set<string>([
 
 /**
  * `.ts` modules under hooks/ and lib/ intentionally without a co-located
- * `{name}.test.ts`. The 1:1 convention covers *logic*; these are pure-data /
- * declarative-constant modules with no branches to exercise, so a test would
- * just restate the literal. Each entry is verified constants-only:
+ * `{name}.test.ts`: pure-data / declarative-constant modules with no branches
+ * to exercise. Each entry is verified constants-only:
  *
  *   - lib/metricGlossary.ts — a frozen `as const` record of glossary copy
  *     (acronym/label/body strings). No functions, no branches.

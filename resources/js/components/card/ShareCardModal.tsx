@@ -70,14 +70,11 @@ const FACT_CHIPS: Array<{
 
 /**
  * The share popup: a bottom sheet at phone width, a centred dialog on a
- * desktop. The three prints sit side by side in a clipped carousel with their
- * neighbours peeking, the story/feed toggle sits above them, and the chips
- * below toggle the optional facts. A chip for a fact this run does not have is
- * hidden rather than disabled.
+ * desktop. The three prints sit side by side in a clipped carousel, the
+ * story/feed toggle above them and the optional-fact chips below.
  *
- * Everything on screen is drawn in the browser, so a switch is a local redraw:
- * a tuple already drawn paints instantly, and only a genuinely new one shows
- * any progress at all.
+ * Everything is drawn in the browser, so a switch is a local redraw and only a
+ * genuinely new tuple shows any progress.
  */
 export default function ShareCardModal({
     open,

@@ -50,10 +50,6 @@ class FeedQuery
     /**
      * The feed's page window: the Monday that the `$weeks`-th most recent
      * run-bearing week starts on, plus whether any run sits behind it.
-     *
-     * Paging by *week* rather than by run keeps the unit the same as the one
-     * the screen renders — a "load older weeks" press must add whole week
-     * sections, and a heavy week must not consume someone else's page.
      * `since` is null only when the window holds no runs at all.
      *
      * @return array{since: ?Carbon, hasOlder: bool}

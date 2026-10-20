@@ -177,12 +177,10 @@ class DemoRunSeeder
             $filled = $this->backfillWithFiller($user);
             $log(sprintf('  %d AI analyses backfilled with rule-based content (demo narration stays rule-based, Reread included).', $filled));
 
-            // Rebuilt rather than topped up. Inbox rows must be written
-            // oldest-first (see writeInboxEntries), which a top-up
-            // cannot fix: rows already written in the wrong order keep their
-            // ids, so the account never converges no matter how often the
-            // seed re-runs. Every row here is derived from the seeded dataset
-            // and re-written below, and this only ever touches the demo user.
+            // Rebuilt rather than topped up: inbox rows must be written
+            // oldest-first (see writeInboxEntries), which a top-up cannot fix.
+            // Every row here is derived from the seeded dataset and re-written
+            // below, and this only ever touches the demo user.
             $user->inboxNotifications()->delete();
             $pendingInbox = $this->pendingNarrationInboxEntries($user);
             $log(sprintf('  %d inbox rows rebuilt', $this->writeInboxEntries($user, $pendingInbox)));
@@ -196,9 +194,9 @@ class DemoRunSeeder
      * Daily keep-alive for the demo account, run by the demo:daily-refresh
      * scheduler. Adds one modest synthetic run for today (skipping two rest days
      * a week so the streak looks human) and re-stages + rule-based-fills today's
-     * date-keyed narration, so the demo never goes stale or renders an empty
-     * an empty, un-narrated block when the date rolls. Zero LLM tokens (runs under
-     * withoutDispatching + the filler), so the demo-billing exclusion holds.
+     * date-keyed narration, so the demo never renders an empty, un-narrated block
+     * when the date rolls. Zero LLM tokens (runs under withoutDispatching + the
+     * filler), so the demo-billing exclusion holds.
      *
      * @param  Closure(string): void|null  $log  optional reporter (command::info etc.)
      */
@@ -239,9 +237,8 @@ class DemoRunSeeder
 
     /**
      * A believable easy run for a given day, deterministic per date (so a same-day
-     * re-run converges via updateOrCreate). Kept modest on purpose: easy Z2 pace
-     * slower than any seeded PR and short enough that RunCardFactory scores it a
-     * Common/Uncommon card, so the daily run never beats a record or inflates the
+     * re-run converges via updateOrCreate). Kept modest: easy Z2 pace slower than
+     * any seeded PR, so the daily run never beats a record or inflates the
      * curated rarity ladder.
      */
     private function modestBlueprintFor(Carbon $date): RunBlueprint
@@ -366,12 +363,11 @@ class DemoRunSeeder
 
     /**
      * The demo user trains for a race, so there has to be one: without it
-     * Race renders its empty state and Profile's goal chip renders for
-     * nobody. Goal pace is 3% faster than the seeded 10K best (rounded to the
-     * nearest 15 s), so the showcase plan reads as ahead of, not behind,
-     * race pace. Runs after the activities are seeded so the 10K
-     * PersonalRecord it reads already reflects them. updateOrCreate on the
-     * active row so a re-seed converges.
+     * Race renders its empty state and Profile's goal chip renders for nobody.
+     * Goal pace is 3% faster than the seeded 10K best (rounded to the nearest
+     * 15 s), so the showcase plan reads as ahead of race pace. Runs after the
+     * activities are seeded; updateOrCreate on the active row so a re-seed
+     * converges.
      */
     private function seedRaceGoal(User $user): void
     {
@@ -393,14 +389,11 @@ class DemoRunSeeder
 
     /**
      * Regenerates the real 12-week horizon via {@see Periodizer::regenerate()},
-     * then backfills the current week's *past* days, which that call always
-     * skips (`Periodizer` only ever writes today-forward — see its own
-     * docblock). Reuses {@see WeekPlanBuilder} with `notBefore: null` so the
-     * past days come from the exact same session-type template as the days
-     * `regenerate()` just wrote, then hand-assigns a status/compliance-score
-     * cycle across the real `PlannedSessionStatus` bands (see
-     * {@see \App\Services\Run\Plan\SessionMatcher}) so Today's day-glyph strip
-     * shows real variety instead of an all-`Planned` week.
+     * then backfills the current week's *past* days, which it skips. Reuses
+     * {@see WeekPlanBuilder} with `notBefore: null`, then hand-assigns a
+     * status/compliance-score cycle across the real `PlannedSessionStatus` bands
+     * (see {@see \App\Services\Run\Plan\SessionMatcher}) so Today's day-glyph
+     * strip shows real variety instead of an all-`Planned` week.
      */
     private function seedCurrentWeekPlan(User $user): void
     {
@@ -519,12 +512,10 @@ class DemoRunSeeder
 
     /**
      * Three representative inbox rows built straight from already-narrated
-     * Analysis content, mirroring AnalysisReadyNotification::toInbox()'s own
-     * shape (title/payload) without going through the queued notify() path:
-     * the last closed week's recap and the last closed month's, each dated to
-     * when it would really have landed, plus today's post-run summary. Those
-     * fill all three of the Inbox page's buckets across three distinct kinds,
-     * rather than one undifferentiated list.
+     * Analysis content, mirroring AnalysisReadyNotification::toInbox()'s shape
+     * without the queued notify() path: the last closed week's recap, the last
+     * closed month's and today's post-run summary, each dated to when it would
+     * really have landed, so all three of the Inbox page's buckets fill.
      *
      * @return list<array{at: Carbon, message: InboxMessage, key: string}>
      */
@@ -560,12 +551,8 @@ class DemoRunSeeder
             Carbon::today()->subMonthNoOverflow()->format('Y-m'),
         );
 
-        // Filler blueprints can coincidentally land on the same calendar date
-        // as the D-0 keep-alive run seeded in seed()/refreshToday() (more
-        // than one activity on "today" is common in this dataset), so this
-        // orders by id to deterministically pick that keep-alive run — it's
-        // always seeded last — rather than an unordered first() that could
-        // pick a different row across re-seeds.
+        // Filler blueprints can land on the same date as the keep-alive run, so
+        // order by id to pick it deterministically — it is always seeded last.
         $todayActivity = Activity::query()
             ->where('user_id', $user->id)
             ->whereHas('detail', fn ($q) => $q->whereDate('start_date_local', Carbon::today()))
@@ -580,15 +567,11 @@ class DemoRunSeeder
 
     /**
      * Two answered questions on the newest run, so the Q&A panel's prior-list
-     * renders rather than only ever showing its empty state, and returns how
-     * many it added.
+     * renders rather than only its empty state, and returns how many it added.
      *
-     * Scoped run Q&A keeps its own table rather than an Analysis row (see
-     * docs/decisions/scoped-run-qa-not-an-analysis-row.md), so the seeder's
-     * withoutDispatching guard does not reach it and RuleBasedNarrationFiller
-     * has nothing to say about it. The answers are therefore fixture text,
-     * grounded in the run's own numbers, on the same footing as the rest of
-     * the demo's rule-based narration: no LLM call, no tokens.
+     * Scoped run Q&A keeps its own table (see
+     * docs/decisions/scoped-run-qa-not-an-analysis-row.md), so the answers are
+     * fixture text grounded in the run's own numbers: no LLM call, no tokens.
      */
     private function seedRunQuestions(User $user): int
     {
@@ -726,11 +709,9 @@ class DemoRunSeeder
      * Writes pending inbox entries oldest-first and returns how many landed.
      *
      * InboxController paginates on `orderByDesc('id')` while the page buckets
-     * on created_at. Those only agree while rows are inserted in chronological
-     * order, which is automatic in production (a row is written when its
-     * notification fires) and has to be arranged here, because these rows are
-     * backdated across the whole season. Written out of order, a row falls off
-     * the end of the first window and its entire bucket stops rendering.
+     * on created_at; they only agree while rows are inserted chronologically,
+     * which these backdated rows must arrange. Written out of order, a row falls
+     * off the end of the first window and its entire bucket stops rendering.
      *
      * @param  list<array{at: Carbon, message: InboxMessage, key: string}>  $pending
      */
@@ -927,13 +908,9 @@ class DemoRunSeeder
     }
 
     /**
-     * The states the demo never produces, for the audits only.
-     *
-     * seed() marks every Analysis row done, which is honest for a public demo
-     * and is exactly why no sweep has ever rendered a pending, processing or
-     * failed block. A near-white `.skeleton` shipped on the dark ground behind
-     * that gap and survived three sweeps. Opt in with `demo:seed --with-edge-states`
-     * so the audits can see them and the demo stays pristine.
+     * The states the demo never produces, for the browser sweeps only: seed()
+     * marks every Analysis row done. Opt in with `demo:seed --with-edge-states`
+     * so the sweeps can see them and the demo stays pristine.
      *
      * The states land on the two pages a sweep actually visits: the newest
      * activity carries a failed block and a pending one, and the user-level

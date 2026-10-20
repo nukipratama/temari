@@ -187,11 +187,10 @@ it('PostRunSpeechNarrator narrates a run with a populated stream summary', funct
     expect($narrator->generate($a, $d->refresh(), 'blazing'))->toBe('Base solid');
 });
 
-// The speech used to be handed all three insight blocks as prose to synthesize.
-// On a page where all four render side by side, that made it a fourth telling of
-// the same run. Its lens is what the other three structurally cannot hold -- the
-// day around the run and where it sits in the athlete's history -- so the
-// triplet no longer reaches it at all.
+// On a page where all four blocks render side by side, handing the speech the
+// insight blocks would make it a fourth telling of the same run. Its lens is what
+// the other three cannot hold -- the day around the run and where it sits in the
+// athlete's history -- so the triplet never reaches it.
 it('PostRunSpeechNarrator is not handed the insight blocks it used to retell', function (): void {
     ['activity' => $a, 'detail' => $d] = postRunFixture();
 
@@ -452,8 +451,7 @@ it('RunInsightNarrator prompt exempts a lap-structured session from the pace-con
         ->and($prompt)->toContain('warmup');
 });
 
-// The old fixed 3-slot schema asked for 2-3 paragraphs per slot; the adaptive
-// claims schema replaces that with short, per-anchor observations instead.
+// The adaptive claims schema asks for short, per-anchor observations.
 it('RunInsightNarrator prompt keeps each claim short (1-2 sentences), not the old fixed-slot paragraphs', function (): void {
     $prompt = narratorPrompt(RunInsightNarrator::class);
 
@@ -461,12 +459,9 @@ it('RunInsightNarrator prompt keeps each claim short (1-2 sentences), not the ol
         ->and($prompt)->not->toContain('2-3 short paragraphs');
 });
 
-// The old fixed 3-slot schema needed the prompt itself to redirect "technical"
-// and "zones" around a missing sensor, forcing a full paragraph out of
-// whatever WAS present. Adaptive claims don't have that problem: a metric or
-// zone anchor with no real reading behind it is simply not a candidate, and
-// the anchor resolver drops it even if the model tries anyway -- so the
-// prompt only needs the general no-invention rule, not a per-slot redirect.
+// A metric or zone anchor with no real reading behind it is simply not a
+// candidate, and the anchor resolver drops it even if the model tries anyway --
+// so the prompt only needs the general no-invention rule.
 it('RunInsightNarrator prompt treats a missing reading as simply not a claim candidate, not something to redirect around', function (): void {
     $prompt = narratorPrompt(RunInsightNarrator::class);
 
@@ -533,10 +528,7 @@ it('BriefingMascotVoiceNarrator reads the day, the 28d baseline and what was pre
         ->toBe(['get_week_state', 'get_recent_runs', 'get_training_load', 'get_recent_baseline', 'get_planned_sessions']);
 });
 
-// Regression for #1009 (decision): the tool that let this narrator see a
-// specific past run's comparison numbers is gone, and the prompt no longer
-// invites stating one -- see the PostRunSpeechNarrator equivalent below for
-// the fuller structural guard.
+// The prompt no longer invites stating a past-run comparison; see the structural guard below.
 it('BriefingMascotVoiceNarrator prompt forbids comparing today or the last run to a specific past run', function (): void {
     $prompt = narratorPrompt(BriefingMascotVoiceNarrator::class);
 
@@ -647,10 +639,7 @@ it('WeeklyRecapNarrator omits prev_narrative when the prior week recap is not ye
     expect($context['prev_narrative'])->toBeNull();
 });
 
-// Regression for #1009 (reopened): avg_decoupling reached the model as a
-// bare signed percentage. It now carries its own relation, resolved from
-// the sign alone via the same DecouplingBands::TIGHT flat band used
-// elsewhere.
+// avg_decoupling carries its own relation, resolved from the sign alone via the DecouplingBands::TIGHT flat band.
 it('WeekTotalsTool reads avg_decoupling with no signed field for the week', function (): void {
     $user = User::factory()->create();
     $snap = WeeklySnapshot::factory()->for($user)->create([
@@ -858,11 +847,9 @@ it('BriefingMascotVoiceNarrator post-run prompt shows outcomes in words, not ver
 });
 
 /**
- * Three separate no-stacking rules in the prompt did not stop it: measured at
- * 4-5 metric families and 9-10 numbers against a stated ceiling of 3. Making the
- * model NAME its one reading in the schema before writing brought that to 1.5
- * families and 2.2 numbers. The enum is the mechanism, so a family added to the
- * prompt without a matching value would be unpickable — and silently so.
+ * The model must NAME its one reading in the schema before writing. The enum is
+ * the mechanism, so a family added to the prompt without a matching value would
+ * be unpickable — and silently so.
  */
 it('TrendReadNarrator offers exactly the readings its prompt describes', function (): void {
     $schema = new ReflectionClass(TrendReadNarrator::class)->getConstant('READING_PROPERTY_SCHEMA');
@@ -1231,10 +1218,8 @@ it('ProfileVoiceNarrator throws when the model skips its evidence slots', functi
 })->throws(UnavailableException::class, 'required fields');
 
 /**
- * The #801 move, applied to the one narrator still off-model: the paragraph's
- * numbers are bounded by the schema, not by a prose rule. Two slots exist, both
- * are required, and the paragraph may quote nothing else -- so a fourth figure
- * has no field to arrive in. Live output stacked four.
+ * The paragraph's numbers are bounded by the schema, not by a prose rule. Two
+ * slots exist, both are required, and the paragraph may quote nothing else.
  */
 it('ProfileVoiceNarrator bounds its quotable numbers to two schema slots', function (): void {
     $user = User::factory()->create();
@@ -1565,7 +1550,7 @@ it('BriefingMascotVoiceNarrator omits prev_narrative when the prior day Temari n
     expect($context['prev_narrative'])->toBeNull();
 });
 
-// ── Prompt wording guards (slice 8 polish) ────────────────────────────
+// ── Prompt wording guards ────────────────────────────
 
 /**
  * Read a narrator's private SYSTEM_PROMPT constant for wording assertions.
@@ -1796,12 +1781,8 @@ it('recap prompts give storytelling room (3-4 sentences, no rigid word cap)', fu
 ]);
 
 it('PostRunSpeechNarrator prompt hands the mechanics to the other three lenses', function (): void {
-    // Predates the RunInsight consolidation (the "other three lenses" were
-    // technical/splits/zones, now one adaptive block), but the reasoning
-    // still holds: the two blocks render side by side, so a speech that
-    // re-tells the pacing is visibly redundant. Telling it not to repeat had
-    // already failed twice (its own prompt said so, and #423 took its tools);
-    // the fix was giving it a lens of its own instead.
+    // The two blocks render side by side, so a speech that re-tells the
+    // pacing is visibly redundant; it gets a lens of its own instead.
     $prompt = narratorPrompt(PostRunSpeechNarrator::class);
 
     expect($prompt)
@@ -1844,17 +1825,8 @@ it('RunInsightNarrator prompt steers toward plain, natural phrasing while keepin
         ->and($prompt)->not->toContain('—');
 });
 
-// Superseded by this slice: the fixed 3-slot schema needed the prompt itself
-// to redirect "technical"/"zones" around a missing sensor (validated twice
-// against prod). Adaptive claims move that guarantee into code -- see "prompt
-// treats a missing reading as simply not a claim candidate" above, plus the
-// anchor-falsifiability tests, which now enforce it deterministically instead
-// of trusting prompt wording.
-
-// Prod data (830 real rows) showed these five narrators' prompts training the
-// model to front-load every tool into one turn and stop, landing on exactly 2
-// steps regardless of a 4-8 step budget -- confirmed not a maxSteps/AgentLoop
-// bug (that loop genuinely supports more). The fix is prompt wording, not code.
+// These five narrators' prompts must not train the model to front-load every tool into one turn;
+// the loop supports more steps, so this is prompt wording, not code.
 it('invites iterative tool follow-up instead of front-loading everything into one turn', function (string $class): void {
     // Heredoc line-wraps mid-phrase, so compare on whitespace-normalized text
     // rather than the raw string with its literal line breaks.
@@ -1871,11 +1843,8 @@ it('invites iterative tool follow-up instead of front-loading everything into on
     BriefingMascotVoiceNarrator::class => [BriefingMascotVoiceNarrator::class],
 ]);
 
-// The same prod audit found a different problem for these three: 6-27% of
-// live calls answered with zero tool calls despite having a toolbox, because
-// the prompt's "Scope"/data list reads as if the numbers were already given
-// rather than something to go fetch. None of the three previously named their
-// tool anywhere in the prompt.
+// The prompt's "Scope"/data list must not read as if the numbers were already given:
+// each of these three names its tool so the model fetches the data.
 it('tells the model to call its tool for data that is never handed to it in context', function (string $class, string $toolName): void {
     $prompt = preg_replace('/\s+/', ' ', narratorPrompt($class));
 
@@ -1899,19 +1868,13 @@ it('CardFlavorNarrator prompt names rarity in English, not Indonesian', function
         ->and($prompt)->not->toContain('Legendaris');
 });
 
-// ── Structural guard: no swept narrator invites a past-run comparison (#1009, decision) ──
+// ── Structural guard: no swept narrator invites a past-run comparison ──
 
 /**
- * #1016 and #1033 both re-encoded the past-you delta (a signed number plus a
- * composite direction, then an unsigned magnitude plus a relation word) and
- * both still let a narrator invert a fact about half the time in a live
- * check: the model builds a mood from the rest of the context, then states
- * the comparison to fit that story. The only reliable fix is that no
- * narrator ever states one -- the comparison is rendered by code as its own
- * fact line next to the narration instead. This guard covers every narrator
- * #1009 found wired to past-you data (PostRunSpeechNarrator,
- * BriefingMascotVoiceNarrator); no other narrator's toolbox or context()
- * touches PastYouMatcher.
+ * No narrator states a past-run comparison; code renders it as its own fact
+ * line next to the narration. Covers every narrator wired to past-you data
+ * (PostRunSpeechNarrator, BriefingMascotVoiceNarrator); no other narrator's
+ * toolbox or context() touches PastYouMatcher.
  */
 it('never invites a past-run comparison and never wires the retired past-you tools', function (string $class): void {
     $prompt = preg_replace('/\s+/', ' ', narratorPrompt($class));

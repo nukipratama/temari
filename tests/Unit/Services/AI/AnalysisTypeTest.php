@@ -129,10 +129,8 @@ it('formats currentIsoWeek to the discriminator shape ProfileVoice requires', fu
  */
 it('bounds every discriminator it permits, by range or by ownership', function (): void {
     // Types whose bound is ownership rather than a range, which would be checked
-    // in AnalysisSubjectAuthorizer::authorize(). Empty since W2 swept the
-    // featured-card voice, the only resource-keyed discriminator there has ever
-    // been; the escape hatch stays because the rule above still names ownership
-    // as a legitimate bound.
+    // in AnalysisSubjectAuthorizer::authorize(). Currently empty; the rule above
+    // still names ownership as a legitimate bound.
     /** @var list<AnalysisType> $boundedByOwnership */
     $boundedByOwnership = [];
 

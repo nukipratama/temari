@@ -9,9 +9,7 @@ use App\Models\RaceGoal;
 /**
  * The athlete's one active race goal, read once per request.
  *
- * Bound `scoped()` in AppServiceProvider — Home, Plan and Profile each reach
- * the same goal through several unrelated collaborators, and the memo can only
- * collapse those into one read if they are handed the same instance.
+ * Bound `scoped()` in AppServiceProvider.
  *
  * A caller that retires or supersedes a race must call {@see self::forget()}:
  * the mass `update()` those paths use fires no model events, which is why the

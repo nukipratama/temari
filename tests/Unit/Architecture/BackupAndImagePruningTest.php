@@ -7,15 +7,14 @@ use Symfony\Component\Process\Process;
 use Symfony\Component\Yaml\Yaml;
 
 /**
- * #997: a re-run of the Deploy job for a sha that was already deployed
+ * A re-run of the Deploy job for a sha that was already deployed
  * overwrote that sha's pre-deploy backup with a dump of the freshly-wiped
  * (empty) database, silently — and the same re-run left `:latest`/`:previous`
  * pointing at the same image, so a rollback would roll back to itself.
  *
- * This asserts the fix by construction: the workflow YAML shapes that make a
- * re-run safe, plus the prune/selection scripts' actual behavior against
- * fabricated fixtures (never a live docker daemon or database). See the PR
- * description for what only a real run on the host can still prove.
+ * Asserts the workflow YAML shapes that make a re-run safe, plus the
+ * prune/selection scripts' behavior against fabricated fixtures (never a live
+ * docker daemon or database).
  */
 const DEPLOY_WORKFLOW_PATH = '.github/workflows/deploy.yml';
 const NIGHTLY_BACKUP_WORKFLOW_PATH = '.github/workflows/nightly-backup.yml';
@@ -52,10 +51,7 @@ it('names deploy backups with a suffix that differs on every run and every retry
         ->toContain('github.run_attempt');
 
     // github.run_id is stable across a "re-run failed jobs" retry (only
-    // github.run_attempt changes there) — the bug in #997 was exactly this
-    // kind of re-run, so run_attempt alone is what must vary for that case.
-    // Both are asserted above; this just documents which one carries the case
-    // that actually bit prod.
+    // github.run_attempt changes there), so run_attempt alone must vary for that case.
     expect($suffixStep)->toContain('run_attempt');
 });
 
@@ -86,7 +82,7 @@ it('skips re-tagging :previous when the incoming image already is :latest', func
         ->toContain('docker image inspect temari/app:latest')
         ->toContain('"$current" = "$incoming"');
 
-    // The old unconditional form must be gone, not just supplemented.
+    // The unconditional form must be gone, not just supplemented.
     expect($run)->not->toContain('if docker image inspect temari/app:latest >/dev/null 2>&1; then');
 });
 

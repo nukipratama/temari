@@ -276,7 +276,7 @@ it('defers a week past the backfill depth cap that the ingest pipeline is still 
 });
 
 /**
- * The shape #1010 measured: a full-history backfill's kickoff runs before
+ * A full-history backfill's kickoff runs before
  * `strava:hydrate-backlog` has fetched every run's detail, and every week of
  * a brand-new athlete's history is pre-connect. Filling those rule-based
  * without the same hydration gate the LLM path uses reads a snapshot whose
@@ -286,7 +286,7 @@ it('defers a week past the backfill depth cap that the ingest pipeline is still 
 it('defers a pre-connect week the ingest pipeline is still hydrating instead of filling it rule-based blind', function (): void {
     $user = User::factory()->create();
     // Connected moments before "now": both the backfill and the recap
-    // kickoff that follows it fire in the same breath, per #1010.
+    // kickoff that follows it fire in the same breath.
     StravaConnection::factory()->for($user)->create(['created_at' => '2026-05-18 05:00:00']);
 
     WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-10', 'runs' => 3]);

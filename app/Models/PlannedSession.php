@@ -23,8 +23,7 @@ use Override;
 
 /**
  * One day of a user's periodized plan ({@see \App\Services\Run\Plan\Periodizer}).
- * `unique(user_id, date)` — the app's first clean single-purpose daily-grain
- * unique table. A `pinned` row is a fixed constraint the periodizer must plan
+ * `unique(user_id, date)`. A `pinned` row is a fixed constraint the periodizer must plan
  * around and never overwrite; volume redistribution and segment structure
  * ({@see \App\Services\Run\Plan\SegmentGenerator}) are render-time-only and
  * never stored, but the readiness clamp outcome (`clamped_km`/

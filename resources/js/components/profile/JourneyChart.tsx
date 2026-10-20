@@ -30,14 +30,12 @@ interface Point {
 
 /**
  * Best time per week for one distance, as the prototype draws it: a filled
- * polyline with a fatter marker on the PR. Y is inverted — a faster time
- * sits higher — and X is spaced by real elapsed days, so an uneven gap
- * between two attempts is not flattened into progress.
+ * polyline with a fatter marker on the PR. Y is inverted (a faster time sits
+ * higher) and X is spaced by real elapsed days.
  *
  * A pointer drag (touch) or hover (mouse) scrubs a readout across the line,
- * snapping to the nearest week; arrow keys move between weeks from the
- * keyboard. `touch-pan-y` keeps vertical page scroll working on mobile —
- * only a horizontal-ish gesture is claimed as a scrub.
+ * snapping to the nearest week; arrow keys move between weeks. `touch-pan-y`
+ * keeps vertical page scroll working on mobile.
  */
 export default function JourneyChart({
     weeks,

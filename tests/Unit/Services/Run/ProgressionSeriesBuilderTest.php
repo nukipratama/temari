@@ -114,7 +114,7 @@ it('snaps the series best to the authoritative PR time so the chart matches the 
 it('does not stamp the PR time onto a more recent week when the PR predates the window', function (): void {
     // The PR was set long before the 26-week window and hasn't been beaten since,
     // so its week isn't in the series. A newer in-window run must keep its own
-    // scaled time, not get relabeled with the old PR value (the fabricated-point bug).
+    // scaled time, not get relabeled with the old PR value.
     ['user' => $user, 'featured' => $featured] = progressionFixture('5km', 1_500, '2024-01-01 07:00:00');
 
     $a = Activity::factory()->for($user)->analyzed()->create();

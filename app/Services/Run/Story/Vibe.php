@@ -40,11 +40,8 @@ class Vibe
     private const int PR_WINDOW_DAYS = 14;
 
     /**
-     * Answers already computed this request/job, keyed by user and date.
-     *
-     * The binding is `scoped()` in AppServiceProvider so DashboardController
-     * and BriefingComposer reach the same instance; without that they get
-     * separate ones and this memo never sees the second call.
+     * Answers already computed this request/job, keyed by user and date. The binding is `scoped()` in
+     * AppServiceProvider so DashboardController and BriefingComposer share the instance.
      *
      * @var array<string, string>
      */

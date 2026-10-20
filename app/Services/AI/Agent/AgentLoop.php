@@ -32,16 +32,10 @@ final readonly class AgentLoop
     }
 
     /**
-     * Take the model's turn until it stops asking for tools, and return both the
-     * answering response and the conversation that produced it.
+     * Take the model's turn until it stops asking for tools, and return both the answering response
+     * and the conversation that produced it. Without a toolbox this is one request.
      *
-     * Without a toolbox this is one request, which is every narrator that has
-     * not been given tools yet.
-     *
-     * Termination is guaranteed twice over: the budget forbids tools once a
-     * ceiling is hit, and a turn that was already forbidden them is returned
-     * whatever it says. A capped run answers from what it managed to read
-     * rather than failing — the user gets narration either way.
+     * A capped run answers from what it managed to read rather than failing.
      *
      * @param  array<string, mixed>  $payload
      * @return array{0: CreateResponse, 1: list<array<string, mixed>>}
@@ -121,15 +115,11 @@ final readonly class AgentLoop
     }
 
     /**
-     * Issue one Responses API request, folding its usage into the budget and
-     * mapping any Azure failure into the caller's transient/terminal exception
-     * taxonomy.
+     * Issue one Responses API request, folding its usage into the budget and mapping any Azure
+     * failure into the caller's transient/terminal exception taxonomy.
      *
-     * A run past its wall-clock deadline starts no further request: it gives up
-     * terminally here, at a step boundary, rather than being killed mid-request
-     * by the worker's own timeout with the step billed and the block empty. The
-     * deadline is checked again after the throttle block, since that block can
-     * itself spend up to `azure_block_cap_seconds` of the same wall clock.
+     * A run past its wall-clock deadline starts no further request: it gives up terminally here, at
+     * a step boundary.
      *
      * @param  array<string, mixed>  $payload
      */
@@ -200,11 +190,8 @@ final readonly class AgentLoop
     }
 
     /**
-     * The turn's usage, in the order {@see AgentBudget::recordStep()} takes it.
-     *
-     * The last two are breakdowns the provider reports alongside the totals:
-     * cached input (billed at a discount) and reasoning output (billed at the
-     * full output rate). Both are absent on responses that carry neither.
+     * The turn's usage, in the order {@see AgentBudget::recordStep()} takes it. The last two are
+     * breakdowns the provider reports alongside the totals: cached input and reasoning output.
      *
      * @return array{0: int, 1: int, 2: int, 3: int, 4: int} input, output, total, cached, reasoning
      */

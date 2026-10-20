@@ -128,13 +128,9 @@ class Analysis extends Model
 
     /**
      * Rows whose analysis_type still maps to a live {@see AnalysisType} case.
-     * Retired types (narration surfaces that were removed) leave their historical
-     * rows behind, and the enum cast throws a ValueError the moment one is
-     * hydrated. {@see \App\Models\Scopes\KnownAnalysisTypeScope} now applies this
-     * same filter globally as a backstop, so this scope is belt-and-suspenders
-     * rather than the only guard; it stays for readability at these call sites.
-     * Ops paths want retired-type rows gone anyway: a block whose narrator no
-     * longer exists can never be re-dispatched or re-armed.
+     * {@see \App\Models\Scopes\KnownAnalysisTypeScope} applies the same filter
+     * globally as a backstop; this scope stays for readability at call sites,
+     * since ops paths want retired-type rows gone anyway.
      *
      * @param  Builder<Analysis>  $query
      * @return Builder<Analysis>
@@ -183,10 +179,9 @@ class Analysis extends Model
 
     /**
      * In-flight zombies: rows stuck Queued/Processing since before $threshold,
-     * i.e. their queue job was lost (Redis incident / ill-timed deploy) so they
-     * never settled. ai:self-heal reverts these to Pending. Uses queued_at (the
-     * enqueue time, untouched by markProcessing), falling back to updated_at for
-     * a row that somehow has no queued_at.
+     * i.e. their queue job was lost, so they never settled. ai:self-heal reverts
+     * these to Pending. Uses queued_at, falling back to updated_at for a row with
+     * none.
      *
      * @param  Builder<Analysis>  $query
      * @return Builder<Analysis>

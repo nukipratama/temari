@@ -13,26 +13,15 @@ use Illuminate\Support\Carbon;
  * Projects a realistic race time for a target distance from the athlete's own
  * personal records, using Riegel's formula: T2 = T1 * (D2/D1)^exponent.
  *
- * Riegel's own exponent (1.06) is a population average. This fits the
- * exponent to the athlete's *own* PRs instead of assuming it, via a log-log
- * linear regression across every usable (distance, time) pair: distance PRs
- * contribute directly, effort-window PRs ({@see PrCategory::efforts()}) store
- * a pace (sec/km), not elapsed time, so they are converted first.
+ * Riegel's own exponent (1.06) is a population average; this fits the exponent to the athlete's own
+ * PRs via a log-log linear regression across every usable (distance, time) pair (effort-window PRs
+ * store a pace, so they are converted first). A thin sample (0 or 1 usable PR) falls back to the
+ * default 1.06 exponent and widens the predicted range.
  *
- * `personal_records` holds at most one row per category (11 categories, no
- * time-series), so a thin sample — 0 or 1 usable PR — is the common case, not
- * an edge case: those fall back to the default 1.06 exponent and widen the
- * predicted range rather than claim false precision from one data point.
+ * The fit reads only records set within {@see self::RECENT_MONTHS} of the projection date, falling
+ * back to the whole record when fewer than two remain.
  *
- * The fit reads only the records set within {@see self::RECENT_MONTHS} of the
- * projection date, falling back to the whole record when fewer than two
- * remain. A category with no time-series keeps a season-old PR forever, and
- * regressing today's shape against it fits the exponent to a fade the athlete
- * has since trained out of.
- *
- * Deliberately does not reconcile with {@see VdotEstimator}, which solves a
- * different problem (training-pace prescription via min() across PRs, not
- * race-time projection).
+ * Deliberately does not reconcile with {@see VdotEstimator}, which prescribes training paces.
  */
 class RiegelProjector
 {
@@ -43,11 +32,8 @@ class RiegelProjector
     public const int RECENT_MONTHS = 4;
 
     /**
-     * Sanity bounds on a fitted exponent. A 2-point fit can be pulled to an
-     * implausible slope by ordinary PR noise (e.g. a slightly-off effort PR);
-     * clamping keeps the projection from extrapolating into a physiologically
-     * meaningless prediction while still letting real signal move the number
-     * away from the population-average default.
+     * Sanity bounds on a fitted exponent: a 2-point fit can be pulled to an implausible slope by
+     * ordinary PR noise.
      */
     private const float MIN_EXPONENT = 1.0;
 
@@ -57,10 +43,8 @@ class RiegelProjector
     private const int MIN_EFFORT_SEC = 210;
 
     /**
-     * Uncertainty half-width, as a fraction of the predicted time, by sample
-     * size — widens as the sample thins out. A single-PR (or zero-PR default)
-     * projection is genuinely uncertain and should read that way, not with
-     * false precision.
+     * Uncertainty half-width, as a fraction of the predicted time, by sample size; widens as the
+     * sample thins out.
      *
      * @var array<int, float>
      */
@@ -131,10 +115,8 @@ class RiegelProjector
     }
 
     /**
-     * Log-log linear regression slope across the sample. Falls back to the
-     * default exponent (clamped bounds don't apply to it — it's already a
-     * sane population value) when every pair shares the same log-distance,
-     * which would otherwise divide by zero.
+     * Log-log linear regression slope across the sample. Falls back to the default exponent when
+     * every pair shares the same log-distance.
      *
      * @param  list<array{distance_m: float, time_sec: float}>  $pairs
      */

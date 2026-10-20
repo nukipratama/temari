@@ -44,7 +44,7 @@ function narrationBlock(User $user, AnalysisType $type = AnalysisType::TrendRead
         'subject_type' => 'briefing_user_day',
         'subject_id' => $user->id,
         'analysis_type' => $type,
-        // TrendRead's discriminator is a closed set (just '7d' since #967);
+        // TrendRead's discriminator is a closed set (just '7d');
         // the factory's default date-shaped value would be hidden by
         // KnownAnalysisTypeScope for this one type.
         ...($type === AnalysisType::TrendRead ? ['discriminator' => '7d'] : []),

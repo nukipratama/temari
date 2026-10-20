@@ -229,15 +229,11 @@ return [
             'nice' => 0,
         ],
 
-        // Narration runs on its own supervisor. A tool-calling agent takes
-        // several Azure round trips, which does not fit the 60 s the rest of
-        // the queue lives by, and holding a shared worker that long would stall
-        // Strava ingest behind it.
-        //
-        // The timeout is the outer safety margin, not the real bound: a run
-        // gives up at `ai.agent.deadline_seconds` and can only overshoot it by
-        // the request already in flight (azure_openai.timeout), so this must
-        // stay above their sum for the deadline to fire first.
+        // Narration runs on its own supervisor: a tool-calling agent takes several
+        // Azure round trips, which does not fit the 60 s the rest of the queue
+        // lives by. The timeout is the outer safety margin and must stay above
+        // `ai.agent.deadline_seconds` plus `azure_openai.timeout` for the
+        // deadline to fire first.
         'supervisor-ai' => [
             'connection' => 'redis',
             'queue' => ['ai'],

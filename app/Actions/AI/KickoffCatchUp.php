@@ -13,10 +13,8 @@ use Illuminate\Support\Carbon;
  * Creates the kickoff rows a missed scheduler minute never created and records
  * the deterministic readiness side effects needed by next-day compliance.
  *
- * The three types here are exactly the per-user kickoff types
- * {@see \App\Services\AI\SelfHealer} already resumes — filling is left to that
- * hourly sweep, so a type it does not sweep would only gain a row that stays
- * empty forever.
+ * Limited to the per-user kickoff types {@see \App\Services\AI\SelfHealer} already
+ * resumes.
  */
 class KickoffCatchUp
 {

@@ -12,8 +12,7 @@ use App\Services\Run\Metrics\TrainingLoad;
 use Illuminate\Support\Carbon;
 
 /**
- * The range a Trends narration is about — just `7d` since #967 (was
- * 7d/30d/90d/12mo), read as of now. The comparison is against the
+ * The range a Trends narration is about: just `7d`, read as of now. The comparison is against the
  * immediately preceding 7-day period.
  *
  * @phpstan-type PeriodTotals array{runs: int, distance_km: float, trimp_total: float|null}

@@ -9,13 +9,8 @@ interface ToggleProps {
 }
 
 /**
- * The app's switch.
- *
- * Promoted out of `Settings/Index` when the settings page grew past one place
- * that needed a switch. It renders **only the control**, not a label row: the
- * visible label, description and icon belong to `SettingsRow`, so both toggle
- * rows and chevron rows share one layout instead of each inventing its own
- * padding and type scale.
+ * The app's switch. It renders **only the control**, not a label row: the
+ * visible label, description and icon belong to `SettingsRow`.
  *
  * `role="switch"` with `aria-checked` rather than a checkbox, because the state
  * change takes effect immediately — there is no form to submit.
