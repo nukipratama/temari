@@ -37,6 +37,7 @@ use App\Support\Config\AppConfig;
 use App\Support\Config\AppConfigKey;
 use App\Services\Weather\OpenMeteoClient;
 use Carbon\CarbonImmutable;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -86,7 +87,7 @@ class ActivityPipeline
             $detail = $this->client
                 ->get($connection, "/activities/{$activity->strava_external_id}", $source, $priority)
                 ->json();
-        } catch (StravaRateLimitedException|StravaCircuitOpenException $e) {
+        } catch (StravaRateLimitedException|StravaCircuitOpenException|ConnectionException $e) {
             // Rethrow rather than retry here: IngestActivityJob re-queues with its
             // own exponential backoff.
             throw $e;
@@ -264,7 +265,7 @@ class ActivityPipeline
 
             /** @var array<string, mixed> $streams */
             return $streams;
-        } catch (StravaRateLimitedException|StravaCircuitOpenException $e) {
+        } catch (StravaRateLimitedException|StravaCircuitOpenException|ConnectionException $e) {
             // The detail is already stored; re-queue the job rather than
             // silently drop the streams.
             throw $e;
