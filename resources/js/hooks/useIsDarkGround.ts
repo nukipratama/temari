@@ -13,9 +13,6 @@ function getSnapshot(): boolean {
     return document.documentElement.dataset.theme === 'dark';
 }
 
-// Dark is the app's default ground (decision 6) — matches the fallback in
-// app.blade.php's blocking script for the same "resolve before we can know
-// for sure" moment.
 function getServerSnapshot(): boolean {
     return true;
 }
