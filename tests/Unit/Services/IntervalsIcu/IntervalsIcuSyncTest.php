@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Enums\IntervalsIcuSyncStatus;
 use App\Enums\PlanPhase;
+use App\Enums\PlannedSessionStatus;
 use App\Enums\SessionType;
 use App\Models\IntervalsIcuConnection;
 use App\Models\PlannedSession;
@@ -135,6 +136,7 @@ it('removes the event when today becomes a rest day or is skipped', function (ar
         ->and($connection->sync_status)->toBeNull();
 })->with([
     'rest' => [['session_type' => SessionType::Rest]],
+    'rest already scored done' => [['session_type' => SessionType::Rest, 'status' => PlannedSessionStatus::Done]],
     'skipped' => [['skipped' => true]],
 ]);
 
@@ -225,4 +227,29 @@ it('skips a broken connection when removing best effort', function (): void {
     app(IntervalsIcuSync::class)->removeTodayBestEffort($connection, Carbon::today());
 
     Http::assertNothingSent();
+});
+
+it("leaves today's workout as sent once today's run is credited, even when the day changes", function (array $change): void {
+    $connection = runSync(syncedAthlete());
+    PlannedSession::query()->where('user_id', $connection->user_id)->sole()->update(['status' => PlannedSessionStatus::Done, ...$change]);
+    intervalsIcuAnswers(['threshold' => 170]);
+
+    $connection = runSync($connection);
+
+    expect(Http::recorded())->toHaveCount(0)
+        ->and($connection->event_id)->toBe('501')
+        ->and($connection->sync_status)->toBe(IntervalsIcuSyncStatus::Sent);
+})->with([
+    'threshold changed' => [[]],
+    'turned into a long run' => [['session_type' => SessionType::Long]],
+]);
+
+it('sends nothing for a run already credited before the athlete connected', function (): void {
+    $connection = syncedAthlete();
+    PlannedSession::query()->where('user_id', $connection->user_id)->sole()->update(['status' => PlannedSessionStatus::Done]);
+
+    $connection = runSync($connection);
+
+    expect(Http::recorded())->toHaveCount(0)
+        ->and($connection->event_id)->toBeNull();
 });

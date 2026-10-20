@@ -17,6 +17,7 @@ use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Queue\Attributes\MaxExceptions;
 use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Queue\Middleware\ThrottlesExceptions;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
@@ -62,7 +63,8 @@ class ResyncActivityJob implements ShouldBeUnique, ShouldQueue
         return [
             new ThrottlesExceptions(self::RATE_LIMIT_MAX_ATTEMPTS, self::RATE_LIMIT_DECAY_SECONDS)
                 ->when(fn (Throwable $e): bool => $e instanceof StravaRateLimitedException
-                    || $e instanceof StravaCircuitOpenException)
+                    || $e instanceof StravaCircuitOpenException
+                    || $e instanceof ConnectionException)
                 ->backoff(self::RATE_LIMIT_BACKOFF_MINUTES)
                 ->by(StravaReadPriority::Live->throttleKey()),
         ];

@@ -62,6 +62,7 @@ Every 15 minutes `intervals-icu:sync` queues one `SyncIntervalsIcuWorkoutJob` pe
 - **hash changed** (a clamp, a regenerated plan, a skipped rep): `PUT` the same event in place. If the athlete deleted it, a new one is created;
 - **unchanged**: no call at all, except that a day without paces reads the athlete's run threshold heart rate each time, so a threshold they change on intervals.icu is used on the next tick;
 - **today becomes a rest day, is skipped, or can't be sent**: the event is deleted. The watch may still hold a course it already received; that is accepted.
+- **today's run is credited** (done, partial or overreached): the event is left exactly as sent, with no update or delete, and nothing is sent if there was no event yet. Once run, the watch workout is history (#2191, narrowing #2160).
 
 Workouts from earlier days stay on the calendar, and temari never touches events the athlete made. A 401/403 marks the connection broken (`broken_at`), stops its syncs, and sends `IntervalsIcuDisconnectedNotification` once; reconnecting clears it. Any other failure sets the day's status to unreachable and the next tick tries again.
 

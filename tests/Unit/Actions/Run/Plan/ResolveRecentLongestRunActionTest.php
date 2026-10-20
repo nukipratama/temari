@@ -42,3 +42,14 @@ it('reads identical questions once', function (): void {
 it('is one shared instance per request', function (): void {
     expect(app(ResolveRecentLongestRunAction::class))->toBe(app(ResolveRecentLongestRunAction::class));
 });
+
+it("leaves out runs from the day it is asked about, so a day's own run never sizes it", function (): void {
+    Carbon::setTestNow('2026-10-18 09:00:00');
+    $user = User::factory()->create();
+    foreach ([[10_400, '2026-10-17 23:30:00'], [11_410, '2026-10-18 06:00:00']] as [$distanceM, $startedAt]) {
+        $activity = Activity::factory()->for($user)->analyzed()->create();
+        ActivityDetail::factory()->for($activity)->create(['distance' => $distanceM, 'start_date_local' => $startedAt]);
+    }
+
+    expect((new ResolveRecentLongestRunAction())($user->id, Carbon::today(), 30))->toBe(10_400.0);
+});
