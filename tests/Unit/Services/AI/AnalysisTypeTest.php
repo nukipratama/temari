@@ -144,7 +144,7 @@ it('bounds every discriminator it permits, by range or by ownership', function (
         }
 
         $hasRange = collect($rules)->contains(
-            fn (string|In $rule): bool => $rule instanceof In || str_starts_with((string) $rule, 'after_or_equal:'),
+            fn (string|In $rule): bool => $rule instanceof In || str_starts_with($rule, 'after_or_equal:'),
         );
 
         expect($hasRange)->toBeTrue(

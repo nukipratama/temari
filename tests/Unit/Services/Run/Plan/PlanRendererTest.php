@@ -1004,7 +1004,7 @@ it('sessionDistanceKm falls back to the volume-scaled budget when no segment car
 
     expect(SegmentGenerator::segmentSumKm($segments))->toBeNull();
 
-    $budget = SegmentGenerator::coreKmFor(SessionType::Interval, false, 20.0, 1.0, INF, null);
+    $budget = SegmentGenerator::coreKmFor(SessionType::Interval, false, 20.0, 1.0, INF);
 
     expect(PlanRenderer::sessionDistanceKm($segments, SessionType::Interval, false, 20.0, 1.0, INF, null))
         ->toBe($budget)

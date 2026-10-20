@@ -211,7 +211,7 @@ final readonly class StructuredChatCaller
     private function decoded(CreateResponse $response, array $requiredKeys, ?array $propertySchema): array
     {
         try {
-            $decoded = json_decode((string) ($response->outputText ?? ''), true, 16, JSON_THROW_ON_ERROR);
+            $decoded = json_decode($response->outputText ?? '', true, 16, JSON_THROW_ON_ERROR);
         } catch (JsonException $e) {
             throw new UnavailableException('Azure OpenAI returned non-JSON: '.$e->getMessage());
         }

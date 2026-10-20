@@ -541,11 +541,6 @@ it('does not delete a newer generation when an obsolete job settles', function (
     $row->update(['generation_token' => 'older-generation']);
 
     $job = new class ($row->id, 'older-generation') extends AnalyzeRowJob {
-        public function __construct(int $analysisId, ?string $generationToken)
-        {
-            parent::__construct($analysisId, $generationToken);
-        }
-
         protected function generateContent(Analysis $row): string
         {
             Analysis::query()->whereKey($row->id)->update([

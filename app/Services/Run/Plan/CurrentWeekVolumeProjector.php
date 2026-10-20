@@ -108,6 +108,6 @@ final readonly class CurrentWeekVolumeProjector
             }
         }
 
-        return DistanceFormatter::km((float) $meters);
+        return DistanceFormatter::km($meters);
     }
 }

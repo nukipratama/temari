@@ -139,7 +139,7 @@ it('verify-and-prune-backup.sh keeps the newest backup for a sha and drops an ol
 
     $now = time();
     $old = $now - 10 * 24 * 3600;
-    $recent = $now - 1 * 24 * 3600;
+    $recent = $now - 24 * 3600;
 
     $touch = function (string $name, int $mtime) use ($dir): string {
         $path = "{$dir}/{$name}";

@@ -157,7 +157,6 @@ class TokenUsageReport
      * from the same rows (summed across kinds per model) rather than issuing a
      * second GROUP BY model scan over the range.
      *
-     * @param  Builder  $baseQuery
      * @return array{
      *     totals: array{prompt:int, completion:int, total:int, cached:int, calls:int, truncated_calls:int, cost:float},
      *     byKind: list<array{kind:string, prompt:int, completion:int, total:int, cached:int, calls:int, truncated_calls:int, avg_latency_ms:int|null, max_latency_ms:int|null, cost:float, avg_steps:float|null, cached_pct:float|null, reasoning_pct:float|null}>,
@@ -327,7 +326,6 @@ class TokenUsageReport
      * self-heal alike. Costed per (origin, model), since deployments price
      * differently and an origin can span several.
      *
-     * @param  Builder  $baseQuery
      * @return list<array{origin:string, label:string, prompt:int, completion:int, total:int, calls:int, cost:float}>
      */
     private function byOrigin(Builder $baseQuery): array

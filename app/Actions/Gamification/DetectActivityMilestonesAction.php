@@ -105,7 +105,7 @@ class DetectActivityMilestonesAction
             $milestones[] = $distanceMilestone;
         }
 
-        $paceFloat = PaceCalculator::secPerKm((float) $distanceMeters, $detail->elapsed_time);
+        $paceFloat = PaceCalculator::secPerKm($distanceMeters, $detail->elapsed_time);
         if ($paceFloat !== null) {
             $paceMilestone = $this->firstEverPace($activity, $detail, $paceFloat);
             if ($paceMilestone !== null) {

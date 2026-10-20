@@ -127,7 +127,6 @@ enum SharedPropCacheKey: string
         $cached = Cache::get($key);
 
         if (is_array($cached) && array_key_exists(self::ENVELOPE, $cached)) {
-            /** @var TValue */
             return $cached[self::ENVELOPE];
         }
 

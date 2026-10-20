@@ -234,7 +234,7 @@ it('keeps the subject-only seed when the discriminator is null', function (): vo
 
     // A null discriminator must leave the seed equal to subject_id so existing
     // non-discriminated determinism (and the first-variant default) is preserved.
-    $copy = $filler->fillFor(fillerRow(AnalysisType::MonthlyRecap, 0, null));
+    $copy = $filler->fillFor(fillerRow(AnalysisType::MonthlyRecap, 0));
 
     expect($copy)->toBe("no dated runs found for this month. there's nothing honest to recap yet.");
 });

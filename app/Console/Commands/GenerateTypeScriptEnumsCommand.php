@@ -115,7 +115,7 @@ final class GenerateTypeScriptEnumsCommand extends Command
 
         $scalars = [];
         foreach (self::SCALARS as $name => $value) {
-            $scalars[] = "export const {$name} = ".(string) $value.';';
+            $scalars[] = "export const {$name} = ".$value.';';
         }
         $blocks[] = implode("\n", $scalars);
 

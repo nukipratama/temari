@@ -101,7 +101,6 @@ class RunController extends Controller
         /** @var Collection<string, Analysis>|null $loadedAnalyses */
         $loadedAnalyses = null;
         $loadAnalyses = function () use ($activity, &$loadedAnalyses): Collection {
-            /** @var Collection<string, Analysis> */
             return $loadedAnalyses ??= Analysis::query()
                 ->where('subject_type', Activity::class)
                 ->where('subject_id', $activity->id)
