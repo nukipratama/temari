@@ -61,6 +61,11 @@ rather than falling back — a bare `vitest --changed` diffs the working tree ag
 clean checkout selects nothing and exits 0. Cost of getting that wrong: it found no git, reported
 `No test files found`, and the step passed having run zero frontend tests.
 
+The same base feeds every changed-file step: `GATE_BASE=<ref>` first, then the PR base `gh` recorded
+in `branch.<name>.gh-merge-base`, then `origin/main`. A slice targeting an epic branch sets
+`GATE_BASE` through `sail exec -e GATE_BASE=origin/epic/x app sh scripts/gate.sh`, since
+`sail composer` forwards no host env.
+
 **Dev commands:**
 - After changing a PHP enum exposed to TS: `./vendor/bin/sail artisan typescript:enums` (`--check` mirrors CI).
 - Local UI/demo data (deterministic, no LLM tokens, no Strava HTTP): `./vendor/bin/sail artisan demo:seed`. Idempotent, re-run any time to converge. It only upserts the current blueprint set, so to purge rows from retired blueprints do a full reset: `./vendor/bin/sail artisan migrate:fresh` then `demo:seed`.

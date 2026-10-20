@@ -50,6 +50,15 @@ and scoping ESLint once let two lint errors reach `main`, while the full-tree ru
   build, and the bundle-chunk budget check. This reproduces what CI runs, opt-in and slow — for when
   the fast gate isn't enough confidence before a push.
 
+Every changed-file step (Rector, Vitest `--changed`, Pest, and the full gate's migration-safety check)
+diffs against one base from [scripts/vitest-changed-base.sh](../../scripts/vitest-changed-base.sh),
+so the steps always agree. It takes the first of: `GATE_BASE` (a ref, passed into the container with
+`./vendor/bin/sail exec -e GATE_BASE=origin/epic/x app sh scripts/gate.sh`), the PR base `gh` recorded
+for the branch in git config (`branch.<name>.gh-merge-base`, read with no network call, used when its
+`origin/` ref is fetched), then `origin/main`. A slice that targets an `epic/*` branch therefore gates
+only its own changes instead of the whole epic. A `GATE_BASE` that does not resolve fails the gate
+rather than falling back to `main`.
+
 ## CI: the full gate, plus deploy
 
 [.github/workflows/ci.yml](../../.github/workflows/ci.yml) orchestrates the unconditional guards
