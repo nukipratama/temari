@@ -41,7 +41,8 @@ class HydrateBacklogCommand extends Command
             return self::SUCCESS;
         }
 
-        $budget = $this->budget($client, $this->option('batch'));
+        $batch = $this->option('batch');
+        $budget = $this->budget($client, is_int($batch) || is_string($batch) ? $batch : null);
 
         if ($budget < 1) {
             $this->line('Background read headroom is spent; nothing hydrated this tick.');

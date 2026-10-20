@@ -120,6 +120,18 @@ it('stashes a safe ?from path as the intended url before redirecting to strava',
     expect(session('url.intended'))->toBe(url('/activities/7'));
 });
 
+it('ignores an array ?from and still redirects to strava', function (): void {
+    mockStravaDriver(function ($driver): void {
+        $driver->shouldReceive('scopes')->once()->andReturnSelf();
+        $driver->shouldReceive('redirect')->once()->andReturn(redirect('https://www.strava.com/oauth/authorize?fake'));
+    });
+
+    $this->get(route('auth.strava.redirect', ['from' => ['x']]))
+        ->assertRedirect('https://www.strava.com/oauth/authorize?fake');
+
+    expect(session('url.intended'))->toBeNull();
+});
+
 it('exposes the stashed intended deep link as the login `from` prop', function (): void {
     // A guest bounce stores the full URL as url.intended; the login page surfaces
     // it to the client as a relative path (array session driver in tests, so the
@@ -396,8 +408,7 @@ it('updates an existing user on subsequent strava callbacks', function (): void 
         ->and(StravaConnection::count())->toBe(1);
 
     $existingUser->refresh()->load('stravaConnection');
-    $refreshedConnection = $existingUser->stravaConnection;
-    assert($refreshedConnection !== null);
+    $refreshedConnection = nonNull($existingUser->stravaConnection);
     expect($existingUser->name)->toBe('New Name')
         ->and($refreshedConnection->access_token)->toBe('new-access')
         ->and($refreshedConnection->refresh_token)->toBe('new-refresh')

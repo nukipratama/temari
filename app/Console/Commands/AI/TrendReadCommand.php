@@ -23,7 +23,8 @@ class TrendReadCommand extends Command
     {
         app(NarrationOrigin::class)->set(AnalysisOrigin::Scheduled);
 
-        $range = (string) $this->argument('range');
+        $argument = $this->argument('range');
+        $range = is_scalar($argument) ? (string) $argument : '';
         if (! in_array($range, AnalysisType::TREND_READ_RANGES, true)) {
             $this->error('range must be one of: '.implode(', ', AnalysisType::TREND_READ_RANGES));
 

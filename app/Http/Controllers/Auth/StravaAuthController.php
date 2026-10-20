@@ -42,7 +42,8 @@ class StravaAuthController extends Controller
 
     public function redirect(Request $request): SymfonyRedirectResponse
     {
-        $from = LocalRedirectPath::sanitize($request->query('from'));
+        $requestedFrom = $request->query('from');
+        $from = LocalRedirectPath::sanitize(is_string($requestedFrom) ? $requestedFrom : null);
         if ($from !== null) {
             redirect()->setIntendedUrl(url($from));
         }
