@@ -78,11 +78,6 @@ describe('app.css integrity', () => {
         expect(scanComments(css).unterminated).toBe(false);
     });
 
-    // Every `.pressable { … }` block is collected rather than the first, because
-    // the selector also appears ending the `user-select` grouping, and a
-    // first-match assertion would pass while the press-feedback rule is gone.
-    // `touch-manipulation` is the load-bearing half: without it every control
-    // keeps the ~300ms double-tap-zoom wait.
     it('keeps a popup trigger still without cancelling opacity feedback', () => {
         // The popup is anchored to this element, so pressing it must not move
         // it — but the base opacity dip remains as feedback.
@@ -115,6 +110,11 @@ describe('app.css integrity', () => {
         expect(css).toMatch(/--container-column-wide:\s*54rem;/);
     });
 
+    // Every `.pressable { … }` block is collected rather than the first, because
+    // the selector also appears ending the `user-select` grouping, and a
+    // first-match assertion would pass while the press-feedback rule is gone.
+    // `touch-manipulation` is the load-bearing half: without it every control
+    // keeps the ~300ms double-tap-zoom wait.
     it('still declares the press-feedback rule', () => {
         const blocks = [...css.matchAll(/\.pressable\s*\{[^}]*\}/g)].map(
             (m) => m[0],
