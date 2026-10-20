@@ -48,8 +48,6 @@ export default function WeeksList({
             >
                 {weeks.map((week, index) => {
                     const detail = detailByWeekStart[week.week_start] ?? null;
-                    const adherence =
-                        week.type === 'history' ? week.adherence_pct : null;
                     const shown = week.week_start === shownWeekStart;
 
                     const content = (
@@ -73,8 +71,10 @@ export default function WeeksList({
                             </span>
                             <span className="flex-none text-right font-mono text-xs tabular-nums text-text-2">
                                 {weekKm(week)}
-                                {adherence != null && (
-                                    <span className="block">{adherence}%</span>
+                                {week.adherence_pct !== null && (
+                                    <span className="block">
+                                        {week.adherence_pct}%
+                                    </span>
                                 )}
                             </span>
                         </>
