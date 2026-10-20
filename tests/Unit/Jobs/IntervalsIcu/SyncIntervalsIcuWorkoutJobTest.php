@@ -15,7 +15,10 @@ uses(RefreshDatabase::class);
 
 it("syncs the athlete's connection for today", function (): void {
     Carbon::setTestNow('2026-10-14 06:00:00');
-    Http::fake(['intervals.icu/*' => Http::response(['id' => 501, 'sportSettings' => [['types' => ['Run'], 'lthr' => 163]]])]);
+    Http::fake([
+        'intervals.icu/api/v1/athlete/*/events/bulk*' => Http::response([['id' => 501]]),
+        'intervals.icu/*' => Http::response(['sportSettings' => [['types' => ['Run'], 'lthr' => 163]]]),
+    ]);
     $connection = IntervalsIcuConnection::factory()->create();
     PlannedSession::factory()->for($connection->user)->create(['date' => '2026-10-14']);
 
