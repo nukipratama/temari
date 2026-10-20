@@ -70,7 +70,8 @@ class StravaAuthController extends Controller
 
         // Strava returns the scopes the user actually granted (comma-separated)
         // in the `scope` query param. Store those, not what we requested.
-        $grantedScopes = (string) $request->query('scope', '');
+        $requestedScopes = $request->query('scope');
+        $grantedScopes = is_string($requestedScopes) ? $requestedScopes : '';
 
         $upserted = $this->upsertUser($stravaUser, $grantedScopes);
 

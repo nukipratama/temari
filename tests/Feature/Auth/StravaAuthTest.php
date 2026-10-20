@@ -386,6 +386,22 @@ it('stores only the granted scopes and logs when a required scope is declined', 
     ]);
 });
 
+it('treats an array ?scope like a missing scope instead of failing', function (): void {
+    $stravaUser = socialiteUserMock('access-token-array', 'refresh-token-array', 21600);
+    $stravaUser->shouldReceive('getId')->andReturn('555222');
+    $stravaUser->shouldReceive('getName')->andReturn('Array Scope');
+    $stravaUser->shouldReceive('getEmail')->andReturn('array@example.test');
+    $stravaUser->shouldReceive('getAvatar')->andReturn('https://strava.test/a.png');
+
+    mockStravaDriver(fn ($driver) => $driver->shouldReceive('user')->once()->andReturn($stravaUser));
+
+    $this->get(route('auth.strava.callback', ['scope' => ['x']]))
+        ->assertRedirect(route('onboarding.show'));
+
+    expect(StravaConnection::where('strava_athlete_id', 555222)->firstOrFail()->scopes)
+        ->toBe('read,activity:read_all,profile:read_all');
+});
+
 it('updates an existing user on subsequent strava callbacks', function (): void {
     $existingUser = User::factory()->create(['name' => 'Old Name']);
     StravaConnection::factory()->for($existingUser)->create([
