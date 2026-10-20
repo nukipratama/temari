@@ -150,7 +150,10 @@ export default function JourneyChart({
         }
         event.preventDefault();
         setPickedIndex((prev) => {
-            const base = prev ?? points.length - 1;
+            const base =
+                prev !== null && prev < points.length
+                    ? prev
+                    : points.length - 1;
             const next = event.key === 'ArrowLeft' ? base - 1 : base + 1;
             return Math.min(Math.max(next, 0), points.length - 1);
         });

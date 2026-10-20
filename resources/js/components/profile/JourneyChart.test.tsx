@@ -153,6 +153,12 @@ describe('JourneyChart', () => {
         expect(screen.getByRole('slider')).not.toHaveAttribute(
             'aria-valuetext',
         );
+
+        fireEvent.keyDown(screen.getByRole('slider'), { key: 'ArrowLeft' });
+        expect(screen.getByRole('slider')).toHaveAttribute(
+            'aria-valuenow',
+            '0',
+        );
     });
 
     it('closes the readout with Escape', () => {
