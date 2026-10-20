@@ -168,7 +168,7 @@ it('counts only moving time over the cap, and skips implausible samples', functi
     $stopped = easyCapStreams(900, static fn (int $t): int => $t >= 600 && $t < 700 ? 170 : 150, static fn (int $t): float => $t >= 600 && $t < 700 ? 0.0 : 3.0);
     $dropout = easyCapStreams(900, static fn (int $t): int => $t % 2 === 0 ? 0 : 150);
 
-    expect(data_get(streamAnalysis()->easyCapOverage($stopped, defaultZones()), 'over_easy_cap_sec'))->toBeLessThan(30)
+    expect(data_get(streamAnalysis()->easyCapOverage($stopped, defaultZones()), 'over_easy_cap_sec'))->toBeInt()->toBeLessThan(30)
         ->and(data_get(streamAnalysis()->easyCapOverage($dropout, defaultZones()), 'over_easy_cap_sec'))->toBe(0);
 });
 

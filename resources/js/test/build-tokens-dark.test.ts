@@ -47,19 +47,13 @@ describe('dark-ground token derivation (build-tokens.mjs)', () => {
         const ember = '#b23a4f';
         const lightened = inkOnDark(ember, GROUNDS_DARK);
         expect(lightened).not.toBe(ember);
-        const toRgb = (hex: string) => [
+        const toRgb = (hex: string): [number, number, number] => [
             Number.parseInt(hex.slice(1, 3), 16),
             Number.parseInt(hex.slice(3, 5), 16),
             Number.parseInt(hex.slice(5, 7), 16),
         ];
-        const [maybeEr, maybeEg, maybeEb] = toRgb(ember);
-        const er = defined(maybeEr);
-        const eg = defined(maybeEg);
-        const eb = defined(maybeEb);
-        const [maybeLr, maybeLg, maybeLb] = toRgb(lightened);
-        const lr = defined(maybeLr);
-        const lg = defined(maybeLg);
-        const lb = defined(maybeLb);
+        const [er, eg, eb] = toRgb(ember);
+        const [lr, lg, lb] = toRgb(lightened);
         expect(lr).toBeGreaterThanOrEqual(er);
         expect(lg).toBeGreaterThanOrEqual(eg);
         expect(lb).toBeGreaterThanOrEqual(eb);

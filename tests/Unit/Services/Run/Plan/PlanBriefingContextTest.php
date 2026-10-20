@@ -81,5 +81,5 @@ it('sizes the prescription to date from the week rows and baseline its caller ho
     $baseline = app(TrainingBaseline::class)->forUser($user, Carbon::today());
 
     expect(aheadOfPlanPct($user, $rows, $baseline))->toBe(app(PlanBriefingContext::class)->forUser($user, Carbon::today())->readinessAssessment['inputs']['ahead_of_plan_pct'])
-        ->and(aheadOfPlanPct($user, $rows, [...$baseline, 'long_run_km' => $baseline['long_run_km'] / 2]))->toBeGreaterThan(Numeric::float(aheadOfPlanPct($user, $rows, $baseline)));
+        ->and(aheadOfPlanPct($user, $rows, [...$baseline, 'long_run_km' => $baseline['long_run_km'] / 2]))->toBeGreaterThan(Numeric::float(nonNull(aheadOfPlanPct($user, $rows, $baseline))));
 });

@@ -41,7 +41,7 @@ function backfilledUser(): User
     return $user;
 }
 
-it('stages the briefing Pending without dispatching at signup while the backfill has not landed yet (#1032)', function (): void {
+it('stages the briefing Pending without dispatching at signup while the backfill has not landed yet', function (): void {
     Bus::fake();
     // backfilled_at is null: the backfill sync hasn't even run, so there is no
     // Activity row yet for the row-based gate to read.

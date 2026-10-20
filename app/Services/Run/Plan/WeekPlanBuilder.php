@@ -343,7 +343,8 @@ final class WeekPlanBuilder
      * A week with only one quality slot spends it on whatever the phase calls for: Base builds with
      * a Tempo, and a race-oriented Build/Peak/Taper for a sub-marathon race gets Interval work. Only
      * a second slot can hold both, needing {@see self::MIN_SESSIONS_FOR_EXTRA_QUALITY} sessions.
-     * Self-scaled training and a race season's general-zone week stay on Base rules.
+     * Self-scaled training stays threshold-only, and a race season's general-zone week stays on
+     * Base rules.
      *
      * A fall-off tilt moves only the slot the race duration leaves open, see
      * {@see self::tiltedSingleSlot()} and {@see self::tiltedPair()}.

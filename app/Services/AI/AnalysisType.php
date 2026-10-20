@@ -150,8 +150,7 @@ enum AnalysisType: string
      * discriminator is part of the row identity and of the re-trigger cooldown key, so an
      * unconstrained value mints a fresh billed generation on every request.
      *
-     * Period-keyed arms carry a range as well as a shape, and the one arm naming a resource is
-     * ownership-checked in {@see AnalysisSubjectAuthorizer} instead. See
+     * Period-keyed arms carry a range as well as a shape. See
      * docs/decisions/twelve-week-narration-cutoff.md.
      *
      * Exhaustive on purpose (no `default`): a new type must state its choice.

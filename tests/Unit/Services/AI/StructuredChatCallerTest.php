@@ -396,7 +396,7 @@ it('keeps a schema/JSON failure terminal even though the HTTP call succeeded', f
         ->toThrow(UnavailableException::class, 'non-JSON');
 });
 
-// ── E0-11: config/auth failures feed the Azure config circuit breaker ──
+// ── config/auth failures feed the Azure config circuit breaker ──
 
 /** @return array{state: string, failures: int, opened_at: string|null} */
 function configBreakerSnapshot(): array

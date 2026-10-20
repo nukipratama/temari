@@ -178,16 +178,6 @@ it('does not dispatch a ResolveActivityLocationJob for a run already resolved or
 ]);
 
 /**
- * The analysis poller reloads `weeklySnapshots` every 3-15s while a recap is
- * generating; behind closures, Inertia skips the props it never asked for.
- *
- * Note which of the two tests below actually pins that. Inertia strips
- * unrequested props from the response whether or not they were computed, so the
- * prop-surface test passes even with eager props and only documents the
- * contract. The query test is the one that fails if a prop is un-closured.
- */
-
-/**
  * The story + run-insight props are the whole reload set of the detail page's
  * poll (`DEFAULT_RELOAD_PROPS` in resources/js/components/run/RunLenses.tsx),
  * and it ticks every 3-15s for up to 30 attempts while narration generates.

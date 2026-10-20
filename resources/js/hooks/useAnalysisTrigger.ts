@@ -121,7 +121,7 @@ function stopSlot(slot: PollSlot): void {
 // the registry. Used both by the last-subscriber teardown and the max-attempts
 // give-up path (`gaveUp`), so we don't leak a listener for a slot that no
 // longer polls. Only evict our OWN slot: a later subscribe under the same key
-// may have already replaced us in the registry (FE-6 evict-race guard).
+// may have already replaced us in the registry.
 // When `gaveUp`, notify subscribers so their UI can leave the fake skeleton.
 function retireSlot(slot: PollSlot, gaveUp = false): void {
     stopSlot(slot);

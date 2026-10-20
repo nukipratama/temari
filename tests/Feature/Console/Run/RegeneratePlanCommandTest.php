@@ -2,7 +2,9 @@
 
 declare(strict_types=1);
 
+use App\Actions\Run\Plan\ResolveTrainingPreferenceAction;
 use App\Models\PlannedSession;
+use App\Models\TrainingPreference;
 use Illuminate\Support\Facades\Queue;
 use App\Models\User;
 use Illuminate\Support\Carbon;
@@ -40,9 +42,6 @@ it('limits to a single user via --user', function (): void {
  * A race whose day had passed made PhaseSchedule::forRace() count a negative
  * number of weeks and array_fill() throw, taking every athlete after the thrower
  * in the same run with it.
- *
- * The per-user try/catch that contains such a failure has no test of its own:
- * every class in the plan chain is `final`, so no throw can be injected.
  */
 it('regenerates a user whose race day has passed instead of throwing', function (): void {
     Carbon::setTestNow('2026-09-08 10:00:00');
@@ -58,6 +57,26 @@ it('regenerates a user whose race day has passed instead of throwing', function 
     $this->artisan('plan:regenerate', ['--user' => $user->id])->assertSuccessful();
 
     Carbon::setTestNow();
+});
+
+it('keeps regenerating later athletes when one athlete throws, and fails the run', function (): void {
+    $failing = User::factory()->create();
+    $later = User::factory()->create();
+    $realPreference = app(ResolveTrainingPreferenceAction::class);
+    $preference = Mockery::mock(ResolveTrainingPreferenceAction::class);
+    $preference->shouldReceive('__invoke')->andReturnUsing(
+        static fn (int $userId): ?TrainingPreference => $userId === $failing->id
+            ? throw new LogicException('test regenerate failure')
+            : $realPreference($userId),
+    );
+    app()->instance(ResolveTrainingPreferenceAction::class, $preference);
+
+    $this->artisan('plan:regenerate')
+        ->expectsOutputToContain('Regenerated the plan for 1 user(s). 1 failed; see the log.')
+        ->assertFailed();
+
+    expect(PlannedSession::query()->where('user_id', $failing->id)->exists())->toBeFalse()
+        ->and(PlannedSession::query()->where('user_id', $later->id)->exists())->toBeTrue();
 });
 
 it('regenerates the plan for a dormant athlete too', function (): void {
