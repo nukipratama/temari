@@ -86,7 +86,7 @@ class AnalysisMessagePresenter
         }
 
         $detail = $this->activityDetail($analysis->subject_id);
-        if ($detail === null) {
+        if (!$detail instanceof ActivityDetail) {
             return null;
         }
 
@@ -142,9 +142,9 @@ class AnalysisMessagePresenter
             ->value('week_ending');
         assert($weekEnding === null || $weekEnding instanceof DateTimeInterface);
 
-        return $weekEnding === null
-            ? route('history')
-            : route('history', ['week' => Carbon::parse($weekEnding)->toDateString()]);
+        return $weekEnding instanceof DateTimeInterface
+            ? route('history', ['week' => Carbon::parse($weekEnding)->toDateString()])
+            : route('history');
     }
 
     /**

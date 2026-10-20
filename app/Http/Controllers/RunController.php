@@ -199,7 +199,7 @@ class RunController extends Controller
      */
     private function cardPayload(CardPresenter $cards, ?RunCard $card, User $user): ?array
     {
-        if ($card === null) {
+        if (!$card instanceof RunCard) {
             return null;
         }
 

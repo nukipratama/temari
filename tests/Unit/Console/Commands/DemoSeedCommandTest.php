@@ -137,7 +137,7 @@ function sharedFixtureConnection(?PDO $pdo = null): ?PDO
 afterAll(function (): void {
     $pdo = sharedFixtureConnection();
 
-    if ($pdo === null) {
+    if (!$pdo instanceof PDO) {
         return;
     }
 

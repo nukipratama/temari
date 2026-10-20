@@ -235,7 +235,7 @@ final class TrainingBaseline
         $weeklyVolumeKm = $season->anchor_weekly_volume_km ?? $this->weeklyVolumeKm($weeks, $seed);
 
         $race = ($this->activeRace)($user->id);
-        $longRunCapKm = $this->longRunCapKm($race, max($weeklyVolumeKm, $race === null ? 0.0 : (float) $season?->volume_floor_km), $user, $asOf);
+        $longRunCapKm = $this->longRunCapKm($race, max($weeklyVolumeKm, $race instanceof RaceGoal ? (float) $season?->volume_floor_km : 0.0), $user, $asOf);
         $longRunProgressionCapKm = $this->recentLongRunCapKm($user, $asOf, $seed);
         $layout = $this->weekLayout($user, $asOf);
 
@@ -245,7 +245,7 @@ final class TrainingBaseline
             'long_run_km' => $this->longRunKm($race, $weeklyVolumeKm, $season, $longRunCapKm, $longRunProgressionCapKm, $sessionsPerWeek, $asOf, $layout),
             'long_run_cap_km' => $longRunCapKm,
             'long_run_progression_cap_km' => $longRunProgressionCapKm,
-            'self_scaled' => $race === null,
+            'self_scaled' => !$race instanceof RaceGoal,
         ];
     }
 
@@ -266,7 +266,7 @@ final class TrainingBaseline
             ->filter(static fn (WeeklySnapshot $week): bool => $week->week_ending->lt($weekStart) && $week->week_ending->gte($weekStart->copy()->subWeeks(self::TRAILING_WEEKS)));
 
         return [
-            'projected_race_seconds' => $race === null ? null : (float) $this->ambition->assess($user, $race, $asOf)->prescribedTimeSec(),
+            'projected_race_seconds' => $race instanceof RaceGoal ? (float) $this->ambition->assess($user, $race, $asOf)->prescribedTimeSec() : null,
             'fall_off_tilt' => FallOffTilt::fromFallOff($estimate['k'] ?? null, $estimate['k_fitted'] ?? false),
             'run_days' => $preference?->run_days,
             'long_run_day' => $preference?->long_run_day,
@@ -371,8 +371,8 @@ final class TrainingBaseline
      */
     private function longRunKm(?RaceGoal $race, float $weeklyVolumeKm, ?Season $season, float $capKm, float $progressionCapKm, int $sessionsPerWeek, Carbon $asOf, array $layout): float
     {
-        $block = $race !== null && $season !== null ? $this->block($race, $season) : null;
-        $selfScaledAnchorKm = $race === null ? $season?->anchor_weekly_volume_km : null;
+        $block = $race instanceof RaceGoal && $season instanceof Season ? $this->block($race, $season) : null;
+        $selfScaledAnchorKm = $race instanceof RaceGoal ? null : $season?->anchor_weekly_volume_km;
 
         $derived = max(
             $selfScaledAnchorKm === null
@@ -577,12 +577,12 @@ final class TrainingBaseline
      */
     private function baselineAveragingKm(float $targetKm, array $weeks, int $sessionsPerWeek, ?RaceGoal $race, float $longRunCapKm, float $progressionCapKm, array $layout): float
     {
-        $raceDistanceM = $race === null ? null : (float) $race->distance_m;
+        $raceDistanceM = $race instanceof RaceGoal ? (float) $race->distance_m : null;
         $sessions = [];
         $kmPerBaselineKm = 0.0;
         $raceKm = 0.0;
         foreach ($weeks as $week) {
-            $days = WeekPlanBuilder::build($week['week_start'], $week['phase'], $sessionsPerWeek, [], $raceDistanceM, $race === null, preferredOffsets: $layout['run_days'], preferredLongOffset: $layout['long_run_day'], projectedRaceSeconds: $layout['projected_race_seconds'], raceDate: $race?->race_date, twoRunQualityEligible: $layout['two_run_quality_eligible'], fallOffTilt: $layout['fall_off_tilt']);
+            $days = WeekPlanBuilder::build($week['week_start'], $week['phase'], $sessionsPerWeek, [], $raceDistanceM, !$race instanceof RaceGoal, preferredOffsets: $layout['run_days'], preferredLongOffset: $layout['long_run_day'], projectedRaceSeconds: $layout['projected_race_seconds'], raceDate: $race?->race_date, twoRunQualityEligible: $layout['two_run_quality_eligible'], fallOffTilt: $layout['fall_off_tilt']);
             ksort($days);
             $primaryEasySeen = false;
             foreach ($days as $day) {
@@ -656,7 +656,7 @@ final class TrainingBaseline
 
     private static function raceBandCapKm(?RaceGoal $race): float
     {
-        if ($race === null || ! RaceSupport::forDistance((float) $race->distance_m)->dedicatedPreparation()) {
+        if (!$race instanceof RaceGoal || ! RaceSupport::forDistance((float) $race->distance_m)->dedicatedPreparation()) {
             return self::LONG_RUN_CAP_NO_RACE_KM;
         }
 

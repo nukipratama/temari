@@ -107,7 +107,7 @@ final readonly class RestClampRecorder
         $ceiling = ReadinessCeiling::from($context->readinessCeiling);
         $baselineData = $this->baseline->forUser($user, $today);
         $prescription = IntensityPrescription::fromSession($session);
-        $paces = $prescription === null ? null : $this->paceCalculator->fromVdotResult($this->vdotEstimator->estimate($user, $today));
+        $paces = $prescription instanceof IntensityPrescription ? $this->paceCalculator->fromVdotResult($this->vdotEstimator->estimate($user, $today)) : null;
         $clamp = ReadinessClamp::apply(
             $session->session_type,
             $session->phase,

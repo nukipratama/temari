@@ -42,7 +42,7 @@ class TelegramChannel
     public function send(User $notifiable, Notification $notification): void
     {
         $notifiable = $this->router->eligibleUserFor($notifiable, self::class);
-        if ($notifiable === null) {
+        if (!$notifiable instanceof User) {
             return;
         }
 

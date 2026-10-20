@@ -84,7 +84,7 @@ class AnalyzeActivityJob extends AnalyzeGroupJob
     {
         try {
             $next = self::earliestPendingActivity($this->subjectId);
-            if ($next === null) {
+            if (!$next instanceof Activity) {
                 return;
             }
 
@@ -134,7 +134,7 @@ class AnalyzeActivityJob extends AnalyzeGroupJob
             ->join('activity_details', 'activity_details.activity_id', '=', 'activities.id')
             ->where('activities.user_id', $userId)
             ->whereNotNull('activity_details.start_date_local')
-            ->when($after !== null, fn ($query) => $query->where('activity_details.start_date_local', '>', $after))
+            ->when($after instanceof Carbon, fn ($query) => $query->where('activity_details.start_date_local', '>', $after))
             ->whereHas('analyses', fn ($query) => $query
                 ->where('analysis_type', AnalysisType::PostRunSpeech)
                 ->where('status', AnalysisStatus::Pending))
@@ -270,7 +270,7 @@ class AnalyzeActivityJob extends AnalyzeGroupJob
 
     private function remainingWorkerSeconds(): int
     {
-        if ($this->workerDeadlineAt === null) {
+        if (!$this->workerDeadlineAt instanceof CarbonImmutable) {
             return 0;
         }
 

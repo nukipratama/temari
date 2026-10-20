@@ -61,7 +61,7 @@ final readonly class GoalPaceWork
         $goalTimeSec = in_array($inputs->raceAmbitionState, self::STEPPING_STONE_BANDS, true)
             ? $inputs->raceSteppingStoneTimeSec
             : $inputs->raceGoalTimeSec;
-        if ($inputs->raceDate === null || $distanceM === null || $goalTimeSec === null || $goalTimeSec <= 0
+        if (!$inputs->raceDate instanceof Carbon || $distanceM === null || $goalTimeSec === null || $goalTimeSec <= 0
             || ! RaceSupport::forDistance($distanceM)->dedicatedPreparation()
             || ! in_array($inputs->raceAmbitionState, self::BANDS, true)
             || ($inputs->raceAmbitionGapPct ?? 0.0) < -RaceAmbitionAssessor::ON_TRACK_WITHIN * 100

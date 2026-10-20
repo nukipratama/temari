@@ -49,7 +49,7 @@ function captureResumeRequests(array &$captured): AnalysisService
     $service = Mockery::mock(AnalysisService::class);
     $service->shouldReceive('request')
         ->andReturnUsing(function (string $subjectOrType, int $subjectId, AnalysisType $type, ?string $discriminator = null, ?int $delaySeconds = null, bool $invalidate = false) use (&$captured): Analysis {
-            $captured[] = compact('subjectOrType', 'subjectId', 'type', 'discriminator', 'delaySeconds', 'invalidate') + ['ruleBased' => false];
+            $captured[] = ['subjectOrType' => $subjectOrType, 'subjectId' => $subjectId, 'type' => $type, 'discriminator' => $discriminator, 'delaySeconds' => $delaySeconds, 'invalidate' => $invalidate] + ['ruleBased' => false];
 
             return new Analysis();
         });
@@ -60,7 +60,7 @@ function captureResumeRequests(array &$captured): AnalysisService
         });
     $service->shouldReceive('requestRuleBased')
         ->andReturnUsing(function (string $subjectOrType, int $subjectId, AnalysisType $type, ?string $discriminator = null) use (&$captured): Analysis {
-            $captured[] = compact('subjectOrType', 'subjectId', 'type', 'discriminator') + ['invalidate' => null, 'ruleBased' => true];
+            $captured[] = ['subjectOrType' => $subjectOrType, 'subjectId' => $subjectId, 'type' => $type, 'discriminator' => $discriminator] + ['invalidate' => null, 'ruleBased' => true];
 
             return new Analysis();
         });

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Jobs\Notifications;
 
+use App\Models\User;
 use DateTimeInterface;
 use Illuminate\Queue\Attributes\Backoff;
 use Illuminate\Queue\Attributes\Tries;
@@ -47,7 +48,7 @@ class RetryStaleWebPushNotificationJob implements ShouldQueue
         }
 
         $user = $eligibility->resolveUser($analysis);
-        if ($user === null) {
+        if (!$user instanceof User) {
             $claim->markStaleWebPushSkipped($this->analysisId, $this->claimVersion);
 
             return;

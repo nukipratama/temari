@@ -43,7 +43,7 @@ class PostRunNoteReader
             ->where('subject_id', $activityId)
             ->value('content');
 
-        if ($mood === null || ! is_string($speech) || $speech === '') {
+        if (!$mood instanceof Mood || ! is_string($speech) || $speech === '') {
             return null;
         }
 

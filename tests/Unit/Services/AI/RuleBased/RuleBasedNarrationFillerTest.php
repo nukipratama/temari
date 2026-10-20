@@ -59,7 +59,7 @@ it('weaves the card context (move or distance) into the flavor', function (): vo
     $flavor = app(RuleBasedNarrationFiller::class)->cardFlavorFor($card);
 
     // Every template carries either the move name or the formatted distance.
-    expect($flavor === '' ? '' : $flavor)
+    expect($flavor)
         ->toBeString()
         ->and(str_contains($flavor, 'Threshold Hold') || str_contains($flavor, '10.0'))
         ->toBeTrue();

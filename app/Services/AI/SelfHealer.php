@@ -151,7 +151,7 @@ class SelfHealer
 
                 foreach ($users as $row) {
                     $earliest = AnalyzeActivityJob::earliestStalledActivityForUser((int) $row->user_id);
-                    if ($earliest === null) {
+                    if (!$earliest instanceof Activity) {
                         continue;
                     }
 

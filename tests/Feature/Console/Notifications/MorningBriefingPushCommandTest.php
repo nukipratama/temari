@@ -42,7 +42,7 @@ function morningAthlete(string $usualStart = '06:00:00', ?AnalysisStatus $briefi
         ]);
     }
 
-    if ($briefingStatus !== null) {
+    if ($briefingStatus instanceof AnalysisStatus) {
         Analysis::factory()->create([
             'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
             'subject_id' => $user->id,
@@ -137,7 +137,7 @@ it('skips an athlete whose briefing is not done, and never generates one', funct
         ->assertSuccessful();
 
     Notification::assertNothingSent();
-    expect(Analysis::query()->count())->toBe($status === null ? 0 : 1);
+    expect(Analysis::query()->count())->toBe($status instanceof AnalysisStatus ? 1 : 0);
 })->with([
     'no row at all' => null,
     'still pending' => AnalysisStatus::Pending,

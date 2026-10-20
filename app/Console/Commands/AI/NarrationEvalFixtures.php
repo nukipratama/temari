@@ -72,10 +72,12 @@ final readonly class NarrationEvalFixtures
         $balance = Arr::get($evidence, 'get_training_load.training_load.load_balance');
 
         if ($balance === 'heavy') {
-            array_push($forbidden, '\bfresh\b', '\brested\b');
+            $forbidden[] = '\bfresh\b';
+            $forbidden[] = '\brested\b';
         }
         if ($balance === 'fresh') {
-            array_push($forbidden, '\bheavy\b', '\boverloaded\b');
+            $forbidden[] = '\bheavy\b';
+            $forbidden[] = '\boverloaded\b';
         }
 
         return ['required' => [], 'forbidden' => $forbidden];

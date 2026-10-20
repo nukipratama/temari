@@ -95,10 +95,10 @@ function countingQuestionNarrator(ArrayObject $calls, string $answer, ?Closure $
     $mock = Mockery::mock(RunQuestionNarrator::class);
     $mock->shouldReceive('generate')->andReturnUsing(function () use ($calls, $answer, $during, $throw): array {
         $calls->append($answer);
-        if ($during !== null && count($calls) === 1) {
+        if ($during instanceof Closure && count($calls) === 1) {
             $during();
         }
-        if ($throw !== null) {
+        if ($throw instanceof Throwable) {
             throw $throw;
         }
 

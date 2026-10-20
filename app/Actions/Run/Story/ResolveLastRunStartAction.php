@@ -41,7 +41,7 @@ class ResolveLastRunStartAction
             return null;
         }
 
-        if ($ceiling === null || $latest <= $ceiling->toDateTimeString()) {
+        if (!$ceiling instanceof Carbon || $latest <= $ceiling->toDateTimeString()) {
             return Carbon::parse($latest);
         }
 
@@ -67,7 +67,7 @@ class ResolveLastRunStartAction
         $value = ActivityDetail::query()
             ->whereHas('activity', fn ($q) => $q->where('user_id', $userId))
             ->whereNotNull('start_date_local')
-            ->when($ceiling !== null, fn ($q) => $q->where('start_date_local', '<=', $ceiling))
+            ->when($ceiling instanceof Carbon, fn ($q) => $q->where('start_date_local', '<=', $ceiling))
             ->orderByDesc('start_date_local')
             ->value('start_date_local');
 

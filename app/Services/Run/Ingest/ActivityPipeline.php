@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Run\Ingest;
 
+use App\Services\Weather\WeatherSnapshot;
 use App\Actions\AI\SettleEarlyNarrationAction;
 use App\Actions\Gamification\DetectActivityMilestonesAction;
 use App\Actions\Run\DeleteIngestedRunAction;
@@ -497,7 +498,7 @@ class ActivityPipeline
             return;
         }
 
-        if ($snapshot === null) {
+        if (!$snapshot instanceof WeatherSnapshot) {
             return;
         }
 

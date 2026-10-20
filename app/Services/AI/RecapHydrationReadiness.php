@@ -97,7 +97,7 @@ class RecapHydrationReadiness
     {
         $anchor = Carbon::parse($weekEnding)->endOfDay();
 
-        if ($connectedAt !== null && $connectedAt->gt($anchor)) {
+        if ($connectedAt instanceof Carbon && $connectedAt->gt($anchor)) {
             $anchor = $connectedAt->copy();
         }
 

@@ -50,7 +50,7 @@ it('runs a 5K goal\'s fast finish without goal-pace work at the supported 10K pa
 });
 
 it('exists only for a 5K-to-half race with a pace to run', function (?float $distanceM, ?RaceAmbitionState $band, ?int $supportedSec, bool $exists, ?int $supportedTenKSec = null): void {
-    expect(FastFinishLongRun::forWeek(fastFinishUnitInputs($distanceM, $band, $supportedSec, $supportedTenKSec), null) !== null)->toBe($exists);
+    expect(FastFinishLongRun::forWeek(fastFinishUnitInputs($distanceM, $band, $supportedSec, $supportedTenKSec), null) instanceof FastFinishLongRun)->toBe($exists);
 })->with([
     '5K' => [5_000.0, RaceAmbitionState::OnTrack, 1400, true, 2900],
     'half' => [21_097.5, RaceAmbitionState::OnTrack, 6300, true],

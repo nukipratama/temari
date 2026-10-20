@@ -74,7 +74,7 @@ class DeleteIngestedRunAction
                 // user's only run was the deleted one), which would leave a stale
                 // snapshot claiming runs that no longer exist. Drop the now-empty
                 // forward snapshots in that case.
-                if ($rebuilt === null) {
+                if (!$rebuilt instanceof WeeklySnapshot) {
                     $anchorWeekEnding = Carbon::instance($weekAnchor)->endOfWeek(Carbon::SUNDAY)->startOfDay();
                     WeeklySnapshot::query()
                         ->where('user_id', $user->id)

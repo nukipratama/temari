@@ -33,7 +33,7 @@ it('dispatches the 7d range for every active user', function (): void {
     $service->shouldReceive('request')
         ->once()
         ->andReturnUsing(function (string $subjectOrType, int $subjectId, AnalysisType $type, ?string $discriminator = null) use (&$requestCalls): Analysis {
-            $requestCalls[] = compact('subjectOrType', 'subjectId', 'type', 'discriminator');
+            $requestCalls[] = ['subjectOrType' => $subjectOrType, 'subjectId' => $subjectId, 'type' => $type, 'discriminator' => $discriminator];
 
             return new Analysis();
         });

@@ -113,7 +113,7 @@ final class WeekPlanBuilder
         $qualityPool = self::awayFromLongRun($nonLongOffsets, $longOffset);
         $qualityPool = array_values(array_filter(
             $qualityPool,
-            static fn (int $offset): bool => self::raceWeekType($weekStart->copy()->addDays($offset), $raceDate) === null,
+            static fn (int $offset): bool => !self::raceWeekType($weekStart->copy()->addDays($offset), $raceDate) instanceof SessionType,
         ));
 
         $qualitySlots = self::withQualityDelta(
@@ -138,12 +138,12 @@ final class WeekPlanBuilder
         foreach (range(0, 6) as $offset) {
             $dayDate = $weekStart->copy()->addDays($offset);
             $date = $dayDate->toDateString();
-            if (isset($fixedDates[$date]) || ($notBefore !== null && $dayDate->lt($notBefore))) {
+            if (isset($fixedDates[$date]) || ($notBefore instanceof Carbon && $dayDate->lt($notBefore))) {
                 continue;
             }
 
             $raceWeekType = self::raceWeekType($dayDate, $raceDate);
-            if ($raceWeekType !== null) {
+            if ($raceWeekType instanceof SessionType) {
                 $rows[$date] = ['session_type' => $raceWeekType];
 
                 continue;
@@ -192,7 +192,7 @@ final class WeekPlanBuilder
      */
     private static function raceWeekType(Carbon $dayDate, ?Carbon $raceDate): ?SessionType
     {
-        if ($raceDate === null) {
+        if (!$raceDate instanceof Carbon) {
             return null;
         }
 
@@ -237,7 +237,8 @@ final class WeekPlanBuilder
 
         $bestPair = [];
         $bestScore = -1;
-        for ($i = 0; $i < count($offsets); $i++) {
+        $counter = count($offsets);
+        for ($i = 0; $i < $counter; $i++) {
             for ($j = $i + 1; $j < count($offsets); $j++) {
                 $left = $offsets[$i];
                 $right = $offsets[$j];
@@ -419,7 +420,7 @@ final class WeekPlanBuilder
         $open = $projectedRaceSeconds !== null
             && $projectedRaceSeconds >= self::VO2MAX_RACE_SECONDS
             && $projectedRaceSeconds < self::THRESHOLD_RACE_SECONDS;
-        if ($fallOffTilt === null || ! $open || $fallOffTilt->qualityType() === $neutral) {
+        if (!$fallOffTilt instanceof FallOffTilt || ! $open || $fallOffTilt->qualityType() === $neutral) {
             return ['session_type' => $neutral];
         }
 
@@ -436,7 +437,7 @@ final class WeekPlanBuilder
      */
     private static function tiltedPair(array $pair, ?float $projectedRaceSeconds, ?FallOffTilt $fallOffTilt): array
     {
-        if ($fallOffTilt === null) {
+        if (!$fallOffTilt instanceof FallOffTilt) {
             return $pair;
         }
         $pinned = $projectedRaceSeconds !== null && match ($fallOffTilt) {

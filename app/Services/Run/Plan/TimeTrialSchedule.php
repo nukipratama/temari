@@ -54,7 +54,7 @@ final class TimeTrialSchedule
     {
         $arcStart = $inputs->arcStart();
         $weeks = [];
-        if ($inputs->raceDate !== null) {
+        if ($inputs->raceDate instanceof Carbon) {
             $week = $inputs->raceDate->copy()->startOfWeek(Carbon::MONDAY)->subWeeks(self::LAST_TRIAL_WEEKS_BEFORE_RACE);
             for (; $week->gte($arcStart); $week = $week->copy()->subWeeks(self::CADENCE_WEEKS)) {
                 array_unshift($weeks, $week->toDateString());
@@ -110,7 +110,7 @@ final class TimeTrialSchedule
 
         $raceDate = $this->inputs->raceDate;
 
-        return $raceDate === null
+        return !$raceDate instanceof Carbon
             || (int) $weekStart->diffInWeeks($raceDate->copy()->startOfWeek(Carbon::MONDAY)) > self::TRIAL_FREE_WEEKS_BEFORE_RACE;
     }
 

@@ -72,8 +72,8 @@ final readonly class PlanInputsGatherer
         $this->seasonService->releaseHeldIncreases($season, $user, $today);
 
         $race = ($this->activeRace)($user->id);
-        $trialDistanceM = TimeTrial::distanceFor($race === null ? null : (float) $race->distance_m);
-        $ambition = $race === null ? null : $this->ambition->assess($user, $race, $today);
+        $trialDistanceM = TimeTrial::distanceFor($race instanceof RaceGoal ? (float) $race->distance_m : null);
+        $ambition = $race instanceof RaceGoal ? $this->ambition->assess($user, $race, $today) : null;
         $baseline = $this->baseline->forUser($user, $today);
         $layout = $this->baseline->weekLayout($user, $today);
         $estimate = $this->vdotEstimator->estimate($user, $today);
@@ -95,7 +95,7 @@ final readonly class PlanInputsGatherer
             seasonEnd: $season->ends_at,
             recovery: $this->postRaceRecovery($user, $today),
             raceDate: $race?->race_date,
-            raceDistanceM: $race === null ? null : (float) $race->distance_m,
+            raceDistanceM: $race instanceof RaceGoal ? (float) $race->distance_m : null,
             sessionsPerWeek: $baseline['sessions_per_week'],
             runDays: $layout['run_days'],
             longRunDay: $layout['long_run_day'],
@@ -131,7 +131,7 @@ final readonly class PlanInputsGatherer
             timeTrials: $this->timeTrials($user, $season->starts_at->copy()->startOfWeek(Carbon::MONDAY), $today),
             timeTrialEvidenceDates: $this->timeTrialEvidenceDates($user, $trialDistanceM, $currentWeekStart),
             lastBuildQualityHardMinutes: $this->lastBuildQualityHardMinutes($user, $today),
-            lastPeakGoalPaceHardMinutes: $race === null ? null : $this->lastPeakGoalPaceHardMinutes($user, $today, GoalPaceWork::kindFor((float) $race->distance_m)),
+            lastPeakGoalPaceHardMinutes: $race instanceof RaceGoal ? $this->lastPeakGoalPaceHardMinutes($user, $today, GoalPaceWork::kindFor((float) $race->distance_m)) : null,
             raceSupportedTimeSec: $ambition?->supportedTimeSec,
             longestRunSoFarKm: $this->longestRunSoFarKm($user, $today, $season->starts_at, $baseline),
             lastFastFinishDate: $this->lastFastFinishDate($user, $today),
@@ -227,7 +227,7 @@ final readonly class PlanInputsGatherer
     private function resumeTrailingMeanKm(?RaceGoal $race, Collection $weeks, Carbon $currentWeekStart): ?float
     {
         $recent = $weeks->take(self::RESUME_TRAILING_WEEKS);
-        if ($race === null || $recent->count() < self::RESUME_MIN_WEEKS) {
+        if (!$race instanceof RaceGoal || $recent->count() < self::RESUME_MIN_WEEKS) {
             return null;
         }
 

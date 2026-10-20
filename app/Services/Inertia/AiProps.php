@@ -57,7 +57,7 @@ final readonly class AiProps
      */
     private function aiPausedFor(?User $user): bool
     {
-        if ($user === null) {
+        if (!$user instanceof User) {
             return false;
         }
 
@@ -92,7 +92,7 @@ final readonly class AiProps
      */
     private function aiCatchingUpFor(?User $user): bool
     {
-        if ($user === null || $this->aiPausedFor($user)) {
+        if (!$user instanceof User || $this->aiPausedFor($user)) {
             return false;
         }
 

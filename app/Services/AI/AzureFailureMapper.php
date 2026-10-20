@@ -47,7 +47,7 @@ final class AzureFailureMapper
 
         return new TransientUpstreamException(
             $message,
-            $response !== null ? self::retryAfterSeconds($response) : null,
+            $response instanceof ResponseInterface ? self::retryAfterSeconds($response) : null,
             $e,
         );
     }

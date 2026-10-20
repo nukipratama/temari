@@ -255,7 +255,8 @@ it('keeps quality within the hard-day budget for run counts two through six', fu
                 expect(WeekPlanBuilder::longRunRecoveryDays($offset, $longOffset))->toBeGreaterThanOrEqual(2);
             }
         }
-        for ($index = 1; $index < count($qualityOffsets); $index++) {
+        $counter = count($qualityOffsets);
+        for ($index = 1; $index < $counter; $index++) {
             expect(WeekPlanBuilder::longRunRecoveryDays($qualityOffsets[$index - 1], $qualityOffsets[$index]))->toBeGreaterThanOrEqual(2);
         }
     }

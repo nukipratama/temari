@@ -26,7 +26,7 @@ final class DayAnchorResolver
         [$kind] = $parsed;
 
         return match ($kind) {
-            AnchorKind::Session => $today !== null,
+            AnchorKind::Session => $today instanceof PlannedSession,
             // Split, zone and metric describe one run's own stream, which a
             // day does not have. A briefing citing `split:4` is pointing at
             // something this page never draws.

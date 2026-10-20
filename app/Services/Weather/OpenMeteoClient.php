@@ -75,7 +75,7 @@ class OpenMeteoClient
         }
 
         $snapshot = $this->fetchUncached($latitude, $longitude, $startedAt, $useArchive);
-        if ($snapshot !== null) {
+        if ($snapshot instanceof WeatherSnapshot) {
             $ttl = $useArchive ? self::ARCHIVE_CACHE_TTL : self::FORECAST_CACHE_TTL;
             Cache::put($cacheKey, $this->dehydrate($snapshot), $ttl);
         }

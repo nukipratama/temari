@@ -343,7 +343,7 @@ class Analysis extends Model
      */
     private static function resolveCooldown(?self $row, ?array $cooldowns): ?int
     {
-        if ($row === null) {
+        if (!$row instanceof \App\Models\AI\Analysis) {
             return null;
         }
 

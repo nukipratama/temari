@@ -47,7 +47,7 @@ final readonly class StravaProps
      */
     private function stravaPausedFor(?User $user): bool
     {
-        if ($user === null) {
+        if (!$user instanceof User) {
             return false;
         }
 
@@ -65,7 +65,7 @@ final readonly class StravaProps
      */
     private function stravaZoneScopeMissingFor(?User $user): bool
     {
-        if ($user === null || $user->is_demo) {
+        if (!$user instanceof User || $user->is_demo) {
             return false;
         }
 
@@ -91,7 +91,7 @@ final readonly class StravaProps
      */
     private function hrZonesChangedAtFor(?User $user): ?string
     {
-        if ($user === null) {
+        if (!$user instanceof User) {
             return null;
         }
 
@@ -109,7 +109,7 @@ final readonly class StravaProps
      */
     private function stravaSyncFor(?User $user): array
     {
-        if ($user === null) {
+        if (!$user instanceof User) {
             return ['state' => 'disconnected', 'last_synced_at' => null];
         }
 

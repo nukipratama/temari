@@ -180,7 +180,7 @@ final class PlanContextTool extends UserTool
                     'skipped' => $session->skipped,
                     'status' => $session->status->value,
                     'completed_km' => $runDistances === null ? null : round($runDistances['sum'], 1),
-                    'credited_km' => $runDistances === null ? null : round(SessionMatcher::creditedKm($session->session_type, $runDistances, TimeTrial::of($session) !== null), 1),
+                    'credited_km' => $runDistances === null ? null : round(SessionMatcher::creditedKm($session->session_type, $runDistances, TimeTrial::of($session) instanceof TimeTrial), 1),
                     'distance_score' => $session->distance_score,
                     'compliance_score' => $session->compliance_score,
                     'ran_anyway' => $session->ran_anyway,
@@ -192,7 +192,7 @@ final class PlanContextTool extends UserTool
                         : IntentOutcome::detail(
                             $session->intent_verdict,
                             $session->intent_evidence ?? [],
-                            SessionMatcher::ranPaceSecPerKmFromRuns($session->session_type, $runDistances['runs'] ?? [], TimeTrial::of($session) !== null),
+                            SessionMatcher::ranPaceSecPerKmFromRuns($session->session_type, $runDistances['runs'] ?? [], TimeTrial::of($session) instanceof TimeTrial),
                         ),
                 ];
             })->all(),

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Console\Commands\Weather;
 
+use App\Services\Weather\WeatherSnapshot;
 use App\Models\ActivityDetail;
 use App\Services\Ops\MaintainerAlerter;
 use App\Services\Weather\OpenMeteoClient;
@@ -76,7 +77,7 @@ class BackfillActivityWeatherCommand extends Command
             CarbonImmutable::instance($detail->start_date_local),
         );
 
-        if ($snapshot === null) {
+        if (!$snapshot instanceof WeatherSnapshot) {
             $detail->update([
                 'weather_attempts' => $detail->weather_attempts + 1,
                 'weather_attempted_at' => now(),

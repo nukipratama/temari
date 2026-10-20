@@ -34,7 +34,7 @@ final readonly class TimeTrialService
     public function settle(PlannedSession $session): ?TimeTrialOutcome
     {
         $trial = TimeTrial::of($session);
-        if ($trial === null || $session->time_trial_outcome !== null) {
+        if (!$trial instanceof TimeTrial || $session->time_trial_outcome !== null) {
             return null;
         }
 
@@ -61,7 +61,7 @@ final readonly class TimeTrialService
             throw new AuthorizationException();
         }
         $trial = TimeTrial::of($session);
-        if ($trial === null || $session->time_trial_outcome !== TimeTrialOutcome::Asked) {
+        if (!$trial instanceof TimeTrial || $session->time_trial_outcome !== TimeTrialOutcome::Asked) {
             throw ValidationException::withMessages(['answer' => 'This trial is already settled.']);
         }
         if (! $allOut) {

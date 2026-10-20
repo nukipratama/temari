@@ -66,7 +66,7 @@ function ciChecks(
     bool $structure = false,
     bool $image = false,
 ): array {
-    return compact('backend', 'frontend', 'docker', 'worktree', 'structure', 'image');
+    return ['backend' => $backend, 'frontend' => $frontend, 'docker' => $docker, 'worktree' => $worktree, 'structure' => $structure, 'image' => $image];
 }
 
 function ciClassifiesAsBackend(string $path): bool
@@ -187,7 +187,7 @@ it('runs a check that executes every test reading a repo file it names', functio
     foreach ($reads as [$path, $test, $source]) {
         $checks = $classified[$path];
 
-        if (! $checks['backend'] && ! ($checks['structure'] && ciRunsOnlyStructureTests($source))) {
+        if (! $checks['backend'] && (!$checks['structure'] || !ciRunsOnlyStructureTests($source))) {
             $unguarded[] = "{$path} (read by tests/{$test->getRelativePathname()})";
         }
     }

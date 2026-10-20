@@ -551,7 +551,7 @@ final class SegmentGenerator
     {
         $pace = $prescription->paceBand;
         $secPerKm = ($isFinalUnit ? GoalPaceWork::finalPaceOf($prescription->raceContext) : null) ?? $prescription->paceSecPerKm;
-        if ($pace === null) {
+        if (!$pace instanceof PaceBand) {
             throw new LogicException('A hard prescription requires a pace band.');
         }
 

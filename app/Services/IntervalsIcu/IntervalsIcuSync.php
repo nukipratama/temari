@@ -99,7 +99,7 @@ final readonly class IntervalsIcuSync
             }
         }
 
-        if ($workout === null) {
+        if (!$workout instanceof IntervalsIcuWorkout) {
             $this->removeToday($connection, $today);
             $connection->fill(['sync_status' => $status, 'event_id' => null, 'payload_hash' => null])->save();
 

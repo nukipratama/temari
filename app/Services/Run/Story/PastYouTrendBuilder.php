@@ -272,7 +272,7 @@ class PastYouTrendBuilder
             ));
 
             $comparison = $this->matcher->bestMatch($run, $available);
-            if ($comparison === null) {
+            if (!$comparison instanceof PastYouComparison) {
                 continue;
             }
 
@@ -330,7 +330,7 @@ class PastYouTrendBuilder
             $runDate = Carbon::parse((string) $values['start_date_local'])->toDateString();
             $values['planned_session_type'] = ($plannedTypes[$runDate] ?? null)?->value;
             $run = ComparableRun::fromRow($values);
-            if ($run !== null) {
+            if ($run instanceof ComparableRun) {
                 $runs[] = $run;
             }
         }
@@ -369,7 +369,7 @@ class PastYouTrendBuilder
 
     private function consistencyLabel(?ActivityDetail $detail): ?string
     {
-        if ($detail === null) {
+        if (!$detail instanceof ActivityDetail) {
             return null;
         }
 

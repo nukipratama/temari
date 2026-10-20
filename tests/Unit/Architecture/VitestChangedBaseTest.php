@@ -58,7 +58,7 @@ function makeRepoWithOriginMain(): array
     $commit('head');
     $head = trim($git('rev-parse', 'HEAD')->getOutput());
 
-    return compact('dir', 'base', 'head');
+    return ['dir' => $dir, 'base' => $base, 'head' => $head];
 }
 
 function installBaseScript(string $dir): void

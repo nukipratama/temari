@@ -15,7 +15,7 @@ uses(RefreshDatabase::class);
 function runSetDefaultNarrationOriginMiddleware(?User $user): Response
 {
     $request = Request::create('/', 'GET');
-    if ($user !== null) {
+    if ($user instanceof User) {
         $request->setUserResolver(fn (): User => $user);
     }
 

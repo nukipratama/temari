@@ -124,7 +124,7 @@ class DispatchPostRunAnalysis implements ShouldQueue
         $snapshot = $this->rebuildWeeksUnlessRecalibrating($user, $detail->start_date_local, $isBackfill && ! $user->is_demo);
         $this->trendSnapshots->forActivity($activity);
 
-        if ($snapshot !== null) {
+        if ($snapshot instanceof WeeklySnapshot) {
             // Weekly cadence: regenerating the recap of a still-unfinished week
             // on every run was the single biggest LLM re-bill. The row is staged
             // Pending here; ai:weekly-recap narrates it once the week closes.
@@ -212,8 +212,8 @@ class DispatchPostRunAnalysis implements ShouldQueue
         $this->analysisService->request(
             subjectOrType: RunCard::class,
             subjectId: $card->id,
-            delaySeconds: $delaySec,
             type: AnalysisType::CardFlavor,
+            delaySeconds: $delaySec,
             invalidate: $stamped !== null && $stamped !== MaterialFingerprint::forActivity($activity),
         );
     }
@@ -274,7 +274,7 @@ class DispatchPostRunAnalysis implements ShouldQueue
             return;
         }
 
-        $hasUnfinishedOlderLink = AnalyzeActivityJob::earliestPendingActivityForUser($activity->user_id) !== null;
+        $hasUnfinishedOlderLink = AnalyzeActivityJob::earliestPendingActivityForUser($activity->user_id) instanceof Activity;
 
         if (! $isBackfill && ! $hasUnfinishedOlderLink) {
             $this->maybeRefreshActivityGroup($activity);
@@ -285,7 +285,7 @@ class DispatchPostRunAnalysis implements ShouldQueue
         $this->analysisService->requestActivityGroupDeferred($activity);
 
         $earliest = AnalyzeActivityJob::earliestPendingActivityForUser($activity->user_id);
-        if ($earliest !== null) {
+        if ($earliest instanceof Activity) {
             $this->analysisService->requestActivityGroup($earliest, invalidate: false, delaySeconds: $delaySec);
         }
     }

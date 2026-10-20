@@ -132,12 +132,12 @@ final readonly class EffectiveSession
      */
     public static function clampVoiceNeeded(?array $clamp, ?PlannedSession $todaySession): bool
     {
-        return $clamp !== null || ($todaySession !== null && self::isRecordedOn($todaySession));
+        return $clamp !== null || ($todaySession instanceof PlannedSession && self::isRecordedOn($todaySession));
     }
 
     public function isEased(): bool
     {
-        return $this->easedFromType !== null;
+        return $this->easedFromType instanceof SessionType;
     }
 
     /** Type and distance stayed, only the pace came down — see {@see \App\Services\Run\Plan\ReadinessClamp::paceEaseApplies()}. */
@@ -167,7 +167,7 @@ final readonly class EffectiveSession
      */
     public function easedFromForNarration(): ?array
     {
-        if ($this->easedFromType === null || $this->easedFromKm === null) {
+        if (!$this->easedFromType instanceof SessionType || $this->easedFromKm === null) {
             return null;
         }
 
