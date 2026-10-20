@@ -113,6 +113,7 @@ function summaryWeek(
         planned_km: 30.4,
         actual_km: 12,
         sessions: 5,
+        adherence_pct: null,
         ...overrides,
     };
 }

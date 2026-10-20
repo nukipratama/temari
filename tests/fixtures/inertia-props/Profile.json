@@ -101,6 +101,7 @@
     "season.starts_at",
     "seasonWeeks",
     "seasonWeeks[].actual_km",
+    "seasonWeeks[].adherence_pct",
     "seasonWeeks[].eased_from_km",
     "seasonWeeks[].phase",
     "seasonWeeks[].planned_km",

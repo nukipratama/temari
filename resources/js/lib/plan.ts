@@ -50,6 +50,8 @@ export interface SeasonSummaryWeek {
     eased_from_km?: number | null;
     actual_km: number | null;
     sessions: number;
+    /** A week behind's mean capped compliance score; null for this week, weeks ahead and unscored weeks. */
+    adherence_pct: number | null;
 }
 
 /** The first later week whose phase identity differs from the current week's, and how many weeks away it is. */

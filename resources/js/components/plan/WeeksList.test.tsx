@@ -16,6 +16,7 @@ function week(overrides: Partial<SeasonSummaryWeek> = {}): SeasonSummaryWeek {
         planned_km: 30.4,
         actual_km: 27.6,
         sessions: 5,
+        adherence_pct: null,
         ...overrides,
     };
 }
@@ -39,8 +40,8 @@ function detail(weekStart: string, scores: (number | null)[]): PlanWeek {
 
 /** An old unloaded week, a loaded week behind, this week, a loaded and an unloaded week ahead. */
 const SEASON: SeasonSummaryWeek[] = [
-    week({ week_start: '2026-06-01' }),
-    week({ week_start: '2026-06-08', actual_km: null }),
+    week({ week_start: '2026-06-01', adherence_pct: 94 }),
+    week({ week_start: '2026-06-08', actual_km: null, adherence_pct: 80 }),
     week({
         week_start: '2026-06-15',
         type: 'current',
@@ -52,7 +53,7 @@ const SEASON: SeasonSummaryWeek[] = [
 ];
 
 const DETAIL: Record<string, PlanWeek> = {
-    '2026-06-08': detail('2026-06-08', [100, 60, null]),
+    '2026-06-08': detail('2026-06-08', [100, 100, null]),
     '2026-06-15': detail('2026-06-15', [100]),
     '2026-06-22': detail('2026-06-22', [null]),
 };
@@ -99,9 +100,10 @@ describe('WeeksList', () => {
         expect(rows[3]).toHaveTextContent('30.4 km');
     });
 
-    it('gives a scored week behind its adherence, and no other week one', () => {
+    it('gives a scored week behind its season adherence, loaded or not, and no other week one', () => {
         const { rows } = renderList();
 
+        expect(rows[0]).toHaveTextContent('94%');
         expect(rows[1]).toHaveTextContent('80%');
         expect(rows[2]).not.toHaveTextContent('%');
         expect(rows[3]).not.toHaveTextContent('%');

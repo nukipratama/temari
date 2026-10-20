@@ -17,6 +17,7 @@ function week(overrides: Partial<SeasonSummaryWeek> = {}): SeasonSummaryWeek {
         planned_km: 30,
         actual_km: null,
         sessions: 5,
+        adherence_pct: null,
         ...overrides,
     };
 }
