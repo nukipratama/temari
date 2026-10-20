@@ -286,9 +286,9 @@ class DispatchPostRunAnalysis implements ShouldQueue
     /**
      * Steady-state (fresh or re-synced) dispatch. A first ingest dispatches the
      * group as normal. On a re-sync of the user's LATEST run, if the material run
-     * data changed since it was last narrated and its re-narrate cooldown has
-     * elapsed, the Done group is invalidated so it re-narrates the corrected
-     * data; otherwise it's a no-op. Older runs are left to the manual "Reread".
+     * data changed since it was last narrated, at least a cooldown window ago,
+     * the Done group is invalidated so it re-narrates the corrected data;
+     * otherwise it's a no-op. Older runs are left to the manual "Reread".
      */
     private function maybeRefreshActivityGroup(Activity $activity): void
     {
@@ -306,9 +306,10 @@ class DispatchPostRunAnalysis implements ShouldQueue
 
     /**
      * Whether the latest run's material data changed since its narration was
-     * generated, at least a cooldown window ago whatever started it. A null stored fingerprint (a
-     * pre-feature run, never stamped) counts as unchanged, so shipping this never
-     * mass-invalidates history — only forward, on a genuine change.
+     * generated, at least a cooldown window ago whatever started it. A null
+     * stored fingerprint (a pre-feature run, never stamped) counts as unchanged,
+     * so shipping this never mass-invalidates history — only forward, on a
+     * genuine change.
      */
     private function materialRefreshDue(Activity $activity): bool
     {
