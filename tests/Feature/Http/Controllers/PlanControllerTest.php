@@ -415,6 +415,20 @@ it('queues a manual regeneration when the per-user lock stays busy', function ()
     expect(app(PlanRegenerateCooldown::class)->remaining($user))->not->toBeNull();
 });
 
+it('answers the 11th manual regenerate within a minute with 429, the cooldown still answering the rest', function (): void {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)->post('/plan/regenerate')->assertSessionHas('success');
+
+    foreach (range(2, 10) as $attempt) {
+        $this->actingAs($user)->post('/plan/regenerate')
+            ->assertRedirect()
+            ->assertSessionHas('info');
+    }
+
+    $this->actingAs($user)->post('/plan/regenerate')->assertTooManyRequests();
+});
+
 /**
  * Reported from prod: two sessions on one day rendered as a single
  * "12 km · 55:00" — the day's summed distance beside only the longer run's
