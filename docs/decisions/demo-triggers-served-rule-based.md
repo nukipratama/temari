@@ -17,6 +17,8 @@ code_refs:
 
 > **One premise below is superseded (noted 2026-08-14) by [[cost-ceiling-degrades-to-rule-based]].** The Context lists "a manual trigger deliberately fires past the AI cost ceiling" among the reasons this decision was needed. It no longer does — `generationPaused()` folds the ceiling in and [AnalysisController::trigger](app/Http/Controllers/Api/AnalysisController.php#L24) refuses with a 409. The decision itself is unaffected: the demo branch still sits *ahead* of that guard, so a demo trigger is still served rule-based and still cannot bill.
 
+> **One name below is superseded (noted 2026-10-17):** the `block-demo-telegram` alias is now `block-demo-writes`, same guard.
+
 ## Context
 
 [[demo-user-billing-exclusion]] held the demo account out of every recurring

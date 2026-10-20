@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Support\Config\AppConfig;
 use App\Support\Config\AppConfigKey;
 use App\Support\SharedPropCacheKey;
+use Carbon\CarbonInterface;
 use Closure;
 
 /**
@@ -46,7 +47,7 @@ final readonly class StravaProps
      */
     private function stravaPausedFor(?User $user): bool
     {
-        if ($user === null) {
+        if (!$user instanceof User) {
             return false;
         }
 
@@ -64,7 +65,7 @@ final readonly class StravaProps
      */
     private function stravaZoneScopeMissingFor(?User $user): bool
     {
-        if ($user === null || $user->is_demo) {
+        if (!$user instanceof User || $user->is_demo) {
             return false;
         }
 
@@ -90,7 +91,7 @@ final readonly class StravaProps
      */
     private function hrZonesChangedAtFor(?User $user): ?string
     {
-        if ($user === null) {
+        if (!$user instanceof User) {
             return null;
         }
 
@@ -108,7 +109,7 @@ final readonly class StravaProps
      */
     private function stravaSyncFor(?User $user): array
     {
-        if ($user === null) {
+        if (!$user instanceof User) {
             return ['state' => 'disconnected', 'last_synced_at' => null];
         }
 
@@ -150,6 +151,7 @@ final readonly class StravaProps
             ->whereNotNull('fetched_at')
             ->orderByDesc('fetched_at')
             ->value('fetched_at');
+        assert($latest === null || $latest instanceof CarbonInterface);
 
         // "ready" once at least one run is fully ingested; the scope already
         // restricts to analyzed rows, so exists() answers that directly.

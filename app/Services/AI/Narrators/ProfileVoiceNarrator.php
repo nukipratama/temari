@@ -188,7 +188,9 @@ class ProfileVoiceNarrator
         );
 
         // The evidence slots are a commitment device: never rendered, only required.
-        return (string) $decoded['profile_voice'];
+        assert(is_string($decoded['profile_voice']));
+
+        return $decoded['profile_voice'];
     }
 
     /**
@@ -201,11 +203,13 @@ class ProfileVoiceNarrator
      */
     private static function figureComplaint(array $answer, array $claimFigures): ?string
     {
-        $primary = (string) $answer['evidence_primary'];
-        $secondary = (string) $answer['evidence_secondary'];
+        $primary = $answer['evidence_primary'];
+        $secondary = $answer['evidence_secondary'];
+        $voice = $answer['profile_voice'];
+        assert(is_string($primary) && is_string($secondary) && is_string($voice));
 
         $leaked = QuotedFigures::outside(
-            (string) $answer['profile_voice'],
+            $voice,
             [...$claimFigures, $primary, $secondary],
         );
 
@@ -228,6 +232,7 @@ class ProfileVoiceNarrator
     private function claimFigures(User $user): array
     {
         $mix = new PersonaMixTool($user, Carbon::now())->handle([]);
+        assert(is_int($mix['lookback_weeks']) && is_int($mix['total_runs']));
         $figures = [
             (string) $mix['lookback_weeks'],
             (string) ((int) $mix['lookback_weeks'] / 2),

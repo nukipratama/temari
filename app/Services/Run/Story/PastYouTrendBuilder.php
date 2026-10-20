@@ -47,12 +47,10 @@ class PastYouTrendBuilder
     public const float SAME_HR_BPM = 2.0;
 
     /**
-     * The date range is the real bound: {@see self::WINDOW_DAYS} back for the
-     * recent side plus {@see PastYouMatcher::MAX_GAP_DAYS} for the candidates
-     * each of them may pair with. This row count is only a backstop against
-     * pathological data such as a duplicated import, sized above the 814 runs a
-     * twice-a-day runner could log in that range; it drops the *oldest* rows,
-     * which are eligible candidates.
+     * The date range is the real bound: {@see self::WINDOW_DAYS} back for the recent side plus
+     * {@see PastYouMatcher::MAX_GAP_DAYS} for the candidates each may pair with. This row count is
+     * only a backstop against pathological data such as a duplicated import; it drops the *oldest*
+     * rows, which are eligible candidates.
      */
     private const int HISTORY_BACKSTOP_ROWS = 2_000;
 
@@ -272,7 +270,7 @@ class PastYouTrendBuilder
             ));
 
             $comparison = $this->matcher->bestMatch($run, $available);
-            if ($comparison === null) {
+            if (!$comparison instanceof PastYouComparison) {
                 continue;
             }
 
@@ -284,13 +282,10 @@ class PastYouTrendBuilder
     }
 
     /**
-     * Rows come back as plain records rather than models: nothing downstream of
-     * {@see ComparableRun} touches Eloquent, and hydrating a year of history
-     * into models cost more than the matching it feeds. The join replaces an
-     * eager load of `activities` for the one column the runs need, so it also
-     * has to re-apply {@see \App\Models\Scopes\AnalyzedScope} via
-     * {@see Activity::analyzedJoinConstraint()} — a plain join bypasses
-     * Eloquent's global scopes.
+     * Rows come back as plain records rather than models, since nothing downstream of
+     * {@see ComparableRun} touches Eloquent. The join re-applies
+     * {@see \App\Models\Scopes\AnalyzedScope} via {@see Activity::analyzedJoinConstraint()}, since a
+     * plain join bypasses global scopes.
      *
      * @return list<ComparableRun>  newest first
      */
@@ -330,7 +325,7 @@ class PastYouTrendBuilder
             $runDate = Carbon::parse((string) $values['start_date_local'])->toDateString();
             $values['planned_session_type'] = ($plannedTypes[$runDate] ?? null)?->value;
             $run = ComparableRun::fromRow($values);
-            if ($run !== null) {
+            if ($run instanceof ComparableRun) {
                 $runs[] = $run;
             }
         }
@@ -369,7 +364,7 @@ class PastYouTrendBuilder
 
     private function consistencyLabel(?ActivityDetail $detail): ?string
     {
-        if ($detail === null) {
+        if (!$detail instanceof ActivityDetail) {
             return null;
         }
 
@@ -377,10 +372,8 @@ class PastYouTrendBuilder
     }
 
     /**
-     * Kept at 2 decimal places: this feeds threshold comparisons (±1.0 signal
-     * units, the 2%/3% pace and efficiency bands), and {@see self::mean()}'s
-     * 1-decimal rounding is coarse enough to round a sub-threshold value like
-     * 0.97 up to the 1.0 line.
+     * Kept at 2 decimal places: this feeds threshold comparisons (±1.0 signal units), and
+     * {@see self::mean()}'s 1-decimal rounding could round 0.97 up to the 1.0 line.
      *
      * @param  list<float>  $values  never empty at either call site
      */

@@ -16,6 +16,7 @@ it('keeps every reply free of em-dashes and en-dashes', function (): void {
         TelegramReplies::disconnected(),
         TelegramReplies::test(),
         TelegramReplies::linkedElsewhere(),
+        TelegramReplies::privateChatOnly(),
     ];
 
     foreach ($replies as $reply) {

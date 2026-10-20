@@ -33,7 +33,7 @@ it('dispatches the 7d range for every active user', function (): void {
     $service->shouldReceive('request')
         ->once()
         ->andReturnUsing(function (string $subjectOrType, int $subjectId, AnalysisType $type, ?string $discriminator = null) use (&$requestCalls): Analysis {
-            $requestCalls[] = compact('subjectOrType', 'subjectId', 'type', 'discriminator');
+            $requestCalls[] = ['subjectOrType' => $subjectOrType, 'subjectId' => $subjectId, 'type' => $type, 'discriminator' => $discriminator];
 
             return new Analysis();
         });
@@ -150,7 +150,7 @@ it('re-dispatches a done 7d read whose stored fingerprint is null, exactly once'
     $this->artisan('ai:trend-read', ['range' => '7d'])->assertSuccessful();
 
     Bus::assertDispatchedTimes(AnalyzeTrendReadJob::class, 1);
-    expect($row->fresh()->status)->toBe(AnalysisStatus::Queued);
+    expect($row->refresh()->status)->toBe(AnalysisStatus::Queued);
 
     Carbon::setTestNow();
 });
@@ -209,7 +209,7 @@ it('re-dispatches a done read once when its range material has changed', functio
     $this->artisan('ai:trend-read', ['range' => '7d'])->assertSuccessful();
 
     Bus::assertDispatchedTimes(AnalyzeTrendReadJob::class, 1);
-    expect($row->fresh()->status)->toBe(AnalysisStatus::Queued);
+    expect($row->refresh()->status)->toBe(AnalysisStatus::Queued);
 
     Carbon::setTestNow();
 });

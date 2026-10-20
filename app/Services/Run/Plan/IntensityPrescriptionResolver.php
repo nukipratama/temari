@@ -54,9 +54,9 @@ final class IntensityPrescriptionResolver
             return new IntensityPrescription(0, null, null, null);
         }
 
-        [$target, $band, $raceContext] = $goalPace === null
-            ? self::target($type, $phase, $raceDistanceM, $raceGoalTimeSec)
-            : self::goalPaceTarget($type, $phase, $goalPace);
+        [$target, $band, $raceContext] = $goalPace instanceof GoalPaceWork
+            ? self::goalPaceTarget($type, $phase, $goalPace)
+            : self::target($type, $phase, $raceDistanceM, $raceGoalTimeSec);
         if ($target === 0 || $band === null) {
             return new IntensityPrescription(0, null, null, null, $raceContext);
         }

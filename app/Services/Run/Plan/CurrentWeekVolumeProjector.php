@@ -59,7 +59,7 @@ final readonly class CurrentWeekVolumeProjector
         $pinnedKm = $sessions->filter(fn (PlannedSession $session): bool => $session->pinned && ! $session->date->lt($today))->sum($kmFor);
 
         $todayFixedKm = 0.0;
-        if ($todaySession !== null && ! $todaySession->pinned) {
+        if ($todaySession instanceof PlannedSession && ! $todaySession->pinned) {
             $todayFixedKm = $clamp !== null && ! EffectiveSession::isRecordedOn($todaySession)
                 ? $clamp['core_km']
                 : $kmFor($todaySession);
@@ -108,6 +108,6 @@ final readonly class CurrentWeekVolumeProjector
             }
         }
 
-        return DistanceFormatter::km((float) $meters);
+        return DistanceFormatter::km($meters);
     }
 }

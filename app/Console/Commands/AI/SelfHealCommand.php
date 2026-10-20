@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Console\Commands\AI;
 
+use Illuminate\Support\Carbon;
 use App\Services\AI\NarrationGate;
 use App\Services\Ops\MaintainerAlerter;
 use App\Services\AI\SelfHealer;
@@ -35,7 +36,7 @@ class SelfHealCommand extends Command
             return self::SUCCESS;
         }
 
-        $resumed = ($liftedPauseStartedAt === null ? 0 : $healer->retryFailedDuringPause($liftedPauseStartedAt))
+        $resumed = ($liftedPauseStartedAt instanceof Carbon ? $healer->retryFailedDuringPause($liftedPauseStartedAt) : 0)
             + $healer->run();
 
         $this->info("Resumed {$resumed} blocks.");

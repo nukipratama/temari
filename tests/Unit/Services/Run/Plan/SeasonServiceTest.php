@@ -14,6 +14,7 @@ use App\Models\SeasonGoal;
 use App\Models\TrainingPreference;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
+use App\Support\Numeric;
 use App\Services\Run\Plan\SeasonService;
 use App\Services\Run\Plan\SeasonSummaryBuilder;
 use App\Services\Run\Plan\PhaseSchedule;
@@ -31,17 +32,21 @@ uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
     Carbon::setTestNow('2026-08-10 08:00:00');
-    $this->service = app(SeasonService::class);
 });
 afterEach(fn () => Carbon::setTestNow());
+
+function seasonServiceUnderTest(): SeasonService
+{
+    return app(SeasonService::class);
+}
 
 it('opens, keeps, peeks and auto-cycles a self-scaled 12-week season with its five goals for a user with no active race', function (): void {
     $user = User::factory()->create();
 
-    expect($this->service->peekCurrent($user, Carbon::today()))->toBeNull()
+    expect(seasonServiceUnderTest()->peekCurrent($user, Carbon::today()))->toBeNull()
         ->and(Season::query()->where('user_id', $user->id)->count())->toBe(0);
 
-    $season = $this->service->ensureCurrent($user, Carbon::today());
+    $season = seasonServiceUnderTest()->ensureCurrent($user, Carbon::today());
 
     expect($season->race_goal_id)->toBeNull()
         ->and($season->starts_at->toDateString())->toBe('2026-08-10')
@@ -50,59 +55,58 @@ it('opens, keeps, peeks and auto-cycles a self-scaled 12-week season with its fi
 
     $metrics = SeasonGoal::query()->where('season_id', $season->id)->pluck('metric')->all();
     $consistency = SeasonGoal::query()->where('season_id', $season->id)->where('metric', 'season_consistent_weeks')->first();
-    expect($metrics)->not->toContain('season_ctl_growth')->not->toContain('season_race_goal_met')
+    expect($metrics)->not->toContain('season_ctl_growth')->and($metrics)->not->toContain('season_race_goal_met')
         ->and($consistency?->target)->toBe(12.0)
         ->and($consistency?->unit)->toBe('weeks');
 
-    $second = $this->service->ensureCurrent($user, Carbon::today());
+    $second = seasonServiceUnderTest()->ensureCurrent($user, Carbon::today());
 
     expect($second->id)->toBe($season->id)
         ->and(Season::query()->where('user_id', $user->id)->count())->toBe(1)
         ->and(SeasonGoal::query()->where('season_id', $season->id)->count())->toBe(5);
 
-    $peeked = $this->service->peekCurrent($user, Carbon::today());
+    $peeked = nonNull(seasonServiceUnderTest()->peekCurrent($user, Carbon::today()));
 
-    expect($peeked)->not->toBeNull()
-        ->and($peeked->id)->toBe($season->id)
+    expect($peeked->id)->toBe($season->id)
         ->and(Season::query()->where('user_id', $user->id)->count())->toBe(1);
 
     Carbon::setTestNow($season->ends_at->copy()->addDay()->format('Y-m-d H:i:s'));
 
-    expect($this->service->peekCurrent($user, Carbon::today()))->toBeNull();
+    expect(seasonServiceUnderTest()->peekCurrent($user, Carbon::today()))->toBeNull();
 
-    $next = $this->service->ensureCurrent($user, Carbon::today());
+    $next = seasonServiceUnderTest()->ensureCurrent($user, Carbon::today());
 
     expect($next->id)->not->toBe($season->id)
         ->and($next->starts_at->toDateString())->toBe(Carbon::today()->toDateString())
         ->and(Season::query()->where('user_id', $user->id)->count())->toBe(2)
         // No gap and no overlap: the new season starts exactly where the old one ended.
-        ->and($season->fresh()->ends_at->toDateString())->toBe(Carbon::today()->copy()->subDay()->toDateString());
+        ->and($season->refresh()->ends_at->toDateString())->toBe(Carbon::today()->copy()->subDay()->toDateString());
 });
 
 it('opens a race-oriented season ending on race day, keeps it unsettled, follows the race date and gives way to a self-scaled one when the race is cleared', function (): void {
     $user = User::factory()->create();
     $race = RaceGoal::factory()->for($user)->create(['race_date' => Carbon::today()->addWeeks(9)->toDateString()]);
 
-    $season = $this->service->ensureCurrent($user, Carbon::today());
+    $season = seasonServiceUnderTest()->ensureCurrent($user, Carbon::today());
 
     expect($season->race_goal_id)->toBe($race->id)
         ->and($season->ends_at->toDateString())->toBe($race->race_date->toDateString());
 
     $raceMetrics = SeasonGoal::query()->where('season_id', $season->id)->pluck('metric')->all();
-    expect($raceMetrics)->toContain('season_race_goal_met')->not->toContain('season_consistent_weeks');
+    expect($raceMetrics)->toContain('season_race_goal_met')->and($raceMetrics)->not->toContain('season_consistent_weeks');
 
-    $this->service->ensureCurrent($user, Carbon::today());
+    seasonServiceUnderTest()->ensureCurrent($user, Carbon::today());
 
-    expect($season->fresh()->record_settled_at)->toBeNull();
+    expect($season->refresh()->record_settled_at)->toBeNull();
 
     // The race is edited in place (same row, same id) rather than superseded.
     $race->update(['race_date' => Carbon::today()->addWeeks(13)->toDateString()]);
 
-    $resynced = $this->service->ensureCurrent($user, Carbon::today());
+    $resynced = seasonServiceUnderTest()->ensureCurrent($user, Carbon::today());
 
     expect($resynced->id)->toBe($season->id)
         ->and($resynced->race_goal_id)->toBe($race->id)
-        ->and($resynced->ends_at->toDateString())->toBe($race->fresh()->race_date->toDateString());
+        ->and($resynced->ends_at->toDateString())->toBe($race->refresh()->race_date->toDateString());
 
     Carbon::setTestNow('2026-08-17 08:00:00');
     // What RaceController::destroy() does: a mass update fires no model events,
@@ -110,7 +114,7 @@ it('opens a race-oriented season ending on race day, keeps it unsettled, follows
     RaceGoal::query()->where('user_id', $user->id)->update(['completed_at' => now()]);
     app(ResolveActiveRaceAction::class)->forget($user->id);
 
-    $selfScaled = $this->service->ensureCurrent($user, Carbon::today());
+    $selfScaled = seasonServiceUnderTest()->ensureCurrent($user, Carbon::today());
 
     expect($selfScaled->id)->not->toBe($season->id)
         ->and($selfScaled->race_goal_id)->toBeNull();
@@ -118,25 +122,25 @@ it('opens a race-oriented season ending on race day, keeps it unsettled, follows
 
 it('ends a self-scaled season early and starts a race-oriented one when a race is set mid-season', function (): void {
     $user = User::factory()->create();
-    $selfScaled = $this->service->ensureCurrent($user, Carbon::today());
+    $selfScaled = seasonServiceUnderTest()->ensureCurrent($user, Carbon::today());
 
     Carbon::setTestNow('2026-08-17 08:00:00'); // a week later
     RaceGoal::factory()->for($user)->create(['race_date' => Carbon::today()->addWeeks(9)->toDateString()]);
 
-    $raceOriented = $this->service->ensureCurrent($user, Carbon::today());
+    $raceOriented = seasonServiceUnderTest()->ensureCurrent($user, Carbon::today());
 
     expect($raceOriented->id)->not->toBe($selfScaled->id)
         ->and($raceOriented->race_goal_id)->not->toBeNull()
-        ->and($selfScaled->fresh()->ends_at->toDateString())->toBe('2026-08-16')
+        ->and($selfScaled->refresh()->ends_at->toDateString())->toBe('2026-08-16')
         ->and(Season::query()->where('user_id', $user->id)->count())->toBe(2);
 });
 
 it('retargets the season in place, rather than opening a duplicate row, when the race is set the same day the season started', function (): void {
     $user = User::factory()->create();
-    $selfScaled = $this->service->ensureCurrent($user, Carbon::today());
+    $selfScaled = seasonServiceUnderTest()->ensureCurrent($user, Carbon::today());
     $race = RaceGoal::factory()->for($user)->create(['race_date' => Carbon::today()->addWeeks(3)->toDateString()]);
 
-    $season = $this->service->ensureCurrent($user, Carbon::today());
+    $season = seasonServiceUnderTest()->ensureCurrent($user, Carbon::today());
 
     expect($season->id)->toBe($selfScaled->id)
         ->and($season->race_goal_id)->toBe($race->id)
@@ -162,8 +166,8 @@ it('scales the quality-session target with the athlete\'s own trailing session c
         ]);
     }
 
-    $season = $this->service->ensureCurrent($user, Carbon::today());
-    $qualityGoal = SeasonGoal::query()->where('season_id', $season->id)->where('metric', 'season_quality_completed')->first();
+    $season = seasonServiceUnderTest()->ensureCurrent($user, Carbon::today());
+    $qualityGoal = nonNull(SeasonGoal::query()->where('season_id', $season->id)->where('metric', 'season_quality_completed')->first());
 
     // A 6-runs/week athlete gets 2 quality slots/week across a 12-week build/deload
     // cycle (3 build weeks at 2 slots + 1 deload week at 0, repeated 3x) = 18.
@@ -181,12 +185,12 @@ it('counts a race season\'s general-zone weeks at their reduced, base-rule quali
     }
     RaceGoal::factory()->for($user)->create(['race_date' => '2027-03-08', 'distance_m' => 10_000]);
 
-    $season = $this->service->ensureCurrent($user, Carbon::today());
-    $qualityGoal = SeasonGoal::query()->where('season_id', $season->id)->where('metric', 'season_quality_completed')->first();
+    $season = seasonServiceUnderTest()->ensureCurrent($user, Carbon::today());
+    $qualityGoal = nonNull(SeasonGoal::query()->where('season_id', $season->id)->where('metric', 'season_quality_completed')->first());
 
     // 31-week arc: 15 general weeks (11 Build @ 1 slot + 4 Deload @ 0, the last one leading into the block) = 11,
     // 16 block weeks (3 Base @ 1 + 3 Deload @ 0 + 5 Build @ 2 + 3 Peak @ 2 +
-    // 2 Taper @ 2) = 23. A general-zone Build week no longer counts the
+    // 2 Taper @ 2) = 23. A general-zone Build week does not count the
     // block's race-mode 2-slot mix.
     expect($qualityGoal->target)->toBe(34.0);
 });
@@ -195,8 +199,8 @@ it('respects an explicit sessions_per_week preference below the old behavioral f
     $user = User::factory()->create();
     TrainingPreference::factory()->for($user)->create(['sessions_per_week' => 2, 'run_days' => null, 'long_run_day' => null]);
 
-    $season = $this->service->ensureCurrent($user, Carbon::today());
-    $sessionsGoal = SeasonGoal::query()->where('season_id', $season->id)->where('metric', 'season_sessions_completed')->first();
+    $season = seasonServiceUnderTest()->ensureCurrent($user, Carbon::today());
+    $sessionsGoal = nonNull(SeasonGoal::query()->where('season_id', $season->id)->where('metric', 'season_sessions_completed')->first());
 
     expect($sessionsGoal->target)->toBe(24.0); // 2 sessions/week * 12-week self-scaled horizon
 });
@@ -219,10 +223,9 @@ function planLongestLongRunKm(User $user, RaceGoal $race): float
     $weeks = PhaseSchedule::forRace(Carbon::today(), $race->race_date, (float) $race->distance_m);
     $multipliers = PhaseSchedule::volumeMultipliers(array_column($weeks, 'phase'), zones: array_column($weeks, 'zone'));
 
-    return round(max(array_map(
+    return round(Numeric::float(collect($multipliers)->map(
         fn (float $multiplier): float => SegmentGenerator::coreKmFor(SessionType::Long, false, $baselineData['long_run_km'], $multiplier, $baselineData['long_run_cap_km']),
-        $multipliers,
-    )), 1);
+    )->max()), 1);
 }
 
 it('opens a race season far from its block with the general goals only, its long-run goal the plan\'s own longest', function (int $distanceM, float $weeklyKm): void {
@@ -230,7 +233,7 @@ it('opens a race season far from its block with the general goals only, its long
     seasonServiceWeeks($user, $weeklyKm);
     $race = RaceGoal::factory()->for($user)->create(['race_date' => '2027-03-08', 'distance_m' => $distanceM]);
 
-    $season = $this->service->ensureCurrent($user, Carbon::today());
+    $season = seasonServiceUnderTest()->ensureCurrent($user, Carbon::today());
     $goals = SeasonGoal::query()->where('season_id', $season->id)->pluck('target', 'metric')->all();
 
     expect(array_keys($goals))->toEqualCanonicalizing([
@@ -257,11 +260,11 @@ it('asks for exactly the long run the plan builds to, which reaches a 10K\'s 12 
     seasonServiceWeeks($user, 24.4);
     RaceGoal::factory()->for($user)->create(['race_date' => Carbon::today()->addWeeks(11)->toDateString(), 'distance_m' => 10_000]);
 
-    $season = $this->service->ensureCurrent($user, Carbon::today());
+    $season = seasonServiceUnderTest()->ensureCurrent($user, Carbon::today());
     $goal = SeasonGoal::query()->where('season_id', $season->id)->where('metric', 'season_longest_long_run_km')->value('target');
 
     expect($goal)->toBe(12.2)
-        ->and($goal)->toBe(planLongestLongRunKm($user, $season->raceGoal));
+        ->and($goal)->toBe(planLongestLongRunKm($user, nonNull($season->raceGoal)));
 });
 
 it('keeps the season long-run goal aimed at the arc beyond the first staged step', function (): void {
@@ -274,7 +277,7 @@ it('keeps the season long-run goal aimed at the arc beyond the first staged step
     ]);
     RaceGoal::factory()->for($user)->create(['race_date' => Carbon::today()->addWeeks(11)->toDateString(), 'distance_m' => 10_000]);
 
-    $season = $this->service->ensureCurrent($user, Carbon::today());
+    $season = seasonServiceUnderTest()->ensureCurrent($user, Carbon::today());
     $goal = SeasonGoal::query()->where('season_id', $season->id)->where('metric', 'season_longest_long_run_km')->value('target');
 
     expect($goal)->toBe(12.2)
@@ -294,8 +297,8 @@ it('freezes a race season\'s twelve-week actual mean as its volume floor, and gi
     seasonServiceWeeks($goalless, 30.0);
 
     // 20..31 km, the two older 100 km weeks outside the window.
-    expect($this->service->ensureCurrent($racer, Carbon::today())->volume_floor_km)->toBe(25.5)
-        ->and($this->service->ensureCurrent($goalless, Carbon::today())->volume_floor_km)->toBeNull();
+    expect(seasonServiceUnderTest()->ensureCurrent($racer, Carbon::today())->volume_floor_km)->toBe(25.5)
+        ->and(seasonServiceUnderTest()->ensureCurrent($goalless, Carbon::today())->volume_floor_km)->toBeNull();
 });
 
 it('backfills a race season\'s missing floor from the weeks before it opened', function (): void {
@@ -312,15 +315,15 @@ it('backfills a race season\'s missing floor from the weeks before it opened', f
     Carbon::setTestNow('2026-08-24 08:00:00');
     WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-08-16', 'distance_km' => 60.0]);
 
-    expect($this->service->ensureCurrent($user, Carbon::today())->volume_floor_km)->toBe(30.0)
-        ->and($season->fresh()->volume_floor_km)->toBe(30.0);
+    expect(seasonServiceUnderTest()->ensureCurrent($user, Carbon::today())->volume_floor_km)->toBe(30.0)
+        ->and($season->refresh()->volume_floor_km)->toBe(30.0);
 });
 
 it('brings the floor down to the new anchor when the athlete\'s volume collapses', function (): void {
     $user = User::factory()->create();
     seasonServiceWeeks($user, 30.0);
     RaceGoal::factory()->for($user)->create(['race_date' => Carbon::today()->addWeeks(11)->toDateString()]);
-    $season = $this->service->ensureCurrent($user, Carbon::today());
+    $season = seasonServiceUnderTest()->ensureCurrent($user, Carbon::today());
     expect($season->volume_floor_km)->toBe(30.0);
 
     Carbon::setTestNow('2026-09-21 08:00:00');
@@ -331,24 +334,24 @@ it('brings the floor down to the new anchor when the athlete\'s volume collapses
         ]);
     }
 
-    expect($this->service->ensureCurrent($user, Carbon::today())->volume_floor_km)->toBe(10.0);
+    expect(seasonServiceUnderTest()->ensureCurrent($user, Carbon::today())->volume_floor_km)->toBe(10.0);
 });
 
 it('appends the block goals once the block opens, and only once, even for a second caller still holding the pre-append season', function (): void {
     $user = User::factory()->create();
     seasonServiceWeeks($user, 30.0);
     RaceGoal::factory()->for($user)->create(['race_date' => '2027-03-08', 'distance_m' => 10_000]);
-    $season = $this->service->ensureCurrent($user, Carbon::today());
+    $season = seasonServiceUnderTest()->ensureCurrent($user, Carbon::today());
 
     Carbon::setTestNow('2026-11-22 08:00:00');
-    $this->service->ensureCurrent($user, Carbon::today());
+    seasonServiceUnderTest()->ensureCurrent($user, Carbon::today());
     expect(SeasonGoal::query()->where('season_id', $season->id)->count())->toBe(4);
 
     Carbon::setTestNow('2026-11-23 08:00:00');
     $callerA = app()->make(SeasonService::class, ['season' => new ResolveSeasonAction()]);
     expect($callerA->peekCurrent($user, Carbon::today())?->block_goals_appended_at)->toBeNull();
 
-    $this->service->ensureCurrent($user, Carbon::today());
+    seasonServiceUnderTest()->ensureCurrent($user, Carbon::today());
     $callerA->ensureCurrent($user, Carbon::today());
 
     $appended = SeasonGoal::query()->where('season_id', $season->id)->pluck('metric');
@@ -359,12 +362,12 @@ it('appends the block goals once the block opens, and only once, even for a seco
     DB::listen(function (QueryExecuted $query) use (&$goalQueries): void {
         $goalQueries += str_contains($query->sql, 'season_goals') ? 1 : 0;
     });
-    $this->service->ensureCurrent($user, Carbon::today());
+    seasonServiceUnderTest()->ensureCurrent($user, Carbon::today());
     expect($goalQueries)->toBe(0)
-        ->and($season->fresh()->block_goals_appended_at)->not->toBeNull();
+        ->and($season->refresh()->block_goals_appended_at)->not->toBeNull();
 
     $metrics = SeasonGoal::query()->where('season_id', $season->id)->pluck('metric');
-    $peakWeekKm = collect(app(SeasonSummaryBuilder::class)->plannedWeeks($user, $season->fresh()))
+    $peakWeekKm = collect(app(SeasonSummaryBuilder::class)->plannedWeeks($user, $season->refresh()))
         ->where('zone', 'block')
         ->max('planned_km');
 
@@ -372,17 +375,17 @@ it('appends the block goals once the block opens, and only once, even for a seco
         ->and($metrics->duplicates())->toBeEmpty()
         ->and($metrics)->toContain('season_race_goal_met', 'season_peak_weekly_km')
         ->and(SeasonGoal::query()->where('season_id', $season->id)->where('metric', 'season_peak_weekly_km')->value('target'))
-        ->toBe(round($peakWeekKm, 1));
+        ->toBe(round(Numeric::float($peakWeekKm), 1));
 });
 
 it('serves the under-ready line once, counting the block rows through race week', function (int $daysOut, int $distanceM, string $line): void {
     $user = User::factory()->create();
     RaceGoal::factory()->for($user)->create(['race_date' => Carbon::today()->addDays($daysOut)->toDateString(), 'distance_m' => $distanceM]);
-    $season = $this->service->ensureCurrent($user, Carbon::today());
+    $season = seasonServiceUnderTest()->ensureCurrent($user, Carbon::today());
 
-    expect($this->service->takeUnderReadyLine($season))->toBe($line)
-        ->and($season->fresh()->under_ready_noted_at)->not->toBeNull()
-        ->and($this->service->takeUnderReadyLine($season->fresh()))->toBeNull();
+    expect(seasonServiceUnderTest()->takeUnderReadyLine($season))->toBe($line)
+        ->and($season->refresh()->under_ready_noted_at)->not->toBeNull()
+        ->and(seasonServiceUnderTest()->takeUnderReadyLine($season->refresh()))->toBeNull();
 })->with([
     '10K with twelve rows to race week' => [77, 10_000, "Twelve weeks is tighter than I'd pick for this one, so we build what we can and race what we've built."],
     'marathon with eighteen rows to race week' => [119, 42_195, "Eighteen weeks is tighter than I'd pick for this one, so we build what we can and race what we've built."],
@@ -396,10 +399,10 @@ it('says nothing about readiness for a full block or a season with no race', fun
     RaceGoal::factory()->for($farOut)->create(['race_date' => Carbon::today()->addWeeks(30)->toDateString(), 'distance_m' => 42_195]);
 
     foreach ([$fullBlock, $farOut, User::factory()->create()] as $user) {
-        $season = $this->service->ensureCurrent($user, Carbon::today());
+        $season = seasonServiceUnderTest()->ensureCurrent($user, Carbon::today());
 
-        expect($this->service->takeUnderReadyLine($season))->toBeNull()
-            ->and($season->fresh()->under_ready_noted_at)->toBeNull();
+        expect(seasonServiceUnderTest()->takeUnderReadyLine($season))->toBeNull()
+            ->and($season->refresh()->under_ready_noted_at)->toBeNull();
     }
 });
 
@@ -421,29 +424,29 @@ it('holds a race season\'s increases when a run inside the chronic-load window i
     $goalless = User::factory()->create();
     unscoredRunOn($goalless, Carbon::today()->subDay());
 
-    expect($this->service->ensureCurrent($held, Carbon::today())->increases_held)->toBeTrue()
-        ->and($this->service->ensureCurrent($outsideWindow, Carbon::today())->increases_held)->toBeFalse()
-        ->and($this->service->ensureCurrent($goalless, Carbon::today())->increases_held)->toBeFalse();
+    expect(seasonServiceUnderTest()->ensureCurrent($held, Carbon::today())->increases_held)->toBeTrue()
+        ->and(seasonServiceUnderTest()->ensureCurrent($outsideWindow, Carbon::today())->increases_held)->toBeFalse()
+        ->and(seasonServiceUnderTest()->ensureCurrent($goalless, Carbon::today())->increases_held)->toBeFalse();
 });
 
 it('releases held increases only once the window is scored, and never on an ordinary read', function (): void {
     $user = User::factory()->create();
     RaceGoal::factory()->for($user)->create(['race_date' => Carbon::today()->addWeeks(11)->toDateString()]);
     $run = unscoredRunOn($user, Carbon::today()->subDay());
-    $season = $this->service->ensureCurrent($user, Carbon::today());
+    $season = seasonServiceUnderTest()->ensureCurrent($user, Carbon::today());
 
-    $this->service->releaseHeldIncreases($season, $user, Carbon::today());
-    $stillHeld = $season->fresh()->increases_held;
+    seasonServiceUnderTest()->releaseHeldIncreases($season, $user, Carbon::today());
+    $stillHeld = nonNull($season->fresh())->increases_held;
 
     $run->update(['ingest_state' => IngestState::Detailed]);
-    $this->service->ensureCurrent($user, Carbon::today());
-    $heldAfterRead = $season->fresh()->increases_held;
+    seasonServiceUnderTest()->ensureCurrent($user, Carbon::today());
+    $heldAfterRead = nonNull($season->fresh())->increases_held;
 
-    $this->service->releaseHeldIncreases($season, $user, Carbon::today());
+    seasonServiceUnderTest()->releaseHeldIncreases($season, $user, Carbon::today());
 
     expect($stillHeld)->toBeTrue()
         ->and($heldAfterRead)->toBeTrue()
-        ->and($season->fresh()->increases_held)->toBeFalse();
+        ->and(nonNull($season->fresh())->increases_held)->toBeFalse();
 });
 
 it('re-reads under the athlete lock, so a caller holding a stale "no season" read reuses the season another caller opened', function (): void {
@@ -461,7 +464,7 @@ it('re-reads under the athlete lock, so a caller holding a stale "no season" rea
 
 it('returns the existing season when a create still hits the seasons unique index', function (): void {
     $user = User::factory()->create();
-    $existing = $this->service->ensureCurrent($user, Carbon::today());
+    $existing = seasonServiceUnderTest()->ensureCurrent($user, Carbon::today());
 
     $staleRead = Mockery::mock(ResolveSeasonAction::class)->makePartial();
     $staleRead->shouldReceive('latest')->with($user->id)->twice()->andReturn(null, $existing);
@@ -503,9 +506,9 @@ it('keeps the anchor when the athlete followed the prescription down, however fa
     Carbon::setTestNow('2026-09-21 08:00:00');
     trailingFollowThrough($user, '2026-09-20', 10.0, 12.0);
 
-    $this->service->ensureCurrent($user, Carbon::today());
+    seasonServiceUnderTest()->ensureCurrent($user, Carbon::today());
 
-    expect($season->fresh()->anchor_weekly_volume_km)->toBe(30.0);
+    expect($season->refresh()->anchor_weekly_volume_km)->toBe(30.0);
 });
 
 it('re-anchors after a collapse the prescription did not ask for', function (): void {
@@ -514,9 +517,9 @@ it('re-anchors after a collapse the prescription did not ask for', function (): 
     Carbon::setTestNow('2026-09-21 08:00:00');
     trailingFollowThrough($user, '2026-09-20', 10.0, 30.0);
 
-    $this->service->ensureCurrent($user, Carbon::today());
+    seasonServiceUnderTest()->ensureCurrent($user, Carbon::today());
 
-    expect($season->fresh()->anchor_weekly_volume_km)->toBe(10.0);
+    expect($season->refresh()->anchor_weekly_volume_km)->toBe(10.0);
 });
 
 it('carries the anchor into the next season when the athlete followed the prescription', function (): void {
@@ -525,7 +528,7 @@ it('carries the anchor into the next season when the athlete followed the prescr
     Carbon::setTestNow('2026-09-21 08:00:00');
     trailingFollowThrough($user, '2026-09-20', 18.0, 20.0);
 
-    expect($this->service->ensureCurrent($user, Carbon::today())->anchor_weekly_volume_km)->toBe(30.0);
+    expect(seasonServiceUnderTest()->ensureCurrent($user, Carbon::today())->anchor_weekly_volume_km)->toBe(30.0);
 });
 
 it('opens the next season at the trailing actual when the athlete fell short of the prescription', function (): void {
@@ -534,19 +537,19 @@ it('opens the next season at the trailing actual when the athlete fell short of 
     Carbon::setTestNow('2026-09-21 08:00:00');
     trailingFollowThrough($user, '2026-09-20', 18.0, 30.0);
 
-    expect($this->service->ensureCurrent($user, Carbon::today())->anchor_weekly_volume_km)->toBe(18.0);
+    expect(seasonServiceUnderTest()->ensureCurrent($user, Carbon::today())->anchor_weekly_volume_km)->toBe(18.0);
 });
 
 it('keeps a race beyond the marathon on general goals with no block goals or under-ready line', function (): void {
     $user = User::factory()->create();
     RaceGoal::factory()->for($user)->create(['distance_m' => 80_000, 'race_date' => Carbon::today()->addWeeks(3)->toDateString()]);
 
-    $season = $this->service->ensureCurrent($user, Carbon::today());
+    $season = seasonServiceUnderTest()->ensureCurrent($user, Carbon::today());
     $metrics = SeasonGoal::query()->where('season_id', $season->id)->pluck('metric')->all();
 
-    expect($metrics)->not->toContain('season_race_goal_met')->not->toContain('season_peak_weekly_km')
+    expect($metrics)->not->toContain('season_race_goal_met')->and($metrics)->not->toContain('season_peak_weekly_km')
         ->and($season->block_goals_appended_at)->toBeNull()
-        ->and($this->service->takeUnderReadyLine($season))->toBeNull();
+        ->and(seasonServiceUnderTest()->takeUnderReadyLine($season))->toBeNull();
 });
 
 it('settles the closing season\'s record when the next one opens, with a pending race reading as pending', function (): void {
@@ -555,15 +558,15 @@ it('settles the closing season\'s record when the next one opens, with a pending
         'race_date' => Carbon::today()->addWeeks(2)->toDateString(),
         'outcome' => RaceOutcome::Pending,
     ]);
-    $season = $this->service->ensureCurrent($user, Carbon::today());
+    $season = seasonServiceUnderTest()->ensureCurrent($user, Carbon::today());
 
     Carbon::setTestNow($race->race_date->copy()->addDay()->setTime(8, 0));
     $race->update(['completed_at' => now()]);
-    $next = $this->service->ensureCurrent($user, Carbon::today());
+    $next = seasonServiceUnderTest()->ensureCurrent($user, Carbon::today());
 
     expect($next->id)->not->toBe($season->id)
-        ->and($season->fresh()->record_settled_at)->not->toBeNull()
-        ->and($season->fresh()->performance_state)->toBe(SeasonPerformance::Pending)
-        ->and($season->fresh()->process_pct)->toBeInt()
+        ->and($season->refresh()->record_settled_at)->not->toBeNull()
+        ->and($season->refresh()->performance_state)->toBe(SeasonPerformance::Pending)
+        ->and($season->refresh()->process_pct)->toBeInt()
         ->and($next->performance_state)->toBeNull();
 });

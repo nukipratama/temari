@@ -17,14 +17,10 @@ import {
 } from '@/lib/navigationMemory';
 import { iconButtonVariants } from '@/lib/variants';
 
-// A shared chip backdrop for the icon-only buttons — muted is the exact
-// ground-reactive equivalent of the bar's old fixed cream-deep background (see
-// AppShell), so NotificationBell/UserAvatarLink's own hover/ring styling
-// (tuned against that backdrop) still reads correctly floating over content.
-// Carried at 70% over a blur so the chips read as glass against whatever
-// scrolls beneath them, matching the bottom nav's pill.
+// A shared chip backdrop for the icon-only buttons: muted over a blur, so the
+// chips read as glass against whatever scrolls beneath them.
 // Unsized on purpose: it hugs whichever of the two differently-sized controls
-// it wraps rather than forcing both to match.
+// it wraps.
 const CHIP =
     'inline-flex items-center justify-center overflow-hidden rounded-full bg-muted/70 shadow-e1 backdrop-blur-md';
 
@@ -38,21 +34,9 @@ const PUSHED_WITH_BELL: ReadonlySet<string> = new Set([
  * The app's top bar: the wordmark or a back chevron on the left, the bell and
  * avatar on the right, each in its own pill.
  *
- * In normal flow, not `fixed`. It floated for the whole F4 port, which meant
- * page content scrolled underneath it and showed through the gaps between the
- * pills — and in a standalone PWA iOS 26 blurs whatever lands in that strip, so
- * the bleed arrived pre-smeared. Nothing pinned can be painted over that region
- * reliably, so the bar stops competing for it: it reserves its own space at the
- * top of the page and scrolls away with everything else, which is also why
- * AppShell no longer carries a clearance padding.
- *
- * Sharing PageContainer's column rather than running full-bleed: in flow the
- * bar sits directly above the content, so at desktop widths, where the column
- * narrows and centres, chips pinned to the screen edges would read as belonging
- * to nothing.
- *
- * `max()` keeps the row clear of the notch where the inset resolves, and falls
- * back to 1rem in a browser tab, which has nothing to clear.
+ * In normal flow, not `fixed`, so page content never scrolls underneath it. It
+ * shares PageContainer's column so the chips do not pin to the screen edges at
+ * desktop widths; `max()` keeps the row clear of the notch.
  */
 export default function MobileTopBar() {
     const page = usePage<SharedProps>();

@@ -15,6 +15,7 @@ use App\Services\Strava\Exceptions\StravaConnectionRevokedException;
 use App\Services\Strava\Exceptions\StravaRateLimitedException;
 use App\Services\Strava\Exceptions\StravaTokenRefreshFailedException;
 use App\Services\Strava\Exceptions\StravaTokenRefreshTransientException;
+use App\Support\Numeric;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Illuminate\Contracts\Cache\Repository;
@@ -237,7 +238,9 @@ class StravaClient
 
     public static function apiBaseUrl(): string
     {
-        return rtrim((string) config('services.strava.api_base_url'), '/');
+        $baseUrl = config('services.strava.api_base_url');
+
+        return rtrim(is_string($baseUrl) ? $baseUrl : '', '/');
     }
 
     private function http(): PendingRequest
@@ -310,7 +313,7 @@ class StravaClient
     {
         $reported = $this->limiterStore()->get(self::reportedUsageKey($bucket, $at));
 
-        return max((int) RateLimiter::attempts(self::rateLimitKey($bucket, $at)), is_numeric($reported) ? (int) $reported : 0);
+        return max(Numeric::int(RateLimiter::attempts(self::rateLimitKey($bucket, $at))), is_numeric($reported) ? (int) $reported : 0);
     }
 
     private function rememberReportedUsage(string $bucket, ?int $usage, CarbonImmutable $sentAt): void
@@ -324,7 +327,10 @@ class StravaClient
 
     private function limiterStore(): Repository
     {
-        return Cache::store(config('cache.limiter'));
+        $limiterStore = config('cache.limiter');
+        assert($limiterStore === null || is_string($limiterStore));
+
+        return Cache::store($limiterStore);
     }
 
     public function refreshIfExpired(StravaConnection $connection): StravaConnection
@@ -334,7 +340,7 @@ class StravaClient
         }
 
         // Refreshes and grant releases share this athlete-level lock because each refresh rotates the token.
-        return Cache::lock(self::refreshLockKey($connection->strava_athlete_id), self::REFRESH_LOCK_TTL_SECONDS)->block(
+        $refreshed = Cache::lock(self::refreshLockKey($connection->strava_athlete_id), self::REFRESH_LOCK_TTL_SECONDS)->block(
             self::REFRESH_LOCK_WAIT_SECONDS,
             function () use ($connection): StravaConnection {
                 // Re-read inside the lock: another worker may have just refreshed.
@@ -346,6 +352,9 @@ class StravaClient
                 return $this->performRefresh($connection, $connection->credential_version);
             },
         );
+        assert($refreshed instanceof StravaConnection);
+
+        return $refreshed;
     }
 
     private function tokenIsFresh(StravaConnection $connection): bool
@@ -423,7 +432,7 @@ class StravaClient
         return [
             'access_token' => $accessToken,
             'refresh_token' => $refreshToken,
-            'expires_at' => new Carbon('@' . $expiresAt)->setTimezone(config('app.timezone')),
+            'expires_at' => new Carbon('@' . $expiresAt)->setTimezone(config()->string('app.timezone')),
         ];
     }
 
@@ -478,7 +487,7 @@ class StravaClient
     {
         return [
             '15min' => self::RATE_LIMIT_15MIN_MAX - intdiv(self::RATE_LIMIT_15MIN_MAX * self::LIVE_RESERVE_PERCENT, 100),
-            'daily' => self::RATE_LIMIT_DAILY_MAX - (int) config('strava.live_read_floor'),
+            'daily' => self::RATE_LIMIT_DAILY_MAX - config()->integer('strava.live_read_floor'),
         ];
     }
 

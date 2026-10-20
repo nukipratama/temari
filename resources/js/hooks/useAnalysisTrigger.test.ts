@@ -4,6 +4,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { AnalysisPayload } from '@/types/inertia';
 
+import { defined } from '@/test/defined';
+
 import { triggerAnalysis, useAnalysisTrigger } from './useAnalysisTrigger';
 
 const fetchMock = vi.fn();
@@ -64,7 +66,7 @@ describe('useAnalysisTrigger', () => {
         await act(async () => {
             await result.current.trigger();
         });
-        const url = fetchMock.mock.calls[0][0] as string;
+        const url = defined(fetchMock.mock.calls[0])[0] as string;
         expect(url).toContain('?discriminator=2026-05-19');
     });
 
@@ -165,6 +167,23 @@ describe('useAnalysisTrigger', () => {
         expect(result.current.error).toBeTruthy();
     });
 
+    it('rejects a body missing the fields consumers read', async () => {
+        fetchMock.mockResolvedValue({
+            ok: true,
+            json: async () => ({ status: 'done' }),
+        });
+
+        const onUpdate = vi.fn();
+        const { result } = renderHook(() =>
+            useAnalysisTrigger(payload(), [], { onUpdate }),
+        );
+        await act(async () => {
+            await result.current.trigger();
+        });
+        await waitFor(() => expect(result.current.status).toBe('failed'));
+        expect(onUpdate).not.toHaveBeenCalled();
+    });
+
     it('falls back to empty CSRF when meta tag is missing', async () => {
         document.head.innerHTML = '';
         fetchMock.mockResolvedValue({
@@ -176,7 +195,7 @@ describe('useAnalysisTrigger', () => {
         await act(async () => {
             await result.current.trigger();
         });
-        const init = fetchMock.mock.calls[0][1] as RequestInit;
+        const init = defined(fetchMock.mock.calls[0])[1] as RequestInit;
         expect((init.headers as Record<string, string>)['X-CSRF-TOKEN']).toBe(
             '',
         );

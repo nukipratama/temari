@@ -69,8 +69,10 @@ class IntervalsIcuClient
     {
         $response = $this->call($connection, fn (PendingRequest $request): Response => $request->post(self::athletePath($connection).'/events', self::event($date, $workout)));
         self::ensureSuccessful($response);
+        $id = $response->json('id');
+        assert(is_scalar($id));
 
-        return (string) $response->json('id');
+        return (string) $id;
     }
 
     /** @return bool false when the event is gone from the calendar */

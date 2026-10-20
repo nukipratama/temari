@@ -11,16 +11,12 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 
 /**
- * Global circuit breaker for Azure OpenAI *configuration/auth* failures: a wrong
- * API key (401/403) or a wrong base URL/host (persistent DNS/connection failure).
- * Trips after a short streak of these so a fat-fingered env stops burning the
- * per-row retry budget and spamming failed_jobs; auto half-opens after a cooldown
- * to probe recovery, so fixing the env auto-resumes for free. State is durable
- * (app_config) so it survives restarts and is visible across containers.
+ * Global circuit breaker for Azure OpenAI configuration/auth failures: a wrong API key (401/403) or
+ * a wrong base URL/host (persistent DNS/connection failure). Trips after a short streak and auto
+ * half-opens after a cooldown; state is durable (app_config).
  *
- * Only config/auth failures count. Transient upstream errors (429 / 5xx) route to
- * the queue's own retry/backoff and never touch this breaker. Mirrors
- * {@see \App\Services\Strava\StravaCircuitBreaker} for the AI narration pipeline.
+ * Transient upstream errors (429 / 5xx) route to the queue's own retry/backoff and never touch it.
+ * Mirrors {@see \App\Services\Strava\StravaCircuitBreaker}.
  */
 class AzureConfigCircuitBreaker
 {

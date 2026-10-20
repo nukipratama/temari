@@ -1,14 +1,11 @@
 import { cva } from 'class-variance-authority';
 
 /**
- * class-variance-authority variant matrices for the shared UI primitives.
- * Each export mirrors the inline `Record`-table lookups the components used to
- * carry, so a component becomes `cn(variants({ … }), className)`. Pair with the
- * {@link ./cn} merge helper so caller `className` overrides win.
+ * class-variance-authority variant matrices for the shared UI primitives; pair
+ * with the {@link ./cn} merge helper so caller `className` overrides win.
  *
  * Plain data maps that are NOT style-variant matrices (mood → face/label/fill in
- * {@link ./mood}, icon-tile tones in {@link ./tones}) intentionally stay as
- * `Record` lookups and are not folded in here.
+ * {@link ./mood}, icon-tile tones in {@link ./tones}) stay as `Record` lookups.
  */
 
 /** The tone and size axes {@link pillButtonVariants} is built from. */
@@ -96,12 +93,10 @@ export const outlineChipVariants = cva(
 );
 
 /**
- * Text/number/date field. `rounded-sm` is the radius scale's input corner, so
- * a field never picks up a card's `md` or a pill's `full`. `sm` is the inline
- * field that sits in a row of controls, and shares `min-h-8` with
- * {@link outlineChipVariants} and the ToggleGroup's `sm` item so they line up: a coarse pointer forces
- * every field to 16px (see the iOS zoom note in app.css), which would
- * otherwise leave a field taller than the pills beside it.
+ * Text/number/date field. `rounded-sm` is the radius scale's input corner. `sm`
+ * is the inline field that sits in a row of controls, and shares `min-h-8` with
+ * {@link outlineChipVariants} and the ToggleGroup's `sm` item so they line up: a
+ * coarse pointer forces every field to 16px (see the iOS zoom note in app.css).
  */
 export const inputVariants = cva(
     'focus-ring w-full border border-border bg-background rounded-sm text-foreground',

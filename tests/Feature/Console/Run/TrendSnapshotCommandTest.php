@@ -101,10 +101,11 @@ it('backfills the supported race time for the closed days of the current race', 
     $this->artisan('trend:snapshot-daily', ['--days' => 7])->assertSuccessful();
 
     $rows = TrendDailySnapshot::query()->where('user_id', $user->id)->orderBy('snapshot_date')->get();
+    $last = nonNull($rows->last());
     expect($rows->pluck('race_goal_id')->all())->toBe([null, null, null, $race->id, $race->id, $race->id, $race->id])
-        ->and($rows->last()->supported_time_sec)->toBeInt()->toBeGreaterThan(0)
-        ->and($rows->last()->supported_source_distance_m)->toBe(5000)
-        ->and($rows->last()->supported_source_date?->toDateString())->toBe('2026-08-01');
+        ->and($last->supported_time_sec)->toBeInt()->toBeGreaterThan(0)
+        ->and($last->supported_source_distance_m)->toBe(5000)
+        ->and($last->supported_source_date?->toDateString())->toBe('2026-08-01');
 
     Carbon::setTestNow();
 });

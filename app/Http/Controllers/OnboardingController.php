@@ -57,12 +57,18 @@ class OnboardingController extends Controller
         /** @var User $user */
         $user = $request->user();
 
+        if ($user->onboarded_at !== null) {
+            return redirect()->route('dashboard');
+        }
+
         if ($request->filled('race_date')) {
+            $name = $request->validated('name');
+            assert($name === null || is_string($name));
             $races->createUnlessActive($user, [
-                'race_date' => $request->validated('race_date'),
-                'distance_m' => (int) $request->validated('distance_m'),
-                'goal_time_sec' => (int) $request->validated('goal_time_sec'),
-                'name' => $request->validated('name'),
+                'race_date' => $request->safe()->string('race_date')->toString(),
+                'distance_m' => $request->safe()->integer('distance_m'),
+                'goal_time_sec' => $request->safe()->integer('goal_time_sec'),
+                'name' => $name,
             ]);
         }
 
@@ -82,13 +88,9 @@ class OnboardingController extends Controller
         $user->markOnboarded();
 
         // The plan is built here, not on connect: `plan:regenerate` only runs
-        // Mondays, so before this a user who signed up on a Tuesday met an
-        // empty Plan tab and a "No plan yet." card until the following week.
-        // This is the first moment the preferences that shape a week — run
-        // days, sessions per week, the race goal above — actually exist.
-        // Strava's backfill may still be running, so a first week can be sized
-        // from TrainingBaseline's cold-start seeds; Monday's regeneration
-        // re-sizes it against the real history.
+        // Mondays, and the preferences that shape a week first exist now. A first
+        // week may be sized from TrainingBaseline's cold-start seeds; Monday's
+        // regeneration re-sizes it against the real history.
         $planReady = $regeneration->regenerateForRequest($user, PlanRegenerationReason::Onboarding);
 
         // Regeneration narrates if backfill has landed; otherwise KickoffRecapsJob

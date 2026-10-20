@@ -6,12 +6,6 @@ import { renderBold } from '@/lib/richText';
 /**
  * A span of narration that points at the thing proving it: the cited words
  * carry a dotted underline and nothing else.
- *
- * Chosen over a trailing chip and a superscript marker by building all three
- * against real narration in /devtools/design. The chip restated what the words
- * already said, cost a line of height and orphaned the punctuation after it;
- * the marker was too quiet to read as a control and never showed which words
- * it covered.
  */
 export default function Citation({
     anchor,
@@ -49,11 +43,11 @@ export function renderNarration(
     const nodes: ReactNode[] = [];
 
     for (let i = 0; i < parts.length; i += 3) {
-        nodes.push(<Fragment key={i}>{renderBold(parts[i])}</Fragment>);
+        nodes.push(<Fragment key={i}>{renderBold(parts[i] ?? '')}</Fragment>);
 
-        if (i + 2 < parts.length) {
-            const words = parts[i + 1];
-            const anchor = parts[i + 2];
+        const words = parts[i + 1];
+        const anchor = parts[i + 2];
+        if (words !== undefined && anchor !== undefined) {
             nodes.push(
                 drawn.has(anchor) ? (
                     <Citation key={i + 1} anchor={anchor}>

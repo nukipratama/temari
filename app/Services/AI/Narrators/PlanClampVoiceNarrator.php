@@ -72,6 +72,8 @@ class PlanClampVoiceNarrator
             ),
         );
 
-        return (string) $decoded['voice'];
+        assert(is_string($decoded['voice']));
+
+        return $decoded['voice'];
     }
 }

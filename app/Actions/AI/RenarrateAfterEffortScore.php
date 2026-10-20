@@ -35,7 +35,7 @@ final readonly class RenarrateAfterEffortScore
             ->forSubject(Activity::class, $activity->id, AnalysisType::PostRunSpeech)
             ->first();
         if ($speech?->status === AnalysisStatus::Processing && $recheck) {
-            RecheckEffortScoreNarrationJob::dispatch($activity->id)->delay((int) config('horizon.defaults.supervisor-ai.timeout'));
+            RecheckEffortScoreNarrationJob::dispatch($activity->id)->delay(config()->integer('horizon.defaults.supervisor-ai.timeout'));
 
             return;
         }

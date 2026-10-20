@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Weather;
 
+use App\Support\Numeric;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Facades\Cache;
@@ -68,12 +69,13 @@ class OpenMeteoClient
         if ($useCache) {
             $cached = Cache::get($cacheKey);
             if (is_array($cached)) {
+                /** @var array<string, mixed> $cached */
                 return $this->hydrate($cached);
             }
         }
 
         $snapshot = $this->fetchUncached($latitude, $longitude, $startedAt, $useArchive);
-        if ($snapshot !== null) {
+        if ($snapshot instanceof WeatherSnapshot) {
             $ttl = $useArchive ? self::ARCHIVE_CACHE_TTL : self::FORECAST_CACHE_TTL;
             Cache::put($cacheKey, $this->dehydrate($snapshot), $ttl);
         }
@@ -107,12 +109,12 @@ class OpenMeteoClient
         }
 
         return new WeatherSnapshot(
-            tempC: (int) $cached['t'],
-            humidityPct: (int) $cached['h'],
+            tempC: Numeric::int($cached['t']),
+            humidityPct: Numeric::int($cached['h']),
             rainDetected: (bool) $cached['r'],
-            windSpeedKmh: isset($cached['ws']) ? (int) $cached['ws'] : null,
-            windGustKmh: isset($cached['wg']) ? (int) $cached['wg'] : null,
-            windDirectionDeg: isset($cached['wd']) ? (int) $cached['wd'] : null,
+            windSpeedKmh: isset($cached['ws']) ? Numeric::int($cached['ws']) : null,
+            windGustKmh: isset($cached['wg']) ? Numeric::int($cached['wg']) : null,
+            windDirectionDeg: isset($cached['wd']) ? Numeric::int($cached['wd']) : null,
             rainIsForecast: (bool) ($cached['rf'] ?? false),
         );
     }
@@ -146,7 +148,10 @@ class OpenMeteoClient
             return null;
         }
 
-        return $this->parse($response->json(), $startedAt, $useArchive);
+        /** @var array<string, mixed>|null $payload */
+        $payload = $response->json();
+
+        return $this->parse($payload, $startedAt, $useArchive);
     }
 
     /**

@@ -38,10 +38,8 @@ type Choice = FeedbackReason | typeof SOMETHING_ELSE;
 /**
  * The sheet FlagWrong opens, kept in its own module so the Base UI dialog it
  * rests on is fetched on the first tap rather than on every page's first paint.
- * The note stays optional behind a named reason — that reason is the signal
- * worth having, and asking for prose before accepting a flag would cost most of
- * them. "Something else" is the one chip with nothing else to go on, so it
- * holds the send until the note says what happened.
+ * The note stays optional behind a named reason; "Something else" holds the
+ * send until the note says what happened.
  */
 export default function FlagSheet({
     subjectType,

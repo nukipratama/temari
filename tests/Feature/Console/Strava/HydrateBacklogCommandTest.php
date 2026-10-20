@@ -95,7 +95,7 @@ it('stays oldest-first even across the last-7-days window the connect-triggered 
 
     $this->artisan('strava:hydrate-backlog', ['--batch' => 2])->assertSuccessful();
 
-    $order = Queue::pushed(IngestActivityJob::class)->map(fn (IngestActivityJob $job): int => $job->activityId)->all();
+    $order = pushedJobs(IngestActivityJob::class)->map(fn (IngestActivityJob $job): int => $job->activityId)->all();
 
     expect($order)->toBe([$older->id, $recent->id]);
 });
@@ -108,7 +108,7 @@ it('hydrates a mixed-date-order backlog oldest-first', function (): void {
 
     $this->artisan('strava:hydrate-backlog', ['--batch' => 3])->assertSuccessful();
 
-    $order = Queue::pushed(IngestActivityJob::class)->map(fn (IngestActivityJob $job): int => $job->activityId)->all();
+    $order = pushedJobs(IngestActivityJob::class)->map(fn (IngestActivityJob $job): int => $job->activityId)->all();
 
     expect($order)->toBe([$oldest->id, $middle->id, $newest->id]);
 });
@@ -158,7 +158,7 @@ it('skips a permanently-stuck old run and continues draining newer ones in date 
     $this->artisan('strava:hydrate-backlog', ['--batch' => 2])->assertSuccessful();
 
     Queue::assertPushed(IngestActivityJob::class, 2);
-    $queued = Queue::pushed(IngestActivityJob::class)->map(fn (IngestActivityJob $job): int => $job->activityId)->all();
+    $queued = pushedJobs(IngestActivityJob::class)->map(fn (IngestActivityJob $job): int => $job->activityId)->all();
     expect($queued)->toBe([$next->id, $newest->id])
         ->and($queued)->not->toContain($stuck->id);
 });

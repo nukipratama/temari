@@ -1,19 +1,9 @@
 name: Refresh shards
 
-# Pest balances the 3-way backend shard using the per-class timings committed
-# in tests/.pest/shards.json (docs/decisions/sharded-pr-coverage.md). Nobody
-# regenerates it on a schedule, so it drifts as classes are added, removed, or
-# get slower/faster. This runs the regeneration weekly and opens or updates
-# one PR, but only when scripts/compare-shards.php decides the drift matters
-# enough to be worth a review.
-#
-# Runs on ubuntu-26.04-arm, never the homelab runner: that box is shared with prod. The suite runs serially,
-# without --parallel, so the recorded timings stay per-class.
-#
-# The PR is opened with the default GITHUB_TOKEN, so its own CI does not
-# start automatically — GitHub's recursion guard blocks a GITHUB_TOKEN push
-# from triggering workflows. The PR body says so; the owner re-runs CI by
-# hand, or pushes an empty commit, before merging.
+# Regenerates the per-class timings in tests/.pest/shards.json (docs/decisions/sharded-pr-coverage.md)
+# weekly and opens or updates one PR when scripts/compare-shards.php finds the drift material.
+# Runs on a hosted runner, serially without --parallel, so the timings stay per-class.
+# The PR is opened with GITHUB_TOKEN, so its CI does not start on its own; re-run it before merging.
 
 on:
   schedule:

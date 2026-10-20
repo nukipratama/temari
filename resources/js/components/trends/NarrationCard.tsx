@@ -28,20 +28,16 @@ const EYEBROW_LABEL = "Temari's read · last 7 days";
  * rule-based fallback or an older row doesn't carry the blank-line split.
  */
 function splitContent(content: string): { title: string; description: string } {
-    const [title, ...rest] = content.split('\n\n');
+    const [title = '', ...rest] = content.split('\n\n');
     return { title: title.trim(), description: rest.join('\n\n').trim() };
 }
 
 /**
- * The verdict, the only place on Trends a call is made — everything else on
- * the page is evidence. Its headline is Temari's voice line (MASTER.md's
- * Fraunces-italic register), same as Today's own read. Any state short of a
- * written verdict (a plain Pending row, still queued, or Failed) renders the
- * same honest empty block: every number on the page is real and current,
- * only the sentence is missing, with the same per-block "try again" every
- * other narrated block carries. Direction A (#967) deliberately does not
- * distinguish those states further — a mid-flight skeleton would just be
- * more silence.
+ * The verdict, the only place on Trends a call is made — everything else on the
+ * page is evidence. Its headline is Temari's voice line (MASTER.md's
+ * Fraunces-italic register). Any state short of a written verdict renders the
+ * same empty block with the per-block "try again", since a mid-flight skeleton
+ * would just be more silence.
  */
 export default function NarrationCard({
     analysis,

@@ -25,13 +25,11 @@ function valueLabel(bib: PrBib): string {
 }
 
 /**
- * The race-bib badge on a run that currently holds a tracked record: shown
- * on every view, permanently. Only the render that resolved `animate: true`
- * plays the punch-in CSS animation (`prefers-reduced-motion` shows it static
- * either way) and the guarded vibrate-on-mount buzz — then claims the stamp
- * with a fire-and-forget POST so no later view, on any device, animates
- * again. The claim happens after the animation plays, never on render, so a
- * plain GET of the run page stays free of side effects.
+ * The race-bib badge on a run that currently holds a tracked record, shown on
+ * every view. Only the render that resolved `animate: true` plays the punch-in
+ * animation and the vibrate-on-mount buzz, then claims the stamp with a
+ * fire-and-forget POST so no later view animates again. The claim happens after
+ * the animation, never on render, so a plain GET stays free of side effects.
  */
 export default function PrBibStamp({
     bib,
@@ -47,7 +45,9 @@ export default function PrBibStamp({
         if (typeof navigator.vibrate === 'function') {
             navigator.vibrate(40);
         }
-        void postJson('/api/record-stamps', { record_key: bib.record_key });
+        postJson('/api/record-stamps', { record_key: bib.record_key }).catch(
+            () => undefined,
+        );
     }, [bib]);
 
     if (bib === null) {

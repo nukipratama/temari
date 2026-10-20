@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Actions\Run\Story;
 
+use Illuminate\Support\Collection;
 use App\Enums\SegmentKey;
 use App\Enums\SessionType;
 use App\Models\Activity;
@@ -27,11 +28,10 @@ use Illuminate\Support\Facades\DB;
  * predicate. See {@see self::historyCounts()} for the per-count analyzed_at
  * treatment.
  *
- * Costs 3 queries (was 2 before Slice 7's quality-execution rarity dimension
- * added a {@see PlannedSession} lookup): the aggregate, the consecutive-day
- * scan, and the planned-session-for-this-date lookup. The third only grows to
- * a fourth (a VDOT estimate) when that lookup actually finds a Tempo/Interval
- * row for this date — see {@see self::qualitySessionPaceMet()}.
+ * Costs 3 queries: the aggregate, the consecutive-day scan, and the
+ * planned-session-for-this-date lookup. The third only grows to a fourth (a VDOT
+ * estimate) when that lookup finds a Tempo/Interval row for this date — see
+ * {@see self::qualitySessionPaceMet()}.
  */
 final readonly class BuildCardContextAction
 {
@@ -80,7 +80,7 @@ final readonly class BuildCardContextAction
      */
     private function qualitySessionPaceMet(Activity $activity, ActivityDetail $detail, ?Carbon $startDate): bool
     {
-        if ($startDate === null) {
+        if (!$startDate instanceof Carbon) {
             return false;
         }
 
@@ -165,21 +165,23 @@ final readonly class BuildCardContextAction
      */
     private function consecutiveDaysBefore(Activity $activity, ?Carbon $startDate): int
     {
-        if ($startDate === null) {
+        if (!$startDate instanceof Carbon) {
             return 0;
         }
 
         // Fetch the last 30 distinct run dates in one query, then count
         // consecutive days in PHP. Much cheaper than N queries for long streaks.
-        $dates = Activity::analyzedJoinConstraint(
+        /** @var Collection<int, string> $runDates */
+        $runDates = Activity::analyzedJoinConstraint(
             ActivityDetail::query()->join('activities', 'activities.id', '=', 'activity_details.activity_id'),
         )
             ->where('activities.user_id', $activity->user_id)
-            ->whereDate('start_date_local', '<', $startDate->toDateString())
+            ->where('start_date_local', '<', $startDate->toDateString())
             ->selectRaw('DISTINCT DATE(start_date_local) as run_date')
             ->orderByDesc('run_date')
             ->limit(self::STREAK_LOOKBACK_DAYS)
-            ->pluck('run_date')
+            ->pluck('run_date');
+        $dates = $runDates
             ->map(fn (string $d): string => Carbon::parse($d)->toDateString())
             ->flip();
 

@@ -8,17 +8,12 @@ use App\Exceptions\AI\TransientUpstreamException;
 use Illuminate\Support\Facades\RateLimiter;
 
 /**
- * Local ceiling on outbound Azure OpenAI calls, checked before every request
- * so concurrent workers self-throttle instead of firehosing Azure and eating
- * 429s. Ordinary contention (a couple of workers overlapping) clears in a
- * few seconds and is worth blocking for rather than spending a job retry-
- * budget attempt on it; sustained oversubscription past the block cap throws
- * instead of blocking a worker indefinitely — the caller's existing
- * {@see \App\Jobs\AI\AnalyzeBaseJob::settleFailure()} retry-budget/backoff
- * path takes it from there.
+ * Local ceiling on outbound Azure OpenAI calls, checked before every request so concurrent workers
+ * self-throttle instead of eating 429s. Contention blocks briefly; sustained oversubscription past
+ * the block cap throws, and {@see \App\Jobs\AI\AnalyzeBaseJob::settleFailure()} takes it from
+ * there.
  *
- * The sleep step is an injectable callable (defaulting to the real `sleep()`)
- * so tests can fake time passing instead of actually waiting.
+ * The sleep step is an injectable callable so tests can fake time passing.
  */
 class AzureCallThrottle
 {
@@ -37,8 +32,8 @@ class AzureCallThrottle
 
     public function block(): void
     {
-        $maxPerMinute = max(1, (int) config('ai.azure_calls_per_minute'));
-        $blockCapSeconds = max(1, (int) config('ai.azure_block_cap_seconds'));
+        $maxPerMinute = max(1, config()->integer('ai.azure_calls_per_minute'));
+        $blockCapSeconds = max(1, config()->integer('ai.azure_block_cap_seconds'));
         $waited = 0;
 
         while (! RateLimiter::attempt(self::KEY, $maxPerMinute, fn (): bool => true, 60)) {

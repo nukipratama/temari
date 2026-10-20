@@ -107,6 +107,6 @@ final readonly class PlanInputs
 
     public function isSelfScaled(): bool
     {
-        return $this->raceDate === null;
+        return !$this->raceDate instanceof Carbon;
     }
 }

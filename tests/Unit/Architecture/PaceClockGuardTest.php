@@ -7,6 +7,7 @@ use App\Services\Run\Ingest\StreamAnalysis;
 use App\Services\Run\Metrics\PaceCalculator;
 use App\Services\Run\Plan\SessionIntentJudge;
 use Illuminate\Support\Facades\File;
+use PhpParser\Node\Arg;
 use PhpParser\Node\Expr\StaticCall;
 use PhpParser\Node\Name;
 use PhpParser\NodeFinder;
@@ -38,7 +39,7 @@ function movingPaceClockViolations(array $sources): array
         foreach ($finder->findInstanceOf($nodes, StaticCall::class) as $call) {
             if ($call->class instanceof Name
                 && $call->class->toString() === PaceCalculator::class
-                && isset($call->args[1])
+                && ($call->args[1] ?? null) instanceof Arg
                 && str_contains($printer->prettyPrintExpr($call->args[1]->value), 'moving_time')) {
                 $violations[] = $class.':'.$call->getStartLine();
             }

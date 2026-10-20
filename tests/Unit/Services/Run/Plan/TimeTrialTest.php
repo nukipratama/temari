@@ -10,6 +10,12 @@ use App\Services\Run\Plan\TimeTrial;
 
 const TRIAL_ZONES = ['Z1' => ['lo' => 116, 'hi' => 138], 'Z2' => ['lo' => 138, 'hi' => 154], 'Z3' => ['lo' => 154, 'hi' => 168], 'Z4' => ['lo' => 168, 'hi' => 176], 'Z5' => ['lo' => 176, 'hi' => 999]];
 
+/** @param  array<string, int|float|string>|null  $context */
+function contextIsTrial(?array $context): bool
+{
+    return TimeTrial::isTrial($context);
+}
+
 it('runs a 10K for a half marathon or longer goal and a 5K otherwise', function (?float $raceDistanceM, int $trialM): void {
     expect(TimeTrial::distanceFor($raceDistanceM))->toBe($trialM);
 })->with([
@@ -31,8 +37,8 @@ it('prescribes the trial at the aim, as hard work carrying its own context', fun
         ->and($prescription->raceContext)->toBe(['kind' => 'time_trial', 'distance_m' => 5_000, 'aim_time_sec' => 1_500, 'retry' => 1])
         ->and(TimeTrial::isTrial($prescription->raceContext))->toBeTrue()
         ->and(new TimeTrial(10_000, 3_100)->prescription()->paceBand)->toBe(PaceBand::Threshold)
-        ->and(TimeTrial::isTrial(['distance_m' => 10_000, 'goal_pace_sec_per_km' => 300, 'kind' => '10k', 'band' => 'on_track']))->toBeFalse()
-        ->and(TimeTrial::isTrial(null))->toBeFalse();
+        ->and(contextIsTrial(['distance_m' => 10_000, 'goal_pace_sec_per_km' => 300, 'kind' => '10k', 'band' => 'on_track']))->toBeFalse()
+        ->and(contextIsTrial(null))->toBeFalse();
 });
 
 it('sizes a trial day as the trial distance alone, and no other day', function (): void {
@@ -54,7 +60,7 @@ it('reads a stored trial back only while it is still hard work on a quality day'
         ...$attributes,
     ]);
 
-    expect(TimeTrial::of($session) !== null)->toBe($isTrial);
+    expect(TimeTrial::of($session) instanceof TimeTrial)->toBe($isTrial);
 })->with([
     'as written' => [[], true],
     'kept easy' => [['prescribed_hard_minutes' => 0], false],

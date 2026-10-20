@@ -12,19 +12,12 @@ use Illuminate\Support\Carbon;
 /**
  * Decides which runs the LLM narrates by itself and which wait to be asked for.
  *
- * A run the athlete did before they connected Strava is history — it exists only
- * because the first-connect backfill imported it. The backfill hydrates its
- * streams and metrics; a historical run inside the last
- * {@see RecentlyActiveUsers::ACTIVE_WINDOW_DAYS} days still narrates by itself on
- * ingest, the same window {@see \App\Jobs\AI\NarrateOnReturnJob} applies to a
- * returning athlete's pending runs, so a day-one backfill's cost is bounded and
- * identical regardless of how much history it imports. Anything older is filled
- * deterministically and an LLM read is left to the page's own "Try again".
+ * A run the athlete did before connecting Strava is history: inside the last
+ * {@see RecentlyActiveUsers::ACTIVE_WINDOW_DAYS} days it still narrates on ingest, anything older
+ * is filled deterministically and left to the page's "Try again".
  *
- * Any narration, automatic or on-demand, waits until every older run within
- * past-you's reach has finished hydrating, because the narrator's baseline,
- * recent-runs and past-you tools read resolved metrics: narrating over a
- * half-hydrated history writes a thin story that nothing re-narrates.
+ * Any narration waits until every older run within past-you's reach has finished hydrating, because
+ * the narrator's tools read resolved metrics.
  *
  * @see docs/decisions/history-narrates-on-demand.md
  */
@@ -38,13 +31,13 @@ class HistoryNarrationGate
 
     public function isHistorical(User $user, ?Carbon $startedAt): bool
     {
-        if ($startedAt === null) {
+        if (!$startedAt instanceof Carbon) {
             return false;
         }
 
         $connectedAt = $this->backlog->connectedAt($user->id);
 
-        return $connectedAt !== null && $startedAt->lt($connectedAt);
+        return $connectedAt instanceof Carbon && $startedAt->lt($connectedAt);
     }
 
     /**
@@ -53,7 +46,7 @@ class HistoryNarrationGate
      */
     public function narratesAutomatically(?Carbon $startedAt): bool
     {
-        return $startedAt !== null && $startedAt->gte(RecentlyActiveUsers::windowStart());
+        return $startedAt instanceof Carbon && $startedAt->gte(RecentlyActiveUsers::windowStart());
     }
 
     /**
@@ -64,7 +57,7 @@ class HistoryNarrationGate
     {
         $startedAt = $this->ages->runDateForSubject($type, $subjectId);
 
-        if ($startedAt === null || ! $this->isHistorical($user, $startedAt)) {
+        if (!$startedAt instanceof Carbon || ! $this->isHistorical($user, $startedAt)) {
             return false;
         }
 

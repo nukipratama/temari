@@ -46,6 +46,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Notification;
+use Mockery\MockInterface;
 
 uses(RefreshDatabase::class);
 
@@ -55,7 +56,6 @@ beforeEach(function (): void {
     // it stays inside the narration age cutoff as wall time moves on. Cases that
     // exercise the cutoff itself set their own clock and config.
     Carbon::setTestNow('2026-05-11 09:00:00');
-    $this->listener = app(DispatchPostRunAnalysis::class);
 });
 
 afterEach(function (): void {
@@ -102,7 +102,7 @@ it('never clamps or requests clamp narration after a run today', function (): vo
 
     fire($activity);
 
-    expect($session->fresh()->clamped_km)->toBeNull()
+    expect($session->refresh()->clamped_km)->toBeNull()
         ->and(Analysis::query()->where('analysis_type', AnalysisType::PlanClampVoice)->exists())->toBeFalse();
     Notification::assertNotSentTo($activity->user, DayClampedNotification::class);
 });
@@ -141,7 +141,7 @@ it('re-narrates card flavor on a re-ingest whose run material changed, without m
     fire($activity);
 
     expect(Analysis::query()->forSubject(RunCard::class, $card->id, AnalysisType::CardFlavor)->count())->toBe(1)
-        ->and($row->fresh()->status)->not->toBe(AnalysisStatus::Done);
+        ->and($row->refresh()->status)->not->toBe(AnalysisStatus::Done);
 });
 
 it('does not re-bill card flavor on a re-ingest of an unchanged run', function (): void {
@@ -150,13 +150,13 @@ it('does not re-bill card flavor on a re-ingest of an unchanged run', function (
 
     fire($activity);
     $row = Analysis::query()->forSubject(RunCard::class, $card->id, AnalysisType::CardFlavor)->firstOrFail();
-    app(AnalysisService::class)->markDone($row, 'card pertama', ServedBy::Llm, fingerprint: MaterialFingerprint::forActivity($activity->fresh()));
+    app(AnalysisService::class)->markDone($row, 'card pertama', ServedBy::Llm, fingerprint: MaterialFingerprint::forActivity($activity->refresh()));
 
     Bus::fake();
     fire($activity);
 
     Bus::assertNotDispatched(AnalyzeCardFlavorJob::class);
-    expect($row->fresh()->status)->toBe(AnalysisStatus::Done);
+    expect($row->fresh()?->status)->toBe(AnalysisStatus::Done);
 });
 
 it('delays the invalidating briefing request so a burst of same-day ingests bills one regeneration', function (): void {
@@ -207,7 +207,7 @@ it('does not re-bill a Done ProfileVoice row on re-ingest (invalidate:false)', f
         ->where('subject_id', $activity->user_id)
         ->where('analysis_type', AnalysisType::ProfileVoice)
         ->count())->toBe(1)
-        ->and($row->fresh()->status)->toBe(AnalysisStatus::Done);
+        ->and($row->fresh()?->status)->toBe(AnalysisStatus::Done);
 });
 
 it('fans out the activity group once, the briefing, the monthly recap and the reconciliation marker', function (): void {
@@ -227,7 +227,7 @@ it('fans out the activity group once, the briefing, the monthly recap and the re
 
     expect($row->status)->toBe(AnalysisStatus::Pending);
 
-    expect($activity->user->fresh()->plan_reconciliation_pending_from->toDateString())
+    expect($activity->user->fresh()?->plan_reconciliation_pending_from?->toDateString())
         ->toBe('2026-05-10');
     Bus::assertDispatched(ReconcilePlanJob::class);
 });
@@ -258,7 +258,7 @@ it('marks a backfilled run week dirty and stages its recap against the week alre
 
     fire($activity);
 
-    expect($activity->user->fresh()->weekly_snapshots_dirty_from->toDateString())->toBe('2026-04-19')
+    expect($activity->user->fresh()?->weekly_snapshots_dirty_from?->toDateString())->toBe('2026-04-19')
         ->and(WeeklySnapshot::query()->where('user_id', $activity->user_id)->count())->toBe(1)
         ->and(Analysis::query()->forSubject(WeeklySnapshot::class, $synced->id, AnalysisType::WeeklyRecap)->value('status'))
         ->toBe(AnalysisStatus::Pending);
@@ -270,7 +270,7 @@ it('rebuilds a demo backfilled run inline, since no tick ever rolls the demo for
 
     fire($activity);
 
-    expect($demo->fresh()->weekly_snapshots_dirty_from)->toBeNull()
+    expect($demo->refresh()->weekly_snapshots_dirty_from)->toBeNull()
         ->and(WeeklySnapshot::query()->where('user_id', $demo->id)->where('week_ending', '2026-04-19')->exists())->toBeTrue();
 });
 
@@ -310,6 +310,8 @@ it('lets the recalibration re-run cover a run ingested while it held its lock', 
         return $job->userId === $user->id;
     });
 
+    expect($rerun)->toBeInstanceOf(RecalibrateTrainingHistoryJob::class);
+    assert($rerun instanceof RecalibrateTrainingHistoryJob);
     $rerun->handle(app(PlanRecalibrationService::class));
 
     $week = WeeklySnapshot::query()->where('user_id', $user->id)->where('week_ending', '2026-05-10')->firstOrFail();
@@ -371,7 +373,7 @@ it('leaves today\'s briefing as narrated when a run lands on a day the athlete s
     fire($activity);
 
     Bus::assertNotDispatched(AnalyzeBriefingMascotVoiceJob::class);
-    expect($briefing->fresh()->only(['status', 'content']))->toBe(['status' => AnalysisStatus::Done, 'content' => 'easy run, 2.6 km.']);
+    expect($briefing->fresh()?->only(['status', 'content']))->toBe(['status' => AnalysisStatus::Done, 'content' => 'easy run, 2.6 km.']);
 });
 
 it('does not re-bill the daily set when backfilling a previous-day run', function (): void {
@@ -540,7 +542,8 @@ it('routes an ingest either side of the shipped cutoff differently, against the 
         Bus::assertNotDispatched(AnalyzeCardFlavorJob::class);
         Bus::assertNotDispatched(AnalyzeActivityJob::class);
         expect($cardRow->status)->toBe(AnalysisStatus::Done)
-            ->and($cardRow->content)->toBeString()->not->toBeEmpty();
+            ->and($cardRow->content)->toBeString()
+            ->and($cardRow->content)->not->toBeEmpty();
     }
 
     Carbon::setTestNow();
@@ -712,6 +715,7 @@ it('skips weekly recap staging when rebuildForwardFrom finds no in-window histor
     // (WeeklyAggregatorTest); this only checks the listener's own branch —
     // a null return means no history to stage a recap against.
     $activity = analyzedActivity('2026-05-10 12:00:00');
+    /** @var WeeklyAggregator&MockInterface $weekly */
     $weekly = Mockery::mock(WeeklyAggregator::class);
     $weekly->shouldReceive('rebuildForwardFrom')->once()->andReturnNull();
     $listener = new DispatchPostRunAnalysis(
@@ -747,7 +751,8 @@ it('fills a pre-connect run rule-based and dispatches no LLM job for it', functi
 
     $cardRow = Analysis::query()->forSubject(RunCard::class, $card->id, AnalysisType::CardFlavor)->firstOrFail();
     expect($cardRow->status)->toBe(AnalysisStatus::Done)
-        ->and($cardRow->content)->toBeString()->not->toBeEmpty();
+        ->and($cardRow->content)->toBeString()
+        ->and($cardRow->content)->not->toBeEmpty();
 
     Carbon::setTestNow();
 });
@@ -823,7 +828,7 @@ it('still stages the recaps and scores the day for an athlete away from the app'
 
     fire($activity);
 
-    expect($session->fresh()->status->isCredited())->toBeTrue()
+    expect($session->fresh()?->status->isCredited())->toBeTrue()
         ->and(Analysis::query()->where('analysis_type', AnalysisType::WeeklyRecap)->exists())->toBeTrue()
         ->and(Analysis::query()->where('analysis_type', AnalysisType::MonthlyRecap)->exists())->toBeTrue();
 });
@@ -886,7 +891,7 @@ it('narrates the profile voice right away while any run of the backlog awaits hy
     Carbon::setTestNow();
 });
 
-it('narrates a long-connected athlete\'s briefing and profile voice on schedule despite a stuck old backlog entry (#1032)', function (): void {
+it('narrates a long-connected athlete\'s briefing and profile voice on schedule despite a stuck old backlog entry', function (): void {
     Carbon::setTestNow('2026-06-10 09:00:00');
     $activity = analyzedActivity('2026-06-10 06:00:00');
     // Connected well past the hydration grace window (default 48h).
@@ -906,10 +911,13 @@ it('narrates a long-connected athlete\'s briefing and profile voice on schedule 
 it('refreshes the run mood once its plan day is graded, before narration reads it', function (): void {
     $activity = analyzedActivity();
     PlannedSession::factory()->for($activity->user)->create(['date' => '2026-05-10', 'session_type' => SessionType::Tempo]);
-    $activity->detail->update(['stream_summary' => ['time_in_zone_pct' => ['Z2' => 25.0, 'Z3' => 45.0, 'Z4' => 30.0], 'negative_split' => false], 'weather_temp_c' => 24]);
+    $detail = $activity->detail;
+    expect($detail)->not->toBeNull();
+    assert($detail !== null);
+    $detail->update(['stream_summary' => ['time_in_zone_pct' => ['Z2' => 25.0, 'Z3' => 45.0, 'Z4' => 30.0], 'negative_split' => false], 'weather_temp_c' => 24]);
     StoryLine::query()->create(['user_id' => $activity->user_id, 'activity_id' => $activity->id, 'kind' => StoryLine::KIND_POST_RUN, 'mood' => Mood::Easy]);
 
     fire($activity);
 
-    expect($activity->postRunStoryLine()->first()->mood)->toBe(Mood::Blazing);
+    expect($activity->postRunStoryLine()->first()?->mood)->toBe(Mood::Blazing);
 });

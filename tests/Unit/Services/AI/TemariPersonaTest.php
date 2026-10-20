@@ -4,9 +4,10 @@ declare(strict_types=1);
 
 use App\Services\AI\TemariPersona;
 
-beforeEach(function (): void {
-    $this->prompt = TemariPersona::systemPrompt();
-});
+function temariPrompt(): string
+{
+    return TemariPersona::systemPrompt();
+}
 
 /*
  * MANUAL VOICE SPOT-CHECK (run after meaningful persona edits):
@@ -33,12 +34,12 @@ beforeEach(function (): void {
  */
 
 it('exposes the full persona system message', function (): void {
-    expect($this->prompt)->toBeString()->not->toBe('');
+    expect(temariPrompt())->toBeString()->and(temariPrompt())->not->toBe('');
 });
 
 it('persona prompt wording: who Temari is and how it addresses the user', function (string ...$needles): void {
     foreach ($needles as $needle) {
-        expect($this->prompt)->toContain($needle);
+        expect(temariPrompt())->toContain($needle);
     }
 })->with([
     'introduces Temari in first person as the partner who keeps score' => ["I'm temari", 'I keep score'],
@@ -54,13 +55,13 @@ it('persona prompt wording: who Temari is and how it addresses the user', functi
 
 it('keeps the Daybreak mood vocabulary inline so narrators reuse it verbatim', function (): void {
     foreach (['blazing', 'easy', 'wobbly', 'gassed', 'overloaded', 'chill'] as $mood) {
-        expect($this->prompt)->toContain($mood);
+        expect(temariPrompt())->toContain($mood);
     }
 });
 
 it('persona prompt wording: voice rules, formats and guards', function (string ...$needles): void {
     foreach ($needles as $needle) {
-        expect($this->prompt)->toContain($needle);
+        expect(temariPrompt())->toContain($needle);
     }
 })->with([
     'allows one bold emphasis but bans other markdown, em-dash, and clinical phrasing' => ['**Bold**', 'NO other markdown', 'em dash', 'clinical third person'],
@@ -90,20 +91,20 @@ it('persona prompt wording: voice rules, formats and guards', function (string .
 ]);
 
 it('mandates English output regardless of tool results, prior narration, or Indonesian context cues', function (): void {
-    // Prod narration on the larger model went Indonesian for narrators with no
-    // Indonesian source data at all (profile_voice) -- the
-    // persona never actually said "write in English" anywhere, it only used
-    // "English" as register guidance ("casual running-app English"). This is
-    // the fix: an explicit, unmissable language mandate near the top of the
-    // prompt, positioned before any other guidance (including the cultural
-    // context section, which could otherwise read as license to answer in
-    // Indonesian).
-    expect($this->prompt)
+    // An explicit language mandate sits near the top of the prompt, before any
+    // other guidance (including the cultural context section, which could
+    // otherwise read as license to answer in Indonesian).
+    expect(temariPrompt())
         ->toContain('# Language')
         ->toContain('Always write in English')
         ->toContain('prev_narrative')
         ->toContain('content to riff off, not a language to continue in');
 
-    expect(mb_strpos($this->prompt, '# Language'))
-        ->toBeLessThan(mb_strpos($this->prompt, '# Cultural awareness'));
+    $languageAt = mb_strpos(temariPrompt(), '# Language');
+    $cultureAt = mb_strpos(temariPrompt(), '# Cultural awareness');
+
+    expect($languageAt)->toBeInt()
+        ->and($cultureAt)->toBeInt();
+    assert($languageAt !== false && $cultureAt !== false);
+    expect($languageAt)->toBeLessThan($cultureAt);
 });

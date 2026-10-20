@@ -13,8 +13,10 @@ use App\Notifications\IntervalsIcuDisconnectedNotification;
 use App\Services\IntervalsIcu\IntervalsIcuSync;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
 
 uses(RefreshDatabase::class);
@@ -22,12 +24,12 @@ uses(RefreshDatabase::class);
 beforeEach(function (): void {
     Carbon::setTestNow('2026-10-14 06:00:00');
     Notification::fake();
-    test()->icu = ['threshold' => 163, 'status' => 200, 'put' => 200, 'id' => 501];
+    intervalsIcuState(['threshold' => 163, 'status' => 200, 'put' => 200, 'id' => 501]);
     Http::fake(fn (Request $request) => match (true) {
-        test()->icu['status'] !== 200 => Http::response('', test()->icu['status']),
-        $request->method() === 'GET' => Http::response(['sportSettings' => [['types' => ['Run'], 'lthr' => test()->icu['threshold']]]]),
-        $request->method() === 'POST' => Http::response(['id' => test()->icu['id']]),
-        $request->method() === 'PUT' => Http::response('', test()->icu['put']),
+        intervalsIcuState()['status'] !== 200 => Http::response('', intervalsIcuState()['status']),
+        $request->method() === 'GET' => Http::response(['sportSettings' => [['types' => ['Run'], 'lthr' => intervalsIcuState()['threshold']]]]),
+        $request->method() === 'POST' => Http::response(['id' => intervalsIcuState()['id']]),
+        $request->method() === 'PUT' => Http::response('', intervalsIcuState()['put']),
         default => Http::response([]),
     });
 });
@@ -40,14 +42,29 @@ function syncedAthlete(SessionType $today = SessionType::Easy): IntervalsIcuConn
     return IntervalsIcuConnection::factory()->for($user)->create(['athlete_id' => 'i42']);
 }
 
-/** @param  array<string, int|null>  $state */
+/**
+ * @param  array{threshold: int|null, status: int, put: int, id: int}|null  $replace
+ * @return array{threshold: int|null, status: int, put: int, id: int}
+ */
+function intervalsIcuState(?array $replace = null): array
+{
+    static $state = ['threshold' => 163, 'status' => 200, 'put' => 200, 'id' => 501];
+
+    if ($replace !== null) {
+        $state = $replace;
+    }
+
+    return $state;
+}
+
+/** @param  array{threshold?: int|null, status?: int, put?: int, id?: int}  $state */
 function intervalsIcuAnswers(array $state): void
 {
-    test()->icu = [...test()->icu, ...$state];
+    intervalsIcuState([...intervalsIcuState(), ...$state]);
     Http::fake();
 }
 
-/** @return list<string> */
+/** @return array<int, string> */
 function writesSent(): array
 {
     return Http::recorded()
@@ -75,7 +92,7 @@ it("sends today's run once and keeps its id", function (): void {
         ->and($connection->payload_hash)->toHaveLength(64);
     Http::assertSent(fn (Request $request): bool => $request->method() === 'POST'
         && $request['start_date_local'] === '2026-10-14T00:00:00'
-        && str_contains((string) $request['description'], '% LTHR'));
+        && str_contains(Arr::string($request->data(), 'description'), '% LTHR'));
 });
 
 it('sends nothing when today is unchanged', function (): void {
@@ -185,6 +202,32 @@ it("removes only today's event on request", function (string $syncedOn, array $w
     'today' => ['2026-10-14', ['DELETE /athlete/i42/events/400']],
     'yesterday' => ['2026-10-13', []],
 ]);
+
+it('removes today best effort and logs a failure instead of throwing', function (int $status, array $writes): void {
+    intervalsIcuAnswers(['status' => $status]);
+    $log = Log::spy();
+    $connection = syncedAthlete();
+    $connection->update(['synced_on' => '2026-10-14', 'event_id' => '400']);
+
+    app(IntervalsIcuSync::class)->removeTodayBestEffort($connection, Carbon::today());
+
+    expect(writesSent())->toBe($writes);
+    $status === 200 ? $log->shouldNotHaveReceived('warning') : $log->shouldHaveReceived('warning')->once();
+})->with([
+    'accepted' => [200, ['DELETE /athlete/i42/events/400']],
+    'rejected' => [401, ['DELETE /athlete/i42/events/400']],
+    'unreachable' => [503, ['DELETE /athlete/i42/events/400']],
+]);
+
+it('skips a broken connection when removing best effort', function (): void {
+    Http::fake();
+    $connection = syncedAthlete();
+    $connection->update(['broken_at' => now(), 'synced_on' => '2026-10-14', 'event_id' => '400']);
+
+    app(IntervalsIcuSync::class)->removeTodayBestEffort($connection, Carbon::today());
+
+    Http::assertNothingSent();
+});
 
 it("leaves today's workout as sent once today's run is credited, even when the day changes", function (array $change): void {
     $connection = runSync(syncedAthlete());

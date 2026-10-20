@@ -37,11 +37,11 @@ it('replaces an open goal-less season\'s CTL goal with the consistency goal and 
     $migration->up();
     $migration->up();
 
-    expect($openGoal->fresh()->metric)->toBe('season_consistent_weeks')
-        ->and($openGoal->fresh()->target)->toBe(12.0)
-        ->and($openGoal->fresh()->unit)->toBe('weeks')
-        ->and($settledGoal->fresh()->metric)->toBe('season_ctl_growth')
-        ->and($raceGoal->fresh()->metric)->toBe('season_ctl_growth');
+    expect($openGoal->refresh()->metric)->toBe('season_consistent_weeks')
+        ->and($openGoal->refresh()->target)->toBe(12.0)
+        ->and($openGoal->refresh()->unit)->toBe('weeks')
+        ->and($settledGoal->refresh()->metric)->toBe('season_ctl_growth')
+        ->and($raceGoal->refresh()->metric)->toBe('season_ctl_growth');
 });
 
 it('turns every consistency goal back into a CTL goal on rollback, so reverted code can read it', function (): void {
@@ -53,6 +53,6 @@ it('turns every consistency goal back into a CTL goal on rollback, so reverted c
     $migration->up();
     $migration->down();
 
-    expect($goal->fresh()->metric)->toBe('season_ctl_growth')
-        ->and($goal->fresh()->unit)->toBe('CTL pts');
+    expect($goal->refresh()->metric)->toBe('season_ctl_growth')
+        ->and($goal->refresh()->unit)->toBe('CTL pts');
 });

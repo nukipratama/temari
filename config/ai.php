@@ -48,11 +48,9 @@ return [
     // 100 backfilled activities span ~10 hours of staggered LLM work.
     'backfill_stagger_seconds' => (int) env('AI_BACKFILL_STAGGER_SECONDS', 360),
 
-    // An activity/week/month older than this gets the deterministic
-    // rule-based filler instead of a real LLM call — nobody's checking back
-    // on narration for a run from last season, and it keeps backfill depth
-    // bounded. 12 weeks is a training block; beyond it a narrated run is
-    // history, not context. See docs/decisions/twelve-week-narration-cutoff.md.
+    // An activity/week/month older than this gets the deterministic rule-based
+    // filler instead of a real LLM call. See
+    // docs/decisions/twelve-week-narration-cutoff.md.
     'backfill_max_age_days' => (int) env('AI_BACKFILL_MAX_AGE_DAYS', 84),
 
     // How long a weekly recap waits for `strava:hydrate-backlog` to finish the

@@ -34,27 +34,18 @@ use Illuminate\Support\Facades\DB;
  * the whole computation and touches neither.
  *
  * Invariants (see `docs/features/plan-periodizer.md`):
- * - The arc is counted from the {@see \App\Models\Season}'s own start, not
- *   from today, and only then sliced to the horizon — so the week being
- *   trained carries the multiplier its position in the season earns rather
- *   than the 1.0 that index 0 always earns. See
- *   `docs/decisions/the-arc-is-anchored-once.md`.
+ * - The arc is counted from the {@see \App\Models\Season}'s own start, not from today, and only then
+ *   sliced to the horizon. See `docs/decisions/the-arc-is-anchored-once.md`.
  * - Past dates (before `$today`) are never touched.
- * - Pinned rows are read first and never overwritten; the rest of each week
- *   is planned around them.
- * - A row already carrying a verdict is left alone, even inside the
- *   today-forward window: it records what was run, not what is still planned.
- * - A mode switch (race set/cleared) only takes effect at the next call —
- *   the gatherer always reads the CURRENT active race fresh.
- * - The plan reacts to what actually happened: {@see PlanAdapter} can turn
- *   the current week into a real {@see PlanPhase::Deload} (fewer km, no
- *   quality work) and resize every week's quality block against the race
- *   projection. Its verdict is recorded as a {@see PlanAdaptation} row so
- *   the Plan tab can explain the week it produced, including the race
+ * - Pinned rows are read first and never overwritten; the rest of each week is planned around them.
+ * - A row already carrying a verdict is left alone, even inside the today-forward window.
+ * - A mode switch (race set/cleared) only takes effect at the next call; the gatherer reads the
+ *   current active race fresh.
+ * - {@see PlanAdapter} can turn the current week into a real {@see PlanPhase::Deload} and resize every
+ *   week's quality block; its verdict is recorded as a {@see PlanAdaptation} row, including the race
  *   season's volume floor when that deload takes the week below it.
- * - Deleting a row also deletes the `plan_day` {@see Feedback} rows filed
- *   against it, and today's row carries its recorded readiness clamp
- *   ({@see RestClampRecorder}) onto the row that replaces it.
+ * - Deleting a row also deletes the `plan_day` {@see Feedback} rows filed against it, and today's row
+ *   carries its recorded readiness clamp ({@see RestClampRecorder}) onto the row that replaces it.
  */
 final readonly class Periodizer
 {
@@ -178,7 +169,7 @@ final readonly class Periodizer
     public function rowsFor(PlanInputs $inputs): array
     {
         $arcStart = $inputs->arcStart();
-        $arc = $inputs->raceDate !== null && $inputs->raceDistanceM !== null
+        $arc = $inputs->raceDate instanceof Carbon && $inputs->raceDistanceM !== null
             ? PhaseSchedule::forRace($arcStart, $inputs->raceDate, $inputs->raceDistanceM)
             // The season's own window, not a fresh horizon, so the arc
             // SeasonSummaryBuilder draws is the one the athlete trains.
@@ -220,7 +211,7 @@ final readonly class Periodizer
                 [$week['multiplier'], $ceilingKm] = self::boundResumedWeek($weekRows, $week['phase'], $week['multiplier'], $inputs, $ceilingKm);
             }
             $goalPace = GoalPaceWork::forWeek($inputs, $week['week_start'], $week['phase']);
-            $fastFinish = $fastFinishFrom !== null
+            $fastFinish = $fastFinishFrom instanceof Carbon
                 && in_array($week['phase'], [PlanPhase::Build, PlanPhase::Peak], true)
                 && $week['zone'] === PhaseSchedule::ZONE_BLOCK
                 && $week['week_start']->gte($fastFinishFrom)
@@ -228,7 +219,7 @@ final readonly class Periodizer
                 ? FastFinishLongRun::forWeek($inputs, $goalPace)
                 : null;
             $trial = $trials->forWeek($week['week_start'], $week['phase']);
-            $trialRows = $trial === null ? null : $this->withIntensityPrescriptions($weekRows, $week['multiplier'], $inputs, $week['week_start'], $rows, trial: $trial, buildQualityMinutes: $buildQualityMinutes, peakGoalPaceMinutes: $peakGoalPaceMinutes, fastFinish: $fastFinish, longestKm: $longestKm);
+            $trialRows = $trial instanceof TimeTrial ? $this->withIntensityPrescriptions($weekRows, $week['multiplier'], $inputs, $week['week_start'], $rows, trial: $trial, buildQualityMinutes: $buildQualityMinutes, peakGoalPaceMinutes: $peakGoalPaceMinutes, fastFinish: $fastFinish, longestKm: $longestKm) : null;
             if ($trialRows !== null && array_any($trialRows, static fn (array $row): bool => TimeTrial::isTrial($row['prescription_race_context']))) {
                 $weekRows = $trialRows;
                 $trials->placedIn($week['week_start']);
@@ -549,9 +540,9 @@ final readonly class Periodizer
             $work = $date === $goalPaceDate || ($row['session_type'] === SessionType::Long && $goalPace?->racesLongAtGoalPace() === true)
                 ? $goalPace
                 : null;
-            $family = $work === null
-                ? IntensityPrescriptionResolver::familyKey($row['session_type'], $inputs->raceDistanceM, $inputs->raceGoalTimeSec)
-                : IntensityPrescriptionResolver::familyKeyForContext($row['session_type'], $work->context());
+            $family = $work instanceof GoalPaceWork
+                ? IntensityPrescriptionResolver::familyKeyForContext($row['session_type'], $work->context())
+                : IntensityPrescriptionResolver::familyKey($row['session_type'], $inputs->raceDistanceM, $inputs->raceGoalTimeSec);
             $recent = $inputs->recentPrescriptions[$family] ?? null;
             $carried = $row['phase'] === PlanPhase::Peak
                 && in_array($family, ['goal_pace', 'race_tempo'], true)
@@ -584,13 +575,13 @@ final readonly class Periodizer
                     ? new IntensityPrescription(min(10, $prescription->hardMinutes), $prescription->paceBand, $prescription->paceSecPerKm, 'modest quality for an established two-run week', $prescription->raceContext)
                     : new IntensityPrescription(0, null, null, null);
             }
-            if ($inputs->recovery !== null && $inputs->recovery->excludesQualityOn($date) && ! $prescriptions[$date]->isEasy()) {
+            if ($inputs->recovery instanceof PostRaceRecovery && $inputs->recovery->excludesQualityOn($date) && ! $prescriptions[$date]->isEasy()) {
                 $prescriptions[$date] = new IntensityPrescription(0, null, null, 'easy while recovering from the race', $prescriptions[$date]->raceContext);
             }
         }
 
-        $trialDate = $trial === null || $unknownDemandingMinutes ? null : self::firstQualityDate($rows, $prescriptions);
-        if ($trial !== null && $trialDate !== null) {
+        $trialDate = !$trial instanceof TimeTrial || $unknownDemandingMinutes ? null : self::firstQualityDate($rows, $prescriptions);
+        if ($trial instanceof TimeTrial && $trialDate !== null) {
             $prescriptions[$trialDate] = $trial->prescription();
             $kmByDate[$trialDate] = TimeTrial::dayKm($rows[$trialDate]['session_type'], $trial->context()) ?? $kmByDate[$trialDate];
         }
@@ -647,9 +638,9 @@ final readonly class Periodizer
         unset($row);
 
         $longDate = array_find_key($rows, static fn (array $row): bool => $row['session_type'] === SessionType::Long && $row['prescribed_hard_minutes'] === 0);
-        if ($fastFinish !== null && $longDate !== null && ! $unknownDemandingMinutes && ! $twoRunWeek
+        if ($fastFinish instanceof FastFinishLongRun && $longDate !== null && ! $unknownDemandingMinutes && ! $twoRunWeek
             && $kmByDate[$longDate] <= $longestKm
-            && ($inputs->recovery === null || ! $inputs->recovery->excludesQualityOn($longDate))) {
+            && (!$inputs->recovery instanceof PostRaceRecovery || ! $inputs->recovery->excludesQualityOn($longDate))) {
             $withFinish = $rows;
             $withFinish[$longDate] = [...$rows[$longDate], ...$fastFinish->prescription($kmByDate[$longDate])->toArray()];
             $asPrescriptions = array_map(static fn (array $row): IntensityPrescription => new IntensityPrescription($row['prescribed_hard_minutes'], $row['prescribed_pace_band'], $row['prescribed_pace_sec_per_km'], $row['prescription_reason'], $row['prescription_race_context']), $withFinish);
@@ -680,7 +671,6 @@ final readonly class Periodizer
     /**
      * @param array<string, array{phase: PlanPhase, session_type: SessionType, prescribed_hard_minutes: int, prescribed_pace_band: PaceBand|null, prescribed_pace_sec_per_km: int|null, prescription_reason: string|null, prescription_race_context: array<string, int|float|string>|null, ...}> $rows
      * @param array<string, array{session_type: SessionType, prescribed_hard_minutes: int, prescribed_pace_band: PaceBand|null, hard_minutes?: float|null, duration_minutes?: float, demanding?: bool, ...}> $fixedSessions
-     * @param Carbon $weekStart
      * @return array<string, array{phase: PlanPhase, session_type: SessionType, prescribed_hard_minutes: int, prescribed_pace_band: PaceBand|null, prescribed_pace_sec_per_km: int|null, prescription_reason: string|null, prescription_race_context: array<string, int|float|string>|null, ...}>
      */
     private static function capQualityAroundWeeklyHardDays(array $rows, array $fixedSessions, Carbon $weekStart): array
@@ -905,24 +895,13 @@ final readonly class Periodizer
     }
 
     /**
-     * The horizon's worth of weeks starting at the current one, each carrying
-     * the multiplier its position in the WHOLE arc earns. Slicing after the
-     * multipliers are computed is the entire point: computing them over the
-     * remaining weeks alone put the week being trained at index 0 every
-     * Monday, which is 1.0 in every phase but Taper.
+     * The horizon's worth of weeks starting at the current one, each carrying the multiplier its
+     * position in the WHOLE arc earns (slicing happens after the multipliers are computed).
      *
-     * The reactive deload lands before the multipliers, so a week the adapter
-     * turns down is not counted as a Build week by the weeks after it. Taper
-     * weeks are left alone: they are already a planned reduction counting down
-     * to race day, and restarting the taper curve from a deload multiplier
-     * would leave the athlete under-stimulated going in.
-     *
-     * `$flat` holds the arc at 1.0 outside its dips: a self-scaled arc always,
-     * a race block while its increases are held.
-     *
-     * A season whose stored window outlasts its own arc — only reachable for a
-     * self-scaled row written before the two were aligned — holds on its last
-     * arc week rather than materializing nothing at all, until it rolls over.
+     * The reactive deload lands before the multipliers, so a week the adapter turns down is not
+     * counted as a Build week by the weeks after it; Taper weeks are left alone. `$flat` holds the
+     * arc at 1.0 outside its dips: a self-scaled arc always, a race block while its increases are
+     * held. A season whose stored window outlasts its own arc holds on its last arc week.
      *
      * @param  list<array{week_start: Carbon, phase: PlanPhase, zone: string}>  $arc
      * @return list<array{week_start: Carbon, phase: PlanPhase, zone: string, multiplier: float}>
@@ -940,7 +919,7 @@ final readonly class Periodizer
             $phases[$offset] = PlanPhase::Deload;
         }
         foreach ($arc as $index => $week) {
-            if ($recovery !== null && $recovery->deloadsWeek($week['week_start']) && $phases[$index] !== PlanPhase::Taper) {
+            if ($recovery instanceof PostRaceRecovery && $recovery->deloadsWeek($week['week_start']) && $phases[$index] !== PlanPhase::Taper) {
                 $phases[$index] = PlanPhase::Deload;
             }
         }

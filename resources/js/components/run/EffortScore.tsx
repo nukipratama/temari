@@ -1,12 +1,11 @@
-import { router, usePage } from '@inertiajs/react';
+import { router } from '@inertiajs/react';
 import { useId, useState } from 'react';
-
-import type { SharedProps } from '@/types/inertia';
 
 import TemariMascot from '@/components/temari/TemariMascot';
 import Chip from '@/components/ui/Chip';
 import Eyebrow from '@/components/ui/Eyebrow';
 import PillButton from '@/components/ui/PillButton';
+import { useSharedProps } from '@/hooks/useSharedProps';
 import { cn } from '@/lib/cn';
 import { EFFORT_ICON_CLASS } from '@/lib/effort';
 import {
@@ -52,7 +51,7 @@ function effortUrl(activityId: number): string {
 }
 
 function ScoreError() {
-    const error = usePage<SharedProps>().props.errors?.score;
+    const error = useSharedProps().errors?.score;
 
     return error ? (
         <p className="mt-2 text-xs text-ember-ink" role="alert">
@@ -109,7 +108,7 @@ export function EffortPicker({
     const [processing, setProcessing] = useState(false);
 
     return (
-        <div className="rounded-panel bg-secondary px-4 pb-3 pt-3.5 text-foreground dark:bg-sky">
+        <div className="rounded-panel bg-stat-ground px-4 pb-3 pt-3.5 text-foreground">
             <div className="grid grid-cols-[44px_minmax(0,1fr)] items-center gap-x-2.5">
                 <TemariMascot pose={effortPose(draft)} size={44} />
                 <div className="min-w-0">

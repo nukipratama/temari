@@ -1,6 +1,8 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { defined } from '@/test/defined';
+
 import JourneyChart from './JourneyChart';
 
 const WEEKS = ['2026-05-25', '2026-06-08', '2026-06-22'];
@@ -95,7 +97,7 @@ describe('JourneyChart', () => {
             'line[vector-effect="non-scaling-stroke"]',
         );
 
-        expect(markers[1].getAttribute('stroke-width')).toBe('10');
+        expect(defined(markers[1]).getAttribute('stroke-width')).toBe('10');
     });
 
     it('moves the readout between weeks with the arrow keys, most recent first', () => {
@@ -110,6 +112,20 @@ describe('JourneyChart', () => {
 
         fireEvent.keyDown(chart, { key: 'ArrowRight' });
         expect(screen.getByText(/jun 8 · 51:57/)).toBeInTheDocument();
+    });
+
+    it('keeps the readout position across re-renders with unchanged props', () => {
+        const { container, rerender } = render(
+            <JourneyChart weeks={WEEKS} timesSec={TIMES} />,
+        );
+        fireEvent.keyDown(screen.getByRole('slider'), { key: 'ArrowLeft' });
+        const tip = container.querySelector<HTMLElement>('[style*="left"]');
+        if (tip === null) throw new Error('expected a positioned readout');
+        tip.style.left = '1px';
+
+        rerender(<JourneyChart weeks={WEEKS} timesSec={TIMES} />);
+
+        expect(tip.style.left).toBe('1px');
     });
 
     it('closes the readout with Escape', () => {

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Console\Commands\Weather;
 
+use App\Services\Weather\WeatherSnapshot;
 use App\Models\ActivityDetail;
 use App\Services\Weather\OpenMeteoClient;
 use Carbon\CarbonImmutable;
@@ -59,9 +60,7 @@ class CorrectForecastWeatherCommand extends Command
     /**
      * Only the weather columns are touched here. RunCard badges (RainWarrior,
      * HeatTamer, Headwind, ...) are derived once when the card is built and are
-     * never recomputed retroactively: stripping an earned badge because the
-     * archive later disagrees with the forecast is worse UX than a
-     * slightly-stale badge.
+     * never recomputed retroactively.
      */
     private function correct(OpenMeteoClient $weather, ActivityDetail $detail): bool
     {
@@ -75,7 +74,7 @@ class CorrectForecastWeatherCommand extends Command
             CarbonImmutable::instance($detail->start_date_local),
         );
 
-        if ($snapshot === null) {
+        if (!$snapshot instanceof WeatherSnapshot) {
             return false;
         }
 

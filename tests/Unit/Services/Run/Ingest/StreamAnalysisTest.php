@@ -3,11 +3,14 @@
 declare(strict_types=1);
 
 use App\Services\Run\Ingest\StreamAnalysis;
+use Illuminate\Support\Arr;
 
-beforeEach(function (): void {
-    $this->analysis = new StreamAnalysis();
-});
+function streamAnalysis(): StreamAnalysis
+{
+    return new StreamAnalysis();
+}
 
+/** @return array<string, array{lo: int, hi: int}> */
 function defaultZones(): array
 {
     return [
@@ -19,7 +22,12 @@ function defaultZones(): array
     ];
 }
 
-/** @return list<array<string, float|int|null>> */
+/**
+ * @param list<int> $paces
+ * @param list<int|float|null> $hearts
+ * @param list<float> $elevationDifferences
+ * @return list<array<string, float|int|null>>
+ */
 function segmentDriftSplits(array $paces, array $hearts, array $elevationDifferences = []): array
 {
     $splits = [];
@@ -52,7 +60,7 @@ it('classifies seconds by HR zone and returns min + pct', function (): void {
         };
     }
 
-    $summary = $this->analysis->compute(
+    $summary = streamAnalysis()->compute(
         ['time' => ['data' => $time], 'heartrate' => ['data' => $hr]],
         defaultZones(),
         null,
@@ -90,23 +98,23 @@ it('has gapless HR zones in config so every boundary bpm lands in exactly one zo
 
 it('counts a boundary bpm second into a zone using the real config zones', function (): void {
     // 138 bpm is the Z1.hi / Z2.lo boundary. Under the gapless config it must
-    // land in Z2 and contribute its 60s; the old +1-gap config dropped it.
+    // land in Z2 and contribute its 60s.
     /** @var array<string, array{lo: int, hi: int}> $zones */
     $zones = config('runner.hr_zones');
 
-    $summary = $this->analysis->compute(
+    $summary = streamAnalysis()->compute(
         ['time' => ['data' => [0, 60, 120]], 'heartrate' => ['data' => [138, 138]]],
         $zones,
         null,
         170,
     );
 
-    expect($summary['time_in_zone_min']['Z2'])->toBe(2.0)
-        ->and($summary['time_in_zone_pct']['Z2'])->toBe(100.0);
+    expect(data_get($summary, 'time_in_zone_min.Z2'))->toBe(2.0)
+        ->and(data_get($summary, 'time_in_zone_pct.Z2'))->toBe(100.0);
 });
 
 it('returns no zone summary when streams are missing HR', function (): void {
-    $summary = $this->analysis->compute(
+    $summary = streamAnalysis()->compute(
         ['time' => ['data' => [0, 60, 120]]],
         defaultZones(),
         null,
@@ -135,7 +143,7 @@ function easyCapStreams(int $seconds, callable $heartRate, ?callable $velocity =
 }
 
 it('measures time over the easy cap against the top of zone 2, with a 5 bpm margin', function (int $bpm, int $expected): void {
-    expect($this->analysis->easyCapOverage(easyCapStreams(900, static fn (int $t): int => $bpm), defaultZones()))
+    expect(streamAnalysis()->easyCapOverage(easyCapStreams(900, static fn (int $t): int => $bpm), defaultZones()))
         ->toBe(['easy_cap_bpm' => 156, 'over_easy_cap_sec' => $expected]);
 })->with([
     'inside the margin' => [161, 0],
@@ -145,36 +153,36 @@ it('measures time over the easy cap against the top of zone 2, with a 5 bpm marg
 it('ignores the first five minutes of the recording', function (): void {
     $hotStart = easyCapStreams(900, static fn (int $t): int => $t < 270 ? 175 : 140);
 
-    expect($this->analysis->easyCapOverage($hotStart, defaultZones())['over_easy_cap_sec'])->toBe(0);
+    expect(data_get(streamAnalysis()->easyCapOverage($hotStart, defaultZones()), 'over_easy_cap_sec'))->toBe(0);
 });
 
 it('reads a 30-second rolling average, so a short spike does not count', function (): void {
     $spike = easyCapStreams(900, static fn (int $t): int => $t >= 400 && $t < 410 ? 180 : 150);
     $surge = easyCapStreams(900, static fn (int $t): int => $t >= 400 && $t < 460 ? 180 : 150);
 
-    expect($this->analysis->easyCapOverage($spike, defaultZones())['over_easy_cap_sec'])->toBe(0)
-        ->and($this->analysis->easyCapOverage($surge, defaultZones())['over_easy_cap_sec'])->toBeGreaterThan(50)->toBeLessThan(70);
+    expect(data_get(streamAnalysis()->easyCapOverage($spike, defaultZones()), 'over_easy_cap_sec'))->toBe(0)
+        ->and(data_get(streamAnalysis()->easyCapOverage($surge, defaultZones()), 'over_easy_cap_sec'))->toBeGreaterThan(50)->toBeLessThan(70);
 });
 
 it('counts only moving time over the cap, and skips implausible samples', function (): void {
     $stopped = easyCapStreams(900, static fn (int $t): int => $t >= 600 && $t < 700 ? 170 : 150, static fn (int $t): float => $t >= 600 && $t < 700 ? 0.0 : 3.0);
     $dropout = easyCapStreams(900, static fn (int $t): int => $t % 2 === 0 ? 0 : 150);
 
-    expect($this->analysis->easyCapOverage($stopped, defaultZones())['over_easy_cap_sec'])->toBeLessThan(30)
-        ->and($this->analysis->easyCapOverage($dropout, defaultZones())['over_easy_cap_sec'])->toBe(0);
+    expect(data_get(streamAnalysis()->easyCapOverage($stopped, defaultZones()), 'over_easy_cap_sec'))->toBeInt()->toBeLessThan(30)
+        ->and(data_get(streamAnalysis()->easyCapOverage($dropout, defaultZones()), 'over_easy_cap_sec'))->toBe(0);
 });
 
 it('reports no easy-cap figure without a heart-rate stream or a zone 3', function (): void {
     $noHeartRate = ['time' => ['data' => range(0, 899)]];
     $allDropout = easyCapStreams(900, static fn (int $t): int => 0);
 
-    expect($this->analysis->easyCapOverage($noHeartRate, defaultZones()))->toBe([])
-        ->and($this->analysis->easyCapOverage($allDropout, defaultZones()))->toBe([])
-        ->and($this->analysis->easyCapOverage(easyCapStreams(900, static fn (int $t): int => 170), ['Z1' => ['lo' => 100, 'hi' => 999]]))->toBe([]);
+    expect(streamAnalysis()->easyCapOverage($noHeartRate, defaultZones()))->toBe([])
+        ->and(streamAnalysis()->easyCapOverage($allDropout, defaultZones()))->toBe([])
+        ->and(streamAnalysis()->easyCapOverage(easyCapStreams(900, static fn (int $t): int => 170), ['Z1' => ['lo' => 100, 'hi' => 999]]))->toBe([]);
 });
 
 it('writes the easy-cap figure into the stream summary', function (): void {
-    $summary = $this->analysis->compute(easyCapStreams(900, static fn (int $t): int => 170), defaultZones(), null, 170);
+    $summary = streamAnalysis()->compute(easyCapStreams(900, static fn (int $t): int => 170), defaultZones(), null, 170);
 
     expect($summary)->toMatchArray(['easy_cap_bpm' => 156, 'over_easy_cap_sec' => 599]);
 });
@@ -182,13 +190,13 @@ it('writes the easy-cap figure into the stream summary', function (): void {
 it('measures v2 drift inside the steady segment and ignores a fast finish', function (): void {
     $steadyPaces = array_fill(0, 8, 420);
     $steadyHearts = [140, 140, 140, 140, 154, 154, 154, 154];
-    $steady = $this->analysis->compute(
+    $steady = streamAnalysis()->compute(
         [],
         defaultZones(),
         segmentDriftSplits($steadyPaces, $steadyHearts),
         170,
     );
-    $fastFinish = $this->analysis->compute(
+    $fastFinish = streamAnalysis()->compute(
         [],
         defaultZones(),
         segmentDriftSplits([...$steadyPaces, 360], [...$steadyHearts, 180]),
@@ -203,7 +211,7 @@ it('measures v2 drift inside the steady segment and ignores a fast finish', func
 });
 
 it('does not let a stride-like pace surge enter the selected steady segment', function (): void {
-    $summary = $this->analysis->compute(
+    $summary = streamAnalysis()->compute(
         [],
         defaultZones(),
         segmentDriftSplits(
@@ -218,7 +226,7 @@ it('does not let a stride-like pace surge enter the selected steady segment', fu
 });
 
 it('reads a pace fade at a held heart rate as positive v2 drift', function (): void {
-    $summary = $this->analysis->compute(
+    $summary = streamAnalysis()->compute(
         [],
         defaultZones(),
         segmentDriftSplits(
@@ -233,7 +241,7 @@ it('reads a pace fade at a held heart rate as positive v2 drift', function (): v
 });
 
 it('withholds v2 drift for interval splits without a comparable steady segment', function (): void {
-    $summary = $this->analysis->compute(
+    $summary = streamAnalysis()->compute(
         [],
         defaultZones(),
         segmentDriftSplits(
@@ -249,7 +257,7 @@ it('withholds v2 drift for interval splits without a comparable steady segment',
 });
 
 it('excludes the first ten percent of moving time from a long warm-up', function (): void {
-    $summary = $this->analysis->compute(
+    $summary = streamAnalysis()->compute(
         [],
         defaultZones(),
         segmentDriftSplits(
@@ -263,7 +271,7 @@ it('excludes the first ten percent of moving time from a long warm-up', function
 });
 
 it('withholds v2 drift when a short run has less than twenty steady minutes', function (): void {
-    $summary = $this->analysis->compute(
+    $summary = streamAnalysis()->compute(
         [],
         defaultZones(),
         segmentDriftSplits([360, 360, 360], [140, 145, 150]),
@@ -275,7 +283,7 @@ it('withholds v2 drift when a short run has less than twenty steady minutes', fu
 });
 
 it('withholds v2 drift when a steady segment has an HR gap', function (): void {
-    $summary = $this->analysis->compute(
+    $summary = streamAnalysis()->compute(
         [],
         defaultZones(),
         segmentDriftSplits(
@@ -290,7 +298,7 @@ it('withholds v2 drift when a steady segment has an HR gap', function (): void {
 });
 
 it('uses the longest segment with complete readings when a longer segment has an HR gap', function (): void {
-    $summary = $this->analysis->compute(
+    $summary = streamAnalysis()->compute(
         [],
         defaultZones(),
         segmentDriftSplits(
@@ -305,7 +313,7 @@ it('uses the longest segment with complete readings when a longer segment has an
 });
 
 it('uses grade-adjusted pace to keep an even downhill segment steady', function (): void {
-    $summary = $this->analysis->compute(
+    $summary = streamAnalysis()->compute(
         [],
         defaultZones(),
         segmentDriftSplits(
@@ -325,7 +333,7 @@ it('detects a stop when velocity drops below 0.5 m/s', function (): void {
     // 120s stopped between t=120 and t=240.
     $velocity = [2.5, 2.5, 0.0, 0.0, 2.5, 2.5];
 
-    $summary = $this->analysis->compute(
+    $summary = streamAnalysis()->compute(
         ['time' => ['data' => $time], 'velocity_smooth' => ['data' => $velocity]],
         defaultZones(),
         null,
@@ -340,7 +348,7 @@ it('detects a stop when velocity drops below 0.5 m/s', function (): void {
 
 // The published figure is grade-adjusted by contract, so the gradient is one of
 // the streams the reading is made of rather than an optional refinement. Where
-// it is missing the run used to be scored as though the ground were flat — the
+// it is missing the run must not be scored as though the ground were flat — the
 // exact reading the grade correction exists to refuse. The positive case with a
 // gradient present is asserted further down ("still reports drift on a flat run").
 it('publishes no decoupling when the run carries no gradient stream to correct pace with', function (): void {
@@ -353,7 +361,7 @@ it('publishes no decoupling when the run carries no gradient stream to correct p
         $velocity[] = 2.5;
     }
 
-    $summary = $this->analysis->compute(
+    $summary = streamAnalysis()->compute(
         [
             'time' => ['data' => $time],
             'heartrate' => ['data' => $hr],
@@ -383,7 +391,7 @@ it('does not read a heart-rate dropout in the first half as cardiac drift', func
         $grade[] = 0.0;
     }
 
-    $summary = $this->analysis->compute(
+    $summary = streamAnalysis()->compute(
         [
             'time' => ['data' => $time],
             'heartrate' => ['data' => $hr],
@@ -414,7 +422,7 @@ it('weighs a half by the seconds each sample is worth, not by sample count', fun
         $grade[] = 0.0;
     }
 
-    $summary = $this->analysis->compute(
+    $summary = streamAnalysis()->compute(
         [
             'time' => ['data' => $time],
             'heartrate' => ['data' => $hr],
@@ -445,7 +453,7 @@ it('splits the halves at the time midpoint, not the middle sample', function ():
         $grade[] = 0.0;
     }
 
-    $summary = $this->analysis->compute(
+    $summary = streamAnalysis()->compute(
         [
             'time' => ['data' => $time],
             'heartrate' => ['data' => $hr],
@@ -475,7 +483,7 @@ it('withholds a decoupling reading no athlete could have produced', function ():
         $grade[] = 0.0;
     }
 
-    $summary = $this->analysis->compute(
+    $summary = streamAnalysis()->compute(
         [
             'time' => ['data' => $time],
             'heartrate' => ['data' => $hr],
@@ -505,7 +513,7 @@ it('stops reading where the gradient stream stops, rather than calling the rest 
     }
     $grade = array_fill(0, 90, 0.0);
 
-    $summary = $this->analysis->compute(
+    $summary = streamAnalysis()->compute(
         [
             'time' => ['data' => $time],
             'heartrate' => ['data' => $hr],
@@ -532,7 +540,7 @@ it('omits decoupling on a run too short to sustain the measurement', function ()
         $velocity[] = 2.5;
     }
 
-    $summary = $this->analysis->compute(
+    $summary = streamAnalysis()->compute(
         [
             'time' => ['data' => $time],
             'heartrate' => ['data' => $hr],
@@ -558,7 +566,7 @@ it('counts only moving time toward the sustained-effort floor', function (): voi
         $velocity[] = $t < 600 ? 2.5 : 0.0;
     }
 
-    $summary = $this->analysis->compute(
+    $summary = streamAnalysis()->compute(
         [
             'time' => ['data' => $time],
             'heartrate' => ['data' => $hr],
@@ -581,19 +589,20 @@ it('finds the best 5-min pace as fastest sustained window', function (): void {
         $velocity[] = ($t >= 600 && $t <= 960) ? 3.5 : 2.5;
     }
 
-    $pace = $this->analysis->bestEffortPace($time, $velocity, 300);
+    $pace = streamAnalysis()->bestEffortPace($time, $velocity, 300);
 
     expect($pace)->toBeString()->toBe('4:46');
 });
 
 it('returns null best-effort pace when the run is too short', function (): void {
-    expect($this->analysis->bestEffortPace([0, 30, 60], [2.5, 2.5, 2.5], 300))->toBeNull();
+    expect(streamAnalysis()->bestEffortPace([0, 30, 60], [2.5, 2.5, 2.5], 300))->toBeNull();
 });
 
 it('keeps best-effort pace at the true 5:33 rate without window inflation', function (array $time): void {
+    /** @var list<int> $time */
     $velocity = array_fill(0, count($time), 3.0);
 
-    expect($this->analysis->bestEffortPace($time, $velocity, 300))->toBe('5:33');
+    expect(streamAnalysis()->bestEffortPace($time, $velocity, 300))->toBe('5:33');
 })->with([
     'a steady run' => [range(0, 1200, 60)],
     'sparse 120s sampling' => [range(0, 1200, 120)],
@@ -610,7 +619,7 @@ it('emits the best_30min_pace window from compute()', function (): void {
         $velocity[] = 3.0;
     }
 
-    $summary = $this->analysis->compute(
+    $summary = streamAnalysis()->compute(
         ['time' => ['data' => $time], 'velocity_smooth' => ['data' => $velocity]],
         defaultZones(),
         null,
@@ -635,10 +644,10 @@ it('computes per-km splits + negative_split + hr drift + cadence drop from split
         ['split' => 8, 'distance' => 1000, 'elapsed_time' => 385, 'moving_time' => 385, 'average_speed' => 2.60, 'average_heartrate' => 158, 'average_cadence' => 80],
     ];
 
-    $summary = $this->analysis->compute([], defaultZones(), $splits, 170);
+    $summary = streamAnalysis()->compute([], defaultZones(), $splits, 170);
 
     expect($summary['per_km'])->toHaveCount(8)
-        ->and($summary['per_km'][0])->toMatchArray(['km' => 1, 'pace' => '7:00', 'avg_hr' => 140])
+        ->and(arrayOf($summary['per_km'])[0])->toMatchArray(['km' => 1, 'pace' => '7:00', 'avg_hr' => 140])
         ->and($summary)->not->toHaveKey('partial_split')
         ->and($summary['negative_split'])->toBeTrue()
         ->and($summary['hr_drift_bpm'])->toBeFloat()->toEqualWithDelta(18.0, 0.01)
@@ -654,9 +663,8 @@ it('measures pace variability as the spread of kilometre splits, not of the velo
         ['split' => 5, 'distance' => 1000, 'moving_time' => 458, 'average_speed' => 2.18],
     ];
 
-    // Splits spanning 26 seconds: a steady run. The old per-second definition
-    // scored this kind of run near 95, far past every "uneven" threshold.
-    $summary = $this->analysis->compute([], defaultZones(), $splits, 170);
+    // Splits spanning 26 seconds: a steady run, nowhere near an "uneven" threshold.
+    $summary = streamAnalysis()->compute([], defaultZones(), $splits, 170);
 
     expect($summary['pace_variability_sec'])->toBeFloat()->toBeLessThan(15.0);
 });
@@ -664,7 +672,7 @@ it('measures pace variability as the spread of kilometre splits, not of the velo
 it('omits pace variability below two full kilometres', function (): void {
     $splits = [['split' => 1, 'distance' => 1000, 'moving_time' => 420, 'average_speed' => 2.38]];
 
-    expect($this->analysis->compute([], defaultZones(), $splits, 170))
+    expect(streamAnalysis()->compute([], defaultZones(), $splits, 170))
         ->not->toHaveKey('pace_variability_sec');
 });
 
@@ -678,7 +686,7 @@ it('omits hr drift on a run too short for drift to mean anything', function (): 
         ['split' => 4, 'distance' => 1000, 'moving_time' => 390, 'average_speed' => 2.56, 'average_heartrate' => 155],
     ];
 
-    expect($this->analysis->compute([], defaultZones(), $splits, 170))
+    expect(streamAnalysis()->compute([], defaultZones(), $splits, 170))
         ->not->toHaveKey('hr_drift_bpm');
 });
 
@@ -691,7 +699,7 @@ it('requires a deliberate surge before calling a run a negative split', function
         ['split' => 4, 'distance' => 1000, 'moving_time' => 390, 'average_speed' => 2.56],
     ];
 
-    expect($this->analysis->compute([], defaultZones(), $splits, 170)['negative_split'])->toBeFalse();
+    expect(streamAnalysis()->compute([], defaultZones(), $splits, 170)['negative_split'])->toBeFalse();
 });
 
 it('emits the trailing sub-km segment as partial_split without touching per_km or aggregates', function (): void {
@@ -707,7 +715,7 @@ it('emits the trailing sub-km segment as partial_split without touching per_km o
         ['split' => 9, 'distance' => 700, 'elapsed_time' => 252, 'moving_time' => 252, 'average_speed' => 2.78, 'average_heartrate' => 158, 'average_cadence' => 80],
     ];
 
-    $summary = $this->analysis->compute([], defaultZones(), $splits, 170);
+    $summary = streamAnalysis()->compute([], defaultZones(), $splits, 170);
 
     // per_km stays full-km only; the partial rides on its own key.
     expect($summary['per_km'])->toHaveCount(8)
@@ -728,7 +736,7 @@ it('drops a sub-100m trailing sliver rather than emitting a partial_split', func
         ['split' => 3, 'distance' => 40, 'elapsed_time' => 14, 'moving_time' => 14, 'average_speed' => 2.78],
     ];
 
-    $summary = $this->analysis->compute([], defaultZones(), $splits, 170);
+    $summary = streamAnalysis()->compute([], defaultZones(), $splits, 170);
 
     expect($summary['per_km'])->toHaveCount(2)
         ->and($summary)->not->toHaveKey('partial_split');
@@ -739,7 +747,7 @@ it('classifies cadence into <165, 165-175, >175 buckets and optimal pct', functi
     // Cadence stream is RPM per foot; ×2 → SPM 160/160/170/170/180/180/178.
     $cadence = [80, 80, 85, 85, 90, 90, 89];
 
-    $summary = $this->analysis->compute(
+    $summary = streamAnalysis()->compute(
         ['time' => ['data' => $time], 'cadence' => ['data' => $cadence]],
         defaultZones(),
         null,
@@ -756,7 +764,7 @@ it('classifies cadence into <165, 165-175, >175 buckets and optimal pct', functi
 });
 
 it('returns null best-effort pace when velocity array is shorter than time', function (): void {
-    expect($this->analysis->bestEffortPace([0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300], [2.5, 2.5], 300))
+    expect(streamAnalysis()->bestEffortPace([0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300], [2.5, 2.5], 300))
         ->toBeNull();
 });
 
@@ -764,13 +772,13 @@ it('returns null best-effort pace when velocity is all zero (no distance covered
     $time = range(0, 600, 30);
     $velocity = array_fill(0, count($time), 0.0);
 
-    expect($this->analysis->bestEffortPace($time, $velocity, 300))->toBeNull();
+    expect(streamAnalysis()->bestEffortPace($time, $velocity, 300))->toBeNull();
 });
 
 it('skips zone summary when no second matches any zone band', function (): void {
     $time = [0, 60, 120, 180];
     $hr = [80, 80, 80, 80];
-    $summary = $this->analysis->compute(
+    $summary = streamAnalysis()->compute(
         ['time' => ['data' => $time], 'heartrate' => ['data' => $hr]],
         defaultZones(),
         null,
@@ -785,7 +793,7 @@ it('omits decoupling when every sample is stopped (no moving seconds)', function
     $hr = array_fill(0, count($time), 150);
     $velocity = array_fill(0, count($time), 0.0);
 
-    $summary = $this->analysis->compute(
+    $summary = streamAnalysis()->compute(
         [
             'time' => ['data' => $time],
             'heartrate' => ['data' => $hr],
@@ -804,7 +812,7 @@ it('omits decoupling when only one half has moving samples', function (): void {
     $hr = array_fill(0, count($time), 150);
     $velocity = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 2.5, 2.5, 2.5, 2.5, 2.5];
 
-    $summary = $this->analysis->compute(
+    $summary = streamAnalysis()->compute(
         [
             'time' => ['data' => $time],
             'heartrate' => ['data' => $hr],
@@ -822,7 +830,7 @@ it('omits cadence summary when all dt are zero (degenerate time array)', functio
     $time = [0, 0, 0, 0];
     $cadence = [85, 85, 85, 85];
 
-    $summary = $this->analysis->compute(
+    $summary = streamAnalysis()->compute(
         ['time' => ['data' => $time], 'cadence' => ['data' => $cadence]],
         defaultZones(),
         null,
@@ -837,7 +845,7 @@ it('omits cadence summary when all dt are zero (degenerate time array)', functio
 // number disagreed with it by more than 5 m on 40% of real runs.
 it('integrates altitude into descent meters without recomputing ascent', function (): void {
     $altitude = [100, 105, 110, 108, 115, 113];
-    $summary = $this->analysis->compute(
+    $summary = streamAnalysis()->compute(
         ['altitude' => ['data' => $altitude]],
         defaultZones(),
         null,
@@ -888,22 +896,22 @@ function buildCadenceTestRun(): array
 it('populates per-km avg_cadence_spm from the cadence stream + distance stream', function (): void {
     [$streams, $splits] = buildCadenceTestRun();
 
-    $summary = $this->analysis->compute($streams, defaultZones(), $splits, 170);
+    $summary = streamAnalysis()->compute($streams, defaultZones(), $splits, 170);
 
     expect($summary['per_km'])->toHaveCount(3);
-    expect($summary['per_km'][0]['avg_cadence_spm'])->toBe(170)
-        ->and($summary['per_km'][1]['avg_cadence_spm'])->toBe(176)
-        ->and($summary['per_km'][2]['avg_cadence_spm'])->toBe(160);
+    expect(data_get($summary, 'per_km.0.avg_cadence_spm'))->toBe(170)
+        ->and(data_get($summary, 'per_km.1.avg_cadence_spm'))->toBe(176)
+        ->and(data_get($summary, 'per_km.2.avg_cadence_spm'))->toBe(160);
 });
 
 it('skips per-km cadence when the distance stream is empty', function (): void {
     [$streams, $splits] = buildCadenceTestRun();
     unset($streams['distance']);
 
-    $summary = $this->analysis->compute($streams, defaultZones(), $splits, 170);
+    $summary = streamAnalysis()->compute($streams, defaultZones(), $splits, 170);
 
     expect($summary['per_km'])->toHaveCount(3);
-    expect($summary['per_km'][0])->not->toHaveKey('avg_cadence_spm');
+    expect(arrayOf($summary['per_km'])[0])->not->toHaveKey('avg_cadence_spm');
 });
 
 it('omits avg_cadence_spm for km buckets with no cadence samples', function (): void {
@@ -911,11 +919,11 @@ it('omits avg_cadence_spm for km buckets with no cadence samples', function (): 
     // Cut the last third → km 3 bucket stays empty.
     $streams['cadence']['data'] = array_slice($streams['cadence']['data'], 0, 720);
 
-    $summary = $this->analysis->compute($streams, defaultZones(), $splits, 170);
+    $summary = streamAnalysis()->compute($streams, defaultZones(), $splits, 170);
 
-    expect($summary['per_km'][0])->toHaveKey('avg_cadence_spm')
-        ->and($summary['per_km'][1])->toHaveKey('avg_cadence_spm')
-        ->and($summary['per_km'][2])->not->toHaveKey('avg_cadence_spm');
+    expect(arrayOf($summary['per_km'])[0])->toHaveKey('avg_cadence_spm')
+        ->and(arrayOf($summary['per_km'])[1])->toHaveKey('avg_cadence_spm')
+        ->and(arrayOf($summary['per_km'])[2])->not->toHaveKey('avg_cadence_spm');
 });
 
 it('skips per-km cadence when time stream has only one sample', function (): void {
@@ -924,9 +932,9 @@ it('skips per-km cadence when time stream has only one sample', function (): voi
     $streams['distance']['data'] = [0.0];
     $streams['cadence']['data'] = [85];
 
-    $summary = $this->analysis->compute($streams, defaultZones(), $splits, 170);
+    $summary = streamAnalysis()->compute($streams, defaultZones(), $splits, 170);
 
-    expect($summary['per_km'][0])->not->toHaveKey('avg_cadence_spm');
+    expect(arrayOf($summary['per_km'])[0])->not->toHaveKey('avg_cadence_spm');
 });
 
 it('ignores cadence samples where dt <= 0 (degenerate time array)', function (): void {
@@ -935,10 +943,10 @@ it('ignores cadence samples where dt <= 0 (degenerate time array)', function ():
     $streams['distance']['data'] = array_slice($streams['distance']['data'], 0, 720);
     $streams['cadence']['data'] = array_slice($streams['cadence']['data'], 0, 720);
 
-    $summary = $this->analysis->compute($streams, defaultZones(), $splits, 170);
+    $summary = streamAnalysis()->compute($streams, defaultZones(), $splits, 170);
 
-    expect($summary['per_km'][0])->not->toHaveKey('avg_cadence_spm')
-        ->and($summary['per_km'][1])->not->toHaveKey('avg_cadence_spm');
+    expect(arrayOf($summary['per_km'])[0])->not->toHaveKey('avg_cadence_spm')
+        ->and(arrayOf($summary['per_km'])[1])->not->toHaveKey('avg_cadence_spm');
 });
 
 it('preserves a pre-existing avg_cadence_spm from splits_metric', function (): void {
@@ -946,10 +954,10 @@ it('preserves a pre-existing avg_cadence_spm from splits_metric', function (): v
     [$streams, $splits] = buildCadenceTestRun();
     $splits[0]['average_cadence'] = 100;
 
-    $summary = $this->analysis->compute($streams, defaultZones(), $splits, 170);
+    $summary = streamAnalysis()->compute($streams, defaultZones(), $splits, 170);
 
-    expect($summary['per_km'][0]['avg_cadence_spm'])->toBe(200)
-        ->and($summary['per_km'][1]['avg_cadence_spm'])->toBe(176);
+    expect(data_get($summary, 'per_km.0.avg_cadence_spm'))->toBe(200)
+        ->and(data_get($summary, 'per_km.1.avg_cadence_spm'))->toBe(176);
 });
 
 function paceToSec(string $pace): int
@@ -970,7 +978,7 @@ it('derives max sustained grade over a rolling window and rejects spikes', funct
     }
     $grade[90] = 30.0; // spike
 
-    $summary = $this->analysis->compute([
+    $summary = streamAnalysis()->compute([
         'time' => ['data' => $time],
         'velocity_smooth' => ['data' => $velocity],
         'grade_smooth' => ['data' => $grade],
@@ -985,14 +993,14 @@ it('grade-adjusts pace faster than raw on a sustained climb', function (): void 
     $velocity = array_fill(0, 61, 2.5); // raw pace 1000/2.5 = 400s = 6:40 /km
     $grade = array_fill(0, 61, 10.0);
 
-    $summary = $this->analysis->compute([
+    $summary = streamAnalysis()->compute([
         'time' => ['data' => $time],
         'velocity_smooth' => ['data' => $velocity],
         'grade_smooth' => ['data' => $grade],
     ], defaultZones(), null, 170);
 
     // Uphill effort is worth a faster flat pace, so GAP < raw 400s.
-    expect(paceToSec($summary['gap_pace']))->toBeLessThan(400)->toBeGreaterThan(180);
+    expect(paceToSec(Arr::string($summary, 'gap_pace')))->toBeLessThan(400)->toBeGreaterThan(180);
 });
 
 it('leaves GAP equal to raw pace and grade zero on flat ground', function (): void {
@@ -1000,7 +1008,7 @@ it('leaves GAP equal to raw pace and grade zero on flat ground', function (): vo
     $velocity = array_fill(0, 61, 2.5);
     $grade = array_fill(0, 61, 0.0);
 
-    $summary = $this->analysis->compute([
+    $summary = streamAnalysis()->compute([
         'time' => ['data' => $time],
         'velocity_smooth' => ['data' => $velocity],
         'grade_smooth' => ['data' => $grade],
@@ -1012,7 +1020,7 @@ it('leaves GAP equal to raw pace and grade zero on flat ground', function (): vo
 });
 
 it('omits grade metrics when there is no grade stream', function (): void {
-    $summary = $this->analysis->compute([
+    $summary = streamAnalysis()->compute([
         'time' => ['data' => range(0, 60)],
         'velocity_smooth' => ['data' => array_fill(0, 61, 2.5)],
     ], defaultZones(), null, 170);
@@ -1035,7 +1043,7 @@ it('judges sustained effort over the samples decoupling can actually analyse', f
     // Velocity cuts out after ten minutes.
     $velocity = array_fill(0, 21, 2.5);
 
-    $summary = $this->analysis->compute(
+    $summary = streamAnalysis()->compute(
         [
             'time' => ['data' => $time],
             'heartrate' => ['data' => $hr],
@@ -1062,13 +1070,13 @@ it('merges the laps-derived per_km rows in place of the splits_metric ones', fun
         ['split' => 3, 'distance' => 400, 'elapsed_time' => 170, 'moving_time' => 144, 'average_speed' => 2.78],
     ];
 
-    $summary = $this->analysis->compute([], defaultZones(), $splits, 170, 2400.0, $laps);
+    $summary = streamAnalysis()->compute([], defaultZones(), $splits, 170, 2400.0, $laps);
 
     expect($summary['per_km'])->toBe([
         ['km' => 1, 'pace' => '7:00', 'elapsed_sec' => 420, 'distance_m' => 1000, 'avg_hr' => 150],
         ['km' => 2, 'pace' => '7:10', 'elapsed_sec' => 430, 'distance_m' => 1000, 'avg_hr' => 155],
     ])
-        // partial_split keeps its own splits_metric basis, untouched by this slice.
+        // partial_split keeps its own splits_metric basis.
         ->and($summary['partial_split'])->toMatchArray(['distance_m' => 400]);
 });
 
@@ -1078,7 +1086,7 @@ it('emits the raw lap rows alongside per_km', function (): void {
         ['distance' => 647.0, 'elapsed_time' => 250],
     ];
 
-    $summary = $this->analysis->compute([], defaultZones(), null, 170, 1647.0, $laps);
+    $summary = streamAnalysis()->compute([], defaultZones(), null, 170, 1647.0, $laps);
 
     expect($summary['laps'])->toBe([
         ['lap' => 1, 'distance_m' => 1000, 'elapsed_sec' => 420, 'pace' => '7:00'],
@@ -1087,7 +1095,7 @@ it('emits the raw lap rows alongside per_km', function (): void {
 });
 
 it('omits the laps key when the activity has none', function (): void {
-    expect($this->analysis->compute([], defaultZones(), null, 170))->not->toHaveKey('laps');
+    expect(streamAnalysis()->compute([], defaultZones(), null, 170))->not->toHaveKey('laps');
 });
 
 it('still decorates lap-derived per_km rows with cadence from the stream', function (): void {
@@ -1098,9 +1106,9 @@ it('still decorates lap-derived per_km rows with cadence from the stream', funct
         ['distance' => 1000.0, 'elapsed_time' => 360],
     ];
 
-    $summary = $this->analysis->compute($streams, defaultZones(), null, 170, 3000.0, $laps);
+    $summary = streamAnalysis()->compute($streams, defaultZones(), null, 170, 3000.0, $laps);
 
-    expect(array_column($summary['per_km'], 'avg_cadence_spm'))->toBe([170, 176, 160]);
+    expect(array_column(arrayOf($summary['per_km']), 'avg_cadence_spm'))->toBe([170, 176, 160]);
 });
 
 it('does not read a downhill finish as cardiac drift', function (): void {
@@ -1121,7 +1129,7 @@ it('does not read a downhill finish as cardiac drift', function (): void {
         $grade[] = $descending ? -5.0 : 0.0;
     }
 
-    $summary = $this->analysis->compute(
+    $summary = streamAnalysis()->compute(
         [
             'time' => ['data' => $time],
             'heartrate' => ['data' => $hr],
@@ -1148,7 +1156,7 @@ it('still reports drift on a flat run, so the grade adjustment is not swallowing
         $grade[] = 0.0;
     }
 
-    $summary = $this->analysis->compute(
+    $summary = streamAnalysis()->compute(
         [
             'time' => ['data' => $time],
             'heartrate' => ['data' => $hr],
@@ -1177,7 +1185,7 @@ it('publishes no heart-rate-against-pace reading at all on genuinely steep terra
         $grade[] = 20.0;
     }
 
-    $summary = $this->analysis->compute(
+    $summary = streamAnalysis()->compute(
         [
             'time' => ['data' => $time],
             'heartrate' => ['data' => $hr],

@@ -74,28 +74,30 @@ it('fails on an empty manifest instead of passing nothing', function (): void {
 })->group('structure');
 
 it('writes each nightly manifest before its dump and never lets a manifest failure stop the dump', function (): void {
-    $steps = collect(Yaml::parseFile(base_path('.github/workflows/nightly-backup.yml'))['jobs']['nightly-backup']['steps']);
+    $steps = collect(arrayOf(data_get(Yaml::parseFile(base_path('.github/workflows/nightly-backup.yml')), 'jobs.nightly-backup.steps')));
 
     foreach (['Backup DB' => 'nightly-', 'Backup analytics schema' => 'analytics-nightly-'] as $name => $prefix) {
-        $run = $steps->firstWhere('name', $name)['run'];
+        $step = data_get($steps->firstWhere('name', $name), 'run');
+        $run = is_string($step) ? $step : throw new InvalidArgumentException("Step '{$name}' run block is not a string.");
+        $dumpAt = strpos($run, 'mysqldump');
 
         expect($run)->toContain("{$prefix}\$NIGHTLY_TIMESTAMP.manifest")
             ->toContain('scripts/deploy/count-rows-query.sh')
             ->toContain('::warning::')
-            ->and(strpos((string) $run, '.manifest'))->toBeLessThan(strpos((string) $run, 'mysqldump'));
+            ->and(strpos($run, '.manifest'))->toBeLessThan(is_int($dumpAt) ? $dumpAt : throw new InvalidArgumentException("Step '{$name}' has no mysqldump."));
     }
 })->group('structure');
 
 it('verifies a nightly restore against its manifest, not live', function (): void {
-    $verify = collect(Yaml::parseFile(base_path('.github/workflows/restore-dry-run.yml'))['jobs']['restore-dry-run']['steps'])
+    $verify = collect(arrayOf(data_get(Yaml::parseFile(base_path('.github/workflows/restore-dry-run.yml')), 'jobs.restore-dry-run.steps')))
         ->firstWhere('id', 'verify');
 
-    expect($verify['env'])->toBe([
+    expect(data_get($verify, 'env'))->toBe([
         'KIND' => "\${{ inputs.kind || 'nightly' }}",
         'APP_MANIFEST' => '${{ steps.pick.outputs.app_manifest }}',
         'ANALYTICS_MANIFEST' => '${{ steps.pick.outputs.analytics_manifest }}',
     ])
-        ->and($verify['run'])->toContain('scripts/deploy/check-restore-manifest.sh "$schema" "$manifest" "$restored"')
+        ->and(data_get($verify, 'run'))->toContain('scripts/deploy/check-restore-manifest.sh "$schema" "$manifest" "$restored"')
         ->toContain('check_manifest sql "default" "$APP_MANIFEST"')
         ->toContain('check_manifest sql_analytics "analytics" "$ANALYTICS_MANIFEST"');
 })->group('structure');

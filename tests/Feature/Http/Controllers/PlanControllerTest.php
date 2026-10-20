@@ -30,6 +30,7 @@ use App\Services\Run\Plan\Periodizer;
 use App\Services\Run\Plan\PlanAdapter;
 use App\Services\Run\Plan\PlanPageAssembler;
 use App\Services\Run\Plan\SessionMatcher;
+use App\Support\Numeric;
 use App\Support\TrainingDisclaimer;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -39,6 +40,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Sleep;
 use Inertia\Testing\AssertableInertia as Assert;
+use Mockery\MockInterface;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 
 uses(RefreshDatabase::class);
@@ -137,10 +139,23 @@ it('updating a session automatically pins it, so the next regeneration leaves it
         ->patch("/plan/sessions/{$session->id}", ['skipped' => true])
         ->assertRedirect();
 
-    $fresh = $session->fresh();
+    $fresh = $session->refresh();
     expect($fresh->skipped)->toBeTrue()
         ->and($fresh->pinned)->toBeTrue()
         ->and($fresh->session_type->value)->toBe('tempo');
+});
+
+it('answers an edit to another athlete\'s session with 404, leaving it untouched', function (): void {
+    $session = PlannedSession::factory()->create([
+        'date' => Carbon::today()->addDay()->toDateString(),
+        'skipped' => false,
+    ]);
+
+    $this->actingAs(User::factory()->create())
+        ->patch("/plan/sessions/{$session->id}", ['skipped' => true])
+        ->assertNotFound();
+
+    expect($session->refresh()->skipped)->toBeFalse();
 });
 
 it('allows an explicit unpin alongside an edit', function (): void {
@@ -152,7 +167,7 @@ it('allows an explicit unpin alongside an edit', function (): void {
     $this->actingAs($user)
         ->patch("/plan/sessions/{$session->id}", ['pinned' => false]);
 
-    expect($session->fresh()->pinned)->toBeFalse();
+    expect($session->refresh()->pinned)->toBeFalse();
 });
 
 it('restores a skipped future session to scoring and regeneration', function (): void {
@@ -171,7 +186,7 @@ it('restores a skipped future session to scoring and regeneration', function ():
         ->patch("/plan/sessions/{$session->id}", ['skipped' => false, 'pinned' => false])
         ->assertRedirect();
 
-    $restored = $session->fresh();
+    $restored = $session->refresh();
     expect($restored->skipped)->toBeFalse()
         ->and($restored->pinned)->toBeFalse()
         ->and($restored->isExcused())->toBeFalse();
@@ -199,7 +214,7 @@ it('cuts block and delete, per decision P23', function (): void {
     // session_type is no longer a validated field, so a block attempt is a no-op.
     $this->actingAs($user)->patch("/plan/sessions/{$session->id}", ['session_type' => 'rest']);
 
-    expect($session->fresh()->session_type->value)->toBe('tempo')
+    expect($session->refresh()->session_type->value)->toBe('tempo')
         ->and(PlannedSession::query()->find($session->id))->not->toBeNull();
 });
 
@@ -221,12 +236,12 @@ it('moves a session by swapping it with whatever already sits on the target day'
         ->assertRedirect();
 
     // Each row keeps its own calendar slot; what they prescribe is what moves.
-    expect($from->fresh()->date->toDateString())->toBe(Carbon::today()->addDay()->toDateString())
-        ->and($from->fresh()->session_type->value)->toBe('rest')
-        ->and($to->fresh()->date->toDateString())->toBe(Carbon::today()->addDays(2)->toDateString())
-        ->and($to->fresh()->session_type->value)->toBe('tempo')
-        ->and($from->fresh()->pinned)->toBeTrue()
-        ->and($to->fresh()->pinned)->toBeTrue();
+    expect($from->refresh()->date->toDateString())->toBe(Carbon::today()->addDay()->toDateString())
+        ->and($from->refresh()->session_type->value)->toBe('rest')
+        ->and($to->refresh()->date->toDateString())->toBe(Carbon::today()->addDays(2)->toDateString())
+        ->and($to->refresh()->session_type->value)->toBe('tempo')
+        ->and($from->refresh()->pinned)->toBeTrue()
+        ->and($to->refresh()->pinned)->toBeTrue();
 });
 
 it('moves a generated quality prescription with its whole workout', function (): void {
@@ -243,7 +258,7 @@ it('moves a generated quality prescription with its whole workout', function ():
     app(Periodizer::class)->regenerate($user);
 
     $movable = collect(app(PlanPageAssembler::class)->weeks($user, Carbon::today()))
-        ->flatMap(fn (array $week): array => $week['days'])
+        ->flatMap(fn (array $week): array => arrayOf($week['days']))
         ->first(fn (array $day): bool => in_array($day['session_type'], ['tempo', 'interval'], true) && $day['move_targets'] !== []);
     $quality = PlannedSession::query()
         ->whereKey($movable['id'])
@@ -261,10 +276,10 @@ it('moves a generated quality prescription with its whole workout', function ():
         ->patch("/plan/sessions/{$quality->id}", ['date' => $rest->date->toDateString()])
         ->assertRedirect();
 
-    expect($quality->fresh()->only(PlannedSession::WORKOUT_TRANSFER_FIELDS))->toBe($restWorkout)
-        ->and($rest->fresh()->only(PlannedSession::WORKOUT_TRANSFER_FIELDS))->toBe($qualityWorkout)
-        ->and($quality->fresh()->pinned)->toBeTrue()
-        ->and($rest->fresh()->pinned)->toBeTrue();
+    expect($quality->refresh()->only(PlannedSession::WORKOUT_TRANSFER_FIELDS))->toBe($restWorkout)
+        ->and($rest->refresh()->only(PlannedSession::WORKOUT_TRANSFER_FIELDS))->toBe($qualityWorkout)
+        ->and($quality->refresh()->pinned)->toBeTrue()
+        ->and($rest->refresh()->pinned)->toBeTrue();
 });
 
 it('moves race distance with the race workout without changing the goal date', function (): void {
@@ -287,10 +302,10 @@ it('moves race distance with the race workout without changing the goal date', f
         ->patch("/plan/sessions/{$race->id}", ['date' => $rest->date->toDateString()])
         ->assertRedirect();
 
-    expect($race->fresh()->race_distance_m)->toBeNull()
-        ->and($rest->fresh()->session_type)->toBe(SessionType::Race)
-        ->and($rest->fresh()->race_distance_m)->toBe(10_000)
-        ->and($goal->fresh()->race_date->toDateString())->toBe($raceDate->toDateString());
+    expect($race->refresh()->race_distance_m)->toBeNull()
+        ->and($rest->refresh()->session_type)->toBe(SessionType::Race)
+        ->and($rest->refresh()->race_distance_m)->toBe(10_000)
+        ->and($goal->refresh()->race_date->toDateString())->toBe($raceDate->toDateString());
 });
 
 it('rolls back both rows when a session swap fails after its first write', function (): void {
@@ -306,8 +321,8 @@ it('rolls back both rows when a session swap fails after its first write', funct
     $rest = PlannedSession::factory()->for($user)->rest()->create([
         'date' => Carbon::today()->addDays(2)->toDateString(),
     ]);
-    $qualityBefore = $quality->fresh()->getAttributes();
-    $restBefore = $rest->fresh()->getAttributes();
+    $qualityBefore = $quality->refresh()->getAttributes();
+    $restBefore = $rest->refresh()->getAttributes();
     $failed = false;
     DB::listen(function (QueryExecuted $query) use (&$failed): void {
         if (! $failed && str_starts_with(strtolower($query->sql), 'update `planned_sessions`')) {
@@ -320,8 +335,8 @@ it('rolls back both rows when a session swap fails after its first write', funct
     expect(fn () => $this->actingAs($user)->patch("/plan/sessions/{$quality->id}", ['date' => $rest->date->toDateString()]))
         ->toThrow(RuntimeException::class, 'planned session swap failed');
 
-    expect($quality->fresh()->getAttributes())->toBe($qualityBefore)
-        ->and($rest->fresh()->getAttributes())->toBe($restBefore);
+    expect($quality->refresh()->getAttributes())->toBe($qualityBefore)
+        ->and($rest->refresh()->getAttributes())->toBe($restBefore);
 });
 
 it('rejects a session edit when regeneration replaced its bound row', function (): void {
@@ -335,6 +350,7 @@ it('rejects a session edit when regeneration replaced its bound row', function (
 
     app(Periodizer::class)->regenerate($user);
 
+    /** @var UpdatePlannedSessionRequest&MockInterface $request */
     $request = Mockery::mock(UpdatePlannedSessionRequest::class)->makePartial();
     $request->shouldReceive('validated')->once()->andReturn([
         'date' => Carbon::today()->addDays(2)->toDateString(),
@@ -377,8 +393,8 @@ it('does not report a session edit as saved while regeneration holds the per-use
         ->assertSessionHas('info');
 
     $lock->release();
-    expect($source->fresh()->session_type)->toBe(SessionType::Tempo)
-        ->and($destination->fresh()->session_type)->toBe(SessionType::Rest);
+    expect($source->refresh()->session_type)->toBe(SessionType::Tempo)
+        ->and($destination->refresh()->session_type)->toBe(SessionType::Rest);
 });
 
 it('queues a manual regeneration when the per-user lock stays busy', function (): void {
@@ -431,19 +447,20 @@ it('returns every run of a two-session day, each with its own distance and time'
         ->get('/plan', inertiaPartialHeaders($this->actingAs($user), '/plan', 'Plan', 'weeks'))
         ->assertSuccessful();
 
-    $today = collect($response->json('props.weeks'))
-        ->flatMap(fn (array $week): array => $week['days'])
-        ->firstWhere('date', Carbon::today()->toDateString());
+    $today = arrayOf(collect(arrayOf($response->json('props.weeks')))
+        ->flatMap(fn (mixed $week): array => arrayOf(arrayOf($week)['days']))
+        ->firstWhere('date', Carbon::today()->toDateString()));
+    $activities = arrayOf($today['activities']);
 
-    expect((float) $today['actual_km'])->toBe(12.0)
-        ->and($today['activities'])->toHaveCount(2)
+    expect(Numeric::float($today['actual_km']))->toBe(12.0)
+        ->and($activities)->toHaveCount(2)
         // Oldest first, so the list reads in the order they were run.
-        ->and($today['activities'][0]['id'])->toBe($morning->id)
-        ->and((float) $today['activities'][0]['km'])->toBe(5.0)
-        ->and($today['activities'][0]['seconds'])->toBe(1380)
-        ->and($today['activities'][1]['id'])->toBe($evening->id)
-        ->and((float) $today['activities'][1]['km'])->toBe(7.0)
-        ->and($today['activities'][1]['seconds'])->toBe(3300);
+        ->and(arrayOf($activities[0])['id'])->toBe($morning->id)
+        ->and(Numeric::float(arrayOf($activities[0])['km']))->toBe(5.0)
+        ->and(arrayOf($activities[0])['seconds'])->toBe(1380)
+        ->and(arrayOf($activities[1])['id'])->toBe($evening->id)
+        ->and(Numeric::float(arrayOf($activities[1])['km']))->toBe(7.0)
+        ->and(arrayOf($activities[1])['seconds'])->toBe(3300);
 });
 
 // A budget, not an exact count: it may move with the page, but a memoization
@@ -537,8 +554,8 @@ it('refuses to move a day that has already happened, leaving both rows as they w
         ->patch("/plan/sessions/{$from->id}", ['date' => $to->date->toDateString()])
         ->assertSessionHasErrors('date');
 
-    expect($from->fresh()->session_type->value)->toBe('tempo')
-        ->and($to->fresh()->session_type->value)->toBe('rest');
+    expect($from->refresh()->session_type->value)->toBe('tempo')
+        ->and($to->refresh()->session_type->value)->toBe('rest');
 });
 
 it('refuses to move a session onto a day that is not a rest day', function (): void {
@@ -556,12 +573,13 @@ it('refuses to move a session onto a day that is not a rest day', function (): v
         ->patch("/plan/sessions/{$from->id}", ['date' => $to->date->toDateString()])
         ->assertSessionHasErrors('date');
 
-    expect($from->fresh()->session_type->value)->toBe('tempo')
-        ->and($to->fresh()->session_type->value)->toBe('race');
+    expect($from->refresh()->session_type->value)->toBe('tempo')
+        ->and($to->refresh()->session_type->value)->toBe('race');
 });
 
 /**
  * @param  array<string, string>  $types  Y-m-d => session type
+ * @param  array<string, array<string, mixed>>  $attributesByDate
  * @return array<string, PlannedSession>
  */
 function planWeekRows(User $user, array $types, array $attributesByDate = []): array
@@ -646,13 +664,14 @@ it('refuses to skip or restore a past day', function (bool $skipped): void {
         ->patch("/plan/sessions/{$rows['2026-08-11']->id}", ['skipped' => $skipped])
         ->assertSessionHasErrors('skipped');
 
-    expect($rows['2026-08-11']->fresh()->skipped)->toBe(! $skipped);
+    expect($rows['2026-08-11']->refresh()->skipped)->toBe(! $skipped);
 })->with([true, false]);
 
+/** @return Collection<array-key, mixed> */
 function planDaysByDate(User $user): Collection
 {
     return collect(app(PlanPageAssembler::class)->weeks($user, Carbon::today()))
-        ->flatMap(fn (array $week): array => $week['days'])
+        ->flatMap(fn (array $week): array => arrayOf($week['days']))
         ->keyBy('date');
 }
 
@@ -682,8 +701,8 @@ it('refuses to skip a missed session made up onto today before it is run', funct
         ->patch("/plan/sessions/{$rows['2026-08-12']->id}", ['skipped' => true])
         ->assertSessionHasErrors('skipped');
 
-    expect($rows['2026-08-12']->fresh()->skipped)->toBeFalse()
-        ->and(planDaysByDate($user)['2026-08-12']['actions']['skip'])->toBeFalse();
+    expect($rows['2026-08-12']->refresh()->skipped)->toBeFalse()
+        ->and(arrayOf(arrayOf(planDaysByDate($user)['2026-08-12'])['actions'])['skip'])->toBeFalse();
 });
 
 it('makes up the same missed easy on Thursday, onto Wednesday\'s past rest day that was run', function (): void {
@@ -699,10 +718,10 @@ it('makes up the same missed easy on Thursday, onto Wednesday\'s past rest day t
         ->patch("/plan/sessions/{$rows['2026-08-11']->id}", ['date' => '2026-08-12'])
         ->assertSessionHasNoErrors();
 
-    expect($rows['2026-08-12']->fresh()->session_type)->toBe(SessionType::Easy)
-        ->and($rows['2026-08-12']->fresh()->status->isCredited())->toBeTrue()
-        ->and($rows['2026-08-12']->fresh()->ran_anyway)->toBeFalse()
-        ->and($rows['2026-08-11']->fresh()->made_up_on->toDateString())->toBe('2026-08-12');
+    expect($rows['2026-08-12']->refresh()->session_type)->toBe(SessionType::Easy)
+        ->and($rows['2026-08-12']->refresh()->status->isCredited())->toBeTrue()
+        ->and($rows['2026-08-12']->refresh()->ran_anyway)->toBeFalse()
+        ->and($rows['2026-08-11']->refresh()->made_up_on?->toDateString())->toBe('2026-08-12');
 });
 
 it('counts the made-up day in next week\'s adherence and leaves the emptied day out', function (): void {
@@ -717,7 +736,7 @@ it('counts the made-up day in next week\'s adherence and leaves the emptied day 
     Carbon::setTestNow('2026-08-17 08:00:00');
     $adherence = app(PlanAdapter::class)->forWeek($user, Carbon::parse('2026-08-17'), Carbon::today(), null)['adherence_pct'];
 
-    expect($adherence)->toBe(min(100, $rows['2026-08-12']->fresh()->distance_score))
+    expect($adherence)->toBe(min(100, $rows['2026-08-12']->refresh()->distance_score))
         ->and($adherence)->toBeGreaterThan(0);
 });
 
@@ -733,10 +752,10 @@ it('never clamps a future day, only today, even under a restricted readiness cei
         ->get('/plan', inertiaPartialHeaders($this->actingAs($user), '/plan', 'Plan', 'weeks'))
         ->assertSuccessful();
 
-    $weeks = $response->json('props.weeks');
-    $futureDay = collect($weeks)
-        ->flatMap(fn (array $week): array => $week['days'])
-        ->firstWhere('date', Carbon::today()->addDays(2)->toDateString());
+    $weeks = arrayOf($response->json('props.weeks'));
+    $futureDay = arrayOf(collect($weeks)
+        ->flatMap(fn (mixed $week): array => arrayOf(arrayOf($week)['days']))
+        ->firstWhere('date', Carbon::today()->addDays(2)->toDateString()));
 
     expect($futureDay['session_type'])->toBe('interval')
         ->and($futureDay['eased_from'])->toBeNull();
@@ -755,7 +774,7 @@ it('credits the run a skipped session is made up onto, rather than excusing it',
         ->patch("/plan/sessions/{$rows['2026-08-12']->id}", ['date' => '2026-08-10'])
         ->assertSessionHasNoErrors();
 
-    $monday = $rows['2026-08-10']->fresh();
+    $monday = $rows['2026-08-10']->refresh();
     expect($monday->session_type)->toBe(SessionType::Easy)
         ->and($monday->skipped)->toBeFalse()
         ->and($monday->status->isCredited())->toBeTrue()
@@ -820,7 +839,7 @@ it('restores today without invalidating a briefing already narrated', function (
             ->assertSessionHasNoErrors();
     }
 
-    expect($rows['2026-08-12']->fresh()->skipped)->toBeFalse();
+    expect($rows['2026-08-12']->refresh()->skipped)->toBeFalse();
 });
 
 it('queues nothing for the demo athlete however often today is toggled', function (): void {
@@ -838,3 +857,40 @@ it('queues nothing for the demo athlete however often today is toggled', functio
     Bus::assertNotDispatched(AnalyzeBriefingMascotVoiceJob::class);
     expect(Analysis::query()->where('analysis_type', AnalysisType::BriefingMascotVoice)->exists())->toBeFalse();
 });
+
+it('rebriefs a narrated today on a move onto or off it only once its Reread cooldown has run out', function (string $from, string $to, bool $cooling): void {
+    Carbon::setTestNow('2026-08-12 08:00:00');
+    Bus::fake();
+    $user = User::factory()->create();
+    $rows = planWeekRows($user, [
+        '2026-08-12' => $from === '2026-08-12' ? 'easy' : 'rest',
+        '2026-08-13' => 'rest',
+        '2026-08-14' => 'easy',
+    ]);
+    $briefing = Analysis::factory()->done('easy run, 2.6 km.')->create([
+        'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
+        'subject_id' => $user->id,
+        'analysis_type' => AnalysisType::BriefingMascotVoice,
+        'discriminator' => '2026-08-12',
+    ]);
+    if ($cooling) {
+        $briefing->startCooldown();
+    }
+
+    $this->actingAs($user)
+        ->patch("/plan/sessions/{$rows[$from]->id}", ['date' => $to])
+        ->assertSessionHasNoErrors();
+
+    if ($cooling) {
+        Bus::assertNotDispatched(AnalyzeBriefingMascotVoiceJob::class);
+        expect(nonNull($briefing->fresh())->only(['status', 'content', 'updated_at']))->toEqual($briefing->only(['status', 'content', 'updated_at']));
+    } else {
+        Bus::assertDispatched(fn (AnalyzeBriefingMascotVoiceJob $job): bool => $job->analysisId === $briefing->id
+            && $job->delay === AnalysisService::PLAN_EDIT_DELAY_SECONDS);
+    }
+})->with([
+    'today away, cooled' => ['2026-08-12', '2026-08-13', false],
+    'onto today, cooled' => ['2026-08-14', '2026-08-12', false],
+    'today away, cooling' => ['2026-08-12', '2026-08-13', true],
+    'onto today, cooling' => ['2026-08-14', '2026-08-12', true],
+]);

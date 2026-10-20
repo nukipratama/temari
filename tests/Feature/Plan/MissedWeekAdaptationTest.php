@@ -15,6 +15,7 @@ use App\Services\Run\Plan\Periodizer;
 use App\Services\Run\Plan\SegmentGenerator;
 use App\Services\Run\Plan\TrainingBaseline;
 use App\Services\Run\Plan\VolumeRedistributor;
+use App\Support\Numeric;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -56,6 +57,17 @@ function weekOf(User $user, string $monday): Collection
         ->whereBetween('date', [$monday, Carbon::parse($monday)->addDays(6)->toDateString()])
         ->orderBy('date')
         ->get();
+}
+
+/**
+ * @return list<array<mixed>>
+ */
+function planTabDays(User $user, string $monday): array
+{
+    $weeks = arrayOf(test()->actingAs($user)->get('/plan', inertiaPartialHeaders(test()->actingAs($user), '/plan', 'Plan', 'weeks'))->json('props.weeks'));
+    $week = arrayOf(collect($weeks)->firstWhere('week_start', $monday));
+
+    return array_values(array_map(arrayOf(...), arrayOf($week['days'])));
 }
 
 it('turns the week after a fully missed one into a real deload, not a catch-up', function (): void {
@@ -102,17 +114,13 @@ it('prescribes fewer km after a missed week than the build week it replaced', fu
     Carbon::setTestNow(LAST_MONDAY.' 08:00:00');
     $periodizer->regenerate($user, Carbon::parse(LAST_MONDAY));
 
-    $buildWeekKm = $this->actingAs($user)->get('/plan', inertiaPartialHeaders($this->actingAs($user), '/plan', 'Plan', 'weeks'))->json('props.weeks');
-    $buildWeekKm = collect($buildWeekKm)->firstWhere('week_start', LAST_MONDAY)['days'];
-    $buildWeekKm = collect($buildWeekKm)->sum('distance_km');
+    $buildWeekKm = Numeric::float(collect(planTabDays($user, LAST_MONDAY))->sum('distance_km'));
 
     Carbon::setTestNow(THIS_MONDAY.' 08:00:00');
     $this->artisan('plan:score-compliance')->assertSuccessful();
     $periodizer->regenerate($user, Carbon::parse(THIS_MONDAY));
 
-    $deloadWeekKm = $this->actingAs($user)->get('/plan', inertiaPartialHeaders($this->actingAs($user), '/plan', 'Plan', 'weeks'))->json('props.weeks');
-    $deloadWeekKm = collect($deloadWeekKm)->firstWhere('week_start', THIS_MONDAY)['days'];
-    $deloadWeekKm = collect($deloadWeekKm)->sum('distance_km');
+    $deloadWeekKm = Numeric::float(collect(planTabDays($user, THIS_MONDAY))->sum('distance_km'));
 
     expect($deloadWeekKm)->toBeLessThan($buildWeekKm)
         ->and($deloadWeekKm)->toBeGreaterThan(0.0);
@@ -144,8 +152,7 @@ it('marks last week\'s untouched sessions as missed on the Plan tab', function (
     $periodizer->regenerate($user, Carbon::parse(LAST_MONDAY));
     Carbon::setTestNow(THIS_MONDAY.' 08:00:00');
 
-    $weeks = $this->actingAs($user)->get('/plan', inertiaPartialHeaders($this->actingAs($user), '/plan', 'Plan', 'weeks'))->json('props.weeks');
-    $days = collect(collect($weeks)->firstWhere('week_start', LAST_MONDAY)['days']);
+    $days = collect(planTabDays($user, LAST_MONDAY));
 
     expect($days->where('session_type', '!=', 'rest')->pluck('status')->unique()->all())->toBe(['missed']);
 });
@@ -163,14 +170,13 @@ it('does not add a missed session to future easy runs or the long run', function
     // 4-session template [Tue,Thu,Sat,Sun]: Tue takes the week's one quality
     // slot, Thu is the week's earliest (isPrimaryEasy) Easy day, Sat the
     // second, Sun the Long day — see WeekPlanBuilder's own day-template logic.
-    expect($generated[$saturday]->session_type)->toBe(SessionType::Easy)
-        ->and($generated[$sunday]->session_type)->toBe(SessionType::Long);
+    expect(nonNull($generated[$saturday])->session_type)->toBe(SessionType::Easy)
+        ->and(nonNull($generated[$sunday])->session_type)->toBe(SessionType::Long);
 
     // Thursday, with Tuesday's and Thursday's sessions un-run (nothing logged).
     Carbon::setTestNow(Carbon::parse(THIS_MONDAY)->addDays(3)->setTime(18, 0));
 
-    $weeks = $this->actingAs($user)->get('/plan', inertiaPartialHeaders($this->actingAs($user), '/plan', 'Plan', 'weeks'))->json('props.weeks');
-    $days = collect(collect($weeks)->firstWhere('week_start', THIS_MONDAY)['days'])->keyBy('date');
+    $days = array_column(planTabDays($user, THIS_MONDAY), null, 'date');
 
     $longRunKm = app(TrainingBaseline::class)->forUser($user, Carbon::today())['long_run_km'];
     $kmFor = fn (SessionType $type, bool $isPrimaryEasy) => SegmentGenerator::coreKmFor($type, $isPrimaryEasy, $longRunKm, 1.0, INF);

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\AI;
 
+use Illuminate\Support\Collection;
 use App\Actions\AI\RecentlyActiveUsers;
 use App\Models\AI\Analysis;
 use App\Models\AI\ContentFilterEvent;
@@ -14,17 +15,13 @@ use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Carbon;
 
 /**
- * Builds the /devtools/narration reporting payload from the analytics-schema
- * `ai_token_usages` table: totals, per-kind, per-deployment, per-origin, the
- * filter options, the stacked daily cost series, and the per-athlete rows. Spend
- * lives in the analytics schema while athlete identity and the narration rows
- * live in the app schema, so each side is aggregated first and stitched in PHP
- * to avoid a fragile cross-schema join.
+ * Builds the /devtools/narration reporting payload from the analytics-schema `ai_token_usages`
+ * table: totals, per-kind, per-deployment, per-origin, the filter options, the stacked daily cost
+ * series, and the per-athlete rows. Each side of the schema split is aggregated first and stitched
+ * in PHP, to avoid a cross-schema join.
  *
- * Cost accuracy: rates are per-deployment, so any cross-deployment row (totals,
- * byKind, daily) is grouped by the `model` (deployment) column FIRST, costed per
- * deployment, then rolled up. This avoids attributing a whole kind/day to a
- * single "dominant" deployment when calls span multiple models.
+ * Rates are per-deployment, so any cross-deployment row is grouped by the `model` column first,
+ * costed per deployment, then rolled up.
  */
 class TokenUsageReport
 {
@@ -76,7 +73,9 @@ class TokenUsageReport
 
         $aggregate = $this->aggregate($baseQuery);
         $perUserCeiling = config('azure_openai.daily_cost_ceiling_per_user');
+        assert($perUserCeiling === null || is_numeric($perUserCeiling));
         $totalCeiling = config('azure_openai.daily_cost_ceiling_total');
+        assert($totalCeiling === null || is_numeric($totalCeiling));
         // `dailyCeiling` is the per-athlete slice times the athlete count: what
         // the bill would reach if every athlete spent theirs. `totalCeiling` is
         // the configured app-wide stop that binds before it.
@@ -149,12 +148,10 @@ class TokenUsageReport
     }
 
     /**
-     * Single (kind, model) aggregate scan that feeds totals, the per-kind
-     * breakdown, AND the per-deployment breakdown. byDeployment is rolled up
-     * from the same rows (summed across kinds per model) rather than issuing a
-     * second GROUP BY model scan over the range.
+     * Single (kind, model) aggregate scan that feeds totals, the per-kind breakdown and the
+     * per-deployment breakdown, which is rolled up from the same rows rather than issuing a second
+     * scan.
      *
-     * @param  Builder  $baseQuery
      * @return array{
      *     totals: array{prompt:int, completion:int, total:int, cached:int, calls:int, truncated_calls:int, cost:float},
      *     byKind: list<array{kind:string, prompt:int, completion:int, total:int, cached:int, calls:int, truncated_calls:int, avg_latency_ms:int|null, max_latency_ms:int|null, cost:float, avg_steps:float|null, cached_pct:float|null, reasoning_pct:float|null}>,
@@ -258,12 +255,10 @@ class TokenUsageReport
     }
 
     /**
-     * How a kind behaves as an agent: model turns per call, how much of its
-     * input the provider's cache absorbed, and how much of its output went on
-     * reasoning rather than the answer.
+     * How a kind behaves as an agent: model turns per call, how much of its input the provider's
+     * cache absorbed, and how much of its output went on reasoning.
      *
-     * All three are null together when no call in range recorded a step, which
-     * is how rows written before these columns existed look. Reporting zero
+     * All three are null together when no call in range recorded a step, because reporting zero
      * would read as "never cached, never reasoned" rather than "never measured".
      *
      * @param  array{calls:int, prompt:int, completion:int, cached:int, reasoning:int, steps:int}  $entry
@@ -313,6 +308,8 @@ class TokenUsageReport
 
     private static function stringOrNull(mixed $value): ?string
     {
+        assert($value === null || is_scalar($value));
+
         return $value === null || $value === '' ? null : (string) $value;
     }
 
@@ -322,7 +319,6 @@ class TokenUsageReport
      * self-heal alike. Costed per (origin, model), since deployments price
      * differently and an origin can span several.
      *
-     * @param  Builder  $baseQuery
      * @return list<array{origin:string, label:string, prompt:int, completion:int, total:int, calls:int, cost:float}>
      */
     private function byOrigin(Builder $baseQuery): array
@@ -372,11 +368,14 @@ class TokenUsageReport
      */
     private function availableOrigins(Carbon $from, Carbon $to): array
     {
-        return array_values(TokenUsage::query()->toBase()
+        /** @var Collection<int, string> $origins */
+        $origins = TokenUsage::query()->toBase()
             ->whereBetween('created_at', [$from, $to])
             ->distinct()
             ->orderBy('origin')
-            ->pluck('origin')
+            ->pluck('origin');
+
+        return array_values($origins
             ->map(fn (string $o): array => [
                 'value' => $o,
                 'label' => AnalysisOrigin::tryFrom($o)?->label() ?? $o,
@@ -391,11 +390,14 @@ class TokenUsageReport
      */
     private function availableKinds(Carbon $from, Carbon $to): array
     {
-        return array_values(TokenUsage::query()->toBase()
+        /** @var Collection<int, string> $kinds */
+        $kinds = TokenUsage::query()->toBase()
             ->whereBetween('created_at', [$from, $to])
             ->distinct()
             ->orderBy('kind')
-            ->pluck('kind')
+            ->pluck('kind');
+
+        return array_values($kinds
             ->map(fn (string $k): array => [
                 'value' => $k,
                 'label' => AnalysisType::tryFrom($k)?->name ?? $k,
@@ -404,13 +406,9 @@ class TokenUsageReport
     }
 
     /**
-     * Daily $ cost split by narrator kind, for the stacked chart. One scan
-     * grouped by (day, kind, model): the model dimension is what lets each
-     * segment bill against its own deployment rate before rolling up.
-     *
-     * `$userId` narrows the whole chart to one athlete, which is the athlete
-     * filter above it. Kinds that cost nothing in range are left out of both the
-     * stack and the legend.
+     * Daily $ cost split by narrator kind, for the stacked chart: one scan grouped by (day, kind,
+     * model), so each segment bills against its own deployment rate. `$userId` narrows the chart to
+     * one athlete; kinds that cost nothing in range are left out of the stack and the legend.
      *
      * @return array{
      *     kinds: list<array{kind:string, label:string, cost:float}>,
@@ -475,18 +473,13 @@ class TokenUsageReport
     }
 
     /**
-     * One row per athlete: what they cost, whether they are capped, and what
-     * their narration was served by.
+     * One row per athlete: what they cost, whether they are capped, and what their narration was
+     * served by.
      *
-     * The money columns and the sparkline are fixed {@see self::ATHLETE_WINDOW_DAYS}
-     * windows rather than the page's range, so "today vs their ceiling" keeps
-     * meaning the same thing whatever range is selected; the quality columns
-     * (served-by split, flags) follow the range, since they are a question about
-     * a period rather than about a budget.
-     *
-     * Athletes with no spend are listed too — a silent athlete is a signal — and
-     * a user_id that only exists in the metering rows (a deleted account) keeps
-     * its snapshot name rather than disappearing.
+     * The money columns and the sparkline use fixed {@see self::ATHLETE_WINDOW_DAYS} windows rather
+     * than the page's range; the quality columns follow the range. Athletes with no spend are
+     * listed too, and a user_id that only exists in the metering rows (a deleted account) keeps its
+     * snapshot name.
      *
      * @return list<array{
      *     user_id:int, user_name:string|null, is_demo:bool, deleted:bool,
@@ -520,6 +513,7 @@ class TokenUsageReport
         $flags = $this->flagCounts($from, $to);
         $deadLettered = $this->deadLetterCounts();
         $configCeiling = config('azure_openai.daily_cost_ceiling_per_user');
+        assert($configCeiling === null || is_numeric($configCeiling));
 
         foreach ($spend as $userId => $entry) {
             $identities[$userId] ??= [
@@ -642,18 +636,14 @@ class TokenUsageReport
     }
 
     /**
-     * Which producer wrote each athlete's Done narration in range. `unknown` is
-     * its own bucket rather than folded into rule-based: `served_by` is null for
-     * every row narrated before the column shipped, and calling that rule-based
-     * would invent a degradation that never happened.
+     * Which producer wrote each athlete's Done narration in range. `unknown` is its own bucket
+     * rather than folded into rule-based, because `served_by` is null for rows narrated before the
+     * column shipped.
      *
-     * Every rule-based row also lands in exactly one `reasons` bucket. `demo` is
-     * derived from the athlete's own `is_demo` flag rather than the stored
-     * column — every demo rule-based fill counts as `demo` regardless of which
-     * (if any) reason a dispatch site declared, since the demo account's whole
-     * narration is rule-based by design, not by exception. Every other athlete's
-     * bucket comes straight off {@see \App\Models\AI\Analysis::$rule_based_reason},
-     * with a null or not-yet-taxonomised value folded into `unattributed`.
+     * Every rule-based row lands in exactly one `reasons` bucket: `demo` is derived from the
+     * athlete's `is_demo` flag, every other bucket comes off
+     * {@see \App\Models\AI\Analysis::$rule_based_reason}, and a null or not-yet-taxonomised value
+     * folds into `unattributed`.
      *
      * @param  list<int>  $demoUserIds  Pre-resolved by the caller ({@see self::athletes()}), which
      *                                  already fetches every user's `is_demo` flag for the identity
@@ -720,16 +710,14 @@ class TokenUsageReport
      */
     private function flagCounts(Carbon $from, Carbon $to): array
     {
-        /** @var array<int, int> $counts */
-        $counts = Feedback::query()
+        /** @var Collection<int, int|string> $flags */
+        $flags = Feedback::query()
             ->whereBetween('created_at', [$from, $to])
             ->selectRaw('user_id, COUNT(*) as flags')
             ->groupBy('user_id')
-            ->pluck('flags', 'user_id')
-            ->map(fn (mixed $flags): int => (int) $flags)
-            ->all();
+            ->pluck('flags', 'user_id');
 
-        return $counts;
+        return $flags->map(fn (int|string $count): int => (int) $count)->all();
     }
 
     /**

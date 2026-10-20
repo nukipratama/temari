@@ -8,11 +8,13 @@ use App\Services\Run\Metrics\WeeklyAggregator;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
+use Mockery\MockInterface;
 
 uses(RefreshDatabase::class);
 
 it('is unique per athlete and rolls their dirty weeks forward', function (): void {
     $user = User::factory()->create();
+    /** @var WeeklyAggregator&MockInterface $aggregator */
     $aggregator = Mockery::mock(WeeklyAggregator::class);
     $aggregator->shouldReceive('rollForwardDirty')->once()->with(Mockery::on(fn (User $u): bool => $u->id === $user->id));
 
@@ -27,6 +29,7 @@ it('is unique per athlete and rolls their dirty weeks forward', function (): voi
 
 it('never rolls the demo forward', function (): void {
     $demo = User::factory()->create(['is_demo' => true]);
+    /** @var WeeklyAggregator&MockInterface $aggregator */
     $aggregator = Mockery::mock(WeeklyAggregator::class);
     $aggregator->shouldNotReceive('rollForwardDirty');
 

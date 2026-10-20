@@ -18,12 +18,21 @@ use Illuminate\Support\Facades\Http;
 
 uses(RefreshDatabase::class);
 
+/** @return array<string, mixed> */
 function sharedPropsFor(?User $user): array
 {
     $request = Request::create('/');
     $request->setUserResolver(fn (): ?User => $user);
 
     return app(SharedProps::class)->forRequest($request);
+}
+
+/** @param  array<string, mixed>  $props */
+function resolvedSharedProp(array $props, string $key): mixed
+{
+    $prop = $props[$key];
+
+    return $prop instanceof Closure ? $prop() : throw new InvalidArgumentException("Shared prop {$key} is not a closure.");
 }
 
 it('shares every documented key on every response', function (): void {
@@ -62,7 +71,7 @@ it('keeps every derived prop a closure so a partial reload can skip it', functio
 it('exposes the signed-in user in the auth block', function (): void {
     $user = User::factory()->create(['name' => 'Nuki Pratama']);
 
-    expect(sharedPropsFor($user)['auth']['user'])->toMatchArray([
+    expect(arrayOf(sharedPropsFor($user)['auth'])['user'])->toMatchArray([
         'id' => $user->id,
         'name' => 'Nuki Pratama',
         'is_demo' => false,
@@ -81,14 +90,14 @@ it('shares the server calendar day in the app timezone, not the UTC date', funct
 it('answers with safe guest defaults when nobody is signed in', function (): void {
     $props = sharedPropsFor(null);
 
-    expect($props['auth']['user'])->toBeNull()
-        ->and(($props['stravaSync'])())->toBe(['state' => 'disconnected', 'last_synced_at' => null])
-        ->and(($props['activeRace'])())->toBeNull()
-        ->and(($props['hrZonesChangedAt'])())->toBeNull()
-        ->and(($props['unreadNotifications'])())->toBe(0)
-        ->and(($props['stravaZoneScopeMissing'])())->toBeFalse()
-        ->and(($props['aiPaused'])())->toBeFalse()
-        ->and(($props['aiCatchingUp'])())->toBeFalse();
+    expect(arrayOf($props['auth'])['user'])->toBeNull()
+        ->and(resolvedSharedProp($props, 'stravaSync'))->toBe(['state' => 'disconnected', 'last_synced_at' => null])
+        ->and(resolvedSharedProp($props, 'activeRace'))->toBeNull()
+        ->and(resolvedSharedProp($props, 'hrZonesChangedAt'))->toBeNull()
+        ->and(resolvedSharedProp($props, 'unreadNotifications'))->toBe(0)
+        ->and(resolvedSharedProp($props, 'stravaZoneScopeMissing'))->toBeFalse()
+        ->and(resolvedSharedProp($props, 'aiPaused'))->toBeFalse()
+        ->and(resolvedSharedProp($props, 'aiCatchingUp'))->toBeFalse();
 });
 
 it('loads none of the auth user relations when no prop asks for them', function (): void {
@@ -104,7 +113,7 @@ it('loads none of the auth user relations when no prop asks for them', function 
 
     $props = sharedPropsFor($user);
 
-    expect($props['auth']['user']['id'])->toBe($user->id)
+    expect(arrayOf(arrayOf($props['auth'])['user'])['id'])->toBe($user->id)
         ->and($queries)->toBe(0)
         ->and($user->relationLoaded('telegramConnection'))->toBeFalse()
         ->and($user->relationLoaded('runnerProfile'))->toBeFalse()
@@ -130,7 +139,7 @@ it('runs no queries at all for a guest request', function (): void {
     expect($queries)->toBe(0);
 });
 
-// #986: HandleInertiaRequests resolves every shared prop on a full page load,
+// HandleInertiaRequests resolves every shared prop on a full page load,
 // which reaches NarrationGate::ceilingExceeded() and, past the app-wide
 // ceiling, a maintainer alert. That alert must never make an outbound call
 // itself — it only queues one (see MaintainerAlerter::broadcast()).
@@ -159,7 +168,7 @@ it('makes no outbound call while resolving props, even when it trips a maintaine
 
     $props = sharedPropsFor($user);
 
-    expect(($props['aiPaused'])())->toBeTrue();
+    expect(resolvedSharedProp($props, 'aiPaused'))->toBeTrue();
     Http::assertNothingSent();
     Bus::assertDispatched(SendMaintainerAlertJob::class);
 });

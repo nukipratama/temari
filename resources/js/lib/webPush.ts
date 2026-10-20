@@ -1,6 +1,6 @@
 import type { SharedProps } from '@/types/inertia';
 
-import { csrfToken } from '@/lib/http';
+import { sendJson } from '@/lib/http';
 
 const SAVED_ENDPOINT_KEY = 'temari-push-endpoint';
 const SEEN_ON_KEY = 'temari-push-seen-on';
@@ -39,23 +39,6 @@ export function isIos(): boolean {
 export function isIosNonSafari(): boolean {
     const ua = navigator.userAgent;
     return /iP(hone|ad|od)/.test(ua) && /CriOS|FxiOS|EdgiOS|OPiOS/.test(ua);
-}
-
-async function send(
-    url: string,
-    method: string,
-    body?: unknown,
-): Promise<Response> {
-    return fetch(url, {
-        method,
-        credentials: 'same-origin',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': csrfToken(),
-            'X-Requested-With': 'XMLHttpRequest',
-        },
-        body: body === undefined ? undefined : JSON.stringify(body),
-    });
 }
 
 /** The live push subscription for this browser, or null. */
@@ -105,7 +88,7 @@ async function subscribeOnce(publicKey: string): Promise<void> {
 }
 
 async function save(subscription: PushSubscription): Promise<Response> {
-    const response = await send('/profile/push', 'POST', {
+    const response = await sendJson('POST', '/profile/push', {
         ...subscription.toJSON(),
         previous_endpoint: savedEndpoint() ?? undefined,
     });
@@ -142,7 +125,7 @@ async function reportSeenOnce(): Promise<void> {
         return;
     }
 
-    let response = await send('/profile/push/seen', 'POST', {
+    let response = await sendJson('POST', '/profile/push/seen', {
         endpoint: subscription.endpoint,
     });
     if (response.status === 404) {
@@ -165,7 +148,7 @@ export async function unsubscribe(): Promise<void> {
     }
     const { endpoint } = subscription;
     await subscription.unsubscribe();
-    await send('/profile/push', 'DELETE', { endpoint });
+    await sendJson('DELETE', '/profile/push', { endpoint });
     rememberEndpoint(null);
 }
 

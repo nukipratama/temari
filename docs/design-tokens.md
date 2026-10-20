@@ -212,6 +212,7 @@ Settings.
 | `text-2` / `text-3` | = `ink-2` / `ink-3` | derived, lighter than `muted-foreground` / equal to it | A secondary/tertiary text pair distinct from `ink-2`/`ink-3` |
 | `border-strong` | line | one step lighter than sky-2 | A stronger separator (e.g. Login) |
 | `today-accent` | horizon-ink at 30% over the card | transparent | The Today card's accent edge — no added edge needed on dark |
+| `stat-ground` | surface-sunken | sky | The gut-check tile (`EffortScore`): the stat-tile ground on light, the sky panel on dark. Equals `secondary` on light only |
 | `btn-primary-bg` / `btn-primary-fg` | horizon-ink / white | horizon / ink | Settings' solid "primary" pill |
 | `mood-*-bg` / `mood-*-ink` | pastel cell / darkened label | fill at 15% over sky-deep / lightened label | The six mood cells and their labels, derived as a pair |
 | `chart-1`..`chart-5` | horizon-ink, sky-2, leaf, ember, citrus-ink | same | Unused by Chart.js (see above); reserved for any future SVG/shadcn chart primitive |
@@ -241,9 +242,10 @@ prototype's `PHASE_COLOR` literals into four CSS colour tokens, but the periodiz
 on reading [`PHASE_COLORS`](../resources/js/lib/chartTokens.ts) — a different set, with a fifth
 `deload` key those tokens never had. `W4` deleted the unread four rather than leave two disagreeing
 sources, and pinned the removal in `DesignTokenDocsTest`'s forbidden list so the name cannot come
-back quietly. The set that ships is validated colorblind-safe via the `dataviz` skill's palette
-checker — one adjacent pair sits at the CVD-separation floor, so any phase indicator needs a direct
-label or texture alongside the colour, never hue alone.
+back quietly. The set that ships is validated colorblind-safe (CVD ΔE of at least 15 on every
+co-occurring pair) via the `dataviz` skill's palette checker — one adjacent pair sits at the
+CVD-separation floor, so any phase indicator needs a direct label or texture alongside the colour,
+never hue alone.
 
 ### Text contrast tiers
 
@@ -326,6 +328,13 @@ Four warm-tinted steps. Warm, not neutral: a grey shadow on a cream ground reads
 | Sheet | `shadow-e3` | `surface-elev` / `cream` | Bottom sheets, large detached panels |
 | Modal | `shadow-e4` | `cream` / `sky-deep` | Full modals (share card, card mount) |
 
+On the dark ground the elevation scale is redefined as a rim rather than a cast, because a shadow
+has nowhere to go on a near-black surface: pure black at 60% over `sky-deep` measures 1.06:1,
+against 1.14:1 for the light ground's `e1` at 6% over cream, while a hairline of the foreground
+reaches 1.33:1 at 10% and 1.85:1 at 20%. Redefining the token rather than its 40 call sites keeps
+`shadow-e1` meaning "resting card" on both grounds; `e4` keeps a deep cast too, since a modal sits
+over a scrim with room to darken.
+
 Tailwind's default `shadow-*` scale is not used and is rejected by the source guard.
 `surface-elev` is reserved for the floating step — never a resting card (that is `surface-card` /
 `surface-warm`). Pair each step with its matching surface rather than mixing tiers.
@@ -334,6 +343,16 @@ The resting step ships inside `Card` ([card.tsx](../resources/js/components/ui/c
 every card carries it already — do not re-apply `shadow-e1` at a call site. Elevation
 applies once per stack: a tile nested inside a card stays flat, because the card it sits in already
 carries the resting step.
+
+### Fixed overlay and fill tokens
+
+Three more tokens hold one value on both grounds, so they sit outside the ground-reactive layer.
+
+| Token | Value | Use |
+|---|---|---|
+| `--scrim` | `rgba(0, 0, 0, 0.5)` | Modal backdrop behind the share-card sheet and the Temari nudge dialog, read as `var(--scrim)`: no `bg-*` utility, so it stays outside the literal-hex colour guard |
+| `on-fill` | `#ffffff` | The switch thumb and the skip link label on `leaf-deep` (6.07:1): a mark on a saturated fill, never on paper. Not for text on `leaf` (4.02:1, under the 4.5:1 guard) |
+| `shadow-glow` | `0 2px 10px -2px rgba(173, 224, 71, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.25)` | The active bottom-nav tab's lime glow |
 
 ## Motion
 

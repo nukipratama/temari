@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
+import { defined } from '@/test/defined';
 import { setMockPage } from '@/test/setup';
 
 import type { NarrationOverviewProps } from './types';
@@ -130,7 +131,7 @@ const baseProps: NarrationOverviewProps = {
 describe('Narration overview page', () => {
     it('is the page module app.tsx resolves for the name "Narration/Overview"', async () => {
         const pages = import.meta.glob('./**/*.tsx');
-        const importer = pages['./Overview.tsx'];
+        const importer = defined(pages['./Overview.tsx']);
 
         expect(importer).toBeTypeOf('function');
         const module = (await importer()) as { default: unknown };

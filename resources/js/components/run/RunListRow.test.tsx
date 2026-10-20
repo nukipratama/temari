@@ -81,9 +81,9 @@ describe('RunListRow', () => {
         expect(screen.getByText('— bpm')).toBeInTheDocument();
     });
 
-    // The row used to guess a mood from TRIMP when none was stored. That guess
-    // disagreed with the backend rule engine, so a row could show one mood and
-    // then flip once narration landed. No dot beats a wrong dot.
+    // The row never guesses a mood from TRIMP: that guess disagreed with the
+    // backend rule engine and flipped once narration landed. No dot beats a
+    // wrong dot.
     it('shows no mood dot when nothing has assigned one yet', () => {
         render(<RunListRow detail={detail()} />);
         expect(moodDot()).toBeNull();

@@ -5,6 +5,9 @@ declare(strict_types=1);
 use App\Http\Requests\ShowNarrationOverviewRequest;
 use Illuminate\Support\Facades\Validator;
 
+/**
+ * @param  array<string, mixed>  $data
+ */
 function passesTokenUsage(array $data): bool
 {
     return Validator::make($data, new ShowNarrationOverviewRequest()->rules())->passes();

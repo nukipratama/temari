@@ -37,7 +37,7 @@ final readonly class RaceGoalService
             $active = $this->lockedActive($user);
 
             return match (true) {
-                $active === null => $this->create($user, $attributes),
+                !$active instanceof RaceGoal => $this->create($user, $attributes),
                 $intent === RaceIntent::Update => $this->revise($active, $attributes),
                 default => $this->replace($active, $attributes),
             };
@@ -62,7 +62,7 @@ final readonly class RaceGoalService
     {
         $race = DB::transaction(function () use ($user): ?RaceGoal {
             $active = $this->lockedActive($user);
-            if ($active === null) {
+            if (!$active instanceof RaceGoal) {
                 return null;
             }
 

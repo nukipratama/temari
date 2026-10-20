@@ -33,11 +33,14 @@ class StoreRaceGoalRequest extends FormRequest
      */
     public function raceAttributes(): array
     {
+        $name = $this->validated('name');
+        assert($name === null || is_string($name));
+
         return [
-            'race_date' => $this->validated('race_date'),
-            'distance_m' => (int) $this->validated('distance_m'),
-            'goal_time_sec' => (int) $this->validated('goal_time_sec'),
-            'name' => $this->validated('name'),
+            'race_date' => $this->safe()->string('race_date')->toString(),
+            'distance_m' => $this->safe()->integer('distance_m'),
+            'goal_time_sec' => $this->safe()->integer('goal_time_sec'),
+            'name' => $name,
         ];
     }
 

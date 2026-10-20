@@ -21,6 +21,11 @@ function scheduledChainEvent(string $command): ?Event
     );
 }
 
+function registeredChainEvent(string $command): Event
+{
+    return nonNull(scheduledChainEvent($command));
+}
+
 function runsAt(Event $event, string $at): bool
 {
     Carbon::setTestNow($at);
@@ -32,16 +37,15 @@ beforeEach(fn () => Carbon::setTestNow('2026-09-14 00:00:00')); // a Monday
 afterEach(fn () => Carbon::setTestNow());
 
 it('no longer gates ai:weekly-recap on streak settlement', function (): void {
-    expect(runsAt(scheduledChainEvent('ai:weekly-recap'), '2026-09-14 00:16:00'))->toBeTrue();
+    expect(runsAt(registeredChainEvent('ai:weekly-recap'), '2026-09-14 00:16:00'))->toBeTrue();
 });
 
 it('does not let plan:regenerate pass its when() gate until both prerequisites finish today', function (): void {
-    $closeFinishedRaces = scheduledChainEvent('plan:close-finished-races');
-    $scoreCompliance = scheduledChainEvent('plan:score-compliance');
-    $regenerate = scheduledChainEvent('plan:regenerate');
+    $closeFinishedRaces = registeredChainEvent('plan:close-finished-races');
+    $scoreCompliance = registeredChainEvent('plan:score-compliance');
+    $regenerate = registeredChainEvent('plan:regenerate');
 
-    expect($regenerate)->not->toBeNull()
-        ->and($regenerate->filtersPass(app()))->toBeFalse();
+    expect($regenerate->filtersPass(app()))->toBeFalse();
 
     $closeFinishedRaces->finish(app(), 0);
 
@@ -53,7 +57,7 @@ it('does not let plan:regenerate pass its when() gate until both prerequisites f
 });
 
 it('catches a missed 00:26 plan:regenerate up on a later Monday tick, exactly once that week', function (): void {
-    $regenerate = scheduledChainEvent('plan:regenerate');
+    $regenerate = registeredChainEvent('plan:regenerate');
     SchedulerChain::markDoneToday(SchedulerChain::PLAN_CLOSE_FINISHED_RACES);
     SchedulerChain::markDoneToday(SchedulerChain::PLAN_SCORE_COMPLIANCE);
 
@@ -66,7 +70,7 @@ it('catches a missed 00:26 plan:regenerate up on a later Monday tick, exactly on
 });
 
 it('keeps retrying plan:regenerate after a failed run', function (): void {
-    $regenerate = scheduledChainEvent('plan:regenerate');
+    $regenerate = registeredChainEvent('plan:regenerate');
     SchedulerChain::markDoneToday(SchedulerChain::PLAN_CLOSE_FINISHED_RACES);
     SchedulerChain::markDoneToday(SchedulerChain::PLAN_SCORE_COMPLIANCE);
 
@@ -77,7 +81,7 @@ it('keeps retrying plan:regenerate after a failed run', function (): void {
 });
 
 it('catches a missed plan prerequisite up on a later tick the same day, then holds it', function (string $command, int $minute): void {
-    $event = scheduledChainEvent($command);
+    $event = registeredChainEvent($command);
     $at = fn (int $hour): string => sprintf('2026-09-14 %02d:%02d:00', $hour, $minute);
 
     expect(runsAt($event, $at(3)))->toBeTrue();
@@ -92,7 +96,7 @@ it('catches a missed plan prerequisite up on a later tick the same day, then hol
 ]);
 
 it('runs streak:settle every hour of every day', function (): void {
-    $settle = scheduledChainEvent('streak:settle');
+    $settle = registeredChainEvent('streak:settle');
 
     expect(runsAt($settle, '2026-09-14 00:00:00'))->toBeTrue()
         ->and(runsAt($settle, '2026-09-14 05:00:00'))->toBeTrue()
@@ -105,16 +109,15 @@ it('alerts on a failed streak:settle and closes the incident on its next success
     $alerter->shouldReceive('schedulerRecovered')->once()->with('streak:settle');
     app()->instance(MaintainerAlerter::class, $alerter);
 
-    $settle = scheduledChainEvent('streak:settle');
+    $settle = registeredChainEvent('streak:settle');
     $settle->finish(app(), 1);
     $settle->finish(app(), 0);
 });
 
 it('checks the Monday entries once, at 06:00', function (): void {
-    $check = scheduledChainEvent('schedule:monday-check');
+    $check = registeredChainEvent('schedule:monday-check');
 
-    expect($check)->not->toBeNull()
-        ->and(runsAt($check, '2026-09-14 06:00:00'))->toBeTrue()
+    expect(runsAt($check, '2026-09-14 06:00:00'))->toBeTrue()
         ->and(runsAt($check, '2026-09-14 07:00:00'))->toBeFalse()
         ->and(runsAt($check, '2026-09-15 06:00:00'))->toBeFalse();
 });

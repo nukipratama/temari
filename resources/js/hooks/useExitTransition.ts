@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 
 /**
  * Keeps a closing element mounted for `exitMs` so its CSS exit animation can
- * run — the job `AnimatePresence` used to do, without the animation engine.
+ * run, without an animation engine.
  * Returns whether to render at all, and whether the element is on its way out
  * (put `data-closing` on it; the attribute reverses the entrance keyframe).
  */

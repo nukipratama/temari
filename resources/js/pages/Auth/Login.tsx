@@ -1,4 +1,4 @@
-import { Head, useForm, usePage } from '@inertiajs/react';
+import { Head, useForm } from '@inertiajs/react';
 import {
     ArrowRight,
     ArrowUpDown,
@@ -11,13 +11,12 @@ import {
 } from 'lucide-react';
 import { Suspense, useId, useState } from 'react';
 
-import type { SharedProps } from '@/types/inertia';
-
 import BrandMark from '@/components/BrandMark';
 import { Card } from '@/components/ui/card';
 import Eyebrow from '@/components/ui/Eyebrow';
 import { Icon, IconComponent, StravaIcon } from '@/components/ui/Icon';
 import PillButton from '@/components/ui/PillButton';
+import { useSharedProps } from '@/hooks/useSharedProps';
 import { bareLayout } from '@/layouts/BareShell';
 import { cn } from '@/lib/cn';
 import { lazyIsland } from '@/lib/lazyIsland';
@@ -98,7 +97,7 @@ export default function Login({
     dataUse,
     trainingDisclaimer,
 }: Readonly<LoginProps>) {
-    const { demoLoginEnabled } = usePage<SharedProps>().props;
+    const { demoLoginEnabled } = useSharedProps();
     const demoForm = useForm({ from });
     const submitDemo = () => demoForm.post('/auth/demo');
 

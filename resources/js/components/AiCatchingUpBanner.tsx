@@ -4,14 +4,11 @@ import Banner from '@/components/ui/Banner';
 import { useSharedProps } from '@/hooks/useSharedProps';
 
 /**
- * Calm, app-wide reassurance shown while the auth user has at least one
- * synced activity still waiting on its narration (`aiCatchingUp`) — a
- * backfill chain hasn't reached it yet, or a failed attempt is still under
- * retry budget. Mirrors {@link AiOutageBanner}'s placement/shape, mounted
- * once in {@link AppShell}; static (not dismissable) and action-less. Never
- * shown alongside {@link AiOutageBanner} — the server skips `aiCatchingUp`
- * entirely while generation is globally paused, since that banner already
- * explains it.
+ * Calm, app-wide reassurance shown while the auth user has an activity still
+ * waiting on its narration (`aiCatchingUp`). Mirrors {@link AiOutageBanner}'s
+ * placement, mounted once in {@link AppShell}; static and action-less, and never
+ * shown alongside it, since the server skips `aiCatchingUp` while generation is
+ * paused.
  */
 export default function AiCatchingUpBanner() {
     const catchingUp = useSharedProps().aiCatchingUp ?? false;

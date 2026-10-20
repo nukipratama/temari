@@ -105,7 +105,8 @@ class ScheduledTaskRunLog extends Model
             $killedCutoff = 'CASE command'.str_repeat(' WHEN ? THEN ?', count($windows)).' ELSE ? END';
 
             foreach ($windows as $command => $seconds) {
-                array_push($cutoffs, $command, $now->copy()->subSeconds($seconds));
+                $cutoffs[] = $command;
+                $cutoffs[] = $now->copy()->subSeconds($seconds);
             }
         }
 

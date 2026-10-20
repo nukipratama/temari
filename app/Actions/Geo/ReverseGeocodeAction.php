@@ -72,7 +72,8 @@ class ReverseGeocodeAction
         $requestStartedAt = null;
         try {
             $now = (int) Carbon::now()->format('Uu');
-            $nextAllowedAt = (int) Cache::get(self::NEXT_RATE_SLOT_KEY, 0);
+            $cachedSlot = Cache::get(self::NEXT_RATE_SLOT_KEY, 0);
+            $nextAllowedAt = is_numeric($cachedSlot) ? (int) $cachedSlot : 0;
             if ($nextAllowedAt > $now) {
                 throw new NominatimRateSlotUnavailableException();
             }
@@ -125,7 +126,10 @@ class ReverseGeocodeAction
                 return ReverseGeocodeOutcome::TransientFailure;
             }
 
-            return $this->formatAddress($payload['address']) ?? ReverseGeocodeOutcome::NoAddress;
+            /** @var array<string, mixed> $address */
+            $address = $payload['address'];
+
+            return $this->formatAddress($address) ?? ReverseGeocodeOutcome::NoAddress;
         } catch (Throwable $e) {
             Log::info('nominatim resolve failed', [
                 'error' => preg_replace('/\?\S*/', '', $e->getMessage()),
@@ -188,7 +192,8 @@ class ReverseGeocodeAction
 
     private function userAgent(): string
     {
-        $contact = config('app.url') ?? 'https://github.com/nukipratama/temari';
+        $url = config('app.url');
+        $contact = is_string($url) ? $url : 'https://github.com/nukipratama/temari';
 
         return sprintf('Temari/1.0 (%s)', $contact);
     }

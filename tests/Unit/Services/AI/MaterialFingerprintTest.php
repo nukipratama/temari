@@ -56,7 +56,7 @@ it('ignores sub-granularity jitter (distance within 10m, decoupling within 1%)',
     $activity = fingerprintActivity(['distance' => 5000.0, 'stream_summary' => ['decoupling_pct' => 6.0]]);
     $before = fingerprint($activity->id);
 
-    $activity->detail->update(['distance' => 5003.0, 'stream_summary' => ['decoupling_pct' => 6.3]]);
+    nonNull($activity->detail)->update(['distance' => 5003.0, 'stream_summary' => ['decoupling_pct' => 6.3]]);
 
     expect(fingerprint($activity->id))->toBe($before);
 });
@@ -65,7 +65,7 @@ it('changes when distance moves beyond the 10m bucket', function (): void {
     $activity = fingerprintActivity(['distance' => 5000.0]);
     $before = fingerprint($activity->id);
 
-    $activity->detail->update(['distance' => 5200.0]);
+    nonNull($activity->detail)->update(['distance' => 5200.0]);
 
     expect(fingerprint($activity->id))->not->toBe($before);
 });
@@ -74,7 +74,7 @@ it('changes when decoupling shifts materially (6% to 14%)', function (): void {
     $activity = fingerprintActivity(['stream_summary' => ['decoupling_pct' => 6.0]]);
     $before = fingerprint($activity->id);
 
-    $activity->detail->update(['stream_summary' => ['decoupling_pct' => 14.0]]);
+    nonNull($activity->detail)->update(['stream_summary' => ['decoupling_pct' => 14.0]]);
 
     expect(fingerprint($activity->id))->not->toBe($before);
 });
@@ -85,7 +85,7 @@ it('does not re-narrate historical run content when version 2 drift is added or 
     ]]);
     $before = fingerprint($activity->id);
 
-    $activity->detail->update(['stream_summary' => [
+    nonNull($activity->detail)->update(['stream_summary' => [
         'decoupling_pct' => 6.0,
         'drift_metric_version' => 2,
         'steady_effort_decoupling_pct' => 6.0,
@@ -93,7 +93,7 @@ it('does not re-narrate historical run content when version 2 drift is added or 
 
     expect(fingerprint($activity->id))->toBe($before);
 
-    $activity->detail->update(['stream_summary' => [
+    nonNull($activity->detail)->update(['stream_summary' => [
         'decoupling_pct' => 6.0,
         'drift_metric_version' => 2,
         'steady_effort_decoupling_pct' => 14.0,
@@ -106,7 +106,7 @@ it('changes when a trailing partial split appears (so a resync re-narrates the f
     $activity = fingerprintActivity(['stream_summary' => ['decoupling_pct' => 6.0]]);
     $before = fingerprint($activity->id);
 
-    $activity->detail->update(['stream_summary' => [
+    nonNull($activity->detail)->update(['stream_summary' => [
         'decoupling_pct' => 6.0,
         'partial_split' => ['distance_m' => 700, 'pace' => '5:30'],
     ]]);
@@ -127,9 +127,9 @@ it('changes when the first effort score is logged, and not when the score is edi
     $activity = fingerprintActivity(['perceived_effort' => null]);
     $before = fingerprint($activity->id);
 
-    $activity->detail->update(['perceived_effort' => 6]);
+    nonNull($activity->detail)->update(['perceived_effort' => 6]);
     $scored = fingerprint($activity->id);
-    $activity->detail->update(['perceived_effort' => 8]);
+    nonNull($activity->detail)->update(['perceived_effort' => 8]);
 
     expect($scored)->not->toBe($before)
         ->and(fingerprint($activity->id))->toBe($scored);
@@ -145,8 +145,8 @@ it('changes when the day turns out to be a planned tempo', function (): void {
 });
 
 /**
- * @param  array<string, mixed>  $overrides
- * @return array<string, mixed>
+ * @param  array{range?: string, current?: array{runs: int, distance_km: float, trimp_total: float|null}, comparison?: array{runs: int, distance_km: float, trimp_total: float|null}, ctl_start?: float|null, ctl_end?: float|null, vdot_start?: float|null, vdot_end?: float|null, avg_monotony?: float|null, avg_strain?: float|null}  $overrides
+ * @return array{range: string, current: array{runs: int, distance_km: float, trimp_total: float|null}, comparison: array{runs: int, distance_km: float, trimp_total: float|null}, ctl_start: float|null, ctl_end: float|null, vdot_start: float|null, vdot_end: float|null, avg_monotony: float|null, avg_strain: float|null}
  */
 function trendTotals(array $overrides = []): array
 {

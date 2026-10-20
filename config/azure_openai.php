@@ -41,18 +41,14 @@ return [
     ],
 
     // Manual per-1M-token USD rates keyed by DEPLOYMENT name (the value recorded
-    // in ai_token_usages.model), for the /devtools/narration cost estimate. Azure's retail
-    // price catalog (Foundry Models) uses cryptic, region/tier-specific meter
-    // names that can't be matched reliably, so these are maintained by hand from
+    // in ai_token_usages.model), for the /devtools/narration cost estimate,
+    // maintained by hand from
     // https://azure.microsoft.com/pricing/details/cognitive-services/openai-service/.
     // Values are Global Standard; map the deployment to its model's published rate.
     //
     // 'cached_input_per_1m' prices the slice of input the provider served from its
-    // prompt cache, which both models bill at a tenth of their input rate. Omit it
-    // for a deployment and its cached input bills as ordinary input, so a missing
-    // entry only ever overstates the estimate, never understates it.
-    // Measured on prod before these were filled in: 43-62% of input on multi-step
-    // calls was already arriving cached, so the estimate was overstating by a lot.
+    // prompt cache. Omit it for a deployment and its cached input bills as
+    // ordinary input, so a missing entry only ever overstates the estimate.
     'prices' => [
         // gpt-5.2
         'nuki-5.2' => ['input_per_1m' => 1.75, 'cached_input_per_1m' => 0.17, 'output_per_1m' => 14.00],

@@ -150,7 +150,7 @@ it('stalled() includes Pending and under-budget Failed rows, excludes Done and d
 
     expect($ids)->toContain($pending->id)
         ->toContain($failedUnder->id)
-        ->not->toContain($failedAtBudget->id);
+        ->and($ids)->not->toContain($failedAtBudget->id);
 });
 
 it('deadLettered() is only Failed rows at or over the retry budget', function (): void {
@@ -168,8 +168,8 @@ it('deadLettered() is only Failed rows at or over the retry budget', function ()
     $ids = Analysis::query()->deadLettered()->pluck('id');
 
     expect($ids)->toContain($dead->id)
-        ->not->toContain($failedUnder->id)
-        ->not->toContain($pendingMaxed->id); // Pending never dead-letters
+        ->and($ids)->not->toContain($failedUnder->id)
+        ->and($ids)->not->toContain($pendingMaxed->id); // Pending never dead-letters
 });
 
 it('payloadsForSubjects reports the same retry_after_seconds as a per-row toPayload', function (): void {
@@ -192,7 +192,7 @@ it('payloadsForSubjects reports the same retry_after_seconds as a per-row toPayl
         $row->startCooldown();
     }
 
-    $ids = $snapshots->pluck('id')->all();
+    $ids = $snapshots->map(fn (WeeklySnapshot $snapshot): int => $snapshot->id)->all();
     $batched = Analysis::payloadsForSubjects(WeeklySnapshot::class, AnalysisType::WeeklyRecap, $ids);
 
     foreach ($rows as $row) {
@@ -239,7 +239,7 @@ it('payloadsForSubjects resolves every cooldown in one cache round trip', functi
     $payloads = Analysis::payloadsForSubjects(
         WeeklySnapshot::class,
         AnalysisType::WeeklyRecap,
-        $snapshots->pluck('id')->all(),
+        $snapshots->map(fn (WeeklySnapshot $snapshot): int => $snapshot->id)->all(),
     );
 
     expect($payloads)->toHaveCount(5);

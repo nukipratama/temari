@@ -38,7 +38,7 @@ interface RaceComparisonProps {
  * ("vs race day · N days out"), then the target beside the time recent runs
  * support, the same figure and band sentence /race shows, and load balance
  * today. Long-term load appears once on the page, in its own section; with
- * no race set this section is a line and a "set a race" link (#967, #1275).
+ * no race set this section is a line and a "set a race" link.
  */
 export default function RaceComparison({
     activeRace,

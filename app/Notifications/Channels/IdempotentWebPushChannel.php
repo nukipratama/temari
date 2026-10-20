@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Notifications\Channels;
 
+use Psr\Http\Message\ResponseInterface;
 use Throwable;
 use App\Exceptions\Notifications\TransientWebPushException;
 use App\Models\User;
@@ -40,7 +41,7 @@ class IdempotentWebPushChannel
     public function send(User $notifiable, Notification $notification): void
     {
         $notifiable = $this->router->eligibleUserFor($notifiable, self::class);
-        if ($notifiable === null) {
+        if (!$notifiable instanceof User) {
             return;
         }
 
@@ -95,7 +96,7 @@ class IdempotentWebPushChannel
         }
 
         $statuses = $reports->map(fn (MessageSentReport $report): string => match (true) {
-            $report->getResponse() === null => 'network error',
+            !$report->getResponse() instanceof ResponseInterface => 'network error',
             $report->isSubscriptionExpired() => $report->getResponse()->getStatusCode().' expired',
             default => (string) $report->getResponse()->getStatusCode(),
         })->implode(', ');

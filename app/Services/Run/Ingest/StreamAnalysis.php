@@ -6,6 +6,7 @@ namespace App\Services\Run\Ingest;
 
 use App\Services\Run\Metrics\IntervalDetector;
 use App\Services\Run\Metrics\PaceFormatter;
+use App\Support\Numeric;
 
 class StreamAnalysis
 {
@@ -16,12 +17,8 @@ class StreamAnalysis
     private const float CLIMB_GRADE_PCT = 3.0;
 
     /**
-     * Steepest sustained grade past which neither decoupling nor HR drift is
-     * published at all. The Minetti cost curve behind grade adjustment is
-     * fitted for ordinary running gradients and degrades outside them, so on a
-     * genuinely steep run the corrected figure is not trustworthy either — and
-     * a number nobody can rely on is worse than no number, since the plan reads
-     * this to decide whether an athlete faded.
+     * Steepest sustained grade past which neither decoupling nor HR drift is published: the Minetti
+     * cost curve behind grade adjustment degrades outside ordinary running gradients.
      */
     private const float TERRAIN_UNREADABLE_GRADE_PCT = 15.0;
 
@@ -41,41 +38,27 @@ class StreamAnalysis
     private const float DRIFT_WARMUP_MOVING_TIME_FRACTION = 0.1;
 
     /**
-     * Aerobic decoupling compares HR/pace drift between halves, which only
-     * describes physiology over a sustained steady effort. Below this the split
-     * halves are too short for the ratio to mean anything and it reports GPS and
-     * traffic noise as cardiac drift, so the key is omitted entirely.
+     * Below this the split halves are too short and the ratio reports GPS and traffic noise as
+     * cardiac drift, so the key is omitted.
      */
     private const int DECOUPLING_MIN_MOVING_SEC = 2700;
 
     /**
-     * Heart rates outside this band are a strap dropout or a contact spike, not
-     * an athlete. Samples carrying one are skipped rather than averaged in: a
-     * stretch of dropouts in one half drags that half's mean HR toward zero and
-     * the ratio between the halves then reports the gap in the data as drift.
-     *
-     * Deliberately a fixed physiological band rather than the runner's own zone
-     * table, which {@see self::timeInZones} uses for the same "skip what does
-     * not belong" purpose: a zone table's Z1 floor sits around 100 bpm, so
-     * reusing it would discard genuine easy-running samples.
+     * Heart rates outside this band are a strap dropout or contact spike and are skipped rather
+     * than averaged in. A fixed physiological band, not the runner's zone table, whose Z1 floor
+     * would discard genuine easy-running samples.
      */
     private const float HR_PLAUSIBLE_MIN_BPM = 30.0;
 
     private const float HR_PLAUSIBLE_MAX_BPM = 220.0;
 
     /**
-     * Drift this far from zero is not a reading about the athlete. Real aerobic
-     * decoupling lives in single digits and a hard long run reaches the teens;
-     * a figure past this describes inputs that broke in a way the per-sample
-     * guards did not catch, so no number is published rather than a wrong one.
+     * Drift this far from zero describes broken inputs, so no number is published.
      */
     private const float DECOUPLING_IMPLAUSIBLE_PCT = 40.0;
 
     /**
-     * How much faster the second half must average before a run counts as a
-     * negative split. A bare `>` lets per-km noise coin-flip into the badge;
-     * fitted against real split data, 7% lands it near 1 run in 8, so finishing
-     * strong stays a deliberate act rather than the default outcome.
+     * How much faster the second half must average before a run counts as a negative split.
      */
     private const float NEGATIVE_SPLIT_MARGIN = 1.07;
 
@@ -123,7 +106,7 @@ class StreamAnalysis
         $altitude = $this->data($streams, 'altitude');
         $distance = $this->data($streams, 'distance');
         $grade = $this->data($streams, 'grade_smooth');
-        $latlng = $this->data($streams, 'latlng');
+        $latlng = $this->samples($streams, 'latlng');
 
         $seconds = self::floats($time);
         $intervals = self::intervals($seconds);
@@ -161,7 +144,7 @@ class StreamAnalysis
         }
 
         if (is_array($splitsMetric) && $splitsMetric !== []) {
-            $summary = array_merge(
+            return array_merge(
                 $summary,
                 $this->partialSplit($splitsMetric, $cadenceByKm),
                 // HR drift is first-km against last-km average HR, with no
@@ -182,6 +165,18 @@ class StreamAnalysis
      * @return list<float|int>
      */
     private function data(array $streams, string $key): array
+    {
+        /** @var list<float|int> $values */
+        $values = $this->samples($streams, $key);
+
+        return $values;
+    }
+
+    /**
+     * @param  array<string, mixed>  $streams
+     * @return list<mixed>
+     */
+    private function samples(array $streams, string $key): array
     {
         $payload = $streams[$key] ?? null;
         if (! is_array($payload)) {
@@ -295,12 +290,8 @@ class StreamAnalysis
             return null;
         }
 
-        // Two-pointer sliding window: distance covered between i..j where
-        // time[j]-time[i] >= targetSec. The window stops as soon as it crosses
-        // targetSec, so the trailing segment [j-1, j] is the one that overshoots.
-        // Trim that overshoot off the trailing edge proportionally so the credited
-        // distance maps to exactly targetSec; on uniform 1 Hz sampling the
-        // overshoot is zero and the value is unchanged.
+        // Two-pointer sliding window; the overshooting trailing segment is trimmed proportionally so
+        // the credited distance maps to exactly targetSec.
         $bestDist = 0.0;
         $j = 0;
         $windowDist = 0.0;
@@ -389,10 +380,8 @@ class StreamAnalysis
     }
 
     /**
-     * Whether this run's terrain is gentle enough for a heart-rate-against-pace
-     * reading to mean anything. Reads the max sustained grade `grade()` has
-     * already computed, so it costs nothing; a run with no grade stream is
-     * treated as readable rather than silently losing both metrics.
+     * Whether this run's terrain is gentle enough for a heart-rate-against-pace reading to mean
+     * anything; a run with no grade stream is treated as readable.
      *
      * @param  array<string, mixed>  $summary
      */
@@ -404,9 +393,8 @@ class StreamAnalysis
     }
 
     /**
-     * Steepest grade sustained over a rolling ~20s window, in percent. A raw
-     * per-sample max would just surface GPS spikes, so this is time-weighted
-     * over the window using the same two-pointer idiom as bestEffortPace().
+     * Steepest grade sustained over a rolling ~20s window, in percent; time-weighted because a raw
+     * per-sample max would surface GPS spikes.
      *
      * @param  list<float>  $grade
      * @param  list<float>  $seconds
@@ -606,8 +594,8 @@ class StreamAnalysis
      */
     private function fullKmPaceSec(array $split): ?float
     {
-        $distance = (float) ($split['distance'] ?? 0);
-        $moving = (float) ($split['moving_time'] ?? 0);
+        $distance = Numeric::float($split['distance'] ?? 0);
+        $moving = Numeric::float($split['moving_time'] ?? 0);
 
         if ($distance < self::FULL_KM_MIN_DISTANCE_M || $moving <= 0) {
             return null;
@@ -624,7 +612,7 @@ class StreamAnalysis
     {
         return array_values(array_filter(
             $splits,
-            fn (array $s): bool => (float) ($s['distance'] ?? 0) >= self::FULL_KM_MIN_DISTANCE_M,
+            fn (array $s): bool => Numeric::float($s['distance'] ?? 0) >= self::FULL_KM_MIN_DISTANCE_M,
         ));
     }
 
@@ -645,7 +633,7 @@ class StreamAnalysis
             if ($warmupSplits >= 1 && $warmupTime >= $warmupTarget) {
                 break;
             }
-            $warmupTime += max(0.0, (float) ($split['moving_time'] ?? 0));
+            $warmupTime += max(0.0, Numeric::float($split['moving_time'] ?? 0));
             $warmupSplits++;
         }
 
@@ -716,7 +704,7 @@ class StreamAnalysis
     private static function movingTimeSec(array $splits): float
     {
         return array_sum(array_map(
-            fn (array $split): float => max(0.0, (float) ($split['moving_time'] ?? 0)),
+            fn (array $split): float => max(0.0, Numeric::float($split['moving_time'] ?? 0)),
             $splits,
         ));
     }
@@ -731,7 +719,7 @@ class StreamAnalysis
         $movingSeconds = 0.0;
         $flatEquivalentDistance = 0.0;
         foreach ($splits as $split) {
-            $splitMovingTime = (float) ($split['moving_time'] ?? 0);
+            $splitMovingTime = Numeric::float($split['moving_time'] ?? 0);
             $bpm = $split['average_heartrate'] ?? null;
             if (! is_numeric($bpm)
                 || (float) $bpm < self::HR_PLAUSIBLE_MIN_BPM
@@ -766,8 +754,8 @@ class StreamAnalysis
      */
     private function fullKmGradeAdjustedPaceSec(array $split): ?float
     {
-        $distance = (float) ($split['distance'] ?? 0);
-        $moving = (float) ($split['moving_time'] ?? 0);
+        $distance = Numeric::float($split['distance'] ?? 0);
+        $moving = Numeric::float($split['moving_time'] ?? 0);
         $elevationDifference = $split['elevation_difference'] ?? null;
         if ($distance < self::FULL_KM_MIN_DISTANCE_M || $moving <= 0 || ! is_numeric($elevationDifference)) {
             return null;
@@ -784,13 +772,8 @@ class StreamAnalysis
     }
 
     /**
-     * Spread of the *per-km split* paces, in sec/km. Deliberately not the spread
-     * of the instantaneous velocity stream: that samples every GPS wobble,
-     * traffic light and cadence tick, so on real streams it lands an order of
-     * magnitude above anything a runner would call "uneven" and never resolves
-     * to a steady run. Split-level spread is the figure a runner can act on.
-     *
-     * Needs two full kilometres to describe anything, so shorter runs omit it.
+     * Spread of the per-km split paces, in sec/km (not the instantaneous velocity stream).
+     * Needs two full kilometres, so shorter runs omit it.
      *
      * @param  array<int, array<string, mixed>>  $splits
      * @return array<string, float>
@@ -814,15 +797,9 @@ class StreamAnalysis
     }
 
     /**
-     * Whether the run is long enough for half-vs-half drift metrics to describe
-     * physiology rather than noise.
-     *
-     * Measured across the same samples {@see decoupling} will actually analyse
-     * ({@see driftSampleCount}), not the full time stream: the streams can
-     * arrive at different lengths, and a run whose velocity trace stops early
-     * would otherwise be certified on 90 minutes of elapsed time while the ratio
-     * was computed from the ten minutes that had data. Stopped time comes from
-     * the summary so stop detection keeps a single definition.
+     * Whether the run is long enough for half-vs-half drift metrics to describe physiology rather
+     * than noise. Measured across the samples {@see decoupling} analyses ({@see driftSampleCount}),
+     * not the full time stream; stopped time comes from the summary.
      *
      * @param  list<float|int>  $time
      * @param  list<float|int>  $heartrate
@@ -838,22 +815,14 @@ class StreamAnalysis
         }
 
         $analysed = (float) $time[$n] - (float) $time[0];
-        $stopped = (float) ($summary['stopped_time_sec'] ?? 0);
+        $stopped = Numeric::float($summary['stopped_time_sec'] ?? 0);
 
         return ($analysed - $stopped) >= self::DECOUPLING_MIN_MOVING_SEC;
     }
 
     /**
-     * How many sample intervals the half-vs-half drift metrics can read: every
-     * stream they consume has to cover the index, and each interval needs its
-     * closing timestamp.
-     *
-     * The gradient is one of those streams. The pace inside the ratio is
-     * grade-adjusted by contract ({@see decoupling}), so a run whose grade trace
-     * is missing or short carries no reading over that stretch rather than one
-     * computed as though the ground were flat. That is the same set
-     * {@see gradeAdjustedPace} reads, and the mismatch used to let the tail of a
-     * hilly run be scored flat.
+     * How many sample intervals the half-vs-half drift metrics can read: every stream they consume
+     * (the gradient included) has to cover the index, matching the set {@see gradeAdjustedPace} reads.
      *
      * @param  list<float|int>  $time
      * @param  list<float|int>  $heartrate
@@ -895,20 +864,8 @@ class StreamAnalysis
      * Cardiac decoupling: ratio of average (HR / pace) in the second half
      * vs the first half. Positive = HR drifted up for the same pace.
      *
-     * Pace is **grade-adjusted** before the ratio is taken, via the same
-     * Minetti cost factor {@see self::gradeAdjustedPace()} uses. Against raw
-     * pace this metric could not tell fatigue from terrain: a climb in the
-     * back half reads as decoupling, and a downhill finish flatters it. The
-     * grade stream is already fetched for GAP, so this costs nothing extra.
-     *
-     * Both halves are **time-weighted**, and the split is the run's time
-     * midpoint rather than the middle index. Each half's pace is its moving
-     * seconds over its flat-equivalent distance, the same shape
-     * {@see self::gradeAdjustedPace()} computes, so a slow sample weighs what
-     * its seconds are worth. Averaging per-sample s/km instead let one crawling
-     * sample near the stop threshold count for the same as a running one while
-     * standing for a couple of metres, and an index split cut the halves
-     * unevenly in time whenever the sample spacing changed mid-run.
+     * Pace is grade-adjusted via {@see self::gradeAdjustedPace()}'s Minetti cost factor, and both
+     * halves are time-weighted around the run's time midpoint rather than the middle index.
      *
      * @param  list<float>  $seconds
      * @param  list<float>  $intervals
@@ -1020,15 +977,10 @@ class StreamAnalysis
     }
 
     /**
-     * The trailing sub-km "sisa" segment as its own row, pace-normalized per km
-     * from moving_time (same basis as full-km rows). Display/narrative-only: it
-     * is never a full km, never crowned fastest, and never enters the aggregate
-     * metrics. Carries no `km` field by design so the AI payload can't be nudged
-     * into naming it "km N".
-     *
-     * Only the final split qualifies (Strava emits at most one leftover), and
-     * only when 100 m <= distance < 950 m (slivers under 100 m are noise, matching
-     * the demo seeder threshold).
+     * The trailing sub-km "sisa" segment as its own row, pace-normalized per km from moving_time.
+     * Display/narrative-only: never a full km, never crowned fastest, never enters the aggregate
+     * metrics, and carries no `km` field so the AI payload can't name it "km N". Only the final split
+     * with 100 m <= distance < 950 m qualifies.
      *
      * @param  array<int, array<string, mixed>>  $splits
      * @param  array<int, int>  $cadenceByKm  km index (1-based) → average spm
@@ -1040,8 +992,8 @@ class StreamAnalysis
         if (! is_array($last)) {
             return [];
         }
-        $distance = (float) ($last['distance'] ?? 0);
-        $moving = (float) ($last['moving_time'] ?? 0);
+        $distance = Numeric::float($last['distance'] ?? 0);
+        $moving = Numeric::float($last['moving_time'] ?? 0);
         if ($distance >= self::FULL_KM_MIN_DISTANCE_M || $distance < self::PARTIAL_SPLIT_MIN_DISTANCE_M || $moving <= 0) {
             return [];
         }
@@ -1051,12 +1003,12 @@ class StreamAnalysis
             'pace' => PaceFormatter::format($paceSec),
         ];
         if (isset($last['average_heartrate'])) {
-            $row['avg_hr'] = (int) round((float) $last['average_heartrate']);
+            $row['avg_hr'] = (int) round(Numeric::float($last['average_heartrate']));
         }
         if (isset($last['average_cadence'])) {
-            $row['avg_cadence_spm'] = (int) round((float) $last['average_cadence'] * 2);
+            $row['avg_cadence_spm'] = (int) round(Numeric::float($last['average_cadence']) * 2);
         }
-        $km = (int) ($last['split'] ?? 0);
+        $km = Numeric::int($last['split'] ?? 0);
         if (! isset($row['avg_cadence_spm']) && isset($cadenceByKm[$km])) {
             $row['avg_cadence_spm'] = $cadenceByKm[$km];
         }
@@ -1065,13 +1017,8 @@ class StreamAnalysis
     }
 
     /**
-     * Bucket the cadence stream by km using cumulative distance from the
-     * `distance` stream. Strava's `splits_metric` payload doesn't carry
-     * cadence, so this is the only way to populate per-km cadence for the
-     * /runs/{id} splits table.
-     *
-     * Time-weighted (matching `cadenceDistribution()` line 317) and doubles
-     * the half-cadence values Strava ships in the stream.
+     * Bucket the cadence stream by km using cumulative distance from the `distance` stream,
+     * time-weighted, doubling the half-cadence values Strava ships (`splits_metric` carries none).
      *
      * @param  list<float>  $intervals
      * @param  list<float|int>  $distance
@@ -1110,9 +1057,8 @@ class StreamAnalysis
     }
 
     /**
-     * Decorate `per_km` rows with `avg_cadence_spm` from the per-km cadence
-     * map. Existing values (from a future Strava payload that adds cadence
-     * to splits_metric) are preserved.
+     * Decorate `per_km` rows with `avg_cadence_spm` from the per-km cadence map; existing values are
+     * preserved.
      *
      * @param  array<int, array<string, mixed>>  $rows
      * @param  array<int, int>  $cadenceByKm
@@ -1127,7 +1073,7 @@ class StreamAnalysis
             if (isset($row['avg_cadence_spm'])) {
                 continue;
             }
-            $km = (int) ($row['km'] ?? 0);
+            $km = Numeric::int($row['km'] ?? 0);
             if (isset($cadenceByKm[$km])) {
                 $rows[$i]['avg_cadence_spm'] = $cadenceByKm[$km];
             }
@@ -1138,11 +1084,7 @@ class StreamAnalysis
 
     /**
      * HR drift across the run: avg HR of last full-km split minus first.
-     *
-     * Gated on the same sustained-effort floor as decoupling, and for the same
-     * reason: over a short run the gap between the first and last kilometre's HR
-     * is warm-up and terrain, not drift. Measured from the splits themselves so
-     * the metric stays available whenever its own inputs are.
+     * Gated on the same sustained-effort floor as decoupling.
      *
      * @param  array<int, array<string, mixed>>  $splits
      * @return array<string, float>
@@ -1153,7 +1095,7 @@ class StreamAnalysis
         if (count($full) < 2) {
             return [];
         }
-        $movingTime = array_sum(array_map(fn (array $s): float => (float) ($s['moving_time'] ?? 0), $full));
+        $movingTime = array_sum(array_map(fn (array $s): float => Numeric::float($s['moving_time'] ?? 0), $full));
         if ($movingTime < self::DECOUPLING_MIN_MOVING_SEC) {
             return [];
         }
@@ -1163,7 +1105,7 @@ class StreamAnalysis
             return [];
         }
 
-        return ['hr_drift_bpm' => round((float) $last - (float) $first, 1)];
+        return ['hr_drift_bpm' => round(Numeric::float($last) - Numeric::float($first), 1)];
     }
 
     /**
@@ -1183,7 +1125,7 @@ class StreamAnalysis
         }
 
         // cadence_drop_spm: how much SPM dropped from start to end (positive = slowed)
-        return ['cadence_drop_spm' => round(((float) $first - (float) $last) * 2, 1)];
+        return ['cadence_drop_spm' => round((Numeric::float($first) - Numeric::float($last)) * 2, 1)];
     }
 
     /**

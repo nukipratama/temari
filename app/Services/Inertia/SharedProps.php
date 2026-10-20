@@ -11,18 +11,16 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 
 /**
- * Builds the cross-cutting props merged into every Inertia response. The
- * `HandleInertiaRequests` middleware is wiring only; this is where the
- * shared-prop policy lives, and it is injectable, so a test can drive it
+ * Builds the cross-cutting props merged into every Inertia response. The `HandleInertiaRequests`
+ * middleware is wiring only; the shared-prop policy lives here, injectable, so a test can drive it
  * without a request cycle.
  *
- * The domain families each own their own builder ({@see GamificationProps},
- * {@see StravaProps}, {@see NotificationProps}, {@see AiProps}); what is left
- * here is the request-shaped remainder — identity, flashes, the server's
- * calendar day and two config flags — plus the composition.
+ * The domain families each own their own builder ({@see GamificationProps}, {@see StravaProps},
+ * {@see NotificationProps}, {@see AiProps}); what is left here is identity, flashes, the server's
+ * calendar day and two config flags, plus the composition.
  *
- * Every prop but `auth`, `today` and the two config flags is a closure, so Inertia skips
- * the work entirely on a partial reload that did not ask for that key.
+ * Every prop but `auth`, `today` and the two config flags is a closure, so Inertia skips the work
+ * on a partial reload that did not ask for that key.
  */
 final readonly class SharedProps
 {
@@ -41,6 +39,7 @@ final readonly class SharedProps
     {
         /** @var User|null $user */
         $user = $request->user();
+        $vapidPublicKey = config('webpush.vapid.public_key');
 
         return [
             'auth' => [
@@ -62,7 +61,7 @@ final readonly class SharedProps
                 && ! app(AppConfig::class)->boolean(AppConfigKey::MaintenanceEnabled),
             // Public VAPID key only — the client needs it to subscribe; the private
             // key never leaves the server.
-            'webPushPublicKey' => (string) config('webpush.vapid.public_key'),
+            'webPushPublicKey' => is_string($vapidPublicKey) ? $vapidPublicKey : '',
             'today' => Carbon::today()->toDateString(),
             'planRecalibration' => fn (): array => $this->planRecalibrationFor($user),
             ...$this->gamification->forUser($user),

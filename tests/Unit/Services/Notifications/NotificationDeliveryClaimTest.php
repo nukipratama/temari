@@ -11,6 +11,15 @@ use Illuminate\Support\Str;
 
 uses(RefreshDatabase::class);
 
+function claimedVersion(NotificationDeliveryClaim $claim, int $id, string $channel): int
+{
+    $version = $claim->claim($id, $channel);
+    expect($version)->not->toBeNull();
+    assert($version !== null);
+
+    return $version;
+}
+
 it('claims once and rejects a duplicate on the same channel', function (): void {
     $id = Analysis::factory()->create()->id;
     $claim = app(NotificationDeliveryClaim::class);
@@ -41,7 +50,7 @@ it('records a claim as pending until it settles', function (): void {
 it('settles only the matching claim version', function (): void {
     $id = Analysis::factory()->create()->id;
     $claim = app(NotificationDeliveryClaim::class);
-    $version = $claim->claim($id, 'telegram');
+    $version = claimedVersion($claim, $id, 'telegram');
 
     expect($claim->markSent($id, 'telegram', $version))->toBeTrue()
         ->and($claim->markSent($id, 'telegram', $version))->toBeFalse();
@@ -56,7 +65,7 @@ it('settles only the matching claim version', function (): void {
 it('keeps a sent delivery deduped against a later automatic send', function (): void {
     $id = Analysis::factory()->create()->id;
     $claim = app(NotificationDeliveryClaim::class);
-    $version = $claim->claim($id, 'telegram');
+    $version = claimedVersion($claim, $id, 'telegram');
     $claim->markSent($id, 'telegram', $version);
 
     expect($claim->claim($id, 'telegram'))->toBeNull();
@@ -65,7 +74,7 @@ it('keeps a sent delivery deduped against a later automatic send', function (): 
 it('stores the error on a failed send instead of erasing the row', function (): void {
     $id = Analysis::factory()->create()->id;
     $claim = app(NotificationDeliveryClaim::class);
-    $version = $claim->claim($id, 'telegram');
+    $version = claimedVersion($claim, $id, 'telegram');
 
     $claim->markFailed($id, 'telegram', $version, 'chat not found');
 
@@ -79,7 +88,7 @@ it('stores the error on a failed send instead of erasing the row', function (): 
 it('abandons a claim so no retry can take it over', function (): void {
     $id = Analysis::factory()->create()->id;
     $claim = app(NotificationDeliveryClaim::class);
-    $version = $claim->claim($id, 'telegram');
+    $version = claimedVersion($claim, $id, 'telegram');
 
     expect($claim->markAbandoned($id, 'telegram', $version, 'timed out'))->toBeTrue()
         ->and($claim->claim($id, 'telegram'))->toBeNull()
@@ -95,7 +104,7 @@ it('abandons a claim so no retry can take it over', function (): void {
 it('lets a retry take over a failed claim with a new version', function (): void {
     $id = Analysis::factory()->create()->id;
     $claim = app(NotificationDeliveryClaim::class);
-    $version = $claim->claim($id, 'telegram');
+    $version = claimedVersion($claim, $id, 'telegram');
     $claim->markFailed($id, 'telegram', $version, 'boom');
 
     expect($claim->claim($id, 'telegram'))->toBe(2)
@@ -112,7 +121,7 @@ it('lets a retry take over a failed claim with a new version', function (): void
 it('settles only the named channel', function (): void {
     $id = Analysis::factory()->create()->id;
     $claim = app(NotificationDeliveryClaim::class);
-    $telegramVersion = $claim->claim($id, 'telegram');
+    $telegramVersion = claimedVersion($claim, $id, 'telegram');
     $claim->claim($id, 'webpush');
 
     $claim->markFailed($id, 'telegram', $telegramVersion, 'boom');
@@ -134,7 +143,7 @@ it('records a failed send that never claimed a row', function (): void {
 it('does not let an unclaimed failure overwrite an earlier successful delivery', function (): void {
     $id = Analysis::factory()->create()->id;
     $claim = app(NotificationDeliveryClaim::class);
-    $claim->markSent($id, 'telegram', $claim->claim($id, 'telegram'));
+    $claim->markSent($id, 'telegram', claimedVersion($claim, $id, 'telegram'));
 
     expect($claim->recordUnclaimedFailed($id, 'telegram', 'skipped as stale'))->toBeFalse()
         ->and(NotificationDelivery::query()->firstOrFail()->status)->toBe(NotificationDeliveryStatus::Sent);
@@ -143,7 +152,7 @@ it('does not let an unclaimed failure overwrite an earlier successful delivery',
 it('truncates a runaway error message', function (): void {
     $id = Analysis::factory()->create()->id;
     $claim = app(NotificationDeliveryClaim::class);
-    $version = $claim->claim($id, 'telegram');
+    $version = claimedVersion($claim, $id, 'telegram');
 
     $claim->markFailed($id, 'telegram', $version, str_repeat('x', 5000));
 
@@ -155,7 +164,7 @@ it('truncates a runaway error message', function (): void {
 it('reclaims stale web pushes with a new version and fences the old finisher', function (): void {
     $id = Analysis::factory()->create()->id;
     $claim = app(NotificationDeliveryClaim::class);
-    $oldVersion = $claim->claim($id, 'webpush');
+    $oldVersion = claimedVersion($claim, $id, 'webpush');
     NotificationDelivery::query()->where('analysis_id', $id)->update(['claimed_at' => now()->subMinutes(16)]);
 
     expect($claim->recoverStale())->toBe([
@@ -163,7 +172,7 @@ it('reclaims stale web pushes with a new version and fences the old finisher', f
         'telegram_abandoned' => 0,
     ]);
 
-    $newVersion = $claim->claim($id, 'webpush');
+    $newVersion = claimedVersion($claim, $id, 'webpush');
     expect($newVersion)->toBe(2)
         ->and($claim->markSent($id, 'webpush', $oldVersion))->toBeFalse();
 
@@ -181,7 +190,7 @@ it('reclaims stale web pushes with a new version and fences the old finisher', f
 it('abandons stale Telegram claims and rejects both re-claim and late settlement', function (): void {
     $id = Analysis::factory()->create()->id;
     $claim = app(NotificationDeliveryClaim::class);
-    $oldVersion = $claim->claim($id, 'telegram');
+    $oldVersion = claimedVersion($claim, $id, 'telegram');
     NotificationDelivery::query()->where('analysis_id', $id)->update(['claimed_at' => now()->subMinutes(16)]);
 
     expect($claim->claim($id, 'telegram'))->toBeNull()

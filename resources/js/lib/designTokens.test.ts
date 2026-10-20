@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
+import { defined } from '@/test/defined';
+
 import GROUND_KINDS from '../../brand/grounds.json';
 import {
     auditPanels,
@@ -166,8 +168,7 @@ describe('collectPaperGrounds', () => {
     });
 
     it('reaches past --color-surface', () => {
-        // The S2.9 blind spot in one assertion: cream-deep is the ground
-        // AppShell paints and the one the old scrape could never see.
+        // cream-deep is the ground AppShell paints.
         const grounds = collectPaperGrounds(paperValues);
 
         expect(grounds.map((g) => g.name)).toContain('cream-deep');
@@ -261,7 +262,7 @@ describe('auditContrast', () => {
             'mood-gassed fill',
         ]);
         expect(rows.every((r) => r.pass)).toBe(true);
-        expect(rows[1].outlined).toBeUndefined();
+        expect(defined(rows[1]).outlined).toBeUndefined();
     });
 
     it('tests the outline instead when a fill is too light to reach 3:1', () => {

@@ -27,7 +27,7 @@ function runCitationGuard(array $files): array
         $process = new Process([PHP_BINARY, $root.'/scripts/check-doc-citations.php']);
         $process->run();
 
-        return [$process->getExitCode(), $process->getErrorOutput().$process->getOutput()];
+        return [nonNull($process->getExitCode()), $process->getErrorOutput().$process->getOutput()];
     } finally {
         File::deleteDirectory($root);
     }

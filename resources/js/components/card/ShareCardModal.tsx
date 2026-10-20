@@ -70,14 +70,11 @@ const FACT_CHIPS: Array<{
 
 /**
  * The share popup: a bottom sheet at phone width, a centred dialog on a
- * desktop. The three prints sit side by side in a clipped carousel with their
- * neighbours peeking, the story/feed toggle sits above them, and the chips
- * below toggle the optional facts. A chip for a fact this run does not have is
- * hidden rather than disabled.
+ * desktop. The three prints sit side by side in a clipped carousel, the
+ * story/feed toggle above them and the optional-fact chips below.
  *
- * Everything on screen is drawn in the browser, so a switch is a local redraw:
- * a tuple already drawn paints instantly, and only a genuinely new one shows
- * any progress at all.
+ * Everything is drawn in the browser, so a switch is a local redraw and only a
+ * genuinely new tuple shows any progress.
  */
 export default function ShareCardModal({
     open,
@@ -118,7 +115,8 @@ export default function ShareCardModal({
 
     const step = (delta: number) => {
         const next = index + delta;
-        if (next >= 0 && next < CARD_STYLES.length) setStyle(CARD_STYLES[next]);
+        const target = CARD_STYLES[next];
+        if (target !== undefined) setStyle(target);
     };
 
     const touchHandlers = useHorizontalSwipe((direction) =>
@@ -219,7 +217,7 @@ export default function ShareCardModal({
             backdropProps={{
                 className: 'backdrop-reveal fixed inset-0 z-[50]',
                 style: {
-                    background: 'rgba(0,0,0,0.5)',
+                    background: 'var(--scrim)',
                     backdropFilter: 'blur(6px)',
                 },
             }}
@@ -287,7 +285,7 @@ export default function ShareCardModal({
             {/* The prints, racked side by side and clipped by the stage, so
                     the neighbours bleed off the sheet instead of widening it. */}
             <div
-                role="group"
+                role="toolbar"
                 aria-label="print style"
                 tabIndex={0}
                 onKeyDown={(event) => {

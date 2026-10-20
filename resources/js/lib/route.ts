@@ -1,5 +1,14 @@
 import polylineCodec from '@mapbox/polyline';
 
+/** Decode a Google-encoded polyline into lat/lng pairs; `[]` when empty or undecodable. */
+export function decodePolyline(polyline: string): Array<[number, number]> {
+    try {
+        return polylineCodec.decode(polyline) as Array<[number, number]>;
+    } catch {
+        return [];
+    }
+}
+
 /**
  * Decode + normalize a Google-encoded polyline into points fitted to a
  * `width`×`height` box (0-origin), preserving aspect ratio and flipping
@@ -20,12 +29,7 @@ export function projectPolyline(
         return null;
     }
 
-    let pts: Array<[number, number]>;
-    try {
-        pts = polylineCodec.decode(polyline) as Array<[number, number]>;
-    } catch {
-        return null;
-    }
+    let pts = decodePolyline(polyline);
     if (pts.length < 2) {
         return null;
     }
@@ -33,8 +37,9 @@ export function projectPolyline(
     if (pts.length > maxPoints) {
         const stride = Math.ceil(pts.length / maxPoints);
         const sampled = pts.filter((_, i) => i % stride === 0);
-        if (sampled[sampled.length - 1] !== pts[pts.length - 1]) {
-            sampled.push(pts[pts.length - 1]);
+        const last = pts.at(-1);
+        if (last !== undefined && sampled.at(-1) !== last) {
+            sampled.push(last);
         }
         pts = sampled;
     }
@@ -57,5 +62,9 @@ export function projectPolyline(
         offX + (p[1] - minLng) * scale,
         offY + (maxLat - p[0]) * scale, // flip y: higher latitude = higher on screen
     ]);
-    return { points, start: points[0] };
+    const start = points[0];
+    if (start === undefined) {
+        return null;
+    }
+    return { points, start };
 }

@@ -33,7 +33,7 @@ beforeEach(fn () => Carbon::setTestNow(WEEK_KM_TODAY.' 08:00:00'));
 afterEach(fn () => Carbon::setTestNow());
 
 /**
- * The #1994 week: a past pinned make-up easy day asked at 4.4 km, today and
+ * A week with a past pinned make-up easy day asked at 4.4 km, today and
  * Saturday easy at 2.7, and a Sunday long run at 6.8. The week's multiplier
  * puts the long run at 6.8 km, so the primary easy day is 0.65 of it and the
  * other easy days 0.40.
@@ -74,20 +74,27 @@ function issueWeek(?float $wednesdayRunKm): User
     return $user;
 }
 
-/** @return array<string, array<string, mixed>> */
+/** @return array<string, array<mixed>> */
 function narratedWeek(User $user): array
 {
     $tool = new PlanContextTool($user, Carbon::today(), Carbon::parse(WEEK_KM_SUNDAY), app(TrainingBaseline::class), app(VdotEstimator::class), app(TrainingPaceCalculator::class));
 
-    return collect($tool->handle([])['days'])->keyBy('date')->all();
+    $days = [];
+    foreach (arrayOf($tool->handle([])['days']) as $day) {
+        $day = arrayOf($day);
+        $date = $day['date'];
+        $days[is_string($date) ? $date : throw new InvalidArgumentException('Day date is not a string.')] = $day;
+    }
+
+    return $days;
 }
 
 it('totals the issue week at the 16.6 km the plan asks for, and the page, header and narrator agree on Saturday', function (): void {
     $user = issueWeek(5.0);
 
-    $week = app(CurrentWeekKm::class)->forUser($user, Carbon::today());
-    $home = app(CurrentWeekPlanBuilder::class)->forUser($user, Carbon::today());
-    $days = collect($home['days'])->keyBy('date');
+    $week = nonNull(app(CurrentWeekKm::class)->forUser($user, Carbon::today()));
+    $home = nonNull(app(CurrentWeekPlanBuilder::class)->forUser($user, Carbon::today()));
+    $days = array_column($home['days'], null, 'date');
     $targetKm = round(array_sum(array_column($home['days'], 'asked_km')), 1);
 
     expect([$days[WEEK_KM_WEDNESDAY]['asked_km'], $days[WEEK_KM_TODAY]['asked_km'], $days[WEEK_KM_SATURDAY]['asked_km'], $days[WEEK_KM_SUNDAY]['asked_km']])->toBe([4.4, 2.7, 2.7, 6.8])
@@ -106,8 +113,8 @@ it('totals the issue week at the 16.6 km the plan asks for, and the page, header
 it('drops the total by a missed day\'s km, since the cap never makes them up', function (): void {
     $user = issueWeek(null);
 
-    $home = app(CurrentWeekPlanBuilder::class)->forUser($user, Carbon::today());
-    $days = collect($home['days'])->keyBy('date');
+    $home = nonNull(app(CurrentWeekPlanBuilder::class)->forUser($user, Carbon::today()));
+    $days = array_column($home['days'], null, 'date');
 
     expect($days[WEEK_KM_SATURDAY]['distance_km'])->toBe(2.7)
         ->and(narratedWeek($user)[WEEK_KM_SATURDAY]['distance_km'])->toBe(2.7)
@@ -117,9 +124,9 @@ it('drops the total by a missed day\'s km, since the cap never makes them up', f
 it('ends above the plan\'s target when the trim is floor-bound and cannot absorb an overrun', function (): void {
     $user = issueWeek(6.0);
 
-    $week = app(CurrentWeekKm::class)->forUser($user, Carbon::today());
-    $home = app(CurrentWeekPlanBuilder::class)->forUser($user, Carbon::today());
-    $days = collect($home['days'])->keyBy('date');
+    $week = nonNull(app(CurrentWeekKm::class)->forUser($user, Carbon::today()));
+    $home = nonNull(app(CurrentWeekPlanBuilder::class)->forUser($user, Carbon::today()));
+    $days = array_column($home['days'], null, 'date');
 
     expect($week['scale_by_date'][WEEK_KM_SATURDAY])->toBe(0.7)
         ->and($days[WEEK_KM_SATURDAY]['distance_km'])->toBe(round(2.7 * 0.7, 1))
@@ -145,10 +152,10 @@ it('gives the narrator today\'s advised session, its type and km together', func
         'stream_summary' => ['time_in_zone_min' => ['Z2' => 20, 'Z4' => 12]],
     ]);
 
-    $today = collect(app(CurrentWeekPlanBuilder::class)->forUser($user, Carbon::today())['days'])->firstWhere('date', WEEK_KM_TODAY);
+    $today = nonNull(collect(nonNull(app(CurrentWeekPlanBuilder::class)->forUser($user, Carbon::today()))['days'])->firstWhere('date', WEEK_KM_TODAY));
     $narrated = narratedWeek($user)[WEEK_KM_TODAY];
 
-    expect($today['eased_from']['session_type'])->toBe('tempo')
+    expect(data_get($today, 'eased_from.session_type'))->toBe('tempo')
         ->and($today['session_type'])->toBe('easy')
         ->and([$narrated['session_type'], $narrated['distance_km']])->toBe([$today['session_type'], $today['distance_km']]);
 });
@@ -160,7 +167,7 @@ it('gives the narrator a later easy-prescribed interval as the easy run the page
         'prescribed_hard_minutes' => 0,
     ]);
 
-    $friday = collect(app(CurrentWeekPlanBuilder::class)->forUser($user, Carbon::today())['days'])->firstWhere('date', '2026-10-09');
+    $friday = nonNull(collect(nonNull(app(CurrentWeekPlanBuilder::class)->forUser($user, Carbon::today()))['days'])->firstWhere('date', '2026-10-09'));
     $narrated = narratedWeek($user)['2026-10-09'];
 
     expect($friday['session_type'])->toBe('easy')
@@ -174,9 +181,9 @@ it('hands the week plan each run day\'s pace window from the athlete\'s VDOT', f
     $marathon = $calculator->fromVdot(45.0)['marathon'];
     $slowEnd = $calculator->easySlowEndSecPerKm(45.0);
 
-    $week = app(CurrentWeekKm::class)->forUser($user, Carbon::today());
-    $today = collect(app(CurrentWeekPlanBuilder::class)->forUser($user, Carbon::today())['days'])->firstWhere('date', WEEK_KM_TODAY);
+    $week = nonNull(app(CurrentWeekKm::class)->forUser($user, Carbon::today()));
+    $today = nonNull(collect(nonNull(app(CurrentWeekPlanBuilder::class)->forUser($user, Carbon::today()))['days'])->firstWhere('date', WEEK_KM_TODAY));
 
     expect($week['easy_slow_end_sec_per_km'])->toBe($slowEnd)
-        ->and($today['segments'][0]['pace_range'])->toBe(['fast_sec_per_km' => $marathon, 'slow_sec_per_km' => $slowEnd]);
+        ->and(data_get($today, 'segments.0.pace_range'))->toBe(['fast_sec_per_km' => $marathon, 'slow_sec_per_km' => $slowEnd]);
 });

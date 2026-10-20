@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Run\Ingest;
 
+use App\Services\Weather\WeatherSnapshot;
 use App\Actions\AI\SettleEarlyNarrationAction;
 use App\Actions\Gamification\DetectActivityMilestonesAction;
 use App\Actions\Run\DeleteIngestedRunAction;
@@ -38,7 +39,6 @@ use App\Services\Weather\OpenMeteoClient;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\RequestException;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use RuntimeException;
@@ -112,6 +112,7 @@ class ActivityPipeline
             return;
         }
 
+        /** @var array<string, mixed> $detail */
         if (RunSportType::isExplicitlyNotRun($detail)) {
             $this->rejectNonRunUpload($activity, $detail);
 
@@ -214,11 +215,9 @@ class ActivityPipeline
     }
 
     /**
-     * The webhook fires for every activity type; the detail payload carries the
-     * authoritative sport_type. Rejects here so a ride / walk / swim never mints
-     * a PR / card / weekly snapshot or bills the AI narrator — the poll path
-     * filters these upstream, this is the webhook's equivalent choke point.
-     * A run already ingested and then re-typed on Strava heals like a delete.
+     * Rejects a non-run upload (the webhook fires for every activity type) before it mints a
+     * PR / card / weekly snapshot or bills the AI narrator. A run later re-typed on Strava heals
+     * like a delete.
      *
      * @param  array<string, mixed>  $detail
      */
@@ -242,41 +241,9 @@ class ActivityPipeline
      */
     private function storeDetail(Activity $activity, array $detail): ActivityDetail
     {
-        $start = $detail['start_date_local'] ?? $detail['start_date'] ?? null;
-        // start_latlng is null/empty for non-GPS activities (treadmill, manual).
-        $latlng = is_array($detail['start_latlng'] ?? null) && count($detail['start_latlng']) === 2
-            ? $detail['start_latlng']
-            : null;
-
         return ActivityDetail::query()->updateOrCreate(
             ['activity_id' => $activity->id],
-            [
-                'name' => $detail['name'] ?? null,
-                'start_date_local' => is_string($start) ? Carbon::parse($start) : null,
-                'start_date_utc' => is_string($detail['start_date'] ?? null) && $detail['start_date'] !== '' ? Carbon::parse($detail['start_date'])->utc()->toDateTimeString() : null,
-                'distance' => $detail['distance'] ?? null,
-                'moving_time' => $detail['moving_time'] ?? null,
-                'elapsed_time' => $detail['elapsed_time'] ?? null,
-                'average_speed' => $detail['average_speed'] ?? null,
-                'total_elevation_gain' => $detail['total_elevation_gain'] ?? null,
-                'has_heartrate' => (bool) ($detail['has_heartrate'] ?? false),
-                'average_heartrate' => $detail['average_heartrate'] ?? null,
-                'max_heartrate' => $detail['max_heartrate'] ?? null,
-                'average_cadence' => $detail['average_cadence'] ?? null,
-                'calories' => $detail['calories'] ?? null,
-                'splits_metric' => $detail['splits_metric'] ?? null,
-                'laps' => $detail['laps'] ?? null,
-                'summary_polyline' => $detail['map']['summary_polyline'] ?? null,
-                'start_lat' => $latlng === null ? null : (float) $latlng[0],
-                'start_lng' => $latlng === null ? null : (float) $latlng[1],
-                'suffer_score' => $detail['suffer_score'] ?? null,
-                'workout_type' => $detail['workout_type'] ?? null,
-                'elev_high' => $detail['elev_high'] ?? null,
-                'elev_low' => $detail['elev_low'] ?? null,
-                'device_name' => $detail['device_name'] ?? null,
-                'average_watts' => $detail['average_watts'] ?? null,
-                'max_speed' => $detail['max_speed'] ?? null,
-            ],
+            StravaDetailMapper::detail($detail),
         );
     }
 
@@ -292,8 +259,12 @@ class ActivityPipeline
                     'key_by_type' => 'true',
                 ])
                 ->json();
+            if (! is_array($streams)) {
+                return null;
+            }
 
-            return is_array($streams) ? $streams : null;
+            /** @var array<string, mixed> $streams */
+            return $streams;
         } catch (StravaRateLimitedException|StravaCircuitOpenException|ConnectionException $e) {
             // The detail is already stored; re-queue the job rather than
             // silently drop the streams.
@@ -353,19 +324,11 @@ class ActivityPipeline
     }
 
     /**
-     * Raise the athlete's max HR when their own history beats it. The athlete's
-     * own peak can never be an underestimate, so it always wins.
+     * Raise the athlete's max HR when their own history beats it. The ceiling is the highest
+     * plausible `max_heartrate` across the whole history, so ingest order does not matter.
      *
-     * Order-independent by construction: the ceiling is the highest plausible
-     * `max_heartrate` across the whole history, not a running maximum built up
-     * as ingest walks. `strava:hydrate-backlog` drains oldest-first, but this
-     * would reach the same answer walking either direction.
-     *
-     * Zones are only re-derived for a profile the athlete never spoke for. A
-     * `strava` or `manual` source states where the bands came from, and the
-     * percentage model must not silently replace it: real Strava zones are
-     * routinely nothing like it, and overwriting them left the settings card
-     * still captioned "Synced from Strava" over formula-derived numbers.
+     * Zones are re-derived only for a profile the athlete never spoke for; a `strava` or `manual`
+     * source is left alone.
      */
     private function reconcileMaxHeartRate(Activity $activity): void
     {
@@ -382,12 +345,12 @@ class ActivityPipeline
         // or a Strava sync with custom zones), so compare against the effective
         // default too — keying off the row alone would leave that majority
         // never corrected.
-        $currentMax = $profile->max_hr ?? (int) config('runner.max_hr');
+        $currentMax = $profile->max_hr ?? config()->integer('runner.max_hr');
         if ($observed <= $currentMax) {
             return;
         }
 
-        $restingHr = $profile->resting_hr ?? (int) config('runner.resting_hr');
+        $restingHr = $profile->resting_hr ?? config()->integer('runner.resting_hr');
 
         if ($profile === null) {
             $user->runnerProfile()->create([
@@ -395,7 +358,7 @@ class ActivityPipeline
                 'max_hr' => $observed,
                 'resting_hr' => $restingHr,
                 'hr_zones' => HeartRateZones::derive($observed, $restingHr),
-                'optimal_cadence_spm' => (int) config('runner.optimal_cadence_spm'),
+                'optimal_cadence_spm' => config()->integer('runner.optimal_cadence_spm'),
             ]);
 
             // The relation cached a null before the row existed.
@@ -414,12 +377,8 @@ class ActivityPipeline
     }
 
     /**
-     * The athlete's highest believable peak across their whole history.
-     *
-     * Not AnalyzedScope-guarded on purpose: this runs from {@see computeAndStoreSummary},
-     * which fires before the transaction that sets the current activity's own
-     * `analyzed_at` — scoping it out would make the row being ingested right now
-     * invisible to its own max-HR reconciliation.
+     * The athlete's highest believable peak across their whole history. Not AnalyzedScope-guarded:
+     * it runs before the current activity's own `analyzed_at` is set.
      */
     private function highestPlausibleMaxHr(User $user): ?int
     {
@@ -428,6 +387,7 @@ class ActivityPipeline
             ->where('activities.user_id', $user->id)
             ->whereBetween('activity_details.max_heartrate', [HeartRateZones::MIN_MAX_HR, HeartRateZones::MAX_MAX_HR])
             ->max('activity_details.max_heartrate');
+        assert($max === null || is_numeric($max));
 
         return $max === null ? null : (int) round((float) $max);
     }
@@ -470,16 +430,11 @@ class ActivityPipeline
     }
 
     /**
-     * Recompute a single activity's `stream_summary` / `trimp_edwards` from its
-     * ALREADY-STORED streams using the user's CURRENT heart-rate zones, then
-     * rebuild that week's snapshot forward. Forward-only: makes ZERO Strava HTTP
-     * calls, so a user-initiated "Reread" can refresh one block with new
-     * zones without re-ingesting from Strava. No-op when the activity has no
-     * stored streams or no detail row.
+     * Recompute a single activity's `stream_summary` / `trimp_edwards` from its already-stored
+     * streams using the user's current heart-rate zones, then rebuild that week's snapshot forward.
+     * Makes no Strava HTTP calls; no-op when the activity has no stored streams or detail row.
      *
-     * $rebuildAggregates is opt-out for batch callers only: the forward rebuild
-     * is O(weeks-forward) per activity, so a whole-history loop must switch it
-     * off and roll the snapshots once at the end instead.
+     * `$rebuildAggregates` is for batch callers to switch off and roll the snapshots once at the end.
      */
     public function recomputeSummary(Activity $activity, bool $rebuildAggregates = true, bool $reconcileMaxHeartRate = true): void
     {
@@ -525,7 +480,7 @@ class ActivityPipeline
             return;
         }
 
-        if ($snapshot === null) {
+        if (!$snapshot instanceof WeatherSnapshot) {
             return;
         }
 

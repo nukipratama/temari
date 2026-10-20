@@ -206,6 +206,9 @@ function survey(
     }
 
     const start = points[0];
+    const finish = points.at(-1);
+    if (start === undefined || finish === undefined) return svg;
+
     svg += circle(start[0], start[1], 16, {
         fill: CREAM,
         stroke: INK,
@@ -214,7 +217,6 @@ function survey(
     svg += fieldLabel('START', start[0], start[1] + 8, fx, fw);
 
     if (facts.form === 'race') {
-        const finish = points[points.length - 1];
         for (let i = 0; i < 8; i++) {
             svg += rect(
                 finish[0] - 18 + (i % 2) * 18,

@@ -13,12 +13,21 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Queue\Middleware\ThrottlesExceptions;
 use Illuminate\Support\Facades\Log;
+use Mockery\MockInterface;
 
 uses(RefreshDatabase::class);
+
+function ingestThrottle(IngestActivityJob $job): ThrottlesExceptions
+{
+    $middleware = $job->middleware()[0];
+
+    return $middleware instanceof ThrottlesExceptions ? $middleware : throw new InvalidArgumentException('Middleware is not a ThrottlesExceptions.');
+}
 
 it('forwards to the ActivityPipeline for the resolved activity', function (): void {
     $activity = Activity::factory()->create();
 
+    /** @var ActivityPipeline&MockInterface $pipeline */
     $pipeline = Mockery::mock(ActivityPipeline::class);
     $pipeline->shouldReceive('ingest')
         ->once()
@@ -32,6 +41,7 @@ it('forwards to the ActivityPipeline for the resolved activity', function (): vo
 it('hands the pipeline the priority it was dispatched with', function (): void {
     $activity = Activity::factory()->create();
 
+    /** @var ActivityPipeline&MockInterface $pipeline */
     $pipeline = Mockery::mock(ActivityPipeline::class);
     $pipeline->shouldReceive('ingest')
         ->once()
@@ -51,6 +61,7 @@ it('defaults the source for older serialized jobs', function (): void {
 });
 
 it('quietly no-ops if the activity has been deleted before the job runs', function (): void {
+    /** @var ActivityPipeline&MockInterface $pipeline */
     $pipeline = Mockery::mock(ActivityPipeline::class);
     $pipeline->shouldNotReceive('ingest');
 
@@ -69,7 +80,7 @@ it('does not pin a fixed $tries cap that a rate-limit backoff loop could exhaust
 
     expect($job->retryUntil())->toBeInstanceOf(DateTimeInterface::class)
         ->and($job->retryUntil()->getTimestamp())->toBeGreaterThan(now()->getTimestamp())
-        ->and(property_exists($job, 'tries') ? $job->tries : null)->toBeNull();
+        ->and(data_get($job, 'tries'))->toBeNull();
 });
 
 it('survives many rate-limit backoffs without the throttle middleware failing the job', function (): void {
@@ -103,7 +114,7 @@ it('survives many rate-limit backoffs without the throttle middleware failing th
         }
     };
 
-    $middleware = $job->middleware()[0];
+    $middleware = ingestThrottle($job);
 
     for ($attempt = 0; $attempt < 10; $attempt++) {
         $middleware->handle($fakeJob, $next);
@@ -138,7 +149,7 @@ it('does not let a stalled browsing tier hold back live ingest', function (): vo
 
     // Exhaust the background tier's throttle circuit: 50 backoffs inside its
     // decay window, the shape of a signup burst scrolling old runs.
-    $background = new IngestActivityJob(1, StravaReadPriority::Background)->middleware()[0];
+    $background = ingestThrottle(new IngestActivityJob(1, StravaReadPriority::Background));
     $browsing = $fakeJob();
     for ($attempt = 0; $attempt < 50; $attempt++) {
         $background->handle($browsing, $rateLimited);
@@ -151,7 +162,7 @@ it('does not let a stalled browsing tier hold back live ingest', function (): vo
 
     // A freshly-webhooked run still executes: separate key, separate circuit.
     $ran = false;
-    $live = new IngestActivityJob(2)->middleware()[0];
+    $live = ingestThrottle(new IngestActivityJob(2));
     $live->handle($fakeJob(), function () use (&$ran): void {
         $ran = true;
     });
@@ -163,7 +174,7 @@ it('lets the throttle middleware re-raise a genuine non rate-limit failure', fun
     // maxExceptions governs genuine failures; the throttle only catches 429s,
     // so any other throwable is re-raised for the job to count against it.
     $job = new IngestActivityJob(1);
-    $middleware = $job->middleware()[0];
+    $middleware = ingestThrottle($job);
 
     $next = function () {
         throw new RuntimeException('genuine failure');
@@ -189,11 +200,11 @@ it('is unique per activity id so a throttled stub is not re-dispatched as a dupl
 });
 
 it('logs the stuck activity when the job is finally marked failed', function (): void {
-    Log::spy();
+    $logSpy = Log::spy();
 
     new IngestActivityJob(123)->failed(new RuntimeException('boom'));
 
-    Log::shouldHaveReceived('warning')->once()->withArgs(
+    $logSpy->shouldHaveReceived('warning')->once()->withArgs(
         fn (string $message, array $context): bool => $message === 'strava.ingest.failed'
             && $context['activity_id'] === 123
             && $context['reason'] === 'boom',
@@ -215,7 +226,7 @@ it('backs off on a connect failure instead of counting it as a genuine failure',
         }
     };
 
-    new IngestActivityJob(1)->middleware()[0]->handle($fakeJob, function (): never {
+    ingestThrottle(new IngestActivityJob(1))->handle($fakeJob, function (): never {
         throw new ConnectionException('cURL error 28: Connection timed out');
     });
 

@@ -101,7 +101,7 @@ class CleanupDeletedActivityJob implements ShouldQueue
      */
     private function confirmDeletedOnStrava(StravaClient $client, ?StravaConnection $connection): bool
     {
-        if ($connection === null || $connection->isRevoked()) {
+        if (!$connection instanceof StravaConnection || $connection->isRevoked()) {
             return false;
         }
 

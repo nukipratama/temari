@@ -36,6 +36,7 @@ return new class () extends Migration {
     public function up(): void
     {
         foreach (DB::table('users')->where('is_demo', true)->pluck('id') as $demoId) {
+            assert(is_numeric($demoId));
             $this->purgeVisitorQuestions((int) $demoId);
 
             DB::table('race_goals')->where('user_id', $demoId)->update(['name' => self::SEEDED_RACE_NAME]);

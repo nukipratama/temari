@@ -87,7 +87,7 @@ const NON_BILLING = [
  */
 function scheduledCommandNames(): array
 {
-    return collect(app(Schedule::class)->events())
+    return array_values(collect(app(Schedule::class)->events())
         ->map(function (Event $event): ?string {
             if ($event instanceof CallbackEvent) {
                 return $event->description;
@@ -99,8 +99,7 @@ function scheduledCommandNames(): array
         })
         ->filter()
         ->unique()
-        ->values()
-        ->all();
+        ->all());
 }
 
 it('classifies every scheduled command as billing or not, so a new one cannot slip past the demo exclusion', function (): void {

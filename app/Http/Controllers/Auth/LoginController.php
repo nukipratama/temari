@@ -16,9 +16,12 @@ class LoginController extends Controller
 {
     public function show(Request $request): Response
     {
+        $intended = $request->session()->get('url.intended');
+        assert($intended === null || is_string($intended));
+
         return Inertia::render('Auth/Login', [
             'authStravaUrl' => route('auth.strava.redirect'),
-            'from' => LocalRedirectPath::fromIntended($request->session()->get('url.intended')),
+            'from' => LocalRedirectPath::fromIntended($intended),
             'dataUse' => [
                 'headline' => DataUseStatement::HEADLINE,
                 'points' => DataUseStatement::points(),

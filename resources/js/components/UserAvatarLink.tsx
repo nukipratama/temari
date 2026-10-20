@@ -8,11 +8,8 @@ interface UserAvatarLinkProps {
 }
 
 /**
- * Avatar that links straight to Profile — the Me destination's only entry
- * point now that the bottom nav carries no Me tab of its own. Shared by both
- * the desktop TopNav and the mobile MobileTopBar. Settings and Log out, which
- * used to live in a dropdown here, are reachable from Profile's MeTabs and
- * the bottom of the Settings page, respectively.
+ * Avatar that links straight to Profile, the Me destination's only entry point.
+ * Shared by both the desktop TopNav and the mobile MobileTopBar.
  */
 export default function UserAvatarLink({
     name,

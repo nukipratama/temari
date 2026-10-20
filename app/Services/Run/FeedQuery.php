@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Run;
 
+use Illuminate\Support\Collection;
 use App\Http\Requests\FeedFilterRequest;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
@@ -33,7 +34,7 @@ class FeedQuery
         // A deep link to one week (the weekly-recap notification) has to reach
         // that week regardless of how far back it is, so it overrides both the
         // requested range and the auto-widen.
-        if ($week !== null) {
+        if ($week instanceof Carbon) {
             $rangeStart = $week->copy()->subDays(6);
             $rangeAutoWidened = false;
         }
@@ -49,10 +50,6 @@ class FeedQuery
     /**
      * The feed's page window: the Monday that the `$weeks`-th most recent
      * run-bearing week starts on, plus whether any run sits behind it.
-     *
-     * Paging by *week* rather than by run keeps the unit the same as the one
-     * the screen renders — a "load older weeks" press must add whole week
-     * sections, and a heavy week must not consume someone else's page.
      * `since` is null only when the window holds no runs at all.
      *
      * @return array{since: ?Carbon, hasOlder: bool}
@@ -63,11 +60,12 @@ class FeedQuery
         // Sunday counts whatever time the run started.
         $weekEnd = $filters->week?->copy()->addDay();
 
+        /** @var Collection<int, Carbon> $dates */
         $dates = ActivityDetail::query()
             ->forUser($user->id)
             ->whereNotNull('start_date_local')
             ->when(
-                $filters->rangeStart !== null,
+                $filters->rangeStart instanceof Carbon,
                 fn (Builder $q): Builder => $q->where('start_date_local', '>=', $filters->rangeStart),
             )
             ->when(
@@ -111,14 +109,14 @@ class FeedQuery
         return Activity::query()
             ->where('user_id', $user->id)
             ->whereHas('detail', function ($q) use ($filters, $lowerBound) {
-                if ($lowerBound !== null) {
+                if ($lowerBound instanceof Carbon) {
                     $q->where('start_date_local', '>=', $lowerBound);
                 }
 
                 // Upper bound for a single-week deep link (the lower bound comes
                 // from $rangeStart above). `<` the next day so the whole Sunday
                 // is included whatever time the run started.
-                if ($filters->week !== null) {
+                if ($filters->week instanceof Carbon) {
                     $q->where('start_date_local', '<', $filters->week->copy()->addDay());
                 }
             })
@@ -139,6 +137,7 @@ class FeedQuery
             ->forUser($user->id)
             ->whereNotNull('start_date_local')
             ->max('start_date_local');
+        assert($latestDate === null || is_string($latestDate));
 
         if ($latestDate === null) {
             return null;

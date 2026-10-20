@@ -76,7 +76,8 @@ class DoctorCommand extends Command
                 ->exists(),
             'Webhook self-handshake' => function (): bool {
                 $callbackUrl = StravaWebhookController::callbackUrl();
-                $verifyToken = (string) config('services.strava.webhook_verify_token');
+                $configuredToken = config('services.strava.webhook_verify_token');
+                $verifyToken = is_string($configuredToken) ? $configuredToken : '';
 
                 return $verifyToken !== '' && app(ProbeStravaWebhookAction::class)($callbackUrl, $verifyToken)['passed'];
             },
@@ -117,6 +118,7 @@ class DoctorCommand extends Command
                 ->where('user_id', $user->id)
                 ->whereNotNull('fetched_at')
                 ->max('fetched_at');
+            assert($lastFetched === null || is_string($lastFetched));
 
             return [
                 $user->id,
@@ -126,7 +128,7 @@ class DoctorCommand extends Command
                 $counts['analyzed'],
                 $counts['pending'],
                 $counts['stranded'],
-                is_string($lastFetched) ? $lastFetched : ($lastFetched?->toDateTimeString() ?? '—'),
+                $lastFetched ?? '—',
             ];
         })->all();
 
@@ -149,6 +151,7 @@ class DoctorCommand extends Command
                 continue;
             }
 
+            /** @var \Illuminate\Support\Collection<int, int|string> $stranded */
             $stranded = $this->strandedQuery($user->id)->orderBy('id')->pluck('id');
             foreach ($stranded as $activityId) {
                 IngestActivityJob::dispatch((int) $activityId, StravaReadPriority::Live, StravaReadSource::Doctor);
@@ -166,7 +169,8 @@ class DoctorCommand extends Command
     private function reportWebhook(): void
     {
         $callbackUrl = StravaWebhookController::callbackUrl();
-        $verifyToken = (string) config('services.strava.webhook_verify_token');
+        $configuredToken = config('services.strava.webhook_verify_token');
+        $verifyToken = is_string($configuredToken) ? $configuredToken : '';
 
         $this->line('Webhook callback: '.StravaWebhookController::maskWebhookSecrets($callbackUrl));
 

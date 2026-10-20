@@ -94,8 +94,8 @@ abstract class TestCase extends BaseTestCase
         $app->afterBootstrapping(LoadConfiguration::class, function (Application $app): void {
             $config = $app->make('config');
 
-            self::assertTestRedisHost((string) $config->get('database.redis.default.host'));
-            self::assertTestRedisHost((string) $config->get('database.redis.cache.host'));
+            self::assertTestRedisHost($config->string('database.redis.default.host'));
+            self::assertTestRedisHost($config->string('database.redis.cache.host'));
 
             $slotBase = self::integerSetting('REDIS_DB', $config->get('database.redis.default.database'));
             $slotFile = $app->basePath('.claude-worktree-slot');
@@ -133,6 +133,8 @@ abstract class TestCase extends BaseTestCase
      * the paratest per-process suffix) before RefreshDatabase boots, so its
      * tables are migrated and transaction-wrapped alongside the default ones.
      * Runs after ParallelTesting has already switched the default connection.
+     *
+     * @return array<class-string, class-string>
      */
     #[Override]
     protected function setUpTraits()

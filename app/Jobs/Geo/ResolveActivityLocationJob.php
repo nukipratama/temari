@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Jobs\Geo;
 
+use App\Services\Geo\ResolvedLocation;
 use App\Actions\Geo\ReverseGeocodeAction;
 use App\Models\ActivityDetail;
 use App\Services\Geo\Exceptions\NominatimRateSlotUnavailableException;
@@ -61,7 +62,7 @@ class ResolveActivityLocationJob implements ShouldBeUnique, ShouldQueue
             return;
         }
 
-        if ($resolved === null) {
+        if (!$resolved instanceof ResolvedLocation) {
             $detail->update([
                 'location_attempts' => $detail->location_attempts + 1,
                 'location_attempted_at' => Carbon::now(),

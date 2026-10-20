@@ -102,6 +102,6 @@ export function axesOf<Map extends Record<string, Record<string, string>>>(
     axes: ReadonlyArray<keyof Map & string>,
 ): Record<string, string[]> {
     return Object.fromEntries(
-        axes.map((axis) => [axis, Object.keys(map[axis])]),
+        axes.map((axis) => [axis, Object.keys(map[axis] ?? {})]),
     );
 }

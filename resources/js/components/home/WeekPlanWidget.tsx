@@ -78,12 +78,10 @@ function DayCell({
 
 /**
  * "This week's plan" — the week at a glance: phase badge, the week's actual km
- * against its planned km as the hero number, credited sessions and TRIMP as
- * tiles, a seven-day grid, and a link into Plan. Today's own session is stated once, on `TodaySession`, beside the
- * voice describing it. Plan fields are exactly
+ * against its planned km, credited sessions and TRIMP as tiles, a seven-day
+ * grid, and a link into Plan. Plan fields are exactly
  * `CurrentWeekPlanBuilder::forUser()`'s shape, the same computation Plan's own
- * week rows use, so nothing shown here can drift from Plan; the actuals are
- * the week's `WeeklySnapshot`.
+ * week rows use; the actuals are the week's `WeeklySnapshot`.
  */
 export default function WeekPlanWidget({
     weekPlan,

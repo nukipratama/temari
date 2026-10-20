@@ -25,6 +25,7 @@ use App\Services\Run\Metrics\TrainingPaceCalculator;
 use App\Services\Run\Metrics\VdotEstimator;
 use App\Services\Run\Metrics\RecentTrainingStress;
 use App\Actions\Run\Plan\ResolveTrailingWeeksAction;
+use App\Support\Numeric;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -71,8 +72,8 @@ final readonly class PlanInputsGatherer
         $this->seasonService->releaseHeldIncreases($season, $user, $today);
 
         $race = ($this->activeRace)($user->id);
-        $trialDistanceM = TimeTrial::distanceFor($race === null ? null : (float) $race->distance_m);
-        $ambition = $race === null ? null : $this->ambition->assess($user, $race, $today);
+        $trialDistanceM = TimeTrial::distanceFor($race instanceof RaceGoal ? (float) $race->distance_m : null);
+        $ambition = $race instanceof RaceGoal ? $this->ambition->assess($user, $race, $today) : null;
         $baseline = $this->baseline->forUser($user, $today);
         $layout = $this->baseline->weekLayout($user, $today);
         $estimate = $this->vdotEstimator->estimate($user, $today);
@@ -94,17 +95,14 @@ final readonly class PlanInputsGatherer
             seasonEnd: $season->ends_at,
             recovery: $this->postRaceRecovery($user, $today),
             raceDate: $race?->race_date,
-            raceDistanceM: $race === null ? null : (float) $race->distance_m,
+            raceDistanceM: $race instanceof RaceGoal ? (float) $race->distance_m : null,
             sessionsPerWeek: $baseline['sessions_per_week'],
             runDays: $layout['run_days'],
             longRunDay: $layout['long_run_day'],
             adaptation: $this->planAdapter->forWeek($user, $currentWeekStart, $today, $race, $ambition),
             pinnedDates: $pinnedDates,
             // A day that already carries a verdict is the record of what was
-            // run, not a slot left to plan. Since compliance lands at ingest
-            // rather than at 00:03 the next morning, regeneration can meet a
-            // settled row inside its own today-forward window — see
-            // `docs/decisions/a-day-is-scored-when-it-is-run.md`.
+            // run, not a slot left to plan.
             settledDates: $settledDates,
             // How long the race will take this athlete, not how far it is: the
             // same 10K is a VO2max event for one runner and a threshold event
@@ -130,7 +128,7 @@ final readonly class PlanInputsGatherer
             timeTrials: $this->timeTrials($user, $season->starts_at->copy()->startOfWeek(Carbon::MONDAY), $today),
             timeTrialEvidenceDates: $this->timeTrialEvidenceDates($user, $trialDistanceM, $currentWeekStart),
             lastBuildQualityHardMinutes: $this->lastBuildQualityHardMinutes($user, $today),
-            lastPeakGoalPaceHardMinutes: $race === null ? null : $this->lastPeakGoalPaceHardMinutes($user, $today, GoalPaceWork::kindFor((float) $race->distance_m)),
+            lastPeakGoalPaceHardMinutes: $race instanceof RaceGoal ? $this->lastPeakGoalPaceHardMinutes($user, $today, GoalPaceWork::kindFor((float) $race->distance_m)) : null,
             raceSupportedTimeSec: $ambition?->supportedTimeSec,
             longestRunSoFarKm: $this->longestRunSoFarKm($user, $today, $season->starts_at, $baseline),
             lastFastFinishDate: $this->lastFastFinishDate($user, $today),
@@ -149,7 +147,7 @@ final readonly class PlanInputsGatherer
 
         foreach ($races as $race) {
             $distanceRunM = $race->outcome === RaceOutcome::Confirmed
-                ? (float) (ActivityDetail::query()->where('activity_id', $race->outcome_activity_id)->value('distance') ?? $race->distance_m)
+                ? Numeric::float(ActivityDetail::query()->where('activity_id', $race->outcome_activity_id)->value('distance') ?? $race->distance_m)
                 : $this->raceOutcomes->candidates($race)->first()['distance_m'] ?? null;
             if ($distanceRunM !== null) {
                 return PostRaceRecovery::after($race->race_date, $distanceRunM);
@@ -185,10 +183,12 @@ final readonly class PlanInputsGatherer
             return [];
         }
 
-        $ranOn = ActivityDetail::query()->forUser($user->id)
+        /** @var Collection<int, Carbon> $startedAts */
+        $startedAts = ActivityDetail::query()->forUser($user->id)
             ->whereBetween('activity_details.start_date_local', [$trials->first()->date->copy()->startOfDay(), $today->copy()->endOfDay()])
-            ->pluck('activity_details.start_date_local')
-            ->mapWithKeys(static fn (mixed $startedAt): array => [Carbon::parse($startedAt)->toDateString() => true])
+            ->pluck('activity_details.start_date_local');
+        $ranOn = $startedAts
+            ->mapWithKeys(static fn (Carbon $startedAt): array => [Carbon::parse($startedAt)->toDateString() => true])
             ->all();
 
         return array_values($trials->map(static fn (PlannedSession $trial): array => [
@@ -224,7 +224,7 @@ final readonly class PlanInputsGatherer
     private function resumeTrailingMeanKm(?RaceGoal $race, Collection $weeks, Carbon $currentWeekStart): ?float
     {
         $recent = $weeks->take(self::RESUME_TRAILING_WEEKS);
-        if ($race === null || $recent->count() < self::RESUME_MIN_WEEKS) {
+        if (!$race instanceof RaceGoal || $recent->count() < self::RESUME_MIN_WEEKS) {
             return null;
         }
 

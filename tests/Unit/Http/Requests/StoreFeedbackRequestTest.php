@@ -14,11 +14,18 @@ use Illuminate\Support\Facades\Validator;
 
 uses(RefreshDatabase::class);
 
+/**
+ * @param  array<string, mixed>  $input
+ * @return array<string, mixed>
+ */
 function feedbackRules(array $input = []): array
 {
     return feedbackRequest($input, null)->rules();
 }
 
+/**
+ * @param  array<string, mixed>  $input
+ */
 function feedbackRequest(array $input, ?User $user): StoreFeedbackRequest
 {
     $request = StoreFeedbackRequest::create('/feedback', 'POST', $input);

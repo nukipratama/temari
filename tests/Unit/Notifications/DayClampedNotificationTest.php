@@ -21,13 +21,21 @@ uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
     config(['services.telegram.bot_token' => 'test-bot-token']);
-    $this->date = '2026-09-08';
-    $this->note = 'you completed a demanding session within the last day, so quality can wait.';
 });
+
+function clampDate(): string
+{
+    return '2026-09-08';
+}
+
+function clampNote(): string
+{
+    return 'you completed a demanding session within the last day, so quality can wait.';
+}
 
 function clampNotification(): DayClampedNotification
 {
-    return new DayClampedNotification(test()->date, test()->note);
+    return new DayClampedNotification(clampDate(), clampNote());
 }
 
 // A clamp is advisory and the briefing path records it at 00:01, so a lock
@@ -37,7 +45,7 @@ it('stays in the inbox even for an athlete every outbound channel could reach', 
     TelegramConnection::factory()->for($user)->create(['revoked_at' => null]);
     $user->updatePushSubscription('https://push.example/endpoint', 'key', 'auth');
 
-    expect(clampNotification()->via($user->fresh()))->toBe([InAppChannel::class]);
+    expect(clampNotification()->via($user->refresh()))->toBe([InAppChannel::class]);
 });
 
 it('records a row that opens the home page', function (): void {
@@ -45,20 +53,20 @@ it('records a row that opens the home page', function (): void {
 
     expect($message->kind)->toBe(NotificationKind::PlanClamp)
         ->and($message->title)->toBe('Today eases off')
-        ->and($message->body)->toBe($this->note)
+        ->and($message->body)->toBe(clampNote())
         ->and($message->payload)->toBe(['url' => route('dashboard')]);
 });
 
 // A repeated morning briefing must not stack a second clamp row for the day.
 it('dedupes on the clamped date', function (): void {
     expect(clampNotification()->toInbox(User::factory()->create())->dedupeKey)
-        ->toBe('plan_clamp:'.$this->date);
+        ->toBe('plan_clamp:'.clampDate());
 });
 
 it('prefers the clamp narration once one has landed', function (): void {
     $user = User::factory()->create();
     PlannedSession::factory()->for($user)->create([
-        'date' => $this->date,
+        'date' => clampDate(),
         'session_type' => SessionType::Interval,
         'clamped_km' => 6.0,
         'readiness_assessment' => [
@@ -71,7 +79,7 @@ it('prefers the clamp narration once one has landed', function (): void {
         'subject_type' => AnalysisType::PLAN_CLAMP_VOICE_SUBJECT_TYPE,
         'subject_id' => $user->id,
         'analysis_type' => AnalysisType::PlanClampVoice,
-        'discriminator' => $this->date,
+        'discriminator' => clampDate(),
         'status' => AnalysisStatus::Done,
         'content' => "today's an easy run, the intervals can wait after yesterday's hard session.",
         'content_fingerprint' => MaterialFingerprint::forClamp(ReadinessCeiling::ModerateOk, SessionType::Easy, false, ['demanding_session_within_24h']),
@@ -87,12 +95,12 @@ it('keeps the factual fallback when a completed narration has no matching decisi
         'subject_type' => AnalysisType::PLAN_CLAMP_VOICE_SUBJECT_TYPE,
         'subject_id' => $user->id,
         'analysis_type' => AnalysisType::PlanClampVoice,
-        'discriminator' => $this->date,
+        'discriminator' => clampDate(),
         'status' => AnalysisStatus::Done,
         'content' => 'old advice from a different assessment.',
     ]);
 
-    expect(clampNotification()->toInbox($user)->body)->toBe($this->note);
+    expect(clampNotification()->toInbox($user)->body)->toBe(clampNote());
 });
 
 // The templated note is the permanent floor `the-clamp-explains-itself` keeps
@@ -103,12 +111,12 @@ it('falls back to the templated note while the narration is only pending', funct
         'subject_type' => AnalysisType::PLAN_CLAMP_VOICE_SUBJECT_TYPE,
         'subject_id' => $user->id,
         'analysis_type' => AnalysisType::PlanClampVoice,
-        'discriminator' => $this->date,
+        'discriminator' => clampDate(),
         'status' => AnalysisStatus::Pending,
         'content' => null,
     ]);
 
-    expect(clampNotification()->toInbox($user)->body)->toBe($this->note);
+    expect(clampNotification()->toInbox($user)->body)->toBe(clampNote());
 });
 
 it('reads the narration for its own date, not another day', function (): void {
@@ -117,10 +125,10 @@ it('reads the narration for its own date, not another day', function (): void {
         'subject_type' => AnalysisType::PLAN_CLAMP_VOICE_SUBJECT_TYPE,
         'subject_id' => $user->id,
         'analysis_type' => AnalysisType::PlanClampVoice,
-        'discriminator' => Carbon::parse($this->date)->subDay()->toDateString(),
+        'discriminator' => Carbon::parse(clampDate())->subDay()->toDateString(),
         'status' => AnalysisStatus::Done,
         'content' => 'yesterday said something else.',
     ]);
 
-    expect(clampNotification()->toInbox($user)->body)->toBe($this->note);
+    expect(clampNotification()->toInbox($user)->body)->toBe(clampNote());
 });

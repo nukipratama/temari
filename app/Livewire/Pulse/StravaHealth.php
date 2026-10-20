@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Livewire\Pulse;
 
+use Illuminate\Support\Collection;
 use Illuminate\Database\Query\Builder;
 use App\Livewire\Pulse\Concerns\SumsPulseTotals;
 use App\Models\Activity;
@@ -42,6 +43,7 @@ class StravaHealth extends Card
             ->where('detail_fail_count', '<', Activity::MAX_DETAIL_FETCH_ATTEMPTS)
             ->count();
 
+        /** @var array{webhook: int, revoked: int, rate_limited: int, synced: int} $trends */
         [$trends, $time, $runAt] = $this->remember(fn (): array => [
             'webhook' => $this->asCount($this->aggregateTotal('strava_webhook', 'count')),
             'revoked' => $this->asCount($this->aggregateTotal('strava_revoked', 'count')),
@@ -104,8 +106,10 @@ class StravaHealth extends Card
             ->get()
             ->keyBy('user_id');
 
+        /** @var Collection<int, int|string> $activeUserIds */
         $activeUserIds = StravaConnection::active()->pluck('user_id');
 
+        /** @var Collection<array-key, string|null> $userNames */
         $userNames = User::query()
             ->whereIn('id', $activeUserIds)
             ->pluck('name', 'id');

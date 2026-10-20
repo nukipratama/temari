@@ -10,6 +10,7 @@ use App\Services\Run\Trend\TrendSnapshotWriter;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
+use Illuminate\Support\Collection;
 
 #[Signature('trend:snapshot-daily {--days= : Reconcile only this many closed days synchronously}')]
 #[Description('Reconcile closed VDOT/pace-consistency snapshot rows for every user')]
@@ -18,6 +19,7 @@ class TrendSnapshotCommand extends Command
     public function handle(TrendSnapshotWriter $writer): int
     {
         if ($this->option('days') === null) {
+            /** @var Collection<int, int|string> $userIds */
             $userIds = User::query()->pluck('id');
             foreach ($userIds as $userId) {
                 ReconcileScheduledTrendSnapshotsJob::dispatch((int) $userId)->afterCommit();

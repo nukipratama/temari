@@ -32,31 +32,20 @@
     <link rel="manifest" href="{{ asset('manifest.webmanifest') }}">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    {{-- Walking this value down as iOS 26.1 takes the strip away. Under
-         `black-translucent` iOS stopped honouring the translucency and painted
-         its own material over the region; `black` made that lighter but did not
-         opt out of it. `default` is the last value that asks iOS for a plain
-         system bar rather than a composited one.
-
-         The cost is that the bar is no longer dark: it is the system's own,
-         which on the dark ground reads as a pale band above the app. That is
-         the trade for it not being blurred, and it is deliberate. The style
-         cannot vary per colour scheme, so it is a single choice for both.
-
-         Verified only by looking at a device — the blur does not reproduce in
-         a desktop browser at any viewport, because it is iOS's own art rather
-         than anything the page draws. Do not "fix" this from the spec. --}}
+    {{-- `default` is the last status-bar style that asks iOS for a plain system
+         bar rather than a composited one, so iOS 26.1 stops blurring the strip.
+         The cost is that the bar is no longer dark: on the dark ground it reads
+         as a pale band above the app. The style cannot vary per colour scheme.
+         The blur only reproduces on an iOS device, so do not "fix" this from
+         the spec. --}}
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="Temari">
 
-    {{-- Launch images for a cold standalone start. Without these iOS holds a
-         white screen until first paint, which reads as a flash on either
-         ground. Keyed by CSS device size + DPR, and by prefers-color-scheme so
-         the image matches the ground the app is about to paint. That follows
-         the OS, not the 'temari-theme' key the head script reads, so a user who
-         overrode the ground in Settings still sees the OS-matching image —
-         accepted, since the alternative is one fixed ground that is wrong for
-         everyone on the other one. Regenerate the PNGs with
+    {{-- Launch images for a cold standalone start, so iOS does not hold a white
+         screen until first paint. Keyed by CSS device size + DPR and by
+         prefers-color-scheme, which follows the OS rather than the
+         'temari-theme' key, so a user who overrode the ground in Settings still
+         sees the OS-matching image. Regenerate the PNGs with
          `scripts/build-splash-screens.php`. --}}
     @foreach ([
         ['w' => 390, 'h' => 844, 'dpr' => 3],
@@ -76,37 +65,23 @@
         @endforeach
     @endforeach
 
-    {{-- Fonts are self-hosted (resources/css/fonts.css). A cold standalone
-         launch used to block on fonts.googleapis.com *after* the splash had
-         already shown, on a connection the app has no control over; these ship
-         from the same origin as everything else, fingerprinted into /build and
-         served immutable for a year by docker/Caddyfile. First in the @vite
-         list so the faces are known before app.css asks for them. --}}
+    {{-- Fonts are self-hosted (resources/css/fonts.css), so a cold standalone
+         launch never blocks on a third-party origin. First in the @vite list so
+         the faces are known before app.css asks for them. --}}
     @viteReactRefresh
     @vite(['resources/css/fonts.css', 'resources/css/app.css', 'resources/js/app.tsx'])
     @inertiaHead
 </head>
 <body class="bg-background text-foreground antialiased">
-    {{-- iOS 26/27 draws a progressive blur over the top edge of a standalone
-         PWA unconditionally — no apple-mobile-web-app-status-bar-style value
-         opts out (established on-device in #738). A 1px color-sampling hint
-         didn't clear it either (#889, reverted). What does: a real, opaque
-         bar tall enough to fully cover the blurred strip, which is what
-         other iOS 27 PWAs have shipped successfully — 16px is their
-         reported value too.
+    {{-- iOS 26/27 draws a progressive blur over the top edge of a standalone PWA
+         regardless of apple-mobile-web-app-status-bar-style; only a real,
+         opaque bar tall enough to cover the blurred strip clears it.
 
          navigator.standalone (Safari-only) rather than a `display-mode:
-         standalone` media query, since that also matches non-iOS installed
-         PWAs that don't have this problem. 16px sits well inside the
-         safe-area-inset-top clearance MobileTopBar already reserves on any
-         notched device (44px+), so nothing needs to be pushed down further
-         to make room for it.
-
-         `bg-background` keeps it in lockstep with whatever the theme script
-         above already resolved `data-theme` to, rather than tracking
-         prefers-color-scheme independently — that freezes for the life of
-         the process in standalone mode, so a value read straight from it
-         would drift stale after an OS theme switch mid-session. --}}
+         standalone` media query, since that also matches non-iOS installed PWAs.
+         `bg-background` keeps it in lockstep with the `data-theme` the theme
+         script resolved, rather than prefers-color-scheme, which freezes for the
+         life of the process in standalone mode. --}}
     <div id="ios-status-bar-tint" aria-hidden="true" class="fixed inset-x-0 top-0 z-50 hidden h-4 bg-background"></div>
     <script>
         if (navigator.standalone === true) {

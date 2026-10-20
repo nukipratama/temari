@@ -98,7 +98,7 @@ it('marks the connection revoked when the fetcher reports a 401, unlike a generi
 
     $this->artisan('strava:sync-zones')->assertSuccessful();
 
-    expect($user->stravaConnection()->first()->isRevoked())->toBeTrue();
+    expect(nonNull($user->stravaConnection()->first())->isRevoked())->toBeTrue();
 });
 
 it('ignores a stale 401 after credentials change during the zone fetch', function (): void {
@@ -121,7 +121,7 @@ it('ignores a stale 401 after credentials change during the zone fetch', functio
         ->expectsOutputToContain('ignored stale auth failure after credentials changed')
         ->assertSuccessful();
 
-    expect($connection->fresh()->isRevoked())->toBeFalse();
+    expect($connection->refresh()->isRevoked())->toBeFalse();
 });
 
 it('keeps syncing other users and still succeeds when one connection throws', function (): void {
@@ -159,7 +159,7 @@ it('does not count a revoked connection as a failed athlete, so the run recovers
 it('keeps a manual save that lands during the Strava fetch', function (): void {
     $user = User::factory()->create();
     StravaConnection::factory()->for($user)->create(['scopes' => 'read,activity:read_all,profile:read_all']);
-    $manualZones = config('runner.hr_zones');
+    $manualZones = arrayOf(config('runner.hr_zones'));
     $manualZones['Z5'] = ['lo' => 181, 'hi' => 999];
 
     $fetcher = Mockery::mock(ZoneFetcher::class);

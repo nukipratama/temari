@@ -6,7 +6,6 @@ use App\Enums\PlanRegenerationReason;
 use App\Jobs\Run\RegeneratePlanJob;
 use App\Models\User;
 use App\Services\Run\Plan\Periodizer;
-use App\Services\Run\Plan\PlanRegenerationService;
 use Illuminate\Contracts\Cache\Lock as CacheLock;
 use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -30,7 +29,7 @@ it('releases for retry when the regeneration lock is busy', function (): void {
     $job = new RegeneratePlanJob($user->id, PlanRegenerationReason::Manual)
         ->withFakeQueueInteractions();
 
-    $job->handle(app(Periodizer::class), app(PlanRegenerationService::class));
+    $job->handle(app(Periodizer::class));
 
     $job->assertReleased(10);
 });
@@ -42,5 +41,5 @@ it('uses a time-bounded retry window instead of an attempt cap', function (): vo
     expect($retryUntil)->toBeInstanceOf(DateTimeInterface::class)
         ->and($retryUntil->getTimestamp())->toBeGreaterThanOrEqual(now()->addMinutes(9)->getTimestamp())
         ->and($retryUntil->getTimestamp())->toBeLessThanOrEqual(now()->addMinutes(10)->getTimestamp())
-        ->and(property_exists($job, 'tries') ? $job->tries : null)->toBeNull();
+        ->and(data_get($job, 'tries'))->toBeNull();
 });

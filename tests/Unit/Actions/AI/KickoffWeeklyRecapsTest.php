@@ -40,8 +40,8 @@ it('narrates only the named user when given a user id', function (): void {
 
     expect($result)->toBe(['dispatched' => 1, 'rule_based' => 0, 'deferred' => 0])
         ->and(array_column($captured, 'subjectId'))
-        ->toBe([$myWeek->id])
-        ->not->toContain($theirWeek->id);
+        ->not->toContain($theirWeek->id)
+        ->toBe([$myWeek->id]);
 });
 
 it('sweeps every non-demo user when given no user id', function (): void {
@@ -93,7 +93,7 @@ it('fills a week past the backfill depth cap rule-based and narrates the rest', 
 
     expect(app(KickoffWeeklyRecaps::class)($user->id))->toBe(['dispatched' => 1, 'rule_based' => 1, 'deferred' => 0]);
 
-    expect(collect($captured)->firstWhere('subjectId', $tooOld->id)['ruleBased'])->toBeTrue()
+    expect(data_get(collect($captured)->firstWhere('subjectId', $tooOld->id), 'ruleBased'))->toBeTrue()
         ->and(collect($captured)->firstWhere('subjectId', $recent->id))
         ->toMatchArray(['ruleBased' => false, 'invalidate' => false, 'delaySeconds' => 0]);
 });
@@ -111,7 +111,7 @@ it('fills a week that closed before the athlete connected rule-based, and narrat
 
     expect(app(KickoffWeeklyRecaps::class)($user->id))->toBe(['dispatched' => 1, 'rule_based' => 1, 'deferred' => 0]);
 
-    expect(collect($captured)->firstWhere('subjectId', $preConnect->id)['ruleBased'])->toBeTrue()
+    expect(data_get(collect($captured)->firstWhere('subjectId', $preConnect->id), 'ruleBased'))->toBeTrue()
         ->and(collect($captured)->firstWhere('subjectId', $postConnect->id))
         ->toMatchArray(['ruleBased' => false, 'invalidate' => false, 'delaySeconds' => 0]);
 });
@@ -276,7 +276,7 @@ it('defers a week past the backfill depth cap that the ingest pipeline is still 
 });
 
 /**
- * The shape #1010 measured: a full-history backfill's kickoff runs before
+ * A full-history backfill's kickoff runs before
  * `strava:hydrate-backlog` has fetched every run's detail, and every week of
  * a brand-new athlete's history is pre-connect. Filling those rule-based
  * without the same hydration gate the LLM path uses reads a snapshot whose
@@ -286,7 +286,7 @@ it('defers a week past the backfill depth cap that the ingest pipeline is still 
 it('defers a pre-connect week the ingest pipeline is still hydrating instead of filling it rule-based blind', function (): void {
     $user = User::factory()->create();
     // Connected moments before "now": both the backfill and the recap
-    // kickoff that follows it fire in the same breath, per #1010.
+    // kickoff that follows it fire in the same breath.
     StravaConnection::factory()->for($user)->create(['created_at' => '2026-05-18 05:00:00']);
 
     WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-10', 'runs' => 3]);
@@ -317,7 +317,7 @@ it('fills the deferred pre-connect week rule-based on the next run once hydratio
     $activity->update(['ingest_state' => IngestState::Detailed]);
 
     expect(app(KickoffWeeklyRecaps::class)($user->id))->toBe(['dispatched' => 0, 'rule_based' => 1, 'deferred' => 0])
-        ->and(collect($captured)->firstWhere('subjectId', $week->id)['ruleBased'])->toBeTrue();
+        ->and(data_get(collect($captured)->firstWhere('subjectId', $week->id), 'ruleBased'))->toBeTrue();
 });
 
 it('never defers or dispatches for the demo account, backlog or not', function (): void {

@@ -34,7 +34,7 @@ it('revokes the connection when Strava rejects the token with a 401 (genuine dea
 
     runVerifyJob($connection);
 
-    expect($connection->fresh()->isRevoked())->toBeTrue()
+    expect($connection->refresh()->isRevoked())->toBeTrue()
         ->and(StravaSyncLog::query()->where('user_id', $connection->user_id)->where('status', 'revoked')->value('source'))
         ->toBe(StravaSyncSource::Webhook);
 });
@@ -46,7 +46,7 @@ it('revokes when the token refresh is permanently rejected (rejected refresh tok
 
     runVerifyJob($connection);
 
-    expect($connection->fresh()->isRevoked())->toBeTrue();
+    expect($connection->refresh()->isRevoked())->toBeTrue();
 });
 
 it('does NOT revoke when the grant is still live (forged deauth event)', function (): void {
@@ -55,18 +55,18 @@ it('does NOT revoke when the grant is still live (forged deauth event)', functio
 
     runVerifyJob($connection);
 
-    expect($connection->fresh()->isRevoked())->toBeFalse()
+    expect($connection->refresh()->isRevoked())->toBeFalse()
         ->and(StravaSyncLog::query()->where('user_id', $connection->user_id)->exists())->toBeFalse();
 });
 
 it('logs the internal user id, never the Strava athlete id', function (int $status, string $level): void {
-    Log::spy();
+    $logSpy = Log::spy();
     $connection = freshConnection();
     Http::fake(['strava.com/api/v3/athlete' => Http::response(['id' => 42], $status)]);
 
     runVerifyJob($connection);
 
-    Log::shouldHaveReceived($level)
+    $logSpy->shouldHaveReceived($level)
         ->once()
         ->withArgs(fn (string $message, array $context): bool => str_starts_with($message, 'strava.webhook')
             && $context === ['user_id' => $connection->user_id] + ($level === 'warning' ? ['source' => 'webhook_deauth'] : []));
@@ -108,7 +108,7 @@ it('does not revoke after a reconnect replaces the credentials while the check i
     new VerifyStravaRevocationJob($connection->id, 'webhook_deauth', $capturedVersion)
         ->handle(app(StravaClient::class));
 
-    expect($connection->fresh()->isRevoked())->toBeFalse()
+    expect($connection->refresh()->isRevoked())->toBeFalse()
         ->and(StravaSyncLog::query()->where('user_id', $connection->user_id)->exists())->toBeFalse();
 });
 
@@ -119,5 +119,5 @@ it('does not verify a queued event without a captured credential version', funct
     new VerifyStravaRevocationJob($connection->id, 'webhook_deauth')->handle(app(StravaClient::class));
 
     Http::assertNothingSent();
-    expect($connection->fresh()->isRevoked())->toBeFalse();
+    expect($connection->refresh()->isRevoked())->toBeFalse();
 });

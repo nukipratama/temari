@@ -9,6 +9,8 @@ import type {
     TrendDirection,
 } from '@/types/inertia';
 
+import { defined } from '@/test/defined';
+
 import { evidenceRows, verdictHeadline, verdictSupport } from './verdict';
 
 function run(
@@ -93,9 +95,10 @@ function trend(overrides: Partial<PastYouTrend> = {}): PastYouTrend {
 
 describe('evidenceRows', () => {
     it('shows pace and heart rate for both runs, with a pace row signed by direction', () => {
-        const [row] = evidenceRows(
+        const [maybeRow] = evidenceRows(
             trend({ comparisons: [comparison({ paceDelta: 12 })] }),
         );
+        const row = defined(maybeRow);
 
         expect(row.metric).toBe('pace');
         expect(row.pace).toEqual({ then: '7:12', now: '7:00' });
@@ -105,20 +108,21 @@ describe('evidenceRows', () => {
     });
 
     it('marks a slower pace pair with a positive delta', () => {
-        const [row] = evidenceRows(
+        const [maybeRow] = evidenceRows(
             trend({
                 comparisons: [
                     comparison({ direction: 'worse', paceDelta: -10 }),
                 ],
             }),
         );
+        const row = defined(maybeRow);
 
         expect(row.delta).toBe('+10 s/km');
         expect(row.direction).toBe('worse');
     });
 
     it('states an efficiency call in words, never as a number or a percentage', () => {
-        const [better, worse] = evidenceRows(
+        const [maybeBetter, maybeWorse] = evidenceRows(
             trend({
                 comparisons: [
                     comparison({ metric: 'ef', paceDelta: 1, hrDelta: -7 }),
@@ -132,6 +136,8 @@ describe('evidenceRows', () => {
                 ],
             }),
         );
+        const better = defined(maybeBetter);
+        const worse = defined(maybeWorse);
 
         expect(better.metric).toBe('ef');
         expect(better.delta).toBe('less work');
@@ -140,34 +146,37 @@ describe('evidenceRows', () => {
     });
 
     it('never says less work on a pair decided on pace', () => {
-        const [row] = evidenceRows(
+        const [maybeRow] = evidenceRows(
             trend({
                 comparisons: [comparison({ metric: 'pace', paceDelta: 12 })],
             }),
         );
+        const row = defined(maybeRow);
 
         expect(row.delta).not.toBe('less work');
     });
 
     it('leaves heart rate off a row where either run has none', () => {
-        const [row] = evidenceRows(
+        const [maybeRow] = evidenceRows(
             trend({
                 comparisons: [comparison({ hrDelta: null, pastHr: null })],
             }),
         );
+        const row = defined(maybeRow);
 
         expect(row.hr).toBeNull();
         expect(row.pace).toEqual({ then: '7:12', now: '7:00' });
     });
 
     it('reads a flat pair as holding rather than a noisy number', () => {
-        const [row] = evidenceRows(
+        const [maybeRow] = evidenceRows(
             trend({
                 comparisons: [
                     comparison({ direction: 'flat', paceDelta: 2, hrDelta: 1 }),
                 ],
             }),
         );
+        const row = defined(maybeRow);
 
         expect(row.delta).toBe('holding');
     });

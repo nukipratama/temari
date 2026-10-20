@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Models\Season;
 use App\Actions\Run\Plan\ResolveActiveRaceAction;
 use App\Actions\Run\Plan\ResolveSeasonAction;
 use App\Enums\PlanPhase;
@@ -92,18 +93,18 @@ class TrendsController extends Controller
     private function supportedHistory(User $user, Carbon $today, ResolveActiveRaceAction $activeRace, ResolveSeasonAction $seasons): ?array
     {
         $race = $activeRace($user->id);
-        if ($race === null) {
+        if (!$race instanceof RaceGoal) {
             return null;
         }
 
         $season = $seasons->latest($user->id);
-        $seasonStart = $season !== null && $season->race_goal_id === $race->id ? $season->starts_at->toDateString() : null;
+        $seasonStart = $season instanceof Season && $season->race_goal_id === $race->id ? $season->starts_at->toDateString() : null;
         $snapshots = TrendDailySnapshot::query()
             ->where('user_id', $user->id)
             ->where('race_goal_id', $race->id)
             ->whereNotNull('supported_time_sec')
-            ->when($seasonStart, fn ($query, string $start) => $query->whereDate('snapshot_date', '>=', $start))
-            ->whereDate('snapshot_date', '<=', $today->toDateString())
+            ->when($seasonStart, fn ($query, string $start) => $query->where('snapshot_date', '>=', $start))
+            ->where('snapshot_date', '<=', $today->toDateString())
             ->orderBy('snapshot_date')
             ->get(['snapshot_date', 'supported_time_sec', 'supported_source_distance_m', 'supported_source_date']);
 
@@ -130,10 +131,8 @@ class TrendsController extends Controller
     }
 
     /**
-     * The gain half of "vs last week" — km and runs this week against last
-     * week through the same weekday. Reuses BriefingContext rather than a new
-     * query: it already computes this exact comparison for the daily
-     * briefing's tool context.
+     * The gain half of "vs last week" — km and runs this week against last week
+     * through the same weekday, reusing BriefingContext's own comparison.
      *
      * @return array{
      *     this_week_km: float|null,
@@ -205,8 +204,7 @@ class TrendsController extends Controller
     }
 
     /**
-     * The verdict card's own Analysis payload — the single 7d row. Trends
-     * used to narrate 30d/90d/12mo alongside it; those retired (#967).
+     * The verdict card's own Analysis payload — the single 7d row.
      *
      * @return array<string, mixed>
      */

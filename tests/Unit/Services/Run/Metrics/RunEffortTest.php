@@ -26,7 +26,7 @@ function runEffortDetail(User $user, array $attributes): ActivityDetail
     ], $attributes));
 }
 
-/** @return array<string, float> */
+/** @return array{time_in_zone_pct: array<string, float>} */
 function runEffortZones(float $z1, float $z2, float $z3, float $z4, float $z5): array
 {
     return ['time_in_zone_pct' => ['Z1' => $z1, 'Z2' => $z2, 'Z3' => $z3, 'Z4' => $z4, 'Z5' => $z5]];

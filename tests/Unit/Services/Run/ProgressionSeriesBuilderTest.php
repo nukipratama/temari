@@ -61,10 +61,9 @@ it('builds the weekly-best series scaled to the target distance', function (): v
         $activityIds[] = $a->id;
     }
 
-    $series = new ProgressionSeriesBuilder()->build($user, $featured, 2_400);
+    $series = nonNull(new ProgressionSeriesBuilder()->build($user, $featured, 2_400));
 
-    expect($series)->not->toBeNull()
-        ->and($series['category'])->toBe('10km')
+    expect($series['category'])->toBe('10km')
         ->and($series['weeks'])->toHaveCount(2)
         ->and($series['times_sec'])->toHaveCount(2)
         ->and($series['activity_ids'])->toBe($activityIds)
@@ -84,7 +83,7 @@ it('snaps the activity id to the record when the best time is snapped', function
         'start_date_local' => Carbon::parse('2026-05-04 07:00:00'),
     ]);
 
-    $series = new ProgressionSeriesBuilder()->build($user, $featured, 2_400);
+    $series = nonNull(new ProgressionSeriesBuilder()->build($user, $featured, 2_400));
 
     expect($series['activity_ids'])->toBe([$featured->activity_id]);
 });
@@ -103,7 +102,10 @@ it('snaps the series best to the authoritative PR time so the chart matches the 
         'start_date_local' => Carbon::parse('2026-05-04 07:00:00'),
     ]);
 
-    $series = new ProgressionSeriesBuilder()->build($user, $featured, 2_400);
+    $series = nonNull(new ProgressionSeriesBuilder()->build($user, $featured, 2_400));
+
+    expect($series['times_sec'])->not->toBeEmpty();
+    assert($series['times_sec'] !== []);
 
     expect(min($series['times_sec']))->toBe(2_400)
         ->and($series['times_sec'])->toContain(2_400);
@@ -112,7 +114,7 @@ it('snaps the series best to the authoritative PR time so the chart matches the 
 it('does not stamp the PR time onto a more recent week when the PR predates the window', function (): void {
     // The PR was set long before the 26-week window and hasn't been beaten since,
     // so its week isn't in the series. A newer in-window run must keep its own
-    // scaled time, not get relabeled with the old PR value (the fabricated-point bug).
+    // scaled time, not get relabeled with the old PR value.
     ['user' => $user, 'featured' => $featured] = progressionFixture('5km', 1_500, '2024-01-01 07:00:00');
 
     $a = Activity::factory()->for($user)->analyzed()->create();
@@ -122,7 +124,7 @@ it('does not stamp the PR time onto a more recent week when the PR predates the 
         'start_date_local' => Carbon::parse('2026-05-04 07:00:00'),
     ]);
 
-    $series = new ProgressionSeriesBuilder()->build($user, $featured, 1_485);
+    $series = nonNull(new ProgressionSeriesBuilder()->build($user, $featured, 1_485));
 
     expect($series['times_sec'])->toBe([1_550])
         ->and($series['times_sec'])->not->toContain(1_500);
@@ -141,7 +143,7 @@ it('keeps only the best (lowest) scaled time per week', function (): void {
         ]);
     }
 
-    $series = new ProgressionSeriesBuilder()->build($user, $featured, 1_485);
+    $series = nonNull(new ProgressionSeriesBuilder()->build($user, $featured, 1_485));
 
     expect($series['weeks'])->toHaveCount(1)
         ->and($series['times_sec'][0])->toBe(1_500);

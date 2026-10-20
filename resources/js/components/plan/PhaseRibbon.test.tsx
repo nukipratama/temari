@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import type { SeasonSummaryWeek } from '@/lib/plan';
 
 import { PHASE_COLORS } from '@/lib/chartTokens';
+import { defined } from '@/test/defined';
 
 import PhaseRibbon from './PhaseRibbon';
 
@@ -231,7 +232,7 @@ describe('PhaseRibbon', () => {
         const [firstGeneralCell] = screen.getAllByRole('button', {
             name: 'maintain',
         });
-        fireEvent.mouseEnter(firstGeneralCell);
+        fireEvent.mouseEnter(defined(firstGeneralCell));
 
         expect(screen.getByText('maintain')).toBeInTheDocument();
         expect(screen.queryByText('build')).not.toBeInTheDocument();

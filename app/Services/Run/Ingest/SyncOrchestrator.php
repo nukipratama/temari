@@ -60,13 +60,9 @@ class SyncOrchestrator
      * Ingest a single activity by its Strava external id (webhook push path).
      * Inserts the row if it is new, then dispatches exactly one IngestActivityJob.
      *
-     * Dedup: Strava can redeliver the same event, and the aspect type (create vs
-     * update) is not propagated down to here, so we cannot tell a genuine update
-     * apart from a duplicate create. A detailed row means the detail and streams
-     * are already fetched, so re-dispatching would re-spend two Strava API calls
-     * and re-run the pipeline for nothing; we skip it. A stub, or a run the poll
-     * stored only as a summary, still ingests at live priority. Genuine updates
-     * re-pull via the hourly poll or a manual re-ingest, not this push path.
+     * A detailed row is skipped (Strava redelivers events and the create/update aspect is not
+     * propagated here), so a duplicate never re-spends two API calls; a stub or summary-only run
+     * still ingests at live priority. Genuine updates re-pull via the hourly poll or a manual re-ingest.
      */
     public function syncSingleActivity(User $user, int $externalId, StravaSyncSource $source = StravaSyncSource::Webhook): bool
     {

@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import type { CatalogueItem } from '@/lib/catalogue';
 
 import { useSharedProps } from '@/hooks/useSharedProps';
+import { defined } from '@/test/defined';
 
 import EntrySection from './EntrySection';
 
@@ -53,9 +54,9 @@ describe('EntrySection', () => {
         expect(screen.getAllByText('holding')).toHaveLength(2);
         expect(screen.getAllByText('paused')).toHaveLength(3);
         expect(screen.queryByText('running')).not.toBeInTheDocument();
-        expect(screen.getAllByText('sheet')[0].parentElement).toHaveClass(
-            'transform-gpu',
-        );
+        expect(
+            defined(screen.getAllByText('sheet')[0]).parentElement,
+        ).toHaveClass('transform-gpu');
     });
 
     it('lays the variant matrix out as rows by columns, minus the omitted values', () => {
@@ -65,8 +66,12 @@ describe('EntrySection', () => {
             screen.getByRole('heading', { name: 'variants · tone × size' }),
         ).toBeInTheDocument();
         const [light] = screen.getAllByRole('table');
-        expect(within(light).getByText('warning/md')).toBeInTheDocument();
-        expect(within(light).queryByText(/^sky/)).not.toBeInTheDocument();
+        expect(
+            within(defined(light)).getByText('warning/md'),
+        ).toBeInTheDocument();
+        expect(
+            within(defined(light)).queryByText(/^sky/),
+        ).not.toBeInTheDocument();
         expect(screen.getByText('not shown · sky: unused')).toBeInTheDocument();
     });
 

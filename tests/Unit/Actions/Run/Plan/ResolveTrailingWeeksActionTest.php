@@ -25,7 +25,7 @@ it('returns the window behind the date, newest first', function (): void {
     $weeks = (app(ResolveTrailingWeeksAction::class))($user->id, Carbon::today()->toDateString(), 2);
 
     expect($weeks)->toHaveCount(2)
-        ->and($weeks->first()->week_ending->toDateString())->toBe(Carbon::today()->subWeek()->toDateString());
+        ->and(nonNull($weeks->first())->week_ending->toDateString())->toBe(Carbon::today()->subWeek()->toDateString());
 });
 
 it('reads the window once for repeated questions with the same key', function (): void {
@@ -74,7 +74,7 @@ it('excludes a snapshot ending later in the same week as the date', function ():
     $weeks = (new ResolveTrailingWeeksAction())($user->id, $wednesday->toDateString(), 6);
 
     expect($weeks)->toHaveCount(1)
-        ->and($weeks->first()->week_ending->toDateString())->toBe('2026-09-06');
+        ->and(nonNull($weeks->first())->week_ending->toDateString())->toBe('2026-09-06');
 });
 
 it('keeps athletes apart', function (): void {

@@ -6,6 +6,8 @@ use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
 use App\Models\HeldNotification;
+use App\Enums\NotificationDeliveryStatus;
+use App\Models\NotificationDelivery;
 use App\Models\NotificationPreference;
 use App\Models\PlannedSession;
 use App\Models\TelegramConnection;
@@ -13,8 +15,10 @@ use App\Models\User;
 use App\Notifications\MorningBriefingNotification;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
+use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Notification;
 use NotificationChannels\WebPush\WebPushChannel;
@@ -38,7 +42,7 @@ function morningAthlete(string $usualStart = '06:00:00', ?AnalysisStatus $briefi
         ]);
     }
 
-    if ($briefingStatus !== null) {
+    if ($briefingStatus instanceof AnalysisStatus) {
         Analysis::factory()->create([
             'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
             'subject_id' => $user->id,
@@ -133,7 +137,7 @@ it('skips an athlete whose briefing is not done, and never generates one', funct
         ->assertSuccessful();
 
     Notification::assertNothingSent();
-    expect(Analysis::query()->count())->toBe($status === null ? 0 : 1);
+    expect(Analysis::query()->count())->toBe($status instanceof AnalysisStatus ? 1 : 0);
 })->with([
     'no row at all' => null,
     'still pending' => AnalysisStatus::Pending,
@@ -313,4 +317,53 @@ it('holds a quiet-hours briefing once per channel across catch-up ticks', functi
     expect($held)->toHaveCount(2)
         ->and(HeldNotification::query()->pluck('id')->all())->toBe($held);
     Http::assertNothingSent();
+});
+
+it('pushes only the athletes due this tick across a mixed set of slots', function (): void {
+    Notification::fake();
+
+    $due = morningAthlete('06:00:00');
+    $dueNoBriefing = morningAthlete('06:00:00', null);
+    $dueAlreadyClaimed = morningAthlete('06:00:00');
+    $later = morningAthlete('09:00:00');
+    $earlier = morningAthlete('04:00:00');
+    NotificationDelivery::query()->create([
+        'analysis_id' => Analysis::query()->where('subject_id', $dueAlreadyClaimed->id)->value('id'),
+        'channel' => 'webpush',
+        'status' => NotificationDeliveryStatus::Sent,
+        'created_at' => now(),
+        'claim_version' => 1,
+    ]);
+
+    $this->artisan('briefing:morning-push')
+        ->expectsOutputToContain('Pushed the morning briefing to 1 athletes.')
+        ->assertSuccessful();
+
+    Notification::assertSentTo($due, MorningBriefingNotification::class);
+    foreach ([$dueNoBriefing, $dueAlreadyClaimed, $later, $earlier] as $user) {
+        Notification::assertNotSentTo($user, MorningBriefingNotification::class);
+    }
+});
+
+it('loads briefings and deliveries once however many athletes are due', function (): void {
+    Notification::fake();
+    foreach (range(1, 4) as $ignored) {
+        morningAthlete('06:00:00');
+    }
+    morningAthlete('09:00:00');
+
+    $selects = ['ai_analyses' => 0, 'notification_deliveries' => 0];
+    DB::listen(function (QueryExecuted $query) use (&$selects): void {
+        foreach (array_keys($selects) as $table) {
+            if (str_starts_with($query->sql, 'select') && str_contains($query->sql, "from `{$table}`")) {
+                $selects[$table]++;
+            }
+        }
+    });
+
+    $this->artisan('briefing:morning-push')
+        ->expectsOutputToContain('Pushed the morning briefing to 4 athletes.')
+        ->assertSuccessful();
+
+    expect($selects)->toBe(['ai_analyses' => 1, 'notification_deliveries' => 1]);
 });

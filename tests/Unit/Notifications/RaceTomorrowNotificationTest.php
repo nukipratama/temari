@@ -102,9 +102,10 @@ it('says nothing about the taper when today is not a rest day', function (): voi
         'session_type' => SessionType::Easy,
     ]);
 
-    expect(new RaceTomorrowNotification(raceFor($user))->toInbox($user)->body)
-        ->not->toContain('the plan rests you today')
-        ->not->toContain('  ');
+    $body = new RaceTomorrowNotification(raceFor($user))->toInbox($user)->body;
+
+    expect($body)->not->toContain('the plan rests you today')
+        ->and($body)->not->toContain('  ');
 });
 
 it('sends the evening before and skips on race day', function (): void {
@@ -114,12 +115,12 @@ it('sends the evening before and skips on race day', function (): void {
 
     expect($notification->shouldSend($user, IdempotentWebPushChannel::class))->toBeTrue();
 
-    Log::spy();
+    $log = Log::spy();
     Carbon::setTestNow('2026-05-24 06:00:00');
 
     expect($notification->shouldSend($user, IdempotentWebPushChannel::class))->toBeFalse()
         ->and($notification->shouldSend($user, InAppChannel::class))->toBeTrue();
-    Log::shouldHaveReceived('info')->withArgs(fn (string $message, array $context): bool => $message === 'notifications.stale_skipped'
+    $log->shouldHaveReceived('info')->withArgs(fn (string $message, array $context): bool => $message === 'notifications.stale_skipped'
         && $context['type'] === RaceTomorrowNotification::class)->once();
 });
 
@@ -139,5 +140,5 @@ it('judges a replayed race reminder as of the moment it was held', function (): 
 it('goes stale at the end of the day before the race', function (): void {
     $user = User::factory()->create();
 
-    expect(new RaceTomorrowNotification(raceFor($user))->staleAfter->toDateTimeString())->toBe('2026-05-23 23:59:59');
+    expect(new RaceTomorrowNotification(raceFor($user))->staleAfter?->toDateTimeString())->toBe('2026-05-23 23:59:59');
 });

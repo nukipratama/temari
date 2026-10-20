@@ -2,6 +2,7 @@ import { router } from '@inertiajs/react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
+import { defined } from '@/test/defined';
 import { makeUser, setMockPage } from '@/test/setup';
 
 import Settings from './Index';
@@ -52,7 +53,7 @@ describe('Settings', () => {
 
         expect(levels[0]).toBe(1);
         levels.slice(1).forEach((level, index) => {
-            expect(level - levels[index]).toBeLessThanOrEqual(1);
+            expect(level - defined(levels[index])).toBeLessThanOrEqual(1);
         });
     });
 
@@ -137,8 +138,7 @@ describe('Settings', () => {
         ).toBeTruthy();
     });
 
-    // Reflow #11: a button pair that turns sideways above 900px, not a
-    // SettingsRow list.
+    // A button pair that turns sideways above 900px, not a SettingsRow list.
     it('draws the account actions as the prototype button pair', () => {
         render(<Settings />);
 
@@ -152,11 +152,12 @@ describe('Settings', () => {
         render(<Settings />);
 
         expect(screen.getByText('The fine print')).toBeInTheDocument();
-        for (const [label, href] of [
+        const links: Array<[string, string]> = [
             ['terms of use', '/terms'],
             ['privacy policy', '/privacy'],
             ['training disclaimer', '/training-disclaimer'],
-        ]) {
+        ];
+        for (const [label, href] of links) {
             expect(
                 screen.getByRole('link', { name: new RegExp(label) }),
             ).toHaveAttribute('href', href);
@@ -178,8 +179,8 @@ describe('Settings', () => {
         ).toBeInTheDocument();
     });
 
-    // The page used to open with a bare untranslated <h1>, the only screen in
-    // the app not using the editorial header every other page shares.
+    // The page uses the editorial header every other page shares, not a bare
+    // title.
     it('opens with the editorial header rather than a bare title', () => {
         render(<Settings />);
         expect(screen.getAllByText('Settings').length).toBeGreaterThan(0);
@@ -329,9 +330,8 @@ describe('Settings', () => {
         );
     });
 
-    // Pressing it used to look like nothing happened, and pressing again either
-    // sent a second time or hit the route throttle as a bare 429 the UI could
-    // not explain.
+    // Pressing it must not look like nothing happened, nor send twice or hit
+    // the route throttle as a bare 429 the UI cannot explain.
     it('disables the test button with a countdown while the send is cooling', () => {
         vi.mocked(router.post).mockReset();
         render(<Settings testCooldownSeconds={45} />);

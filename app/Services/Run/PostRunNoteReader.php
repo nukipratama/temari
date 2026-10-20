@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Run;
 
+use Illuminate\Support\Collection;
 use App\Models\Activity;
 use App\Models\AI\Analysis;
 use App\Models\StoryLine;
@@ -33,6 +34,7 @@ class PostRunNoteReader
             ->where('kind', StoryLine::KIND_POST_RUN)
             ->where('activity_id', $activityId)
             ->value('mood');
+        assert($mood === null || $mood instanceof Mood);
 
         $speech = Analysis::query()
             ->where('subject_type', Activity::class)
@@ -41,7 +43,7 @@ class PostRunNoteReader
             ->where('subject_id', $activityId)
             ->value('content');
 
-        if ($mood === null || ! is_string($speech) || $speech === '') {
+        if (!$mood instanceof Mood || ! is_string($speech) || $speech === '') {
             return null;
         }
 
@@ -77,6 +79,7 @@ class PostRunNoteReader
 
         $moodByActivity = $this->moodsFor($activityIds);
 
+        /** @var Collection<int, string|null> $speechByActivity */
         $speechByActivity = Analysis::query()
             ->where('subject_type', Activity::class)
             ->where('analysis_type', AnalysisType::PostRunSpeech)
@@ -98,10 +101,8 @@ class PostRunNoteReader
     }
 
     /**
-     * Persisted post-run mood per activity, keyed by activity id, independent of
-     * whether the speech is ready. Lets list/dashboard surfaces show the same
-     * mood the backend already computed instead of a frontend heuristic during
-     * the window before the post-run speech lands.
+     * Persisted post-run mood per activity, keyed by activity id, independent of whether the speech
+     * is ready.
      *
      * @param  array<int, int>  $activityIds
      * @return array<int, string>
@@ -112,11 +113,12 @@ class PostRunNoteReader
             return [];
         }
 
-        return StoryLine::query()
+        /** @var Collection<int, Mood> $moods */
+        $moods = StoryLine::query()
             ->where('kind', StoryLine::KIND_POST_RUN)
             ->whereIn('activity_id', $activityIds)
-            ->pluck('mood', 'activity_id')
-            ->map(fn (Mood $mood): string => $mood->value)
-            ->all();
+            ->pluck('mood', 'activity_id');
+
+        return $moods->map(fn (Mood $mood): string => $mood->value)->all();
     }
 }

@@ -34,13 +34,13 @@ it('prices a deployment directly from the config rate map', function (): void {
 });
 
 it('returns 0.0 and warns once for a model with no configured rate', function (): void {
-    Log::spy();
+    $log = Log::spy();
     $calculator = new LlmCostCalculator();
 
     expect($calculator->costFor('mystery-model', 1_000_000, 1_000_000))->toBe(0.0)
         ->and($calculator->costFor('mystery-model', 1, 1))->toBe(0.0);
 
-    Log::shouldHaveReceived('warning')
+    $log->shouldHaveReceived('warning')
         ->once()
         ->with('llm_cost.unknown_deployment', ['deployment' => 'mystery-model']);
 });

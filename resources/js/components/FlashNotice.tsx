@@ -29,17 +29,11 @@ export default function FlashNotice() {
             (key) => typeof flash?.[key] === 'string' && flash[key] !== '',
         ) ?? null;
     const message = tone === null ? null : (flash?.[tone] ?? null);
-    const [dismissed, setDismissed] = useState(false);
-    const [lastMessage, setLastMessage] = useState(message);
+    const [dismissedFlash, setDismissedFlash] = useState<typeof flash | null>(
+        null,
+    );
 
-    // A fresh flash (new message) re-shows the banner after a prior dismissal.
-    // Adjusted during render (React-endorsed) rather than in an effect.
-    if (message !== lastMessage) {
-        setLastMessage(message);
-        setDismissed(false);
-    }
-
-    if (tone === null || message === null || dismissed) {
+    if (tone === null || message === null || dismissedFlash === flash) {
         return null;
     }
 
@@ -50,7 +44,7 @@ export default function FlashNotice() {
             tone={style.tone}
             icon={style.icon}
             role="status"
-            onDismiss={() => setDismissed(true)}
+            onDismiss={() => setDismissedFlash(flash)}
         >
             {message}
         </Banner>

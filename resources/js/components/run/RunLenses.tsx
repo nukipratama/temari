@@ -1,4 +1,4 @@
-import { router, usePage } from '@inertiajs/react';
+import { router } from '@inertiajs/react';
 import {
     ArrowDown,
     Clock,
@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
 
-import type { AnalysisPayload, Mood, SharedProps } from '@/types/inertia';
+import type { AnalysisPayload, Mood } from '@/types/inertia';
 
 import AnalysisStatus, {
     rendersNothing,
@@ -23,6 +23,7 @@ import {
     cooldownAriaLabel,
     useCooldownCountdown,
 } from '@/hooks/useCooldownCountdown';
+import { useSharedProps } from '@/hooks/useSharedProps';
 import { anchorLabel, revealAnchor } from '@/lib/anchors';
 import { cn } from '@/lib/cn';
 import { formatDurationHMS } from '@/lib/pace';
@@ -79,6 +80,15 @@ function rereadLabel(pending: boolean, cooldownRemaining: number): string {
     return 'reread';
 }
 
+function isRunInsightClaim(value: unknown): value is RunInsightClaim {
+    if (typeof value !== 'object' || value === null) {
+        return false;
+    }
+    const claim = value as Record<string, unknown>;
+
+    return typeof claim.anchor === 'string' && typeof claim.text === 'string';
+}
+
 /**
  * Parse the run-insight block's JSON-encoded claims list. Malformed content
  * (should never happen — the server only ever writes its own JSON) renders
@@ -87,7 +97,7 @@ function rereadLabel(pending: boolean, cooldownRemaining: number): string {
 function parseClaims(content: string): RunInsightClaim[] {
     try {
         const parsed: unknown = JSON.parse(content);
-        return Array.isArray(parsed) ? (parsed as RunInsightClaim[]) : [];
+        return Array.isArray(parsed) ? parsed.filter(isRunInsightClaim) : [];
     } catch {
         return [];
     }
@@ -197,7 +207,7 @@ export default function RunLenses({
     className,
 }: Readonly<RunLensesProps>) {
     const [bulkPending, setBulkPending] = useState(false);
-    const paused = usePage<SharedProps>().props.aiPaused ?? false;
+    const paused = useSharedProps().aiPaused ?? false;
 
     const lenses = useMemo(() => [story, insight], [story, insight]);
 

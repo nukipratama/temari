@@ -10,11 +10,8 @@ use Illuminate\Database\Eloquent\Collection;
 /**
  * The athlete's planned sessions across a date range, read once per request.
  *
- * Bound `scoped()` in AppServiceProvider — {@see \App\Services\Run\Plan\CurrentWeekPlanBuilder}
- * loads a four-week window and {@see \App\Services\Run\Plan\SessionMatcher}
- * then asks which of a handful of those same days prescribed a long run. A
- * memo keyed on the exact range would miss that, so a request whose range
- * falls inside one already read is served from the wider window.
+ * Bound `scoped()` in AppServiceProvider. A request whose range falls inside one
+ * already read is served from the wider window.
  *
  * {@see PlannedSession::booted()} drops the memo on any write; a caller that
  * deletes rows in bulk must call {@see self::forget()} itself, since a mass

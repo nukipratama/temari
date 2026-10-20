@@ -258,11 +258,13 @@ class StravaAuthController extends Controller
     private function refuseNewAthlete(SocialiteUser $stravaUser, array $connectionAttributes, int $credentialVersion): void
     {
         $athleteId = (int) $stravaUser->getId();
+        $refreshToken = $connectionAttributes['refresh_token'];
+        assert($refreshToken === null || is_string($refreshToken));
         $this->grantLedger->recordGrant(
             $athleteId,
             null,
             $credentialVersion,
-            (string) $connectionAttributes['refresh_token'],
+            (string) $refreshToken,
             StravaGrantEventType::RefusedInMaintenance,
         );
         $result = $this->grantReleases->release($athleteId, expectedCredentialVersion: $credentialVersion);

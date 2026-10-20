@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
+import { defined } from '@/test/defined';
+
 import type { SeasonSummaryWeek } from './plan';
 
 import { phaseGroupKey, phasesOf } from './planPhases';
@@ -88,7 +90,7 @@ describe('phasesOf', () => {
         ]);
 
         expect(phases.map((p) => p.key)).toEqual(['general', 'base']);
-        expect(phases[0].state).toBe('current');
+        expect(defined(phases[0]).state).toBe('current');
     });
 
     it('puts the general entry first, ahead of the block phases it precedes', () => {

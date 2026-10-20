@@ -5,11 +5,17 @@ declare(strict_types=1);
 use App\Http\Requests\LogoutRequest;
 use Illuminate\Support\Facades\Validator;
 
+/**
+ * @param  array<string, mixed>  $data
+ */
 function passesLogout(array $data): bool
 {
     return Validator::make($data, new LogoutRequest()->rules())->passes();
 }
 
+/**
+ * @param  array<string, mixed>  $data
+ */
 function resolvedLogoutRequest(array $data): LogoutRequest
 {
     $request = LogoutRequest::create('/logout', 'POST', $data);

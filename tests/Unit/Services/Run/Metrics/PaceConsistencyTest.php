@@ -26,9 +26,7 @@ it('only flags a swing wider than the uneven band', function (): void {
         ->and(PaceConsistency::isNotablyUneven(20.1))->toBeTrue();
 });
 
-// The bands describe per-km split spread. Under the old per-second definition a
-// steady run measured ~95 sec, so every run in the corpus read as ragged and the
-// two praise bands were unreachable. Splits 26 seconds apart must read as even.
+// The bands describe per-km split spread: splits 26 seconds apart must read as even.
 it('calls a run whose kilometre splits sit within half a minute even', function (): void {
     $splitPaces = [473.0, 463.0, 484.0, 477.0, 458.0];
     $mean = array_sum($splitPaces) / count($splitPaces);

@@ -21,7 +21,7 @@ it('marks an activity date dirty after detail ingest', function (): void {
 
     app(TrendSnapshotRepairDispatch::class)->forActivity($activity->load('detail'));
 
-    expect($activity->user->fresh()->trend_snapshots_pending_from->toDateString())->toBe('2026-08-16');
+    expect(nonNull(nonNull($activity->user->fresh())->trend_snapshots_pending_from)->toDateString())->toBe('2026-08-16');
     Bus::assertDispatched(RebuildTrendSnapshotsJob::class);
     Carbon::setTestNow();
 });
@@ -33,6 +33,6 @@ it('does not schedule a repair for the demo account', function (): void {
 
     app(TrendSnapshotRepairDispatch::class)->forActivity($activity->load('detail'));
 
-    expect($activity->user->fresh()->trend_snapshots_pending_from)->toBeNull();
+    expect(nonNull($activity->user->fresh())->trend_snapshots_pending_from)->toBeNull();
     Bus::assertNotDispatched(RebuildTrendSnapshotsJob::class);
 });

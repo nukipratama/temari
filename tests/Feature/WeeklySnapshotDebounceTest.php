@@ -21,6 +21,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\DB;
+use Mockery\MockInterface;
 
 uses(RefreshDatabase::class);
 
@@ -43,6 +44,7 @@ function debounceRun(User $user, string $startedAt, float $trimp): Activity
     return $activity;
 }
 
+/** @return array<int, array<mixed>> */
 function debounceSnapshotRows(User $user): array
 {
     return DB::table('weekly_snapshots')
@@ -97,14 +99,16 @@ it('still rebuilds the week inline for a run landing today', function (): void {
     $week = WeeklySnapshot::query()->where('user_id', $user->id)->where('week_ending', '2026-05-17')->firstOrFail();
     expect($week->runs)->toBe(1)
         ->and($week->weekly_trimp)->toBe(90.0)
-        ->and($user->fresh()->weekly_snapshots_dirty_from)->toBeNull();
+        ->and($user->refresh()->weekly_snapshots_dirty_from)->toBeNull();
 });
 
 it('finishes the snapshots of a sync killed mid-rebuild on the next tick', function (): void {
     $user = User::factory()->create();
     StravaConnection::factory()->for($user)->create();
+    /** @var StravaClient&MockInterface $client */
     $client = Mockery::mock(StravaClient::class);
     $client->shouldReceive('rateLimitRemaining')->andReturn(['15min' => 200, 'daily' => 2000]);
+    /** @var ActivityFetcher&MockInterface $fetcher */
     $fetcher = Mockery::mock(ActivityFetcher::class);
     $fetcher->shouldReceive('fetchNewSummaries')->andReturn([
         'summaries' => array_map(fn (int $id): array => [
@@ -120,21 +124,23 @@ it('finishes the snapshots of a sync killed mid-rebuild on the next tick', funct
         'resume_before' => null,
     ]);
     $orchestrator = new SyncOrchestrator($fetcher, $client, app(SummaryIngest::class), app(WeeklyAggregator::class), app(MaintainerAlerter::class));
-    $killed = true;
-    DB::listen(function (QueryExecuted $query) use (&$killed): void {
-        if ($killed && str_contains($query->sql, '`activity_details`.`trimp_edwards`, `activity_details`.`stream_summary`')) {
+    $worker = new class () {
+        public bool $killed = true;
+    };
+    DB::listen(function (QueryExecuted $query) use ($worker): void {
+        if ($worker->killed && str_contains($query->sql, '`activity_details`.`trimp_edwards`, `activity_details`.`stream_summary`')) {
             throw new RuntimeException('worker killed');
         }
     });
 
     expect(fn () => $orchestrator->syncUser($user))->toThrow(RuntimeException::class, 'worker killed')
         ->and(WeeklySnapshot::query()->where('user_id', $user->id)->exists())->toBeFalse()
-        ->and($user->fresh()->weekly_snapshots_dirty_from?->toDateString())->toBe('2026-03-08');
+        ->and($user->refresh()->weekly_snapshots_dirty_from?->toDateString())->toBe('2026-03-08');
 
-    $killed = false;
+    $worker->killed = false;
     $this->artisan('strava:hydrate-backlog')->assertSuccessful();
 
     expect(WeeklySnapshot::query()->where('user_id', $user->id)->sum('runs'))->toEqual(3)
         ->and(WeeklySnapshot::query()->where('user_id', $user->id)->min('week_ending'))->toBe('2026-03-08')
-        ->and($user->fresh()->weekly_snapshots_dirty_from)->toBeNull();
+        ->and($user->refresh()->weekly_snapshots_dirty_from)->toBeNull();
 });

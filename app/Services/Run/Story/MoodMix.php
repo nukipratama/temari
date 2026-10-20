@@ -5,15 +5,14 @@ declare(strict_types=1);
 namespace App\Services\Run\Story;
 
 use App\Models\StoryLine;
+use App\Support\Numeric;
 use Illuminate\Support\Carbon;
 
 /**
  * How a runner's moods were distributed over a window, newest concern first:
  * each mood with its run count and share, ordered by count descending.
  *
- * Read by the persona-mix and month-totals tools and by the Profile page's persona
- * bar. The three had grown their own copies of the same group-by; they agreed
- * with each other, but there is no reason for three.
+ * Read by the persona-mix and month-totals tools and by the Profile page's persona bar.
  *
  * Windows are by the run's `start_date_local`, not the line's `created_at`:
  * a backfilled run is hydrated long after it was run.
@@ -34,11 +33,11 @@ final class MoodMix
             ->join('activity_details', 'activity_details.activity_id', '=', 'story_lines.activity_id')
             ->where('story_lines.user_id', $userId)
             ->where('activity_details.start_date_local', '>=', $from)
-            ->when($to !== null, fn ($query) => $query->where('activity_details.start_date_local', '<', $to))
+            ->when($to instanceof Carbon, fn ($query) => $query->where('activity_details.start_date_local', '<', $to))
             ->selectRaw('story_lines.mood as mood, COUNT(*) as c')
             ->groupBy('story_lines.mood')
             ->pluck('c', 'mood')
-            ->map(fn (mixed $count): int => (int) $count)
+            ->map(fn (mixed $count): int => Numeric::int($count))
             ->all();
 
         return self::shape($counts);

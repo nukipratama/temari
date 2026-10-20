@@ -1,7 +1,7 @@
 import type { ComponentProps } from 'react';
 
 import { router } from '@inertiajs/react';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { EditablePlanDay, SeasonSummaryWeek } from '@/lib/plan';
@@ -10,9 +10,24 @@ import {
     clearNavigationMemory,
     rememberPlanSelectedDay,
 } from '@/lib/navigationMemory';
+import { defined } from '@/test/defined';
 import { setMockDeferred, setMockPage } from '@/test/setup';
 
 import Plan from './Plan';
+
+const raceCardRenders = vi.hoisted(() => vi.fn());
+vi.mock('@/components/plan/PlanRaceCard', async (importOriginal) => {
+    const original =
+        await importOriginal<typeof import('@/components/plan/PlanRaceCard')>();
+
+    return {
+        default: (props: ComponentProps<typeof original.default>) => {
+            raceCardRenders();
+
+            return original.default(props);
+        },
+    };
+});
 
 const DISCLAIMER_LINE =
     'temari plans from your runs, not a check-up. if something hurts, rest and see a pro.';
@@ -181,6 +196,12 @@ describe('Plan', () => {
         expect(
             screen.getByRole('link', { name: '+ add a race' }),
         ).toHaveAttribute('href', '/race');
+    });
+
+    it('shows the empty state when weeks is absent', () => {
+        renderPlan({ weeks: undefined });
+
+        expect(screen.getByText('no plan yet.')).toBeInTheDocument();
     });
 
     it('paints the header and disclaimer while the plan body is still deferred', () => {
@@ -382,6 +403,25 @@ describe('Plan', () => {
         expect(button).toBeDisabled();
     });
 
+    it('ticks the cooldown without re-rendering the rest of the page', () => {
+        vi.useFakeTimers();
+        try {
+            renderPlan({ regenerateCooldownSeconds: 3600 });
+            const rendersBefore = raceCardRenders.mock.calls.length;
+
+            act(() => {
+                vi.advanceTimersByTime(3000);
+            });
+
+            expect(
+                screen.getByRole('button', { name: /next in 59:57/i }),
+            ).toBeInTheDocument();
+            expect(raceCardRenders).toHaveBeenCalledTimes(rendersBefore);
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
     it('skips a session through the sessions endpoint', () => {
         renderPlan();
         fireEvent.click(screen.getByRole('button', { name: /^skip$/i }));
@@ -397,7 +437,7 @@ describe('Plan', () => {
         renderPlan({
             weeks: [
                 {
-                    ...BASE_PROPS.weeks![0],
+                    ...defined(BASE_PROPS.weeks![0]),
                     days: [
                         day({
                             skipped: true,

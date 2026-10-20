@@ -38,8 +38,8 @@ const NO_ANNOTATIONS: FitnessChartAnnotations = { deload: [], race: [] };
 interface FitnessPanelProps {
     /** The full 365-day series ({@link FitnessTrendPoint}), oldest first. */
     trend: ReadonlyArray<FitnessTrendPoint>;
-    /** Only the deload marker is drawn here — direction A keeps race day off
-     *  this chart, see the "vs race day" comparison instead. */
+    /** Only the deload marker is drawn here; race day stays off this chart, see
+     *  the "vs race day" comparison instead. */
     annotations?: FitnessChartAnnotations;
     /** Trailing days to shade, so "a month ago" is a place on the line. */
     highlightDays?: number;
@@ -118,6 +118,7 @@ function strokeVerticalAt(
     dash: number[] = [],
 ): void {
     const { ctx, chartArea, scales } = chart;
+    if (!scales.x) return;
     const x = scales.x.getPixelForValue(index);
     ctx.save();
     ctx.strokeStyle = color;
@@ -147,6 +148,7 @@ const fitnessOverlayPlugin: Plugin<'line'> = {
         }
 
         const { ctx, chartArea } = chart;
+        if (!chart.scales.x) return;
         const x0 = chart.scales.x.getPixelForValue(
             Math.max(0, total - highlightDays),
         );
@@ -192,13 +194,11 @@ function monthShort(iso: string): string {
 }
 
 /**
- * The long-term load line "vs a month ago" owns: one CTL series with a categorical
- * load balance band beneath it, a range chip (1M/3M/1Y, default 3M) choosing how
- * much of the 365-day history is drawn, a headline reading the value now and
- * the change since the range's start, and a scrub cursor (hover or touch
- * drag) that swaps the headline for a per-day readout. No ATL line, no stat
- * tiles, no badge chips — those live in the comparison cards around it, or
- * off the page entirely (#967, #1296).
+ * The long-term load line "vs a month ago" owns: one CTL series with a
+ * categorical load balance band beneath it, a range chip (1M/3M/1Y, default 3M),
+ * a headline reading the value now and the change since the range's start, and
+ * a scrub cursor that swaps the headline for a per-day readout. No ATL line,
+ * stat tiles or badge chips.
  */
 export default function FitnessPanel({
     trend,
@@ -265,7 +265,7 @@ export default function FitnessPanel({
                 chart: Chart,
             ): void => {
                 const overlay = overlayOf(chart);
-                const index = elements.length > 0 ? elements[0].index : null;
+                const index = elements[0]?.index ?? null;
                 if (!overlay || overlay.cursorIndex === index) return;
                 overlay.cursorIndex = index;
                 chart.draw();
@@ -316,7 +316,8 @@ export default function FitnessPanel({
         [runs],
     );
 
-    if (trend.length === 0) {
+    const latest = visible.at(-1);
+    if (trend.length === 0 || latest === undefined) {
         return (
             <p className={className ?? 'text-sm text-text-2'}>
                 not enough training history yet to draw a trend.
@@ -324,7 +325,6 @@ export default function FitnessPanel({
         );
     }
 
-    const latest = visible[visible.length - 1];
     const rangeStart = visible[0];
     const activePoint = cursorIndex !== null ? visible[cursorIndex] : null;
     const delta = rangeStart ? latest.ctl - rangeStart.ctl : null;

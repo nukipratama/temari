@@ -12,11 +12,9 @@ use Illuminate\Support\Collection;
  * The athlete's personal records over the standard race distances, read once
  * per request.
  *
- * Bound `scoped()` in AppServiceProvider — {@see \App\Services\Run\Metrics\VdotEstimator}
- * re-reads the whole set on every estimate, and one Plan render estimates four
- * times. {@see PersonalRecord::booted()} drops the memo on any write; a caller
- * that rebuilds the set with a mass `delete()` must call {@see self::forget()}
- * itself, since that fires no model events.
+ * Bound `scoped()` in AppServiceProvider. {@see PersonalRecord::booted()} drops
+ * the memo on any write; a caller that rebuilds the set with a mass `delete()`
+ * must call {@see self::forget()} itself, since that fires no model events.
  */
 class ResolveDistanceRecordsAction
 {

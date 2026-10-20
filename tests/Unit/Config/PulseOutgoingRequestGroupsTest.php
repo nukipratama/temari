@@ -58,14 +58,14 @@ it('stores each outbound request under a group with no token or coordinates', fu
     $key = pulseOutgoingRequestKey($method, $url);
 
     expect($key)->toBe(json_encode([$method, $group], flags: JSON_THROW_ON_ERROR))
-        ->not->toContain(FAKE_BOT_TOKEN)
-        ->not->toContain('AAFakeBotToken')
-        ->not->toContain(FAKE_LATITUDE)
-        ->not->toContain(FAKE_LONGITUDE)
-        ->not->toContain('lat=')
-        ->not->toContain('latitude=')
-        ->not->toContain(FAKE_STRAVA_SECRET)
-        ->not->toContain(FAKE_WEBHOOK_VERIFY_TOKEN)
-        ->not->toContain(FAKE_WEBHOOK_CALLBACK_TOKEN)
-        ->not->toContain('verify_token=');
+        ->and($key)->not->toContain(FAKE_BOT_TOKEN)
+        ->and($key)->not->toContain('AAFakeBotToken')
+        ->and($key)->not->toContain(FAKE_LATITUDE)
+        ->and($key)->not->toContain(FAKE_LONGITUDE)
+        ->and($key)->not->toContain('lat=')
+        ->and($key)->not->toContain('latitude=')
+        ->and($key)->not->toContain(FAKE_STRAVA_SECRET)
+        ->and($key)->not->toContain(FAKE_WEBHOOK_VERIFY_TOKEN)
+        ->and($key)->not->toContain(FAKE_WEBHOOK_CALLBACK_TOKEN)
+        ->and($key)->not->toContain('verify_token=');
 })->with('outbound requests');

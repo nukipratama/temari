@@ -37,12 +37,14 @@ it('holds a send inside the window and keeps the notification id', function (): 
     $result = new HoldNotificationsInQuietHours()->handle(sendingEvent($user, new StreakReminderNotification(4)));
 
     $held = HeldNotification::query()->sole();
+    /** @var Notification $queued */
+    $queued = unserialize($held->notification);
     expect($result)->toBeFalse()
         ->and($held->user_id)->toBe($user->id)
         ->and($held->channel)->toBe(InAppChannel::class)
         ->and($held->dedupe_key)->toBeNull()
         ->and($held->held_at->toDateTimeString())->toBe('2026-10-05 23:00:00')
-        ->and(unserialize($held->notification)->id)->toBe('f3b1c2d4-0000-4000-8000-000000000001');
+        ->and($queued->id)->toBe('f3b1c2d4-0000-4000-8000-000000000001');
 });
 
 it('holds a briefing once per channel however many times it is sent in the window', function (): void {

@@ -19,12 +19,10 @@ final readonly class CardContext
         /** Null when this run has no average HR, so no effort ratio is computable. */
         public ?int $athleteMaxHr,
         /**
-         * True when a planned Tempo/Interval session existed for this run's
-         * date and the run's actual pace met or beat that session's
-         * prescribed pace band — the rarity dimension that lets a
-         * well-executed quality run reach the top tiers without needing
-         * distance or a PR. Always false when Slice 6 planning has nothing
-         * for this date, or the day wasn't a quality session.
+         * True when a planned Tempo/Interval session existed for this run's date and the run's actual
+         * pace met or beat that session's prescribed pace band: the rarity dimension that lets a
+         * well-executed quality run reach the top tiers without needing distance or a PR. Always false
+         * when no planned session exists for this date, or the day wasn't a quality session.
          */
         public bool $qualitySessionPaceMet = false,
     ) {

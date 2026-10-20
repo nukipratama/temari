@@ -66,8 +66,8 @@ it('excludes the demo user so it never auto-bills the weekly profile LLM', funct
         ->assertSuccessful();
 
     expect(array_column($captured, 'subjectId'))
-        ->toContain($real->id)
-        ->not->toContain($demo->id);
+        ->not->toContain($demo->id)
+        ->toContain($real->id);
 
     Carbon::setTestNow();
 });

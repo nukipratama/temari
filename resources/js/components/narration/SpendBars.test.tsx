@@ -1,12 +1,14 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import Sparkline from './Sparkline';
+import { defined } from '@/test/defined';
 
-describe('Sparkline', () => {
+import SpendBars from './SpendBars';
+
+describe('SpendBars', () => {
     it('draws one bar per day', () => {
         const { container } = render(
-            <Sparkline values={[1, 2, 3]} ariaLabel="spend" />,
+            <SpendBars values={[1, 2, 3]} ariaLabel="spend" />,
         );
 
         expect(container.querySelectorAll('rect')).toHaveLength(3);
@@ -14,29 +16,29 @@ describe('Sparkline', () => {
 
     it('scales the bars against the tallest day', () => {
         const { container } = render(
-            <Sparkline values={[1, 2]} ariaLabel="spend" />,
+            <SpendBars values={[1, 2]} ariaLabel="spend" />,
         );
 
         const [first, second] = Array.from(container.querySelectorAll('rect'));
 
-        expect(Number(first.getAttribute('height'))).toBeLessThan(
-            Number(second.getAttribute('height')),
+        expect(Number(defined(first).getAttribute('height'))).toBeLessThan(
+            Number(defined(second).getAttribute('height')),
         );
     });
 
     it('draws a flat, muted stub for a day with no spend', () => {
         const { container } = render(
-            <Sparkline values={[0, 4]} ariaLabel="spend" />,
+            <SpendBars values={[0, 4]} ariaLabel="spend" />,
         );
 
         const [empty] = Array.from(container.querySelectorAll('rect'));
 
-        expect(empty.getAttribute('class')).toContain('fill-border');
+        expect(defined(empty).getAttribute('class')).toContain('fill-border');
     });
 
     it('survives an all-zero window without dividing by the peak', () => {
         const { container } = render(
-            <Sparkline values={[0, 0]} ariaLabel="spend" />,
+            <SpendBars values={[0, 0]} ariaLabel="spend" />,
         );
 
         for (const rect of Array.from(container.querySelectorAll('rect'))) {
@@ -45,7 +47,7 @@ describe('Sparkline', () => {
     });
 
     it('names itself for a screen reader', () => {
-        render(<Sparkline values={[1]} ariaLabel="Nuki: daily spend" />);
+        render(<SpendBars values={[1]} ariaLabel="Nuki: daily spend" />);
 
         expect(screen.getByRole('img')).toHaveAccessibleName(
             'Nuki: daily spend',

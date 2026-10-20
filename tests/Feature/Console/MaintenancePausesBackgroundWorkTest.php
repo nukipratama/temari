@@ -21,7 +21,7 @@ afterEach(fn () => Carbon::setTestNow());
  */
 function scheduledEvents(): array
 {
-    return app(Schedule::class)->events();
+    return array_values(app(Schedule::class)->events());
 }
 
 it('keeps only the scheduler heartbeat running in maintenance', function (): void {
@@ -36,7 +36,7 @@ it('keeps only the scheduler heartbeat running in maintenance', function (): voi
 
 it('skips every other scheduled task while maintenance is on, and runs it once it lifts', function (): void {
     foreach (scheduledEvents() as $event) {
-        $timezone = $event->timezone ?? config('app.timezone');
+        $timezone = $event->timezone instanceof DateTimeZone ? $event->timezone->getName() : $event->timezone;
         Carbon::setTestNow(Carbon::instance(
             new CronExpression($event->expression)->getNextRunDate(Carbon::now($timezone), 0, false, $timezone)
         ));
@@ -51,12 +51,15 @@ it('skips every other scheduled task while maintenance is on, and runs it once i
 
 it('never lets a Horizon supervisor force its workers through maintenance', function (): void {
     $supervisors = [
-        ...array_values(config('horizon.defaults')),
-        ...array_merge(...array_map(array_values(...), array_values(config('horizon.environments')))),
+        ...array_values(arrayOf(config('horizon.defaults'))),
+        ...array_merge(...array_map(
+            fn (mixed $environment): array => array_values(arrayOf($environment)),
+            array_values(arrayOf(config('horizon.environments'))),
+        )),
     ];
 
     foreach ($supervisors as $supervisor) {
-        expect($supervisor['force'] ?? false)->toBeFalse();
+        expect(data_get($supervisor, 'force', false))->toBeFalse();
     }
 });
 

@@ -4,6 +4,11 @@ declare(strict_types=1);
 
 use App\Console\Commands\AI\NarrationEvalChecks;
 
+/**
+ * @param  array<string, mixed>  $evidence
+ * @param  array{required?: list<string>, forbidden?: list<string>}  $direction
+ * @return array{outcome_labels: ?string, raw_enum: ?string, markdown: ?string, numbers: ?string, direction: ?string}
+ */
 function evalChecks(string $text, array $evidence = [], array $direction = []): array
 {
     return NarrationEvalChecks::run($text, $evidence, $direction);

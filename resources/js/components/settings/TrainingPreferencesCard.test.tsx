@@ -2,6 +2,8 @@ import { router } from '@inertiajs/react';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
+import { defined } from '@/test/defined';
+
 import TrainingPreferencesCard, {
     type TrainingPreferencesPayload,
 } from './TrainingPreferencesCard';
@@ -92,8 +94,12 @@ describe('TrainingPreferencesCard', () => {
 
         // Mon is a run day but not the long run; swapping it for Wed leaves
         // Sun as the long run.
-        fireEvent.click(screen.getAllByRole('button', { name: 'Mon' })[0]);
-        fireEvent.click(screen.getAllByRole('button', { name: 'Wed' })[0]);
+        fireEvent.click(
+            defined(screen.getAllByRole('button', { name: 'Mon' })[0]),
+        );
+        fireEvent.click(
+            defined(screen.getAllByRole('button', { name: 'Wed' })[0]),
+        );
         fireEvent.click(screen.getByRole('button', { name: /save changes/ }));
 
         expect(router.patch).toHaveBeenCalledWith(
@@ -109,7 +115,9 @@ describe('TrainingPreferencesCard', () => {
         // Sun appears twice: once in the run-day row, once in the long-run row.
         expect(screen.getAllByRole('button', { name: 'Sun' })).toHaveLength(2);
 
-        fireEvent.click(screen.getAllByRole('button', { name: 'Sun' })[0]);
+        fireEvent.click(
+            defined(screen.getAllByRole('button', { name: 'Sun' })[0]),
+        );
 
         expect(screen.queryAllByRole('button', { name: 'Sun' })).toHaveLength(
             1,
@@ -201,7 +209,9 @@ describe('TrainingPreferencesCard', () => {
             />,
         );
 
-        fireEvent.click(screen.getAllByRole('button', { name: 'Mon' })[0]);
+        fireEvent.click(
+            defined(screen.getAllByRole('button', { name: 'Mon' })[0]),
+        );
         fireEvent.click(screen.getByRole('button', { name: /save changes/ }));
 
         expect(router.patch).toHaveBeenCalledWith(

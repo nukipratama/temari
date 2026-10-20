@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Models\ActivityDetail;
 use App\Services\AI\RuleBased\RuleBasedRunInsights;
 
+/** @param  array<string, mixed>  $attributes */
 function detailWith(array $attributes): ActivityDetail
 {
     return new ActivityDetail(['activity_id' => 1, ...$attributes]);

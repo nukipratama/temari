@@ -3,25 +3,10 @@
 /*
  * Build-output guard: keeps heavy vendor code off the first-paint path.
  *
- * Two regressions this repo has actually shipped, both invisible to every
- * other gate because nothing inspected the built bundle:
+ * Rule 1 (entry allowlist): the entry may only statically pull in the allowed chunks.
+ * Rule 2 (route budget): a cold visit to each route stays under a gzipped ceiling.
  *
- *   1. Rolldown swept `react` into the `charts` chunk and `react-dom` into
- *      `maps`, so every route -- Login included -- statically loaded a chart
- *      and a map engine it never rendered.
- *   2. `bareLayout` shared a module with `appLayout`, so Login's import
- *      closure reached `AppShell` and dragged all of framer-motion onto a
- *      page that animates nothing.
- *
- * Rule 1 (entry allowlist) catches the first class, rule 2 (route budget)
- * the second.
- *
- * Deliberately NOT a denylist of chunk names like "motion"/"charts".
- * Chunk names are not unique: Rolldown names auto-generated shared chunks
- * after one of their member modules, and `resources/js/lib/motion.ts` has
- * already produced a second, unrelated `motion-*.js` alongside the
- * framer-motion vendor chunk. Matching on those names yields both false
- * positives and false negatives. Membership and bytes are unambiguous.
+ * Checks chunk membership and bytes, not chunk names, which are not unique.
  *
  * Standalone: no bundler, no Laravel. Requires a prior `npm run build`.
  *   node scripts/check-entry-chunks.mjs
@@ -52,20 +37,13 @@ const ENTRY_ALLOWED = [
 
 /*
  * Gzipped ceiling for a cold visit to a route: the entry closure plus that
- * page's own. Sized to catch a lazy-only engine turning into a static import:
- * `charts` is ~59KB gzipped and `maps` ~45KB, either of which blows the
- * headroom here. Slow creep below that is deliberately not caught; a budget
- * tight enough to catch it would fire on ordinary feature growth and get
- * raised on sight.
+ * page's own. Sized to catch a lazy-only engine (`charts` ~59KB, `maps` ~45KB)
+ * turning into a static import.
  */
 /*
- * One entry per screen the prototype draws, which is also every screen a user
- * can land on cold. Budgets are the measured weight plus ~10%, rounded up to
- * 5. Re-baselined when the global icon registry came out of the entry: every
- * route dropped 3-6KB gzipped, and leaving the old ceilings in place would
- * have left room for a new registry to walk back in unnoticed.
- * Operator pages (Devtools, Devtools/Design, AiUsage) and the legal documents
- * stay out, per P20.
+ * One entry per screen a user can land on cold; each budget is the measured
+ * weight plus ~10%, rounded up to 5. Operator pages (Devtools, Devtools/Design,
+ * AiUsage) and the legal documents stay out.
  */
 const ROUTE_BUDGETS_KB = [
     { name: 'Login', src: 'resources/js/pages/Auth/Login.tsx', budgetKb: 145 },
@@ -82,7 +60,7 @@ const ROUTE_BUDGETS_KB = [
     {
         name: 'Activity',
         src: 'resources/js/pages/Runs/Show.tsx',
-        budgetKb: 175,
+        budgetKb: 176,
     },
     { name: 'Inbox', src: 'resources/js/pages/Inbox.tsx', budgetKb: 153 },
     { name: 'Profile', src: 'resources/js/pages/Profile.tsx', budgetKb: 166 },

@@ -29,7 +29,8 @@ class SetWebhookCommand extends Command
             return self::FAILURE;
         }
 
-        $secret = (string) config('services.telegram.webhook_secret');
+        $configuredSecret = config('services.telegram.webhook_secret');
+        $secret = is_string($configuredSecret) ? $configuredSecret : '';
         if ($secret === '') {
             $this->error('TELEGRAM_WEBHOOK_SECRET is not configured.');
 

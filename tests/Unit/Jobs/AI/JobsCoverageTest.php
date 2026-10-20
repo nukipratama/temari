@@ -65,8 +65,8 @@ it('AnalyzeBriefingMascotVoiceJob returns the mascot voice line', function (): v
     $row = rowOf(AnalysisType::BRIEFING_SUBJECT_TYPE, $user->id, AnalysisType::BriefingMascotVoice, '2026-05-18');
     new AnalyzeBriefingMascotVoiceJob($row->id)->handle(app(AnalysisService::class));
 
-    expect($row->fresh()->content)->toBe('Temari note today')
-        ->and($row->fresh()->status)->toBe(AnalysisStatus::Done);
+    expect($row->refresh()->content)->toBe('Temari note today')
+        ->and($row->refresh()->status)->toBe(AnalysisStatus::Done);
 });
 
 it('AnalyzeBriefingMascotVoiceJob falls back to today when discriminator is null', function (): void {
@@ -74,11 +74,11 @@ it('AnalyzeBriefingMascotVoiceJob falls back to today when discriminator is null
     $user = User::factory()->create();
     mockNarrator(BriefingMascotVoiceNarrator::class, 'today mascot voice');
 
-    $row = rowOf(AnalysisType::BRIEFING_SUBJECT_TYPE, $user->id, AnalysisType::BriefingMascotVoice, null);
+    $row = rowOf(AnalysisType::BRIEFING_SUBJECT_TYPE, $user->id, AnalysisType::BriefingMascotVoice);
     new AnalyzeBriefingMascotVoiceJob($row->id)->handle(app(AnalysisService::class));
 
-    expect($row->fresh()->content)->toBe('today mascot voice')
-        ->and($row->fresh()->status)->toBe(AnalysisStatus::Done);
+    expect($row->refresh()->content)->toBe('today mascot voice')
+        ->and($row->refresh()->status)->toBe(AnalysisStatus::Done);
     Carbon::setTestNow();
 });
 
@@ -88,7 +88,7 @@ it('AnalyzeBriefingMascotVoiceJob marks the row Failed and rethrows when the use
     expect(fn () => new AnalyzeBriefingMascotVoiceJob($row->id)->handle(app(AnalysisService::class)))
         ->toThrow(ModelNotFoundException::class);
 
-    expect($row->fresh()->status)->toBe(AnalysisStatus::Failed);
+    expect($row->refresh()->status)->toBe(AnalysisStatus::Failed);
 });
 
 // ── AnalyzeTrendReadJob (row) ─────────────────────────────────────────
@@ -100,8 +100,8 @@ it('AnalyzeTrendReadJob returns the trend read for the row\'s range', function (
     $row = rowOf(AnalysisType::TREND_READ_SUBJECT_TYPE, $user->id, AnalysisType::TrendRead, '7d');
     new AnalyzeTrendReadJob($row->id)->handle(app(AnalysisService::class));
 
-    expect($row->fresh()->content)->toBe('The last 30 days, in one read.')
-        ->and($row->fresh()->status)->toBe(AnalysisStatus::Done);
+    expect($row->refresh()->content)->toBe('The last 30 days, in one read.')
+        ->and($row->refresh()->status)->toBe(AnalysisStatus::Done);
 });
 
 it('AnalyzeTrendReadJob stamps the range\'s current fingerprint once done', function (): void {
@@ -111,7 +111,7 @@ it('AnalyzeTrendReadJob stamps the range\'s current fingerprint once done', func
     $row = rowOf(AnalysisType::TREND_READ_SUBJECT_TYPE, $user->id, AnalysisType::TrendRead, '7d');
     new AnalyzeTrendReadJob($row->id)->handle(app(AnalysisService::class));
 
-    expect($row->fresh()->content_fingerprint)->toBe(app(TrendReadFingerprint::class)->forUser($user, '7d'));
+    expect($row->refresh()->content_fingerprint)->toBe(app(TrendReadFingerprint::class)->forUser($user, '7d'));
 });
 
 it('AnalyzeTrendReadJob marks the row Failed and rethrows when the user is missing', function (): void {
@@ -120,7 +120,7 @@ it('AnalyzeTrendReadJob marks the row Failed and rethrows when the user is missi
     expect(fn () => new AnalyzeTrendReadJob($row->id)->handle(app(AnalysisService::class)))
         ->toThrow(ModelNotFoundException::class);
 
-    expect($row->fresh()->status)->toBe(AnalysisStatus::Failed);
+    expect($row->refresh()->status)->toBe(AnalysisStatus::Failed);
 });
 
 // ── AnalyzePlanClampVoiceJob (row) ────────────────────────────────────
@@ -149,11 +149,11 @@ it('AnalyzePlanClampVoiceJob stores the clamp voice and the clamp fingerprint on
     $row = clampRowOf($user);
     new AnalyzePlanClampVoiceJob($row->id)->handle(app(AnalysisService::class));
 
-    $context = app(ClampNarrationContext::class)->forUserOn($user->id, Carbon::today());
+    $context = nonNull(app(ClampNarrationContext::class)->forUserOn($user->id, Carbon::today()));
 
-    expect($row->fresh()->status)->toBe(AnalysisStatus::Done)
-        ->and($row->fresh()->content)->toBe('you ran long yesterday, so today is an easy day.')
-        ->and($row->fresh()->content_fingerprint)->toBe(MaterialFingerprint::forClamp(
+    expect($row->refresh()->status)->toBe(AnalysisStatus::Done)
+        ->and($row->refresh()->content)->toBe('you ran long yesterday, so today is an easy day.')
+        ->and($row->refresh()->content_fingerprint)->toBe(MaterialFingerprint::forClamp(
             $context['ceiling'],
             $context['clamped_to'],
             $context['has_run_today'],
@@ -181,8 +181,8 @@ it('AnalyzePlanClampVoiceJob fingerprints the same clamp identically for differe
     new AnalyzePlanClampVoiceJob($first->id)->handle(app(AnalysisService::class));
     new AnalyzePlanClampVoiceJob($second->id)->handle(app(AnalysisService::class));
 
-    expect($first->fresh()->content_fingerprint)->not->toBeNull()
-        ->and($second->fresh()->content_fingerprint)->toBe($first->fresh()->content_fingerprint);
+    expect($first->refresh()->content_fingerprint)->not->toBeNull()
+        ->and($second->refresh()->content_fingerprint)->toBe($first->refresh()->content_fingerprint);
 });
 
 // ── AnalyzeCardFlavorJob (row) ────────────────────────────────────────
@@ -194,14 +194,14 @@ it('AnalyzeCardFlavorJob returns flavor string', function (): void {
     $row = rowOf(RunCard::class, $card->id, AnalysisType::CardFlavor);
     new AnalyzeCardFlavorJob($row->id)->handle(app(AnalysisService::class));
 
-    expect($row->fresh()->content)->toBe('flavor text');
+    expect($row->refresh()->content)->toBe('flavor text');
 });
 
 it('AnalyzeCardFlavorJob throws when card missing', function (): void {
     $row = rowOf(RunCard::class, 99999, AnalysisType::CardFlavor);
     new AnalyzeCardFlavorJob($row->id)->handle(app(AnalysisService::class));
 
-    expect($row->fresh()->status)->toBe(AnalysisStatus::Failed);
+    expect($row->refresh()->status)->toBe(AnalysisStatus::Failed);
 });
 
 it('AnalyzeCardFlavorJob stamps the card flavor row with the run material fingerprint', function (): void {
@@ -212,7 +212,7 @@ it('AnalyzeCardFlavorJob stamps the card flavor row with the run material finger
 
     $fingerprint = (fn (): ?string => $this->fingerprintFor($row))->call(new AnalyzeCardFlavorJob($row->id));
 
-    expect($fingerprint)->toBe(MaterialFingerprint::forActivity($activity->fresh()));
+    expect($fingerprint)->toBe(MaterialFingerprint::forActivity($activity->refresh()));
 });
 
 // ── AnalyzeWeeklyRecapJob (row) ──────────────────────────────────────
@@ -226,14 +226,14 @@ it('AnalyzeWeeklyRecapJob returns narrative', function (): void {
     $row = rowOf(WeeklySnapshot::class, $snap->id, AnalysisType::WeeklyRecap);
     new AnalyzeWeeklyRecapJob($row->id)->handle(app(AnalysisService::class));
 
-    expect($row->fresh()->content)->toBe('weekly narrative');
+    expect($row->refresh()->content)->toBe('weekly narrative');
 });
 
 it('AnalyzeWeeklyRecapJob throws when snapshot missing', function (): void {
     $row = rowOf(WeeklySnapshot::class, 99999, AnalysisType::WeeklyRecap);
     new AnalyzeWeeklyRecapJob($row->id)->handle(app(AnalysisService::class));
 
-    expect($row->fresh()->status)->toBe(AnalysisStatus::Failed);
+    expect($row->refresh()->status)->toBe(AnalysisStatus::Failed);
 });
 
 it('AnalyzeWeeklyRecapJob advances the chain to the next Pending week on completion', function (): void {
@@ -260,8 +260,8 @@ it('AnalyzeWeeklyRecapJob advances the chain to the next Pending week on complet
 
     new AnalyzeWeeklyRecapJob($thisRow->id)->handle(app(AnalysisService::class));
 
-    expect($thisRow->fresh()->content)->toBe('this week narrative')
-        ->and($nextRow->fresh()->status)->toBe(AnalysisStatus::Queued);
+    expect($thisRow->refresh()->content)->toBe('this week narrative')
+        ->and($nextRow->refresh()->status)->toBe(AnalysisStatus::Queued);
     Bus::assertDispatched(AnalyzeWeeklyRecapJob::class);
 });
 
@@ -278,7 +278,7 @@ it('AnalyzeWeeklyRecapJob does not advance when no later Pending week exists', f
 
     new AnalyzeWeeklyRecapJob($thisRow->id)->handle(app(AnalysisService::class));
 
-    expect($thisRow->fresh()->content)->toBe('tail narrative');
+    expect($thisRow->refresh()->content)->toBe('tail narrative');
     Bus::assertNotDispatched(AnalyzeWeeklyRecapJob::class);
 });
 
@@ -304,7 +304,7 @@ it('AnalyzeWeeklyRecapJob does not advance into the still-open current week', fu
     new AnalyzeWeeklyRecapJob($thisRow->id)->handle(app(AnalysisService::class));
 
     // The open week stays Pending: the chain must not narrate an incomplete week.
-    expect($openRow->fresh()->status)->toBe(AnalysisStatus::Pending);
+    expect($openRow->refresh()->status)->toBe(AnalysisStatus::Pending);
     Bus::assertNotDispatched(AnalyzeWeeklyRecapJob::class);
     Carbon::setTestNow();
 });
@@ -328,7 +328,7 @@ it('AnalyzeMonthlyRecapJob does not advance into the still-open current month', 
     $thisRow = rowOf(AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE, $user->id, AnalysisType::MonthlyRecap, '2026-04');
     new AnalyzeMonthlyRecapJob($thisRow->id)->handle(app(AnalysisService::class));
 
-    expect($openRow->fresh()->status)->toBe(AnalysisStatus::Pending);
+    expect($openRow->refresh()->status)->toBe(AnalysisStatus::Pending);
     Carbon::setTestNow();
 });
 
@@ -341,14 +341,14 @@ it('AnalyzeProfileVoiceJob returns profile voice', function (): void {
     $row = rowOf(AnalysisType::PROFILE_VOICE_SUBJECT_TYPE, $user->id, AnalysisType::ProfileVoice);
     new AnalyzeProfileVoiceJob($row->id)->handle(app(AnalysisService::class));
 
-    expect($row->fresh()->content)->toBe('profile voice narrative');
+    expect($row->refresh()->content)->toBe('profile voice narrative');
 });
 
 it('AnalyzeProfileVoiceJob fails when user missing', function (): void {
     $row = rowOf(AnalysisType::PROFILE_VOICE_SUBJECT_TYPE, 99999, AnalysisType::ProfileVoice);
     new AnalyzeProfileVoiceJob($row->id)->handle(app(AnalysisService::class));
 
-    expect($row->fresh()->status)->toBe(AnalysisStatus::Failed);
+    expect($row->refresh()->status)->toBe(AnalysisStatus::Failed);
 });
 
 // ── AnalyzeMonthlyRecapJob (row) ──────────────────────────────────────
@@ -360,22 +360,22 @@ it('AnalyzeMonthlyRecapJob returns recap for the given month', function (): void
     $row = rowOf(AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE, $user->id, AnalysisType::MonthlyRecap, '2026-05');
     new AnalyzeMonthlyRecapJob($row->id)->handle(app(AnalysisService::class));
 
-    expect($row->fresh()->content)->toBe('monthly narrative');
+    expect($row->refresh()->content)->toBe('monthly narrative');
 });
 
 it('AnalyzeMonthlyRecapJob fails when user missing', function (): void {
     $row = rowOf(AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE, 99999, AnalysisType::MonthlyRecap, '2026-05');
     new AnalyzeMonthlyRecapJob($row->id)->handle(app(AnalysisService::class));
 
-    expect($row->fresh()->status)->toBe(AnalysisStatus::Failed);
+    expect($row->refresh()->status)->toBe(AnalysisStatus::Failed);
 });
 
 it('AnalyzeMonthlyRecapJob fails when discriminator is missing', function (): void {
     $user = User::factory()->create();
-    $row = rowOf(AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE, $user->id, AnalysisType::MonthlyRecap, null);
+    $row = rowOf(AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE, $user->id, AnalysisType::MonthlyRecap);
     new AnalyzeMonthlyRecapJob($row->id)->handle(app(AnalysisService::class));
 
-    expect($row->fresh()->status)->toBe(AnalysisStatus::Failed);
+    expect($row->refresh()->status)->toBe(AnalysisStatus::Failed);
 });
 
 it('AnalyzeMonthlyRecapJob advances the chain to the next Pending month on completion', function (): void {
@@ -399,8 +399,8 @@ it('AnalyzeMonthlyRecapJob advances the chain to the next Pending month on compl
 
     new AnalyzeMonthlyRecapJob($thisRow->id)->handle(app(AnalysisService::class));
 
-    expect($thisRow->fresh()->content)->toBe('this month narrative')
-        ->and($nextRow->fresh()->status)->toBe(AnalysisStatus::Queued);
+    expect($thisRow->refresh()->content)->toBe('this month narrative')
+        ->and($nextRow->refresh()->status)->toBe(AnalysisStatus::Queued);
     Bus::assertDispatched(AnalyzeMonthlyRecapJob::class);
 });
 
@@ -416,19 +416,26 @@ it('AnalyzeMonthlyRecapJob does not advance when no later Pending month exists',
 
     new AnalyzeMonthlyRecapJob($thisRow->id)->handle(app(AnalysisService::class));
 
-    expect($thisRow->fresh()->content)->toBe('tail narrative');
+    expect($thisRow->refresh()->content)->toBe('tail narrative');
     Bus::assertNotDispatched(AnalyzeMonthlyRecapJob::class);
 });
 
-it('sends every analyze job to the narration queue, whichever base it extends', function (): void {
+it('sends every analyze job to the narration queue, whichever base it extends', function (string $job): void {
     // Not configurable and not the dispatcher's business: a tool-calling run
     // needs the longer timeout only supervisor-ai gives it.
     Queue::fake();
 
-    AnalyzeBriefingMascotVoiceJob::dispatch(1);
-    AnalyzeActivityJob::dispatch(1);
+    $job::dispatch(1);
 
-    Queue::assertPushedOn('ai', AnalyzeBriefingMascotVoiceJob::class);
-    Queue::assertPushedOn('ai', AnalyzeActivityJob::class);
+    Queue::assertPushedOn('ai', $job);
     expect(AnalyzeBaseJob::QUEUE)->toBe('ai');
-});
+})->with([
+    AnalyzeActivityJob::class => [AnalyzeActivityJob::class],
+    AnalyzeBriefingMascotVoiceJob::class => [AnalyzeBriefingMascotVoiceJob::class],
+    AnalyzeCardFlavorJob::class => [AnalyzeCardFlavorJob::class],
+    AnalyzeMonthlyRecapJob::class => [AnalyzeMonthlyRecapJob::class],
+    AnalyzePlanClampVoiceJob::class => [AnalyzePlanClampVoiceJob::class],
+    AnalyzeProfileVoiceJob::class => [AnalyzeProfileVoiceJob::class],
+    AnalyzeTrendReadJob::class => [AnalyzeTrendReadJob::class],
+    AnalyzeWeeklyRecapJob::class => [AnalyzeWeeklyRecapJob::class],
+]);

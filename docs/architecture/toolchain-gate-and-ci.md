@@ -26,7 +26,10 @@ staged — Rector (applying its fixes to the staged `app/` and `tests/` PHP), Pi
 PHPStan, and ESLint/Prettier on the staged TS. These are fast enough to pay for every commit and give
 the tightest feedback loop. A full-tree Rector pass was the slowest single step the hook ever carried,
 so it stays in `check:full`, per [#832](https://github.com/nukipratama/temari/pull/832); the gate keeps
-its scoped dry run as the check.
+its scoped dry run as the check. Each language branch is one `sail exec`, because the container
+round-trip (~1.1 s) was the largest line item. PHPStan and ESLint stay full-tree: a scoped PHPStan run
+cannot reuse the whole-project result cache (1.5 s warm across the tree against 5.0 s for one file),
+and scoping ESLint once let two lint errors reach `main`, while the full-tree run costs 3.4 s.
 
 ## `composer gate`: the fast pre-push gate
 
@@ -80,5 +83,10 @@ on a later unlucky run. Reproduce a red shard locally with
 `./vendor/bin/sail npx vitest run --sequence.shuffle --sequence.seed=<id>` (add `--shard=<n>/3` to
 match one shard); a red PR shard writes that exact command to its job summary. A re-run keeps the run id and
 so the order, so only a new push reshuffles. The merge-reports coverage job and main-push shards stay in file order.
+
+PR backend shards do the same with Pest's `--order-by=random --random-order-seed=<run id>`, echo
+`Pest random order seed: <id>`, and a red shard writes its reproduce command to the job summary.
+Sharding stays stable under it: Pest lists and partitions the test files before PHPUnit sorts them, and
+every shard gets the same seed. Main-push shards stay in file order.
 
 See also: [[deployment]].

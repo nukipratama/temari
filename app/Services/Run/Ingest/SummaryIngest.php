@@ -7,7 +7,7 @@ namespace App\Services\Run\Ingest;
 use App\Enums\IngestState;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
-use Illuminate\Support\Carbon;
+use App\Support\Numeric;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -64,7 +64,7 @@ class SummaryIngest
 
         $byExternalId = [];
         foreach ($summaries as $summary) {
-            $externalId = (int) ($summary['id'] ?? 0);
+            $externalId = Numeric::int($summary['id'] ?? 0);
             if ($externalId > 0) {
                 $byExternalId[$externalId] = $summary;
             }
@@ -91,7 +91,7 @@ class SummaryIngest
         foreach ($activities as $activity) {
             $summary = $byExternalId[$activity->strava_external_id] ?? null;
             if ($summary !== null) {
-                $detailRows[] = ['activity_id' => $activity->id, ...$this->detailAttributes($summary)];
+                $detailRows[] = ['activity_id' => $activity->id, ...StravaDetailMapper::summary($summary)];
             }
         }
 
@@ -135,40 +135,5 @@ class SummaryIngest
 
             return $inserted;
         });
-    }
-
-    /**
-     * @param  array<string, mixed>  $summary
-     * @return array<string, mixed>
-     */
-    private function detailAttributes(array $summary): array
-    {
-        $start = $summary['start_date_local'] ?? $summary['start_date'] ?? null;
-        // start_latlng is null/empty for non-GPS activities (treadmill, manual).
-        $latlng = is_array($summary['start_latlng'] ?? null) && count($summary['start_latlng']) === 2
-            ? $summary['start_latlng']
-            : null;
-
-        return [
-            'name' => $summary['name'] ?? null,
-            'start_date_local' => is_string($start) && $start !== '' ? Carbon::parse($start)->toDateTimeString() : null,
-            'start_date_utc' => is_string($summary['start_date'] ?? null) && $summary['start_date'] !== '' ? Carbon::parse($summary['start_date'])->utc()->toDateTimeString() : null,
-            'distance' => $summary['distance'] ?? null,
-            'moving_time' => $summary['moving_time'] ?? null,
-            'elapsed_time' => $summary['elapsed_time'] ?? null,
-            'average_speed' => $summary['average_speed'] ?? null,
-            'max_speed' => $summary['max_speed'] ?? null,
-            'total_elevation_gain' => $summary['total_elevation_gain'] ?? null,
-            'elev_high' => $summary['elev_high'] ?? null,
-            'elev_low' => $summary['elev_low'] ?? null,
-            'has_heartrate' => (bool) ($summary['has_heartrate'] ?? false),
-            'average_heartrate' => $summary['average_heartrate'] ?? null,
-            'max_heartrate' => $summary['max_heartrate'] ?? null,
-            'average_cadence' => $summary['average_cadence'] ?? null,
-            'workout_type' => $summary['workout_type'] ?? null,
-            'summary_polyline' => $summary['map']['summary_polyline'] ?? null,
-            'start_lat' => $latlng === null ? null : (float) $latlng[0],
-            'start_lng' => $latlng === null ? null : (float) $latlng[1],
-        ];
     }
 }

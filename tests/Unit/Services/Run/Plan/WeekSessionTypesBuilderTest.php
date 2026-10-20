@@ -38,6 +38,7 @@ function seedMixedWeek(User $user, Carbon $weekStart): void
     }
 }
 
+/** @return array{easy: int, marathon: int, threshold: int, interval: int}|null */
 function pacesFor(User $user, Carbon $today): ?array
 {
     return app(TrainingPaceCalculator::class)->fromVdotResult(
@@ -77,11 +78,11 @@ it('sizes a day exactly as the week plan Home renders does', function (): void {
     seedMixedWeek($user, $today->copy()->startOfWeek(Carbon::MONDAY));
 
     $ladder = app(WeekSessionTypesBuilder::class)->forUser($user, $today, pacesFor($user, $today), null);
-    $home = app(CurrentWeekPlanBuilder::class)->forUser($user, $today);
+    $home = nonNull(app(CurrentWeekPlanBuilder::class)->forUser($user, $today));
 
     $homeKmByWeekday = [];
     foreach ($home['days'] as $day) {
-        $homeKmByWeekday[strtolower(Carbon::parse($day['date'])->format('D'))] = $day['distance_km'];
+        $homeKmByWeekday[strtolower(Carbon::parse(is_string($day['date']) ? $day['date'] : throw new InvalidArgumentException('Day date is not a string.'))->format('D'))] = $day['distance_km'];
     }
 
     foreach ($ladder as $day) {
@@ -144,12 +145,12 @@ it('sizes a day as Home does while a marathon goal is active', function (): void
     ]);
 
     $race = app(ResolveActiveRaceAction::class)($user->id);
-    $ladder = app(WeekSessionTypesBuilder::class)->forUser($user, $today, pacesFor($user, $today), (float) $race->distance_m);
-    $home = app(CurrentWeekPlanBuilder::class)->forUser($user, $today);
+    $ladder = app(WeekSessionTypesBuilder::class)->forUser($user, $today, pacesFor($user, $today), (float) nonNull($race)->distance_m);
+    $home = nonNull(app(CurrentWeekPlanBuilder::class)->forUser($user, $today));
 
     $homeKmByWeekday = [];
     foreach ($home['days'] as $day) {
-        $homeKmByWeekday[strtolower(Carbon::parse($day['date'])->format('D'))] = $day['distance_km'];
+        $homeKmByWeekday[strtolower(Carbon::parse(is_string($day['date']) ? $day['date'] : throw new InvalidArgumentException('Day date is not a string.'))->format('D'))] = $day['distance_km'];
     }
 
     foreach ($ladder as $day) {

@@ -13,7 +13,11 @@ uses(RefreshDatabase::class);
 
 $asOf = fn (): Carbon => Carbon::parse('2026-06-15 08:00:00');
 
-/** Create a run (activity + detail) for the given user with an optional TRIMP. */
+/**
+ * Create a run (activity + detail) for the given user with an optional TRIMP.
+ *
+ * @return array{0: Activity, 1: ActivityDetail}
+ */
 function effortRun(User $user, Carbon $when, ?float $trimp): array
 {
     $activity = Activity::factory()->for($user)->analyzed()->create();
@@ -77,7 +81,7 @@ it('bands a slightly-harder run as above', function () use ($asOf): void {
     seedBaseline($user, $asOf(), 4, 100.0);
     [$activity, $detail] = effortRun($user, $asOf(), 115.0);
 
-    $result = app(RelativeEffort::class)->forRun($activity, $detail);
+    $result = nonNull(app(RelativeEffort::class)->forRun($activity, $detail));
     expect($result['ratio'])->toBe(1.15)
         ->and($result['band'])->toBe(RelativeEffort::ABOVE);
 });
@@ -87,7 +91,7 @@ it('bands a run near the baseline as typical', function () use ($asOf): void {
     seedBaseline($user, $asOf(), 4, 100.0);
     [$activity, $detail] = effortRun($user, $asOf(), 100.0);
 
-    expect(app(RelativeEffort::class)->forRun($activity, $detail)['band'])->toBe(RelativeEffort::TYPICAL);
+    expect(nonNull(app(RelativeEffort::class)->forRun($activity, $detail))['band'])->toBe(RelativeEffort::TYPICAL);
 });
 
 it('bands an easy run as below', function () use ($asOf): void {
@@ -95,7 +99,7 @@ it('bands an easy run as below', function () use ($asOf): void {
     seedBaseline($user, $asOf(), 4, 100.0);
     [$activity, $detail] = effortRun($user, $asOf(), 70.0);
 
-    $result = app(RelativeEffort::class)->forRun($activity, $detail);
+    $result = nonNull(app(RelativeEffort::class)->forRun($activity, $detail));
     expect($result['ratio'])->toBe(0.7)
         ->and($result['band'])->toBe(RelativeEffort::BELOW);
 });
@@ -107,7 +111,7 @@ it('excludes the current run from its own baseline', function () use ($asOf): vo
     seedBaseline($user, $asOf(), 3, 100.0);
     [$activity, $detail] = effortRun($user, $asOf(), 150.0);
 
-    $result = app(RelativeEffort::class)->forRun($activity, $detail);
+    $result = nonNull(app(RelativeEffort::class)->forRun($activity, $detail));
     expect($result['baseline'])->toBe(100)
         ->and($result['band'])->toBe(RelativeEffort::WELL_ABOVE);
 });

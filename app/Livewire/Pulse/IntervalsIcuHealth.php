@@ -34,7 +34,7 @@ class IntervalsIcuHealth extends Card
 
         $today = IntervalsIcuConnection::query()
             ->whereNull('broken_at')
-            ->whereDate('synced_on', Carbon::today())
+            ->where('synced_on', Carbon::today()->toDateString())
             ->whereNotNull('sync_status')
             ->selectRaw('sync_status, COUNT(*) AS total')
             ->groupBy('sync_status')
@@ -44,6 +44,7 @@ class IntervalsIcuHealth extends Card
             ->pluck('count', 'key')
             ->all());
 
+        assert(is_array($counts));
         $trends = [];
         foreach (self::COUNTERS as $counter) {
             $trends[$counter] = $this->asCount($counts[$counter] ?? 0);
@@ -52,9 +53,9 @@ class IntervalsIcuHealth extends Card
         $states = [
             'working' => (int) ($connections->working ?? 0),
             'broken' => (int) ($connections->broken ?? 0),
-            'sent' => (int) ($today[IntervalsIcuSyncStatus::Sent->value] ?? 0),
-            'not_sent' => (int) ($today[IntervalsIcuSyncStatus::NoThresholdHeartRate->value] ?? 0),
-            'failing' => (int) ($today[IntervalsIcuSyncStatus::Unreachable->value] ?? 0),
+            'sent' => $this->asCount($today[IntervalsIcuSyncStatus::Sent->value] ?? 0),
+            'not_sent' => $this->asCount($today[IntervalsIcuSyncStatus::NoThresholdHeartRate->value] ?? 0),
+            'failing' => $this->asCount($today[IntervalsIcuSyncStatus::Unreachable->value] ?? 0),
         ];
 
         return View::make('livewire.pulse.intervals-icu-health', [

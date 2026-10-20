@@ -1,17 +1,22 @@
-import { router, usePage } from '@inertiajs/react';
+import { router } from '@inertiajs/react';
 import { CircleAlert } from 'lucide-react';
 import { type FormEvent, useState } from 'react';
 
-import type { RaceProjection, SharedProps } from '@/types/inertia';
+import type { RaceProjection } from '@/types/inertia';
 
 import DemoBlockedModal from '@/components/DemoBlockedModal';
 import DateField from '@/components/ui/DateField';
+import DurationFields, {
+    durationFromSec,
+    durationSec,
+} from '@/components/ui/DurationFields';
 import Eyebrow from '@/components/ui/Eyebrow';
 import FieldError from '@/components/ui/FieldError';
 import { Icon } from '@/components/ui/Icon';
 import PillButton from '@/components/ui/PillButton';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { useDemoGuard } from '@/hooks/useDemoGuard';
+import { useSharedProps } from '@/hooks/useSharedProps';
 import { cn } from '@/lib/cn';
 import { useTodayIso } from '@/lib/pace';
 import {
@@ -68,18 +73,16 @@ export default function RaceGoalForm({
     const [distanceKm, setDistanceKm] = useState(
         race ? race.distance_m / 1_000 : 10,
     );
-    const [hours, setHours] = useState(
-        race ? Math.floor(race.goal_time_sec / 3_600) : 0,
+    const [time, setTime] = useState(() =>
+        race
+            ? durationFromSec(race.goal_time_sec)
+            : { hours: 0, minutes: 50, seconds: 0 },
     );
-    const [minutes, setMinutes] = useState(
-        race ? Math.floor((race.goal_time_sec % 3_600) / 60) : 50,
-    );
-    const [seconds, setSeconds] = useState(race ? race.goal_time_sec % 60 : 0);
     const [name, setName] = useState(race?.name ?? '');
     const [processing, setProcessing] = useState(false);
     const [intent, setIntent] = useState<RaceIntent>('update');
     const today = useTodayIso();
-    const errors = usePage<SharedProps>().props.errors ?? {};
+    const errors = useSharedProps().errors ?? {};
     const {
         open: demoBlocked,
         setOpen: setDemoBlocked,
@@ -97,15 +100,15 @@ export default function RaceGoalForm({
         const source = next === 'update' ? race : null;
         setRaceDate(source?.race_date ?? '');
         setDistanceKm(source ? source.distance_m / 1_000 : 10);
-        setHours(source ? Math.floor(source.goal_time_sec / 3_600) : 0);
-        setMinutes(
-            source ? Math.floor((source.goal_time_sec % 3_600) / 60) : 50,
+        setTime(
+            source
+                ? durationFromSec(source.goal_time_sec)
+                : { hours: 0, minutes: 50, seconds: 0 },
         );
-        setSeconds(source ? source.goal_time_sec % 60 : 0);
         setName(source?.name ?? '');
     };
 
-    const goalTimeSec = hours * 3_600 + minutes * 60 + seconds;
+    const goalTimeSec = durationSec(time);
     const goalTimeIssue = goalTimeError(goalTimeSec);
     // `projection` is always computed server-side from the saved race's own
     // distance, never the form's live distance state - so that's the only
@@ -260,47 +263,12 @@ export default function RaceGoalForm({
 
                 <div>
                     <span className={FIELD_LABEL}>Goal time</span>
-                    <div className="mt-1.5 flex items-center gap-1.5">
-                        <input
-                            type="number"
-                            min={0}
-                            max={71}
-                            value={hours}
-                            onChange={(e) => setHours(Number(e.target.value))}
-                            aria-label="Hours"
-                            className={cn(
-                                inputVariants({ size: 'sm' }),
-                                'w-16 text-center',
-                            )}
-                        />
-                        <span className={FIELD_LABEL}>hr</span>
-                        <input
-                            type="number"
-                            min={0}
-                            max={59}
-                            value={minutes}
-                            onChange={(e) => setMinutes(Number(e.target.value))}
-                            aria-label="Minutes"
-                            className={cn(
-                                inputVariants({ size: 'sm' }),
-                                'w-16 text-center',
-                            )}
-                        />
-                        <span className={FIELD_LABEL}>min</span>
-                        <input
-                            type="number"
-                            min={0}
-                            max={59}
-                            value={seconds}
-                            onChange={(e) => setSeconds(Number(e.target.value))}
-                            aria-label="Seconds"
-                            className={cn(
-                                inputVariants({ size: 'sm' }),
-                                'w-16 text-center',
-                            )}
-                        />
-                        <span className={FIELD_LABEL}>sec</span>
-                    </div>
+                    <DurationFields
+                        value={time}
+                        onChange={setTime}
+                        withSeconds
+                        className="mt-1.5"
+                    />
                     <FieldError
                         message={goalTimeIssue ?? errors.goal_time_sec}
                     />

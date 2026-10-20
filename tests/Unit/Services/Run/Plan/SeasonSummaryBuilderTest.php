@@ -23,9 +23,13 @@ uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
     Carbon::setTestNow('2026-08-10 08:00:00'); // a Monday
-    $this->builder = app(SeasonSummaryBuilder::class);
 });
 afterEach(fn () => Carbon::setTestNow());
+
+function seasonSummaryBuilder(): SeasonSummaryBuilder
+{
+    return app(SeasonSummaryBuilder::class);
+}
 
 it('caps each scored day before averaging season adherence', function (): void {
     $user = User::factory()->create();
@@ -42,7 +46,7 @@ it('caps each scored day before averaging season adherence', function (): void {
         'compliance_score' => 0,
     ]);
 
-    expect($this->builder->adherencePct($user, $season))->toBe(50);
+    expect(seasonSummaryBuilder()->adherencePct($user, $season))->toBe(50);
 });
 
 it('covers every week from season start to season end for a self-scaled season', function (): void {
@@ -53,7 +57,7 @@ it('covers every week from season start to season end for a self-scaled season',
         'ends_at' => '2026-11-02', // 12 weeks later
     ]);
 
-    $weeks = $this->builder->build($user, $season, Carbon::today());
+    $weeks = seasonSummaryBuilder()->build($user, $season, Carbon::today());
 
     // week_start's diffInWeeks(starts_at, ends_at) + 1 convention (shared with
     // SeasonPayloadBuilder::seasonPayload()'s "Week X of Y") counts the
@@ -77,12 +81,12 @@ it('marks each week general before block open and block from it', function (): v
         'ends_at' => '2026-11-02',
     ]);
 
-    $weeks = $this->builder->build($user, $season, Carbon::today());
+    $weeks = seasonSummaryBuilder()->build($user, $season, Carbon::today());
 
     expect(array_count_values(array_column($weeks, 'zone')))->toBe(['general' => 14, 'block' => 16])
         ->and($weeks[13]['week_start'])->toBe('2026-11-09')
         ->and($weeks[14]['zone'])->toBe('block')
-        ->and(array_unique(array_column($this->builder->build($selfScaled->user, $selfScaled, Carbon::today()), 'zone')))->toBe(['general']);
+        ->and(array_unique(array_column(seasonSummaryBuilder()->build($selfScaled->user, $selfScaled, Carbon::today()), 'zone')))->toBe(['general']);
 });
 
 it('classifies weeks as history, current, or lookahead relative to today', function (): void {
@@ -93,7 +97,7 @@ it('classifies weeks as history, current, or lookahead relative to today', funct
         'ends_at' => '2026-10-19',
     ]);
 
-    $weeks = $this->builder->build($user, $season, Carbon::today());
+    $weeks = seasonSummaryBuilder()->build($user, $season, Carbon::today());
 
     expect($weeks[0]['type'])->toBe('history')
         ->and($weeks[1]['type'])->toBe('history')
@@ -112,7 +116,7 @@ it('gives each week behind the capped mean of its scored days as adherence_pct',
         PlannedSession::factory()->for($user)->create(['date' => $date, 'compliance_score' => $score]);
     }
 
-    $weeks = $this->builder->build($user, $season, Carbon::today());
+    $weeks = seasonSummaryBuilder()->build($user, $season, Carbon::today());
 
     expect($weeks[0]['adherence_pct'])->toBe(80)
         ->and($weeks[1]['adherence_pct'])->toBeNull()
@@ -132,7 +136,7 @@ it('carries a week\'s real distance_km from its WeeklySnapshot as actual_km', fu
         'distance_km' => 27.4,
     ]);
 
-    $weeks = $this->builder->build($user, $season, Carbon::today());
+    $weeks = seasonSummaryBuilder()->build($user, $season, Carbon::today());
 
     expect($weeks[0]['actual_km'])->toBe(27.4);
 });
@@ -145,7 +149,7 @@ it('leaves actual_km null for a week with no WeeklySnapshot yet', function (): v
         'ends_at' => '2026-11-02',
     ]);
 
-    $weeks = $this->builder->build($user, $season, Carbon::today());
+    $weeks = seasonSummaryBuilder()->build($user, $season, Carbon::today());
 
     expect($weeks[11]['actual_km'])->toBeNull();
 });
@@ -159,7 +163,7 @@ it('gives a Deload week a lower planned_km than the Build week right before it',
         'ends_at' => '2026-11-02',
     ]);
 
-    $weeks = $this->builder->build($user, $season, Carbon::today());
+    $weeks = seasonSummaryBuilder()->build($user, $season, Carbon::today());
 
     expect($weeks[2]['phase'])->toBe('build')
         ->and($weeks[3]['phase'])->toBe('deload')
@@ -167,6 +171,7 @@ it('gives a Deload week a lower planned_km than the Build week right before it',
         ->and($weeks[3]['planned_km'])->toBeGreaterThan(0.0);
 });
 
+/** @return array{0: PlannedSession, 1: float} */
 function seasonSummaryTempoToday(User $user): array
 {
     $row = PlannedSession::factory()->for($user)->create([
@@ -190,9 +195,9 @@ it('gives the current week the same target and eased-from figure as Home', funct
     [$row] = seasonSummaryTempoToday($user);
     $row->update(['clamped_km' => 1.0]);
 
-    $home = app(CurrentWeekPlanBuilder::class)->forUser($user, Carbon::today());
-    $weeks = $this->builder->build($user, $season, Carbon::today());
-    $current = collect($weeks)->firstWhere('type', 'current');
+    $home = nonNull(app(CurrentWeekPlanBuilder::class)->forUser($user, Carbon::today()));
+    $weeks = seasonSummaryBuilder()->build($user, $season, Carbon::today());
+    $current = nonNull(collect($weeks)->firstWhere('type', 'current'));
 
     expect($current['planned_km'])->toBe($home['planned_km_this_week'])
         ->and($current['eased_from_km'])->toBe($home['planned_km_eased_from'])
@@ -201,7 +206,7 @@ it('gives the current week the same target and eased-from figure as Home', funct
         ->and($weeks[2]['eased_from_km'])->toBeNull();
 });
 
-/** #1433: a reactive deload reads the same on Plan's header, the season list and Home, with the arc as eased-from. */
+/** A reactive deload reads the same on Plan's header, the season list and Home, with the arc as eased-from. */
 it('shows a reactively deloaded current week at its held target, the arc figure as eased-from, future weeks unchanged', function (): void {
     $user = User::factory()->create();
     $season = Season::factory()->for($user)->create([
@@ -209,9 +214,10 @@ it('shows a reactively deloaded current week at its held target, the arc figure 
         'starts_at' => '2026-08-03',
         'ends_at' => '2026-10-26',
     ]);
-    $arc = collect($this->builder->plannedWeeks($user, $season))
+    $arc = collect(seasonSummaryBuilder()->plannedWeeks($user, $season))
         ->mapWithKeys(fn (array $w): array => [$w['week_start']->toDateString() => $w]);
-    expect($arc['2026-08-10']['phase'])->not->toBe(PlanPhase::Deload);
+    $arcCurrent = nonNull($arc['2026-08-10']);
+    expect($arcCurrent['phase'])->not->toBe(PlanPhase::Deload);
 
     foreach (range(0, 6) as $offset) {
         PlannedSession::factory()->for($user)->create([
@@ -221,16 +227,19 @@ it('shows a reactively deloaded current week at its held target, the arc figure 
         ]);
     }
 
-    $home = app(CurrentWeekPlanBuilder::class)->forUser($user, Carbon::today());
-    $weeks = collect($this->builder->build($user, $season, Carbon::today()))->keyBy('week_start');
+    $home = nonNull(app(CurrentWeekPlanBuilder::class)->forUser($user, Carbon::today()));
+    $weeks = collect(seasonSummaryBuilder()->build($user, $season, Carbon::today()))->keyBy('week_start');
+    $currentWeek = nonNull($weeks['2026-08-10']);
+    $nextWeek = nonNull($weeks['2026-08-17']);
+    $arcNext = nonNull($arc['2026-08-17']);
 
     expect($home['phase'])->toBe('deload')
-        ->and($weeks['2026-08-10']['phase'])->toBe('deload')
-        ->and($weeks['2026-08-10']['planned_km'])->toBe($home['planned_km_this_week'])
-        ->and($weeks['2026-08-10']['eased_from_km'])->toBe(round($arc['2026-08-10']['planned_km'], 1))
-        ->and($weeks['2026-08-17']['planned_km'])->toBe(round($arc['2026-08-17']['planned_km'], 1))
-        ->and($weeks['2026-08-17']['phase'])->toBe($arc['2026-08-17']['phase']->value)
-        ->and($weeks['2026-08-17']['eased_from_km'])->toBeNull();
+        ->and($currentWeek['phase'])->toBe('deload')
+        ->and($currentWeek['planned_km'])->toBe($home['planned_km_this_week'])
+        ->and($currentWeek['eased_from_km'])->toBe(round($arcCurrent['planned_km'], 1))
+        ->and($nextWeek['planned_km'])->toBe(round($arcNext['planned_km'], 1))
+        ->and($nextWeek['phase'])->toBe($arcNext['phase']->value)
+        ->and($nextWeek['eased_from_km'])->toBeNull();
 });
 
 /** A past day counts the km it was credited, so its recorded ease no longer moves the week total. */
@@ -255,8 +264,8 @@ it('counts a past eased day at its credited km, not at its eased ask', function 
         'distance' => 3_000,
     ]);
 
-    $weeks = $this->builder->build($user, $season, Carbon::today());
-    $current = collect($weeks)->firstWhere('type', 'current');
+    $weeks = seasonSummaryBuilder()->build($user, $season, Carbon::today());
+    $current = nonNull(collect($weeks)->firstWhere('type', 'current'));
 
     expect($storedKm)->toBeGreaterThan(1.0)
         ->and($current['eased_from_km'])->toBeNull()
@@ -273,5 +282,5 @@ it('names nothing on a week whose eased day kept its distance', function (): voi
     [$row, $storedKm] = seasonSummaryTempoToday($user);
     $row->update(['clamped_km' => $storedKm]);
 
-    expect($this->builder->build($user, $season, Carbon::today())[0]['eased_from_km'])->toBeNull();
+    expect(seasonSummaryBuilder()->build($user, $season, Carbon::today())[0]['eased_from_km'])->toBeNull();
 });

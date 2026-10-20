@@ -1,4 +1,6 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { defined } from '@/test/defined';
 
 import {
     currentSubscription,
@@ -12,8 +14,6 @@ import {
     unsubscribe,
     urlBase64ToUint8Array,
 } from './webPush';
-
-vi.mock('@/lib/http', () => ({ csrfToken: () => 'test-csrf' }));
 
 const fakeSubscription = {
     endpoint: 'https://fcm.googleapis.com/fcm/send/abc',
@@ -51,7 +51,15 @@ function stubServiceWorker(): void {
     );
 }
 
+beforeEach(() => {
+    const meta = document.createElement('meta');
+    meta.name = 'csrf-token';
+    meta.content = 'test-csrf';
+    document.head.appendChild(meta);
+});
+
 afterEach(() => {
+    document.head.innerHTML = '';
     vi.unstubAllGlobals();
     Reflect.deleteProperty(navigator, 'serviceWorker');
     vi.clearAllMocks();
@@ -191,6 +199,43 @@ describe('subscribe', () => {
 
         await subscribe('aGVsbG8');
         expect(fetch).toHaveBeenCalledTimes(2);
+    });
+});
+
+describe('request shape', () => {
+    const headers = {
+        'Content-Type': 'application/json',
+        'X-CSRF-TOKEN': 'test-csrf',
+        'X-Requested-With': 'XMLHttpRequest',
+    };
+
+    it('sends the subscription as same-origin JSON with the CSRF headers', async () => {
+        stubServiceWorker();
+
+        await subscribe('aGVsbG8');
+
+        expect(fetch).toHaveBeenCalledWith('/profile/push', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers,
+            body: JSON.stringify({
+                ...fakeSubscription.toJSON(),
+                previous_endpoint: undefined,
+            }),
+        });
+    });
+
+    it('sends the removal as a same-origin JSON DELETE with the CSRF headers', async () => {
+        stubServiceWorker();
+
+        await unsubscribe();
+
+        expect(fetch).toHaveBeenCalledWith('/profile/push', {
+            method: 'DELETE',
+            credentials: 'same-origin',
+            headers,
+            body: JSON.stringify({ endpoint: fakeSubscription.endpoint }),
+        });
     });
 });
 
@@ -341,7 +386,7 @@ describe('reportSeen', () => {
         await reportSeen(athlete);
 
         expect(fetchCalls()).toHaveLength(1);
-        const [url, init] = fetchCalls()[0];
+        const [url, init] = defined(fetchCalls()[0]);
         expect(url).toBe('/profile/push/seen');
         expect(JSON.parse(init.body as string)).toEqual({
             endpoint: fakeSubscription.endpoint,
@@ -369,9 +414,9 @@ describe('reportSeen', () => {
             '/profile/push/seen',
             '/profile/push',
         ]);
-        expect(JSON.parse(fetchCalls()[1][1].body as string)).toMatchObject(
-            fakeSubscription.toJSON(),
-        );
+        expect(
+            JSON.parse(defined(fetchCalls()[1])[1].body as string),
+        ).toMatchObject(fakeSubscription.toJSON());
         expect(localStorage.getItem('temari-push-endpoint')).toBe(
             fakeSubscription.endpoint,
         );

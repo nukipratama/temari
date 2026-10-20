@@ -22,9 +22,11 @@ use App\Services\Run\Plan\PlanAdapter;
 use App\Services\Run\Story\BriefingContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Mockery\MockInterface;
 
 uses(RefreshDatabase::class);
 
+/** @return array{reason: AdaptationReason, deload: bool, quality_delta: int, adherence_pct: int, stimulus_adherence_pct: int} */
 function decide(
     int $adherencePct = 100,
     int $stimulusAdherencePct = 100,
@@ -411,6 +413,7 @@ it('adds no work when the race projection is slower than the goal time', functio
         'race_date' => '2026-11-01',
     ]);
 
+    /** @var RiegelProjector&MockInterface $riegel */
     $riegel = Mockery::mock(RiegelProjector::class);
     $riegel->shouldReceive('project')->andReturn([
         'predicted_sec' => 7200.0, 'low_sec' => 6800.0, 'high_sec' => 7600.0,
@@ -435,6 +438,7 @@ it('does not chase an unsupported race ambition with extra quality', function ()
         'race_date' => '2026-09-07',
     ]);
 
+    /** @var RiegelProjector&MockInterface $riegel */
     $riegel = Mockery::mock(RiegelProjector::class);
     $riegel->shouldReceive('project')->andReturn([
         'predicted_sec' => 4200.0, 'low_sec' => 4000.0, 'high_sec' => 4400.0,
@@ -456,6 +460,7 @@ it('ignores the race projection when the athlete has no usable PR to anchor it',
     $user = User::factory()->create();
     $race = RaceGoal::factory()->for($user)->create(['goal_time_sec' => 6000, 'race_date' => '2026-11-01']);
 
+    /** @var RiegelProjector&MockInterface $riegel */
     $riegel = Mockery::mock(RiegelProjector::class);
     $riegel->shouldReceive('project')->andReturnNull();
 
@@ -471,6 +476,7 @@ it('ignores the race projection when the athlete has no usable PR to anchor it',
  * A run on $date owned by $user, carrying exactly the stream summary given.
  *
  * @param  array<string, mixed>  $streamSummary
+ * @param  array<string, mixed>  $attributes
  */
 function planAdapterRunOn(User $user, string $date, array $streamSummary, array $attributes = []): void
 {
@@ -759,7 +765,7 @@ function planAdapterLoadRuns(User $user, Carbon $start, array $runs): void
     ], $runs));
     $activityIds = Activity::query()->withStubs()->where('user_id', $user->id)->orderByDesc('id')->limit(count($runs))->pluck('id')->reverse()->values()->all();
 
-    ActivityDetail::query()->insert(array_map(fn (array $run, int $activityId): array => [
+    ActivityDetail::query()->insert(array_map(fn (array $run, mixed $activityId): array => [
         ...ActivityDetail::factory()->make([
             'activity_id' => $activityId,
             'start_date_local' => $start->copy()->addDays($run[0])->setTime(6, 0),
@@ -841,7 +847,7 @@ it('stores no low-readiness deload for a race season opened mid-backfill, and re
         $activity->detail()->update(['trimp_edwards' => 148.0]);
     });
     TrainingLoad::clearSummaryCache($user);
-    $fullHistory = app(TrainingLoad::class)->summary($user, $monday);
+    $fullHistory = nonNull(app(TrainingLoad::class)->summary($user, $monday));
 
     expect($midBackfill['reason'])->not->toBe(AdaptationReason::LowReadiness)
         ->and($midBackfill['deload'])->toBeFalse()

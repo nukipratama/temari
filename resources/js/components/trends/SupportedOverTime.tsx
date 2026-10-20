@@ -63,7 +63,10 @@ export function changeLine(points: ReadonlyArray<SupportedHistoryPoint>): {
     tone: 'faster' | 'slower' | 'same';
 } {
     const first = points[0];
-    const latest = points[points.length - 1];
+    const latest = points.at(-1);
+    if (first === undefined || latest === undefined) {
+        return { text: '', tone: 'same' };
+    }
     const since = formatNaiveMonthDayId(first.date);
     const gain = first.supported_time_sec - latest.supported_time_sec;
 
@@ -115,9 +118,11 @@ const supportedLabelsPlugin: Plugin<'line'> = {
         if (!labels) return;
 
         const { ctx, chartArea, scales } = chart;
+        const { x: xScale, y: yScale } = scales;
+        if (!xScale || !yScale) return;
         const family = getComputedStyle(chart.canvas).fontFamily;
         const supported = chart.data.datasets[0]?.data as number[];
-        const targetY = scales.y.getPixelForValue(
+        const targetY = yScale.getPixelForValue(
             chart.data.datasets[1]?.data[0] as number,
         );
 
@@ -131,8 +136,10 @@ const supportedLabelsPlugin: Plugin<'line'> = {
         ctx.font = `600 10px ${family}`;
         ctx.fillStyle = labels.stepColor;
         for (const step of labels.steps) {
-            const x = scales.x.getPixelForValue(step.index);
-            const y = scales.y.getPixelForValue(supported[step.index]);
+            const value = supported[step.index];
+            if (value === undefined) continue;
+            const x = xScale.getPixelForValue(step.index);
+            const y = yScale.getPixelForValue(value);
             const width = ctx.measureText(step.text).width;
             const above = y - 4;
             const crossesTarget =
@@ -275,11 +282,11 @@ export default function SupportedOverTime({
         [ground, reducedMotion, steps, target, yStep],
     );
 
-    if (history === null || points.length < 2) {
+    const latest = points.at(-1);
+    if (history === null || points.length < 2 || latest === undefined) {
         return null;
     }
 
-    const latest = points[points.length - 1];
     const change = changeLine(points);
 
     return (

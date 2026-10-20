@@ -15,6 +15,7 @@ use App\Services\Run\Ingest\ActivityPipeline;
 use App\Services\Run\Ingest\DetailHydrator;
 use App\Services\Run\Ingest\SyncOrchestrator;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Queue\Middleware\ThrottlesExceptions;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Http;
@@ -70,8 +71,13 @@ function runThroughThrottle(IngestActivityJob $job): array
         }
     };
 
+    $throttle = $job->middleware()[0];
+    if (! $throttle instanceof ThrottlesExceptions) {
+        throw new InvalidArgumentException('First middleware is not ThrottlesExceptions.');
+    }
+
     $ran = false;
-    $job->middleware()[0]->handle($queued, function () use ($job, &$ran): void {
+    $throttle->handle($queued, function () use ($job, &$ran): void {
         $ran = true;
         $job->handle(app(ActivityPipeline::class));
     });

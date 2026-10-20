@@ -77,7 +77,8 @@ class TelegramClient
      */
     private function call(string $method, array $params, int $longPollTimeout = 0, ?int $timeoutSeconds = null): mixed
     {
-        $token = (string) config('services.telegram.bot_token');
+        $configuredToken = config('services.telegram.bot_token');
+        $token = is_string($configuredToken) ? $configuredToken : '';
 
         $http = $this->client($token, $longPollTimeout, $timeoutSeconds)->asJson();
 
@@ -98,7 +99,9 @@ class TelegramClient
         }
 
         if ($response->failed() || $response->json('ok') !== true) {
-            $description = (string) ($response->json('description') ?? $response->body());
+            $rawDescription = $response->json('description') ?? $response->body();
+            assert(is_scalar($rawDescription));
+            $description = (string) $rawDescription;
 
             throw new TelegramApiException(
                 "Telegram [{$method}] failed with status {$response->status()}: {$description}",

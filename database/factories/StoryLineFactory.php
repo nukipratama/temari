@@ -7,6 +7,7 @@ namespace Database\Factories;
 use App\Models\Activity;
 use App\Models\StoryLine;
 use App\Models\User;
+use App\Support\Numeric;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\DB;
 
@@ -23,9 +24,9 @@ class StoryLineFactory extends Factory
         return [
             'activity_id' => Activity::factory(),
             // Resolve owner without hydrating the Activity model.
-            'user_id' => fn (array $attributes): int => (int) DB::table('activities')
+            'user_id' => fn (array $attributes): int => Numeric::int(DB::table('activities')
                 ->where('id', $attributes['activity_id'])
-                ->value('user_id'),
+                ->value('user_id')),
             'kind' => StoryLine::KIND_POST_RUN,
             'for_date' => null,
             'mood' => fake()->randomElement(['blazing', 'easy', 'wobbly', 'gassed', 'overloaded', 'chill']),

@@ -16,6 +16,7 @@ function duelDetail(array $splits, float $distanceM): ActivityDetail
     ]);
 }
 
+/** @return array{split: int, distance: float, elapsed_time: float} */
 function kmSplit(int $km, float $elapsedSec, float $distanceM = 1000.0): array
 {
     return ['split' => $km, 'distance' => $distanceM, 'elapsed_time' => $elapsedSec];
@@ -25,7 +26,7 @@ it('builds a signed gap per compared km, ahead as negative and behind as positiv
     $current = duelDetail([kmSplit(1, 240), kmSplit(2, 250)], 2000.0);
     $past = duelDetail([kmSplit(1, 246), kmSplit(2, 241)], 2000.0);
 
-    $duel = app(PastYouDuelBuilder::class)->build($current, $past);
+    $duel = nonNull(app(PastYouDuelBuilder::class)->build($current, $past));
 
     expect($duel['gaps'])->toBe([
         ['km' => 1, 'gap_sec' => -6, 'label' => '−0:06'],
@@ -40,7 +41,7 @@ it('labels a dead-even km as "even"', function (): void {
     $current = duelDetail([kmSplit(1, 240)], 1000.0);
     $past = duelDetail([kmSplit(1, 240)], 1000.0);
 
-    $duel = app(PastYouDuelBuilder::class)->build($current, $past);
+    $duel = nonNull(app(PastYouDuelBuilder::class)->build($current, $past));
 
     expect($duel['gaps'][0]['label'])->toBe('even')
         ->and($duel['footnote'])->toBeNull();
@@ -50,7 +51,7 @@ it('compares only the whole km both runs covered and footnotes the remainder', f
     $current = duelDetail([kmSplit(1, 240), kmSplit(2, 245), kmSplit(3, 250)], 3400.0);
     $past = duelDetail([kmSplit(1, 246), kmSplit(2, 241)], 2000.0);
 
-    $duel = app(PastYouDuelBuilder::class)->build($current, $past);
+    $duel = nonNull(app(PastYouDuelBuilder::class)->build($current, $past));
 
     expect($duel['compared_km'])->toBe(2)
         ->and($duel['footnote'])->toBe('+1.4 km past you didn\'t run');
@@ -60,7 +61,7 @@ it('names the viewer as the one who didn\'t run when the past run went further',
     $current = duelDetail([kmSplit(1, 240)], 1000.0);
     $past = duelDetail([kmSplit(1, 246), kmSplit(2, 241)], 2400.0);
 
-    $duel = app(PastYouDuelBuilder::class)->build($current, $past);
+    $duel = nonNull(app(PastYouDuelBuilder::class)->build($current, $past));
 
     expect($duel['footnote'])->toBe('+1.4 km you didn\'t run');
 });
@@ -69,7 +70,7 @@ it('ignores a partial split short of a full km', function (): void {
     $current = duelDetail([kmSplit(1, 240), kmSplit(2, 100, 400.0)], 1400.0);
     $past = duelDetail([kmSplit(1, 246), kmSplit(2, 241)], 2000.0);
 
-    $duel = app(PastYouDuelBuilder::class)->build($current, $past);
+    $duel = nonNull(app(PastYouDuelBuilder::class)->build($current, $past));
 
     expect($duel['compared_km'])->toBe(1)
         ->and($duel['gaps'])->toHaveCount(1);

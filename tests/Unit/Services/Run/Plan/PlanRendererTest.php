@@ -23,6 +23,7 @@ use App\Services\Run\Plan\ReadinessClamp;
 use App\Services\Run\Plan\SegmentGenerator;
 use App\Services\Run\Plan\SessionMatcher;
 use App\Services\Run\Plan\SessionSegment;
+use App\Support\Numeric;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Crypt;
@@ -34,6 +35,18 @@ use Illuminate\Support\Facades\Crypt;
 uses(RefreshDatabase::class);
 
 const RENDERER_PACES = ['easy' => 360, 'marathon' => 300, 'threshold' => 270, 'interval' => 240];
+
+/**
+ * @param  array<string, mixed>  $payload
+ * @return array<mixed>
+ */
+function renderedRecommendation(array $payload): array
+{
+    $token = $payload['recommendation_token'];
+    $decrypted = Crypt::decryptString(is_string($token) ? $token : throw new InvalidArgumentException('Payload recommendation_token is not a string.'));
+
+    return arrayOf(json_decode($decrypted, true, flags: JSON_THROW_ON_ERROR));
+}
 
 it('weekPhasesAndMultipliers reads each week\'s phase off its rows', function (): void {
     $sessionsByWeek = collect([
@@ -193,7 +206,7 @@ it('dayPayload generates segments fresh from the stored session when there is no
 
     expect($payload['session_type'])->toBe('long')
         ->and($payload['segments'])->toHaveCount(1)
-        ->and($payload['segments'][0]['key'])->toBe('main')
+        ->and(data_get($payload, 'segments.0.key'))->toBe('main')
         ->and($payload['distance_km'])->toBe(20.0)
         ->and($payload['pinned'])->toBeTrue()
         ->and($payload['eased_from'])->toBeNull();
@@ -280,15 +293,15 @@ it('keeps a pinned race prescription beside conservative-effort advice and snaps
         PlannedSessionStatus::Planned,
         readinessAssessment: $assessment,
     );
-    $recommendation = json_decode(Crypt::decryptString($payload['recommendation_token']), true, flags: JSON_THROW_ON_ERROR);
+    $recommendation = renderedRecommendation($payload);
 
     expect($payload['session_type'])->toBe('race')
         ->and($payload['pinned'])->toBeTrue()
         ->and($payload['eased_from'])->toBeNull()
         ->and($payload['advice_note'])->toContain('demanding session within the last day')
         ->and($payload)->not->toHaveKey('readiness_assessment')
-        ->and($recommendation['policy_version'])->toBe(2)
-        ->and($recommendation['effective']['readiness_assessment'])->toBe($assessment);
+        ->and(data_get($recommendation, 'policy_version'))->toBe(2)
+        ->and(data_get($recommendation, 'effective.readiness_assessment'))->toBe($assessment);
 });
 
 it('dayPayload omits the recommendation token when asked not to carry one', function (): void {
@@ -310,7 +323,7 @@ it('dayPayload applies a redistributed volume scale for a non-today day', functi
     $unscaled = PlanRenderer::dayPayload($session, Carbon::parse('2026-08-10'), null, [], null, false, 20.0, 1.0, INF, RENDERER_PACES, PlannedSessionStatus::Planned);
     $scaled = PlanRenderer::dayPayload($session, Carbon::parse('2026-08-10'), null, ['2026-08-12' => 0.5], null, false, 20.0, 1.0, INF, RENDERER_PACES, PlannedSessionStatus::Planned);
 
-    expect($scaled['distance_km'])->toBe(round($unscaled['distance_km'] * 0.5, 1));
+    expect($scaled['distance_km'])->toBe(round(Numeric::float($unscaled['distance_km']) * 0.5, 1));
 });
 
 it('dayPayload gives every paced step the window it is graded in', function (): void {
@@ -335,7 +348,7 @@ it('dayPayload gives every paced step the window it is graded in', function (): 
         easySlowEndSecPerKm: 380,
     );
 
-    $ranges = array_column($payload['segments'], 'pace_range', 'key');
+    $ranges = array_column(arrayOf($payload['segments']), 'pace_range', 'key');
     expect($ranges['warmup'])->toBe(['fast_sec_per_km' => 300, 'slow_sec_per_km' => 380])
         ->and($ranges['main'])->toBe(['fast_sec_per_km' => 257, 'slow_sec_per_km' => 280]);
 });
@@ -350,8 +363,8 @@ it('dayPayload runs race day steps on the hard window even at marathon pace', fu
 
     $payload = PlanRenderer::dayPayload($session, Carbon::parse('2026-08-01'), null, [], 42_195.0, false, 20.0, 1.0, INF, RENDERER_PACES, PlannedSessionStatus::Planned, null, null, 14_400);
 
-    $pace = $payload['segments'][0]['pace_sec_per_km'];
-    expect($payload['segments'][0]['pace_range'])->toBe(['fast_sec_per_km' => (int) round($pace * 0.95), 'slow_sec_per_km' => $pace + 10]);
+    $pace = Numeric::int(data_get($payload, 'segments.0.pace_sec_per_km'));
+    expect(data_get($payload, 'segments.0.pace_range'))->toBe(['fast_sec_per_km' => (int) round($pace * 0.95), 'slow_sec_per_km' => $pace + 10]);
 });
 
 it('dayPayload prescribes race day at the athlete\'s goal pace', function (): void {
@@ -380,8 +393,8 @@ it('dayPayload prescribes race day at the athlete\'s goal pace', function (): vo
     );
 
     // A 59:00 10K is 5:54/km, not this athlete's 4:30/km threshold band.
-    expect($payload['segments'][0]['pace_sec_per_km'])->toBe(354)
-        ->and($payload['segments'][0]['minutes'])->toBe(59.0)
+    expect(data_get($payload, 'segments.0.pace_sec_per_km'))->toBe(354)
+        ->and(data_get($payload, 'segments.0.minutes'))->toBe(59.0)
         ->and($payload['distance_km'])->toBe(10.0);
 });
 
@@ -411,7 +424,8 @@ it('dayPayload still fills distance_km with no VDOT estimate yet — only segmen
 
     $payload = PlanRenderer::dayPayload($session, Carbon::parse('2026-08-01'), null, [], null, true, 20.0, 1.0, INF, null, PlannedSessionStatus::Planned);
 
-    expect($payload['segments'][0]['minutes'])->toBeNull()
+    expect($payload)->toHaveKey('segments.0.minutes')
+        ->and(data_get($payload, 'segments.0.minutes'))->toBeNull()
         ->and($payload['distance_km'])->toBe(13.0); // 20.0 * 0.65 (isPrimaryEasy=true), pace-independent
 });
 
@@ -436,11 +450,11 @@ it('dayPayload reports an Interval day at what its reps add up to, not at its bu
         PlannedSessionStatus::Planned,
     );
 
-    $summed = round(array_sum(array_column($payload['segments'], 'km')), 1);
+    $summed = round(array_sum(array_column(arrayOf($payload['segments']), 'km')), 1);
 
     // The card and the segments beneath it are the same run — the whole point
     // of docs/decisions/a-session-is-the-whole-outing.md, and the one session
-    // type that used to break it.
+    // type most at risk of breaking it.
     expect($payload['distance_km'])->toBe($summed);
 });
 
@@ -518,8 +532,8 @@ function tempoSessionWithEasyClamp(Carbon $today, string $note): array
 
 /**
  * `Readiness::assess()` caps to EasyOnly on `ranToday` alone, so finishing the
- * session is itself what clamps it. The block used to become a menu for a
- * second outing; a finished day now just states what it came to.
+ * session is itself what clamps it. A finished day states what it came to
+ * instead of offering a second outing.
  */
 it('dayPayload drops the advised ease entirely once the day is credited', function (PlannedSessionStatus $status): void {
     $today = Carbon::parse('2026-08-10');
@@ -553,8 +567,8 @@ it('dayPayload keeps the forecast wording on a day not yet credited', function (
     $payload = PlanRenderer::dayPayload($session, $today, $clamp, [], null, false, 20.0, 1.0, INF, RENDERER_PACES, $status);
 
     expect($payload['session_type'])->toBe('easy')
-        ->and($payload['eased_from']['session_type'])->toBe('tempo')
-        ->and($payload['eased_from']['voice'])->toBe('Quality work waits until you are fresher.');
+        ->and(data_get($payload, 'eased_from.session_type'))->toBe('tempo')
+        ->and(data_get($payload, 'eased_from.voice'))->toBe('Quality work waits until you are fresher.');
 })->with([
     PlannedSessionStatus::Planned,
     PlannedSessionStatus::Missed,
@@ -594,7 +608,7 @@ it('dayPayload narrates the clamp on a day still to be run', function (): void {
 
     $pending = PlanRenderer::dayPayload($session, $today, $clamp, [], null, false, 20.0, 1.0, INF, RENDERER_PACES, PlannedSessionStatus::Planned, null, $voice);
 
-    expect($pending['eased_from']['voice'])->toBe($voice);
+    expect(data_get($pending, 'eased_from.voice'))->toBe($voice);
 });
 
 /** A tempo day eased to easy at 00:01 with its 6.4 km held: before credit, the easy run already leads. */
@@ -608,7 +622,7 @@ it('dayPayload leads today with its recorded ease, the tempo only as context', f
 
     expect($payload['session_type'])->toBe('easy')
         ->and($payload['distance_km'])->toBe(6.4)
-        ->and($payload['segments'][0]['pace_sec_per_km'])->toBe(RENDERER_PACES['easy'])
+        ->and(data_get($payload, 'segments.0.pace_sec_per_km'))->toBe(RENDERER_PACES['easy'])
         ->and($payload['eased_from'])->toBe([
             'session_type' => 'tempo',
             'distance_km' => null,
@@ -642,15 +656,15 @@ it('renders a recorded readiness dose beside the unchanged prescribed quality se
         'readiness_assessment' => $assessment,
     ]);
     $payload = PlanRenderer::dayPayload($session, $today, null, [], null, false, 9.8, 1.0, INF, RENDERER_PACES, PlannedSessionStatus::Planned);
-    $token = json_decode(Crypt::decryptString($payload['recommendation_token']), true, flags: JSON_THROW_ON_ERROR);
+    $token = renderedRecommendation($payload);
 
     expect($payload['session_type'])->toBe('tempo')
-        ->and($payload['eased_from']['session_type'])->toBe('tempo')
-        ->and($payload['eased_from']['voice'])->toBe(ReadinessClamp::qualityDoseNote(SessionType::Tempo, $assessment['reasons'], 15, 20))
-        ->and(array_sum(array_map(static fn (array $seg): int => in_array($seg['key'], ['main', 'interval'], true) ? (int) $seg['minutes'] : 0, $payload['segments'])))->toBeLessThan(20)
+        ->and(data_get($payload, 'eased_from.session_type'))->toBe('tempo')
+        ->and(data_get($payload, 'eased_from.voice'))->toBe(ReadinessClamp::qualityDoseNote(SessionType::Tempo, $assessment['reasons'], 15, 20))
+        ->and(array_sum(array_map(static fn (mixed $seg): int => in_array(data_get($seg, 'key'), ['main', 'interval'], true) ? Numeric::int(data_get($seg, 'minutes')) : 0, arrayOf($payload['segments']))))->toBeLessThan(20)
         ->and($payload)->not->toHaveKey('readiness_assessment')
-        ->and($token['original']['hard_minutes'])->toBe(20)
-        ->and($token['effective']['readiness_assessment']['adjustment']['quality_dose'])->toBe($qualityDose)
+        ->and(data_get($token, 'original.hard_minutes'))->toBe(20)
+        ->and(data_get($token, 'effective.readiness_assessment.adjustment.quality_dose'))->toBe($qualityDose)
         ->and($session->prescribed_hard_minutes)->toBe(20);
 });
 
@@ -670,15 +684,15 @@ it('renders a stored slowed-pace dose and an unrecognised legacy reason code fro
     ]);
 
     $payload = PlanRenderer::dayPayload($session, $today, null, [], null, false, 9.8, 1.0, INF, RENDERER_PACES, PlannedSessionStatus::Planned);
-    $token = json_decode(Crypt::decryptString($payload['recommendation_token']), true, flags: JSON_THROW_ON_ERROR);
-    $hard = array_values(array_filter($payload['segments'], static fn (array $seg): bool => $seg['key'] === 'main'));
-    $shownHard = array_values(array_filter($token['effective']['segments'], static fn (array $seg): bool => $seg['key'] === 'main'));
+    $token = renderedRecommendation($payload);
+    $hard = array_values(array_filter(arrayOf($payload['segments']), static fn (mixed $seg): bool => data_get($seg, 'key') === 'main'));
+    $shownHard = array_values(array_filter(arrayOf(data_get($token, 'effective.segments')), static fn (mixed $seg): bool => data_get($seg, 'key') === 'main'));
 
     expect($payload['session_type'])->toBe('tempo')
         ->and(array_sum(array_column($hard, 'minutes')))->toBe(20.0)
         ->and(array_unique(array_column($hard, 'pace_sec_per_km')))->toBe([278])
         ->and(array_unique(array_column($shownHard, 'pace_sec_per_km')))->toBe([278])
-        ->and($payload['eased_from']['voice'])->toBe('keep all 20 hard minutes of the tempo work, a touch easier at 4:38/km.');
+        ->and(data_get($payload, 'eased_from.voice'))->toBe('keep all 20 hard minutes of the tempo work, a touch easier at 4:38/km.');
 });
 
 it('carries the easy heart-rate cap on easy and long days only, and only when one is given', function (SessionType $type, PlanPhase $phase, ?int $cap, ?int $expected): void {
@@ -705,9 +719,9 @@ it('dayPayload leads a distance-eased today with the easy run it recorded, even 
 
     expect($payload['session_type'])->toBe('easy')
         ->and($payload['distance_km'])->toBe(3.6)
-        ->and($payload['eased_from']['session_type'])->toBe('tempo')
-        ->and($payload['eased_from']['distance_km'])->toBe(SegmentGenerator::coreKmFor(SessionType::Tempo, false, 20.0, 1.0, INF))
-        ->and($payload['eased_from']['voice'])->toBe(ReadinessClamp::noteFor(SessionType::Tempo, ReadinessCeiling::EasyOnly));
+        ->and(data_get($payload, 'eased_from.session_type'))->toBe('tempo')
+        ->and(data_get($payload, 'eased_from.distance_km'))->toBe(SegmentGenerator::coreKmFor(SessionType::Tempo, false, 20.0, 1.0, INF))
+        ->and(data_get($payload, 'eased_from.voice'))->toBe(ReadinessClamp::noteFor(SessionType::Tempo, ReadinessCeiling::EasyOnly));
 });
 
 it('dayPayload reads a row left with a rest snapshot from before the rest clamp was removed as its stored session', function (): void {
@@ -740,7 +754,8 @@ it('dayPayload hands an eased day back to its own narration once it is credited'
     $payload = PlanRenderer::dayPayload($session, $today, null, [], null, false, 20.0, 1.0, INF, RENDERER_PACES, PlannedSessionStatus::Done, null, 'a clamp line');
 
     expect($payload['session_type'])->toBe('easy')
-        ->and($payload['eased_from']['voice'])->toBeNull();
+        ->and($payload)->toHaveKey('eased_from.voice')
+        ->and(data_get($payload, 'eased_from.voice'))->toBeNull();
 });
 
 it('dayPayload leads with an advised ease that was never recorded, so the card never shows tempo beside easy', function (): void {
@@ -750,8 +765,8 @@ it('dayPayload leads with an advised ease that was never recorded, so the card n
     $payload = PlanRenderer::dayPayload($session, $today, $clamp, [], null, false, 20.0, 1.0, INF, RENDERER_PACES, PlannedSessionStatus::Planned);
 
     expect($payload['session_type'])->toBe('easy')
-        ->and(array_column($payload['segments'], 'pace_label'))->each->toBe('easy')
-        ->and($payload['eased_from']['session_type'])->toBe('tempo')
+        ->and(array_column(arrayOf($payload['segments']), 'pace_label'))->each->toBe('easy')
+        ->and(data_get($payload, 'eased_from.session_type'))->toBe('tempo')
         ->and($payload['advice_note'])->toBeNull();
 });
 
@@ -772,7 +787,7 @@ it('dayPayload runs a pace-eased Easy day at the recorded slow end, keeping type
         ->and($payload['distance_km'])->toBe(8.0)
         ->and($payload['asked_km'])->toBe(8.0)
         ->and($payload['segments'])->toHaveCount(1)
-        ->and($payload['segments'][0]['pace_sec_per_km'])->toBe(400)
+        ->and(data_get($payload, 'segments.0.pace_sec_per_km'))->toBe(400)
         ->and($payload['eased_from'])->toBeNull()
         ->and($payload['pace_eased_from'])->toBe([
             'pace_sec_per_km' => RENDERER_PACES['easy'],
@@ -798,7 +813,7 @@ it('dayPayload overrides even a marathon-pace long run to the eased slow end', f
     $payload = PlanRenderer::dayPayload($session, $today, null, [], 42_195.0, false, 20.0, 1.0, INF, RENDERER_PACES, PlannedSessionStatus::Planned);
 
     expect($payload['session_type'])->toBe('long')
-        ->and($payload['segments'][0]['pace_sec_per_km'])->toBe(410)
+        ->and(data_get($payload, 'segments.0.pace_sec_per_km'))->toBe(410)
         ->and($payload['pace_eased_from'])->toBe([
             'pace_sec_per_km' => RENDERER_PACES['marathon'],
             'voice' => ReadinessClamp::paceEaseNote(),
@@ -817,9 +832,10 @@ it('dayPayload keeps a pace ease\'s pace once credited, but drops the voice', fu
 
     $payload = PlanRenderer::dayPayload($session, $today, null, [], null, false, 20.0, 1.0, INF, RENDERER_PACES, PlannedSessionStatus::Done);
 
-    expect($payload['segments'][0]['pace_sec_per_km'])->toBe(400)
-        ->and($payload['pace_eased_from']['pace_sec_per_km'])->toBe(RENDERER_PACES['easy'])
-        ->and($payload['pace_eased_from']['voice'])->toBeNull();
+    expect(data_get($payload, 'segments.0.pace_sec_per_km'))->toBe(400)
+        ->and(data_get($payload, 'pace_eased_from.pace_sec_per_km'))->toBe(RENDERER_PACES['easy'])
+        ->and($payload)->toHaveKey('pace_eased_from.voice')
+        ->and(data_get($payload, 'pace_eased_from.voice'))->toBeNull();
 });
 
 it('dayPayload leaves a pace-eased day paceless with no VDOT estimate, and still names the ease', function (): void {
@@ -834,7 +850,8 @@ it('dayPayload leaves a pace-eased day paceless with no VDOT estimate, and still
 
     $payload = PlanRenderer::dayPayload($session, $today, null, [], null, false, 20.0, 1.0, INF, null, PlannedSessionStatus::Planned);
 
-    expect($payload['segments'][0]['pace_sec_per_km'])->toBeNull()
+    expect($payload)->toHaveKey('segments.0.pace_sec_per_km')
+        ->and(data_get($payload, 'segments.0.pace_sec_per_km'))->toBeNull()
         ->and($payload['pace_eased_from'])->toBe([
             'pace_sec_per_km' => null,
             'voice' => ReadinessClamp::paceEaseNote(),
@@ -860,27 +877,15 @@ it('dayPayload never attaches todays clamp voice to a different, uncredited ease
 
     $payload = PlanRenderer::dayPayload($pastDay, $today, null, [], null, false, 20.0, 1.0, INF, RENDERER_PACES, PlannedSessionStatus::Missed, null, "today's clamp voice, about a different day entirely.");
 
-    expect($payload['eased_from']['voice'])
-        ->toBe(ReadinessClamp::noteFor(SessionType::Tempo, ReadinessCeiling::EasyOnly))
-        ->not->toBe("today's clamp voice, about a different day entirely.");
+    expect(data_get($payload, 'eased_from.voice'))
+        ->not->toBe("today's clamp voice, about a different day entirely.")
+        ->toBe(ReadinessClamp::noteFor(SessionType::Tempo, ReadinessCeiling::EasyOnly));
 });
 
-/**
- * A long day whose distance arrived in pieces reads `partial` despite the
- * volume being there, so the row says why rather than leaving the athlete to
- * work it out from a 100% score beside a partial badge.
- */
-it('dayPayload explains a long day that covered its distance in pieces', function (): void {
-    $today = Carbon::parse('2026-08-10');
-    $session = PlannedSession::factory()->create([
-        'session_type' => SessionType::Long,
-        'phase' => PlanPhase::Build,
-        'date' => $today,
-    ]);
-    $inPieces = ['km' => 20.0, 'runs' => [['id' => 1, 'km' => 10.0, 'seconds' => 3000, 'started_at' => '06:00'], ['id' => 2, 'km' => 10.0, 'seconds' => 3000, 'started_at' => '17:30']]];
-    $inOne = ['km' => 20.0, 'runs' => [['id' => 1, 'km' => 18.0, 'seconds' => 5400, 'started_at' => '06:00'], ['id' => 2, 'km' => 2.0, 'seconds' => 600, 'started_at' => '17:30']]];
-
-    $render = fn (array $activity, PlannedSessionStatus $status): ?string => PlanRenderer::dayPayload(
+/** @param  array{km: float, runs: list<array{id: int, km: float, seconds: int|null, started_at: string, avg_hr: int|null}>}  $activity */
+function dayCreditNote(PlannedSession $session, Carbon $today, array $activity, PlannedSessionStatus $status): mixed
+{
+    return PlanRenderer::dayPayload(
         $session,
         $today,
         null,
@@ -894,10 +899,26 @@ it('dayPayload explains a long day that covered its distance in pieces', functio
         $status,
         $activity,
     )['credit_note'];
+}
 
-    expect($render($inPieces, PlannedSessionStatus::Partial))->toContain('not in one run')
-        ->and($render($inOne, PlannedSessionStatus::Done))->toBeNull()
-        ->and($render($inPieces, PlannedSessionStatus::Done))->toBeNull();
+/**
+ * A long day whose distance arrived in pieces reads `partial` despite the
+ * volume being there, so the row says why rather than leaving the athlete to
+ * work it out from a 100% score beside a partial badge.
+ */
+it('dayPayload explains a long day that covered its distance in pieces', function (): void {
+    $today = Carbon::parse('2026-08-10');
+    $session = PlannedSession::factory()->create([
+        'session_type' => SessionType::Long,
+        'phase' => PlanPhase::Build,
+        'date' => $today,
+    ]);
+    $inPieces = ['km' => 20.0, 'runs' => [['id' => 1, 'km' => 10.0, 'seconds' => 3000, 'started_at' => '06:00', 'avg_hr' => null], ['id' => 2, 'km' => 10.0, 'seconds' => 3000, 'started_at' => '17:30', 'avg_hr' => null]]];
+    $inOne = ['km' => 20.0, 'runs' => [['id' => 1, 'km' => 18.0, 'seconds' => 5400, 'started_at' => '06:00', 'avg_hr' => null], ['id' => 2, 'km' => 2.0, 'seconds' => 600, 'started_at' => '17:30', 'avg_hr' => null]]];
+
+    expect(dayCreditNote($session, $today, $inPieces, PlannedSessionStatus::Partial))->toContain('not in one run')
+        ->and(dayCreditNote($session, $today, $inOne, PlannedSessionStatus::Done))->toBeNull()
+        ->and(dayCreditNote($session, $today, $inPieces, PlannedSessionStatus::Done))->toBeNull();
 });
 
 it('dayPayload never asks a long day eased to an easy run for one go', function (): void {
@@ -907,7 +928,7 @@ it('dayPayload never asks a long day eased to an easy run for one go', function 
         'date' => Carbon::parse('2026-08-10'),
         'clamped_km' => 6.8,
     ]);
-    $split = ['km' => 8.1, 'runs' => [['id' => 1, 'km' => 4.5, 'seconds' => 1800, 'started_at' => '06:00'], ['id' => 2, 'km' => 3.6, 'seconds' => 1440, 'started_at' => '17:30']]];
+    $split = ['km' => 8.1, 'runs' => [['id' => 1, 'km' => 4.5, 'seconds' => 1800, 'started_at' => '06:00', 'avg_hr' => null], ['id' => 2, 'km' => 3.6, 'seconds' => 1440, 'started_at' => '17:30', 'avg_hr' => null]]];
 
     $payload = PlanRenderer::dayPayload($session, Carbon::parse('2026-08-12'), null, [], null, false, 20.0, 1.0, INF, RENDERER_PACES, PlannedSessionStatus::Partial, $split);
 
@@ -983,7 +1004,7 @@ it('sessionDistanceKm falls back to the volume-scaled budget when no segment car
 
     expect(SegmentGenerator::segmentSumKm($segments))->toBeNull();
 
-    $budget = SegmentGenerator::coreKmFor(SessionType::Interval, false, 20.0, 1.0, INF, null);
+    $budget = SegmentGenerator::coreKmFor(SessionType::Interval, false, 20.0, 1.0, INF);
 
     expect(PlanRenderer::sessionDistanceKm($segments, SessionType::Interval, false, 20.0, 1.0, INF, null))
         ->toBe($budget)
@@ -1109,7 +1130,7 @@ it('dayPayload quotes a stopped run on elapsed pace', function (): void {
 
     expect($payload['ran_pace_sec_per_km'])->toBe(360)
         ->and($payload['ran_pace_sec_per_km'])->toBe((int) $detail->paceSecPerKm())
-        ->and($payload['activities'][0]['seconds'])->toBe(3_600);
+        ->and(data_get($payload, 'activities.0.seconds'))->toBe(3_600);
 });
 
 /**
@@ -1188,6 +1209,11 @@ it("dayPayload computes an Easy day's ran pace from the whole day, not one run",
     expect($payload['ran_pace_sec_per_km'])->toBe(340);
 });
 
+/**
+ * @param  array<string, mixed>  $attributes
+ * @param  array{km: float, runs: list<array{id: int, km: float, seconds: int|null, started_at: string, avg_hr: int|null}>}|null  $activity
+ * @return array<string, mixed>
+ */
 function resultNotePayload(Carbon $today, array $attributes, PlannedSessionStatus $status = PlannedSessionStatus::Overreached, ?array $activity = null): array
 {
     return PlanRenderer::dayPayload(
@@ -1258,11 +1284,11 @@ it('dayPayload explains a run against the advice shown in the grading\'s own wor
 
 it('dayPayload quotes the card\'s elapsed pace in the result note, naming the hill-adjusted one only when it differs', function (): void {
     $today = Carbon::parse('2026-08-10');
-    $render = fn (int $elapsedTime): ?string => resultNotePayload(
+    $render = fn (int $elapsedTime): mixed => resultNotePayload(
         $today,
         ['compliance_score' => 103, 'intent_evidence' => ['basis' => 'pace', 'pace_sec' => 380, 'ceiling_pace_sec' => 408]],
         PlannedSessionStatus::Overreached,
-        ['km' => 8.0, 'runs' => [['id' => 1, 'km' => 8.0, 'seconds' => $elapsedTime, 'started_at' => '06:00']]],
+        ['km' => 8.0, 'runs' => [['id' => 1, 'km' => 8.0, 'seconds' => $elapsedTime, 'started_at' => '06:00', 'avg_hr' => null]]],
     )['result_note'];
 
     expect($render(3_056))->toBe('it ran harder than the easy effort the day asked for; averaged 6:22/km, quicker than the easy limit of 6:48/km.')
@@ -1275,8 +1301,8 @@ it('dayPayload paces a tempo day eased to easy over every run the judge graded, 
         ['session_type' => SessionType::Tempo, 'compliance_score' => 103, 'intent_evidence' => ['basis' => 'pace', 'pace_sec' => 384, 'ceiling_pace_sec' => 408, 'effective_type' => 'easy']],
         PlannedSessionStatus::Overreached,
         ['km' => 10.0, 'runs' => [
-            ['id' => 1, 'km' => 8.0, 'seconds' => 2_880, 'started_at' => '06:00'],
-            ['id' => 2, 'km' => 2.0, 'seconds' => 960, 'started_at' => '17:00'],
+            ['id' => 1, 'km' => 8.0, 'seconds' => 2_880, 'started_at' => '06:00', 'avg_hr' => null],
+            ['id' => 2, 'km' => 2.0, 'seconds' => 960, 'started_at' => '17:00', 'avg_hr' => null],
         ]],
     );
 
@@ -1388,7 +1414,7 @@ it('dayPayload names the race a goal-pace session rehearses, at the goal pace, o
         'prescription_race_context' => ['distance_m' => 42_195, 'goal_pace_sec_per_km' => 300, 'kind' => 'marathon'],
     ]);
     $payload = fn (PlannedSession $s): array => PlanRenderer::dayPayload($s, Carbon::parse('2026-08-10'), null, [], 10_000.0, false, 20.0, 1.0, INF, RENDERER_PACES, PlannedSessionStatus::Planned);
-    $work = array_values(array_filter($payload($goalPace)['segments'], static fn (array $segment): bool => $segment['pace_label'] !== 'easy'));
+    $work = array_values(array_filter(arrayOf($payload($goalPace)['segments']), static fn (mixed $segment): bool => data_get($segment, 'pace_label') !== 'easy'));
 
     expect($payload($goalPace)['goal_pace'])->toBe('10k')
         ->and(array_unique(array_column($work, 'key')))->toBe(['interval'])
@@ -1478,7 +1504,7 @@ it('dayPayload names a time trial, sized as the trial alone at the aim, only whi
     expect($payload['time_trial'])->toBe(['distance_m' => 5_000, 'aim_time_sec' => 1_500])
         ->and($payload['goal_pace'])->toBeNull()
         ->and($payload['distance_km'])->toBe(5.0)
-        ->and(array_column($payload['segments'], 'key'))->toBe(['main'])
+        ->and(array_column(arrayOf($payload['segments']), 'key'))->toBe(['main'])
         ->and(PlanRenderer::timeTrialOf($trial, SessionType::Easy))->toBeNull()
         ->and(PlanRenderer::timeTrialForNarration(['distance_m' => 10_000, 'aim_time_sec' => 3_125]))->toBe(['distance_km' => 10.0, 'aim_time' => '52:05']);
 });
@@ -1495,7 +1521,7 @@ it('dayPayload marks goal-pace work at an unsupported goal\'s stepping-stone pac
     ]);
     $payload = fn (PlannedSession $s): array => PlanRenderer::dayPayload($s, Carbon::parse('2026-08-10'), null, [], 10_000.0, false, 20.0, 1.0, INF, RENDERER_PACES, PlannedSessionStatus::Planned);
     $steppingStone = $payload($session('unsupported'));
-    $work = array_values(array_filter($steppingStone['segments'], static fn (array $segment): bool => $segment['pace_label'] !== 'easy'));
+    $work = array_values(array_filter(arrayOf($steppingStone['segments']), static fn (mixed $segment): bool => data_get($segment, 'pace_label') !== 'easy'));
 
     expect($steppingStone['goal_pace'])->toBe('10k')
         ->and($steppingStone['stepping_stone'])->toBeTrue()

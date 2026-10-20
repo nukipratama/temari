@@ -14,6 +14,7 @@ use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\Run\Plan\CurrentWeekPlanBuilder;
 use App\Services\Run\Plan\Periodizer;
+use App\Support\Numeric;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 
@@ -92,19 +93,20 @@ function longRunSeries(User $user, int $weeks): array
         Carbon::setTestNow($monday->copy()->setTime(8, 0));
         $periodizer->regenerate($user, $monday->copy());
 
-        $week = $currentWeek->forUser($user, $monday->copy());
+        $week = nonNull($currentWeek->forUser($user, $monday->copy()));
         $longDay = collect($week['days'])->firstWhere('session_type', SessionType::Long->value);
 
         $series[] = [
             'phase' => PlannedSession::query()
                 ->where('user_id', $user->id)
                 ->where('date', $monday->toDateString())
-                ->value('phase'),
-            'long_km' => (float) ($longDay['distance_km'] ?? 0.0),
+                ->firstOrFail()
+                ->phase,
+            'long_km' => Numeric::float($longDay['distance_km'] ?? 0.0),
             'week_km' => $week['planned_km_this_week'],
         ];
 
-        logFloorWeek($user, $monday->copy()->addDays(6)->toDateString(), 26.0, max(9.0, (float) ($longDay['distance_km'] ?? 0.0)));
+        logFloorWeek($user, $monday->copy()->addDays(6)->toDateString(), 26.0, max(9.0, Numeric::float($longDay['distance_km'] ?? 0.0)));
     }
 
     return $series;
@@ -125,7 +127,7 @@ it('works the long run up to the race distance before the taper', function (): v
 
     $beforeTaper = array_filter($series, fn (array $week): bool => $week['phase'] !== PlanPhase::Taper);
 
-    expect(max(array_column($beforeTaper, 'long_km')))->toBeGreaterThanOrEqual(10.0);
+    expect(nonNull(collect(array_column($beforeTaper, 'long_km'))->max()))->toBeGreaterThanOrEqual(10.0);
 });
 
 it('reaches it by ramping rather than by jumping there in week one', function (): void {
@@ -134,7 +136,7 @@ it('reaches it by ramping rather than by jumping there in week one', function ()
     // 9.1 km was the un-floored share of this athlete's week. The floor lifts
     // the arc's STARTING long run only as far as the build ramp needs to carry
     // it to the 12 km readiness distance, not to 12 km outright.
-    expect($series[0]['long_km'])->toBeLessThan(max(array_column($series, 'long_km')))
+    expect($series[0]['long_km'])->toBeLessThan(nonNull(collect(array_column($series, 'long_km'))->max()))
         ->and($series[0]['long_km'])->toBeGreaterThan(9.1);
 });
 
@@ -149,5 +151,5 @@ it('keeps a four-run week\'s long run within half the prescribed week', function
 it('leaves a marathon goal on its own coaching, well under race distance', function (): void {
     $series = longRunSeries(longRunFloorAthlete(goalDistanceM: 42_195), 8);
 
-    expect(max(array_column($series, 'long_km')))->toBeLessThan(42.195);
+    expect(nonNull(collect(array_column($series, 'long_km'))->max()))->toBeLessThan(42.195);
 });

@@ -136,13 +136,10 @@ abstract class AnalyzeRowJob extends AnalyzeBaseJob
 
     /**
      * A digest of the material this narration describes, stamped on the row so a
-     * scheduled re-narration can tell an unchanged subject from a changed one and
-     * skip the bill. Null (the default) means the type does not track changes and
-     * its caller decides when to re-narrate.
-     *
-     * Deliberately not written on the rule-based paths: a filler line is not a
-     * narration of the material, so a capped or content-filtered day stays
-     * eligible for a real one.
+     * scheduled re-narration can skip the bill for an unchanged subject. Null
+     * (the default) means the type does not track changes and its caller decides
+     * when to re-narrate. Not written on the rule-based paths: a filler line is
+     * not a narration of the material.
      */
     protected function fingerprintFor(Analysis $row): ?string
     {

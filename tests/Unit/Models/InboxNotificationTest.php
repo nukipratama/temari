@@ -81,12 +81,12 @@ it('marks a row read once and keeps the first timestamp', function (): void {
     $row = InboxNotification::factory()->create();
 
     $row->markRead();
-    $first = $row->read_at;
+    $first = nonNull($row->read_at);
 
     $this->travel(5)->minutes();
     $row->markRead();
 
-    expect($row->fresh()->read_at->equalTo($first))->toBeTrue();
+    expect(nonNull($row->fresh())->read_at?->equalTo($first))->toBeTrue();
 });
 
 it('busts the unread-count shared prop on write and on read', function (): void {
@@ -109,8 +109,8 @@ it('marks every unread row for the user read in one call', function (): void {
 
     InboxNotification::markAllReadFor($user);
 
-    $rows->each(fn (InboxNotification $row) => expect($row->fresh()->read_at)->not->toBeNull());
-    expect($other->fresh()->read_at)->toBeNull();
+    $rows->each(fn (InboxNotification $row) => expect($row->refresh()->read_at)->not->toBeNull());
+    expect($other->refresh()->read_at)->toBeNull();
 });
 
 it('busts the unread-count shared prop on mark-all-read', function (): void {

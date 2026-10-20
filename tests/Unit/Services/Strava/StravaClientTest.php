@@ -152,7 +152,7 @@ it('skips the refresh POST when another worker already refreshed under the lock'
     // Simulate a concurrent worker that grabbed the lock first and refreshed:
     // the DB row is now fresh while our in-memory model still looks expired.
     // Use a separate model instance so encrypted casts are applied on write.
-    StravaConnection::query()->find($connection->id)->update([
+    StravaConnection::query()->findOrFail($connection->id)->update([
         'access_token' => 'refreshed-by-other-worker',
         'token_expires_at' => Carbon::now()->addHours(6),
     ]);
@@ -875,8 +875,8 @@ it('does not release a newer grant after an old refresh response arrives', funct
     $refreshedGrant = $grant->fresh();
 
     expect($result->status)->toBe(StravaGrantReleaseStatus::Stale)
-        ->and($refreshedGrant->credential_version)->toBe(5)
-        ->and($refreshedGrant->refresh_token)->toBe('oauth-refresh');
+        ->and($refreshedGrant?->credential_version)->toBe(5)
+        ->and($refreshedGrant?->refresh_token)->toBe('oauth-refresh');
 
     Http::assertNotSent(fn (Request $request): bool => $request->url() === 'https://www.strava.com/oauth/deauthorize');
 });
@@ -945,12 +945,14 @@ it('bounds the grant release refresh and deauthorize calls with the connect and 
 it('fits a refresh-lock wait, a refresh and two worst-case reads inside the default worker timeout', function (): void {
     $worstCase = StravaClient::REFRESH_LOCK_WAIT_SECONDS + 3 * StravaClient::HTTP_TIMEOUT_SECONDS;
 
-    expect($worstCase)->toBeLessThan(config('horizon.defaults.supervisor-1.timeout'));
+    expect($worstCase)->toBeLessThan(config()->integer('horizon.defaults.supervisor-1.timeout'));
 });
 
 it('counts a bucket the cache store hands back as a string, as Redis does', function (): void {
     Carbon::setTestNow(Carbon::parse('2026-10-06 03:05:00', 'UTC'));
-    Cache::store(config('cache.limiter'))->put(StravaClient::rateLimitKey('15min'), '5', 600);
+    $limiter = config('cache.limiter');
+    assert($limiter === null || is_string($limiter));
+    Cache::store($limiter)->put(StravaClient::rateLimitKey('15min'), '5', 600);
 
     expect(new StravaClient()->rateLimitRemaining()['15min'])->toBe(195);
 });

@@ -35,7 +35,7 @@ it('re-arms and re-dispatches every dead-lettered block, then runs self-heal', f
         ->expectsOutputToContain('Resumed')
         ->assertSuccessful();
 
-    $fresh = $row->fresh();
+    $fresh = $row->refresh();
     expect($fresh->attempts)->toBe(0)
         ->and($fresh->status)->toBe(AnalysisStatus::Queued);
     Bus::assertDispatched(AnalyzeWeeklyRecapJob::class);
@@ -49,7 +49,7 @@ it('never re-arms a demo user (no auto-bill on the shared demo account)', functi
         ->expectsOutputToContain('Re-armed 0 dead-lettered blocks.')
         ->assertSuccessful();
 
-    $fresh = $demoRow->fresh();
+    $fresh = $demoRow->refresh();
     expect($fresh->attempts)->toBe(Analysis::MAX_SELF_HEAL_ATTEMPTS)
         ->and($fresh->status)->toBe(AnalysisStatus::Failed);
 });
@@ -71,5 +71,5 @@ it('leaves under-budget Failed blocks for self-heal (only dead-letters are re-ar
 
     // Still attempts=1: the recover re-arm only touches dead-lettered rows; the
     // self-heal sweep resumes it separately without resetting the budget.
-    expect($underBudget->fresh()->attempts)->toBe(1);
+    expect($underBudget->refresh()->attempts)->toBe(1);
 });

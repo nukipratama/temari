@@ -10,24 +10,24 @@ use Illuminate\Support\Carbon;
 
 uses(RefreshDatabase::class);
 
-beforeEach(function (): void {
-    $this->projector = new RiegelProjector();
-});
+function riegelProjector(): RiegelProjector
+{
+    return new RiegelProjector();
+}
 
 it('returns null when the athlete has no PR to anchor a projection from', function (): void {
     $user = User::factory()->create();
 
-    expect($this->projector->project($user, 10_000.0))->toBeNull();
+    expect(riegelProjector()->project($user, 10_000.0))->toBeNull();
 });
 
 it('falls back to the default 1.06 exponent with a wide range for a single PR', function (): void {
     $user = User::factory()->create();
     PersonalRecord::factory()->for($user)->create(['category' => '5km', 'value_sec' => 1_500.0, 'set_at' => now()]);
 
-    $result = $this->projector->project($user, 10_000.0);
+    $result = nonNull(riegelProjector()->project($user, 10_000.0));
 
-    expect($result)->not->toBeNull()
-        ->and($result['sample_size'])->toBe(1)
+    expect($result['sample_size'])->toBe(1)
         ->and($result['exponent'])->toBe(1.06)
         ->and($result['confidence'])->toBe('low')
         ->and($result['window'])->toBe('all')
@@ -47,10 +47,9 @@ it('fits an exponent from 3 realistic PRs and projects a plausible marathon time
     PersonalRecord::factory()->for($user)->create(['category' => '10km', 'value_sec' => 3_120.0, 'set_at' => now()]);
     PersonalRecord::factory()->for($user)->create(['category' => 'half_marathon', 'value_sec' => 6_900.0, 'set_at' => now()]);
 
-    $result = $this->projector->project($user, 42_195.0);
+    $result = nonNull(riegelProjector()->project($user, 42_195.0));
 
-    expect($result)->not->toBeNull()
-        ->and($result['sample_size'])->toBe(3)
+    expect($result['sample_size'])->toBe(3)
         ->and($result['confidence'])->toBe('medium');
 
     // Plausible range: slower than exactly double the half-marathon time (a
@@ -66,14 +65,14 @@ it('fits an exponent from 3 realistic PRs and projects a plausible marathon time
 it('narrows the uncertainty band as the PR sample grows', function (): void {
     $thin = User::factory()->create();
     PersonalRecord::factory()->for($thin)->create(['category' => '5km', 'value_sec' => 1_500.0, 'set_at' => now()]);
-    $thinResult = $this->projector->project($thin, 10_000.0);
+    $thinResult = nonNull(riegelProjector()->project($thin, 10_000.0));
 
     $rich = User::factory()->create();
     PersonalRecord::factory()->for($rich)->create(['category' => '5km', 'value_sec' => 1_500.0, 'set_at' => now()]);
     PersonalRecord::factory()->for($rich)->create(['category' => '10km', 'value_sec' => 3_120.0, 'set_at' => now()]);
     PersonalRecord::factory()->for($rich)->create(['category' => '15km', 'value_sec' => 4_800.0, 'set_at' => now()]);
     PersonalRecord::factory()->for($rich)->create(['category' => 'half_marathon', 'value_sec' => 6_900.0, 'set_at' => now()]);
-    $richResult = $this->projector->project($rich, 42_195.0);
+    $richResult = nonNull(riegelProjector()->project($rich, 42_195.0));
 
     $thinFraction = ($thinResult['high_sec'] - $thinResult['predicted_sec']) / $thinResult['predicted_sec'];
     $richFraction = ($richResult['high_sec'] - $richResult['predicted_sec']) / $richResult['predicted_sec'];
@@ -88,13 +87,13 @@ it('clamps a pathological 2-point fit, never below an exponent of 1.0', function
     PersonalRecord::factory()->for($steep)->create(['category' => '10km', 'value_sec' => 3_000.0, 'set_at' => now()]);
     PersonalRecord::factory()->for($steep)->create(['category' => '15km', 'value_sec' => 6_000.0, 'set_at' => now()]);
 
-    expect($this->projector->project($steep, 20_000.0)['exponent'])->toBe(1.3);
+    expect(nonNull(riegelProjector()->project($steep, 20_000.0))['exponent'])->toBe(1.3);
 
     $flat = User::factory()->create();
     PersonalRecord::factory()->for($flat)->create(['category' => '10km', 'value_sec' => 3_000.0, 'set_at' => now()]);
     PersonalRecord::factory()->for($flat)->create(['category' => '15km', 'value_sec' => 4_200.0, 'set_at' => now()]);
 
-    expect($this->projector->project($flat, 20_000.0)['exponent'])->toBe(1.0);
+    expect(nonNull(riegelProjector()->project($flat, 20_000.0))['exponent'])->toBe(1.0);
 });
 
 it('converts an effort-window PR (pace, not elapsed time) into a (distance, time) pair', function (): void {
@@ -106,7 +105,7 @@ it('converts an effort-window PR (pace, not elapsed time) into a (distance, time
     // Projecting onto that exact derived distance should recover the window's
     // own elapsed time (300s), since the distance ratio is 1 regardless of
     // exponent.
-    $result = $this->projector->project($user, 1_250.0);
+    $result = nonNull(riegelProjector()->project($user, 1_250.0));
 
     expect($result['predicted_sec'])->toEqualWithDelta(300.0, 0.5)
         ->and($result['sample_size'])->toBe(1);
@@ -116,14 +115,14 @@ it('skips a PR with a zero or negative value_sec rather than dividing by it', fu
     $user = User::factory()->create();
     PersonalRecord::factory()->for($user)->create(['category' => '5km', 'value_sec' => 0.0, 'set_at' => now()]);
 
-    expect($this->projector->project($user, 10_000.0))->toBeNull();
+    expect(riegelProjector()->project($user, 10_000.0))->toBeNull();
 });
 
 it('fits only the records set inside the recent window, so a finished block stops steering the projection', function (): void {
     Carbon::setTestNow('2026-09-20 08:00:00');
     $user = riegelAthleteWithTwoBlocks();
 
-    $result = $this->projector->project($user, 10_000.0);
+    $result = nonNull(riegelProjector()->project($user, 10_000.0));
 
     expect($result['window'])->toBe('recent')
         ->and($result['sample_size'])->toBe(2)
@@ -137,7 +136,7 @@ it('falls back to the whole record when the recent window leaves fewer than two 
     Carbon::setTestNow('2027-01-15 08:00:00');
     $user = riegelAthleteWithTwoBlocks();
 
-    $result = $this->projector->project($user, 10_000.0);
+    $result = nonNull(riegelProjector()->project($user, 10_000.0));
 
     expect($result['window'])->toBe('all')
         ->and($result['sample_size'])->toBe(5)
@@ -178,7 +177,7 @@ it('leaves out an effort shorter than three and a half minutes', function (): vo
     PersonalRecord::factory()->for($user)->create(['category' => '1km', 'value_sec' => 200.0, 'set_at' => now()]);
     PersonalRecord::factory()->for($user)->create(['category' => '5km', 'value_sec' => 1_300.0, 'set_at' => now()]);
 
-    $projection = $this->projector->project($user, 10_000.0);
+    $projection = nonNull(riegelProjector()->project($user, 10_000.0));
 
     expect($projection['sample_size'])->toBe(1)
         ->and($projection['exponent'])->toBe(1.06);
