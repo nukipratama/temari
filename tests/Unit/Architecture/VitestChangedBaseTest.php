@@ -110,3 +110,96 @@ it('fails loudly when no base can be resolved', function (): void {
         ->and($process->getOutput())->toBe('')
         ->and($process->getErrorOutput())->toContain('no base commit');
 })->group('structure');
+
+/**
+ * Adds an `origin/epic/x` ref one commit past `origin/main` and a branch commit
+ * on top of it, so the three possible bases (main, epic, none) are distinct commits.
+ *
+ * @param  array{dir: string, base: string, head: string}  $repo
+ * @return array{epic: string}
+ */
+function addEpicBranch(array $repo): array
+{
+    $git = fn (string ...$args) => new Process(['git', ...$args], $repo['dir'], withoutAmbientGitDir())->mustRun();
+
+    $git('update-ref', 'refs/remotes/origin/epic/x', $repo['head']);
+    $git('-c', 'user.email=test@example.com', '-c', 'user.name=Test', 'commit', '--allow-empty', '-q', '-m', 'slice');
+
+    return ['epic' => $repo['head']];
+}
+
+/**
+ * @param  array<string, string>  $env
+ */
+function runBaseScript(string $dir, array $env = []): Process
+{
+    installBaseScript($dir);
+    $process = new Process(['sh', "$dir/scripts/vitest-changed-base.sh"], $dir, withoutAmbientGitDir() + $env);
+    $process->run();
+
+    return $process;
+}
+
+it('diffs against the ref in GATE_BASE, ahead of every other source', function (): void {
+    $repo = makeRepoWithOriginMain();
+    $epic = addEpicBranch($repo)['epic'];
+
+    try {
+        $branch = trim(new Process(['git', 'branch', '--show-current'], $repo['dir'], withoutAmbientGitDir())->mustRun()->getOutput());
+        new Process(['git', 'config', "branch.$branch.gh-merge-base", 'main'], $repo['dir'], withoutAmbientGitDir())->mustRun();
+        $process = runBaseScript($repo['dir'], ['GATE_BASE' => 'origin/epic/x']);
+
+        expect($process->getExitCode())->toBe(0, $process->getErrorOutput())
+            ->and(trim($process->getOutput()))->toBe($epic)
+            ->and($process->getErrorOutput())->toContain('vitest --changed base: GATE_BASE=origin/epic/x');
+    } finally {
+        exec('rm -rf '.escapeshellarg($repo['dir']));
+    }
+})->group('structure');
+
+it('fails rather than falling back to main when GATE_BASE does not resolve', function (): void {
+    $repo = makeRepoWithOriginMain();
+
+    try {
+        $process = runBaseScript($repo['dir'], ['GATE_BASE' => 'origin/no-such-branch']);
+
+        expect($process->getExitCode())->not->toBe(0)
+            ->and($process->getOutput())->toBe('')
+            ->and($process->getErrorOutput())->toContain('GATE_BASE=origin/no-such-branch');
+    } finally {
+        exec('rm -rf '.escapeshellarg($repo['dir']));
+    }
+})->group('structure');
+
+it("follows the branch's recorded PR base when the remote ref is present locally", function (): void {
+    $repo = makeRepoWithOriginMain();
+    $epic = addEpicBranch($repo)['epic'];
+    $branch = trim(new Process(['git', 'branch', '--show-current'], $repo['dir'], withoutAmbientGitDir())->mustRun()->getOutput());
+
+    try {
+        new Process(['git', 'config', "branch.$branch.gh-merge-base", 'epic/x'], $repo['dir'], withoutAmbientGitDir())->mustRun();
+        $process = runBaseScript($repo['dir']);
+
+        expect($process->getExitCode())->toBe(0, $process->getErrorOutput())
+            ->and(trim($process->getOutput()))->toBe($epic)
+            ->and($process->getErrorOutput())->toContain('vitest --changed base: origin/epic/x');
+    } finally {
+        exec('rm -rf '.escapeshellarg($repo['dir']));
+    }
+})->group('structure');
+
+it('falls back to origin/main when the recorded PR base is not fetched locally', function (): void {
+    $repo = makeRepoWithOriginMain();
+    $branch = trim(new Process(['git', 'branch', '--show-current'], $repo['dir'], withoutAmbientGitDir())->mustRun()->getOutput());
+
+    try {
+        new Process(['git', 'config', "branch.$branch.gh-merge-base", 'epic/unfetched'], $repo['dir'], withoutAmbientGitDir())->mustRun();
+        $process = runBaseScript($repo['dir']);
+
+        expect($process->getExitCode())->toBe(0, $process->getErrorOutput())
+            ->and(trim($process->getOutput()))->toBe($repo['base'])
+            ->and($process->getErrorOutput())->toContain('vitest --changed base: origin/main');
+    } finally {
+        exec('rm -rf '.escapeshellarg($repo['dir']));
+    }
+})->group('structure');
