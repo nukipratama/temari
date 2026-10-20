@@ -187,6 +187,12 @@ it('throws unreachable on a server error', function (): void {
     new IntervalsIcuClient()->createEvent(clientConnection(), '2026-10-17', clientWorkout());
 })->throws(IntervalsIcuUnreachableException::class);
 
+it('throws unreachable when a create answers without an event id', function (): void {
+    Http::fake(['intervals.icu/*' => Http::response([])]);
+
+    new IntervalsIcuClient()->createEvent(clientConnection(), '2026-10-17', clientWorkout());
+})->throws(IntervalsIcuUnreachableException::class);
+
 it('throws unreachable on a dropped connection', function (): void {
     Http::fake(['intervals.icu/*' => fn () => throw new ConnectionException('timed out')]);
 

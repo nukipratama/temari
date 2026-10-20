@@ -28,8 +28,7 @@ beforeEach(function (): void {
     Http::fake(fn (Request $request) => match (true) {
         intervalsIcuState()['status'] !== 200 => Http::response('', intervalsIcuState()['status']),
         $request->method() === 'GET' => Http::response(['sportSettings' => [['types' => ['Run'], 'lthr' => intervalsIcuState()['threshold']]]]),
-        $request->method() === 'POST' && str_contains($request->url(), '/events/bulk') => Http::response([['id' => intervalsIcuState()['id']]]),
-        $request->method() === 'POST' => Http::response(['id' => intervalsIcuState()['id']]),
+        $request->method() === 'POST' => Http::response([['id' => intervalsIcuState()['id']]]),
         $request->method() === 'PUT' => Http::response('', intervalsIcuState()['put']),
         default => Http::response([]),
     });
