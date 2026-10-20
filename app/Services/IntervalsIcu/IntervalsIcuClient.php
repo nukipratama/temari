@@ -64,14 +64,21 @@ class IntervalsIcuClient
         return null;
     }
 
-    /** @return string the event's id */
+    /**
+     * Upserts on an `external_id` per athlete and day through the bulk
+     * endpoint, the only create intervals.icu deduplicates.
+     *
+     * @return string the event's id
+     */
     public function createEvent(IntervalsIcuConnection $connection, string $date, IntervalsIcuWorkout $workout): string
     {
-        $event = [...self::event($date, $workout), 'uid' => 'temari-'.$connection->user_id.'-'.$date];
-        $response = $this->call($connection, fn (PendingRequest $request): Response => $request->post(self::athletePath($connection).'/events?upsertOnUid=true', $event));
+        $event = [...self::event($date, $workout), 'external_id' => 'temari-'.$connection->user_id.'-'.$date];
+        $response = $this->call($connection, fn (PendingRequest $request): Response => $request->post(self::athletePath($connection).'/events/bulk?upsert=true', [$event]));
         self::ensureSuccessful($response);
-        $id = $response->json('id');
-        assert(is_scalar($id));
+        $id = $response->json('0.id');
+        if (! is_int($id) && ! is_string($id)) {
+            throw new IntervalsIcuUnreachableException('intervals.icu answered without an event id');
+        }
 
         return (string) $id;
     }

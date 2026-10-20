@@ -28,7 +28,7 @@ beforeEach(function (): void {
     Http::fake(fn (Request $request) => match (true) {
         intervalsIcuState()['status'] !== 200 => Http::response('', intervalsIcuState()['status']),
         $request->method() === 'GET' => Http::response(['sportSettings' => [['types' => ['Run'], 'lthr' => intervalsIcuState()['threshold']]]]),
-        $request->method() === 'POST' => Http::response(['id' => intervalsIcuState()['id']]),
+        $request->method() === 'POST' => Http::response([['id' => intervalsIcuState()['id']]]),
         $request->method() === 'PUT' => Http::response('', intervalsIcuState()['put']),
         default => Http::response([]),
     });
@@ -85,14 +85,15 @@ it("sends today's run once and keeps its id", function (): void {
 
     $connection = runSync(syncedAthlete());
 
-    expect(writesSent())->toBe(['POST /athlete/i42/events?upsertOnUid=true'])
+    expect(writesSent())->toBe(['POST /athlete/i42/events/bulk?upsert=true'])
         ->and($connection->event_id)->toBe('501')
         ->and($connection->synced_on?->toDateString())->toBe('2026-10-14')
         ->and($connection->sync_status)->toBe(IntervalsIcuSyncStatus::Sent)
         ->and($connection->payload_hash)->toHaveLength(64);
     Http::assertSent(fn (Request $request): bool => $request->method() === 'POST'
-        && $request['start_date_local'] === '2026-10-14T00:00:00'
-        && str_contains(Arr::string($request->data(), 'description'), '% LTHR'));
+        && $request->data()[0]['start_date_local'] === '2026-10-14T00:00:00'
+        && $request->data()[0]['external_id'] === 'temari-'.$connection->user_id.'-2026-10-14'
+        && str_contains(Arr::string($request->data()[0], 'description'), '% LTHR'));
 });
 
 it('sends nothing when today is unchanged', function (): void {
@@ -120,7 +121,7 @@ it('sends a new event when the athlete deleted the one it would update', functio
 
     $connection = runSync($connection);
 
-    expect(writesSent())->toBe(['PUT /athlete/i42/events/501', 'POST /athlete/i42/events?upsertOnUid=true'])
+    expect(writesSent())->toBe(['PUT /athlete/i42/events/501', 'POST /athlete/i42/events/bulk?upsert=true'])
         ->and($connection->event_id)->toBe('777');
 });
 
@@ -164,7 +165,7 @@ it("leaves yesterday's event and sends a new one for today", function (): void {
 
     $connection = runSync($connection);
 
-    expect(writesSent())->toBe(['POST /athlete/i42/events?upsertOnUid=true'])
+    expect(writesSent())->toBe(['POST /athlete/i42/events/bulk?upsert=true'])
         ->and($connection->event_id)->toBe('501');
 });
 
