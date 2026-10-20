@@ -473,5 +473,5 @@ it('sizes the prescription to date from the week rows and baseline its caller al
         ->and($queries)->toBe([])
         ->and(BriefingContext::prescribedKmToDate($user, $asOf, $rows, $doubled))->toBeGreaterThan($held)
         ->and($aheadOf(false))->toBe(BriefingContext::forUser($user, $asOf, ['monotony' => 1.0])->readinessAssessment['inputs']['ahead_of_plan_pct'])
-        ->and($aheadOf(true))->toBeLessThan(Numeric::float(nonNull($aheadOf(false))));
+        ->and($aheadOf(true))->toBeFloat()->toBeLessThan(Numeric::float(nonNull($aheadOf(false))));
 });
