@@ -26,6 +26,14 @@ it('returns to a safe `from` deep link after demo login', function (): void {
         ->assertRedirect(url('/activities/13'));
 });
 
+it('ignores an array `from` and lands on the dashboard after demo login', function (): void {
+    config()->set('demo.login_enabled', true);
+    User::factory()->demo()->create();
+
+    $this->post(route('auth.demo'), ['from' => ['x']])
+        ->assertRedirect(route('dashboard'));
+});
+
 it('aborts with 404 when the flag is off', function (): void {
     config()->set('demo.login_enabled', false);
     User::factory()->demo()->create();

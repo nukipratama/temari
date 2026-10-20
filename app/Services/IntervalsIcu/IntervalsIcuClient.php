@@ -64,10 +64,16 @@ class IntervalsIcuClient
         return null;
     }
 
-    /** @return string the new event's id */
+    /**
+     * Upserts on a `uid` fixed per athlete and day, so a retry after a create
+     * that landed but timed out updates that event instead of adding another.
+     *
+     * @return string the event's id
+     */
     public function createEvent(IntervalsIcuConnection $connection, string $date, IntervalsIcuWorkout $workout): string
     {
-        $response = $this->call($connection, fn (PendingRequest $request): Response => $request->post(self::athletePath($connection).'/events', self::event($date, $workout)));
+        $event = [...self::event($date, $workout), 'uid' => 'temari-'.$connection->user_id.'-'.$date];
+        $response = $this->call($connection, fn (PendingRequest $request): Response => $request->post(self::athletePath($connection).'/events?upsertOnUid=true', $event));
         self::ensureSuccessful($response);
         $id = $response->json('id');
         assert(is_scalar($id));

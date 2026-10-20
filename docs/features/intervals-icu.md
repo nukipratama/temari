@@ -58,7 +58,7 @@ Only today's run is ever sent (decision #2160): Huawei Health shows just the nex
 
 Every 15 minutes `intervals-icu:sync` queues one `SyncIntervalsIcuWorkoutJob` per non-demo athlete with a working connection, and connecting queues one straight away. The job runs `IntervalsIcuSync::sync()`, which builds today exactly as Today shows it (`CurrentWeekPlanBuilder`), maps it, and hashes the workout's name and description:
 
-- **first send of the day**: `POST` the event and keep its id (`event_id`, `synced_on`, `payload_hash` on the connection row);
+- **first send of the day**: `POST` the event and keep its id (`event_id`, `synced_on`, `payload_hash` on the connection row). The create upserts on a `uid` fixed per athlete and day (`upsertOnUid`), so a retry after a create that landed but timed out updates that event rather than adding a second (#2187);
 - **hash changed** (a clamp, a regenerated plan, a skipped rep): `PUT` the same event in place. If the athlete deleted it, a new one is created;
 - **unchanged**: no call at all, except that a day without paces reads the athlete's run threshold heart rate each time, so a threshold they change on intervals.icu is used on the next tick;
 - **today becomes a rest day, is skipped, or can't be sent**: the event is deleted. The watch may still hold a course it already received; that is accepted.
