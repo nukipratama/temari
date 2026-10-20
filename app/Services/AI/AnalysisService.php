@@ -188,8 +188,8 @@ class AnalysisService
 
     /**
      * Re-narrates the day's briefing after a plan edit moved a session onto or
-     * off that day, unless the briefing's Reread cooldown is still running: then
-     * the current briefing stays, so repeated moves never bill past it.
+     * off that day, unless a user-started narration of it opened the Reread
+     * cooldown: then the current briefing stays, so repeated moves never bill past it.
      */
     public function rebriefAfterPlanEdit(User $user, string $date): void
     {
@@ -377,12 +377,14 @@ class AnalysisService
             $row->setRawAttributes($current->getAttributes());
             $row->syncOriginal();
 
-            // Skipped under withoutDispatching (demo seed) so a freshly seeded demo
-            // stays instantly re-narratable on demand. afterCommit: AnalyzeGroupJob
-            // wraps several markDone() calls in one DB::transaction(), and the
-            // Redis-backed cooldown isn't rolled back by a transaction abort, so
-            // starting it eagerly could cool a row whose Done status never committed.
-            if (! $this->gate->dispatchSuppressed()) {
+            // Only a user-started narration opens the Reread cooldown. Skipped under
+            // withoutDispatching (demo seed) so a freshly seeded demo stays instantly
+            // re-narratable on demand.
+            // afterCommit: AnalyzeGroupJob wraps several markDone() calls in one
+            // DB::transaction(), and the Redis-backed cooldown isn't rolled back by a
+            // transaction abort, so starting it eagerly could cool a row whose Done
+            // status never committed.
+            if (! $this->gate->dispatchSuppressed() && $this->origin->current() === AnalysisOrigin::User) {
                 DB::afterCommit(fn () => $row->startCooldown());
             }
 

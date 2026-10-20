@@ -935,6 +935,7 @@ it('markDone records content and generated_at', function (): void {
         'analysis_type' => AnalysisType::BriefingMascotVoice,
         'discriminator' => '2026-05-18',
     ]);
+    app(NarrationOrigin::class)->set(AnalysisOrigin::User);
 
     analysisService()->markDone($row, 'final narrative', ServedBy::Llm);
 
@@ -2085,6 +2086,44 @@ it('rebriefs after a plan edit only once the briefing\'s Reread cooldown has run
             && $job->delay === AnalysisService::PLAN_EDIT_DELAY_SECONDS);
     }
 })->with(['cooled' => [false], 'cooling' => [true]]);
+
+it('rebriefs after a plan edit inside 15 minutes of a system narration of the briefing, but not of a user Reread', function (AnalysisOrigin $narratedBy, bool $rebriefs): void {
+    $user = User::factory()->create();
+    $briefing = Analysis::factory()->queued()->create([
+        'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
+        'subject_id' => $user->id,
+        'analysis_type' => AnalysisType::BriefingMascotVoice,
+        'discriminator' => '2026-05-18',
+    ]);
+    app(NarrationOrigin::class)->set($narratedBy);
+    analysisService()->markDone($briefing, 'easy run, 2.6 km.', ServedBy::Llm);
+
+    app(NarrationOrigin::class)->set(AnalysisOrigin::User);
+    analysisService()->rebriefAfterPlanEdit($user, '2026-05-18');
+
+    Bus::assertDispatchedTimes(AnalyzeBriefingMascotVoiceJob::class, $rebriefs ? 1 : 0);
+})->with([
+    'the 00:01 briefing' => [AnalysisOrigin::Scheduled, true],
+    'a user Reread' => [AnalysisOrigin::User, false],
+]);
+
+it('opens the Reread cooldown only after a user-started narration', function (AnalysisOrigin $origin, bool $cooling): void {
+    $row = Analysis::factory()->queued()->create([
+        'subject_type' => Activity::class,
+        'subject_id' => 1,
+        'analysis_type' => AnalysisType::PostRunSpeech,
+    ]);
+    app(NarrationOrigin::class)->set($origin);
+
+    analysisService()->markDone($row, 'story', ServedBy::Llm);
+
+    expect(nonNull($row->fresh())->cooldownRemaining() !== null)->toBe($cooling);
+})->with([
+    'ingest' => [AnalysisOrigin::Ingest, false],
+    'self-heal' => [AnalysisOrigin::Recovery, false],
+    'scheduled' => [AnalysisOrigin::Scheduled, false],
+    'user' => [AnalysisOrigin::User, true],
+]);
 
 it('rebriefs after a plan edit when no briefing was narrated yet', function (): void {
     $user = User::factory()->create();

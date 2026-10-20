@@ -5,12 +5,14 @@ declare(strict_types=1);
 use App\Enums\RaceChangeKind;
 use App\Enums\RaceIntent;
 use App\Enums\RaceOutcome;
+use App\Jobs\Run\CheckFitnessImprovementJob;
 use App\Models\RaceGoal;
 use App\Models\User;
 use App\Services\Run\Plan\RaceGoalService;
 use App\Services\Run\Plan\SeasonService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Validation\ValidationException;
 
 uses(RefreshDatabase::class);
@@ -192,4 +194,33 @@ it('never touches another athlete\'s event', function (): void {
 
     expect($other->refresh()->completed_at)->toBeNull()
         ->and($other->refresh()->outcome)->toBe(RaceOutcome::Pending);
+});
+
+it('re-checks fitness after a race change or cancellation, but not at onboarding or for the demo user', function (): void {
+    Queue::fake();
+    $switcher = User::factory()->create();
+    $canceller = User::factory()->create();
+    $demo = User::factory()->create(['is_demo' => true]);
+
+    raceGoalService()->createUnlessActive($switcher, submission());
+    raceGoalService()->createUnlessActive($canceller, submission());
+    expect(pushedJobs(CheckFitnessImprovementJob::class))->toHaveCount(0);
+
+    raceGoalService()->submit($switcher, submission(['distance_m' => 42_195]), RaceIntent::New);
+    raceGoalService()->cancel($canceller);
+    raceGoalService()->submit($demo, submission(), RaceIntent::New);
+
+    expect(pushedJobs(CheckFitnessImprovementJob::class)->map(fn (CheckFitnessImprovementJob $job): int => $job->userId)->all())
+        ->toBe([$switcher->id, $canceller->id]);
+});
+
+it('does not re-check fitness for a revision, which keeps the distance', function (): void {
+    $user = User::factory()->create();
+    raceGoalService()->createUnlessActive($user, submission());
+    $queue = Queue::fake();
+
+    raceGoalService()->submit($user, submission(['goal_time_sec' => 2_900]), RaceIntent::Update);
+    raceGoalService()->cancel(User::factory()->create());
+
+    expect($queue->pushed(CheckFitnessImprovementJob::class))->toHaveCount(0);
 });

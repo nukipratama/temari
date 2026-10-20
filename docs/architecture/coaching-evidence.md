@@ -31,7 +31,7 @@ code_refs:
   - resources/js/components/settings/HrZonesDisclosure.tsx
   - app/Services/Run/Metrics/FallOffExponent.php
   - app/Actions/Run/Metrics/ResolveHardEffortsAction.php
-  - app/Console/Commands/Run/FitnessNotifyImprovementCommand.php
+  - app/Services/Run/Metrics/FitnessImprovementChecker.php
   - resources/js/lib/raceGoal.ts
   - app/Services/Run/Plan/GoalPaceWork.php
   - app/Services/Run/Plan/TimeTrial.php
@@ -101,7 +101,7 @@ ADRs, feature notes and code docblocks cite a source here as `[[coaching-evidenc
 | The personal fall-off k is fitted within an 8-week cluster spanning at least 1.5× in distance, clamped to [1.06, 1.15], defaulting to 1.08 up to 10K, 1.10 to the half and 1.15 beyond | [FallOffExponent.php](app/Services/Run/Metrics/FallOffExponent.php) | heuristic | [[#BlytheKiraly2016]], [[#VickersVertosick2016]], [[#Riegel1981]] |
 | A recent training run of at least the race distance floors the supported time; it never sets one alone, and heart rate never becomes a time | [VdotEstimator.php](app/Services/Run/Metrics/VdotEstimator.php) | evidence-supported | [[#SmythMunizPumares2020]], [[#Hunter2023]], [[#MolinaGarcia2022]] |
 | A rise resting on unconfirmed records lifts the supported VDOT by at most 1.0 a week from the anchor's capture; confirmed rises and drops apply at once | [VdotEstimator.php](app/Services/Run/Metrics/VdotEstimator.php) | heuristic | — |
-| An improvement of at least 0.5 VDOT is noted at most once a week; the Race page and Trends name the effort behind the supported time, and never ask the athlete to vouch for a run | [FitnessNotifyImprovementCommand.php](app/Console/Commands/Run/FitnessNotifyImprovementCommand.php), [raceGoal.ts](resources/js/lib/raceGoal.ts) | product choice | — |
+| An improvement of at least 0.5 VDOT is noted at most once a week; the Race page and Trends name the effort behind the supported time, and never ask the athlete to vouch for a run | [FitnessImprovementChecker.php](app/Services/Run/Metrics/FitnessImprovementChecker.php), [raceGoal.ts](resources/js/lib/raceGoal.ts) | product choice | — |
 | A target backed by evidence covering under half the race distance is `low_evidence`, and the prescribed race time is the slower of target and supported | [RaceAmbitionAssessor.php](app/Services/Run/Plan/RaceAmbitionAssessor.php), [RaceAmbition.php](app/Services/Run/Plan/RaceAmbition.php) | evidence-supported | [[#VickersVertosick2016]], [[#Keogh2019]], [[#OficialCasado2025]], [[#BlytheKiraly2016]], [[#Riegel1981]] |
 | The 3% and 6% ambition bands against supported race time | [RaceAmbitionAssessor.php](app/Services/Run/Plan/RaceAmbitionAssessor.php) | heuristic | — |
 | A Riegel projection slower than the goal adds no quality session; the projection is display only, with its fitted exponent floored at 1.0 and efforts under 3.5 min excluded | [PlanAdapter.php](app/Services/Run/Plan/PlanAdapter.php), [RiegelProjector.php](app/Services/Run/Metrics/RiegelProjector.php) | evidence-supported | [[#Riegel1981]], [[#BlytheKiraly2016]], [[#VickersVertosick2016]] |

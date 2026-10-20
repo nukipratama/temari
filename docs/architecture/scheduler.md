@@ -87,10 +87,10 @@ despite that.
 | `trend:snapshot-daily` | daily 03:45 | 55 (unchanged) | yes | queues durable closed-date recovery in 365-day chunks; `--days=N` remains the focused mode | scheduled recovery advances each user's cursor through yesterday; ingest repairs backdated ranges; each row also records the supported race time for the race active that day ([[supported-time-history-from-daily-trend-snapshots]]) |
 | `race:remind` | hourly 18:00-21:00, every tick after the first send a no-op | 15 | yes | one race-goal sweep, same shape and cost as `streak:remind` | not measured — added after this pass; the sweep is one indexed `race_date` query plus one notify per athlete racing tomorrow |
 | `race:ask-outcome` | hourly 09:00-21:00, every tick after the first ask a no-op | 15 | yes | one indexed sweep of races dated yesterday with a pending outcome, one notify each | not measured — added with CR-06; same shape and cost as `race:remind` |
-| `plan:settle-time-trials` | daily 09:05 | 15 | yes | one indexed sweep of the last week's unsettled time-trial rows for non-demo athletes, at most one evidence write or one notify each; a settled row is never selected again | not measured — added with the time trials (#1808) |
-| `fitness:notify-improvement` | daily 10:00 | 30 | yes | one estimate per non-demo athlete with a run analysed since their `users.fitness_checked_at` stamp (never-checked athletes included; a rise held back by the weekly interval is not stamped) against their last noted VDOT, one notify for each improvement of at least 0.5 a week apart; the first run only records baselines; one athlete's failure is reported and alerted once at the end, the rest are still checked | not measured — added with the supported-race-time model; the estimate reads each athlete's runs once |
+| `plan:settle-time-trials` | daily 09:05 | 15 | yes | one indexed sweep of the last week's unsettled time-trial rows for non-demo athletes, at most one evidence write or one notify each; a settled row is never selected again | not measured — added with the time trials |
+| `fitness:notify-improvement` | daily 10:00 | 30 | yes | one estimate per non-demo athlete with a run analysed since their `users.fitness_checked_at` stamp (never-checked athletes included; a rise held back by the weekly interval is not stamped), plus on Mondays every athlete not checked in the last 7 days, so a rise that matures over rest weeks is still noted; each due athlete is selected once per run, and the stamp keeps a same-day re-run from checking them again. A new or cancelled race goal checks the athlete at once through the queued `CheckFitnessImprovementJob`, so a run before the next scan is not folded into the new distance's baseline. Each estimate is compared against their last noted VDOT, one notify for each improvement of at least 0.5 a week apart; the first run only records baselines; one athlete's failure is reported and alerted once at the end, the rest are still checked | not measured — added with the supported-race-time model; the estimate reads each athlete's runs once |
 | `briefing:morning-push` | every 15 min | 14 | yes | one median-start-time sweep that keeps only the athletes due this tick, then loads their briefings and deliveries in one query each; sends only, generates nothing | not measured — added after this pass; the median is cached per athlete per day (`UsualRunTime`), so only the first tick to see a given athlete that day pays the indexed read, every later tick that day is a cache hit |
-| `intervals-icu:sync` | every 15 min | 14 | yes | one indexed read of working intervals.icu connections, one queued job per athlete; the HTTP calls run on the queue, not in the tick | not measured — added with the intervals.icu sync (#2160) |
+| `intervals-icu:sync` | every 15 min | 14 | yes | one indexed read of working intervals.icu connections, one queued job per athlete; the HTTP calls run on the queue, not in the tick | not measured — added with the intervals.icu sync |
 | `streak:remind` | Sat 18:00 | 15 | yes | one push-eligibility sweep; one athlete's failure is reported and alerted once at the end, the rest still get their nudge | ~2.0s — dispatched to 0 users |
 | `streak:settle` | hourly | 20 | yes | queues chronological per-user settlement for the athletes still behind or marked dirty; one query when nobody is | queues one settlement job per athlete behind |
 | `schedule:monday-check` | Mon 06:00 | 10 | yes | one indexed count plus the chain flags, at most one alert per week | not measured — added with the Monday catch-up |
@@ -172,8 +172,9 @@ once per incident through [MaintainerAlerter](../../app/Services/Ops/MaintainerA
 first failure pages. The entry then stays silent while it keeps failing, except for one repeat page
 per 24 hours, and its next success sends one "recovered" line. The open incident is a key on the
 `durable` store, so a cache eviction cannot re-page it. `athletesFailed()`, which a per-athlete
-loop (`ai:daily-briefing`, `plan:score-compliance`) sends when it skipped athletes after errors,
-follows the same rule per command: a run with no failed athlete closes the incident.
+loop (`ai:daily-briefing`, `plan:score-compliance`, `streak:remind`, `fitness:notify-improvement`)
+sends when it skipped athletes after errors, follows the same rule per command: a run with no
+failed athlete closes the incident.
 
 `schedule:check-late` runs every 5 minutes and pages once per incident for each entry that is
 late, with one "back on time" line when it is not
@@ -287,7 +288,7 @@ quiet hours deliver the resulting push at 04:00.
 
 Three cadences carried a comment explaining the *shape* of the choice but no cited number. Each is
 derived here from a number that already exists in the codebase. A fourth, `ai:trend-read 90d`'s
-every-3-days cadence, was derived the same way but retired with the 90d range itself (#967).
+every-3-days cadence, was derived the same way but retired with the 90d range itself.
 
 **`strava:sync-zones` — monthly.** HR zones are set from a Strava athlete's configured zones, which
 change only when the athlete deliberately edits them in Strava — there is no measured "zones change

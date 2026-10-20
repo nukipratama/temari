@@ -20,6 +20,7 @@ use App\Jobs\Gamification\SettleStreakWeeksJob;
 use App\Jobs\Geo\ResolveActivityLocationJob;
 use App\Jobs\IntervalsIcu\SyncIntervalsIcuWorkoutJob;
 use App\Jobs\Notifications\RetryStaleWebPushNotificationJob;
+use App\Jobs\Run\CheckFitnessImprovementJob;
 use App\Jobs\Run\RebuildTrendSnapshotsJob;
 use App\Jobs\Run\RecalibrateTrainingHistoryJob;
 use App\Jobs\Run\ReconcilePlanJob;
@@ -129,6 +130,7 @@ $expectedRetryPolicies = [
     ResolveActivityLocationJob::class => [null, null, null, null, 1200],
     SyncIntervalsIcuWorkoutJob::class => [1, null, null, null, 900],
     RetryStaleWebPushNotificationJob::class => [3, '30,120', null, null, null],
+    CheckFitnessImprovementJob::class => [3, '30,120', null, null, 3600],
     RebuildTrendSnapshotsJob::class => [3, '30,120', null, null, 3600],
     RecalibrateTrainingHistoryJob::class => [null, '30,120', 120, 3, 3600],
     ReconcilePlanJob::class => [10, '30,120', null, 3, 3600],
