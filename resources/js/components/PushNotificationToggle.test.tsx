@@ -142,6 +142,24 @@ it('unsubscribes and returns to the ready state when disconnect is clicked', asy
     ).toBeInTheDocument();
 });
 
+it('keeps the subscribed state and shows an error when the unsubscribe rejects', async () => {
+    vi.mocked(webPush.currentSubscription).mockResolvedValue(
+        {} as PushSubscription,
+    );
+    vi.mocked(webPush.unsubscribe).mockRejectedValue(new Error('network down'));
+    render(<PushNotificationToggle />);
+
+    fireEvent.click(await screen.findByRole('button', { name: /Disconnect/ }));
+
+    expect(
+        await screen.findByText('failed to turn off notifications, try again.'),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Disconnect/ })).toBeEnabled();
+    expect(
+        screen.queryByRole('button', { name: /turn on/ }),
+    ).not.toBeInTheDocument();
+});
+
 it('renders a mute toggle instead of the action once subscribed, when onMuteChange is passed', async () => {
     vi.mocked(webPush.currentSubscription).mockResolvedValue(
         {} as PushSubscription,

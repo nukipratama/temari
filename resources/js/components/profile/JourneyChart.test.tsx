@@ -128,6 +128,33 @@ describe('JourneyChart', () => {
         expect(tip.style.left).toBe('1px');
     });
 
+    it('drops a stale selection when the points shrink under an open readout', () => {
+        const { rerender } = render(
+            <JourneyChart weeks={WEEKS} timesSec={TIMES} />,
+        );
+        const chart = screen.getByRole('slider');
+        fireEvent.keyDown(chart, { key: 'ArrowRight' });
+        expect(screen.getByText(/jun 22 · PR · 48:15/)).toBeInTheDocument();
+
+        expect(() =>
+            rerender(
+                <JourneyChart
+                    weeks={['2026-05-25', '2026-06-08']}
+                    timesSec={[3160, 3117]}
+                />,
+            ),
+        ).not.toThrow();
+
+        expect(screen.queryByText(/ · 51:57/)).not.toBeInTheDocument();
+        expect(screen.getByRole('slider')).toHaveAttribute(
+            'aria-valuenow',
+            '1',
+        );
+        expect(screen.getByRole('slider')).not.toHaveAttribute(
+            'aria-valuetext',
+        );
+    });
+
     it('closes the readout with Escape', () => {
         render(<JourneyChart weeks={WEEKS} timesSec={TIMES} />);
         const chart = screen.getByRole('slider');
