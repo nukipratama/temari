@@ -11,8 +11,7 @@ use App\Notifications\FitnessImprovedNotification;
 use Illuminate\Support\Carbon;
 
 /**
- * Notes an athlete's supported race time once it has risen a meaningful step since the last note,
- * for the daily scan and for a race-goal change alike.
+ * Notes an athlete's supported race time once it has risen a meaningful step since the last note.
  */
 final readonly class FitnessImprovementChecker
 {

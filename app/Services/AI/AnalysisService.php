@@ -377,10 +377,9 @@ class AnalysisService
             $row->setRawAttributes($current->getAttributes());
             $row->syncOriginal();
 
-            // Only a user-started narration opens the Reread cooldown: it guards a
-            // person clicking twice, so a system narration leaves Reread and the
-            // plan-edit re-brief open. Skipped under withoutDispatching (demo seed) so
-            // a freshly seeded demo stays instantly re-narratable on demand.
+            // Only a user-started narration opens the Reread cooldown. Skipped under
+            // withoutDispatching (demo seed) so a freshly seeded demo stays instantly
+            // re-narratable on demand.
             // afterCommit: AnalyzeGroupJob wraps several markDone() calls in one
             // DB::transaction(), and the Redis-backed cooldown isn't rolled back by a
             // transaction abort, so starting it eagerly could cool a row whose Done

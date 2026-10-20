@@ -190,7 +190,6 @@ final readonly class RaceGoalService
         ]);
     }
 
-    /** A new or cancelled event can change the race distance, so the fitness baseline re-seeds before the next run lands. */
     private function recheckFitness(User $user): void
     {
         if (! $user->is_demo) {

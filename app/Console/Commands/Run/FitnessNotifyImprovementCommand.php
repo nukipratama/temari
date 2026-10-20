@@ -19,10 +19,9 @@ use Throwable;
 #[Description('Tell each athlete whose supported race time improved by a meaningful step since the last note')]
 class FitnessNotifyImprovementCommand extends Command
 {
-    /** The day the scan also takes athletes with no new run, so a rise that matured over rest is still noted. */
-    public const int SWEEP_DAY = Carbon::MONDAY;
+    private const int SWEEP_DAY = Carbon::MONDAY;
 
-    public const int SWEEP_AFTER_DAYS = 7;
+    private const int SWEEP_AFTER_DAYS = 7;
 
     private const int CHUNK_SIZE = 100;
 
