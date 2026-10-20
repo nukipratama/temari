@@ -2,13 +2,18 @@
 
 declare(strict_types=1);
 
+use App\Enums\RaceIntent;
 use App\Models\Activity;
+use App\Models\ActivityDetail;
+use App\Models\FitnessAnchor;
 use App\Models\InboxNotification;
 use App\Models\PerformanceEvidence;
 use App\Models\User;
 use App\Notifications\FitnessImprovedNotification;
 use App\Services\Ops\MaintainerAlerter;
+use App\Services\Run\Metrics\PaceFormatter;
 use App\Services\Run\Metrics\VdotEstimator;
+use App\Services\Run\Plan\RaceGoalService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Notification;
@@ -205,4 +210,85 @@ it('does not stamp an athlete whose rise is held back by the weekly note interva
     $this->artisan('fitness:notify-improvement')->assertSuccessful();
 
     expect($user->refresh()->fitness_checked_at)->toBeNull();
+});
+
+function tenKRunAnalysedAt(User $user, string $runAt, int $seconds, string $analyzedAt): void
+{
+    $pace = PaceFormatter::format($seconds / 10);
+    $activity = Activity::factory()->for($user)->create(['analyzed_at' => $analyzedAt]);
+    ActivityDetail::factory()->for($activity)->create([
+        'start_date_local' => $runAt, 'distance' => 10_000, 'elapsed_time' => $seconds, 'moving_time' => $seconds, 'workout_type' => 0,
+        'stream_summary' => ['per_km' => array_map(
+            static fn (int $km): array => ['km' => $km, 'pace' => $pace, 'elapsed_sec' => $seconds / 10, 'distance_m' => 1000],
+            range(1, 10),
+        )],
+    ]);
+}
+
+it('notes a rise that matures over a rest week at the Monday sweep', function (): void {
+    Notification::fake();
+    $user = User::factory()->create(['last_notified_race_m' => 10_000, 'fitness_checked_at' => '2026-10-04 10:00:00']);
+    tenKRunAnalysedAt($user, '2026-08-01 06:00:00', 3_600, '2026-08-01 07:00:00');
+    FitnessAnchor::query()->create([
+        'user_id' => $user->id, 'vdot' => 1, 'quality_vdot' => 1, 'source_category' => 'race', 'source_value_sec' => 3_600,
+        'set_at' => '2026-08-01', 'captured_at' => '2026-08-02 08:00:00',
+    ]);
+    $before = nonNull(app(VdotEstimator::class)->estimate($user))['vdot'];
+    app(VdotEstimator::class)->forget($user);
+    $user->forceFill(['last_notified_vdot' => $before])->save();
+    tenKRunAnalysedAt($user, '2026-10-05 06:00:00', 3_440, '2026-10-05 07:00:00');
+
+    $this->artisan('fitness:notify-improvement')->assertSuccessful();
+
+    expect($user->refresh()->last_notified_vdot)->toBe(round($before + VdotEstimator::RISE_CAP_VDOT_PER_WEEK, 1));
+
+    Carbon::setTestNow('2026-10-12 10:00:00');
+    $this->artisan('fitness:notify-improvement')->assertSuccessful();
+
+    Notification::assertSentToTimes($user, FitnessImprovedNotification::class, 2);
+    expect($user->refresh()->last_notified_vdot)->toBe(tenKVdot(3_440));
+});
+
+it('notes a breakthrough that follows a switch to a marathon goal', function (): void {
+    Notification::fake();
+    $user = athleteWithTenK(3_600, ['last_notified_vdot' => tenKVdot(3_600), 'fitness_checked_at' => '2026-10-05 10:00:00']);
+
+    Carbon::setTestNow('2026-10-05 11:00:00');
+    app(RaceGoalService::class)->submit($user, [
+        'race_date' => '2026-12-27', 'distance_m' => 42_195, 'goal_time_sec' => 14_400, 'name' => null,
+    ], RaceIntent::New);
+
+    Carbon::setTestNow('2026-10-06 10:00:00');
+    PerformanceEvidence::query()->create([
+        'user_id' => $user->id, 'kind' => 'race', 'distance_m' => 10_000, 'elapsed_time_sec' => 3_300,
+        'performed_on' => '2026-10-06', 'confirmed_at' => '2026-10-06 08:00:00',
+    ]);
+    tenKRunAnalysedAt($user, '2026-10-06 06:00:00', 3_300, '2026-10-06 08:00:00');
+    app(VdotEstimator::class)->forget($user);
+
+    $this->artisan('fitness:notify-improvement')->assertSuccessful();
+
+    Notification::assertSentTo($user, FitnessImprovedNotification::class, fn (FitnessImprovedNotification $note): bool => $note->raceDistanceM === 42_195.0);
+});
+
+it('checks a swept athlete once, however often the command runs that day', function (): void {
+    Notification::fake();
+    $user = athleteWithTenK(3_500, ['last_notified_vdot' => tenKVdot(3_500), 'fitness_checked_at' => '2026-09-28 10:00:00']);
+
+    $this->artisan('fitness:notify-improvement')->assertSuccessful();
+    Carbon::setTestNow('2026-10-05 10:30:00');
+    $this->artisan('fitness:notify-improvement')->assertSuccessful();
+
+    expect(nonNull($user->refresh()->fitness_checked_at)->toDateTimeString())->toBe('2026-10-05 10:00:00');
+});
+
+it('leaves an athlete unchecked for over a week alone until the Monday sweep', function (): void {
+    Notification::fake();
+    Carbon::setTestNow('2026-10-06 10:00:00');
+    $user = athleteWithTenK(3_500, ['last_notified_vdot' => tenKVdot(3_500) - 0.5, 'fitness_checked_at' => '2026-09-21 10:00:00']);
+
+    $this->artisan('fitness:notify-improvement')->assertSuccessful();
+
+    Notification::assertNothingSent();
+    expect(nonNull($user->refresh()->fitness_checked_at)->toDateTimeString())->toBe('2026-09-21 10:00:00');
 });

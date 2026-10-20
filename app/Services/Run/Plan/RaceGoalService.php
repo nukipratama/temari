@@ -8,6 +8,7 @@ use App\Actions\Run\Plan\ResolveActiveRaceAction;
 use App\Enums\RaceChangeKind;
 use App\Enums\RaceIntent;
 use App\Enums\RaceOutcome;
+use App\Jobs\Run\CheckFitnessImprovementJob;
 use App\Models\RaceGoal;
 use App\Models\RaceGoalChange;
 use App\Models\User;
@@ -33,8 +34,10 @@ final readonly class RaceGoalService
      */
     public function submit(User $user, array $attributes, RaceIntent $intent): RaceGoal
     {
-        $race = DB::transaction(function () use ($user, $attributes, $intent): RaceGoal {
+        $previousId = null;
+        $race = DB::transaction(function () use ($user, $attributes, $intent, &$previousId): RaceGoal {
             $active = $this->lockedActive($user);
+            $previousId = $active?->id;
 
             return match (true) {
                 !$active instanceof RaceGoal => $this->create($user, $attributes),
@@ -43,6 +46,9 @@ final readonly class RaceGoalService
             };
         });
         $this->forget($user);
+        if ($race->id !== $previousId) {
+            $this->recheckFitness($user);
+        }
 
         return $race;
     }
@@ -76,6 +82,9 @@ final readonly class RaceGoalService
             return $active;
         });
         $this->forget($user);
+        if ($race instanceof RaceGoal) {
+            $this->recheckFitness($user);
+        }
 
         return $race;
     }
@@ -179,6 +188,14 @@ final readonly class RaceGoalService
             'activity_id' => $race->outcome_activity_id,
             'finish_time_sec' => $race->finish_time_sec,
         ]);
+    }
+
+    /** A new or cancelled event can change the race distance, so the fitness baseline re-seeds before the next run lands. */
+    private function recheckFitness(User $user): void
+    {
+        if (! $user->is_demo) {
+            CheckFitnessImprovementJob::dispatch($user->id)->afterCommit();
+        }
     }
 
     private function forget(User $user): void

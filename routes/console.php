@@ -246,8 +246,12 @@ Schedule::command('plan:settle-time-trials')->dailyAt('09:05')->withoutOverlappi
 
 // 10:00 daily: tell each athlete whose supported race time improved by at least
 // half a VDOT point since the last note, at most once a week. The first run only
-// records each athlete's baseline. Demo excluded (notDemo() on the user scan),
-// quiet hours apply through the shared hold, and the copy is templated.
+// records each athlete's baseline. It checks athletes with a run analysed since
+// their last check; Monday's run also checks anyone not checked in the last 7
+// days, so a rise that matured over rest weeks is still noted. A race-goal change
+// checks the athlete at once, outside this schedule. Demo excluded (notDemo() on
+// the user scan), quiet hours apply through the shared hold, and the copy is
+// templated.
 Schedule::command('fitness:notify-improvement')->dailyAt('10:00')->withoutOverlapping(30);
 
 // Every 15 minutes: push today's briefing to each athlete at the quarter hour

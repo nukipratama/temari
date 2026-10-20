@@ -21,7 +21,7 @@ use Illuminate\Support\Carbon;
 use NotificationChannels\WebPush\WebPushMessage;
 
 /**
- * The note dispatched by {@see \App\Console\Commands\Run\FitnessNotifyImprovementCommand}
+ * The note dispatched by {@see \App\Services\Run\Metrics\FitnessImprovementChecker}
  * when the supported race time has moved up by a meaningful step. Governed by
  * the master switch like the other notes Temari initiates.
  *
