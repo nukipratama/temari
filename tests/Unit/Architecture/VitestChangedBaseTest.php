@@ -19,13 +19,14 @@ const BASE_SCRIPT = 'scripts/vitest-changed-base.sh';
 /**
  * A stale worktree stack can still export GIT_DIR/GIT_WORK_TREE from a
  * compose.override.yaml. Every git command a test spawns against a throwaway
- * repo has to unset both, or it silently operates on the real checkout.
+ * repo has to unset both, or it silently operates on the real checkout. A
+ * GATE_BASE exported by the caller would likewise override every scenario.
  *
- * @return array{GIT_DIR: false, GIT_WORK_TREE: false}
+ * @return array{GIT_DIR: false, GIT_WORK_TREE: false, GATE_BASE: false}
  */
 function withoutAmbientGitDir(): array
 {
-    return ['GIT_DIR' => false, 'GIT_WORK_TREE' => false];
+    return ['GIT_DIR' => false, 'GIT_WORK_TREE' => false, 'GATE_BASE' => false];
 }
 
 /**
@@ -134,7 +135,7 @@ function addEpicBranch(array $repo): array
 function runBaseScript(string $dir, array $env = []): Process
 {
     installBaseScript($dir);
-    $process = new Process(['sh', "$dir/scripts/vitest-changed-base.sh"], $dir, withoutAmbientGitDir() + $env);
+    $process = new Process(['sh', "$dir/scripts/vitest-changed-base.sh"], $dir, array_merge(withoutAmbientGitDir(), $env));
     $process->run();
 
     return $process;
