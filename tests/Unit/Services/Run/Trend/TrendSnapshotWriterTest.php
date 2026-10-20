@@ -120,11 +120,7 @@ it('running the writer twice for the same day recomputes the existing row', func
 
 it('backfills a snapshot with the VDOT the athlete had proven by that date, not by today', function (): void {
     $user = User::factory()->create();
-    PersonalRecord::factory()->for($user)->create([
-        'category' => 'marathon',
-        'value_sec' => 20_292.0,
-        'set_at' => Carbon::parse('2024-01-01'),
-    ]);
+    seedConfirmedEffort($user, 42_195, 20_292, Carbon::parse('2024-01-01'));
     PerformanceEvidence::query()->create([
         'user_id' => $user->id,
         'activity_id' => Activity::factory()->for($user)->create()->id,
@@ -141,7 +137,7 @@ it('backfills a snapshot with the VDOT the athlete had proven by that date, not 
     $today = TrendDailySnapshot::query()->where('snapshot_date', Carbon::today()->toDateString())->sole();
     $backfilled = TrendDailySnapshot::query()->where('snapshot_date', '2024-06-01')->sole();
 
-    expect($backfilled->vdot)->toBeLessThan(nonNull($today->vdot));
+    expect($backfilled->vdot)->toBeFloat()->toBeLessThan(nonNull($today->vdot));
 });
 
 it('writes the supported time at the active race distance, its race goal and the effort it rests on', function (): void {
