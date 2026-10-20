@@ -159,18 +159,18 @@ class WeeklySnapshot extends Model
 
     /**
      * The form_status of the user's most recent weekly snapshot, or null when
-     * they have none. A shared spine so the profile / persona narrators
-     * tone-match the current load state, the same state this week's recap
-     * reads, rather than drifting from it. (It does not retroactively align an
-     * older week's recap that a self-heal retry may regenerate against that
-     * week's own status.)
+     * they have none, so the profile / persona narrators tone-match the current
+     * load state, the same state this week's recap reads.
      */
     public static function latestFormStatus(int $userId): ?TrainingFormStatus
     {
-        return self::query()
+        $status = self::query()
             ->where('user_id', $userId)
             ->orderByDesc('week_ending')
             ->value('form_status');
+        assert($status === null || $status instanceof TrainingFormStatus);
+
+        return $status;
     }
 
     /**

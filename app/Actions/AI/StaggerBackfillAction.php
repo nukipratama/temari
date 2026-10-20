@@ -30,11 +30,13 @@ class StaggerBackfillAction
      */
     public function __invoke(int $userId): int
     {
-        $staggerSec = max(1, (int) config('ai.backfill_stagger_seconds', 360));
+        $staggerSec = max(1, config()->integer('ai.backfill_stagger_seconds', 360));
 
         try {
-            [$delaySec, $slotAt] = Cache::lock(self::SLOT_LOCK_PREFIX.$userId, 10)
+            /** @var array{0: int, 1: CarbonInterface} $reserved */
+            $reserved = Cache::lock(self::SLOT_LOCK_PREFIX.$userId, 10)
                 ->block(3, fn (): array => $this->reserveSlot($userId, $staggerSec));
+            [$delaySec, $slotAt] = $reserved;
         } catch (LockTimeoutException) {
             Log::warning('ai.backfill.lock_timeout', ['user_id' => $userId]);
 

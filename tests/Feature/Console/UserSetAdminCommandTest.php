@@ -13,7 +13,7 @@ it('grants admin to a user', function (): void {
     $this->artisan('user:set-admin', ['userId' => $user->id])
         ->assertSuccessful();
 
-    expect($user->fresh()->is_admin)->toBeTrue();
+    expect($user->refresh()->is_admin)->toBeTrue();
 });
 
 it('revokes admin with --unset', function (): void {
@@ -22,7 +22,7 @@ it('revokes admin with --unset', function (): void {
     $this->artisan('user:set-admin', ['userId' => $user->id, '--unset' => true])
         ->assertSuccessful();
 
-    expect($user->fresh()->is_admin)->toBeFalse();
+    expect($user->refresh()->is_admin)->toBeFalse();
 });
 
 it('fails when the user does not exist', function (): void {

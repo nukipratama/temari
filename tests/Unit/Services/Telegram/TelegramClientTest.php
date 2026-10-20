@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Services\Telegram\Exceptions\TelegramApiException;
 use App\Services\Telegram\TelegramClient;
 use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Facades\Http;
 
 beforeEach(function (): void {
@@ -82,7 +83,7 @@ it('throws when Telegram answers 200 but ok is false', function (): void {
 // the path — so an unredacted transport error hands the live token to every
 // caller that logs or persists the reason.
 it('keeps the bot token out of a transport failure message', function (): void {
-    $token = (string) config('services.telegram.bot_token');
+    $token = config()->string('services.telegram.bot_token');
     expect($token)->not->toBe('');
 
     Http::fake(fn () => throw new ConnectionException(
@@ -111,13 +112,15 @@ it('wraps a transport failure in a TelegramApiException with no status', functio
     }
 });
 
-// #986: an explicit connect timeout bounds DNS/TCP setup independently of the
+// An explicit connect timeout bounds DNS/TCP setup independently of the
 // total timeout, so a resolver/socket stall can't outlast either budget.
 it('sets an explicit connect timeout alongside the total timeout', function (): void {
     $method = new ReflectionMethod(TelegramClient::class, 'client');
 
     $pending = $method->invoke(new TelegramClient(), 'test-bot-token', 0);
 
+    expect($pending)->toBeInstanceOf(PendingRequest::class);
+    assert($pending instanceof PendingRequest);
     expect($pending->getOptions())
         ->toHaveKey('connect_timeout', 5)
         ->toHaveKey('timeout', 10);
@@ -128,6 +131,8 @@ it('adds a long-poll timeout on top of the base total timeout, unaffected by the
 
     $pending = $method->invoke(new TelegramClient(), 'test-bot-token', 30);
 
+    expect($pending)->toBeInstanceOf(PendingRequest::class);
+    assert($pending instanceof PendingRequest);
     expect($pending->getOptions())
         ->toHaveKey('connect_timeout', 5)
         ->toHaveKey('timeout', 40);
@@ -138,6 +143,8 @@ it('replaces the total timeout when a caller sets its own', function (): void {
 
     $pending = $method->invoke(new TelegramClient(), 'test-bot-token', 0, 5);
 
+    expect($pending)->toBeInstanceOf(PendingRequest::class);
+    assert($pending instanceof PendingRequest);
     expect($pending->getOptions())
         ->toHaveKey('connect_timeout', 5)
         ->toHaveKey('timeout', 5);

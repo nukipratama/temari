@@ -12,15 +12,11 @@ import type {
 
 export type {
     AnalysisStatus,
-    AnalysisType,
     Effort,
     Mood,
     NotificationKind,
-    PlannedSessionStatus,
     Rarity,
 } from './generated';
-
-export type Tone = 'neutral' | 'positive' | 'warning' | 'alert';
 
 export interface AuthUser {
     id: number;
@@ -34,7 +30,7 @@ export interface AuthUser {
 export type StravaSyncState =
     'disconnected' | 'revoked' | 'syncing' | 'failed' | 'ready';
 
-export interface StravaSync {
+interface StravaSync {
     /**
      * Honest connection/ingest state the UI branches on. `syncing` means
      * connected but no analyzed run has landed yet (backfill in flight);
@@ -124,10 +120,10 @@ export interface RaceSupport {
     limitation: string | null;
 }
 
-export type RaceChangeKind =
+type RaceChangeKind =
     'created' | 'revised' | 'postponed' | 'replaced' | 'cancelled' | 'outcome';
 
-export interface RaceHistoryEntry {
+interface RaceHistoryEntry {
     kind: RaceChangeKind;
     race_date: string | null;
     goal_time_sec: number | null;
@@ -152,7 +148,7 @@ export interface RaceOutcomeCandidate {
     started_at: string;
 }
 
-export interface RaceOutcomeSummary {
+interface RaceOutcomeSummary {
     state: RaceOutcomeState;
     finish_time_sec: number | null;
     activity_id: number | null;
@@ -171,7 +167,7 @@ export interface PastRace {
     outcome: RaceOutcomeSummary;
 }
 
-export type PlanRaceCardState =
+type PlanRaceCardState =
     'ahead' | 'week' | 'day' | 'result_pending' | 'result_recorded';
 
 /** The race state Plan shows: a card above the season, or the season card's result line. */
@@ -285,9 +281,7 @@ export interface StreamSummaryLap {
 export type ZonePct = Partial<Record<'Z1' | 'Z2' | 'Z3' | 'Z4' | 'Z5', number>>;
 
 /** Minutes of moving time spent in each HR zone, keyed Z1..Z5. Absent for no-HR runs. */
-export type ZoneMinutes = Partial<
-    Record<'Z1' | 'Z2' | 'Z3' | 'Z4' | 'Z5', number>
->;
+type ZoneMinutes = Partial<Record<'Z1' | 'Z2' | 'Z3' | 'Z4' | 'Z5', number>>;
 
 /** The trailing sub-km "sisa" segment. Display/narrative-only — never a full km
  *  and never in per_km (which stays full-km for card stats & AI). Absent for
@@ -299,12 +293,8 @@ export interface StreamSummaryPartial {
     avg_cadence_spm?: number | null;
 }
 
-/** Windows the producer writes a `best_<window>_pace` key for (StreamAnalysis::BEST_EFFORT_WINDOWS). */
-export type BestEffortWindow =
-    '30s' | '1min' | '3min' | '5min' | '10min' | '20min' | '30min' | '60min';
-
 /** Share of moving time below / within / above the step-rate band. */
-export type CadenceDistributionPct = Partial<
+type CadenceDistributionPct = Partial<
     Record<'<165' | '165-175' | '>175', number>
 >;
 

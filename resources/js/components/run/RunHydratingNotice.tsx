@@ -15,12 +15,10 @@ interface RunHydratingNoticeProps {
 }
 
 /**
- * A summary-only run carries distance, time, pace and average HR straight from
- * Strava's activity list, and nothing else: no splits, no laps, no heart-rate
- * zones, no effort score, no card. Opening the run queues the deeper fetch at
- * background priority, behind whatever live ingest is running, so the page is
- * honest but momentarily thin. Say so, and stop claiming a self-refresh once
- * the poll budget is spent rather than leaving a promise nothing will keep.
+ * A summary-only run carries distance, time, pace and average HR from Strava's
+ * activity list and nothing else; opening it queues the deeper fetch at
+ * background priority, so the page is momentarily thin. Say so, and stop
+ * claiming a self-refresh once the poll budget is spent.
  */
 export default function RunHydratingNotice({
     hydrating,

@@ -7,17 +7,8 @@ namespace App\Services\Run\Metrics;
 /**
  * The one place this repo decides what a cardiac-decoupling figure means.
  *
- * The same question — "was that a lot?" — used to be answered in four files
- * with five different numbers: the plan called 5% high, the rule-based
- * insights agreed at 5% and called 2% tight, Temari's mood picked 12%, and the
- * run-insight prompt told the model ">10%". A run at 11% was simultaneously
- * high, normal and not worth mentioning depending on who was asking.
- *
- * The ladder is fitted against real runs rather than assumed. On the corpus
- * this athlete's ordinary runs — easy days and quality days alike — land
- * between 6 and 13%, so a line drawn at 5% fires on a routine Tuesday.
- * {@see self::HIGH} therefore sits above the top of that band. The bands are
- * descriptive: no plan decision reads them.
+ * {@see self::HIGH} sits above the 6-13% band an ordinary run lands in. The bands are descriptive:
+ * no plan decision reads them.
  */
 final class DecouplingBands
 {
@@ -31,11 +22,9 @@ final class DecouplingBands
     public const float HIGH = 12.0;
 
     /**
-     * Which way a decoupling reading points, for a caller that must not
-     * invert a raw signed percentage the way #1009 (reopened) found a
-     * narrator doing with a signed pace delta: 'up' when HR drifted up for
-     * the same pace, 'down' when it improved, 'flat' under {@see self::TIGHT}
-     * either way -- the same band that already means "barely moved" above.
+     * Which way a decoupling reading points, for a caller that must not invert a raw signed
+     * percentage: 'up' when HR drifted up for the same pace, 'down' when it improved, 'flat' under
+     * {@see self::TIGHT} either way.
      */
     public static function relationFor(float $pct): string
     {

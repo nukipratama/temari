@@ -128,7 +128,7 @@ class NarrationAthleteController extends Controller
 
     public function replay(Request $request, int $userId): RedirectResponse
     {
-        $athlete = User::query()->findOrFail($userId);
+        User::query()->findOrFail($userId);
 
         $validated = $request->validate([
             'analysis_id' => ['required', 'integer'],
@@ -145,7 +145,7 @@ class NarrationAthleteController extends Controller
             );
         }
 
-        $this->replayAction->replay($row, $athlete);
+        $this->replayAction->replay($row);
         $this->recorder->record('narration.replay', $userId, [
             'analysis_id' => $row->id,
             'kind' => $row->analysis_type->value,

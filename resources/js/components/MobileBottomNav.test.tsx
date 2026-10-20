@@ -505,8 +505,8 @@ describe('MobileBottomNav', () => {
     it('tracks the content column at its wide step too', () => {
         setMockPage({}, '/', 'Home');
         render(<MobileBottomNav />);
-        // A pill narrower than the content above it reads as misaligned; P32's
-        // objection was to a full-bleed track, which 1040 still is not.
+        // A pill narrower than the content above it reads as misaligned; 1040 is
+        // still a bounded column.
         expect(screen.getByRole('navigation')).toHaveClass(
             'min-[1280px]:max-w-column-wide',
         );

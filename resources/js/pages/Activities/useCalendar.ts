@@ -91,7 +91,9 @@ export function chunkIntoWeeks(cells: ReadonlyArray<CalendarCell>): WeekRow[] {
     const weeks: WeekRow[] = [];
     for (let i = 0; i < cells.length; i += 7) {
         const days = cells.slice(i, i + 7);
-        if (days.length === 0) continue;
+        const firstDay = days[0];
+        const lastDay = days.at(-1);
+        if (firstDay === undefined || lastDay === undefined) continue;
         let totalKm = 0;
         let totalTrimp: number | null = null;
         for (const day of days) {
@@ -103,8 +105,8 @@ export function chunkIntoWeeks(cells: ReadonlyArray<CalendarCell>): WeekRow[] {
             }
         }
         weeks.push({
-            weekStart: days[0].date,
-            weekEnding: days[days.length - 1].date,
+            weekStart: firstDay.date,
+            weekEnding: lastDay.date,
             weekNumber: weeks.length + 1,
             days,
             totalKm,

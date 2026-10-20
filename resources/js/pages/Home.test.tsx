@@ -9,6 +9,7 @@ import type {
     WeeklySnapshot,
 } from '@/types/inertia';
 
+import { defined } from '@/test/defined';
 import { makeUser, setMockPage } from '@/test/setup';
 
 import Home from './Home';
@@ -384,7 +385,7 @@ describe('Home', () => {
 
         const restDayPlan: WeekPlan = {
             ...weekPlan,
-            days: [{ ...weekPlan.days[0], session_type: 'rest' }],
+            days: [{ ...defined(weekPlan.days[0]), session_type: 'rest' }],
         };
 
         render(

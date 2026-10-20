@@ -119,6 +119,7 @@ it('throws rejected on an auth answer from any call', function (string $call, in
         'create' => $client->createEvent(clientConnection(), '2026-10-17', clientWorkout()),
         'update' => $client->updateEvent(clientConnection(), '1', '2026-10-17', clientWorkout()),
         'delete' => $client->deleteEvent(clientConnection(), '1'),
+        default => throw new InvalidArgumentException("Unknown call {$call}."),
     };
 })->with(['threshold', 'create', 'update', 'delete'])->with([401, 403])->throws(IntervalsIcuRejectedException::class);
 

@@ -6,7 +6,12 @@ use App\Models\ActivityDetail;
 use App\Services\AI\RunQuestion\RunQuestionSeeds;
 use App\Services\AI\RunQuestion\RunQuestionTopic;
 
-/** Detached model, so these stay DB-free. */
+/**
+ * Detached model, so these stay DB-free.
+ *
+ * @param  array<string, mixed>  $attributes
+ * @param  array<string, mixed>  $streamSummary
+ */
 function runSeedDetail(array $streamSummary = [], array $attributes = []): ActivityDetail
 {
     $detail = new ActivityDetail();

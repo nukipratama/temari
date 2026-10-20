@@ -5,11 +5,17 @@ declare(strict_types=1);
 use App\Http\Requests\StorePushSubscriptionRequest;
 use Illuminate\Support\Facades\Validator;
 
+/**
+ * @param  array<string, mixed>  $data
+ */
 function passesSubscription(array $data): bool
 {
     return Validator::make($data, new StorePushSubscriptionRequest()->rules())->passes();
 }
 
+/**
+ * @return array{endpoint: string, keys: array{p256dh: string, auth: string}}
+ */
 function subscription(string $endpoint): array
 {
     return ['endpoint' => $endpoint, 'keys' => ['p256dh' => 'p256dh-key', 'auth' => 'auth-token']];

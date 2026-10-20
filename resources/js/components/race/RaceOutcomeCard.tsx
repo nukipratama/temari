@@ -4,13 +4,13 @@ import { type FormEvent, useState } from 'react';
 import type { PastRace, RaceOutcomeState } from '@/types/inertia';
 
 import DemoBlockedModal from '@/components/DemoBlockedModal';
+import DurationFields, { durationSec } from '@/components/ui/DurationFields';
 import Eyebrow from '@/components/ui/Eyebrow';
 import PillButton from '@/components/ui/PillButton';
 import { useDemoGuard } from '@/hooks/useDemoGuard';
 import { cn } from '@/lib/cn';
 import { formatDurationHMS, formatKm, formatNaiveIdDate } from '@/lib/pace';
 import { RACE_DEMO_BLOCKED } from '@/lib/raceGoal';
-import { inputVariants } from '@/lib/variants';
 
 interface RaceOutcomeCardProps {
     race: PastRace;
@@ -37,9 +37,7 @@ export default function RaceOutcomeCard({
 }: Readonly<RaceOutcomeCardProps>) {
     const { outcome } = race;
     const [changing, setChanging] = useState(false);
-    const [hours, setHours] = useState(0);
-    const [minutes, setMinutes] = useState(0);
-    const [seconds, setSeconds] = useState(0);
+    const [time, setTime] = useState({ hours: 0, minutes: 0, seconds: 0 });
     const [processing, setProcessing] = useState(false);
     const {
         open: demoBlocked,
@@ -47,7 +45,7 @@ export default function RaceOutcomeCard({
         guard,
     } = useDemoGuard();
 
-    const timeSec = hours * 3_600 + minutes * 60 + seconds;
+    const timeSec = durationSec(time);
     const open = outcome.state === 'pending' || changing;
     const title = race.name ?? `${formatKm(race.distance_m, 1)} km`;
 
@@ -131,52 +129,13 @@ export default function RaceOutcomeCard({
 
                     <form onSubmit={saveTime} className="flex flex-col gap-1.5">
                         <span className={FIELD_LABEL}>or enter your time</span>
-                        <div className="flex flex-wrap items-center gap-1.5">
-                            <input
-                                type="number"
-                                min={0}
-                                max={71}
-                                value={hours}
-                                onChange={(e) =>
-                                    setHours(Number(e.target.value))
-                                }
-                                aria-label="Finish hours"
-                                className={cn(
-                                    inputVariants({ size: 'sm' }),
-                                    'w-16 text-center',
-                                )}
-                            />
-                            <span className={FIELD_LABEL}>hr</span>
-                            <input
-                                type="number"
-                                min={0}
-                                max={59}
-                                value={minutes}
-                                onChange={(e) =>
-                                    setMinutes(Number(e.target.value))
-                                }
-                                aria-label="Finish minutes"
-                                className={cn(
-                                    inputVariants({ size: 'sm' }),
-                                    'w-16 text-center',
-                                )}
-                            />
-                            <span className={FIELD_LABEL}>min</span>
-                            <input
-                                type="number"
-                                min={0}
-                                max={59}
-                                value={seconds}
-                                onChange={(e) =>
-                                    setSeconds(Number(e.target.value))
-                                }
-                                aria-label="Finish seconds"
-                                className={cn(
-                                    inputVariants({ size: 'sm' }),
-                                    'w-16 text-center',
-                                )}
-                            />
-                            <span className={FIELD_LABEL}>sec</span>
+                        <DurationFields
+                            value={time}
+                            onChange={setTime}
+                            withSeconds
+                            labelPrefix="finish "
+                            className="flex-wrap"
+                        >
                             <PillButton
                                 type="submit"
                                 tone="outline"
@@ -185,7 +144,7 @@ export default function RaceOutcomeCard({
                             >
                                 save time
                             </PillButton>
-                        </div>
+                        </DurationFields>
                     </form>
 
                     <div className="flex flex-wrap gap-2 border-t border-dashed border-border pt-3">

@@ -142,7 +142,9 @@ class NarrationEvalCommand extends Command
      */
     private function evaluate(NarrationEvalFixture $fixture, User $demo, LlmCostCalculator $costs): ?array
     {
-        $lastUsageId = (int) TokenUsage::query()->max('id');
+        $maxUsageId = TokenUsage::query()->max('id');
+        assert($maxUsageId === null || is_numeric($maxUsageId));
+        $lastUsageId = (int) $maxUsageId;
         $failures = [];
         $text = '';
         $called = false;

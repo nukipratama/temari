@@ -7,10 +7,8 @@ namespace App\Services\Run;
 use Illuminate\Support\Carbon;
 
 /**
- * Windowing for the History feed. Mood/distance/rarity/sort selection was cut
- * from the Feed screen (S7 — the mobile-UX port has no filter UI); this DTO
- * keeps only the range/week-deep-link windowing that still governs how much
- * history the server loads, which isn't itself a user-facing filter control.
+ * Windowing for the History feed: the range and week-deep-link bounds that govern how much
+ * history the server loads.
  */
 final readonly class FeedFilters
 {

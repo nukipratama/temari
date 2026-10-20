@@ -17,11 +17,13 @@ use OpenAI\Testing\ClientFake;
 
 uses(RefreshDatabase::class);
 
+/** @return list<string> */
 function evalVoices(int $count = 30): array
 {
     return array_fill(0, $count, "8 km done.\n\nrest up.\n\neat well.");
 }
 
+/** @param list<string> $voices */
 function evalClient(array $voices): ClientFake
 {
     $client = new ClientFake(array_map(

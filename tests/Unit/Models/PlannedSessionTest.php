@@ -55,13 +55,13 @@ it('casts date and every enum column', function (): void {
 it('serializes date as the naive date, not a UTC-shifted instant', function (): void {
     $session = new PlannedSession(['date' => '2026-08-17']);
 
-    expect($session->toArray()['date'])->toBe('2026-08-17');
+    expect(data_get($session->toArray(), 'date'))->toBe('2026-08-17');
 });
 
 it('serializes made_up_on as the naive date, not a UTC-shifted instant', function (): void {
     $session = new PlannedSession(['made_up_on' => '2026-08-18']);
 
-    expect($session->toArray()['made_up_on'])->toBe('2026-08-18');
+    expect(data_get($session->toArray(), 'made_up_on'))->toBe('2026-08-18');
 });
 
 it('enforces one row per user per date', function (): void {

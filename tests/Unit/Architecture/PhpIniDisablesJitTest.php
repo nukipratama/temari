@@ -5,7 +5,7 @@ declare(strict_types=1);
 use Illuminate\Support\Facades\File;
 
 /**
- * #1045: opcache JIT miscompiled code inside the long-lived FrankenPHP worker.
+ * Opcache JIT miscompiled code inside the long-lived FrankenPHP worker.
  * docker/php.ini is baked into the prod image (COPY'd to zz-app.ini in the
  * Dockerfile) — a regression here silently brings JIT back on the next build.
  */

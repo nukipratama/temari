@@ -15,6 +15,7 @@ use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\Run\Plan\Periodizer;
 use App\Services\Run\Plan\RaceGoalService;
+use App\Support\Numeric;
 use App\Enums\RaceIntent;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
@@ -87,25 +88,25 @@ function phaseByWeek(User $user): array
         ->orderBy('date')
         ->get()
         ->groupBy(fn (PlannedSession $s): string => $s->date->copy()->startOfWeek(Carbon::MONDAY)->toDateString())
-        ->map(fn ($week): PlanPhase => $week->first()->phase)
+        ->map(fn ($week): PlanPhase => nonNull($week->first())->phase)
         ->all();
 }
 
 /** @return list<SessionType> */
 function sessionTypesBetween(User $user, string $from, string $to): array
 {
-    return PlannedSession::query()
+    return array_values(PlannedSession::query()
         ->where('user_id', $user->id)
         ->whereBetween('date', [$from, $to])
-        ->pluck('session_type')
+        ->get()
+        ->map(fn (PlannedSession $session): SessionType => $session->session_type)
         ->unique()
-        ->values()
-        ->all();
+        ->all());
 }
 
 function multiplierOn(User $user, string $date): float
 {
-    return round((float) PlannedSession::query()->where('user_id', $user->id)->where('date', $date)->value('volume_multiplier'), 3);
+    return round(Numeric::float(nonNull(PlannedSession::query()->where('user_id', $user->id)->where('date', $date)->value('volume_multiplier'))), 3);
 }
 
 function logRaceDayRun(User $user, int $distanceM): void

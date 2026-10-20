@@ -149,7 +149,9 @@ class WeeklyRecapNarrator
             ),
         );
 
-        return (string) $decoded['narrative'];
+        assert(is_string($decoded['narrative']));
+
+        return $decoded['narrative'];
     }
 
     /**
@@ -163,15 +165,10 @@ class WeeklyRecapNarrator
     }
 
     /**
-     * The previous chain link's recap narrative for continuity: the most recent
-     * earlier week with runs > 0 whose WeeklyRecap is Done. This follows the
-     * chain's own definition of "previous" (runs > 0, gap-skipping), not the
-     * exact calendar-prior week, so a zero-run week between two running weeks
-     * does not sever the thread. Returns null when no such Done predecessor
-     * exists (first ever week, or the predecessor not yet narrated), so the
-     * narrator opens standalone. The chain (kickoff + AnalyzeWeeklyRecapJob
-     * propagation) guarantees the predecessor is Done before this week narrates,
-     * so steady-state always sees the prior thread.
+     * The previous chain link's recap narrative for continuity: the most recent earlier week with
+     * runs > 0 whose WeeklyRecap is Done. This follows the chain's own gap-skipping definition of
+     * "previous", so a zero-run week between two running weeks does not sever the thread. Returns
+     * null when no such Done predecessor exists, so the narrator opens standalone.
      */
     public function prevNarrative(WeeklySnapshot $snapshot): ?string
     {
@@ -189,10 +186,13 @@ class WeeklyRecapNarrator
             return null;
         }
 
-        return Analysis::query()
+        $content = Analysis::query()
             ->forSubject(WeeklySnapshot::class, $previousLink->id, AnalysisType::WeeklyRecap)
             ->where('status', AnalysisStatus::Done)
             ->value('content');
+        assert($content === null || is_string($content));
+
+        return $content;
     }
 
 

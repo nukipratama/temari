@@ -31,18 +31,20 @@ beforeEach(function (): void {
     $this->withHeaders(['Authorization' => 'Basic '.base64_encode('devtools:secret')]);
 });
 
+/** @param  array<string, mixed>  $attributes */
 function narrationAthlete(array $attributes = []): User
 {
     return User::factory()->create($attributes);
 }
 
+/** @param  array<string, mixed>  $attributes */
 function narrationBlock(User $user, AnalysisType $type = AnalysisType::TrendRead, array $attributes = []): Analysis
 {
     return Analysis::factory()->create([
         'subject_type' => 'briefing_user_day',
         'subject_id' => $user->id,
         'analysis_type' => $type,
-        // TrendRead's discriminator is a closed set (just '7d' since #967);
+        // TrendRead's discriminator is a closed set (just '7d');
         // the factory's default date-shaped value would be hidden by
         // KnownAnalysisTypeScope for this one type.
         ...($type === AnalysisType::TrendRead ? ['discriminator' => '7d'] : []),
@@ -213,7 +215,6 @@ describe('replay', function (): void {
         ]);
 
         $service = $this->mock(AnalysisService::class);
-        $service->shouldReceive('shouldServeRuleBased')->andReturnFalse();
         $service->shouldReceive('request')->once();
 
         $this->post(athletePath($user, '/replay'), ['analysis_id' => $block->id])

@@ -28,7 +28,9 @@ export interface HeroStat {
  */
 function leadSentence(text: string): readonly [string, string] {
     const match = /^(.+?[.!?])\s+(.*)$/s.exec(text);
-    return match ? [match[1], match[2]] : [text, ''];
+    const lead = match?.[1];
+    const rest = match?.[2];
+    return lead !== undefined && rest !== undefined ? [lead, rest] : [text, ''];
 }
 
 function ProfileVoice({ text }: Readonly<{ text: string }>) {

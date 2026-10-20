@@ -29,14 +29,13 @@ it('reports revoked state and marks revoked once', function (): void {
     expect($connection->isRevoked())->toBeFalse();
 
     $connection->markRevoked();
-    $revokedAt = $connection->revoked_at;
+    $revokedAt = nonNull($connection->revoked_at);
 
-    expect($connection->isRevoked())->toBeTrue()
-        ->and($revokedAt)->not->toBeNull();
+    expect($connection->isRevoked())->toBeTrue();
 
     // Idempotent: a second call does not move the timestamp.
     $connection->markRevoked();
-    expect($connection->fresh()->revoked_at->equalTo($revokedAt))->toBeTrue();
+    expect(nonNull($connection->fresh())->revoked_at?->equalTo($revokedAt))->toBeTrue();
 });
 
 it('active scope excludes revoked connections', function (): void {

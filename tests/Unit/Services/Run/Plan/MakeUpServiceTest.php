@@ -33,6 +33,7 @@ const MAKE_UP_CLAMP = [
  * A missed Easy already swapped off `$vacatedDate` onto `$targetDate`, where
  * a 5 km run landed.
  *
+ * @param  array<string, mixed>  $userAttributes
  * @return array{User, PlannedSession, PlannedSession, Activity}
  */
 function swappedMakeUp(string $vacatedDate, string $targetDate, array $userAttributes = []): array
@@ -72,13 +73,13 @@ it('links the two days and clears the clamp state on both', function (): void {
 
     applyMakeUp($user, $vacated, $target);
 
-    foreach ([$vacated->fresh(), $target->fresh()] as $row) {
+    foreach ([$vacated->refresh(), $target->refresh()] as $row) {
         expect($row->clamped_km)->toBeNull()
             ->and($row->eased_pace_sec_per_km)->toBeNull()
             ->and($row->readiness_assessment)->toBeNull();
     }
-    expect($vacated->fresh()->made_up_on->toDateString())->toBe('2026-08-12')
-        ->and($target->fresh()->made_up_from_id)->toBe($vacated->id);
+    expect($vacated->refresh()->made_up_on?->toDateString())->toBe('2026-08-12')
+        ->and($target->refresh()->made_up_from_id)->toBe($vacated->id);
 });
 
 it('regrades both days in full: the made-up day on the moved session, the emptied one as rest', function (): void {
@@ -86,12 +87,12 @@ it('regrades both days in full: the made-up day on the moved session, the emptie
 
     applyMakeUp($user, $vacated, $target);
 
-    expect($vacated->fresh()->status)->toBe(PlannedSessionStatus::Done)
-        ->and($vacated->fresh()->distance_score)->toBeNull()
-        ->and($vacated->fresh()->compliance_score)->toBeNull()
-        ->and($target->fresh()->prescribed_km)->toBeGreaterThan(0.0)
-        ->and($target->fresh()->distance_score)->toBeGreaterThan(0)
-        ->and($target->fresh()->intent_evidence['advice_history'])->toBe('declared_after_run');
+    expect($vacated->refresh()->status)->toBe(PlannedSessionStatus::Done)
+        ->and($vacated->refresh()->distance_score)->toBeNull()
+        ->and($vacated->refresh()->compliance_score)->toBeNull()
+        ->and($target->refresh()->prescribed_km)->toBeGreaterThan(0.0)
+        ->and($target->refresh()->distance_score)->toBeGreaterThan(0)
+        ->and(data_get($target->refresh()->intent_evidence, 'advice_history'))->toBe('declared_after_run');
 });
 
 it('marks the plan for reconciliation from the earlier of the two days', function (): void {
@@ -99,7 +100,7 @@ it('marks the plan for reconciliation from the earlier of the two days', functio
 
     applyMakeUp($user, $vacated, $target);
 
-    expect($user->fresh()->plan_reconciliation_pending_from->toDateString())->toBe('2026-08-11');
+    expect($user->refresh()->plan_reconciliation_pending_from?->toDateString())->toBe('2026-08-11');
     Bus::assertDispatched(ReconcilePlanJob::class);
 });
 
@@ -109,5 +110,5 @@ it('keeps the demo athlete rule-based, with no LLM call and no reconciliation', 
     applyMakeUp($user, $vacated, $target);
 
     Bus::assertNothingDispatched();
-    expect($target->fresh()->intent_evidence['advice_history'])->toBe('declared_after_run');
+    expect(data_get($target->refresh()->intent_evidence, 'advice_history'))->toBe('declared_after_run');
 });

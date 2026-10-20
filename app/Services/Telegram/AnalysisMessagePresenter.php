@@ -13,6 +13,7 @@ use App\Services\Run\Metrics\DistanceFormatter;
 use App\Services\Run\Metrics\DurationFormatter;
 use App\Services\Run\Metrics\PaceCalculator;
 use App\Services\Run\Metrics\PaceFormatter;
+use DateTimeInterface;
 use Illuminate\Support\Carbon;
 
 /**
@@ -85,7 +86,7 @@ class AnalysisMessagePresenter
         }
 
         $detail = $this->activityDetail($analysis->subject_id);
-        if ($detail === null) {
+        if (!$detail instanceof ActivityDetail) {
             return null;
         }
 
@@ -139,10 +140,11 @@ class AnalysisMessagePresenter
         $weekEnding = WeeklySnapshot::query()
             ->whereKey($analysis->subject_id)
             ->value('week_ending');
+        assert($weekEnding === null || $weekEnding instanceof DateTimeInterface);
 
-        return $weekEnding === null
-            ? route('history')
-            : route('history', ['week' => Carbon::parse($weekEnding)->toDateString()]);
+        return $weekEnding instanceof DateTimeInterface
+            ? route('history', ['week' => Carbon::parse($weekEnding)->toDateString()])
+            : route('history');
     }
 
     /**
@@ -158,13 +160,11 @@ class AnalysisMessagePresenter
             return 'Temari';
         }
 
-        $phrase = match ($analysis->analysis_type) {
+        return match ($analysis->analysis_type) {
             AnalysisType::PostRunSpeech => $this->postRunTitle($analysis),
             AnalysisType::MonthlyRecap => $this->monthlyRecapTitle($analysis),
             default => $meta['title'],
         };
-
-        return $phrase;
     }
 
     /** "Your 8.2K run is in", dropping the distance when it's unknown. */

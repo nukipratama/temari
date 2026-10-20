@@ -49,26 +49,13 @@ if ! docker compose ps --status running --services 2>/dev/null | grep -qx 'app';
   exit 1
 fi
 
-# Formatting + the static analysis that is cheap enough to pay for on every
-# commit. `composer gate` runs before a push; tsc lives there. Rector applies its
-# fixes to the staged app/ and tests/ PHP before pint. The full-tree rector run
-# — the slowest step this hook ever carried — is CI-only, via `check:full`.
-#
-# Each language branch is ONE `sail exec`. The container round-trip costs ~1.1s,
-# which was the largest single line item in the old hook's three-call shape.
-#
-# phpstan stays FULL rather than staged-scoped, which is faster, not slower:
-# measured 1.5s warm across the tree against 5.0s for a single file, because a
-# scoped run cannot reuse the whole-project result cache. eslint stays full too
-# — scoping it once let two lint errors reach main, and it costs 3.4s.
-#
-# rector, pint and prettier rewrite staged files in place; that is the point of
-# them, and they only ever touch files the commit already contains.
+# Formatting plus the cheap static analysis; the full-tree rector run is CI-only.
+# rector, pint and prettier rewrite staged files in place. phpstan and eslint run
+# over the whole tree on purpose; see docs/architecture/toolchain-gate-and-ci.md.
 run_checks() {
   local status=0
   ./vendor/bin/sail exec -T app sh -c "$1" || status=$?
-  # Re-stage whatever the formatter rewrote, pass or fail, so a later failure
-  # never throws away the formatting this run already did.
+  # Re-stage whatever the formatter rewrote, pass or fail.
   # shellcheck disable=SC2086
   git add $2
   return $status

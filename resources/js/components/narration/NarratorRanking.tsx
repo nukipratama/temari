@@ -14,12 +14,11 @@ interface NarratorRankingProps {
 }
 
 /**
- * Ranked cost-and-calls list beside the daily chart, replacing the chart's own
- * wrapping legend. `chart.kinds` is already cost-descending and shares its
- * band colours with the stacked bars via {@link band}; tokens and calls are
- * joined in from the breakdown rows the chart itself has no need of, so a kind
- * that is most of the spend on a handful of calls reads differently from one
- * that got there on hundreds.
+ * Ranked cost-and-calls list beside the daily chart. `chart.kinds` is already
+ * cost-descending and shares its band colours with the stacked bars via
+ * {@link band}; tokens and calls are joined in from the breakdown rows, so a
+ * kind that is most of the spend on a handful of calls reads differently from
+ * one that got there on hundreds.
  */
 export default function NarratorRanking({
     chart,

@@ -44,8 +44,8 @@ it('settles each finished trial of the last week once, and asks only once', func
     $this->artisan('plan:settle-time-trials')->expectsOutputToContain('Settled 2 time trial(s).')->assertSuccessful();
     $this->artisan('plan:settle-time-trials')->expectsOutputToContain('Settled 0 time trial(s).')->assertSuccessful();
 
-    expect($asked->fresh()->time_trial_outcome)->toBe(TimeTrialOutcome::Asked)
-        ->and($counted->fresh()->time_trial_outcome)->toBe(TimeTrialOutcome::Confirmed)
+    expect($asked->refresh()->time_trial_outcome)->toBe(TimeTrialOutcome::Asked)
+        ->and($counted->refresh()->time_trial_outcome)->toBe(TimeTrialOutcome::Confirmed)
         ->and(InboxNotification::query()->where('user_id', $user->id)->where('kind', 'time_trial')->count())->toBe(1);
 });
 

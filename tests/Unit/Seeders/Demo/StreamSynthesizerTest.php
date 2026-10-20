@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Support\Numeric;
 use Database\Seeders\Demo\HrProfile;
 use Database\Seeders\Demo\RunBlueprint;
 use Database\Seeders\Demo\StreamSynthesizer;
@@ -24,10 +25,8 @@ it('produces a final accumulated distance that matches the blueprint exactly', f
     $distance = $streams['distance']['data'];
     $finalDistance = (float) end($distance);
 
-    // Before the fix the rescale walked the rounded velocity series while the
-    // scale factor came from the unrounded sum, leaving the final distance
-    // drifting off the 10,000 m blueprint. It must now land within rounding
-    // noise (each step rounds to 2 dp).
+    // The final distance must land within rounding noise of the 10,000 m
+    // blueprint (each step rounds to 2 dp).
     expect($finalDistance)->toEqualWithDelta(10_000.0, 0.5);
 });
 
@@ -158,12 +157,12 @@ it('derives grade_smooth from its own altitude and distance series', function ()
     // this stream StreamAnalysis computes no max_grade_pct at all, and the
     // vitals card's steepest-grade and flat-pace tiles never render.
     foreach ([1, 100, 500] as $i) {
-        $rise = $altitude[$i] - $altitude[$i - 1];
-        $run = $distance[$i] - $distance[$i - 1];
+        $rise = Numeric::float($altitude[$i]) - Numeric::float($altitude[$i - 1]);
+        $run = Numeric::float($distance[$i]) - Numeric::float($distance[$i - 1]);
         expect($grade[$i])->toBe(round($rise / $run * 100, 2));
     }
 
     // A run with real elevation has to actually register as climbing.
-    expect(max($grade))->toBeGreaterThan(0.0)
-        ->and(min($grade))->toBeLessThan(0.0);
+    expect(nonNull(collect($grade)->max()))->toBeGreaterThan(0.0)
+        ->and(nonNull(collect($grade)->min()))->toBeLessThan(0.0);
 });

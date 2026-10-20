@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace App\Services\Run\Ingest;
 
+use Illuminate\Support\Collection;
 use App\Models\Activity;
 use App\Models\StravaConnection;
 use App\Services\Run\Metrics\TrainingLoad;
 use App\Services\Run\Story\PastYouMatcher;
+use DateTimeInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 
@@ -23,6 +25,7 @@ class HydrationBacklog
     public function connectedAt(int $userId): ?Carbon
     {
         $connectedAt = StravaConnection::query()->where('user_id', $userId)->value('created_at');
+        assert($connectedAt === null || $connectedAt instanceof DateTimeInterface || is_string($connectedAt));
 
         return $connectedAt === null ? null : Carbon::parse($connectedAt);
     }
@@ -33,11 +36,12 @@ class HydrationBacklog
      */
     public function connectedAtFor(array $userIds): array
     {
-        return StravaConnection::query()
+        /** @var Collection<int, Carbon> $createdAt */
+        $createdAt = StravaConnection::query()
             ->whereIn('user_id', $userIds)
-            ->pluck('created_at', 'user_id')
-            ->map(fn (mixed $at): Carbon => Carbon::parse($at))
-            ->all();
+            ->pluck('created_at', 'user_id');
+
+        return $createdAt->map(fn (Carbon $at): Carbon => Carbon::parse($at))->all();
     }
 
     /**
@@ -60,9 +64,9 @@ class HydrationBacklog
      */
     public function awaitsHydrationBefore(int $userId, ?Carbon $before, ?Carbon $since = null): bool
     {
-        return $before !== null && $this->awaitingHydration([$userId])
+        return $before instanceof Carbon && $this->awaitingHydration([$userId])
             ->where('activity_details.start_date_local', '<', $before)
-            ->when($since !== null, fn (Builder $query) => $query->where('activity_details.start_date_local', '>=', $since))
+            ->when($since instanceof Carbon, fn (Builder $query) => $query->where('activity_details.start_date_local', '>=', $since))
             ->exists();
     }
 
@@ -86,9 +90,9 @@ class HydrationBacklog
     public function withinHydrationGrace(int $userId): bool
     {
         $connectedAt = $this->connectedAt($userId);
-        $graceHours = (int) config('ai.recap_hydration_grace_hours', 48);
+        $graceHours = config()->integer('ai.recap_hydration_grace_hours', 48);
 
-        return $connectedAt !== null && Carbon::now()->lt($connectedAt->copy()->addHours($graceHours));
+        return $connectedAt instanceof Carbon && Carbon::now()->lt($connectedAt->copy()->addHours($graceHours));
     }
 
     /**
@@ -99,7 +103,7 @@ class HydrationBacklog
      */
     public function awaitsOlderHydration(int $userId, ?Carbon $startedAt): bool
     {
-        if ($startedAt === null || ! $this->withinHydrationGrace($userId)) {
+        if (!$startedAt instanceof Carbon || ! $this->withinHydrationGrace($userId)) {
             return false;
         }
 
@@ -119,13 +123,9 @@ class HydrationBacklog
     }
 
     /**
-     * Whether ANY of this athlete's runs, at any age, still await hydration —
-     * wider than {@see self::awaitsOlderHydration()}'s past-you-bounded reach.
-     * The profile voice reads the athlete's whole history (lifetime stats,
-     * full PR table, all-time plan adherence), so a run outside past-you's
-     * 365-day window can still be exactly the one it would misread. Bounded
-     * by the same connect-anchored grace window, so a stuck drain cannot hold
-     * it forever and a long-connected athlete is never affected.
+     * Whether ANY of this athlete's runs, at any age, still await hydration: wider than
+     * {@see self::awaitsOlderHydration()}'s past-you-bounded reach, for the profile voice that reads
+     * the whole history. Bounded by the same connect-anchored grace window.
      */
     public function awaitsFullHydration(int $userId): bool
     {

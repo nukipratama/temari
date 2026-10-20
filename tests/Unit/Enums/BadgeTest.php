@@ -5,7 +5,7 @@ declare(strict_types=1);
 use App\Enums\Badge;
 
 it('returns a non-empty label for every case', function (Badge $badge): void {
-    expect($badge->label())->toBeString()->not->toBe('');
+    expect($badge->label())->not->toBe('')->toBeString();
 })->with(Badge::cases());
 
 it('exposes a representative label', function (): void {
@@ -16,7 +16,7 @@ it('exposes a representative label', function (): void {
 it('exposes an emoji-free prompt label for every case', function (Badge $badge): void {
     $label = $badge->promptLabel();
 
-    expect($label)->toBeString()->not->toBe('')
+    expect($label)->not->toBe('')->toBeString()
         // First character is a letter: the leading emoji has been stripped.
         ->and(preg_match('/^\p{L}/u', $label))->toBe(1)
         // No snake_case slug bled through.

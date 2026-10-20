@@ -7,9 +7,7 @@ use Illuminate\Support\Facades\File;
 
 /**
  * Keeps docs/architecture/llm-triggers.md honest about what actually calls a
- * model. The note is the map of every LLM surface in the app, and a map that
- * silently omits a new narrator is worse than no map: the last audit found a
- * narrated block that had been billing every ingest for a page nobody rendered.
+ * model. The note is the map of every LLM surface in the app.
  *
  * Bidirectional on purpose. Forward, so a surface added without a doc row fails
  * here rather than going unnoticed; backward, so a surface deleted without a doc
@@ -23,21 +21,19 @@ function llmInventoryDoc(): string
 /** @return list<string> */
 function narratorClassNames(): array
 {
-    return collect(File::files(app_path('Services/AI/Narrators')))
+    return array_values(collect(File::files(app_path('Services/AI/Narrators')))
         ->map(fn ($file): string => $file->getFilenameWithoutExtension())
         ->filter(fn (string $name): bool => str_ends_with($name, 'Narrator'))
-        ->values()
-        ->all();
+        ->all());
 }
 
 /** @return list<string> */
 function concreteToolClassNames(): array
 {
-    return collect(File::files(app_path('Services/AI/Agent/Tools')))
+    return array_values(collect(File::files(app_path('Services/AI/Agent/Tools')))
         ->reject(fn ($file): bool => str_contains($file->getContents(), 'abstract class'))
         ->map(fn ($file): string => $file->getFilenameWithoutExtension())
-        ->values()
-        ->all();
+        ->all());
 }
 
 it('documents every narrator that can reach the model', function (): void {

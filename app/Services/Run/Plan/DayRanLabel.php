@@ -58,7 +58,7 @@ final class DayRanLabel
      */
     private static function longBlock(int $paceSec, array $evidence, array $segments): string
     {
-        $km = array_sum(array_map(static fn (SessionSegment $segment): float => $segment->paceLabel === PaceBand::Easy ? 0.0 : (float) ($segment->km ?? 0.0), $segments));
+        $km = array_sum(array_map(static fn (SessionSegment $segment): float => $segment->paceLabel === PaceBand::Easy ? 0.0 : $segment->km ?? 0.0, $segments));
         $label = ($km > 0.0 ? self::minutes($km).' km' : self::minutes((float) $evidence['block_minutes']).' min').' at '.self::pace($paceSec);
         if (! is_numeric($evidence['easy_over_cap_minutes'] ?? null)) {
             return $label;

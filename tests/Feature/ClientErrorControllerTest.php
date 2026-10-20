@@ -4,14 +4,18 @@ declare(strict_types=1);
 
 use App\Support\NewExceptionLedger;
 use Illuminate\Support\Facades\Log;
+use Mockery\MockInterface;
 
-function spyOnClientErrorLog(): void
+function spyOnClientErrorLog(): MockInterface
 {
-    Log::spy()->shouldReceive('channel')->with('client-errors')->andReturnSelf();
+    $log = Log::spy();
+    $log->shouldReceive('channel')->with('client-errors')->andReturnSelf();
+
+    return $log;
 }
 
 it('logs a reported client error and returns no content', function (): void {
-    spyOnClientErrorLog();
+    $log = spyOnClientErrorLog();
 
     $this->postJson('/client-errors', [
         'message' => 'Boom',
@@ -20,7 +24,7 @@ it('logs a reported client error and returns no content', function (): void {
         'componentStack' => 'in RunPage',
     ])->assertNoContent();
 
-    Log::shouldHaveReceived('warning')->withArgs(
+    $log->shouldHaveReceived('warning')->withArgs(
         fn (string $message, array $context): bool => $message === 'client-error'
             && $context['message'] === 'Boom'
             && $context['url'] === 'https://temari.test/activities',
@@ -32,7 +36,7 @@ it('is reachable without authentication (captures guest-page errors)', function 
 });
 
 it('writes only the leading frames of an oversized trace', function (): void {
-    spyOnClientErrorLog();
+    $log = spyOnClientErrorLog();
 
     $this->postJson('/client-errors', [
         'message' => 'Boom',
@@ -40,7 +44,7 @@ it('writes only the leading frames of an oversized trace', function (): void {
         'componentStack' => str_repeat('b', 5000),
     ])->assertNoContent();
 
-    Log::shouldHaveReceived('warning')->withArgs(
+    $log->shouldHaveReceived('warning')->withArgs(
         fn (string $message, array $context): bool => str_starts_with((string) $context['stack'], str_repeat('a', 2000))
             && mb_strlen((string) $context['stack']) < 2100
             && mb_strlen((string) $context['component_stack']) < 2100,

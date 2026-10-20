@@ -3,6 +3,7 @@ import type { router as inertiaRouter } from '@inertiajs/react';
 import type { ContextualOrigin, TabId } from '@/lib/nav';
 
 import { isTabId, navTabFor, TAB_IDS } from '@/lib/navRoutes';
+import { readSession, removeSession, writeSession } from '@/lib/safeStorage';
 
 const ORIGIN_KEY = 'temari:navigation:origin';
 const ORIGIN_CHANGE_EVENT = 'temari:navigation:origin-change';
@@ -107,14 +108,14 @@ export function parseTabMemory(stored: string | null): TabStates {
 }
 
 function readTabStates(): TabStates {
-    return parseTabMemory(window.sessionStorage.getItem(TAB_STATE_KEY));
+    return parseTabMemory(readSession(TAB_STATE_KEY));
 }
 
 function writeTabStates(states: TabStates): void {
     if (Object.keys(states).length === 0) {
-        window.sessionStorage.removeItem(TAB_STATE_KEY);
+        removeSession(TAB_STATE_KEY);
     } else {
-        window.sessionStorage.setItem(TAB_STATE_KEY, JSON.stringify(states));
+        writeSession(TAB_STATE_KEY, JSON.stringify(states));
     }
 
     window.dispatchEvent(new Event(TAB_CHANGE_EVENT));
@@ -126,9 +127,7 @@ export function subscribeToTabMemory(listener: () => void): () => void {
 }
 
 export function tabMemorySnapshot(): string | null {
-    return typeof window === 'undefined'
-        ? null
-        : window.sessionStorage.getItem(TAB_STATE_KEY);
+    return typeof window === 'undefined' ? null : readSession(TAB_STATE_KEY);
 }
 
 export function subscribeToContextualOrigin(listener: () => void): () => void {
@@ -137,9 +136,7 @@ export function subscribeToContextualOrigin(listener: () => void): () => void {
 }
 
 export function contextualOriginSnapshot(): string | null {
-    return typeof window === 'undefined'
-        ? null
-        : window.sessionStorage.getItem(ORIGIN_KEY);
+    return typeof window === 'undefined' ? null : readSession(ORIGIN_KEY);
 }
 
 function notifyContextualOriginChange(): void {
@@ -211,8 +208,8 @@ export function clearTabMemory(tab: TabId): void {
 }
 
 export function clearNavigationMemory(): void {
-    window.sessionStorage.removeItem(ORIGIN_KEY);
-    window.sessionStorage.removeItem(TAB_STATE_KEY);
+    removeSession(ORIGIN_KEY);
+    removeSession(TAB_STATE_KEY);
     notifyContextualOriginChange();
     window.dispatchEvent(new Event(TAB_CHANGE_EVENT));
 }
@@ -248,12 +245,12 @@ export function parseContextualOrigin(
 }
 
 export function readContextualOrigin(): ContextualOrigin | null {
-    return parseContextualOrigin(window.sessionStorage.getItem(ORIGIN_KEY));
+    return parseContextualOrigin(readSession(ORIGIN_KEY));
 }
 
 export function writeContextualOrigin(origin: ContextualOrigin | null): void {
     if (origin === null) {
-        window.sessionStorage.removeItem(ORIGIN_KEY);
+        removeSession(ORIGIN_KEY);
         notifyContextualOriginChange();
         return;
     }
@@ -265,15 +262,12 @@ export function writeContextualOrigin(origin: ContextualOrigin | null): void {
         !Number.isFinite(origin.scrollY) ||
         origin.scrollY < 0
     ) {
-        window.sessionStorage.removeItem(ORIGIN_KEY);
+        removeSession(ORIGIN_KEY);
         notifyContextualOriginChange();
         return;
     }
 
-    window.sessionStorage.setItem(
-        ORIGIN_KEY,
-        JSON.stringify({ ...origin, href }),
-    );
+    writeSession(ORIGIN_KEY, JSON.stringify({ ...origin, href }));
     notifyContextualOriginChange();
 }
 

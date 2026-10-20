@@ -81,7 +81,7 @@ it('catches a missed 00:00 run up on a later Monday tick, and a re-run once ever
         ->expectsOutputToContain('Queued streak settlement for 1 users.')
         ->assertSuccessful();
 
-    expect($user->fresh()->streak_settled_through?->toDateString())->toBe('2026-05-31');
+    expect($user->refresh()->streak_settled_through?->toDateString())->toBe('2026-05-31');
 
     Bus::fake();
 

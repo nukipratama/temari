@@ -50,6 +50,8 @@ export interface SeasonSummaryWeek {
     eased_from_km?: number | null;
     actual_km: number | null;
     sessions: number;
+    /** A week behind's mean capped compliance score; null for this week, weeks ahead and unscored weeks. */
+    adherence_pct: number | null;
 }
 
 /** The first later week whose phase identity differs from the current week's, and how many weeks away it is. */
@@ -57,15 +59,16 @@ export function nextPhaseOf(
     weeks: SeasonSummaryWeek[],
 ): { key: string; inWeeks: number } | null {
     const currentIndex = weeks.findIndex((week) => week.type === 'current');
-    if (currentIndex === -1) {
+    const current = weeks[currentIndex];
+    if (current === undefined) {
         return null;
     }
 
-    const currentKey = seasonPhaseKey(weeks[currentIndex]);
-    for (let i = currentIndex + 1; i < weeks.length; i++) {
-        const key = seasonPhaseKey(weeks[i]);
+    const currentKey = seasonPhaseKey(current);
+    for (const [offset, week] of weeks.slice(currentIndex + 1).entries()) {
+        const key = seasonPhaseKey(week);
         if (key !== currentKey) {
-            return { key, inWeeks: i - currentIndex };
+            return { key, inWeeks: offset + 1 };
         }
     }
 
@@ -262,12 +265,10 @@ export function easedFromDelta(
 
 /**
  * The current week's live volume redistribution can shrink an ungraded day's
- * `distance_km` below what it was originally sized at (`asked_km`) as the
- * athlete banks km elsewhere in the week. Returns that original figure only
- * when it has actually moved, so the day's header can say why its number
- * doesn't match what Home or its own narration says. A graded day
- * (`prescribed_km` set) already has a settled answer to this via
- * {@see judgedDayResult}.
+ * `distance_km` below what it was originally sized at (`asked_km`). Returns the
+ * original figure only when it has moved, so the day's header can say why its
+ * number differs from Home or its own narration. A graded day already has its
+ * answer via {@see judgedDayResult}.
  */
 export function volumeAdjustedFrom(day: PlanDay): number | null {
     if (day.prescribed_km != null || day.session_type === 'rest') {
@@ -459,19 +460,22 @@ export function sessionShape(segments: PlanSessionSegment[]): string | null {
     const parts: string[] = [];
     for (let i = 0; i < segments.length; i++) {
         const work = segments[i];
+        if (work === undefined) {
+            continue;
+        }
         let reps = 1;
-        while (
-            work.zone > 'Z2' &&
-            segments[i + 1]?.key === 'recovery' &&
-            segments[i + 2] !== undefined &&
-            sameWork(work, segments[i + 2])
-        ) {
+        while (work.zone > 'Z2' && segments[i + 1]?.key === 'recovery') {
+            const repeat = segments[i + 2];
+            if (repeat === undefined || !sameWork(work, repeat)) {
+                break;
+            }
             reps++;
             i += 2;
         }
-        if (reps > 1) {
+        const recovery = segments[i - 1];
+        if (reps > 1 && recovery !== undefined) {
             parts.push(
-                `${reps} × ${segmentLabel(work)}, ${segmentLabel(segments[i - 1])} between`,
+                `${reps} × ${segmentLabel(work)}, ${segmentLabel(recovery)} between`,
             );
         } else {
             parts.push(segmentLabel(work));
@@ -646,16 +650,17 @@ export function targetLabel(day: PlanDay): string | null {
     }
 
     const units = workUnits(day.segments);
-    if (units.length === 0) {
+    const [firstUnit] = units;
+    if (firstUnit === undefined) {
         return day.hr_cap_bpm !== null
             ? `under ${day.hr_cap_bpm} bpm`
             : corePaceWithRange(day);
     }
 
     const pace =
-        units[0].paceSecPerKm === null
+        firstUnit.paceSecPerKm === null
             ? ''
-            : ` at ${formatPaceWithRange(units[0].paceSecPerKm, units[0].paceRange)}`;
+            : ` at ${formatPaceWithRange(firstUnit.paceSecPerKm, firstUnit.paceRange)}`;
     if (day.session_type === 'long') {
         const km = oneDecimal(
             units.reduce((sum, unit) => sum + (unit.km ?? 0), 0),
@@ -718,11 +723,10 @@ export function paceEaseDelta(
 /**
  * A day the plan has judged, paired by side rather than by figure: what it
  * asked for and what was run, each in the same terms. The ask is
- * {@see targetLabel}, read off the effective segments, so a pace-eased day
- * shows its eased pace (#932/#965); the answer is `ran_label`, read off the
- * judge's evidence, falling back to the pace over the runs `SessionMatcher`
- * credits (#962). Null on a day still ahead, which shows the ask alone
- * instead.
+ * {@see targetLabel}, read off the effective segments; the answer is
+ * `ran_label`, read off the judge's evidence, falling back to the pace over the
+ * runs `SessionMatcher` credits. Null on a day still ahead, which shows the ask
+ * alone.
  */
 export interface JudgedDayResult {
     askedKm: number;
@@ -753,7 +757,7 @@ const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 /** The weekday a Y-m-d falls on, as the day rows label it. */
 export function weekdayLabel(iso: string): string {
     const date = parseNaiveLocalDate(iso);
-    return date === null ? '' : WEEKDAYS[date.getDay()];
+    return date === null ? '' : (WEEKDAYS[date.getDay()] ?? '');
 }
 
 /** A Plan page day row with the edits `SessionEditRules` allows on it. */

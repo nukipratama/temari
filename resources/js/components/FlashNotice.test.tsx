@@ -85,23 +85,33 @@ describe('FlashNotice', () => {
         expect(screen.queryByRole('status')).not.toBeInTheDocument();
     });
 
-    it('stays dismissed when a partial reload replays the same flash', () => {
-        setMockPage({
-            ...base,
-            flash: { info: 'Just sent. Give it a moment.' },
-        });
+    it('stays dismissed when a partial reload keeps the same flash', () => {
+        const flash = { info: 'Just sent. Give it a moment.' };
+        setMockPage({ ...base, flash });
         const { rerender } = render(<FlashNotice />);
         fireEvent.click(screen.getByLabelText('Close'));
 
-        setMockPage({
-            ...base,
-            flash: { info: 'Just sent. Give it a moment.' },
-        });
+        setMockPage({ ...base, flash, unreadNotifications: 2 });
         rerender(<FlashNotice />);
         expect(screen.queryByRole('status')).not.toBeInTheDocument();
     });
 
-    it('re-shows for a fresh flash after a prior dismissal', () => {
+    it('shows the same text again when the next visit flashes it anew', () => {
+        const flash = { info: 'Just sent. Give it a moment.' };
+        setMockPage({ ...base, flash });
+        const { rerender } = render(<FlashNotice />);
+        fireEvent.click(screen.getByLabelText('Close'));
+        expect(screen.queryByRole('status')).not.toBeInTheDocument();
+
+        setMockPage({ ...base, flash: { ...flash } });
+        rerender(<FlashNotice />);
+
+        expect(screen.getByRole('status')).toHaveTextContent(
+            'Just sent. Give it a moment.',
+        );
+    });
+
+    it('re-shows for a fresh flash on a same-page redirect after a prior dismissal', () => {
         setMockPage({
             ...base,
             flash: { info: 'Turn on notifications first.' },

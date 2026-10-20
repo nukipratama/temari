@@ -10,7 +10,7 @@ export interface CtlPoint {
  * plots — oldest first, ending today — rather than a second backend query.
  */
 export function ctlNow(trend: ReadonlyArray<CtlPoint>): number | null {
-    return trend.length === 0 ? null : trend[trend.length - 1].ctl;
+    return trend.at(-1)?.ctl ?? null;
 }
 
 /** The series entry `daysAgo` days before the last one, or null when the
@@ -20,7 +20,7 @@ export function ctlDaysAgo(
     daysAgo: number,
 ): number | null {
     const index = trend.length - 1 - daysAgo;
-    return index >= 0 ? trend[index].ctl : null;
+    return index >= 0 ? (trend[index]?.ctl ?? null) : null;
 }
 
 /** The highest CTL the series reaches — "best this year" against the

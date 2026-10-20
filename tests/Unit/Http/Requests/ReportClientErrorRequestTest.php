@@ -5,6 +5,9 @@ declare(strict_types=1);
 use App\Http\Requests\ReportClientErrorRequest;
 use Illuminate\Support\Facades\Validator;
 
+/**
+ * @param  array<string, mixed>  $data
+ */
 function passesClientError(array $data): bool
 {
     return Validator::make($data, new ReportClientErrorRequest()->rules())->passes();

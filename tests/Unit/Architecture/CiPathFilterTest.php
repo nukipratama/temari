@@ -9,10 +9,17 @@ use Symfony\Component\Yaml\Yaml;
 
 const CI_WORKFLOW = '.github/workflows/ci.yml';
 
+/**
+ * @param  array<mixed>  $paths
+ * @return array<string, bool>
+ */
 function ciClassifyPaths(array $paths): array
 {
     $process = new Process([base_path('scripts/ci/classify-checks.sh')], base_path());
-    $process->setInput(implode("\n", $paths)."\n");
+    $process->setInput(implode("\n", array_map(
+        fn (mixed $path): string => is_string($path) ? $path : throw new InvalidArgumentException('A changed path is not a string.'),
+        $paths,
+    ))."\n");
     $process->run();
 
     expect($process->isSuccessful())->toBeTrue($process->getErrorOutput());
@@ -26,7 +33,10 @@ function ciClassifyPaths(array $paths): array
     return $checks;
 }
 
-/** @return array<string, array<string, bool>> */
+/**
+ * @param  list<string>  $paths
+ * @return array<string, array<string, bool>>
+ */
 function ciClassifyEachPath(array $paths): array
 {
     $process = new Process([base_path('scripts/ci/classify-checks.sh'), '--per-path'], base_path());
@@ -47,6 +57,7 @@ function ciClassifyEachPath(array $paths): array
     return $classified;
 }
 
+/** @return array<string, bool> */
 function ciChecks(
     bool $backend = false,
     bool $frontend = false,
@@ -55,7 +66,7 @@ function ciChecks(
     bool $structure = false,
     bool $image = false,
 ): array {
-    return compact('backend', 'frontend', 'docker', 'worktree', 'structure', 'image');
+    return ['backend' => $backend, 'frontend' => $frontend, 'docker' => $docker, 'worktree' => $worktree, 'structure' => $structure, 'image' => $image];
 }
 
 function ciClassifiesAsBackend(string $path): bool
@@ -81,20 +92,30 @@ function ciRunsStructureTests(string $path): bool
 }
 
 /** @return list<string> */
-function ciRepoPathsReadBy(string $testSource): array
+function ciDirectoryProbes(string $path): array
 {
     static $directoryProbes = [];
 
+    return $directoryProbes[$path] ??= collect(File::allFiles(base_path($path)))
+        ->map(fn (SplFileInfo $file): string => "{$path}/ci-probe.{$file->getExtension()}")
+        ->unique()
+        ->values()
+        ->all();
+}
+
+/** @return list<string> */
+function ciRepoPathsReadBy(string $testSource): array
+{
     $roots = ['base' => '', 'resource' => 'resources/', 'public' => 'public/'];
 
     preg_match_all("/\b(base|resource|public)_path\('([^'$]+)'\)/", $testSource, $calls, PREG_SET_ORDER);
     preg_match_all("/^const [A-Z_]+ = '([^'$]+)';/m", $testSource, $constants);
 
-    return collect($calls)
+    return array_values(collect($calls)
         ->map(fn (array $call): string => $roots[$call[1]].$call[2])
         ->merge($constants[1])
         ->reject(fn (string $path): bool => str_starts_with($path, 'vendor/'))
-        ->flatMap(function (string $path) use (&$directoryProbes): array {
+        ->flatMap(function (string $path): array {
             if (is_file(base_path($path))) {
                 return [$path];
             }
@@ -102,14 +123,10 @@ function ciRepoPathsReadBy(string $testSource): array
                 return [];
             }
 
-            return $directoryProbes[$path] ??= collect(File::allFiles(base_path($path)))
-                ->map(fn (SplFileInfo $file): string => "{$path}/ci-probe.{$file->getExtension()}")
-                ->unique()
-                ->all();
+            return ciDirectoryProbes($path);
         })
         ->unique()
-        ->values()
-        ->all();
+        ->all());
 }
 
 function ciRunsOnlyStructureTests(string $testSource): bool
@@ -170,7 +187,7 @@ it('runs a check that executes every test reading a repo file it names', functio
     foreach ($reads as [$path, $test, $source]) {
         $checks = $classified[$path];
 
-        if (! $checks['backend'] && ! ($checks['structure'] && ciRunsOnlyStructureTests($source))) {
+        if (! $checks['backend'] && (!$checks['structure'] || !ciRunsOnlyStructureTests($source))) {
             $unguarded[] = "{$path} (read by tests/{$test->getRelativePathname()})";
         }
     }
@@ -192,13 +209,13 @@ it('runs only the structure tests for documentation those tests read', function 
 
 it('runs the structure tests in their own required job only when backend CI does not run', function (): void {
     $workflow = Yaml::parseFile(base_path(CI_WORKFLOW));
-    $job = $workflow['jobs']['structure'];
+    $job = data_get($workflow, 'jobs.structure');
 
-    expect($job['if'])->toBe("\${{ needs.changes.outputs.structure == 'true' }}")
-        ->and($job['timeout-minutes'])->toBeInt()
-        ->and(collect($job['steps'])->pluck('run')->filter()->implode("\n"))->toContain('./vendor/bin/pest --group=structure')
-        ->and($workflow['jobs']['ci-gate']['needs'])->toContain('structure')
-        ->and($workflow['jobs']['ci-gate']['steps'][0]['run'])->toContain('needs.structure.result');
+    expect(data_get($job, 'if'))->toBe("\${{ needs.changes.outputs.structure == 'true' }}")
+        ->and(data_get($job, 'timeout-minutes'))->toBeInt()
+        ->and(collect(arrayOf(data_get($job, 'steps')))->pluck('run')->filter()->implode("\n"))->toContain('./vendor/bin/pest --group=structure')
+        ->and(data_get($workflow, 'jobs.ci-gate.needs'))->toContain('structure')
+        ->and(data_get($workflow, 'jobs.ci-gate.steps.0.run'))->toContain('needs.structure.result');
 
     expect(ciClassifyPaths(['docs/design-tokens.md', 'app/Models/User.php']))->toBe(ciChecks(backend: true));
 })->group('structure');

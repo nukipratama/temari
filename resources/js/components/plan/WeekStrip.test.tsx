@@ -3,6 +3,8 @@ import { describe, expect, it, vi } from 'vitest';
 
 import type { PlanDay } from '@/lib/plan';
 
+import { defined } from '@/test/defined';
+
 import WeekStrip from './WeekStrip';
 
 const TODAY = '2026-06-17';
@@ -117,13 +119,13 @@ describe('WeekStrip', () => {
 
     it('rings the selected today tab in lime', () => {
         const { tabs } = renderStrip();
-        expect(tabs[2].className).toContain('ring-icon-accent');
-        expect(tabs[0].className).not.toContain('ring-icon-accent');
+        expect(defined(tabs[2]).className).toContain('ring-icon-accent');
+        expect(defined(tabs[0]).className).not.toContain('ring-icon-accent');
     });
 
     it('rings today in lime even when another tab is selected', () => {
         const { tabs } = renderStrip({ selectedDate: '2026-06-15' });
-        expect(tabs[2].className).toContain(
+        expect(defined(tabs[2]).className).toContain(
             'ring-[1.5px] ring-inset ring-icon-accent',
         );
     });
@@ -158,9 +160,9 @@ describe('WeekStrip', () => {
         });
 
         expect(tabs[0]).toHaveAttribute('aria-label', 'Mon, 4.0 km, partial');
-        expect(tabs[0].querySelector('[data-icon="CircleDashed"]')).not.toBe(
-            null,
-        );
+        expect(
+            defined(tabs[0]).querySelector('[data-icon="CircleDashed"]'),
+        ).not.toBe(null);
         expect(tabs[0]).not.toHaveTextContent('short');
     });
 
@@ -180,7 +182,7 @@ describe('WeekStrip', () => {
 
     it('selects a tile on click', () => {
         const { onSelect, tabs } = renderStrip();
-        fireEvent.click(tabs[4]);
+        fireEvent.click(defined(tabs[4]));
 
         expect(onSelect).toHaveBeenCalledWith('2026-06-19');
     });
@@ -188,11 +190,11 @@ describe('WeekStrip', () => {
     it('moves the selection and focus with the arrow keys, wrapping at the ends', () => {
         const { onSelect, tabs } = renderStrip();
 
-        fireEvent.keyDown(tabs[2], { key: 'ArrowRight' });
+        fireEvent.keyDown(defined(tabs[2]), { key: 'ArrowRight' });
         expect(onSelect).toHaveBeenLastCalledWith('2026-06-18');
         expect(tabs[3]).toHaveFocus();
 
-        fireEvent.keyDown(tabs[0], { key: 'ArrowLeft' });
+        fireEvent.keyDown(defined(tabs[0]), { key: 'ArrowLeft' });
         expect(onSelect).toHaveBeenLastCalledWith('2026-06-21');
         expect(tabs[6]).toHaveFocus();
     });
@@ -200,16 +202,16 @@ describe('WeekStrip', () => {
     it('jumps to the first and last day on Home and End', () => {
         const { onSelect, tabs } = renderStrip();
 
-        fireEvent.keyDown(tabs[2], { key: 'End' });
+        fireEvent.keyDown(defined(tabs[2]), { key: 'End' });
         expect(onSelect).toHaveBeenLastCalledWith('2026-06-21');
 
-        fireEvent.keyDown(tabs[2], { key: 'Home' });
+        fireEvent.keyDown(defined(tabs[2]), { key: 'Home' });
         expect(onSelect).toHaveBeenLastCalledWith('2026-06-15');
     });
 
     it('ignores any other key', () => {
         const { onSelect, tabs } = renderStrip();
-        fireEvent.keyDown(tabs[2], { key: 'a' });
+        fireEvent.keyDown(defined(tabs[2]), { key: 'a' });
 
         expect(onSelect).not.toHaveBeenCalled();
     });
@@ -219,9 +221,9 @@ describe('WeekStrip', () => {
             days: [day({ session_type: 'interval', status: 'planned' })],
         });
 
-        expect(tabs[0].querySelector('[data-icon="Flame"]')).toHaveClass(
-            'text-ember-ink',
-        );
+        expect(
+            defined(tabs[0]).querySelector('[data-icon="Flame"]'),
+        ).toHaveClass('text-ember-ink');
         expect(tabs[0]).not.toHaveTextContent('interval');
         expect(tabs[0]).toHaveAttribute(
             'aria-label',
@@ -302,7 +304,9 @@ describe('WeekStrip', () => {
             'aria-label',
             expect.stringContaining('overreached'),
         );
-        expect(tabs[0].querySelector('[data-icon="ArrowUp"]')).not.toBe(null);
+        expect(
+            defined(tabs[0]).querySelector('[data-icon="ArrowUp"]'),
+        ).not.toBe(null);
     });
 
     it('shows a skipped day as its glyph, not the word, with the word kept in the label', () => {
@@ -310,7 +314,9 @@ describe('WeekStrip', () => {
             days: [day({ skipped: true })],
         });
 
-        expect(tabs[0].querySelector('[data-icon="Minus"]')).not.toBe(null);
+        expect(defined(tabs[0]).querySelector('[data-icon="Minus"]')).not.toBe(
+            null,
+        );
         expect(tabs[0]).not.toHaveTextContent('skip');
         expect(tabs[0]).toHaveAttribute(
             'aria-label',
@@ -321,8 +327,8 @@ describe('WeekStrip', () => {
     it('lays tiles out as a borderless column, matching the day cell shared with Home', () => {
         const { tabs } = renderStrip();
 
-        expect(tabs[0].className).not.toContain('border-border');
-        expect(tabs[0].className).not.toContain('bg-card');
+        expect(defined(tabs[0]).className).not.toContain('border-border');
+        expect(defined(tabs[0]).className).not.toContain('bg-card');
     });
 
     it("colors every tile's edge by its session-type effort, not by status", () => {
@@ -333,9 +339,9 @@ describe('WeekStrip', () => {
             ],
         });
 
-        expect(tabs[0].querySelector('.border-citrus')).not.toBeNull();
+        expect(defined(tabs[0]).querySelector('.border-citrus')).not.toBeNull();
         expect(
-            tabs[1].querySelector('.border-dashed.border-border'),
+            defined(tabs[1]).querySelector('.border-dashed.border-border'),
         ).not.toBeNull();
     });
 });

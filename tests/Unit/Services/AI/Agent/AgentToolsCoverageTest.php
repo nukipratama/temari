@@ -48,9 +48,15 @@ use App\Services\Run\Metrics\TrainingLoad;
 use App\Services\Run\Metrics\TrainingPaceCalculator;
 use App\Services\Run\Metrics\VdotEstimator;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use App\Services\AI\Agent\AgentTool;
+use App\Services\AI\Agent\Tools\LifetimeStatsTool;
+use App\Services\AI\Agent\Tools\MonthTotalsTool;
+use App\Services\AI\Agent\Tools\TrendRangeTool;
+use App\Services\Run\LifetimeStats;
 use App\Services\AI\Agent\Tools\ProgressionSignalTool;
 use App\Services\AI\Agent\Tools\PersonaMixTool;
 use App\Services\Run\ProgressionSeriesBuilder;
+use App\Support\Numeric;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Carbon;
 
@@ -75,41 +81,71 @@ function agentToolFixture(): array
 
 // ── the shape every tool shares ───────────────────────────────────────
 
-it('declares an argument-free schema, so no tool can be pointed at another run', function (): void {
+function agentToolFor(string $class): AgentTool
+{
     ['activity' => $a, 'detail' => $d] = agentToolFixture();
+    $user = $a->user;
+    $today = nonNull($d->start_date_local);
 
-    expect(new RunSummaryTool($a, $d)->parameters())->toEqual([
+    return match ($class) {
+        HrZonesTool::class, KmSplitsTool::class, LapsTool::class, PerceivedEffortTool::class,
+        PersonalRecordsTool::class, RunSummaryTool::class, TerrainTool::class, WeatherTool::class => new $class($a, $d),
+        PersonaMixTool::class, WeekStateTool::class => new $class($user, $today),
+        EffortContextTool::class => new EffortContextTool($a, $d, app(RelativeEffort::class)),
+        GetThreadTool::class => new GetThreadTool($a, 1),
+        CardIdentityTool::class => new CardIdentityTool(RunCard::factory()->create(['activity_id' => $a->id])),
+        WeekTotalsTool::class => new WeekTotalsTool(WeeklySnapshot::factory()->for($user)->create()),
+        MonthTotalsTool::class => new MonthTotalsTool($user, $today->format('Y-m')),
+        TrendRangeTool::class => new TrendRangeTool($user, '7d', new TrainingLoad()),
+        LifetimeStatsTool::class => new LifetimeStatsTool($user, $today, app(LifetimeStats::class)),
+        PlanAdherenceTool::class => new PlanAdherenceTool($user, $today, null),
+        PlanContextTool::class => planContextTool($user, $today, $today),
+        ProgressionSignalTool::class => new ProgressionSignalTool($user, $today, app(ProgressionSeriesBuilder::class)),
+        RecentBaselineTool::class => new RecentBaselineTool($user, $today, new ResolveRunBaselineAction()),
+        RecentRunsTool::class => new RecentRunsTool($user, $today, app(VerdictNarrator::class)),
+        TrainingLoadTool::class => new TrainingLoadTool($user, $today, new TrainingLoad()),
+        TrainingPacesTool::class => new TrainingPacesTool($user, $today, app(VdotEstimator::class), app(TrainingPaceCalculator::class)),
+        default => throw new InvalidArgumentException("Unknown tool {$class}."),
+    };
+}
+
+it('gives every tool an argument-free schema, so none can be pointed at another run, and a snake_case name and description the model can choose on', function (string $class): void {
+    $tool = agentToolFor($class);
+
+    expect($tool->parameters())->toEqual([
         'type' => 'object',
         'properties' => (object) [],
         'required' => [],
         'additionalProperties' => false,
-    ]);
-});
-
-it('names every tool in snake_case with a description the model can choose on', function (): void {
-    ['activity' => $a, 'detail' => $d] = agentToolFixture();
-
-    $tools = [
-        new RunSummaryTool($a, $d),
-        new KmSplitsTool($a, $d),
-        new LapsTool($a, $d),
-        new HrZonesTool($a, $d),
-        new TerrainTool($a, $d),
-        new WeatherTool($a, $d),
-        new EffortContextTool($a, $d, app(RelativeEffort::class)),
-        new PerceivedEffortTool($a, $d),
-        new TrainingLoadTool($a->user, $d->start_date_local, new TrainingLoad()),
-        new RecentBaselineTool($a->user, $d->start_date_local, new ResolveRunBaselineAction()),
-        new TrainingPacesTool($a->user, $d->start_date_local, app(VdotEstimator::class), app(TrainingPaceCalculator::class)),
-        planContextTool($a->user, $d->start_date_local, $d->start_date_local),
-        new GetThreadTool($a, 1),
-    ];
-
-    foreach ($tools as $tool) {
-        expect($tool->name())->toMatch('/^get_[a-z_]+$/')
-            ->and($tool->description())->not->toBe('');
-    }
-});
+    ])
+        ->and($tool->name())->toMatch('/^get_[a-z_]+$/')
+        ->and($tool->description())->not->toBe('');
+})->with([
+    CardIdentityTool::class => [CardIdentityTool::class],
+    EffortContextTool::class => [EffortContextTool::class],
+    GetThreadTool::class => [GetThreadTool::class],
+    HrZonesTool::class => [HrZonesTool::class],
+    KmSplitsTool::class => [KmSplitsTool::class],
+    LapsTool::class => [LapsTool::class],
+    LifetimeStatsTool::class => [LifetimeStatsTool::class],
+    MonthTotalsTool::class => [MonthTotalsTool::class],
+    PerceivedEffortTool::class => [PerceivedEffortTool::class],
+    PersonaMixTool::class => [PersonaMixTool::class],
+    PersonalRecordsTool::class => [PersonalRecordsTool::class],
+    PlanAdherenceTool::class => [PlanAdherenceTool::class],
+    PlanContextTool::class => [PlanContextTool::class],
+    ProgressionSignalTool::class => [ProgressionSignalTool::class],
+    RecentBaselineTool::class => [RecentBaselineTool::class],
+    RecentRunsTool::class => [RecentRunsTool::class],
+    RunSummaryTool::class => [RunSummaryTool::class],
+    TerrainTool::class => [TerrainTool::class],
+    TrainingLoadTool::class => [TrainingLoadTool::class],
+    TrainingPacesTool::class => [TrainingPacesTool::class],
+    TrendRangeTool::class => [TrendRangeTool::class],
+    WeatherTool::class => [WeatherTool::class],
+    WeekStateTool::class => [WeekStateTool::class],
+    WeekTotalsTool::class => [WeekTotalsTool::class],
+]);
 
 // ── GetThreadTool ─────────────────────────────────────────────────────
 
@@ -145,7 +181,7 @@ it('keeps only the most recent six exchanges of a long thread', function (): voi
     }
     $answering = threadExchange($a, 'and now?', status: AnalysisStatus::Queued);
 
-    expect(array_column(new GetThreadTool($a, $answering->id)->handle([])['thread'], 'question'))
+    expect(array_column(arrayOf(new GetThreadTool($a, $answering->id)->handle([])['thread']), 'question'))
         ->toBe(['q3?', 'q4?', 'q5?', 'q6?', 'q7?', 'q8?']);
 });
 
@@ -166,7 +202,7 @@ it('reads only this run thread even when the call forges another run and user', 
         'limit' => 100,
     ]);
 
-    expect(array_column($forged['thread'], 'question'))->toBe(['mine?']);
+    expect(array_column(arrayOf($forged['thread']), 'question'))->toBe(['mine?']);
 });
 
 // ── RunSummaryTool ────────────────────────────────────────────────────
@@ -175,7 +211,7 @@ it('reads the run basics, doubling the one-leg cadence Strava stores', function 
     ['activity' => $a, 'detail' => $d] = agentToolFixture();
     $d->update(['average_heartrate' => 155.0, 'max_heartrate' => 178, 'average_cadence' => 83.5]);
 
-    expect(new RunSummaryTool($a, $d->fresh())->handle([]))->toMatchArray([
+    expect(new RunSummaryTool($a, $d->refresh())->handle([]))->toMatchArray([
         'distance_km' => 5.0,
         'elapsed_time_sec' => 1500,
         'elapsed_time_formatted' => '25:00',
@@ -190,7 +226,7 @@ it('formats a sub-4:00 pace and a past-hour duration the same way the app shows 
     ['activity' => $a, 'detail' => $d] = agentToolFixture();
     $d->update(['distance' => 42195.0, 'moving_time' => 9000, 'elapsed_time' => 9000]); // marathon, 3:33/km, 2:30:00
 
-    $reading = new RunSummaryTool($a, $d->fresh())->handle([]);
+    $reading = new RunSummaryTool($a, $d->refresh())->handle([]);
 
     expect($reading['elapsed_time_formatted'])->toBe('2:30:00')
         ->and($reading['pace_formatted'])->toBe('3:33');
@@ -200,14 +236,14 @@ it('rounds the run distance to the one decimal the copy rule allows', function (
     ['activity' => $a, 'detail' => $d] = agentToolFixture();
     $d->update(['distance' => 10_470.0]);
 
-    expect(new RunSummaryTool($a, $d->fresh())->handle([]))->toMatchArray(['distance_km' => 10.5]);
+    expect(new RunSummaryTool($a, $d->refresh())->handle([]))->toMatchArray(['distance_km' => 10.5]);
 });
 
 it('leaves cadence null rather than doubling a missing value', function (): void {
     ['activity' => $a, 'detail' => $d] = agentToolFixture();
     $d->update(['average_cadence' => null]);
 
-    expect(new RunSummaryTool($a, $d->fresh())->handle([])['avg_cadence_spm'])->toBeNull();
+    expect(new RunSummaryTool($a, $d->refresh())->handle([])['avg_cadence_spm'])->toBeNull();
 });
 
 // ── KmSplitsTool ──────────────────────────────────────────────────────
@@ -221,7 +257,7 @@ it('reads the splits with the pace spread already banded into words', function (
         'negative_split' => true,
     ]]);
 
-    $reading = new KmSplitsTool($a, $d->fresh())->handle([]);
+    $reading = new KmSplitsTool($a, $d->refresh())->handle([]);
 
     // Banded, never the raw figure: the model quoted "pace variability 68 detik
     // per km" at users, a number none of them can act on.
@@ -236,14 +272,14 @@ it('leaves the finish partial null when the run ends on a whole km', function ()
     ['activity' => $a, 'detail' => $d] = agentToolFixture();
     $d->update(['stream_summary' => ['per_km' => [['km' => 1, 'pace' => '6:00']]]]);
 
-    expect(new KmSplitsTool($a, $d->fresh())->handle([])['finish_partial'])->toBeNull();
+    expect(new KmSplitsTool($a, $d->refresh())->handle([])['finish_partial'])->toBeNull();
 });
 
 it('reads null splits without fataling when there is no stream summary', function (): void {
     ['activity' => $a, 'detail' => $d] = agentToolFixture();
     $d->update(['stream_summary' => null]);
 
-    expect(new KmSplitsTool($a, $d->fresh())->handle([]))->toBe([
+    expect(new KmSplitsTool($a, $d->refresh())->handle([]))->toBe([
         'per_km' => null,
         'omitted_km' => 0,
         'fastest_km' => null,
@@ -264,7 +300,7 @@ it('names the fastest and slowest kilometre outright', function (): void {
         ['km' => 3, 'pace' => '6:30'],
     ]]]);
 
-    $reading = new KmSplitsTool($a, $d->fresh())->handle([]);
+    $reading = new KmSplitsTool($a, $d->refresh())->handle([]);
 
     expect($reading['fastest_km'])->toBe(2)
         ->and($reading['slowest_km'])->toBe(3)
@@ -276,7 +312,7 @@ it('leaves the extremes null when no split carries a readable pace', function ()
     ['activity' => $a, 'detail' => $d] = agentToolFixture();
     $d->update(['stream_summary' => ['per_km' => [['km' => 1, 'pace' => '-']]]]);
 
-    $reading = new KmSplitsTool($a, $d->fresh())->handle([]);
+    $reading = new KmSplitsTool($a, $d->refresh())->handle([]);
 
     expect($reading['fastest_km'])->toBeNull()
         ->and($reading['slowest_km'])->toBeNull();
@@ -294,8 +330,8 @@ it('samples a long run down while keeping the opening, the finish and both extre
     $perKm[19] = ['km' => 20, 'pace' => '7:45'];
     $d->update(['stream_summary' => ['per_km' => $perKm]]);
 
-    $reading = new KmSplitsTool($a, $d->fresh())->handle([]);
-    $kept = array_column($reading['per_km'], 'km');
+    $reading = new KmSplitsTool($a, $d->refresh())->handle([]);
+    $kept = array_column(arrayOf($reading['per_km']), 'km');
 
     expect($reading['fastest_km'])->toBe(13)
         ->and($reading['slowest_km'])->toBe(20)
@@ -308,7 +344,7 @@ it('samples a long run down while keeping the opening, the finish and both extre
         ->and($reading['omitted_km'])->toBe(30 - count($kept))
         // Still ordered by km, so the run reads front to back.
         ->and($kept)->toBe(array_values(array_unique($kept)))
-        ->and($kept === array_values($kept) && $kept === collect($kept)->sort()->values()->all())->toBeTrue();
+        ->and($kept === collect($kept)->sort()->values()->all())->toBeTrue();
 });
 
 it('leaves a run at the sample size untouched', function (): void {
@@ -319,7 +355,7 @@ it('leaves a run at the sample size untouched', function (): void {
     }
     $d->update(['stream_summary' => ['per_km' => $perKm]]);
 
-    $reading = new KmSplitsTool($a, $d->fresh())->handle([]);
+    $reading = new KmSplitsTool($a, $d->refresh())->handle([]);
 
     expect($reading['per_km'])->toHaveCount(12)
         ->and($reading['omitted_km'])->toBe(0);
@@ -354,7 +390,7 @@ it('reads an interval session as a structure, counting the reps and the jogs bet
     ['activity' => $a, 'detail' => $d] = agentToolFixture();
     $d->update(['stream_summary' => ['laps' => agentToolIntervalLaps()]]);
 
-    $reading = new LapsTool($a, $d->fresh())->handle([]);
+    $reading = new LapsTool($a, $d->refresh())->handle([]);
 
     expect($reading['lap_count'])->toBe(13)
         ->and($reading['laps'])->toHaveCount(13)
@@ -377,14 +413,14 @@ it('has nothing to add when the laps are just the kilometres', function (): void
         ['lap' => 4, 'distance_m' => 647, 'elapsed_sec' => 281],
     ]]]);
 
-    expect(array_filter(new LapsTool($a, $d->fresh())->handle([]), fn (mixed $v): bool => $v !== null))->toBe([]);
+    expect(array_filter(new LapsTool($a, $d->refresh())->handle([]), fn (mixed $v): bool => $v !== null))->toBe([]);
 });
 
 it('reads null laps without fataling when there is no stream summary', function (): void {
     ['activity' => $a, 'detail' => $d] = agentToolFixture();
     $d->update(['stream_summary' => null]);
 
-    expect(new LapsTool($a, $d->fresh())->handle([]))->toBe([
+    expect(new LapsTool($a, $d->refresh())->handle([]))->toBe([
         'lap_count' => null,
         'laps' => null,
         'fastest_lap' => null,
@@ -407,7 +443,7 @@ it('leaves the rep structure out when manual laps carry no fast-slow pattern', f
         ['lap' => 3, 'distance_m' => 647, 'elapsed_sec' => 281],
     ]]]);
 
-    $reading = new LapsTool($a, $d->fresh())->handle([]);
+    $reading = new LapsTool($a, $d->refresh())->handle([]);
 
     expect($reading['lap_count'])->toBe(3)
         ->and($reading['laps'])->toHaveCount(3)
@@ -434,7 +470,7 @@ it('reads short stop-and-go laps as pauses, distinct from a rep structure', func
         ['lap' => 11, 'distance_m' => 1000, 'elapsed_sec' => 389],
     ]]]);
 
-    $reading = new LapsTool($a, $d->fresh())->handle([]);
+    $reading = new LapsTool($a, $d->refresh())->handle([]);
 
     expect($reading['rep_count'])->toBeNull()
         ->and($reading['recovery_sec'])->toBeNull()
@@ -450,7 +486,7 @@ it('drops the row table on a run with too many laps but keeps the findings', fun
     }
     $d->update(['stream_summary' => ['laps' => $laps]]);
 
-    $reading = new LapsTool($a, $d->fresh())->handle([]);
+    $reading = new LapsTool($a, $d->refresh())->handle([]);
 
     expect($reading['lap_count'])->toBe(24)
         ->and($reading['laps'])->toBeNull()
@@ -469,7 +505,7 @@ it('reads the zone split in both percent and minutes, with the session TRIMP', f
         ],
     ]);
 
-    expect(new HrZonesTool($a, $d->fresh())->handle([]))->toMatchArray([
+    expect(new HrZonesTool($a, $d->refresh())->handle([]))->toMatchArray([
         'zone_pct' => ['Z2' => 70, 'Z3' => 30],
         'time_in_zone_min' => ['Z2' => 32, 'Z3' => 14],
         'trimp' => 92.4,
@@ -481,7 +517,7 @@ it('reads empty zones for a run with no heart rate', function (): void {
     ['activity' => $a, 'detail' => $d] = agentToolFixture();
     $d->update(['stream_summary' => null, 'trimp_edwards' => null]);
 
-    $reading = new HrZonesTool($a, $d->fresh())->handle([]);
+    $reading = new HrZonesTool($a, $d->refresh())->handle([]);
 
     expect($reading['zone_pct'])->toBe([])
         ->and($reading['time_in_zone_min'])->toBeNull()
@@ -495,7 +531,7 @@ it('reads intensity_label light for a Z1/Z2-dominant session regardless of raw H
         'stream_summary' => ['time_in_zone_pct' => ['Z1' => 5, 'Z2' => 95]],
     ]);
 
-    expect(new HrZonesTool($a, $d->fresh())->handle([])['intensity_label'])->toBe('light');
+    expect(new HrZonesTool($a, $d->refresh())->handle([])['intensity_label'])->toBe('light');
 });
 
 it('reads intensity_label heavy when Z3-Z5 together cover at least half the session', function (): void {
@@ -504,18 +540,15 @@ it('reads intensity_label heavy when Z3-Z5 together cover at least half the sess
         'stream_summary' => ['time_in_zone_pct' => ['Z2' => 49, 'Z3' => 30, 'Z4' => 21]],
     ]);
 
-    expect(new HrZonesTool($a, $d->fresh())->handle([])['intensity_label'])->toBe('heavy');
+    expect(new HrZonesTool($a, $d->refresh())->handle([])['intensity_label'])->toBe('heavy');
 });
 
-// Regression for #1009 (reopened): hr_drift_bpm reached the model as a bare
-// signed number described as "how much HR climbed", which reads backwards
-// the moment it's negative. hr_drift now carries an unsigned bpm and its own
-// relation, resolved from the sign alone.
+// hr_drift carries an unsigned bpm and its own relation, resolved from the sign alone.
 it('reads hr_drift from the stream summary with no signed field', function (): void {
     ['activity' => $a, 'detail' => $d] = agentToolFixture();
     $d->update(['stream_summary' => ['drift_metric_version' => 2, 'steady_effort_hr_drift_bpm' => 7.5]]);
 
-    expect(new HrZonesTool($a, $d->fresh())->handle([])['hr_drift'])
+    expect(new HrZonesTool($a, $d->refresh())->handle([])['hr_drift'])
         ->toBe(['bpm' => 7.5, 'relation' => 'up']);
 });
 
@@ -523,18 +556,16 @@ it('reads hr_drift with relation=down when HR fell across the run', function ():
     ['activity' => $a, 'detail' => $d] = agentToolFixture();
     $d->update(['stream_summary' => ['drift_metric_version' => 2, 'steady_effort_hr_drift_bpm' => -7.5]]);
 
-    expect(new HrZonesTool($a, $d->fresh())->handle([])['hr_drift'])
+    expect(new HrZonesTool($a, $d->refresh())->handle([])['hr_drift'])
         ->toBe(['bpm' => 7.5, 'relation' => 'down']);
 });
 
-// Regression for #1009 (reopened): same anti-pattern as hr_drift, this time
-// described as "how much step rate fell" while the underlying value can be
-// negative when cadence actually rose.
+// Like hr_drift, cadence_drop carries no signed field even when cadence rose.
 it('reads cadence_drop from the stream summary via RunSummaryTool with no signed field', function (): void {
     ['activity' => $a, 'detail' => $d] = agentToolFixture();
     $d->update(['stream_summary' => ['cadence_drop_spm' => 4.0]]);
 
-    expect(new RunSummaryTool($a, $d->fresh())->handle([])['cadence_drop'])
+    expect(new RunSummaryTool($a, $d->refresh())->handle([])['cadence_drop'])
         ->toBe(['spm' => 4.0, 'relation' => 'dropped']);
 });
 
@@ -542,7 +573,7 @@ it('reads cadence_drop with relation=rose when cadence sped up across the run', 
     ['activity' => $a, 'detail' => $d] = agentToolFixture();
     $d->update(['stream_summary' => ['cadence_drop_spm' => -4.0]]);
 
-    expect(new RunSummaryTool($a, $d->fresh())->handle([])['cadence_drop'])
+    expect(new RunSummaryTool($a, $d->refresh())->handle([])['cadence_drop'])
         ->toBe(['spm' => 4.0, 'relation' => 'rose']);
 });
 
@@ -555,22 +586,19 @@ it('reads Strava elevation gain alongside the steepest grade and the flat-adjust
         'stream_summary' => ['max_grade_pct' => 9.5, 'gap_pace' => '5:40'],
     ]);
 
-    expect(new TerrainTool($a, $d->fresh())->handle([]))->toMatchArray([
+    expect(new TerrainTool($a, $d->refresh())->handle([]))->toMatchArray([
         'elevation_gain_m' => 48.0,
         'max_grade' => ['pct' => 9.5, 'relation' => 'climb'],
         'gap_pace' => '5:40',
     ]);
 });
 
-// Regression for #1009 (reopened): the steepest-sustained-grade reading is
-// signed and can be negative on a net-downhill run, but the tool description
-// only ever framed it as "steepest climb". max_grade now carries its own
-// relation, so a descent can never be misread as a climb.
+// max_grade carries its own relation, so a descent is never misread as a climb.
 it('reads max_grade with relation=descent on a net-downhill run', function (): void {
     ['activity' => $a, 'detail' => $d] = agentToolFixture();
     $d->update(['stream_summary' => ['max_grade_pct' => -6.0]]);
 
-    expect(new TerrainTool($a, $d->fresh())->handle([])['max_grade'])
+    expect(new TerrainTool($a, $d->refresh())->handle([])['max_grade'])
         ->toBe(['pct' => 6.0, 'relation' => 'descent']);
 });
 
@@ -586,7 +614,7 @@ it('reads the weather with the rain flag carrying whether it was observed or for
         'weather_wind_speed_kmh' => 28,
     ]);
 
-    expect(new WeatherTool($a, $d->fresh())->handle([]))->toMatchArray([
+    expect(new WeatherTool($a, $d->refresh())->handle([]))->toMatchArray([
         'weather_temp_c' => 32,
         'weather_humidity_pct' => 80,
         'weather_rain' => true,
@@ -604,7 +632,7 @@ it('reads a Strava-tagged workout as a tagged intent', function (): void {
         'stream_summary' => ['time_in_zone_pct' => ['Z2' => 90, 'Z3' => 10]],
     ]);
 
-    expect(new EffortContextTool($a, $d->fresh(), app(RelativeEffort::class))->handle([])['session_intent'])
+    expect(new EffortContextTool($a, $d->refresh(), app(RelativeEffort::class))->handle([])['session_intent'])
         ->toBe(['intent' => 'workout', 'source' => 'tagged']);
 });
 
@@ -615,7 +643,7 @@ it('infers a workout intent from a Z3-Z4 heavy untagged run', function (): void 
         'stream_summary' => ['time_in_zone_pct' => ['Z2' => 15, 'Z3' => 47, 'Z4' => 34, 'Z5' => 4]],
     ]);
 
-    expect(new EffortContextTool($a, $d->fresh(), app(RelativeEffort::class))->handle([])['session_intent'])
+    expect(new EffortContextTool($a, $d->refresh(), app(RelativeEffort::class))->handle([])['session_intent'])
         ->toBe(['intent' => 'workout', 'source' => 'inferred']);
 });
 
@@ -625,18 +653,18 @@ it('reads an untagged run on a planned tempo day as a planned workout', function
         'workout_type' => null,
         'stream_summary' => ['time_in_zone_pct' => ['Z2' => 90, 'Z3' => 10]],
     ]);
-    PlannedSession::factory()->for($a->user)->create(['date' => $d->start_date_local->toDateString(), 'session_type' => SessionType::Tempo]);
+    PlannedSession::factory()->for($a->user)->create(['date' => nonNull($d->start_date_local)->toDateString(), 'session_type' => SessionType::Tempo]);
 
-    expect(new EffortContextTool($a, $d->fresh(), app(RelativeEffort::class))->handle([])['session_intent'])
+    expect(new EffortContextTool($a, $d->refresh(), app(RelativeEffort::class))->handle([])['session_intent'])
         ->toBe(['intent' => 'workout', 'source' => 'planned']);
 });
 
 it('reads the athlete\'s effort score against the range the day\'s session usually feels', function (int $score, string $relation): void {
     ['activity' => $a, 'detail' => $d] = agentToolFixture();
     $d->update(['perceived_effort' => $score]);
-    PlannedSession::factory()->for($a->user)->create(['date' => $d->start_date_local->toDateString(), 'session_type' => SessionType::Tempo]);
+    PlannedSession::factory()->for($a->user)->create(['date' => nonNull($d->start_date_local)->toDateString(), 'session_type' => SessionType::Tempo]);
 
-    expect(new PerceivedEffortTool($a, $d->fresh())->handle([]))->toBe([
+    expect(new PerceivedEffortTool($a, $d->refresh())->handle([]))->toBe([
         'score' => $score,
         'session_type' => 'tempo',
         'target' => ['low' => 6, 'high' => 7],
@@ -652,7 +680,7 @@ it('reads an effort score with no range when no plan covered the day', function 
     ['activity' => $a, 'detail' => $d] = agentToolFixture();
     $d->update(['perceived_effort' => 5]);
 
-    expect(new PerceivedEffortTool($a, $d->fresh())->handle([]))
+    expect(new PerceivedEffortTool($a, $d->refresh())->handle([]))
         ->toBe(['score' => 5, 'session_type' => null, 'target' => null, 'relation' => null]);
 });
 
@@ -660,26 +688,24 @@ it('says plainly when no effort score was logged', function (): void {
     ['activity' => $a, 'detail' => $d] = agentToolFixture();
     $d->update(['perceived_effort' => null]);
 
-    expect(new PerceivedEffortTool($a, $d->fresh())->handle([]))->toBe(['score' => null]);
+    expect(new PerceivedEffortTool($a, $d->refresh())->handle([]))->toBe(['score' => null]);
 });
 
 it('reads relative effort with no comparison when the history is still one run deep', function (): void {
     ['activity' => $a, 'detail' => $d] = agentToolFixture();
     $d->update(['trimp_edwards' => 92.4]);
 
-    expect(new EffortContextTool($a, $d->fresh(), app(RelativeEffort::class))->handle([])['relative_effort'])
+    expect(new EffortContextTool($a, $d->refresh(), app(RelativeEffort::class))->handle([])['relative_effort'])
         ->toBe(['trimp' => 92.4, 'baseline' => null, 'ratio' => null, 'band' => null]);
 });
 
-// Regression for #1009 (reopened): decoupling_pct reached the model with no
-// sign convention stated at all. decoupling now carries an unsigned pct plus
-// its own relation (up/down/flat), reusing DecouplingBands::TIGHT as the flat
-// band rather than inventing a new threshold.
+// decoupling carries an unsigned pct plus its own relation (up/down/flat),
+// using DecouplingBands::TIGHT as the flat band.
 it('reads decoupling with no signed field, relation=up on a real drift', function (): void {
     ['activity' => $a, 'detail' => $d] = agentToolFixture();
     $d->update(['stream_summary' => ['drift_metric_version' => 2, 'steady_effort_decoupling_pct' => 14.0]]);
 
-    expect(new EffortContextTool($a, $d->fresh(), app(RelativeEffort::class))->handle([])['decoupling'])
+    expect(new EffortContextTool($a, $d->refresh(), app(RelativeEffort::class))->handle([])['decoupling'])
         ->toBe(['pct' => 14.0, 'relation' => 'up']);
 });
 
@@ -687,7 +713,7 @@ it('reads decoupling with relation=down when cardiac drift improved', function (
     ['activity' => $a, 'detail' => $d] = agentToolFixture();
     $d->update(['stream_summary' => ['drift_metric_version' => 2, 'steady_effort_decoupling_pct' => -14.0]]);
 
-    expect(new EffortContextTool($a, $d->fresh(), app(RelativeEffort::class))->handle([])['decoupling'])
+    expect(new EffortContextTool($a, $d->refresh(), app(RelativeEffort::class))->handle([])['decoupling'])
         ->toBe(['pct' => 14.0, 'relation' => 'down']);
 });
 
@@ -710,34 +736,34 @@ it('reads the 28-day baseline and the load state from a prior run', function ():
         ],
     ]);
 
-    $baseline = new RecentBaselineTool($a->user, $d->start_date_local, new ResolveRunBaselineAction())->handle([])['recent_baseline_28d'];
-    $load = new TrainingLoadTool($a->user, $d->start_date_local, new TrainingLoad())->handle([])['training_load'];
+    $baseline = new RecentBaselineTool($a->user, nonNull($d->start_date_local), new ResolveRunBaselineAction())->handle([])['recent_baseline_28d'];
+    $load = new TrainingLoadTool($a->user, nonNull($d->start_date_local), new TrainingLoad())->handle([])['training_load'];
 
     expect($baseline)->toMatchArray([
         'runs' => 1,
         'avg_pace_sec_per_km' => 360,
         'avg_hr' => 150,
-        // Regression for #1009 (reopened): no bare signed avg_decoupling_pct.
+        // No bare signed avg_decoupling_pct.
         'avg_decoupling' => ['pct' => 6.0, 'relation' => 'up'],
     ])
         ->and($baseline)->not->toHaveKey('avg_decoupling_pct')
         ->and($load)->toHaveKeys(['acute_7d', 'chronic_42d', 'load_balance'])
         ->and($load)->not->toHaveKeys(['form', 'form_status'])
-        ->and($load['load_balance'])->toBeIn(['fresh', 'steady', 'heavy', null]);
+        ->and(data_get($load, 'load_balance'))->toBeIn(['fresh', 'steady', 'heavy', null]);
 });
 
 it('reads a null training load rather than inventing one with no TRIMP history', function (): void {
     ['activity' => $a, 'detail' => $d] = agentToolFixture();
     $d->update(['trimp_edwards' => null]);
 
-    expect(new TrainingLoadTool($a->user, $d->start_date_local, new TrainingLoad())->handle([]))->toBe(['training_load' => null]);
+    expect(new TrainingLoadTool($a->user, nonNull($d->start_date_local), new TrainingLoad())->handle([]))->toBe(['training_load' => null]);
 });
 
 it('excludes the run being narrated from its own baseline', function (): void {
     ['activity' => $a, 'detail' => $d] = agentToolFixture();
     $d->update(['average_heartrate' => 190.0]);
 
-    expect(new RecentBaselineTool($a->user, $d->start_date_local, new ResolveRunBaselineAction(), $a->id)->handle([])['recent_baseline_28d'])
+    expect(new RecentBaselineTool($a->user, nonNull($d->start_date_local), new ResolveRunBaselineAction(), $a->id)->handle([])['recent_baseline_28d'])
         ->toBeNull();
 });
 
@@ -748,19 +774,19 @@ it('reads easy and threshold paces derived from the runner VDOT', function (): v
     PersonalRecord::factory()->for($a->user)->create(['category' => '5km', 'value_sec' => 1200]);
     seedConfirmedEffort($a->user, 5000, 1200);
 
-    $reading = new TrainingPacesTool($a->user, $d->start_date_local, app(VdotEstimator::class), app(TrainingPaceCalculator::class))->handle([]);
+    $reading = new TrainingPacesTool($a->user, nonNull($d->start_date_local), app(VdotEstimator::class), app(TrainingPaceCalculator::class))->handle([]);
 
     expect($reading['easy_pace_sec'])->toBeInt()
         ->and($reading['threshold_pace_sec'])->toBeInt()
-        ->and($reading['easy_pace_sec'])->toBeGreaterThan($reading['threshold_pace_sec'])
-        ->and($reading['easy_pace_formatted'])->toBe(PaceFormatter::format((float) $reading['easy_pace_sec']))
-        ->and($reading['threshold_pace_formatted'])->toBe(PaceFormatter::format((float) $reading['threshold_pace_sec']));
+        ->and($reading['easy_pace_sec'])->toBeGreaterThan(Numeric::float($reading['threshold_pace_sec']))
+        ->and($reading['easy_pace_formatted'])->toBe(PaceFormatter::format(Numeric::float($reading['easy_pace_sec'])))
+        ->and($reading['threshold_pace_formatted'])->toBe(PaceFormatter::format(Numeric::float($reading['threshold_pace_sec'])));
 });
 
 it('reads null paces when the runner has no VDOT-eligible PR', function (): void {
     ['activity' => $a, 'detail' => $d] = agentToolFixture();
 
-    $reading = new TrainingPacesTool($a->user, $d->start_date_local, app(VdotEstimator::class), app(TrainingPaceCalculator::class))->handle([]);
+    $reading = new TrainingPacesTool($a->user, nonNull($d->start_date_local), app(VdotEstimator::class), app(TrainingPaceCalculator::class))->handle([]);
 
     expect($reading['easy_pace_sec'])->toBeNull()
         ->and($reading['threshold_pace_sec'])->toBeNull()
@@ -773,10 +799,10 @@ it('formats a sub-4:00 interval pace for a fast runner', function (): void {
     PersonalRecord::factory()->for($a->user)->create(['category' => '5km', 'value_sec' => 780]); // 14:00 5K, elite-ish
     seedConfirmedEffort($a->user, 5000, 780);
 
-    $reading = new TrainingPacesTool($a->user, $d->start_date_local, app(VdotEstimator::class), app(TrainingPaceCalculator::class))->handle([]);
+    $reading = new TrainingPacesTool($a->user, nonNull($d->start_date_local), app(VdotEstimator::class), app(TrainingPaceCalculator::class))->handle([]);
 
     expect($reading['interval_pace_sec'])->toBeLessThan(240)
-        ->and($reading['interval_pace_formatted'])->toBe(PaceFormatter::format((float) $reading['interval_pace_sec']));
+        ->and($reading['interval_pace_formatted'])->toBe(PaceFormatter::format(Numeric::float($reading['interval_pace_sec'])));
 });
 
 // ── PersonalRecordsTool ───────────────────────────────────────────────
@@ -801,7 +827,7 @@ it('formats a past-hour PR the same way the profile page shows it', function ():
         'value_sec' => 9007.0,
     ]);
 
-    expect(new PersonalRecordsTool($a, $d)->handle([])['personal_records'][0]['value_formatted'])
+    expect(data_get(new PersonalRecordsTool($a, $d)->handle([]), 'personal_records.0.value_formatted'))
         ->toBe('2:30:07');
 });
 
@@ -883,7 +909,7 @@ it('reads the recent runs as mood, distance, intensity and a one-liner', functio
     $reading = new RecentRunsTool($a->user, Carbon::today(), app(VerdictNarrator::class))->handle([]);
 
     expect($reading['recent_runs'])->toBeArray()->toHaveCount(1)
-        ->and($reading['recent_runs'][0])->toHaveKeys(['mood', 'km', 'intensity', 'oneline']);
+        ->and(data_get($reading, 'recent_runs.0'))->toHaveKeys(['mood', 'km', 'intensity', 'oneline']);
 });
 
 it('reads an empty recent-runs list for a runner with no history', function (): void {
@@ -955,10 +981,10 @@ it('names the distance the runner has improved most, from one series build', fun
     $reading = new ProgressionSignalTool($user, Carbon::today(), app(ProgressionSeriesBuilder::class))->handle([]);
 
     expect($reading['progression_signal'])->not->toBeNull()
-        ->and($reading['progression_signal']['delta_sec'])->toBe(300)
+        ->and(data_get($reading, 'progression_signal.delta_sec'))->toBe(300)
         // The formatted sibling is what the narrator quotes; without it the model
         // wrote the raw seconds and contradicted the progression card beside it.
-        ->and($reading['progression_signal']['delta_formatted'])->toBe('5:00')
+        ->and(data_get($reading, 'progression_signal.delta_formatted'))->toBe('5:00')
         // One read for the records, one series build for all of them -- not one
         // full ActivityDetail scan per category.
         ->and($queries)->toBeLessThanOrEqual(3);
@@ -1044,8 +1070,8 @@ it('reads what the plan prescribed across the span it is bound to', function ():
 
     $reading = planContextTool($user, $monday, $monday->copy()->addDay())->handle([]);
 
-    expect(array_column($reading['days'], 'session_type'))->toBe(['tempo', 'easy'])
-        ->and(array_column($reading['days'], 'date'))->toBe(['2026-09-07', '2026-09-08']);
+    expect(array_column(arrayOf($reading['days']), 'session_type'))->toBe(['tempo', 'easy'])
+        ->and(array_column(arrayOf($reading['days']), 'date'))->toBe(['2026-09-07', '2026-09-08']);
 });
 
 it('carries a detailed run and persisted intent beside the plan row', function (): void {
@@ -1063,10 +1089,10 @@ it('carries a detailed run and persisted intent beside the plan row', function (
         'intent_verdict' => IntentVerdict::TooHard,
     ]);
 
-    $reading = planContextTool($user, $today, $today)->handle([])['days'][0];
+    $reading = data_get(planContextTool($user, $today, $today)->handle([]), 'days.0');
 
-    expect($reading['completed_km'])->toBe(10.0)
-        ->and($reading['intent'])->toBe('it ran harder than the easy effort the day asked for');
+    expect(data_get($reading, 'completed_km'))->toBe(10.0)
+        ->and(data_get($reading, 'intent'))->toBe('it ran harder than the easy effort the day asked for');
 });
 
 it('carries the numbers behind a judged quality day beside its verdict', function (): void {
@@ -1080,10 +1106,10 @@ it('carries the numbers behind a judged quality day beside its verdict', functio
         'intent_evidence' => ['block_minutes' => 20, 'target_pace_sec' => 363, 'window' => '20min', 'window_pace_sec' => 330, 'control' => 'excessive'],
     ]);
 
-    $reading = planContextTool($user, $today, $today)->handle([])['days'][0];
+    $reading = data_get(planContextTool($user, $today, $today)->handle([]), 'days.0');
 
-    expect($reading['intent'])->toBe('the hard block ran well past the effort it asked for')
-        ->and($reading['intent_detail'])->toBe('best 20-minute stretch averaged 5:30/km, well quicker than the 6:03/km target pace');
+    expect(data_get($reading, 'intent'))->toBe('the hard block ran well past the effort it asked for')
+        ->and(data_get($reading, 'intent_detail'))->toBe('best 20-minute stretch averaged 5:30/km, well quicker than the 6:03/km target pace');
 });
 
 it('quotes the pace the run showed beside the hill-adjusted pace the verdict judged', function (): void {
@@ -1099,7 +1125,7 @@ it('quotes the pace the run showed beside the hill-adjusted pace the verdict jud
         'intent_evidence' => ['pace_sec' => 360, 'ceiling_pace_sec' => 408, 'basis' => 'pace'],
     ]);
 
-    expect(planContextTool($user, $today, $today)->handle([])['days'][0]['intent_detail'])
+    expect(data_get(planContextTool($user, $today, $today)->handle([]), 'days.0.intent_detail'))
         ->toBe('averaged 6:40/km; effort-adjusted for hills that is 6:00/km');
 });
 
@@ -1123,11 +1149,11 @@ it('keeps total distance separate from the distance credited on a multi-run temp
         ]);
     }
 
-    $reading = planContextTool($user, $today, $today)->handle([])['days'][0];
+    $reading = data_get(planContextTool($user, $today, $today)->handle([]), 'days.0');
 
-    expect($reading['completed_km'])->toBe(10.0)
-        ->and($reading['credited_km'])->toBe(5.0)
-        ->and($reading['distance_score'])->toBe($session->distance_score);
+    expect(data_get($reading, 'completed_km'))->toBe(10.0)
+        ->and(data_get($reading, 'credited_km'))->toBe(5.0)
+        ->and(data_get($reading, 'distance_score'))->toBe($session->distance_score);
 });
 
 /** The span is the binding, so a day outside it is another block's business. */
@@ -1158,7 +1184,7 @@ it('derives the distance for a day the scorer has not reached yet', function ():
 
     $reading = planContextTool($user, $today, $today)->handle([]);
 
-    expect($reading['days'][0]['distance_km'])->toBeGreaterThan(0.0);
+    expect(data_get($reading, 'days.0.distance_km'))->toBeGreaterThan(0.0);
 });
 
 /**
@@ -1181,11 +1207,11 @@ it('scales the fallback distance by the week\'s own volume multiplier', function
     $longRunKm = app(TrainingBaseline::class)->forUser($user, $today)['long_run_km'];
     $flatOldReading = round($longRunKm, 1); // the pre-fix figure: multiplier hardcoded to 1.0
 
-    $reading = planContextTool($user, $today, $today)->handle([])['days'][0];
+    $reading = data_get(planContextTool($user, $today, $today)->handle([]), 'days.0');
 
-    expect($reading['distance_km'])
+    expect(data_get($reading, 'distance_km'))
         ->toBe(round($longRunKm * 1.3, 1))
-        ->not->toBe($flatOldReading);
+        ->and(data_get($reading, 'distance_km'))->not->toBe($flatOldReading);
 });
 
 it('caps a planned-session fallback at recent single-run capacity', function (): void {
@@ -1201,7 +1227,7 @@ it('caps a planned-session fallback at recent single-run capacity', function ():
         'prescribed_km' => null,
     ]);
 
-    expect(planContextTool($user, Carbon::today(), Carbon::today())->handle([])['days'][0]['distance_km'])->toBe(3.0);
+    expect(data_get(planContextTool($user, Carbon::today(), Carbon::today())->handle([]), 'days.0.distance_km'))->toBe(3.0);
 });
 
 /**
@@ -1220,14 +1246,14 @@ it('reads a tempo day eased to easy as the easy run, at easy pace, tempo only as
     $baseline = app(TrainingBaseline::class)->forUser($user, $today);
     $storedKm = PlanRenderer::coreKmForSession($session, $baseline['long_run_km'], $baseline['long_run_cap_km'], $baseline['self_scaled']);
     $session->update(['clamped_km' => $storedKm]);
-    $paces = app(TrainingPaceCalculator::class)->fromVdotResult(app(VdotEstimator::class)->estimate($user, $today));
+    $paces = nonNull(app(TrainingPaceCalculator::class)->fromVdotResult(app(VdotEstimator::class)->estimate($user, $today)));
 
-    $day = planContextTool($user, $today, $today)->handle([])['days'][0];
+    $day = data_get(planContextTool($user, $today, $today)->handle([]), 'days.0');
 
-    expect($day['session_type'])->toBe('easy')
-        ->and($day['distance_km'])->toBe($storedKm)
-        ->and($day['target_pace_sec'])->toBe($paces['easy'])
-        ->and($day['eased_from'])->toBe(['session_type' => 'tempo']);
+    expect(data_get($day, 'session_type'))->toBe('easy')
+        ->and(data_get($day, 'distance_km'))->toBe($storedKm)
+        ->and(data_get($day, 'target_pace_sec'))->toBe($paces['easy'])
+        ->and(data_get($day, 'eased_from'))->toBe(['session_type' => 'tempo']);
 });
 
 it('reads a day eased to a shorter run at the eased distance, naming the original', function (): void {
@@ -1239,12 +1265,12 @@ it('reads a day eased to a shorter run at the eased distance, naming the origina
         'clamped_km' => 1.0,
     ]);
 
-    $day = planContextTool($user, $today, $today)->handle([])['days'][0];
+    $day = data_get(planContextTool($user, $today, $today)->handle([]), 'days.0');
 
-    expect($day['session_type'])->toBe('easy')
-        ->and($day['distance_km'])->toBe(1.0)
-        ->and($day['eased_from']['session_type'])->toBe('tempo')
-        ->and($day['eased_from']['distance_km'])->toBeGreaterThan(1.0);
+    expect(data_get($day, 'session_type'))->toBe('easy')
+        ->and(data_get($day, 'distance_km'))->toBe(1.0)
+        ->and(data_get($day, 'eased_from.session_type'))->toBe('tempo')
+        ->and(data_get($day, 'eased_from.distance_km'))->toBeGreaterThan(1.0);
 });
 
 it('leaves an un-eased day with no easing to explain', function (): void {
@@ -1252,7 +1278,10 @@ it('leaves an un-eased day with no easing to explain', function (): void {
     $today = Carbon::today();
     PlannedSession::factory()->for($user)->create(['date' => $today->toDateString(), 'session_type' => SessionType::Tempo]);
 
-    expect(planContextTool($user, $today, $today)->handle([])['days'][0])->not->toHaveKey('eased_from');
+    $reading = planContextTool($user, $today, $today)->handle([]);
+
+    expect($reading)->toHaveKey('days.0')
+        ->and(data_get($reading, 'days.0'))->not->toHaveKey('eased_from');
 });
 
 /** A pace-only ease keeps session_type unchanged and swaps the target pace, naming what it replaced. */
@@ -1266,16 +1295,16 @@ it('reads a pace-only ease as the eased pace, naming the pace it replaced', func
         'session_type' => SessionType::Long,
         'eased_pace_sec_per_km' => 400,
     ]);
-    $easyPace = app(TrainingPaceCalculator::class)
-        ->fromVdotResult(app(VdotEstimator::class)->estimate($user, $today))['easy'];
+    $easyPace = nonNull(app(TrainingPaceCalculator::class)
+        ->fromVdotResult(app(VdotEstimator::class)->estimate($user, $today)))['easy'];
 
-    $day = planContextTool($user, $today, $today)->handle([])['days'][0];
+    $day = data_get(planContextTool($user, $today, $today)->handle([]), 'days.0');
 
-    expect($day['session_type'])->toBe('long')
-        ->and($day['target_pace_sec'])->toBe(400)
-        ->and($day['target_pace_formatted'])->toBe(PaceFormatter::format(400.0))
+    expect(data_get($day, 'session_type'))->toBe('long')
+        ->and(data_get($day, 'target_pace_sec'))->toBe(400)
+        ->and(data_get($day, 'target_pace_formatted'))->toBe(PaceFormatter::format(400.0))
         ->and($day)->not->toHaveKey('eased_from')
-        ->and($day['pace_eased_from'])->toBe([
+        ->and(data_get($day, 'pace_eased_from'))->toBe([
             'pace_sec' => $easyPace,
             'pace_formatted' => PaceFormatter::format((float) $easyPace),
         ]);
@@ -1286,7 +1315,10 @@ it('leaves an un-pace-eased day with no pace easing to explain', function (): vo
     $today = Carbon::today();
     PlannedSession::factory()->for($user)->create(['date' => $today->toDateString(), 'session_type' => SessionType::Easy]);
 
-    expect(planContextTool($user, $today, $today)->handle([])['days'][0])->not->toHaveKey('pace_eased_from');
+    $reading = planContextTool($user, $today, $today)->handle([]);
+
+    expect($reading)->toHaveKey('days.0')
+        ->and(data_get($reading, 'days.0'))->not->toHaveKey('pace_eased_from');
 });
 
 it('prefers the scored distance once the scorer has written one', function (): void {
@@ -1300,7 +1332,7 @@ it('prefers the scored distance once the scorer has written one', function (): v
 
     $reading = planContextTool($user, $yesterday, $yesterday)->handle([]);
 
-    expect($reading['days'][0]['distance_km'])->toBe(12.3);
+    expect(data_get($reading, 'days.0.distance_km'))->toBe(12.3);
 });
 
 /**
@@ -1324,16 +1356,17 @@ it('targets each day at the pace its session type calls for', function (): void 
         ]);
     }
 
-    $days = planContextTool($user, $monday, $monday->copy()->addDays(2))->handle([])['days'];
+    $days = arrayOf(planContextTool($user, $monday, $monday->copy()->addDays(2))->handle([])['days']);
     $paces = array_column($days, 'target_pace_sec');
 
     expect($paces[0])->toBeInt()
         ->and($paces[1])->toBeInt()
         ->and($paces[0])->toBeGreaterThan($paces[1])
         ->and($paces[2])->toBeNull()
-        ->and($days[0]['target_pace_formatted'])->toBe(PaceFormatter::format((float) $paces[0]))
-        ->and($days[1]['target_pace_formatted'])->toBe(PaceFormatter::format((float) $paces[1]))
-        ->and($days[2]['target_pace_formatted'])->toBeNull();
+        ->and(data_get($days, '0.target_pace_formatted'))->toBe(PaceFormatter::format(Numeric::float(data_get($paces, '0'))))
+        ->and(data_get($days, '1.target_pace_formatted'))->toBe(PaceFormatter::format(Numeric::float(data_get($paces, '1'))))
+        ->and($days)->toHaveKey('2.target_pace_formatted')
+        ->and(data_get($days, '2.target_pace_formatted'))->toBeNull();
 });
 
 /**
@@ -1352,12 +1385,12 @@ it('targets a sub-marathon race day at threshold pace, not marathon pace', funct
         'race_distance_m' => 5000,
     ]);
 
-    $paces = planContextTool($user, $today, $today)->handle([])['days'][0];
+    $paces = data_get(planContextTool($user, $today, $today)->handle([]), 'days.0');
 
-    $expectedThreshold = app(TrainingPaceCalculator::class)
-        ->fromVdotResult(app(VdotEstimator::class)->estimate($user, $today))['threshold'];
+    $expectedThreshold = nonNull(app(TrainingPaceCalculator::class)
+        ->fromVdotResult(app(VdotEstimator::class)->estimate($user, $today)))['threshold'];
 
-    expect($paces['target_pace_sec'])->toBe($expectedThreshold);
+    expect(data_get($paces, 'target_pace_sec'))->toBe($expectedThreshold);
 });
 
 /** A brand-new athlete has no VDOT, and a guessed pace is worse than none. */
@@ -1369,7 +1402,10 @@ it('carries no target pace at all until the PR history can estimate a VDOT', fun
         'session_type' => SessionType::Tempo,
     ]);
 
-    expect(planContextTool($user, $today, $today)->handle([])['days'][0]['target_pace_sec'])->toBeNull();
+    $reading = planContextTool($user, $today, $today)->handle([]);
+
+    expect($reading)->toHaveKey('days.0.target_pace_sec')
+        ->and(data_get($reading, 'days.0.target_pace_sec'))->toBeNull();
 });
 
 it('answers with an empty span rather than failing when no plan covers it', function (): void {
@@ -1477,16 +1513,13 @@ it('never counts another athlete plan', function (): void {
     expect(new PlanAdherenceTool($user, $today, null)->handle([])['prescribed'])->toBe(0);
 });
 
-// ── Structural guard: no tool payload exposes a signed delta (#1009, reopened) ──
+// ── Structural guard: no tool payload exposes a signed delta ──
 
 /**
  * Recursively asserts a tool payload carries no bare signed delta: none of
  * the retired key names show up anywhere in the tree (at any depth, under
- * any parent), and no numeric leaf is negative -- every delta this fix
- * touched now carries an unsigned magnitude plus its own relation word
- * instead. Generic over the whole payload tree on purpose, so a new field
- * added to any of these tools later is checked for free rather than needing
- * its own hand-written sign assertion.
+ * any parent), and no numeric leaf is negative. Generic over the whole
+ * payload tree, so a new field added to any of these tools is checked for free.
  *
  * @param  list<string>  $retiredKeys
  */
@@ -1508,10 +1541,10 @@ function assertNoSignedDelta(mixed $node, array $retiredKeys): void
     }
 }
 
-it('exposes no signed numeric field across every tool payload touched by the #1009 fix', function (): void {
-    // Every fixture below is deliberately built on the "negative" side of a
-    // converted field, so this test fails on the pre-fix shape (a bare
-    // signed number) instead of passing by accident on all-positive data.
+it('exposes no signed numeric field across every tool payload that carries a delta', function (): void {
+    // Every fixture below is built on the "negative" side of a converted
+    // field, so a bare signed number fails instead of passing by accident on
+    // all-positive data.
     ['activity' => $a, 'detail' => $d] = agentToolFixture();
     $d->update([
         'weather_temp_c' => null,
@@ -1533,12 +1566,12 @@ it('exposes no signed numeric field across every tool payload touched by the #10
     ]);
 
     $payloads = [
-        new HrZonesTool($a, $d->fresh())->handle([]),
-        new RunSummaryTool($a, $d->fresh())->handle([]),
-        new TerrainTool($a, $d->fresh())->handle([]),
-        new EffortContextTool($a, $d->fresh(), app(RelativeEffort::class))->handle([]),
-        new RecentBaselineTool($a->user, $d->start_date_local, new ResolveRunBaselineAction())->handle([]),
-        new TrainingLoadTool($a->user, $d->start_date_local, new TrainingLoad())->handle([]),
+        new HrZonesTool($a, $d->refresh())->handle([]),
+        new RunSummaryTool($a, $d->refresh())->handle([]),
+        new TerrainTool($a, $d->refresh())->handle([]),
+        new EffortContextTool($a, $d->refresh(), app(RelativeEffort::class))->handle([]),
+        new RecentBaselineTool($a->user, nonNull($d->start_date_local), new ResolveRunBaselineAction())->handle([]),
+        new TrainingLoadTool($a->user, nonNull($d->start_date_local), new TrainingLoad())->handle([]),
         new WeekTotalsTool($snapshot)->handle([]),
         new WeekStateTool($a->user, Carbon::today())->handle([]),
     ];
@@ -1574,10 +1607,11 @@ it('names goal-pace work and its goal pace to the plan tools, and nothing on an 
 
     $days = planContextTool($user, $monday, $monday->copy()->addDays(2))->handle([])['days'];
 
-    expect($days[0]['goal_pace'])->toBe('10k')
-        ->and($days[0]['target_pace_sec'])->toBe(300)
-        ->and($days[0]['target_pace_formatted'])->toBe('5:00')
-        ->and($days[1])->not->toHaveKey('goal_pace');
+    expect(data_get($days, '0.goal_pace'))->toBe('10k')
+        ->and(data_get($days, '0.target_pace_sec'))->toBe(300)
+        ->and(data_get($days, '0.target_pace_formatted'))->toBe('5:00')
+        ->and($days)->toHaveKey('1')
+        ->and(data_get($days, '1'))->not->toHaveKey('goal_pace');
 });
 
 it('names a time trial, its distance and its aim to the plan tools, and nothing on an ordinary quality day', function (): void {
@@ -1600,10 +1634,11 @@ it('names a time trial, its distance and its aim to the plan tools, and nothing 
 
     $days = planContextTool($user, $monday, $monday->copy()->addDays(2))->handle([])['days'];
 
-    expect($days[0]['time_trial'])->toBe(['distance_km' => 5.0, 'aim_time' => '25:00'])
-        ->and($days[0]['target_pace_sec'])->toBe(300)
-        ->and($days[0]['distance_km'])->toBe(5.0)
-        ->and($days[1])->not->toHaveKey('time_trial');
+    expect(data_get($days, '0.time_trial'))->toBe(['distance_km' => 5.0, 'aim_time' => '25:00'])
+        ->and(data_get($days, '0.target_pace_sec'))->toBe(300)
+        ->and(data_get($days, '0.distance_km'))->toBe(5.0)
+        ->and($days)->toHaveKey('1')
+        ->and(data_get($days, '1'))->not->toHaveKey('time_trial');
 });
 
 it('names stepping-stone work and its pace to the plan tools, never as goal pace', function (): void {
@@ -1620,10 +1655,10 @@ it('names stepping-stone work and its pace to the plan tools, never as goal pace
 
     $days = planContextTool($user, $monday, $monday)->handle([])['days'];
 
-    expect($days[0]['stepping_stone'])->toBe('10k')
-        ->and($days[0])->not->toHaveKey('goal_pace')
-        ->and($days[0]['target_pace_sec'])->toBe(291)
-        ->and($days[0]['target_pace_formatted'])->toBe('4:51');
+    expect(data_get($days, '0.stepping_stone'))->toBe('10k')
+        ->and(data_get($days, '0'))->not->toHaveKey('goal_pace')
+        ->and(data_get($days, '0.target_pace_sec'))->toBe(291)
+        ->and(data_get($days, '0.target_pace_formatted'))->toBe('4:51');
 });
 
 it('tells the plan tools where ambitious stepping-stone work closes at goal pace', function (): void {
@@ -1641,10 +1676,10 @@ it('tells the plan tools where ambitious stepping-stone work closes at goal pace
     $tool = planContextTool($user, $monday, $monday);
     $days = $tool->handle([])['days'];
 
-    expect($days[0]['stepping_stone'])->toBe('10k')
-        ->and($days[0]['closing_goal_pace_formatted'])->toBe('4:56')
-        ->and($days[0])->not->toHaveKey('goal_pace')
-        ->and($days[0]['target_pace_formatted'])->toBe('5:06')
+    expect(data_get($days, '0.stepping_stone'))->toBe('10k')
+        ->and(data_get($days, '0.closing_goal_pace_formatted'))->toBe('4:56')
+        ->and(data_get($days, '0'))->not->toHaveKey('goal_pace')
+        ->and(data_get($days, '0.target_pace_formatted'))->toBe('5:06')
         ->and($tool->description())->toContain('closing_goal_pace_formatted');
 });
 
@@ -1663,10 +1698,10 @@ it('names a fast-finish long run to the plan tools by its fast block, never as g
     $tool = planContextTool($user, $sunday, $sunday);
     $days = $tool->handle([])['days'];
 
-    expect($days[0]['session_type'])->toBe('long')
-        ->and($days[0]['fast_finish'])->toBe(['pace_kind' => '10k', 'pace_source' => 'supported', 'minutes' => 20, 'pace_formatted' => '4:50'])
-        ->and($days[0])->not->toHaveKey('goal_pace')
-        ->and($days[0])->not->toHaveKey('stepping_stone')
+    expect(data_get($days, '0.session_type'))->toBe('long')
+        ->and(data_get($days, '0.fast_finish'))->toBe(['pace_kind' => '10k', 'pace_source' => 'supported', 'minutes' => 20, 'pace_formatted' => '4:50'])
+        ->and(data_get($days, '0'))->not->toHaveKey('goal_pace')
+        ->and(data_get($days, '0'))->not->toHaveKey('stepping_stone')
         ->and($tool->description())->toContain('fast_finish');
 });
 
@@ -1685,8 +1720,8 @@ it('names an unsupported marathon race long to the plan tools by its stepping-st
     $tool = planContextTool($user, $sunday, $sunday);
     $days = $tool->handle([])['days'];
 
-    expect($days[0]['session_type'])->toBe('long')
-        ->and($days[0]['race_long'])->toBe(['pace_kind' => 'marathon', 'pace_source' => 'stepping_stone', 'minutes' => 40, 'pace_formatted' => '5:30'])
-        ->and($days[0])->not->toHaveKey('goal_pace')
+    expect(data_get($days, '0.session_type'))->toBe('long')
+        ->and(data_get($days, '0.race_long'))->toBe(['pace_kind' => 'marathon', 'pace_source' => 'stepping_stone', 'minutes' => 40, 'pace_formatted' => '5:30'])
+        ->and(data_get($days, '0'))->not->toHaveKey('goal_pace')
         ->and($tool->description())->toContain('race_long');
 });

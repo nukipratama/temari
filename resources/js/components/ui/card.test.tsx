@@ -57,7 +57,17 @@ describe('Card', () => {
     });
 
     it('renders as a link when given an anchor', () => {
-        render(<Card render={<a href="/race" />}>go</Card>);
+        render(
+            <Card
+                render={(props) => (
+                    <a href="/race" {...props}>
+                        {props.children}
+                    </a>
+                )}
+            >
+                go
+            </Card>,
+        );
         const link = screen.getByRole('link', { name: 'go' });
         expect(link).toHaveAttribute('href', '/race');
         expect(link).toHaveClass('bg-card');

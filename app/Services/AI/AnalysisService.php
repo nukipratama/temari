@@ -85,27 +85,16 @@ class AnalysisService
     }
 
     /**
-     * Serve a trigger from the deterministic rule-based filler instead of the
-     * LLM. The row is reused (or staged) and marked Done immediately, all under
-     * {@see self::withoutDispatching()}, so no job is queued, no cooldown starts
-     * and no notification fans out. The demo login is public and a manual
-     * trigger deliberately fires past the cost ceiling, so the demo account's
-     * "Reread" resolves here and can never bill Azure.
+     * Serve a trigger from the deterministic rule-based filler instead of the LLM. The row is
+     * reused (or staged) and marked Done under {@see self::withoutDispatching()}, so no job is
+     * queued, no cooldown starts and no notification fans out. The demo account's "Reread" resolves
+     * here so it can never bill Azure.
      *
-     * $refillDone controls whether an already-Done row gets overwritten: the
-     * demo "Reread" trigger wants true (its content is rule-based to begin
-     * with, so refilling in place is a no-op it can rely on), but a caller
-     * filling in a too-old-for-the-LLM backfill row must pass false — that row
-     * can legitimately already hold real, billed-for narration (e.g. a Strava
-     * resync of an activity that aged past the backfill cap since it was first
-     * narrated), which must never be silently clobbered with filler prose.
+     * `$refillDone` false keeps an already-Done row, which may hold real billed narration, from
+     * being clobbered with filler prose.
      *
-     * $reason records why on the row itself ({@see Analysis::$rule_based_reason})
-     * beyond "some rule-based filler wrote this" — today only ever passed as
-     * {@see AnalysisOrigin::Return} by {@see \App\Jobs\AI\NarrateOnReturnJob}'s
-     * own catch-up calls, never left to whatever {@see NarrationOrigin} happens
-     * to be ambient, so a cost-ceiling degrade mid-return chain is never
-     * mistaken for an away-fill.
+     * `$reason` records on the row why the filler answered ({@see Analysis::$rule_based_reason});
+     * it is never left to whatever {@see NarrationOrigin} is ambient.
      */
     public function requestRuleBased(
         Model|string $subjectOrType,
@@ -195,6 +184,24 @@ class AnalysisService
             $invalidate,
             $delaySeconds,
         );
+    }
+
+    /**
+     * Re-narrates the day's briefing after a plan edit moved a session onto or
+     * off that day, unless the briefing's Reread cooldown is still running: then
+     * the current briefing stays, so repeated moves never bill past it.
+     */
+    public function rebriefAfterPlanEdit(User $user, string $date): void
+    {
+        $briefing = Analysis::query()
+            ->forSubject(AnalysisType::BRIEFING_SUBJECT_TYPE, $user->id, AnalysisType::BriefingMascotVoice, $date)
+            ->first();
+
+        if ($briefing?->cooldownRemaining() !== null) {
+            return;
+        }
+
+        $this->requestBriefing($user, $date, invalidate: true, delaySeconds: self::PLAN_EDIT_DELAY_SECONDS);
     }
 
     public function requestProfileVoice(User $user, string $isoWeek, bool $invalidate = false): Analysis
@@ -449,7 +456,7 @@ class AnalysisService
     {
         $startedAt = $activity?->detail?->start_date_local;
 
-        return $activity !== null && $startedAt !== null
+        return $activity instanceof Activity && $startedAt !== null
             && $this->backlog->awaitsOlderHydration($activity->user_id, $startedAt);
     }
 
@@ -543,6 +550,12 @@ class AnalysisService
             );
         }
 
+        $ownerId = AnalysisSubjectMap::ownerId($subjectType, $subjectId);
+
+        if ($this->servesOwnerRuleBased($ownerId)) {
+            return $this->requestRuleBased($subjectType, $subjectId, $type, $discriminator, refillDone: $invalidate);
+        }
+
         $row = $this->upsertRow($subjectType, $subjectId, $type, $discriminator);
         $justCreated = $row->wasRecentlyCreated;
 
@@ -550,8 +563,6 @@ class AnalysisService
         // honest -> a fresh row rests Pending for the empty state, an existing
         // Done keeps its real prose, and ai:self-heal resumes it once generation
         // is back. The spend ceiling is the one pause that degrades instead.
-        $ownerId = AnalysisSubjectMap::ownerId($subjectType, $subjectId);
-
         if (! $this->gate->autoDispatchEnabled($ownerId)) {
             if ($this->gate->costCeilingDegraded($ownerId)) {
                 $this->degradeToRuleBased($row);
@@ -591,8 +602,17 @@ class AnalysisService
         bool $invalidate,
         ?int $delaySeconds,
     ): void {
-        $rows = $this->upsertGroupRows($jobClass::subjectType(), $subjectId, $discriminator, $jobClass::groupedTypes());
         $ownerId = AnalysisSubjectMap::ownerId($jobClass::subjectType(), $subjectId);
+
+        if ($this->servesOwnerRuleBased($ownerId)) {
+            foreach ($jobClass::groupedTypes() as $type) {
+                $this->requestRuleBased($jobClass::subjectType(), $subjectId, $type, $discriminator, refillDone: $invalidate);
+            }
+
+            return;
+        }
+
+        $rows = $this->upsertGroupRows($jobClass::subjectType(), $subjectId, $discriminator, $jobClass::groupedTypes());
 
         if (! $this->gate->autoDispatchEnabled($ownerId)) {
             if ($this->gate->costCeilingDegraded($ownerId)) {
@@ -665,6 +685,22 @@ class AnalysisService
         }
 
         $this->dispatchPending($this->stamped(new $jobClass($subjectId, $discriminator, $generationToken)), $delaySeconds);
+    }
+
+    /**
+     * Whether a dispatch for this owner must be filled rule-based rather than
+     * billed. A suppressed dispatch (the demo seed) keeps staging Pending rows,
+     * which the seed fills itself.
+     */
+    private function servesOwnerRuleBased(?int $ownerId): bool
+    {
+        if ($ownerId === null || $this->gate->dispatchSuppressed()) {
+            return false;
+        }
+
+        $owner = User::query()->find($ownerId);
+
+        return $owner !== null && $this->gate->shouldServeRuleBased($owner);
     }
 
     /**
@@ -807,7 +843,7 @@ class AnalysisService
     {
         return $date !== null && PlannedSession::query()
             ->where('user_id', $userId)
-            ->whereDate('date', $date)
+            ->where('date', $date)
             ->where('skipped', true)
             ->exists();
     }
@@ -815,12 +851,9 @@ class AnalysisService
     /**
      * Send a Done row back to Pending so the next dispatch re-narrates it.
      *
-     * Only an invalidation the athlete asked for ("Reread", a plan edit, a
-     * replan) also re-arms the self-heal budget, read from the origin its entry
-     * point already declares: `attempts` counts real LLM executions per row, and
-     * a system invalidation fires on repeatable events (an ingest, the Monday
-     * fingerprint sweep), so resetting there would make MAX_SELF_HEAL_ATTEMPTS
-     * a bound per invalidation rather than per row.
+     * Only an invalidation the athlete asked for ("Reread", a plan edit, a replan) also re-arms the
+     * self-heal budget: system invalidations repeat, so resetting there would make
+     * MAX_SELF_HEAL_ATTEMPTS a bound per invalidation rather than per row.
      */
     private function invalidateDoneRow(Analysis $row): void
     {
@@ -946,14 +979,10 @@ class AnalysisService
     }
 
     /**
-     * Whether a chained click must resume the chain forward instead of narrating
-     * the clicked row in isolation. Only a head regenerate (a Done row that IS
-     * the chain head) re-narrates itself; every other chained click, including a
-     * Done mid-history row reached by a hand-crafted POST, resumes, so
-     * re-narrating mid-history never desyncs the later blocks that quoted its old
-     * narrative. A resumed dispatch forward-fills only and must pass
-     * `invalidate: false`, or already-Done siblings of the resumed group are
-     * flipped back to Pending and re-billed.
+     * Whether a chained click must resume the chain forward instead of narrating the clicked row in
+     * isolation. Only a head regenerate re-narrates itself; a resumed dispatch forward-fills only
+     * and must pass `invalidate: false`, or already-Done siblings are flipped back to Pending and
+     * re-billed.
      */
     public function shouldResumeChain(
         User $user,
@@ -992,17 +1021,12 @@ class AnalysisService
     }
 
     /**
-     * Serve a row from the deterministic filler because the spend ceiling is
-     * hit. Filled under {@see self::withoutDispatching()} so no job is queued, no
-     * cooldown starts and no notification claims a narration that was never
-     * written.
+     * Serve a row from the deterministic filler because the spend ceiling is hit, under
+     * {@see self::withoutDispatching()} so no job is queued, no cooldown starts and no
+     * notification claims a narration that was never written.
      *
-     * Two statuses are left alone. An already-Done row keeps the real prose it
-     * was billed for. A Failed row is a genuine fault (content filter, malformed
-     * response, spent retry budget) that the bounded self-heal and the /devtools/narration
-     * dead-letter exist to surface, so it stays Failed with its "Try again"
-     * rather than hiding a break behind plausible content — on a day the ceiling
-     * trips repeatedly, filling it would erase that signal every time.
+     * An already-Done row keeps the real prose it was billed for, and a Failed row stays Failed so
+     * a genuine fault is not hidden behind plausible content.
      */
     public function degradeToRuleBased(Analysis $row, ?string $generationToken = null): void
     {

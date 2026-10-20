@@ -1,6 +1,6 @@
 import { Deferred, Head, Link, router } from '@inertiajs/react';
-import { Clock, RefreshCw } from 'lucide-react';
-import { useState } from 'react';
+import { RefreshCw } from 'lucide-react';
+import { useMemo, useState } from 'react';
 
 import type { PlanDay, PlanWeek, SeasonSummaryWeek } from '@/lib/plan';
 import type {
@@ -13,18 +13,16 @@ import AddRacePrompt from '@/components/plan/AddRacePrompt';
 import PlanHeading from '@/components/plan/PlanHeading';
 import PlanRaceCard from '@/components/plan/PlanRaceCard';
 import { PlanWeeksSkeleton } from '@/components/plan/PlanSkeleton';
+import RegenerateButton from '@/components/plan/RegenerateButton';
 import SeasonHeaderCard from '@/components/plan/SeasonHeaderCard';
 import SeasonTimeline from '@/components/plan/SeasonTimeline';
 import EmptyPanel from '@/components/ui/EmptyPanel';
 import { Icon } from '@/components/ui/Icon';
 import LaneStack from '@/components/ui/LaneStack';
 import PageContainer from '@/components/ui/PageContainer';
-import PillButton from '@/components/ui/PillButton';
-import { useCooldownCountdown } from '@/hooks/useCooldownCountdown';
 import { appLayout } from '@/layouts/appLayout';
-import { cn } from '@/lib/cn';
 import { readPlanSelectedDay } from '@/lib/navigationMemory';
-import { formatDurationHMS, useTodayIso } from '@/lib/pace';
+import { useTodayIso } from '@/lib/pace';
 
 interface SeasonSummary {
     starts_at: string;
@@ -74,7 +72,7 @@ export default function Plan({
     raceSupportedTimeSec,
     raceOutcomeCandidate,
     sessionsPerWeek,
-    weeks,
+    weeks = [],
     season,
     seasonSummary = [],
     seasonAdherencePct = null,
@@ -83,24 +81,14 @@ export default function Plan({
     regenerateCooldownSeconds = null,
     planRecalibration,
 }: Readonly<PlanProps>) {
-    const [regenerating, setRegenerating] = useState(false);
     const today = useTodayIso();
     const [focusDay] = useState(requestedDay);
     const [selectedDay] = useState(() => focusDay ?? readPlanSelectedDay());
-    const regenerateCooldown = useCooldownCountdown(regenerateCooldownSeconds);
-    const regenerateCooling = regenerateCooldown > 0;
 
-    const regenerate = () => {
-        router.post(
-            '/plan/regenerate',
-            {},
-            {
-                preserveScroll: true,
-                onStart: () => setRegenerating(true),
-                onFinish: () => setRegenerating(false),
-            },
-        );
-    };
+    const detailByWeekStart = useMemo(
+        () => Object.fromEntries(weeks.map((week) => [week.week_start, week])),
+        [weeks],
+    );
 
     const moveSession = (day: PlanDay, toDate: string) => {
         router.patch(
@@ -132,34 +120,9 @@ export default function Plan({
             <PageContainer>
                 <PlanHeading
                     action={
-                        <PillButton
-                            tone="muted"
-                            size="xs"
-                            className="flex-none"
-                            onClick={regenerate}
-                            disabled={regenerating || regenerateCooling}
-                            aria-label={
-                                regenerating
-                                    ? 'replanning'
-                                    : regenerateCooling
-                                      ? `regenerate, next in ${formatDurationHMS(regenerateCooldown)}`
-                                      : 'regenerate'
-                            }
-                        >
-                            <Icon
-                                icon={regenerateCooling ? Clock : RefreshCw}
-                                className={cn(
-                                    'size-3.5',
-                                    regenerating && 'animate-spin',
-                                )}
-                                aria-hidden
-                            />
-                            {regenerateCooling && (
-                                <span aria-hidden>
-                                    {formatDurationHMS(regenerateCooldown)}
-                                </span>
-                            )}
-                        </PillButton>
+                        <RegenerateButton
+                            cooldownSeconds={regenerateCooldownSeconds}
+                        />
                     }
                 />
                 <p className="mt-1 mb-4 text-xs text-text-2">
@@ -206,7 +169,7 @@ export default function Plan({
                     fallback={<PlanWeeksSkeleton />}
                 >
                     {() =>
-                        weeks!.length === 0 || season === null ? (
+                        weeks.length === 0 || season === null ? (
                             <>
                                 <EmptyPanel
                                     face
@@ -231,12 +194,7 @@ export default function Plan({
                                 />
                                 <SeasonTimeline
                                     weeks={seasonSummary}
-                                    detailByWeekStart={Object.fromEntries(
-                                        weeks!.map((week) => [
-                                            week.week_start,
-                                            week,
-                                        ]),
-                                    )}
+                                    detailByWeekStart={detailByWeekStart}
                                     today={today}
                                     raceDate={race?.race_date ?? null}
                                     weekFocus={adaptation}

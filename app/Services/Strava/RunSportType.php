@@ -25,7 +25,8 @@ final class RunSportType
      */
     public static function matches(array $activity): bool
     {
-        $type = (string) ($activity['sport_type'] ?? $activity['type'] ?? '');
+        $rawType = $activity['sport_type'] ?? $activity['type'] ?? '';
+        $type = is_scalar($rawType) ? (string) $rawType : '';
 
         return in_array($type, self::RUN_TYPES, strict: true);
     }

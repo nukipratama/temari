@@ -213,7 +213,8 @@ final class LapsTool extends ActivityTool
     private static function recoveries(array $laps, array $reps): array
     {
         $gaps = [];
-        for ($i = 1; $i < count($reps); $i++) {
+        $counter = count($reps);
+        for ($i = 1; $i < $counter; $i++) {
             $seconds = 0;
             for ($position = $reps[$i - 1] + 1; $position < $reps[$i]; $position++) {
                 $elapsed = $laps[$position]['elapsed_sec'] ?? null;

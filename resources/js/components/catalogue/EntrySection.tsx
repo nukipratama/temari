@@ -57,14 +57,18 @@ export default function EntrySection({
 
 function VariantMatrix({ matrix }: Readonly<{ matrix: CatalogueMatrix }>) {
     const omitted = matrix.omitted ?? {};
-    const [rowAxis, columnAxis] = Object.keys(matrix.axes);
+    const [rowEntry, columnEntry] = Object.entries(matrix.axes);
+    if (rowEntry === undefined) return null;
+
+    const [rowAxis, rowValues] = rowEntry;
+    const columnAxis = columnEntry?.[0];
     const shown = (value: string) => !(value in omitted);
-    const rows = matrix.axes[rowAxis].filter(shown);
+    const rows = rowValues.filter(shown);
     const columns =
-        columnAxis === undefined ? [] : matrix.axes[columnAxis].filter(shown);
+        columnEntry === undefined ? [] : columnEntry[1].filter(shown);
 
     const variant = (row: string, column: string | null) =>
-        column === null
+        column === null || columnAxis === undefined
             ? { [rowAxis]: row }
             : { [rowAxis]: row, [columnAxis]: column };
 

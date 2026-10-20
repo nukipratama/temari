@@ -12,9 +12,8 @@ const RouteMap = lazyIsland(() => import('@/components/run/RouteMap'));
 
 /**
  * The route map with the run's conditions read underneath it, as one sunken
- * slab. The prototype fills the map half with a decorative "activate map"
- * placeholder; decision P16 puts the real Leaflet map there, which already
- * carries an activate-to-pan tap target of its own.
+ * slab. The prototype's decorative "activate map" placeholder is replaced by the
+ * real Leaflet map, which carries its own activate-to-pan tap target.
  */
 export default function MapWeatherPanel({
     detail,
@@ -132,8 +131,9 @@ function splitLocationLines(location: string): [string, string | null] {
     if (parts.length <= 1) {
         return [location, null];
     }
+    const [first = '', second = null] = parts;
     if (parts.length === 2) {
-        return [parts[0], parts[1]];
+        return [first, second];
     }
     return [parts.slice(0, -2).join(', '), parts.slice(-2).join(', ')];
 }

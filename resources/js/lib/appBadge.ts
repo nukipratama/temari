@@ -1,12 +1,11 @@
 /**
  * The PWA app-icon badge, which counts the in-app inbox's unread rows — the
- * same number the bell shows, so the icon and the app never disagree.
+ * same number the bell shows.
  *
  * {@see syncAppBadge} is called with the `unreadNotifications` shared prop on
- * every Inertia visit, which is also what clears the badge the moment the inbox
- * is read. {@see syncAppBadgeOnVisible} re-applies the last count when the app
- * comes back into view, for the iOS case where a swiped-away notification
- * leaves the service worker's own count stale ({@see public/sw.js}).
+ * every Inertia visit. {@see syncAppBadgeOnVisible} re-applies the last count
+ * when the app comes back into view, for the iOS case where a swiped-away
+ * notification leaves the service worker's own count stale ({@see public/sw.js}).
  *
  * Fire-and-forget, matching {@see registerServiceWorker}: any absent API or
  * rejected promise degrades silently.

@@ -193,13 +193,13 @@ it('renders the feed and calendar for a summary-only run without inventing a zer
         ->assertOk()
         ->json('props.cells');
 
-    $runCells = collect($cells)
-        ->filter(fn (array $cell): bool => $cell['activity_id'] === $activity->id);
+    $runCells = collect(arrayOf($cells))
+        ->filter(fn (mixed $cell): bool => arrayOf($cell)['activity_id'] === $activity->id);
 
     expect($runCells)->toHaveCount(1)
-        ->and($runCells->first()['distance_km'])->not->toBeNull()
+        ->and(arrayOf($runCells->first())['distance_km'])->not->toBeNull()
         // Unknown load reads as unknown, never as a zero-effort day.
-        ->and($runCells->first()['trimp'])->toBeNull();
+        ->and(arrayOf($runCells->first())['trimp'])->toBeNull();
 });
 
 it('defers backfilled recap history until hydration finishes, without one extra Strava read', function (): void {
@@ -241,10 +241,9 @@ it('defers backfilled recap history until hydration finishes, without one extra 
     // it. Both recaps stay rule-based, but neither may permanently record the
     // summary-only snapshot or month totals before hydration finishes. Weekly
     // leaves no row here; monthly stages a deferred row for the calendar UI.
-    $monthly = collect($captured)->firstWhere('type', AnalysisType::MonthlyRecap);
+    $monthly = nonNull(collect($captured)->firstWhere('type', AnalysisType::MonthlyRecap));
 
     expect(collect($captured)->firstWhere('type', AnalysisType::WeeklyRecap))->toBeNull()
-        ->and($monthly)->not->toBeNull()
         ->and($monthly['ruleBased'])->toBeFalse()
         ->and($monthly['invalidate'])->toBeNull()
         ->and($monthly['subjectId'])->toBe($user->id)
@@ -261,13 +260,11 @@ it('defers backfilled recap history until hydration finishes, without one extra 
     app(KickoffMonthlyRecaps::class)($user->id);
     Http::assertSentCount(1);
 
-    $weekly = collect($captured)->firstWhere('type', AnalysisType::WeeklyRecap);
-    $monthly = collect($captured)->firstWhere('type', AnalysisType::MonthlyRecap);
+    $weekly = nonNull(collect($captured)->firstWhere('type', AnalysisType::WeeklyRecap));
+    $monthly = nonNull(collect($captured)->firstWhere('type', AnalysisType::MonthlyRecap));
 
-    expect($weekly)->not->toBeNull()
-        ->and($weekly['subjectOrType'])->toBe(WeeklySnapshot::class)
+    expect($weekly['subjectOrType'])->toBe(WeeklySnapshot::class)
         ->and($weekly['ruleBased'])->toBeTrue()
-        ->and($monthly)->not->toBeNull()
         ->and($monthly['ruleBased'])->toBeTrue();
 
     Carbon::setTestNow();

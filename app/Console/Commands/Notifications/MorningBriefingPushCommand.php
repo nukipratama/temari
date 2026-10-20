@@ -17,6 +17,7 @@ use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Carbon;
 
 #[Signature('briefing:morning-push')]
@@ -39,19 +40,23 @@ class MorningBriefingPushCommand extends Command
                 'notificationPreference',
                 fn (Builder $preference): Builder => $preference->where('notifications_enabled', false),
             )
-            ->whereNotIn('id', PlannedSession::query()->select('user_id')->whereDate('date', $today)->where('skipped', true))
+            ->whereNotIn('id', PlannedSession::query()->select('user_id')->where('date', $today)->where('skipped', true))
             ->get();
+
+        $due = $users->filter(function (User $user) use ($usualRunTime, $minuteOfDay): bool {
+            $slot = intdiv($usualRunTime->forUser($user->id), self::BUCKET_MINUTES) * self::BUCKET_MINUTES;
+
+            return $minuteOfDay >= $slot && $minuteOfDay - $slot <= self::CATCH_UP_MINUTES;
+        });
+
+        $briefings = $this->briefingsFor($due, $today);
+        $claimedChannels = $this->claimedChannelsFor($briefings);
 
         $sent = 0;
 
-        foreach ($users as $user) {
-            $slot = intdiv($usualRunTime->forUser($user->id), self::BUCKET_MINUTES) * self::BUCKET_MINUTES;
-            if ($minuteOfDay < $slot || $minuteOfDay - $slot > self::CATCH_UP_MINUTES) {
-                continue;
-            }
-
-            $briefing = $this->briefingFor($user, $today);
-            if ($briefing === null || $this->claimedOnEveryChannel($router, $user, $briefing)) {
+        foreach ($due as $user) {
+            $briefing = $briefings->get($user->id);
+            if ($briefing === null || $this->claimedOnEveryChannel($router, $user, $claimedChannels[$briefing->id] ?? [])) {
                 continue;
             }
 
@@ -64,36 +69,49 @@ class MorningBriefingPushCommand extends Command
         return self::SUCCESS;
     }
 
-    private function claimedOnEveryChannel(ChannelRouter $router, User $user, Analysis $briefing): bool
+    /** @param  list<string>  $claimedChannels */
+    private function claimedOnEveryChannel(ChannelRouter $router, User $user, array $claimedChannels): bool
     {
         $channels = array_map(ChannelRouter::deliveryChannel(...), $router->outboundOnly($user));
-        if ($channels === []) {
-            return false;
-        }
 
-        $claimed = NotificationDelivery::query()
-            ->where('analysis_id', $briefing->id)
-            ->whereIn('channel', $channels)
-            ->distinct()
-            ->count('channel');
-
-        return $claimed === count($channels);
+        return $channels !== [] && array_diff($channels, $claimedChannels) === [];
     }
 
     /**
-     * Today's briefing, only once it has actually been narrated. A row still
-     * pending or failed is skipped and never generated here: 00:01's kickoff
-     * owns generation, and a push is not a reason to spend a token.
+     * The delivery channels already claimed per briefing id.
+     *
+     * @param  Collection<int, Analysis>  $briefings
+     * @return array<int, list<string>>
      */
-    private function briefingFor(User $user, string $today): ?Analysis
+    private function claimedChannelsFor(Collection $briefings): array
+    {
+        $claimed = [];
+        $deliveries = NotificationDelivery::query()->whereIn('analysis_id', $briefings->pluck('id'))->get(['analysis_id', 'channel']);
+        foreach ($deliveries as $delivery) {
+            $claimed[$delivery->analysis_id][] = $delivery->channel;
+        }
+
+        return $claimed;
+    }
+
+    /**
+     * Today's briefings keyed by athlete id, only once actually narrated. A row
+     * still pending or failed is skipped and never generated here: 00:01's
+     * kickoff owns generation, and a push is not a reason to spend a token.
+     *
+     * @param  Collection<int, User>  $users
+     * @return Collection<int, Analysis>
+     */
+    private function briefingsFor(Collection $users, string $today): Collection
     {
         return Analysis::query()
             ->where('subject_type', AnalysisType::BRIEFING_SUBJECT_TYPE)
-            ->where('subject_id', $user->id)
+            ->whereIn('subject_id', $users->modelKeys())
             ->where('analysis_type', AnalysisType::BriefingMascotVoice)
             ->where('discriminator', $today)
             ->where('status', AnalysisStatus::Done)
             ->whereNotNull('content')
-            ->first();
+            ->get()
+            ->keyBy('subject_id');
     }
 }

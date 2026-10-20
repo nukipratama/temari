@@ -23,8 +23,7 @@ it('round-trips through the decoder for the first point', function (): void {
         [-6.2253, 106.8090],
         [-6.2203, 106.8100],
     ]);
-    $back = $decoder->firstPoint($encoded);
-    expect($back)->not->toBeNull();
+    $back = nonNull($decoder->firstPoint($encoded));
     expect($back[0])->toEqualWithDelta(-6.2253, 1e-5);
     expect($back[1])->toEqualWithDelta(106.8090, 1e-5);
 });

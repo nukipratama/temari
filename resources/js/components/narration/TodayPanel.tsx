@@ -11,10 +11,9 @@ interface TodayPanelProps {
 
 /**
  * Today's spend at display size against the app-wide ceiling, with four
- * labelled references beside it so "is that normal" is answered by
- * comparison rather than a lone percentage. Absorbs the old CeilingHeader;
- * the capped-athlete count, pause reason and recover action moved to
- * {@link FaultStrip}, since those are faults, not this panel's own reading.
+ * labelled references beside it so "is that normal" is answered by comparison
+ * rather than a lone percentage. The capped-athlete count, pause reason and
+ * recover action live on {@link FaultStrip}.
  */
 export default function TodayPanel({
     budget,
@@ -31,7 +30,7 @@ export default function TodayPanel({
         days.length > 0
             ? Math.round(median(days.map((day) => day.tokens)))
             : null;
-    const yesterdayDay = days.length > 1 ? days[days.length - 2] : null;
+    const yesterdayDay = days.at(-2) ?? null;
     const yesterday = yesterdayDay?.cost ?? null;
     const priorDays = days.slice(0, -1);
     const busiestDay =

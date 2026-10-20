@@ -40,13 +40,14 @@ function athleteReport(): AthleteNarrationReport
     return app(AthleteNarrationReport::class);
 }
 
+/** @param array<string, mixed> $attributes */
 function athleteBlock(User $user, AnalysisType $type = AnalysisType::BriefingMascotVoice, array $attributes = []): Analysis
 {
     return Analysis::factory()->create([
         'subject_type' => 'briefing_user_day',
         'subject_id' => $user->id,
         'analysis_type' => $type,
-        // TrendRead's discriminator is a closed set (just '7d' since #967);
+        // TrendRead's discriminator is a closed set (just '7d');
         // the factory's default date-shaped value would be hidden by
         // KnownAnalysisTypeScope for this one type.
         ...($type === AnalysisType::TrendRead ? ['discriminator' => '7d'] : []),
@@ -54,6 +55,7 @@ function athleteBlock(User $user, AnalysisType $type = AnalysisType::BriefingMas
     ]);
 }
 
+/** @param array<string, mixed> $attributes */
 function usageRow(User $user, ?Analysis $block, Carbon $when, int $prompt = 1000, int $completion = 500, array $attributes = []): TokenUsage
 {
     return TokenUsage::query()->create([
@@ -142,7 +144,7 @@ describe('narrations', function (): void {
             ->and($first['steps'])->toBe(3)
             ->and($first['origin'])->toBe('user')
             ->and($first['served_by'])->toBe('llm')
-            ->and($first['tool_calls'][0]['tool'])->toBe('recent_runs')
+            ->and(data_get($first, 'tool_calls.0.tool'))->toBe('recent_runs')
             ->and($first['content'])->toBe('the fresh one')
             ->and($second['id'])->toBe($older->id)
             ->and($second['served_by'])->toBeNull()
@@ -203,9 +205,9 @@ describe('narrations', function (): void {
 
         expect($row['version_count'])->toBe(2)
             ->and($row['previous_content'])->toBe('the middle take')
-            ->and($row['flag']['reason'])->toBe(FeedbackReason::FactsWrong->value)
-            ->and($row['flag']['note'])->toBe('that never happened')
-            ->and($row['flag']['superseded'])->toBeTrue();
+            ->and(data_get($row, 'flag.reason'))->toBe(FeedbackReason::FactsWrong->value)
+            ->and(data_get($row, 'flag.note'))->toBe('that never happened')
+            ->and(data_get($row, 'flag.superseded'))->toBeTrue();
     });
 });
 
@@ -218,11 +220,11 @@ describe('costByKind', function (): void {
 
         $rows = collect(athleteReport()->costByKind($user->id))->keyBy('kind');
 
-        expect($rows['briefing']['today'])->toBe(['cost' => 2.0, 'calls' => 1])
-            ->and($rows['briefing']['week'])->toBe(['cost' => 2.0, 'calls' => 1])
-            ->and($rows['briefing']['month'])->toBe(['cost' => 4.0, 'calls' => 2])
-            ->and($rows['trend_read']['today'])->toBe(['cost' => 0.0, 'calls' => 0])
-            ->and($rows['trend_read']['month'])->toBe(['cost' => 2.0, 'calls' => 1]);
+        expect(data_get($rows, 'briefing.today'))->toBe(['cost' => 2.0, 'calls' => 1])
+            ->and(data_get($rows, 'briefing.week'))->toBe(['cost' => 2.0, 'calls' => 1])
+            ->and(data_get($rows, 'briefing.month'))->toBe(['cost' => 4.0, 'calls' => 2])
+            ->and(data_get($rows, 'trend_read.today'))->toBe(['cost' => 0.0, 'calls' => 0])
+            ->and(data_get($rows, 'trend_read.month'))->toBe(['cost' => 2.0, 'calls' => 1]);
     });
 });
 
@@ -280,6 +282,6 @@ describe('audit and override', function (): void {
 
         app(CeilingOverride::class)->set($user->id, 2.5);
 
-        expect(athleteReport()->activeOverride($user->id)['value'])->toBe(2.5);
+        expect(data_get(athleteReport()->activeOverride($user->id), 'value'))->toBe(2.5);
     });
 });

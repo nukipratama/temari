@@ -29,11 +29,9 @@ interface SettingsRowProps {
     /**
      * Trailing control (e.g. a `<Toggle>`) rendered where the chevron would be.
      *
-     * A row with its own control is never itself tappable: the whole point is
-     * that the control owns the interaction, and a row that both navigates and
-     * holds a switch gives two different outcomes for taps a few pixels apart.
-     * So this branch always renders a plain container, and `href` /
-     * `externalHref` / `onClick` are ignored alongside it.
+     * A row with its own control is never itself tappable: this branch always
+     * renders a plain container, and `href` / `externalHref` / `onClick` are
+     * ignored alongside it.
      */
     control?: ReactNode;
     /**

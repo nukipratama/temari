@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Notifications\Messages\InboxMessage;
 use App\Enums\NotificationKind;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
@@ -49,6 +50,7 @@ function postRunAnalysis(User $user, string $content = 'Mantap!', int $daysAgo =
     ]);
 }
 
+/** @return array<int, class-string> */
 function viaFor(Analysis $analysis, User $user): array
 {
     return new AnalysisReadyNotification($analysis)->via($user);
@@ -95,9 +97,9 @@ it('rechecks current preferences before a queued channel sends', function (): vo
 
     $user->notify(new AnalysisReadyNotification($analysis));
 
-    $job = Queue::pushed(SendQueuedNotifications::class)->first(
+    $job = nonNull(pushedJobs(SendQueuedNotifications::class)->first(
         fn (SendQueuedNotifications $queued): bool => $queued->channels === [IdempotentWebPushChannel::class],
-    );
+    ));
     expect($job)->toBeInstanceOf(SendQueuedNotifications::class);
 
     NotificationPreference::factory()->for($user)->create(['notifications_enabled' => false]);
@@ -121,12 +123,13 @@ it('preserves a queued inbox notification when outbound preferences change', fun
 
     $user->notify(new AnalysisReadyNotification($analysis));
 
-    $inboxJob = Queue::pushed(SendQueuedNotifications::class)->first(
+    $pushed = pushedJobs(SendQueuedNotifications::class);
+    $inboxJob = nonNull($pushed->first(
         fn (SendQueuedNotifications $queued): bool => $queued->channels === [InAppChannel::class],
-    );
-    $pushJob = Queue::pushed(SendQueuedNotifications::class)->first(
+    ));
+    $pushJob = nonNull($pushed->first(
         fn (SendQueuedNotifications $queued): bool => $queued->channels === [IdempotentWebPushChannel::class],
-    );
+    ));
     expect($inboxJob)->toBeInstanceOf(SendQueuedNotifications::class)
         ->and($pushJob)->toBeInstanceOf(SendQueuedNotifications::class);
 
@@ -263,11 +266,13 @@ it('keeps a long, emoji-heavy narration under the push payload limit, and whole 
     $notification = new AnalysisReadyNotification(postRunAnalysis($user, $narration));
 
     $payload = json_encode($notification->toWebPush($user, $notification)->toArray(), JSON_THROW_ON_ERROR);
+    /** @var array{body: string} $decoded */
+    $decoded = json_decode($payload, true);
 
     expect(strlen(json_encode(['body' => $narration], JSON_THROW_ON_ERROR)))->toBeGreaterThan(Encryption::MAX_PAYLOAD_LENGTH)
         ->and(strlen($payload))->toBeLessThan(Encryption::MAX_PAYLOAD_LENGTH)
-        ->and(mb_strlen(json_decode($payload, true)['body']))->toBeLessThanOrEqual(PushBody::MAX_CHARS)
-        ->and($notification->toInbox($user)->body)->toBe(trim($narration));
+        ->and(mb_strlen($decoded['body']))->toBeLessThanOrEqual(PushBody::MAX_CHARS)
+        ->and($notification->toInbox($user)?->body)->toBe(trim($narration));
 });
 
 // --- toInbox() ---------------------------------------------------------------
@@ -278,11 +283,11 @@ it('keys the inbox row on the analysis, so a re-analysis adds no second row', fu
 
     $automatic = new AnalysisReadyNotification($analysis)->toInbox($user);
 
-    expect($automatic->dedupeKey)->toBe('analysis:'.$analysis->id)
-        ->and($automatic->kind)->toBe(NotificationKind::PostRun)
-        ->and($automatic->body)->toBe('Pace konsisten.')
-        ->and($automatic->subjectType)->toBe(Activity::class)
-        ->and($automatic->subjectId)->toBe($analysis->subject_id);
+    expect($automatic?->dedupeKey)->toBe('analysis:'.$analysis->id)
+        ->and($automatic?->kind)->toBe(NotificationKind::PostRun)
+        ->and($automatic?->body)->toBe('Pace konsisten.')
+        ->and($automatic?->subjectType)->toBe(Activity::class)
+        ->and($automatic?->subjectId)->toBe($analysis->subject_id);
 });
 
 it('carries the card id and rarity so the reveal can be replayed', function (): void {
@@ -290,7 +295,7 @@ it('carries the card id and rarity so the reveal can be replayed', function (): 
     $analysis = postRunAnalysis($user);
     $card = RunCard::factory()->create(['activity_id' => $analysis->subject_id, 'rarity' => 'epic']);
 
-    expect(new AnalysisReadyNotification($analysis)->toInbox($user)->payload)->toBe([
+    expect(new AnalysisReadyNotification($analysis)->toInbox($user)?->payload)->toBe([
         'analysis_id' => $analysis->id,
         'url' => route('activities.show', $analysis->subject_id),
         'activity_id' => $analysis->subject_id,
@@ -301,7 +306,10 @@ it('carries the card id and rarity so the reveal can be replayed', function (): 
 
 it('leaves the card fields null when the run has no card', function (): void {
     $user = User::factory()->create();
-    $payload = new AnalysisReadyNotification(postRunAnalysis($user))->toInbox($user)->payload;
+    $message = new AnalysisReadyNotification(postRunAnalysis($user))->toInbox($user);
+    expect($message)->not->toBeNull();
+    assert($message instanceof InboxMessage);
+    $payload = $message->payload;
 
     expect($payload['run_card_id'])->toBeNull()
         ->and($payload['rarity'])->toBeNull();
@@ -318,6 +326,8 @@ it('carries only the deep link for a recap, which has no card to reveal', functi
     ]);
 
     $message = new AnalysisReadyNotification($analysis)->toInbox($user);
+    expect($message)->not->toBeNull();
+    assert($message instanceof InboxMessage);
 
     expect($message->kind)->toBe(NotificationKind::WeeklyRecap)
         ->and($message->payload)->toHaveKeys(['analysis_id', 'url'])
@@ -341,7 +351,7 @@ it('sends on the surviving channel when only one is muted', function (): void {
     $user->updatePushSubscription('https://push.example/endpoint', 'key', 'auth');
     NotificationPreference::factory()->for($user)->create(['telegram_enabled' => false]);
 
-    expect(viaFor(postRunAnalysis($user), $user->fresh()))->toBe([InAppChannel::class, IdempotentWebPushChannel::class]);
+    expect(viaFor(postRunAnalysis($user), $user->refresh()))->toBe([InAppChannel::class, IdempotentWebPushChannel::class]);
 });
 
 // The app-icon badge counts inbox rows, so the push carries the count the
@@ -351,7 +361,10 @@ it('carries the inbox unread count for the app-icon badge', function (): void {
     InboxNotification::factory()->for($user)->count(3)->create();
     $notification = new AnalysisReadyNotification(postRunAnalysis($user));
 
-    expect($notification->toWebPush($user, $notification)->toArray()['data']['unread'])->toBe(3);
+    /** @var array{data: array{unread: int}} $webPush */
+    $webPush = $notification->toWebPush($user, $notification)->toArray();
+
+    expect($webPush['data']['unread'])->toBe(3);
 });
 
 it('keeps the Telegram text and the web push title in sentence case, whatever the inbox shows', function (): void {

@@ -12,30 +12,23 @@ use App\Notifications\Channels\TelegramChannel;
 use Illuminate\Database\Eloquent\Builder;
 
 /**
- * The single answer to "where can this user actually be reached right now".
- * Every call site shares this one check rather than each re-deriving its own
- * answer, which is how "reachable" quietly drifts out of sync between callers.
+ * The single answer to "where can this user actually be reached right now". Every call site shares
+ * this one check rather than each re-deriving its own.
  *
- * Two conditions per **outbound** channel, and they are different kinds of thing:
+ * Two conditions per **outbound** channel:
  *
- * - **Wired** — is there a live connection or subscription at all, and is the
- *   app configured to use it. Infrastructure.
+ * - **Wired** — is there a live connection or subscription at all, and is the app configured to use
+ *   it. Infrastructure.
  * - **Enabled** — has the user muted it. Intent.
  *
- * A muted channel stays wired: the Telegram link is not revoked and the push
- * subscription is not deleted, so un-muting is one tap with no re-auth.
+ * A muted channel stays wired, so un-muting is one tap with no re-auth.
  *
- * The in-app inbox has neither condition. It is always reachable, so
- * {@see self::channelsFor()} always includes it while {@see self::canReach()}
- * and {@see self::scopeReachable()} stay about the outbound channels.
+ * The in-app inbox has neither condition: {@see self::channelsFor()} always includes it while
+ * {@see self::canReach()} and {@see self::scopeReachable()} stay about the outbound channels. The
+ * shared demo identity has no outbound channel at all but still gets the inbox.
  *
- * The shared demo identity is the one user with no outbound channel at all,
- * decided here rather than re-derived in each notification's `via()`. It still
- * gets the inbox, so the public demo shows a populated notification centre.
- *
- * This answers *where*, never *whether*. Per-type opt-in and recency stay with
- * `NotificationEligibility` and the notifications themselves, because those are
- * per-message questions and this is a routing one.
+ * This answers *where*, never *whether*: per-type opt-in and recency stay with
+ * `NotificationEligibility` and the notifications themselves.
  */
 final readonly class ChannelRouter
 {
@@ -129,13 +122,10 @@ final readonly class ChannelRouter
     }
 
     /**
-     * Query-level equivalent of {@see self::canReach()}, for callers that select
-     * users in bulk rather than checking one.
-     *
-     * `StreakRemindCommand` needs this: the nudge is time-boxed to the rest of
-     * the week, so it is only worth sending to someone an outbound channel can
-     * actually interrupt. A user reachable on the inbox alone would read it days
-     * later, when it is no longer true.
+     * Query-level equivalent of {@see self::canReach()}, for callers that select users in bulk
+     * rather than checking one. `StreakRemindCommand` needs it because the nudge is time-boxed to
+     * the rest of the week, so it is only worth sending to someone an outbound channel can actually
+     * interrupt.
      *
      * @param  Builder<User>  $query
      */

@@ -25,17 +25,19 @@ FROM frankenphp-base AS dev
 WORKDIR /var/www/html
 
 # pcov is dev-stage only: local coverage runs need a coverage driver. The
-# runtime stage below stays driver-free.
+# runtime stage below stays driver-free. PECL extensions are version-pinned
+# (bundled ones follow the base image's PHP); bump the runtime stage's redis
+# with this one.
 RUN install-php-extensions \
         pdo_mysql \
-        redis \
+        redis-6.3.0 \
         intl \
         bcmath \
         gmp \
         opcache \
         pcntl \
-        imagick \
-        pcov
+        imagick-3.8.1 \
+        pcov-1.0.12
 
 # librsvg is ImageMagick's SVG delegate — scripts/build-splash-screens.php
 # (Imagick) and resources/brand/build-og.mjs (the `magick` CLI) rasterise SVG
@@ -147,7 +149,7 @@ ENV FRANKENPHP_NUM_THREADS=4 \
 
 RUN install-php-extensions \
         pdo_mysql \
-        redis \
+        redis-6.3.0 \
         intl \
         bcmath \
         gmp \
@@ -156,16 +158,9 @@ RUN install-php-extensions \
 
 COPY --from=vendor /var/www/html /var/www/html
 COPY --from=assets /var/www/html/public/build /var/www/html/public/build
-# Run the package:discover hook the vendor stage deferred. Writes
-# bootstrap/cache/packages.php. CACHE_STORE=array because no redis is
-# reachable at build time — runtime config still resolves to redis.
-# config:cache is deliberately NOT baked here: build time has no .env
-# loaded, so env() falls back to the PHP defaults (e.g. DB_CONNECTION
-# defaults to 'sqlite' in config/database.php) and freezes them into the
-# cache. Runtime env vars from compose.prod.yaml are then ignored because
-# Laravel reads from the cached config, not from env. The post-rollover
-# `php artisan optimize` step in ci.yml does the caching at deploy time
-# where the runtime env is actually loaded.
+# Runs the package:discover hook the vendor stage deferred; CACHE_STORE=array
+# because no redis is reachable at build time. config:cache is not baked here:
+# docs/decisions/defer-config-cache.md.
 RUN CACHE_STORE=array php artisan package:discover --ansi
 # FrankenPHP loads /etc/frankenphp/Caddyfile, NOT /etc/caddy/Caddyfile.
 # Copying to the wrong path silently falls back to the image's default

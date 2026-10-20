@@ -20,8 +20,9 @@ class RunnerZonesController extends Controller
         /** @var User $user */
         $user = $request->user();
 
-        /** @var array<int, array{lo:int, hi:int}> $rawZones */
-        $rawZones = array_values($request->validated('zones'));
+        /** @var array<array-key, array{lo: int|string, hi: int|string}> $zones */
+        $zones = $request->validated('zones');
+        $rawZones = array_values($zones);
 
         $hrZones = [];
         foreach (['Z1', 'Z2', 'Z3', 'Z4', 'Z5'] as $index => $key) {
@@ -34,8 +35,8 @@ class RunnerZonesController extends Controller
         $user->runnerProfile()->updateOrCreate(
             ['user_id' => $user->id],
             [
-                'max_hr' => (int) $request->validated('max_hr'),
-                'resting_hr' => (int) $request->validated('resting_hr'),
+                'max_hr' => $request->safe()->integer('max_hr'),
+                'resting_hr' => $request->safe()->integer('resting_hr'),
                 'hr_zones' => $hrZones,
                 'source' => 'manual',
             ],

@@ -151,9 +151,8 @@ export default function RunCardMini({
                     )}
             </div>
 
-            {/* Thread-band rarity accent (Slice 9c) — mirrors Card's, scaled
-                down for the mini tile. Additive to the rarity border above,
-                not a re-hue. */}
+            {/* Thread-band rarity accent, mirrored from Card's and scaled down
+                for the mini tile. */}
             {!compact && (
                 <div
                     aria-hidden

@@ -1,18 +1,8 @@
 #!/bin/sh
-# Idempotent DB bootstrap (early-exit) — ensure the app's schemas, user and grants
-# exist, as root. Safe to run any number of times.
-#
-# Runs in two contexts:
-#   - dev: auto-runs at initdb on a FRESH volume (mounted into
-#     /docker-entrypoint-initdb.d by compose.yaml; connects over the socket).
-#   - prod: run once after (re)initializing the mysql data, piped over stdin so no
-#     bind mount is needed on the self-hosted runner:
-#
+# Idempotent DB bootstrap: ensures the app's schemas, user and grants exist, as root.
+#   - dev: runs at initdb on a fresh volume (mounted into /docker-entrypoint-initdb.d by compose.yaml).
+#   - prod: piped over stdin after (re)initializing the mysql data:
 #       docker compose -f compose.prod.yaml exec -T mysql sh < docker/mysql/init/01-databases.sh
-#
-# To reinitialize prod from scratch (data is disposable): stop + remove the mysql
-# container, `docker volume rm temari-prod_mysql_data`, `up -d mysql`, then run
-# the one-liner above.
 set -e
 
 # Prefer the app's (Laravel) DB_* names; fall back to the image's MYSQL_* (dev initdb,

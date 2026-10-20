@@ -248,7 +248,7 @@ describe('Activities/Feed', () => {
         expect(screen.getAllByText('No date').length).toBeGreaterThan(0);
     });
 
-    // P3: the button is a real page, not a client-side reveal — the server
+    // The button is a real page, not a client-side reveal — the server
     // decides how many weeks came back and whether any remain behind them.
     describe('load older weeks', () => {
         const runs = [run(101, 'Week 1', '2026-05-19T06:00:00')];

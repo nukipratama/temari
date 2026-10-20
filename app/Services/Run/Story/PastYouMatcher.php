@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Run\Story;
 
+use App\Enums\SessionType;
 use App\Enums\ComparisonMetric;
 use App\Services\Run\Metrics\DistanceFormatter;
 use Illuminate\Database\Eloquent\Collection;
@@ -38,10 +39,8 @@ class PastYouMatcher
     public const int MIN_GAP_DAYS = 21;
 
     /**
-     * Oldest a comparison run may be. Without a ceiling the oldest-first pick
-     * below reaches as far back as the account goes, and "14 seconds faster than
-     * five years ago" compares the runner to a different person. A year keeps the
-     * contrast wide enough to feel like progress and close enough to be theirs.
+     * Oldest a comparison run may be; a year keeps the contrast wide enough to feel like progress and
+     * close enough to be theirs.
      */
     public const int MAX_GAP_DAYS = 365;
 
@@ -171,26 +170,15 @@ class PastYouMatcher
     }
 
     /**
-     * Compact shape of {@see findMatch}: the comparison deltas plus a couple
-     * of descriptors of the matched past run, without the full ActivityDetail
-     * model. Originally the LLM-facing tool payload; since #1009's decision
-     * that code states the comparison and narrators never do, this is now the
-     * source a controller reads directly to render the fact line the UI
-     * shows next to the narration, never inside it.
+     * Compact shape of {@see findMatch}: the comparison deltas plus a couple of descriptors of the
+     * matched past run, without the full ActivityDetail model. A controller reads it directly to
+     * render the fact line the UI shows next to the narration, never inside it.
      *
-     * Regression for #1009 (reopened): {@see findMatch}'s bare signed
-     * `pace_diff_sec`/`time_diff_sec`/`hr_diff_bpm` plus a `direction`
-     * composite still let a narrator invert a field's sign -- `direction`
-     * is a verdict on the pair as a whole, not a guard on each number, and a
-     * model reading a mixed-signal pair (slower pace, lower HR) read the pace
-     * backwards to fit whichever number it decided was the headline. No
-     * signed number reaches a caller here: `pace`/`time` carry an unsigned
-     * magnitude plus their own `relation` (faster/slower/same, `time` always
-     * agreeing with `pace` in sign since it is the same delta scaled by
-     * distance), banded by the pace signal of {@see ComparisonMetric::Pace};
-     * `hr` carries bpm plus higher/lower/same, where `same` means the gap rounds
-     * to the 0 bpm the card would show. `direction` still travels alongside as
-     * the composite call, decided on efficiency when heart rate allows.
+     * No signed number reaches a caller: `pace`/`time` carry an unsigned magnitude plus their own
+     * `relation` (faster/slower/same), banded by the pace signal of {@see ComparisonMetric::Pace};
+     * `hr` carries bpm plus higher/lower/same, where `same` means the gap rounds to the 0 bpm the card
+     * would show. `direction` still travels alongside as the composite call, decided on efficiency
+     * when heart rate allows.
      *
      * @return array{days_ago: int, pace: array{seconds_per_km: float, relation: string}, time: array{seconds: float, relation: string}, hr: array{bpm: float, relation: string}|null, direction: string, past_km: float, past_activity_id: int, past_name: string|null}|null
      */
@@ -265,13 +253,9 @@ class PastYouMatcher
     }
 
     /**
-     * Similarity score used to rank qualifying candidates, on a 0..1 scale.
-     * Null when a hard rule rejects the pairing.
-     *
-     * Neither pace nor heart rate is scored: the pace band already establishes
-     * that the two are the same kind of session, and both readings are what
-     * the verdict measures, so rewarding similarity there would bury the very
-     * change this is asked to detect.
+     * Similarity score used to rank qualifying candidates, on a 0..1 scale; null when a hard rule
+     * rejects the pairing. Neither pace nor heart rate is scored, since both are what the verdict
+     * measures.
      */
     public function similarity(ComparableRun $current, ComparableRun $past): ?float
     {
@@ -289,8 +273,8 @@ class PastYouMatcher
             return null;
         }
 
-        if ($current->plannedSessionType !== null
-            && $past->plannedSessionType !== null
+        if ($current->plannedSessionType instanceof SessionType
+            && $past->plannedSessionType instanceof SessionType
             && $current->plannedSessionType !== $past->plannedSessionType) {
             return null;
         }

@@ -18,7 +18,7 @@ export const RUNNER: AuthUser = {
 
 export const DEMO_RUNNER: AuthUser = { ...RUNNER, is_demo: true };
 
-export const NARRATION =
+const NARRATION =
     "13.5 km this week, down from 23.6 last week. the last few days have been **heavy**, so I'm keeping today to an easy run, 30-40 minutes.";
 
 export function analysis(

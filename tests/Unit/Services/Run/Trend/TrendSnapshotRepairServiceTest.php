@@ -33,7 +33,7 @@ it('keeps the earliest pending date when several activities arrive', function ()
     $service->markDirty($user->id, Carbon::parse('2026-08-15'));
     $service->markDirty($user->id, Carbon::parse('2026-08-16'));
 
-    expect($user->fresh()->trend_snapshots_pending_from->toDateString())->toBe('2026-08-15');
+    expect(nonNull(nonNull($user->fresh())->trend_snapshots_pending_from)->toDateString())->toBe('2026-08-15');
     Bus::assertDispatched(RebuildTrendSnapshotsJob::class);
 });
 
@@ -49,8 +49,8 @@ it('writes the closed range through today and emits settlement when no work rema
 
     app(TrendSnapshotRepairService::class)->drain($user->id);
 
-    expect($user->fresh()->trend_snapshots_pending_from)->toBeNull()
-        ->and($user->fresh()->trend_snapshots_rebuilding_from)->toBeNull()
+    expect(nonNull($user->fresh())->trend_snapshots_pending_from)->toBeNull()
+        ->and(nonNull($user->fresh())->trend_snapshots_rebuilding_from)->toBeNull()
         ->and(TrendDailySnapshot::query()->where('user_id', $user->id)->count())->toBe(3);
     Event::assertDispatched(fn (TrendSnapshotsSettled $event): bool => $event->userId === $user->id);
 });
@@ -72,7 +72,7 @@ it('retains a new earlier date for a second bounded pass', function (): void {
     app()->instance(TrendSnapshotWriter::class, $writer);
     app(TrendSnapshotRepairService::class)->drain($user->id);
 
-    expect($user->fresh()->trend_snapshots_pending_from)->toBeNull()
-        ->and($user->fresh()->trend_snapshots_rebuilding_from->toDateString())->toBe('2026-08-14');
+    expect(nonNull($user->fresh())->trend_snapshots_pending_from)->toBeNull()
+        ->and(nonNull(nonNull($user->fresh())->trend_snapshots_rebuilding_from)->toDateString())->toBe('2026-08-14');
     Bus::assertDispatched(RebuildTrendSnapshotsJob::class);
 });

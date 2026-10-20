@@ -1,6 +1,8 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
+import { defined } from '@/test/defined';
+
 import { useRunQuestions, type RunQuestion } from './useRunQuestions';
 
 function row(overrides: Partial<RunQuestion> = {}): RunQuestion {
@@ -35,7 +37,7 @@ function deferredFetch() {
         fetchMock,
         resolve: async (call: number, response: Response) => {
             await act(async () => {
-                resolvers[call](response);
+                defined(resolvers[call])(response);
             });
         },
     };
@@ -57,7 +59,9 @@ describe('useRunQuestions', () => {
         const { result } = renderHook(() => useRunQuestions(9));
 
         await waitFor(() => expect(result.current.questions).toHaveLength(1));
-        expect(result.current.questions[0].answer).toBe('You went out hot.');
+        expect(defined(result.current.questions[0]).answer).toBe(
+            'You went out hot.',
+        );
         expect(result.current.suggestions).toEqual([
             'how does this one compare to my usual?',
         ]);
@@ -75,7 +79,9 @@ describe('useRunQuestions', () => {
         renderHook(() => useRunQuestions(42));
 
         await waitFor(() => expect(fetchMock).toHaveBeenCalled());
-        expect(fetchMock.mock.calls[0][0]).toBe('/api/activities/42/questions');
+        expect(defined(fetchMock.mock.calls[0])[0]).toBe(
+            '/api/activities/42/questions',
+        );
     });
 
     it('leaves the panel empty rather than throwing when the thread fails to load', async () => {
@@ -133,7 +139,7 @@ describe('useRunQuestions', () => {
 
         expect(result.current.questions).toHaveLength(1);
         expect(result.current.awaitingAnswer).toBe(true);
-        const [, init] = fetchMock.mock.calls[1];
+        const [, init] = defined(fetchMock.mock.calls[1]);
         expect(init.method).toBe('POST');
         expect(init.body).toBe(
             '{"question":"why did my heart rate drift up?"}',
@@ -192,7 +198,7 @@ describe('useRunQuestions', () => {
             await result.current.ask('   was it the heat?   ');
         });
 
-        expect(fetchMock.mock.calls[1][1].body).toBe(
+        expect(defined(fetchMock.mock.calls[1])[1].body).toBe(
             '{"question":"was it the heat?"}',
         );
     });
@@ -329,7 +335,7 @@ describe('useRunQuestions', () => {
             await vi.advanceTimersByTimeAsync(3000);
         });
 
-        expect(result.current.questions[0].status).toBe('done');
+        expect(defined(result.current.questions[0]).status).toBe('done');
         expect(result.current.awaitingAnswer).toBe(false);
 
         const callsAfterSettle = fetchMock.mock.calls.length;
@@ -448,8 +454,10 @@ describe('useRunQuestions', () => {
             }),
         );
 
-        expect(result.current.questions[0].status).toBe('done');
-        expect(result.current.questions[0].answer).toBe('You went out hot.');
+        expect(defined(result.current.questions[0]).status).toBe('done');
+        expect(defined(result.current.questions[0]).answer).toBe(
+            'You went out hot.',
+        );
         expect(result.current.awaitingAnswer).toBe(false);
     });
 

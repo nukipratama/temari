@@ -16,6 +16,7 @@ use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Queue\Attributes\Backoff;
 use Illuminate\Queue\Attributes\Tries;
 use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -44,12 +45,13 @@ class HandleTelegramUpdateJob implements ShouldQueue
             return;
         }
 
-        $chatId = $message['chat']['id'] ?? null;
+        $chatId = Arr::get($message, 'chat.id');
         if (! is_int($chatId)) {
             return;
         }
 
-        $text = trim((string) ($message['text'] ?? ''));
+        $rawText = $message['text'] ?? '';
+        $text = trim(is_scalar($rawText) ? (string) $rawText : '');
 
         if (str_starts_with($text, '/start')) {
             $this->handleStart($client, $linkToken, $chatId, $text, $message);
@@ -76,7 +78,13 @@ class HandleTelegramUpdateJob implements ShouldQueue
         string $text,
         array $message,
     ): void {
-        $token = trim((string) substr($text, strlen('/start')));
+        if (Arr::get($message, 'chat.type') !== 'private') {
+            $client->sendMessage($chatId, TelegramReplies::privateChatOnly());
+
+            return;
+        }
+
+        $token = trim(substr($text, strlen('/start')));
 
         if ($token === '') {
             $client->sendMessage($chatId, TelegramReplies::generic());
@@ -124,7 +132,7 @@ class HandleTelegramUpdateJob implements ShouldQueue
                     ['user_id' => $user->id],
                     [
                         'chat_id' => $chatId,
-                        'username' => $message['from']['username'] ?? null,
+                        'username' => Arr::get($message, 'from.username'),
                         'revoked_at' => null,
                     ],
                 );

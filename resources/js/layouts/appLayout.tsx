@@ -4,18 +4,13 @@ import AppShell from '@/layouts/AppShell';
 
 /**
  * Inertia persistent layouts. A page sets `Page.layout = appLayout` instead of
- * wrapping its own render in `<AppShell>`, which is what keeps the shell — nav,
- * top bar, banners — **mounted across navigations** rather than torn down and rebuilt on every
- * visit. That remount was the single biggest reason navigation read as a page
- * reload instead of an app, and a stable shell is also what lets the content
- * region alone show a loading state while the shell stays put.
+ * wrapping its own render in `<AppShell>`, which keeps the shell mounted across
+ * navigations.
  *
- * A module-level constant on purpose: Inertia compares the layout by
- * reference, so an inline `page => <AppShell>{page}</AppShell>` at each call
- * site would be a new function every render and defeat the persistence.
+ * A module-level constant on purpose: Inertia compares the layout by reference,
+ * so an inline `page => <AppShell>{page}</AppShell>` would defeat persistence.
  *
  * The standalone counterpart is `bareLayout` in `BareShell.tsx`, kept in its
- * own module so that importing it does not drag `AppShell` and the whole
- * authenticated shell onto Login's first paint.
+ * own module so importing it does not drag `AppShell` onto Login's first paint.
  */
 export const appLayout = (page: ReactNode) => <AppShell>{page}</AppShell>;

@@ -50,11 +50,11 @@ it('asks only once for the same race', function (): void {
     $this->artisan('race:ask-outcome')->assertSuccessful();
     $this->artisan('race:ask-outcome')->expectsOutputToContain('Asked 0 users')->assertSuccessful();
 
-    $queued = Queue::pushed(SendQueuedNotifications::class)
+    $queued = pushedJobs(SendQueuedNotifications::class)
         ->filter(fn (SendQueuedNotifications $job): bool => $job->notification instanceof RaceOutcomeNotification);
     expect($queued)->not->toBeEmpty()
-        ->and($queued->map(fn (SendQueuedNotifications $job): string => $job->notification->id)->unique())->toHaveCount(1)
-        ->and($race->fresh()->outcome_asked_for_date?->toDateString())->toBe('2026-10-04');
+        ->and($queued->map(fn (SendQueuedNotifications $job): string => nonNull($job->notification->id))->unique())->toHaveCount(1)
+        ->and($race->refresh()->outcome_asked_for_date?->toDateString())->toBe('2026-10-04');
 });
 
 it('releases the claim when dispatch throws, so the next run sends', function (): void {
@@ -63,13 +63,13 @@ it('releases the claim when dispatch throws, so the next run sends', function ()
     Notification::shouldReceive('send')->once()->andThrow(new RuntimeException('Redis is down'));
 
     expect(fn () => $this->artisan('race:ask-outcome')->run())->toThrow(RuntimeException::class, 'Redis is down');
-    expect($race->fresh()->outcome_asked_for_date)->toBeNull();
+    expect($race->refresh()->outcome_asked_for_date)->toBeNull();
 
     Notification::fake();
     $this->artisan('race:ask-outcome')->assertSuccessful();
 
     Notification::assertSentToTimes($user, RaceOutcomeNotification::class, 1);
-    expect($race->fresh()->outcome_asked_for_date?->toDateString())->toBe('2026-10-04');
+    expect($race->refresh()->outcome_asked_for_date?->toDateString())->toBe('2026-10-04');
 });
 
 it('claims a rescheduled race again for its new date', function (): void {
@@ -85,7 +85,7 @@ it('claims a rescheduled race again for its new date', function (): void {
     $this->artisan('race:ask-outcome')->expectsOutputToContain('Asked 0 users')->assertSuccessful();
 
     Notification::assertSentToTimes($user, RaceOutcomeNotification::class, 2);
-    expect($race->fresh()->outcome_asked_for_date?->toDateString())->toBe('2026-10-11');
+    expect($race->refresh()->outcome_asked_for_date?->toDateString())->toBe('2026-10-11');
 });
 
 it('does not ask about a race that is already answered, legacy, or on another day', function (RaceGoal $race): void {
@@ -117,7 +117,7 @@ it('never asks the demo account or an athlete with notifications off', function 
 function raceOutcomeAskIsDueAt(string $at): bool
 {
     Carbon::setTestNow($at);
-    $event = collect(app(Schedule::class)->events())->first(fn (Event $e): bool => str_ends_with((string) $e->command, 'race:ask-outcome'));
+    $event = nonNull(collect(app(Schedule::class)->events())->first(fn (Event $e): bool => str_ends_with((string) $e->command, 'race:ask-outcome')));
 
     return $event->isDue(app()) && $event->filtersPass(app());
 }
@@ -154,3 +154,18 @@ it('still asks at the window\'s last hour when the first hour was missed', funct
 
     Notification::assertSentToTimes($user, RaceOutcomeNotification::class, 1);
 });
+
+it('finds yesterday\'s race at both edges of the day', function (string $now): void {
+    Notification::fake();
+    Carbon::setTestNow($now);
+    $user = User::factory()->create();
+    raceYesterday($user);
+    RaceGoal::factory()->for(User::factory()->create())->completed()->create(['race_date' => '2026-10-03', 'distance_m' => 21_097, 'outcome' => RaceOutcome::Pending]);
+    RaceGoal::factory()->for(User::factory()->create())->completed()->create(['race_date' => '2026-10-05', 'distance_m' => 21_097, 'outcome' => RaceOutcome::Pending]);
+
+    $this->artisan('race:ask-outcome')
+        ->expectsOutputToContain('Asked 1 users how their race went.')
+        ->assertSuccessful();
+
+    Notification::assertSentTo($user, RaceOutcomeNotification::class);
+})->with(['midnight' => '2026-10-05 00:00:00', 'last second' => '2026-10-05 23:59:59']);

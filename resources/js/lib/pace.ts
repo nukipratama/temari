@@ -1,6 +1,6 @@
-import { usePage } from '@inertiajs/react';
+import type { PaceRange } from '@/types/inertia';
 
-import type { PaceRange, SharedProps } from '@/types/inertia';
+import { useSharedProps } from '@/hooks/useSharedProps';
 
 // Mirrors App\Services\Run\Metrics\PaceFormatter::format().
 export function formatPace(secPerKm: number): string {
@@ -148,7 +148,7 @@ export function formatAbsoluteId(iso: string | null | undefined): string {
 /**
  * Dates render lowercase, as the prototype writes them (`12 jun`, not `Jun 12`).
  * Applied at every formatter's exit rather than at each call site, so a new
- * caller cannot reintroduce Title Case by accident. See P37.
+ * caller cannot reintroduce Title Case by accident.
  */
 function idCase(s: string): string {
     return s.toLowerCase();
@@ -302,7 +302,7 @@ export function isoDateLocal(d: Date): string {
 
 /** The server's calendar day as YYYY-MM-DD. */
 export function useTodayIso(): string {
-    return usePage<SharedProps>().props.today;
+    return useSharedProps().today;
 }
 
 // Inverse of formatPace: parses "M:SS" (or "MM:SS") back to seconds-per-km.

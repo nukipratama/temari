@@ -27,7 +27,7 @@ final class PlannedSessionTypes
 
     public static function forRun(int $userId, ?Carbon $startedAt): ?SessionType
     {
-        if ($startedAt === null) {
+        if (!$startedAt instanceof Carbon) {
             return null;
         }
 

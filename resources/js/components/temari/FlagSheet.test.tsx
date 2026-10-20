@@ -2,6 +2,8 @@ import { router } from '@inertiajs/react';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { defined } from '@/test/defined';
+
 import FlagSheet from './FlagSheet';
 
 function renderSheet({
@@ -29,7 +31,7 @@ function renderSheet({
 function lastPostOptions() {
     const call = vi.mocked(router.post).mock.calls[0];
 
-    return call[2] as { onSuccess?: () => void };
+    return defined(call)[2] as { onSuccess?: () => void };
 }
 
 describe('FlagSheet', () => {

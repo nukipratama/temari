@@ -67,9 +67,8 @@ it('resets a stale crown instead of re-detecting over it', function (): void {
 
     $this->artisan('run:rebuild-splits')->assertSuccessful();
 
-    $record = PersonalRecord::query()->where('user_id', $user->id)->where('category', '1km')->first();
-    expect($record)->not->toBeNull()
-        ->and((float) $record->value_sec)->toBe(400.0);
+    $record = nonNull(PersonalRecord::query()->where('user_id', $user->id)->where('category', '1km')->first());
+    expect((float) $record->value_sec)->toBe(400.0);
 });
 
 it('rebuilds weekly snapshots once per user, not once per activity', function (): void {
@@ -106,5 +105,5 @@ it('leaves another user untouched when scoped with --user', function (): void {
         ->expectsOutputToContain('Pass 2: rebuilt records and weekly snapshots for 1 user(s)')
         ->assertSuccessful();
 
-    expect((float) $stale->fresh()->value_sec)->toBe(300.0);
+    expect((float) $stale->refresh()->value_sec)->toBe(300.0);
 });

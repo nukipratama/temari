@@ -93,8 +93,8 @@ class AthleteNarrationReport
     public function narrations(int $userId, ?AnalysisType $kind, ?AnalysisStatus $status, ?int $before): array
     {
         $query = AnalysisSubjectMap::whereOwnedBy(Analysis::query()->knownType(), $userId)
-            ->when($kind !== null, fn ($q) => $q->where('analysis_type', $kind))
-            ->when($status !== null, fn ($q) => $q->where('status', $status))
+            ->when($kind instanceof AnalysisType, fn ($q) => $q->where('analysis_type', $kind))
+            ->when($status instanceof AnalysisStatus, fn ($q) => $q->where('status', $status))
             ->when($before !== null, fn ($q) => $q->where('ai_analyses.id', '<', $before));
 
         $page = $query->orderByDesc('ai_analyses.id')->limit(self::PAGE_SIZE + 1)->get();

@@ -185,3 +185,14 @@ it('opens and closes the demo-blocked modal for a demo user', async () => {
         expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
     );
 });
+
+it('falls back to unsupported when resolving the push state rejects', async () => {
+    vi.mocked(webPush.currentSubscription).mockRejectedValue(
+        new Error('service worker unavailable'),
+    );
+    render(<PushNotificationToggle />);
+
+    expect(
+        await screen.findByText(/can't receive notifications/),
+    ).toBeInTheDocument();
+});

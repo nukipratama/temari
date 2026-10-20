@@ -5,6 +5,9 @@ declare(strict_types=1);
 use App\Http\Requests\SeenPushSubscriptionRequest;
 use Illuminate\Support\Facades\Validator;
 
+/**
+ * @param  array<string, mixed>  $data
+ */
 function passesSeenPushSubscription(array $data): bool
 {
     return Validator::make($data, new SeenPushSubscriptionRequest()->rules())->passes();

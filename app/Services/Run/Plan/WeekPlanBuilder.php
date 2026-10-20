@@ -11,17 +11,10 @@ use App\Enums\SessionType;
 use Illuminate\Support\Carbon;
 
 /**
- * Turns one week's phase + session count into a concrete row per calendar
- * day (Monday-Sunday), skipping fixed dates so the periodizer never overwrites
- * a user-fixed or settled day (see {@see Periodizer}).
- *
- * Only ever decides `session_type` here — no km, pace or segment structure
- * enters generation at all. {@see SegmentGenerator} derives the full
- * warmup/main/cooldown breakdown fresh at render time from `session_type`
- * alone (plus phase, current baseline and paces), so a token like "the
- * week's first Easy day is bigger" is recomputed from sibling context by the
- * render-time caller rather than decided here (see
- * `docs/features/plan-periodizer.md`).
+ * Turns one week's phase + session count into a concrete row per calendar day (Monday-Sunday),
+ * skipping fixed dates so the periodizer never overwrites a user-fixed or settled day (see
+ * {@see Periodizer}). Only decides `session_type`; {@see SegmentGenerator} derives the segment
+ * breakdown at render time (see `docs/features/plan-periodizer.md`).
  */
 final class WeekPlanBuilder
 {
@@ -44,11 +37,9 @@ final class WeekPlanBuilder
     private const int MIN_SESSIONS_FOR_QUALITY = 3;
 
     /**
-     * A projected race under this is run above threshold, so VO2max work is the
-     * specific stimulus. Over {@see self::THRESHOLD_RACE_SECONDS} the race is at
-     * or below threshold and threshold work is more specific than intervals —
-     * the same 10K is a different event for a 35-minute runner and a 70-minute
-     * one, which race DISTANCE alone cannot see.
+     * A projected race under this is run above threshold, so VO2max work is the specific stimulus.
+     * Over {@see self::THRESHOLD_RACE_SECONDS} threshold work is more specific, which race DISTANCE
+     * alone cannot see.
      */
     private const int VO2MAX_RACE_SECONDS = 3000;
 
@@ -113,7 +104,7 @@ final class WeekPlanBuilder
         $qualityPool = self::awayFromLongRun($nonLongOffsets, $longOffset);
         $qualityPool = array_values(array_filter(
             $qualityPool,
-            static fn (int $offset): bool => self::raceWeekType($weekStart->copy()->addDays($offset), $raceDate) === null,
+            static fn (int $offset): bool => !self::raceWeekType($weekStart->copy()->addDays($offset), $raceDate) instanceof SessionType,
         ));
 
         $qualitySlots = self::withQualityDelta(
@@ -138,12 +129,12 @@ final class WeekPlanBuilder
         foreach (range(0, 6) as $offset) {
             $dayDate = $weekStart->copy()->addDays($offset);
             $date = $dayDate->toDateString();
-            if (isset($fixedDates[$date]) || ($notBefore !== null && $dayDate->lt($notBefore))) {
+            if (isset($fixedDates[$date]) || ($notBefore instanceof Carbon && $dayDate->lt($notBefore))) {
                 continue;
             }
 
             $raceWeekType = self::raceWeekType($dayDate, $raceDate);
-            if ($raceWeekType !== null) {
+            if ($raceWeekType instanceof SessionType) {
                 $rows[$date] = ['session_type' => $raceWeekType];
 
                 continue;
@@ -182,17 +173,12 @@ final class WeekPlanBuilder
      * What race day and the days around it get, or null for any day the race
      * has no claim on.
      *
-     * The template knows nothing about race day, so before this the week the
-     * athlete's goal race falls in was laid out as an ordinary tapered week:
-     * a Sunday marathon got a long run on the Saturday before it and `rest`
-     * on the day itself, and a Tuesday 10K got a tempo session ON the race.
-     * Race day is the session; the day before it is rest, and so is every day
-     * after it, since the arc ends here and nothing is worth prescribing
-     * between a goal race and the fresh plan that follows it.
+     * Race day is the session; the day before it is rest, and so is every day after it, since the
+     * arc ends there.
      */
     private static function raceWeekType(Carbon $dayDate, ?Carbon $raceDate): ?SessionType
     {
-        if ($raceDate === null) {
+        if (!$raceDate instanceof Carbon) {
             return null;
         }
 
@@ -237,7 +223,8 @@ final class WeekPlanBuilder
 
         $bestPair = [];
         $bestScore = -1;
-        for ($i = 0; $i < count($offsets); $i++) {
+        $counter = count($offsets);
+        for ($i = 0; $i < $counter; $i++) {
             for ($j = $i + 1; $j < count($offsets); $j++) {
                 $left = $offsets[$i];
                 $right = $offsets[$j];
@@ -336,14 +323,9 @@ final class WeekPlanBuilder
     }
 
     /**
-     * The adapter's verdict can shrink the week's quality block: a week run
-     * harder than it was written drops a session. Base, Deload and Taper are
-     * exempt: none exists to carry quality work, a taper's whole job is
-     * arriving fresh, and Base is defined as predominantly easy with at most
-     * one threshold session. A race season's general-zone week is exempt for
-     * the same reason — it trains by base rules, see
-     * {@see self::phaseQualitySlots()} — regardless of which phase the
-     * self-scaled mesocycle it's borrowing happens to land it on.
+     * The adapter's verdict can shrink the week's quality block: a week run harder than it was
+     * written drops a session. Base, Deload, Taper and a race season's general-zone week are exempt,
+     * see {@see self::phaseQualitySlots()}.
      *
      * @param  list<array{session_type: SessionType, fall_off_tilt?: FallOffTilt}>  $slots
      * @return list<array{session_type: SessionType, fall_off_tilt?: FallOffTilt}>
@@ -358,17 +340,11 @@ final class WeekPlanBuilder
     }
 
     /**
-     * A week with only one quality slot spends it on whatever the phase
-     * actually calls for, rather than always threshold: Base builds with a
-     * Tempo, and a race-oriented Build/Peak/Taper for a sub-marathon race
-     * gets the Interval work that moves race pace at those distances. Only a
-     * second slot can hold both, and that needs
-     * {@see self::MIN_SESSIONS_FOR_EXTRA_QUALITY} sessions to absorb it.
-     * Self-scaled training stays threshold-only throughout — there is no race
-     * pace to sharpen for, and its spec reads "1-2 threshold sessions". A race
-     * season's general-zone week (before the block opens) trains by these
-     * same Base rules whatever phase the self-scaled mesocycle assigned it —
-     * race-specific interval work waits for the block.
+     * A week with only one quality slot spends it on whatever the phase calls for: Base builds with
+     * a Tempo, and a race-oriented Build/Peak/Taper for a sub-marathon race gets Interval work. Only
+     * a second slot can hold both, needing {@see self::MIN_SESSIONS_FOR_EXTRA_QUALITY} sessions.
+     * Self-scaled training stays threshold-only, and a race season's general-zone week stays on
+     * Base rules.
      *
      * A fall-off tilt moves only the slot the race duration leaves open, see
      * {@see self::tiltedSingleSlot()} and {@see self::tiltedPair()}.
@@ -419,7 +395,7 @@ final class WeekPlanBuilder
         $open = $projectedRaceSeconds !== null
             && $projectedRaceSeconds >= self::VO2MAX_RACE_SECONDS
             && $projectedRaceSeconds < self::THRESHOLD_RACE_SECONDS;
-        if ($fallOffTilt === null || ! $open || $fallOffTilt->qualityType() === $neutral) {
+        if (!$fallOffTilt instanceof FallOffTilt || ! $open || $fallOffTilt->qualityType() === $neutral) {
             return ['session_type' => $neutral];
         }
 
@@ -436,7 +412,7 @@ final class WeekPlanBuilder
      */
     private static function tiltedPair(array $pair, ?float $projectedRaceSeconds, ?FallOffTilt $fallOffTilt): array
     {
-        if ($fallOffTilt === null) {
+        if (!$fallOffTilt instanceof FallOffTilt) {
             return $pair;
         }
         $pinned = $projectedRaceSeconds !== null && match ($fallOffTilt) {
@@ -456,14 +432,10 @@ final class WeekPlanBuilder
     }
 
     /**
-     * The one quality day a week gets when it only gets one. Self-scaled
-     * training has no race pace to sharpen for and stays threshold-only. With a
-     * race, the choice follows how long the race will take rather than how far
-     * it is: a short race is run above threshold, a long one at or below it, and
-     * in between the build develops VO2max while the peak and taper sharpen at
-     * race-specific threshold. No projection yet means no evidence, so it falls
-     * back to threshold — the safer single quality session, the same reasoning
-     * Base already applies.
+     * The one quality day a week gets when it only gets one. Self-scaled training stays
+     * threshold-only. With a race, the choice follows how long the race will take: a short race is
+     * run above threshold, a long one at or below it, and in between the build develops VO2max while
+     * peak and taper sharpen at threshold. No projection yet falls back to threshold.
      */
     private static function singleQualityType(PlanPhase $phase, bool $selfScaled, ?float $projectedRaceSeconds): SessionType
     {

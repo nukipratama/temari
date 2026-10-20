@@ -1,13 +1,8 @@
 /*
- * Derives the set of grounds an `-ink` token has to survive.
- *
- * S2.9 scored the ink tier against a hand-written list of five grounds. The
- * list omitted the one AppShell actually paints, so every hue-derived ink
- * shipped at ~4.3:1 while three audits reported a pass. Nothing here is a list
- * of grounds: the values come out of the stylesheet, the set of backgrounds in
- * play comes out of the components, and grounds.json only says what *kind* each
- * one is. A background in use with no entry in grounds.json is an error, not a
- * skip.
+ * Derives the set of grounds an `-ink` token has to survive. The values come
+ * out of the stylesheet, the set of backgrounds in play comes out of the
+ * components, and grounds.json only says what *kind* each one is. A background
+ * in use with no entry in grounds.json is an error, not a skip.
  */
 
 import { readdirSync, readFileSync } from 'node:fs';
@@ -89,11 +84,10 @@ export function unclassifiedBackgrounds(dir = COMPONENT_DIR) {
 
 /**
  * Panel call sites grounds.json does not register, and registered ones nothing
- * paints any more. The mount is recorded per file rather than per panel class
- * because that is the part a scan cannot see: the same `bg-sky/40` is a tile on
- * a hero panel in one file and a tile on the page ground in another, and only
- * the second one is a contrast bug. A new file painting a registered panel is
- * therefore a new claim to check, not a silent reuse.
+ * paints any more. The mount is recorded per file rather than per panel class,
+ * since the same `bg-sky/40` can be a tile on a hero panel in one file and on
+ * the page ground in another; a new file painting a registered panel is a new
+ * claim to check, not a silent reuse.
  */
 export function panelSiteDrift(dir = COMPONENT_DIR, tokens = readColorTokens()) {
   const painted = enumerateAlphaPanels(dir, tokens);
@@ -153,11 +147,9 @@ export function paperGrounds(tokens = readColorTokens(), dir = COMPONENT_DIR) {
 }
 
 /**
- * The three surfaces the dark ground actually uses: sky-deep (background),
- * sky (card), sky-2 (popover/secondary/muted/accent). Fixed by the token
- * model rather than scanned like paperGrounds() — nothing paints a dark
- * surface via a literal bg-<name> class the way paper grounds are classified,
- * since the same `bg-card`/`bg-background` utilities repaint per
+ * The three surfaces the dark ground uses: sky-deep (background), sky (card),
+ * sky-2 (popover/secondary/muted/accent). Fixed by the token model rather than
+ * scanned like paperGrounds(), since `bg-card`/`bg-background` repaint per
  * `[data-theme]` at runtime instead of naming a different token per ground.
  */
 export function darkGrounds(tokens = readColorTokens()) {
@@ -219,14 +211,9 @@ const alphaOf = (bracket, plain) =>
   bracket === undefined ? Number(plain) / 100 : Number(bracket);
 
 /**
- * String literals, the way the language delimits them.
- *
- * A quoted literal cannot span a raw newline, but a naive `'[^']*'` does: an
- * apostrophe in JSX text ("Temari's") opens a match that runs to the next one,
- * swallowing whole subtrees and pairing a background in one element with text
- * in another. Bounding the quoted forms to a single line kills that, and the
- * bracket check drops what is left of a mis-paired line, since no Tailwind
- * class contains an angle or curly bracket.
+ * String literals, the way the language delimits them: a quoted literal cannot
+ * span a raw newline, so a JSX apostrophe must not open a match that pairs a
+ * background in one element with text in another.
  */
 const LITERAL = /'[^'\n]*'|"[^"\n]*"|`[^`]*`/g;
 
@@ -237,11 +224,8 @@ function isClassString(literal) {
 /**
  * Every `bg-<token>/<alpha>` the components paint, as `token/alpha`.
  *
- * `enumerateBackgrounds` drops the alpha on purpose, so a translucent panel is
- * classified as the solid token it is a tint of. That is the right call for
- * *classifying* it and the wrong one for *scoring* it: `bg-sky/40` is not sky,
- * it is whatever sky at 40% lands on, and the text an author picks for it is
- * the text sky would take.
+ * `enumerateBackgrounds` drops the alpha when classifying; scoring keeps it,
+ * since `bg-sky/40` is not sky.
  */
 export function enumerateAlphaPanels(dir = COMPONENT_DIR, tokens = readColorTokens()) {
   const sites = {};
@@ -266,9 +250,8 @@ export function enumerateAlphaPanels(dir = COMPONENT_DIR, tokens = readColorToke
 /**
  * Every `text-<token>` painted in the same class string as an alpha panel,
  * keyed by panel. One class string is one element, so a pair found here
- * definitely stacks. A panel that carries text from a *child* element is
- * invisible to this scan and has to be recorded by hand — which is how
- * `bg-sky/40` carried `text-ink-on-sky` at 1.5:1 with three audits green.
+ * definitely stacks; a panel that carries text from a *child* element is
+ * invisible to this scan and has to be recorded by hand.
  */
 export function enumeratePanelText(dir = COMPONENT_DIR, tokens = readColorTokens()) {
   const painted = {};
@@ -346,8 +329,7 @@ function panelBases(over, tokens, papers) {
 
 /**
  * The real ground each registered alpha panel paints, and the text tokens that
- * land on it, reported at the worst mount. This is the audit the `tint` rule
- * only ever did for `-ink` chips.
+ * land on it, reported at the worst mount.
  */
 export function panelGrounds(tokens = readColorTokens(), papers = paperGrounds(tokens)) {
   const rows = [];

@@ -31,7 +31,7 @@ it('analysis-trigger limiter keys by user id when authenticated', function (): v
     $request = Request::create('/api/analyses/foo/1/trigger', 'POST');
     $request->setUserResolver(fn () => $user);
 
-    $limit = RateLimiter::limiter('analysis-trigger')($request);
+    $limit = nonNull(RateLimiter::limiter('analysis-trigger'))($request);
 
     expect($limit)->toBeInstanceOf(Limit::class)
         ->and($limit->key)->toBe('99')
@@ -43,7 +43,7 @@ it('analysis-trigger limiter falls back to IP when unauthenticated', function ()
 
     $request = Request::create('/api/analyses/foo/1/trigger', 'POST', server: ['REMOTE_ADDR' => '203.0.113.7']);
 
-    $limit = RateLimiter::limiter('analysis-trigger')($request);
+    $limit = nonNull(RateLimiter::limiter('analysis-trigger'))($request);
 
     expect($limit->key)->toBe('203.0.113.7')
         ->and($limit->maxAttempts)->toBe(3);
@@ -54,7 +54,7 @@ it('strava-sync limiter caps at 2/min, keyed by user id when authenticated', fun
     $request = Request::create('/strava/sync', 'POST');
     $request->setUserResolver(fn () => $user);
 
-    $limit = RateLimiter::limiter('strava-sync')($request);
+    $limit = nonNull(RateLimiter::limiter('strava-sync'))($request);
 
     expect($limit)->toBeInstanceOf(Limit::class)
         ->and($limit->key)->toBe('42')
@@ -64,7 +64,7 @@ it('strava-sync limiter caps at 2/min, keyed by user id when authenticated', fun
 it('strava-sync limiter falls back to IP when unauthenticated', function (): void {
     $request = Request::create('/strava/sync', 'POST', server: ['REMOTE_ADDR' => '203.0.113.7']);
 
-    $limit = RateLimiter::limiter('strava-sync')($request);
+    $limit = nonNull(RateLimiter::limiter('strava-sync'))($request);
 
     expect($limit->key)->toBe('203.0.113.7')
         ->and($limit->maxAttempts)->toBe(2);
@@ -73,7 +73,7 @@ it('strava-sync limiter falls back to IP when unauthenticated', function (): voi
 it('strava-oauth limiter caps at 10/min, keyed by IP', function (): void {
     $request = Request::create('/auth/strava/callback', 'GET', server: ['REMOTE_ADDR' => '203.0.113.7']);
 
-    $limit = RateLimiter::limiter('strava-oauth')($request);
+    $limit = nonNull(RateLimiter::limiter('strava-oauth'))($request);
 
     expect($limit)->toBeInstanceOf(Limit::class)
         ->and($limit->key)->toBe('203.0.113.7')
@@ -84,13 +84,13 @@ it('strava-oauth limiter stays IP-keyed for an already-signed-in reconnect', fun
     $request = Request::create('/auth/strava/callback', 'GET', server: ['REMOTE_ADDR' => '198.51.100.4']);
     $request->setUserResolver(fn () => User::factory()->make(['id' => 7]));
 
-    expect(RateLimiter::limiter('strava-oauth')($request)->key)->toBe('198.51.100.4');
+    expect(nonNull(RateLimiter::limiter('strava-oauth'))($request)->key)->toBe('198.51.100.4');
 });
 
 it('client-errors limiter caps at 10/min, keyed by IP', function (): void {
     $request = Request::create('/client-errors', 'POST', server: ['REMOTE_ADDR' => '203.0.113.7']);
 
-    $limit = RateLimiter::limiter('client-errors')($request);
+    $limit = nonNull(RateLimiter::limiter('client-errors'))($request);
 
     expect($limit)->toBeInstanceOf(Limit::class)
         ->and($limit->key)->toBe('203.0.113.7')
@@ -106,10 +106,9 @@ it('always allows the viewPulse gate — real enforcement is upstream in EnsureD
 });
 
 it('gates the Livewire update route with the devtools middleware', function (): void {
-    $route = app('router')->getRoutes()->getByName('livewire.update');
+    $route = nonNull(app('router')->getRoutes()->getByName('livewire.update'));
 
-    expect($route)->not->toBeNull()
-        ->and($route->middleware())->toContain('web')
+    expect($route->middleware())->toContain('web')
         ->and($route->middleware())->toContain(EnsureDevtoolsAccess::class);
 });
 
@@ -142,13 +141,23 @@ it('binds TrainingLoad as scoped, not a cross-request singleton', function (): v
         ->and(app(TrainingLoad::class))->toBe(app(TrainingLoad::class));
 });
 
+function listenerSignature(mixed $listener): string
+{
+    if (is_string($listener)) {
+        return str_contains($listener, '@') ? $listener : $listener.'@handle';
+    }
+
+    [$class, $method] = arrayOf($listener);
+
+    return (is_string($class) ? $class : throw new InvalidArgumentException('Listener class is not a string.'))
+        .'@'.(is_string($method) ? $method : throw new InvalidArgumentException('Listener method is not a string.'));
+}
+
 it('registers every listener once per event, so discovery and an explicit listen never both fire it', function (): void {
     $duplicates = collect(app('events')->getRawListeners())
-        ->map(fn (array $listeners): array => collect($listeners)
+        ->map(fn (mixed $listeners): array => collect(arrayOf($listeners))
             ->reject(fn (mixed $listener): bool => $listener instanceof Closure)
-            ->map(fn (string|array $listener): string => is_array($listener)
-                ? $listener[0].'@'.$listener[1]
-                : (str_contains($listener, '@') ? $listener : $listener.'@handle'))
+            ->map(fn (mixed $listener): string => listenerSignature($listener))
             ->duplicates()
             ->values()
             ->all())

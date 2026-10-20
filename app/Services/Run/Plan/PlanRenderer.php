@@ -32,31 +32,21 @@ use LogicException;
 final class PlanRenderer
 {
     /**
-     * Trailing weeks every caller of {@see self::weekPhasesAndMultipliers()}
-     * must load around the weeks it actually wants. The recompute fallback
-     * reads a week's Build ramp off its neighbours, so a window shorter than
-     * this reads a week deep in a ramp as an isolated week 1. Declared once
-     * here rather than per caller: nothing enforced that two copies stayed
-     * equal.
+     * Trailing weeks every caller of {@see self::weekPhasesAndMultipliers()} must load around the
+     * weeks it wants: the recompute fallback reads a week's Build ramp off its neighbours.
      */
     public const int HISTORY_WEEKS = 3;
 
     /**
-     * $sessionsByWeek is keyed by week_start (Y-m-d), any order, each value
-     * itself a Collection<int, PlannedSession> — the value type is left as
-     * `mixed` rather than nested-Collection-typed, since groupBy()'s
-     * nested-collection result doesn't satisfy Eloquent Collection's
-     * Model-bound generics and Support Collection's own generics aren't
-     * covariant either way.
+     * $sessionsByWeek is keyed by week_start (Y-m-d), any order.
      *
-     * `$selfScaled` only matters for the recompute fallback below: a stamped
-     * week already carries the multiplier it was actually generated with, so
-     * a self-scaled arc's flat ramp only needs re-deriving here for a week old
-     * enough to predate {@see PlannedSession::$volume_multiplier} being
-     * stamped at all — otherwise this would re-apply the race-arc ramp
-     * {@see TrainingBaseline}'s `self_scaled` flag exists to hold at 1.0.
+     * `$selfScaled` only matters for the recompute fallback: a stamped week already carries its
+     * multiplier, so a self-scaled arc's flat ramp is re-derived only for a week predating
+     * {@see PlannedSession::$volume_multiplier}.
      *
-     * @param  Collection<string, mixed>  $sessionsByWeek
+     * @template TWeek of Collection<int, PlannedSession>
+     *
+     * @param  Collection<array-key, TWeek>  $sessionsByWeek
      * @return array{0: Collection<string, PlanPhase>, 1: array<string, float>}
      */
     public static function weekPhasesAndMultipliers(Collection $sessionsByWeek, bool $selfScaled): array
@@ -87,14 +77,9 @@ final class PlanRenderer
     }
 
     /**
-     * The row a week reads its phase AND multiplier from — one row, so the
-     * two can never disagree with each other. Regeneration never rewrites a
-     * pinned row, nor one already carrying a verdict, nor a date already
-     * behind it, so a week can hold a stale row from an older generation
-     * next to fresh ones. Every regeneration writes forward to the week's
-     * end, so the latest-dated row it could still own is the one carrying
-     * its most recent decision; only a week pinned to the last day reads a
-     * pinned row.
+     * The row a week reads its phase AND multiplier from, so the two never disagree. A week can hold
+     * a stale row from an older generation next to fresh ones; regeneration writes forward to the
+     * week's end, so the latest-dated row is the one carrying its most recent decision.
      *
      * @param  Collection<int, PlannedSession>  $weekSessions
      */
@@ -111,11 +96,9 @@ final class PlanRenderer
     }
 
     /**
-     * The week's first Easy day gets the bigger (Medium) core-km fraction —
-     * see {@see SegmentGenerator::coreKmFor()}'s `$isPrimaryEasy`. Shared by
-     * every caller that needs a week's per-day km (`PlanPageAssembler`,
-     * `CurrentWeekPlanBuilder`, `plan:score-compliance`) so none of them
-     * silently drift on which day is "primary".
+     * The week's first Easy day gets the bigger (Medium) core-km fraction (see
+     * {@see SegmentGenerator::coreKmFor()}'s `$isPrimaryEasy`); shared so every caller agrees on
+     * which day is "primary".
      *
      * @param  Collection<int, PlannedSession>  $weekSessions
      */
@@ -128,17 +111,11 @@ final class PlanRenderer
     }
 
     /**
-     * Every session's core km, keyed by date — the shared computation behind
-     * `distance_km`/`SessionMatcher`'s planned-km input. `$sessions` should
-     * include enough trailing history for {@see self::weekPhasesAndMultipliers()}'s
-     * ramp to be correct for the *earliest* week being scored, not just the
-     * dates the caller actually wants km for — which matters only while the
-     * range still holds a row written before the multiplier was stamped.
+     * Every session's core km, keyed by date. `$sessions` should include enough trailing history for
+     * {@see self::weekPhasesAndMultipliers()}'s ramp to be correct for the earliest week scored.
      *
-     * A `Race` day is sized from its own stored `race_distance_m` rather than
-     * the training baseline, so this keeps working once the goal behind it has
-     * been retired — which it always has by the time `plan:score-compliance`
-     * grades race day.
+     * A `Race` day is sized from its own stored `race_distance_m` rather than the training baseline,
+     * so it keeps working once its goal is retired.
      *
      * @param  Collection<int, PlannedSession>  $sessions
      * @return array<string, float>  Y-m-d => core km
@@ -173,12 +150,8 @@ final class PlanRenderer
     }
 
     /**
-     * One session's core km, for a caller holding a single row rather than an
-     * already-loaded week — looks up its own week's siblings so
-     * {@see self::plannedKmByDate()}'s `isPrimaryEasy`/multiplier still apply.
-     * Still the plain, unredistributed figure: no {@see VolumeRedistributor}
-     * scale reaches this. The current week's shown km, scale included, come
-     * from {@see CurrentWeekKm}.
+     * One session's core km, for a caller holding a single row; looks up its own week's siblings.
+     * The plain, unredistributed figure: the current week's shown km come from {@see CurrentWeekKm}.
      */
     public static function coreKmForSession(PlannedSession $session, float $longRunBaselineKm, float $longRunCapKm, bool $selfScaled, float $longRunProgressionCapKm = INF): float
     {
@@ -193,12 +166,9 @@ final class PlanRenderer
     }
 
     /**
-     * The whole outing, and the figure the segments beneath it add up to.
-     * An Interval day is the one that cannot land on its own budget — a
-     * whole number of fixed-duration reps rarely does — so it reports what
-     * its reps actually come to. Without a VDOT estimate nothing has a
-     * distance yet, and the budget stands in, scaled by a redistributed
-     * week's own scale.
+     * The whole outing, and the figure the segments beneath it add up to. An Interval day reports
+     * what its reps actually come to; without a VDOT estimate the budget stands in, scaled by a
+     * redistributed week's own scale.
      *
      * @param  list<SessionSegment>  $segments  from {@see SegmentGenerator::generate()} for this same day
      */
@@ -284,7 +254,7 @@ final class PlanRenderer
 
         $creditedKm = self::creditedKmOf($s, $activity);
         $ranPaceSecPerKm = $status->isCredited() && $sessionType !== SessionType::Rest
-            ? SessionMatcher::ranPaceSecPerKmFromRuns(EffectiveSession::settledTypeOf($s), $activity['runs'] ?? [], TimeTrial::of($s) !== null)
+            ? SessionMatcher::ranPaceSecPerKmFromRuns(EffectiveSession::settledTypeOf($s), $activity['runs'] ?? [], TimeTrial::of($s) instanceof TimeTrial)
             : null;
 
         $originalSegments = self::segmentsFor($s, $s->session_type, $s->phase, $raceDistanceM, $isPrimaryEasy, $longRunKm, $multiplier, $longRunCapKm, $paces, $volumeScale, $raceGoalTimeSec, $longRunProgressionCapKm);
@@ -321,7 +291,7 @@ final class PlanRenderer
             'date' => $s->date->toDateString(),
             'phase' => $s->phase->value,
             'session_type' => $sessionType->value,
-            'segments' => self::segmentsWithRanges($segments, $sessionType === SessionType::Race || TimeTrial::of($s) !== null, $paces['marathon'] ?? null, $easySlowEndSecPerKm),
+            'segments' => self::segmentsWithRanges($segments, $sessionType === SessionType::Race || TimeTrial::of($s) instanceof TimeTrial, $paces['marathon'] ?? null, $easySlowEndSecPerKm),
             'hr_cap_bpm' => self::heartRateCapOf($sessionType, $segments, $easyHrCapBpm),
             'distance_km' => $distanceKm,
             'asked_km' => $askedKm,
@@ -359,7 +329,7 @@ final class PlanRenderer
             'result_note' => self::resultNote($s, $status, $ranPaceSecPerKm),
             'ran_pace_sec_per_km' => $ranPaceSecPerKm,
             'ran_label' => $status->isCredited() && $sessionType !== SessionType::Rest
-                ? DayRanLabel::of(EffectiveSession::settledTypeOf($s), TimeTrial::of($s) !== null, $s->intent_evidence ?? [], $ranPaceSecPerKm, $segments, $activity['runs'] ?? [])
+                ? DayRanLabel::of(EffectiveSession::settledTypeOf($s), TimeTrial::of($s) instanceof TimeTrial, $s->intent_evidence ?? [], $ranPaceSecPerKm, $segments, $activity['runs'] ?? [])
                 : null,
             'actual_km' => $activity['km'] ?? null,
             'credited_km' => $creditedKm,
@@ -386,7 +356,7 @@ final class PlanRenderer
         return $activity === null || $longestRunKm === null ? null : round(SessionMatcher::creditedKm(EffectiveSession::settledTypeOf($s), [
             'sum' => $activity['km'],
             'longest' => $longestRunKm,
-        ], TimeTrial::of($s) !== null), 1);
+        ], TimeTrial::of($s) instanceof TimeTrial), 1);
     }
 
     /**
@@ -420,6 +390,7 @@ final class PlanRenderer
         $currentReadinessAssessment = $isToday && ! $status->isCredited()
             ? ($readinessAssessment ?? $s->readiness_assessment)
             : $s->readiness_assessment;
+        /** @var list<string> $readinessReasons */
         $readinessReasons = $currentReadinessAssessment['reasons'] ?? [];
 
         // The row's own distance on race day, the active race's everywhere
@@ -430,6 +401,7 @@ final class PlanRenderer
         // screens just disagreeing with no explanation.
         $askedKm = SegmentGenerator::coreKmFor($s->session_type, $isPrimaryEasy, $longRunKm, $multiplier, $longRunCapKm, $raceDistanceM, $longRunProgressionCapKm, $s->fall_off_tilt, $s->prescription_race_context);
         $effective = EffectiveSession::of($s, $askedKm);
+        /** @var list<string> $recordedReasons */
         $recordedReasons = $s->readiness_assessment['reasons'] ?? $readinessReasons;
         $headlinesEase = $effective->isEased();
         $advisoryClamp = $isToday && ! $status->isCredited() && ! $headlinesEase ? $clamp : null;
@@ -678,7 +650,7 @@ final class PlanRenderer
     {
         $trial = $shownType === $s->session_type ? TimeTrial::of($s) : null;
 
-        return $trial === null ? null : ['distance_m' => $trial->distanceM, 'aim_time_sec' => $trial->aimTimeSec];
+        return $trial instanceof TimeTrial ? ['distance_m' => $trial->distanceM, 'aim_time_sec' => $trial->aimTimeSec] : null;
     }
 
     /**
@@ -741,7 +713,7 @@ final class PlanRenderer
 
             return SegmentGenerator::easyBlock(round($km, 1), $paces);
         }
-        if ($prescription === null || ! $sessionType->isQuality()) {
+        if (!$prescription instanceof IntensityPrescription || ! $sessionType->isQuality()) {
             return SegmentGenerator::generate($sessionType, $phase, $raceDistanceM, $isPrimaryEasy, $longRunKm, $multiplier, $longRunCapKm, $paces, $volumeScale, $raceGoalTimeSec, $longRunProgressionCapKm, $session->fall_off_tilt);
         }
 
@@ -794,7 +766,7 @@ final class PlanRenderer
         $original = $effective->easedFromType ?? $effective->sessionType;
         $segments = SegmentGenerator::easyBlock($effective->coreKm, $paces);
         $prescription = $effective->qualityPrescription();
-        if ($prescription !== null) {
+        if ($prescription instanceof IntensityPrescription) {
             $segments = SegmentGenerator::forPrescription(
                 $effective->sessionType,
                 $phase,

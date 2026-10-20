@@ -5,20 +5,21 @@ declare(strict_types=1);
 namespace App\Livewire\Pulse;
 
 use App\Enums\NotificationDeliveryStatus;
+use App\Livewire\Pulse\Concerns\SumsPulseTotals;
 use App\Models\NotificationDelivery as DeliveryRow;
 use Illuminate\Contracts\Support\Renderable;
 use Illuminate\Support\Facades\View;
 use Laravel\Pulse\Livewire\Card;
 
 /**
- * Notification delivery outcomes on the /pulse dashboard. Until the outcome
- * columns landed, a claim row proved only that a send was attempted, so a
- * Telegram push that never arrived was indistinguishable from one nobody read.
+ * Notification delivery outcomes on the /pulse dashboard.
  *
  * Not lazy: one grouped count over a small table, so deferring buys nothing.
  */
 class NotificationDeliveryHealth extends Card
 {
+    use SumsPulseTotals;
+
     private const int RECENT_ISSUES = 20;
 
     public function render(): Renderable
@@ -31,8 +32,8 @@ class NotificationDeliveryHealth extends Card
             ->limit(self::RECENT_ISSUES)
             ->get(['analysis_id', 'channel', 'status', 'error', 'settled_at']);
 
-        $failed = (int) collect($channels)->sum('failed');
-        $abandoned = (int) collect($channels)->sum('abandoned');
+        $failed = array_sum(array_column($channels, 'failed'));
+        $abandoned = array_sum(array_column($channels, 'abandoned'));
         $hasIssues = $failed + $abandoned > 0;
 
         return View::make('livewire.pulse.notification-delivery-health', [
@@ -40,8 +41,8 @@ class NotificationDeliveryHealth extends Card
             'rows' => $this->rows,
             'class' => $this->class,
             'statusBoxes' => [
-                ['label' => 'sent', 'count' => (int) collect($channels)->sum('sent'), 'tone' => 'neutral'],
-                ['label' => 'in flight', 'count' => (int) collect($channels)->sum('pending'), 'tone' => 'neutral'],
+                ['label' => 'sent', 'count' => array_sum(array_column($channels, 'sent')), 'tone' => 'neutral'],
+                ['label' => 'in flight', 'count' => array_sum(array_column($channels, 'pending')), 'tone' => 'neutral'],
                 ['label' => 'failed', 'count' => $failed, 'tone' => $failed > 0 ? 'alert' : 'neutral'],
                 ['label' => 'abandoned', 'count' => $abandoned, 'tone' => $abandoned > 0 ? 'alert' : 'neutral'],
             ],
@@ -68,10 +69,10 @@ class NotificationDeliveryHealth extends Card
 
         return array_values($rows->map(fn (DeliveryRow $row): array => [
             'channel' => $row->channel,
-            'sent' => (int) $row->getAttribute('sent'),
-            'pending' => (int) $row->getAttribute('pending'),
-            'failed' => (int) $row->getAttribute('failed'),
-            'abandoned' => (int) $row->getAttribute('abandoned'),
+            'sent' => $this->asCount($row->getAttribute('sent')),
+            'pending' => $this->asCount($row->getAttribute('pending')),
+            'failed' => $this->asCount($row->getAttribute('failed')),
+            'abandoned' => $this->asCount($row->getAttribute('abandoned')),
         ])->all());
     }
 }

@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Services\Strava;
 
+use Illuminate\Support\Collection;
 use App\Enums\StravaReadSource;
 use App\Models\Activity;
 use App\Models\StravaConnection;
+use App\Support\Numeric;
 use Carbon\CarbonImmutable;
 
 class ActivityFetcher
@@ -24,31 +26,22 @@ class ActivityFetcher
     }
 
     /**
-     * Fetch the activity-summary payloads of runs not yet stored locally, plus
-     * how many Strava reads the walk actually spent.
+     * Fetch the activity-summary payloads of runs not yet stored locally, plus how many Strava
+     * reads the walk actually spent.
      *
-     * Contract: relies on the Strava `/athlete/activities` invariant that
-     * results are ordered newest-first, and returns the new summaries sorted
-     * oldest-first so the caller can store them in chronological order. Each
-     * page carries PER_PAGE summaries, so an athlete's whole history costs a
-     * handful of reads rather than one per activity.
+     * Relies on the Strava `/athlete/activities` invariant that results are ordered newest-first,
+     * and returns the new summaries sorted oldest-first so the caller can store them
+     * chronologically.
      *
-     * The walk keeps scanning past a known id while the activity started within
-     * the trailing DISCOVERY_WINDOW_DAYS window — a backdated upload sits at its
-     * chronological position, nested among already-synced runs, so stopping at
-     * the first known id would miss it. Below the window a known id means the
-     * history is fully synced and the walk stops.
+     * The walk keeps scanning past a known id while the activity started within the trailing
+     * DISCOVERY_WINDOW_DAYS window, because a backdated upload sits at its chronological position
+     * among already-synced runs; below the window a known id means the history is fully synced and
+     * the walk stops.
      *
-     * When `$since` is given, the walk also stops at the first activity that
-     * started on or before it — bounding a first-connect backfill to a recent
-     * window instead of pulling an athlete's entire history.
-     *
-     * When `$maxPages` is given, the walk stops after that many full pages and
-     * returns `resume_before`, one second past the start of the oldest activity
-     * it read; passing it back as `$before` resumes the walk at that second, so
-     * a run sharing it is not lost, and the resumed walk skips runs it already
-     * holds instead of stopping on them. `resume_before` is null once the walk
-     * has finished.
+     * `$since` stops the walk at the first activity that started on or before it. `$maxPages` stops
+     * it after that many full pages and returns `resume_before` (one second past the oldest
+     * activity read, null once finished); passing it back as `$before` resumes at that second,
+     * skipping runs already held.
      *
      * @return array{summaries: list<array<string, mixed>>, api_calls: int, resume_before: ?int}
      */
@@ -59,12 +52,12 @@ class ActivityFetcher
         ?int $before = null,
         ?int $maxPages = null,
     ): array {
-        $existing = Activity::query()
+        /** @var Collection<int, int|string> $externalIds */
+        $externalIds = Activity::query()
             ->withStubs()
             ->where('user_id', $connection->user_id)
-            ->pluck('strava_external_id')
-            ->map(fn (int|string $id): int => (int) $id)
-            ->all();
+            ->pluck('strava_external_id');
+        $existing = $externalIds->map(fn (int|string $id): int => (int) $id)->all();
         $existingSet = array_flip($existing);
         $windowStart = CarbonImmutable::now()->subDays(self::DISCOVERY_WINDOW_DAYS);
 
@@ -101,7 +94,7 @@ class ActivityFetcher
         }
 
         // Strava paginates newest-first; reverse so the caller stores oldest-first.
-        usort($summaries, fn (array $a, array $b): int => (int) $a['id'] <=> (int) $b['id']);
+        usort($summaries, fn (array $a, array $b): int => Numeric::int($a['id']) <=> Numeric::int($b['id']));
 
         return ['summaries' => $summaries, 'api_calls' => $apiCalls, 'resume_before' => $resumeBefore];
     }
@@ -133,7 +126,7 @@ class ActivityFetcher
     private function collectNewSummaries(array $items, array $existingSet, CarbonImmutable $windowStart, ?CarbonImmutable $since, array &$summaries, bool $stopOnKnown): bool
     {
         foreach ($items as $item) {
-            $id = (int) ($item['id'] ?? 0);
+            $id = Numeric::int($item['id'] ?? 0);
             if ($id <= 0) {
                 continue;
             }
@@ -147,7 +140,7 @@ class ActivityFetcher
 
                 return true;
             }
-            if ($since !== null && $this->startedOnOrBefore($item, $since)) {
+            if ($since instanceof CarbonImmutable && $this->startedOnOrBefore($item, $since)) {
                 return true;
             }
             if (! $this->isRun($item)) {

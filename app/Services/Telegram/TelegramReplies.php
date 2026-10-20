@@ -33,6 +33,11 @@ class TelegramReplies
             . "account's settings first, then connect it from yours again.";
     }
 
+    public static function privateChatOnly(): string
+    {
+        return "I only link from a direct chat. Message me one-on-one, then tap Telegram in temari's Settings again.";
+    }
+
     public static function generic(): string
     {
         return 'Hey! I\'m temari. Open Settings in temari and tap Telegram to link up.';

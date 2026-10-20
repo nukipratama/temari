@@ -18,6 +18,7 @@ class PrunePushSubscriptionsCommand extends Command
     public function handle(): int
     {
         $deleted = PushSubscription::query()->where('last_seen_at', '<', now()->subDays(self::UNSEEN_DAYS))->delete();
+        assert(is_int($deleted));
 
         $this->info("Pruned {$deleted} push subscriptions unseen for ".self::UNSEEN_DAYS.' days.');
 

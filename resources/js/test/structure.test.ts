@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
+import { defined } from '@/test/defined';
+
 // Eager: false — we only need the module paths (keys), not the modules.
 const allTsx = import.meta.glob('../**/*.tsx');
 // Logic-bearing TS: hooks (all stateful) + lib utilities. Pure-data modules
@@ -22,9 +24,8 @@ const EXEMPT = new Set<string>([
 
 /**
  * `.ts` modules under hooks/ and lib/ intentionally without a co-located
- * `{name}.test.ts`. The 1:1 convention covers *logic*; these are pure-data /
- * declarative-constant modules with no branches to exercise, so a test would
- * just restate the literal. Each entry is verified constants-only:
+ * `{name}.test.ts`: pure-data / declarative-constant modules with no branches
+ * to exercise. Each entry is verified constants-only:
  *
  *   - lib/metricGlossary.ts — a frozen `as const` record of glossary copy
  *     (acronym/label/body strings). No functions, no branches.
@@ -136,10 +137,10 @@ function componentExports(source: string): string[] {
     for (const match of source.matchAll(
         /export\s+(?:default\s+)?(?:function|const)\s+([A-Z]\w*)/g,
     )) {
-        names.add(match[1]);
+        names.add(defined(match[1]));
     }
     for (const match of source.matchAll(/export\s*\{([^}]*)\}/g)) {
-        for (const part of match[1].split(',')) {
+        for (const part of defined(match[1]).split(',')) {
             const name =
                 part
                     .trim()
@@ -197,7 +198,7 @@ describe('design catalogue coverage', () => {
             }
             const body = examples.replace(IMPORTS, '');
 
-            return componentExports(sources[path])
+            return componentExports(defined(sources[path]))
                 .filter((name) => !NOT_CATALOGUED.has(`${path}#${name}`))
                 .filter((name) => !new RegExp(`\\b${name}\\b`).test(body))
                 .map((name) => `${path}#${name}`);
@@ -211,7 +212,7 @@ describe('design catalogue coverage', () => {
 
     it('lists no stale scope or exclusion', () => {
         const stale = [...CATALOGUED_FILES, ...NOT_CATALOGUED.keys()].filter(
-            (entry) => sources[entry.split('#')[0]] === undefined,
+            (entry) => sources[entry.split('#')[0] ?? ''] === undefined,
         );
 
         expect(

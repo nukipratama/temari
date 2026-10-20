@@ -26,7 +26,7 @@ it('optionally belongs to a race goal', function (): void {
     $season = Season::factory()->for($user)->create(['race_goal_id' => $race->id]);
 
     expect($season->raceGoal)->toBeInstanceOf(RaceGoal::class)
-        ->and($season->raceGoal->is($race))->toBeTrue();
+        ->and($season->raceGoal?->is($race))->toBeTrue();
 });
 
 it('is self-scaled when it has no race goal', function (): void {
@@ -78,10 +78,10 @@ it('reads a legacy season without a settled record as null, and casts a settled 
         'record_settled_at' => '2026-10-05 08:00:00',
     ]);
 
-    expect($legacy->fresh()->process_pct)->toBeNull()
-        ->and($legacy->fresh()->performance_state)->toBeNull()
-        ->and($legacy->fresh()->record_settled_at)->toBeNull()
-        ->and($settled->fresh()->process_pct)->toBeInt()->toBe(82)
-        ->and($settled->fresh()->performance_state)->toBe(SeasonPerformance::Pending)
-        ->and($settled->fresh()->record_settled_at)->toBeInstanceOf(Carbon::class);
+    expect($legacy->refresh()->process_pct)->toBeNull()
+        ->and($legacy->refresh()->performance_state)->toBeNull()
+        ->and($legacy->refresh()->record_settled_at)->toBeNull()
+        ->and($settled->refresh()->process_pct)->toBeInt()->toBe(82)
+        ->and($settled->refresh()->performance_state)->toBe(SeasonPerformance::Pending)
+        ->and($settled->refresh()->record_settled_at)->toBeInstanceOf(Carbon::class);
 });

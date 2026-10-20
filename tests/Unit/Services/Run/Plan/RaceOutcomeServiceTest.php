@@ -23,13 +23,20 @@ uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
     Carbon::setTestNow('2026-10-05 09:00:00');
-    $this->service = app(RaceOutcomeService::class);
-    $this->user = User::factory()->create();
-    $this->race = RaceGoal::factory()->for($this->user)->completed()->create([
-        'race_date' => '2026-10-04', 'distance_m' => 10_000, 'goal_time_sec' => 3_000, 'outcome' => RaceOutcome::Pending,
-    ]);
 });
 afterEach(fn () => Carbon::setTestNow());
+
+function raceOutcomeService(): RaceOutcomeService
+{
+    return app(RaceOutcomeService::class);
+}
+
+function pendingRaceOf(User $user): RaceGoal
+{
+    return RaceGoal::factory()->for($user)->completed()->create([
+        'race_date' => '2026-10-04', 'distance_m' => 10_000, 'goal_time_sec' => 3_000, 'outcome' => RaceOutcome::Pending,
+    ]);
+}
 
 function raceDayRun(User $user, float $distance = 10_040.0, int $elapsed = 2_950, string $startsAt = '2026-10-04 07:00:00'): Activity
 {
@@ -40,11 +47,14 @@ function raceDayRun(User $user, float $distance = 10_040.0, int $elapsed = 2_950
 }
 
 it('confirms a matching owned activity, feeds fitness evidence from it and regenerates the plan, and takes a repeat as a no-op', function (): void {
-    $run = raceDayRun($this->user);
+    $user = User::factory()->create();
+    $goal = pendingRaceOf($user);
+    $run = raceDayRun($user);
 
-    $race = $this->service->record($this->user, $this->race, RaceOutcome::Confirmed, activityId: $run->id);
+    $race = raceOutcomeService()->record($user, $goal, RaceOutcome::Confirmed, activityId: $run->id);
 
     $evidence = PerformanceEvidence::query()->sole();
+    $change = nonNull($race->changes->last());
     expect($race->outcome)->toBe(RaceOutcome::Confirmed)
         ->and($race->outcome_activity_id)->toBe($run->id)
         ->and($race->finish_time_sec)->toBe(2_950)
@@ -55,34 +65,38 @@ it('confirms a matching owned activity, feeds fitness evidence from it and regen
         ->and($evidence->distance_m)->toBe(10_040)
         ->and($evidence->elapsed_time_sec)->toBe(2_950)
         ->and($evidence->performed_on->toDateString())->toBe('2026-10-04')
-        ->and($race->changes->last()->kind)->toBe(RaceChangeKind::Outcome)
-        ->and($race->changes->last()->outcome)->toBe(RaceOutcome::Confirmed);
+        ->and($change->kind)->toBe(RaceChangeKind::Outcome)
+        ->and($change->outcome)->toBe(RaceOutcome::Confirmed);
 
-    $plannedAfterConfirm = PlannedSession::query()->where('user_id', $this->user->id)->count();
-    PlannedSession::query()->where('user_id', $this->user->id)->delete();
-    $this->service->record($this->user, $this->race->fresh(), RaceOutcome::Confirmed, activityId: $run->id);
+    $plannedAfterConfirm = PlannedSession::query()->where('user_id', $user->id)->count();
+    PlannedSession::query()->where('user_id', $user->id)->delete();
+    raceOutcomeService()->record($user, $goal->refresh(), RaceOutcome::Confirmed, activityId: $run->id);
 
-    expect($this->race->fresh()->changes()->count())->toBe(1)
+    expect($goal->refresh()->changes()->count())->toBe(1)
         ->and(PerformanceEvidence::query()->count())->toBe(1)
         ->and($plannedAfterConfirm)->toBeGreaterThan(0)
-        ->and(PlannedSession::query()->where('user_id', $this->user->id)->count())->toBe(0);
+        ->and(PlannedSession::query()->where('user_id', $user->id)->count())->toBe(0);
 });
 
 it('rejects an implausible manual time without recording anything', function (): void {
-    expect(fn () => $this->service->record($this->user, $this->race, RaceOutcome::Confirmed, finishTimeSec: 600))
+    $user = User::factory()->create();
+    $goal = pendingRaceOf($user);
+    expect(fn () => raceOutcomeService()->record($user, $goal, RaceOutcome::Confirmed, finishTimeSec: 600))
         ->toThrow(ValidationException::class);
 
-    expect($this->race->fresh()->outcome)->toBe(RaceOutcome::Pending)
-        ->and($this->race->changes()->count())->toBe(0)
+    expect($goal->refresh()->outcome)->toBe(RaceOutcome::Pending)
+        ->and($goal->changes()->count())->toBe(0)
         ->and(PerformanceEvidence::query()->count())->toBe(0);
 });
 
 it('refuses an activity that is another athlete\'s, off race day or the wrong distance', function (Closure $activity): void {
-    $id = $activity($this->user)->id;
+    $user = User::factory()->create();
+    $goal = pendingRaceOf($user);
+    $id = $activity($user)->id;
 
-    expect(fn () => $this->service->record($this->user, $this->race, RaceOutcome::Confirmed, activityId: $id))
+    expect(fn () => raceOutcomeService()->record($user, $goal, RaceOutcome::Confirmed, activityId: $id))
         ->toThrow(ValidationException::class);
-    expect($this->race->fresh()->outcome)->toBe(RaceOutcome::Pending);
+    expect($goal->refresh()->outcome)->toBe(RaceOutcome::Pending);
 })->with([
     'another athlete' => [fn (User $user) => raceDayRun(User::factory()->create())],
     'another day' => [fn (User $user) => raceDayRun($user, startsAt: '2026-10-03 07:00:00')],
@@ -90,14 +104,18 @@ it('refuses an activity that is another athlete\'s, off race day or the wrong di
 ]);
 
 it('needs exactly one of an activity or a time to confirm', function (): void {
-    $run = raceDayRun($this->user);
+    $user = User::factory()->create();
+    $goal = pendingRaceOf($user);
+    $run = raceDayRun($user);
 
-    expect(fn () => $this->service->record($this->user, $this->race, RaceOutcome::Confirmed))->toThrow(ValidationException::class)
-        ->and(fn () => $this->service->record($this->user, $this->race, RaceOutcome::Confirmed, activityId: $run->id, finishTimeSec: 3_000))->toThrow(ValidationException::class);
+    expect(fn () => raceOutcomeService()->record($user, $goal, RaceOutcome::Confirmed))->toThrow(ValidationException::class)
+        ->and(fn () => raceOutcomeService()->record($user, $goal, RaceOutcome::Confirmed, activityId: $run->id, finishTimeSec: 3_000))->toThrow(ValidationException::class);
 });
 
 it('records did not run and cancelled without any result or evidence', function (RaceOutcome $outcome): void {
-    $race = $this->service->record($this->user, $this->race, $outcome);
+    $user = User::factory()->create();
+    $goal = pendingRaceOf($user);
+    $race = raceOutcomeService()->record($user, $goal, $outcome);
 
     expect($race->outcome)->toBe($outcome)
         ->and($race->finish_time_sec)->toBeNull()
@@ -106,7 +124,9 @@ it('records did not run and cancelled without any result or evidence', function 
 })->with([RaceOutcome::DidNotRun, RaceOutcome::Cancelled]);
 
 it('confirms a manual finish time against the race distance, then lets the athlete correct any state later, recording each change and retracting stale evidence', function (): void {
-    $race = $this->service->record($this->user, $this->race, RaceOutcome::Confirmed, finishTimeSec: 3_100);
+    $user = User::factory()->create();
+    $goal = pendingRaceOf($user);
+    $race = raceOutcomeService()->record($user, $goal, RaceOutcome::Confirmed, finishTimeSec: 3_100);
 
     $evidence = PerformanceEvidence::query()->sole();
     expect($race->finish_time_sec)->toBe(3_100)
@@ -115,79 +135,93 @@ it('confirms a manual finish time against the race distance, then lets the athle
         ->and($evidence->elapsed_time_sec)->toBe(3_100)
         ->and($evidence->activity_id)->toBeNull();
 
-    $this->service->record($this->user, $this->race->fresh(), RaceOutcome::Confirmed, finishTimeSec: 3_050);
+    raceOutcomeService()->record($user, $goal->refresh(), RaceOutcome::Confirmed, finishTimeSec: 3_050);
     expect(PerformanceEvidence::query()->sole()->elapsed_time_sec)->toBe(3_050);
 
-    $this->service->record($this->user, $this->race->fresh(), RaceOutcome::DidNotRun);
+    raceOutcomeService()->record($user, $goal->refresh(), RaceOutcome::DidNotRun);
     expect(PerformanceEvidence::query()->count())->toBe(0)
-        ->and($this->race->fresh()->finish_time_sec)->toBeNull();
+        ->and($goal->refresh()->finish_time_sec)->toBeNull();
 
-    $reopened = $this->service->record($this->user, $this->race->fresh(), RaceOutcome::Pending);
+    $reopened = raceOutcomeService()->record($user, $goal->refresh(), RaceOutcome::Pending);
 
     expect($reopened->outcome)->toBe(RaceOutcome::Pending)
         ->and($reopened->changes->pluck('outcome')->all())->toBe([RaceOutcome::Confirmed, RaceOutcome::Confirmed, RaceOutcome::DidNotRun, RaceOutcome::Pending]);
 });
 
 it('accepts a late confirmation long after the date', function (): void {
+    $user = User::factory()->create();
+    $goal = pendingRaceOf($user);
     Carbon::setTestNow('2026-12-20 09:00:00');
 
-    $race = $this->service->record($this->user, $this->race, RaceOutcome::Confirmed, finishTimeSec: 3_000);
+    $race = raceOutcomeService()->record($user, $goal, RaceOutcome::Confirmed, finishTimeSec: 3_000);
 
     expect($race->outcome)->toBe(RaceOutcome::Confirmed);
 });
 
 it('does not take an outcome for a race that has not happened yet', function (): void {
-    $future = RaceGoal::factory()->for($this->user)->create(['race_date' => '2026-10-20', 'outcome' => RaceOutcome::Pending]);
+    $user = User::factory()->create();
+    pendingRaceOf($user);
+    $future = RaceGoal::factory()->for($user)->create(['race_date' => '2026-10-20', 'outcome' => RaceOutcome::Pending]);
 
-    expect(fn () => $this->service->record($this->user, $future, RaceOutcome::DidNotRun))->toThrow(ValidationException::class);
-    expect($future->fresh()->outcome)->toBe(RaceOutcome::Pending);
+    expect(fn () => raceOutcomeService()->record($user, $future, RaceOutcome::DidNotRun))->toThrow(ValidationException::class);
+    expect($future->refresh()->outcome)->toBe(RaceOutcome::Pending);
 });
 
 it('retires an active race whose passed date is confirmed before the nightly close', function (): void {
-    $active = RaceGoal::factory()->for($this->user)->create(['race_date' => '2026-10-05', 'outcome' => RaceOutcome::Pending]);
+    $user = User::factory()->create();
+    pendingRaceOf($user);
+    $active = RaceGoal::factory()->for($user)->create(['race_date' => '2026-10-05', 'outcome' => RaceOutcome::Pending]);
 
-    $race = $this->service->record($this->user, $active, RaceOutcome::Confirmed, finishTimeSec: 3_000);
+    $race = raceOutcomeService()->record($user, $active, RaceOutcome::Confirmed, finishTimeSec: 3_000);
 
     expect($race->completed_at)->not->toBeNull();
 });
 
 it('keeps a result beyond the evidence range on the race without feeding fitness', function (): void {
-    $ultra = RaceGoal::factory()->for($this->user)->completed()->create([
+    $user = User::factory()->create();
+    pendingRaceOf($user);
+    $ultra = RaceGoal::factory()->for($user)->completed()->create([
         'race_date' => '2026-10-04', 'distance_m' => 80_000, 'goal_time_sec' => 36_000, 'outcome' => RaceOutcome::Pending,
     ]);
 
-    $race = $this->service->record($this->user, $ultra, RaceOutcome::Confirmed, finishTimeSec: 40_000);
+    $race = raceOutcomeService()->record($user, $ultra, RaceOutcome::Confirmed, finishTimeSec: 40_000);
 
     expect($race->finish_time_sec)->toBe(40_000)
         ->and(PerformanceEvidence::query()->count())->toBe(0);
 });
 
 it('feeds a rounded 42.2 km marathon to fitness at the marathon distance', function (): void {
-    $marathon = RaceGoal::factory()->for($this->user)->completed()->create([
+    $user = User::factory()->create();
+    pendingRaceOf($user);
+    $marathon = RaceGoal::factory()->for($user)->completed()->create([
         'race_date' => '2026-10-04', 'distance_m' => 42_200, 'goal_time_sec' => 13_000, 'outcome' => RaceOutcome::Pending,
     ]);
 
-    $race = $this->service->record($this->user, $marathon, RaceOutcome::Confirmed, finishTimeSec: 13_200);
+    $race = raceOutcomeService()->record($user, $marathon, RaceOutcome::Confirmed, finishTimeSec: 13_200);
 
     expect($race->finish_time_sec)->toBe(13_200)
         ->and(PerformanceEvidence::query()->sole()->distance_m)->toBe(42_195);
 });
 
 it('refuses another athlete\'s race', function (): void {
+    $user = User::factory()->create();
+    $goal = pendingRaceOf($user);
     $intruder = User::factory()->create();
 
-    expect(fn () => $this->service->record($intruder, $this->race, RaceOutcome::DidNotRun))->toThrow(AuthorizationException::class);
-    expect($this->race->fresh()->outcome)->toBe(RaceOutcome::Pending);
+    expect(fn () => raceOutcomeService()->record($intruder, $goal, RaceOutcome::DidNotRun))->toThrow(AuthorizationException::class);
+    expect($goal->refresh()->outcome)->toBe(RaceOutcome::Pending);
 });
 
 it('carries a late confirmation into the performance of the season that was already settled', function (): void {
-    $season = Season::factory()->for($this->user)->create(['race_goal_id' => $this->race->id, 'starts_at' => '2026-09-01', 'ends_at' => '2026-10-04']);
-    app(SeasonRecordBuilder::class)->settle($this->user, $season->load('goals', 'raceGoal'), Carbon::today());
-    expect($season->fresh()->performance_state)->toBe(SeasonPerformance::Pending);
+    $user = User::factory()->create();
+    $goal = pendingRaceOf($user);
+    $season = Season::factory()->for($user)->create(['race_goal_id' => $goal->id, 'starts_at' => '2026-09-01', 'ends_at' => '2026-10-04']);
+    app(SeasonRecordBuilder::class)->settle($user, $season->load('goals', 'raceGoal'), Carbon::today());
+    expect($season->refresh()->performance_state)->toBe(SeasonPerformance::Pending);
 
-    $this->service->record($this->user, $this->race, RaceOutcome::Confirmed, finishTimeSec: 3_100);
-    expect($season->fresh()->performance_state)->toBe(SeasonPerformance::Met);
+    raceOutcomeService()->record($user, $goal, RaceOutcome::Confirmed, finishTimeSec: 3_100);
+    expect($season->refresh()->performance_state)->toBe(SeasonPerformance::Met);
 
-    $this->service->record($this->user, $this->race->fresh(), RaceOutcome::DidNotRun);
-    expect($season->fresh()->performance_state)->toBe(SeasonPerformance::DidNotRun);
+    raceOutcomeService()->record($user, $goal->refresh(), RaceOutcome::DidNotRun);
+    expect($season->refresh()->performance_state)->toBe(SeasonPerformance::DidNotRun);
 });

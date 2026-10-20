@@ -9,6 +9,8 @@ import {
 import { Chart } from 'chart.js';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { defined } from '@/test/defined';
+
 import FitnessPanel, { type FitnessTrendPoint } from './FitnessPanel';
 
 vi.unmock('react-chartjs-2');
@@ -72,7 +74,7 @@ function drawAndRecord(chart: Chart<'line'>) {
 describe('FitnessPanel on a real Chart.js canvas', () => {
     it('draws the highlight band, deload marks and cursor from the live range, cursor and ground', async () => {
         const trend = trendOverDays(365);
-        const deloadDate = trend[trend.length - 10].date;
+        const deloadDate = defined(trend.at(-10)).date;
         const { container } = render(
             <FitnessPanel
                 trend={trend}
@@ -85,7 +87,7 @@ describe('FitnessPanel on a real Chart.js canvas', () => {
         fireEvent.click(screen.getByRole('button', { name: '1Y' }));
         expect(chart.data.labels).toHaveLength(365);
 
-        const x = chart.scales.x;
+        const x = defined(chart.scales.x);
         const afterRange = drawAndRecord(chart);
         expect(afterRange.fillRectXs).toContain(x.getPixelForValue(335));
         expect(afterRange.moveToXs).toContain(x.getPixelForValue(355));

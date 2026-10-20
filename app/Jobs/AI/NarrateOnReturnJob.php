@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Jobs\AI;
 
+use Illuminate\Support\Collection;
 use App\Actions\AI\RecentlyActiveUsers;
 use App\Models\Activity;
 use App\Models\AI\Analysis;
@@ -32,11 +33,9 @@ use Illuminate\Support\Carbon;
  *
  * Every request is invalidate:false and every fill skips a Done row, so a second
  * run bills nothing. Stamped {@see AnalysisOrigin::Return}, which
- * {@see AnalysisService::markDone()} never notifies for, and every one of this
- * job's own rule-based fills is written with `reason: AnalysisOrigin::Return`
- * ({@see Analysis::$rule_based_reason}), so the UI can cue "temari hasn't read
- * this one yet" on exactly the blocks this job filled and no other rule-based
- * reason.
+ * {@see AnalysisService::markDone()} never notifies for; its rule-based fills
+ * carry `reason: AnalysisOrigin::Return` ({@see Analysis::$rule_based_reason}),
+ * so the UI can cue "temari hasn't read this one yet" on exactly those blocks.
  *
  * @see docs/decisions/narration-spends-only-on-active-athletes.md
  */
@@ -80,7 +79,7 @@ class NarrateOnReturnJob implements ShouldQueue
             ->each(fn (Activity $activity) => $service->requestActivityGroupRuleBased($activity, AnalysisOrigin::Return));
 
         $earliest = AnalyzeActivityJob::earliestPendingActivityForUser($user->id);
-        if ($earliest !== null) {
+        if ($earliest instanceof Activity) {
             $service->requestActivityGroup($earliest, invalidate: false);
         }
     }
@@ -99,8 +98,10 @@ class NarrateOnReturnJob implements ShouldQueue
 
         foreach ($pending as $row) {
             $cardId = (int) $row->subject_id;
+            $startDateLocal = $row->getAttribute('start_date_local');
+            assert($startDateLocal === null || is_string($startDateLocal));
 
-            if (Carbon::parse($row->getAttribute('start_date_local'))->lt($windowStart)) {
+            if (Carbon::parse($startDateLocal)->lt($windowStart)) {
                 $service->requestRuleBased(RunCard::class, $cardId, AnalysisType::CardFlavor, refillDone: false, reason: AnalysisOrigin::Return);
 
                 continue;
@@ -141,6 +142,7 @@ class NarrateOnReturnJob implements ShouldQueue
     private function catchUpMonthlyRecaps(AnalysisService $service, HydrationBacklog $backlog, User $user): void
     {
         $lastClosed = RecapPeriod::lastClosedMonth();
+        /** @var Collection<int, string> $months */
         $months = Analysis::query()
             ->where('subject_type', AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE)
             ->where('subject_id', $user->id)

@@ -13,6 +13,7 @@ use App\Services\Telegram\TelegramReplies;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Http;
+use Mockery\MockInterface;
 
 uses(RefreshDatabase::class);
 
@@ -21,6 +22,7 @@ beforeEach(function (): void {
     Http::fake(['api.telegram.org/*' => Http::response(['ok' => true, 'result' => true])]);
 });
 
+/** @param  array<string, mixed>  $update */
 function runUpdate(array $update): void
 {
     new HandleTelegramUpdateJob($update)->handle(
@@ -29,15 +31,23 @@ function runUpdate(array $update): void
     );
 }
 
-function startUpdate(int $chatId, string $token, ?string $username = null): array
+/** @return array{message: array{chat: array{id: int, type: string}, from: array{username: string|null}, text: string}} */
+function startUpdate(int $chatId, string $token, ?string $username = null, string $chatType = 'private'): array
 {
     return [
         'message' => [
-            'chat' => ['id' => $chatId],
+            'chat' => ['id' => $chatId, 'type' => $chatType],
             'from' => ['username' => $username],
             'text' => '/start ' . $token,
         ],
     ];
+}
+
+function dispatchedWelcome(): SendTelegramLinkWelcomeJob
+{
+    $job = Bus::dispatched(SendTelegramLinkWelcomeJob::class)->first();
+
+    return $job instanceof SendTelegramLinkWelcomeJob ? $job : throw new InvalidArgumentException('No welcome job was dispatched.');
 }
 
 it('links the chat and replies with a welcome naming the account on a valid token', function (): void {
@@ -56,7 +66,7 @@ it('links the chat and replies with a welcome naming the account on a valid toke
 
     expect(TelegramLinkTokenUse::query()->whereKey(hash('sha256', $token))->exists())->toBeTrue();
     Bus::assertDispatchedTimes(SendTelegramLinkWelcomeJob::class, 1);
-    expect(Bus::dispatched(SendTelegramLinkWelcomeJob::class)->first()->chatId)->toBe(555);
+    expect(dispatchedWelcome()->chatId)->toBe(555);
     Http::assertNothingSent();
 });
 
@@ -73,7 +83,7 @@ it('lets one of two competing starts claim a token and send one welcome', functi
     expect(TelegramLinkTokenUse::query()->whereKey(hash('sha256', $token))->exists())->toBeTrue();
     Bus::assertDispatchedTimes(SendTelegramLinkWelcomeJob::class, 1);
 
-    Bus::dispatched(SendTelegramLinkWelcomeJob::class)->first()->handle(app(TelegramClient::class));
+    dispatchedWelcome()->handle(app(TelegramClient::class));
 
     Http::assertSentCount(2);
     Http::assertSent(fn ($request): bool => $request['chat_id'] === 555
@@ -104,7 +114,7 @@ it('treats a token as single-use: a second /start with the same token does not r
     // Replaying the same token from a different chat must not re-bind the account.
     runUpdate(startUpdate(999, $token));
 
-    expect($user->telegramConnection->fresh()->chat_id)->toBe(555);
+    expect(nonNull($user->telegramConnection)->refresh()->chat_id)->toBe(555);
     Http::assertSent(fn ($request): bool => $request['chat_id'] === 999
         && str_contains((string) $request['text'], 'valid anymore'));
 });
@@ -124,6 +134,7 @@ it('stays silent when a retried start loses the token claim to its own committed
     $user = User::factory()->create();
     $token = app(TelegramLinkToken::class)->mint($user->id);
     TelegramConnection::factory()->for($user)->create(['chat_id' => 555]);
+    /** @var TelegramLinkToken&MockInterface $linkToken */
     $linkToken = Mockery::mock(TelegramLinkToken::class);
     $linkToken->shouldReceive('userId')->with($token)->andReturn($user->id);
     $linkToken->shouldReceive('consume')->with($token)->andReturnFalse();
@@ -164,12 +175,25 @@ it('refuses to link the demo account even with a valid token', function (): void
     Http::assertSent(fn ($request): bool => str_contains((string) $request['text'], 'tap Telegram to link up'));
 });
 
+it('links only from a private chat, asking a group to link from a direct chat and leaving the token unused', function (string $chatType): void {
+    Bus::fake();
+    $user = User::factory()->create();
+    $token = app(TelegramLinkToken::class)->mint($user->id);
+
+    runUpdate(startUpdate(-100555, $token, 'budi_runs', $chatType));
+
+    expect(TelegramConnection::query()->count())->toBe(0)
+        ->and(TelegramLinkTokenUse::query()->whereKey(hash('sha256', $token))->exists())->toBeFalse();
+    Bus::assertNotDispatched(SendTelegramLinkWelcomeJob::class);
+    Http::assertSent(fn ($request): bool => $request['text'] === TelegramReplies::privateChatOnly());
+})->with(['group', 'supergroup', 'channel']);
+
 it('revokes the connection and confirms on /stop', function (): void {
     $connection = TelegramConnection::factory()->create(['chat_id' => 777]);
 
     runUpdate(['message' => ['chat' => ['id' => 777], 'text' => '/stop']]);
 
-    expect($connection->fresh()->isRevoked())->toBeTrue();
+    expect($connection->refresh()->isRevoked())->toBeTrue();
     Http::assertSent(fn ($request): bool => str_contains((string) $request['text'], 'disconnected'));
 });
 
@@ -233,6 +257,7 @@ it('replies the same way when another account claims the chat between the check 
     $other = User::factory()->create();
     $user = User::factory()->create();
     $token = app(TelegramLinkToken::class)->mint($user->id);
+    /** @var TelegramLinkToken&MockInterface $linkToken */
     $linkToken = Mockery::mock(TelegramLinkToken::class);
     $linkToken->shouldReceive('userId')->with($token)->andReturn($user->id);
     $linkToken->shouldReceive('consume')->with($token)->andReturnUsing(function () use ($other): bool {

@@ -9,6 +9,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
 
+/** @return array<string, Closure> */
 function notificationPropsFor(?User $user): array
 {
     return app(NotificationProps::class)->forUser($user);
@@ -29,7 +30,7 @@ describe('unreadNotifications', function (): void {
 
         expect((notificationPropsFor($user)['unreadNotifications'])())->toBe(3);
 
-        $user->inboxNotifications()->first()->markRead();
+        nonNull($user->inboxNotifications()->first())->markRead();
 
         expect((notificationPropsFor($user)['unreadNotifications'])())->toBe(2);
     });

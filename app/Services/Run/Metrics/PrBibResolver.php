@@ -8,20 +8,17 @@ use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\PersonalRecord;
 use App\Models\RecordStamp;
+use App\Support\Numeric;
 
 /**
  * The run hero's "PR bib" stamp: whether the viewed run currently holds one
  * of the tracked records, and whether this render still owes it the punch-in
  * animation.
  *
- * Tracked records are the 5K/10K/half/full bests plus the account's longest
- * run — not the best-effort pace windows or the 1 km/15 km distances
- * {@see PersonalRecord} also tracks. The badge itself is permanent: a run
- * that holds a record shows it on every view. Only the *animation* is
- * one-time, and this class only reads that fact: `animate` is true whenever
- * no {@see RecordStamp} row exists yet for (user, record) — a GET must not
- * change its own payload, so claiming the stamp happens on the frontend's
- * follow-up POST after the animation plays, not here.
+ * Tracked records are the 5K/10K/half/full bests plus the account's longest run. The badge is
+ * permanent; only the animation is one-time: `animate` is true whenever no {@see RecordStamp} row
+ * exists yet for (user, record), and the stamp is claimed by the frontend's follow-up POST, since a
+ * GET must not change its own payload.
  */
 class PrBibResolver
 {
@@ -103,6 +100,6 @@ class PrBibResolver
             ->where('activities.id', '!=', $activity->id)
             ->max('activity_details.distance');
 
-        return $distance > (float) ($maxOther ?? 0);
+        return $distance > Numeric::float($maxOther ?? 0);
     }
 }

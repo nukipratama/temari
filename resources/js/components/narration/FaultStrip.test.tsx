@@ -7,6 +7,7 @@ import type {
     ContentFilterSummary,
 } from '@/pages/Narration/types';
 
+import { defined } from '@/test/defined';
 import { formMock } from '@/test/setup';
 
 import FaultStrip from './FaultStrip';
@@ -141,7 +142,7 @@ describe('FaultStrip', () => {
         const buttons = screen.getAllByRole('button', { name: 'retry failed' });
         expect(buttons).toHaveLength(2);
 
-        fireEvent.click(buttons[0]);
+        fireEvent.click(defined(buttons[0]));
         expect(formMock.post).toHaveBeenCalledWith(
             '/devtools/narration/athletes/7/retry-failed',
             expect.anything(),

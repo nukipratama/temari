@@ -3,6 +3,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { EditablePlanDay, PlanWeek, SeasonSummaryWeek } from '@/lib/plan';
 
+import { defined } from '@/test/defined';
+
 import SeasonTimeline from './SeasonTimeline';
 
 function week(overrides: Partial<SeasonSummaryWeek> = {}): SeasonSummaryWeek {
@@ -14,6 +16,7 @@ function week(overrides: Partial<SeasonSummaryWeek> = {}): SeasonSummaryWeek {
         planned_km: 30,
         actual_km: null,
         sessions: 5,
+        adherence_pct: null,
         ...overrides,
     };
 }
@@ -212,7 +215,9 @@ describe('SeasonTimeline', () => {
             screen.getByRole('list', { name: 'season weeks' }),
         ).getAllByRole('listitem');
 
-        expect(within(rows[0]).queryByRole('button')).not.toBeInTheDocument();
+        expect(
+            within(defined(rows[0])).queryByRole('button'),
+        ).not.toBeInTheDocument();
     });
 
     it('opens on the week and day /plan?day= asked for, even outside this week', () => {

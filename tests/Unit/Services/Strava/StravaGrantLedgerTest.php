@@ -56,11 +56,11 @@ it('mirrors connection refreshes through a credential-version checked write', fu
         'stale-refresh',
         Carbon::now()->addHours(6),
     ))->toBeFalse()
-        ->and($grant->fresh()->refresh_token)->toBe('fresh-refresh');
+        ->and($grant->fresh()?->refresh_token)->toBe('fresh-refresh');
 });
 
 it('keeps refreshed connection credentials when the grant mirror has advanced', function (): void {
-    Log::spy();
+    $log = Log::spy();
 
     $user = User::factory()->create();
     $connection = StravaConnection::factory()->for($user)->create(['credential_version' => 3]);
@@ -83,12 +83,12 @@ it('keeps refreshed connection credentials when the grant mirror has advanced', 
 
     $refreshedConnection = $connection->fresh();
 
-    expect($refreshedConnection->access_token)->toBe('fresh-access')
-        ->and($refreshedConnection->refresh_token)->toBe('fresh-refresh')
+    expect($refreshedConnection?->access_token)->toBe('fresh-access')
+        ->and($refreshedConnection?->refresh_token)->toBe('fresh-refresh')
         ->and(StravaGrantToken::query()->where('strava_athlete_id', $connection->strava_athlete_id)->sole()->refresh_token)
         ->toBe('newer-refresh');
 
-    Log::shouldHaveReceived('warning')->once()->with(
+    $log->shouldHaveReceived('warning')->once()->with(
         'Skipped mirroring a stale Strava refresh because a newer grant exists.',
         [
             'connection_id' => $connection->getKey(),
@@ -99,7 +99,7 @@ it('keeps refreshed connection credentials when the grant mirror has advanced', 
 });
 
 it('distinguishes a grant mirror behind the connection when skipping a refresh', function (): void {
-    Log::spy();
+    $log = Log::spy();
 
     $user = User::factory()->create();
     $connection = StravaConnection::factory()->for($user)->create(['credential_version' => 4]);
@@ -122,12 +122,12 @@ it('distinguishes a grant mirror behind the connection when skipping a refresh',
 
     $refreshedConnection = $connection->fresh();
 
-    expect($refreshedConnection->access_token)->toBe('fresh-access')
-        ->and($refreshedConnection->refresh_token)->toBe('fresh-refresh')
+    expect($refreshedConnection?->access_token)->toBe('fresh-access')
+        ->and($refreshedConnection?->refresh_token)->toBe('fresh-refresh')
         ->and(StravaGrantToken::query()->where('strava_athlete_id', $connection->strava_athlete_id)->sole()->refresh_token)
         ->toBe('older-refresh');
 
-    Log::shouldHaveReceived('warning')->once()->with(
+    $log->shouldHaveReceived('warning')->once()->with(
         'Skipped mirroring a Strava refresh because the grant mirror is behind the connection.',
         [
             'connection_id' => $connection->getKey(),

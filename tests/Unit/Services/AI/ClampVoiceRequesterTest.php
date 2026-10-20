@@ -24,8 +24,13 @@ uses(RefreshDatabase::class);
 beforeEach(function (): void {
     Bus::fake();
     Carbon::setTestNow('2026-08-31 08:00:00'); // a Monday
-    $this->requester = app(ClampVoiceRequester::class);
 });
+
+function clampVoiceRequester(): ClampVoiceRequester
+{
+    return app(ClampVoiceRequester::class);
+}
+
 afterEach(fn () => Carbon::setTestNow());
 
 function tiredUserWithClampedDay(): User
@@ -43,17 +48,17 @@ function tiredUserWithClampedDay(): User
 it('asks for nothing when the day has no clamp', function (): void {
     $user = User::factory()->create();
 
-    expect($this->requester->request($user, Carbon::today()))->toBeFalse();
+    expect(clampVoiceRequester()->request($user, Carbon::today()))->toBeFalse();
     Bus::assertNotDispatched(AnalyzePlanClampVoiceJob::class);
 });
 
 it('regenerates only when the clamp it explains changed', function (): void {
     $user = tiredUserWithClampedDay();
 
-    $this->requester->request($user, Carbon::today());
+    clampVoiceRequester()->request($user, Carbon::today());
     Bus::assertDispatchedTimes(AnalyzePlanClampVoiceJob::class, 1);
 
-    $context = app(ClampNarrationContext::class)->forUserOn($user->id, Carbon::today());
+    $context = nonNull(app(ClampNarrationContext::class)->forUserOn($user->id, Carbon::today()));
     $row = Analysis::query()->where('analysis_type', AnalysisType::PlanClampVoice)->firstOrFail();
     app(AnalysisService::class)->markDone(
         $row,
@@ -63,12 +68,12 @@ it('regenerates only when the clamp it explains changed', function (): void {
     );
 
     Bus::fake();
-    $this->requester->request($user, Carbon::today());
+    clampVoiceRequester()->request($user, Carbon::today());
     Bus::assertNotDispatched(AnalyzePlanClampVoiceJob::class);
 
     ActivityDetail::factory()->for(Activity::factory()->for($user))->create([
         'start_date_local' => Carbon::today()->setHour(7),
     ]);
-    $this->requester->request($user, Carbon::today());
+    clampVoiceRequester()->request($user, Carbon::today());
     Bus::assertDispatchedTimes(AnalyzePlanClampVoiceJob::class, 1);
 });

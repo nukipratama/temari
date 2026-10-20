@@ -18,7 +18,7 @@ it('marks a row read and reports the remaining unread count', function (): void 
         ->assertOk()
         ->assertJson(['unread' => 1]);
 
-    expect($row->fresh()->read_at)->not->toBeNull();
+    expect($row->refresh()->read_at)->not->toBeNull();
 });
 
 it('404s on another user\'s row rather than confirming it exists', function (): void {
@@ -28,5 +28,5 @@ it('404s on another user\'s row rather than confirming it exists', function (): 
         ->postJson(route('api.notifications.read', $row->id))
         ->assertNotFound();
 
-    expect($row->fresh()->read_at)->toBeNull();
+    expect($row->refresh()->read_at)->toBeNull();
 });

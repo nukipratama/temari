@@ -37,11 +37,11 @@ it('persists the interval minutes that its reduced repetitions actually render',
     $session->update(['prescribed_hard_minutes' => 14, 'prescribed_pace_band' => 'interval', 'prescribed_pace_sec_per_km' => 240]);
     app(RestClampRecorder::class)->record($user, Carbon::today());
     $session->refresh();
-    $effective = EffectiveSession::of($session, $session->clamped_km);
-    $segments = SegmentGenerator::forPrescription($effective->sessionType, $session->phase, $effective->coreKm, null, $effective->qualityPrescription());
+    $effective = EffectiveSession::of($session, nonNull($session->clamped_km));
+    $segments = SegmentGenerator::forPrescription($effective->sessionType, $session->phase, $effective->coreKm, null, nonNull($effective->qualityPrescription()));
     $minutes = array_sum(array_map(static fn ($segment): float => $segment->paceLabel === PaceBand::Easy ? 0.0 : ($segment->minutes ?? 0.0), $segments));
 
-    expect($session->readiness_assessment['adjustment']['quality_dose']['hard_minutes'])->toBe(9)
+    expect(data_get($session->readiness_assessment, 'adjustment.quality_dose.hard_minutes'))->toBe(9)
         ->and($minutes)->toBe(9.0);
     Notification::assertSentTo($user, DayClampedNotification::class, static fn (DayClampedNotification $notification): bool => str_contains($notification->note, '9 hard minutes'));
 });
@@ -55,7 +55,7 @@ it('records a smaller quality dose and clears it when the demanding session ages
 
     expect(app(RestClampRecorder::class)->record($user, Carbon::today()))->toBeTrue();
     $session->refresh();
-    expect($session->readiness_assessment['adjustment']['quality_dose']['hard_minutes'])->toBe(15)
+    expect(data_get($session->readiness_assessment, 'adjustment.quality_dose.hard_minutes'))->toBe(15)
         ->and($session->prescribed_hard_minutes)->toBe(20)
         ->and($session->session_type)->toBe(SessionType::Tempo);
 
@@ -107,7 +107,7 @@ it('records the morning briefing clamp before the athlete runs', function (): vo
 
         $this->artisan('ai:daily-briefing')->assertSuccessful();
 
-        expect($session->fresh()->clamped_km)->not->toBeNull();
+        expect($session->refresh()->clamped_km)->not->toBeNull();
         Notification::assertSentToTimes($user, DayClampedNotification::class, 1);
     });
 });
@@ -122,8 +122,8 @@ it('records the eased distance on a downgrade that still asks for a run', functi
     $session = todaysSession($user);
 
     expect(app(RestClampRecorder::class)->record($user, Carbon::today()))->toBeTrue()
-        ->and($session->fresh()->clamped_km)->toBeFloat()
-        ->and($session->fresh()->clamped_km)->toBeGreaterThan(0.0);
+        ->and($session->refresh()->clamped_km)->toBeFloat()
+        ->and($session->refresh()->clamped_km)->toBeGreaterThan(0.0);
 });
 
 /** An easy day needs only the floor above rest, so nothing downgrades it. */
@@ -132,7 +132,7 @@ it('leaves a day whose session already fits under the ceiling alone', function (
     $session = todaysSession($user, 'easy');
 
     expect(app(RestClampRecorder::class)->record($user, Carbon::today()))->toBeFalse()
-        ->and($session->fresh()->clamped_km)->toBeNull();
+        ->and($session->refresh()->clamped_km)->toBeNull();
 });
 
 /**
@@ -165,7 +165,7 @@ it('records no eased target once the athlete has already run today', function ()
     // rate and moving time, so the ceiling lands on rest or easy_only run to
     // run. Either way the guarantee holds: a cap the athlete's own run caused
     // is never a target they were set.
-    expect($session->fresh()->clamped_km)->toBeNull();
+    expect($session->refresh()->clamped_km)->toBeNull();
 });
 
 it('records the eased distance at the week\'s own volume multiplier, the one the render shows', function (): void {
@@ -193,7 +193,7 @@ it('records the eased distance at the week\'s own volume multiplier, the one the
     )['core_km'] ?? null;
 
     expect($clampAt(1.3))->not->toBe($clampAt(1.0))
-        ->and($session->fresh()->clamped_km)->toBe($clampAt(1.3));
+        ->and($session->refresh()->clamped_km)->toBe($clampAt(1.3));
 });
 
 it('clears a current adjustment when readiness no longer calls for it', function (): void {
@@ -202,8 +202,8 @@ it('clears a current adjustment when readiness no longer calls for it', function
     $session->forceFill(['clamped_km' => 4.2])->save();
 
     expect(app(RestClampRecorder::class)->record($user, Carbon::today()))->toBeTrue()
-        ->and($session->fresh()->clamped_km)->toBeNull()
-        ->and($session->fresh()->readiness_assessment)->toBeNull();
+        ->and($session->refresh()->clamped_km)->toBeNull()
+        ->and($session->refresh()->readiness_assessment)->toBeNull();
 });
 
 it('never records against a pinned row', function (): void {
@@ -212,7 +212,7 @@ it('never records against a pinned row', function (): void {
     $session = todaysSession($user, pinned: true);
 
     expect(app(RestClampRecorder::class)->record($user, Carbon::today()))->toBeFalse()
-        ->and($session->fresh()->clamped_km)->toBeNull();
+        ->and($session->refresh()->clamped_km)->toBeNull();
 });
 
 it('does nothing for a user with no session today', function (): void {
@@ -229,7 +229,7 @@ it('scopes to the given user', function (): void {
     $session = todaysSession($other);
 
     expect(app(RestClampRecorder::class)->record($user, Carbon::today()))->toBeFalse()
-        ->and($session->fresh()->clamped_km)->toBeNull();
+        ->and($session->refresh()->clamped_km)->toBeNull();
 });
 
 /**
@@ -263,7 +263,7 @@ it('recomputes fresh training load instead of a pre-ingest cache entry', functio
     ]);
 
     expect(app(RestClampRecorder::class)->record($user, Carbon::today()))->toBeTrue()
-        ->and($session->fresh()->readiness_assessment['reasons'])->toContain('weekly_load_above_personal_range');
+        ->and(data_get($session->refresh()->readiness_assessment, 'reasons'))->toContain('weekly_load_above_personal_range');
 });
 
 it('tells the athlete when the day is eased, in the clamp note', function (): void {
@@ -303,8 +303,8 @@ it('records a pace ease on a Long day at a ModerateOk ceiling', function (): voi
     );
 
     expect(app(RestClampRecorder::class)->record($user, Carbon::today()))->toBeTrue()
-        ->and($session->fresh()->eased_pace_sec_per_km)->toBe($expectedPace)
-        ->and($session->fresh()->clamped_km)->toBeNull();
+        ->and($session->refresh()->eased_pace_sec_per_km)->toBe($expectedPace)
+        ->and($session->refresh()->clamped_km)->toBeNull();
 });
 
 it('records no pace ease with no VDOT estimate to size one from', function (): void {
@@ -313,7 +313,7 @@ it('records no pace ease with no VDOT estimate to size one from', function (): v
     $session = todaysSession($user, 'long');
 
     expect(app(RestClampRecorder::class)->record($user, Carbon::today()))->toBeFalse()
-        ->and($session->fresh()->eased_pace_sec_per_km)->toBeNull();
+        ->and($session->refresh()->eased_pace_sec_per_km)->toBeNull();
 });
 
 /** Mirrors the same ranToday trap the eased-distance branch guards against. */
@@ -334,7 +334,7 @@ it('records no pace ease once the athlete has already run today', function (): v
 
     app(RestClampRecorder::class)->record($user, Carbon::today());
 
-    expect($session->fresh()->eased_pace_sec_per_km)->toBeNull();
+    expect($session->refresh()->eased_pace_sec_per_km)->toBeNull();
 });
 
 it('recalculates a current pace ease from current readiness and fitness', function (): void {
@@ -345,8 +345,8 @@ it('recalculates a current pace ease from current readiness and fitness', functi
     $session->forceFill(['eased_pace_sec_per_km' => 400])->save();
 
     expect(app(RestClampRecorder::class)->record($user, Carbon::today()))->toBeTrue()
-        ->and($session->fresh()->eased_pace_sec_per_km)->toBe($expectedPace = app(TrainingPaceCalculator::class)->easySlowEndFromVdotResult(app(VdotEstimator::class)->estimate($user, Carbon::today())))
-        ->and($session->fresh()->readiness_assessment['reasons'])->toContain('demanding_session_within_24h');
+        ->and($session->refresh()->eased_pace_sec_per_km)->toBe($expectedPace = app(TrainingPaceCalculator::class)->easySlowEndFromVdotResult(app(VdotEstimator::class)->estimate($user, Carbon::today())))
+        ->and(data_get($session->refresh()->readiness_assessment, 'reasons'))->toContain('demanding_session_within_24h');
 });
 
 /** One lever per day: a day apply() already downgraded never also gets a pace ease. */
@@ -358,8 +358,8 @@ it('carries exactly one reduction — a downgraded day records no pace ease on t
 
     app(RestClampRecorder::class)->record($user, Carbon::today());
 
-    expect($downgraded->fresh()->clamped_km)->not->toBeNull()
-        ->and($downgraded->fresh()->eased_pace_sec_per_km)->toBeNull();
+    expect($downgraded->refresh()->clamped_km)->not->toBeNull()
+        ->and($downgraded->refresh()->eased_pace_sec_per_km)->toBeNull();
 });
 
 it('sends no notification for a pace-only ease', function (): void {
@@ -393,7 +393,7 @@ it('holds recording while recent training history awaits hydration', function ()
     unscoredLoadRunOn($user, Carbon::today()->subDays(41));
 
     expect(app(RestClampRecorder::class)->record($user, Carbon::today()))->toBeFalse()
-        ->and($session->fresh()->clamped_km)->toBeNull();
+        ->and($session->refresh()->clamped_km)->toBeNull();
 });
 
 it('resumes recording once the run it was held for has hydrated', function (): void {
@@ -404,7 +404,7 @@ it('resumes recording once the run it was held for has hydrated', function (): v
     $activity->update(['ingest_state' => IngestState::Detailed]);
 
     expect(app(RestClampRecorder::class)->record($user, Carbon::today()))->toBeTrue()
-        ->and($session->fresh()->clamped_km)->not->toBeNull();
+        ->and($session->refresh()->clamped_km)->not->toBeNull();
 });
 
 it('ignores an unscored run outside the trailing load window', function (): void {
@@ -414,5 +414,5 @@ it('ignores an unscored run outside the trailing load window', function (): void
     unscoredLoadRunOn($user, Carbon::today()->subDays(42));
 
     expect(app(RestClampRecorder::class)->record($user, Carbon::today()))->toBeTrue()
-        ->and($session->fresh()->clamped_km)->not->toBeNull();
+        ->and($session->refresh()->clamped_km)->not->toBeNull();
 });

@@ -60,6 +60,31 @@ describe('RaceGoalForm', () => {
         ).toBeInTheDocument();
     });
 
+    it('keeps an emptied duration field empty while typing and counts it as 0 on blur', () => {
+        render(
+            <RaceGoalForm
+                hasRace={false}
+                race={null}
+                projection={null}
+                onSaved={() => {}}
+            />,
+        );
+        const minutes = screen.getByLabelText('Minutes') as HTMLInputElement;
+
+        fireEvent.change(minutes, { target: { value: '' } });
+        expect(minutes.value).toBe('');
+        expect(
+            screen.getByText('goal time has to be at least 5 minutes.'),
+        ).toBeInTheDocument();
+
+        fireEvent.change(minutes, { target: { value: '4' } });
+        expect(minutes.value).toBe('4');
+
+        fireEvent.change(minutes, { target: { value: '' } });
+        fireEvent.blur(minutes);
+        expect(minutes.value).toBe('0');
+    });
+
     it('submits the form with distance in meters and goal time in seconds', () => {
         render(
             <RaceGoalForm

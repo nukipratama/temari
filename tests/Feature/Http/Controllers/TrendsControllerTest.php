@@ -17,6 +17,7 @@ use App\Services\AI\AnalysisType;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Inertia\Testing\AssertableInertia as Assert;
+use Tests\TestCase;
 
 uses(RefreshDatabase::class);
 
@@ -239,15 +240,15 @@ it('serves a fresh user an empty fitness trend, a pending 7d verdict, empty char
 
     RaceGoal::factory()->for($user)->create(['race_date' => Carbon::today()->addWeeks(10)->toDateString(), 'distance_m' => 10_000, 'goal_time_sec' => 3_000]);
 
-    $outlook = $this->actingAs($user)
+    $outlook = arrayOf($this->actingAs($user)
         ->get('/trends', inertiaPartialHeaders($this->actingAs($user), '/trends', 'Trends', 'raceOutlook'))
-        ->json('props.raceOutlook');
+        ->json('props.raceOutlook'));
     $raceAmbition = $this->actingAs($user)
         ->get('/race', inertiaPartialHeaders($this->actingAs($user), '/race', 'Race', 'race'))
         ->json('props.race.ambition');
 
-    expect($outlook['ambition']['state'])->toBe('unknown')
-        ->and($outlook['support']['dedicated_preparation'])->toBeTrue()
+    expect(arrayOf($outlook['ambition'])['state'])->toBe('unknown')
+        ->and(arrayOf($outlook['support'])['dedicated_preparation'])->toBeTrue()
         ->and($outlook['ambition'])->toBe($raceAmbition);
 });
 
@@ -262,7 +263,7 @@ function supportedSnapshot(User $user, ?RaceGoal $race, string $date, ?int $supp
     ]);
 }
 
-function supportedHistoryProp(mixed $test, User $user): mixed
+function supportedHistoryProp(TestCase $test, User $user): mixed
 {
     return $test->actingAs($user)
         ->get('/trends', inertiaPartialHeaders($test->actingAs($user), '/trends', 'Trends', 'supportedHistory'))
@@ -281,13 +282,14 @@ it('serves the current race\'s supported time over its season, labelling a step 
     supportedSnapshot($user, $race, '2026-08-06', 3_200, 10_000, '2026-08-05');
     supportedSnapshot($user, $race, '2026-08-07', null);
 
-    $history = supportedHistoryProp($this, $user);
+    $history = arrayOf(supportedHistoryProp($this, $user));
+    $points = arrayOf($history['points']);
 
     expect($history['target_time_sec'])->toBe(3_000)
-        ->and(array_column($history['points'], 'date'))->toBe(['2026-08-03', '2026-08-04', '2026-08-05', '2026-08-06'])
-        ->and(array_column($history['points'], 'supported_time_sec'))->toBe([3_300, 3_250, 3_200, 3_200])
-        ->and(array_column($history['points'], 'new_source'))->toBe([false, false, true, false])
-        ->and($history['points'][2]['source'])->toBe(['distance_m' => 10_000, 'date' => '2026-08-05']);
+        ->and(array_column($points, 'date'))->toBe(['2026-08-03', '2026-08-04', '2026-08-05', '2026-08-06'])
+        ->and(array_column($points, 'supported_time_sec'))->toBe([3_300, 3_250, 3_200, 3_200])
+        ->and(array_column($points, 'new_source'))->toBe([false, false, true, false])
+        ->and(arrayOf($points[2])['source'])->toBe(['distance_m' => 10_000, 'date' => '2026-08-05']);
 });
 
 it('plots only snapshots taken for the current race goal', function (): void {
@@ -300,9 +302,9 @@ it('plots only snapshots taken for the current race goal', function (): void {
     supportedSnapshot($user, $race, '2026-10-03', 3_300);
     supportedSnapshot($user, $race, '2026-10-04', 3_290);
 
-    $history = supportedHistoryProp($this, $user);
+    $history = arrayOf(supportedHistoryProp($this, $user));
 
-    expect(array_column($history['points'], 'date'))->toBe(['2026-10-03', '2026-10-04']);
+    expect(array_column(arrayOf($history['points']), 'date'))->toBe(['2026-10-03', '2026-10-04']);
 });
 
 it('serves no supported history', function (Closure $arrange): void {

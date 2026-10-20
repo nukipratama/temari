@@ -34,7 +34,10 @@ class RecentlyActiveUsers
      */
     public function ids(): array
     {
-        return array_values($this->query()->pluck('id')->map(fn (mixed $id): int => (int) $id)->all());
+        /** @var \Illuminate\Support\Collection<int, int|string> $ids */
+        $ids = $this->query()->pluck('id');
+
+        return array_values($ids->map(fn (int|string $id): int => (int) $id)->all());
     }
 
     public function includes(User $user): bool

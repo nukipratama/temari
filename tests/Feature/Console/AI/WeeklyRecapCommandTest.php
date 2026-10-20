@@ -55,8 +55,8 @@ it('excludes the demo user so it never auto-bills the weekly LLM', function (): 
         ->assertSuccessful();
 
     expect(array_column($captured, 'subjectId'))
-        ->toContain($realSnap->id)
-        ->not->toContain($demoSnap->id);
+        ->not->toContain($demoSnap->id)
+        ->toContain($realSnap->id);
 
     Carbon::setTestNow();
 });

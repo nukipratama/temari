@@ -40,6 +40,7 @@ enum AppConfigKey: string
         return 'app-config:'.$this->value;
     }
 
+    /** @return bool|int|string|null */
     public function default(): mixed
     {
         return match ($this) {
@@ -64,9 +65,13 @@ enum AppConfigKey: string
 
     /**
      * Coerce a raw stored/decoded value into this key's canonical PHP type.
+     *
+     * @return bool|int|string|null
      */
     public function cast(mixed $value): mixed
     {
+        assert(is_scalar($value) || $value === null);
+
         return match ($this) {
             self::AiEnabled, self::StravaEnabled, self::MaintenanceEnabled => (bool) $value,
             self::StravaBreakerThreshold,

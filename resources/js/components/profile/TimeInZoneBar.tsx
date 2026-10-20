@@ -10,8 +10,7 @@ export type TimeInZone = Partial<Record<HrZoneKey, number>>;
 
 /**
  * Where training time actually went: one segmented bar over Z1-Z5 and a dot
- * legend. On Profile it answers the last twelve weeks, in the slot the
- * behavioural persona mix used to occupy (decision P13); on a single run it
+ * legend. On Profile it answers the last twelve weeks; on a single run it
  * answers that run, which is why the caller names the span.
  *
  * `anchored` puts a `zone:*` citation target on each legend entry rather than

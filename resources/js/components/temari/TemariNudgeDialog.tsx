@@ -49,7 +49,7 @@ export default function TemariNudgeDialog({
             backdropProps={{
                 className: 'backdrop-reveal fixed inset-0 z-[51]',
                 style: {
-                    background: 'rgba(0,0,0,0.5)',
+                    background: 'var(--scrim)',
                     backdropFilter: 'blur(6px)',
                 },
             }}

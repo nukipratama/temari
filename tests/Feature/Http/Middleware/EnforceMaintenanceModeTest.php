@@ -58,10 +58,10 @@ it('lets the Pulse toggle switch maintenance off over HTTP while it is on', func
     preg_match_all('/wire:snapshot="([^"]+)"/', (string) $page->getContent(), $matches);
     $snapshot = collect($matches[1])
         ->map(fn (string $encoded): string => html_entity_decode($encoded))
-        ->first(fn (string $json): bool => json_decode($json, true)['memo']['name'] === 'pulse.system-control');
+        ->first(fn (string $json): bool => data_get(json_decode($json, true), 'memo.name') === 'pulse.system-control');
     expect($snapshot)->not->toBeNull();
 
-    $update = Route::getRoutes()->getByName('livewire.update');
+    $update = nonNull(Route::getRoutes()->getByName('livewire.update'));
     $this->postJson('/'.$update->uri(), ['components' => [[
         'snapshot' => $snapshot,
         'updates' => [],

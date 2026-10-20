@@ -41,18 +41,23 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
+use Mockery\MockInterface;
 
 uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
     Bus::fake();
-    $this->service = app(AnalysisService::class);
 });
+
+function analysisService(): AnalysisService
+{
+    return app(AnalysisService::class);
+}
 
 it('creates a pending row and queues a row job stamped unattributed on an undeclared first request', function (): void {
     $snap = WeeklySnapshot::factory()->create();
 
-    $row = $this->service->request(
+    $row = analysisService()->request(
         subjectOrType: WeeklySnapshot::class,
         subjectId: $snap->id,
         type: AnalysisType::WeeklyRecap,
@@ -69,7 +74,7 @@ it('stamps the dispatching entry point origin onto the job, so spend attributes 
     $snap = WeeklySnapshot::factory()->create();
     app(NarrationOrigin::class)->set(AnalysisOrigin::Scheduled);
 
-    $this->service->request(
+    analysisService()->request(
         subjectOrType: WeeklySnapshot::class,
         subjectId: $snap->id,
         type: AnalysisType::WeeklyRecap,
@@ -87,7 +92,7 @@ it('skips dispatch when status is already done (idempotent)', function (): void 
         'discriminator' => null,
     ]);
 
-    $result = $this->service->request(
+    $result = analysisService()->request(
         subjectOrType: WeeklySnapshot::class,
         subjectId: $snap->id,
         type: AnalysisType::WeeklyRecap,
@@ -107,7 +112,7 @@ it('invalidate=true flips a done row back to queued and re-dispatches', function
         'discriminator' => null,
     ]);
 
-    $this->service->request(
+    analysisService()->request(
         subjectOrType: WeeklySnapshot::class,
         subjectId: $snap->id,
         type: AnalysisType::WeeklyRecap,
@@ -115,7 +120,7 @@ it('invalidate=true flips a done row back to queued and re-dispatches', function
     );
 
     Bus::assertDispatched(AnalyzeWeeklyRecapJob::class);
-    expect(Analysis::query()->first()->status)->toBe(AnalysisStatus::Queued);
+    expect(nonNull(Analysis::query()->first())->status)->toBe(AnalysisStatus::Queued);
 });
 
 it('resets attempts to 0 on a user-initiated invalidation (row + group paths)', function (): void {
@@ -131,14 +136,14 @@ it('resets attempts to 0 on a user-initiated invalidation (row + group paths)', 
         'attempts' => 3,
     ]);
 
-    $this->service->request(
+    analysisService()->request(
         subjectOrType: WeeklySnapshot::class,
         subjectId: $snap->id,
         type: AnalysisType::WeeklyRecap,
         invalidate: true,
     );
 
-    expect(Analysis::query()->first()->attempts)->toBe(0);
+    expect(nonNull(Analysis::query()->first())->attempts)->toBe(0);
 
     // Group path (PostRunSpeech is grouped under AnalyzeActivityJob).
     $activity = Activity::factory()->create();
@@ -151,17 +156,17 @@ it('resets attempts to 0 on a user-initiated invalidation (row + group paths)', 
         'attempts' => 2,
     ]);
 
-    $this->service->request(
+    analysisService()->request(
         subjectOrType: Activity::class,
         subjectId: $activity->id,
         type: AnalysisType::PostRunSpeech,
         invalidate: true,
     );
 
-    $speechRow = Analysis::query()
+    $speechRow = nonNull(Analysis::query()
         ->where('subject_id', $activity->id)
         ->where('analysis_type', AnalysisType::PostRunSpeech)
-        ->first();
+        ->first());
     expect($speechRow->attempts)->toBe(0);
 });
 
@@ -177,14 +182,14 @@ it('keeps attempts on a system invalidation, so the self-heal budget is per row 
         'attempts' => 3,
     ]);
 
-    $this->service->request(
+    analysisService()->request(
         subjectOrType: WeeklySnapshot::class,
         subjectId: $snap->id,
         type: AnalysisType::WeeklyRecap,
         invalidate: true,
     );
 
-    expect(Analysis::query()->first()->attempts)->toBe(3);
+    expect(nonNull(Analysis::query()->first())->attempts)->toBe(3);
 
     $activity = Activity::factory()->create();
     ActivityDetail::factory()->for($activity)->create();
@@ -196,17 +201,17 @@ it('keeps attempts on a system invalidation, so the self-heal budget is per row 
         'attempts' => 2,
     ]);
 
-    $this->service->request(
+    analysisService()->request(
         subjectOrType: Activity::class,
         subjectId: $activity->id,
         type: AnalysisType::PostRunSpeech,
         invalidate: true,
     );
 
-    $speechRow = Analysis::query()
+    $speechRow = nonNull(Analysis::query()
         ->where('subject_id', $activity->id)
         ->where('analysis_type', AnalysisType::PostRunSpeech)
-        ->first();
+        ->first());
     expect($speechRow->attempts)->toBe(2)
         ->and($speechRow->status)->toBe(AnalysisStatus::Queued);
 });
@@ -232,14 +237,14 @@ it('enqueues one job when two dispatchers interleave over the same pending row',
         }
         $interleaved = true;
 
-        $this->service->request(
+        analysisService()->request(
             subjectOrType: WeeklySnapshot::class,
             subjectId: $snap->id,
             type: AnalysisType::WeeklyRecap,
         );
     });
 
-    $this->service->request(
+    analysisService()->request(
         subjectOrType: WeeklySnapshot::class,
         subjectId: $snap->id,
         type: AnalysisType::WeeklyRecap,
@@ -248,7 +253,7 @@ it('enqueues one job when two dispatchers interleave over the same pending row',
     expect($interleaved)->toBeTrue();
     Bus::assertDispatchedTimes(AnalyzeWeeklyRecapJob::class, 1);
 
-    $row = Analysis::query()->first();
+    $row = nonNull(Analysis::query()->first());
     expect($row->status)->toBe(AnalysisStatus::Queued);
 });
 
@@ -265,13 +270,13 @@ it('claims a row for dispatch only from pending or failed', function (): void {
             'status' => $status,
         ]);
 
-        $this->service->request(
+        analysisService()->request(
             subjectOrType: WeeklySnapshot::class,
             subjectId: $snap->id,
             type: AnalysisType::WeeklyRecap,
         );
 
-        expect(Analysis::query()->first()->status)->toBe($status);
+        expect(nonNull(Analysis::query()->first())->status)->toBe($status);
     }
 
     Bus::assertNotDispatched(AnalyzeWeeklyRecapJob::class);
@@ -286,28 +291,28 @@ it('re-dispatches when status is failed', function (): void {
         'discriminator' => null,
     ]);
 
-    $this->service->request(
+    analysisService()->request(
         subjectOrType: WeeklySnapshot::class,
         subjectId: $snap->id,
         type: AnalysisType::WeeklyRecap,
     );
 
     Bus::assertDispatched(AnalyzeWeeklyRecapJob::class);
-    $row = Analysis::query()->first();
+    $row = nonNull(Analysis::query()->first());
     expect($row->status)->toBe(AnalysisStatus::Queued)
         ->and($row->error)->toBeNull();
 });
 
 it('requestDeferred creates a Pending row, never dispatches, and leaves it untouched once Done', function (): void {
     $snap = WeeklySnapshot::factory()->create();
-    $row = $this->service->requestDeferred(WeeklySnapshot::class, $snap->id, AnalysisType::WeeklyRecap);
+    $row = analysisService()->requestDeferred(WeeklySnapshot::class, $snap->id, AnalysisType::WeeklyRecap);
 
     expect($row->status)->toBe(AnalysisStatus::Pending)
         ->and($row->queued_at)->toBeNull();
 
-    $this->service->markDone($row, 'last week recap', ServedBy::Llm);
+    analysisService()->markDone($row, 'last week recap', ServedBy::Llm);
 
-    $again = $this->service->requestDeferred(WeeklySnapshot::class, $snap->id, AnalysisType::WeeklyRecap);
+    $again = analysisService()->requestDeferred(WeeklySnapshot::class, $snap->id, AnalysisType::WeeklyRecap);
 
     expect($again->id)->toBe($row->id)
         ->and($again->status)->toBe(AnalysisStatus::Done)
@@ -318,7 +323,7 @@ it('requestDeferred creates a Pending row, never dispatches, and leaves it untou
 it('requestActivityGroupRuleBased fills all rows Done without dispatching', function (): void {
     $activity = Activity::factory()->create();
 
-    $this->service->requestActivityGroupRuleBased($activity);
+    analysisService()->requestActivityGroupRuleBased($activity);
 
     $rows = Analysis::query()->where('subject_id', $activity->id)->get();
     expect($rows)->toHaveCount(2)
@@ -340,15 +345,15 @@ it('requestActivityGroupRuleBased never overwrites an already-Done row with fill
         'discriminator' => null,
     ]);
 
-    $this->service->requestActivityGroupRuleBased($activity);
+    analysisService()->requestActivityGroupRuleBased($activity);
 
-    expect($realRow->fresh()->content)->toBe('original narration, already billed');
+    expect(nonNull($realRow->fresh())->content)->toBe('original narration, already billed');
 });
 
 it('requestActivityGroup creates its rows, dispatches one AnalyzeActivityJob, and collapses a repeat request to one NULL-discriminator row per type', function (): void {
     $activity = Activity::factory()->create();
 
-    $this->service->requestActivityGroup($activity);
+    analysisService()->requestActivityGroup($activity);
 
     $rows = Analysis::query()->where('subject_id', $activity->id)->get();
     expect($rows)->toHaveCount(2)
@@ -359,7 +364,7 @@ it('requestActivityGroup creates its rows, dispatches one AnalyzeActivityJob, an
     Bus::assertDispatched(fn (AnalyzeActivityJob $job): bool => $job->subjectId === $activity->id);
     Bus::assertDispatchedTimes(AnalyzeActivityJob::class, 1);
 
-    $this->service->requestActivityGroup($activity);
+    analysisService()->requestActivityGroup($activity);
 
     expect(Analysis::query()
         ->where('subject_type', Activity::class)
@@ -371,7 +376,7 @@ it('requestActivityGroup creates its rows, dispatches one AnalyzeActivityJob, an
 it('request() with any activity-group type routes to AnalyzeActivityJob (group)', function (): void {
     $activity = Activity::factory()->create();
 
-    $this->service->request(
+    analysisService()->request(
         subjectOrType: Activity::class,
         subjectId: $activity->id,
         type: AnalysisType::RunInsight,
@@ -384,12 +389,12 @@ it('request() with any activity-group type routes to AnalyzeActivityJob (group)'
 it('activity group debounces — sibling-type requests dispatch only one AnalyzeActivityJob', function (): void {
     $activity = Activity::factory()->create();
 
-    $this->service->request(
+    analysisService()->request(
         subjectOrType: Activity::class,
         subjectId: $activity->id,
         type: AnalysisType::PostRunSpeech,
     );
-    $this->service->request(
+    analysisService()->request(
         subjectOrType: Activity::class,
         subjectId: $activity->id,
         type: AnalysisType::RunInsight,
@@ -398,25 +403,25 @@ it('activity group debounces — sibling-type requests dispatch only one Analyze
     Bus::assertDispatchedTimes(AnalyzeActivityJob::class, 1);
     expect(Analysis::query()->where('subject_id', $activity->id)->pluck('generation_token')->unique())
         ->toHaveCount(1)
-        ->and(Analysis::query()->where('subject_id', $activity->id)->first()->generation_token)->not->toBeNull();
+        ->and(nonNull(Analysis::query()->where('subject_id', $activity->id)->first())->generation_token)->not->toBeNull();
 });
 
 it('does not claim a pending sibling when another group row is already active', function (): void {
     $activity = Activity::factory()->create();
-    $rows = $this->service->upsertGroupRows(
+    $rows = analysisService()->upsertGroupRows(
         Activity::class,
         $activity->id,
         null,
         AnalyzeActivityJob::groupedTypes(),
     );
     $token = 'active-generation';
-    $rows->first()->update([
+    nonNull($rows->first())->update([
         'status' => AnalysisStatus::Queued,
         'generation_token' => $token,
     ]);
     Bus::dispatch(new AnalyzeActivityJob($activity->id, null, $token));
 
-    $this->service->requestActivityGroup($activity);
+    analysisService()->requestActivityGroup($activity);
 
     Bus::assertDispatchedTimes(AnalyzeActivityJob::class, 1);
     expect(Analysis::query()->where('subject_id', $activity->id)->where('status', AnalysisStatus::Pending)->count())
@@ -425,15 +430,15 @@ it('does not claim a pending sibling when another group row is already active', 
 
 it('does not invalidate a completed sibling while another group row is active', function (): void {
     $activity = Activity::factory()->create();
-    $rows = $this->service->upsertGroupRows(
+    $rows = analysisService()->upsertGroupRows(
         Activity::class,
         $activity->id,
         null,
         AnalyzeActivityJob::groupedTypes(),
     );
     $token = 'active-generation';
-    $active = $rows->first();
-    $done = $rows->last();
+    $active = nonNull($rows->first());
+    $done = nonNull($rows->last());
     $active->update(['status' => AnalysisStatus::Queued, 'generation_token' => $token]);
     $done->update([
         'status' => AnalysisStatus::Done,
@@ -442,17 +447,17 @@ it('does not invalidate a completed sibling while another group row is active', 
     ]);
     Bus::dispatch(new AnalyzeActivityJob($activity->id, null, $token));
 
-    $this->service->requestActivityGroup($activity, invalidate: true);
+    analysisService()->requestActivityGroup($activity, invalidate: true);
 
     Bus::assertDispatchedTimes(AnalyzeActivityJob::class, 1);
-    expect($done->fresh()->status)->toBe(AnalysisStatus::Done)
-        ->and($done->fresh()->content)->toBe('completed sibling');
+    expect(nonNull($done->fresh())->status)->toBe(AnalysisStatus::Done)
+        ->and(nonNull($done->fresh())->content)->toBe('completed sibling');
 });
 
 it('requestProfileVoice creates the profile-voice row and dispatches one AnalyzeProfileVoiceJob', function (): void {
     $user = User::factory()->create();
 
-    $row = $this->service->requestProfileVoice($user, '2026-W20');
+    $row = analysisService()->requestProfileVoice($user, '2026-W20');
 
     expect($row->subject_type)->toBe(AnalysisType::ProfileVoice->subjectType())
         ->and($row->subject_id)->toBe($user->id)
@@ -467,14 +472,14 @@ it('holds an automatic profile voice Pending while the athlete is behind on stre
     $user = User::factory()->create();
     WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-17', 'runs' => 3]);
 
-    $held = $this->service->requestProfileVoice($user, '2026-W21');
+    $held = analysisService()->requestProfileVoice($user, '2026-W21');
 
     expect($held->status)->toBe(AnalysisStatus::Pending);
     Bus::assertNotDispatched(AnalyzeProfileVoiceJob::class);
 
     $user->forceFill(['streak_settled_through' => '2026-05-17'])->saveQuietly();
 
-    $this->service->requestProfileVoice($user, '2026-W21');
+    analysisService()->requestProfileVoice($user, '2026-W21');
 
     Bus::assertDispatched(fn (AnalyzeProfileVoiceJob $job): bool => $job->analysisId === $held->id);
     Carbon::setTestNow();
@@ -489,7 +494,7 @@ it('holds the profile voice of a dirty athlete too', function (): void {
         'streak_settlement_dirty_from' => '2026-05-10',
     ])->saveQuietly();
 
-    $this->service->requestProfileVoice($user, '2026-W21');
+    analysisService()->requestProfileVoice($user, '2026-W21');
 
     Bus::assertNotDispatched(AnalyzeProfileVoiceJob::class);
     Carbon::setTestNow();
@@ -500,7 +505,7 @@ it('lets the athlete\'s own Reread narrate the profile voice while settlement is
     $user = User::factory()->create();
     WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-17', 'runs' => 3]);
 
-    $row = $this->service->requestProfileVoice($user, '2026-W21', invalidate: true);
+    $row = analysisService()->requestProfileVoice($user, '2026-W21', invalidate: true);
 
     Bus::assertDispatched(fn (AnalyzeProfileVoiceJob $job): bool => $job->analysisId === $row->id);
     Carbon::setTestNow();
@@ -509,20 +514,20 @@ it('lets the athlete\'s own Reread narrate the profile voice while settlement is
 it('withoutDispatching suppresses dispatch but still creates Pending rows', function (): void {
     $activity = Activity::factory()->create();
 
-    $this->service->withoutDispatching(function () use ($activity): void {
-        $this->service->requestActivityGroup($activity);
+    analysisService()->withoutDispatching(function () use ($activity): void {
+        analysisService()->requestActivityGroup($activity);
     });
 
     expect(Analysis::query()->where('subject_id', $activity->id)->count())->toBe(2)
-        ->and(Analysis::query()->where('subject_id', $activity->id)->first()->status)->toBe(AnalysisStatus::Pending);
+        ->and(nonNull(Analysis::query()->where('subject_id', $activity->id)->first())->status)->toBe(AnalysisStatus::Pending);
     Bus::assertNotDispatched(AnalyzeActivityJob::class);
 });
 
 it('withoutDispatching restores prior suppression state on exit', function (): void {
     $snap = WeeklySnapshot::factory()->create();
 
-    $this->service->withoutDispatching(function () use ($snap): void {
-        $this->service->request(
+    analysisService()->withoutDispatching(function () use ($snap): void {
+        analysisService()->request(
             subjectOrType: WeeklySnapshot::class,
             subjectId: $snap->id,
             type: AnalysisType::WeeklyRecap,
@@ -532,7 +537,7 @@ it('withoutDispatching restores prior suppression state on exit', function (): v
 
     // After exit, dispatching works again.
     $snap2 = WeeklySnapshot::factory()->create();
-    $this->service->request(
+    analysisService()->request(
         subjectOrType: WeeklySnapshot::class,
         subjectId: $snap2->id,
         type: AnalysisType::WeeklyRecap,
@@ -544,7 +549,7 @@ it('does not dispatch when ai.auto_dispatch config is false', function (): void 
     config(['ai.auto_dispatch' => false]);
     $snap = WeeklySnapshot::factory()->create();
 
-    $row = $this->service->request(
+    $row = analysisService()->request(
         subjectOrType: WeeklySnapshot::class,
         subjectId: $snap->id,
         type: AnalysisType::WeeklyRecap,
@@ -559,7 +564,7 @@ it('serves rule-based content, marked as a capped rule-based fill, instead of di
     $snap = WeeklySnapshot::factory()->create(['runs' => 3, 'distance_km' => 21.0]);
     breachTheCeilingFor($snap->user_id);
 
-    $row = $this->service->request(
+    $row = analysisService()->request(
         subjectOrType: WeeklySnapshot::class,
         subjectId: $snap->id,
         type: AnalysisType::WeeklyRecap,
@@ -568,8 +573,8 @@ it('serves rule-based content, marked as a capped rule-based fill, instead of di
     expect($row->status)->toBe(AnalysisStatus::Done)
         ->and($row->content)->toBe(app(RuleBasedNarrationFiller::class)->fillFor($row))
         ->and($row->content)->toContain('21.0 km')
-        ->and($row->fresh()->served_by)->toBe(ServedBy::RuleBased)
-        ->and($row->fresh()->rule_based_reason)->toBe(AnalysisOrigin::Capped);
+        ->and(nonNull($row->fresh())->served_by)->toBe(ServedBy::RuleBased)
+        ->and(nonNull($row->fresh())->rule_based_reason)->toBe(AnalysisOrigin::Capped);
     Bus::assertNotDispatched(AnalyzeWeeklyRecapJob::class);
 });
 
@@ -577,7 +582,7 @@ it('leaves the row Pending when the kill switch, not the budget, stopped generat
     app(AppConfig::class)->set(AppConfigKey::AiEnabled, false);
 
     $snap = WeeklySnapshot::factory()->create();
-    $row = $this->service->request(
+    $row = analysisService()->request(
         subjectOrType: WeeklySnapshot::class,
         subjectId: $snap->id,
         type: AnalysisType::WeeklyRecap,
@@ -585,7 +590,7 @@ it('leaves the row Pending when the kill switch, not the budget, stopped generat
 
     expect($row->status)->toBe(AnalysisStatus::Pending)
         ->and($row->content)->toBeNull()
-        ->and($this->service->costCeilingDegraded())->toBeFalse();
+        ->and(analysisService()->costCeilingDegraded())->toBeFalse();
     Bus::assertNotDispatched(AnalyzeWeeklyRecapJob::class);
 });
 
@@ -593,7 +598,7 @@ it('does not dispatch, and leaves the row Pending rather than degraded, when Azu
     config(['azure_openai.uri' => '', 'azure_openai.api_key' => '']);
 
     $snap = WeeklySnapshot::factory()->create();
-    $row = $this->service->request(
+    $row = analysisService()->request(
         subjectOrType: WeeklySnapshot::class,
         subjectId: $snap->id,
         type: AnalysisType::WeeklyRecap,
@@ -601,7 +606,7 @@ it('does not dispatch, and leaves the row Pending rather than degraded, when Azu
 
     expect($row->status)->toBe(AnalysisStatus::Pending)
         ->and($row->content)->toBeNull()
-        ->and($this->service->costCeilingDegraded())->toBeFalse();
+        ->and(analysisService()->costCeilingDegraded())->toBeFalse();
     Bus::assertNotDispatched(AnalyzeWeeklyRecapJob::class);
 });
 
@@ -610,12 +615,12 @@ it('degrades only the athlete who spent, and leaves everyone else billing normal
     $bystander = WeeklySnapshot::factory()->create();
     breachTheCeilingFor($heavy->user_id);
 
-    $heavyRow = $this->service->request(
+    $heavyRow = analysisService()->request(
         subjectOrType: WeeklySnapshot::class,
         subjectId: $heavy->id,
         type: AnalysisType::WeeklyRecap,
     );
-    $bystanderRow = $this->service->request(
+    $bystanderRow = analysisService()->request(
         subjectOrType: WeeklySnapshot::class,
         subjectId: $bystander->id,
         type: AnalysisType::WeeklyRecap,
@@ -625,8 +630,8 @@ it('degrades only the athlete who spent, and leaves everyone else billing normal
     // heaviest athlete of the day silently degrade everyone else's narration.
     expect($heavyRow->status)->toBe(AnalysisStatus::Done)
         ->and($bystanderRow->status)->toBe(AnalysisStatus::Queued)
-        ->and($this->service->costCeilingDegraded($heavy->user_id))->toBeTrue()
-        ->and($this->service->costCeilingDegraded($bystander->user_id))->toBeFalse();
+        ->and(analysisService()->costCeilingDegraded($heavy->user_id))->toBeTrue()
+        ->and(analysisService()->costCeilingDegraded($bystander->user_id))->toBeFalse();
     Bus::assertDispatchedTimes(AnalyzeWeeklyRecapJob::class, 1);
 });
 
@@ -639,14 +644,14 @@ it('leaves the row Pending when a breached budget sits behind a tripped config b
         $breaker->recordFailure();
     }
 
-    $row = $this->service->request(
+    $row = analysisService()->request(
         subjectOrType: WeeklySnapshot::class,
         subjectId: $snap->id,
         type: AnalysisType::WeeklyRecap,
     );
 
     expect($row->status)->toBe(AnalysisStatus::Pending)
-        ->and($this->service->costCeilingDegraded())->toBeFalse();
+        ->and(analysisService()->costCeilingDegraded())->toBeFalse();
 });
 
 it('degrades every row of a group, and never overwrites one already billed for', function (): void {
@@ -660,15 +665,15 @@ it('degrades every row of a group, and never overwrites one already billed for',
     ]);
     breachTheCeilingFor($activity->user_id);
 
-    $this->service->requestActivityGroup($activity);
+    analysisService()->requestActivityGroup($activity);
 
     $rows = Analysis::query()->where('subject_id', $activity->id)->get();
     expect($rows->pluck('status')->unique()->all())->toBe([AnalysisStatus::Done])
-        ->and($rows->firstWhere('analysis_type', AnalysisType::RunInsight)->content)
+        ->and(nonNull($rows->firstWhere('analysis_type', AnalysisType::RunInsight))->content)
         ->toBe('original narration, already billed')
-        ->and($rows->firstWhere('analysis_type', AnalysisType::PostRunSpeech)->content)
+        ->and(nonNull($rows->firstWhere('analysis_type', AnalysisType::PostRunSpeech))->content)
         ->toBe(app(RuleBasedNarrationFiller::class)->fillFor(
-            $rows->firstWhere('analysis_type', AnalysisType::PostRunSpeech),
+            nonNull($rows->firstWhere('analysis_type', AnalysisType::PostRunSpeech)),
         ));
     Bus::assertNotDispatched(AnalyzeActivityJob::class);
 });
@@ -684,7 +689,7 @@ it('leaves a Failed row Failed past the ceiling while its Pending sibling degrad
     ]);
     breachTheCeilingFor($activity->user_id);
 
-    $this->service->requestActivityGroup($activity);
+    analysisService()->requestActivityGroup($activity);
 
     $rows = Analysis::query()
         ->where('subject_id', $activity->id)
@@ -694,12 +699,12 @@ it('leaves a Failed row Failed past the ceiling while its Pending sibling degrad
     // The broken block keeps its fault (and its dead-letter visibility); the
     // untouched sibling still gets content, so this is an exclusion, not a
     // whole-group opt-out.
-    expect($rows['run_insight']->status)->toBe(AnalysisStatus::Failed)
-        ->and($rows['run_insight']->error)->toBe('narator meledak')
-        ->and($rows['run_insight']->content)->toBeNull()
-        ->and($rows['post_run_speech']->status)->toBe(AnalysisStatus::Done)
-        ->and($rows['post_run_speech']->content)->toBe(
-            app(RuleBasedNarrationFiller::class)->fillFor($rows['post_run_speech']),
+    expect(nonNull($rows['run_insight'])->status)->toBe(AnalysisStatus::Failed)
+        ->and(nonNull($rows['run_insight'])->error)->toBe('narator meledak')
+        ->and(nonNull($rows['run_insight'])->content)->toBeNull()
+        ->and(nonNull($rows['post_run_speech'])->status)->toBe(AnalysisStatus::Done)
+        ->and(nonNull($rows['post_run_speech'])->content)->toBe(
+            app(RuleBasedNarrationFiller::class)->fillFor(nonNull($rows['post_run_speech'])),
         );
     expect(app(CostCeilingLedger::class)->today()['degradedFills'])->toBe(1);
 });
@@ -709,16 +714,17 @@ it('records the trip time and the degraded-fill count for /devtools/narration', 
 
     foreach (WeeklySnapshot::factory()->count(2)->create() as $snap) {
         breachTheCeilingFor($snap->user_id);
-        $this->service->request(
+        analysisService()->request(
             subjectOrType: WeeklySnapshot::class,
             subjectId: $snap->id,
             type: AnalysisType::WeeklyRecap,
         );
     }
 
-    expect(app(CostCeilingLedger::class)->today())
-        ->trippedAt->toBe(Carbon::now()->toIso8601String())
-        ->degradedFills->toBe(2);
+    $today = app(CostCeilingLedger::class)->today();
+
+    expect($today['trippedAt'])->toBe(Carbon::now()->toIso8601String())
+        ->and($today['degradedFills'])->toBe(2);
 });
 
 it('keeps dispatching while app-wide spend is still under the total ceiling', function (): void {
@@ -726,14 +732,14 @@ it('keeps dispatching while app-wide spend is still under the total ceiling', fu
     breachTheTotalCeilingWith($snap->user_id);
     config(['azure_openai.daily_cost_ceiling_total' => 10.0]);
 
-    $row = $this->service->request(
+    $row = analysisService()->request(
         subjectOrType: WeeklySnapshot::class,
         subjectId: $snap->id,
         type: AnalysisType::WeeklyRecap,
     );
 
     expect($row->status)->toBe(AnalysisStatus::Queued)
-        ->and($this->service->costCeilingDegraded($snap->user_id))->toBeFalse();
+        ->and(analysisService()->costCeilingDegraded($snap->user_id))->toBeFalse();
     Bus::assertDispatched(AnalyzeWeeklyRecapJob::class);
 });
 
@@ -742,7 +748,7 @@ it('degrades an athlete who has spent nothing once the app-wide ceiling is passe
     $bystander = WeeklySnapshot::factory()->create();
     breachTheTotalCeilingWith($heavy->user_id);
 
-    $bystanderRow = $this->service->request(
+    $bystanderRow = analysisService()->request(
         subjectOrType: WeeklySnapshot::class,
         subjectId: $bystander->id,
         type: AnalysisType::WeeklyRecap,
@@ -754,7 +760,7 @@ it('degrades an athlete who has spent nothing once the app-wide ceiling is passe
         ->and($bystanderRow->content)->toBe(
             app(RuleBasedNarrationFiller::class)->fillFor($bystanderRow),
         )
-        ->and($this->service->costCeilingDegraded($bystander->user_id))->toBeTrue();
+        ->and(analysisService()->costCeilingDegraded($bystander->user_id))->toBeTrue();
     Bus::assertNotDispatched(AnalyzeWeeklyRecapJob::class);
 });
 
@@ -768,7 +774,7 @@ it('leaves a Failed row Failed once the app-wide ceiling is passed', function ()
     ]);
     breachTheTotalCeilingWith($snap->user_id);
 
-    $this->service->request(
+    analysisService()->request(
         subjectOrType: WeeklySnapshot::class,
         subjectId: $snap->id,
         type: AnalysisType::WeeklyRecap,
@@ -780,6 +786,7 @@ it('leaves a Failed row Failed once the app-wide ceiling is passed', function ()
 });
 
 it('pushes one maintainer alert naming the spend, the ceiling and the athletes degraded', function (): void {
+    /** @var MaintainerAlerter&MockInterface $alerter */
     $alerter = Mockery::mock(MaintainerAlerter::class);
     $this->app->instance(MaintainerAlerter::class, $alerter);
     $this->app->forgetInstance(AnalysisService::class);
@@ -803,6 +810,7 @@ it('pushes one maintainer alert naming the spend, the ceiling and the athletes d
 });
 
 it('pushes a maintainer alert when an athlete passes their own slice', function (): void {
+    /** @var MaintainerAlerter&MockInterface $alerter */
     $alerter = Mockery::mock(MaintainerAlerter::class);
     $this->app->instance(MaintainerAlerter::class, $alerter);
     $this->app->forgetInstance(AnalysisService::class);
@@ -825,6 +833,7 @@ it('pushes a maintainer alert when an athlete passes their own slice', function 
 // The alerter owns the 80% threshold and the dedupe; the ceiling check only
 // hands it today's spend while there is still headroom.
 it('offers today\'s spend to the early-warning alert while under the app-wide ceiling', function (): void {
+    /** @var MaintainerAlerter&MockInterface $alerter */
     $alerter = Mockery::mock(MaintainerAlerter::class);
     $this->app->instance(MaintainerAlerter::class, $alerter);
     $this->app->forgetInstance(AnalysisService::class);
@@ -850,15 +859,15 @@ it('does not degrade a staged row under withoutDispatching', function (): void {
     $snap = WeeklySnapshot::factory()->create();
     breachTheCeilingFor($snap->user_id);
 
-    $this->service->withoutDispatching(function () use ($snap): void {
-        $row = $this->service->request(
+    analysisService()->withoutDispatching(function () use ($snap): void {
+        $row = analysisService()->request(
             subjectOrType: WeeklySnapshot::class,
             subjectId: $snap->id,
             type: AnalysisType::WeeklyRecap,
         );
 
         expect($row->status)->toBe(AnalysisStatus::Pending)
-            ->and($this->service->costCeilingDegraded($snap->user_id))->toBeFalse();
+            ->and(analysisService()->costCeilingDegraded($snap->user_id))->toBeFalse();
     });
 });
 
@@ -872,7 +881,7 @@ it('still dispatches when today\'s LLM cost is under the daily ceiling', functio
     ]);
 
     $snap = WeeklySnapshot::factory()->create();
-    $this->service->request(
+    analysisService()->request(
         subjectOrType: WeeklySnapshot::class,
         subjectId: $snap->id,
         type: AnalysisType::WeeklyRecap,
@@ -892,7 +901,7 @@ it('keeps existing prose when a capped "Reread" regenerate is a no-op', function
         'content' => 'narasi LLM asli',
     ]);
 
-    $row = $this->service->request(
+    $row = analysisService()->request(
         subjectOrType: WeeklySnapshot::class,
         subjectId: $snap->id,
         type: AnalysisType::WeeklyRecap,
@@ -908,7 +917,7 @@ it('applies delaySeconds when dispatching (row)', function (): void {
     Carbon::setTestNow('2026-05-18 12:00:00');
     $snap = WeeklySnapshot::factory()->create();
 
-    $this->service->request(
+    analysisService()->request(
         subjectOrType: WeeklySnapshot::class,
         subjectId: $snap->id,
         type: AnalysisType::WeeklyRecap,
@@ -927,9 +936,9 @@ it('markDone records content and generated_at', function (): void {
         'discriminator' => '2026-05-18',
     ]);
 
-    $this->service->markDone($row, 'final narrative', ServedBy::Llm);
+    analysisService()->markDone($row, 'final narrative', ServedBy::Llm);
 
-    $fresh = $row->fresh();
+    $fresh = nonNull($row->fresh());
     expect($fresh->status)->toBe(AnalysisStatus::Done)
         ->and($fresh->content)->toBe('final narrative')
         ->and($fresh->generated_at)->not->toBeNull()
@@ -950,11 +959,11 @@ it('markDone stores a content fingerprint when given, and leaves it null otherwi
         'discriminator' => '2026-05-18',
     ]);
 
-    $this->service->markDone($withFingerprint, 'story', ServedBy::Llm, fingerprint: 'abc123');
-    $this->service->markDone($without, 'headline', ServedBy::Llm);
+    analysisService()->markDone($withFingerprint, 'story', ServedBy::Llm, fingerprint: 'abc123');
+    analysisService()->markDone($without, 'headline', ServedBy::Llm);
 
-    expect($withFingerprint->fresh()->content_fingerprint)->toBe('abc123')
-        ->and($without->fresh()->content_fingerprint)->toBeNull();
+    expect(nonNull($withFingerprint->fresh())->content_fingerprint)->toBe('abc123')
+        ->and(nonNull($without->fresh())->content_fingerprint)->toBeNull();
 });
 
 it('markDone uses supplied generatedAt when given', function (): void {
@@ -966,10 +975,10 @@ it('markDone uses supplied generatedAt when given', function (): void {
     ]);
 
     $past = Carbon::now()->subHours(2);
-    $this->service->markDone($row, 'demo content', ServedBy::Llm, $past);
+    analysisService()->markDone($row, 'demo content', ServedBy::Llm, $past);
 
-    $fresh = $row->fresh();
-    expect($fresh->generated_at->toIso8601String())->toBe($past->toIso8601String());
+    $fresh = nonNull($row->fresh());
+    expect(nonNull($fresh->generated_at)->toIso8601String())->toBe($past->toIso8601String());
 });
 
 it('markFailed records error message without clearing prior content', function (): void {
@@ -980,15 +989,16 @@ it('markFailed records error message without clearing prior content', function (
         'discriminator' => '2026-05-18',
     ]);
 
-    $this->service->markFailed($row, 'Azure 500');
+    analysisService()->markFailed($row, 'Azure 500');
 
-    $fresh = $row->fresh();
+    $fresh = nonNull($row->fresh());
     expect($fresh->status)->toBe(AnalysisStatus::Failed)
         ->and($fresh->error)->toBe('Azure 500')
         ->and($fresh->content)->toBe('prior content');
 });
 
 it('markFailed alerts maintainers exactly at the dead-letter crossing', function (): void {
+    /** @var MaintainerAlerter&MockInterface $alerter */
     $alerter = Mockery::mock(MaintainerAlerter::class);
     $this->app->instance(MaintainerAlerter::class, $alerter);
     $this->app->forgetInstance(AnalysisService::class);
@@ -1008,6 +1018,7 @@ it('markFailed alerts maintainers exactly at the dead-letter crossing', function
 });
 
 it('markFailed does not alert while a Failed row is still under the retry budget', function (): void {
+    /** @var MaintainerAlerter&MockInterface $alerter */
     $alerter = Mockery::mock(MaintainerAlerter::class);
     $this->app->instance(MaintainerAlerter::class, $alerter);
     $this->app->forgetInstance(AnalysisService::class);
@@ -1036,11 +1047,11 @@ it('increments attempts atomically from a stale row model', function (): void {
     ]);
 
     $stale = $row->fresh();
-    $this->service->markProcessing($row);
-    expect($this->service->markProcessing($stale))->toBeFalse()
-        ->and($this->service->markProcessing($stale, allowProcessing: true))->toBeTrue();
+    analysisService()->markProcessing($row);
+    expect(analysisService()->markProcessing(nonNull($stale)))->toBeFalse()
+        ->and(analysisService()->markProcessing(nonNull($stale), allowProcessing: true))->toBeTrue();
 
-    $fresh = $row->fresh();
+    $fresh = nonNull($row->fresh());
     expect($fresh->status)->toBe(AnalysisStatus::Processing)
         ->and($fresh->attempts)->toBe(2);
 });
@@ -1054,17 +1065,17 @@ it('keeps the attempt when a processing row is reset for recovery', function ():
         'attempts' => 0,
     ]);
 
-    $this->service->markProcessing($row);
-    $this->service->revertToPending($row);
+    analysisService()->markProcessing($row);
+    analysisService()->revertToPending($row);
 
-    expect($row->fresh()->status)->toBe(AnalysisStatus::Pending)
+    expect(nonNull($row->fresh())->status)->toBe(AnalysisStatus::Pending)
         ->and($row->attempts)->toBe(1);
 });
 
 it('accepts a Model instance as the subject', function (): void {
     $detail = ActivityDetail::factory()->for(Activity::factory())->create();
 
-    $this->service->request(
+    analysisService()->request(
         subjectOrType: $detail->activity,
         subjectId: $detail->activity_id,
         type: AnalysisType::RunInsight,
@@ -1076,7 +1087,7 @@ it('accepts a Model instance as the subject', function (): void {
 it('requestBriefing creates the suggestion row, dispatches one AnalyzeBriefingMascotVoiceJob, and mints no duplicate when re-requested', function (): void {
     $user = User::factory()->create();
 
-    $this->service->requestBriefing($user, '2026-05-18');
+    analysisService()->requestBriefing($user, '2026-05-18');
 
     // Mascot voice and featured-card voice are dispatched by their own callers.
     expect(Analysis::query()->where('subject_id', $user->id)->where('discriminator', '2026-05-18')->count())->toBe(1);
@@ -1090,7 +1101,7 @@ it('requestBriefing creates the suggestion row, dispatches one AnalyzeBriefingMa
 
     Bus::assertDispatched(fn (AnalyzeBriefingMascotVoiceJob $job): bool => $job->analysisId === $row->id);
 
-    $this->service->requestBriefing($user, '2026-05-18');
+    analysisService()->requestBriefing($user, '2026-05-18');
 
     expect(Analysis::query()
         ->where('subject_type', AnalysisType::BRIEFING_SUBJECT_TYPE)
@@ -1103,7 +1114,7 @@ it('generates no briefing for a skipped day, staging no row and leaving a narrat
     $user = User::factory()->create();
     PlannedSession::factory()->for($user)->create(['date' => '2026-05-18', 'skipped' => true]);
 
-    $staged = $this->service->requestBriefing($user, '2026-05-18');
+    $staged = analysisService()->requestBriefing($user, '2026-05-18');
 
     expect($staged->exists)->toBeFalse()
         ->and(Analysis::query()->where('subject_id', $user->id)->exists())->toBeFalse();
@@ -1117,11 +1128,11 @@ it('generates no briefing for a skipped day, staging no row and leaving a narrat
         'content' => 'easy run, 2.6 km.',
     ]);
 
-    $this->service->requestBriefing($user, '2026-05-18', invalidate: true);
-    $this->service->request(AnalysisType::BRIEFING_SUBJECT_TYPE, $user->id, AnalysisType::BriefingMascotVoice, '2026-05-18', invalidate: true);
+    analysisService()->requestBriefing($user, '2026-05-18', invalidate: true);
+    analysisService()->request(AnalysisType::BRIEFING_SUBJECT_TYPE, $user->id, AnalysisType::BriefingMascotVoice, '2026-05-18', invalidate: true);
 
     Bus::assertNotDispatched(AnalyzeBriefingMascotVoiceJob::class);
-    expect($narrated->fresh()->only(['status', 'content']))->toBe(['status' => AnalysisStatus::Done, 'content' => 'easy run, 2.6 km.']);
+    expect(nonNull($narrated->fresh())->only(['status', 'content']))->toBe(['status' => AnalysisStatus::Done, 'content' => 'easy run, 2.6 km.']);
 });
 
 it('briefs a day whose session is not skipped while another day is', function (): void {
@@ -1129,7 +1140,7 @@ it('briefs a day whose session is not skipped while another day is', function ()
     PlannedSession::factory()->for($user)->create(['date' => '2026-05-19', 'skipped' => true]);
     PlannedSession::factory()->for($user)->create(['date' => '2026-05-18']);
 
-    $this->service->requestBriefing($user, '2026-05-18');
+    analysisService()->requestBriefing($user, '2026-05-18');
 
     Bus::assertDispatchedTimes(AnalyzeBriefingMascotVoiceJob::class, 1);
 });
@@ -1165,12 +1176,12 @@ it('rejects a duplicate row with a NULL discriminator at the DB level', function
 it('upsertRow with a NULL discriminator collapses concurrent calls to exactly one row', function (): void {
     $snap = WeeklySnapshot::factory()->create();
 
-    $first = $this->service->request(
+    $first = analysisService()->request(
         subjectOrType: WeeklySnapshot::class,
         subjectId: $snap->id,
         type: AnalysisType::WeeklyRecap,
     );
-    $second = $this->service->request(
+    $second = analysisService()->request(
         subjectOrType: WeeklySnapshot::class,
         subjectId: $snap->id,
         type: AnalysisType::WeeklyRecap,
@@ -1194,23 +1205,23 @@ it('upsertGroupRows leaves pre-existing rows unflagged and flags only the newly 
         'discriminator' => null,
     ]);
 
-    $rows = $this->service->upsertGroupRows(
+    $rows = analysisService()->upsertGroupRows(
         Activity::class,
         $activity->id,
         null,
         AnalyzeActivityJob::groupedTypes(),
     );
 
-    expect($rows->get(AnalysisType::PostRunSpeech->value)->wasRecentlyCreated)->toBeFalse()
-        ->and($rows->get(AnalysisType::RunInsight->value)->wasRecentlyCreated)->toBeTrue()
+    expect(nonNull($rows->get(AnalysisType::PostRunSpeech->value))->wasRecentlyCreated)->toBeFalse()
+        ->and(nonNull($rows->get(AnalysisType::RunInsight->value))->wasRecentlyCreated)->toBeTrue()
         ->and($rows->filter(fn (Analysis $row): bool => $row->wasRecentlyCreated))->toHaveCount(1);
 });
 
 it('upsertGroupRows flags nothing when every row already exists', function (): void {
     $activity = Activity::factory()->create();
-    $this->service->requestActivityGroup($activity);
+    analysisService()->requestActivityGroup($activity);
 
-    $rows = $this->service->upsertGroupRows(
+    $rows = analysisService()->upsertGroupRows(
         Activity::class,
         $activity->id,
         null,
@@ -1238,7 +1249,7 @@ it('marks only rows inserted by this caller as recently created when an insert r
         ]);
     });
 
-    $rows = $this->service->upsertGroupRows(
+    $rows = analysisService()->upsertGroupRows(
         Activity::class,
         $activity->id,
         null,
@@ -1246,15 +1257,15 @@ it('marks only rows inserted by this caller as recently created when an insert r
     );
 
     expect($insertedByRacer)->toBeTrue()
-        ->and($rows->get(AnalysisType::PostRunSpeech->value)->wasRecentlyCreated)->toBeTrue()
-        ->and($rows->get(AnalysisType::RunInsight->value)->wasRecentlyCreated)->toBeFalse();
+        ->and(nonNull($rows->get(AnalysisType::PostRunSpeech->value))->wasRecentlyCreated)->toBeTrue()
+        ->and(nonNull($rows->get(AnalysisType::RunInsight->value))->wasRecentlyCreated)->toBeFalse();
 });
 
 it('upsertGroupRows flags the rows it created, which stay Pending until the whole group is claimed', function (): void {
     Carbon::setTestNow('2026-05-18 07:10:59');
     $activity = Activity::factory()->create();
 
-    $rows = $this->service->upsertGroupRows(
+    $rows = analysisService()->upsertGroupRows(
         Activity::class,
         $activity->id,
         null,
@@ -1268,13 +1279,13 @@ it('upsertGroupRows flags the rows it created, which stay Pending until the whol
             array_map(fn (AnalysisType $type): string => $type->value, AnalyzeActivityJob::groupedTypes()),
         );
 
-    $row = $rows->get(AnalysisType::PostRunSpeech->value);
+    $row = nonNull($rows->get(AnalysisType::PostRunSpeech->value));
 
     expect($row->status)->toBe(AnalysisStatus::Pending)
         ->and($row->queued_at)->toBeNull()
         ->and($row->generation_token)->toBeNull()
-        ->and($row->created_at?->toDateTimeString())->toBe('2026-05-18 07:10:59')
-        ->and($row->updated_at?->toDateTimeString())->toBe('2026-05-18 07:10:59')
+        ->and($row->created_at->toDateTimeString())->toBe('2026-05-18 07:10:59')
+        ->and($row->updated_at->toDateTimeString())->toBe('2026-05-18 07:10:59')
         ->and($row->attempts)->toBe(0);
 
     Carbon::setTestNow();
@@ -1283,8 +1294,8 @@ it('upsertGroupRows flags the rows it created, which stay Pending until the whol
 it('inserted group rows rest Pending with no queued_at while dispatch is suppressed', function (): void {
     $activity = Activity::factory()->create();
 
-    $this->service->withoutDispatching(function () use ($activity): void {
-        $rows = $this->service->upsertGroupRows(
+    analysisService()->withoutDispatching(function () use ($activity): void {
+        $rows = analysisService()->upsertGroupRows(
             Activity::class,
             $activity->id,
             null,
@@ -1298,21 +1309,21 @@ it('inserted group rows rest Pending with no queued_at while dispatch is suppres
 
 it('a second dispatchGroup on a fully Done group does not re-dispatch', function (): void {
     $activity = Activity::factory()->create();
-    $this->service->requestActivityGroup($activity);
+    analysisService()->requestActivityGroup($activity);
     Analysis::query()->where('subject_id', $activity->id)->update([
         'status' => AnalysisStatus::Done->value,
         'content' => 'done.',
     ]);
     Bus::fake();
 
-    $this->service->requestActivityGroup($activity);
+    analysisService()->requestActivityGroup($activity);
 
     Bus::assertNotDispatched(AnalyzeActivityJob::class);
 });
 
 it('does not let a finishing job overwrite a newer group generation', function (): void {
     $activity = Activity::factory()->create();
-    $this->service->requestActivityGroup($activity);
+    analysisService()->requestActivityGroup($activity);
     $stale = Analysis::query()->where('subject_id', $activity->id)->firstOrFail();
     $oldToken = $stale->generation_token;
 
@@ -1321,19 +1332,19 @@ it('does not let a finishing job overwrite a newer group generation', function (
         'content' => 'previous generation',
     ]);
 
-    $this->service->requestActivityGroup($activity, invalidate: true);
+    analysisService()->requestActivityGroup($activity, invalidate: true);
 
     $fresh = Analysis::query()->whereKey($stale->id)->firstOrFail();
     expect($oldToken)->not->toBeNull()
         ->and($fresh->generation_token)->not->toBe($oldToken)
         ->and($fresh->status)->toBe(AnalysisStatus::Queued)
-        ->and($this->service->markDone(
+        ->and(analysisService()->markDone(
             $stale,
             'late previous generation',
             ServedBy::Llm,
             generationToken: $oldToken,
         ))->toBeFalse()
-        ->and($fresh->fresh()->content)->toBe('previous generation');
+        ->and(nonNull($fresh->fresh())->content)->toBe('previous generation');
 });
 
 it('markDone fans out a notification for a notifiable, wired type', function (): void {
@@ -1350,7 +1361,7 @@ it('markDone fans out a notification for a notifiable, wired type', function ():
         'discriminator' => null,
     ]);
 
-    $this->service->markDone($row, 'Run story.', ServedBy::Llm);
+    analysisService()->markDone($row, 'Run story.', ServedBy::Llm);
 
     Notification::assertSentTo(
         $user,
@@ -1374,7 +1385,7 @@ it('markDone sends no notification for a narration requested on the athlete retu
     ]);
     app(NarrationOrigin::class)->set(AnalysisOrigin::Return);
 
-    $this->service->markDone($row, 'Run story.', ServedBy::Llm);
+    analysisService()->markDone($row, 'Run story.', ServedBy::Llm);
 
     Notification::assertNothingSent();
 });
@@ -1396,10 +1407,10 @@ it('markDone marks the row early and skips the notification during a fresh conne
         'discriminator' => null,
     ]);
 
-    $this->service->markDone($row, 'Run story.', ServedBy::Llm);
+    analysisService()->markDone($row, 'Run story.', ServedBy::Llm);
 
     Notification::assertNothingSent();
-    expect($row->fresh()->narrated_early_at)->not->toBeNull();
+    expect(nonNull($row->fresh())->narrated_early_at)->not->toBeNull();
 });
 
 it('markDone leaves narrated_early_at null and notifies normally for a long-connected athlete', function (): void {
@@ -1417,10 +1428,10 @@ it('markDone leaves narrated_early_at null and notifies normally for a long-conn
         'discriminator' => null,
     ]);
 
-    $this->service->markDone($row, 'Run story.', ServedBy::Llm);
+    analysisService()->markDone($row, 'Run story.', ServedBy::Llm);
 
     Notification::assertSentTo($user, AnalysisReadyNotification::class);
-    expect($row->fresh()->narrated_early_at)->toBeNull();
+    expect(nonNull($row->fresh())->narrated_early_at)->toBeNull();
 });
 
 it('markDone never marks a rule-based fill early, even for a run inside the early-pass window', function (): void {
@@ -1437,9 +1448,9 @@ it('markDone never marks a rule-based fill early, even for a run inside the earl
         'discriminator' => null,
     ]);
 
-    $this->service->markDone($row, 'filler.', ServedBy::RuleBased);
+    analysisService()->markDone($row, 'filler.', ServedBy::RuleBased);
 
-    expect($row->fresh()->narrated_early_at)->toBeNull();
+    expect(nonNull($row->fresh())->narrated_early_at)->toBeNull();
 });
 
 it('re-requests a straddling row once instead of marking it early', function (): void {
@@ -1463,10 +1474,10 @@ it('re-requests a straddling row once instead of marking it early', function ():
     // (e.g. a slow Azure call spanning the moment the drain emptied). The
     // replay that would ever regenerate an early row has already run by now,
     // so this row asks for itself again instead of being left early.
-    $this->service->markDone($row, 'Run story.', ServedBy::Llm, startedEarly: true);
+    analysisService()->markDone($row, 'Run story.', ServedBy::Llm, startedEarly: true);
 
-    expect($row->fresh()->narrated_early_at)->toBeNull()
-        ->and($row->fresh()->status)->toBe(AnalysisStatus::Queued);
+    expect(nonNull($row->fresh())->narrated_early_at)->toBeNull()
+        ->and(nonNull($row->fresh())->status)->toBe(AnalysisStatus::Queued);
     // No notification on this pass either — it fires once, on the
     // re-requested pass that finally reads the complete history.
     Notification::assertNothingSent();
@@ -1484,9 +1495,9 @@ it('never marks a rule-based fill early from $startedEarly either', function ():
         'discriminator' => null,
     ]);
 
-    $this->service->markDone($row, 'filler.', ServedBy::RuleBased, startedEarly: true);
+    analysisService()->markDone($row, 'filler.', ServedBy::RuleBased, startedEarly: true);
 
-    expect($row->fresh()->narrated_early_at)->toBeNull();
+    expect(nonNull($row->fresh())->narrated_early_at)->toBeNull();
 });
 
 it('markDone marks the daily briefing early while older history is hydrating', function (): void {
@@ -1501,9 +1512,9 @@ it('markDone marks the daily briefing early while older history is hydrating', f
         'discriminator' => now()->toDateString(),
     ]);
 
-    $this->service->markDone($row, 'Halo!', ServedBy::Llm);
+    analysisService()->markDone($row, 'Halo!', ServedBy::Llm);
 
-    expect($row->fresh()->narrated_early_at)->not->toBeNull();
+    expect(nonNull($row->fresh())->narrated_early_at)->not->toBeNull();
 });
 
 it('markDone marks the profile voice early while any history at all is hydrating, even past past-you\'s reach', function (): void {
@@ -1521,16 +1532,16 @@ it('markDone marks the profile voice early while any history at all is hydrating
         'discriminator' => AnalysisType::currentIsoWeek(),
     ]);
 
-    $this->service->markDone($row, 'Profile voice.', ServedBy::Llm);
+    analysisService()->markDone($row, 'Profile voice.', ServedBy::Llm);
 
-    expect($row->fresh()->narrated_early_at)->not->toBeNull();
+    expect(nonNull($row->fresh())->narrated_early_at)->not->toBeNull();
 });
 
 it('markDone does not notify for a non-notifiable type', function (): void {
     Notification::fake();
     $row = Analysis::factory()->create(['analysis_type' => AnalysisType::BriefingMascotVoice]);
 
-    $this->service->markDone($row, 'Halo!', ServedBy::Llm);
+    analysisService()->markDone($row, 'Halo!', ServedBy::Llm);
 
     Notification::assertNothingSent();
 });
@@ -1549,8 +1560,8 @@ it('markDone does not notify under withoutDispatching (demo seed)', function ():
         'discriminator' => null,
     ]);
 
-    $this->service->withoutDispatching(function () use ($row): void {
-        $this->service->markDone($row, 'Rekap seed.', ServedBy::Llm);
+    analysisService()->withoutDispatching(function () use ($row): void {
+        analysisService()->markDone($row, 'Rekap seed.', ServedBy::Llm);
     });
 
     Notification::assertNothingSent();
@@ -1564,11 +1575,11 @@ it('markDone does not start the re-trigger cooldown under withoutDispatching (de
         'discriminator' => '2026-05-18',
     ]);
 
-    $this->service->withoutDispatching(function () use ($row): void {
-        $this->service->markDone($row, 'Seed content.', ServedBy::Llm);
+    analysisService()->withoutDispatching(function () use ($row): void {
+        analysisService()->markDone($row, 'Seed content.', ServedBy::Llm);
     });
 
-    $fresh = $row->fresh();
+    $fresh = nonNull($row->fresh());
     expect($fresh->cooldownRemaining())->toBeNull()
         ->and($fresh->status)->toBe(AnalysisStatus::Done)
         ->and($fresh->content)->toBe('Seed content.');
@@ -1588,7 +1599,7 @@ it('markDone reaches the inbox alone when Telegram is unconfigured', function ()
         'discriminator' => null,
     ]);
 
-    $this->service->markDone($row, 'Rekap.', ServedBy::Llm);
+    analysisService()->markDone($row, 'Rekap.', ServedBy::Llm);
 
     Notification::assertSentTo(
         $user,
@@ -1599,17 +1610,17 @@ it('markDone reaches the inbox alone when Telegram is unconfigured', function ()
 
 it('requestRuleBased fills a row rule-based with no reason, without dispatching or cooling, and refills it in place rather than minting a second one', function (): void {
     $snap = WeeklySnapshot::factory()->create();
-    $first = $this->service->requestRuleBased(WeeklySnapshot::class, $snap->id, AnalysisType::WeeklyRecap);
+    $first = analysisService()->requestRuleBased(WeeklySnapshot::class, $snap->id, AnalysisType::WeeklyRecap);
 
     expect($first->status)->toBe(AnalysisStatus::Done)
-        ->and($first->content)->toBeString()->not->toBeEmpty()
+        ->and($first->content)->toBeString()->and($first->content)->not->toBeEmpty()
         ->and($first->generated_at)->not->toBeNull()
         ->and($first->cooldownRemaining())->toBeNull()
-        ->and($first->fresh()->served_by)->toBe(ServedBy::RuleBased)
-        ->and($first->fresh()->rule_based_reason)->toBeNull();
+        ->and(nonNull($first->fresh())->served_by)->toBe(ServedBy::RuleBased)
+        ->and(nonNull($first->fresh())->rule_based_reason)->toBeNull();
     Bus::assertNotDispatched(AnalyzeWeeklyRecapJob::class);
 
-    $second = $this->service->requestRuleBased(WeeklySnapshot::class, $snap->id, AnalysisType::WeeklyRecap);
+    $second = analysisService()->requestRuleBased(WeeklySnapshot::class, $snap->id, AnalysisType::WeeklyRecap);
 
     expect($second->id)->toBe($first->id)
         ->and(Analysis::query()->count())->toBe(1);
@@ -1625,7 +1636,7 @@ it('requestRuleBased with refillDone:false leaves an already-Done row untouched'
         'discriminator' => null,
     ]);
 
-    $row = $this->service->requestRuleBased(WeeklySnapshot::class, $snap->id, AnalysisType::WeeklyRecap, refillDone: false);
+    $row = analysisService()->requestRuleBased(WeeklySnapshot::class, $snap->id, AnalysisType::WeeklyRecap, refillDone: false);
 
     expect($row->content)->toBe('original recap, already billed');
 });
@@ -1646,7 +1657,7 @@ it('runs the daily cost aggregate once per scope no matter how many rows one ath
     });
 
     foreach ($snaps as $snap) {
-        $this->service->request(
+        analysisService()->request(
             subjectOrType: WeeklySnapshot::class,
             subjectId: $snap->id,
             type: AnalysisType::WeeklyRecap,
@@ -1673,7 +1684,7 @@ it('reads each athlete\'s slice once, so a scope touching several does not re-re
     });
 
     foreach ($snaps as $snap) {
-        $this->service->request(
+        analysisService()->request(
             subjectOrType: WeeklySnapshot::class,
             subjectId: $snap->id,
             type: AnalysisType::WeeklyRecap,
@@ -1720,7 +1731,7 @@ it('honours a ceiling that is already breached when the scope starts', function 
     $snaps = WeeklySnapshot::factory()->count(3)->create();
     foreach ($snaps as $snap) {
         breachTheCeilingFor($snap->user_id);
-        $row = $this->service->request(
+        $row = analysisService()->request(
             subjectOrType: WeeklySnapshot::class,
             subjectId: $snap->id,
             type: AnalysisType::WeeklyRecap,
@@ -1729,14 +1740,14 @@ it('honours a ceiling that is already breached when the scope starts', function 
     }
 
     Bus::assertNotDispatched(AnalyzeWeeklyRecapJob::class);
-    expect($this->service->generationPaused($snaps->last()->user_id))->toBeTrue();
+    expect(analysisService()->generationPaused(nonNull($snaps->last())->user_id))->toBeTrue();
 });
 
 it('keeps withoutDispatching suppressing after the memo is already warm', function (): void {
     config(['azure_openai.daily_cost_ceiling_per_user' => 100.0]);
 
     $warm = WeeklySnapshot::factory()->create();
-    $this->service->request(
+    analysisService()->request(
         subjectOrType: WeeklySnapshot::class,
         subjectId: $warm->id,
         type: AnalysisType::WeeklyRecap,
@@ -1744,22 +1755,22 @@ it('keeps withoutDispatching suppressing after the memo is already warm', functi
     Bus::assertDispatchedTimes(AnalyzeWeeklyRecapJob::class, 1);
 
     $suppressed = WeeklySnapshot::factory()->create();
-    $this->service->withoutDispatching(function () use ($suppressed): void {
-        $row = $this->service->request(
+    analysisService()->withoutDispatching(function () use ($suppressed): void {
+        $row = analysisService()->request(
             subjectOrType: WeeklySnapshot::class,
             subjectId: $suppressed->id,
             type: AnalysisType::WeeklyRecap,
         );
         expect($row->status)->toBe(AnalysisStatus::Pending);
-        expect($this->service->generationPaused())->toBeTrue();
+        expect(analysisService()->generationPaused())->toBeTrue();
     });
 
     // Suppression lifts cleanly: the warm memo is still the real answer.
     Bus::assertDispatchedTimes(AnalyzeWeeklyRecapJob::class, 1);
-    expect($this->service->generationPaused())->toBeFalse();
+    expect(analysisService()->generationPaused())->toBeFalse();
 
     $after = WeeklySnapshot::factory()->create();
-    $this->service->request(
+    analysisService()->request(
         subjectOrType: WeeklySnapshot::class,
         subjectId: $after->id,
         type: AnalysisType::WeeklyRecap,
@@ -1773,18 +1784,18 @@ it('stamps the producer the caller states, and has no default to fall back on', 
     $llm = Analysis::factory()->queued()->create(['discriminator' => '2026-05-18']);
     $ruleBased = Analysis::factory()->queued()->create(['discriminator' => '2026-05-19']);
 
-    $this->service->markDone($llm, 'narrated', ServedBy::Llm);
-    $this->service->markDone($ruleBased, 'filled', ServedBy::RuleBased);
+    analysisService()->markDone($llm, 'narrated', ServedBy::Llm);
+    analysisService()->markDone($ruleBased, 'filled', ServedBy::RuleBased);
 
-    expect($llm->fresh()->served_by)->toBe(ServedBy::Llm)
-        ->and($ruleBased->fresh()->served_by)->toBe(ServedBy::RuleBased)
+    expect(nonNull($llm->fresh())->served_by)->toBe(ServedBy::Llm)
+        ->and(nonNull($ruleBased->fresh())->served_by)->toBe(ServedBy::RuleBased)
         ->and(new ReflectionMethod(AnalysisService::class, 'markDone')->getParameters()[2]->isOptional())
         ->toBeFalse();
 });
 
 it('does not count a rule-based fill after a newer generation takes ownership', function (): void {
     $snap = WeeklySnapshot::factory()->create();
-    $row = $this->service->requestDeferred(WeeklySnapshot::class, $snap->id, AnalysisType::WeeklyRecap);
+    $row = analysisService()->requestDeferred(WeeklySnapshot::class, $snap->id, AnalysisType::WeeklyRecap);
     $row->update(['generation_token' => 'older-generation']);
     $stale = $row->fresh();
     $row->update([
@@ -1794,11 +1805,11 @@ it('does not count a rule-based fill after a newer generation takes ownership', 
     $ledger = app(CostCeilingLedger::class);
     $degradedFills = $ledger->today()['degradedFills'];
 
-    $this->service->degradeToRuleBased($stale, 'older-generation');
+    analysisService()->degradeToRuleBased(nonNull($stale), 'older-generation');
 
-    expect($row->fresh()->status)->toBe(AnalysisStatus::Queued)
-        ->and($row->fresh()->generation_token)->toBe('newer-generation')
-        ->and($row->fresh()->content)->toBeNull()
+    expect(nonNull($row->fresh())->status)->toBe(AnalysisStatus::Queued)
+        ->and(nonNull($row->fresh())->generation_token)->toBe('newer-generation')
+        ->and(nonNull($row->fresh())->content)->toBeNull()
         ->and($ledger->today()['degradedFills'])->toBe($degradedFills);
 });
 
@@ -1807,40 +1818,41 @@ it('does not count a rule-based fill after a newer generation takes ownership', 
 it('never records a reason for an LLM-served row, even if one is passed', function (): void {
     $row = Analysis::factory()->queued()->create();
 
-    $this->service->markDone($row, 'narrated', ServedBy::Llm, ruleBasedReason: AnalysisOrigin::Return);
+    analysisService()->markDone($row, 'narrated', ServedBy::Llm, ruleBasedReason: AnalysisOrigin::Return);
 
-    expect($row->fresh()->rule_based_reason)->toBeNull();
+    expect(nonNull($row->fresh())->rule_based_reason)->toBeNull();
 });
 
 it('clears a stale rule_based_reason when the row is re-served by the LLM', function (): void {
     $snap = WeeklySnapshot::factory()->create();
-    $row = $this->service->requestRuleBased(
+    $row = analysisService()->requestRuleBased(
         WeeklySnapshot::class,
         $snap->id,
         AnalysisType::WeeklyRecap,
         reason: AnalysisOrigin::Return,
     );
-    expect($row->fresh()->rule_based_reason)->toBe(AnalysisOrigin::Return);
+    expect(nonNull($row->fresh())->rule_based_reason)->toBe(AnalysisOrigin::Return);
 
-    $this->service->markDone($row, 'now narrated for real', ServedBy::Llm);
+    analysisService()->markDone($row, 'now narrated for real', ServedBy::Llm);
 
-    expect($row->fresh())
-        ->served_by->toBe(ServedBy::Llm)
-        ->rule_based_reason->toBeNull();
+    $fresh = nonNull($row->fresh());
+
+    expect($fresh->served_by)->toBe(ServedBy::Llm)
+        ->and($fresh->rule_based_reason)->toBeNull();
 });
 
 it('clears a stale rule_based_reason when re-served rule-based for a different reason', function (): void {
     $snap = WeeklySnapshot::factory()->create();
-    $row = $this->service->requestRuleBased(
+    $row = analysisService()->requestRuleBased(
         WeeklySnapshot::class,
         $snap->id,
         AnalysisType::WeeklyRecap,
         reason: AnalysisOrigin::Return,
     );
 
-    $this->service->requestRuleBased(WeeklySnapshot::class, $snap->id, AnalysisType::WeeklyRecap);
+    analysisService()->requestRuleBased(WeeklySnapshot::class, $snap->id, AnalysisType::WeeklyRecap);
 
-    expect($row->fresh()->rule_based_reason)->toBeNull();
+    expect(nonNull($row->fresh())->rule_based_reason)->toBeNull();
 });
 
 // ── analysis_versions: what a re-narration supersedes ─────────────────
@@ -1854,7 +1866,7 @@ it('keeps the previous narration and supersedes only its own flag when a done ro
     $otherNarration = Feedback::factory()->onNarration($row->id + 1)->create();
     $planDay = Feedback::factory()->onPlanDay($row->id)->create();
 
-    $this->service->markDone($row, 'second', ServedBy::Llm);
+    analysisService()->markDone($row, 'second', ServedBy::Llm);
 
     $version = AnalysisVersion::query()->sole();
 
@@ -1862,20 +1874,20 @@ it('keeps the previous narration and supersedes only its own flag when a done ro
         ->and($version->content)->toBe('first')
         ->and($version->fingerprint)->toBe('abc123')
         ->and($version->served_by)->toBe(ServedBy::RuleBased)
-        ->and($row->fresh()->content)->toBe('second')
-        ->and($flag->fresh()->superseded_at)->not->toBeNull()
-        ->and($otherNarration->fresh()->superseded_at)->toBeNull()
-        ->and($planDay->fresh()->superseded_at)->toBeNull();
+        ->and(nonNull($row->fresh())->content)->toBe('second')
+        ->and(nonNull($flag->fresh())->superseded_at)->not->toBeNull()
+        ->and(nonNull($otherNarration->fresh())->superseded_at)->toBeNull()
+        ->and(nonNull($planDay->fresh())->superseded_at)->toBeNull();
 });
 
 it('writes no version and leaves the flag standing on a first narration, which supersedes nothing', function (): void {
     $row = Analysis::factory()->queued()->create();
     $flag = Feedback::factory()->onNarration($row->id)->create();
 
-    $this->service->markDone($row, 'first', ServedBy::Llm);
+    analysisService()->markDone($row, 'first', ServedBy::Llm);
 
     expect(AnalysisVersion::query()->count())->toBe(0)
-        ->and($flag->fresh()->superseded_at)->toBeNull();
+        ->and(nonNull($flag->fresh())->superseded_at)->toBeNull();
 });
 
 // ── replay: its own app-wide cap, never the athlete's slice ───────────
@@ -1886,7 +1898,7 @@ it('spends a replay against the replay cap rather than the athlete slice', funct
     config(['azure_openai.replay_daily_cap' => 100.0]);
     app(NarrationOrigin::class)->set(AnalysisOrigin::Replay);
 
-    $row = $this->service->request(
+    $row = analysisService()->request(
         subjectOrType: WeeklySnapshot::class,
         subjectId: $snap->id,
         type: AnalysisType::WeeklyRecap,
@@ -1905,7 +1917,7 @@ it('refuses a replay once today replay spend has reached its cap', function (): 
     spend($snap->user_id, 1_000_000, AnalysisOrigin::Replay);
     app(NarrationOrigin::class)->set(AnalysisOrigin::Replay);
 
-    $row = $this->service->request(
+    $row = analysisService()->request(
         subjectOrType: WeeklySnapshot::class,
         subjectId: $snap->id,
         type: AnalysisType::WeeklyRecap,
@@ -1928,7 +1940,7 @@ it('refuses a replay whose spend lands exactly on the cap', function (): void {
     spend($snap->user_id, 1_000_000, AnalysisOrigin::Replay);
     app(NarrationOrigin::class)->set(AnalysisOrigin::Replay);
 
-    $this->service->request(
+    analysisService()->request(
         subjectOrType: WeeklySnapshot::class,
         subjectId: $snap->id,
         type: AnalysisType::WeeklyRecap,
@@ -1943,7 +1955,7 @@ it('still stops a replay at the app-wide total', function (): void {
     config(['azure_openai.replay_daily_cap' => 100.0]);
     app(NarrationOrigin::class)->set(AnalysisOrigin::Replay);
 
-    $this->service->request(
+    analysisService()->request(
         subjectOrType: WeeklySnapshot::class,
         subjectId: $snap->id,
         type: AnalysisType::WeeklyRecap,
@@ -1959,7 +1971,7 @@ it('reads a today-only override in place of the configured athlete ceiling', fun
     breachTheCeilingFor($snap->user_id);
     app(CeilingOverride::class)->set($snap->user_id, 10.0);
 
-    $row = $this->service->request(
+    $row = analysisService()->request(
         subjectOrType: WeeklySnapshot::class,
         subjectId: $snap->id,
         type: AnalysisType::WeeklyRecap,
@@ -1975,7 +1987,7 @@ it('degrades again once the override is cleared', function (): void {
     app(CeilingOverride::class)->set($snap->user_id, 10.0);
     app(CeilingOverride::class)->clear($snap->user_id);
 
-    $row = $this->service->request(
+    $row = analysisService()->request(
         subjectOrType: WeeklySnapshot::class,
         subjectId: $snap->id,
         type: AnalysisType::WeeklyRecap,
@@ -1983,4 +1995,101 @@ it('degrades again once the override is cleared', function (): void {
 
     expect($row->status)->toBe(AnalysisStatus::Done);
     Bus::assertNotDispatched(AnalyzeWeeklyRecapJob::class);
+});
+
+it('serves a demo-owned row from the filler instead of dispatching', function (): void {
+    $snap = WeeklySnapshot::factory()->for(User::factory()->demo())->create();
+
+    $row = analysisService()->request(
+        subjectOrType: WeeklySnapshot::class,
+        subjectId: $snap->id,
+        type: AnalysisType::WeeklyRecap,
+    );
+
+    expect($row->status)->toBe(AnalysisStatus::Done)
+        ->and(nonNull($row->fresh())->served_by)->toBe(ServedBy::RuleBased);
+    Bus::assertNotDispatched(AnalyzeWeeklyRecapJob::class);
+});
+
+it('serves a demo-owned activity group from the filler instead of dispatching', function (): void {
+    $activity = Activity::factory()->for(User::factory()->demo())->create();
+
+    analysisService()->requestActivityGroup($activity);
+
+    $rows = Analysis::query()->where('subject_id', $activity->id)->get();
+    expect($rows)->toHaveCount(2)
+        ->and($rows->every(fn (Analysis $row): bool => $row->served_by === ServedBy::RuleBased))->toBeTrue();
+    Bus::assertNotDispatched(AnalyzeActivityJob::class);
+});
+
+it('serves a demo-owned row from the filler even while generation is paused', function (): void {
+    app(AppConfig::class)->set(AppConfigKey::AiEnabled, false);
+    $demo = User::factory()->demo()->create();
+
+    $row = analysisService()->requestBriefing($demo, Carbon::today()->toDateString());
+
+    expect($row->status)->toBe(AnalysisStatus::Done)
+        ->and(nonNull($row->fresh())->served_by)->toBe(ServedBy::RuleBased);
+});
+
+it('refills a demo-owned Done row only when the trigger invalidates', function (): void {
+    $snap = WeeklySnapshot::factory()->for(User::factory()->demo())->create();
+    Analysis::factory()->done('seeded recap')->create([
+        'subject_type' => WeeklySnapshot::class,
+        'subject_id' => $snap->id,
+        'analysis_type' => AnalysisType::WeeklyRecap,
+        'discriminator' => null,
+    ]);
+
+    $kept = analysisService()->request(WeeklySnapshot::class, $snap->id, AnalysisType::WeeklyRecap);
+    expect($kept->content)->toBe('seeded recap');
+
+    $refilled = analysisService()->request(WeeklySnapshot::class, $snap->id, AnalysisType::WeeklyRecap, invalidate: true);
+    expect($refilled->content)->not->toBe('seeded recap')
+        ->and(nonNull($refilled->fresh())->served_by)->toBe(ServedBy::RuleBased);
+    Bus::assertNotDispatched(AnalyzeWeeklyRecapJob::class);
+});
+
+it('leaves a demo-owned row Pending under withoutDispatching, for the demo seed to fill', function (): void {
+    $snap = WeeklySnapshot::factory()->for(User::factory()->demo())->create();
+    $row = null;
+
+    analysisService()->withoutDispatching(function () use ($snap, &$row): void {
+        $row = analysisService()->request(WeeklySnapshot::class, $snap->id, AnalysisType::WeeklyRecap);
+    });
+
+    expect($row)->toBeInstanceOf(Analysis::class);
+    assert($row instanceof Analysis);
+    expect($row->status)->toBe(AnalysisStatus::Pending);
+});
+
+it('rebriefs after a plan edit only once the briefing\'s Reread cooldown has run out', function (bool $cooling): void {
+    $user = User::factory()->create();
+    $briefing = Analysis::factory()->done('easy run, 2.6 km.')->create([
+        'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
+        'subject_id' => $user->id,
+        'analysis_type' => AnalysisType::BriefingMascotVoice,
+        'discriminator' => '2026-05-18',
+    ]);
+    if ($cooling) {
+        $briefing->startCooldown();
+    }
+
+    analysisService()->rebriefAfterPlanEdit($user, '2026-05-18');
+
+    if ($cooling) {
+        Bus::assertNotDispatched(AnalyzeBriefingMascotVoiceJob::class);
+        expect(nonNull($briefing->fresh())->only(['status', 'content']))->toBe(['status' => AnalysisStatus::Done, 'content' => 'easy run, 2.6 km.']);
+    } else {
+        Bus::assertDispatched(fn (AnalyzeBriefingMascotVoiceJob $job): bool => $job->analysisId === $briefing->id
+            && $job->delay === AnalysisService::PLAN_EDIT_DELAY_SECONDS);
+    }
+})->with(['cooled' => [false], 'cooling' => [true]]);
+
+it('rebriefs after a plan edit when no briefing was narrated yet', function (): void {
+    $user = User::factory()->create();
+
+    analysisService()->rebriefAfterPlanEdit($user, '2026-05-18');
+
+    Bus::assertDispatchedTimes(AnalyzeBriefingMascotVoiceJob::class, 1);
 });

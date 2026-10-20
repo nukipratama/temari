@@ -28,6 +28,7 @@ class BurnDown extends Card
     public function render(LlmCostCalculator $cost, StravaClient $strava): Renderable
     {
         $totalCeiling = config('azure_openai.daily_cost_ceiling_total');
+        assert($totalCeiling === null || is_numeric($totalCeiling));
         $totalCeiling = $totalCeiling === null ? null : (float) $totalCeiling;
         $spent = $cost->dailyCost();
 

@@ -17,10 +17,8 @@ use Symfony\Component\HttpFoundation\Response;
  * {@see RecentlyActiveUsers} spends narration on, and queues the catch-up for
  * an athlete coming back after the active window lapsed.
  *
- * At most one write per athlete per calendar day: the comparison is on the date,
- * not the timestamp, so a session of fifty requests costs one UPDATE. The demo
- * identity is skipped — it is shared and public, and it is excluded from every
- * billing cadence anyway.
+ * At most one write per athlete per calendar day (compared on the date, not the
+ * timestamp). The demo identity is skipped.
  */
 class StampLastSeen
 {

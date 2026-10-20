@@ -33,6 +33,7 @@ function summaryPayload(int $id, array $overrides = []): array
         'has_heartrate' => true,
         'average_heartrate' => 156.2,
         'max_heartrate' => 178,
+        'average_cadence' => 82.5,
         'workout_type' => 0,
         'map' => ['summary_polyline' => 'abc123'],
         'start_latlng' => [-6.2, 106.8],
@@ -58,10 +59,10 @@ it('preserves UTC start separately from the local calendar and never guesses mis
         summaryPayload(111, ['start_date' => '2026-05-09T23:00:00Z', 'start_date_local' => '2026-05-10T06:00:00Z']),
         summaryPayload(222, ['start_date' => '']),
     ]);
-    $known = Activity::query()->where('strava_external_id', 111)->firstOrFail()->detail;
-    $unknown = Activity::query()->where('strava_external_id', 222)->firstOrFail()->detail;
+    $known = nonNull(Activity::query()->where('strava_external_id', 111)->firstOrFail()->detail);
+    $unknown = nonNull(Activity::query()->where('strava_external_id', 222)->firstOrFail()->detail);
     expect($known->getRawOriginal('start_date_utc'))->toBe('2026-05-09 23:00:00')
-        ->and($known->start_date_local->toDateString())->toBe('2026-05-10')
+        ->and(nonNull($known->start_date_local)->toDateString())->toBe('2026-05-10')
         ->and($unknown->start_date_utc)->toBeNull();
 });
 
@@ -84,6 +85,7 @@ it('maps every field the summary endpoint carries onto the detail row', function
         ->and($detail->has_heartrate)->toBeTrue()
         ->and($detail->average_heartrate)->toBe(156.2)
         ->and($detail->max_heartrate)->toBe(178)
+        ->and($detail->average_cadence)->toBe(82.5)
         ->and($detail->workout_type)->toBe(0)
         ->and($detail->summary_polyline)->toBe('abc123')
         ->and($detail->start_lat)->toBe(-6.2)

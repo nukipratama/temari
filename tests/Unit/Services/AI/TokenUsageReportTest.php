@@ -17,6 +17,7 @@ use App\Services\AI\CostCeilingLedger;
 use App\Services\AI\ServedBy;
 use App\Services\AI\TokenUsageReport;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
 
 uses(RefreshDatabase::class);
@@ -42,8 +43,8 @@ beforeEach(function (): void {
     // can't straddle the Asia/Jakarta midnight boundary and flake the todayCost.
     $this->freezeTime();
 
-    config()->set('azure_openai.daily_cost_ceiling_per_user', null);
-    config()->set('azure_openai.daily_cost_ceiling_total', null);
+    config()->set('azure_openai.daily_cost_ceiling_per_user');
+    config()->set('azure_openai.daily_cost_ceiling_total');
 
     // Deterministic manual rates: gpt-4o = 2.50 in / 10.00 out, gpt-4o-mini =
     // 0.15 / 0.60 (per 1M).
@@ -51,8 +52,12 @@ beforeEach(function (): void {
         'gpt-4o' => ['input_per_1m' => 2.50, 'output_per_1m' => 10.00],
         'gpt-4o-mini' => ['input_per_1m' => 0.15, 'output_per_1m' => 0.60],
     ]);
-    $this->report = app(TokenUsageReport::class);
 });
+
+function tokenUsageReport(): TokenUsageReport
+{
+    return app(TokenUsageReport::class);
+}
 
 function seedReportUsage(
     string $kind,
@@ -88,7 +93,7 @@ it('aggregates totals + per-kind ordered by total descending, excluding out-of-r
     seedReportUsage('briefing', 999, 999, Carbon::parse('2026-04-30 23:00:00')); // out of range
 
     [$from, $to] = $range();
-    $result = $this->report->build($from, $to, null);
+    $result = tokenUsageReport()->build($from, $to, null);
 
     expect($result['totals'])->toMatchArray([
         'prompt' => 600,
@@ -126,7 +131,7 @@ it('computes a kind-level cost and latency rolled up across multiple deployments
     seedReportUsage('briefing', 1_000_000, 0, Carbon::parse('2026-05-11'), latencyMs: 2000, model: 'gpt-4o-mini');
 
     [$from, $to] = $range();
-    $result = $this->report->build($from, $to, null);
+    $result = tokenUsageReport()->build($from, $to, null);
 
     expect($result['byKind'])->toHaveCount(1)
         // 1M in @ 2.50 (gpt-4o) + 1M in @ 0.15 (gpt-4o-mini) = 2.65
@@ -141,7 +146,7 @@ it('breaks usage down by deployment with per-deployment cost', function () use (
     seedReportUsage('run-insight', 2_000_000, 0, Carbon::parse('2026-05-11'), model: 'gpt-4o-mini');
 
     [$from, $to] = $range();
-    $byDeployment = collect($this->report->build($from, $to, null)['byDeployment'])->keyBy('deployment');
+    $byDeployment = collect(tokenUsageReport()->build($from, $to, null)['byDeployment'])->keyBy('deployment');
 
     expect($byDeployment->get('gpt-4o'))->toMatchArray([
         'deployment' => 'gpt-4o',
@@ -151,19 +156,19 @@ it('breaks usage down by deployment with per-deployment cost', function () use (
         'calls' => 1,
     ])
         // 1M in @ 2.50 + 1M out @ 10.00 = 12.50
-        ->and($byDeployment->get('gpt-4o')['cost'])->toBe(12.50)
+        ->and(nonNull($byDeployment->get('gpt-4o'))['cost'])->toBe(12.50)
         // gpt-4o-mini: 2M in @ 0.15/1M = 0.30
-        ->and($byDeployment->get('gpt-4o-mini')['cost'])->toBe(0.30);
+        ->and(nonNull($byDeployment->get('gpt-4o-mini'))['cost'])->toBe(0.30);
 });
 
-it('reports total spend against a combined ceiling derived from the per-athlete one', function () use ($range): void {
+it('reports total spend against a combined ceiling derived from the per-athlete one', function (): void {
     config()->set('azure_openai.daily_cost_ceiling_per_user', 5.0);
     User::factory()->count(3)->create();
     User::factory()->create(['is_demo' => true]); // spends nothing, so it is not counted
     seedReportUsage('briefing', 1_000_000, 0, Carbon::today(), model: 'gpt-4o'); // 2.50 today
 
     [$from, $to] = [Carbon::today()->subDay(), Carbon::today()->addDay()];
-    $result = $this->report->build($from, $to, null);
+    $result = tokenUsageReport()->build($from, $to, null);
 
     // Nothing enforces the combined figure — it is the sum of what each athlete
     // may individually spend, reported so the total bill stays visible.
@@ -179,7 +184,7 @@ it('reports the enforced app-wide ceiling alongside the derived combined figure'
     User::factory()->count(3)->create();
     seedReportUsage('briefing', 1_000_000, 0, Carbon::today(), model: 'gpt-4o'); // 2.50 today
 
-    $result = $this->report->build(Carbon::today()->subDay(), Carbon::today()->addDay(), null);
+    $result = tokenUsageReport()->build(Carbon::today()->subDay(), Carbon::today()->addDay(), null);
 
     expect($result['budget']['totalCeiling'])->toBe(8.0)
         ->and($result['budget']['dailyCeiling'])->toBe(15.0)
@@ -193,7 +198,7 @@ it('carries the ceiling trip and the rule-based fill count into the budget block
     $ledger->recordDegradedFill('run_insight', 1);
 
     [$from, $to] = $range();
-    $result = $this->report->build($from, $to, null);
+    $result = tokenUsageReport()->build($from, $to, null);
 
     expect($result['budget']['trippedAt'])->toBe(Carbon::now()->toIso8601String())
         ->and($result['budget']['degradedFills'])->toBe(2);
@@ -205,7 +210,7 @@ it('narrows every figure to one kind when the filter names it', function () use 
     seedReportUsage('run-insight', 300, 150, Carbon::parse('2026-05-10'));
 
     [$from, $to] = $range();
-    $result = $this->report->build($from, $to, 'briefing');
+    $result = tokenUsageReport()->build($from, $to, 'briefing');
 
     expect($result['byKind'])->toHaveCount(1)
         ->and($result['byKind'][0]['kind'])->toBe('briefing')
@@ -217,7 +222,7 @@ it('sums per-day cost across deployments in the stacked series', function () use
     seedReportUsage('run-insight', 1_000_000, 0, Carbon::parse('2026-05-10'), model: 'gpt-4o-mini'); // 0.15
 
     [$from, $to] = $range();
-    $chart = $this->report->dailyCostByKind($from, $to);
+    $chart = tokenUsageReport()->dailyCostByKind($from, $to);
 
     expect($chart['days'])->toHaveCount(1)
         ->and($chart['days'][0]['day'])->toBe('2026-05-10')
@@ -232,7 +237,7 @@ it('orders the stack by kind spend, heaviest band first, and labels it', functio
     seedReportUsage('briefing', 1_000_000, 0, Carbon::parse('2026-05-11'));
 
     [$from, $to] = $range();
-    $chart = $this->report->dailyCostByKind($from, $to);
+    $chart = tokenUsageReport()->dailyCostByKind($from, $to);
 
     expect(array_column($chart['kinds'], 'kind'))->toBe(['briefing', 'card_flavor'])
         ->and($chart['kinds'][1]['label'])->toBe('CardFlavor');
@@ -243,7 +248,7 @@ it('leaves a kind that cost nothing out of the stack and its legend', function (
     seedReportUsage('card_flavor', 100, 50, Carbon::parse('2026-05-10'), model: 'not-priced');
 
     [$from, $to] = $range();
-    $chart = $this->report->dailyCostByKind($from, $to);
+    $chart = tokenUsageReport()->dailyCostByKind($from, $to);
 
     expect(array_column($chart['kinds'], 'kind'))->toBe(['briefing'])
         ->and($chart['days'][0]['byKind'])->toHaveKey('card_flavor');
@@ -257,7 +262,7 @@ it('narrows the stacked series to one athlete when the chart filter names one', 
 
     [$from, $to] = $range();
 
-    expect($this->report->dailyCostByKind($from, $to, $alice->id)['days'][0]['cost'])->toBe(2.50);
+    expect(tokenUsageReport()->dailyCostByKind($from, $to, $alice->id)['days'][0]['cost'])->toBe(2.50);
 });
 
 it('labels available kinds via AnalysisType, falling back to the raw value', function () use ($range): void {
@@ -265,16 +270,16 @@ it('labels available kinds via AnalysisType, falling back to the raw value', fun
     seedReportUsage('totally-unknown-kind', 10, 5, Carbon::parse('2026-05-11'));
 
     [$from, $to] = $range();
-    $kinds = collect($this->report->build($from, $to, null)['availableKinds'])->keyBy('value');
+    $kinds = collect(tokenUsageReport()->build($from, $to, null)['availableKinds'])->keyBy('value');
 
     // A known kind resolves to the AnalysisType case name; unknown stays raw.
-    expect($kinds->get('card_flavor')['label'])->toBe('CardFlavor')
-        ->and($kinds->get('totally-unknown-kind')['label'])->toBe('totally-unknown-kind');
+    expect(nonNull($kinds->get('card_flavor'))['label'])->toBe('CardFlavor')
+        ->and(nonNull($kinds->get('totally-unknown-kind'))['label'])->toBe('totally-unknown-kind');
 });
 
 it('returns zeroed figures, empty breakdowns and no ceilings when nothing billed and nothing is configured', function () use ($range): void {
     [$from, $to] = $range();
-    $result = $this->report->build($from, $to, null);
+    $result = tokenUsageReport()->build($from, $to, null);
 
     expect($result['totals'])->toBe([
         'prompt' => 0, 'completion' => 0, 'total' => 0, 'cached' => 0, 'calls' => 0, 'truncated_calls' => 0, 'cost' => 0.0,
@@ -291,9 +296,9 @@ it('returns zeroed figures, empty breakdowns and no ceilings when nothing billed
             'trips' => 0,
             'pct' => null,
         ])
-        ->and($this->report->dailyCostByKind($from, $to))->toBe(['kinds' => [], 'days' => []]);
+        ->and(tokenUsageReport()->dailyCostByKind($from, $to))->toBe(['kinds' => [], 'days' => []]);
 
-    $result = $this->report->build(Carbon::today()->subDay(), Carbon::today()->addDay(), null);
+    $result = tokenUsageReport()->build(Carbon::today()->subDay(), Carbon::today()->addDay(), null);
 
     expect($result['budget']['dailyCeiling'])->toBeNull()
         ->and($result['budget']['perUserCeiling'])->toBeNull()
@@ -307,8 +312,8 @@ it('exposes raw cached token counts on totals and byKind, not just the cache per
     seedAgentUsage('run_insight', 1000, 200, 600, 50, 2);
     seedAgentUsage('run_insight', 1000, 200, 900, 30, 4);
 
-    $result = $this->report->build(Carbon::today(), Carbon::today(), null);
-    $row = collect($result['byKind'])->firstWhere('kind', 'run_insight');
+    $result = tokenUsageReport()->build(Carbon::today(), Carbon::today(), null);
+    $row = nonNull(collect($result['byKind'])->firstWhere('kind', 'run_insight'));
 
     expect($result['totals']['cached'])->toBe(1500)
         ->and($row['cached'])->toBe(1500);
@@ -318,7 +323,7 @@ it('reports raw token totals for today, decoupled from the selected range', func
     seedAgentUsage('run_insight', 1000, 200, 600, 50, 2);
     seedReportUsage('briefing', 999, 999, Carbon::today()->subDays(60)); // outside today
 
-    $result = $this->report->build(Carbon::today()->subDay(), Carbon::today()->addDay(), null);
+    $result = tokenUsageReport()->build(Carbon::today()->subDay(), Carbon::today()->addDay(), null);
 
     expect($result['budget']['tokens'])->toBe([
         'prompt' => 1000,
@@ -333,8 +338,8 @@ it('summarises how a kind behaves as an agent', function (): void {
     seedAgentUsage('run_insight', 1000, 200, 600, 50, 2);
     seedAgentUsage('run_insight', 1000, 200, 900, 30, 4);
 
-    $row = collect($this->report->build(Carbon::today(), Carbon::today(), null)['byKind'])
-        ->firstWhere('kind', 'run_insight');
+    $row = nonNull(collect(tokenUsageReport()->build(Carbon::today(), Carbon::today(), null)['byKind'])
+        ->firstWhere('kind', 'run_insight'));
 
     expect($row['avg_steps'])->toBe(3.0)
         ->and($row['cached_pct'])->toBe(75.0)
@@ -346,8 +351,8 @@ it('summarises how a kind behaves as an agent', function (): void {
 it('leaves the agent summary null when no call recorded a step', function (): void {
     seedReportUsage('briefing', 100, 50, Carbon::today());
 
-    $row = collect($this->report->build(Carbon::today(), Carbon::today(), null)['byKind'])
-        ->firstWhere('kind', 'briefing');
+    $row = nonNull(collect(tokenUsageReport()->build(Carbon::today(), Carbon::today(), null)['byKind'])
+        ->firstWhere('kind', 'briefing'));
 
     expect($row['avg_steps'])->toBeNull()
         ->and($row['cached_pct'])->toBeNull()
@@ -363,13 +368,13 @@ it('splits spend by what started the call, which kind alone cannot express', fun
     seedReportUsage('weekly_recap', 10, 5, Carbon::parse('2026-05-12'), origin: AnalysisOrigin::Recovery);
 
     [$from, $to] = $range();
-    $byOrigin = collect($this->report->build($from, $to, null)['byOrigin'])->keyBy('origin');
+    $byOrigin = collect(tokenUsageReport()->build($from, $to, null)['byOrigin'])->keyBy('origin');
 
-    expect($byOrigin->get('ingest')['calls'])->toBe(2)
-        ->and($byOrigin->get('ingest')['total'])->toBe(410)
-        ->and($byOrigin->get('ingest')['label'])->toBe('Ingest cascade')
-        ->and($byOrigin->get('user')['calls'])->toBe(1)
-        ->and($byOrigin->get('recovery')['calls'])->toBe(1);
+    expect(nonNull($byOrigin->get('ingest'))['calls'])->toBe(2)
+        ->and(nonNull($byOrigin->get('ingest'))['total'])->toBe(410)
+        ->and(nonNull($byOrigin->get('ingest'))['label'])->toBe('Ingest cascade')
+        ->and(nonNull($byOrigin->get('user'))['calls'])->toBe(1)
+        ->and(nonNull($byOrigin->get('recovery'))['calls'])->toBe(1);
 });
 
 it('orders the origin breakdown by spend, heaviest first', function () use ($range): void {
@@ -378,7 +383,7 @@ it('orders the origin breakdown by spend, heaviest first', function () use ($ran
 
     [$from, $to] = $range();
 
-    expect(array_column($this->report->build($from, $to, null)['byOrigin'], 'origin'))
+    expect(array_column(tokenUsageReport()->build($from, $to, null)['byOrigin'], 'origin'))
         ->toBe(['ingest', 'user']);
 });
 
@@ -387,7 +392,7 @@ it('narrows every figure to one origin when the filter names it', function () us
     seedReportUsage('run_insight', 900, 300, Carbon::parse('2026-05-11'), origin: AnalysisOrigin::Scheduled);
 
     [$from, $to] = $range();
-    $report = $this->report->build($from, $to, null, origin: 'ingest');
+    $report = tokenUsageReport()->build($from, $to, null, origin: 'ingest');
 
     expect($report['totals']['calls'])->toBe(1)
         ->and($report['totals']['total'])->toBe(150)
@@ -400,7 +405,7 @@ it('offers only the origins actually present in the range', function () use ($ra
 
     [$from, $to] = $range();
 
-    expect($this->report->build($from, $to, null)['availableOrigins'])->toBe([
+    expect(tokenUsageReport()->build($from, $to, null)['availableOrigins'])->toBe([
         ['value' => 'ingest', 'label' => 'Ingest cascade'],
         ['value' => 'recovery', 'label' => 'Recovery'],
     ]);
@@ -414,7 +419,7 @@ it('reports the content-filter trip count and its share of calls in range', func
 
     [$from, $to] = $range();
 
-    expect($this->report->build($from, $to, null)['contentFilter'])->toBe([
+    expect(tokenUsageReport()->build($from, $to, null)['contentFilter'])->toBe([
         'trips' => 1,
         'pct' => 50.0,
     ]);
@@ -444,8 +449,8 @@ it('measures the money columns over fixed windows, whatever range is selected', 
     seedReportUsage('briefing', 1_000_000, 0, Carbon::today()->subDays(20), userId: $alice->id); // 2.50
     seedReportUsage('briefing', 1_000_000, 0, Carbon::today()->subDays(60), userId: $alice->id); // outside
 
-    $row = collect($this->report->athletes(Carbon::parse('2026-05-10'), Carbon::parse('2026-05-19')))
-        ->firstWhere('user_id', $alice->id);
+    $row = nonNull(collect(tokenUsageReport()->athletes(Carbon::parse('2026-05-10'), Carbon::parse('2026-05-19')))
+        ->firstWhere('user_id', $alice->id));
 
     expect($row['today'])->toBe(2.50)
         ->and($row['last7'])->toBe(5.00)
@@ -460,12 +465,12 @@ it('gives the sparkline one slot per day of the window, silent days included, an
     $alice = User::factory()->create();
     seedReportUsage('briefing', 1_000_000, 0, Carbon::today(), userId: $alice->id);
 
-    $row = collect($this->report->athletes(Carbon::today(), Carbon::now()))
-        ->firstWhere('user_id', $alice->id);
+    $row = nonNull(collect(tokenUsageReport()->athletes(Carbon::today(), Carbon::now()))
+        ->firstWhere('user_id', $alice->id));
 
     expect($row['sparkline'])->toHaveCount(TokenUsageReport::ATHLETE_WINDOW_DAYS)
         ->and($row['sparkline'][0]['cost'])->toBe(0.0)
-        ->and(end($row['sparkline'])['cost'])->toBe(2.50)
+        ->and(nonNull(Arr::last($row['sparkline']))['cost'])->toBe(2.50)
         ->and($row['ceiling'])->toBeNull()
         ->and($row['capped'])->toBeFalse();
 });
@@ -475,8 +480,8 @@ it('marks an athlete capped once today reaches their ceiling, and reads a today-
     $alice = User::factory()->create();
     seedReportUsage('briefing', 1_000_000, 0, Carbon::today(), userId: $alice->id); // 2.50
 
-    $row = collect($this->report->athletes(Carbon::today(), Carbon::now()))
-        ->firstWhere('user_id', $alice->id);
+    $row = nonNull(collect(tokenUsageReport()->athletes(Carbon::today(), Carbon::now()))
+        ->firstWhere('user_id', $alice->id));
 
     expect($row['ceiling'])->toBe(2.0)
         ->and($row['capped'])->toBeTrue()
@@ -484,8 +489,8 @@ it('marks an athlete capped once today reaches their ceiling, and reads a today-
 
     app(CeilingOverride::class)->set($alice->id, 10.0);
 
-    $row = collect($this->report->athletes(Carbon::today(), Carbon::now()))
-        ->firstWhere('user_id', $alice->id);
+    $row = nonNull(collect(tokenUsageReport()->athletes(Carbon::today(), Carbon::now()))
+        ->firstWhere('user_id', $alice->id));
 
     expect($row['ceiling'])->toBe(10.0)
         ->and($row['ceiling_overridden'])->toBeTrue()
@@ -501,7 +506,7 @@ it('splits done narration by its producer, counting a null served_by as unknown'
     seedDoneNarration($alice->id, ServedBy::Llm, Carbon::parse('2026-04-01')); // outside the range
 
     [$from, $to] = $range();
-    $row = collect($this->report->athletes($from, $to))->firstWhere('user_id', $alice->id);
+    $row = nonNull(collect(tokenUsageReport()->athletes($from, $to))->firstWhere('user_id', $alice->id));
 
     expect($row['served'])->toBe([
         'llm' => 2,
@@ -516,11 +521,11 @@ it('groups a rule-based fill by its stored reason', function () use ($range): vo
     seedDoneNarration($alice->id, ServedBy::RuleBased, Carbon::parse('2026-05-11'), AnalysisOrigin::Capped);
     seedDoneNarration($alice->id, ServedBy::RuleBased, Carbon::parse('2026-05-12'), AnalysisOrigin::Return);
     seedDoneNarration($alice->id, ServedBy::RuleBased, Carbon::parse('2026-05-14'), AnalysisOrigin::ContentFilter);
-    seedDoneNarration($alice->id, ServedBy::RuleBased, Carbon::parse('2026-05-15'), null);
+    seedDoneNarration($alice->id, ServedBy::RuleBased, Carbon::parse('2026-05-15'));
     seedDoneNarration($alice->id, ServedBy::RuleBased, Carbon::parse('2026-05-13'), AnalysisOrigin::RejectedOutput);
 
     [$from, $to] = $range();
-    $row = collect($this->report->athletes($from, $to))->firstWhere('user_id', $alice->id);
+    $row = nonNull(collect(tokenUsageReport()->athletes($from, $to))->firstWhere('user_id', $alice->id));
 
     expect($row['served']['reasons'])->toBe([
         'demo' => 0,
@@ -534,11 +539,11 @@ it('groups a rule-based fill by its stored reason', function () use ($range): vo
 
 it('counts every one of a demo athlete\'s rule-based fills as demo, whatever reason (if any) was stored', function () use ($range): void {
     $demo = User::factory()->create(['is_demo' => true]);
-    seedDoneNarration($demo->id, ServedBy::RuleBased, Carbon::parse('2026-05-11'), null);
+    seedDoneNarration($demo->id, ServedBy::RuleBased, Carbon::parse('2026-05-11'));
     seedDoneNarration($demo->id, ServedBy::RuleBased, Carbon::parse('2026-05-12'), AnalysisOrigin::Capped);
 
     [$from, $to] = $range();
-    $row = collect($this->report->athletes($from, $to))->firstWhere('user_id', $demo->id);
+    $row = nonNull(collect(tokenUsageReport()->athletes($from, $to))->firstWhere('user_id', $demo->id));
 
     expect($row['served']['reasons'])->toBe([
         'demo' => 2,
@@ -557,7 +562,7 @@ it('counts the flags an athlete filed in range', function () use ($range): void 
     Feedback::factory()->for($alice)->create(['subject_id' => 3, 'created_at' => Carbon::parse('2026-04-01')]);
 
     [$from, $to] = $range();
-    $row = collect($this->report->athletes($from, $to))->firstWhere('user_id', $alice->id);
+    $row = nonNull(collect(tokenUsageReport()->athletes($from, $to))->firstWhere('user_id', $alice->id));
 
     expect($row['flags'])->toBe(2);
 });
@@ -573,7 +578,7 @@ it('counts dead-lettered blocks regardless of the range, since they still need a
     ]);
 
     [$from, $to] = $range();
-    $row = collect($this->report->athletes($from, $to))->firstWhere('user_id', $alice->id);
+    $row = nonNull(collect(tokenUsageReport()->athletes($from, $to))->firstWhere('user_id', $alice->id));
 
     expect($row['dead_lettered'])->toBe(1);
 });
@@ -582,7 +587,7 @@ it('lists a silent athlete rather than hiding them behind zero spend', function 
     $alice = User::factory()->create();
 
     [$from, $to] = $range();
-    $row = collect($this->report->athletes($from, $to))->firstWhere('user_id', $alice->id);
+    $row = nonNull(collect(tokenUsageReport()->athletes($from, $to))->firstWhere('user_id', $alice->id));
 
     expect($row['today'])->toBe(0.0)
         ->and($row['calls'])->toBe(0)
@@ -601,7 +606,7 @@ it('sorts the demo account last and the rest by 30-day spend', function () use (
 
     [$from, $to] = $range();
 
-    expect(array_column($this->report->athletes($from, $to), 'user_id'))
+    expect(array_column(tokenUsageReport()->athletes($from, $to), 'user_id'))
         ->toBe([$heavy->id, $quiet->id, $demo->id]);
 });
 
@@ -614,7 +619,7 @@ it('keeps a deleted account listed under the snapshot the eraser left behind', f
     app(UserEraser::class)->erase($alice);
 
     [$from, $to] = $range();
-    $row = collect($this->report->athletes($from, $to))->firstWhere('user_id', $aliceId);
+    $row = nonNull(collect(tokenUsageReport()->athletes($from, $to))->firstWhere('user_id', $aliceId));
 
     expect($row['user_name'])->toBe('Alice')
         ->and($row['deleted'])->toBeTrue();

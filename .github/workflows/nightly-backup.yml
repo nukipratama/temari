@@ -1,21 +1,7 @@
 name: Nightly backup
 
-# A deploy backup only exists because a deploy happened — a quiet week between
-# deploys leaves no recovery point at all. This runs on a schedule instead,
-# independent of shipping code, so there is always a recent restorable pair.
-#
-# Off the hour for the same reason nightly-audit.yml is: an on-the-hour cron
-# queues behind everyone else's. 23:40 WIB is chosen because the day's data is
-# complete by then. The 5-, 15- and 60-minute schedule entries still run
-# between 21:00 and midnight, as do `streak:settle` (hourly) and the 21:00
-# digests; then `ai:daily-briefing` at 00:01 and eight jobs through 00:26,
-# pruning at 02:20-02:40, weather and trend at 03:15-03:45, the nightly audit
-# at 03:17, `ai:trend-read` at 06:00 (see routes/console.php).
-#
-# Disk cleanup rides in the same job, strictly after a successful backup and
-# never before it: a full disk is how backups start failing silently, and the
-# host has no other scheduled trim for the build cache or the sha-tagged
-# images ci.yml's `build` job pushes to GHCR one per merged commit.
+# Scheduled database backup, independent of deploys, so there is always a recent restorable pair.
+# Disk cleanup runs in the same job, only after a successful backup.
 
 on:
   schedule:
@@ -51,10 +37,12 @@ jobs:
       - name: Backup DB
         timeout-minutes: 10
         run: |
+          umask 077
           set -o pipefail
           DB_BACKUP_PASSWORD=$(scripts/deploy/backup-password.sh)
           export DB_BACKUP_PASSWORD
           mkdir -p "$BACKUP_DIR"
+          chmod 700 "$BACKUP_DIR"
           out="$BACKUP_DIR/nightly-$NIGHTLY_TIMESTAMP.sql.gz"
           manifest="$BACKUP_DIR/nightly-$NIGHTLY_TIMESTAMP.manifest"
           db_sql() {
@@ -81,6 +69,7 @@ jobs:
       - name: Backup analytics schema
         timeout-minutes: 10
         run: |
+          umask 077
           DB_BACKUP_PASSWORD=$(scripts/deploy/backup-password.sh)
           export DB_BACKUP_PASSWORD
           out="$BACKUP_DIR/analytics-nightly-$NIGHTLY_TIMESTAMP.sql.gz"

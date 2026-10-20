@@ -22,15 +22,8 @@ class ResolveRunBaselineAction
 
     /**
      * Answers already computed this request/job, keyed by every argument.
-     *
-     * The run-insight toolbox asks twice with identical arguments — once through
-     * RelativeEffort, once through RecentBaselineTool — and the window scan reads
-     * `stream_summary` for every run in it. The binding is `scoped()` in
-     * AppServiceProvider so both reach the same instance; without that they get
-     * separate ones and this memo never sees the second call.
-     *
-     * `excludeActivityId` is part of the key on purpose: dropping it would let a
-     * run be measured against a baseline that includes itself.
+     * `excludeActivityId` is part of the key so a run is never measured against
+     * a baseline that includes itself.
      *
      * @var array<string, array{runs:int, avg_pace_sec_per_km:int|null, avg_hr:int|null, avg_decoupling_pct:float|null, avg_trimp:int|null, trimp_runs:int}|null>
      */

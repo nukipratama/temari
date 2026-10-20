@@ -21,9 +21,14 @@ class UnrestorableHeldNotificationException extends RuntimeException
 
     public static function from(mixed $restored): self
     {
-        return new self($restored instanceof __PHP_Incomplete_Class
-            ? (string) get_object_vars($restored)['__PHP_Incomplete_Class_Name']
-            : get_debug_type($restored));
+        if (! $restored instanceof __PHP_Incomplete_Class) {
+            return new self(get_debug_type($restored));
+        }
+
+        $storedClass = get_object_vars($restored)['__PHP_Incomplete_Class_Name'];
+        assert(is_string($storedClass));
+
+        return new self($storedClass);
     }
 
     public static function unparseable(string $serialized, Throwable $previous): self

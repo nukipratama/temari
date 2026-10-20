@@ -5,7 +5,7 @@ import type { AthleteRow } from '@/pages/Narration/types';
 import EmptyState from '@/components/narration/EmptyState';
 import LastOpen from '@/components/narration/LastOpen';
 import SectionHeading from '@/components/narration/SectionHeading';
-import Sparkline from '@/components/narration/Sparkline';
+import SpendBars from '@/components/narration/SpendBars';
 import { Card } from '@/components/ui/card';
 import Chip from '@/components/ui/Chip';
 import ProgressBar from '@/components/ui/ProgressBar';
@@ -22,12 +22,9 @@ interface AthletesPanelProps {
 }
 
 /**
- * One flex row per athlete, replacing the old table: name and tags, today
- * against their own ceiling, 7d, 30d, calls and a sparkline. Flags and the
- * dead-letter count dropped from here on purpose — the dead-letter recovery
- * lives on {@link FaultStrip} now, and quality signals live on the breakdown
- * tab. A deleted account collapses into a `<details>` rollup below the live
- * rows instead of taking a full row.
+ * One flex row per athlete: name and tags, today against their own ceiling, 7d,
+ * 30d, calls and a sparkline. A deleted account collapses into a `<details>`
+ * rollup below the live rows instead of taking a full row.
  */
 export default function AthletesPanel({
     rows,
@@ -169,7 +166,7 @@ function AthleteRowView({
                     30-day shape
                 </span>
                 <div className="mt-1">
-                    <Sparkline
+                    <SpendBars
                         values={row.sparkline.map((point) => point.cost)}
                         ariaLabel={`${label}: daily spend over the last 30 days`}
                     />

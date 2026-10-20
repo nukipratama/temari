@@ -17,7 +17,9 @@ use Database\Seeders\Demo\DemoRunSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Sleep;
 
 uses(RefreshDatabase::class);
 
@@ -27,6 +29,7 @@ beforeEach(function (): void {
     config()->set('azure_openai.api_key', 'fake-key');
 });
 
+/** @param  array<string, mixed>  $detail */
 function runFor(User $user, array $detail = []): Activity
 {
     $activity = Activity::factory()->for($user)->create();
@@ -156,7 +159,7 @@ it('shows a fresh demo session only the seeded questions', function (): void {
         'weather_temp_c' => 32,
         'stream_summary' => ['drift_metric_version' => 2, 'steady_effort_hr_drift_bpm' => 6.4],
     ]);
-    $seeded = DemoRunSeeder::seededExchanges($activity->detail);
+    $seeded = DemoRunSeeder::seededExchanges(nonNull($activity->detail));
     foreach ($seeded as $question => $answer) {
         RunQuestion::factory()->create([
             'user_id' => $demo->id, 'activity_id' => $activity->id,
@@ -170,7 +173,7 @@ it('shows a fresh demo session only the seeded questions', function (): void {
         'user_id' => $demo->id, 'activity_id' => $activity->id, 'question' => array_key_first($seeded),
     ]);
 
-    $questions = $this->actingAs($demo)->getJson("/api/activities/{$activity->id}/questions")->json('questions');
+    $questions = arrayOf($this->actingAs($demo)->getJson("/api/activities/{$activity->id}/questions")->json('questions'));
 
     expect($seeded)->toHaveCount(2)
         ->and(array_column($questions, 'question'))->toBe(array_keys($seeded))
@@ -314,6 +317,23 @@ it('accepts the tenth question on a run today and refuses the eleventh without a
     expect(RunQuestion::query()->count())->toBe(10);
 });
 
+it('turns a question away with a transient 429, not the run cap, while another holds the run cap lock', function (): void {
+    Sleep::fake(syncWithCarbon: true);
+    $user = User::factory()->create();
+    $activity = runFor($user);
+    $held = Cache::lock("run-question-cap:{$user->id}:{$activity->id}", 30);
+    $held->get();
+
+    $this->actingAs($user)
+        ->postJson("/api/activities/{$activity->id}/questions", ['question' => 'racing the cap?'])
+        ->assertStatus(429)
+        ->assertExactJson(['error' => 'rate_limited']);
+    $held->release();
+
+    Bus::assertNotDispatched(AnswerRunQuestionJob::class);
+    expect(RunQuestion::query()->count())->toBe(0);
+});
+
 it('says the run is capped when the thread is read at the cap, and not below it', function (): void {
     $user = User::factory()->create();
     $activity = runFor($user);
@@ -409,7 +429,7 @@ it('builds a demo answer follow-ups from the seeded questions and the current on
         'weather_temp_c' => 32,
         'stream_summary' => ['drift_metric_version' => 2, 'steady_effort_hr_drift_bpm' => 6.4],
     ]);
-    foreach (DemoRunSeeder::seededExchanges($activity->detail) as $question => $answer) {
+    foreach (DemoRunSeeder::seededExchanges(nonNull($activity->detail)) as $question => $answer) {
         RunQuestion::factory()->create([
             'user_id' => $demo->id, 'activity_id' => $activity->id,
             'question' => $question, 'answer' => $answer, 'status' => AnalysisStatus::Done,

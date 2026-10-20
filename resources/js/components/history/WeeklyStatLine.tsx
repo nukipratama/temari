@@ -76,13 +76,10 @@ function buildMetrics(snapshot: WeeklySnapshotWithRecap): StatMetric[] {
 }
 
 /**
- * The week's numbers as one tappable mono line, shown under a week's
- * narration. Shared by the feed's week section and the calendar's week-row
- * disclosure, which the prototype draws as the same line at two grains.
- * Tapping a metric word reveals a plain explanation inline underneath, so
- * nothing needs a popover that a clipped ancestor could cut off. A metric
- * past its alarm threshold opens by default with a deterministic,
- * rule-based read instead of the general explanation.
+ * The week's numbers as one tappable mono line, shown under a week's narration
+ * and shared by the feed's week section and the calendar's week-row disclosure.
+ * Tapping a metric word reveals a plain explanation inline; a metric past its
+ * alarm threshold opens by default with a deterministic, rule-based read.
  */
 export default function WeeklyStatLine({
     snapshot,

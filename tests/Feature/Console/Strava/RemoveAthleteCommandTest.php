@@ -74,7 +74,7 @@ it('releases the grant on Strava and then removes the account and everything it 
 it('removes the account anyway when Strava will not take the deauthorize', function (): void {
     fakeAthleteRemovalHttp(503);
     $user = athleteWithLiveGrant();
-    $athleteId = $user->stravaConnection->strava_athlete_id;
+    $athleteId = nonNull($user->stravaConnection)->strava_athlete_id;
 
     $this->artisan('strava:remove-athlete', ['user' => $user->id, '--force' => true])
         ->expectsOutputToContain('did not accept the deauthorize')

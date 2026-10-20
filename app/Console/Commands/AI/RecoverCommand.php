@@ -19,20 +19,12 @@ use App\Services\AI\NarrationOrigin;
 class RecoverCommand extends Command
 {
     /**
-     * The manual "resume everything" lever. After a day-long outage, full recovery
-     * otherwise takes N per-user /devtools/narration clicks + Horizon retries + per-run-page
-     * clicks + up to 60 min of hourly self-heal cadence. This collapses that into
-     * one action:
+     * The manual "resume everything" lever: re-arms every dead-lettered block
+     * across all non-demo users, then runs ai:self-heal inline instead of
+     * waiting for the next hourly sweep.
      *
-     *   1. Re-arm every dead-lettered block across all non-demo users (reset the
-     *      retry budget + re-dispatch), generalizing the per-user /devtools/narration re-arm.
-     *   2. Run ai:self-heal inline, which reverts stale in-flight zombies to
-     *      Pending, sweeps the earliest Failed per-activity group oldest-first, and
-     *      re-kicks every stalled family, instead of waiting for the next hour.
-     *
-     * Every dispatch is cost-safe: request(invalidate:false) never re-bills a Done
-     * sibling, the job-level pause guard reverts to Pending mid-cap, and demo users
-     * are excluded so this never auto-bills the shared demo account.
+     * Every dispatch is cost-safe: request(invalidate:false) never re-bills a
+     * Done sibling, and the job-level pause guard reverts to Pending mid-cap.
      */
     public function handle(AnalysisService $service): int
     {
@@ -55,12 +47,12 @@ class RecoverCommand extends Command
     {
         $rows = Analysis::query()->deadLettered()->get();
         $ownerIds = AnalysisSubjectMap::ownerIdsForRows($rows);
-        $demoUserIds = User::query()->where('is_demo', true)->pluck('id')->flip();
+        $athleteIds = User::query()->notDemo()->whereIn('id', array_filter($ownerIds))->pluck('id')->flip();
 
         $rearmed = 0;
         foreach ($rows as $row) {
             $ownerId = $ownerIds[$row->id] ?? null;
-            if ($ownerId === null || $demoUserIds->has($ownerId)) {
+            if ($ownerId === null || ! $athleteIds->has($ownerId)) {
                 continue;
             }
 

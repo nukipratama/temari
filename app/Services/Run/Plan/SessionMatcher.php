@@ -17,18 +17,13 @@ use App\Services\Run\Metrics\PaceCalculator;
 use Illuminate\Support\Carbon;
 
 /**
- * Matches what the athlete actually ran against what the plan asked for,
- * one day at a time — a continuous km-ratio score, not just a bucket, so a
- * 3 km jog against a 20 km long run reads as a real number, not just
- * {@see PlannedSessionStatus::Partial}. `plan:score-compliance` (daily) is
- * what actually calls {@see self::scoreFor()} and persists the result onto
- * each {@see \App\Models\PlannedSession} row — this class stays render-safe
- * (`scoreRange()`) for a past row the daily command hasn't reached yet, so a
- * page load never shows a stale `planned` for a day that's already over, and
- * for today, which the daily command deliberately never reaches.
+ * Matches what the athlete actually ran against what the plan asked for, one day at a time — a
+ * continuous km-ratio score, not just a bucket. `plan:score-compliance` (daily) calls
+ * {@see self::scoreFor()} and persists the result onto each {@see \App\Models\PlannedSession} row;
+ * this class stays render-safe (`scoreRange()`) for a past row the daily command hasn't reached
+ * yet, and for today, which it never reaches.
  *
- * Loads a whole date range in one query — the per-day existence check this
- * replaced on the Plan tab was an N+1 across every rendered week.
+ * Loads a whole date range in one query.
  */
 final readonly class SessionMatcher
 {
@@ -50,11 +45,8 @@ final readonly class SessionMatcher
     }
 
     /**
-     * Render-time fallback for whatever subset of `$plannedKmByDate` is
-     * still `planned` despite being past-dated, plus today — see the class
-     * docblock.
-     * Callers should only pass the stale subset, not the whole range, so a
-     * healthy day never pays for a query it doesn't need.
+     * Render-time fallback for whatever subset of `$plannedKmByDate` is still `planned` despite being
+     * past-dated, plus today. Callers should pass only the stale subset, not the whole range.
      *
      * @param  array<string, float>  $plannedKmByDate  Y-m-d => prescribed km (0.0 on a rest day)
      * @param  array<string, bool>  $excusedByDate  Y-m-d => whether this day is excused — the athlete skipped it,
@@ -70,10 +62,9 @@ final readonly class SessionMatcher
     }
 
     /**
-     * `plan:score-compliance`'s entry point, and also what `PlanPageAssembler`/
-     * `CurrentWeekPlanBuilder` call for the render-time fallback — the same
-     * per-day judgment as {@see self::statuses()}, but returning the full
-     * verdict (score, `ran_anyway`) rather than just the status label.
+     * `plan:score-compliance`'s entry point, and the render-time fallback of `PlanPageAssembler`/
+     * `CurrentWeekPlanBuilder`: {@see self::statuses()}'s per-day judgment, returning the full
+     * verdict (score, `ran_anyway`).
      *
      * @param  array<string, float>  $plannedKmByDate  Y-m-d => prescribed km (0.0 on a rest day)
      * @param  array<string, bool>  $excusedByDate  Y-m-d => whether this day is excused — the athlete skipped it,
@@ -95,7 +86,7 @@ final readonly class SessionMatcher
             $day = $completed[$date] ?? ['sum' => 0.0, 'longest' => 0.0];
             $session = $sessionByDate[$date] ?? null;
             $type = $sessionTypesByDate[$date] ?? ($session === null ? null : EffectiveSession::settledTypeOf($session));
-            $timeTrial = $session !== null && $type === $session->session_type && TimeTrial::of($session) !== null;
+            $timeTrial = $session !== null && $type === $session->session_type && TimeTrial::of($session) instanceof TimeTrial;
             $creditedKm = self::creditedKm($type, $day, $timeTrial);
             $results[$date] = self::scoreFor(
                 $plannedKm,
@@ -110,20 +101,13 @@ final readonly class SessionMatcher
     }
 
     /**
-     * The single source of truth for turning a day's (prescribed km,
-     * completed km) into a verdict. `$excused` always wins — an excused day
-     * is never scored, regardless of what happened to be logged that date; it
-     * covers both an athlete's own skip and a day whose shown advice was a
-     * rest day. A rest day (`$plannedKm <= 0`) is always `Done`; whether something was
-     * logged anyway is reported separately via `ran_anyway` rather than
-     * changing the status itself.
+     * The single source of truth for turning a day's (prescribed km, completed km) into a verdict.
+     * `$excused` always wins: an excused day (an athlete's own skip, or a day whose shown advice was a
+     * rest day) is never scored. A rest day (`$plannedKm <= 0`) is always `Done`; whether something
+     * was logged anyway is reported via `ran_anyway`.
      *
-     * A day still in progress (`$isPast` false) is graded too, but the
-     * verdict only stands when the athlete has already earned it: anything
-     * short of credited floors back to `Planned`. Falling short is not
-     * decidable until the day ends, while clearing the bar cannot be undone
-     * by the hours left in it. See
-     * `docs/decisions/today-credits-when-earned.md`.
+     * A day still in progress (`$isPast` false) is graded too, but anything short of credited floors
+     * back to `Planned`. See `docs/decisions/today-credits-when-earned.md`.
      *
      * `$longestRunKm`, supplied only on a `Long` day the clamp did not ease
      * ({@see self::asksForOneLongRun()}), can downgrade a cleared-km day to
@@ -194,12 +178,9 @@ final readonly class SessionMatcher
     }
 
     /**
-     * Every logged run of each day in the range, keyed by date, oldest
-     * first. `km` is the day's total (the same figure {@see self::scoreFor()}
-     * grades against) and drives the planned-vs-actual bar; `runs` lists each
-     * run so a two-session day can show both instead of pairing the day's
-     * total distance with one run's duration, which read as a single
-     * impossible run.
+     * Every logged run of each day in the range, keyed by date, oldest first. `km` is the day's
+     * total (the figure {@see self::scoreFor()} grades against); `runs` lists each run so a
+     * two-session day can show both.
      *
      * @return array<string, array{km: float, meters: float, runs: list<array{id: int, km: float, seconds: int|null, started_at: string, avg_hr: int|null}>}>
      */
@@ -276,15 +257,10 @@ final readonly class SessionMatcher
     }
 
     /**
-     * The pace the credited runs actually averaged — elapsed time over
-     * distance — over the identical best-run/day-total selection
-     * {@see self::creditedKm()} grades the km with, so the two figures a
-     * judged row shows always describe the same running. Takes a day's
-     * already-loaded {@see self::activityByDate()} runs rather than
-     * querying again: a renderer building a whole week of judged days would
-     * otherwise pay for one query per credited day. Null on a day with no
-     * runs logged, or where the credited runs carry no elapsed time to divide
-     * by.
+     * The pace the credited runs actually averaged (elapsed time over distance), over the same
+     * best-run/day-total selection {@see self::creditedKm()} uses. Takes a day's already-loaded
+     * {@see self::activityByDate()} runs rather than querying again. Null on a day with no runs, or
+     * where the credited runs carry no elapsed time.
      *
      * @param  list<array{id: int, km: float, seconds: int|null, started_at: string}>  $runs
      */
@@ -359,9 +335,8 @@ final readonly class SessionMatcher
     }
 
     /**
-     * What each of these dates actually prescribed. Read here rather than
-     * passed in, so the three callers that build `$plannedKmByDate` cannot
-     * drift out of step with the crediting rule.
+     * What each of these dates actually prescribed, read here so the callers that build
+     * `$plannedKmByDate` cannot drift out of step with the crediting rule.
      *
      * @param  non-empty-list<string>  $dates
      * @return array<string, PlannedSession>

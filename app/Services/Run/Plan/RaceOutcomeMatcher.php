@@ -30,7 +30,7 @@ final readonly class RaceOutcomeMatcher
         )
             ->where('activities.user_id', $race->user_id)
             ->whereNotNull('activity_details.elapsed_time')
-            ->whereDate('activity_details.start_date_local', $raceDay)
+            ->startedOn($raceDay)
             ->whereBetween('activity_details.distance', [$race->distance_m * (1 - $tolerance), $race->distance_m * (1 + $tolerance)])
             ->orderByRaw('ABS(activity_details.distance - ?) asc', [$race->distance_m])
             ->orderByDesc('activity_details.distance')

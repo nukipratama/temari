@@ -14,13 +14,19 @@ function intentDetail(array $attrs): ActivityDetail
     return new ActivityDetail()->forceFill($attrs);
 }
 
-/** @param array<string, float> $zonePct */
+/**
+ * @param array<string, float> $zonePct
+ * @return array{stream_summary: array{time_in_zone_pct: array<string, float>}}
+ */
 function zones(array $zonePct): array
 {
     return ['stream_summary' => ['time_in_zone_pct' => $zonePct]];
 }
 
-/** @param array<string, float> $zonePct */
+/**
+ * @param array<string, float> $zonePct
+ * @return array{stream_summary: array<string, mixed>}
+ */
 function zonesWithReps(array $zonePct): array
 {
     return ['stream_summary' => ['time_in_zone_pct' => $zonePct, 'laps' => [

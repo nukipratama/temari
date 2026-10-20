@@ -28,15 +28,18 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Cache;
+use Mockery\MockInterface;
 
 uses(RefreshDatabase::class);
 
 /** @return array{0: KickoffWeeklyRecaps, 1: KickoffMonthlyRecaps} */
 function kickoffRecapsDoubles(): array
 {
+    /** @var KickoffWeeklyRecaps&MockInterface $weekly */
     $weekly = Mockery::mock(KickoffWeeklyRecaps::class);
     $weekly->shouldReceive('__invoke')->andReturn(['dispatched' => 0, 'rule_based' => 0]);
 
+    /** @var KickoffMonthlyRecaps&MockInterface $monthly */
     $monthly = Mockery::mock(KickoffMonthlyRecaps::class);
     $monthly->shouldReceive('__invoke')->andReturn(['dispatched' => 0, 'rule_based' => 0]);
 
@@ -48,6 +51,7 @@ it('runs the weekly and monthly kickoff for its own user, attributed to the inge
     $origin = app(NarrationOrigin::class);
     $seen = [];
 
+    /** @var KickoffWeeklyRecaps&MockInterface $weekly */
     $weekly = Mockery::mock(KickoffWeeklyRecaps::class);
     $weekly->shouldReceive('__invoke')->once()
         ->andReturnUsing(function (?int $userId) use (&$seen, $origin): array {
@@ -56,6 +60,7 @@ it('runs the weekly and monthly kickoff for its own user, attributed to the inge
             return ['dispatched' => 0, 'rule_based' => 0];
         });
 
+    /** @var KickoffMonthlyRecaps&MockInterface $monthly */
     $monthly = Mockery::mock(KickoffMonthlyRecaps::class);
     $monthly->shouldReceive('__invoke')->once()
         ->andReturnUsing(function (?int $userId) use (&$seen, $origin): array {
@@ -71,7 +76,7 @@ it('runs the weekly and monthly kickoff for its own user, attributed to the inge
 });
 
 /**
- * #1051: the backfill landing is the moment hydration should start, not the
+ * The backfill landing is the moment hydration should start, not the
  * next `strava:hydrate-backlog` tick up to 15 minutes later.
  */
 it('dispatches an immediate hydration batch for the backfilled user', function (): void {
@@ -100,7 +105,7 @@ it('stamps backfilled_at as the last link of the connect chain', function (): vo
 
     new KickoffRecapsJob($user->id)->handle($weekly, $monthly, app(AnalysisService::class), app(Periodizer::class), app(RequestTodaysBriefing::class), app(HydrationBacklog::class));
 
-    expect($user->fresh()->backfilled_at)->not->toBeNull();
+    expect($user->refresh()->backfilled_at)->not->toBeNull();
 });
 
 it('queues onboarding regeneration when the plan lock is busy', function (): void {
@@ -134,8 +139,8 @@ it('re-sizes the first week against the history that just landed', function (): 
     $plannedThisWeek = PlannedSession::query()
         ->where('user_id', $user->id)
         ->whereBetween('date', [Carbon::today(), Carbon::today()->endOfWeek(Carbon::SUNDAY)])
-        ->pluck('date')
-        ->map(fn (Carbon $date): string => $date->toDateString())
+        ->get()
+        ->map(fn (PlannedSession $session): string => $session->date->toDateString())
         ->all();
 
     // The single cold-start row is gone, replaced by a full re-sized week.
@@ -153,7 +158,7 @@ it('plans nothing when no plan exists yet', function (): void {
     new KickoffRecapsJob($user->id)->handle($weekly, $monthly, app(AnalysisService::class), app(Periodizer::class), app(RequestTodaysBriefing::class), app(HydrationBacklog::class));
 
     expect(PlannedSession::query()->where('user_id', $user->id)->exists())->toBeFalse()
-        ->and($user->fresh()->backfilled_at)->not->toBeNull();
+        ->and($user->refresh()->backfilled_at)->not->toBeNull();
 });
 
 it('kicks every Trends range off the backfill, so a new account is not days behind', function (): void {

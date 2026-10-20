@@ -65,7 +65,7 @@ it('does not resolve a row that reached five attempts', function (): void {
 
     new ResolveActivityLocationJob($detail->id)->handle(app(ReverseGeocodeAction::class));
 
-    expect($detail->fresh()->location_attempts)->toBe(5);
+    expect($detail->refresh()->location_attempts)->toBe(5);
 });
 
 it('waits a day after a failed attempt before resolving again', function (): void {
@@ -81,7 +81,7 @@ it('waits a day after a failed attempt before resolving again', function (): voi
 
     new ResolveActivityLocationJob($detail->id)->handle(app(ReverseGeocodeAction::class));
 
-    expect($detail->fresh()->location_attempts)->toBe(1);
+    expect($detail->refresh()->location_attempts)->toBe(1);
 });
 
 it('skips already-resolved details', function (): void {
@@ -96,7 +96,7 @@ it('skips already-resolved details', function (): void {
 
     new ResolveActivityLocationJob($detail->id)->handle(app(ReverseGeocodeAction::class));
 
-    expect($detail->fresh()->location_name)->toBe('cached');
+    expect($detail->refresh()->location_name)->toBe('cached');
 });
 
 it('stamps and exits when the detail has no coords', function (): void {

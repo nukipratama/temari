@@ -24,37 +24,22 @@ use App\Actions\Run\Plan\ResolveTrainingPreferenceAction;
 use App\Actions\Run\Plan\ResolveSeasonAction;
 
 /**
- * The athlete's own recent behavior, read fresh every time it's asked for
- * (generation and render both call this independently, per the periodizer's
- * "not frozen into the row" design — see `docs/features/plan-periodizer.md`).
+ * The athlete's own recent behavior, read fresh every time it's asked for (see
+ * `docs/features/plan-periodizer.md`).
  *
- * Prescribes a frequency and volume the athlete already has, rather than
- * inventing one: session count from the trailing 6-week average run count
- * (clamped 3-6), weekly volume from a trimmed mean of those weeks, and the
- * long run derived as a share of that volume rather than read off the single
- * longest recent run.
+ * Prescribes a frequency and volume the athlete already has: session count from the trailing 6-week
+ * average run count (clamped 3-6), weekly volume from a trimmed mean of those weeks, and the long
+ * run derived as a share of that volume rather than read off the single longest recent run. See
+ * docs/decisions/plan-volume-anchors-on-weekly-mean.md.
  *
- * The direction matters. Anchoring on the longest run lets one outlier — a
- * race, an event, a one-off adventure — set every session in the plan, since
- * {@see SegmentGenerator::coreKmFor()} scales the whole week off that one
- * scalar. Anchoring on a trimmed weekly mean describes the athlete instead of
- * their biggest day. See docs/decisions/plan-volume-anchors-on-weekly-mean.md.
- *
- * That trailing mean SETS the volume once, at the start of a {@see Season},
- * and is then frozen on the row: re-reading it every week made the ramp
- * chase its own output and made a missed week shrink the next one. Every
- * caller here reads the anchor of the season covering `$asOf`, so
- * generation, render and a late compliance verdict all agree. See
+ * That trailing mean sets the volume once, at the start of a {@see Season}, and is then frozen on
+ * the row; every caller reads the anchor of the season covering `$asOf`. See
  * docs/decisions/the-arc-is-anchored-once.md.
  *
- * An explicit {@see TrainingPreference} sits above both: a set
- * `sessions_per_week` always wins over the behavioral average (this is the
- * one fallback stack member with no clamp of its own — the caller already
- * validated it against `WeekPlanBuilder`'s supported range). With no logged
- * weeks *and* no preference, `experience_level` picks which cold-start
- * default to seed rather than every brand-new athlete getting the same flat
- * numbers regardless of what they claim; real behavior still wins the
- * moment any exists.
+ * An explicit {@see TrainingPreference} sits above both: a set `sessions_per_week` always wins over
+ * the behavioral average (the caller already validated it against `WeekPlanBuilder`'s supported
+ * range). With no logged weeks *and* no preference, `experience_level` picks the cold-start default
+ * to seed.
  *
  * @phpstan-type WeekLayout array{projected_race_seconds: float|null, fall_off_tilt: FallOffTilt|null, run_days: list<int>|null, long_run_day: int|null, two_run_quality_eligible: bool}
  */
@@ -85,11 +70,9 @@ final class TrainingBaseline
     ];
 
     /**
-     * Long-run share of weekly volume, as `[volume_below_km, share]` ascending,
-     * with the flat high-volume share past the last band. Daniels caps a
-     * long run at 25% of weekly mileage, Pfitzinger at 25-30%; both ranges
-     * assume higher mileage than a beginner runs, and 25% of 20 km/week is not
-     * a long run at all, so the share rises as volume falls.
+     * Long-run share of weekly volume, as `[volume_below_km, share]` ascending, with the flat
+     * high-volume share past the last band; the share rises as volume falls, since Daniels' 25%
+     * and Pfitzinger's 25-30% assume more mileage than a beginner runs.
      *
      * @var list<array{0: float, 1: float}>
      */
@@ -101,11 +84,8 @@ final class TrainingBaseline
     private const float LONG_RUN_SHARE_ABOVE_BANDS = 0.25;
 
     /**
-     * Long-run ceiling in km, as `[race_distance_below_m, cap_km]` ascending,
-     * with the marathon cap past the last band. The long-run to
-     * race-distance ratio *inverts* with distance — a 5K long run is 2-3x race
-     * distance, a marathon's is 0.7-0.85x — so a single multiplier is wrong at
-     * both ends and this has to be a table.
+     * Long-run ceiling in km, as `[race_distance_below_m, cap_km]` ascending, with the marathon cap
+     * past the last band; a table because the long-run to race-distance ratio inverts with distance.
      *
      * @var list<array{0: float, 1: float}>
      */
@@ -119,18 +99,14 @@ final class TrainingBaseline
     private const float LONG_RUN_CAP_MARATHON_KM = 35.0;
 
     /**
-     * With no race goal the season is self-scaled, so there is no distance to
-     * band against. The half-marathon cap stands in: it is generous enough that
-     * the volume share below it almost always binds first (0.25 x 80 km/week is
-     * still only 20 km), and it keeps a runaway volume figure bounded.
+     * With no race goal there is no distance to band against; the half-marathon cap stands in and
+     * keeps a runaway volume figure bounded.
      */
     private const float LONG_RUN_CAP_NO_RACE_KM = 22.0;
 
     /**
-     * The real ceiling on a long run is time on feet, not distance: a slower
-     * runner covering 24 km accrues far more fatigue than a fast one. Daniels
-     * caps at 2.5 hours for exactly this reason. Skipped when the athlete has
-     * no VDOT yet, since there is then no pace to convert against.
+     * The ceiling on a long run is time on feet, not distance (Daniels caps at 2.5 hours). Skipped
+     * when the athlete has no VDOT yet.
      */
     private const int LONG_RUN_CAP_MINUTES = 150;
 
@@ -141,13 +117,9 @@ final class TrainingBaseline
     private const float MAX_RECENT_LONG_RUN_INCREASE = 1.1;
 
     /**
-     * Below the marathon threshold the long run should reach the race
-     * distance itself at some point in the arc. The volume share alone never
-     * gets there for a low-mileage athlete — 0.35 x 26 km/week is a 9 km long
-     * run for a 10K — and going to the start line having never covered the
-     * distance is the one thing a plan with a date on it must not allow. A
-     * marathon is exempt in the other direction: 0.7-0.85x race distance is
-     * the coaching, and {@see self::LONG_RUN_CAP_BANDS} already says so.
+     * Below the marathon threshold the long run should reach the race distance itself at some point
+     * in the arc; the volume share alone never gets a low-mileage athlete there. A marathon is exempt,
+     * see {@see self::LONG_RUN_CAP_BANDS}.
      */
     private const float RACE_DISTANCE_FLOOR_THRESHOLD_M = RaceSupport::MARATHON_CLASS_ABOVE_M;
 
@@ -235,7 +207,7 @@ final class TrainingBaseline
         $weeklyVolumeKm = $season->anchor_weekly_volume_km ?? $this->weeklyVolumeKm($weeks, $seed);
 
         $race = ($this->activeRace)($user->id);
-        $longRunCapKm = $this->longRunCapKm($race, max($weeklyVolumeKm, $race === null ? 0.0 : (float) $season?->volume_floor_km), $user, $asOf);
+        $longRunCapKm = $this->longRunCapKm($race, max($weeklyVolumeKm, $race instanceof RaceGoal ? (float) $season?->volume_floor_km : 0.0), $user, $asOf);
         $longRunProgressionCapKm = $this->recentLongRunCapKm($user, $asOf, $seed);
         $layout = $this->weekLayout($user, $asOf);
 
@@ -245,7 +217,7 @@ final class TrainingBaseline
             'long_run_km' => $this->longRunKm($race, $weeklyVolumeKm, $season, $longRunCapKm, $longRunProgressionCapKm, $sessionsPerWeek, $asOf, $layout),
             'long_run_cap_km' => $longRunCapKm,
             'long_run_progression_cap_km' => $longRunProgressionCapKm,
-            'self_scaled' => $race === null,
+            'self_scaled' => !$race instanceof RaceGoal,
         ];
     }
 
@@ -266,7 +238,7 @@ final class TrainingBaseline
             ->filter(static fn (WeeklySnapshot $week): bool => $week->week_ending->lt($weekStart) && $week->week_ending->gte($weekStart->copy()->subWeeks(self::TRAILING_WEEKS)));
 
         return [
-            'projected_race_seconds' => $race === null ? null : (float) $this->ambition->assess($user, $race, $asOf)->prescribedTimeSec(),
+            'projected_race_seconds' => $race instanceof RaceGoal ? (float) $this->ambition->assess($user, $race, $asOf)->prescribedTimeSec() : null,
             'fall_off_tilt' => FallOffTilt::fromFallOff($estimate['k'] ?? null, $estimate['k_fitted'] ?? false),
             'run_days' => $preference?->run_days,
             'long_run_day' => $preference?->long_run_day,
@@ -371,8 +343,8 @@ final class TrainingBaseline
      */
     private function longRunKm(?RaceGoal $race, float $weeklyVolumeKm, ?Season $season, float $capKm, float $progressionCapKm, int $sessionsPerWeek, Carbon $asOf, array $layout): float
     {
-        $block = $race !== null && $season !== null ? $this->block($race, $season) : null;
-        $selfScaledAnchorKm = $race === null ? $season?->anchor_weekly_volume_km : null;
+        $block = $race instanceof RaceGoal && $season instanceof Season ? $this->block($race, $season) : null;
+        $selfScaledAnchorKm = $race instanceof RaceGoal ? null : $season?->anchor_weekly_volume_km;
 
         $derived = max(
             $selfScaledAnchorKm === null
@@ -386,13 +358,10 @@ final class TrainingBaseline
     }
 
     /**
-     * The ceiling on any single long run, whichever of the three binds
-     * tightest: the race-distance band, time on feet, and half the anchor
-     * week, or of the week a race season's volume floor asks for when that
-     * is the bigger one.
-     * Returned by {@see self::forUser()} because capping the baseline alone
-     * left {@see SegmentGenerator::coreKmFor()}'s volume-multiplied
-     * prescription unbounded.
+     * The ceiling on any single long run, whichever of the three binds tightest: the race-distance
+     * band, time on feet, and half the anchor week (or of the week a race season's volume floor asks
+     * for when that is bigger). Returned by {@see self::forUser()} because capping the baseline alone
+     * left {@see SegmentGenerator::coreKmFor()}'s volume-multiplied prescription unbounded.
      */
     private function longRunCapKm(?RaceGoal $race, float $weeklyVolumeKm, User $user, Carbon $asOf): float
     {
@@ -465,14 +434,11 @@ final class TrainingBaseline
     }
 
     /**
-     * The baseline the block has to start from for its long run to REACH its
-     * target at the block's own peak: the race distance itself below the
-     * marathon threshold, and the readiness distance for every race, capped by
-     * the athlete's own ceiling. Divided by the biggest Build or Peak
-     * multiplier, so the athlete arrives there by running the ramp rather
-     * than being handed the distance in week one. Taper and Deload are
-     * reductions and never count as the ramp's high-water mark; a block
-     * holding neither phase gets no floor.
+     * The baseline the block has to start from for its long run to REACH its target at the block's
+     * own peak: the race distance itself below the marathon threshold, and the readiness distance for
+     * every race, capped by the athlete's own ceiling, divided by the biggest Build or Peak
+     * multiplier. Taper and Deload never count as the ramp's high-water mark; a block holding neither
+     * phase gets no floor.
      *
      * @param  list<array{week_start: Carbon, phase: PlanPhase, multiplier: float}>  $block
      */
@@ -506,10 +472,8 @@ final class TrainingBaseline
      * ceilings hold the block under the floor at every baseline, it is the
      * smallest baseline that reaches the most they allow.
      *
-     * A block holding its increases has no ramp to carry that difference, so
-     * the floor is solved over its training weeks alone: their mean matches
-     * the athlete's, each stays within 10% of it, and the recovery and taper
-     * weeks dip under it.
+     * A block holding its increases has no ramp to carry that difference, so the floor is solved
+     * over its training weeks alone.
      *
      * @param  list<array{week_start: Carbon, phase: PlanPhase, multiplier: float}>  $block
      * @param  WeekLayout  $layout
@@ -545,9 +509,7 @@ final class TrainingBaseline
      * A self-scaled season's baseline: the one at which its four-week cycle,
      * as {@see WeekPlanBuilder} lays it out and {@see SegmentGenerator::coreKmFor()}
      * sizes it under `long_run_cap_km` and `long_run_progression_cap_km`,
-     * averages the frozen anchor, or the most those ceilings allow. The
-     * share-of-volume long run left the week to the session count, so the
-     * same anchor prescribed anywhere from 0.4x to 1.2x itself.
+     * averages the frozen anchor, or the most those ceilings allow.
      *
      * @param  WeekLayout  $layout
      */
@@ -577,12 +539,12 @@ final class TrainingBaseline
      */
     private function baselineAveragingKm(float $targetKm, array $weeks, int $sessionsPerWeek, ?RaceGoal $race, float $longRunCapKm, float $progressionCapKm, array $layout): float
     {
-        $raceDistanceM = $race === null ? null : (float) $race->distance_m;
+        $raceDistanceM = $race instanceof RaceGoal ? (float) $race->distance_m : null;
         $sessions = [];
         $kmPerBaselineKm = 0.0;
         $raceKm = 0.0;
         foreach ($weeks as $week) {
-            $days = WeekPlanBuilder::build($week['week_start'], $week['phase'], $sessionsPerWeek, [], $raceDistanceM, $race === null, preferredOffsets: $layout['run_days'], preferredLongOffset: $layout['long_run_day'], projectedRaceSeconds: $layout['projected_race_seconds'], raceDate: $race?->race_date, twoRunQualityEligible: $layout['two_run_quality_eligible'], fallOffTilt: $layout['fall_off_tilt']);
+            $days = WeekPlanBuilder::build($week['week_start'], $week['phase'], $sessionsPerWeek, [], $raceDistanceM, !$race instanceof RaceGoal, preferredOffsets: $layout['run_days'], preferredLongOffset: $layout['long_run_day'], projectedRaceSeconds: $layout['projected_race_seconds'], raceDate: $race?->race_date, twoRunQualityEligible: $layout['two_run_quality_eligible'], fallOffTilt: $layout['fall_off_tilt']);
             ksort($days);
             $primaryEasySeen = false;
             foreach ($days as $day) {
@@ -656,7 +618,7 @@ final class TrainingBaseline
 
     private static function raceBandCapKm(?RaceGoal $race): float
     {
-        if ($race === null || ! RaceSupport::forDistance((float) $race->distance_m)->dedicatedPreparation()) {
+        if (!$race instanceof RaceGoal || ! RaceSupport::forDistance((float) $race->distance_m)->dedicatedPreparation()) {
             return self::LONG_RUN_CAP_NO_RACE_KM;
         }
 

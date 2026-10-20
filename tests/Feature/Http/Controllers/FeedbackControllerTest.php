@@ -11,6 +11,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
 
+/** @return array<string, mixed> */
 function flagPayload(PlannedSession $day, ?string $note = null): array
 {
     return array_filter([

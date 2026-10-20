@@ -31,7 +31,7 @@ function fullyWiredUser(): User
     TelegramConnection::factory()->for($user)->create(['chat_id' => 4242, 'revoked_at' => null]);
     $user->updatePushSubscription('https://push.example/endpoint', str_repeat('a', 87), str_repeat('b', 22));
 
-    return $user->fresh();
+    return nonNull($user->fresh());
 }
 
 function expectPushSends(int $times): void
@@ -104,7 +104,7 @@ it('carries the card id and rarity alongside the activity', function (): void {
 
     $user->notify(new AnalysisReadyNotification($analysis));
 
-    $payload = InboxNotification::query()->firstOrFail()->payload;
+    $payload = nonNull(InboxNotification::query()->firstOrFail()->payload);
 
     expect($payload['run_card_id'])->toBe($card->id)
         ->and($payload['activity_id'])->toBe($activity->id)
@@ -117,9 +117,9 @@ it('records the demo inbox row and sends nothing outbound', function (): void {
     expectPushSends(0);
     $demo = fullyWiredUser();
     $demo->forceFill(['is_demo' => true])->save();
-    $analysis = postRunAnalysisFor($demo->fresh());
+    $analysis = postRunAnalysisFor($demo->refresh());
 
-    $demo->fresh()->notify(new AnalysisReadyNotification($analysis));
+    $demo->refresh()->notify(new AnalysisReadyNotification($analysis));
 
     Http::assertNothingSent();
     expect(InboxNotification::query()->where('user_id', $demo->id)->count())->toBe(1);

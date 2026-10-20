@@ -131,7 +131,9 @@ class MonthlyRecapNarrator
             ),
         );
 
-        return (string) $decoded['narrative'];
+        assert(is_string($decoded['narrative']));
+
+        return $decoded['narrative'];
     }
 
     /**
@@ -145,14 +147,9 @@ class MonthlyRecapNarrator
     }
 
     /**
-     * The previous chain link's recap narrative for continuity: the prior
-     * calendar month's MonthlyRecap content, if that row is Done. The monthly
-     * chain is keyed by the discriminator month (Y-m) under a single user
-     * subject, so "previous" is the calendar month before $month. Returns null
-     * when no Done predecessor exists (first ever month, or it is not yet
-     * narrated), so the narrator opens standalone. The chain (kickoff +
-     * AnalyzeMonthlyRecapJob propagation) guarantees the predecessor is Done
-     * before this month narrates, so steady-state always sees the prior thread.
+     * The previous chain link's recap narrative for continuity: the prior calendar month's
+     * MonthlyRecap content, if that row is Done. Returns null when no Done predecessor exists, so
+     * the narrator opens standalone.
      */
     public function prevNarrative(User $user, string $month): ?string
     {
@@ -164,9 +161,12 @@ class MonthlyRecapNarrator
             return null;
         }
 
-        return Analysis::query()
+        $content = Analysis::query()
             ->forSubject(AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE, $user->id, AnalysisType::MonthlyRecap, $previousMonth)
             ->where('status', AnalysisStatus::Done)
             ->value('content');
+        assert($content === null || is_string($content));
+
+        return $content;
     }
 }

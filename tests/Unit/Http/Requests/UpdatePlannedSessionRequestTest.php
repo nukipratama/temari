@@ -5,6 +5,9 @@ declare(strict_types=1);
 use App\Http\Requests\UpdatePlannedSessionRequest;
 use Illuminate\Support\Facades\Validator;
 
+/**
+ * @param  array<string, mixed>  $payload
+ */
 function validatePlannedSessionUpdate(array $payload): Illuminate\Validation\Validator
 {
     $request = new UpdatePlannedSessionRequest();
@@ -35,7 +38,7 @@ it('rejects an invalid date or a non-boolean flag', function (array $payload): v
     'a non-boolean skipped value' => [['skipped' => 'yes']],
 ]);
 
-it('no longer validates session_type, block having been cut by P23', function (): void {
+it('drops a session_type, which is not an editable field', function (): void {
     expect(validatePlannedSessionUpdate(['session_type' => 'sprint'])->validated())
         ->not->toHaveKey('session_type');
 });

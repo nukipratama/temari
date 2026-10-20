@@ -16,6 +16,7 @@ use Inertia\Testing\AssertableInertia as Assert;
 uses(RefreshDatabase::class);
 
 /**
+ * @param  array<string, mixed>  $overrides
  * @return array<string, mixed>
  */
 function validZonesPayload(array $overrides = []): array
@@ -147,4 +148,15 @@ it('says so instead of touching Strava while the kill-switch is off', function (
         ->assertSessionHas('info');
 
     expect(RunnerProfile::query()->where('user_id', $user->id)->value('source'))->toBe('manual');
+});
+
+it('spends the same per-minute budget as a Strava sync, answering a resync past it with 429', function (): void {
+    Queue::fake();
+    $user = User::factory()->create();
+    StravaConnection::factory()->for($user)->create(['scopes' => 'read,activity:read_all']);
+
+    $this->actingAs($user)->post('/strava/sync');
+    $this->actingAs($user)->post('/settings/zones/resync-strava')->assertForbidden();
+
+    $this->actingAs($user)->post('/settings/zones/resync-strava')->assertTooManyRequests();
 });

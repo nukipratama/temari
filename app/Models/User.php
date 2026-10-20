@@ -41,6 +41,7 @@ use Override;
  * @property Carbon|null $last_seen_at
  * @property float|null $last_notified_vdot
  * @property int|null $last_notified_race_m
+ * @property Carbon|null $fitness_checked_at
  */
 // `is_admin` is deliberately NOT fillable: it is a privilege flag granted only
 // via the `user:set-admin` command, never through mass assignment.
@@ -95,6 +96,7 @@ class User extends Authenticatable
             'last_seen_at' => 'datetime',
             'last_notified_vdot' => 'float',
             'last_notified_race_m' => 'integer',
+            'fitness_checked_at' => 'datetime',
         ];
     }
 
@@ -223,10 +225,10 @@ class User extends Authenticatable
         $hrZones = config('runner.hr_zones');
 
         return [
-            'max_hr' => (int) config('runner.max_hr'),
-            'resting_hr' => (int) config('runner.resting_hr'),
+            'max_hr' => config()->integer('runner.max_hr'),
+            'resting_hr' => config()->integer('runner.resting_hr'),
             'hr_zones' => $hrZones,
-            'optimal_cadence_spm' => (int) config('runner.optimal_cadence_spm'),
+            'optimal_cadence_spm' => config()->integer('runner.optimal_cadence_spm'),
         ];
     }
 

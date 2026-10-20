@@ -3,6 +3,7 @@ import {
     Fragment,
     useEffect,
     useLayoutEffect,
+    useMemo,
     useRef,
     useState,
     type KeyboardEvent as ReactKeyboardEvent,
@@ -16,6 +17,8 @@ const VIEW_W = 300;
 const VIEW_H = 78;
 const VIEW_PAD_X = 8;
 
+const NO_ACTIVITY_IDS: ReadonlyArray<number | null> = [];
+
 interface Point {
     x: number;
     y: number;
@@ -27,19 +30,17 @@ interface Point {
 
 /**
  * Best time per week for one distance, as the prototype draws it: a filled
- * polyline with a fatter marker on the PR. Y is inverted — a faster time
- * sits higher — and X is spaced by real elapsed days, so an uneven gap
- * between two attempts is not flattened into progress.
+ * polyline with a fatter marker on the PR. Y is inverted (a faster time sits
+ * higher) and X is spaced by real elapsed days.
  *
  * A pointer drag (touch) or hover (mouse) scrubs a readout across the line,
- * snapping to the nearest week; arrow keys move between weeks from the
- * keyboard. `touch-pan-y` keeps vertical page scroll working on mobile —
- * only a horizontal-ish gesture is claimed as a scrub.
+ * snapping to the nearest week; arrow keys move between weeks. `touch-pan-y`
+ * keeps vertical page scroll working on mobile.
  */
 export default function JourneyChart({
     weeks,
     timesSec,
-    activityIds = [],
+    activityIds = NO_ACTIVITY_IDS,
 }: Readonly<{
     weeks: ReadonlyArray<string>;
     timesSec: ReadonlyArray<number | null>;
@@ -50,7 +51,10 @@ export default function JourneyChart({
     const draggingRef = useRef(false);
     const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
 
-    const points = buildPoints(weeks, timesSec, activityIds);
+    const points = useMemo(
+        () => buildPoints(weeks, timesSec, activityIds),
+        [weeks, timesSec, activityIds],
+    );
 
     useEffect(() => {
         function close(event: MouseEvent) {
@@ -67,6 +71,9 @@ export default function JourneyChart({
             return;
         }
         const point = points[selectedIndex];
+        if (point === undefined) {
+            return;
+        }
         const halfTip = tipRef.current.offsetWidth / 2;
         const containerWidth = chartRef.current.clientWidth || VIEW_W;
         const rawX =
@@ -79,7 +86,9 @@ export default function JourneyChart({
         tipRef.current.style.left = `${clamped}px`;
     }, [selectedIndex, points]);
 
-    if (points.length === 0) {
+    const first = points[0];
+    const last = points.at(-1);
+    if (first === undefined || last === undefined) {
         return (
             <EmptyPanel title="not enough runs at this distance yet to draw a journey line." />
         );
@@ -144,7 +153,7 @@ export default function JourneyChart({
     }
 
     const path = points.map((p) => `${p.x},${p.y}`).join(' ');
-    const summary = `from ${formatDurationHMS(points[0].time)} on ${points[0].label} to ${formatDurationHMS(points.at(-1)!.time)} on ${points.at(-1)!.label}.`;
+    const summary = `from ${formatDurationHMS(first.time)} on ${first.label} to ${formatDurationHMS(last.time)} on ${last.label}.`;
     const selected = selectedIndex !== null ? points[selectedIndex] : null;
 
     return (
@@ -309,21 +318,24 @@ function buildPoints(
             } => row.time != null,
         );
 
-    if (recorded.length === 0) return [];
+    const firstRow = recorded[0];
+    const lastRow = recorded.at(-1);
+    if (firstRow === undefined || lastRow === undefined) return [];
 
-    const days = recorded.map((row) => Date.parse(row.week) / 86_400_000);
-    const daySpan = days.at(-1)! - days[0];
+    const dayOf = (week: string) => Date.parse(week) / 86_400_000;
+    const firstDay = dayOf(firstRow.week);
+    const daySpan = dayOf(lastRow.week) - firstDay;
     const times = recorded.map((row) => row.time);
     const slowest = Math.max(...times);
     const fastest = Math.min(...times);
     const timeSpan = slowest - fastest;
     const best = recorded.reduce((a, b) => (b.time < a.time ? b : a));
 
-    return recorded.map((row, index) => ({
+    return recorded.map((row) => ({
         x:
             daySpan === 0
                 ? VIEW_W / 2
-                : ((days[index] - days[0]) / daySpan) * VIEW_W,
+                : ((dayOf(row.week) - firstDay) / daySpan) * VIEW_W,
         // 8px of headroom top and bottom so a marker never clips the viewBox.
         y:
             timeSpan === 0

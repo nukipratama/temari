@@ -8,7 +8,13 @@ it('app namespace stays free of debug helpers', function (): void {
     $helpers = ['dd', 'dump', 'ray', 'var_dump'];
     $calls = [];
 
-    foreach (json_decode(File::get(base_path('composer.json')), true)['autoload']['psr-4'] as $directory) {
+    $composer = arrayOf(json_decode(File::get(base_path('composer.json')), true));
+    $directories = array_map(
+        fn (mixed $directory): string => is_string($directory) ? $directory : throw new InvalidArgumentException('Autoload directory is not a string.'),
+        arrayOf(arrayOf($composer['autoload'])['psr-4']),
+    );
+
+    foreach ($directories as $directory) {
         foreach (File::allFiles(base_path($directory)) as $file) {
             $tokens = array_values(array_filter(
                 PhpToken::tokenize($file->getContents()),

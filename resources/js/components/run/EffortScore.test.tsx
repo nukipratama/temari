@@ -2,6 +2,7 @@ import { router } from '@inertiajs/react';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { defined } from '@/test/defined';
 import { setMockPage } from '@/test/setup';
 
 import { EffortChip, EffortPicker } from './EffortScore';
@@ -35,8 +36,7 @@ describe('EffortPicker', () => {
         const { container } = renderPicker();
 
         expect(container.firstElementChild).toHaveClass(
-            'bg-secondary',
-            'dark:bg-sky',
+            'bg-stat-ground',
             'rounded-panel',
         );
         expect(container.firstElementChild).not.toHaveAttribute('data-theme');
@@ -178,7 +178,7 @@ describe('EffortPicker', () => {
         fireEvent.change(slider(), { target: { value: '4' } });
         fireEvent.click(screen.getByRole('button', { name: 'save' }));
 
-        const options = vi.mocked(router.patch).mock.calls[0][2] as {
+        const options = defined(vi.mocked(router.patch).mock.calls[0])[2] as {
             onStart: () => void;
             onFinish: () => void;
             onSuccess: () => void;

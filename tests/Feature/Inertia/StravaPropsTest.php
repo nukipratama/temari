@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\Cache;
 
 uses(RefreshDatabase::class);
 
+/** @return array<string, Closure> */
 function stravaPropsFor(?User $user): array
 {
     return app(StravaProps::class)->forUser($user);

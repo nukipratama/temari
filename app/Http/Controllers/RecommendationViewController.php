@@ -18,6 +18,7 @@ class RecommendationViewController extends Controller
     {
         $validated = $request->validate(['observation_id' => ['required', 'uuid'], 'token' => ['required', 'string', 'max:30000']]);
         try {
+            /** @var array{user_id: int, date: string, original: array<string, mixed>, effective: array<string, mixed>, policy_version: int} $advice */
             $advice = json_decode(Crypt::decryptString($validated['token']), true, flags: JSON_THROW_ON_ERROR);
         } catch (DecryptException|JsonException) {
             abort(422, 'Invalid recommendation.');

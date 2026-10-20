@@ -104,7 +104,7 @@ class AnalysisReadyNotification extends Notification implements ShouldQueue
     public function toInbox(User $notifiable): ?InboxMessage
     {
         $kind = NotificationKind::forAnalysisType($this->analysis->analysis_type);
-        if ($kind === null) {
+        if (!$kind instanceof NotificationKind) {
             return null;
         }
 

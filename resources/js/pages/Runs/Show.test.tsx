@@ -8,6 +8,7 @@ import type {
 } from '@/types/inertia';
 
 import { makeCardFacts } from '@/test/cardFacts';
+import { defined } from '@/test/defined';
 import { setMockPage } from '@/test/setup';
 
 import RunsShow from './Show';
@@ -201,7 +202,7 @@ describe('Runs/Show', () => {
 
         expect(levels[0]).toBe(1);
         levels.slice(1).forEach((level, index) => {
-            expect(level - levels[index]).toBeLessThanOrEqual(1);
+            expect(level - defined(levels[index])).toBeLessThanOrEqual(1);
         });
     });
 

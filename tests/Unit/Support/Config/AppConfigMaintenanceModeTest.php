@@ -52,7 +52,7 @@ it('keeps maintenance active from the cached last-known value without consulting
 });
 
 it('fails closed when neither Redis nor MySQL can answer', function (): void {
-    Log::spy();
+    $log = Log::spy();
     Cache::shouldReceive('get')
         ->once()
         ->with(AppConfigKey::MaintenanceEnabled->cacheKey())
@@ -64,6 +64,6 @@ it('fails closed when neither Redis nor MySQL can answer', function (): void {
 
     expect(new AppConfigMaintenanceMode()->active())->toBeTrue();
 
-    Log::shouldHaveReceived('warning')->with('app_config.cache_unavailable', Mockery::type('array'));
-    Log::shouldHaveReceived('warning')->with('maintenance.flag_unreadable', Mockery::type('array'));
+    $log->shouldHaveReceived('warning')->with('app_config.cache_unavailable', Mockery::type('array'));
+    $log->shouldHaveReceived('warning')->with('maintenance.flag_unreadable', Mockery::type('array'));
 });

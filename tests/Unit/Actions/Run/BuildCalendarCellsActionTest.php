@@ -15,29 +15,28 @@ use Illuminate\Support\Carbon;
 
 uses(RefreshDatabase::class);
 
-beforeEach(function (): void {
-    $this->user = User::factory()->create();
-
-    $monthStart = Carbon::create(2026, 5, 1)->startOfMonth();
+/**
+ * @return array<int, array{date: string, day: int, is_current_month: bool, is_today: bool, distance_km: float|null, pace_sec_per_km: float|null, avg_hr: int|null, trimp: float|null, mood: string|null, rarity: string|null, activity_id: int|null, effort: string|null, runs: array<int, array{activity_id: int, name: string|null, distance_km: float|null, pace_sec_per_km: float|null, effort: string, mood: string|null}>}>
+ */
+function calendarCellsFor(User $user): array
+{
+    $monthStart = nonNull(Carbon::create(2026, 5, 1))->startOfMonth();
     $monthEnd = $monthStart->copy()->endOfMonth();
-    $this->grid = [
-        'gridStart' => $monthStart->copy()->startOfWeek(Carbon::MONDAY),
-        'gridEnd' => $monthEnd->copy()->endOfWeek(Carbon::SUNDAY),
-        'monthStart' => $monthStart,
-        'monthEnd' => $monthEnd,
-    ];
 
-    $this->buildCells = fn (User $user): array => app(BuildCalendarCellsAction::class)(
+    return app(BuildCalendarCellsAction::class)(
         $user,
-        $this->grid['gridStart'],
-        $this->grid['gridEnd'],
-        $this->grid['monthStart'],
-        $this->grid['monthEnd'],
+        $monthStart->copy()->startOfWeek(Carbon::MONDAY),
+        $monthEnd->copy()->endOfWeek(Carbon::SUNDAY),
+        $monthStart,
+        $monthEnd,
     );
-});
+}
 
 /**
- * @return array{date: string, day: int, is_current_month: bool, is_today: bool, distance_km: float|null, pace_sec_per_km: float|null, avg_hr: int|null, trimp: float|null, mood: string|null, rarity: string|null, activity_id: int|null, effort: string|null}|null
+ * @template T of array{date: string}
+ *
+ * @param  array<int, T>  $cells
+ * @return T|null
  */
 function cellOn(array $cells, string $date): ?array
 {
@@ -45,15 +44,17 @@ function cellOn(array $cells, string $date): ?array
 }
 
 it('emits whole Mon-Sun weeks padded around the month', function (): void {
-    $cells = ($this->buildCells)($this->user);
+    $user = User::factory()->create();
+    $cells = calendarCellsFor($user);
 
     expect(count($cells) % 7)->toBe(0)
-        ->and(cellOn($cells, '2026-05-15')['is_current_month'])->toBeTrue();
+        ->and(nonNull(cellOn($cells, '2026-05-15'))['is_current_month'])->toBeTrue();
 });
 
 it('aggregates multiple runs on the same day into one cell with weighted HR', function (): void {
+    $user = User::factory()->create();
     foreach ([[3_000, 1_080, 140], [4_000, 1_440, 160]] as [$dist, $mt, $hr]) {
-        $activity = Activity::factory()->for($this->user)->analyzed()->create();
+        $activity = Activity::factory()->for($user)->analyzed()->create();
         ActivityDetail::factory()->for($activity)->create([
             'start_date_local' => Carbon::create(2026, 5, 15),
             'distance' => $dist,
@@ -64,8 +65,8 @@ it('aggregates multiple runs on the same day into one cell with weighted HR', fu
         ]);
     }
 
-    $cells = ($this->buildCells)($this->user);
-    $cell = cellOn($cells, '2026-05-15');
+    $cells = calendarCellsFor($user);
+    $cell = nonNull(cellOn($cells, '2026-05-15'));
 
     // Weighted HR = (140*1080 + 160*1440) / (1080+1440) = 351600 / 2520 ≈ 153.
     $expectedHr = (int) round((140 * 1080 + 160 * 1440) / (1080 + 1440));
@@ -77,7 +78,8 @@ it('aggregates multiple runs on the same day into one cell with weighted HR', fu
 });
 
 it('carries a per-run breakdown for a multi-run day, so the sheet can list each run', function (): void {
-    $easy = Activity::factory()->for($this->user)->analyzed()->create();
+    $user = User::factory()->create();
+    $easy = Activity::factory()->for($user)->analyzed()->create();
     ActivityDetail::factory()->for($easy)->create([
         'start_date_local' => Carbon::create(2026, 5, 15, 6),
         'distance' => 3_000,
@@ -90,7 +92,7 @@ it('carries a per-run breakdown for a multi-run day, so the sheet can list each 
         'mood' => 'chill',
     ]);
 
-    $hard = Activity::factory()->for($this->user)->analyzed()->create();
+    $hard = Activity::factory()->for($user)->analyzed()->create();
     ActivityDetail::factory()->for($hard)->create([
         'start_date_local' => Carbon::create(2026, 5, 15, 18),
         'distance' => 4_000,
@@ -99,40 +101,44 @@ it('carries a per-run breakdown for a multi-run day, so the sheet can list each 
         'workout_type' => 1, // Strava race tag -> hard
     ]);
 
-    $cells = ($this->buildCells)($this->user);
-    $runs = cellOn($cells, '2026-05-15')['runs'];
+    $cells = calendarCellsFor($user);
+    $runs = nonNull(cellOn($cells, '2026-05-15'))['runs'];
 
     expect($runs)->toHaveCount(2);
     $byName = collect($runs)->keyBy('name');
-    expect($byName['morning shakeout']['distance_km'])->toBe(3.0)
-        ->and($byName['morning shakeout']['effort'])->toBe('unknown')
-        ->and($byName['morning shakeout']['mood'])->toBe('chill')
-        ->and($byName['evening intervals']['distance_km'])->toBe(4.0)
-        ->and($byName['evening intervals']['effort'])->toBe('hard')
-        ->and($byName['evening intervals']['mood'])->toBeNull();
+    $morning = nonNull($byName['morning shakeout']);
+    $evening = nonNull($byName['evening intervals']);
+    expect($morning['distance_km'])->toBe(3.0)
+        ->and($morning['effort'])->toBe('unknown')
+        ->and($morning['mood'])->toBe('chill')
+        ->and($evening['distance_km'])->toBe(4.0)
+        ->and($evening['effort'])->toBe('hard')
+        ->and($evening['mood'])->toBeNull();
 });
 
 it('orders the runs breakdown chronologically, earliest first, regardless of creation order', function (): void {
-    $evening = Activity::factory()->for($this->user)->analyzed()->create();
+    $user = User::factory()->create();
+    $evening = Activity::factory()->for($user)->analyzed()->create();
     ActivityDetail::factory()->for($evening)->create([
         'start_date_local' => Carbon::create(2026, 5, 15, 18),
         'name' => 'evening intervals',
     ]);
 
-    $morning = Activity::factory()->for($this->user)->analyzed()->create();
+    $morning = Activity::factory()->for($user)->analyzed()->create();
     ActivityDetail::factory()->for($morning)->create([
         'start_date_local' => Carbon::create(2026, 5, 15, 6),
         'name' => 'morning shakeout',
     ]);
 
-    $cells = ($this->buildCells)($this->user);
-    $names = collect(cellOn($cells, '2026-05-15')['runs'])->pluck('name')->all();
+    $cells = calendarCellsFor($user);
+    $names = collect(nonNull(cellOn($cells, '2026-05-15'))['runs'])->pluck('name')->all();
 
     expect($names)->toBe(['morning shakeout', 'evening intervals']);
 });
 
 it('carries a single-item runs breakdown for a single-run day, and none for a run-less day', function (): void {
-    $activity = Activity::factory()->for($this->user)->analyzed()->create();
+    $user = User::factory()->create();
+    $activity = Activity::factory()->for($user)->analyzed()->create();
     ActivityDetail::factory()->for($activity)->create([
         'start_date_local' => Carbon::create(2026, 5, 10),
         'distance' => 5_000,
@@ -140,15 +146,16 @@ it('carries a single-item runs breakdown for a single-run day, and none for a ru
         'name' => 'tempo run',
     ]);
 
-    $cells = ($this->buildCells)($this->user);
+    $cells = calendarCellsFor($user);
 
-    expect(cellOn($cells, '2026-05-10')['runs'])->toHaveCount(1)
-        ->and(cellOn($cells, '2026-05-10')['runs'][0]['name'])->toBe('tempo run')
-        ->and(cellOn($cells, '2026-05-20')['runs'])->toBe([]);
+    expect(nonNull(cellOn($cells, '2026-05-10'))['runs'])->toHaveCount(1)
+        ->and(nonNull(cellOn($cells, '2026-05-10'))['runs'][0]['name'])->toBe('tempo run')
+        ->and(nonNull(cellOn($cells, '2026-05-20'))['runs'])->toBe([]);
 });
 
 it('links a single-run day to its activity and attaches the mood', function (): void {
-    $activity = Activity::factory()->for($this->user)->analyzed()->create();
+    $user = User::factory()->create();
+    $activity = Activity::factory()->for($user)->analyzed()->create();
     ActivityDetail::factory()->for($activity)->create([
         'start_date_local' => Carbon::create(2026, 5, 10),
         'distance' => 5_000,
@@ -161,8 +168,8 @@ it('links a single-run day to its activity and attaches the mood', function (): 
         'mood' => 'blazing',
     ]);
 
-    $cells = ($this->buildCells)($this->user);
-    $cell = cellOn($cells, '2026-05-10');
+    $cells = calendarCellsFor($user);
+    $cell = nonNull(cellOn($cells, '2026-05-10'));
 
     expect($cell['activity_id'])->toBe($activity->id)
         ->and($cell['mood'])->toBe('blazing')
@@ -170,8 +177,9 @@ it('links a single-run day to its activity and attaches the mood', function (): 
 });
 
 it('emits null metrics and no effort bar for a day with no run and no plan', function (): void {
-    $cells = ($this->buildCells)($this->user);
-    $cell = cellOn($cells, '2026-05-20');
+    $user = User::factory()->create();
+    $cells = calendarCellsFor($user);
+    $cell = nonNull(cellOn($cells, '2026-05-20'));
 
     expect($cell['distance_km'])->toBeNull()
         ->and($cell['avg_hr'])->toBeNull()
@@ -181,50 +189,54 @@ it('emits null metrics and no effort bar for a day with no run and no plan', fun
 });
 
 it("picks the day's hardest run for a multi-run day's effort", function (): void {
-    $activity = Activity::factory()->for($this->user)->analyzed()->create();
+    $user = User::factory()->create();
+    $activity = Activity::factory()->for($user)->analyzed()->create();
     ActivityDetail::factory()->for($activity)->create([
         'start_date_local' => Carbon::create(2026, 5, 15, 6),
         'elapsed_time' => 1_800,
         'workout_type' => null, // no tag, no stream -> unknown
     ]);
 
-    $hard = Activity::factory()->for($this->user)->analyzed()->create();
+    $hard = Activity::factory()->for($user)->analyzed()->create();
     ActivityDetail::factory()->for($hard)->create([
         'start_date_local' => Carbon::create(2026, 5, 15, 18),
         'elapsed_time' => 1_800,
         'workout_type' => 1, // Strava race tag -> hard
     ]);
 
-    $cells = ($this->buildCells)($this->user);
+    $cells = calendarCellsFor($user);
 
-    expect(cellOn($cells, '2026-05-15')['effort'])->toBe('hard');
+    expect(nonNull(cellOn($cells, '2026-05-15'))['effort'])->toBe('hard');
 });
 
 it('gives an unexcused planned rest day with no run the rest effort', function (): void {
-    PlannedSession::factory()->for($this->user)->rest()->create([
+    $user = User::factory()->create();
+    PlannedSession::factory()->for($user)->rest()->create([
         'date' => Carbon::create(2026, 5, 20),
     ]);
 
-    $cells = ($this->buildCells)($this->user);
+    $cells = calendarCellsFor($user);
 
-    expect(cellOn($cells, '2026-05-20')['effort'])->toBe('rest');
+    expect(nonNull(cellOn($cells, '2026-05-20'))['effort'])->toBe('rest');
 });
 
 it('withholds the rest effort for an excused rest day', function (): void {
-    PlannedSession::factory()->for($this->user)->rest()->create([
+    $user = User::factory()->create();
+    PlannedSession::factory()->for($user)->rest()->create([
         'date' => Carbon::create(2026, 5, 20),
         'skipped' => true,
     ]);
 
-    $cells = ($this->buildCells)($this->user);
+    $cells = calendarCellsFor($user);
 
-    expect(cellOn($cells, '2026-05-20')['effort'])->toBeNull();
+    expect(nonNull(cellOn($cells, '2026-05-20'))['effort'])->toBeNull();
 });
 
 it('ignores un-analyzed activities and other users', function (): void {
+    $user = User::factory()->create();
     $other = User::factory()->create();
 
-    $pending = Activity::factory()->for($this->user)->create(['analyzed_at' => null]);
+    $pending = Activity::factory()->for($user)->create(['analyzed_at' => null]);
     ActivityDetail::factory()->for($pending)->create([
         'start_date_local' => Carbon::create(2026, 5, 12),
         'distance' => 5_000,
@@ -236,34 +248,35 @@ it('ignores un-analyzed activities and other users', function (): void {
         'distance' => 8_000,
     ]);
 
-    $cells = ($this->buildCells)($this->user);
+    $cells = calendarCellsFor($user);
 
-    expect(cellOn($cells, '2026-05-12')['distance_km'])->toBeNull();
+    expect(nonNull(cellOn($cells, '2026-05-12'))['distance_km'])->toBeNull();
 });
 
 it('carries the day\'s rarest earned card, and null when none was earned', function (): void {
-    $common = Activity::factory()->for($this->user)->analyzed()->create();
+    $user = User::factory()->create();
+    $common = Activity::factory()->for($user)->analyzed()->create();
     ActivityDetail::factory()->for($common)->create([
         'start_date_local' => Carbon::create(2026, 5, 14, 6),
         'distance' => 5_000,
     ]);
     RunCard::factory()->for($common)->create(['rarity' => Rarity::Common]);
 
-    $epic = Activity::factory()->for($this->user)->analyzed()->create();
+    $epic = Activity::factory()->for($user)->analyzed()->create();
     ActivityDetail::factory()->for($epic)->create([
         'start_date_local' => Carbon::create(2026, 5, 14, 18),
         'distance' => 8_000,
     ]);
     RunCard::factory()->for($epic)->create(['rarity' => Rarity::Epic]);
 
-    $cardless = Activity::factory()->for($this->user)->analyzed()->create();
+    $cardless = Activity::factory()->for($user)->analyzed()->create();
     ActivityDetail::factory()->for($cardless)->create([
         'start_date_local' => Carbon::create(2026, 5, 15),
         'distance' => 4_000,
     ]);
 
-    $cells = ($this->buildCells)($this->user);
+    $cells = calendarCellsFor($user);
 
-    expect(cellOn($cells, '2026-05-14')['rarity'])->toBe('epic')
-        ->and(cellOn($cells, '2026-05-15')['rarity'])->toBeNull();
+    expect(nonNull(cellOn($cells, '2026-05-14'))['rarity'])->toBe('epic')
+        ->and(nonNull(cellOn($cells, '2026-05-15'))['rarity'])->toBeNull();
 });

@@ -39,5 +39,5 @@ it('keeps the plain user id after account deletion', function (): void {
 
     $user->delete();
 
-    expect($event->fresh()->user_id)->toBe($user->id);
+    expect($event->refresh()->user_id)->toBe($user->id);
 });

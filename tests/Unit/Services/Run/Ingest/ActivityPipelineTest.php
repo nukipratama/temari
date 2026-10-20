@@ -34,19 +34,25 @@ use App\Services\Weather\OpenMeteoClient;
 use App\Support\Config\AppConfig;
 use App\Support\Config\AppConfigKey;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\RateLimiter;
 use Laravel\Pulse\Facades\Pulse;
+use Mockery\MockInterface;
 
 uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
-    $this->pipeline = app(ActivityPipeline::class);
     Bus::fake();
 });
+
+function activityPipeline(): ActivityPipeline
+{
+    return app(ActivityPipeline::class);
+}
 
 function makeActivityWithConnection(): Activity
 {
@@ -152,23 +158,21 @@ it('stores detail and streams on successful fetch', function (): void {
         ]),
     ]);
 
-    $this->pipeline->ingest($activity);
+    activityPipeline()->ingest($activity);
 
-    $detail = ActivityDetail::query()->where('activity_id', $activity->id)->first();
-    expect($detail)->not->toBeNull()
-        ->and($detail->name)->toBe('Morning Run')
+    $detail = nonNull(ActivityDetail::query()->where('activity_id', $activity->id)->first());
+    expect($detail->name)->toBe('Morning Run')
         ->and($detail->distance)->toEqualWithDelta(10000.0, 0.01)
         ->and($detail->summary_polyline)->toBe('poly123')
         ->and($detail->laps)->toEqual([['lap_index' => 1, 'distance' => 1000.0, 'elapsed_time' => 360, 'moving_time' => 360]])
         ->and($detail->start_lat)->toEqualWithDelta(-6.2253, 1e-5)
         ->and($detail->start_lng)->toEqualWithDelta(106.8090, 1e-5);
 
-    $stream = ActivityStream::query()->where('activity_id', $activity->id)->first();
-    expect($stream)->not->toBeNull()
-        ->and($stream->data['time']['data'])->toBe([0, 60, 120]);
+    $stream = nonNull(ActivityStream::query()->where('activity_id', $activity->id)->first());
+    expect(data_get($stream, 'data.time.data'))->toBe([0, 60, 120]);
 
-    expect($activity->fresh()->analyzed_at)->not->toBeNull()
-        ->and($activity->fresh()->detail_fail_count)->toBe(0);
+    expect(nonNull($activity->fresh())->analyzed_at)->not->toBeNull()
+        ->and(nonNull($activity->fresh())->detail_fail_count)->toBe(0);
 });
 
 it('captures enrichment fields from the detail payload', function (): void {
@@ -193,9 +197,9 @@ it('captures enrichment fields from the detail payload', function (): void {
         'strava.com/api/v3/activities/999/streams*' => Http::response([]),
     ]);
 
-    $this->pipeline->ingest($activity);
+    activityPipeline()->ingest($activity);
 
-    $detail = ActivityDetail::query()->where('activity_id', $activity->id)->first();
+    $detail = nonNull(ActivityDetail::query()->where('activity_id', $activity->id)->first());
     expect($detail->suffer_score)->toBe(142)
         ->and($detail->workout_type)->toBe(1)
         ->and($detail->elev_high)->toEqualWithDelta(88.4, 0.01)
@@ -220,9 +224,9 @@ it('leaves enrichment fields null when the detail payload omits them', function 
         'strava.com/api/v3/activities/999/streams*' => Http::response([]),
     ]);
 
-    $this->pipeline->ingest($activity);
+    activityPipeline()->ingest($activity);
 
-    $detail = ActivityDetail::query()->where('activity_id', $activity->id)->first();
+    $detail = nonNull(ActivityDetail::query()->where('activity_id', $activity->id)->first());
     expect($detail->suffer_score)->toBeNull()
         ->and($detail->workout_type)->toBeNull()
         ->and($detail->elev_high)->toBeNull()
@@ -240,7 +244,7 @@ it('requests the grade_smooth stream key', function (): void {
         'strava.com/api/v3/activities/999/streams*' => Http::response([]),
     ]);
 
-    $this->pipeline->ingest($activity);
+    activityPipeline()->ingest($activity);
 
     Http::assertSent(fn ($request): bool => str_contains((string) $request->url(), '/streams')
         && str_contains((string) $request->url(), 'grade_smooth'));
@@ -254,10 +258,10 @@ it('increments detail_fail_count on detail fetch failure', function (): void {
         'strava.com/api/v3/activities/999' => Http::response(['error' => 'down'], 500),
     ]);
 
-    $this->pipeline->ingest($activity);
+    activityPipeline()->ingest($activity);
 
-    expect($activity->fresh()->detail_fail_count)->toBe(3)
-        ->and($activity->fresh()->analyzed_at)->toBeNull();
+    expect(nonNull($activity->fresh())->detail_fail_count)->toBe(3)
+        ->and(nonNull($activity->fresh())->analyzed_at)->toBeNull();
 });
 
 it('marks analyzed_at after max attempts so we stop hammering Strava', function (): void {
@@ -268,10 +272,10 @@ it('marks analyzed_at after max attempts so we stop hammering Strava', function 
         'strava.com/api/v3/activities/999' => Http::response(['error' => 'down'], 500),
     ]);
 
-    $this->pipeline->ingest($activity);
+    activityPipeline()->ingest($activity);
 
-    expect($activity->fresh()->detail_fail_count)->toBe(5)
-        ->and($activity->fresh()->analyzed_at)->not->toBeNull();
+    expect(nonNull($activity->fresh())->detail_fail_count)->toBe(5)
+        ->and(nonNull($activity->fresh())->analyzed_at)->not->toBeNull();
 });
 
 it('deletes a stub whose detail fetch hits a permanent 4xx, with no further retries', function (int $status): void {
@@ -281,7 +285,7 @@ it('deletes a stub whose detail fetch hits a permanent 4xx, with no further retr
         'strava.com/api/v3/activities/999' => Http::response(['error' => 'Record Not Found'], $status),
     ]);
 
-    $this->pipeline->ingest($activity);
+    activityPipeline()->ingest($activity);
 
     expect(Activity::query()->withStubs()->find($activity->id))->toBeNull();
 })->with([404, 403]);
@@ -295,7 +299,7 @@ it('keeps an ingested run whose resync hits a permanent 4xx', function (): void 
         'strava.com/api/v3/activities/999' => Http::response(['error' => 'Record Not Found'], 404),
     ]);
 
-    $this->pipeline->ingest($activity);
+    activityPipeline()->ingest($activity);
 
     expect(ActivityDetail::query()->where('activity_id', $activity->id)->exists())->toBeTrue();
 });
@@ -307,11 +311,11 @@ it('keeps retrying on a 5xx detail (transient)', function (): void {
         'strava.com/api/v3/activities/999' => Http::response(['error' => 'down'], 503),
     ]);
 
-    $this->pipeline->ingest($activity);
+    activityPipeline()->ingest($activity);
 
     // 5xx is transient: increment but leave analyzed_at null so we retry.
-    expect($activity->fresh()->detail_fail_count)->toBe(1)
-        ->and($activity->fresh()->analyzed_at)->toBeNull();
+    expect(nonNull($activity->fresh())->detail_fail_count)->toBe(1)
+        ->and(nonNull($activity->fresh())->analyzed_at)->toBeNull();
 });
 
 it('propagates a rate-limit exception so the job can re-queue with backoff', function (): void {
@@ -324,12 +328,12 @@ it('propagates a rate-limit exception so the job can re-queue with backoff', fun
     }
     Http::fake();
 
-    expect(fn () => $this->pipeline->ingest($activity))
+    expect(fn () => activityPipeline()->ingest($activity))
         ->toThrow(StravaRateLimitedException::class);
 
     // The rate-limited fetch must NOT count as a detail failure.
-    expect($activity->fresh()->detail_fail_count)->toBe(0)
-        ->and($activity->fresh()->analyzed_at)->toBeNull();
+    expect(nonNull($activity->fresh())->detail_fail_count)->toBe(0)
+        ->and(nonNull($activity->fresh())->analyzed_at)->toBeNull();
 });
 
 it('propagates a rate-limit exception from the streams fetch, with the detail already stored', function (): void {
@@ -345,11 +349,27 @@ it('propagates a rate-limit exception from the streams fetch, with the detail al
         'strava.com/api/v3/activities/999' => Http::response(['name' => 'R', 'distance' => 5000]),
     ]);
 
-    expect(fn () => $this->pipeline->ingest($activity))
+    expect(fn () => activityPipeline()->ingest($activity))
         ->toThrow(StravaRateLimitedException::class);
 
     expect(ActivityDetail::query()->where('activity_id', $activity->id)->exists())->toBeTrue()
-        ->and($activity->fresh()->analyzed_at)->toBeNull();
+        ->and(nonNull($activity->fresh())->analyzed_at)->toBeNull();
+});
+
+it('propagates a connect failure from the streams fetch, with the detail already stored', function (): void {
+    $activity = makeActivityWithConnection();
+
+    Http::fake([
+        'strava.com/api/v3/activities/999/streams*' => Http::failedConnection(),
+        'strava.com/api/v3/activities/999' => Http::response(['name' => 'R', 'distance' => 5000]),
+    ]);
+
+    expect(fn () => activityPipeline()->ingest($activity))
+        ->toThrow(ConnectionException::class);
+
+    expect(ActivityDetail::query()->where('activity_id', $activity->id)->exists())->toBeTrue()
+        ->and($activity->refresh()->analyzed_at)->toBeNull()
+        ->and($activity->detail_fail_count)->toBe(0);
 });
 
 it('still stores detail when streams 404 (best-effort)', function (): void {
@@ -360,11 +380,11 @@ it('still stores detail when streams 404 (best-effort)', function (): void {
         'strava.com/api/v3/activities/999/streams*' => Http::response(['error' => 'gone'], 404),
     ]);
 
-    $this->pipeline->ingest($activity);
+    activityPipeline()->ingest($activity);
 
     expect(ActivityDetail::query()->where('activity_id', $activity->id)->exists())->toBeTrue()
         ->and(ActivityStream::query()->where('activity_id', $activity->id)->exists())->toBeFalse()
-        ->and($activity->fresh()->analyzed_at)->not->toBeNull();
+        ->and(nonNull($activity->fresh())->analyzed_at)->not->toBeNull();
 });
 
 it('completes ingest for a zero-distance, zero-duration activity without fataling downstream', function (): void {
@@ -382,10 +402,10 @@ it('completes ingest for a zero-distance, zero-duration activity without fatalin
         'strava.com/api/v3/activities/999/streams*' => Http::response([]),
     ]);
 
-    $this->pipeline->ingest($activity);
+    activityPipeline()->ingest($activity);
 
     expect(ActivityDetail::query()->where('activity_id', $activity->id)->value('distance'))->toBe(0.0)
-        ->and($activity->fresh()->analyzed_at)->not->toBeNull();
+        ->and(nonNull($activity->fresh())->analyzed_at)->not->toBeNull();
 });
 
 it('is idempotent — re-ingesting refreshes detail and clears fail count', function (): void {
@@ -398,11 +418,11 @@ it('is idempotent — re-ingesting refreshes detail and clears fail count', func
         'strava.com/api/v3/activities/999/streams*' => Http::response([]),
     ]);
 
-    $this->pipeline->ingest($activity);
+    activityPipeline()->ingest($activity);
 
-    $detail = ActivityDetail::query()->where('activity_id', $activity->id)->first();
+    $detail = nonNull(ActivityDetail::query()->where('activity_id', $activity->id)->first());
     expect($detail->name)->toBe('fresh name')
-        ->and($activity->fresh()->detail_fail_count)->toBe(0);
+        ->and(nonNull($activity->fresh())->detail_fail_count)->toBe(0);
 });
 
 it('no-ops ingest when the Strava kill-switch is off, leaving the stub pending', function (): void {
@@ -410,9 +430,9 @@ it('no-ops ingest when the Strava kill-switch is off, leaving the stub pending',
     app(AppConfig::class)->set(AppConfigKey::StravaEnabled, false);
     Http::fake();
 
-    $this->pipeline->ingest($activity);
+    activityPipeline()->ingest($activity);
 
-    expect($activity->fresh()->analyzed_at)->toBeNull()
+    expect(nonNull($activity->fresh())->analyzed_at)->toBeNull()
         ->and(ActivityDetail::query()->where('activity_id', $activity->id)->exists())->toBeFalse();
     Http::assertNothingSent();
 });
@@ -421,7 +441,7 @@ it('skips when user has no Strava connection', function (): void {
     $activity = Activity::factory()->create();
     Http::fake();
 
-    $this->pipeline->ingest($activity);
+    activityPipeline()->ingest($activity);
 
     expect(ActivityDetail::query()->where('activity_id', $activity->id)->exists())->toBeFalse();
     Http::assertNothingSent();
@@ -433,9 +453,9 @@ it('treats non-array Strava detail as a fetch failure', function (): void {
         'strava.com/api/v3/activities/999' => Http::response('"unexpected scalar"'),
     ]);
 
-    $this->pipeline->ingest($activity);
+    activityPipeline()->ingest($activity);
 
-    expect($activity->fresh()->detail_fail_count)->toBe(1)
+    expect(nonNull($activity->fresh())->detail_fail_count)->toBe(1)
         ->and(ActivityDetail::query()->where('activity_id', $activity->id)->exists())->toBeFalse();
 });
 
@@ -450,7 +470,7 @@ it('drops a non-run activity (ride) without minting a run', function (): void {
         ]),
     ]);
 
-    $this->pipeline->ingest($activity);
+    activityPipeline()->ingest($activity);
 
     // The stub is deleted outright — no detail, no card, no analyzed ghost.
     expect(Activity::withStubs()->find($activity->id))->toBeNull()
@@ -464,7 +484,7 @@ it('heals the records, week, narration and time-trial evidence of an ingested ru
     Event::fake([ActivityIngested::class]);
     $activity = makeActivityWithConnection();
     $user = $activity->user;
-    $user->stravaConnection->forceFill(['created_at' => now()->subMonths(3)])->save();
+    nonNull($user->stravaConnection)->forceFill(['created_at' => now()->subMonths(3)])->save();
     $weekStart = now()->startOfWeek()->subWeek();
     $survivor = Activity::factory()->for($user)->analyzed()->create();
     ActivityDetail::factory()->for($survivor)->create([
@@ -489,7 +509,7 @@ it('heals the records, week, narration and time-trial evidence of an ingested ru
         'strava.com/api/v3/activities/999/streams*' => Http::response([]),
     ]);
 
-    $this->pipeline->ingest($activity);
+    activityPipeline()->ingest($activity);
 
     app(WeeklyAggregator::class)->rebuildFor($user);
     $weekEnding = $weekStart->copy()->endOfWeek(Carbon::SUNDAY)->toDateString();
@@ -500,7 +520,7 @@ it('heals the records, week, narration and time-trial evidence of an ingested ru
     expect(PersonalRecord::query()->where('user_id', $user->id)->where('category', '5km')->value('activity_id'))->toBe($activity->id)
         ->and(WeeklySnapshot::query()->where('user_id', $user->id)->where('week_ending', $weekEnding)->value('runs'))->toBe(2);
 
-    $this->pipeline->ingest(Activity::query()->withStubs()->findOrFail($activity->id));
+    activityPipeline()->ingest(Activity::query()->withStubs()->findOrFail($activity->id));
 
     $record = PersonalRecord::query()->where('user_id', $user->id)->where('category', '5km')->firstOrFail();
     expect(Activity::query()->withStubs()->find($activity->id))->toBeNull()
@@ -525,7 +545,6 @@ it('fires the replay when a non-run upload empties the backlog, not just a succe
     $this->mock(PersonalRecords::class)->shouldReceive('rebuildForUser')->once();
     $this->mock(RecomputeCardClaimsAction::class)->shouldReceive('__invoke')->once()
         ->andReturn(['cleared' => [], 'earned' => [], 'moods' => 0]);
-    $this->pipeline = app(ActivityPipeline::class);
 
     Http::fake([
         'strava.com/api/v3/activities/999' => Http::response([
@@ -535,11 +554,11 @@ it('fires the replay when a non-run upload empties the backlog, not just a succe
         ]),
     ]);
 
-    $this->pipeline->ingest($activity);
+    activityPipeline()->ingest($activity);
 
     Bus::assertDispatched(AnalyzeBriefingMascotVoiceJob::class);
-    expect($row->fresh()->narrated_early_at)->toBeNull()
-        ->and($row->fresh()->status)->toBe(AnalysisStatus::Queued);
+    expect(nonNull($row->fresh())->narrated_early_at)->toBeNull()
+        ->and(nonNull($row->fresh())->status)->toBe(AnalysisStatus::Queued);
 });
 
 it('revokes the connection without burning detail_fail_count on a 401 (auth revoked)', function (): void {
@@ -547,21 +566,21 @@ it('revokes the connection without burning detail_fail_count on a 401 (auth revo
     // An already-ingested run (analyzed_at set) so markRevoked's stub purge leaves
     // it in place and we can assert the retry budget stayed untouched.
     $activity->update(['analyzed_at' => now(), 'detail_fail_count' => 0]);
-    $connection = $activity->user->stravaConnection;
+    $connection = nonNull($activity->user->stravaConnection);
 
     Http::fake([
         'strava.com/api/v3/activities/999' => Http::response(['error' => 'Authorization Error'], 401),
     ]);
 
-    $this->pipeline->ingest($activity);
+    activityPipeline()->ingest($activity);
 
-    expect($connection->fresh()->isRevoked())->toBeTrue()
-        ->and($activity->fresh()->detail_fail_count)->toBe(0);
+    expect(nonNull($connection->fresh())->isRevoked())->toBeTrue()
+        ->and(nonNull($activity->fresh())->detail_fail_count)->toBe(0);
 });
 
 it('ignores a stale 401 after credentials change during the detail fetch', function (): void {
     $activity = makeActivityWithConnection();
-    $connection = $activity->user->stravaConnection;
+    $connection = nonNull($activity->user->stravaConnection);
     $capturedVersion = $connection->credential_version;
 
     Http::fake(function () use ($connection, $capturedVersion) {
@@ -577,44 +596,61 @@ it('ignores a stale 401 after credentials change during the detail fetch', funct
     $pulseEntry->shouldReceive('sum')->andReturnSelf();
     Pulse::shouldReceive('record')->andReturn($pulseEntry)->zeroOrMoreTimes();
 
-    $this->pipeline->ingest($activity);
+    activityPipeline()->ingest($activity);
 
-    expect($connection->fresh()->isRevoked())->toBeFalse()
-        ->and($activity->fresh()->detail_fail_count)->toBe(0)
-        ->and($activity->fresh()->analyzed_at)->toBeNull();
-    Pulse::shouldNotHaveReceived('record', ['strava_revoked', Mockery::any()]);
+    expect(nonNull($connection->fresh())->isRevoked())->toBeFalse()
+        ->and(nonNull($activity->fresh())->detail_fail_count)->toBe(0)
+        ->and(nonNull($activity->fresh())->analyzed_at)->toBeNull();
+    /** @var MockInterface $pulseMock */
+    $pulseMock = Pulse::getFacadeRoot();
+    $pulseMock->shouldNotHaveReceived('record', ['strava_revoked', Mockery::any()]);
 });
 
 it('revokes on a permanent token refresh failure (rejected refresh token), budget untouched', function (): void {
     $activity = makeActivityWithConnection();
     $activity->update(['analyzed_at' => now(), 'detail_fail_count' => 0]);
-    $connection = $activity->user->stravaConnection;
+    $connection = nonNull($activity->user->stravaConnection);
     $connection->update(['token_expires_at' => Carbon::now()->subMinute()]);
 
     Http::fake([
         'strava.com/oauth/token' => Http::response(stravaBadRequest('RefreshToken', 'refresh_token'), 400),
     ]);
 
-    $this->pipeline->ingest($activity);
+    activityPipeline()->ingest($activity);
 
-    expect($connection->fresh()->isRevoked())->toBeTrue()
-        ->and($activity->fresh()->detail_fail_count)->toBe(0);
+    expect(nonNull($connection->fresh())->isRevoked())->toBeTrue()
+        ->and(nonNull($activity->fresh())->detail_fail_count)->toBe(0);
 });
 
 it('rethrows a transient token refresh blip so the job retries, without revoking or burning the budget', function (): void {
     $activity = makeActivityWithConnection();
-    $connection = $activity->user->stravaConnection;
+    $connection = nonNull($activity->user->stravaConnection);
     $connection->update(['token_expires_at' => Carbon::now()->subMinute()]);
 
     Http::fake([
         'strava.com/oauth/token' => Http::response(['error' => 'server'], 500),
     ]);
 
-    expect(fn () => $this->pipeline->ingest($activity))
+    expect(fn () => activityPipeline()->ingest($activity))
         ->toThrow(StravaTokenRefreshTransientException::class);
 
-    expect($connection->fresh()->isRevoked())->toBeFalse()
-        ->and($activity->fresh()->detail_fail_count)->toBe(0);
+    expect(nonNull($connection->fresh())->isRevoked())->toBeFalse()
+        ->and(nonNull($activity->fresh())->detail_fail_count)->toBe(0);
+});
+
+it('rethrows a connect failure so the job retries, without burning the detail budget', function (): void {
+    $activity = makeActivityWithConnection();
+    $activity->update(['detail_fail_count' => 4]);
+
+    Http::fake([
+        'strava.com/api/v3/activities/999' => Http::failedConnection(),
+    ]);
+
+    expect(fn () => activityPipeline()->ingest($activity))
+        ->toThrow(ConnectionException::class);
+
+    expect($activity->refresh()->detail_fail_count)->toBe(4)
+        ->and($activity->analyzed_at)->toBeNull();
 });
 
 it('computes stream_summary + Edwards TRIMP from the streams blob', function (): void {
@@ -648,9 +684,9 @@ it('computes stream_summary + Edwards TRIMP from the streams blob', function ():
         ]),
     ]);
 
-    $this->pipeline->ingest($activity);
+    activityPipeline()->ingest($activity);
 
-    $detail = ActivityDetail::query()->where('activity_id', $activity->id)->first();
+    $detail = nonNull(ActivityDetail::query()->where('activity_id', $activity->id)->first());
 
     // ~30min×2 + ~30min×3 = ~150 TRIMP.
     expect($detail->trimp_edwards)->toBeFloat()->toBeGreaterThan(100)->toBeLessThan(200);
@@ -685,9 +721,9 @@ it('writes weather columns from detail coords when streams omit lat/lng', functi
         ]),
     ]);
 
-    $this->pipeline->ingest($activity);
+    activityPipeline()->ingest($activity);
 
-    $detail = ActivityDetail::query()->where('activity_id', $activity->id)->first();
+    $detail = nonNull(ActivityDetail::query()->where('activity_id', $activity->id)->first());
     expect($detail->weather_temp_c)->toBe(28)
         ->and($detail->weather_humidity_pct)->toBe(82)
         ->and($detail->weather_rain_detected)->toBeFalse();
@@ -709,16 +745,16 @@ it('leaves weather columns null when Open-Meteo returns nothing', function (): v
         'api.open-meteo.com/*' => Http::response([], 500),
     ]);
 
-    $this->pipeline->ingest($activity);
+    activityPipeline()->ingest($activity);
 
-    $detail = ActivityDetail::query()->where('activity_id', $activity->id)->first();
+    $detail = nonNull(ActivityDetail::query()->where('activity_id', $activity->id)->first());
     expect($detail->weather_temp_c)->toBeNull();
 });
 
 it('does NOT fail ingest when the weather lookup throws (best-effort)', function (): void {
     $activity = makeActivityWithConnection();
 
-    // Reproduce the prod incident: a __PHP_Incomplete_Class return surfaced as a
+    // A __PHP_Incomplete_Class return surfaces as a
     // TypeError. Weather must stay best-effort and never strand the activity.
     $this->mock(OpenMeteoClient::class)
         ->shouldReceive('fetchForActivity')
@@ -739,9 +775,9 @@ it('does NOT fail ingest when the weather lookup throws (best-effort)', function
     // Resolve the pipeline AFTER binding the throwing mock.
     app(ActivityPipeline::class)->ingest($activity);
 
-    $detail = ActivityDetail::query()->where('activity_id', $activity->id)->first();
-    expect($activity->fresh()->analyzed_at)->not->toBeNull()
-        ->and($activity->fresh()->detail_fail_count)->toBe(0)
+    $detail = nonNull(ActivityDetail::query()->where('activity_id', $activity->id)->first());
+    expect(nonNull($activity->fresh())->analyzed_at)->not->toBeNull()
+        ->and(nonNull($activity->fresh())->detail_fail_count)->toBe(0)
         ->and($detail->weather_temp_c)->toBeNull()
         ->and(RunCard::query()->where('activity_id', $activity->id)->exists())->toBeTrue();
 });
@@ -764,7 +800,7 @@ it('produces a run card + post_run story line on a successful ingest', function 
         ]),
     ]);
 
-    $this->pipeline->ingest($activity);
+    activityPipeline()->ingest($activity);
 
     expect(RunCard::query()->where('activity_id', $activity->id)->exists())->toBeTrue()
         ->and(StoryLine::query()
@@ -808,10 +844,10 @@ it('computes stream_summary using the user\'s runner-profile zones', function ()
         ]),
     ]);
 
-    $this->pipeline->ingest($activity);
+    activityPipeline()->ingest($activity);
 
-    $detail = ActivityDetail::query()->where('activity_id', $activity->id)->first();
-    $minutes = $detail->stream_summary['time_in_zone_min'];
+    $detail = nonNull(ActivityDetail::query()->where('activity_id', $activity->id)->first());
+    $minutes = arrayOf(nonNull($detail->stream_summary)['time_in_zone_min']);
     expect(($minutes['Z3'] ?? 0))->toBeGreaterThan(0)
         ->and(($minutes['Z2'] ?? 0))->toBe(0);
 });
@@ -858,8 +894,8 @@ it('recomputeSummary refreshes a single activity from stored streams using curre
     ]);
 
     // Recompute under the original zones: 152 lands in Z2.
-    $this->pipeline->recomputeSummary($activity->fresh());
-    $beforeMin = $detail->fresh()->stream_summary['time_in_zone_min'];
+    activityPipeline()->recomputeSummary($activity->refresh());
+    $beforeMin = arrayOf(nonNull(nonNull($detail->fresh())->stream_summary)['time_in_zone_min']);
     expect(($beforeMin['Z2'] ?? 0))->toBeGreaterThan(0)
         ->and(($beforeMin['Z3'] ?? 0))->toBe(0);
 
@@ -875,9 +911,9 @@ it('recomputeSummary refreshes a single activity from stored streams using curre
     ]);
 
     Http::fake();
-    $this->pipeline->recomputeSummary($activity->fresh());
+    activityPipeline()->recomputeSummary($activity->refresh());
 
-    $afterMin = $detail->fresh()->stream_summary['time_in_zone_min'];
+    $afterMin = arrayOf(nonNull(nonNull($detail->fresh())->stream_summary)['time_in_zone_min']);
     expect(($afterMin['Z3'] ?? 0))->toBeGreaterThan(0)
         ->and(($afterMin['Z2'] ?? 0))->toBe(0);
 
@@ -905,11 +941,11 @@ it('recomputeSummary can skip the forward snapshot rebuild for batch callers', f
     ]);
 
     Http::fake();
-    $this->pipeline->recomputeSummary($activity->fresh(), rebuildAggregates: false);
+    activityPipeline()->recomputeSummary($activity->refresh(), rebuildAggregates: false);
 
     // The summary is still written; only the O(weeks-forward) rebuild is deferred
     // to the caller, which rolls the snapshots once at the end of its sweep.
-    expect($activity->detail->fresh()->stream_summary)->toBeArray()
+    expect(nonNull(nonNull($activity->detail)->fresh())->stream_summary)->toBeArray()
         ->and(WeeklySnapshot::query()->where('user_id', $activity->user_id)->exists())->toBeFalse();
     Http::assertNothingSent();
 });
@@ -922,9 +958,9 @@ it('recomputeSummary is a no-op when the activity has no stored streams', functi
     ]);
 
     Http::fake();
-    $this->pipeline->recomputeSummary($activity->fresh());
+    activityPipeline()->recomputeSummary($activity->refresh());
 
-    expect($activity->detail->fresh()->stream_summary)->toBeNull();
+    expect(nonNull(nonNull($activity->detail)->fresh())->stream_summary)->toBeNull();
     Http::assertNothingSent();
 });
 
@@ -948,7 +984,7 @@ it('rolls back analyzed_at and skips the cascade when the story layer throws', f
     expect(fn () => app(ActivityPipeline::class)->ingest($activity))
         ->toThrow(RuntimeException::class, 'boom');
 
-    $stub = Activity::withStubs()->find($activity->id);
+    $stub = nonNull(Activity::withStubs()->find($activity->id));
     expect($stub->analyzed_at)->toBeNull()                                                  // re-drainable
         ->and(RunCard::query()->where('activity_id', $activity->id)->exists())->toBeFalse() // card rolled back
         ->and(StoryLine::query()->where('activity_id', $activity->id)->exists())->toBeFalse();
@@ -971,7 +1007,7 @@ it('dispatches ResolveActivityLocationJob when the activity has start coords', f
         'strava.com/api/v3/activities/999/streams*' => Http::response([]),
     ]);
 
-    $this->pipeline->ingest($activity);
+    activityPipeline()->ingest($activity);
 
     $detail = ActivityDetail::query()->where('activity_id', $activity->id)->firstOrFail();
     Bus::assertDispatched(fn (ResolveActivityLocationJob $job): bool => $job->activityDetailId === $detail->id);
@@ -993,7 +1029,7 @@ it('does NOT dispatch ResolveActivityLocationJob when the activity has no coords
         'strava.com/api/v3/activities/999/streams*' => Http::response([]),
     ]);
 
-    $this->pipeline->ingest($activity);
+    activityPipeline()->ingest($activity);
 
     Bus::assertNotDispatched(ResolveActivityLocationJob::class);
 });
@@ -1022,7 +1058,7 @@ it('raises a stale max HR to the observed peak and re-derives the zones', functi
         ]),
     ]);
 
-    $this->pipeline->ingest($activity);
+    activityPipeline()->ingest($activity);
 
     $profile->refresh();
     expect($profile->max_hr)->toBe(188)
@@ -1063,7 +1099,7 @@ it('raises the max but keeps zones the athlete stated, when they came from Strav
         ]),
     ]);
 
-    $this->pipeline->ingest($activity);
+    activityPipeline()->ingest($activity);
 
     $profile->refresh();
     expect($profile->max_hr)->toBe(188)
@@ -1093,7 +1129,7 @@ it('keeps zones the athlete set by hand too', function (): void {
         ]),
     ]);
 
-    $this->pipeline->ingest($activity);
+    activityPipeline()->ingest($activity);
 
     expect($profile->refresh()->hr_zones)->toEqual($manualZones);
 });
@@ -1126,7 +1162,7 @@ it('reconciles against the whole history, not just the run being ingested', func
         ]),
     ]);
 
-    $this->pipeline->ingest($activity);
+    activityPipeline()->ingest($activity);
 
     expect($profile->refresh()->max_hr)->toBe(195);
 });
@@ -1148,7 +1184,7 @@ it('leaves the profile alone when the run peaks below the stored max', function 
         ]),
     ]);
 
-    $this->pipeline->ingest($activity);
+    activityPipeline()->ingest($activity);
 
     $profile->refresh();
     expect($profile->max_hr)->toBe(190)
@@ -1171,7 +1207,7 @@ it('ignores an implausible HR spike so one bad strap reading cannot reshape the 
         ]),
     ]);
 
-    $this->pipeline->ingest($activity);
+    activityPipeline()->ingest($activity);
 
     expect($profile->refresh()->max_hr)->toBe(180);
 });
@@ -1196,12 +1232,11 @@ it('creates a profile from the observed peak when the athlete has no runner prof
         ]),
     ]);
 
-    $this->pipeline->ingest($activity);
+    activityPipeline()->ingest($activity);
 
-    $profile = $activity->user->fresh()->runnerProfile;
-    expect($profile)->not->toBeNull()
-        ->and($profile->max_hr)->toBe(192)
-        ->and($profile->hr_zones['Z2']['lo'])->toBeGreaterThan((int) config('runner.hr_zones.Z2.lo'));
+    $profile = nonNull(nonNull($activity->user->fresh())->runnerProfile);
+    expect($profile->max_hr)->toBe(192)
+        ->and($profile->hr_zones['Z2']['lo'])->toBeGreaterThan(config()->integer('runner.hr_zones.Z2.lo'));
 });
 
 it('leaves the config default alone when a profile-less run stays under it', function (): void {
@@ -1219,9 +1254,9 @@ it('leaves the config default alone when a profile-less run stays under it', fun
         ]),
     ]);
 
-    $this->pipeline->ingest($activity);
+    activityPipeline()->ingest($activity);
 
-    expect($activity->user->fresh()->runnerProfile)->toBeNull();
+    expect(nonNull($activity->user->fresh())->runnerProfile)->toBeNull();
 });
 
 it('clears a backfill phantom PR, and its mood, once the older faster run it never saw lands', function (): void {
@@ -1261,7 +1296,7 @@ it('clears a backfill phantom PR, and its mood, once the older faster run it nev
         'strava.com/api/v3/activities/999/streams*' => Http::response([]),
     ]);
 
-    $this->pipeline->ingest($older);
+    activityPipeline()->ingest($older);
 
     $newerCard = RunCard::query()->where('activity_id', $newer->id)->firstOrFail();
     expect($newerCard->pr_set)->toBeFalse()
@@ -1302,19 +1337,19 @@ it('lands each card\'s PR flag and mood correctly at ingest when hydrated oldest
     ]);
 
     // Oldest-first: the faster, earlier run lands first and genuinely sets the record.
-    $this->pipeline->ingest($older);
+    activityPipeline()->ingest($older);
     $olderCard = RunCard::query()->where('activity_id', $older->id)->firstOrFail();
     expect($olderCard->pr_set)->toBeTrue();
 
     // The slower, later run lands next with the record already known, so it is
     // judged correctly the moment it lands — no RecomputeCardClaimsAction needed.
-    $this->pipeline->ingest($newer);
+    activityPipeline()->ingest($newer);
     $newerCard = RunCard::query()->where('activity_id', $newer->id)->firstOrFail();
 
     expect($newerCard->pr_set)->toBeFalse()
         ->and($newerCard->special_move)->not->toBe('Personal Best')
         ->and(StoryLine::query()->where('activity_id', $newer->id)->value('mood'))->not->toBe('blazing')
-        ->and($olderCard->fresh()->pr_set)->toBeTrue();
+        ->and(nonNull($olderCard->fresh())->pr_set)->toBeTrue();
 });
 
 it('defers PR detection for a run hydrated ahead of its older history (the early pass), and restores it once the drain empties', function (): void {
@@ -1345,7 +1380,7 @@ it('defers PR detection for a run hydrated ahead of its older history (the early
 
     // recentFirst: the recent run hydrates while $older (dated well before it)
     // is still a plain summary-only stub, awaiting its own hydration.
-    $this->pipeline->ingest($recent);
+    activityPipeline()->ingest($recent);
 
     expect(PersonalRecord::query()->where('user_id', $user->id)->where('category', '5km')->exists())->toBeFalse()
         ->and(RunCard::query()->where('activity_id', $recent->id)->value('pr_set'))->toBeFalse();
@@ -1360,7 +1395,7 @@ it('defers PR detection for a run hydrated ahead of its older history (the early
         ]),
         'strava.com/api/v3/activities/601/streams*' => Http::response([]),
     ]);
-    $this->pipeline->ingest($older);
+    activityPipeline()->ingest($older);
 
     expect(PersonalRecord::query()
         ->where('user_id', $user->id)
@@ -1395,7 +1430,7 @@ it('fires the replay when the drain ends by give-up, not just success', function
         ]),
         'strava.com/api/v3/activities/702/streams*' => Http::response([]),
     ]);
-    $this->pipeline->ingest($recent);
+    activityPipeline()->ingest($recent);
 
     expect(PersonalRecord::query()->where('user_id', $user->id)->where('category', '5km')->exists())->toBeFalse();
 
@@ -1403,10 +1438,10 @@ it('fires the replay when the drain ends by give-up, not just success', function
     Http::fake([
         'strava.com/api/v3/activities/701' => Http::response(['error' => 'gone'], 404),
     ]);
-    $this->pipeline->ingest($older);
+    activityPipeline()->ingest($older);
 
-    expect($older->fresh()->detail_fail_count)->toBe(5)
-        ->and($older->fresh()->analyzed_at)->not->toBeNull()
+    expect(nonNull($older->fresh())->detail_fail_count)->toBe(5)
+        ->and(nonNull($older->fresh())->analyzed_at)->not->toBeNull()
         ->and(PersonalRecord::query()
             ->where('user_id', $user->id)
             ->where('category', '5km')
@@ -1443,9 +1478,8 @@ it('drains 5+ runs recent-first then oldest-first, settling the replay exactly o
 
     // rebuildForUser and the card recompute only ever run from
     // SettleEarlyNarrationAction, so Mockery's `once()` (it fails the test the
-    // moment a second call happens) is the direct proof the mid-drain
-    // re-billing loop is gone: on the old code this ran on nearly every one
-    // of the 5 ingests.
+    // moment a second call happens) is the direct proof there is no mid-drain
+    // re-billing loop across the 5 ingests.
     $personalRecords = $this->mock(PersonalRecords::class);
     $personalRecords->shouldReceive('detectAndStore')->andReturn([]);
     $personalRecords->shouldReceive('rebuildForUser')->once();
@@ -1453,28 +1487,76 @@ it('drains 5+ runs recent-first then oldest-first, settling the replay exactly o
         ->shouldReceive('__invoke')
         ->once()
         ->andReturn(['cleared' => [], 'earned' => [], 'moods' => 0]);
-    $this->pipeline = app(ActivityPipeline::class);
 
     $fakeDetail(801, '2026-09-17 06:30:00');
-    $this->pipeline->ingest($recent1);
+    activityPipeline()->ingest($recent1);
     $fakeDetail(802, '2026-09-18 06:30:00');
-    $this->pipeline->ingest($recent2);
+    activityPipeline()->ingest($recent2);
 
     expect(Analysis::query()->where('analysis_type', AnalysisType::TrendRead)->exists())->toBeFalse();
 
     $fakeDetail(803, '2025-11-20 06:00:00');
-    $this->pipeline->ingest($older1);
+    activityPipeline()->ingest($older1);
     $fakeDetail(804, '2025-11-22 06:00:00');
-    $this->pipeline->ingest($older2);
+    activityPipeline()->ingest($older2);
 
     expect(Analysis::query()->where('analysis_type', AnalysisType::TrendRead)->exists())->toBeFalse();
 
     $fakeDetail(805, '2025-11-24 06:00:00');
-    $this->pipeline->ingest($older3);
+    activityPipeline()->ingest($older3);
 
     expect(Analysis::query()
         ->where('subject_id', $user->id)
         ->where('analysis_type', AnalysisType::TrendRead)
         ->pluck('discriminator')
         ->all())->toEqualCanonicalizing(AnalysisType::TREND_READ_RANGES);
+});
+
+it('maps every detail payload field onto the detail row', function (): void {
+    $activity = makeActivityWithConnection();
+    Http::fake([
+        'strava.com/api/v3/activities/999' => Http::response([
+            'name' => 'Full map',
+            'start_date' => '2026-05-09T23:30:00Z',
+            'start_date_local' => '2026-05-10 06:30:00',
+            'distance' => 10120.5, 'moving_time' => 3300, 'elapsed_time' => 3400,
+            'average_speed' => 3.07, 'max_speed' => 4.2,
+            'total_elevation_gain' => 62.0, 'elev_high' => 88.1, 'elev_low' => 26.4,
+            'has_heartrate' => true, 'average_heartrate' => 156.2, 'max_heartrate' => 178,
+            'average_cadence' => 82.5, 'workout_type' => 2,
+            'calories' => 600.0, 'suffer_score' => 90, 'device_name' => 'Watch', 'average_watts' => 250.5,
+            'splits_metric' => [['split' => 1]], 'laps' => [['lap_index' => 1]],
+            'map' => ['summary_polyline' => 'abc123'], 'start_latlng' => [-6.2, 106.8],
+        ]),
+        'strava.com/api/v3/activities/999/streams*' => Http::response([]),
+    ]);
+
+    activityPipeline()->ingest($activity);
+
+    $detail = ActivityDetail::query()->where('activity_id', $activity->id)->firstOrFail();
+    expect($detail->name)->toBe('Full map')
+        ->and($detail->getRawOriginal('start_date_utc'))->toBe('2026-05-09 23:30:00')
+        ->and($detail->start_date_local?->toDateTimeString())->toBe('2026-05-10 06:30:00')
+        ->and($detail->distance)->toBe(10120.5)
+        ->and($detail->moving_time)->toBe(3300)
+        ->and($detail->elapsed_time)->toBe(3400)
+        ->and($detail->average_speed)->toBe(3.07)
+        ->and($detail->max_speed)->toBe(4.2)
+        ->and($detail->total_elevation_gain)->toBe(62.0)
+        ->and($detail->elev_high)->toBe(88.1)
+        ->and($detail->elev_low)->toBe(26.4)
+        ->and($detail->has_heartrate)->toBeTrue()
+        ->and($detail->average_heartrate)->toBe(156.2)
+        ->and($detail->max_heartrate)->toBe(178)
+        ->and($detail->average_cadence)->toBe(82.5)
+        ->and($detail->workout_type)->toBe(2)
+        ->and($detail->calories)->toBe(600.0)
+        ->and($detail->suffer_score)->toBe(90)
+        ->and($detail->device_name)->toBe('Watch')
+        ->and($detail->average_watts)->toBe(250.5)
+        ->and($detail->splits_metric)->toBe([['split' => 1]])
+        ->and($detail->laps)->toBe([['lap_index' => 1]])
+        ->and($detail->summary_polyline)->toBe('abc123')
+        ->and($detail->start_lat)->toBe(-6.2)
+        ->and($detail->start_lng)->toBe(106.8);
 });

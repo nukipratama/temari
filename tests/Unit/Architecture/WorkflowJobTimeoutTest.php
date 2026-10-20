@@ -7,13 +7,13 @@ use Illuminate\Support\Facades\File;
 use Symfony\Component\Finder\SplFileInfo;
 use Symfony\Component\Yaml\Yaml;
 
-/** @return Collection<string, array<string, mixed>> */
+/** @return Collection<string, array<mixed>> */
 function workflowJobs(): Collection
 {
     return collect(File::files(base_path('.github/workflows')))
         ->filter(fn (SplFileInfo $file): bool => $file->getExtension() === 'yml')
-        ->flatMap(fn (SplFileInfo $file): array => collect(Yaml::parseFile($file->getPathname())['jobs'])
-            ->mapWithKeys(fn (array $job, string $id): array => ["{$file->getFilename()}: {$id}" => $job])
+        ->flatMap(fn (SplFileInfo $file): array => collect(arrayOf(data_get(Yaml::parseFile($file->getPathname()), 'jobs')))
+            ->mapWithKeys(fn (mixed $job, int|string $id): array => ["{$file->getFilename()}: {$id}" => arrayOf($job)])
             ->all());
 }
 

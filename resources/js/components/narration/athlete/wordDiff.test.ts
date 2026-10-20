@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
+import { defined } from '@/test/defined';
+
 import { wordDiff } from './wordDiff';
 
 describe('wordDiff', () => {
@@ -13,7 +15,7 @@ describe('wordDiff', () => {
         const tokens = wordDiff('a steady five', 'a steady five kay');
 
         expect(tokens.map((t) => t.op)).toEqual(['same', 'added']);
-        expect(tokens[1].text).toBe('kay');
+        expect(defined(tokens[1]).text).toBe('kay');
     });
 
     it('marks dropped words as removed', () => {

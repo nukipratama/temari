@@ -86,7 +86,7 @@ final readonly class SeasonRecordBuilder
      */
     private static function performance(?RaceGoal $race): array
     {
-        if ($race === null) {
+        if (!$race instanceof RaceGoal) {
             return ['state' => SeasonPerformance::None->value, 'target_time_sec' => null, 'finish_time_sec' => null, 'margin_pct' => null];
         }
 

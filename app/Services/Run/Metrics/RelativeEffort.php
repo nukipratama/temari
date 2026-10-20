@@ -11,12 +11,8 @@ use App\Models\ActivityDetail;
 /**
  * How hard a run was for the runner *relative to their own recent norm*, using
  * the Edwards TRIMP we already compute ({@see ActivityDetail::$trimp_edwards})
- * against the 28-day baseline from {@see ResolveRunBaselineAction}. This is the "vs biasanya"
- * framing the raw TRIMP tile can't give on its own; it never compares the runner
- * to anyone else.
- *
- * Bands are semantic (not presentation): the UI/narrator maps them onto the
- * Threadwork mood register and Indonesian copy.
+ * against the 28-day baseline from {@see ResolveRunBaselineAction}, never comparing the runner to
+ * anyone else. Bands are semantic: the UI/narrator maps them onto copy.
  */
 class RelativeEffort
 {

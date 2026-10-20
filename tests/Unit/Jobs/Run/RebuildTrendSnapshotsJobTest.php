@@ -8,12 +8,14 @@ use App\Services\Run\Trend\TrendSnapshotRepairService;
 use App\Services\Run\Trend\TrendSnapshotWriter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
+use Mockery\MockInterface;
 
 uses(RefreshDatabase::class);
 
 it('is unique per user and delegates to the repair service', function (): void {
     $user = User::factory()->create();
     $user->forceFill(['trend_snapshots_pending_from' => now()->subDay()])->saveQuietly();
+    /** @var TrendSnapshotWriter&MockInterface $writer */
     $writer = Mockery::mock(TrendSnapshotWriter::class);
     $writer->shouldReceive('writeRange')->once();
     $repair = new TrendSnapshotRepairService($writer);

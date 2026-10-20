@@ -92,7 +92,7 @@ class AthleteOperations extends Card
      */
     private function syncPath(?StravaSyncLog $sync): ?string
     {
-        if ($sync === null || $sync->status !== 'success') {
+        if (!$sync instanceof StravaSyncLog || $sync->status !== 'success') {
             return null;
         }
 

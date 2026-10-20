@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Enums\StravaReadSource;
 use App\Services\Strava\ActivityFetcher;
 use App\Services\Strava\StravaClient;
+use App\Support\Numeric;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
@@ -56,7 +57,7 @@ function fetchIds(StravaConnection $connection, ?CarbonImmutable $since = null):
 {
     $summaries = new ActivityFetcher(new StravaClient())->fetchNewSummaries($connection, StravaReadSource::Manual, $since)['summaries'];
 
-    return array_map(fn (array $summary): int => (int) $summary['id'], $summaries);
+    return array_map(fn (array $summary): int => Numeric::int($summary['id']), $summaries);
 }
 
 it('returns new run ids sorted ascending', function (): void {

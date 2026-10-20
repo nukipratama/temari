@@ -1,6 +1,6 @@
 <?php
 
-use App\Http\Middleware\BlockDemoTelegramWrites;
+use App\Http\Middleware\BlockDemoWrites;
 use App\Http\Middleware\EnforceMaintenanceMode;
 use App\Http\Middleware\EnsureDevtoolsAccess;
 use App\Http\Middleware\EnsureOnboarded;
@@ -57,7 +57,7 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
 
         $middleware->alias([
-            'block-demo-telegram' => BlockDemoTelegramWrites::class,
+            'block-demo-writes' => BlockDemoWrites::class,
             'devtools' => EnsureDevtoolsAccess::class,
             'inertia-etag' => SetInertiaEtag::class,
             'onboarded' => EnsureOnboarded::class,

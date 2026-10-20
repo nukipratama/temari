@@ -44,15 +44,15 @@ dataset('console entry points that can reach a narrator', [
 ]);
 
 it('declares an origin before a queued job can reach a narrator', function (Closure $makeJob, AnalysisOrigin $expected): void {
-    $job = $makeJob();
+    $handler = [$makeJob(), 'handle'];
 
-    $origin = originAfter(fn () => app()->call([$job, 'handle']));
+    $origin = originAfter(fn () => is_callable($handler) ? app()->call($handler) : throw new InvalidArgumentException('Job has no handle method.'));
 
-    expect($origin)->toBe($expected)->not->toBe(AnalysisOrigin::Unknown);
+    expect($origin)->toBe($expected)->and($origin)->not->toBe(AnalysisOrigin::Unknown);
 })->with('queued entry points that can reach a narrator');
 
 it('declares an origin before a console command can reach a narrator', function (string $command, array $arguments, AnalysisOrigin $expected): void {
     $origin = originAfter(fn () => Artisan::call($command, $arguments));
 
-    expect($origin)->toBe($expected)->not->toBe(AnalysisOrigin::Unknown);
+    expect($origin)->toBe($expected)->and($origin)->not->toBe(AnalysisOrigin::Unknown);
 })->with('console entry points that can reach a narrator');
