@@ -179,7 +179,7 @@ final readonly class RuleBasedNarrationFiller
         $creditedKm = $planned === null ? null : round(SessionMatcher::creditedKm($planned->session_type, [
             'sum' => DistanceFormatter::km($actualMeters),
             'longest' => DistanceFormatter::km((float) $distancesM->max()),
-        ], TimeTrial::of($planned) !== null), 1);
+        ], TimeTrial::of($planned) instanceof TimeTrial), 1);
         $distanceLine = match (true) {
             $plannedKm === null => "{$actual} km logged, no plan for today",
             $plannedKm <= 0 => "{$actual} km logged on a planned rest day",
@@ -223,7 +223,7 @@ final readonly class RuleBasedNarrationFiller
     {
         $detail = $this->detailFor($activityId);
 
-        return $detail === null ? "Done. That one's in the log." : $this->postRunSpeechFor($detail, $activityId);
+        return $detail instanceof ActivityDetail ? $this->postRunSpeechFor($detail, $activityId) : "Done. That one's in the log.";
     }
 
     public function postRunSpeechFor(ActivityDetail $detail, int $activityId): string
@@ -317,7 +317,7 @@ final readonly class RuleBasedNarrationFiller
     private function runInsight(int $activityId): string
     {
         $detail = $this->detailFor($activityId);
-        $claims = $detail === null ? [] : RuleBasedRunInsights::claims($detail);
+        $claims = $detail instanceof ActivityDetail ? RuleBasedRunInsights::claims($detail) : [];
 
         return json_encode($claims, JSON_THROW_ON_ERROR);
     }

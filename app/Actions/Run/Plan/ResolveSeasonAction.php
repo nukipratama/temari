@@ -46,7 +46,7 @@ class ResolveSeasonAction
         }
 
         $latest = $this->latest($userId);
-        if ($latest === null || $latest->starts_at->toDateString() <= $date) {
+        if (!$latest instanceof Season || $latest->starts_at->toDateString() <= $date) {
             return $this->asOf[$key] = $latest;
         }
 

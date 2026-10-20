@@ -379,16 +379,16 @@ final class SessionIntentJudge
             $evidence['limit'] = 'marathon';
         }
         $effort = $marathon ? null : EasyEffort::of($runs);
-        if ($heartRateCapped && $effort !== null) {
+        if ($heartRateCapped && $effort instanceof EasyEffort) {
             return self::onEasyCap($effort, $evidence);
         }
         if ($pace >= $ceiling) {
             return self::reading(IntentVerdict::Hit, $evidence + ['basis' => 'pace'] + self::stimulus('easy', null, 'pace'));
         }
 
-        return $effort === null
-            ? self::reading(IntentVerdict::TooHard, $evidence + ['basis' => 'pace'] + self::stimulus('hard', null, 'pace'))
-            : self::onEasyCap($effort, $evidence);
+        return $effort instanceof EasyEffort
+            ? self::onEasyCap($effort, $evidence)
+            : self::reading(IntentVerdict::TooHard, $evidence + ['basis' => 'pace'] + self::stimulus('hard', null, 'pace'));
     }
 
     /**
@@ -418,7 +418,7 @@ final class SessionIntentJudge
     {
         $blockSeconds = 60 * array_sum(array_map(static fn (SessionSegment $segment): float => $segment->paceLabel === PaceBand::Easy ? 0.0 : ($segment->minutes ?? 0.0), $segments));
         $effort = $heartRateCapped ? EasyEffort::of($runs, $blockSeconds) : null;
-        if ($effort === null) {
+        if (!$effort instanceof EasyEffort) {
             return $block;
         }
 

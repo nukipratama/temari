@@ -30,7 +30,7 @@ final readonly class SeasonPayloadBuilder
      */
     public function seasonPayload(?Season $season, Carbon $today): ?array
     {
-        if ($season === null) {
+        if (!$season instanceof Season) {
             return null;
         }
 
@@ -51,7 +51,7 @@ final readonly class SeasonPayloadBuilder
      */
     public function profileSeasonPayload(User $user, ?Season $season, Carbon $today): ?array
     {
-        if ($season === null) {
+        if (!$season instanceof Season) {
             return null;
         }
 

@@ -467,7 +467,7 @@ class AnalysisService
     {
         $startedAt = $activity?->detail?->start_date_local;
 
-        return $activity !== null && $startedAt !== null
+        return $activity instanceof Activity && $startedAt !== null
             && $this->backlog->awaitsOlderHydration($activity->user_id, $startedAt);
     }
 

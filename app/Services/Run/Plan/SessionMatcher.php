@@ -95,7 +95,7 @@ final readonly class SessionMatcher
             $day = $completed[$date] ?? ['sum' => 0.0, 'longest' => 0.0];
             $session = $sessionByDate[$date] ?? null;
             $type = $sessionTypesByDate[$date] ?? ($session === null ? null : EffectiveSession::settledTypeOf($session));
-            $timeTrial = $session !== null && $type === $session->session_type && TimeTrial::of($session) !== null;
+            $timeTrial = $session !== null && $type === $session->session_type && TimeTrial::of($session) instanceof TimeTrial;
             $creditedKm = self::creditedKm($type, $day, $timeTrial);
             $results[$date] = self::scoreFor(
                 $plannedKm,

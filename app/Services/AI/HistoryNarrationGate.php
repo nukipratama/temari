@@ -38,13 +38,13 @@ class HistoryNarrationGate
 
     public function isHistorical(User $user, ?Carbon $startedAt): bool
     {
-        if ($startedAt === null) {
+        if (!$startedAt instanceof Carbon) {
             return false;
         }
 
         $connectedAt = $this->backlog->connectedAt($user->id);
 
-        return $connectedAt !== null && $startedAt->lt($connectedAt);
+        return $connectedAt instanceof Carbon && $startedAt->lt($connectedAt);
     }
 
     /**
@@ -53,7 +53,7 @@ class HistoryNarrationGate
      */
     public function narratesAutomatically(?Carbon $startedAt): bool
     {
-        return $startedAt !== null && $startedAt->gte(RecentlyActiveUsers::windowStart());
+        return $startedAt instanceof Carbon && $startedAt->gte(RecentlyActiveUsers::windowStart());
     }
 
     /**
@@ -64,7 +64,7 @@ class HistoryNarrationGate
     {
         $startedAt = $this->ages->runDateForSubject($type, $subjectId);
 
-        if ($startedAt === null || ! $this->isHistorical($user, $startedAt)) {
+        if (!$startedAt instanceof Carbon || ! $this->isHistorical($user, $startedAt)) {
             return false;
         }
 

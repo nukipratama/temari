@@ -60,7 +60,7 @@ class SettleEarlyNarrationAction
         // something left to claim, so a drain that outran the grace window
         // gets its one replay instead of being silently skipped forever.
         if (! $this->backlog->withinHydrationGrace($user->id) && ! $claimableRows->exists()) {
-            if ($startedAt !== null && $this->laterRunLanded($user, $startedAt)) {
+            if ($startedAt instanceof Carbon && $this->laterRunLanded($user, $startedAt)) {
                 ($this->recomputeCardClaims)($user);
             }
 
@@ -68,7 +68,7 @@ class SettleEarlyNarrationAction
         }
 
         // Settles the drain's dirty weeks, this run's included, before anything below narrates from them.
-        if ($startedAt !== null) {
+        if ($startedAt instanceof Carbon) {
             $this->weeklyAggregator->rollForwardFrom($user, $startedAt);
         } else {
             $this->weeklyAggregator->rollForwardDirty($user);

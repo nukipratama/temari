@@ -74,7 +74,7 @@ final readonly class ComplianceScorer
         // for an athlete east of the app's timezone just after their midnight.
         $rangeEnd = $rows->pluck('date')->max();
         assert($rangeEnd === null || $rangeEnd instanceof Carbon);
-        if ($rangeEnd === null || $rangeEnd->lessThan($today)) {
+        if (!$rangeEnd instanceof Carbon || $rangeEnd->lessThan($today)) {
             $rangeEnd = $today;
         }
 
@@ -176,7 +176,7 @@ final readonly class ComplianceScorer
             $date = $row->date->toDateString();
             $trial = TimeTrial::of($row);
             $effectiveType = $effectiveByDate[$date]->sessionType;
-            if ($trial !== null && in_array($effectiveType, [SessionType::Tempo, SessionType::Interval], true)) {
+            if ($trial instanceof TimeTrial && in_array($effectiveType, [SessionType::Tempo, SessionType::Interval], true)) {
                 $intents[$date] = self::trialIntent($trial, $effectiveType, $runsByDate[$date] ?? [], $zones, $row->time_trial_outcome === TimeTrialOutcome::Confirmed);
                 if (isset($declaredAfterRunDates[$date])) {
                     $intents[$date]['evidence']['advice_history'] = 'declared_after_run';
@@ -273,7 +273,7 @@ final readonly class ComplianceScorer
     {
         $paces = $this->paceCalculator->fromVdotResult($this->vdotEstimator->estimate($user, $row->date));
         $prescription = IntensityPrescription::fromSession($row);
-        $segments = $prescription !== null && $type->isQuality()
+        $segments = $prescription instanceof IntensityPrescription && $type->isQuality()
             ? SegmentGenerator::forPrescription($type, $row->phase, $coreKm, $paces, $prescription)
             : SegmentGenerator::forCoreKm($type, $row->phase, $row->race_distance_m === null ? null : (float) $row->race_distance_m, $coreKm, $paces);
         $reading = SessionIntentJudge::judge($type, $segments, $paces, $runs, $heartRateCapped, $streams);

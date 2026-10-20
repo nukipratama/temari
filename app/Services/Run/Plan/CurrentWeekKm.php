@@ -79,7 +79,7 @@ final readonly class CurrentWeekKm
         $loadPending = $briefingContext->historyLoading;
         $ceiling = ReadinessCeiling::from($briefingContext->readinessCeiling);
         $race = ($this->activeRace)($user->id);
-        $raceDistanceM = $race !== null ? (float) $race->distance_m : null;
+        $raceDistanceM = $race instanceof RaceGoal ? (float) $race->distance_m : null;
         $primaryEasyDate = PlanRenderer::primaryEasyDate($currentWeekSessions);
 
         $plannedKmByDate = [];

@@ -56,7 +56,7 @@ final readonly class AgentLoop
         /** @var list<array<string, mixed>> $input */
         $input = $payload['input'];
 
-        if ($toolbox === null) {
+        if (!$toolbox instanceof AgentToolbox) {
             return [$this->createResponse($kind, $payload, $budget, $startedAt), $input];
         }
 

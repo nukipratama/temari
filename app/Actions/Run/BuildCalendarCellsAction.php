@@ -101,7 +101,7 @@ class BuildCalendarCellsAction
             'is_today' => $dateKey === $todayKey,
         ];
 
-        if ($rows === null || $rows->isEmpty()) {
+        if (!$rows instanceof Collection || $rows->isEmpty()) {
             return [
                 ...$base,
                 'distance_km' => null,

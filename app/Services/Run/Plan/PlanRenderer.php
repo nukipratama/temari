@@ -286,7 +286,7 @@ final class PlanRenderer
 
         $creditedKm = self::creditedKmOf($s, $activity);
         $ranPaceSecPerKm = $status->isCredited() && $sessionType !== SessionType::Rest
-            ? SessionMatcher::ranPaceSecPerKmFromRuns(EffectiveSession::settledTypeOf($s), $activity['runs'] ?? [], TimeTrial::of($s) !== null)
+            ? SessionMatcher::ranPaceSecPerKmFromRuns(EffectiveSession::settledTypeOf($s), $activity['runs'] ?? [], TimeTrial::of($s) instanceof TimeTrial)
             : null;
 
         $originalSegments = self::segmentsFor($s, $s->session_type, $s->phase, $raceDistanceM, $isPrimaryEasy, $longRunKm, $multiplier, $longRunCapKm, $paces, $volumeScale, $raceGoalTimeSec, $longRunProgressionCapKm);
@@ -323,7 +323,7 @@ final class PlanRenderer
             'date' => $s->date->toDateString(),
             'phase' => $s->phase->value,
             'session_type' => $sessionType->value,
-            'segments' => self::segmentsWithRanges($segments, $sessionType === SessionType::Race || TimeTrial::of($s) !== null, $paces['marathon'] ?? null, $easySlowEndSecPerKm),
+            'segments' => self::segmentsWithRanges($segments, $sessionType === SessionType::Race || TimeTrial::of($s) instanceof TimeTrial, $paces['marathon'] ?? null, $easySlowEndSecPerKm),
             'hr_cap_bpm' => self::heartRateCapOf($sessionType, $segments, $easyHrCapBpm),
             'distance_km' => $distanceKm,
             'asked_km' => $askedKm,
@@ -361,7 +361,7 @@ final class PlanRenderer
             'result_note' => self::resultNote($s, $status, $ranPaceSecPerKm),
             'ran_pace_sec_per_km' => $ranPaceSecPerKm,
             'ran_label' => $status->isCredited() && $sessionType !== SessionType::Rest
-                ? DayRanLabel::of(EffectiveSession::settledTypeOf($s), TimeTrial::of($s) !== null, $s->intent_evidence ?? [], $ranPaceSecPerKm, $segments, $activity['runs'] ?? [])
+                ? DayRanLabel::of(EffectiveSession::settledTypeOf($s), TimeTrial::of($s) instanceof TimeTrial, $s->intent_evidence ?? [], $ranPaceSecPerKm, $segments, $activity['runs'] ?? [])
                 : null,
             'actual_km' => $activity['km'] ?? null,
             'credited_km' => $creditedKm,
@@ -388,7 +388,7 @@ final class PlanRenderer
         return $activity === null || $longestRunKm === null ? null : round(SessionMatcher::creditedKm(EffectiveSession::settledTypeOf($s), [
             'sum' => $activity['km'],
             'longest' => $longestRunKm,
-        ], TimeTrial::of($s) !== null), 1);
+        ], TimeTrial::of($s) instanceof TimeTrial), 1);
     }
 
     /**
@@ -682,7 +682,7 @@ final class PlanRenderer
     {
         $trial = $shownType === $s->session_type ? TimeTrial::of($s) : null;
 
-        return $trial === null ? null : ['distance_m' => $trial->distanceM, 'aim_time_sec' => $trial->aimTimeSec];
+        return $trial instanceof TimeTrial ? ['distance_m' => $trial->distanceM, 'aim_time_sec' => $trial->aimTimeSec] : null;
     }
 
     /**
@@ -745,7 +745,7 @@ final class PlanRenderer
 
             return SegmentGenerator::easyBlock(round($km, 1), $paces);
         }
-        if ($prescription === null || ! $sessionType->isQuality()) {
+        if (!$prescription instanceof IntensityPrescription || ! $sessionType->isQuality()) {
             return SegmentGenerator::generate($sessionType, $phase, $raceDistanceM, $isPrimaryEasy, $longRunKm, $multiplier, $longRunCapKm, $paces, $volumeScale, $raceGoalTimeSec, $longRunProgressionCapKm, $session->fall_off_tilt);
         }
 
@@ -798,7 +798,7 @@ final class PlanRenderer
         $original = $effective->easedFromType ?? $effective->sessionType;
         $segments = SegmentGenerator::easyBlock($effective->coreKm, $paces);
         $prescription = $effective->qualityPrescription();
-        if ($prescription !== null) {
+        if ($prescription instanceof IntensityPrescription) {
             $segments = SegmentGenerator::forPrescription(
                 $effective->sessionType,
                 $phase,

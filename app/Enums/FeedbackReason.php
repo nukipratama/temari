@@ -33,9 +33,9 @@ enum FeedbackReason: string
      */
     public static function valuesFor(?FeedbackSubject $subject): array
     {
-        $cases = $subject === null
-            ? self::cases()
-            : array_filter(self::cases(), fn (self $reason): bool => $reason->subject() === $subject);
+        $cases = $subject instanceof FeedbackSubject
+            ? array_filter(self::cases(), fn (self $reason): bool => $reason->subject() === $subject)
+            : self::cases();
 
         return array_values(array_map(static fn (self $reason): string => $reason->value, $cases));
     }

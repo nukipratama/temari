@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Run\Plan;
 
+use Illuminate\Support\Carbon;
 use App\Enums\PaceBand;
 use App\Enums\RaceAmbitionState;
 use App\Enums\RaceSupport;
@@ -43,13 +44,13 @@ final readonly class FastFinishLongRun
     public static function forWeek(PlanInputs $inputs, ?GoalPaceWork $goalPace): ?self
     {
         $distanceM = $inputs->raceDistanceM;
-        if ($inputs->raceDate === null || $distanceM === null
+        if (!$inputs->raceDate instanceof Carbon || $distanceM === null
             || ! RaceSupport::forDistance($distanceM)->dedicatedPreparation()
             || RaceSupport::isMarathonClass($distanceM)) {
             return null;
         }
         $raceKind = GoalPaceWork::kindFor($distanceM);
-        if ($goalPace !== null) {
+        if ($goalPace instanceof GoalPaceWork) {
             $source = GoalPaceWork::isSteppingStone($goalPace->context()) ? self::PACE_STEPPING_STONE : self::PACE_GOAL;
 
             return new self($raceKind, (int) round($distanceM), $goalPace->goalPaceSecPerKm, $raceKind, $source);

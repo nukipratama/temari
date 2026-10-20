@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services\AI;
 
+use App\Services\AI\Agent\AgentToolbox;
+use Closure;
 use App\Actions\AI\RecordTokenUsageAction;
 use App\Exceptions\AI\ContentFilterException;
 use App\Exceptions\AI\RejectedOutputException;
@@ -63,7 +65,7 @@ final readonly class StructuredChatCaller
         $startedAt = microtime(true);
         $effectiveMaxTokens = $options->maxTokens ?? config()->integer('azure_openai.max_completion_tokens');
         $deployment = $this->azure->deploymentFor($kind);
-        $toolbox = $options->toolbox !== null && ! $options->toolbox->isEmpty() ? $options->toolbox : null;
+        $toolbox = $options->toolbox instanceof AgentToolbox && ! $options->toolbox->isEmpty() ? $options->toolbox : null;
         $budget = AgentBudget::fromConfig($options->maxSteps, $options->deadlineSeconds);
 
         $payload = [
@@ -87,7 +89,7 @@ final readonly class StructuredChatCaller
             $payload['temperature'] = $options->temperature;
         }
 
-        if ($toolbox !== null) {
+        if ($toolbox instanceof AgentToolbox) {
             $payload['tools'] = $toolbox->definitions();
         }
 
@@ -146,7 +148,7 @@ final readonly class StructuredChatCaller
             // A narrator's own contract, checked after the schema's. The rewrite
             // replays the conversation with tools forbidden, so it costs one turn
             // and re-reads nothing.
-            if ($options->validator !== null) {
+            if ($options->validator instanceof Closure) {
                 $complaint = ($options->validator)($decoded);
 
                 if ($complaint !== null) {
@@ -253,7 +255,7 @@ final readonly class StructuredChatCaller
             usage: $budget,
             model: $deployment !== '' ? $deployment : null,
             latencyMs: self::latencyMs($startedAt),
-            truncated: $response !== null && self::isTruncated($response),
+            truncated: $response instanceof CreateResponse && self::isTruncated($response),
             userId: $userId,
             origin: $this->origin->current(),
             analysisId: $this->narrated->current(),

@@ -149,7 +149,7 @@ class ActivityFetcher
 
                 return true;
             }
-            if ($since !== null && $this->startedOnOrBefore($item, $since)) {
+            if ($since instanceof CarbonImmutable && $this->startedOnOrBefore($item, $since)) {
                 return true;
             }
             if (! $this->isRun($item)) {

@@ -31,7 +31,7 @@ class StoreFeedbackRequest extends FormRequest
 
         $subject = $this->subjectType();
 
-        return $subject === null || $subject->isOwnedBy($user, $this->integer('subject_id'));
+        return !$subject instanceof FeedbackSubject || $subject->isOwnedBy($user, $this->integer('subject_id'));
     }
 
     /**

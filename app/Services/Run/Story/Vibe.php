@@ -84,7 +84,7 @@ class Vibe
     {
         $lastRun = ($this->lastRunStart)($user->id);
 
-        if ($lastRun === null) {
+        if (!$lastRun instanceof Carbon) {
             return null;
         }
 

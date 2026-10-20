@@ -53,7 +53,7 @@ class AnalyzeWeeklyRecapJob extends AnalyzeRowJob
             }
 
             $next = $this->nextPendingSnapshot($snapshot);
-            if ($next === null) {
+            if (!$next instanceof WeeklySnapshot) {
                 return;
             }
 

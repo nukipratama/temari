@@ -56,7 +56,7 @@ final class ReadinessClamp
                 'note' => self::noteFor($sessionType, $ceiling, $reasons) ?? 'keep the event distance and use a conservative effort.'];
         }
 
-        if ($ceiling === ReadinessCeiling::ModerateOk && in_array($sessionType, [SessionType::Tempo, SessionType::Interval], true) && $prescription !== null && $prescription->paceBand !== null && ! $prescription->isEasy()) {
+        if ($ceiling === ReadinessCeiling::ModerateOk && in_array($sessionType, [SessionType::Tempo, SessionType::Interval], true) && $prescription instanceof IntensityPrescription && $prescription->paceBand instanceof PaceBand && ! $prescription->isEasy()) {
             if (TimeTrial::isTrial($prescription->raceContext)) {
                 $km = SegmentGenerator::coreKmFor($sessionType, false, $longRunBaselineKm, $volumeMultiplier, $longRunCapKm, raceContext: $prescription->raceContext);
 

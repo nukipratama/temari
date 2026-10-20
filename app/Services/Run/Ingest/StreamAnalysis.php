@@ -162,7 +162,7 @@ class StreamAnalysis
         }
 
         if (is_array($splitsMetric) && $splitsMetric !== []) {
-            $summary = array_merge(
+            return array_merge(
                 $summary,
                 $this->partialSplit($splitsMetric, $cadenceByKm),
                 // HR drift is first-km against last-km average HR, with no

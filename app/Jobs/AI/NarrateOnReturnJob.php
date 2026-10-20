@@ -81,7 +81,7 @@ class NarrateOnReturnJob implements ShouldQueue
             ->each(fn (Activity $activity) => $service->requestActivityGroupRuleBased($activity, AnalysisOrigin::Return));
 
         $earliest = AnalyzeActivityJob::earliestPendingActivityForUser($user->id);
-        if ($earliest !== null) {
+        if ($earliest instanceof Activity) {
             $service->requestActivityGroup($earliest, invalidate: false);
         }
     }

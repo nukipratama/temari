@@ -255,13 +255,13 @@ function captureAnalysisServiceRequests(array &$captured): AnalysisService
     $service = Mockery::mock(AnalysisService::class);
     $service->shouldReceive('request')
         ->andReturnUsing(function (string $subjectOrType, int $subjectId, AnalysisType $type, ?string $discriminator = null, ?int $delaySeconds = null, bool $invalidate = false) use (&$captured): Analysis {
-            $captured[] = compact('subjectOrType', 'subjectId', 'type', 'discriminator', 'delaySeconds', 'invalidate') + ['ruleBased' => false];
+            $captured[] = ['subjectOrType' => $subjectOrType, 'subjectId' => $subjectId, 'type' => $type, 'discriminator' => $discriminator, 'delaySeconds' => $delaySeconds, 'invalidate' => $invalidate] + ['ruleBased' => false];
 
             return new Analysis();
         });
     $service->shouldReceive('requestRuleBased')
         ->andReturnUsing(function (string $subjectOrType, int $subjectId, AnalysisType $type, ?string $discriminator = null) use (&$captured): Analysis {
-            $captured[] = compact('subjectOrType', 'subjectId', 'type', 'discriminator') + ['delaySeconds' => null, 'invalidate' => null, 'ruleBased' => true];
+            $captured[] = ['subjectOrType' => $subjectOrType, 'subjectId' => $subjectId, 'type' => $type, 'discriminator' => $discriminator] + ['delaySeconds' => null, 'invalidate' => null, 'ruleBased' => true];
 
             return new Analysis();
         });
@@ -281,7 +281,7 @@ function captureAnalysisServiceRequests(array &$captured): AnalysisService
         });
     $service->shouldReceive('requestDeferred')
         ->andReturnUsing(function (string $subjectOrType, int $subjectId, AnalysisType $type, ?string $discriminator = null) use (&$captured): Analysis {
-            $captured[] = compact('subjectOrType', 'subjectId', 'type', 'discriminator') + ['delaySeconds' => null, 'invalidate' => null, 'ruleBased' => false];
+            $captured[] = ['subjectOrType' => $subjectOrType, 'subjectId' => $subjectId, 'type' => $type, 'discriminator' => $discriminator] + ['delaySeconds' => null, 'invalidate' => null, 'ruleBased' => false];
 
             return new Analysis();
         });
@@ -568,7 +568,7 @@ function spend(int $userId, int $promptTokens, ?AnalysisOrigin $origin = null): 
 {
     TokenUsage::query()->create([
         'user_id' => $userId,
-        ...($origin !== null ? ['origin' => $origin] : []),
+        ...($origin instanceof AnalysisOrigin ? ['origin' => $origin] : []),
         'kind' => 'briefing', 'prompt_tokens' => $promptTokens, 'completion_tokens' => 0,
         'total_tokens' => $promptTokens, 'model' => 'gpt-4o', 'created_at' => Carbon::now(),
     ]);

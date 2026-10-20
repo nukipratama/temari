@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Models\Season;
 use App\Actions\Run\Plan\ResolveActiveRaceAction;
 use App\Actions\Run\Plan\ResolveSeasonAction;
 use App\Enums\PlanPhase;
@@ -92,12 +93,12 @@ class TrendsController extends Controller
     private function supportedHistory(User $user, Carbon $today, ResolveActiveRaceAction $activeRace, ResolveSeasonAction $seasons): ?array
     {
         $race = $activeRace($user->id);
-        if ($race === null) {
+        if (!$race instanceof RaceGoal) {
             return null;
         }
 
         $season = $seasons->latest($user->id);
-        $seasonStart = $season !== null && $season->race_goal_id === $race->id ? $season->starts_at->toDateString() : null;
+        $seasonStart = $season instanceof Season && $season->race_goal_id === $race->id ? $season->starts_at->toDateString() : null;
         $snapshots = TrendDailySnapshot::query()
             ->where('user_id', $user->id)
             ->where('race_goal_id', $race->id)

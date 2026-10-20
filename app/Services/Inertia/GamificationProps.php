@@ -38,7 +38,7 @@ final readonly class GamificationProps
      */
     private function activeRaceFor(?User $user): ?array
     {
-        if ($user === null) {
+        if (!$user instanceof User) {
             return null;
         }
 

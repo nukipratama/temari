@@ -60,7 +60,7 @@ it('reads a stored trial back only while it is still hard work on a quality day'
         ...$attributes,
     ]);
 
-    expect(TimeTrial::of($session) !== null)->toBe($isTrial);
+    expect(TimeTrial::of($session) instanceof TimeTrial)->toBe($isTrial);
 })->with([
     'as written' => [[], true],
     'kept easy' => [['prescribed_hard_minutes' => 0], false],

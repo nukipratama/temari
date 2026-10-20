@@ -52,7 +52,7 @@ final class PlanAdherenceTool extends UserTool
         $sessions = PlannedSession::query()
             ->where('user_id', $this->user->id)
             ->where('date', '<=', $this->asOf->toDateString())
-            ->when($this->from !== null, fn ($query) => $query->where('date', '>=', $this->from?->toDateString()))
+            ->when($this->from instanceof Carbon, fn ($query) => $query->where('date', '>=', $this->from?->toDateString()))
             ->get();
 
         $meanCompliance = $sessions->whereNotNull('compliance_score')->avg('compliance_score');

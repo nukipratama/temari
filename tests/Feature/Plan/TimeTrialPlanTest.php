@@ -57,7 +57,7 @@ function trialPlanInputs(
         longRunBaselineKm: 18.0,
         longRunCapKm: 32.0,
         raceAmbitionState: $band,
-        raceAmbitionGapPct: $band === null ? null : 0.0,
+        raceAmbitionGapPct: $band instanceof RaceAmbitionState ? 0.0 : null,
         timeTrialAimSec: $aimSec,
         timeTrials: $trials,
     );

@@ -156,11 +156,11 @@ class HistoryController extends Controller
     ): SupportCollection {
         $weeklySnapshots = WeeklySnapshot::query()
             ->where('user_id', $user->id)
-            ->when($rangeStart !== null, fn ($q) => $q->where('week_ending', '>=', $rangeStart))
-            ->when($rangeEnd !== null, fn ($q) => $q->where('week_ending', '<=', $rangeEnd))
+            ->when($rangeStart instanceof Carbon, fn ($q) => $q->where('week_ending', '>=', $rangeStart))
+            ->when($rangeEnd instanceof Carbon, fn ($q) => $q->where('week_ending', '<=', $rangeEnd))
             // A week deep link shows exactly that week's recap, not every recap
             // since it.
-            ->when($weekFilter !== null, fn ($q) => $q->where('week_ending', '=', $weekFilter))
+            ->when($weekFilter instanceof Carbon, fn ($q) => $q->where('week_ending', '=', $weekFilter))
             ->orderByDesc('week_ending')
             ->limit(self::MAX_WEEKS)
             ->get();

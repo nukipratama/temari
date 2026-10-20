@@ -14,7 +14,7 @@ uses(RefreshDatabase::class);
 function runOnboardedMiddleware(?User $user, ?string $routeName = null): Response
 {
     $request = Request::create('/', 'GET');
-    if ($user !== null) {
+    if ($user instanceof User) {
         $request->setUserResolver(fn (): User => $user);
     }
     if ($routeName !== null) {

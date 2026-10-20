@@ -35,7 +35,7 @@ class BackfillAgeGate
 
     public function isTooOld(?Carbon $startedAt): bool
     {
-        if ($startedAt === null) {
+        if (!$startedAt instanceof Carbon) {
             return false;
         }
 

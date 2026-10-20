@@ -99,7 +99,7 @@ class RaceController extends Controller
         /** @var User $user */
         $user = $request->user();
 
-        if ($races->cancel($user) === null) {
+        if (!$races->cancel($user) instanceof RaceGoal) {
             return back();
         }
 

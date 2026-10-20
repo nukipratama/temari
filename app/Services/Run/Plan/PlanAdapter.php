@@ -317,7 +317,7 @@ final readonly class PlanAdapter
 
     private function raceGapRatio(User $user, ?RaceGoal $race, ?RaceAmbition $ambition): ?float
     {
-        if ($race === null || $race->goal_time_sec <= 0 || $ambition?->state === RaceAmbitionState::Unsupported) {
+        if (!$race instanceof RaceGoal || $race->goal_time_sec <= 0 || $ambition?->state === RaceAmbitionState::Unsupported) {
             return null;
         }
 

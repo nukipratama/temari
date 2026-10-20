@@ -36,7 +36,7 @@ final readonly class IntensityPrescription
     {
         // A missing VDOT pace does not erase the hard-day decision. It only
         // means the display cannot attach a seconds-per-kilometre target yet.
-        return $this->hardMinutes === 0 || $this->paceBand === null;
+        return $this->hardMinutes === 0 || !$this->paceBand instanceof PaceBand;
     }
 
     public static function isEasyQualityDay(PlannedSession $session, SessionType $type): bool

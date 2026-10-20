@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Console\Commands\Weather;
 
+use App\Services\Weather\WeatherSnapshot;
 use App\Models\ActivityDetail;
 use App\Services\Weather\OpenMeteoClient;
 use Carbon\CarbonImmutable;
@@ -75,7 +76,7 @@ class CorrectForecastWeatherCommand extends Command
             CarbonImmutable::instance($detail->start_date_local),
         );
 
-        if ($snapshot === null) {
+        if (!$snapshot instanceof WeatherSnapshot) {
             return false;
         }
 

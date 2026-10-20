@@ -178,7 +178,7 @@ final readonly class Periodizer
     public function rowsFor(PlanInputs $inputs): array
     {
         $arcStart = $inputs->arcStart();
-        $arc = $inputs->raceDate !== null && $inputs->raceDistanceM !== null
+        $arc = $inputs->raceDate instanceof Carbon && $inputs->raceDistanceM !== null
             ? PhaseSchedule::forRace($arcStart, $inputs->raceDate, $inputs->raceDistanceM)
             // The season's own window, not a fresh horizon, so the arc
             // SeasonSummaryBuilder draws is the one the athlete trains.
@@ -220,7 +220,7 @@ final readonly class Periodizer
                 [$week['multiplier'], $ceilingKm] = self::boundResumedWeek($weekRows, $week['phase'], $week['multiplier'], $inputs, $ceilingKm);
             }
             $goalPace = GoalPaceWork::forWeek($inputs, $week['week_start'], $week['phase']);
-            $fastFinish = $fastFinishFrom !== null
+            $fastFinish = $fastFinishFrom instanceof Carbon
                 && in_array($week['phase'], [PlanPhase::Build, PlanPhase::Peak], true)
                 && $week['zone'] === PhaseSchedule::ZONE_BLOCK
                 && $week['week_start']->gte($fastFinishFrom)
@@ -228,7 +228,7 @@ final readonly class Periodizer
                 ? FastFinishLongRun::forWeek($inputs, $goalPace)
                 : null;
             $trial = $trials->forWeek($week['week_start'], $week['phase']);
-            $trialRows = $trial === null ? null : $this->withIntensityPrescriptions($weekRows, $week['multiplier'], $inputs, $week['week_start'], $rows, trial: $trial, buildQualityMinutes: $buildQualityMinutes, peakGoalPaceMinutes: $peakGoalPaceMinutes, fastFinish: $fastFinish, longestKm: $longestKm);
+            $trialRows = $trial instanceof TimeTrial ? $this->withIntensityPrescriptions($weekRows, $week['multiplier'], $inputs, $week['week_start'], $rows, trial: $trial, buildQualityMinutes: $buildQualityMinutes, peakGoalPaceMinutes: $peakGoalPaceMinutes, fastFinish: $fastFinish, longestKm: $longestKm) : null;
             if ($trialRows !== null && array_any($trialRows, static fn (array $row): bool => TimeTrial::isTrial($row['prescription_race_context']))) {
                 $weekRows = $trialRows;
                 $trials->placedIn($week['week_start']);
@@ -549,9 +549,9 @@ final readonly class Periodizer
             $work = $date === $goalPaceDate || ($row['session_type'] === SessionType::Long && $goalPace?->racesLongAtGoalPace() === true)
                 ? $goalPace
                 : null;
-            $family = $work === null
-                ? IntensityPrescriptionResolver::familyKey($row['session_type'], $inputs->raceDistanceM, $inputs->raceGoalTimeSec)
-                : IntensityPrescriptionResolver::familyKeyForContext($row['session_type'], $work->context());
+            $family = $work instanceof GoalPaceWork
+                ? IntensityPrescriptionResolver::familyKeyForContext($row['session_type'], $work->context())
+                : IntensityPrescriptionResolver::familyKey($row['session_type'], $inputs->raceDistanceM, $inputs->raceGoalTimeSec);
             $recent = $inputs->recentPrescriptions[$family] ?? null;
             $carried = $row['phase'] === PlanPhase::Peak
                 && in_array($family, ['goal_pace', 'race_tempo'], true)
@@ -584,13 +584,13 @@ final readonly class Periodizer
                     ? new IntensityPrescription(min(10, $prescription->hardMinutes), $prescription->paceBand, $prescription->paceSecPerKm, 'modest quality for an established two-run week', $prescription->raceContext)
                     : new IntensityPrescription(0, null, null, null);
             }
-            if ($inputs->recovery !== null && $inputs->recovery->excludesQualityOn($date) && ! $prescriptions[$date]->isEasy()) {
+            if ($inputs->recovery instanceof PostRaceRecovery && $inputs->recovery->excludesQualityOn($date) && ! $prescriptions[$date]->isEasy()) {
                 $prescriptions[$date] = new IntensityPrescription(0, null, null, 'easy while recovering from the race', $prescriptions[$date]->raceContext);
             }
         }
 
-        $trialDate = $trial === null || $unknownDemandingMinutes ? null : self::firstQualityDate($rows, $prescriptions);
-        if ($trial !== null && $trialDate !== null) {
+        $trialDate = !$trial instanceof TimeTrial || $unknownDemandingMinutes ? null : self::firstQualityDate($rows, $prescriptions);
+        if ($trial instanceof TimeTrial && $trialDate !== null) {
             $prescriptions[$trialDate] = $trial->prescription();
             $kmByDate[$trialDate] = TimeTrial::dayKm($rows[$trialDate]['session_type'], $trial->context()) ?? $kmByDate[$trialDate];
         }
@@ -647,9 +647,9 @@ final readonly class Periodizer
         unset($row);
 
         $longDate = array_find_key($rows, static fn (array $row): bool => $row['session_type'] === SessionType::Long && $row['prescribed_hard_minutes'] === 0);
-        if ($fastFinish !== null && $longDate !== null && ! $unknownDemandingMinutes && ! $twoRunWeek
+        if ($fastFinish instanceof FastFinishLongRun && $longDate !== null && ! $unknownDemandingMinutes && ! $twoRunWeek
             && $kmByDate[$longDate] <= $longestKm
-            && ($inputs->recovery === null || ! $inputs->recovery->excludesQualityOn($longDate))) {
+            && (!$inputs->recovery instanceof PostRaceRecovery || ! $inputs->recovery->excludesQualityOn($longDate))) {
             $withFinish = $rows;
             $withFinish[$longDate] = [...$rows[$longDate], ...$fastFinish->prescription($kmByDate[$longDate])->toArray()];
             $asPrescriptions = array_map(static fn (array $row): IntensityPrescription => new IntensityPrescription($row['prescribed_hard_minutes'], $row['prescribed_pace_band'], $row['prescribed_pace_sec_per_km'], $row['prescription_reason'], $row['prescription_race_context']), $withFinish);
@@ -939,7 +939,7 @@ final readonly class Periodizer
             $phases[$offset] = PlanPhase::Deload;
         }
         foreach ($arc as $index => $week) {
-            if ($recovery !== null && $recovery->deloadsWeek($week['week_start']) && $phases[$index] !== PlanPhase::Taper) {
+            if ($recovery instanceof PostRaceRecovery && $recovery->deloadsWeek($week['week_start']) && $phases[$index] !== PlanPhase::Taper) {
                 $phases[$index] = PlanPhase::Deload;
             }
         }

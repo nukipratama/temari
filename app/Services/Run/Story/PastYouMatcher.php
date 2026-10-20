@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Run\Story;
 
+use App\Enums\SessionType;
 use App\Enums\ComparisonMetric;
 use App\Services\Run\Metrics\DistanceFormatter;
 use Illuminate\Database\Eloquent\Collection;
@@ -289,8 +290,8 @@ class PastYouMatcher
             return null;
         }
 
-        if ($current->plannedSessionType !== null
-            && $past->plannedSessionType !== null
+        if ($current->plannedSessionType instanceof SessionType
+            && $past->plannedSessionType instanceof SessionType
             && $current->plannedSessionType !== $past->plannedSessionType) {
             return null;
         }

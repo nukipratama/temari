@@ -330,7 +330,7 @@ it('carries the last build quality minutes into peak goal-pace work instead of t
 });
 
 it('caps the carried-over minutes at the peak goal-pace target', function (): void {
-    $rows = goalPacePlan(goalPaceInputs(GOAL_PACE_10K, RaceAmbitionState::OnTrack, projectedSec: 4200.0, recent: ['tempo' => goalPaceHit(30)]));
+    $rows = goalPacePlan(goalPaceInputs(GOAL_PACE_10K, RaceAmbitionState::OnTrack, recent: ['tempo' => goalPaceHit(30)], projectedSec: 4200.0));
     $build = qualityMinutesInPhase($rows, PlanPhase::Build);
 
     expect(array_last($build))->toBe(30)

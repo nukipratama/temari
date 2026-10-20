@@ -291,7 +291,7 @@ final readonly class SeasonService
             return false;
         }
 
-        return $race === null ? $season->race_goal_id === null : $season->race_goal_id === $race->id;
+        return $race instanceof RaceGoal ? $season->race_goal_id === $race->id : $season->race_goal_id === null;
     }
 
     private function generateGoals(Season $season, User $user, ?RaceGoal $race, Carbon $today): void
@@ -299,20 +299,20 @@ final readonly class SeasonService
         $baselineData = $this->baseline->forUser($user, $today);
         $sessionsPerWeek = $baselineData['sessions_per_week'];
 
-        $weeks = $race !== null
+        $weeks = $race instanceof RaceGoal
             ? PhaseSchedule::forRace($today, $race->race_date, (float) $race->distance_m)
             : PhaseSchedule::selfScaled($today, self::SELF_SCALED_WEEKS);
         $weekCount = count($weeks);
 
         $phases = array_column($weeks, 'phase');
         $zones = array_column($weeks, 'zone');
-        $multipliers = PhaseSchedule::volumeMultipliers($phases, $race === null || $season->increases_held, $zones);
-        $raceDistanceM = $race !== null ? (float) $race->distance_m : null;
+        $multipliers = PhaseSchedule::volumeMultipliers($phases, !$race instanceof RaceGoal || $season->increases_held, $zones);
+        $raceDistanceM = $race instanceof RaceGoal ? (float) $race->distance_m : null;
 
         $qualityTotal = 0;
         $longestLongRunKm = 0.0;
         foreach ($phases as $index => $phase) {
-            $qualityTotal += WeekPlanBuilder::qualitySlotCount($phase, $sessionsPerWeek, $raceDistanceM, $race === null, $zones[$index]);
+            $qualityTotal += WeekPlanBuilder::qualitySlotCount($phase, $sessionsPerWeek, $raceDistanceM, !$race instanceof RaceGoal, $zones[$index]);
             $longRunKm = SegmentGenerator::coreKmFor(SessionType::Long, isPrimaryEasy: false, longRunBaselineKm: $baselineData['long_run_km'], volumeMultiplier: $multipliers[$index], longRunCapKm: $baselineData['long_run_cap_km']);
             $longestLongRunKm = max($longestLongRunKm, $longRunKm);
         }
@@ -351,7 +351,7 @@ final readonly class SeasonService
             ],
         ];
 
-        if ($race === null) {
+        if (!$race instanceof RaceGoal) {
             $goals[] = self::consistencyGoal($season);
         } elseif (self::blockHasOpened($race, $today)) {
             $goals[] = self::raceMarginGoal();

@@ -64,9 +64,9 @@ class HydrationBacklog
      */
     public function awaitsHydrationBefore(int $userId, ?Carbon $before, ?Carbon $since = null): bool
     {
-        return $before !== null && $this->awaitingHydration([$userId])
+        return $before instanceof Carbon && $this->awaitingHydration([$userId])
             ->where('activity_details.start_date_local', '<', $before)
-            ->when($since !== null, fn (Builder $query) => $query->where('activity_details.start_date_local', '>=', $since))
+            ->when($since instanceof Carbon, fn (Builder $query) => $query->where('activity_details.start_date_local', '>=', $since))
             ->exists();
     }
 
@@ -92,7 +92,7 @@ class HydrationBacklog
         $connectedAt = $this->connectedAt($userId);
         $graceHours = config()->integer('ai.recap_hydration_grace_hours', 48);
 
-        return $connectedAt !== null && Carbon::now()->lt($connectedAt->copy()->addHours($graceHours));
+        return $connectedAt instanceof Carbon && Carbon::now()->lt($connectedAt->copy()->addHours($graceHours));
     }
 
     /**
@@ -103,7 +103,7 @@ class HydrationBacklog
      */
     public function awaitsOlderHydration(int $userId, ?Carbon $startedAt): bool
     {
-        if ($startedAt === null || ! $this->withinHydrationGrace($userId)) {
+        if (!$startedAt instanceof Carbon || ! $this->withinHydrationGrace($userId)) {
             return false;
         }
 

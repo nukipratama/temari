@@ -132,7 +132,7 @@ final readonly class BriefingContext
         $aheadOfPlanPct = $prescribedKmToDate === null || $prescribedKmToDate <= 0.0
             ? null
             : round(((($thisWeek->distance_km ?? 0.0) - $prescribedKmToDate) / $prescribedKmToDate) * 100, 1);
-        $formConflict = $liveFormStatus !== null
+        $formConflict = $liveFormStatus instanceof TrainingFormStatus
             && $snapshotFormStatus !== null
             && $liveFormStatus !== $snapshotFormStatus;
 
@@ -219,7 +219,7 @@ final readonly class BriefingContext
      */
     private static function lastWeekToDate(User $user, ?WeeklySnapshot $lastWeek, Carbon $lastWeekStart, Carbon $throughDate): array
     {
-        if ($lastWeek === null) {
+        if (!$lastWeek instanceof WeeklySnapshot) {
             return ['runs' => null, 'km' => null];
         }
 

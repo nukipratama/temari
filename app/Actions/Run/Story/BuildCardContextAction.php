@@ -81,7 +81,7 @@ final readonly class BuildCardContextAction
      */
     private function qualitySessionPaceMet(Activity $activity, ActivityDetail $detail, ?Carbon $startDate): bool
     {
-        if ($startDate === null) {
+        if (!$startDate instanceof Carbon) {
             return false;
         }
 
@@ -166,7 +166,7 @@ final readonly class BuildCardContextAction
      */
     private function consecutiveDaysBefore(Activity $activity, ?Carbon $startDate): int
     {
-        if ($startDate === null) {
+        if (!$startDate instanceof Carbon) {
             return 0;
         }
 

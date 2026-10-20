@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Notifications\Messages\InboxMessage;
 use App\Enums\NotificationKind;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
@@ -307,7 +308,7 @@ it('leaves the card fields null when the run has no card', function (): void {
     $user = User::factory()->create();
     $message = new AnalysisReadyNotification(postRunAnalysis($user))->toInbox($user);
     expect($message)->not->toBeNull();
-    assert($message !== null);
+    assert($message instanceof InboxMessage);
     $payload = $message->payload;
 
     expect($payload['run_card_id'])->toBeNull()
@@ -326,7 +327,7 @@ it('carries only the deep link for a recap, which has no card to reveal', functi
 
     $message = new AnalysisReadyNotification($analysis)->toInbox($user);
     expect($message)->not->toBeNull();
-    assert($message !== null);
+    assert($message instanceof InboxMessage);
 
     expect($message->kind)->toBe(NotificationKind::WeeklyRecap)
         ->and($message->payload)->toHaveKeys(['analysis_id', 'url'])

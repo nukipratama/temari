@@ -49,7 +49,7 @@ class NotificationEligibility
     public function isRecentEnoughToAutoNotify(Analysis $analysis, ?CarbonInterface $triggeredAt = null): bool
     {
         $reference = $this->autoNotifyReferenceDate($analysis);
-        if ($reference === null) {
+        if (!$reference instanceof Carbon) {
             return true;
         }
 

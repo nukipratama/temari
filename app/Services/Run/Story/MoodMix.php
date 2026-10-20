@@ -35,7 +35,7 @@ final class MoodMix
             ->join('activity_details', 'activity_details.activity_id', '=', 'story_lines.activity_id')
             ->where('story_lines.user_id', $userId)
             ->where('activity_details.start_date_local', '>=', $from)
-            ->when($to !== null, fn ($query) => $query->where('activity_details.start_date_local', '<', $to))
+            ->when($to instanceof Carbon, fn ($query) => $query->where('activity_details.start_date_local', '<', $to))
             ->selectRaw('story_lines.mood as mood, COUNT(*) as c')
             ->groupBy('story_lines.mood')
             ->pluck('c', 'mood')

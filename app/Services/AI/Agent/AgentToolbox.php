@@ -52,7 +52,7 @@ final readonly class AgentToolbox
     public function invoke(string $name, string $argumentsJson): string
     {
         $tool = $this->find($name);
-        if ($tool === null) {
+        if (!$tool instanceof AgentTool) {
             return self::encode(['error' => "unknown tool: {$name}"]);
         }
 
