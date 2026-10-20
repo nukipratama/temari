@@ -25,8 +25,7 @@ class DemoAuthController extends Controller
         }
 
         $requestedFrom = $request->input('from');
-        assert($requestedFrom === null || is_string($requestedFrom));
-        $from = LocalRedirectPath::sanitize($requestedFrom);
+        $from = LocalRedirectPath::sanitize(is_string($requestedFrom) ? $requestedFrom : null);
         if ($from !== null) {
             redirect()->setIntendedUrl(url($from));
         }

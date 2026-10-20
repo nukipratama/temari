@@ -85,7 +85,7 @@ it("sends today's run once and keeps its id", function (): void {
 
     $connection = runSync(syncedAthlete());
 
-    expect(writesSent())->toBe(['POST /athlete/i42/events'])
+    expect(writesSent())->toBe(['POST /athlete/i42/events?upsertOnUid=true'])
         ->and($connection->event_id)->toBe('501')
         ->and($connection->synced_on?->toDateString())->toBe('2026-10-14')
         ->and($connection->sync_status)->toBe(IntervalsIcuSyncStatus::Sent)
@@ -120,7 +120,7 @@ it('sends a new event when the athlete deleted the one it would update', functio
 
     $connection = runSync($connection);
 
-    expect(writesSent())->toBe(['PUT /athlete/i42/events/501', 'POST /athlete/i42/events'])
+    expect(writesSent())->toBe(['PUT /athlete/i42/events/501', 'POST /athlete/i42/events?upsertOnUid=true'])
         ->and($connection->event_id)->toBe('777');
 });
 
@@ -164,7 +164,7 @@ it("leaves yesterday's event and sends a new one for today", function (): void {
 
     $connection = runSync($connection);
 
-    expect(writesSent())->toBe(['POST /athlete/i42/events'])
+    expect(writesSent())->toBe(['POST /athlete/i42/events?upsertOnUid=true'])
         ->and($connection->event_id)->toBe('501');
 });
 

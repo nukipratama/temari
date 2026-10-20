@@ -20,6 +20,6 @@ class DatabaseSeeder extends Seeder
             'email' => 'test@example.com',
         ]);
 
-        $demoRunSeeder->seed(log: fn (string $line) => $this->command->line($line));
+        $demoRunSeeder->seed(log: fn (string $line) => $this->command?->line($line));
     }
 }
