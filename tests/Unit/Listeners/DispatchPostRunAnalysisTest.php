@@ -891,7 +891,7 @@ it('narrates the profile voice right away while any run of the backlog awaits hy
     Carbon::setTestNow();
 });
 
-it('narrates a long-connected athlete\'s briefing and profile voice on schedule despite a stuck old backlog entry (#1032)', function (): void {
+it('narrates a long-connected athlete\'s briefing and profile voice on schedule despite a stuck old backlog entry', function (): void {
     Carbon::setTestNow('2026-06-10 09:00:00');
     $activity = analyzedActivity('2026-06-10 06:00:00');
     // Connected well past the hydration grace window (default 48h).
