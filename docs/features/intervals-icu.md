@@ -3,7 +3,7 @@ title: intervals.icu connection
 description: Connecting an athlete's intervals.icu account from Settings → Integrations, and keeping today's planned run on their intervals.icu calendar so it reaches their watch.
 tags: [feature, integrations]
 status: living
-reviewed: 2026-10-17
+reviewed: 2026-10-20
 code_refs:
   - app/Http/Controllers/IntervalsIcu/IntervalsIcuConnectionController.php
   - app/Http/Requests/StoreIntervalsIcuConnectionRequest.php
@@ -58,11 +58,13 @@ Only today's run is ever sent: Huawei Health shows just the next upcoming workou
 
 Every 15 minutes `intervals-icu:sync` queues one `SyncIntervalsIcuWorkoutJob` per non-demo athlete with a working connection, and connecting queues one straight away. The job runs `IntervalsIcuSync::sync()`, which builds today exactly as Today shows it (`CurrentWeekPlanBuilder`), maps it, and hashes the workout's name and description:
 
-- **first send of the day**: `POST` the event and keep its id (`event_id`, `synced_on`, `payload_hash` on the connection row). The create upserts on a `uid` fixed per athlete and day (`upsertOnUid`), so a retry after a create that landed but timed out updates that event rather than adding a second;
+- **first send of the day**: create the event and keep its id (`event_id`, `synced_on`, `payload_hash` on the connection row). The create goes through `POST /events/bulk?upsert=true` with an `external_id` fixed per athlete and day, so a retry after a create that landed but timed out updates that event rather than adding a second;
 - **hash changed** (a clamp, a regenerated plan, a skipped rep): `PUT` the same event in place. If the athlete deleted it, a new one is created;
 - **unchanged**: no call at all, except that a day without paces reads the athlete's run threshold heart rate each time, so a threshold they change on intervals.icu is used on the next tick;
 - **today becomes a rest day, is skipped, or can't be sent**: the event is deleted. The watch may still hold a course it already received; that is accepted.
 - **today's run is credited** (done, partial or overreached): the event is left exactly as sent, with no update or delete, and nothing is sent if there was no event yet. Once run, the watch workout is history.
+
+Measured against a throwaway account on 2026-10-20 with [scripts/measure/intervals-icu-upsert.sh](scripts/measure/intervals-icu-upsert.sh), which posts the same workout twice per candidate: only the bulk create with `upsert=true` and an `external_id` kept one event and one id, and it works with a personal API key. A plain `POST /events` adds a second event whatever it carries: intervals.icu replaces a client `uid` with its own UUID, so `upsertOnUid` matches only a uid it issued, which a timed-out create never returns. The OpenAPI document lists `uid` and `upsertOnUid` as if they deduplicated, so rerun the script before relying on any other create path.
 
 Workouts from earlier days stay on the calendar, and temari never touches events the athlete made. A 401/403 marks the connection broken (`broken_at`), stops its syncs, and sends `IntervalsIcuDisconnectedNotification` once; reconnecting clears it. Any other failure sets the day's status to unreachable and the next tick tries again.
 

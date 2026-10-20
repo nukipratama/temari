@@ -69,40 +69,66 @@ it('reads no run threshold as null', function (array $settings): void {
     'zero threshold' => [[['types' => ['Run'], 'lthr' => 0]]],
 ]);
 
-it('upserts a whole-day run workout on a uid per athlete and day, and returns its id', function (): void {
-    Http::fake(['intervals.icu/*' => Http::response(['id' => 98765])]);
+it('upserts a whole-day run workout on an external id per athlete and day, and returns its id', function (): void {
+    Http::fake(['intervals.icu/*' => Http::response([['id' => 98765]])]);
 
     $id = new IntervalsIcuClient()->createEvent(clientConnection(), '2026-10-17', clientWorkout());
 
     expect($id)->toBe('98765');
     Http::assertSent(fn (Request $request): bool => $request->method() === 'POST'
-        && $request->url() === 'https://intervals.icu/api/v1/athlete/i123456/events?upsertOnUid=true'
-        && $request->data() === [
+        && $request->url() === 'https://intervals.icu/api/v1/athlete/i123456/events/bulk?upsert=true'
+        && $request->data() === [[
             'category' => 'WORKOUT',
             'type' => 'Run',
             'start_date_local' => '2026-10-17T00:00:00',
             'name' => 'Easy 8 km',
             'description' => "from temari\n\n- 8km 6:33-7:32/km Pace intensity=active",
-            'uid' => 'temari-1-2026-10-17',
-        ]);
+            'external_id' => 'temari-1-2026-10-17',
+        ]]);
 });
 
-it('keeps one event when a create that landed but timed out is retried', function (): void {
-    $calendar = [];
-    $timesOut = true;
-    Http::fake(function (Request $request) use (&$calendar, &$timesOut) {
-        parse_str((string) parse_url($request->url(), PHP_URL_QUERY), $query);
-        $upsertOn = ($query['upsertOnUid'] ?? null) === 'true' ? $request['uid'] : null;
-        $id = array_search($upsertOn, array_column($calendar, 'uid', 'id'), true);
-        $id = $id === false ? count($calendar) + 1 : $id;
-        $calendar[$id] = [...$request->data(), 'id' => $id];
+/**
+ * intervals.icu as measured on 2026-10-20: only the bulk create with
+ * `upsert=true` matches an existing event, on its `external_id`; any other
+ * create adds a new event and ignores a client `uid`.
+ *
+ * @param  array<int, array<string, mixed>>  $calendar
+ * @return Closure(Request): mixed
+ */
+function measuredCalendar(array &$calendar, bool &$timesOut): Closure
+{
+    return function (Request $request) use (&$calendar, &$timesOut) {
+        $bulk = str_contains($request->url(), '/events/bulk');
+        $upsert = $bulk && str_contains($request->url(), 'upsert=true');
+        /** @var array<string, mixed> $event */
+        $event = $bulk ? $request->data()[0] : $request->data();
+        $match = $upsert ? array_search($event['external_id'] ?? null, array_column($calendar, 'external_id', 'id'), true) : false;
+        $id = $match === false ? count($calendar) + 1 : $match;
+        $calendar[$id] = [...$event, 'id' => $id];
         if ($timesOut) {
             $timesOut = false;
             throw new ConnectionException('timed out');
         }
 
-        return Http::response(['id' => $id]);
-    });
+        return Http::response($bulk ? [['id' => $id]] : ['id' => $id]);
+    };
+}
+
+it('adds a second event when a plain create is retried, as measured', function (): void {
+    $calendar = [];
+    $timesOut = false;
+    Http::fake(measuredCalendar($calendar, $timesOut));
+
+    Http::post('https://intervals.icu/api/v1/athlete/i123456/events?upsertOnUid=true', ['uid' => 'temari-1-2026-10-17']);
+    Http::post('https://intervals.icu/api/v1/athlete/i123456/events?upsertOnUid=true', ['uid' => 'temari-1-2026-10-17']);
+
+    expect($calendar)->toHaveCount(2);
+});
+
+it('keeps one event when a create that landed but timed out is retried', function (): void {
+    $calendar = [];
+    $timesOut = true;
+    Http::fake(measuredCalendar($calendar, $timesOut));
     $client = new IntervalsIcuClient();
 
     expect(fn () => $client->createEvent(clientConnection(), '2026-10-17', clientWorkout()))->toThrow(IntervalsIcuUnreachableException::class);
