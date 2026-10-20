@@ -105,7 +105,7 @@ it('gives each week behind the capped mean of its scored days as adherence_pct',
     $user = User::factory()->create();
     $season = Season::factory()->for($user)->create([
         'race_goal_id' => null,
-        'starts_at' => '2026-07-20', // 3 weeks before "today"
+        'starts_at' => '2026-07-22', // a Wednesday, so the first week opens on the 20th
         'ends_at' => '2026-10-19',
     ]);
     foreach (['2026-07-20' => 161, '2026-07-22' => 60, '2026-07-23' => null, '2026-08-10' => 90] as $date => $score) {

@@ -82,7 +82,7 @@ final readonly class SeasonSummaryBuilder
         $currentWeekKey = $today->copy()->startOfWeek(Carbon::MONDAY)->toDateString();
         $adherenceByWeekStart = PlannedSession::query()
             ->where('user_id', $user->id)
-            ->whereBetween('date', [$season->starts_at->toDateString(), $season->ends_at->toDateString()])
+            ->whereBetween('date', [$season->starts_at->copy()->startOfWeek(Carbon::MONDAY)->toDateString(), $season->ends_at->toDateString()])
             ->where('date', '<', $currentWeekKey)
             ->whereNotNull('compliance_score')
             ->get(['date', 'compliance_score'])
