@@ -41,7 +41,7 @@ function trialScheduleInputs(bool $race = true, array $trials = [], array $evide
 /**
  * @param  list<string>  $weeks
  * @param  list<string>  $deloads
- * @return array<string, string> week start => whether a trial is offered, in order
+ * @return array<string, 'none'|'trial'|'retry'> week start => what is offered there, in order
  */
 function offeredWeeks(TimeTrialSchedule $schedule, array $weeks, array $deloads = []): array
 {

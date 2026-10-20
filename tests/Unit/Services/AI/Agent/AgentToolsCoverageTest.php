@@ -1541,7 +1541,7 @@ function assertNoSignedDelta(mixed $node, array $retiredKeys): void
     }
 }
 
-it('exposes no signed numeric field across every tool payload touched by the #1009 fix', function (): void {
+it('exposes no signed numeric field across every tool payload that carries a delta', function (): void {
     // Every fixture below is built on the "negative" side of a converted
     // field, so a bare signed number fails instead of passing by accident on
     // all-positive data.
