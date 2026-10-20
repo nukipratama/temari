@@ -164,7 +164,7 @@ Route::middleware(['auth', 'onboarded'])->group(function (): void {
     // The demo is otherwise a fully-interactive shared sandbox (drift resets on
     // demo:seed). block-demo-writes guards the writes that reach outside it: a visitor
     // could disconnect the shared bot, spam real messages via the send/test endpoints,
-    // or touch race, feedback, time trial, intervals.icu, zones and Strava sync state.
+    // or touch race, feedback, time trial, intervals.icu, zone resync and Strava sync state.
     // The guard is behaviourally generic (it blocks any demo mutation), so it also
     // covers the channel-neutral preference + test writes.
     Route::patch('/profile/notifications', NotificationPreferenceController::class)->middleware('block-demo-writes')->name('notifications.preferences.update');

@@ -196,8 +196,8 @@ is now 2,000, above the 814 runs a twice-a-day runner could log in the range.
 [PaceConsistency](app/Services/Run/Metrics/PaceConsistency.php). Both need the
 detail pipeline, so both are null on a purely summary-state window. They sit
 beside the verdict; they never change it. `relative_effort_band` sat here too
-until it was removed: relative effort's UI was cut and the payload field outlived its
-reader by a wave. [RelativeEffort](app/Services/Run/Metrics/RelativeEffort.php)
+until it was removed: relative effort's UI was cut and the payload field had briefly
+outlived its reader. [RelativeEffort](app/Services/Run/Metrics/RelativeEffort.php)
 itself is untouched, still feeding three narrators via `EffortContextTool`.
 
 ## Open product questions
