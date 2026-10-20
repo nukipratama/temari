@@ -122,7 +122,7 @@ class NarrationEvalCommand extends Command
     {
         $option = $this->option('max-calls');
 
-        if ($option === null || ! ctype_digit((string) $option) || (int) $option < 1) {
+        if (! is_scalar($option) || ! ctype_digit((string) $option) || (int) $option < 1) {
             $this->error('Pass an explicit --max-calls=N (1 to '.self::MAX_CALLS_CEILING.'); there is no default.');
 
             return null;

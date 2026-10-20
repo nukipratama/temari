@@ -26,7 +26,8 @@ class SlotsCommand extends Command
 {
     public function handle(StravaGrantLedger $ledger, StravaGrantReleaseService $releases): int
     {
-        $releaseId = $this->option('release');
+        $release = $this->option('release');
+        $releaseId = is_scalar($release) ? (string) $release : null;
         $releaseOrphans = (bool) $this->option('release-orphans');
 
         if ($releaseId !== null && $releaseOrphans) {
@@ -36,7 +37,7 @@ class SlotsCommand extends Command
         }
 
         if ($releaseId !== null) {
-            return $this->releaseOne((string) $releaseId, $ledger, $releases);
+            return $this->releaseOne($releaseId, $ledger, $releases);
         }
 
         if ($releaseOrphans) {

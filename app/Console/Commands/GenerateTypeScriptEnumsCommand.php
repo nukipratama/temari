@@ -79,7 +79,8 @@ final class GenerateTypeScriptEnumsCommand extends Command
     public function handle(): int
     {
         $expected = $this->build();
-        $path = $this->option('path') ?? resource_path('js/types/generated.ts');
+        $pathOption = $this->option('path');
+        $path = is_string($pathOption) ? $pathOption : resource_path('js/types/generated.ts');
 
         if ($this->option('check')) {
             $current = is_file($path) ? (string) file_get_contents($path) : '';
