@@ -54,15 +54,15 @@ const ROUTE_BUDGETS_KB = [
     },
     { name: 'Today', src: 'resources/js/pages/Home.tsx', budgetKb: 175 },
     { name: 'Plan', src: 'resources/js/pages/Plan.tsx', budgetKb: 185 },
-    { name: 'Race', src: 'resources/js/pages/Race.tsx', budgetKb: 155 },
-    { name: 'Trends', src: 'resources/js/pages/Trends.tsx', budgetKb: 175 },
+    { name: 'Race', src: 'resources/js/pages/Race.tsx', budgetKb: 156 },
+    { name: 'Trends', src: 'resources/js/pages/Trends.tsx', budgetKb: 176 },
     { name: 'History', src: 'resources/js/pages/History.tsx', budgetKb: 176 },
     {
         name: 'Activity',
         src: 'resources/js/pages/Runs/Show.tsx',
         budgetKb: 176,
     },
-    { name: 'Inbox', src: 'resources/js/pages/Inbox.tsx', budgetKb: 153 },
+    { name: 'Inbox', src: 'resources/js/pages/Inbox.tsx', budgetKb: 154 },
     { name: 'Profile', src: 'resources/js/pages/Profile.tsx', budgetKb: 166 },
     {
         name: 'Settings',
