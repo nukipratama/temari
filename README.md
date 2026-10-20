@@ -23,7 +23,7 @@ Full feature map: [docs/features/index.md](docs/features/index.md).
 
 ## Stack
 
-- **Backend**: Laravel 13 · PHP 8.5 (FrankenPHP + Octane in prod, Sail's PHP image in dev) · Larastan L8 · Pint · Rector
+- **Backend**: Laravel 13 · PHP 8.5 (FrankenPHP + Octane in prod, Sail's PHP image in dev) · Larastan L9 · Pint · Rector
 - **Frontend**: Inertia 3 + React 19 + TypeScript · Tailwind v4 (`@tailwindcss/vite`) · Vitest
 - **Data**: MySQL 9.7 + Redis (separate dev / test / prod stacks for parity)
 - **Async**: Horizon (queues) · Scheduler
@@ -100,7 +100,7 @@ Nothing is excluded from coverage: `phpunit.xml` measures all of `app/`, service
 
 | Where           | What runs                                                              |
 |:----------------|:-----------------------------------------------------------------------|
-| pre-commit      | `pint` (auto-format staged PHP) + `phpstan` (whole `app/`)             |
+| pre-commit      | `pint` (auto-format staged PHP) + `phpstan` (`app/`, `database/`, `tests/`) |
 | commit-msg      | Conventional Commits format check                                      |
 | pre-push        | Block direct pushes to `main` (force or not). Use feature branch + PR  |
 | CI — `lint`     | `pint --test`, `phpstan`, `rector --dry-run` (no DB, fast)             |

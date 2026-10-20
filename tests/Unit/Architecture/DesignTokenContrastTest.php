@@ -878,8 +878,8 @@ it('declares every dark-ground override as literal hex, never var() or color-mix
     ));
 
     expect($notLiteralHex)->toBe([], sprintf(
-        "These dark-ground declarations are not literal hex — the exact failure mode R1 mitigates against, ".
-        "where a token guard parses #rrggbb by regex and a var()/color-mix() value silently scores nothing:\n  %s",
+        "These dark-ground declarations are not literal hex; a token guard parses #rrggbb by regex, ".
+        "so a var()/color-mix() value silently scores nothing:\n  %s",
         implode("\n  ", $notLiteralHex),
     ));
 })->group('structure');

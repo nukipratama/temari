@@ -110,9 +110,7 @@ it('does not use versionless whole-run decoupling in a new baseline', function (
 });
 
 it('counts a run with zero moving_time toward runs but leaves pace null', function () use ($asOf): void {
-    // moving_time <= 0 is excluded from the pace-weighted sum (ResolveRunBaselineAction.php:49)
-    // but the run still counts toward `runs`, so a window with only such a run
-    // must show runs > 0 with avg_pace_sec_per_km null rather than 0/0.
+    // A zero elapsed_time drops out of the pace sum but still counts toward `runs`, so pace is null rather than 0/0.
     $user = User::factory()->create();
     baselineRun($user, $asOf()->copy()->subDays(5), 5000.0, 0, 150.0, null);
 
