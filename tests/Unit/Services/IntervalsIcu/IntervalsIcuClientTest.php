@@ -69,21 +69,47 @@ it('reads no run threshold as null', function (array $settings): void {
     'zero threshold' => [[['types' => ['Run'], 'lthr' => 0]]],
 ]);
 
-it('creates a whole-day run workout and returns its id', function (): void {
+it('upserts a whole-day run workout on a uid per athlete and day, and returns its id', function (): void {
     Http::fake(['intervals.icu/*' => Http::response(['id' => 98765])]);
 
     $id = new IntervalsIcuClient()->createEvent(clientConnection(), '2026-10-17', clientWorkout());
 
     expect($id)->toBe('98765');
     Http::assertSent(fn (Request $request): bool => $request->method() === 'POST'
-        && $request->url() === 'https://intervals.icu/api/v1/athlete/i123456/events'
+        && $request->url() === 'https://intervals.icu/api/v1/athlete/i123456/events?upsertOnUid=true'
         && $request->data() === [
             'category' => 'WORKOUT',
             'type' => 'Run',
             'start_date_local' => '2026-10-17T00:00:00',
             'name' => 'Easy 8 km',
             'description' => "from temari\n\n- 8km 6:33-7:32/km Pace intensity=active",
+            'uid' => 'temari-1-2026-10-17',
         ]);
+});
+
+it('keeps one event when a create that landed but timed out is retried', function (): void {
+    $calendar = [];
+    $timesOut = true;
+    Http::fake(function (Request $request) use (&$calendar, &$timesOut) {
+        parse_str((string) parse_url($request->url(), PHP_URL_QUERY), $query);
+        $upsertOn = ($query['upsertOnUid'] ?? null) === 'true' ? $request['uid'] : null;
+        $id = array_search($upsertOn, array_column($calendar, 'uid', 'id'), true);
+        $id = $id === false ? count($calendar) + 1 : $id;
+        $calendar[$id] = [...$request->data(), 'id' => $id];
+        if ($timesOut) {
+            $timesOut = false;
+            throw new ConnectionException('timed out');
+        }
+
+        return Http::response(['id' => $id]);
+    });
+    $client = new IntervalsIcuClient();
+
+    expect(fn () => $client->createEvent(clientConnection(), '2026-10-17', clientWorkout()))->toThrow(IntervalsIcuUnreachableException::class);
+    $id = $client->createEvent(clientConnection(), '2026-10-17', clientWorkout());
+
+    expect($calendar)->toHaveCount(1)
+        ->and($id)->toBe('1');
 });
 
 it('updates an event in place by its id', function (): void {
