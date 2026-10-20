@@ -8,9 +8,9 @@ import { Icon } from '@/components/ui/Icon';
 
 /**
  * The prototype's `planState: 'empty'` branch — what Today leads with before
- * the periodizer has a season to draw from. The shipped page used to render
- * nothing at all in this slot. The week's own numbers ride along underneath,
- * since the merged plan card that normally carries them is not drawn here.
+ * the periodizer has a season to draw from. The week's own numbers ride along
+ * underneath, since the merged plan card that normally carries them is not
+ * drawn here.
  */
 export default function NoPlanCard({
     snapshot = null,

@@ -104,10 +104,9 @@ export default function FaultStrip({
 }
 
 /**
- * Every open fault, most severe first. Ordering and copy mirror the
- * #929/A design round: a pause blocks generation outright, an app-wide
- * ceiling trip degrades everyone, then per-athlete caps, dead letters and
- * content-filter trips.
+ * Every open fault, most severe first: a pause blocks generation outright, an
+ * app-wide ceiling trip degrades everyone, then per-athlete caps, dead letters
+ * and content-filter trips.
  */
 function buildFaults(
     pauseReason: string | null,

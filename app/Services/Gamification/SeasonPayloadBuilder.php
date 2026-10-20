@@ -9,14 +9,10 @@ use App\Models\User;
 use Illuminate\Support\Carbon;
 
 /**
- * Builds the season read models shared by the Plan tab and the
- * Profile page. Purely a read: {@see \App\Services\Run\Plan\PlanPageAssembler}
- * passes it the {@see Season} its own {@see
- * \App\Services\Run\Plan\SeasonService::ensureCurrent()} call already
- * created, while {@see \App\Http\Controllers\ProfileController} passes
- * whatever {@see \App\Services\Run\Plan\SeasonService::peekCurrent()} finds
- * (possibly `null`) — a second page load must never trigger season creation
- * on its own.
+ * Builds the season read models shared by the Plan tab and the Profile page. Purely a read:
+ * {@see \App\Services\Run\Plan\PlanPageAssembler} passes the {@see Season} its own
+ * `ensureCurrent()` call created, {@see \App\Http\Controllers\ProfileController} passes whatever
+ * `peekCurrent()` finds (possibly `null`), so a second page load never triggers season creation.
  */
 final readonly class SeasonPayloadBuilder
 {

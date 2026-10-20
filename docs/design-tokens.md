@@ -242,9 +242,10 @@ prototype's `PHASE_COLOR` literals into four CSS colour tokens, but the periodiz
 on reading [`PHASE_COLORS`](../resources/js/lib/chartTokens.ts) — a different set, with a fifth
 `deload` key those tokens never had. `W4` deleted the unread four rather than leave two disagreeing
 sources, and pinned the removal in `DesignTokenDocsTest`'s forbidden list so the name cannot come
-back quietly. The set that ships is validated colorblind-safe via the `dataviz` skill's palette
-checker — one adjacent pair sits at the CVD-separation floor, so any phase indicator needs a direct
-label or texture alongside the colour, never hue alone.
+back quietly. The set that ships is validated colorblind-safe (CVD ΔE of at least 15 on every
+co-occurring pair) via the `dataviz` skill's palette checker — one adjacent pair sits at the
+CVD-separation floor, so any phase indicator needs a direct label or texture alongside the colour,
+never hue alone.
 
 ### Text contrast tiers
 
@@ -326,6 +327,13 @@ Four warm-tinted steps. Warm, not neutral: a grey shadow on a cream ground reads
 | Floating | `shadow-e2` | `surface-elev` | Popovers, dropdowns, toasts, tooltips |
 | Sheet | `shadow-e3` | `surface-elev` / `cream` | Bottom sheets, large detached panels |
 | Modal | `shadow-e4` | `cream` / `sky-deep` | Full modals (share card, card mount) |
+
+On the dark ground the elevation scale is redefined as a rim rather than a cast, because a shadow
+has nowhere to go on a near-black surface: pure black at 60% over `sky-deep` measures 1.06:1,
+against 1.14:1 for the light ground's `e1` at 6% over cream, while a hairline of the foreground
+reaches 1.33:1 at 10% and 1.85:1 at 20%. Redefining the token rather than its 40 call sites keeps
+`shadow-e1` meaning "resting card" on both grounds; `e4` keeps a deep cast too, since a modal sits
+over a scrim with room to darken.
 
 Tailwind's default `shadow-*` scale is not used and is rejected by the source guard.
 `surface-elev` is reserved for the floating step — never a resting card (that is `surface-card` /

@@ -438,7 +438,7 @@ it('trains nothing after race day, so a Sunday marathon gets no long run the day
 });
 
 it('rests every day after race day rather than training through the days a goal race is recovered from', function (): void {
-    // Tuesday: the layout that used to prescribe a tempo ON the race.
+    // Tuesday: a layout that could prescribe a tempo ON the race.
     $raceDate = weekPlanMonday()->copy()->addDay();
 
     $rows = WeekPlanBuilder::build(weekPlanMonday(), PlanPhase::Taper, 4, [], 10_000.0, false, raceDate: $raceDate);

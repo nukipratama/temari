@@ -20,12 +20,10 @@ const DIRECTION_COLOR: Record<DeltaPairDirection, string> = {
 
 /**
  * One changed value, read as `old → new`: the old value dimmed and struck
- * through, the new one at the row's normal weight, with a real text arrow
- * (not a decorative icon) so the direction survives in the accessible name
- * and in a plain-text assertion the same way. The glyph itself points the
- * way the value actually moved, and its colour follows direction so up and
- * down never read the same; `neutral` (a session-type change) gets its own
- * plain arrow and colour instead.
+ * through, the new one at the row's normal weight, with a real text arrow so
+ * the direction survives in the accessible name. The glyph points the way the
+ * value moved and its colour follows direction; `neutral` (a session-type
+ * change) gets its own plain arrow and colour.
  */
 export function DeltaPair({
     from,

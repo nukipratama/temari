@@ -82,9 +82,8 @@ class PlanController extends Controller
      * silently overwrite it, unless the caller passes `pinned: false` to hand
      * control back to the periodizer.
      *
-     * A move is a **swap** with the rest day it lands on, not a re-date:
-     * `planned_sessions` is unique on (user_id, date) and the periodizer
-     * materializes all seven days of every week.
+     * A move is a **swap** with the rest day it lands on, not a re-date: the
+     * periodizer materializes all seven days of every week.
      */
     public function update(
         UpdatePlannedSessionRequest $request,

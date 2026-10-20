@@ -131,10 +131,8 @@ class TrendsController extends Controller
     }
 
     /**
-     * The gain half of "vs last week" — km and runs this week against last
-     * week through the same weekday. Reuses BriefingContext rather than a new
-     * query: it already computes this exact comparison for the daily
-     * briefing's tool context.
+     * The gain half of "vs last week" — km and runs this week against last week
+     * through the same weekday, reusing BriefingContext's own comparison.
      *
      * @return array{
      *     this_week_km: float|null,
@@ -206,8 +204,7 @@ class TrendsController extends Controller
     }
 
     /**
-     * The verdict card's own Analysis payload — the single 7d row. Trends
-     * used to narrate 30d/90d/12mo alongside it; those retired (#967).
+     * The verdict card's own Analysis payload — the single 7d row.
      *
      * @return array<string, mixed>
      */

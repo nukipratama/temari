@@ -16,14 +16,11 @@ uses(RefreshDatabase::class);
 
 /**
  * The asset version the middleware will actually compare against. Inertia's
- * `Middleware::handle()` only (re)binds the `Inertia::version()` closure at
- * the start of a request it processes — calling the `Inertia::getVersion()`
- * facade outside that cycle reads whatever the *previous* request left
- * behind (or nothing, before any request has run), so it silently drifts
- * from the real value the moment a local `npm run build` populates
- * `public/build/manifest.json` (absent in CI, present on a dev machine that's
- * run a build). Resolving it the same way the middleware does keeps this
- * deterministic in both environments.
+ * `Middleware::handle()` only binds the `Inertia::version()` closure at the
+ * start of a request it processes, so calling `Inertia::getVersion()` outside
+ * that cycle drifts from the real value once a local `npm run build` populates
+ * `public/build/manifest.json`. Resolving it the way the middleware does keeps
+ * this deterministic in CI and on a dev machine.
  */
 function currentInertiaVersion(): string
 {
@@ -82,10 +79,8 @@ it('answers a replayed ETag with an empty 304', function (): void {
 });
 
 it('never lets a replayed ETag short-circuit authorization', function (): void {
-    // Every tagged route is now owner-scoped, so the old shared-URL collision
-    // has no subject. The guarantee underneath it is stronger and still
-    // reachable: a 304 must never be the reason a request skips its own
-    // authorization.
+    // Every tagged route is owner-scoped; a 304 must never be the reason a
+    // request skips its own authorization.
     $alice = User::factory()->create();
     $bob = User::factory()->create();
     $aliceRun = etagSeedRun($alice);

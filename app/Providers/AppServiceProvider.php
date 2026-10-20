@@ -89,11 +89,9 @@ class AppServiceProvider extends ServiceProvider
         $this->app->scoped(ResolveActiveRaceAction::class);
         $this->app->scoped(Vibe::class);
 
-        // The rest of the Plan tab's repeated reads, same reason. One deferred
-        // Plan render enters TrainingBaseline four times and each pass re-read
-        // the preferences row, the trailing snapshot window, the season arc and
-        // the distance PRs; the week's adaptation is asked for three times. The
-        // assembler joins them because it memoizes the season three props want.
+        // The rest of the Plan tab's repeated reads, same reason: one deferred Plan
+        // render enters TrainingBaseline four times and asks for the week's
+        // adaptation three times.
         $this->app->scoped(PlanPageAssembler::class);
         $this->app->scoped(PlanBriefingContext::class);
         $this->app->scoped(TrainingBaseline::class);

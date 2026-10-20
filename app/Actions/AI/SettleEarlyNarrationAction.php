@@ -29,11 +29,7 @@ use Illuminate\Support\Carbon;
  *
  * Called from every point an ingest or a give-up can leave the backlog empty
  * ({@see \App\Services\Run\Ingest\ActivityPipeline}); a no-op unless the
- * backlog is actually empty, so a long-connected athlete's every in-order
- * ingest returns immediately — except a backdated one landing behind an
- * already-hydrated later run, which still gets its card recompute. The claim
- * is per row, so a second call (a racing ingest, an unrelated sweep) finds
- * nothing left to claim.
+ * backlog is actually empty.
  */
 class SettleEarlyNarrationAction
 {
@@ -94,11 +90,9 @@ class SettleEarlyNarrationAction
      * Clears `narrated_early_at` on every early row this athlete owns, pairing
      * a lone early RunInsight or PostRunSpeech with its sibling so the
      * per-activity group's representative row is never left Done while the
-     * other resets alone — {@see AnalyzeActivityJob}'s chain advance and
-     * SelfHealer both key on PostRunSpeech's status. Each row is claimed by
-     * its own single-row conditional UPDATE rather than a bulk lockForUpdate,
-     * so a concurrent settle for the same user cannot deadlock against
-     * PersonalRecords's own row locking.
+     * other resets alone. Each row is claimed by its own single-row conditional
+     * UPDATE, so a concurrent settle cannot deadlock against PersonalRecords's
+     * row locking.
      *
      * @return Collection<int, Analysis>
      */

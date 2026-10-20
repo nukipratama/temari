@@ -44,13 +44,8 @@ const TAB_PAGES = ['Home', 'Plan', 'Trends', 'History'];
  * Fetches the JS chunk for each tab once the browser is idle, so the first tap
  * on a tab does not wait on a network round trip for its code.
  *
- * Deliberately not `{ eager: true }` on the glob: that folds every page into
- * the entry graph and promotes the `charts` (170KB) and `maps` (152KB) vendor
- * chunks from lazy to always-fetched, which would hurt exactly the first load
- * this is meant to protect. Warming four importers by hand keeps those lazy.
- *
- * This is not the route prefetching reverted in #97 either — it fetches static
- * hashed assets that are already cached immutably, and never runs a controller.
+ * Not `{ eager: true }` on the glob: that would pull the lazy `charts` and
+ * `maps` vendor chunks into the entry graph.
  */
 function warmTabChunks(): void {
     if (typeof window === 'undefined') return;

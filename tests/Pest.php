@@ -359,12 +359,9 @@ expect()->extend('toBeOne', fn () => $this->toBe(1));
  *
  * It has to be read off a real response: Inertia 409s a partial request whose
  * `X-Inertia-Version` does not match, and the middleware only computes that
- * value while handling a request.
- *
- * Read off the HTML page rather than a bare Inertia GET: without a version
- * header that request 409s too. This adapter renders the page object as the
- * text content of a <script type="application/json"> block (a CSP measure),
- * not as a data-page attribute.
+ * value while handling a request. Read it off the HTML page, since a bare
+ * Inertia GET 409s too; the page object is the text content of a
+ * <script type="application/json"> block, not a data-page attribute.
  *
  * @param  TestCase  $actingAs  The authenticated test case.
  */

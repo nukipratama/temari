@@ -52,16 +52,12 @@ async function resolvePushState(): Promise<PushState> {
 
 /**
  * Device-level web-push control for the Settings page. Detects where the user
- * is in the install/permission flow and shows the one right action — the payoff
- * of the PWA work: native lock-screen notifications on iPhone. Only rendered when
- * a VAPID public key is configured.
+ * is in the install/permission flow and shows the one right action. Only
+ * rendered when a VAPID public key is configured.
  *
- * Renders as a `SettingsRow` rather than owning a section, so it sits in the
- * "Where it goes" group beside Telegram and both channels read as the same kind
- * of thing. `loading` renders nothing; each of the other seven states resolves
- * to a description plus at most one action. Only `ready`, `stale` and
- * `subscribed` have a control; `unsupported`, both `needs-install` states and
- * `denied` are pure explanation.
+ * Renders as a `SettingsRow` in the "Where it goes" group. `loading` renders
+ * nothing; `ready`, `stale` and `subscribed` carry a control, and the other
+ * states are pure explanation.
  */
 export default function PushNotificationToggle({
     muted = false,

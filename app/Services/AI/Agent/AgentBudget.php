@@ -8,18 +8,9 @@ use Carbon\CarbonImmutable;
 
 /**
  * The per-block ceiling on an agent run, and the running total it is measured
- * against.
- *
- * The daily cost ceiling is a dispatch-time gate — it is read once before the
- * job is queued and never again — so nothing else stops a tool loop that keeps
- * deciding it needs one more read. This is what bounds a single block.
- *
- * Tokens accumulate across every step of the run *including* an aborted attempt
- * that is being retried: those tokens were billed, so they count.
- *
- * Steps and tokens bound what the block costs; the wall-clock deadline bounds
- * how long it may hold its worker, which the worker's own timeout would
- * otherwise settle by killing the job mid-request.
+ * against. Tokens count across every step, including an aborted attempt that is
+ * being retried, because they were billed. See
+ * docs/decisions/narration-agents-on-openai-php.md.
  */
 final class AgentBudget
 {
@@ -85,14 +76,9 @@ final class AgentBudget
     }
 
     /**
-     * Fold one model turn's usage into the run. `total` is trusted when the
-     * provider reports it, since reasoning tokens land there but in neither
-     * input nor output.
-     *
-     * `cached` and `reasoning` are breakdowns, not additions: cached tokens are
-     * a subset of input (billed at a discount), reasoning a subset of output.
-     * Neither is added to the totals, and neither counts toward the ceiling on
-     * its own — the ceiling already sees them through `total`.
+     * Fold one model turn's usage into the run. `total` is trusted when the provider reports it;
+     * `cached` and `reasoning` are subsets of input and output, so they are never added to the
+     * totals.
      */
     public function recordStep(
         int $inputTokens,

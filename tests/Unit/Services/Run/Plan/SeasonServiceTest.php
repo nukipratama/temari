@@ -190,7 +190,7 @@ it('counts a race season\'s general-zone weeks at their reduced, base-rule quali
 
     // 31-week arc: 15 general weeks (11 Build @ 1 slot + 4 Deload @ 0, the last one leading into the block) = 11,
     // 16 block weeks (3 Base @ 1 + 3 Deload @ 0 + 5 Build @ 2 + 3 Peak @ 2 +
-    // 2 Taper @ 2) = 23. A general-zone Build week no longer counts the
+    // 2 Taper @ 2) = 23. A general-zone Build week does not count the
     // block's race-mode 2-slot mix.
     expect($qualityGoal->target)->toBe(34.0);
 });

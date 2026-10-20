@@ -28,11 +28,10 @@ use Illuminate\Support\Facades\DB;
  * predicate. See {@see self::historyCounts()} for the per-count analyzed_at
  * treatment.
  *
- * Costs 3 queries (was 2 before Slice 7's quality-execution rarity dimension
- * added a {@see PlannedSession} lookup): the aggregate, the consecutive-day
- * scan, and the planned-session-for-this-date lookup. The third only grows to
- * a fourth (a VDOT estimate) when that lookup actually finds a Tempo/Interval
- * row for this date — see {@see self::qualitySessionPaceMet()}.
+ * Costs 3 queries: the aggregate, the consecutive-day scan, and the
+ * planned-session-for-this-date lookup. The third only grows to a fourth (a VDOT
+ * estimate) when that lookup finds a Tempo/Interval row for this date — see
+ * {@see self::qualitySessionPaceMet()}.
  */
 final readonly class BuildCardContextAction
 {

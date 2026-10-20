@@ -11,13 +11,9 @@ use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
 
 /**
- * Continuity for the connected + chained per-activity narration: reads the
- * previous activity's same-kind Done narrative so each run continues the thread
- * of the one before it. Shared by the per-activity narrators (post-run speech +
- * run insight). The per-activity chain (kickoff + AnalyzeActivityJob group
- * propagation, oldest first by start_date_local) guarantees the predecessor's
- * group is Done before this activity narrates, so steady-state always sees the
- * prior thread; backfill fills it in chronologically.
+ * Continuity for the connected + chained per-activity narration: reads the previous activity's
+ * same-kind Done narrative so each run continues the thread of the one before it. Shared by
+ * post-run speech and run insight.
  */
 trait ReadsPreviousActivityNarrative
 {

@@ -390,7 +390,7 @@ it('counts only training days, so a week off never credits itself', function ():
 
     // Two Easy days and five Rest days. Nothing is logged all week, so the
     // two training days score Missed and the five rest days score Done —
-    // which used to make an entirely unrun week read as 5 credited.
+    // which must not make an entirely unrun week read as 5 credited.
     for ($i = 0; $i < 7; $i++) {
         PlannedSession::factory()->for($user)->create([
             'date' => $weekStart->copy()->addDays($i),

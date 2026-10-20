@@ -17,37 +17,30 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
 /**
- * Re-dispatches the earliest still-stalled block of each recovery family so a
- * block stranded by a cost-ceiling pause resumes once the ceiling resets at
- * midnight, and a block stranded by a transient failure gets a bounded retry.
- * Every dispatch is invalidate:false, so it never fills a template and a
- * still-capped run is a clean no-op; the Failed-sweeping families are bounded
- * by {@see Analysis::MAX_SELF_HEAL_ATTEMPTS} so a terminally-broken block
- * drops out to the /devtools/narration dead-letter instead of re-billing forever.
- * Every family sweeps only {@see RecentlyActiveUsers}: an athlete away from the
- * app is caught up by {@see \App\Jobs\AI\NarrateOnReturnJob} when they come back.
- * A run or card whose older history is still hydrating waits for a later sweep
- * ({@see HydrationBacklog::awaitsOlderHydration()}).
+ * Re-dispatches the earliest still-stalled block of each recovery family so a block stranded by a
+ * cost-ceiling pause resumes once the ceiling resets at midnight, and a block stranded by a
+ * transient failure gets a bounded retry.
+ *
+ * Every dispatch is invalidate:false, so a still-capped run is a clean no-op; the Failed-sweeping
+ * families are bounded by {@see Analysis::MAX_SELF_HEAL_ATTEMPTS}, after which a terminally-broken
+ * block drops out to the /devtools/narration dead-letter.
+ *
+ * Every family sweeps only {@see RecentlyActiveUsers}; an athlete away from the app is caught up by
+ * {@see \App\Jobs\AI\NarrateOnReturnJob}. A run or card whose older history is still hydrating
+ * waits for a later sweep ({@see HydrationBacklog::awaitsOlderHydration()}).
  */
 class SelfHealer
 {
     /**
-     * Per-run drain cap for the non-cascading families (card flavor, PR context).
-     * Re-kicking one of these narrates exactly one subject, so at 1/run a large
-     * backfill would take one hour per card/PR; a bounded batch drains it in a few
-     * runs. Billing stays capped regardless of this number: each dispatched job
-     * re-checks the cost ceiling before calling the LLM (see
-     * AnalyzeBaseJob::haltForPausedGeneration), so actual spend is bounded by the
-     * ceiling, not by the batch size.
+     * Per-run drain cap for the non-cascading families (card flavor, PR context). Spend stays
+     * bounded by the ceiling, not this number, because each dispatched job re-checks the cost
+     * ceiling before calling the LLM (see AnalyzeBaseJob::haltForPausedGeneration).
      */
     private const int NONCASCADING_DRAIN_BATCH = 10;
 
     /**
-     * Spacing between successive real dispatches within one sweep run, so an
-     * hourly sweep spreads its batch instead of firing every resumed link at
-     * once. Sweep-internal fairness only — much smaller than the multi-minute
-     * backfill stagger, since the proactive Azure rate limiter is the actual
-     * backstop against a burst.
+     * Spacing between successive real dispatches within one sweep run, so an hourly sweep spreads
+     * its batch instead of firing every resumed link at once.
      */
     private const int SWEEP_SPACING_SECONDS = 5;
 
@@ -117,16 +110,10 @@ class SelfHealer
     }
 
     /**
-     * Per-activity chains: the user's earliest activity (by start_date_local)
-     * whose narration group is *stalled* on its representative PostRunSpeech row
-     * (Pending, or Failed still under the retry budget). Dispatching it
-     * (invalidate:false) re-kicks the group; AnalyzeActivityJob then walks
-     * forward. Unlike the Pending-only chain advance, a Failed-under-budget group
-     * is auto-retried here too, so the biggest silent-rot class self-heals
-     * instead of waiting on the run page's manual "Try again"; the attempts
-     * budget still caps re-billing and dead-letters a terminally-broken group.
-     * Demo is excluded (its per-activity rows are seeded Done, and this never
-     * auto-bills a demo LLM call) to match the other five families.
+     * Per-activity chains: the user's earliest activity (by start_date_local) whose narration group
+     * is stalled on its representative PostRunSpeech row (Pending, or Failed still under the retry
+     * budget). Dispatching it (invalidate:false) re-kicks the group and AnalyzeActivityJob walks
+     * forward. The demo is excluded, like the other families.
      */
     private function resumePerActivity(): int
     {
@@ -178,13 +165,9 @@ class SelfHealer
 
     /**
      * Stale in-flight sweep: a row stuck Queued/Processing past
-     * {@see Analysis::STALE_IN_FLIGHT_HOURS} (its queue job was lost to a Redis
-     * incident or ill-timed deploy) is reverted to Pending via the existing
-     * revertToPending path, with no attempt burn. That puts it back into the
-     * normal self-heal/dead-letter lifecycle: the family sweeps in this same run
-     * re-dispatch the earliest, and the rest get picked up next hour. Without this
-     * such a row shows an eternal "Lagi dipikirin Temari" skeleton, invisible to
-     * every other recovery path.
+     * {@see Analysis::STALE_IN_FLIGHT_HOURS} (its queue job was lost) is reverted to Pending via the
+     * existing revertToPending path, with no attempt burn, which puts it back into the normal
+     * self-heal/dead-letter lifecycle.
      */
     private function revertStaleInFlight(): int
     {
@@ -324,12 +307,9 @@ class SelfHealer
 
     /**
      * Card-flavor narration: the earliest stalled CardFlavor rows per user, up to
-     * {@see self::NONCASCADING_DRAIN_BATCH}. Unlike the daily/weekly-kickoff types,
-     * CardFlavor is dispatched only at ingest and has no other scheduled recovery,
-     * so a capped-Pending or transiently-Failed card would sit stuck without this
-     * sweep. It does not cascade (one kick narrates one card), so a backfill of N
-     * cards drains in ceil(N / batch) runs rather than N. Stalled + budget-bounded;
-     * demo excluded.
+     * {@see self::NONCASCADING_DRAIN_BATCH}. CardFlavor is dispatched only at ingest and does not
+     * cascade (one kick narrates one card), so this sweep is its only recovery. Stalled +
+     * budget-bounded; demo excluded.
      */
     private function resumeCardFlavor(): int
     {
@@ -370,17 +350,13 @@ class SelfHealer
     }
 
     /**
-     * Single-row-per-user narration types with no chain/group of their own:
-     * BriefingMascotVoice, ProfileVoice, TrendRead and PlanClampVoice. Each is dispatched only at its
-     * own kickoff (daily briefing / weekly profile) with no other scheduled
-     * recovery, so a capped-Pending or transiently-Failed row would sit stuck
-     * without this sweep. subject_id is the user id directly for both types, so
-     * no join is needed to scope by user. Stalled + budget-bounded; demo
-     * excluded; re-dispatched against the stalled row's own discriminator
-     * rather than a recomputed one.
+     * Single-row-per-user narration types with no chain/group of their own: BriefingMascotVoice,
+     * ProfileVoice, TrendRead and PlanClampVoice. Each is dispatched only at its own kickoff, so
+     * this sweep is its only recovery. Stalled + budget-bounded; demo excluded; re-dispatched
+     * against the stalled row's own discriminator rather than a recomputed one.
      *
-     * Both discriminators are zero-padded date/week strings, so a plain string
-     * ORDER BY is chronological.
+     * The discriminators are zero-padded date/week strings, so a plain string ORDER BY is
+     * chronological.
      */
     private function resumeSingleRowType(AnalysisType $type, ?string $onlyDiscriminator = null): int
     {

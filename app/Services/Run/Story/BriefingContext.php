@@ -24,19 +24,14 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
 /**
- * Extra signals the Briefing LLM should know about so its output sounds
- * personal instead of generic. Built once per Briefing call and injected
- * as fields into get_week_state ({@see \App\Services\AI\Agent\Tools\WeekStateTool}).
+ * Extra signals the Briefing LLM should know about so its output sounds personal instead of
+ * generic. Built once per Briefing call and injected as fields into get_week_state
+ * ({@see \App\Services\AI\Agent\Tools\WeekStateTool}).
  *
- * `timeBucket` lets the LLM frame its suggestion by the actual hour the
- * user opened the dashboard (morning prompt vs evening prompt feel
- * different). `consecutiveWeeksActive` substitutes for the consecutive-day
- * streak we don't track; reuses WeeklySnapshot rows we already maintain.
- *
- * `readinessCeiling` is the deterministic safety cap ({@see Readiness}): the
- * LLM may suggest at or below it, never above. `fitnessTrend` and
- * `buildNudge` give it trajectory (is the runner ramping, or coasting into
- * detraining) so it stops defaulting to easy/recovery for lack of context.
+ * `timeBucket` frames the suggestion by the hour the user opened the dashboard;
+ * `consecutiveWeeksActive` stands in for the consecutive-day streak we don't track.
+ * `readinessCeiling` is the deterministic safety cap ({@see Readiness}): the LLM may suggest at or
+ * below it, never above. `fitnessTrend` and `buildNudge` give it trajectory.
  *
  * @phpstan-import-type Assessment from Readiness
  */
@@ -87,11 +82,9 @@ final readonly class BriefingContext
         $thisWeekEnd = $weekRanges['this_week_end'];
         $lastWeekEnd = $weekRanges['last_week_end'];
 
-        // A fresh connect's early pass reads null snapshots and no live load,
-        // the same neutral path a brand-new account with nothing yet already
-        // takes — never a partial past. Bound to weeks at or before the
-        // briefing week otherwise, so a backdated recompute (self-heal /
-        // dead-letter retry) reads fitness_trend from the state as of $asOf.
+        // A fresh connect's early pass reads null snapshots and no live load, the neutral path of a
+        // brand-new account; otherwise weeks are bound to those at or before the briefing week, so a
+        // backdated recompute reads fitness_trend as of $asOf.
         /** @var array<string, WeeklySnapshot> $byDate */
         $byDate = $historyLoading ? [] : app(ResolveTrailingWeeksAction::class)(
             $user->id,
@@ -379,9 +372,8 @@ final readonly class BriefingContext
      * Sketch of the deltas, ready to JSON-encode straight into the user
      * message context. Keys are short so they don't bloat token usage.
      *
-     * `volume_ramp` carries no bare sign (#1009, reopened): pct is an
-     * unsigned magnitude and relation (up/down/flat) says which way it went,
-     * rather than handing the model a raw signed percentage to read itself.
+     * `volume_ramp` carries no bare sign: pct is an unsigned magnitude and relation (up/down/flat)
+     * says which way it went.
      *
      * @return array<string, mixed>
      */

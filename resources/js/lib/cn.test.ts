@@ -43,8 +43,8 @@ describe('cn', () => {
     });
 
     it('keeps display/headline/quote/stat scale tokens alongside a text color', () => {
-        // These also bundle no color (see StatTile's `lg` size, which combined
-        // text-stat with a color before this fix and silently lost text-stat).
+        // These also bundle no color (see StatTile's `lg` size, which combines
+        // text-stat with a color).
         expect(cn('text-display-2xl', 'text-foreground')).toBe(
             'text-display-2xl text-foreground',
         );

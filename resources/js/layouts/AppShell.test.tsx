@@ -139,10 +139,9 @@ describe('AppShell', () => {
         ).toBeInTheDocument();
     });
 
-    // The content region used to be keyed on the Inertia component name, which
-    // tore down and rebuilt the whole subtree on every visit and replayed an
-    // enter animation starting at opacity 0 — so a navigation read as
-    // "old page -> blank -> fade in". Both are gone; this pins that.
+    // The content region is not keyed on the Inertia component name: a remount
+    // would tear down the whole subtree on every visit and replay an enter
+    // animation from opacity 0.
     it('does not remount the content region when the page component changes', () => {
         setMockPage(
             { auth: { user: andiUser }, flash: {}, demoLoginEnabled: false },

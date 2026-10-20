@@ -18,9 +18,8 @@ use Illuminate\Support\Facades\DB;
  * in date order and cached until the rows they are read from change.
  *
  * A run is a hard effort when it set a distance record on its own date and the
- * record covers essentially the whole run. A fast segment inside a longer run
- * never counts, and neither the Strava workout tag nor heart rate plays a part:
- * a tag edited after ingest never reaches the app.
+ * record covers essentially the whole run; a fast segment inside a longer run
+ * never counts, and neither the Strava workout tag nor heart rate plays a part.
  *
  * @phpstan-type HardEffort array{activity_id: int, date: Carbon, distance_m: float, time_sec: float, basis: string}
  * @phpstan-type TrainingRun array{activity_id: int, date: Carbon, distance_m: float, time_sec: float}

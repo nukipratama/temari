@@ -9,9 +9,8 @@ use Illuminate\Support\Facades\Schema;
 /**
  * Adds the second, orthogonal axis to notification preferences.
  *
- * The three existing flags answer *what* gets sent and stay channel-neutral.
- * These answer *where* it may go. Keeping the two axes independent is what
- * stops this becoming a 3x2 matrix of toggles nobody wants to maintain.
+ * The three existing flags answer *what* gets sent and stay channel-neutral;
+ * these answer *where* it may go, independently of them.
  *
  * Both default true, matching the existing contract that a missing preference
  * row means all-on: adding the columns must not mute anyone.

@@ -89,13 +89,10 @@ Route::middleware('guest')->group(function (): void {
 });
 
 // Strava OAuth is reachable by guests (first connect) AND authenticated users
-// (reconnect to grant a newly added scope, e.g. the StravaZoneReconnectBanner).
-// The callback upserts by athlete id, so a logged-in user re-authing just refreshes
-// their existing connection. Keeping these out of the `guest` group is what lets the
-// reconnect flow reach the redirect/callback at all instead of bouncing to dashboard.
-// Throttled per IP: this is the account-creation path, open to anyone, and the
-// callback spends a Strava token exchange (plus a history backfill on a first
-// connect) before any session exists to key a limit by.
+// (reconnect to grant a newly added scope), so these stay out of the `guest`
+// group. Throttled per IP: this is the account-creation path, open to anyone,
+// and the callback spends a Strava token exchange before any session exists to
+// key a limit by.
 Route::middleware('throttle:strava-oauth')->group(function (): void {
     Route::get('/auth/strava/redirect', [StravaAuthController::class, 'redirect'])->name('auth.strava.redirect');
     Route::get('/auth/strava/callback', [StravaAuthController::class, 'callback'])->name('auth.strava.callback');

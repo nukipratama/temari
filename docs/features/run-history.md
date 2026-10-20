@@ -128,7 +128,15 @@ and builds the `Activity` query (always newest-first), and the controller hands
 The calendar branch defers `cells`, `weeklySnapshots` and `monthlyRecap` the
 same way. Both branches send only what the page reads: each run is limited to
 `RUN_FIELDS` plus its `detail` and `run_card`, `lifetime` to `LIFETIME_FIELDS`,
-and the weekly snapshots drop their timestamps. Two behaviours worth knowing:
+and the weekly snapshots drop their timestamps.
+[HistoryController::attachEfforts()](app/Http/Controllers/HistoryController.php)
+resolves the page's run efforts in one batch through
+[RunEffort::forDetails()](app/Services/Run/Metrics/RunEffort.php) and stamps each
+on its run's `detail`, so `RunListRow` never recomputes it per row. The
+`stream_summary` column `FeedQuery` selects for that is heavy (about 2.7 KB on
+average and 9.9 KB at most per row on seeded demo data) and only needed
+server-side, so the controller hides it again once the effort is resolved
+instead of shipping it to the client. Two behaviours worth knowing:
 
 - **Auto-widen range** (`FeedQuery::widenRangeToReach`): the window defaults to
   `8w` but the server silently widens it to the smallest preset that reaches the

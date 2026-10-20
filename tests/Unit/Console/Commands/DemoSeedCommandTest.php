@@ -203,8 +203,8 @@ it('converges a same-day re-seed without duplicating rows and heals a stale Stra
         ->and($connection->token_expires_at->isFuture())->toBeTrue()
         ->and($connection->revoked_at)->toBeNull();
 
-    // F7: re-seeding under the same frozen clock converges rather than
-    // duplicating rows for the plan/narration/inbox surfaces this slice adds.
+    // Re-seeding under the same frozen clock converges rather than
+    // duplicating rows for the plan/narration/inbox surfaces.
     expect(demoSurfaceCounts($user))->toBe($counts);
 });
 
@@ -212,10 +212,9 @@ it('replaces the timeline on a later-day re-seed instead of stacking a second co
     $user = seedSlimDemo();
     $activityCount = Activity::query()->where('user_id', $user->id)->count();
 
-    // #1165: every blueprint anchors to Carbon::today(), so its identity
-    // shifts whenever "today" does. A re-seed on a *later* calendar day must
-    // still replace the timeline instead of stacking a second copy of it
-    // onto the account — the bug left several runs piled onto most days.
+    // Every blueprint anchors to Carbon::today(), so its identity shifts
+    // whenever "today" does. A re-seed on a *later* calendar day must still
+    // replace the timeline instead of stacking a second copy of it.
     Carbon::setTestNow('2026-05-20 12:00:00');
     $this->artisan('demo:seed')->assertSuccessful();
 
@@ -235,8 +234,8 @@ it('seeds a complete, login-ready demo dataset', function (): void {
 
     $user = User::query()->where('email', DemoRunSeeder::DEMO_USER_EMAIL)->firstOrFail();
 
-    // Core row counts — 35 scripted (one moved off today to D-2, which now
-    // excludes a filler that used to land there) + RNG fillers @ 30% over
+    // Core row counts — 35 scripted (one moved off today to D-2, which
+    // excludes a filler) + RNG fillers @ 30% over
     // ~180d + 1 D-0 cold-start run; exact match fails loud on drift.
     $activityIds = Activity::query()->where('user_id', $user->id)->pluck('id');
     $activityCount = $activityIds->count();
@@ -300,9 +299,9 @@ it('seeds a complete, login-ready demo dataset', function (): void {
         ->where('discriminator', '>', RecapPeriod::lastClosedMonth())
         ->count())->toBe(0);
 
-    // F7: a full 12-week planned-session horizon, self-scaled (no active
+    // A full 12-week planned-session horizon, self-scaled (no active
     // race), with the current week's past days scored/skipped rather than
-    // left stuck at Planned — the exact gap this slice closes.
+    // left stuck at Planned.
     $plannedSessionCount = PlannedSession::query()->where('user_id', $user->id)->count();
     expect($plannedSessionCount)->toBe(7 * Periodizer::HORIZON_WEEKS)
         ->and(PlannedSession::query()
@@ -316,7 +315,7 @@ it('seeds a complete, login-ready demo dataset', function (): void {
             ->where('status', '!=', PlannedSessionStatus::Planned)
             ->count())->toBe(0);
 
-    // F7: trend_read narrated for every live window (just 7d since #967).
+    // trend_read narrated for every live window.
     expect(Analysis::query()
         ->where('subject_type', AnalysisType::TREND_READ_SUBJECT_TYPE)
         ->where('subject_id', $user->id)
@@ -333,18 +332,17 @@ it('seeds a complete, login-ready demo dataset', function (): void {
         ->where('discriminator', '7d')
         ->value('served_by'))->toBe(ServedBy::RuleBased);
 
-    // F7: the inbox is populated (today's post-run summary at minimum), not
-    // the empty state R5 flagged.
+    // The inbox is populated (today's post-run summary at minimum), not
+    // the empty state.
     $inboxCount = InboxNotification::query()->where('user_id', $user->id)->count();
     expect($inboxCount)->toBeGreaterThanOrEqual(1);
 
-    // PP4 / P30. Every one of these surfaces was invisible on the demo account
-    // until this slice, so each assertion stands for a screen a reviewer could
+    // Each assertion below stands for a demo-account screen a reviewer could
     // not otherwise see.
 
     // Settings' preferences card runs on TrainingBaseline fallbacks without a
     // row, and its "which one's the long run?" block is gated on run days.
-    // PS14. The preference says the demo user trains for a race, and nothing
+    // The preference says the demo user trains for a race, and nothing
     // created one: Race rendered its empty state and Profile's goal chip
     // rendered for nobody, on any fresh database.
     $race = RaceGoal::query()->where('user_id', $user->id)->active()->firstOrFail();
@@ -353,7 +351,7 @@ it('seeds a complete, login-ready demo dataset', function (): void {
         ->and($race->race_date->isFuture())->toBeTrue();
 
     // The race goal is 3% faster than the seeded 10K best, rounded to the
-    // nearest 15 s, not an independently hardcoded time (#917).
+    // nearest 15 s, not an independently hardcoded time.
     $km10Best = nonNull(PersonalRecord::query()
         ->where('user_id', $user->id)
         ->where('category', PrCategory::Km10)
@@ -367,7 +365,7 @@ it('seeds a complete, login-ready demo dataset', function (): void {
         ->and($snapshot->supported_source_distance_m)->toBeInt()
         ->and($snapshot->supported_source_date)->not->toBeNull();
 
-    // #979. The 10K that backs that goal is itself flagged as a race, so the
+    // The 10K that backs that goal is itself flagged as a race, so the
     // share card's `race` form (bib chassis, chip splits) is reachable on the
     // demo account instead of unconditionally falling through to the other
     // four forms.

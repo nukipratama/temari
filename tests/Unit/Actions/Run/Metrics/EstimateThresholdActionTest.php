@@ -130,8 +130,8 @@ it('rejects a steady run that lives in Z3 without ever reaching Z4', function ()
 it('counts a hard session too short for a 30 minute window', function (): void {
     $user = User::factory()->create();
     // A 28-minute 5km time trial fills neither a 60 nor a 30 minute window, so
-    // the athlete's single best piece of evidence used to contribute nothing
-    // while slower, longer runs set the estimate.
+    // the athlete's single best piece of evidence must still contribute
+    // rather than slower, longer runs setting the estimate.
     $estimator = estimatorOver([[
         'time_in_zone_pct' => ['Z3' => 10.1, 'Z4' => 40.0, 'Z5' => 38.3],
         'best_20min_pace' => '5:30',

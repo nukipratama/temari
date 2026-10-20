@@ -32,29 +32,17 @@ use LogicException;
 final class PlanRenderer
 {
     /**
-     * Trailing weeks every caller of {@see self::weekPhasesAndMultipliers()}
-     * must load around the weeks it actually wants. The recompute fallback
-     * reads a week's Build ramp off its neighbours, so a window shorter than
-     * this reads a week deep in a ramp as an isolated week 1. Declared once
-     * here rather than per caller: nothing enforced that two copies stayed
-     * equal.
+     * Trailing weeks every caller of {@see self::weekPhasesAndMultipliers()} must load around the
+     * weeks it wants: the recompute fallback reads a week's Build ramp off its neighbours.
      */
     public const int HISTORY_WEEKS = 3;
 
     /**
-     * $sessionsByWeek is keyed by week_start (Y-m-d), any order, each value
-     * itself a Collection<int, PlannedSession> — the value type is left as
-     * `mixed` rather than nested-Collection-typed, since groupBy()'s
-     * nested-collection result doesn't satisfy Eloquent Collection's
-     * Model-bound generics and Support Collection's own generics aren't
-     * covariant either way.
+     * $sessionsByWeek is keyed by week_start (Y-m-d), any order.
      *
-     * `$selfScaled` only matters for the recompute fallback below: a stamped
-     * week already carries the multiplier it was actually generated with, so
-     * a self-scaled arc's flat ramp only needs re-deriving here for a week old
-     * enough to predate {@see PlannedSession::$volume_multiplier} being
-     * stamped at all — otherwise this would re-apply the race-arc ramp
-     * {@see TrainingBaseline}'s `self_scaled` flag exists to hold at 1.0.
+     * `$selfScaled` only matters for the recompute fallback: a stamped week already carries its
+     * multiplier, so a self-scaled arc's flat ramp is re-derived only for a week predating
+     * {@see PlannedSession::$volume_multiplier}.
      *
      * @template TWeek of Collection<int, PlannedSession>
      *
@@ -89,14 +77,9 @@ final class PlanRenderer
     }
 
     /**
-     * The row a week reads its phase AND multiplier from — one row, so the
-     * two can never disagree with each other. Regeneration never rewrites a
-     * pinned row, nor one already carrying a verdict, nor a date already
-     * behind it, so a week can hold a stale row from an older generation
-     * next to fresh ones. Every regeneration writes forward to the week's
-     * end, so the latest-dated row it could still own is the one carrying
-     * its most recent decision; only a week pinned to the last day reads a
-     * pinned row.
+     * The row a week reads its phase AND multiplier from, so the two never disagree. A week can hold
+     * a stale row from an older generation next to fresh ones; regeneration writes forward to the
+     * week's end, so the latest-dated row is the one carrying its most recent decision.
      *
      * @param  Collection<int, PlannedSession>  $weekSessions
      */
@@ -113,11 +96,9 @@ final class PlanRenderer
     }
 
     /**
-     * The week's first Easy day gets the bigger (Medium) core-km fraction —
-     * see {@see SegmentGenerator::coreKmFor()}'s `$isPrimaryEasy`. Shared by
-     * every caller that needs a week's per-day km (`PlanPageAssembler`,
-     * `CurrentWeekPlanBuilder`, `plan:score-compliance`) so none of them
-     * silently drift on which day is "primary".
+     * The week's first Easy day gets the bigger (Medium) core-km fraction (see
+     * {@see SegmentGenerator::coreKmFor()}'s `$isPrimaryEasy`); shared so every caller agrees on
+     * which day is "primary".
      *
      * @param  Collection<int, PlannedSession>  $weekSessions
      */
@@ -130,17 +111,11 @@ final class PlanRenderer
     }
 
     /**
-     * Every session's core km, keyed by date — the shared computation behind
-     * `distance_km`/`SessionMatcher`'s planned-km input. `$sessions` should
-     * include enough trailing history for {@see self::weekPhasesAndMultipliers()}'s
-     * ramp to be correct for the *earliest* week being scored, not just the
-     * dates the caller actually wants km for — which matters only while the
-     * range still holds a row written before the multiplier was stamped.
+     * Every session's core km, keyed by date. `$sessions` should include enough trailing history for
+     * {@see self::weekPhasesAndMultipliers()}'s ramp to be correct for the earliest week scored.
      *
-     * A `Race` day is sized from its own stored `race_distance_m` rather than
-     * the training baseline, so this keeps working once the goal behind it has
-     * been retired — which it always has by the time `plan:score-compliance`
-     * grades race day.
+     * A `Race` day is sized from its own stored `race_distance_m` rather than the training baseline,
+     * so it keeps working once its goal is retired.
      *
      * @param  Collection<int, PlannedSession>  $sessions
      * @return array<string, float>  Y-m-d => core km
@@ -175,12 +150,8 @@ final class PlanRenderer
     }
 
     /**
-     * One session's core km, for a caller holding a single row rather than an
-     * already-loaded week — looks up its own week's siblings so
-     * {@see self::plannedKmByDate()}'s `isPrimaryEasy`/multiplier still apply.
-     * Still the plain, unredistributed figure: no {@see VolumeRedistributor}
-     * scale reaches this. The current week's shown km, scale included, come
-     * from {@see CurrentWeekKm}.
+     * One session's core km, for a caller holding a single row; looks up its own week's siblings.
+     * The plain, unredistributed figure: the current week's shown km come from {@see CurrentWeekKm}.
      */
     public static function coreKmForSession(PlannedSession $session, float $longRunBaselineKm, float $longRunCapKm, bool $selfScaled, float $longRunProgressionCapKm = INF): float
     {
@@ -195,12 +166,9 @@ final class PlanRenderer
     }
 
     /**
-     * The whole outing, and the figure the segments beneath it add up to.
-     * An Interval day is the one that cannot land on its own budget — a
-     * whole number of fixed-duration reps rarely does — so it reports what
-     * its reps actually come to. Without a VDOT estimate nothing has a
-     * distance yet, and the budget stands in, scaled by a redistributed
-     * week's own scale.
+     * The whole outing, and the figure the segments beneath it add up to. An Interval day reports
+     * what its reps actually come to; without a VDOT estimate the budget stands in, scaled by a
+     * redistributed week's own scale.
      *
      * @param  list<SessionSegment>  $segments  from {@see SegmentGenerator::generate()} for this same day
      */

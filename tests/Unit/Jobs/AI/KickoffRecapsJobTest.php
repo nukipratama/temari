@@ -76,7 +76,7 @@ it('runs the weekly and monthly kickoff for its own user, attributed to the inge
 });
 
 /**
- * #1051: the backfill landing is the moment hydration should start, not the
+ * The backfill landing is the moment hydration should start, not the
  * next `strava:hydrate-backlog` tick up to 15 minutes later.
  */
 it('dispatches an immediate hydration batch for the backfilled user', function (): void {

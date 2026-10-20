@@ -14,15 +14,13 @@ use App\Services\AI\NarrationOrigin;
 use Illuminate\Database\Eloquent\Collection;
 
 /**
- * The two per-athlete recoveries the attention tab offers, both of them the
- * `ai:recover` mechanic narrowed to one athlete: reset the self-heal budget and
- * re-dispatch. `invalidate: false` keeps a Done sibling from being re-billed,
- * and the job-level pause guard reverts to Pending mid-cap, so neither is a way
- * to spend past a ceiling.
+ * The two per-athlete recoveries the attention tab offers: the `ai:recover` mechanic narrowed to
+ * one athlete (reset the self-heal budget and re-dispatch). `invalidate: false` keeps a Done
+ * sibling from being re-billed and the job-level pause guard reverts to Pending mid-cap, so neither
+ * spends past a ceiling.
  *
- * The demo athlete resolves through the rule-based filler instead, like every
- * other manual trigger: `AnalysisService::request()` carries no demo guard of
- * its own, so a re-arm there would dispatch a real, billed LLM job.
+ * The demo athlete resolves through the rule-based filler instead: `AnalysisService::request()`
+ * carries no demo guard of its own, so a re-arm there would dispatch a real, billed LLM job.
  */
 class ReArmNarrationAction
 {

@@ -66,14 +66,12 @@ function relationTone(relation: Relation, betterWhen: Relation): string {
 }
 
 /**
- * "You vs past you" — the claim the whole app is built on: its own lane
- * section directly under the hero, leading with the pace delta and linking to
- * the run it is measured against. No match means no section, not an empty
- * state.
+ * "You vs past you": its own lane section directly under the hero, leading with
+ * the pace delta and linking to the run it is measured against. No match means
+ * no section, not an empty state.
  *
- * The wording is built entirely from the `relation` words
- * {@see PastYouMatcher::findMatchContext} already computes (pace banded against
- * noise, heart rate named as the rounded bpm shows it) — this component never
+ * The wording is built from the `relation` words
+ * {@see PastYouMatcher::findMatchContext} already computes; this component never
  * re-derives a direction from a raw sign.
  */
 export default function PastYouCard({

@@ -35,11 +35,9 @@ use Illuminate\Support\Carbon;
 /**
  * Answers one question about one run.
  *
- * Scope is enforced by construction, not by instruction: every tool on
- * {@see self::toolbox()} is bound to this activity (or to its owner's history
- * as of this run) and takes no arguments, so no phrasing of a question can
- * reach another run or another account. The prompt below shapes the answer; the
- * toolbox is what makes the boundary real.
+ * Scope is enforced by construction, not by instruction: every tool on {@see self::toolbox()} is
+ * bound to this activity (or to its owner's history as of this run) and takes no arguments, so no
+ * phrasing of a question can reach another run or another account.
  */
 class RunQuestionNarrator
 {
@@ -159,13 +157,9 @@ class RunQuestionNarrator
     /**
      * The reads this answer may pull, each bound to this activity.
      *
-     * A summary-state run has never been through the stream pipeline, so the
-     * splits, laps, zone and terrain reads have nothing behind them and are left
-     * off entirely rather than offered as tools that answer `{}`. What survives
-     * is the run's own summary numbers and the history reads, which stand on
-     * their own. Opening the run queues the detail fetch, so a question asked in
-     * that window answers from the smaller toolbox and a later one answers from
-     * the full set.
+     * A summary-state run has never been through the stream pipeline, so the splits, laps, zone and
+     * terrain reads are left off entirely rather than offered as tools that answer `{}`; opening
+     * the run queues the detail fetch, so a later question answers from the full set.
      */
     public function toolbox(Activity $activity, ActivityDetail $detail, int $answeringQuestionId): AgentToolbox
     {

@@ -3,21 +3,18 @@ import { ANCHOR_KIND_VALUES, type AnchorKind } from '@/types/generated';
 /**
  * The anchor namespace the narrators validate server-side (`split:<n>`,
  * `zone:z1..z5`, `metric:<name>`, `session:today`), resolved here to the
- * element that actually draws the thing on the page in question.
+ * element that draws the thing on the page in question.
  *
- * An anchor being well-formed does not mean it has a rendering site: the
- * narrator validates against the run's `StreamSummary`, which knows readings
- * no component draws. So callers ask the DOM, not this map, before offering an
- * affordance for one.
+ * A well-formed anchor may have no rendering site, so callers ask the DOM, not
+ * this map, before offering an affordance for one.
  */
 const HIGHLIGHT_MS = 1600;
 
 /**
  * The value half of each kind's grammar, mirroring
- * `App\Services\AI\Anchor\AnchorKind::valuePattern()`. Typed as a total
- * record over the generated `AnchorKind`, so adding a kind in PHP fails the
- * TypeScript build here until this side handles it — the two used to hold
- * separate regexes for one grammar with nothing keeping them honest.
+ * `App\Services\AI\Anchor\AnchorKind::valuePattern()`. Typed as a total record
+ * over the generated `AnchorKind`, so adding a kind in PHP fails the TypeScript
+ * build here until this side handles it.
  */
 const VALUE_PATTERN: Record<AnchorKind, string> = {
     split: '[1-9]\\d*',

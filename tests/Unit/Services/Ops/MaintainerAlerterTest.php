@@ -356,16 +356,9 @@ it('swallows a send failure so an alert never fails its caller', function (): vo
 });
 
 /**
- * Maintainer alerts deliberately bypass the per-channel mute added in #406.
- *
- * They are operational, not product: telling a solo operator that the AI
- * pipeline has stalled. MaintainerAlerter is also Telegram-only, so honouring
- * the mute would not reroute these alerts, it would delete them — and the
- * failure they exist to catch is exactly the one you notice days late.
- *
- * The Settings copy states this scope out loud -- bot replies and system alerts
- * still arrive -- so the carve-out is documented to the user rather than being a
- * surprise. Pinned here so it stays a decision, not an accident.
+ * Maintainer alerts deliberately bypass the per-channel mute: they are
+ * operational, and MaintainerAlerter is Telegram-only, so honouring the mute
+ * would delete them rather than reroute them.
  */
 it('still alerts an admin who has muted the Telegram channel', function (): void {
     $admin = adminWithChat(4321);
@@ -615,7 +608,7 @@ it('exceptionDigest folds a long list into a count so the message stays sendable
     app(MaintainerAlerter::class)->exceptionDigest($entries);
 });
 
-// #986: every alert queues its Telegram send instead of making the call
+// Every alert queues its Telegram send instead of making the call
 // inline, so a slow/unreachable Telegram can never block the caller.
 it('queues the Telegram send instead of calling the client inline', function (): void {
     Bus::fake();

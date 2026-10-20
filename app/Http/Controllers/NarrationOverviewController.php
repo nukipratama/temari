@@ -73,10 +73,9 @@ class NarrationOverviewController extends Controller
 
     /**
      * Resolve the relative range token to concrete dates on every request, so
-     * preset links stay correct as the calendar rolls (a baked-in absolute
-     * `to` would silently point at yesterday). Bare requests default to the
-     * rolling last 7 days; legacy absolute `from`+`to` links (no `range`) map
-     * to a `custom` range for back-compat.
+     * preset links stay correct as the calendar rolls. Bare requests default to
+     * the rolling last 7 days; legacy absolute `from`+`to` links (no `range`) map
+     * to a `custom` range.
      *
      * @param  array{range?:string, from?:string, to?:string}  $validated
      * @return array{0:string, 1:Carbon, 2:Carbon}

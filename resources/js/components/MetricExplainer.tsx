@@ -66,15 +66,9 @@ export default function MetricExplainer({
     const popoverRef = useRef<HTMLDivElement>(null);
     const popoverId = useId();
 
-    // Resets to center on close (not on open) so a stale left/right
-    // correction from a previous position (the trigger can move between
-    // opens, e.g. a range chip reflowing the layout) is already gone by the
-    // time the next open's measurement effect below reads the DOM — doing
-    // the reset at open time instead would race that same-commit measurement
-    // against a class update that hasn't painted yet. Done in the close
-    // handlers themselves (not an effect keyed on `open`), since resetting
-    // one piece of state in reaction to another is exactly what an event
-    // handler is for.
+    // Resets to center on close, not on open: resetting at open would race the
+    // measurement effect below against a class update that hasn't painted yet.
+    // Done in the close handlers, not an effect keyed on `open`.
     const close = useCallback(() => {
         setOpen(false);
         setAlign('center');

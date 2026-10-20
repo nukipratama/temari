@@ -28,13 +28,11 @@ interface MonthComparisonProps {
 }
 
 /**
- * "long-term load" owns the CTL chart: load-now and a-month-ago are
- * read off the same 365-day series the chart plots, so the card and the
- * line can never disagree (direction A, #967). Long-term load now is the
- * section's hero number; best-this-year is a plain secondary reading below
- * it, not paired side-by-side with anything, so it stays a Stat rather than
- * a tile (MASTER.md's tile rule only fires once two numbers sit side by
- * side).
+ * "long-term load" owns the CTL chart: load-now and a-month-ago are read off
+ * the same 365-day series the chart plots, so the card and the line can never
+ * disagree. Long-term load now is the section's hero number; best-this-year is
+ * a plain secondary reading, so it stays a Stat rather than a tile (MASTER.md's
+ * tile rule only fires once two numbers sit side by side).
  */
 export default function MonthComparison({
     trend,

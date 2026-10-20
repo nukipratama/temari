@@ -101,10 +101,8 @@ class PostRunNoteReader
     }
 
     /**
-     * Persisted post-run mood per activity, keyed by activity id, independent of
-     * whether the speech is ready. Lets list/dashboard surfaces show the same
-     * mood the backend already computed instead of a frontend heuristic during
-     * the window before the post-run speech lands.
+     * Persisted post-run mood per activity, keyed by activity id, independent of whether the speech
+     * is ready.
      *
      * @param  array<int, int>  $activityIds
      * @return array<int, string>

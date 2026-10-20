@@ -33,7 +33,7 @@ beforeEach(fn () => Carbon::setTestNow(WEEK_KM_TODAY.' 08:00:00'));
 afterEach(fn () => Carbon::setTestNow());
 
 /**
- * The #1994 week: a past pinned make-up easy day asked at 4.4 km, today and
+ * A week with a past pinned make-up easy day asked at 4.4 km, today and
  * Saturday easy at 2.7, and a Sunday long run at 6.8. The week's multiplier
  * puts the long run at 6.8 km, so the primary easy day is 0.65 of it and the
  * other easy days 0.40.

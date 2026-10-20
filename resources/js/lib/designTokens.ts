@@ -1,13 +1,10 @@
 /**
- * Reads the design system back out of the live stylesheet.
- *
- * Everything here takes the CSS as it actually shipped — the token names come
- * from the `:root` rules the browser parsed, the values from
- * `getComputedStyle` — so /devtools/design cannot drift from
- * [resources/css/app.css](../../css/app.css) the way a hand-copied token list
- * in TypeScript would. The audit rules mirror
- * [resources/brand/build-tokens.mjs](../../brand/build-tokens.mjs), which is
- * what generates the `@theme` block in the first place.
+ * Reads the design system back out of the live stylesheet: token names come
+ * from the `:root` rules the browser parsed, values from `getComputedStyle`, so
+ * /devtools/design cannot drift from [resources/css/app.css](../../css/app.css).
+ * The audit rules mirror
+ * [resources/brand/build-tokens.mjs](../../brand/build-tokens.mjs), which
+ * generates the `@theme` block.
  */
 
 import GROUND_KINDS from '../../brand/grounds.json';
@@ -78,13 +75,9 @@ export function collectTokenNames(
 /**
  * Every paper an `-ink` token can land on: every background
  * [grounds.json](../../brand/grounds.json) classifies as paper, resolved
- * against the live values. Derived from the classification rather than listed,
- * so a new page ground the components start painting is audited as soon as it
- * is classified.
- *
- * A classified ground the stylesheet no longer resolves is kept with an empty
- * value on purpose: it scores `null` and reports as a failure, rather than
- * quietly shrinking the set the way the missing `--color-cream-deep` did.
+ * against the live values. A classified ground the stylesheet no longer
+ * resolves is kept with an empty value, so it scores `null` and reports as a
+ * failure rather than quietly shrinking the set.
  */
 export function collectPaperGrounds(values: Record<string, string>): Ground[] {
     return GROUND_KINDS.paper.map((name) => ({
@@ -273,12 +266,9 @@ type PanelEntry = {
 /**
  * Scores every translucent panel against the text it carries.
  *
- * A `bg-<token>/<alpha>` panel is not the token it tints — it is that token
- * composited over whatever it is mounted on, and the text an author reaches for
- * is the text the solid token would take. `bg-sky/40` on the page ground reads
- * as a dark panel and is not one, which is how it carried `text-ink-on-sky` at
- * 1.5:1 while all three audits reported a pass. The mount is the one fact no
- * scan can see, so grounds.json records it; everything else is derived.
+ * A `bg-<token>/<alpha>` panel is that token composited over whatever it is
+ * mounted on, and the mount is the one fact no scan can see, so grounds.json
+ * records it; everything else is derived.
  */
 export function auditPanels(
     values: Record<string, string>,
@@ -425,11 +415,10 @@ function kindFor(fg: string, bg: string): string {
 
 /**
  * The grounds a tier is allowed to land on. A reactive ground and a reactive
- * text tier flip together, so they are only ever scored against each other; the
- * fixed ink tier is scored against the grounds that do not flip. Pairing the
- * fixed tier with every ground is what reported 67 failures on the dark ground
- * for pairings the app never paints. A ground the classification does not know
- * counts as fixed, so a caller can still pass a synthetic paper.
+ * text tier flip together, so they are only scored against each other; the
+ * fixed ink tier is scored against the grounds that do not flip. A ground the
+ * classification does not know counts as fixed, so a caller can still pass a
+ * synthetic paper.
  */
 function groundsOfKind(grounds: ReadonlyArray<Ground>, kind: string): Ground[] {
     return grounds.filter((ground) => {

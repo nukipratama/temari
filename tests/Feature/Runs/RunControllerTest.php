@@ -179,9 +179,7 @@ it('does not dispatch a ResolveActivityLocationJob for a run already resolved or
 
 /**
  * The analysis poller reloads `weeklySnapshots` every 3-15s while a recap is
- * generating. Every prop used to be computed in the method body, so each tick
- * re-ran the full run query, the note reader and the mood reader for a prop it
- * never asked for. Behind closures, Inertia skips them entirely.
+ * generating; behind closures, Inertia skips the props it never asked for.
  *
  * Note which of the two tests below actually pins that. Inertia strips
  * unrequested props from the response whether or not they were computed, so the
@@ -192,10 +190,9 @@ it('does not dispatch a ResolveActivityLocationJob for a run already resolved or
 /**
  * The story + run-insight props are the whole reload set of the detail page's
  * poll (`DEFAULT_RELOAD_PROPS` in resources/js/components/run/RunLenses.tsx),
- * and it ticks every 3-15s for up to 30 attempts while narration generates. Every
- * prop used to be computed in the method body, so each tick re-ran the past-you
- * match, the relative-effort baseline, the card payload and the story-line
- * query for props it never asked for. Behind closures, Inertia skips them.
+ * and it ticks every 3-15s for up to 30 attempts while narration generates.
+ * Behind closures, Inertia skips the past-you match, the relative-effort
+ * baseline, the card payload and the story-line query for props it never asked for.
  */
 it('does not run the past-you match or the relative-effort baseline on an insight-only partial reload', function (): void {
     $user = User::factory()->create();
@@ -237,11 +234,11 @@ it('stamps the viewed run\'s own effort onto detail on a full load', function ()
 });
 
 /**
- * Regression for the prod bug where Slice 3 (#559) consolidated
- * RunInsightTechnical/Splits/Zones into one RunInsight case without a cleanup
- * migration for the pre-consolidation rows: those retired-type rows survive
- * under their old string values, which the AnalysisType enum cast throws a
- * ValueError on the moment it is hydrated and read.
+ * Regression for the prod bug where consolidating
+ * RunInsightTechnical/Splits/Zones into one RunInsight case shipped without a
+ * cleanup migration for the pre-consolidation rows: those retired-type rows
+ * survive under their old string values, which the AnalysisType enum cast
+ * throws a ValueError on the moment it is hydrated and read.
  */
 it('renders the run detail page past orphaned pre-consolidation RunInsight rows', function (): void {
     $user = User::factory()->create();

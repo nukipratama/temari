@@ -1,21 +1,10 @@
 name: Nightly dependency audit
 
-# Supply-chain audits are the one gate whose verdict does not depend on the
-# diff: a freshly-published advisory against a package nobody in this PR touched
-# turns `composer audit` / `npm audit` red, and on `main` that red sits in front
-# of the deploy. Auditing on a schedule keeps the signal without letting an
-# upstream disclosure block an unrelated change from shipping. Neither job
-# installs dependencies — both read the lock files directly.
+# Scheduled supply-chain audits, so an upstream advisory cannot block an unrelated change on `main`.
+# Neither audit job installs dependencies; both read the lock files directly.
 #
-# Failure is visible as a red run in the Actions tab plus GitHub's own
-# failed-scheduled-run notification, plus a direct Telegram push below. It
-# deliberately does NOT go through MaintainerAlerter: that path is
-# Telegram-over-the-prod-DB and is only reachable from inside the prod app
-# container on the homelab runner, which this workflow does not touch (both
-# audit jobs run on ubuntu-26.04-arm and read the lock files directly - no
-# install, no homelab). The push needs its own `TELEGRAM_BOT_TOKEN` and
-# `TELEGRAM_MAINTAINER_CHAT_ID` repository secrets; until both are set the
-# alert step is a no-op skip (both jobs still fail/pass normally).
+# Failures push to Telegram directly with the `TELEGRAM_BOT_TOKEN` and `TELEGRAM_MAINTAINER_CHAT_ID`
+# repository secrets, not through MaintainerAlerter, which is unreachable from a hosted runner.
 
 on:
   schedule:
@@ -76,16 +65,8 @@ jobs:
         continue-on-error: true
         run: npm audit --audit-level=critical --package-lock-only
 
-  # DF-7/D3: scripts/restore-db.sh had no automated exercise — the deploy doc
-  # said outright that restore has never fired even in prod, so the first real
-  # use would also be its first test. This runs the script's real code path
-  # (its flags, env expectations, the gzip/streaming restore) against a
-  # throwaway MySQL instead of compose.prod.yaml, via the COMPOSE_FILE /
-  # MYSQL_SERVICE overrides added alongside this job. ubuntu-26.04-arm, not the
-  # self-hosted homelab runner: no reason to compete with prod for the shared
-  # 4 cores, and a runner-local docker compose stack needs no bind mounts (the
-  # dump moves through a pipe, same as the prod backup step) so the homelab's
-  # docker-out-of-docker quirk doesn't apply here anyway.
+  # Runs scripts/restore-db.sh against a throwaway MySQL via the COMPOSE_FILE / MYSQL_SERVICE overrides,
+  # on a hosted runner so it does not compete with prod.
   restore-db-exercise:
     runs-on: ubuntu-26.04-arm
     timeout-minutes: 15

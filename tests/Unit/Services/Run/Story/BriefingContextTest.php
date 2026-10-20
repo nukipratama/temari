@@ -118,8 +118,8 @@ it('does not compare a partial week against a full one, either in the numbers or
         ->and($ctx->lastWeekKm)->toBe(5.3)
         ->and($ctx->volumeRampPct)->toBe(0.0)
         ->and($ctx->volumeRampPct)->not->toBeLessThan(-15.0)
-        // Regression for #1009 (reopened): the LLM-facing shape carries no
-        // bare signed volume_ramp_pct, just its own relation.
+        // The LLM-facing shape carries no bare signed volume_ramp_pct, just its
+        // own relation.
         ->and($ctx->toArray()['volume_ramp'])->toBe(['pct' => 0.0, 'relation' => 'flat']);
 });
 
@@ -142,10 +142,8 @@ it('uses Sunday-ending calendar weeks for the current and matching prior ranges'
     'month and year rollover' => ['2027-01-01', '2026-12-28', '2026-12-21', '2026-12-25', '2027-01-03'],
 ]);
 
-// Regression for #1009 (reopened): a raw signed volume_ramp_pct used to reach
-// the briefing narrator with no sign convention stated anywhere in the
-// prompt. `volume_ramp` now carries the magnitude and its own relation, so
-// there's no sign left for a narrator to invert.
+// `volume_ramp` carries the magnitude and its own relation, so no sign is left
+// for a narrator to invert.
 it('exposes volume_ramp with relation=down and no signed field on a real drop in volume', function (): void {
     $user = User::factory()->create();
     $asOf = nonNull(Carbon::create(2026, 5, 21, 8)); // Thursday in week ending 2026-05-24 (Sun)

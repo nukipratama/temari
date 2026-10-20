@@ -192,14 +192,13 @@ it('measures a day against the baseline as it stood that day, not against today\
 });
 
 /**
- * The bug this closes: an athlete told at 00:01 to run an eased 3.6 instead of
- * the 5.9 tempo on the board, who obeys, was graded 3.6/5.9 = 61% and landed on
- * `partial` for following the app's own advice.
+ * An athlete told at 00:01 to run an eased 3.6 instead of the 5.9 tempo on the
+ * board, who obeys, must not be graded 3.6/5.9 = 61% and land on `partial`.
  */
 it('grades a clamped day against the eased distance it actually asked for', function (): void {
     $user = User::factory()->create();
     // 1.2 against a stored tempo ask of ~3.4 is 35% — `partial` — without the
-    // substitution, which is exactly the shape of the reported bug.
+    // substitution.
     $row = scorerDay($user, '2026-08-05', [
         'session_type' => SessionType::Tempo,
         'clamped_km' => 1.2,

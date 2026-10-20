@@ -96,9 +96,8 @@ describe('HrZonesDisclosure', () => {
         ).toBeInTheDocument();
     });
 
-    // The prototype draws one bound per zone, and the extra `hi` fields the
-    // page used to render could only ever express submissions the server
-    // rejects.
+    // The prototype draws one bound per zone; an extra `hi` field could only
+    // express submissions the server rejects.
     it('draws one bound per zone, never a second upper-bound field', () => {
         render(<HrZonesDisclosure hrZones={DEFAULT_PAYLOAD} />);
         open();
@@ -111,7 +110,7 @@ describe('HrZonesDisclosure', () => {
         }
     });
 
-    // Reflow #10: the prototype's own wide step on this two-field grid.
+    // The prototype's own wide step on this two-field grid.
     it('takes the wide four-column step on the max/resting grid', () => {
         const { container } = render(
             <HrZonesDisclosure hrZones={DEFAULT_PAYLOAD} />,

@@ -17,14 +17,12 @@ use Illuminate\Support\Carbon;
 /**
  * A readiness step-down, kept as a record rather than only rendered.
  * {@see \App\Services\Run\Plan\RestClampRecorder} already writes the outcome so
- * compliance can grade the day it asked for; this makes the same moment
- * legible to the athlete, whose only way to learn of it was to open the plan
- * while it still applied.
+ * compliance can grade the day it asked for; this makes the same moment legible
+ * to the athlete.
  *
- * Inbox-only. The clamp is advisory
- * ({@see \App\Services\Run\Plan\ReadinessClamp}) and the briefing path records
- * it at 00:01, so a lock screen is the wrong place for it — and the master
- * switch, which enumerates what it governs, does not name it either.
+ * Inbox-only: the clamp is advisory
+ * ({@see \App\Services\Run\Plan\ReadinessClamp}), so a lock screen is the wrong
+ * place for it.
  */
 class DayClampedNotification extends Notification implements ShouldQueue
 {

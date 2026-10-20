@@ -123,13 +123,9 @@ class HydrationBacklog
     }
 
     /**
-     * Whether ANY of this athlete's runs, at any age, still await hydration —
-     * wider than {@see self::awaitsOlderHydration()}'s past-you-bounded reach.
-     * The profile voice reads the athlete's whole history (lifetime stats,
-     * full PR table, all-time plan adherence), so a run outside past-you's
-     * 365-day window can still be exactly the one it would misread. Bounded
-     * by the same connect-anchored grace window, so a stuck drain cannot hold
-     * it forever and a long-connected athlete is never affected.
+     * Whether ANY of this athlete's runs, at any age, still await hydration: wider than
+     * {@see self::awaitsOlderHydration()}'s past-you-bounded reach, for the profile voice that reads
+     * the whole history. Bounded by the same connect-anchored grace window.
      */
     public function awaitsFullHydration(int $userId): bool
     {

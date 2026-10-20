@@ -10,15 +10,10 @@ use App\Models\User;
 use Illuminate\Support\Carbon;
 
 /**
- * How well the athlete held the plan over a span, as counts rather than days.
+ * How well the athlete held the plan over a span, as counts rather than days. The aggregate
+ * counterpart to {@see PlanContextTool}, which returns one entry per prescribed day.
  *
- * The aggregate counterpart to {@see PlanContextTool}, which returns one entry
- * per prescribed day. A day list is the right answer for a week or a month and
- * the wrong one for a range measured in quarters: it grows with the span, and a
- * narrator reading a year is asking about a shape, not a register.
- *
- * A null `$from` means the athlete's whole history, which is what a persona
- * summary is about.
+ * A null `$from` means the athlete's whole history.
  */
 final class PlanAdherenceTool extends UserTool
 {

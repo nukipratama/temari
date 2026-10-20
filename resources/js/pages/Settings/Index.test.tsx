@@ -138,8 +138,7 @@ describe('Settings', () => {
         ).toBeTruthy();
     });
 
-    // Reflow #11: a button pair that turns sideways above 900px, not a
-    // SettingsRow list.
+    // A button pair that turns sideways above 900px, not a SettingsRow list.
     it('draws the account actions as the prototype button pair', () => {
         render(<Settings />);
 
@@ -180,8 +179,8 @@ describe('Settings', () => {
         ).toBeInTheDocument();
     });
 
-    // The page used to open with a bare untranslated <h1>, the only screen in
-    // the app not using the editorial header every other page shares.
+    // The page uses the editorial header every other page shares, not a bare
+    // title.
     it('opens with the editorial header rather than a bare title', () => {
         render(<Settings />);
         expect(screen.getAllByText('Settings').length).toBeGreaterThan(0);
@@ -331,9 +330,8 @@ describe('Settings', () => {
         );
     });
 
-    // Pressing it used to look like nothing happened, and pressing again either
-    // sent a second time or hit the route throttle as a bare 429 the UI could
-    // not explain.
+    // Pressing it must not look like nothing happened, nor send twice or hit
+    // the route throttle as a bare 429 the UI cannot explain.
     it('disables the test button with a countdown while the send is cooling', () => {
         vi.mocked(router.post).mockReset();
         render(<Settings testCooldownSeconds={45} />);

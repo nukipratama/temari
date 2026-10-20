@@ -9,17 +9,16 @@ use App\Services\Telegram\Exceptions\TelegramLinkTokenException;
 use Illuminate\Support\Carbon;
 
 /**
- * Mints and verifies the deep-link token that carries the logged-in user's
- * identity through Telegram's `/start <token>` payload. The token is HMAC-signed
- * with APP_KEY and carries an embedded TTL, so the bulk of the pending-link state
- * needs no storage. See the account-linking ADR.
+ * Mints and verifies the deep-link token that carries the logged-in user's identity through
+ * Telegram's `/start <token>` payload. The token is HMAC-signed with APP_KEY and carries an
+ * embedded TTL, so the bulk of the pending-link state needs no storage (see the account-linking
+ * ADR).
  *
- * Telegram caps the `start` payload at 64 chars and allows only `[A-Za-z0-9_-]`,
- * so the token is a compact base64url of `user_id|expires_at` plus a truncated
- * HMAC, NOT an encrypted blob (which blows past 64 chars).
+ * Telegram caps the `start` payload at 64 chars of `[A-Za-z0-9_-]`, so the token is a compact
+ * base64url of `user_id|expires_at` plus a truncated HMAC, not an encrypted blob.
  *
- * Single use: a durable unique token-use row prevents a leaked link from being
- * replayed to re-bind the account within the TTL window.
+ * Single use: a durable unique token-use row prevents a leaked link from being replayed within the
+ * TTL window.
  */
 class TelegramLinkToken
 {

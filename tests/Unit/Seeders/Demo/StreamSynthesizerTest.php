@@ -25,10 +25,8 @@ it('produces a final accumulated distance that matches the blueprint exactly', f
     $distance = $streams['distance']['data'];
     $finalDistance = (float) end($distance);
 
-    // Before the fix the rescale walked the rounded velocity series while the
-    // scale factor came from the unrounded sum, leaving the final distance
-    // drifting off the 10,000 m blueprint. It must now land within rounding
-    // noise (each step rounds to 2 dp).
+    // The final distance must land within rounding noise of the 10,000 m
+    // blueprint (each step rounds to 2 dp).
     expect($finalDistance)->toEqualWithDelta(10_000.0, 0.5);
 });
 

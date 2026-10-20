@@ -11,10 +11,9 @@ interface TodayPanelProps {
 
 /**
  * Today's spend at display size against the app-wide ceiling, with four
- * labelled references beside it so "is that normal" is answered by
- * comparison rather than a lone percentage. Absorbs the old CeilingHeader;
- * the capped-athlete count, pause reason and recover action moved to
- * {@link FaultStrip}, since those are faults, not this panel's own reading.
+ * labelled references beside it so "is that normal" is answered by comparison
+ * rather than a lone percentage. The capped-athlete count, pause reason and
+ * recover action live on {@link FaultStrip}.
  */
 export default function TodayPanel({
     budget,

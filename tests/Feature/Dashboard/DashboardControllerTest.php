@@ -77,8 +77,7 @@ it('answers the empty state with a boolean, hydrating no run rows', function ():
 
 /**
  * `snapshot` is a single row — `TrainingLoadCard` takes one `WeeklySnapshot | null`.
- * The read used to pull the newest twelve and throw eleven away. The row it
- * keeps is the current week's own, never a trailing one.
+ * The row it keeps is the current week's own, never a trailing one.
  */
 it('reads the weekly snapshots once and shows this week\'s', function (): void {
     $user = User::factory()->create();
@@ -157,10 +156,9 @@ it('reuses the same daily greeting on a second open within the day', function ()
 /**
  * Every briefing trigger on this page (`SuggestionCard`, `KataTemariCompact`)
  * polls `router.reload({ only: ['briefing'] })` every
- * 3-15s while the analysis generates. Every prop used to be computed in the
- * method body, so each tick re-ran the eight-row recent-run fetch — polylines
- * and stream summaries included — plus the weekly-snapshot read, for props the
- * response then discarded. Behind closures, Inertia skips them.
+ * 3-15s while the analysis generates. Behind closures, Inertia skips the
+ * eight-row recent-run fetch and the weekly-snapshot read for props the
+ * reload never asked for.
  */
 it('does not fetch recent runs or weekly snapshots on a briefing-only partial reload', function (): void {
     $user = User::factory()->create();
@@ -328,11 +326,10 @@ it('paints Home inside its query budget', function (): void {
 
     $this->actingAs($user)->get('/')->assertSuccessful();
 
-    // 17: was 16 against a fixture whose week_ending was never a real Sunday, so
-    // BriefingContext::lastWeekToDate() always took its early-exit branch. The
-    // fixture now carries the real previous Sunday, so that branch's read runs.
-    // 18: a pinned today no longer skips the readiness check, so its
-    // hydration-backlog read runs here as it does for any other today.
+    // 17: the fixture carries the real previous Sunday, so
+    // BriefingContext::lastWeekToDate() runs its read.
+    // 18: a pinned today still runs the readiness check, including its
+    // hydration-backlog read.
     // 19: the controller reads today's own session_type once to decide
     // whether restDayEasePace's deferred prop is worth adding at all.
     // 24: BriefingContext::prescribedKmToDate reads this week's planned sessions.
@@ -347,9 +344,8 @@ it('paints Home inside its query budget', function (): void {
     Carbon::setTestNow();
 });
 
-// clampVoiceFor used to be an argument inside the per-day `->map()`, so a day
-// the readiness ceiling stepped down cost seven identical reads of the same
-// single value.
+// clampVoiceFor is resolved once, not inside the per-day `->map()`, so a day
+// the readiness ceiling stepped down costs one read, not seven.
 it('reads the clamp narration once on a clamped day', function (): void {
     Carbon::setTestNow('2026-09-10 09:00:00');
     $user = User::factory()->create();

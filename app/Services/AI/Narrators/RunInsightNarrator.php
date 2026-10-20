@@ -277,12 +277,9 @@ class RunInsightNarrator
     }
 
     /**
-     * Deterministic falsifiability gate: every claim's anchor is checked
-     * against this run's own computed data before it is allowed to persist or
-     * render, so the LLM cannot narrate a split, zone or metric this run does
-     * not actually have. A claim whose anchor does not resolve is dropped
-     * silently rather than repaired -- the model is told exactly what a valid
-     * anchor looks like, so a bad one is a signal to drop, not to guess at.
+     * Deterministic falsifiability gate: every claim's anchor is checked against this run's own
+     * computed data before it persists or renders. A claim whose anchor does not resolve is dropped
+     * silently rather than repaired.
      *
      * @param  array<mixed>  $claims  Raw, untrusted model output.
      * @return list<array{anchor: string, text: string, value: string|null, delta: string|null}>

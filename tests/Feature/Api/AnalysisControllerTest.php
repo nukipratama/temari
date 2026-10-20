@@ -653,7 +653,7 @@ it('throws Unauthenticated when the request has no user (defensive guard)', func
 });
 
 /**
- * Pre-connect history is filled rule-based on ingest (#905); the LLM read is
+ * Pre-connect history is filled rule-based on ingest; the LLM read is
  * this trigger, and it waits for the rest of the window to hydrate.
  */
 function historicalRun(User $user, string $startedAt, IngestState $state = IngestState::Detailed): Activity

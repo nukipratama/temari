@@ -34,27 +34,18 @@ use Illuminate\Support\Facades\DB;
  * the whole computation and touches neither.
  *
  * Invariants (see `docs/features/plan-periodizer.md`):
- * - The arc is counted from the {@see \App\Models\Season}'s own start, not
- *   from today, and only then sliced to the horizon — so the week being
- *   trained carries the multiplier its position in the season earns rather
- *   than the 1.0 that index 0 always earns. See
- *   `docs/decisions/the-arc-is-anchored-once.md`.
+ * - The arc is counted from the {@see \App\Models\Season}'s own start, not from today, and only then
+ *   sliced to the horizon. See `docs/decisions/the-arc-is-anchored-once.md`.
  * - Past dates (before `$today`) are never touched.
- * - Pinned rows are read first and never overwritten; the rest of each week
- *   is planned around them.
- * - A row already carrying a verdict is left alone, even inside the
- *   today-forward window: it records what was run, not what is still planned.
- * - A mode switch (race set/cleared) only takes effect at the next call —
- *   the gatherer always reads the CURRENT active race fresh.
- * - The plan reacts to what actually happened: {@see PlanAdapter} can turn
- *   the current week into a real {@see PlanPhase::Deload} (fewer km, no
- *   quality work) and resize every week's quality block against the race
- *   projection. Its verdict is recorded as a {@see PlanAdaptation} row so
- *   the Plan tab can explain the week it produced, including the race
+ * - Pinned rows are read first and never overwritten; the rest of each week is planned around them.
+ * - A row already carrying a verdict is left alone, even inside the today-forward window.
+ * - A mode switch (race set/cleared) only takes effect at the next call; the gatherer reads the
+ *   current active race fresh.
+ * - {@see PlanAdapter} can turn the current week into a real {@see PlanPhase::Deload} and resize every
+ *   week's quality block; its verdict is recorded as a {@see PlanAdaptation} row, including the race
  *   season's volume floor when that deload takes the week below it.
- * - Deleting a row also deletes the `plan_day` {@see Feedback} rows filed
- *   against it, and today's row carries its recorded readiness clamp
- *   ({@see RestClampRecorder}) onto the row that replaces it.
+ * - Deleting a row also deletes the `plan_day` {@see Feedback} rows filed against it, and today's row
+ *   carries its recorded readiness clamp ({@see RestClampRecorder}) onto the row that replaces it.
  */
 final readonly class Periodizer
 {
@@ -904,24 +895,13 @@ final readonly class Periodizer
     }
 
     /**
-     * The horizon's worth of weeks starting at the current one, each carrying
-     * the multiplier its position in the WHOLE arc earns. Slicing after the
-     * multipliers are computed is the entire point: computing them over the
-     * remaining weeks alone put the week being trained at index 0 every
-     * Monday, which is 1.0 in every phase but Taper.
+     * The horizon's worth of weeks starting at the current one, each carrying the multiplier its
+     * position in the WHOLE arc earns (slicing happens after the multipliers are computed).
      *
-     * The reactive deload lands before the multipliers, so a week the adapter
-     * turns down is not counted as a Build week by the weeks after it. Taper
-     * weeks are left alone: they are already a planned reduction counting down
-     * to race day, and restarting the taper curve from a deload multiplier
-     * would leave the athlete under-stimulated going in.
-     *
-     * `$flat` holds the arc at 1.0 outside its dips: a self-scaled arc always,
-     * a race block while its increases are held.
-     *
-     * A season whose stored window outlasts its own arc — only reachable for a
-     * self-scaled row written before the two were aligned — holds on its last
-     * arc week rather than materializing nothing at all, until it rolls over.
+     * The reactive deload lands before the multipliers, so a week the adapter turns down is not
+     * counted as a Build week by the weeks after it; Taper weeks are left alone. `$flat` holds the
+     * arc at 1.0 outside its dips: a self-scaled arc always, a race block while its increases are
+     * held. A season whose stored window outlasts its own arc holds on its last arc week.
      *
      * @param  list<array{week_start: Carbon, phase: PlanPhase, zone: string}>  $arc
      * @return list<array{week_start: Carbon, phase: PlanPhase, zone: string, multiplier: float}>

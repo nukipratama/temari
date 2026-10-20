@@ -11,18 +11,16 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 
 /**
- * Builds the cross-cutting props merged into every Inertia response. The
- * `HandleInertiaRequests` middleware is wiring only; this is where the
- * shared-prop policy lives, and it is injectable, so a test can drive it
+ * Builds the cross-cutting props merged into every Inertia response. The `HandleInertiaRequests`
+ * middleware is wiring only; the shared-prop policy lives here, injectable, so a test can drive it
  * without a request cycle.
  *
- * The domain families each own their own builder ({@see GamificationProps},
- * {@see StravaProps}, {@see NotificationProps}, {@see AiProps}); what is left
- * here is the request-shaped remainder — identity, flashes, the server's
- * calendar day and two config flags — plus the composition.
+ * The domain families each own their own builder ({@see GamificationProps}, {@see StravaProps},
+ * {@see NotificationProps}, {@see AiProps}); what is left here is identity, flashes, the server's
+ * calendar day and two config flags, plus the composition.
  *
- * Every prop but `auth`, `today` and the two config flags is a closure, so Inertia skips
- * the work entirely on a partial reload that did not ask for that key.
+ * Every prop but `auth`, `today` and the two config flags is a closure, so Inertia skips the work
+ * on a partial reload that did not ask for that key.
  */
 final readonly class SharedProps
 {

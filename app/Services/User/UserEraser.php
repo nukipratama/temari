@@ -27,21 +27,14 @@ use Illuminate\Support\Facades\DB;
 /**
  * Deletes a user and everything they own.
  *
- * Most owned tables cascade off the `users` row's foreign keys. Two do not, and
- * both are polymorphic with no user column to constrain: `ai_analyses` (its
- * subject is an activity, card, snapshot, record, season, plan adaptation, or
- * a synthetic per-user string) and `push_subscriptions` (a `subscribable`
- * morph). They have to be deleted by hand, which is why this lives in one place rather than in each
- * caller — the in-app delete button did not, and leaked both.
+ * Most owned tables cascade off the `users` row's foreign keys. Two do not, both polymorphic with
+ * no user column to constrain: `ai_analyses` and `push_subscriptions` (a `subscribable` morph).
+ * They are deleted by hand, in this one place rather than in each caller. `notification_deliveries`
+ * cascades off `ai_analyses`.
  *
- * `notification_deliveries` needs no handling here: it cascades off
- * `ai_analyses`, so removing those takes it with them.
- *
- * `ai_token_usages` is deliberately kept. It is cost history, not user data,
- * and lives on its own connection so it survives the account entirely. Before
- * the user goes, their name and Strava athlete id are stamped onto those rows,
- * so /devtools/narration can still say whose spend it was instead of showing a bare id
- * pointing at nobody.
+ * `ai_token_usages` is deliberately kept: it is cost history, not user data, and lives on its own
+ * connection. Before the user goes, their name and Strava athlete id are stamped onto those rows so
+ * /devtools/narration can still say whose spend it was.
  */
 final readonly class UserEraser
 {
@@ -103,20 +96,16 @@ final readonly class UserEraser
     }
 
     /**
-     * Hands the athlete's grant back to Strava before the local rows go, and
-     * marks the connection revoked either way. The `deleting` hook on
-     * {@see User} only marks a connection revoked, which frees nothing on
-     * Strava's side: the athlete kept counting against the app's allocation
-     * long after they had deleted their account.
+     * Hands the athlete's grant back to Strava before the local rows go, and marks the connection
+     * revoked either way. The `deleting` hook on {@see User} only marks a connection revoked, which
+     * frees nothing on Strava's side.
      *
-     * Best effort, and it cannot be anything else — someone who asked to be
-     * deleted is not left undeleted because Strava is unreachable, which is
-     * why {@see StravaGrantReleaseService::release()} reports rather than throws.
+     * Best effort: someone who asked to be deleted is not left undeleted because Strava is
+     * unreachable, so {@see StravaGrantReleaseService::release()} reports rather than throws.
      *
-     * Public so a caller that wants to tell the operator whether Strava took
-     * it (e.g. {@see \App\Console\Commands\Strava\RemoveAthleteCommand}) can
-     * call this directly instead of re-implementing the release. That caller
-     * then tells {@see self::erase()} the release was already attempted.
+     * Public so a caller that wants to tell the operator whether Strava took it (e.g.
+     * {@see \App\Console\Commands\Strava\RemoveAthleteCommand}) can call it directly, then tell
+     * {@see self::erase()} the release was already attempted.
      *
      * @return bool|null Whether Strava accepted the deauthorize, or null when
      *                    there was no live grant to release.
@@ -190,11 +179,9 @@ final readonly class UserEraser
     }
 
     /**
-     * All `ai_analyses` rows owned by the user: their activity / card /
-     * snapshot / personal-record subjects, plus the user-keyed ones. Opts out
-     * of {@see KnownAnalysisTypeScope} so a retired-type row (e.g. one of the
-     * old per-lens RunInsight types) is still reached and removed rather than
-     * silently surviving the user's own erasure.
+     * All `ai_analyses` rows owned by the user: their activity / card / snapshot / personal-record
+     * subjects, plus the user-keyed ones. Opts out of {@see KnownAnalysisTypeScope} so a
+     * retired-type row is still reached and removed.
      *
      * @param  Collection<int, int>  $activityIds
      * @param  Collection<int, int>  $cardIds

@@ -175,8 +175,8 @@ it('creates a training_preferences row when the preferences step is filled in', 
 it('asks for today\'s briefing when the wizard is finished', function (): void {
     Bus::fake();
     // backfilled_at set: the Strava backfill already landed by the time the
-    // wizard finishes, so the request is not held (#1032 covers the other
-    // case below, and RequestTodaysBriefingTest covers the hold itself).
+    // wizard finishes, so the request is not held (RequestTodaysBriefingTest
+    // covers the hold itself).
     $user = User::factory()->needsOnboarding()->create(['backfilled_at' => Carbon::now()]);
 
     $this->actingAs($user)->post('/onboarding')->assertRedirect(route('dashboard'));

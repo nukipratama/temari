@@ -15,18 +15,12 @@ use Illuminate\Support\Facades\Cache;
  * kickoff, so a brand-new account has a briefing on the day it signs up rather
  * than after its first midnight.
  *
- * Both entry points reuse {@see AnalysisService::requestBriefing()}, which is
- * the upsert the kickoff and the hourly catch-up already share: an existing row
- * is never duplicated, and the demo account is served from the deterministic
- * filler like every other trigger it can reach.
+ * Both entry points reuse {@see AnalysisService::requestBriefing()}, the upsert
+ * the kickoff and the hourly catch-up already share, so an existing row is never
+ * duplicated.
  *
- * Both are held (staged Pending, not generated) only while there is no history
- * yet to narrate at all — `backfilled_at` still null. Once the backfill has
- * landed, the briefing narrates right away even if older history is still
- * hydrating (a fresh connect's early pass, per
- * docs/decisions/history-narrates-on-demand.md): AnalysisService::markDone()
- * detects that live and flags the row for SettleEarlyNarrationAction's
- * one-time replay once that history lands.
+ * Both are held (staged Pending, not generated) only while `backfilled_at` is
+ * still null; see docs/decisions/history-narrates-on-demand.md.
  */
 class RequestTodaysBriefing
 {
@@ -46,11 +40,8 @@ class RequestTodaysBriefing
      * the real thing. `BriefingMascotVoice` stamps no material fingerprint, so
      * a plain request would leave a Done row alone.
      *
-     * Bounded to one re-request per athlete per day: a resync that re-runs the
-     * connect chain must not re-bill the day's briefing on every pass. Checked
-     * only once the hold has cleared, so a re-run while history is still
-     * hydrating can never consume the day's one real request — it just
-     * re-stages the same Pending row, which is idempotent.
+     * Bounded to one re-request per athlete per day, checked only once the hold
+     * has cleared.
      */
     public function afterBackfill(User $user): void
     {

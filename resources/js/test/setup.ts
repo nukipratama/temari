@@ -6,13 +6,11 @@ import { afterEach, beforeEach, vi } from 'vitest';
 
 import { installOverlayHistory } from '@/hooks/useOverlayHistory';
 
-// jsdom ships no matchMedia. Anything asking the environment about itself
-// (display-mode for the installed-app checks, pointer coarseness, reduced
-// motion) needs it to exist, so default every query to "no match" — a plain
+// jsdom ships no matchMedia, so default every query to "no match" — a plain
 // desktop browser tab. Reduced motion is the exception: under it the count-up
-// tween snaps to its target instead of running over ~900ms of real time, which
-// keeps time-based assertions deterministic and stops a frame firing after a
-// test file's jsdom env is torn down. Tests that care override it per-file.
+// tween snaps to its target, which keeps time-based assertions deterministic and
+// stops a frame firing after a test file's jsdom env is torn down. Tests that
+// care override it per-file.
 if (typeof window !== 'undefined' && !window.matchMedia) {
     window.matchMedia = ((query: string) => ({
         matches: query.includes('prefers-reduced-motion'),

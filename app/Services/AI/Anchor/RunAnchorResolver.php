@@ -7,15 +7,11 @@ namespace App\Services\AI\Anchor;
 use App\Services\Run\Metrics\StreamSummary;
 
 /**
- * Whether an anchor names something a given run's own {@see StreamSummary}
- * actually measured. Lifted out of {@see \App\Services\AI\Narrators\RunInsightNarrator}
- * so the grammar and the resolution are testable apart from the narrator, and
- * so a second run-scoped narrator can reuse them rather than restate them.
+ * Whether an anchor names something a given run's own {@see StreamSummary} actually measured.
  *
- * Resolving is not the same as being citable: a reading this class accepts may
- * still have no component drawing it, which the client decides
- * (`resources/js/lib/anchors.ts`). A claim about an undrawn reading is kept —
- * it is a true observation — and simply offers no control.
+ * Resolving is not the same as being citable: the client decides whether a component draws a
+ * reading (`resources/js/lib/anchors.ts`), and a claim about an undrawn reading is kept without a
+ * control.
  */
 final class RunAnchorResolver
 {

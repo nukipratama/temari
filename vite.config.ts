@@ -68,14 +68,11 @@ export default defineConfig({
         rolldownOptions: {
             output: {
                 // Split heavy vendors into their own chunks so a page that doesn't use
-                // charts/maps/animation doesn't pull the whole bundle. Without this
-                // they all land in one large vendor chunk.
+                // charts/maps/animation doesn't pull the whole bundle.
                 //
-                // `codeSplitting` groups, not `manualChunks`: Rolldown collapses a
-                // manualChunks function into one group at priority 0, so its branches
-                // cannot outrank each other, and `includeDependenciesRecursively`
-                // (default true) then sweeps React into whichever vendor group reaches
-                // it first. Explicit groups give react-vendor a priority that wins.
+                // `codeSplitting` groups, not `manualChunks`: explicit groups give
+                // react-vendor a priority that wins; see
+                // docs/architecture/frontend-architecture.md.
                 codeSplitting: {
                     groups: [
                         {

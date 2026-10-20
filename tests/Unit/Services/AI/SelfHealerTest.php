@@ -806,10 +806,9 @@ it('sweeps past a retired-type row left in flight instead of dying on the enum c
 });
 
 /**
- * #947: `plan_week_voice` was never swept by any family here even while the
- * type was live (no plan-family sweep exists), so nothing changes behind
- * the retired case — this pins that a leftover row stays untouched rather
- * than crashing the enum cast, same as any other retired type.
+ * `plan_week_voice` was never swept by any family (no plan-family sweep exists):
+ * a leftover row stays untouched rather than crashing the enum cast, same as
+ * any other retired type.
  */
 it('sweeps past a leftover plan_week_voice row in flight instead of dying on the enum cast', function (): void {
     $user = User::factory()->create();

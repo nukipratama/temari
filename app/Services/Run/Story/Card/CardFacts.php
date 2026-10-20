@@ -17,11 +17,9 @@ use App\Services\Run\Story\BadgeEvaluator;
 use App\Support\Numeric;
 
 /**
- * Everything a card prints, resolved once server-side and shipped with the run
- * page, so the browser can draw any print — style, aspect, chips — without a
- * round trip. Every optional fact is resolved here whether or not the athlete
- * has it switched on; the chips are the client's, and dropping a fact it can
- * already see would cost a request to get it back.
+ * Everything a card prints, resolved once server-side and shipped with the run page, so the browser
+ * can draw any print without a round trip. Every optional fact is resolved whether or not the
+ * athlete has it switched on; the chips are the client's.
  *
  * Distance is the app's own 2-decimal reading and the date stamp is the app's
  * own `j M Y`, cased up for the mono labels the styles set them in.

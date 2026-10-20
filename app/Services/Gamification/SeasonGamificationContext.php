@@ -18,15 +18,11 @@ use App\Support\Numeric;
 use Illuminate\Support\Carbon;
 
 /**
- * The whole-season facts {@see SeasonGoalResolver} needs, resolved fresh on
- * every read (never cached — season goals are cheap to recompute and must
- * stay live). Scoped to one {@see Season} rather than the user's whole
- * history.
+ * The whole-season facts {@see SeasonGoalResolver} needs, resolved fresh on every read and never
+ * cached. Scoped to one {@see Season} rather than the user's whole history.
  *
- * Only PAST days (strictly before "today") are counted, matching
- * {@see \App\Services\Run\Plan\PlanPageAssembler}'s own `Done`/`Missed`
- * boundary — a day that hasn't finished yet can't be "completed" or
- * "honored".
+ * Only past days (strictly before "today") are counted, matching
+ * {@see \App\Services\Run\Plan\PlanPageAssembler}'s own `Done`/`Missed` boundary.
  */
 final readonly class SeasonGamificationContext
 {

@@ -24,7 +24,7 @@ describe('EmptyPanel', () => {
         expect(container.firstElementChild).toHaveClass('border-border-strong');
         expect(container.firstElementChild).toHaveClass('shadow-e1');
         // The prototype draws no dashed border anywhere; its empty cards are
-        // ordinary cards on the heavier border. See T3.
+        // ordinary cards on the heavier border.
         expect(container.firstElementChild).not.toHaveClass('border-dashed');
         expect(container.firstElementChild).not.toHaveClass('border-2');
     });

@@ -26,7 +26,7 @@ it('shifts every band up when max HR rises', function (): void {
     $after = HeartRateZones::derive(188, 55);
 
     // The whole point of reconciling a stale max: an easy run that read as Z3
-    // against the old ceiling reads as Z2 against the corrected one.
+    // against the stale ceiling reads as Z2 against the corrected one.
     expect($after['Z3']['lo'])->toBeGreaterThan($before['Z3']['lo'])
         ->and($after['Z2']['lo'])->toBeGreaterThan($before['Z2']['lo']);
 });

@@ -6,27 +6,20 @@ use Symfony\Component\Process\Process;
 
 /**
  * `vitest --changed` with no argument diffs the working tree against HEAD, so on
- * a clean checkout it selects nothing and exits 0. The gate used to fall back to
- * exactly that whenever `git merge-base HEAD origin/main` failed, so it ran zero
- * frontend tests and reported the step green.
+ * a clean checkout it selects nothing and exits 0.
  *
- * This pins both halves of the fix: a base is resolved, and an unresolvable one
- * is a non-zero exit rather than a silent empty string.
+ * Pins that a base is resolved, and that an unresolvable one is a non-zero exit
+ * rather than a silent empty string.
  *
- * Every scenario that needs a real `origin/main` builds its own throwaway repo
- * rather than relying on this checkout's: CI's own checkout is a shallow
- * `fetch-depth: 1` clone with no `origin/main` ref at all, so asserting against
- * this repo's actual remote-tracking state would fail there for the same reason
- * the script itself would.
+ * Every scenario that needs a real `origin/main` builds its own throwaway repo:
+ * CI's checkout is a shallow `fetch-depth: 1` clone with no `origin/main` ref.
  */
 const BASE_SCRIPT = 'scripts/vitest-changed-base.sh';
 
 /**
  * A stale worktree stack can still export GIT_DIR/GIT_WORK_TREE from a
- * compose.override.yaml written before the same-path git mount. Every git
- * command a test spawns against a throwaway repo has to unset both, or it
- * silently operates on the real checkout instead — it bit this file for real
- * once already.
+ * compose.override.yaml. Every git command a test spawns against a throwaway
+ * repo has to unset both, or it silently operates on the real checkout.
  *
  * @return array{GIT_DIR: false, GIT_WORK_TREE: false}
  */

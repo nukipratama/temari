@@ -35,16 +35,11 @@ class NotificationEligibility
     }
 
     /**
-     * Whether an automatic push is still relevant to send. A big Strava backfill
-     * stages hundreds of old per-run and historical recap narrations that
-     * eventually complete via the deferred chain (see
-     * DispatchPostRunAnalysis::isBackfill); without this, each one would still
-     * push to Telegram once done. Gates by the age of the type's reference date
-     * (the run's start, the week's ending, the recap month's end) against
-     * `notify_max_age_days`, so only the freshest period pings and history stays
-     * quiet. Types with no reference date, or a missing one, are never gated.
-     * Measured as of `$triggeredAt` when given, so time a notification spends
-     * held in quiet hours never makes it too old.
+     * Whether an automatic push is still relevant to send. Gates by the age of the type's reference
+     * date (the run's start, the week's ending, the recap month's end) against
+     * `notify_max_age_days`, so the old narrations a backfill completes later stay quiet. Types
+     * with no reference date, or a missing one, are never gated. Measured as of `$triggeredAt` when
+     * given, so time held in quiet hours never makes a notification too old.
      */
     public function isRecentEnoughToAutoNotify(Analysis $analysis, ?CarbonInterface $triggeredAt = null): bool
     {

@@ -8,13 +8,9 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 
 /**
- * A today-only replacement for one athlete's `daily_cost_ceiling_per_user`, set
- * from /devtools when an operator wants to let a specific athlete keep
- * narrating past their usual slice.
- *
- * Cache-backed and keyed by local date, expiring at midnight, so an override
- * cannot outlive the day it was reasoned about: the operator never has to
- * remember to take it back off, and tomorrow reads config again.
+ * A today-only replacement for one athlete's `daily_cost_ceiling_per_user`, set from /devtools.
+ * Cache-backed and keyed by local date, expiring at midnight, so an override cannot outlive the
+ * day.
  */
 class CeilingOverride
 {

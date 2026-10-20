@@ -5,13 +5,11 @@ import { useSharedProps } from '@/hooks/useSharedProps';
 
 /**
  * Calm reassurance shown when LLM narration is globally paused (`aiPaused`), so
- * a quiet pipeline reads as "Temari is resting" instead of a screen of
- * broken-looking empty states. Only the pause fact is shared, never the
- * operator-facing reason, so the copy stays soft and non-diagnostic. Mirrors
- * {@link StravaZoneReconnectBanner}'s shape, but each page that renders
- * narration blocks mounts it above its content, and a page without narration
- * never shows it; its test derives that set from the pages' imports. Static
- * (not dismissable) and action-less, this is a friendly heads-up, not an error.
+ * a quiet pipeline reads as "Temari is resting" instead of broken-looking empty
+ * states. Only the pause fact is shared, never the operator-facing reason.
+ * Mirrors {@link StravaZoneReconnectBanner}'s shape, but each page that renders
+ * narration blocks mounts it above its content; a page without narration never
+ * shows it. Static and action-less.
  */
 export default function AiOutageBanner() {
     const paused = useSharedProps().aiPaused ?? false;

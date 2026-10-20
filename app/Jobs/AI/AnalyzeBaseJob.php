@@ -80,19 +80,16 @@ abstract class AnalyzeBaseJob implements ShouldQueue
      * Settle a generation failure, given callbacks that mark the affected
      * row(s) failed or re-queued.
      *
-     * Any `TransientUpstreamException` (429 / 5xx / timeout) is retryable while
-     * both a `TRIES` slot and a row retry budget remain, whether or not it
-     * carries a `Retry-After`: re-queue the row(s) and release the job. The
-     * release delay is the upstream `Retry-After` when present, otherwise the
-     * configured backoff, capped at {@see self::MAX_RETRY_AFTER_SECONDS}. A
-     * re-queued row is neither re-dispatchable nor shown as "Try again", so a
-     * manual retry cannot race a second LLM call during the wait.
+     * Any `TransientUpstreamException` is retryable while both a `TRIES` slot and
+     * a row retry budget remain: re-queue the row(s) and release the job after
+     * the upstream `Retry-After` when present, otherwise the configured backoff,
+     * capped at {@see self::MAX_RETRY_AFTER_SECONDS}. A re-queued row is neither
+     * re-dispatchable nor shown as "Try again", so a manual retry cannot race a
+     * second LLM call.
      *
-     * Every other outcome ends this attempt failed. `UnavailableException` is
-     * terminal (bad schema / malformed JSON / permanent upstream error) and is
-     * swallowed so the worker does not retry; anything else (a transient error
-     * with no slot left, or a genuine bug) is rethrown so the queue records it
-     * in `failed_jobs`.
+     * Every other outcome ends this attempt failed: `UnavailableException` is
+     * terminal and swallowed so the worker does not retry; anything else is
+     * rethrown so the queue records it in `failed_jobs`.
      *
      * @param  iterable<Analysis>  $rows
      */
@@ -127,15 +124,12 @@ abstract class AnalyzeBaseJob implements ShouldQueue
      * Refuse to bill a run the row's retry budget can no longer pay for, and
      * settle it so it dead-letters. Returns true to tell handle() to stop.
      *
-     * `attempts` bumps once per real run (markProcessing), so it is the single
-     * budget the queue's own `TRIES` retries and ai:self-heal's re-dispatches
-     * both draw from, and {@see Analysis::MAX_SELF_HEAL_ATTEMPTS} bounds their
-     * sum rather than each half separately. Every dispatch leaves its row
-     * Queued, so a row arriving Failed or Processing is a queue-driven re-entry
-     * (a rethrown exception being retried, or a run whose worker died
-     * mid-flight) — a manual re-trigger still gets its run. A halted row that is
-     * not already Failed is marked so, rather than resting in a state no sweep
-     * can see.
+     * `attempts` is the single budget the queue's own `TRIES` retries and
+     * ai:self-heal's re-dispatches both draw from, bounded by
+     * {@see Analysis::MAX_SELF_HEAL_ATTEMPTS}. Every dispatch leaves its row
+     * Queued, so a row arriving Failed or Processing is a queue-driven re-entry;
+     * a manual re-trigger still gets its run. A halted row that is not already
+     * Failed is marked so.
      *
      * @param  iterable<Analysis>  $rows
      */
@@ -188,19 +182,13 @@ abstract class AnalyzeBaseJob implements ShouldQueue
 
     /**
      * Refuse to bill while generation is paused (cost ceiling / AI off / Azure
-     * unset). The cap is otherwise enforced only at dispatch time, so a job
-     * dispatched just before the ceiling tripped would still call the LLM; this
-     * closes that window. Returns true to tell handle() to stop.
+     * unset). Returns true to tell handle() to stop.
      *
-     * The ceiling is asked about the athlete these rows belong to, not just the
-     * shared pool. A group's rows are all upserted for one subject, so the first
-     * row's owner is every row's owner.
-     *
-     * Under the spend ceiling the rows are served from the deterministic filler,
-     * matching what dispatch would have done had the ceiling been hit a moment
-     * earlier — except a row that arrived Failed, which keeps its fault and its
-     * dead-letter visibility. Every other pause reverts them to Pending (never Failed, and
-     * before markProcessing, so no `attempts` burn) for ai:self-heal to
+     * The ceiling is asked about the athlete these rows belong to (a group's rows
+     * share one subject). Under the spend ceiling the rows are served from the
+     * deterministic filler, except a row that arrived Failed, which keeps its
+     * fault and dead-letter visibility. Every other pause reverts them to Pending
+     * (before markProcessing, so no `attempts` burn) for ai:self-heal to
      * re-dispatch once generation resumes.
      *
      * @param  iterable<array-key, Analysis>  $rows

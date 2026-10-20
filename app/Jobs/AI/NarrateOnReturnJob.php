@@ -33,11 +33,9 @@ use Illuminate\Support\Carbon;
  *
  * Every request is invalidate:false and every fill skips a Done row, so a second
  * run bills nothing. Stamped {@see AnalysisOrigin::Return}, which
- * {@see AnalysisService::markDone()} never notifies for, and every one of this
- * job's own rule-based fills is written with `reason: AnalysisOrigin::Return`
- * ({@see Analysis::$rule_based_reason}), so the UI can cue "temari hasn't read
- * this one yet" on exactly the blocks this job filled and no other rule-based
- * reason.
+ * {@see AnalysisService::markDone()} never notifies for; its rule-based fills
+ * carry `reason: AnalysisOrigin::Return` ({@see Analysis::$rule_based_reason}),
+ * so the UI can cue "temari hasn't read this one yet" on exactly those blocks.
  *
  * @see docs/decisions/narration-spends-only-on-active-athletes.md
  */

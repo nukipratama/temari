@@ -28,9 +28,8 @@ use LogicException;
  * here at render time only — the stored {@see PlannedSession} rows are never
  * mutated by a page load. See `docs/features/plan-periodizer.md`.
  *
- * Bound `scoped()` in AppServiceProvider: the season is memoized because
- * three props want it and `ensureCurrent()` writes, and Inertia's partial
- * reload runs the whole action a second time.
+ * Bound `scoped()` in AppServiceProvider: the season is memoized because three props want it and
+ * `ensureCurrent()` writes.
  *
  * @phpstan-import-type Candidate from RaceOutcomeMatcher
  */
@@ -381,11 +380,8 @@ final class PlanPageAssembler
     }
 
     /**
-     * Every past row should already carry its real status —
-     * plan:score-compliance (daily) persists it the morning after. This is the
-     * safety net for whatever it hasn't reached yet, plus today, which it
-     * deliberately never reaches; both are a small subset, so it's computed
-     * for those dates rather than the whole range.
+     * The safety net for past rows the daily `plan:score-compliance` pass hasn't reached yet, plus
+     * today, which it never reaches.
      *
      * @param  Collection<int, PlannedSession>  $sessions
      * @param  array{sessions_per_week: int, weekly_volume_km: float, long_run_km: float, long_run_cap_km: float, long_run_progression_cap_km: float, self_scaled: bool}  $baselineData

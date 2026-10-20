@@ -543,10 +543,7 @@ it('reads intensity_label heavy when Z3-Z5 together cover at least half the sess
     expect(new HrZonesTool($a, $d->refresh())->handle([])['intensity_label'])->toBe('heavy');
 });
 
-// Regression for #1009 (reopened): hr_drift_bpm reached the model as a bare
-// signed number described as "how much HR climbed", which reads backwards
-// the moment it's negative. hr_drift now carries an unsigned bpm and its own
-// relation, resolved from the sign alone.
+// hr_drift carries an unsigned bpm and its own relation, resolved from the sign alone.
 it('reads hr_drift from the stream summary with no signed field', function (): void {
     ['activity' => $a, 'detail' => $d] = agentToolFixture();
     $d->update(['stream_summary' => ['drift_metric_version' => 2, 'steady_effort_hr_drift_bpm' => 7.5]]);
@@ -563,9 +560,7 @@ it('reads hr_drift with relation=down when HR fell across the run', function ():
         ->toBe(['bpm' => 7.5, 'relation' => 'down']);
 });
 
-// Regression for #1009 (reopened): same anti-pattern as hr_drift, this time
-// described as "how much step rate fell" while the underlying value can be
-// negative when cadence actually rose.
+// Like hr_drift, cadence_drop carries no signed field even when cadence rose.
 it('reads cadence_drop from the stream summary via RunSummaryTool with no signed field', function (): void {
     ['activity' => $a, 'detail' => $d] = agentToolFixture();
     $d->update(['stream_summary' => ['cadence_drop_spm' => 4.0]]);
@@ -598,10 +593,7 @@ it('reads Strava elevation gain alongside the steepest grade and the flat-adjust
     ]);
 });
 
-// Regression for #1009 (reopened): the steepest-sustained-grade reading is
-// signed and can be negative on a net-downhill run, but the tool description
-// only ever framed it as "steepest climb". max_grade now carries its own
-// relation, so a descent can never be misread as a climb.
+// max_grade carries its own relation, so a descent is never misread as a climb.
 it('reads max_grade with relation=descent on a net-downhill run', function (): void {
     ['activity' => $a, 'detail' => $d] = agentToolFixture();
     $d->update(['stream_summary' => ['max_grade_pct' => -6.0]]);
@@ -707,10 +699,8 @@ it('reads relative effort with no comparison when the history is still one run d
         ->toBe(['trimp' => 92.4, 'baseline' => null, 'ratio' => null, 'band' => null]);
 });
 
-// Regression for #1009 (reopened): decoupling_pct reached the model with no
-// sign convention stated at all. decoupling now carries an unsigned pct plus
-// its own relation (up/down/flat), reusing DecouplingBands::TIGHT as the flat
-// band rather than inventing a new threshold.
+// decoupling carries an unsigned pct plus its own relation (up/down/flat),
+// using DecouplingBands::TIGHT as the flat band.
 it('reads decoupling with no signed field, relation=up on a real drift', function (): void {
     ['activity' => $a, 'detail' => $d] = agentToolFixture();
     $d->update(['stream_summary' => ['drift_metric_version' => 2, 'steady_effort_decoupling_pct' => 14.0]]);
@@ -753,7 +743,7 @@ it('reads the 28-day baseline and the load state from a prior run', function ():
         'runs' => 1,
         'avg_pace_sec_per_km' => 360,
         'avg_hr' => 150,
-        // Regression for #1009 (reopened): no bare signed avg_decoupling_pct.
+        // No bare signed avg_decoupling_pct.
         'avg_decoupling' => ['pct' => 6.0, 'relation' => 'up'],
     ])
         ->and($baseline)->not->toHaveKey('avg_decoupling_pct')
@@ -1523,16 +1513,13 @@ it('never counts another athlete plan', function (): void {
     expect(new PlanAdherenceTool($user, $today, null)->handle([])['prescribed'])->toBe(0);
 });
 
-// ── Structural guard: no tool payload exposes a signed delta (#1009, reopened) ──
+// ── Structural guard: no tool payload exposes a signed delta ──
 
 /**
  * Recursively asserts a tool payload carries no bare signed delta: none of
  * the retired key names show up anywhere in the tree (at any depth, under
- * any parent), and no numeric leaf is negative -- every delta this fix
- * touched now carries an unsigned magnitude plus its own relation word
- * instead. Generic over the whole payload tree on purpose, so a new field
- * added to any of these tools later is checked for free rather than needing
- * its own hand-written sign assertion.
+ * any parent), and no numeric leaf is negative. Generic over the whole
+ * payload tree, so a new field added to any of these tools is checked for free.
  *
  * @param  list<string>  $retiredKeys
  */
@@ -1555,9 +1542,9 @@ function assertNoSignedDelta(mixed $node, array $retiredKeys): void
 }
 
 it('exposes no signed numeric field across every tool payload touched by the #1009 fix', function (): void {
-    // Every fixture below is deliberately built on the "negative" side of a
-    // converted field, so this test fails on the pre-fix shape (a bare
-    // signed number) instead of passing by accident on all-positive data.
+    // Every fixture below is built on the "negative" side of a converted
+    // field, so a bare signed number fails instead of passing by accident on
+    // all-positive data.
     ['activity' => $a, 'detail' => $d] = agentToolFixture();
     $d->update([
         'weather_temp_c' => null,

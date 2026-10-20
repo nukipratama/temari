@@ -181,7 +181,7 @@ class BuildCalendarCellsAction
 
     /**
      * The best card the day's runs earned, so a week row's disclosure can badge
-     * its rarest card (P12) without a second per-week query.
+     * its rarest card without a second per-week query.
      *
      * @param  Collection<int, ActivityDetail>  $rows
      * @param  array<int, Rarity>  $rarityByActivity

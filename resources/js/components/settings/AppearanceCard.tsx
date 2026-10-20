@@ -16,11 +16,10 @@ const OPTIONS: ReadonlyArray<{
 ];
 
 /**
- * The Light / Dark / System control, ported from the prototype's own
- * AppearanceCard shape (a 3-way ToggleGroup) but wired for real: useTheme
- * owns the localStorage write and applies the resolved ground to the DOM
- * immediately, so a tap switches live with no reload and survives the next
- * one via app.blade.php's blocking inline script.
+ * The Light / Dark / System control (a 3-way ToggleGroup): useTheme owns the
+ * localStorage write and applies the resolved ground to the DOM immediately, so
+ * a tap switches live and survives the next load via app.blade.php's blocking
+ * inline script.
  */
 export default function AppearanceCard() {
     const { preference, setTheme } = useTheme();

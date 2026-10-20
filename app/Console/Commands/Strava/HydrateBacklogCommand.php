@@ -123,20 +123,16 @@ class HydrateBacklogCommand extends Command
     }
 
     /**
-     * Oldest-first: each run lands with its complete past already hydrated, so
-     * card PR flags, moods and Past You comparisons are right the moment it
-     * lands instead of needing a later replay. See
-     * {@see \App\Actions\Run\Story\RecomputeCardClaimsAction} for the safety
-     * net this leaves in place for runs that still arrive out of order (a
-     * live run synced mid-drain, a backdated upload). Ordered by a correlated
-     * subquery rather than a join so {@see AnalyzedScope} and the
-     * `summaryOnly` scope keep their own qualified columns. Public for the
-     * same reason as {@see self::budget()}.
+     * Oldest-first, so each run lands with its complete past already hydrated;
+     * {@see \App\Actions\Run\Story\RecomputeCardClaimsAction} is the safety net
+     * for runs that still arrive out of order. Ordered by a correlated subquery
+     * rather than a join so {@see AnalyzedScope} and the `summaryOnly` scope keep
+     * their own qualified columns. Public for the same reason as
+     * {@see self::budget()}.
      *
      * $recentFirst puts the last {@see RecentlyActiveUsers::ACTIVE_WINDOW_DAYS}
-     * days ahead of the rest, oldest-first within each half — the fresh-connect
-     * immediate drain's own ordering (see docs/decisions/history-narrates-on-demand.md).
-     * The cron tick never passes it, so its drain stays plain oldest-first.
+     * days ahead of the rest, oldest-first within each half (see
+     * docs/decisions/history-narrates-on-demand.md); the cron tick never passes it.
      */
     public function hydrateFor(DetailHydrator $hydrator, int $userId, int $take, bool $recentFirst = false): int
     {
@@ -161,12 +157,10 @@ class HydrateBacklogCommand extends Command
     }
 
     /**
-     * Rows the pipeline can still make progress on. A permanent 4xx leaves
-     * `ingest_state` at `summary` on purpose, so the attempt count — not the
-     * state — is what separates "not fetched yet" from "never will be".
-     * Stubs (`analyzed_at` null) stay hidden by {@see AnalyzedScope}: those are
-     * `strava:ingest`'s to drain, and dispatching both at one row would spend
-     * its two reads twice.
+     * Rows the pipeline can still make progress on: a permanent 4xx leaves
+     * `ingest_state` at `summary`, so the attempt count separates "not fetched
+     * yet" from "never will be". Stubs (`analyzed_at` null) stay hidden by
+     * {@see AnalyzedScope}; they are `strava:ingest`'s to drain.
      *
      * @param  Builder<Activity>  $query
      */

@@ -21,18 +21,14 @@ use Illuminate\Support\Facades\Log;
 use Throwable;
 
 /**
- * Pushes maintainer-facing alerts to every `is_admin` user's connected Telegram
- * chat, so a solo operator sees a paused pipeline, a dead-lettered block, or a
- * dead scheduler as a push instead of discovering it days later.
+ * Pushes maintainer-facing alerts to every `is_admin` user's connected Telegram chat, so a solo
+ * operator sees a paused pipeline, a dead-lettered block, or a dead scheduler as a push.
  *
- * Best-effort and self-contained: a no-op when Telegram is unconfigured, and a
- * per-chat send failure is logged, never thrown, so an alert can never fail the
- * job/command it is reporting on. Almost every alert's actual Telegram send
- * happens in {@see \App\Jobs\AI\SendMaintainerAlertJob}, queued by
- * {@see self::broadcast()}, so no outbound call runs inline in a web request.
- * The alerts raised by the scheduler itself send inline through
- * {@see self::sendInline()} instead, so a dead or paused Horizon cannot
- * silence them.
+ * Best-effort: a no-op when Telegram is unconfigured, and a per-chat send failure is logged, never
+ * thrown, so an alert can never fail the job it is reporting on. Most alerts send from
+ * {@see \App\Jobs\AI\SendMaintainerAlertJob}, queued by {@see self::broadcast()}; the alerts raised
+ * by the scheduler itself send inline through {@see self::sendInline()}, so a dead or paused
+ * Horizon cannot silence them.
  */
 class MaintainerAlerter
 {
@@ -90,15 +86,10 @@ class MaintainerAlerter
     }
 
     /**
-     * A block just crossed into dead-letter (ai:self-heal gave up after burning
-     * the retry budget). Fired from {@see \App\Services\AI\AnalysisService::markFailed()} only at
-     * the crossing (attempts reaching MAX). Coalesces into one summary push per
-     * window instead of one per dead-letter — a rate-limit storm can dead-letter
-     * many blocks within seconds, and one push per dead-letter would flood every
-     * admin's Telegram. Cache::add() only succeeds for the first dead-letter in
-     * a window, which is what schedules the flush; every dead-letter (first or
-     * not) increments the count the flush eventually reads. Serialised against
-     * flushDeadLetterWindow() via the same lock (see {@see self::withDeadLetterLock()}).
+     * A block just crossed into dead-letter (ai:self-heal gave up after burning the retry budget).
+     * Fired from {@see \App\Services\AI\AnalysisService::markFailed()} only at the crossing, and
+     * coalesced into one summary push per window so a rate-limit storm cannot flood every admin's
+     * Telegram. Serialised against flushDeadLetterWindow() via {@see self::withDeadLetterLock()}.
      */
     public function deadLettered(): void
     {
@@ -116,12 +107,9 @@ class MaintainerAlerter
 
     /**
      * Send the coalesced dead-letter count as one summary message, called by
-     * {@see \App\Jobs\AI\FlushDeadLetterAlertJob}. Reads then clears the window
-     * count under the same lock deadLettered() uses (see
-     * {@see self::withDeadLetterLock()}) — Cache::pull() is get()-then-forget(),
-     * not atomic, so without the lock a dead-letter landing between this read and
-     * the clear would increment a key about to be deleted and be silently lost
-     * instead of scheduling its own future flush.
+     * {@see \App\Jobs\AI\FlushDeadLetterAlertJob}. Reads then clears the window count under the
+     * lock deadLettered() uses (see {@see self::withDeadLetterLock()}), because Cache::pull() is
+     * not atomic and a dead-letter landing in between would be silently lost.
      */
     public function flushDeadLetterWindow(): void
     {
@@ -142,12 +130,9 @@ class MaintainerAlerter
     }
 
     /**
-     * Serialises the dead-letter window's read/increment/clear operations
-     * against each other so deadLettered()'s increment can never land between
-     * flushDeadLetterWindow()'s read and its forget (see both docblocks). On
-     * the (effectively impossible) lock timeout, falls back to running $work
-     * unlocked rather than dropping a dead-letter alert or blocking the
-     * caller's markFailed() path.
+     * Serialises the dead-letter window's read/increment/clear operations against each other. On
+     * the (effectively impossible) lock timeout, falls back to running $work unlocked rather than
+     * dropping an alert or blocking the caller's markFailed() path.
      *
      * @template T
      * @param  callable(): T  $work
@@ -163,10 +148,9 @@ class MaintainerAlerter
     }
 
     /**
-     * Alert on a generation pause on/off transition, with the reason. Compares the
-     * current {@see \App\Services\AI\NarrationGate::pauseReason()} to the last one alerted (stored
-     * durably) and pushes only on a change, so an ongoing pause is not re-sent on
-     * every hourly self-heal run. A null reason means generation resumed.
+     * Alert on a generation pause on/off transition, with the reason. Compares the current
+     * {@see \App\Services\AI\NarrationGate::pauseReason()} to the last one alerted (stored durably)
+     * and pushes only on a change. A null reason means generation resumed.
      *
      * Returns when the pause began on the one sweep that sees it lift, and null
      * otherwise, including when the lifting pause was the app-wide cost ceiling.
@@ -330,10 +314,9 @@ class MaintainerAlerter
     }
 
     /**
-     * One athlete has spent their own daily slice, so their narration is served
-     * rule-based until midnight while everyone else is unaffected. Ordinary
-     * enough not to wake anyone, frequent enough to want the key dated: one push
-     * per athlete per day, not one per gated dispatch.
+     * One athlete has spent their own daily slice, so their narration is served rule-based until
+     * midnight while everyone else is unaffected. One push per athlete per day, not one per gated
+     * dispatch.
      */
     public function userCeilingReached(int $userId, float $todayCost, float $ceiling): void
     {
@@ -348,11 +331,9 @@ class MaintainerAlerter
     }
 
     /**
-     * Today's app-wide spend, offered on every gated dispatch while there is
-     * still headroom. The threshold and the cooldown live here so the ceiling
-     * check stays one call: a warning at
-     * {@see self::TOTAL_CEILING_WARNING_FRACTION} of the ceiling buys the time
-     * that {@see self::totalCeilingReached()} no longer has.
+     * Today's app-wide spend, offered on every gated dispatch while there is still headroom. A
+     * warning at {@see self::TOTAL_CEILING_WARNING_FRACTION} of the ceiling buys the time that
+     * {@see self::totalCeilingReached()} no longer has.
      */
     public function totalCeilingApproaching(float $todayCost, float $ceiling): void
     {

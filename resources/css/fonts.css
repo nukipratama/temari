@@ -1,24 +1,18 @@
 /* Self-hosted web fonts, so a cold standalone launch never blocks on a
    third-party origin after the splash has already shown. Vite fingerprints
-   these into /build/assets, which docker/Caddyfile already serves
-   `immutable, max-age=1y`.
+   these into /build/assets, which docker/Caddyfile serves `immutable,
+   max-age=1y`.
 
-   Written out here rather than importing @fontsource-variable's own stylesheets
-   because those ship every subset the family has (vietnamese, latin-ext,
-   cyrillic); the app is English-only, so only the latin subset is emitted. The
-   families are named exactly as `--font-sans` / `--font-serif` / `--font-mono`
-   in app.css declare them, so nothing downstream changes.
+   Only the latin subset is emitted, rather than importing
+   @fontsource-variable's own stylesheets, which ship every subset the family
+   has. The families are named exactly as `--font-sans` / `--font-serif` /
+   `--font-mono` in app.css declare them.
 
-   Axes match what the Google stylesheet requested before it: Fraunces carries
-   opsz 9..144 alongside wght, which is what makes its optical sizing work at
-   headline sizes, and its italic is a second file. Plus Jakarta Sans and
-   JetBrains Mono were only ever requested upright, so their italics stay
-   synthesised, exactly as today.
-
-   The Fraunces faces are the two heaviest assets the app serves (81.5 and
-   67.3 kB) and both ship whole. Narrowing their axis ranges was measured and
-   declined; docs/design-tokens.md carries the numbers and what would have to
-   be true to revisit it. */
+   Fraunces carries opsz 9..144 alongside wght, which is what makes its optical
+   sizing work at headline sizes, and its italic is a second file. Plus Jakarta
+   Sans and JetBrains Mono are upright only, so their italics stay synthesised.
+   docs/design-tokens.md carries the Fraunces asset sizes and why narrowing
+   their axis ranges was declined. */
 
 @font-face {
     font-family: 'Fraunces';

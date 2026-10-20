@@ -193,7 +193,7 @@ export default function Inbox({
 }
 
 /**
- * P3: a real page, not a reveal. Each press asks the server for twenty more
+ * A real page, not a reveal. Each press asks the server for twenty more
  * rows; `preserveScroll` keeps what has already been read where it was, and
  * only the list props are refetched.
  */

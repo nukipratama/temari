@@ -21,12 +21,11 @@ use Laravel\Pulse\Facades\Pulse;
 /**
  * Verifies a Strava deauthorization webhook out-of-band before acting on it.
  *
- * The webhook body is unauthenticated and forgeable: anyone who knows the
- * owner's public athlete id could POST a fake deauth and DoS the sync. So the
- * controller treats the event as a hint only and queues this job, which confirms
- * the grant is really gone by hitting `/athlete` with the stored token. A 401
- * (or a permanently-rejected refresh) proves the revocation is genuine; a 2xx
- * means the event was forged or stale and the connection is left untouched.
+ * The webhook body is unauthenticated and forgeable, so the controller treats
+ * the event as a hint only and queues this job, which confirms the grant is
+ * really gone by hitting `/athlete` with the stored token. A 401 (or a
+ * permanently-rejected refresh) proves the revocation is genuine; a 2xx means
+ * the event was forged or stale and the connection is left untouched.
  */
 #[Backoff([30, 120])]
 #[Tries(3)]

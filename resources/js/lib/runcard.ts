@@ -48,8 +48,7 @@ export const RARITY_HEX: Record<Rarity, string> = {
     legendary: '#f5a623',
 };
 
-// Thread-band accent density (Slice 9c).
-// Additive rarity chrome, not a re-hue: more stitches at higher tiers.
+// Thread-band accent density: more stitches at higher tiers.
 export const RARITY_BAND_COUNT: Record<Rarity, number> = {
     common: 1,
     uncommon: 2,

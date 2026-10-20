@@ -65,19 +65,14 @@ class AnalyzeActivityJob extends AnalyzeGroupJob
 
     /**
      * Chain propagation (group-level): once this activity's whole narration
-     * group is Done, dispatch the next chronological activity's group (by
-     * start_date_local) for the same user whose group is still Pending. The
-     * per-activity chain advances per activity (the whole group), not per row,
-     * so this is overridden at the group level rather than per AnalyzeRowJob.
-     * The next group is dispatched via requestActivityGroup(invalidate:false),
-     * which is a clean no-op under a tripped cost ceiling or AI-disabled env,
-     * so the chain pauses (rows stay Pending, no filler) rather than breaking
-     * the connected story. Each successor reads its predecessor's already-Done
-     * post_run / run_insight narrative.
+     * group is Done, dispatch the next chronological activity's group for the
+     * same user whose group is still Pending, via
+     * requestActivityGroup(invalidate:false) — a clean no-op under a tripped cost
+     * ceiling or AI-disabled env, so the chain pauses rather than breaking.
      *
-     * Best-effort: any failure here (DB blip, dispatch error) is logged and
-     * swallowed so it never flips this already-Done, already-billed group back
-     * to Failed. The daily resume sweep re-kicks any link this misses.
+     * Best-effort: any failure is logged and swallowed so it never flips this
+     * already-Done, already-billed group back to Failed. The daily resume sweep
+     * re-kicks any link this misses.
      */
     #[Override]
     protected function afterGroupDone(AnalysisService $service): void
@@ -104,11 +99,9 @@ class AnalyzeActivityJob extends AnalyzeGroupJob
     /**
      * The earliest activity (by start_date_local) for the user owning
      * $afterActivityId whose narration group is still Pending and that is
-     * strictly later than $afterActivityId. Drives both the chain advance (the
-     * "next" link) and, when $afterActivityId is the chain head, lets the
-     * listener kickoff and the daily resume sweep find the same earliest link.
-     * "Pending group" is matched on the representative PostRunSpeech row, since
-     * the whole group is staged and narrated together.
+     * strictly later than it. Drives the chain advance and, when it is the chain
+     * head, the listener kickoff and the daily resume sweep. "Pending group" is
+     * matched on the representative PostRunSpeech row.
      */
     public static function earliestPendingActivity(int $afterActivityId): ?Activity
     {
@@ -144,13 +137,10 @@ class AnalyzeActivityJob extends AnalyzeGroupJob
     }
 
     /**
-     * The user's earliest activity (by start_date_local) whose narration group is
-     * *stalled* on its representative PostRunSpeech row: Pending, or Failed still
-     * under the self-heal retry budget ({@see Analysis::stalled()}). Unlike
-     * {@see self::earliestPendingActivityForUser()} (Pending-only, which drives
-     * the chain advance), this also recovers a Failed-under-budget group so
-     * ai:self-heal can retry it, bounded to dead-letter. Returns null when the
-     * user has no stalled per-activity group left.
+     * The user's earliest activity whose narration group is *stalled* on its
+     * representative PostRunSpeech row: Pending, or Failed still under the
+     * self-heal retry budget ({@see Analysis::stalled()}), so ai:self-heal can
+     * retry it. Returns null when none is left.
      */
     public static function earliestStalledActivityForUser(int $userId): ?Activity
     {
@@ -227,11 +217,10 @@ class AnalyzeActivityJob extends AnalyzeGroupJob
     }
 
     /**
-     * The run-insight analysis this group persists: its content is a JSON-
-     * encoded claims list (possibly `[]` when nothing survived falsifiability
-     * checking — see {@see RunInsightNarrator}). Reused verbatim from an
-     * already-Done row when present (so a story-only re-dispatch does not
-     * re-bill the insight LLM); otherwise generated fresh.
+     * The run-insight analysis this group persists: a JSON-encoded claims list
+     * (possibly `[]`, see {@see RunInsightNarrator}). Reused verbatim from an
+     * already-Done row so a story-only re-dispatch does not re-bill the insight
+     * LLM; otherwise generated fresh.
      *
      * @param  Closure(AnalysisType, string): void  $persistGenerated
      */

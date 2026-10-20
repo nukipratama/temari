@@ -14,15 +14,11 @@ use Illuminate\Database\Eloquent\Builder;
 final class AnalysisSubjectAuthorizer
 {
     /**
-     * Exhaustive on purpose (no `default`): a new AnalysisType without an arm is
-     * an UnhandledMatchError, never a silent authorization bypass.
+     * Exhaustive on purpose (no `default`): a new AnalysisType without an arm is an
+     * UnhandledMatchError, never a silent authorization bypass.
      *
-     * `$discriminator` is accepted but unchecked: no type keys off a *resource*
-     * any more. The featured-card voice was the only one, and it needed its own
-     * ownership check because a RunCard id sat under the caller's own subject id.
-     * A future resource-keyed type needs that check added back here; the range or
-     * ownership bound is required by AnalysisTypeTest, which fails a type that
-     * permits a discriminator and bounds it neither way.
+     * `$discriminator` is accepted but unchecked because no type keys off a resource; a future
+     * resource-keyed type needs an ownership check added here.
      *
      * @throws AuthorizationException
      */

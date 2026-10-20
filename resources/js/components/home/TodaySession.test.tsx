@@ -669,8 +669,7 @@ describe('TodaySession', () => {
     });
 
     /**
-     * #940: the prescribed pace used to sit right after "km run", reading as
-     * the run's own pace. Once the day is credited it shows on its own line,
+     * Once the day is credited, the prescribed pace shows on its own line,
      * labelled beside the run's own credited pace.
      */
     it('states both figures once the day has been judged, with the pace labelled', () => {
@@ -718,8 +717,8 @@ describe('TodaySession', () => {
         ).toBeInTheDocument();
     });
 
-    /** #1269: once today has a run logged but hasn't been graded yet, the
-     *  hero number is what was run, with the plan's ask beside it as the label. */
+    /** Once today has a run logged but hasn't been graded yet, the hero number
+     *  is what was run, with the plan's ask beside it as the label. */
     it('leads with the ran km once today has a run but is not yet judged', () => {
         render(
             <TodaySession

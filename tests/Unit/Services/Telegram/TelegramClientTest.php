@@ -112,7 +112,7 @@ it('wraps a transport failure in a TelegramApiException with no status', functio
     }
 });
 
-// #986: an explicit connect timeout bounds DNS/TCP setup independently of the
+// An explicit connect timeout bounds DNS/TCP setup independently of the
 // total timeout, so a resolver/socket stall can't outlast either budget.
 it('sets an explicit connect timeout alongside the total timeout', function (): void {
     $method = new ReflectionMethod(TelegramClient::class, 'client');

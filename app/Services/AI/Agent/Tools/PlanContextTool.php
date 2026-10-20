@@ -28,16 +28,13 @@ use Carbon\CarbonInterface;
 use Illuminate\Support\Carbon;
 
 /**
- * What the periodizer prescribed over a span, and how the athlete did against
- * it. Bound to the span the calling block is about, so a weekly recap and a
- * per-run narrator ask the same question of a different window.
+ * What the periodizer prescribed over a span, and how the athlete did against it. Bound to the span
+ * the calling block is about.
  *
- * `prescribed_km` is written by {@see \App\Services\Run\Plan\ComplianceScorer}
- * the morning after a day passes, so it is null for today and every future day.
- * Today and the rest of the current week take the session and km the page
- * shows, from {@see CurrentWeekKm}; later days fall back to the unredistributed core
- * distance. The target pace comes from the athlete's current VDOT rather than
- * the row, which stores none.
+ * `prescribed_km` is written by {@see \App\Services\Run\Plan\ComplianceScorer} the morning after a
+ * day passes, so it is null for today and every future day: today and the rest of the current week
+ * take the session and km the page shows, from {@see CurrentWeekKm}, and later days fall back to
+ * the unredistributed core distance.
  */
 final class PlanContextTool extends UserTool
 {

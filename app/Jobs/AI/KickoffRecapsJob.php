@@ -23,21 +23,16 @@ use Illuminate\Foundation\Queue\Queueable;
 
 /**
  * The last link of the first-connect chain: weekly + monthly recap and Trends
- * kickoff for a single user, so a new athlete's history narrates on day one
- * instead of waiting for the Monday / 1st-of-month sweep. Recap and Trends
- * reads touch only rows the backfill already wrote, so those bill no Strava
- * budget; the one exception is the immediate {@see HydrateBacklogForUserJob}
- * this dispatches, bounded by the same background read headroom the
- * `strava:hydrate-backlog` cron shares, so the backlog drain starts now
- * instead of waiting for the next tick. The kickoff actions skip every Done
- * recap, so a re-run bills nothing.
+ * kickoff for a single user, so a new athlete's history narrates on day one.
+ * Recap and Trends reads touch only rows the backfill already wrote; the one
+ * Strava-billing exception is the immediate {@see HydrateBacklogForUserJob} this
+ * dispatches, bounded by the same background read headroom as the
+ * `strava:hydrate-backlog` cron. The kickoff actions skip every Done recap, so a
+ * re-run bills nothing.
  *
- * Being last, it is also where `users.backfilled_at` is stamped — the marker
- * nothing else could supply, since the chain's own position is unreadable from
- * outside it — and where the first week is re-sized against the history that
- * just landed, if onboarding already wrote a plan. Today's
- * briefing, asked for at signup against a history that had not arrived yet, is
- * re-requested here so it reads the runs instead.
+ * Being last, it is where `users.backfilled_at` is stamped, where the first week
+ * is re-sized against the landed history if onboarding already wrote a plan, and
+ * where today's briefing is re-requested so it reads the runs.
  */
 class KickoffRecapsJob implements ShouldQueue
 {

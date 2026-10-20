@@ -88,8 +88,7 @@ it('dispatches the briefing group for each active user, and nothing else', funct
 
             return new Analysis();
         });
-    // The featured-card row was this command's only direct request() call.
-    // W2 removed it with the panel it narrated, so the kickoff is the group alone.
+    // The kickoff is the group alone; this command makes no direct request() call.
     $service->shouldNotReceive('request');
     $this->app->instance(AnalysisService::class, $service);
 

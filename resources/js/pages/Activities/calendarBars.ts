@@ -62,13 +62,11 @@ export interface BarSegment {
 }
 
 /**
- * One bar segment per run, stacked bottom-up in the order `cell.runs`
- * arrives — the backend orders by start time, so the earliest run lands at
- * the bottom. Each segment's height uses the same per-grid scale as a
- * single-run day (own distance, own effort colour), so a multi-run day
- * reads as a taller bar instead of collapsing to its hardest run's colour.
- * Falls back to one segment from the day's aggregate when the breakdown is
- * thin (a legacy summary-only day with no per-run detail).
+ * One bar segment per run, stacked bottom-up in the order `cell.runs` arrives
+ * (the backend orders by start time). Each segment's height uses the same
+ * per-grid scale as a single-run day, so a multi-run day reads as a taller bar.
+ * Falls back to one segment from the day's aggregate when the breakdown is thin
+ * (a legacy summary-only day).
  */
 export function barSegments(cell: CalendarCell, gridMax: number): BarSegment[] {
     if (cell.runs.length > 0) {

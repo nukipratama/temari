@@ -215,16 +215,9 @@ class PostRunSpeechNarrator
     /**
      * The reads this speech may pull, each bound to this activity.
      *
-     * Deliberately narrower than run insight's: no per-km table, no zone
-     * breakdown. Handing it either would produce a fourth telling of the same
-     * run alongside the three lenses that already told it, on a page where all
-     * four sit side by side. What is left is the material for the one lens the
-     * others cannot hold: what this run beat, what the plan asked of it, and
-     * what the day around it was like. Where this run sits against a past one
-     * is deliberately not here any more (#1009): that comparison is rendered
-     * by code from {@see \App\Services\Run\Story\PastYouMatcher::findMatchContext},
-     * next to this narration, and a narrator that never sees the numbers
-     * cannot state them wrongly.
+     * Deliberately narrower than run insight's: no per-km table, no zone breakdown, and no past-run
+     * comparison, which {@see \App\Services\Run\Story\PastYouMatcher::findMatchContext} renders in
+     * code so a narrator that never sees the numbers cannot state them wrongly.
      */
     public function toolbox(Activity $activity, ActivityDetail $detail): AgentToolbox
     {

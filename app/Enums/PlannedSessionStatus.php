@@ -6,16 +6,11 @@ namespace App\Enums;
 
 /**
  * Backed enum for a planned session's row-level lifecycle. Every generated
- * row starts `Planned`; this is never mutated by regeneration or the
- * readiness clamp (both are render/generation-time concerns that leave the
- * stored row alone). `plan:score-compliance` (daily, see `routes/console.php`)
- * is what resolves a past `Planned` row to `Done`/`Partial`/`Missed`/
- * `Overreached`/`Skip` and writes it back — see
+ * row starts `Planned`; `plan:score-compliance` (daily) resolves a past one to
+ * `Done`/`Partial`/`Missed`/`Overreached`/`Skip` — see
  * {@see \App\Services\Run\Plan\SessionMatcher::scoreFor()} for the km-ratio
- * bands that decide it. `PlanPageAssembler`/`CurrentWeekPlanBuilder` read the
- * stored value directly; `SessionMatcher::scoreRange()` survives only as a
- * defensive live-compute fallback for a past row the daily command hasn't
- * reached yet.
+ * bands. `SessionMatcher::scoreRange()` survives only as a live-compute
+ * fallback for a past row the daily command hasn't reached yet.
  */
 enum PlannedSessionStatus: string
 {

@@ -454,7 +454,7 @@ it('dayPayload reports an Interval day at what its reps add up to, not at its bu
 
     // The card and the segments beneath it are the same run — the whole point
     // of docs/decisions/a-session-is-the-whole-outing.md, and the one session
-    // type that used to break it.
+    // type most at risk of breaking it.
     expect($payload['distance_km'])->toBe($summed);
 });
 
@@ -532,8 +532,8 @@ function tempoSessionWithEasyClamp(Carbon $today, string $note): array
 
 /**
  * `Readiness::assess()` caps to EasyOnly on `ranToday` alone, so finishing the
- * session is itself what clamps it. The block used to become a menu for a
- * second outing; a finished day now just states what it came to.
+ * session is itself what clamps it. A finished day states what it came to
+ * instead of offering a second outing.
  */
 it('dayPayload drops the advised ease entirely once the day is credited', function (PlannedSessionStatus $status): void {
     $today = Carbon::parse('2026-08-10');

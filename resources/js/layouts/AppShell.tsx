@@ -70,13 +70,9 @@ export default function AppShell({ children }: Readonly<AppShellProps>) {
                 <AiCatchingUpBanner />
                 <StravaPausedBanner />
 
-                {/* Deliberately unkeyed and unanimated. A `key` here forced React to
-                    tear down and rebuild the whole content subtree on every visit
-                    (25 card mounts on Collection), and the enter animation it existed
-                    to replay started at opacity 0 — so a navigation read as
-                    "old page → blank → fade in". Inertia already swaps a different
-                    component type on a real navigation, so React remounts what it
-                    needs to without help. */}
+                {/* Deliberately unkeyed and unanimated: Inertia already swaps a
+                    different component type on a real navigation, so React
+                    remounts what it needs to without help. */}
                 <main
                     id="main-content"
                     tabIndex={-1}

@@ -73,10 +73,8 @@ it('throws UnavailableException when a required key is missing from the structur
         ->call('kind', 'sys', [], 'schema', ['headline']);
 })->throws(UnavailableException::class, 'missing headline');
 
-// A malformed answer is still a billed turn. Metering used to sit downstream of
-// the JSON decode, so those tokens vanished -- and with $tries=3 on the job, a
-// flaky row under-reported roughly three times its real spend to the daily cost
-// ceiling that reads this table.
+// A malformed answer is still a billed turn: metering sits upstream of the JSON
+// decode, so the daily cost ceiling that reads this table sees the real spend.
 it('records the turn it already paid for even when the response is malformed', function (): void {
     expect(fn () => structuredCaller('{not valid json')->call('kind', 'sys', [], 'schema', ['headline']))
         ->toThrow(UnavailableException::class);
@@ -370,7 +368,7 @@ it('RecordTokenUsageAction alerts the maintainer once when the DB insert throws,
     $log->shouldHaveReceived('warning')->once()->with('token_usage.record_failed', Mockery::any());
 });
 
-// ── B1: transient vs terminal Azure-failure classification ────────────
+// ── transient vs terminal Azure-failure classification ────────────
 
 function retryAfterOfTransientUpstream(Closure $call): ?int
 {
@@ -451,7 +449,7 @@ it('resets the config-breaker streak on a successful call', function (): void {
     expect(configBreakerSnapshot()['failures'])->toBe(0);
 });
 
-// ── B3: single higher-token retry on truncation ───────────────────────
+// ── single higher-token retry on truncation ───────────────────────
 
 it('retries once at a higher token cap when the first response is truncated', function (): void {
     $log = Log::spy();
@@ -832,7 +830,7 @@ it('sends the same cache key for two different users of one narrator', function 
     expect($keys)->toBe(['briefing_mascot_voice', 'briefing_mascot_voice']);
 });
 
-// A narrator contract the JSON schema cannot express (#853: the profile voice
+// A narrator contract the JSON schema cannot express (the profile voice
 // may quote only the figures it committed to two slots) is checked here, and a
 // rejected answer is handed back once with the complaint attached.
 it('re-asks once with the complaint when a validator rejects the answer', function (): void {

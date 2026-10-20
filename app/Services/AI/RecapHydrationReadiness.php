@@ -14,16 +14,13 @@ use Illuminate\Support\Facades\Log;
 /**
  * Holds a weekly recap back while the week it narrates is still filling in.
  *
- * A recap is requested `invalidate: false`, so a week narrated against half its
- * splits and a null `weekly_trimp` keeps that thin story permanently. The
- * `strava:hydrate-backlog` drain and the Monday kickoff have no ordering
- * between them, so this is the ordering: a week whose activities the pipeline
- * still owes a hydration is not narrated yet.
+ * A recap is requested `invalidate: false`, so a week narrated against half its splits keeps that
+ * thin story permanently; a week whose activities the pipeline still owes a hydration is not
+ * narrated yet.
  *
- * The hold is bounded by wall clock rather than a deferral counter, so it needs
- * no state of its own — a run that will never hydrate (detail attempts spent)
- * already drops out of {@see Activity::awaitingHydration()}, and everything
- * else is capped by the grace window below.
+ * The hold is bounded by wall clock rather than a deferral counter, so it needs no state of its
+ * own: a run that will never hydrate already drops out of {@see Activity::awaitingHydration()}, and
+ * everything else is capped by the grace window below.
  *
  * @see docs/decisions/recap-waits-for-hydration.md
  */
@@ -105,10 +102,9 @@ class RecapHydrationReadiness
     }
 
     /**
-     * `"{user}|{week_ending}"` for every week holding a run the pipeline can
-     * still hydrate. A webhook stub carries no `activity_details` row and so no
-     * date to place it in a week; `strava:ingest` gives it one before it can
-     * count against any recap.
+     * `"{user}|{week_ending}"` for every week holding a run the pipeline can still hydrate. A
+     * webhook stub carries no `activity_details` row and so no date to place it in a week;
+     * `strava:ingest` gives it one first.
      *
      * @param  list<int>  $userIds
      * @return array<string, true>
