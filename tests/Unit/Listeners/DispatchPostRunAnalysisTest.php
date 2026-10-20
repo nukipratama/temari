@@ -28,7 +28,9 @@ use App\Models\RunCard;
 use App\Models\StravaConnection;
 use App\Models\WeeklySnapshot;
 use App\Notifications\DayClampedNotification;
+use App\Services\AI\AnalysisOrigin;
 use App\Services\AI\AnalysisService;
+use App\Services\AI\NarrationOrigin;
 use App\Services\AI\ServedBy;
 use App\Actions\AI\StaggerBackfillAction;
 use App\Services\AI\AnalysisStatus;
@@ -602,7 +604,7 @@ function narratedGroup(Activity $activity, ?string $fingerprint): void
             'status' => AnalysisStatus::Done,
             'content' => 'narasi lama',
             'content_fingerprint' => $fingerprint,
-            'generated_at' => Carbon::now(),
+            'generated_at' => Carbon::now()->subHour(),
         ]);
     }
 }
@@ -668,11 +670,12 @@ it('does not auto-refresh an older, non-latest run even when its data changed', 
     Carbon::setTestNow();
 });
 
-it('holds off re-narrating while the run is still in its cooldown window', function (): void {
+it('holds off re-narrating while an ingest narration of the run is still inside the cooldown window', function (): void {
     Carbon::setTestNow('2026-06-10 09:00:00');
     $activity = analyzedActivity('2026-06-10 06:00:00');
     narratedGroup($activity, 'stale-fingerprint');
-    postRunSpeechRow($activity)->startCooldown();
+    app(NarrationOrigin::class)->set(AnalysisOrigin::Ingest);
+    app(AnalysisService::class)->markDone(postRunSpeechRow($activity), 'narasi baru', ServedBy::Llm, fingerprint: 'stale-fingerprint');
 
     fire($activity);
 

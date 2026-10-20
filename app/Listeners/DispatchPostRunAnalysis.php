@@ -26,6 +26,7 @@ use App\Services\Run\Metrics\WeeklyAggregator;
 use App\Services\Run\Story\Temari;
 use App\Services\Run\Trend\TrendSnapshotRepairDispatch;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use App\Support\Cooldown;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use App\Services\AI\AnalysisOrigin;
@@ -305,7 +306,7 @@ class DispatchPostRunAnalysis implements ShouldQueue
 
     /**
      * Whether the latest run's material data changed since its narration was
-     * generated and its cooldown has elapsed. A null stored fingerprint (a
+     * generated, at least a cooldown window ago whatever started it. A null stored fingerprint (a
      * pre-feature run, never stamped) counts as unchanged, so shipping this never
      * mass-invalidates history — only forward, on a genuine change.
      */
@@ -325,7 +326,8 @@ class DispatchPostRunAnalysis implements ShouldQueue
             return false;
         }
 
-        return ($speech->cooldownRemaining() ?? 0) <= 0;
+        return $speech->generated_at === null
+            || $speech->generated_at->lte(Carbon::now()->subSeconds(Cooldown::WINDOW_SECONDS));
     }
 
 }
