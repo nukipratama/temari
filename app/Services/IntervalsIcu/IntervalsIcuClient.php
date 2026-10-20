@@ -64,12 +64,7 @@ class IntervalsIcuClient
         return null;
     }
 
-    /**
-     * Upserts on a `uid` fixed per athlete and day, so a retry after a create
-     * that landed but timed out updates that event instead of adding another.
-     *
-     * @return string the event's id
-     */
+    /** @return string the event's id */
     public function createEvent(IntervalsIcuConnection $connection, string $date, IntervalsIcuWorkout $workout): string
     {
         $event = [...self::event($date, $workout), 'uid' => 'temari-'.$connection->user_id.'-'.$date];
