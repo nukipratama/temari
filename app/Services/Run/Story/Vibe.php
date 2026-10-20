@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Run\Story;
 
+use App\Support\Numeric;
 use Illuminate\Database\Eloquent\Collection;
 use App\Actions\Run\Story\ResolveLastRunStartAction;
 use App\Models\ActivityDetail;
@@ -39,11 +40,8 @@ class Vibe
     private const int PR_WINDOW_DAYS = 14;
 
     /**
-     * Answers already computed this request/job, keyed by user and date.
-     *
-     * The binding is `scoped()` in AppServiceProvider so DashboardController
-     * and BriefingComposer reach the same instance; without that they get
-     * separate ones and this memo never sees the second call.
+     * Answers already computed this request/job, keyed by user and date. The binding is `scoped()` in
+     * AppServiceProvider so DashboardController and BriefingComposer share the instance.
      *
      * @var array<string, string>
      */
@@ -71,7 +69,7 @@ class Vibe
         $decoupling = $this->avgDecouplingPct($user, $asOf);
 
         return $this->memo[$key] = VibeMatrix::pick([
-            'form' => (float) ($load['form'] ?? 0.0),
+            'form' => Numeric::float($load['form'] ?? 0.0),
             'form_status' => $load['form_status'] ?? TrainingFormStatus::Optimal,
             'days_since_run' => $daysSinceRun,
             'recent_pr' => $recentPr,
@@ -83,7 +81,7 @@ class Vibe
     {
         $lastRun = ($this->lastRunStart)($user->id);
 
-        if ($lastRun === null) {
+        if (!$lastRun instanceof Carbon) {
             return null;
         }
 

@@ -21,21 +21,25 @@ const PAUSED_STATUS = 409;
 const MALFORMED_RESPONSE_ERROR = 'the server sent back something unreadable';
 
 /**
- * Minimal runtime shape check for a trigger response. The fetch body is
- * `unknown`, so we verify the two fields this hook reads (`status` string +
- * the optional numeric `retry_after_seconds`) before trusting the cast.
+ * Runtime shape check for a trigger response. The fetch body is `unknown`, so
+ * we verify the fields this hook and its `onUpdate` consumers read before
+ * trusting the cast.
  */
 function isAnalysisPayload(value: unknown): value is AnalysisPayload {
     if (typeof value !== 'object' || value === null) {
         return false;
     }
     const record = value as Record<string, unknown>;
-    if (typeof record.status !== 'string') {
-        return false;
-    }
     return (
-        record.retry_after_seconds == null ||
-        typeof record.retry_after_seconds === 'number'
+        typeof record.status === 'string' &&
+        typeof record.type === 'string' &&
+        typeof record.subject_id === 'number' &&
+        (record.id === null || typeof record.id === 'number') &&
+        (record.content === null || typeof record.content === 'string') &&
+        (record.discriminator == null ||
+            typeof record.discriminator === 'string') &&
+        (record.retry_after_seconds == null ||
+            typeof record.retry_after_seconds === 'number')
     );
 }
 
@@ -117,7 +121,7 @@ function stopSlot(slot: PollSlot): void {
 // the registry. Used both by the last-subscriber teardown and the max-attempts
 // give-up path (`gaveUp`), so we don't leak a listener for a slot that no
 // longer polls. Only evict our OWN slot: a later subscribe under the same key
-// may have already replaced us in the registry (FE-6 evict-race guard).
+// may have already replaced us in the registry.
 // When `gaveUp`, notify subscribers so their UI can leave the fake skeleton.
 function retireSlot(slot: PollSlot, gaveUp = false): void {
     stopSlot(slot);

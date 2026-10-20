@@ -30,6 +30,7 @@ function briefingRowsFor(User $user): Collection
 }
 
 /**
+ * @param  array<string, mixed>  $overrides
  * @return array<string, mixed>
  */
 function onboardingGoalPayload(array $overrides = []): array
@@ -93,6 +94,20 @@ it('never redirects an already-onboarded user back into the wizard, and lets the
     $this->actingAs($user)->get('/')->assertSuccessful();
 });
 
+it('sends an already-onboarded user home from a replayed wizard submit, changing nothing', function (): void {
+    $onboardedAt = Carbon::now()->subWeek()->startOfSecond();
+    $user = User::factory()->create(['onboarded_at' => $onboardedAt]);
+    $this->mock(RequestTodaysBriefing::class)->shouldNotReceive('atSignup');
+
+    $this->actingAs($user)
+        ->post('/onboarding', onboardingGoalPayload())
+        ->assertRedirect(route('dashboard'))
+        ->assertSessionMissing('success');
+
+    expect(RaceGoal::query()->where('user_id', $user->id)->exists())->toBeFalse()
+        ->and($user->refresh()->onboarded_at?->equalTo($onboardedAt))->toBeTrue();
+});
+
 it('redirects an unboarded user away from the rest of the app back to the wizard, but lets them subscribe to push and log out', function (): void {
     $user = User::factory()->needsOnboarding()->create();
 
@@ -117,7 +132,7 @@ it('marks the user onboarded and skips the goal and preferences steps when no fi
         ->assertRedirect(route('dashboard'))
         ->assertSessionHas('success');
 
-    expect($user->fresh()->onboarded_at)->not->toBeNull()
+    expect($user->refresh()->onboarded_at)->not->toBeNull()
         ->and(RaceGoal::query()->where('user_id', $user->id)->exists())->toBeFalse()
         ->and(TrainingPreference::query()->where('user_id', $user->id)->exists())->toBeFalse();
 });
@@ -129,12 +144,11 @@ it('creates a race and marks the user onboarded when the goal step is filled in'
         ->post('/onboarding', onboardingGoalPayload())
         ->assertRedirect(route('dashboard'));
 
-    $race = RaceGoal::query()->where('user_id', $user->id)->active()->first();
-    expect($race)->not->toBeNull()
-        ->and($race->distance_m)->toBe(10_000)
+    $race = nonNull(RaceGoal::query()->where('user_id', $user->id)->active()->first());
+    expect($race->distance_m)->toBe(10_000)
         ->and($race->goal_time_sec)->toBe(3_000)
         ->and($race->name)->toBe('Jakarta 10K')
-        ->and($user->fresh()->onboarded_at)->not->toBeNull();
+        ->and($user->refresh()->onboarded_at)->not->toBeNull();
 });
 
 it('creates a training_preferences row when the preferences step is filled in', function (): void {
@@ -150,11 +164,10 @@ it('creates a training_preferences row when the preferences step is filled in', 
         ])
         ->assertRedirect(route('dashboard'));
 
-    $preference = TrainingPreference::query()->where('user_id', $user->id)->first();
-    expect($preference)->not->toBeNull()
-        ->and($preference->sessions_per_week)->toBe(3)
+    $preference = nonNull(TrainingPreference::query()->where('user_id', $user->id)->first());
+    expect($preference->sessions_per_week)->toBe(3)
         ->and($preference->run_days)->toBe([1, 3, 5])
-        ->and($user->fresh()->onboarded_at)->not->toBeNull();
+        ->and($user->refresh()->onboarded_at)->not->toBeNull();
 });
 
 // Before this, today's briefing was staged only by the 00:01 kickoff, so an
@@ -162,8 +175,8 @@ it('creates a training_preferences row when the preferences step is filled in', 
 it('asks for today\'s briefing when the wizard is finished', function (): void {
     Bus::fake();
     // backfilled_at set: the Strava backfill already landed by the time the
-    // wizard finishes, so the request is not held (#1032 covers the other
-    // case below, and RequestTodaysBriefingTest covers the hold itself).
+    // wizard finishes, so the request is not held (RequestTodaysBriefingTest
+    // covers the hold itself).
     $user = User::factory()->needsOnboarding()->create(['backfilled_at' => Carbon::now()]);
 
     $this->actingAs($user)->post('/onboarding')->assertRedirect(route('dashboard'));
@@ -189,6 +202,16 @@ it('rejects a partial goal submission and does not onboard the user', function (
         ->post('/onboarding', onboardingGoalPayload(['distance_m' => null]))
         ->assertSessionHasErrors('distance_m');
 
-    expect($user->fresh()->onboarded_at)->toBeNull()
+    expect($user->refresh()->onboarded_at)->toBeNull()
         ->and(RaceGoal::query()->where('user_id', $user->id)->exists())->toBeFalse();
+});
+
+it('answers the 11th wizard submit within a minute with 429', function (): void {
+    $user = User::factory()->needsOnboarding()->create();
+
+    foreach (range(1, 10) as $attempt) {
+        $this->actingAs($user)->postJson('/onboarding', onboardingGoalPayload(['distance_m' => null]))->assertUnprocessable();
+    }
+
+    $this->actingAs($user)->postJson('/onboarding', onboardingGoalPayload(['distance_m' => null]))->assertTooManyRequests();
 });

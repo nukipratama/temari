@@ -7,6 +7,8 @@ namespace App\Services\Run;
 use App\Models\ActivityDetail;
 use App\Models\User;
 use App\Services\Run\Metrics\DistanceFormatter;
+use App\Support\Numeric;
+use Carbon\CarbonInterface;
 use Illuminate\Support\Facades\Cache;
 
 use function is_string;
@@ -54,9 +56,10 @@ class LifetimeStats
             ->selectRaw('SUM(distance) AS total_distance, MAX(distance) AS longest_distance, MIN(start_date_local) AS first_run_at')
             ->first();
 
-        $totalDistanceMeters = (float) ($aggregates?->getAttribute('total_distance') ?? 0);
-        $longestMeters = (float) ($aggregates?->getAttribute('longest_distance') ?? 0);
+        $totalDistanceMeters = Numeric::float($aggregates?->getAttribute('total_distance') ?? 0);
+        $longestMeters = Numeric::float($aggregates?->getAttribute('longest_distance') ?? 0);
         $firstRunAt = $aggregates?->getAttribute('first_run_at');
+        assert($firstRunAt === null || is_string($firstRunAt) || $firstRunAt instanceof CarbonInterface);
 
         return [
             'total_runs' => $totalRuns,

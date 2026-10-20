@@ -19,8 +19,7 @@ use Inertia\Response;
  * row arrives with the deep link, the replay ids, and nothing else.
  *
  * The list is a growing window rather than a two-way pager: "load older" asks
- * for `?shown=` more rows and the server says whether anything sits behind them
- * (P3 — the prototype's own reveal swaps a hardcoded array).
+ * for `?shown=` more rows and the server says whether anything sits behind them.
  *
  * `?item=` is the deep-link target a push tap lands on. The window is widened
  * far enough to contain it, so the row is on screen even when it sits well
@@ -111,7 +110,7 @@ final class InboxController extends Controller
     }
 
     /**
-     * The distance/pace the prototype's post-run rows carry as stat chips, in
+     * The distance/pace the post-run rows carry as stat chips, in
      * one query over the whole window rather than a lookup per row.
      *
      * @param  Collection<int, InboxNotification>  $rows

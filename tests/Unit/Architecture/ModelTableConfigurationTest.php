@@ -28,7 +28,7 @@ it('resolves the pinned table configuration', function (string $class, array $co
         $model->getTable(),
         $model->getConnectionName(),
         $model->usesTimestamps(),
-        $class::isIgnoringTouch(),
+        $model::isIgnoringTouch(),
         $model->getIncrementing(),
         $model->getKeyName(),
         $model->getKeyType(),

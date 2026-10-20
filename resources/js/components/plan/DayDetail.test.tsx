@@ -3,6 +3,8 @@ import { describe, expect, it, vi } from 'vitest';
 
 import type { EditablePlanDay } from '@/lib/plan';
 
+import { defined } from '@/test/defined';
+
 import DayDetail, { DayHeadline, hasDayDetail } from './DayDetail';
 
 const TODAY = '2026-06-17';
@@ -87,7 +89,7 @@ const WEEK: EditablePlanDay[] = [
 /** The headline over its detail, as the day panel draws them. */
 function renderRow(overrides: Partial<Parameters<typeof DayDetail>[0]> = {}) {
     const props = {
-        day: WEEK[0],
+        day: defined(WEEK[0]),
         weekDays: WEEK,
         onMove: vi.fn(),
         onSkip: vi.fn(),
@@ -384,8 +386,7 @@ describe('DayHeadline and DayDetail', () => {
     });
 
     /**
-     * The week-adjustment arrow used to always point down, even when the
-     * number went up (#975). It must point the way the ask actually moved.
+     * The week-adjustment arrow points the way the ask actually moved.
      */
     it("tags a trimmed day 'trimmed' but keeps the old value out of the headline, then explains it in the detail", () => {
         renderRow({ day: day({ distance_km: 3, asked_km: 8 }) });
@@ -1070,10 +1071,8 @@ describe('DayHeadline and DayDetail', () => {
     });
 
     /**
-     * #975: three independent change lines used to stack as full sentences.
-     * Even combined on one (synthetic) day, each stays a short delta pair —
-     * this proves the row copes with all three at once rather than turning
-     * into a paragraph.
+     * Even combined on one (synthetic) day, each change stays a short delta
+     * pair rather than turning into a paragraph.
      */
     it('renders all three change kinds together, each as its own short delta line', () => {
         renderRow({
@@ -1200,10 +1199,8 @@ describe('DayHeadline and DayDetail', () => {
     });
 
     /**
-     * #940: a graded day's prescribed pace used to sit right after "km run",
-     * reading as the run's own pace — the actual run averaged something
-     * else entirely. Once the day is credited, both figures show, each
-     * labelled with its own word.
+     * Once the day is credited, both paces show, each labelled with its own
+     * word.
      */
     it('labels both paces once the day has a credited run', () => {
         renderRow({

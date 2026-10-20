@@ -8,12 +8,9 @@ use NoDiscard;
 
 /**
  * The hardest session intensity a runner should be encouraged toward today.
- * Computed deterministically by {@see Readiness} from load + recovery signals;
- * the LLM may voice a suggestion at or below the ceiling but never above it,
- * so a red-flag day can't be phrased as a quality day even if the prose wants.
- *
- * Ordered least-to-most permissive via {@see rank()} so the assessor can take
- * the most restrictive cap across every guardrail with a simple minimum.
+ * Computed deterministically by {@see Readiness} from load + recovery signals; the LLM may voice a
+ * suggestion at or below the ceiling but never above it. Ordered least-to-most permissive via
+ * {@see rank()}.
  */
 enum ReadinessCeiling: string
 {

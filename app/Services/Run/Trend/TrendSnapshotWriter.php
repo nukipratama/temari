@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Run\Trend;
 
+use App\Models\RaceGoal;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\TrendDailySnapshot;
@@ -44,7 +45,7 @@ class TrendSnapshotWriter
             $estimate = $this->vdotEstimator->estimate($user, $date);
             $dateString = $date->toDateString();
             $race = $this->vdotEstimator->raceAsOf($user, $date);
-            $ambition = $race === null ? null : $this->ambition->assess($user, $race, $date);
+            $ambition = $race instanceof RaceGoal ? $this->ambition->assess($user, $race, $date) : null;
             $supportedSec = $ambition?->supportedTimeSec;
             $basis = $supportedSec === null ? null : $ambition->basis;
 

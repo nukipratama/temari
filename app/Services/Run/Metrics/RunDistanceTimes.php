@@ -6,6 +6,7 @@ namespace App\Services\Run\Metrics;
 
 use App\Enums\PrCategory;
 use App\Models\ActivityDetail;
+use App\Support\Numeric;
 
 final class RunDistanceTimes
 {
@@ -78,12 +79,9 @@ final class RunDistanceTimes
     }
 
     /**
-     * The run's segments in order: every full kilometre, then the trailing
-     * sub-km leftover. The window needs that leftover to reach a target that
-     * lands inside it — a 42.6 km run only covers 42 full kilometres, so the
-     * marathon PR sits in the final 600 m. The leftover's time is recovered
-     * from its already-normalized pace, the one place Strava's `moving_time`
-     * still shows through until KmSplitBuilder derives the partial itself.
+     * The run's segments in order: every full kilometre, then the trailing sub-km leftover, so a
+     * target inside it (the marathon on a 42.6 km run) is reachable. The leftover's time is recovered
+     * from its already-normalized pace.
      *
      * @return list<array<string, mixed>>
      */
@@ -94,7 +92,7 @@ final class RunDistanceTimes
         $partial = $summary->partialSplit() ?? [];
         $pace = $partial['pace'] ?? null;
         $paceSec = is_string($pace) ? PaceFormatter::parse($pace) : null;
-        $distance = (float) ($partial['distance_m'] ?? 0);
+        $distance = Numeric::float($partial['distance_m'] ?? 0);
         if ($paceSec !== null && $distance > 0) {
             $rows[] = ['distance_m' => $distance, 'elapsed_sec' => $paceSec * $distance / 1000];
         }
@@ -116,8 +114,8 @@ final class RunDistanceTimes
         $beats = 0.0;
         $everySplitHasHeartRate = true;
         foreach ($splits as $split) {
-            $distance = (float) ($split['distance_m'] ?? 0);
-            $time = (float) ($split['elapsed_sec'] ?? 0);
+            $distance = Numeric::float($split['distance_m'] ?? 0);
+            $time = Numeric::float($split['elapsed_sec'] ?? 0);
             if ($distance <= 0 || $time <= 0) {
                 continue;
             }

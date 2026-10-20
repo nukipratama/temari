@@ -44,11 +44,8 @@ class ProgressionSeriesBuilder
     }
 
     /**
-     * Batch variant of build(): one query covering every requested PR's distance
-     * band, bucketed in PHP, so /records's multi-distance selector costs a single
-     * round trip instead of one per category. Keyed by PrCategory value; a
-     * category with too few in-window runs is omitted. Insertion order follows
-     * the given $records.
+     * Batch variant of build(): one query covering every requested PR's distance band, bucketed in
+     * PHP. Keyed by PrCategory value; a category with too few in-window runs is omitted.
      *
      * @param  list<PersonalRecord>  $records
      * @param  callable(PersonalRecord): (int|null)  $goalResolver
@@ -166,15 +163,9 @@ class ProgressionSeriesBuilder
     }
 
     /**
-     * Overwrite the PR's own week with its stored time, so the chart's labeled
-     * best point matches the /records hero and trophy wall exactly instead of
-     * drifting a second or two (the weekly series scales whole-run elapsed_time
-     * while the PR is split-interpolated to the exact target distance).
-     *
-     * Only the PR's own ISO week is snapped: if the PR was set before the
-     * 26-week window (an old best not beaten since), its week isn't in the
-     * series, so we leave the scaled trend untouched rather than stamp the PR
-     * time onto a different, more recent week that never actually ran it.
+     * Overwrite the PR's own week with its stored time, so the chart's labeled best point matches the
+     * /records hero exactly. Only the PR's own ISO week is snapped: a PR set before the 26-week window
+     * leaves the scaled trend untouched.
      *
      * @param  array<string, array{time:int, activity_id:int|null}>  $bestByWeek
      */

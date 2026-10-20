@@ -64,7 +64,7 @@ it('reaches Telegram as well as push, never the inbox', function (): void {
     $user = subscribedUser();
     TelegramConnection::factory()->for($user)->create();
 
-    expect(new MorningBriefingNotification(briefingFor($user))->via($user->fresh()))
+    expect(new MorningBriefingNotification(briefingFor($user))->via($user->refresh()))
         ->toBe([TelegramChannel::class, IdempotentWebPushChannel::class]);
 });
 
@@ -72,7 +72,7 @@ it('reaches a Telegram-only athlete', function (): void {
     $user = User::factory()->create();
     TelegramConnection::factory()->for($user)->create();
 
-    expect(new MorningBriefingNotification(briefingFor($user))->via($user->fresh()))
+    expect(new MorningBriefingNotification(briefingFor($user))->via($user->refresh()))
         ->toBe([TelegramChannel::class]);
 });
 
@@ -104,7 +104,7 @@ it('sends nothing to the demo identity', function (): void {
     TelegramConnection::factory()->for($user)->create();
     $user->update(['is_demo' => true]);
 
-    expect(new MorningBriefingNotification(briefingFor($user))->via($user->fresh()))->toBe([]);
+    expect(new MorningBriefingNotification(briefingFor($user))->via($user->refresh()))->toBe([]);
 });
 
 it('carries the briefing content to Telegram, keyed on the same briefing row', function (): void {
@@ -122,6 +122,7 @@ it('carries the briefing content, trimmed, and opens the dashboard', function ()
     $user = subscribedUser();
     $notification = new MorningBriefingNotification(briefingFor($user));
 
+    /** @var array{title: string, body: string, data: array{url: string}} $message */
     $message = $notification->toWebPush($user, $notification)->toArray();
 
     expect($message['title'])->toBe('Your briefing for today')
@@ -135,7 +136,9 @@ it('cuts a long briefing to whole sentences for the push, and keeps it whole on 
     $briefing->update(['content' => 'honestly the legs were heavier than the pace says 🔥🔥. you held 5:40 through the middle third ✨ and only let it slip on the climb back, which is fine. tomorrow stays easy 🛌 though, no heroics. the week still has room for one more quality day if the legs come round 🔥.']);
     $notification = new MorningBriefingNotification($briefing);
 
-    $body = $notification->toWebPush($user, $notification)->toArray()['body'];
+    /** @var array{body: string} $payload */
+    $payload = $notification->toWebPush($user, $notification)->toArray();
+    $body = $payload['body'];
 
     expect(mb_strlen($body))->toBeLessThanOrEqual(PushBody::MAX_CHARS)
         ->and($body)->toEndWith('which is fine.')
@@ -206,7 +209,7 @@ it('goes stale two hours past its bucket, or at the end of its day when that com
     $user = subscribedUser();
     $briefing = briefingFor($user);
 
-    expect(new MorningBriefingNotification($briefing)->staleAfter->toDateTimeString())->toBe('2026-05-24 08:00:00');
+    expect(new MorningBriefingNotification($briefing)->staleAfter?->toDateTimeString())->toBe('2026-05-24 08:00:00');
 
     $lateRunner = subscribedUser();
     foreach (range(1, 5) as $day) {
@@ -214,18 +217,18 @@ it('goes stale two hours past its bucket, or at the end of its day when that com
         ActivityDetail::factory()->for($activity)->create(['start_date_local' => "2026-05-0{$day} 23:30:00"]);
     }
 
-    expect(new MorningBriefingNotification(briefingFor($lateRunner))->staleAfter->toDateTimeString())->toBe('2026-05-24 23:59:59');
+    expect(new MorningBriefingNotification(briefingFor($lateRunner))->staleAfter?->toDateTimeString())->toBe('2026-05-24 23:59:59');
 });
 
 it('logs a stale skip with its type and settles the delivery row as failed', function (): void {
     Carbon::setTestNow('2026-05-24 09:00:00');
-    Log::spy();
+    $log = Log::spy();
     $user = subscribedUser();
     $briefing = briefingFor($user);
 
     expect(new MorningBriefingNotification($briefing)->shouldSend($user, IdempotentWebPushChannel::class))->toBeFalse();
 
-    Log::shouldHaveReceived('info')->withArgs(fn (string $message, array $context): bool => $message === 'notifications.stale_skipped'
+    $log->shouldHaveReceived('info')->withArgs(fn (string $message, array $context): bool => $message === 'notifications.stale_skipped'
         && $context['type'] === MorningBriefingNotification::class)->once();
     $row = NotificationDelivery::query()->where('analysis_id', $briefing->id)->where('channel', 'webpush')->firstOrFail();
     expect($row->status)->toBe(NotificationDeliveryStatus::Failed)

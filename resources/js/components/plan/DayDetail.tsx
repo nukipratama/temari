@@ -41,8 +41,7 @@ import {
 
 /**
  * The whole day, for a rest day that was run anyway. Both halves are day
- * totals: mixing a summed distance with one run's clock is the bug this
- * replaced.
+ * totals: mixing a summed distance with one run's clock would misreport it.
  */
 function daySummary(day: PlanDay): string {
     const km = day.actual_km == null ? null : `${day.actual_km} km`;

@@ -1,13 +1,12 @@
 import { RULES, rulesFor } from '@scripts/check-raw-palette.mjs';
 
+import { defined } from '@/test/defined';
+
 // Every fixture below is built via concatenation rather than written as one
-// literal, in code AND in comments — check-raw-palette.mjs itself scans
-// resources/js line by line with no comment-stripping, so a fixture (or a
-// comment naming one) spelled out as a contiguous substring would trip the
-// very rule this file tests. grounds.mjs's/DesignTokenContrastTest's own
-// source scanners have the same blind spot for the `bg-*` family — an
-// unclassified fixture there would separately fail the backend's
-// "classifies every background the components paint" gate.
+// literal, in code AND in comments: check-raw-palette.mjs scans resources/js
+// line by line with no comment-stripping, so a contiguous fixture would trip the
+// very rule this file tests. grounds.mjs's/DesignTokenContrastTest's scanners
+// have the same blind spot for the `bg-*` family.
 const rawShade = ['bg', 'blue', '500'].join('-');
 const legitToken = ['bg', 'sky', '2'].join('-');
 const offTokenShadow = ['shadow', 'lg'].join('-');
@@ -18,30 +17,32 @@ const canvasFont = ['700 30px "JetBrains', 'Mono"'].join(' ');
 
 describe('check-raw-palette rules', () => {
     it('still flags a raw Tailwind palette shade', () => {
-        expect(rawShade.match(RULES[0].re)).toEqual([rawShade]);
+        expect(rawShade.match(defined(RULES[0]).re)).toEqual([rawShade]);
     });
 
     it('still flags an off-token shadow utility', () => {
-        expect(offTokenShadow.match(RULES[1].re)).toEqual([offTokenShadow]);
+        expect(offTokenShadow.match(defined(RULES[1]).re)).toEqual([
+            offTokenShadow,
+        ]);
     });
 
     it('does not false-positive a legitimate token that ends in a digit', () => {
-        expect(legitToken.match(RULES[0].re)).toBeNull();
+        expect(legitToken.match(defined(RULES[0]).re)).toBeNull();
     });
 
     /**
-     * T2 stepped the root font-size 20% at >=1280px and left open that nothing
-     * stopped a new px literal from silently opting out of it. These two rules
-     * close that, and W4 added them while the tree held zero violations — so
-     * without a deliberate fixture they would pass forever whether or not they
-     * matched anything.
+     * These two rules guard px literals opting out of the root font-size step at
+     * >=1280px; they were added while the tree held zero violations, so without
+     * a deliberate fixture they would pass whether or not they matched anything.
      */
     it('flags a px font-size utility', () => {
-        expect(pxFontSize.match(RULES[2].re)).toEqual([pxFontSize]);
+        expect(pxFontSize.match(defined(RULES[2]).re)).toEqual([pxFontSize]);
     });
 
     it('flags an inline px font-size style prop', () => {
-        expect(inlinePxFont.match(RULES[3].re)).toEqual([inlinePxFont]);
+        expect(inlinePxFont.match(defined(RULES[3]).re)).toEqual([
+            inlinePxFont,
+        ]);
     });
 
     it('leaves rem font-sizes at the 11px floor alone, since those scale with the root', () => {
@@ -61,12 +62,11 @@ describe('check-raw-palette rules', () => {
     });
 
     /**
-     * F2 removed the off-scale-radius rule after tokening the rest of
-     * Tailwind's radius keywords (--radius-2xl/3xl/4xl joined app.css's
-     * @theme static). This is the regression test for that removal: exactly
-     * two rules remain, and rounded-2xl/3xl/4xl are no longer matched by
-     * anything — proving the rule went away because it ran out of a
-     * violation to find, not because RULES was silently trimmed further.
+     * Regression test for the off-scale-radius rule's removal once the rest of
+     * Tailwind's radius keywords were tokened (--radius-2xl/3xl/4xl in app.css's
+     * @theme static): rounded-2xl/3xl/4xl are no longer matched by anything,
+     * proving the rule went away because it ran out of a violation to find, not
+     * because RULES was silently trimmed further.
      */
     it('has exactly the seven rules the docstring documents', () => {
         expect(RULES.map((rule) => rule.name)).toEqual([
@@ -102,7 +102,7 @@ describe('ground-fixed gradient stop', () => {
     // concatenated for the reason given at the top of this file: the scanner
     // reads this very file, so a contiguous literal would trip the rule it
     // tests.
-    const rule = RULES[4].re;
+    const rule = defined(RULES[4]).re;
     const fixedFrom = ['from', 'surface', 'warm'].join('-');
     const fixedTo = ['to', 'surface', 'elev'].join('-');
     const reactiveFrom = ['from', 'popover'].join('-');
@@ -143,7 +143,7 @@ describe('ground-fixed gradient stop', () => {
 });
 
 describe('sub-11px rem font-size', () => {
-    const rule = RULES[5].re;
+    const rule = defined(RULES[5]).re;
     const remSize = (value: string) => ['text', `[${value}rem]`].join('-');
 
     it.each([
@@ -187,7 +187,7 @@ describe('sub-11px rem font-size', () => {
 });
 
 describe('bare rounded utility', () => {
-    const rule = RULES[6].re;
+    const rule = defined(RULES[6]).re;
     const bare = ['round', 'ed'].join('');
     const matches = (classes: string) => classes.match(rule) ?? [];
 

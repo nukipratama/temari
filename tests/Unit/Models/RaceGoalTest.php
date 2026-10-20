@@ -39,7 +39,7 @@ it('casts race_date, distance_m, goal_time_sec and completed_at', function (): v
 it('serializes race_date as the naive date, not a UTC-shifted instant', function (): void {
     $race = new RaceGoal(['race_date' => '2026-12-06']);
 
-    expect($race->toArray()['race_date'])->toBe('2026-12-06');
+    expect(data_get($race->toArray(), 'race_date'))->toBe('2026-12-06');
 });
 
 it('active scope excludes races with a completed_at', function (): void {
@@ -98,7 +98,7 @@ it('casts its outcome, finish time and recorded-at, and reads null for a legacy 
         'outcome_recorded_at' => '2026-10-02 08:00:00',
     ]);
 
-    expect($legacy->fresh()->outcome)->toBeNull()
+    expect($legacy->refresh()->outcome)->toBeNull()
         ->and($recorded->outcome)->toBe(RaceOutcome::Confirmed)
         ->and($recorded->finish_time_sec)->toBeInt()->toBe(2950)
         ->and($recorded->outcome_recorded_at)->toBeInstanceOf(Carbon::class);

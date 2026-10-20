@@ -52,9 +52,9 @@ it('allows every preference field to stay null', function (): void {
         'long_run_day' => null,
     ]);
 
-    expect($preference->fresh()->experience_level)->toBeNull()
-        ->and($preference->fresh()->sessions_per_week)->toBeNull()
-        ->and($preference->fresh()->goal_type)->toBeNull()
-        ->and($preference->fresh()->run_days)->toBeNull()
-        ->and($preference->fresh()->long_run_day)->toBeNull();
+    expect($preference->refresh()->experience_level)->toBeNull()
+        ->and($preference->refresh()->sessions_per_week)->toBeNull()
+        ->and($preference->refresh()->goal_type)->toBeNull()
+        ->and($preference->refresh()->run_days)->toBeNull()
+        ->and($preference->refresh()->long_run_day)->toBeNull();
 });

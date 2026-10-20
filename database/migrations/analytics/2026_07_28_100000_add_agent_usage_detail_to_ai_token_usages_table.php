@@ -9,12 +9,9 @@ use Illuminate\Support\Facades\Schema;
 /**
  * What a narration actually cost, beyond the three totals already recorded.
  *
- * Every narrator is a tool-calling agent now, so one row can cover several model
- * turns. Without `steps` there is no way to tell an expensive block apart from a
- * chatty one. `cached_tokens` and `reasoning_tokens` come off the response's
- * usage details, which the client parses and nothing has been reading: cached
- * input is billed at a discount, and reasoning bills as output — the costlier
- * side on both deployments.
+ * Every narrator is a tool-calling agent, so one row can cover several model
+ * turns: `steps` tells an expensive block from a chatty one, `cached_tokens`
+ * bills at a discount and `reasoning_tokens` bills as output.
  */
 return new class () extends Migration {
     public function up(): void

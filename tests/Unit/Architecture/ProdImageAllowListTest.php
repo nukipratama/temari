@@ -6,14 +6,18 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 use Symfony\Component\Yaml\Yaml;
 
+/** @return Collection<int, non-empty-string> */
 function dockerignorePatterns(): Collection
 {
-    return collect(file(base_path('.dockerignore'), FILE_IGNORE_NEW_LINES))
+    $lines = file(base_path('.dockerignore'), FILE_IGNORE_NEW_LINES);
+
+    return collect($lines === false ? throw new RuntimeException('.dockerignore is unreadable.') : $lines)
         ->map(fn (string $line): string => trim($line))
         ->reject(fn (string $line): bool => $line === '' || str_starts_with($line, '#'))
         ->values();
 }
 
+/** @return Collection<int, string> */
 function allowListedPaths(): Collection
 {
     return dockerignorePatterns()
@@ -22,14 +26,17 @@ function allowListedPaths(): Collection
         ->values();
 }
 
+/** @return list<string> */
 function expectedImageEntries(): array
 {
-    $step = collect(Yaml::parseFile(base_path('.github/workflows/ci.yml'))['jobs']['build']['steps'])
+    $step = collect(arrayOf(data_get(Yaml::parseFile(base_path('.github/workflows/ci.yml')), 'jobs.build.steps')))
         ->firstWhere('name', 'Assert the shipped app entries');
 
     expect($step)->not->toBeNull('build-prod-image lost its image-contents assertion step.');
 
-    return preg_split('/\s+/', trim($step['env']['EXPECTED_ENTRIES']));
+    $entries = data_get($step, 'env.EXPECTED_ENTRIES');
+
+    return preg_split('/\s+/', trim(is_string($entries) ? $entries : throw new InvalidArgumentException('EXPECTED_ENTRIES is not a string.'))) ?: throw new RuntimeException('EXPECTED_ENTRIES could not be split.');
 }
 
 it('excludes everything the allow-list does not name', function (): void {
@@ -55,7 +62,7 @@ it('keeps every file the Dockerfile copies from the build context in the allow-l
     preg_match_all('/^COPY\s+(?!--from)(.+)$/m', (string) file_get_contents(base_path('Dockerfile')), $matches);
 
     $sources = collect($matches[1])
-        ->flatMap(fn (string $args): array => array_slice(preg_split('/\s+/', trim($args)), 0, -1))
+        ->flatMap(fn (string $args): array => array_slice(preg_split('/\s+/', trim($args)) ?: throw new RuntimeException('COPY arguments could not be split.'), 0, -1))
         ->reject(fn (string $source): bool => $source === '.' || str_starts_with($source, '--'))
         ->unique()
         ->values();
@@ -78,10 +85,10 @@ it('installs the assets stage under the repo .npmrc, so dependency install scrip
 
 it('loads and lists the image only when an image input changed, never on a main push', function (): void {
     $workflow = Yaml::parseFile(base_path('.github/workflows/ci.yml'));
-    $steps = collect($workflow['jobs']['build']['steps'])->keyBy('name');
+    $steps = collect(arrayOf(data_get($workflow, 'jobs.build.steps')))->keyBy('name');
 
-    expect($steps['Load the runtime image locally']['if'])->toBe("needs.changes.outputs.image == 'true'")
-        ->and($steps['Assert the shipped app entries']['if'])->toBe("needs.changes.outputs.image == 'true'")
-        ->and($workflow['jobs']['changes']['outputs']['image'])->toBe('${{ steps.filter.outputs.image }}')
-        ->and($workflow['jobs']['changes']['if'])->toBe("\${{ github.event_name == 'pull_request' }}");
+    expect(data_get($steps['Load the runtime image locally'], 'if'))->toBe("needs.changes.outputs.image == 'true'")
+        ->and(data_get($steps['Assert the shipped app entries'], 'if'))->toBe("needs.changes.outputs.image == 'true'")
+        ->and(data_get($workflow, 'jobs.changes.outputs.image'))->toBe('${{ steps.filter.outputs.image }}')
+        ->and(data_get($workflow, 'jobs.changes.if'))->toBe("\${{ github.event_name == 'pull_request' }}");
 })->group('structure');

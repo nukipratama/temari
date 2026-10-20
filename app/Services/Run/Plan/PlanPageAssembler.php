@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Run\Plan;
 
+use App\Models\PlanAdaptation;
 use App\Actions\Run\Plan\ResolveActiveRaceAction;
 use App\Actions\Run\Plan\ResolveWeekAdaptationAction;
 use App\Enums\PlannedSessionStatus;
@@ -27,9 +28,8 @@ use LogicException;
  * here at render time only — the stored {@see PlannedSession} rows are never
  * mutated by a page load. See `docs/features/plan-periodizer.md`.
  *
- * Bound `scoped()` in AppServiceProvider: the season is memoized because
- * three props want it and `ensureCurrent()` writes, and Inertia's partial
- * reload runs the whole action a second time.
+ * Bound `scoped()` in AppServiceProvider: the season is memoized because three props want it and
+ * `ensureCurrent()` writes.
  *
  * @phpstan-import-type Candidate from RaceOutcomeMatcher
  */
@@ -74,7 +74,7 @@ final class PlanPageAssembler
     {
         $race = ($this->activeRace)($user->id);
 
-        return $race === null ? null : ['race_date' => $race->race_date->toDateString(), 'name' => $race->name];
+        return $race instanceof RaceGoal ? ['race_date' => $race->race_date->toDateString(), 'name' => $race->name] : null;
     }
 
     /**
@@ -165,7 +165,7 @@ final class PlanPageAssembler
     public function adaptation(User $user, Carbon $today): ?array
     {
         $adaptation = ($this->weekAdaptation)($user->id, $this->currentWeekStart($today)->toDateString());
-        if ($adaptation === null) {
+        if (!$adaptation instanceof PlanAdaptation) {
             return null;
         }
 
@@ -226,7 +226,7 @@ final class PlanPageAssembler
         $briefingContext = $this->briefing->forUser($user, $today, $sessionsByWeek->get($currentWeekKey), $baselineData);
         $loadPending = $briefingContext->historyLoading;
         $ceiling = ReadinessCeiling::from($briefingContext->readinessCeiling);
-        $raceDistanceM = $race !== null ? (float) $race->distance_m : null;
+        $raceDistanceM = $race instanceof RaceGoal ? (float) $race->distance_m : null;
 
         [$phaseByWeek, $multiplierByWeek] = PlanRenderer::weekPhasesAndMultipliers($sessionsByWeek, $baselineData['self_scaled']);
         $primaryEasyDateByWeek = $sessionsByWeek->map(fn (Collection $weekSessions): ?string => PlanRenderer::primaryEasyDate($weekSessions));
@@ -302,7 +302,7 @@ final class PlanPageAssembler
                     $fallbackVerdicts[$s->date->toDateString()]['status'] ?? $s->status,
                     $activityByDate[$s->date->toDateString()] ?? null,
                     $clampVoice,
-                    $race !== null && $s->date->isSameDay($race->race_date) ? $this->ambition->assess($user, $race, $today)->prescribedTimeSec() : null,
+                    $race instanceof RaceGoal && $s->date->isSameDay($race->race_date) ? $this->ambition->assess($user, $race, $today)->prescribedTimeSec() : null,
                     $baselineData['long_run_progression_cap_km'],
                     $fallbackVerdicts[$s->date->toDateString()]['ran_anyway'] ?? null,
                     $s->date->isSameDay($today) ? $briefingContext->readinessAssessment : null,
@@ -341,22 +341,22 @@ final class PlanPageAssembler
         $this->raceCardResolved = true;
 
         $active = ($this->activeRace)($user->id);
-        $daysToRace = $active === null ? null : (int) $today->diffInDays($active->race_date, false);
-        if ($active !== null && $daysToRace === 0) {
+        $daysToRace = $active instanceof RaceGoal ? (int) $today->diffInDays($active->race_date, false) : null;
+        if ($active instanceof RaceGoal && $daysToRace === 0) {
             return $this->raceCardRace = ['state' => 'day', 'race' => $active, 'days_to_race' => 0];
         }
 
         $past = RaceGoal::query()
             ->where('user_id', $user->id)
-            ->whereDate('race_date', '<', $today->toDateString())
+            ->where('race_date', '<', $today->toDateString())
             ->orderByDesc('race_date')
             ->orderByDesc('id')
             ->first();
 
         return $this->raceCardRace = match (true) {
             $past?->outcome === RaceOutcome::Pending => ['state' => 'result_pending', 'race' => $past, 'days_to_race' => null],
-            $active !== null && $daysToRace > 0 => ['state' => $daysToRace <= self::RACE_WEEK_DAYS ? 'week' : 'ahead', 'race' => $active, 'days_to_race' => $daysToRace],
-            $active === null && $past !== null && $this->resultRecentlyRecorded($past, $today) => ['state' => 'result_recorded', 'race' => $past, 'days_to_race' => null],
+            $active instanceof RaceGoal && $daysToRace > 0 => ['state' => $daysToRace <= self::RACE_WEEK_DAYS ? 'week' : 'ahead', 'race' => $active, 'days_to_race' => $daysToRace],
+            !$active instanceof RaceGoal && $past !== null && $this->resultRecentlyRecorded($past, $today) => ['state' => 'result_recorded', 'race' => $past, 'days_to_race' => null],
             default => null,
         };
     }
@@ -380,11 +380,8 @@ final class PlanPageAssembler
     }
 
     /**
-     * Every past row should already carry its real status —
-     * plan:score-compliance (daily) persists it the morning after. This is the
-     * safety net for whatever it hasn't reached yet, plus today, which it
-     * deliberately never reaches; both are a small subset, so it's computed
-     * for those dates rather than the whole range.
+     * The safety net for past rows the daily `plan:score-compliance` pass hasn't reached yet, plus
+     * today, which it never reaches.
      *
      * @param  Collection<int, PlannedSession>  $sessions
      * @param  array{sessions_per_week: int, weekly_volume_km: float, long_run_km: float, long_run_cap_km: float, long_run_progression_cap_km: float, self_scaled: bool}  $baselineData

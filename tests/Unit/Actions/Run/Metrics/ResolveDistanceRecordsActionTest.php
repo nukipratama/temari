@@ -19,7 +19,7 @@ it('returns only the standard race distances', function (): void {
     $records = (app(ResolveDistanceRecordsAction::class))($user->id);
 
     expect($records)->toHaveCount(1)
-        ->and($records->first()->category)->toBe(PrCategory::Km5);
+        ->and(nonNull($records->first())->category)->toBe(PrCategory::Km5);
 });
 
 it('reads the set once for repeated questions about the same athlete', function (): void {

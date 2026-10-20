@@ -13,29 +13,30 @@ use Illuminate\Support\Carbon;
 
 const WEEK_PACES = ['easy' => 380, 'marathon' => 320, 'threshold' => 292, 'interval' => 268];
 
-beforeEach(function (): void {
-    $this->monday = Carbon::parse('2026-08-10')->startOfWeek(Carbon::MONDAY);
-});
+function weekPlanMonday(): Carbon
+{
+    return Carbon::parse('2026-08-10')->startOfWeek(Carbon::MONDAY);
+}
 
 it('produces exactly one row per day, minus pinned and past-in-current-week dates', function (): void {
-    $rows = WeekPlanBuilder::build($this->monday, PlanPhase::Base, 4, [], null, false);
+    $rows = WeekPlanBuilder::build(weekPlanMonday(), PlanPhase::Base, 4, [], null, false);
 
     expect($rows)->toHaveCount(7);
 });
 
 it('never assigns a row to a pinned date', function (): void {
-    $pinned = $this->monday->copy()->addDays(1)->toDateString();
+    $pinned = weekPlanMonday()->copy()->addDays(1)->toDateString();
 
-    $rows = WeekPlanBuilder::build($this->monday, PlanPhase::Base, 4, [$pinned => true], null, false);
+    $rows = WeekPlanBuilder::build(weekPlanMonday(), PlanPhase::Base, 4, [$pinned => true], null, false);
 
     expect($rows)->not->toHaveKey($pinned)
         ->and($rows)->toHaveCount(6);
 });
 
 it('never assigns a row to a date before notBefore', function (): void {
-    $notBefore = $this->monday->copy()->addDays(3);
+    $notBefore = weekPlanMonday()->copy()->addDays(3);
 
-    $rows = WeekPlanBuilder::build($this->monday, PlanPhase::Base, 4, [], null, false, $notBefore);
+    $rows = WeekPlanBuilder::build(weekPlanMonday(), PlanPhase::Base, 4, [], null, false, $notBefore);
 
     foreach (array_keys($rows) as $date) {
         expect(Carbon::parse($date)->lt($notBefore))->toBeFalse();
@@ -44,31 +45,31 @@ it('never assigns a row to a date before notBefore', function (): void {
 });
 
 it('gives the last training day of the week the Long session type', function (): void {
-    $rows = WeekPlanBuilder::build($this->monday, PlanPhase::Build, 4, [], null, false);
+    $rows = WeekPlanBuilder::build(weekPlanMonday(), PlanPhase::Build, 4, [], null, false);
     // 4-session template: Tue, Thu, Sat, Sun -- Sun is the long day.
-    $sunday = $this->monday->copy()->addDays(6)->toDateString();
+    $sunday = weekPlanMonday()->copy()->addDays(6)->toDateString();
 
     expect($rows[$sunday]['session_type'])->toBe(SessionType::Long);
 });
 
 it('marks every non-training day as Rest', function (): void {
-    $rows = WeekPlanBuilder::build($this->monday, PlanPhase::Build, 3, [], null, false);
+    $rows = WeekPlanBuilder::build(weekPlanMonday(), PlanPhase::Build, 3, [], null, false);
     // 3-session template: Tue, Thu, Sat. Monday is a rest day.
-    $monday = $this->monday->toDateString();
+    $monday = weekPlanMonday()->toDateString();
 
     expect($rows[$monday]['session_type'])->toBe(SessionType::Rest);
 });
 
 it('Base phase stays quality-free below 4 sessions/week, adds one Tempo at 4+', function (): void {
-    $withoutQuality = WeekPlanBuilder::build($this->monday, PlanPhase::Base, 3, [], null, false);
-    $withQuality = WeekPlanBuilder::build($this->monday, PlanPhase::Base, 4, [], null, false);
+    $withoutQuality = WeekPlanBuilder::build(weekPlanMonday(), PlanPhase::Base, 3, [], null, false);
+    $withQuality = WeekPlanBuilder::build(weekPlanMonday(), PlanPhase::Base, 4, [], null, false);
 
     expect(collect($withoutQuality)->pluck('session_type'))->not->toContain(SessionType::Tempo);
     expect(collect($withQuality)->pluck('session_type'))->toContain(SessionType::Tempo);
 });
 
 it('Build phase mixes Tempo and Interval once sessions/week exceeds 4 for a sub-marathon race', function (): void {
-    $rows = WeekPlanBuilder::build($this->monday, PlanPhase::Build, 6, [], 10_000.0, false);
+    $rows = WeekPlanBuilder::build(weekPlanMonday(), PlanPhase::Build, 6, [], 10_000.0, false);
     $types = collect($rows)->pluck('session_type');
 
     expect($types)->toContain(SessionType::Tempo)
@@ -76,7 +77,7 @@ it('Build phase mixes Tempo and Interval once sessions/week exceeds 4 for a sub-
 });
 
 it('self-scaled Build stays threshold-only, never adds Interval, even at 2 quality slots', function (): void {
-    $rows = WeekPlanBuilder::build($this->monday, PlanPhase::Build, 6, [], null, true);
+    $rows = WeekPlanBuilder::build(weekPlanMonday(), PlanPhase::Build, 6, [], null, true);
     $types = collect($rows)->pluck('session_type');
 
     expect($types)->not->toContain(SessionType::Interval);
@@ -86,19 +87,19 @@ it('Peak/Taper for a marathon-distance race narrows the quality block to a singl
     // Pace itself (Threshold vs Marathon) is SegmentGenerator's call now — see
     // its "switches a Tempo day to Marathon pace..." tests. What WeekPlanBuilder
     // still decides is the SLOT COUNT: one narrowed session, not the normal mix.
-    $rows = WeekPlanBuilder::build($this->monday, PlanPhase::Peak, 6, [], 42_195.0, false);
+    $rows = WeekPlanBuilder::build(weekPlanMonday(), PlanPhase::Peak, 6, [], 42_195.0, false);
 
     expect(qualityCount($rows))->toBe(1);
 });
 
 it('Peak/Taper for a shorter race keeps the normal threshold/interval mix', function (): void {
-    $rows = WeekPlanBuilder::build($this->monday, PlanPhase::Peak, 6, [], 10_000.0, false);
+    $rows = WeekPlanBuilder::build(weekPlanMonday(), PlanPhase::Peak, 6, [], 10_000.0, false);
 
     expect(qualityCount($rows))->toBe(2);
 });
 
 it('Deload carries no quality sessions at all', function (): void {
-    $rows = WeekPlanBuilder::build($this->monday, PlanPhase::Deload, 6, [], null, true);
+    $rows = WeekPlanBuilder::build(weekPlanMonday(), PlanPhase::Deload, 6, [], null, true);
     $types = collect($rows)->pluck('session_type')->unique()->values()->all();
 
     expect($types)->not->toContain(SessionType::Tempo)
@@ -106,16 +107,16 @@ it('Deload carries no quality sessions at all', function (): void {
 });
 
 it('clamps an out-of-range session count into the supported 2-6 template range', function (): void {
-    $tooMany = WeekPlanBuilder::build($this->monday, PlanPhase::Base, 10, [], null, false);
-    $tooFew = WeekPlanBuilder::build($this->monday, PlanPhase::Base, 1, [], null, false);
+    $tooMany = WeekPlanBuilder::build(weekPlanMonday(), PlanPhase::Base, 10, [], null, false);
+    $tooFew = WeekPlanBuilder::build(weekPlanMonday(), PlanPhase::Base, 1, [], null, false);
 
     expect($tooMany)->toHaveCount(7) // falls back to the 6-session template
         ->and($tooFew)->toHaveCount(7); // falls back to the 2-session template
 });
 
 it('supports the 2-session template, long run on Saturday', function (): void {
-    $rows = WeekPlanBuilder::build($this->monday, PlanPhase::Build, 2, [], null, true);
-    $saturday = $this->monday->copy()->addDays(5)->toDateString();
+    $rows = WeekPlanBuilder::build(weekPlanMonday(), PlanPhase::Build, 2, [], null, true);
+    $saturday = weekPlanMonday()->copy()->addDays(5)->toDateString();
 
     // Two training days, and neither is quality — a week this short has no room
     // for it without giving up every easy kilometre.
@@ -125,21 +126,22 @@ it('supports the 2-session template, long run on Saturday', function (): void {
 });
 
 it('an explicit run_days/long_run_day preference overrides the day template entirely', function (): void {
-    $friday = $this->monday->copy()->addDays(4)->toDateString();
-    $rows = WeekPlanBuilder::build($this->monday, PlanPhase::Build, 4, [], null, true, null, 0, [0, 2, 4], 4);
+    $friday = weekPlanMonday()->copy()->addDays(4)->toDateString();
+    $rows = WeekPlanBuilder::build(weekPlanMonday(), PlanPhase::Build, 4, [], null, true, null, 0, [0, 2, 4], 4);
 
     expect($rows[$friday]['session_type'])->toBe(SessionType::Long)
         ->and(collect($rows)->filter(fn (array $r): bool => $r['session_type'] !== SessionType::Rest))->toHaveCount(3);
 });
 
 it('tags every produced row with the phase it was built for', function (): void {
-    $rows = WeekPlanBuilder::build($this->monday, PlanPhase::Peak, 4, [], null, false);
+    $rows = WeekPlanBuilder::build(weekPlanMonday(), PlanPhase::Peak, 4, [], null, false);
 
     foreach ($rows as $row) {
         expect($row['phase'])->toBe(PlanPhase::Peak);
     }
 });
 
+/** @param  array<string, array{phase: PlanPhase, session_type: SessionType, fall_off_tilt?: FallOffTilt}>  $rows */
 function qualityCount(array $rows): int
 {
     return collect($rows)
@@ -148,43 +150,43 @@ function qualityCount(array $rows): int
 }
 
 it('drops a quality session when race-pace feedback asks for less', function (): void {
-    $before = WeekPlanBuilder::build($this->monday, PlanPhase::Build, 6, [], null, true);
-    $after = WeekPlanBuilder::build($this->monday, PlanPhase::Build, 6, [], null, true, null, -1);
+    $before = WeekPlanBuilder::build(weekPlanMonday(), PlanPhase::Build, 6, [], null, true);
+    $after = WeekPlanBuilder::build(weekPlanMonday(), PlanPhase::Build, 6, [], null, true, null, -1);
 
     expect(qualityCount($before))->toBe(2)
         ->and(qualityCount($after))->toBe(1);
 });
 
 it('drops the week to zero quality when asked for less than it already carries', function (): void {
-    $rows = WeekPlanBuilder::build($this->monday, PlanPhase::Build, 4, [], null, false, null, -1);
+    $rows = WeekPlanBuilder::build(weekPlanMonday(), PlanPhase::Build, 4, [], null, false, null, -1);
 
     expect(qualityCount($rows))->toBe(0);
 });
 
 it('leaves a Base week the one quality day its phase defines when feedback asks for less', function (): void {
-    $eased = WeekPlanBuilder::build($this->monday, PlanPhase::Base, 4, [], null, false, null, -1);
+    $eased = WeekPlanBuilder::build(weekPlanMonday(), PlanPhase::Base, 4, [], null, false, null, -1);
 
     expect(qualityCount($eased))->toBe(1);
 });
 
 it('chooses Thursday over Tuesday for circular recovery from the Sunday long run', function (): void {
-    $rows = WeekPlanBuilder::build($this->monday, PlanPhase::Base, 4, [], null, false);
-    $tuesday = $this->monday->copy()->addDay()->toDateString();
-    $thursday = $this->monday->copy()->addDays(3)->toDateString();
+    $rows = WeekPlanBuilder::build(weekPlanMonday(), PlanPhase::Base, 4, [], null, false);
+    $tuesday = weekPlanMonday()->copy()->addDay()->toDateString();
+    $thursday = weekPlanMonday()->copy()->addDays(3)->toDateString();
 
     expect($rows[$tuesday]['session_type'])->toBe(SessionType::Easy)
         ->and($rows[$thursday]['session_type'])->toBe(SessionType::Tempo);
 });
 
 it('chooses Thursday when Wednesday and Thursday are equally spaced from the Sunday long run', function (): void {
-    $rows = WeekPlanBuilder::build($this->monday, PlanPhase::Base, 4, [], null, false, preferredOffsets: [2, 3, 5, 6], preferredLongOffset: 6);
+    $rows = WeekPlanBuilder::build(weekPlanMonday(), PlanPhase::Base, 4, [], null, false, preferredOffsets: [2, 3, 5, 6], preferredLongOffset: 6);
 
-    expect($rows[$this->monday->copy()->addDays(2)->toDateString()]['session_type'])->toBe(SessionType::Easy)
-        ->and($rows[$this->monday->copy()->addDays(3)->toDateString()]['session_type'])->toBe(SessionType::Tempo);
+    expect($rows[weekPlanMonday()->copy()->addDays(2)->toDateString()]['session_type'])->toBe(SessionType::Easy)
+        ->and($rows[weekPlanMonday()->copy()->addDays(3)->toDateString()]['session_type'])->toBe(SessionType::Tempo);
 });
 
 it('uses Tuesday and Thursday for a six-session build week behind its race goal', function (): void {
-    $rows = WeekPlanBuilder::build($this->monday, PlanPhase::Build, 6, [], 10_000.0, false, projectedRaceSeconds: 35 * 60.0);
+    $rows = WeekPlanBuilder::build(weekPlanMonday(), PlanPhase::Build, 6, [], 10_000.0, false, projectedRaceSeconds: 35 * 60.0);
     $typesByWeekday = collect($rows)->mapWithKeys(fn (array $row, string $date): array => [
         Carbon::parse($date)->dayOfWeekIso => $row['session_type'],
     ]);
@@ -196,11 +198,11 @@ it('uses Tuesday and Thursday for a six-session build week behind its race goal'
 });
 
 it('keeps the selected weekday stable when Thursday is pinned in a custom run week', function (): void {
-    $thursday = $this->monday->copy()->addDays(3)->toDateString();
-    $wednesday = $this->monday->copy()->addDays(2)->toDateString();
-    $sunday = $this->monday->copy()->addDays(6)->toDateString();
+    $thursday = weekPlanMonday()->copy()->addDays(3)->toDateString();
+    $wednesday = weekPlanMonday()->copy()->addDays(2)->toDateString();
+    $sunday = weekPlanMonday()->copy()->addDays(6)->toDateString();
 
-    $rows = WeekPlanBuilder::build($this->monday, PlanPhase::Base, 4, [$thursday => true], null, false, preferredOffsets: [2, 3, 5, 6], preferredLongOffset: 6);
+    $rows = WeekPlanBuilder::build(weekPlanMonday(), PlanPhase::Base, 4, [$thursday => true], null, false, preferredOffsets: [2, 3, 5, 6], preferredLongOffset: 6);
 
     expect($rows)->not->toHaveKey($thursday)
         ->and($rows[$wednesday]['session_type'])->toBe(SessionType::Easy)
@@ -209,7 +211,7 @@ it('keeps the selected weekday stable when Thursday is pinned in a custom run we
 
 it('keeps the same selected slots when replanning from Thursday', function (): void {
     $arguments = [
-        'weekStart' => $this->monday,
+        'weekStart' => weekPlanMonday(),
         'phase' => PlanPhase::Build,
         'sessionsPerWeek' => 6,
         'fixedDates' => [],
@@ -220,19 +222,19 @@ it('keeps the same selected slots when replanning from Thursday', function (): v
         'projectedRaceSeconds' => 35 * 60.0,
     ];
     $fullWeek = WeekPlanBuilder::build(...$arguments);
-    $thursdayOn = WeekPlanBuilder::build(...[...$arguments, 'notBefore' => $this->monday->copy()->addDays(3)]);
+    $thursdayOn = WeekPlanBuilder::build(...[...$arguments, 'notBefore' => weekPlanMonday()->copy()->addDays(3)]);
 
-    expect($fullWeek[$this->monday->copy()->addDays(2)->toDateString()]['session_type'])->toBe(SessionType::Tempo)
-        ->and($fullWeek[$this->monday->copy()->addDays(4)->toDateString()]['session_type'])->toBe(SessionType::Interval)
-        ->and($thursdayOn[$this->monday->copy()->addDays(3)->toDateString()]['session_type'])->toBe(SessionType::Easy)
-        ->and($thursdayOn[$this->monday->copy()->addDays(4)->toDateString()]['session_type'])->toBe(SessionType::Interval)
-        ->and($thursdayOn[$this->monday->copy()->addDays(6)->toDateString()]['session_type'])->toBe(SessionType::Long);
+    expect($fullWeek[weekPlanMonday()->copy()->addDays(2)->toDateString()]['session_type'])->toBe(SessionType::Tempo)
+        ->and($fullWeek[weekPlanMonday()->copy()->addDays(4)->toDateString()]['session_type'])->toBe(SessionType::Interval)
+        ->and($thursdayOn[weekPlanMonday()->copy()->addDays(3)->toDateString()]['session_type'])->toBe(SessionType::Easy)
+        ->and($thursdayOn[weekPlanMonday()->copy()->addDays(4)->toDateString()]['session_type'])->toBe(SessionType::Interval)
+        ->and($thursdayOn[weekPlanMonday()->copy()->addDays(6)->toDateString()]['session_type'])->toBe(SessionType::Long);
 });
 
 it('keeps quality within the hard-day budget for run counts two through six', function (): void {
     foreach (range(2, 6) as $sessionsPerWeek) {
         $rows = WeekPlanBuilder::build(
-            $this->monday,
+            weekPlanMonday(),
             PlanPhase::Build,
             $sessionsPerWeek,
             [],
@@ -253,36 +255,37 @@ it('keeps quality within the hard-day budget for run counts two through six', fu
                 expect(WeekPlanBuilder::longRunRecoveryDays($offset, $longOffset))->toBeGreaterThanOrEqual(2);
             }
         }
-        for ($index = 1; $index < count($qualityOffsets); $index++) {
+        $counter = count($qualityOffsets);
+        for ($index = 1; $index < $counter; $index++) {
             expect(WeekPlanBuilder::longRunRecoveryDays($qualityOffsets[$index - 1], $qualityOffsets[$index]))->toBeGreaterThanOrEqual(2);
         }
     }
 });
 
 it('keeps the long-run flanks clear when no other quality day is available', function (): void {
-    $rows = WeekPlanBuilder::build($this->monday, PlanPhase::Build, 3, [], null, true, preferredOffsets: [0, 5, 6], preferredLongOffset: 6);
+    $rows = WeekPlanBuilder::build(weekPlanMonday(), PlanPhase::Build, 3, [], null, true, preferredOffsets: [0, 5, 6], preferredLongOffset: 6);
 
     expect(qualityCount($rows))->toBe(0)
-        ->and($rows[$this->monday->toDateString()]['session_type'])->toBe(SessionType::Easy)
-        ->and($rows[$this->monday->copy()->addDays(5)->toDateString()]['session_type'])->toBe(SessionType::Easy)
-        ->and($rows[$this->monday->copy()->addDays(6)->toDateString()]['session_type'])->toBe(SessionType::Long);
+        ->and($rows[weekPlanMonday()->toDateString()]['session_type'])->toBe(SessionType::Easy)
+        ->and($rows[weekPlanMonday()->copy()->addDays(5)->toDateString()]['session_type'])->toBe(SessionType::Easy)
+        ->and($rows[weekPlanMonday()->copy()->addDays(6)->toDateString()]['session_type'])->toBe(SessionType::Long);
 });
 
 it('drops the quality session a four-session week already carries when feedback asks for less', function (): void {
-    $rows = WeekPlanBuilder::build($this->monday, PlanPhase::Build, 4, [], null, true, null, -1);
+    $rows = WeekPlanBuilder::build(weekPlanMonday(), PlanPhase::Build, 4, [], null, true, null, -1);
 
     expect(qualityCount($rows))->toBe(0);
 });
 
 it('still empties a four-session race week\'s quality block when the week was run too hard', function (): void {
-    $rows = WeekPlanBuilder::build($this->monday, PlanPhase::Build, 4, [], 10_000.0, false, null, -1, projectedRaceSeconds: 3469.0);
+    $rows = WeekPlanBuilder::build(weekPlanMonday(), PlanPhase::Build, 4, [], 10_000.0, false, null, -1, projectedRaceSeconds: 3469.0);
 
     expect(qualityCount($rows))->toBe(0);
 });
 
 it('never lets feedback drop quality work from a taper or a deload', function (): void {
-    $taper = WeekPlanBuilder::build($this->monday, PlanPhase::Taper, 6, [], 10_000.0, false, null, -1);
-    $deload = WeekPlanBuilder::build($this->monday, PlanPhase::Deload, 6, [], null, true, null, -1);
+    $taper = WeekPlanBuilder::build(weekPlanMonday(), PlanPhase::Taper, 6, [], 10_000.0, false, null, -1);
+    $deload = WeekPlanBuilder::build(weekPlanMonday(), PlanPhase::Deload, 6, [], null, true, null, -1);
 
     expect(qualityCount($taper))->toBe(2)
         ->and(qualityCount($deload))->toBe(0);
@@ -311,7 +314,7 @@ it('spends a fast runner\'s only quality day on interval work, and a slow runner
 
     $types = fn (PlanPhase $phase, ?float $seconds): array => array_values(array_map(
         fn (array $row): SessionType => $row['session_type'],
-        WeekPlanBuilder::build($this->monday, $phase, 4, [], $tenK, false, null, 0, null, null, $seconds),
+        WeekPlanBuilder::build(weekPlanMonday(), $phase, 4, [], $tenK, false, null, 0, null, null, $seconds),
     ));
 
     // The same 10K is a different event depending on how long it takes. A
@@ -338,7 +341,7 @@ it('spends a fast runner\'s only quality day on interval work, and a slow runner
 });
 
 it('falls back to threshold when there is no projection to judge the race by', function (): void {
-    $types = array_column(WeekPlanBuilder::build($this->monday, PlanPhase::Build, 4, [], 10_000.0, false), 'session_type');
+    $types = array_column(WeekPlanBuilder::build(weekPlanMonday(), PlanPhase::Build, 4, [], 10_000.0, false), 'session_type');
 
     expect($types)->toContain(SessionType::Tempo)
         ->and($types)->not->toContain(SessionType::Interval);
@@ -346,9 +349,9 @@ it('falls back to threshold when there is no projection to judge the race by', f
 
 it('keeps quality off the days either side of the long run', function (): void {
     foreach ([5, 6] as $sessionsPerWeek) {
-        $rows = WeekPlanBuilder::build($this->monday, PlanPhase::Build, $sessionsPerWeek, [], 10_000.0, false, null, 0, null, null, 35 * 60.0);
+        $rows = WeekPlanBuilder::build(weekPlanMonday(), PlanPhase::Build, $sessionsPerWeek, [], 10_000.0, false, null, 0, null, null, 35 * 60.0);
 
-        $offsetOf = fn (string $date): int => (int) $this->monday->diffInDays(Carbon::parse($date));
+        $offsetOf = fn (string $date): int => (int) weekPlanMonday()->diffInDays(Carbon::parse($date));
         $long = null;
         $quality = [];
         foreach ($rows as $date => $row) {
@@ -370,7 +373,7 @@ it('keeps quality off the days either side of the long run', function (): void {
 
 it('gives a two-session week easy running rather than half a week of quality', function (): void {
     foreach ([PlanPhase::Build, PlanPhase::Peak, PlanPhase::Taper] as $phase) {
-        $types = array_column(WeekPlanBuilder::build($this->monday, $phase, 2, [], 10_000.0, false, null, 0, null, null, 35 * 60.0), 'session_type');
+        $types = array_column(WeekPlanBuilder::build(weekPlanMonday(), $phase, 2, [], 10_000.0, false, null, 0, null, null, 35 * 60.0), 'session_type');
 
         expect($types)->not->toContain(SessionType::Tempo)
             ->and($types)->not->toContain(SessionType::Interval)
@@ -380,7 +383,7 @@ it('gives a two-session week easy running rather than half a week of quality', f
 
 it('keeps a four-session week on threshold when there is no race to sharpen for', function (): void {
     foreach ([PlanPhase::Build, PlanPhase::Peak, PlanPhase::Taper] as $phase) {
-        $types = array_column(WeekPlanBuilder::build($this->monday, $phase, 4, [], null, true), 'session_type');
+        $types = array_column(WeekPlanBuilder::build(weekPlanMonday(), $phase, 4, [], null, true), 'session_type');
 
         expect($types)->toContain(SessionType::Tempo)
             ->and($types)->not->toContain(SessionType::Interval);
@@ -391,7 +394,7 @@ it('keeps a marathon build on race-pace tempo rather than swapping in intervals'
     $marathon = 42_195.0;
 
     foreach ([PlanPhase::Peak, PlanPhase::Taper] as $phase) {
-        $types = array_column(WeekPlanBuilder::build($this->monday, $phase, 4, [], $marathon, false), 'session_type');
+        $types = array_column(WeekPlanBuilder::build(weekPlanMonday(), $phase, 4, [], $marathon, false), 'session_type');
 
         expect($types)->toContain(SessionType::Tempo)
             ->and($types)->not->toContain(SessionType::Interval);
@@ -399,7 +402,7 @@ it('keeps a marathon build on race-pace tempo rather than swapping in intervals'
 });
 
 it('still gives a five-session week both a threshold and an interval day', function (): void {
-    $types = array_column(WeekPlanBuilder::build($this->monday, PlanPhase::Build, 5, [], 10_000.0, false), 'session_type');
+    $types = array_column(WeekPlanBuilder::build(weekPlanMonday(), PlanPhase::Build, 5, [], 10_000.0, false), 'session_type');
 
     expect($types)->toContain(SessionType::Tempo)
         ->and($types)->toContain(SessionType::Interval);
@@ -407,38 +410,38 @@ it('still gives a five-session week both a threshold and an interval day', funct
 
 it('makes race day the race, and rests the day before it', function (): void {
     // Saturday of the built week.
-    $raceDate = $this->monday->copy()->addDays(5);
+    $raceDate = weekPlanMonday()->copy()->addDays(5);
 
-    $rows = WeekPlanBuilder::build($this->monday, PlanPhase::Taper, 4, [], 21_097.0, false, raceDate: $raceDate);
+    $rows = WeekPlanBuilder::build(weekPlanMonday(), PlanPhase::Taper, 4, [], 21_097.0, false, raceDate: $raceDate);
 
     expect($rows[$raceDate->toDateString()]['session_type'])->toBe(SessionType::Race)
         ->and($rows[$raceDate->copy()->subDay()->toDateString()]['session_type'])->toBe(SessionType::Rest);
 });
 
 it('keeps an eligible quality day when race day would rank later', function (): void {
-    $raceDate = $this->monday->copy()->addDays(3);
-    $tuesday = $this->monday->copy()->addDay()->toDateString();
+    $raceDate = weekPlanMonday()->copy()->addDays(3);
+    $tuesday = weekPlanMonday()->copy()->addDay()->toDateString();
 
-    $rows = WeekPlanBuilder::build($this->monday, PlanPhase::Taper, 4, [], 21_097.0, false, raceDate: $raceDate);
+    $rows = WeekPlanBuilder::build(weekPlanMonday(), PlanPhase::Taper, 4, [], 21_097.0, false, raceDate: $raceDate);
 
     expect($rows[$tuesday]['session_type'])->toBe(SessionType::Tempo)
         ->and($rows[$raceDate->toDateString()]['session_type'])->toBe(SessionType::Race);
 });
 
 it('trains nothing after race day, so a Sunday marathon gets no long run the day before it', function (): void {
-    $raceDate = $this->monday->copy()->addDays(6);
+    $raceDate = weekPlanMonday()->copy()->addDays(6);
 
-    $rows = WeekPlanBuilder::build($this->monday, PlanPhase::Taper, 5, [], 42_195.0, false, raceDate: $raceDate);
+    $rows = WeekPlanBuilder::build(weekPlanMonday(), PlanPhase::Taper, 5, [], 42_195.0, false, raceDate: $raceDate);
 
     expect($rows[$raceDate->copy()->subDay()->toDateString()]['session_type'])->toBe(SessionType::Rest)
         ->and(array_column($rows, 'session_type'))->not->toContain(SessionType::Long);
 });
 
 it('rests every day after race day rather than training through the days a goal race is recovered from', function (): void {
-    // Tuesday: the layout that used to prescribe a tempo ON the race.
-    $raceDate = $this->monday->copy()->addDay();
+    // Tuesday: a layout that could prescribe a tempo ON the race.
+    $raceDate = weekPlanMonday()->copy()->addDay();
 
-    $rows = WeekPlanBuilder::build($this->monday, PlanPhase::Taper, 4, [], 10_000.0, false, raceDate: $raceDate);
+    $rows = WeekPlanBuilder::build(weekPlanMonday(), PlanPhase::Taper, 4, [], 10_000.0, false, raceDate: $raceDate);
 
     $afterRace = array_column(array_slice($rows, 2), 'session_type');
 
@@ -447,45 +450,45 @@ it('rests every day after race day rather than training through the days a goal 
 });
 
 it('leaves a week the race does not fall in completely alone', function (): void {
-    $raceDate = $this->monday->copy()->addWeeks(3);
+    $raceDate = weekPlanMonday()->copy()->addWeeks(3);
 
-    $withRace = array_column(WeekPlanBuilder::build($this->monday, PlanPhase::Build, 4, [], 10_000.0, false, raceDate: $raceDate), 'session_type');
-    $without = array_column(WeekPlanBuilder::build($this->monday, PlanPhase::Build, 4, [], 10_000.0, false), 'session_type');
+    $withRace = array_column(WeekPlanBuilder::build(weekPlanMonday(), PlanPhase::Build, 4, [], 10_000.0, false, raceDate: $raceDate), 'session_type');
+    $without = array_column(WeekPlanBuilder::build(weekPlanMonday(), PlanPhase::Build, 4, [], 10_000.0, false), 'session_type');
 
     expect($withRace)->toBe($without)
         ->and($withRace)->not->toContain(SessionType::Race);
 });
 
 it('trains a race season\'s general-zone week by base rules: at most one quality slot, and it is a tempo', function (): void {
-    $rows = WeekPlanBuilder::build($this->monday, PlanPhase::Build, 6, [], 10_000.0, false, zone: PhaseSchedule::ZONE_GENERAL);
+    $rows = WeekPlanBuilder::build(weekPlanMonday(), PlanPhase::Build, 6, [], 10_000.0, false, zone: PhaseSchedule::ZONE_GENERAL);
 
     expect(qualityCount($rows))->toBe(1)
         ->and(collect($rows)->pluck('session_type'))->not->toContain(SessionType::Interval);
 });
 
 it('leaves a race season\'s block-zone week unchanged by the general-zone rule', function (): void {
-    $rows = WeekPlanBuilder::build($this->monday, PlanPhase::Build, 6, [], 10_000.0, false, zone: PhaseSchedule::ZONE_BLOCK);
+    $rows = WeekPlanBuilder::build(weekPlanMonday(), PlanPhase::Build, 6, [], 10_000.0, false, zone: PhaseSchedule::ZONE_BLOCK);
 
     expect(qualityCount($rows))->toBe(2)
         ->and(collect($rows)->pluck('session_type'))->toContain(SessionType::Interval);
 });
 
 it('does not let quality_delta take a general-zone week below its one quality session', function (): void {
-    $rows = WeekPlanBuilder::build($this->monday, PlanPhase::Build, 6, [], 10_000.0, false, null, -1, zone: PhaseSchedule::ZONE_GENERAL);
+    $rows = WeekPlanBuilder::build(weekPlanMonday(), PlanPhase::Build, 6, [], 10_000.0, false, null, -1, zone: PhaseSchedule::ZONE_GENERAL);
 
     expect(qualityCount($rows))->toBe(1);
 });
 
 it('leaves a self-scaled (goal-less) season unchanged by the general-zone rule', function (): void {
-    $generalZone = WeekPlanBuilder::build($this->monday, PlanPhase::Build, 6, [], null, true, zone: PhaseSchedule::ZONE_GENERAL);
-    $blockZone = WeekPlanBuilder::build($this->monday, PlanPhase::Build, 6, [], null, true, zone: PhaseSchedule::ZONE_BLOCK);
+    $generalZone = WeekPlanBuilder::build(weekPlanMonday(), PlanPhase::Build, 6, [], null, true, zone: PhaseSchedule::ZONE_GENERAL);
+    $blockZone = WeekPlanBuilder::build(weekPlanMonday(), PlanPhase::Build, 6, [], null, true, zone: PhaseSchedule::ZONE_BLOCK);
 
     expect(qualityCount($generalZone))->toBe(2)
         ->and(array_column($generalZone, 'session_type'))->toBe(array_column($blockZone, 'session_type'));
 });
 
 it('keeps a Base week under a fifth of its volume at threshold or faster', function (): void {
-    $rows = WeekPlanBuilder::build($this->monday, PlanPhase::Base, 5, [], 10_000.0, false);
+    $rows = WeekPlanBuilder::build(weekPlanMonday(), PlanPhase::Base, 5, [], 10_000.0, false);
 
     $weekKm = 0.0;
     $hardKm = 0.0;
@@ -502,6 +505,7 @@ it('keeps a Base week under a fifth of its volume at threshold or faster', funct
 });
 
 /**
+ * @param  array<string, array{phase: PlanPhase, session_type: SessionType, fall_off_tilt?: FallOffTilt}>  $rows
  * @return list<array{0: SessionType, 1: FallOffTilt|null}>
  */
 function tiltedQuality(array $rows): array
@@ -512,6 +516,7 @@ function tiltedQuality(array $rows): array
     ));
 }
 
+/** @param  array<string, array{phase: PlanPhase, session_type: SessionType, fall_off_tilt?: FallOffTilt}>  $rows */
 function tiltedLong(array $rows): ?FallOffTilt
 {
     $long = array_find($rows, static fn (array $row): bool => $row['session_type'] === SessionType::Long);
@@ -521,7 +526,7 @@ function tiltedLong(array $rows): ?FallOffTilt
 
 it('moves the one quality day of a race between the VO2max and threshold durations toward the tilt', function (): void {
     $middling = 60 * 60.0;
-    $build = fn (PlanPhase $phase, ?FallOffTilt $tilt): array => WeekPlanBuilder::build($this->monday, $phase, 4, [], 10_000.0, false, projectedRaceSeconds: $middling, fallOffTilt: $tilt);
+    $build = fn (PlanPhase $phase, ?FallOffTilt $tilt): array => WeekPlanBuilder::build(weekPlanMonday(), $phase, 4, [], 10_000.0, false, projectedRaceSeconds: $middling, fallOffTilt: $tilt);
 
     expect(tiltedQuality($build(PlanPhase::Build, FallOffTilt::Endurance)))->toBe([[SessionType::Tempo, FallOffTilt::Endurance]])
         ->and(tiltedQuality($build(PlanPhase::Peak, FallOffTilt::Endurance)))->toBe([[SessionType::Tempo, null]])
@@ -532,7 +537,7 @@ it('moves the one quality day of a race between the VO2max and threshold duratio
 });
 
 it('keeps the one quality day a short or long race duration pins', function (): void {
-    $build = fn (PlanPhase $phase, float $seconds, FallOffTilt $tilt): array => WeekPlanBuilder::build($this->monday, $phase, 4, [], 10_000.0, false, projectedRaceSeconds: $seconds, fallOffTilt: $tilt);
+    $build = fn (PlanPhase $phase, float $seconds, FallOffTilt $tilt): array => WeekPlanBuilder::build(weekPlanMonday(), $phase, 4, [], 10_000.0, false, projectedRaceSeconds: $seconds, fallOffTilt: $tilt);
 
     foreach ([PlanPhase::Build, PlanPhase::Peak] as $phase) {
         expect(tiltedQuality($build($phase, 35 * 60.0, FallOffTilt::Endurance)))->toBe([[SessionType::Interval, null]])
@@ -541,7 +546,7 @@ it('keeps the one quality day a short or long race duration pins', function (): 
 });
 
 it('turns a two-slot week\'s pair toward the tilt unless the race duration pins one of them', function (): void {
-    $build = fn (float $seconds, FallOffTilt $tilt): array => WeekPlanBuilder::build($this->monday, PlanPhase::Build, 6, [], 10_000.0, false, projectedRaceSeconds: $seconds, fallOffTilt: $tilt);
+    $build = fn (float $seconds, FallOffTilt $tilt): array => WeekPlanBuilder::build(weekPlanMonday(), PlanPhase::Build, 6, [], 10_000.0, false, projectedRaceSeconds: $seconds, fallOffTilt: $tilt);
 
     expect(tiltedQuality($build(60 * 60.0, FallOffTilt::Endurance)))->toEqualCanonicalizing([[SessionType::Tempo, null], [SessionType::Tempo, FallOffTilt::Endurance]])
         ->and(tiltedQuality($build(60 * 60.0, FallOffTilt::Speed)))->toEqualCanonicalizing([[SessionType::Interval, FallOffTilt::Speed], [SessionType::Interval, null]])
@@ -552,8 +557,8 @@ it('turns a two-slot week\'s pair toward the tilt unless the race duration pins 
 });
 
 it('keeps the hard-day count and the quality-delta drop under a tilt', function (): void {
-    $neutral = WeekPlanBuilder::build($this->monday, PlanPhase::Build, 6, [], 10_000.0, false, null, -1, projectedRaceSeconds: 60 * 60.0);
-    $tilted = WeekPlanBuilder::build($this->monday, PlanPhase::Build, 6, [], 10_000.0, false, null, -1, projectedRaceSeconds: 60 * 60.0, fallOffTilt: FallOffTilt::Speed);
+    $neutral = WeekPlanBuilder::build(weekPlanMonday(), PlanPhase::Build, 6, [], 10_000.0, false, null, -1, projectedRaceSeconds: 60 * 60.0);
+    $tilted = WeekPlanBuilder::build(weekPlanMonday(), PlanPhase::Build, 6, [], 10_000.0, false, null, -1, projectedRaceSeconds: 60 * 60.0, fallOffTilt: FallOffTilt::Speed);
 
     expect(qualityCount($tilted))->toBe(qualityCount($neutral))
         ->and(array_keys($tilted))->toBe(array_keys($neutral));
@@ -561,8 +566,8 @@ it('keeps the hard-day count and the quality-delta drop under a tilt', function 
 
 it('marks the long run of an endurance-tilted Build or Peak week, and never a speed-tilted one', function (): void {
     foreach ([PlanPhase::Build, PlanPhase::Peak] as $phase) {
-        $endurance = WeekPlanBuilder::build($this->monday, $phase, 4, [], 10_000.0, false, projectedRaceSeconds: 60 * 60.0, fallOffTilt: FallOffTilt::Endurance);
-        $speed = WeekPlanBuilder::build($this->monday, $phase, 4, [], 10_000.0, false, projectedRaceSeconds: 60 * 60.0, fallOffTilt: FallOffTilt::Speed);
+        $endurance = WeekPlanBuilder::build(weekPlanMonday(), $phase, 4, [], 10_000.0, false, projectedRaceSeconds: 60 * 60.0, fallOffTilt: FallOffTilt::Endurance);
+        $speed = WeekPlanBuilder::build(weekPlanMonday(), $phase, 4, [], 10_000.0, false, projectedRaceSeconds: 60 * 60.0, fallOffTilt: FallOffTilt::Speed);
 
         expect(tiltedLong($endurance))->toBe(FallOffTilt::Endurance)
             ->and(tiltedLong($speed))->toBeNull();
@@ -581,8 +586,8 @@ it('leaves Base, Deload, Taper, general-zone, self-scaled and marathon race-pace
     foreach ($cases as $label => [$phase, $distance, $selfScaled, $zone]) {
         foreach ([4, 6] as $sessions) {
             foreach (FallOffTilt::cases() as $tilt) {
-                $neutral = WeekPlanBuilder::build($this->monday, $phase, $sessions, [], $distance, $selfScaled, projectedRaceSeconds: 60 * 60.0, zone: $zone);
-                $tilted = WeekPlanBuilder::build($this->monday, $phase, $sessions, [], $distance, $selfScaled, projectedRaceSeconds: 60 * 60.0, zone: $zone, fallOffTilt: $tilt);
+                $neutral = WeekPlanBuilder::build(weekPlanMonday(), $phase, $sessions, [], $distance, $selfScaled, projectedRaceSeconds: 60 * 60.0, zone: $zone);
+                $tilted = WeekPlanBuilder::build(weekPlanMonday(), $phase, $sessions, [], $distance, $selfScaled, projectedRaceSeconds: 60 * 60.0, zone: $zone, fallOffTilt: $tilt);
 
                 expect($tilted)->toBe($neutral, "{$label}, {$sessions} sessions, {$tilt->value}");
             }
@@ -590,7 +595,7 @@ it('leaves Base, Deload, Taper, general-zone, self-scaled and marathon race-pace
     }
 
     foreach ([PlanPhase::Build, PlanPhase::Peak] as $phase) {
-        $marathon = WeekPlanBuilder::build($this->monday, $phase, 6, [], 42_195.0, false, projectedRaceSeconds: 4 * 3600.0, fallOffTilt: FallOffTilt::Speed);
+        $marathon = WeekPlanBuilder::build(weekPlanMonday(), $phase, 6, [], 42_195.0, false, projectedRaceSeconds: 4 * 3600.0, fallOffTilt: FallOffTilt::Speed);
 
         expect(tiltedQuality($marathon))->toBe([[SessionType::Tempo, null]]);
     }

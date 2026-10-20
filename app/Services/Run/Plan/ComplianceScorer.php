@@ -28,11 +28,10 @@ use Illuminate\Support\Carbon;
  * past-due row at once, and by ingest, which judges the single day a run
  * just landed on.
  *
- * The trailing-week context is why this is one class rather than two copies:
- * scoring a lone week in isolation would let
- * {@see PlanRenderer::weekPhasesAndMultipliers()} read it as an isolated
- * week 1 and silently drop whatever Build ramp it is actually deep into, so
- * the prescribed km every verdict is measured against would be wrong.
+ * The trailing-week context is why this is one class: {@see PlanRenderer::weekPhasesAndMultipliers()}
+ * must not read a lone week as an isolated week 1.
+ *
+ * @phpstan-import-type Segment from RecommendationRevision
  */
 final readonly class ComplianceScorer
 {
@@ -48,11 +47,7 @@ final readonly class ComplianceScorer
     }
 
     /**
-     * Each day is measured against the baseline **as it stood that day**, not
-     * against today's. A verdict is a historical judgment, so it has to be
-     * the same figure whether it is reached the morning after or three days
-     * later when a delayed run finally syncs.
-     *
+     * Each day is measured against the baseline as it stood that day, not today's.
      * `score` carries the session's intent as well as its distance;
      * `distance_score` is the distance ratio alone, and `intent` is null on a
      * day that was never credited.
@@ -71,7 +66,8 @@ final readonly class ComplianceScorer
         // A run's own local date can read a calendar day ahead of the server's,
         // for an athlete east of the app's timezone just after their midnight.
         $rangeEnd = $rows->pluck('date')->max();
-        if ($rangeEnd === null || $rangeEnd->lessThan($today)) {
+        assert($rangeEnd === null || $rangeEnd instanceof Carbon);
+        if (!$rangeEnd instanceof Carbon || $rangeEnd->lessThan($today)) {
             $rangeEnd = $today;
         }
 
@@ -173,7 +169,7 @@ final readonly class ComplianceScorer
             $date = $row->date->toDateString();
             $trial = TimeTrial::of($row);
             $effectiveType = $effectiveByDate[$date]->sessionType;
-            if ($trial !== null && in_array($effectiveType, [SessionType::Tempo, SessionType::Interval], true)) {
+            if ($trial instanceof TimeTrial && in_array($effectiveType, [SessionType::Tempo, SessionType::Interval], true)) {
                 $intents[$date] = self::trialIntent($trial, $effectiveType, $runsByDate[$date] ?? [], $zones, $row->time_trial_outcome === TimeTrialOutcome::Confirmed);
                 if (isset($declaredAfterRunDates[$date])) {
                     $intents[$date]['evidence']['advice_history'] = 'declared_after_run';
@@ -270,7 +266,7 @@ final readonly class ComplianceScorer
     {
         $paces = $this->paceCalculator->fromVdotResult($this->vdotEstimator->estimate($user, $row->date));
         $prescription = IntensityPrescription::fromSession($row);
-        $segments = $prescription !== null && $type->isQuality()
+        $segments = $prescription instanceof IntensityPrescription && $type->isQuality()
             ? SegmentGenerator::forPrescription($type, $row->phase, $coreKm, $paces, $prescription)
             : SegmentGenerator::forCoreKm($type, $row->phase, $row->race_distance_m === null ? null : (float) $row->race_distance_m, $coreKm, $paces);
         $reading = SessionIntentJudge::judge($type, $segments, $paces, $runs, $heartRateCapped, $streams);
@@ -329,13 +325,15 @@ final readonly class ComplianceScorer
     private static function concernOf(?array $assessment): string
     {
         $stoppingCeiling = in_array($assessment['ceiling'] ?? null, [ReadinessCeiling::Rest->value, ReadinessCeiling::EasyOnly->value], true);
-        $severe = array_intersect(self::STRONG_CONCERN_REASONS, $assessment['reasons'] ?? []) !== [];
+        /** @var list<string> $reasons */
+        $reasons = $assessment['reasons'] ?? [];
+        $severe = array_intersect(self::STRONG_CONCERN_REASONS, $reasons) !== [];
 
         return $stoppingCeiling && $severe ? 'strong' : 'mild';
     }
 
     /**
-     * @param  list<array<string, mixed>>  $segments
+     * @param  list<Segment>  $segments
      * @return list<SessionSegment>
      */
     private static function segmentsOf(array $segments): array
@@ -400,18 +398,10 @@ final readonly class ComplianceScorer
     }
 
     /**
-     * Writes one day's verdict the moment a run lands on it, but only ever
-     * upward: a day the athlete has already earned is recorded, and anything
-     * short of credited is left `Planned` for the daily pass to settle once
-     * the day is actually over. Falling short is not decidable while the day
-     * still has hours in it; clearing the bar cannot be undone by them.
-     *
-     * That asymmetry is also what corrects a late arrival. A run that syncs
-     * after the daily pass has already written `missed` finds a row that is
-     * no longer `Planned`, which nothing else would ever revisit, and lifts
-     * it — while a second run on an already-credited day can raise `done` to
-     * `overreached` but never the reverse. This holds for ingests,
-     * re-ingests, revisions and late uploads; a deleted run goes through
+     * Writes one day's verdict the moment a run lands on it, but only ever upward: a day the athlete
+     * has already earned is recorded, and anything short of credited is left `Planned` for the daily
+     * pass to settle. A late-arriving run lifts a day the daily pass already wrote `missed`, and a
+     * second run can raise `done` to `overreached` but never the reverse; a deleted run goes through
      * {@see self::regradeAfterDelete()} instead.
      */
     public function creditIfEarned(User $user, Carbon $date, Carbon $today): void
@@ -484,14 +474,8 @@ final readonly class ComplianceScorer
     }
 
     /**
-     * Records the denominator beside the verdict. Prescribed km is otherwise
-     * recomputed from the athlete's *current* baseline on every render, so a
-     * past day would drift away from the figure it was actually judged
-     * against as fitness moved.
-     *
-     * The intent verdict and its evidence are persisted here too, so a
-     * narrator reading this row later gets the exact verdict the grade used
-     * rather than recomputing one that could drift from it.
+     * Records the denominator beside the verdict (prescribed km is otherwise recomputed from the
+     * current baseline on every render) and persists the intent verdict and evidence the grade used.
      *
      * @param  array{status: PlannedSessionStatus, score: int|null, ran_anyway: bool, distance_score?: int|null, prescribed_km?: float|null, intent?: array{verdict: IntentVerdict, evidence: array<string, int|float|string>}|null}  $verdict
      */

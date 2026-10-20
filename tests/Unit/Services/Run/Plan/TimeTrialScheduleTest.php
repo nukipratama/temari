@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Services\Run\Plan\TimeTrial;
 use App\Enums\AdaptationReason;
 use App\Enums\PlanPhase;
 use App\Services\Run\Plan\PlanInputs;
@@ -37,14 +38,18 @@ function trialScheduleInputs(bool $race = true, array $trials = [], array $evide
     );
 }
 
-/** @return array<string, bool> week start => whether a trial is offered, in order */
+/**
+ * @param  list<string>  $weeks
+ * @param  list<string>  $deloads
+ * @return array<string, 'none'|'trial'|'retry'> week start => what is offered there, in order
+ */
 function offeredWeeks(TimeTrialSchedule $schedule, array $weeks, array $deloads = []): array
 {
     $offered = [];
     foreach ($weeks as $week) {
         $trial = $schedule->forWeek(Carbon::parse($week), in_array($week, $deloads, true) ? PlanPhase::Deload : PlanPhase::Build);
-        $offered[$week] = $trial === null ? 'none' : ($trial->retry ? 'retry' : 'trial');
-        if ($trial !== null) {
+        $offered[$week] = $trial instanceof TimeTrial ? $trial->retry ? 'retry' : 'trial' : ('none');
+        if ($trial instanceof TimeTrial) {
             $schedule->placedIn(Carbon::parse($week));
         }
     }

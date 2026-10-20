@@ -155,7 +155,7 @@ class AnswerRunQuestionJob implements ShouldQueue
     {
         $now = Carbon::now();
         $token = (string) Str::uuid();
-        $leaseExpiredBefore = $now->copy()->subSeconds((int) config('queue.connections.redis.retry_after'));
+        $leaseExpiredBefore = $now->copy()->subSeconds(config()->integer('queue.connections.redis.retry_after'));
         $isRetry = $this->attempts() > 1;
         $priorToken = $question->claim_token;
 

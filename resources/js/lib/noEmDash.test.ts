@@ -3,13 +3,10 @@ import { describe, expect, it } from 'vitest';
 import { METRIC_GLOSSARY } from './metricGlossary';
 
 /**
- * Em-dash / en-dash regression guard for shipped UI copy.
- *
- * Em-dashes (—) and en-dashes (–) read as an AI/translation tell in casual
- * Indonesian (see feedback_no_em_dash). This walks the *string values* of the
- * canonical copy modules (not their source/comments) and asserts none slip in.
- * The '—' glyph as a null placeholder in data display is a separate concern and
- * never lives in these copy constants.
+ * Em-dash / en-dash regression guard for shipped UI copy: walks the *string
+ * values* of the canonical copy modules (not their source/comments) and asserts
+ * none slip in. The '—' glyph as a null placeholder in data display is a
+ * separate concern and never lives in these copy constants.
  */
 const EM_DASH = '—';
 const EN_DASH = '–';

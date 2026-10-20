@@ -5,6 +5,10 @@ declare(strict_types=1);
 use App\Services\Run\Metrics\TrainingFormStatus;
 use App\Services\Run\Story\VibeMatrix;
 
+/**
+ * @param array{form?: float, form_status?: TrainingFormStatus, days_since_run?: int|null, recent_pr?: bool, decoupling_avg?: float|null} $overrides
+ * @return array{form: float, form_status: TrainingFormStatus, days_since_run: int|null, recent_pr: bool, decoupling_avg: float|null}
+ */
 function signals(array $overrides = []): array
 {
     return array_merge([

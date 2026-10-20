@@ -13,6 +13,7 @@ use App\Services\Run\LifetimeStats;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Inertia\Testing\AssertableInertia as Assert;
+use Tests\TestCase;
 
 uses(RefreshDatabase::class);
 
@@ -439,7 +440,7 @@ it('runs no activity queries when only snapshots are requested', function (): vo
 
     // `latestRunDaysAgo` and the week window still run — both are eager scalars
     // driving `rangeFilter` / `hasOlderWeeks` — so the assertion targets the
-    // payload queries the poll used to drag along: the run fetch and the
+    // payload queries the poll must not drag along: the run fetch and the
     // story-line reads behind `notes` and `moods`.
     $runFetches = array_filter($queries, isRunFetch(...));
     $storyLineReads = array_filter($queries, fn (string $sql): bool => str_contains($sql, '`story_lines`'));
@@ -493,10 +494,10 @@ function isRunFetch(string $sql): bool
  * Partial-reload headers mimicking the analysis poller's
  * `router.reload({ only: ['weeklySnapshots'] })`.
  *
- * @param  object  $actingAs  The authenticated test case.
+ * @param  TestCase  $actingAs  The authenticated test case.
  * @return array<string, string>
  */
-function snapshotOnlyHeaders(object $actingAs): array
+function snapshotOnlyHeaders(TestCase $actingAs): array
 {
     return [
         'X-Inertia' => 'true',

@@ -25,7 +25,6 @@ use App\Services\Run\Metrics\RiegelProjector;
 use App\Services\Run\Metrics\VdotEstimator;
 use App\Services\Run\Plan\EffectiveSession;
 use App\Services\Run\Plan\Periodizer;
-use App\Services\Run\Plan\PlanInputs;
 use App\Services\Run\Plan\PlanInputsGatherer;
 use App\Services\Run\Plan\SeasonService;
 use App\Services\Run\Plan\TrainingBaseline;
@@ -41,9 +40,13 @@ uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
     Carbon::setTestNow('2026-08-10 08:00:00');
-    $this->periodizer = app(Periodizer::class);
 });
 afterEach(fn () => Carbon::setTestNow());
+
+function periodizer(): Periodizer
+{
+    return app(Periodizer::class);
+}
 
 it('keeps carried readiness doses under new workload limits during reconciliation and regeneration', function (bool $fullRegeneration): void {
     Carbon::setTestNow('2026-08-13 08:00:00');
@@ -54,7 +57,7 @@ it('keeps carried readiness doses under new workload limits during reconciliatio
     TrainingPreference::factory()->for($user)->create(['sessions_per_week' => 4]);
     PersonalRecord::factory()->for($user)->create(['category' => '10km', 'value_sec' => 2700, 'set_at' => Carbon::today()]);
     seedConfirmedEffort($user, 10_000, 2700, Carbon::today());
-    $this->periodizer->regenerate($user, Carbon::today());
+    periodizer()->regenerate($user, Carbon::today());
     $session = PlannedSession::query()->where('user_id', $user->id)->whereDate('date', Carbon::today())->firstOrFail();
     $assessment = ['adjustment' => ['quality_dose' => ['hard_minutes' => 15, 'original_hard_minutes' => 20, 'pace_band' => 'threshold', 'pace_sec_per_km' => 270]]];
     $session->update(['clamped_km' => 12.0, 'readiness_assessment' => $assessment]);
@@ -63,9 +66,9 @@ it('keeps carried readiness doses under new workload limits during reconciliatio
         'stream_summary' => ['time_in_zone_min' => ['Z1' => 0, 'Z2' => 0, 'Z3' => 0, 'Z4' => 180, 'Z5' => 0]],
     ]);
     if ($fullRegeneration) {
-        $this->periodizer->regenerate($user, Carbon::today());
+        periodizer()->regenerate($user, Carbon::today());
     } else {
-        expect($this->periodizer->regenerateIfChanged($user, Carbon::today()))->toBeTrue();
+        expect(periodizer()->regenerateIfChanged($user, Carbon::today()))->toBeTrue();
     }
     $session = PlannedSession::query()->where('user_id', $user->id)->whereDate('date', Carbon::today())->firstOrFail();
     $effective = EffectiveSession::of($session, 10.0);
@@ -85,7 +88,7 @@ it('reconciles new actual workload only into affected current-week prescriptions
     TrainingPreference::factory()->for($user)->create(['sessions_per_week' => 4]);
     PersonalRecord::factory()->for($user)->create(['category' => '10km', 'value_sec' => 2700, 'set_at' => Carbon::today()]);
     seedConfirmedEffort($user, 10_000, 2700, Carbon::today());
-    $this->periodizer->regenerate($user, Carbon::today());
+    periodizer()->regenerate($user, Carbon::today());
     $thursday = PlannedSession::query()->where('user_id', $user->id)->whereDate('date', '2026-08-13')->firstOrFail();
     $nextWeek = PlannedSession::query()->where('user_id', $user->id)->whereDate('date', '2026-08-20')->firstOrFail();
     expect($thursday->prescribed_hard_minutes)->toBeGreaterThan(0);
@@ -94,10 +97,10 @@ it('reconciles new actual workload only into affected current-week prescriptions
         'stream_summary' => ['time_in_zone_min' => ['Z1' => 0, 'Z2' => 0, 'Z3' => 0, 'Z4' => 180, 'Z5' => 0]],
     ]);
 
-    expect($this->periodizer->regenerateIfChanged($user, Carbon::today()))->toBeTrue()
-        ->and($thursday->fresh()->prescribed_hard_minutes)->toBe(0)
-        ->and($nextWeek->fresh()->id)->toBe($nextWeek->id)
-        ->and($this->periodizer->regenerateIfChanged($user, Carbon::today()))->toBeFalse();
+    expect(periodizer()->regenerateIfChanged($user, Carbon::today()))->toBeTrue()
+        ->and($thursday->refresh()->prescribed_hard_minutes)->toBe(0)
+        ->and($nextWeek->refresh()->id)->toBe($nextWeek->id)
+        ->and(periodizer()->regenerateIfChanged($user, Carbon::today()))->toBeFalse();
 });
 
 it('still plans today when a run is already logged today', function (): void {
@@ -109,7 +112,7 @@ it('still plans today when a run is already logged today', function (): void {
         'start_date_local' => '2026-08-13 07:00:00', 'elapsed_time' => 2400, 'moving_time' => 2400, 'distance' => 7000,
     ]);
 
-    $this->periodizer->regenerate($user, Carbon::today());
+    periodizer()->regenerate($user, Carbon::today());
 
     expect(PlannedSession::query()->where('user_id', $user->id)->whereDate('date', Carbon::today())->count())->toBe(1);
 });
@@ -119,11 +122,11 @@ it('keeps a day the athlete skipped in advance when the plan regenerates', funct
     $user = User::factory()->create();
     seedPeriodizerBaseline($user);
     TrainingPreference::factory()->for($user)->create(['sessions_per_week' => 4]);
-    $this->periodizer->regenerate($user, Carbon::today());
+    periodizer()->regenerate($user, Carbon::today());
     $future = PlannedSession::query()->where('user_id', $user->id)->whereDate('date', '2026-08-14')->firstOrFail();
     $future->update(['skipped' => true]);
 
-    $this->periodizer->regenerate($user, Carbon::today());
+    periodizer()->regenerate($user, Carbon::today());
 
     expect($future->fresh()?->skipped)->toBeTrue()
         ->and(PlannedSession::query()->where('user_id', $user->id)->whereDate('date', '2026-08-14')->count())->toBe(1);
@@ -148,12 +151,12 @@ it('generates a self-scaled cycle with its season and decision, then regenerates
     expect($resolve($user->id, $today, $today))->toBeEmpty();
     Cache::put(PastYouTrendBuilder::cacheKey($user->id, $today), ['stale'], 3600);
 
-    $this->periodizer->regenerate($user, Carbon::today());
+    periodizer()->regenerate($user, Carbon::today());
 
     expect($resolve($user->id, $today, $today))->toHaveCount(1)
         ->and(Cache::has(PastYouTrendBuilder::cacheKey($user->id, $today)))->toBeFalse();
 
-    $phases = PlannedSession::query()->where('user_id', $user->id)->pluck('phase')->map(fn ($p) => $p->value)->unique()->sort()->values()->all();
+    $phases = PlannedSession::query()->where('user_id', $user->id)->get()->map(fn (PlannedSession $row): string => $row->phase->value)->unique()->sort()->values()->all();
     expect($phases)->toBe(['build', 'deload'])
         ->and(Season::query()->where('user_id', $user->id)->where('race_goal_id', null)->exists())->toBeTrue();
 
@@ -167,7 +170,7 @@ it('generates a self-scaled cycle with its season and decision, then regenerates
 
     DB::flushQueryLog();
     DB::enableQueryLog();
-    $this->periodizer->regenerate($user, Carbon::today());
+    periodizer()->regenerate($user, Carbon::today());
     $queries = array_column(DB::getQueryLog(), 'query');
     DB::disableQueryLog();
 
@@ -181,7 +184,7 @@ it('generates a self-scaled cycle with its season and decision, then regenerates
     Carbon::setTestNow('2026-08-10 08:05:00');
 
     expect(app(Periodizer::class)->regenerateIfChanged($user, Carbon::today()))->toBeFalse()
-        ->and($before->fresh()->updated_at->equalTo($before->updated_at))->toBeTrue();
+        ->and(nonNull(nonNull($before->fresh())->updated_at)->equalTo(nonNull($before->updated_at)))->toBeTrue();
 
     $sessionOn = fn (int $days): PlannedSession => PlannedSession::query()->where('user_id', $user->id)->whereDate('date', Carbon::today()->addDays($days))->firstOrFail();
     $sessionOn(0)->update(['status' => PlannedSessionStatus::Done, 'compliance_score' => 96, 'distance_score' => 98, 'intent_verdict' => 'hit', 'intent_evidence' => ['effective_type' => 'easy']]);
@@ -192,17 +195,20 @@ it('generates a self-scaled cycle with its season and decision, then regenerates
     $replaced = $sessionOn(1)->id;
     $this->travel(5)->minutes();
 
-    $this->periodizer->regenerate($user, Carbon::today());
+    periodizer()->regenerate($user, Carbon::today());
 
     expect($settledAttributes())->toBe($settled)
         ->and($sessionOn(1)->id)->not->toBe($replaced)
         ->and(PlannedSession::query()->where('user_id', $user->id)->count())->toBe(Periodizer::HORIZON_WEEKS * 7);
 });
 
+/**
+ * @param  array<string, mixed>  $overrides
+ * @return array<string, array{phase: PlanPhase, session_type: SessionType, volume_multiplier: float, fall_off_tilt: FallOffTilt|null, prescribed_hard_minutes: int, prescribed_pace_band: PaceBand|null, prescribed_pace_sec_per_km: int|null, prescription_reason: string|null, prescription_race_context: array<string, int|float|string>|null, ...}>
+ */
 function periodizerRows(string $today, ?string $raceDay, array $overrides = []): array
 {
-    return app(Periodizer::class)->rowsFor(new PlanInputs(...[
-        ...get_object_vars(arcInputs(today: $today, raceDay: $raceDay)),
+    return app(Periodizer::class)->rowsFor(planInputsWith(arcInputs(today: $today, raceDay: $raceDay), [
         'seasonStart' => Carbon::parse($today),
         ...$overrides,
     ]));
@@ -247,9 +253,9 @@ it('never overwrites a pinned row', function (): void {
         'session_type' => SessionType::Interval,
     ]);
 
-    $this->periodizer->regenerate($user, Carbon::today());
+    periodizer()->regenerate($user, Carbon::today());
 
-    $fresh = $pinned->fresh();
+    $fresh = $pinned->refresh();
     expect($fresh->session_type)->toBe(SessionType::Interval)
         ->and($fresh->pinned)->toBeTrue();
 });
@@ -288,7 +294,7 @@ it('keeps a session pinned after input gathering and rebuilds the week around it
 
     app(Periodizer::class)->regenerate($user, Carbon::today());
 
-    $fresh = $session->fresh();
+    $fresh = $session->refresh();
     expect($injected)->toBeTrue()
         ->and($fresh->session_type)->toBe(SessionType::Tempo)
         ->and($fresh->prescribed_hard_minutes)->toBe(20)
@@ -300,7 +306,8 @@ it('keeps a session pinned after input gathering and rebuilds the week around it
         ->whereBetween('date', [Carbon::today()->startOfWeek(Carbon::MONDAY)->toDateString(), Carbon::today()->endOfWeek(Carbon::SUNDAY)->toDateString()])
         ->whereIn('session_type', [SessionType::Tempo, SessionType::Interval])
         ->orderBy('date')
-        ->pluck('date');
+        ->get()
+        ->map(fn (PlannedSession $row): Carbon => $row->date);
 
     for ($index = 1; $index < $hardDates->count(); $index++) {
         expect(Carbon::parse($hardDates[$index])->diffInDays(Carbon::parse($hardDates[$index - 1])))->toBeGreaterThanOrEqual(2);
@@ -316,7 +323,7 @@ it('rolls back deleted sessions and feedback when a regenerated row cannot be wr
         'pinned' => false,
     ]);
     $feedback = Feedback::factory()->for($user)->onPlanDay($session->id)->create();
-    $before = $session->fresh()->getAttributes();
+    $before = nonNull($session->fresh())->getAttributes();
     $failed = false;
 
     DB::listen(function (QueryExecuted $query) use (&$failed): void {
@@ -330,7 +337,7 @@ it('rolls back deleted sessions and feedback when a regenerated row cannot be wr
         ->toThrow(RuntimeException::class, 'planned session regeneration failed');
 
     expect($failed)->toBeTrue()
-        ->and($session->fresh()->getAttributes())->toBe($before)
+        ->and(nonNull($session->fresh())->getAttributes())->toBe($before)
         ->and($feedback->fresh())->not->toBeNull()
         ->and(PlannedSession::query()->where('user_id', $user->id)->count())->toBe(1);
 });
@@ -343,30 +350,29 @@ it('never touches a row dated before today', function (): void {
         'session_type' => SessionType::Rest,
     ]);
 
-    $this->periodizer->regenerate($user, Carbon::today());
+    periodizer()->regenerate($user, Carbon::today());
 
-    expect($past->fresh()->session_type)->toBe(SessionType::Rest);
+    expect($past->refresh()->session_type)->toBe(SessionType::Rest);
 });
 
 it('recomputes a stale unpinned future row fresh on a second call', function (): void {
     $user = User::factory()->create();
     seedPeriodizerBaseline($user);
 
-    $this->periodizer->regenerate($user, Carbon::today());
-    $someRow = PlannedSession::query()
+    periodizer()->regenerate($user, Carbon::today());
+    $someRow = nonNull(PlannedSession::query()
         ->where('user_id', $user->id)
         ->where('date', '>=', Carbon::today()->toDateString())
-        ->first();
+        ->first());
     $dateKey = $someRow->date->toDateString();
     $someRow->update(['session_type' => SessionType::Interval, 'phase' => PlanPhase::Peak]);
 
-    $this->periodizer->regenerate($user, Carbon::today());
+    periodizer()->regenerate($user, Carbon::today());
 
     // Self-scaled mode never produces Peak, so a still-Peak row would prove the
     // stale edit survived instead of being recomputed.
-    $refetched = PlannedSession::query()->where('user_id', $user->id)->where('date', $dateKey)->first();
-    expect($refetched)->not->toBeNull()
-        ->and($refetched->phase)->not->toBe(PlanPhase::Peak);
+    $refetched = nonNull(PlannedSession::query()->where('user_id', $user->id)->where('date', $dateKey)->first());
+    expect($refetched->phase)->not->toBe(PlanPhase::Peak);
 });
 
 it('leaves a pinned far-future row alone even when the horizon shrinks', function (): void {
@@ -380,7 +386,7 @@ it('leaves a pinned far-future row alone even when the horizon shrinks', functio
         'race_date' => Carbon::today()->addWeeks(3)->toDateString(),
         'distance_m' => 10_000,
     ]);
-    $this->periodizer->regenerate($user, Carbon::today());
+    periodizer()->regenerate($user, Carbon::today());
 
     expect(PlannedSession::query()->find($pinned->id))->not->toBeNull();
 });
@@ -413,7 +419,7 @@ function regenerateWithProjectedFinish(User $user, float $predictedSec): void
 it('reconciles when a settled key-session verdict changes the adaptation fingerprint', function (): void {
     $user = User::factory()->create();
     seedPeriodizerBaseline($user);
-    $this->periodizer->regenerate($user, Carbon::today());
+    periodizer()->regenerate($user, Carbon::today());
 
     PlannedSession::factory()->for($user)->create([
         'date' => Carbon::today()->subWeek()->toDateString(),
@@ -425,7 +431,7 @@ it('reconciles when a settled key-session verdict changes the adaptation fingerp
         'intent_evidence' => ['advice_history' => 'shown', 'quality_progression' => 'eligible'],
     ]);
 
-    $changed = $this->periodizer->regenerateIfChanged($user, Carbon::today());
+    $changed = periodizer()->regenerateIfChanged($user, Carbon::today());
     $adaptation = PlanAdaptation::query()->where('user_id', $user->id)->firstOrFail();
 
     expect($changed)->toBeTrue()
@@ -449,13 +455,13 @@ it('does not restore a quality slot removed by an earlier repeated miss', functi
         ]);
     }
 
-    $this->periodizer->regenerate($user, Carbon::today());
+    periodizer()->regenerate($user, Carbon::today());
     PlannedSession::query()->where('user_id', $user->id)->whereIn('date', ['2026-07-27', '2026-08-03'])->update([
         'intent_verdict' => 'hit',
         'intent_evidence' => json_encode(['advice_history' => 'shown', 'quality_progression' => 'eligible']),
     ]);
 
-    expect($this->periodizer->regenerateIfChanged($user, Carbon::today()))->toBeFalse()
+    expect(periodizer()->regenerateIfChanged($user, Carbon::today()))->toBeFalse()
         ->and(PlanAdaptation::query()->where('user_id', $user->id)->firstOrFail()->quality_delta)
         ->toBe(-1);
 });
@@ -464,7 +470,7 @@ it('reconciles a settled key-session verdict from the current week', function ()
     Carbon::setTestNow('2026-08-12 08:00:00');
     $user = User::factory()->create();
     seedPeriodizerBaseline($user);
-    $this->periodizer->regenerate($user, Carbon::today());
+    periodizer()->regenerate($user, Carbon::today());
 
     PlannedSession::query()
         ->where('user_id', $user->id)
@@ -490,11 +496,12 @@ it('reconciles a settled key-session verdict from the current week', function ()
         ]);
     }
 
-    expect($this->periodizer->regenerateIfChanged($user, Carbon::today()))->toBeTrue()
+    expect(periodizer()->regenerateIfChanged($user, Carbon::today()))->toBeTrue()
         ->and(PlanAdaptation::query()->where('user_id', $user->id)->firstOrFail()->reason)
         ->toBe(AdaptationReason::MissedStimulus);
 });
 
+/** @return array<int, PlanPhase> */
 function currentWeekPhases(User $user): array
 {
     $weekStart = Carbon::today()->startOfWeek(Carbon::MONDAY);
@@ -502,7 +509,8 @@ function currentWeekPhases(User $user): array
     return PlannedSession::query()
         ->where('user_id', $user->id)
         ->whereBetween('date', [$weekStart->toDateString(), $weekStart->copy()->addDays(6)->toDateString()])
-        ->pluck('phase')
+        ->get()
+        ->map(fn (PlannedSession $row): PlanPhase => $row->phase)
         ->unique()
         ->values()
         ->all();
@@ -521,7 +529,7 @@ it('turns the current week into a real deload after a missed week, with no floor
         ->toBe(AdaptationReason::MissedWeek)
         ->and(floorOverriddenKm($user))->toBeNull();
 
-    expect($this->periodizer->regenerateIfChanged($user, Carbon::today()))->toBeFalse()
+    expect(periodizer()->regenerateIfChanged($user, Carbon::today()))->toBeFalse()
         ->and(currentWeekPhases($user))->toBe([PlanPhase::Deload])
         ->and(PlanAdaptation::query()->where('user_id', $user->id)->firstOrFail()->reason)
         ->toBe(AdaptationReason::MissedWeek);
@@ -588,14 +596,13 @@ it('counts a race-pace Long against the weekly hard-day limit', function (): voi
 
     $monday = Carbon::parse($buildDate)->startOfWeek(Carbon::MONDAY);
     $week = array_filter($rows, fn (string $date): bool => $date >= $monday->toDateString() && $date <= $monday->copy()->addDays(6)->toDateString(), ARRAY_FILTER_USE_KEY);
-    $long = array_find($week, fn (array $row): bool => $row['session_type'] === SessionType::Long);
+    $long = nonNull(array_find($week, fn (array $row): bool => $row['session_type'] === SessionType::Long));
     $quality = array_filter($week, fn (array $row): bool => in_array($row['session_type'], [SessionType::Tempo, SessionType::Interval], true));
     $hardDays = array_filter($week, fn (array $row): bool => $row['prescribed_hard_minutes'] > 0);
 
-    expect($long)->not->toBeNull();
     expect($long['prescribed_pace_band'])->toBe(PaceBand::Marathon);
     expect($quality)->toHaveCount(1);
-    expect(array_first($quality)['prescribed_hard_minutes'])->toBeGreaterThan(0);
+    expect(nonNull(array_first($quality))['prescribed_hard_minutes'])->toBeGreaterThan(0);
     expect($hardDays)->toHaveCount(2);
 });
 
@@ -665,7 +672,7 @@ it('lets the race projection move prescribed quality work in both directions', f
     regenerateWithProjectedFinish($user, 5000.0);
     $aheadOfGoal = currentWeekQualityCount($user);
 
-    // #933: being ahead of the goal time no longer touches the quality block
+    // Being ahead of the goal time does not touch the quality block
     // at all -- it stays exactly what the phase baseline already prescribes.
     // Only falling behind still moves it, and only upward.
     expect($steady)->toBe(2)
@@ -683,7 +690,7 @@ it('writes race day into the plan and stamps the distance onto the row', functio
         'completed_at' => null,
     ]);
 
-    $this->periodizer->regenerate($user);
+    periodizer()->regenerate($user);
 
     $raceRow = PlannedSession::query()->where('user_id', $user->id)
         ->where('date', $raceDate->toDateString())->firstOrFail();
@@ -700,16 +707,16 @@ it('stamps the race distance on the race day alone, and plans no race day once t
         'distance_m' => 21_097,
         'completed_at' => null,
     ]);
-    $this->periodizer->regenerate($user);
+    periodizer()->regenerate($user);
 
     $stamped = PlannedSession::query()->where('user_id', $user->id)
         ->whereNotNull('race_distance_m')->get();
 
     expect($stamped)->toHaveCount(1)
-        ->and($stamped->first()->session_type)->toBe(SessionType::Race);
+        ->and(nonNull($stamped->first())->session_type)->toBe(SessionType::Race);
 
     $race->update(['completed_at' => now()]);
-    $this->periodizer->regenerate($user);
+    periodizer()->regenerate($user);
 
     expect(PlannedSession::query()->where('user_id', $user->id)->where('session_type', SessionType::Race)->exists())->toBeFalse()
         ->and(PlannedSession::query()->where('user_id', $user->id)->whereNotNull('race_distance_m')->exists())->toBeFalse();
@@ -719,7 +726,7 @@ it('leaves nothing behind when a near-term race shrinks the horizon, and refills
     $user = User::factory()->create();
     seedPeriodizerBaseline($user);
 
-    $this->periodizer->regenerate($user);
+    periodizer()->regenerate($user);
     $selfScaledEnd = PlannedSession::query()->where('user_id', $user->id)->max('date');
     $farFutureDate = Carbon::today()->addWeeks(10)->toDateString();
     expect(PlannedSession::query()->where('user_id', $user->id)->where('date', '>=', $farFutureDate)->exists())->toBeTrue();
@@ -729,7 +736,7 @@ it('leaves nothing behind when a near-term race shrinks the horizon, and refills
         'distance_m' => 10_000,
         'completed_at' => null,
     ]);
-    $this->periodizer->regenerate($user);
+    periodizer()->regenerate($user);
 
     $raceArcEnd = Carbon::today()->addWeeks(3)->endOfWeek(Carbon::SUNDAY)->toDateString();
     expect(PlannedSession::query()->where('user_id', $user->id)->max('date'))->toBe($raceArcEnd)
@@ -738,7 +745,7 @@ it('leaves nothing behind when a near-term race shrinks the horizon, and refills
         ->and(PlannedSession::query()->where('user_id', $user->id)->where('date', '>=', $farFutureDate)->exists())->toBeFalse();
 
     $race->update(['completed_at' => now()]);
-    $this->periodizer->regenerate($user);
+    periodizer()->regenerate($user);
 
     expect(PlannedSession::query()->where('user_id', $user->id)->max('date'))->toBe($selfScaledEnd);
 });
@@ -752,7 +759,7 @@ it('carries a recorded easy clamp onto today\'s recreated row', function (): voi
         'clamped_km' => 3.6,
     ]);
 
-    $this->periodizer->regenerate($user, Carbon::today());
+    periodizer()->regenerate($user, Carbon::today());
 
     $fresh = PlannedSession::query()->where('user_id', $user->id)->where('date', Carbon::today()->toDateString())->firstOrFail();
     expect($fresh->id)->not->toBe($today->id)
@@ -772,7 +779,7 @@ it('carries a recorded pace ease onto today\'s recreated row', function (): void
         'eased_pace_sec_per_km' => 375,
     ]);
 
-    $this->periodizer->regenerate($user, Carbon::today());
+    periodizer()->regenerate($user, Carbon::today());
 
     $fresh = PlannedSession::query()->where('user_id', $user->id)->where('date', Carbon::today()->toDateString())->firstOrFail();
     expect($fresh->id)->not->toBe($today->id)
@@ -808,7 +815,7 @@ it('deletes plan_day feedback for exactly the rows a regenerate deletes, keeping
     $gradedFlag = Feedback::factory()->for($user)->onPlanDay($gradedRow->id)->create();
     $narrationFlag = Feedback::factory()->for($user)->onNarration(999)->create();
 
-    $this->periodizer->regenerate($user, Carbon::today());
+    periodizer()->regenerate($user, Carbon::today());
 
     expect(Feedback::query()->find($deletedFlag->id))->toBeNull()
         ->and(Feedback::query()->find($pinnedFlag->id))->not->toBeNull()
@@ -827,11 +834,10 @@ it('keeps today\'s row when the day has already been scored', function (): void 
         'prescribed_km' => 12.0,
     ]);
 
-    $this->periodizer->regenerate($user, Carbon::today());
+    periodizer()->regenerate($user, Carbon::today());
 
-    $fresh = $scored->fresh();
-    expect($fresh)->not->toBeNull()
-        ->and($fresh->status)->toBe(PlannedSessionStatus::Done)
+    $fresh = nonNull($scored->fresh());
+    expect($fresh->status)->toBe(PlannedSessionStatus::Done)
         ->and($fresh->compliance_score)->toBe(104)
         ->and($fresh->session_type)->toBe(SessionType::Long);
 });
@@ -844,7 +850,7 @@ it('plans the week around the day an eased tempo became, not the tempo it abando
     ActivityDetail::factory()->for(Activity::factory()->for($user)->analyzed()->create())->create(['start_date_local' => '2026-08-08 07:00:00', 'distance' => 20_000]);
     TrainingPreference::factory()->for($user)->create(['sessions_per_week' => 4]);
     PersonalRecord::factory()->for($user)->create(['category' => '10km', 'value_sec' => 2700, 'set_at' => Carbon::today()]);
-    $this->periodizer->regenerate($user, Carbon::today());
+    periodizer()->regenerate($user, Carbon::today());
     PlannedSession::query()->updateOrCreate(['user_id' => $user->id, 'date' => '2026-08-10'], [
         'phase' => PlanPhase::Build,
         'session_type' => SessionType::Tempo,
@@ -858,7 +864,7 @@ it('plans the week around the day an eased tempo became, not the tempo it abando
             : ['advice_history' => 'shown', 'effective_type' => 'tempo', 'concern' => 'none', 'quality_progression' => 'eligible'],
     ]);
 
-    $this->periodizer->regenerate($user, Carbon::today());
+    periodizer()->regenerate($user, Carbon::today());
 
     expect(PlannedSession::query()->where('user_id', $user->id)->whereDate('date', '2026-08-13')->firstOrFail()->prescribed_hard_minutes > 0)->toBe($qualityPlanned);
 })->with([

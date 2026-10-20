@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Models\Activity;
 use App\Models\AI\Analysis;
 use App\Models\AI\TokenUsage;
+use App\Models\IntervalsIcuConnection;
 use App\Models\PlanAdaptation;
 use App\Models\RunCard;
 use App\Models\Season;
@@ -273,4 +274,39 @@ it('sends nothing for an account that never connected Strava', function (): void
     app(UserEraser::class)->erase(User::factory()->create());
 
     Http::assertNothingSent();
+});
+
+it("removes today's intervals.icu workout before the account goes", function (): void {
+    $user = User::factory()->create();
+    IntervalsIcuConnection::factory()->for($user)->create(['athlete_id' => 'i42', 'synced_on' => now()->toDateString(), 'event_id' => '501']);
+    Http::fake(['intervals.icu/*' => Http::response()]);
+
+    app(UserEraser::class)->erase($user);
+
+    Http::assertSent(fn (Request $request): bool => $request->method() === 'DELETE'
+        && $request->url() === 'https://intervals.icu/api/v1/athlete/i42/events/501');
+    expect(User::query()->whereKey($user->id)->exists())->toBeFalse();
+});
+
+it('erases the account even when intervals.icu cannot remove the workout', function (int $status): void {
+    $user = User::factory()->create();
+    IntervalsIcuConnection::factory()->for($user)->create(['synced_on' => now()->toDateString(), 'event_id' => '501']);
+    Http::fake(['intervals.icu/*' => Http::response('', $status)]);
+
+    app(UserEraser::class)->erase($user);
+
+    expect(User::query()->whereKey($user->id)->exists())->toBeFalse()
+        ->and(IntervalsIcuConnection::query()->count())->toBe(0);
+})->with([401, 503]);
+
+it('calls nothing on intervals.icu for a user without a working connection', function (): void {
+    $withBroken = User::factory()->create();
+    IntervalsIcuConnection::factory()->for($withBroken)->broken()->create(['synced_on' => now()->toDateString(), 'event_id' => '501']);
+    $without = User::factory()->create();
+    Http::fake(['intervals.icu/*' => Http::response()]);
+
+    app(UserEraser::class)->erase($withBroken);
+    app(UserEraser::class)->erase($without);
+
+    Http::assertNotSent(fn (Request $request): bool => str_contains($request->url(), 'intervals.icu'));
 });

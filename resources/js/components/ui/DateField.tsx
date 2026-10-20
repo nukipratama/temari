@@ -23,14 +23,11 @@ interface DateFieldProps {
  * A date field that keeps the native input and adds a calendar of our own on
  * pointer devices.
  *
- * The input is never replaced by a button, because it is doing real work: the
- * race form is a genuine `<form onSubmit>`, so `required` and `min` run the
- * browser's own constraint validation and block submission before the handler
- * is reached. A button would have dropped that silently. On a fine pointer the
- * webkit picker indicator is hidden and our own trigger takes its place; on a
- * coarse pointer nothing changes at all, since the OS date sheet beats anything
- * we would draw — bigger targets, the platform's own locale handling, and the
- * interaction people already know.
+ * The input is never replaced by a button: the race form is a genuine
+ * `<form onSubmit>`, so `required` and `min` need the native input to run the
+ * browser's constraint validation. On a fine pointer the webkit picker indicator
+ * is hidden and our own trigger takes its place; on a coarse pointer nothing
+ * changes, since the OS date sheet is better.
  */
 export default function DateField({
     id,

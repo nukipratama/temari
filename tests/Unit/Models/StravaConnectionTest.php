@@ -27,7 +27,7 @@ it('encrypts the access token at rest', function (): void {
     $stored = $connection->getAttributes()['access_token'];
 
     expect($stored)->not->toBe('plain-access')
-        ->and(Crypt::decryptString($stored))->toBe('plain-access')
+        ->and(Crypt::decryptString(is_string($stored) ? $stored : throw new InvalidArgumentException('Stored access token is not a string.')))->toBe('plain-access')
         ->and($connection->access_token)->toBe('plain-access');
 });
 
@@ -37,7 +37,7 @@ it('encrypts the refresh token at rest', function (): void {
     $stored = $connection->getAttributes()['refresh_token'];
 
     expect($stored)->not->toBe('plain-refresh')
-        ->and(Crypt::decryptString($stored))->toBe('plain-refresh')
+        ->and(Crypt::decryptString(is_string($stored) ? $stored : throw new InvalidArgumentException('Stored refresh token is not a string.')))->toBe('plain-refresh')
         ->and($connection->refresh_token)->toBe('plain-refresh');
 });
 
@@ -50,7 +50,7 @@ it('casts token_expires_at to a Carbon instance', function (): void {
 
 it('casts strava_athlete_id to an integer on read', function (): void {
     $connection = new StravaConnection();
-    $connection->strava_athlete_id = '987654';
+    $connection->setAttribute('strava_athlete_id', '987654');
 
     expect($connection->strava_athlete_id)->toBe(987654);
 });
@@ -97,7 +97,7 @@ it('casts revoked_at to a Carbon instance', function (): void {
     $connection = StravaConnection::factory()->make(['user_id' => 1, 'revoked_at' => '2026-01-01 00:00:00']);
 
     expect($connection->revoked_at)->toBeInstanceOf(Carbon::class)
-        ->and($connection->revoked_at->toDateTimeString())->toBe('2026-01-01 00:00:00');
+        ->and($connection->revoked_at?->toDateTimeString())->toBe('2026-01-01 00:00:00');
 });
 
 it('reports revoked state via isRevoked', function (): void {
@@ -120,11 +120,11 @@ it('stamps revoked_at via markRevoked and is a no-op when already revoked', func
     $connection = StravaConnection::factory()->create();
 
     $connection->markRevoked();
-    expect($connection->fresh()->isRevoked())->toBeTrue();
+    expect(nonNull($connection->fresh())->isRevoked())->toBeTrue();
 
-    $stampedAt = $connection->fresh()->revoked_at;
+    $stampedAt = nonNull(nonNull($connection->fresh())->revoked_at);
     $connection->markRevoked();
-    expect($connection->fresh()->revoked_at->equalTo($stampedAt))->toBeTrue();
+    expect(nonNull($connection->fresh())->revoked_at?->equalTo($stampedAt))->toBeTrue();
 });
 
 it('ignores a stale revocation without notifying or purging stubs', function (): void {
@@ -136,7 +136,7 @@ it('ignores a stale revocation without notifying or purging stubs', function ():
     $revoked = $connection->markRevoked(expectedCredentialVersion: 1);
 
     expect($revoked)->toBeFalse()
-        ->and($connection->fresh()->isRevoked())->toBeFalse()
+        ->and($connection->refresh()->isRevoked())->toBeFalse()
         ->and(Activity::withStubs()->whereKey($stub->id)->exists())->toBeTrue();
     Notification::assertNothingSent();
 });
@@ -149,7 +149,7 @@ it('revokes when the expected credential version matches', function (): void {
     $revoked = $connection->markRevoked(expectedCredentialVersion: 2);
 
     expect($revoked)->toBeTrue()
-        ->and($connection->fresh()->isRevoked())->toBeTrue();
+        ->and($connection->refresh()->isRevoked())->toBeTrue();
     Notification::assertSentToTimes($user, StravaDisconnectedNotification::class, 1);
 });
 
@@ -226,7 +226,7 @@ it('carries the revocation instant into the notification, so a re-revocation is 
     Notification::assertSentTo(
         $user,
         StravaDisconnectedNotification::class,
-        fn (StravaDisconnectedNotification $notification): bool => $notification->revokedAt->toDateTimeString() === $connection->fresh()->revoked_at?->toDateTimeString(),
+        fn (StravaDisconnectedNotification $notification): bool => $notification->revokedAt->toDateTimeString() === $connection->refresh()->revoked_at?->toDateTimeString(),
     );
 });
 

@@ -11,8 +11,10 @@ use App\Models\Analytics\DevtoolsAction;
 use App\Models\Analytics\ScheduledTaskRunLog;
 use App\Models\Analytics\StravaRead;
 use App\Models\Analytics\StravaSyncLog;
+use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 
 uses(RefreshDatabase::class);
 
@@ -70,4 +72,29 @@ it('deletes metering, audit and narration-version rows older than 90 days', func
         ->and(DevtoolsAction::query()->find($recentAction->id))->not->toBeNull()
         ->and(ScheduledTaskRunLog::query()->find($oldRunLog->id))->toBeNull()
         ->and(ScheduledTaskRunLog::query()->find($recentRunLog->id))->not->toBeNull();
+});
+
+it('deletes more rows than one chunk across several bounded deletes', function (): void {
+    $row = fn (int $daysAgo): array => [
+        'kind' => 'briefing', 'prompt_tokens' => 1, 'completion_tokens' => 1,
+        'total_tokens' => 2, 'model' => 'gpt-4o', 'created_at' => Carbon::now()->subDays($daysAgo),
+    ];
+    foreach (array_chunk(array_map(fn (): array => $row(91), range(1, 2_500)), 500) as $rows) {
+        TokenUsage::query()->insert($rows);
+    }
+    $recent = TokenUsage::query()->create($row(89));
+
+    $deletes = 0;
+    DB::listen(function (QueryExecuted $query) use (&$deletes): void {
+        if (str_starts_with($query->sql, 'delete from `ai_token_usages`')) {
+            $deletes++;
+        }
+    });
+
+    $this->artisan('analytics:prune')
+        ->expectsOutputToContain('Pruned 2500 ai_token_usages')
+        ->assertSuccessful();
+
+    expect(TokenUsage::query()->pluck('id')->all())->toBe([$recent->id])
+        ->and($deletes)->toBe(3);
 });

@@ -25,10 +25,9 @@ function comparableRow(array $attributes = [], IngestState $ingestState = Ingest
 }
 
 it('projects a query row onto the summary-only fields', function (): void {
-    $run = ComparableRun::fromRow(comparableRow());
+    $run = nonNull(ComparableRun::fromRow(comparableRow()));
 
-    expect($run)->not->toBeNull()
-        ->and($run->activityId)->toBe(7)
+    expect($run->activityId)->toBe(7)
         ->and($run->distanceM)->toBe(10_000.0)
         ->and($run->elapsedTimeSec)->toBe(3_000)
         ->and($run->paceSecPerKm)->toBe(300.0)
@@ -46,7 +45,7 @@ it('returns null when distance, elapsed time or start date is unusable', functio
 ]);
 
 it('derives distance, elevation density, clock time and month', function (): void {
-    $run = ComparableRun::fromRow(comparableRow(ingestState: IngestState::Detailed));
+    $run = nonNull(ComparableRun::fromRow(comparableRow(ingestState: IngestState::Detailed)));
 
     expect($run->distanceKm())->toBe(10.0)
         ->and($run->elevationPerKm())->toBe(12.0)
@@ -55,21 +54,21 @@ it('derives distance, elevation density, clock time and month', function (): voi
 });
 
 it('has no elevation density when the run carries no elevation', function (): void {
-    $run = ComparableRun::fromRow(comparableRow(['total_elevation_gain' => null]));
+    $run = nonNull(ComparableRun::fromRow(comparableRow(['total_elevation_gain' => null])));
 
     expect($run->elevationGainM)->toBeNull()
         ->and($run->elevationPerKm())->toBeNull();
 });
 
 it('measures whole days between two runs', function (): void {
-    $past = ComparableRun::fromRow(comparableRow(['start_date_local' => '2026-01-01 20:00:00']));
-    $current = ComparableRun::fromRow(comparableRow(['start_date_local' => '2026-03-02 05:00:00']));
+    $past = nonNull(ComparableRun::fromRow(comparableRow(['start_date_local' => '2026-01-01 20:00:00'])));
+    $current = nonNull(ComparableRun::fromRow(comparableRow(['start_date_local' => '2026-03-02 05:00:00'])));
 
     expect($past->daysBefore($current))->toBe(60);
 });
 
 it('serializes the ingest state so a summary-sourced comparison is visible', function (): void {
-    $run = ComparableRun::fromRow(comparableRow());
+    $run = nonNull(ComparableRun::fromRow(comparableRow()));
 
     expect($run->toArray())->toBe([
         'activity_id' => 7,
@@ -84,7 +83,7 @@ it('serializes the ingest state so a summary-sourced comparison is visible', fun
 });
 
 it('serializes the effort passed in for the run\'s comparison row', function (): void {
-    $run = ComparableRun::fromRow(comparableRow());
+    $run = nonNull(ComparableRun::fromRow(comparableRow()));
 
     expect($run->toArray(Effort::Hard)['effort'])->toBe('hard');
 });

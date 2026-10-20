@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Enums\AdaptationReason;
+use App\Enums\FallOffTilt;
 use App\Enums\PaceBand;
 use App\Enums\PlanPhase;
 use App\Enums\RaceAmbitionState;
@@ -15,6 +16,7 @@ use App\Services\Run\Plan\PlanInputs;
 use App\Services\Run\Plan\SegmentGenerator;
 use App\Services\Run\Plan\TimeTrial;
 use App\Services\Run\Plan\TimeTrialSchedule;
+use App\Support\Numeric;
 use Illuminate\Support\Carbon;
 
 const TRIAL_RACE_DAY = '2026-12-19';
@@ -55,28 +57,31 @@ function trialPlanInputs(
         longRunBaselineKm: 18.0,
         longRunCapKm: 32.0,
         raceAmbitionState: $band,
-        raceAmbitionGapPct: $band === null ? null : 0.0,
+        raceAmbitionGapPct: $band instanceof RaceAmbitionState ? 0.0 : null,
         timeTrialAimSec: $aimSec,
         timeTrials: $trials,
     );
 }
 
-/** @return array<string, array<string, mixed>> */
+/** @return array<string, array{phase: PlanPhase, session_type: SessionType, volume_multiplier: float, fall_off_tilt: FallOffTilt|null, prescribed_hard_minutes: int, prescribed_pace_band: PaceBand|null, prescribed_pace_sec_per_km: int|null, prescription_reason: string|null, prescription_race_context: array<string, int|float|string>|null, ...}> */
 function trialPlan(PlanInputs $inputs): array
 {
     return app(Periodizer::class)->rowsFor($inputs);
 }
 
 /**
- * @param  array<string, array<string, mixed>>  $rows
- * @return array<string, array<string, mixed>>
+ * @param  array<string, array{phase: PlanPhase, session_type: SessionType, volume_multiplier: float, fall_off_tilt: FallOffTilt|null, prescribed_hard_minutes: int, prescribed_pace_band: PaceBand|null, prescribed_pace_sec_per_km: int|null, prescription_reason: string|null, prescription_race_context: array<string, int|float|string>|null, ...}>  $rows
+ * @return array<string, array{phase: PlanPhase, session_type: SessionType, volume_multiplier: float, fall_off_tilt: FallOffTilt|null, prescribed_hard_minutes: int, prescribed_pace_band: PaceBand|null, prescribed_pace_sec_per_km: int|null, prescription_reason: string|null, prescription_race_context: array<string, int|float|string>|null, ...}>
  */
 function trialRows(array $rows): array
 {
     return array_filter($rows, static fn (array $row): bool => TimeTrial::isTrial($row['prescription_race_context']));
 }
 
-/** @param  array<string, array<string, mixed>>  $rows */
+/**
+ * @param  array<string, array{phase: PlanPhase, session_type: SessionType, volume_multiplier: float, fall_off_tilt: FallOffTilt|null, prescribed_hard_minutes: int, prescribed_pace_band: PaceBand|null, prescribed_pace_sec_per_km: int|null, prescription_reason: string|null, prescription_race_context: array<string, int|float|string>|null, ...}>  $rows
+ * @return list<string>
+ */
 function trialWeeksOf(array $rows): array
 {
     return array_values(array_unique(array_map(
@@ -88,7 +93,7 @@ function trialWeeksOf(array $rows): array
 /**
  * Hard days per week: quality sessions with work, and a hard long run.
  *
- * @param  array<string, array<string, mixed>>  $rows
+ * @param  array<string, array{phase: PlanPhase, session_type: SessionType, volume_multiplier: float, fall_off_tilt: FallOffTilt|null, prescribed_hard_minutes: int, prescribed_pace_band: PaceBand|null, prescribed_pace_sec_per_km: int|null, prescription_reason: string|null, prescription_race_context: array<string, int|float|string>|null, ...}>  $rows
  * @return array<string, int>
  */
 function hardDaysByWeek(array $rows): array
@@ -110,7 +115,7 @@ function hardDaysByWeek(array $rows): array
  */
 function weeksWithQualitySlot(PlanInputs $inputs): array
 {
-    $plain = trialPlan(new PlanInputs(...[...get_object_vars($inputs), 'timeTrialAimSec' => null]));
+    $plain = trialPlan(planInputsWith($inputs, ['timeTrialAimSec' => null]));
 
     return array_values(array_unique(array_map(
         static fn (string $date): string => Carbon::parse($date)->startOfWeek(Carbon::MONDAY)->toDateString(),
@@ -139,7 +144,7 @@ it('runs a 10K trial for a half marathon goal and a 5K one for a 10K goal', func
     $trials = trialRows(trialPlan(trialPlanInputs($raceDistanceM, aimSec: $trialM === 5_000 ? 1_400 : 2_950)));
 
     expect($trials)->not->toBeEmpty()
-        ->and(array_values(array_unique(array_map(static fn (array $row): int => $row['prescription_race_context']['distance_m'], $trials))))->toBe([$trialM]);
+        ->and(array_values(array_unique(array_map(static fn (array $row): int => Numeric::int(data_get($row['prescription_race_context'], 'distance_m')), $trials))))->toBe([$trialM]);
 })->with([
     '10K goal' => [10_000.0, 5_000],
     'half goal' => [21_097.5, 10_000],
@@ -162,7 +167,7 @@ it('moves a trial due in a deload week to the next week with a quality slot', fu
     $next = array_find(weeksWithQualitySlot($inputs), static fn (string $week): bool => $week > '2026-10-19');
 
     expect(trialWeeksOf(trialPlan($inputs))[0])->toBe($next)
-        ->and(array_column(trialRows(trialPlan($inputs)), 'prescription_race_context')[0]['retry'])->toBe(0);
+        ->and(data_get(array_column(trialRows(trialPlan($inputs)), 'prescription_race_context')[0], 'retry'))->toBe(0);
 });
 
 it('replaces the week\'s first quality session, so a trial week never gains a hard day', function (?float $raceDistanceM): void {
@@ -202,25 +207,39 @@ it('takes a goal-pace week\'s goal-pace session, leaving that week with no goal-
 it('offers a skipped trial once more in the following week\'s first quality slot', function (): void {
     $inputs = trialPlanInputs(null, today: '2026-11-09', trials: [['date' => '2026-11-05', 'retry' => false, 'skipped' => true]]);
     $nextWeekSlot = in_array('2026-11-09', weeksWithQualitySlot($inputs), true);
-    $retries = array_filter(trialRows(trialPlan($inputs)), static fn (array $row): bool => $row['prescription_race_context']['retry'] === 1);
+    $retries = array_filter(trialRows(trialPlan($inputs)), static fn (array $row): bool => data_get($row['prescription_race_context'], 'retry') === 1);
 
     expect($nextWeekSlot)->toBeTrue()
         ->and(array_map(static fn (string $date): string => Carbon::parse($date)->startOfWeek(Carbon::MONDAY)->toDateString(), array_keys($retries)))
         ->toBe(['2026-11-09']);
 });
 
-it('offers no retry for a trial that was run, a skipped retry, or a following deload week', function (string $today, array $trials): void {
+/**
+ * @return array{string, list<array{date: string, retry: bool, skipped: bool}>}
+ */
+function noRetryTrialCase(string $case): array
+{
+    return match ($case) {
+        'run' => ['2026-11-09', [['date' => '2026-11-05', 'retry' => false, 'skipped' => false]]],
+        'retry skipped' => ['2026-11-16', [['date' => '2026-11-05', 'retry' => false, 'skipped' => true], ['date' => '2026-11-12', 'retry' => true, 'skipped' => true]]],
+        'deload the week after' => ['2026-10-26', [['date' => '2026-10-22', 'retry' => false, 'skipped' => true]]],
+        default => throw new InvalidArgumentException("Unknown trial case {$case}."),
+    };
+}
+
+it('offers no retry for a trial that was run, a skipped retry, or a following deload week', function (string $case): void {
+    [$today, $trials] = noRetryTrialCase($case);
     $rows = trialPlan(trialPlanInputs(null, today: $today, trials: $trials));
 
     expect(array_filter(trialRows($rows), static fn (array $row, string $date): bool => $date < '2026-11-30', ARRAY_FILTER_USE_BOTH))->toBe([]);
 })->with([
-    'run' => ['2026-11-09', [['date' => '2026-11-05', 'retry' => false, 'skipped' => false]]],
-    'retry skipped' => ['2026-11-16', [['date' => '2026-11-05', 'retry' => false, 'skipped' => true], ['date' => '2026-11-12', 'retry' => true, 'skipped' => true]]],
-    'deload the week after' => ['2026-10-26', [['date' => '2026-10-22', 'retry' => false, 'skipped' => true]]],
+    'run' => ['run'],
+    'retry skipped' => ['retry skipped'],
+    'deload the week after' => ['deload the week after'],
 ]);
 
 it('writes the trial day as the trial distance alone, at the aim', function (): void {
-    $date = array_key_first(trialRows(trialPlan(trialPlanInputs(null))));
+    $date = nonNull(array_key_first(trialRows(trialPlan(trialPlanInputs(null)))));
     $row = trialPlan(trialPlanInputs(null))[$date];
     $segments = SegmentGenerator::forPrescription(
         $row['session_type'],

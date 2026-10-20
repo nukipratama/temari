@@ -6,9 +6,8 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Rename RunCard.rarity values from Bahasa to English keys per the
- * Daybreak handoff. UI strings stay Bahasa via the RunCard::RARITY_LABELS
- * presenter map (en-key → ID-label).
+ * Rename RunCard.rarity values from Bahasa to English keys. UI strings stay
+ * Bahasa via the RunCard::RARITY_LABELS presenter map (en-key → ID-label).
  *
  *   biasa       → common
  *   jarang      → uncommon

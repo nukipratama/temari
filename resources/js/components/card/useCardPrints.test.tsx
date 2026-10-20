@@ -3,8 +3,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { Print } from '@/lib/card/print';
 
-import { ALL_FACTS } from '@/lib/card/types';
+import { ALL_FACTS, CARD_STYLES, type CardOptions } from '@/lib/card/types';
 import { makeCardFacts } from '@/test/cardFacts';
+import { defined } from '@/test/defined';
 
 import { useCardPrints } from './useCardPrints';
 
@@ -161,5 +162,51 @@ describe('useCardPrints', () => {
         unmount();
 
         expect(URL.revokeObjectURL).toHaveBeenCalledTimes(3);
+    });
+
+    it('revokes the oldest tuples once the memo outgrows four tuples of prints', async () => {
+        const tuples: CardOptions[] = [
+            { ...ALL_FACTS, hr: false },
+            { ...ALL_FACTS, elevation: false },
+            { ...ALL_FACTS, weather: false },
+            { ...ALL_FACTS, badges: false },
+            { ...ALL_FACTS, hr: false, elevation: false },
+            { ...ALL_FACTS, hr: false, weather: false },
+        ];
+        const { result, rerender } = renderHook(
+            ({ options }: { options: CardOptions }) =>
+                useCardPrints(facts, options, 'story', 'broadsheet'),
+            { initialProps: { options: defined(tuples[0]) } },
+        );
+        await waitFor(() => expect(renderPrint).toHaveBeenCalledTimes(3));
+
+        for (const [index, options] of tuples.slice(1).entries()) {
+            rerender({ options });
+            await waitFor(() =>
+                expect(renderPrint).toHaveBeenCalledTimes(
+                    (index + 2) * CARD_STYLES.length,
+                ),
+            );
+        }
+        await waitFor(() =>
+            expect(result.current.states.topo.print).not.toBeNull(),
+        );
+
+        const revoked = vi
+            .mocked(URL.revokeObjectURL)
+            .mock.calls.map(([url]) => url);
+        expect(revoked).toEqual([
+            'blob:print-1',
+            'blob:print-2',
+            'blob:print-3',
+            'blob:print-4',
+            'blob:print-5',
+            'blob:print-6',
+        ]);
+        for (const each of CARD_STYLES) {
+            expect(revoked).not.toContain(
+                result.current.states[each].print?.url,
+            );
+        }
     });
 });

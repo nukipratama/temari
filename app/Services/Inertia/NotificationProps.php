@@ -34,7 +34,7 @@ final readonly class NotificationProps
      */
     private function unreadNotificationsFor(?User $user): int
     {
-        if ($user === null) {
+        if (!$user instanceof User) {
             return 0;
         }
 

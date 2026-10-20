@@ -43,7 +43,7 @@ It carries **no back affordance in the page body**: Settings is a pushed screen,
 
 ## Account deletion
 
-"Delete account" is the owner-facing way to release a Strava-account binding (one Strava account = one user, reused on every re-login). A confirmation modal guards against accidental deletion; confirming issues `router.delete('/account')` → [AccountController](../../app/Http/Controllers/AccountController.php) `destroy()`, which releases the mirrored Strava grant through [UserEraser](../../app/Services/User/UserEraser.php) before deleting the user, then logs them out, invalidates the session, and redirects to `/login` with a friendly flash.
+"Delete account" is the owner-facing way to release a Strava-account binding (one Strava account = one user, reused on every re-login). A confirmation modal guards against accidental deletion; confirming issues `router.delete('/account')` → [AccountController](../../app/Http/Controllers/AccountController.php) `destroy()`, which removes today's intervals.icu workout (best effort) and releases the mirrored Strava grant through [UserEraser](../../app/Services/User/UserEraser.php) before deleting the user, then logs them out, invalidates the session, and redirects to `/login` with a friendly flash.
 
 The grant ledger keeps the encrypted refresh token if Strava cannot release it, so `strava:slots` and the daily orphan retry can try again after the account is gone. The `User` model's `deleting` hook still marks the local connection revoked and writes a sync log; that local state change alone does not release the OAuth grant. The shared **demo** account can't be deleted (`AccountController` rejects `is_demo` with an error flash; the delete-account button is not rendered for the demo account).
 

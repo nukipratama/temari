@@ -22,8 +22,8 @@ it('dispatches one recalibration for a real user and excludes demo users', funct
 
     Bus::assertDispatchedTimes(RecalibrateTrainingHistoryJob::class, 1);
     Bus::assertDispatched(fn (RecalibrateTrainingHistoryJob $job): bool => $job->userId === $user->id && $job->delay === 5);
-    expect($user->fresh()->plan_recalibration_started_at)->not->toBeNull()
-        ->and($user->fresh()->plan_recalibration_completed_at)->toBeNull();
+    expect($user->refresh()->plan_recalibration_started_at)->not->toBeNull()
+        ->and($user->refresh()->plan_recalibration_completed_at)->toBeNull();
 });
 
 it('releases the overlap lock before dispatching so a synchronous recalibration can take it', function (): void {
@@ -31,7 +31,7 @@ it('releases the overlap lock before dispatching so a synchronous recalibration 
 
     PlanRecalibrationDispatch::forUserId($user->id);
 
-    expect($user->fresh()->plan_recalibration_completed_at)->not->toBeNull();
+    expect($user->refresh()->plan_recalibration_completed_at)->not->toBeNull();
 });
 
 it('can suppress recursive dispatch while recalibration updates zone-derived data', function (): void {
@@ -50,7 +50,7 @@ it('marks an in-progress recalibration dirty without re-arming its progress stam
     $user = User::factory()->create();
 
     PlanRecalibrationDispatch::forUserId($user->id);
-    $startedAt = $user->fresh()->plan_recalibration_started_at;
+    $startedAt = nonNull($user->refresh()->plan_recalibration_started_at);
     $lock = Cache::lock(
         RecalibrateTrainingHistoryJob::overlapLockKey($user->id),
         RecalibrateTrainingHistoryJob::overlapLockTtlSeconds(),
@@ -60,7 +60,7 @@ it('marks an in-progress recalibration dirty without re-arming its progress stam
     PlanRecalibrationDispatch::forUserId($user->id);
 
     Bus::assertDispatchedTimes(RecalibrateTrainingHistoryJob::class, 1);
-    expect($user->fresh()->plan_recalibration_started_at->toIso8601String())
+    expect($user->refresh()->plan_recalibration_started_at?->toIso8601String())
         ->toBe($startedAt->toIso8601String())
         ->and(Cache::get(RecalibrateTrainingHistoryJob::dirtyMarkerKey($user->id)))->toBeTrue();
 
@@ -107,7 +107,7 @@ it('lets another user dispatch while one users recalibration lock is held', func
 
     Bus::assertDispatchedTimes(RecalibrateTrainingHistoryJob::class, 1);
     Bus::assertDispatched(fn (RecalibrateTrainingHistoryJob $job): bool => $job->userId === $otherUser->id);
-    expect($otherUser->fresh()->plan_recalibration_started_at)->not->toBeNull();
+    expect($otherUser->refresh()->plan_recalibration_started_at)->not->toBeNull();
 
     $lock->release();
 });

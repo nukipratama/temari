@@ -48,7 +48,7 @@ it('serializes snapshot_date as a plain Y-m-d string under a non-UTC timezone', 
     try {
         $snap = TrendDailySnapshot::factory()->make(['user_id' => 1, 'snapshot_date' => '2026-06-14']);
 
-        $serialized = $snap->toArray()['snapshot_date'];
+        $serialized = data_get($snap->toArray(), 'snapshot_date');
 
         expect($serialized)->toBe('2026-06-14')
             ->and($serialized)->not->toContain('T')

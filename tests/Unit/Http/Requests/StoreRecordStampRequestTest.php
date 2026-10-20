@@ -5,6 +5,9 @@ declare(strict_types=1);
 use App\Http\Requests\StoreRecordStampRequest;
 use Illuminate\Support\Facades\Validator;
 
+/**
+ * @param  array<string, mixed>  $payload
+ */
 function validateRecordStamp(array $payload): Illuminate\Validation\Validator
 {
     $request = new StoreRecordStampRequest();

@@ -29,7 +29,7 @@ it('re-narrates a run whose speech landed without the effort score saved while i
 
     app()->call([new RecheckEffortScoreNarrationJob($activity->id), 'handle']);
 
-    expect($speech->fresh()->status)->not->toBe(AnalysisStatus::Done);
+    expect($speech->refresh()->status)->not->toBe(AnalysisStatus::Done);
     Bus::assertNotDispatched(RecheckEffortScoreNarrationJob::class);
 });
 

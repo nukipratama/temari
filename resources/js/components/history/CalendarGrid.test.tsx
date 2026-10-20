@@ -8,6 +8,7 @@ import {
     type CalendarCell,
     type WeekRow,
 } from '@/pages/Activities/useCalendar';
+import { defined } from '@/test/defined';
 import { makeUser, setMockPage } from '@/test/setup';
 
 import CalendarGrid from './CalendarGrid';
@@ -34,7 +35,7 @@ function cellsFor(
 function weekFor(
     rows: Array<Partial<CalendarCell> & Pick<CalendarCell, 'date' | 'day'>>,
 ): WeekRow {
-    return chunkIntoWeeks(cellsFor(rows))[0];
+    return defined(chunkIntoWeeks(cellsFor(rows))[0]);
 }
 
 const PLAIN_WEEK = weekFor([

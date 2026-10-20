@@ -53,6 +53,7 @@ final readonly class ScheduledTrendSnapshotRecovery
 
     private function anchorFor(User $user): Carbon
     {
+        /** @var list<string|null> $dates */
         $dates = [
             TrendDailySnapshot::query()->where('user_id', $user->id)->min('snapshot_date'),
             Activity::analyzedJoinConstraint(

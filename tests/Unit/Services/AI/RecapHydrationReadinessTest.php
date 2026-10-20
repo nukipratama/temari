@@ -41,11 +41,10 @@ function hydrationWeekOf(User $user, string $weekEnding = '2026-05-17'): WeeklyS
 /** @return list<int> */
 function hydrationReadyIds(WeeklySnapshot ...$snapshots): array
 {
-    return app(RecapHydrationReadiness::class)
-        ->ready(collect($snapshots))
-        ->pluck('id')
-        ->map(fn (mixed $id): int => (int) $id)
-        ->all();
+    return array_values(app(RecapHydrationReadiness::class)
+        ->ready(collect(array_values($snapshots)))
+        ->map(fn (WeeklySnapshot $snapshot): int => $snapshot->id)
+        ->all());
 }
 
 it('holds back a week that still holds a run awaiting hydration', function (string $state): void {
@@ -124,14 +123,14 @@ it('honours a configured grace window', function (): void {
 });
 
 it('records the deferral and the escape hatch in the structured log', function (): void {
-    Log::spy();
+    $log = Log::spy();
 
     $user = User::factory()->create();
     $week = hydrationWeekOf($user);
     hydrationRun($user, 'summaryOnly');
 
     hydrationReadyIds($week);
-    Log::shouldHaveReceived('info')
+    $log->shouldHaveReceived('info')
         ->with('narrator.recap.hydration_deferred', Mockery::on(
             fn (array $context): bool => $context['count'] === 1 && $context['weeks'] === [$user->id.'|2026-05-17'],
         ))
@@ -140,7 +139,7 @@ it('records the deferral and the escape hatch in the structured log', function (
     Carbon::setTestNow('2026-05-20 00:01:00');
 
     hydrationReadyIds($week);
-    Log::shouldHaveReceived('info')
+    $log->shouldHaveReceived('info')
         ->with('narrator.recap.hydration_grace_expired', Mockery::on(
             fn (array $context): bool => $context['count'] === 1,
         ))

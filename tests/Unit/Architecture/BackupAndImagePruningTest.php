@@ -7,15 +7,14 @@ use Symfony\Component\Process\Process;
 use Symfony\Component\Yaml\Yaml;
 
 /**
- * #997: a re-run of the Deploy job for a sha that was already deployed
+ * A re-run of the Deploy job for a sha that was already deployed
  * overwrote that sha's pre-deploy backup with a dump of the freshly-wiped
  * (empty) database, silently — and the same re-run left `:latest`/`:previous`
  * pointing at the same image, so a rollback would roll back to itself.
  *
- * This asserts the fix by construction: the workflow YAML shapes that make a
- * re-run safe, plus the prune/selection scripts' actual behavior against
- * fabricated fixtures (never a live docker daemon or database). See the PR
- * description for what only a real run on the host can still prove.
+ * Asserts the workflow YAML shapes that make a re-run safe, plus the
+ * prune/selection scripts' behavior against fabricated fixtures (never a live
+ * docker daemon or database).
  */
 const DEPLOY_WORKFLOW_PATH = '.github/workflows/deploy.yml';
 const NIGHTLY_BACKUP_WORKFLOW_PATH = '.github/workflows/nightly-backup.yml';
@@ -28,13 +27,14 @@ function deployYamlText(): string
 function findDeployStepRun(string $stepName): string
 {
     $doc = Yaml::parseFile(base_path(DEPLOY_WORKFLOW_PATH));
-    $steps = $doc['jobs']['deploy']['steps'];
+    $steps = arrayOf(data_get($doc, 'jobs.deploy.steps'));
 
     foreach ($steps as $step) {
-        if (($step['name'] ?? null) === $stepName) {
-            expect($step['run'] ?? null)->not->toBeNull("Step '{$stepName}' has no run block.");
+        if (data_get($step, 'name') === $stepName) {
+            $run = data_get($step, 'run');
+            expect($run)->not->toBeNull("Step '{$stepName}' has no run block.");
 
-            return $step['run'];
+            return is_string($run) ? $run : throw new InvalidArgumentException("Step '{$stepName}' run block is not a string.");
         }
     }
 
@@ -51,10 +51,7 @@ it('names deploy backups with a suffix that differs on every run and every retry
         ->toContain('github.run_attempt');
 
     // github.run_id is stable across a "re-run failed jobs" retry (only
-    // github.run_attempt changes there) — the bug in #997 was exactly this
-    // kind of re-run, so run_attempt alone is what must vary for that case.
-    // Both are asserted above; this just documents which one carries the case
-    // that actually bit prod.
+    // github.run_attempt changes there), so run_attempt alone must vary for that case.
     expect($suffixStep)->toContain('run_attempt');
 });
 
@@ -85,18 +82,17 @@ it('skips re-tagging :previous when the incoming image already is :latest', func
         ->toContain('docker image inspect temari/app:latest')
         ->toContain('"$current" = "$incoming"');
 
-    // The old unconditional form must be gone, not just supplemented.
+    // The unconditional form must be gone, not just supplemented.
     expect($run)->not->toContain('if docker image inspect temari/app:latest >/dev/null 2>&1; then');
 });
 
 it('nightly-backup.yml matches the issue: cron 40 16 * * *, workflow_dispatch, self-hosted homelab, 14-day retention', function (): void {
     $doc = Yaml::parseFile(base_path(NIGHTLY_BACKUP_WORKFLOW_PATH));
 
-    expect($doc['on']['schedule'][0]['cron'])->toBe('40 16 * * *');
-    expect($doc['on'])->toHaveKey('workflow_dispatch');
+    expect(data_get($doc, 'on.schedule.0.cron'))->toBe('40 16 * * *');
+    expect(data_get($doc, 'on'))->toHaveKey('workflow_dispatch');
 
-    $job = $doc['jobs']['nightly-backup'];
-    expect($job['runs-on'])->toBe(['self-hosted', 'homelab']);
+    expect(data_get($doc, 'jobs.nightly-backup.runs-on'))->toBe(['self-hosted', 'homelab']);
 
     $yaml = File::get(base_path(NIGHTLY_BACKUP_WORKFLOW_PATH));
     expect(substr_count($yaml, 'verify-and-prune-backup.sh "Nightly'))->toBe(2);
@@ -106,20 +102,20 @@ it('nightly-backup.yml matches the issue: cron 40 16 * * *, workflow_dispatch, s
 
 it('nightly-backup.yml runs disk cleanup only after the backup steps, with continue-on-error so cleanup can never fail the backup', function (): void {
     $doc = Yaml::parseFile(base_path(NIGHTLY_BACKUP_WORKFLOW_PATH));
-    $steps = $doc['jobs']['nightly-backup']['steps'];
+    $steps = arrayOf(data_get($doc, 'jobs.nightly-backup.steps'));
 
-    $names = array_map(fn (array $s): string => $s['name'] ?? '', $steps);
+    $names = array_map(fn (mixed $step): mixed => data_get($step, 'name', ''), $steps);
     $backupIndex = array_search('Backup analytics schema', $names, true);
     $cleanupIndex = array_search('Reclaim disk — old sha-tagged images', $names, true);
 
     expect($backupIndex)->not->toBeFalse();
     expect($cleanupIndex)->not->toBeFalse();
-    expect($cleanupIndex)->toBeGreaterThan($backupIndex);
+    expect($cleanupIndex)->toBeGreaterThan(is_int($backupIndex) ? $backupIndex : throw new InvalidArgumentException('Backup analytics step index is not an int.'));
 
     foreach (['Reclaim disk — build cache', 'Reclaim disk — old sha-tagged images'] as $cleanupStepName) {
         foreach ($steps as $step) {
-            if (($step['name'] ?? null) === $cleanupStepName) {
-                expect($step['continue-on-error'] ?? false)->toBeTrue(
+            if (data_get($step, 'name') === $cleanupStepName) {
+                expect(data_get($step, 'continue-on-error', false))->toBeTrue(
                     "Cleanup step '{$cleanupStepName}' must set continue-on-error so it can never fail the backup job."
                 );
             }
@@ -139,7 +135,7 @@ it('verify-and-prune-backup.sh keeps the newest backup for a sha and drops an ol
 
     $now = time();
     $old = $now - 10 * 24 * 3600;
-    $recent = $now - 1 * 24 * 3600;
+    $recent = $now - 24 * 3600;
 
     $touch = function (string $name, int $mtime) use ($dir): string {
         $path = "{$dir}/{$name}";
@@ -240,8 +236,8 @@ it('select-images-to-prune.sh never selects :latest, :previous, or a non-sha tag
 
     foreach ($removed as $line) {
         expect($line)->not->toContain(':latest')
-            ->not->toContain(':previous')
-            ->not->toContain(':buildcache');
+            ->and($line)->not->toContain(':previous')
+            ->and($line)->not->toContain(':buildcache');
     }
 
     for ($i = 1; $i <= 5; $i++) {
@@ -272,5 +268,5 @@ it('select-images-to-prune.sh never selects an image IN_USE names, by id or by r
     $output = trim($process->getOutput());
 
     expect($output)->not->toContain('sha256:img1')
-        ->not->toContain('sha256:img2');
+        ->and($output)->not->toContain('sha256:img2');
 });

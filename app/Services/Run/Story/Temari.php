@@ -109,8 +109,8 @@ class Temari
     // Order matters — first matching rule wins, most-prestigious mood first.
     private static function moodForActivity(ActivityDetail $detail, bool $hasPr, Effort $effort, ?PlannedSession $planDay): Mood
     {
-        $plannedType = $planDay === null ? null : EffectiveSession::settledTypeOf($planDay);
-        $qualityDay = $planDay !== null && (in_array($plannedType, [SessionType::Tempo, SessionType::Interval, SessionType::Race], true)
+        $plannedType = $planDay instanceof PlannedSession ? EffectiveSession::settledTypeOf($planDay) : null;
+        $qualityDay = $planDay instanceof PlannedSession && (in_array($plannedType, [SessionType::Tempo, SessionType::Interval, SessionType::Race], true)
             || ($plannedType === SessionType::Long && $planDay->prescribed_hard_minutes > 0
                 && ($planDay->prescribed_pace_band === PaceBand::Marathon || FastFinishLongRun::isFastFinish($planDay->prescription_race_context))));
         $summary = StreamSummary::fromArray($detail->streamSummary());

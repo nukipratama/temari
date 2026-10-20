@@ -33,9 +33,8 @@ it('aborts with 404 when the flag is off', function (): void {
     $this->post(route('auth.demo'))->assertNotFound();
 });
 
-// The demo user used to be found by the seeder's email constant. Now that any
-// stranger can sign up carrying whatever address Strava hands over, the lookup
-// keys off the same is_demo flag every scheduler and guard already trusts.
+// Any stranger can sign up carrying whatever address Strava hands over, so the
+// demo lookup keys off the is_demo flag every scheduler and guard already trusts.
 it('never hands the demo session to a signed-up user wearing the demo email', function (): void {
     config()->set('demo.login_enabled', true);
     $demo = User::factory()->demo()->create(['email' => 'demo@temari.local']);

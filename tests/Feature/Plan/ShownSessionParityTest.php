@@ -79,13 +79,25 @@ function parityPlan(array $overrides = []): User
 }
 
 /** @return array<string, string> */
+function parityTypesByDate(mixed $days): array
+{
+    $types = [];
+    foreach (arrayOf($days) as $day) {
+        $day = arrayOf($day);
+        $date = $day['date'];
+        $type = $day['session_type'];
+        $types[is_string($date) ? $date : throw new InvalidArgumentException('Day date is not a string.')] = is_string($type) ? $type : throw new InvalidArgumentException('Day session type is not a string.');
+    }
+
+    return $types;
+}
+
+/** @return array<string, string> */
 function parityCardTypes(User $user): array
 {
     $types = [];
     foreach (app(PlanPageAssembler::class)->weeks($user, Carbon::today()) as $week) {
-        foreach ($week['days'] as $day) {
-            $types[$day['date']] = $day['session_type'];
-        }
+        $types = [...$types, ...parityTypesByDate($week['days'])];
     }
 
     return $types;
@@ -96,7 +108,7 @@ function parityNarratedTypes(User $user, string $from, string $through): array
 {
     $tool = new PlanContextTool($user, Carbon::parse($from), Carbon::parse($through), app(TrainingBaseline::class), app(VdotEstimator::class), app(TrainingPaceCalculator::class));
 
-    return collect($tool->handle([])['days'])->pluck('session_type', 'date')->all();
+    return parityTypesByDate($tool->handle([])['days']);
 }
 
 function parityOverreaching(User $user): void

@@ -24,19 +24,17 @@ use App\Services\Run\Plan\TimeTrial;
 use App\Services\Run\Plan\SegmentGenerator;
 use App\Services\Run\Plan\TrainingBaseline;
 use App\Services\Run\Plan\WeekPlanBuilder;
+use Carbon\CarbonInterface;
 use Illuminate\Support\Carbon;
 
 /**
- * What the periodizer prescribed over a span, and how the athlete did against
- * it. Bound to the span the calling block is about, so a weekly recap and a
- * per-run narrator ask the same question of a different window.
+ * What the periodizer prescribed over a span, and how the athlete did against it. Bound to the span
+ * the calling block is about.
  *
- * `prescribed_km` is written by {@see \App\Services\Run\Plan\ComplianceScorer}
- * the morning after a day passes, so it is null for today and every future day.
- * Today and the rest of the current week take the session and km the page
- * shows, from {@see CurrentWeekKm}; later days fall back to the unredistributed core
- * distance. The target pace comes from the athlete's current VDOT rather than
- * the row, which stores none.
+ * `prescribed_km` is written by {@see \App\Services\Run\Plan\ComplianceScorer} the morning after a
+ * day passes, so it is null for today and every future day: today and the rest of the current week
+ * take the session and km the page shows, from {@see CurrentWeekKm}, and later days fall back to
+ * the unredistributed core distance.
  */
 final class PlanContextTool extends UserTool
 {
@@ -179,7 +177,7 @@ final class PlanContextTool extends UserTool
                     'skipped' => $session->skipped,
                     'status' => $session->status->value,
                     'completed_km' => $runDistances === null ? null : round($runDistances['sum'], 1),
-                    'credited_km' => $runDistances === null ? null : round(SessionMatcher::creditedKm($session->session_type, $runDistances, TimeTrial::of($session) !== null), 1),
+                    'credited_km' => $runDistances === null ? null : round(SessionMatcher::creditedKm($session->session_type, $runDistances, TimeTrial::of($session) instanceof TimeTrial), 1),
                     'distance_score' => $session->distance_score,
                     'compliance_score' => $session->compliance_score,
                     'ran_anyway' => $session->ran_anyway,
@@ -191,7 +189,7 @@ final class PlanContextTool extends UserTool
                         : IntentOutcome::detail(
                             $session->intent_verdict,
                             $session->intent_evidence ?? [],
-                            SessionMatcher::ranPaceSecPerKmFromRuns($session->session_type, $runDistances['runs'] ?? [], TimeTrial::of($session) !== null),
+                            SessionMatcher::ranPaceSecPerKmFromRuns($session->session_type, $runDistances['runs'] ?? [], TimeTrial::of($session) instanceof TimeTrial),
                         ),
                 ];
             })->all(),
@@ -217,6 +215,7 @@ final class PlanContextTool extends UserTool
             if ($startDateLocal === null) {
                 continue;
             }
+            assert(is_string($startDateLocal) || $startDateLocal instanceof CarbonInterface);
             $startedAt = Carbon::parse((string) $startDateLocal);
             $date = $startedAt->toDateString();
             $runsByDate[$date][] = [

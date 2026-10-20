@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Strava;
 
+use App\Support\Numeric;
 use stdClass;
 use Illuminate\Support\Collection;
 use App\Enums\StravaGrantEventType;
@@ -31,8 +32,8 @@ final class StravaGrantLedger
 
         return max(
             $connectionVersion ?? -1,
-            (int) ($eventVersion ?? -1),
-            (int) ($tokenVersion ?? -1),
+            Numeric::int($eventVersion ?? -1),
+            Numeric::int($tokenVersion ?? -1),
         ) + 1;
     }
 

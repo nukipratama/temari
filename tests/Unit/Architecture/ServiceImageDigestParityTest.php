@@ -25,10 +25,13 @@ it('pins dev and CI MySQL and Redis to the digests prod runs', function (string 
         ->and($redis)->toHaveKey(1)
         ->and($images)->not->toBeEmpty();
 
+    $mysqlDigest = $mysql[1] ?? throw new InvalidArgumentException('The mysql Dockerfile pins no digest.');
+    $redisImage = $redis[1] ?? throw new InvalidArgumentException('compose.prod.yaml pins no redis image.');
+
     foreach ($images as $image) {
         str_starts_with($image, 'mysql')
-            ? expect($image)->toEndWith('@'.$mysql[1])
-            : expect($image)->toBe($redis[1]);
+            ? expect($image)->toEndWith('@'.$mysqlDigest)
+            : expect($image)->toBe($redisImage);
     }
 })->with('dev and ci service manifests')->group('structure');
 
@@ -36,15 +39,16 @@ it('keeps .nvmrc on the Node release the Dockerfile pins', function (): void {
     preg_match('/node:(\d+\.\d+\.\d+)-alpine/', (string) File::get(base_path('Dockerfile')), $pinned);
 
     expect($pinned)->toHaveKey(1)
-        ->and(trim((string) File::get(base_path('.nvmrc'))))->toBe($pinned[1]);
+        ->and(trim((string) File::get(base_path('.nvmrc'))))->toBe($pinned[1] ?? throw new InvalidArgumentException('The Dockerfile pins no Node release.'));
 })->group('structure');
 
 it('runs every workflow on one PHP minor that matches the Dockerfile header patch', function (): void {
     $versions = collect(['ci.yml', 'backend-ci.yml', 'nightly-audit.yml', 'refresh-shards.yml'])
-        ->mapWithKeys(fn (string $workflow): array => [$workflow => Yaml::parseFile(base_path(".github/workflows/{$workflow}"))['env']['PHP_VERSION'] ?? null]);
+        ->mapWithKeys(fn (string $workflow): array => [$workflow => data_get(Yaml::parseFile(base_path(".github/workflows/{$workflow}")), 'env.PHP_VERSION')]);
+    $version = $versions->first();
     preg_match('/^# = .*\(PHP (\d+\.\d+\.\d+)\)/m', (string) File::get(base_path('Dockerfile')), $header);
 
     expect($versions->unique()->all())->toHaveCount(1)
         ->and($header)->toHaveKey(1)
-        ->and(implode('.', array_slice(explode('.', $header[1]), 0, 2)))->toBe((string) $versions->first());
+        ->and(implode('.', array_slice(explode('.', $header[1] ?? throw new InvalidArgumentException('The Dockerfile header names no PHP version.')), 0, 2)))->toBe(is_string($version) ? $version : throw new InvalidArgumentException('PHP_VERSION is not a string.'));
 })->group('structure');

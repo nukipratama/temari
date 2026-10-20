@@ -64,10 +64,10 @@ it('continues dispatching later briefings after one athlete fails and alerts onc
     expect($requested)->toBe([[$later->id, Carbon::today()->toDateString()]]);
     Http::assertSentCount(1);
     Http::assertSent(static fn (Request $request): bool =>
-        str_contains((string) $request['text'], 'ai:daily-briefing')
-        && str_contains((string) $request['text'], '1 athlete')
-        && ! str_contains((string) $request['text'], 'Private Failed Athlete')
-        && ! str_contains((string) $request['text'], 'Private Later Athlete'));
+        str_contains(telegramRequestText($request), 'ai:daily-briefing')
+        && str_contains(telegramRequestText($request), '1 athlete')
+        && ! str_contains(telegramRequestText($request), 'Private Failed Athlete')
+        && ! str_contains(telegramRequestText($request), 'Private Later Athlete'));
 
     Carbon::setTestNow();
 });
@@ -88,8 +88,7 @@ it('dispatches the briefing group for each active user, and nothing else', funct
 
             return new Analysis();
         });
-    // The featured-card row was this command's only direct request() call.
-    // W2 removed it with the panel it narrated, so the kickoff is the group alone.
+    // The kickoff is the group alone; this command makes no direct request() call.
     $service->shouldNotReceive('request');
     $this->app->instance(AnalysisService::class, $service);
 

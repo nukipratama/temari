@@ -14,6 +14,7 @@ use Illuminate\Queue\Events\JobExceptionOccurred;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Minishlink\WebPush\VAPID;
+use Mockery\MockInterface;
 
 uses(RefreshDatabase::class);
 
@@ -21,7 +22,11 @@ function queuedPushUser(): User
 {
     $vapid = VAPID::createVapidKeys();
     config(['webpush.vapid.public_key' => $vapid['publicKey'], 'webpush.vapid.private_key' => $vapid['privateKey']]);
-    $device = openssl_pkey_get_details(openssl_pkey_new(['curve_name' => 'prime256v1', 'private_key_type' => OPENSSL_KEYTYPE_EC]))['ec'];
+    $key = openssl_pkey_new(['curve_name' => 'prime256v1', 'private_key_type' => OPENSSL_KEYTYPE_EC]);
+    assert($key !== false);
+    $details = openssl_pkey_get_details($key);
+    assert($details !== false);
+    $device = $details['ec'];
     $user = User::factory()->create();
     $user->updatePushSubscription(
         'https://push.example/endpoint',
@@ -62,6 +67,7 @@ it('leaves a queued push without Retry-After on the notification backoff', funct
 });
 
 it('caps a long Retry-After at ten minutes', function (): void {
+    /** @var Job&MockInterface $job */
     $job = Mockery::mock(Job::class);
     $job->allows(['hasFailed' => false, 'isReleased' => false, 'isDeleted' => false]);
     $job->expects('release')->with(600);
@@ -70,6 +76,7 @@ it('caps a long Retry-After at ten minutes', function (): void {
 });
 
 it('does not release a job that already failed, was released or was deleted', function (string $state): void {
+    /** @var Job&MockInterface $job */
     $job = Mockery::mock(Job::class);
     $job->allows(['hasFailed' => $state === 'failed', 'isReleased' => $state === 'released', 'isDeleted' => $state === 'deleted']);
     $job->shouldNotReceive('release');
@@ -78,6 +85,7 @@ it('does not release a job that already failed, was released or was deleted', fu
 })->with(['failed', 'released', 'deleted']);
 
 it('ignores other exceptions and transient failures without Retry-After', function (Throwable $exception): void {
+    /** @var Job&MockInterface $job */
     $job = Mockery::mock(Job::class);
     $job->shouldNotReceive('release');
 

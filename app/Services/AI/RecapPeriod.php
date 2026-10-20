@@ -35,7 +35,7 @@ final class RecapPeriod
      */
     public static function weekClosedBeforeConnect(Carbon|string $weekEnding, ?Carbon $connectedAt): bool
     {
-        return $connectedAt !== null && Carbon::parse($weekEnding)->endOfDay()->lt($connectedAt);
+        return $connectedAt instanceof Carbon && Carbon::parse($weekEnding)->endOfDay()->lt($connectedAt);
     }
 
     /**
@@ -44,6 +44,6 @@ final class RecapPeriod
      */
     public static function monthClosedBeforeConnect(string $month, ?Carbon $connectedAt): bool
     {
-        return $connectedAt !== null && Carbon::parse($month.'-01')->endOfMonth()->endOfDay()->lt($connectedAt);
+        return $connectedAt instanceof Carbon && Carbon::parse($month.'-01')->endOfMonth()->endOfDay()->lt($connectedAt);
     }
 }

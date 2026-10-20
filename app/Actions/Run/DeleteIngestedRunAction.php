@@ -22,13 +22,11 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Deletes an ingested run and heals the artifacts that don't cascade: the FK
- * cascade drops detail / streams / card / post-run storyline, but the plan
- * day's verdict and the weekly snapshot are recomputed from separate
- * aggregates, PRs are only ever lowered (so a deleted run's record lingers),
- * and the polymorphic Analysis rows have no FK. A time trial confirmed from the
- * run is retracted with it, while a race result the athlete confirmed stays.
- * Shared by a Strava delete and a resync that re-types the run to a non-run sport.
+ * Deletes an ingested run and heals the artifacts that don't cascade: the plan
+ * day's verdict, the weekly snapshot, PRs and the polymorphic Analysis rows. A
+ * time trial confirmed from the run is retracted with it, while a race result
+ * the athlete confirmed stays. Shared by a Strava delete and a resync that
+ * re-types the run to a non-run sport.
  */
 class DeleteIngestedRunAction
 {
@@ -74,7 +72,7 @@ class DeleteIngestedRunAction
                 // user's only run was the deleted one), which would leave a stale
                 // snapshot claiming runs that no longer exist. Drop the now-empty
                 // forward snapshots in that case.
-                if ($rebuilt === null) {
+                if (!$rebuilt instanceof WeeklySnapshot) {
                     $anchorWeekEnding = Carbon::instance($weekAnchor)->endOfWeek(Carbon::SUNDAY)->startOfDay();
                     WeeklySnapshot::query()
                         ->where('user_id', $user->id)
@@ -90,9 +88,8 @@ class DeleteIngestedRunAction
 
             // Polymorphic narration has no FK; purge the deleted run's rows (the
             // activity-keyed speech + insights, and the card-keyed flavor).
-            // withoutGlobalScope so a retired-type row for this subject (see
-            // KnownAnalysisTypeScope) is purged too instead of surviving the
-            // very activity/card it belonged to.
+            // withoutGlobalScope so a retired-type row (see KnownAnalysisTypeScope)
+            // is purged too.
             Analysis::query()
                 ->withoutGlobalScope(KnownAnalysisTypeScope::class)
                 ->where('subject_type', Activity::class)

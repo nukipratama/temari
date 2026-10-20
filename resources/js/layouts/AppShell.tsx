@@ -54,7 +54,7 @@ export default function AppShell({ children }: Readonly<AppShellProps>) {
         <div className="min-h-screen bg-background pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] text-foreground">
             <a
                 href="#main-content"
-                className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-leaf focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-white focus:shadow-e2"
+                className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-leaf-deep focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-on-fill focus:shadow-e2"
             >
                 Skip to content
             </a>
@@ -70,13 +70,9 @@ export default function AppShell({ children }: Readonly<AppShellProps>) {
                 <AiCatchingUpBanner />
                 <StravaPausedBanner />
 
-                {/* Deliberately unkeyed and unanimated. A `key` here forced React to
-                    tear down and rebuild the whole content subtree on every visit
-                    (25 card mounts on Collection), and the enter animation it existed
-                    to replay started at opacity 0 — so a navigation read as
-                    "old page → blank → fade in". Inertia already swaps a different
-                    component type on a real navigation, so React remounts what it
-                    needs to without help. */}
+                {/* Deliberately unkeyed and unanimated: Inertia already swaps a
+                    different component type on a real navigation, so React
+                    remounts what it needs to without help. */}
                 <main
                     id="main-content"
                     tabIndex={-1}

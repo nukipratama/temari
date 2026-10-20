@@ -40,8 +40,9 @@ it('runs none of the dashboard reads for a guest', function (): void {
 
     $this->get('/')->assertSuccessful();
 
-    expect(implode("\n", $queried))
-        ->not->toContain('activity_details')
-        ->not->toContain('story_lines')
-        ->not->toContain('weekly_snapshots');
+    $sql = implode("\n", $queried);
+
+    expect($sql)->not->toContain('activity_details')
+        ->and($sql)->not->toContain('story_lines')
+        ->and($sql)->not->toContain('weekly_snapshots');
 });

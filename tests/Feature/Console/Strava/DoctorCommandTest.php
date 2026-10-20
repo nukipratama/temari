@@ -93,8 +93,8 @@ it('prints the webhook callback with its token masked', function (): void {
     expect(Artisan::call('strava:doctor', ['--user' => $user->id]))->toBe(0);
 
     expect(Artisan::output())
-        ->toContain('Webhook callback: '.url('/strava/webhook/****'))
-        ->not->toContain('fake-callback-token');
+        ->not->toContain('fake-callback-token')
+        ->toContain('Webhook callback: '.url('/strava/webhook/****'));
 });
 
 it('e2e passes all checks when healthy', function (): void {

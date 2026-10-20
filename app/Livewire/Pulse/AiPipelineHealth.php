@@ -51,15 +51,15 @@ class AiPipelineHealth extends Card
             'contentFilterFallbacks' => $this->asCount($this->aggregateTotal('ai_content_filter_fallback', 'count')),
         ]);
 
-        $failed = (int) ($statusCounts[AnalysisStatus::Failed->value] ?? 0);
+        $failed = $this->asCount($statusCounts[AnalysisStatus::Failed->value] ?? 0);
         $deadLettered = Analysis::query()->deadLettered()->count();
         $failedJobs = DB::table('failed_jobs')->count();
         $pauseReason = $gate->pauseReason();
 
         $statusBoxes = [
-            ['label' => 'pending',     'count' => (int) ($statusCounts[AnalysisStatus::Pending->value] ?? 0),    'alert' => false],
-            ['label' => 'in progress', 'count' => (int) ($statusCounts[AnalysisStatus::Queued->value] ?? 0) + (int) ($statusCounts[AnalysisStatus::Processing->value] ?? 0), 'alert' => false],
-            ['label' => 'done',        'count' => (int) ($statusCounts[AnalysisStatus::Done->value] ?? 0),        'alert' => false],
+            ['label' => 'pending',     'count' => $this->asCount($statusCounts[AnalysisStatus::Pending->value] ?? 0),    'alert' => false],
+            ['label' => 'in progress', 'count' => $this->asCount($statusCounts[AnalysisStatus::Queued->value] ?? 0) + $this->asCount($statusCounts[AnalysisStatus::Processing->value] ?? 0), 'alert' => false],
+            ['label' => 'done',        'count' => $this->asCount($statusCounts[AnalysisStatus::Done->value] ?? 0),        'alert' => false],
             ['label' => 'failed',      'count' => $failed,                                                         'alert' => $failed > 0],
         ];
 
@@ -100,8 +100,10 @@ class AiPipelineHealth extends Card
     private function spend(LlmCostCalculator $cost): array
     {
         $perUserCeiling = config('azure_openai.daily_cost_ceiling_per_user');
+        assert($perUserCeiling === null || is_numeric($perUserCeiling));
         $perUserCeiling = $perUserCeiling === null ? null : (float) $perUserCeiling;
         $totalCeiling = config('azure_openai.daily_cost_ceiling_total');
+        assert($totalCeiling === null || is_numeric($totalCeiling));
 
         $rows = TokenUsage::query()->toBase()
             ->whereBetween('created_at', [Carbon::today()->startOfDay(), Carbon::today()->endOfDay()])
@@ -153,11 +155,14 @@ class AiPipelineHealth extends Card
 
     private function latencyAt(Builder $base, int $calls, float $quantile): int
     {
-        return (int) (clone $base)
+        $latency = (clone $base)
             ->orderBy('latency_ms')
             ->offset((int) floor($quantile * ($calls - 1)))
             ->limit(1)
             ->value('latency_ms');
+        assert($latency === null || is_numeric($latency));
+
+        return (int) $latency;
     }
 
     /**

@@ -28,7 +28,7 @@ it('ignores a demo user', function (): void {
 
     new RecalibrateTrainingHistoryJob($demo->id)->handle(app(PlanRecalibrationService::class));
 
-    expect($demo->fresh()->plan_recalibration_started_at)->toBeNull();
+    expect($demo->refresh()->plan_recalibration_started_at)->toBeNull();
 });
 
 it('dispatches one follow-up after a run that was marked dirty', function (): void {

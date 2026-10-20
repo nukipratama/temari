@@ -54,24 +54,33 @@ const TAB_LABEL: Record<(typeof TABS)[number], string> = {
 export default function ProgressionCard({
     byCategory,
 }: Readonly<{ byCategory: Record<string, ProgressionSeries> }>) {
-    const tabs = TABS.filter((c) => byCategory[c]);
+    const tabs = TABS.flatMap((tab) => {
+        const entry = byCategory[tab];
+        return entry ? [{ tab, series: entry }] : [];
+    });
     const [selected, setSelected] = useState<string>(
         () =>
-            tabs.find((c) => byCategory[c].goal_sec != null) ??
-            tabs.filter((c) => byCategory[c].progress != null).at(-1) ??
-            tabs.at(-1) ??
-            tabs[0],
+            (
+                tabs.find((t) => t.series.goal_sec != null) ??
+                tabs.filter((t) => t.series.progress != null).at(-1) ??
+                tabs.at(-1)
+            )?.tab ?? '',
     );
-    const series = byCategory[selected] ?? byCategory[tabs[0]];
+    const series = (tabs.find((t) => t.tab === selected) ?? tabs[0])?.series;
 
-    const progress = series.progress;
-    const totalSign = progress ? TOTAL_SIGN[progress.relation] : null;
-    const label = PR_CATEGORY_LABELS[series.category] ?? series.category;
+    const progress = series?.progress ?? null;
 
     const fromCount = useCountUp(progress?.from_sec ?? 0);
     const toCount = useCountUp(progress?.to_sec ?? 0);
     const deltaCount = useCountUp(progress?.delta_sec ?? 0);
     const delta = formatDurationHMS(Math.round(deltaCount));
+
+    if (series === undefined) {
+        return null;
+    }
+
+    const totalSign = progress ? TOTAL_SIGN[progress.relation] : null;
+    const label = PR_CATEGORY_LABELS[series.category] ?? series.category;
 
     return (
         <section>
@@ -82,9 +91,9 @@ export default function ProgressionCard({
                     aria-label="Choose distance"
                     className="mb-3.5"
                 >
-                    {tabs.map((c) => (
-                        <ToggleGroupItem key={c} value={c}>
-                            {TAB_LABEL[c]}
+                    {tabs.map(({ tab }) => (
+                        <ToggleGroupItem key={tab} value={tab}>
+                            {TAB_LABEL[tab]}
                         </ToggleGroupItem>
                     ))}
                 </ToggleGroup>

@@ -25,6 +25,7 @@ use App\Services\Run\Plan\PlanRenderer;
 use App\Services\Run\Plan\TrainingBaseline;
 use App\Services\Run\Plan\SeasonSummaryBuilder;
 use App\Services\Run\Plan\TimeTrial;
+use App\Support\Numeric;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 
@@ -34,9 +35,9 @@ beforeEach(fn () => Carbon::setTestNow('2026-09-21 08:00:00'));
 afterEach(fn () => Carbon::setTestNow());
 
 /**
- * The #1000 audit's athlete, in shape: twelve weeks averaging 25.91 km with a
+ * An athlete in shape: twelve weeks averaging 25.91 km with a
  * 44.7 km week in them, a 24.4 km six-week trimmed anchor, four sessions and
- * a 10K twelve weeks out. The plan used to average 22.05 km across the block.
+ * a 10K twelve weeks out.
  */
 function flooredAthlete(): User
 {
@@ -67,12 +68,12 @@ function flooredAthlete(): User
 
 function thisWeekKm(User $user): float
 {
-    return app(CurrentWeekPlanBuilder::class)->forUser($user, Carbon::today())['planned_km_this_week'];
+    return nonNull(app(CurrentWeekPlanBuilder::class)->forUser($user, Carbon::today()))['planned_km_this_week'];
 }
 
 function thisWeekPhase(User $user): PlanPhase
 {
-    return PlannedSession::query()->where('user_id', $user->id)->where('date', Carbon::today()->toDateString())->value('phase');
+    return PlannedSession::query()->where('user_id', $user->id)->where('date', Carbon::today()->toDateString())->firstOrFail()->phase;
 }
 
 it('holds the race block at the athlete\'s own recent mean when load is fine, without lifting the progression cap to get there', function (): void {
@@ -87,7 +88,7 @@ it('holds the race block at the athlete\'s own recent mean when load is fine, wi
 
     expect($season->volume_floor_km)->toBe(25.91)
         ->and(app(TrainingBaseline::class)->forUser($user, $season->starts_at)['long_run_progression_cap_km'])->toBe(11.0)
-        ->and(max(storedLongRunsKm($user)))->toBe(11.0)
+        ->and(collect(storedLongRunsKm($user))->max())->toBe(11.0)
         ->and(array_sum(array_column($block, 'planned_km')) / count($block))->toBeGreaterThanOrEqual(25.91)
         ->and(storedBlockWeeksKm($user, $season))->toHaveCount(12)
         ->and(array_sum(storedBlockWeeksKm($user, $season)) / 12)->toBeGreaterThanOrEqual(25.91)
@@ -175,7 +176,7 @@ it('renders every block week without a trial or an eased taper day at its predic
     foreach ($stored as $weekStart => $km) {
         expect($km)->toEqualWithDelta($predicted[$weekStart], 0.05);
     }
-    expect($stored->avg())->toBeGreaterThanOrEqual($season->volume_floor_km);
+    expect($stored->avg())->toBeGreaterThanOrEqual(nonNull($season->volume_floor_km));
 });
 
 it('renders a block on the athlete\'s own run days at the mean the floor solve lays out for it', function (): void {
@@ -207,7 +208,7 @@ it('backs off under the floor after a missed week, and says so on the plan', fun
         ->and(thisWeekKm($user))->toBeLessThan(25.91)
         ->and($adaptation->reason)->toBe(AdaptationReason::MissedWeek)
         ->and($adaptation->volume_floor_km)->toBe(25.91)
-        ->and(app(PlanPageAssembler::class)->adaptation($user, Carbon::today())['detail'])
+        ->and(nonNull(app(PlanPageAssembler::class)->adaptation($user, Carbon::today()))['detail'])
         ->toEndWith('that puts it under your usual 25.9 km a week, on purpose.');
 });
 
@@ -278,7 +279,7 @@ function storedBlockWeeksKm(User $user, Season $season): array
 
 function storedMaxMultiplier(User $user): float
 {
-    return (float) PlannedSession::query()->where('user_id', $user->id)->max('volume_multiplier');
+    return Numeric::float(nonNull(PlannedSession::query()->where('user_id', $user->id)->max('volume_multiplier')));
 }
 
 it('holds the block at the floor, with no ramp and no long-run climb, while recent load is unscored', function (): void {
@@ -297,12 +298,12 @@ it('holds the block at the floor, with no ramp and no long-run climb, while rece
 
     expect($season->increases_held)->toBeTrue()
         ->and(array_sum($trainingWeeksKm) / count($trainingWeeksKm))->toBeGreaterThanOrEqual(25.91)
-        ->and(max($trainingWeeksKm))->toBeLessThanOrEqual(25.91 * 1.10)
+        ->and(nonNull(collect($trainingWeeksKm)->max()))->toBeLessThanOrEqual(25.91 * 1.10)
         ->and(storedMaxMultiplier($user))->toBe(1.0)
-        ->and(max($longRuns))->toBe($longRuns[0])
-        ->and(max($longRuns))->toBeLessThan(12.0)
+        ->and(collect($longRuns)->max())->toBe($longRuns[0])
+        ->and(nonNull(collect($longRuns)->max()))->toBeLessThan(12.0)
         ->and(PlanAdaptation::query()->where('user_id', $user->id)->value('increases_held'))->toBeTrue()
-        ->and(app(PlanPageAssembler::class)->adaptation($user, Carbon::today())['detail'])
+        ->and(nonNull(app(PlanPageAssembler::class)->adaptation($user, Carbon::today()))['detail'])
         ->toEndWith('the build and the longer long runs wait until your recent runs are scored.');
 });
 
@@ -319,7 +320,7 @@ it('lets the ramp and the long-run climb in at the next regeneration once that l
 
     expect(Season::query()->where('user_id', $user->id)->value('increases_held'))->toBeFalse()
         ->and(storedMaxMultiplier($user))->toBeGreaterThan(1.0)
-        ->and(max($longRuns))->toBe(11.0)
+        ->and(collect($longRuns)->max())->toBe(11.0)
         ->and($longRuns[0])->toBeLessThan(11.0)
         ->and(PlanAdaptation::query()->where('user_id', $user->id)->where('week_start', '2026-09-28')->value('increases_held'))->toBeFalse();
 });

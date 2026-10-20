@@ -25,6 +25,7 @@ beforeEach(function (): void {
     Http::preventStrayRequests();
 });
 
+/** @param array<string, mixed> $deauthorizeBody */
 function fakeGrantReleaseHttp(
     int $deauthorizeStatus = 200,
     array $deauthorizeBody = ['access_token' => 'revoked'],
@@ -67,7 +68,7 @@ it('retains the rotated token and error after a failed release', function (): vo
 
     expect($result?->status)->toBe(StravaGrantReleaseStatus::Failed)
         ->and(StravaGrantToken::query()->where('strava_athlete_id', 12345)->sole()->refresh_token)->toBe('rotated-refresh')
-        ->and(StravaGrantEvent::query()->where('strava_athlete_id', 12345)->orderBy('id')->get()->last()->event)
+        ->and(StravaGrantEvent::query()->where('strava_athlete_id', 12345)->orderByDesc('id')->first()?->event)
         ->toBe(StravaGrantEventType::ReleaseFailed);
 });
 
@@ -82,7 +83,7 @@ it('keeps the token when the refresh 400 blames our client credentials', functio
     expect($result?->status)->toBe(StravaGrantReleaseStatus::Failed)
         ->and($result?->error)->toContain('(Application client_secret)')
         ->and(StravaGrantToken::query()->where('strava_athlete_id', 12345)->sole()->refresh_token)->toBe('stale-refresh')
-        ->and(StravaGrantEvent::query()->where('strava_athlete_id', 12345)->orderBy('id')->get()->last()->event)
+        ->and(StravaGrantEvent::query()->where('strava_athlete_id', 12345)->orderByDesc('id')->first()?->event)
         ->toBe(StravaGrantEventType::ReleaseFailed);
     Http::assertNotSent(fn (Request $request): bool => $request->url() === 'https://www.strava.com/oauth/deauthorize');
 });
@@ -97,7 +98,7 @@ it('removes the token when the refresh 400 rejects the refresh token', function 
 
     expect($result?->status)->toBe(StravaGrantReleaseStatus::Rejected)
         ->and(StravaGrantToken::query()->where('strava_athlete_id', 12345)->exists())->toBeFalse()
-        ->and(StravaGrantEvent::query()->where('strava_athlete_id', 12345)->orderBy('id')->get()->last()->event)
+        ->and(StravaGrantEvent::query()->where('strava_athlete_id', 12345)->orderByDesc('id')->first()?->event)
         ->toBe(StravaGrantEventType::Rejected);
 });
 
@@ -129,7 +130,7 @@ it('removes the token when Strava reports invalid_grant during deauthorization',
 
     expect($result?->status)->toBe(StravaGrantReleaseStatus::Rejected)
         ->and(StravaGrantToken::query()->where('strava_athlete_id', 12345)->exists())->toBeFalse()
-        ->and(StravaGrantEvent::query()->where('strava_athlete_id', 12345)->orderBy('id')->get()->last()->event)
+        ->and(StravaGrantEvent::query()->where('strava_athlete_id', 12345)->orderByDesc('id')->first()?->event)
         ->toBe(StravaGrantEventType::Rejected);
 });
 

@@ -8,6 +8,7 @@ use App\Enums\SessionType;
 use App\Models\Activity;
 use App\Models\PlannedSession;
 use App\Models\User;
+use App\Services\Run\Metrics\Readiness;
 use App\Services\Run\Metrics\ReadinessCeiling;
 use App\Services\Run\Metrics\TrainingLoad;
 use App\Services\Run\Story\BriefingContext;
@@ -15,12 +16,11 @@ use Illuminate\Support\Carbon;
 
 /**
  * Resolves the same clamp facts for the shared briefing side effects and the narration job.
+ * It reads the ceiling fresh rather than trusting what the requester saw: the ceiling moves as the
+ * day's runs land, and a clamp that has since lifted should not be narrated. See
+ * {@see self::fingerprint()}.
  *
- * It deliberately reads the ceiling **fresh** rather than trusting what the
- * requester saw. The ceiling comes off {@see TrainingLoad}, which counts the
- * day's own runs, so it moves as the day goes on — and a clamp that has since
- * lifted should not be narrated at all. That is also why the row it backs is
- * fingerprinted coarsely; see {@see self::fingerprint()}.
+ * @phpstan-import-type Assessment from Readiness
  */
 final readonly class ClampNarrationContext
 {
@@ -29,7 +29,7 @@ final readonly class ClampNarrationContext
     }
 
     /**
-     * @param  array<string, mixed>|null  $liveAssessment  the day's live readiness assessment when the caller already built it
+     * @param  Assessment|null  $liveAssessment  the day's live readiness assessment when the caller already built it
      * @return array{ceiling: ReadinessCeiling, original: SessionType, clamped_to: SessionType, has_run_today: bool, readiness_reasons: list<string>, readiness_inputs: array<string, mixed>, decision_source: string}|null
      *                                                                                                                   null when the day has no session, or already fits under the ceiling
      */
@@ -42,7 +42,7 @@ final readonly class ClampNarrationContext
 
         $session = PlannedSession::query()
             ->where('user_id', $userId)
-            ->whereDate('date', $date->toDateString())
+            ->where('date', $date->toDateString())
             ->first();
 
         if ($session === null) {
@@ -52,6 +52,7 @@ final readonly class ClampNarrationContext
         $recordedAssessment = $session->readiness_assessment;
         $hasRecordedAdjustment = $session->clamped_km !== null;
         if ($hasRecordedAdjustment && is_array($recordedAssessment) && is_string($recordedAssessment['ceiling'] ?? null)) {
+            /** @var Assessment $assessment */
             $assessment = $recordedAssessment;
             $decisionSource = 'recorded';
         } else {
@@ -65,7 +66,7 @@ final readonly class ClampNarrationContext
         }
 
         $clampedTo = ReadinessClamp::downgradeFor($session->session_type, $ceiling);
-        if ($clampedTo === null) {
+        if (!$clampedTo instanceof SessionType) {
             return null;
         }
 
@@ -75,7 +76,7 @@ final readonly class ClampNarrationContext
             'clamped_to' => $clampedTo,
             'has_run_today' => Activity::query()
                 ->where('user_id', $userId)
-                ->whereHas('detail', fn ($q) => $q->whereDate('start_date_local', $date->toDateString()))
+                ->whereHas('detail', fn ($q) => $q->startedOn($date))
                 ->exists(),
             'readiness_reasons' => $assessment['reasons'],
             'readiness_inputs' => $assessment['inputs'],
@@ -84,13 +85,9 @@ final readonly class ClampNarrationContext
     }
 
     /**
-     * What a clamp explanation actually speaks to, deliberately coarser than
-     * the clamp itself. The ceiling is recomputed from {@see TrainingLoad}
-     * on every ingest, so it drifts a little with each run logged; fingerprinting
-     * the exact figures would re-bill this line several times on the one kind of
-     * day it exists for. The band, the type it was downgraded to, and whether the
-     * athlete has already run are the whole substance of the sentence — a
-     * ceiling that slides within its own band changes nothing worth saying.
+     * What a clamp explanation speaks to, deliberately coarser than the clamp itself: the band, the
+     * type it was downgraded to, and whether the athlete has already run, so a ceiling drifting
+     * within its band does not re-bill the line.
      *
      * @param  list<string>  $readinessReasons
      */

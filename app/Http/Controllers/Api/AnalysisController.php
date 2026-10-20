@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
 
+use App\Services\AI\ChainLink;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\TriggerAnalysisRequest;
 use App\Http\Resources\AnalysisResource;
@@ -70,7 +71,7 @@ class AnalysisController extends Controller
             NarrationVerdict::Inactive => null,
         };
 
-        if ($refused !== null) {
+        if ($refused instanceof JsonResponse) {
             return $refused;
         }
 
@@ -85,7 +86,7 @@ class AnalysisController extends Controller
             ? $chains->earliestUnfilledLink($user, $analysisType)
             : null;
 
-        if ($resume !== null) {
+        if ($resume instanceof ChainLink) {
             $subjectId = $resume->subjectId;
             $discriminator = $resume->discriminator;
         }
@@ -99,7 +100,7 @@ class AnalysisController extends Controller
             subjectId: $subjectId,
             type: $analysisType,
             discriminator: $discriminator,
-            invalidate: $resume === null,
+            invalidate: !$resume instanceof ChainLink,
         );
 
         return $this->payload($row, $analysisType, $subjectId, $discriminator);

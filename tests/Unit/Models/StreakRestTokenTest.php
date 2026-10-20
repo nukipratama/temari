@@ -17,7 +17,7 @@ it('casts the week columns to shift-free dates', function (): void {
 
     expect($token->refresh()->earned_for_week_ending->toDateString())->toBe('2026-05-24')
         ->and($token->spent_for_week_ending?->toDateString())->toBe('2026-05-31')
-        ->and($token->toArray()['earned_for_week_ending'])->toBe('2026-05-24');
+        ->and(data_get($token->toArray(), 'earned_for_week_ending'))->toBe('2026-05-24');
 });
 
 it('counts only unspent tokens toward the balance', function (): void {

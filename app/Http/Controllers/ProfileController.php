@@ -111,7 +111,7 @@ class ProfileController extends Controller
             'seasonWeeks' => Inertia::defer(function () use ($loadSeason, $seasonSummaryBuilder, $user, $today): ?array {
                 $season = $loadSeason();
 
-                return $season === null ? null : $seasonSummaryBuilder->build($user, $season, $today);
+                return $season instanceof Season ? $seasonSummaryBuilder->build($user, $season, $today) : null;
             }),
         ]);
     }
@@ -141,7 +141,7 @@ class ProfileController extends Controller
 
         $paces = $trainingPaceCalculator->fromVdotResult($vdot);
         $race = $activeRace($user->id);
-        $raceDistanceM = $race !== null ? (float) $race->distance_m : null;
+        $raceDistanceM = $race instanceof RaceGoal ? (float) $race->distance_m : null;
 
         return [
             'vdot' => $vdot['vdot'] ?? null,
@@ -196,7 +196,7 @@ class ProfileController extends Controller
     private function raceGoalSecFor(?RaceGoal $race, PersonalRecord $pr): ?int
     {
         $target = $pr->category->distanceMeters();
-        if ($race === null || $target === null) {
+        if (!$race instanceof RaceGoal || $target === null) {
             return null;
         }
 

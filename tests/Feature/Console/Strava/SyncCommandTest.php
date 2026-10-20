@@ -80,7 +80,7 @@ it('closes the skipped-athletes incident when every athlete syncs', function ():
 });
 
 it('honors the --user filter', function (): void {
-    [$userA] = User::factory()->withStravaConnection()->count(2)->create();
+    $userA = nonNull(User::factory()->withStravaConnection()->count(2)->create()->first());
 
     $orchestrator = Mockery::mock(SyncOrchestrator::class);
     $orchestrator->shouldReceive('syncUser')

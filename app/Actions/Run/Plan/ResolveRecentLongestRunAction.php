@@ -29,6 +29,7 @@ class ResolveRecentLongestRunAction
             ->where('start_date_local', '>=', $asOf->copy()->subDays($days)->startOfDay())
             ->where('start_date_local', '<', $asOf->copy()->startOfDay())
             ->max('distance');
+        assert($distanceM === null || is_numeric($distanceM));
 
         return $this->memo[$key] = $distanceM === null ? null : (float) $distanceM;
     }

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Console\Commands\Run;
 
+use App\Enums\TimeTrialOutcome;
 use App\Models\PlannedSession;
 use App\Models\User;
 use App\Services\Run\Plan\TimeTrial;
@@ -35,7 +36,7 @@ class TimeTrialSettleCommand extends Command
         $failed = 0;
         foreach ($sessions as $session) {
             try {
-                $settled += $trials->settle($session) === null ? 0 : 1;
+                $settled += $trials->settle($session) instanceof TimeTrialOutcome ? 1 : 0;
             } catch (Throwable $e) {
                 $failed++;
                 report($e);

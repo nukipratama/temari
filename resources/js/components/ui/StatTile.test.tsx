@@ -108,6 +108,12 @@ describe('StatTile', () => {
         expect(css).toMatch(/--text-stat-tile-fit:\s*min\(1\.5rem,\s*28cqi\);/);
     });
 
+    it('keeps text-stat-tile a font size: no colour token shares its name', () => {
+        const css = readFileSync('resources/css/app.css', 'utf8');
+
+        expect(css).not.toMatch(/--color-stat-tile(-fit)?:/);
+    });
+
     it('lets a unit beside the number drop to its own line rather than squeeze it', () => {
         render(
             <StatTile

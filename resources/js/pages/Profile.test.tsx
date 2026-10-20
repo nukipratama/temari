@@ -217,6 +217,7 @@ describe('Profile', () => {
                         planned_km: 30,
                         actual_km: null,
                         sessions: 5,
+                        adherence_pct: null,
                     },
                 ]}
             />,

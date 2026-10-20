@@ -13,6 +13,7 @@ use App\Services\Run\Story\Vibe;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Mockery\MockInterface;
 
 uses(RefreshDatabase::class);
 
@@ -79,6 +80,7 @@ function userWithOptimalForm(): User
 
 function vibeWithOptimalForm(): Vibe
 {
+    /** @var TrainingLoad&MockInterface $load */
     $load = Mockery::mock(TrainingLoad::class);
     $load->shouldReceive('summary')->andReturn(['form' => -7.0, 'form_status' => TrainingFormStatus::Optimal]);
 

@@ -6,15 +6,6 @@ import { Fragment, type ReactNode } from 'react';
 const BOLD = /\*\*(.+?)\*\*/g;
 
 /**
- * Renders Temari narration text, converting `**bold**` spans to <strong>.
- * Only bold is supported on purpose: the TemariPersona prompt allows a single
- * bold emphasis but bans all other markdown, so a full parser is unwarranted.
- *
- * Use this wherever LLM-generated narration is rendered, including inside a
- * caller's `renderContent` wrapper, so the emphasis lands instead of showing
- * literal `**` asterisks.
- */
-/**
  * Narration is rendered inside decorative “…” quotes. When the model opens a
  * line by quoting a name (e.g. `"Zone Two Zen" jarang ketemu…`), that inner
  * quote collides with the decorative frame and reads as a doubled opening
@@ -35,6 +26,15 @@ export function stripEdgeQuotes(text: string): string {
         : trimmed.slice(1, closeIdx) + trimmed.slice(closeIdx + 1);
 }
 
+/**
+ * Renders Temari narration text, converting `**bold**` spans to <strong>. Only
+ * bold is supported: the TemariPersona prompt allows a single bold emphasis but
+ * bans all other markdown.
+ *
+ * Use this wherever LLM-generated narration is rendered, including inside a
+ * caller's `renderContent` wrapper, so the emphasis lands instead of showing
+ * literal `**` asterisks.
+ */
 export function renderBold(text: string): ReactNode {
     // Split into positional fragments (odd indices are the bolded captures). The id is
     // baked once here so the render map keys off a data field, not the array index.

@@ -24,6 +24,7 @@ use App\Services\AI\SelfHealer;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Mockery\MockInterface;
 
 uses(RefreshDatabase::class);
 
@@ -44,10 +45,11 @@ afterEach(function (): void {
  */
 function captureResumeRequests(array &$captured): AnalysisService
 {
+    /** @var AnalysisService&MockInterface $service */
     $service = Mockery::mock(AnalysisService::class);
     $service->shouldReceive('request')
         ->andReturnUsing(function (string $subjectOrType, int $subjectId, AnalysisType $type, ?string $discriminator = null, ?int $delaySeconds = null, bool $invalidate = false) use (&$captured): Analysis {
-            $captured[] = compact('subjectOrType', 'subjectId', 'type', 'discriminator', 'delaySeconds', 'invalidate') + ['ruleBased' => false];
+            $captured[] = ['subjectOrType' => $subjectOrType, 'subjectId' => $subjectId, 'type' => $type, 'discriminator' => $discriminator, 'delaySeconds' => $delaySeconds, 'invalidate' => $invalidate] + ['ruleBased' => false];
 
             return new Analysis();
         });
@@ -58,7 +60,7 @@ function captureResumeRequests(array &$captured): AnalysisService
         });
     $service->shouldReceive('requestRuleBased')
         ->andReturnUsing(function (string $subjectOrType, int $subjectId, AnalysisType $type, ?string $discriminator = null) use (&$captured): Analysis {
-            $captured[] = compact('subjectOrType', 'subjectId', 'type', 'discriminator') + ['invalidate' => null, 'ruleBased' => true];
+            $captured[] = ['subjectOrType' => $subjectOrType, 'subjectId' => $subjectId, 'type' => $type, 'discriminator' => $discriminator] + ['invalidate' => null, 'ruleBased' => true];
 
             return new Analysis();
         });
@@ -73,6 +75,7 @@ function captureResumeRequests(array &$captured): AnalysisService
 /** A service mock that must never dispatch. */
 function nonDispatchingResumeService(): AnalysisService
 {
+    /** @var AnalysisService&MockInterface $service */
     $service = Mockery::mock(AnalysisService::class);
     $service->shouldNotReceive('request');
     $service->shouldNotReceive('requestActivityGroup');
@@ -803,10 +806,9 @@ it('sweeps past a retired-type row left in flight instead of dying on the enum c
 });
 
 /**
- * #947: `plan_week_voice` was never swept by any family here even while the
- * type was live (no plan-family sweep exists), so nothing changes behind
- * the retired case — this pins that a leftover row stays untouched rather
- * than crashing the enum cast, same as any other retired type.
+ * `plan_week_voice` was never swept by any family (no plan-family sweep exists):
+ * a leftover row stays untouched rather than crashing the enum cast, same as
+ * any other retired type.
  */
 it('sweeps past a leftover plan_week_voice row in flight instead of dying on the enum cast', function (): void {
     $user = User::factory()->create();
@@ -861,7 +863,7 @@ it('does not resume a weekly link whose week is still hydrating', function (): v
 
     expect(selfHealer(captureResumeRequests($captured))->run())->toBe(0)
         ->and($captured)->toBeEmpty()
-        ->and($activity->fresh()->ingest_state)->toBe(IngestState::Summary);
+        ->and(nonNull($activity->fresh())->ingest_state)->toBe(IngestState::Summary);
 });
 
 it('resumes that weekly link on the first sweep after hydration finishes', function (): void {
@@ -991,12 +993,12 @@ it('re-arms every active athlete block that failed since an hour before the paus
         ->and(array_column($captured, 'discriminator'))->toEqualCanonicalizing(['2026-06-16', '2026-06-17'])
         ->and(array_column($captured, 'invalidate'))->toBe([false, false])
         ->and(array_column($captured, 'delaySeconds'))->toBe([0, 5])
-        ->and($deadLettered->fresh()->attempts)->toBe(Analysis::MAX_SELF_HEAL_ATTEMPTS - 1)
-        ->and($underBudget->fresh()->attempts)->toBe(Analysis::MAX_SELF_HEAL_ATTEMPTS - 1)
-        ->and($tooEarly->fresh()->attempts)->toBe(Analysis::MAX_SELF_HEAL_ATTEMPTS)
-        ->and($done->fresh()->attempts)->toBe(Analysis::MAX_SELF_HEAL_ATTEMPTS)
-        ->and($demo->fresh()->attempts)->toBe(Analysis::MAX_SELF_HEAL_ATTEMPTS)
-        ->and($away->fresh()->attempts)->toBe(Analysis::MAX_SELF_HEAL_ATTEMPTS);
+        ->and(nonNull($deadLettered->fresh())->attempts)->toBe(Analysis::MAX_SELF_HEAL_ATTEMPTS - 1)
+        ->and(nonNull($underBudget->fresh())->attempts)->toBe(Analysis::MAX_SELF_HEAL_ATTEMPTS - 1)
+        ->and(nonNull($tooEarly->fresh())->attempts)->toBe(Analysis::MAX_SELF_HEAL_ATTEMPTS)
+        ->and(nonNull($done->fresh())->attempts)->toBe(Analysis::MAX_SELF_HEAL_ATTEMPTS)
+        ->and(nonNull($demo->fresh())->attempts)->toBe(Analysis::MAX_SELF_HEAL_ATTEMPTS)
+        ->and(nonNull($away->fresh())->attempts)->toBe(Analysis::MAX_SELF_HEAL_ATTEMPTS);
 });
 
 it('resumes both a briefing and a profile-voice row for a long-connected athlete despite a stuck old backlog entry (#1032)', function (): void {

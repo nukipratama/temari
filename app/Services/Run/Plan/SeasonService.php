@@ -16,6 +16,7 @@ use App\Models\WeeklySnapshot;
 use App\Services\Run\Ingest\HydrationBacklog;
 use App\Services\Gamification\SeasonGamificationContext;
 use App\Services\Gamification\SeasonRecordBuilder;
+use App\Support\Numeric;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -23,19 +24,13 @@ use Illuminate\Support\Str;
 use App\Actions\Run\Plan\ResolveSeasonAction;
 
 /**
- * Ensures a user always has a current {@see Season}, generates its general
- * {@see SeasonGoal} rows once at creation, and appends a race season's block
- * goals on the first call on or after block open. Mirrors {@see Periodizer}'s own
- * "a mode switch takes effect at the next call" rule: this is read fresh
- * (never cached) every time it's called, and a `RaceGoal` set or cleared
- * mid-season only changes the season at the NEXT call, not retroactively.
+ * Ensures a user always has a current {@see Season}, generates its general {@see SeasonGoal} rows
+ * once at creation, and appends a race season's block goals on the first call on or after block
+ * open. Read fresh every call, mirroring {@see Periodizer}'s "a mode switch takes effect at the next
+ * call" rule.
  *
- * Called from both {@see PlanPageAssembler} (so
- * a first-ever page view already has a season, even before any plan has been
- * regenerated) and {@see Periodizer::regenerate()} (so the weekly job and
- * on-demand regeneration keep the season in lockstep with the plan's own
- * mode). Both call sites are idempotent against each other — see
- * {@see self::isCurrent()}.
+ * Called from both {@see PlanPageAssembler} and {@see Periodizer::regenerate()}; the two call sites
+ * are idempotent against each other, see {@see self::isCurrent()}.
  */
 final readonly class SeasonService
 {
@@ -43,14 +38,9 @@ final readonly class SeasonService
     public const int SELF_SCALED_WEEKS = Periodizer::HORIZON_WEEKS;
 
     /**
-     * How far the athlete's own trailing volume has to fall BELOW the stored
-     * anchor before the arc is re-anchored to it mid-season. Deliberately
-     * one-directional: a trailing mean that has RISEN is the ramp working, and
-     * re-anchoring upward would compound the ramp on top of its own output —
-     * which is the bug this whole anchor exists to fix. Only a collapse — an
-     * injury, a layoff, a month of travel — is a reason to redescribe the
-     * athlete, and a trimmed six-week mean needs a sustained one to move this
-     * far, so a single down week never trips it.
+     * How far the athlete's own trailing volume has to fall BELOW the stored anchor before the arc is
+     * re-anchored mid-season. One-directional: re-anchoring upward would compound the ramp on top of
+     * its own output, so only a sustained collapse moves it.
      */
     private const float REANCHOR_COLLAPSE_FRACTION = 0.25;
 
@@ -116,11 +106,8 @@ final readonly class SeasonService
         $endsAt = $race?->race_date->toDateString() ?? $today->copy()->addWeeks(self::SELF_SCALED_WEEKS)->toDateString();
         $blockGoalsAppendedAt = $race !== null && self::blockHasOpened($race, $today) ? Carbon::now() : null;
 
-        // A mode switch on the very same day the current season started
-        // (no history accumulated yet) retargets that row in place,
-        // rather than closing it and opening a second row for the same
-        // calendar day — which `unique(user_id, starts_at)` forbids, and
-        // which would leave a nonsensical zero-day season in history.
+        // A mode switch on the day the current season started retargets that row in place:
+        // `unique(user_id, starts_at)` forbids a second row for the same day.
         if ($current !== null && ! $today->isAfter($current->ends_at) && $current->starts_at->isSameDay($today)) {
             $current->update([
                 'race_goal_id' => $race?->id,
@@ -190,18 +177,10 @@ final readonly class SeasonService
     }
 
     /**
-     * The anchor's only mid-season write. A season opened before the arc was
-     * anchored carries nothing to ramp off and would stay flat forever, so it
-     * is backfilled to where the athlete stands now; an anchored one moves
-     * only when the athlete has fallen {@see self::REANCHOR_COLLAPSE_FRACTION}
-     * below it and below what the plan asked of them. A replan, a page load
-     * or a manual regeneration reaches here every time and must leave the arc
-     * alone — only a race change (which opens a new season) resets it outright.
-     *
-     * A race season's volume floor follows the same two rules: backfilled
-     * from the weeks before the season opened when it has none, and brought
-     * down to the new anchor after a collapse, since the weeks it averaged no
-     * longer describe the athlete.
+     * The anchor's only mid-season write: a season opened before the arc was anchored is backfilled
+     * to where the athlete stands now; an anchored one moves only when the athlete has fallen
+     * {@see self::REANCHOR_COLLAPSE_FRACTION} below it and below what the plan asked of them. A race
+     * season's volume floor follows the same two rules.
      */
     private function reanchorIfCollapsed(Season $season, User $user, Carbon $today): void
     {
@@ -241,17 +220,17 @@ final readonly class SeasonService
             ->whereNotNull('prescribed_km')
             ->get(['date', 'prescribed_km'])
             ->groupBy(fn (PlannedSession $session): string => $session->date->copy()->endOfWeek(Carbon::SUNDAY)->toDateString())
-            ->map(fn ($sessions): float => (float) $sessions->sum('prescribed_km'));
+            ->map(fn ($sessions): float => Numeric::float($sessions->sum('prescribed_km')));
         if ($prescribedKmByWeek->isEmpty()) {
             return null;
         }
 
-        $actualKm = (float) WeeklySnapshot::query()
+        $actualKm = Numeric::float(WeeklySnapshot::query()
             ->where('user_id', $user->id)
             ->whereIn('week_ending', $prescribedKmByWeek->keys()->all())
-            ->sum('distance_km');
+            ->sum('distance_km'));
 
-        return $actualKm >= $prescribedKmByWeek->sum() * (1 - self::REANCHOR_COLLAPSE_FRACTION);
+        return $actualKm >= array_sum($prescribedKmByWeek->all()) * (1 - self::REANCHOR_COLLAPSE_FRACTION);
     }
 
     /**
@@ -267,15 +246,9 @@ final readonly class SeasonService
     }
 
     /**
-     * A race-oriented season ends on its race day per
-     * `docs/features/plan-periodizer.md`. `race_goal_id` staying the same
-     * (the athlete's active race row was edited in place rather than
-     * superseded — see {@see \Database\Seeders\Demo\DemoRunSeeder::seedRaceGoal()})
-     * leaves {@see self::isCurrent()} treating the season as unchanged, so
-     * nothing else here would otherwise notice the race moved and refresh
-     * `ends_at` to match — leaving {@see SeasonSummaryBuilder::plannedWeeks()},
-     * which always reads the race's date fresh, running past the season's
-     * own stored end.
+     * A race-oriented season ends on its race day per `docs/features/plan-periodizer.md`. Refreshes
+     * `ends_at` when the race row was edited in place (same `race_goal_id`), which
+     * {@see self::isCurrent()} would not notice.
      */
     private function syncEndsAtToRaceDate(Season $season, RaceGoal $race): void
     {
@@ -290,7 +263,7 @@ final readonly class SeasonService
             return false;
         }
 
-        return $race === null ? $season->race_goal_id === null : $season->race_goal_id === $race->id;
+        return $race instanceof RaceGoal ? $season->race_goal_id === $race->id : $season->race_goal_id === null;
     }
 
     private function generateGoals(Season $season, User $user, ?RaceGoal $race, Carbon $today): void
@@ -298,20 +271,20 @@ final readonly class SeasonService
         $baselineData = $this->baseline->forUser($user, $today);
         $sessionsPerWeek = $baselineData['sessions_per_week'];
 
-        $weeks = $race !== null
+        $weeks = $race instanceof RaceGoal
             ? PhaseSchedule::forRace($today, $race->race_date, (float) $race->distance_m)
             : PhaseSchedule::selfScaled($today, self::SELF_SCALED_WEEKS);
         $weekCount = count($weeks);
 
         $phases = array_column($weeks, 'phase');
         $zones = array_column($weeks, 'zone');
-        $multipliers = PhaseSchedule::volumeMultipliers($phases, $race === null || $season->increases_held, $zones);
-        $raceDistanceM = $race !== null ? (float) $race->distance_m : null;
+        $multipliers = PhaseSchedule::volumeMultipliers($phases, !$race instanceof RaceGoal || $season->increases_held, $zones);
+        $raceDistanceM = $race instanceof RaceGoal ? (float) $race->distance_m : null;
 
         $qualityTotal = 0;
         $longestLongRunKm = 0.0;
         foreach ($phases as $index => $phase) {
-            $qualityTotal += WeekPlanBuilder::qualitySlotCount($phase, $sessionsPerWeek, $raceDistanceM, $race === null, $zones[$index]);
+            $qualityTotal += WeekPlanBuilder::qualitySlotCount($phase, $sessionsPerWeek, $raceDistanceM, !$race instanceof RaceGoal, $zones[$index]);
             $longRunKm = SegmentGenerator::coreKmFor(SessionType::Long, isPrimaryEasy: false, longRunBaselineKm: $baselineData['long_run_km'], volumeMultiplier: $multipliers[$index], longRunCapKm: $baselineData['long_run_cap_km']);
             $longestLongRunKm = max($longestLongRunKm, $longRunKm);
         }
@@ -350,7 +323,7 @@ final readonly class SeasonService
             ],
         ];
 
-        if ($race === null) {
+        if (!$race instanceof RaceGoal) {
             $goals[] = self::consistencyGoal($season);
         } elseif (self::blockHasOpened($race, $today)) {
             $goals[] = self::raceMarginGoal();

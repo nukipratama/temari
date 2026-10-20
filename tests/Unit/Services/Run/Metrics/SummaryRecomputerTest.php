@@ -6,12 +6,14 @@ use App\Models\Activity;
 use App\Services\Run\Ingest\ActivityPipeline;
 use App\Services\Run\Metrics\SummaryRecomputer;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Mockery\MockInterface;
 
 uses(RefreshDatabase::class);
 
 it('loads the activity with its detail and stream, then hands it to the pipeline', function (): void {
     $activity = Activity::factory()->create();
 
+    /** @var ActivityPipeline&MockInterface $pipeline */
     $pipeline = Mockery::mock(ActivityPipeline::class);
     $pipeline->shouldReceive('recomputeSummary')
         ->once()
@@ -23,6 +25,7 @@ it('loads the activity with its detail and stream, then hands it to the pipeline
 });
 
 it('is a no-op when the activity does not exist', function (): void {
+    /** @var ActivityPipeline&MockInterface $pipeline */
     $pipeline = Mockery::mock(ActivityPipeline::class);
     $pipeline->shouldNotReceive('recomputeSummary');
 

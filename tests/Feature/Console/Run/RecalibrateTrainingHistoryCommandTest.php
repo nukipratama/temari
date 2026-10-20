@@ -17,9 +17,9 @@ it('runs synchronously for the selected non-demo user only', function (): void {
         ->expectsOutputToContain('Recalibrated 1 non-demo user(s).')
         ->assertSuccessful();
 
-    expect($selected->fresh()->plan_recalibration_completed_at)->not->toBeNull()
-        ->and($other->fresh()->plan_recalibration_started_at)->toBeNull()
-        ->and($demo->fresh()->plan_recalibration_started_at)->toBeNull();
+    expect($selected->refresh()->plan_recalibration_completed_at)->not->toBeNull()
+        ->and($other->refresh()->plan_recalibration_started_at)->toBeNull()
+        ->and($demo->refresh()->plan_recalibration_started_at)->toBeNull();
 });
 
 it('reports a dry run without retaining plan writes or markers', function (): void {
@@ -29,6 +29,6 @@ it('reports a dry run without retaining plan writes or markers', function (): vo
         ->expectsOutputToContain('(dry run)')
         ->assertSuccessful();
 
-    expect($user->fresh()->plan_recalibration_started_at)->toBeNull()
+    expect($user->refresh()->plan_recalibration_started_at)->toBeNull()
         ->and(PlannedSession::query()->where('user_id', $user->id)->exists())->toBeFalse();
 });

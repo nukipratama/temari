@@ -10,9 +10,7 @@ use App\Support\SharedPropCacheKey;
 use Closure;
 
 /**
- * The collection-and-progress family of shared props: currently just the race
- * being trained for. The equipped-accessories prop lived here too until `W2`
- * swept it along with the wardrobe surface `PP2` cut.
+ * The collection-and-progress family of shared props: currently just the race being trained for.
  *
  * Every prop is returned as a closure, so Inertia skips the work entirely on a
  * partial reload that did not ask for that key.
@@ -38,7 +36,7 @@ final readonly class GamificationProps
      */
     private function activeRaceFor(?User $user): ?array
     {
-        if ($user === null) {
+        if (!$user instanceof User) {
             return null;
         }
 

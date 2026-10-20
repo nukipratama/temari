@@ -25,7 +25,7 @@ class RaceOutcomeAskCommand extends Command
     {
         $races = RaceGoal::query()
             ->where('outcome', RaceOutcome::Pending)
-            ->whereDate('race_date', Carbon::yesterday())
+            ->where('race_date', Carbon::yesterday()->toDateString())
             ->whereIn('user_id', User::query()
                 ->notDemo()
                 ->whereDoesntHave('notificationPreference', fn (Builder $preference): Builder => $preference->where('notifications_enabled', false))

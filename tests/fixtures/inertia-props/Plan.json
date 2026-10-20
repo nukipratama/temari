@@ -29,6 +29,7 @@
     "seasonAdherencePct",
     "seasonSummary",
     "seasonSummary[].actual_km",
+    "seasonSummary[].adherence_pct",
     "seasonSummary[].eased_from_km",
     "seasonSummary[].phase",
     "seasonSummary[].planned_km",

@@ -37,18 +37,14 @@ class AnalyzeMonthlyRecapJob extends AnalyzeRowJob
 
     /**
      * Chain propagation: once this month's recap is Done, dispatch the next
-     * chronological month's recap for the same user whose row is still Pending.
-     * The monthly chain is keyed by the discriminator month (Y-m) under a single
-     * user subject, so "next" is the smallest discriminator greater than this
-     * row's month. Pre-staged Pending rows only (invalidate:false), so a tripped
-     * cost ceiling or AI-disabled env makes the dispatch a clean no-op and the
-     * chain pauses rather than injecting filler. This keeps each successor
-     * reading its predecessor's already-Done narrative.
+     * chronological month's recap (the smallest discriminator `Y-m` greater than
+     * this row's) for the same user whose row is still Pending. Pre-staged
+     * Pending rows only (invalidate:false), so a tripped cost ceiling or
+     * AI-disabled env pauses the chain rather than injecting filler.
      *
-     * Best-effort: any failure here (DB blip, dispatch error) is logged and
-     * swallowed so it never flips this already-Done, already-billed row back to
-     * Failed (which would re-bill on retry). The daily resume sweep re-kicks any
-     * link this misses.
+     * Best-effort: any failure is logged and swallowed so it never flips this
+     * already-Done, already-billed row back to Failed (which would re-bill on
+     * retry). The daily resume sweep re-kicks any link this misses.
      */
     #[Override]
     protected function afterDone(Analysis $row, AnalysisService $service): void
@@ -91,7 +87,7 @@ class AnalyzeMonthlyRecapJob extends AnalyzeRowJob
     {
         $lastClosedMonth = RecapPeriod::lastClosedMonth();
 
-        return Analysis::query()
+        $next = Analysis::query()
             ->where('subject_type', AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE)
             ->where('subject_id', $userId)
             ->where('analysis_type', AnalysisType::MonthlyRecap)
@@ -100,5 +96,8 @@ class AnalyzeMonthlyRecapJob extends AnalyzeRowJob
             ->where('discriminator', '<=', $lastClosedMonth)
             ->orderBy('discriminator')
             ->value('discriminator');
+        assert($next === null || is_string($next));
+
+        return $next;
     }
 }

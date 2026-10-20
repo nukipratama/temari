@@ -1,12 +1,7 @@
 /**
- * Beginner-friendly explanations for every sport-science term surfaced
- * across the app. Each entry is a 1-2 sentence explanation keyed by a
- * stable slug. Components opt in via `<MetricExplainer metricKey="ctl" />`
- * next to the label they want to demystify.
- *
- * Voice matches the Temari persona: casual, warm, contractions fine,
- * common running terms stay English, obscure ones get explained, no
- * em-dash, no markdown. See docs/voice-and-tone.md.
+ * Beginner-friendly explanations for every sport-science term surfaced across
+ * the app, each a 1-2 sentence entry keyed by a stable slug. Components opt in
+ * via `<MetricExplainer metricKey="ctl" />`. Voice: see docs/voice-and-tone.md.
  */
 
 export interface MetricGlossaryEntry {

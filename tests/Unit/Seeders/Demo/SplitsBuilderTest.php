@@ -13,7 +13,7 @@ it('split distances sum to total stream distance', function (): void {
 
     $splits = new SplitsBuilder()->build($streams);
 
-    $totalStreamDist = (float) end($streams['distance']['data']);
+    $totalStreamDist = end($streams['distance']['data']);
     $splitSum = array_sum(array_map(fn (array $s): float => (float) $s['distance'], $splits));
 
     expect($splitSum)->toEqualWithDelta($totalStreamDist, 0.1);

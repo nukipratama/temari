@@ -81,24 +81,22 @@ it('lets the Monday scheduler open the regenerate gate after a partial scoring f
 
     expect(SchedulerChain::isDoneToday(SchedulerChain::PLAN_SCORE_COMPLIANCE))->toBeFalse()
         ->and(SchedulerChain::prerequisitesMet('plan:regenerate'))->toBeFalse();
-    $scoreCompliance = collect(app(Schedule::class)->events())->first(
+    $scoreCompliance = nonNull(collect(app(Schedule::class)->events())->first(
         static fn (Event $event): bool => str_contains((string) $event->command, 'plan:score-compliance'),
-    );
-    expect($scoreCompliance)->not->toBeNull();
+    ));
     $scoreCompliance->finish(app(), 0);
     expect(SchedulerChain::isDoneToday(SchedulerChain::PLAN_SCORE_COMPLIANCE))->toBeTrue()
         ->and(SchedulerChain::prerequisitesMet('plan:regenerate'))->toBeTrue();
-    $regenerate = collect(app(Schedule::class)->events())->first(
+    $regenerate = nonNull(collect(app(Schedule::class)->events())->first(
         static fn (Event $event): bool => str_contains((string) $event->command, 'plan:regenerate'),
-    );
-    expect($regenerate)->not->toBeNull()
-        ->and($regenerate->filtersPass(app()))->toBeTrue();
+    ));
+    expect($regenerate->filtersPass(app()))->toBeTrue();
     Http::assertSentCount(1);
     Http::assertSent(static fn (Request $request): bool =>
-        str_contains((string) $request['text'], 'plan:score-compliance')
-        && str_contains((string) $request['text'], '1 athlete')
-        && ! str_contains((string) $request['text'], 'Private Failed Athlete')
-        && ! str_contains((string) $request['text'], 'Private Later Athlete'));
+        str_contains(telegramRequestText($request), 'plan:score-compliance')
+        && str_contains(telegramRequestText($request), '1 athlete')
+        && ! str_contains(telegramRequestText($request), 'Private Failed Athlete')
+        && ! str_contains(telegramRequestText($request), 'Private Later Athlete'));
 
     Carbon::setTestNow();
 });
@@ -120,21 +118,19 @@ it('keeps the Monday regenerate gate closed when every athlete fails scoring', f
 
     expect(SchedulerChain::isDoneToday(SchedulerChain::PLAN_SCORE_COMPLIANCE))->toBeFalse()
         ->and(SchedulerChain::prerequisitesMet('plan:regenerate'))->toBeFalse();
-    $regenerate = collect(app(Schedule::class)->events())->first(
+    $regenerate = nonNull(collect(app(Schedule::class)->events())->first(
         static fn (Event $event): bool => str_contains((string) $event->command, 'plan:regenerate'),
-    );
-    expect($regenerate)->not->toBeNull()
-        ->and($regenerate->filtersPass(app()))->toBeFalse();
-    $scoreCompliance = collect(app(Schedule::class)->events())->first(
+    ));
+    expect($regenerate->filtersPass(app()))->toBeFalse();
+    $scoreCompliance = nonNull(collect(app(Schedule::class)->events())->first(
         static fn (Event $event): bool => str_contains((string) $event->command, 'plan:score-compliance'),
-    );
-    expect($scoreCompliance)->not->toBeNull();
+    ));
     $scoreCompliance->finish(app(), 1);
     expect($regenerate->filtersPass(app()))->toBeFalse();
     Http::assertSentCount(1);
     Http::assertSent(static fn (Request $request): bool =>
-        str_contains((string) $request['text'], 'plan:score-compliance')
-        && str_contains((string) $request['text'], 'Scheduler failed to run'));
+        str_contains(telegramRequestText($request), 'plan:score-compliance')
+        && str_contains(telegramRequestText($request), 'Scheduler failed to run'));
 
     Carbon::setTestNow();
 });
@@ -201,10 +197,12 @@ it('scores a past week, crediting the day that met its target and marking the re
 
     $rows = PlannedSession::query()->where('user_id', $user->id)->orderBy('date')->get();
 
-    expect($rows[0]->status->value)->toBe('done')
-        ->and($rows[0]->compliance_score)->not->toBeNull()
-        ->and($rows[1]->status->value)->toBe('missed')
-        ->and($rows[1]->compliance_score)->toBe(0);
+    $first = nonNull($rows[0]);
+    $second = nonNull($rows[1]);
+    expect($first->status->value)->toBe('done')
+        ->and($first->compliance_score)->not->toBeNull()
+        ->and($second->status->value)->toBe('missed')
+        ->and($second->compliance_score)->toBe(0);
 
     Carbon::setTestNow();
 });
@@ -231,7 +229,7 @@ it('uses the latest scored date when a backlog spans irrelevant and relevant wee
 
     $this->artisan('plan:score-compliance')->assertSuccessful();
 
-    expect($user->fresh()->plan_reconciliation_pending_from->toDateString())
+    expect(nonNull($user->refresh()->plan_reconciliation_pending_from)->toDateString())
         ->toBe(Carbon::yesterday()->toDateString());
 
     Carbon::setTestNow();
@@ -250,8 +248,8 @@ it('limits to a single user via --user', function (): void {
         ->expectsOutputToContain('Scored 1 planned session(s) across 1 user(s).')
         ->assertSuccessful();
 
-    expect(PlannedSession::query()->where('user_id', $a->id)->first()->status->value)->toBe('done')
-        ->and(PlannedSession::query()->where('user_id', $b->id)->first()->status->value)->toBe('planned');
+    expect(nonNull(PlannedSession::query()->where('user_id', $a->id)->first())->status->value)->toBe('done')
+        ->and(nonNull(PlannedSession::query()->where('user_id', $b->id)->first())->status->value)->toBe('planned');
 
     Carbon::setTestNow();
 });
@@ -272,7 +270,7 @@ it('marks a skipped day as Skip regardless of logged distance', function (): voi
 
     $this->artisan('plan:score-compliance')->assertSuccessful();
 
-    $row = PlannedSession::query()->where('user_id', $user->id)->first();
+    $row = nonNull(PlannedSession::query()->where('user_id', $user->id)->first());
     expect($row->status->value)->toBe('skip')
         ->and($row->compliance_score)->toBeNull()
         ->and($row->ran_anyway)->toBeFalse();
@@ -289,7 +287,7 @@ it('leaves future planned sessions untouched', function (): void {
         ->expectsOutputToContain('Scored 0 planned session(s) across 0 user(s).')
         ->assertSuccessful();
 
-    expect(PlannedSession::query()->where('user_id', $user->id)->first()->status->value)->toBe('planned');
+    expect(nonNull(PlannedSession::query()->where('user_id', $user->id)->first())->status->value)->toBe('planned');
 
     Carbon::setTestNow();
 });
@@ -319,7 +317,7 @@ it('marks a past rest day Done and flags ran_anyway when logged despite being re
 
     $this->artisan('plan:score-compliance')->assertSuccessful();
 
-    $row = PlannedSession::query()->where('user_id', $user->id)->first();
+    $row = nonNull(PlannedSession::query()->where('user_id', $user->id)->first());
     expect($row->status->value)->toBe('done')
         ->and($row->compliance_score)->toBeNull()
         ->and($row->ran_anyway)->toBeTrue();
@@ -337,7 +335,7 @@ it('still marks an unclamped long day missed when nothing was run', function ():
 
     $this->artisan('plan:score-compliance')->assertSuccessful();
 
-    expect(PlannedSession::query()->where('user_id', $user->id)->first()->status->value)->toBe('missed');
+    expect(nonNull(PlannedSession::query()->where('user_id', $user->id)->first())->status->value)->toBe('missed');
 
     Carbon::setTestNow();
 });

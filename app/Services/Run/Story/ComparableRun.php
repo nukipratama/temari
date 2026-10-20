@@ -9,6 +9,7 @@ use App\Enums\IngestState;
 use App\Enums\SessionType;
 use App\Services\Run\Metrics\DistanceFormatter;
 use App\Services\Run\Metrics\PaceCalculator;
+use App\Support\Numeric;
 use Illuminate\Support\Carbon;
 
 /**
@@ -40,8 +41,8 @@ final readonly class ComparableRun
      */
     public static function fromRow(array $row): ?self
     {
-        $distance = (float) ($row['distance'] ?? 0);
-        $elapsedTime = (int) ($row['elapsed_time'] ?? 0);
+        $distance = Numeric::float($row['distance'] ?? 0);
+        $elapsedTime = Numeric::int($row['elapsed_time'] ?? 0);
         $pace = PaceCalculator::secPerKm($distance, $elapsedTime);
         $startedAt = $row['start_date_local'] ?? null;
 
@@ -49,19 +50,21 @@ final readonly class ComparableRun
             return null;
         }
 
+        assert(is_string($row['ingest_state']));
+
         return new self(
-            activityId: (int) $row['activity_id'],
+            activityId: Numeric::int($row['activity_id']),
             startedAt: Carbon::parse($startedAt),
             distanceM: $distance,
             elapsedTimeSec: $elapsedTime,
             paceSecPerKm: $pace,
-            averageHeartrate: isset($row['average_heartrate']) ? (float) $row['average_heartrate'] : null,
-            elevationGainM: isset($row['total_elevation_gain']) ? (float) $row['total_elevation_gain'] : null,
-            ingestState: IngestState::from((string) $row['ingest_state']),
+            averageHeartrate: isset($row['average_heartrate']) ? Numeric::float($row['average_heartrate']) : null,
+            elevationGainM: isset($row['total_elevation_gain']) ? Numeric::float($row['total_elevation_gain']) : null,
+            ingestState: IngestState::from($row['ingest_state']),
             plannedSessionType: is_string($row['planned_session_type'] ?? null)
                 ? SessionType::tryFrom($row['planned_session_type'])
                 : null,
-            weatherTempC: isset($row['weather_temp_c']) ? (int) $row['weather_temp_c'] : null,
+            weatherTempC: isset($row['weather_temp_c']) ? Numeric::int($row['weather_temp_c']) : null,
         );
     }
 

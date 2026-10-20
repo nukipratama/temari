@@ -26,13 +26,9 @@ class LlmCostCalculator
     /**
      * Cost in USD for a single call's token split against the deployment's rate.
      *
-     * `$cachedTokens` is the slice of `$promptTokens` the provider served from
-     * its prompt cache. It only changes the bill when the deployment declares a
-     * `cached_input_per_1m`; without one it bills as ordinary input, so a
-     * deployment that has not been given a cached rate is unaffected.
-     *
-     * Reasoning tokens need no handling here: the provider already counts them
-     * inside `$completionTokens`, so they bill at the output rate by arriving.
+     * `$cachedTokens` is the slice of `$promptTokens` served from the provider's prompt cache; it
+     * only changes the bill when the deployment declares a `cached_input_per_1m`. Reasoning tokens
+     * need no handling: the provider already counts them inside `$completionTokens`.
      */
     public function costFor(string $deployment, int $promptTokens, int $completionTokens, int $cachedTokens = 0): float
     {
@@ -57,14 +53,11 @@ class LlmCostCalculator
     }
 
     /**
-     * Total USD cost of today's ai_token_usages rows (analytics connection),
-     * grouped by deployment so each group bills against its own rate.
+     * Total USD cost of today's ai_token_usages rows (analytics connection), grouped by deployment
+     * so each group bills against its own rate.
      *
-     * `$userId` scopes the sum to one athlete's spend. Rows carry `user_id`
-     * already, so this is the same query with one more predicate — what makes a
-     * per-athlete budget possible without any new bookkeeping. `$origin` narrows
-     * it the same way, which is how the replay cap reads its own slice. `$day`
-     * selects another calendar day, today by default.
+     * `$userId` scopes the sum to one athlete, `$origin` narrows it to one origin, and `$day`
+     * selects another calendar day.
      */
     public function dailyCost(?int $userId = null, ?AnalysisOrigin $origin = null, ?Carbon $day = null): float
     {

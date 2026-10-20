@@ -29,6 +29,7 @@ use App\Services\Run\FeedFilters;
 use App\Services\Run\Plan\Periodizer;
 use App\Services\Run\Story\Card\CardFacts;
 use App\Services\Run\Story\Card\RunForm;
+use App\Support\Numeric;
 use Database\Seeders\Demo\DemoRunSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
@@ -86,7 +87,7 @@ function commitSharedDemoFixture(): void
     DB::connection('mysql')->beginTransaction();
     DB::connection('analytics')->beginTransaction();
 
-    sharedFixtureConnection(DB::connection('mysql')->getRawPdo());
+    sharedFixtureConnection(DB::connection('mysql')->getPdo());
 }
 
 /**
@@ -136,7 +137,7 @@ function sharedFixtureConnection(?PDO $pdo = null): ?PDO
 afterAll(function (): void {
     $pdo = sharedFixtureConnection();
 
-    if ($pdo === null) {
+    if (!$pdo instanceof PDO) {
         return;
     }
 
@@ -146,7 +147,10 @@ afterAll(function (): void {
 
     $pdo->exec('SET FOREIGN_KEY_CHECKS=0');
 
-    foreach ($pdo->query('SHOW FULL TABLES WHERE Table_type = "BASE TABLE"')->fetchAll(PDO::FETCH_COLUMN) as $table) {
+    $tables = $pdo->query('SHOW FULL TABLES WHERE Table_type = "BASE TABLE"');
+    $tables = $tables === false ? throw new InvalidArgumentException('SHOW FULL TABLES returned no statement.') : $tables;
+
+    foreach ($tables->fetchAll(PDO::FETCH_COLUMN) as $table) {
         if ($table !== 'migrations') {
             $pdo->exec("DELETE FROM `{$table}`");
         }
@@ -199,8 +203,8 @@ it('converges a same-day re-seed without duplicating rows and heals a stale Stra
         ->and($connection->token_expires_at->isFuture())->toBeTrue()
         ->and($connection->revoked_at)->toBeNull();
 
-    // F7: re-seeding under the same frozen clock converges rather than
-    // duplicating rows for the plan/narration/inbox surfaces this slice adds.
+    // Re-seeding under the same frozen clock converges rather than
+    // duplicating rows for the plan/narration/inbox surfaces.
     expect(demoSurfaceCounts($user))->toBe($counts);
 });
 
@@ -208,10 +212,9 @@ it('replaces the timeline on a later-day re-seed instead of stacking a second co
     $user = seedSlimDemo();
     $activityCount = Activity::query()->where('user_id', $user->id)->count();
 
-    // #1165: every blueprint anchors to Carbon::today(), so its identity
-    // shifts whenever "today" does. A re-seed on a *later* calendar day must
-    // still replace the timeline instead of stacking a second copy of it
-    // onto the account — the bug left several runs piled onto most days.
+    // Every blueprint anchors to Carbon::today(), so its identity shifts
+    // whenever "today" does. A re-seed on a *later* calendar day must still
+    // replace the timeline instead of stacking a second copy of it.
     Carbon::setTestNow('2026-05-20 12:00:00');
     $this->artisan('demo:seed')->assertSuccessful();
 
@@ -221,7 +224,7 @@ it('replaces the timeline on a later-day re-seed instead of stacking a second co
     $runsPerDay = ActivityDetail::query()
         ->whereIn('activity_id', $driftedActivityIds)
         ->get()
-        ->groupBy(fn (ActivityDetail $detail) => $detail->start_date_local->toDateString())
+        ->groupBy(fn (ActivityDetail $detail) => nonNull($detail->start_date_local)->toDateString())
         ->map->count();
     expect($runsPerDay->max())->toBe(1, 'A re-seed on a later day must replace the timeline, not stack a second run onto the same date.');
 });
@@ -231,8 +234,8 @@ it('seeds a complete, login-ready demo dataset', function (): void {
 
     $user = User::query()->where('email', DemoRunSeeder::DEMO_USER_EMAIL)->firstOrFail();
 
-    // Core row counts — 35 scripted (one moved off today to D-2, which now
-    // excludes a filler that used to land there) + RNG fillers @ 30% over
+    // Core row counts — 35 scripted (one moved off today to D-2, which
+    // excludes a filler) + RNG fillers @ 30% over
     // ~180d + 1 D-0 cold-start run; exact match fails loud on drift.
     $activityIds = Activity::query()->where('user_id', $user->id)->pluck('id');
     $activityCount = $activityIds->count();
@@ -260,13 +263,12 @@ it('seeds a complete, login-ready demo dataset', function (): void {
         ->and((clone $cardQuery)->where('rarity', Rarity::Epic)->count())->toBeGreaterThanOrEqual(3);
 
     // The week-keyed profile voice is backfilled to a done analysis row.
-    $profileVoice = Analysis::query()
+    $profileVoice = nonNull(Analysis::query()
         ->where('subject_type', AnalysisType::PROFILE_VOICE_SUBJECT_TYPE)
         ->where('subject_id', $user->id)
         ->where('discriminator', Carbon::now()->isoFormat('GGGG-[W]WW'))
-        ->first();
-    expect($profileVoice)->not->toBeNull()
-        ->and($profileVoice->status->value)->toBe('done')
+        ->first());
+    expect($profileVoice->status->value)->toBe('done')
         ->and($profileVoice->content)->not->toBeEmpty();
 
     // Varied maps: more than one distinct resolved location.
@@ -297,9 +299,9 @@ it('seeds a complete, login-ready demo dataset', function (): void {
         ->where('discriminator', '>', RecapPeriod::lastClosedMonth())
         ->count())->toBe(0);
 
-    // F7: a full 12-week planned-session horizon, self-scaled (no active
+    // A full 12-week planned-session horizon, self-scaled (no active
     // race), with the current week's past days scored/skipped rather than
-    // left stuck at Planned — the exact gap this slice closes.
+    // left stuck at Planned.
     $plannedSessionCount = PlannedSession::query()->where('user_id', $user->id)->count();
     expect($plannedSessionCount)->toBe(7 * Periodizer::HORIZON_WEEKS)
         ->and(PlannedSession::query()
@@ -313,7 +315,7 @@ it('seeds a complete, login-ready demo dataset', function (): void {
             ->where('status', '!=', PlannedSessionStatus::Planned)
             ->count())->toBe(0);
 
-    // F7: trend_read narrated for every live window (just 7d since #967).
+    // trend_read narrated for every live window.
     expect(Analysis::query()
         ->where('subject_type', AnalysisType::TREND_READ_SUBJECT_TYPE)
         ->where('subject_id', $user->id)
@@ -330,18 +332,17 @@ it('seeds a complete, login-ready demo dataset', function (): void {
         ->where('discriminator', '7d')
         ->value('served_by'))->toBe(ServedBy::RuleBased);
 
-    // F7: the inbox is populated (today's post-run summary at minimum), not
-    // the empty state R5 flagged.
+    // The inbox is populated (today's post-run summary at minimum), not
+    // the empty state.
     $inboxCount = InboxNotification::query()->where('user_id', $user->id)->count();
     expect($inboxCount)->toBeGreaterThanOrEqual(1);
 
-    // PP4 / P30. Every one of these surfaces was invisible on the demo account
-    // until this slice, so each assertion stands for a screen a reviewer could
+    // Each assertion below stands for a demo-account screen a reviewer could
     // not otherwise see.
 
     // Settings' preferences card runs on TrainingBaseline fallbacks without a
     // row, and its "which one's the long run?" block is gated on run days.
-    // PS14. The preference says the demo user trains for a race, and nothing
+    // The preference says the demo user trains for a race, and nothing
     // created one: Race rendered its empty state and Profile's goal chip
     // rendered for nobody, on any fresh database.
     $race = RaceGoal::query()->where('user_id', $user->id)->active()->firstOrFail();
@@ -350,13 +351,12 @@ it('seeds a complete, login-ready demo dataset', function (): void {
         ->and($race->race_date->isFuture())->toBeTrue();
 
     // The race goal is 3% faster than the seeded 10K best, rounded to the
-    // nearest 15 s, not an independently hardcoded time (#917).
-    $km10Best = PersonalRecord::query()
+    // nearest 15 s, not an independently hardcoded time.
+    $km10Best = nonNull(PersonalRecord::query()
         ->where('user_id', $user->id)
         ->where('category', PrCategory::Km10)
-        ->value('value_sec');
-    expect($km10Best)->not->toBeNull();
-    $expectedGoalTimeSec = (int) (round($km10Best * 0.97 / 15) * 15);
+        ->value('value_sec'));
+    $expectedGoalTimeSec = (int) (round(Numeric::float($km10Best) * 0.97 / 15) * 15);
     expect($race->goal_time_sec)->toBe($expectedGoalTimeSec);
 
     $snapshot = TrendDailySnapshot::query()->where('user_id', $user->id)->whereDate('snapshot_date', Carbon::today())->firstOrFail();
@@ -365,7 +365,7 @@ it('seeds a complete, login-ready demo dataset', function (): void {
         ->and($snapshot->supported_source_distance_m)->toBeInt()
         ->and($snapshot->supported_source_date)->not->toBeNull();
 
-    // #979. The 10K that backs that goal is itself flagged as a race, so the
+    // The 10K that backs that goal is itself flagged as a race, so the
     // share card's `race` form (bib chassis, chip splits) is reachable on the
     // demo account instead of unconditionally falling through to the other
     // four forms.
@@ -391,8 +391,8 @@ it('seeds a complete, login-ready demo dataset', function (): void {
     // rows written out of chronological order drop whole buckets off the first
     // window. Backdating makes that reachable, so it is asserted rather than
     // assumed.
-    expect($inbox->pluck('created_at')->map(fn ($at) => $at->timestamp)->all())
-        ->toBe($inbox->pluck('created_at')->map(fn ($at) => $at->timestamp)->sort()->values()->all());
+    $createdAt = $inbox->map(fn (InboxNotification $notification): int => nonNull($notification->created_at)->getTimestamp());
+    expect($createdAt->all())->toBe($createdAt->sort()->values()->all());
 
     // VitalsCard gates its steepest-grade and flat-pace tiles on a computed
     // max_grade_pct >= 3, which needs a grade_smooth stream the synthesizer
@@ -402,7 +402,7 @@ it('seeds a complete, login-ready demo dataset', function (): void {
         ->whereIn('activity_id', $activityIds)
         ->orderByDesc('start_date_local')
         ->firstOrFail();
-    expect((float) ($newestDetail->streamSummary()['max_grade_pct'] ?? 0))->toBeGreaterThanOrEqual(3.0);
+    expect(Numeric::float($newestDetail->streamSummary()['max_grade_pct'] ?? 0))->toBeGreaterThanOrEqual(3.0);
 
     // AskAboutRun's prior-question list is gated on there being any.
     $runQuestions = RunQuestion::query()->where('activity_id', $newestDetail->activity_id)->get();
@@ -428,8 +428,8 @@ it('reminds the operator to enable the demo login only when it is off', function
 
 it('tells the operator the demo narration stays rule-based, Reread included', function (): void {
     expect(ensureBareDemoSeeded())
-        ->toContain('demo narration stays rule-based')
-        ->not->toContain('real LLM narration');
+        ->not->toContain('real LLM narration')
+        ->toContain('demo narration stays rule-based');
 });
 
 it('applies the edge states after the seed when --with-edge-states is passed', function (): void {
@@ -449,8 +449,8 @@ it('seeds the pending, processing and failed states the audits cannot otherwise 
 
     $statuses = Analysis::query()
         ->whereIn('status', [AnalysisStatus::Pending, AnalysisStatus::Processing, AnalysisStatus::Failed])
-        ->pluck('status')
-        ->map(fn (AnalysisStatus $s): string => $s->value)
+        ->get()
+        ->map(fn (Analysis $analysis): string => $analysis->status->value)
         ->sort()
         ->values()
         ->all();
@@ -499,19 +499,23 @@ function propContractPage(TestCase $test, ?User $user, string $url): array
 
     $html = (string) $test->get($url)->assertSuccessful()->getContent();
     preg_match('/type="application\/json">(.*?)<\/script>/s', $html, $matches);
-    $page = json_decode(html_entity_decode($matches[1] ?? ''), true);
-    expect($page)->toBeArray();
+    $page = arrayOf(json_decode(html_entity_decode($matches[1] ?? ''), true));
 
-    $props = $page['props'];
-    $deferred = collect($page['deferredProps'] ?? [])->flatten()->all();
+    $props = arrayOf($page['props']);
+    $component = is_string($page['component']) ? $page['component'] : throw new InvalidArgumentException('Page component is not a string.');
+    $version = $page['version'] ?? '';
+    $deferred = collect(arrayOf($page['deferredProps'] ?? []))
+        ->flatten()
+        ->map(fn (mixed $path): string => is_string($path) ? $path : throw new InvalidArgumentException('Deferred prop path is not a string.'))
+        ->all();
     if ($deferred !== []) {
         $partial = $test->get($url, [
             'X-Inertia' => 'true',
-            'X-Inertia-Version' => (string) ($page['version'] ?? ''),
-            'X-Inertia-Partial-Component' => $page['component'],
+            'X-Inertia-Version' => is_scalar($version) ? (string) $version : '',
+            'X-Inertia-Partial-Component' => $component,
             'X-Inertia-Partial-Data' => implode(',', $deferred),
         ])->assertSuccessful()->json('props');
-        $props = array_merge($props, $partial);
+        $props = array_merge($props, arrayOf($partial));
     }
 
     $request = Request::create($url);
@@ -519,7 +523,7 @@ function propContractPage(TestCase $test, ?User $user, string $url): array
     $shared = array_keys(app(HandleInertiaRequests::class)->share($request));
 
     return [
-        'component' => $page['component'],
+        'component' => $component,
         'props' => array_diff_key($props, array_flip($shared)),
         'shared' => array_intersect_key($props, array_flip($shared)),
     ];

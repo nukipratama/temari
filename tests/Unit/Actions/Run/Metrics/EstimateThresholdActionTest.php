@@ -10,14 +10,11 @@ use App\Actions\Run\Metrics\ResolveRecentStreamSummariesAction;
 use App\Services\Run\Metrics\StreamSummary;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Mockery\MockInterface;
 
 uses(RefreshDatabase::class);
 
-beforeEach(function (): void {
-    $this->user = User::factory()->create();
-    $this->estimator = app(EstimateThresholdAction::class);
-});
-
+/** @param  array<string, mixed>  $summary */
 function seedDetail(User $user, array $summary, ?Carbon $startDate = null): void
 {
     $activity = Activity::factory()->for($user)->create();
@@ -30,6 +27,7 @@ function seedDetail(User $user, array $summary, ?Carbon $startDate = null): void
 /** @param  list<array<string, mixed>>  $summaries */
 function estimatorOver(array $summaries): EstimateThresholdAction
 {
+    /** @var ResolveRecentStreamSummariesAction&MockInterface $recent */
     $recent = Mockery::mock(ResolveRecentStreamSummariesAction::class);
     $recent->shouldReceive('__invoke')->andReturn(array_map(StreamSummary::fromArray(...), $summaries));
 
@@ -37,46 +35,49 @@ function estimatorOver(array $summaries): EstimateThresholdAction
 }
 
 it('returns null when no hard sessions exist in the lookback window', function (): void {
+    $user = User::factory()->create();
     $estimator = estimatorOver([[
         'time_in_zone_pct' => ['Z2' => 80.0, 'Z3' => 10.0, 'Z4' => 0.0],
         'best_60min_pace' => '6:30',
     ]]);
 
-    expect($estimator($this->user))->toBeNull();
+    expect($estimator($user))->toBeNull();
 });
 
 it('uses best_60min_pace from a single hard session with low confidence', function (): void {
-    seedDetail($this->user, [
+    $user = User::factory()->create();
+    seedDetail($user, [
         'time_in_zone_pct' => ['Z2' => 20.0, 'Z3' => 50.0, 'Z4' => 25.0, 'Z5' => 5.0],
         'best_60min_pace' => '5:00',
     ]);
 
-    $result = ($this->estimator)($this->user);
+    $result = nonNull(app(EstimateThresholdAction::class)($user));
 
-    expect($result)->not->toBeNull()
-        ->and($result['pace_sec'])->toEqualWithDelta(300.0, 0.1)
+    expect($result['pace_sec'])->toEqualWithDelta(300.0, 0.1)
         ->and($result['confidence'])->toBe('low')
         ->and($result['sample_size'])->toBe(1);
 });
 
 it('falls back to best_30min_pace when 60min not available', function (): void {
+    $user = User::factory()->create();
     $estimator = estimatorOver([[
         'time_in_zone_pct' => ['Z3' => 40.0, 'Z4' => 30.0],
         'best_30min_pace' => '5:30',
     ]]);
 
-    $result = $estimator($this->user);
+    $result = nonNull($estimator($user));
 
     expect($result['pace_sec'])->toEqualWithDelta(330.0, 0.1);
 });
 
 it('takes the median across multiple hard sessions and reports confidence', function (): void {
+    $user = User::factory()->create();
     $estimator = estimatorOver(array_map(fn (string $pace): array => [
         'time_in_zone_pct' => ['Z3' => 40.0, 'Z4' => 30.0],
         'best_60min_pace' => $pace,
     ], ['5:00', '5:10', '5:20', '5:30', '5:40', '5:50']));
 
-    $result = $estimator($this->user);
+    $result = nonNull($estimator($user));
 
     // 6 values [300..350] → median at floor(5/2)=2 → 320.
     expect($result['pace_sec'])->toEqualWithDelta(320.0, 0.1)
@@ -85,33 +86,37 @@ it('takes the median across multiple hard sessions and reports confidence', func
 });
 
 it('ignores sessions outside the 60-day lookback', function (): void {
-    seedDetail($this->user, [
+    $user = User::factory()->create();
+    seedDetail($user, [
         'time_in_zone_pct' => ['Z3' => 60.0],
         'best_60min_pace' => '5:00',
     ], Carbon::today()->subDays(120));
 
-    expect(($this->estimator)($this->user))->toBeNull();
+    expect(app(EstimateThresholdAction::class)($user))->toBeNull();
 });
 
 it('ignores stream summaries whose time_in_zone_pct is not an array', function (): void {
+    $user = User::factory()->create();
     $estimator = estimatorOver([[
         'time_in_zone_pct' => 'malformed-string-not-array',
         'best_60min_pace' => '5:00',
     ]]);
 
-    expect($estimator($this->user))->toBeNull();
+    expect($estimator($user))->toBeNull();
 });
 
 it('ignores stream summaries that have neither 30min nor 60min best paces', function (): void {
+    $user = User::factory()->create();
     $estimator = estimatorOver([[
         'time_in_zone_pct' => ['Z3' => 60.0],
         'best_5min_pace' => '4:30',
     ]]);
 
-    expect($estimator($this->user))->toBeNull();
+    expect($estimator($user))->toBeNull();
 });
 
 it('rejects a steady run that lives in Z3 without ever reaching Z4', function (): void {
+    $user = User::factory()->create();
     // The shape that broke this on real data: an easy 10km at 7:31/km logging
     // 84.3% Z3+, which a Z3-inclusive bar reads as a threshold session.
     $estimator = estimatorOver([[
@@ -119,25 +124,26 @@ it('rejects a steady run that lives in Z3 without ever reaching Z4', function ()
         'best_60min_pace' => '7:31',
     ]]);
 
-    expect($estimator($this->user))->toBeNull();
+    expect($estimator($user))->toBeNull();
 });
 
 it('counts a hard session too short for a 30 minute window', function (): void {
+    $user = User::factory()->create();
     // A 28-minute 5km time trial fills neither a 60 nor a 30 minute window, so
-    // the athlete's single best piece of evidence used to contribute nothing
-    // while slower, longer runs set the estimate.
+    // the athlete's single best piece of evidence must still contribute
+    // rather than slower, longer runs setting the estimate.
     $estimator = estimatorOver([[
         'time_in_zone_pct' => ['Z3' => 10.1, 'Z4' => 40.0, 'Z5' => 38.3],
         'best_20min_pace' => '5:30',
     ]]);
 
-    $result = $estimator($this->user);
+    $result = nonNull($estimator($user));
 
-    expect($result)->not->toBeNull()
-        ->and($result['pace_sec'])->toEqualWithDelta(330.0, 0.1);
+    expect($result['pace_sec'])->toEqualWithDelta(330.0, 0.1);
 });
 
 it('prefers the longest sustained window when a session offers several', function (): void {
+    $user = User::factory()->create();
     $estimator = estimatorOver([[
         'time_in_zone_pct' => ['Z4' => 35.0, 'Z5' => 10.0],
         'best_60min_pace' => '6:00',
@@ -145,5 +151,5 @@ it('prefers the longest sustained window when a session offers several', functio
         'best_20min_pace' => '5:20',
     ]]);
 
-    expect($estimator($this->user)['pace_sec'])->toEqualWithDelta(360.0, 0.1);
+    expect(nonNull($estimator($user))['pace_sec'])->toEqualWithDelta(360.0, 0.1);
 });

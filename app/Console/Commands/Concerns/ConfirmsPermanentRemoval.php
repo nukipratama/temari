@@ -34,10 +34,7 @@ trait ConfirmsPermanentRemoval
      * proceed or the exit code to return immediately.
      *
      * A bare `docker exec` without `-it` still reports `isInteractive() ===
-     * true`, so a plain `confirm()` would read immediate EOF as its "no"
-     * default and exit 0 having silently done nothing — this also requires
-     * a real stdin TTY (skipped under tests, whose own stdin is never a TTY
-     * either) to catch that case.
+     * true`, so this also requires a real stdin TTY (skipped under tests).
      */
     private function confirmRemoval(string $question, string $abortMessage): ?int
     {

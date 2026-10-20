@@ -1,11 +1,8 @@
 /**
  * Canonical palette hex values for use inside Chart.js / inline-SVG, which
  * cannot read CSS `var(--color-*)` tokens off a `<canvas>`. These MUST mirror
- * the `@theme` block in [resources/css/app.css](../../css/app.css); treat that
- * file as source of truth and keep this bridge in sync when a token moves.
- *
- * Use the named exports (never loose hex) so a chart series reads as
- * "ember" / "leaf" at the call site and recolors with the palette.
+ * the `@theme` block in [resources/css/app.css](../../css/app.css), the source
+ * of truth. Use the named exports, never loose hex.
  */
 export const PALETTE = {
     leaf: '#2f8f63',
@@ -34,20 +31,14 @@ export const PALETTE = {
 export type PaletteColor = keyof typeof PALETTE;
 
 /**
- * Ground-dependent chart roles. Bold graphic fills/accents in {@link PALETTE}
- * above (a bar, a filled area, `horizon` used at full saturation) read fine
- * on either ground unchanged, matching how `--mood-*`/`--rarity-*` fills
- * don't migrate either. What genuinely needs a ground-reactive pair is
- * anything text-weight: grid lines, axis/legend labels, a muted
- * secondary-series stroke, the ink-safe `horizonInk` line several trend
- * panels use as their primary stroke (darkened specifically to hold up as a
- * *thin* mark on light paper — that darkening is exactly what makes it
- * disappear against a dark chart surface), a neutral marker outline, and the
- * "cutout" ring Chart.js point markers use against the chart's own surface.
- * Values here mirror the light/dark declarations of `--color-text-2`/
- * `-text-3`/`-card`/`-border` in resources/css/app.css (kept as literal
- * hex/rgba, not `var()`, per the same constraint as PALETTE above);
- * `grid`/`tick` additionally match the frozen prototype's `CHART_PALETTE`.
+ * Ground-dependent chart roles: the text-weight values that need a
+ * ground-reactive pair (grid lines, axis/legend labels, a muted secondary
+ * stroke, the ink-safe `horizonInk` line, a neutral marker outline, and the
+ * "cutout" ring Chart.js point markers use). Bold fills in {@link PALETTE} read
+ * fine on either ground unchanged. Values mirror the light/dark declarations of
+ * `--color-text-2`/`-text-3`/`-card`/`-border` in resources/css/app.css as
+ * literal hex/rgba; `grid`/`tick` additionally match the frozen prototype's
+ * `CHART_PALETTE`.
  */
 export const CHART_GROUND = {
     light: {
@@ -106,21 +97,13 @@ export const HR_ZONE_LABELS: Record<HrZoneKey, string> = {
 
 /**
  * Periodization-phase fills for the Plan season summary (phase-progress bar,
- * week timeline, phase ribbon). A validated-distinct (dataviz skill's
- * `validate_palette.js`, CVD ΔE >= 15 on every co-occurring pair) categorical
- * hue per phase, deliberately drawn away from `PALETTE.overloaded`/`gassed`/
- * `chill` — those three are already committed to per-run Mood colors
- * (see `lib/mood.ts`) and reusing one here for a phase would collide with
- * that existing meaning on the same page. `deload` used to only co-occur with
- * `build`, back when a race season's block ran a single uninterrupted
- * base/build/peak/taper sweep. Since
- * `docs/decisions/the-block-opens-on-a-computed-date.md`, `PhaseSchedule`
- * schedules a recovery week every fourth base/build week inside the block
- * too, so a race season now shows `deload` both in its general zone (the
- * self-scaled cycle before block open) and inside the block itself, next to
- * `base`/`build`. Its deliberately desaturated `stone` still reads as
- * "resting" against either neighbour without needing to be hue-distinct from
- * `peak`/`taper`, which it never shares a chart with.
+ * week timeline, phase ribbon). A validated-distinct categorical hue per phase
+ * (dataviz skill's `validate_palette.js`, CVD ΔE >= 15 on every co-occurring
+ * pair), drawn away from `PALETTE.overloaded`/`gassed`/`chill`, which are
+ * committed to per-run Mood colors (see `lib/mood.ts`). `deload` shares a chart
+ * with `base`/`build` both in a race season's general zone and inside its block
+ * ({@see docs/decisions/the-block-opens-on-a-computed-date.md}); its desaturated
+ * `stone` reads as "resting" against either neighbour.
  */
 export const PHASE_COLORS = {
     base: PALETTE.leaf,

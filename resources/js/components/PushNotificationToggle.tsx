@@ -1,8 +1,5 @@
-import { usePage } from '@inertiajs/react';
 import { Bell, BellRing, Smartphone } from 'lucide-react';
 import { useEffect, useState } from 'react';
-
-import type { SharedProps } from '@/types/inertia';
 
 import DemoBlockedModal from '@/components/DemoBlockedModal';
 import { Icon } from '@/components/ui/Icon';
@@ -11,6 +8,7 @@ import SettingsDisconnectLink from '@/components/ui/SettingsDisconnectLink';
 import SettingsRow from '@/components/ui/SettingsRow';
 import Toggle from '@/components/ui/Switch';
 import { useDemoGuard } from '@/hooks/useDemoGuard';
+import { useSharedProps } from '@/hooks/useSharedProps';
 import {
     currentSubscription,
     isIos,
@@ -54,16 +52,12 @@ async function resolvePushState(): Promise<PushState> {
 
 /**
  * Device-level web-push control for the Settings page. Detects where the user
- * is in the install/permission flow and shows the one right action — the payoff
- * of the PWA work: native lock-screen notifications on iPhone. Only rendered when
- * a VAPID public key is configured.
+ * is in the install/permission flow and shows the one right action. Only
+ * rendered when a VAPID public key is configured.
  *
- * Renders as a `SettingsRow` rather than owning a section, so it sits in the
- * "Where it goes" group beside Telegram and both channels read as the same kind
- * of thing. `loading` renders nothing; each of the other seven states resolves
- * to a description plus at most one action. Only `ready`, `stale` and
- * `subscribed` have a control; `unsupported`, both `needs-install` states and
- * `denied` are pure explanation.
+ * Renders as a `SettingsRow` in the "Where it goes" group. `loading` renders
+ * nothing; `ready`, `stale` and `subscribed` carry a control, and the other
+ * states are pure explanation.
  */
 export default function PushNotificationToggle({
     muted = false,
@@ -72,14 +66,16 @@ export default function PushNotificationToggle({
     muted?: boolean;
     onMuteChange?: (muted: boolean) => void;
 }> = {}) {
-    const publicKey = usePage<SharedProps>().props.webPushPublicKey ?? '';
+    const publicKey = useSharedProps().webPushPublicKey ?? '';
     const { open, setOpen, guard } = useDemoGuard();
     const [state, setState] = useState<PushState>('loading');
     const [busy, setBusy] = useState(false);
     const [status, setStatus] = useState('');
 
     useEffect(() => {
-        void resolvePushState().then(setState);
+        resolvePushState()
+            .then(setState)
+            .catch(() => setState('unsupported'));
     }, []);
 
     const runSubscribe = () =>

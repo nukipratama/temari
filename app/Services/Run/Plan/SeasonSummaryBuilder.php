@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Run\Plan;
 
+use Illuminate\Support\Collection;
 use App\Enums\PlanPhase;
 use App\Enums\SessionType;
 use App\Models\PlannedSession;
@@ -13,27 +14,16 @@ use App\Models\WeeklySnapshot;
 use Illuminate\Support\Carbon;
 
 /**
- * A season-wide read model of the periodizer's own arc: every week from
- * {@see Season::$starts_at} to {@see Season::$ends_at}, each with its phase,
- * a planned volume figure, and (where a {@see WeeklySnapshot} already
- * exists) the actual volume that week logged. Powers the Plan tab's
- * phase-progress bar and week-by-week timeline — see
- * `docs/features/plan-periodizer.md`.
+ * A season-wide read model of the periodizer's own arc: every week from {@see Season::$starts_at}
+ * to {@see Season::$ends_at}, each with its phase, a planned volume figure, and (where a
+ * {@see WeeklySnapshot} exists) the actual volume that week logged. Powers the Plan tab's
+ * phase-progress bar and week-by-week timeline; see `docs/features/plan-periodizer.md`.
  *
- * `planned_km` is computed the same way {@see SeasonService::generateGoals()}
- * sizes its `SeasonGoal` targets: a deterministic, season-start-anchored
- * schedule ({@see PhaseSchedule}/{@see WeekPlanBuilder}/{@see SegmentGenerator}),
- * not a read of materialized {@see \App\Models\PlannedSession} rows. Those
- * rows only ever cover a rolling ~12-week horizon (see
- * `Periodizer::HORIZON_WEEKS`) and get deleted/recreated by every weekly
- * regeneration, so they're the wrong source for a stable, whole-season
- * figure — the same reasoning that already keeps `SeasonGoal` targets off
- * of them. Future weeks therefore won't reflect a real-time adaptation; they
- * are forecasts. The current week is the exception: it takes the km, phase
- * and eased-from figure of the days the plan holds
- * ({@see CurrentWeekPlanBuilder}), so Plan's header, the season list and
- * Home's week total agree, with the arc's figure as "eased from" for a
- * reactive deload.
+ * `planned_km` is sized like {@see SeasonService::generateGoals()}'s targets: a deterministic,
+ * season-start-anchored schedule ({@see PhaseSchedule}/{@see WeekPlanBuilder}/{@see SegmentGenerator}),
+ * not materialized {@see \App\Models\PlannedSession} rows, so future weeks are forecasts. The current
+ * week is the exception: it takes the km, phase and eased-from figure of the days the plan holds
+ * ({@see CurrentWeekPlanBuilder}), with the arc's figure as "eased from" for a reactive deload.
  */
 final readonly class SeasonSummaryBuilder
 {
@@ -51,18 +41,20 @@ final readonly class SeasonSummaryBuilder
      */
     public function adherencePct(User $user, Season $season): ?int
     {
-        $scores = PlannedSession::query()
+        /** @var Collection<int, int> $complianceScores */
+        $complianceScores = PlannedSession::query()
             ->where('user_id', $user->id)
             ->whereBetween('date', [$season->starts_at->toDateString(), $season->ends_at->toDateString()])
             ->whereNotNull('compliance_score')
-            ->pluck('compliance_score')
+            ->pluck('compliance_score');
+        $scores = $complianceScores
             ->map(fn (int $score): int => min(100, $score));
 
         return $scores->isEmpty() ? null : (int) round((float) $scores->avg());
     }
 
     /**
-     * @return list<array{week_start: string, phase: string, zone: string, type: string, planned_km: float, eased_from_km: float|null, actual_km: float|null, sessions: int}>
+     * @return list<array{week_start: string, phase: string, zone: string, type: string, planned_km: float, eased_from_km: float|null, actual_km: float|null, sessions: int, adherence_pct: int|null}>
      */
     public function build(User $user, Season $season, Carbon $today): array
     {
@@ -80,6 +72,15 @@ final readonly class SeasonSummaryBuilder
             ->all();
 
         $currentWeekKey = $today->copy()->startOfWeek(Carbon::MONDAY)->toDateString();
+        $adherenceByWeekStart = PlannedSession::query()
+            ->where('user_id', $user->id)
+            ->whereBetween('date', [$season->starts_at->copy()->startOfWeek(Carbon::MONDAY)->toDateString(), $season->ends_at->toDateString()])
+            ->where('date', '<', $currentWeekKey)
+            ->whereNotNull('compliance_score')
+            ->get(['date', 'compliance_score'])
+            ->groupBy(fn (PlannedSession $s): string => $s->date->copy()->startOfWeek(Carbon::MONDAY)->toDateString())
+            ->map(fn ($week): int => (int) round((float) $week->avg(fn (PlannedSession $s): int => min(100, (int) $s->compliance_score))))
+            ->all();
         $seasonHasCurrentWeek = in_array($currentWeekKey, array_map(fn (array $w): string => $w['week_start']->toDateString(), $weeks), true);
         $currentWeek = $seasonHasCurrentWeek ? $this->currentWeekPlan->forUser($user, $today) : null;
 
@@ -98,6 +99,7 @@ final readonly class SeasonSummaryBuilder
                 'eased_from_km' => $held === null ? null : self::easedFromKm($held, $week['phase'], $arcKm),
                 'actual_km' => $actualKmByWeekEnding[$weekEndings[$i]] ?? null,
                 'sessions' => $week['sessions'],
+                'adherence_pct' => $adherenceByWeekStart[$weekStartKey] ?? null,
             ];
         }
 

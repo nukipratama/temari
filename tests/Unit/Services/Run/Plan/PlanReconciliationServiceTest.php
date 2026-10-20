@@ -27,7 +27,7 @@ it('keeps the earliest pending evidence date when several material changes arriv
     $service->markDirty($user->id, Carbon::parse('2026-08-16'));
     $service->markDirty($user->id, Carbon::parse('2026-08-14'));
 
-    expect($user->fresh()->plan_reconciliation_pending_from->toDateString())->toBe('2026-08-14');
+    expect($user->refresh()->plan_reconciliation_pending_from?->toDateString())->toBe('2026-08-14');
     Bus::assertDispatched(ReconcilePlanJob::class);
 });
 
@@ -38,8 +38,8 @@ it('reconciles once and clears its rebuilding marker after the plan settles', fu
 
     app(PlanReconciliationService::class)->drain($user->id);
 
-    expect($user->fresh()->plan_reconciliation_pending_from)->toBeNull()
-        ->and($user->fresh()->plan_reconciliation_rebuilding_from)->toBeNull()
+    expect($user->refresh()->plan_reconciliation_pending_from)->toBeNull()
+        ->and($user->refresh()->plan_reconciliation_rebuilding_from)->toBeNull()
         ->and(PlanAdaptation::query()->where('user_id', $user->id)->exists())->toBeTrue();
 });
 
@@ -49,7 +49,7 @@ it('does not schedule reconciliation for the demo account', function (): void {
 
     app(PlanReconciliationService::class)->markDirty($user->id, Carbon::yesterday());
 
-    expect($user->fresh()->plan_reconciliation_pending_from)->toBeNull();
+    expect($user->refresh()->plan_reconciliation_pending_from)->toBeNull();
     Bus::assertNotDispatched(ReconcilePlanJob::class);
 });
 
@@ -59,7 +59,7 @@ it('ignores evidence older than the previous week because it cannot change the c
 
     app(PlanReconciliationService::class)->markDirty($user->id, Carbon::parse('2026-08-01'));
 
-    expect($user->fresh()->plan_reconciliation_pending_from)->toBeNull();
+    expect($user->refresh()->plan_reconciliation_pending_from)->toBeNull();
     Bus::assertNotDispatched(ReconcilePlanJob::class);
 });
 

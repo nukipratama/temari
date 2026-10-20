@@ -165,7 +165,7 @@ it('reports the briefing voice as flagged once this athlete has flagged it', fun
 
     $this->actingAs($user);
 
-    expect(app(BriefingComposer::class)->compose($user, $asOf)->mascotVoice['flagged'])->toBeFalse();
+    expect(data_get(app(BriefingComposer::class)->compose($user, $asOf)->mascotVoice, 'flagged'))->toBeFalse();
 
     Feedback::query()->create([
         'user_id' => $user->id,
@@ -175,5 +175,5 @@ it('reports the briefing voice as flagged once this athlete has flagged it', fun
 
     app()->forgetScopedInstances();
 
-    expect(app(BriefingComposer::class)->compose($user, $asOf)->mascotVoice['flagged'])->toBeTrue();
+    expect(data_get(app(BriefingComposer::class)->compose($user, $asOf)->mascotVoice, 'flagged'))->toBeTrue();
 });

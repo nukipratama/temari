@@ -83,6 +83,11 @@ function earlyPassUser(): array
     return ['user' => $user, 'older' => $older, 'newer' => $newer];
 }
 
+function activityStartLocal(Activity $activity): Carbon
+{
+    return nonNull(nonNull($activity->detail)->start_date_local);
+}
+
 it('does nothing while the backlog is still hydrating', function (): void {
     $user = User::factory()->create();
     StravaConnection::factory()->for($user)->create(['created_at' => Carbon::now()->subHour()]);
@@ -97,12 +102,12 @@ it('does nothing while the backlog is still hydrating', function (): void {
 it('settles the snapshots of the drain and of the run that emptied it', function (): void {
     Bus::fake();
     ['user' => $user, 'older' => $older, 'newer' => $newer] = earlyPassUser();
-    $newer->detail->update(['start_date_local' => Carbon::today()->subDays(15)]);
-    app(WeeklyAggregator::class)->markDirty($user, $older->detail->start_date_local);
+    nonNull($newer->detail)->update(['start_date_local' => Carbon::today()->subDays(15)]);
+    app(WeeklyAggregator::class)->markDirty($user, activityStartLocal($older));
 
-    app(SettleEarlyNarrationAction::class)($user, $newer->detail->start_date_local);
+    app(SettleEarlyNarrationAction::class)($user, activityStartLocal($newer));
 
-    expect($user->fresh()->weekly_snapshots_dirty_from)->toBeNull()
+    expect($user->refresh()->weekly_snapshots_dirty_from)->toBeNull()
         ->and(WeeklySnapshot::query()->where('user_id', $user->id)->sum('runs'))->toEqual(2)
         ->and(WeeklySnapshot::query()->where('user_id', $user->id)->min('week_ending'))
         ->toBe(Carbon::today()->subDays(15)->endOfWeek(Carbon::SUNDAY)->toDateString());
@@ -111,11 +116,11 @@ it('settles the snapshots of the drain and of the run that emptied it', function
 it('rolls the dirty weeks forward when a give-up empties the backlog', function (): void {
     Bus::fake();
     ['user' => $user, 'older' => $older] = earlyPassUser();
-    app(WeeklyAggregator::class)->markDirty($user, $older->detail->start_date_local);
+    app(WeeklyAggregator::class)->markDirty($user, activityStartLocal($older));
 
     app(SettleEarlyNarrationAction::class)($user);
 
-    expect($user->fresh()->weekly_snapshots_dirty_from)->toBeNull()
+    expect($user->refresh()->weekly_snapshots_dirty_from)->toBeNull()
         ->and(WeeklySnapshot::query()->where('user_id', $user->id)->exists())->toBeTrue();
 });
 
@@ -154,7 +159,7 @@ it('re-judges a later card when a backdated run lands behind it, for a long-conn
     $day3 = backdatableRun($user, '2026-01-03 06:00:00', 330, true);
     $day1 = backdatableRun($user, '2026-01-01 06:00:00', 300, false);
 
-    app(SettleEarlyNarrationAction::class)($user, $day1->detail->start_date_local);
+    app(SettleEarlyNarrationAction::class)($user, activityStartLocal($day1));
 
     expect($day3->runCard()->value('pr_set'))->toBeFalse();
 });
@@ -166,7 +171,7 @@ it('does not recompute cards on a normal in-order ingest for a long-connected at
 
     $this->mock(RecomputeCardClaimsAction::class)->shouldNotReceive('__invoke');
 
-    app(SettleEarlyNarrationAction::class)($user, $activity->detail->start_date_local);
+    app(SettleEarlyNarrationAction::class)($user, activityStartLocal($activity));
 });
 
 it('rebuilds PRs and regenerates a still-claimable row even past the grace window', function (): void {
@@ -191,8 +196,8 @@ it('rebuilds PRs and regenerates a still-claimable row even past the grace windo
     app(SettleEarlyNarrationAction::class)($user);
 
     Bus::assertDispatched(AnalyzeBriefingMascotVoiceJob::class);
-    expect($row->fresh()->narrated_early_at)->toBeNull()
-        ->and($row->fresh()->status)->toBe(AnalysisStatus::Queued);
+    expect($row->refresh()->narrated_early_at)->toBeNull()
+        ->and($row->refresh()->status)->toBe(AnalysisStatus::Queued);
 });
 
 it('rebuilds PRs and replays cards once the backlog is empty, even when nothing was ever marked for narration', function (): void {
@@ -285,9 +290,9 @@ it('pairs a lone early RunInsight with its own PostRunSpeech row so the group is
     // The group's representative row (chain advance + SelfHealer key on it)
     // is reset alongside its sibling, not left Done.
     Bus::assertDispatched(fn (AnalyzeActivityJob $job): bool => $job->subjectId === $activity->id);
-    expect($speech->fresh()->status)->toBe(AnalysisStatus::Queued)
-        ->and($insight->fresh()->status)->toBe(AnalysisStatus::Queued)
-        ->and($insight->fresh()->narrated_early_at)->toBeNull();
+    expect($speech->refresh()->status)->toBe(AnalysisStatus::Queued)
+        ->and($insight->refresh()->status)->toBe(AnalysisStatus::Queued)
+        ->and($insight->refresh()->narrated_early_at)->toBeNull();
 });
 
 it('requests the deferred Trends read once the drain empties', function (): void {
@@ -341,13 +346,13 @@ it('requests a hydrated closed-week recap when the drain empties without touchin
     $openRow = Analysis::query()->forSubject(WeeklySnapshot::class, $openWeek->id, AnalysisType::WeeklyRecap)->firstOrFail();
 
     Bus::assertDispatched(fn (AnalyzeWeeklyRecapJob $job): bool => $job->analysisId === $closedRow->id);
-    expect($closedRow->fresh()->status)->toBe(AnalysisStatus::Queued)
-        ->and($openRow->fresh()->status)->toBe(AnalysisStatus::Pending);
+    expect($closedRow->refresh()->status)->toBe(AnalysisStatus::Queued)
+        ->and($openRow->refresh()->status)->toBe(AnalysisStatus::Pending);
 
     app(SelfHealer::class)->run();
 
     Bus::assertDispatchedTimes(AnalyzeWeeklyRecapJob::class, 1);
-    expect($openRow->fresh()->status)->toBe(AnalysisStatus::Pending);
+    expect($openRow->refresh()->status)->toBe(AnalysisStatus::Pending);
 
     Carbon::setTestNow();
 });
@@ -362,9 +367,9 @@ it('bills nothing more on a second completion signal', function (): void {
     $recomputeCardClaims->shouldReceive('__invoke')->twice()->andReturn(['cleared' => [], 'earned' => [], 'moods' => 0]);
 
     $action = app(SettleEarlyNarrationAction::class);
-    $action($user->fresh());
+    $action($user->refresh());
     Bus::fake();
-    $action($user->fresh());
+    $action($user->refresh());
 
     // The PR rebuild and card recompute are idempotent and re-run on every
     // completion signal (a racing ingest, an unrelated sweep) — the row-level

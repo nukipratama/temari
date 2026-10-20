@@ -40,11 +40,9 @@ enum AnalysisType: string
     public const string PLAN_CLAMP_VOICE_SUBJECT_TYPE = 'plan_clamp_voice_user_day';
 
     /**
-     * The one window Trends narrates. Not chained, not date-keyed — always
-     * "as of now", so the discriminator names the range, not a period. Used
-     * to carry `30d`/`90d`/`12mo` too; those retired (#967) to cut scheduled
-     * LLM calls once the page settled on a single verdict. Stored rows under
-     * a retired range are hidden by {@see \App\Models\Scopes\KnownAnalysisTypeScope}.
+     * The one window Trends narrates: not chained, not date-keyed, always "as of now", so the
+     * discriminator names the range, not a period. Stored rows under a retired range are hidden by
+     * {@see \App\Models\Scopes\KnownAnalysisTypeScope}.
      *
      * @var list<string>
      */
@@ -59,11 +57,8 @@ enum AnalysisType: string
     public const int MAX_DISCRIMINATOR_AGE_DAYS = 365;
 
     /**
-     * The multi-row group job this type is dispatched through (the whole group
-     * is upserted + queued together), or null for single-row / on-demand types
-     * dispatched individually. Single source of truth for grouping — both
-     * {@see AnalyzeGroupJob::groupedTypes()} implementations and
-     * AnalysisService derive from this.
+     * The multi-row group job this type is dispatched through, or null for single-row / on-demand
+     * types dispatched individually. Single source of truth for grouping.
      *
      * @return class-string<AnalyzeGroupJob>|null
      */
@@ -110,14 +105,10 @@ enum AnalysisType: string
     }
 
     /**
-     * Connected + chained kinds: each item reads the previous same-kind
-     * narrative and is narrated only after its chronological predecessor is
-     * Done. A manual trigger on these resumes the earliest unfilled link of the
-     * user's chain rather than narrating the clicked row in isolation, and only
-     * the chain head may regenerate. See AnalysisController::trigger.
-     *
-     * WeeklyRecap + MonthlyRecap + the per-activity group (PostRunSpeech +
-     * RunInsight) are wired so far; a later slice flips BriefingMascotVoice on.
+     * Connected + chained kinds: each item reads the previous same-kind narrative and is narrated
+     * only after its chronological predecessor is Done. A manual trigger resumes the earliest
+     * unfilled link of the user's chain rather than narrating the clicked row in isolation, and
+     * only the chain head may regenerate. See AnalysisController::trigger.
      */
     public function isChained(): bool
     {
@@ -131,15 +122,12 @@ enum AnalysisType: string
     }
 
     /**
-     * Whether this narrative is derived from the user's heart-rate zones, so a
-     * zone change makes copies generated beforehand stale (the "calculated with old zones" hint). Zone-agnostic types never carry it.
+     * Whether this narrative is derived from the user's heart-rate zones, so a zone change makes
+     * copies generated beforehand stale (the "calculated with old zones" hint). Zone-agnostic types
+     * never carry it.
      *
-     * RunInsight's claims are a variable mix (a `zone:<z>` claim reads the
-     * configured zones, a `split:<n>`/other `metric:*` claim does not), and the
-     * row carries no flag saying which shape it landed on, so it is treated as
-     * zone-dependent unconditionally: a false "stale" hint on a zone-free row
-     * costs nothing, a missed one on a zone-anchored row would silently show
-     * numbers computed under zones the user has since changed.
+     * RunInsight is zone-dependent unconditionally because its row carries no flag saying whether a
+     * `zone:<z>` claim was used.
      */
     public function isZoneDependent(): bool
     {
@@ -158,26 +146,12 @@ enum AnalysisType: string
     }
 
     /**
-     * Validation rules for a caller-supplied `discriminator` on this type, as a
-     * closed set. The discriminator is part of the row identity and of the
-     * re-trigger cooldown key, so an unconstrained value mints a fresh row and a
-     * fresh billed generation on every request. Each arm mirrors the shape this
-     * type's own dispatch sites write:
+     * Validation rules for a caller-supplied `discriminator` on this type, as a closed set: the
+     * discriminator is part of the row identity and of the re-trigger cooldown key, so an
+     * unconstrained value mints a fresh billed generation on every request.
      *
-     * - `Y-m-d` daily keys: DailyBriefingCommand, BriefingComposer.
-     * - featured card: the RunCard id. Never null — BriefingComposer only emits
-     *   the block once a card is picked, and a null id would bill the narrator's
-     *   "no card yet" line under a second cooldown key.
-     * - ProfileVoice: the ISO week key WeeklyProfileCommand + ProfileController use.
-     * - `Y-m` months: KickoffMonthlyRecaps, HistoryController.
-     * - every other type keys off subject_id alone and its job ignores the
-     *   discriminator, so a non-null value is rejected outright.
-     *
-     * A shape rule alone is not a closed set: `date_format:Y-m-d` admits some
-     * 3.6M days, so a caller could mint that many permanent rows. The
-     * period-keyed arms therefore carry a range as well as a shape, and the one
-     * arm naming a *resource* is ownership-checked in
-     * {@see AnalysisSubjectAuthorizer} instead, where a 403 is the honest answer.
+     * Period-keyed arms carry a range as well as a shape. See
+     * docs/decisions/twelve-week-narration-cutoff.md.
      *
      * Exhaustive on purpose (no `default`): a new type must state its choice.
      *

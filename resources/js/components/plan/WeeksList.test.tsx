@@ -3,6 +3,8 @@ import { describe, expect, it, vi } from 'vitest';
 
 import type { EditablePlanDay, PlanWeek, SeasonSummaryWeek } from '@/lib/plan';
 
+import { defined } from '@/test/defined';
+
 import WeeksList from './WeeksList';
 
 function week(overrides: Partial<SeasonSummaryWeek> = {}): SeasonSummaryWeek {
@@ -14,6 +16,7 @@ function week(overrides: Partial<SeasonSummaryWeek> = {}): SeasonSummaryWeek {
         planned_km: 30.4,
         actual_km: 27.6,
         sessions: 5,
+        adherence_pct: null,
         ...overrides,
     };
 }
@@ -37,8 +40,8 @@ function detail(weekStart: string, scores: (number | null)[]): PlanWeek {
 
 /** An old unloaded week, a loaded week behind, this week, a loaded and an unloaded week ahead. */
 const SEASON: SeasonSummaryWeek[] = [
-    week({ week_start: '2026-06-01' }),
-    week({ week_start: '2026-06-08', actual_km: null }),
+    week({ week_start: '2026-06-01', adherence_pct: 94 }),
+    week({ week_start: '2026-06-08', actual_km: null, adherence_pct: 80 }),
     week({
         week_start: '2026-06-15',
         type: 'current',
@@ -50,7 +53,7 @@ const SEASON: SeasonSummaryWeek[] = [
 ];
 
 const DETAIL: Record<string, PlanWeek> = {
-    '2026-06-08': detail('2026-06-08', [100, 60, null]),
+    '2026-06-08': detail('2026-06-08', [100, 100, null]),
     '2026-06-15': detail('2026-06-15', [100]),
     '2026-06-22': detail('2026-06-22', [null]),
 };
@@ -97,9 +100,10 @@ describe('WeeksList', () => {
         expect(rows[3]).toHaveTextContent('30.4 km');
     });
 
-    it('gives a scored week behind its adherence, and no other week one', () => {
+    it('gives a scored week behind its season adherence, loaded or not, and no other week one', () => {
         const { rows } = renderList();
 
+        expect(rows[0]).toHaveTextContent('94%');
         expect(rows[1]).toHaveTextContent('80%');
         expect(rows[2]).not.toHaveTextContent('%');
         expect(rows[3]).not.toHaveTextContent('%');
@@ -108,15 +112,17 @@ describe('WeeksList', () => {
     it('marks the current week', () => {
         const { rows } = renderList();
 
-        expect(within(rows[2]).getByText('this week')).toBeInTheDocument();
+        expect(
+            within(defined(rows[2])).getByText('this week'),
+        ).toBeInTheDocument();
         expect(rows[1]).not.toHaveTextContent('this week');
     });
 
     it('shows a loaded week when its row is picked, and says which one is shown', () => {
         const { onShow, rows } = renderList();
-        const behind = within(rows[1]).getByRole('button');
+        const behind = within(defined(rows[1])).getByRole('button');
 
-        expect(within(rows[2]).getByRole('button')).toHaveAttribute(
+        expect(within(defined(rows[2])).getByRole('button')).toHaveAttribute(
             'aria-pressed',
             'true',
         );
@@ -130,8 +136,12 @@ describe('WeeksList', () => {
     it('leaves a week outside the loaded window as a plain row', () => {
         const { rows } = renderList();
 
-        expect(within(rows[0]).queryByRole('button')).not.toBeInTheDocument();
-        expect(within(rows[4]).queryByRole('button')).not.toBeInTheDocument();
+        expect(
+            within(defined(rows[0])).queryByRole('button'),
+        ).not.toBeInTheDocument();
+        expect(
+            within(defined(rows[4])).queryByRole('button'),
+        ).not.toBeInTheDocument();
         expect(screen.getAllByRole('button')).toHaveLength(3);
     });
 });

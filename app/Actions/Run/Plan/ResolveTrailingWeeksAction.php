@@ -12,14 +12,11 @@ use Illuminate\Support\Collection;
  * The trailing window of weekly snapshots behind a date, read once per
  * request per (athlete, week).
  *
- * Bound `scoped()` in AppServiceProvider — {@see \App\Services\Run\Plan\TrainingBaseline}
- * scans the same window from every entry point it has, and one Plan render
- * enters it four times. Home asks the same table for three different depths
- * behind three dates in the same week, so the read is widened to that week's
- * end and to {@see self::MAX_WEEKS} rows and every caller is served a slice of
- * it. {@see WeeklySnapshot::booted()} drops the memo on any write; a caller
- * that deletes snapshots in bulk must call {@see self::forget()} itself, since
- * a mass `delete()` fires no model events.
+ * Bound `scoped()` in AppServiceProvider. The read is widened to that week's end
+ * and to {@see self::MAX_WEEKS} rows, and every caller is served a slice of it.
+ * {@see WeeklySnapshot::booted()} drops the memo on any write; a caller that
+ * deletes snapshots in bulk must call {@see self::forget()} itself, since a mass
+ * `delete()` fires no model events.
  */
 class ResolveTrailingWeeksAction
 {

@@ -1,9 +1,9 @@
-import polylineCodec from '@mapbox/polyline';
 import { latLngBounds } from 'leaflet';
 import { useMemo, useState } from 'react';
 import { MapContainer, Polyline, TileLayer } from 'react-leaflet';
 
 import { PALETTE } from '@/lib/chartTokens';
+import { decodePolyline } from '@/lib/route';
 // leaflet.css lives in resources/css/app.css (@import). Importing it here would race
 // the lazy-load and leave tiles unpositioned on first render.
 
@@ -22,12 +22,13 @@ export default function RouteMap({
     distanceKm,
 }: Readonly<RouteMapProps>) {
     const [active, setActive] = useState(false);
-    const positions = useMemo<Array<[number, number]>>(
-        () => polylineCodec.decode(polyline) as Array<[number, number]>,
-        [polyline],
+    const positions = useMemo(() => decodePolyline(polyline), [polyline]);
+    const bounds = useMemo(
+        () => (positions.length < 2 ? null : latLngBounds(positions)),
+        [positions],
     );
 
-    if (positions.length < 2) {
+    if (bounds === null) {
         return (
             <div className="flex h-56 items-center justify-center rounded-lg border border-dashed border-border text-sm text-text-3">
                 route not available
@@ -48,7 +49,7 @@ export default function RouteMap({
         <div className="relative isolate overflow-hidden">
             <div role="img" aria-label={mapLabel}>
                 <MapContainer
-                    bounds={latLngBounds(positions)}
+                    bounds={bounds}
                     boundsOptions={{ padding: [20, 20] }}
                     scrollWheelZoom={false}
                     style={{ height: '17.5rem', width: '100%' }}

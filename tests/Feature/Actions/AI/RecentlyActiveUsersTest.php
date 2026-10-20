@@ -34,10 +34,11 @@ it('returns the athletes who opened the app inside the active window', function 
     $dormant = athleteLastSeen(RecentlyActiveUsers::ACTIVE_WINDOW_DAYS + 1);
 
     $users = app(RecentlyActiveUsers::class)();
+    $ids = $users->pluck('id')->all();
 
-    expect($users->pluck('id')->all())
+    expect($ids)
         ->toContain($recent->id, $onTheEdge->id)
-        ->not->toContain($dormant->id);
+        ->and($ids)->not->toContain($dormant->id);
 });
 
 it('excludes an athlete who has never opened the app', function (): void {
@@ -71,7 +72,9 @@ it('lists the active ids', function (): void {
     $active = athleteLastSeen(1);
     $dormant = athleteLastSeen(30);
 
-    expect(app(RecentlyActiveUsers::class)->ids())
+    $ids = app(RecentlyActiveUsers::class)->ids();
+
+    expect($ids)
         ->toContain($active->id)
-        ->not->toContain($dormant->id);
+        ->and($ids)->not->toContain($dormant->id);
 });

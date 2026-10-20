@@ -58,7 +58,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # deploy.yml pulls app:<sha>, so a tag that already exists is reused, never re-pushed.
+      # rollback.yml pulls app:<sha>, so a tag that already exists is reused, never re-pushed.
       - name: Check for an existing image tag
         id: existing
         env:

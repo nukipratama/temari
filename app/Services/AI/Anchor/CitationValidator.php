@@ -8,14 +8,12 @@ use Closure;
 use Illuminate\Support\Facades\Log;
 
 /**
- * Keeps the citations a narrator emitted that actually resolve, and unwraps the
- * rest back to plain prose.
+ * Keeps the citations a narrator emitted that actually resolve, and unwraps the rest back to plain
+ * prose.
  *
- * Narration carries a citation as the markdown inline-link form
- * `[text](anchor)`. Model output is untrusted twice over: the anchor may name
- * something the subject does not have, and the model may mark several spans
- * when the voice allows one. Both degrade to the words themselves, so a block
- * is never lost to a bad citation and the row stays done.
+ * A citation is the markdown inline-link form `[text](anchor)`. Model output is untrusted twice
+ * over (an anchor the subject does not have, several spans where the voice allows one); both
+ * degrade to the words themselves, so the row stays done.
  */
 final class CitationValidator
 {

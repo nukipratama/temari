@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import type { SeasonSummaryWeek } from '@/lib/plan';
 
 import { PHASE_COLORS } from '@/lib/chartTokens';
+import { defined } from '@/test/defined';
 
 import PhaseRibbon from './PhaseRibbon';
 
@@ -16,6 +17,7 @@ function week(overrides: Partial<SeasonSummaryWeek> = {}): SeasonSummaryWeek {
         planned_km: 30,
         actual_km: null,
         sessions: 5,
+        adherence_pct: null,
         ...overrides,
     };
 }
@@ -230,7 +232,7 @@ describe('PhaseRibbon', () => {
         const [firstGeneralCell] = screen.getAllByRole('button', {
             name: 'maintain',
         });
-        fireEvent.mouseEnter(firstGeneralCell);
+        fireEvent.mouseEnter(defined(firstGeneralCell));
 
         expect(screen.getByText('maintain')).toBeInTheDocument();
         expect(screen.queryByText('build')).not.toBeInTheDocument();

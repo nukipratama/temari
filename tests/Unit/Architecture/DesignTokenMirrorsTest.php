@@ -8,14 +8,10 @@ use Illuminate\Support\Facades\File;
  * Guards the files that keep their own copy of the palette.
  *
  * A `<canvas>` cannot read `var(--color-*)`, and neither can the error pages,
- * which render without the app stylesheet, an inline SVG's fill attributes, a
- * `<meta>` tag in the document head, or PHP that paints an image server-side.
- * So these files hold hex literals and a comment asking the next person to keep
- * them in sync. Nothing imports them, so nothing broke when the ink tier moved
- * — they simply kept painting the old values, including the error layout's
- * gold-on-cream-deep pair at 4.28:1.
+ * an inline SVG's fill attributes, a `<meta>` tag in the document head, or PHP
+ * that paints an image server-side. So these files hold hex literals.
  *
- * Every hex in these files must therefore still be a value `app.css` declares.
+ * Every hex in these files must still be a value `app.css` declares.
  * A token that moves without its mirrors goes red here; a genuinely non-token
  * colour has to be named in OFF_TOKEN, which is the part that fails closed.
  */
@@ -41,11 +37,9 @@ const MIRROR_FILES = [
 
 /**
  * Every solid hex a `--color-*` custom property declares anywhere in
- * app.css — not just inside `@theme static` (the light ground). F2 added a
- * second declaration site, `[data-theme='dark'] { ... }`, for the tokens
- * that flip; scoping this to `@theme static` alone would make any dark-only
- * mirror value (e.g. a chart series that needs to stay legible against the
- * dark ground) look stale here even though app.css genuinely declares it.
+ * app.css — not just inside `@theme static` (the light ground), but also the
+ * `[data-theme='dark'] { ... }` block, so dark-only mirror values are not
+ * reported stale.
  *
  * @return list<string>
  */

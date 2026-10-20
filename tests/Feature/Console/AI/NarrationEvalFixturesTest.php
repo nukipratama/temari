@@ -43,9 +43,9 @@ it('picks the runs furthest from their baseline for the run insight', function (
     expect($fixtures->keys()->all())->toBe(['faster_than_past_you', 'slower_than_past_you', 'no_heart_rate']);
 
     DB::beginTransaction();
-    $faster = $fixtures['faster_than_past_you']->build->__invoke();
-    $slower = $fixtures['slower_than_past_you']->build->__invoke();
-    $noHr = $fixtures['no_heart_rate']->build->__invoke();
+    $faster = nonNull((nonNull($fixtures->get('faster_than_past_you'))->build)());
+    $slower = nonNull((nonNull($fixtures->get('slower_than_past_you'))->build)());
+    $noHr = nonNull((nonNull($fixtures->get('no_heart_rate'))->build)());
     DB::rollBack();
 
     expect($faster['direction']['required'])->not->toBe([])
@@ -60,7 +60,7 @@ it('skips a run insight fixture the history cannot support', function (): void {
     $fixtures = collect(app(NarrationEvalFixtures::class)->for($demo, ['run_insight']))->keyBy('name');
 
     DB::beginTransaction();
-    $case = $fixtures['faster_than_past_you']->build->__invoke();
+    $case = nonNull($fixtures->get('faster_than_past_you'))->build->__invoke();
     DB::rollBack();
 
     expect($case)->toBeNull();
@@ -78,14 +78,14 @@ it('strips heart rate from the no heart rate run inside the transaction only', f
     $fixtures = collect(app(NarrationEvalFixtures::class)->for($demo, ['run_insight']))->keyBy('name');
 
     DB::beginTransaction();
-    $fixtures['no_heart_rate']->build->__invoke();
-    $during = $run->fresh();
+    nonNull($fixtures->get('no_heart_rate'))->build->__invoke();
+    $during = nonNull($run->fresh());
     DB::rollBack();
 
     expect($during->has_heartrate)->toBeFalse()
         ->and($during->streamSummary())->toEqual(['pace_variability_sec' => 4.2, 'per_km' => [['km' => 1, 'pace' => '6:00']]])
-        ->and($run->fresh()->has_heartrate)->toBeTrue()
-        ->and($run->fresh()->streamSummary())->toHaveKey('time_in_zone_pct');
+        ->and(nonNull($run->fresh())->has_heartrate)->toBeTrue()
+        ->and(nonNull($run->fresh())->streamSummary())->toHaveKey('time_in_zone_pct');
 });
 
 it('builds the post run briefing against a run logged today', function (): void {
@@ -95,8 +95,8 @@ it('builds the post run briefing against a run logged today', function (): void 
     expect($fixtures->keys()->all())->toBe(['hit_easy_today', 'too_hard_easy_today']);
 
     DB::beginTransaction();
-    $case = $fixtures['too_hard_easy_today']->build->__invoke();
-    $ranToday = $case['evidence']['context']['ran_today'];
+    $case = nonNull($fixtures->get('too_hard_easy_today'))->build->__invoke();
+    $ranToday = data_get($case, 'evidence.context.ran_today');
     DB::rollBack();
 
     expect($ranToday)->toBeTrue();

@@ -11,17 +11,13 @@ use App\Services\Run\Metrics\PaceFormatter;
 use App\Services\Run\Metrics\ReadinessCeiling;
 
 /**
- * Render-time, deterministic downgrade of a single stored session against
- * the CURRENT {@see ReadinessCeiling} — never a narrator, never persisted
- * (see the "Readiness clamp" section of `docs/features/plan-periodizer.md`).
- * Compares what the stored session implies against what the ceiling allows
- * today; when the stored session asks for more than the ceiling permits,
- * returns a downgraded segment list plus a short templated explanation.
+ * Render-time, deterministic downgrade of a single stored session against the CURRENT
+ * {@see ReadinessCeiling}, never a narrator, never persisted (see the "Readiness clamp" section of
+ * `docs/features/plan-periodizer.md`). When the stored session asks for more than the ceiling
+ * permits, returns a downgraded segment list plus a short templated explanation.
  *
- * Scope: only ever called against TODAY's row. A future day's readiness is
- * unknowable today, and clamping a whole training block by this moment's
- * fatigue would defeat periodization — see the controller for where this is
- * invoked.
+ * Scope: only ever called against TODAY's row; clamping a future block by this moment's fatigue
+ * would defeat periodization.
  */
 final class ReadinessClamp
 {
@@ -56,7 +52,7 @@ final class ReadinessClamp
                 'note' => self::noteFor($sessionType, $ceiling, $reasons) ?? 'keep the event distance and use a conservative effort.'];
         }
 
-        if ($ceiling === ReadinessCeiling::ModerateOk && in_array($sessionType, [SessionType::Tempo, SessionType::Interval], true) && $prescription !== null && $prescription->paceBand !== null && ! $prescription->isEasy()) {
+        if ($ceiling === ReadinessCeiling::ModerateOk && in_array($sessionType, [SessionType::Tempo, SessionType::Interval], true) && $prescription instanceof IntensityPrescription && $prescription->paceBand instanceof PaceBand && ! $prescription->isEasy()) {
             if (TimeTrial::isTrial($prescription->raceContext)) {
                 $km = SegmentGenerator::coreKmFor($sessionType, false, $longRunBaselineKm, $volumeMultiplier, $longRunCapKm, raceContext: $prescription->raceContext);
 
@@ -119,14 +115,8 @@ final class ReadinessClamp
     }
 
     /**
-     * What today's ceiling would downgrade this session to, or null when the
-     * session already fits under it. A caller that needs only the OUTCOME
-     * should not have to build a segment list to learn it.
-     * {@see \App\Services\Run\Plan\ClampNarrationContext} narrates the
-     * downgrade and has neither paces nor a volume multiplier to hand.
-     *
-     * Shares {@see self::requiredRank()} with {@see self::apply()}, so the two
-     * can never disagree about what the ceiling permits.
+     * What today's ceiling would downgrade this session to, or null when it already fits under it.
+     * Shares {@see self::requiredRank()} with {@see self::apply()}, so the two never disagree.
      */
     public static function downgradeFor(SessionType $sessionType, ReadinessCeiling $ceiling): ?SessionType
     {
@@ -141,13 +131,10 @@ final class ReadinessClamp
     }
 
     /**
-     * The one pace-only lever: a session {@see self::apply()} leaves
-     * completely alone because it already clears the ceiling, but only
-     * just — an Easy day at an EasyOnly ceiling, or a Long day at
-     * ModerateOk (marathon-pace long runs included: type and distance stay,
-     * only the pace comes down). Never true on a day `apply()` already
-     * downgraded, since a session that needed MORE than the ceiling allows
-     * fails this exact-match check.
+     * The one pace-only lever: a session {@see self::apply()} leaves alone because it already clears
+     * the ceiling, but only just: an Easy day at an EasyOnly ceiling, or a Long day at ModerateOk
+     * (type and distance stay, only the pace comes down). Never true on a day `apply()` already
+     * downgraded.
      */
     public static function paceEaseApplies(SessionType $sessionType, ReadinessCeiling $ceiling): bool
     {
@@ -159,8 +146,9 @@ final class ReadinessClamp
      * The line a pace-only ease always carries — rule-based only, never
      * narrated: unlike every other clamp outcome, this one requests no
      * `plan_clamp_voice` and sends no notification. See {@see self::paceEaseApplies()}.
+     *
+     * @param  list<string>  $reasons
      */
-    /** @param list<string> $reasons */
     public static function paceEaseNote(array $reasons = []): string
     {
         foreach ([
@@ -200,12 +188,11 @@ final class ReadinessClamp
     }
 
     /**
-     * The line a step-down is explained by, or null when the session already
-     * fits under the ceiling. Split out of {@see self::apply()} for the same
-     * reason as {@see self::downgradeFor()}: a caller that needs only the
-     * explanation should not have to build a segment list to reach it.
+     * The line a step-down is explained by, or null when the session already fits under the ceiling.
+     * Split out of {@see self::apply()} like {@see self::downgradeFor()}.
+     *
+     * @param  list<string>  $reasons
      */
-    /** @param list<string> $reasons */
     public static function noteFor(SessionType $sessionType, ReadinessCeiling $ceiling, array $reasons = []): ?string
     {
         if (self::requiredRank($sessionType) <= $ceiling->rank()) {

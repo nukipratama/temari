@@ -26,8 +26,7 @@ export interface ProfileSeason {
 
 /**
  * The season in one card: which phase the athlete is in, the phase arc as a
- * segmented bar, and a single goal line. Decision P24 — the five-row season &
- * streak panel this replaces was deleted by `PP3`.
+ * segmented bar, and a single goal line.
  *
  * The goal shown is the first one still open, so the line tracks what is
  * actually being worked toward rather than the first row the resolver happens

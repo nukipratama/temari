@@ -18,9 +18,13 @@ uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
     Carbon::setTestNow('2026-08-17 12:00:00');
-    $this->writer = app(TrendSnapshotWriter::class);
 });
 afterEach(fn () => Carbon::setTestNow());
+
+function trendSnapshotWriter(): TrendSnapshotWriter
+{
+    return app(TrendSnapshotWriter::class);
+}
 
 it('writes a row with vdot and pace-variability computed from real data', function (): void {
     $user = User::factory()->create();
@@ -36,7 +40,7 @@ it('writes a row with vdot and pace-variability computed from real data', functi
         'stream_summary' => ['pace_variability_sec' => 6.5],
     ]);
 
-    $this->writer->writeRange($user, Carbon::today(), Carbon::today());
+    trendSnapshotWriter()->writeRange($user, Carbon::today(), Carbon::today());
 
     $snap = TrendDailySnapshot::query()->where('user_id', $user->id)->sole();
     expect($snap->snapshot_date->toDateString())->toBe(Carbon::today()->toDateString())
@@ -47,7 +51,7 @@ it('writes a row with vdot and pace-variability computed from real data', functi
 it('writes null vdot when the user has no qualifying PR, and null pace-variability on a rest day', function (): void {
     $user = User::factory()->create();
 
-    $this->writer->writeRange($user, Carbon::today(), Carbon::today());
+    trendSnapshotWriter()->writeRange($user, Carbon::today(), Carbon::today());
 
     $snap = TrendDailySnapshot::query()->where('user_id', $user->id)->sole();
     expect($snap->vdot)->toBeNull()
@@ -67,7 +71,7 @@ it('excludes a not-yet-analyzed activity from the day\'s pace-variability averag
         'stream_summary' => ['pace_variability_sec' => 900.0],
     ]);
 
-    $this->writer->writeRange($user, Carbon::today(), Carbon::today());
+    trendSnapshotWriter()->writeRange($user, Carbon::today(), Carbon::today());
 
     $snap = TrendDailySnapshot::query()->where('user_id', $user->id)->sole();
     expect($snap->pace_variability_sec)->toEqualWithDelta(4.0, 0.01);
@@ -83,7 +87,7 @@ it('averages pace-variability across multiple runs the same day', function (): v
         ]);
     }
 
-    $this->writer->writeRange($user, Carbon::today(), Carbon::today());
+    trendSnapshotWriter()->writeRange($user, Carbon::today(), Carbon::today());
 
     $snap = TrendDailySnapshot::query()->where('user_id', $user->id)->sole();
     expect($snap->pace_variability_sec)->toEqualWithDelta(6.0, 0.01);
@@ -97,7 +101,7 @@ it('running the writer twice for the same day recomputes the existing row', func
         'stream_summary' => ['pace_variability_sec' => 5.0],
     ]);
 
-    $this->writer->writeRange($user, Carbon::today(), Carbon::today());
+    trendSnapshotWriter()->writeRange($user, Carbon::today(), Carbon::today());
     $firstRowId = TrendDailySnapshot::query()->where('user_id', $user->id)->sole()->id;
 
     // A second run of the day must include both runs in the daily aggregate.
@@ -106,7 +110,7 @@ it('running the writer twice for the same day recomputes the existing row', func
         'start_date_local' => Carbon::today()->setTime(18, 0),
         'stream_summary' => ['pace_variability_sec' => 99.0],
     ]);
-    $this->writer->writeRange($user, Carbon::today(), Carbon::today());
+    trendSnapshotWriter()->writeRange($user, Carbon::today(), Carbon::today());
 
     $snap = TrendDailySnapshot::query()->where('user_id', $user->id)->sole();
     expect($snap->id)->toBe($firstRowId)
@@ -116,11 +120,7 @@ it('running the writer twice for the same day recomputes the existing row', func
 
 it('backfills a snapshot with the VDOT the athlete had proven by that date, not by today', function (): void {
     $user = User::factory()->create();
-    PersonalRecord::factory()->for($user)->create([
-        'category' => 'marathon',
-        'value_sec' => 20_292.0,
-        'set_at' => Carbon::parse('2024-01-01'),
-    ]);
+    seedConfirmedEffort($user, 42_195, 20_292, Carbon::parse('2024-01-01'));
     PerformanceEvidence::query()->create([
         'user_id' => $user->id,
         'activity_id' => Activity::factory()->for($user)->create()->id,
@@ -131,13 +131,13 @@ it('backfills a snapshot with the VDOT the athlete had proven by that date, not 
         'confirmed_at' => Carbon::parse('2026-07-01 12:00:00'),
     ]);
 
-    $this->writer->writeRange($user, Carbon::today(), Carbon::today());
-    $this->writer->writeRange($user, Carbon::parse('2024-06-01'), Carbon::parse('2024-06-01'));
+    trendSnapshotWriter()->writeRange($user, Carbon::today(), Carbon::today());
+    trendSnapshotWriter()->writeRange($user, Carbon::parse('2024-06-01'), Carbon::parse('2024-06-01'));
 
     $today = TrendDailySnapshot::query()->where('snapshot_date', Carbon::today()->toDateString())->sole();
     $backfilled = TrendDailySnapshot::query()->where('snapshot_date', '2024-06-01')->sole();
 
-    expect($backfilled->vdot)->toBeLessThan($today->vdot);
+    expect($backfilled->vdot)->toBeFloat()->toBeLessThan(nonNull($today->vdot));
 });
 
 it('writes the supported time at the active race distance, its race goal and the effort it rests on', function (): void {
@@ -145,7 +145,7 @@ it('writes the supported time at the active race distance, its race goal and the
     $race = RaceGoal::factory()->for($user)->create(['distance_m' => 10_000, 'created_at' => Carbon::today()->subWeeks(3)]);
     seedConfirmedEffort($user, 5000, 1320, Carbon::parse('2026-08-03'));
 
-    $this->writer->writeRange($user, Carbon::today(), Carbon::today());
+    trendSnapshotWriter()->writeRange($user, Carbon::today(), Carbon::today());
 
     $snap = TrendDailySnapshot::query()->where('user_id', $user->id)->sole();
     $expected = app(RaceAmbitionAssessor::class)->assess($user, $race, Carbon::today());
@@ -161,25 +161,25 @@ it('backfills a range with the race that was active on each date, and nulls the 
     $race = RaceGoal::factory()->for($user)->create(['distance_m' => 10_000, 'created_at' => Carbon::parse('2026-08-14 09:00:00')]);
     seedConfirmedEffort($user, 5000, 1320, Carbon::parse('2026-08-01'));
 
-    $this->writer->writeRange($user, Carbon::parse('2026-08-12'), Carbon::today());
+    trendSnapshotWriter()->writeRange($user, Carbon::parse('2026-08-12'), Carbon::today());
 
     $rows = TrendDailySnapshot::query()->where('user_id', $user->id)->orderBy('snapshot_date')->get()
         ->keyBy(fn (TrendDailySnapshot $row): string => $row->snapshot_date->toDateString());
     expect($rows)->toHaveCount(6)
-        ->and($rows['2026-08-13']->race_goal_id)->toBeNull()
-        ->and($rows['2026-08-13']->supported_time_sec)->toBeNull()
-        ->and($rows['2026-08-13']->supported_source_distance_m)->toBeNull()
-        ->and($rows['2026-08-13']->supported_source_date)->toBeNull()
-        ->and($rows['2026-08-14']->race_goal_id)->toBe($race->id)
-        ->and($rows['2026-08-16']->supported_time_sec)->toBeInt()
-        ->and($rows['2026-08-17']->race_goal_id)->toBe($race->id);
+        ->and(nonNull($rows['2026-08-13'])->race_goal_id)->toBeNull()
+        ->and(nonNull($rows['2026-08-13'])->supported_time_sec)->toBeNull()
+        ->and(nonNull($rows['2026-08-13'])->supported_source_distance_m)->toBeNull()
+        ->and(nonNull($rows['2026-08-13'])->supported_source_date)->toBeNull()
+        ->and(nonNull($rows['2026-08-14'])->race_goal_id)->toBe($race->id)
+        ->and(nonNull($rows['2026-08-16'])->supported_time_sec)->toBeInt()
+        ->and(nonNull($rows['2026-08-17'])->race_goal_id)->toBe($race->id);
 });
 
 it('writes no supported time without an active race', function (): void {
     $user = User::factory()->create();
     seedConfirmedEffort($user, 5000, 1320, Carbon::parse('2026-08-03'));
 
-    $this->writer->writeRange($user, Carbon::today(), Carbon::today());
+    trendSnapshotWriter()->writeRange($user, Carbon::today(), Carbon::today());
 
     $snap = TrendDailySnapshot::query()->where('user_id', $user->id)->sole();
     expect($snap->vdot)->not->toBeNull()
@@ -194,7 +194,7 @@ it('writes no supported time for a race beyond the marathon', function (): void 
     RaceGoal::factory()->for($user)->create(['distance_m' => 50_000, 'goal_time_sec' => 18_000, 'created_at' => Carbon::today()->subWeek()]);
     seedConfirmedEffort($user, 5000, 1320, Carbon::parse('2026-08-03'));
 
-    $this->writer->writeRange($user, Carbon::today(), Carbon::today());
+    trendSnapshotWriter()->writeRange($user, Carbon::today(), Carbon::today());
 
     $snap = TrendDailySnapshot::query()->where('user_id', $user->id)->sole();
     expect($snap->race_goal_id)->toBeNull()

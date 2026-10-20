@@ -63,6 +63,7 @@ final class StreakSettlementService
             $earliest = WeeklySnapshot::query()
                 ->where('user_id', $locked->id)
                 ->min('week_ending');
+            assert($earliest === null || is_string($earliest));
 
             if ($earliest === null) {
                 StreakRestToken::query()->where('user_id', $locked->id)->delete();

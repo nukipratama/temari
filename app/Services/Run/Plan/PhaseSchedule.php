@@ -10,30 +10,21 @@ use Illuminate\Support\Carbon;
 use InvalidArgumentException;
 
 /**
- * Pure week-by-week phase allocation — the periodizer's phase-boundary math,
- * grounded in standard periodization practice (see the "Periodizer algorithm"
- * section of the Slice 6 plan and `docs/features/plan-periodizer.md`).
+ * Pure week-by-week phase allocation: the periodizer's phase-boundary math (see
+ * `docs/features/plan-periodizer.md`).
  *
- * Weeks are ISO (Monday-starting), keyed by their Monday date, so weekly
- * regeneration and mid-week on-demand regeneration agree on week boundaries.
- * {@see self::forRace()} always returns the FULL arc from its start week
- * through race week inclusive — callers slice however many weeks they
- * actually need. This keeps the base/build/peak ratios correct even when
- * only a lookahead window is materialized.
+ * Weeks are ISO (Monday-starting), keyed by their Monday date. {@see self::forRace()} always returns
+ * the FULL arc from its start week through race week inclusive; callers slice however many weeks
+ * they need.
  *
- * The arc starts where the {@see \App\Models\Season} does, never at "today":
- * counting it from the current week put every week the athlete was actually
- * asked to train at index 0, so Build, Peak and the scheduled Deload were
- * only ever previewed. See `docs/decisions/the-arc-is-anchored-once.md`.
+ * The arc starts where the {@see \App\Models\Season} does, never at "today". See
+ * `docs/decisions/the-arc-is-anchored-once.md`.
  */
 final class PhaseSchedule
 {
     /**
-     * base / build / peak split of the weeks remaining after the taper — Base
-     * has no constant of its own since it's computed as the remainder (see
-     * {@see self::forRace()}), which is what keeps the three always summing
-     * to exactly $remainingWeeks; a literal 30% base fraction would leave a
-     * fourth, unused rounding of the same weeks.
+     * base / build / peak split of the weeks remaining after the taper; Base is the remainder (see
+     * {@see self::forRace()}), so the three always sum to exactly $remainingWeeks.
      */
     private const float BUILD_FRACTION = 0.45;
 
@@ -52,15 +43,8 @@ final class PhaseSchedule
     private const array TAPER_REDUCTION_CURVE = [0.20, 0.40, 0.60];
 
     /**
-     * Every fourth week of the Base/Build/Peak run is a recovery week. Without one
-     * the ramp compounds unbroken — five Build weeks at
-     * {@see self::BUILD_WEEKLY_RAMP} is +33% with nothing absorbing it — and
-     * the only Deload that existed was the reactive one
-     * {@see \App\Services\Run\Plan\Periodizer::sliceFromCurrentWeek()} applies
-     * to the current week once monotony, strain or adherence has ALREADY
-     * slipped. The self-scaled arc has had a scheduled down week all along
-     * ({@see self::SELF_SCALED_CYCLE_WEEKS}); the arc with a deadline is the
-     * one that needed it more.
+     * Every fourth week of the Base/Build/Peak run is a recovery week; the self-scaled arc's own
+     * cycle is {@see self::SELF_SCALED_CYCLE_WEEKS}.
      */
     private const int DELOAD_EVERY_WEEKS = 4;
 
@@ -156,12 +140,8 @@ final class PhaseSchedule
     private static function raceBlock(Carbon $currentWeekStart, Carbon $raceDate, float $raceDistanceM): array
     {
         $raceWeekStart = $raceDate->copy()->startOfWeek(Carbon::MONDAY);
-        // diffInWeeks is signed, so a race day already behind us counts down
-        // past zero. Floored at one week: `plan:close-finished-races` retires a
-        // finished race long before this could matter, but four callers reach
-        // this method and a negative count used to reach array_fill() below and
-        // throw — taking every athlete after the thrower in the same
-        // `plan:regenerate` run with it.
+        // diffInWeeks is signed; floored at one week so a race day already behind us cannot reach
+        // array_fill() with a negative count.
         $weeksToRace = max(1, (int) $currentWeekStart->diffInWeeks($raceWeekStart) + 1);
 
         $taperWeeks = self::taperWeeksForDistance($raceDistanceM);
@@ -214,17 +194,13 @@ final class PhaseSchedule
     }
 
     /**
-     * The weekly volume multiplier for an ordered phase sequence, relative to
-     * whatever baseline weekly volume the caller supplies it against. Pure and
-     * stored-data-driven: works equally against a freshly computed arc
-     * (generation) or a sequence read back from stored rows (render), so a
-     * render-time recompute never drifts from what was actually generated.
+     * The weekly volume multiplier for an ordered phase sequence, relative to whatever baseline
+     * weekly volume the caller supplies it against. Pure and stored-data-driven, so a render-time
+     * recompute never drifts from what was generated.
      *
-     * A `$selfScaled` arc holds flat at 1.0 (dipping only for deload) rather
-     * than ramping on top of a baseline that already tracks real volume. See
-     * `docs/decisions/a-goalless-arc-does-not-ramp.md`. So does every
-     * {@see self::ZONE_GENERAL} week in `$zones`, and the ramp after them counts
-     * from the block's first week.
+     * A `$selfScaled` arc holds flat at 1.0 (dipping only for deload); so does every
+     * {@see self::ZONE_GENERAL} week in `$zones`, and the ramp after them counts from the block's
+     * first week. See `docs/decisions/a-goalless-arc-does-not-ramp.md`.
      *
      * @param  list<PlanPhase>  $phases
      * @param  list<string>  $zones
@@ -307,13 +283,9 @@ final class PhaseSchedule
     }
 
     /**
-     * Turns every fourth week of the Base/Build/Peak run into a recovery week.
-     * Taper is untouched, and a race arc short enough to hold fewer than
-     * {@see self::DELOAD_EVERY_WEEKS} weeks before it has nothing to recover from
-     * yet. A recovery week never takes the last week before Taper or the first
-     * Peak week: it moves earlier, so the block reaches Taper off a Peak week and
-     * Peak opens on one, and the cadence counts on from where it landed. A move
-     * that would put it within two weeks of the previous one drops it instead.
+     * Turns every fourth week of the Base/Build/Peak run into a recovery week. Taper is untouched,
+     * and a recovery week never takes the last week before Taper or the first Peak week: it moves
+     * earlier, and a move that would put it within two weeks of the previous one drops it instead.
      *
      * @param  list<PlanPhase>  $phases
      * @param  int  $rampWeeks  how many leading weeks are Base, Build or Peak
@@ -338,11 +310,8 @@ final class PhaseSchedule
     }
 
     /**
-     * The taper reduction curve sized to $weeks, nearest-to-race last. A
-     * standard 3-week (or shorter) taper takes the trailing slice of the fixed
-     * -20/-40/-60% curve; a longer taper-only arc (only reachable when the
-     * race is very close relative to its own taper length) prepends milder
-     * reductions so the curve still ends at -60% right before race day.
+     * The taper reduction curve sized to $weeks, nearest-to-race last: a standard taper takes the
+     * trailing slice of the fixed -20/-40/-60% curve, a longer one prepends milder reductions.
      *
      * @return list<float>
      */

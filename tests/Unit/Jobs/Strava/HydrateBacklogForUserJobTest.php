@@ -83,7 +83,7 @@ it('hydrates the last 7 days before older history, then stays oldest-first withi
 
     runHydrateBacklogForUser($user->id);
 
-    $order = Queue::pushed(IngestActivityJob::class)->map(fn (IngestActivityJob $job): int => $job->activityId)->all();
+    $order = pushedJobs(IngestActivityJob::class)->map(fn (IngestActivityJob $job): int => $job->activityId)->all();
 
     expect($order)->toBe([$olderRecent->id, $newestRecent->id, $oldest->id, $middleOld->id]);
 });

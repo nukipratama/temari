@@ -38,7 +38,7 @@ function chainWeek(User $user, string $weekEnding, ?AnalysisStatus $status, int 
         'runs' => $runs,
     ]);
 
-    if ($status !== null) {
+    if ($status instanceof AnalysisStatus) {
         Analysis::factory()->create([
             'subject_type' => WeeklySnapshot::class,
             'subject_id' => $snapshot->id,

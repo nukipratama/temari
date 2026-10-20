@@ -25,14 +25,11 @@ function resolve(preference: ThemePreference): 'light' | 'dark' {
 }
 
 /**
- * Owns the Settings appearance control's read/write side of the
- * 'temari-theme' key: mirrors app.blade.php's blocking-script resolution
- * order (an explicit light/dark wins, everything else — including a missing
- * or stale value — follows the OS) and applies a change to the DOM
- * immediately so switching is live with no reload. useSystemTheme (mounted
- * once in AppShell/BareShell) is the sibling that keeps 'system' mode live
- * across a later OS change while the tab stays open; both read/write the same
- * key.
+ * Owns the Settings appearance control's read/write side of the 'temari-theme'
+ * key: mirrors app.blade.php's blocking-script resolution order (an explicit
+ * light/dark wins, everything else follows the OS) and applies a change to the
+ * DOM immediately. useSystemTheme is the sibling that keeps 'system' mode live
+ * across a later OS change; both read/write the same key.
  */
 export function useTheme() {
     const [preference, setPreference] = useState<ThemePreference>(readStored);

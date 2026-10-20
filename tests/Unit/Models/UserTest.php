@@ -25,7 +25,7 @@ it('has at most one strava connection', function (): void {
     $user = User::factory()->withStravaConnection()->create();
 
     expect($user->stravaConnection)->toBeInstanceOf(StravaConnection::class)
-        ->and($user->stravaConnection->user->is($user))->toBeTrue();
+        ->and($user->stravaConnection?->user->is($user))->toBeTrue();
 });
 
 it('returns null stravaConnection when none is attached', function (): void {
@@ -39,7 +39,7 @@ it('has one runner profile', function (): void {
     $profile = RunnerProfile::factory()->for($user)->create();
 
     expect($user->runnerProfile)->toBeInstanceOf(RunnerProfile::class)
-        ->and($user->runnerProfile->is($profile))->toBeTrue();
+        ->and($user->runnerProfile?->is($profile))->toBeTrue();
 });
 
 it('has one telegram connection', function (): void {
@@ -47,17 +47,17 @@ it('has one telegram connection', function (): void {
     $connection = TelegramConnection::factory()->for($user)->create();
 
     expect($user->telegramConnection)->toBeInstanceOf(TelegramConnection::class)
-        ->and($user->telegramConnection->is($connection))->toBeTrue();
+        ->and($user->telegramConnection?->is($connection))->toBeTrue();
 });
 
 it('returns config runner defaults from hrProfile when the user has no profile', function (): void {
     $user = User::factory()->create();
 
     expect($user->hrProfile())->toBe([
-        'max_hr' => (int) config('runner.max_hr'),
-        'resting_hr' => (int) config('runner.resting_hr'),
+        'max_hr' => config()->integer('runner.max_hr'),
+        'resting_hr' => config()->integer('runner.resting_hr'),
         'hr_zones' => config('runner.hr_zones'),
-        'optimal_cadence_spm' => (int) config('runner.optimal_cadence_spm'),
+        'optimal_cadence_spm' => config()->integer('runner.optimal_cadence_spm'),
     ]);
 });
 
@@ -183,5 +183,5 @@ it('stamps backfilled_at when the connect chain reports the history is in', func
 
     $user->markBackfilled();
 
-    expect($user->fresh()->backfilled_at)->toBeInstanceOf(Carbon::class);
+    expect($user->refresh()->backfilled_at)->toBeInstanceOf(Carbon::class);
 });

@@ -34,7 +34,7 @@ final readonly class TimeTrialService
     public function settle(PlannedSession $session): ?TimeTrialOutcome
     {
         $trial = TimeTrial::of($session);
-        if ($trial === null || $session->time_trial_outcome !== null) {
+        if (!$trial instanceof TimeTrial || $session->time_trial_outcome !== null) {
             return null;
         }
 
@@ -61,7 +61,7 @@ final readonly class TimeTrialService
             throw new AuthorizationException();
         }
         $trial = TimeTrial::of($session);
-        if ($trial === null || $session->time_trial_outcome !== TimeTrialOutcome::Asked) {
+        if (!$trial instanceof TimeTrial || $session->time_trial_outcome !== TimeTrialOutcome::Asked) {
             throw ValidationException::withMessages(['answer' => 'This trial is already settled.']);
         }
         if (! $allOut) {
@@ -86,7 +86,7 @@ final readonly class TimeTrialService
     private function runsOn(PlannedSession $session, TimeTrial $trial): Collection
     {
         return ActivityDetail::query()->forUser($session->user_id)
-            ->whereDate('activity_details.start_date_local', $session->date->toDateString())
+            ->startedOn($session->date)
             ->orderByRaw('ABS(activity_details.distance - ?) asc', [$trial->distanceM])
             ->orderByDesc('activity_details.distance')
             ->orderBy('activity_details.activity_id')

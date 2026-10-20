@@ -46,7 +46,7 @@ class RunCardFactory
             'seed' => $activity->id,
         ]);
 
-        $card = RunCard::query()->updateOrCreate(
+        return RunCard::query()->updateOrCreate(
             ['activity_id' => $activity->id],
             [
                 'rarity' => $rarity,
@@ -55,8 +55,6 @@ class RunCardFactory
                 'pr_set' => $prSet,
             ],
         );
-
-        return $card;
     }
 
     private function prSetAtIngest(Activity $activity, ActivityDetail $detail): bool

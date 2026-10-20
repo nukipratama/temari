@@ -21,7 +21,7 @@ it('marks an ingested activity date for plan reconciliation', function (): void 
 
     app(PlanReconciliationDispatch::class)->forActivity($activity->load('detail'));
 
-    expect($activity->user->fresh()->plan_reconciliation_pending_from->toDateString())->toBe('2026-08-16');
+    expect($activity->user->refresh()->plan_reconciliation_pending_from?->toDateString())->toBe('2026-08-16');
     Bus::assertDispatched(ReconcilePlanJob::class);
     Carbon::setTestNow();
 });
@@ -33,6 +33,6 @@ it('ignores an activity without a local start date', function (): void {
 
     app(PlanReconciliationDispatch::class)->forActivity($activity->load('detail'));
 
-    expect($activity->user->fresh()->plan_reconciliation_pending_from)->toBeNull();
+    expect($activity->user->refresh()->plan_reconciliation_pending_from)->toBeNull();
     Bus::assertNotDispatched(ReconcilePlanJob::class);
 });

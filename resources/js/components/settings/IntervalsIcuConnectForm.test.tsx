@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { defined } from '@/test/defined';
 import { formMock } from '@/test/setup';
 
 import IntervalsIcuConnectForm from './IntervalsIcuConnectForm';
@@ -43,7 +44,7 @@ describe('IntervalsIcuConnectForm', () => {
             '/settings/intervals-icu',
             expect.objectContaining({ preserveScroll: true }),
         );
-        const options = formMock.post.mock.calls[0][1] as {
+        const options = defined(formMock.post.mock.calls[0])[1] as {
             onFinish: () => void;
         };
         options.onFinish();
@@ -82,7 +83,7 @@ describe('IntervalsIcuConnectForm', () => {
         );
         fireEvent.click(screen.getByRole('button', { name: /connect/ }));
 
-        const options = formMock.post.mock.calls[0][1] as {
+        const options = defined(formMock.post.mock.calls[0])[1] as {
             onSuccess: () => void;
         };
         options.onSuccess();

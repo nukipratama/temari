@@ -36,7 +36,7 @@ it('serializes set_at as the verbatim wall-clock, not a UTC-shifted instant', fu
     // rendered through the frontend's naive parsers, so it must serialize unshifted.
     $pr = new PersonalRecord(['set_at' => '2026-01-01 06:20:30']);
 
-    expect($pr->toArray()['set_at'])->toBe('2026-01-01T06:20:30');
+    expect(data_get($pr->toArray(), 'set_at'))->toBe('2026-01-01T06:20:30');
 });
 
 it('belongs to a user and optionally to an activity', function (): void {
@@ -46,7 +46,7 @@ it('belongs to a user and optionally to an activity', function (): void {
 
     expect($pr->user->is($user))->toBeTrue()
         ->and($pr->activity)->toBeInstanceOf(Activity::class)
-        ->and($pr->activity->is($activity))->toBeTrue();
+        ->and($pr->activity?->is($activity))->toBeTrue();
 });
 
 it('nullifies activity_id when the activity is deleted (PR outlives source run)', function (): void {
@@ -55,7 +55,7 @@ it('nullifies activity_id when the activity is deleted (PR outlives source run)'
 
     Activity::query()->whereKey($activity->id)->delete();
 
-    expect($pr->fresh()->activity_id)->toBeNull();
+    expect($pr->refresh()->activity_id)->toBeNull();
 });
 
 it('enforces one PR per (user_id, category)', function (): void {

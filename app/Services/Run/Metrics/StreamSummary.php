@@ -9,12 +9,9 @@ namespace App\Services\Run\Metrics;
  * {@see \App\Services\Run\Ingest\StreamAnalysis::compute()} writes onto
  * {@see \App\Models\ActivityDetail}.
  *
- * Every derivation in the producer omits its key entirely when the stream it
- * needs is missing or too short, so any given row carries a subset of the key
- * set and rows written by older revisions carry fewer keys still. Each accessor
- * therefore reports a key that is absent, present-but-null, or present with an
- * unusable type as "no reading" — the same collapse every consumer's `?? null`
- * and `isset()` already performed.
+ * Every derivation in the producer omits its key when the stream it needs is missing or too short,
+ * so each accessor reports a key that is absent, present-but-null, or of an unusable type as "no
+ * reading".
  */
 final readonly class StreamSummary
 {
@@ -54,7 +51,10 @@ final readonly class StreamSummary
      */
     public function zonePct(): array
     {
-        return $this->array('time_in_zone_pct') ?? [];
+        /** @var array<string, float|int>|null $zonePct */
+        $zonePct = $this->array('time_in_zone_pct');
+
+        return $zonePct ?? [];
     }
 
     /**
@@ -64,7 +64,10 @@ final readonly class StreamSummary
      */
     public function zoneMinutes(): ?array
     {
-        return $this->array('time_in_zone_min');
+        /** @var array<string, float|int>|null $zoneMinutes */
+        $zoneMinutes = $this->array('time_in_zone_min');
+
+        return $zoneMinutes;
     }
 
     /**
@@ -82,11 +85,8 @@ final readonly class StreamSummary
     /**
      * Combined share of moving time spent in Z4 and Z5.
      *
-     * Distinct from {@see self::hardZoneShare()} on purpose. Z3 starts around
-     * 80% of max HR, which is where a runner with little true easy running
-     * spends most of an ordinary day, so a Z3-inclusive share does not separate
-     * a quality session from a steady one. Z4 begins at the threshold boundary
-     * and is only reached deliberately.
+     * Distinct from {@see self::hardZoneShare()}: Z3 starts around 80% of max HR, so a Z3-inclusive
+     * share does not separate a quality session from a steady one; Z4 is only reached deliberately.
      */
     public function thresholdZoneShare(): float
     {
@@ -126,7 +126,10 @@ final readonly class StreamSummary
      */
     public function perKm(): ?array
     {
-        return $this->array('per_km');
+        /** @var array<int, array<string, mixed>>|null $perKm */
+        $perKm = $this->array('per_km');
+
+        return $perKm;
     }
 
     /**
@@ -138,7 +141,10 @@ final readonly class StreamSummary
      */
     public function laps(): ?array
     {
-        return $this->array('laps');
+        /** @var array<int, array<string, mixed>>|null $laps */
+        $laps = $this->array('laps');
+
+        return $laps;
     }
 
     /**
@@ -215,7 +221,10 @@ final readonly class StreamSummary
      */
     public function cadenceDistributionPct(): array
     {
-        return $this->array('cadence_distribution_pct') ?? [];
+        /** @var array<string, float|int>|null $cadenceDistributionPct */
+        $cadenceDistributionPct = $this->array('cadence_distribution_pct');
+
+        return $cadenceDistributionPct ?? [];
     }
 
     public function maxGradePct(): ?float

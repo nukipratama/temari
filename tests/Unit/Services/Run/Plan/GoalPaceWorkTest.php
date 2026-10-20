@@ -58,7 +58,7 @@ it('sizes the window and kind by race distance', function (float $distanceM, int
 ]);
 
 it('exists only for supported bands, race phases and dedicated preparation inside the window', function (float $distanceM, ?RaceAmbitionState $band, PlanPhase $phase, string $monday, ?int $goalTimeSec, bool $exists): void {
-    expect(GoalPaceWork::forWeek(goalPaceWorkInputs($distanceM, $band, $goalTimeSec), Carbon::parse($monday), $phase) !== null)->toBe($exists);
+    expect(GoalPaceWork::forWeek(goalPaceWorkInputs($distanceM, $band, $goalTimeSec), Carbon::parse($monday), $phase) instanceof GoalPaceWork)->toBe($exists);
 })->with([
     'on track' => [10_000.0, RaceAmbitionState::OnTrack, PlanPhase::Peak, '2026-11-16', 3000, true],
     'ambitious without a stepping stone' => [10_000.0, RaceAmbitionState::Ambitious, PlanPhase::Taper, '2026-12-14', 3000, false],
@@ -160,9 +160,9 @@ it('shapes goal-pace work by kind and leaves every other session its own shape',
 
 it('leaves a goal far slower than supported fitness without goal-pace work', function (?float $gapPct, bool $exists): void {
     $inputs = goalPaceWorkInputs(10_000.0, RaceAmbitionState::OnTrack);
-    $inputs = new PlanInputs(...[...get_object_vars($inputs), 'raceAmbitionGapPct' => $gapPct]);
+    $inputs = planInputsWith($inputs, ['raceAmbitionGapPct' => $gapPct]);
 
-    expect(GoalPaceWork::forWeek($inputs, Carbon::parse('2026-11-16'), PlanPhase::Peak) !== null)->toBe($exists);
+    expect(GoalPaceWork::forWeek($inputs, Carbon::parse('2026-11-16'), PlanPhase::Peak) instanceof GoalPaceWork)->toBe($exists);
 })->with([
     'faster than supported' => [2.0, true],
     'at the slower edge of on track' => [-3.0, true],

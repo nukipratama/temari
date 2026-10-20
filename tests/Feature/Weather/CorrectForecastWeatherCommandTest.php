@@ -59,7 +59,7 @@ it('skips a forecast-sourced row that is not old enough yet', function (): void 
 
     $this->artisan('weather:correct-forecast')->assertSuccessful();
 
-    expect($detail->fresh()->weather_rain_is_forecast)->toBeTrue();
+    expect($detail->refresh()->weather_rain_is_forecast)->toBeTrue();
 });
 
 it('skips a row that is already observed (not forecast-sourced)', function (): void {
@@ -116,12 +116,12 @@ it('does not touch RunCard badges when correcting weather', function (): void {
     $this->artisan('weather:correct-forecast')->assertSuccessful();
 
     // Derived non-weather state is untouched even though rainDetected flips.
-    expect($detail->fresh()->trimp_edwards)->toBe(42.5);
+    expect($detail->refresh()->trimp_edwards)->toBe(42.5);
 });
 
 it('does not let a permanently-uncorrectable old row starve fresher rows', function (): void {
     // The archive still misses for the very old row (uncorrectable) but has a value
-    // for the newer one. Under the old ASC ordering + a tight limit, the stuck old
+    // for the newer one. Under an ASC ordering + a tight limit, the stuck old
     // row would sit at the head every run and the newer row would never correct.
     $this->mock(OpenMeteoClient::class)
         ->shouldReceive('fetchArchive')
@@ -145,8 +145,8 @@ it('does not let a permanently-uncorrectable old row starve fresher rows', funct
     // Limit of 1: only the head row is handled per run, so ordering decides who wins.
     $this->artisan('weather:correct-forecast', ['--limit' => 1])->assertSuccessful();
 
-    expect($fresher->fresh()->weather_rain_is_forecast)->toBeFalse()
-        ->and($stuckOld->fresh()->weather_rain_is_forecast)->toBeTrue();
+    expect($fresher->refresh()->weather_rain_is_forecast)->toBeFalse()
+        ->and($stuckOld->refresh()->weather_rain_is_forecast)->toBeTrue();
 });
 
 it('honors the --limit option', function (): void {

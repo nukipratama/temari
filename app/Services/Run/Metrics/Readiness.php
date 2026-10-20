@@ -4,9 +4,14 @@ declare(strict_types=1);
 
 namespace App\Services\Run\Metrics;
 
+use App\Support\Numeric;
+
 /**
  * A deterministic ceiling plus the evidence that produced it. Missing data is
  * recorded as unknown; it does not become a fatigue signal.
+ *
+ * @phpstan-type QualityDose array{hard_minutes: int, original_hard_minutes: int, pace_band: string, pace_sec_per_km: int|null}
+ * @phpstan-type Assessment array{ceiling: string, reasons: list<string>, inputs: array<string, mixed>, adjustment?: array{quality_dose?: QualityDose|null}}
  */
 final readonly class Readiness
 {
@@ -48,8 +53,8 @@ final readonly class Readiness
             'demanding_within_24h' => 0,
             'demanding_within_48h' => 0,
         ];
-        $recentDemanding = (int) ($stressProfile['demanding_within_24h'] ?? 0) > 0;
-        $closelySpacedDemanding = (int) ($stressProfile['demanding_within_48h'] ?? 0) > 1;
+        $recentDemanding = Numeric::int($stressProfile['demanding_within_24h'] ?? 0) > 0;
+        $closelySpacedDemanding = Numeric::int($stressProfile['demanding_within_48h'] ?? 0) > 1;
         $aheadOfPlan = $aheadOfPlanPct !== null && $aheadOfPlanPct > 15.0;
         $loadAboveTypical = $weeklyTrimp !== null
             && $weeklyTrimpRange !== null

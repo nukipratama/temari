@@ -70,6 +70,6 @@ it('maps every shown session shape to step lines intervals.icu reads, each with 
         foreach ($lines as $line) {
             expect($line)->toMatch(STEP_LINE);
         }
-        expect($workout?->name)->not->toBe('')->not->toMatch('/\b0 (min|km)$/');
+        expect($workout?->name)->not->toBe('')->and($workout?->name)->not->toMatch('/\b0 (min|km)$/');
     }
 })->with(everyShownShape());

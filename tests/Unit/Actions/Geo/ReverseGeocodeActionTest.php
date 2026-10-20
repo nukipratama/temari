@@ -28,9 +28,8 @@ it('formats Indonesian address parts into a comma-joined display string', functi
     ]);
 
     $resolver = new ReverseGeocodeAction();
-    $result = $resolver(-6.24, 106.81);
+    $result = nonNull($resolver(-6.24, 106.81));
 
-    expect($result)->not->toBeNull();
     expect($result->name)->toBe('Kebayoran Baru, Jakarta Selatan, DKI Jakarta, Indonesia');
     expect($result->country)->toBe('ID');
 });
@@ -61,14 +60,14 @@ it('returns null when the API throws', function (): void {
 });
 
 it('logs a failed lookup without the coordinate its error message carries', function (): void {
-    Log::spy();
+    $log = Log::spy();
     Http::fake(['nominatim.openstreetmap.org/*' => fn () => throw new ConnectionException(
         'cURL error 28: Operation timed out (see https://curl.se/libcurl/c/libcurl-errors.html) for https://nominatim.openstreetmap.org/reverse?lat=12.3456789&lon=98.7654321&format=jsonv2',
     )]);
 
     expect(new ReverseGeocodeAction()(12.3456789, 98.7654321))->toBeNull();
 
-    Log::shouldHaveReceived('info')
+    $log->shouldHaveReceived('info')
         ->once()
         ->withArgs(fn (string $message, array $context): bool => $message === 'nominatim resolve failed'
             && array_keys($context) === ['error']

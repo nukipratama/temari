@@ -81,8 +81,8 @@ it('leaves the demo grant out of the holder list and total', function (): void {
     Artisan::call('strava:slots');
     $output = Artisan::output();
 
-    expect($output)->toContain((string) $realConnection->strava_athlete_id)
-        ->not->toContain((string) $demoConnection->strava_athlete_id)
+    expect($output)->not->toContain((string) $demoConnection->strava_athlete_id)
+        ->toContain((string) $realConnection->strava_athlete_id)
         ->toContain('Total: 1');
 });
 
@@ -98,10 +98,10 @@ it('releases a live grant and revokes only the local connection', function (): v
 
     Http::assertSent(fn (Request $request): bool => $request->url() === 'https://www.strava.com/oauth/deauthorize'
         && $request['access_token'] === 'fresh-access');
-    expect($connection->fresh()->isRevoked())->toBeTrue()
+    expect($connection->refresh()->isRevoked())->toBeTrue()
         ->and(User::query()->whereKey($user->id)->exists())->toBeTrue()
         ->and(StravaGrantToken::query()->where('strava_athlete_id', $connection->strava_athlete_id)->exists())->toBeFalse()
-        ->and(StravaGrantEvent::query()->where('strava_athlete_id', $connection->strava_athlete_id)->orderBy('id')->get()->last()->event)
+        ->and(nonNull(StravaGrantEvent::query()->where('strava_athlete_id', $connection->strava_athlete_id)->orderByDesc('id')->first())->event)
         ->toBe(StravaGrantEventType::ForceReleased);
 });
 
@@ -115,7 +115,7 @@ it('marks a live connection revoked but retains the rotated grant after release 
     ])->expectsOutputToContain('Release failed for Strava athlete '.$connection->strava_athlete_id)
         ->assertFailed();
 
-    expect($connection->fresh()->isRevoked())->toBeTrue()
+    expect($connection->refresh()->isRevoked())->toBeTrue()
         ->and(StravaGrantToken::query()->where('strava_athlete_id', $connection->strava_athlete_id)->sole()->refresh_token)
         ->toBe('rotated-refresh');
 });
@@ -155,6 +155,6 @@ it('leaves the holder untouched when an operator declines confirmation', functio
         ->assertSuccessful();
 
     Http::assertNothingSent();
-    expect($connection->fresh()->isRevoked())->toBeFalse()
+    expect($connection->refresh()->isRevoked())->toBeFalse()
         ->and(StravaGrantToken::query()->where('strava_athlete_id', $connection->strava_athlete_id)->exists())->toBeTrue();
 });

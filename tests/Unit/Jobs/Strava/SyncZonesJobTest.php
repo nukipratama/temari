@@ -13,6 +13,7 @@ use App\Services\Strava\ZoneFetcher;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
 use Laravel\Pulse\Facades\Pulse;
+use Mockery\MockInterface;
 
 uses(RefreshDatabase::class);
 
@@ -33,6 +34,7 @@ it('writes a strava-sourced profile, setting source and strava_zones_synced_at w
         'Z5' => ['lo' => 180, 'hi' => 999],
     ];
 
+    /** @var ZoneFetcher&MockInterface $fetcher */
     $fetcher = Mockery::mock(ZoneFetcher::class);
     $fetcher->shouldReceive('fetch')->once()->andReturn($newZones);
 
@@ -52,6 +54,7 @@ it('skips a user whose profile source is manual', function (): void {
     StravaConnection::factory()->for($user)->create();
     RunnerProfile::factory()->for($user)->create(['source' => 'manual', 'max_hr' => 200]);
 
+    /** @var ZoneFetcher&MockInterface $fetcher */
     $fetcher = Mockery::mock(ZoneFetcher::class);
     $fetcher->shouldNotReceive('fetch');
 
@@ -73,6 +76,7 @@ it('overwrites a manual profile when forced (explicit user re-sync)', function (
         'Z5' => ['lo' => 180, 'hi' => 999],
     ];
 
+    /** @var ZoneFetcher&MockInterface $fetcher */
     $fetcher = Mockery::mock(ZoneFetcher::class);
     $fetcher->shouldReceive('fetch')->once()->andReturn($newZones);
 
@@ -85,6 +89,7 @@ it('no-ops when Strava returns no zones', function (): void {
     $user = User::factory()->create();
     StravaConnection::factory()->for($user)->create();
 
+    /** @var ZoneFetcher&MockInterface $fetcher */
     $fetcher = Mockery::mock(ZoneFetcher::class);
     $fetcher->shouldReceive('fetch')->once()->andReturn(null);
 
@@ -97,6 +102,7 @@ it('no-ops when Strava zones are already the effective (default) zones', functio
     $user = User::factory()->create();
     StravaConnection::factory()->for($user)->create();
 
+    /** @var ZoneFetcher&MockInterface $fetcher */
     $fetcher = Mockery::mock(ZoneFetcher::class);
     $fetcher->shouldReceive('fetch')->once()->andReturn(config('runner.hr_zones'));
 
@@ -106,6 +112,7 @@ it('no-ops when Strava zones are already the effective (default) zones', functio
 });
 
 it('no-ops on a deleted user', function (): void {
+    /** @var ZoneFetcher&MockInterface $fetcher */
     $fetcher = Mockery::mock(ZoneFetcher::class);
     $fetcher->shouldNotReceive('fetch');
 
@@ -115,6 +122,7 @@ it('no-ops on a deleted user', function (): void {
 it('no-ops when the user has no Strava connection', function (): void {
     $user = User::factory()->create();
 
+    /** @var ZoneFetcher&MockInterface $fetcher */
     $fetcher = Mockery::mock(ZoneFetcher::class);
     $fetcher->shouldNotReceive('fetch');
 
@@ -125,6 +133,7 @@ it('ignores a stale API 401 after credentials change during the zone fetch', fun
     $user = User::factory()->create();
     $connection = StravaConnection::factory()->for($user)->create(['credential_version' => 2]);
 
+    /** @var ZoneFetcher&MockInterface $fetcher */
     $fetcher = Mockery::mock(ZoneFetcher::class);
     $fetcher->shouldReceive('fetch')->once()->andReturnUsing(function () use ($connection): never {
         $connection->update(['credential_version' => 3, 'revoked_at' => null]);
@@ -135,13 +144,14 @@ it('ignores a stale API 401 after credentials change during the zone fetch', fun
 
     new SyncZonesJob($user->id)->handle($fetcher);
 
-    expect($connection->fresh()->isRevoked())->toBeFalse();
+    expect($connection->refresh()->isRevoked())->toBeFalse();
 });
 
 it('ignores a stale refresh failure after credentials change during the zone fetch', function (): void {
     $user = User::factory()->create();
     $connection = StravaConnection::factory()->for($user)->create(['credential_version' => 2]);
 
+    /** @var ZoneFetcher&MockInterface $fetcher */
     $fetcher = Mockery::mock(ZoneFetcher::class);
     $fetcher->shouldReceive('fetch')->once()->andReturnUsing(function () use ($connection): never {
         $connection->update(['credential_version' => 3, 'revoked_at' => null]);
@@ -152,7 +162,7 @@ it('ignores a stale refresh failure after credentials change during the zone fet
 
     new SyncZonesJob($user->id)->handle($fetcher);
 
-    expect($connection->fresh()->isRevoked())->toBeFalse();
+    expect($connection->refresh()->isRevoked())->toBeFalse();
 });
 
 it('keeps a manual save that lands during the Strava fetch', function (bool $hadProfile): void {
@@ -162,9 +172,10 @@ it('keeps a manual save that lands during the Strava fetch', function (bool $had
     if ($hadProfile) {
         RunnerProfile::factory()->for($user)->create(['source' => 'strava']);
     }
-    $manualZones = config('runner.hr_zones');
+    $manualZones = arrayOf(config('runner.hr_zones'));
     $manualZones['Z5'] = ['lo' => 181, 'hi' => 999];
 
+    /** @var ZoneFetcher&MockInterface $fetcher */
     $fetcher = Mockery::mock(ZoneFetcher::class);
     $fetcher->shouldReceive('fetch')->once()->andReturnUsing(function () use ($user, $manualZones): array {
         RunnerProfile::query()->updateOrCreate(
@@ -196,6 +207,7 @@ it('does not recreate a profile when the user is deleted during the Strava fetch
     $user = User::factory()->create();
     StravaConnection::factory()->for($user)->create();
 
+    /** @var ZoneFetcher&MockInterface $fetcher */
     $fetcher = Mockery::mock(ZoneFetcher::class);
     $fetcher->shouldReceive('fetch')->once()->andReturnUsing(function () use ($user): array {
         $user->delete();
@@ -231,6 +243,7 @@ it('requests recalibration only when the zones changed', function (bool $changed
         $fetched['Z5'] = ['lo' => 182, 'hi' => 999];
     }
 
+    /** @var ZoneFetcher&MockInterface $fetcher */
     $fetcher = Mockery::mock(ZoneFetcher::class);
     $fetcher->shouldReceive('fetch')->once()->andReturn($fetched);
 

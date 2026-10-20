@@ -15,8 +15,16 @@ use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Queue\Middleware\ThrottlesExceptions;
+use Mockery\MockInterface;
 
 uses(RefreshDatabase::class);
+
+function resyncThrottle(ResyncActivityJob $job): ThrottlesExceptions
+{
+    $middleware = $job->middleware()[0];
+
+    return $middleware instanceof ThrottlesExceptions ? $middleware : throw new InvalidArgumentException('Middleware is not a ThrottlesExceptions.');
+}
 
 it('re-ingests the activity', function (): void {
     $user = User::factory()->create();
@@ -26,6 +34,7 @@ it('re-ingests the activity', function (): void {
         'start_date_local' => now(),
     ]);
 
+    /** @var ActivityPipeline&MockInterface $pipeline */
     $pipeline = Mockery::mock(ActivityPipeline::class);
     $pipeline->shouldReceive('ingest')
         ->once()
@@ -35,6 +44,7 @@ it('re-ingests the activity', function (): void {
 });
 
 it('quietly no-ops if the activity was deleted before the job runs', function (): void {
+    /** @var ActivityPipeline&MockInterface $pipeline */
     $pipeline = Mockery::mock(ActivityPipeline::class);
     $pipeline->shouldNotReceive('ingest');
 
@@ -57,6 +67,7 @@ it('clears the stale intent evidence of the day an edited run moved away from', 
         'intent_evidence' => ['advice_history' => 'shown'],
     ]);
 
+    /** @var ActivityPipeline&MockInterface $pipeline */
     $pipeline = Mockery::mock(ActivityPipeline::class);
     $pipeline->shouldReceive('ingest')->once()->andReturnUsing(static function () use ($detail, $oldDay): void {
         $detail->update(['start_date_local' => $oldDay->copy()->addDays(2)->setTime(6, 0)]);
@@ -89,7 +100,7 @@ it('is governed by a retry window, not a fixed $tries cap', function (): void {
 
     expect($job->retryUntil())->toBeInstanceOf(DateTimeInterface::class)
         ->and($job->retryUntil()->getTimestamp())->toBeGreaterThan(now()->getTimestamp())
-        ->and(property_exists($job, 'tries') ? $job->tries : null)->toBeNull();
+        ->and(data_get($job, 'tries'))->toBeNull();
 });
 
 it('backs off on a connect failure instead of counting it as a genuine failure', function (): void {
@@ -107,7 +118,7 @@ it('backs off on a connect failure instead of counting it as a genuine failure',
         }
     };
 
-    new ResyncActivityJob(1)->middleware()[0]->handle($fakeJob, function (): never {
+    resyncThrottle(new ResyncActivityJob(1))->handle($fakeJob, function (): never {
         throw new ConnectionException('cURL error 28: Connection timed out');
     });
 

@@ -64,7 +64,7 @@ class BuildCalendarCellsAction
             ->orderBy('activity_details.start_date_local')
             ->get();
 
-        $activityIds = $details->pluck('activity_id')->all();
+        $activityIds = $details->map(fn (ActivityDetail $row): int => $row->activity_id)->all();
         $moodByActivity = $this->postRunNotes->moodsFor($activityIds);
         $rarityByActivity = $this->raritiesForActivities($activityIds);
         $effortByActivity = RunEffort::forDetails($user->id, $details);
@@ -101,7 +101,7 @@ class BuildCalendarCellsAction
             'is_today' => $dateKey === $todayKey,
         ];
 
-        if ($rows === null || $rows->isEmpty()) {
+        if (!$rows instanceof Collection || $rows->isEmpty()) {
             return [
                 ...$base,
                 'distance_km' => null,
@@ -135,7 +135,7 @@ class BuildCalendarCellsAction
 
         // `$rows` is non-empty (guarded above) so `first()` is always a model.
         $primary = $rows->first();
-        $primaryId = (int) $primary->getAttribute('activity_id');
+        $primaryId = $primary->activity_id;
 
         $paceSecPerKm = PaceCalculator::secPerKm($totalDistance, $totalElapsed);
 
@@ -165,7 +165,7 @@ class BuildCalendarCellsAction
     private function runsFor(Collection $rows, array $moodByActivity, array $effortByActivity): array
     {
         return $rows->map(function ($row) use ($moodByActivity, $effortByActivity): array {
-            $id = (int) $row->getAttribute('activity_id');
+            $id = $row->activity_id;
             $pace = PaceCalculator::secPerKm((float) ($row->distance ?? 0), (float) ($row->elapsed_time ?? 0));
 
             return [
@@ -181,7 +181,7 @@ class BuildCalendarCellsAction
 
     /**
      * The best card the day's runs earned, so a week row's disclosure can badge
-     * its rarest card (P12) without a second per-week query.
+     * its rarest card without a second per-week query.
      *
      * @param  Collection<int, ActivityDetail>  $rows
      * @param  array<int, Rarity>  $rarityByActivity
@@ -191,7 +191,7 @@ class BuildCalendarCellsAction
         $best = null;
 
         foreach ($rows as $row) {
-            $rarity = $rarityByActivity[(int) $row->getAttribute('activity_id')] ?? null;
+            $rarity = $rarityByActivity[$row->activity_id] ?? null;
             if ($rarity !== null && ($best === null || $rarity->rank() > $best->rank())) {
                 $best = $rarity;
             }
@@ -212,7 +212,7 @@ class BuildCalendarCellsAction
         $best = Effort::Unknown;
 
         foreach ($rows as $row) {
-            $effort = $effortByActivity[(int) $row->getAttribute('activity_id')] ?? Effort::Unknown;
+            $effort = $effortByActivity[$row->activity_id] ?? Effort::Unknown;
             if (self::EFFORT_RANK[$effort->value] > self::EFFORT_RANK[$best->value]) {
                 $best = $effort;
             }
@@ -249,9 +249,12 @@ class BuildCalendarCellsAction
             return [];
         }
 
-        return RunCard::query()
+        /** @var array<int, Rarity> $rarities */
+        $rarities = RunCard::query()
             ->whereIn('activity_id', $activityIds)
             ->pluck('rarity', 'activity_id')
             ->all();
+
+        return $rarities;
     }
 }

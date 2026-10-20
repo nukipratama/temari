@@ -24,8 +24,11 @@ uses(RefreshDatabase::class);
 
 afterEach(fn () => Carbon::setTestNow());
 
+/** @return array<string, mixed> */
 function pushOptions(Notification $notification, User $user): array
 {
+    assert(method_exists($notification, 'toWebPush'));
+
     return $notification->toWebPush($user, $notification)->getOptions();
 }
 

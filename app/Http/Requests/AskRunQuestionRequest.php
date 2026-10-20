@@ -38,6 +38,6 @@ class AskRunQuestionRequest extends FormRequest
 
     public function question(): string
     {
-        return trim((string) $this->validated('question'));
+        return trim($this->safe()->string('question')->toString());
     }
 }

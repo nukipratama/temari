@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Testing\TestResponse;
 use Inertia\Testing\AssertableInertia as Assert;
+use Symfony\Component\HttpFoundation\Response;
 
 uses(RefreshDatabase::class);
 
@@ -28,10 +29,12 @@ uses(RefreshDatabase::class);
  * is handed, so a relation lazy-loaded during one request would stay memoised on
  * that object for the next one — an artefact of the test harness, not of a real
  * request, which rebuilds the user from the session every time.
+ *
+ * @return TestResponse<Response>
  */
 function visitAs(User $user): TestResponse
 {
-    return test()->actingAs($user->fresh())->get('/profile');
+    return test()->actingAs(nonNull($user->fresh()))->get('/profile');
 }
 
 function warmSharedProps(User $user): void

@@ -45,8 +45,8 @@ it('renders the data-use wording from the shared statement', function (): void {
     $this->get(route('legal.privacy'))
         ->assertOk()
         ->assertInertia(function (Assert $page): void {
-            $paragraphs = collect($page->toArray()['props']['sections'])
-                ->flatMap(fn (array $section): array => $section['paragraphs']);
+            $paragraphs = collect(arrayOf(arrayOf($page->toArray()['props'])['sections']))
+                ->flatMap(fn (mixed $section): array => arrayOf(arrayOf($section)['paragraphs']));
 
             foreach (DataUseStatement::points(pointToPrivacyPolicy: false) as $point) {
                 expect($paragraphs)->toContain($point);

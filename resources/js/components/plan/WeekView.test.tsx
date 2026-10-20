@@ -7,6 +7,7 @@ import {
     clearNavigationMemory,
     readPlanSelectedDay,
 } from '@/lib/navigationMemory';
+import { defined } from '@/test/defined';
 
 import WeekView from './WeekView';
 
@@ -112,6 +113,7 @@ function summaryWeek(
         planned_km: 30.4,
         actual_km: 12,
         sessions: 5,
+        adherence_pct: null,
         ...overrides,
     };
 }
@@ -229,7 +231,10 @@ describe('WeekView', () => {
     });
 
     it('falls back to the first day when nothing is left to run', () => {
-        renderWeek({ days: [WEEK[0], WEEK[4]], today: '2026-06-22' });
+        renderWeek({
+            days: [defined(WEEK[0]), defined(WEEK[4])],
+            today: '2026-06-22',
+        });
 
         expect(selectedTab()).toHaveAttribute(
             'aria-label',
@@ -239,7 +244,12 @@ describe('WeekView', () => {
 
     it('passes over days already run or missed and excused ones', () => {
         renderWeek({
-            days: [WEEK[0], WEEK[1], { ...WEEK[2], skipped: true }, WEEK[3]],
+            days: [
+                defined(WEEK[0]),
+                defined(WEEK[1]),
+                { ...defined(WEEK[2]), skipped: true },
+                defined(WEEK[3]),
+            ],
             today: '2026-06-10',
         });
 
@@ -334,7 +344,7 @@ describe('WeekView', () => {
     });
 
     it('says nothing about progress before any day is graded', () => {
-        renderWeek({ days: [WEEK[2], WEEK[3]] });
+        renderWeek({ days: [defined(WEEK[2]), defined(WEEK[3])] });
 
         expect(screen.queryByText(/so far/)).not.toBeInTheDocument();
     });
@@ -376,7 +386,7 @@ describe('WeekView', () => {
 
     it('restores the selected skipped session through the caller', () => {
         const skipped = {
-            ...WEEK[3],
+            ...defined(WEEK[3]),
             skipped: true,
             pinned: true,
             actions: { move: true, skip: false, restore: true },

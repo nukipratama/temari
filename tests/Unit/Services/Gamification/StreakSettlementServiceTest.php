@@ -36,8 +36,8 @@ it('rebuilds token outcomes chronologically and records a forgiven no-run week',
 
     $token = StreakRestToken::query()->where('user_id', $user->id)->sole();
     expect($token->spent_for_week_ending?->toDateString())->toBe('2026-05-31')
-        ->and($user->fresh()->streak_settled_through?->toDateString())->toBe('2026-05-31')
-        ->and($user->fresh()->streak_settlement_streak)->toBe(4);
+        ->and($user->fresh()?->streak_settled_through?->toDateString())->toBe('2026-05-31')
+        ->and($user->fresh()?->streak_settlement_streak)->toBe(4);
 });
 
 it('processes an initial rebuild in bounded batches without replaying prior weeks', function (): void {
@@ -46,13 +46,13 @@ it('processes an initial rebuild in bounded batches without replaying prior week
 
     $service = app(StreakSettlementService::class);
     expect($service->settle($user))->toBeFalse()
-        ->and($user->fresh()->streak_settled_through?->toDateString())->toBe('2026-04-05')
-        ->and($user->fresh()->streak_settlement_streak)->toBe(52)
+        ->and($user->fresh()?->streak_settled_through?->toDateString())->toBe('2026-04-05')
+        ->and($user->fresh()?->streak_settlement_streak)->toBe(52)
         ->and(StreakRestToken::query()->where('user_id', $user->id)->count())->toBe(2);
 
     expect($service->settle($user))->toBeTrue()
-        ->and($user->fresh()->streak_settled_through?->toDateString())->toBe('2026-05-31')
-        ->and($user->fresh()->streak_settlement_streak)->toBe(60)
+        ->and($user->fresh()?->streak_settled_through?->toDateString())->toBe('2026-05-31')
+        ->and($user->fresh()?->streak_settlement_streak)->toBe(60)
         ->and(StreakRestToken::query()->where('user_id', $user->id)->count())->toBe(2);
 });
 
@@ -66,11 +66,11 @@ it('continues a cursor in bounded weekly batches', function (): void {
 
     $service = app(StreakSettlementService::class);
     expect($service->settle($user))->toBeFalse()
-        ->and($user->fresh()->streak_settled_through?->toDateString())->toBe('2026-04-19');
+        ->and($user->fresh()?->streak_settled_through?->toDateString())->toBe('2026-04-19');
 
     expect($service->settle($user))->toBeTrue()
-        ->and($user->fresh()->streak_settled_through?->toDateString())->toBe('2026-05-31')
-        ->and($user->fresh()->streak_settlement_streak)->toBe(58);
+        ->and($user->fresh()?->streak_settled_through?->toDateString())->toBe('2026-05-31')
+        ->and($user->fresh()?->streak_settlement_streak)->toBe(58);
 });
 
 it('does not dirty settlement for a week after the cursor', function (): void {
@@ -84,7 +84,7 @@ it('does not dirty settlement for a week after the cursor', function (): void {
         'runs' => 1,
     ]);
 
-    expect($user->fresh()->streak_settlement_dirty_from)->toBeNull();
+    expect($user->refresh()->streak_settlement_dirty_from)->toBeNull();
 });
 
 it('rebuilds when a backdated weekly snapshot lowers the dirty cursor', function (): void {
@@ -100,11 +100,11 @@ it('rebuilds when a backdated weekly snapshot lowers the dirty cursor', function
         'runs' => 1,
     ]);
 
-    expect($user->fresh()->streak_settlement_dirty_from?->toDateString())->toBe('2026-05-03')
+    expect($user->fresh()?->streak_settlement_dirty_from?->toDateString())->toBe('2026-05-03')
         ->and($service->isSettled($user->id))->toBeFalse();
 
     expect($service->settle($user))->toBeTrue()
-        ->and($user->fresh()->streak_settlement_dirty_from)->toBeNull()
+        ->and($user->refresh()->streak_settlement_dirty_from)->toBeNull()
         ->and(StreakRestToken::query()->where('user_id', $user->id)->count())->toBe(1)
         ->and(StreakRestToken::query()->where('user_id', $user->id)->sole()->earned_for_week_ending->toDateString())
         ->toBe('2026-05-24');
@@ -125,10 +125,10 @@ it('rebuilds when an already-settled weekly snapshot changes', function (): void
     $snapshot->runs = 0;
     $snapshot->save();
 
-    expect($user->fresh()->streak_settlement_dirty_from?->toDateString())->toBe('2026-05-31');
+    expect($user->fresh()?->streak_settlement_dirty_from?->toDateString())->toBe('2026-05-31');
 
     expect($service->settle($user))->toBeTrue()
-        ->and($user->fresh()->streak_settlement_dirty_from)->toBeNull()
+        ->and($user->refresh()->streak_settlement_dirty_from)->toBeNull()
         ->and(StreakRestToken::query()->where('user_id', $user->id)->count())->toBe(1)
         ->and(StreakRestToken::query()->where('user_id', $user->id)->sole()->spent_for_week_ending?->toDateString())
         ->toBe('2026-05-31');

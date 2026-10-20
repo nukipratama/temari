@@ -9,16 +9,13 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\RateLimiter;
 
 /**
- * A single-shot cooldown keyed by an arbitrary string, backed by the Redis
- * RateLimiter (cache connection, isolated from the queue). One `start()` makes
- * the key active for the whole window; `remaining()` reports the countdown so a
- * caller can surface a "wait Xm" disabled state.
+ * A single-shot cooldown keyed by an arbitrary string, backed by the Redis RateLimiter (cache
+ * connection, isolated from the queue). One `start()` makes the key active for the whole window;
+ * `remaining()` reports the countdown so a caller can surface a "wait Xm" disabled state.
  *
- * The window is per-instance because the uses guard different things.
- * Re-narrating a block spends money, so it holds longest. The test send
- * protects nobody at all — it exists to prove a
- * channel works, and is pressed exactly when someone is setting one up and
- * iterating, so a long lock turns a 30-second check into a 15-minute one.
+ * The window is per-instance because the uses guard different things: re-narrating a block spends
+ * money, so it holds longest, while the test send only proves a channel works and a long lock would
+ * turn a 30-second check into a 15-minute one.
  */
 final readonly class Cooldown
 {
@@ -50,7 +47,10 @@ final readonly class Cooldown
      */
     public function attempt(): bool
     {
-        return RateLimiter::attempt($this->key, 1, fn (): bool => true, $this->window);
+        $attempted = RateLimiter::attempt($this->key, 1, fn (): bool => true, $this->window);
+        assert(is_bool($attempted));
+
+        return $attempted;
     }
 
     /**
@@ -72,15 +72,10 @@ final readonly class Cooldown
     }
 
     /**
-     * {@see self::remaining()} for many keys in one cache round trip (an MGET on
-     * Redis) instead of one `availableIn()` per key. List payloads resolve a
-     * countdown per row, so the per-key form turns one page into hundreds of
-     * sequential round trips.
-     *
-     * Reads the same `:timer` entries from the same limiter store `availableIn()`
-     * reads, so the values are identical to calling it key by key. CooldownTest
-     * pins that equivalence, which is what would catch the framework changing
-     * this layout underneath us.
+     * {@see self::remaining()} for many keys in one cache round trip (an MGET on Redis) instead of
+     * one `availableIn()` per key, since list payloads resolve a countdown per row. It reads the
+     * same `:timer` entries from the same limiter store `availableIn()` reads; CooldownTest pins
+     * that equivalence.
      *
      * @param  array<int, string>  $keys
      * @return array<string, int|null>  Keyed by the original key.
@@ -96,7 +91,9 @@ final readonly class Cooldown
             $timerKeys[$key] = RateLimiter::cleanRateLimiterKey($key).':timer';
         }
 
-        $availableAt = Cache::driver(config('cache.limiter'))->many(array_values($timerKeys));
+        $limiterStore = config('cache.limiter');
+        assert($limiterStore === null || is_string($limiterStore));
+        $availableAt = Cache::driver($limiterStore)->many(array_values($timerKeys));
         $now = Carbon::now()->getTimestamp();
 
         $remaining = [];

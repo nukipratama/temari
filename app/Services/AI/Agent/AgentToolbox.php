@@ -32,7 +32,7 @@ final readonly class AgentToolbox
      * The Responses API tool declarations. Function tools are flat there — name
      * and parameters sit on the tool object itself, not under a `function` key.
      *
-     * @return list<array<string, mixed>>
+     * @return list<array{type: string, name: string, description: string, parameters: array<string, mixed>, strict: bool}>
      */
     public function definitions(): array
     {
@@ -52,7 +52,7 @@ final readonly class AgentToolbox
     public function invoke(string $name, string $argumentsJson): string
     {
         $tool = $this->find($name);
-        if ($tool === null) {
+        if (!$tool instanceof AgentTool) {
             return self::encode(['error' => "unknown tool: {$name}"]);
         }
 
@@ -86,12 +86,9 @@ final readonly class AgentToolbox
     }
 
     /**
-     * Serialise a reading, leaving out everything the run has no answer for. A
-     * null key is dropped entirely (a reading with nothing to report comes back
-     * as `{}`); every tool description says what a MISSING field means, never
-     * what a null one does — that wording is the contract, do not strip a null
-     * key without updating it. Empty arrays survive: `[]` is itself an answer
-     * ("no zones recorded"), unlike a missing key.
+     * Serialise a reading, leaving out everything the run has no answer for. A null key is dropped
+     * entirely; every tool description says what a MISSING field means, so do not strip a null key
+     * without updating them. Empty arrays survive: `[]` is itself an answer.
      *
      * @param  array<string, mixed>  $payload
      */

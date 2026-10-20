@@ -26,9 +26,9 @@ class PushSubscriptionController extends Controller
         /** @var User $user */
         $user = $request->user();
         $save = fn () => $user->updatePushSubscription(
-            (string) $request->input('endpoint'),
-            (string) $request->input('keys.p256dh'),
-            (string) $request->input('keys.auth'),
+            $request->string('endpoint')->toString(),
+            $request->string('keys.p256dh')->toString(),
+            $request->string('keys.auth')->toString(),
         );
 
         try {

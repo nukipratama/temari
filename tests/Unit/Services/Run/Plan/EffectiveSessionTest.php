@@ -14,6 +14,7 @@ use App\Enums\IntentVerdict;
 use App\Models\ActivityDetail;
 use App\Services\Run\Plan\SessionIntentJudge;
 
+/** @param  array<string, mixed>  $attributes */
 function effectiveRow(array $attributes): PlannedSession
 {
     return new PlannedSession()->forceFill($attributes);
@@ -31,15 +32,15 @@ it('uses the known current marathon band and context when composing an older thr
         ]]],
     ]), 8.0);
     $paces = ['easy' => 360, 'marathon' => 330, 'threshold' => 270, 'interval' => 240];
-    $segments = SegmentGenerator::forPrescription(SessionType::Tempo, PlanPhase::Build, $effective->coreKm, $paces, $effective->qualityPrescription());
+    $segments = SegmentGenerator::forPrescription(SessionType::Tempo, PlanPhase::Build, $effective->coreKm, $paces, nonNull($effective->qualityPrescription()));
     $run = new ActivityDetail()->forceFill(['distance' => 8000, 'elapsed_time' => 3600,
         'stream_summary' => ['time_in_zone_min' => ['Z1' => 0, 'Z2' => 48, 'Z3' => 12, 'Z4' => 0, 'Z5' => 0]],
     ]);
-    $main = array_find($segments, static fn (SessionSegment $segment): bool => $segment->key === SegmentKey::Main);
+    $main = nonNull(array_find($segments, static fn (SessionSegment $segment): bool => $segment->key === SegmentKey::Main));
     expect(SessionIntentJudge::judge(SessionType::Tempo, $segments, $paces, [$run])['verdict'])->toBe(IntentVerdict::Hit)
         ->and($main->paceLabel)->toBe(PaceBand::Marathon)
         ->and($main->zone)->toBe('Z3')
-        ->and($effective->qualityPrescription()->raceContext)->toEqual($context);
+        ->and(nonNull($effective->qualityPrescription())->raceContext)->toEqual($context);
 });
 
 it('preserves recorded modern distance when historical core reconstruction changes', function (): void {
@@ -74,7 +75,7 @@ it('composes a saved readiness dose with a tighter base workload cap', function 
         PlanPhase::Build,
         $effective->coreKm,
         ['easy' => 360, 'marathon' => 300, 'threshold' => 280, 'interval' => 240],
-        $effective->qualityPrescription()
+        nonNull($effective->qualityPrescription())
     );
     expect(array_sum(array_map(static fn (SessionSegment $segment): float => $segment->key === SegmentKey::Main ? ($segment->minutes ?? 0.0) : 0.0, $segments)))->toBe(12.0);
 });

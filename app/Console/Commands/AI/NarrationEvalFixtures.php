@@ -21,6 +21,7 @@ use App\Services\AI\Narrators\ProfileVoiceNarrator;
 use App\Services\AI\Narrators\RunInsightNarrator;
 use App\Services\Run\Metrics\PaceCalculator;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
 use RuntimeException;
 
@@ -68,13 +69,15 @@ final readonly class NarrationEvalFixtures
     public static function loadDirection(array $evidence): array
     {
         $forbidden = [self::RETIRED_LOAD_NAMES];
-        $balance = $evidence['get_training_load']['training_load']['load_balance'] ?? null;
+        $balance = Arr::get($evidence, 'get_training_load.training_load.load_balance');
 
         if ($balance === 'heavy') {
-            array_push($forbidden, '\bfresh\b', '\brested\b');
+            $forbidden[] = '\bfresh\b';
+            $forbidden[] = '\brested\b';
         }
         if ($balance === 'fresh') {
-            array_push($forbidden, '\bheavy\b', '\boverloaded\b');
+            $forbidden[] = '\bheavy\b';
+            $forbidden[] = '\boverloaded\b';
         }
 
         return ['required' => [], 'forbidden' => $forbidden];
@@ -182,7 +185,7 @@ final readonly class NarrationEvalFixtures
         return [
             new NarrationEvalFixture('profile_voice', 'progression_direction', function () use ($demo): array {
                 $evidence = self::evidenceOf($this->profile->context($demo), $this->profile->toolbox($demo));
-                $relation = $evidence['get_progression_signal']['progression_signal']['relation'] ?? null;
+                $relation = Arr::get($evidence, 'get_progression_signal.progression_signal.relation');
                 $direction = match ($relation) {
                     'faster' => ['required' => [], 'forbidden' => ['\b(?:slower|slipp\w*|regress\w*|declin\w*|worse|backwards)\b']],
                     'slower' => ['required' => [], 'forbidden' => ['\b(?:improv\w*|faster|quicker|gain\w*)\b']],
@@ -291,8 +294,8 @@ final readonly class NarrationEvalFixtures
     }
 
     /**
-     * @param  array<string, mixed>  $summary
-     * @return array<string, mixed>
+     * @param  array<array-key, mixed>  $summary
+     * @return array<array-key, mixed>
      */
     private static function withoutHeartRateKeys(array $summary): array
     {

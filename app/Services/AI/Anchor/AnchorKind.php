@@ -5,14 +5,11 @@ declare(strict_types=1);
 namespace App\Services\AI\Anchor;
 
 /**
- * The namespace a citation anchor lives in. An anchor is `<kind>:<value>` —
- * `split:4`, `zone:z3`, `metric:decoupling`, `session:today`.
+ * The namespace a citation anchor lives in. An anchor is `<kind>:<value>`: `split:4`, `zone:z3`,
+ * `metric:decoupling`, `session:today`.
  *
- * The grammar is defined once here and exported to TypeScript through
- * `artisan typescript:enums`, because both sides need it: the server decides
- * whether an anchor resolves against the subject's data, and the client decides
- * which element draws it. They used to hold separate regexes for the same
- * grammar with nothing keeping them honest.
+ * The grammar is defined once here and exported to TypeScript through `artisan typescript:enums`,
+ * because the server resolves anchors and the client draws them.
  */
 enum AnchorKind: string
 {
@@ -26,11 +23,9 @@ enum AnchorKind: string
     case Metric = 'metric';
 
     /**
-     * The session the plan prescribed. `today` is the only legal value: the
-     * briefing is a today-scoped block by construction, and the week grid's
-     * other six days have no narrator citing them yet. A slice that needs one
-     * widens the pattern then, the way this kind was added rather than
-     * speculated in S1.
+     * The session the plan prescribed. `today` is the only legal value: the briefing is a
+     * today-scoped block by construction, and the week grid's other six days have no narrator
+     * citing them yet.
      */
     case Session = 'session';
 

@@ -32,6 +32,8 @@ use Illuminate\Support\Carbon;
 
 uses(RefreshDatabase::class);
 
+const SHOWN_PACES = ['easy' => 400, 'marathon' => 340, 'threshold' => 310, 'interval' => 285];
+
 it('grades the shown target rather than a later reconstructed distance', function (): void {
     $user = User::factory()->create();
     $row = scorerDay($user, '2026-10-01');
@@ -46,10 +48,11 @@ it('grades the shown target rather than a later reconstructed distance', functio
     ]);
     $verdict = app(ComplianceScorer::class)->verdictsFor($user, new Collection([$row]), Carbon::parse('2026-10-02'))['2026-10-01'];
     expect($verdict['prescribed_km'])->toBe(6.0)->and($verdict['distance_score'])->toBe(100)
-        ->and($verdict['intent']['evidence']['recommendation_revision_id'])->toBe($revision->id);
+        ->and(nonNull($verdict['intent'])['evidence']['recommendation_revision_id'])->toBe($revision->id);
     Carbon::setTestNow();
 });
 
+/** @param  array<string, mixed>  $attributes */
 function scorerDay(User $user, string $date, array $attributes = []): PlannedSession
 {
     return PlannedSession::factory()->for($user)->create([
@@ -189,14 +192,13 @@ it('measures a day against the baseline as it stood that day, not against today\
 });
 
 /**
- * The bug this closes: an athlete told at 00:01 to run an eased 3.6 instead of
- * the 5.9 tempo on the board, who obeys, was graded 3.6/5.9 = 61% and landed on
- * `partial` for following the app's own advice.
+ * An athlete told at 00:01 to run an eased 3.6 instead of the 5.9 tempo on the
+ * board, who obeys, must not be graded 3.6/5.9 = 61% and land on `partial`.
  */
 it('grades a clamped day against the eased distance it actually asked for', function (): void {
     $user = User::factory()->create();
     // 1.2 against a stored tempo ask of ~3.4 is 35% — `partial` — without the
-    // substitution, which is exactly the shape of the reported bug.
+    // substitution.
     $row = scorerDay($user, '2026-08-05', [
         'session_type' => SessionType::Tempo,
         'clamped_km' => 1.2,
@@ -306,7 +308,7 @@ function everyWindowAt(int $secPerKm): array
         ->all();
 }
 
-/** @return array<string, mixed> */
+/** @return array{status: PlannedSessionStatus, score: int|null, ran_anyway: bool, distance_score: int|null, prescribed_km: float|null, intent: array{verdict: IntentVerdict, evidence: array<string, int|float|string>}|null} */
 function scorerVerdict(User $user, PlannedSession $row): array
 {
     return app(ComplianceScorer::class)->verdictsFor($user, PlannedSession::query()->whereKey($row->id)->get(), Carbon::parse('2026-08-20'))[$row->date->toDateString()];
@@ -319,8 +321,9 @@ it('grades a tempo eased to easy and run easy as intent hit, on distance alone',
     shownRun($user, '2026-08-05', 5.3, 2136, ['best_1min_pace' => '4:30']);
 
     $verdict = scorerVerdict($user, $row);
+    $intent = nonNull($verdict['intent']);
 
-    expect($verdict['intent']['verdict'])->toBe(IntentVerdict::Hit)
+    expect($intent['verdict'])->toBe(IntentVerdict::Hit)
         ->and($verdict['status'])->toBe(PlannedSessionStatus::Partial)
         ->and($verdict['score'])->toBe(83)
         ->and($verdict['distance_score'])->toBe(83);
@@ -336,8 +339,9 @@ it('grades a long day eased to an easy run as done when split across two runs', 
     shownRun($user, '2026-08-05', 3.6, 1440, [], '17:00:00');
 
     $verdict = scorerVerdict($user, $row);
+    $intent = nonNull($verdict['intent']);
 
-    expect($verdict['intent']['verdict'])->toBe(IntentVerdict::Hit)
+    expect($intent['verdict'])->toBe(IntentVerdict::Hit)
         ->and($verdict['status'])->toBe(PlannedSessionStatus::Done)
         ->and($verdict['distance_score'])->toBe(119)
         ->and($verdict['prescribed_km'])->toBe(6.8);
@@ -399,7 +403,7 @@ it('persists the intent verdict and its evidence beside the grade', function ():
     app(ComplianceScorer::class)->creditIfEarned($user, Carbon::parse('2026-08-05'), Carbon::parse('2026-08-05'));
 
     expect($row->refresh()->intent_verdict)->toBe(IntentVerdict::TooHard)
-        ->and($row->intent_evidence)->toBeArray()->not->toBeEmpty();
+        ->and($row->intent_evidence)->not->toBeEmpty()->toBeArray();
 });
 
 /** A day the day the plan never judges (no intent to fold in) persists none. */
@@ -413,8 +417,6 @@ it('persists no intent verdict for a day never credited', function (): void {
     expect($row->refresh()->intent_verdict)->toBeNull()
         ->and($row->intent_evidence)->toBeNull();
 });
-
-const SHOWN_PACES = ['easy' => 400, 'marathon' => 340, 'threshold' => 310, 'interval' => 285];
 
 /** @return list<array<string, mixed>> */
 function shownTempoSegments(float $blockMinutes = 20.0): array
@@ -491,13 +493,15 @@ it('reads a controlled tempo that exceeded advice eased for a mild concern as th
     shownRun($user, '2026-08-05', 8.0, 2800, controlledTempoSummary());
 
     $verdict = scorerVerdict($user, $row);
+    $intent = nonNull($verdict['intent']);
 
-    expect($verdict['intent']['verdict'])->toBe(IntentVerdict::TooHard)
+    expect($intent['verdict'])->toBe(IntentVerdict::TooHard)
         ->and($verdict['status'])->toBe(PlannedSessionStatus::Overreached)
-        ->and($verdict['intent']['evidence'])->toMatchArray([
+        ->and($intent['evidence'])->toMatchArray([
             'advice_history' => 'shown', 'eased_from' => 'tempo', 'concern' => 'mild', 'original_completed' => 'controlled',
             'stimulus_family' => 'tempo', 'stimulus_minutes' => 20.0, 'stimulus_source' => 'window',
-        ])->not->toHaveKey('quality_progression');
+        ])
+        ->and($intent['evidence'])->not->toHaveKey('quality_progression');
 });
 
 it('keeps a strong recovery concern distinct when the eased session was run hard anyway', function (string $ceiling, string $reason): void {
@@ -506,7 +510,7 @@ it('keeps a strong recovery concern distinct when the eased session was run hard
     showAdvice($user, '2026-08-05', shownTempoOriginal(), shownEasyEffective($ceiling, [$reason]));
     shownRun($user, '2026-08-05', 8.0, 2800, controlledTempoSummary());
 
-    expect(scorerVerdict($user, $row)['intent']['evidence'])->toMatchArray(['eased_from' => 'tempo', 'concern' => 'strong', 'original_completed' => 'controlled']);
+    expect(nonNull(scorerVerdict($user, $row)['intent'])['evidence'])->toMatchArray(['eased_from' => 'tempo', 'concern' => 'strong', 'original_completed' => 'controlled']);
 })->with([
     'severe fatigue' => ['easy_only', 'severe_fatigue_or_soreness_reported'],
     'pain' => ['rest', 'concerning_pain_reported'],
@@ -519,7 +523,7 @@ it('treats a severe reason under a ceiling that still allowed moderate work as a
     showAdvice($user, '2026-08-05', shownTempoOriginal(), shownEasyEffective('moderate_ok', ['severe_fatigue_or_soreness_reported']));
     shownRun($user, '2026-08-05', 8.0, 2800, controlledTempoSummary());
 
-    expect(scorerVerdict($user, $row)['intent']['evidence']['concern'])->toBe('mild');
+    expect(nonNull(scorerVerdict($user, $row)['intent'])['evidence']['concern'])->toBe('mild');
 });
 
 it('does not count an eased tempo run easy toward quality progression', function (): void {
@@ -529,10 +533,11 @@ it('does not count an eased tempo run easy toward quality progression', function
     shownRun($user, '2026-08-05', 6.4, 2580);
 
     $verdict = scorerVerdict($user, $row);
+    $intent = nonNull($verdict['intent']);
 
-    expect($verdict['intent']['verdict'])->toBe(IntentVerdict::Hit)
-        ->and($verdict['intent']['evidence'])->toMatchArray(['eased_from' => 'tempo', 'concern' => 'mild', 'stimulus_family' => 'easy'])
-        ->not->toHaveKeys(['quality_progression', 'original_completed']);
+    expect($intent['verdict'])->toBe(IntentVerdict::Hit)
+        ->and($intent['evidence'])->toMatchArray(['eased_from' => 'tempo', 'concern' => 'mild', 'stimulus_family' => 'easy'])
+        ->and($intent['evidence'])->not->toHaveKeys(['quality_progression', 'original_completed']);
 });
 
 it('reads self-added hard work on an easy day as an unplanned hard effort that teaches no quality', function (): void {
@@ -544,10 +549,11 @@ it('reads self-added hard work on an easy day as an unplanned hard effort that t
     shownRun($user, '2026-08-05', 6.4, 2100, ['easy_cap_bpm' => 150, 'over_easy_cap_sec' => 1380]);
 
     $verdict = scorerVerdict($user, $row);
+    $intent = nonNull($verdict['intent']);
 
-    expect($verdict['intent']['verdict'])->toBe(IntentVerdict::TooHard)
-        ->and($verdict['intent']['evidence'])->toMatchArray(['concern' => 'none', 'stimulus_family' => 'hard', 'stimulus_minutes' => 23.0])
-        ->not->toHaveKeys(['eased_from', 'quality_progression']);
+    expect($intent['verdict'])->toBe(IntentVerdict::TooHard)
+        ->and($intent['evidence'])->toMatchArray(['concern' => 'none', 'stimulus_family' => 'hard', 'stimulus_minutes' => 23.0])
+        ->and($intent['evidence'])->not->toHaveKeys(['eased_from', 'quality_progression']);
 });
 
 it('marks a heart-rate verdict as resting on estimated zones until the athlete measures or syncs them', function (?string $source, bool $estimated): void {
@@ -561,7 +567,7 @@ it('marks a heart-rate verdict as resting on estimated zones until the athlete m
     ]);
     shownRun($user, '2026-08-05', 6.4, 2100, ['easy_cap_bpm' => 150, 'over_easy_cap_sec' => 1380]);
 
-    $evidence = scorerVerdict($user, $row)['intent']['evidence'];
+    $evidence = nonNull(scorerVerdict($user, $row)['intent'])['evidence'];
 
     expect($evidence['stimulus_source'])->toBe('heart_rate')
         ->and(($evidence['zones'] ?? null) === 'estimated')->toBe($estimated);
@@ -583,7 +589,7 @@ it('grades an easy day on the heart-rate cap alone once the athlete has zones of
     ]);
     shownRun($user, '2026-08-05', 6.0, 3000, ['easy_cap_bpm' => 150, 'over_easy_cap_sec' => 900]);
 
-    expect(scorerVerdict($user, $row)['intent']['verdict'])->toBe($expected);
+    expect(nonNull(scorerVerdict($user, $row)['intent'])['verdict'])->toBe($expected);
 })->with([
     'config default zones keep pace first' => [null, IntentVerdict::Hit],
     'observed zones are capped' => ['observed', IntentVerdict::TooHard],
@@ -602,11 +608,11 @@ it('grades a mildly eased quality day against the slowed pace it was shown', fun
     ]);
     shownRun($user, '2026-08-05', 8.0, 2800, ['best_20min_pace' => $bestPace]);
 
-    $intent = scorerVerdict($user, $row)['intent'];
+    $intent = nonNull(scorerVerdict($user, $row)['intent']);
 
     expect($intent['verdict'])->toBe($expected)
         ->and($intent['evidence'])->toMatchArray(['target_pace_sec' => 319, 'concern' => 'none'])
-        ->not->toHaveKey('eased_from');
+        ->and($intent['evidence'])->not->toHaveKey('eased_from');
 })->with([
     'inside the slowed tolerance, outside the original' => ['5:27', IntentVerdict::Hit],
     'outside the slowed tolerance' => ['5:31', IntentVerdict::Missed],
@@ -621,9 +627,10 @@ it('marks a shown quality session graded on complete evidence as eligible to tea
     shownRun($user, '2026-08-05', 8.0, 2800, $summary);
 
     $verdict = scorerVerdict($user, $row);
+    $intent = nonNull($verdict['intent']);
 
-    expect($verdict['intent']['verdict'])->toBe($expected)
-        ->and($verdict['intent']['evidence'])->toMatchArray(['concern' => 'none', 'quality_progression' => 'eligible']);
+    expect($intent['verdict'])->toBe($expected)
+        ->and($intent['evidence'])->toMatchArray(['concern' => 'none', 'quality_progression' => 'eligible']);
 })->with([
     'controlled hit' => [controlledTempoSummary(), IntentVerdict::Hit],
     'complete miss' => [['best_20min_pace' => '6:35'], IntentVerdict::Missed],
@@ -639,11 +646,12 @@ it('keeps a shown quality day with unknown intent informational and out of progr
     shownRun($user, '2026-08-05', 8.0, 2800);
 
     $verdict = scorerVerdict($user, $row);
+    $intent = nonNull($verdict['intent']);
 
-    expect($verdict['intent']['verdict'])->toBe(IntentVerdict::Unknown)
+    expect($intent['verdict'])->toBe(IntentVerdict::Unknown)
         ->and($verdict['status'])->toBe(PlannedSessionStatus::Done)
         ->and($verdict['distance_score'])->toBe(100)
-        ->and($verdict['intent']['evidence'])->not->toHaveKey('quality_progression');
+        ->and($intent['evidence'])->not->toHaveKey('quality_progression');
 });
 
 it('keeps verified distance and an unknown intent when no advice was shown', function (): void {
@@ -654,9 +662,10 @@ it('keeps verified distance and an unknown intent when no advice was shown', fun
     scorerPacedRun($user, '2026-08-05', $askedKm, 450, everyWindowAt(450));
 
     $verdict = scorerVerdict($user, $row);
+    $intent = nonNull($verdict['intent']);
 
-    expect($verdict['intent']['verdict'])->toBe(IntentVerdict::Unknown)
-        ->and($verdict['intent']['evidence'])->toBe(['advice_history' => 'unknown'])
+    expect($intent['verdict'])->toBe(IntentVerdict::Unknown)
+        ->and($intent['evidence'])->toBe(['advice_history' => 'unknown'])
         ->and($verdict['status'])->toBe(PlannedSessionStatus::Done)
         ->and($verdict['distance_score'])->toBe(100);
 });
@@ -671,10 +680,11 @@ it('judges a multi-activity day on its longest run and gives unknown intent when
     shownRun($user, '2026-08-05', 3.0, 720, ['time_in_zone_min' => ['Z1' => 1, 'Z2' => 2, 'Z3' => 2, 'Z4' => 8, 'Z5' => 0]], '17:00:00');
 
     $verdict = scorerVerdict($user, $row);
+    $intent = nonNull($verdict['intent']);
 
-    expect($verdict['intent']['verdict'])->toBe(IntentVerdict::Unknown)
-        ->and($verdict['intent']['evidence'])->toMatchArray(['stimulus_family' => 'tempo', 'stimulus_minutes' => 18.0])
-        ->not->toHaveKey('quality_progression');
+    expect($intent['verdict'])->toBe(IntentVerdict::Unknown)
+        ->and($intent['evidence'])->toMatchArray(['stimulus_family' => 'tempo', 'stimulus_minutes' => 18.0])
+        ->and($intent['evidence'])->not->toHaveKey('quality_progression');
 });
 
 it('rewrites revised intent evidence at an equal distance score without touching the earned score', function (): void {
@@ -753,10 +763,11 @@ it('does not read an easy run as the original completed when the eased session w
     shownRun($user, '2026-08-05', 6.4, 2580);
 
     $verdict = scorerVerdict($user, $row);
+    $intent = nonNull($verdict['intent']);
 
-    expect($verdict['intent']['verdict'])->toBe(IntentVerdict::Hit)
-        ->and($verdict['intent']['evidence'])->toMatchArray(['eased_from' => 'long', 'stimulus_family' => 'easy'])
-        ->not->toHaveKeys(['original_completed', 'quality_progression']);
+    expect($intent['verdict'])->toBe(IntentVerdict::Hit)
+        ->and($intent['evidence'])->toMatchArray(['eased_from' => 'long', 'stimulus_family' => 'easy'])
+        ->and($intent['evidence'])->not->toHaveKeys(['original_completed', 'quality_progression']);
 });
 
 it('grades a time trial on its distance and the trial gate, never on its pace segments', function (int $trialSecPerKm, IntentVerdict $intent, PlannedSessionStatus $status, string $gate): void {
@@ -772,10 +783,11 @@ it('grades a time trial on its distance and the trial gate, never on its pace se
     scorerPacedRun($user, '2026-08-05', 5.0, $trialSecPerKm, everyWindowAt($trialSecPerKm));
 
     $verdict = scorerVerdict($user, $row);
+    $judged = nonNull($verdict['intent']);
 
     expect($verdict['prescribed_km'])->toBe(5.0)
-        ->and($verdict['intent']['verdict'])->toBe($intent)
-        ->and($verdict['intent']['evidence'])->toMatchArray(['time_trial' => $gate, 'effective_type' => 'interval'])
+        ->and($judged['verdict'])->toBe($intent)
+        ->and($judged['evidence'])->toMatchArray(['time_trial' => $gate, 'effective_type' => 'interval'])
         ->and($verdict['status'])->toBe($status);
 })->with([
     'much faster than the aim' => [250, IntentVerdict::Hit, PlannedSessionStatus::Done, 'pace'],
@@ -799,9 +811,10 @@ it('grades a warmup and trial recorded as one run by its trial split, crediting 
     scorerPacedRun($user, '2026-08-05', 7.0, 321, ['per_km' => $perKm]);
 
     $verdict = scorerVerdict($user, $row);
+    $intent = nonNull($verdict['intent']);
 
-    expect($verdict['intent']['verdict'])->toBe(IntentVerdict::Hit)
-        ->and($verdict['intent']['evidence'])->toMatchArray(['time_trial' => 'pace', 'time_trial_read' => 'split'])
+    expect($intent['verdict'])->toBe(IntentVerdict::Hit)
+        ->and($intent['evidence'])->toMatchArray(['time_trial' => 'pace', 'time_trial_read' => 'split'])
         ->and($verdict['status'])->toBe(PlannedSessionStatus::Done);
 });
 
@@ -830,13 +843,14 @@ it('grades a made-up day against the moved session, not the rest it was shown th
     shownRun($user, '2026-08-05', $askedKm, (int) round($askedKm * $paces['easy']), everyWindowAt($paces['easy']));
 
     $verdict = scorerVerdict($user, $target);
+    $intent = nonNull($verdict['intent']);
 
     expect($askedKm)->toBeGreaterThan(0.0)
         ->and($verdict['status'])->toBe(PlannedSessionStatus::Done)
         ->and($verdict['distance_score'])->toBe(100)
-        ->and($verdict['intent']['verdict'])->toBe(IntentVerdict::Hit)
-        ->and($verdict['intent']['evidence'])->toMatchArray(['advice_history' => 'declared_after_run', 'effective_type' => 'easy'])
-        ->and($verdict['intent']['evidence'])->not->toHaveKey('quality_progression');
+        ->and($intent['verdict'])->toBe(IntentVerdict::Hit)
+        ->and($intent['evidence'])->toMatchArray(['advice_history' => 'declared_after_run', 'effective_type' => 'easy'])
+        ->and($intent['evidence'])->not->toHaveKey('quality_progression');
 });
 
 it('keeps a made-up quality session out of progression even when it hit', function (): void {
@@ -847,10 +861,11 @@ it('keeps a made-up quality session out of progression even when it hit', functi
     scorerPacedRun($user, '2026-08-05', $askedKm, $paces['threshold'], everyWindowAt($paces['threshold']) + ['time_in_zone_min' => ['Z1' => 0, 'Z2' => 10, 'Z3' => 5, 'Z4' => 30, 'Z5' => 20]]);
 
     $verdict = scorerVerdict($user, $target);
+    $intent = nonNull($verdict['intent']);
 
-    expect($verdict['intent']['verdict'])->toBe(IntentVerdict::Hit)
-        ->and($verdict['intent']['evidence'])->toMatchArray(['advice_history' => 'declared_after_run', 'effective_type' => 'tempo'])
-        ->and($verdict['intent']['evidence'])->not->toHaveKey('quality_progression');
+    expect($intent['verdict'])->toBe(IntentVerdict::Hit)
+        ->and($intent['evidence'])->toMatchArray(['advice_history' => 'declared_after_run', 'effective_type' => 'tempo'])
+        ->and($intent['evidence'])->not->toHaveKey('quality_progression');
 });
 
 it('grades a session made up onto a day still ahead on the advice shown before its run', function (): void {
@@ -862,9 +877,10 @@ it('grades a session made up onto a day still ahead on the advice shown before i
     shownRun($user, '2026-08-05', 8.0, 2800, controlledTempoSummary());
 
     $verdict = scorerVerdict($user, $target);
+    $intent = nonNull($verdict['intent']);
 
-    expect($verdict['intent']['verdict'])->toBe(IntentVerdict::Hit)
-        ->and($verdict['intent']['evidence'])->toMatchArray([
+    expect($intent['verdict'])->toBe(IntentVerdict::Hit)
+        ->and($intent['evidence'])->toMatchArray([
             'advice_history' => 'shown',
             'recommendation_revision_id' => $revision->id,
             'quality_progression' => 'eligible',
@@ -890,9 +906,10 @@ it('keeps a make-up declared after the run when the moved session was shown only
     }
 
     $verdict = scorerVerdict($user, $target);
+    $intent = nonNull($verdict['intent']);
 
-    expect($verdict['intent']['evidence'])->toMatchArray(['advice_history' => 'declared_after_run', 'effective_type' => 'tempo'])
-        ->and($verdict['intent']['evidence'])->not->toHaveKeys(['quality_progression', 'recommendation_revision_id']);
+    expect($intent['evidence'])->toMatchArray(['advice_history' => 'declared_after_run', 'effective_type' => 'tempo'])
+        ->and($intent['evidence'])->not->toHaveKeys(['quality_progression', 'recommendation_revision_id']);
 })->with([
     'run before the move was shown' => [[[8.0, '06:00:00']]],
     'a short run before, the long one after' => [[[3.0, '06:00:00'], [8.0, '18:00:00']]],
@@ -912,10 +929,11 @@ it('judges a made-up time trial on its gate and tags it declared after the run',
     scorerPacedRun($user, '2026-08-05', 5.0, 250, everyWindowAt(250));
 
     $verdict = scorerVerdict($user, $target);
+    $intent = nonNull($verdict['intent']);
 
-    expect($verdict['intent']['verdict'])->toBe(IntentVerdict::Hit)
-        ->and($verdict['intent']['evidence'])->toMatchArray(['time_trial' => 'pace', 'advice_history' => 'declared_after_run'])
-        ->and($verdict['intent']['evidence'])->not->toHaveKey('quality_progression');
+    expect($intent['verdict'])->toBe(IntentVerdict::Hit)
+        ->and($intent['evidence'])->toMatchArray(['time_trial' => 'pace', 'advice_history' => 'declared_after_run'])
+        ->and($intent['evidence'])->not->toHaveKey('quality_progression');
 });
 
 it('grades a missed tempo made up on an easy run as missed on intent', function (): void {
@@ -926,8 +944,9 @@ it('grades a missed tempo made up on an easy run as missed on intent', function 
     scorerPacedRun($user, '2026-08-05', $askedKm, $paces['easy'], everyWindowAt($paces['easy']));
 
     $verdict = scorerVerdict($user, $target);
+    $intent = nonNull($verdict['intent']);
 
-    expect($verdict['intent']['verdict'])->toBe(IntentVerdict::Missed)
+    expect($intent['verdict'])->toBe(IntentVerdict::Missed)
         ->and($verdict['status'])->toBe(PlannedSessionStatus::Partial);
 });
 
@@ -957,7 +976,7 @@ it('hands the judge the run\'s raw stream, so a block the laps never marked is s
     $velocity = array_map(static fn (int $second): float => 1000 / ($second >= 600 && $second < 1800 ? 305 : 420), $time);
     ActivityStream::query()->create(['activity_id' => $run->activity_id, 'data' => ['time' => ['data' => $time], 'velocity_smooth' => ['data' => $velocity]]]);
 
-    $intent = scorerVerdict($user, $row)['intent'];
+    $intent = nonNull(scorerVerdict($user, $row)['intent']);
 
     expect($intent['verdict'])->toBe(IntentVerdict::Hit)
         ->and($intent['evidence'])->toMatchArray(['block_source' => 'stream', 'block_paces' => '305']);

@@ -25,7 +25,7 @@ final readonly class StravaGrantReleaseService
         ?int $expectedCredentialVersion = null,
     ): ?StravaGrantReleaseResult {
         try {
-            return Cache::lock(
+            $released = Cache::lock(
                 StravaClient::refreshLockKey($stravaAthleteId),
                 StravaClient::REFRESH_LOCK_TTL_SECONDS,
             )->block(StravaClient::REFRESH_LOCK_TTL_SECONDS, function () use ($stravaAthleteId, $forced, $expectedCredentialVersion): ?StravaGrantReleaseResult {
@@ -52,6 +52,9 @@ final readonly class StravaGrantReleaseService
 
                 return $result;
             });
+            assert($released === null || $released instanceof StravaGrantReleaseResult);
+
+            return $released;
         } catch (LockTimeoutException) {
             return new StravaGrantReleaseResult(StravaGrantReleaseStatus::Failed, 'refresh lock busy');
         }

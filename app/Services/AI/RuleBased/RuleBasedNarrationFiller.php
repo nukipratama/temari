@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\AI\RuleBased;
 
+use Illuminate\Support\Collection;
 use App\Enums\Badge;
 use App\Enums\IntentVerdict;
 use App\Enums\PlannedSessionStatus;
@@ -31,20 +32,17 @@ use App\Services\Run\Metrics\TrainingFormStatus;
 use App\Services\Weather\WeatherSnapshot;
 
 /**
- * Rule-based content per AnalysisType. Reached in production, not only by the
- * demo seed:
- * - {@see \App\Listeners\DispatchPostRunAnalysis} for material past
- *   `ai.backfill_max_age_days`, and {@see \App\Services\AI\BackfillAgeGate} for
- *   a manual retry on the same
- * - {@see \App\Jobs\AI\AnalyzeRowJob} / {@see \App\Jobs\AI\AnalyzeGroupJob} when
- *   Azure content-filters a generation twice over
+ * Rule-based content per AnalysisType. Reached in production, not only by the demo seed:
+ *
+ * - {@see \App\Listeners\DispatchPostRunAnalysis} for material past `ai.backfill_max_age_days`, and
+ *   {@see \App\Services\AI\BackfillAgeGate} for a manual retry on the same
+ * - {@see \App\Jobs\AI\AnalyzeRowJob} / {@see \App\Jobs\AI\AnalyzeGroupJob} when Azure
+ *   content-filters a generation twice over
  * - the public demo account's triggers, and DemoSeedCommand's backfill
  *
- * Output is deterministic and Temari-voiced. Where the subject's real data is
- * available it drives the copy (run insight via {@see RuleBasedRunInsights}
- * so a seeded demo shows the run's real numbers), falling back to seeded
- * variants only when the subject row is missing. A "Reread" gets real LLM
- * output whenever the subject is inside the narration age cutoff.
+ * Output is deterministic and Temari-voiced. Where the subject's real data is available it drives
+ * the copy (run insight via {@see RuleBasedRunInsights}), falling back to seeded variants only when
+ * the subject row is missing.
  */
 final readonly class RuleBasedNarrationFiller
 {
@@ -86,7 +84,7 @@ final readonly class RuleBasedNarrationFiller
     {
         $date = $date->toDateString();
 
-        return $this->postRunBriefingFor($user->id, $date, $user->id + (int) crc32($date));
+        return $this->postRunBriefingFor($user->id, $date, $user->id + crc32($date));
     }
 
     /**
@@ -102,7 +100,7 @@ final readonly class RuleBasedNarrationFiller
             return $row->subject_id;
         }
 
-        return $row->subject_id + (int) crc32($row->discriminator);
+        return $row->subject_id + crc32($row->discriminator);
     }
 
 
@@ -143,7 +141,7 @@ final readonly class RuleBasedNarrationFiller
         $activities = Activity::query()
             ->where('user_id', $userId)
             ->detailed()
-            ->whereHas('detail', fn ($query) => $query->whereDate('start_date_local', $date))
+            ->whereHas('detail', fn ($query) => $query->startedOn($date))
             ->with('detail')
             ->get();
         if ($activities->isEmpty()) {
@@ -154,11 +152,12 @@ final readonly class RuleBasedNarrationFiller
             fn (Activity $activity): float => (float) $activity->detail?->distance,
         );
         $actualMeters = $distancesM->sum();
+        assert(is_float($actualMeters) || is_int($actualMeters));
         $actualKm = DistanceFormatter::km($actualMeters);
         $actual = DistanceFormatter::kmString($actualMeters) ?? '0.0';
         $planned = PlannedSession::query()
             ->where('user_id', $userId)
-            ->whereDate('date', $date)
+            ->where('date', $date)
             ->first();
         $plannedKm = $planned?->prescribed_km;
         if ($planned !== null && $plannedKm === null) {
@@ -177,7 +176,7 @@ final readonly class RuleBasedNarrationFiller
         $creditedKm = $planned === null ? null : round(SessionMatcher::creditedKm($planned->session_type, [
             'sum' => DistanceFormatter::km($actualMeters),
             'longest' => DistanceFormatter::km((float) $distancesM->max()),
-        ], TimeTrial::of($planned) !== null), 1);
+        ], TimeTrial::of($planned) instanceof TimeTrial), 1);
         $distanceLine = match (true) {
             $plannedKm === null => "{$actual} km logged, no plan for today",
             $plannedKm <= 0 => "{$actual} km logged on a planned rest day",
@@ -221,7 +220,7 @@ final readonly class RuleBasedNarrationFiller
     {
         $detail = $this->detailFor($activityId);
 
-        return $detail === null ? "Done. That one's in the log." : $this->postRunSpeechFor($detail, $activityId);
+        return $detail instanceof ActivityDetail ? $this->postRunSpeechFor($detail, $activityId) : "Done. That one's in the log.";
     }
 
     public function postRunSpeechFor(ActivityDetail $detail, int $activityId): string
@@ -230,8 +229,8 @@ final readonly class RuleBasedNarrationFiller
 
         // Two slots under separate salts: the History feed shows these side by
         // side, and one pool of whole sentences repeats verbatim within a screen.
-        $opener = strtr($this->select(self::POST_RUN_OPENERS, (int) crc32('post_run_speech_open_'.$activityId)), ['{km}' => $km]);
-        $closer = $this->select(self::POST_RUN_CLOSERS, (int) crc32('post_run_speech_close_'.$activityId));
+        $opener = strtr($this->select(self::POST_RUN_OPENERS, crc32('post_run_speech_open_'.$activityId)), ['{km}' => $km]);
+        $closer = $this->select(self::POST_RUN_CLOSERS, crc32('post_run_speech_close_'.$activityId));
 
         return $opener.' '.$closer.$this->postRunCoda($detail, $activityId);
     }
@@ -315,9 +314,9 @@ final readonly class RuleBasedNarrationFiller
     private function runInsight(int $activityId): string
     {
         $detail = $this->detailFor($activityId);
-        $claims = $detail === null ? [] : RuleBasedRunInsights::claims($detail);
+        $claims = $detail instanceof ActivityDetail ? RuleBasedRunInsights::claims($detail) : [];
 
-        return (string) json_encode($claims, JSON_THROW_ON_ERROR);
+        return json_encode($claims, JSON_THROW_ON_ERROR);
     }
 
     private function weeklyRecap(int $snapshotId): string
@@ -381,9 +380,10 @@ final readonly class RuleBasedNarrationFiller
             ->where('activities.user_id', $snapshot->user_id)
             ->whereNotNull('activity_details.trimp_edwards')
             ->min('activity_details.start_date_local');
+        assert($firstScored === null || is_string($firstScored));
 
         return $firstScored !== null
-            && $snapshot->week_ending->toDateString() >= Carbon::parse((string) $firstScored)->addDays(TrainingLoad::CTL_TAU)->toDateString();
+            && $snapshot->week_ending->toDateString() >= Carbon::parse($firstScored)->addDays(TrainingLoad::CTL_TAU)->toDateString();
     }
 
     /**
@@ -393,13 +393,14 @@ final readonly class RuleBasedNarrationFiller
      */
     private function usualWeeklyKm(WeeklySnapshot $snapshot): ?float
     {
-        $distances = WeeklySnapshot::query()
+        /** @var Collection<int, float|null> $priorDistances */
+        $priorDistances = WeeklySnapshot::query()
             ->where('user_id', $snapshot->user_id)
             ->where('week_ending', '<', $snapshot->week_ending)
             ->orderByDesc('week_ending')
             ->limit(6)
-            ->pluck('distance_km')
-            ->filter(fn (?float $km): bool => $km !== null);
+            ->pluck('distance_km');
+        $distances = $priorDistances->filter(fn (?float $km): bool => $km !== null);
 
         return $distances->isEmpty() ? null : (float) $distances->avg();
     }
@@ -455,7 +456,7 @@ final readonly class RuleBasedNarrationFiller
         // Fold the badge set into the base pick (not just the appended clause) so
         // two commons that differ only by badge don't also land on the identical
         // base sentence. Badgeless cards fold a constant, so they still vary by id.
-        $flavorSeed = $cardId + (int) crc32(implode(',', $card->badges ?? []));
+        $flavorSeed = $cardId + crc32(implode(',', $card->badges ?? []));
         $base = strtr($this->select($templates, $flavorSeed), ['{move}' => $move, '{km}' => (string) $km]);
         $badgeClause = $this->badgeClause($card->badges, $cardId);
 
@@ -611,9 +612,13 @@ final readonly class RuleBasedNarrationFiller
         $runs = $details->count();
         $runWord = $runs === 1 ? 'run' : 'runs';
         $sessionWord = $runs === 1 ? 'session' : 'sessions';
-        $totalKm = DistanceFormatter::km((float) $details->sum('distance'));
+        $totalDistance = $details->sum('distance');
+        assert(is_numeric($totalDistance));
+        $longestDistance = $details->max('distance');
+        assert($longestDistance === null || is_numeric($longestDistance));
+        $totalKm = DistanceFormatter::km((float) $totalDistance);
         $km = DecimalFormatter::decimal($totalKm);
-        $longestKm = DistanceFormatter::kmString((float) $details->max('distance'));
+        $longestKm = DistanceFormatter::kmString((float) $longestDistance);
         $usualKm = $this->usualMonthlyKm($userId, $start);
         $closer = $usualKm === null
             ? 'no usual month yet to compare it with. this one sets the line.'

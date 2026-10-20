@@ -16,7 +16,7 @@ it('round-trips the streams array via the cast', function (): void {
     ];
     $stream = ActivityStream::factory()->create(['data' => $payload]);
 
-    expect($stream->fresh()->data)->toBe($payload);
+    expect($stream->refresh()->data)->toBe($payload);
 });
 
 it('belongs to one activity and enforces uniqueness', function (): void {

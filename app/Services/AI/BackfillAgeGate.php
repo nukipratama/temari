@@ -18,7 +18,7 @@ class BackfillAgeGate
     /** The oldest instant still narratable by the LLM. */
     public function cutoff(): Carbon
     {
-        return Carbon::now()->subDays((int) config('ai.backfill_max_age_days'));
+        return Carbon::now()->subDays(config()->integer('ai.backfill_max_age_days'));
     }
 
     /** The cutoff as the `Y-m-d` key a date-keyed subject compares against. */
@@ -35,11 +35,11 @@ class BackfillAgeGate
 
     public function isTooOld(?Carbon $startedAt): bool
     {
-        if ($startedAt === null) {
+        if (!$startedAt instanceof Carbon) {
             return false;
         }
 
-        return Carbon::now()->diffInDays($startedAt, absolute: true) >= (int) config('ai.backfill_max_age_days');
+        return Carbon::now()->diffInDays($startedAt, absolute: true) >= config()->integer('ai.backfill_max_age_days');
     }
 
     /**
@@ -90,6 +90,7 @@ class BackfillAgeGate
     private function runDateForCard(int $cardId): ?Carbon
     {
         $activityId = RunCard::query()->whereKey($cardId)->value('activity_id');
+        assert($activityId === null || is_numeric($activityId));
 
         return $activityId === null ? null : $this->runDate((int) $activityId);
     }

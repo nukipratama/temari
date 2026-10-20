@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
+import { defined } from '@/test/defined';
+
 import type { CalendarCell, CalendarCellRun } from './useCalendar';
 
 import {
@@ -48,19 +50,25 @@ function run(overrides: Partial<CalendarCellRun> = {}): CalendarCellRun {
 
 describe('hasRun / runCount / kmLabel', () => {
     it('is false for a null or zero distance', () => {
-        expect(hasRun(cellsFor([{ date: 'd', day: 1 }])[0])).toBe(false);
+        expect(hasRun(defined(cellsFor([{ date: 'd', day: 1 }])[0]))).toBe(
+            false,
+        );
         expect(
-            hasRun(cellsFor([{ date: 'd', day: 1, distance_km: 0 }])[0]),
+            hasRun(
+                defined(cellsFor([{ date: 'd', day: 1, distance_km: 0 }])[0]),
+            ),
         ).toBe(false);
     });
 
     it('counts runs from the breakdown, falling back to 1 for a thin one', () => {
-        const [thin] = cellsFor([{ date: 'd', day: 1, distance_km: 5 }]);
+        const [maybeThin] = cellsFor([{ date: 'd', day: 1, distance_km: 5 }]);
+        const thin = defined(maybeThin);
         expect(runCount(thin)).toBe(1);
 
-        const [multi] = cellsFor([
+        const [maybeMulti] = cellsFor([
             { date: 'd', day: 1, distance_km: 8, runs: [run(), run()] },
         ]);
+        const multi = defined(maybeMulti);
         expect(runCount(multi)).toBe(2);
     });
 
@@ -197,26 +205,29 @@ describe('consistencyOf', () => {
 
 describe('describeDay', () => {
     it('describes a run-less day', () => {
-        const [cell] = cellsFor([{ date: '2026-05-01', day: 1 }]);
+        const [maybeCell] = cellsFor([{ date: '2026-05-01', day: 1 }]);
+        const cell = defined(maybeCell);
         expect(describeDay(cell)).toBe('may 1: no run');
     });
 
     it('names today', () => {
-        const [cell] = cellsFor([
+        const [maybeCell] = cellsFor([
             { date: '2026-05-01', day: 1, is_today: true },
         ]);
+        const cell = defined(maybeCell);
         expect(describeDay(cell)).toBe('may 1 (today): no run');
     });
 
     it('describes a planned rest day', () => {
-        const [cell] = cellsFor([
+        const [maybeCell] = cellsFor([
             { date: '2026-05-01', day: 1, effort: 'rest' },
         ]);
+        const cell = defined(maybeCell);
         expect(describeDay(cell)).toBe('may 1: planned rest');
     });
 
     it('describes a single-run day with its distance and effort', () => {
-        const [cell] = cellsFor([
+        const [maybeCell] = cellsFor([
             {
                 date: '2026-05-01',
                 day: 1,
@@ -224,11 +235,12 @@ describe('describeDay', () => {
                 effort: 'steady',
             },
         ]);
+        const cell = defined(maybeCell);
         expect(describeDay(cell)).toBe('may 1: 8.4 km, steady');
     });
 
     it('leads with the run count on a multi-run day, ahead of the day total', () => {
-        const [cell] = cellsFor([
+        const [maybeCell] = cellsFor([
             {
                 date: '2026-09-24',
                 day: 24,
@@ -237,13 +249,14 @@ describe('describeDay', () => {
                 runs: [run({ effort: 'easy' }), run({ effort: 'hard' })],
             },
         ]);
+        const cell = defined(maybeCell);
         expect(describeDay(cell)).toBe('sep 24, 2 runs, 13.5 km');
     });
 });
 
 describe('barSegments', () => {
     it('gives a single-run day one segment from its own distance and effort', () => {
-        const [cell] = cellsFor([
+        const [maybeCell] = cellsFor([
             {
                 date: '2026-05-01',
                 day: 1,
@@ -252,13 +265,14 @@ describe('barSegments', () => {
                 runs: [run({ activity_id: 9, distance_km: 8, effort: 'hard' })],
             },
         ]);
+        const cell = defined(maybeCell);
         expect(barSegments(cell, 10)).toEqual([
             { activityId: 9, effort: 'hard', heightPct: 80 },
         ]);
     });
 
     it('gives a multi-run day one segment per run, in cell.runs order, each scaled against the grid max', () => {
-        const [cell] = cellsFor([
+        const [maybeCell] = cellsFor([
             {
                 date: '2026-05-01',
                 day: 1,
@@ -278,6 +292,7 @@ describe('barSegments', () => {
                 ],
             },
         ]);
+        const cell = defined(maybeCell);
         expect(barSegments(cell, 10)).toEqual([
             { activityId: 1, effort: 'easy', heightPct: 80 },
             { activityId: 2, effort: 'hard', heightPct: 40 },
@@ -285,7 +300,7 @@ describe('barSegments', () => {
     });
 
     it('floors every segment at the shared minimum height, even a zero-distance run', () => {
-        const [cell] = cellsFor([
+        const [maybeCell] = cellsFor([
             {
                 date: '2026-05-01',
                 day: 1,
@@ -297,6 +312,7 @@ describe('barSegments', () => {
                 ],
             },
         ]);
+        const cell = defined(maybeCell);
         expect(barSegments(cell, 10)[1]).toEqual({
             activityId: 2,
             effort: 'easy',
@@ -305,16 +321,18 @@ describe('barSegments', () => {
     });
 
     it('falls back to one segment from the day aggregate when the breakdown is thin', () => {
-        const [cell] = cellsFor([
+        const [maybeCell] = cellsFor([
             { date: '2026-05-01', day: 1, distance_km: 6, effort: 'steady' },
         ]);
+        const cell = defined(maybeCell);
         expect(barSegments(cell, 10)).toEqual([
             { activityId: 0, effort: 'steady', heightPct: 60 },
         ]);
     });
 
     it('gives a run-less day no segments', () => {
-        const [cell] = cellsFor([{ date: '2026-05-01', day: 1 }]);
+        const [maybeCell] = cellsFor([{ date: '2026-05-01', day: 1 }]);
+        const cell = defined(maybeCell);
         expect(barSegments(cell, 10)).toEqual([]);
     });
 });

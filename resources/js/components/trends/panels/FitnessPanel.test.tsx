@@ -2,6 +2,8 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import { createElement, useImperativeHandle, type Ref } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
+import { defined } from '@/test/defined';
+
 import FitnessPanel, {
     type FitnessChartAnnotations,
     type FitnessTrendPoint,
@@ -76,8 +78,8 @@ describe('FitnessPanel', () => {
 
         expect(await screen.findByTestId('line-chart')).toBeInTheDocument();
         expect(lastData!.datasets).toHaveLength(1);
-        expect(lastData!.datasets[0].label).toBe('long-term load');
-        expect(lastData!.datasets[0].data).toHaveLength(90);
+        expect(defined(lastData!.datasets[0]).label).toBe('long-term load');
+        expect(defined(lastData!.datasets[0]).data).toHaveLength(90);
     });
 
     it('re-slices the chart when a range chip is picked', async () => {
@@ -85,10 +87,10 @@ describe('FitnessPanel', () => {
         await screen.findByTestId('line-chart');
 
         fireEvent.click(screen.getByRole('button', { name: '1M' }));
-        expect(lastData!.datasets[0].data).toHaveLength(30);
+        expect(defined(lastData!.datasets[0]).data).toHaveLength(30);
 
         fireEvent.click(screen.getByRole('button', { name: '1Y' }));
-        expect(lastData!.datasets[0].data).toHaveLength(365);
+        expect(defined(lastData!.datasets[0]).data).toHaveLength(365);
     });
 
     it('disables the default tooltip box in favour of the scrub readout', async () => {
@@ -183,7 +185,7 @@ describe('FitnessPanel', () => {
         expect(
             screen.getByRole('img', {
                 name: new RegExp(
-                    `now at ${trend[trend.length - 1].ctl.toFixed(1)}`,
+                    `now at ${defined(trend.at(-1)).ctl.toFixed(1)}`,
                 ),
             }),
         ).toBeInTheDocument();

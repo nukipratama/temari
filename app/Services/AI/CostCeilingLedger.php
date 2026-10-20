@@ -9,13 +9,9 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 
 /**
- * Day-scoped record of the daily spend ceiling tripping: when it first tripped
- * and how much was served rule-based because of it, counting both narration
- * blocks and run-question answers. Keyed by date and cache-backed rather than
- * migrated, because it answers one operator question on /devtools/narration about the
- * current day, and the spend history it would duplicate already lives in
- * ai_token_usages. Each fill is also tallied by kind and athlete, so the day can
- * be broken down beyond the bare total.
+ * Day-scoped record of the daily spend ceiling tripping: when it first tripped and how much was
+ * served rule-based because of it, tallied by kind and athlete. Cache-backed and keyed by date
+ * rather than migrated, since the spend history already lives in ai_token_usages.
  */
 class CostCeilingLedger
 {
@@ -48,10 +44,12 @@ class CostCeilingLedger
     public function today(): array
     {
         $trippedAt = Cache::get($this->key('tripped_at'));
+        $fills = Cache::get($this->key('fills'), 0);
+        assert(is_numeric($fills));
 
         return [
             'trippedAt' => is_string($trippedAt) ? $trippedAt : null,
-            'degradedFills' => (int) Cache::get($this->key('fills'), 0),
+            'degradedFills' => (int) $fills,
             'degradedBreakdown' => array_values($this->breakdown()),
         ];
     }
@@ -59,6 +57,7 @@ class CostCeilingLedger
     /** @return array<string, array{kind: string, userId: int|null, count: int}> */
     private function breakdown(): array
     {
+        /** @var array<string, array{kind: string, userId: int|null, count: int}>|null $stored */
         $stored = Cache::get($this->key('breakdown'), []);
 
         return is_array($stored) ? $stored : [];

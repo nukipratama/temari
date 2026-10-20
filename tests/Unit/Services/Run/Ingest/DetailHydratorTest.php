@@ -61,6 +61,7 @@ it('does not queue a detail fetch it must not spend', function (string $owner, b
         'demo' => hydratableUser(isDemo: true),
         'revoked' => revokedUser(),
         'unconnected' => User::factory()->create(),
+        default => throw new InvalidArgumentException("Unknown owner {$owner}"),
     };
     $factory = Activity::factory()->for($user);
     $activity = ($summaryOnly ? $factory->summaryOnly() : $factory)->create($attributes);

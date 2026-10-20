@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Services\Run\Metrics\FallOffExponent;
 use Illuminate\Support\Carbon;
 
+/** @return array{date: Carbon, distance_m: float, time_sec: float} */
 function fallOffEffort(string $date, float $meters, float $seconds): array
 {
     return ['date' => Carbon::parse($date), 'distance_m' => $meters, 'time_sec' => $seconds];

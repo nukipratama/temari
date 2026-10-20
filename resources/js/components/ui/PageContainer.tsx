@@ -10,11 +10,8 @@ interface PageContainerProps {
 
 /**
  * Standard page shell: the single mobile column below 900px, the prototype's
- * centred 760px column above it, and a second step to 1040px at 1280px. The
- * first breakpoint is the prototype's own; the second is ours, because its
- * PhoneFrame never renders past the frame and so draws no reference for a
- * desktop width at all. Carries the shared `.reveal` entrance so pages stay a
- * one-line swap.
+ * centred 760px column above it, and a second step to 1040px at 1280px.
+ * Carries the shared `.reveal` entrance so pages stay a one-line swap.
  */
 const CONTAINER =
     'mx-auto w-full px-4 pb-6 pt-4 min-[900px]:max-w-column min-[900px]:px-6 min-[1280px]:max-w-column-wide';

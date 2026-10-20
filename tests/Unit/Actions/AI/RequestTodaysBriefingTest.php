@@ -41,7 +41,7 @@ function backfilledUser(): User
     return $user;
 }
 
-it('stages the briefing Pending without dispatching at signup while the backfill has not landed yet (#1032)', function (): void {
+it('stages the briefing Pending without dispatching at signup while the backfill has not landed yet', function (): void {
     Bus::fake();
     // backfilled_at is null: the backfill sync hasn't even run, so there is no
     // Activity row yet for the row-based gate to read.
@@ -49,9 +49,8 @@ it('stages the briefing Pending without dispatching at signup while the backfill
 
     app(RequestTodaysBriefing::class)->atSignup($user);
 
-    $row = todaysBriefingRows($user)->first();
-    expect($row)->not->toBeNull()
-        ->and($row->status)->toBe(AnalysisStatus::Pending);
+    $row = nonNull(todaysBriefingRows($user)->first());
+    expect($row->status)->toBe(AnalysisStatus::Pending);
     Bus::assertNothingDispatched();
 });
 
@@ -78,7 +77,7 @@ it('never duplicates the row when signup runs twice', function (): void {
 it('leaves an already-narrated row alone at signup', function (): void {
     $user = backfilledUser();
     app(RequestTodaysBriefing::class)->atSignup($user);
-    $row = todaysBriefingRows($user)->first();
+    $row = nonNull(todaysBriefingRows($user)->first());
     $row->update(['status' => AnalysisStatus::Done, 'content' => 'already read']);
 
     Bus::fake();
@@ -94,7 +93,7 @@ it('serves the demo account from the rule-based filler without dispatching', fun
 
     app(RequestTodaysBriefing::class)->atSignup($user);
 
-    $row = todaysBriefingRows($user)->first();
+    $row = nonNull(todaysBriefingRows($user)->first());
     expect($row->status)->toBe(AnalysisStatus::Done)
         ->and($row->content)->not->toBeNull();
     Bus::assertNothingDispatched();
@@ -106,7 +105,7 @@ it('serves the demo account from the rule-based filler without dispatching', fun
 it('re-narrates the briefing once the backfill lands', function (): void {
     $user = backfilledUser();
     app(RequestTodaysBriefing::class)->atSignup($user);
-    $row = todaysBriefingRows($user)->first();
+    $row = nonNull(todaysBriefingRows($user)->first());
     $row->update(['status' => AnalysisStatus::Done, 'content' => 'read against an empty history']);
 
     Bus::fake();

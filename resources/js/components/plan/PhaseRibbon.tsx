@@ -15,27 +15,18 @@ function cellLabel(week: SeasonSummaryWeek): string {
 /**
  * The season at a glance, one cell per week from season start to race day: a
  * flat neutral "maintain" band for the weeks before the race block opens,
- * phase-coloured cells for the weeks inside it. Reads the `zone` each
- * week of the season summary already carries
- * ({@see docs/decisions/the-block-opens-on-a-computed-date.md}) rather than
- * computing anything of its own. A general week's own `phase` (the
- * self-scaled cycle alternates Build/Deload before the block opens) is
- * deliberately ignored so the band reads as one continuous fill, not a
- * flicker of per-week colour.
+ * phase-coloured cells for the weeks inside it. Reads the `zone` each week of
+ * the season summary already carries
+ * ({@see docs/decisions/the-block-opens-on-a-computed-date.md}); a general
+ * week's own `phase` is ignored so the band reads as one continuous fill.
  *
  * "Now" is drawn, not marked: every week up to and including the current one
- * is solid, every week still ahead is faded (`opacity-40`) - in both the
- * neutral band and the phase-coloured block - so the solid/faded edge alone
- * reads as "you are here". A separate ring/dot marker used to sit on the
- * current cell alone; isolated against the flat neutral band it read as a
- * stray broken box rather than a marker, which is why this reads the fill
- * instead.
+ * is solid, every week still ahead is faded (`opacity-40`).
  *
- * No number ever prints here - the phase name is the only thing hover, tap
- * or keyboard focus reveals, and it doubles as each cell's accessible name
- * (with ", current week" appended for the one cell that is). A goal-less
- * season has no block at all, so it renders nothing rather than an
- * all-neutral bar with nothing to show.
+ * No number prints here: the phase name is what hover, tap or keyboard focus
+ * reveals, and it doubles as each cell's accessible name (", current week"
+ * appended for the current one). A goal-less season has no block and renders
+ * nothing.
  */
 export default function PhaseRibbon({
     weeks,

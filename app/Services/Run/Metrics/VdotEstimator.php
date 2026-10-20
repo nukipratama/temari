@@ -230,7 +230,7 @@ class VdotEstimator
     private function riseCapped(User $user, Carbon $now, float $distance, array $projection): float
     {
         $anchor = $this->anchorForUser($user);
-        if ($anchor === null || $anchor->captured_at->gt($now->copy()->endOfDay())) {
+        if (!$anchor instanceof FitnessAnchor || $anchor->captured_at->gt($now->copy()->endOfDay())) {
             return $projection['vdot'];
         }
 
@@ -503,7 +503,7 @@ class VdotEstimator
     {
         $race = $this->raceAsOf($user, $now);
 
-        return $race !== null && RaceSupport::forDistance((float) $race->distance_m)->dedicatedPreparation()
+        return $race instanceof RaceGoal && RaceSupport::forDistance((float) $race->distance_m)->dedicatedPreparation()
             ? (float) $race->distance_m
             : self::DEFAULT_RACE_METERS;
     }

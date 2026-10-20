@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Services\Run\Plan\ComplianceScorer;
 use App\Services\Run\Plan\PlanReconciliationService;
 use App\Services\Ops\MaintainerAlerter;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 use Illuminate\Console\Attributes\Description;
@@ -26,10 +27,8 @@ use Illuminate\Support\Carbon;
  * no unscored rows) touches nothing. `--user`/`--limit` mirror
  * `plan:regenerate`'s own options.
  *
- * This settles the days that ended short. The days the athlete actually
- * earned are already recorded, the moment the run landed, by
- * {@see ComplianceScorer::creditIfEarned()} — which is also what stops a run
- * that syncs after this pass from being frozen out of its own day.
+ * The days the athlete actually earned are credited earlier, when the run
+ * lands, by {@see ComplianceScorer::creditIfEarned()}.
  */
 #[Signature('plan:score-compliance {--user= : Limit to one user id} {--limit=500 : Max users processed per run}')]
 #[Description("Score every user's past-due Planned sessions and persist the verdict")]
@@ -41,6 +40,7 @@ class ScoreComplianceCommand extends Command
         $userOption = $this->option('user');
         $limit = (int) $this->option('limit');
 
+        /** @var Collection<int, int|string> $userIds */
         $userIds = PlannedSession::query()
             ->where('status', PlannedSessionStatus::Planned)
             ->where('date', '<', $today->toDateString())

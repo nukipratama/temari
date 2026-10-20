@@ -89,11 +89,9 @@ class AppServiceProvider extends ServiceProvider
         $this->app->scoped(ResolveActiveRaceAction::class);
         $this->app->scoped(Vibe::class);
 
-        // The rest of the Plan tab's repeated reads, same reason. One deferred
-        // Plan render enters TrainingBaseline four times and each pass re-read
-        // the preferences row, the trailing snapshot window, the season arc and
-        // the distance PRs; the week's adaptation is asked for three times. The
-        // assembler joins them because it memoizes the season three props want.
+        // The rest of the Plan tab's repeated reads, same reason: one deferred Plan
+        // render enters TrainingBaseline four times and asks for the week's
+        // adaptation three times.
         $this->app->scoped(PlanPageAssembler::class);
         $this->app->scoped(PlanBriefingContext::class);
         $this->app->scoped(TrainingBaseline::class);
@@ -152,7 +150,7 @@ class AppServiceProvider extends ServiceProvider
             ->middleware(['web', 'throttle:60,1', EnsureDevtoolsAccess::class]));
 
         RateLimiter::for('analysis-trigger', function (Request $request): Limit {
-            $perMinute = max(1, (int) config('ai.rate_limit_per_minute', 8));
+            $perMinute = max(1, config()->integer('ai.rate_limit_per_minute', 8));
 
             return Limit::perMinute($perMinute)->by(self::rateLimitKey($request));
         });
@@ -162,7 +160,7 @@ class AppServiceProvider extends ServiceProvider
         // already-Done row. A rate limit, not a cost cap: app-wide spend is the
         // daily_cost_ceiling's job.
         RateLimiter::for('run-question', function (Request $request): Limit {
-            $perMinute = max(1, (int) config('ai.run_question_rate_limit_per_minute', 4));
+            $perMinute = max(1, config()->integer('ai.run_question_rate_limit_per_minute', 4));
 
             return Limit::perMinute($perMinute)->by(self::rateLimitKey($request));
         });

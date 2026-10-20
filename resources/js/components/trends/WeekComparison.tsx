@@ -84,7 +84,11 @@ function strainMeaning(strain: number | null, range: WeeklyRange): string {
     return `over your last 7 days. a steady week for you sits around ${range.low} to ${range.high}.`;
 }
 
-function dateParts(iso: string): { day: number; month: string; year: string } {
+function dateParts(iso: string): {
+    day: number;
+    month: string | undefined;
+    year: string | undefined;
+} {
     const [year, month, day] = iso.split('-');
 
     return { day: Number(day), month: ID_MONTH_SHORT[Number(month) - 1], year };
@@ -116,7 +120,7 @@ interface WeekComparisonProps {
  * "vs last week" carries both halves of the page's question: km leads as
  * the section's hero number with its delta beside it, runs is a plain stat
  * line beneath it, and TRIMP/monotony/strain — three side-by-side secondary
- * numbers — stay stat tiles per MASTER.md (direction A, #967; #1275).
+ * numbers — stay stat tiles per MASTER.md.
  */
 export default function WeekComparison({
     weekComparison,

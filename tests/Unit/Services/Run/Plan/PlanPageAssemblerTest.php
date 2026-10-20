@@ -25,9 +25,11 @@ use App\Services\Run\Plan\PlanRenderer;
 use App\Services\Run\Plan\RaceAmbitionAssessor;
 use App\Services\Run\Plan\SessionEditRules;
 use App\Services\Run\Plan\TrainingBaseline;
+use App\Support\Numeric;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 
@@ -35,9 +37,13 @@ uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
     Carbon::setTestNow('2026-08-10 08:00:00');
-    $this->assembler = app(PlanPageAssembler::class);
 });
 afterEach(fn () => Carbon::setTestNow());
+
+function planPageAssembler(): PlanPageAssembler
+{
+    return app(PlanPageAssembler::class);
+}
 
 function assemblerAthlete(): User
 {
@@ -53,14 +59,37 @@ function assemblerAthlete(): User
     return $user;
 }
 
-/** @return array<string, mixed> */
+/**
+ * @param  array<mixed>  $day
+ * @return array<mixed>
+ */
 function assemblerShownReadiness(array $day): array
 {
-    return json_decode(Crypt::decryptString($day['recommendation_token']), true, flags: JSON_THROW_ON_ERROR)['effective']['readiness_assessment'];
+    $token = $day['recommendation_token'];
+    $payload = Crypt::decryptString(is_string($token) ? $token : throw new InvalidArgumentException('Day recommendation_token is not a string.'));
+
+    return arrayOf(data_get(json_decode($payload, true, flags: JSON_THROW_ON_ERROR), 'effective.readiness_assessment'));
+}
+
+/**
+ * @param  list<array<string, mixed>>  $weeks
+ * @return Collection<int, array<mixed>>
+ */
+function assemblerPlannedDays(array $weeks): Collection
+{
+    return collect($weeks)->flatMap(fn (array $week): array => array_map(arrayOf(...), arrayOf($week['days'])))->values();
+}
+
+/** @return list<array<mixed>> */
+function assemblerCurrentDays(PlanPageAssembler $assembler, User $user): array
+{
+    $week = nonNull(collect($assembler->weeks($user, Carbon::today()))->firstWhere('type', 'current'));
+
+    return array_values(array_map(arrayOf(...), arrayOf($week['days'])));
 }
 
 it('returns no race payload when the athlete has no active goal', function (): void {
-    expect($this->assembler->race(assemblerAthlete()))->toBeNull();
+    expect(planPageAssembler()->race(assemblerAthlete()))->toBeNull();
 });
 
 it('names the active race and the day it is run', function (): void {
@@ -71,32 +100,34 @@ it('names the active race and the day it is run', function (): void {
         'name' => 'City 10K',
     ]);
 
-    expect($this->assembler->race($user))->toBe(['race_date' => '2026-10-31', 'name' => 'City 10K']);
+    expect(planPageAssembler()->race($user))->toBe(['race_date' => '2026-10-31', 'name' => 'City 10K']);
 });
 
 it('ensures the season once even though three props ask for it', function (): void {
+    $assembler = planPageAssembler();
     $user = assemblerAthlete();
     $today = Carbon::today();
 
-    $this->assembler->season($user, $today);
-    $this->assembler->seasonSummary($user, $today);
-    $this->assembler->seasonAdherencePct($user, $today);
+    $assembler->season($user, $today);
+    $assembler->seasonSummary($user, $today);
+    $assembler->seasonAdherencePct($user, $today);
 
     expect(Season::query()->where('user_id', $user->id)->count())->toBe(1);
 });
 
 it('carries the under-ready line on the first Plan visit of a short block, and not after', function (): void {
+    $assembler = planPageAssembler();
     $user = assemblerAthlete();
     RaceGoal::factory()->for($user)->create(['race_date' => '2026-10-26', 'distance_m' => 10_000]);
     $today = Carbon::today();
 
-    expect($this->assembler->season($user, $today)['under_ready_line'])
+    expect(nonNull($assembler->season($user, $today))['under_ready_line'])
         ->toBe("Twelve weeks is tighter than I'd pick for this one, so we build what we can and race what we've built.")
-        ->and($this->assembler->season($user, $today)['under_ready_line'])->toBeNull();
+        ->and(nonNull($assembler->season($user, $today))['under_ready_line'])->toBeNull();
 });
 
 it('has nothing to explain about a week the adapter never touched', function (): void {
-    expect($this->assembler->adaptation(assemblerAthlete(), Carbon::today()))->toBeNull();
+    expect(planPageAssembler()->adaptation(assemblerAthlete(), Carbon::today()))->toBeNull();
 });
 
 it('explains the current week in the adapter\'s own words', function (): void {
@@ -110,7 +141,7 @@ it('explains the current week in the adapter\'s own words', function (): void {
         'adherence_pct' => 0,
     ]);
 
-    expect($this->assembler->adaptation($user, Carbon::today()))->toBe([
+    expect(planPageAssembler()->adaptation($user, Carbon::today()))->toBe([
         'reason' => AdaptationReason::MissedWeek->value,
         'headline' => AdaptationReason::MissedWeek->headline(),
         'detail' => AdaptationReason::MissedWeek->detail(0),
@@ -130,7 +161,7 @@ it('says so when the deload takes the week under the season\'s volume floor', fu
         'volume_floor_km' => 25.91,
     ]);
 
-    expect($this->assembler->adaptation($user, Carbon::today())['detail'])
+    expect(nonNull(planPageAssembler()->adaptation($user, Carbon::today()))['detail'])
         ->toBe(AdaptationReason::LowReadiness->detail(100).' that puts it under your usual 25.9 km a week, on purpose.');
 });
 
@@ -146,7 +177,7 @@ it('explains volume and stimulus adherence separately when key work misses', fun
         'stimulus_adherence_pct' => 50,
     ]);
 
-    expect($this->assembler->adaptation($user, Carbon::today())['detail'])
+    expect(nonNull(planPageAssembler()->adaptation($user, Carbon::today()))['detail'])
         ->toContain("you ran all of last week's distance, but only half of the latest settled key work landed")
         ->toContain('does not add another quality session');
 });
@@ -163,20 +194,20 @@ it('says the build is waiting when the block holds its increases for unscored lo
         'increases_held' => true,
     ]);
 
-    expect($this->assembler->adaptation($user, Carbon::today())['detail'])
+    expect(nonNull(planPageAssembler()->adaptation($user, Carbon::today()))['detail'])
         ->toBe(AdaptationReason::Steady->detail(100).' the build and the longer long runs wait until your recent runs are scored.');
 });
 
 it('has no weeks to render before anything has been planned', function (): void {
-    expect($this->assembler->weeks(assemblerAthlete(), Carbon::today()))->toBe([]);
+    expect(planPageAssembler()->weeks(assemblerAthlete(), Carbon::today()))->toBe([]);
 });
 
 it('renders the generated weeks with the current one marked as such', function (): void {
     $user = assemblerAthlete();
     app(Periodizer::class)->regenerate($user, Carbon::today());
 
-    $weeks = $this->assembler->weeks($user, Carbon::today());
-    $current = collect($weeks)->firstWhere('type', 'current');
+    $weeks = planPageAssembler()->weeks($user, Carbon::today());
+    $current = nonNull(collect($weeks)->firstWhere('type', 'current'));
 
     expect($weeks)->not->toBeEmpty()
         ->and($current['week_start'])->toBe(Carbon::today()->startOfWeek(Carbon::MONDAY)->toDateString())
@@ -187,7 +218,7 @@ it('keeps a recommendation token on every plan day and ships no readiness assess
     $user = assemblerAthlete();
     app(Periodizer::class)->regenerate($user, Carbon::today());
 
-    $days = collect($this->assembler->weeks($user, Carbon::today()))->pluck('days')->flatten(1);
+    $days = assemblerPlannedDays(planPageAssembler()->weeks($user, Carbon::today()));
 
     expect($days->count())->toBeGreaterThan(28)
         ->and($days->every(fn (array $day): bool => is_string($day['recommendation_token']) && $day['recommendation_token'] !== ''))->toBeTrue()
@@ -195,15 +226,16 @@ it('keeps a recommendation token on every plan day and ships no readiness assess
 });
 
 it('reads the briefing context once for the weeks and the season summary', function (): void {
+    $assembler = planPageAssembler();
     $user = assemblerAthlete();
     app(Periodizer::class)->regenerate($user, Carbon::today());
     $today = Carbon::today();
-    $this->assembler->season($user, $today);
+    $assembler->season($user, $today);
     DB::flushQueryLog();
     DB::enableQueryLog();
 
-    $this->assembler->weeks($user, $today);
-    $this->assembler->seasonSummary($user, $today);
+    $assembler->weeks($user, $today);
+    $assembler->seasonSummary($user, $today);
 
     $stressReads = collect(DB::getQueryLog())->filter(fn (array $query): bool => str_contains($query['query'], '`activity_details`.`has_heartrate`'))->count();
     DB::disableQueryLog();
@@ -217,20 +249,21 @@ it('offers the same edit actions and move targets as scanning every row per day'
     $rows = PlannedSession::query()->where('user_id', $user->id)->orderBy('date')->get();
     $today = Carbon::today();
 
-    $days = collect($this->assembler->weeks($user, $today))->pluck('days')->flatten(1);
+    $days = assemblerPlannedDays(planPageAssembler()->weeks($user, $today));
 
     expect($days->count())->toBeGreaterThan(28);
     foreach ($days as $day) {
-        $row = $rows->first(fn (PlannedSession $r): bool => $r->date->toDateString() === $day['date']);
+        $row = nonNull($rows->first(fn (PlannedSession $r): bool => $r->date->toDateString() === $day['date']));
         [$from, $to] = SessionEditRules::window($row->date);
         $window = $rows->filter(fn (PlannedSession $r): bool => $r->date->betweenIncluded($from, $to));
-        $status = PlannedSessionStatus::from($day['status']);
+        $statusValue = $day['status'];
+        $status = is_string($statusValue) ? PlannedSessionStatus::from($statusValue) : throw new InvalidArgumentException('Day status is not a string.');
         $targets = SessionEditRules::canMoveFrom($row, $status, $today) ? SessionEditRules::moveTargets($row, $window, [], $today) : [];
 
         expect($day['move_targets'])->toBe($targets)
-            ->and($day['actions']['move'])->toBe($targets !== []);
+            ->and(data_get($day, 'actions.move'))->toBe($targets !== []);
     }
-    expect($days->contains(fn (array $day): bool => $day['actions']['move'] && $day['move_targets'] !== []))->toBeTrue();
+    expect($days->contains(fn (array $day): bool => data_get($day, 'actions.move') === true && $day['move_targets'] !== []))->toBeTrue();
 });
 
 it('renders ran_anyway true for a past, unscored rest day with a logged run', function (): void {
@@ -246,10 +279,7 @@ it('renders ran_anyway true for a past, unscored rest day with a logged run', fu
         'distance' => 5_000.0,
     ]);
 
-    $day = collect($this->assembler->weeks($user, Carbon::today()))
-        ->pluck('days')
-        ->flatten(1)
-        ->firstWhere('date', $restDay->toDateString());
+    $day = nonNull(assemblerPlannedDays(planPageAssembler()->weeks($user, Carbon::today()))->firstWhere('date', $restDay->toDateString()));
 
     expect($day['status'])->toBe('done')
         ->and($day['ran_anyway'])->toBeTrue();
@@ -266,13 +296,12 @@ it('leads the Plan row today with a tempo day eased to easy, tempo only as conte
     $storedKm = PlanRenderer::coreKmForSession($row, $baseline['long_run_km'], $baseline['long_run_cap_km'], $baseline['self_scaled'], $baseline['long_run_progression_cap_km']);
     $row->update(['clamped_km' => $storedKm]);
 
-    $day = collect($this->assembler->weeks($user, Carbon::today()))
-        ->firstWhere('type', 'current')['days'][0];
+    $day = assemblerCurrentDays(planPageAssembler(), $user)[0];
 
     expect($day['session_type'])->toBe('easy')
         ->and($day['distance_km'])->toBe($storedKm)
-        ->and($day['eased_from']['session_type'])->toBe('tempo')
-        ->and($day['eased_from']['voice'])->not->toBeNull();
+        ->and(data_get($day, 'eased_from.session_type'))->toBe('tempo')
+        ->and(data_get($day, 'eased_from.voice'))->not->toBeNull();
 });
 
 it('holds todays advisory clamp while a demanding run awaits hydration, then applies its evidence', function (): void {
@@ -297,36 +326,33 @@ it('holds todays advisory clamp while a demanding run awaits hydration, then app
         'stream_summary' => ['time_in_zone_min' => ['Z2' => 20, 'Z4' => 12]],
     ]);
 
-    $held = collect($this->assembler->weeks($user, Carbon::today()))
-        ->firstWhere('type', 'current')['days'][0];
+    $held = assemblerCurrentDays(planPageAssembler(), $user)[0];
 
     $activity->update(['ingest_state' => IngestState::Detailed]);
     app()->forgetScopedInstances();
 
-    $resumed = collect(app(PlanPageAssembler::class)->weeks($user, Carbon::today()))
-        ->firstWhere('type', 'current')['days'][0];
+    $resumed = assemblerCurrentDays(app(PlanPageAssembler::class), $user)[0];
 
     expect($held['eased_from'])->toBeNull()
         ->and($resumed['session_type'])->toBe('easy')
         ->and(assemblerShownReadiness($resumed)['reasons'])->toContain('demanding_session_within_24h')
-        ->and($stored->fresh()->session_type)->toBe(SessionType::Interval)
-        ->and($stored->fresh()->pinned)->toBeFalse();
+        ->and($stored->refresh()->session_type)->toBe(SessionType::Interval)
+        ->and($stored->refresh()->pinned)->toBeFalse();
 });
 
 it('reports the baseline session count the plan is built on', function (): void {
-    expect($this->assembler->sessionsPerWeek(assemblerAthlete(), Carbon::today()))->toBeGreaterThan(0);
+    expect(planPageAssembler()->sessionsPerWeek(assemblerAthlete(), Carbon::today()))->toBeGreaterThan(0);
 });
 
 it('asks for no cooldown when the athlete has not just replanned', function (): void {
-    expect($this->assembler->regenerateCooldownSeconds(assemblerAthlete()))->toBeNull();
+    expect(planPageAssembler()->regenerateCooldownSeconds(assemblerAthlete()))->toBeNull();
 });
 
 /**
  * A plan generated mid-week only stores rows from that day on, so its week
- * target sums three days while the completed figure was subtracted from the
- * calendar Monday — everything the athlete ran before the plan existed was
- * deducted from a target that never included it. The measured result was an
- * easy day of 1 km and a long run of 1.6.
+ * target sums three days, so the completed figure must not be subtracted from
+ * the calendar Monday — that would deduct everything the athlete ran before the
+ * plan existed from a target that never included it.
  */
 it('measures the week already run from the first planned day, not the calendar Monday', function (): void {
     Carbon::setTestNow('2026-08-14 08:00:00'); // Friday
@@ -347,8 +373,7 @@ it('measures the week already run from the first planned day, not the calendar M
         'distance' => 12_400.0,
     ]);
 
-    $days = collect($this->assembler->weeks($user, Carbon::today()))
-        ->firstOrFail(fn (array $week): bool => $week['type'] === 'current')['days'];
+    $days = assemblerCurrentDays(planPageAssembler(), $user);
 
     $sunday = collect($days)->firstOrFail(fn (array $day): bool => $day['date'] === '2026-08-16');
 
@@ -376,15 +401,13 @@ it('counts a pinned day already run once, not as both pinned and completed volum
         ]);
     }
 
-    $dayOn = fn (string $date): array => collect(
-        collect($this->assembler->weeks($user, Carbon::today()))
-            ->firstOrFail(fn (array $week): bool => $week['type'] === 'current')['days'],
-    )->firstOrFail(fn (array $day): bool => $day['date'] === $date);
+    $dayOn = fn (string $date): array => collect(assemblerCurrentDays(planPageAssembler(), $user))
+        ->firstOrFail(fn (array $day): bool => $day['date'] === $date);
 
     $activity = Activity::factory()->for($user)->create();
     ActivityDetail::factory()->for($activity)->create([
         'start_date_local' => Carbon::parse('2026-08-11 06:00'),
-        'distance' => $dayOn('2026-08-11')['asked_km'] * 1000,
+        'distance' => Numeric::float($dayOn('2026-08-11')['asked_km']) * 1000,
     ]);
 
     $saturday = $dayOn('2026-08-15');
@@ -415,12 +438,13 @@ it('trims only the easy days when the week runs ahead, never the long run', func
         'distance' => 20_000.0,
     ]);
 
-    $days = collect(collect($this->assembler->weeks($user, Carbon::today()))
-        ->firstOrFail(fn (array $week): bool => $week['type'] === 'current')['days'])
-        ->keyBy('date');
+    $days = collect(assemblerCurrentDays(planPageAssembler(), $user))->keyBy('date');
 
-    expect($days['2026-08-16']['distance_km'])->toBe($days['2026-08-16']['asked_km'])
-        ->and($days['2026-08-15']['distance_km'])->toBeLessThan($days['2026-08-15']['asked_km']);
+    $long = nonNull($days['2026-08-16']);
+    $easy = nonNull($days['2026-08-15']);
+
+    expect($long['distance_km'])->toBe($long['asked_km'])
+        ->and($easy['distance_km'])->toBeLessThan(Numeric::float($easy['asked_km']));
 });
 
 function freshAssembler(): PlanPageAssembler
@@ -430,6 +454,7 @@ function freshAssembler(): PlanPageAssembler
     return app(PlanPageAssembler::class);
 }
 
+/** @param  array<string, mixed>  $attributes */
 function assemblerPastRace(User $user, array $attributes): RaceGoal
 {
     return RaceGoal::factory()->for($user)->completed()->create([
@@ -482,10 +507,10 @@ it('turns to race day at midnight on the app clock, not in UTC', function (): vo
     RaceGoal::factory()->for($user)->create(['race_date' => '2026-08-10']);
 
     Carbon::setTestNow(Carbon::parse('2026-08-09 23:59:59', 'Asia/Jakarta'));
-    expect(freshAssembler()->raceCard($user, Carbon::today())['state'])->toBe('week');
+    expect(nonNull(freshAssembler()->raceCard($user, Carbon::today()))['state'])->toBe('week');
 
     Carbon::setTestNow(Carbon::parse('2026-08-09 17:30:00', 'UTC'));
-    expect(freshAssembler()->raceCard($user, Carbon::today())['state'])->toBe('day');
+    expect(nonNull(freshAssembler()->raceCard($user, Carbon::today()))['state'])->toBe('day');
 });
 
 it('asks about a past race whose result is still pending', function (): void {
@@ -501,10 +526,10 @@ it('asks about a pending result ahead of the next race, but not on race day', fu
     assemblerPastRace($user, []);
     $next = RaceGoal::factory()->for($user)->create(['race_date' => '2026-08-13']);
 
-    expect(freshAssembler()->raceCard($user, Carbon::today())['state'])->toBe('result_pending');
+    expect(nonNull(freshAssembler()->raceCard($user, Carbon::today()))['state'])->toBe('result_pending');
 
     $next->update(['race_date' => '2026-08-10']);
-    expect(freshAssembler()->raceCard($user, Carbon::today())['state'])->toBe('day');
+    expect(nonNull(freshAssembler()->raceCard($user, Carbon::today()))['state'])->toBe('day');
 });
 
 it('asks only about the most recent past race', function (): void {
@@ -539,7 +564,7 @@ it('drops a recorded result once the next race is set', function (): void {
     assemblerPastRace($user, ['outcome' => RaceOutcome::Confirmed, 'finish_time_sec' => 2_921, 'outcome_recorded_at' => '2026-08-09 07:00:00']);
     RaceGoal::factory()->for($user)->create(['race_date' => '2026-10-04']);
 
-    expect(freshAssembler()->raceCard($user, Carbon::today())['state'])->toBe('ahead');
+    expect(nonNull(freshAssembler()->raceCard($user, Carbon::today()))['state'])->toBe('ahead');
 });
 
 it('shows no race card with no race, or one not run, called off, or confirmed without a time', function (?array $attributes): void {
@@ -597,7 +622,7 @@ it('builds the readiness context once on a live clamp day', function (): void {
         'trimp_edwards' => 130.0,
         'stream_summary' => ['time_in_zone_min' => ['Z2' => 20, 'Z4' => 12]],
     ]);
-    $fresh = app(ClampNarrationContext::class)->forUserOn($user->id, Carbon::today());
+    $fresh = nonNull(app(ClampNarrationContext::class)->forUserOn($user->id, Carbon::today()));
     Analysis::factory()->create([
         'subject_type' => AnalysisType::PLAN_CLAMP_VOICE_SUBJECT_TYPE,
         'subject_id' => $user->id,
@@ -613,10 +638,10 @@ it('builds the readiness context once on a live clamp day', function (): void {
         $lastWeekReads += str_contains($query->sql, 'as total_distance') ? 1 : 0;
     });
 
-    $today = collect(app(PlanPageAssembler::class)->weeks($user, Carbon::today()))->firstWhere('type', 'current')['days'][0];
+    $today = assemblerCurrentDays(app(PlanPageAssembler::class), $user)[0];
 
     expect($fresh['decision_source'])->toBe('live')
-        ->and($today['eased_from']['voice'])->toBe('yesterday was hard, so today stays easy.')
+        ->and(data_get($today, 'eased_from.voice'))->toBe('yesterday was hard, so today stays easy.')
         ->and($lastWeekReads)->toBe(1);
 });
 
@@ -628,7 +653,7 @@ it('sizes the prescription to date from the plan window it already read', functi
         $currentWeekReads += str_starts_with($query->sql, 'select * from `planned_sessions`') && $query->bindings === [$user->id, '2026-08-10', '2026-08-16'] ? 1 : 0;
     });
 
-    $this->assembler->weeks($user, Carbon::today());
+    planPageAssembler()->weeks($user, Carbon::today());
 
     expect($currentWeekReads)->toBe(0);
 });
