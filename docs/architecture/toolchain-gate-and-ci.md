@@ -29,7 +29,7 @@ so it stays in `check:full`, per [#832](https://github.com/nukipratama/temari/pu
 its scoped dry run as the check. Each language branch is one `sail exec`, because the container
 round-trip (~1.1 s) was the largest line item. PHPStan and ESLint stay full-tree: a scoped PHPStan run
 cannot reuse the whole-project result cache (1.5 s warm across the tree against 5.0 s for one file),
-and scoping ESLint once let lint errors reach `main`.
+and scoping ESLint once let two lint errors reach `main`, for a 3.4 s full-tree cost.
 
 ## `composer gate`: the fast pre-push gate
 

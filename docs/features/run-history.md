@@ -73,6 +73,8 @@ Calendar's own client-side mood-dim filter rode the same `HistoryFilter`
 popover and was cut for the same reason (`useCalendar.ts` no longer exposes
 `moodFilter`/`toggleMood`/`resetFilter`/`isFilteredOut`).
 
+`HistoryController` resolves each page's run effort once for the whole batch through `FeedQuery` and stamps it on the row's `detail`, so `RunListRow` never recomputes it per row. The `stream_summary` column `FeedQuery` selects for that is heavy (about 2.7 KB on average and 9.9 KB at most per row on seeded demo data) and only needed server-side, so the controller hides it again once the effort is resolved instead of shipping it to the client.
+
 **What survived the cut, because it isn't a filter:** the `?week=` deep link
 from the weekly-recap Telegram notification (`AnalysisMessagePresenter`) still
 pins the Feed to one week — that's server-driven windowing triggered by an
