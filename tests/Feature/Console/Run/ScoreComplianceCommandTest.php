@@ -43,6 +43,7 @@ function failScoringFor(array $failingUserIds): void
         },
     );
     app()->instance(ResolveTrainingPreferenceAction::class, $preference);
+    app()->forgetInstance(TrainingBaseline::class);
 }
 
 it('continues scoring later athletes when one athlete throws', function (): void {

@@ -142,7 +142,7 @@ Route::middleware(['auth', 'onboarded'])->group(function (): void {
     Route::post('/plan/recommendations/shown', RecommendationViewController::class)
         ->middleware('throttle:120,1')
         ->name('plan.recommendations.shown');
-    Route::post('/plan/regenerate', [PlanController::class, 'regenerate'])->name('plan.regenerate');
+    Route::post('/plan/regenerate', [PlanController::class, 'regenerate'])->middleware('throttle:10,1,plan-regenerate')->name('plan.regenerate');
     Route::patch('/plan/sessions/{plannedSession}', [PlanController::class, 'update'])
         ->middleware('throttle:20,1,plan-edit')
         ->name('plan.sessions.update');
