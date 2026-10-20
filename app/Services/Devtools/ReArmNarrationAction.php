@@ -19,8 +19,7 @@ use Illuminate\Database\Eloquent\Collection;
  * sibling from being re-billed and the job-level pause guard reverts to Pending mid-cap, so neither
  * spends past a ceiling.
  *
- * The demo athlete resolves through the rule-based filler instead: `AnalysisService::request()`
- * carries no demo guard of its own, so a re-arm there would dispatch a real, billed LLM job.
+ * The demo athlete's blocks are refilled straight from the rule-based filler instead.
  */
 class ReArmNarrationAction
 {
