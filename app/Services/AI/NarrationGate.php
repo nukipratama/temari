@@ -184,8 +184,8 @@ class NarrationGate
      * which gates everyone including a caller with no athlete in hand, or this athlete's own slice
      * underneath it. A ceiling left null never gates.
      *
-     * A replay swaps the athlete's slice for its own app-wide cap ({@see
-     * self::replayCapExceeded()}); the total still gates it.
+     * A replay swaps the athlete's slice for its own app-wide cap
+     * ({@see self::replayCapExceeded()}); the total still gates it.
      */
     private function dailyCostCeilingExceeded(?int $userId = null): bool
     {

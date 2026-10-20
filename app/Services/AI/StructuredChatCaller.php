@@ -71,8 +71,9 @@ final readonly class StructuredChatCaller
                 ['role' => 'user', 'content' => json_encode($context, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE)],
             ],
             'max_output_tokens' => $effectiveMaxTokens,
-            // Keyed on the narrator, never the user: the cacheable prefix is byte-identical for everyone who calls it,
-            // and Azure already scopes its cache per deployment, so this must not encode a model either.
+            // Keyed on the narrator, never the user: the cacheable prefix is
+            // byte-identical for everyone who calls it, and Azure already scopes
+            // its cache per deployment, so this must not encode a model either.
             'prompt_cache_key' => $kind,
             'text' => ['format' => self::textFormat($schemaName, $requiredKeys, $propertySchema)],
         ];
@@ -85,17 +86,19 @@ final readonly class StructuredChatCaller
             $payload['tools'] = $toolbox->definitions();
         }
 
-        // Everything below can throw after tokens have been billed, so the meter runs in a finally;
-        // the daily cost ceiling reads the table it writes.
+        // Everything below can throw after tokens have been billed, so the meter
+        // runs in a finally; the daily cost ceiling reads the table it writes.
         $response = null;
 
         try {
             try {
                 [$response, $input] = $this->loop->converse($kind, $payload, $toolbox, $budget, $startedAt);
             } catch (ContentFilterException $e) {
-                // A stored continuity line fed back as input can trip Azure's filter: strip the continuity keys and retry once,
-                // restarting from the two base messages but keeping the budget, since the tokens already burned were billed.
-                // If the retry still content-filters, let it propagate.
+                // A stored continuity line fed back as input can trip Azure's
+                // filter: strip the continuity keys and retry once, restarting
+                // from the two base messages but keeping the budget, since the
+                // tokens already burned were billed. If the retry still
+                // content-filters, let it propagate.
                 $strippedKeys = array_values(array_intersect(NarratorContinuity::CONTEXT_KEYS, array_keys($context)));
                 if ($strippedKeys === []) {
                     throw $e;

@@ -15,8 +15,8 @@
  *      defaults are neutral black, which reads dirty on a cream ground.
  *   3. Font size must resolve through a `--text-*` token, never a px literal in
  *      an arbitrary class; the root steps up 20% at >=1280px and a px value
- *      opts out of that step. A rem literal at or
- *      above the floor (rule 6) is fine.
+ *      opts out of that step. A rem literal at or above the floor (rule 6) is
+ *      fine.
  *   4. The same, for an inline `fontSize` style prop. Canvas `ctx.font` strings
  *      are deliberately not matched — a canvas is a fixed raster, so px is
  *      correct there.

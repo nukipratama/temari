@@ -528,7 +528,8 @@ it('BriefingMascotVoiceNarrator reads the day, the 28d baseline and what was pre
         ->toBe(['get_week_state', 'get_recent_runs', 'get_training_load', 'get_recent_baseline', 'get_planned_sessions']);
 });
 
-// The prompt no longer invites stating a past-run comparison; see the structural guard below.
+// The prompt no longer invites stating a past-run comparison; see the
+// structural guard below.
 it('BriefingMascotVoiceNarrator prompt forbids comparing today or the last run to a specific past run', function (): void {
     $prompt = narratorPrompt(BriefingMascotVoiceNarrator::class);
 
@@ -639,7 +640,8 @@ it('WeeklyRecapNarrator omits prev_narrative when the prior week recap is not ye
     expect($context['prev_narrative'])->toBeNull();
 });
 
-// avg_decoupling carries its own relation, resolved from the sign alone via the DecouplingBands::TIGHT flat band.
+// avg_decoupling carries its own relation, resolved from the sign alone via
+// the DecouplingBands::TIGHT flat band.
 it('WeekTotalsTool reads avg_decoupling with no signed field for the week', function (): void {
     $user = User::factory()->create();
     $snap = WeeklySnapshot::factory()->for($user)->create([
@@ -1825,8 +1827,9 @@ it('RunInsightNarrator prompt steers toward plain, natural phrasing while keepin
         ->and($prompt)->not->toContain('—');
 });
 
-// These five narrators' prompts must not train the model to front-load every tool into one turn;
-// the loop supports more steps, so this is prompt wording, not code.
+// These five narrators' prompts must not train the model to front-load every
+// tool into one turn; the loop supports more steps, so this is prompt wording,
+// not code.
 it('invites iterative tool follow-up instead of front-loading everything into one turn', function (string $class): void {
     // Heredoc line-wraps mid-phrase, so compare on whitespace-normalized text
     // rather than the raw string with its literal line breaks.
@@ -1843,8 +1846,8 @@ it('invites iterative tool follow-up instead of front-loading everything into on
     BriefingMascotVoiceNarrator::class => [BriefingMascotVoiceNarrator::class],
 ]);
 
-// The prompt's "Scope"/data list must not read as if the numbers were already given:
-// each of these three names its tool so the model fetches the data.
+// The prompt's "Scope"/data list must not read as if the numbers were already
+// given: each of these three names its tool so the model fetches the data.
 it('tells the model to call its tool for data that is never handed to it in context', function (string $class, string $toolName): void {
     $prompt = preg_replace('/\s+/', ' ', narratorPrompt($class));
 

@@ -148,8 +148,8 @@ class TokenUsageReport
     }
 
     /**
-     * Single (kind, model) aggregate scan that feeds totals, the per-kind breakdown and the per-
-     * deployment breakdown, which is rolled up from the same rows rather than issuing a second
+     * Single (kind, model) aggregate scan that feeds totals, the per-kind breakdown and the
+     * per-deployment breakdown, which is rolled up from the same rows rather than issuing a second
      * scan.
      *
      * @return array{
@@ -641,9 +641,9 @@ class TokenUsageReport
      * column shipped.
      *
      * Every rule-based row lands in exactly one `reasons` bucket: `demo` is derived from the
-     * athlete's `is_demo` flag, every other bucket comes off {@see
-     * \App\Models\AI\Analysis::$rule_based_reason}, and a null or not-yet-taxonomised value folds
-     * into `unattributed`.
+     * athlete's `is_demo` flag, every other bucket comes off
+     * {@see \App\Models\AI\Analysis::$rule_based_reason}, and a null or not-yet-taxonomised value
+     * folds into `unattributed`.
      *
      * @param  list<int>  $demoUserIds  Pre-resolved by the caller ({@see self::athletes()}), which
      *                                  already fetches every user's `is_demo` flag for the identity

@@ -70,7 +70,9 @@ class HistoryController extends Controller
     {
         $filters = $feed->filtersFor($user, $request);
         $weeks = $request->weeks();
-        // "Load older weeks" is a real page: the server ships exactly the requested number of run-bearing week sections and says whether anything sits behind them.
+        // "Load older weeks" is a real page: the server ships exactly the
+        // requested number of run-bearing week sections and says whether
+        // anything sits behind them.
         ['since' => $since, 'hasOlder' => $hasOlderWeeks] = $feed->weekWindow($user, $filters, $weeks);
         $runsQuery = $feed->for($user, $filters, $since);
 

@@ -103,9 +103,9 @@ final readonly class UserEraser
      * Best effort: someone who asked to be deleted is not left undeleted because Strava is
      * unreachable, so {@see StravaGrantReleaseService::release()} reports rather than throws.
      *
-     * Public so a caller that wants to tell the operator whether Strava took it (e.g. {@see
-     * \App\Console\Commands\Strava\RemoveAthleteCommand}) can call it directly, then tell {@see
-     * self::erase()} the release was already attempted.
+     * Public so a caller that wants to tell the operator whether Strava took it (e.g.
+     * {@see \App\Console\Commands\Strava\RemoveAthleteCommand}) can call it directly, then tell
+     * {@see self::erase()} the release was already attempted.
      *
      * @return bool|null Whether Strava accepted the deauthorize, or null when
      *                    there was no live grant to release.
@@ -180,8 +180,8 @@ final readonly class UserEraser
 
     /**
      * All `ai_analyses` rows owned by the user: their activity / card / snapshot / personal-record
-     * subjects, plus the user-keyed ones. Opts out of {@see KnownAnalysisTypeScope} so a retired-
-     * type row is still reached and removed.
+     * subjects, plus the user-keyed ones. Opts out of {@see KnownAnalysisTypeScope} so a
+     * retired-type row is still reached and removed.
      *
      * @param  Collection<int, int>  $activityIds
      * @param  Collection<int, int>  $cardIds

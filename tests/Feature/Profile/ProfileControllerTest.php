@@ -357,11 +357,11 @@ it('resolves the deferred Profile props inside their query budget', function ():
 
     $this->actingAs($user)->get('/profile', $headers)->assertSuccessful();
 
-    // The profile read stays bounded across the season history rather than re-reading
-    // each source once per historical week. The fixture carries 9 real past weeks (see
-    // seedPastSeasonWeeks), so SeasonGamificationContext runs its race-goal, peak-week
-    // and grouped activity reads — once, not per day.
-    // The current week's row reads the held week from
+    // The profile read stays bounded across the season history rather than
+    // re-reading each source once per historical week. The fixture carries 9
+    // real past weeks (see seedPastSeasonWeeks), so SeasonGamificationContext
+    // runs its race-goal, peak-week and grouped activity reads — once, not per
+    // day. The current week's row reads the held week from
     // CurrentWeekPlanBuilder once, so the season list shows Home's week total.
     expect($queries)->toBeLessThanOrEqual(27);
 });

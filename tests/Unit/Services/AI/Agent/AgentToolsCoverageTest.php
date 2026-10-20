@@ -699,7 +699,8 @@ it('reads relative effort with no comparison when the history is still one run d
         ->toBe(['trimp' => 92.4, 'baseline' => null, 'ratio' => null, 'band' => null]);
 });
 
-// decoupling carries an unsigned pct plus its own relation (up/down/flat), using DecouplingBands::TIGHT as the flat band.
+// decoupling carries an unsigned pct plus its own relation (up/down/flat),
+// using DecouplingBands::TIGHT as the flat band.
 it('reads decoupling with no signed field, relation=up on a real drift', function (): void {
     ['activity' => $a, 'detail' => $d] = agentToolFixture();
     $d->update(['stream_summary' => ['drift_metric_version' => 2, 'steady_effort_decoupling_pct' => 14.0]]);
@@ -1541,8 +1542,9 @@ function assertNoSignedDelta(mixed $node, array $retiredKeys): void
 }
 
 it('exposes no signed numeric field across every tool payload touched by the #1009 fix', function (): void {
-    // Every fixture below is built on the "negative" side of a converted field, so a bare
-    // signed number fails instead of passing by accident on all-positive data.
+    // Every fixture below is built on the "negative" side of a converted
+    // field, so a bare signed number fails instead of passing by accident on
+    // all-positive data.
     ['activity' => $a, 'detail' => $d] = agentToolFixture();
     $d->update([
         'weather_temp_c' => null,

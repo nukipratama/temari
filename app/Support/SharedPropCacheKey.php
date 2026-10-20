@@ -51,8 +51,8 @@ enum SharedPropCacheKey: string
 
     /**
      * TTL for the per-user "narration still catching up" signal. Backfill chains advance one link
-     * at a time, so it moves faster than the settings-shaped signals below but need not be query-
-     * fresh.
+     * at a time, so it moves faster than the settings-shaped signals below but need not be
+     * query-fresh.
      */
     private const int AI_CATCHING_UP_SECONDS = 120;
 

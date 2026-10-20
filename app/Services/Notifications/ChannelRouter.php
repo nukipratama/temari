@@ -23,9 +23,9 @@ use Illuminate\Database\Eloquent\Builder;
  *
  * A muted channel stays wired, so un-muting is one tap with no re-auth.
  *
- * The in-app inbox has neither condition: {@see self::channelsFor()} always includes it while {@see
- * self::canReach()} and {@see self::scopeReachable()} stay about the outbound channels. The shared
- * demo identity has no outbound channel at all but still gets the inbox.
+ * The in-app inbox has neither condition: {@see self::channelsFor()} always includes it while
+ * {@see self::canReach()} and {@see self::scopeReachable()} stay about the outbound channels. The
+ * shared demo identity has no outbound channel at all but still gets the inbox.
  *
  * This answers *where*, never *whether*: per-type opt-in and recency stay with
  * `NotificationEligibility` and the notifications themselves.

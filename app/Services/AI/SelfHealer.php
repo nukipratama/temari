@@ -164,10 +164,10 @@ class SelfHealer
     }
 
     /**
-     * Stale in-flight sweep: a row stuck Queued/Processing past {@see
-     * Analysis::STALE_IN_FLIGHT_HOURS} (its queue job was lost) is reverted to Pending via the
-     * existing revertToPending path, with no attempt burn, which puts it back into the normal self-
-     * heal/dead-letter lifecycle.
+     * Stale in-flight sweep: a row stuck Queued/Processing past
+     * {@see Analysis::STALE_IN_FLIGHT_HOURS} (its queue job was lost) is reverted to Pending via the
+     * existing revertToPending path, with no attempt burn, which puts it back into the normal
+     * self-heal/dead-letter lifecycle.
      */
     private function revertStaleInFlight(): int
     {
@@ -306,10 +306,10 @@ class SelfHealer
     }
 
     /**
-     * Card-flavor narration: the earliest stalled CardFlavor rows per user, up to {@see
-     * self::NONCASCADING_DRAIN_BATCH}. CardFlavor is dispatched only at ingest and does not cascade
-     * (one kick narrates one card), so this sweep is its only recovery. Stalled + budget-bounded;
-     * demo excluded.
+     * Card-flavor narration: the earliest stalled CardFlavor rows per user, up to
+     * {@see self::NONCASCADING_DRAIN_BATCH}. CardFlavor is dispatched only at ingest and does not
+     * cascade (one kick narrates one card), so this sweep is its only recovery. Stalled +
+     * budget-bounded; demo excluded.
      */
     private function resumeCardFlavor(): int
     {

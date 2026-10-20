@@ -25,10 +25,10 @@ use Throwable;
  * operator sees a paused pipeline, a dead-lettered block, or a dead scheduler as a push.
  *
  * Best-effort: a no-op when Telegram is unconfigured, and a per-chat send failure is logged, never
- * thrown, so an alert can never fail the job it is reporting on. Most alerts send from {@see
- * \App\Jobs\AI\SendMaintainerAlertJob}, queued by {@see self::broadcast()}; the alerts raised by
- * the scheduler itself send inline through {@see self::sendInline()}, so a dead or paused Horizon
- * cannot silence them.
+ * thrown, so an alert can never fail the job it is reporting on. Most alerts send from
+ * {@see \App\Jobs\AI\SendMaintainerAlertJob}, queued by {@see self::broadcast()}; the alerts raised
+ * by the scheduler itself send inline through {@see self::sendInline()}, so a dead or paused
+ * Horizon cannot silence them.
  */
 class MaintainerAlerter
 {
@@ -106,10 +106,10 @@ class MaintainerAlerter
     }
 
     /**
-     * Send the coalesced dead-letter count as one summary message, called by {@see
-     * \App\Jobs\AI\FlushDeadLetterAlertJob}. Reads then clears the window count under the lock
-     * deadLettered() uses (see {@see self::withDeadLetterLock()}), because Cache::pull() is not
-     * atomic and a dead-letter landing in between would be silently lost.
+     * Send the coalesced dead-letter count as one summary message, called by
+     * {@see \App\Jobs\AI\FlushDeadLetterAlertJob}. Reads then clears the window count under the
+     * lock deadLettered() uses (see {@see self::withDeadLetterLock()}), because Cache::pull() is
+     * not atomic and a dead-letter landing in between would be silently lost.
      */
     public function flushDeadLetterWindow(): void
     {
@@ -148,9 +148,9 @@ class MaintainerAlerter
     }
 
     /**
-     * Alert on a generation pause on/off transition, with the reason. Compares the current {@see
-     * \App\Services\AI\NarrationGate::pauseReason()} to the last one alerted (stored durably) and
-     * pushes only on a change. A null reason means generation resumed.
+     * Alert on a generation pause on/off transition, with the reason. Compares the current
+     * {@see \App\Services\AI\NarrationGate::pauseReason()} to the last one alerted (stored durably)
+     * and pushes only on a change. A null reason means generation resumed.
      *
      * Returns when the pause began on the one sweep that sees it lift, and null
      * otherwise, including when the lifting pause was the app-wide cost ceiling.

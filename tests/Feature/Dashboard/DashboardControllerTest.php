@@ -326,9 +326,11 @@ it('paints Home inside its query budget', function (): void {
 
     $this->actingAs($user)->get('/')->assertSuccessful();
 
-    // The fixture carries the real previous Sunday, so BriefingContext::lastWeekToDate() runs its read.
-    // A pinned today still runs the readiness check, including its hydration-backlog read.
-    // The controller reads today's own session_type once to decide
+    // 17: the fixture carries the real previous Sunday, so
+    // BriefingContext::lastWeekToDate() runs its read.
+    // 18: a pinned today still runs the readiness check, including its
+    // hydration-backlog read.
+    // 19: the controller reads today's own session_type once to decide
     // whether restDayEasePace's deferred prop is worth adding at all.
     // 24: BriefingContext::prescribedKmToDate reads this week's planned sessions.
     // 25: Home asks about a passed race still waiting on its outcome.

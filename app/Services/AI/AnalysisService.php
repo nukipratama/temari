@@ -1021,9 +1021,9 @@ class AnalysisService
     }
 
     /**
-     * Serve a row from the deterministic filler because the spend ceiling is hit, under {@see
-     * self::withoutDispatching()} so no job is queued, no cooldown starts and no notification
-     * claims a narration that was never written.
+     * Serve a row from the deterministic filler because the spend ceiling is hit, under
+     * {@see self::withoutDispatching()} so no job is queued, no cooldown starts and no
+     * notification claims a narration that was never written.
      *
      * An already-Done row keeps the real prose it was billed for, and a Failed row stays Failed so
      * a genuine fault is not hidden behind plausible content.

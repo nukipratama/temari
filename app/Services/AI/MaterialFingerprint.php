@@ -42,10 +42,10 @@ final class MaterialFingerprint
     }
 
     /**
-     * The material a Trends range's read speaks to: {@see
-     * \App\Services\AI\Agent\Tools\TrendRangeTool}'s own output for the range plus plan-adherence
-     * counts, rounded to the granularity the narration reads at, so a scheduled re-read only spends
-     * its cadence when a figure has actually moved.
+     * The material a Trends range's read speaks to:
+     * {@see \App\Services\AI\Agent\Tools\TrendRangeTool}'s own output for the range plus
+     * plan-adherence counts, rounded to the granularity the narration reads at, so a scheduled
+     * re-read only spends its cadence when a figure has actually moved.
      *
      * @param  RangeTotals  $totals
      * @param  array<string, mixed>  $adherence

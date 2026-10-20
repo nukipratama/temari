@@ -7,10 +7,10 @@ namespace App\Services\AI\Agent;
 use Carbon\CarbonImmutable;
 
 /**
- * The per-block ceiling on an agent run, and the running total it is measured against.
- *
- * Tokens count across every step, including an aborted attempt that is being retried, because they
- * were billed.
+ * The per-block ceiling on an agent run, and the running total it is measured
+ * against. Tokens count across every step, including an aborted attempt that is
+ * being retried, because they were billed. See
+ * docs/decisions/narration-agents-on-openai-php.md.
  */
 final class AgentBudget
 {

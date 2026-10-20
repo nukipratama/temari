@@ -16,8 +16,8 @@ use Illuminate\Support\Carbon;
  * Runs daily ahead of `plan:regenerate`, so a race nobody replaced stops being
  * {@see RaceGoal::active()} before
  * {@see \App\Services\Run\Plan\PhaseSchedule::forRace()}'s week count goes
- * negative. The row is never deleted — a past race is still the athlete's record.
- * the athlete's record.
+ * negative. The row is never deleted — a past race is still the athlete's
+ * record.
  */
 #[Signature('plan:close-finished-races')]
 #[Description('Stamp completed_at on every active race whose day has passed')]

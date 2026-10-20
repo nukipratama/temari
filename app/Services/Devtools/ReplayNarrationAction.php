@@ -14,9 +14,9 @@ use App\Services\AI\NarrationOrigin;
  * Re-narrate one flagged block as a QA replay: same subject, same narrator, a fresh answer to
  * compare against the one the athlete complained about.
  *
- * A replay is the operator's spend, so it is measured against its own app-wide daily cap; {@see
- * AnalysisService} enforces the cap again at dispatch, and this reads the same numbers so the
- * button can refuse first.
+ * A replay is the operator's spend, so it is measured against its own app-wide daily cap;
+ * {@see AnalysisService} enforces the cap again at dispatch, and this reads the same numbers so
+ * the button can refuse first.
  */
 class ReplayNarrationAction
 {

@@ -44,12 +44,6 @@ final class SegmentGenerator
     private const float MAX_WARMUP_SHARE = 0.5;
 
     /**
-     * Rep length / recovery length by phase, minutes. Interval only occurs in Build and in
-     * Peak/Taper for a non-marathon-distance race (see {@see WeekPlanBuilder::phaseQualitySlots()}).
-     *
-     * @var array<string, array{0: float, 1: float}>
-     */
-    /**
      * Threshold blocks / recovery length by phase, minutes: several shorter blocks early, fewer and
      * longer as the athlete adapts, one continuous effort at Peak; Taper breaks it up again.
      *
@@ -62,6 +56,12 @@ final class SegmentGenerator
         'taper' => [2, 2.0],
     ];
 
+    /**
+     * Rep length / recovery length by phase, minutes. Interval only occurs in Build and in
+     * Peak/Taper for a non-marathon-distance race (see {@see WeekPlanBuilder::phaseQualitySlots()}).
+     *
+     * @var array<string, array{0: float, 1: float}>
+     */
     private const array INTERVAL_REP_TABLE = [
         'build' => [3.0, 2.0],
         'peak' => [4.0, 2.0],

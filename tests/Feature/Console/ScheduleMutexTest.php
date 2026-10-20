@@ -130,7 +130,8 @@ it('runs the Strava drain and fallback poll on the cadences they were sized for'
     // Matches the read bucket's own decay window, so recovered headroom is never
     // left idle for most of an hour.
     'hydrate-backlog tracks the 15-minute bucket' => ['strava:hydrate-backlog', '*/15 * * * *'],
-    // Around the clock, so a missed webhook never goes unnoticed overnight. At :07, off the serial :00 tick.
+    // Around the clock, so a missed webhook never goes unnoticed overnight. At
+    // :07, off the serial :00 tick.
     'sync polls hourly at :07 with no overnight gap' => ['strava:sync', '7 * * * *'],
 ]);
 

@@ -12,8 +12,8 @@ use App\Services\AI\AnalysisType;
 
 /**
  * Continuity for the connected + chained per-activity narration: reads the previous activity's
- * same-kind Done narrative so each run continues the thread of the one before it. Shared by post-
- * run speech and run insight.
+ * same-kind Done narrative so each run continues the thread of the one before it. Shared by
+ * post-run speech and run insight.
  */
 trait ReadsPreviousActivityNarrative
 {

@@ -158,8 +158,9 @@ RUN install-php-extensions \
 
 COPY --from=vendor /var/www/html /var/www/html
 COPY --from=assets /var/www/html/public/build /var/www/html/public/build
-# Runs the package:discover hook the vendor stage deferred; CACHE_STORE=array because no redis is reachable at build time.
-# config:cache is not baked here: docs/decisions/defer-config-cache.md.
+# Runs the package:discover hook the vendor stage deferred; CACHE_STORE=array
+# because no redis is reachable at build time. config:cache is not baked here:
+# docs/decisions/defer-config-cache.md.
 RUN CACHE_STORE=array php artisan package:discover --ansi
 # FrankenPHP loads /etc/frankenphp/Caddyfile, NOT /etc/caddy/Caddyfile.
 # Copying to the wrong path silently falls back to the image's default

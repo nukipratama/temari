@@ -21,8 +21,8 @@ use Illuminate\Support\Carbon;
  * The whole-season facts {@see SeasonGoalResolver} needs, resolved fresh on every read and never
  * cached. Scoped to one {@see Season} rather than the user's whole history.
  *
- * Only past days (strictly before "today") are counted, matching {@see
- * \App\Services\Run\Plan\PlanPageAssembler}'s own `Done`/`Missed` boundary.
+ * Only past days (strictly before "today") are counted, matching
+ * {@see \App\Services\Run\Plan\PlanPageAssembler}'s own `Done`/`Missed` boundary.
  */
 final readonly class SeasonGamificationContext
 {

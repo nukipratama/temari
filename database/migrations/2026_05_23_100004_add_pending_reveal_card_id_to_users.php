@@ -7,11 +7,11 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * Card Reveal trigger flag: when a RunCard is
- * persisted for the first time, RunCardFactory sets this column to
- * the card id. The Inertia middleware surfaces it as `pendingReveal`
- * on every page load; AppShell mounts the 4-frame CardReveal modal
- * when present. POST /api/kartu/{card}/seen clears the flag.
+ * Card Reveal trigger flag: when a RunCard is persisted for the first
+ * time, RunCardFactory sets this column to the card id. The Inertia
+ * middleware surfaces it as `pendingReveal` on every page load; AppShell
+ * mounts the 4-frame CardReveal modal when present. POST
+ * /api/kartu/{card}/seen clears the flag.
  */
 return new class () extends Migration {
     public function up(): void

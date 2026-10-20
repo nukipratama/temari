@@ -65,9 +65,9 @@ final readonly class AiProps
     /**
      * Whether this user has at least one synced activity still waiting on its per-activity
      * narration (a backfill chain has not reached it yet, or a failed attempt is still under retry
-     * budget), or narration held behind the still-hydrating history gate ({@see
-     * HydrationBacklog::awaitsFullHydration()}), so the UI can show a soft "still catching up"
-     * reassurance.
+     * budget), or narration held behind the still-hydrating history gate
+     * ({@see HydrationBacklog::awaitsFullHydration()}), so the UI can show a soft "still catching
+     * up" reassurance.
      *
      * `awaitsFullHydration()` is a superset of every narrower hydration hold the pipeline applies,
      * so one check stands in for all of them. A dead-lettered row and a deferred recap `pending`

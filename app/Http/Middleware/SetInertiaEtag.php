@@ -10,6 +10,7 @@ use Symfony\Component\HttpFoundation\Response;
 
 /**
  * Conditional GET for the Inertia page object on the run-history read surface.
+ *
  * The ETag is a hash of the exact response bytes, computed after Inertia has
  * serialized the page, so a 304 is only emitted when the browser's copy is
  * byte-identical.

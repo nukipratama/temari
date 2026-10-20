@@ -197,7 +197,8 @@ it('measures a day against the baseline as it stood that day, not against today\
  */
 it('grades a clamped day against the eased distance it actually asked for', function (): void {
     $user = User::factory()->create();
-    // 1.2 against a stored tempo ask of ~3.4 is 35% — `partial` — without the substitution.
+    // 1.2 against a stored tempo ask of ~3.4 is 35% — `partial` — without the
+    // substitution.
     $row = scorerDay($user, '2026-08-05', [
         'session_type' => SessionType::Tempo,
         'clamped_km' => 1.2,

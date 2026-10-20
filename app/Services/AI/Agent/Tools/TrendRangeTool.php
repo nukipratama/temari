@@ -20,8 +20,11 @@ use Illuminate\Support\Carbon;
  */
 final class TrendRangeTool extends NoArgumentTool
 {
-    /** @var array<string, int> */
-    /** Also read by narrators binding a second tool to the same window. */
+    /**
+     * Also read by narrators binding a second tool to the same window.
+     *
+     * @var array<string, int>
+     */
     public const array RANGE_DAYS = ['7d' => 7];
 
     public function __construct(

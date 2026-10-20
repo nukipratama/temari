@@ -23,9 +23,9 @@ enum AnchorKind: string
     case Metric = 'metric';
 
     /**
-     * The session the plan prescribed. `today` is the only legal value: the briefing is a today-
-     * scoped block by construction, and the week grid's other six days have no narrator citing them
-     * yet.
+     * The session the plan prescribed. `today` is the only legal value: the briefing is a
+     * today-scoped block by construction, and the week grid's other six days have no narrator
+     * citing them yet.
      */
     case Session = 'session';
 

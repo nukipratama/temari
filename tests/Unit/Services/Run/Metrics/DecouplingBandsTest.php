@@ -16,7 +16,8 @@ it('draws the high line above the band ordinary runs occupy, and the controlled 
         ->and(DecouplingBands::CONTROLLED)->toBeLessThan(6.0);
 });
 
-// relationFor() resolves which way a signed decoupling_pct points, using TIGHT ("barely moved") as the flat band.
+// relationFor() resolves which way a signed decoupling_pct points, using TIGHT
+// ("barely moved") as the flat band.
 it('resolves relationFor using the existing TIGHT band as the flat threshold', function (): void {
     expect(DecouplingBands::relationFor(14.0))->toBe('up')
         ->and(DecouplingBands::relationFor(-14.0))->toBe('down')

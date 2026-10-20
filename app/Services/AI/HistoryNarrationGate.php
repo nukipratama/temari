@@ -12,9 +12,9 @@ use Illuminate\Support\Carbon;
 /**
  * Decides which runs the LLM narrates by itself and which wait to be asked for.
  *
- * A run the athlete did before connecting Strava is history: inside the last {@see
- * RecentlyActiveUsers::ACTIVE_WINDOW_DAYS} days it still narrates on ingest, anything older is
- * filled deterministically and left to the page's "Try again".
+ * A run the athlete did before connecting Strava is history: inside the last
+ * {@see RecentlyActiveUsers::ACTIVE_WINDOW_DAYS} days it still narrates on ingest, anything older
+ * is filled deterministically and left to the page's "Try again".
  *
  * Any narration waits until every older run within past-you's reach has finished hydrating, because
  * the narrator's tools read resolved metrics.

@@ -7,10 +7,10 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * Accessories dress-up surface: one `equipped` flag
- * per unlock row. The server enforces "one equipped per slot" by
- * un-equipping siblings whose unlock_key shares the slot prefix
- * (headband_* / medali_* / pita_* / aura_*) on equip.
+ * Accessories dress-up surface: one `equipped` flag per unlock row. The
+ * server enforces "one equipped per slot" by un-equipping siblings whose
+ * unlock_key shares the slot prefix (headband_* / medali_* / pita_* /
+ * aura_*) on equip.
  */
 return new class () extends Migration {
     public function up(): void

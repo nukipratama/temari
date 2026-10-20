@@ -41,8 +41,9 @@ const ENTRY_ALLOWED = [
  * turning into a static import.
  */
 /*
- * One entry per screen a user can land on cold; each budget is the measured weight plus ~10%,
- * rounded up to 5. Operator pages (Devtools, Devtools/Design, AiUsage) and the legal documents stay out.
+ * One entry per screen a user can land on cold; each budget is the measured
+ * weight plus ~10%, rounded up to 5. Operator pages (Devtools, Devtools/Design,
+ * AiUsage) and the legal documents stay out.
  */
 const ROUTE_BUDGETS_KB = [
     { name: 'Login', src: 'resources/js/pages/Auth/Login.tsx', budgetKb: 145 },

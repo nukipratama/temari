@@ -234,11 +234,11 @@ it('stamps the viewed run\'s own effort onto detail on a full load', function ()
 });
 
 /**
- * Regression for the prod bug where RunInsight consolidated
- * RunInsightTechnical/Splits/Zones into one RunInsight case without a cleanup
- * migration for the pre-consolidation rows: those retired-type rows survive
- * under their old string values, which the AnalysisType enum cast throws a
- * ValueError on the moment it is hydrated and read.
+ * Regression for the prod bug where consolidating
+ * RunInsightTechnical/Splits/Zones into one RunInsight case shipped without a
+ * cleanup migration for the pre-consolidation rows: those retired-type rows
+ * survive under their old string values, which the AnalysisType enum cast
+ * throws a ValueError on the moment it is hydrated and read.
  */
 it('renders the run detail page past orphaned pre-consolidation RunInsight rows', function (): void {
     $user = User::factory()->create();

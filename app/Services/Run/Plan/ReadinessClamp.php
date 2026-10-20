@@ -146,8 +146,9 @@ final class ReadinessClamp
      * The line a pace-only ease always carries — rule-based only, never
      * narrated: unlike every other clamp outcome, this one requests no
      * `plan_clamp_voice` and sends no notification. See {@see self::paceEaseApplies()}.
+     *
+     * @param  list<string>  $reasons
      */
-    /** @param list<string> $reasons */
     public static function paceEaseNote(array $reasons = []): string
     {
         foreach ([
@@ -189,8 +190,9 @@ final class ReadinessClamp
     /**
      * The line a step-down is explained by, or null when the session already fits under the ceiling.
      * Split out of {@see self::apply()} like {@see self::downgradeFor()}.
+     *
+     * @param  list<string>  $reasons
      */
-    /** @param list<string> $reasons */
     public static function noteFor(SessionType $sessionType, ReadinessCeiling $ceiling, array $reasons = []): ?string
     {
         if (self::requiredRank($sessionType) <= $ceiling->rank()) {

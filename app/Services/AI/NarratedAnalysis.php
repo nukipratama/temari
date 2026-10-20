@@ -14,8 +14,8 @@ use Closure;
  * call made outside a narration reads null and stays unattributed. Bound `scoped`, so a worker
  * never carries one job's row id into the next.
  *
- * A run question has no Analysis row, so it declares its own id through {@see
- * self::duringRunQuestion()}.
+ * A run question has no Analysis row, so it declares its own id through
+ * {@see self::duringRunQuestion()}.
  */
 final class NarratedAnalysis
 {
