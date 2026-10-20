@@ -7,7 +7,6 @@ import Eyebrow from '@/components/ui/Eyebrow';
 import { Icon } from '@/components/ui/Icon';
 import { cn } from '@/lib/cn';
 import { formatKm, weekRangeLabel } from '@/lib/pace';
-import { computeAdherence } from '@/lib/plan';
 import { PHASE_LABEL, phaseGroupKey } from '@/lib/planPhases';
 
 function weekKm(week: SeasonSummaryWeek): string {
@@ -23,7 +22,7 @@ function weekKm(week: SeasonSummaryWeek): string {
 /**
  * Every week of the season as one compact row: its number, dates, phase and
  * km (what was run for a week behind, what is planned otherwise), plus the
- * adherence of a week behind that the page holds day rows for. A row the
+ * adherence of a scored week behind. A row the
  * page holds day rows for is a button that shows that week above; the rest
  * are plain summary rows.
  */
@@ -50,9 +49,7 @@ export default function WeeksList({
                 {weeks.map((week, index) => {
                     const detail = detailByWeekStart[week.week_start] ?? null;
                     const adherence =
-                        week.type === 'history' && detail !== null
-                            ? computeAdherence(detail.days)
-                            : null;
+                        week.type === 'history' ? week.adherence_pct : null;
                     const shown = week.week_start === shownWeekStart;
 
                     const content = (

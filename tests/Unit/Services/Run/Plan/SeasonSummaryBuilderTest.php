@@ -101,6 +101,25 @@ it('classifies weeks as history, current, or lookahead relative to today', funct
         ->and($weeks[3]['type'])->toBe('lookahead');
 });
 
+it('gives each week behind the capped mean of its scored days as adherence_pct', function (): void {
+    $user = User::factory()->create();
+    $season = Season::factory()->for($user)->create([
+        'race_goal_id' => null,
+        'starts_at' => '2026-07-20', // 3 weeks before "today"
+        'ends_at' => '2026-10-19',
+    ]);
+    foreach (['2026-07-20' => 161, '2026-07-22' => 60, '2026-07-23' => null, '2026-08-10' => 90] as $date => $score) {
+        PlannedSession::factory()->for($user)->create(['date' => $date, 'compliance_score' => $score]);
+    }
+
+    $weeks = $this->builder->build($user, $season, Carbon::today());
+
+    expect($weeks[0]['adherence_pct'])->toBe(80)
+        ->and($weeks[1]['adherence_pct'])->toBeNull()
+        ->and($weeks[3]['type'])->toBe('current')
+        ->and($weeks[3]['adherence_pct'])->toBeNull();
+});
+
 it('carries a week\'s real distance_km from its WeeklySnapshot as actual_km', function (): void {
     $user = User::factory()->create();
     $season = Season::factory()->for($user)->create([

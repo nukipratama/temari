@@ -62,7 +62,7 @@ final readonly class SeasonSummaryBuilder
     }
 
     /**
-     * @return list<array{week_start: string, phase: string, zone: string, type: string, planned_km: float, eased_from_km: float|null, actual_km: float|null, sessions: int}>
+     * @return list<array{week_start: string, phase: string, zone: string, type: string, planned_km: float, eased_from_km: float|null, actual_km: float|null, sessions: int, adherence_pct: int|null}>
      */
     public function build(User $user, Season $season, Carbon $today): array
     {
@@ -80,6 +80,15 @@ final readonly class SeasonSummaryBuilder
             ->all();
 
         $currentWeekKey = $today->copy()->startOfWeek(Carbon::MONDAY)->toDateString();
+        $adherenceByWeekStart = PlannedSession::query()
+            ->where('user_id', $user->id)
+            ->whereBetween('date', [$season->starts_at->toDateString(), $season->ends_at->toDateString()])
+            ->where('date', '<', $currentWeekKey)
+            ->whereNotNull('compliance_score')
+            ->get(['date', 'compliance_score'])
+            ->groupBy(fn (PlannedSession $s): string => $s->date->copy()->startOfWeek(Carbon::MONDAY)->toDateString())
+            ->map(fn ($week): int => (int) round((float) $week->avg(fn (PlannedSession $s): int => min(100, (int) $s->compliance_score))))
+            ->all();
         $seasonHasCurrentWeek = in_array($currentWeekKey, array_map(fn (array $w): string => $w['week_start']->toDateString(), $weeks), true);
         $currentWeek = $seasonHasCurrentWeek ? $this->currentWeekPlan->forUser($user, $today) : null;
 
@@ -98,6 +107,7 @@ final readonly class SeasonSummaryBuilder
                 'eased_from_km' => $held === null ? null : self::easedFromKm($held, $week['phase'], $arcKm),
                 'actual_km' => $actualKmByWeekEnding[$weekEndings[$i]] ?? null,
                 'sessions' => $week['sessions'],
+                'adherence_pct' => $adherenceByWeekStart[$weekStartKey] ?? null,
             ];
         }
 
