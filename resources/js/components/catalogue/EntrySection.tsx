@@ -24,7 +24,9 @@ export default function EntrySection({
                 >
                     {item.name}
                 </h2>
-                <span className="text-meta">{item.path}</span>
+                <span className="min-w-0 text-meta break-words">
+                    {item.path}
+                </span>
             </div>
             <p className="mt-1.5 max-w-[72ch] font-sans text-sm leading-relaxed text-text-2">
                 {item.description}

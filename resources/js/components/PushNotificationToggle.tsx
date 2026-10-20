@@ -108,6 +108,8 @@ export default function PushNotificationToggle({
                 await unsubscribe();
                 setState('ready');
                 setStatus('push notifications turned off.');
+            } catch {
+                setStatus('failed to turn off notifications, try again.');
             } finally {
                 setBusy(false);
             }

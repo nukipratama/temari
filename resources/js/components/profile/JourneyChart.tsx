@@ -49,17 +49,21 @@ export default function JourneyChart({
     const chartRef = useRef<HTMLDivElement>(null);
     const tipRef = useRef<HTMLDivElement>(null);
     const draggingRef = useRef(false);
-    const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+    const [pickedIndex, setPickedIndex] = useState<number | null>(null);
 
     const points = useMemo(
         () => buildPoints(weeks, timesSec, activityIds),
         [weeks, timesSec, activityIds],
     );
+    const selectedIndex =
+        pickedIndex !== null && pickedIndex < points.length
+            ? pickedIndex
+            : null;
 
     useEffect(() => {
         function close(event: MouseEvent) {
             if (!chartRef.current?.contains(event.target as Node)) {
-                setSelectedIndex(null);
+                setPickedIndex(null);
             }
         }
         document.addEventListener('click', close);
@@ -122,14 +126,14 @@ export default function JourneyChart({
         }
         event.currentTarget.setPointerCapture?.(event.pointerId);
         draggingRef.current = true;
-        setSelectedIndex(nearestIndexFromClientX(event.clientX));
+        setPickedIndex(nearestIndexFromClientX(event.clientX));
     }
 
     function handlePointerMove(event: ReactPointerEvent<HTMLDivElement>) {
         if (event.pointerType !== 'mouse' && !draggingRef.current) {
             return;
         }
-        setSelectedIndex(nearestIndexFromClientX(event.clientX));
+        setPickedIndex(nearestIndexFromClientX(event.clientX));
     }
 
     function endDrag() {
@@ -138,15 +142,18 @@ export default function JourneyChart({
 
     function handleKeyDown(event: ReactKeyboardEvent<HTMLDivElement>) {
         if (event.key === 'Escape') {
-            setSelectedIndex(null);
+            setPickedIndex(null);
             return;
         }
         if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') {
             return;
         }
         event.preventDefault();
-        setSelectedIndex((prev) => {
-            const base = prev ?? points.length - 1;
+        setPickedIndex((prev) => {
+            const base =
+                prev !== null && prev < points.length
+                    ? prev
+                    : points.length - 1;
             const next = event.key === 'ArrowLeft' ? base - 1 : base + 1;
             return Math.min(Math.max(next, 0), points.length - 1);
         });

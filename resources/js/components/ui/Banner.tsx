@@ -53,7 +53,7 @@ export default function Banner({
                     className={cn('mt-0.5 shrink-0', TONE[tone].glyph)}
                     aria-hidden
                 />
-                <p className="flex-1 font-sans text-sm leading-relaxed text-foreground">
+                <p className="min-w-0 flex-1 break-words font-sans text-sm leading-relaxed text-foreground">
                     {children}
                 </p>
                 {action}
