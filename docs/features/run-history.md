@@ -1,6 +1,6 @@
 ---
 title: Run history (Feed & Calendar)
-description: The activity archive — weekly snapshots on the Feed view, a weekly bar-chart grid on the Calendar view, both behind one /history route. Filters and the journey strip were cut in the mobile-UX port (S7); PS7 ported the screen to prototype parity; #1343 redesigned the Calendar grid as bar charts.
+description: The activity archive — weekly snapshots on the Feed view, a weekly bar-chart grid on the Calendar view, both behind one /history route. Filters and the journey strip were cut in the mobile-UX port; the screen was ported to prototype parity; the Calendar grid was redesigned as bar charts.
 tags: [feature, runs]
 status: living
 reviewed: 2026-09-28
@@ -60,7 +60,7 @@ detail page) is unaffected and still resolves via `RunController::show`.
 - **Training metrics** — `WeeklySnapshot` payloads carry CTL/ATL/form from [[training-load-metrics]].
 - **Data model** — the shape of `Activity`, `ActivityDetail`, `WeeklySnapshot` is in [[data-model]].
 
-## S7 — feed filters and the journey strip were cut
+## Feed filters and the journey strip were cut
 
 The mobile-UX port's reconciliation ledger ruled both **cut**, not restyled
 (the prototype's own History mockup has no filter popover and no journey-strip
@@ -94,7 +94,7 @@ Monday-start; undated runs fall into a trailing "No date" bucket). Matching the
 prototype's own structure, only the two most recent run-bearing weeks render up
 front. "Load older weeks" is a **real page**, not a reveal: it is an Inertia
 visit carrying `?weeks=` two higher, and the server ships exactly that many week
-sections (decision P3 of the prototype-parity program). Each [WeekSection](../../resources/js/components/history/WeekSection.tsx)
+sections. Each [WeekSection](../../resources/js/components/history/WeekSection.tsx)
 renders a plain mono meta line (runs / km / TRIMP), then the week's
 [RecapCard](../../resources/js/components/history/RecapCard.tsx) (mood-ringed
 Temari, narration, a tappable `WeeklyStatLine` — fatigue/ATL,
@@ -166,7 +166,7 @@ week (`is_current_week`) waits for the scheduler. See [[recaps]] and
 [Calendar.tsx](../../resources/js/pages/Activities/Calendar.tsx) renders in this order:
 month nav → consistency line → monthly recap card → grid
 (the grid has a rounded outer frame, without day-column borders).
-(#1343 replaced the former bordered-box + mood-dot grid, prototype variant C
+(This replaced the former bordered-box + mood-dot grid, prototype variant C
 on `prototype/calendar-redesign`). The consistency line (`consistencyOf` in
 [calendarBars.ts](../../resources/js/pages/Activities/calendarBars.ts)) shows runs,
 km, days run and the longest **consecutive-run-day streak within the visible
@@ -217,8 +217,7 @@ prop is omitted here: there is no rule-based fallback for monthly recaps.
 
 **Per-week narration inside the grid** is the tap-to-expand week column, and
 pressing it reveals its recap through `AnalysisStatus`, the shared
-`WeeklyStatLine`, and — the one Card surface this screen keeps (decision
-P12) — a badge for the week's **rarest** earned card, tinted by rarity. A week
+`WeeklyStatLine`, and — the one Card surface this screen keeps — a badge for the week's **rarest** earned card, tinted by rarity. A week
 with no snapshot leaves the column disabled. The badge lives here and nowhere
 else on the screen; it is not a day-cell affordance.
 

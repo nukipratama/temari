@@ -173,7 +173,11 @@ describe('RaceOutcomeCard', () => {
             screen.getByRole('button', { name: 'i did not run it' }),
         );
 
+        expect(
+            screen.getByRole('button', { name: 'keep as is' }),
+        ).toBeInTheDocument();
         const options = lastPostCall()?.[2];
+        expect(options).toBeDefined();
         await act(async () => {
             options?.onStart?.({} as never);
             options?.onSuccess?.({} as never);

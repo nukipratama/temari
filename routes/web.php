@@ -162,10 +162,11 @@ Route::middleware(['auth', 'onboarded'])->group(function (): void {
     Route::get('/profile', ProfileController::class)->name('profile');
 
     // The demo is otherwise a fully-interactive shared sandbox (drift resets on
-    // demo:seed). Notifications are the one area worth guarding: a visitor could
-    // disconnect the shared bot or spam real messages via the send/test endpoints.
-    // The block-demo-writes guard is behaviourally generic (it blocks any demo
-    // mutation), so it also covers the channel-neutral preference + test writes.
+    // demo:seed). block-demo-writes guards the writes that reach outside it: a visitor
+    // could disconnect the shared bot, spam real messages via the send/test endpoints,
+    // or touch race, feedback, time trial, intervals.icu, zone resync and Strava sync state.
+    // The guard is behaviourally generic (it blocks any demo mutation), so it also
+    // covers the channel-neutral preference + test writes.
     Route::patch('/profile/notifications', NotificationPreferenceController::class)->middleware('block-demo-writes')->name('notifications.preferences.update');
     Route::delete('/profile/telegram', [TelegramConnectionController::class, 'destroy'])->middleware('block-demo-writes')->name('telegram.disconnect');
     Route::post('/profile/notifications/test', NotificationTestController::class)->middleware(['throttle:6,1', 'block-demo-writes'])->name('notifications.test');

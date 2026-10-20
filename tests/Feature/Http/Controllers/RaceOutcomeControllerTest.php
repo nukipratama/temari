@@ -64,7 +64,6 @@ it('offers the matched run and confirms it', function (): void {
 });
 
 it('refuses the demo account a race outcome', function (): void {
-    raceOutcomeFixture();
     $demo = User::factory()->create(['is_demo' => true]);
     $race = RaceGoal::factory()->for($demo)->completed()->create([
         'race_date' => '2026-10-04', 'distance_m' => 10_000, 'goal_time_sec' => 3_000, 'outcome' => RaceOutcome::Pending,

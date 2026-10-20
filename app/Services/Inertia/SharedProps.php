@@ -17,9 +17,9 @@ use Illuminate\Support\Carbon;
  *
  * The domain families each own their own builder ({@see GamificationProps}, {@see StravaProps},
  * {@see NotificationProps}, {@see AiProps}); what is left here is identity, flashes, the server's
- * calendar day and two config flags, plus the composition.
+ * calendar day, the demo-login flag and the web push key, plus the composition.
  *
- * Every prop but `auth`, `today` and the two config flags is a closure, so Inertia skips the work
+ * Every prop but `auth`, `today` and `webPushPublicKey` is a closure, so Inertia skips the work
  * on a partial reload that did not ask for that key.
  */
 final readonly class SharedProps

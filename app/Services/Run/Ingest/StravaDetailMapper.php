@@ -20,7 +20,8 @@ final class StravaDetailMapper
      */
     public static function summary(array $payload): array
     {
-        $start = $payload['start_date_local'] ?? $payload['start_date'] ?? null;
+        $local = $payload['start_date_local'] ?? null;
+        $start = is_string($local) && $local !== '' ? $local : ($payload['start_date'] ?? null);
         // start_latlng is null/empty for non-GPS activities (treadmill, manual).
         $latlng = is_array($payload['start_latlng'] ?? null) && count($payload['start_latlng']) === 2
             ? $payload['start_latlng']

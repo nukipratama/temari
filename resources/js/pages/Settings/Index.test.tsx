@@ -190,7 +190,7 @@ describe('Settings', () => {
     });
 
     // What gets sent and where it goes were three separate sections; they are
-    // now two labelled groups inside one Notifikasi card.
+    // now two labelled groups inside one Notifications card.
     it('groups the notification settings by what and where', () => {
         render(<Settings />);
         expect(screen.getByText('What gets sent')).toBeInTheDocument();
@@ -274,7 +274,7 @@ describe('Settings', () => {
     });
 
     // The streak nudge had no toggle of its own and silently rode along on
-    // "Rekap mingguan"; the master switch names it so the coupling is visible.
+    // "weekly recap"; the master switch names it so the coupling is visible.
     it('names the streak nudge among what the master switch sends', () => {
         render(<Settings notificationPrefs={prefs} />);
         expect(

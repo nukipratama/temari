@@ -406,7 +406,7 @@ it('persists the intent verdict and its evidence beside the grade', function ():
         ->and($row->intent_evidence)->not->toBeEmpty()->toBeArray();
 });
 
-/** A day the day the plan never judges (no intent to fold in) persists none. */
+/** A day the plan never judges (no intent to fold in) persists none. */
 it('persists no intent verdict for a day never credited', function (): void {
     $user = User::factory()->create();
     $row = scorerDay($user, '2026-08-05');

@@ -198,8 +198,8 @@ function channels(hex: string): [number, number, number] | null {
 
     const long = /^#([0-9a-f]{6})(?:[0-9a-f]{2})?$/i.exec(hex);
     if (long) {
-        const [, hex = ''] = long;
-        const n = parseInt(hex, 16);
+        const [, digits = ''] = long;
+        const n = parseInt(digits, 16);
         return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
     }
 

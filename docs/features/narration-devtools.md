@@ -52,7 +52,7 @@ code_refs:
 
 ### The overview tab
 
-Rebuilt as a status board (design round #929, direction A): faults first, then
+Rebuilt as a status board: faults first, then
 today's number, then who and what drove it, then the rule-based ledger.
 
 - A **fault region** ([FaultStrip](../../resources/js/components/narration/FaultStrip.tsx)): one tile per open fault — generation paused, an app-wide ceiling trip, athletes capped today, dead-lettered blocks, content-filter trips — each with the action that fixes it (the existing **recover all** / per-athlete **retry failed** buttons, factored into [actions.tsx](../../resources/js/components/narration/actions.tsx)). The whole region collapses to a single "nothing on fire" line when none of those are true, so the presence or absence of the block is the signal, not a chip to scan.

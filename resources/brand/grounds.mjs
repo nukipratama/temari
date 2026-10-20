@@ -85,8 +85,8 @@ export function unclassifiedBackgrounds(dir = COMPONENT_DIR) {
 /**
  * Panel call sites grounds.json does not register, and registered ones nothing
  * paints any more. The mount is recorded per file rather than per panel class,
- * since the same `bg-sky/40` can be a tile on a hero panel in one file and on
- * the page ground in another; a new file painting a registered panel is a new
+ * since the same `bg-leaf/18` can sit on the paper in one file and on the
+ * background in another; a new file painting a registered panel is a new
  * claim to check, not a silent reuse.
  */
 export function panelSiteDrift(dir = COMPONENT_DIR, tokens = readColorTokens()) {
@@ -310,8 +310,8 @@ export function splitAlpha(spec) {
  * Every surface a panel is mounted on. `"paper"` stands for the whole paper
  * set, so a panel painted on the page is scored against each of them; any
  * other entry names the solid token it sits on. The same panel class can be
- * mounted in both places — `bg-sky/40` is a hero-panel tile on `Runs/Show` and
- * a page-ground tile on `Records` — and the worst mount is the one that counts.
+ * mounted in both places — `bg-leaf/18` sits on the paper in `variants.ts` and
+ * on the background in `VersionDiff` — and the worst mount is the one that counts.
  */
 function panelBases(over, tokens, papers) {
   const bases = {};

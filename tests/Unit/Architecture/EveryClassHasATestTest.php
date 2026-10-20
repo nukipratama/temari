@@ -31,22 +31,6 @@ use Illuminate\Support\Facades\File;
 use Illuminate\Support\ServiceProvider;
 
 /**
- * Guards the 1:1 class<->test convention: every concrete app class should have a
- * matching `{ClassName}Test.php` somewhere under tests/. Runs in the `structure`
- * group so CI can execute it before the (expensive) coverage run and fail fast
- * when a new class ships without a test.
- *
- * Exemptions below are the documented exceptions to 1:1, not a TODO list:
- * abstract/interface/enum/exception/provider types carry no standalone test, and
- * a few families are intentionally covered by aggregate suites, which must mark
- * each class with a dataset key or covers() (see aggregateSuiteMarksClass). An exempt class
- * that has its own {Name}Test.php fails the guard, so a stale exemption cannot
- * outlive the test that replaced it.
- *
- * `database/seeders/Demo` is outside the guard (it scans `app/`); it is covered end
- * to end by DemoSeedCommandTest.
- */
-/**
  * True when the suite keys a `dataset()`/`->with()` entry by `$class::class` or
  * passes it to `covers()`; a name in a comment, string or plain reference is not a marker.
  */
@@ -89,6 +73,22 @@ function aggregateSuiteMarksClass(string $source, string $class): bool
     return false;
 }
 
+/**
+ * Guards the 1:1 class<->test convention: every concrete app class should have a
+ * matching `{ClassName}Test.php` somewhere under tests/. Runs in the `structure`
+ * group so CI can execute it before the (expensive) coverage run and fail fast
+ * when a new class ships without a test.
+ *
+ * Exemptions below are the documented exceptions to 1:1, not a TODO list:
+ * abstract/interface/enum/exception/provider types carry no standalone test, and
+ * a few families are intentionally covered by aggregate suites, which must mark
+ * each class with a dataset key or covers() (see aggregateSuiteMarksClass). An exempt class
+ * that has its own {Name}Test.php fails the guard, so a stale exemption cannot
+ * outlive the test that replaced it.
+ *
+ * `database/seeders/Demo` is outside the guard (it scans `app/`); it is covered end
+ * to end by DemoSeedCommandTest.
+ */
 it('has a test class for every concrete app class', function (): void {
     // Whole namespaces covered by aggregate suites; each concrete class must be marked in one of them or have its own {Name}Test.php.
     $aggregateSuites = [

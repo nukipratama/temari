@@ -27,9 +27,7 @@ const COLOR = {
   'surface-elev':   '#f8fbfe',
   'surface-warm':   '#f0f5fb',
   'surface-sunken': '#e2e8ee',
-  // line/line-strong already drifted from app.css before this change (this
-  // file predates the current live values) — left as-is, not this change's
-  // drift to fix.
+  // line/line-strong hold different values from app.css and are left as they are.
   line:             '#d2c9b0',
   'line-strong':    '#c3b89c',
   // semantic accents — held constant across every direction (not brand)
@@ -126,9 +124,6 @@ for (const family of INK_FAMILIES) {
 }
 COLOR.line = inkOn(COLOR.line, GROUNDS, 1.4);
 
-/* Every accent family whose light -ink value inverts on the dark ground. */
-const DARK_INK_FAMILIES = ['horizon', 'leaf', 'ember', 'citrus'];
-
 /* A translucent chip prints on its tint over the ground, not on the ground
    itself, so the tint is scored as a ground too (accent/muted/popover all
    resolve to sky-2 on dark). */
@@ -146,7 +141,7 @@ function darkTintGrounds(family) {
 const TINTED_DARK_INK_TARGET = { ember: 4.5, leaf: 4.6 };
 
 export const DARK_INK = Object.fromEntries(
-  DARK_INK_FAMILIES.map((family) => [
+  INK_FAMILIES.map((family) => [
     family,
     family in TINTED_DARK_INK_TARGET
       ? inkOnDark(COLOR[family], darkTintGrounds(family), TINTED_DARK_INK_TARGET[family])

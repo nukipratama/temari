@@ -324,7 +324,7 @@ it('uses grade-adjusted pace to keep an even downhill segment steady', function 
         170,
     );
 
-    expect($summary['steady_effort_decoupling_pct'])->toEqualWithDelta(0.0, 0.1)
+    expect($summary['steady_effort_decoupling_pct'])->toBeFloat()->toEqualWithDelta(0.0, 0.1)
         ->and($summary['steady_effort_hr_drift_bpm'])->toBe(0.0);
 });
 

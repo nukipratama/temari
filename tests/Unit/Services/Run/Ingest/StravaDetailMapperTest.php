@@ -48,3 +48,7 @@ it('falls back to start_date for the local start and leaves non-GPS coordinates 
         ->and($mapped['start_lat'])->toBeNull()
         ->and($mapped['start_lng'])->toBeNull();
 });
+
+it('falls back to start_date when the local start is an empty string', function (): void {
+    expect(StravaDetailMapper::summary(['start_date_local' => '', 'start_date' => '2026-05-10T06:00:00Z'])['start_date_local'])->toBe('2026-05-10 06:00:00');
+});

@@ -189,8 +189,7 @@ it('releases the current mirrored grant when Strava rejects a connection token',
 });
 
 // One notification per revocation, from the one method every revoking call site
-// already goes through — eight of them, and a per-call-site notify would drift the
-// way "where can this user be reached" once did.
+// already goes through, so no call site can notify on its own and drift.
 it('tells the athlete once that syncing stopped', function (): void {
     Notification::fake();
     $user = User::factory()->create();

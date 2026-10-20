@@ -15,7 +15,7 @@ code_refs:
 
 A run's card leaves the app as a PNG the browser makes: the print in the share popup, the file the
 athlete downloads or copies, and the file the native share sheet hands on are all the same blob.
-The server renderer that used to own this retired with `#981` — it was too slow on first open and
+The server renderer that used to own this retired — it was too slow on first open and
 on every switch, and it loaded a four-core box shared with production and CI. There is still
 exactly one renderer, and it now runs where the athlete is.
 

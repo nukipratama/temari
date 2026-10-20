@@ -331,7 +331,7 @@ class RecordsBackfillTailJob implements ShouldQueue
 
     public function handle(): void
     {
-        Cache::put('backfill-tail-saw', Activity::withStubs()->where('user_id', $this->userId)->count());
+        Cache::put('backfill-tail-saw', (string) Activity::withStubs()->where('user_id', $this->userId)->count());
     }
 }
 

@@ -64,7 +64,7 @@ export default function Inbox({
     );
 
     // The deep-linked row counts as read from the moment it lands, which is a
-    // beat after paint now that the window is deferred.
+    // beat after paint since the window is deferred.
     const isRead = (item: InboxItem) =>
         item.read_at !== null ||
         readIds.has(item.id) ||

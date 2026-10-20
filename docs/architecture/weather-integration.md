@@ -46,7 +46,7 @@ It's written during ingest by [ActivityPipeline::lookupWeather](app/Services/Run
 
 All consumers read the stored columns; none call Open-Meteo.
 
-- **[[run-detail]]** — [MapWeatherPanel](resources/js/components/run/MapWeatherPanel.tsx) renders the temp / humidity / wind / location block beside the route map, on both mobile and desktop, and [VitalsCard](resources/js/components/run/VitalsCard.tsx) reads the stored temperature to explain a hot run's heart-rate drift. The dashboard's last-run weather chip went with `PS3`'s port to the prototype's mini card, which draws no chip (see [[dashboard]]).
+- **[[run-detail]]** — [MapWeatherPanel](resources/js/components/run/MapWeatherPanel.tsx) renders the temp / humidity / wind / location block beside the route map, on both mobile and desktop, and [VitalsCard](resources/js/components/run/VitalsCard.tsx) reads the stored temperature to explain a hot run's heart-rate drift. The dashboard's last-run weather chip went with the port to the prototype's mini card, which draws no chip (see [[dashboard]]).
 - **[[ai-pipeline|AI narration]]** — temp and rain flow into [ActivityNarrationContext](app/Services/AI/Context/ActivityNarrationContext.php) so Temari's run commentary can mention the conditions.
 - **Past You, badges, mood and Q&A** — [PastYouMatcher](app/Services/Run/Story/PastYouMatcher.php) matches past runs on temperature, [BadgeEvaluator](app/Services/Run/Story/BadgeEvaluator.php) awards the heat and rain badges from the stored weather, [Temari](app/Services/Run/Story/Temari.php) weighs hot weather in a run's mood, and the card facts and the run Q&A answers ([RuleBasedRunAnswer](app/Services/AI/RunQuestion/RuleBasedRunAnswer.php)) quote it.
 

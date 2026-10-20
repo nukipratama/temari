@@ -22,6 +22,8 @@ use Mockery\MockInterface;
 
 uses(RefreshDatabase::class);
 
+afterEach(fn () => Carbon::setTestNow());
+
 // The /devtools/narration dashboard is gated by HTTP Basic Auth against a
 // shared devtools password. Every case below sends the correct credential;
 // the authorization cases override it and call armDevtoolsGate() first,

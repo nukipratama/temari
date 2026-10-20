@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Notifications\Messages\InboxMessage;
 use App\Enums\NotificationKind;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
@@ -17,6 +16,7 @@ use App\Notifications\AnalysisReadyNotification;
 use App\Notifications\Channels\IdempotentWebPushChannel;
 use App\Notifications\Channels\InAppChannel;
 use App\Notifications\Channels\TelegramChannel;
+use App\Notifications\Messages\InboxMessage;
 use App\Notifications\Messages\PushBody;
 use App\Notifications\Messages\TelegramMessage;
 use App\Services\AI\AnalysisType;

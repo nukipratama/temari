@@ -171,7 +171,7 @@ it('flags decoupling at 12.01% as gassed', function (): void {
 });
 
 it('reads an inferred tempo (Z3-Z4 heavy, untagged) with high decoupling + neg split as blazing, not gassed', function (): void {
-    // The activity 276 shape: 81.7% Z3-Z4, decoupling 14, negative split, untagged.
+    // A hard run logged without a tag: 81.7% Z3-Z4, decoupling 14, negative split.
     // Decoupling on an intended-hard session is the work, not weakness.
     $activity = Activity::factory()->create();
     $detail = ActivityDetail::factory()->for($activity)->create([

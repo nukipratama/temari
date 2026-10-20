@@ -158,7 +158,7 @@ example [MorningBriefingNotification](../../app/Notifications/MorningBriefingNot
 
 ## Deep links, not replays
 
-`PP3` cut both celebration replays: the card-reveal modal and its `api.cards.*` endpoints, and the
+Both celebration replays were cut: the card-reveal modal and its `api.cards.*` endpoints, and the
 accessory-unlock takeover. Rows are now a record and a deep link, nothing more. Every row's only
 action is the link into the page the notification was about, which is the same URL its web push
 already carried — a full-bleed overlay over the row itself is the row's one accessible link

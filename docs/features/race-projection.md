@@ -80,7 +80,7 @@ Under the card, a row behind a hairline holds "edit race" and a quiet ember "cle
 
 ## No fitness trend here any more
 
-`PP3` cut `/race`'s 90-day CTL chart (P26): the prototype draws that chart once, on Trends. `PS6` built Trends' panel on `LineChart` directly rather than reusing `CtlTrendChart`, which left that component with no consumer at all; `W2` swept it. [TrainingLoad::ctlTrend()](app/Services/Run/Metrics/TrainingLoad.php) still feeds the CTL line inside Trends' "vs a month ago" comparison — see [[trends]] and [[training-load-metrics]] for the full CTL/ATL engine.
+`/race`'s 90-day CTL chart was cut: the prototype draws that chart once, on Trends. Trends' panel was built on `LineChart` directly rather than reusing `CtlTrendChart`, which left that component with no consumer at all, so it was swept. [TrainingLoad::ctlTrend()](app/Services/Run/Metrics/TrainingLoad.php) still feeds the CTL line inside Trends' "vs a month ago" comparison — see [[trends]] and [[training-load-metrics]] for the full CTL/ATL engine.
 
 ## Sharing and cache busting
 

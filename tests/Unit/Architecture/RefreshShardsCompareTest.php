@@ -5,13 +5,6 @@ declare(strict_types=1);
 use Symfony\Component\Process\Process;
 use Symfony\Component\Yaml\Yaml;
 
-/**
- * Exercises scripts/compare-shards.php, the decision guard behind
- * .github/workflows/refresh-shards.yml (docs/decisions/sharded-pr-coverage.md).
- * A class add/remove always decides yes; otherwise it decides yes only when the
- * old split, re-measured on the new timings, is both over the 10% threshold
- * and worse than a fresh split of the new timings.
- */
 /** @param  array<string, float>  $timings */
 function shardsFixture(array $timings): string
 {
@@ -72,6 +65,13 @@ const BALANCED_BASE = [
     'Tests\\I' => 10.0,
 ];
 
+/**
+ * Exercises scripts/compare-shards.php, the decision guard behind
+ * .github/workflows/refresh-shards.yml (docs/decisions/sharded-pr-coverage.md).
+ * A class add/remove always decides yes; otherwise it decides yes only when the
+ * old split, re-measured on the new timings, is both over the 10% threshold
+ * and worse than a fresh split of the new timings.
+ */
 it('decides no when the map is unchanged', function (): void {
     $out = compareShards(BALANCED_BASE, BALANCED_BASE);
 
@@ -107,8 +107,7 @@ it('decides yes when a fresh split would rebalance shards the stale one has drif
         'Tests\\G' => 11.2, 'Tests\\H' => 10.0, 'Tests\\I' => 8.8,
     ]);
 
-    // Under the pre-fix rule this looked at new_excess_pct (0.0, not > 10) and
-    // decided no, even though the stale split is 12% over mean right now.
+    // The fresh split is balanced (new_excess_pct 0.0), but the stale split is 12% over mean right now.
     expect($out['decision'])->toBe('yes')
         ->and((float) $out['old_applied_excess_pct'])->toBe(12.0)
         ->and((float) $out['new_excess_pct'])->toBe(0.0);

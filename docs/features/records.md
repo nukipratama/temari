@@ -15,12 +15,11 @@ code_refs:
 # Personal records
 
 PRs are detected during ingest and stored in `personal_records`. They have had three homes: a
-standalone `/records` scoreboard (retired), a **Personal Bests** panel on `/trends` (**cut in
-`PP3`**, decision P25 — the prototype's Trends screen draws four blocks and a personal-bests table
+standalone `/records` scoreboard (retired), a **Personal Bests** panel on `/trends` (**cut**, because the prototype's Trends screen draws four blocks and a personal-bests table
 is not one of them), and their surviving home, **[[profile]]'s progression charts**.
 
 The old `/records` / `/badges` routes 404, no redirect, since neither had external consumers. The
-Indonesian-named `/rekor` redirect that used to point at `/trends` was deleted in `C1` along with
+Indonesian-named `/rekor` redirect that used to point at `/trends` was deleted along with
 every other legacy redirect.
 
 ## System dependencies
@@ -47,5 +46,5 @@ nowhere.
   scoreboard computed a featured PR's splits, weather, location, a "you're N seconds off sub-X"
   milestone delta and an AI-narrated PR line; the Trends panel that replaced it kept only
   category/value/date; the cut removed that too. Re-adding any of it is new scope.
-- `TrendsController` no longer ships `distanceRecords` / `paceRecords`; `W2` decides whether the
-  now-unread pace-window categories stay.
+- `TrendsController` no longer ships `distanceRecords` / `paceRecords`; whether the
+  now-unread pace-window categories stay is not yet decided.

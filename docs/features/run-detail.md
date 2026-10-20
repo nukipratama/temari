@@ -41,13 +41,13 @@ coordinates, Strava's raw laps and splits arrays and the other unread columns
 never reach the browser; the laps and splits views render from `stream_summary`.
 
 **Navigation:** `route('activities.show', activity)` → `/activities/{activity}`.
-Named route: `activities.show`. It is a **pushed** screen (P6): back chevron,
+Named route: `activities.show`. It is a **pushed** screen: back chevron,
 no bottom nav. An in-app visit returns to its recorded internal route and scroll
 position; a cold deep link or notification launch falls back to History.
 
 ## Section order
 
-`PS8` rebuilt the page to the prototype's section list (P28), and that order is
+The page was rebuilt to the prototype's section list, and that order is
 the spec — a slice that adds a section adds it here too:
 
 1. the effort-score picker ([EffortScore](../../resources/js/components/run/EffortScore.tsx)), while the run has no score or the athlete is changing it
@@ -125,7 +125,7 @@ tap-to-activate overlay button — Leaflet's drag handler otherwise captures a
 touch-scroll swipe as a pan gesture, trapping the page mid-scroll on mobile;
 one tap dismisses the overlay and enables full drag/zoom, the same pattern
 Google Maps embeds use. The prototype fills this slot with a decorative
-"activate map" placeholder; P16 keeps the real map there, which already carries
+"activate map" placeholder; the app keeps the real map there, which already carries
 an activate pill of its own.
 
 ## Effort score
@@ -217,7 +217,7 @@ drift is toned as a warning **unless** the run was at or above
 `WeatherSnapshot::HOT_RUN_TEMP_C` (31°C), the one hot-run threshold the backend
 also uses and `typescript:enums` generates into the frontend, which mirrors the
 backend's own rule — heat explains an upward drift, and cannot explain a
-negative one. Relative effort is **not** here: P18 cut it, and the prototype's
+negative one. Relative effort is **not** here: it was cut, and the prototype's
 vitals card draws these five readings instead.
 
 [SplitsChart](../../resources/js/components/run/SplitsChart.tsx) reads

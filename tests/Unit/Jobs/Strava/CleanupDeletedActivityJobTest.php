@@ -52,7 +52,7 @@ function makeCleanupRun(User $user, int $externalId, float $distance, CarbonInte
 }
 
 /**
- * The cleanup job now verifies the deletion against Strava (a 404) before acting.
+ * The cleanup job verifies the deletion against Strava (a 404) before acting.
  * Give the user a live connection and fake the activity endpoint to 404 so the
  * verification passes.
  */

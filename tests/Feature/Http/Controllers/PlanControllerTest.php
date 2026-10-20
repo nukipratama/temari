@@ -199,7 +199,7 @@ it('restores a skipped future session to scoring and regeneration', function ():
         ->and($regenerated->pinned)->toBeFalse();
 });
 
-it('cuts block and delete, per decision P23', function (): void {
+it('cuts block and delete: the delete route is gone and a block attempt is a no-op', function (): void {
     $user = User::factory()->create();
     $session = PlannedSession::factory()->for($user)->create([
         'date' => Carbon::today()->addDay()->toDateString(),
