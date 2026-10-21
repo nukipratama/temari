@@ -25,9 +25,9 @@ use App\Actions\Run\Plan\ResolveSeasonAction;
 
 /**
  * Ensures a user always has a current {@see Season}, generates its general {@see SeasonGoal} rows
- * once at creation, and appends a race season's block goals on the first call on or after block
- * open. Read fresh every call, mirroring {@see Periodizer}'s "a mode switch takes effect at the next
- * call" rule.
+ * once at creation, recounts the planned-count targets from the plan {@see self::recountPlannedGoals()},
+ * and appends a race season's block goals on the first call on or after block open. Read fresh every
+ * call, mirroring {@see Periodizer}'s "a mode switch takes effect at the next call" rule.
  *
  * Called from both {@see PlanPageAssembler} and {@see Periodizer::regenerate()}; the two call sites
  * are idempotent against each other, see {@see self::isCurrent()}.
@@ -55,6 +55,15 @@ final readonly class SeasonService
     private const string RACE_MARGIN_METRIC = 'season_race_goal_met';
 
     private const string PEAK_WEEKLY_KM_METRIC = 'season_peak_weekly_km';
+
+    /** The share of the season's planned sessions of a kind that its goal asks for. */
+    private const int PLANNED_GOAL_PERCENT = 80;
+
+    private const array PLANNED_COUNT_GOALS = [
+        'season_sessions_completed' => ['title' => 'Complete your planned sessions', 'unit' => 'sessions'],
+        'season_quality_completed' => ['title' => 'Nail your quality sessions', 'unit' => 'sessions'],
+        'season_rest_honored' => ['title' => 'Honor your rest days', 'unit' => 'days'],
+    ];
 
     public function __construct(
         private TrainingBaseline $baseline,
@@ -131,6 +140,7 @@ final readonly class SeasonService
         }
 
         if ($current !== null) {
+            $this->recountGoals($current);
             $this->records->settle($user, $current, $today);
         }
 
@@ -148,6 +158,59 @@ final readonly class SeasonService
         $this->generateGoals($season, $user, $race, $today);
 
         return $season;
+    }
+
+    /**
+     * Sets the current season's sessions, quality and rest-day targets to
+     * {@see self::PLANNED_GOAL_PERCENT} of its planned rows of each kind, and
+     * removes the goal for a kind the plan never schedules. A season with no
+     * plan written yet keeps the targets it opened with.
+     */
+    public function recountPlannedGoals(User $user): void
+    {
+        $season = $this->season->latest($user->id);
+        if ($season instanceof Season) {
+            $this->recountGoals($season);
+        }
+    }
+
+    private function recountGoals(Season $season): void
+    {
+        $sessions = PlannedSession::query()
+            ->where('user_id', $season->user_id)
+            ->whereBetween('date', [$season->starts_at->toDateString(), $season->ends_at->toDateString()])
+            ->get(['session_type', 'made_up_on']);
+        if ($sessions->isEmpty()) {
+            return;
+        }
+
+        $counts = [
+            'season_sessions_completed' => $sessions->filter(fn (PlannedSession $s): bool => $s->session_type !== SessionType::Rest)->count(),
+            'season_quality_completed' => $sessions->filter(fn (PlannedSession $s): bool => in_array($s->session_type, [SessionType::Tempo, SessionType::Interval, SessionType::Race], true))->count(),
+            'season_rest_honored' => $sessions->filter(fn (PlannedSession $s): bool => $s->session_type === SessionType::Rest && $s->made_up_on === null)->count(),
+        ];
+
+        $existing = SeasonGoal::query()
+            ->where('season_id', $season->id)
+            ->whereIn('metric', array_keys(self::PLANNED_COUNT_GOALS))
+            ->get()
+            ->keyBy('metric');
+
+        foreach (self::PLANNED_COUNT_GOALS as $metric => $goal) {
+            $row = $existing->get($metric);
+            if ($counts[$metric] === 0) {
+                $row?->delete();
+
+                continue;
+            }
+
+            $target = ceil($counts[$metric] * self::PLANNED_GOAL_PERCENT / 100);
+            if ($row === null) {
+                SeasonGoal::query()->create([...$goal, 'season_id' => $season->id, 'metric' => $metric, 'metric_key' => null, 'target' => $target]);
+            } else {
+                $row->update(['target' => $target]);
+            }
+        }
     }
 
     /**
@@ -294,18 +357,16 @@ final readonly class SeasonService
 
         $goals = [
             [
-                'title' => 'Complete your planned sessions',
+                ...self::PLANNED_COUNT_GOALS['season_sessions_completed'],
                 'metric' => 'season_sessions_completed',
                 'metric_key' => null,
                 'target' => (float) max(1, $sessionsTotal),
-                'unit' => 'sessions',
             ],
             [
-                'title' => 'Nail your quality sessions',
+                ...self::PLANNED_COUNT_GOALS['season_quality_completed'],
                 'metric' => 'season_quality_completed',
                 'metric_key' => null,
                 'target' => (float) max(1, $qualityTotal),
-                'unit' => 'sessions',
             ],
             [
                 'title' => 'Run this season\'s longest long run',
@@ -315,11 +376,10 @@ final readonly class SeasonService
                 'unit' => 'km',
             ],
             [
-                'title' => 'Honor your rest days',
+                ...self::PLANNED_COUNT_GOALS['season_rest_honored'],
                 'metric' => 'season_rest_honored',
                 'metric_key' => null,
                 'target' => (float) max(1, $restDaysTotal),
-                'unit' => 'days',
             ],
         ];
 

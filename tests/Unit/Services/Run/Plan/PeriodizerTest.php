@@ -18,6 +18,7 @@ use App\Models\PlanAdaptation;
 use App\Models\PlannedSession;
 use App\Models\RaceGoal;
 use App\Models\Season;
+use App\Models\SeasonGoal;
 use App\Models\TrainingPreference;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
@@ -177,7 +178,7 @@ it('generates a self-scaled cycle with its season and decision, then regenerates
     $plannedSessionInserts = array_filter($queries, fn (string $sql): bool => str_starts_with(strtolower($sql), 'insert into `planned_sessions`'));
     expect(PlannedSession::query()->where('user_id', $user->id)->count())->toBe(Periodizer::HORIZON_WEEKS * 7)
         ->and($plannedSessionInserts)->toHaveCount(1)
-        ->and(count($queries))->toBeLessThanOrEqual(24)
+        ->and(count($queries))->toBeLessThanOrEqual(26)
         ->and(PlanAdaptation::query()->where('user_id', $user->id)->count())->toBe(1);
 
     $before = PlanAdaptation::query()->where('user_id', $user->id)->firstOrFail();
@@ -896,4 +897,21 @@ it('persists an endurance tilt on the Build and Peak long runs, and nowhere outs
         ->and(array_all($blockLongs, fn (array $row): bool => $row['fall_off_tilt'] === FallOffTilt::Endurance))->toBeTrue()
         ->and(array_all($tilted, fn (array $row): bool => in_array($row['phase'], [PlanPhase::Build, PlanPhase::Peak], true)
             && in_array($row['session_type'], [SessionType::Long, SessionType::Tempo], true)))->toBeTrue();
+});
+
+it('recounts the season goal targets from the plan it just wrote', function (): void {
+    $user = User::factory()->create();
+    seedPeriodizerBaseline($user);
+
+    periodizer()->regenerate($user, Carbon::today());
+
+    $season = Season::query()->where('user_id', $user->id)->sole();
+    $runs = PlannedSession::query()->where('user_id', $user->id)
+        ->whereBetween('date', [$season->starts_at->toDateString(), $season->ends_at->toDateString()])
+        ->where('session_type', '!=', SessionType::Rest)
+        ->count();
+    $target = SeasonGoal::query()->where('season_id', $season->id)->where('metric', 'season_sessions_completed')->value('target');
+
+    expect($runs)->toBeGreaterThan(0)
+        ->and($target)->toBe(ceil($runs * 0.8));
 });

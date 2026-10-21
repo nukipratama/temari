@@ -68,6 +68,7 @@ final readonly class Periodizer
 
     public function __construct(
         private PlanInputsGatherer $gatherer,
+        private SeasonService $seasonService,
     ) {
     }
 
@@ -464,6 +465,8 @@ final readonly class Periodizer
                     'increases_held' => $inputs->increasesHeld,
                 ],
             );
+
+            $this->seasonService->recountPlannedGoals($user);
         });
     }
 
