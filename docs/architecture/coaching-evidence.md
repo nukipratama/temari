@@ -3,7 +3,7 @@ title: Coaching evidence
 description: The one curated reference list behind the app's coaching rules — each source keyed AuthorYear with grade and access, and a rule table mapping each rule to code and its label (evidence-supported, heuristic or product choice)
 tags: [architecture, run]
 status: living
-reviewed: 2026-10-08
+reviewed: 2026-10-21
 code_refs:
   - app/Services/Run/Metrics/TrainingPaceCalculator.php
   - app/Services/Run/Metrics/VdotEstimator.php
@@ -124,6 +124,7 @@ ADRs, feature notes and code docblocks cite a source here as `[[coaching-evidenc
 | On a planned trial day only, a run longer than the ±10% band is read by its best split at the trial distance, with the split's heart rate or else the run's; confirmed evidence is that split at the trial distance, never the whole run. A shorter run, or one with no split at the trial distance, is read whole. Every other evidence stays whole-run | [TimeTrial.php](app/Services/Run/Plan/TimeTrial.php) | heuristic | — |
 | A trial whose run misses the gate asks the athlete once; "yes" counts the run, or its trial split, "no" closes the trial | [TimeTrialService.php](app/Services/Run/Plan/TimeTrialService.php) | product choice | — |
 | A goal-less season's goal counts weeks that reached 85% of the planned km, not CTL growth | [SeasonGamificationContext.php](app/Services/Gamification/SeasonGamificationContext.php), [SeasonService.php](app/Services/Run/Plan/SeasonService.php) | product choice | [[#Vermeire2022]], [[#Doherty2020]] |
+| The sessions, quality and rest-day season goals target 80% of what the season's plan schedules, and a kind it never schedules has no goal | [SeasonService.php](app/Services/Run/Plan/SeasonService.php) | product choice | [[#LockeLatham2002]], [[#LockeLatham2019]], [[#LeyPutz2024]], [[#Shaw2022]], [[#IliesJudge2005]], [[#Kivetz2006]] |
 | Load numbers are presented as running load: long-term load, short-term load and a three-state load balance (fresh, steady, heavy); no copy reads them as fitness, readiness, overreaching, injury or soreness | [TrainingFormStatus.php](app/Services/Run/Metrics/TrainingFormStatus.php) | evidence-supported | [[#Meeusen2013]], [[#Vermeire2022]], [[#Foster1998]], [[#JonesCM2017]], [[#Smyth2022]], [[#Mountjoy2023]] |
 | Heart-rate zones without a measured max or synced bands are labelled estimated, and heart-rate intent verdicts on them are marked a rough read | [HrZonesDisclosure.tsx](resources/js/components/settings/HrZonesDisclosure.tsx), [ComplianceScorer.php](app/Services/Run/Plan/ComplianceScorer.php) | evidence-supported | [[#Tanaka2001]], [[#Nes2013]], [[#RobergsLandwehr2002]] |
 | No age is collected to predict a max heart rate; the default 180 and the observed-peak raise stand | [runner.php](config/runner.php) | product choice | — |
@@ -343,3 +344,21 @@ Mujika I. Intense training: the key to optimal performance before and during the
 
 ### Fokkema2020
 Fokkema T, van Damme AADN, Fornerod MWJ, de Vos RJ, Bierma-Zeinstra SMA, van Middelkoop M. Training for a (half-)marathon: training volume and longest endurance run related to performance and running injuries. *Scand J Med Sci Sports* 2020;30(9):1692–1704. https://doi.org/10.1111/sms.13725. In recreational (half-)marathon runners, a longer longest training run went with faster finish times; the study did not look at what pace the long runs held. Grade COH · access NR.
+
+### LockeLatham2002
+Locke EA, Latham GP. Building a practically useful theory of goal setting and task motivation: a 35-year odyssey. *Am Psychol* 2002;57(9):705–717. https://doi.org/10.1037/0003-066x.57.9.705. Harder goals raise performance only while the person is committed and able to reach them. Grade REV · access ABS.
+
+### LockeLatham2019
+Locke EA, Latham GP. The development of goal setting theory: a half century retrospective. *Motiv Sci* 2019;5(2):93–105. https://doi.org/10.1037/mot0000127. Outside the laboratory, goals that cannot be reached lead to demoralization, so goals should be challenging yet attainable. Grade REV · access NR (secondary summaries only).
+
+### LeyPutz2024
+Ley C, Putz P. Efficacy of interventions and techniques on adherence to physiotherapy in adults: an overview of systematic reviews and panoramic meta-analysis. *Syst Rev* 2024;13:137. https://doi.org/10.1186/s13643-024-02538-9. Adherence is sessions done ÷ sessions prescribed, and reviews commonly call more than 70% or 80% of prescribed sessions adherent. Grade MA · access FT.
+
+### Shaw2022
+Shaw JF, Pilon S, Vierula M, McIsaac DI. Predictors of adherence to prescribed exercise programs for older adults with medical or surgical indications for exercise: a systematic review. *Syst Rev* 2022;11:80. https://doi.org/10.1186/s13643-022-01966-9. Where adherence was reported as a percentage of prescribed sessions, the mean was 80% (range 60–98%). Grade SR · access ABS.
+
+### IliesJudge2005
+Ilies R, Judge TA. Goal regulation across time: the effects of feedback and affect. *J Appl Psychol* 2005;90(3):453–467. https://doi.org/10.1037/0021-9010.90.3.453. People lowered their goals after negative feedback and raised them after positive feedback. Grade LAB · access ABS.
+
+### Kivetz2006
+Kivetz R, Urminsky O, Zheng Y. The goal-gradient hypothesis resurrected: purchase acceleration, illusionary goal progress, and customer retention. *J Mark Res* 2006;43(1):39–58. https://doi.org/10.1509/jmkr.43.1.39. Effort rises as the share of distance left to a goal shrinks. Grade CT · access ABS.

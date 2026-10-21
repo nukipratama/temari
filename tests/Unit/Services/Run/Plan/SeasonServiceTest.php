@@ -570,3 +570,86 @@ it('settles the closing season\'s record when the next one opens, with a pending
         ->and($season->refresh()->process_pct)->toBeInt()
         ->and($next->performance_state)->toBeNull();
 });
+
+/** @return array<string, float> */
+function seasonGoalTargets(Season $season): array
+{
+    return SeasonGoal::query()->where('season_id', $season->id)->get()
+        ->mapWithKeys(fn (SeasonGoal $goal): array => [$goal->metric => $goal->target])
+        ->all();
+}
+
+it('recounts the sessions, quality and rest-day targets at 80% of the season\'s planned rows, rounded up', function (): void {
+    $user = User::factory()->create();
+    $season = seasonServiceUnderTest()->ensureCurrent($user, Carbon::today());
+    $day = Carbon::today()->copy();
+    $plan = [
+        ...array_fill(0, 6, SessionType::Easy), SessionType::Long,
+        SessionType::Tempo, SessionType::Interval, SessionType::Race,
+        ...array_fill(0, 6, SessionType::Rest),
+    ];
+    foreach ($plan as $type) {
+        PlannedSession::factory()->for($user)->create(['date' => $day->toDateString(), 'session_type' => $type]);
+        $day->addDay();
+    }
+    PlannedSession::factory()->for($user)->rest()->create(['date' => $day->toDateString(), 'made_up_on' => $day->copy()->addDay()->toDateString()]);
+    PlannedSession::factory()->for($user)->create(['date' => $season->starts_at->copy()->subDay()->toDateString(), 'session_type' => SessionType::Tempo]);
+    PlannedSession::factory()->for($user)->create(['date' => $season->ends_at->copy()->addDay()->toDateString(), 'session_type' => SessionType::Tempo]);
+
+    seasonServiceUnderTest()->recountPlannedGoals($user);
+
+    $targets = seasonGoalTargets($season);
+    expect($targets['season_sessions_completed'])->toBe(8.0)
+        ->and($targets['season_quality_completed'])->toBe(3.0)
+        ->and($targets['season_rest_honored'])->toBe(5.0)
+        ->and($targets['season_consistent_weeks'])->toBe(12.0);
+});
+
+it('drops the goal for a kind the plan never schedules, and brings it back once a plan does', function (): void {
+    $user = User::factory()->create();
+    $season = seasonServiceUnderTest()->ensureCurrent($user, Carbon::today());
+    PlannedSession::factory()->for($user)->create(['date' => Carbon::today()->toDateString(), 'session_type' => SessionType::Easy]);
+    PlannedSession::factory()->for($user)->rest()->create(['date' => Carbon::tomorrow()->toDateString()]);
+
+    seasonServiceUnderTest()->recountPlannedGoals($user);
+
+    expect(seasonGoalTargets($season))->not->toHaveKey('season_quality_completed')
+        ->and(seasonGoalTargets($season)['season_sessions_completed'])->toBe(1.0);
+
+    PlannedSession::factory()->for($user)->create(['date' => Carbon::today()->addDays(2)->toDateString(), 'session_type' => SessionType::Tempo]);
+    seasonServiceUnderTest()->recountPlannedGoals($user);
+
+    $quality = SeasonGoal::query()->where('season_id', $season->id)->where('metric', 'season_quality_completed')->firstOrFail();
+    expect($quality->target)->toBe(1.0)
+        ->and($quality->unit)->toBe('sessions')
+        ->and($quality->title)->toBe('Nail your quality sessions');
+});
+
+it('recounts a season closed early on only the rows inside its shortened range before its record settles', function (): void {
+    $user = User::factory()->create();
+    $season = seasonServiceUnderTest()->ensureCurrent($user, Carbon::today());
+    foreach (range(0, 9) as $offset) {
+        PlannedSession::factory()->for($user)->create(['date' => Carbon::today()->addDays($offset)->toDateString(), 'session_type' => SessionType::Easy]);
+    }
+    seasonServiceUnderTest()->recountPlannedGoals($user);
+    expect(seasonGoalTargets($season)['season_sessions_completed'])->toBe(8.0);
+
+    Carbon::setTestNow(Carbon::today()->addDays(5)->setTime(8, 0));
+    RaceGoal::factory()->for($user)->create(['race_date' => Carbon::today()->addWeeks(10)->toDateString()]);
+    seasonServiceUnderTest()->ensureCurrent($user, Carbon::today());
+
+    $season->refresh();
+    expect($season->ends_at->toDateString())->toBe(Carbon::yesterday()->toDateString())
+        ->and(seasonGoalTargets($season)['season_sessions_completed'])->toBe(4.0)
+        ->and($season->record_settled_at)->not->toBeNull();
+});
+
+it('keeps the opening targets of a season whose plan was never written', function (): void {
+    $user = User::factory()->create();
+    $season = seasonServiceUnderTest()->ensureCurrent($user, Carbon::today());
+    $opening = seasonGoalTargets($season);
+
+    seasonServiceUnderTest()->recountPlannedGoals($user);
+
+    expect(seasonGoalTargets($season))->toBe($opening);
+});
