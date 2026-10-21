@@ -30,9 +30,9 @@ use Illuminate\Console\Events\ScheduledTaskStarting;
 use Illuminate\Foundation\MaintenanceModeManager;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
-use Illuminate\Queue\Events\JobFailed;
-use Illuminate\Queue\Events\JobProcessed;
+use Illuminate\Queue\Events\JobAttempted;
 use Illuminate\Queue\Events\JobProcessing;
+use Illuminate\Queue\Events\JobTimedOut;
 use Illuminate\Routing\Route;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
@@ -143,7 +143,7 @@ class AppServiceProvider extends ServiceProvider
         Event::listen(ScheduledTaskSkipped::class, [RecordScheduledTaskRun::class, 'skipped']);
 
         Event::listen([JobProcessing::class, CommandStarting::class], [RecordCliPeakMemory::class, 'reset']);
-        Event::listen([JobProcessed::class, JobFailed::class], [RecordCliPeakMemory::class, 'job']);
+        Event::listen([JobAttempted::class, JobTimedOut::class], [RecordCliPeakMemory::class, 'job']);
         Event::listen(CommandFinished::class, [RecordCliPeakMemory::class, 'command']);
 
         // Real enforcement happens upstream in EnsureDevtoolsAccess (HTTP Basic

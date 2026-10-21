@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Listeners;
 
 use Illuminate\Console\Events\CommandFinished;
-use Illuminate\Queue\Events\JobFailed;
-use Illuminate\Queue\Events\JobProcessed;
+use Illuminate\Queue\Events\JobAttempted;
+use Illuminate\Queue\Events\JobTimedOut;
 use Laravel\Pulse\Facades\Pulse;
 
 /**
@@ -20,7 +20,7 @@ final class RecordCliPeakMemory
         memory_reset_peak_usage();
     }
 
-    public function job(JobProcessed|JobFailed $event): void
+    public function job(JobAttempted|JobTimedOut $event): void
     {
         Pulse::record('peak_memory_job', $event->job->resolveName(), memory_get_peak_usage(true))->max()->avg()->count();
     }
