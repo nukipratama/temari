@@ -131,7 +131,7 @@ The `deploy` job lives in its own workflow, [.github/workflows/deploy.yml](.gith
 
 CI's workflow-level concurrency group is `ci-<ref>` with `cancel-in-progress: true` on every ref, `main` included, so a newer push to `main` cancels the older commit's whole CI run. The superseded run shows as cancelled: `ci-gate` runs under `if: ${{ !cancelled() }}`, so it is skipped rather than failed, and a cancelled CI run never starts a deploy. A job that hits its `timeout-minutes` is different: the job's result is `cancelled` but the run is not, so `ci-gate` still runs, fails on that job, and the run reads red.
 
-The cancellation never reaches a deploy. `Deploy` is a separate workflow run outside CI's concurrency group, and its `deploy-prod` group never cancels a started job. [CiConcurrencyTest](tests/Unit/Architecture/CiConcurrencyTest.php) pins both concurrency settings, the trigger and guard, the head sha, the newest-commit check and the rollback step.
+The cancellation never reaches a deploy. `Deploy` is a separate workflow run outside CI's concurrency group, and its `deploy-prod` group never cancels a started job. [CiConcurrencyTest](tests/Unit/Architecture/CiConcurrencyTest.php) pins both concurrency settings, the trigger and guard, the head sha, the newest-commit check and the rollback step. [SelfHostedRunnerTriggerTest](tests/Unit/Architecture/SelfHostedRunnerTriggerTest.php) fails when a workflow an outside contributor can trigger (a PR, review, issue or comment event) reaches a self-hosted job, directly or through a local reusable workflow.
 
 `workflow_run` has two properties to keep in mind:
 
