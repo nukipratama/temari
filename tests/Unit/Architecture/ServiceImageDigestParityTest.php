@@ -36,7 +36,7 @@ it('pins dev and CI MySQL and Redis to the digests prod runs', function (string 
 })->with('dev and ci service manifests')->group('structure');
 
 it('keeps .nvmrc on the Node release the Dockerfile pins', function (): void {
-    preg_match('/node:(\d+\.\d+\.\d+)-alpine/', (string) File::get(base_path('Dockerfile')), $pinned);
+    preg_match('/^FROM node:(\d+\.\d+\.\d+)-alpine@/m', (string) File::get(base_path('Dockerfile')), $pinned);
 
     expect($pinned)->toHaveKey(1)
         ->and(trim((string) File::get(base_path('.nvmrc'))))->toBe($pinned[1] ?? throw new InvalidArgumentException('The Dockerfile pins no Node release.'));
