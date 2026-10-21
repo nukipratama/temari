@@ -15,7 +15,7 @@ function ciWorkflow(string $file): array
 /** @return array<mixed> */
 function deployJob(): array
 {
-    return arrayOf(data_get(ciWorkflow('deploy.yml'), 'jobs.deploy'));
+    return arrayOf(data_get(ciWorkflow('release-deploy.yml'), 'jobs.deploy'));
 }
 
 /** @return array<mixed> */
@@ -33,7 +33,7 @@ it('cancels a superseded CI run on every ref, main included', function (): void 
 
 it('runs ci-gate and the frontend gate unless the run was cancelled, so a timed-out job still fails them', function (): void {
     expect(data_get(ciWorkflow('ci.yml'), 'jobs.ci-gate.if'))->toBe('${{ !cancelled() }}')
-        ->and(data_get(ciWorkflow('frontend-ci.yml'), 'jobs.gate.if'))->toBe('${{ !cancelled() }}');
+        ->and(data_get(ciWorkflow('ci-frontend.yml'), 'jobs.gate.if'))->toBe('${{ !cancelled() }}');
 })->group('structure');
 
 it('keeps the deploy out of the CI workflow', function (): void {
@@ -44,7 +44,7 @@ it('keeps the deploy out of the CI workflow', function (): void {
 })->group('structure');
 
 it('deploys only after CI succeeds on a push to main', function (): void {
-    $workflow = ciWorkflow('deploy.yml');
+    $workflow = ciWorkflow('release-deploy.yml');
 
     expect(data_get(ciWorkflow('ci.yml'), 'name'))->toBe('CI')
         ->and(data_get($workflow, 'on'))->toBe(['workflow_run' => [
@@ -57,7 +57,7 @@ it('deploys only after CI succeeds on a push to main', function (): void {
 })->group('structure');
 
 it('names each deploy run after the commit it deploys', function (): void {
-    expect(data_get(ciWorkflow('deploy.yml'), 'run-name'))->toBe('${{ github.event.workflow_run.display_title }}');
+    expect(data_get(ciWorkflow('release-deploy.yml'), 'run-name'))->toBe('${{ github.event.workflow_run.display_title }}');
 })->group('structure');
 
 it('never lets a newer deploy cancel one that has started', function (): void {
@@ -66,14 +66,14 @@ it('never lets a newer deploy cancel one that has started', function (): void {
 })->group('structure');
 
 it('deploys the commit CI tested, never the default branch head', function (): void {
-    $text = (string) file_get_contents(base_path('.github/workflows/deploy.yml'));
+    $text = (string) file_get_contents(base_path('.github/workflows/release-deploy.yml'));
     $checkout = data_get(deployJob(), 'steps.0');
 
     expect($text)->not->toContain('github.sha')
         ->and(data_get($checkout, 'uses'))->toStartWith('actions/checkout@')
         ->and(data_get($checkout, 'with.ref'))->toBe('${{ '.HEAD_SHA.' }}')
         ->and(data_get(deployJobStep('Pull the image built on the hosted runner'), 'run'))->toContain('$APP_IMAGE:${{ '.HEAD_SHA.' }}')
-        ->and(data_get(ciWorkflow('deploy.yml'), 'jobs.notify.with.message'))->toContain(HEAD_SHA);
+        ->and(data_get(ciWorkflow('release-deploy.yml'), 'jobs.notify.with.message'))->toContain(HEAD_SHA);
 })->group('structure');
 
 it('skips a commit main has moved past before touching prod', function (): void {

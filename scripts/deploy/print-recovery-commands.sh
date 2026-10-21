@@ -28,9 +28,9 @@ if [ -e "$analytics_dump" ]; then
 fi
 echo "# 3. Roll the code back to the image that was live before this deploy."
 if [ -n "${PREVIOUS_SHA:-}" ]; then
-  echo "gh workflow run rollback.yml --repo $GITHUB_REPOSITORY -f sha=$PREVIOUS_SHA"
+  echo "gh workflow run release-rollback.yml --repo $GITHUB_REPOSITORY -f sha=$PREVIOUS_SHA"
 else
-  echo "gh workflow run rollback.yml --repo $GITHUB_REPOSITORY"
+  echo "gh workflow run release-rollback.yml --repo $GITHUB_REPOSITORY"
 fi
 if [ "${DEPLOY_ENABLED_MAINTENANCE:-false}" = "true" ]; then
   echo "# 4. Once the rollback run is green, lift the maintenance this deploy turned on."

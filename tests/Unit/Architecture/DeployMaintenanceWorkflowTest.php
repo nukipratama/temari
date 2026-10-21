@@ -7,7 +7,7 @@ use Symfony\Component\Yaml\Yaml;
 /** @return array<mixed> */
 function deploySteps(): array
 {
-    return arrayOf(data_get(Yaml::parseFile(base_path('.github/workflows/deploy.yml')), 'jobs.deploy.steps'));
+    return arrayOf(data_get(Yaml::parseFile(base_path('.github/workflows/release-deploy.yml')), 'jobs.deploy.steps'));
 }
 
 /** @return array<mixed> */
@@ -66,7 +66,7 @@ it('keeps deploy-owned maintenance active when the migration path fails', functi
 });
 
 it('uses shallow readiness for app lifecycle checks while retaining deep health separately', function (): void {
-    $workflow = file_get_contents(base_path('.github/workflows/deploy.yml'));
+    $workflow = file_get_contents(base_path('.github/workflows/release-deploy.yml'));
     $compose = file_get_contents(base_path('compose.prod.yaml'));
     $dockerfile = file_get_contents(base_path('Dockerfile'));
 

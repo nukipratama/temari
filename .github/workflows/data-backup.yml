@@ -1,4 +1,4 @@
-name: Nightly backup
+name: Data · Nightly backup
 
 # Scheduled database backup, independent of deploys, so there is always a recent restorable pair.
 # Disk cleanup runs in the same job, only after a successful backup.
@@ -164,7 +164,7 @@ jobs:
     name: Backup alert
     needs: [nightly-backup]
     if: always() && needs.nightly-backup.result == 'failure'
-    uses: ./.github/workflows/maintainer-alert.yml
+    uses: ./.github/workflows/_alert.yml
     with:
       message: Nightly backup or its binlog disk-headroom check failed on the homelab runner. A silent backup failure is worse than none.
     secrets:

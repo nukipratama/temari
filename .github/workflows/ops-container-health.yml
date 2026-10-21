@@ -1,4 +1,4 @@
-name: Container health
+name: Ops · Container health
 
 on:
   schedule:
@@ -33,7 +33,7 @@ jobs:
         run: |
           set -euo pipefail
           busy=false
-          for workflow in deploy.yml rollback.yml; do
+          for workflow in release-deploy.yml release-rollback.yml; do
             for status in queued in_progress; do
               count=$(gh run list --workflow "$workflow" --status "$status" --limit 1 --json databaseId --jq 'length')
               if [ "$count" != "0" ]; then
@@ -211,7 +211,7 @@ jobs:
   notify:
     needs: [check, failures]
     if: always() && (needs.check.outputs.alert != '' || needs.failures.outputs.alert != '')
-    uses: ./.github/workflows/maintainer-alert.yml
+    uses: ./.github/workflows/_alert.yml
     with:
       message: ${{ needs.failures.outputs.alert != '' && needs.check.outputs.alert != '' && format('{0} {1}', needs.failures.outputs.alert, needs.check.outputs.alert) || needs.failures.outputs.alert || needs.check.outputs.alert }}
     secrets:

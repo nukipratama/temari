@@ -8,8 +8,8 @@ use Symfony\Component\Yaml\Yaml;
 dataset('dev and ci service manifests', [
     'compose.yaml',
     'compose.shared-services.yml',
-    '.github/workflows/backend-ci.yml',
-    '.github/workflows/refresh-shards.yml',
+    '.github/workflows/ci-backend.yml',
+    '.github/workflows/upkeep-refresh-shards.yml',
     '.github/actions/start-redis/action.yml',
 ]);
 
@@ -43,7 +43,7 @@ it('keeps .nvmrc on the Node release the Dockerfile pins', function (): void {
 })->group('structure');
 
 it('runs every workflow on one PHP minor that matches the Dockerfile header patch', function (): void {
-    $versions = collect(['ci.yml', 'backend-ci.yml', 'nightly-audit.yml', 'refresh-shards.yml'])
+    $versions = collect(['ci.yml', 'ci-backend.yml', 'supply-audit.yml', 'upkeep-refresh-shards.yml'])
         ->mapWithKeys(fn (string $workflow): array => [$workflow => data_get(Yaml::parseFile(base_path(".github/workflows/{$workflow}")), 'env.PHP_VERSION')]);
     $version = $versions->first();
     preg_match('/^# = .*\(PHP (\d+\.\d+\.\d+)\)/m', (string) File::get(base_path('Dockerfile')), $header);

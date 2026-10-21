@@ -32,7 +32,7 @@ it('prints the restore, rollback and maintenance commands for the dumps this dep
     expect($output)->toContain('sudo docker compose -f compose.prod.yaml stop scheduler horizon')
         ->toContain("sudo ./scripts/restore-db.sh {$dir}/pre-deploy-abc-1.sql.gz")
         ->toContain("sudo ./scripts/restore-db.sh {$dir}/analytics-pre-deploy-abc-1.sql.gz")
-        ->toContain("gh workflow run rollback.yml --repo owner/repo -f sha={$sha}")
+        ->toContain("gh workflow run release-rollback.yml --repo owner/repo -f sha={$sha}")
         ->toContain('sudo docker compose -f compose.prod.yaml exec -T app php artisan up');
 
     File::deleteDirectory($dir);
@@ -42,13 +42,13 @@ it('falls back to :previous and leaves owner maintenance alone when the deploy f
     $output = recoveryCommands(['BACKUP_DIR' => sys_get_temp_dir().'/recovery-missing']);
 
     expect($output)->toContain('This run wrote no pre-deploy dump')
-        ->toContain("gh workflow run rollback.yml --repo owner/repo\n")
+        ->toContain("gh workflow run release-rollback.yml --repo owner/repo\n")
         ->and($output)->not->toContain('-f sha=')
         ->and($output)->not->toContain('php artisan up');
 });
 
 it('prints the recovery commands from the deploy rollback step on the migration path', function (): void {
-    $steps = collect(arrayOf(data_get(Yaml::parseFile(base_path('.github/workflows/deploy.yml')), 'jobs.deploy.steps')));
+    $steps = collect(arrayOf(data_get(Yaml::parseFile(base_path('.github/workflows/release-deploy.yml')), 'jobs.deploy.steps')));
 
     expect(data_get($steps->firstWhere('name', 'Roll back on failure'), 'run'))
         ->toContain('scripts/deploy/print-recovery-commands.sh | tee -a "$GITHUB_STEP_SUMMARY"')

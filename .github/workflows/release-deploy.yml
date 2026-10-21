@@ -1,4 +1,4 @@
-name: Deploy
+name: Release · Deploy
 run-name: ${{ github.event.workflow_run.display_title }}
 
 on:
@@ -386,7 +386,7 @@ jobs:
     name: Deploy alert
     needs: [deploy]
     if: always() && (needs.deploy.result == 'failure' || needs.deploy.result == 'cancelled')
-    uses: ./.github/workflows/maintainer-alert.yml
+    uses: ./.github/workflows/_alert.yml
     with:
       message: Deploy ${{ github.event.workflow_run.head_sha }} ${{ needs.deploy.result == 'cancelled' && 'was cancelled' || 'failed' }} on the homelab runner (${{ needs.deploy.outputs.failure_note || (needs.deploy.result == 'cancelled' && 're-run it' || 'possibly before any step ran') }}).
     secrets:

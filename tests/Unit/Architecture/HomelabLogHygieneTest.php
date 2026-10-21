@@ -30,10 +30,10 @@ it('masks the backup password in every step that reads it from the host env file
     foreach ($reads as $run) {
         expect($run)->toContain("DB_BACKUP_PASSWORD=\$(scripts/deploy/backup-password.sh)\necho \"::add-mask::\$DB_BACKUP_PASSWORD\"");
     }
-})->with(['deploy.yml', 'nightly-backup.yml'])->group('structure');
+})->with(['release-deploy.yml', 'data-backup.yml'])->group('structure');
 
 it('masks the throwaway database password before the rehearsal env file is written', function (): void {
-    $run = collect(homelabStepRuns('restore-dry-run.yml'))
+    $run = collect(homelabStepRuns('data-restore-dry-run.yml'))
         ->first(fn (string $run): bool => str_contains($run, 'db_password=$(restore_env DB_PASSWORD)'));
 
     expect($run)->toBeString();
@@ -48,7 +48,7 @@ it('masks the throwaway database password before the rehearsal env file is writt
 })->group('structure');
 
 it('keeps disk sizes out of the nightly log and summary unless the headroom check fails', function (): void {
-    $run = collect(homelabStepRuns('nightly-backup.yml'))
+    $run = collect(homelabStepRuns('data-backup.yml'))
         ->first(fn (string $run): bool => str_contains($run, 'binlog_bytes='));
 
     expect($run)->toBeString();

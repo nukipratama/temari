@@ -40,8 +40,8 @@ function runRestoreDryRunCountCheck(
     return $process;
 }
 
-it('restore-dry-run.yml delegates count validation to the tested helper', function (): void {
-    $workflow = Yaml::parseFile(base_path('.github/workflows/restore-dry-run.yml'));
+it('data-restore-dry-run.yml delegates count validation to the tested helper', function (): void {
+    $workflow = Yaml::parseFile(base_path('.github/workflows/data-restore-dry-run.yml'));
     $steps = arrayOf(data_get($workflow, 'jobs.restore-dry-run.steps'));
     $verifyStep = collect($steps)->firstWhere('id', 'verify');
 

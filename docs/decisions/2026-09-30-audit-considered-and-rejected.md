@@ -25,7 +25,7 @@ code_refs:
   - vitest.config.ts
   - compose.yaml
   - compose.prod.yaml
-  - .github/workflows/nightly-backup.yml
+  - .github/workflows/data-backup.yml
 ---
 
 # Audit 2026-09 — options considered and rejected or deferred
@@ -135,7 +135,7 @@ Every environment runs Node 24 (`.nvmrc:1`, `package.json:6`), which is active L
 
 **Considered:** shipping each verified nightly dump, encrypted, to an off-host store (an object store with a write-only credential, a second machine, or a private release asset).
 
-Every dump lands on the same host as the database volume, in plain gzip, with 14 days of nightly and 7 days of deploy dumps together (`.github/workflows/nightly-backup.yml:50`, [[deployment]]). One disk failure, host loss or ransomware event removes the data and every recovery point at once. The owner's call: "fine for now on the same host". The data is still effectively a pre-launch fixture, and the on-host restore path is being tested (see the weekly restore-test work) before more machinery is added around it.
+Every dump lands on the same host as the database volume, in plain gzip, with 14 days of nightly and 7 days of deploy dumps together (`.github/workflows/data-backup.yml:50`, [[deployment]]). One disk failure, host loss or ransomware event removes the data and every recovery point at once. The owner's call: "fine for now on the same host". The data is still effectively a pre-launch fixture, and the on-host restore path is being tested (see the weekly restore-test work) before more machinery is added around it.
 
 **Revisit when** real athletes beyond the current handful are on the app, or the owner stops treating the data as replaceable, whichever comes first. Decide then between an object store, a second machine over SSH and a release asset, and whether Redis (sessions, queue state) is included.
 
