@@ -131,7 +131,9 @@ it('ops-disk.yml prunes with continue-on-error so only the headroom check can fa
         );
     }
 
-    expect(data_get($steps->firstWhere('name', 'Binlog disk headroom'), 'continue-on-error'))->toBeNull();
+    $headroom = $steps->firstWhere('name', 'Binlog disk headroom');
+    expect($headroom)->toBeArray()
+        ->and(data_get($headroom, 'continue-on-error'))->toBeNull();
 
     // The keep-last-10 image prune must never touch temari/app:latest or :previous
     // (a different, local repo — never in scope of the ghcr.io sha-tag cleanup).
