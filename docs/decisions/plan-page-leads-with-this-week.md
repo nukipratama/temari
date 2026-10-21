@@ -11,9 +11,6 @@ code_refs:
 
 # The Plan page leads with this week
 
-> **Fact update, 2026-10-21.** A week behind the loaded window is no longer a plain row: tapping it loads
-> that week's days on demand (`pastWeek`), so the page payload is still unchanged; see [[plan-periodizer]].
-
 > **Fact update, 2026-09-24.** The desktop width cap was dropped: a narrower Plan column read as
 > inconsistent beside every other page, so Plan uses the shared page container width. The decision
 > below is otherwise unchanged.
@@ -25,6 +22,9 @@ code_refs:
 > invites one. See [[plan-periodizer]]. The decision below is otherwise unchanged.
 
 > **Partly superseded (2026-10-13) by [[the-season-has-no-narrated-read]].** The season band no longer carries Temari's take; the rest of this decision stands.
+
+> **Fact update, 2026-10-21.** A week behind the loaded window is no longer a plain row: tapping it loads
+> that week's days on demand (`pastWeek`), so the page payload is still unchanged; see [[plan-periodizer]].
 
 ## Context
 

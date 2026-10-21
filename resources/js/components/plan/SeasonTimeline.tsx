@@ -59,6 +59,7 @@ export default function SeasonTimeline({
         null,
     );
     const viewRef = useRef<HTMLDivElement>(null);
+    const pickedWeekStartRef = useRef<string | null>(null);
 
     if (current === null) {
         return null;
@@ -68,6 +69,7 @@ export default function SeasonTimeline({
         weeks.find((week) => week.week_start === shownWeekStart) ?? current;
 
     const show = (weekStart: string) => {
+        pickedWeekStartRef.current = weekStart;
         setShownWeekStart(weekStart);
         setPendingFocusDay(null);
         viewRef.current?.scrollIntoView({ block: 'start' });
@@ -82,10 +84,11 @@ export default function SeasonTimeline({
         if (loadingWeekStart !== null) {
             return;
         }
+        pickedWeekStartRef.current = weekStart;
         setLoadingWeekStart(weekStart);
         void onLoadWeek(weekStart).then((loaded) => {
             setLoadingWeekStart(null);
-            if (loaded) {
+            if (loaded && pickedWeekStartRef.current === weekStart) {
                 show(weekStart);
             }
         });

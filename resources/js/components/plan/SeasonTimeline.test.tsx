@@ -247,6 +247,26 @@ describe('SeasonTimeline', () => {
         expect(selectedTab()).toHaveAccessibleName(/^Tue.*done$/);
     });
 
+    it('keeps the week picked while a week behind was still loading', async () => {
+        let finishLoad: (loaded: boolean) => void = () => {};
+        const onLoadWeek = vi.fn(
+            () =>
+                new Promise<boolean>((resolve) => {
+                    finishLoad = resolve;
+                }),
+        );
+        renderTimeline({ onLoadWeek });
+
+        fireEvent.click(rowButton('Week 1'));
+        fireEvent.click(rowButton('Week 2'));
+        finishLoad(true);
+
+        await waitFor(() =>
+            expect(rowButton('Week 1')).toHaveAttribute('aria-busy', 'false'),
+        );
+        expect(shownWeek()).toHaveAccessibleName('week 2');
+    });
+
     it('stays on this week when a week behind has no day rows to load', async () => {
         const onLoadWeek = vi.fn(() => Promise.resolve(false));
         renderTimeline({ onLoadWeek });
