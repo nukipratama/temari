@@ -40,6 +40,7 @@ jobs:
           umask 077
           set -o pipefail
           DB_BACKUP_PASSWORD=$(scripts/deploy/backup-password.sh)
+          echo "::add-mask::$DB_BACKUP_PASSWORD"
           export DB_BACKUP_PASSWORD
           mkdir -p "$BACKUP_DIR"
           chmod 700 "$BACKUP_DIR"
@@ -71,6 +72,7 @@ jobs:
         run: |
           umask 077
           DB_BACKUP_PASSWORD=$(scripts/deploy/backup-password.sh)
+          echo "::add-mask::$DB_BACKUP_PASSWORD"
           export DB_BACKUP_PASSWORD
           out="$BACKUP_DIR/analytics-nightly-$NIGHTLY_TIMESTAMP.sql.gz"
           # shellcheck disable=SC2016 # Analytics variables must expand inside the container shell.
@@ -140,12 +142,11 @@ jobs:
           free=$(( mysql_free < backup_free ? mysql_free : backup_free ))
           need=$(( binlog_bytes + dump_bytes ))
           line="7-day binlogs $(( binlog_bytes / 1048576 )) MiB + tonight's dumps $(( dump_bytes / 1048576 )) MiB = $(( need / 1048576 )) MiB needed; $(( free / 1048576 )) MiB free (mysql $(( mysql_free / 1048576 )) MiB, backups $(( backup_free / 1048576 )) MiB)"
-          echo "$line"
-          echo "## Binlog disk headroom"$'\n'"$line" >> "$GITHUB_STEP_SUMMARY"
           if [ "$need" -gt "$free" ]; then
             echo "::error::Another 7 days of binlogs plus a nightly dump no longer fit the free disk: $line"
             exit 1
           fi
+          echo "## Binlog disk headroom"$'\n'"OK" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Reclaim disk summary
         if: always()

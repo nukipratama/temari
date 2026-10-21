@@ -158,6 +158,7 @@ jobs:
         timeout-minutes: 2
         run: |
           DB_BACKUP_PASSWORD=$(scripts/deploy/backup-password.sh)
+          echo "::add-mask::$DB_BACKUP_PASSWORD"
           export DB_BACKUP_PASSWORD
           $COMPOSE exec -T -e DB_BACKUP_PASSWORD mysql sh -s < scripts/deploy/ensure-backup-user.sh
 
@@ -170,6 +171,7 @@ jobs:
           umask 077
           set -o pipefail
           DB_BACKUP_PASSWORD=$(scripts/deploy/backup-password.sh)
+          echo "::add-mask::$DB_BACKUP_PASSWORD"
           export DB_BACKUP_PASSWORD
           mkdir -p "$BACKUP_DIR"
           chmod 700 "$BACKUP_DIR"
@@ -194,6 +196,7 @@ jobs:
         run: |
           umask 077
           DB_BACKUP_PASSWORD=$(scripts/deploy/backup-password.sh)
+          echo "::add-mask::$DB_BACKUP_PASSWORD"
           export DB_BACKUP_PASSWORD
           out="$BACKUP_DIR/analytics-pre-deploy-$BACKUP_SUFFIX.sql.gz"
           if [ -e "$out" ]; then
