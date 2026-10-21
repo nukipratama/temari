@@ -2,6 +2,9 @@
 {
 	auto_https off
 	frankenphp {
+		# Interim CVE-2026-109618 mitigation, web server only so CLI workers keep php.ini's 512M; revert with the PHP 8.5.12 bump.
+		php_ini memory_limit -1
+
 		# Recycle each worker after a bounded number of requests to cap
 		# per-request memory growth (leak → OOM at the 1g container cap).
 		# Octane's frankenphp-worker.php loop reads MAX_REQUESTS
@@ -34,6 +37,12 @@
 	# fields of tens of kilobytes, so 1MB rejects only abuse.
 	request_body {
 		max_size 1MB
+	}
+
+	# Interim CVE-2026-109618 mitigation; revert with the PHP 8.5.12 bump.
+	@multipart header_regexp Content-Type (?i)multipart/
+	handle @multipart {
+		respond 400
 	}
 
 	# Cloudflare re-compresses at the edge with brotli, so brotli on the
