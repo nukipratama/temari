@@ -26,8 +26,8 @@ use App\Actions\Run\Plan\ResolveSeasonAction;
 /**
  * Ensures a user always has a current {@see Season}, generates its general {@see SeasonGoal} rows
  * once at creation, recounts the planned-count targets from the plan {@see self::recountPlannedGoals()},
- * and appends a race season's block goals on the first call on or after block open. Read fresh every call, mirroring {@see Periodizer}'s "a mode switch takes effect at the next
- * call" rule.
+ * and appends a race season's block goals on the first call on or after block open. Read fresh every
+ * call, mirroring {@see Periodizer}'s "a mode switch takes effect at the next call" rule.
  *
  * Called from both {@see PlanPageAssembler} and {@see Periodizer::regenerate()}; the two call sites
  * are idempotent against each other, see {@see self::isCurrent()}.
