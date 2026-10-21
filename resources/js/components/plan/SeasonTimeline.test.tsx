@@ -1,9 +1,13 @@
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import {
+    fireEvent,
+    render,
+    screen,
+    waitFor,
+    within,
+} from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { EditablePlanDay, PlanWeek, SeasonSummaryWeek } from '@/lib/plan';
-
-import { defined } from '@/test/defined';
 
 import SeasonTimeline from './SeasonTimeline';
 
@@ -122,6 +126,7 @@ function renderTimeline(
             onMove={vi.fn()}
             onSkip={vi.fn()}
             onUnskip={vi.fn()}
+            onLoadWeek={vi.fn(() => Promise.resolve(false))}
             {...overrides}
         />,
     );
@@ -209,15 +214,50 @@ describe('SeasonTimeline', () => {
         ).not.toBeInTheDocument();
     });
 
-    it('offers no swap for a week outside the loaded window', () => {
-        renderTimeline();
-        const rows = within(
-            screen.getByRole('list', { name: 'season weeks' }),
-        ).getAllByRole('listitem');
+    it('loads a week behind the page holds no day rows for, then swaps it in', async () => {
+        const oldWeek: PlanWeek = {
+            week_start: '2026-06-01',
+            phase: 'base',
+            type: 'history',
+            days: [day({ id: 1, date: '2026-06-02', status: 'done' })],
+        };
+        const onLoadWeek = vi.fn(() => Promise.resolve(true));
+        const { rerender } = renderTimeline({ onLoadWeek });
+        onLoadWeek.mockImplementation(() => {
+            rerender(
+                <SeasonTimeline
+                    weeks={SEASON}
+                    detailByWeekStart={{ ...DETAIL, '2026-06-01': oldWeek }}
+                    today="2026-06-17"
+                    weekFocus={FOCUS}
+                    onMove={vi.fn()}
+                    onSkip={vi.fn()}
+                    onUnskip={vi.fn()}
+                    onLoadWeek={onLoadWeek}
+                />,
+            );
 
-        expect(
-            within(defined(rows[0])).queryByRole('button'),
-        ).not.toBeInTheDocument();
+            return Promise.resolve(true);
+        });
+
+        fireEvent.click(rowButton('Week 1'));
+
+        expect(onLoadWeek).toHaveBeenCalledWith('2026-06-01');
+        await waitFor(() => expect(shownWeek()).toHaveAccessibleName('week 1'));
+        expect(selectedTab()).toHaveAccessibleName(/^Tue.*done$/);
+    });
+
+    it('stays on this week when a week behind has no day rows to load', async () => {
+        const onLoadWeek = vi.fn(() => Promise.resolve(false));
+        renderTimeline({ onLoadWeek });
+
+        fireEvent.click(rowButton('Week 1'));
+
+        expect(rowButton('Week 1')).toHaveAttribute('aria-busy', 'true');
+        await waitFor(() =>
+            expect(rowButton('Week 1')).toHaveAttribute('aria-busy', 'false'),
+        );
+        expect(shownWeek()).toHaveAccessibleName('week 3');
     });
 
     it('opens on the week and day /plan?day= asked for, even outside this week', () => {

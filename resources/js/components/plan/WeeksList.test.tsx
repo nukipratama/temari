@@ -133,15 +133,28 @@ describe('WeeksList', () => {
         expect(onShow).toHaveBeenCalledWith('2026-06-08');
     });
 
-    it('leaves a week outside the loaded window as a plain row', () => {
-        const { rows } = renderList();
+    it('lets an unloaded week behind be picked, and leaves an unloaded week ahead a plain row', () => {
+        const { onShow, rows } = renderList();
 
-        expect(
-            within(defined(rows[0])).queryByRole('button'),
-        ).not.toBeInTheDocument();
+        fireEvent.click(within(defined(rows[0])).getByRole('button'));
+
+        expect(onShow).toHaveBeenCalledWith('2026-06-01');
         expect(
             within(defined(rows[4])).queryByRole('button'),
         ).not.toBeInTheDocument();
-        expect(screen.getAllByRole('button')).toHaveLength(3);
+        expect(screen.getAllByRole('button')).toHaveLength(4);
+    });
+
+    it('marks the week whose day rows are loading as busy', () => {
+        const { rows } = renderList({ loadingWeekStart: '2026-06-01' });
+
+        expect(within(defined(rows[0])).getByRole('button')).toHaveAttribute(
+            'aria-busy',
+            'true',
+        );
+        expect(within(defined(rows[1])).getByRole('button')).toHaveAttribute(
+            'aria-busy',
+            'false',
+        );
     });
 });

@@ -285,6 +285,39 @@ it('renders ran_anyway true for a past, unscored rest day with a logged run', fu
         ->and($day['ran_anyway'])->toBeTrue();
 });
 
+it('renders a week older than the loaded window the way the window renders its weeks', function (): void {
+    $user = assemblerAthlete();
+    $restDay = Carbon::parse('2026-07-08');
+    PlannedSession::factory()->for($user)->create(['date' => '2026-07-07', 'session_type' => SessionType::Easy]);
+    PlannedSession::factory()->for($user)->create(['date' => $restDay->toDateString(), 'session_type' => SessionType::Rest]);
+    $activity = Activity::factory()->for($user)->create();
+    ActivityDetail::factory()->for($activity)->create([
+        'start_date_local' => $restDay->copy()->setTime(7, 0),
+        'distance' => 5_000.0,
+    ]);
+
+    $week = nonNull(planPageAssembler()->pastWeek($user, Carbon::today(), '2026-07-06'));
+    $day = arrayOf(collect(arrayOf($week['days']))->firstWhere('date', $restDay->toDateString()));
+
+    expect($week['week_start'])->toBe('2026-07-06')
+        ->and($week['type'])->toBe('history')
+        ->and($week['days'])->toHaveCount(2)
+        ->and($day['status'])->toBe('done')
+        ->and($day['ran_anyway'])->toBeTrue();
+});
+
+it('loads no past week for a week the window holds, a later one, a non-Monday or an unreadable date', function (string $weekStart): void {
+    $user = assemblerAthlete();
+    app(Periodizer::class)->regenerate($user, Carbon::today());
+    PlannedSession::factory()->for($user)->create(['date' => '2026-07-07', 'session_type' => SessionType::Easy]);
+
+    expect(planPageAssembler()->pastWeek($user, Carbon::today(), $weekStart))->toBeNull();
+})->with(['2026-07-20', '2026-08-10', '2026-07-07', '2026-02-30', 'last week', '']);
+
+it('loads no past week the athlete had nothing planned in', function (): void {
+    expect(planPageAssembler()->pastWeek(assemblerAthlete(), Carbon::today(), '2026-07-06'))->toBeNull();
+});
+
 /** A tempo day eased to easy at 00:01, distance held: the Plan row leads with the easy run, tempo as context. */
 it('leads the Plan row today with a tempo day eased to easy, tempo only as context', function (): void {
     $user = assemblerAthlete();
