@@ -104,17 +104,29 @@ it('fails when a count query returns non-numeric output', function (): void {
 it('accepts zero rows in both the live and throwaway databases', function (): void {
     $process = runRestoreDryRunCountCheck('0', '0', '0', '0');
 
+    $output = $process->getOutput();
+
     expect($process->getExitCode())->toBe(0)
-        ->and($process->getOutput())->toContain('live=0')
-        ->toContain('throwaway=0')
-        ->toContain('OK');
+        ->and($output)->toContain('OK')
+        ->and($output)->not->toContain('live=');
 })->group('structure');
 
 it('allows a historical restore count below the live count', function (): void {
     $process = runRestoreDryRunCountCheck('0', '100', '0', '94');
 
+    $output = $process->getOutput();
+
     expect($process->getExitCode())->toBe(0)
+        ->and($output)->toContain('OK')
+        ->and($output)->not->toContain('100')
+        ->and($output)->not->toContain('94');
+})->group('structure');
+
+it('prints both counts only when a restore count fails the check', function (): void {
+    $process = runRestoreDryRunCountCheck('0', '100', '0', '101');
+
+    expect($process->getExitCode())->toBe(1)
         ->and($process->getOutput())->toContain('live=100')
-        ->toContain('throwaway=94')
-        ->toContain('OK');
+        ->toContain('throwaway=101')
+        ->toContain('FAIL');
 })->group('structure');

@@ -182,8 +182,12 @@ class AppServiceProvider extends ServiceProvider
 
     private static function rateLimitKey(Request $request): string
     {
-        return $request->user()?->id !== null
-            ? (string) $request->user()->id
-            : (string) $request->ip();
+        $user = $request->user();
+
+        return match (true) {
+            $user?->id === null => (string) $request->ip(),
+            $user->is_demo => 'demo:'.$request->ip(),
+            default => (string) $user->id,
+        };
     }
 }

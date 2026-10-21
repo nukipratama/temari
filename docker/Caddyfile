@@ -45,6 +45,15 @@
 		respond 400
 	}
 
+	# Cloudflare stamps every tunnelled request with Cf-Connecting-Ip, so this keeps the deep /up check to the deploy and rollback polls on 127.0.0.1.
+	@tunnelledHealth {
+		path /up
+		header Cf-Connecting-Ip *
+	}
+	handle @tunnelledHealth {
+		respond 404
+	}
+
 	# Cloudflare re-compresses at the edge with brotli, so brotli on the
 	# origin is wasted CPU. zstd for tunnel transport, gzip as fallback.
 	encode zstd gzip

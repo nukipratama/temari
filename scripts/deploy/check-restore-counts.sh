@@ -47,10 +47,9 @@ case "$THROWAWAY_COUNT" in
     ;;
 esac
 
-printf '  %-20s live=%-10s throwaway=%-10s' "$TABLE" "$LIVE_COUNT" "$THROWAWAY_COUNT"
 if [ "$THROWAWAY_COUNT" -gt "$LIVE_COUNT" ] || { [ "$LIVE_COUNT" -gt 0 ] && [ "$THROWAWAY_COUNT" -eq 0 ]; }; then
-  echo "  FAIL"
+  echo "  $TABLE live=$LIVE_COUNT throwaway=$THROWAWAY_COUNT FAIL"
   exit 1
 fi
 
-echo "  OK"
+echo "  $TABLE OK"

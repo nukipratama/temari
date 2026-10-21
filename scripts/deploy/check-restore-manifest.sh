@@ -18,6 +18,7 @@ if ! grep -q . "$MANIFEST"; then
 fi
 
 fail=0
+ok=0
 while IFS="$(printf '\t')" read -r table expected; do
   [ -n "$table" ] || continue
   restored=$(awk -F '\t' -v t="$table" '$1 == t { print $2; exit }' "$RESTORED")
@@ -26,13 +27,13 @@ while IFS="$(printf '\t')" read -r table expected; do
     fail=1
     continue
   fi
-  printf '  %-28s dumped=%-10s restored=%-10s' "$table" "$expected" "$restored"
   if [ "$restored" -lt "$expected" ]; then
-    echo "  FAIL"
+    echo "  $table dumped=$expected restored=$restored FAIL"
     fail=1
   else
-    echo "  OK"
+    ok=$((ok + 1))
   fi
 done < "$MANIFEST"
 
+echo "  $SCHEMA: $ok tables OK"
 exit "$fail"

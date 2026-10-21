@@ -318,6 +318,7 @@ jobs:
           single_quotable DB_USERNAME "$db_username"
           single_quotable DB_PASSWORD "$db_password"
           single_quotable DB_ANALYTICS_DATABASE "$db_analytics_database"
+          echo "::add-mask::$db_password"
 
           umask 077
           {

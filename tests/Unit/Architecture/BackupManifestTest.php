@@ -52,11 +52,15 @@ it('refuses an empty table list', function (): void {
     expect(runCountRowsQuery("\n")->getExitCode())->toBe(1);
 })->group('structure');
 
-it('passes a restore holding every manifest table with at least its dump-time rows', function (): void {
+it('passes a restore holding every manifest table with at least its dump-time rows, printing only a total', function (): void {
     $process = runManifestCheck("users\t4\nactivities\t564\n", "activities\t566\nusers\t4\nextra\t1\n");
 
+    $output = $process->getOutput();
+
     expect($process->getExitCode())->toBe(0)
-        ->and($process->getOutput())->toContain('activities')->toContain('OK');
+        ->and($output)->toContain('2 tables OK')
+        ->and($output)->not->toContain('activities')
+        ->and($output)->not->toContain('564');
 })->group('structure');
 
 it('fails a restore that lost a table or rows the manifest recorded', function (string $restored, string $reason): void {
@@ -66,7 +70,7 @@ it('fails a restore that lost a table or rows the manifest recorded', function (
         ->and($process->getOutput())->toContain($reason);
 })->with([
     'missing table' => ["users\t4\n", 'activities'],
-    'fewer rows' => ["users\t4\nactivities\t500\n", 'FAIL'],
+    'fewer rows' => ["users\t4\nactivities\t500\n", 'activities dumped=564 restored=500 FAIL'],
 ])->group('structure');
 
 it('fails on an empty manifest instead of passing nothing', function (): void {
