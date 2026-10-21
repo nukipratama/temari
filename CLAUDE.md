@@ -23,6 +23,7 @@
 
 - Read production runtime state from the live container (`artisan tinker --execute`, with per-use approval), never from the repo `.env` or config files.
 - Before an intentional local LLM-backed run, announce a hard call or spend cap. Run only the selected local job or jobs; never start a worker or queue-drain command that could consume unrelated pending work.
+- Never link another repository's issue or PR (URL or `owner/repo#n`) from temari issues, PRs or commits; name it in plain text, because GitHub posts a public backlink in that thread.
 
 ## Stack notes
 
