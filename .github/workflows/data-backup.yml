@@ -1,7 +1,7 @@
 name: Data · Nightly backup
 
 # Scheduled database backup, independent of deploys, so there is always a recent restorable pair.
-# Disk cleanup runs in the same job, only after a successful backup.
+# A successful run triggers ops-disk.yml, which prunes the disk and checks binlog headroom.
 
 on:
   schedule:
@@ -24,7 +24,6 @@ jobs:
     env:
       COMPOSE: docker compose -f compose.prod.yaml
       BACKUP_DIR: /var/lib/temari-backups
-      APP_IMAGE_REPO: ghcr.io/nukipratama/temari/app
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -101,72 +100,13 @@ jobs:
             echo "Analytics schema not present — skipping."
           fi
 
-      # From here down is disk hygiene, not backup — a failure here must never
-      # fail the job the backup above already made green.
-      - name: Reclaim disk — build cache
-        continue-on-error: true
-        run: |
-          docker builder prune -f --filter unused-for=168h | tee /tmp/builder-prune.txt
-
-      - name: Reclaim disk — old sha-tagged images
-        continue-on-error: true
-        run: |
-          in_use=$( { docker ps --format '{{.Image}}'; docker ps --format '{{.ID}}'; } )
-          before=$(docker system df --format '{{.Type}}\t{{.Reclaimable}}' | awk -F'\t' '$1=="Images"{print $2}')
-
-          docker images "$APP_IMAGE_REPO" --format '{{.ID}}\t{{.Tag}}' | while IFS=$'\t' read -r id tag; do
-            created=$(docker image inspect "$id" --format '{{.Created}}')
-            printf '%s\t%s\t%s\n' "$created" "$id" "$tag"
-          done \
-            | IN_USE="$in_use" scripts/deploy/select-images-to-prune.sh "$APP_IMAGE_REPO" 10 \
-            | while IFS=$'\t' read -r id ref; do
-                echo "removing $ref ($id)"
-                docker rmi "$id" || true
-              done
-
-          after=$(docker system df --format '{{.Type}}\t{{.Reclaimable}}' | awk -F'\t' '$1=="Images"{print $2}')
-          echo "Images reclaimable before: ${before:-unknown}, after: ${after:-unknown}" | tee /tmp/image-prune.txt
-
-      - name: Binlog disk headroom
-        timeout-minutes: 2
-        run: |
-          binlogs=$($COMPOSE exec -T mysql sh -c 'find /var/lib/mysql -maxdepth 1 -name "binlog.[0-9]*" -mtime -7 -printf "%s\n"')
-          if [ -z "$binlogs" ]; then
-            echo "::error::No binlog written in the last 7 days under /var/lib/mysql; point-in-time recovery has nothing to replay."
-            exit 1
-          fi
-          binlog_bytes=$(printf '%s\n' "$binlogs" | awk '{ total += $1 } END { printf "%.0f", total }')
-          dump_bytes=$(du -cb "$BACKUP_DIR"/*nightly-"$NIGHTLY_TIMESTAMP".sql.gz | tail -n 1 | cut -f1)
-          mysql_free=$($COMPOSE exec -T mysql df -Pk /var/lib/mysql | awk 'NR == 2 { printf "%.0f", $4 * 1024 }')
-          backup_free=$(df -Pk "$BACKUP_DIR" | awk 'NR == 2 { printf "%.0f", $4 * 1024 }')
-          free=$(( mysql_free < backup_free ? mysql_free : backup_free ))
-          need=$(( binlog_bytes + dump_bytes ))
-          line="7-day binlogs $(( binlog_bytes / 1048576 )) MiB + tonight's dumps $(( dump_bytes / 1048576 )) MiB = $(( need / 1048576 )) MiB needed; $(( free / 1048576 )) MiB free (mysql $(( mysql_free / 1048576 )) MiB, backups $(( backup_free / 1048576 )) MiB)"
-          if [ "$need" -gt "$free" ]; then
-            echo "::error::Another 7 days of binlogs plus a nightly dump no longer fit the free disk: $line"
-            exit 1
-          fi
-          echo "## Binlog disk headroom"$'\n'"OK" >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Reclaim disk summary
-        if: always()
-        run: |
-          {
-            echo "## Nightly backup — disk reclaimed"
-            echo '```'
-            grep -i 'reclaimed space' /tmp/builder-prune.txt 2>/dev/null || echo "build cache: no reclaim line captured"
-            cat /tmp/image-prune.txt 2>/dev/null || echo "images: cleanup step did not run"
-            echo '```'
-          } >> "$GITHUB_STEP_SUMMARY"
-
-  # Cleanup uses continue-on-error above, so only a backup step or the headroom check can fail the job.
   notify:
     name: Backup alert
     needs: [nightly-backup]
     if: always() && needs.nightly-backup.result == 'failure'
     uses: ./.github/workflows/_alert.yml
     with:
-      message: Nightly backup or its binlog disk-headroom check failed on the homelab runner. A silent backup failure is worse than none.
+      message: Nightly backup failed on the homelab runner. A silent backup failure is worse than none.
     secrets:
       TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
       TELEGRAM_MAINTAINER_CHAT_ID: ${{ secrets.TELEGRAM_MAINTAINER_CHAT_ID }}

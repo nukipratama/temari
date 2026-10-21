@@ -23,7 +23,7 @@ function expectHostedAlertJob(mixed $job, string $needs, bool $alertOnCancel = f
         ->and(data_get($job, 'with.message'))->not->toBeEmpty();
 }
 
-it('pushes the maintainer alert from a hosted runner with the supply-audit secrets', function (): void {
+it('pushes the maintainer alert from a hosted runner with the Telegram repository secrets', function (): void {
     $workflow = workflowDoc('_alert.yml');
     $job = data_get($workflow, 'jobs.telegram');
 
@@ -42,6 +42,27 @@ it('alerts from a hosted runner when the deploy job fails or is cancelled', func
 
 it('alerts from a hosted runner when the nightly backup job fails', function (): void {
     expectHostedAlertJob(data_get(workflowDoc('data-backup.yml'), 'jobs.notify'), 'nightly-backup');
+})->group('structure');
+
+it('alerts from a hosted runner when the disk headroom check fails', function (): void {
+    expectHostedAlertJob(data_get(workflowDoc('ops-disk.yml'), 'jobs.notify'), 'disk');
+})->group('structure');
+
+it('alerts from a hosted runner when the restore exercise fails', function (): void {
+    expectHostedAlertJob(data_get(workflowDoc('data-restore-exercise.yml'), 'jobs.notify'), 'restore-db-exercise');
+})->group('structure');
+
+it('alerts through the shared workflow when either dependency audit fails, or on a test dispatch', function (): void {
+    $workflow = workflowDoc('supply-audit.yml');
+    $notify = data_get($workflow, 'jobs.notify');
+
+    expect(data_get($notify, 'needs'))->toBe(['composer-audit', 'npm-audit'])
+        ->and(data_get($notify, 'if'))->toBe("always() && (needs.composer-audit.result == 'failure' || needs.npm-audit.result == 'failure' || inputs.test_alert == true)")
+        ->and(data_get($notify, 'uses'))->toBe('./.github/workflows/_alert.yml')
+        ->and(array_keys(arrayOf(data_get($notify, 'secrets'))))->toBe(['TELEGRAM_BOT_TOKEN', 'TELEGRAM_MAINTAINER_CHAT_ID'])
+        ->and(data_get($notify, 'with.message'))->toContain('inputs.test_alert')
+        ->and(data_get($workflow, 'on.workflow_dispatch.inputs.test_alert.type'))->toBe('boolean')
+        ->and(collect(arrayOf(data_get($workflow, 'jobs')))->pluck('steps')->flatten(1)->pluck('run')->filter()->implode("\n"))->not->toContain('api.telegram.org');
 })->group('structure');
 
 it('watches the newest successful nightly backup daily with a lowerable threshold', function (): void {

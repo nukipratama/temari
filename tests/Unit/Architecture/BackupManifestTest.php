@@ -119,5 +119,5 @@ it('dumps as the read-only backup user with its GTID position recorded as a comm
 })->with([
     '.github/workflows/release-deploy.yml',
     '.github/workflows/data-backup.yml',
-    '.github/workflows/supply-audit.yml',
+    '.github/workflows/data-restore-exercise.yml',
 ])->group('structure');

@@ -10,6 +10,7 @@ dataset('prod workflows', [
     '.github/workflows/release-rollback.yml',
     '.github/workflows/data-backup.yml',
     '.github/workflows/data-restore-dry-run.yml',
+    '.github/workflows/ops-disk.yml',
 ]);
 
 it('never lets a prod compose up or run start, build or recreate mysql', function (string $workflow): void {
