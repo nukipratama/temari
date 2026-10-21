@@ -36,6 +36,12 @@
 		max_size 1MB
 	}
 
+	# Interim CVE-2026-109618/CVE-2026-109619 mitigation; revert with the PHP 8.5.12 bump.
+	@multipart header_regexp Content-Type (?i)multipart/
+	handle @multipart {
+		respond 400
+	}
+
 	# Cloudflare re-compresses at the edge with brotli, so brotli on the
 	# origin is wasted CPU. zstd for tunnel transport, gzip as fallback.
 	encode zstd gzip
