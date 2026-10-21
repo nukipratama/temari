@@ -7,7 +7,7 @@
 FROM dunglas/frankenphp:1.13.1-php8.5-alpine@sha256:16d4703cd476758d5cf54b558bfc7458b933b6fe2b9db0a6a4a9b0f11d2ff3cc AS frankenphp-base
 
 # Single pinned Node toolchain reused by the dev stage (copied in) and the
-# assets build, so dev/CI/prod all run the same Node. node:26.12.1-alpine.
+# assets build, so dev/CI/prod all run the same Node.
 # Refresh after a version bump with:
 #   docker buildx imagetools inspect node:<ver>-alpine --format '{{.Manifest.Digest}}'
 FROM node:26.12.1-alpine@sha256:9bd229b644e391df00fb989efa732335aefc6170a05d8c163c5c8ca9870da401 AS node-src
