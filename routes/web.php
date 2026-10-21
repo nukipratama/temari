@@ -49,7 +49,9 @@ use Illuminate\Support\Facades\Route;
 // Strava push subscription. Called by Strava with no session — gated by the
 // secret callback token in the path, the shared verify token (handshake) and the
 // subscription id (events), so it lives outside the auth middleware group.
-Route::get('/strava/webhook/{token}', [StravaWebhookController::class, 'verify'])->name('strava.webhook.verify');
+Route::get('/strava/webhook/{token}', [StravaWebhookController::class, 'verify'])
+    ->middleware('throttle:60,1')
+    ->name('strava.webhook.verify');
 // IP rate-limited like the other public POSTs to blunt amplification. 60/min is
 // well above Strava's real delivery rate (one event per activity) while still
 // throttling a flood.

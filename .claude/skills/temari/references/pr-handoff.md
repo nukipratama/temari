@@ -12,6 +12,8 @@ Every pull request is a reviewer handoff, not just a change list. Keep the descr
 
 Use `Closes #<n>` in the PR body, keep issue/PR text free of secrets and identifying athlete data, and update the description when later pushes change scope or verification. The repository is public: describe athlete ids, emails, hostnames and per-athlete costs rather than pasting them.
 
+**Security fixes.** Public issues, PRs, commits and code comments describe a security fix by what it changes. They never say that production is currently exposed, or until which version, and never weigh a mitigation's gaps. Exposure windows and mitigation trade-offs go in a draft security advisory.
+
 **Drafting.** Draft the body in `.planning/pr-<n>.md`, change it with Edit, and send it with `gh pr create|edit --body-file`; never patch a body in place with perl or sed.
 
 **CI.** A check blocks merging only when its job is in `ci.yml` under `ci-gate`'s `needs`; a standalone workflow is advisory.

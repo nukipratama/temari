@@ -271,6 +271,14 @@ it('runs the ref image as a hardened overlay service with no outside env file, p
         ->and(data_get($base, 'networks'))->toBe(['restore' => ['internal' => true]]);
 })->group('structure');
 
+it('caps every throwaway service, since it shares the live stack\'s host daemon', function (): void {
+    $base = Yaml::parseFile(base_path('deploy/restore-dry-run-compose.yml'));
+    $overlay = Yaml::parseFile(base_path('deploy/restore-dry-run-rehearsal-compose.yml'));
+
+    expect(data_get($base, 'services.mysql_restore.deploy.resources.limits'))->toBe(['cpus' => '1.0', 'memory' => '1g'])
+        ->and(data_get($overlay, 'services.app_rehearsal.deploy.resources.limits'))->toBe(['cpus' => '0.5', 'memory' => '512m']);
+})->group('structure');
+
 it('loads the overlay only through the ref-gated rehearsal compose command', function (): void {
     $workflow = restoreDryRunWorkflow();
     $text = (string) File::get(base_path('.github/workflows/restore-dry-run.yml'));
