@@ -23,6 +23,9 @@ code_refs:
 
 > **Partly superseded (2026-10-13) by [[the-season-has-no-narrated-read]].** The season band no longer carries Temari's take; the rest of this decision stands.
 
+> **Fact update, 2026-10-21.** A week behind the loaded window is no longer a plain row: tapping it loads
+> that week's days on demand (`pastWeek`), so the page payload is still unchanged; see [[plan-periodizer]].
+
 ## Context
 
 The prototype-parity program (`PS4`, decisions P22–P24) gave the Plan page one nested timeline: a season card, then a rail of week cards, with the current week open onto a volume chart and seven stacked day rows. The owner's review (#1143) found three faults:

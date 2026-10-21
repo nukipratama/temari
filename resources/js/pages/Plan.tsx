@@ -46,6 +46,8 @@ interface PlanProps {
     raceOutcomeCandidate?: RaceOutcomeCandidate | null;
     sessionsPerWeek: number;
     weeks?: PlanWeek[];
+    /** A week older than `weeks` holds, asked for with `?week=` on a partial reload. */
+    pastWeek?: PlanWeek | null;
     season: SeasonSummary | null;
     seasonSummary?: SeasonSummaryWeek[];
     seasonAdherencePct?: number | null;
@@ -85,10 +87,32 @@ export default function Plan({
     const [focusDay] = useState(requestedDay);
     const [selectedDay] = useState(() => focusDay ?? readPlanSelectedDay());
 
+    const [pastWeeks, setPastWeeks] = useState<PlanWeek[]>([]);
+
     const detailByWeekStart = useMemo(
-        () => Object.fromEntries(weeks.map((week) => [week.week_start, week])),
-        [weeks],
+        () =>
+            Object.fromEntries(
+                [...pastWeeks, ...weeks].map((week) => [week.week_start, week]),
+            ),
+        [pastWeeks, weeks],
     );
+
+    const loadPastWeek = (weekStart: string) =>
+        new Promise<boolean>((resolve) => {
+            router.reload({
+                only: ['pastWeek'],
+                data: { week: weekStart },
+                preserveUrl: true,
+                onSuccess: (page) => {
+                    const week = (page.props as Partial<PlanProps>).pastWeek;
+                    if (week) {
+                        setPastWeeks((loaded) => [...loaded, week]);
+                    }
+                    resolve(Boolean(week));
+                },
+                onFinish: () => resolve(false),
+            });
+        });
 
     const moveSession = (day: PlanDay, toDate: string) => {
         router.patch(
@@ -203,6 +227,7 @@ export default function Plan({
                                     onMove={moveSession}
                                     onSkip={skipSession}
                                     onUnskip={unskipSession}
+                                    onLoadWeek={loadPastWeek}
                                 />
                             </LaneStack>
                         )

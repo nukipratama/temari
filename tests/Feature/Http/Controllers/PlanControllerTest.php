@@ -92,6 +92,22 @@ it('paints a fresh user\'s shell with the plan body deferred, creating the seaso
         ->and($response->json('props'))->not->toHaveKey('sessionsPerWeek');
 });
 
+it('serves a week older than the loaded window only on the partial reload that asks for it', function (): void {
+    $user = User::factory()->create();
+    PlannedSession::factory()->for($user)->create(['date' => '2026-07-07', 'session_type' => SessionType::Easy]);
+
+    $this->actingAs($user)->get('/plan?week=2026-07-06')
+        ->assertInertia(fn (Assert $page) => $page->missing('pastWeek')->etc());
+
+    $this->actingAs($user)
+        ->get('/plan?week=2026-07-06', inertiaPartialHeaders($this->actingAs($user), '/plan', 'Plan', 'pastWeek'))
+        ->assertSuccessful()
+        ->assertJsonPath('props.pastWeek.week_start', '2026-07-06')
+        ->assertJsonPath('props.pastWeek.type', 'history')
+        ->assertJsonPath('props.pastWeek.days.0.date', '2026-07-07')
+        ->assertJsonMissingPath('props.weeks');
+});
+
 it('paints the race card at once and loads its supported time and outcome run in their own deferred group', function (): void {
     $user = User::factory()->create();
     RaceGoal::factory()->for($user)->create(['race_date' => Carbon::today()->addWeeks(8)->toDateString(), 'distance_m' => 10_000, 'goal_time_sec' => 3_600]);

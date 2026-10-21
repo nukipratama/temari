@@ -8,8 +8,9 @@ import LaneStack from '@/components/ui/LaneStack';
 
 /**
  * The season's weeks: one week laid out open, this week by default, above a
- * list of every week of the season. Picking a week the page holds day rows
- * for shows it in place of this week until the visitor goes back.
+ * list of every week of the season. Picking a week shows it in place of this
+ * week until the visitor goes back; a week behind the page holds no day rows
+ * for loads them first.
  */
 export default function SeasonTimeline({
     weeks,
@@ -22,6 +23,7 @@ export default function SeasonTimeline({
     onMove,
     onSkip,
     onUnskip,
+    onLoadWeek,
 }: Readonly<{
     weeks: SeasonSummaryWeek[];
     detailByWeekStart: Record<string, PlanWeek>;
@@ -37,6 +39,8 @@ export default function SeasonTimeline({
     onMove: (day: PlanDay, toDate: string) => void;
     onSkip: (day: PlanDay) => void;
     onUnskip: (day: PlanDay) => void;
+    /** Fetches a week behind's day rows; resolves whether it found any. */
+    onLoadWeek: (weekStart: string) => Promise<boolean>;
 }>) {
     const current = weeks.find((week) => week.type === 'current') ?? null;
     const initialDay = focusDay ?? selectedDay;
@@ -51,7 +55,11 @@ export default function SeasonTimeline({
             null,
     );
     const [pendingFocusDay, setPendingFocusDay] = useState(focusDay);
+    const [loadingWeekStart, setLoadingWeekStart] = useState<string | null>(
+        null,
+    );
     const viewRef = useRef<HTMLDivElement>(null);
+    const pickedWeekStartRef = useRef<string | null>(null);
 
     if (current === null) {
         return null;
@@ -61,9 +69,29 @@ export default function SeasonTimeline({
         weeks.find((week) => week.week_start === shownWeekStart) ?? current;
 
     const show = (weekStart: string) => {
+        pickedWeekStartRef.current = weekStart;
         setShownWeekStart(weekStart);
         setPendingFocusDay(null);
         viewRef.current?.scrollIntoView({ block: 'start' });
+    };
+
+    const open = (weekStart: string) => {
+        if (weekStart in detailByWeekStart) {
+            show(weekStart);
+
+            return;
+        }
+        if (loadingWeekStart !== null) {
+            return;
+        }
+        pickedWeekStartRef.current = weekStart;
+        setLoadingWeekStart(weekStart);
+        void onLoadWeek(weekStart).then((loaded) => {
+            setLoadingWeekStart(null);
+            if (loaded && pickedWeekStartRef.current === weekStart) {
+                show(weekStart);
+            }
+        });
     };
 
     return (
@@ -93,7 +121,8 @@ export default function SeasonTimeline({
                 weeks={weeks}
                 detailByWeekStart={detailByWeekStart}
                 shownWeekStart={shown.week_start}
-                onShow={show}
+                loadingWeekStart={loadingWeekStart}
+                onShow={open}
             />
         </LaneStack>
     );

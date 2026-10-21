@@ -50,6 +50,7 @@ class PlanController extends Controller
             'raceOutcomeCandidate' => Inertia::defer(fn (): ?array => $plan->raceOutcomeCandidate($user, $today), 'race'),
             'sessionsPerWeek' => fn (): int => $plan->sessionsPerWeek($user, $today),
             'weeks' => Inertia::defer(fn (): array => $plan->weeks($user, $today)),
+            'pastWeek' => Inertia::optional(fn (): ?array => $plan->pastWeek($user, $today, $request->string('week')->toString())),
             'season' => fn (): ?array => $plan->season($user, $today),
             'seasonSummary' => Inertia::defer(fn (): array => $plan->seasonSummary($user, $today)),
             'seasonAdherencePct' => Inertia::defer(fn (): ?int => $plan->seasonAdherencePct($user, $today)),

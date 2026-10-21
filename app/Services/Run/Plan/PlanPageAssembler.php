@@ -200,8 +200,42 @@ final class PlanPageAssembler
     public function weeks(User $user, Carbon $today): array
     {
         $currentWeekStart = $this->currentWeekStart($today);
-        $rangeStart = $currentWeekStart->copy()->subWeeks(PlanRenderer::HISTORY_WEEKS);
-        $rangeEnd = $currentWeekStart->copy()->addWeeks(self::LOOKAHEAD_WEEKS)->addDays(6);
+
+        return $this->weeksBetween(
+            $user,
+            $today,
+            $currentWeekStart->copy()->subWeeks(PlanRenderer::HISTORY_WEEKS),
+            $currentWeekStart->copy()->addWeeks(self::LOOKAHEAD_WEEKS)->addDays(6),
+        );
+    }
+
+    /**
+     * A past week older than {@see weeks()} loads, rendered the same way, for a season row opened on demand.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function pastWeek(User $user, Carbon $today, string $weekStart): ?array
+    {
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $weekStart) !== 1) {
+            return null;
+        }
+        $start = Carbon::createFromFormat('!Y-m-d', $weekStart);
+        if (! $start instanceof Carbon || $start->toDateString() !== $weekStart || ! $start->isMonday()) {
+            return null;
+        }
+        if ($start->gte($this->currentWeekStart($today)->subWeeks(PlanRenderer::HISTORY_WEEKS))) {
+            return null;
+        }
+
+        return $this->weeksBetween($user, $today, $start, $start->copy()->addDays(6))[0] ?? null;
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function weeksBetween(User $user, Carbon $today, Carbon $rangeStart, Carbon $rangeEnd): array
+    {
+        $currentWeekStart = $this->currentWeekStart($today);
 
         $ruleRows = PlannedSession::query()
             ->where('user_id', $user->id)

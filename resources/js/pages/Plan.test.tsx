@@ -474,6 +474,40 @@ describe('Plan', () => {
         );
     });
 
+    it('loads a week behind the loaded window on a partial reload and opens it', async () => {
+        vi.mocked(router.reload).mockImplementationOnce((options) => {
+            options?.onSuccess?.({
+                props: {
+                    pastWeek: {
+                        week_start: '2026-06-01',
+                        phase: 'base',
+                        type: 'history',
+                        days: [day({ id: 9, date: '2026-06-02' })],
+                    },
+                },
+            } as never);
+        });
+        renderPlan({
+            seasonSummary: [
+                summaryWeek({ week_start: '2026-06-01', type: 'history' }),
+                summaryWeek(),
+            ],
+        });
+
+        fireEvent.click(screen.getByRole('button', { name: /Week 1/ }));
+
+        expect(router.reload).toHaveBeenCalledWith(
+            expect.objectContaining({
+                only: ['pastWeek'],
+                data: { week: '2026-06-01' },
+                preserveUrl: true,
+            }),
+        );
+        expect(
+            await screen.findByRole('region', { name: 'week 1' }),
+        ).toBeInTheDocument();
+    });
+
     it('offers no Pin, Block or Delete action anywhere', () => {
         renderPlan();
 

@@ -1,4 +1,4 @@
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, LoaderCircle } from 'lucide-react';
 
 import type { PlanWeek, SeasonSummaryWeek } from '@/lib/plan';
 
@@ -22,18 +22,22 @@ function weekKm(week: SeasonSummaryWeek): string {
 /**
  * Every week of the season as one compact row: its number, dates, phase and
  * km (what was run for a week behind, what is planned otherwise), plus the
- * adherence of a scored week behind. A row the page holds day rows for is a
- * button that shows that week above; the rest are plain summary rows.
+ * adherence of a scored week behind. A row the page holds day rows for, or a
+ * week behind it can load them for, is a button that shows that week above;
+ * the rest are plain summary rows.
  */
 export default function WeeksList({
     weeks,
     detailByWeekStart,
     shownWeekStart,
+    loadingWeekStart = null,
     onShow,
 }: Readonly<{
     weeks: SeasonSummaryWeek[];
     detailByWeekStart: Record<string, PlanWeek>;
     shownWeekStart: string;
+    /** A week behind whose day rows are on their way. */
+    loadingWeekStart?: string | null;
     onShow: (weekStart: string) => void;
 }>) {
     return (
@@ -48,6 +52,7 @@ export default function WeeksList({
                 {weeks.map((week, index) => {
                     const detail = detailByWeekStart[week.week_start] ?? null;
                     const shown = week.week_start === shownWeekStart;
+                    const loading = week.week_start === loadingWeekStart;
 
                     const content = (
                         <>
@@ -81,7 +86,7 @@ export default function WeeksList({
 
                     return (
                         <li key={week.week_start}>
-                            {detail === null ? (
+                            {detail === null && week.type !== 'history' ? (
                                 <div className="flex items-center gap-3 py-2.5 pr-11 pl-4">
                                     {content}
                                 </div>
@@ -89,6 +94,7 @@ export default function WeeksList({
                                 <button
                                     type="button"
                                     aria-pressed={shown}
+                                    aria-busy={loading}
                                     onClick={() => onShow(week.week_start)}
                                     className={cn(
                                         'focus-ring flex w-full items-center gap-3 border-l-2 py-2.5 pr-4 pl-3.5 text-left transition-colors hover:bg-muted',
@@ -99,8 +105,15 @@ export default function WeeksList({
                                 >
                                     {content}
                                     <Icon
-                                        icon={ChevronRight}
-                                        className="size-4 flex-none text-text-2"
+                                        icon={
+                                            loading
+                                                ? LoaderCircle
+                                                : ChevronRight
+                                        }
+                                        className={cn(
+                                            'size-4 flex-none text-text-2',
+                                            loading && 'animate-spin',
+                                        )}
                                         aria-hidden
                                     />
                                 </button>
