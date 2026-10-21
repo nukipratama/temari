@@ -2,9 +2,9 @@
 
 # FrankenPHP base, digest-pinned so the floating tag can't drift the Caddyfile
 # syntax out from under us (a worker-directive rename took prod down once).
-# = dunglas/frankenphp:1.13.0-php8.5-alpine (PHP 8.5.11). Refresh after a bump with:
+# = dunglas/frankenphp:1.13.1-php8.5-alpine (PHP 8.5.12). Refresh after a bump with:
 #   docker buildx imagetools inspect dunglas/frankenphp:1-php8.5-alpine --format '{{.Manifest.Digest}}'
-FROM dunglas/frankenphp:1.13.1-php8.5-alpine@sha256:16d4703cd476758d5cf54b558bfc7458b933b6fe2b9db0a6a4a9b0f11d2ff3cc AS frankenphp-base
+FROM dunglas/frankenphp:1.13.1-php8.5-alpine@sha256:39dfc07f14f49503f1a02a0009459382b592448549edbac5a83fc988908f7723 AS frankenphp-base
 
 # Single pinned Node toolchain reused by the dev stage (copied in) and the
 # assets build, so dev/CI/prod all run the same Node.
