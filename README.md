@@ -190,7 +190,7 @@ Every successful deploy leaves two extra image tags on the host:
 
 Non-running images older than 7 days are pruned automatically.
 
-The `Rollback prod` workflow runs these steps for you: `gh workflow run release-rollback.yml` rolls back to `:previous`, and `-f sha=<full commit sha>` pulls that commit's image from GHCR instead.
+The `Release · Rollback prod` workflow runs these steps for you: `gh workflow run release-rollback.yml` rolls back to `:previous`, and `-f sha=<full commit sha>` pulls that commit's image from GHCR instead.
 
 **Roll back the most recent deploy** (most common case):
 ```bash

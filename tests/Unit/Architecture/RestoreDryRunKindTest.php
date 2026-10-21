@@ -80,7 +80,7 @@ it('runs weekly on the homelab runner inside the deploy-prod group, defaulting t
         ->and(data_get($workflow, 'jobs.restore-dry-run.runs-on'))->toBe(['self-hosted', 'homelab']);
 })->group('structure');
 
-it('alerts through the hosted maintainer-alert workflow when the dry-run fails', function (): void {
+it('alerts through the hosted _alert workflow when the dry-run fails', function (): void {
     $notify = data_get(restoreDryRunWorkflow(), 'jobs.notify');
 
     expect(data_get($notify, 'needs'))->toBe(['build', 'restore-dry-run'])

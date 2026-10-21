@@ -23,7 +23,7 @@ function expectHostedAlertJob(mixed $job, string $needs, bool $alertOnCancel = f
         ->and(data_get($job, 'with.message'))->not->toBeEmpty();
 }
 
-it('pushes the maintainer alert from a hosted runner with the nightly-audit secrets', function (): void {
+it('pushes the maintainer alert from a hosted runner with the supply-audit secrets', function (): void {
     $workflow = workflowDoc('_alert.yml');
     $job = data_get($workflow, 'jobs.telegram');
 
