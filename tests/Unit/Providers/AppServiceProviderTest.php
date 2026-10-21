@@ -49,6 +49,14 @@ it('analysis-trigger limiter falls back to IP when unauthenticated', function ()
         ->and($limit->maxAttempts)->toBe(3);
 });
 
+it('keys the shared demo user by visitor IP, so one visitor cannot spend every demo visitor\'s budget', function (string $limiter): void {
+    $demo = User::factory()->make(['id' => 7, 'is_demo' => true]);
+    $request = Request::create('/demo', 'POST', server: ['REMOTE_ADDR' => '203.0.113.9']);
+    $request->setUserResolver(fn () => $demo);
+
+    expect(nonNull(RateLimiter::limiter($limiter))($request)->key)->toBe('demo:203.0.113.9');
+})->with(['analysis-trigger', 'run-question', 'strava-sync']);
+
 it('strava-sync limiter caps at 2/min, keyed by user id when authenticated', function (): void {
     $user = User::factory()->make(['id' => 42]);
     $request = Request::create('/strava/sync', 'POST');

@@ -45,6 +45,17 @@
 		respond 400
 	}
 
+	# /up runs the deep dependency check; only local probes (container healthcheck,
+	# deploy and rollback polls on 127.0.0.1) need it. Cloudflare stamps every
+	# tunnelled request with Cf-Connecting-Ip, and a client can't strip it.
+	@tunnelledHealth {
+		path /up
+		header Cf-Connecting-Ip *
+	}
+	handle @tunnelledHealth {
+		respond 404
+	}
+
 	# Cloudflare re-compresses at the edge with brotli, so brotli on the
 	# origin is wasted CPU. zstd for tunnel transport, gzip as fallback.
 	encode zstd gzip

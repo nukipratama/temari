@@ -49,3 +49,7 @@ it('skips the challenge entirely outside production', function (string $environm
 
     expect(runDevtoolsMiddleware(null)->getContent())->toBe('ok');
 })->with(['local', 'testing', 'staging']);
+
+it('ships no devtools password in the example env, so a copied env fails closed in production', function (): void {
+    expect((string) file_get_contents(base_path('.env.example')))->toMatch('/^DEVTOOLS_PASSWORD=$/m');
+});
