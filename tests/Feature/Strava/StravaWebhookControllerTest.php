@@ -342,7 +342,7 @@ it('ignores an athlete update that is not a deauthorization', function (): void 
 function stubPulseEntry(): void
 {
     $entry = Mockery::mock(Entry::class);
-    $entry->shouldReceive('count')->andReturnSelf();
+    $entry->shouldReceive('count', 'max', 'avg')->andReturnSelf();
     Pulse::shouldReceive('record')->andReturn($entry);
 }
 
