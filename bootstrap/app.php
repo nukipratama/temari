@@ -5,6 +5,7 @@ use App\Http\Middleware\EnforceMaintenanceMode;
 use App\Http\Middleware\EnsureDevtoolsAccess;
 use App\Http\Middleware\EnsureOnboarded;
 use App\Http\Middleware\HandleInertiaRequests;
+use App\Http\Middleware\RecordRequestPeakMemory;
 use App\Http\Middleware\SetDefaultNarrationOrigin;
 use App\Http\Middleware\SetInertiaEtag;
 use App\Http\Middleware\StampLastSeen;
@@ -48,6 +49,8 @@ return Application::configure(basePath: dirname(__DIR__))
         // Maintenance is enforced inside `web` instead, where the session tells
         // an admin apart from everyone else (see EnforceMaintenanceMode).
         $middleware->remove(PreventRequestsDuringMaintenance::class);
+
+        $middleware->prepend(RecordRequestPeakMemory::class);
 
         $middleware->web(append: [
             EnforceMaintenanceMode::class,

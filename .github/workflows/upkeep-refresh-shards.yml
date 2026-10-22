@@ -1,4 +1,4 @@
-name: Refresh shards
+name: Upkeep · Refresh shards
 
 # Regenerates the per-class timings in tests/.pest/shards.json (docs/decisions/sharded-pr-coverage.md)
 # weekly and opens or updates one PR when scripts/compare-shards.php finds the drift material.

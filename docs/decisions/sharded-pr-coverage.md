@@ -6,9 +6,9 @@ status: accepted
 reviewed: 2026-09-21
 code_refs:
   - .github/workflows/ci.yml
-  - .github/workflows/backend-ci.yml
-  - .github/workflows/frontend-ci.yml
-  - .github/workflows/refresh-shards.yml
+  - .github/workflows/ci-backend.yml
+  - .github/workflows/ci-frontend.yml
+  - .github/workflows/upkeep-refresh-shards.yml
   - tests/.pest/shards.json
 ---
 
@@ -17,7 +17,7 @@ code_refs:
 **Status:** Accepted (decided 2026-09-18)
 
 > **Fact update, 2026-09-24.** `tests/.pest/shards.json` is no longer hand-regenerated. A nightly
-> [refresh-shards.yml](../../.github/workflows/refresh-shards.yml) reruns `--update-shards
+> [upkeep-refresh-shards.yml](../../.github/workflows/upkeep-refresh-shards.yml) reruns `--update-shards
 > --exclude-group=structure`, then `scripts/compare-shards.php` decides whether the drift is worth
 > a PR (a class added or removed, or the old map's split re-measured on the new timings sitting
 > more than 10% over the mean while a fresh split would actually do better). It opens or updates
@@ -39,6 +39,10 @@ code_refs:
 > **Fact update, 2026-10-07.** Backend tests run in three shards (`SHARD_TOTAL` 3) to cut billed
 > runner minutes, trialled against the acceptance criteria in [#1891](https://github.com/nukipratama/temari/issues/1891).
 
+> **Fact update, 2026-10-22.** Each suite's PR coverage merge runs in its own `coverage` job after the shards, the frontend `gate` is gone, and `ci-gate` only aggregates results ([#2255](https://github.com/nukipratama/temari/issues/2255)). The shard count is each suite's `matrix.shard` list; `SHARD_TOTAL` is read from `strategy.job-total`.
+
+> **Fact update, 2026-10-22.** Backend tests run in four shards again. The 2026-10-07 cut to three saved billed minutes, which no longer apply since the repository went public (a full PR run bills 0 ms). The backend shards are the PR's critical path, and the trial against that path is recorded in [#2264](https://github.com/nukipratama/temari/pull/2264). `compare-shards.php` simulates the same count by default.
+
 Coverage roughly doubled backend tests on every pull request (186–340s vs ~145s on a push),
 making them the PR's critical path by two to three minutes. Frontend tests were also near the
 critical path because per-file jsdom setup dominated their runtime. Both suites now use the same
@@ -57,7 +61,7 @@ Two alternatives were rejected:
 ## What changed
 
 Backend tests are split across `SHARD_TOTAL` (3) parallel GitHub-hosted jobs
-(`tests`, [backend-ci.yml](../../.github/workflows/backend-ci.yml)), using Pest's
+(`tests`, [ci-backend.yml](../../.github/workflows/ci-backend.yml)), using Pest's
 `--shard=i/N` ([Shard plugin](https://github.com/pestphp/pest)). Plain round-robin (by test-class
 index, no timing data) put one file — `DemoSeedCommandTest`, the single heaviest file in the suite
 even after [#1019](https://github.com/nukipratama/temari/issues/1019) — alongside enough other
@@ -73,14 +77,14 @@ deletes it after printing a single-run report); ParaTest — Pest's `--parallel`
 already merges each of its own worker processes' coverage into that one file, so a shard ends up
 with one combined object regardless of how many parallel workers ran inside it.
 
-`coverage` ([backend-ci.yml](../../.github/workflows/backend-ci.yml)) downloads all PR shards'
+`coverage` ([ci-backend.yml](../../.github/workflows/ci-backend.yml)) downloads all PR shards'
 `.cov` artifacts, merges them with `phpunit/phpcov merge` into a Clover report, and applies
 `--min=95` exactly once against the merged project-level `<metrics statements coveredstatements>`
 totals — the same executable-lines basis Pest's own `--min` uses. **The threshold is never
 checked per shard**: a shard covering only its own slice of the suite is expected to sit well
 under 95%, and that must not fail it on its own.
 
-Frontend tests use the same three-way shape in [frontend-ci.yml](../../.github/workflows/frontend-ci.yml). PR shards write Vitest blob
+Frontend tests use the same three-way shape in [ci-frontend.yml](../../.github/workflows/ci-frontend.yml). PR shards write Vitest blob
 reports with their individual thresholds disabled; its `coverage` job combines them and
 applies the configured whole-suite thresholds once. Main-push shards run without coverage, and
 shard 1 retains the asset build and entry-chunk budget checks that previously lived in the

@@ -1,0 +1,57 @@
+name: CI · Repo
+
+on:
+  workflow_call:
+    inputs:
+      worktree:
+        description: 'run the worktree race harness'
+        type: boolean
+        required: true
+
+permissions:
+  contents: read
+
+env:
+  PHP_VERSION: '8.5'
+
+jobs:
+  lint:
+    name: lint
+    runs-on: ubuntu-26.04-arm
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Lint GitHub Actions workflows
+        run: docker run --rm -v "$GITHUB_WORKSPACE:/work" -w /work rhysd/actionlint:1.7.12@sha256:b1934ee5f1c509618f2508e6eb47ee0d3520686341fec936f3b79331f9315667 -color -config-file=.github/actionlint.yaml -shellcheck=shellcheck
+
+  # Unfiltered: a deletion anywhere can orphan a doc citation, so this has to see the whole tree.
+  doc-citations:
+    name: doc-citations
+    runs-on: ubuntu-26.04-arm
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Set up PHP
+        uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # v2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+      - name: Check doc citations resolve
+        run: php scripts/check-doc-citations.php
+
+  worktree-races:
+    name: worktree-races (${{ matrix.backend }})
+    if: inputs.worktree
+    runs-on: ubuntu-26.04-arm
+    timeout-minutes: 5
+    strategy:
+      fail-fast: false
+      matrix:
+        backend: [perl, flock]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Run the worktree race harness
+        env:
+          LOCK_BACKEND: ${{ matrix.backend }}
+        run: |
+          tests/scripts/worktree-races.sh "$LOCK_BACKEND" | tee "$RUNNER_TEMP/races.out"
+          grep -qx "PASS: lock backend $LOCK_BACKEND" "$RUNNER_TEMP/races.out"

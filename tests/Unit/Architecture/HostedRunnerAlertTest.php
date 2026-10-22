@@ -18,13 +18,13 @@ function expectHostedAlertJob(mixed $job, string $needs, bool $alertOnCancel = f
 
     expect(data_get($job, 'needs'))->toBe([$needs])
         ->and(data_get($job, 'if'))->toBe($condition)
-        ->and(data_get($job, 'uses'))->toBe('./.github/workflows/maintainer-alert.yml')
+        ->and(data_get($job, 'uses'))->toBe('./.github/workflows/_alert.yml')
         ->and(array_keys(arrayOf(data_get($job, 'secrets'))))->toBe(['TELEGRAM_BOT_TOKEN', 'TELEGRAM_MAINTAINER_CHAT_ID'])
         ->and(data_get($job, 'with.message'))->not->toBeEmpty();
 }
 
-it('pushes the maintainer alert from a hosted runner with the nightly-audit secrets', function (): void {
-    $workflow = workflowDoc('maintainer-alert.yml');
+it('pushes the maintainer alert from a hosted runner with the Telegram repository secrets', function (): void {
+    $workflow = workflowDoc('_alert.yml');
     $job = data_get($workflow, 'jobs.telegram');
 
     expect(data_get($workflow, 'on'))->toHaveKey('workflow_call')
@@ -34,18 +34,39 @@ it('pushes the maintainer alert from a hosted runner with the nightly-audit secr
 })->group('structure');
 
 it('alerts from a hosted runner when the deploy job fails or is cancelled', function (): void {
-    $notify = data_get(workflowDoc('deploy.yml'), 'jobs.notify');
+    $notify = data_get(workflowDoc('release-deploy.yml'), 'jobs.notify');
 
     expectHostedAlertJob($notify, 'deploy', alertOnCancel: true);
     expect(data_get($notify, 'with.message'))->toContain('github.event.workflow_run.head_sha');
 })->group('structure');
 
 it('alerts from a hosted runner when the nightly backup job fails', function (): void {
-    expectHostedAlertJob(data_get(workflowDoc('nightly-backup.yml'), 'jobs.notify'), 'nightly-backup');
+    expectHostedAlertJob(data_get(workflowDoc('data-backup.yml'), 'jobs.notify'), 'nightly-backup');
+})->group('structure');
+
+it('alerts from a hosted runner when the disk headroom check fails', function (): void {
+    expectHostedAlertJob(data_get(workflowDoc('ops-disk.yml'), 'jobs.notify'), 'disk');
+})->group('structure');
+
+it('alerts from a hosted runner when the restore exercise fails', function (): void {
+    expectHostedAlertJob(data_get(workflowDoc('data-restore-exercise.yml'), 'jobs.notify'), 'restore-db-exercise');
+})->group('structure');
+
+it('alerts through the shared workflow when either dependency audit fails, or on a test dispatch', function (): void {
+    $workflow = workflowDoc('supply-audit.yml');
+    $notify = data_get($workflow, 'jobs.notify');
+
+    expect(data_get($notify, 'needs'))->toBe(['composer-audit', 'npm-audit'])
+        ->and(data_get($notify, 'if'))->toBe("always() && (needs.composer-audit.result == 'failure' || needs.npm-audit.result == 'failure' || inputs.test_alert == true)")
+        ->and(data_get($notify, 'uses'))->toBe('./.github/workflows/_alert.yml')
+        ->and(array_keys(arrayOf(data_get($notify, 'secrets'))))->toBe(['TELEGRAM_BOT_TOKEN', 'TELEGRAM_MAINTAINER_CHAT_ID'])
+        ->and(data_get($notify, 'with.message'))->toContain('inputs.test_alert')
+        ->and(data_get($workflow, 'on.workflow_dispatch.inputs.test_alert.type'))->toBe('boolean')
+        ->and(collect(arrayOf(data_get($workflow, 'jobs')))->pluck('steps')->flatten(1)->pluck('run')->filter()->implode("\n"))->not->toContain('api.telegram.org');
 })->group('structure');
 
 it('watches the newest successful nightly backup daily with a lowerable threshold', function (): void {
-    $workflow = workflowDoc('backup-watchdog.yml');
+    $workflow = workflowDoc('data-backup-watchdog.yml');
     $check = data_get($workflow, 'jobs.check');
     $measure = collect(arrayOf(data_get($check, 'steps')))->firstWhere('id', 'age');
 
@@ -55,10 +76,10 @@ it('watches the newest successful nightly backup daily with a lowerable threshol
         ->and(data_get($check, 'runs-on'))->toBe('ubuntu-26.04-arm')
         ->and(data_get($check, 'timeout-minutes'))->toBeInt()
         ->and(data_get($measure, 'env.MAX_AGE_HOURS'))->toBe('${{ inputs.max_age_hours || 26 }}')
-        ->and(data_get($measure, 'run'))->toContain("gh run list --workflow 'Nightly backup' --status success --limit 1")
+        ->and(data_get($measure, 'run'))->toContain("gh run list --workflow data-backup.yml --status success --limit 1")
         ->and(data_get($measure, 'run'))->toContain('no successful Nightly backup run exists');
 
     expect(data_get($workflow, 'jobs.notify.needs'))->toBe(['check'])
         ->and(data_get($workflow, 'jobs.notify.if'))->toBe("always() && needs.check.result == 'failure'")
-        ->and(data_get($workflow, 'jobs.notify.uses'))->toBe('./.github/workflows/maintainer-alert.yml');
+        ->and(data_get($workflow, 'jobs.notify.uses'))->toBe('./.github/workflows/_alert.yml');
 })->group('structure');

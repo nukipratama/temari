@@ -1,21 +1,13 @@
-name: Nightly dependency audit
+name: Data · Restore exercise
 
-# Scheduled supply-chain audits, so an upstream advisory cannot block an unrelated change on `main`.
-# Neither audit job installs dependencies; both read the lock files directly.
-#
-# Failures push to Telegram directly with the `TELEGRAM_BOT_TOKEN` and `TELEGRAM_MAINTAINER_CHAT_ID`
-# repository secrets, not through MaintainerAlerter, which is unreachable from a hosted runner.
+# Runs scripts/restore-db.sh against a throwaway MySQL via the COMPOSE_FILE / MYSQL_SERVICE overrides,
+# on a hosted runner so it does not compete with prod.
 
 on:
   schedule:
     # 03:17 WIB — off the hour, since on-the-hour crons queue behind everyone else's.
     - cron: '17 20 * * *'
   workflow_dispatch:
-    inputs:
-      test_alert:
-        description: 'send a test message through the alert step without failing anything'
-        type: boolean
-        default: false
 
 permissions:
   contents: read
@@ -24,49 +16,6 @@ env:
   PHP_VERSION: '8.5'
 
 jobs:
-  composer-audit:
-    runs-on: ubuntu-26.04-arm
-    timeout-minutes: 2
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      - name: Setup PHP
-        uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # v2
-        with:
-          php-version: ${{ env.PHP_VERSION }}
-          coverage: none
-
-      # --locked audits composer.lock itself, so no vendor install is needed.
-      - name: Audit composer dependencies
-        run: composer audit --locked --no-interaction
-
-  # A separate job, not a second step: one ecosystem going red must not hide
-  # whether the other one is clean.
-  npm-audit:
-    runs-on: ubuntu-26.04-arm
-    timeout-minutes: 2
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      - name: Setup Node
-        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          node-version-file: '.nvmrc'
-
-      # --package-lock-only builds the tree from package-lock.json, so this needs
-      # no `npm ci`; --omit=dev then prunes dev-only advisories, which cannot
-      # reach production (the image's assets stage never ships node_modules).
-      - name: Audit npm dependencies (prod, high+)
-        run: npm audit --omit=dev --audit-level=high --package-lock-only
-
-      # Dev tooling runs on CI runners and developer machines, so a critical
-      # advisory there is worth seeing, but it never ships and does not page.
-      - name: Audit npm dependencies (dev included, critical, non-blocking)
-        continue-on-error: true
-        run: npm audit --audit-level=critical --package-lock-only
-
-  # Runs scripts/restore-db.sh against a throwaway MySQL via the COMPOSE_FILE / MYSQL_SERVICE overrides,
-  # on a hosted runner so it does not compete with prod.
   restore-db-exercise:
     runs-on: ubuntu-26.04-arm
     timeout-minutes: 15
@@ -152,7 +101,7 @@ jobs:
             | gzip > /tmp/restore-ci/fixture.sql.gz
 
           # --databases carries its own CREATE DATABASE/USE, matching the analytics
-          # backup step in deploy.yml and restore-db.sh's `analytics-*` filename branch.
+          # backup step in release-deploy.yml and restore-db.sh's `analytics-*` filename branch.
           docker compose -f "$FIXTURE_COMPOSE" exec -T -e DB_BACKUP_PASSWORD mysql sh -c \
             'export MYSQL_PWD="$DB_BACKUP_PASSWORD"; mysqldump -h 127.0.0.1 --single-transaction --quick --no-tablespaces --set-gtid-purged=COMMENTED --loose-skip-masking-policies -utemari_backup --databases "$DB_ANALYTICS_DATABASE"' \
             | gzip > /tmp/restore-ci/analytics-fixture.sql.gz
@@ -286,41 +235,13 @@ jobs:
         if: always()
         run: docker compose -f "$FIXTURE_COMPOSE" down -v
 
-  # Separate job so it can run `if: always()` and read both jobs' results,
-  # rather than duplicating the push as a failure step inside each of them.
-  alert-on-failure:
-    needs: [composer-audit, npm-audit, restore-db-exercise]
-    if: always() && (needs.composer-audit.result == 'failure' || needs.npm-audit.result == 'failure' || needs.restore-db-exercise.result == 'failure' || inputs.test_alert == true)
-    runs-on: ubuntu-26.04-arm
-    timeout-minutes: 2
-    steps:
-      - name: Push a Telegram alert
-        env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_MAINTAINER_CHAT_ID: ${{ secrets.TELEGRAM_MAINTAINER_CHAT_ID }}
-          COMPOSER_RESULT: ${{ needs.composer-audit.result }}
-          NPM_RESULT: ${{ needs.npm-audit.result }}
-          RESTORE_RESULT: ${{ needs.restore-db-exercise.result }}
-          TEST_ALERT: ${{ inputs.test_alert }}
-          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-        run: |
-          if [ -z "$TELEGRAM_BOT_TOKEN" ] || [ -z "$TELEGRAM_MAINTAINER_CHAT_ID" ]; then
-            echo "TELEGRAM_BOT_TOKEN / TELEGRAM_MAINTAINER_CHAT_ID not set, skipping the push (see the workflow's top comment)."
-            exit 0
-          fi
-
-          if [ "$TEST_ALERT" = "true" ]; then
-            message="temari nightly audit: test message, the alert path works (run $RUN_URL)"
-          else
-            failed=""
-            [ "$COMPOSER_RESULT" = "failure" ] && failed="${failed:+$failed, }composer audit"
-            [ "$NPM_RESULT" = "failure" ] && failed="${failed:+$failed, }npm audit"
-            [ "$RESTORE_RESULT" = "failure" ] && failed="${failed:+$failed, }restore-db exercise"
-
-            message="Nightly dependency audit failed ($failed). Check the run: $RUN_URL"
-          fi
-
-          curl -sS --fail-with-body \
-            "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
-            -d chat_id="${TELEGRAM_MAINTAINER_CHAT_ID}" \
-            --data-urlencode text="$message"
+  notify:
+    name: Restore exercise alert
+    needs: [restore-db-exercise]
+    if: always() && needs.restore-db-exercise.result == 'failure'
+    uses: ./.github/workflows/_alert.yml
+    with:
+      message: The restore-db exercise failed on a hosted runner, so scripts/restore-db.sh or the point-in-time replay may no longer bring back a dump.
+    secrets:
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TELEGRAM_MAINTAINER_CHAT_ID: ${{ secrets.TELEGRAM_MAINTAINER_CHAT_ID }}

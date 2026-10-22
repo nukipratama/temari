@@ -16,8 +16,9 @@ use Symfony\Component\Yaml\Yaml;
  * prune/selection scripts' behavior against fabricated fixtures (never a live
  * docker daemon or database).
  */
-const DEPLOY_WORKFLOW_PATH = '.github/workflows/deploy.yml';
-const NIGHTLY_BACKUP_WORKFLOW_PATH = '.github/workflows/nightly-backup.yml';
+const DEPLOY_WORKFLOW_PATH = '.github/workflows/release-deploy.yml';
+const NIGHTLY_BACKUP_WORKFLOW_PATH = '.github/workflows/data-backup.yml';
+const OPS_DISK_WORKFLOW_PATH = '.github/workflows/ops-disk.yml';
 
 function deployYamlText(): string
 {
@@ -86,7 +87,7 @@ it('skips re-tagging :previous when the incoming image already is :latest', func
     expect($run)->not->toContain('if docker image inspect temari/app:latest >/dev/null 2>&1; then');
 });
 
-it('nightly-backup.yml matches the issue: cron 40 16 * * *, workflow_dispatch, self-hosted homelab, 14-day retention', function (): void {
+it('data-backup.yml matches the issue: cron 40 16 * * *, workflow_dispatch, self-hosted homelab, 14-day retention', function (): void {
     $doc = Yaml::parseFile(base_path(NIGHTLY_BACKUP_WORKFLOW_PATH));
 
     expect(data_get($doc, 'on.schedule.0.cron'))->toBe('40 16 * * *');
@@ -100,31 +101,43 @@ it('nightly-backup.yml matches the issue: cron 40 16 * * *, workflow_dispatch, s
         ->toContain('$BACKUP_DIR/analytics-nightly-*.sql.gz" 14');
 });
 
-it('nightly-backup.yml runs disk cleanup only after the backup steps, with continue-on-error so cleanup can never fail the backup', function (): void {
-    $doc = Yaml::parseFile(base_path(NIGHTLY_BACKUP_WORKFLOW_PATH));
-    $steps = arrayOf(data_get($doc, 'jobs.nightly-backup.steps'));
+it('data-backup.yml only backs up, leaving disk cleanup to ops-disk.yml', function (): void {
+    $yaml = File::get(base_path(NIGHTLY_BACKUP_WORKFLOW_PATH));
 
-    $names = array_map(fn (mixed $step): mixed => data_get($step, 'name', ''), $steps);
-    $backupIndex = array_search('Backup analytics schema', $names, true);
-    $cleanupIndex = array_search('Reclaim disk — old sha-tagged images', $names, true);
+    expect($yaml)->not->toContain('Reclaim disk')
+        ->and($yaml)->not->toContain('docker rmi')
+        ->and($yaml)->not->toContain('Binlog disk headroom');
+});
 
-    expect($backupIndex)->not->toBeFalse();
-    expect($cleanupIndex)->not->toBeFalse();
-    expect($cleanupIndex)->toBeGreaterThan(is_int($backupIndex) ? $backupIndex : throw new InvalidArgumentException('Backup analytics step index is not an int.'));
+it('ops-disk.yml runs on the homelab after each successful nightly backup, outside the deploy-prod group', function (): void {
+    $doc = Yaml::parseFile(base_path(OPS_DISK_WORKFLOW_PATH));
+
+    expect(data_get($doc, 'on.workflow_run'))->toBe([
+        'workflows' => [data_get(Yaml::parseFile(base_path(NIGHTLY_BACKUP_WORKFLOW_PATH)), 'name')],
+        'types' => ['completed'],
+    ])
+        ->and(data_get($doc, 'on'))->toHaveKey('workflow_dispatch')
+        ->and(data_get($doc, 'concurrency.group'))->toBe('ops-disk')
+        ->and(data_get($doc, 'jobs.disk.if'))->toBe("github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'")
+        ->and(data_get($doc, 'jobs.disk.runs-on'))->toBe(['self-hosted', 'homelab']);
+});
+
+it('ops-disk.yml prunes with continue-on-error so only the headroom check can fail it', function (): void {
+    $steps = collect(arrayOf(data_get(Yaml::parseFile(base_path(OPS_DISK_WORKFLOW_PATH)), 'jobs.disk.steps')));
 
     foreach (['Reclaim disk — build cache', 'Reclaim disk — old sha-tagged images'] as $cleanupStepName) {
-        foreach ($steps as $step) {
-            if (data_get($step, 'name') === $cleanupStepName) {
-                expect(data_get($step, 'continue-on-error', false))->toBeTrue(
-                    "Cleanup step '{$cleanupStepName}' must set continue-on-error so it can never fail the backup job."
-                );
-            }
-        }
+        expect(data_get($steps->firstWhere('name', $cleanupStepName), 'continue-on-error'))->toBeTrue(
+            "Cleanup step '{$cleanupStepName}' must set continue-on-error so it can never fail the job."
+        );
     }
+
+    $headroom = $steps->firstWhere('name', 'Binlog disk headroom');
+    expect($headroom)->toBeArray()
+        ->and(data_get($headroom, 'continue-on-error'))->toBeNull();
 
     // The keep-last-10 image prune must never touch temari/app:latest or :previous
     // (a different, local repo — never in scope of the ghcr.io sha-tag cleanup).
-    $yaml = File::get(base_path(NIGHTLY_BACKUP_WORKFLOW_PATH));
+    $yaml = File::get(base_path(OPS_DISK_WORKFLOW_PATH));
     expect($yaml)->not->toContain('docker rmi temari/app')
         ->toContain('select-images-to-prune.sh "$APP_IMAGE_REPO" 10');
 });
@@ -177,7 +190,7 @@ it('verify-and-prune-backup.sh keeps the newest backup for a sha and drops an ol
 });
 
 it('verify-and-prune-backup.sh: two backup runs for the same sha never collide on a filename', function (): void {
-    // The actual uniqueness guarantee lives in the deploy.yml suffix (sha + timestamp
+    // The actual uniqueness guarantee lives in the release-deploy.yml suffix (sha + timestamp
     // + run_id + run_attempt), asserted above; this proves the prune script's
     // own side of the contract — given two distinctly-named files for one sha,
     // neither is silently treated as "the same backup" and both are inspectable

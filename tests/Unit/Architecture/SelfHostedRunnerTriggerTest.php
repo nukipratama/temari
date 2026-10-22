@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Illuminate\Support\Collection;
 use Symfony\Component\Yaml\Yaml;
 
 const OUTSIDER_TRIGGERS = [
@@ -54,27 +55,168 @@ function selfHostedJobs(array $workflow, Closure $load): array
 }
 
 /**
+ * Keyed the way workflow_run matches: by `name:`, or by file path for a workflow without one.
+ *
+ * @return array<string, array<mixed>>
+ */
+function repoWorkflowsByName(): array
+{
+    $byName = [];
+    foreach (glob(base_path('.github/workflows/*.yml')) ?: [] as $file) {
+        $path = '.github/workflows/'.basename($file);
+        $workflow = workflowFile($path);
+        $name = data_get($workflow, 'name');
+        $byName[is_string($name) ? $name : $path] = $workflow;
+    }
+
+    return $byName;
+}
+
+function requiresWatchedPush(mixed $if): bool
+{
+    if (! is_string($if)) {
+        return false;
+    }
+
+    $condition = preg_match('/^\$\{\{(.*)\}\}\z/s', $if, $wrapped) === 1 ? $wrapped[1] : $if;
+    if (str_contains($condition, '${{') || str_contains($condition, '}}') || str_contains($condition, '||')) {
+        return false;
+    }
+
+    $terms = array_map(trim(...), explode('&&', $condition));
+
+    return in_array("github.event.workflow_run.event == 'push'", $terms, true);
+}
+
+/**
+ * @param  array<mixed>  $workflow
+ * @param  array<string, array<mixed>>  $byName
+ * @param  list<string>  $seen
+ */
+function outsiderCanTriggerThroughRun(array $workflow, array $byName, array $seen = []): bool
+{
+    foreach (arrayOf(data_get($workflow, 'on.workflow_run.workflows', [])) as $name) {
+        if (! is_string($name) || in_array($name, $seen, true)) {
+            continue;
+        }
+        $watched = $byName[$name] ?? null;
+        if ($watched === null) {
+            continue;
+        }
+        if (outsiderCanTrigger($watched) || outsiderCanTriggerThroughRun($watched, $byName, [...$seen, $name])) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/**
  * @param  array<mixed>  $workflow
  * @param  array<string, array<mixed>>  $locals
+ * @param  array<string, array<mixed>>  $byName
  * @return list<string>
  */
-function selfHostedJobsOutsidersCanReach(array $workflow, array $locals = []): array
+function selfHostedJobsOutsidersCanReach(array $workflow, array $locals = [], array $byName = []): array
 {
-    return outsiderCanTrigger($workflow)
-        ? selfHostedJobs($workflow, fn (string $path): array => $locals[$path] ?? workflowFile($path))
-        : [];
+    $load = fn (string $path): array => $locals[$path] ?? workflowFile($path);
+
+    if (outsiderCanTrigger($workflow)) {
+        return selfHostedJobs($workflow, $load);
+    }
+
+    if (! outsiderCanTriggerThroughRun($workflow, $byName)) {
+        return [];
+    }
+
+    // A watched run that an outsider started is never a push to this repository.
+    $unguarded = array_filter(
+        arrayOf($workflow['jobs'] ?? []),
+        fn (mixed $job): bool => ! requiresWatchedPush(data_get($job, 'if')),
+    );
+
+    return selfHostedJobs(['jobs' => $unguarded], $load);
 }
 
 it('keeps every self-hosted job off workflows an outside contributor can trigger', function (): void {
+    $byName = repoWorkflowsByName();
     $offenders = [];
     foreach (glob(base_path('.github/workflows/*.yml')) ?: [] as $file) {
         $path = '.github/workflows/'.basename($file);
-        foreach (selfHostedJobsOutsidersCanReach(workflowFile($path)) as $job) {
+        foreach (selfHostedJobsOutsidersCanReach(workflowFile($path), byName: $byName) as $job) {
             $offenders[] = "{$path}: {$job}";
         }
     }
 
     expect($offenders)->toBe([]);
+})->group('structure');
+
+it('follows a workflow_run trigger to the workflow it watches', function (array $watched, mixed $if, array $expected): void {
+    $workflow = [
+        'on' => ['workflow_run' => ['workflows' => ['Watched'], 'types' => ['completed']]],
+        'jobs' => ['probe' => array_filter(['if' => $if, 'runs-on' => ['self-hosted', 'homelab']])],
+    ];
+
+    expect(selfHostedJobsOutsidersCanReach($workflow, byName: ['Watched' => $watched]))->toBe($expected);
+})->with([
+    'watches an outsider-triggered workflow' => [['on' => ['pull_request' => null]], null, ['probe']],
+    'guarded to the watched run being a push' => [['on' => ['pull_request' => null]], "github.event.workflow_run.event == 'push'", []],
+    'push guard alongside another condition' => [['on' => ['pull_request' => null]], "\${{ github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push' }}", []],
+    'push guard ORed with another event' => [['on' => ['pull_request' => null]], "github.event.workflow_run.event == 'push' || github.event.workflow_run.event == 'pull_request'", ['probe']],
+    'push guard beside text outside the expression' => [['on' => ['pull_request' => null]], "\${{ github.event.workflow_run.conclusion == 'success' }} && github.event.workflow_run.event == 'push'", ['probe']],
+    'push guard in an expression with trailing text' => [['on' => ['pull_request' => null]], "\${{ github.event.workflow_run.event == 'push' }}\n", ['probe']],
+    'push guard negated' => [['on' => ['pull_request' => null]], "github.event.workflow_run.event != 'push'", ['probe']],
+    'watches an owner-only workflow' => [['on' => ['schedule' => [['cron' => '0 0 * * *']]]], null, []],
+    'a watch cycle with no outsider trigger' => [
+        ['on' => ['workflow_run' => ['workflows' => ['Watched']]]],
+        null,
+        [],
+    ],
+])->group('structure');
+
+it('gives every workflow its own name, so a workflow_run watch resolves to one workflow', function (): void {
+    $paths = collect(glob(base_path('.github/workflows/*.yml')) ?: [])
+        ->map(fn (string $file): string => '.github/workflows/'.basename($file));
+    $duplicates = $paths
+        ->groupBy(fn (string $path): string => is_string($name = data_get(workflowFile($path), 'name')) ? $name : $path)
+        ->filter(fn (Collection $group): bool => $group->count() > 1)
+        ->map(fn (Collection $group, string $name): string => "'{$name}' is shared by ".$group->implode(', '))
+        ->values()
+        ->all();
+
+    expect($duplicates)->toBe([], 'Two workflows share a name:, so workflow_run cannot tell which one it watches. Rename one: '.implode('; ', $duplicates))
+        ->and(repoWorkflowsByName())->toHaveCount($paths->count());
+})->group('structure');
+
+it('watches workflows by exact name, never by a glob pattern', function (): void {
+    $globs = [];
+    foreach (glob(base_path('.github/workflows/*.yml')) ?: [] as $file) {
+        $path = '.github/workflows/'.basename($file);
+        foreach (arrayOf(data_get(workflowFile($path), 'on.workflow_run.workflows', [])) as $watched) {
+            if (! is_string($watched) || preg_match('/[*?+!\[\]]/', $watched) === 1) {
+                $globs[] = "{$path} watches ".var_export($watched, true);
+            }
+        }
+    }
+
+    expect($globs)->toBe([], 'workflow_run.workflows must name each watched workflow exactly; this test cannot follow a glob pattern to the workflows it matches: '.implode('; ', $globs));
+})->group('structure');
+
+it('finds a watched workflow without a name by its file path', function (): void {
+    $workflow = [
+        'on' => ['workflow_run' => ['workflows' => ['.github/workflows/unnamed.yml']]],
+        'jobs' => ['probe' => ['runs-on' => ['self-hosted', 'homelab']]],
+    ];
+
+    expect(selfHostedJobsOutsidersCanReach($workflow, byName: ['.github/workflows/unnamed.yml' => ['on' => ['pull_request' => null]]]))->toBe(['probe']);
+})->group('structure');
+
+it('reaches the nightly backup only from the owner, so ops-disk stays safe on the homelab', function (): void {
+    $byName = repoWorkflowsByName();
+
+    expect(outsiderCanTriggerThroughRun(workflowFile('.github/workflows/ops-disk.yml'), $byName))->toBeFalse()
+        ->and(outsiderCanTriggerThroughRun(workflowFile('.github/workflows/release-deploy.yml'), $byName))->toBeTrue()
+        ->and(selfHostedJobsOutsidersCanReach(workflowFile('.github/workflows/release-deploy.yml'), byName: $byName))->toBe([]);
 })->group('structure');
 
 it('flags a self-hosted job on an outsider-triggered workflow, directly or through a local reusable workflow', function (mixed $on, array $jobs, array $locals, array $expected): void {

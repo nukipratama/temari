@@ -19,7 +19,7 @@ function shardsFixture(array $timings): string
  * @param  array<string, float>  $new
  * @return array<string, string|false|null>
  */
-function compareShards(array $old, array $new): array
+function compareShards(array $old, array $new, ?int $shards = 3): array
 {
     $oldPath = shardsFixture($old);
     $newPath = shardsFixture($new);
@@ -32,6 +32,7 @@ function compareShards(array $old, array $new): array
             "--old={$oldPath}",
             "--new={$newPath}",
             "--body-out={$bodyPath}",
+            ...($shards === null ? [] : ["--shards={$shards}"]),
         ]);
         $process->run();
 
@@ -67,7 +68,7 @@ const BALANCED_BASE = [
 
 /**
  * Exercises scripts/compare-shards.php, the decision guard behind
- * .github/workflows/refresh-shards.yml (docs/decisions/sharded-pr-coverage.md).
+ * .github/workflows/upkeep-refresh-shards.yml (docs/decisions/sharded-pr-coverage.md).
  * A class add/remove always decides yes; otherwise it decides yes only when the
  * old split, re-measured on the new timings, is both over the 10% threshold
  * and worse than a fresh split of the new timings.
@@ -134,21 +135,20 @@ it('decides no when a fresh split would not do any better than the stale one', f
 });
 
 it('simulates the same number of shards backend CI runs', function (): void {
-    $workflow = Yaml::parseFile(base_path('.github/workflows/backend-ci.yml'));
+    $workflow = Yaml::parseFile(base_path('.github/workflows/ci-backend.yml'));
     preg_match('/^const SHARD_TOTAL = (\d+);$/m', (string) file_get_contents(base_path('scripts/compare-shards.php')), $constant);
 
-    $body = compareShards(BALANCED_BASE, BALANCED_BASE)['body'];
+    $body = compareShards(BALANCED_BASE, BALANCED_BASE, shards: null)['body'];
 
-    expect(data_get($workflow, 'env.SHARD_TOTAL'))->toBe(3)
-        ->and(data_get($workflow, 'jobs.tests.strategy.matrix.shard'))->toBe([1, 2, 3])
-        ->and((int) ($constant[1] ?? 0))->toBe(3)
-        ->and($body)->toContain('Simulated 3-shard totals')
-        ->toContain('| shard 3 |')
-        ->and($body)->not->toContain('| shard 4 |');
+    expect(data_get($workflow, 'jobs.tests.strategy.matrix.shard'))->toBe([1, 2, 3, 4])
+        ->and((int) ($constant[1] ?? 0))->toBe(4)
+        ->and($body)->toContain('Simulated 4-shard totals')
+        ->toContain('| shard 4 |')
+        ->and($body)->not->toContain('| shard 5 |');
 });
 
 it('times the shard map with pcov loaded, as PR shards run', function (): void {
-    $workflow = Yaml::parseFile(base_path('.github/workflows/refresh-shards.yml'));
+    $workflow = Yaml::parseFile(base_path('.github/workflows/upkeep-refresh-shards.yml'));
     $steps = collect(arrayOf(data_get($workflow, 'jobs.refresh-shards.steps')));
 
     expect(data_get($steps->firstWhere('uses', './.github/actions/setup-php'), 'with.coverage'))->toBe('pcov')
@@ -156,7 +156,7 @@ it('times the shard map with pcov loaded, as PR shards run', function (): void {
 });
 
 it('runs the refresh workflow on ubuntu-26.04-arm, serially, weekly, off the existing nightly crons', function (): void {
-    $workflow = Yaml::parseFile(base_path('.github/workflows/refresh-shards.yml'));
+    $workflow = Yaml::parseFile(base_path('.github/workflows/upkeep-refresh-shards.yml'));
     $job = data_get($workflow, 'jobs.refresh-shards');
 
     expect(data_get($job, 'runs-on'))->toBe('ubuntu-26.04-arm')
@@ -180,7 +180,7 @@ it('runs the refresh workflow on ubuntu-26.04-arm, serially, weekly, off the exi
 });
 
 it('never enables auto-merge on the refresh PR', function (): void {
-    $workflow = file_get_contents(base_path('.github/workflows/refresh-shards.yml'));
+    $workflow = file_get_contents(base_path('.github/workflows/upkeep-refresh-shards.yml'));
 
     expect($workflow)->not->toContain('--auto')
         ->and($workflow)->not->toContain('enable-auto-merge')
@@ -188,7 +188,7 @@ it('never enables auto-merge on the refresh PR', function (): void {
 });
 
 it('commits the refreshed map without the local developer git hooks', function (): void {
-    $workflow = file_get_contents(base_path('.github/workflows/refresh-shards.yml'));
+    $workflow = file_get_contents(base_path('.github/workflows/upkeep-refresh-shards.yml'));
 
     expect($workflow)->toContain('git -c core.hooksPath=/dev/null commit')
         ->and($workflow)->not->toMatch('/^\s*git commit /m');

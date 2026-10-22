@@ -1,4 +1,4 @@
-name: Backup watchdog
+name: Data · Backup watchdog
 
 on:
   schedule:
@@ -34,7 +34,7 @@ jobs:
             exit 1
           fi
 
-          last=$(gh run list --workflow 'Nightly backup' --status success --limit 1 --json createdAt --jq '.[0].createdAt // empty')
+          last=$(gh run list --workflow data-backup.yml --status success --limit 1 --json createdAt --jq '.[0].createdAt // empty')
 
           if [ -z "$last" ]; then
             stale=true
@@ -67,7 +67,7 @@ jobs:
   notify:
     needs: [check]
     if: always() && needs.check.result == 'failure'
-    uses: ./.github/workflows/maintainer-alert.yml
+    uses: ./.github/workflows/_alert.yml
     with:
       message: ${{ needs.check.outputs.detail || 'Backup watchdog could not read the Nightly backup run history.' }}
     secrets:

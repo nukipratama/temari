@@ -150,7 +150,7 @@ Defined in [compose.prod.yaml](compose.prod.yaml) + [Dockerfile](Dockerfile) + [
 ### How a deploy works
 
 1. PR merges to `main`.
-2. [.github/workflows/deploy.yml](.github/workflows/deploy.yml) starts the `deploy` job once CI passes on that commit.
+2. [.github/workflows/release-deploy.yml](.github/workflows/release-deploy.yml) starts the `deploy` job once CI passes on that commit.
 3. The job runs on a containerized self-hosted runner registered for this repo, connecting outbound-only (no inbound port).
 4. On the host, the job preserves owner maintenance, enables deploy-owned maintenance only when migrations are pending, migrates, rolls the services, checks shallow `/ready` and deep `/up`, smoke-tests the release, then lifts only deploy-owned maintenance.
 
@@ -190,7 +190,7 @@ Every successful deploy leaves two extra image tags on the host:
 
 Non-running images older than 7 days are pruned automatically.
 
-The `Rollback prod` workflow runs these steps for you: `gh workflow run rollback.yml` rolls back to `:previous`, and `-f sha=<full commit sha>` pulls that commit's image from GHCR instead.
+The `Release · Rollback prod` workflow runs these steps for you: `gh workflow run release-rollback.yml` rolls back to `:previous`, and `-f sha=<full commit sha>` pulls that commit's image from GHCR instead.
 
 **Roll back the most recent deploy** (most common case):
 ```bash

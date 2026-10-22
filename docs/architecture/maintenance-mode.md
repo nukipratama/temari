@@ -13,7 +13,7 @@ code_refs:
   - config/app.php
   - routes/console.php
   - resources/views/maintenance.blade.php
-  - .github/workflows/deploy.yml
+  - .github/workflows/release-deploy.yml
 ---
 
 # Maintenance mode

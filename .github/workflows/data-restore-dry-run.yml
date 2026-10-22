@@ -1,4 +1,4 @@
-name: Restore dry-run
+name: Data · Restore dry-run
 
 # Restores a real prod backup pair with scripts/restore-db.sh into a throwaway
 # MySQL instead of the live one, weekly for the newest nightly pair and on demand
@@ -58,7 +58,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # rollback.yml pulls app:<sha>, so a tag that already exists is reused, never re-pushed.
+      # release-rollback.yml pulls app:<sha>, so a tag that already exists is reused, never re-pushed.
       - name: Check for an existing image tag
         id: existing
         env:
@@ -418,7 +418,7 @@ jobs:
   notify:
     needs: [build, restore-dry-run]
     if: always() && (needs.build.result == 'failure' || needs.restore-dry-run.result == 'failure')
-    uses: ./.github/workflows/maintainer-alert.yml
+    uses: ./.github/workflows/_alert.yml
     with:
       message: Restore dry-run (${{ inputs.kind || 'nightly' }}${{ inputs.ref && format(', ref {0}', inputs.ref) || '' }}) ${{ needs.build.result == 'failure' && 'failed building the ref''s image on the hosted runner' || 'failed on the homelab runner, possibly before any step ran' }}.
     secrets:

@@ -13,15 +13,15 @@ declare(strict_types=1);
  *
  * Decides yes when a class was added or removed, or when sticking with the
  * old split (re-measured on the new timings) has its slowest shard more than
- * 10% over the mean and a fresh 3-shard split of the new timings would
+ * 10% over the mean and a fresh split of the new timings would
  * actually improve on that.
  *
- * Usage: php scripts/compare-shards.php --old=<path> --new=<path> [--body-out=<path>]
+ * Usage: php scripts/compare-shards.php --old=<path> --new=<path> [--body-out=<path>] [--shards=<n>]
  * Prints GITHUB_OUTPUT-format lines to stdout: decision, added, removed,
  * new_excess_pct, old_applied_excess_pct, summary.
  */
 
-const SHARD_TOTAL = 3;
+const SHARD_TOTAL = 4;
 const THRESHOLD_PCT = 10.0;
 
 /**
@@ -163,7 +163,7 @@ function buildPrBody(array $added, array $removed, array $newTotals, array $oldA
     }
 
     $lines[] = '';
-    $lines[] = sprintf('## Simulated %d-shard totals (seconds)', SHARD_TOTAL);
+    $lines[] = sprintf('## Simulated %d-shard totals (seconds)', count($newTotals));
     $lines[] = '| | New split | Old split, new timings |';
     $lines[] = '| --- | --- | --- |';
 
@@ -172,7 +172,7 @@ function buildPrBody(array $added, array $removed, array $newTotals, array $oldA
     rsort($newSorted);
     rsort($oldSorted);
 
-    for ($i = 0; $i < SHARD_TOTAL; $i++) {
+    for ($i = 0; $i < count($newTotals); $i++) {
         $lines[] = sprintf(
             '| shard %d | %.2f | %.2f |',
             $i + 1,
@@ -198,9 +198,11 @@ foreach (array_slice($argv, 1) as $arg) {
 }
 
 if (! isset($args['old'], $args['new'])) {
-    fwrite(STDERR, "Usage: php scripts/compare-shards.php --old=<path> --new=<path> [--body-out=<path>]\n");
+    fwrite(STDERR, "Usage: php scripts/compare-shards.php --old=<path> --new=<path> [--body-out=<path>] [--shards=<n>]\n");
     exit(1);
 }
+
+$shards = isset($args['shards']) ? (int) $args['shards'] : SHARD_TOTAL;
 
 $oldTimings = readTimings($args['old']);
 $newTimings = readTimings($args['new']);
@@ -213,7 +215,7 @@ $removed = array_values(array_diff($oldClasses, $newClasses));
 sort($added);
 sort($removed);
 
-$newBins = partitionByTime($newClasses, $newTimings, SHARD_TOTAL);
+$newBins = partitionByTime($newClasses, $newTimings, $shards);
 $newTotals = binTotals($newBins, $newTimings);
 $newExcess = excessPct($newTotals);
 
@@ -221,13 +223,13 @@ $newExcess = excessPct($newTotals);
 // actually runs while shards.json stays stale. Removed classes drop out;
 // added classes are appended round-robin, mirroring how Pest's own --shard
 // handling treats classes missing from the timings map.
-$oldBins = partitionByTime($oldClasses, $oldTimings, SHARD_TOTAL);
+$oldBins = partitionByTime($oldClasses, $oldTimings, $shards);
 $oldBinsSurviving = array_map(
     fn (array $bin): array => array_values(array_intersect($bin, $newClasses)),
     $oldBins,
 );
 foreach ($added as $i => $class) {
-    $oldBinsSurviving[$i % SHARD_TOTAL][] = $class;
+    $oldBinsSurviving[$i % $shards][] = $class;
 }
 $oldAppliedTotals = binTotals($oldBinsSurviving, $newTimings);
 $oldAppliedExcess = excessPct($oldAppliedTotals);

@@ -6,10 +6,11 @@ use Illuminate\Support\Facades\File;
 use Symfony\Component\Yaml\Yaml;
 
 dataset('prod workflows', [
-    '.github/workflows/deploy.yml',
-    '.github/workflows/rollback.yml',
-    '.github/workflows/nightly-backup.yml',
-    '.github/workflows/restore-dry-run.yml',
+    '.github/workflows/release-deploy.yml',
+    '.github/workflows/release-rollback.yml',
+    '.github/workflows/data-backup.yml',
+    '.github/workflows/data-restore-dry-run.yml',
+    '.github/workflows/ops-disk.yml',
 ]);
 
 it('never lets a prod compose up or run start, build or recreate mysql', function (string $workflow): void {
@@ -27,7 +28,7 @@ it('never lets a prod compose up or run start, build or recreate mysql', functio
 })->with('prod workflows')->group('structure');
 
 it('checks mysql is running before the deploy pulls anything, without bringing it up', function (): void {
-    $steps = arrayOf(data_get(Yaml::parseFile(base_path('.github/workflows/deploy.yml')), 'jobs.deploy.steps'));
+    $steps = arrayOf(data_get(Yaml::parseFile(base_path('.github/workflows/release-deploy.yml')), 'jobs.deploy.steps'));
     $names = array_map(fn (mixed $step): mixed => data_get($step, 'name') ?? data_get($step, 'uses') ?? '', $steps);
     $guard = array_search('Require a running mysql (deploys never create or recreate it)', $names, true);
     $pull = array_search('Pull the image built on the hosted runner', $names, true);
