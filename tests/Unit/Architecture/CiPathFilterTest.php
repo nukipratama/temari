@@ -290,6 +290,14 @@ it('lets each conditional context and ci-gate read the same run flag from change
     'image' => ['image', 'run_image'],
 ])->group('structure');
 
+it('exposes every decided flag as a changes output, and feeds the repo worktree input from one', function (): void {
+    $workflow = Yaml::parseFile(base_path(CI_WORKFLOW));
+    $fromDecide = collect(ciDecide('push'))->map(fn (string $value, string $flag): string => "\${{ steps.decide.outputs.{$flag} }}")->all();
+
+    expect(data_get($workflow, 'jobs.changes.outputs'))->toEqual($fromDecide)
+        ->and(data_get($workflow, 'jobs.repo.with.worktree'))->toBe("\${{ needs.changes.outputs.run_worktree == 'true' }}");
+})->group('structure');
+
 it('requires changes, repo and supply on every run', function (): void {
     $workflow = Yaml::parseFile(base_path(CI_WORKFLOW));
     $gate = data_get($workflow, 'jobs.ci-gate.steps.0.run');
