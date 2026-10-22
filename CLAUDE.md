@@ -61,7 +61,7 @@ Narration goes through the [Analysis](app/Models/AI/Analysis.php) row model. Its
 
 ## Environment toggles
 
-- `DEMO_LOGIN_ENABLED` (default `true`): renders the "Try the demo" button on `/login` that signs in as the seeded demo user. Plumbed via [config/demo.php](config/demo.php) to Inertia shared `demoLoginEnabled`. Loaded in prod from the host `.env` via [compose.prod.yaml](compose.prod.yaml) `env_file:` ([deploy.yml](.github/workflows/deploy.yml) rolls the services, it does not inject these values).
+- `DEMO_LOGIN_ENABLED` (default `true`): renders the "Try the demo" button on `/login` that signs in as the seeded demo user. Plumbed via [config/demo.php](config/demo.php) to Inertia shared `demoLoginEnabled`. Loaded in prod from the host `.env` via [compose.prod.yaml](compose.prod.yaml) `env_file:` ([release-deploy.yml](.github/workflows/release-deploy.yml) rolls the services, it does not inject these values).
 
 ## Secrets
 

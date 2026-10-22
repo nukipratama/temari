@@ -1,4 +1,4 @@
-name: Labeler
+name: Upkeep · Labeler
 
 # Additive: sync-labels stays off so a label added or removed by hand survives later pushes.
 

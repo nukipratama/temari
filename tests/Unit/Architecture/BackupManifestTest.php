@@ -78,7 +78,7 @@ it('fails on an empty manifest instead of passing nothing', function (): void {
 })->group('structure');
 
 it('writes each nightly manifest before its dump and never lets a manifest failure stop the dump', function (): void {
-    $steps = collect(arrayOf(data_get(Yaml::parseFile(base_path('.github/workflows/nightly-backup.yml')), 'jobs.nightly-backup.steps')));
+    $steps = collect(arrayOf(data_get(Yaml::parseFile(base_path('.github/workflows/data-backup.yml')), 'jobs.nightly-backup.steps')));
 
     foreach (['Backup DB' => 'nightly-', 'Backup analytics schema' => 'analytics-nightly-'] as $name => $prefix) {
         $step = data_get($steps->firstWhere('name', $name), 'run');
@@ -93,7 +93,7 @@ it('writes each nightly manifest before its dump and never lets a manifest failu
 })->group('structure');
 
 it('verifies a nightly restore against its manifest, not live', function (): void {
-    $verify = collect(arrayOf(data_get(Yaml::parseFile(base_path('.github/workflows/restore-dry-run.yml')), 'jobs.restore-dry-run.steps')))
+    $verify = collect(arrayOf(data_get(Yaml::parseFile(base_path('.github/workflows/data-restore-dry-run.yml')), 'jobs.restore-dry-run.steps')))
         ->firstWhere('id', 'verify');
 
     expect(data_get($verify, 'env'))->toBe([
@@ -117,7 +117,7 @@ it('dumps as the read-only backup user with its GTID position recorded as a comm
             ->toContain('-utemari_backup');
     }
 })->with([
-    '.github/workflows/deploy.yml',
-    '.github/workflows/nightly-backup.yml',
-    '.github/workflows/nightly-audit.yml',
+    '.github/workflows/release-deploy.yml',
+    '.github/workflows/data-backup.yml',
+    '.github/workflows/supply-audit.yml',
 ])->group('structure');

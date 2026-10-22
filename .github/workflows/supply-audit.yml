@@ -1,4 +1,4 @@
-name: Nightly dependency audit
+name: Supply · Nightly dependency audit
 
 # Scheduled supply-chain audits, so an upstream advisory cannot block an unrelated change on `main`.
 # Neither audit job installs dependencies; both read the lock files directly.
@@ -152,7 +152,7 @@ jobs:
             | gzip > /tmp/restore-ci/fixture.sql.gz
 
           # --databases carries its own CREATE DATABASE/USE, matching the analytics
-          # backup step in deploy.yml and restore-db.sh's `analytics-*` filename branch.
+          # backup step in release-deploy.yml and restore-db.sh's `analytics-*` filename branch.
           docker compose -f "$FIXTURE_COMPOSE" exec -T -e DB_BACKUP_PASSWORD mysql sh -c \
             'export MYSQL_PWD="$DB_BACKUP_PASSWORD"; mysqldump -h 127.0.0.1 --single-transaction --quick --no-tablespaces --set-gtid-purged=COMMENTED --loose-skip-masking-policies -utemari_backup --databases "$DB_ANALYTICS_DATABASE"' \
             | gzip > /tmp/restore-ci/analytics-fixture.sql.gz

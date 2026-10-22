@@ -8,9 +8,9 @@ code_refs:
   - scripts/gate.sh
   - .githooks/pre-commit
   - .github/workflows/ci.yml
-  - .github/workflows/deploy.yml
-  - .github/workflows/backend-ci.yml
-  - .github/workflows/frontend-ci.yml
+  - .github/workflows/release-deploy.yml
+  - .github/workflows/ci-backend.yml
+  - .github/workflows/ci-frontend.yml
   - composer.json
 ---
 
@@ -62,12 +62,12 @@ rather than falling back to `main`.
 ## CI: the full gate, plus deploy
 
 [.github/workflows/ci.yml](../../.github/workflows/ci.yml) orchestrates the unconditional guards
-and the image build while [backend-ci.yml](../../.github/workflows/backend-ci.yml) and
-[frontend-ci.yml](../../.github/workflows/frontend-ci.yml) run each suite's tests, coverage and
+and the image build while [ci-backend.yml](../../.github/workflows/ci-backend.yml) and
+[ci-frontend.yml](../../.github/workflows/ci-frontend.yml) run each suite's tests, coverage and
 static analysis directly. They do not shell out to `gate.sh`, so every check gets its own cache and
 log. **CI is the authoritative full gate** — a green `composer gate` locally is a fast pre-push
 signal, not a substitute for CI passing. On `push` to `main`, a successful CI run triggers
-[deploy.yml](../../.github/workflows/deploy.yml), which rolls the built image; see [[deployment]]
+[release-deploy.yml](../../.github/workflows/release-deploy.yml), which rolls the built image; see [[deployment]]
 for that half.
 
 The backend suite and the frontend suite each run three parallel shards, on PRs and main pushes. The test jobs and the image build need only `changes`, so they start without waiting for `repo-guards`, which also runs the gitleaks secret scan; `ci-gate` still requires it. Backend shards start MySQL with a backgrounded `docker run` right after checkout and wait for it just before the tests, so its pull and init overlap PHP setup. PR shards collect coverage;

@@ -16,8 +16,8 @@ use Symfony\Component\Yaml\Yaml;
  * prune/selection scripts' behavior against fabricated fixtures (never a live
  * docker daemon or database).
  */
-const DEPLOY_WORKFLOW_PATH = '.github/workflows/deploy.yml';
-const NIGHTLY_BACKUP_WORKFLOW_PATH = '.github/workflows/nightly-backup.yml';
+const DEPLOY_WORKFLOW_PATH = '.github/workflows/release-deploy.yml';
+const NIGHTLY_BACKUP_WORKFLOW_PATH = '.github/workflows/data-backup.yml';
 
 function deployYamlText(): string
 {
@@ -86,7 +86,7 @@ it('skips re-tagging :previous when the incoming image already is :latest', func
     expect($run)->not->toContain('if docker image inspect temari/app:latest >/dev/null 2>&1; then');
 });
 
-it('nightly-backup.yml matches the issue: cron 40 16 * * *, workflow_dispatch, self-hosted homelab, 14-day retention', function (): void {
+it('data-backup.yml matches the issue: cron 40 16 * * *, workflow_dispatch, self-hosted homelab, 14-day retention', function (): void {
     $doc = Yaml::parseFile(base_path(NIGHTLY_BACKUP_WORKFLOW_PATH));
 
     expect(data_get($doc, 'on.schedule.0.cron'))->toBe('40 16 * * *');
@@ -100,7 +100,7 @@ it('nightly-backup.yml matches the issue: cron 40 16 * * *, workflow_dispatch, s
         ->toContain('$BACKUP_DIR/analytics-nightly-*.sql.gz" 14');
 });
 
-it('nightly-backup.yml runs disk cleanup only after the backup steps, with continue-on-error so cleanup can never fail the backup', function (): void {
+it('data-backup.yml runs disk cleanup only after the backup steps, with continue-on-error so cleanup can never fail the backup', function (): void {
     $doc = Yaml::parseFile(base_path(NIGHTLY_BACKUP_WORKFLOW_PATH));
     $steps = arrayOf(data_get($doc, 'jobs.nightly-backup.steps'));
 
@@ -177,7 +177,7 @@ it('verify-and-prune-backup.sh keeps the newest backup for a sha and drops an ol
 });
 
 it('verify-and-prune-backup.sh: two backup runs for the same sha never collide on a filename', function (): void {
-    // The actual uniqueness guarantee lives in the deploy.yml suffix (sha + timestamp
+    // The actual uniqueness guarantee lives in the release-deploy.yml suffix (sha + timestamp
     // + run_id + run_attempt), asserted above; this proves the prune script's
     // own side of the contract — given two distinctly-named files for one sha,
     // neither is silently treated as "the same backup" and both are inspectable

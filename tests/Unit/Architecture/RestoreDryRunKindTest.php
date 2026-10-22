@@ -9,7 +9,7 @@ use Symfony\Component\Yaml\Yaml;
 /** @return array<mixed> */
 function restoreDryRunWorkflow(): array
 {
-    return arrayOf(Yaml::parseFile(base_path('.github/workflows/restore-dry-run.yml')));
+    return arrayOf(Yaml::parseFile(base_path('.github/workflows/data-restore-dry-run.yml')));
 }
 
 function restoreDryRunStepRun(mixed $step): string
@@ -80,13 +80,13 @@ it('runs weekly on the homelab runner inside the deploy-prod group, defaulting t
         ->and(data_get($workflow, 'jobs.restore-dry-run.runs-on'))->toBe(['self-hosted', 'homelab']);
 })->group('structure');
 
-it('alerts through the hosted maintainer-alert workflow when the dry-run fails', function (): void {
+it('alerts through the hosted _alert workflow when the dry-run fails', function (): void {
     $notify = data_get(restoreDryRunWorkflow(), 'jobs.notify');
 
     expect(data_get($notify, 'needs'))->toBe(['build', 'restore-dry-run'])
         ->and(data_get($notify, 'if'))->toBe("always() && (needs.build.result == 'failure' || needs.restore-dry-run.result == 'failure')")
         ->and(data_get($notify, 'with.message'))->toContain("format(', ref {0}', inputs.ref)")
-        ->and(data_get($notify, 'uses'))->toBe('./.github/workflows/maintainer-alert.yml')
+        ->and(data_get($notify, 'uses'))->toBe('./.github/workflows/_alert.yml')
         ->and(array_keys(arrayOf(data_get($notify, 'secrets'))))->toBe(['TELEGRAM_BOT_TOKEN', 'TELEGRAM_MAINTAINER_CHAT_ID']);
 })->group('structure');
 
@@ -202,7 +202,7 @@ it('tags the ref image by its resolved sha, never the moving ref name', function
         ->and(data_get($workflow, 'jobs.restore-dry-run.env.REHEARSAL_SHA'))->toBe('${{ needs.build.outputs.sha }}');
 })->group('structure');
 
-it('reuses an image tag that already exists instead of re-pushing a tag deploy.yml pulls', function (): void {
+it('reuses an image tag that already exists instead of re-pushing a tag release-deploy.yml pulls', function (): void {
     $steps = collect(arrayOf(data_get(restoreDryRunWorkflow(), 'jobs.build.steps')));
     $check = restoreDryRunStep('build', 'id', 'existing');
     $checkRun = restoreDryRunStepRun($check);
@@ -281,7 +281,7 @@ it('caps every throwaway service, since it shares the live stack\'s host daemon'
 
 it('loads the overlay only through the ref-gated rehearsal compose command', function (): void {
     $workflow = restoreDryRunWorkflow();
-    $text = (string) File::get(base_path('.github/workflows/restore-dry-run.yml'));
+    $text = (string) File::get(base_path('.github/workflows/data-restore-dry-run.yml'));
     $steps = arrayOf(data_get($workflow, 'jobs.restore-dry-run.steps'));
 
     expect(substr_count($text, 'restore-dry-run-rehearsal-compose.yml'))->toBe(1)

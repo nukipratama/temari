@@ -26,7 +26,7 @@ it('gives CLI opcache a file cache directory the runtime stage creates for www-d
 })->group('structure');
 
 it('fails the deploy smoke test when a response advertises X-Powered-By', function (): void {
-    $steps = arrayOf(data_get(Yaml::parseFile(base_path('.github/workflows/deploy.yml')), 'jobs.deploy.steps'));
+    $steps = arrayOf(data_get(Yaml::parseFile(base_path('.github/workflows/release-deploy.yml')), 'jobs.deploy.steps'));
     $smoke = data_get(collect($steps)->firstWhere('name', 'Smoke test'), 'run', '');
 
     expect($smoke)->toMatch('/grep -qi \'\^x-powered-by:\'/')

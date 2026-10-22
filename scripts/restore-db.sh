@@ -6,14 +6,14 @@ set -euo pipefail
 #
 #   ./scripts/restore-db.sh <backup.sql.gz>
 #
-# The "Rollback prod" workflow rolls CODE back only; after a destructive migration
+# The release-rollback.yml workflow rolls CODE back only; after a destructive migration
 # the DATA needs restoring with this first. Recommended order for that incident:
 #   1. docker compose -f compose.prod.yaml stop scheduler horizon
 #   2. ./scripts/restore-db.sh /var/lib/temari-backups/pre-deploy-<sha>-<utc-timestamp>-<run_id>-<run_attempt>.sql.gz
 #      (and the matching analytics-pre-deploy-<...>.sql.gz if analytics moved too —
 #      it shares the exact same suffix after "pre-deploy-", just under the
 #      "analytics-pre-deploy-" prefix; `ls -1t` picks the newest for a sha)
-#   3. run the "Rollback prod" GitHub workflow to roll code to :previous
+#   3. run the release-rollback.yml GitHub workflow to roll code to :previous
 
 # COMPOSE_FILE / MYSQL_SERVICE / RESTORE_DB_ASSUME_YES / COMPOSE_PROJECT let CI
 # point this at a throwaway stack instead of prod; all default to the prod

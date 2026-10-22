@@ -1,6 +1,6 @@
-name: Maintainer alert
+name: Shared · Maintainer alert
 
-# Hosted-runner Telegram push, using the same two repository secrets as nightly-audit.yml.
+# Hosted-runner Telegram push, using the same two repository secrets as supply-audit.yml.
 
 on:
   workflow_call:

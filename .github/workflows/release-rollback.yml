@@ -1,4 +1,4 @@
-name: Rollback prod
+name: Release · Rollback prod
 
 # Manual code-only rollback. Re-tags :previous (or the GHCR image of a given
 # sha) → :latest and re-rolls services. Migrations are out of scope — see the

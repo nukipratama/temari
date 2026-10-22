@@ -326,10 +326,10 @@ it('routes GitHub configuration to the checks that read it', function (string $p
     '.github/labeler.yml' => ['.github/labeler.yml', ciChecks()],
     '.github/dependabot.yml' => ['.github/dependabot.yml', ciChecks()],
     '.github/pull_request_template.md' => ['.github/pull_request_template.md', ciChecks()],
-    '.github/workflows/labeler.yml' => ['.github/workflows/labeler.yml', ciChecks(backend: true)],
-    '.github/workflows/deploy.yml' => ['.github/workflows/deploy.yml', ciChecks(backend: true)],
-    '.github/workflows/backend-ci.yml' => ['.github/workflows/backend-ci.yml', ciChecks(backend: true)],
-    '.github/workflows/frontend-ci.yml' => ['.github/workflows/frontend-ci.yml', ciChecks(backend: true, frontend: true)],
+    '.github/workflows/upkeep-labeler.yml' => ['.github/workflows/upkeep-labeler.yml', ciChecks(backend: true)],
+    '.github/workflows/release-deploy.yml' => ['.github/workflows/release-deploy.yml', ciChecks(backend: true)],
+    '.github/workflows/ci-backend.yml' => ['.github/workflows/ci-backend.yml', ciChecks(backend: true)],
+    '.github/workflows/ci-frontend.yml' => ['.github/workflows/ci-frontend.yml', ciChecks(backend: true, frontend: true)],
     '.github/actions/setup-node/action.yml' => ['.github/actions/setup-node/action.yml', ciChecks(backend: true, frontend: true)],
 ])->group('structure');
 
@@ -397,6 +397,6 @@ it('runs the image-contents check only for the inputs that can change the image\
     'ci.yml' => ['.github/workflows/ci.yml', true],
     'app source' => ['app/Models/User.php', false],
     'frontend source' => ['resources/js/pages/Plan.tsx', false],
-    'backend workflow' => ['.github/workflows/backend-ci.yml', false],
+    'backend workflow' => ['.github/workflows/ci-backend.yml', false],
     'docs' => ['docs/architecture/deployment.md', false],
 ])->group('structure');

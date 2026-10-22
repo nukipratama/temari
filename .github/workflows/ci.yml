@@ -111,13 +111,13 @@ jobs:
     name: backend
     needs: [changes]
     if: ${{ !cancelled() && (github.event_name != 'pull_request' || needs.changes.outputs.backend == 'true') }}
-    uses: ./.github/workflows/backend-ci.yml
+    uses: ./.github/workflows/ci-backend.yml
 
   frontend:
     name: frontend
     needs: [changes]
     if: ${{ !cancelled() && (github.event_name != 'pull_request' || needs.changes.outputs.frontend == 'true') }}
-    uses: ./.github/workflows/frontend-ci.yml
+    uses: ./.github/workflows/ci-frontend.yml
 
   worktree:
     name: worktree-races
@@ -257,7 +257,7 @@ jobs:
             echo ""
           } >> "$GITHUB_STEP_SUMMARY"
 
-  # Produces the image deploy.yml pulls after a main push, and on a PR proves a
+  # Produces the image release-deploy.yml pulls after a main push, and on a PR proves a
   # Dockerfile/composer change still builds. ~40s off a warm cache.
   build:
     name: build-prod-image
@@ -297,7 +297,7 @@ jobs:
           cache-to: ${{ github.event_name == 'push' && format('type=registry,ref={0}:buildcache,mode=max', env.APP_IMAGE) || '' }}
           provenance: false
 
-      # deploy.yml pulls this exact digest, so a later repush of the tag can't
+      # release-deploy.yml pulls this exact digest, so a later repush of the tag can't
       # change what ships.
       - name: Record the pushed image digest
         if: github.event_name == 'push'
