@@ -29,10 +29,10 @@ function allowListedPaths(): Collection
 /** @return list<string> */
 function expectedImageEntries(): array
 {
-    $step = collect(arrayOf(data_get(Yaml::parseFile(base_path('.github/workflows/ci.yml')), 'jobs.build.steps')))
+    $step = collect(arrayOf(data_get(Yaml::parseFile(base_path('.github/workflows/ci-image.yml')), 'jobs.build.steps')))
         ->firstWhere('name', 'Assert the shipped app entries');
 
-    expect($step)->not->toBeNull('build-prod-image lost its image-contents assertion step.');
+    expect($step)->not->toBeNull('image / build lost its image-contents assertion step.');
 
     $entries = data_get($step, 'env.EXPECTED_ENTRIES');
 
@@ -85,10 +85,11 @@ it('installs the assets stage under the repo .npmrc, so dependency install scrip
 
 it('loads and lists the image only when an image input changed, never on a main push', function (): void {
     $workflow = Yaml::parseFile(base_path('.github/workflows/ci.yml'));
-    $steps = collect(arrayOf(data_get($workflow, 'jobs.build.steps')))->keyBy('name');
+    $steps = collect(arrayOf(data_get(Yaml::parseFile(base_path('.github/workflows/ci-image.yml')), 'jobs.build.steps')))->keyBy('name');
 
-    expect(data_get($steps['Load the runtime image locally'], 'if'))->toBe("needs.changes.outputs.image == 'true'")
-        ->and(data_get($steps['Assert the shipped app entries'], 'if'))->toBe("needs.changes.outputs.image == 'true'")
-        ->and(data_get($workflow, 'jobs.changes.outputs.image'))->toBe('${{ steps.filter.outputs.image }}')
-        ->and(data_get($workflow, 'jobs.changes.if'))->toBe("\${{ github.event_name == 'pull_request' }}");
+    expect(data_get($steps['Load the runtime image locally'], 'if'))->toBe('inputs.inspect')
+        ->and(data_get($steps['Assert the shipped app entries'], 'if'))->toBe('inputs.inspect')
+        ->and(data_get($workflow, 'jobs.image.with.inspect'))->toBe("\${{ needs.changes.outputs.image_inspect == 'true' }}")
+        ->and(data_get($workflow, 'jobs.changes.outputs.image_inspect'))->toBe('${{ steps.decide.outputs.image_inspect }}')
+        ->and(data_get(collect(arrayOf(data_get($workflow, 'jobs.changes.steps')))->firstWhere('id', 'decide'), 'env.IMAGE'))->toBe('${{ steps.filter.outputs.image }}');
 })->group('structure');

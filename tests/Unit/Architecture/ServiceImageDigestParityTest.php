@@ -43,7 +43,7 @@ it('keeps .nvmrc on the Node release the Dockerfile pins', function (): void {
 })->group('structure');
 
 it('runs every workflow on one PHP minor that matches the Dockerfile header patch', function (): void {
-    $versions = collect(['ci.yml', 'ci-backend.yml', 'supply-audit.yml', 'data-restore-exercise.yml', 'upkeep-refresh-shards.yml'])
+    $versions = collect(['ci-repo.yml', 'ci-backend.yml', 'supply-audit.yml', 'data-restore-exercise.yml', 'upkeep-refresh-shards.yml'])
         ->mapWithKeys(fn (string $workflow): array => [$workflow => data_get(Yaml::parseFile(base_path(".github/workflows/{$workflow}")), 'env.PHP_VERSION')]);
     $version = $versions->first();
     preg_match('/^# = .*\(PHP (\d+\.\d+\.\d+)\)/m', (string) File::get(base_path('Dockerfile')), $header);

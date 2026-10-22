@@ -2,23 +2,30 @@ name: CI · Backend
 
 on:
   workflow_call:
+    inputs:
+      full:
+        description: 'run the whole backend suite; false runs only the DB-free structure tests'
+        type: boolean
+        required: true
 
 permissions:
   contents: read
 
 env:
   PHP_VERSION: '8.5'
-  SHARD_TOTAL: 3
 
 jobs:
   tests:
-    name: tests (shard ${{ matrix.shard }}/3)
+    name: tests (shard ${{ matrix.shard }}/${{ strategy.job-total }})
+    if: inputs.full
     runs-on: ubuntu-26.04-arm
     timeout-minutes: 10
     strategy:
       fail-fast: false
       matrix:
         shard: [1, 2, 3]
+    env:
+      SHARD_TOTAL: ${{ strategy.job-total }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -126,8 +133,115 @@ jobs:
           path: coverage-shard-${{ matrix.shard }}.cov
           retention-days: 1
 
+  coverage:
+    name: coverage
+    needs: [tests]
+    if: inputs.full && github.event_name == 'pull_request'
+    runs-on: ubuntu-26.04-arm
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: ./.github/actions/setup-php
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: coverage-shard-*
+          path: coverage-shards
+          merge-multiple: true
+
+      - name: Merge shard coverage and check --min=95 on the whole suite
+        id: merge
+        run: |
+          ./vendor/bin/phpcov merge --clover=coverage-merged-clover.xml coverage-shards
+
+          # shellcheck disable=SC2016 # PHP variables are evaluated by php, so the shell must leave this snippet literal.
+          php -r '
+            $xml = simplexml_load_file("coverage-merged-clover.xml");
+            $metrics = $xml->project->metrics;
+            $statements = (int) $metrics["statements"];
+            $covered = (int) $metrics["coveredstatements"];
+            $pct = $statements > 0 ? ($covered / $statements) * 100 : 100.0;
+            printf("Merged coverage: %.2f%% (%d/%d executable lines)\n", $pct, $covered, $statements);
+            $min = 95.0;
+            if ($pct < $min) {
+              fwrite(STDERR, sprintf("FAIL: merged coverage %.1f%% is below the required %.1f%%.\n", floor($pct * 10) / 10, $min));
+              exit(1);
+            }
+          '
+
+      - name: Coverage summary
+        if: always() && steps.merge.outcome != 'skipped'
+        run: |
+          {
+            echo "### Backend · Coverage (merged, $(find coverage-shards -name '*.cov' | wc -l)-way shard)"
+            echo ""
+            if [ -f coverage-merged-clover.xml ]; then
+              # shellcheck disable=SC2016 # PHP variables are evaluated by php, so the shell must leave this snippet literal.
+              php -r '
+              $xml = @simplexml_load_file("coverage-merged-clover.xml");
+              if ($xml === false) { exit(0); }
+              $metrics = $xml->project->metrics;
+              $statements = (int) $metrics["statements"];
+              $covered = (int) $metrics["coveredstatements"];
+              $pct = $statements > 0 ? ($covered / $statements) * 100 : 100.0;
+              echo "| | |\n| --- | --- |\n";
+              printf("| Lines | %.1f%% (%d/%d) |\n", $pct, $covered, $statements);
+              '
+            fi
+            echo ""
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  # Full git history: the guard diffs the migrations against the PR base or the pushed-over commit.
+  migration-guard:
+    name: migration-guard
+    if: inputs.full
+    runs-on: ubuntu-26.04-arm
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # v2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+
+      - name: Reject unmarked destructive migrations
+        env:
+          MIGRATION_DIFF_BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+        run: php scripts/check-migration-safety.php --base "$MIGRATION_DIFF_BASE"
+
+  # When the full suite is skipped but a file only the DB-free structure tests read changed.
+  # A full run covers these tests in static analysis.
+  structure:
+    name: structure
+    if: ${{ !inputs.full }}
+    runs-on: ubuntu-26.04-arm
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: ./.github/actions/setup-php
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+
+      - name: Stub .env for file-scanning tests
+        run: cp .env.example .env
+
+      - uses: ./.github/actions/start-redis
+
+      - name: Backend structure tests
+        env:
+          REDIS_HOST: 127.0.0.1
+        run: ./vendor/bin/pest --group=structure
+
   static-analysis:
     name: static analysis
+    if: inputs.full
     runs-on: ubuntu-26.04-arm
     timeout-minutes: 6
     steps:

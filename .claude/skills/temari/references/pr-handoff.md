@@ -16,4 +16,4 @@ Use `Closes #<n>` in the PR body, keep issue/PR text free of secrets and identif
 
 **Drafting.** Draft the body in `.planning/pr-<n>.md`, change it with Edit, and send it with `gh pr create|edit --body-file`; never patch a body in place with perl or sed.
 
-**CI.** A check blocks merging only when its job is in `ci.yml` under `ci-gate`'s `needs`; a standalone workflow is advisory.
+**CI.** A check blocks merging only when its job is in `ci.yml` under `ci-gate`'s `needs`, directly or inside a reusable workflow such a job calls; a standalone workflow is advisory.
