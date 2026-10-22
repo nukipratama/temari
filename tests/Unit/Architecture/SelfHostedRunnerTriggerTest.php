@@ -77,8 +77,8 @@ function requiresWatchedPush(mixed $if): bool
         return false;
     }
 
-    $condition = trim(preg_replace('/^\$\{\{(.*)\}\}$/s', '$1', trim($if)) ?? '');
-    if (str_contains($condition, '||')) {
+    $condition = preg_match('/^\$\{\{(.*)\}\}\z/s', $if, $wrapped) === 1 ? $wrapped[1] : $if;
+    if (str_contains($condition, '${{') || str_contains($condition, '}}') || str_contains($condition, '||')) {
         return false;
     }
 
@@ -162,6 +162,8 @@ it('follows a workflow_run trigger to the workflow it watches', function (array 
     'guarded to the watched run being a push' => [['on' => ['pull_request' => null]], "github.event.workflow_run.event == 'push'", []],
     'push guard alongside another condition' => [['on' => ['pull_request' => null]], "\${{ github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push' }}", []],
     'push guard ORed with another event' => [['on' => ['pull_request' => null]], "github.event.workflow_run.event == 'push' || github.event.workflow_run.event == 'pull_request'", ['probe']],
+    'push guard beside text outside the expression' => [['on' => ['pull_request' => null]], "\${{ github.event.workflow_run.conclusion == 'success' }} && github.event.workflow_run.event == 'push'", ['probe']],
+    'push guard in an expression with trailing text' => [['on' => ['pull_request' => null]], "\${{ github.event.workflow_run.event == 'push' }}\n", ['probe']],
     'push guard negated' => [['on' => ['pull_request' => null]], "github.event.workflow_run.event != 'push'", ['probe']],
     'watches an owner-only workflow' => [['on' => ['schedule' => [['cron' => '0 0 * * *']]]], null, []],
     'a watch cycle with no outsider trigger' => [
