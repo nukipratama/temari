@@ -41,6 +41,8 @@ code_refs:
 
 > **Fact update, 2026-10-22.** Each suite's PR coverage merge runs in its own `coverage` job after the shards, the frontend `gate` is gone, and `ci-gate` only aggregates results ([#2255](https://github.com/nukipratama/temari/issues/2255)). The shard count is each suite's `matrix.shard` list; `SHARD_TOTAL` is read from `strategy.job-total`.
 
+> **Fact update, 2026-10-22.** Backend tests run in four shards again. The 2026-10-07 cut to three saved billed minutes, which no longer apply since the repository went public (a full PR run bills 0 ms). The backend shards are the PR's critical path, and the trial against that path is recorded in [#2264](https://github.com/nukipratama/temari/pull/2264). `compare-shards.php` simulates the same count by default.
+
 Coverage roughly doubled backend tests on every pull request (186–340s vs ~145s on a push),
 making them the PR's critical path by two to three minutes. Frontend tests were also near the
 critical path because per-file jsdom setup dominated their runtime. Both suites now use the same
