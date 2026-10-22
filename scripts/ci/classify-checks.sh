@@ -36,7 +36,7 @@ FRONTEND='^resources/(js|css|views|brand)/|^tests/fixtures/|^\.github/actions/|^
 DOCKER='^(Dockerfile|\.dockerignore)$|^docker/|^public/\.htaccess$'
 WORKTREE='^scripts/worktree|^tests/scripts/'
 STRUCTURE='^resources/js/|^(CLAUDE|README)\.md$|^\.dockerignore$|^docs/(design-tokens|architecture/llm-triggers)\.md$|^\.claude/skills/temari/.*\.md$'
-IMAGE='^(Dockerfile|\.dockerignore|composer\.(json|lock)|package(-lock)?\.json)$|^docker/|^\.github/workflows/ci\.yml$'
+IMAGE='^(Dockerfile|\.dockerignore|composer\.(json|lock)|package(-lock)?\.json)$|^docker/|^\.github/workflows/ci(-image)?\.yml$'
 
 hits_EVERYTHING="$(hits "$EVERYTHING")"
 hits_BACKEND="$(hits "$BACKEND")"

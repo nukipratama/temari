@@ -163,9 +163,9 @@ function runWithFakeDocker(string $script, string $fakeDocker, array $env): arra
     return [$process, $bin];
 }
 
-it('builds the ref image on a hosted runner only when a ref is given, as ci.yml builds it but without a cache write', function (): void {
+it('builds the ref image on a hosted runner only when a ref is given, as ci-image.yml builds it but without a cache write', function (): void {
     $workflow = restoreDryRunWorkflow();
-    $ci = Yaml::parseFile(base_path('.github/workflows/ci.yml'));
+    $ci = Yaml::parseFile(base_path('.github/workflows/ci-image.yml'));
     $build = data_get($workflow, 'jobs.build');
     $push = restoreDryRunStep('build', 'name', 'Build and push the rehearsal image');
     $pushWith = arrayOf(data_get($push, 'with'));

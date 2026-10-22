@@ -19,12 +19,13 @@ function migrationGuard(array $files): Process
     return $process;
 }
 
-it('runs the migration guard from the unconditional repository checks with full git history', function (): void {
-    $job = data_get(Yaml::parseFile(base_path('.github/workflows/ci.yml')), 'jobs.repo-guards');
+it('runs the migration guard in every full backend run with full git history', function (): void {
+    $job = data_get(Yaml::parseFile(base_path('.github/workflows/ci-backend.yml')), 'jobs.migration-guard');
     $checkout = data_get($job, 'steps.0');
     $guard = collect(arrayOf(data_get($job, 'steps')))->firstWhere('name', 'Reject unmarked destructive migrations');
 
-    expect(data_get($checkout, 'with.fetch-depth'))->toBe(0)
+    expect(data_get($job, 'if'))->toBe('inputs.full')
+        ->and(data_get($checkout, 'with.fetch-depth'))->toBe(0)
         ->and(data_get($guard, 'run'))->toContain('scripts/check-migration-safety.php --base');
 });
 

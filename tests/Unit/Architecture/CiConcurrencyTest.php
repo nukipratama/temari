@@ -31,9 +31,58 @@ it('cancels a superseded CI run on every ref, main included', function (): void 
     ]);
 })->group('structure');
 
-it('runs ci-gate and the frontend gate unless the run was cancelled, so a timed-out job still fails them', function (): void {
-    expect(data_get(ciWorkflow('ci.yml'), 'jobs.ci-gate.if'))->toBe('${{ !cancelled() }}')
-        ->and(data_get(ciWorkflow('ci-frontend.yml'), 'jobs.gate.if'))->toBe('${{ !cancelled() }}');
+it('runs ci-gate unless the run was cancelled, so a timed-out job still fails it', function (): void {
+    expect(data_get(ciWorkflow('ci.yml'), 'jobs.ci-gate.if'))->toBe('${{ !cancelled() }}');
+})->group('structure');
+
+it('lets ci-gate require each context workflow as a unit, with no gate job inside one', function (string $file): void {
+    $jobs = arrayOf(data_get(ciWorkflow('ci.yml'), 'jobs'));
+    $callers = collect($jobs)->filter(fn (mixed $job): bool => data_get($job, 'uses') === "./.github/workflows/{$file}");
+    $caller = (string) $callers->keys()->first();
+
+    expect($callers)->toHaveCount(1)
+        ->and(data_get($jobs, 'ci-gate.needs'))->toContain($caller)
+        ->and(data_get($jobs, 'ci-gate.steps.0.run'))->toContain("\"\${{ needs.{$caller}.result }}\" {$caller}")
+        ->and(array_keys(arrayOf(data_get(ciWorkflow($file), 'jobs'))))->not->toContain('gate')
+        ->and(data_get(ciWorkflow($file), 'on'))->toHaveKey('workflow_call');
+})->with(['ci-backend.yml', 'ci-frontend.yml', 'ci-repo.yml', 'ci-supply.yml', 'ci-image.yml'])->group('structure');
+
+it('merges each suite\'s PR coverage in its own job after the shards', function (string $file, string $condition): void {
+    $coverage = data_get(ciWorkflow($file), 'jobs.coverage');
+
+    expect(data_get($coverage, 'needs'))->toBe(['tests'])
+        ->and(data_get($coverage, 'if'))->toBe($condition)
+        ->and(data_get($coverage, 'timeout-minutes'))->toBeInt();
+})->with([
+    'backend' => ['ci-backend.yml', "inputs.full && github.event_name == 'pull_request'"],
+    'frontend' => ['ci-frontend.yml', "github.event_name == 'pull_request'"],
+])->group('structure');
+
+it('builds frontend assets beside the test shards, on every event', function (): void {
+    $build = data_get(ciWorkflow('ci-frontend.yml'), 'jobs.build');
+    $runs = collect(arrayOf(data_get($build, 'steps')))->pluck('run')->filter()->values()->all();
+
+    expect($build)->not->toHaveKey('needs')
+        ->and($build)->not->toHaveKey('if')
+        ->and($runs)->toBe(['npm run build', 'npm run check:chunks']);
+})->group('structure');
+
+it('names each test shard from its matrix, so the shard list is the only count', function (string $file, string $total): void {
+    $tests = data_get(ciWorkflow($file), 'jobs.tests');
+
+    expect(data_get($tests, 'name'))->toBe('tests (shard ${{ matrix.shard }}/${{ strategy.job-total }})')
+        ->and(data_get($tests, "env.{$total}"))->toBe('${{ strategy.job-total }}')
+        ->and(data_get(ciWorkflow($file), "env.{$total}"))->toBeNull();
+})->with([
+    'backend' => ['ci-backend.yml', 'SHARD_TOTAL'],
+    'frontend' => ['ci-frontend.yml', 'FRONTEND_SHARD_TOTAL'],
+])->group('structure');
+
+it('keeps ci-gate a pure aggregator that checks nothing out', function (): void {
+    $steps = arrayOf(data_get(ciWorkflow('ci.yml'), 'jobs.ci-gate.steps'));
+
+    expect($steps)->toHaveCount(1)
+        ->and(data_get($steps, '0.uses'))->toBeNull();
 })->group('structure');
 
 it('keeps the deploy out of the CI workflow', function (): void {

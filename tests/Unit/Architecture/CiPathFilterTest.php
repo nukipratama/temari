@@ -207,15 +207,17 @@ it('runs only the structure tests for documentation those tests read', function 
     'agent entrypoints' => [['CLAUDE.md', 'README.md']],
 ])->group('structure');
 
-it('runs the structure tests in their own required job only when backend CI does not run', function (): void {
+it('runs the structure tests in their own required job only when the full backend suite does not run', function (): void {
     $workflow = Yaml::parseFile(base_path(CI_WORKFLOW));
-    $job = data_get($workflow, 'jobs.structure');
+    $backend = Yaml::parseFile(base_path('.github/workflows/ci-backend.yml'));
+    $job = data_get($backend, 'jobs.structure');
 
-    expect(data_get($job, 'if'))->toBe("\${{ needs.changes.outputs.structure == 'true' }}")
+    expect(data_get($workflow, 'jobs.backend.if'))->toContain("needs.changes.outputs.structure == 'true'")
+        ->and(data_get($workflow, 'jobs.backend.with.full'))->toBe("\${{ github.event_name != 'pull_request' || needs.changes.outputs.backend == 'true' }}")
+        ->and(data_get($job, 'if'))->toBe('${{ !inputs.full }}')
         ->and(data_get($job, 'timeout-minutes'))->toBeInt()
         ->and(collect(arrayOf(data_get($job, 'steps')))->pluck('run')->filter()->implode("\n"))->toContain('./vendor/bin/pest --group=structure')
-        ->and(data_get($workflow, 'jobs.ci-gate.needs'))->toContain('structure')
-        ->and(data_get($workflow, 'jobs.ci-gate.steps.0.run'))->toContain('needs.structure.result');
+        ->and(data_get($workflow, 'jobs.ci-gate.steps.0.run'))->toContain("needs.changes.outputs.structure == 'true' }}\" \"\${{ needs.backend.result }}\" backend");
 
     expect(ciClassifyPaths(['docs/design-tokens.md', 'app/Models/User.php']))->toBe(ciChecks(backend: true));
 })->group('structure');
@@ -395,6 +397,7 @@ it('runs the image-contents check only for the inputs that can change the image\
     'package.json' => ['package.json', true],
     'package-lock.json' => ['package-lock.json', true],
     'ci.yml' => ['.github/workflows/ci.yml', true],
+    'image workflow' => ['.github/workflows/ci-image.yml', true],
     'app source' => ['app/Models/User.php', false],
     'frontend source' => ['resources/js/pages/Plan.tsx', false],
     'backend workflow' => ['.github/workflows/ci-backend.yml', false],

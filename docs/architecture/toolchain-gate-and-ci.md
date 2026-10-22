@@ -11,6 +11,9 @@ code_refs:
   - .github/workflows/release-deploy.yml
   - .github/workflows/ci-backend.yml
   - .github/workflows/ci-frontend.yml
+  - .github/workflows/ci-repo.yml
+  - .github/workflows/ci-supply.yml
+  - .github/workflows/ci-image.yml
   - composer.json
 ---
 
@@ -61,27 +64,32 @@ rather than falling back to `main`.
 
 ## CI: the full gate, plus deploy
 
-[.github/workflows/ci.yml](../../.github/workflows/ci.yml) orchestrates the unconditional guards
-and the image build while [ci-backend.yml](../../.github/workflows/ci-backend.yml) and
-[ci-frontend.yml](../../.github/workflows/ci-frontend.yml) run each suite's tests, coverage and
-static analysis directly. They do not shell out to `gate.sh`, so every check gets its own cache and
+[.github/workflows/ci.yml](../../.github/workflows/ci.yml) only orchestrates: after `changes`
+classifies the diff, it calls one reusable workflow per context, so the PR checks list reads
+`<context> / <check>`. [ci-backend.yml](../../.github/workflows/ci-backend.yml) (`tests`,
+`coverage`, `static analysis`, `migration-guard`, `structure`) and
+[ci-frontend.yml](../../.github/workflows/ci-frontend.yml) (`tests`, `coverage`, `build`,
+`static analysis`) run each suite; [ci-repo.yml](../../.github/workflows/ci-repo.yml) runs `lint`
+(actionlint), `doc-citations` and `worktree-races`; [ci-supply.yml](../../.github/workflows/ci-supply.yml)
+runs `secrets` (gitleaks) and `dependency-review`; [ci-image.yml](../../.github/workflows/ci-image.yml)
+runs `build`, the prod image. None shell out to `gate.sh`, so every check gets its own cache and
 log. **CI is the authoritative full gate** — a green `composer gate` locally is a fast pre-push
 signal, not a substitute for CI passing. On `push` to `main`, a successful CI run triggers
 [release-deploy.yml](../../.github/workflows/release-deploy.yml), which rolls the built image; see [[deployment]]
 for that half.
 
-The backend suite and the frontend suite each run three parallel shards, on PRs and main pushes. The test jobs and the image build need only `changes`, so they start without waiting for `repo-guards`, which also runs the gitleaks secret scan; `ci-gate` still requires it. Backend shards start MySQL with a backgrounded `docker run` right after checkout and wait for it just before the tests, so its pull and init overlap PHP setup. PR shards collect coverage;
-the frontend's `gate` job and, for the backend, `ci-gate` merge the whole-suite totals and apply the
-configured thresholds exactly once. The two sides differ on purpose: the backend merge sits on the
-critical path behind the slowest shard, so it runs inside `ci-gate` to save a job, while the
-frontend `gate` (merge, build and chunk check) finishes while the backend shards still run, and
-moving it into `ci-gate` would put that work on the critical path. Main-push shards skip instrumentation and the merge is skipped,
+The backend suite and the frontend suite each run three parallel shards, on PRs and main pushes. A suite's shard count is its `matrix.shard` list alone: job names and `--shard` read `strategy.job-total`. Every context workflow needs only `changes`, so nothing waits on another context. Backend shards start MySQL with a backgrounded `docker run` right after checkout and wait for it just before the tests, so its pull and init overlap PHP setup. PR shards collect coverage;
+each suite's `coverage` job merges the whole-suite totals after its shards and applies the configured
+thresholds exactly once. The frontend `build` (asset build and chunk check) runs beside the shards on
+both events. Main-push shards skip instrumentation and the merge is skipped,
 because the change was already coverage-gated before merge. Each side's single static-analysis job runs its tools in
 sequence (Pint, PHPStan and Rector; TypeScript, ESLint and Prettier) and then that side's 1:1
 structure check and source guard (`{@see}` references; the raw-palette guard), so the structure
-checks run once per run instead of once per shard. The frontend workflow's `gate` requires all of
-its shards and its static analysis on both events, and the top-level `ci-gate` requires each
-changed suite as a unit, the backend's `tests` and `static-analysis` jobs included. A missing, cancelled or failed shard therefore reds the gate — see
+checks run once per run instead of once per shard; it is one job per side because both finish well
+before the backend shards, so a per-tool matrix would only add jobs. When a PR changes only files the
+DB-free structure tests read, `ci-backend.yml` runs with `full: false` and only its `structure` job.
+`ci-gate` checks nothing out: it requires each changed context workflow as a unit, every job inside it
+included. A missing, cancelled or failed shard therefore reds the gate — see
 [[sharded-pr-coverage]]. A newer push to
 the same ref, `main` included, cancels the older run whole instead, and its `ci-gate` skips; see
 [[deployment]] under "Superseded main runs".

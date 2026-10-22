@@ -139,8 +139,7 @@ it('simulates the same number of shards backend CI runs', function (): void {
 
     $body = compareShards(BALANCED_BASE, BALANCED_BASE)['body'];
 
-    expect(data_get($workflow, 'env.SHARD_TOTAL'))->toBe(3)
-        ->and(data_get($workflow, 'jobs.tests.strategy.matrix.shard'))->toBe([1, 2, 3])
+    expect(data_get($workflow, 'jobs.tests.strategy.matrix.shard'))->toBe([1, 2, 3])
         ->and((int) ($constant[1] ?? 0))->toBe(3)
         ->and($body)->toContain('Simulated 3-shard totals')
         ->toContain('| shard 3 |')
