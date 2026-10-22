@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Illuminate\Support\Collection;
 use Symfony\Component\Yaml\Yaml;
 
 const OUTSIDER_TRIGGERS = [
@@ -173,9 +174,35 @@ it('follows a workflow_run trigger to the workflow it watches', function (array 
     ],
 ])->group('structure');
 
-it('finds a watched workflow without a name by its file path', function (): void {
-    expect(repoWorkflowsByName())->toHaveCount(count(glob(base_path('.github/workflows/*.yml')) ?: []));
+it('gives every workflow its own name, so a workflow_run watch resolves to one workflow', function (): void {
+    $paths = collect(glob(base_path('.github/workflows/*.yml')) ?: [])
+        ->map(fn (string $file): string => '.github/workflows/'.basename($file));
+    $duplicates = $paths
+        ->groupBy(fn (string $path): string => is_string($name = data_get(workflowFile($path), 'name')) ? $name : $path)
+        ->filter(fn (Collection $group): bool => $group->count() > 1)
+        ->map(fn (Collection $group, string $name): string => "'{$name}' is shared by ".$group->implode(', '))
+        ->values()
+        ->all();
 
+    expect($duplicates)->toBe([], 'Two workflows share a name:, so workflow_run cannot tell which one it watches. Rename one: '.implode('; ', $duplicates))
+        ->and(repoWorkflowsByName())->toHaveCount($paths->count());
+})->group('structure');
+
+it('watches workflows by exact name, never by a glob pattern', function (): void {
+    $globs = [];
+    foreach (glob(base_path('.github/workflows/*.yml')) ?: [] as $file) {
+        $path = '.github/workflows/'.basename($file);
+        foreach (arrayOf(data_get(workflowFile($path), 'on.workflow_run.workflows', [])) as $watched) {
+            if (! is_string($watched) || preg_match('/[*?+!\[\]]/', $watched) === 1) {
+                $globs[] = "{$path} watches ".var_export($watched, true);
+            }
+        }
+    }
+
+    expect($globs)->toBe([], 'workflow_run.workflows must name each watched workflow exactly; this test cannot follow a glob pattern to the workflows it matches: '.implode('; ', $globs));
+})->group('structure');
+
+it('finds a watched workflow without a name by its file path', function (): void {
     $workflow = [
         'on' => ['workflow_run' => ['workflows' => ['.github/workflows/unnamed.yml']]],
         'jobs' => ['probe' => ['runs-on' => ['self-hosted', 'homelab']]],
