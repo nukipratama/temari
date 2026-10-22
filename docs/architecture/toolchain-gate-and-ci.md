@@ -64,9 +64,10 @@ rather than falling back to `main`.
 
 ## CI: the full gate, plus deploy
 
-[.github/workflows/ci.yml](../../.github/workflows/ci.yml) only orchestrates: after `changes`
-classifies the diff, it calls one reusable workflow per context, so the PR checks list reads
-`<context> / <check>`. [ci-backend.yml](../../.github/workflows/ci-backend.yml) (`tests`,
+[.github/workflows/ci.yml](../../.github/workflows/ci.yml) only orchestrates: `changes` decides
+once which contexts run, as `run_*` outputs (a PR from the classified diff, a push runs every
+context), and both the context calls and `ci-gate` read those same flags. It calls one reusable
+workflow per context, so the PR checks list reads `<context> / <check>`. [ci-backend.yml](../../.github/workflows/ci-backend.yml) (`tests`,
 `coverage`, `static analysis`, `migration-guard`, `structure`) and
 [ci-frontend.yml](../../.github/workflows/ci-frontend.yml) (`tests`, `coverage`, `build`,
 `static analysis`) run each suite; [ci-repo.yml](../../.github/workflows/ci-repo.yml) runs `lint`

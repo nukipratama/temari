@@ -89,7 +89,7 @@ it('loads and lists the image only when an image input changed, never on a main 
 
     expect(data_get($steps['Load the runtime image locally'], 'if'))->toBe('inputs.inspect')
         ->and(data_get($steps['Assert the shipped app entries'], 'if'))->toBe('inputs.inspect')
-        ->and(data_get($workflow, 'jobs.image.with.inspect'))->toBe("\${{ needs.changes.outputs.image == 'true' }}")
-        ->and(data_get($workflow, 'jobs.changes.outputs.image'))->toBe('${{ steps.filter.outputs.image }}')
-        ->and(data_get($workflow, 'jobs.changes.if'))->toBe("\${{ github.event_name == 'pull_request' }}");
+        ->and(data_get($workflow, 'jobs.image.with.inspect'))->toBe("\${{ needs.changes.outputs.image_inspect == 'true' }}")
+        ->and(data_get($workflow, 'jobs.changes.outputs.image_inspect'))->toBe('${{ steps.decide.outputs.image_inspect }}')
+        ->and(data_get(collect(arrayOf(data_get($workflow, 'jobs.changes.steps')))->firstWhere('id', 'decide'), 'env.IMAGE'))->toBe('${{ steps.filter.outputs.image }}');
 })->group('structure');
