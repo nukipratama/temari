@@ -69,6 +69,41 @@ function ciChecks(
     return ['backend' => $backend, 'frontend' => $frontend, 'docker' => $docker, 'worktree' => $worktree, 'structure' => $structure, 'image' => $image];
 }
 
+/**
+ * Runs ci.yml's own "Decide which contexts run" step.
+ *
+ * @param  array<string, bool>  $checks
+ * @return array<string, string>
+ */
+function ciDecide(string $event, array $checks = []): array
+{
+    $step = collect(arrayOf(data_get(Yaml::parseFile(base_path(CI_WORKFLOW)), 'jobs.changes.steps')))->firstWhere('id', 'decide');
+    $script = data_get($step, 'run');
+    $output = tempnam(sys_get_temp_dir(), 'ci-decide-');
+
+    try {
+        $env = ['EVENT' => $event, 'GITHUB_OUTPUT' => $output];
+        foreach ($checks as $name => $value) {
+            $env[strtoupper($name)] = $value ? 'true' : 'false';
+        }
+
+        $process = new Process(['sh', '-c', is_string($script) ? $script : throw new InvalidArgumentException('The decide step has no run script.')], base_path(), $env);
+        $process->run();
+
+        expect($process->isSuccessful())->toBeTrue($process->getErrorOutput());
+
+        $decided = [];
+        foreach (explode("\n", trim((string) file_get_contents($output))) as $line) {
+            [$name, $value] = explode('=', $line, 2);
+            $decided[$name] = $value;
+        }
+
+        return $decided;
+    } finally {
+        @unlink($output);
+    }
+}
+
 function ciClassifiesAsBackend(string $path): bool
 {
     return ciClassifyPaths([$path])['backend'];
@@ -212,14 +247,57 @@ it('runs the structure tests in their own required job only when the full backen
     $backend = Yaml::parseFile(base_path('.github/workflows/ci-backend.yml'));
     $job = data_get($backend, 'jobs.structure');
 
-    expect(data_get($workflow, 'jobs.backend.if'))->toContain("needs.changes.outputs.structure == 'true'")
-        ->and(data_get($workflow, 'jobs.backend.with.full'))->toBe("\${{ github.event_name != 'pull_request' || needs.changes.outputs.backend == 'true' }}")
+    expect(data_get($workflow, 'jobs.backend.with.full'))->toBe("\${{ needs.changes.outputs.backend_full == 'true' }}")
         ->and(data_get($job, 'if'))->toBe('${{ !inputs.full }}')
         ->and(data_get($job, 'timeout-minutes'))->toBeInt()
         ->and(collect(arrayOf(data_get($job, 'steps')))->pluck('run')->filter()->implode("\n"))->toContain('./vendor/bin/pest --group=structure')
-        ->and(data_get($workflow, 'jobs.ci-gate.steps.0.run'))->toContain("needs.changes.outputs.structure == 'true' }}\" \"\${{ needs.backend.result }}\" backend");
+        ->and(ciDecide('pull_request', ciChecks(structure: true)))->toMatchArray(['run_backend' => 'true', 'backend_full' => 'false'])
+        ->and(ciDecide('pull_request', ciChecks(backend: true)))->toMatchArray(['run_backend' => 'true', 'backend_full' => 'true']);
 
     expect(ciClassifyPaths(['docs/design-tokens.md', 'app/Models/User.php']))->toBe(ciChecks(backend: true));
+})->group('structure');
+
+it('decides which contexts run from the classifier on a PR, and runs every context on a push', function (string $event, array $checks, array $decided): void {
+    expect(ciDecide($event, $checks))->toBe($decided);
+})->with([
+    'push' => ['push', [], [
+        'run_backend' => 'true', 'backend_full' => 'true', 'run_frontend' => 'true',
+        'run_worktree' => 'true', 'run_image' => 'true', 'image_inspect' => 'false',
+    ]],
+    'docs-only PR' => ['pull_request', ciChecks(), [
+        'run_backend' => 'false', 'backend_full' => 'false', 'run_frontend' => 'false',
+        'run_worktree' => 'false', 'run_image' => 'false', 'image_inspect' => 'false',
+    ]],
+    'frontend PR builds the image' => ['pull_request', ciChecks(frontend: true), [
+        'run_backend' => 'false', 'backend_full' => 'false', 'run_frontend' => 'true',
+        'run_worktree' => 'false', 'run_image' => 'true', 'image_inspect' => 'false',
+    ]],
+    'Dockerfile PR' => ['pull_request', ciChecks(backend: true, docker: true, image: true), [
+        'run_backend' => 'true', 'backend_full' => 'true', 'run_frontend' => 'false',
+        'run_worktree' => 'false', 'run_image' => 'true', 'image_inspect' => 'true',
+    ]],
+])->group('structure');
+
+it('lets each conditional context and ci-gate read the same run flag from changes', function (string $caller, string $flag): void {
+    $workflow = Yaml::parseFile(base_path(CI_WORKFLOW));
+
+    expect(data_get($workflow, "jobs.{$caller}.if"))->toBe("\${{ needs.changes.outputs.{$flag} == 'true' }}")
+        ->and(data_get($workflow, "jobs.changes.outputs.{$flag}"))->toBe("\${{ steps.decide.outputs.{$flag} }}")
+        ->and(data_get($workflow, 'jobs.ci-gate.steps.0.run'))->toContain("require_if_changed \"\${{ needs.changes.outputs.{$flag} }}\" \"\${{ needs.{$caller}.result }}\" {$caller}");
+})->with([
+    'backend' => ['backend', 'run_backend'],
+    'frontend' => ['frontend', 'run_frontend'],
+    'image' => ['image', 'run_image'],
+])->group('structure');
+
+it('requires changes, repo and supply on every run', function (): void {
+    $workflow = Yaml::parseFile(base_path(CI_WORKFLOW));
+    $gate = data_get($workflow, 'jobs.ci-gate.steps.0.run');
+
+    expect(data_get($workflow, 'jobs.changes'))->not->toHaveKey('if')
+        ->and($gate)->toBeString()->toContain('require_if_changed true "${{ needs.changes.result }}" changes')
+        ->toContain('require_if_changed true "${{ needs.repo.result }}" repo')
+        ->toContain('require_if_changed true "${{ needs.supply.result }}" supply');
 })->group('structure');
 
 it('uses the tested classifier and runs every check when the workflow itself changes', function (): void {

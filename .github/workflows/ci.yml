@@ -21,26 +21,27 @@ permissions:
 # Each context's checks live in its own reusable workflow, so the PR checks list reads
 # `<context> / <check>` and this file stays orchestration plus the one required check.
 jobs:
-  # Diffs against the PR's *own* base branch, so filtering is correct whatever
-  # the target; a hardcoded base saw the whole epic diff and never filtered
-  # anything. A push skips this job and runs everything, having no base to diff against.
+  # The one place that decides which contexts run: the callers below and ci-gate
+  # read the same run_* outputs. A PR diffs against its *own* base branch, so
+  # filtering is correct whatever the target; a push has no base and runs everything.
   changes:
-    if: ${{ github.event_name == 'pull_request' }}
     runs-on: ubuntu-26.04-arm
     timeout-minutes: 2
     outputs:
-      backend: ${{ steps.filter.outputs.backend }}
-      frontend: ${{ steps.filter.outputs.frontend }}
-      docker: ${{ steps.filter.outputs.docker }}
-      worktree: ${{ steps.filter.outputs.worktree }}
-      structure: ${{ steps.filter.outputs.structure }}
-      image: ${{ steps.filter.outputs.image }}
+      run_backend: ${{ steps.decide.outputs.run_backend }}
+      backend_full: ${{ steps.decide.outputs.backend_full }}
+      run_frontend: ${{ steps.decide.outputs.run_frontend }}
+      run_worktree: ${{ steps.decide.outputs.run_worktree }}
+      run_image: ${{ steps.decide.outputs.run_image }}
+      image_inspect: ${{ steps.decide.outputs.image_inspect }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: github.event_name == 'pull_request'
         with:
           fetch-depth: 0
       - name: Classify the diff
         id: filter
+        if: github.event_name == 'pull_request'
         env:
           BASE_REF: ${{ github.base_ref }}
         run: |
@@ -60,27 +61,61 @@ jobs:
           printf '%s\n' "$checks"
           printf '%s\n' "$checks" >> "$GITHUB_OUTPUT"
 
+      - name: Decide which contexts run
+        id: decide
+        env:
+          EVENT: ${{ github.event_name }}
+          BACKEND: ${{ steps.filter.outputs.backend }}
+          FRONTEND: ${{ steps.filter.outputs.frontend }}
+          DOCKER: ${{ steps.filter.outputs.docker }}
+          WORKTREE: ${{ steps.filter.outputs.worktree }}
+          STRUCTURE: ${{ steps.filter.outputs.structure }}
+          IMAGE: ${{ steps.filter.outputs.image }}
+        run: |
+          set -euo pipefail
+
+          if [ "$EVENT" = pull_request ]; then
+            backend=$BACKEND frontend=$FRONTEND docker=$DOCKER worktree=$WORKTREE structure=$STRUCTURE image=$IMAGE
+          else
+            backend=true frontend=true docker=true worktree=true structure=false image=false
+          fi
+
+          any() {
+            for value in "$@"; do
+              if [ "$value" = true ]; then echo true; return; fi
+            done
+            echo false
+          }
+
+          {
+            echo "run_backend=$(any "$backend" "$structure")"
+            echo "backend_full=$(any "$backend")"
+            echo "run_frontend=$(any "$frontend")"
+            echo "run_worktree=$(any "$worktree")"
+            echo "run_image=$(any "$docker" "$backend" "$frontend")"
+            echo "image_inspect=$(any "$image")"
+          } | tee -a "$GITHUB_OUTPUT"
+
   backend:
     name: backend
     needs: [changes]
-    if: ${{ !cancelled() && (github.event_name != 'pull_request' || needs.changes.outputs.backend == 'true' || needs.changes.outputs.structure == 'true') }}
+    if: ${{ needs.changes.outputs.run_backend == 'true' }}
     uses: ./.github/workflows/ci-backend.yml
     with:
-      full: ${{ github.event_name != 'pull_request' || needs.changes.outputs.backend == 'true' }}
+      full: ${{ needs.changes.outputs.backend_full == 'true' }}
 
   frontend:
     name: frontend
     needs: [changes]
-    if: ${{ !cancelled() && (github.event_name != 'pull_request' || needs.changes.outputs.frontend == 'true') }}
+    if: ${{ needs.changes.outputs.run_frontend == 'true' }}
     uses: ./.github/workflows/ci-frontend.yml
 
   repo:
     name: repo
     needs: [changes]
-    if: ${{ !cancelled() }}
     uses: ./.github/workflows/ci-repo.yml
     with:
-      worktree: ${{ github.event_name != 'pull_request' || needs.changes.outputs.worktree == 'true' }}
+      worktree: ${{ needs.changes.outputs.run_worktree == 'true' }}
 
   supply:
     name: supply
@@ -89,13 +124,13 @@ jobs:
   image:
     name: image
     needs: [changes]
-    if: ${{ !cancelled() && (github.event_name != 'pull_request' || needs.changes.outputs.docker == 'true' || needs.changes.outputs.backend == 'true' || needs.changes.outputs.frontend == 'true') }}
+    if: ${{ needs.changes.outputs.run_image == 'true' }}
     permissions:
       contents: read
       packages: write
     uses: ./.github/workflows/ci-image.yml
     with:
-      inspect: ${{ needs.changes.outputs.image == 'true' }}
+      inspect: ${{ needs.changes.outputs.image_inspect == 'true' }}
 
   # Single required check for branch protection.
   ci-gate:
@@ -115,12 +150,9 @@ jobs:
             fi
           }
 
-          require_if_changed "${{ github.event_name != 'pull_request' || needs.changes.outputs.backend == 'true' || needs.changes.outputs.structure == 'true' }}" "${{ needs.backend.result }}" backend
-          require_if_changed "${{ github.event_name != 'pull_request' || needs.changes.outputs.frontend == 'true' }}" "${{ needs.frontend.result }}" frontend
-          require_if_changed "${{ github.event_name != 'pull_request' || needs.changes.outputs.docker == 'true' || needs.changes.outputs.backend == 'true' || needs.changes.outputs.frontend == 'true' }}" "${{ needs.image.result }}" image
+          require_if_changed true "${{ needs.changes.result }}" changes
+          require_if_changed "${{ needs.changes.outputs.run_backend }}" "${{ needs.backend.result }}" backend
+          require_if_changed "${{ needs.changes.outputs.run_frontend }}" "${{ needs.frontend.result }}" frontend
+          require_if_changed "${{ needs.changes.outputs.run_image }}" "${{ needs.image.result }}" image
           require_if_changed true "${{ needs.repo.result }}" repo
           require_if_changed true "${{ needs.supply.result }}" supply
-
-          expected_changes=success
-          [ "${{ github.event_name }}" = "pull_request" ] || expected_changes=skipped
-          [ "${{ needs.changes.result }}" = "$expected_changes" ] || { echo "::error::changes did not run as expected (${{ needs.changes.result }})"; exit 1; }
