@@ -34,7 +34,7 @@ MIRRORS='^resources/(css|views|brand)/|^resources/js/lib/(shareCard|runcard|char
 BACKEND='^resources/js/types/generated\.ts$|^(app|bootstrap|config|database|deploy|docker|public|routes|tests)/|^\.github/(workflows|actions)/|^scripts/(worktree|tl)$|^scripts/.*\.(php|sh)$|^composer\.(json|lock)$|^compose[^/]*\.ya?ml$|^(Dockerfile|phpunit\.xml|artisan|rector\.php|pint\.json|\.env\.example|\.env\.testing\.example|\.nvmrc|\.gitignore|\.gitattributes)$|^phpstan.*\.neon$'
 FRONTEND='^resources/(js|css|views|brand)/|^tests/fixtures/|^\.github/actions/|^\.github/workflows/ci-frontend\.yml$|^public/(sw\.js|offline\.html|manifest\.webmanifest|robots\.txt)$|^scripts/.*\.mjs$|^(package\.json|package-lock\.json|vite\.config\.ts|vitest\.config\.ts|prettier\.config\.js|eslint\.config\.js|\.nvmrc|\.npmrc|\.prettierignore|\.editorconfig|\.gitignore|\.gitattributes)$|^tsconfig.*\.json$|^\.prettierrc'
 DOCKER='^(Dockerfile|\.dockerignore)$|^docker/|^public/\.htaccess$'
-WORKTREE='^scripts/worktree|^tests/scripts/'
+WORKTREE='^scripts/worktree|^tests/scripts/|^\.github/workflows/ci-repo\.yml$'
 STRUCTURE='^resources/js/|^(CLAUDE|README)\.md$|^\.dockerignore$|^docs/(design-tokens|architecture/llm-triggers)\.md$|^\.claude/skills/temari/.*\.md$'
 IMAGE='^(Dockerfile|\.dockerignore|composer\.(json|lock)|package(-lock)?\.json)$|^docker/|^\.github/workflows/ci(-image)?\.yml$'
 

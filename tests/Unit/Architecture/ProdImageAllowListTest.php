@@ -32,7 +32,7 @@ function expectedImageEntries(): array
     $step = collect(arrayOf(data_get(Yaml::parseFile(base_path('.github/workflows/ci-image.yml')), 'jobs.build.steps')))
         ->firstWhere('name', 'Assert the shipped app entries');
 
-    expect($step)->not->toBeNull('build-prod-image lost its image-contents assertion step.');
+    expect($step)->not->toBeNull('image / build lost its image-contents assertion step.');
 
     $entries = data_get($step, 'env.EXPECTED_ENTRIES');
 

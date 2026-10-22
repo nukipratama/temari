@@ -85,11 +85,19 @@ it('keeps ci-gate a pure aggregator that checks nothing out', function (): void 
         ->and(data_get($steps, '0.uses'))->toBeNull();
 })->group('structure');
 
-it('keeps the deploy out of the CI workflow', function (): void {
-    $jobs = collect(arrayOf(data_get(ciWorkflow('ci.yml'), 'jobs')));
+it('keeps the deploy out of the CI workflow and every workflow it calls', function (): void {
+    $called = collect(arrayOf(data_get(ciWorkflow('ci.yml'), 'jobs')))->pluck('uses')->filter()
+        ->map(fn (mixed $uses): string => basename(is_string($uses) ? $uses : throw new InvalidArgumentException('A job uses a non-string workflow.')))
+        ->values();
 
-    expect($jobs->keys()->all())->not->toContain('deploy')->and($jobs->keys()->all())->not->toContain('notify')
-        ->and($jobs->pluck('runs-on')->flatten()->all())->not->toContain('self-hosted');
+    expect($called->all())->toContain('ci-image.yml');
+
+    foreach (['ci.yml', ...$called->all()] as $file) {
+        $jobs = collect(arrayOf(data_get(ciWorkflow($file), 'jobs')));
+
+        expect($jobs->keys()->all())->not->toContain('deploy')->and($jobs->keys()->all())->not->toContain('notify')
+            ->and($jobs->pluck('runs-on')->flatten()->all())->not->toContain('self-hosted');
+    }
 })->group('structure');
 
 it('deploys only after CI succeeds on a push to main', function (): void {

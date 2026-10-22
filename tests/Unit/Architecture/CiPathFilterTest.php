@@ -296,6 +296,7 @@ it('runs the worktree race harness when the worktree tooling or its harness chan
     'scripts/worktree-setup.sh',
     'scripts/worktree-hook-create.sh',
     'tests/scripts/worktree-races.sh',
+    '.github/workflows/ci-repo.yml',
 ])->group('structure');
 
 it('skips the worktree race harness for unrelated changes', function (string $path): void {
@@ -332,6 +333,9 @@ it('routes GitHub configuration to the checks that read it', function (string $p
     '.github/workflows/release-deploy.yml' => ['.github/workflows/release-deploy.yml', ciChecks(backend: true)],
     '.github/workflows/ci-backend.yml' => ['.github/workflows/ci-backend.yml', ciChecks(backend: true)],
     '.github/workflows/ci-frontend.yml' => ['.github/workflows/ci-frontend.yml', ciChecks(backend: true, frontend: true)],
+    '.github/workflows/ci-repo.yml' => ['.github/workflows/ci-repo.yml', ciChecks(backend: true, worktree: true)],
+    '.github/workflows/ci-supply.yml' => ['.github/workflows/ci-supply.yml', ciChecks(backend: true)],
+    '.github/workflows/ci-image.yml' => ['.github/workflows/ci-image.yml', ciChecks(backend: true, image: true)],
     '.github/actions/setup-node/action.yml' => ['.github/actions/setup-node/action.yml', ciChecks(backend: true, frontend: true)],
 ])->group('structure');
 
