@@ -78,7 +78,7 @@ signal, not a substitute for CI passing. On `push` to `main`, a successful CI ru
 [release-deploy.yml](../../.github/workflows/release-deploy.yml), which rolls the built image; see [[deployment]]
 for that half.
 
-The backend suite and the frontend suite each run three parallel shards, on PRs and main pushes. A suite's shard count is its `matrix.shard` list alone: job names and `--shard` read `strategy.job-total`. Every context workflow needs only `changes`, so nothing waits on another context. Backend shards start MySQL with a backgrounded `docker run` right after checkout and wait for it just before the tests, so its pull and init overlap PHP setup. PR shards collect coverage;
+The backend suite runs four parallel shards and the frontend suite three, on PRs and main pushes. A suite's shard count is its `matrix.shard` list alone: job names and `--shard` read `strategy.job-total`. Every context workflow needs only `changes`, so nothing waits on another context. Backend shards start MySQL with a backgrounded `docker run` right after checkout and wait for it just before the tests, so its pull and init overlap PHP setup. PR shards collect coverage;
 each suite's `coverage` job merges the whole-suite totals after its shards and applies the configured
 thresholds exactly once. The frontend `build` (asset build and chunk check) runs beside the shards on
 both events. Main-push shards skip instrumentation and the merge is skipped,

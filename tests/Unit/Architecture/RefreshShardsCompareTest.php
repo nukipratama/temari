@@ -19,7 +19,7 @@ function shardsFixture(array $timings): string
  * @param  array<string, float>  $new
  * @return array<string, string|false|null>
  */
-function compareShards(array $old, array $new): array
+function compareShards(array $old, array $new, ?int $shards = 3): array
 {
     $oldPath = shardsFixture($old);
     $newPath = shardsFixture($new);
@@ -32,6 +32,7 @@ function compareShards(array $old, array $new): array
             "--old={$oldPath}",
             "--new={$newPath}",
             "--body-out={$bodyPath}",
+            ...($shards === null ? [] : ["--shards={$shards}"]),
         ]);
         $process->run();
 
@@ -137,13 +138,13 @@ it('simulates the same number of shards backend CI runs', function (): void {
     $workflow = Yaml::parseFile(base_path('.github/workflows/ci-backend.yml'));
     preg_match('/^const SHARD_TOTAL = (\d+);$/m', (string) file_get_contents(base_path('scripts/compare-shards.php')), $constant);
 
-    $body = compareShards(BALANCED_BASE, BALANCED_BASE)['body'];
+    $body = compareShards(BALANCED_BASE, BALANCED_BASE, shards: null)['body'];
 
-    expect(data_get($workflow, 'jobs.tests.strategy.matrix.shard'))->toBe([1, 2, 3])
-        ->and((int) ($constant[1] ?? 0))->toBe(3)
-        ->and($body)->toContain('Simulated 3-shard totals')
-        ->toContain('| shard 3 |')
-        ->and($body)->not->toContain('| shard 4 |');
+    expect(data_get($workflow, 'jobs.tests.strategy.matrix.shard'))->toBe([1, 2, 3, 4])
+        ->and((int) ($constant[1] ?? 0))->toBe(4)
+        ->and($body)->toContain('Simulated 4-shard totals')
+        ->toContain('| shard 4 |')
+        ->and($body)->not->toContain('| shard 5 |');
 });
 
 it('times the shard map with pcov loaded, as PR shards run', function (): void {
