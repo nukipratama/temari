@@ -1,6 +1,6 @@
 name: Shared · Maintainer alert
 
-# Hosted-runner Telegram push, using the same two repository secrets as supply-audit.yml.
+# Hosted-runner Telegram push from the TELEGRAM_BOT_TOKEN and TELEGRAM_MAINTAINER_CHAT_ID repository secrets.
 
 on:
   workflow_call:

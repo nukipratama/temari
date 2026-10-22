@@ -1,5 +1,5 @@
 # Throwaway single-service stack for the nightly restore-db CI job
-# (.github/workflows/supply-audit.yml). Lets scripts/restore-db.sh run its
+# (.github/workflows/data-restore-exercise.yml). Lets scripts/restore-db.sh run its
 # real `docker compose exec` code path against a disposable database instead
 # of compose.prod.yaml, via its COMPOSE_FILE/MYSQL_SERVICE overrides.
 services:

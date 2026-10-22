@@ -47,8 +47,8 @@ it('masks the throwaway database password before the rehearsal env file is writt
     expect($mask)->toBeLessThan($write);
 })->group('structure');
 
-it('keeps disk sizes out of the nightly log and summary unless the headroom check fails', function (): void {
-    $run = collect(homelabStepRuns('data-backup.yml'))
+it('keeps disk sizes out of the disk hygiene log and summary unless the headroom check fails', function (): void {
+    $run = collect(homelabStepRuns('ops-disk.yml'))
         ->first(fn (string $run): bool => str_contains($run, 'binlog_bytes='));
 
     expect($run)->toBeString();
