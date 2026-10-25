@@ -111,22 +111,22 @@ class RecapHydrationReadiness
      */
     private function weeksAwaitingHydration(array $userIds): array
     {
-        return $this->backlog->awaitingHydration($userIds)
+        $keys = $this->backlog->awaitingHydration($userIds)
             ->get(['activities.user_id', 'activity_details.start_date_local'])
-            ->mapWithKeys(function (Activity $activity): array {
+            ->map(function (Activity $activity): string {
                 $startDateLocal = $activity->getAttribute('start_date_local');
                 assert($startDateLocal === null || is_string($startDateLocal));
 
-                return [
-                    $this->key(
-                        (int) $activity->user_id,
-                        Carbon::parse((string) $startDateLocal)
-                            ->endOfWeek(Carbon::SUNDAY)
-                            ->toDateString(),
-                    ) => true,
-                ];
+                return $this->key(
+                    (int) $activity->user_id,
+                    Carbon::parse((string) $startDateLocal)
+                        ->endOfWeek(Carbon::SUNDAY)
+                        ->toDateString(),
+                );
             })
             ->all();
+
+        return array_fill_keys($keys, true);
     }
 
     private function key(int $userId, string $weekEnding): string
