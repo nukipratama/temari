@@ -5,8 +5,8 @@ name: Data · Restore exercise
 
 on:
   schedule:
-    # 03:17 WIB — off the hour, since on-the-hour crons queue behind everyone else's.
-    - cron: '17 20 * * *'
+    # 03:47 WIB — off the hour, since on-the-hour crons queue behind everyone else's, and clear of the 03:17 audit.
+    - cron: '47 20 * * *'
   workflow_dispatch:
 
 permissions:

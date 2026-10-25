@@ -194,7 +194,7 @@ Cleanup steps use `continue-on-error`, so only the headroom check can fail the j
 
 ## Container health watchdog
 
-Docker restarts a container only when its process exits, so the `scheduler` and `horizon` healthchecks above can report `unhealthy` with nothing acting on it, and every in-app alarm for a stuck scheduler runs inside the scheduler. [.github/workflows/ops-container-health.yml](.github/workflows/ops-container-health.yml) closes that loop from outside both containers, every 10 minutes plus `workflow_dispatch`:
+Docker restarts a container only when its process exits, so the `scheduler` and `horizon` healthchecks above can report `unhealthy` with nothing acting on it, and every in-app alarm for a stuck scheduler runs inside the scheduler. [.github/workflows/ops-container-health.yml](.github/workflows/ops-container-health.yml) closes that loop from outside both containers, hourly plus `workflow_dispatch`:
 
 - A hosted `busy` job (`actions: read`) runs `gh run list` and skips the tick while a `release-deploy.yml` or `release-rollback.yml` run is queued or in progress. The watchdog has its own `container-health` concurrency group, so it never queues in, or cancels anything in, the `deploy-prod` group.
 - The homelab `check` job reads `docker inspect --format '{{.State.Running}} {{.State.Health.Status}}'` for each service's container in the `temari-prod` compose project. Only a running `unhealthy` container is acted on; `starting`, `healthy` or a stopped container (a deliberate stop) is left alone.
