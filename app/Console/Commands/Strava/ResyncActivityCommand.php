@@ -21,8 +21,7 @@ class ResyncActivityCommand extends Command
     {
         app(NarrationOrigin::class)->set(AnalysisOrigin::Recovery);
 
-        $argument = $this->argument('activity');
-        $activityId = is_scalar($argument) ? (string) $argument : '';
+        $activityId = $this->argument('activity');
         $activity = Activity::query()->withStubs()->find($activityId);
         if ($activity === null) {
             $this->error("Activity {$activityId} not found.");
