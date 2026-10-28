@@ -431,7 +431,9 @@ turns Vite's `vite:preloadError` into a full load of the page the athlete was go
 taken from Inertia's `start` event, so the new build loads; a non-GET visit reloads the
 current page. Vite fires once per failed dependency, so the rest of that batch is
 swallowed while the reload runs. A failure on the reloaded page within ten seconds is
-left to surface, so a broken build cannot loop.
+left to surface, so a broken build cannot loop. Only a failure during a page visit is
+recovered: an idle tab-chunk prefetch that fails, offline for instance, keeps its own
+quiet catch rather than forcing a reload.
 
 ## Deliberately absent
 

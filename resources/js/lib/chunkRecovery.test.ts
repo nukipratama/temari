@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { recoverFromStaleChunks } from './chunkRecovery';
 
-const reload = vi.fn();
+const reload = vi.fn(() => true);
 let uninstall: () => void;
 
 function preloadError(): Event {
@@ -26,7 +26,7 @@ beforeEach(() => {
 afterEach(() => {
     uninstall();
     vi.useRealTimers();
-    reload.mockReset();
+    reload.mockClear();
 });
 
 describe('recoverFromStaleChunks', () => {
@@ -48,7 +48,7 @@ describe('recoverFromStaleChunks', () => {
 
     it('lets a failure right after the reload surface instead of looping', () => {
         preloadError();
-        reload.mockReset();
+        reload.mockClear();
         boot();
 
         vi.advanceTimersByTime(2_000);
@@ -60,12 +60,25 @@ describe('recoverFromStaleChunks', () => {
 
     it('recovers again after a later deploy in the same session', () => {
         preloadError();
-        reload.mockReset();
+        reload.mockClear();
         boot();
 
         vi.advanceTimersByTime(60_000);
         preloadError();
 
         expect(reload).toHaveBeenCalledOnce();
+    });
+});
+
+describe('recoverFromStaleChunks outside a page visit', () => {
+    it('leaves the error to its importer when no visit is in flight', () => {
+        reload.mockReturnValueOnce(false);
+
+        const event = preloadError();
+        const next = preloadError();
+
+        expect(event.defaultPrevented).toBe(false);
+        expect(reload).toHaveBeenCalledTimes(2);
+        expect(next.defaultPrevented).toBe(true);
     });
 });

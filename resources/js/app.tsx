@@ -34,19 +34,27 @@ router.on('navigate', (event) => {
 installGlobalErrorReporting();
 captureInstallPrompt();
 
-let visitTarget: string | null = null;
+let inFlightVisit: { url: string; method: string } | null = null;
 router.on('start', (event) => {
-    const { visit } = event.detail;
-    visitTarget = visit.method === 'get' ? visit.url.href : null;
+    inFlightVisit = {
+        url: event.detail.visit.url.href,
+        method: event.detail.visit.method,
+    };
 });
 router.on('finish', () => {
-    visitTarget = null;
+    inFlightVisit = null;
 });
-recoverFromStaleChunks(() =>
-    visitTarget === null
-        ? window.location.reload()
-        : window.location.assign(visitTarget),
-);
+recoverFromStaleChunks(() => {
+    if (inFlightVisit === null) {
+        return false;
+    }
+    if (inFlightVisit.method === 'get') {
+        window.location.assign(inFlightVisit.url);
+    } else {
+        window.location.reload();
+    }
+    return true;
+});
 installOverlayHistory(router);
 
 const pages = import.meta.glob<{ default: ComponentType }>([
