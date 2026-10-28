@@ -75,6 +75,13 @@ Cleanup:
   slot lock behind. Run `scripts/worktree prune` in the main checkout: it prunes the git registration
   and reclaims the slot's container, schemas and lock. The next `create`/`adopt` also reclaims any
   abandoned slot it lands on. Git branches are never touched, so delete the stale branch yourself.
+- A finished session keeps its slot until it is archived, so when every slot is taken, `create` and
+  `adopt` reclaim one whose work has landed. A worktree qualifies only when all of these hold: its
+  current branch's merged PR head is exactly its `HEAD` (`gh pr list --state merged`), its tree is
+  clean, no process has its working directory inside it (`lsof`), and nothing in it or its git dir
+  changed for `RECLAIM_IDLE_MINUTES` (120). Removal then goes through `remove` as usual, which
+  deletes only the generated `worktree-<name>` branch, so a feature branch the session switched to
+  stays. Missing `gh` or `lsof`, or any error, counts as "keep".
 
 ### Shared services
 

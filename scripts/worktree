@@ -8,6 +8,7 @@ SLOT_FILE=".claude-worktree-slot"
 LOCKS_NAME="temari-worktree-slots"
 MAX_WORKTREE_SLOTS=3
 INCOMPLETE_SLOT_TTL_MINUTES=5
+RECLAIM_IDLE_MINUTES=120
 
 usage() {
   cat >&2 <<EOF
@@ -206,16 +207,83 @@ allocate_slot_locked() {
   printf '%s\n' "$slot"
 }
 
-allocate_slot_for() {
+worktree_has_live_process() {
+  local worktree="$1"
+  local cwds
+
+  command -v lsof >/dev/null 2>&1 || return 0
+  cwds="$(lsof -d cwd -Fn 2>/dev/null)" || true
+  [ -n "$cwds" ] || return 0
+  printf '%s\n' "$cwds" | root="$worktree" awk '
+    BEGIN { root = ENVIRON["root"] }
+    /^n/ { path = substr($0, 2); if (path == root || index(path, root "/") == 1) found = 1 }
+    END { exit !found }
+  '
+}
+
+worktree_recently_active() {
+  local worktree="$1"
+  local git_dir
+
+  [ -z "$(find "$worktree" \( -name vendor -o -name node_modules -o -path "${worktree}/public/build" -o -path "${worktree}/storage" \) -prune \
+    -o -mmin "-${RECLAIM_IDLE_MINUTES}" -print -quit 2>/dev/null)" ] || return 0
+  git_dir="$(git_dir_for "$worktree" 2>/dev/null)" || return 0
+  [ -d "$git_dir" ] || return 0
+  [ -n "$(find "$git_dir" -maxdepth 1 -mmin "-${RECLAIM_IDLE_MINUTES}" -print -quit 2>/dev/null)" ]
+}
+
+merged_pr_head_for() {
+  local branch="$1"
+
+  command -v gh >/dev/null 2>&1 || return 1
+  (cd "$CHECKOUT_DIR" && gh pr list --state merged --head "$branch" --limit 1 --json headRefOid --jq '.[0].headRefOid // empty') 2>/dev/null
+}
+
+# A slot is reclaimable only when its worktree sits exactly on a merged PR's head,
+# with nothing uncommitted, no process inside it and no activity for a while.
+reclaimable_worktree() {
+  local worktree="$1"
+  local branch
+  local changes
+  local head
+  local merged_head
+
+  [ -f "${worktree}/.git" ] || return 1
+  branch="$(git -C "$worktree" symbolic-ref --quiet --short HEAD 2>/dev/null)" || return 1
+  changes="$(GIT_OPTIONAL_LOCKS=0 git -C "$worktree" status --porcelain 2>/dev/null)" || return 1
+  [ -z "$changes" ] || return 1
+  ! worktree_recently_active "$worktree" || return 1
+  ! worktree_has_live_process "$worktree" || return 1
+  head="$(git -C "$worktree" rev-parse HEAD 2>/dev/null)" || return 1
+  merged_head="$(merged_pr_head_for "$branch")" || return 1
+  [ -n "$merged_head" ] && [ "$merged_head" = "$head" ]
+}
+
+reclaim_merged_slot() {
+  local requester="$1"
+  local common_dir="$2"
+  local slot
+  local owner
+
+  for slot in $(seq 1 "$MAX_WORKTREE_SLOTS"); do
+    owner=""
+    [ ! -f "${common_dir}/${LOCKS_NAME}/slot-${slot}/path" ] || owner="$(<"${common_dir}/${LOCKS_NAME}/slot-${slot}/path")"
+    [ -n "$owner" ] && [ "$owner" != "$requester" ] || continue
+    reclaimable_worktree "$owner" || continue
+    echo "worktree: reclaiming slot ${slot} from ${owner}: its PR is merged, it is clean, and nothing has run in it for ${RECLAIM_IDLE_MINUTES} minutes" >&2
+    remove_impl "$owner" false >&2 && return 0
+  done
+  return 1
+}
+
+try_allocate_slot() {
   local worktree="$1"
   local branch="$2"
   local common_dir="$3"
-  local locks_dir="${common_dir}/${LOCKS_NAME}"
   local slot=1
   local allocated_slot
   local status
 
-  mkdir -p "$locks_dir"
   while [ "$slot" -le "$MAX_WORKTREE_SLOTS" ]; do
     if allocated_slot="$(with_slot_lock "$slot" "$common_dir" __allocate_slot_locked "$worktree" "$branch" "$common_dir" "$slot")"; then
       ALLOCATED_SLOT="$allocated_slot"
@@ -226,9 +294,26 @@ allocate_slot_for() {
     fi
     slot=$((slot + 1))
   done
+  return 10
+}
 
-  fail "no free worktree slots; the maximum is ${MAX_WORKTREE_SLOTS}. Free one with scripts/worktree remove <path>, or reclaim abandoned slots with scripts/worktree prune"
-  return 1
+allocate_slot_for() {
+  local worktree="$1"
+  local branch="$2"
+  local common_dir="$3"
+  local status=0
+
+  mkdir -p "${common_dir}/${LOCKS_NAME}"
+  try_allocate_slot "$worktree" "$branch" "$common_dir" || status=$?
+  if [ "$status" -eq 10 ] && reclaim_merged_slot "$worktree" "$common_dir"; then
+    status=0
+    try_allocate_slot "$worktree" "$branch" "$common_dir" || status=$?
+  fi
+  [ "$status" -ne 10 ] || {
+    fail "no free worktree slots; the maximum is ${MAX_WORKTREE_SLOTS}, and none holds a merged PR left idle for ${RECLAIM_IDLE_MINUTES} minutes. Free one with scripts/worktree remove <path>, or reclaim abandoned slots with scripts/worktree prune"
+    return 1
+  }
+  return "$status"
 }
 
 SETUP_LOG=""
