@@ -86,8 +86,9 @@ Cleanup:
   release.
 - An agent or workflow started with `isolation: "worktree"` gets a full slot through `WorktreeCreate`,
   but Claude Code keeps that worktree when the agent finishes and never runs `WorktreeRemove`, even
-  when nothing changed (measured). Its `worktree-agent-<id>` branch has no PR, so reclaim never frees
-  it. Whoever spawned the agent runs `scripts/worktree remove <path>` once its work is collected.
+  when nothing changed (measured). Reclaim frees it only once a PR from its current branch has merged,
+  which a `worktree-agent-<id>` branch rarely gets, so whoever spawned the agent runs
+  `scripts/worktree remove <path>` once its work is collected.
 
 ### Shared services
 
