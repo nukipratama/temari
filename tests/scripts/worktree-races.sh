@@ -92,6 +92,7 @@ init_case() {
   export FAKE_REMOVE_AFTER_REMOVE="${case_dir}/remove-after-git"
   export FAKE_RELEASE_REMOVE="${case_dir}/release-remove"
   export FAKE_INSTALL_LOG="${case_dir}/install-log"
+  export FAKE_SHARED_STOP_LOG="${case_dir}/shared-stop-log"
   export FAKE_REAL_PERL="$real_perl"
   export FAKE_REAL_FLOCK="$real_flock"
   export TEMARI_FORCE_PERL_FLOCK="$force_perl_flock"
@@ -109,6 +110,7 @@ init_case() {
   : > "$FAKE_LOCK_ATTEMPTS"
   : > "$FAKE_CLEAN_LOG"
   : > "$FAKE_INSTALL_LOG"
+  : > "$FAKE_SHARED_STOP_LOG"
 
   cat > "${FAKE_BIN}/git" <<'EOF'
 #!/usr/bin/env bash
@@ -301,6 +303,10 @@ case "${1:-}" in
       printf '{"name":"temari"}\n'
     elif [[ "$arguments" == *" ps --status running -q "* ]]; then
       printf 'fake-container\n'
+    elif [[ "$arguments" == *" ps --status running -q" ]]; then
+      [ "${FAKE_SHARED_STOPPED:-false}" = true ] || printf 'fake-container\n'
+    elif [[ "$arguments" == *" stop" ]]; then
+      printf '%s\n' "$arguments" >> "$FAKE_SHARED_STOP_LOG"
     elif [[ "$arguments" == *" exec -T app "* ]]; then
       while [ "$1" != app ]; do shift; done
       shift
@@ -515,6 +521,30 @@ grep -q "reclaiming slot 3 from ${FAKE_MAIN}/.claude/worktrees/owner-3" "${case_
 assert_eq "${FAKE_MAIN}/.claude/worktrees/creator" "$(<"${FAKE_COMMON}/temari-worktree-slots/slot-3/path")" 'the reclaimed slot did not go to the new worktree'
 echo 'PASS: create reclaims only a merged, clean, idle and unused slot'
 unset FAKE_LIVE_CWDS
+
+case_dir="${test_root}/stop-idle-shared-services"
+init_case "$case_dir"
+export FAKE_MERGED_HEADS="${case_dir}/merged-heads"
+: > "$FAKE_MERGED_HEADS"
+for slot in 1 2; do make_finished_owner "$slot"; done
+
+"${FAKE_MAIN}/scripts/worktree" remove --force "${FAKE_MAIN}/.claude/worktrees/owner-1" > "${case_dir}/remove-1.out" 2>&1 ||
+  { cat "${case_dir}/remove-1.out" >&2; fail 'removing the first of two slots failed'; }
+assert_eq 0 "$(wc -l < "$FAKE_SHARED_STOP_LOG" | tr -d ' ')" 'remove stopped the shared services while another slot was reserved'
+
+"${FAKE_MAIN}/scripts/worktree" remove --force "${FAKE_MAIN}/.claude/worktrees/owner-2" > "${case_dir}/remove-2.out" 2>&1 ||
+  { cat "${case_dir}/remove-2.out" >&2; fail 'removing the last slot failed'; }
+assert_eq 1 "$(wc -l < "$FAKE_SHARED_STOP_LOG" | tr -d ' ')" 'removing the last slot did not stop the shared services'
+grep -q -- "--project-directory ${FAKE_MAIN} --progress quiet stop" "$FAKE_SHARED_STOP_LOG" ||
+  { cat "$FAKE_SHARED_STOP_LOG" >&2; fail 'the shared services were stopped without pinning the main checkout as project directory'; }
+grep -q 'no slots remain; stopped the shared MySQL/Redis services' "${case_dir}/remove-2.out" ||
+  { cat "${case_dir}/remove-2.out" >&2; fail 'remove did not say it stopped the shared services'; }
+
+FAKE_SHARED_STOPPED=true "${FAKE_MAIN}/scripts/worktree" prune > "${case_dir}/prune.out" 2>&1 ||
+  { cat "${case_dir}/prune.out" >&2; fail 'prune failed with no slots reserved'; }
+assert_eq 1 "$(wc -l < "$FAKE_SHARED_STOP_LOG" | tr -d ' ')" 'prune stopped shared services that were already stopped'
+echo 'PASS: the shared services stop only when the last slot is released'
+unset FAKE_MERGED_HEADS
 
 case_dir="${test_root}/reclaim-refusals"
 init_case "$case_dir"

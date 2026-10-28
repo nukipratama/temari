@@ -96,6 +96,12 @@ separate, pinned-name Compose project: `temari-shared-services`) runs exactly on
 profile that only the main checkout enables by default (`.env.example`'s `COMPOSE_PROFILES=local-db`);
 `scripts/worktree` setup clears it for a worktree, so `docker compose up` there never starts them.
 
+The shared stack runs only while a slot is reserved. Setup starts it, and the `remove` or `prune`
+that releases the last slot stops it, so idle Docker frees its ~1 GiB and Resource Saver can pause the
+VM. Both happen under one `lock-shared-services.lock`, so a create racing the last remove still gets a
+running stack. `restart: unless-stopped` stays: Docker never restarts a container that was explicitly
+stopped, so the stack comes back after a reboot only while slots still exist.
+
 Isolation moves from *separate containers* to *separate schema* (MySQL: `temari_slot{N}` /
 `temari_slot{N}_analytics`) and *separate logical Redis DB index* (`3*N` for dev's
 default/cache/pulse). `migrate:fresh` only ever touches the schema its own connection is bound to,

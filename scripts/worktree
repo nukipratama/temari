@@ -43,10 +43,24 @@ git_common_dir_for() {
 with_slot_lock() {
   local slot="$1"
   local common_dir="$2"
-  local lock_file="${common_dir}/${LOCKS_NAME}/lock-slot-${slot}.lock"
   shift 2
 
-  mkdir -p "${common_dir}/${LOCKS_NAME}"
+  with_lock "${common_dir}/${LOCKS_NAME}/lock-slot-${slot}.lock" "$@"
+}
+
+# Serialises starting the shared services with stopping them once no slot is reserved.
+with_shared_services_lock() {
+  local common_dir="$1"
+  shift
+
+  with_lock "${common_dir}/${LOCKS_NAME}/lock-shared-services.lock" "$@"
+}
+
+with_lock() {
+  local lock_file="$1"
+  shift
+
+  mkdir -p "$(dirname "$lock_file")"
   if [ "${TEMARI_FORCE_PERL_FLOCK:-false}" != true ] && command -v flock >/dev/null 2>&1; then
     flock -x "$lock_file" "$SCRIPT_PATH" "$@"
   else
@@ -417,7 +431,7 @@ EOF
     docker compose -f compose.shared-services.yml --project-directory "$(dirname "$git_common_dir")" "$@"
   }
 
-  step "shared MySQL/Redis up" shared up -d --wait
+  step "shared MySQL/Redis up" with_shared_services_lock "$git_common_dir" __shared_services_up "$git_common_dir"
 
   db_username="$(env_value .env DB_USERNAME)"
   step "dev schemas" shared exec -T \
@@ -575,6 +589,33 @@ release_slot() {
   rmdir "$slot_dir" 2>/dev/null || true
 }
 
+shared_services_up() {
+  local common_dir="$1"
+
+  docker compose -f compose.shared-services.yml --project-directory "$(dirname "$common_dir")" up -d --wait
+}
+
+stop_idle_shared_services_locked() {
+  local common_dir="$1"
+  local main_checkout
+
+  ! compgen -G "${common_dir}/${LOCKS_NAME}/slot-*" >/dev/null || return 0
+  main_checkout="$(dirname "$common_dir")"
+  (
+    cd "$main_checkout"
+    export DB_PASSWORD="$(env_value .env.example DB_PASSWORD)"
+    shared() {
+      docker compose -f compose.shared-services.yml --project-directory "$main_checkout" "$@"
+    }
+    [ -n "$(shared ps --status running -q)" ] || exit 0
+    if shared --progress quiet stop; then
+      echo "worktree: no slots remain; stopped the shared MySQL/Redis services" >&2
+    else
+      echo "worktree: no slots remain, but the shared MySQL/Redis services did not stop" >&2
+    fi
+  )
+}
+
 release_slot_for_worktree_locked() {
   local slot="$1"
   local common_dir="$2"
@@ -647,6 +688,7 @@ prune_cmd() {
     slot="${slot_dir##*/slot-}"
     with_slot_lock "$slot" "$common_dir" __prune_slot_locked "$slot" "$common_dir" || status=1
   done
+  with_shared_services_lock "$common_dir" __stop_idle_shared_services_locked "$common_dir"
   return "$status"
 }
 
@@ -841,7 +883,8 @@ remove_impl() {
   fi
 
   with_slot_lock "$slot" "$common_dir" __remove_slot_locked \
-    "$worktree" "$force" "$force_cleanup" "$common_dir" "$slot" "$generated_branch"
+    "$worktree" "$force" "$force_cleanup" "$common_dir" "$slot" "$generated_branch" || return
+  with_shared_services_lock "$common_dir" __stop_idle_shared_services_locked "$common_dir"
 }
 
 create_cmd() {
@@ -979,6 +1022,14 @@ case "$command" in
   __remove_slot_locked)
     [ $# -eq 6 ] || usage
     remove_slot_locked "$@"
+    ;;
+  __shared_services_up)
+    [ $# -eq 1 ] || usage
+    shared_services_up "$@"
+    ;;
+  __stop_idle_shared_services_locked)
+    [ $# -eq 1 ] || usage
+    stop_idle_shared_services_locked "$@"
     ;;
   create)
     [ $# -ge 1 ] && [ $# -le 2 ] || usage
