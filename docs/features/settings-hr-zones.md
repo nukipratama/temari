@@ -39,7 +39,7 @@ A runner's personal heart-rate zones, so every run is scored against *their* phy
 
 There is deliberately **no upper-bound field**. `UpdateHrZonesRequest` rejects any submission where a zone's `hi` is not the next zone's `lo`, so every upper bound is already determined by the five lower ones; `toZonePairs()` widens them back into the `{lo, hi}` payload on submit, with Z5's `hi` fixed at the open-ended sentinel (`999`). The gap/overlap error the old paired inputs could produce is therefore unreachable rather than merely validated, and a server complaint on `zones.N.hi` is surfaced against zone **N+1**'s field, the only one the user can reach.
 
-Source `strava`/`manual` also show a "Reset to default" action beside Save, and `manual` a scope-gated "Resync from Strava" beneath it. Both mutate server-side, then reload just the `hrZones` Inertia prop (`router.reload({ only: ['hrZones'] })`) rather than the whole page — the disclosure and any unrelated in-progress state elsewhere on Settings (a toggled notification, say) survive the round-trip.
+Source `strava`/`manual` also show a "Reset to default" action beside Save, and `manual` a scope-gated "Resync from Strava" beneath it. Both ask first in a `TemariNudgeModal`, since each overwrites the zones in place, then mutate server-side and reload just the `hrZones` Inertia prop (`router.reload({ only: ['hrZones'] })`) rather than the whole page — the disclosure and any unrelated in-progress state elsewhere on Settings (a toggled notification, say) survive the round-trip.
 
 Submit posts `router.patch('/settings/zones', …)` with `max_hr`, `resting_hr` and the five `{lo, hi}` zones — same payload shape as before.
 

@@ -6,6 +6,7 @@ import Chip from '@/components/ui/Chip';
 import Eyebrow from '@/components/ui/Eyebrow';
 import PillButton from '@/components/ui/PillButton';
 import { useSharedProps } from '@/hooks/useSharedProps';
+import { showToast } from '@/hooks/useToast';
 import { cn } from '@/lib/cn';
 import { EFFORT_ICON_CLASS } from '@/lib/effort';
 import {
@@ -161,7 +162,10 @@ export function EffortPicker({
                                         preserveScroll: true,
                                         onStart: () => setProcessing(true),
                                         onFinish: () => setProcessing(false),
-                                        onSuccess: onClose,
+                                        onSuccess: () => {
+                                            onClose();
+                                            showToast('effort cleared');
+                                        },
                                     })
                                 }
                             >

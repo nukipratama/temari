@@ -14,6 +14,8 @@ code_refs:
   - resources/js/components/inbox/InboxRow.tsx
   - resources/js/components/inbox/inboxBuckets.ts
   - resources/js/components/NotificationBell.tsx
+  - resources/js/lib/appBadge.ts
+  - app/Http/Middleware/MarkPushedInboxRowRead.php
 ---
 
 # Notification inbox
@@ -223,6 +225,21 @@ is ground-reactive. A ring keeps it off the lime the active tab tints its own ic
 `/inbox?item={id}` is the per-row deep link. The controller widens the window far enough to contain
 that row ([InboxController](../../app/Http/Controllers/InboxController.php)) so the target is on
 screen even when it sits well behind the first twenty, and arriving on a row counts as reading it.
+
+## App-icon badge
+
+The installed app's icon badge shows the same number as the bell: the server's unread count, with no
+second copy kept anywhere. [appBadge](../../resources/js/lib/appBadge.ts) applies the
+`unreadNotifications` prop on every visit, clears the badge on a guest page so signing out leaves none,
+and reloads that one prop whenever the app comes back into view, so a read made on another device shows
+up. The service worker ([public/sw.js](../../public/sw.js)) sets the badge only from the `data.unread` a
+push carries. A tap or a swipe-away never touches the badge, because the tray is not the inbox.
+
+Each push also names its own row in `data.inbox_id`
+([AppendsUnreadBadge](../../app/Notifications/Concerns/AppendsUnreadBadge.php)). Tapping the push opens
+its URL with `?read={id}`, and [MarkPushedInboxRowRead](../../app/Http/Middleware/MarkPushedInboxRowRead.php)
+marks that row read before the page renders, so the badge drops in the same response. A push built
+before its inbox row was written, or the briefing (which has no row), carries no id and only navigates.
 
 ## Empty inbox
 

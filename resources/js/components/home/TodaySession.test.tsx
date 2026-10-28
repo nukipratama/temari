@@ -4,9 +4,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { BriefingResult, WeekPlanDay } from '@/types/inertia';
 
+import { showToast } from '@/hooks/useToast';
 import { makeUser, setMockPage } from '@/test/setup';
 
 import TodaySession from './TodaySession';
+
+vi.mock('@/hooks/useToast', () => ({ showToast: vi.fn() }));
 
 function briefing(content: string, status = 'done'): BriefingResult {
     return {
@@ -333,6 +336,36 @@ describe('TodaySession', () => {
         ]);
         expect(screen.getByRole('button', { name: 'restore' })).toBeDisabled();
     });
+
+    it.each([
+        ['onSuccess', null, ['restored']],
+        ['onSuccess', 'The plan is updating right now.', []],
+        ['onError', null, []],
+    ] as const)(
+        'toasts the restore only once it lands (%s, info %s)',
+        (outcome, info, toasts) => {
+            vi.mocked(showToast).mockClear();
+            vi.mocked(router.patch).mockImplementationOnce(
+                (_url, _data, options) => {
+                    options?.[outcome]?.({
+                        props: { flash: { success: null, error: null, info } },
+                    } as never);
+                },
+            );
+            render(
+                <TodaySession
+                    briefing={briefing('Easy run, 2.6 km.')}
+                    today={day({ id: 31, skipped: true })}
+                />,
+            );
+
+            fireEvent.click(screen.getByRole('button', { name: 'restore' }));
+
+            expect(vi.mocked(showToast).mock.calls).toEqual(
+                toasts.map((message) => [message]),
+            );
+        },
+    );
 
     it('labels the block as today', () => {
         render(<TodaySession briefing={briefing('Easy 6k.')} />);

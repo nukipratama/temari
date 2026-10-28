@@ -72,7 +72,7 @@ class IntervalsIcuDisconnectedNotification extends Notification implements Shoul
             ->title($this->title())
             ->body($this->body())
             ->icon('/icon-192.png')
-            ->data($this->withUnreadBadge(['url' => $this->url()], $notifiable->id))
+            ->data($this->withUnreadBadge(['url' => $this->url()], $notifiable))
             ->options(['TTL' => 7 * 86400]);
     }
 

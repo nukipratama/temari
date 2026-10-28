@@ -127,7 +127,12 @@ const CATALOGUED_FILES = new Set([
  * In-scope files (`path`) and exports (`path#Name`) left out of the
  * catalogue, each with its reason. Drop an entry once the reason is gone.
  */
-const NOT_CATALOGUED = new Map<string, string>();
+const NOT_CATALOGUED = new Map<string, string>([
+    [
+        'components/ui/Toast.tsx#Toaster',
+        'fixed to the viewport and mounted once by AppShell; ToastMessage shows the pill it draws',
+    ],
+]);
 
 const IMPORTS = /^import[\s\S]*?from\s+'[^']+';$/gm;
 

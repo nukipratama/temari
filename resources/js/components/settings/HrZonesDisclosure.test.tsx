@@ -1,5 +1,5 @@
 import { router } from '@inertiajs/react';
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { makeUser, setMockPage } from '@/test/setup';
@@ -279,7 +279,35 @@ describe('HrZonesDisclosure', () => {
         ).toBeInTheDocument();
     });
 
-    it('resyncs from Strava and reloads just the hrZones prop', () => {
+    it('asks before resyncing over manual zones, and cancel sends nothing', async () => {
+        vi.mocked(router.post).mockReset();
+
+        render(
+            <HrZonesDisclosure
+                hrZones={{
+                    ...DEFAULT_PAYLOAD,
+                    source: 'manual',
+                    canSyncFromStrava: true,
+                }}
+            />,
+        );
+        open();
+        fireEvent.click(
+            screen.getByRole('button', { name: /resync from Strava/ }),
+        );
+
+        expect(
+            await screen.findByRole('dialog', {
+                name: 'use your Strava zones?',
+            }),
+        ).toBeInTheDocument();
+        expect(router.post).not.toHaveBeenCalled();
+
+        fireEvent.click(screen.getByRole('button', { name: 'not now' }));
+        expect(router.post).not.toHaveBeenCalled();
+    });
+
+    it('resyncs from Strava once on confirm and reloads just the hrZones prop', async () => {
         vi.mocked(router.post).mockReset();
         vi.mocked(router.reload).mockReset();
 
@@ -296,7 +324,14 @@ describe('HrZonesDisclosure', () => {
         fireEvent.click(
             screen.getByRole('button', { name: /resync from Strava/ }),
         );
+        const dialog = await screen.findByRole('dialog', {
+            name: 'use your Strava zones?',
+        });
+        fireEvent.click(
+            within(dialog).getByRole('button', { name: 'resync from Strava' }),
+        );
 
+        expect(router.post).toHaveBeenCalledOnce();
         expect(router.post).toHaveBeenCalledWith(
             '/settings/zones/resync-strava',
             {},
@@ -340,7 +375,29 @@ describe('HrZonesDisclosure', () => {
         expect(router.post).not.toHaveBeenCalled();
     });
 
-    it('deletes and reloads just the hrZones prop when Reset to default is clicked', () => {
+    it('asks before resetting to default, and cancel sends nothing', async () => {
+        vi.mocked(router.delete).mockReset();
+
+        render(
+            <HrZonesDisclosure
+                hrZones={{ ...DEFAULT_PAYLOAD, source: 'manual' }}
+            />,
+        );
+        open();
+        fireEvent.click(
+            screen.getByRole('button', { name: /reset to default/ }),
+        );
+
+        expect(
+            await screen.findByRole('dialog', { name: 'reset your zones?' }),
+        ).toBeInTheDocument();
+        expect(router.delete).not.toHaveBeenCalled();
+
+        fireEvent.click(screen.getByRole('button', { name: 'not now' }));
+        expect(router.delete).not.toHaveBeenCalled();
+    });
+
+    it('deletes once on confirm and reloads just the hrZones prop', async () => {
         vi.mocked(router.delete).mockReset();
         vi.mocked(router.reload).mockReset();
 
@@ -353,7 +410,11 @@ describe('HrZonesDisclosure', () => {
         fireEvent.click(
             screen.getByRole('button', { name: /reset to default/ }),
         );
+        fireEvent.click(
+            await screen.findByRole('button', { name: 'reset zones' }),
+        );
 
+        expect(router.delete).toHaveBeenCalledOnce();
         expect(router.delete).toHaveBeenCalledWith(
             '/settings/zones',
             expect.objectContaining({ onSuccess: expect.any(Function) }),

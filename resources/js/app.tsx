@@ -5,11 +5,7 @@ import { createRoot } from 'react-dom/client';
 
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { installOverlayHistory } from '@/hooks/useOverlayHistory';
-import {
-    syncAppBadge,
-    syncAppBadgeOnVisible,
-    unreadCountFromProps,
-} from '@/lib/appBadge';
+import { syncAppBadge, syncAppBadgeOnVisible } from '@/lib/appBadge';
 import { installGlobalErrorReporting } from '@/lib/clientErrorReporter';
 import { startContextualBackSession } from '@/lib/navigationMemory';
 import { registerServiceWorker } from '@/lib/registerServiceWorker';
@@ -20,12 +16,12 @@ const APP_NAME = import.meta.env.VITE_APP_NAME ?? 'Temari';
 // Every visitor, not just push subscribers: the worker also serves the offline
 // fallback page. See lib/registerServiceWorker.ts.
 registerServiceWorker();
-syncAppBadgeOnVisible();
+syncAppBadgeOnVisible(() => router.reload({ only: ['unreadNotifications'] }));
 
 // The app-icon badge follows the inbox: every visit ships the unread count, so
 // reading the inbox clears the badge on its next partial reload.
 router.on('navigate', (event) => {
-    syncAppBadge(unreadCountFromProps(event.detail.page.props));
+    syncAppBadge(event.detail.page.props);
     void reportSeen(event.detail.page.props);
 });
 
@@ -89,7 +85,7 @@ void createInertiaApp({
                 <App {...props} />
             </ErrorBoundary>,
         );
-        syncAppBadge(unreadCountFromProps(props.initialPage.props));
+        syncAppBadge(props.initialPage.props);
         void reportSeen(props.initialPage.props);
         warmTabChunks();
     },

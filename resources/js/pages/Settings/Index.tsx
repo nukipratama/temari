@@ -5,6 +5,7 @@ import {
     LoaderCircle,
     LogOut,
     Send,
+    Unlink,
     UserX,
 } from 'lucide-react';
 import { type ReactNode, useState } from 'react';
@@ -471,6 +472,7 @@ function TelegramPanel({
     onMuteChange: (muted: boolean) => void;
 }>) {
     const { isDemo, open, setOpen, guard } = useDemoGuard();
+    const [confirmingDisconnect, setConfirmingDisconnect] = useState(false);
 
     if (!telegram.connected) {
         // Whole-row tap when the row means one thing ("go connect"); a discrete
@@ -539,15 +541,25 @@ function TelegramPanel({
             />
             <div className="-mt-1 pl-11">
                 <SettingsDisconnectLink
-                    onClick={() =>
-                        guard(() =>
-                            router.delete('/profile/telegram', {
-                                preserveScroll: true,
-                            }),
-                        )
-                    }
+                    onClick={() => guard(() => setConfirmingDisconnect(true))}
                 />
             </div>
+            <TemariNudgeModal
+                open={confirmingDisconnect}
+                onClose={() => setConfirmingDisconnect(false)}
+                pose="concerned"
+                title="disconnect Telegram?"
+                body="nothing goes to Telegram after this. you can connect it again from here."
+                primaryLabel="disconnect"
+                primaryIcon={Unlink}
+                primaryTone="danger"
+                onPrimary={() => {
+                    setConfirmingDisconnect(false);
+                    router.delete('/profile/telegram', {
+                        preserveScroll: true,
+                    });
+                }}
+            />
             <DemoBlockedModal open={open} onClose={() => setOpen(false)} />
         </>
     );

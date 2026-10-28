@@ -18,6 +18,7 @@ import {
     fastFinishPaceLabel,
     isRaceWeek,
     nextPhaseOf,
+    planEditLanded,
     judgedDayResult,
     paceEaseDelta,
     paceLabel,
@@ -131,6 +132,26 @@ describe('weekdayLabel', () => {
     it('returns an empty string for an unparseable date', () => {
         expect(weekdayLabel('not-a-date')).toBe('');
     });
+});
+
+describe('planEditLanded', () => {
+    const page = (flash: { info?: string | null; error?: string | null }) =>
+        ({
+            props: {
+                flash: { success: null, info: null, error: null, ...flash },
+            },
+        }) as never;
+
+    it('holds for a response without a flashed refusal', () => {
+        expect(planEditLanded(page({}))).toBe(true);
+    });
+
+    it.each(['info', 'error'] as const)(
+        'fails when the response flashes %s',
+        (tone) => {
+            expect(planEditLanded(page({ [tone]: 'try again' }))).toBe(false);
+        },
+    );
 });
 
 describe('nextPhaseOf', () => {

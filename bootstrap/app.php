@@ -5,6 +5,7 @@ use App\Http\Middleware\EnforceMaintenanceMode;
 use App\Http\Middleware\EnsureDevtoolsAccess;
 use App\Http\Middleware\EnsureOnboarded;
 use App\Http\Middleware\HandleInertiaRequests;
+use App\Http\Middleware\MarkPushedInboxRowRead;
 use App\Http\Middleware\RecordRequestPeakMemory;
 use App\Http\Middleware\SetDefaultNarrationOrigin;
 use App\Http\Middleware\SetInertiaEtag;
@@ -57,6 +58,7 @@ return Application::configure(basePath: dirname(__DIR__))
             HandleInertiaRequests::class,
             SetDefaultNarrationOrigin::class,
             StampLastSeen::class,
+            MarkPushedInboxRowRead::class,
         ]);
 
         $middleware->alias([

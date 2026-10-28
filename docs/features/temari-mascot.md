@@ -56,11 +56,11 @@ Every hero, Today and every recap card carries its own **watermark**; smaller pl
 | Watermark | [MascotWatermark](../../resources/js/components/temari/MascotWatermark.tsx), 12.5rem (200px at the base type step) and faint, sized in rem so it keeps its place as the root type steps up on wide screens, bleeding off the card's edge behind the content; each surface passes its own placement, where its content leaves the face readable. The card is `relative isolate overflow-hidden` | top-right: RunHero (below the share button), TodaySession (beside the eyebrow, showing through the translucent session box), ProfileHero (the header's open middle from 900px); bottom-right, where the voice text ends: every RecapCard, weekly in the Feed and monthly in the Calendar, and Race's duel card, posed from the goal gap |
 | Gutter tag | 40px beside the voice line, above the eyes-only cut so the whole face shows | RunLenses header, NoPlanCard |
 | Sleepy inline | the `sleepy` pose beside the copy | EmptyPanel, EmptyRunsState (`thinking` while a sync runs) |
-| Hero + draw-in | 72px, traced in once | Onboarding's connected step, TemariNudgeModal (its `pose` prop: `neutral` for the notification and demo nudges, `concerned` for Settings' delete-account confirmation) |
+| Hero + draw-in | 72px, traced in once | Onboarding's connected step, TemariNudgeModal (its `pose` prop: `neutral` for the notification and demo nudges, `neutral` for the replan confirms, `concerned` for the destructive confirms: delete account, clear race, reset zones and the disconnects) |
 | Face only | the face as the centre of a ring | Onboarding's required-pace ring |
 | Thinking mark | 40px `thinking` beside AnalysisStatus's skeleton, opt-in via `thinkingMark` | the calendar's weekly recap |
 
-It is **absent from the Login, Trends and Settings pages**, which must not gain one. The one exception is a modal opened *from* Settings (the delete-account confirmation), which has always drawn Temari.
+It is **absent from the Login, Trends and Settings pages**, which must not gain one. The one exception is a confirmation opened *from* Settings (delete account, the disconnects, resetting or resyncing zones, saving training preferences), which draws Temari.
 
 ## TemariMark
 

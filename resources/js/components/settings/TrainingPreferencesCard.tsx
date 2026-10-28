@@ -3,6 +3,7 @@ import {
     CircleCheck,
     Flag,
     Layers,
+    RefreshCw,
     RotateCcw,
     Sprout,
     Target,
@@ -16,6 +17,7 @@ import type { ExperienceLevel, GoalType } from '@/types/generated';
 import { DayCell, DayRow } from '@/components/onboarding/DayPicker';
 import IconChoiceCard from '@/components/onboarding/IconChoiceCard';
 import SessionsDial from '@/components/onboarding/SessionsDial';
+import TemariNudgeModal from '@/components/temari/TemariNudgeModal';
 import Eyebrow from '@/components/ui/Eyebrow';
 import { Icon, IconComponent } from '@/components/ui/Icon';
 import PillButton from '@/components/ui/PillButton';
@@ -165,7 +167,10 @@ export default function TrainingPreferencesCard({
     const daysIncomplete =
         runDays.length > 0 && runDays.length !== sessionsPerWeek;
 
+    const [confirming, setConfirming] = useState(false);
+
     const submit = () => {
+        setConfirming(false);
         router.patch(
             '/settings/training-preferences',
             {
@@ -312,7 +317,7 @@ export default function TrainingPreferencesCard({
                 <PillButton
                     tone="horizon"
                     className="w-full justify-center"
-                    onClick={submit}
+                    onClick={() => setConfirming(true)}
                     disabled={processing || !isDirty || daysIncomplete}
                 >
                     save changes
@@ -333,6 +338,15 @@ export default function TrainingPreferencesCard({
                     </span>
                 )}
             </div>
+            <TemariNudgeModal
+                open={confirming}
+                onClose={() => setConfirming(false)}
+                title="save and replan?"
+                body="i'll rebuild your upcoming sessions around these preferences. sessions you've moved, skipped or already run stay put."
+                primaryLabel="save and replan"
+                primaryIcon={RefreshCw}
+                onPrimary={submit}
+            />
         </div>
     );
 }

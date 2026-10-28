@@ -1,6 +1,6 @@
 import { router } from '@inertiajs/react';
-import { fireEvent, render, screen } from '@testing-library/react';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { fireEvent, render, screen, within } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { makeUser, setMockPage } from '@/test/setup';
 
@@ -15,8 +15,15 @@ const notConnected: IntervalsIcuPayload = {
     broken: false,
 };
 
+const healthy: IntervalsIcuPayload = {
+    connected: true,
+    athlete_id: 'i123456',
+    broken: false,
+};
+
 beforeEach(() => {
     setMockPage({ auth: { user: makeUser() } });
+    vi.mocked(router.delete).mockClear();
 });
 
 function openRow() {
@@ -41,15 +48,7 @@ describe('IntervalsIcuPanel', () => {
     });
 
     it('shows a healthy connection as a static row with a disconnect beneath it', () => {
-        render(
-            <IntervalsIcuPanel
-                intervalsIcu={{
-                    connected: true,
-                    athlete_id: 'i123456',
-                    broken: false,
-                }}
-            />,
-        );
+        render(<IntervalsIcuPanel intervalsIcu={healthy} />);
 
         expect(
             screen.getByText('connected · athlete i123456'),
@@ -57,9 +56,39 @@ describe('IntervalsIcuPanel', () => {
         expect(
             screen.queryByRole('button', { name: /intervals\.icu/ }),
         ).not.toBeInTheDocument();
+        expect(
+            screen.getByRole('button', { name: /disconnect/i }),
+        ).toBeInTheDocument();
+    });
+
+    it('asks before disconnecting, and cancel sends nothing', async () => {
+        render(<IntervalsIcuPanel intervalsIcu={healthy} />);
 
         fireEvent.click(screen.getByRole('button', { name: /disconnect/i }));
 
+        expect(
+            await screen.findByRole('dialog', {
+                name: 'disconnect intervals.icu?',
+            }),
+        ).toBeInTheDocument();
+        expect(router.delete).not.toHaveBeenCalled();
+
+        fireEvent.click(screen.getByRole('button', { name: 'not now' }));
+        expect(router.delete).not.toHaveBeenCalled();
+    });
+
+    it('disconnects once on confirm', async () => {
+        render(<IntervalsIcuPanel intervalsIcu={healthy} />);
+
+        fireEvent.click(screen.getByRole('button', { name: /disconnect/i }));
+        const dialog = await screen.findByRole('dialog', {
+            name: 'disconnect intervals.icu?',
+        });
+        fireEvent.click(
+            within(dialog).getByRole('button', { name: 'disconnect' }),
+        );
+
+        expect(router.delete).toHaveBeenCalledOnce();
         expect(router.delete).toHaveBeenCalledWith('/settings/intervals-icu', {
             preserveScroll: true,
         });

@@ -307,7 +307,9 @@ Three things carry it, and all three are invisible on a desktop browser:
 - **Overlays.** Every app overlay rests on
   [Overlay](resources/js/components/ui/Overlay.tsx), Base UI's modal Dialog,
   which owns the focus trap and return, the scroll lock, stacking and the
-  Escape/outside-press dismissals.
+  Escape/outside-press dismissals. Confirmations (`TemariNudgeModal`) are a
+  [Sheet](resources/js/components/ui/Sheet.tsx) below `md`, the primary
+  action in thumb reach, and a centered card from `md` up.
   [useOverlayHistory](resources/js/hooks/useOverlayHistory.ts) gives each open
   overlay one history entry, so Android/browser Back closes only the topmost
   overlay and never reaches Inertia or the contextual back. Closing by button,

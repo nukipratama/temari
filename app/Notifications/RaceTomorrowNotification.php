@@ -81,7 +81,7 @@ class RaceTomorrowNotification extends Notification implements ShouldQueue
             ->title($this->title())
             ->body($this->body($notifiable))
             ->icon('/icon-192.png')
-            ->data($this->withUnreadBadge(['url' => route('race')], $notifiable->id))
+            ->data($this->withUnreadBadge(['url' => route('race')], $notifiable))
             ->options([
                 'urgency' => 'high',
                 'TTL' => $this->secondsUntil($this->race->race_date->copy()->setTime(6, 0)),
