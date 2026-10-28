@@ -15,7 +15,7 @@ use Illuminate\Http\Request;
  * Sends the channel-agnostic {@see TestNotification} to whatever channels the
  * signed-in user has wired; its via() picks the destinations.
  *
- * Cooled per user for a short window on top of the route's `throttle:6,1`.
+ * Cooled per user for a short window on top of the route's `throttle:6,1,notification-test`.
  */
 class NotificationTestController extends Controller
 {
