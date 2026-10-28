@@ -1,5 +1,11 @@
 import { router } from '@inertiajs/react';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+    fireEvent,
+    render,
+    screen,
+    waitFor,
+    within,
+} from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { defined } from '@/test/defined';
@@ -399,12 +405,34 @@ describe('Settings', () => {
         ).toBeInTheDocument();
     });
 
-    it('disconnects via DELETE when Disconnect is clicked', () => {
+    it('asks before disconnecting Telegram, and cancel sends nothing', async () => {
         vi.mocked(router.delete).mockReset();
         render(<Settings telegram={connectedTelegram} />);
 
         fireEvent.click(screen.getByText('Disconnect'));
 
+        expect(
+            await screen.findByRole('dialog', { name: 'disconnect Telegram?' }),
+        ).toBeInTheDocument();
+        expect(router.delete).not.toHaveBeenCalled();
+
+        fireEvent.click(screen.getByRole('button', { name: 'not now' }));
+        expect(router.delete).not.toHaveBeenCalled();
+    });
+
+    it('disconnects Telegram via one DELETE on confirm', async () => {
+        vi.mocked(router.delete).mockReset();
+        render(<Settings telegram={connectedTelegram} />);
+
+        fireEvent.click(screen.getByText('Disconnect'));
+        const dialog = await screen.findByRole('dialog', {
+            name: 'disconnect Telegram?',
+        });
+        fireEvent.click(
+            within(dialog).getByRole('button', { name: 'disconnect' }),
+        );
+
+        expect(router.delete).toHaveBeenCalledOnce();
         expect(router.delete).toHaveBeenCalledWith('/profile/telegram', {
             preserveScroll: true,
         });

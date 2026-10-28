@@ -5,11 +5,13 @@ import {
     HeartPulse,
     LoaderCircle,
     RefreshCw,
+    RotateCcw,
 } from 'lucide-react';
 import { useEffect, useId, useRef, useState } from 'react';
 
 import DemoBlockedModal from '@/components/DemoBlockedModal';
 import StravaAction from '@/components/StravaAction';
+import TemariNudgeModal from '@/components/temari/TemariNudgeModal';
 import Eyebrow from '@/components/ui/Eyebrow';
 import { Icon } from '@/components/ui/Icon';
 import PillButton from '@/components/ui/PillButton';
@@ -205,7 +207,12 @@ export default function HrZonesDisclosure({
     // Reset and resync change the zones server-side; a scoped reload of just
     // this prop re-seeds the form from the new profile without disturbing
     // whatever else is live on the rest of the Settings page.
+    const [confirming, setConfirming] = useState<'reset' | 'resync' | null>(
+        null,
+    );
+
     const resetToDefault = () => {
+        setConfirming(null);
         router.delete('/settings/zones', {
             onSuccess: () => router.reload({ only: ['hrZones'] }),
         });
@@ -378,7 +385,7 @@ export default function HrZonesDisclosure({
                                 tone="ghost"
                                 size="sm"
                                 className="flex-1 justify-center"
-                                onClick={resetToDefault}
+                                onClick={() => setConfirming('reset')}
                             >
                                 reset to default
                             </PillButton>
@@ -392,7 +399,9 @@ export default function HrZonesDisclosure({
                                     tone="outline"
                                     size="sm"
                                     className="w-full justify-center"
-                                    onClick={() => guard(resyncFromStrava)}
+                                    onClick={() =>
+                                        guard(() => setConfirming('resync'))
+                                    }
                                     disabled={resyncing}
                                 >
                                     <Icon
@@ -420,6 +429,30 @@ export default function HrZonesDisclosure({
                             </StravaAction>
                         </div>
                     )}
+
+                    <TemariNudgeModal
+                        open={confirming === 'reset'}
+                        onClose={() => setConfirming(null)}
+                        pose="concerned"
+                        title="reset your zones?"
+                        body="your max HR, resting HR and zones are cleared, and i'll go back to estimating them."
+                        primaryLabel="reset zones"
+                        primaryIcon={RotateCcw}
+                        primaryTone="danger"
+                        onPrimary={resetToDefault}
+                    />
+                    <TemariNudgeModal
+                        open={confirming === 'resync'}
+                        onClose={() => setConfirming(null)}
+                        title="use your Strava zones?"
+                        body="your Strava zones replace the bounds you set here."
+                        primaryLabel="resync from Strava"
+                        primaryIcon={RefreshCw}
+                        onPrimary={() => {
+                            setConfirming(null);
+                            resyncFromStrava();
+                        }}
+                    />
 
                     {savedNotice.rendered && (
                         <span

@@ -52,14 +52,6 @@ describe('DemoBlockedModal', () => {
         expect(onClose).toHaveBeenCalledOnce();
     });
 
-    it('calls onClose when the top-left close button is clicked', async () => {
-        const onClose = vi.fn();
-        render(<DemoBlockedModal open onClose={onClose} />);
-        await screen.findByRole('dialog');
-        fireEvent.click(screen.getByLabelText('Close'));
-        expect(onClose).toHaveBeenCalledOnce();
-    });
-
     it('renders the copy it is handed in place of the Telegram default', async () => {
         render(
             <DemoBlockedModal

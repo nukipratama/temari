@@ -18,11 +18,19 @@ export default function Sheet({
     open,
     onOpenChange,
     title,
+    lead,
+    centeredFromMd = false,
+    className,
     children,
 }: Readonly<{
     open: boolean;
     onOpenChange: (open: boolean) => void;
     title: string;
+    /** Rendered above the title. */
+    lead?: ReactNode;
+    /** From `md` up, a centered card that fades in, with no grip. */
+    centeredFromMd?: boolean;
+    className?: string;
     children: ReactNode;
 }>) {
     const startYRef = useRef<number | null>(null);
@@ -52,6 +60,9 @@ export default function Sheet({
                 'fixed inset-x-0 bottom-0 z-50 mx-auto flex max-h-[85svh] w-full max-w-lg flex-col overflow-y-auto rounded-t-4xl bg-popover text-foreground shadow-e3',
                 'px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))]',
                 'motion-safe:transition-transform motion-safe:duration-200 motion-safe:ease-out data-[ending-style]:translate-y-full data-[starting-style]:translate-y-full',
+                centeredFromMd &&
+                    'md:inset-0 md:m-auto md:h-fit md:max-h-[calc(100dvh-2rem)] md:max-w-sm md:rounded-4xl md:pt-5 md:motion-safe:transition-[transform,opacity] md:data-[ending-style]:translate-y-0 md:data-[ending-style]:scale-95 md:data-[ending-style]:opacity-0 md:data-[starting-style]:translate-y-0 md:data-[starting-style]:scale-95 md:data-[starting-style]:opacity-0',
+                className,
             )}
             style={
                 dragY === null
@@ -64,7 +75,10 @@ export default function Sheet({
         >
             <div
                 data-testid="sheet-grip"
-                className="-mx-5 flex touch-none justify-center px-5 pb-3 pt-4"
+                className={cn(
+                    '-mx-5 flex touch-none justify-center px-5 pb-3 pt-4',
+                    centeredFromMd && 'md:hidden',
+                )}
                 onPointerDown={(event) => {
                     event.currentTarget.setPointerCapture?.(event.pointerId);
                     startYRef.current = event.clientY;
@@ -85,6 +99,7 @@ export default function Sheet({
                     className="h-1 w-10 rounded-full bg-border-strong"
                 />
             </div>
+            {lead}
             <OverlayTitle className="font-serif text-headline-sm text-foreground">
                 {title}
             </OverlayTitle>
