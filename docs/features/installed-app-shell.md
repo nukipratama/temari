@@ -23,6 +23,8 @@ code_refs:
   - resources/css/app.css
   - scripts/build-splash-screens.php
   - resources/brand/build-og.mjs
+  - resources/views/partials/boot-shell.blade.php
+  - public/sw.js
 ---
 
 # Installed app shell
@@ -223,6 +225,33 @@ connection the app has no say over — the one moment where that cost is most
 visible. They are self-hosted now
 ([fonts.css](resources/css/fonts.css)), fingerprinted into `/build` and served
 from the same origin, immutable, as everything else. See [[design-tokens]].
+
+## Cold launch
+
+Measured on 2026-10-28 against production through Cloudflare, as the demo account
+under mobile emulation, the server spends about 50 ms building Today: most of the
+~240 ms to first byte is the tunnel, and the rest of a cold open is the JavaScript.
+With an empty HTTP cache the app mounts after roughly 1.1 s on 4G and 2 s on slow
+4G; with it cached, about 0.3 to 0.5 s. Deferring Today's props was therefore not
+taken, and three changes target the client side instead:
+
+- **Boot shell.** For a signed-in athlete,
+  [boot-shell.blade.php](resources/views/partials/boot-shell.blade.php) paints the
+  top bar, nav pill and a few content blocks as skeletons straight from the HTML,
+  so the launch image hands off to something app-shaped instead of a bare ground.
+  `body:has(#app > *) #boot-shell` in `app.css` hides it the moment React renders.
+  It is generic rather than Today's skeleton because a home-screen shortcut can open
+  any tab cold.
+- **Page chunk preload.** The current page's chunk is in the `@vite` list, so it
+  downloads alongside the entry instead of after the entry has run (median cold load
+  on slow 4G 2.54 s to 2.24 s locally).
+- **Navigation preload.** [sw.js](public/sw.js) enables it on activate and answers a
+  navigation with `preloadResponse`, so a launch that has to boot the service worker
+  does not wait for it before the request goes out. Not measurable in a headless
+  browser; it shows on a device whose worker iOS has killed.
+
+Whether iOS keeps an installed app's HTTP cache between launches decides which of
+those two cold-open numbers a phone sees, and only a device can tell.
 
 ## Social preview
 

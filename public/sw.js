@@ -61,6 +61,9 @@ self.addEventListener('activate', (event) => {
         caches
             .keys()
             .then((keys) => Promise.all(keys.filter((key) => key !== OFFLINE_CACHE).map((key) => caches.delete(key))))
+            // Starts the navigation request while the worker is still booting,
+            // so a cold launch does not wait on the worker before the network.
+            .then(() => self.registration.navigationPreload?.enable())
             .then(() => self.clients.claim()),
     );
 });
@@ -73,13 +76,17 @@ self.addEventListener('fetch', (event) => {
     }
 
     event.respondWith(
-        fetch(event.request).catch(async () => {
-            const cached = await caches.match(OFFLINE_URL);
+        (async () => {
+            try {
+                return (await event.preloadResponse) ?? (await fetch(event.request));
+            } catch {
+                const cached = await caches.match(OFFLINE_URL);
 
-            // If even the offline page is missing, fall through to the browser's
-            // own error rather than returning a confusing empty response.
-            return cached ?? Response.error();
-        }),
+                // If even the offline page is missing, fall through to the browser's
+                // own error rather than returning a confusing empty response.
+                return cached ?? Response.error();
+            }
+        })(),
     );
 });
 
