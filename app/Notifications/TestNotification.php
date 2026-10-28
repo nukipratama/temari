@@ -6,6 +6,7 @@ namespace App\Notifications;
 
 use App\Enums\NotificationKind;
 use App\Models\User;
+use App\Notifications\Concerns\AppendsUnreadBadge;
 use App\Notifications\Messages\InboxMessage;
 use App\Notifications\Messages\TelegramMessage;
 use App\Services\Telegram\TelegramReplies;
@@ -25,6 +26,7 @@ use NotificationChannels\WebPush\WebPushMessage;
  */
 class TestNotification extends Notification implements ShouldQueue
 {
+    use AppendsUnreadBadge;
     use Queueable;
 
     private const string INBOX_BODY = "Test notification from temari. If you're seeing this, your inbox is working. I'll drop a note here after every run and with your weekly recap.";
@@ -67,6 +69,7 @@ class TestNotification extends Notification implements ShouldQueue
             ->title('Test notification')
             ->body(self::PUSH_BODY)
             ->icon('/icon-192.png')
+            ->data($this->withUnreadBadge(['url' => route('dashboard')], $notifiable))
             // Mirror the real push: high urgency so the test is a truthful delivery signal.
             ->options(['urgency' => 'high', 'TTL' => 300]);
     }

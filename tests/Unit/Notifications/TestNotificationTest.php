@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Enums\NotificationKind;
+use App\Models\InboxNotification;
 use App\Models\TelegramConnection;
 use App\Models\User;
 use App\Notifications\Channels\IdempotentWebPushChannel;
@@ -83,4 +84,20 @@ it('records the test in the inbox as well, so the send leaves a trace', function
         ->and($message->body)->not->toContain('Telegram')
         ->and($message->payload)->toBe(['url' => route('dashboard')])
         ->and($message->dedupeKey)->toBeNull();
+});
+
+// Tapping the test push should mark its inbox row read, like every other push.
+it('carries the dashboard url, the unread count and its own inbox row id', function (): void {
+    $user = User::factory()->create();
+    $notification = new TestNotification();
+    new InAppChannel()->send($user, $notification);
+
+    /** @var array{data: array{url: string, unread: int, inbox_id: int}} $payload */
+    $payload = $notification->toWebPush($user, $notification)->toArray();
+
+    expect($payload['data'])->toBe([
+        'url' => route('dashboard'),
+        'unread' => 1,
+        'inbox_id' => InboxNotification::query()->sole()->id,
+    ]);
 });
