@@ -21,16 +21,13 @@
 const OFFLINE_CACHE = 'temari-offline-v7';
 const OFFLINE_URL = '/offline.html';
 
-// Inbox unread count from the last push. The badge counts inbox rows, so the
-// tray is only the fallback before this worker has seen a push.
-let lastKnownUnread = null;
-
-async function syncBadge() {
-    if (!('setAppBadge' in self.navigator)) {
+// The badge counts the server's unread inbox rows, so only a push's own count
+// sets it. Taps and dismissals never touch it: the page re-syncs it from the
+// server on every visit and on resume (resources/js/lib/appBadge.ts).
+async function setBadge(count) {
+    if (typeof count !== 'number' || !('setAppBadge' in self.navigator)) {
         return;
     }
-
-    const count = lastKnownUnread ?? (await self.registration.getNotifications()).length;
 
     try {
         if (count > 0) {
@@ -108,10 +105,6 @@ self.addEventListener('push', (event) => {
     const read = readPayload(event.data);
     const payload = read?.title || read?.body ? read : FALLBACK_PAYLOAD;
 
-    if (typeof payload.data?.unread === 'number') {
-        lastKnownUnread = payload.data.unread;
-    }
-
     event.waitUntil(
         self.registration
             .showNotification(payload.title || 'Temari', {
@@ -120,7 +113,7 @@ self.addEventListener('push', (event) => {
                 badge: '/icon-192.png',
                 data: payload.data || {},
             })
-            .then(syncBadge),
+            .then(() => setBadge(payload.data?.unread)),
     );
 });
 
@@ -133,6 +126,11 @@ self.addEventListener('notificationclick', (event) => {
     try {
         const resolved = new URL(event.notification.data?.url || '/', self.location.origin);
         if (resolved.origin === self.location.origin) {
+            // The page marks this inbox row read on arrival (resources/js/app.tsx).
+            const inboxId = event.notification.data?.inbox_id;
+            if (Number.isInteger(inboxId)) {
+                resolved.searchParams.set('read', String(inboxId));
+            }
             url = resolved.href;
         }
     } catch {
@@ -149,11 +147,6 @@ self.addEventListener('notificationclick', (event) => {
                     }
                 }
                 return self.clients.openWindow(url);
-            })
-            .then(syncBadge),
+            }),
     );
-});
-
-self.addEventListener('notificationclose', (event) => {
-    event.waitUntil(syncBadge());
 });

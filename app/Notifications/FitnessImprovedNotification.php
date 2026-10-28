@@ -87,7 +87,7 @@ class FitnessImprovedNotification extends Notification implements ShouldQueue
             ->title($this->title())
             ->body($this->body())
             ->icon('/icon-192.png')
-            ->data($this->withUnreadBadge(['url' => route('race')], $notifiable->id))
+            ->data($this->withUnreadBadge(['url' => route('race')], $notifiable))
             ->options(['TTL' => self::PUSH_TTL_SECONDS, 'topic' => self::PUSH_TOPIC]);
     }
 

@@ -367,6 +367,27 @@ it('carries the inbox unread count for the app-icon badge', function (): void {
     expect($webPush['data']['unread'])->toBe(3);
 });
 
+// Tapping the push marks its own inbox row read, so the payload names that row.
+it('carries the inbox row id it wrote, so tapping the push can mark it read', function (): void {
+    $user = User::factory()->create();
+    $notification = new AnalysisReadyNotification(postRunAnalysis($user));
+    new InAppChannel()->send($user, $notification);
+
+    /** @var array{data: array{inbox_id: int}} $webPush */
+    $webPush = $notification->toWebPush($user, $notification)->toArray();
+
+    expect($webPush['data']['inbox_id'])->toBe(InboxNotification::query()->sole()->id);
+});
+
+it('carries no inbox row id before the inbox row exists', function (): void {
+    $user = User::factory()->create();
+    $notification = new AnalysisReadyNotification(postRunAnalysis($user));
+
+    $webPush = $notification->toWebPush($user, $notification)->toArray();
+
+    expect($webPush['data'])->not->toHaveKey('inbox_id');
+});
+
 it('keeps the Telegram text and the web push title in sentence case, whatever the inbox shows', function (): void {
     $user = User::factory()->create();
     $analysis = postRunAnalysis($user, 'Pace konsisten.');

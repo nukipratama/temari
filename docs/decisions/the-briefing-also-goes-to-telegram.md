@@ -14,6 +14,8 @@ code_refs:
 
 # The briefing also goes to Telegram, and the app-icon badge counts inbox rows
 
+> **Superseded 2026-10-28 on the badge mechanics:** the tray fallback is gone, the page refetches the count on resume, and a push tap marks its own row read ([[notification-inbox]]).
+
 > **One premise below is superseded (noted 2026-10-06) by #1866.** The Context calls a missing push permission "the normal state on desktop"; push is now offered outside iOS without a Home-Screen install, so desktop athletes can grant it. The decision itself is unchanged.
 
 **Status:** Accepted (decided 2026-09-16)
