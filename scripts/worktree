@@ -269,7 +269,7 @@ reclaim_merged_slot() {
     [ -n "$owner" ] && [ "$owner" != "$requester" ] || continue
     reclaimable_worktree "$owner" || continue
     echo "worktree: reclaiming slot ${slot} from ${owner}: its PR is merged, it is clean, and nothing has run in it for ${RECLAIM_IDLE_MINUTES} minutes" >&2
-    remove_impl "$owner" false && return 0
+    remove_impl "$owner" false >&2 && return 0
   done
   return 1
 }

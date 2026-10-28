@@ -311,6 +311,8 @@ case "${1:-}" in
       else
         cat >/dev/null || true
       fi
+    elif [[ "$arguments" == *" down "* ]]; then
+      printf 'fake compose down output\n'
     fi
     ;;
   volume)
@@ -478,6 +480,7 @@ make_finished_owner() {
   local slot="$1"
   local owner="${FAKE_MAIN}/.claude/worktrees/owner-${slot}"
   make_worktree "$owner"
+  cp "$FAKE_MAIN/.env.example" "${owner}/.env"
   printf '%s\n' "$slot" > "${owner}/.claude-worktree-slot"
   printf 'feat-%s\n' "$slot" > "${owner}/.fake-branch"
   printf 'sha-%s\n' "$slot" > "${owner}/.fake-head"
@@ -498,10 +501,11 @@ printf '%s/sub\n' "${FAKE_MAIN}/.claude/worktrees/owner-1" > "$FAKE_LIVE_CWDS"
 printf 'sha-2-newer\n' > "${FAKE_MAIN}/.claude/worktrees/owner-2/.fake-head"
 find "${FAKE_MAIN}/.claude/worktrees/owner-2" -exec touch -t 202601010000 {} +
 
-if ! "${FAKE_MAIN}/scripts/worktree" create creator > "${case_dir}/create.out" 2>&1; then
+if ! "${FAKE_MAIN}/scripts/worktree" create creator > "${case_dir}/create.stdout" 2> "${case_dir}/create.out"; then
   cat "${case_dir}/create.out" >&2
   fail 'create did not reclaim the merged, idle slot'
 fi
+assert_eq "${FAKE_MAIN}/.claude/worktrees/creator" "$(<"${case_dir}/create.stdout")" 'create printed more than the new worktree path on stdout'
 grep -q "reclaiming slot 3 from ${FAKE_MAIN}/.claude/worktrees/owner-3" "${case_dir}/create.out" ||
   { cat "${case_dir}/create.out" >&2; fail 'create did not say which slot it reclaimed'; }
 [ ! -e "${FAKE_MAIN}/.claude/worktrees/owner-3" ] || fail 'reclaim left the finished worktree on disk'
