@@ -36,7 +36,8 @@ captureInstallPrompt();
 
 let visitTarget: string | null = null;
 router.on('start', (event) => {
-    visitTarget = event.detail.visit.url.href;
+    const { visit } = event.detail;
+    visitTarget = visit.method === 'get' ? visit.url.href : null;
 });
 router.on('finish', () => {
     visitTarget = null;

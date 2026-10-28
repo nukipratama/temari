@@ -4,6 +4,8 @@ import { recoverFromStaleChunks } from './chunkRecovery';
 
 const reload = vi.fn();
 
+recoverFromStaleChunks(reload);
+
 function preloadError(): Event {
     const event = new Event('vite:preloadError', { cancelable: true });
     window.dispatchEvent(event);
@@ -22,8 +24,6 @@ afterEach(() => {
 
 describe('recoverFromStaleChunks', () => {
     it('reloads in full when a chunk fails to load', () => {
-        recoverFromStaleChunks(reload);
-
         const event = preloadError();
 
         expect(reload).toHaveBeenCalledOnce();
@@ -31,7 +31,6 @@ describe('recoverFromStaleChunks', () => {
     });
 
     it('lets a second failure right after the reload surface instead of looping', () => {
-        recoverFromStaleChunks(reload);
         preloadError();
         reload.mockReset();
 
@@ -43,7 +42,6 @@ describe('recoverFromStaleChunks', () => {
     });
 
     it('recovers again after a later deploy in the same session', () => {
-        recoverFromStaleChunks(reload);
         preloadError();
         reload.mockReset();
 
