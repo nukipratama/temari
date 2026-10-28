@@ -93,3 +93,16 @@ it('cools per user, so one account cannot mute another', function (): void {
 
     Notification::assertSentTimes(TestNotification::class, 2);
 });
+
+it('keeps its own rate-limit bucket, so other endpoints cannot spend it', function (): void {
+    Notification::fake();
+    $user = User::factory()->create();
+    TelegramConnection::factory()->for($user)->create();
+
+    foreach (range(1, 6) as $_) {
+        $this->actingAs($user)->postJson('/profile/push/seen', ['endpoint' => 'https://push.example/unknown']);
+    }
+    $this->actingAs($user)->postJson('/profile/push/seen', ['endpoint' => 'https://push.example/unknown'])->assertTooManyRequests();
+
+    $this->actingAs($user)->post('/profile/notifications/test')->assertRedirect()->assertSessionHas('success');
+});
