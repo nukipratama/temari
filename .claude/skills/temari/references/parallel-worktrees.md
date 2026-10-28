@@ -79,8 +79,9 @@ Cleanup:
   `adopt` reclaim one whose work has landed. A worktree qualifies only when all of these hold: its
   current branch's merged PR head is exactly its `HEAD` (`gh pr list --state merged`), its tree is
   clean, no process has its working directory inside it (`lsof`), and nothing in it or its git dir
-  changed for `RECLAIM_IDLE_MINUTES` (120). Removal then goes through `remove` as usual, so the
-  session's own branch stays. Missing `gh` or `lsof`, or any error, counts as "keep".
+  changed for `RECLAIM_IDLE_MINUTES` (120). Removal then goes through `remove` as usual, which
+  deletes only the generated `worktree-<name>` branch, so a feature branch the session switched to
+  stays. Missing `gh` or `lsof`, or any error, counts as "keep".
 
 ### Shared services
 
