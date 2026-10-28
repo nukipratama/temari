@@ -24,7 +24,7 @@ import { showToast } from '@/hooks/useToast';
 import { appLayout } from '@/layouts/appLayout';
 import { readPlanSelectedDay } from '@/lib/navigationMemory';
 import { useTodayIso } from '@/lib/pace';
-import { weekdayLabel } from '@/lib/plan';
+import { planEditLanded, weekdayLabel } from '@/lib/plan';
 
 interface SeasonSummary {
     starts_at: string;
@@ -122,7 +122,11 @@ export default function Plan({
             { date: toDate },
             {
                 preserveScroll: true,
-                onSuccess: () => showToast(`moved to ${weekdayLabel(toDate)}`),
+                onSuccess: (page) => {
+                    if (planEditLanded(page)) {
+                        showToast(`moved to ${weekdayLabel(toDate)}`);
+                    }
+                },
             },
         );
     };
@@ -131,7 +135,14 @@ export default function Plan({
         router.patch(
             `/plan/sessions/${day.id}`,
             { skipped: true },
-            { preserveScroll: true, onSuccess: () => showToast('skipped') },
+            {
+                preserveScroll: true,
+                onSuccess: (page) => {
+                    if (planEditLanded(page)) {
+                        showToast('skipped');
+                    }
+                },
+            },
         );
     };
 
@@ -139,7 +150,14 @@ export default function Plan({
         router.patch(
             `/plan/sessions/${day.id}`,
             { skipped: false, pinned: false },
-            { preserveScroll: true, onSuccess: () => showToast('restored') },
+            {
+                preserveScroll: true,
+                onSuccess: (page) => {
+                    if (planEditLanded(page)) {
+                        showToast('restored');
+                    }
+                },
+            },
         );
     };
 

@@ -18,9 +18,14 @@ import Plan from './Plan';
 
 vi.mock('@/hooks/useToast', () => ({ showToast: vi.fn() }));
 
-function settlePatch(outcome: 'onSuccess' | 'onError') {
+function settlePatch(
+    outcome: 'onSuccess' | 'onError',
+    info: string | null = null,
+) {
     vi.mocked(router.patch).mockImplementationOnce((_url, _data, options) => {
-        options?.[outcome]?.({} as never);
+        options?.[outcome]?.({
+            props: { flash: { success: null, error: null, info } },
+        } as never);
     });
 }
 
@@ -531,7 +536,7 @@ describe('Plan', () => {
             expect(showToast).toHaveBeenCalledExactlyOnceWith('restored');
         });
 
-        it.each([
+        const actions: [string, () => void][] = [
             [
                 'move',
                 () => {
@@ -562,13 +567,32 @@ describe('Plan', () => {
                     );
                 },
             ],
-        ])('shows no toast when the %s is refused', (_action, perform) => {
-            settlePatch('onError');
-            perform();
+        ];
 
-            expect(router.patch).toHaveBeenCalled();
-            expect(showToast).not.toHaveBeenCalled();
-        });
+        it.each(actions)(
+            'shows no toast when the %s is refused',
+            (_action, perform) => {
+                settlePatch('onError');
+                perform();
+
+                expect(router.patch).toHaveBeenCalled();
+                expect(showToast).not.toHaveBeenCalled();
+            },
+        );
+
+        it.each(actions)(
+            'shows no toast when the %s comes back as a flashed refusal',
+            (_action, perform) => {
+                settlePatch(
+                    'onSuccess',
+                    'The plan is updating right now. Reload and try your edit again.',
+                );
+                perform();
+
+                expect(router.patch).toHaveBeenCalled();
+                expect(showToast).not.toHaveBeenCalled();
+            },
+        );
     });
 
     it('loads a week behind the loaded window on a partial reload and opens it', async () => {

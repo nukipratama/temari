@@ -27,6 +27,7 @@ import {
     easedFromDelta,
     judgedDayResult,
     paceEaseDelta,
+    planEditLanded,
     prescriptionWhy,
     sessionHint,
     sessionLabel,
@@ -261,7 +262,11 @@ function SkippedToday({ day }: Readonly<{ day: WeekPlanDay }>) {
                 preserveScroll: true,
                 onStart: () => setProcessing(true),
                 onFinish: () => setProcessing(false),
-                onSuccess: () => showToast('restored'),
+                onSuccess: (page) => {
+                    if (planEditLanded(page)) {
+                        showToast('restored');
+                    }
+                },
             },
         );
     };

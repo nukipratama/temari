@@ -1,3 +1,5 @@
+import type { Page } from '@inertiajs/core';
+
 import {
     ArrowUp,
     Bed,
@@ -16,6 +18,7 @@ import type {
     PaceRange,
     PlanDayPaceEasedFrom,
     PlanSessionSegment,
+    SharedProps,
     WeekPlanDay,
 } from '@/types/inertia';
 
@@ -758,6 +761,12 @@ const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 export function weekdayLabel(iso: string): string {
     const date = parseNaiveLocalDate(iso);
     return date === null ? '' : (WEEKDAYS[date.getDay()] ?? '');
+}
+
+/** Whether a plan edit applied, rather than coming back as a flashed refusal. */
+export function planEditLanded(page: Page): boolean {
+    const { flash } = page.props as Partial<SharedProps>;
+    return !flash?.info && !flash?.error;
 }
 
 /** A Plan page day row with the edits `SessionEditRules` allows on it. */

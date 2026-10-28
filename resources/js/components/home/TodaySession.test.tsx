@@ -338,15 +338,18 @@ describe('TodaySession', () => {
     });
 
     it.each([
-        ['onSuccess', ['restored']],
-        ['onError', []],
+        ['onSuccess', null, ['restored']],
+        ['onSuccess', 'The plan is updating right now.', []],
+        ['onError', null, []],
     ] as const)(
-        'toasts the restore only once it lands (%s)',
-        (outcome, toasts) => {
+        'toasts the restore only once it lands (%s, info %s)',
+        (outcome, info, toasts) => {
             vi.mocked(showToast).mockClear();
             vi.mocked(router.patch).mockImplementationOnce(
                 (_url, _data, options) => {
-                    options?.[outcome]?.({} as never);
+                    options?.[outcome]?.({
+                        props: { flash: { success: null, error: null, info } },
+                    } as never);
                 },
             );
             render(
