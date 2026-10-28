@@ -3,8 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { recoverFromStaleChunks } from './chunkRecovery';
 
 const reload = vi.fn();
-
-recoverFromStaleChunks(reload);
+let uninstall: () => void;
 
 function preloadError(): Event {
     const event = new Event('vite:preloadError', { cancelable: true });
@@ -12,12 +11,20 @@ function preloadError(): Event {
     return event;
 }
 
+/** A fresh page load: the listener re-registers, sessionStorage survives. */
+function boot(): void {
+    uninstall?.();
+    uninstall = recoverFromStaleChunks(reload);
+}
+
 beforeEach(() => {
     vi.useFakeTimers();
     sessionStorage.clear();
+    boot();
 });
 
 afterEach(() => {
+    uninstall();
     vi.useRealTimers();
     reload.mockReset();
 });
@@ -30,9 +37,19 @@ describe('recoverFromStaleChunks', () => {
         expect(event.defaultPrevented).toBe(true);
     });
 
-    it('lets a second failure right after the reload surface instead of looping', () => {
+    it('swallows the rest of the same failed batch while the reload is under way', () => {
+        preloadError();
+
+        const followUp = preloadError();
+
+        expect(reload).toHaveBeenCalledOnce();
+        expect(followUp.defaultPrevented).toBe(true);
+    });
+
+    it('lets a failure right after the reload surface instead of looping', () => {
         preloadError();
         reload.mockReset();
+        boot();
 
         vi.advanceTimersByTime(2_000);
         const event = preloadError();
@@ -44,6 +61,7 @@ describe('recoverFromStaleChunks', () => {
     it('recovers again after a later deploy in the same session', () => {
         preloadError();
         reload.mockReset();
+        boot();
 
         vi.advanceTimersByTime(60_000);
         preloadError();

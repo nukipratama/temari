@@ -94,7 +94,11 @@ void createInertiaApp({
         if (!importer) {
             throw new Error(`Inertia page not found: ${name}`);
         }
-        const module = await importer();
+        const module: { default: ComponentType } | undefined = await importer();
+        // A stale chunk resolves to nothing once recoverFromStaleChunks has taken over; the page is reloading.
+        if (module === undefined) {
+            return new Promise<never>(() => undefined);
+        }
         return module.default;
     },
     setup({ el, App, props }) {
