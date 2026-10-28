@@ -43,7 +43,9 @@ router.on('finish', () => {
     visitTarget = null;
 });
 recoverFromStaleChunks(() =>
-    window.location.assign(visitTarget ?? window.location.href),
+    visitTarget === null
+        ? window.location.reload()
+        : window.location.assign(visitTarget),
 );
 installOverlayHistory(router);
 

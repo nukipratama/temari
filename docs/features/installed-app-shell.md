@@ -428,8 +428,10 @@ opening a second one.
 An app left open across a deploy still points at the previous build's content-hashed
 chunks, which are gone. [recoverFromStaleChunks](../../resources/js/lib/chunkRecovery.ts)
 turns Vite's `vite:preloadError` into a full load of the page the athlete was going to,
-taken from Inertia's `start` event, so the new build loads. A second failure within ten
-seconds is left to surface, so a broken build cannot loop.
+taken from Inertia's `start` event, so the new build loads; a non-GET visit reloads the
+current page. Vite fires once per failed dependency, so the rest of that batch is
+swallowed while the reload runs. A failure on the reloaded page within ten seconds is
+left to surface, so a broken build cannot loop.
 
 ## Deliberately absent
 
