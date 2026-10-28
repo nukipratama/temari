@@ -147,6 +147,9 @@ case "${1:-}" in
       --verify)
         printf '%s\n' fake-commit
         ;;
+      HEAD)
+        cat "${location}/.fake-head"
+        ;;
       *) exit 2 ;;
     esac
     ;;
@@ -190,10 +193,34 @@ case "${1:-}" in
   rev-list)
     printf '%s\n' "${FAKE_UNPUSHED_COUNT:-0}"
     ;;
+  symbolic-ref)
+    cat "${location}/.fake-branch"
+    ;;
   *) exit 2 ;;
 esac
 EOF
   chmod +x "${FAKE_BIN}/git"
+
+  cat > "${FAKE_BIN}/gh" <<'EOF'
+#!/usr/bin/env bash
+set -Eeuo pipefail
+[ "${FAKE_GH_FAIL:-}" != true ] || exit 1
+branch=""
+while [ "$#" -gt 0 ]; do
+  [ "$1" != --head ] || branch="$2"
+  shift
+done
+[ -f "${FAKE_MERGED_HEADS:-/nonexistent}" ] || exit 0
+awk -v b="$branch" '$1 == b { print $2 }' "$FAKE_MERGED_HEADS"
+EOF
+  chmod +x "${FAKE_BIN}/gh"
+
+  cat > "${FAKE_BIN}/lsof" <<'EOF'
+#!/usr/bin/env bash
+printf 'p1\nn/\n'
+[ ! -f "${FAKE_LIVE_CWDS:-/nonexistent}" ] || sed 's/^/n/' "$FAKE_LIVE_CWDS"
+EOF
+  chmod +x "${FAKE_BIN}/lsof"
 
   cat > "${FAKE_BIN}/perl" <<'EOF'
 #!/usr/bin/env bash
@@ -446,6 +473,71 @@ if ! grep -q 'no free worktree slots; the maximum is 3' "${case_dir}/create.out"
   fail 'allocator did not report that all documented worktree slots were occupied'
 fi
 echo 'PASS: allocation stops at the documented 3-slot limit'
+
+make_finished_owner() {
+  local slot="$1"
+  local owner="${FAKE_MAIN}/.claude/worktrees/owner-${slot}"
+  make_worktree "$owner"
+  printf '%s\n' "$slot" > "${owner}/.claude-worktree-slot"
+  printf 'feat-%s\n' "$slot" > "${owner}/.fake-branch"
+  printf 'sha-%s\n' "$slot" > "${owner}/.fake-head"
+  printf 'feat-%s sha-%s\n' "$slot" "$slot" >> "$FAKE_MERGED_HEADS"
+  mkdir -p "${FAKE_COMMON}/temari-worktree-slots/slot-${slot}"
+  printf '%s\n' "$owner" > "${FAKE_COMMON}/temari-worktree-slots/slot-${slot}/path"
+  printf 'worktree-owner-%s\n' "$slot" > "${FAKE_COMMON}/temari-worktree-slots/slot-${slot}/branch"
+  find "$owner" -exec touch -t 202601010000 {} +
+}
+
+case_dir="${test_root}/reclaim-merged-slot"
+init_case "$case_dir"
+export FAKE_MERGED_HEADS="${case_dir}/merged-heads"
+export FAKE_LIVE_CWDS="${case_dir}/live-cwds"
+: > "$FAKE_MERGED_HEADS"
+for slot in 1 2 3; do make_finished_owner "$slot"; done
+printf '%s/sub\n' "${FAKE_MAIN}/.claude/worktrees/owner-1" > "$FAKE_LIVE_CWDS"
+printf 'sha-2-newer\n' > "${FAKE_MAIN}/.claude/worktrees/owner-2/.fake-head"
+find "${FAKE_MAIN}/.claude/worktrees/owner-2" -exec touch -t 202601010000 {} +
+
+if ! "${FAKE_MAIN}/scripts/worktree" create creator > "${case_dir}/create.out" 2>&1; then
+  cat "${case_dir}/create.out" >&2
+  fail 'create did not reclaim the merged, idle slot'
+fi
+grep -q "reclaiming slot 3 from ${FAKE_MAIN}/.claude/worktrees/owner-3" "${case_dir}/create.out" ||
+  { cat "${case_dir}/create.out" >&2; fail 'create did not say which slot it reclaimed'; }
+[ ! -e "${FAKE_MAIN}/.claude/worktrees/owner-3" ] || fail 'reclaim left the finished worktree on disk'
+[ -d "${FAKE_MAIN}/.claude/worktrees/owner-1" ] || fail 'reclaim removed a worktree a process was still using'
+[ -d "${FAKE_MAIN}/.claude/worktrees/owner-2" ] || fail 'reclaim removed a worktree with commits past its merged PR'
+assert_eq "${FAKE_MAIN}/.claude/worktrees/creator" "$(<"${FAKE_COMMON}/temari-worktree-slots/slot-3/path")" 'the reclaimed slot did not go to the new worktree'
+echo 'PASS: create reclaims only a merged, clean, idle and unused slot'
+unset FAKE_LIVE_CWDS
+
+case_dir="${test_root}/reclaim-refusals"
+init_case "$case_dir"
+export FAKE_MERGED_HEADS="${case_dir}/merged-heads"
+: > "$FAKE_MERGED_HEADS"
+for slot in 1 2 3; do make_finished_owner "$slot"; done
+touch "${FAKE_MAIN}/.claude/worktrees/owner-1/recent-edit"
+export FAKE_UNCOMMITTED_PATH="${FAKE_MAIN}/.claude/worktrees/owner-2"
+grep -v '^feat-3 ' "$FAKE_MERGED_HEADS" > "${FAKE_MERGED_HEADS}.next" && mv "${FAKE_MERGED_HEADS}.next" "$FAKE_MERGED_HEADS"
+
+if "${FAKE_MAIN}/scripts/worktree" create creator > "${case_dir}/create.out" 2>&1; then
+  fail 'create reclaimed a slot that was recently active, uncommitted or unmerged'
+fi
+grep -q 'no free worktree slots; the maximum is 3' "${case_dir}/create.out" ||
+  { cat "${case_dir}/create.out" >&2; fail 'create did not report the full slots'; }
+for slot in 1 2 3; do
+  [ -d "${FAKE_MAIN}/.claude/worktrees/owner-${slot}" ] || fail "reclaim removed owner-${slot}"
+done
+unset FAKE_UNCOMMITTED_PATH
+
+printf 'feat-3 sha-3\n' >> "$FAKE_MERGED_HEADS"
+export FAKE_GH_FAIL=true
+if "${FAKE_MAIN}/scripts/worktree" create creator2 > "${case_dir}/gh-fail.out" 2>&1; then
+  fail 'create reclaimed a slot while gh could not confirm the merge'
+fi
+[ -d "${FAKE_MAIN}/.claude/worktrees/owner-3" ] || fail 'reclaim removed a worktree without a confirmed merge'
+unset FAKE_GH_FAIL FAKE_MERGED_HEADS
+echo 'PASS: reclaim refuses recent activity, uncommitted work, an unmerged branch and an unreachable gh'
 
 case_dir="${test_root}/remove-prune-create"
 init_case "$case_dir"
