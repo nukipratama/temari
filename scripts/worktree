@@ -249,7 +249,7 @@ reclaimable_worktree() {
 
   [ -f "${worktree}/.git" ] || return 1
   branch="$(git -C "$worktree" symbolic-ref --quiet --short HEAD 2>/dev/null)" || return 1
-  changes="$(git -C "$worktree" status --porcelain 2>/dev/null)" || return 1
+  changes="$(GIT_OPTIONAL_LOCKS=0 git -C "$worktree" status --porcelain 2>/dev/null)" || return 1
   [ -z "$changes" ] || return 1
   ! worktree_recently_active "$worktree" || return 1
   ! worktree_has_live_process "$worktree" || return 1
