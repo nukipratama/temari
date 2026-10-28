@@ -16,6 +16,7 @@ import AppearanceCard from '@/components/settings/AppearanceCard';
 import HrZonesDisclosure, {
     type HrZonesPayload,
 } from '@/components/settings/HrZonesDisclosure';
+import InstallAppSection from '@/components/settings/InstallAppSection';
 import IntervalsIcuPanel, {
     type IntervalsIcuPayload,
 } from '@/components/settings/IntervalsIcuPanel';
@@ -152,6 +153,8 @@ export default function Settings({
                             <AppearanceCard />
                         </div>
                     </section>
+
+                    <InstallAppSection />
 
                     {/* One notification section, not three. The user holds a single
                         model with two questions — what gets sent, and where it goes —

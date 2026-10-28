@@ -155,6 +155,9 @@
                 "resources/js/components/settings/HrZonesDisclosure.tsx": [
                     "paper"
                 ],
+                "resources/js/components/settings/InstallAppSection.tsx": [
+                    "paper"
+                ],
                 "resources/js/components/ui/SettingsRow.tsx": [
                     "paper"
                 ],

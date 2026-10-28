@@ -6,7 +6,9 @@ import { createRoot } from 'react-dom/client';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { installOverlayHistory } from '@/hooks/useOverlayHistory';
 import { syncAppBadge, syncAppBadgeOnVisible } from '@/lib/appBadge';
+import { recoverFromStaleChunks } from '@/lib/chunkRecovery';
 import { installGlobalErrorReporting } from '@/lib/clientErrorReporter';
+import { captureInstallPrompt } from '@/lib/installPrompt';
 import { startContextualBackSession } from '@/lib/navigationMemory';
 import { registerServiceWorker } from '@/lib/registerServiceWorker';
 import { reportSeen } from '@/lib/webPush';
@@ -26,6 +28,34 @@ router.on('navigate', (event) => {
 });
 
 installGlobalErrorReporting();
+captureInstallPrompt();
+
+let inFlightVisit: { url: string; method: string } | null = null;
+router.on('start', (event) => {
+    const { visit } = event.detail;
+    if (visit.async || visit.prefetch) {
+        return;
+    }
+    inFlightVisit = { url: visit.url.href, method: visit.method };
+});
+router.on('finish', (event) => {
+    const { visit } = event.detail;
+    if (visit.async || visit.prefetch) {
+        return;
+    }
+    inFlightVisit = null;
+});
+recoverFromStaleChunks(() => {
+    if (inFlightVisit === null) {
+        return false;
+    }
+    if (inFlightVisit.method === 'get') {
+        window.location.assign(inFlightVisit.url);
+    } else {
+        window.location.reload();
+    }
+    return true;
+});
 installOverlayHistory(router);
 
 const pages = import.meta.glob<{ default: ComponentType }>([
@@ -75,7 +105,11 @@ void createInertiaApp({
         if (!importer) {
             throw new Error(`Inertia page not found: ${name}`);
         }
-        const module = await importer();
+        const module: { default: ComponentType } | undefined = await importer();
+        // A stale chunk resolves to nothing once recoverFromStaleChunks has taken over; the page is reloading.
+        if (module === undefined) {
+            return new Promise<never>(() => undefined);
+        }
         return module.default;
     },
     setup({ el, App, props }) {
