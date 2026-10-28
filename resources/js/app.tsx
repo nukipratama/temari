@@ -10,7 +10,9 @@ import {
     syncAppBadgeOnVisible,
     unreadCountFromProps,
 } from '@/lib/appBadge';
+import { recoverFromStaleChunks } from '@/lib/chunkRecovery';
 import { installGlobalErrorReporting } from '@/lib/clientErrorReporter';
+import { captureInstallPrompt } from '@/lib/installPrompt';
 import { startContextualBackSession } from '@/lib/navigationMemory';
 import { registerServiceWorker } from '@/lib/registerServiceWorker';
 import { reportSeen } from '@/lib/webPush';
@@ -30,6 +32,18 @@ router.on('navigate', (event) => {
 });
 
 installGlobalErrorReporting();
+captureInstallPrompt();
+
+let visitTarget: string | null = null;
+router.on('start', (event) => {
+    visitTarget = event.detail.visit.url.href;
+});
+router.on('finish', () => {
+    visitTarget = null;
+});
+recoverFromStaleChunks(() =>
+    window.location.assign(visitTarget ?? window.location.href),
+);
 installOverlayHistory(router);
 
 const pages = import.meta.glob<{ default: ComponentType }>([

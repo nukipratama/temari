@@ -1,6 +1,6 @@
 ---
 title: Installed app shell
-description: What makes Temari feel native once it is on the iOS Home Screen — edge-to-edge status bar, launch image, top bar with back button, touch feel
+description: What makes Temari feel native once it is on the iOS Home Screen — edge-to-edge status bar, launch image, top bar with back button, touch feel, install and shortcuts
 tags: [feature, pwa]
 status: living
 reviewed: 2026-10-09
@@ -23,6 +23,9 @@ code_refs:
   - resources/css/app.css
   - scripts/build-splash-screens.php
   - resources/brand/build-og.mjs
+  - resources/js/lib/installPrompt.ts
+  - resources/js/lib/chunkRecovery.ts
+  - resources/js/lib/haptics.ts
 ---
 
 # Installed app shell
@@ -339,6 +342,11 @@ instead swaps the consistency line, month recap and grid for their placeholders
 while a visit that reloads the month props is in flight. Under reduced motion
 the shapes are static, through the `.skeleton` rule in `app.css`.
 
+A committed write through [usePendingPost](../../resources/js/hooks/usePendingPost.ts)
+ends in [hapticCommit](../../resources/js/lib/haptics.ts), one short pulse. It is an
+Android nicety only: iOS Safari has no `navigator.vibrate`, so the call is a no-op on
+the primary device, and nothing may depend on it.
+
 ## The route cross-fade
 
 Real navigations cross-fade through the **View Transitions API**, and none of it
@@ -398,10 +406,33 @@ past the threshold calls `router.reload()`; a failed reload suppresses Inertia's
 error modal for that request and shows a short notice in the gap. Under reduced
 motion the content does not slide.
 
+## Install, shortcuts and store screenshots
+
+Chrome and Edge fire `beforeinstallprompt` once, early, on whichever page is open, so
+[captureInstallPrompt](../../resources/js/lib/installPrompt.ts) holds it from boot and
+[InstallAppSection](../../resources/js/components/settings/InstallAppSection.tsx) offers
+it as an "App" section in Settings. The section renders nothing while there is no offer,
+which covers iOS (Safari never fires the event; the push explainer covers Add to Home
+Screen there), an already-installed app, and a spent prompt. There is no install nag on
+Today.
+
+The manifest carries one shortcut per destination (Today, Plan, History, Inbox), each with
+a 96px icon drawn from the glyph its tab or the bell uses, cream on the app icon's
+`#171f28` plate. Its `screenshots`, narrow and wide shots of Today and Plan from the demo
+account, feed Android's and desktop Chrome's richer install sheet. Retake them when either
+page changes noticeably. `launch_handler` focuses an already-open window instead of
+opening a second one.
+
+## Stale chunks after a deploy
+
+An app left open across a deploy still points at the previous build's content-hashed
+chunks, which are gone. [recoverFromStaleChunks](../../resources/js/lib/chunkRecovery.ts)
+turns Vite's `vite:preloadError` into a full load of the page the athlete was going to,
+taken from Inertia's `start` event, so the new build loads. A second failure within ten
+seconds is left to surface, so a broken build cannot loop.
+
 ## Deliberately absent
 
-- **Haptics.** iOS Safari does not implement `navigator.vibrate`, so any haptics
-  code would be dead on the primary target device.
 - **Keyed, self-animated page transitions.** Removed and not coming
   back. Keying `<main>` tore down the whole content subtree on every visit (25
   card mounts on Collection), and the enter animation it existed to replay

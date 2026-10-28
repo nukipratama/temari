@@ -20,13 +20,32 @@
             "name": "Today",
             "short_name": "Today",
             "url": "/",
-            "icons": [{ "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+            "icons": [{ "src": "/shortcut-today.png", "sizes": "96x96", "type": "image/png" }]
+        },
+        {
+            "name": "Plan",
+            "short_name": "Plan",
+            "url": "/plan",
+            "icons": [{ "src": "/shortcut-plan.png", "sizes": "96x96", "type": "image/png" }]
         },
         {
             "name": "History",
             "short_name": "History",
             "url": "/history",
-            "icons": [{ "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+            "icons": [{ "src": "/shortcut-history.png", "sizes": "96x96", "type": "image/png" }]
+        },
+        {
+            "name": "Inbox",
+            "short_name": "Inbox",
+            "url": "/inbox",
+            "icons": [{ "src": "/shortcut-inbox.png", "sizes": "96x96", "type": "image/png" }]
         }
-    ]
+    ],
+    "screenshots": [
+        { "src": "/screenshots/today-narrow.webp", "sizes": "780x1688", "type": "image/webp", "form_factor": "narrow", "label": "Today: the session, the week and how it went" },
+        { "src": "/screenshots/plan-narrow.webp", "sizes": "780x1688", "type": "image/webp", "form_factor": "narrow", "label": "Plan: the weeks ahead to race day" },
+        { "src": "/screenshots/today-wide.webp", "sizes": "1920x1080", "type": "image/webp", "form_factor": "wide", "label": "Today on a larger screen" },
+        { "src": "/screenshots/plan-wide.webp", "sizes": "1920x1080", "type": "image/webp", "form_factor": "wide", "label": "Plan on a larger screen" }
+    ],
+    "launch_handler": { "client_mode": "focus-existing" }
 }
