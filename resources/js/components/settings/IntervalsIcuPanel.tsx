@@ -7,6 +7,7 @@ import TemariNudgeModal from '@/components/temari/TemariNudgeModal';
 import SettingsDisconnectLink from '@/components/ui/SettingsDisconnectLink';
 import SettingsRow from '@/components/ui/SettingsRow';
 import { useDemoGuard } from '@/hooks/useDemoGuard';
+import { showToast } from '@/hooks/useToast';
 import { lazyIsland } from '@/lib/lazyIsland';
 
 const IntervalsIcuConnectForm = lazyIsland(
@@ -84,6 +85,8 @@ export default function IntervalsIcuPanel({
                     setConfirmingDisconnect(false);
                     router.delete('/settings/intervals-icu', {
                         preserveScroll: true,
+                        onSuccess: () =>
+                            showToast('intervals.icu disconnected'),
                     });
                 }}
             />

@@ -2,7 +2,10 @@ import { router } from '@inertiajs/react';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { showToast } from '@/hooks/useToast';
 import { makeUser, setMockPage } from '@/test/setup';
+
+vi.mock('@/hooks/useToast', () => ({ showToast: vi.fn() }));
 
 import IntervalsIcuPanel, {
     INTERVALS_ICU_DEMO_BLOCKED,
@@ -24,6 +27,7 @@ const healthy: IntervalsIcuPayload = {
 beforeEach(() => {
     setMockPage({ auth: { user: makeUser() } });
     vi.mocked(router.delete).mockClear();
+    vi.mocked(showToast).mockClear();
 });
 
 function openRow() {
@@ -91,7 +95,15 @@ describe('IntervalsIcuPanel', () => {
         expect(router.delete).toHaveBeenCalledOnce();
         expect(router.delete).toHaveBeenCalledWith('/settings/intervals-icu', {
             preserveScroll: true,
+            onSuccess: expect.any(Function),
         });
+        expect(showToast).not.toHaveBeenCalled();
+
+        vi.mocked(router.delete).mock.calls[0]?.[1]?.onSuccess?.({} as never);
+
+        expect(showToast).toHaveBeenCalledExactlyOnceWith(
+            'intervals.icu disconnected',
+        );
     });
 
     it('offers to reconnect a broken key from the same form', async () => {
