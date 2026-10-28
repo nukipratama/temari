@@ -8,7 +8,7 @@ SLOT_FILE=".claude-worktree-slot"
 LOCKS_NAME="temari-worktree-slots"
 MAX_WORKTREE_SLOTS=3
 INCOMPLETE_SLOT_TTL_MINUTES=5
-RECLAIM_IDLE_MINUTES=120
+RECLAIM_IDLE_MINUTES=30
 
 usage() {
   cat >&2 <<EOF
@@ -171,6 +171,7 @@ slot_lock_is_stale() {
 }
 
 ALLOCATED_SLOT=""
+RECLAIM_HOLDERS=""
 allocate_slot_locked() {
   local worktree="$1"
   local branch="$2"
@@ -239,24 +240,25 @@ merged_pr_head_for() {
   (cd "$CHECKOUT_DIR" && gh pr list --state merged --head "$branch" --limit 1 --json headRefOid --jq '.[0].headRefOid // empty') 2>/dev/null
 }
 
-# A slot is reclaimable only when its worktree sits exactly on a merged PR's head,
-# with nothing uncommitted, no process inside it and no activity for a while.
-reclaimable_worktree() {
+# Prints why a slot's worktree must be kept, or nothing when it is reclaimable: it sits
+# exactly on a merged PR's head, with nothing uncommitted, no process inside it and no
+# activity for a while.
+reclaim_blocker() {
   local worktree="$1"
   local branch
   local changes
   local head
   local merged_head
 
-  [ -f "${worktree}/.git" ] || return 1
-  branch="$(git -C "$worktree" symbolic-ref --quiet --short HEAD 2>/dev/null)" || return 1
-  changes="$(GIT_OPTIONAL_LOCKS=0 git -C "$worktree" status --porcelain 2>/dev/null)" || return 1
-  [ -z "$changes" ] || return 1
-  ! worktree_recently_active "$worktree" || return 1
-  ! worktree_has_live_process "$worktree" || return 1
-  head="$(git -C "$worktree" rev-parse HEAD 2>/dev/null)" || return 1
-  merged_head="$(merged_pr_head_for "$branch")" || return 1
-  [ -n "$merged_head" ] && [ "$merged_head" = "$head" ]
+  [ -f "${worktree}/.git" ] || { echo 'not a linked worktree'; return; }
+  branch="$(git -C "$worktree" symbolic-ref --quiet --short HEAD 2>/dev/null)" || { echo 'not on a branch'; return; }
+  changes="$(GIT_OPTIONAL_LOCKS=0 git -C "$worktree" status --porcelain 2>/dev/null)" || { echo 'git status failed'; return; }
+  [ -z "$changes" ] || { echo 'has uncommitted changes'; return; }
+  ! worktree_recently_active "$worktree" || { echo "changed in the last ${RECLAIM_IDLE_MINUTES} minutes"; return; }
+  ! worktree_has_live_process "$worktree" || { echo 'a process may be using it'; return; }
+  head="$(git -C "$worktree" rev-parse HEAD 2>/dev/null)" || { echo 'git rev-parse failed'; return; }
+  merged_head="$(merged_pr_head_for "$branch")" || { echo 'merge status unknown (gh failed)'; return; }
+  [ -n "$merged_head" ] && [ "$merged_head" = "$head" ] || echo "HEAD is not a merged PR's head"
 }
 
 reclaim_merged_slot() {
@@ -264,14 +266,23 @@ reclaim_merged_slot() {
   local common_dir="$2"
   local slot
   local owner
+  local branch
+  local blocker
 
+  RECLAIM_HOLDERS=""
   for slot in $(seq 1 "$MAX_WORKTREE_SLOTS"); do
     owner=""
     [ ! -f "${common_dir}/${LOCKS_NAME}/slot-${slot}/path" ] || owner="$(<"${common_dir}/${LOCKS_NAME}/slot-${slot}/path")"
     [ -n "$owner" ] && [ "$owner" != "$requester" ] || continue
-    reclaimable_worktree "$owner" || continue
+    blocker="$(reclaim_blocker "$owner")"
+    if [ -n "$blocker" ]; then
+      branch="$(git -C "$owner" symbolic-ref --quiet --short HEAD 2>/dev/null)" || branch="no branch"
+      RECLAIM_HOLDERS+="  slot ${slot}: ${owner} (${branch}): ${blocker}"$'\n'
+      continue
+    fi
     echo "worktree: reclaiming slot ${slot} from ${owner}: its PR is merged, it is clean, and nothing has run in it for ${RECLAIM_IDLE_MINUTES} minutes" >&2
     remove_impl "$owner" false >&2 && return 0
+    RECLAIM_HOLDERS+="  slot ${slot}: ${owner}: reclaim failed while removing it"$'\n'
   done
   return 1
 }
@@ -310,7 +321,8 @@ allocate_slot_for() {
     try_allocate_slot "$worktree" "$branch" "$common_dir" || status=$?
   fi
   [ "$status" -ne 10 ] || {
-    fail "no free worktree slots; the maximum is ${MAX_WORKTREE_SLOTS}, and none holds a merged PR left idle for ${RECLAIM_IDLE_MINUTES} minutes. Free one with scripts/worktree remove <path>, or reclaim abandoned slots with scripts/worktree prune"
+    fail "no free worktree slots; the maximum is ${MAX_WORKTREE_SLOTS}, and none can be reclaimed:
+${RECLAIM_HOLDERS}Free one with scripts/worktree remove <path>, or reclaim abandoned slots with scripts/worktree prune"
     return 1
   }
   return "$status"
