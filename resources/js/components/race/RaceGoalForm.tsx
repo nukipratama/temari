@@ -1,10 +1,11 @@
 import { router } from '@inertiajs/react';
-import { CircleAlert } from 'lucide-react';
+import { CircleAlert, RefreshCw } from 'lucide-react';
 import { type FormEvent, useState } from 'react';
 
 import type { RaceProjection } from '@/types/inertia';
 
 import DemoBlockedModal from '@/components/DemoBlockedModal';
+import TemariNudgeModal from '@/components/temari/TemariNudgeModal';
 import DateField from '@/components/ui/DateField';
 import DurationFields, {
     durationFromSec,
@@ -81,6 +82,7 @@ export default function RaceGoalForm({
     const [name, setName] = useState(race?.name ?? '');
     const [processing, setProcessing] = useState(false);
     const [intent, setIntent] = useState<RaceIntent>('update');
+    const [confirming, setConfirming] = useState(false);
     const today = useTodayIso();
     const errors = useSharedProps().errors ?? {};
     const {
@@ -125,26 +127,36 @@ export default function RaceGoalForm({
         impossiblePaceWarning(distanceKm, goalTimeSec) ??
         ambitiousGoalWarning(distanceKm, goalTimeSec, projectionForWarning);
 
+    // Mirrors RaceController::store, which rebuilds the plan only for a new
+    // race or a changed date or goal time.
+    const rebuildsPlan =
+        !updating ||
+        raceDate !== race?.race_date ||
+        goalTimeSec !== race.goal_time_sec;
+
+    const save = () => {
+        setConfirming(false);
+        router.post(
+            '/race',
+            {
+                race_date: raceDate,
+                distance_m: Math.round(distanceKm * 1_000),
+                goal_time_sec: goalTimeSec,
+                name: name.trim() === '' ? null : name.trim(),
+                ...(hasRace ? { intent } : {}),
+            },
+            {
+                preserveScroll: true,
+                onStart: () => setProcessing(true),
+                onSuccess: onSaved,
+                onFinish: () => setProcessing(false),
+            },
+        );
+    };
+
     const submit = (event: FormEvent) => {
         event.preventDefault();
-        guard(() =>
-            router.post(
-                '/race',
-                {
-                    race_date: raceDate,
-                    distance_m: Math.round(distanceKm * 1_000),
-                    goal_time_sec: goalTimeSec,
-                    name: name.trim() === '' ? null : name.trim(),
-                    ...(hasRace ? { intent } : {}),
-                },
-                {
-                    preserveScroll: true,
-                    onStart: () => setProcessing(true),
-                    onSuccess: onSaved,
-                    onFinish: () => setProcessing(false),
-                },
-            ),
-        );
+        guard(() => (rebuildsPlan ? setConfirming(true) : save()));
     };
 
     return (
@@ -304,6 +316,15 @@ export default function RaceGoalForm({
                           : 'set race'}
                 </PillButton>
             </form>
+            <TemariNudgeModal
+                open={confirming}
+                onClose={() => setConfirming(false)}
+                title="save and replan?"
+                body="i'll rebuild your upcoming sessions around this race. sessions you've moved, skipped or already run stay put."
+                primaryLabel="save and replan"
+                primaryIcon={RefreshCw}
+                onPrimary={save}
+            />
             <DemoBlockedModal
                 open={demoBlocked}
                 onClose={() => setDemoBlocked(false)}

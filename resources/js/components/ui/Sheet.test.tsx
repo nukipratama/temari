@@ -53,6 +53,46 @@ describe('Sheet', () => {
         );
     });
 
+    it('stays a bottom sheet with its grip unless asked to center from md', () => {
+        render(<Harness />);
+
+        expect(screen.getByRole('dialog')).not.toHaveClass('md:inset-0');
+        expect(screen.getByTestId('sheet-grip')).not.toHaveClass('md:hidden');
+    });
+
+    it('centers from md without a grip, with its lead above the title', () => {
+        render(
+            <Sheet
+                open
+                onOpenChange={vi.fn()}
+                title="sure?"
+                lead={<span>lead</span>}
+                centeredFromMd
+                className="text-center"
+            >
+                <p>sheet body</p>
+            </Sheet>,
+        );
+        const dialog = screen.getByRole('dialog', { name: 'sure?' });
+
+        expect(dialog).toHaveClass(
+            'bottom-0',
+            'md:inset-0',
+            'md:m-auto',
+            'md:max-w-sm',
+            'md:motion-safe:transition-[translate,scale,opacity]',
+            'md:data-[starting-style]:opacity-0',
+            'text-center',
+        );
+        expect(screen.getByTestId('sheet-grip')).toHaveClass('md:hidden');
+        expect(
+            screen
+                .getByText('lead')
+                .compareDocumentPosition(screen.getByText('sure?')) &
+                Node.DOCUMENT_POSITION_FOLLOWING,
+        ).toBeTruthy();
+    });
+
     it('stays out of the document when closed', () => {
         render(
             <Sheet open={false} onOpenChange={vi.fn()} title="something off?">

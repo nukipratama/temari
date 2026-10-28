@@ -1,8 +1,9 @@
 import { router } from '@inertiajs/react';
-import { Watch } from 'lucide-react';
+import { Unlink, Watch } from 'lucide-react';
 import { Suspense, useState } from 'react';
 
 import DemoBlockedModal from '@/components/DemoBlockedModal';
+import TemariNudgeModal from '@/components/temari/TemariNudgeModal';
 import SettingsDisconnectLink from '@/components/ui/SettingsDisconnectLink';
 import SettingsRow from '@/components/ui/SettingsRow';
 import { useDemoGuard } from '@/hooks/useDemoGuard';
@@ -37,6 +38,7 @@ export default function IntervalsIcuPanel({
     intervalsIcu,
 }: Readonly<{ intervalsIcu: IntervalsIcuPayload }>) {
     const [open, setOpen] = useState(false);
+    const [confirmingDisconnect, setConfirmingDisconnect] = useState(false);
     const { open: demoOpen, setOpen: setDemoOpen, guard } = useDemoGuard();
     const healthy = intervalsIcu.connected && !intervalsIcu.broken;
 
@@ -63,15 +65,28 @@ export default function IntervalsIcuPanel({
                 <div className="-mt-1 pl-11">
                     <SettingsDisconnectLink
                         onClick={() =>
-                            guard(() =>
-                                router.delete('/settings/intervals-icu', {
-                                    preserveScroll: true,
-                                }),
-                            )
+                            guard(() => setConfirmingDisconnect(true))
                         }
                     />
                 </div>
             )}
+
+            <TemariNudgeModal
+                open={confirmingDisconnect}
+                onClose={() => setConfirmingDisconnect(false)}
+                pose="concerned"
+                title="disconnect intervals.icu?"
+                body="your planned runs stop going to your watch. connecting again takes your API key."
+                primaryLabel="disconnect"
+                primaryIcon={Unlink}
+                primaryTone="danger"
+                onPrimary={() => {
+                    setConfirmingDisconnect(false);
+                    router.delete('/settings/intervals-icu', {
+                        preserveScroll: true,
+                    });
+                }}
+            />
 
             {!healthy && open && (
                 <Suspense fallback={null}>

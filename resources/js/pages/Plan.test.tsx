@@ -385,9 +385,10 @@ describe('Plan', () => {
         expect(scrollIntoView).not.toHaveBeenCalled();
     });
 
-    it('regenerates the plan', () => {
+    it('regenerates the plan once the replan is confirmed', async () => {
         renderPlan();
         fireEvent.click(screen.getByRole('button', { name: /regenerate/i }));
+        fireEvent.click(await screen.findByRole('button', { name: 'replan' }));
 
         expect(router.post).toHaveBeenCalledWith(
             '/plan/regenerate',

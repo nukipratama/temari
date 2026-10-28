@@ -110,12 +110,39 @@ describe('TemariNudgeDialog', () => {
         expect(onPrimary).toHaveBeenCalledOnce();
     });
 
-    it('calls onClose from both the dismiss CTA and the top-left close button', () => {
+    it('calls onClose from the dismiss CTA', () => {
         const onClose = vi.fn();
         render(<TemariNudgeDialog open onClose={onClose} {...baseProps} />);
         fireEvent.click(screen.getByRole('button', { name: 'not now' }));
-        fireEvent.click(screen.getByLabelText('Close'));
-        expect(onClose).toHaveBeenCalledTimes(2);
+        expect(onClose).toHaveBeenCalledOnce();
+    });
+
+    it('is a bottom sheet with a grip that turns into a centered card from md', () => {
+        render(<TemariNudgeDialog open onClose={vi.fn()} {...baseProps} />);
+        const dialog = screen.getByRole('dialog', { name: 'Nudge title' });
+
+        expect(dialog).toHaveClass('bottom-0', 'md:inset-0', 'md:m-auto');
+        expect(screen.getByTestId('sheet-grip')).toHaveClass('md:hidden');
+    });
+
+    it('stacks a red danger CTA above the dismiss, both full width', () => {
+        render(
+            <TemariNudgeDialog
+                open
+                onClose={vi.fn()}
+                {...baseProps}
+                primaryTone="danger"
+            />,
+        );
+        const primary = screen.getByRole('button', { name: 'Do it' });
+        const dismiss = screen.getByRole('button', { name: 'not now' });
+
+        expect(primary).toHaveClass('w-full', 'bg-ember-deep');
+        expect(dismiss).toHaveClass('w-full');
+        expect(
+            primary.compareDocumentPosition(dismiss) &
+                Node.DOCUMENT_POSITION_FOLLOWING,
+        ).toBeTruthy();
     });
 
     it('closes on Back without leaving the page', async () => {

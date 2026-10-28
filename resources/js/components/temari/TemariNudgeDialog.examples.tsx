@@ -31,7 +31,7 @@ function Demo() {
 export default {
     name: 'TemariNudgeDialog',
     description:
-        "TemariNudgeModal's dialog itself, loaded on its first open. Mount TemariNudgeModal, not this.",
+        "TemariNudgeModal's dialog itself, loaded on its first open: a bottom sheet below md, centered from md up. Mount TemariNudgeModal, not this.",
     usage: `<TemariNudgeModal … />`,
     states: [
         {

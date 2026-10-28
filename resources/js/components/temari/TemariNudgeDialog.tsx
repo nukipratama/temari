@@ -5,9 +5,8 @@ import TemariMascot, {
     type MascotPose,
 } from '@/components/temari/TemariMascot';
 import { Icon, IconComponent } from '@/components/ui/Icon';
-import Overlay, { OverlayTitle } from '@/components/ui/Overlay';
 import PillButton, { type PillTone } from '@/components/ui/PillButton';
-import { iconButtonVariants } from '@/lib/variants';
+import Sheet from '@/components/ui/Sheet';
 
 export interface TemariNudgeModalProps {
     open: boolean;
@@ -27,7 +26,11 @@ export interface TemariNudgeModalProps {
     pose?: MascotPose;
 }
 
-/** The dialog {@link TemariNudgeModal} loads on its first open, on the shared {@link Overlay}. */
+/**
+ * The confirm {@link TemariNudgeModal} loads on its first open: a bottom
+ * {@link Sheet} on phones with the primary action in thumb reach, and a
+ * centered card from `md` up.
+ */
 export default function TemariNudgeDialog({
     open,
     onClose,
@@ -41,42 +44,24 @@ export default function TemariNudgeDialog({
     pose = 'neutral',
 }: Readonly<TemariNudgeModalProps>) {
     return (
-        <Overlay
+        <Sheet
             open={open}
             onOpenChange={(next) => {
                 if (!next) onClose();
             }}
-            backdropProps={{
-                className: 'backdrop-reveal fixed inset-0 z-[51]',
-                style: {
-                    background: 'var(--scrim)',
-                    backdropFilter: 'blur(6px)',
-                },
-            }}
-            className="panel-reveal fixed inset-0 z-[51] m-auto flex h-fit max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-sm flex-col overflow-y-auto rounded-xl bg-card shadow-e4"
+            title={title}
+            lead={
+                <div className="mb-3 flex justify-center">
+                    <TemariMascot pose={pose} size={72} drawIn />
+                </div>
+            }
+            centeredFromMd
+            className="text-center"
         >
-            <div className="flex justify-start px-3 pt-3">
-                <button
-                    type="button"
-                    onClick={onClose}
-                    aria-label="Close"
-                    className={iconButtonVariants({ size: 'sm' })}
-                >
-                    <Icon icon={X} width={16} height={16} />
-                </button>
-            </div>
-
-            <div className="flex flex-col items-center gap-4 px-6 pb-6 pt-1 text-center">
-                <TemariMascot pose={pose} size={72} drawIn />
-                <OverlayTitle className="font-serif text-2xl tracking-tight text-foreground">
-                    {title}
-                </OverlayTitle>
-                <p className="font-sans text-sm leading-relaxed text-text-2">
-                    {body}
-                </p>
-            </div>
-
-            <div className="flex flex-col gap-2 border-t border-border bg-card px-5 py-4">
+            <p className="mt-2 font-sans text-sm leading-relaxed text-text-2">
+                {body}
+            </p>
+            <div className="mt-5 flex flex-col gap-2">
                 <PillButton
                     tone={primaryTone}
                     onClick={onPrimary}
@@ -99,6 +84,6 @@ export default function TemariNudgeDialog({
                     {secondaryLabel}
                 </PillButton>
             </div>
-        </Overlay>
+        </Sheet>
     );
 }
