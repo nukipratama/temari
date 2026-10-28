@@ -20,9 +20,11 @@ import EmptyPanel from '@/components/ui/EmptyPanel';
 import { Icon } from '@/components/ui/Icon';
 import LaneStack from '@/components/ui/LaneStack';
 import PageContainer from '@/components/ui/PageContainer';
+import { showToast } from '@/hooks/useToast';
 import { appLayout } from '@/layouts/appLayout';
 import { readPlanSelectedDay } from '@/lib/navigationMemory';
 import { useTodayIso } from '@/lib/pace';
+import { planEditLanded, weekdayLabel } from '@/lib/plan';
 
 interface SeasonSummary {
     starts_at: string;
@@ -118,7 +120,14 @@ export default function Plan({
         router.patch(
             `/plan/sessions/${day.id}`,
             { date: toDate },
-            { preserveScroll: true },
+            {
+                preserveScroll: true,
+                onSuccess: (page) => {
+                    if (planEditLanded(page)) {
+                        showToast(`moved to ${weekdayLabel(toDate)}`);
+                    }
+                },
+            },
         );
     };
 
@@ -126,7 +135,14 @@ export default function Plan({
         router.patch(
             `/plan/sessions/${day.id}`,
             { skipped: true },
-            { preserveScroll: true },
+            {
+                preserveScroll: true,
+                onSuccess: (page) => {
+                    if (planEditLanded(page)) {
+                        showToast('skipped');
+                    }
+                },
+            },
         );
     };
 
@@ -134,7 +150,14 @@ export default function Plan({
         router.patch(
             `/plan/sessions/${day.id}`,
             { skipped: false, pinned: false },
-            { preserveScroll: true },
+            {
+                preserveScroll: true,
+                onSuccess: (page) => {
+                    if (planEditLanded(page)) {
+                        showToast('restored');
+                    }
+                },
+            },
         );
     };
 

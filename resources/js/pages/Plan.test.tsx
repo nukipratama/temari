@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { EditablePlanDay, SeasonSummaryWeek } from '@/lib/plan';
 
+import { showToast } from '@/hooks/useToast';
 import {
     clearNavigationMemory,
     rememberPlanSelectedDay,
@@ -14,6 +15,19 @@ import { defined } from '@/test/defined';
 import { setMockDeferred, setMockPage } from '@/test/setup';
 
 import Plan from './Plan';
+
+vi.mock('@/hooks/useToast', () => ({ showToast: vi.fn() }));
+
+function settlePatch(
+    outcome: 'onSuccess' | 'onError',
+    info: string | null = null,
+) {
+    vi.mocked(router.patch).mockImplementationOnce((_url, _data, options) => {
+        options?.[outcome]?.({
+            props: { flash: { success: null, error: null, info } },
+        } as never);
+    });
+}
 
 const raceCardRenders = vi.hoisted(() => vi.fn());
 vi.mock('@/components/plan/PlanRaceCard', async (importOriginal) => {
@@ -385,9 +399,10 @@ describe('Plan', () => {
         expect(scrollIntoView).not.toHaveBeenCalled();
     });
 
-    it('regenerates the plan', () => {
+    it('regenerates the plan once the replan is confirmed', async () => {
         renderPlan();
         fireEvent.click(screen.getByRole('button', { name: /regenerate/i }));
+        fireEvent.click(await screen.findByRole('button', { name: 'replan' }));
 
         expect(router.post).toHaveBeenCalledWith(
             '/plan/regenerate',
@@ -458,7 +473,7 @@ describe('Plan', () => {
         expect(router.patch).toHaveBeenCalledWith(
             '/plan/sessions/1',
             { skipped: false, pinned: false },
-            { preserveScroll: true },
+            expect.objectContaining({ preserveScroll: true }),
         );
     });
 
@@ -471,6 +486,113 @@ describe('Plan', () => {
             '/plan/sessions/1',
             { date: '2026-06-19' },
             expect.objectContaining({ preserveScroll: true }),
+        );
+    });
+
+    describe('toasts', () => {
+        const skippedWeek = () => ({
+            weeks: [
+                {
+                    ...defined(BASE_PROPS.weeks![0]),
+                    days: [
+                        day({
+                            skipped: true,
+                            actions: {
+                                move: false,
+                                skip: false,
+                                restore: true,
+                            },
+                        }),
+                    ],
+                },
+            ],
+        });
+
+        beforeEach(() => {
+            vi.mocked(showToast).mockClear();
+        });
+
+        it('names the weekday a session moved to once the move lands', () => {
+            settlePatch('onSuccess');
+            renderPlan();
+            fireEvent.click(screen.getByRole('button', { name: /^move$/i }));
+            fireEvent.click(screen.getByRole('button', { name: 'Fri' }));
+
+            expect(showToast).toHaveBeenCalledExactlyOnceWith('moved to Fri');
+        });
+
+        it('says skipped once the skip lands', () => {
+            settlePatch('onSuccess');
+            renderPlan();
+            fireEvent.click(screen.getByRole('button', { name: /^skip$/i }));
+
+            expect(showToast).toHaveBeenCalledExactlyOnceWith('skipped');
+        });
+
+        it('says restored once the restore lands', () => {
+            settlePatch('onSuccess');
+            renderPlan(skippedWeek());
+            fireEvent.click(screen.getByRole('button', { name: 'restore' }));
+
+            expect(showToast).toHaveBeenCalledExactlyOnceWith('restored');
+        });
+
+        const actions: [string, () => void][] = [
+            [
+                'move',
+                () => {
+                    renderPlan();
+                    fireEvent.click(
+                        screen.getByRole('button', { name: /^move$/i }),
+                    );
+                    fireEvent.click(
+                        screen.getByRole('button', { name: 'Fri' }),
+                    );
+                },
+            ],
+            [
+                'skip',
+                () => {
+                    renderPlan();
+                    fireEvent.click(
+                        screen.getByRole('button', { name: /^skip$/i }),
+                    );
+                },
+            ],
+            [
+                'restore',
+                () => {
+                    renderPlan(skippedWeek());
+                    fireEvent.click(
+                        screen.getByRole('button', { name: 'restore' }),
+                    );
+                },
+            ],
+        ];
+
+        it.each(actions)(
+            'shows no toast when the %s is refused',
+            (_action, perform) => {
+                settlePatch('onError');
+                perform();
+
+                expect(router.patch).toHaveBeenCalled();
+                expect(showToast).not.toHaveBeenCalled();
+            },
+        );
+
+        it.each(actions)(
+            'shows no toast when the %s comes back as a flashed refusal',
+            (_action, perform) => {
+                settlePatch(
+                    'onSuccess',
+                    'The plan is updating right now. Reload and try your edit again.',
+                );
+                perform();
+
+                expect(router.patch).toHaveBeenCalled();
+                expect(showToast).not.toHaveBeenCalled();
+            },
         );
     });
 

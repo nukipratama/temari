@@ -198,7 +198,7 @@ it('opens and closes the demo-blocked modal for a demo user', async () => {
     fireEvent.click(await screen.findByRole('button', { name: /turn on/ }));
     expect(await screen.findByRole('dialog')).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: /close/i }));
+    fireEvent.click(screen.getByRole('button', { name: 'not now' }));
     await waitFor(() =>
         expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
     );

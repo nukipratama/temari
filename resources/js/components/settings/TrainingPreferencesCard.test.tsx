@@ -24,6 +24,13 @@ const SET_PAYLOAD: TrainingPreferencesPayload = {
     long_run_day: 6,
 };
 
+async function saveAndConfirm() {
+    fireEvent.click(screen.getByRole('button', { name: /save changes/ }));
+    fireEvent.click(
+        await screen.findByRole('button', { name: 'save and replan' }),
+    );
+}
+
 describe('TrainingPreferencesCard', () => {
     // The prototype draws this as an always-open card, not a disclosure: every
     // control is reachable without a trigger click.
@@ -88,7 +95,7 @@ describe('TrainingPreferencesCard', () => {
         ).toBeInTheDocument();
     });
 
-    it('keeps the long-run day when a different run day is swapped out', () => {
+    it('keeps the long-run day when a different run day is swapped out', async () => {
         vi.mocked(router.patch).mockReset();
         render(<TrainingPreferencesCard trainingPreferences={SET_PAYLOAD} />);
 
@@ -100,8 +107,9 @@ describe('TrainingPreferencesCard', () => {
         fireEvent.click(
             defined(screen.getAllByRole('button', { name: 'Wed' })[0]),
         );
-        fireEvent.click(screen.getByRole('button', { name: /save changes/ }));
+        await saveAndConfirm();
 
+        expect(router.patch).toHaveBeenCalledOnce();
         expect(router.patch).toHaveBeenCalledWith(
             '/settings/training-preferences',
             expect.objectContaining({ long_run_day: 6 }),
@@ -151,12 +159,28 @@ describe('TrainingPreferencesCard', () => {
         expect(screen.getByText(/0 of 3 selected/)).toBeInTheDocument();
     });
 
-    it('patches the full preference payload on save', () => {
+    it('asks before a save that rebuilds the plan, and cancel sends nothing', async () => {
         vi.mocked(router.patch).mockReset();
         render(<TrainingPreferencesCard trainingPreferences={SET_PAYLOAD} />);
 
         fireEvent.click(screen.getByRole('button', { name: 'build a base' }));
         fireEvent.click(screen.getByRole('button', { name: /save changes/ }));
+
+        expect(
+            await screen.findByRole('dialog', { name: 'save and replan?' }),
+        ).toBeInTheDocument();
+        expect(router.patch).not.toHaveBeenCalled();
+
+        fireEvent.click(screen.getByRole('button', { name: 'not now' }));
+        expect(router.patch).not.toHaveBeenCalled();
+    });
+
+    it('patches the full preference payload once on confirm', async () => {
+        vi.mocked(router.patch).mockReset();
+        render(<TrainingPreferencesCard trainingPreferences={SET_PAYLOAD} />);
+
+        fireEvent.click(screen.getByRole('button', { name: 'build a base' }));
+        await saveAndConfirm();
 
         expect(router.patch).toHaveBeenCalledWith(
             '/settings/training-preferences',
@@ -171,12 +195,12 @@ describe('TrainingPreferencesCard', () => {
         );
     });
 
-    it('flashes Saved once the patch succeeds', () => {
+    it('flashes Saved once the patch succeeds', async () => {
         vi.mocked(router.patch).mockReset();
         render(<TrainingPreferencesCard trainingPreferences={SET_PAYLOAD} />);
 
         fireEvent.click(screen.getByRole('button', { name: 'build a base' }));
-        fireEvent.click(screen.getByRole('button', { name: /save changes/ }));
+        await saveAndConfirm();
         expect(screen.queryByRole('status')).not.toBeInTheDocument();
 
         const [, , options] = vi.mocked(router.patch).mock.calls[0] as [
@@ -197,7 +221,7 @@ describe('TrainingPreferencesCard', () => {
         expect(screen.getByRole('status')).toHaveTextContent('saved');
     });
 
-    it('sends null run_days when every day has been cleared', () => {
+    it('sends null run_days when every day has been cleared', async () => {
         vi.mocked(router.patch).mockReset();
         render(
             <TrainingPreferencesCard
@@ -212,7 +236,7 @@ describe('TrainingPreferencesCard', () => {
         fireEvent.click(
             defined(screen.getAllByRole('button', { name: 'Mon' })[0]),
         );
-        fireEvent.click(screen.getByRole('button', { name: /save changes/ }));
+        await saveAndConfirm();
 
         expect(router.patch).toHaveBeenCalledWith(
             '/settings/training-preferences',

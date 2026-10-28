@@ -72,7 +72,7 @@ class TimeTrialNotification extends Notification implements ShouldQueue
             ->title($this->title())
             ->body($this->body())
             ->icon('/icon-192.png')
-            ->data($this->withUnreadBadge(['url' => route('dashboard')], $notifiable->id))
+            ->data($this->withUnreadBadge(['url' => route('dashboard')], $notifiable))
             ->options(['TTL' => 3 * 86400]);
     }
 

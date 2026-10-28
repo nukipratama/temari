@@ -1,11 +1,11 @@
 /**
  * The PWA app-icon badge, which counts the in-app inbox's unread rows — the
- * same number the bell shows.
+ * same number the bell shows. The server's count is the only source: this
+ * module applies the `unreadNotifications` shared prop on every Inertia visit,
+ * and the service worker applies the count a push carries ({@see public/sw.js}).
  *
- * {@see syncAppBadge} is called with the `unreadNotifications` shared prop on
- * every Inertia visit. {@see syncAppBadgeOnVisible} re-applies the last count
- * when the app comes back into view, for the iOS case where a swiped-away
- * notification leaves the service worker's own count stale ({@see public/sw.js}).
+ * {@see syncAppBadgeOnVisible} refetches that prop when the app comes back into
+ * view, so reads made elsewhere while it was backgrounded show up.
  *
  * Fire-and-forget, matching {@see registerServiceWorker}: any absent API or
  * rejected promise degrades silently.
@@ -15,7 +15,7 @@ type BadgeNavigator = Navigator & {
     clearAppBadge?: () => Promise<void>;
 };
 
-let lastKnownUnread = 0;
+let signedIn = false;
 
 function apply(count: number): void {
     if (typeof navigator === 'undefined' || !('setAppBadge' in navigator)) {
@@ -31,26 +31,19 @@ function apply(count: number): void {
     void applied?.catch(() => undefined);
 }
 
-export function syncAppBadge(unread: number): void {
-    lastKnownUnread = unread;
-    apply(unread);
-}
-
-export function syncAppBadgeOnVisible(): void {
-    const sync = (): void => {
-        if (document.visibilityState !== 'visible') {
-            return;
-        }
-
-        apply(lastKnownUnread);
-    };
-
-    document.addEventListener('visibilitychange', sync);
-    globalThis.addEventListener('focus', sync);
-}
-
-/** Reads the `unreadNotifications` shared prop off an Inertia page, defaulting to 0 when absent or malformed. */
-export function unreadCountFromProps(props: Record<string, unknown>): number {
+/** Applies an Inertia page's unread count; a guest page clears the badge. */
+export function syncAppBadge(props: Record<string, unknown>): void {
+    const auth = props.auth as { user?: unknown } | undefined;
     const unread = props.unreadNotifications;
-    return typeof unread === 'number' ? unread : 0;
+
+    signedIn = auth?.user != null;
+    apply(signedIn && typeof unread === 'number' ? unread : 0);
+}
+
+export function syncAppBadgeOnVisible(refresh: () => void): void {
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible' && signedIn) {
+            refresh();
+        }
+    });
 }

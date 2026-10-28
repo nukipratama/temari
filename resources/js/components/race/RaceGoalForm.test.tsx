@@ -1,6 +1,6 @@
 import { router } from '@inertiajs/react';
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { RACE_DEMO_BLOCKED } from '@/lib/raceGoal';
 import { makeUser, setMockPage } from '@/test/setup';
@@ -26,6 +26,17 @@ const PROJECTION = {
 function lastPostCall() {
     return vi.mocked(router.post).mock.calls.at(-1);
 }
+
+async function submitAndConfirm(label: string) {
+    fireEvent.click(screen.getByRole('button', { name: label }));
+    fireEvent.click(
+        await screen.findByRole('button', { name: 'save and replan' }),
+    );
+}
+
+beforeEach(() => {
+    vi.mocked(router.post).mockClear();
+});
 
 describe('RaceGoalForm', () => {
     it('labels itself for creating a race when there is none', () => {
@@ -85,7 +96,7 @@ describe('RaceGoalForm', () => {
         expect(minutes.value).toBe('0');
     });
 
-    it('submits the form with distance in meters and goal time in seconds', () => {
+    it('submits the form with distance in meters and goal time in seconds', async () => {
         render(
             <RaceGoalForm
                 hasRace={false}
@@ -112,7 +123,7 @@ describe('RaceGoalForm', () => {
             target: { value: 'Christmas 5K' },
         });
 
-        fireEvent.click(screen.getByRole('button', { name: 'set race' }));
+        await submitAndConfirm('set race');
 
         const call = lastPostCall();
         expect(call?.[0]).toBe('/race');
@@ -124,7 +135,7 @@ describe('RaceGoalForm', () => {
         });
     });
 
-    it('accepts a custom distance typed directly, not just a preset pill', () => {
+    it('accepts a custom distance typed directly, not just a preset pill', async () => {
         render(
             <RaceGoalForm
                 hasRace={false}
@@ -143,9 +154,73 @@ describe('RaceGoalForm', () => {
             screen.getByLabelText('Custom distance in kilometers'),
             { target: { value: '15' } },
         );
-        fireEvent.click(screen.getByRole('button', { name: 'set race' }));
+        await submitAndConfirm('set race');
 
         expect(lastPostCall()?.[1]).toMatchObject({ distance_m: 15_000 });
+    });
+
+    it('asks before a save that rebuilds the plan, and cancel sends nothing', async () => {
+        render(
+            <RaceGoalForm
+                hasRace={false}
+                race={null}
+                projection={null}
+                onSaved={() => {}}
+            />,
+        );
+
+        fireEvent.change(screen.getByLabelText('Race day'), {
+            target: { value: '2026-12-25' },
+        });
+        fireEvent.click(screen.getByRole('button', { name: 'set race' }));
+
+        expect(
+            await screen.findByRole('dialog', { name: 'save and replan?' }),
+        ).toBeInTheDocument();
+        expect(router.post).not.toHaveBeenCalled();
+
+        fireEvent.click(screen.getByRole('button', { name: 'not now' }));
+        expect(router.post).not.toHaveBeenCalled();
+    });
+
+    it('posts once when the replan is confirmed', async () => {
+        render(
+            <RaceGoalForm
+                hasRace={false}
+                race={null}
+                projection={null}
+                onSaved={() => {}}
+            />,
+        );
+
+        fireEvent.change(screen.getByLabelText('Race day'), {
+            target: { value: '2026-12-25' },
+        });
+        await submitAndConfirm('set race');
+
+        expect(router.post).toHaveBeenCalledOnce();
+    });
+
+    it('saves a change that keeps the date and goal time without asking', () => {
+        render(
+            <RaceGoalForm
+                hasRace
+                race={RACE}
+                projection={null}
+                onSaved={() => {}}
+            />,
+        );
+
+        fireEvent.change(screen.getByLabelText('Name (optional)'), {
+            target: { value: 'Jakarta Night 10K' },
+        });
+        fireEvent.click(screen.getByRole('button', { name: 'update race' }));
+
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+        expect(router.post).toHaveBeenCalledOnce();
+        expect(lastPostCall()?.[1]).toMatchObject({
+            name: 'Jakarta Night 10K',
+        });
     });
 
     it('reports a successful save to its owner', () => {
@@ -166,7 +241,7 @@ describe('RaceGoalForm', () => {
         expect(onSaved).toHaveBeenCalledOnce();
     });
 
-    it('sends a null name when left blank', () => {
+    it('sends a null name when left blank', async () => {
         render(
             <RaceGoalForm
                 hasRace={false}
@@ -179,12 +254,12 @@ describe('RaceGoalForm', () => {
         fireEvent.change(screen.getByLabelText('Race day'), {
             target: { value: '2026-12-25' },
         });
-        fireEvent.click(screen.getByRole('button', { name: 'set race' }));
+        await submitAndConfirm('set race');
 
         expect(lastPostCall()?.[1]).toMatchObject({ name: null });
     });
 
-    it('shows a saving state between the router request starting and finishing', () => {
+    it('shows a saving state between the router request starting and finishing', async () => {
         render(
             <RaceGoalForm
                 hasRace={false}
@@ -197,7 +272,7 @@ describe('RaceGoalForm', () => {
         fireEvent.change(screen.getByLabelText('Race day'), {
             target: { value: '2026-12-25' },
         });
-        fireEvent.click(screen.getByRole('button', { name: 'set race' }));
+        await submitAndConfirm('set race');
 
         const options = lastPostCall()?.[2] as {
             onStart: () => void;
@@ -366,7 +441,7 @@ describe('RaceGoalForm', () => {
         ).not.toBeInTheDocument();
     });
 
-    it('defaults to updating the current race with its distance held', () => {
+    it('defaults to updating the current race with its distance held', async () => {
         render(
             <RaceGoalForm
                 hasRace
@@ -390,7 +465,7 @@ describe('RaceGoalForm', () => {
         fireEvent.change(screen.getByLabelText('Minutes'), {
             target: { value: '48' },
         });
-        fireEvent.click(screen.getByRole('button', { name: 'update race' }));
+        await submitAndConfirm('update race');
 
         expect(lastPostCall()?.[1]).toEqual({
             race_date: '2026-12-06',
@@ -401,7 +476,7 @@ describe('RaceGoalForm', () => {
         });
     });
 
-    it('starts a blank new race on "add a new race" and posts that intent', () => {
+    it('starts a blank new race on "add a new race" and posts that intent', async () => {
         render(
             <RaceGoalForm
                 hasRace
@@ -426,7 +501,7 @@ describe('RaceGoalForm', () => {
             target: { value: '2027-03-14' },
         });
         fireEvent.click(screen.getByRole('button', { name: '5K' }));
-        fireEvent.click(screen.getByRole('button', { name: 'add race' }));
+        await submitAndConfirm('add race');
 
         expect(lastPostCall()?.[1]).toMatchObject({
             race_date: '2027-03-14',
@@ -589,7 +664,6 @@ describe('RaceGoalForm', () => {
 
     it('shows a demo visitor the race demo-blocked modal instead of saving', async () => {
         setMockPage({ auth: { user: makeUser({ is_demo: true }) } });
-        vi.mocked(router.post).mockClear();
         render(
             <RaceGoalForm
                 hasRace

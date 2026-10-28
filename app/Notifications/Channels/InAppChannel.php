@@ -34,6 +34,11 @@ class InAppChannel
             return;
         }
 
-        InboxNotification::record($notifiable, $message, $message->dedupeKey ?? (string) $notification->id);
+        InboxNotification::record($notifiable, $message, self::dedupeKey($notification, $message));
+    }
+
+    public static function dedupeKey(Notification $notification, InboxMessage $message): string
+    {
+        return $message->dedupeKey ?? (string) $notification->id;
     }
 }
