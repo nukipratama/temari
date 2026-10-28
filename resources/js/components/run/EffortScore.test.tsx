@@ -2,10 +2,13 @@ import { router } from '@inertiajs/react';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { showToast } from '@/hooks/useToast';
 import { defined } from '@/test/defined';
 import { setMockPage } from '@/test/setup';
 
 import { EffortChip, EffortPicker } from './EffortScore';
+
+vi.mock('@/hooks/useToast', () => ({ showToast: vi.fn() }));
 
 function renderPicker(saved: number | null = null, onClose = vi.fn()) {
     return render(
@@ -30,6 +33,7 @@ describe('EffortPicker', () => {
     beforeEach(() => {
         vi.mocked(router.patch).mockReset();
         vi.mocked(router.delete).mockReset();
+        vi.mocked(showToast).mockClear();
     });
 
     it('sits on the stat-tile ground on light and the sky panel on dark', () => {
@@ -162,6 +166,32 @@ describe('EffortPicker', () => {
 
         fireEvent.click(screen.getByRole('button', { name: 'cancel' }));
         expect(onClose).toHaveBeenCalledOnce();
+    });
+
+    it('closes and says so once a clear lands', () => {
+        vi.mocked(router.delete).mockImplementationOnce((_url, options) => {
+            options?.onSuccess?.({} as never);
+        });
+        const onClose = vi.fn();
+        renderPicker(3, onClose);
+
+        fireEvent.click(screen.getByRole('button', { name: 'clear' }));
+
+        expect(onClose).toHaveBeenCalledOnce();
+        expect(showToast).toHaveBeenCalledExactlyOnceWith('effort cleared');
+    });
+
+    it('shows no toast and stays open when a clear is refused', () => {
+        vi.mocked(router.delete).mockImplementationOnce((_url, options) => {
+            options?.onError?.({} as never);
+        });
+        const onClose = vi.fn();
+        renderPicker(3, onClose);
+
+        fireEvent.click(screen.getByRole('button', { name: 'clear' }));
+
+        expect(onClose).not.toHaveBeenCalled();
+        expect(showToast).not.toHaveBeenCalled();
     });
 
     it('offers no clear on a run that has no score yet', () => {

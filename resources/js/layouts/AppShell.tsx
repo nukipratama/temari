@@ -18,6 +18,7 @@ import RaceSkeleton from '@/components/race/RaceSkeleton';
 import StravaPausedBanner from '@/components/StravaPausedBanner';
 import StravaZoneReconnectBanner from '@/components/StravaZoneReconnectBanner';
 import TrendsSkeleton from '@/components/trends/TrendsSkeleton';
+import Toaster from '@/components/ui/Toast';
 import { useSystemTheme } from '@/hooks/useSystemTheme';
 import useTabSkeleton from '@/hooks/useTabSkeleton';
 import useViewTransitions from '@/hooks/useViewTransitions';
@@ -92,6 +93,7 @@ export default function AppShell({ children }: Readonly<AppShellProps>) {
             </PullToRefresh>
 
             <MobileBottomNav />
+            <Toaster aboveNav={hasBottomNav} />
         </div>
     );
 }
