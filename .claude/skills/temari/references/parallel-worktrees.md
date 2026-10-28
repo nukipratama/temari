@@ -84,6 +84,11 @@ Cleanup:
   stays. Missing `gh` or `lsof`, or any error, counts as "keep". When no slot qualifies, the error
   lists each holder's slot, path, branch and the first rule that keeps it, so you can pick one to
   release.
+- An agent or workflow started with `isolation: "worktree"` gets a full slot through `WorktreeCreate`,
+  but Claude Code keeps that worktree when the agent finishes and never runs `WorktreeRemove`, even
+  when nothing changed (measured). Reclaim frees it only once a PR from its current branch has merged,
+  which a `worktree-agent-<id>` branch rarely gets, so whoever spawned the agent runs
+  `scripts/worktree remove <path>` once its work is collected.
 
 ### Shared services
 
