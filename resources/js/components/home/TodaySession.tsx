@@ -20,12 +20,14 @@ import { type MascotPose, writingPose } from '@/components/temari/TemariMascot';
 import Eyebrow from '@/components/ui/Eyebrow';
 import PillButton from '@/components/ui/PillButton';
 import { useRecommendationView } from '@/hooks/useRecommendationView';
+import { showToast } from '@/hooks/useToast';
 import { cn } from '@/lib/cn';
 import { formatPace } from '@/lib/pace';
 import {
     easedFromDelta,
     judgedDayResult,
     paceEaseDelta,
+    planEditLanded,
     prescriptionWhy,
     sessionHint,
     sessionLabel,
@@ -260,6 +262,11 @@ function SkippedToday({ day }: Readonly<{ day: WeekPlanDay }>) {
                 preserveScroll: true,
                 onStart: () => setProcessing(true),
                 onFinish: () => setProcessing(false),
+                onSuccess: (page) => {
+                    if (planEditLanded(page)) {
+                        showToast('restored');
+                    }
+                },
             },
         );
     };
