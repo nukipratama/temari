@@ -73,7 +73,7 @@ class StreakReminderNotification extends Notification implements ShouldQueue
             ->title($this->title())
             ->body($this->body())
             ->icon('/icon-192.png')
-            ->data($this->withUnreadBadge(['url' => route('dashboard')], $notifiable->id))
+            ->data($this->withUnreadBadge(['url' => route('dashboard')], $notifiable))
             // High urgency: the nudge is time-boxed to the rest of the week, so
             // the OS deferring it under Low Power Mode would defeat the point.
             ->options([

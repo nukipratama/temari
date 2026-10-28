@@ -130,6 +130,15 @@ it('carries the briefing content, trimmed, and opens the dashboard', function ()
         ->and($message['data']['url'])->toBe(route('dashboard'));
 });
 
+it('carries no inbox row id, since the briefing writes no inbox row', function (): void {
+    $user = subscribedUser();
+    $notification = new MorningBriefingNotification(briefingFor($user));
+
+    $webPush = $notification->toWebPush($user, $notification)->toArray();
+
+    expect($webPush['data'])->not->toHaveKey('inbox_id');
+});
+
 it('cuts a long briefing to whole sentences for the push, and keeps it whole on Telegram', function (): void {
     $user = subscribedUser();
     $briefing = briefingFor($user);

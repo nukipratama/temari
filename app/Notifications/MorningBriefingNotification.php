@@ -84,7 +84,7 @@ class MorningBriefingNotification extends Notification implements ShouldQueue
         $message = new WebPushMessage()
             ->title(self::TITLE)
             ->icon('/icon-192.png')
-            ->data($this->withUnreadBadge(['url' => route('dashboard')], $notifiable->id))
+            ->data($this->withUnreadBadge(['url' => route('dashboard')], $notifiable))
             // High urgency: the whole point is landing at the moment they are
             // about to head out, which a deferred push misses entirely.
             ->options([
