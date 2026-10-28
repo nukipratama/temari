@@ -488,7 +488,8 @@ make_finished_owner() {
   mkdir -p "${FAKE_COMMON}/temari-worktree-slots/slot-${slot}"
   printf '%s\n' "$owner" > "${FAKE_COMMON}/temari-worktree-slots/slot-${slot}/path"
   printf 'worktree-owner-%s\n' "$slot" > "${FAKE_COMMON}/temari-worktree-slots/slot-${slot}/branch"
-  find "$owner" -exec touch -t 202601010000 {} +
+  mkdir -p "${FAKE_COMMON}/worktrees/owner-${slot}"
+  find "$owner" "${FAKE_COMMON}/worktrees/owner-${slot}" -exec touch -t 202601010000 {} +
 }
 
 case_dir="${test_root}/reclaim-merged-slot"

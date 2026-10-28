@@ -227,8 +227,9 @@ worktree_recently_active() {
 
   [ -z "$(find "$worktree" \( -name vendor -o -name node_modules -o -path "${worktree}/public/build" -o -path "${worktree}/storage" \) -prune \
     -o -mmin "-${RECLAIM_IDLE_MINUTES}" -print -quit 2>/dev/null)" ] || return 0
-  git_dir="$(git_dir_for "$worktree" 2>/dev/null)" || return 1
-  [ -d "$git_dir" ] && [ -n "$(find "$git_dir" -maxdepth 1 -mmin "-${RECLAIM_IDLE_MINUTES}" -print -quit 2>/dev/null)" ]
+  git_dir="$(git_dir_for "$worktree" 2>/dev/null)" || return 0
+  [ -d "$git_dir" ] || return 0
+  [ -n "$(find "$git_dir" -maxdepth 1 -mmin "-${RECLAIM_IDLE_MINUTES}" -print -quit 2>/dev/null)" ]
 }
 
 merged_pr_head_for() {
