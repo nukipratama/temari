@@ -530,6 +530,13 @@ if "${FAKE_MAIN}/scripts/worktree" create creator > "${case_dir}/create.out" 2>&
 fi
 grep -q 'no free worktree slots; the maximum is 3' "${case_dir}/create.out" ||
   { cat "${case_dir}/create.out" >&2; fail 'create did not report the full slots'; }
+for holder in \
+  "slot 1: ${FAKE_MAIN}/.claude/worktrees/owner-1 (feat-1): changed in the last 30 minutes" \
+  "slot 2: ${FAKE_MAIN}/.claude/worktrees/owner-2 (feat-2): has uncommitted changes" \
+  "slot 3: ${FAKE_MAIN}/.claude/worktrees/owner-3 (feat-3): HEAD is not a merged PR's head"; do
+  grep -qF "$holder" "${case_dir}/create.out" ||
+    { cat "${case_dir}/create.out" >&2; fail "full-slot error did not list: ${holder}"; }
+done
 for slot in 1 2 3; do
   [ -d "${FAKE_MAIN}/.claude/worktrees/owner-${slot}" ] || fail "reclaim removed owner-${slot}"
 done
@@ -541,8 +548,10 @@ if "${FAKE_MAIN}/scripts/worktree" create creator2 > "${case_dir}/gh-fail.out" 2
   fail 'create reclaimed a slot while gh could not confirm the merge'
 fi
 [ -d "${FAKE_MAIN}/.claude/worktrees/owner-3" ] || fail 'reclaim removed a worktree without a confirmed merge'
+grep -qF "slot 3: ${FAKE_MAIN}/.claude/worktrees/owner-3 (feat-3): merge status unknown (gh failed)" "${case_dir}/gh-fail.out" ||
+  { cat "${case_dir}/gh-fail.out" >&2; fail 'full-slot error did not say gh could not confirm the merge'; }
 unset FAKE_GH_FAIL FAKE_MERGED_HEADS
-echo 'PASS: reclaim refuses recent activity, uncommitted work, an unmerged branch and an unreachable gh'
+echo 'PASS: reclaim refuses recent activity, uncommitted work, an unmerged branch and an unreachable gh, and names each holder'
 
 case_dir="${test_root}/remove-prune-create"
 init_case "$case_dir"
