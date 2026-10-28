@@ -69,7 +69,7 @@
          launch never blocks on a third-party origin. First in the @vite list so
          the faces are known before app.css asks for them. --}}
     @viteReactRefresh
-    @vite(['resources/css/fonts.css', 'resources/css/app.css', 'resources/js/app.tsx'])
+    @vite(['resources/css/fonts.css', 'resources/css/app.css', 'resources/js/app.tsx', "resources/js/pages/{$page['component']}.tsx"])
     @inertiaHead
 </head>
 <body class="bg-background text-foreground antialiased">
@@ -89,6 +89,9 @@
         }
     </script>
 
+    @auth
+        @include('partials.boot-shell')
+    @endauth
     @inertia
 </body>
 </html>
