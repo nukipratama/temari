@@ -303,9 +303,7 @@ case "${1:-}" in
   compose)
     if [[ "$arguments" == *" config --format json"* ]]; then
       printf '{"name":"temari"}\n'
-    elif [[ "$arguments" == *" ps --status running -q "* ]]; then
-      printf 'fake-container\n'
-    elif [[ "$arguments" == *" ps --status running -q" ]]; then
+    elif [[ "$arguments" == *" ps --status running -q"* ]]; then
       [ "${FAKE_SHARED_STOPPED:-false}" = true ] || printf 'fake-container\n'
     elif [[ "$arguments" == *" up -d --wait" ]]; then
       printf '%s\n' "$arguments" >> "$FAKE_SHARED_UP_LOG"
@@ -539,6 +537,7 @@ assert_eq 0 "$(wc -l < "$FAKE_SHARED_STOP_LOG" | tr -d ' ')" 'remove stopped the
 
 "${FAKE_MAIN}/scripts/worktree" remove --force "${FAKE_MAIN}/.claude/worktrees/owner-2" > "${case_dir}/remove-2.out" 2>&1 ||
   { cat "${case_dir}/remove-2.out" >&2; fail 'removing the last slot failed'; }
+assert_eq 1 "$(wc -l < "$FAKE_SHARED_UP_LOG" | tr -d ' ')" 'slot cleanup re-ran up on shared services that were already running'
 assert_eq 1 "$(wc -l < "$FAKE_SHARED_STOP_LOG" | tr -d ' ')" 'removing the last slot did not stop the shared services'
 grep -q -- "--project-directory ${FAKE_MAIN} --progress quiet stop" "$FAKE_SHARED_STOP_LOG" ||
   { cat "$FAKE_SHARED_STOP_LOG" >&2; fail 'the shared services were stopped without pinning the main checkout as project directory'; }

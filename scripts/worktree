@@ -514,10 +514,14 @@ clean_slot_data() {
       docker compose -f compose.shared-services.yml --project-directory "$(dirname "$common_dir")" "$@"
     }
 
-    with_shared_services_lock "$common_dir" __shared_services_up "$common_dir" >&2 || {
-      fail "could not start the shared services"
-      return 1
-    }
+    for service in mysql redis mysql-test redis-test; do
+      [ -z "$(shared ps --status running -q "$service")" ] || continue
+      with_shared_services_lock "$common_dir" __shared_services_up "$common_dir" >&2 || {
+        fail "could not start the shared services"
+        return 1
+      }
+      break
+    done
 
     shared exec -T -e MYSQL_PWD="$DB_PASSWORD" mysql mysql -uroot \
       -e "DROP DATABASE IF EXISTS \`${db_schema}\`; DROP DATABASE IF EXISTS \`${db_analytics_schema}\`;" || {

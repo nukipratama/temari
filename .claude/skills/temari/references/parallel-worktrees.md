@@ -98,8 +98,9 @@ profile that only the main checkout enables by default (`.env.example`'s `COMPOS
 
 The shared stack runs only while a slot is reserved. Setup starts it, and the `remove` or `prune`
 that releases the last slot stops it, so idle Docker frees its 0.75-1 GiB and Resource Saver can pause
-the VM. Slot cleanup starts the stack first, so `remove` and `prune` work while it is stopped. Both happen under one `lock-shared-services.lock`, so a create racing the last remove still gets a
-running stack. `restart: unless-stopped` stays: Docker never restarts a container that was explicitly
+the VM. Slot cleanup starts the stack when it is stopped, so `remove` and `prune` still work. Starting
+and stopping both happen under one `lock-shared-services.lock`, so a create racing the last remove
+still gets a running stack. `restart: unless-stopped` stays: Docker never restarts a container that was explicitly
 stopped, so the stack comes back after a reboot only while slots still exist.
 
 Isolation moves from *separate containers* to *separate schema* (MySQL: `temari_slot{N}` /
