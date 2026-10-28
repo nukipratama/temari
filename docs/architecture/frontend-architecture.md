@@ -25,7 +25,7 @@ There is no client-side router and no REST/JSON API for pages. Every screen is a
 
 ## The request lifecycle
 
-1. **Blade root.** [app.blade.php](resources/views/app.blade.php) is the single server-rendered shell: `lang="en"`, the CSRF meta tag, `@vite(['resources/css/fonts.css', 'resources/css/app.css', 'resources/js/app.tsx'])` (fonts are self-hosted in `resources/css/fonts.css`), and `@inertia` (the mount point). `$rootView = 'app'` is set in [HandleInertiaRequests](app/Http/Middleware/HandleInertiaRequests.php).
+1. **Blade root.** [app.blade.php](resources/views/app.blade.php) is the single server-rendered shell: `lang="en"`, the CSRF meta tag, `@vite(['resources/css/fonts.css', 'resources/css/app.css', 'resources/js/app.tsx', "resources/js/pages/{$page['component']}.tsx"])` (fonts are self-hosted in `resources/css/fonts.css`; the current page's chunk is listed so it preloads alongside the entry instead of after it), and `@inertia` (the mount point). `$rootView = 'app'` is set in [HandleInertiaRequests](app/Http/Middleware/HandleInertiaRequests.php).
 2. **Controller.** Renders a page name + page props (see the calls in [routes/web.php](routes/web.php)'s controllers, e.g. [`DashboardController`](app/Http/Controllers/DashboardController.php)).
 3. **Middleware merges shared props** (below) into every response.
 4. **React resolves + mounts** the page (below).

@@ -445,6 +445,10 @@ body {
     }
 }
 
+body:has(#app > *) #boot-shell {
+    display: none;
+}
+
 .skeleton {
     background-size: 200% 100%;
     animation: skeleton-sweep 1.6s linear infinite;
