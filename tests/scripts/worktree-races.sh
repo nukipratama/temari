@@ -93,6 +93,7 @@ init_case() {
   export FAKE_RELEASE_REMOVE="${case_dir}/release-remove"
   export FAKE_INSTALL_LOG="${case_dir}/install-log"
   export FAKE_SHARED_STOP_LOG="${case_dir}/shared-stop-log"
+  export FAKE_SHARED_UP_LOG="${case_dir}/shared-up-log"
   export FAKE_REAL_PERL="$real_perl"
   export FAKE_REAL_FLOCK="$real_flock"
   export TEMARI_FORCE_PERL_FLOCK="$force_perl_flock"
@@ -111,6 +112,7 @@ init_case() {
   : > "$FAKE_CLEAN_LOG"
   : > "$FAKE_INSTALL_LOG"
   : > "$FAKE_SHARED_STOP_LOG"
+  : > "$FAKE_SHARED_UP_LOG"
 
   cat > "${FAKE_BIN}/git" <<'EOF'
 #!/usr/bin/env bash
@@ -305,6 +307,8 @@ case "${1:-}" in
       printf 'fake-container\n'
     elif [[ "$arguments" == *" ps --status running -q" ]]; then
       [ "${FAKE_SHARED_STOPPED:-false}" = true ] || printf 'fake-container\n'
+    elif [[ "$arguments" == *" up -d --wait" ]]; then
+      printf '%s\n' "$arguments" >> "$FAKE_SHARED_UP_LOG"
     elif [[ "$arguments" == *" stop" ]]; then
       printf '%s\n' "$arguments" >> "$FAKE_SHARED_STOP_LOG"
     elif [[ "$arguments" == *" exec -T app "* ]]; then
@@ -528,8 +532,9 @@ export FAKE_MERGED_HEADS="${case_dir}/merged-heads"
 : > "$FAKE_MERGED_HEADS"
 for slot in 1 2; do make_finished_owner "$slot"; done
 
-"${FAKE_MAIN}/scripts/worktree" remove --force "${FAKE_MAIN}/.claude/worktrees/owner-1" > "${case_dir}/remove-1.out" 2>&1 ||
-  { cat "${case_dir}/remove-1.out" >&2; fail 'removing the first of two slots failed'; }
+FAKE_SHARED_STOPPED=true "${FAKE_MAIN}/scripts/worktree" remove --force "${FAKE_MAIN}/.claude/worktrees/owner-1" > "${case_dir}/remove-1.out" 2>&1 ||
+  { cat "${case_dir}/remove-1.out" >&2; fail 'removing a slot while the shared services were stopped failed'; }
+assert_eq 1 "$(wc -l < "$FAKE_SHARED_UP_LOG" | tr -d ' ')" 'slot cleanup did not start the stopped shared services'
 assert_eq 0 "$(wc -l < "$FAKE_SHARED_STOP_LOG" | tr -d ' ')" 'remove stopped the shared services while another slot was reserved'
 
 "${FAKE_MAIN}/scripts/worktree" remove --force "${FAKE_MAIN}/.claude/worktrees/owner-2" > "${case_dir}/remove-2.out" 2>&1 ||
@@ -543,7 +548,7 @@ grep -q 'no slots remain; stopped the shared MySQL/Redis services' "${case_dir}/
 FAKE_SHARED_STOPPED=true "${FAKE_MAIN}/scripts/worktree" prune > "${case_dir}/prune.out" 2>&1 ||
   { cat "${case_dir}/prune.out" >&2; fail 'prune failed with no slots reserved'; }
 assert_eq 1 "$(wc -l < "$FAKE_SHARED_STOP_LOG" | tr -d ' ')" 'prune stopped shared services that were already stopped'
-echo 'PASS: the shared services stop only when the last slot is released'
+echo 'PASS: slot cleanup starts the shared services, and they stop only when the last slot is released'
 unset FAKE_MERGED_HEADS
 
 case_dir="${test_root}/reclaim-refusals"
