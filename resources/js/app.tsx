@@ -36,12 +36,17 @@ captureInstallPrompt();
 
 let inFlightVisit: { url: string; method: string } | null = null;
 router.on('start', (event) => {
-    inFlightVisit = {
-        url: event.detail.visit.url.href,
-        method: event.detail.visit.method,
-    };
+    const { visit } = event.detail;
+    if (visit.async || visit.prefetch) {
+        return;
+    }
+    inFlightVisit = { url: visit.url.href, method: visit.method };
 });
-router.on('finish', () => {
+router.on('finish', (event) => {
+    const { visit } = event.detail;
+    if (visit.async || visit.prefetch) {
+        return;
+    }
     inFlightVisit = null;
 });
 recoverFromStaleChunks(() => {
