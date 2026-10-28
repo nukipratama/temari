@@ -38,6 +38,7 @@ import {
 } from '@/hooks/useCooldownCountdown';
 import { useDemoGuard } from '@/hooks/useDemoGuard';
 import { usePendingPost } from '@/hooks/usePendingPost';
+import { showToast } from '@/hooks/useToast';
 import { appLayout } from '@/layouts/appLayout';
 import { cn } from '@/lib/cn';
 import { formatDurationHMS } from '@/lib/pace';
@@ -557,6 +558,7 @@ function TelegramPanel({
                     setConfirmingDisconnect(false);
                     router.delete('/profile/telegram', {
                         preserveScroll: true,
+                        onSuccess: () => showToast('Telegram disconnected'),
                     });
                 }}
             />

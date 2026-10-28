@@ -8,8 +8,14 @@ import {
 } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
+import { showToast } from '@/hooks/useToast';
 import { defined } from '@/test/defined';
 import { makeUser, setMockPage } from '@/test/setup';
+
+vi.mock('@/hooks/useToast', () => ({
+    showToast: vi.fn(),
+    useToast: () => null,
+}));
 
 import Settings from './Index';
 
@@ -435,7 +441,15 @@ describe('Settings', () => {
         expect(router.delete).toHaveBeenCalledOnce();
         expect(router.delete).toHaveBeenCalledWith('/profile/telegram', {
             preserveScroll: true,
+            onSuccess: expect.any(Function),
         });
+        expect(showToast).not.toHaveBeenCalled();
+
+        vi.mocked(router.delete).mock.calls[0]?.[1]?.onSuccess?.({} as never);
+
+        expect(showToast).toHaveBeenCalledExactlyOnceWith(
+            'Telegram disconnected',
+        );
     });
 
     it('hides the delete-account control from the demo account, which the server refuses to delete', () => {
