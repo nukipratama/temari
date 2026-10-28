@@ -96,6 +96,13 @@ separate, pinned-name Compose project: `temari-shared-services`) runs exactly on
 profile that only the main checkout enables by default (`.env.example`'s `COMPOSE_PROFILES=local-db`);
 `scripts/worktree` setup clears it for a worktree, so `docker compose up` there never starts them.
 
+The shared stack runs only while a slot is reserved. Setup starts it, and the `remove` or `prune`
+that releases the last slot stops it, so idle Docker frees its 0.75-1 GiB and Resource Saver can pause
+the VM. Slot cleanup starts the stack when it is stopped, so `remove` and `prune` still work. Starting
+and stopping both happen under one `lock-shared-services.lock`, so a create racing the last remove
+still gets a running stack. `restart: unless-stopped` stays: Docker never restarts a container that was explicitly
+stopped, so the stack comes back after a reboot only while slots still exist.
+
 Isolation moves from *separate containers* to *separate schema* (MySQL: `temari_slot{N}` /
 `temari_slot{N}_analytics`) and *separate logical Redis DB index* (`3*N` for dev's
 default/cache/pulse). `migrate:fresh` only ever touches the schema its own connection is bound to,
@@ -135,9 +142,9 @@ a config change to Compose even though the file content is identical — Compose
 the containers to match, and since `mysql-test`/`redis-test` are tmpfs, that recreate silently
 wipes every other worktree's test schema. Measured directly: benchmarking 3 concurrent worktrees
 lost 2 of 3 test schemas mid-run this way. Every call against `compose.shared-services.yml` in
-`scripts/worktree` setup goes through its `shared()` helper, which pins `--project-directory` to the
+`scripts/worktree` (its `shared()` helpers and `shared_services_up`) pins `--project-directory` to the
 main checkout (stable across every worktree) specifically to prevent this — **any new call against
-that file must go through `shared()` too**, never a bare `docker compose -f compose.shared-services.yml`.
+that file must pin it too**, never a bare `docker compose -f compose.shared-services.yml`.
 
 **Both** migration sets matters. `analytics` is a second connection with its own migration path, so
 a plain `artisan migrate` does not touch it — the script also runs
