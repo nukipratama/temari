@@ -549,7 +549,7 @@ function TelegramPanel({
                 onClose={() => setConfirmingDisconnect(false)}
                 pose="concerned"
                 title="disconnect Telegram?"
-                body="i'll stop sending your run notes there. you can connect it again from here."
+                body="nothing goes to Telegram after this. you can connect it again from here."
                 primaryLabel="disconnect"
                 primaryIcon={Unlink}
                 primaryTone="danger"
