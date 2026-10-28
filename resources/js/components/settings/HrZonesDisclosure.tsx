@@ -204,13 +204,13 @@ export default function HrZonesDisclosure({
         setBounds((prev) => ({ ...prev, [key]: value }));
     };
 
-    // Reset and resync change the zones server-side; a scoped reload of just
-    // this prop re-seeds the form from the new profile without disturbing
-    // whatever else is live on the rest of the Settings page.
     const [confirming, setConfirming] = useState<'reset' | 'resync' | null>(
         null,
     );
 
+    // Reset and resync change the zones server-side; a scoped reload of just
+    // this prop re-seeds the form from the new profile without disturbing
+    // whatever else is live on the rest of the Settings page.
     const resetToDefault = () => {
         setConfirming(null);
         router.delete('/settings/zones', {

@@ -61,7 +61,7 @@ export default function Sheet({
                 'px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))]',
                 'motion-safe:transition-transform motion-safe:duration-200 motion-safe:ease-out data-[ending-style]:translate-y-full data-[starting-style]:translate-y-full',
                 centeredFromMd &&
-                    'md:inset-0 md:m-auto md:h-fit md:max-h-[calc(100dvh-2rem)] md:max-w-sm md:rounded-4xl md:pt-5 md:motion-safe:transition-[transform,opacity] md:data-[ending-style]:translate-y-0 md:data-[ending-style]:scale-95 md:data-[ending-style]:opacity-0 md:data-[starting-style]:translate-y-0 md:data-[starting-style]:scale-95 md:data-[starting-style]:opacity-0',
+                    'md:inset-0 md:m-auto md:h-fit md:max-h-[calc(100dvh-2rem)] md:max-w-sm md:rounded-4xl md:pt-5 md:motion-safe:transition-[translate,scale,opacity] md:data-[ending-style]:translate-y-0 md:data-[ending-style]:scale-95 md:data-[ending-style]:opacity-0 md:data-[starting-style]:translate-y-0 md:data-[starting-style]:scale-95 md:data-[starting-style]:opacity-0',
                 className,
             )}
             style={

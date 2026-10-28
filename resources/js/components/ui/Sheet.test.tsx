@@ -80,6 +80,7 @@ describe('Sheet', () => {
             'md:inset-0',
             'md:m-auto',
             'md:max-w-sm',
+            'md:motion-safe:transition-[translate,scale,opacity]',
             'md:data-[starting-style]:opacity-0',
             'text-center',
         );
