@@ -157,7 +157,7 @@ class AppServiceProvider extends ServiceProvider
         // throttled like the other devtools routes; `web` + the header guard
         // are appended by setUpdateRoute.
         Livewire::setUpdateRoute(fn ($handle, string $updatePath): Route => RouteFacade::post($updatePath, $handle)
-            ->middleware(['web', 'throttle:60,1', EnsureDevtoolsAccess::class]));
+            ->middleware(['web', 'throttle:60,1,devtools', EnsureDevtoolsAccess::class]));
 
         RateLimiter::for('analysis-trigger', function (Request $request): Limit {
             $perMinute = max(1, config()->integer('ai.rate_limit_per_minute', 8));

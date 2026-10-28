@@ -48,7 +48,7 @@ The row is marked, never deleted. A flag is the only thing the athlete has said 
 
 ## The endpoint
 
-One route, `feedback.store` in [web.php](../../routes/web.php), inside the `auth` + `onboarded` group with `throttle:10,1` and `block-demo-writes` — the guard is behaviourally generic (it blocks any demo mutation), so it keeps the shared sandbox from filling the table with visitor noise. The frontend hides the control for `is_demo` for the same reason, so the middleware is the defense-in-depth net rather than the visible rule.
+One route, `feedback.store` in [web.php](../../routes/web.php), inside the `auth` + `onboarded` group with `throttle:10,1,feedback` and `block-demo-writes` — the guard is behaviourally generic (it blocks any demo mutation), so it keeps the shared sandbox from filling the table with visitor noise. The frontend hides the control for `is_demo` for the same reason, so the middleware is the defense-in-depth net rather than the visible rule.
 
 Ownership lives in [StoreFeedbackRequest::authorize()](../../app/Http/Requests/StoreFeedbackRequest.php) rather than the controller, so a foreign subject id 403s instead of getting a validation redirect. An *unrecognised* subject type is deliberately left to the rules, so a typo reads as a 422 rather than a permission problem.
 

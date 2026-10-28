@@ -89,7 +89,7 @@ it('fails honestly when the ip-keyed oauth throttle trips', function (): void {
     $this->get(route('auth.strava.redirect'))
         ->assertStatus(429)
         ->assertSee('easy there')
-        ->assertSee('try again in a minute');
+        ->assertSee('give it a minute, then try again');
 });
 
 it('redirects authenticated users away from login', function (): void {

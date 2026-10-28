@@ -50,20 +50,20 @@ use Illuminate\Support\Facades\Route;
 // secret callback token in the path, the shared verify token (handshake) and the
 // subscription id (events), so it lives outside the auth middleware group.
 Route::get('/strava/webhook/{token}', [StravaWebhookController::class, 'verify'])
-    ->middleware('throttle:60,1')
+    ->middleware('throttle:60,1,strava-webhook')
     ->name('strava.webhook.verify');
 // IP rate-limited like the other public POSTs to blunt amplification. 60/min is
 // well above Strava's real delivery rate (one event per activity) while still
 // throttling a flood.
 Route::post('/strava/webhook/{token}', [StravaWebhookController::class, 'handle'])
-    ->middleware('throttle:60,1')
+    ->middleware('throttle:60,1,strava-webhook')
     ->name('strava.webhook.handle');
 
 // Telegram bot webhook. Called by Telegram unauthenticated — gated by the secret
 // token echoed in the X-Telegram-Bot-Api-Secret-Token header. IP rate-limited
 // like the other public POSTs.
 Route::post('/telegram/webhook', [TelegramWebhookController::class, 'handle'])
-    ->middleware('throttle:60,1')
+    ->middleware('throttle:60,1,telegram-webhook')
     ->name('telegram.webhook.handle');
 
 // Client-side error sink. Unauthenticated so it captures errors on guest pages
@@ -86,7 +86,7 @@ Route::middleware('guest')->group(function (): void {
     // Throttled like the other public POSTs to blunt session-creation spam; it
     // only ever logs in as the shared sandboxed demo user, so the cap is generous.
     Route::post('/auth/demo', [DemoAuthController::class, 'login'])
-        ->middleware('throttle:10,1')
+        ->middleware('throttle:10,1,demo-login')
         ->name('auth.demo');
 });
 
@@ -124,10 +124,10 @@ Route::middleware(['auth', 'onboarded'])->group(function (): void {
         ->middleware('inertia-etag')
         ->name('activities.show');
     Route::patch('/activities/{activity}/effort', [PerceivedEffortController::class, 'update'])
-        ->middleware('throttle:30,1')
+        ->middleware('throttle:30,1,effort')
         ->name('activities.effort.update');
     Route::delete('/activities/{activity}/effort', [PerceivedEffortController::class, 'destroy'])
-        ->middleware('throttle:30,1')
+        ->middleware('throttle:30,1,effort')
         ->name('activities.effort.destroy');
 
     Route::get('/trends', TrendsController::class)->name('trends');
@@ -136,20 +136,20 @@ Route::middleware(['auth', 'onboarded'])->group(function (): void {
     Route::post('/race', [RaceController::class, 'store'])->middleware(['throttle:10,1,plan-regenerate', 'block-demo-writes'])->name('race.store');
     Route::delete('/race', [RaceController::class, 'destroy'])->middleware(['throttle:10,1,plan-regenerate', 'block-demo-writes'])->name('race.destroy');
     Route::post('/race/{race}/outcome', [RaceOutcomeController::class, 'store'])
-        ->middleware(['throttle:20,1', 'block-demo-writes'])
+        ->middleware(['throttle:20,1,race-outcome', 'block-demo-writes'])
         ->whereNumber('race')
         ->name('race.outcome.store');
 
     Route::get('/plan', [PlanController::class, 'index'])->name('plan');
     Route::post('/plan/recommendations/shown', RecommendationViewController::class)
-        ->middleware('throttle:120,1')
+        ->middleware('throttle:120,1,recommendations-shown')
         ->name('plan.recommendations.shown');
     Route::post('/plan/regenerate', [PlanController::class, 'regenerate'])->middleware('throttle:10,1,plan-regenerate')->name('plan.regenerate');
     Route::patch('/plan/sessions/{plannedSession}', [PlanController::class, 'update'])
         ->middleware('throttle:20,1,plan-edit')
         ->name('plan.sessions.update');
     Route::post('/plan/time-trials/{plannedSession}', TimeTrialAnswerController::class)
-        ->middleware(['throttle:20,1', 'block-demo-writes'])
+        ->middleware(['throttle:20,1,time-trial', 'block-demo-writes'])
         ->whereNumber('plannedSession')
         ->name('plan.time-trials.answer');
     Route::get('/inbox', InboxController::class)->name('inbox');
@@ -158,7 +158,7 @@ Route::middleware(['auth', 'onboarded'])->group(function (): void {
     // guard is behaviourally generic (it blocks any demo mutation), so it also
     // keeps the shared sandbox from filling the table with visitor noise.
     Route::post('/feedback', FeedbackController::class)
-        ->middleware(['throttle:10,1', 'block-demo-writes'])
+        ->middleware(['throttle:10,1,feedback', 'block-demo-writes'])
         ->name('feedback.store');
 
     Route::get('/profile', ProfileController::class)->name('profile');
@@ -171,16 +171,16 @@ Route::middleware(['auth', 'onboarded'])->group(function (): void {
     // covers the channel-neutral preference + test writes.
     Route::patch('/profile/notifications', NotificationPreferenceController::class)->middleware('block-demo-writes')->name('notifications.preferences.update');
     Route::delete('/profile/telegram', [TelegramConnectionController::class, 'destroy'])->middleware('block-demo-writes')->name('telegram.disconnect');
-    Route::post('/profile/notifications/test', NotificationTestController::class)->middleware(['throttle:6,1', 'block-demo-writes'])->name('notifications.test');
+    Route::post('/profile/notifications/test', NotificationTestController::class)->middleware(['throttle:6,1,notification-test', 'block-demo-writes'])->name('notifications.test');
 
     // Browser push subscription, managed via fetch from the installed PWA. Allow-listed
     // by name in EnsureOnboarded so the wizard's last step can subscribe before the
     // `onboarded` gate would otherwise redirect it. The block-demo-writes guard is
     // behaviourally generic (it blocks any demo mutation); the throttle caps abuse of
     // the push send path a subscription feeds.
-    Route::post('/profile/push', [PushSubscriptionController::class, 'store'])->middleware(['throttle:6,1', 'block-demo-writes'])->name('push.subscribe');
-    Route::delete('/profile/push', [PushSubscriptionController::class, 'destroy'])->middleware(['throttle:6,1', 'block-demo-writes'])->name('push.unsubscribe');
-    Route::post('/profile/push/seen', [PushSubscriptionController::class, 'seen'])->middleware(['throttle:6,1', 'block-demo-writes'])->name('push.seen');
+    Route::post('/profile/push', [PushSubscriptionController::class, 'store'])->middleware(['throttle:6,1,push-subscription', 'block-demo-writes'])->name('push.subscribe');
+    Route::delete('/profile/push', [PushSubscriptionController::class, 'destroy'])->middleware(['throttle:6,1,push-subscription', 'block-demo-writes'])->name('push.unsubscribe');
+    Route::post('/profile/push/seen', [PushSubscriptionController::class, 'seen'])->middleware(['throttle:6,1,push-seen', 'block-demo-writes'])->name('push.seen');
 
     Route::get('/settings', SettingsController::class)->name('settings');
 
@@ -190,7 +190,7 @@ Route::middleware(['auth', 'onboarded'])->group(function (): void {
     Route::delete('/settings/zones', [RunnerZonesController::class, 'resetToDefault'])->name('settings.zones.reset');
     Route::post('/settings/zones/resync-strava', [RunnerZonesController::class, 'resyncFromStrava'])->middleware(['throttle:strava-sync', 'block-demo-writes'])->name('settings.zones.resync');
     Route::patch('/settings/training-preferences', [TrainingPreferencesController::class, 'update'])->middleware('throttle:10,1,plan-regenerate')->name('settings.training-preferences.update');
-    Route::post('/settings/intervals-icu', [IntervalsIcuConnectionController::class, 'store'])->middleware(['throttle:6,1', 'block-demo-writes'])->name('intervals-icu.connect');
+    Route::post('/settings/intervals-icu', [IntervalsIcuConnectionController::class, 'store'])->middleware(['throttle:6,1,intervals-icu-connect', 'block-demo-writes'])->name('intervals-icu.connect');
     Route::delete('/settings/intervals-icu', [IntervalsIcuConnectionController::class, 'destroy'])->middleware('block-demo-writes')->name('intervals-icu.disconnect');
 
     Route::post('/strava/sync', SyncController::class)
@@ -230,7 +230,7 @@ Route::middleware(['auth', 'onboarded'])->group(function (): void {
 // EnsureDevtoolsAccess. Throttled like the other
 // public POSTs (60/min/IP) so a wrong password can't be broute-forced at
 // line speed; generous enough to not trip Pulse's live-polling requests.
-Route::middleware(['throttle:60,1', 'devtools'])->group(function (): void {
+Route::middleware(['throttle:60,1,devtools', 'devtools'])->group(function (): void {
     Route::get('/devtools', DevtoolsIndexController::class)->name('devtools.index');
     Route::get('/devtools/design', DevtoolsDesignController::class)->name('devtools.design');
     Route::get('/devtools/feedback', DevtoolsFeedbackController::class)->name('devtools.feedback');

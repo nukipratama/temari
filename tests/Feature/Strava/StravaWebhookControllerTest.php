@@ -37,7 +37,7 @@ function stravaWebhookUrl(string $token = 'fake-callback-token'): string
 it('rate-limits both public webhook routes', function (string $name): void {
     $route = nonNull(Route::getRoutes()->getByName($name));
 
-    expect($route->gatherMiddleware())->toContain('throttle:60,1');
+    expect($route->gatherMiddleware())->toContain('throttle:60,1,strava-webhook');
 })->with(['strava.webhook.verify', 'strava.webhook.handle']);
 
 it('echoes the challenge back when the verify token matches', function (): void {
