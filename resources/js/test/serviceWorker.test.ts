@@ -2,8 +2,6 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 
-import { defined } from '@/test/defined';
-
 const source = readFileSync(
     path.resolve(__dirname, '../../../public/sw.js'),
     'utf8',
@@ -54,15 +52,8 @@ function loadWorker() {
         });
     }
 
-    async function push(data: PushData): Promise<void> {
-        let pending: Promise<unknown> = Promise.resolve();
-        defined(listeners.push)({
-            data,
-            waitUntil: (promise: Promise<unknown>) => {
-                pending = promise;
-            },
-        });
-        await pending;
+    function push(data: PushData): Promise<void> {
+        return dispatch('push', { data });
     }
 
     return {

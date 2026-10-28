@@ -126,7 +126,7 @@ self.addEventListener('notificationclick', (event) => {
     try {
         const resolved = new URL(event.notification.data?.url || '/', self.location.origin);
         if (resolved.origin === self.location.origin) {
-            // The page marks this inbox row read on arrival (resources/js/app.tsx).
+            // The server marks this inbox row read on arrival (MarkPushedInboxRowRead).
             const inboxId = event.notification.data?.inbox_id;
             if (Number.isInteger(inboxId)) {
                 resolved.searchParams.set('read', String(inboxId));
