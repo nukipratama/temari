@@ -178,4 +178,4 @@ _Design_
 
 _Audit_
 - [[2026-09-30-audit-considered-and-rejected]] — stream compression, push transport, Azure Batch, model downshifts, queue topology, TypeScript 7, MySQL 9.7, Valkey, Node 25, an off-host backup copy and happy-dom were measured and declined or deferred, each with a revisit trigger
-- [[2026-10-08-node-26]] — the toolchain moves to Node 26 with `@types/node` 26, `engines`, `.nvmrc`, the Dockerfile pin and the typings moving together, and a re-pin to the first LTS-tagged 26 build after 2026-10-28 still open
+- [[2026-10-08-node-26]] — the toolchain moves to Node 26 with `@types/node` 26, `engines`, `.nvmrc`, the Dockerfile pin and the typings moving together, pinned to 26.13.0, the first LTS-tagged 26 build
