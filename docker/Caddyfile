@@ -2,6 +2,10 @@
 {
 	auto_https off
 	frankenphp {
+		# The worker `num` below starts on top of num_threads: 4 threads in total,
+		# and 4 × memory_limit stays under the app container's 1g cap.
+		num_threads 2
+		php_ini memory_limit 128M
 		# Recycle each worker after a bounded number of requests to cap
 		# per-request memory growth (leak → OOM at the 1g container cap).
 		# Octane's frankenphp-worker.php loop reads MAX_REQUESTS
