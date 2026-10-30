@@ -141,11 +141,7 @@ RUN npm run build
 FROM frankenphp-base
 WORKDIR /var/www/html
 
-# Concrete thread count, not `auto`: the deploy runs docker-out-of-docker and
-# cgroup CPU limits don't reduce nproc, so `auto` would size off the host's
-# full core count and over-subscribe this 2-cpu-capped container.
-ENV FRANKENPHP_NUM_THREADS=4 \
-    SERVER_NAME=:7001
+ENV SERVER_NAME=:7001
 
 RUN install-php-extensions \
         pdo_mysql \

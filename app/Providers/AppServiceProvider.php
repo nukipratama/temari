@@ -8,7 +8,6 @@ use App\Actions\Feedback\ResolveFlaggedSubjectsAction;
 use App\Actions\Run\Metrics\ResolveRunBaselineAction;
 use App\Actions\Run\Plan\ResolveActiveRaceAction;
 use App\Http\Middleware\EnsureDevtoolsAccess;
-use App\Listeners\RecordCliPeakMemory;
 use App\Listeners\RecordScheduledTaskRun;
 use App\Models\User;
 use App\Services\AI\AnalysisService;
@@ -21,8 +20,6 @@ use App\Services\Run\Story\VerdictTimeline;
 use App\Support\Config\AppConfig;
 use App\Support\Config\AppConfigMaintenanceMode;
 use Illuminate\Cache\RateLimiting\Limit;
-use Illuminate\Console\Events\CommandFinished;
-use Illuminate\Console\Events\CommandStarting;
 use Illuminate\Console\Events\ScheduledTaskFailed;
 use Illuminate\Console\Events\ScheduledTaskFinished;
 use Illuminate\Console\Events\ScheduledTaskSkipped;
@@ -30,9 +27,6 @@ use Illuminate\Console\Events\ScheduledTaskStarting;
 use Illuminate\Foundation\MaintenanceModeManager;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
-use Illuminate\Queue\Events\JobAttempted;
-use Illuminate\Queue\Events\JobProcessing;
-use Illuminate\Queue\Events\JobTimedOut;
 use Illuminate\Routing\Route;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
@@ -141,10 +135,6 @@ class AppServiceProvider extends ServiceProvider
         Event::listen(ScheduledTaskFinished::class, [RecordScheduledTaskRun::class, 'finished']);
         Event::listen(ScheduledTaskFailed::class, [RecordScheduledTaskRun::class, 'failed']);
         Event::listen(ScheduledTaskSkipped::class, [RecordScheduledTaskRun::class, 'skipped']);
-
-        Event::listen([JobProcessing::class, CommandStarting::class], [RecordCliPeakMemory::class, 'reset']);
-        Event::listen([JobAttempted::class, JobTimedOut::class], [RecordCliPeakMemory::class, 'job']);
-        Event::listen(CommandFinished::class, [RecordCliPeakMemory::class, 'command']);
 
         // Real enforcement happens upstream in EnsureDevtoolsAccess (HTTP Basic
         // Auth); this gate just rubber-stamps once that middleware has passed

@@ -28,7 +28,6 @@ beforeEach(function (): void {
     $pulseEntry = Mockery::mock(Entry::class);
     $pulseEntry->shouldReceive('count')->andReturnSelf();
     $pulseEntry->shouldReceive('sum')->andReturnSelf();
-    $pulseEntry->shouldReceive('max', 'avg')->andReturnSelf();
     Pulse::shouldReceive('record')->andReturn($pulseEntry)->zeroOrMoreTimes();
 });
 
