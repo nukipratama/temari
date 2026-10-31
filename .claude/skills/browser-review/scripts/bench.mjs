@@ -16,7 +16,7 @@
  *   response  first frame after the DOM changed      budget 100
  *   swap      first frame after inertia:navigate     (no budget; where the new page lands)
  *   done      first frame the step is finished       budget 400
- *   shift     layout shift after the swap            budget 0.05
+ *   shift     shift after swap, no hadRecentInput    budget 0.05
  *   inp       longest event duration in the step     budget 200
  * Medians and maxima per label go to stdout, every run to storage/app/bench/<label>.json.
  *
@@ -54,7 +54,7 @@ const press = VIEWPORT_DEFS[viewportKey].hasTouch ? 'tap' : 'click';
 function installProbe() {
     const s = { shifts: [], events: [], lcp: 0, active: 0, step: null };
     window.__bench = s;
-    new PerformanceObserver((l) => l.getEntries().forEach((e) => s.shifts.push({ t: e.startTime, v: e.value }))).observe({ type: 'layout-shift', buffered: true });
+    new PerformanceObserver((l) => l.getEntries().forEach((e) => { if (!e.hadRecentInput) s.shifts.push({ t: e.startTime, v: e.value }); })).observe({ type: 'layout-shift', buffered: true });
     new PerformanceObserver((l) => l.getEntries().forEach((e) => s.events.push({ t: e.startTime, d: e.duration }))).observe({ type: 'event', buffered: true, durationThreshold: 16 });
     new PerformanceObserver((l) => l.getEntries().forEach((e) => { s.lcp = e.startTime; })).observe({ type: 'largest-contentful-paint', buffered: true });
 
