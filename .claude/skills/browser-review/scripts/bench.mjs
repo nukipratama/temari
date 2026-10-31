@@ -7,7 +7,7 @@
  *
  * A scenario exports `route` and a default `async ({ page, measure }) => { ... }`, where
  * `measure(label, selector, { until })` taps the first match and times the response. Without
- * `until` a step is a navigation and finishes when Inertia is idle and no `.skeleton` is visible;
+ * `until` a step is a navigation and finishes when Inertia is idle and no `.skeleton` is on screen;
  * with `until` it finishes when that selector is visible. A scenario that exports `launch = true`
  * is a cold launch instead: each run clears the HTTP cache and loads `route`, then loads it once
  * more warm.
@@ -67,11 +67,15 @@ function installProbe() {
         const r = el.getBoundingClientRect();
         return r.width > 0 && r.height > 0 && getComputedStyle(el).visibility !== 'hidden' && el.closest('[hidden]') === null;
     };
+    const onScreen = (el) => {
+        const r = el.getBoundingClientRect();
+        return visible(el) && r.bottom > 0 && r.top < innerHeight;
+    };
     s.finished = (until) => until
         ? [...document.querySelectorAll(until)].some(visible)
         : s.active === 0
             && document.getElementById('app')?.childElementCount > 0
-            && ![...document.querySelectorAll('.skeleton')].some(visible);
+            && ![...document.querySelectorAll('.skeleton')].some(onScreen);
 
     s.begin = (until, origin) => {
         const step = { until, tapAt: origin, mutatedAt: null, navigateAt: null, response: null, swap: null, done: null };

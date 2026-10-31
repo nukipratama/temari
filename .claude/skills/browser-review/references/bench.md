@@ -10,7 +10,7 @@ and the clip that shows it come from one file.
 | --- | --- | --- |
 | `response` | first frame after the DOM changed | 100 ms |
 | `swap` | first frame after `inertia:navigate`, where the new page lands | none |
-| `done` | first frame with Inertia idle and no visible `.skeleton`, or the scenario's `until` visible | 400 ms |
+| `done` | first frame with Inertia idle and no `.skeleton` in the viewport, or the scenario's `until` visible | 400 ms |
 | `shift` | layout shift after the swap | 0.05 |
 | `inp` | longest event duration in the step | 200 ms |
 
