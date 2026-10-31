@@ -12,7 +12,7 @@ import {
     rememberPlanSelectedDay,
 } from '@/lib/navigationMemory';
 import { defined } from '@/test/defined';
-import { setMockDeferred, setMockPage } from '@/test/setup';
+import { setMockPage } from '@/test/setup';
 
 import Plan from './Plan';
 
@@ -212,35 +212,14 @@ describe('Plan', () => {
         ).toHaveAttribute('href', '/race');
     });
 
-    it('shows the empty state when weeks is absent', () => {
-        renderPlan({ weeks: undefined });
+    it('paints the weeks, season and adaptation from the first response with no skeleton', () => {
+        const { container } = renderPlan();
 
-        expect(screen.getByText('no plan yet.')).toBeInTheDocument();
-    });
-
-    it('paints the header and disclaimer while the plan body is still deferred', () => {
-        setMockDeferred([
-            'weeks',
-            'seasonSummary',
-            'seasonAdherencePct',
-            'adaptation',
-        ]);
-
-        const { container } = renderPlan({
-            weeks: undefined,
-            seasonSummary: undefined,
-            seasonAdherencePct: undefined,
-            adaptation: undefined,
-        });
-
-        expect(screen.getByText('Plan')).toBeInTheDocument();
-        expect(screen.getByRole('heading')).toHaveTextContent(
-            /the weeks\s*ahead\./i,
-        );
-        expect(screen.getByText(/not a check-up/i)).toBeInTheDocument();
-        expect(container.querySelectorAll('.skeleton').length).toBeGreaterThan(
-            0,
-        );
+        expect(
+            screen.getByRole('list', { name: 'season weeks' }),
+        ).toBeInTheDocument();
+        expect(screen.getByRole('tablist')).toBeInTheDocument();
+        expect(container.querySelectorAll('.skeleton')).toHaveLength(0);
     });
 
     it('quietly keeps the current plan visible while zone recalibration is pending', () => {
@@ -580,17 +559,11 @@ describe('Plan', () => {
                 .getByRole('tab', { selected: true })
                 .getAttribute('aria-label');
 
-        it('keeps the picked day through the plan props dropping out and coming back', () => {
-            setMockDeferred(['weeks']);
+        it('keeps the picked day when the plan props are refreshed', () => {
             const { rerender } = renderPlan();
-            setMockDeferred([]);
-            rerender(<Plan {...BASE_PROPS} />);
             fireEvent.click(screen.getByRole('tab', { name: /^Fri/ }));
 
-            setMockDeferred(['weeks']);
-            rerender(<Plan {...BASE_PROPS} />);
-            setMockDeferred([]);
-            rerender(<Plan {...BASE_PROPS} />);
+            rerender(<Plan {...BASE_PROPS} weeks={[...BASE_PROPS.weeks]} />);
 
             expect(selectedTab()).toMatch(/^Fri/);
         });

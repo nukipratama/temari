@@ -1,4 +1,4 @@
-import { Deferred, Head, Link, router } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import { RefreshCw } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
@@ -12,7 +12,6 @@ import type {
 import AddRacePrompt from '@/components/plan/AddRacePrompt';
 import PlanHeading from '@/components/plan/PlanHeading';
 import PlanRaceCard from '@/components/plan/PlanRaceCard';
-import { PlanWeeksSkeleton } from '@/components/plan/PlanSkeleton';
 import RegenerateButton from '@/components/plan/RegenerateButton';
 import SeasonHeaderCard from '@/components/plan/SeasonHeaderCard';
 import SeasonTimeline from '@/components/plan/SeasonTimeline';
@@ -47,13 +46,13 @@ interface PlanProps {
     raceSupportedTimeSec?: number | null;
     raceOutcomeCandidate?: RaceOutcomeCandidate | null;
     sessionsPerWeek: number;
-    weeks?: PlanWeek[];
+    weeks: PlanWeek[];
     /** A week older than `weeks` holds, asked for with `?week=` on a partial reload. */
     pastWeek?: PlanWeek | null;
     season: SeasonSummary | null;
-    seasonSummary?: SeasonSummaryWeek[];
-    seasonAdherencePct?: number | null;
-    adaptation?: PlanAdaptation | null;
+    seasonSummary: SeasonSummaryWeek[];
+    seasonAdherencePct: number | null;
+    adaptation: PlanAdaptation | null;
     /** Served from App\Support\TrainingDisclaimer, shared with the legal pages. */
     disclaimerLine: string;
     /** Seconds left before Regenerate may run again, or null when it's free to click. */
@@ -84,11 +83,11 @@ export default function Plan({
     raceSupportedTimeSec,
     raceOutcomeCandidate,
     sessionsPerWeek,
-    weeks = [],
+    weeks,
     season,
-    seasonSummary = [],
-    seasonAdherencePct = null,
-    adaptation = null,
+    seasonSummary,
+    seasonAdherencePct,
+    adaptation,
     disclaimerLine,
     regenerateCooldownSeconds = null,
     planRecalibration,
@@ -249,56 +248,44 @@ export default function Plan({
                     </div>
                 )}
 
-                <Deferred
-                    data={[
-                        'weeks',
-                        'seasonSummary',
-                        'seasonAdherencePct',
-                        'adaptation',
-                    ]}
-                    fallback={<PlanWeeksSkeleton />}
-                >
-                    {() =>
-                        weeks.length === 0 || season === null ? (
-                            <>
-                                <EmptyPanel
-                                    face
-                                    title="no plan yet."
-                                    body="hit regenerate and temari will lay out the weeks ahead."
-                                    className="mt-6"
-                                />
-                                {(raceCard === null ||
-                                    raceCard.state === 'result_recorded') && (
-                                    <AddRacePrompt className="mt-4" />
-                                )}
-                            </>
-                        ) : (
-                            <LaneStack className="mt-6">
-                                <SeasonHeaderCard
-                                    weekIndex={season.week_index}
-                                    totalWeeks={season.total_weeks}
-                                    adherencePct={seasonAdherencePct}
-                                    weeks={seasonSummary}
-                                    raceCard={raceCard}
-                                    underReadyLine={season.under_ready_line}
-                                />
-                                <SeasonTimeline
-                                    weeks={seasonSummary}
-                                    detailByWeekStart={detailByWeekStart}
-                                    today={today}
-                                    raceDate={race?.race_date ?? null}
-                                    weekFocus={adaptation}
-                                    focusDay={focusDay}
-                                    selectedDay={selectedDay}
-                                    onMove={moveSession}
-                                    onSkip={skipSession}
-                                    onUnskip={unskipSession}
-                                    onLoadWeek={loadPastWeek}
-                                />
-                            </LaneStack>
-                        )
-                    }
-                </Deferred>
+                {weeks.length === 0 || season === null ? (
+                    <>
+                        <EmptyPanel
+                            face
+                            title="no plan yet."
+                            body="hit regenerate and temari will lay out the weeks ahead."
+                            className="mt-6"
+                        />
+                        {(raceCard === null ||
+                            raceCard.state === 'result_recorded') && (
+                            <AddRacePrompt className="mt-4" />
+                        )}
+                    </>
+                ) : (
+                    <LaneStack className="mt-6">
+                        <SeasonHeaderCard
+                            weekIndex={season.week_index}
+                            totalWeeks={season.total_weeks}
+                            adherencePct={seasonAdherencePct}
+                            weeks={seasonSummary}
+                            raceCard={raceCard}
+                            underReadyLine={season.under_ready_line}
+                        />
+                        <SeasonTimeline
+                            weeks={seasonSummary}
+                            detailByWeekStart={detailByWeekStart}
+                            today={today}
+                            raceDate={race?.race_date ?? null}
+                            weekFocus={adaptation}
+                            focusDay={focusDay}
+                            selectedDay={selectedDay}
+                            onMove={moveSession}
+                            onSkip={skipSession}
+                            onUnskip={unskipSession}
+                            onLoadWeek={loadPastWeek}
+                        />
+                    </LaneStack>
+                )}
 
                 <footer className="mt-8 border-t border-border pt-3 text-xs text-text-3">
                     {disclaimerLine}{' '}

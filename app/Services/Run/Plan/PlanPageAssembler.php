@@ -199,14 +199,38 @@ final class PlanPageAssembler
      */
     public function weeks(User $user, Carbon $today): array
     {
-        $currentWeekStart = $this->currentWeekStart($today);
+        [$rangeStart, $rangeEnd] = $this->weeksRange($today);
 
-        return $this->weeksBetween(
-            $user,
-            $today,
-            $currentWeekStart->copy()->subWeeks(PlanRenderer::HISTORY_WEEKS),
-            $currentWeekStart->copy()->addWeeks(self::LOOKAHEAD_WEEKS)->addDays(6),
-        );
+        return $this->weeksBetween($user, $today, $rangeStart, $rangeEnd, $today->toDateString());
+    }
+
+    /**
+     * The recommendation token for one day, rendered in the window the page loads that day with.
+     * Null when the date is not a day of the user's plan.
+     */
+    public function recommendationToken(User $user, Carbon $today, string $date): ?string
+    {
+        $day = $this->parseDate($date);
+        if (! $day instanceof Carbon) {
+            return null;
+        }
+        [$rangeStart, $rangeEnd] = $this->weeksRange($today);
+        $weekStart = $day->copy()->startOfWeek(Carbon::MONDAY);
+        $weeks = $weekStart->gte($rangeStart)
+            ? $this->weeksBetween($user, $today, $rangeStart, $rangeEnd, $date)
+            : $this->weeksBetween($user, $today, $weekStart, $weekStart->copy()->addDays(6), $date);
+
+        foreach ($weeks as $week) {
+            foreach ($week['days'] as $planDay) {
+                if ($planDay['date'] === $date) {
+                    $token = $planDay['recommendation_token'] ?? null;
+
+                    return is_string($token) ? $token : null;
+                }
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -216,11 +240,8 @@ final class PlanPageAssembler
      */
     public function pastWeek(User $user, Carbon $today, string $weekStart): ?array
     {
-        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $weekStart) !== 1) {
-            return null;
-        }
-        $start = Carbon::createFromFormat('!Y-m-d', $weekStart);
-        if (! $start instanceof Carbon || $start->toDateString() !== $weekStart || ! $start->isMonday()) {
+        $start = $this->parseDate($weekStart);
+        if (! $start instanceof Carbon || ! $start->isMonday()) {
             return null;
         }
         if ($start->gte($this->currentWeekStart($today)->subWeeks(PlanRenderer::HISTORY_WEEKS))) {
@@ -231,9 +252,32 @@ final class PlanPageAssembler
     }
 
     /**
-     * @return list<array<string, mixed>>
+     * @return array{Carbon, Carbon}
      */
-    private function weeksBetween(User $user, Carbon $today, Carbon $rangeStart, Carbon $rangeEnd): array
+    private function weeksRange(Carbon $today): array
+    {
+        $currentWeekStart = $this->currentWeekStart($today);
+
+        return [
+            $currentWeekStart->copy()->subWeeks(PlanRenderer::HISTORY_WEEKS),
+            $currentWeekStart->copy()->addWeeks(self::LOOKAHEAD_WEEKS)->addDays(6),
+        ];
+    }
+
+    private function parseDate(string $date): ?Carbon
+    {
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $date) !== 1) {
+            return null;
+        }
+        $parsed = Carbon::createFromFormat('!Y-m-d', $date);
+
+        return $parsed instanceof Carbon && $parsed->toDateString() === $date ? $parsed : null;
+    }
+
+    /**
+     * @return list<array{week_start: int|string, phase: string, type: string, days: array<int, array<string, mixed>>}>
+     */
+    private function weeksBetween(User $user, Carbon $today, Carbon $rangeStart, Carbon $rangeEnd, ?string $tokenDate = null): array
     {
         $currentWeekStart = $this->currentWeekStart($today);
 
@@ -341,6 +385,7 @@ final class PlanPageAssembler
                     $fallbackVerdicts[$s->date->toDateString()]['ran_anyway'] ?? null,
                     $s->date->isSameDay($today) ? $briefingContext->readinessAssessment : null,
                     $user->runnerProfile?->easyHrCapBpm(),
+                    includeRecommendationToken: $s->date->toDateString() === $tokenDate,
                     easySlowEndSecPerKm: $easySlowEnd,
                 ), ...$this->editRules($s, $fallbackVerdicts[$s->date->toDateString()]['status'] ?? $s->status, $ruleRowsByDate, $ranDates, $today), 'made_up_on' => $s->made_up_on?->toDateString()])->all(),
             ];

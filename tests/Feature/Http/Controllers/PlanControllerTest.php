@@ -17,6 +17,8 @@ use App\Models\ActivityDetail;
 use App\Models\PersonalRecord;
 use App\Models\PlannedSession;
 use App\Models\RaceGoal;
+use App\Models\RecommendationRevision;
+use App\Models\RecommendationView;
 use App\Models\Season;
 use App\Models\TrainingPreference;
 use App\Models\User;
@@ -39,6 +41,7 @@ use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Sleep;
+use Illuminate\Support\Str;
 use Inertia\Testing\AssertableInertia as Assert;
 use Mockery\MockInterface;
 use Symfony\Component\HttpKernel\Exception\HttpException;
@@ -48,7 +51,7 @@ uses(RefreshDatabase::class);
 beforeEach(fn () => Carbon::setTestNow('2026-08-10 08:00:00'));
 afterEach(fn () => Carbon::setTestNow());
 
-it('paints a fresh user\'s shell with the plan body deferred, creating the season and its 5 goals, then serves the deferred props alone', function (): void {
+it('paints a fresh user\'s plan body at once, creating the season and its 5 goals, then serves a partial reload\'s props alone', function (): void {
     $user = User::factory()->create();
 
     $this->actingAs($user)->get('/plan')
@@ -68,16 +71,16 @@ it('paints a fresh user\'s shell with the plan body deferred, creating the seaso
             ->missing('season.record')
             ->where('disclaimerLine', TrainingDisclaimer::SHORT)
             ->missing('disclaimer')
-            ->missing('weeks')
-            ->missing('seasonSummary')
-            ->missing('seasonAdherencePct')
-            ->missing('adaptation')
+            ->where('weeks', [])
+            ->has('seasonSummary')
+            ->where('seasonAdherencePct', null)
+            ->where('adaptation', null)
             ->etc());
 
     $season = Season::query()->where('user_id', $user->id)->sole();
     expect($season->goals()->count())->toBe(5);
 
-    // The whole action runs again on Inertia's partial request, so every prop
+    // The whole action runs again on every partial request, so every prop
     // is a closure and the partial must resolve only the ones it asked for.
     $response = $this->actingAs($user)
         ->get('/plan', inertiaPartialHeaders($this->actingAs($user), '/plan', 'Plan', 'weeks,seasonSummary,seasonAdherencePct'))
@@ -141,6 +144,43 @@ it('regenerating populates the plan, redirects with a success flash and renders 
         ->assertSuccessful()
         ->assertJsonPath('component', 'Plan')
         ->assertJsonPath('props.weeks', fn (mixed $weeks): bool => is_array($weeks) && $weeks !== []);
+});
+
+it('sends the recommendation token for today only and serves any other day\'s on its own endpoint, which records the same view', function (): void {
+    $user = User::factory()->create();
+    app(Periodizer::class)->regenerate($user);
+    $today = Carbon::today()->toDateString();
+    $tomorrow = Carbon::today()->addDay()->toDateString();
+
+    $weeks = $this->actingAs($user)->get('/plan')->assertSuccessful()->inertiaProps('weeks');
+    $tokenDates = collect(arrayOf($weeks))
+        ->flatMap(fn (mixed $week): array => arrayOf(arrayOf($week)['days']))
+        ->filter(fn (mixed $day): bool => isset(arrayOf($day)['recommendation_token']))
+        ->map(fn (mixed $day): mixed => arrayOf($day)['date'])
+        ->values()
+        ->all();
+    expect($tokenDates)->toBe([$today]);
+
+    $token = $this->actingAs($user)->getJson(route('plan.days.recommendation', $tomorrow))
+        ->assertSuccessful()
+        ->assertJsonStructure(['token'])
+        ->json('token');
+
+    $this->actingAs($user)->postJson(route('plan.recommendations.shown'), ['token' => $token, 'observation_id' => (string) Str::uuid()])->assertNoContent();
+    expect(RecommendationRevision::query()->sole()->date->toDateString())->toBe($tomorrow)
+        ->and(RecommendationView::query()->count())->toBe(1);
+});
+
+it('has no recommendation token for a day outside the athlete\'s plan, another athlete\'s day or a bad date', function (): void {
+    $owner = User::factory()->create();
+    app(Periodizer::class)->regenerate($owner);
+    $tomorrow = Carbon::today()->addDay()->toDateString();
+
+    $this->actingAs(User::factory()->create())->getJson(route('plan.days.recommendation', $tomorrow))->assertNotFound();
+    $this->actingAs($owner)->getJson(route('plan.days.recommendation', Carbon::today()->addYears(2)->toDateString()))->assertNotFound();
+    $this->actingAs($owner)->getJson(route('plan.days.recommendation', 'not-a-date'))->assertNotFound();
+    auth()->logout();
+    $this->getJson(route('plan.days.recommendation', $tomorrow))->assertUnauthorized();
 });
 
 it('updating a session automatically pins it, so the next regeneration leaves it alone', function (): void {
@@ -495,9 +535,9 @@ it('returns every run of a two-session day, each with its own distance and time'
 
 // A budget, not an exact count: it may move with the page, but a memoization
 // regression (the active race resolving once per collaborator again) lands here
-// as several statements at once. The deferred leg is the expensive one — the
+// as several statements at once. The initial leg is the expensive one: the
 // plan engine, the season service and the narration requester all run there.
-it('paints the Plan shell and resolves its deferred props inside their query budgets', function (): void {
+it('paints the Plan page and resolves its deferred race group inside their query budgets', function (): void {
     $user = planBudgetFixture();
 
     $queries = 0;
@@ -512,31 +552,20 @@ it('paints the Plan shell and resolves its deferred props inside their query bud
 
     $this->actingAs($user)->get('/plan')->assertSuccessful();
 
-    // 28: 26 since a race season's creation asks whether its recent load is
-    // scored yet, +1 since aiCatchingUp now also asks the hydration gate
-    // whether this athlete's history is still coming in, +1 for recent
-    // single-run capacity.
-    expect($queries)->toBeLessThanOrEqual(28);
+    expect($queries)->toBeLessThanOrEqual(41);
+    expect($readinessQueries)->toBe(['stress' => 1]);
 
     $headers = inertiaPartialHeaders(
         $this->actingAs($user),
         '/plan',
         'Plan',
-        'weeks,seasonSummary,seasonAdherencePct,adaptation',
+        'raceSupportedTimeSec,raceOutcomeCandidate',
     );
     $queries = 0;
-    $readinessQueries = ['stress' => 0];
 
     $this->actingAs($user)->get('/plan', $headers)->assertSuccessful();
 
-    // 16: was 15 against a fixture with no past season days, so
-    // SeasonGamificationContext's grouped read over the season range never
-    // ran. The fixture now carries 9 weeks of them (see planBudgetFixture),
-    // adding that one query.
-    // 20: BriefingContext::prescribedKmToDate reads this week's planned sessions.
-    // 21: the supported VDOT reads the athlete's hard efforts.
-    expect($queries)->toBeLessThanOrEqual(21);
-    expect($readinessQueries)->toBe(['stress' => 1]);
+    expect($queries)->toBeLessThanOrEqual(1);
 });
 
 function planBudgetFixture(): User

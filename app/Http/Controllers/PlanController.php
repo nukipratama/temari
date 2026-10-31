@@ -18,6 +18,7 @@ use App\Services\Run\Plan\PlanPageAssembler;
 use App\Services\Run\Plan\SessionEditRules;
 use App\Services\Run\Plan\SessionMatcher;
 use App\Support\TrainingDisclaimer;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Contracts\Cache\LockTimeoutException;
@@ -40,7 +41,7 @@ class PlanController extends Controller
         $today = Carbon::today();
 
         // Two requests serve this page: the initial render, then Inertia's
-        // partial for the deferred props — and the whole action runs again on
+        // partial for the deferred race props — and the whole action runs again on
         // the second one. Every prop is a closure so the partial resolves only
         // what it asked for.
         return Inertia::render('Plan', [
@@ -49,15 +50,25 @@ class PlanController extends Controller
             'raceSupportedTimeSec' => Inertia::defer(fn (): ?int => $plan->raceSupportedTimeSec($user, $today), 'race'),
             'raceOutcomeCandidate' => Inertia::defer(fn (): ?array => $plan->raceOutcomeCandidate($user, $today), 'race'),
             'sessionsPerWeek' => fn (): int => $plan->sessionsPerWeek($user, $today),
-            'weeks' => Inertia::defer(fn (): array => $plan->weeks($user, $today)),
+            'weeks' => fn (): array => $plan->weeks($user, $today),
             'pastWeek' => Inertia::optional(fn (): ?array => $plan->pastWeek($user, $today, $request->string('week')->toString())),
             'season' => fn (): ?array => $plan->season($user, $today),
-            'seasonSummary' => Inertia::defer(fn (): array => $plan->seasonSummary($user, $today)),
-            'seasonAdherencePct' => Inertia::defer(fn (): ?int => $plan->seasonAdherencePct($user, $today)),
-            'adaptation' => Inertia::defer(fn (): ?array => $plan->adaptation($user, $today)),
+            'seasonSummary' => fn (): array => $plan->seasonSummary($user, $today),
+            'seasonAdherencePct' => fn (): ?int => $plan->seasonAdherencePct($user, $today),
+            'adaptation' => fn (): ?array => $plan->adaptation($user, $today),
             'disclaimerLine' => TrainingDisclaimer::SHORT,
             'regenerateCooldownSeconds' => fn (): ?int => $plan->regenerateCooldownSeconds($user),
         ]);
+    }
+
+    public function recommendation(Request $request, PlanPageAssembler $plan, string $date): JsonResponse
+    {
+        /** @var User $user */
+        $user = $request->user();
+        $token = $plan->recommendationToken($user, Carbon::today(), $date);
+        abort_if($token === null, 404);
+
+        return response()->json(['token' => $token]);
     }
 
     public function regenerate(Request $request, PlanRegenerateCooldown $cooldown, PlanRegenerationService $regeneration): RedirectResponse
