@@ -2,9 +2,9 @@
 
 # FrankenPHP base, digest-pinned so the floating tag can't drift the Caddyfile
 # syntax out from under us (a worker-directive rename took prod down once).
-# = dunglas/frankenphp:1.13.2-php8.5-alpine (PHP 8.5.12). Refresh after a bump with:
+# = dunglas/frankenphp:1.13.4-php8.5-alpine (PHP 8.5.12). Refresh after a bump with:
 #   docker buildx imagetools inspect dunglas/frankenphp:1-php8.5-alpine --format '{{.Manifest.Digest}}'
-FROM dunglas/frankenphp:1.13.2-php8.5-alpine@sha256:f4947926b4c5070176be7c72b03939e045f7ae9d249a3219cf9708bd5e6d0ff2 AS frankenphp-base
+FROM dunglas/frankenphp:1.13.4-php8.5-alpine@sha256:974e767f7694964fdb23ead3172dd0a12cedefbd929fbe0db7f69a680663295d AS frankenphp-base
 
 # Single pinned Node toolchain reused by the dev stage (copied in) and the
 # assets build, so dev/CI/prod all run the same Node.
@@ -13,9 +13,9 @@ FROM dunglas/frankenphp:1.13.2-php8.5-alpine@sha256:f4947926b4c5070176be7c72b039
 FROM node:26.13.0-alpine@sha256:c6ad9e9c1d80f6eb607c26b4b0a132ff7a2344fad1c78ea3baa2a7d4c8de6d94 AS node-src
 
 # Single pinned Composer, copied into the dev stage and built on by the vendor stage.
-# = composer:2.10.3. Refresh after a bump with:
+# = composer:2.11.1. Refresh after a bump with:
 #   docker buildx imagetools inspect composer:2 --format '{{json .Manifest.Digest}}'
-FROM composer:2.10.3@sha256:af98f42dfff7c68ba8d53c2164fd9fde1087b7d449514baa38c418b1f6bc4bac AS composer-src
+FROM composer:2.11.1@sha256:537fb03057ed901ae06bde7ef25af348903485ae1acc7fc789b80d8bac666f35 AS composer-src
 
 # ─── Stage: dev ─────────────────────────────────────────────────────────────
 # Local dev target — FrankenPHP traditional mode (no Octane worker).
@@ -74,7 +74,7 @@ RUN ln -sf /usr/local/lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
     && ln -sf /usr/local/lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx
 
 # Keep PLAYWRIGHT_VERSION within a Chromium release or two of Alpine's chromium, which it drives.
-ARG PLAYWRIGHT_VERSION=1.63.0
+ARG PLAYWRIGHT_VERSION=1.64.1
 RUN apk add --no-cache chromium nss freetype harfbuzz ttf-freefont font-noto-emoji ffmpeg \
     && PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm install -g --no-audit --no-fund "playwright@${PLAYWRIGHT_VERSION}" \
     && npm cache clean --force
