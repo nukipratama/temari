@@ -1,10 +1,9 @@
 import type { Chart, Plugin } from 'chart.js';
 
-import { Suspense, useMemo } from 'react';
+import { useMemo } from 'react';
 
-import { LazyLine } from '@/components/collection/LazyLineChart';
+import DeferredLine from '@/components/collection/DeferredLine';
 import Eyebrow from '@/components/ui/Eyebrow';
-import Skeleton from '@/components/ui/Skeleton';
 import { useIsDarkGround } from '@/hooks/useIsDarkGround';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { CHART_GROUND, PALETTE } from '@/lib/chartTokens';
@@ -305,15 +304,11 @@ export default function SupportedOverTime({
                 aria-label={`supported time over ${points.length} days, now ${formatDurationHMS(latest.supported_time_sec)}, against your target of ${formatDurationHMS(target)}.`}
                 className="mt-2 h-[9.5rem]"
             >
-                <Suspense
-                    fallback={<Skeleton className="h-full w-full rounded-lg" />}
-                >
-                    <LazyLine
-                        data={data}
-                        options={options}
-                        plugins={CHART_PLUGINS}
-                    />
-                </Suspense>
+                <DeferredLine
+                    data={data}
+                    options={options}
+                    plugins={CHART_PLUGINS}
+                />
             </div>
         </section>
     );

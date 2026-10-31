@@ -1,11 +1,10 @@
 import type { ActiveElement, Chart, ChartEvent, Plugin } from 'chart.js';
 
-import { Suspense, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 
 import type { FormStatus } from '@/types/inertia';
 
-import { LazyLine } from '@/components/collection/LazyLineChart';
-import Skeleton from '@/components/ui/Skeleton';
+import DeferredLine from '@/components/collection/DeferredLine';
 import { StatDelta } from '@/components/ui/StatTile';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { useIsDarkGround } from '@/hooks/useIsDarkGround';
@@ -369,15 +368,11 @@ export default function FitnessPanel({
                 style={{ touchAction: 'pan-y' }}
                 data-no-pull-refresh
             >
-                <Suspense
-                    fallback={<Skeleton className="h-full w-full rounded-lg" />}
-                >
-                    <LazyLine
-                        data={data}
-                        options={options}
-                        plugins={CHART_PLUGINS}
-                    />
-                </Suspense>
+                <DeferredLine
+                    data={data}
+                    options={options}
+                    plugins={CHART_PLUGINS}
+                />
             </div>
             <div
                 className="mt-1 flex h-2.5 gap-px overflow-hidden rounded-full"

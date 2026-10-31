@@ -1,12 +1,16 @@
 export const route = '/';
 
-const chart = '[aria-label^="Long-term load"] canvas';
+const figure = '[aria-label^="Long-term load"]';
 
 export default async ({ page, measure }) => {
-    const scrolled = page
-        .waitForURL('**/trends')
-        .then(() => page.waitForTimeout(100))
-        .then(() => page.mouse.wheel(0, 800));
-    await measure('tab Trends', 'nav[aria-label="Primary"] a:has-text("Trends")', { until: chart });
-    await scrolled;
+    await page.evaluate((selector) => {
+        const observer = new MutationObserver(() => {
+            const target = document.querySelector(selector);
+            if (!target) return;
+            target.scrollIntoView({ block: 'center' });
+            observer.disconnect();
+        });
+        observer.observe(document.documentElement, { subtree: true, childList: true });
+    }, figure);
+    await measure('tab Trends', 'nav[aria-label="Primary"] a:has-text("Trends")', { until: `${figure} canvas` });
 };
