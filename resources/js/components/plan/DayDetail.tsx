@@ -76,7 +76,7 @@ function RunList({ runs }: Readonly<{ runs: PlanDay['activities'] }>) {
                         <Link
                             href={`/activities/${run.id}`}
                             aria-label={`view activity · ${run.started_at} · ${runSummary(run)}`}
-                            className="focus-ring flex items-center gap-3 py-2 text-sm text-foreground tabular-nums hover:text-horizon-ink"
+                            className="pressable focus-ring flex items-center gap-3 py-2 text-sm text-foreground tabular-nums hover:text-horizon-ink"
                         >
                             <span className="w-12 flex-none">
                                 {run.started_at}

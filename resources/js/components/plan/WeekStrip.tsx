@@ -139,6 +139,7 @@ export default function WeekStrip({
                         onClick={() => onSelect(day.date)}
                         onKeyDown={(event) => onKeyDown(event, index)}
                         className={cn(
+                            'pressable',
                             DAY_CELL_CLASS,
                             'min-w-0',
                             selected &&

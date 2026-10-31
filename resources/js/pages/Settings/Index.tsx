@@ -225,7 +225,7 @@ export default function Settings({
                                     key={row.href}
                                     href={row.href}
                                     className={cn(
-                                        'focus-ring flex items-center justify-between gap-2 py-3.5 font-sans text-xs font-semibold text-foreground transition hover:text-horizon-ink',
+                                        'pressable focus-ring flex items-center justify-between gap-2 py-3.5 font-sans text-xs font-semibold text-foreground transition hover:text-horizon-ink',
                                         index !== LEGAL_ROWS.length - 1 &&
                                             'border-b border-dashed border-border',
                                     )}
@@ -305,7 +305,7 @@ function AccountActions() {
                                 accounts, this is also how.{' '}
                                 <Link
                                     href="/privacy"
-                                    className="underline underline-offset-2"
+                                    className="pressable underline underline-offset-2"
                                 >
                                     what&apos;s kept afterwards
                                 </Link>

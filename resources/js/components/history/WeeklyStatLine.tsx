@@ -117,7 +117,7 @@ export default function WeeklyStatLine({
                                 aria-expanded={open}
                                 aria-controls={open ? explainerId : undefined}
                                 className={cn(
-                                    'focus-ring rounded-xs underline decoration-dotted decoration-1 underline-offset-2',
+                                    'pressable focus-ring rounded-xs underline decoration-dotted decoration-1 underline-offset-2',
                                     metric.flagged
                                         ? 'text-ember-ink'
                                         : 'text-foreground',

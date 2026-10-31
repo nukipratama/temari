@@ -18,7 +18,7 @@ export default function Citation({
             type="button"
             onClick={() => revealAnchor(anchor)}
             aria-label={`Show ${label ?? anchor} on this page`}
-            className="focus-ring rounded-xs underline decoration-text-3 decoration-dotted underline-offset-4 transition hover:text-foreground hover:decoration-foreground"
+            className="pressable focus-ring rounded-xs underline decoration-text-3 decoration-dotted underline-offset-4 transition hover:text-foreground hover:decoration-foreground"
         >
             {children}
         </button>

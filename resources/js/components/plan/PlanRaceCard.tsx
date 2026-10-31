@@ -56,7 +56,7 @@ function RaceLinkCard({
             href="/race"
             className={cn(
                 CARD,
-                'focus-ring flex items-center justify-between gap-3',
+                'pressable focus-ring flex items-center justify-between gap-3',
                 className,
             )}
         >

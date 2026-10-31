@@ -66,6 +66,7 @@ function DayCell({
                 href={`/plan?day=${day.date}`}
                 aria-label={`${weekdayLabel(day.date)} · ${dayDetail(day)}`}
                 className={cn(
+                    'pressable',
                     DAY_CELL_CLASS,
                     isToday && 'ring-[1.5px] ring-inset ring-icon-accent',
                 )}
@@ -152,7 +153,7 @@ export default function WeekPlanWidget({
 
             <Link
                 href="/plan"
-                className="focus-ring flex items-center justify-between gap-2 rounded-lg bg-muted px-3 py-2.5 text-[0.71875rem] text-foreground transition-colors hover:bg-accent"
+                className="pressable focus-ring flex items-center justify-between gap-2 rounded-lg bg-muted px-3 py-2.5 text-[0.71875rem] text-foreground transition-colors hover:bg-accent"
             >
                 <span>see the plan</span>
                 <Icon

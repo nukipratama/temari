@@ -261,7 +261,7 @@ export default function Plan({
                     {disclaimerLine}{' '}
                     <Link
                         href="/training-disclaimer"
-                        className="focus-ring hit-area text-text-2 underline underline-offset-2 hover:text-foreground"
+                        className="pressable focus-ring hit-area text-text-2 underline underline-offset-2 hover:text-foreground"
                     >
                         the full disclaimer
                     </Link>

@@ -164,6 +164,28 @@ describe('InboxRow', () => {
         expect(screen.queryByText('Distance')).not.toBeInTheDocument();
     });
 
+    it('presses the whole row only when it links somewhere', () => {
+        const { container, rerender } = render(
+            <InboxRow
+                item={item({ url: '/profile' })}
+                read={false}
+                focused={false}
+                onOpen={vi.fn()}
+            />,
+        );
+        expect(container.querySelector('article')).toHaveClass('pressable');
+
+        rerender(
+            <InboxRow
+                item={item()}
+                read={false}
+                focused={false}
+                onOpen={vi.fn()}
+            />,
+        );
+        expect(container.querySelector('article')).not.toHaveClass('pressable');
+    });
+
     it('toggles the timestamp between relative and absolute on tap', async () => {
         renderRow({ created_at: '2026-08-13T07:30:00+07:00' });
 
