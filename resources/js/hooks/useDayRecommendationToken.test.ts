@@ -37,20 +37,48 @@ it('fetches the token of a day that arrived without one', async () => {
     );
 });
 
-it('fetches again when the day is replaced and never shows the old day a stale token', async () => {
+it('fetches again when the server sends the day anew and never shows it the stale token', async () => {
     vi.mocked(getJson)
         .mockResolvedValueOnce(reply({ token: 'first' }))
         .mockResolvedValueOnce(reply({ token: 'second' }));
     const { result, rerender } = renderHook(
         ({ day }) => useDayRecommendationToken(day),
-        { initialProps: { day: { date: '2026-11-02' } } },
+        { initialProps: { day: { date: '2026-11-02', segments: [] } } },
     );
     await waitFor(() => expect(result.current).toBe('first'));
 
-    rerender({ day: { date: '2026-11-02' } });
+    rerender({ day: { date: '2026-11-02', segments: [] } });
 
     expect(result.current).toBeUndefined();
     await waitFor(() => expect(result.current).toBe('second'));
+});
+
+it('keeps the token through an optimistic skip of the day and fetches nothing more', async () => {
+    vi.mocked(getJson).mockResolvedValue(reply({ token: 'fetched' }));
+    const day = {
+        date: '2026-11-02',
+        segments: [],
+        skipped: false,
+        pinned: false,
+        actions: { skip: true, restore: false },
+    };
+    const { result, rerender } = renderHook(
+        ({ day }) => useDayRecommendationToken(day),
+        { initialProps: { day } },
+    );
+    await waitFor(() => expect(result.current).toBe('fetched'));
+
+    rerender({
+        day: {
+            ...day,
+            skipped: true,
+            pinned: true,
+            actions: { skip: false, restore: true },
+        },
+    });
+
+    expect(result.current).toBe('fetched');
+    expect(getJson).toHaveBeenCalledOnce();
 });
 
 it('stays without a token when the fetch fails', async () => {

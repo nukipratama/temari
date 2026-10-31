@@ -211,10 +211,10 @@ final class PlanPageAssembler
     public function recommendationToken(User $user, Carbon $today, string $date): ?string
     {
         $day = $this->parseDate($date);
-        if (! $day instanceof Carbon) {
+        [$rangeStart, $rangeEnd] = $this->weeksRange($today);
+        if (! $day instanceof Carbon || $day->gt($rangeEnd)) {
             return null;
         }
-        [$rangeStart, $rangeEnd] = $this->weeksRange($today);
         $weekStart = $day->copy()->startOfWeek(Carbon::MONDAY);
         $weeks = $weekStart->gte($rangeStart)
             ? $this->weeksBetween($user, $today, $rangeStart, $rangeEnd, $date)

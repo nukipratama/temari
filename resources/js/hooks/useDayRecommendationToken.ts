@@ -7,16 +7,36 @@ interface TokenDay {
     recommendation_token?: string;
 }
 
-export function useDayRecommendationToken(
-    day: TokenDay | null,
+const OPTIMISTIC_FIELDS = new Set<PropertyKey>([
+    'skipped',
+    'pinned',
+    'actions',
+]);
+
+function sameServerDay<T extends TokenDay>(fetchedFor: T, day: T): boolean {
+    return (Object.keys(day) as (keyof T)[]).every(
+        (key) => OPTIMISTIC_FIELDS.has(key) || fetchedFor[key] === day[key],
+    );
+}
+
+export function useDayRecommendationToken<T extends TokenDay>(
+    day: T | null,
 ): string | undefined {
     const [fetched, setFetched] = useState<{
-        day: TokenDay;
+        day: T;
         token: string;
     } | null>(null);
+    const fetchedToken =
+        fetched !== null && day !== null && sameServerDay(fetched.day, day)
+            ? fetched.token
+            : undefined;
+    const needsFetch =
+        day !== null &&
+        day.recommendation_token === undefined &&
+        fetchedToken === undefined;
 
     useEffect(() => {
-        if (!day || day.recommendation_token !== undefined) {
+        if (!day || !needsFetch) {
             return;
         }
         let current = true;
@@ -32,10 +52,7 @@ export function useDayRecommendationToken(
         return () => {
             current = false;
         };
-    }, [day]);
+    }, [day, needsFetch]);
 
-    return (
-        day?.recommendation_token ??
-        (fetched?.day === day ? fetched?.token : undefined)
-    );
+    return day?.recommendation_token ?? fetchedToken;
 }
