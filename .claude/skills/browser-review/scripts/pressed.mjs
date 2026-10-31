@@ -2,7 +2,7 @@
  * Lists the visible controls that give no pressed feedback.
  *
  * Usage:
- *   node pressed.mjs [routes] [--viewport=mobile] [--ground=dark]
+ *   node pressed.mjs [routes] [--viewport=mobile] [--ground=dark] [--signed-out] [--click=<selector>]...
  *
  * For each route it forces `:active` on every visible link, button, switch and tab through CDP,
  * with transitions off, and compares the computed style of the control and its descendants
@@ -22,9 +22,11 @@ const [routeList] = args.filter((a) => !a.startsWith('--'));
 const routes = (routeList ?? '/,/plan,/trends,/history,/race,/inbox,/profile,/settings').split(',');
 const viewportKey = flag('viewport', 'mobile');
 const ground = flag('ground', 'dark');
+const signedOut = args.includes('--signed-out');
+const clicks = args.filter((a) => a.startsWith('--click=')).map((a) => a.slice('--click='.length));
 
 if (!VIEWPORT_DEFS[viewportKey] || !['dark', 'light'].includes(ground)) {
-    console.error(`Usage: node pressed.mjs [routes] [--viewport=${Object.keys(VIEWPORT_DEFS).join('|')}] [--ground=dark|light]`);
+    console.error(`Usage: node pressed.mjs [routes] [--viewport=${Object.keys(VIEWPORT_DEFS).join('|')}] [--ground=dark|light] [--signed-out] [--click=<selector>]...`);
     process.exit(2);
 }
 
@@ -40,7 +42,7 @@ await ctx.addInitScript((g) => {
     if (location.protocol.startsWith('http')) localStorage.setItem('temari-theme', g);
 }, ground);
 const page = await ctx.newPage();
-await login(page);
+if (!signedOut) await login(page);
 const cdp = await ctx.newCDPSession(page);
 await cdp.send('DOM.enable');
 await cdp.send('CSS.enable');
@@ -53,14 +55,15 @@ const signature = (ids) => page.evaluate(([list, props]) => list.map((i) => {
 }), [ids, PROPS]);
 
 const report = [];
-for (const route of routes) {
-    await page.goto(`${BASE}${route}`, { waitUntil: 'load' });
-    await page.waitForLoadState('networkidle').catch(() => {});
-    await page.waitForTimeout(600);
+const scanState = async (label) => {
     const controls = await page.evaluate((selector) => {
-        const style = document.createElement('style');
-        style.textContent = '*, *::before, *::after { transition: none !important; animation: none !important; }';
-        document.head.append(style);
+        document.querySelectorAll('[data-pressed-scan]').forEach((el) => delete el.dataset.pressedScan);
+        if (!document.getElementById('pressed-scan-reset')) {
+            const style = document.createElement('style');
+            style.id = 'pressed-scan-reset';
+            style.textContent = '*, *::before, *::after { transition: none !important; animation: none !important; }';
+            document.head.append(style);
+        }
         return [...document.querySelectorAll(selector)]
             .filter((el) => {
                 const r = el.getBoundingClientRect();
@@ -83,9 +86,21 @@ for (const route of routes) {
         await cdp.send('CSS.forcePseudoState', { nodeId, forcedPseudoClasses: [] });
         if (after === before[c.i]) missing.push(c);
     }
-    report.push({ route, controls: controls.length, withoutFeedback: missing.length, missing: missing.map((m) => `${m.tag} "${m.name}"`) });
-    console.log(`${route}: ${missing.length}/${controls.length} controls without pressed feedback`);
+    report.push({ route: label, controls: controls.length, withoutFeedback: missing.length, missing: missing.map((m) => `${m.tag} "${m.name}"`) });
+    console.log(`${label}: ${missing.length}/${controls.length} controls without pressed feedback`);
     for (const m of missing) console.log(`  ${m.tag} "${m.name}"`);
+};
+
+for (const route of routes) {
+    await page.goto(`${BASE}${route}`, { waitUntil: 'load' });
+    await page.waitForLoadState('networkidle').catch(() => {});
+    await page.waitForTimeout(600);
+    await scanState(route);
+    for (const selector of clicks) {
+        await page.click(selector);
+        await page.waitForTimeout(600);
+        await scanState(`${route} after ${selector}`);
+    }
 }
 await browser.close();
 console.log(JSON.stringify({ viewport: viewportKey, ground, total: report.reduce((a, r) => a + r.controls, 0), withoutFeedback: report.reduce((a, r) => a + r.withoutFeedback, 0) }));

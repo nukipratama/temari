@@ -376,6 +376,8 @@ end state.
    `touch-manipulation` and gives up the movement, since the popup it opens is anchored to it.
    A link inside running text takes the opacity dip only (`active:opacity-70`), so its text stays
    selectable and iOS long-press Copy Link keeps working.
+   A control that rests below full opacity (the faded future weeks of the plan ribbon) sets its own
+   deeper `active:opacity-*`, since its resting opacity utility overrides the shared dip.
    Route transitions carry no tokens at all any more: the swap cross-fades through the
    **View Transitions API** (the browser's own animation, tuned only by a 180ms duration in
    `app.css`), and the progress bar it replaced is gone — see [[installed-app-shell]].

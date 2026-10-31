@@ -30,6 +30,14 @@ S=.claude/skills/browser-review
 ./vendor/bin/sail exec app node $S/scripts/record.mjs tabs $S/scenarios/bench/tabs.mjs --side=before --throttle=fast4g
 ```
 
+`pressed.mjs --signed-out /login` skips the demo login. `--click=<selector>` (Playwright syntax,
+repeatable) clicks in order after the route loads and scans again in each state it opens, so a
+modal or the next wizard step is covered: `pressed.mjs /activities/<id> --click='button:has-text("Share")'`.
+The onboarding wizard needs a non-onboarded user; null the demo user's `onboarded_at` through
+`artisan tinker --execute`, scan `/onboarding` with `--click='button:has-text("continue")'` and the
+step buttons, then restore it. `DateField`'s calendar button only renders for a fine pointer, so scan
+it with `--viewport=laptop`.
+
 Results print as medians with the maximum in brackets, `!` marking a median over budget, and every
 run lands in `storage/app/bench/<label>.json` (gitignored).
 
