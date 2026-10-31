@@ -41,7 +41,7 @@ const ground = flag('ground', 'dark');
 const throttle = THROTTLES[flag('throttle', 'fast4g')];
 const label = flag('label', basename(scenarioPath ?? '', '.mjs'));
 
-if (!scenarioPath || !VIEWPORT_DEFS[viewportKey] || throttle === undefined) {
+if (!scenarioPath || !Number.isInteger(runs) || runs < 1 || !VIEWPORT_DEFS[viewportKey] || throttle === undefined) {
     console.error(
         `Usage: node bench.mjs <scenario.mjs> [--runs=5] [--viewport=${Object.keys(VIEWPORT_DEFS).join('|')}] [--ground=dark|light] [--throttle=${Object.keys(THROTTLES).join('|')}] [--label=<name>]`,
     );
@@ -49,6 +49,7 @@ if (!scenarioPath || !VIEWPORT_DEFS[viewportKey] || throttle === undefined) {
 }
 
 const scenario = await import(pathToFileURL(resolve(scenarioPath)).href);
+const press = VIEWPORT_DEFS[viewportKey].hasTouch ? 'tap' : 'click';
 
 function installProbe() {
     const s = { shifts: [], events: [], lcp: 0, active: 0, step: null };
@@ -131,7 +132,7 @@ const rows = [];
 async function measure(page, run, step, selector, { until } = {}) {
     await page.locator(selector).first().waitFor({ timeout: STEP_TIMEOUT_MS });
     await page.evaluate(([u]) => window.__bench.begin(u, null), [until ?? null]);
-    await page.locator(selector).first().tap({ timeout: STEP_TIMEOUT_MS });
+    await page.locator(selector).first()[press]({ timeout: STEP_TIMEOUT_MS });
     await page.waitForFunction(() => window.__bench.step.done !== null, null, { timeout: STEP_TIMEOUT_MS });
     await page.waitForTimeout(QUIET_MS);
     rows.push({ run, step, ...(await page.evaluate(() => window.__bench.end())) });

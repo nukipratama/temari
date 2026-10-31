@@ -116,7 +116,7 @@ if (scenario.steps) {
 } else {
     const measure = async (_label, selector, { until } = {}) => {
         const visit = page.waitForResponse((r) => r.request().headers()['x-inertia'] !== undefined, { timeout: 15000 });
-        await page.locator(selector).first().tap({ timeout: 8000 });
+        await page.locator(selector).first()[device.hasTouch ? 'tap' : 'click']({ timeout: 8000 });
         await visit;
         if (until) await page.locator(until).first().waitFor({ timeout: 15000 });
         else await page.waitForFunction(() => ![...document.querySelectorAll('.skeleton')].some((e) => e.getBoundingClientRect().height > 0), null, { timeout: 15000 });

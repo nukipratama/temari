@@ -23,6 +23,11 @@ const routes = (routeList ?? '/,/plan,/trends,/history,/race,/inbox,/profile,/se
 const viewportKey = flag('viewport', 'mobile');
 const ground = flag('ground', 'dark');
 
+if (!VIEWPORT_DEFS[viewportKey]) {
+    console.error(`Usage: node pressed.mjs [routes] [--viewport=${Object.keys(VIEWPORT_DEFS).join('|')}] [--ground=dark|light]`);
+    process.exit(2);
+}
+
 const CONTROLS = 'a[href], button:not([disabled]), [role="button"], [role="switch"], [role="tab"], summary';
 const PROPS = ['opacity', 'transform', 'scale', 'translate', 'background-color', 'background-image', 'color', 'box-shadow', 'filter', 'border-color', 'outline-color'];
 
