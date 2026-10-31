@@ -23,7 +23,7 @@ const routes = (routeList ?? '/,/plan,/trends,/history,/race,/inbox,/profile,/se
 const viewportKey = flag('viewport', 'mobile');
 const ground = flag('ground', 'dark');
 
-if (!VIEWPORT_DEFS[viewportKey]) {
+if (!VIEWPORT_DEFS[viewportKey] || !['dark', 'light'].includes(ground)) {
     console.error(`Usage: node pressed.mjs [routes] [--viewport=${Object.keys(VIEWPORT_DEFS).join('|')}] [--ground=dark|light]`);
     process.exit(2);
 }

@@ -41,7 +41,7 @@ const ground = flag('ground', 'dark');
 const throttle = THROTTLES[flag('throttle', 'fast4g')];
 const label = flag('label', basename(scenarioPath ?? '', '.mjs'));
 
-if (!scenarioPath || !Number.isInteger(runs) || runs < 1 || !VIEWPORT_DEFS[viewportKey] || throttle === undefined) {
+if (!scenarioPath || !Number.isInteger(runs) || runs < 1 || !VIEWPORT_DEFS[viewportKey] || !['dark', 'light'].includes(ground) || throttle === undefined) {
     console.error(
         `Usage: node bench.mjs <scenario.mjs> [--runs=5] [--viewport=${Object.keys(VIEWPORT_DEFS).join('|')}] [--ground=dark|light] [--throttle=${Object.keys(THROTTLES).join('|')}] [--label=<name>]`,
     );
