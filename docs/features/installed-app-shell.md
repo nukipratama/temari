@@ -433,9 +433,9 @@ through `showPending` in [pendingTab](../../resources/js/lib/pendingTab.ts);
 push or pop keyframes in `app.css`. While the skeleton shows, the chrome is the
 destination's: `MobileTopBar` draws its back chevron (pointed at the origin the
 page will record) or brand mark, and `MobileBottomNav` leaves or returns. The
-chunk's own `before` listener runs after `useViewTransitions` and takes the view
-transition off the visit, so the page replaces its skeleton in place, inside the
-slide's live new frame if the slide is still running. A cancelled or failed
+same `start` listener takes the view transition off the visit, after every
+`before` listener has granted it, so the page replaces its skeleton in place,
+inside the slide's live new frame if the slide is still running. A cancelled or failed
 visit skips the slide and hands the page back the way a tab skeleton does. A
 History row's morph is dropped for that push.
 `RunShowSkeleton` holds the effort picker's space unless the tapped History row

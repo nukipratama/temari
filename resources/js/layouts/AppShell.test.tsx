@@ -670,6 +670,24 @@ describe('AppShell pushed-screen skeleton', () => {
         expect(screen.queryByRole('link', { name: /^Back to/ })).toBeNull();
     });
 
+    it('keeps the cross-fade off a push when the shell remounted after the slide loaded', () => {
+        window.history.replaceState(null, '', '/history');
+        stopStack = startPushStack(() => 'History');
+        renderShell('/history', 'History');
+        const visit = {
+            ...pageVisit('/activities/12'),
+            showProgress: true,
+            viewTransition: undefined as unknown,
+        };
+
+        fireAll('before', visit);
+        const started = { ...visit };
+        fireAll('start', started);
+
+        expect(visit.viewTransition).toBe(true);
+        expect(started.viewTransition).toBe(false);
+    });
+
     it('keeps the page on screen for a push under a fine pointer', () => {
         vi.unstubAllGlobals();
         vi.stubGlobal('scrollTo', vi.fn());

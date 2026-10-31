@@ -11,7 +11,7 @@ import { startPushStack } from './pushStack';
 
 type Handler = (event: { detail: { visit: unknown } }) => void;
 
-function fire(name: 'before' | 'start' | 'finish', visit: unknown): void {
+function fire(name: 'start' | 'finish', visit: unknown): void {
     vi.mocked(router.on)
         .mock.calls.filter(([event]) => event === name)
         .forEach(([, handler]) => (handler as Handler)({ detail: { visit } }));
@@ -331,25 +331,29 @@ describe('startPushStack', () => {
     });
 
     it.each([
-        ['a push it slides', '/activities/12', true, false],
-        ['a tab switch', '/plan', true, true],
-        ['a background reload', '/activities/12', false, undefined],
+        ['a push it slides', '/activities/12', {}, false],
+        ['a tab switch', '/plan', {}, true],
+        ['a background reload', '/activities/12', { async: true }, true],
+        [
+            'a non-GET visit',
+            '/activities/12',
+            { method: 'post' as const },
+            true,
+        ],
     ])(
-        'drops the cross-fade only for %s',
-        (_, href, showProgress, viewTransition) => {
-            const before = {
-                ...visit(href, { showProgress }),
-                viewTransition: showProgress ? true : undefined,
-            };
+        'takes the granted cross-fade off only %s',
+        (_, href, overrides, viewTransition) => {
+            fakeSlide();
+            const started = { ...visit(href, overrides), viewTransition: true };
 
-            fire('before', before);
+            fire('start', started);
 
-            expect(before.viewTransition).toBe(viewTransition);
+            expect(started.viewTransition).toBe(viewTransition);
         },
     );
 
     it('removes every listener it added once uninstalled', () => {
-        const offs = [vi.fn(), vi.fn(), vi.fn(), vi.fn()];
+        const offs = [vi.fn(), vi.fn(), vi.fn()];
         offs.forEach((off) => vi.mocked(router.on).mockReturnValueOnce(off));
         const removeFromDocument = vi.spyOn(document, 'removeEventListener');
         const removeFromWindow = vi.spyOn(window, 'removeEventListener');

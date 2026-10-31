@@ -77,16 +77,6 @@ export function startPushStack(currentComponent: () => string): () => void {
                 : undefined;
     };
 
-    const offBefore = router.on('before', (event) => {
-        const { visit } = event.detail;
-        if (
-            visit.showProgress &&
-            visitDirection(currentComponent(), visit.url) !== null
-        ) {
-            visit.viewTransition = false;
-        }
-    });
-
     const offStart = router.on('start', (event) => {
         const { visit } = event.detail;
         const row = tappedRow;
@@ -102,6 +92,7 @@ export function startPushStack(currentComponent: () => string): () => void {
             return;
         }
 
+        visit.viewTransition = false;
         const tab = navTabFor(screen);
         const place = {
             from,
@@ -159,7 +150,6 @@ export function startPushStack(currentComponent: () => string): () => void {
     document.addEventListener('click', onClick, true);
 
     return () => {
-        offBefore();
         offStart();
         offFinish();
         stopTraversals();
