@@ -255,7 +255,7 @@ services:
     # Dockerfile), so a fresh volume self-initializes on any machine. No workflow builds
     # or recreates it: an image change is the manual "Upgrading MySQL" window in
     # docs/architecture/deployment.md.
-    image: temari/mysql:9.7
+    image: temari/mysql:9.7.4
     build:
       context: ./docker/mysql
     restart: unless-stopped

@@ -46,7 +46,7 @@ it('checks mysql is running before the deploy pulls anything, without bringing i
 })->group('structure');
 
 it('tags the prod mysql image with the version its Dockerfile builds, and never pulls it', function (): void {
-    preg_match('/^FROM mysql:(\d+\.\d+)@/m', (string) File::get(base_path('docker/mysql/Dockerfile')), $from);
+    preg_match('/^FROM mysql:(\d+\.\d+\.\d+)@/m', (string) File::get(base_path('docker/mysql/Dockerfile')), $from);
     $prod = data_get(Yaml::parseFile(base_path('compose.prod.yaml')), 'services.mysql');
     $restore = data_get(Yaml::parseFile(base_path('deploy/restore-dry-run-compose.yml')), 'services.mysql_restore');
 

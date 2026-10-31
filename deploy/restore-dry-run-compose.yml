@@ -6,7 +6,7 @@
 # Its network is internal (no route out), shared with the app_rehearsal overlay in deploy/restore-dry-run-rehearsal-compose.yml.
 services:
   mysql_restore:
-    image: temari/mysql:9.7
+    image: temari/mysql:9.7.4
     pull_policy: never
     env_file:
       - /opt/temari/.env
