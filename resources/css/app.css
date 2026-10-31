@@ -749,6 +749,58 @@ body:has(#app > *) #boot-shell {
     animation-duration: 180ms;
 }
 
+/* A pushed screen sliding in over its parent on a phone, and back out of it
+   on a pop (lib/pushSlide). */
+:root[data-nav-slide]::view-transition-old(root),
+:root[data-nav-slide]::view-transition-new(root) {
+    animation-duration: 320ms;
+    animation-timing-function: cubic-bezier(0.32, 0.72, 0, 1);
+    mix-blend-mode: normal;
+}
+
+:root[data-nav-slide='push']::view-transition-old(root) {
+    animation-name: nav-slide-under;
+}
+
+:root[data-nav-slide='push']::view-transition-new(root) {
+    animation-name: nav-slide-over;
+}
+
+:root[data-nav-slide='pop']::view-transition-old(root) {
+    z-index: 1;
+    animation-name: nav-slide-off;
+}
+
+:root[data-nav-slide='pop']::view-transition-new(root) {
+    animation-name: nav-slide-back;
+}
+
+@keyframes nav-slide-over {
+    from {
+        transform: translateX(100%);
+    }
+}
+
+@keyframes nav-slide-off {
+    to {
+        transform: translateX(100%);
+    }
+}
+
+@keyframes nav-slide-under {
+    to {
+        transform: translateX(-30%);
+        filter: brightness(0.8);
+    }
+}
+
+@keyframes nav-slide-back {
+    from {
+        transform: translateX(-30%);
+        filter: brightness(0.8);
+    }
+}
+
 /* A History run row flying up into the run page's header (lib/runMorph). */
 ::view-transition-group(.run-morph),
 ::view-transition-old(.run-morph),
@@ -863,7 +915,7 @@ body:has(#app > *) #boot-shell {
        reduced-motion user can still receive. The release curve overshoots
        slightly so the control springs back instead of gliding. */
     .pressable {
-        @apply touch-manipulation transition-opacity duration-100 active:opacity-70 motion-safe:transition-[transform,opacity] motion-safe:duration-150 motion-safe:ease-[cubic-bezier(0.34,1.1,0.64,1)] motion-safe:active:scale-[0.97];
+        @apply touch-manipulation transition-opacity duration-100 active:opacity-70 motion-safe:transition-[transform,scale,opacity] motion-safe:duration-150 motion-safe:ease-[cubic-bezier(0.34,1.1,0.64,1)] motion-safe:active:scale-[0.97];
     }
     /* A control that opens something anchored to itself keeps the tap-delay
        fix and gives up the movement: the popup is positioned against this

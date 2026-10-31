@@ -56,7 +56,7 @@ function RaceLinkCard({
             href="/race"
             className={cn(
                 CARD,
-                'focus-ring flex items-center justify-between gap-3',
+                'pressable focus-ring flex items-center justify-between gap-3',
                 className,
             )}
         >
@@ -203,7 +203,7 @@ export default function PlanRaceCard({
             <Link
                 href="/race"
                 className={cn(
-                    'focus-ring block rounded-panel bg-horizon pad-card',
+                    'pressable focus-ring block rounded-panel bg-horizon pad-card',
                     className,
                 )}
             >

@@ -9,7 +9,7 @@
  * <scenario> is a .json file ({ "route": "/history", "steps": [...] }) or a .mjs module
  * (export const route = '/history'; export default async ({ page, measure }) => { ... }), the
  * same module bench.mjs times. Here `measure(label, selector, { until })` taps and waits for
- * `until`, or for the skeletons to clear.
+ * `until`, or for the on-screen skeletons to clear.
  *
  * JSON steps: ["goto", route] ["click", selector] ["hover", selector] ["waitFor", selector]
  * ["wait", ms] ["press", key] ["scroll", dy] ["back"]. Selectors are Playwright selectors;
@@ -119,7 +119,10 @@ if (scenario.steps) {
         await page.locator(selector).first()[device.hasTouch ? 'tap' : 'click']({ timeout: 8000 });
         await visit;
         if (until) await page.locator(until).first().waitFor({ timeout: 15000 });
-        else await page.waitForFunction(() => ![...document.querySelectorAll('.skeleton')].some((e) => e.getBoundingClientRect().height > 0), null, { timeout: 15000 });
+        else await page.waitForFunction(() => ![...document.querySelectorAll('.skeleton')].some((e) => {
+            const r = e.getBoundingClientRect();
+            return r.height > 0 && r.bottom > 0 && r.top < innerHeight;
+        }), null, { timeout: 15000 });
         await page.waitForTimeout(600);
     };
     await scenario.default({ page, measure });

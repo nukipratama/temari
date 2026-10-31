@@ -92,11 +92,10 @@ export default function MobileBottomNav() {
         () => null,
     );
 
-    if (current === null) {
+    const active = pending === null ? current : pending.tab;
+    if (active === null) {
         return null;
     }
-
-    const active = pending?.tab ?? current;
 
     return (
         <div className="pointer-events-none fixed inset-x-0 bottom-[max(0.875rem,calc(env(safe-area-inset-bottom)+0.25rem))] z-30 pl-[max(0.875rem,env(safe-area-inset-left))] pr-[max(0.875rem,env(safe-area-inset-right))]">

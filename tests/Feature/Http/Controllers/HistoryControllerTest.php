@@ -91,6 +91,21 @@ it('stamps each run\'s effort onto its detail and never ships stream_summary to 
         ->assertJsonMissingPath('props.runs.0.detail.stream_summary');
 });
 
+it('ships whether each run has a saved effort score, never the score itself', function (): void {
+    $user = User::factory()->create();
+    $rated = Activity::factory()->for($user)->analyzed()->create();
+    $unrated = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($rated)->create(['start_date_local' => Carbon::now()->subDay(), 'perceived_effort' => 7]);
+    ActivityDetail::factory()->for($unrated)->create(['start_date_local' => Carbon::now(), 'perceived_effort' => null]);
+
+    $this->actingAs($user)
+        ->get('/history', inertiaPartialHeaders($this->actingAs($user), '/history', 'History', 'activeView,runs'))
+        ->assertSuccessful()
+        ->assertJsonPath('props.runs.0.detail.has_perceived_effort', false)
+        ->assertJsonPath('props.runs.1.detail.has_perceived_effort', true)
+        ->assertJsonMissingPath('props.runs.1.detail.perceived_effort');
+});
+
 it('sends each run only the activity fields the list reads', function (): void {
     $user = User::factory()->create();
     $activity = Activity::factory()->for($user)->analyzed()->create();

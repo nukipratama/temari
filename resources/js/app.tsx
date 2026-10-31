@@ -3,6 +3,7 @@ import type { ComponentType } from 'react';
 import { createInertiaApp, router } from '@inertiajs/react';
 import { createRoot } from 'react-dom/client';
 
+import { LazyLine } from '@/components/collection/LazyLineChart';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { installOverlayHistory } from '@/hooks/useOverlayHistory';
 import { syncAppBadge, syncAppBadgeOnVisible } from '@/lib/appBadge';
@@ -67,8 +68,9 @@ const pages = import.meta.glob<{ default: ComponentType }>([
 const TAB_PAGES = ['Home', 'Plan', 'Trends', 'History'];
 
 /**
- * Fetches the JS chunk for each tab once the browser is idle, so the first tap
- * on a tab does not wait on a network round trip for its code.
+ * Fetches the JS chunk for each tab, and the `charts` chunk, once the browser
+ * is idle, so the first tap on a tab does not wait on a network round trip for
+ * its code and Trends' charts mount without suspending.
  *
  * Not `{ eager: true }` on the glob: that would pull the lazy `charts` and
  * `maps` vendor chunks into the entry graph.
@@ -89,6 +91,7 @@ function warmTabChunks(): void {
                 // surfacing: the real navigation will retry and report.
             });
         }
+        LazyLine.preload();
     };
 
     if (typeof window.requestIdleCallback === 'function') {

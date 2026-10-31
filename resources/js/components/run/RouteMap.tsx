@@ -89,7 +89,7 @@ export default function RouteMap({
                     type="button"
                     onClick={() => setActive(true)}
                     aria-label="Activate map to pan and zoom"
-                    className="absolute inset-0 z-[1000] flex items-end justify-center bg-transparent p-3"
+                    className="pressable absolute inset-0 z-[1000] flex items-end justify-center bg-transparent p-3"
                 >
                     <span className="rounded-full bg-ink/70 px-3 py-1.5 text-label-micro text-cream backdrop-blur-sm">
                         Activate map

@@ -3,7 +3,7 @@ title: Installed app shell
 description: What makes Temari feel native once it is on the iOS Home Screen — edge-to-edge status bar, launch image, top bar with back button, touch feel, install and shortcuts
 tags: [feature, pwa]
 status: living
-reviewed: 2026-10-09
+reviewed: 2026-10-31
 code_refs:
   - resources/views/app.blade.php
   - public/manifest.webmanifest
@@ -11,7 +11,12 @@ code_refs:
   - resources/js/components/MobileBottomNav.tsx
   - resources/js/lib/navigationMemory.ts
   - resources/js/lib/pendingTab.ts
+  - resources/js/lib/pushSlide.ts
+  - resources/js/lib/pushStack.tsx
+  - resources/js/lib/warmPushStack.ts
   - resources/js/hooks/useTabSkeleton.ts
+  - resources/js/hooks/useViewTransitions.ts
+  - resources/js/components/run/RunShowSkeleton.tsx
   - resources/js/components/race/RaceSkeleton.tsx
   - resources/js/components/history/HistoryNav.tsx
   - resources/js/pages/Activities/useMonthReload.ts
@@ -359,6 +364,10 @@ narration; Plan's weeks arrive with its first response, so `PlanSkeleton`
 approximates them the same way. A tap on the current tab never shows one, except on a sub-page
 such as Race, where it leaves for the tab's root (Race lights Plan, so a Plan
 tap there shows `PlanSkeleton`).
+On a phone the same state also carries a push into a pushed screen and the pop
+back to its parent, with that screen's skeleton (`RunShowSkeleton`,
+`InboxSkeleton`, `ProfileSkeleton`, `SettingsSkeleton`) or the parent tab's;
+see [Pushed screens slide on a phone](#pushed-screens-slide-on-a-phone).
 
 Two visits besides a tab tap arm the same state. The feed/calendar pill
 ([HistoryNav](../../resources/js/components/history/HistoryNav.tsx)) arms the
@@ -381,15 +390,15 @@ the primary device, and nothing may depend on it.
 
 ## The route cross-fade
 
-Real navigations cross-fade through the **View Transitions API**, and none of it
-is hand-rolled: Inertia's own `Page.swap()` wraps the component swap in
+Real navigations cross-fade through the **View Transitions API**, and the
+cross-fade is not hand-rolled (the phone's push slide below is): Inertia's own `Page.swap()` wraps the component swap in
 `document.startViewTransition()` whenever a visit carries `viewTransition`, and
 already declines on a browser without the API and on a hidden tab. That option
 is per-visit and defaults to false, so
 [useViewTransitions](../../resources/js/hooks/useViewTransitions.ts) only
 decides which visits earn one.
 
-One visit earns a named transition on top of that. A History run row
+Under a fine pointer, one visit earns a named transition on top of that. A History run row
 ([RunListRow](../../resources/js/components/run/RunListRow.tsx)) passes
 [morphRunCard](../../resources/js/lib/runMorph.ts) as its link's
 `viewTransition`, which gives the row and, once the run page has mounted, its
@@ -397,6 +406,55 @@ hero ([RunHero](../../resources/js/components/run/RunHero.tsx)) the same
 `view-transition-name`, so the row morphs into the header. Both ends carry
 `data-run-morph`, `app.css` runs the `.run-morph` class at 280ms against the
 page's 180ms, and the names are cleared when the transition finishes.
+
+### Pushed screens slide on a phone
+
+Under a coarse primary pointer (the split `PullToRefresh` and the 16px controls
+already use), opening a pushed screen slides like an iOS navigation push, and
+going back slides it out. `navDirection` in
+[pushSlide.ts](../../resources/js/lib/pushSlide.ts) decides: a visit to the screen's back
+target (where its chevron goes, a run's being the tab it was opened from) is a
+pop; any other visit to a pushed screen is a push, from any screen, so the bell
+from Plan, the avatar menu from any tab and a run from Inbox all push. Everything
+else, a tab switch included, keeps the cross-fade, and so does a GET visit that
+stays on the same path, such as a pull-to-refresh reload.
+
+All of it lives in a lazy chunk, [pushStack](../../resources/js/lib/pushStack.tsx),
+so none of it weighs on any page's first paint. The coarse-only pull-to-refresh
+gesture asks for it through
+[warmPushStack](../../resources/js/lib/warmPushStack.ts), which loads it once the
+browser is idle, never under Data Saver; a desktop never loads it. Until it has
+loaded, a push or pop fades as it always did, with no skeleton and no hold.
+
+The slide starts on the visit's Inertia `start`, not on the swap, so the screen
+answers the tap rather than the server. The chunk listens for `start` itself and
+makes the swap to the destination's skeleton the update of a view transition,
+through `showPending` in [pendingTab](../../resources/js/lib/pendingTab.ts);
+`startSlide` sets `data-nav-slide` on `<html>` for its length, which picks the
+push or pop keyframes in `app.css`. While the skeleton shows, the chrome is the
+destination's: `MobileTopBar` draws its back chevron (pointed at the origin the
+page will record) or brand mark, and `MobileBottomNav` leaves or returns. The
+same `start` listener takes the view transition off the visit, after every
+`before` listener has granted it, so the page replaces its skeleton in place,
+inside the slide's live new frame if the slide is still running. A cancelled or failed
+visit skips the slide and hands the page back the way a tab skeleton does. A
+History row's morph is dropped for that push.
+`RunShowSkeleton` holds the effort picker's space unless the tapped History row
+says the run already has a saved effort: the feed ships that as
+`has_perceived_effort`, never the score, and the row carries it as
+`data-effort-saved` for the chunk to read on the tap.
+
+Browser back and forward never reach `start`: Inertia restores the page from
+history state on `popstate`, with no request.
+[slideHistoryTraversals](../../resources/js/lib/pushSlide.ts) catches that event
+in a capture listener, starts the slide, and replays it to Inertia inside the
+transition's update. Back out of a pushed screen pops and forward into one
+pushes, told apart by the Navigation API's entry index; without that API only a
+return to the back target slides. The destination is read from the URL, since
+the history state is encrypted. A traversal the browser already animated
+(`hasUAVisualTransition`) passes straight through.
+
+Under reduced motion the skeleton still appears on the tap, with no slide.
 
 This is not the keyed-transition approach that was removed. That attempt keyed `<main>` and animated the
 new subtree up from opacity 0, which needs the old page gone before the new one

@@ -57,7 +57,7 @@ export default function CalendarGrid({
                     aria-label="effort key"
                     aria-haspopup="dialog"
                     onClick={onOpenKey}
-                    className="focus-ring hit-area justify-self-start rounded-full text-text-3 hover:text-foreground"
+                    className="pressable focus-ring hit-area justify-self-start rounded-full text-text-3 hover:text-foreground"
                 >
                     <Icon icon={Info} width={14} height={14} aria-hidden />
                 </button>

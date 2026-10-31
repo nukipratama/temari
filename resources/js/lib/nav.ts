@@ -60,12 +60,14 @@ export const ITEMS: ReadonlyArray<NavItem> = [
 
 const TODAY: BackTarget = { href: '/', label: 'Today' };
 
-const BACK_TARGETS: Readonly<Record<string, BackTarget>> = {
+export const BACK_TARGETS: Readonly<Record<string, BackTarget>> = {
     'Runs/Show': { href: '/history', label: 'History' },
     Inbox: TODAY,
     Profile: TODAY,
     'Settings/Index': { href: '/profile', label: 'Profile' },
 };
+
+export type NavDirection = 'push' | 'pop';
 
 /** The default tab destination, resetting a calendar to the month of the server's `today`. */
 export function defaultTabHrefFor(
