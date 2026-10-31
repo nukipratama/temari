@@ -102,7 +102,11 @@ function untilPageSwapped(): Promise<void> {
             resolve();
         };
         const offNavigate = router.on('navigate', done);
-        const offStart = router.on('start', done);
+        const offStart = router.on('start', (event) => {
+            if (!event.detail.visit.async) {
+                done();
+            }
+        });
     });
 }
 

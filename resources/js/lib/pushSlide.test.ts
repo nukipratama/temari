@@ -62,7 +62,9 @@ function handlerFor(name: 'navigate' | 'start') {
     if (!call) {
         throw new Error(`router.on was never called for "${name}"`);
     }
-    return call[1] as () => void;
+    return call[1] as (event?: {
+        detail: { visit: { async: boolean } };
+    }) => void;
 }
 
 describe('pushSlide', () => {
@@ -270,8 +272,26 @@ describe('slideHistoryTraversals', () => {
 
         popTo('/history');
         const swapped = started[0]?.update() as Promise<void>;
-        handlerFor('start')();
+        handlerFor('start')({ detail: { visit: { async: false } } });
 
+        await expect(swapped).resolves.toBeUndefined();
+    });
+
+    it('keeps holding the transition through a background reload that starts before the page is restored', async () => {
+        const started = fakeViewTransitions();
+        let settled = false;
+
+        popTo('/history');
+        const swapped = started[0]?.update() as Promise<void>;
+        void swapped.then(() => {
+            settled = true;
+        });
+        handlerFor('start')({ detail: { visit: { async: true } } });
+        await Promise.resolve();
+
+        expect(settled).toBe(false);
+
+        handlerFor('navigate')();
         await expect(swapped).resolves.toBeUndefined();
     });
 
