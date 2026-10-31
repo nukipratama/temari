@@ -40,7 +40,7 @@ It is not a ground probe, so it is not in the loop above, and it is not in CI ei
 ```
 
 `pressed.mjs` forces `:active` on every visible control and lists those whose style does not
-change, i.e. the controls missing `.pressable`. The baseline is **0 of 154** on the default
+change, i.e. the controls missing `.pressable`. The baseline is **0 of 168** on the default
 routes. Pass a route list for a screen outside them, such as a run detail or `/history?view=calendar`.
 Leaflet's own zoom buttons and attribution links on a run's map are the known exceptions.
 
