@@ -174,9 +174,12 @@ function startedTabVisit(
     );
 }
 
-function finishedVisit(visit: PendingVisit, completed: boolean): void {
+function finishedVisit(visit: PendingVisit): void {
     if (sliding !== null && sliding.visit === visit) {
-        if (!completed) {
+        if (
+            !visit.completed ||
+            window.location.pathname !== visit.url.pathname
+        ) {
             sliding.transition?.skipTransition();
         }
         sliding = null;
@@ -193,7 +196,7 @@ export function trackTabVisits(currentComponent: () => string): () => void {
         startedTabVisit(event.detail.visit, currentComponent);
     });
     const offFinish = router.on('finish', (event) => {
-        finishedVisit(event.detail.visit, event.detail.visit.completed);
+        finishedVisit(event.detail.visit);
     });
 
     return () => {

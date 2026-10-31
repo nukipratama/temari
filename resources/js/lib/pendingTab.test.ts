@@ -463,10 +463,23 @@ describe('pendingTab pushes and pops on a phone', () => {
         const runVisit = visit('/activities/12', { completed: true });
         start(runVisit);
         slide.update();
+        window.history.replaceState(null, '', '/activities/12');
 
         finish(runVisit);
 
         expect(slide.skipTransition).not.toHaveBeenCalled();
+        expect(pendingTabSnapshot()).toBeNull();
+    });
+
+    it('skips the slide when the visit ends without leaving the page, as on a network error', () => {
+        const slide = fakeSlide();
+        const runVisit = visit('/activities/12', { completed: true });
+        start(runVisit);
+        slide.update();
+
+        finish(runVisit);
+
+        expect(slide.skipTransition).toHaveBeenCalledOnce();
         expect(pendingTabSnapshot()).toBeNull();
     });
 
