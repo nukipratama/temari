@@ -135,22 +135,30 @@ describe('useViewTransitions', () => {
         );
     });
 
-    it('judges the push from the page on screen when the visit starts', () => {
+    it('judges the pop from the page on screen when the visit starts', () => {
         setMedia({ coarse: true });
         const { rerender } = renderHook(
             ({ component }) => useViewTransitions(component),
-            { initialProps: { component: 'Inbox' } },
+            { initialProps: { component: 'Plan' } },
         );
+        window.history.replaceState(null, '', '/plan');
 
-        expect(
-            fireBefore(true, undefined, '/activities/12').viewTransition,
-        ).toBe(true);
+        expect(fireBefore(true, undefined, '/').viewTransition).toBe(true);
 
-        rerender({ component: 'History' });
+        rerender({ component: 'Inbox' });
+        window.history.replaceState(null, '', '/inbox');
 
-        expect(
-            fireBefore(true, undefined, '/activities/12').viewTransition,
-        ).toBe(false);
+        expect(fireBefore(true, undefined, '/').viewTransition).toBe(false);
+        window.history.replaceState(null, '', '/');
+    });
+
+    it('keeps the cross-fade for a reload of the pushed screen on show', () => {
+        setMedia({ coarse: true });
+        window.history.replaceState(null, '', '/inbox');
+        renderHook(() => useViewTransitions('Inbox'));
+
+        expect(fireBefore(true, undefined, '/inbox').viewTransition).toBe(true);
+        window.history.replaceState(null, '', '/');
     });
 
     it('slides history traversals while mounted', () => {

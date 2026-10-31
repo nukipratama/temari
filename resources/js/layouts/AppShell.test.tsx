@@ -586,6 +586,29 @@ describe('AppShell pushed-screen skeleton', () => {
         },
     );
 
+    it('points the skeleton chevron at the tab the run was opened from', () => {
+        window.history.replaceState(null, '', '/plan?day=2026-10-12');
+        renderShell('/plan?day=2026-10-12', 'Plan');
+
+        startVisit(pageVisit('/activities/12'));
+
+        expect(
+            screen.getByRole('link', { name: 'Back to Plan' }),
+        ).toHaveAttribute('href', '/plan?day=2026-10-12');
+        window.history.replaceState(null, '', '/');
+    });
+
+    it('pushes Inbox from the bell on a tab other than Today', () => {
+        window.history.replaceState(null, '', '/plan');
+        renderShell('/plan', 'Plan');
+
+        startVisit(pageVisit('/inbox'));
+
+        expect(screen.getByText('Inbox')).toBeInTheDocument();
+        expect(screen.getByText('current page')).not.toBeVisible();
+        window.history.replaceState(null, '', '/');
+    });
+
     it('pops a run back to the History skeleton, nav and all', () => {
         renderShell('/activities/12', 'Runs/Show');
 

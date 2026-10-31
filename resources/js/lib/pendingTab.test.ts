@@ -3,6 +3,8 @@ import type { GlobalEvent, PendingVisit } from '@inertiajs/core';
 import { router } from '@inertiajs/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { writeContextualOrigin } from '@/lib/navigationMemory';
+
 import {
     armPendingTab,
     pendingTabSnapshot,
@@ -293,6 +295,7 @@ describe('pendingTab pushes and pops on a phone', () => {
 
     beforeEach(() => {
         currentComponent = 'History';
+        window.history.replaceState(null, '', '/history');
         onPhone();
         vi.mocked(router.on).mockClear();
         untrack = trackTabVisits(() => currentComponent);
@@ -306,6 +309,7 @@ describe('pendingTab pushes and pops on a phone', () => {
 
     it('slides a run in on the tap and shows its screen pending once the slide has the old frame', () => {
         const slide = fakeSlide();
+        window.history.replaceState(null, '', '/history?view=calendar');
         window.scrollY = 640;
         const runVisit = visit('/activities/12');
 
@@ -319,6 +323,11 @@ describe('pendingTab pushes and pops on a phone', () => {
         expect(pendingTabSnapshot()).toEqual({
             tab: null,
             screen: 'Runs/Show',
+            origin: {
+                href: '/history?view=calendar',
+                scrollY: 640,
+                tab: 'history',
+            },
             from: 'History',
             href: '/activities/12',
             scrollY: 640,
@@ -326,9 +335,38 @@ describe('pendingTab pushes and pops on a phone', () => {
         });
     });
 
+    it('carries the remembered origin into a run pushed from a run', () => {
+        const slide = fakeSlide();
+        currentComponent = 'Runs/Show';
+        window.history.replaceState(null, '', '/activities/12');
+        const origin = { href: '/plan', scrollY: 80, tab: 'plan' as const };
+        writeContextualOrigin(origin);
+
+        start(visit('/activities/9'));
+        slide.update();
+
+        expect(pendingTabSnapshot()).toMatchObject({
+            screen: 'Runs/Show',
+            origin,
+        });
+        writeContextualOrigin(null);
+    });
+
+    it('pushes Inbox from any tab, the bell from Plan included', () => {
+        const slide = fakeSlide();
+        currentComponent = 'Plan';
+
+        start(visit('/inbox'));
+        slide.update();
+
+        expect(document.documentElement.dataset.navSlide).toBe('push');
+        expect(pendingTabSnapshot()?.screen).toBe('Inbox');
+    });
+
     it('pops back to a tab under that tab, with its skeleton', () => {
         const slide = fakeSlide();
         currentComponent = 'Runs/Show';
+        window.history.replaceState(null, '', '/activities/12');
 
         start(visit('/history?view=calendar'));
         slide.update();

@@ -89,31 +89,29 @@ export function screenForPath(pathname: string): string | null {
     return SCREEN_PATHS[pathname] ?? null;
 }
 
-/** Whether `child` is a pushed screen opened from `parent`; a run opens from any tab. */
-function isParentOf(parent: string, child: string): boolean {
-    if (child === 'Runs/Show') {
-        return navTabFor(parent) !== null;
-    }
-
-    const target = BACK_TARGETS[child];
-
-    return target !== undefined && screenForPath(target.href) === parent;
+export function isPushedScreen(component: string): boolean {
+    return Object.hasOwn(BACK_TARGETS, component);
 }
 
-/** Whether moving from `from` to `to` pushes a screen, pops back to its parent, or neither. */
+/** A pop returns to `from`'s back target; a push opens any pushed screen; anything else is neither. */
 export function navDirection(
     from: string,
     to: string | null,
+    origin: ContextualOrigin | null = null,
 ): NavDirection | null {
     if (to === null) {
         return null;
     }
 
-    if (isParentOf(from, to)) {
-        return 'push';
+    const back = backTargetFor(from, origin);
+    if (
+        back !== null &&
+        screenForPath(back.href.split(/[?#]/)[0] ?? '') === to
+    ) {
+        return 'pop';
     }
 
-    return isParentOf(to, from) ? 'pop' : null;
+    return isPushedScreen(to) ? 'push' : null;
 }
 
 /** The default tab destination, resetting a calendar to the month of the server's `today`. */

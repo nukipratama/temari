@@ -2,7 +2,8 @@ import { router } from '@inertiajs/react';
 
 import type { NavDirection } from '@/lib/nav';
 
-import { navDirection, screenForPath } from '@/lib/nav';
+import { isPushedScreen, navDirection, screenForPath } from '@/lib/nav';
+import { readContextualOrigin } from '@/lib/navigationMemory';
 
 interface HistoryPage {
     page?: unknown;
@@ -19,6 +20,46 @@ export function prefersReducedMotion(): boolean {
     return (
         window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
     );
+}
+
+/** The slide a phone plays for a visit from `from` to `url`, or null for the cross-fade. */
+export function visitDirection(from: string, url: URL): NavDirection | null {
+    if (!slidesScreens() || url.pathname === window.location.pathname) {
+        return null;
+    }
+
+    return navDirection(
+        from,
+        screenForPath(url.pathname),
+        readContextualOrigin(),
+    );
+}
+
+function historyIndex(): number | null {
+    return window.navigation?.currentEntry?.index ?? null;
+}
+
+/**
+ * Back from a pushed screen pops and forward into one pushes. Without the
+ * Navigation API to tell back from forward, only a return to the back target
+ * slides.
+ */
+function traversalDirection(
+    from: string,
+    to: string | null,
+    back: boolean | null,
+): NavDirection | null {
+    if (back === null) {
+        return navDirection(from, to, readContextualOrigin()) === 'pop'
+            ? 'pop'
+            : null;
+    }
+
+    if (back) {
+        return isPushedScreen(from) ? 'pop' : null;
+    }
+
+    return to !== null && isPushedScreen(to) ? 'push' : null;
 }
 
 /**
@@ -66,29 +107,43 @@ function untilPageSwapped(): Promise<void> {
 }
 
 /**
- * Slides browser and Android back (and forward) between a pushed screen and
- * its parent, read from the URL since the history state is encrypted. Inertia
- * restores those pages from history on `popstate`, so the event is held back
- * from it until the transition has captured the old screen, then replayed.
- * Returns the unsubscribe.
+ * Slides browser and Android back and forward to and from pushed screens,
+ * read from the URL since the history state is encrypted. Inertia restores
+ * those pages from history on `popstate`, so the event is held back from it
+ * until the transition has captured the old screen, then replayed. Returns the
+ * unsubscribe.
  */
 export function slideHistoryTraversals(
     currentComponent: () => string,
 ): () => void {
     let replaying = false;
+    let shownPath = window.location.pathname;
+    let shownIndex = historyIndex();
+
+    const offNavigate = router.on('navigate', () => {
+        shownPath = window.location.pathname;
+        shownIndex = historyIndex();
+    });
 
     const onPopstate = (event: PopStateEvent) => {
-        if (replaying || event.hasUAVisualTransition) {
+        const path = window.location.pathname;
+        if (
+            replaying ||
+            event.hasUAVisualTransition ||
+            (event.state as HistoryPage | null)?.page === undefined ||
+            path === shownPath
+        ) {
             return;
         }
 
-        const direction =
-            (event.state as HistoryPage | null)?.page === undefined
+        const index = historyIndex();
+        const direction = traversalDirection(
+            currentComponent(),
+            screenForPath(path),
+            index === null || shownIndex === null || index === shownIndex
                 ? null
-                : navDirection(
-                      currentComponent(),
-                      screenForPath(window.location.pathname),
-                  );
+                : index < shownIndex,
+        );
         if (direction === null || !slidesScreens() || prefersReducedMotion()) {
             return;
         }
@@ -109,6 +164,7 @@ export function slideHistoryTraversals(
     window.addEventListener('popstate', onPopstate, { capture: true });
 
     return () => {
+        offNavigate();
         window.removeEventListener('popstate', onPopstate, { capture: true });
     };
 }

@@ -407,12 +407,14 @@ page's 180ms, and the names are cleared when the transition finishes.
 ### Pushed screens slide on a phone
 
 Under a coarse primary pointer (the split `PullToRefresh` and the 16px controls
-already use), moving into a pushed screen from its parent slides like an iOS
-navigation push, and returning to the parent slides it back out. The pairs come
-from `navDirection` in [nav.ts](../../resources/js/lib/nav.ts): a run from any
-tab, Inbox and Profile from Today, Settings from Profile. A pop is the chevron,
-any link to the parent, or browser/Android back. Tab switches keep the
-cross-fade, and so does any other move, such as the bell from Plan.
+already use), opening a pushed screen slides like an iOS navigation push, and
+going back slides it out. `navDirection` in
+[nav.ts](../../resources/js/lib/nav.ts) decides: a visit to the screen's back
+target (where its chevron goes, a run's being the tab it was opened from) is a
+pop; any other visit to a pushed screen is a push, from any screen, so the bell
+from Plan, the avatar menu from any tab and a run from Inbox all push. Everything
+else, a tab switch included, keeps the cross-fade, and so does a GET visit that
+stays on the same path, such as a pull-to-refresh reload.
 
 The slide starts on the visit's Inertia `start`, not on the swap, so the screen
 answers the tap rather than the server.
@@ -421,17 +423,21 @@ destination's skeleton the update of a view transition, and
 [startSlide](../../resources/js/lib/pushSlide.ts) sets `data-nav-slide` on
 `<html>` for its length, which picks the push or pop keyframes in `app.css`.
 While the skeleton shows, the chrome is the destination's: `MobileTopBar` draws
-its back chevron or brand mark and `MobileBottomNav` leaves or returns. The
+its back chevron (pointed at the origin the page will record) or brand mark, and
+`MobileBottomNav` leaves or returns. The
 visit itself carries no view transition, so the page replaces its skeleton in
 place, inside the slide's live new frame if the slide is still running. A
 cancelled or failed visit skips the slide and hands the page back the way a tab
 skeleton does. A History row's morph is dropped for that push.
 
-Browser back between the same screens never reaches `start`: Inertia restores
-the page from history state on `popstate`, with no request.
+Browser back and forward never reach `start`: Inertia restores the page from
+history state on `popstate`, with no request.
 [slideHistoryTraversals](../../resources/js/lib/pushSlide.ts) catches that event
 in a capture listener, starts the slide, and replays it to Inertia inside the
-transition's update. A traversal the browser already animated
+transition's update. Back out of a pushed screen pops and forward into one
+pushes, told apart by the Navigation API's entry index; without that API only a
+return to the back target slides. The destination is read from the URL, since
+the history state is encrypted. A traversal the browser already animated
 (`hasUAVisualTransition`) passes straight through.
 
 Under reduced motion the skeleton still appears on the tap, with no slide.

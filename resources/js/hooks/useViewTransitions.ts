@@ -1,11 +1,10 @@
 import { router } from '@inertiajs/react';
 import { useEffect, useRef } from 'react';
 
-import { navDirection, screenForPath } from '@/lib/nav';
 import {
     prefersReducedMotion,
     slideHistoryTraversals,
-    slidesScreens,
+    visitDirection,
 } from '@/lib/pushSlide';
 
 /**
@@ -43,11 +42,7 @@ export default function useViewTransitions(component: string): void {
                 }
 
                 const slid =
-                    slidesScreens() &&
-                    navDirection(
-                        componentRef.current,
-                        screenForPath(visit.url.pathname),
-                    ) !== null;
+                    visitDirection(componentRef.current, visit.url) !== null;
 
                 // Read at event time, not on mount: someone who turns the OS
                 // setting on mid-session gets no animation on their next tap.

@@ -9,6 +9,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
     backTargetFor,
     defaultTabHrefFor,
+    isPushedScreen,
     ITEMS,
     navDirection,
     navTabFor,
@@ -161,29 +162,60 @@ describe('nav', () => {
     describe('navDirection', () => {
         it.each([
             ['History', 'Runs/Show'],
-            ['Home', 'Runs/Show'],
-            ['Race', 'Runs/Show'],
             ['Home', 'Inbox'],
-            ['Home', 'Profile'],
+            ['Plan', 'Inbox'],
+            ['Trends', 'Profile'],
+            ['History', 'Settings/Index'],
             ['Profile', 'Settings/Index'],
+            ['Inbox', 'Runs/Show'],
+            ['Runs/Show', 'Runs/Show'],
+            ['Profile', 'Inbox'],
         ])('pushes from %s into %s', (from, to) => {
             expect(navDirection(from, to)).toBe('push');
-            expect(navDirection(to, from)).toBe('pop');
         });
 
         it.each([
-            ['Plan', 'Inbox'],
-            ['Home', 'Settings/Index'],
-            ['Inbox', 'Runs/Show'],
-            ['Runs/Show', 'Runs/Show'],
+            ['Runs/Show', 'History'],
+            ['Inbox', 'Home'],
+            ['Profile', 'Home'],
+            ['Settings/Index', 'Profile'],
+        ])('pops from %s back to its back target %s', (from, to) => {
+            expect(navDirection(from, to)).toBe('pop');
+        });
+
+        it('pops a run back to the tab it was opened from, not History', () => {
+            const origin = {
+                href: '/plan?day=2026-10-12',
+                scrollY: 0,
+                tab: 'plan' as const,
+            };
+
+            expect(navDirection('Runs/Show', 'Plan', origin)).toBe('pop');
+            expect(navDirection('Runs/Show', 'History', origin)).toBeNull();
+        });
+
+        it.each([
             ['Home', 'Plan'],
-            ['Profile', 'Inbox'],
-        ])('neither pushes nor pops from %s to %s', (from, to) => {
+            ['Inbox', 'Plan'],
+            ['Runs/Show', 'Home'],
+            ['Settings/Index', 'Home'],
+        ])('keeps the fade from %s to %s', (from, to) => {
             expect(navDirection(from, to)).toBeNull();
         });
 
         it('has no direction to an unknown screen', () => {
             expect(navDirection('History', null)).toBeNull();
         });
+    });
+
+    it.each([
+        ['Runs/Show', true],
+        ['Inbox', true],
+        ['Profile', true],
+        ['Settings/Index', true],
+        ['Home', false],
+        ['Race', false],
+    ])('counts %s as pushed: %s', (component, pushed) => {
+        expect(isPushedScreen(component)).toBe(pushed);
     });
 });

@@ -54,9 +54,11 @@ export default function MobileTopBar() {
     );
     const screen = pending === null ? page.component : pending.screen;
     const back =
-        screen === null
-            ? null
-            : backTargetFor(screen, parseContextualOrigin(storedOrigin));
+        pending === null
+            ? backTargetFor(page.component, parseContextualOrigin(storedOrigin))
+            : pending.screen === null
+              ? null
+              : backTargetFor(pending.screen, pending.origin);
 
     return (
         <header

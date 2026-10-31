@@ -2,19 +2,25 @@ import type { PendingVisit } from '@inertiajs/core';
 
 import { router } from '@inertiajs/react';
 
-import type { NavDirection } from '@/lib/nav';
+import type { ContextualOrigin, NavDirection } from '@/lib/nav';
 import type { TabId } from '@/lib/navRoutes';
 
-import { ITEMS, navDirection, screenForPath } from '@/lib/nav';
+import { ITEMS, screenForPath } from '@/lib/nav';
+import { readContextualOrigin } from '@/lib/navigationMemory';
 import { navTabFor, RACE_PATH, RACE_TAB } from '@/lib/navRoutes';
 import {
     prefersReducedMotion,
-    slidesScreens,
     startSlide,
+    visitDirection,
 } from '@/lib/pushSlide';
 
-/** Where the visit lands: a tab, or (on a phone, by push or pop) a pushed screen. */
-type Destination = { tab: TabId; screen: null } | { tab: null; screen: string };
+/**
+ * Where the visit lands: a tab, or (on a phone, by push or pop) a pushed
+ * screen with the origin its back chevron will return to.
+ */
+type Destination =
+    | { tab: TabId; screen: null }
+    | { tab: null; screen: string; origin: ContextualOrigin | null };
 
 export type PendingTab = Destination & {
     /** The page component the visit started from. */
@@ -55,6 +61,17 @@ export function pendingTabSnapshot(): PendingTab | null {
     return pending;
 }
 
+function originFrom(from: string): ContextualOrigin | null {
+    const tab = navTabFor(from);
+    if (tab === null) {
+        return readContextualOrigin();
+    }
+
+    const { pathname, search, hash } = window.location;
+
+    return { href: pathname + search + hash, scrollY: window.scrollY, tab };
+}
+
 function pendingTarget(
     path: string,
     tapped: Tap | null,
@@ -65,7 +82,7 @@ function pendingTarget(
         const tab = navTabFor(pushedOrPopped);
 
         return tab === null
-            ? { tab, screen: pushedOrPopped, from }
+            ? { tab, screen: pushedOrPopped, origin: originFrom(from), from }
             : { tab, screen: null, from };
     }
 
@@ -113,13 +130,12 @@ function startedTabVisit(
 
     const path = visit.url.pathname;
     const from = tapped?.from ?? currentComponent();
-    const screen = screenForPath(path);
-    const direction = slidesScreens() ? navDirection(from, screen) : null;
+    const direction = visitDirection(from, visit.url);
     const target = pendingTarget(
         path,
         tapped,
         from,
-        direction === null ? null : screen,
+        direction === null ? null : screenForPath(path),
     );
     if (target === null) {
         return;
