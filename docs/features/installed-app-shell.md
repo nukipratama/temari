@@ -355,7 +355,8 @@ its deferred props load (`TrendsSkeleton`, `PlanSkeleton`, `HistorySkeleton`,
 `RaceSkeleton`, `TodaySkeleton` under `resources/js/components/`), so the first
 response causes no jump. Today has no deferred fallback, so its shapes
 approximate the three sections and shift by roughly the length of that day's
-narration. A tap on the current tab never shows one, except on a sub-page
+narration; Plan's weeks arrive with its first response, so `PlanSkeleton`
+approximates them the same way. A tap on the current tab never shows one, except on a sub-page
 such as Race, where it leaves for the tab's root (Race lights Plan, so a Plan
 tap there shows `PlanSkeleton`).
 
