@@ -85,9 +85,12 @@ it('sizes a day exactly as the week plan Home renders does', function (): void {
         $homeKmByWeekday[strtolower(Carbon::parse(is_string($day['date']) ? $day['date'] : throw new InvalidArgumentException('Day date is not a string.'))->format('D'))] = $day['distance_km'];
     }
 
+    $ladderKmByWeekday = [];
     foreach ($ladder as $day) {
-        expect($day['distance_km'])->toBe($homeKmByWeekday[$day['weekday']]);
+        $ladderKmByWeekday[$day['weekday']] = $day['distance_km'];
     }
+
+    expect($ladderKmByWeekday)->toBe(array_intersect_key($homeKmByWeekday, $ladderKmByWeekday));
 
     Carbon::setTestNow();
 });
@@ -153,9 +156,12 @@ it('sizes a day as Home does while a marathon goal is active', function (): void
         $homeKmByWeekday[strtolower(Carbon::parse(is_string($day['date']) ? $day['date'] : throw new InvalidArgumentException('Day date is not a string.'))->format('D'))] = $day['distance_km'];
     }
 
+    $ladderKmByWeekday = [];
     foreach ($ladder as $day) {
-        expect($day['distance_km'])->toBe($homeKmByWeekday[$day['weekday']]);
+        $ladderKmByWeekday[$day['weekday']] = $day['distance_km'];
     }
+
+    expect($ladderKmByWeekday)->toBe(array_intersect_key($homeKmByWeekday, $ladderKmByWeekday));
 
     Carbon::setTestNow();
 });

@@ -1,5 +1,5 @@
 x-mysql-base: &mysql-base
-    image: 'mysql:9.7@sha256:e2bde46db6563855d7177adb5f0b57b9dc663f5a20927a90f4259d3312068497'
+    image: 'mysql:9.7@sha256:86b390ef642f89a0157d6215dee33ddc928b8b0ecab173117f56f6c40cb24eab'
     restart: unless-stopped
     networks:
         - sail
@@ -9,7 +9,7 @@ x-mysql-base: &mysql-base
         timeout: 5s
 
 x-redis-base: &redis-base
-    image: 'redis:8.10-alpine@sha256:3811787313eba226a2ef38658c6ccb91cd5e110edc89c37767de373120a0e5a0'
+    image: 'redis:8.10-alpine@sha256:21090af93f8324db2f0f0f4f38a7c60369d47d917e000c3423d89d2ae2883537'
     networks:
         - sail
     healthcheck:

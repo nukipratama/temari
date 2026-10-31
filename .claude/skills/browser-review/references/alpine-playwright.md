@@ -17,6 +17,6 @@ only checks the three and prints the rebuild steps when one is missing: the cont
 image built before they shipped. Rebuild `temari/dev` with `docker compose build app` in the main
 checkout, then `./vendor/bin/sail up -d` in each checkout whose container should pick it up.
 
-Keep `PLAYWRIGHT_VERSION` within a Chromium release or two of Alpine's `chromium` (1.63.0 is built
-for Chromium 153; Alpine 3.24 ships 152). When a base-image bump moves Alpine's Chromium, bump the
+Keep `PLAYWRIGHT_VERSION` within a Chromium release or two of Alpine's `chromium` (1.64.1 is built
+for Chromium 156; Alpine 3.24 ships 155). When a base-image bump moves Alpine's Chromium, bump the
 `ARG` to the Playwright release built for it and re-run the scripts.

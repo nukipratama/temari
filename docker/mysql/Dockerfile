@@ -1,8 +1,8 @@
 # Prod mysql image: stock mysql + mysqlbinlog + the idempotent bootstrap baked into initdb.
 # Baked, not bind-mounted, because the CI runner is docker-out-of-docker.
-# Digest-pinned = mysql:9.7 (9.7.2). Refresh after a bump with:
+# Digest-pinned = mysql:9.7 (9.7.4). Refresh after a bump with:
 #   docker buildx imagetools inspect mysql:9.7 --format '{{.Manifest.Digest}}'
-FROM mysql:9.7@sha256:e2bde46db6563855d7177adb5f0b57b9dc663f5a20927a90f4259d3312068497
+FROM mysql:9.7@sha256:86b390ef642f89a0157d6215dee33ddc928b8b0ecab173117f56f6c40cb24eab
 COPY init/01-databases.sh /docker-entrypoint-initdb.d/01-databases.sh
 # mysqlbinlog ships in the client package, not the minimal server: install the one matching
 # this server's exact version so scripts/deploy/replay-binlogs.sh finds it, with no network at recovery time.
