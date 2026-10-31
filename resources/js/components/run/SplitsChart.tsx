@@ -182,7 +182,7 @@ export default function SplitsChart({
                             type="button"
                             onClick={(event) => selectBar(event, bar)}
                             aria-label={`Km ${bar.tick}, ${bar.pace ?? 'no'} pace`}
-                            className="focus-ring flex h-full flex-1 flex-col items-center justify-end gap-1 rounded-xs"
+                            className="pressable focus-ring flex h-full flex-1 flex-col items-center justify-end gap-1 rounded-xs"
                         >
                             {bar.fastest && (
                                 <Icon

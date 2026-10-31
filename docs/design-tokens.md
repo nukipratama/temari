@@ -374,6 +374,8 @@ end state.
    plain button feel identical under the thumb. The retired shadcn button pressed with a 1px
    translate instead, which is why it did not. The one exception is a control with `aria-haspopup`: it keeps
    `touch-manipulation` and gives up the movement, since the popup it opens is anchored to it.
+   A link inside running text takes the opacity dip only (`active:opacity-70`), so its text stays
+   selectable and iOS long-press Copy Link keeps working.
    Route transitions carry no tokens at all any more: the swap cross-fades through the
    **View Transitions API** (the browser's own animation, tuned only by a 180ms duration in
    `app.css`), and the progress bar it replaced is gone — see [[installed-app-shell]].

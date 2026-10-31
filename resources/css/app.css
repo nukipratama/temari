@@ -863,7 +863,7 @@ body:has(#app > *) #boot-shell {
        reduced-motion user can still receive. The release curve overshoots
        slightly so the control springs back instead of gliding. */
     .pressable {
-        @apply touch-manipulation transition-opacity duration-100 active:opacity-70 motion-safe:transition-[transform,opacity] motion-safe:duration-150 motion-safe:ease-[cubic-bezier(0.34,1.1,0.64,1)] motion-safe:active:scale-[0.97];
+        @apply touch-manipulation transition-opacity duration-100 active:opacity-70 motion-safe:transition-[transform,scale,opacity] motion-safe:duration-150 motion-safe:ease-[cubic-bezier(0.34,1.1,0.64,1)] motion-safe:active:scale-[0.97];
     }
     /* A control that opens something anchored to itself keeps the tap-delay
        fix and gives up the movement: the popup is positioned against this

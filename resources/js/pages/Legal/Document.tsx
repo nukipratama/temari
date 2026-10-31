@@ -48,7 +48,7 @@ function linkify(text: string): ReactNode {
                 href={part}
                 rel="noreferrer noopener"
                 target="_blank"
-                className="underline decoration-horizon-deep underline-offset-2 hover:text-foreground"
+                className="active:opacity-70 underline decoration-horizon-deep underline-offset-2 hover:text-foreground"
             >
                 {part}
             </a>
@@ -73,7 +73,7 @@ export default function LegalDocument({
                 <div className="mx-auto max-w-[46rem] py-10">
                     <Link
                         href="/login"
-                        className="text-label-small text-text-3 hover:text-foreground"
+                        className="pressable text-label-small text-text-3 hover:text-foreground"
                     >
                         Temari
                     </Link>
@@ -145,7 +145,7 @@ export default function LegalDocument({
                                 <li key={document.slug}>
                                     <Link
                                         href={document.href}
-                                        className="font-sans text-sm text-text-2 underline underline-offset-2 hover:text-foreground"
+                                        className="active:opacity-70 font-sans text-sm text-text-2 underline underline-offset-2 hover:text-foreground"
                                     >
                                         {document.label}
                                     </Link>
