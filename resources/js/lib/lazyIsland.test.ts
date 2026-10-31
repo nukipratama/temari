@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/react';
-import { createElement, Suspense, useEffect } from 'react';
+import { createElement, startTransition, Suspense, useEffect } from 'react';
+import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { reloadDocument } from '@/lib/reloadDocument';
@@ -119,24 +120,43 @@ describe('lazyIsland', () => {
         expect(screen.queryByText('holding')).not.toBeInTheDocument();
     });
 
-    it('keeps a mounted island mounted when it re-renders after loading', async () => {
+    it('keeps a cold-mounted island mounted when its props change', async () => {
         let mounts = 0;
-        function Counted() {
+        function Counted(props: { label: string }) {
             useEffect(() => {
                 mounts += 1;
             }, []);
 
-            return createElement('p', null, 'arrived');
+            return createElement('p', null, props.label);
         }
         const Island = lazyIsland(() => Promise.resolve({ default: Counted }));
-        const tree = () =>
-            createElement(Suspense, { fallback: null }, createElement(Island));
+        const tree = (label: string) =>
+            createElement(
+                Suspense,
+                { fallback: null },
+                createElement(Island, { label }),
+            );
 
-        const { rerender } = render(tree());
-        await screen.findByText('arrived');
-        rerender(tree());
+        const actEnvironment = Reflect.get(
+            globalThis,
+            'IS_REACT_ACT_ENVIRONMENT',
+        );
+        Reflect.set(globalThis, 'IS_REACT_ACT_ENVIRONMENT', false);
+        const root = createRoot(
+            document.body.appendChild(document.createElement('div')),
+        );
 
-        expect(mounts).toBe(1);
+        try {
+            startTransition(() => root.render(tree('first')));
+            await screen.findByText('first');
+            root.render(tree('second'));
+            await screen.findByText('second');
+
+            expect(mounts).toBe(1);
+        } finally {
+            root.unmount();
+            Reflect.set(globalThis, 'IS_REACT_ACT_ENVIRONMENT', actEnvironment);
+        }
     });
 
     it('survives a failed preload and still loads on first render', async () => {
@@ -157,5 +177,20 @@ describe('lazyIsland', () => {
 
         expect(await screen.findByText('arrived')).toBeInTheDocument();
         expect(reload).not.toHaveBeenCalled();
+    });
+
+    it('still reloads when the first render fails after a failed preload', async () => {
+        const Island = lazyIsland(() =>
+            Promise.reject(
+                new Error('Failed to fetch dynamically imported module'),
+            ),
+        );
+
+        Island.preload();
+        render(
+            createElement(Suspense, { fallback: null }, createElement(Island)),
+        );
+
+        await vi.waitFor(() => expect(reload).toHaveBeenCalledTimes(1));
     });
 });

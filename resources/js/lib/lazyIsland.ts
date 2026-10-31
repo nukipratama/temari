@@ -1,6 +1,6 @@
 import type { ComponentProps, ComponentType } from 'react';
 
-import { createElement, lazy } from 'react';
+import { createElement, lazy, useState } from 'react';
 
 import { reloadDocument } from '@/lib/reloadDocument';
 
@@ -34,7 +34,7 @@ export function recoverFromChunkFailure(): boolean {
  * boundary that is not an Inertia page, and give it a fallback that reserves
  * the space the real thing will take.
  *
- * Once the module has loaded, the island renders it directly instead of
+ * An island mounted once the module has loaded renders it directly instead of
  * through `lazy()`, so a warm chunk never suspends and React 19 never holds a
  * fallback for it. `preload()` loads the module ahead of the first render.
  */
@@ -65,7 +65,9 @@ export function lazyIsland<T extends ComponentType<any>>(
     );
 
     function Island(props: ComponentProps<T>) {
-        return createElement(loaded ?? Lazy, props);
+        const [Component] = useState(() => loaded ?? Lazy);
+
+        return createElement(Component, props);
     }
 
     Island.preload = (): void => {
