@@ -16,7 +16,7 @@
  *   response  first frame after the DOM changed      budget 100
  *   swap      first frame after inertia:navigate     (no budget; where the new page lands)
  *   done      first frame the step is finished       budget 400
- *   shift     CLS-scored shift after the swap        budget 0.05
+ *   shift     shift after swap, no hadRecentInput    budget 0.05
  *   inp       longest event duration in the step     budget 200
  * Medians and maxima per label go to stdout, every run to storage/app/bench/<label>.json.
  *
