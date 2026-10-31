@@ -263,7 +263,7 @@ function ConnectPanel({
             <p className="mt-3 text-center text-xs leading-relaxed text-text-2">
                 <a
                     href="/privacy"
-                    className="focus-ring rounded-xs underline active:opacity-70 decoration-border-strong underline-offset-2 hover:text-foreground"
+                    className="focus-ring rounded-xs underline decoration-border-strong underline-offset-2 hover:text-foreground active:opacity-70"
                 >
                     read-only · no ads · delete anytime
                 </a>

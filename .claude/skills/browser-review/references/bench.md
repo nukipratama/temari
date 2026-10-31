@@ -31,7 +31,7 @@ S=.claude/skills/browser-review
 ```
 
 `pressed.mjs --signed-out /login` skips the demo login. `--click=<selector>` (Playwright syntax,
-repeatable) clicks in order after the route loads and scans again in each state it opens, so a
+repeatable) clicks in order after each route loads and scans again in each state it opens, so a
 modal or the next wizard step is covered: `pressed.mjs /activities/<id> --click='button:has-text("Share")'`.
 The onboarding wizard needs a non-onboarded user; null the demo user's `onboarded_at` through
 `artisan tinker --execute`, scan `/onboarding` with `--click='button:has-text("continue")'` and the
