@@ -24,7 +24,7 @@ import { showToast } from '@/hooks/useToast';
 import { appLayout } from '@/layouts/appLayout';
 import { readPlanSelectedDay } from '@/lib/navigationMemory';
 import { useTodayIso } from '@/lib/pace';
-import { planEditLanded, weekdayLabel } from '@/lib/plan';
+import { planEditLanded, weekdayLabel, withSessionSkipped } from '@/lib/plan';
 
 interface SeasonSummary {
     starts_at: string;
@@ -61,6 +61,14 @@ interface PlanProps {
     planRecalibration?: PlanRecalibrationState;
 }
 
+const PLAN_WRITE_PROPS = [
+    'weeks',
+    'seasonSummary',
+    'seasonAdherencePct',
+    'adaptation',
+    'flash',
+];
+
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 /** The day Home's week card asked for, when it asked for a readable one. */
@@ -87,7 +95,7 @@ export default function Plan({
 }: Readonly<PlanProps>) {
     const today = useTodayIso();
     const [focusDay] = useState(requestedDay);
-    const [selectedDay] = useState(() => focusDay ?? readPlanSelectedDay());
+    const selectedDay = focusDay ?? readPlanSelectedDay();
 
     const [pastWeeks, setPastWeeks] = useState<PlanWeek[]>([]);
 
@@ -116,50 +124,85 @@ export default function Plan({
             });
         });
 
-    const moveSession = (day: PlanDay, toDate: string) => {
-        router.patch(
-            `/plan/sessions/${day.id}`,
+    const writeSession = (
+        day: PlanDay,
+        data: Record<string, boolean | string>,
+        {
+            landed,
+            failed,
+            optimistic,
+            onLanded,
+        }: {
+            landed: string;
+            failed: string;
+            optimistic?: (weeks: PlanWeek[]) => PlanWeek[];
+            onLanded?: () => void;
+        },
+    ) => {
+        router.patch(`/plan/sessions/${day.id}`, data, {
+            preserveScroll: true,
+            only: PLAN_WRITE_PROPS,
+            optimistic:
+                optimistic &&
+                ((props) => {
+                    const { weeks: current } = props as Partial<PlanProps>;
+
+                    return current ? { weeks: optimistic(current) } : undefined;
+                }),
+            onSuccess: (page) => {
+                if (planEditLanded(page)) {
+                    showToast(landed);
+                    onLanded?.();
+                }
+            },
+            onError: () => showToast(failed),
+            onHttpException: () => {
+                showToast(failed);
+
+                return false;
+            },
+            onNetworkError: () => {
+                showToast(failed);
+
+                return false;
+            },
+        });
+    };
+
+    const moveSession = (day: PlanDay, toDate: string, onMoved: () => void) =>
+        writeSession(
+            day,
             { date: toDate },
             {
-                preserveScroll: true,
-                onSuccess: (page) => {
-                    if (planEditLanded(page)) {
-                        showToast(`moved to ${weekdayLabel(toDate)}`);
-                    }
-                },
+                landed: `moved to ${weekdayLabel(toDate)}`,
+                failed: "couldn't move, try again",
+                onLanded: onMoved,
             },
         );
-    };
 
-    const skipSession = (day: PlanDay) => {
-        router.patch(
-            `/plan/sessions/${day.id}`,
+    const skipSession = (day: PlanDay) =>
+        writeSession(
+            day,
             { skipped: true },
             {
-                preserveScroll: true,
-                onSuccess: (page) => {
-                    if (planEditLanded(page)) {
-                        showToast('skipped');
-                    }
-                },
+                landed: 'skipped',
+                failed: "couldn't skip, try again",
+                optimistic: (current) =>
+                    withSessionSkipped(current, day.id, true),
             },
         );
-    };
 
-    const unskipSession = (day: PlanDay) => {
-        router.patch(
-            `/plan/sessions/${day.id}`,
+    const unskipSession = (day: PlanDay) =>
+        writeSession(
+            day,
             { skipped: false, pinned: false },
             {
-                preserveScroll: true,
-                onSuccess: (page) => {
-                    if (planEditLanded(page)) {
-                        showToast('restored');
-                    }
-                },
+                landed: 'restored',
+                failed: "couldn't restore, try again",
+                optimistic: (current) =>
+                    withSessionSkipped(current, day.id, false),
             },
         );
-    };
 
     return (
         <>

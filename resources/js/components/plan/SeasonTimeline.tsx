@@ -36,7 +36,7 @@ export default function SeasonTimeline({
     focusDay?: string | null;
     /** The day selected earlier in this tab session. */
     selectedDay?: string | null;
-    onMove: (day: PlanDay, toDate: string) => void;
+    onMove: (day: PlanDay, toDate: string, onMoved: () => void) => void;
     onSkip: (day: PlanDay) => void;
     onUnskip: (day: PlanDay) => void;
     /** Fetches a week behind's day rows; resolves whether it found any. */

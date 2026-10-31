@@ -98,7 +98,7 @@ export default function WeekView({
     selectedDay?: string | null;
     /** Returns to the current week; set only while another week is shown. */
     onBack?: () => void;
-    onMove: (day: PlanDay, toDate: string) => void;
+    onMove: (day: PlanDay, toDate: string, onMoved: () => void) => void;
     onSkip: (day: PlanDay) => void;
     onUnskip: (day: PlanDay) => void;
 }>) {
@@ -234,7 +234,9 @@ export default function WeekView({
                                     day={selected}
                                     weekDays={days}
                                     onMove={(toDate) =>
-                                        onMove(selected, toDate)
+                                        onMove(selected, toDate, () =>
+                                            selectDate(toDate),
+                                        )
                                     }
                                     onSkip={() => onSkip(selected)}
                                     onUnskip={() => onUnskip(selected)}

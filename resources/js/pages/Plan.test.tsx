@@ -4,7 +4,7 @@ import { router } from '@inertiajs/react';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { EditablePlanDay, SeasonSummaryWeek } from '@/lib/plan';
+import type { EditablePlanDay, PlanWeek, SeasonSummaryWeek } from '@/lib/plan';
 
 import { showToast } from '@/hooks/useToast';
 import {
@@ -489,6 +489,122 @@ describe('Plan', () => {
         );
     });
 
+    describe('writes', () => {
+        type Optimistic = (props: unknown) => { weeks: PlanWeek[] } | undefined;
+        const patchOptions = () =>
+            vi.mocked(router.patch).mock.calls.at(-1)?.[2] as NonNullable<
+                Parameters<typeof router.patch>[2]
+            >;
+        const optimistic = () => patchOptions().optimistic as Optimistic;
+        const skippedWeeks = (): PlanWeek[] => [
+            {
+                ...defined(BASE_PROPS.weeks![0]),
+                days: [
+                    day({
+                        skipped: true,
+                        pinned: true,
+                        actions: { move: false, skip: false, restore: true },
+                    }),
+                ],
+            },
+        ];
+        const skip = () =>
+            fireEvent.click(screen.getByRole('button', { name: /^skip$/i }));
+        const move = () => {
+            fireEvent.click(screen.getByRole('button', { name: /^move$/i }));
+            fireEvent.click(screen.getByRole('button', { name: 'Fri' }));
+        };
+
+        it.each([
+            ['skip', skip],
+            ['move', move],
+        ])('refreshes the deferred plan props in place on a %s', (_a, act) => {
+            renderPlan();
+            act();
+
+            expect(patchOptions().only).toEqual([
+                'weeks',
+                'seasonSummary',
+                'seasonAdherencePct',
+                'adaptation',
+                'flash',
+            ]);
+        });
+
+        it('flips the day to skipped before the server answers a skip', () => {
+            renderPlan();
+            skip();
+
+            const days = optimistic()({ weeks: BASE_PROPS.weeks })?.weeks[0]
+                ?.days;
+
+            expect(days?.[0]).toMatchObject({
+                id: 1,
+                skipped: true,
+                actions: { skip: false, restore: true },
+            });
+            expect(days?.[1]).toEqual(BASE_PROPS.weeks![0]!.days[1]);
+        });
+
+        it('flips the day back to planned before the server answers a restore', () => {
+            renderPlan({ weeks: skippedWeeks() });
+            fireEvent.click(screen.getByRole('button', { name: 'restore' }));
+
+            expect(
+                optimistic()({ weeks: skippedWeeks() })?.weeks[0]?.days[0],
+            ).toMatchObject({
+                skipped: false,
+                pinned: false,
+                actions: { skip: true, restore: false },
+            });
+        });
+
+        it('changes nothing optimistically while the plan props are still deferred', () => {
+            renderPlan();
+            skip();
+
+            expect(optimistic()({})).toBeUndefined();
+        });
+
+        it('waits for the server on a move', () => {
+            renderPlan();
+            move();
+
+            expect(patchOptions().optimistic).toBeUndefined();
+        });
+    });
+
+    describe('selection', () => {
+        const selectedTab = () =>
+            screen
+                .getByRole('tab', { selected: true })
+                .getAttribute('aria-label');
+
+        it('keeps the picked day through the plan props dropping out and coming back', () => {
+            setMockDeferred(['weeks']);
+            const { rerender } = renderPlan();
+            setMockDeferred([]);
+            rerender(<Plan {...BASE_PROPS} />);
+            fireEvent.click(screen.getByRole('tab', { name: /^Fri/ }));
+
+            setMockDeferred(['weeks']);
+            rerender(<Plan {...BASE_PROPS} />);
+            setMockDeferred([]);
+            rerender(<Plan {...BASE_PROPS} />);
+
+            expect(selectedTab()).toMatch(/^Fri/);
+        });
+
+        it('selects the day a session moved to once the move lands', () => {
+            settlePatch('onSuccess');
+            renderPlan();
+            fireEvent.click(screen.getByRole('button', { name: /^move$/i }));
+            fireEvent.click(screen.getByRole('button', { name: 'Fri' }));
+
+            expect(selectedTab()).toMatch(/^Fri/);
+        });
+    });
+
     describe('toasts', () => {
         const skippedWeek = () => ({
             weeks: [
@@ -570,14 +686,35 @@ describe('Plan', () => {
             ],
         ];
 
-        it.each(actions)(
-            'shows no toast when the %s is refused',
-            (_action, perform) => {
-                settlePatch('onError');
-                perform();
+        it.each([
+            ['move', "couldn't move, try again"],
+            ['skip', "couldn't skip, try again"],
+            ['restore', "couldn't restore, try again"],
+        ])('says the %s failed when the server refuses it', (action, toast) => {
+            settlePatch('onError');
+            actions.find(([name]) => name === action)?.[1]();
 
-                expect(router.patch).toHaveBeenCalled();
-                expect(showToast).not.toHaveBeenCalled();
+            expect(showToast).toHaveBeenCalledExactlyOnceWith(toast);
+        });
+
+        it.each(['onHttpException', 'onNetworkError'] as const)(
+            'says the skip failed on %s and suppresses the error page',
+            (callback) => {
+                let result: unknown;
+                vi.mocked(router.patch).mockImplementationOnce(
+                    (_url, _data, options) => {
+                        result = options?.[callback]?.(undefined as never);
+                    },
+                );
+                renderPlan();
+                fireEvent.click(
+                    screen.getByRole('button', { name: /^skip$/i }),
+                );
+
+                expect(showToast).toHaveBeenCalledExactlyOnceWith(
+                    "couldn't skip, try again",
+                );
+                expect(result).toBe(false);
             },
         );
 

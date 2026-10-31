@@ -769,6 +769,31 @@ export function planEditLanded(page: Page): boolean {
     return !flash?.info && !flash?.error;
 }
 
+/** The weeks with one day's skip flipped the way `PlanController::update` stores it, for an optimistic edit. */
+export function withSessionSkipped(
+    weeks: PlanWeek[],
+    id: number,
+    skipped: boolean,
+): PlanWeek[] {
+    return weeks.map((week) => ({
+        ...week,
+        days: week.days.map((day) =>
+            day.id === id
+                ? {
+                      ...day,
+                      skipped,
+                      pinned: skipped,
+                      actions: {
+                          ...day.actions,
+                          skip: !skipped,
+                          restore: skipped,
+                      },
+                  }
+                : day,
+        ),
+    }));
+}
+
 /** A Plan page day row with the edits `SessionEditRules` allows on it. */
 export type EditablePlanDay = PlanDay & {
     actions: { move: boolean; skip: boolean; restore: boolean };
