@@ -70,6 +70,7 @@ describe('pendingTab', () => {
 
         expect(pendingTabSnapshot()).toEqual({
             tab: 'plan',
+            screen: null,
             from: 'Home',
             href: '/plan?day=2026-10-12',
             scrollY: 320,
@@ -166,6 +167,7 @@ describe('pendingTab', () => {
 
             expect(pendingTabSnapshot()).toEqual({
                 tab: 'plan',
+                screen: null,
                 from,
                 href: '/race',
                 scrollY: 120,
@@ -257,5 +259,154 @@ describe('pendingTab', () => {
 
         expect(offStart).toHaveBeenCalledOnce();
         expect(offFinish).toHaveBeenCalledOnce();
+    });
+});
+
+function onPhone({ reduced = false } = {}): void {
+    vi.stubGlobal(
+        'matchMedia',
+        vi.fn((query: string) => ({
+            matches: query.includes('coarse') ? true : reduced,
+        })),
+    );
+}
+
+function fakeSlide() {
+    const slide = {
+        update: () => undefined as unknown,
+        skipTransition: vi.fn(),
+    };
+    document.startViewTransition = vi.fn((update: () => unknown) => {
+        slide.update = update;
+        return {
+            ready: Promise.resolve(),
+            finished: new Promise(() => undefined),
+            skipTransition: slide.skipTransition,
+        } as unknown as ViewTransition;
+    }) as unknown as typeof document.startViewTransition;
+
+    return slide;
+}
+
+describe('pendingTab pushes and pops on a phone', () => {
+    let untrack: () => void;
+
+    beforeEach(() => {
+        currentComponent = 'History';
+        onPhone();
+        vi.mocked(router.on).mockClear();
+        untrack = trackTabVisits(() => currentComponent);
+    });
+
+    afterEach(() => {
+        untrack();
+        Reflect.deleteProperty(document, 'startViewTransition');
+        delete document.documentElement.dataset.navSlide;
+    });
+
+    it('slides a run in on the tap and shows its screen pending once the slide has the old frame', () => {
+        const slide = fakeSlide();
+        window.scrollY = 640;
+        const runVisit = visit('/activities/12');
+
+        start(runVisit);
+
+        expect(document.documentElement.dataset.navSlide).toBe('push');
+        expect(pendingTabSnapshot()).toBeNull();
+
+        slide.update();
+
+        expect(pendingTabSnapshot()).toEqual({
+            tab: null,
+            screen: 'Runs/Show',
+            from: 'History',
+            href: '/activities/12',
+            scrollY: 640,
+            visit: runVisit,
+        });
+    });
+
+    it('pops back to a tab under that tab, with its skeleton', () => {
+        const slide = fakeSlide();
+        currentComponent = 'Runs/Show';
+
+        start(visit('/history?view=calendar'));
+        slide.update();
+
+        expect(document.documentElement.dataset.navSlide).toBe('pop');
+        expect(pendingTabSnapshot()).toMatchObject({
+            tab: 'history',
+            screen: null,
+            href: '/history?view=calendar',
+        });
+    });
+
+    it('pops Settings back to Profile as a pushed screen', () => {
+        const slide = fakeSlide();
+        currentComponent = 'Settings/Index';
+
+        start(visit('/profile'));
+        slide.update();
+
+        expect(pendingTabSnapshot()).toMatchObject({
+            tab: null,
+            screen: 'Profile',
+        });
+    });
+
+    it('shows the pushed screen at once, without a slide, under reduced motion', () => {
+        fakeSlide();
+        onPhone({ reduced: true });
+        currentComponent = 'Home';
+
+        start(visit('/inbox'));
+
+        expect(document.startViewTransition).not.toHaveBeenCalled();
+        expect(pendingTabSnapshot()?.screen).toBe('Inbox');
+    });
+
+    it('leaves a push alone under a fine pointer', () => {
+        fakeSlide();
+        vi.unstubAllGlobals();
+
+        start(visit('/activities/12'));
+
+        expect(document.startViewTransition).not.toHaveBeenCalled();
+        expect(pendingTabSnapshot()).toBeNull();
+    });
+
+    it('skips the slide and hands the page back when the visit is cancelled', () => {
+        const slide = fakeSlide();
+        const runVisit = visit('/activities/12', { completed: false });
+        start(runVisit);
+        slide.update();
+
+        finish(Object.assign(runVisit, { cancelled: true }));
+
+        expect(slide.skipTransition).toHaveBeenCalledOnce();
+        expect(pendingTabSnapshot()).toBeNull();
+    });
+
+    it('lets the slide play out when the page arrives during it', () => {
+        const slide = fakeSlide();
+        const runVisit = visit('/activities/12', { completed: true });
+        start(runVisit);
+        slide.update();
+
+        finish(runVisit);
+
+        expect(slide.skipTransition).not.toHaveBeenCalled();
+        expect(pendingTabSnapshot()).toBeNull();
+    });
+
+    it('never shows a skeleton for a visit that ended before the slide updated', () => {
+        const slide = fakeSlide();
+        const runVisit = visit('/activities/12', { completed: true });
+        start(runVisit);
+        finish(runVisit);
+
+        slide.update();
+
+        expect(pendingTabSnapshot()).toBeNull();
     });
 });

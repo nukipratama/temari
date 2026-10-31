@@ -526,3 +526,102 @@ describe('AppShell tab skeleton', () => {
         expect(screen.getByText('current page')).toBeVisible();
     });
 });
+
+describe('AppShell pushed-screen skeleton', () => {
+    beforeEach(() => {
+        vi.mocked(router.on).mockClear();
+        vi.stubGlobal('scrollTo', vi.fn());
+        vi.stubGlobal(
+            'matchMedia',
+            vi.fn((query: string) => ({
+                matches: query.includes('coarse'),
+                addEventListener: vi.fn(),
+                removeEventListener: vi.fn(),
+            })),
+        );
+    });
+
+    afterEach(() => {
+        const left = pendingTabSnapshot();
+        if (left !== null) {
+            finishVisit(left.visit);
+        }
+    });
+
+    it("swaps a run row's tap for the run screen, with the run screen's chrome", () => {
+        renderShell('/history', 'History');
+
+        startVisit(pageVisit('/activities/12'));
+
+        expect(screen.getByText('Activity')).toBeInTheDocument();
+        expect(screen.getByText('current page')).not.toBeVisible();
+        expect(document.getElementById('main-content')).toHaveAttribute(
+            'aria-busy',
+            'true',
+        );
+        expect(document.getElementById('main-content')?.className).toContain(
+            'pb-[calc(1.75rem+env(safe-area-inset-bottom))]',
+        );
+        expect(
+            screen.queryByRole('navigation', { name: 'Primary' }),
+        ).toBeNull();
+        expect(
+            screen.getByRole('link', { name: 'Back to History' }),
+        ).toBeInTheDocument();
+    });
+
+    it.each([
+        ['Inbox', '/', 'Home', '/inbox'],
+        ['Profile', '/', 'Home', '/profile'],
+        ['Settings', '/profile', 'Profile', '/settings'],
+    ])(
+        'shows the %s skeleton the moment it is pushed',
+        (title, url, from, href) => {
+            renderShell(url, from);
+
+            startVisit(pageVisit(href));
+
+            expect(screen.getByText(title)).toBeInTheDocument();
+            expect(screen.getByText('current page')).not.toBeVisible();
+        },
+    );
+
+    it('pops a run back to the History skeleton, nav and all', () => {
+        renderShell('/activities/12', 'Runs/Show');
+
+        startVisit(pageVisit('/history'));
+
+        expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
+            'every runhas a story.',
+        );
+        expect(
+            screen.getByRole('navigation', { name: 'Primary' }),
+        ).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: 'Home' })).toBeInTheDocument();
+    });
+
+    it('hands the page and its chrome back when the push is cancelled', () => {
+        renderShell('/history', 'History');
+        const visit = pageVisit('/activities/12');
+
+        startVisit(visit);
+        finishVisit(visit);
+
+        expect(screen.getByText('current page')).toBeVisible();
+        expect(screen.queryByText('Activity')).toBeNull();
+        expect(
+            screen.getByRole('navigation', { name: 'Primary' }),
+        ).toBeInTheDocument();
+        expect(screen.queryByRole('link', { name: /^Back to/ })).toBeNull();
+    });
+
+    it('keeps the page on screen for a push under a fine pointer', () => {
+        vi.unstubAllGlobals();
+        vi.stubGlobal('scrollTo', vi.fn());
+        renderShell('/history', 'History');
+
+        startVisit(pageVisit('/activities/12'));
+
+        expect(screen.getByText('current page')).toBeVisible();
+    });
+});

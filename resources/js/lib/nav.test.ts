@@ -6,7 +6,14 @@ import {
 } from 'lucide-react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { backTargetFor, defaultTabHrefFor, ITEMS, navTabFor } from './nav';
+import {
+    backTargetFor,
+    defaultTabHrefFor,
+    ITEMS,
+    navDirection,
+    navTabFor,
+    screenForPath,
+} from './nav';
 
 describe('nav', () => {
     it('has 4 top-level items', () => {
@@ -125,6 +132,58 @@ describe('nav', () => {
                 href: '/',
                 label: 'Today',
             });
+        });
+    });
+
+    describe('screenForPath', () => {
+        it.each([
+            ['/', 'Home'],
+            ['/plan', 'Plan'],
+            ['/race', 'Race'],
+            ['/trends', 'Trends'],
+            ['/history', 'History'],
+            ['/activities/42', 'Runs/Show'],
+            ['/inbox', 'Inbox'],
+            ['/profile', 'Profile'],
+            ['/settings', 'Settings/Index'],
+        ])('maps %s to %s', (path, component) => {
+            expect(screenForPath(path)).toBe(component);
+        });
+
+        it.each(['/activities/42/effort', '/activities/x', '/login'])(
+            'knows nothing of %s',
+            (path) => {
+                expect(screenForPath(path)).toBeNull();
+            },
+        );
+    });
+
+    describe('navDirection', () => {
+        it.each([
+            ['History', 'Runs/Show'],
+            ['Home', 'Runs/Show'],
+            ['Race', 'Runs/Show'],
+            ['Home', 'Inbox'],
+            ['Home', 'Profile'],
+            ['Profile', 'Settings/Index'],
+        ])('pushes from %s into %s', (from, to) => {
+            expect(navDirection(from, to)).toBe('push');
+            expect(navDirection(to, from)).toBe('pop');
+        });
+
+        it.each([
+            ['Plan', 'Inbox'],
+            ['Home', 'Settings/Index'],
+            ['Inbox', 'Runs/Show'],
+            ['Runs/Show', 'Runs/Show'],
+            ['Home', 'Plan'],
+            ['Profile', 'Inbox'],
+        ])('neither pushes nor pops from %s to %s', (from, to) => {
+            expect(navDirection(from, to)).toBeNull();
+        });
+
+        it('has no direction to an unknown screen', () => {
+            expect(navDirection('History', null)).toBeNull();
         });
     });
 });

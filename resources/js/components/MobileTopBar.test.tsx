@@ -1,7 +1,11 @@
+import type { GlobalEvent, PendingVisit } from '@inertiajs/core';
+
+import { router } from '@inertiajs/react';
 import { act, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { writeContextualOrigin } from '@/lib/navigationMemory';
+import { trackTabVisits } from '@/lib/pendingTab';
 import { makeUser, setMockPage } from '@/test/setup';
 
 import MobileTopBar from './MobileTopBar';
@@ -230,5 +234,62 @@ describe('MobileTopBar column cap', () => {
         const box = container.querySelector('[class*="max-w-column"]')!;
         expect(box.classList.contains('max-w-column')).toBe(false);
         expect(box.classList.contains('min-[900px]:max-w-column')).toBe(true);
+    });
+});
+
+describe('MobileTopBar while a phone pushes or pops', () => {
+    let untrack: () => void = () => undefined;
+
+    beforeEach(() => {
+        vi.mocked(router.on).mockClear();
+        vi.stubGlobal(
+            'matchMedia',
+            vi.fn((query: string) => ({ matches: query.includes('coarse') })),
+        );
+    });
+
+    afterEach(() => {
+        untrack();
+    });
+
+    function startFrom(component: string, href: string) {
+        setMockPage({ auth: { user: makeUser() } }, '/x', component);
+        untrack = trackTabVisits(() => component);
+        render(<MobileTopBar />);
+        const start = [...vi.mocked(router.on).mock.calls]
+            .reverse()
+            .find(([event]) => event === 'start')?.[1] as (
+            event: GlobalEvent<'start'>,
+        ) => void;
+        act(() =>
+            start({
+                detail: {
+                    visit: {
+                        url: new URL(href, 'http://localhost'),
+                        method: 'get',
+                        async: false,
+                        prefetch: false,
+                    } as PendingVisit,
+                },
+            } as GlobalEvent<'start'>),
+        );
+    }
+
+    it("wears the pushed screen's back chevron and gear the moment Profile is pushed", () => {
+        startFrom('Home', '/profile');
+
+        expect(screen.getByLabelText('Back to Today')).toHaveAttribute(
+            'href',
+            '/',
+        );
+        expect(screen.getByLabelText('Settings')).toBeInTheDocument();
+        expect(screen.queryByLabelText('Home')).toBeNull();
+    });
+
+    it('wears the brand mark again the moment a run pops back to its tab', () => {
+        startFrom('Runs/Show', '/history');
+
+        expect(screen.getByLabelText('Home')).toBeInTheDocument();
+        expect(screen.queryByLabelText(/^Back to/)).toBeNull();
     });
 });

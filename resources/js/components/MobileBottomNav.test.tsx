@@ -521,3 +521,42 @@ describe('MobileBottomNav column cap', () => {
         expect(box.classList.contains('min-[900px]:max-w-column')).toBe(true);
     });
 });
+
+describe('MobileBottomNav while a phone pushes or pops', () => {
+    let untrack: () => void = () => undefined;
+
+    beforeEach(() => {
+        vi.mocked(router.on).mockClear();
+        vi.stubGlobal(
+            'matchMedia',
+            vi.fn((query: string) => ({ matches: query.includes('coarse') })),
+        );
+    });
+
+    afterEach(() => {
+        untrack();
+    });
+
+    function startFrom(component: string, href: string) {
+        setMockPage({}, '/x', component);
+        untrack = trackTabVisits(() => component);
+        render(<MobileBottomNav />);
+        act(() => fireStart(tabVisit(href)));
+    }
+
+    it('leaves with the tab screen the moment a run is pushed', () => {
+        startFrom('History', '/activities/12');
+
+        expect(
+            screen.queryByRole('navigation', { name: 'Primary' }),
+        ).toBeNull();
+    });
+
+    it('comes back with the parent tab lit the moment a run pops', () => {
+        startFrom('Runs/Show', '/history');
+
+        const history = screen.getByText('History').closest('a')!;
+        expect(history).toHaveClass('grow-[1.6]');
+        expect(history).not.toHaveAttribute('aria-current');
+    });
+});

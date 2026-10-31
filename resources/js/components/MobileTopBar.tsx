@@ -15,6 +15,7 @@ import {
     parseContextualOrigin,
     subscribeToContextualOrigin,
 } from '@/lib/navigationMemory';
+import { pendingTabSnapshot, subscribePendingTab } from '@/lib/pendingTab';
 import { iconButtonVariants } from '@/lib/variants';
 
 // A shared chip backdrop for the icon-only buttons: muted over a blur, so the
@@ -46,10 +47,16 @@ export default function MobileTopBar() {
         contextualOriginSnapshot,
         () => null,
     );
-    const back = backTargetFor(
-        page.component,
-        parseContextualOrigin(storedOrigin),
+    const pending = useSyncExternalStore(
+        subscribePendingTab,
+        pendingTabSnapshot,
+        () => null,
     );
+    const screen = pending === null ? page.component : pending.screen;
+    const back =
+        screen === null
+            ? null
+            : backTargetFor(screen, parseContextualOrigin(storedOrigin));
 
     return (
         <header
@@ -80,7 +87,7 @@ export default function MobileTopBar() {
             )}
 
             <div className="flex items-center gap-2">
-                {page.component === 'Profile' && (
+                {screen === 'Profile' && (
                     <Link
                         href="/settings"
                         aria-label="Settings"
@@ -98,7 +105,7 @@ export default function MobileTopBar() {
                     </Link>
                 )}
                 {user &&
-                    (back === null || PUSHED_WITH_BELL.has(page.component)) && (
+                    (back === null || PUSHED_WITH_BELL.has(screen ?? '')) && (
                         <span className={CHIP}>
                             <NotificationBell density="compact" />
                         </span>

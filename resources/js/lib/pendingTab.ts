@@ -2,23 +2,36 @@ import type { PendingVisit } from '@inertiajs/core';
 
 import { router } from '@inertiajs/react';
 
+import type { NavDirection } from '@/lib/nav';
 import type { TabId } from '@/lib/navRoutes';
 
-import { ITEMS } from '@/lib/nav';
-import { RACE_PATH, RACE_TAB } from '@/lib/navRoutes';
+import { ITEMS, navDirection, screenForPath } from '@/lib/nav';
+import { navTabFor, RACE_PATH, RACE_TAB } from '@/lib/navRoutes';
+import {
+    prefersReducedMotion,
+    slidesScreens,
+    startSlide,
+} from '@/lib/pushSlide';
 
-export interface PendingTab {
-    tab: TabId;
-    /** The page component the tab was tapped from. */
+/** Where the visit lands: a tab, or (on a phone, by push or pop) a pushed screen. */
+type Destination = { tab: TabId; screen: null } | { tab: null; screen: string };
+
+export type PendingTab = Destination & {
+    /** The page component the visit started from. */
     from: string;
     href: string;
-    /** The scroll position on the page the tab was tapped from. */
+    /** The scroll position on the page the visit started from. */
     scrollY: number;
     visit: PendingVisit;
-}
+};
 
-let armed: Pick<PendingTab, 'tab' | 'from'> | null = null;
+type Target = Destination & { from: string };
+type Tap = { tab: TabId; from: string };
+
+let armed: Tap | null = null;
 let pending: PendingTab | null = null;
+let sliding: { visit: PendingVisit; transition: ViewTransition | null } | null =
+    null;
 const listeners = new Set<() => void>();
 
 function setPending(next: PendingTab | null): void {
@@ -44,19 +57,44 @@ export function pendingTabSnapshot(): PendingTab | null {
 
 function pendingTarget(
     path: string,
-    tapped: Pick<PendingTab, 'tab' | 'from'> | null,
-    currentComponent: () => string,
-): Pick<PendingTab, 'tab' | 'from'> | null {
-    const tabPath = ITEMS.find((item) => item.id === tapped?.tab)?.href;
-    if (tapped !== null && path === tabPath) {
-        return tapped;
+    tapped: Tap | null,
+    from: string,
+    pushedOrPopped: string | null,
+): Target | null {
+    if (pushedOrPopped !== null) {
+        const tab = navTabFor(pushedOrPopped);
+
+        return tab === null
+            ? { tab, screen: pushedOrPopped, from }
+            : { tab, screen: null, from };
     }
 
-    const from = tapped?.from ?? currentComponent();
+    const tabPath = ITEMS.find((item) => item.id === tapped?.tab)?.href;
+    if (tapped !== null && path === tabPath) {
+        return { ...tapped, screen: null };
+    }
 
     return path === RACE_PATH && from !== 'Race'
-        ? { tab: RACE_TAB, from }
+        ? { tab: RACE_TAB, screen: null, from }
         : null;
+}
+
+function show(next: PendingTab, direction: NavDirection | null): void {
+    if (direction === null || prefersReducedMotion()) {
+        setPending(next);
+        return;
+    }
+
+    const slide = {
+        visit: next.visit,
+        transition: null as ViewTransition | null,
+    };
+    sliding = slide;
+    slide.transition = startSlide(direction, () => {
+        if (sliding === slide) {
+            setPending(next);
+        }
+    });
 }
 
 function startedTabVisit(
@@ -74,17 +112,41 @@ function startedTabVisit(
     }
 
     const path = visit.url.pathname;
-    const target = pendingTarget(path, tapped, currentComponent);
+    const from = tapped?.from ?? currentComponent();
+    const screen = screenForPath(path);
+    const direction = slidesScreens() ? navDirection(from, screen) : null;
+    const target = pendingTarget(
+        path,
+        tapped,
+        from,
+        direction === null ? null : screen,
+    );
     if (target === null) {
         return;
     }
 
-    setPending({
-        ...target,
-        href: path + visit.url.search,
-        scrollY: window.scrollY,
-        visit,
-    });
+    show(
+        {
+            ...target,
+            href: path + visit.url.search,
+            scrollY: window.scrollY,
+            visit,
+        },
+        direction,
+    );
+}
+
+function finishedVisit(visit: PendingVisit, completed: boolean): void {
+    if (sliding !== null && sliding.visit === visit) {
+        if (!completed) {
+            sliding.transition?.skipTransition();
+        }
+        sliding = null;
+    }
+
+    if (pending !== null && pending.visit === visit) {
+        setPending(null);
+    }
 }
 
 /** Follows Inertia's visit lifecycle; returns the unsubscribe. */
@@ -93,15 +155,14 @@ export function trackTabVisits(currentComponent: () => string): () => void {
         startedTabVisit(event.detail.visit, currentComponent);
     });
     const offFinish = router.on('finish', (event) => {
-        if (pending !== null && pending.visit === event.detail.visit) {
-            setPending(null);
-        }
+        finishedVisit(event.detail.visit, event.detail.visit.completed);
     });
 
     return () => {
         offStart();
         offFinish();
         armed = null;
+        sliding = null;
         if (pending !== null) {
             setPending(null);
         }
