@@ -5,15 +5,6 @@ import Skeleton, {
     SkeletonStats,
 } from '@/components/ui/Skeleton';
 
-export function PlanWeeksSkeleton() {
-    return (
-        <div className="mt-6 flex flex-col gap-4">
-            <SkeletonStats />
-            <SkeletonRows count={4} />
-        </div>
-    );
-}
-
 export default function PlanSkeleton() {
     return (
         <PageContainer reveal={false}>
@@ -23,7 +14,10 @@ export default function PlanSkeleton() {
                 }
             />
             <Skeleton className="mt-1 mb-4 h-4 w-64 max-w-full" />
-            <PlanWeeksSkeleton />
+            <div className="mt-6 flex flex-col gap-4">
+                <SkeletonStats />
+                <SkeletonRows count={4} />
+            </div>
         </PageContainer>
     );
 }

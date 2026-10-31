@@ -122,6 +122,7 @@ it('refuses every authenticated route that is handed another user\'s resource id
     $unownedParameters = [
         'type' => 'run_insight',
         'month' => '2026-05',
+        'date' => '2026-05-04',
     ];
 
     $unmapped = [];
