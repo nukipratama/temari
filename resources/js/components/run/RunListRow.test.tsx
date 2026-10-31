@@ -36,6 +36,23 @@ function moodDot() {
 }
 
 describe('RunListRow', () => {
+    it.each([
+        [true, 'true'],
+        [false, 'false'],
+        [undefined, undefined],
+    ])(
+        'tells the run skeleton whether effort is saved (%s)',
+        (saved, attribute) => {
+            render(
+                <RunListRow detail={detail({ has_perceived_effort: saved })} />,
+            );
+
+            expect(screen.getByRole('link').dataset.effortSaved).toBe(
+                attribute,
+            );
+        },
+    );
+
     it('renders activity name + distance', () => {
         render(<RunListRow detail={detail()} />);
         expect(screen.getByText('Morning Run')).toBeInTheDocument();

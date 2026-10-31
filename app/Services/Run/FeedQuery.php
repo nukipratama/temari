@@ -121,7 +121,7 @@ class FeedQuery
                 }
             })
             ->with([
-                'detail' => fn ($q) => $q->select(['id', 'activity_id', 'name', 'start_date_local', 'distance', 'elapsed_time', 'average_heartrate', 'trimp_edwards', 'workout_type', 'summary_polyline', 'stream_summary']),
+                'detail' => fn ($q) => $q->select(['id', 'activity_id', 'name', 'start_date_local', 'distance', 'elapsed_time', 'average_heartrate', 'trimp_edwards', 'workout_type', 'summary_polyline', 'stream_summary', 'perceived_effort']),
                 'runCard' => fn ($q) => $q->select(['id', 'activity_id', 'rarity', 'special_move', 'badges']),
             ])
             ->orderByDesc('id');

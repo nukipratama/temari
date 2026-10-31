@@ -6,9 +6,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import HistoryNav from '@/components/history/HistoryNav';
 import { pendingTabSnapshot } from '@/lib/pendingTab';
+import { startPushStack } from '@/lib/pushStack';
 import { makeUser, setMockPage } from '@/test/setup';
 
 import AppShell from './AppShell';
+
+vi.mock('@/lib/warmPushStack', () => ({ warmPushStack: vi.fn() }));
 
 const andiUser = { id: 1, name: 'Andi', first_name: 'Andi', avatar_url: null };
 
@@ -524,5 +527,207 @@ describe('AppShell tab skeleton', () => {
         startVisit(pageVisit('/', { async: true }));
 
         expect(screen.getByText('current page')).toBeVisible();
+    });
+});
+
+let stopStack: () => void = () => undefined;
+
+function fireAll(name: 'before' | 'start' | 'finish', visit: unknown) {
+    act(() => {
+        vi.mocked(router.on)
+            .mock.calls.filter(([event]) => event === name)
+            .forEach(([, handler]) =>
+                (handler as (event: unknown) => void)({ detail: { visit } }),
+            );
+    });
+}
+
+function pushVisit(visit: PendingVisit) {
+    fireAll('start', visit);
+}
+
+function endVisit(visit: PendingVisit) {
+    fireAll('finish', visit);
+}
+
+function renderPhoneShell(url: string, component: string) {
+    window.history.replaceState(null, '', url);
+    const rendered = renderShell(url, component);
+    stopStack = startPushStack(() => component);
+    return rendered;
+}
+
+describe('AppShell pushed-screen skeleton', () => {
+    beforeEach(() => {
+        vi.mocked(router.on).mockClear();
+        vi.stubGlobal('scrollTo', vi.fn());
+        vi.stubGlobal(
+            'matchMedia',
+            vi.fn((query: string) => ({
+                matches: query.includes('coarse'),
+                addEventListener: vi.fn(),
+                removeEventListener: vi.fn(),
+            })),
+        );
+    });
+
+    afterEach(() => {
+        const left = pendingTabSnapshot();
+        if (left !== null) {
+            endVisit(left.visit);
+        }
+        stopStack();
+        window.history.replaceState(null, '', '/');
+    });
+
+    it("swaps a run row's tap for the run screen, with the run screen's chrome", () => {
+        renderPhoneShell('/history', 'History');
+
+        pushVisit(pageVisit('/activities/12'));
+
+        expect(screen.getByText('Activity')).toBeInTheDocument();
+        expect(screen.getByText('current page')).not.toBeVisible();
+        expect(document.getElementById('main-content')).toHaveAttribute(
+            'aria-busy',
+            'true',
+        );
+        expect(document.getElementById('main-content')?.className).toContain(
+            'pb-[calc(1.75rem+env(safe-area-inset-bottom))]',
+        );
+        expect(
+            screen.queryByRole('navigation', { name: 'Primary' }),
+        ).toBeNull();
+        expect(
+            screen.getByRole('link', { name: 'Back to History' }),
+        ).toBeInTheDocument();
+    });
+
+    it.each([
+        ['Inbox', '/', 'Home', '/inbox'],
+        ['Profile', '/', 'Home', '/profile'],
+        ['Settings', '/profile', 'Profile', '/settings'],
+    ])(
+        'shows the %s skeleton the moment it is pushed',
+        (title, url, from, href) => {
+            renderPhoneShell(url, from);
+
+            pushVisit(pageVisit(href));
+
+            expect(screen.getByText(title)).toBeInTheDocument();
+            expect(screen.getByText('current page')).not.toBeVisible();
+        },
+    );
+
+    it('points the skeleton chevron at the tab the run was opened from', () => {
+        window.history.replaceState(null, '', '/plan?day=2026-10-12');
+        renderPhoneShell('/plan?day=2026-10-12', 'Plan');
+
+        pushVisit(pageVisit('/activities/12'));
+
+        expect(
+            screen.getByRole('link', { name: 'Back to Plan' }),
+        ).toHaveAttribute('href', '/plan?day=2026-10-12');
+        window.history.replaceState(null, '', '/');
+    });
+
+    it('pushes Inbox from the bell on a tab other than Today', () => {
+        window.history.replaceState(null, '', '/plan');
+        renderPhoneShell('/plan', 'Plan');
+
+        pushVisit(pageVisit('/inbox'));
+
+        expect(screen.getByText('Inbox')).toBeInTheDocument();
+        expect(screen.getByText('current page')).not.toBeVisible();
+        window.history.replaceState(null, '', '/');
+    });
+
+    it('pops a run back to the History skeleton, nav and all', () => {
+        renderPhoneShell('/activities/12', 'Runs/Show');
+
+        pushVisit(pageVisit('/history'));
+
+        expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
+            'every runhas a story.',
+        );
+        expect(
+            screen.getByRole('navigation', { name: 'Primary' }),
+        ).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: 'Home' })).toBeInTheDocument();
+    });
+
+    it('hands the page and its chrome back when the push is cancelled', () => {
+        renderPhoneShell('/history', 'History');
+        const visit = pageVisit('/activities/12');
+
+        pushVisit(visit);
+        endVisit(visit);
+
+        expect(screen.getByText('current page')).toBeVisible();
+        expect(screen.queryByText('Activity')).toBeNull();
+        expect(
+            screen.getByRole('navigation', { name: 'Primary' }),
+        ).toBeInTheDocument();
+        expect(screen.queryByRole('link', { name: /^Back to/ })).toBeNull();
+    });
+
+    it('keeps the cross-fade off a push when the shell remounted after the slide loaded', () => {
+        window.history.replaceState(null, '', '/history');
+        stopStack = startPushStack(() => 'History');
+        renderShell('/history', 'History');
+        const visit = {
+            ...pageVisit('/activities/12'),
+            showProgress: true,
+            viewTransition: undefined as unknown,
+        };
+
+        fireAll('before', visit);
+        const started = { ...visit };
+        fireAll('start', started);
+
+        expect(visit.viewTransition).toBe(true);
+        expect(started.viewTransition).toBe(false);
+    });
+
+    it('keeps the page on screen for a push under a fine pointer', () => {
+        vi.unstubAllGlobals();
+        vi.stubGlobal('scrollTo', vi.fn());
+        renderPhoneShell('/history', 'History');
+
+        pushVisit(pageVisit('/activities/12'));
+
+        expect(screen.getByText('current page')).toBeVisible();
+    });
+});
+
+describe('AppShell before the push slide has loaded', () => {
+    beforeEach(() => {
+        vi.mocked(router.on).mockClear();
+        vi.stubGlobal('scrollTo', vi.fn());
+        vi.stubGlobal(
+            'matchMedia',
+            vi.fn((query: string) => ({
+                matches: query.includes('coarse'),
+                addEventListener: vi.fn(),
+                removeEventListener: vi.fn(),
+            })),
+        );
+    });
+
+    it('keeps the page and the cross-fade for a push on a phone', () => {
+        window.history.replaceState(null, '', '/history');
+        renderShell('/history', 'History');
+        const visit = {
+            ...pageVisit('/activities/12'),
+            showProgress: true,
+            viewTransition: undefined as unknown,
+        };
+
+        fireAll('before', visit);
+        fireAll('start', visit);
+
+        expect(visit.viewTransition).toBe(true);
+        expect(screen.getByText('current page')).toBeVisible();
+        expect(pendingTabSnapshot()).toBeNull();
+        window.history.replaceState(null, '', '/');
     });
 });

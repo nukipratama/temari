@@ -125,7 +125,8 @@ class HistoryController extends Controller
      * Resolves each row's effort once for the whole page batch and stamps it
      * onto its `detail`, so `RunListRow` never recomputes it per row. The heavy
      * `stream_summary` column FeedQuery selects for this is hidden again once
-     * the effort is resolved rather than shipped to the client.
+     * the effort is resolved rather than shipped to the client, and the
+     * athlete's own effort score ships only as whether one is saved.
      *
      * @param  Collection<int, Activity>  $runs
      */
@@ -136,7 +137,8 @@ class HistoryController extends Controller
 
         foreach ($details as $detail) {
             $detail->setAttribute('effort', ($efforts[$detail->activity_id] ?? Effort::Unknown)->value);
-            $detail->makeHidden('stream_summary');
+            $detail->setAttribute('has_perceived_effort', $detail->perceived_effort !== null);
+            $detail->makeHidden(['stream_summary', 'perceived_effort']);
         }
     }
 

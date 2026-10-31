@@ -379,6 +379,10 @@ end state.
    Route transitions carry no tokens at all any more: the swap cross-fades through the
    **View Transitions API** (the browser's own animation, tuned only by a 180ms duration in
    `app.css`), and the progress bar it replaced is gone — see [[installed-app-shell]].
+   On a phone, a push into a pushed screen and the pop back out slide instead, in the iOS range:
+   320ms on `cubic-bezier(0.32, 0.72, 0, 1)`, the incoming screen travelling the full width while
+   the one underneath shifts 30% the other way and dims to `brightness(0.8)` (the `nav-slide-*`
+   keyframes in `app.css`).
 2. **Data reveal** — a page's first showing of real data, not every render. Stat count-ups
    (`useCountUp`, an ease-out curve with no overshoot — a tallying number should land exactly on
    target), route draw-ins (`.draw-in`, SVG `pathLength` 1 with an animated `stroke-dashoffset`),
