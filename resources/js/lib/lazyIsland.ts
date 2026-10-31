@@ -1,6 +1,6 @@
-import type { ComponentType } from 'react';
+import type { ComponentProps, ComponentType } from 'react';
 
-import { lazy } from 'react';
+import { createElement, lazy } from 'react';
 
 import { reloadDocument } from '@/lib/reloadDocument';
 
@@ -33,20 +33,44 @@ export function recoverFromChunkFailure(): boolean {
  * `lazy()` for a piece of an already-rendered page. Use it for every lazy
  * boundary that is not an Inertia page, and give it a fallback that reserves
  * the space the real thing will take.
+ *
+ * Once the module has loaded, the island renders it directly instead of
+ * through `lazy()`, so a warm chunk never suspends and React 19 never holds a
+ * fallback for it. `preload()` loads the module ahead of the first render.
  */
 // React's own `lazy` is typed this way; narrowing it stops props inferring.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function lazyIsland<T extends ComponentType<any>>(
     load: () => Promise<{ default: T }>,
 ) {
-    return lazy(() =>
-        load().catch((error: unknown) => {
-            if (recoverFromChunkFailure()) {
-                // The document is being replaced; never settle.
-                return new Promise<{ default: T }>(() => {});
-            }
+    let loaded: T | null = null;
 
-            throw error;
-        }),
+    const remember = (module: { default: T }) => {
+        loaded = module.default;
+
+        return module;
+    };
+
+    const Lazy = lazy(() =>
+        load()
+            .then(remember)
+            .catch((error: unknown) => {
+                if (recoverFromChunkFailure()) {
+                    // The document is being replaced; never settle.
+                    return new Promise<{ default: T }>(() => {});
+                }
+
+                throw error;
+            }),
     );
+
+    function Island(props: ComponentProps<T>) {
+        return createElement(loaded ?? Lazy, props);
+    }
+
+    Island.preload = (): void => {
+        load().then(remember, () => {});
+    };
+
+    return Island;
 }

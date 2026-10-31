@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import { createElement, Suspense } from 'react';
+import { createElement, Suspense, useEffect } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { reloadDocument } from '@/lib/reloadDocument';
@@ -66,6 +66,90 @@ describe('lazyIsland', () => {
                 default: () => createElement('p', null, 'arrived'),
             }),
         );
+
+        render(
+            createElement(Suspense, { fallback: null }, createElement(Island)),
+        );
+
+        expect(await screen.findByText('arrived')).toBeInTheDocument();
+        expect(reload).not.toHaveBeenCalled();
+    });
+
+    it('falls back while the chunk is cold', async () => {
+        const Island = lazyIsland(() =>
+            Promise.resolve({
+                default: () => createElement('p', null, 'arrived'),
+            }),
+        );
+
+        render(
+            createElement(
+                Suspense,
+                { fallback: createElement('p', null, 'holding') },
+                createElement(Island),
+            ),
+        );
+
+        expect(screen.getByText('holding')).toBeInTheDocument();
+        expect(await screen.findByText('arrived')).toBeInTheDocument();
+    });
+
+    it('renders without suspending once the chunk is preloaded', async () => {
+        const load = vi.fn(() =>
+            Promise.resolve({
+                default: (props: { label: string }) =>
+                    createElement('p', null, props.label),
+            }),
+        );
+        const Island = lazyIsland(load);
+
+        Island.preload();
+        await vi.waitFor(() => expect(load).toHaveBeenCalledTimes(1));
+        await Promise.resolve();
+
+        render(
+            createElement(
+                Suspense,
+                { fallback: createElement('p', null, 'holding') },
+                createElement(Island, { label: 'arrived' }),
+            ),
+        );
+
+        expect(screen.getByText('arrived')).toBeInTheDocument();
+        expect(screen.queryByText('holding')).not.toBeInTheDocument();
+    });
+
+    it('keeps a mounted island mounted when it re-renders after loading', async () => {
+        let mounts = 0;
+        function Counted() {
+            useEffect(() => {
+                mounts += 1;
+            }, []);
+
+            return createElement('p', null, 'arrived');
+        }
+        const Island = lazyIsland(() => Promise.resolve({ default: Counted }));
+        const tree = () =>
+            createElement(Suspense, { fallback: null }, createElement(Island));
+
+        const { rerender } = render(tree());
+        await screen.findByText('arrived');
+        rerender(tree());
+
+        expect(mounts).toBe(1);
+    });
+
+    it('survives a failed preload and still loads on first render', async () => {
+        const load = vi
+            .fn()
+            .mockRejectedValueOnce(new Error('offline'))
+            .mockResolvedValue({
+                default: () => createElement('p', null, 'arrived'),
+            });
+        const Island = lazyIsland(load);
+
+        Island.preload();
+        await vi.waitFor(() => expect(load).toHaveBeenCalledTimes(1));
 
         render(
             createElement(Suspense, { fallback: null }, createElement(Island)),

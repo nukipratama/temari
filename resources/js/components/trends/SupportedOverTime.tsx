@@ -2,17 +2,15 @@ import type { Chart, Plugin } from 'chart.js';
 
 import { Suspense, useMemo } from 'react';
 
+import { LazyLine } from '@/components/collection/LazyLineChart';
 import Eyebrow from '@/components/ui/Eyebrow';
 import Skeleton from '@/components/ui/Skeleton';
 import { useIsDarkGround } from '@/hooks/useIsDarkGround';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { CHART_GROUND, PALETTE } from '@/lib/chartTokens';
 import { cn } from '@/lib/cn';
-import { lazyIsland } from '@/lib/lazyIsland';
 import { formatDurationHMS, formatNaiveMonthDayId } from '@/lib/pace';
 import { raceDistanceLabel } from '@/lib/raceGoal';
-
-const Line = lazyIsland(() => import('@/components/collection/LineChart'));
 
 const NO_POINTS: ReadonlyArray<SupportedHistoryPoint> = [];
 
@@ -310,7 +308,7 @@ export default function SupportedOverTime({
                 <Suspense
                     fallback={<Skeleton className="h-full w-full rounded-lg" />}
                 >
-                    <Line
+                    <LazyLine
                         data={data}
                         options={options}
                         plugins={CHART_PLUGINS}

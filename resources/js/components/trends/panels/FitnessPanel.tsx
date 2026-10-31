@@ -4,19 +4,14 @@ import { Suspense, useMemo, useState } from 'react';
 
 import type { FormStatus } from '@/types/inertia';
 
+import { LazyLine } from '@/components/collection/LazyLineChart';
 import Skeleton from '@/components/ui/Skeleton';
 import { StatDelta } from '@/components/ui/StatTile';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { useIsDarkGround } from '@/hooks/useIsDarkGround';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { CHART_GROUND, PALETTE } from '@/lib/chartTokens';
-import { lazyIsland } from '@/lib/lazyIsland';
 import { ID_MONTH_SHORT, formatNaiveMonthDayId } from '@/lib/pace';
-
-// Chart.js core + its scale/element registration live inside this lazy
-// module, mirroring CtlTrendChart/ProgressionChart so nothing chart-related
-// enters this page's own chunk either.
-const Line = lazyIsland(() => import('@/components/collection/LineChart'));
 
 export interface FitnessTrendPoint {
     date: string;
@@ -377,7 +372,7 @@ export default function FitnessPanel({
                 <Suspense
                     fallback={<Skeleton className="h-full w-full rounded-lg" />}
                 >
-                    <Line
+                    <LazyLine
                         data={data}
                         options={options}
                         plugins={CHART_PLUGINS}

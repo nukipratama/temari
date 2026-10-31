@@ -36,8 +36,8 @@ run lands in `storage/app/bench/<label>.json` (gitignored).
 ### Scenarios
 
 `scenarios/bench/`: `tabs.mjs` (Today → Plan → Trends → History → Today), `push-back.mjs` (History
-row → run → back chevron), `plan-skip.mjs` (skip and restore a session, timed to the toast) and
-`launch.mjs`. A scenario exports `route` and `default async ({ page, measure })`;
+row → run → back chevron), `trends-chart.mjs` (tap Trends, scroll to the fitness chart, timed to
+its canvas), `plan-skip.mjs` (skip and restore a session, timed to the toast) and `launch.mjs`. A scenario exports `route` and `default async ({ page, measure })`;
 `measure(label, selector, { until })` taps the first match. Leave `until` off for a navigation.
 
 `plan-skip.mjs` writes. It reverses its own write inside each run, so the demo plan ends where it
