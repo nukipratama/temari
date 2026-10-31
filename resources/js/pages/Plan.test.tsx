@@ -469,7 +469,7 @@ describe('Plan', () => {
     });
 
     describe('writes', () => {
-        type Optimistic = (props: unknown) => { weeks: PlanWeek[] } | undefined;
+        type Optimistic = (props: unknown) => { weeks: PlanWeek[] };
         const patchOptions = () =>
             vi.mocked(router.patch).mock.calls.at(-1)?.[2] as NonNullable<
                 Parameters<typeof router.patch>[2]
@@ -497,7 +497,7 @@ describe('Plan', () => {
         it.each([
             ['skip', skip],
             ['move', move],
-        ])('refreshes the deferred plan props in place on a %s', (_a, act) => {
+        ])('refreshes the plan props in place on a %s', (_a, act) => {
             renderPlan();
             act();
 
@@ -514,7 +514,7 @@ describe('Plan', () => {
             renderPlan();
             skip();
 
-            const days = optimistic()({ weeks: BASE_PROPS.weeks })?.weeks[0]
+            const days = optimistic()({ weeks: BASE_PROPS.weeks }).weeks[0]
                 ?.days;
 
             expect(days?.[0]).toMatchObject({
@@ -530,19 +530,12 @@ describe('Plan', () => {
             fireEvent.click(screen.getByRole('button', { name: 'restore' }));
 
             expect(
-                optimistic()({ weeks: skippedWeeks() })?.weeks[0]?.days[0],
+                optimistic()({ weeks: skippedWeeks() }).weeks[0]?.days[0],
             ).toMatchObject({
                 skipped: false,
                 pinned: false,
                 actions: { skip: true, restore: false },
             });
-        });
-
-        it('changes nothing optimistically while the plan props are still deferred', () => {
-            renderPlan();
-            skip();
-
-            expect(optimistic()({})).toBeUndefined();
         });
 
         it('waits for the server on a move', () => {

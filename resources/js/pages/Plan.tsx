@@ -143,11 +143,9 @@ export default function Plan({
             only: PLAN_WRITE_PROPS,
             optimistic:
                 optimistic &&
-                ((props) => {
-                    const { weeks: current } = props as Partial<PlanProps>;
-
-                    return current ? { weeks: optimistic(current) } : undefined;
-                }),
+                ((props) => ({
+                    weeks: optimistic((props as unknown as PlanProps).weeks),
+                })),
             onSuccess: (page) => {
                 if (planEditLanded(page)) {
                     showToast(landed);
