@@ -85,7 +85,7 @@ export function EffortSaved({
     return (
         <button
             type="button"
-            className="focus-ring rounded-full"
+            className="focus-ring pressable rounded-full"
             aria-label={`change effort score, ${score} of 10, ${effortWord(score)}`}
             onClick={onChange}
         >

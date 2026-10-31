@@ -11,7 +11,7 @@ export default function BackButton({
             type="button"
             onClick={onClick}
             aria-label="Back"
-            className="focus-ring flex size-11 flex-none items-center justify-center rounded-full bg-muted text-foreground shadow-e1"
+            className="focus-ring pressable flex size-11 flex-none items-center justify-center rounded-full bg-muted text-foreground shadow-e1"
         >
             <Icon icon={ChevronLeft} width={18} height={18} aria-hidden />
         </button>

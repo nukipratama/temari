@@ -67,7 +67,7 @@ function FeedbackCells({ row }: Readonly<{ row: FeedbackFlagRow }>) {
                 {row.subject_url ? (
                     <a
                         href={row.subject_url}
-                        className="focus-ring text-leaf-ink underline underline-offset-2"
+                        className="focus-ring pressable text-leaf-ink underline underline-offset-2"
                     >
                         {row.subject_label}
                     </a>

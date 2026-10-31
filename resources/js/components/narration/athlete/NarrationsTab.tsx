@@ -101,7 +101,7 @@ export default function NarrationsTab({
             {nextCursor !== null && (
                 <Link
                     href={narrationsHref(athleteId, filters, nextCursor)}
-                    className="focus-ring mt-4 inline-block rounded-full text-sm font-semibold text-leaf-ink"
+                    className="focus-ring pressable mt-4 inline-block rounded-full text-sm font-semibold text-leaf-ink"
                 >
                     older
                 </Link>

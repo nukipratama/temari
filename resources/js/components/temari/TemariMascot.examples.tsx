@@ -30,7 +30,7 @@ function DrawIn() {
             <TemariMascot key={replay} pose="blazing" size={72} drawIn />
             <button
                 type="button"
-                className="focus-ring rounded-xs text-meta underline"
+                className="focus-ring pressable rounded-xs text-meta underline"
                 onClick={() => setReplay((n) => n + 1)}
             >
                 replay

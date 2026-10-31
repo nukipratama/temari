@@ -66,7 +66,7 @@ export default function Devtools() {
                                         {props.children}
                                     </a>
                                 )}
-                                className="focus-ring flex items-center gap-4 transition hover:border-horizon/40"
+                                className="focus-ring pressable flex items-center gap-4 transition hover:border-horizon/40"
                             >
                                 <span
                                     aria-hidden

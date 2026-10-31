@@ -137,11 +137,22 @@ describe('PhaseRibbon', () => {
         ];
         for (const cell of solid) {
             expect(cell).not.toHaveClass('opacity-40');
+            expect(cell).not.toHaveClass('active:opacity-25');
         }
 
         for (const name of ['build', 'peak', 'taper']) {
             expect(screen.getByRole('button', { name })).toHaveClass(
                 'opacity-40',
+            );
+        }
+    });
+
+    it('dims a faded cell further while it is pressed, since its resting opacity overrides the shared press dip', () => {
+        render(<PhaseRibbon weeks={RACE_SEASON} />);
+
+        for (const name of ['build', 'peak', 'taper']) {
+            expect(screen.getByRole('button', { name })).toHaveClass(
+                'active:opacity-25',
             );
         }
     });

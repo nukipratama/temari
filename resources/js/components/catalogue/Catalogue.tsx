@@ -65,7 +65,7 @@ export default function Catalogue({
                                     <li key={member.id}>
                                         <a
                                             href={`#${member.id}`}
-                                            className="focus-ring rounded-xs font-sans text-sm text-text-2 transition hover:text-foreground"
+                                            className="focus-ring pressable rounded-xs font-sans text-sm text-text-2 transition hover:text-foreground"
                                         >
                                             {member.name}
                                         </a>

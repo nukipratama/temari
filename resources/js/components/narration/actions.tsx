@@ -20,7 +20,7 @@ export function RecoverAllButton() {
                 post(`${OVERVIEW_PATH}/recover`, { preserveScroll: true })
             }
             disabled={processing}
-            className="focus-ring inline-flex shrink-0 items-center gap-1.5 rounded-full bg-sky px-4 py-2 text-xs font-semibold text-cream transition-colors hover:bg-sky-deep disabled:cursor-wait disabled:opacity-60"
+            className="focus-ring pressable inline-flex shrink-0 items-center gap-1.5 rounded-full bg-sky px-4 py-2 text-xs font-semibold text-cream transition-colors hover:bg-sky-deep disabled:cursor-wait disabled:opacity-60"
         >
             <Icon icon={RotateCcw} aria-hidden />
             <span>recover all</span>
@@ -44,7 +44,7 @@ export function RetryFailedButton({ userId }: Readonly<{ userId: number }>) {
                 })
             }
             disabled={processing}
-            className="focus-ring inline-flex shrink-0 items-center rounded-full bg-sky px-3 py-1.5 text-xs font-semibold text-cream transition-colors hover:bg-sky-deep disabled:cursor-wait disabled:opacity-60"
+            className="focus-ring pressable inline-flex shrink-0 items-center rounded-full bg-sky px-3 py-1.5 text-xs font-semibold text-cream transition-colors hover:bg-sky-deep disabled:cursor-wait disabled:opacity-60"
         >
             retry failed
         </button>

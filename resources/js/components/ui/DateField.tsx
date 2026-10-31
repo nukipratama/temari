@@ -63,7 +63,7 @@ export default function DateField({
                     aria-label="Choose a date"
                     aria-expanded={open}
                     onClick={() => setOpen((wasOpen) => !wasOpen)}
-                    className="focus-ring absolute inset-y-0 right-0 flex w-9 items-center justify-center rounded-sm text-text-3 transition-colors hover:text-foreground"
+                    className="focus-ring pressable absolute inset-y-0 right-0 flex w-9 items-center justify-center rounded-sm text-text-3 transition-colors hover:text-foreground"
                 >
                     <Icon icon={Calendar} width={16} height={16} aria-hidden />
                 </button>
@@ -163,7 +163,7 @@ function MonthStep({
             type="button"
             aria-label={label}
             onClick={onClick}
-            className="focus-ring flex size-6 flex-none items-center justify-center rounded-full bg-muted text-foreground transition-colors hover:bg-accent"
+            className="focus-ring pressable flex size-6 flex-none items-center justify-center rounded-full bg-muted text-foreground transition-colors hover:bg-accent"
         >
             <Icon icon={icon} width={14} height={14} aria-hidden />
         </button>
@@ -208,7 +208,7 @@ function DayCell({
             aria-pressed={selected}
             onClick={() => onPick(iso)}
             className={cn(
-                'focus-ring flex h-7 items-center justify-center rounded-sm font-mono text-xs tabular-nums transition-colors',
+                'focus-ring pressable flex h-7 items-center justify-center rounded-sm font-mono text-xs tabular-nums transition-colors',
                 'disabled:cursor-not-allowed disabled:opacity-35',
                 selected && 'bg-horizon text-sky',
                 !selected && outside && 'text-text-3',

@@ -26,7 +26,7 @@ export default function DevtoolsHeader({
                 </div>
                 <a
                     href="/devtools"
-                    className="focus-ring hidden rounded-full px-2 py-1 text-label-micro font-semibold text-text-3 transition hover:text-foreground sm:inline"
+                    className="focus-ring pressable hidden rounded-full px-2 py-1 text-label-micro font-semibold text-text-3 transition hover:text-foreground sm:inline"
                 >
                     Temari · Devtools
                 </a>

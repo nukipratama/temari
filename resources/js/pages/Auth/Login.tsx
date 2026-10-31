@@ -159,7 +159,7 @@ export default function Login({
                         <a
                             key={link.href}
                             href={link.href}
-                            className="focus-ring inline-flex min-h-6 items-center rounded-xs text-xs text-text-2 underline underline-offset-2 hover:text-foreground"
+                            className="focus-ring pressable inline-flex min-h-6 items-center rounded-xs text-xs text-text-2 underline underline-offset-2 hover:text-foreground"
                         >
                             {link.label}
                         </a>
@@ -263,7 +263,7 @@ function ConnectPanel({
             <p className="mt-3 text-center text-xs leading-relaxed text-text-2">
                 <a
                     href="/privacy"
-                    className="focus-ring rounded-xs underline decoration-border-strong underline-offset-2 hover:text-foreground"
+                    className="focus-ring rounded-xs underline active:opacity-70 decoration-border-strong underline-offset-2 hover:text-foreground"
                 >
                     read-only · no ads · delete anytime
                 </a>
@@ -364,7 +364,7 @@ function DataUseDisclosure({
                 aria-expanded={open}
                 aria-controls={panelId}
                 onClick={() => setOpen((wasOpen) => !wasOpen)}
-                className="focus-ring group flex w-full items-center justify-between gap-2 px-3.5 py-3.5 text-left text-xs leading-tight text-text-2"
+                className="focus-ring pressable group flex w-full items-center justify-between gap-2 px-3.5 py-3.5 text-left text-xs leading-tight text-text-2"
             >
                 <span>
                     how your data is used ·{' '}
@@ -407,7 +407,7 @@ function DataUseDisclosure({
                         <p className="mt-1">{trainingDisclaimer.text}</p>
                         <a
                             href="/training-disclaimer"
-                            className="focus-ring mt-1.5 inline-flex min-h-6 items-center gap-1 rounded-xs text-foreground underline underline-offset-2 hover:text-text-2"
+                            className="focus-ring pressable mt-1.5 inline-flex min-h-6 items-center gap-1 rounded-xs text-foreground underline underline-offset-2 hover:text-text-2"
                         >
                             read the whole disclaimer
                             <Icon

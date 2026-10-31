@@ -62,7 +62,7 @@ export default function Banner({
                         type="button"
                         onClick={onDismiss}
                         aria-label="Close"
-                        className="focus-ring -m-1 shrink-0 rounded-xs p-1 text-text-3 transition hover:text-foreground"
+                        className="focus-ring pressable -m-1 shrink-0 rounded-xs p-1 text-text-3 transition hover:text-foreground"
                     >
                         <Icon icon={X} width={16} height={16} />
                     </button>

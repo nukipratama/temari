@@ -109,7 +109,7 @@ export default function EmptyRunsState() {
                         <Link
                             key={title}
                             href={href}
-                            className="focus-ring flex items-center gap-3 rounded-xl bg-card px-4 py-3"
+                            className="focus-ring pressable flex items-center gap-3 rounded-xl bg-card px-4 py-3"
                         >
                             <span
                                 aria-hidden
