@@ -4,10 +4,12 @@
  *
  * Usage:
  *   node record.mjs <feature> <scenario> [--side=before|after] [--ground=dark|light]
- *       [--viewport=<key>] [--reduced-motion] [--no-view-transitions]
+ *       [--viewport=<key>] [--reduced-motion] [--no-view-transitions] [--throttle=fast4g|none]
  *
  * <scenario> is a .json file ({ "route": "/history", "steps": [...] }) or a .mjs module
- * (export const route = '/history'; export default async (page) => { ... }).
+ * (export const route = '/history'; export default async ({ page, measure }) => { ... }), the
+ * same module bench.mjs times. Here `measure(label, selector, { until })` taps and waits for
+ * `until`, or for the skeletons to clear.
  *
  * JSON steps: ["goto", route] ["click", selector] ["hover", selector] ["waitFor", selector]
  * ["wait", ms] ["press", key] ["scroll", dy] ["back"]. Selectors are Playwright selectors;
@@ -16,13 +18,14 @@
  * The recording is named <feature>-<ground>-<viewport>[-reduced]-<side> and written to
  * storage/app/clips/.frames/<name>/. Point BASE at another stack to record a different build.
  * `--no-view-transitions` removes document.startViewTransition, which is the "before" of a
- * change that adds a view transition.
+ * change that adds a view transition. `--throttle=fast4g` records at bench.mjs's profile, so the
+ * clip shows what its numbers measure.
  */
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { chromium } from './playwright.mjs';
-import { BASE, VIEWPORT_DEFS, login, DEVTOOLS_AUTH } from './lib.mjs';
+import { BASE, THROTTLES, VIEWPORT_DEFS, applyThrottle, login, DEVTOOLS_AUTH } from './lib.mjs';
 
 const LEAD_MS = 300;
 const TAIL_MS = 600;
@@ -36,10 +39,11 @@ const ground = flag('ground') ?? 'dark';
 const viewportKey = flag('viewport') ?? 'mobile';
 const reduced = args.includes('--reduced-motion');
 const noViewTransitions = args.includes('--no-view-transitions');
+const throttle = THROTTLES[flag('throttle') ?? 'none'];
 
-if (!feature || !scenarioPath || !VIEWPORT_DEFS[viewportKey] || !['before', 'after'].includes(side)) {
+if (!feature || !scenarioPath || !VIEWPORT_DEFS[viewportKey] || !['before', 'after'].includes(side) || throttle === undefined) {
     console.error(
-        `Usage: node record.mjs <feature> <scenario.json|.mjs> [--side=before|after] [--ground=dark|light] [--viewport=${Object.keys(VIEWPORT_DEFS).join('|')}] [--reduced-motion] [--no-view-transitions]`,
+        `Usage: node record.mjs <feature> <scenario.json|.mjs> [--side=before|after] [--ground=dark|light] [--viewport=${Object.keys(VIEWPORT_DEFS).join('|')}] [--reduced-motion] [--no-view-transitions] [--throttle=${Object.keys(THROTTLES).join('|')}]`,
     );
     process.exit(2);
 }
@@ -93,6 +97,7 @@ const { width, height } = device.viewport;
 const k = Math.min(2, MAX_FRAME_WIDTH / width);
 const frames = [];
 const cdp = await ctx.newCDPSession(page);
+await applyThrottle(cdp, throttle);
 cdp.on('Page.screencastFrame', ({ data, metadata, sessionId }) => {
     frames.push({ at: metadata.timestamp, data });
     cdp.send('Page.screencastFrameAck', { sessionId }).catch(() => {});
@@ -109,7 +114,15 @@ await page.waitForTimeout(LEAD_MS);
 if (scenario.steps) {
     for (const [step, arg] of scenario.steps) await steps[step](page, arg);
 } else {
-    await scenario.default(page);
+    const measure = async (_label, selector, { until } = {}) => {
+        const visit = page.waitForResponse((r) => r.request().headers()['x-inertia'] !== undefined, { timeout: 15000 });
+        await page.locator(selector).first().tap({ timeout: 8000 });
+        await visit;
+        if (until) await page.locator(until).first().waitFor({ timeout: 15000 });
+        else await page.waitForFunction(() => ![...document.querySelectorAll('.skeleton')].some((e) => e.getBoundingClientRect().height > 0), null, { timeout: 15000 });
+        await page.waitForTimeout(600);
+    };
+    await scenario.default({ page, measure });
 }
 await page.waitForTimeout(TAIL_MS);
 const endedAt = Date.now() / 1000;
