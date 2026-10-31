@@ -1,4 +1,4 @@
-import { Deferred, Head, Link, router } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import { RefreshCw } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
@@ -12,7 +12,6 @@ import type {
 import AddRacePrompt from '@/components/plan/AddRacePrompt';
 import PlanHeading from '@/components/plan/PlanHeading';
 import PlanRaceCard from '@/components/plan/PlanRaceCard';
-import { PlanWeeksSkeleton } from '@/components/plan/PlanSkeleton';
 import RegenerateButton from '@/components/plan/RegenerateButton';
 import SeasonHeaderCard from '@/components/plan/SeasonHeaderCard';
 import SeasonTimeline from '@/components/plan/SeasonTimeline';
@@ -24,7 +23,7 @@ import { showToast } from '@/hooks/useToast';
 import { appLayout } from '@/layouts/appLayout';
 import { readPlanSelectedDay } from '@/lib/navigationMemory';
 import { useTodayIso } from '@/lib/pace';
-import { planEditLanded, weekdayLabel } from '@/lib/plan';
+import { planEditLanded, weekdayLabel, withSessionSkipped } from '@/lib/plan';
 
 interface SeasonSummary {
     starts_at: string;
@@ -47,19 +46,27 @@ interface PlanProps {
     raceSupportedTimeSec?: number | null;
     raceOutcomeCandidate?: RaceOutcomeCandidate | null;
     sessionsPerWeek: number;
-    weeks?: PlanWeek[];
+    weeks: PlanWeek[];
     /** A week older than `weeks` holds, asked for with `?week=` on a partial reload. */
     pastWeek?: PlanWeek | null;
     season: SeasonSummary | null;
-    seasonSummary?: SeasonSummaryWeek[];
-    seasonAdherencePct?: number | null;
-    adaptation?: PlanAdaptation | null;
+    seasonSummary: SeasonSummaryWeek[];
+    seasonAdherencePct: number | null;
+    adaptation: PlanAdaptation | null;
     /** Served from App\Support\TrainingDisclaimer, shared with the legal pages. */
     disclaimerLine: string;
     /** Seconds left before Regenerate may run again, or null when it's free to click. */
     regenerateCooldownSeconds?: number | null;
     planRecalibration?: PlanRecalibrationState;
 }
+
+const PLAN_WRITE_PROPS = [
+    'weeks',
+    'seasonSummary',
+    'seasonAdherencePct',
+    'adaptation',
+    'flash',
+];
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -76,18 +83,18 @@ export default function Plan({
     raceSupportedTimeSec,
     raceOutcomeCandidate,
     sessionsPerWeek,
-    weeks = [],
+    weeks,
     season,
-    seasonSummary = [],
-    seasonAdherencePct = null,
-    adaptation = null,
+    seasonSummary,
+    seasonAdherencePct,
+    adaptation,
     disclaimerLine,
     regenerateCooldownSeconds = null,
     planRecalibration,
 }: Readonly<PlanProps>) {
     const today = useTodayIso();
     const [focusDay] = useState(requestedDay);
-    const [selectedDay] = useState(() => focusDay ?? readPlanSelectedDay());
+    const selectedDay = focusDay ?? readPlanSelectedDay();
 
     const [pastWeeks, setPastWeeks] = useState<PlanWeek[]>([]);
 
@@ -116,50 +123,83 @@ export default function Plan({
             });
         });
 
-    const moveSession = (day: PlanDay, toDate: string) => {
-        router.patch(
-            `/plan/sessions/${day.id}`,
+    const writeSession = (
+        day: PlanDay,
+        data: Record<string, boolean | string>,
+        {
+            landed,
+            failed,
+            optimistic,
+            onLanded,
+        }: {
+            landed: string;
+            failed: string;
+            optimistic?: (weeks: PlanWeek[]) => PlanWeek[];
+            onLanded?: () => void;
+        },
+    ) => {
+        router.patch(`/plan/sessions/${day.id}`, data, {
+            preserveScroll: true,
+            only: PLAN_WRITE_PROPS,
+            optimistic:
+                optimistic &&
+                ((props) => ({
+                    weeks: optimistic((props as unknown as PlanProps).weeks),
+                })),
+            onSuccess: (page) => {
+                if (planEditLanded(page)) {
+                    showToast(landed);
+                    onLanded?.();
+                }
+            },
+            onError: () => showToast(failed),
+            onHttpException: () => {
+                showToast(failed);
+
+                return false;
+            },
+            onNetworkError: () => {
+                showToast(failed);
+
+                return false;
+            },
+        });
+    };
+
+    const moveSession = (day: PlanDay, toDate: string, onMoved: () => void) =>
+        writeSession(
+            day,
             { date: toDate },
             {
-                preserveScroll: true,
-                onSuccess: (page) => {
-                    if (planEditLanded(page)) {
-                        showToast(`moved to ${weekdayLabel(toDate)}`);
-                    }
-                },
+                landed: `moved to ${weekdayLabel(toDate)}`,
+                failed: "couldn't move, try again",
+                onLanded: onMoved,
             },
         );
-    };
 
-    const skipSession = (day: PlanDay) => {
-        router.patch(
-            `/plan/sessions/${day.id}`,
+    const skipSession = (day: PlanDay) =>
+        writeSession(
+            day,
             { skipped: true },
             {
-                preserveScroll: true,
-                onSuccess: (page) => {
-                    if (planEditLanded(page)) {
-                        showToast('skipped');
-                    }
-                },
+                landed: 'skipped',
+                failed: "couldn't skip, try again",
+                optimistic: (current) =>
+                    withSessionSkipped(current, day.id, true),
             },
         );
-    };
 
-    const unskipSession = (day: PlanDay) => {
-        router.patch(
-            `/plan/sessions/${day.id}`,
+    const unskipSession = (day: PlanDay) =>
+        writeSession(
+            day,
             { skipped: false, pinned: false },
             {
-                preserveScroll: true,
-                onSuccess: (page) => {
-                    if (planEditLanded(page)) {
-                        showToast('restored');
-                    }
-                },
+                landed: 'restored',
+                failed: "couldn't restore, try again",
+                optimistic: (current) =>
+                    withSessionSkipped(current, day.id, false),
             },
         );
-    };
 
     return (
         <>
@@ -206,62 +246,50 @@ export default function Plan({
                     </div>
                 )}
 
-                <Deferred
-                    data={[
-                        'weeks',
-                        'seasonSummary',
-                        'seasonAdherencePct',
-                        'adaptation',
-                    ]}
-                    fallback={<PlanWeeksSkeleton />}
-                >
-                    {() =>
-                        weeks.length === 0 || season === null ? (
-                            <>
-                                <EmptyPanel
-                                    face
-                                    title="no plan yet."
-                                    body="hit regenerate and temari will lay out the weeks ahead."
-                                    className="mt-6"
-                                />
-                                {(raceCard === null ||
-                                    raceCard.state === 'result_recorded') && (
-                                    <AddRacePrompt className="mt-4" />
-                                )}
-                            </>
-                        ) : (
-                            <LaneStack className="mt-6">
-                                <SeasonHeaderCard
-                                    weekIndex={season.week_index}
-                                    totalWeeks={season.total_weeks}
-                                    adherencePct={seasonAdherencePct}
-                                    weeks={seasonSummary}
-                                    raceCard={raceCard}
-                                    underReadyLine={season.under_ready_line}
-                                />
-                                <SeasonTimeline
-                                    weeks={seasonSummary}
-                                    detailByWeekStart={detailByWeekStart}
-                                    today={today}
-                                    raceDate={race?.race_date ?? null}
-                                    weekFocus={adaptation}
-                                    focusDay={focusDay}
-                                    selectedDay={selectedDay}
-                                    onMove={moveSession}
-                                    onSkip={skipSession}
-                                    onUnskip={unskipSession}
-                                    onLoadWeek={loadPastWeek}
-                                />
-                            </LaneStack>
-                        )
-                    }
-                </Deferred>
+                {weeks.length === 0 || season === null ? (
+                    <>
+                        <EmptyPanel
+                            face
+                            title="no plan yet."
+                            body="hit regenerate and temari will lay out the weeks ahead."
+                            className="mt-6"
+                        />
+                        {(raceCard === null ||
+                            raceCard.state === 'result_recorded') && (
+                            <AddRacePrompt className="mt-4" />
+                        )}
+                    </>
+                ) : (
+                    <LaneStack className="mt-6">
+                        <SeasonHeaderCard
+                            weekIndex={season.week_index}
+                            totalWeeks={season.total_weeks}
+                            adherencePct={seasonAdherencePct}
+                            weeks={seasonSummary}
+                            raceCard={raceCard}
+                            underReadyLine={season.under_ready_line}
+                        />
+                        <SeasonTimeline
+                            weeks={seasonSummary}
+                            detailByWeekStart={detailByWeekStart}
+                            today={today}
+                            raceDate={race?.race_date ?? null}
+                            weekFocus={adaptation}
+                            focusDay={focusDay}
+                            selectedDay={selectedDay}
+                            onMove={moveSession}
+                            onSkip={skipSession}
+                            onUnskip={unskipSession}
+                            onLoadWeek={loadPastWeek}
+                        />
+                    </LaneStack>
+                )}
 
                 <footer className="mt-8 border-t border-border pt-3 text-xs text-text-3">
                     {disclaimerLine}{' '}
                     <Link
                         href="/training-disclaimer"
-                        className="focus-ring hit-area text-text-2 underline underline-offset-2 hover:text-foreground"
+                        className="active:opacity-70 focus-ring hit-area text-text-2 underline underline-offset-2 hover:text-foreground"
                     >
                         the full disclaimer
                     </Link>

@@ -31,6 +31,19 @@ done
 ./vendor/bin/sail exec app node .claude/skills/browser-review/scripts/light-islands.mjs dark
 ```
 
+**Also run it for a branch that adds or restyles a tappable control** (link, button, tab, switch).
+It is not a ground probe, so it is not in the loop above, and it is not in CI either:
+
+```bash
+./vendor/bin/sail exec app node .claude/skills/browser-review/scripts/pressed.mjs
+./vendor/bin/sail exec app node .claude/skills/browser-review/scripts/pressed.mjs --viewport=laptop
+```
+
+`pressed.mjs` forces `:active` on every visible control and lists those whose style does not
+change, i.e. the controls missing `.pressable`. The baseline is **0 of 168** on the default
+routes. Pass a route list for a screen outside them, such as a run detail or `/history?view=calendar`.
+Leaflet's own zoom buttons and attribution links on a run's map are the known exceptions.
+
 Compare against the baselines each section below documents. A number that moved is the finding;
 a number that held is the result. Neither is "clean" on its own — `contrast.mjs` read **dark 0**
 through three sweeps while a 316x280 near-white block shipped in a state the seed could not produce.

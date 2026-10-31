@@ -141,6 +141,9 @@ Route::middleware(['auth', 'onboarded'])->group(function (): void {
         ->name('race.outcome.store');
 
     Route::get('/plan', [PlanController::class, 'index'])->name('plan');
+    Route::get('/plan/days/{date}/recommendation', [PlanController::class, 'recommendation'])
+        ->middleware('throttle:120,1,recommendations-token')
+        ->name('plan.days.recommendation');
     Route::post('/plan/recommendations/shown', RecommendationViewController::class)
         ->middleware('throttle:120,1,recommendations-shown')
         ->name('plan.recommendations.shown');

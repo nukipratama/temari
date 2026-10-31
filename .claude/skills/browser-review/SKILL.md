@@ -23,6 +23,7 @@ Read only the file the step needs; each holds its section verbatim.
 - [Scanners](references/scanners.md) (`contrast.mjs`, `mounts.mjs`, `light-islands.mjs`, `edges.mjs`, `states.mjs`, `scans.mjs`): before running step 4 or 5, or judging their baselines.
 - [Reading the output and inspecting](references/inspect.md) ("Reading screenshots", "Main-session image budget", "Inspect (audit-gated)", "Verify before reporting", the probe-evidence contract): after steps 2–3, before reading any screenshot.
 - [Recording before/after clips](references/clips.md): when a PR changes motion or interaction (transitions, popovers, gestures, loading states), before opening it.
+- [Timing interactions](references/bench.md) (`bench.mjs`, `pressed.mjs`): before measuring or claiming a snappiness or pressed-state change.
 - [What the scripts handle for you, and notes](references/scripts.md): when a page is missing from the sweep, or before editing a script.
 
 ## Prerequisites

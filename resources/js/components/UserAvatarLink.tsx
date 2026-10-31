@@ -19,7 +19,7 @@ export default function UserAvatarLink({
         <Link
             href="/profile"
             aria-label={`${name}'s profile`}
-            className="flex h-11 w-11 items-center justify-center rounded-full ring-2 ring-cream-deep transition hover:ring-leaf focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-leaf focus-visible:ring-offset-2 focus-visible:ring-offset-cream"
+            className="pressable flex h-11 w-11 items-center justify-center rounded-full ring-2 ring-cream-deep transition hover:ring-leaf focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-leaf focus-visible:ring-offset-2 focus-visible:ring-offset-cream"
         >
             <UserAvatar
                 name={name}

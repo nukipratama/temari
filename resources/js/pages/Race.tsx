@@ -100,7 +100,7 @@ export default function Race({
                                             onClick={() =>
                                                 setConfirmingClear(true)
                                             }
-                                            className="focus-ring hit-area rounded-xs p-1 text-xs font-bold text-ember-ink transition hover:opacity-80"
+                                            className="pressable focus-ring hit-area rounded-xs p-1 text-xs font-bold text-ember-ink transition hover:opacity-80"
                                         >
                                             clear race
                                         </button>

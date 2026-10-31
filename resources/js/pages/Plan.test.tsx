@@ -4,7 +4,7 @@ import { router } from '@inertiajs/react';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { EditablePlanDay, SeasonSummaryWeek } from '@/lib/plan';
+import type { EditablePlanDay, PlanWeek, SeasonSummaryWeek } from '@/lib/plan';
 
 import { showToast } from '@/hooks/useToast';
 import {
@@ -12,7 +12,7 @@ import {
     rememberPlanSelectedDay,
 } from '@/lib/navigationMemory';
 import { defined } from '@/test/defined';
-import { setMockDeferred, setMockPage } from '@/test/setup';
+import { setMockPage } from '@/test/setup';
 
 import Plan from './Plan';
 
@@ -212,35 +212,14 @@ describe('Plan', () => {
         ).toHaveAttribute('href', '/race');
     });
 
-    it('shows the empty state when weeks is absent', () => {
-        renderPlan({ weeks: undefined });
+    it('paints the weeks, season and adaptation from the first response with no skeleton', () => {
+        const { container } = renderPlan();
 
-        expect(screen.getByText('no plan yet.')).toBeInTheDocument();
-    });
-
-    it('paints the header and disclaimer while the plan body is still deferred', () => {
-        setMockDeferred([
-            'weeks',
-            'seasonSummary',
-            'seasonAdherencePct',
-            'adaptation',
-        ]);
-
-        const { container } = renderPlan({
-            weeks: undefined,
-            seasonSummary: undefined,
-            seasonAdherencePct: undefined,
-            adaptation: undefined,
-        });
-
-        expect(screen.getByText('Plan')).toBeInTheDocument();
-        expect(screen.getByRole('heading')).toHaveTextContent(
-            /the weeks\s*ahead\./i,
-        );
-        expect(screen.getByText(/not a check-up/i)).toBeInTheDocument();
-        expect(container.querySelectorAll('.skeleton').length).toBeGreaterThan(
-            0,
-        );
+        expect(
+            screen.getByRole('list', { name: 'season weeks' }),
+        ).toBeInTheDocument();
+        expect(screen.getByRole('tablist')).toBeInTheDocument();
+        expect(container.querySelectorAll('.skeleton')).toHaveLength(0);
     });
 
     it('quietly keeps the current plan visible while zone recalibration is pending', () => {
@@ -489,6 +468,109 @@ describe('Plan', () => {
         );
     });
 
+    describe('writes', () => {
+        type Optimistic = (props: unknown) => { weeks: PlanWeek[] };
+        const patchOptions = () =>
+            vi.mocked(router.patch).mock.calls.at(-1)?.[2] as NonNullable<
+                Parameters<typeof router.patch>[2]
+            >;
+        const optimistic = () => patchOptions().optimistic as Optimistic;
+        const skippedWeeks = (): PlanWeek[] => [
+            {
+                ...defined(BASE_PROPS.weeks![0]),
+                days: [
+                    day({
+                        skipped: true,
+                        pinned: true,
+                        actions: { move: false, skip: false, restore: true },
+                    }),
+                ],
+            },
+        ];
+        const skip = () =>
+            fireEvent.click(screen.getByRole('button', { name: /^skip$/i }));
+        const move = () => {
+            fireEvent.click(screen.getByRole('button', { name: /^move$/i }));
+            fireEvent.click(screen.getByRole('button', { name: 'Fri' }));
+        };
+
+        it.each([
+            ['skip', skip],
+            ['move', move],
+        ])('refreshes the plan props in place on a %s', (_a, act) => {
+            renderPlan();
+            act();
+
+            expect(patchOptions().only).toEqual([
+                'weeks',
+                'seasonSummary',
+                'seasonAdherencePct',
+                'adaptation',
+                'flash',
+            ]);
+        });
+
+        it('flips the day to skipped before the server answers a skip', () => {
+            renderPlan();
+            skip();
+
+            const days = optimistic()({ weeks: BASE_PROPS.weeks }).weeks[0]
+                ?.days;
+
+            expect(days?.[0]).toMatchObject({
+                id: 1,
+                skipped: true,
+                actions: { skip: false, restore: true },
+            });
+            expect(days?.[1]).toEqual(BASE_PROPS.weeks![0]!.days[1]);
+        });
+
+        it('flips the day back to planned before the server answers a restore', () => {
+            renderPlan({ weeks: skippedWeeks() });
+            fireEvent.click(screen.getByRole('button', { name: 'restore' }));
+
+            expect(
+                optimistic()({ weeks: skippedWeeks() }).weeks[0]?.days[0],
+            ).toMatchObject({
+                skipped: false,
+                pinned: false,
+                actions: { skip: true, restore: false },
+            });
+        });
+
+        it('waits for the server on a move', () => {
+            renderPlan();
+            move();
+
+            expect(patchOptions().optimistic).toBeUndefined();
+        });
+    });
+
+    describe('selection', () => {
+        const selectedTab = () =>
+            screen
+                .getByRole('tab', { selected: true })
+                .getAttribute('aria-label');
+
+        it('keeps the picked day when the plan props are refreshed', () => {
+            const { rerender } = renderPlan();
+            fireEvent.click(screen.getByRole('tab', { name: /^Fri/ }));
+
+            rerender(<Plan {...BASE_PROPS} weeks={[...BASE_PROPS.weeks]} />);
+
+            expect(selectedTab()).toMatch(/^Fri/);
+        });
+
+        it('selects the day a session moved to once the move lands', () => {
+            settlePatch('onSuccess');
+            renderPlan();
+            fireEvent.click(screen.getByRole('button', { name: /^move$/i }));
+            fireEvent.click(screen.getByRole('button', { name: 'Fri' }));
+
+            expect(selectedTab()).toMatch(/^Fri/);
+        });
+    });
+
     describe('toasts', () => {
         const skippedWeek = () => ({
             weeks: [
@@ -570,14 +652,35 @@ describe('Plan', () => {
             ],
         ];
 
-        it.each(actions)(
-            'shows no toast when the %s is refused',
-            (_action, perform) => {
-                settlePatch('onError');
-                perform();
+        it.each([
+            ['move', "couldn't move, try again"],
+            ['skip', "couldn't skip, try again"],
+            ['restore', "couldn't restore, try again"],
+        ])('says the %s failed when the server refuses it', (action, toast) => {
+            settlePatch('onError');
+            actions.find(([name]) => name === action)?.[1]();
 
-                expect(router.patch).toHaveBeenCalled();
-                expect(showToast).not.toHaveBeenCalled();
+            expect(showToast).toHaveBeenCalledExactlyOnceWith(toast);
+        });
+
+        it.each(['onHttpException', 'onNetworkError'] as const)(
+            'says the skip failed on %s and suppresses the error page',
+            (callback) => {
+                let result: unknown;
+                vi.mocked(router.patch).mockImplementationOnce(
+                    (_url, _data, options) => {
+                        result = options?.[callback]?.(undefined as never);
+                    },
+                );
+                renderPlan();
+                fireEvent.click(
+                    screen.getByRole('button', { name: /^skip$/i }),
+                );
+
+                expect(showToast).toHaveBeenCalledExactlyOnceWith(
+                    "couldn't skip, try again",
+                );
+                expect(result).toBe(false);
             },
         );
 

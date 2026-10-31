@@ -3,7 +3,12 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { useRef } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { warmPushStack } from '@/lib/warmPushStack';
+import { setMockPage } from '@/test/setup';
+
 import PullToRefreshGesture, { type PullMotion } from './PullToRefreshGesture';
+
+vi.mock('@/lib/warmPushStack', () => ({ warmPushStack: vi.fn() }));
 
 function Host({
     onMotion,
@@ -38,6 +43,13 @@ beforeEach(() => {
 });
 
 describe('PullToRefreshGesture', () => {
+    it('warms the push slide with the page on screen, since only a touch screen loads this', () => {
+        setMockPage({}, '/history', 'History');
+        render(<Host onMotion={vi.fn()} />);
+
+        expect(warmPushStack).toHaveBeenLastCalledWith('History');
+    });
+
     it('renders nothing and reports a resting motion before any pull', () => {
         const onMotion = vi.fn();
         render(<Host onMotion={onMotion} />);

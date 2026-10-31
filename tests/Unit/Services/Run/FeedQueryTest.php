@@ -171,3 +171,13 @@ it('applies the page floor to the run query', function (): void {
 
     expect($names)->toBe(['recent']);
 });
+
+it('loads each run\'s saved effort score with its detail', function (): void {
+    $user = User::factory()->create();
+    $activity = feedRun($user, 'Rated', Carbon::now());
+    nonNull($activity->detail)->update(['perceived_effort' => 6]);
+
+    $run = nonNull(app(FeedQuery::class)->for($user, feedFiltersFor($user))->first());
+
+    expect(nonNull($run->detail)->perceived_effort)->toBe(6);
+});

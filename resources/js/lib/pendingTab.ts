@@ -1,27 +1,38 @@
 import type { PendingVisit } from '@inertiajs/core';
+import type { ComponentType } from 'react';
 
 import { router } from '@inertiajs/react';
 
+import type { ContextualOrigin } from '@/lib/nav';
 import type { TabId } from '@/lib/navRoutes';
 
 import { ITEMS } from '@/lib/nav';
 import { RACE_PATH, RACE_TAB } from '@/lib/navRoutes';
 
-export interface PendingTab {
-    tab: TabId;
-    /** The page component the tab was tapped from. */
-    from: string;
-    href: string;
-    /** The scroll position on the page the tab was tapped from. */
-    scrollY: number;
-    visit: PendingVisit;
+/** A pushed screen a phone slid to (lib/pushStack), with the origin its back chevron returns to. */
+export interface PushedScreen {
+    screen: string;
+    origin: ContextualOrigin | null;
+    Skeleton: ComponentType;
 }
 
-let armed: Pick<PendingTab, 'tab' | 'from'> | null = null;
+export type PendingTab = (
+    { tab: TabId; pushed?: undefined } | { tab: null; pushed: PushedScreen }
+) & {
+    /** The page component the visit started from. */
+    from: string;
+    href: string;
+    /** The scroll position on the page the visit started from. */
+    scrollY: number;
+    visit: PendingVisit;
+};
+
+let armed: { tab: TabId; from: string } | null = null;
 let pending: PendingTab | null = null;
 const listeners = new Set<() => void>();
 
-function setPending(next: PendingTab | null): void {
+/** Sets what `main` shows while a visit is in flight; lib/pushStack sets pushes and pops. */
+export function showPending(next: PendingTab | null): void {
     pending = next;
     listeners.forEach((listener) => listener());
 }
@@ -44,9 +55,9 @@ export function pendingTabSnapshot(): PendingTab | null {
 
 function pendingTarget(
     path: string,
-    tapped: Pick<PendingTab, 'tab' | 'from'> | null,
+    tapped: { tab: TabId; from: string } | null,
     currentComponent: () => string,
-): Pick<PendingTab, 'tab' | 'from'> | null {
+): { tab: TabId; from: string } | null {
     const tabPath = ITEMS.find((item) => item.id === tapped?.tab)?.href;
     if (tapped !== null && path === tabPath) {
         return tapped;
@@ -79,7 +90,7 @@ function startedTabVisit(
         return;
     }
 
-    setPending({
+    showPending({
         ...target,
         href: path + visit.url.search,
         scrollY: window.scrollY,
@@ -94,7 +105,7 @@ export function trackTabVisits(currentComponent: () => string): () => void {
     });
     const offFinish = router.on('finish', (event) => {
         if (pending !== null && pending.visit === event.detail.visit) {
-            setPending(null);
+            showPending(null);
         }
     });
 
@@ -103,7 +114,7 @@ export function trackTabVisits(currentComponent: () => string): () => void {
         offFinish();
         armed = null;
         if (pending !== null) {
-            setPending(null);
+            showPending(null);
         }
     };
 }

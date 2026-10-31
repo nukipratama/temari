@@ -141,7 +141,7 @@ function ClaimLine({
                             aria-label={`Show ${label} on this page`}
                             className={cn(
                                 chipVariants({ tone: 'neutral' }),
-                                "focus-ring relative transition-colors after:absolute after:-inset-3 after:content-[''] hover:text-foreground",
+                                "pressable focus-ring relative transition-colors after:absolute after:-inset-3 after:content-[''] hover:text-foreground",
                             )}
                         >
                             <Icon

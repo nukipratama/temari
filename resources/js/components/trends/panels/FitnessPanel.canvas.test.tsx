@@ -45,14 +45,13 @@ function trendOverDays(days: number): FitnessTrendPoint[] {
 }
 
 async function mountedChart(container: HTMLElement): Promise<Chart<'line'>> {
-    const canvas = await waitFor(() => {
-        const found = container.querySelector('canvas');
-        expect(found).not.toBeNull();
-        return found as HTMLCanvasElement;
+    return waitFor(() => {
+        const canvas = container.querySelector('canvas');
+        expect(canvas).not.toBeNull();
+        const chart = Chart.getChart(canvas as HTMLCanvasElement);
+        expect(chart).toBeDefined();
+        return chart as Chart<'line'>;
     });
-    const chart = Chart.getChart(canvas);
-    expect(chart).toBeDefined();
-    return chart as Chart<'line'>;
 }
 
 function drawAndRecord(chart: Chart<'line'>) {

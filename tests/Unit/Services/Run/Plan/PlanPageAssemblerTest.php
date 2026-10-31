@@ -214,15 +214,41 @@ it('renders the generated weeks with the current one marked as such', function (
         ->and($current['days'])->toHaveCount(7);
 });
 
-it('keeps a recommendation token on every plan day and ships no readiness assessment beside it', function (): void {
+it('ships a recommendation token on today only and no readiness assessment beside it', function (): void {
     $user = assemblerAthlete();
     app(Periodizer::class)->regenerate($user, Carbon::today());
 
     $days = assemblerPlannedDays(planPageAssembler()->weeks($user, Carbon::today()));
+    $withToken = $days->filter(fn (array $day): bool => array_key_exists('recommendation_token', $day));
+    $todayToken = arrayOf($withToken->first())['recommendation_token'] ?? null;
 
     expect($days->count())->toBeGreaterThan(28)
-        ->and($days->every(fn (array $day): bool => is_string($day['recommendation_token']) && $day['recommendation_token'] !== ''))->toBeTrue()
+        ->and($withToken->pluck('date')->all())->toBe([Carbon::today()->toDateString()])
+        ->and(is_string($todayToken) && $todayToken !== '')->toBeTrue()
         ->and($days->contains(fn (array $day): bool => array_key_exists('readiness_assessment', $day)))->toBeFalse();
+});
+
+it('hands out the token of any other day on request, carrying the snapshot the page would have', function (): void {
+    $user = assemblerAthlete();
+    app(Periodizer::class)->regenerate($user, Carbon::today());
+    $tomorrow = Carbon::today()->addDay()->toDateString();
+
+    $token = planPageAssembler()->recommendationToken($user, Carbon::today(), $tomorrow);
+    $payload = arrayOf(json_decode(Crypt::decryptString(is_string($token) ? $token : throw new InvalidArgumentException('No token for tomorrow.')), true, flags: JSON_THROW_ON_ERROR));
+    $tomorrowDay = assemblerPlannedDays(planPageAssembler()->weeks($user, Carbon::today()))->firstWhere('date', $tomorrow);
+
+    expect($payload['user_id'])->toBe($user->id)
+        ->and($payload['date'])->toBe($tomorrow)
+        ->and(arrayOf($payload['original'])['session_type'])->toBe(arrayOf($tomorrowDay)['session_type']);
+});
+
+it('has no token for a date that is not a day of the plan or not a date at all', function (): void {
+    $user = assemblerAthlete();
+    app(Periodizer::class)->regenerate($user, Carbon::today());
+
+    expect(planPageAssembler()->recommendationToken($user, Carbon::today(), Carbon::today()->addYears(2)->toDateString()))->toBeNull()
+        ->and(planPageAssembler()->recommendationToken($user, Carbon::today(), '2026-02-30'))->toBeNull()
+        ->and(planPageAssembler()->recommendationToken($user, Carbon::today(), 'tomorrow'))->toBeNull();
 });
 
 it('reads the briefing context once for the weeks and the season summary', function (): void {
@@ -304,6 +330,17 @@ it('renders a week older than the loaded window the way the window renders its w
         ->and($week['days'])->toHaveCount(2)
         ->and($day['status'])->toBe('done')
         ->and($day['ran_anyway'])->toBeTrue();
+});
+
+it('ships no token on a past week and hands out a day of it on request', function (): void {
+    $user = assemblerAthlete();
+    PlannedSession::factory()->for($user)->create(['date' => '2026-07-07', 'session_type' => SessionType::Easy]);
+
+    $week = nonNull(planPageAssembler()->pastWeek($user, Carbon::today(), '2026-07-06'));
+    $token = planPageAssembler()->recommendationToken($user, Carbon::today(), '2026-07-07');
+
+    expect(array_key_exists('recommendation_token', arrayOf(arrayOf($week['days'])[0])))->toBeFalse()
+        ->and(arrayOf(json_decode(Crypt::decryptString(is_string($token) ? $token : throw new InvalidArgumentException('No token for the past day.')), true, flags: JSON_THROW_ON_ERROR))['date'])->toBe('2026-07-07');
 });
 
 it('loads no past week for a week the window holds, a later one, a non-Monday or an unreadable date', function (string $weekStart): void {

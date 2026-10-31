@@ -164,6 +164,16 @@ describe('InboxRow', () => {
         expect(screen.queryByText('Distance')).not.toBeInTheDocument();
     });
 
+    it('presses the whole row through its link, not through the timestamp', () => {
+        const { container } = renderRow({ url: '/profile' });
+
+        const article = container.querySelector('article');
+        expect(article).not.toHaveClass('pressable');
+        expect(article).toHaveClass('has-[>a:active]:opacity-70');
+        expect(article?.querySelector(':scope > a')).toHaveClass('pressable');
+        expect(screen.getByRole('button')).toHaveClass('pressable');
+    });
+
     it('toggles the timestamp between relative and absolute on tap', async () => {
         renderRow({ created_at: '2026-08-13T07:30:00+07:00' });
 

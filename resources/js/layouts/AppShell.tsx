@@ -48,8 +48,11 @@ export default function AppShell({ children }: Readonly<AppShellProps>) {
     useSystemTheme();
     useViewTransitions();
     const { component } = usePage<SharedProps>();
-    const hasBottomNav = navTabFor(component) !== null;
     const skeleton = useTabSkeleton(component);
+    const hasBottomNav =
+        skeleton === null
+            ? navTabFor(component) !== null
+            : skeleton.tab !== null;
 
     return (
         <div className="min-h-screen bg-background pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] text-foreground">
@@ -85,7 +88,8 @@ export default function AppShell({ children }: Readonly<AppShellProps>) {
                             : 'pb-[calc(1.75rem+env(safe-area-inset-bottom))]',
                     )}
                 >
-                    {skeleton !== null && (
+                    {skeleton?.pushed && <skeleton.pushed.Skeleton />}
+                    {skeleton?.tab && (
                         <TabSkeleton tab={skeleton.tab} href={skeleton.href} />
                     )}
                     <div hidden={skeleton !== null}>{children}</div>
