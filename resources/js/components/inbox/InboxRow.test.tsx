@@ -164,26 +164,14 @@ describe('InboxRow', () => {
         expect(screen.queryByText('Distance')).not.toBeInTheDocument();
     });
 
-    it('presses the whole row only when it links somewhere', () => {
-        const { container, rerender } = render(
-            <InboxRow
-                item={item({ url: '/profile' })}
-                read={false}
-                focused={false}
-                onOpen={vi.fn()}
-            />,
-        );
-        expect(container.querySelector('article')).toHaveClass('pressable');
+    it('presses the whole row through its link, not through the timestamp', () => {
+        const { container } = renderRow({ url: '/profile' });
 
-        rerender(
-            <InboxRow
-                item={item()}
-                read={false}
-                focused={false}
-                onOpen={vi.fn()}
-            />,
-        );
-        expect(container.querySelector('article')).not.toHaveClass('pressable');
+        const article = container.querySelector('article');
+        expect(article).not.toHaveClass('pressable');
+        expect(article).toHaveClass('has-[>a:active]:opacity-70');
+        expect(article?.querySelector(':scope > a')).toHaveClass('pressable');
+        expect(screen.getByRole('button')).toHaveClass('pressable');
     });
 
     it('toggles the timestamp between relative and absolute on tap', async () => {

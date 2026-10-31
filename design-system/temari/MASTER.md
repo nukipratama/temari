@@ -160,6 +160,7 @@ component instead of hand-rolling a near copy.
 - Login's connect is the page's one `horizon` CTA; every in-app Strava reconnect
   (zone banner, profile chip, sync button, demo modal) stays `outline`.
 - Every tappable carries `.pressable`.
+- A link inside running text takes the opacity dip only (`active:opacity-70`), so its text stays selectable.
 
 ### Lists
 

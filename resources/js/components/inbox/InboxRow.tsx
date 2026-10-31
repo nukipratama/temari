@@ -111,8 +111,7 @@ export default function InboxRow({
     return (
         <article
             className={cn(
-                'relative scroll-mt-24 py-3.5 transition',
-                item.url && 'pressable',
+                'relative scroll-mt-24 py-3.5 transition has-[>a:active]:opacity-70 motion-safe:has-[>a:active]:scale-[0.97]',
                 focused && 'rounded-md ring-2 ring-horizon',
             )}
         >

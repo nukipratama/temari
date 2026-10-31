@@ -48,7 +48,7 @@ function linkify(text: string): ReactNode {
                 href={part}
                 rel="noreferrer noopener"
                 target="_blank"
-                className="pressable underline decoration-horizon-deep underline-offset-2 hover:text-foreground"
+                className="active:opacity-70 underline decoration-horizon-deep underline-offset-2 hover:text-foreground"
             >
                 {part}
             </a>
@@ -145,7 +145,7 @@ export default function LegalDocument({
                                 <li key={document.slug}>
                                     <Link
                                         href={document.href}
-                                        className="pressable font-sans text-sm text-text-2 underline underline-offset-2 hover:text-foreground"
+                                        className="active:opacity-70 font-sans text-sm text-text-2 underline underline-offset-2 hover:text-foreground"
                                     >
                                         {document.label}
                                     </Link>

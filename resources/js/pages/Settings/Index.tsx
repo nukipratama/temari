@@ -305,7 +305,7 @@ function AccountActions() {
                                 accounts, this is also how.{' '}
                                 <Link
                                     href="/privacy"
-                                    className="pressable underline underline-offset-2"
+                                    className="active:opacity-70 underline underline-offset-2"
                                 >
                                     what&apos;s kept afterwards
                                 </Link>
