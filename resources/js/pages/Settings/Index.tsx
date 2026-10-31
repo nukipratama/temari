@@ -288,7 +288,7 @@ function AccountActions() {
                     <button
                         type="button"
                         onClick={() => setConfirmOpen(true)}
-                        className="focus-ring rounded-xs p-1 font-sans text-xs font-bold text-ember-ink transition hover:opacity-80"
+                        className="pressable focus-ring rounded-xs p-1 font-sans text-xs font-bold text-ember-ink transition hover:opacity-80"
                     >
                         delete account
                     </button>
