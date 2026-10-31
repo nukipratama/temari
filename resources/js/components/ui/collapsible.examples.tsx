@@ -8,7 +8,7 @@ import { type CatalogueEntry } from '@/lib/catalogue';
 function Demo({ open }: Readonly<{ open: boolean }>) {
     return (
         <Collapsible defaultOpen={open}>
-            <CollapsibleTrigger className="focus-ring rounded-xs text-label-small text-text-2 hover:text-foreground">
+            <CollapsibleTrigger className="focus-ring pressable rounded-xs text-label-small text-text-2 hover:text-foreground">
                 past weeks
             </CollapsibleTrigger>
             <CollapsibleContent className="mt-2 text-sm text-text-2">

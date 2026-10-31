@@ -99,7 +99,7 @@ export default function IntervalsIcuConnectForm({
                     href={INTERVALS_ICU_SETTINGS_URL}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="underline underline-offset-2"
+                    className="underline underline-offset-2 active:opacity-70"
                 >
                     open intervals.icu
                 </a>

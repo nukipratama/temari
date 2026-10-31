@@ -11,8 +11,8 @@
 
 ## Notes
 
-- Defaults to the **local** app. Driving production needs real
-  Strava auth — out of scope here.
+- Defaults to the **local** app. `BASE=<origin>` points a script at another host; one with the
+  demo login button enabled signs in the same way.
 - This sweeps **pages**. Interactive states (e.g. the avatar logout menu) aren't auto-driven — spot-check those with a short one-off Playwright script that
   clicks the element, screenshots, and asserts its `boundingBox()` is within the viewport.
 - Scripts: `lib.mjs` (shared: viewports, login, route discovery), `shoot.mjs` (screenshots),
@@ -20,5 +20,5 @@
   is actually mounted on), `light-islands.mjs` (surfaces wearing the wrong ground), `edges.mjs`
   (borders and rings that are not there), `states.mjs` (those scans, in states a page load never
   reaches), `scans.mjs` (the shared colour maths), `probe.mjs` (one live DOM question, answered; `--viewport=<key>` picks the viewport),
-  `record.mjs` + `clips.sh` (before/after clips, see [clips.md](clips.md)), `playwright.mjs` (the
+  `record.mjs` + `clips.sh` (before/after clips, see [clips.md](clips.md)), `bench.mjs` + `pressed.mjs` (timings and pressed-state coverage, see [bench.md](bench.md)), `playwright.mjs` (the
   dev image's global Playwright), `setup.sh` (checks the baked-in tooling).

@@ -56,7 +56,7 @@ export default function AthletesPanel({
 
                     {gone.length > 0 && (
                         <details className="border-t border-dashed border-border-strong pt-2.5 pb-2">
-                            <summary className="cursor-pointer font-mono text-xs text-text-3">
+                            <summary className="pressable cursor-pointer font-mono text-xs text-text-3">
                                 {gone.length} deleted account
                                 {gone.length === 1 ? '' : 's'} ·{' '}
                                 {formatCost(
@@ -114,7 +114,7 @@ function AthleteRowView({
             <div className="col-span-2 sm:col-span-1">
                 <a
                     href={athletePath(row.user_id)}
-                    className="focus-ring rounded-sm text-sm font-bold text-foreground hover:underline"
+                    className="focus-ring pressable rounded-sm text-sm font-bold text-foreground hover:underline"
                 >
                     {label}
                 </a>

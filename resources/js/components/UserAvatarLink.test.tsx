@@ -15,6 +15,13 @@ describe('UserAvatarLink', () => {
         ).toHaveAttribute('href', '/profile');
     });
 
+    it('confirms a touch with the pressed state', () => {
+        render(<UserAvatarLink name="Ada Lovelace" avatarUrl={null} />);
+        expect(
+            screen.getByRole('link', { name: "Ada Lovelace's profile" }),
+        ).toHaveClass('pressable');
+    });
+
     it('renders the initial when no avatar_url is set', () => {
         render(<UserAvatarLink name="Ada Lovelace" avatarUrl={null} />);
         expect(screen.getByText('A')).toBeInTheDocument();

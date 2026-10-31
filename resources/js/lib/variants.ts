@@ -89,7 +89,7 @@ export const iconButtonVariants = cva(
  * the {@link ../components/ui/toggle-group} ToggleGroup instead.
  */
 export const outlineChipVariants = cva(
-    'focus-ring inline-flex min-h-8 items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-label-micro text-text-3 transition hover:border-horizon/60 hover:text-foreground',
+    'focus-ring pressable inline-flex min-h-8 items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-label-micro text-text-3 transition hover:border-horizon/60 hover:text-foreground',
 );
 
 /**

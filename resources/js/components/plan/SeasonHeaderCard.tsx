@@ -36,7 +36,7 @@ function RaceSlot({ raceCard }: Readonly<{ raceCard: PlanRaceCard | null }>) {
             {' · '}
             <Link
                 href="/race"
-                className="focus-ring hit-area font-semibold text-horizon-ink"
+                className="focus-ring hit-area font-semibold text-horizon-ink active:opacity-70"
             >
                 next race ›
             </Link>

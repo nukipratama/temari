@@ -13,6 +13,7 @@ import FlagWrong from '@/components/temari/FlagWrong';
 import Chip from '@/components/ui/Chip';
 import { Icon } from '@/components/ui/Icon';
 import PillButton from '@/components/ui/PillButton';
+import { useDayRecommendationToken } from '@/hooks/useDayRecommendationToken';
 import { useRecommendationView } from '@/hooks/useRecommendationView';
 import { rememberPlanSelectedDay } from '@/lib/navigationMemory';
 import { formatKm, formatNaiveMonthDayId, weekRangeLabel } from '@/lib/pace';
@@ -98,7 +99,7 @@ export default function WeekView({
     selectedDay?: string | null;
     /** Returns to the current week; set only while another week is shown. */
     onBack?: () => void;
-    onMove: (day: PlanDay, toDate: string) => void;
+    onMove: (day: PlanDay, toDate: string, onMoved: () => void) => void;
     onSkip: (day: PlanDay) => void;
     onUnskip: (day: PlanDay) => void;
 }>) {
@@ -118,7 +119,8 @@ export default function WeekView({
     }, [focusHere]);
 
     const selected = days.find((day) => day.date === selectedDate) ?? null;
-    useRecommendationView(panelRef, selected?.recommendation_token);
+    const recommendationToken = useDayRecommendationToken(selected);
+    useRecommendationView(panelRef, recommendationToken);
     const selectDate = (date: string) => {
         setSelectedDate(date);
         rememberPlanSelectedDay(date);
@@ -234,7 +236,9 @@ export default function WeekView({
                                     day={selected}
                                     weekDays={days}
                                     onMove={(toDate) =>
-                                        onMove(selected, toDate)
+                                        onMove(selected, toDate, () =>
+                                            selectDate(toDate),
+                                        )
                                     }
                                     onSkip={() => onSkip(selected)}
                                     onUnskip={() => onUnskip(selected)}

@@ -41,7 +41,7 @@ export default {
                             </Eyebrow>
                             <button
                                 type="button"
-                                className="focus-ring rounded-xs font-mono text-xs font-semibold text-text-3"
+                                className="pressable focus-ring rounded-xs font-mono text-xs font-semibold text-text-3"
                             >
                                 mark all read
                             </button>

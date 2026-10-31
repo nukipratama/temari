@@ -46,7 +46,7 @@ export default function SeasonCard({
                     no season yet.{' '}
                     <Link
                         href="/plan"
-                        className="focus-ring inline-flex items-center gap-0.5 font-semibold text-horizon-ink"
+                        className="focus-ring inline-flex items-center gap-0.5 font-semibold text-horizon-ink active:opacity-70"
                     >
                         start one on plan
                         <Icon

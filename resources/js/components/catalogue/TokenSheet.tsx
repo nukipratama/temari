@@ -278,7 +278,7 @@ export default function TokenSheet() {
                     <button
                         type="button"
                         onClick={() => setAllContrast((v) => !v)}
-                        className="focus-ring rounded-full border border-border px-3 py-1 text-label-micro text-text-2 transition hover:text-foreground"
+                        className="focus-ring pressable rounded-full border border-border px-3 py-1 text-label-micro text-text-2 transition hover:text-foreground"
                     >
                         {allContrast
                             ? `Show failures only (${contrastFails.length})`

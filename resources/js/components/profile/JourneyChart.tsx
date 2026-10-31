@@ -270,7 +270,7 @@ export default function JourneyChart({
                     {selected.activityId !== null && (
                         <Link
                             href={`/activities/${selected.activityId}`}
-                            className="pointer-events-auto ml-1 underline"
+                            className="pointer-events-auto ml-1 underline active:opacity-70"
                         >
                             open run →
                         </Link>

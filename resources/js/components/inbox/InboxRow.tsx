@@ -111,7 +111,7 @@ export default function InboxRow({
     return (
         <article
             className={cn(
-                'relative scroll-mt-24 py-3.5 transition',
+                'relative scroll-mt-24 py-3.5 transition has-[>a:active]:opacity-70 motion-safe:has-[>a:active]:scale-[0.97]',
                 focused && 'rounded-md ring-2 ring-horizon',
             )}
         >
@@ -120,7 +120,7 @@ export default function InboxRow({
                     href={item.url}
                     onClick={() => onOpen(item)}
                     aria-label={item.title}
-                    className="focus-ring absolute inset-0 z-10 rounded-md"
+                    className="pressable focus-ring absolute inset-0 z-10 rounded-md"
                 />
             )}
 
@@ -141,7 +141,7 @@ export default function InboxRow({
                         <button
                             type="button"
                             onClick={() => setShowAbsolute((prev) => !prev)}
-                            className="hit-area z-20 shrink-0 font-mono text-xs tabular-nums text-text-3"
+                            className="pressable hit-area z-20 shrink-0 font-mono text-xs tabular-nums text-text-3"
                         >
                             <time
                                 dateTime={item.created_at ?? undefined}

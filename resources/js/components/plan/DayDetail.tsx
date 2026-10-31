@@ -76,7 +76,7 @@ function RunList({ runs }: Readonly<{ runs: PlanDay['activities'] }>) {
                         <Link
                             href={`/activities/${run.id}`}
                             aria-label={`view activity · ${run.started_at} · ${runSummary(run)}`}
-                            className="focus-ring flex items-center gap-3 py-2 text-sm text-foreground tabular-nums hover:text-horizon-ink"
+                            className="pressable focus-ring flex items-center gap-3 py-2 text-sm text-foreground tabular-nums hover:text-horizon-ink"
                         >
                             <span className="w-12 flex-none">
                                 {run.started_at}
@@ -421,7 +421,7 @@ export default function DayDetail({
                                             setPicking(false);
                                         }}
                                         className={cn(
-                                            'focus-ring flex aspect-square flex-col items-center justify-center rounded-sm border border-border-strong text-xs font-semibold text-foreground',
+                                            'pressable focus-ring flex aspect-square flex-col items-center justify-center rounded-sm border border-border-strong text-xs font-semibold text-foreground',
                                             !valid && 'opacity-40',
                                         )}
                                     >
@@ -436,7 +436,7 @@ export default function DayDetail({
                                 <button
                                     type="button"
                                     onClick={() => setPicking(true)}
-                                    className="focus-ring flex items-center gap-1.5 text-label-micro text-horizon-ink"
+                                    className="pressable focus-ring flex items-center gap-1.5 text-label-micro text-horizon-ink"
                                 >
                                     <Icon
                                         icon={ArrowRightLeft}
@@ -450,7 +450,7 @@ export default function DayDetail({
                                 <button
                                     type="button"
                                     onClick={onSkip}
-                                    className="focus-ring flex items-center gap-1.5 text-label-micro text-horizon-ink"
+                                    className="pressable focus-ring flex items-center gap-1.5 text-label-micro text-horizon-ink"
                                 >
                                     <Icon
                                         icon={SkipForward}
@@ -465,7 +465,7 @@ export default function DayDetail({
                                     <button
                                         type="button"
                                         onClick={onUnskip}
-                                        className="focus-ring flex items-center gap-1.5 text-label-micro text-horizon-ink"
+                                        className="pressable focus-ring flex items-center gap-1.5 text-label-micro text-horizon-ink"
                                     >
                                         <Icon
                                             icon={RotateCcw}

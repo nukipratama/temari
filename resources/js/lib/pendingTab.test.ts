@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
     armPendingTab,
     pendingTabSnapshot,
+    showPending,
     subscribePendingTab,
     trackTabVisits,
 } from './pendingTab';
@@ -56,6 +57,24 @@ describe('pendingTab', () => {
         }
         start(visit('/settings'));
         untrack();
+    });
+
+    it('holds a pushed screen the push slide sets until its visit finishes', () => {
+        const inboxVisit = visit('/inbox');
+        showPending({
+            tab: null,
+            pushed: { screen: 'Inbox', origin: null, Skeleton: () => null },
+            from: 'Home',
+            href: '/inbox',
+            scrollY: 0,
+            visit: inboxVisit,
+        });
+
+        expect(pendingTabSnapshot()?.pushed?.screen).toBe('Inbox');
+
+        finish(inboxVisit);
+
+        expect(pendingTabSnapshot()).toBeNull();
     });
 
     it('is idle until a tab is tapped', () => {

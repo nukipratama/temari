@@ -1,8 +1,16 @@
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import {
+    act,
+    fireEvent,
+    render,
+    screen,
+    waitFor,
+    within,
+} from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { EditablePlanDay, SeasonSummaryWeek } from '@/lib/plan';
 
+import { getJson, postJson } from '@/lib/http';
 import {
     clearNavigationMemory,
     readPlanSelectedDay,
@@ -10,6 +18,11 @@ import {
 import { defined } from '@/test/defined';
 
 import WeekView from './WeekView';
+
+vi.mock('@/lib/http', () => ({
+    getJson: vi.fn().mockResolvedValue({ ok: false }),
+    postJson: vi.fn().mockResolvedValue({ ok: true }),
+}));
 
 const TODAY = '2026-06-17';
 
@@ -122,20 +135,25 @@ function renderWeek(overrides: Partial<Parameters<typeof WeekView>[0]> = {}) {
     const onMove = vi.fn();
     const onSkip = vi.fn();
     const onUnskip = vi.fn();
-    render(
-        <WeekView
-            week={summaryWeek()}
-            weekNumber={3}
-            days={WEEK}
-            today={TODAY}
-            focus={null}
-            onMove={onMove}
-            onSkip={onSkip}
-            onUnskip={onUnskip}
-            {...overrides}
-        />,
-    );
-    return { onMove, onSkip, onUnskip };
+    const props = {
+        week: summaryWeek(),
+        weekNumber: 3,
+        days: WEEK,
+        today: TODAY,
+        focus: null,
+        onMove,
+        onSkip,
+        onUnskip,
+        ...overrides,
+    };
+    const { rerender } = render(<WeekView {...props} />);
+    return {
+        onMove,
+        onSkip,
+        onUnskip,
+        rerender: (next: Partial<Parameters<typeof WeekView>[0]>) =>
+            rerender(<WeekView {...props} {...next} />),
+    };
 }
 
 const selectedTab = () =>
@@ -408,7 +426,51 @@ describe('WeekView', () => {
         expect(screen.getByRole('button', { name: 'Wed' })).toBeDisabled();
         fireEvent.click(screen.getByRole('button', { name: 'Fri' }));
 
-        expect(onMove).toHaveBeenCalledWith(WEEK[3], '2026-06-19');
+        expect(onMove).toHaveBeenCalledWith(
+            WEEK[3],
+            '2026-06-19',
+            expect.any(Function),
+        );
+    });
+
+    it('selects the day a session moved to once the move lands', () => {
+        const onMove = vi.fn((_day, _toDate, onMoved: () => void) => onMoved());
+        renderWeek({ onMove });
+        fireEvent.click(screen.getByRole('tab', { name: /^Thu/ }));
+        fireEvent.click(screen.getByRole('button', { name: /^move$/i }));
+        fireEvent.click(screen.getByRole('button', { name: 'Fri' }));
+
+        expect(screen.getByRole('tab', { name: /^Fri/ })).toHaveAttribute(
+            'aria-selected',
+            'true',
+        );
+    });
+
+    it('leaves the selection where it was until the move lands', () => {
+        renderWeek();
+        fireEvent.click(screen.getByRole('tab', { name: /^Thu/ }));
+        fireEvent.click(screen.getByRole('button', { name: /^move$/i }));
+        fireEvent.click(screen.getByRole('button', { name: 'Fri' }));
+
+        expect(screen.getByRole('tab', { name: /^Thu/ })).toHaveAttribute(
+            'aria-selected',
+            'true',
+        );
+    });
+
+    it('keeps the selected day when its day row is replaced by an edited one', () => {
+        const { rerender } = renderWeek();
+        fireEvent.click(screen.getByRole('tab', { name: /^Thu/ }));
+        rerender({
+            days: WEEK.map((day) =>
+                day.id === WEEK[3]?.id ? { ...day, skipped: true } : day,
+            ),
+        });
+
+        expect(screen.getByRole('tab', { name: /^Thu/ })).toHaveAttribute(
+            'aria-selected',
+            'true',
+        );
     });
 
     it('offers the flag on the selected day', () => {
@@ -419,6 +481,74 @@ describe('WeekView', () => {
                 name: /flag this day/i,
             }),
         ).toBeInTheDocument();
+    });
+
+    describe('recording the recommendation shown', () => {
+        function showPanels() {
+            vi.stubGlobal(
+                'IntersectionObserver',
+                class {
+                    constructor(
+                        private callback: IntersectionObserverCallback,
+                    ) {}
+                    observe() {
+                        this.callback(
+                            [
+                                {
+                                    isIntersecting: true,
+                                } as IntersectionObserverEntry,
+                            ],
+                            this as unknown as IntersectionObserver,
+                        );
+                    }
+                    disconnect() {}
+                },
+            );
+        }
+
+        afterEach(() => {
+            vi.unstubAllGlobals();
+            vi.clearAllMocks();
+        });
+
+        it('records the token a day arrived with without fetching one', () => {
+            showPanels();
+            renderWeek({
+                days: WEEK.map((d) =>
+                    d.date === TODAY
+                        ? { ...d, recommendation_token: 'today-token' }
+                        : d,
+                ),
+            });
+
+            expect(getJson).not.toHaveBeenCalled();
+            expect(postJson).toHaveBeenCalledExactlyOnceWith(
+                '/plan/recommendations/shown',
+                expect.objectContaining({ token: 'today-token' }),
+            );
+        });
+
+        it("fetches a picked day's token and records that", async () => {
+            showPanels();
+            vi.mocked(getJson).mockResolvedValue({
+                ok: true,
+                json: () => Promise.resolve({ token: 'thu-token' }),
+            } as Response);
+            renderWeek();
+
+            fireEvent.click(screen.getByRole('tab', { name: /^Thu/ }));
+
+            await waitFor(() =>
+                expect(postJson).toHaveBeenCalledWith(
+                    '/plan/recommendations/shown',
+                    expect.objectContaining({ token: 'thu-token' }),
+                ),
+            );
+            expect(getJson).toHaveBeenLastCalledWith(
+                '/plan/days/2026-06-18/recommendation',
+            );
+            await act(async () => undefined);
+        });
     });
 
     it('draws neither strip nor panel for a week with no days', () => {

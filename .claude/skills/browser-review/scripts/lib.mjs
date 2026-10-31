@@ -6,6 +6,20 @@ import { devices } from './playwright.mjs';
 
 export const BASE = process.env.BASE ?? 'http://localhost';
 
+// DevTools' Fast 4G preset plus a 4x CPU slowdown: a mid-range phone on mobile data.
+export const THROTTLES = {
+  fast4g: { latency: 165, downloadThroughput: (9e6 / 8) * 0.9, uploadThroughput: (1.5e6 / 8) * 0.9, cpu: 4 },
+  none: null,
+};
+
+export async function applyThrottle(cdp, throttle) {
+  if (!throttle) return;
+  const { cpu, ...network } = throttle;
+  await cdp.send('Network.enable');
+  await cdp.send('Network.emulateNetworkConditions', { offline: false, ...network });
+  await cdp.send('Emulation.setCPUThrottlingRate', { rate: cpu });
+}
+
 // Screenshots are JPEG, not PNG.
 //
 // A mobile shot renders at deviceScaleFactor 3 (iPhone 13: 390x844 logical =

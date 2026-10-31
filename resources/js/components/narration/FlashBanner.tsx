@@ -28,7 +28,7 @@ export default function FlashBanner({
                 type="button"
                 onClick={() => setDismissed(true)}
                 aria-label="Close"
-                className="focus-ring shrink-0 rounded-full p-1 text-text-3 hover:text-foreground"
+                className="focus-ring pressable shrink-0 rounded-full p-1 text-text-3 hover:text-foreground"
             >
                 <Icon icon={X} width={16} aria-hidden />
             </button>

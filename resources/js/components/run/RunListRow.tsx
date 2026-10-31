@@ -58,6 +58,7 @@ function RunListRow({
             href={activityUrl(detail)}
             data-run-morph={detail.activity_id}
             viewTransition={morphRunCard(detail.activity_id)}
+            data-effort-saved={detail.has_perceived_effort}
             className={cn(
                 'pressable block p-3.5 text-sm transition hover:bg-background',
                 EFFORT_STRIPE_CLASS[effort],

@@ -1,4 +1,4 @@
-import { router } from '@inertiajs/react';
+import { router, usePage } from '@inertiajs/react';
 import { CircleAlert, LoaderCircle } from 'lucide-react';
 import {
     type RefObject,
@@ -12,6 +12,7 @@ import { Icon } from '@/components/ui/Icon';
 import { PULL_THRESHOLD, usePullToRefresh } from '@/hooks/usePullToRefresh';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { cn } from '@/lib/cn';
+import { warmPushStack } from '@/lib/warmPushStack';
 
 const HOLD = 56;
 const FAILURE_NOTICE_MS = 3000;
@@ -34,6 +35,9 @@ export default function PullToRefreshGesture({
 }: Readonly<PullToRefreshGestureProps>) {
     const reducedMotion = useReducedMotion();
     const [phase, setPhase] = useState<Phase>('idle');
+    const { component } = usePage();
+
+    useEffect(() => warmPushStack(component), [component]);
 
     const refresh = useCallback(() => {
         let failed = false;

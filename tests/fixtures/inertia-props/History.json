@@ -19,6 +19,7 @@
     "runs[].detail.distance",
     "runs[].detail.effort",
     "runs[].detail.elapsed_time",
+    "runs[].detail.has_perceived_effort",
     "runs[].detail.id",
     "runs[].detail.name",
     "runs[].detail.start_date_local",

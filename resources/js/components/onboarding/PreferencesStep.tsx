@@ -245,7 +245,7 @@ function SkipQuestionLink({ onClick }: Readonly<{ onClick: () => void }>) {
         <button
             type="button"
             onClick={onClick}
-            className="focus-ring mt-4 font-sans text-xs text-text-3 underline-offset-2 hover:text-foreground hover:underline"
+            className="focus-ring pressable mt-4 font-sans text-xs text-text-3 underline-offset-2 hover:text-foreground hover:underline"
         >
             skip this
         </button>

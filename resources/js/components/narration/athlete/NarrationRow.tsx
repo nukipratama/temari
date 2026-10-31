@@ -114,7 +114,7 @@ export default function NarrationRow({
                         <button
                             type="button"
                             onClick={() => setExpanded(!expanded)}
-                            className="focus-ring mt-1 rounded-full text-xs font-semibold text-leaf-ink"
+                            className="focus-ring pressable mt-1 rounded-full text-xs font-semibold text-leaf-ink"
                         >
                             {expanded ? 'show less' : 'show all'}
                         </button>
@@ -131,7 +131,7 @@ export default function NarrationRow({
                     <button
                         type="button"
                         onClick={() => setShowDiff(!showDiff)}
-                        className="focus-ring inline-flex items-center gap-1 rounded-full text-xs font-semibold text-leaf-ink"
+                        className="focus-ring pressable inline-flex items-center gap-1 rounded-full text-xs font-semibold text-leaf-ink"
                     >
                         <History aria-hidden className="h-3 w-3" />
                         {row.version_count} earlier version(s)

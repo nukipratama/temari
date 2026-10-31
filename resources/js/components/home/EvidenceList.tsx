@@ -41,7 +41,7 @@ export default function EvidenceList({
                         href={activityUrl({ activity_id: row.activityId })}
                         aria-label={ariaLabel(row)}
                         className={cn(
-                            'focus-ring block py-2.5 pl-2.5 transition-colors hover:bg-muted',
+                            'pressable focus-ring block py-2.5 pl-2.5 transition-colors hover:bg-muted',
                             EFFORT_STRIPE_CLASS[row.effort ?? 'unknown'],
                         )}
                     >

@@ -55,7 +55,7 @@ export default class ErrorBoundary extends Component<Props, State> {
                 <button
                     type="button"
                     onClick={reloadDocument}
-                    className="focus-ring inline-flex items-center gap-1.5 rounded-full bg-leaf-deep px-4 py-2 text-sm font-semibold text-cream transition hover:opacity-90"
+                    className="focus-ring pressable inline-flex items-center gap-1.5 rounded-full bg-leaf-deep px-4 py-2 text-sm font-semibold text-cream transition hover:opacity-90"
                 >
                     <RefreshCw aria-hidden />
                     <span>reload</span>
