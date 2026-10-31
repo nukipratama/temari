@@ -36,7 +36,7 @@ clip render morph-dark-mobile-reduced-after
 gh pr edit <n> --attach storage/app/clips/morph-dark-mobile-sbs.mp4
 ```
 
-`record.mjs <feature> <scenario> [--side=before|after] [--ground=dark|light] [--viewport=<key>] [--reduced-motion] [--no-view-transitions]`
+`record.mjs <feature> <scenario> [--side=before|after] [--ground=dark|light] [--viewport=<key>] [--reduced-motion] [--no-view-transitions] [--throttle=fast4g|none]`
 takes the `--viewport` keys of `probe.mjs` (default `mobile`, ground default `dark`). The recording
 starts after login and page load, so the clip opens on the settled page.
 
@@ -48,7 +48,8 @@ a view transition, `--no-view-transitions` on the same stack is the verified "be
 ### Scenarios
 
 A scenario is `scenarios/<name>.json` with a route and a step list, or a `.mjs` module for anything
-a step cannot express (`export const route = '/'; export default async (page) => { ... }`).
+a step cannot express (`export const route = '/'; export default async ({ page, measure }) => { ... }`;
+the bench scenarios in [bench.md](bench.md) are such modules).
 
 | Step | Does |
 | --- | --- |
