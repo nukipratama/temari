@@ -4,7 +4,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { writeContextualOrigin } from '@/lib/navigationMemory';
 
 import {
+    isPushedScreen,
+    navDirection,
     prefersReducedMotion,
+    screenForPath,
     slideHistoryTraversals,
     slidesScreens,
     startSlide,
@@ -377,5 +380,90 @@ describe('slideHistoryTraversals', () => {
 
         expect(offNavigate).toHaveBeenCalledOnce();
         expect(inertia).toHaveBeenCalledOnce();
+    });
+});
+
+describe('pushSlide directions', () => {
+    describe('screenForPath', () => {
+        it.each([
+            ['/', 'Home'],
+            ['/plan', 'Plan'],
+            ['/race', 'Race'],
+            ['/trends', 'Trends'],
+            ['/history', 'History'],
+            ['/activities/42', 'Runs/Show'],
+            ['/inbox', 'Inbox'],
+            ['/profile', 'Profile'],
+            ['/settings', 'Settings/Index'],
+        ])('maps %s to %s', (path, component) => {
+            expect(screenForPath(path)).toBe(component);
+        });
+
+        it.each(['/activities/42/effort', '/activities/x', '/login'])(
+            'knows nothing of %s',
+            (path) => {
+                expect(screenForPath(path)).toBeNull();
+            },
+        );
+    });
+
+    describe('navDirection', () => {
+        it.each([
+            ['History', 'Runs/Show'],
+            ['Home', 'Inbox'],
+            ['Plan', 'Inbox'],
+            ['Trends', 'Profile'],
+            ['History', 'Settings/Index'],
+            ['Profile', 'Settings/Index'],
+            ['Inbox', 'Runs/Show'],
+            ['Runs/Show', 'Runs/Show'],
+            ['Profile', 'Inbox'],
+        ])('pushes from %s into %s', (from, to) => {
+            expect(navDirection(from, to)).toBe('push');
+        });
+
+        it.each([
+            ['Runs/Show', 'History'],
+            ['Inbox', 'Home'],
+            ['Profile', 'Home'],
+            ['Settings/Index', 'Profile'],
+        ])('pops from %s back to its back target %s', (from, to) => {
+            expect(navDirection(from, to)).toBe('pop');
+        });
+
+        it('pops a run back to the tab it was opened from, not History', () => {
+            const origin = {
+                href: '/plan?day=2026-10-12',
+                scrollY: 0,
+                tab: 'plan' as const,
+            };
+
+            expect(navDirection('Runs/Show', 'Plan', origin)).toBe('pop');
+            expect(navDirection('Runs/Show', 'History', origin)).toBeNull();
+        });
+
+        it.each([
+            ['Home', 'Plan'],
+            ['Inbox', 'Plan'],
+            ['Runs/Show', 'Home'],
+            ['Settings/Index', 'Home'],
+        ])('keeps the fade from %s to %s', (from, to) => {
+            expect(navDirection(from, to)).toBeNull();
+        });
+
+        it('has no direction to an unknown screen', () => {
+            expect(navDirection('History', null)).toBeNull();
+        });
+    });
+
+    it.each([
+        ['Runs/Show', true],
+        ['Inbox', true],
+        ['Profile', true],
+        ['Settings/Index', true],
+        ['Home', false],
+        ['Race', false],
+    ])('counts %s as pushed: %s', (component, pushed) => {
+        expect(isPushedScreen(component)).toBe(pushed);
     });
 });

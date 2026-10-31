@@ -1,15 +1,61 @@
 import { router } from '@inertiajs/react';
 
-import type { NavDirection } from '@/lib/nav';
+import type { ContextualOrigin, NavDirection } from '@/lib/nav';
 
-import { isPushedScreen, navDirection, screenForPath } from '@/lib/nav';
+import { BACK_TARGETS, backTargetFor } from '@/lib/nav';
 import { readContextualOrigin } from '@/lib/navigationMemory';
+import { RACE_PATH } from '@/lib/navRoutes';
 
 interface HistoryPage {
     page?: unknown;
 }
 
 let active: ViewTransition | null = null;
+
+export function isPushedScreen(component: string): boolean {
+    return Object.hasOwn(BACK_TARGETS, component);
+}
+
+const SCREEN_PATHS: Readonly<Record<string, string>> = {
+    '/': 'Home',
+    '/plan': 'Plan',
+    [RACE_PATH]: 'Race',
+    '/trends': 'Trends',
+    '/history': 'History',
+    '/inbox': 'Inbox',
+    '/profile': 'Profile',
+    '/settings': 'Settings/Index',
+};
+
+/** The page component a pathname renders, for the tab and pushed screens only. */
+export function screenForPath(pathname: string): string | null {
+    if (/^\/activities\/\d+$/.test(pathname)) {
+        return 'Runs/Show';
+    }
+
+    return SCREEN_PATHS[pathname] ?? null;
+}
+
+/** A pop returns to `from`'s back target; a push opens any pushed screen; anything else is neither. */
+export function navDirection(
+    from: string,
+    to: string | null,
+    origin: ContextualOrigin | null = null,
+): NavDirection | null {
+    if (to === null) {
+        return null;
+    }
+
+    const back = backTargetFor(from, origin);
+    if (
+        back !== null &&
+        screenForPath(back.href.split(/[?#]/)[0] ?? '') === to
+    ) {
+        return 'pop';
+    }
+
+    return isPushedScreen(to) ? 'push' : null;
+}
 
 /** A finger-driven screen, where pushed screens slide; read at event time, like reduced motion. */
 export function slidesScreens(): boolean {

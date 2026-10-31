@@ -12,6 +12,7 @@ import {
     writeTabMemory,
 } from '@/lib/navigationMemory';
 import { pendingTabSnapshot, trackTabVisits } from '@/lib/pendingTab';
+import { startPushStack } from '@/lib/pushStack';
 import { setMockPage } from '@/test/setup';
 
 import MobileBottomNav from './MobileBottomNav';
@@ -524,6 +525,7 @@ describe('MobileBottomNav column cap', () => {
 
 describe('MobileBottomNav while a phone pushes or pops', () => {
     let untrack: () => void = () => undefined;
+    let stop: () => void = () => undefined;
 
     beforeEach(() => {
         vi.mocked(router.on).mockClear();
@@ -534,12 +536,14 @@ describe('MobileBottomNav while a phone pushes or pops', () => {
     });
 
     afterEach(() => {
+        stop();
         untrack();
     });
 
     function startFrom(component: string, href: string) {
         setMockPage({}, '/x', component);
         untrack = trackTabVisits(() => component);
+        stop = startPushStack(() => component);
         render(<MobileBottomNav />);
         act(() => fireStart(tabVisit(href)));
     }

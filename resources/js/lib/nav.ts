@@ -8,7 +8,7 @@ import {
 import type { IconComponent } from '@/components/ui/Icon';
 import type { TabId } from '@/lib/navRoutes';
 
-import { navTabFor, RACE_PATH } from '@/lib/navRoutes';
+import { navTabFor } from '@/lib/navRoutes';
 
 export { navTabFor } from '@/lib/navRoutes';
 export type { TabId } from '@/lib/navRoutes';
@@ -60,7 +60,7 @@ export const ITEMS: ReadonlyArray<NavItem> = [
 
 const TODAY: BackTarget = { href: '/', label: 'Today' };
 
-const BACK_TARGETS: Readonly<Record<string, BackTarget>> = {
+export const BACK_TARGETS: Readonly<Record<string, BackTarget>> = {
     'Runs/Show': { href: '/history', label: 'History' },
     Inbox: TODAY,
     Profile: TODAY,
@@ -68,51 +68,6 @@ const BACK_TARGETS: Readonly<Record<string, BackTarget>> = {
 };
 
 export type NavDirection = 'push' | 'pop';
-
-const SCREEN_PATHS: Readonly<Record<string, string>> = {
-    '/': 'Home',
-    '/plan': 'Plan',
-    [RACE_PATH]: 'Race',
-    '/trends': 'Trends',
-    '/history': 'History',
-    '/inbox': 'Inbox',
-    '/profile': 'Profile',
-    '/settings': 'Settings/Index',
-};
-
-/** The page component a pathname renders, for the tab and pushed screens only. */
-export function screenForPath(pathname: string): string | null {
-    if (/^\/activities\/\d+$/.test(pathname)) {
-        return 'Runs/Show';
-    }
-
-    return SCREEN_PATHS[pathname] ?? null;
-}
-
-export function isPushedScreen(component: string): boolean {
-    return Object.hasOwn(BACK_TARGETS, component);
-}
-
-/** A pop returns to `from`'s back target; a push opens any pushed screen; anything else is neither. */
-export function navDirection(
-    from: string,
-    to: string | null,
-    origin: ContextualOrigin | null = null,
-): NavDirection | null {
-    if (to === null) {
-        return null;
-    }
-
-    const back = backTargetFor(from, origin);
-    if (
-        back !== null &&
-        screenForPath(back.href.split(/[?#]/)[0] ?? '') === to
-    ) {
-        return 'pop';
-    }
-
-    return isPushedScreen(to) ? 'push' : null;
-}
 
 /** The default tab destination, resetting a calendar to the month of the server's `today`. */
 export function defaultTabHrefFor(

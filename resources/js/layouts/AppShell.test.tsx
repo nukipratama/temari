@@ -6,9 +6,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import HistoryNav from '@/components/history/HistoryNav';
 import { pendingTabSnapshot } from '@/lib/pendingTab';
+import { startPushStack } from '@/lib/pushStack';
 import { makeUser, setMockPage } from '@/test/setup';
 
 import AppShell from './AppShell';
+
+vi.mock('@/lib/warmPushStack', () => ({ warmPushStack: vi.fn() }));
 
 const andiUser = { id: 1, name: 'Andi', first_name: 'Andi', avatar_url: null };
 
@@ -527,6 +530,33 @@ describe('AppShell tab skeleton', () => {
     });
 });
 
+let stopStack: () => void = () => undefined;
+
+function fireAll(name: 'before' | 'start' | 'finish', visit: unknown) {
+    act(() => {
+        vi.mocked(router.on)
+            .mock.calls.filter(([event]) => event === name)
+            .forEach(([, handler]) =>
+                (handler as (event: unknown) => void)({ detail: { visit } }),
+            );
+    });
+}
+
+function pushVisit(visit: PendingVisit) {
+    fireAll('start', visit);
+}
+
+function endVisit(visit: PendingVisit) {
+    fireAll('finish', visit);
+}
+
+function renderPhoneShell(url: string, component: string) {
+    window.history.replaceState(null, '', url);
+    const rendered = renderShell(url, component);
+    stopStack = startPushStack(() => component);
+    return rendered;
+}
+
 describe('AppShell pushed-screen skeleton', () => {
     beforeEach(() => {
         vi.mocked(router.on).mockClear();
@@ -544,14 +574,16 @@ describe('AppShell pushed-screen skeleton', () => {
     afterEach(() => {
         const left = pendingTabSnapshot();
         if (left !== null) {
-            finishVisit(left.visit);
+            endVisit(left.visit);
         }
+        stopStack();
+        window.history.replaceState(null, '', '/');
     });
 
     it("swaps a run row's tap for the run screen, with the run screen's chrome", () => {
-        renderShell('/history', 'History');
+        renderPhoneShell('/history', 'History');
 
-        startVisit(pageVisit('/activities/12'));
+        pushVisit(pageVisit('/activities/12'));
 
         expect(screen.getByText('Activity')).toBeInTheDocument();
         expect(screen.getByText('current page')).not.toBeVisible();
@@ -577,9 +609,9 @@ describe('AppShell pushed-screen skeleton', () => {
     ])(
         'shows the %s skeleton the moment it is pushed',
         (title, url, from, href) => {
-            renderShell(url, from);
+            renderPhoneShell(url, from);
 
-            startVisit(pageVisit(href));
+            pushVisit(pageVisit(href));
 
             expect(screen.getByText(title)).toBeInTheDocument();
             expect(screen.getByText('current page')).not.toBeVisible();
@@ -588,9 +620,9 @@ describe('AppShell pushed-screen skeleton', () => {
 
     it('points the skeleton chevron at the tab the run was opened from', () => {
         window.history.replaceState(null, '', '/plan?day=2026-10-12');
-        renderShell('/plan?day=2026-10-12', 'Plan');
+        renderPhoneShell('/plan?day=2026-10-12', 'Plan');
 
-        startVisit(pageVisit('/activities/12'));
+        pushVisit(pageVisit('/activities/12'));
 
         expect(
             screen.getByRole('link', { name: 'Back to Plan' }),
@@ -600,9 +632,9 @@ describe('AppShell pushed-screen skeleton', () => {
 
     it('pushes Inbox from the bell on a tab other than Today', () => {
         window.history.replaceState(null, '', '/plan');
-        renderShell('/plan', 'Plan');
+        renderPhoneShell('/plan', 'Plan');
 
-        startVisit(pageVisit('/inbox'));
+        pushVisit(pageVisit('/inbox'));
 
         expect(screen.getByText('Inbox')).toBeInTheDocument();
         expect(screen.getByText('current page')).not.toBeVisible();
@@ -610,9 +642,9 @@ describe('AppShell pushed-screen skeleton', () => {
     });
 
     it('pops a run back to the History skeleton, nav and all', () => {
-        renderShell('/activities/12', 'Runs/Show');
+        renderPhoneShell('/activities/12', 'Runs/Show');
 
-        startVisit(pageVisit('/history'));
+        pushVisit(pageVisit('/history'));
 
         expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
             'every runhas a story.',
@@ -624,11 +656,11 @@ describe('AppShell pushed-screen skeleton', () => {
     });
 
     it('hands the page and its chrome back when the push is cancelled', () => {
-        renderShell('/history', 'History');
+        renderPhoneShell('/history', 'History');
         const visit = pageVisit('/activities/12');
 
-        startVisit(visit);
-        finishVisit(visit);
+        pushVisit(visit);
+        endVisit(visit);
 
         expect(screen.getByText('current page')).toBeVisible();
         expect(screen.queryByText('Activity')).toBeNull();
@@ -641,10 +673,43 @@ describe('AppShell pushed-screen skeleton', () => {
     it('keeps the page on screen for a push under a fine pointer', () => {
         vi.unstubAllGlobals();
         vi.stubGlobal('scrollTo', vi.fn());
-        renderShell('/history', 'History');
+        renderPhoneShell('/history', 'History');
 
-        startVisit(pageVisit('/activities/12'));
+        pushVisit(pageVisit('/activities/12'));
 
         expect(screen.getByText('current page')).toBeVisible();
+    });
+});
+
+describe('AppShell before the push slide has loaded', () => {
+    beforeEach(() => {
+        vi.mocked(router.on).mockClear();
+        vi.stubGlobal('scrollTo', vi.fn());
+        vi.stubGlobal(
+            'matchMedia',
+            vi.fn((query: string) => ({
+                matches: query.includes('coarse'),
+                addEventListener: vi.fn(),
+                removeEventListener: vi.fn(),
+            })),
+        );
+    });
+
+    it('keeps the page and the cross-fade for a push on a phone', () => {
+        window.history.replaceState(null, '', '/history');
+        renderShell('/history', 'History');
+        const visit = {
+            ...pageVisit('/activities/12'),
+            showProgress: true,
+            viewTransition: undefined as unknown,
+        };
+
+        fireAll('before', visit);
+        fireAll('start', visit);
+
+        expect(visit.viewTransition).toBe(true);
+        expect(screen.getByText('current page')).toBeVisible();
+        expect(pendingTabSnapshot()).toBeNull();
+        window.history.replaceState(null, '', '/');
     });
 });

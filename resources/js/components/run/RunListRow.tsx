@@ -16,7 +16,6 @@ import {
     formatPace,
     paceSecPerKm,
 } from '@/lib/pace';
-import { armEffortHint } from '@/lib/pendingTab';
 import { renderBold } from '@/lib/richText';
 import { activityUrl } from '@/lib/routes';
 import { RARITY_INK } from '@/lib/runcard';
@@ -59,7 +58,7 @@ function RunListRow({
             href={activityUrl(detail)}
             data-run-morph={detail.activity_id}
             viewTransition={morphRunCard(detail.activity_id)}
-            onClick={() => armEffortHint(detail.has_perceived_effort)}
+            data-effort-saved={detail.has_perceived_effort}
             className={cn(
                 'pressable block p-3.5 text-sm transition hover:bg-background',
                 EFFORT_STRIPE_CLASS[effort],

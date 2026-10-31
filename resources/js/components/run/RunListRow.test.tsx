@@ -1,13 +1,9 @@
-import { fireEvent, render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { render, screen } from '@testing-library/react';
+import { describe, expect, it } from 'vitest';
 
 import type { ActivityDetail, RunCard } from '@/types/inertia';
 
-import { armEffortHint } from '@/lib/pendingTab';
-
 import RunListRow from './RunListRow';
-
-vi.mock('@/lib/pendingTab', () => ({ armEffortHint: vi.fn() }));
 
 function detail(overrides: Partial<ActivityDetail> = {}): ActivityDetail {
     return {
@@ -41,19 +37,19 @@ function moodDot() {
 
 describe('RunListRow', () => {
     it.each([
-        [true, true],
-        [false, false],
+        [true, 'true'],
+        [false, 'false'],
         [undefined, undefined],
     ])(
-        'hands the run skeleton whether effort is saved (%s) on the tap',
-        (saved, hint) => {
+        'tells the run skeleton whether effort is saved (%s)',
+        (saved, attribute) => {
             render(
                 <RunListRow detail={detail({ has_perceived_effort: saved })} />,
             );
 
-            fireEvent.click(screen.getByRole('link'));
-
-            expect(armEffortHint).toHaveBeenLastCalledWith(hint);
+            expect(screen.getByRole('link').dataset.effortSaved).toBe(
+                attribute,
+            );
         },
     );
 

@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { writeContextualOrigin } from '@/lib/navigationMemory';
 import { trackTabVisits } from '@/lib/pendingTab';
+import { startPushStack } from '@/lib/pushStack';
 import { makeUser, setMockPage } from '@/test/setup';
 
 import MobileTopBar from './MobileTopBar';
@@ -239,6 +240,7 @@ describe('MobileTopBar column cap', () => {
 
 describe('MobileTopBar while a phone pushes or pops', () => {
     let untrack: () => void = () => undefined;
+    let stop: () => void = () => undefined;
 
     beforeEach(() => {
         vi.mocked(router.on).mockClear();
@@ -249,12 +251,14 @@ describe('MobileTopBar while a phone pushes or pops', () => {
     });
 
     afterEach(() => {
+        stop();
         untrack();
     });
 
     function startFrom(component: string, href: string) {
         setMockPage({ auth: { user: makeUser() } }, '/x', component);
         untrack = trackTabVisits(() => component);
+        stop = startPushStack(() => component);
         render(<MobileTopBar />);
         const start = [...vi.mocked(router.on).mock.calls]
             .reverse()

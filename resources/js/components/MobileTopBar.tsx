@@ -52,13 +52,16 @@ export default function MobileTopBar() {
         pendingTabSnapshot,
         () => null,
     );
-    const screen = pending === null ? page.component : pending.screen;
+    const screen =
+        pending === null ? page.component : (pending.pushed?.screen ?? null);
     const back =
-        pending === null
-            ? backTargetFor(page.component, parseContextualOrigin(storedOrigin))
-            : pending.screen === null
-              ? null
-              : backTargetFor(pending.screen, pending.origin);
+        screen === null
+            ? null
+            : backTargetFor(
+                  screen,
+                  pending?.pushed?.origin ??
+                      parseContextualOrigin(storedOrigin),
+              );
 
     return (
         <header
