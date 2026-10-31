@@ -122,20 +122,25 @@ function renderWeek(overrides: Partial<Parameters<typeof WeekView>[0]> = {}) {
     const onMove = vi.fn();
     const onSkip = vi.fn();
     const onUnskip = vi.fn();
-    render(
-        <WeekView
-            week={summaryWeek()}
-            weekNumber={3}
-            days={WEEK}
-            today={TODAY}
-            focus={null}
-            onMove={onMove}
-            onSkip={onSkip}
-            onUnskip={onUnskip}
-            {...overrides}
-        />,
-    );
-    return { onMove, onSkip, onUnskip };
+    const props = {
+        week: summaryWeek(),
+        weekNumber: 3,
+        days: WEEK,
+        today: TODAY,
+        focus: null,
+        onMove,
+        onSkip,
+        onUnskip,
+        ...overrides,
+    };
+    const { rerender } = render(<WeekView {...props} />);
+    return {
+        onMove,
+        onSkip,
+        onUnskip,
+        rerender: (next: Partial<Parameters<typeof WeekView>[0]>) =>
+            rerender(<WeekView {...props} {...next} />),
+    };
 }
 
 const selectedTab = () =>
@@ -408,7 +413,51 @@ describe('WeekView', () => {
         expect(screen.getByRole('button', { name: 'Wed' })).toBeDisabled();
         fireEvent.click(screen.getByRole('button', { name: 'Fri' }));
 
-        expect(onMove).toHaveBeenCalledWith(WEEK[3], '2026-06-19');
+        expect(onMove).toHaveBeenCalledWith(
+            WEEK[3],
+            '2026-06-19',
+            expect.any(Function),
+        );
+    });
+
+    it('selects the day a session moved to once the move lands', () => {
+        const onMove = vi.fn((_day, _toDate, onMoved: () => void) => onMoved());
+        renderWeek({ onMove });
+        fireEvent.click(screen.getByRole('tab', { name: /^Thu/ }));
+        fireEvent.click(screen.getByRole('button', { name: /^move$/i }));
+        fireEvent.click(screen.getByRole('button', { name: 'Fri' }));
+
+        expect(screen.getByRole('tab', { name: /^Fri/ })).toHaveAttribute(
+            'aria-selected',
+            'true',
+        );
+    });
+
+    it('leaves the selection where it was until the move lands', () => {
+        renderWeek();
+        fireEvent.click(screen.getByRole('tab', { name: /^Thu/ }));
+        fireEvent.click(screen.getByRole('button', { name: /^move$/i }));
+        fireEvent.click(screen.getByRole('button', { name: 'Fri' }));
+
+        expect(screen.getByRole('tab', { name: /^Thu/ })).toHaveAttribute(
+            'aria-selected',
+            'true',
+        );
+    });
+
+    it('keeps the selected day when its day row is replaced by an edited one', () => {
+        const { rerender } = renderWeek();
+        fireEvent.click(screen.getByRole('tab', { name: /^Thu/ }));
+        rerender({
+            days: WEEK.map((day) =>
+                day.id === WEEK[3]?.id ? { ...day, skipped: true } : day,
+            ),
+        });
+
+        expect(screen.getByRole('tab', { name: /^Thu/ })).toHaveAttribute(
+            'aria-selected',
+            'true',
+        );
     });
 
     it('offers the flag on the selected day', () => {

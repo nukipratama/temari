@@ -3,7 +3,12 @@ import { describe, expect, it } from 'vitest';
 
 import type { PlanSessionSegment } from '@/types/inertia';
 
-import type { PlanDay, SeasonSummaryWeek } from './plan';
+import type {
+    EditablePlanDay,
+    PlanDay,
+    PlanWeek,
+    SeasonSummaryWeek,
+} from './plan';
 
 import {
     dayStatusGlyph,
@@ -32,6 +37,7 @@ import {
     weekdayLabel,
     weeksLabel,
     weeksToRace,
+    withSessionSkipped,
     workLabel,
 } from './plan';
 
@@ -152,6 +158,61 @@ describe('planEditLanded', () => {
             expect(planEditLanded(page({ [tone]: 'try again' }))).toBe(false);
         },
     );
+});
+
+describe('withSessionSkipped', () => {
+    const editable = (
+        id: number,
+        overrides: Partial<EditablePlanDay> = {},
+    ): EditablePlanDay =>
+        ({
+            id,
+            skipped: false,
+            pinned: false,
+            actions: { move: true, skip: true, restore: false },
+            ...overrides,
+        }) as EditablePlanDay;
+    const weeks = (days: EditablePlanDay[]): PlanWeek[] => [
+        { week_start: '2026-06-15', phase: 'base', type: 'current', days },
+    ];
+
+    it('skips the one day, pins it and swaps its skip action for restore', () => {
+        const result = withSessionSkipped(
+            weeks([editable(1), editable(2)]),
+            1,
+            true,
+        );
+
+        expect(result[0]?.days[0]).toMatchObject({
+            skipped: true,
+            pinned: true,
+            actions: { move: true, skip: false, restore: true },
+        });
+        expect(result[0]?.days[1]).toEqual(editable(2));
+    });
+
+    it('restores the day, unpins it and swaps restore for skip', () => {
+        const skipped = editable(1, {
+            skipped: true,
+            pinned: true,
+            actions: { move: false, skip: false, restore: true },
+        });
+
+        expect(
+            withSessionSkipped(weeks([skipped]), 1, false)[0]?.days[0],
+        ).toMatchObject({
+            skipped: false,
+            pinned: false,
+            actions: { move: false, skip: true, restore: false },
+        });
+    });
+
+    it('does not mutate the weeks it was given', () => {
+        const given = weeks([editable(1)]);
+        withSessionSkipped(given, 1, true);
+
+        expect(given[0]?.days[0]?.skipped).toBe(false);
+    });
 });
 
 describe('nextPhaseOf', () => {
