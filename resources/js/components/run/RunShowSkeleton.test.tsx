@@ -18,4 +18,21 @@ describe('RunShowSkeleton', () => {
 
         expect(container.querySelector('.reveal')).toBeNull();
     });
+
+    it.each([
+        ['no hint', undefined],
+        ['an unsaved effort', false],
+    ])('holds the effort picker its page shows for %s', (_, effortSaved) => {
+        const { container } = render(
+            <RunShowSkeleton effortSaved={effortSaved} />,
+        );
+
+        expect(container.querySelector('section .skeleton')).not.toBeNull();
+    });
+
+    it('leaves the effort picker out when the run has a saved effort', () => {
+        const { container } = render(<RunShowSkeleton effortSaved />);
+
+        expect(container.querySelector('section .skeleton')).toBeNull();
+    });
 });

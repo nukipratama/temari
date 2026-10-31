@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { writeContextualOrigin } from '@/lib/navigationMemory';
 
 import {
+    armEffortHint,
     armPendingTab,
     pendingTabSnapshot,
     subscribePendingTab,
@@ -328,11 +329,43 @@ describe('pendingTab pushes and pops on a phone', () => {
                 scrollY: 640,
                 tab: 'history',
             },
+            effortSaved: null,
             from: 'History',
             href: '/activities/12',
             scrollY: 640,
             visit: runVisit,
         });
+    });
+
+    it.each([
+        [true, true],
+        [false, false],
+        [undefined, null],
+    ])(
+        "carries the tapped row's effort hint (%s) into the run's skeleton",
+        (saved, effortSaved) => {
+            const slide = fakeSlide();
+            armEffortHint(saved);
+
+            start(visit('/activities/12'));
+            slide.update();
+
+            expect(pendingTabSnapshot()).toMatchObject({ effortSaved });
+        },
+    );
+
+    it('spends the hint on the next visit, so a later run opens without one', () => {
+        const slide = fakeSlide();
+        armEffortHint(true);
+        const inboxVisit = visit('/inbox', { completed: true });
+        start(inboxVisit);
+        slide.update();
+        finish(inboxVisit);
+
+        start(visit('/activities/12'));
+        slide.update();
+
+        expect(pendingTabSnapshot()).toMatchObject({ effortSaved: null });
     });
 
     it('carries the remembered origin into a run pushed from a run', () => {

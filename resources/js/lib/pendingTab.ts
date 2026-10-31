@@ -20,7 +20,13 @@ import {
  */
 type Destination =
     | { tab: TabId; screen: null }
-    | { tab: null; screen: string; origin: ContextualOrigin | null };
+    | {
+          tab: null;
+          screen: string;
+          origin: ContextualOrigin | null;
+          /** Whether the run opening has a saved effort, when the tapped row knew. */
+          effortSaved: boolean | null;
+      };
 
 export type PendingTab = Destination & {
     /** The page component the visit started from. */
@@ -35,6 +41,7 @@ type Target = Destination & { from: string };
 type Tap = { tab: TabId; from: string };
 
 let armed: Tap | null = null;
+let effortHint: boolean | null = null;
 let pending: PendingTab | null = null;
 let sliding: { visit: PendingVisit; transition: ViewTransition | null } | null =
     null;
@@ -48,6 +55,11 @@ function setPending(next: PendingTab | null): void {
 /** Records a tab tap from the bottom nav or the history toggle; the tab turns pending only once Inertia starts that tab's visit. */
 export function armPendingTab(tab: TabId, from: string): void {
     armed = { tab, from };
+}
+
+/** Records whether the tapped run row's run has a saved effort, for its skeleton. */
+export function armEffortHint(saved: boolean | undefined): void {
+    effortHint = saved ?? null;
 }
 
 export function subscribePendingTab(listener: () => void): () => void {
@@ -77,12 +89,19 @@ function pendingTarget(
     tapped: Tap | null,
     from: string,
     pushedOrPopped: string | null,
+    hint: boolean | null,
 ): Target | null {
     if (pushedOrPopped !== null) {
         const tab = navTabFor(pushedOrPopped);
 
         return tab === null
-            ? { tab, screen: pushedOrPopped, origin: originFrom(from), from }
+            ? {
+                  tab,
+                  screen: pushedOrPopped,
+                  origin: originFrom(from),
+                  effortSaved: pushedOrPopped === 'Runs/Show' ? hint : null,
+                  from,
+              }
             : { tab, screen: null, from };
     }
 
@@ -123,7 +142,9 @@ function startedTabVisit(
     }
 
     const tapped = armed;
+    const hint = effortHint;
     armed = null;
+    effortHint = null;
     if (visit.method !== 'get') {
         return;
     }
@@ -136,6 +157,7 @@ function startedTabVisit(
         tapped,
         from,
         direction === null ? null : screenForPath(path),
+        hint,
     );
     if (target === null) {
         return;
@@ -178,6 +200,7 @@ export function trackTabVisits(currentComponent: () => string): () => void {
         offStart();
         offFinish();
         armed = null;
+        effortHint = null;
         sliding = null;
         if (pending !== null) {
             setPending(null);

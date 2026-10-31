@@ -429,6 +429,9 @@ visit itself carries no view transition, so the page replaces its skeleton in
 place, inside the slide's live new frame if the slide is still running. A
 cancelled or failed visit skips the slide and hands the page back the way a tab
 skeleton does. A History row's morph is dropped for that push.
+`RunShowSkeleton` holds the effort picker's space unless the tapped History row
+says the run already has a saved effort; the feed ships that as
+`has_perceived_effort`, never the score.
 
 Browser back and forward never reach `start`: Inertia restores the page from
 history state on `popstate`, with no request.

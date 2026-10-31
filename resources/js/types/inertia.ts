@@ -351,6 +351,8 @@ export interface ActivityDetail {
     trimp_edwards: number | null;
     /** CR-10 effort score (1–10) the athlete entered; feeds no load. */
     perceived_effort?: number | null;
+    /** Whether `perceived_effort` is saved, where a list ships that instead of the score. */
+    has_perceived_effort?: boolean;
     workout_type?: number | null;
     location_name?: string | null;
     location_country?: string | null;

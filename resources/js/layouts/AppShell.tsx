@@ -43,7 +43,9 @@ const TAB_SKELETONS: Readonly<Record<TabId, ComponentType<{ href: string }>>> =
         history: HistorySkeleton,
     };
 
-const PUSHED_SKELETONS: Readonly<Record<string, ComponentType>> = {
+const PUSHED_SKELETONS: Readonly<
+    Record<string, ComponentType<{ effortSaved: boolean | null }>>
+> = {
     'Runs/Show': RunShowSkeleton,
     Inbox: InboxSkeleton,
     Profile: ProfileSkeleton,
@@ -53,7 +55,9 @@ const PUSHED_SKELETONS: Readonly<Record<string, ComponentType>> = {
 function ScreenSkeleton({ pending }: Readonly<{ pending: PendingTab }>) {
     if (pending.screen !== null) {
         const Pushed = PUSHED_SKELETONS[pending.screen];
-        return Pushed === undefined ? null : <Pushed />;
+        return Pushed === undefined ? null : (
+            <Pushed effortSaved={pending.effortSaved} />
+        );
     }
 
     const Skeleton =

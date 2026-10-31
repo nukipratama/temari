@@ -8,11 +8,19 @@ import Skeleton, {
     SkeletonStats,
 } from '@/components/ui/Skeleton';
 
-export default function RunShowSkeleton() {
+/** Draws the effort picker's block unless the run is known to have a saved effort. */
+export default function RunShowSkeleton({
+    effortSaved = null,
+}: Readonly<{ effortSaved?: boolean | null }>) {
     return (
         <>
             <AiOutageBanner />
             <PageContainer reveal={false}>
+                {effortSaved !== true && (
+                    <section className="mb-6">
+                        <Skeleton className="h-[196px] rounded-panel" />
+                    </section>
+                )}
                 <Eyebrow token="hero" tone="ink-3">
                     Activity
                 </Eyebrow>
