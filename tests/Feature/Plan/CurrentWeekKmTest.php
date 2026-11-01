@@ -190,3 +190,21 @@ it('hands the week plan each run day\'s pace window from the athlete\'s VDOT', f
     expect($week['easy_slow_end_sec_per_km'])->toBe($slowEnd)
         ->and(data_get($today, 'segments.0.pace_range'))->toBe(['fast_sec_per_km' => $marathon, 'slow_sec_per_km' => $slowEnd]);
 });
+
+it('trims an easy-quality today like an easy day, with no readiness advice to ease it', function (): void {
+    $user = issueWeek(5.0);
+    seedDemandingRunYesterday($user);
+    PlannedSession::query()->where('user_id', $user->id)->whereDate('date', WEEK_KM_TODAY)
+        ->update(['session_type' => SessionType::Tempo, 'prescribed_hard_minutes' => 0, 'prescribed_pace_band' => null]);
+
+    $week = nonNull(app(CurrentWeekKm::class)->forUser($user, Carbon::today()));
+    $home = nonNull(app(CurrentWeekPlanBuilder::class)->forUser($user, Carbon::today()));
+    $today = array_column($home['days'], null, 'date')[WEEK_KM_TODAY];
+
+    expect($week['clamp'])->toBeNull()
+        ->and($today['advice_note'])->toBeNull()
+        ->and($today['session_type'])->toBe('easy')
+        ->and($week['scale_by_date'][WEEK_KM_TODAY])->toBe(0.7)
+        ->and($today['asked_km'])->toBe(4.4)
+        ->and($today['distance_km'])->toBe(3.1);
+});

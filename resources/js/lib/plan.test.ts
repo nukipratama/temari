@@ -712,6 +712,21 @@ describe('sessionShape', () => {
         );
     });
 
+    it('keeps a closing rep at a different pace out of the rep count', () => {
+        expect(
+            sessionShape([
+                seg('warmup', 'Z2', 12, 1.7),
+                seg('interval', 'Z5', 3, 0.7, 270),
+                seg('recovery', 'Z2', 2, 0.3),
+                seg('interval', 'Z5', 3, 0.7, 270),
+                seg('recovery', 'Z2', 2, 0.3),
+                seg('interval', 'Z5', 3, 0.7, 250),
+            ]),
+        ).toBe(
+            '12 min warm-up → 2 × 3 min (~650 m) at 4:30/km, 2 min jog between → 2 min jog → 3 min (~700 m) at 4:10/km',
+        );
+    });
+
     it('says nothing for a single block the headline already covers', () => {
         expect(sessionShape([seg('main', 'Z2', 50, 7.3)])).toBeNull();
     });
@@ -1177,6 +1192,23 @@ describe('targetLabel on a day with work', () => {
                 }),
             ),
         ).toBe('2 × 14 min (~2.4 km) at 5:49/km');
+    });
+
+    it('sizes equal blocks at the pace it names, even when the last one is quicker', () => {
+        expect(
+            targetLabel(
+                planDay({
+                    session_type: 'interval',
+                    segments: [
+                        work(3, 270),
+                        recovery,
+                        work(3, 270),
+                        recovery,
+                        work(3, 250),
+                    ],
+                }),
+            ),
+        ).toBe('3 × 3 min (~650 m) at 4:30/km');
     });
 
     it('reads back-to-back work with no recovery between as one block', () => {

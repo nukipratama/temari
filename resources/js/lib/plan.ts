@@ -465,6 +465,7 @@ function sameWork(a: PlanSessionSegment, b: PlanSessionSegment): boolean {
     return (
         a.key === b.key &&
         a.zone === b.zone &&
+        a.pace_sec_per_km === b.pace_sec_per_km &&
         Math.round(a.minutes ?? -1) === Math.round(b.minutes ?? -1)
     );
 }
@@ -728,10 +729,9 @@ export function targetLabel(day: PlanDay): string | null {
         0,
     );
     const distance = units.every((unit) => unit.paceSecPerKm !== null)
-        ? approxDistance(
-              equal ? total / minutes.length : total,
-              (total * 60) / km,
-          )
+        ? equal
+            ? approxDistance(total / minutes.length, firstUnit.paceSecPerKm)
+            : approxDistance(total, (total * 60) / km)
         : null;
 
     return `${work}${distance === null ? '' : ` (${distance})`}${pace}`;

@@ -65,7 +65,7 @@ final readonly class ClampNarrationContext
             return null;
         }
 
-        $clampedTo = ReadinessClamp::downgradeFor($session->session_type, $ceiling);
+        $clampedTo = ReadinessClamp::downgradeFor(IntensityPrescription::runsAs($session), $ceiling);
         if (!$clampedTo instanceof SessionType) {
             return null;
         }

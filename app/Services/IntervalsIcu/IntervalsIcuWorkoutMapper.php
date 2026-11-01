@@ -241,11 +241,15 @@ final class IntervalsIcuWorkoutMapper
             return DecimalFormatter::trimmed(array_sum(array_map(static fn (array $segment): float => (float) $segment['km'], $work)), 2).' km';
         }
 
+        $paced = ! array_any($work, static fn (array $segment): bool => $segment['pace_sec_per_km'] === null);
         $units = [];
         $current = null;
         foreach ($segments as $segment) {
             if (self::isWork($segment)) {
-                $current = ($current ?? 0.0) + (float) $segment['minutes'];
+                $current = [
+                    'minutes' => ($current['minutes'] ?? 0.0) + (float) $segment['minutes'],
+                    'km' => ($current['km'] ?? 0.0) + ($paced ? (float) $segment['minutes'] * 60 / (int) $segment['pace_sec_per_km'] : 0.0),
+                ];
             } elseif ($current !== null) {
                 $units[] = $current;
                 $current = null;
@@ -255,16 +259,12 @@ final class IntervalsIcuWorkoutMapper
             $units[] = $current;
         }
 
-        $km = array_any($work, static fn (array $segment): bool => $segment['pace_sec_per_km'] === null)
-            ? null
-            : array_sum(array_map(static fn (array $segment): float => (float) $segment['minutes'] * 60 / (int) $segment['pace_sec_per_km'], $work));
-
-        $minutes = array_map(static fn (float $unit): int => (int) round($unit), $units);
+        $minutes = array_map(static fn (array $unit): int => (int) round($unit['minutes']), $units);
         if (count($minutes) > 1 && count(array_unique($minutes)) === 1) {
-            return count($minutes).'×'.$minutes[0].' min'.self::approxDistance($km === null ? null : $km / count($minutes));
+            return count($minutes).'×'.$minutes[0].' min'.self::approxDistance($paced ? $units[0]['km'] : null);
         }
 
-        return array_sum($minutes).' min'.self::approxDistance($km);
+        return array_sum($minutes).' min'.self::approxDistance($paced ? array_sum(array_column($units, 'km')) : null);
     }
 
     /** The ground the work covers at its target pace. */
