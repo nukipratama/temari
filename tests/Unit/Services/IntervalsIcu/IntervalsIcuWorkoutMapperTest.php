@@ -151,6 +151,14 @@ it('writes interval reps as one repeat, whatever the rep and jog lengths', funct
     'four twos' => [4, 2.0, 3.0, 300],
 ]);
 
+it('sizes equal reps in the name from the first rep, not the quicker closing one', function (): void {
+    $rep = icuSegment('interval', 3.0, 0.7, 'interval', INTERVAL_WINDOW, 'Z5', 270);
+    $jog = icuSegment('recovery', 2.0, 0.3, 'easy', EASY_WINDOW);
+    $last = icuSegment('interval', 3.0, 0.7, 'interval', INTERVAL_WINDOW, 'Z5', 250);
+
+    expect(icuName(icuDay('interval', 5.0, [$rep, $jog, $rep, $jog, $last])))->toBe('Intervals 3×3 min (~650 m)');
+});
+
 it('keeps a last rep run at a different pace outside the repeat', function (): void {
     $rep = icuSegment('interval', 3.0, 0.6, 'interval', INTERVAL_WINDOW, 'Z5');
     $jog = icuSegment('recovery', 2.0, 0.3, 'easy', EASY_WINDOW);
