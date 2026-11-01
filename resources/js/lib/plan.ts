@@ -421,7 +421,7 @@ export function sessionHint(
 }
 
 /** The ground a stretch of minutes covers at its target pace. */
-function approxDistance(
+export function approxDistance(
     minutes: number | null,
     paceSecPerKm: number | null,
 ): string | null {
