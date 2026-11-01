@@ -456,6 +456,11 @@ the history state is encrypted. A traversal the browser already animated
 
 Under reduced motion the skeleton still appears on the tap, with no slide.
 
+The iOS status-bar tint bar in [app.blade.php](resources/views/app.blade.php)
+carries its own `view-transition-name`, so the slide moves the page under it
+rather than moving it with the page. Sliding it opened a gap at the top edge,
+and iOS kept its blur on after the slide ended.
+
 This is not the keyed-transition approach that was removed. That attempt keyed `<main>` and animated the
 new subtree up from opacity 0, which needs the old page gone before the new one
 appears. A view transition snapshots the frame already on screen, swaps
