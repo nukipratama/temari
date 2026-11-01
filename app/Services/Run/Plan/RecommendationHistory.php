@@ -7,8 +7,10 @@ namespace App\Services\Run\Plan;
 use App\Models\ActivityDetail;
 use App\Models\RecommendationRevision;
 use App\Models\RecommendationView;
+use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Crypt;
+use JsonException;
 
 final class RecommendationHistory
 {
@@ -37,6 +39,17 @@ final class RecommendationHistory
     public function token(int $userId, string $date, array $original, array $effective): string
     {
         return Crypt::encryptString(json_encode(['user_id' => $userId, 'date' => $date, 'policy_version' => self::POLICY_VERSION, 'original' => $original, 'effective' => $effective], JSON_THROW_ON_ERROR));
+    }
+
+    /**
+     * @return array{user_id: int, date: string, original: array<string, mixed>, effective: array<string, mixed>, policy_version: int}
+     *
+     * @throws DecryptException|JsonException
+     */
+    public function advice(string $token): array
+    {
+        /** @var array{user_id: int, date: string, original: array<string, mixed>, effective: array<string, mixed>, policy_version: int} */
+        return json_decode(Crypt::decryptString($token), true, flags: JSON_THROW_ON_ERROR);
     }
 
     public function shown(RecommendationRevision $revision, string $observationId): RecommendationView

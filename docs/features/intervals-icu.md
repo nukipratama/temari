@@ -3,7 +3,7 @@ title: intervals.icu connection
 description: Connecting an athlete's intervals.icu account from Settings → Integrations, and keeping today's planned run on their intervals.icu calendar so it reaches their watch.
 tags: [feature, integrations]
 status: living
-reviewed: 2026-10-20
+reviewed: 2026-11-01
 code_refs:
   - app/Http/Controllers/IntervalsIcu/IntervalsIcuConnectionController.php
   - app/Http/Requests/StoreIntervalsIcuConnectionRequest.php
@@ -13,6 +13,7 @@ code_refs:
   - resources/js/components/settings/IntervalsIcuConnectForm.tsx
   - app/Services/IntervalsIcu/IntervalsIcuWorkoutMapper.php
   - app/Services/IntervalsIcu/IntervalsIcuSync.php
+  - app/Services/Run/Plan/RecommendationHistory.php
   - app/Jobs/IntervalsIcu/SyncIntervalsIcuWorkoutJob.php
   - app/Console/Commands/IntervalsIcu/SyncCommand.php
   - resources/js/components/home/IntervalsIcuStatus.tsx
@@ -60,6 +61,7 @@ Every 15 minutes `intervals-icu:sync` queues one `SyncIntervalsIcuWorkoutJob` pe
 
 - **first send of the day**: create the event and keep its id (`event_id`, `synced_on`, `payload_hash` on the connection row). The create goes through `POST /events/bulk?upsert=true` with an `external_id` fixed per athlete and day, so a retry after a create that landed but timed out updates that event rather than adding a second;
 - **hash changed** (a clamp, a regenerated plan, a skipped rep): `PUT` the same event in place. If the athlete deleted it, a new one is created;
+- **sent** (either of the above): the day's recommendation token is recorded as a view at the send time, so the day is graded on the workout the watch carried unless the athlete opens the app later. A day that keeps its prescription beside an advice note records nothing, since its token carries the advice rather than what was sent ([[today-keeps-its-trim-and-the-watch-counts-as-shown]]);
 - **unchanged**: no call at all, except that a day without paces reads the athlete's run threshold heart rate each time, so a threshold they change on intervals.icu is used on the next tick;
 - **today becomes a rest day, is skipped, or can't be sent**: the event is deleted. The watch may still hold a course it already received; that is accepted.
 - **today's run is credited** (done, partial or overreached): the event is left exactly as sent, with no update or delete, and nothing is sent if there was no event yet. Once run, the watch workout is history.

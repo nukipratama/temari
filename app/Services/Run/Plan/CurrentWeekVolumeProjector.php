@@ -59,13 +59,18 @@ final readonly class CurrentWeekVolumeProjector
         $pinnedKm = $sessions->filter(fn (PlannedSession $session): bool => $session->pinned && ! $session->date->lt($today))->sum($kmFor);
 
         $todayFixedKm = 0.0;
+        $easyDaysKm = [];
         if ($todaySession instanceof PlannedSession && ! $todaySession->pinned) {
-            $todayFixedKm = $clamp !== null && ! EffectiveSession::isRecordedOn($todaySession)
-                ? $clamp['core_km']
-                : $kmFor($todaySession);
+            $recorded = EffectiveSession::isRecordedOn($todaySession);
+            if ($clamp !== null && ! $recorded) {
+                $todayFixedKm = $clamp['core_km'];
+            } elseif (! $recorded && $this->runsEasy($todaySession)) {
+                $easyDaysKm[$todaySession->date->toDateString()] = $kmFor($todaySession);
+            } else {
+                $todayFixedKm = $kmFor($todaySession);
+            }
         }
 
-        $easyDaysKm = [];
         $keySessionsKm = 0.0;
         foreach ($sessions as $session) {
             if ($session->pinned || ! $session->date->isAfter($today)) {

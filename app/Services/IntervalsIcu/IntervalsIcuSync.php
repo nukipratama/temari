@@ -12,8 +12,10 @@ use App\Notifications\IntervalsIcuDisconnectedNotification;
 use App\Services\IntervalsIcu\Exceptions\IntervalsIcuRejectedException;
 use App\Services\IntervalsIcu\Exceptions\IntervalsIcuUnreachableException;
 use App\Services\Run\Plan\CurrentWeekPlanBuilder;
+use App\Services\Run\Plan\RecommendationHistory;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Laravel\Pulse\Facades\Pulse;
 
 /**
@@ -31,6 +33,7 @@ final readonly class IntervalsIcuSync
     public function __construct(
         private CurrentWeekPlanBuilder $weekPlan,
         private IntervalsIcuClient $client,
+        private RecommendationHistory $history,
     ) {
     }
 
@@ -116,9 +119,11 @@ final readonly class IntervalsIcuSync
         $hash = hash('sha256', $workout->name."\n".$workout->description);
         $date = $today->toDateString();
 
+        $sent = false;
         if ($connection->event_id !== null && $hash !== $connection->payload_hash) {
             if ($this->client->updateEvent($connection, $connection->event_id, $date, $workout)) {
                 Pulse::record('intervals_icu_sync', 'updated')->count();
+                $sent = true;
             } else {
                 $connection->event_id = null;
             }
@@ -127,9 +132,30 @@ final readonly class IntervalsIcuSync
         if ($connection->event_id === null) {
             $connection->event_id = $this->client->createEvent($connection, $date, $workout);
             Pulse::record('intervals_icu_sync', 'created')->count();
+            $sent = true;
         }
 
         $connection->fill(['sync_status' => IntervalsIcuSyncStatus::Sent, 'payload_hash' => $hash])->save();
+        if ($sent && $shown !== null) {
+            $this->recordShown($shown);
+        }
+    }
+
+    /**
+     * A day that keeps its prescription beside an advice note sends the prescription, which its token does not carry.
+     *
+     * @param  array<string, mixed>  $shown
+     */
+    private function recordShown(array $shown): void
+    {
+        $token = $shown['recommendation_token'] ?? null;
+        if (($shown['advice_note'] ?? null) !== null || ! is_string($token)) {
+            return;
+        }
+
+        $advice = $this->history->advice($token);
+        $revision = $this->history->record($advice['user_id'], $advice['date'], $advice['original'], $advice['effective'], $advice['policy_version']);
+        $this->history->shown($revision, (string) Str::uuid());
     }
 
     /**

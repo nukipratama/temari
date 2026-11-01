@@ -8,6 +8,8 @@ use App\Enums\PlannedSessionStatus;
 use App\Enums\SessionType;
 use App\Models\IntervalsIcuConnection;
 use App\Models\PlannedSession;
+use App\Models\RecommendationRevision;
+use App\Models\RecommendationView;
 use App\Models\User;
 use App\Notifications\IntervalsIcuDisconnectedNotification;
 use App\Services\IntervalsIcu\IntervalsIcuSync;
@@ -94,6 +96,38 @@ it("sends today's run once and keeps its id", function (): void {
         && $request->data()[0]['start_date_local'] === '2026-10-14T00:00:00'
         && $request->data()[0]['external_id'] === 'temari-'.$connection->user_id.'-2026-10-14'
         && str_contains(Arr::string($request->data()[0], 'description'), '% LTHR'));
+});
+
+it('counts the sent workout as advice the athlete was shown, so the day is graded on it', function (): void {
+    $connection = runSync(syncedAthlete());
+
+    $view = RecommendationView::query()->sole();
+    $revision = RecommendationRevision::query()->findOrFail($view->recommendation_revision_id);
+
+    expect($revision->user_id)->toBe($connection->user_id)
+        ->and($revision->date->toDateString())->toBe('2026-10-14')
+        ->and($revision->effective['session_type'])->toBe('easy')
+        ->and(Carbon::parse(Arr::string($view->getRawOriginal(), 'shown_at'), 'UTC')->equalTo(Carbon::now()))->toBeTrue();
+});
+
+it('records no view on a day that keeps its prescription beside advice the watch never carries', function (): void {
+    $connection = syncedAthlete(SessionType::Interval);
+    PlannedSession::query()->where('user_id', $connection->user_id)->update(['pinned' => true]);
+    seedDemandingRunYesterday($connection->user);
+
+    $connection = runSync($connection);
+
+    expect($connection->sync_status)->toBe(IntervalsIcuSyncStatus::Sent)
+        ->and(RecommendationView::query()->count())->toBe(0);
+});
+
+it('records no new view when nothing new is sent', function (): void {
+    $connection = runSync(syncedAthlete());
+    intervalsIcuAnswers([]);
+
+    runSync($connection);
+
+    expect(RecommendationView::query()->count())->toBe(1);
 });
 
 it('sends nothing when today is unchanged', function (): void {

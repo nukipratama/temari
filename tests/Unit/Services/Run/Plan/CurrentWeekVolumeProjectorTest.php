@@ -97,3 +97,55 @@ it('reduces future easy volume for earlier surplus while preserving pinned and k
         ->and($scales)->not->toHaveKey($friday)
         ->and($scales)->not->toHaveKey($sunday);
 });
+
+it('keeps trimming an easy day once it becomes today', function (bool $pinned, bool $trimmed): void {
+    $user = User::factory()->create();
+    $weekStart = Carbon::today()->startOfWeek(Carbon::MONDAY);
+
+    foreach ([
+        [0, SessionType::Easy],
+        [1, SessionType::Rest],
+        [2, SessionType::Rest],
+        [3, SessionType::Easy],
+        [4, SessionType::Rest],
+        [5, SessionType::Easy],
+        [6, SessionType::Long],
+    ] as [$offset, $type]) {
+        PlannedSession::factory()->for($user)->create([
+            'date' => $weekStart->copy()->addDays($offset),
+            'phase' => PlanPhase::Base,
+            'session_type' => $type,
+            'pinned' => $offset === 3 && $pinned,
+            'volume_multiplier' => 1.0,
+        ]);
+    }
+
+    $activity = Activity::factory()->for($user)->create();
+    ActivityDetail::factory()->for($activity)->create([
+        'start_date_local' => $weekStart->copy()->setTime(6, 0),
+        'distance' => 20_000.0,
+    ]);
+
+    $sessions = PlannedSession::query()->where('user_id', $user->id)->orderBy('date')->get();
+    $todaySession = $sessions->first(fn (PlannedSession $session): bool => $session->date->isSameDay(Carbon::today()));
+
+    $scales = app(CurrentWeekVolumeProjector::class)->project(
+        $user,
+        $sessions,
+        $weekStart,
+        Carbon::today(),
+        10.0,
+        1.0,
+        INF,
+        INF,
+        $weekStart->toDateString(),
+        $todaySession,
+        null,
+    )['scale_by_date'];
+
+    expect($scales[Carbon::today()->toDateString()] ?? null)->toBe($trimmed ? 0.7 : null)
+        ->and($scales[$weekStart->copy()->addDays(5)->toDateString()])->toBe(0.7);
+})->with([
+    'unpinned' => [false, true],
+    'pinned' => [true, false],
+]);

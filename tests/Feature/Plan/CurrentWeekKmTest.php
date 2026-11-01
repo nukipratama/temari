@@ -100,12 +100,14 @@ it('totals the issue week at the 16.6 km the plan asks for, and the page, header
     expect([$days[WEEK_KM_WEDNESDAY]['asked_km'], $days[WEEK_KM_TODAY]['asked_km'], $days[WEEK_KM_SATURDAY]['asked_km'], $days[WEEK_KM_SUNDAY]['asked_km']])->toBe([4.4, 2.7, 2.7, 6.8])
         ->and($targetKm)->toBe(16.6)
         ->and($days[WEEK_KM_WEDNESDAY]['credited_km'])->toBe(5.0)
-        ->and($week['scale_by_date'][WEEK_KM_SATURDAY])->toEqualWithDelta((16.6 - 5.0 - 2.7 - 6.8) / 2.7, 0.0001)
-        ->and($days[WEEK_KM_SATURDAY]['distance_km'])->toBe(2.1)
-        ->and($week['km_by_date'][WEEK_KM_SATURDAY])->toBe(2.1)
-        ->and(narratedWeek($user)[WEEK_KM_SATURDAY]['distance_km'])->toBe(2.1)
+        ->and($week['scale_by_date'][WEEK_KM_SATURDAY])->toEqualWithDelta((16.6 - 5.0 - 6.8) / (2.7 + 2.7), 0.0001)
+        ->and($week['scale_by_date'][WEEK_KM_TODAY])->toBe($week['scale_by_date'][WEEK_KM_SATURDAY])
+        ->and($days[WEEK_KM_TODAY]['distance_km'])->toBe(2.4)
+        ->and($days[WEEK_KM_SATURDAY]['distance_km'])->toBe(2.4)
+        ->and($week['km_by_date'][WEEK_KM_SATURDAY])->toBe(2.4)
+        ->and(narratedWeek($user)[WEEK_KM_SATURDAY]['distance_km'])->toBe(2.4)
         ->and(narratedWeek($user)[WEEK_KM_TODAY]['distance_km'])->toBe($days[WEEK_KM_TODAY]['distance_km'])
-        ->and($home['planned_km_this_week'])->toBe(round(5.0 + 2.7 + 2.1 + 6.8, 1))
+        ->and($home['planned_km_this_week'])->toBe(round(5.0 + 2.4 + 2.4 + 6.8, 1))
         ->and($home['planned_km_this_week'])->toBe($targetKm)
         ->and($home['planned_km_eased_from'])->toBeNull();
 });
@@ -122,16 +124,17 @@ it('drops the total by a missed day\'s km, since the cap never makes them up', f
 });
 
 it('ends above the plan\'s target when the trim is floor-bound and cannot absorb an overrun', function (): void {
-    $user = issueWeek(6.0);
+    $user = issueWeek(7.0);
 
     $week = nonNull(app(CurrentWeekKm::class)->forUser($user, Carbon::today()));
     $home = nonNull(app(CurrentWeekPlanBuilder::class)->forUser($user, Carbon::today()));
     $days = array_column($home['days'], null, 'date');
 
     expect($week['scale_by_date'][WEEK_KM_SATURDAY])->toBe(0.7)
+        ->and($week['scale_by_date'][WEEK_KM_TODAY])->toBe(0.7)
         ->and($days[WEEK_KM_SATURDAY]['distance_km'])->toBe(round(2.7 * 0.7, 1))
         ->and(narratedWeek($user)[WEEK_KM_SATURDAY]['distance_km'])->toBe(round(2.7 * 0.7, 1))
-        ->and($home['planned_km_this_week'])->toBe(round(6.0 + 2.7 + round(2.7 * 0.7, 1) + 6.8, 1))
+        ->and($home['planned_km_this_week'])->toBe(round(7.0 + 2 * round(2.7 * 0.7, 1) + 6.8, 1))
         ->and($home['planned_km_this_week'])->toBeGreaterThan(16.6);
 });
 
