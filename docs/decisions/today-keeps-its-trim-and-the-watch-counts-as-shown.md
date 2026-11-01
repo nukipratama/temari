@@ -25,7 +25,7 @@ The run was graded against 2.7 km. [RecommendationHistory::beforeRuns()](app/Ser
 
 **Today is trimmed like the rest of the week.** An unpinned easy day that is today joins the days `VolumeRedistributor` scales, as its own docblock already described ("remaining unpinned non-past training days"). The scale reads km completed through yesterday, so it holds all day, and today's own run never moves it. Today stays a fixed contribution when the readiness clamp eases it (recorded or not), when it is pinned, and when it is a key session. The trim is easy running absorbing the week's surplus ([[easy-running-absorbs-the-week]]). The surplus that called for it is still there on the morning of the run, so the trim stays.
 
-**The workout on the watch is shown advice.** Each time `IntervalsIcuSync` creates or updates today's event, it records the day's recommendation token as a [RecommendationView](app/Models/RecommendationView.php) at the send time. A later view in the app still wins, because grading reads the last advice shown before the run, from either surface. An unchanged payload sends nothing and records nothing.
+**The workout on the watch is shown advice.** Each time `IntervalsIcuSync` creates or updates today's event, it records the day's recommendation token as a [RecommendationView](app/Models/RecommendationView.php) at the send time. A later view in the app still wins, because grading reads the last advice shown before the run, from either surface. An unchanged payload sends nothing and records nothing. A pinned or Race day that keeps its prescription beside an advice note records nothing either: the watch carries the prescription, and the day's token carries the advice.
 
 ## Consequences
 

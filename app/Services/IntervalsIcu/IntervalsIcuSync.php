@@ -136,14 +136,23 @@ final readonly class IntervalsIcuSync
         }
 
         $connection->fill(['sync_status' => IntervalsIcuSyncStatus::Sent, 'payload_hash' => $hash])->save();
-        if ($sent && is_string($shown['recommendation_token'] ?? null)) {
-            $this->recordShown($shown['recommendation_token']);
+        if ($sent && $shown !== null) {
+            $this->recordShown($shown);
         }
     }
 
-    /** The workout on the watch is advice the athlete was shown, so the day is graded on it unless they open the app later. */
-    private function recordShown(string $token): void
+    /**
+     * A day that keeps its prescription beside an advice note sends the prescription, which its token does not carry.
+     *
+     * @param  array<string, mixed>  $shown
+     */
+    private function recordShown(array $shown): void
     {
+        $token = $shown['recommendation_token'] ?? null;
+        if (($shown['advice_note'] ?? null) !== null || ! is_string($token)) {
+            return;
+        }
+
         $advice = $this->history->advice($token);
         $revision = $this->history->record($advice['user_id'], $advice['date'], $advice['original'], $advice['effective'], $advice['policy_version']);
         $this->history->shown($revision, (string) Str::uuid());

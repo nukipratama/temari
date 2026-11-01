@@ -110,6 +110,17 @@ it('counts the sent workout as advice the athlete was shown, so the day is grade
         ->and(Carbon::parse(Arr::string($view->getRawOriginal(), 'shown_at'), 'UTC')->equalTo(Carbon::now()))->toBeTrue();
 });
 
+it('records no view on a day that keeps its prescription beside advice the watch never carries', function (): void {
+    $connection = syncedAthlete(SessionType::Interval);
+    PlannedSession::query()->where('user_id', $connection->user_id)->update(['pinned' => true]);
+    seedDemandingRunYesterday($connection->user);
+
+    $connection = runSync($connection);
+
+    expect($connection->sync_status)->toBe(IntervalsIcuSyncStatus::Sent)
+        ->and(RecommendationView::query()->count())->toBe(0);
+});
+
 it('records no new view when nothing new is sent', function (): void {
     $connection = runSync(syncedAthlete());
     intervalsIcuAnswers([]);
