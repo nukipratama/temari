@@ -419,6 +419,21 @@ export function sessionHint(
 
     return pace === null ? null : `about ${pace}.`;
 }
+
+/** The ground a stretch of minutes covers at its target pace. */
+function approxDistance(
+    minutes: number | null,
+    paceSecPerKm: number | null,
+): string | null {
+    if (minutes === null || paceSecPerKm === null || !(paceSecPerKm > 0)) {
+        return null;
+    }
+    const km = (minutes * 60) / paceSecPerKm;
+    const meters = Math.round(km * 20) * 50;
+
+    return meters < 1000 ? `~${meters} m` : `~${oneDecimal(km)} km`;
+}
+
 function segmentLabel(segment: PlanSessionSegment): string {
     const minutes =
         segment.minutes == null ? null : `${Math.round(segment.minutes)} min`;
@@ -438,7 +453,11 @@ function segmentLabel(segment: PlanSessionSegment): string {
                     ? 'easy to finish'
                     : `${segment.km} km easy`;
             }
-            return `${minutes ?? segment.pace_label} at ${pace}`;
+            const distance = approxDistance(
+                segment.minutes,
+                segment.pace_sec_per_km,
+            );
+            return `${minutes ?? segment.pace_label}${distance === null ? '' : ` (${distance})`} at ${pace}`;
     }
 }
 
@@ -686,14 +705,27 @@ export function targetLabel(day: PlanDay): string | null {
         return corePaceWithRange(day);
     }
     const total = minutes.reduce((sum, value) => sum + value, 0);
+    const equal =
+        minutes.length > 1 && Math.max(...minutes) - Math.min(...minutes) <= 1;
     const work =
         minutes.length === 1
             ? `${Math.round(total)} min`
-            : Math.max(...minutes) - Math.min(...minutes) <= 1
+            : equal
               ? `${minutes.length} × ${Math.round(total / minutes.length)} min`
               : `${minutes.map((value) => Math.round(value)).join(' + ')} min`;
+    const km = units.reduce(
+        (sum, unit) =>
+            sum + ((unit.minutes ?? 0) * 60) / (unit.paceSecPerKm ?? 1),
+        0,
+    );
+    const distance = units.every((unit) => unit.paceSecPerKm !== null)
+        ? approxDistance(
+              equal ? total / minutes.length : total,
+              (total * 60) / km,
+          )
+        : null;
 
-    return `${work}${pace}`;
+    return `${work}${distance === null ? '' : ` (${distance})`}${pace}`;
 }
 
 /**

@@ -255,12 +255,27 @@ final class IntervalsIcuWorkoutMapper
             $units[] = $current;
         }
 
+        $km = array_any($work, static fn (array $segment): bool => $segment['pace_sec_per_km'] === null)
+            ? null
+            : array_sum(array_map(static fn (array $segment): float => (float) $segment['minutes'] * 60 / (int) $segment['pace_sec_per_km'], $work));
+
         $minutes = array_map(static fn (float $unit): int => (int) round($unit), $units);
         if (count($minutes) > 1 && count(array_unique($minutes)) === 1) {
-            return count($minutes).'×'.$minutes[0].' min';
+            return count($minutes).'×'.$minutes[0].' min'.self::approxDistance($km === null ? null : $km / count($minutes));
         }
 
-        return array_sum($minutes).' min';
+        return array_sum($minutes).' min'.self::approxDistance($km);
+    }
+
+    /** The ground the work covers at its target pace, for runners who think in distance. */
+    private static function approxDistance(?float $km): string
+    {
+        if ($km === null || $km <= 0.0) {
+            return '';
+        }
+        $meters = (int) round($km * 20) * 50;
+
+        return $meters < 1000 ? " (~{$meters} m)" : ' (~'.DecimalFormatter::trimmed(round($km, 1), 1).' km)';
     }
 
     private static function raceDistance(float $km): string

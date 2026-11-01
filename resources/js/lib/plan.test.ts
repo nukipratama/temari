@@ -695,7 +695,7 @@ describe('sessionShape', () => {
                 seg('main', 'Z2', 20, 3.1),
             ]),
         ).toBe(
-            '15 min warm-up → 3 × 3 min at 4:20/km, 2 min jog between → 3.1 km easy',
+            '15 min warm-up → 3 × 3 min (~700 m) at 4:20/km, 2 min jog between → 3.1 km easy',
         );
     });
 
@@ -1130,7 +1130,7 @@ describe('targetLabel on a day with work', () => {
                     segments: [work(10, 363), recovery, work(10, 363)],
                 }),
             ),
-        ).toBe('2 × 10 min at 6:03/km');
+        ).toBe('2 × 10 min (~1.7 km) at 6:03/km');
         expect(
             targetLabel(
                 planDay({
@@ -1138,7 +1138,7 @@ describe('targetLabel on a day with work', () => {
                     segments: [work(12, 363), recovery, work(8, 363)],
                 }),
             ),
-        ).toBe('12 + 8 min at 6:03/km');
+        ).toBe('12 + 8 min (~3.3 km) at 6:03/km');
     });
 
     it('counts blocks a rounding remainder apart as the same length', () => {
@@ -1155,7 +1155,7 @@ describe('targetLabel on a day with work', () => {
                     ],
                 }),
             ),
-        ).toBe('3 × 7 min at 5:49/km');
+        ).toBe('3 × 7 min (~1.1 km) at 5:49/km');
         expect(
             targetLabel(
                 planDay({
@@ -1163,7 +1163,7 @@ describe('targetLabel on a day with work', () => {
                     segments: [work(13.4, 349), recovery, work(14.2, 349)],
                 }),
             ),
-        ).toBe('2 × 14 min at 5:49/km');
+        ).toBe('2 × 14 min (~2.4 km) at 5:49/km');
     });
 
     it('reads back-to-back work with no recovery between as one block', () => {
@@ -1174,7 +1174,7 @@ describe('targetLabel on a day with work', () => {
                     segments: [work(10, 363), work(10, 363)],
                 }),
             ),
-        ).toBe('20 min at 6:03/km');
+        ).toBe('20 min (~3.3 km) at 6:03/km');
     });
 
     it('quotes a block that closes at goal pace at the combined pace the judge grades it on', () => {
@@ -1191,7 +1191,7 @@ describe('targetLabel on a day with work', () => {
                     ],
                 }),
             ),
-        ).toBe('2 × 10 min at 4:53/km');
+        ).toBe('2 × 10 min (~2 km) at 4:53/km');
     });
 
     it('says nothing of the work when no pace estimate sized its minutes', () => {
@@ -1293,7 +1293,7 @@ describe('targetLabel with pace ranges', () => {
                     ],
                 }),
             ),
-        ).toBe('3 × 7 min at 5:49/km (5:32–5:59)');
+        ).toBe('3 × 7 min (~1.2 km) at 5:49/km (5:32–5:59)');
     });
 
     it('spans both windows when back-to-back blocks are read as one', () => {
@@ -1307,7 +1307,7 @@ describe('targetLabel with pace ranges', () => {
                     ],
                 }),
             ),
-        ).toBe('14 min at 5:50/km (5:23–6:10)');
+        ).toBe('14 min (~2.4 km) at 5:50/km (5:23–6:10)');
     });
 
     it('puts the window beside race pace', () => {
