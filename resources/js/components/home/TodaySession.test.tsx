@@ -483,7 +483,7 @@ describe('TodaySession', () => {
             />,
         );
 
-        expectSession('8', 'goal pace · 30 min at 4:59/km');
+        expectSession('8', 'goal pace · 30 min (~6 km) at 4:59/km');
         expect(
             screen.getByText('rehearsing your half marathon goal pace.'),
         ).toBeInTheDocument();
@@ -513,7 +513,7 @@ describe('TodaySession', () => {
             />,
         );
 
-        expectSession('8', 'stepping-stone pace · 30 min at 4:50/km');
+        expectSession('8', 'stepping-stone pace · 30 min (~6.2 km) at 4:50/km');
         expect(
             screen.getByText(
                 'rehearsing your half marathon stepping-stone pace.',
@@ -822,7 +822,7 @@ describe('TodaySession', () => {
         );
 
         expect(
-            screen.getByText('15 min warm-up → 20 min at 5:00/km'),
+            screen.getByText('15 min warm-up → 20 min (~4 km) at 5:00/km'),
         ).toBeInTheDocument();
         expect(
             screen.getByText(/comfortably hard\. teaches you to hold a pace/),

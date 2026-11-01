@@ -101,7 +101,7 @@ it('writes a tempo day\'s repeated blocks as one repeat, adding a jog after the 
     $jog = icuSegment('recovery', 2.0, 0.3, 'easy', EASY_WINDOW);
     $day = icuDay('tempo', 6.6, [icuSegment('warmup', 10.0, 1.4, 'easy', EASY_WINDOW), $block, $jog, $block, $jog, $block, icuSegment('easy', 7.9, 1.1, 'easy', EASY_WINDOW)]);
 
-    expect(icuName($day))->toBe('Tempo 3×8 min')
+    expect(icuName($day))->toBe('Tempo 3×8 min (~1.2 km)')
         ->and(icuSteps($day))->toBe(implode("\n", [
             '- 10m 6:33-7:32/km Pace intensity=warmup',
             '',
@@ -119,14 +119,14 @@ it('writes a continuous tempo block as one step', function (): void {
         icuSegment('main', 25.0, 4.3, 'threshold', THRESHOLD_WINDOW, 'Z4'),
     ]);
 
-    expect(icuName($day))->toBe('Tempo 25 min')
+    expect(icuName($day))->toBe('Tempo 25 min (~3.8 km)')
         ->and(icuSteps($day))->toBe(implode("\n", [
             '- 10m 6:33-7:32/km Pace intensity=warmup',
             '- 25m 5:32-5:59/km Pace intensity=active',
         ]));
 });
 
-it('writes interval reps as one repeat, whatever the rep and jog lengths', function (int $reps, float $rep, float $jog): void {
+it('writes interval reps as one repeat, whatever the rep and jog lengths', function (int $reps, float $rep, float $jog, int $repMeters): void {
     $work = icuSegment('interval', $rep, 0.6, 'interval', INTERVAL_WINDOW, 'Z5');
     $recovery = icuSegment('recovery', $jog, 0.3, 'easy', EASY_WINDOW);
     $segments = [icuSegment('warmup', 12.0, 1.7, 'easy', EASY_WINDOW)];
@@ -138,7 +138,7 @@ it('writes interval reps as one repeat, whatever the rep and jog lengths', funct
     }
     $day = icuDay('interval', 6.0, $segments);
 
-    expect(icuName($day))->toBe("Intervals {$reps}×".(int) $rep.' min')
+    expect(icuName($day))->toBe("Intervals {$reps}×".(int) $rep." min (~{$repMeters} m)")
         ->and(icuSteps($day))->toBe(implode("\n", [
             '- 12m 6:33-7:32/km Pace intensity=warmup',
             '',
@@ -147,8 +147,8 @@ it('writes interval reps as one repeat, whatever the rep and jog lengths', funct
             '- '.(int) $jog.'m 6:33-7:32/km Pace intensity=recovery',
         ]));
 })->with([
-    'five threes' => [5, 3.0, 2.0],
-    'four twos' => [4, 2.0, 3.0],
+    'five threes' => [5, 3.0, 2.0, 450],
+    'four twos' => [4, 2.0, 3.0, 300],
 ]);
 
 it('keeps a last rep run at a different pace outside the repeat', function (): void {
