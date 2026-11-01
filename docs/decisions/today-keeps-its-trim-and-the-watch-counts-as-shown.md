@@ -13,7 +13,7 @@ code_refs:
 
 # Today keeps its easy-day trim, and the workout on the watch counts as shown
 
-**Status:** Accepted (2026-11-01). Amends the "today's now-fixed km" rule of [[easy-running-absorbs-the-week]] and the source of shown advice in [[grading-follows-shown-advice-and-actual-stimulus]].
+**Status:** Accepted (2026-11-01). Amends the "today's fixed session" clause of [[no-automatic-mileage-debt]] and the source of shown advice in [[grading-follows-shown-advice-and-actual-stimulus]].
 
 ## Context
 

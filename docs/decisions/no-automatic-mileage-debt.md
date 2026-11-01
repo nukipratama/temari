@@ -12,6 +12,8 @@ supersedes: easy-running-absorbs-the-week
 
 # No automatic mileage debt
 
+> **Partly superseded (2026-11-01) by [[today-keeps-its-trim-and-the-watch-counts-as-shown]].** An unpinned, un-eased easy day that is today is now trimmed with the remaining easy days instead of held as today's fixed session; the rest of this decision stands.
+
 **Status:** Accepted (2026-10-01), settled with the owner as [#1499](https://github.com/nukipratama/temari/issues/1499).
 
 ## Context
