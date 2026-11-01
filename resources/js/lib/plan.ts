@@ -486,18 +486,27 @@ export function sessionShape(segments: PlanSessionSegment[]): string | null {
             continue;
         }
         let reps = 1;
+        let minutes = work.minutes;
         while (work.zone > 'Z2' && segments[i + 1]?.key === 'recovery') {
             const repeat = segments[i + 2];
             if (repeat === undefined || !sameWork(work, repeat)) {
                 break;
             }
             reps++;
+            minutes =
+                minutes === null || repeat.minutes === null
+                    ? null
+                    : minutes + repeat.minutes;
             i += 2;
         }
         const recovery = segments[i - 1];
         if (reps > 1 && recovery !== undefined) {
+            const average = {
+                ...work,
+                minutes: minutes === null ? null : minutes / reps,
+            };
             parts.push(
-                `${reps} × ${segmentLabel(work)}, ${segmentLabel(recovery)} between`,
+                `${reps} × ${segmentLabel(average)}, ${segmentLabel(recovery)} between`,
             );
         } else {
             parts.push(segmentLabel(work));

@@ -699,6 +699,19 @@ describe('sessionShape', () => {
         );
     });
 
+    it('labels collapsed reps by their average, as the headline does', () => {
+        expect(
+            sessionShape([
+                seg('warmup', 'Z2', 10, 1.4),
+                seg('main', 'Z4', 6.6, 1.1, 349),
+                seg('recovery', 'Z2', 2, 0.3),
+                seg('main', 'Z4', 7.4, 1.3, 349),
+            ]),
+        ).toBe(
+            '10 min warm-up → 2 × 7 min (~1.2 km) at 5:49/km, 2 min jog between',
+        );
+    });
+
     it('says nothing for a single block the headline already covers', () => {
         expect(sessionShape([seg('main', 'Z2', 50, 7.3)])).toBeNull();
     });
