@@ -2,7 +2,7 @@ import type { PlanSessionSegment } from '@/types/inertia';
 
 import { HR_ZONE_COLORS, type HrZoneKey } from '@/lib/chartTokens';
 import { formatPace, formatPaceWithRange } from '@/lib/pace';
-import { GOAL_PACE_LABEL } from '@/lib/plan';
+import { approxDistance, GOAL_PACE_LABEL } from '@/lib/plan';
 
 export function zoneColor(zone: string): string {
     return HR_ZONE_COLORS[zone as HrZoneKey] ?? 'var(--color-text-3)';
@@ -25,14 +25,47 @@ const ZONE_HEIGHT_PCT: Record<string, number> = {
     Z5: 100,
 };
 
-/** Distance leads, duration follows — the parts add up to the day's headline km. */
-function figureText(segment: PlanSessionSegment): string {
-    const parts = [
-        segment.km == null ? null : `${segment.km} km`,
-        segment.minutes == null ? null : `${segment.minutes} min`,
-    ].filter(Boolean);
+/**
+ * Each figure leads with the unit its step is run to: minutes for a warm-up,
+ * a jog or hard work, km for easy running and a one-block day, the other
+ * unit following as an approximation.
+ */
+function figureText(
+    segment: PlanSessionSegment,
+    byDistance: boolean,
+    paceSecPerKm: number | null = segment.pace_sec_per_km,
+): string {
+    const minutes =
+        segment.minutes == null ? null : `${Math.round(segment.minutes)} min`;
+    const km = segment.km == null ? null : `${segment.km} km`;
+    if (byDistance) {
+        return km === null
+            ? (minutes ?? '—')
+            : minutes === null
+              ? km
+              : `${km} (~${minutes})`;
+    }
+    const distance =
+        approxDistance(segment.minutes, paceSecPerKm) ??
+        (km === null ? null : `~${km}`);
 
-    return parts.length === 0 ? '—' : parts.join(' · ');
+    return minutes === null
+        ? (km ?? '—')
+        : distance === null
+          ? minutes
+          : `${minutes} (${distance})`;
+}
+
+function runsToDistance(
+    segment: PlanSessionSegment,
+    segments: PlanSessionSegment[],
+): boolean {
+    return (
+        segments.length === 1 ||
+        (segment.pace_label === 'easy' &&
+            segment.key !== 'warmup' &&
+            segment.key !== 'recovery')
+    );
 }
 
 function paceSub(segment: PlanSessionSegment, label: string): string {
@@ -84,6 +117,21 @@ function joined(group: SegmentGroup): PlanSessionSegment {
     };
 }
 
+/** The one pace a rep or block split at its closing quarter averages, which sizes its distance. */
+function groupPace(group: SegmentGroup): number | null {
+    let minutes = 0;
+    let km = 0;
+    for (const segment of group) {
+        if (segment.minutes == null || segment.pace_sec_per_km == null) {
+            return null;
+        }
+        minutes += segment.minutes;
+        km += (segment.minutes * 60) / segment.pace_sec_per_km;
+    }
+
+    return km > 0 ? Math.round((minutes * 60) / km) : null;
+}
+
 function closingNote(units: SegmentGroup[]): string | undefined {
     const last = units.at(-1);
     if (last === undefined) {
@@ -110,6 +158,7 @@ function LegendItem({
     label,
     zone,
     figure,
+    between,
     sub,
     note,
     wide = false,
@@ -117,13 +166,16 @@ function LegendItem({
     label: string;
     zone: string;
     figure: string;
+    between?: string;
     sub: string;
     note?: string;
     wide?: boolean;
 }>) {
     return (
-        <div className={wide ? 'min-w-0 flex-[2]' : 'min-w-0 flex-1'}>
-            <div className="flex items-center gap-1 text-label-micro text-text-2">
+        <div
+            className={`flex min-w-0 gap-3 sm:block ${wide ? 'sm:flex-[2]' : 'sm:flex-1'}`}
+        >
+            <div className="flex w-28 flex-none items-center gap-1 self-start text-label-micro text-text-2 sm:w-auto">
                 <span
                     className="size-1.5 flex-none rounded-full"
                     style={{ backgroundColor: zoneColor(zone) }}
@@ -131,11 +183,16 @@ function LegendItem({
                 />
                 {label}
             </div>
-            <div className="mt-0.5 text-xs font-semibold text-foreground">
-                {figure}
+            <div className="min-w-0">
+                <div className="text-xs font-semibold text-foreground sm:mt-0.5">
+                    {figure}
+                </div>
+                {between && (
+                    <div className="text-xs text-text-2">{between}</div>
+                )}
+                <div className="text-xs text-text-2">{sub}</div>
+                {note && <div className="text-xs text-text-2">{note}</div>}
             </div>
-            <div className="text-xs text-text-2">{sub}</div>
-            {note && <div className="text-xs text-text-2">{note}</div>}
         </div>
     );
 }
@@ -178,6 +235,7 @@ export default function SessionBarGraph({
     const repeats = reps.length > 0 ? reps : mains.length > 1 ? mains : [];
     const warmup = segments.find((s) => s.key === 'warmup');
     const work = repeats[0] === undefined ? undefined : joined(repeats[0]);
+    const workPace = repeats[0] === undefined ? null : groupPace(repeats[0]);
     const recovery = segments.find((s) => s.key === 'recovery');
     const easy = segments.filter((s) => s.key === 'easy');
     const note = closesAtGoalPace
@@ -199,14 +257,14 @@ export default function SessionBarGraph({
                     />
                 ))}
             </div>
-            <div className="mt-1.5 flex gap-2.5">
+            <div className="mt-1.5 flex flex-col gap-2 sm:flex-row sm:gap-2.5">
                 {work ? (
                     <>
                         {warmup && (
                             <LegendItem
                                 label={SEGMENT_LABEL.warmup}
                                 zone={warmup.zone}
-                                figure={figureText(warmup)}
+                                figure={figureText(warmup, false)}
                                 sub={subFor(warmup)}
                             />
                         )}
@@ -214,7 +272,12 @@ export default function SessionBarGraph({
                             wide
                             label={`${repeats.length}× ${SEGMENT_LABEL[work.key]}`}
                             zone={work.zone}
-                            figure={`${figureText(work)} hard / ${recovery?.minutes ?? 0} min easy`}
+                            figure={`${figureText(work, false, workPace)} hard`}
+                            between={
+                                recovery?.minutes == null
+                                    ? undefined
+                                    : `${Math.round(recovery.minutes)} min jog between`
+                            }
                             sub={subFor(work)}
                             note={note}
                         />
@@ -223,7 +286,7 @@ export default function SessionBarGraph({
                                 key={`${segment.key}-${segment.zone}-${segment.minutes ?? 'unmeasured'}-${segment.km ?? 'open'}`}
                                 label={SEGMENT_LABEL.easy}
                                 zone={segment.zone}
-                                figure={figureText(segment)}
+                                figure={figureText(segment, true)}
                                 sub={subFor(segment)}
                             />
                         ))}
@@ -236,7 +299,11 @@ export default function SessionBarGraph({
                                 key={index}
                                 label={SEGMENT_LABEL[unit.key]}
                                 zone={unit.zone}
-                                figure={figureText(unit)}
+                                figure={figureText(
+                                    unit,
+                                    runsToDistance(unit, segments),
+                                    groupPace(group),
+                                )}
                                 sub={subFor(unit)}
                                 note={group.length > 1 ? note : undefined}
                             />

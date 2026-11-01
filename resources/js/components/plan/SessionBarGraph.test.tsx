@@ -68,17 +68,16 @@ describe('SessionBarGraph', () => {
 
         expect(screen.getByText('warmup')).toBeInTheDocument();
         expect(screen.getByText('main set')).toBeInTheDocument();
-        expect(screen.getByText('1.3 km · 10 min')).toBeInTheDocument();
-        expect(screen.getByText('4.6 km · 30 min')).toBeInTheDocument();
+        expect(screen.getByText('10 min (~1.7 km)')).toBeInTheDocument();
+        expect(screen.getByText('4.6 km (~30 min)')).toBeInTheDocument();
     });
 
     it('collapses interval repeats into one legend block rather than listing every rep', () => {
         render(<SessionBarGraph segments={INTERVAL_SESSION} />);
 
         expect(screen.getByText('3× interval')).toBeInTheDocument();
-        expect(
-            screen.getByText('0.8 km · 3 min hard / 2 min easy'),
-        ).toBeInTheDocument();
+        expect(screen.getByText('3 min (~500 m) hard')).toBeInTheDocument();
+        expect(screen.getByText('2 min jog between')).toBeInTheDocument();
         expect(screen.queryByText('Recovery')).not.toBeInTheDocument();
     });
 
@@ -99,7 +98,7 @@ describe('SessionBarGraph', () => {
 
         expect(screen.getByText('3× interval')).toBeInTheDocument();
         expect(screen.getByText('easy running')).toBeInTheDocument();
-        expect(screen.getByText('2 km · 12 min')).toBeInTheDocument();
+        expect(screen.getByText('2 km (~12 min)')).toBeInTheDocument();
     });
 
     it('still draws one bar per rep even when the legend collapses them', () => {
@@ -167,6 +166,7 @@ describe('SessionBarGraph', () => {
                         minutes: 10,
                         km: null,
                         zone: 'Z1',
+                        pace_sec_per_km: null,
                     }),
                     segment({ key: 'main', minutes: 30, km: 4.6 }),
                 ]}
@@ -211,9 +211,24 @@ describe('SessionBarGraph', () => {
         );
 
         expect(screen.getByText('2× main set')).toBeInTheDocument();
-        expect(
-            screen.getByText('4.2 km · 18.9 min hard / 2 min easy'),
-        ).toBeInTheDocument();
+        expect(screen.getByText('19 min (~3.3 km) hard')).toBeInTheDocument();
+    });
+
+    it('leads a one-block day with the distance it is run to', () => {
+        render(
+            <SessionBarGraph
+                segments={[
+                    segment({
+                        minutes: 58,
+                        km: 10,
+                        zone: 'Z4',
+                        pace_label: 'threshold',
+                    }),
+                ]}
+            />,
+        );
+
+        expect(screen.getByText('10 km (~58 min)')).toBeInTheDocument();
     });
 
     it('still lists a single main set rather than collapsing it', () => {
@@ -327,9 +342,7 @@ describe('zoneColor', () => {
             ]);
 
             expect(screen.getByText('2× main set')).toBeInTheDocument();
-            expect(
-                screen.getByText('3 km · 15 min hard / 2 min easy'),
-            ).toBeInTheDocument();
+            expect(screen.getByText('15 min (~3 km) hard')).toBeInTheDocument();
             expect(
                 screen.getByText('last quarter of each at 4:59/km · goal pace'),
             ).toBeInTheDocument();
@@ -345,7 +358,7 @@ describe('zoneColor', () => {
 
             expect(screen.getByText('main set')).toBeInTheDocument();
             expect(screen.queryByText(/2× main set/)).not.toBeInTheDocument();
-            expect(screen.getByText('7.9 km · 40 min')).toBeInTheDocument();
+            expect(screen.getByText('40 min (~7.9 km)')).toBeInTheDocument();
             expect(
                 screen.getByText('5:04/km · stepping-stone pace'),
             ).toBeInTheDocument();
