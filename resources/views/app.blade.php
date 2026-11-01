@@ -81,8 +81,10 @@
          standalone` media query, since that also matches non-iOS installed PWAs.
          `bg-background` keeps it in lockstep with the `data-theme` the theme
          script resolved, rather than prefers-color-scheme, which freezes for the
-         life of the process in standalone mode. --}}
-    <div id="ios-status-bar-tint" aria-hidden="true" class="fixed inset-x-0 top-0 z-50 hidden h-4 bg-background"></div>
+         life of the process in standalone mode. Its own view-transition name
+         keeps it pinned above a push slide, since a gap at the top edge
+         mid-slide leaves the blur on after it ends. --}}
+    <div id="ios-status-bar-tint" aria-hidden="true" class="fixed inset-x-0 top-0 z-50 hidden h-4 bg-background [view-transition-name:ios-status-bar-tint]"></div>
     <script>
         if (navigator.standalone === true) {
             document.getElementById('ios-status-bar-tint').classList.remove('hidden');
