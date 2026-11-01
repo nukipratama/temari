@@ -8,6 +8,7 @@ use App\Models\PlannedSession;
 use App\Models\RecommendationRevision;
 use App\Models\User;
 use App\Services\Run\Plan\RecommendationHistory;
+use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
@@ -94,4 +95,18 @@ it('orders advice in UTC while matching an activity across the local midnight bo
     ]);
     expect(shownBefore($history, $session->user_id, $run)?->id)->toBe($revision->id);
     Carbon::setTestNow();
+});
+
+it('reads back the advice a token carries and rejects one it did not sign', function (): void {
+    $history = app(RecommendationHistory::class);
+    $token = $history->token(7, '2026-10-14', ['distance_km' => 3.1], ['distance_km' => 2.7]);
+
+    expect($history->advice($token))->toBe([
+        'user_id' => 7,
+        'date' => '2026-10-14',
+        'policy_version' => RecommendationHistory::POLICY_VERSION,
+        'original' => ['distance_km' => 3.1],
+        'effective' => ['distance_km' => 2.7],
+    ])
+        ->and(fn () => $history->advice('not-a-token'))->toThrow(DecryptException::class);
 });
