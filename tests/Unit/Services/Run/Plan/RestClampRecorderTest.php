@@ -416,3 +416,14 @@ it('ignores an unscored run outside the trailing load window', function (): void
     expect(app(RestClampRecorder::class)->record($user, Carbon::today()))->toBeTrue()
         ->and($session->refresh()->clamped_km)->not->toBeNull();
 });
+
+it('records no ease on a quality day already prescribed as an easy run', function (): void {
+    $user = User::factory()->create();
+    seedDemandingRunYesterday($user);
+    $session = todaysSession($user, 'tempo');
+    $session->update(['prescribed_hard_minutes' => 0, 'prescribed_pace_band' => null]);
+
+    app(RestClampRecorder::class)->record($user, Carbon::today());
+
+    expect($session->refresh()->clamped_km)->toBeNull();
+});

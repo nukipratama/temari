@@ -123,7 +123,7 @@ final readonly class CurrentWeekKm
         $todaySession = $currentWeekSessions->first(fn (PlannedSession $s): bool => $s->date->isSameDay($today));
         $clamp = ($todaySession !== null && ! $loadPending)
             ? ReadinessClamp::apply(
-                $todaySession->session_type,
+                IntensityPrescription::runsAs($todaySession),
                 $todaySession->phase,
                 $todaySession->race_distance_m === null ? $raceDistanceM : (float) $todaySession->race_distance_m,
                 $baselineData['long_run_km'],

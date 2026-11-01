@@ -198,3 +198,10 @@ it('keeps a recorded ease over the assessment its caller holds', function (): vo
     expect($context['ceiling'])->toBe(ReadinessCeiling::ModerateOk)
         ->and($context['decision_source'])->toBe('recorded');
 });
+
+it('resolves nothing for a quality day already prescribed as an easy run', function (): void {
+    $user = tiredUser();
+    clampDay($user)->update(['prescribed_hard_minutes' => 0, 'prescribed_pace_band' => null]);
+
+    expect(resolveClamp($user))->toBeNull();
+});

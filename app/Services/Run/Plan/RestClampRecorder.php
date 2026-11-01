@@ -98,8 +98,9 @@ final readonly class RestClampRecorder
         $baselineData = $this->baseline->forUser($user, $today);
         $prescription = IntensityPrescription::fromSession($session);
         $paces = $prescription instanceof IntensityPrescription ? $this->paceCalculator->fromVdotResult($this->vdotEstimator->estimate($user, $today)) : null;
+        $runsAs = IntensityPrescription::runsAs($session);
         $clamp = ReadinessClamp::apply(
-            $session->session_type,
+            $runsAs,
             $session->phase,
             $session->race_distance_m === null ? null : (float) $session->race_distance_m,
             (float) $baselineData['long_run_km'],
@@ -120,7 +121,7 @@ final readonly class RestClampRecorder
         if ($clamp !== null) {
             $adjustment['clamped_km'] = $clamp['core_km'];
             $note = $clamp['note'];
-        } elseif (ReadinessClamp::paceEaseApplies($session->session_type, $ceiling)) {
+        } elseif (ReadinessClamp::paceEaseApplies($runsAs, $ceiling)) {
             $easedPace = $this->paceCalculator->easySlowEndFromVdotResult($this->vdotEstimator->estimate($user, $today));
             if ($easedPace !== null) {
                 $adjustment['eased_pace_sec_per_km'] = $easedPace;

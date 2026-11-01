@@ -45,6 +45,11 @@ final readonly class IntensityPrescription
             && self::fromSession($session)?->isEasy() === true;
     }
 
+    public static function runsAs(PlannedSession $session): SessionType
+    {
+        return self::isEasyQualityDay($session, $session->session_type) ? SessionType::Easy : $session->session_type;
+    }
+
     public static function fromSession(PlannedSession $session): ?self
     {
         if ($session->prescribed_hard_minutes === null) {
