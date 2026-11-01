@@ -229,7 +229,7 @@ final class IntervalsIcuWorkoutMapper
     }
 
     /**
-     * "3×8 min" when the work is equal blocks, otherwise its total; the total
+     * "3×8 min (~1.2 km)" when the work is equal blocks, otherwise its total; the total
      * km when the work has no minutes, as for an athlete without paces.
      *
      * @param  list<Segment>  $segments
@@ -267,7 +267,7 @@ final class IntervalsIcuWorkoutMapper
         return array_sum($minutes).' min'.self::approxDistance($km);
     }
 
-    /** The ground the work covers at its target pace, for runners who think in distance. */
+    /** The ground the work covers at its target pace. */
     private static function approxDistance(?float $km): string
     {
         if ($km === null || $km <= 0.0) {

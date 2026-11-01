@@ -471,7 +471,7 @@ function sameWork(a: PlanSessionSegment, b: PlanSessionSegment): boolean {
 
 /**
  * The session's shape in one line: warm-up, the work, the way home. Repeated
- * reps collapse to `4 × 3 min at 4:20/km, 2 min jog between`. Null for a
+ * reps collapse to `4 × 3 min (~700 m) at 4:20/km, 2 min jog between`. Null for a
  * single-block day, whose headline already says everything.
  */
 export function sessionShape(segments: PlanSessionSegment[]): string | null {
