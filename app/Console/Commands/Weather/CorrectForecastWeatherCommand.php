@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Console\Commands\Weather;
 
+use App\Exceptions\Weather\OpenMeteoUnavailableException;
 use App\Services\Weather\WeatherSnapshot;
 use App\Models\ActivityDetail;
 use App\Services\Weather\OpenMeteoClient;
@@ -43,8 +44,14 @@ class CorrectForecastWeatherCommand extends Command
 
         $corrected = 0;
         foreach ($query->cursor() as $detail) {
-            if ($this->correct($weather, $detail)) {
-                $corrected++;
+            try {
+                if ($this->correct($weather, $detail)) {
+                    $corrected++;
+                }
+            } catch (OpenMeteoUnavailableException $e) {
+                $this->warn("Stopped early, Open-Meteo is unavailable: {$e->getMessage()}");
+
+                break;
             }
         }
 

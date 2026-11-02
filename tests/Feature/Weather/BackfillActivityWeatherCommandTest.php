@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Exceptions\Weather\OpenMeteoUnavailableException;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\User;
@@ -9,8 +10,47 @@ use App\Services\Ops\MaintainerAlerter;
 use App\Services\Weather\OpenMeteoClient;
 use App\Services\Weather\WeatherSnapshot;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Sleep;
 
 uses(RefreshDatabase::class);
+
+beforeEach(function (): void {
+    Sleep::fake();
+});
+
+it('stops the batch when Open-Meteo is throttling, without spending an attempt on any row', function (): void {
+    $this->mock(OpenMeteoClient::class)
+        ->shouldReceive('fetchForActivity')
+        ->once()
+        ->andThrow(new OpenMeteoUnavailableException('open-meteo rate limited (429)'));
+
+    $details = ActivityDetail::factory()->count(3)->create([
+        'start_lat' => -6.24, 'start_lng' => 106.81, 'start_date_local' => now()->subDays(30),
+        'weather_temp_c' => null, 'weather_attempts' => 0,
+    ]);
+
+    $this->artisan('weather:backfill')
+        ->expectsOutputToContain('Stopped early, Open-Meteo is unavailable: open-meteo rate limited (429)')
+        ->assertSuccessful();
+
+    expect($details->map(fn (ActivityDetail $detail): int => $detail->refresh()->weather_attempts)->all())->toBe([0, 0, 0]);
+});
+
+it('pauses a second between Open-Meteo requests', function (): void {
+    $this->mock(OpenMeteoClient::class)
+        ->shouldReceive('fetchForActivity')
+        ->times(2)
+        ->andReturn(new WeatherSnapshot(tempC: 27, humidityPct: 80, rainDetected: false, tempMaxC: 28));
+
+    ActivityDetail::factory()->count(2)->create([
+        'start_lat' => -6.24, 'start_lng' => 106.81, 'start_date_local' => now()->subDays(30),
+        'weather_temp_c' => null,
+    ]);
+
+    $this->artisan('weather:backfill')->assertSuccessful();
+
+    Sleep::assertSequence([Sleep::for(1)->second(), Sleep::for(1)->second()]);
+});
 
 it('refetches weather for details with coords but a null weather_temp_c', function (): void {
     $this->mock(OpenMeteoClient::class)
