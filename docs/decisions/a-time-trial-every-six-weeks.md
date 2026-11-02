@@ -23,6 +23,8 @@ code_refs:
   - tests/Feature/Plan/TimeTrialPlanTest.php
 ---
 
+> **Partly superseded (2026-11-02) by [[a-moved-time-trial-may-land-three-weeks-out]].** Only the last 2 weeks before race week are trial-free, so a moved trial or a retry may fall 3 weeks out.
+
 > **Partly superseded (2026-10-08) by [[a-race-block-tapers-two-weeks-and-recovers-in-peak]].** A trial due in a scheduled recovery week now falls due the week before it. Only when that week cannot take it does the trial move to the next week of its cycle. The rest of this decision stands.
 
 # A time trial every six weeks, auto-confirmed as evidence

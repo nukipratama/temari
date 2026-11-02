@@ -123,11 +123,11 @@ function weeksWithQualitySlot(PlanInputs $inputs): array
     )));
 }
 
-it('schedules a race season\'s trials counted back from race week, never in its last three weeks', function (): void {
+it('schedules a race season\'s trials counted back from race week, never in its last two weeks', function (): void {
     $rows = trialPlan(trialPlanInputs(10_000.0));
 
     expect(trialWeeksOf($rows))->toBe(['2026-10-05', '2026-11-09'])
-        ->and(array_filter(array_keys(trialRows($rows)), static fn (string $date): bool => $date >= '2026-11-23'))->toBe([]);
+        ->and(array_filter(array_keys(trialRows($rows)), static fn (string $date): bool => $date >= '2026-11-30'))->toBe([]);
 });
 
 it('keeps a trial moved off a scheduled deload week in that week\'s cycle once the deload is past', function (): void {
@@ -138,6 +138,14 @@ it('keeps a trial moved off a scheduled deload week in that week\'s cycle once t
         ->and(trialWeeksOf(trialPlan(trialPlanInputs(10_000.0, today: '2026-08-17'))))->toContain('2026-08-17')
         ->and(in_array('2026-08-31', weeksWithQualitySlot($inputs), true))->toBeTrue()
         ->and(trialWeeksOf(trialPlan($inputs)))->not->toContain('2026-08-31');
+});
+
+it('moves a trial that a ran-too-hard week left without a quality slot on to three weeks before race week', function (): void {
+    $inputs = planInputsWith(trialPlanInputs(10_000.0, today: '2026-11-09'), [
+        'adaptation' => ['reason' => AdaptationReason::RanTooHard, 'deload' => false, 'quality_delta' => -1, 'adherence_pct' => 100, 'stimulus_adherence_pct' => 100],
+    ]);
+
+    expect(trialWeeksOf(trialPlan($inputs)))->toBe(['2026-11-23']);
 });
 
 it('runs a 10K trial for a half marathon goal and a 5K one for a 10K goal', function (float $raceDistanceM, int $trialM): void {

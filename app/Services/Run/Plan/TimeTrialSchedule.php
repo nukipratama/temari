@@ -21,7 +21,7 @@ final class TimeTrialSchedule
 
     public const int LAST_TRIAL_WEEKS_BEFORE_RACE = 4;
 
-    public const int TRIAL_FREE_WEEKS_BEFORE_RACE = 3;
+    public const int TRIAL_FREE_WEEKS_BEFORE_RACE = 2;
 
     public const int SELF_SCALED_FIRST_WEEK = 3;
 
