@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Exceptions\Weather\OpenMeteoUnavailableException;
 use App\Models\ActivityDetail;
 use App\Services\Weather\OpenMeteoClient;
 use App\Services\Weather\WeatherSnapshot;
@@ -9,6 +10,22 @@ use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
+
+it('stops the batch when Open-Meteo is unavailable', function (): void {
+    $this->mock(OpenMeteoClient::class)
+        ->shouldReceive('fetchArchive')
+        ->once()
+        ->andThrow(new OpenMeteoUnavailableException('open-meteo rate limited (429)'));
+
+    ActivityDetail::factory()->count(2)->create([
+        'start_lat' => -6.24, 'start_lng' => 106.81, 'start_date_local' => now()->subDays(10),
+        'weather_rain_is_forecast' => true,
+    ]);
+
+    $this->artisan('weather:correct-forecast')
+        ->expectsOutputToContain('Stopped early, Open-Meteo is unavailable')
+        ->assertSuccessful();
+});
 
 it('corrects a forecast-sourced row once it is old enough for the archive', function (): void {
     $this->mock(OpenMeteoClient::class)

@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Services\Weather;
 
+use App\Exceptions\Weather\OpenMeteoUnavailableException;
 use App\Support\Numeric;
 use Carbon\CarbonImmutable;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
@@ -142,6 +144,8 @@ class OpenMeteoClient
                 $useArchive ? self::ARCHIVE_URL : self::FORECAST_URL,
                 $this->params($latitude, $longitude, $startedAt, $elapsedSeconds, $useArchive),
             );
+        } catch (ConnectionException $e) {
+            throw new OpenMeteoUnavailableException((string) preg_replace('/\?\S*/', '', $e->getMessage()));
         } catch (Throwable $e) {
             Log::warning('open-meteo request failed', [
                 'started_at' => $startedAt->toIso8601String(),
@@ -149,6 +153,10 @@ class OpenMeteoClient
             ]);
 
             return null;
+        }
+
+        if ($response->status() === 429) {
+            throw new OpenMeteoUnavailableException('open-meteo rate limited (429)');
         }
 
         if ($response->failed()) {

@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Exceptions\Weather\OpenMeteoUnavailableException;
 use Illuminate\Http\Client\ConnectionException;
 use App\Services\Weather\OpenMeteoClient;
 use App\Services\Weather\WeatherSnapshot;
@@ -215,31 +216,37 @@ it('returns null on HTTP failure (pipeline keeps moving)', function (): void {
 it('logs a warning with status and hour but no coordinate when the response fails', function (): void {
     $log = Log::spy();
     $startedAt = CarbonImmutable::parse('2026-05-10 06:00:00');
-    Http::fake(['api.open-meteo.com/*' => Http::response(['error' => 'rate limited'], 429)]);
+    Http::fake(['api.open-meteo.com/*' => Http::response(['error' => 'down'], 503)]);
 
     expect(new OpenMeteoClient()->fetchForActivity(12.3456789, 98.7654321, $startedAt, 0))->toBeNull();
 
     $log->shouldHaveReceived('warning')
         ->once()
         ->withArgs(fn (string $message, array $context): bool => $message === 'open-meteo request failed'
-            && $context === ['status' => 429, 'hour' => '2026-05-10T06:00']);
+            && $context === ['status' => 503, 'hour' => '2026-05-10T06:00']);
 });
 
-it('logs a failed request without the coordinate its error message carries', function (): void {
-    $log = Log::spy();
+it('reports a rate limit as Open-Meteo unavailable so a batch can stop', function (): void {
+    Http::fake(['api.open-meteo.com/*' => Http::response(['error' => 'rate limited'], 429)]);
+
+    expect(fn () => new OpenMeteoClient()->fetchForActivity(-6.2, 106.8, CarbonImmutable::parse('2026-05-10 06:00:00'), 0))
+        ->toThrow(OpenMeteoUnavailableException::class, 'open-meteo rate limited (429)');
+});
+
+it('reports a timeout as Open-Meteo unavailable without the coordinate its error message carries', function (): void {
     Http::fake(['api.open-meteo.com/*' => fn () => throw new ConnectionException(
         'cURL error 28: Operation timed out (see https://curl.se/libcurl/c/libcurl-errors.html) for https://api.open-meteo.com/v1/forecast?latitude=12.3456789&longitude=98.7654321&hourly=temperature_2m',
     )]);
 
-    expect(new OpenMeteoClient()->fetchForActivity(12.3456789, 98.7654321, CarbonImmutable::parse('2026-05-10 06:00:00'), 0))->toBeNull();
-
-    $log->shouldHaveReceived('warning')
-        ->once()
-        ->withArgs(fn (string $message, array $context): bool => $message === 'open-meteo request failed'
-            && array_keys($context) === ['started_at', 'error']
-            && str_contains($context['error'], 'cURL error 28')
-            && ! str_contains(json_encode($context, JSON_THROW_ON_ERROR), '12.3456789')
-            && ! str_contains(json_encode($context, JSON_THROW_ON_ERROR), '98.7654321'));
+    try {
+        new OpenMeteoClient()->fetchForActivity(12.3456789, 98.7654321, CarbonImmutable::parse('2026-05-10 06:00:00'), 0);
+        $this->fail('Expected OpenMeteoUnavailableException');
+    } catch (OpenMeteoUnavailableException $e) {
+        expect($e->getMessage())->toContain('cURL error 28')
+            ->and(str_contains($e->getMessage(), '12.3456789'))->toBeFalse()
+            ->and(str_contains($e->getMessage(), '98.7654321'))->toBeFalse()
+            ->and($e->getPrevious())->toBeNull();
+    }
 });
 
 it('returns null when the response shape is missing hourly', function (): void {
@@ -288,10 +295,10 @@ it('caches and short-circuits the second call', function (): void {
     Http::assertSentCount(1);
 });
 
-it('returns null when the http client throws (timeout / connection failure)', function (): void {
+it('returns null when the http client throws something other than a connection failure', function (): void {
     $startedAt = CarbonImmutable::parse('2026-05-10 06:00:00');
     Http::fake(function (): void {
-        throw new ConnectionException('connection refused');
+        throw new RuntimeException('unexpected');
     });
 
     expect(new OpenMeteoClient()->fetchForActivity(-6.2, 106.8, $startedAt, 0))->toBeNull();

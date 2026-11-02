@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Console\Commands\Weather;
 
+use App\Exceptions\Weather\OpenMeteoUnavailableException;
 use App\Services\Weather\WeatherSnapshot;
 use App\Models\ActivityDetail;
 use App\Services\Ops\MaintainerAlerter;
@@ -12,11 +13,14 @@ use Carbon\CarbonImmutable;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
+use Illuminate\Support\Sleep;
 
 #[Signature('weather:backfill {--limit=200 : Cap on rows handled per run}')]
 #[Description('Fetch weather for activities with stored coords that have none yet (transient Open-Meteo misses) or were sampled at the start hour only.')]
 class BackfillActivityWeatherCommand extends Command
 {
+    private const int REQUEST_PAUSE_MS = 1_000;
+
     public function handle(OpenMeteoClient $weather, MaintainerAlerter $alerter): int
     {
         $limit = (int) $this->option('limit');
@@ -36,9 +40,17 @@ class BackfillActivityWeatherCommand extends Command
 
         $filled = 0;
         foreach ($query->cursor() as $detail) {
-            if ($this->backfill($weather, $detail)) {
-                $filled++;
+            try {
+                if ($this->backfill($weather, $detail)) {
+                    $filled++;
+                }
+            } catch (OpenMeteoUnavailableException $e) {
+                $this->warn("Stopped early, Open-Meteo is unavailable: {$e->getMessage()}");
+
+                break;
             }
+
+            Sleep::for(self::REQUEST_PAUSE_MS)->milliseconds();
         }
 
         $this->info(sprintf(
