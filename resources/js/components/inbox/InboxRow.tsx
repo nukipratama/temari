@@ -6,6 +6,7 @@ import {
     Flag,
     Flame,
     Footprints,
+    HeartPulse,
     Moon,
     RefreshCwOff,
     Timer,
@@ -41,6 +42,7 @@ const KIND_LABEL: Record<NotificationKind, string> = {
     race_outcome: 'Race',
     fitness_improved: 'Race',
     time_trial: 'Plan',
+    easy_too_hard: 'Plan',
     test: 'Test',
 };
 
@@ -56,6 +58,7 @@ const KIND_ICON: Record<NotificationKind, IconComponent> = {
     race_outcome: Flag,
     fitness_improved: TrendingUp,
     time_trial: Timer,
+    easy_too_hard: HeartPulse,
     test: Bell,
 };
 
@@ -71,6 +74,7 @@ const KIND_TONE: Record<NotificationKind, Tone> = {
     race_outcome: 'accent',
     fitness_improved: 'accent',
     time_trial: 'accent',
+    easy_too_hard: 'neutral',
     test: 'neutral',
 };
 

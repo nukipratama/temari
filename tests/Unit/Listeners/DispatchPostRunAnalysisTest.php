@@ -8,6 +8,7 @@ use App\Events\ActivityIngested;
 use App\Jobs\AI\AnalyzeActivityJob;
 use App\Jobs\Run\ReconcilePlanJob;
 use App\Jobs\Run\RecalibrateTrainingHistoryJob;
+use App\Services\Run\Plan\TooHardWarning;
 use App\Services\Run\Plan\PlanRecalibrationService;
 use Illuminate\Support\Facades\Cache;
 use App\Jobs\AI\AnalyzeProfileVoiceJob;
@@ -28,6 +29,7 @@ use App\Models\RunCard;
 use App\Models\StravaConnection;
 use App\Models\WeeklySnapshot;
 use App\Notifications\DayClampedNotification;
+use App\Notifications\EasyTooHardNotification;
 use App\Services\AI\AnalysisOrigin;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\NarrationOrigin;
@@ -108,6 +110,26 @@ it('never clamps or requests clamp narration after a run today', function (): vo
         ->and(Analysis::query()->where('analysis_type', AnalysisType::PlanClampVoice)->exists())->toBeFalse();
     Notification::assertNotSentTo($activity->user, DayClampedNotification::class);
 });
+
+it('warns about a hot easy run from today, never about a backfilled one', function (int $daysAgo, bool $warned): void {
+    Notification::fake();
+    $startedAt = Carbon::today()->subDays($daysAgo)->setTime(7, 0)->toDateTimeString();
+    $activity = analyzedActivity($startedAt);
+    $activity->detail?->update(['moving_time' => 3000, 'stream_summary' => ['easy_cap_bpm' => 150, 'over_easy_cap_sec' => 2400]]);
+    PlannedSession::factory()->for($activity->user)->create([
+        'date' => Carbon::parse($startedAt)->toDateString(),
+        'session_type' => SessionType::Easy,
+    ]);
+
+    fire($activity);
+
+    $warned
+        ? Notification::assertSentTo($activity->user, EasyTooHardNotification::class)
+        : Notification::assertNotSentTo($activity->user, EasyTooHardNotification::class);
+})->with([
+    'today' => [0, true],
+    'backfilled' => [10, false],
+]);
 
 it('never resolves the clamp recorder for a post-ingest run today', function (): void {
     $activity = analyzedActivity(Carbon::today()->setTime(7, 0)->toDateTimeString());
@@ -726,6 +748,7 @@ it('skips weekly recap staging when rebuildForwardFrom finds no in-window histor
         app(PlanReconciliationDispatch::class),
         app(TrendSnapshotRepairDispatch::class),
         app(Temari::class),
+        app(TooHardWarning::class),
     );
 
     $listener->handle(new ActivityIngested($activity->id));

@@ -1270,6 +1270,21 @@ it('dayPayload explains a run against the advice shown in the grading\'s own wor
         PlannedSessionStatus::Done,
         "this run's data can't tell how the effort went, so the day counts its distance only.",
     ],
+    'easy day over the heart-rate cap' => [
+        ['compliance_score' => 103, 'intent_evidence' => ['basis' => 'heart_rate', 'hr_cap_bpm' => 150, 'over_cap_minutes' => 12.0, 'over_cap_limit_minutes' => 10.0, 'egregious' => 0]],
+        PlannedSessionStatus::Overreached,
+        'it ran harder than the easy effort the day asked for. two easy days like it in one week cost the following week a quality session.',
+    ],
+    'easy day far over the heart-rate cap' => [
+        ['compliance_score' => 103, 'intent_evidence' => ['basis' => 'heart_rate', 'hr_cap_bpm' => 150, 'over_cap_minutes' => 35.0, 'over_cap_limit_minutes' => 10.0, 'egregious' => 1]],
+        PlannedSessionStatus::Overreached,
+        'it ran harder than the easy effort the day asked for. it went far enough over to cost the following week a quality session on its own.',
+    ],
+    'marathon-pace long run over the heart-rate cap' => [
+        ['session_type' => SessionType::Long, 'prescribed_hard_minutes' => 20, 'prescribed_pace_band' => PaceBand::Marathon, 'compliance_score' => 103, 'intent_evidence' => ['basis' => 'heart_rate', 'hr_cap_bpm' => 150, 'over_cap_minutes' => 35.0, 'over_cap_limit_minutes' => 10.0, 'egregious' => 1]],
+        PlannedSessionStatus::Overreached,
+        'it ran harder than the easy effort the day asked for.',
+    ],
     'a plain hit' => [
         ['compliance_score' => 100, 'intent_verdict' => IntentVerdict::Hit, 'intent_evidence' => []],
         PlannedSessionStatus::Done,

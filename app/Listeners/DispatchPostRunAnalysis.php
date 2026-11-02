@@ -21,6 +21,7 @@ use App\Services\AI\NarrationEligibility;
 use App\Services\AI\NarrationVerdict;
 use App\Services\Run\Plan\ComplianceScorer;
 use App\Services\Run\Plan\PlanReconciliationDispatch;
+use App\Services\Run\Plan\TooHardWarning;
 use App\Services\AI\MaterialFingerprint;
 use App\Services\Run\Metrics\WeeklyAggregator;
 use App\Services\Run\Story\Temari;
@@ -50,6 +51,7 @@ class DispatchPostRunAnalysis implements ShouldQueue
         private readonly PlanReconciliationDispatch $planReconciliation,
         private readonly TrendSnapshotRepairDispatch $trendSnapshots,
         private readonly Temari $temari,
+        private readonly TooHardWarning $tooHardWarning,
     ) {
     }
 
@@ -90,6 +92,9 @@ class DispatchPostRunAnalysis implements ShouldQueue
         $isToday = $detail->start_date_local?->toDateString() === $today;
 
         if ($detail->start_date_local !== null) {
+            if (! $isBackfill) {
+                $this->tooHardWarning->warn($user, $detail->start_date_local, Carbon::today());
+            }
             $this->complianceScorer->creditIfEarned($user, $detail->start_date_local, Carbon::today());
             $this->temari->refreshPostRunMood($activity, $detail);
             $this->planReconciliation->forActivity($activity);
