@@ -379,7 +379,7 @@ function NotificationPrefsPanel({
                     <SettingsRow
                         icon={Sunrise}
                         label="morning briefing"
-                        description="today's briefing, an hour before you usually run that day."
+                        description="an hour before your usual run"
                         control={
                             <Toggle
                                 label="morning briefing"
@@ -477,8 +477,8 @@ function BriefingSendTime({
     return (
         <SettingsRow
             icon={Clock}
-            label="send it at"
-            description="any time before 22:00. leave it empty and it follows your runs."
+            label="send at"
+            description="empty = follows your runs"
             control={
                 <span className="flex shrink-0 items-center gap-2">
                     {draft !== '' && (
