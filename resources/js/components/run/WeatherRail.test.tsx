@@ -52,6 +52,18 @@ describe('railMarkers', () => {
         });
         expect(markers.find((m) => m.reading === 'feels')?.above).toBe(false);
     });
+    it('lifts a label a row further out when neither side of the rail has room', () => {
+        const { markers } = railMarkers({
+            avg: 32,
+            feels: 40,
+            dew: 30,
+            peak: 34,
+        });
+        const peak = markers.find((m) => m.reading === 'peak');
+        const dew = markers.find((m) => m.reading === 'dew');
+        expect(peak).toMatchObject({ above: true, tier: 1 });
+        expect(dew).toMatchObject({ above: true, tier: 0 });
+    });
 });
 
 describe('WeatherRail', () => {
@@ -98,6 +110,17 @@ describe('WeatherRail', () => {
         expect(document.querySelector('[data-felt-band]')).toBeNull();
         expect(label('dew')).toBeNull();
         expect(label('peak')).toHaveTextContent('peak 33°');
+    });
+
+    it('makes room above the rail only when a label sits on the outer row', () => {
+        const { container, rerender } = render(
+            <WeatherRail avg={32} feels={40} dew={30} peak={34} />,
+        );
+        expect(label('peak')).toHaveClass('mb-6');
+        expect(container.firstChild).toHaveClass('pt-10', 'pb-6');
+
+        rerender(<WeatherRail avg={27} feels={32} dew={24} peak={null} />);
+        expect(container.firstChild).toHaveClass('pt-6', 'pb-6');
     });
 
     it('renders nothing when the average is the only reading', () => {

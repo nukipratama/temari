@@ -14,6 +14,8 @@ interface Marker {
     label: string;
     pct: number;
     above: boolean;
+    /** 0 sits against the rail; 1 sits a row further out, for a label with no room on either side. */
+    tier: 0 | 1;
 }
 
 const MARKER_CLASS: Record<Reading, string> = {
@@ -40,7 +42,8 @@ const SPOKEN: Record<Reading, string> = {
 /**
  * Lays the readings out on one °C scale fitted to this run: dew point and peak
  * label above the rail, average and feels-like below, and a label that would
- * crowd its neighbour moves to the other side when that side has room.
+ * crowd its neighbour moves to the other side when that side has room, or a
+ * row further out when neither side has.
  */
 export function railMarkers(
     readings: Readonly<{
@@ -50,7 +53,7 @@ export function railMarkers(
         peak: number | null;
     }>,
 ): { markers: Marker[]; low: number; high: number } {
-    const shown: Omit<Marker, 'pct'>[] = [
+    const shown: Omit<Marker, 'pct' | 'tier'>[] = [
         {
             reading: 'avg',
             value: readings.avg,
@@ -92,6 +95,7 @@ export function railMarkers(
     const markers = shown.map((m) => ({
         ...m,
         pct: ((m.value - low) / (high - low)) * 100,
+        tier: 0 as 0 | 1,
     }));
 
     for (const above of [true, false]) {
@@ -112,6 +116,19 @@ export function railMarkers(
             );
             if (!otherSideCrowded) {
                 mover.above = !above;
+            }
+        }
+    }
+
+    for (const above of [true, false]) {
+        let lastOnRail = Number.NEGATIVE_INFINITY;
+        for (const m of markers
+            .filter((m) => m.above === above)
+            .sort((a, b) => a.pct - b.pct)) {
+            if (m.pct - lastOnRail < LABEL_MIN_GAP_PCT) {
+                m.tier = 1;
+            } else {
+                lastOnRail = m.pct;
             }
         }
     }
@@ -143,6 +160,8 @@ export default function WeatherRail({
         return null;
     }
 
+    const outerRow = (above: boolean) =>
+        markers.some((m) => m.above === above && m.tier === 1);
     const at = (value: number) => ((value - low) / (high - low)) * 100;
     const spoken = markers
         .map((m) => `${SPOKEN[m.reading]} ${m.value}°C`)
@@ -152,7 +171,12 @@ export default function WeatherRail({
         <div
             role="img"
             aria-label={spoken}
-            className={cn('px-5 py-6', className)}
+            className={cn(
+                'px-5',
+                outerRow(true) ? 'pt-10' : 'pt-6',
+                outerRow(false) ? 'pb-10' : 'pb-6',
+                className,
+            )}
             data-weather-rail
         >
             <div className="relative h-1.5 rounded-full bg-border-strong">
@@ -192,9 +216,12 @@ export default function WeatherRail({
                         <span
                             data-label={m.reading}
                             data-side={m.above ? 'above' : 'below'}
+                            data-tier={m.tier}
                             className={cn(
-                                'absolute -translate-x-1/2 whitespace-nowrap font-mono text-label-micro tabular-nums',
-                                m.above ? 'bottom-full mb-2' : 'top-full mt-2',
+                                'absolute -translate-x-1/2 whitespace-nowrap font-sans text-xs tabular-nums',
+                                m.above ? 'bottom-full' : 'top-full',
+                                m.above && (m.tier === 1 ? 'mb-6' : 'mb-2'),
+                                !m.above && (m.tier === 1 ? 'mt-6' : 'mt-2'),
                                 LABEL_CLASS[m.reading],
                             )}
                             style={{ left: `${m.pct}%` }}

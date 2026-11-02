@@ -39,10 +39,10 @@ final readonly class RunBlueprint
         return (int) round(($this->distanceM / 1000) * $this->targetPaceSecPerKm);
     }
 
-    /** Warms a degree every half hour, so only longer demo runs show a peak. */
+    /** Warms a degree every half hour up to 3°, so only longer demo runs show a peak. */
     public function weatherTempMaxC(): ?int
     {
-        return $this->weatherTempC === null ? null : $this->weatherTempC + intdiv($this->movingTimeSec(), 1800);
+        return $this->weatherTempC === null ? null : $this->weatherTempC + min(3, intdiv($this->movingTimeSec(), 1800));
     }
 
     /** Magnus approximation, the formula Open-Meteo derives dew point with. */
