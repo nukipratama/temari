@@ -22,7 +22,9 @@ use Override;
  * ({@see \App\Services\Run\Plan\PlanAdapter}). Written once per
  * regeneration, keyed `unique(user_id, week_start)`, so the Plan tab can
  * explain a deload that a later readiness recovery would otherwise make
- * look unmotivated.
+ * look unmotivated. The week's one athlete override (`override_*`) is the
+ * only part written outside regeneration, by
+ * {@see \App\Services\Run\Plan\QualityOverrideService}.
  *
  * @property int $id
  * @property int $user_id
