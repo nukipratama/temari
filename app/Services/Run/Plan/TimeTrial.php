@@ -60,7 +60,7 @@ final readonly class TimeTrial
     {
         $trial = intdiv($deferred['distance_m'], 1_000).'k time trial';
         if ($deferred['moved_to'] === null) {
-            return "this week's {$trial} has no week left before your race, so it comes off the plan.";
+            return "this week's {$trial} comes off the plan, there's no week left to fit it.";
         }
 
         $weeks = (int) $weekStart->diffInWeeks(Carbon::parse($deferred['moved_to']));

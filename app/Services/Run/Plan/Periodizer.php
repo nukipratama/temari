@@ -190,7 +190,7 @@ final readonly class Periodizer
             static fn (array $week): string => $week['week_start']->toDateString(),
             array_filter($arc, static fn (array $week): bool => $week['phase'] === PlanPhase::Deload),
         )));
-        $deferredTrial = null;
+        $deferredDates = null;
         foreach ($weeks as $week) {
             $weekRows = WeekPlanBuilder::build(
                 $week['week_start'],
@@ -226,16 +226,16 @@ final readonly class Periodizer
             if ($trialRows !== null && array_any($trialRows, static fn (array $row): bool => TimeTrial::isTrial($row['prescription_race_context']))) {
                 $weekRows = $trialRows;
                 $trials->placedIn($week['week_start']);
-                if ($deferredTrial !== null && ! $trial->retry && $trials->dueWeekOf($week['week_start']) === $deferredTrial['due']) {
-                    foreach ($deferredTrial['dates'] as $date) {
+                if ($deferredDates !== null && ! $trial->retry) {
+                    foreach ($deferredDates as $date) {
                         $rows[$date] = [...$rows[$date], 'deferred_time_trial' => ['distance_m' => $trial->distanceM, 'moved_to' => $week['week_start']->toDateString()]];
                     }
                 }
-                $deferredTrial = null;
+                $deferredDates = null;
             } else {
                 $weekRows = $this->withIntensityPrescriptions($weekRows, $week['multiplier'], $inputs, $week['week_start'], $rows, $goalPace, buildQualityMinutes: $buildQualityMinutes, peakGoalPaceMinutes: $peakGoalPaceMinutes, fastFinish: $fastFinish, longestKm: $longestKm);
-                if ($trial instanceof TimeTrial && ! $trial->retry && $deferredTrial === null) {
-                    $deferredTrial = ['due' => $trials->dueWeekOf($week['week_start']), 'dates' => array_keys($weekRows)];
+                if ($trial instanceof TimeTrial && ! $trial->retry && $deferredDates === null) {
+                    $deferredDates = array_keys($weekRows);
                     $weekDeferral = ['deferred_time_trial' => ['distance_m' => $trial->distanceM, 'moved_to' => null]];
                 }
             }

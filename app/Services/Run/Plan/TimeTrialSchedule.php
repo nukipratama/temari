@@ -81,7 +81,7 @@ final class TimeTrialSchedule
 
         $week = $weekStart->toDateString();
         $distanceM = TimeTrial::distanceFor($this->inputs->raceDistanceM);
-        $due = $this->dueWeekOf($weekStart);
+        $due = array_last(array_filter($this->dueWeeks, static fn (string $dueWeek): bool => $dueWeek <= $week));
         if ($due !== null && ! $this->cycleHasTrial($due) && ! $this->hasEvidenceSince($due)) {
             return new TimeTrial($distanceM, $aimTimeSec);
         }
@@ -95,14 +95,6 @@ final class TimeTrialSchedule
         return $skippedLastWeek && ! isset($this->trialWeeks[$week]) && ! $this->hasEvidenceSince($previous)
             ? new TimeTrial($distanceM, $aimTimeSec, retry: true)
             : null;
-    }
-
-    /** The Monday the cycle holding this week fell due, or null before the first. */
-    public function dueWeekOf(Carbon $weekStart): ?string
-    {
-        $week = $weekStart->toDateString();
-
-        return array_last(array_filter($this->dueWeeks, static fn (string $dueWeek): bool => $dueWeek <= $week));
     }
 
     public function placedIn(Carbon $weekStart): void

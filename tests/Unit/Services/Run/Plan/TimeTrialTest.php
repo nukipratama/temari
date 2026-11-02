@@ -142,5 +142,5 @@ it('says how long a deferred trial waits, or that it comes off the plan', functi
 })->with([
     'a week' => ['2026-11-16', 5_000, "this week's 5k time trial waits a week."],
     'two weeks' => ['2026-11-23', 10_000, "this week's 10k time trial waits 2 weeks."],
-    'none left' => [null, 5_000, "this week's 5k time trial has no week left before your race, so it comes off the plan."],
+    'none left' => [null, 5_000, "this week's 5k time trial comes off the plan, there's no week left to fit it."],
 ]);

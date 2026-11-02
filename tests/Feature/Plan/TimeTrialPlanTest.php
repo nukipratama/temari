@@ -159,6 +159,7 @@ it('marks the week a ran-too-hard week left without its trial with where the tri
         ->toBe([['distance_m' => 5_000, 'moved_to' => $movedTo]]);
 })->with([
     'moved past the deload' => ['2026-11-09', '2026-11-23'],
+    'the next cycle\'s trial' => ['2026-11-02', '2026-11-09'],
     'no week left' => ['2026-11-23', null],
 ]);
 
