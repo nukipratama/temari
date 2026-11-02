@@ -13,8 +13,8 @@ use Illuminate\Foundation\Http\FormRequest;
  * `updateOrCreate` holding whatever was there before, which reads as a toggle
  * that did not stick.
  *
- * A send time ends before quiet hours begin: one held past midnight would
- * deliver the previous day's briefing.
+ * A send time ends before quiet hours begin, so it is never itself held past
+ * midnight into the next day's 04:00 release.
  */
 class UpdateNotificationPreferenceRequest extends FormRequest
 {
