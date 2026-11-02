@@ -18,6 +18,7 @@ code_refs:
   - resources/js/hooks/useRunQuestions.ts
   - resources/js/components/run/RunLenses.tsx
   - resources/js/components/run/MapWeatherPanel.tsx
+  - resources/js/components/run/WeatherRail.tsx
   - resources/js/components/run/VitalsCard.tsx
   - resources/js/components/run/SplitsChart.tsx
   - resources/js/components/run/LapsCarousel.tsx
@@ -127,6 +128,21 @@ one tap dismisses the overlay and enables full drag/zoom, the same pattern
 Google Maps embeds use. The prototype fills this slot with a decorative
 "activate map" placeholder; the app keeps the real map there, which already carries
 an activate pill of its own.
+
+Under the conditions, [WeatherRail](../../resources/js/components/run/WeatherRail.tsx)
+puts the run's air on one °C scale fitted to that run: the average temperature,
+feels-like, dew point and, when it rose at least `PEAK_MIN_RISE_C` (2°) above the
+average, the peak, with the gap between average and feels-like shaded. Dew point
+and peak label above the rail, average and feels-like below, and a label that
+would crowd its neighbour moves to the other side, or a row further out when
+neither side has room ([`railMarkers()`](../../resources/js/components/run/WeatherRail.tsx)).
+A missing reading is just absent, and a run with no reading beside its average
+(one sampled before window sampling) draws no rail. Feels-like is Open-Meteo's
+Steadman apparent temperature, which runs warmer than the heat index the hot-run
+rule uses, so a run can feel like 32° without counting as hot; the rail never
+says hot either way (see [[weather-integration]]). Demo runs derive these
+readings from their blueprint's temperature, humidity, wind and duration
+([RunBlueprint](../../database/seeders/Demo/RunBlueprint.php)).
 
 ## Effort score
 

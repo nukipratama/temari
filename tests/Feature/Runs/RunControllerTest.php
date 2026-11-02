@@ -100,6 +100,29 @@ it('sends the run page only the activity and detail fields it renders', function
             ->missing('storyLine.updated_at'));
 });
 
+it('ships the run\'s feels-like, dew point and peak temperature, null where not sampled', function (?int $max, ?int $dew, ?int $feels): void {
+    $user = User::factory()->create();
+    $activity = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($activity)->create([
+        'weather_temp_c' => 29,
+        'weather_temp_max_c' => $max,
+        'weather_dew_point_c' => $dew,
+        'weather_apparent_temp_c' => $feels,
+    ]);
+    RunCard::factory()->for($activity)->create();
+
+    $this->actingAs($user)->get("/activities/{$activity->id}")
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('detail.weather_temp_c', 29)
+            ->where('detail.weather_temp_max_c', $max)
+            ->where('detail.weather_dew_point_c', $dew)
+            ->where('detail.weather_apparent_temp_c', $feels));
+})->with([
+    'sampled over the run' => [33, 23, 34],
+    'read before window sampling' => [null, null, null],
+]);
+
 it('404s when the activity has not been analyzed yet', function (): void {
     $user = User::factory()->create();
     $activity = Activity::factory()->for($user)->create();

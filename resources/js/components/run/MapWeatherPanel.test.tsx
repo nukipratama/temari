@@ -207,4 +207,28 @@ describe('MapWeatherPanel', () => {
         );
         expect(container.firstElementChild).toHaveClass('flex');
     });
+
+    it("draws the weather rail from the run's feels-like, dew point and peak", async () => {
+        render(
+            <MapWeatherPanel
+                detail={detail({
+                    weather_temp_c: 29.4,
+                    weather_temp_max_c: 33,
+                    weather_dew_point_c: 23,
+                    weather_apparent_temp_c: 34,
+                })}
+            />,
+        );
+        expect(
+            await screen.findByRole('img', {
+                name: 'average 29°C, felt like 34°C, dew point 23°C, peak 33°C',
+            }),
+        ).toHaveClass('w-full', 'sm:order-last');
+    });
+
+    it('keeps the old layout on a run read before the new readings existed', () => {
+        render(<MapWeatherPanel detail={detail()} />);
+        expect(screen.queryByRole('img')).not.toBeInTheDocument();
+        expect(screen.getByText(/80% humidity/)).toBeInTheDocument();
+    });
 });

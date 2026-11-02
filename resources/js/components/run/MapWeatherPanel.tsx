@@ -9,6 +9,7 @@ import { lazyIsland } from '@/lib/lazyIsland';
 import { formatKm } from '@/lib/pace';
 
 const RouteMap = lazyIsland(() => import('@/components/run/RouteMap'));
+const WeatherRail = lazyIsland(() => import('@/components/run/WeatherRail'));
 
 /**
  * The route map with the run's conditions read underneath it, as one sunken
@@ -29,6 +30,8 @@ export default function MapWeatherPanel({
     const hasPolyline =
         detail.summary_polyline != null && detail.summary_polyline.length > 0;
     const hasConditions = temp != null || location != null;
+    const feels = detail.weather_apparent_temp_c ?? null;
+    const dew = detail.weather_dew_point_c ?? null;
 
     if (!hasPolyline && !hasConditions) {
         return null;
@@ -89,6 +92,26 @@ export default function MapWeatherPanel({
                                 />
                             )}
                         </div>
+                    )}
+                    {temp != null && (
+                        <Suspense
+                            fallback={
+                                (feels != null || dew != null) && (
+                                    <div
+                                        className="h-[3.375rem] w-full sm:order-last"
+                                        aria-hidden
+                                    />
+                                )
+                            }
+                        >
+                            <WeatherRail
+                                avg={Math.round(temp)}
+                                feels={feels}
+                                dew={dew}
+                                peak={detail.weather_temp_max_c ?? null}
+                                className="w-full sm:order-last"
+                            />
+                        </Suspense>
                     )}
                     {location != null && (
                         <div
