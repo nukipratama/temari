@@ -23,6 +23,8 @@ class OpenMeteoClient
 
     private const float RAIN_THRESHOLD_MM = 0.1;
 
+    private const int SAMPLE_STEP_SECONDS = 900;
+
     private const int TIMEOUT_SECONDS = 5;
 
     private const int FORECAST_CACHE_TTL = 21_600;
@@ -33,10 +35,11 @@ class OpenMeteoClient
         float $latitude,
         float $longitude,
         CarbonImmutable $startedAt,
+        int $elapsedSeconds,
     ): ?WeatherSnapshot {
         $useArchive = $startedAt->diffInDays(CarbonImmutable::now()) > self::FORECAST_PAST_DAYS;
 
-        return $this->fetch($latitude, $longitude, $startedAt, $useArchive, useCache: true);
+        return $this->fetch($latitude, $longitude, $startedAt, $elapsedSeconds, $useArchive, useCache: true);
     }
 
     /**
@@ -49,18 +52,20 @@ class OpenMeteoClient
         float $latitude,
         float $longitude,
         CarbonImmutable $startedAt,
+        int $elapsedSeconds,
     ): ?WeatherSnapshot {
-        return $this->fetch($latitude, $longitude, $startedAt, useArchive: true, useCache: false);
+        return $this->fetch($latitude, $longitude, $startedAt, $elapsedSeconds, useArchive: true, useCache: false);
     }
 
     private function fetch(
         float $latitude,
         float $longitude,
         CarbonImmutable $startedAt,
+        int $elapsedSeconds,
         bool $useArchive,
         bool $useCache,
     ): ?WeatherSnapshot {
-        $cacheKey = $this->cacheKey($latitude, $longitude, $startedAt);
+        $cacheKey = $this->cacheKey($latitude, $longitude, $startedAt, $elapsedSeconds);
 
         // Cache the primitive shape, never the WeatherSnapshot object: a cached
         // object can come back as __PHP_Incomplete_Class across a runtime/extension
@@ -74,7 +79,7 @@ class OpenMeteoClient
             }
         }
 
-        $snapshot = $this->fetchUncached($latitude, $longitude, $startedAt, $useArchive);
+        $snapshot = $this->fetchUncached($latitude, $longitude, $startedAt, $elapsedSeconds, $useArchive);
         if ($snapshot instanceof WeatherSnapshot) {
             $ttl = $useArchive ? self::ARCHIVE_CACHE_TTL : self::FORECAST_CACHE_TTL;
             Cache::put($cacheKey, $this->dehydrate($snapshot), $ttl);
@@ -84,13 +89,16 @@ class OpenMeteoClient
     }
 
     /**
-     * @return array{t: int, h: int, r: bool, ws: int|null, wg: int|null, wd: int|null, rf: bool}
+     * @return array{t: int, tm: int|null, h: int, dp: int|null, at: int|null, r: bool, ws: int|null, wg: int|null, wd: int|null, rf: bool}
      */
     private function dehydrate(WeatherSnapshot $snapshot): array
     {
         return [
             't' => $snapshot->tempC,
+            'tm' => $snapshot->tempMaxC,
             'h' => $snapshot->humidityPct,
+            'dp' => $snapshot->dewPointC,
+            'at' => $snapshot->apparentTempC,
             'r' => $snapshot->rainDetected,
             'ws' => $snapshot->windSpeedKmh,
             'wg' => $snapshot->windGustKmh,
@@ -116,6 +124,9 @@ class OpenMeteoClient
             windGustKmh: isset($cached['wg']) ? Numeric::int($cached['wg']) : null,
             windDirectionDeg: isset($cached['wd']) ? Numeric::int($cached['wd']) : null,
             rainIsForecast: (bool) ($cached['rf'] ?? false),
+            tempMaxC: isset($cached['tm']) ? Numeric::int($cached['tm']) : null,
+            dewPointC: isset($cached['dp']) ? Numeric::int($cached['dp']) : null,
+            apparentTempC: isset($cached['at']) ? Numeric::int($cached['at']) : null,
         );
     }
 
@@ -123,12 +134,13 @@ class OpenMeteoClient
         float $latitude,
         float $longitude,
         CarbonImmutable $startedAt,
+        int $elapsedSeconds,
         bool $useArchive,
     ): ?WeatherSnapshot {
         try {
             $response = $this->request()->get(
                 $useArchive ? self::ARCHIVE_URL : self::FORECAST_URL,
-                $this->params($latitude, $longitude, $startedAt, $useArchive),
+                $this->params($latitude, $longitude, $startedAt, $elapsedSeconds, $useArchive),
             );
         } catch (Throwable $e) {
             Log::warning('open-meteo request failed', [
@@ -151,7 +163,7 @@ class OpenMeteoClient
         /** @var array<string, mixed>|null $payload */
         $payload = $response->json();
 
-        return $this->parse($payload, $startedAt, $useArchive);
+        return $this->parse($payload, $startedAt, $elapsedSeconds, $useArchive);
     }
 
     /**
@@ -161,18 +173,19 @@ class OpenMeteoClient
         float $latitude,
         float $longitude,
         CarbonImmutable $startedAt,
+        int $elapsedSeconds,
         bool $useArchive,
     ): array {
         $base = [
             'latitude' => $latitude,
             'longitude' => $longitude,
-            'hourly' => 'temperature_2m,relative_humidity_2m,precipitation,wind_speed_10m,wind_gusts_10m,wind_direction_10m',
+            'hourly' => 'temperature_2m,relative_humidity_2m,dew_point_2m,apparent_temperature,precipitation,wind_speed_10m,wind_gusts_10m,wind_direction_10m',
             'timezone' => 'auto',
         ];
 
         if ($useArchive) {
             $base['start_date'] = $startedAt->toDateString();
-            $base['end_date'] = $startedAt->toDateString();
+            $base['end_date'] = $startedAt->addSeconds($elapsedSeconds)->toDateString();
         } else {
             $base['past_days'] = self::FORECAST_PAST_DAYS;
             $base['forecast_days'] = 1;
@@ -184,71 +197,164 @@ class OpenMeteoClient
     /**
      * @param  array<string, mixed>|null  $payload
      */
-    private function parse(?array $payload, CarbonImmutable $startedAt, bool $useArchive): ?WeatherSnapshot
+    private function parse(?array $payload, CarbonImmutable $startedAt, int $elapsedSeconds, bool $useArchive): ?WeatherSnapshot
     {
-        if (! is_array($payload) || ! isset($payload['hourly'])) {
+        if (! is_array($payload) || ! isset($payload['hourly']) || ! is_array($payload['hourly'])) {
             return null;
         }
 
-        /** @var array<string, mixed> $hourly */
         $hourly = $payload['hourly'];
-
-        /** @var list<string> $times */
-        $times = $hourly['time'] ?? [];
-        /** @var list<float|int|null> $temps */
-        $temps = $hourly['temperature_2m'] ?? [];
-        /** @var list<float|int|null> $humidities */
-        $humidities = $hourly['relative_humidity_2m'] ?? [];
-        /** @var list<float|int|null> $precipitations */
-        $precipitations = $hourly['precipitation'] ?? [];
-        /** @var list<float|int|null> $windSpeeds */
-        $windSpeeds = $hourly['wind_speed_10m'] ?? [];
-        /** @var list<float|int|null> $windGusts */
-        $windGusts = $hourly['wind_gusts_10m'] ?? [];
-        /** @var list<float|int|null> $windDirections */
-        $windDirections = $hourly['wind_direction_10m'] ?? [];
-
+        $times = is_array($hourly['time'] ?? null) ? $hourly['time'] : [];
         // Open-Meteo buckets hourly by local wall-clock (timezone=auto), matching Strava's start_date_local.
-        $needle = $startedAt->format('Y-m-d\TH:00');
-        $index = array_search($needle, $times, strict: true);
-        if ($index === false) {
+        $hourIndex = array_flip(array_filter($times, is_string(...)));
+        $endedAt = $startedAt->addSeconds(max(0, $elapsedSeconds));
+        $instants = $this->sampleInstants($startedAt, $endedAt);
+        $sampled = fn (string $variable): array => $this->sampled($hourly[$variable] ?? null, $hourIndex, $instants);
+
+        $temps = $sampled('temperature_2m');
+        $humidities = $sampled('relative_humidity_2m');
+        if ($temps === [] || $humidities === []) {
             return null;
         }
 
-        $temp = $temps[$index] ?? null;
-        $humidity = $humidities[$index] ?? null;
-        $precipitation = $precipitations[$index] ?? 0;
-        if ($temp === null || $humidity === null) {
-            return null;
-        }
+        $windGusts = $sampled('wind_gusts_10m');
+        $midpoint = $startedAt->addSeconds(intdiv(max(0, $elapsedSeconds), 2));
 
         return new WeatherSnapshot(
-            tempC: (int) round((float) $temp),
-            humidityPct: (int) round((float) $humidity),
-            rainDetected: ((float) $precipitation) > self::RAIN_THRESHOLD_MM,
+            tempC: $this->roundedMean($temps),
+            humidityPct: $this->roundedMean($humidities),
+            rainDetected: $this->rainedDuring($hourly['precipitation'] ?? null, $hourIndex, $startedAt, $endedAt),
             // Open-Meteo returns km/h by default; store as-is (the label renders "km/j").
-            windSpeedKmh: $this->roundedOrNull($windSpeeds[$index] ?? null),
-            windGustKmh: $this->roundedOrNull($windGusts[$index] ?? null),
-            windDirectionDeg: $this->roundedOrNull($windDirections[$index] ?? null),
+            windSpeedKmh: $this->roundedMeanOrNull($sampled('wind_speed_10m')),
+            windGustKmh: $windGusts === [] ? null : (int) round(max($windGusts)),
+            windDirectionDeg: $this->roundedOrNull($this->directionNear($hourly['wind_direction_10m'] ?? null, $hourIndex, $midpoint)),
             // The forecast endpoint gives an uncertain rain flag; the archive one is observed.
             rainIsForecast: ! $useArchive,
+            tempMaxC: (int) round(max($temps)),
+            dewPointC: $this->roundedMeanOrNull($sampled('dew_point_2m')),
+            apparentTempC: $this->roundedMeanOrNull($sampled('apparent_temperature')),
         );
     }
 
-    private function roundedOrNull(float|int|null $value): ?int
+    /**
+     * @return non-empty-list<CarbonImmutable>
+     */
+    private function sampleInstants(CarbonImmutable $startedAt, CarbonImmutable $endedAt): array
     {
-        return $value === null ? null : (int) round((float) $value);
+        $instants = [];
+        for ($at = $startedAt; $at->lt($endedAt); $at = $at->addSeconds(self::SAMPLE_STEP_SECONDS)) {
+            $instants[] = $at;
+        }
+
+        $instants[] = $endedAt;
+
+        return $instants;
     }
 
-    private function cacheKey(float $latitude, float $longitude, CarbonImmutable $startedAt): string
+    /**
+     * Hourly values are instantaneous, so each instant interpolates between the
+     * hours around it, or takes the earlier hour when the later one is missing.
+     *
+     * @param  array<string, int>  $hourIndex
+     * @param  list<CarbonImmutable>  $instants
+     * @return list<float>
+     */
+    private function sampled(mixed $series, array $hourIndex, array $instants): array
+    {
+        $values = [];
+        foreach ($instants as $at) {
+            $hour = $at->startOfHour();
+            $before = $this->hourValue($series, $hourIndex, $hour);
+            if ($before === null) {
+                continue;
+            }
+
+            $after = $this->hourValue($series, $hourIndex, $hour->addHour());
+            $fraction = ($at->minute * 60 + $at->second) / 3600;
+            $values[] = $after === null ? $before : $before + ($after - $before) * $fraction;
+        }
+
+        return $values;
+    }
+
+    /**
+     * Each hourly precipitation total covers the hour ending at its timestamp.
+     *
+     * @param  array<string, int>  $hourIndex
+     */
+    private function rainedDuring(mixed $series, array $hourIndex, CarbonImmutable $startedAt, CarbonImmutable $endedAt): bool
+    {
+        $hour = $startedAt->startOfHour()->addHour();
+        do {
+            if (($this->hourValue($series, $hourIndex, $hour) ?? 0.0) > self::RAIN_THRESHOLD_MM) {
+                return true;
+            }
+
+            $hour = $hour->addHour();
+        } while ($hour->subHour()->lt($endedAt));
+
+        return false;
+    }
+
+    /**
+     * A bearing can't be averaged linearly, so take the hour nearest the run's midpoint.
+     *
+     * @param  array<string, int>  $hourIndex
+     */
+    private function directionNear(mixed $series, array $hourIndex, CarbonImmutable $midpoint): ?float
+    {
+        $nearest = $midpoint->minute >= 30 ? $midpoint->startOfHour()->addHour() : $midpoint->startOfHour();
+
+        return $this->hourValue($series, $hourIndex, $nearest)
+            ?? $this->hourValue($series, $hourIndex, $midpoint->startOfHour());
+    }
+
+    /**
+     * @param  array<string, int>  $hourIndex
+     */
+    private function hourValue(mixed $series, array $hourIndex, CarbonImmutable $hour): ?float
+    {
+        $index = $hourIndex[$hour->format('Y-m-d\TH:00')] ?? null;
+        if ($index === null || ! is_array($series)) {
+            return null;
+        }
+
+        $value = $series[$index] ?? null;
+
+        return is_numeric($value) ? (float) $value : null;
+    }
+
+    /**
+     * @param  non-empty-list<float>  $values
+     */
+    private function roundedMean(array $values): int
+    {
+        return (int) round(array_sum($values) / count($values));
+    }
+
+    /**
+     * @param  list<float>  $values
+     */
+    private function roundedMeanOrNull(array $values): ?int
+    {
+        return $values === [] ? null : $this->roundedMean($values);
+    }
+
+    private function roundedOrNull(?float $value): ?int
+    {
+        return $value === null ? null : (int) round($value);
+    }
+
+    private function cacheKey(float $latitude, float $longitude, CarbonImmutable $startedAt, int $elapsedSeconds): string
     {
         // Versioned so a future cache-shape change can bump this prefix rather
         // than risk serving an old, differently-shaped entry.
         return sprintf(
-            'weather:v2:%s:%s:%s',
+            'weather:v3:%s:%s:%s:%d',
             number_format($latitude, 3, '.', ''),
             number_format($longitude, 3, '.', ''),
-            $startedAt->format('Y-m-d\TH:00'),
+            $startedAt->format('Y-m-d\TH:i'),
+            intdiv(max(0, $elapsedSeconds), 60),
         );
     }
 

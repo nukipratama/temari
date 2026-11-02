@@ -468,6 +468,7 @@ class ActivityPipeline
                 (float) $detail->start_lat,
                 (float) $detail->start_lng,
                 $startedAt,
+                $detail->elapsed_time ?? 0,
             );
         } catch (Throwable $e) {
             // Best-effort (see class header): must never block ingest, or the

@@ -72,6 +72,7 @@ class CorrectForecastWeatherCommand extends Command
             (float) $detail->start_lat,
             (float) $detail->start_lng,
             CarbonImmutable::instance($detail->start_date_local),
+            $detail->elapsed_time ?? 0,
         );
 
         if (!$snapshot instanceof WeatherSnapshot) {
