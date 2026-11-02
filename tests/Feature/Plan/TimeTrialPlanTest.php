@@ -148,6 +148,25 @@ it('moves a trial that a ran-too-hard week left without a quality slot on to thr
     expect(trialWeeksOf(trialPlan($inputs)))->toBe(['2026-11-23']);
 });
 
+it('marks the week a ran-too-hard week left without its trial with where the trial moved, or that none is left', function (string $today, ?string $movedTo): void {
+    $rows = trialPlan(planInputsWith(trialPlanInputs(10_000.0, today: $today), [
+        'adaptation' => ['reason' => AdaptationReason::RanTooHard, 'deload' => false, 'quality_delta' => -1, 'adherence_pct' => 100, 'stimulus_adherence_pct' => 100],
+    ]));
+    $weekEnd = Carbon::parse($today)->addDays(6)->toDateString();
+    $week = array_filter($rows, static fn (string $date): bool => $date <= $weekEnd, ARRAY_FILTER_USE_KEY);
+
+    expect(array_values(array_unique(array_map(static fn (array $row): mixed => $row['deferred_time_trial'] ?? null, $week), SORT_REGULAR)))
+        ->toBe([['distance_m' => 5_000, 'moved_to' => $movedTo]]);
+})->with([
+    'moved past the deload' => ['2026-11-09', '2026-11-23'],
+    'the next cycle\'s trial' => ['2026-11-02', '2026-11-09'],
+    'no week left' => ['2026-11-23', null],
+]);
+
+it('marks no week when every trial lands where it falls due', function (): void {
+    expect(array_filter(trialPlan(trialPlanInputs(10_000.0)), static fn (array $row): bool => isset($row['deferred_time_trial'])))->toBe([]);
+});
+
 it('runs a 10K trial for a half marathon goal and a 5K one for a 10K goal', function (float $raceDistanceM, int $trialM): void {
     $trials = trialRows(trialPlan(trialPlanInputs($raceDistanceM, aimSec: $trialM === 5_000 ? 1_400 : 2_950)));
 

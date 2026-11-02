@@ -149,6 +149,23 @@ it('explains the current week in the adapter\'s own words', function (): void {
     ]);
 });
 
+it('says where the week\'s time trial went when the adaptation left it no slot', function (): void {
+    $user = assemblerAthlete();
+    $weekStart = Carbon::today()->startOfWeek(Carbon::MONDAY);
+    PlanAdaptation::query()->create([
+        'user_id' => $user->id,
+        'week_start' => $weekStart->toDateString(),
+        'reason' => AdaptationReason::RanTooHard,
+        'deload' => false,
+        'quality_delta' => -1,
+        'adherence_pct' => 100,
+        'deferred_time_trial' => ['distance_m' => 5_000, 'moved_to' => $weekStart->copy()->addWeeks(2)->toDateString()],
+    ]);
+
+    expect(nonNull(planPageAssembler()->adaptation($user, Carbon::today()))['detail'])
+        ->toBe(AdaptationReason::RanTooHard->detail(100, 100, -1)." this week's 5k time trial waits 2 weeks.");
+});
+
 it('says so when the deload takes the week under the season\'s volume floor', function (): void {
     $user = assemblerAthlete();
     PlanAdaptation::query()->create([

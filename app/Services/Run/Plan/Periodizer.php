@@ -190,6 +190,7 @@ final readonly class Periodizer
             static fn (array $week): string => $week['week_start']->toDateString(),
             array_filter($arc, static fn (array $week): bool => $week['phase'] === PlanPhase::Deload),
         )));
+        $deferredDates = null;
         foreach ($weeks as $week) {
             $weekRows = WeekPlanBuilder::build(
                 $week['week_start'],
@@ -220,12 +221,23 @@ final readonly class Periodizer
                 ? FastFinishLongRun::forWeek($inputs, $goalPace)
                 : null;
             $trial = $trials->forWeek($week['week_start'], $week['phase']);
+            $weekDeferral = [];
             $trialRows = $trial instanceof TimeTrial ? $this->withIntensityPrescriptions($weekRows, $week['multiplier'], $inputs, $week['week_start'], $rows, trial: $trial, buildQualityMinutes: $buildQualityMinutes, peakGoalPaceMinutes: $peakGoalPaceMinutes, fastFinish: $fastFinish, longestKm: $longestKm) : null;
             if ($trialRows !== null && array_any($trialRows, static fn (array $row): bool => TimeTrial::isTrial($row['prescription_race_context']))) {
                 $weekRows = $trialRows;
                 $trials->placedIn($week['week_start']);
+                if ($deferredDates !== null && ! $trial->retry) {
+                    foreach ($deferredDates as $date) {
+                        $rows[$date] = [...$rows[$date], 'deferred_time_trial' => ['distance_m' => $trial->distanceM, 'moved_to' => $week['week_start']->toDateString()]];
+                    }
+                }
+                $deferredDates = null;
             } else {
                 $weekRows = $this->withIntensityPrescriptions($weekRows, $week['multiplier'], $inputs, $week['week_start'], $rows, $goalPace, buildQualityMinutes: $buildQualityMinutes, peakGoalPaceMinutes: $peakGoalPaceMinutes, fastFinish: $fastFinish, longestKm: $longestKm);
+                if ($trial instanceof TimeTrial && ! $trial->retry && $deferredDates === null) {
+                    $deferredDates = array_keys($weekRows);
+                    $weekDeferral = ['deferred_time_trial' => ['distance_m' => $trial->distanceM, 'moved_to' => null]];
+                }
             }
             if (array_any($weekRows, static fn (array $row): bool => $row['prescribed_hard_minutes'] > 0 && FastFinishLongRun::isFastFinish($row['prescription_race_context']))) {
                 $lastFastFinishWeek = $week['week_start'];
@@ -239,7 +251,7 @@ final readonly class Periodizer
                 $peakGoalPaceMinutes = self::goalPaceMinutes($weekRows) ?? $peakGoalPaceMinutes;
             }
             foreach ($weekRows as $date => $row) {
-                $rows[$date] = [...$row, 'volume_multiplier' => $week['multiplier'], 'fall_off_tilt' => $row['session_type'] === SessionType::Easy ? null : ($row['fall_off_tilt'] ?? null)];
+                $rows[$date] = [...$row, 'volume_multiplier' => $week['multiplier'], 'fall_off_tilt' => $row['session_type'] === SessionType::Easy ? null : ($row['fall_off_tilt'] ?? null), ...$weekDeferral];
             }
         }
 
@@ -463,6 +475,7 @@ final readonly class Periodizer
                     'stimulus_adherence_pct' => $inputs->adaptation['stimulus_adherence_pct'],
                     'volume_floor_km' => self::overriddenFloorKm($inputs, $rows),
                     'increases_held' => $inputs->increasesHeld,
+                    'deferred_time_trial' => self::deferredTimeTrial($inputs, $rows),
                 ],
             );
 
@@ -872,6 +885,22 @@ final readonly class Periodizer
         }
 
         return $actuals + $sessions;
+    }
+
+    /**
+     * @param  array<string, array{deferred_time_trial?: array{distance_m: int, moved_to: string|null}, ...}>  $rows
+     * @return array{distance_m: int, moved_to: string|null}|null
+     */
+    private static function deferredTimeTrial(PlanInputs $inputs, array $rows): ?array
+    {
+        $weekEnd = $inputs->currentWeekStart()->addDays(6)->toDateString();
+        foreach ($rows as $date => $row) {
+            if ($date <= $weekEnd) {
+                return $row['deferred_time_trial'] ?? null;
+            }
+        }
+
+        return null;
     }
 
     /**
