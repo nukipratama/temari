@@ -130,7 +130,7 @@ The sections below give every remaining model's relations, by domain.
 
 The delivery path these rows serve is [[notification-delivery]].
 
-- [NotificationPreference](app/Models/NotificationPreference.php) (`hasOne` from User): the master switch and the two channel mutes. A missing row means all on.
+- [NotificationPreference](app/Models/NotificationPreference.php) (`hasOne` from User): the master switch, the briefing push's own switch and send time, and the two channel mutes. A missing row means all on, at the automatic send time.
 - [InboxNotification](app/Models/InboxNotification.php) (`hasMany` from User as `inboxNotifications`, table `notifications`): one inbox row, unique on `(user_id, dedupe_key)` and written only through `InboxNotification::record()`. Named so it doesn't collide with Laravel's own `DatabaseNotification`; the `Notifiable` trait's `notifications()` does not match this schema. See [[notification-inbox]].
 - [NotificationDelivery](app/Models/NotificationDelivery.php): the per-`(analysis_id, channel)` claim and outcome for an outbound send. `analysis_id` is a real foreign key to `ai_analyses`, cascading on delete; there is no relation method.
 - [HeldNotification](app/Models/HeldNotification.php): one channel's send held during quiet hours, the serialised notification plus a `user_id` foreign key that cascades with the user; no relation method.
