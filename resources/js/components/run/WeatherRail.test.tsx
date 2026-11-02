@@ -52,6 +52,7 @@ describe('railMarkers', () => {
         });
         expect(markers.find((m) => m.reading === 'feels')?.above).toBe(false);
     });
+
     it('lifts a label a row further out when neither side of the rail has room', () => {
         const { markers } = railMarkers({
             avg: 32,

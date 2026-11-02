@@ -207,6 +207,7 @@ describe('MapWeatherPanel', () => {
         );
         expect(container.firstElementChild).toHaveClass('flex');
     });
+
     it("draws the weather rail from the run's feels-like, dew point and peak", () => {
         render(
             <MapWeatherPanel

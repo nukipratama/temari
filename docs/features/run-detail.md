@@ -134,7 +134,8 @@ puts the run's air on one °C scale fitted to that run: the average temperature,
 feels-like, dew point and, when it rose at least `PEAK_MIN_RISE_C` (2°) above the
 average, the peak, with the gap between average and feels-like shaded. Dew point
 and peak label above the rail, average and feels-like below, and a label that
-would crowd its neighbour moves to the other side ([`railMarkers()`](../../resources/js/components/run/WeatherRail.tsx)).
+would crowd its neighbour moves to the other side, or a row further out when
+neither side has room ([`railMarkers()`](../../resources/js/components/run/WeatherRail.tsx)).
 A missing reading is just absent, and a run with no reading beside its average
 (one sampled before window sampling) draws no rail. Feels-like is Open-Meteo's
 Steadman apparent temperature, which runs warmer than the heat index the hot-run
