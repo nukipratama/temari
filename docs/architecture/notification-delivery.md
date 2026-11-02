@@ -55,6 +55,7 @@ The notification classes live in `app/Notifications/`. What differs between them
 | [RaceTomorrowNotification](app/Notifications/RaceTomorrowNotification.php) | `race:remind`, hourly 18:00–21:00 | inbox + outbound | yes | — | end of the day before the race |
 | [RaceOutcomeNotification](app/Notifications/RaceOutcomeNotification.php) | `race:ask-outcome`, hourly 09:00–21:00 | inbox + outbound | yes | — | — |
 | [TimeTrialNotification](app/Notifications/TimeTrialNotification.php) | `plan:settle-time-trials`, 09:05 | inbox + outbound | yes | — | — |
+| [EasyTooHardNotification](app/Notifications/EasyTooHardNotification.php) | `TooHardWarning::warn()` from `DispatchPostRunAnalysis`, for a run in the current week | inbox + outbound | yes | — | end of the week it warns about |
 | [FitnessImprovedNotification](app/Notifications/FitnessImprovedNotification.php) | `fitness:notify-improvement`, 10:00 | inbox + outbound | yes | — | — |
 | [StravaDisconnectedNotification](app/Notifications/StravaDisconnectedNotification.php) | [`StravaConnection::markRevoked()`](app/Models/StravaConnection.php), except on account deletion | inbox + outbound | no | — | — |
 | [IntervalsIcuDisconnectedNotification](app/Notifications/IntervalsIcuDisconnectedNotification.php) | [`IntervalsIcuSync`](app/Services/IntervalsIcu/IntervalsIcuSync.php), once when a sync first meets a 401/403 | inbox + outbound | no | — | — |

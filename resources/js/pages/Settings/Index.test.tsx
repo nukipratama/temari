@@ -310,6 +310,15 @@ describe('Settings', () => {
         ).toBeInTheDocument();
     });
 
+    it('names the hot-easy-run warning among what the master switch sends', () => {
+        render(<Settings notificationPrefs={prefs} />);
+        expect(
+            screen.getByText(
+                /a warning when easy runs running hot will cost next week a quality session/,
+            ),
+        ).toBeInTheDocument();
+    });
+
     it('patches the channel-neutral preferences when the master switch is flipped, carrying all current values', () => {
         vi.mocked(router.patch).mockReset();
         render(<Settings notificationPrefs={prefs} />);

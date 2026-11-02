@@ -400,7 +400,7 @@ final class SessionIntentJudge
         $evidence += ['basis' => 'heart_rate', 'hr_cap_bpm' => $effort->capBpm, 'over_cap_minutes' => $effort->overCapMinutes(), 'over_cap_limit_minutes' => $effort->limitMinutes()];
 
         return $effort->tooHard()
-            ? self::reading(IntentVerdict::TooHard, $evidence + self::stimulus('hard', $effort->overCapMinutes(), 'heart_rate'))
+            ? self::reading(IntentVerdict::TooHard, $evidence + ['egregious' => (int) $effort->egregious()] + self::stimulus('hard', $effort->overCapMinutes(), 'heart_rate'))
             : self::reading(IntentVerdict::Hit, $evidence + self::stimulus('easy', null, 'heart_rate'));
     }
 

@@ -53,7 +53,7 @@ final readonly class PlanAdapter
      */
     public function forWeek(User $user, Carbon $weekStart, Carbon $today, ?RaceGoal $race, ?RaceAmbition $ambition = null): array
     {
-        $execution = $this->previousWeekExecution($user, $weekStart);
+        $execution = $this->executionBetween($user, ...self::previousWeekBounds($weekStart));
         $currentStimulus = $this->currentWeekStimulus($user, $weekStart, $today);
         $stimulus = $currentStimulus['sessions'] > 0
             ? $currentStimulus
@@ -114,7 +114,7 @@ final readonly class PlanAdapter
         if ($adherencePct / 100 < self::MISSED_WEEK_ADHERENCE) {
             return AdaptationReason::MissedWeek;
         }
-        if ($egregiousEasyDays >= 1 || $raggedDays >= self::RAGGED_DAYS_MIN) {
+        if (self::ranTooHard($raggedDays, $egregiousEasyDays)) {
             return AdaptationReason::RanTooHard;
         }
         if ($stimulusMisses > 0) {
@@ -123,6 +123,11 @@ final readonly class PlanAdapter
         return $raceGapRatio !== null && $raceGapRatio < 1.0 - self::RACE_GAP_MARGIN
             ? AdaptationReason::AheadOfRacePace
             : AdaptationReason::Steady;
+    }
+
+    public static function ranTooHard(int $raggedDays, int $egregiousEasyDays): bool
+    {
+        return $egregiousEasyDays >= 1 || $raggedDays >= self::RAGGED_DAYS_MIN;
     }
 
     private static function stimulusNeedsReduction(int $misses): bool
@@ -233,7 +238,7 @@ final readonly class PlanAdapter
     }
 
     /**
-     * How last week was run, as counts of easy-effort days, `Easy` days and
+     * How the days from $start to $end were run, as counts of easy-effort days, `Easy` days and
      * `Long` days with no marathon-pace block, whose runs held more time over
      * the heart-rate cap than {@see EasyEffort::tooHard()} allows. The
      * `egregious_easy` count is the subset past {@see EasyEffort::egregious()},
@@ -245,13 +250,11 @@ final readonly class PlanAdapter
      *
      * @return array{ragged: int, egregious_easy: int}
      */
-    private function previousWeekExecution(User $user, Carbon $weekStart): array
+    public function executionBetween(User $user, Carbon $start, Carbon $end): array
     {
-        [$previousStart, $previousEnd] = self::previousWeekBounds($weekStart);
-
         $easyEffortDates = PlannedSession::query()
             ->where('user_id', $user->id)
-            ->whereBetween('date', [$previousStart->toDateString(), $previousEnd->toDateString()])
+            ->whereBetween('date', [$start->toDateString(), $end->toDateString()])
             ->get(['date', 'session_type', 'clamped_km', 'eased_pace_sec_per_km', 'readiness_assessment', 'prescribed_hard_minutes', 'prescribed_pace_band', 'prescribed_pace_sec_per_km', 'prescription_race_context', 'intent_evidence'])
             ->filter(static fn (PlannedSession $session): bool => self::isEasyEffort($session))
             ->map(static fn (PlannedSession $session): string => $session->date->toDateString())
@@ -264,7 +267,7 @@ final readonly class PlanAdapter
         $runsByDate = ActivityDetail::query()
             ->forUser($user->id)
             ->whereNotNull('start_date_local')
-            ->whereBetween('start_date_local', [$previousStart->copy()->startOfDay(), $previousEnd->copy()->endOfDay()])
+            ->whereBetween('start_date_local', [$start->copy()->startOfDay(), $end->copy()->endOfDay()])
             ->get(['activity_details.id', 'start_date_local', 'moving_time', 'elapsed_time', 'stream_summary'])
             ->groupBy(static fn (ActivityDetail $detail): string => (string) $detail->start_date_local?->toDateString());
 
@@ -286,7 +289,7 @@ final readonly class PlanAdapter
         ];
     }
 
-    private static function isEasyEffort(PlannedSession $session): bool
+    public static function isEasyEffort(PlannedSession $session): bool
     {
         return match (EffectiveSession::settledTypeOf($session)) {
             SessionType::Easy => true,

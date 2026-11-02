@@ -345,7 +345,14 @@ it('lets heart rate confirm a fast easy run was too hard', function (): void {
     $reading = SessionIntentJudge::judge(SessionType::Easy, easyDay(), JUDGE_PACES, [$run]);
 
     expect($reading['verdict'])->toBe(IntentVerdict::TooHard)
-        ->and($reading['evidence']['basis'])->toBe('heart_rate');
+        ->and($reading['evidence']['basis'])->toBe('heart_rate')
+        ->and($reading['evidence']['egregious'])->toBe(0);
+});
+
+it('records whether a too-hard easy run went far enough over the cap to speak for the week', function (): void {
+    $run = judgeRun(6.0, 1980, ['easy_cap_bpm' => 150, 'over_easy_cap_sec' => 900]);
+
+    expect(SessionIntentJudge::judge(SessionType::Easy, easyDay(), JUDGE_PACES, [$run])['evidence']['egregious'])->toBe(1);
 });
 
 it('judges a capped athlete on heart rate alone, whatever the pace', function (): void {

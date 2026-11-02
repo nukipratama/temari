@@ -851,10 +851,22 @@ final class PlanRenderer
             IntentVerdict::TooHard => self::clauses(
                 IntentOutcome::outcome(IntentVerdict::TooHard, $evidence),
                 IntentOutcome::cardDetail(IntentVerdict::TooHard, $evidence, $ranPaceSecPerKm),
-            ),
+            ).self::qualityCost($s, $evidence),
             IntentVerdict::Unknown => IntentOutcome::outcome(IntentVerdict::Unknown, $evidence).', so the day counts its distance only.',
             default => null,
         };
+    }
+
+    /** @param  array<string, mixed>  $evidence */
+    private static function qualityCost(PlannedSession $s, array $evidence): string
+    {
+        if (($evidence['basis'] ?? null) !== 'heart_rate' || ! PlanAdapter::isEasyEffort($s)) {
+            return '';
+        }
+
+        return ($evidence['egregious'] ?? 0) === 1
+            ? ' it went far enough over to cost the following week a quality session on its own.'
+            : ' two easy days like it in one week cost the following week a quality session.';
     }
 
     private static function clauses(string $outcome, ?string $detail): string
