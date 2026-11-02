@@ -28,7 +28,7 @@ final readonly class QualityOverrideService
 
     public function take(User $user, PlannedSession $session, Carbon $today): PlanOverrideKind
     {
-        return $this->periodizer->withRegenerationLock($user, fn (): PlanOverrideKind => $this->takeWithinLock($user, $session->refresh(), $today), Periodizer::REQUEST_LOCK_WAIT_SECONDS);
+        return $this->periodizer->withRegenerationLock($user, fn (): PlanOverrideKind => $this->takeWithinLock($user, $session->fresh() ?? throw self::refusal("this day can't be overridden."), $today), Periodizer::REQUEST_LOCK_WAIT_SECONDS);
     }
 
     private function takeWithinLock(User $user, PlannedSession $session, Carbon $today): PlanOverrideKind

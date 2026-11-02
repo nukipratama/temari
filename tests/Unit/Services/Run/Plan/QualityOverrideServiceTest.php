@@ -146,3 +146,17 @@ it('checks the offer inside the plan lock, so a move that lands while it waits w
     expect(overrideRefusal(fn () => overrideService()->take($user, $session, Carbon::today())))->not->toBeNull()
         ->and($week->refresh()->override_kind)->toBeNull();
 });
+
+it('refuses rather than failing once a rebuild that lands while it waits replaces the day', function (): void {
+    ['user' => $user, 'session' => $session, 'week' => $week] = easedIntervalToday();
+    $rebuild = Cache::lock("plan-reconciliation:{$user->id}", 10);
+    expect($rebuild->get())->toBeTrue();
+    Sleep::fake();
+    Sleep::whenFakingSleep(function () use ($session, $rebuild): void {
+        PlannedSession::query()->whereKey($session->id)->delete();
+        $rebuild->release();
+    });
+
+    expect(overrideRefusal(fn () => overrideService()->take($user, $session, Carbon::today())))->not->toBeNull()
+        ->and($week->refresh()->override_kind)->toBeNull();
+});
