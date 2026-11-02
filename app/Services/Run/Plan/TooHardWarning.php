@@ -8,6 +8,7 @@ use App\Models\InboxNotification;
 use App\Models\User;
 use App\Notifications\EasyTooHardNotification;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 
 /**
  * Tells the athlete, while the week is still open, what its hot easy days
@@ -38,7 +39,8 @@ final readonly class TooHardWarning
         }
 
         $dedupeKey = EasyTooHardNotification::dedupeKeyFor($weekStart, $state);
-        if (InboxNotification::query()->where('user_id', $user->id)->where('dedupe_key', $dedupeKey)->exists()) {
+        if (InboxNotification::query()->where('user_id', $user->id)->where('dedupe_key', $dedupeKey)->exists()
+            || ! Cache::add("{$dedupeKey}:{$user->id}", true, $weekStart->copy()->addWeeks(2))) {
             return;
         }
 

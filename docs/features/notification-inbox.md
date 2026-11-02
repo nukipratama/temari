@@ -25,7 +25,7 @@ Every row is something Temari already sent; nothing is written here, and nothing
 
 ## The kinds
 
-Twelve, each with its own row treatment ([NotificationKind](../../app/Enums/NotificationKind.php)).
+Thirteen, each with its own row treatment ([NotificationKind](../../app/Enums/NotificationKind.php)).
 Where a row goes is the router's call ([[inbox-is-an-always-on-channel]]), never the kind's.
 
 | kind | what fires it | channels | opens |
