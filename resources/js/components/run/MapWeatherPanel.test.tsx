@@ -208,7 +208,7 @@ describe('MapWeatherPanel', () => {
         expect(container.firstElementChild).toHaveClass('flex');
     });
 
-    it("draws the weather rail from the run's feels-like, dew point and peak", () => {
+    it("draws the weather rail from the run's feels-like, dew point and peak", async () => {
         render(
             <MapWeatherPanel
                 detail={detail({
@@ -220,7 +220,7 @@ describe('MapWeatherPanel', () => {
             />,
         );
         expect(
-            screen.getByRole('img', {
+            await screen.findByRole('img', {
                 name: 'average 29°C, felt like 34°C, dew point 23°C, peak 33°C',
             }),
         ).toHaveClass('w-full', 'sm:order-last');
