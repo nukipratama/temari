@@ -200,10 +200,10 @@ Schedule::command('geo:backfill-locations')->hourly()->withoutOverlapping(55);
 // RunCard badges, only the weather_* columns.
 Schedule::command('weather:correct-forecast')->dailyAt('03:15')->withoutOverlapping(55);
 
-// 03:30 daily: re-fetch weather for runs with coords but a null weather_temp_c,
-// left behind by a transient Open-Meteo blip during ingest. Rows older than the
-// forecast window route to the archive endpoint automatically. Free HTTP, no
-// LLM.
+// 03:30 daily: fetch weather for runs with coords but a null weather_temp_max_c:
+// gaps left by a transient Open-Meteo blip during ingest, then rows read at the
+// start hour only. Rows older than the forecast window route to the archive
+// endpoint automatically. Demo excluded. Free HTTP, no LLM.
 Schedule::command('weather:backfill')->dailyAt('03:30')->withoutOverlapping(55);
 
 // Saturday 18:00: nudge a user whose weekly streak is live but has no run yet

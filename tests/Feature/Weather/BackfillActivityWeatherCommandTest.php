@@ -211,6 +211,39 @@ it('reports no weather gap once every run has weather', function (): void {
     $this->artisan('weather:backfill')->assertSuccessful();
 });
 
+it('leaves the demo account\'s seeded weather alone', function (): void {
+    $this->mock(OpenMeteoClient::class)->shouldReceive('fetchForActivity')->never();
+
+    $demo = ActivityDetail::factory()
+        ->for(Activity::factory()->for(User::factory()->state(['is_demo' => true])))
+        ->create([
+            'start_lat' => -6.24, 'start_lng' => 106.81, 'start_date_local' => now()->subDays(30),
+            'weather_temp_c' => 33, 'weather_temp_max_c' => null,
+        ]);
+
+    $this->artisan('weather:backfill')->assertSuccessful();
+
+    expect($demo->refresh()->weather_temp_c)->toBe(33);
+});
+
+it('still fills a row whose activity is an un-ingested stub', function (): void {
+    $this->mock(OpenMeteoClient::class)
+        ->shouldReceive('fetchForActivity')
+        ->once()
+        ->andReturn(new WeatherSnapshot(tempC: 27, humidityPct: 80, rainDetected: false, tempMaxC: 28));
+
+    $stub = ActivityDetail::factory()
+        ->for(Activity::factory()->stub())
+        ->create([
+            'start_lat' => -6.24, 'start_lng' => 106.81, 'start_date_local' => now()->subDays(30),
+            'weather_temp_c' => null,
+        ]);
+
+    $this->artisan('weather:backfill')->assertSuccessful();
+
+    expect($stub->refresh()->weather_temp_c)->toBe(27);
+});
+
 it('re-samples a row read at the start hour only, after rows with no weather at all', function (): void {
     $this->mock(OpenMeteoClient::class)
         ->shouldReceive('fetchForActivity')

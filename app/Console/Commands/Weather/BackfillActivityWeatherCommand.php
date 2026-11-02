@@ -27,6 +27,7 @@ class BackfillActivityWeatherCommand extends Command
             ->whereNotNull('start_lng')
             ->whereNotNull('start_date_local')
             ->where('weather_attempts', '<', ActivityDetail::MAX_BACKFILL_ATTEMPTS)
+            ->whereHas('activity', fn ($query) => $query->withStubs()->whereHas('user', fn ($user) => $user->notDemo()))
             ->orderByRaw('weather_temp_c is not null')
             ->orderByRaw('weather_attempted_at is not null')
             ->orderBy('weather_attempted_at')
