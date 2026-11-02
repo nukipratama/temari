@@ -738,3 +738,14 @@ function seedRanTooHardWeek(User $user): void
         ]);
     }
 }
+
+/** A 100 m run this morning: too short to credit the day, but it caps today's readiness at easy only. */
+function seedShortRunToday(User $user): void
+{
+    ActivityDetail::factory()->for(Activity::factory()->for($user))->create([
+        'start_date_local' => Carbon::today()->setTime(6, 0),
+        'distance' => 100,
+        'elapsed_time' => 40,
+        'moving_time' => 40,
+    ]);
+}

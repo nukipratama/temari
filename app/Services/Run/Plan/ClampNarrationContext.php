@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Services\Run\Plan;
 
 use App\Actions\Run\Plan\ResolveWeekAdaptationAction;
-use App\Enums\PlanOverrideKind;
 use App\Enums\SessionType;
 use App\Models\Activity;
 use App\Models\PlannedSession;
@@ -49,8 +48,7 @@ final readonly class ClampNarrationContext
             ->where('date', $date->toDateString())
             ->first();
 
-        if ($session === null
-            || ($this->weekAdaptation)($userId, $date->copy()->startOfWeek(Carbon::MONDAY)->toDateString())?->overrides(PlanOverrideKind::ReadinessEase, $date) === true) {
+        if ($session === null) {
             return null;
         }
 
@@ -65,6 +63,9 @@ final readonly class ClampNarrationContext
             $decisionSource = 'live';
         }
         $ceiling = ReadinessCeiling::from($assessment['ceiling']);
+        if (QualityOverride::holdsEase(($this->weekAdaptation)($userId, $date->copy()->startOfWeek(Carbon::MONDAY)->toDateString()), $date, $ceiling)) {
+            return null;
+        }
         if ($ceiling === ReadinessCeiling::ModerateOk
             && ($session->session_type === SessionType::Race || IntensityPrescription::fromSession($session)?->isEasy() === false)) {
             return null;

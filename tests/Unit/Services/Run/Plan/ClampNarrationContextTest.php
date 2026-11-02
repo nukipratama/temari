@@ -219,3 +219,16 @@ it('resolves nothing on a day the athlete chose to run as written', function ():
 
     expect(resolveClamp($user))->toBeNull();
 });
+
+it('explains the ease again on an overridden day once the ceiling drops below moderate', function (): void {
+    $user = tiredUser();
+    clampDay($user);
+    PlanAdaptation::factory()->for($user)->create([
+        'week_start' => Carbon::today()->startOfWeek(Carbon::MONDAY)->toDateString(),
+        'override_kind' => PlanOverrideKind::ReadinessEase,
+        'override_date' => Carbon::today()->toDateString(),
+    ]);
+    seedShortRunToday($user);
+
+    expect(nonNull(resolveClamp($user))['ceiling'])->toBe(ReadinessCeiling::EasyOnly);
+});

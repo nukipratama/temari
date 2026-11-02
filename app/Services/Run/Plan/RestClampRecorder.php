@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Services\Run\Plan;
 
 use App\Actions\Run\Plan\ResolveWeekAdaptationAction;
-use App\Enums\PlanOverrideKind;
 use App\Enums\SessionType;
 use App\Enums\PlannedSessionStatus;
 use App\Models\PlannedSession;
@@ -80,8 +79,7 @@ final readonly class RestClampRecorder
             ->first();
 
         if ($session === null || $session->pinned || $session->session_type === SessionType::Race
-            || $session->status !== PlannedSessionStatus::Planned || $session->skipped
-            || ($this->weekAdaptation)($user->id, $today->copy()->startOfWeek(Carbon::MONDAY)->toDateString())?->overrides(PlanOverrideKind::ReadinessEase, $today) === true) {
+            || $session->status !== PlannedSessionStatus::Planned || $session->skipped) {
             return false;
         }
 
@@ -99,6 +97,9 @@ final readonly class RestClampRecorder
         }
 
         $ceiling = ReadinessCeiling::from($context->readinessCeiling);
+        if (QualityOverride::holdsEase(($this->weekAdaptation)($user->id, $today->copy()->startOfWeek(Carbon::MONDAY)->toDateString()), $today, $ceiling)) {
+            return false;
+        }
         $baselineData = $this->baseline->forUser($user, $today);
         $prescription = IntensityPrescription::fromSession($session);
         $paces = $prescription instanceof IntensityPrescription ? $this->paceCalculator->fromVdotResult($this->vdotEstimator->estimate($user, $today)) : null;

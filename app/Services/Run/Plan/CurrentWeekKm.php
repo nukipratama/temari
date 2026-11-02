@@ -7,7 +7,6 @@ namespace App\Services\Run\Plan;
 use App\Actions\Run\Plan\ResolveActiveRaceAction;
 use App\Actions\Run\Plan\ResolvePlannedSessionsAction;
 use App\Actions\Run\Plan\ResolveWeekAdaptationAction;
-use App\Enums\PlanOverrideKind;
 use App\Models\PlanAdaptation;
 use App\Enums\PlannedSessionStatus;
 use App\Enums\PlanPhase;
@@ -126,7 +125,7 @@ final readonly class CurrentWeekKm
 
         $todaySession = $currentWeekSessions->first(fn (PlannedSession $s): bool => $s->date->isSameDay($today));
         $adaptation = ($this->weekAdaptation)($user->id, $currentWeekKey);
-        $clamp = ($todaySession !== null && ! $loadPending && $adaptation?->overrides(PlanOverrideKind::ReadinessEase, $today) !== true)
+        $clamp = ($todaySession !== null && ! $loadPending && ! QualityOverride::holdsEase($adaptation, $today, $ceiling))
             ? ReadinessClamp::apply(
                 IntensityPrescription::runsAs($todaySession),
                 $todaySession->phase,

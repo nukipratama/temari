@@ -8,7 +8,6 @@ use App\Models\PlanAdaptation;
 use App\Actions\Run\Plan\ResolveActiveRaceAction;
 use App\Actions\Run\Plan\ResolveWeekAdaptationAction;
 use App\Enums\PlannedSessionStatus;
-use App\Enums\PlanOverrideKind;
 use App\Enums\RaceOutcome;
 use App\Models\PlannedSession;
 use App\Models\RaceGoal;
@@ -320,7 +319,7 @@ final class PlanPageAssembler
         $todaySession = $sessions->first(fn (PlannedSession $s): bool => $s->date->isSameDay($today));
         $currentWeekAdaptation = ($this->weekAdaptation)($user->id, $currentWeekKey);
         $overrideWeek = QualityOverride::openWeek($user, $currentWeekAdaptation, $race);
-        $clamp = ($todaySession !== null && ! $loadPending && $currentWeekAdaptation?->overrides(PlanOverrideKind::ReadinessEase, $today) !== true)
+        $clamp = ($todaySession !== null && ! $loadPending && ! QualityOverride::holdsEase($currentWeekAdaptation, $today, $ceiling))
             ? ReadinessClamp::apply(
                 IntensityPrescription::runsAs($todaySession),
                 $todaySession->phase,

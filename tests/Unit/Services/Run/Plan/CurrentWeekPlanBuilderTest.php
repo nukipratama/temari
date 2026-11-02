@@ -839,3 +839,18 @@ it('offers Home the session a ran-too-hard week dropped, on the day the week as 
         ->and(array_filter(array_column($days, 'override')))->toHaveCount(1);
     Carbon::setTestNow();
 });
+
+it('eases Home\'s today again under a taken readiness override once the ceiling drops below moderate', function (): void {
+    Carbon::setTestNow('2026-08-12 08:00:00');
+    $user = User::factory()->create();
+    seedDemandingRunYesterday($user);
+    PlannedSession::factory()->for($user)->create(['date' => '2026-08-12', 'session_type' => SessionType::Interval]);
+    PlanAdaptation::factory()->for($user)->create(['week_start' => '2026-08-10', 'override_kind' => PlanOverrideKind::ReadinessEase, 'override_date' => '2026-08-12', 'overridden_at' => Carbon::now('UTC')]);
+    seedShortRunToday($user);
+
+    $day = weekPlanDay(weekPlanHome($user)['days'], '2026-08-12');
+
+    expect($day['session_type'])->toBe('easy')
+        ->and(data_get($day, 'override.state'))->toBe('taken');
+    Carbon::setTestNow();
+});

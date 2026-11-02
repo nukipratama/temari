@@ -88,6 +88,11 @@ final class QualityOverride
         return null;
     }
 
+    public static function holdsEase(?PlanAdaptation $week, Carbon $today, ReadinessCeiling $ceiling): bool
+    {
+        return $ceiling === ReadinessCeiling::ModerateOk && $week?->overrides(PlanOverrideKind::ReadinessEase, $today) === true;
+    }
+
     public static function isWorkout(SessionType $type): bool
     {
         return in_array($type, [SessionType::Tempo, SessionType::Interval], true);

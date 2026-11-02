@@ -783,3 +783,22 @@ it('offers no override to the demo athlete', function (): void {
 
     expect(assemblerCurrentDays(planPageAssembler(), $user)[0]['override'])->toBeNull();
 });
+
+it('eases today again under a taken readiness override once the ceiling drops below moderate', function (): void {
+    $user = assemblerAthlete();
+    seedDemandingRunYesterday($user);
+    PlannedSession::factory()->for($user)->create(['date' => Carbon::today()->toDateString(), 'session_type' => SessionType::Interval]);
+    PlanAdaptation::factory()->for($user)->create([
+        'week_start' => '2026-08-10',
+        'override_kind' => PlanOverrideKind::ReadinessEase,
+        'override_date' => Carbon::today()->toDateString(),
+        'overridden_at' => Carbon::now('UTC'),
+    ]);
+    seedShortRunToday($user);
+
+    $day = assemblerCurrentDays(planPageAssembler(), $user)[0];
+
+    expect($day['session_type'])->toBe('easy')
+        ->and(data_get($day, 'eased_from.session_type'))->toBe('interval')
+        ->and(data_get($day, 'override.state'))->toBe('taken');
+});

@@ -1020,3 +1020,18 @@ it('grades an overridden day against the full session shown after the athlete ch
 
     expect(nonNull(scorerVerdict($user, $row)['intent'])['evidence']['recommendation_revision_id'])->toBe($full->id);
 });
+
+it('grades an overridden day against the eased advice shown after the ceiling fell below moderate', function (): void {
+    $user = User::factory()->create();
+    $row = scorerDay($user, '2026-08-05', ['session_type' => SessionType::Tempo, 'prescribed_hard_minutes' => 20, 'prescribed_pace_band' => PaceBand::Threshold, 'prescribed_pace_sec_per_km' => 310]);
+    PlanAdaptation::factory()->for($user)->create([
+        'week_start' => '2026-08-03',
+        'override_kind' => PlanOverrideKind::ReadinessEase,
+        'override_date' => '2026-08-05',
+        'overridden_at' => Carbon::parse('2026-08-05 00:10:00', 'UTC'),
+    ]);
+    $eased = showAdvice($user, '2026-08-05', shownTempoOriginal(), shownEasyEffective('easy_only', ['already_ran_today']));
+    shownRun($user, '2026-08-05', 6.4, 2600);
+
+    expect(nonNull(scorerVerdict($user, $row)['intent'])['evidence'])->toMatchArray(['recommendation_revision_id' => $eased->id, 'effective_type' => 'easy']);
+});
