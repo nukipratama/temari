@@ -936,7 +936,7 @@ it('records the day and type a ran-too-hard week dropped, and keeps the session 
     periodizer()->regenerate($user);
     $adaptation = PlanAdaptation::query()->where('user_id', $user->id)->firstOrFail();
 
-    expect($adaptation->restorable_quality)->toBe(['date' => '2026-09-17', 'session_type' => 'interval'])
+    expect($adaptation->restorable_quality)->toEqual(['date' => '2026-09-17', 'session_type' => 'interval', 'time_trial' => false])
         ->and(currentWeekQualityCount($user))->toBe(0);
 
     $adaptation->update(['override_kind' => PlanOverrideKind::WeeklyDrop, 'override_date' => '2026-09-17', 'overridden_at' => Carbon::now('UTC')]);
@@ -946,7 +946,7 @@ it('records the day and type a ran-too-hard week dropped, and keeps the session 
     expect($restored->session_type)->toBe(SessionType::Interval)
         ->and($restored->prescribed_hard_minutes)->toBeGreaterThan(0)
         ->and($adaptation->refresh()->quality_delta)->toBe(-1)
-        ->and($adaptation->restorable_quality)->toBe(['date' => '2026-09-17', 'session_type' => 'interval']);
+        ->and($adaptation->restorable_quality)->toEqual(['date' => '2026-09-17', 'session_type' => 'interval', 'time_trial' => false]);
 
     periodizer()->regenerateIfChanged($user);
 

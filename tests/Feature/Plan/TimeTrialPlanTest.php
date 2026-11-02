@@ -283,3 +283,14 @@ it('writes the trial day as the trial distance alone, at the aim', function (): 
         ->and($segments[0]->km)->toBe(5.0)
         ->and($segments[0]->paceSecPerKm)->toBe(280);
 });
+
+it('records a time trial a ran-too-hard week dropped as a time trial the athlete can bring back', function (): void {
+    $inputs = planInputsWith(trialPlanInputs(10_000.0, today: '2026-11-09'), [
+        'adaptation' => ['reason' => AdaptationReason::RanTooHard, 'deload' => false, 'quality_delta' => -1, 'adherence_pct' => 100, 'stimulus_adherence_pct' => 100],
+    ]);
+
+    $restorable = nonNull(app(Periodizer::class)->restorableQuality($inputs, trialPlan($inputs)));
+
+    expect($restorable['time_trial'])->toBeTrue()
+        ->and(TimeTrial::isTrial(trialPlan($inputs->withQualityRestored(true))[$restorable['date']]['prescription_race_context']))->toBeTrue();
+});

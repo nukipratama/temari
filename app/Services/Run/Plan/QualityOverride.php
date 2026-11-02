@@ -80,7 +80,7 @@ final class QualityOverride
             return [
                 'kind' => PlanOverrideKind::WeeklyDrop->value,
                 'state' => 'offered',
-                'label' => 'bring back '.strtolower($day->date->format('l'))."'s {$restorable['session_type']}",
+                'label' => 'bring back '.strtolower($day->date->format('l'))."'s ".($restorable['time_trial'] ? 'time trial' : $restorable['session_type']),
                 'reason' => $week->reason->detail($week->adherence_pct, $week->stimulus_adherence_pct, $week->quality_delta),
             ];
         }

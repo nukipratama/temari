@@ -489,10 +489,10 @@ final readonly class Periodizer
      * The first day from today on that a ran-too-hard week's dropped quality session falls on when the
      * week is planned as written, with the type it would hold there.
      *
-     * @param  array<string, array{session_type: SessionType, ...}>  $rows
-     * @return array{date: string, session_type: string}|null
+     * @param  array<string, array{session_type: SessionType, prescription_race_context: array<string, int|float|string>|null, ...}>  $rows
+     * @return array{date: string, session_type: string, time_trial: bool}|null
      */
-    private function restorableQuality(PlanInputs $inputs, array $rows): ?array
+    public function restorableQuality(PlanInputs $inputs, array $rows): ?array
     {
         if ($inputs->adaptation['reason'] !== AdaptationReason::RanTooHard || $inputs->adaptation['quality_delta'] >= 0) {
             return null;
@@ -506,7 +506,7 @@ final readonly class Periodizer
                 break;
             }
             if (QualityOverride::isWorkout($row['session_type']) && ! QualityOverride::isWorkout($dropped[$date]['session_type'] ?? SessionType::Rest)) {
-                return ['date' => $date, 'session_type' => $row['session_type']->value];
+                return ['date' => $date, 'session_type' => $row['session_type']->value, 'time_trial' => TimeTrial::isTrial($row['prescription_race_context'])];
             }
         }
 

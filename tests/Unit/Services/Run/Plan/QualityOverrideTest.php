@@ -33,7 +33,7 @@ function overrideWeek(array $attributes = []): PlanAdaptation
         'quality_delta' => -1,
         'adherence_pct' => 100,
         'stimulus_adherence_pct' => 100,
-        'restorable_quality' => ['date' => '2026-09-17', 'session_type' => 'tempo'],
+        'restorable_quality' => ['date' => '2026-09-17', 'session_type' => 'tempo', 'time_trial' => false],
         ...$attributes,
     ]);
 }
@@ -73,6 +73,12 @@ it('offers the dropped session back on its natural day by name, with the adaptat
     ]);
 })->with(['before the day' => '2026-09-15', 'on the day' => '2026-09-17']);
 
+it('names a dropped time trial as a time trial', function (): void {
+    $week = overrideWeek(['restorable_quality' => ['date' => '2026-09-17', 'session_type' => 'interval', 'time_trial' => true]]);
+
+    expect(data_get(overrideFor(overrideDay('2026-09-17', SessionType::Easy), $week), 'label'))->toBe("bring back thursday's time trial");
+});
+
 it('offers no weekly drop off its natural day, once that day is gone, or on a week that dropped nothing', function (PlannedSession $day, PlanAdaptation $week, string $today): void {
     Carbon::setTestNow($today.' 08:00:00');
 
@@ -105,7 +111,7 @@ it('marks the day the athlete chose to run, undoable until a run lands on it', f
 ]);
 
 it('offers nothing outside the week the adaptation covers', function (): void {
-    expect(overrideFor(overrideDay('2026-09-22', SessionType::Easy), overrideWeek(['restorable_quality' => ['date' => '2026-09-22', 'session_type' => 'tempo']])))->toBeNull();
+    expect(overrideFor(overrideDay('2026-09-22', SessionType::Easy), overrideWeek(['restorable_quality' => ['date' => '2026-09-22', 'session_type' => 'tempo', 'time_trial' => false]])))->toBeNull();
 });
 
 it('opens the override to everyone but the demo athlete, outside the weeks before race week', function (bool $demo, ?string $raceDate, bool $open): void {
