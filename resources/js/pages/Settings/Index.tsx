@@ -514,7 +514,7 @@ function BriefingSendTime({
                         }}
                         className={cn(
                             inputVariants({ size: 'sm' }),
-                            'w-28 font-mono tabular-nums disabled:cursor-not-allowed disabled:opacity-50',
+                            'w-auto font-mono tabular-nums disabled:cursor-not-allowed disabled:opacity-50',
                         )}
                     />
                 </span>
