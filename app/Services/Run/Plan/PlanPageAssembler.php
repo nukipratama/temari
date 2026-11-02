@@ -180,6 +180,9 @@ final class PlanPageAssembler
         if ($adaptation->increases_held) {
             $detail .= ' the build and the longer long runs wait until your recent runs are scored.';
         }
+        if ($adaptation->deferred_time_trial !== null) {
+            $detail .= ' '.TimeTrial::deferralNote($adaptation->deferred_time_trial, $adaptation->week_start);
+        }
 
         return [
             'reason' => $adaptation->reason->value,

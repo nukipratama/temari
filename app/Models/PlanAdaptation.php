@@ -33,6 +33,7 @@ use Override;
  * @property int $stimulus_adherence_pct
  * @property float|null $volume_floor_km
  * @property bool $increases_held
+ * @property array{distance_m: int, moved_to: string|null}|null $deferred_time_trial
  * @property-read User $user
  */
 #[Fillable([
@@ -45,6 +46,7 @@ use Override;
     'stimulus_adherence_pct',
     'volume_floor_km',
     'increases_held',
+    'deferred_time_trial',
 ])]
 class PlanAdaptation extends Model
 {
@@ -92,6 +94,7 @@ class PlanAdaptation extends Model
             'stimulus_adherence_pct' => 'integer',
             'volume_floor_km' => 'float',
             'increases_held' => 'boolean',
+            'deferred_time_trial' => 'array',
         ];
     }
 }

@@ -9,6 +9,7 @@ use App\Enums\SessionType;
 use App\Models\ActivityDetail;
 use App\Models\PlannedSession;
 use App\Services\Run\Metrics\RunDistanceTimes;
+use Illuminate\Support\Carbon;
 
 /**
  * The all-out 5K or 10K that takes one quality session's place, so the
@@ -52,6 +53,19 @@ final readonly class TimeTrial
         return $raceDistanceM !== null && in_array(GoalPaceWork::kindFor($raceDistanceM), [GoalPaceWork::KIND_HALF, GoalPaceWork::KIND_MARATHON], true)
             ? self::LONG_DISTANCE_M
             : self::SHORT_DISTANCE_M;
+    }
+
+    /** @param  array{distance_m: int, moved_to: string|null}  $deferred */
+    public static function deferralNote(array $deferred, Carbon $weekStart): string
+    {
+        $trial = intdiv($deferred['distance_m'], 1_000).'k time trial';
+        if ($deferred['moved_to'] === null) {
+            return "this week's {$trial} has no week left before your race, so it comes off the plan.";
+        }
+
+        $weeks = (int) $weekStart->diffInWeeks(Carbon::parse($deferred['moved_to']));
+
+        return $weeks === 1 ? "this week's {$trial} waits a week." : "this week's {$trial} waits {$weeks} weeks.";
     }
 
     /** @return array{kind: string, distance_m: int, aim_time_sec: int, retry: int} */

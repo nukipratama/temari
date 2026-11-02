@@ -7,6 +7,7 @@ use App\Enums\SessionType;
 use App\Models\ActivityDetail;
 use App\Models\PlannedSession;
 use App\Services\Run\Plan\TimeTrial;
+use Illuminate\Support\Carbon;
 
 const TRIAL_ZONES = ['Z1' => ['lo' => 116, 'hi' => 138], 'Z2' => ['lo' => 138, 'hi' => 154], 'Z3' => ['lo' => 154, 'hi' => 168], 'Z4' => ['lo' => 168, 'hi' => 176], 'Z5' => ['lo' => 176, 'hi' => 999]];
 
@@ -134,4 +135,12 @@ it('reads the whole run when it is inside the band, shorter than it, or has no s
     'inside the band' => [5_100.0, ['per_km' => trialSplits()]],
     'shorter than the band' => [4_000.0, null],
     'longer with no splits' => [7_000.0, null],
+]);
+
+it('says how long a deferred trial waits, or that it comes off the plan', function (?string $movedTo, int $distanceM, string $note): void {
+    expect(TimeTrial::deferralNote(['distance_m' => $distanceM, 'moved_to' => $movedTo], Carbon::parse('2026-11-09')))->toBe($note);
+})->with([
+    'a week' => ['2026-11-16', 5_000, "this week's 5k time trial waits a week."],
+    'two weeks' => ['2026-11-23', 10_000, "this week's 10k time trial waits 2 weeks."],
+    'none left' => [null, 5_000, "this week's 5k time trial has no week left before your race, so it comes off the plan."],
 ]);
