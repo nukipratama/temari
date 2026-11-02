@@ -39,7 +39,7 @@ class EasyTooHardNotification extends Notification implements ShouldQueue
         public readonly string $state,
         public readonly bool $egregious,
     ) {
-        $this->staleAfter = Carbon::parse($weekStart)->endOfWeek();
+        $this->staleAfter = Carbon::parse($weekStart)->endOfWeek(Carbon::SUNDAY);
     }
 
     public static function dedupeKeyFor(Carbon $weekStart, string $state): string

@@ -54,6 +54,10 @@ it('carries the same copy on telegram and web push', function (): void {
         ->and($notification->toWebPush($user, $notification))->toBeInstanceOf(WebPushMessage::class);
 });
 
-it('goes stale once the week it warns about has ended', function (): void {
+it('goes stale once the week it warns about has ended, whatever weekday the locale starts on', function (string $locale): void {
+    Carbon::setLocale($locale);
+
     expect(new EasyTooHardNotification('2026-11-02', EasyTooHardNotification::SET, false)->staleAfter?->toDateTimeString())->toBe('2026-11-08 23:59:59');
-});
+
+    Carbon::setLocale('en');
+})->with(['en', 'en_US']);
