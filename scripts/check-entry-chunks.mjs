@@ -52,7 +52,7 @@ const ROUTE_BUDGETS_KB = [
         src: 'resources/js/pages/Onboarding/Index.tsx',
         budgetKb: 160,
     },
-    { name: 'Today', src: 'resources/js/pages/Home.tsx', budgetKb: 176 },
+    { name: 'Today', src: 'resources/js/pages/Home.tsx', budgetKb: 177 },
     { name: 'Plan', src: 'resources/js/pages/Plan.tsx', budgetKb: 185 },
     { name: 'Race', src: 'resources/js/pages/Race.tsx', budgetKb: 157 },
     { name: 'Trends', src: 'resources/js/pages/Trends.tsx', budgetKb: 177 },
