@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services\Run\Plan;
 
+use App\Actions\Run\Plan\ResolveWeekAdaptationAction;
+use App\Enums\PlanOverrideKind;
 use App\Enums\SessionType;
 use App\Models\Activity;
 use App\Models\PlannedSession;
@@ -24,8 +26,10 @@ use Illuminate\Support\Carbon;
  */
 final readonly class ClampNarrationContext
 {
-    public function __construct(private TrainingLoad $trainingLoad)
-    {
+    public function __construct(
+        private TrainingLoad $trainingLoad,
+        private ResolveWeekAdaptationAction $weekAdaptation,
+    ) {
     }
 
     /**
@@ -45,7 +49,8 @@ final readonly class ClampNarrationContext
             ->where('date', $date->toDateString())
             ->first();
 
-        if ($session === null) {
+        if ($session === null
+            || ($this->weekAdaptation)($userId, $date->copy()->startOfWeek(Carbon::MONDAY)->toDateString())?->overrides(PlanOverrideKind::ReadinessEase, $date) === true) {
             return null;
         }
 

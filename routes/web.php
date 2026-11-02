@@ -25,6 +25,7 @@ use App\Http\Controllers\NotificationPreferenceController;
 use App\Http\Controllers\NotificationTestController;
 use App\Http\Controllers\OnboardingController;
 use App\Http\Controllers\PlanController;
+use App\Http\Controllers\PlanOverrideController;
 use App\Http\Controllers\RecommendationViewController;
 use App\Http\Controllers\PerceivedEffortController;
 use App\Http\Controllers\ProfileController;
@@ -151,6 +152,14 @@ Route::middleware(['auth', 'onboarded'])->group(function (): void {
     Route::patch('/plan/sessions/{plannedSession}', [PlanController::class, 'update'])
         ->middleware('throttle:20,1,plan-edit')
         ->name('plan.sessions.update');
+    Route::post('/plan/sessions/{plannedSession}/override', [PlanOverrideController::class, 'store'])
+        ->middleware(['throttle:20,1,plan-edit', 'block-demo-writes'])
+        ->whereNumber('plannedSession')
+        ->name('plan.sessions.override.store');
+    Route::delete('/plan/sessions/{plannedSession}/override', [PlanOverrideController::class, 'destroy'])
+        ->middleware(['throttle:20,1,plan-edit', 'block-demo-writes'])
+        ->whereNumber('plannedSession')
+        ->name('plan.sessions.override.destroy');
     Route::post('/plan/time-trials/{plannedSession}', TimeTrialAnswerController::class)
         ->middleware(['throttle:20,1,time-trial', 'block-demo-writes'])
         ->whereNumber('plannedSession')

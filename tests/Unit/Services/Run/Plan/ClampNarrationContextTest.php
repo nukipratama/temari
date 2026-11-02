@@ -2,9 +2,11 @@
 
 declare(strict_types=1);
 
+use App\Enums\PlanOverrideKind;
 use App\Enums\SessionType;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
+use App\Models\PlanAdaptation;
 use App\Models\PlannedSession;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
@@ -202,6 +204,18 @@ it('keeps a recorded ease over the assessment its caller holds', function (): vo
 it('resolves nothing for a quality day already prescribed as an easy run', function (): void {
     $user = tiredUser();
     clampDay($user)->update(['prescribed_hard_minutes' => 0, 'prescribed_pace_band' => null]);
+
+    expect(resolveClamp($user))->toBeNull();
+});
+
+it('resolves nothing on a day the athlete chose to run as written', function (): void {
+    $user = tiredUser();
+    clampDay($user);
+    PlanAdaptation::factory()->for($user)->create([
+        'week_start' => Carbon::today()->startOfWeek(Carbon::MONDAY)->toDateString(),
+        'override_kind' => PlanOverrideKind::ReadinessEase,
+        'override_date' => Carbon::today()->toDateString(),
+    ]);
 
     expect(resolveClamp($user))->toBeNull();
 });
