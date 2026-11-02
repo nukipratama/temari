@@ -68,6 +68,7 @@
     "detail.max_heartrate",
     "detail.name",
     "detail.perceived_effort",
+    "detail.ran_hot",
     "detail.start_date_local",
     "detail.stream_summary",
     "detail.stream_summary.best_10min_pace",
