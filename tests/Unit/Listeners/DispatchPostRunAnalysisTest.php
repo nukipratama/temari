@@ -40,6 +40,7 @@ use App\Services\AI\AnalysisType;
 use App\Services\AI\NarrationEligibility;
 use App\Services\Run\Plan\ComplianceScorer;
 use App\Services\Run\Plan\PlanReconciliationDispatch;
+use App\Services\Run\Plan\RecommendationHistory;
 use App\Services\Run\Plan\RestClampRecorder;
 use App\Services\AI\MaterialFingerprint;
 use App\Services\Run\Metrics\WeeklyAggregator;
@@ -50,6 +51,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Str;
 use Mockery\MockInterface;
 
 uses(RefreshDatabase::class);
@@ -130,6 +132,23 @@ it('warns about a hot easy run from today, never about a backfilled one', functi
     'today' => [0, true],
     'backfilled' => [10, false],
 ]);
+
+it('counts a hot run on a quality day its shown advice eased to easy, as next week\'s adapter will', function (): void {
+    Notification::fake();
+    $activity = analyzedActivity('2026-05-11 07:00:00');
+    $activity->detail?->update(['start_date_utc' => '2026-05-11 07:00:00', 'moving_time' => 3000, 'stream_summary' => ['easy_cap_bpm' => 150, 'over_easy_cap_sec' => 2400]]);
+    PlannedSession::factory()->for($activity->user)->create(['date' => '2026-05-11', 'session_type' => SessionType::Tempo]);
+    $history = app(RecommendationHistory::class);
+    Carbon::setTestNow('2026-05-11 06:00:00');
+    $history->shown($history->record($activity->user_id, '2026-05-11', ['session_type' => 'tempo'], [
+        'session_type' => 'easy', 'distance_km' => 5.0, 'segments' => [], 'paces' => null, 'skipped' => false,
+    ]), (string) Str::uuid());
+    Carbon::setTestNow('2026-05-11 09:00:00');
+
+    fire($activity);
+
+    Notification::assertSentTo($activity->user, EasyTooHardNotification::class);
+});
 
 it('never resolves the clamp recorder for a post-ingest run today', function (): void {
     $activity = analyzedActivity(Carbon::today()->setTime(7, 0)->toDateTimeString());

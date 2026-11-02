@@ -92,10 +92,10 @@ class DispatchPostRunAnalysis implements ShouldQueue
         $isToday = $detail->start_date_local?->toDateString() === $today;
 
         if ($detail->start_date_local !== null) {
+            $this->complianceScorer->creditIfEarned($user, $detail->start_date_local, Carbon::today());
             if (! $isBackfill) {
                 $this->tooHardWarning->warn($user, $detail->start_date_local, Carbon::today());
             }
-            $this->complianceScorer->creditIfEarned($user, $detail->start_date_local, Carbon::today());
             $this->temari->refreshPostRunMood($activity, $detail);
             $this->planReconciliation->forActivity($activity);
         }
