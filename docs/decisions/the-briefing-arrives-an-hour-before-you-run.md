@@ -61,8 +61,9 @@ It must fall before quiet hours begin (00:00 to 21:59). A slot from 22:00 is hel
 and since a held send is judged stale as of when it was held, it would deliver the previous day's
 briefing at 04:00. The cap narrows this rather than closing it: a slot from 21:00 still has
 catch-up ticks after 22:00, so a briefing that turns `done` late, or a channel wired after the
-first send, can still be held into the next morning, as an automatic slot that late already could. Settings saves the time when the field is left, puts back a time from 22:00, and
-offers **clear** to return to automatic.
+first send, can still be held into the next morning, as an automatic slot that late already could.
+Settings saves the time when the field is left, puts back a time from 22:00, and offers **clear**
+to return to automatic.
 
 ## Consequences
 
