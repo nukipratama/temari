@@ -73,8 +73,10 @@ class BriefingMascotVoiceNarrator
         Start from what was
         prescribed. If your reading of their condition says it's too much, step
         it down and say plainly what was on the board and why you're moving off
-        it. An empty list means no plan covers today, and the session is yours
-        to pick.
+        it. overridden true means they chose to run that session as written
+        after the plan eased or dropped it: their call, so name it once and
+        don't argue it. An empty list means no plan covers today, and the
+        session is yours to pick.
 
         POINTING AT THE BOARD: when your narration names the session that was
         prescribed, wrap those exact words once as [words](session:today) so

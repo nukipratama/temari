@@ -31,6 +31,8 @@ use App\Models\PlannedSession;
 use App\Enums\PaceBand;
 use App\Enums\PlannedSessionStatus;
 use App\Enums\PlanPhase;
+use App\Enums\PlanOverrideKind;
+use App\Models\PlanAdaptation;
 use App\Services\AI\Agent\Tools\PlanAdherenceTool;
 use App\Services\AI\Agent\Tools\PlanContextTool;
 use App\Services\Run\Plan\PlanRenderer;
@@ -1073,6 +1075,24 @@ it('reads what the plan prescribed across the span it is bound to', function ():
 
     expect(array_column(arrayOf($reading['days']), 'session_type'))->toBe(['tempo', 'easy'])
         ->and(array_column(arrayOf($reading['days']), 'date'))->toBe(['2026-09-07', '2026-09-08']);
+});
+
+it('marks the day the athlete chose to run as written after the plan eased or dropped it', function (): void {
+    $user = User::factory()->create();
+    $monday = Carbon::parse('2026-09-07');
+    foreach (range(0, 2) as $offset) {
+        PlannedSession::factory()->for($user)->create(['date' => $monday->copy()->addDays($offset)->toDateString(), 'session_type' => SessionType::Easy]);
+    }
+    PlanAdaptation::factory()->for($user)->create([
+        'week_start' => '2026-09-07',
+        'override_kind' => PlanOverrideKind::WeeklyDrop,
+        'override_date' => '2026-09-08',
+    ]);
+
+    $reading = planContextTool($user, $monday, $monday->copy()->addDays(2))->handle([]);
+
+    expect(array_column(arrayOf($reading['days']), 'overridden'))->toBe([false, true, false])
+        ->and(planContextTool($user, $monday, $monday)->description())->toContain('overridden true');
 });
 
 it('carries a detailed run and persisted intent beside the plan row', function (): void {

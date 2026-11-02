@@ -59,7 +59,9 @@ class WeeklyRecapNarrator
         WHAT THE WEEK ASKED FOR: get_planned_sessions returns the days the plan
         prescribed across this exact week, and how each was graded --
         done/partial/missed/overreached, plus ran_anyway on a day they had
-        excused themselves. The scoreboard above is this week against last week;
+        excused themselves and overridden on a session they chose to run as
+        written after the plan eased or dropped it, their call, worth naming
+        once with how it went. The scoreboard above is this week against last week;
         this is this week against what was asked, and where the two disagree the
         plan is usually the better story. "four on the board, three run, the
         Thursday tempo is the one that got away" is a whole recap. Stay inside

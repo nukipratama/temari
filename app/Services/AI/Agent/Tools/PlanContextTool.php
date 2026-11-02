@@ -8,6 +8,7 @@ use App\Enums\IngestState;
 use App\Enums\SessionType;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
+use App\Models\PlanAdaptation;
 use App\Models\PlannedSession;
 use App\Models\User;
 use App\Services\Run\Metrics\DistanceFormatter;
@@ -68,7 +69,9 @@ final class PlanContextTool extends UserTool
             .'intent when the day was judged: plain words for whether the session did the job it '
             .'was written for, already decided, so repeat its meaning and never re-judge or label '
             .'it; intent_detail, when present, the numbers behind that verdict, already compared; and ran_anyway true '
-            .'when they ran a day they had excused themselves from. skipped true means they excused '
+            .'when they ran a day they had excused themselves from. overridden true means they chose to run that '
+            .'day\'s session as written after the plan eased it for readiness or dropped it after a hard week: '
+            .'their call, graded like any other day. skipped true means they excused '
             .'the day. eased_from means '
             .'readiness eased the day: session_type, distance_km and the pace are the eased session '
             .'they are actually doing, and eased_from names the session it replaced (with its distance '
@@ -114,6 +117,12 @@ final class PlanContextTool extends UserTool
         }
 
         $runDistancesByDate = $this->runDistancesByDate();
+        $overriddenDates = array_flip(array_filter(PlanAdaptation::query()
+            ->where('user_id', $this->user->id)
+            ->whereBetween('override_date', [$this->asOf->toDateString(), $this->through->toDateString()])
+            ->get(['override_date'])
+            ->map(static fn (PlanAdaptation $adaptation): ?string => $adaptation->override_date?->toDateString())
+            ->all()));
 
         $baselineData = $this->baseline->forUser($this->user, $this->asOf);
         $longRunBaselineKm = $baselineData['long_run_km'];
@@ -130,7 +139,7 @@ final class PlanContextTool extends UserTool
         $shownTypeByDate = $currentWeek['type_by_date'] ?? [];
 
         return [
-            'days' => $sessions->map(function (PlannedSession $session) use ($runDistancesByDate, $paces, $longRunBaselineKm, $longRunCapKm, $longRunProgressionCapKm, $selfScaled, $shownKmByDate, $today, $shownTypeByDate): array {
+            'days' => $sessions->map(function (PlannedSession $session) use ($runDistancesByDate, $overriddenDates, $paces, $longRunBaselineKm, $longRunCapKm, $longRunProgressionCapKm, $selfScaled, $shownKmByDate, $today, $shownTypeByDate): array {
                 $effective = EffectiveSession::of(
                     $session,
                     PlanRenderer::coreKmForSession($session, $longRunBaselineKm, $longRunCapKm, $selfScaled, $longRunProgressionCapKm),
@@ -181,6 +190,7 @@ final class PlanContextTool extends UserTool
                     'distance_score' => $session->distance_score,
                     'compliance_score' => $session->compliance_score,
                     'ran_anyway' => $session->ran_anyway,
+                    'overridden' => isset($overriddenDates[$session->date->toDateString()]),
                     'intent' => $session->intent_verdict === null
                         ? null
                         : IntentOutcome::outcome($session->intent_verdict, $session->intent_evidence ?? []),

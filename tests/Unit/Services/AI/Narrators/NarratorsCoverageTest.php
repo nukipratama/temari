@@ -1906,3 +1906,12 @@ it('never wires the retired past-you tools into a narrator toolbox', function ()
     expect($postRunNames)->not->toContain('get_past_you')
         ->and($briefingNames)->not->toContain('get_latest_past_you');
 });
+
+it('tells the briefing and the weekly recap a session the athlete chose to run as written is their call', function (string $narrator): void {
+    $prompt = narratorPrompt($narrator);
+
+    expect($prompt)->toContain('overridden');
+})->with([
+    'briefing' => [BriefingMascotVoiceNarrator::class],
+    'weekly recap' => [WeeklyRecapNarrator::class],
+]);
