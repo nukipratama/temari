@@ -478,6 +478,7 @@ final readonly class Periodizer
                     'increases_held' => $inputs->increasesHeld,
                     'deferred_time_trial' => self::deferredTimeTrial($inputs, $rows),
                     'restorable_quality' => $this->restorableQuality($inputs, $rows),
+                    ...($inputs->refundsOverride() ? ['override_kind' => null, 'override_date' => null, 'overridden_at' => null] : []),
                 ],
             );
 

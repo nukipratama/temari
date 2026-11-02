@@ -26,11 +26,12 @@ final class QualityOverride
 
     /**
      * The week's adaptation while this athlete may override it: never the demo athlete, and never
-     * in the {@see PreRaceWindow}.
+     * in the {@see PreRaceWindow} unless the override was already taken.
      */
     public static function openWeek(User $user, ?PlanAdaptation $week, ?RaceGoal $race): ?PlanAdaptation
     {
-        if (! $week instanceof PlanAdaptation || $user->is_demo || PreRaceWindow::contains($week->week_start, $race?->race_date)) {
+        if (! $week instanceof PlanAdaptation || $user->is_demo
+            || (! $week->override_kind instanceof PlanOverrideKind && PreRaceWindow::contains($week->week_start, $race?->race_date))) {
             return null;
         }
 

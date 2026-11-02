@@ -15,6 +15,8 @@ use App\Services\Run\Plan\QualityOverrideService;
 use App\Services\Run\Plan\RestClampRecorder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Sleep;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\ValidationException;
 
@@ -129,4 +131,32 @@ it('refuses to undo on a day the athlete never overrode', function (): void {
     ['user' => $user, 'session' => $session] = easedIntervalToday();
 
     expect(overrideRefusal(fn () => overrideService()->undo($user, $session, Carbon::today())))->not->toBeNull();
+});
+
+it('checks the offer inside the plan lock, so a move that lands while it waits wins', function (): void {
+    ['user' => $user, 'session' => $session, 'week' => $week] = easedIntervalToday();
+    $move = Cache::lock("plan-reconciliation:{$user->id}", 10);
+    expect($move->get())->toBeTrue();
+    Sleep::fake();
+    Sleep::whenFakingSleep(function () use ($session, $move): void {
+        $session->update(['pinned' => true]);
+        $move->release();
+    });
+
+    expect(overrideRefusal(fn () => overrideService()->take($user, $session, Carbon::today())))->not->toBeNull()
+        ->and($week->refresh()->override_kind)->toBeNull();
+});
+
+it('refuses rather than failing once a rebuild that lands while it waits replaces the day', function (): void {
+    ['user' => $user, 'session' => $session, 'week' => $week] = easedIntervalToday();
+    $rebuild = Cache::lock("plan-reconciliation:{$user->id}", 10);
+    expect($rebuild->get())->toBeTrue();
+    Sleep::fake();
+    Sleep::whenFakingSleep(function () use ($session, $rebuild): void {
+        PlannedSession::query()->whereKey($session->id)->delete();
+        $rebuild->release();
+    });
+
+    expect(overrideRefusal(fn () => overrideService()->take($user, $session, Carbon::today())))->not->toBeNull()
+        ->and($week->refresh()->override_kind)->toBeNull();
 });

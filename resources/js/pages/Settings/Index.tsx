@@ -473,6 +473,7 @@ function BriefingSendTime({
     onChange: (minute: number | null) => void;
 }>) {
     const [draft, setDraft] = useState(() => minuteToClock(minute));
+    const [reverted, setReverted] = useState(false);
 
     return (
         <SettingsRow
@@ -487,6 +488,7 @@ function BriefingSendTime({
                             disabled={disabled}
                             onClick={() => {
                                 setDraft('');
+                                setReverted(false);
                                 onChange(null);
                             }}
                             className="focus-ring rounded-sm font-sans text-xs text-text-2 underline-offset-2 hover:underline disabled:cursor-not-allowed disabled:opacity-50"
@@ -500,7 +502,10 @@ function BriefingSendTime({
                         aria-label="send the morning briefing at"
                         value={draft}
                         disabled={disabled}
-                        onChange={(event) => setDraft(event.target.value)}
+                        onChange={(event) => {
+                            setDraft(event.target.value);
+                            setReverted(false);
+                        }}
                         onBlur={() => {
                             const next = clockToMinute(draft);
                             if (
@@ -508,6 +513,7 @@ function BriefingSendTime({
                                 next >= QUIET_HOURS_START_MINUTE
                             ) {
                                 setDraft(minuteToClock(minute));
+                                setReverted(true);
                             } else if (next !== minute) {
                                 onChange(next);
                             }
@@ -519,7 +525,13 @@ function BriefingSendTime({
                     />
                 </span>
             }
-        />
+        >
+            {reverted && (
+                <p className="text-right font-sans text-xs text-text-2">
+                    before 22:00 only
+                </p>
+            )}
+        </SettingsRow>
     );
 }
 

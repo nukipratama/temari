@@ -28,6 +28,11 @@ final readonly class QualityOverrideService
 
     public function take(User $user, PlannedSession $session, Carbon $today): PlanOverrideKind
     {
+        return $this->periodizer->withRegenerationLock($user, fn (): PlanOverrideKind => $this->takeWithinLock($user, $session->fresh() ?? throw self::refusal("this day can't be overridden."), $today), Periodizer::REQUEST_LOCK_WAIT_SECONDS);
+    }
+
+    private function takeWithinLock(User $user, PlannedSession $session, Carbon $today): PlanOverrideKind
+    {
         $day = collect($this->currentWeek->forUser($user, $today)['days'] ?? [])->firstWhere('id', $session->id);
         $offer = is_array($day) ? $day['override'] : null;
         if (! is_array($offer) || $offer['state'] !== 'offered' || ! is_string($offer['kind'])) {
@@ -35,7 +40,7 @@ final readonly class QualityOverrideService
         }
         $kind = PlanOverrideKind::from($offer['kind']);
 
-        $this->periodizer->withRegenerationLock($user, fn () => DB::transaction(function () use ($user, $session, $today, $kind): void {
+        DB::transaction(function () use ($user, $session, $today, $kind): void {
             $week = $this->lockedWeek($user, $session);
             if (! $week instanceof PlanAdaptation || $week->override_kind instanceof PlanOverrideKind) {
                 throw self::refusal("this day can't be overridden.");
@@ -53,7 +58,7 @@ final readonly class QualityOverrideService
             if ($restored === null || ! QualityOverride::isWorkout($restored->session_type)) {
                 throw self::refusal("this day can't be overridden.");
             }
-        }), Periodizer::REQUEST_LOCK_WAIT_SECONDS);
+        });
 
         return $kind;
     }

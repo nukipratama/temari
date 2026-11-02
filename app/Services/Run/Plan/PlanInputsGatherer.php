@@ -58,6 +58,7 @@ final readonly class PlanInputsGatherer
         private RaceOutcomeMatcher $raceOutcomes,
         private ResolveHardEffortsAction $hardEfforts,
         private ResolveRecentLongestRunAction $recentLongestRun,
+        private SessionMatcher $sessionMatcher,
     ) {
     }
 
@@ -87,6 +88,12 @@ final readonly class PlanInputsGatherer
             'hard_minutes' => $session['non_easy_minutes'] ?? $session['lap_threshold_minutes'] ?? $session['gap_threshold_minutes'],
             'demanding' => $session['demanding'] || ($session['non_easy_minutes'] ?? 0) >= 10,
         ], $this->trainingStress->forUser($user, $today, 14)['sessions']);
+        $restoredDay = PlanAdaptation::query()
+            ->where('user_id', $user->id)
+            ->where('week_start', $currentWeekStart->toDateString())
+            ->where('override_kind', PlanOverrideKind::WeeklyDrop)
+            ->first(['override_date'])
+            ?->override_date;
         $weeks = ($this->trailingWeeks)($user->id, $currentWeekStart->copy()->subDay()->toDateString(), 6)
             ->filter(static fn (WeeklySnapshot $week): bool => $week->week_ending->gte($currentWeekStart->copy()->subWeeks(6)));
 
@@ -135,11 +142,8 @@ final readonly class PlanInputsGatherer
             longestRunSoFarKm: $this->longestRunSoFarKm($user, $today, $season->starts_at, $baseline),
             lastFastFinishDate: $this->lastFastFinishDate($user, $today),
             supportedTenKTimeSec: $this->supportedTimeSec($estimate, 10_000),
-            qualityRestored: PlanAdaptation::query()
-                ->where('user_id', $user->id)
-                ->where('week_start', $currentWeekStart->toDateString())
-                ->where('override_kind', PlanOverrideKind::WeeklyDrop)
-                ->exists(),
+            qualityRestored: $restoredDay instanceof Carbon,
+            restoredDayOpen: $restoredDay instanceof Carbon && ! $restoredDay->lt($today) && $this->sessionMatcher->activityByDate($user, $restoredDay, $restoredDay) === [],
         );
     }
 

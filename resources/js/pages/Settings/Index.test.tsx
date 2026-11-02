@@ -415,6 +415,23 @@ describe('Settings', () => {
         expect(field).toHaveValue('');
     });
 
+    it('says why a time from 22:00 was put back until the next edit', () => {
+        render(
+            <Settings
+                notificationPrefs={{ ...prefs, notifications_enabled: true }}
+            />,
+        );
+        const field = screen.getByLabelText('send the morning briefing at');
+        expect(screen.queryByText('before 22:00 only')).not.toBeInTheDocument();
+
+        fireEvent.change(field, { target: { value: '22:30' } });
+        fireEvent.blur(field);
+        expect(screen.getByText('before 22:00 only')).toBeInTheDocument();
+
+        fireEvent.change(field, { target: { value: '05:30' } });
+        expect(screen.queryByText('before 22:00 only')).not.toBeInTheDocument();
+    });
+
     it('shows a saved send time and clears it back to automatic', () => {
         vi.mocked(router.patch).mockReset();
         render(

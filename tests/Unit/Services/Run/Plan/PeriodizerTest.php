@@ -25,9 +25,11 @@ use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\Run\Metrics\RiegelProjector;
 use App\Services\Run\Metrics\VdotEstimator;
+use App\Services\Run\Plan\CurrentWeekPlanBuilder;
 use App\Services\Run\Plan\EffectiveSession;
 use App\Services\Run\Plan\Periodizer;
 use App\Services\Run\Plan\PlanInputsGatherer;
+use App\Services\Run\Plan\QualityOverrideService;
 use App\Services\Run\Plan\SeasonService;
 use App\Services\Run\Plan\TrainingBaseline;
 use App\Services\Run\Plan\PlanAdapter;
@@ -953,6 +955,52 @@ it('records the day and type a ran-too-hard week dropped, and keeps the session 
     expect(currentWeekQualityCount($user))->toBe(1)
         ->and($adaptation->refresh()->override_kind)->toBe(PlanOverrideKind::WeeklyDrop);
 });
+
+it('refunds the week\'s override once a rebuild finds the week no longer ran too hard, and shows no taken note', function (): void {
+    $user = User::factory()->create();
+    seedRanTooHardWeek($user);
+    periodizer()->regenerate($user);
+    $thursday = PlannedSession::query()->where('user_id', $user->id)->where('date', '2026-09-17')->firstOrFail();
+    app(QualityOverrideService::class)->take($user, $thursday, Carbon::today());
+
+    ActivityDetail::query()->get()->each(fn (ActivityDetail $detail): bool => $detail->update(['stream_summary' => ['easy_cap_bpm' => 150, 'over_easy_cap_sec' => 0]]));
+    periodizer()->regenerate($user);
+
+    $adaptation = PlanAdaptation::query()->where('user_id', $user->id)->firstOrFail();
+    $day = collect(nonNull(app(CurrentWeekPlanBuilder::class)->forUser($user, Carbon::today()))['days'])->firstWhere('date', '2026-09-17');
+    expect($adaptation->reason)->not->toBe(AdaptationReason::RanTooHard)
+        ->and([$adaptation->override_kind, $adaptation->override_date, $adaptation->overridden_at])->toBe([null, null, null])
+        ->and($day)->toHaveKey('override')
+        ->and(data_get($day, 'override'))->toBeNull();
+});
+
+it('keeps the week\'s override, its taken note and its grading record once the restored day was run or has passed', function (string $now, bool $ran): void {
+    $user = User::factory()->create();
+    seedRanTooHardWeek($user);
+    periodizer()->regenerate($user);
+    $thursday = PlannedSession::query()->where('user_id', $user->id)->where('date', '2026-09-17')->firstOrFail();
+    app(QualityOverrideService::class)->take($user, $thursday, Carbon::today());
+    $taken = PlanAdaptation::query()->where('user_id', $user->id)->firstOrFail();
+    if ($ran) {
+        ActivityDetail::factory()->for(Activity::factory()->for($user))->create(['start_date_local' => Carbon::parse('2026-09-17 07:00:00'), 'distance' => 8_000]);
+    }
+    Carbon::setTestNow($now);
+
+    ActivityDetail::query()->get()->each(fn (ActivityDetail $detail): bool => $detail->update(['stream_summary' => ['easy_cap_bpm' => 150, 'over_easy_cap_sec' => 0]]));
+    periodizer()->regenerate($user);
+
+    $adaptation = PlanAdaptation::query()->where('user_id', $user->id)->firstOrFail();
+    $day = collect(nonNull(app(CurrentWeekPlanBuilder::class)->forUser($user, Carbon::today()))['days'])->firstWhere('date', '2026-09-17');
+    expect($adaptation->reason)->not->toBe(AdaptationReason::RanTooHard)
+        ->and($adaptation->override_kind)->toBe(PlanOverrideKind::WeeklyDrop)
+        ->and($adaptation->override_date?->toDateString())->toBe('2026-09-17')
+        ->and($adaptation->getRawOriginal('overridden_at'))->toBe($taken->getRawOriginal('overridden_at'))
+        ->and(data_get($day, 'override.state'))->toBe('taken')
+        ->and(data_get($day, 'override.undoable'))->toBeFalse();
+})->with([
+    'run on the day' => ['2026-09-17 12:00:00', true],
+    'the day has passed' => ['2026-09-18 12:00:00', false],
+]);
 
 it('records nothing to restore on a week that dropped no quality session', function (): void {
     $user = User::factory()->create();

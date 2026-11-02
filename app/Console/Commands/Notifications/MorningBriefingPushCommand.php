@@ -13,6 +13,7 @@ use App\Notifications\MorningBriefingNotification;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
 use App\Services\Notifications\ChannelRouter;
+use App\Services\Notifications\QuietHours;
 use App\Services\Notifications\UsualRunTime;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
@@ -65,7 +66,7 @@ class MorningBriefingPushCommand extends Command
         $due = $users->filter(function (User $user) use ($minuteOfDay): bool {
             $slot = self::slotFor($user->id, $user->notificationPreference);
 
-            return $minuteOfDay >= $slot && $minuteOfDay - $slot <= self::CATCH_UP_MINUTES;
+            return $minuteOfDay >= $slot && $minuteOfDay - $slot <= self::CATCH_UP_MINUTES && $minuteOfDay < QuietHours::STARTS_AT_HOUR * 60;
         });
 
         $briefings = $this->briefingsFor($due, $today);
