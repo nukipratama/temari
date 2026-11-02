@@ -38,12 +38,13 @@ it('skips details that already have weather or are missing coords/start', functi
         ->shouldReceive('fetchForActivity')
         ->never();
 
-    // Already has weather.
+    // Already sampled over the run.
     ActivityDetail::factory()->create([
         'start_lat' => -6.24,
         'start_lng' => 106.81,
         'start_date_local' => now()->subDays(30),
         'weather_temp_c' => 25,
+        'weather_temp_max_c' => 26,
     ]);
     // Missing coords.
     ActivityDetail::factory()->create([
@@ -199,6 +200,7 @@ it('reports no weather gap once every run has weather', function (): void {
         'start_lng' => 106.81,
         'start_date_local' => now()->subDays(30),
         'weather_temp_c' => 25,
+        'weather_temp_max_c' => 26,
         'created_at' => now()->subDays(4),
     ]);
 
@@ -207,4 +209,38 @@ it('reports no weather gap once every run has weather', function (): void {
     $this->app->instance(MaintainerAlerter::class, $alerter);
 
     $this->artisan('weather:backfill')->assertSuccessful();
+});
+
+it('re-samples a row read at the start hour only, after rows with no weather at all', function (): void {
+    $this->mock(OpenMeteoClient::class)
+        ->shouldReceive('fetchForActivity')
+        ->once()
+        ->withArgs(fn (float $lat, float $lng, $startedAt, int $elapsed): bool => $elapsed === 1800)
+        ->andReturn(new WeatherSnapshot(tempC: 29, humidityPct: 75, rainDetected: true, tempMaxC: 30, dewPointC: 24, apparentTempC: 34));
+
+    $missing = ActivityDetail::factory()->create([
+        'start_lat' => -6.24, 'start_lng' => 106.81, 'start_date_local' => now()->subDays(30),
+        'elapsed_time' => 1800, 'weather_temp_c' => null,
+    ]);
+    $startHourOnly = ActivityDetail::factory()->create([
+        'start_lat' => -6.24, 'start_lng' => 106.81, 'start_date_local' => now()->subDays(30),
+        'elapsed_time' => 1800, 'weather_temp_c' => 27, 'weather_temp_max_c' => null,
+    ]);
+
+    $this->artisan('weather:backfill', ['--limit' => 1])->assertSuccessful();
+
+    expect($missing->refresh()->weather_temp_c)->toBe(29)
+        ->and($startHourOnly->refresh()->weather_temp_c)->toBe(27);
+
+    $this->mock(OpenMeteoClient::class)
+        ->shouldReceive('fetchForActivity')
+        ->once()
+        ->andReturn(new WeatherSnapshot(tempC: 28, humidityPct: 70, rainDetected: false, tempMaxC: 30, dewPointC: 23, apparentTempC: 33));
+
+    $this->artisan('weather:backfill', ['--limit' => 1])->assertSuccessful();
+
+    expect($startHourOnly->refresh()->weather_temp_c)->toBe(28)
+        ->and($startHourOnly->weather_temp_max_c)->toBe(30)
+        ->and($startHourOnly->weather_dew_point_c)->toBe(23)
+        ->and($startHourOnly->weather_apparent_temp_c)->toBe(33);
 });

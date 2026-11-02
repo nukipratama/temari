@@ -49,7 +49,10 @@ use Override;
  * @property float|null $max_speed
  * @property array<string, mixed>|null $stream_summary
  * @property int|null $weather_temp_c
+ * @property int|null $weather_temp_max_c
  * @property int|null $weather_humidity_pct
+ * @property int|null $weather_dew_point_c
+ * @property int|null $weather_apparent_temp_c
  * @property bool|null $weather_rain_detected
  * @property int|null $weather_wind_speed_kmh
  * @property int|null $weather_wind_gust_kmh
@@ -96,7 +99,10 @@ use Override;
     'max_speed',
     'stream_summary',
     'weather_temp_c',
+    'weather_temp_max_c',
     'weather_humidity_pct',
+    'weather_dew_point_c',
+    'weather_apparent_temp_c',
     'weather_rain_detected',
     'weather_wind_speed_kmh',
     'weather_wind_gust_kmh',
@@ -261,7 +267,10 @@ class ActivityDetail extends Model
             'max_speed' => 'float',
             'stream_summary' => 'array',
             'weather_temp_c' => 'integer',
+            'weather_temp_max_c' => 'integer',
             'weather_humidity_pct' => 'integer',
+            'weather_dew_point_c' => 'integer',
+            'weather_apparent_temp_c' => 'integer',
             'weather_rain_detected' => 'boolean',
             'weather_wind_speed_kmh' => 'integer',
             'weather_wind_gust_kmh' => 'integer',

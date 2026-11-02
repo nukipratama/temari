@@ -14,7 +14,7 @@ use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
 
 #[Signature('weather:backfill {--limit=200 : Cap on rows handled per run}')]
-#[Description('Re-fetch weather for activities with stored coords but a null weather_temp_c (transient Open-Meteo misses).')]
+#[Description('Fetch weather for activities with stored coords that have none yet (transient Open-Meteo misses) or were sampled at the start hour only.')]
 class BackfillActivityWeatherCommand extends Command
 {
     public function handle(OpenMeteoClient $weather, MaintainerAlerter $alerter): int
@@ -22,11 +22,12 @@ class BackfillActivityWeatherCommand extends Command
         $limit = (int) $this->option('limit');
 
         $query = ActivityDetail::query()
-            ->whereNull('weather_temp_c')
+            ->whereNull('weather_temp_max_c')
             ->whereNotNull('start_lat')
             ->whereNotNull('start_lng')
             ->whereNotNull('start_date_local')
             ->where('weather_attempts', '<', ActivityDetail::MAX_BACKFILL_ATTEMPTS)
+            ->orderByRaw('weather_temp_c is not null')
             ->orderByRaw('weather_attempted_at is not null')
             ->orderBy('weather_attempted_at')
             ->orderBy('id')
@@ -75,6 +76,7 @@ class BackfillActivityWeatherCommand extends Command
             (float) $detail->start_lat,
             (float) $detail->start_lng,
             CarbonImmutable::instance($detail->start_date_local),
+            $detail->elapsed_time ?? 0,
         );
 
         if (!$snapshot instanceof WeatherSnapshot) {
