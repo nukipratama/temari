@@ -27,6 +27,7 @@ final class WeatherTool extends ActivityTool
         return [
             'weather_temp_c' => $shared->weatherTempC,
             'weather_humidity_pct' => $this->detail->weather_humidity_pct,
+            'ran_hot' => $this->detail->ranHot(),
             'weather_rain' => $shared->weatherRain,
             'weather_rain_source' => $shared->weatherRainSource,
             'weather_wind_speed_kmh' => $shared->weatherWindSpeedKmh,
