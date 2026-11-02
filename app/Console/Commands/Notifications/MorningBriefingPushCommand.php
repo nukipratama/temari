@@ -6,6 +6,7 @@ namespace App\Console\Commands\Notifications;
 
 use App\Models\AI\Analysis;
 use App\Models\NotificationDelivery;
+use App\Models\NotificationPreference;
 use App\Models\PlannedSession;
 use App\Models\User;
 use App\Notifications\MorningBriefingNotification;
@@ -21,14 +22,29 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Carbon;
 
 #[Signature('briefing:morning-push')]
-#[Description("Push today's already-generated briefing to each athlete at the time of day they usually run")]
+#[Description("Push today's already-generated briefing to each athlete an hour before they usually run, or at the time they chose")]
 class MorningBriefingPushCommand extends Command
 {
     public const int BUCKET_MINUTES = 15;
 
     public const int CATCH_UP_MINUTES = 60;
 
-    public function handle(ChannelRouter $router, UsualRunTime $usualRunTime): int
+    public const int LEAD_MINUTES = 60;
+
+    /**
+     * The minute of the day this athlete's briefing is due, on the quarter hour
+     * at or before their chosen send time, or else an hour before their usual
+     * start, never before midnight.
+     */
+    public static function slotFor(int $userId, ?NotificationPreference $preference): int
+    {
+        $minute = $preference->briefing_push_minute
+            ?? max(0, app(UsualRunTime::class)->forUser($userId) - self::LEAD_MINUTES);
+
+        return intdiv($minute, self::BUCKET_MINUTES) * self::BUCKET_MINUTES;
+    }
+
+    public function handle(ChannelRouter $router): int
     {
         $now = Carbon::now();
         $minuteOfDay = $now->hour * 60 + $now->minute;
@@ -38,13 +54,16 @@ class MorningBriefingPushCommand extends Command
             ->where($router->scopeReachable(...))
             ->whereDoesntHave(
                 'notificationPreference',
-                fn (Builder $preference): Builder => $preference->where('notifications_enabled', false),
+                fn (Builder $preference): Builder => $preference
+                    ->where('notifications_enabled', false)
+                    ->orWhere('briefing_push_enabled', false),
             )
             ->whereNotIn('id', PlannedSession::query()->select('user_id')->where('date', $today)->where('skipped', true))
+            ->with('notificationPreference')
             ->get();
 
-        $due = $users->filter(function (User $user) use ($usualRunTime, $minuteOfDay): bool {
-            $slot = intdiv($usualRunTime->forUser($user->id), self::BUCKET_MINUTES) * self::BUCKET_MINUTES;
+        $due = $users->filter(function (User $user) use ($minuteOfDay): bool {
+            $slot = self::slotFor($user->id, $user->notificationPreference);
 
             return $minuteOfDay >= $slot && $minuteOfDay - $slot <= self::CATCH_UP_MINUTES;
         });

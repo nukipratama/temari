@@ -17,25 +17,48 @@ it('authorizes the request', function (): void {
     expect(new UpdateNotificationPreferenceRequest()->authorize())->toBeTrue();
 });
 
-it('accepts the complete boolean state', function (): void {
-    expect(passesNotificationPreference([
+/**
+ * @param  array<string, mixed>  $overrides
+ * @return array<string, mixed>
+ */
+function notificationPreferencePayload(array $overrides = []): array
+{
+    return [
         'notifications_enabled' => true,
         'telegram_enabled' => false,
         'push_enabled' => true,
-    ]))->toBeTrue();
-});
+        'briefing_push_enabled' => true,
+        'briefing_push_minute' => null,
+        ...$overrides,
+    ];
+}
 
-it('rejects a non-boolean flag', function (): void {
-    expect(passesNotificationPreference([
-        'notifications_enabled' => 'maybe',
-        'telegram_enabled' => true,
-        'push_enabled' => true,
-    ]))->toBeFalse();
-});
+it('accepts the complete state', function (?int $minute): void {
+    expect(passesNotificationPreference(notificationPreferencePayload(['briefing_push_minute' => $minute])))->toBeTrue();
+})->with([
+    'an automatic send time' => null,
+    'midnight' => 0,
+    'the last minute before quiet hours' => 21 * 60 + 59,
+]);
+
+it('rejects a non-boolean flag', function (string $flag): void {
+    expect(passesNotificationPreference(notificationPreferencePayload([$flag => 'maybe'])))->toBeFalse();
+})->with(['notifications_enabled', 'briefing_push_enabled']);
+
+it('rejects a send time outside the day or after quiet hours begin', function (mixed $minute): void {
+    expect(passesNotificationPreference(notificationPreferencePayload(['briefing_push_minute' => $minute])))->toBeFalse();
+})->with([
+    'before midnight' => -1,
+    'inside the evening quiet hours, which would hold it into tomorrow' => 22 * 60,
+    'a full day' => 24 * 60,
+    'a clock string' => '06:30',
+]);
 
 it('rejects a partial payload missing a flag', function (array $payload): void {
     expect(passesNotificationPreference($payload))->toBeFalse();
 })->with([
     'the channel mutes' => [['notifications_enabled' => true]],
     'the master switch' => [['telegram_enabled' => true, 'push_enabled' => true]],
+    'the briefing switch' => [array_diff_key(notificationPreferencePayload(), ['briefing_push_enabled' => true])],
+    'the briefing send time' => [array_diff_key(notificationPreferencePayload(), ['briefing_push_minute' => null])],
 ]);

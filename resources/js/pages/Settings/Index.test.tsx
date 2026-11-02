@@ -27,6 +27,8 @@ const connectedTelegram = {
 
 const prefs = {
     notifications_enabled: false,
+    briefing_push_enabled: true,
+    briefing_push_minute: null,
     telegram_enabled: true,
     push_enabled: true,
 };
@@ -329,11 +331,115 @@ describe('Settings', () => {
             '/profile/notifications',
             {
                 notifications_enabled: true,
+                briefing_push_enabled: true,
+                briefing_push_minute: null,
                 telegram_enabled: true,
                 push_enabled: true,
             },
             { preserveScroll: true },
         );
+    });
+
+    it('greys out the briefing controls while the master switch is off', () => {
+        render(<Settings notificationPrefs={prefs} />);
+
+        expect(
+            screen.getByRole('switch', { name: 'morning briefing' }),
+        ).toBeDisabled();
+        expect(
+            screen.getByLabelText('send the morning briefing at'),
+        ).toBeDisabled();
+    });
+
+    it('patches the briefing switch on its own, carrying all current values', () => {
+        vi.mocked(router.patch).mockReset();
+        render(
+            <Settings
+                notificationPrefs={{ ...prefs, notifications_enabled: true }}
+            />,
+        );
+
+        fireEvent.click(
+            screen.getByRole('switch', { name: 'morning briefing' }),
+        );
+
+        expect(router.patch).toHaveBeenCalledWith(
+            '/profile/notifications',
+            expect.objectContaining({
+                notifications_enabled: true,
+                briefing_push_enabled: false,
+            }),
+            { preserveScroll: true },
+        );
+        expect(
+            screen.getByLabelText('send the morning briefing at'),
+        ).toBeDisabled();
+    });
+
+    it('saves a chosen send time as minutes once the field is left', () => {
+        vi.mocked(router.patch).mockReset();
+        render(
+            <Settings
+                notificationPrefs={{ ...prefs, notifications_enabled: true }}
+            />,
+        );
+        const field = screen.getByLabelText('send the morning briefing at');
+
+        fireEvent.change(field, { target: { value: '05:30' } });
+        expect(router.patch).not.toHaveBeenCalled();
+
+        fireEvent.blur(field);
+        expect(router.patch).toHaveBeenCalledWith(
+            '/profile/notifications',
+            expect.objectContaining({ briefing_push_minute: 330 }),
+            { preserveScroll: true },
+        );
+
+        fireEvent.blur(field);
+        expect(router.patch).toHaveBeenCalledTimes(1);
+    });
+
+    it('puts back the saved time instead of saving one inside the evening quiet hours', () => {
+        vi.mocked(router.patch).mockReset();
+        render(
+            <Settings
+                notificationPrefs={{ ...prefs, notifications_enabled: true }}
+            />,
+        );
+        const field = screen.getByLabelText('send the morning briefing at');
+
+        fireEvent.change(field, { target: { value: '22:30' } });
+        fireEvent.blur(field);
+
+        expect(router.patch).not.toHaveBeenCalled();
+        expect(field).toHaveValue('');
+    });
+
+    it('shows a saved send time and clears it back to automatic', () => {
+        vi.mocked(router.patch).mockReset();
+        render(
+            <Settings
+                notificationPrefs={{
+                    ...prefs,
+                    notifications_enabled: true,
+                    briefing_push_minute: 4 * 60 + 45,
+                }}
+            />,
+        );
+        const field = screen.getByLabelText('send the morning briefing at');
+        expect(field).toHaveValue('04:45');
+
+        fireEvent.click(screen.getByRole('button', { name: 'clear' }));
+
+        expect(field).toHaveValue('');
+        expect(router.patch).toHaveBeenCalledWith(
+            '/profile/notifications',
+            expect.objectContaining({ briefing_push_minute: null }),
+            { preserveScroll: true },
+        );
+        expect(
+            screen.queryByRole('button', { name: 'clear' }),
+        ).not.toBeInTheDocument();
     });
 
     it('posts a test notification when "send test notification" is clicked', () => {

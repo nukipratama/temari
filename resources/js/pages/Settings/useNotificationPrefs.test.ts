@@ -11,6 +11,8 @@ import {
 
 const PREFS: NotificationPrefs = {
     notifications_enabled: false,
+    briefing_push_enabled: true,
+    briefing_push_minute: null,
     telegram_enabled: true,
     push_enabled: true,
 };
@@ -32,6 +34,8 @@ describe('useNotificationPrefs', () => {
         expect(result.current.notificationsEnabled).toBe(false);
         expect(result.current.telegramEnabled).toBe(true);
         expect(result.current.pushEnabled).toBe(true);
+        expect(result.current.briefingPushEnabled).toBe(true);
+        expect(result.current.briefingPushMinute).toBeNull();
     });
 
     it('flips a toggle locally and PATCHes the complete state', () => {
@@ -47,6 +51,8 @@ describe('useNotificationPrefs', () => {
             '/profile/notifications',
             {
                 notifications_enabled: true,
+                briefing_push_enabled: true,
+                briefing_push_minute: null,
                 telegram_enabled: true,
                 push_enabled: true,
             },
@@ -67,6 +73,8 @@ describe('useNotificationPrefs', () => {
             '/profile/notifications',
             {
                 notifications_enabled: false,
+                briefing_push_enabled: true,
+                briefing_push_minute: null,
                 telegram_enabled: false,
                 push_enabled: false,
             },
@@ -89,8 +97,33 @@ describe('useNotificationPrefs', () => {
             '/profile/notifications',
             {
                 notifications_enabled: false,
+                briefing_push_enabled: true,
+                briefing_push_minute: null,
                 telegram_enabled: false,
                 push_enabled: false,
+            },
+            { preserveScroll: true },
+        );
+    });
+
+    it('PATCHes the briefing switch and send time with the rest of the state', () => {
+        vi.mocked(router.patch).mockReset();
+        const { result } = renderHook(() =>
+            useNotificationPrefs({ prefs: PREFS }),
+        );
+
+        act(() => result.current.setBriefingPushMinute(5 * 60 + 30));
+        act(() => result.current.setBriefingPushEnabled(false));
+
+        expect(result.current.briefingPushMinute).toBe(330);
+        expect(router.patch).toHaveBeenLastCalledWith(
+            '/profile/notifications',
+            {
+                notifications_enabled: false,
+                briefing_push_enabled: false,
+                briefing_push_minute: 330,
+                telegram_enabled: true,
+                push_enabled: true,
             },
             { preserveScroll: true },
         );

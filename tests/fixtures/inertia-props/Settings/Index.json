@@ -31,6 +31,8 @@
     "intervalsIcu.broken",
     "intervalsIcu.connected",
     "notificationPrefs",
+    "notificationPrefs.briefing_push_enabled",
+    "notificationPrefs.briefing_push_minute",
     "notificationPrefs.notifications_enabled",
     "notificationPrefs.push_enabled",
     "notificationPrefs.telegram_enabled",

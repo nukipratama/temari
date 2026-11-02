@@ -16,6 +16,8 @@ it('creates a preference row on the first write', function (): void {
             'notifications_enabled' => false,
             'telegram_enabled' => true,
             'push_enabled' => true,
+            'briefing_push_enabled' => true,
+            'briefing_push_minute' => null,
         ])
         ->assertRedirect();
 
@@ -37,6 +39,8 @@ it('updates the existing preference row without creating a second', function ():
             'notifications_enabled' => false,
             'telegram_enabled' => true,
             'push_enabled' => true,
+            'briefing_push_enabled' => true,
+            'briefing_push_minute' => null,
         ])
         ->assertRedirect();
 
@@ -52,6 +56,8 @@ it('persists the channel mutes alongside the master switch', function (): void {
             'notifications_enabled' => true,
             'telegram_enabled' => false,
             'push_enabled' => true,
+            'briefing_push_enabled' => true,
+            'briefing_push_minute' => null,
         ])
         ->assertSessionHasNoErrors();
 
@@ -60,4 +66,27 @@ it('persists the channel mutes alongside the master switch', function (): void {
     expect($preference->telegram_enabled)->toBeFalse()
         ->and($preference->push_enabled)->toBeTrue()
         ->and($preference->notifications_enabled)->toBeTrue();
+});
+
+it('persists the briefing push switch and send time, and clears the time back to automatic', function (): void {
+    $user = User::factory()->create();
+    $payload = [
+        'notifications_enabled' => true,
+        'telegram_enabled' => true,
+        'push_enabled' => true,
+        'briefing_push_enabled' => false,
+        'briefing_push_minute' => 5 * 60 + 30,
+    ];
+
+    $this->actingAs($user)->patch('/profile/notifications', $payload)->assertSessionHasNoErrors();
+
+    $preference = nonNull($user->refresh()->notificationPreference);
+    expect($preference->briefing_push_enabled)->toBeFalse()
+        ->and($preference->briefing_push_minute)->toBe(5 * 60 + 30);
+
+    $this->actingAs($user)
+        ->patch('/profile/notifications', [...$payload, 'briefing_push_minute' => null])
+        ->assertSessionHasNoErrors();
+
+    expect(nonNull($preference->refresh())->briefing_push_minute)->toBeNull();
 });

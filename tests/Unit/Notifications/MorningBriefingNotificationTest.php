@@ -89,6 +89,20 @@ it('sends nothing once the master switch is off', function (): void {
     expect(new MorningBriefingNotification(briefingFor($user))->via($user))->toBe([]);
 });
 
+it('sends nothing once the briefing push alone is off', function (): void {
+    $user = subscribedUser();
+    NotificationPreference::factory()->for($user)->create(['briefing_push_enabled' => false]);
+
+    expect(new MorningBriefingNotification(briefingFor($user))->via($user))->toBe([]);
+});
+
+it('goes stale two hours past the athlete\'s own send time', function (): void {
+    $user = subscribedUser();
+    NotificationPreference::factory()->for($user)->create(['briefing_push_minute' => 4 * 60 + 40]);
+
+    expect(new MorningBriefingNotification(briefingFor($user))->staleAfter?->toDateTimeString())->toBe('2026-05-24 06:30:00');
+});
+
 it('rechecks the master switch before a queued channel sends', function (): void {
     $user = subscribedUser();
     $notification = new MorningBriefingNotification(briefingFor($user));
@@ -168,18 +182,19 @@ it('keys idempotency on the briefing row, so a second attempt is a no-op', funct
 
 afterEach(fn () => Carbon::setTestNow());
 
+// With no history the usual start is 06:00, so the slot is 05:00.
 it('sends a briefing delivered inside two hours of its bucket', function (string $at): void {
     Carbon::setTestNow($at);
     $user = subscribedUser();
 
     expect(new MorningBriefingNotification(briefingFor($user))->shouldSend($user, IdempotentWebPushChannel::class))->toBeTrue();
 })->with([
-    'on time' => '2026-05-24 06:05:00',
-    'exactly two hours late' => '2026-05-24 08:00:00',
+    'on time' => '2026-05-24 05:05:00',
+    'exactly two hours late' => '2026-05-24 07:00:00',
 ]);
 
 it('skips a briefing delivered more than two hours past its bucket', function (): void {
-    Carbon::setTestNow('2026-05-24 08:00:01');
+    Carbon::setTestNow('2026-05-24 07:00:01');
     $user = subscribedUser();
 
     expect(new MorningBriefingNotification(briefingFor($user))->shouldSend($user, IdempotentWebPushChannel::class))->toBeFalse();
@@ -209,7 +224,7 @@ it('judges a replayed notification as of the moment it was held', function (): v
     Carbon::setTestNow('2026-05-24 09:00:00');
     expect($notification->shouldSend($user, IdempotentWebPushChannel::class))->toBeFalse();
 
-    $notification->heldAt = Carbon::parse('2026-05-24 06:30:00');
+    $notification->heldAt = Carbon::parse('2026-05-24 06:00:00');
     expect($notification->shouldSend($user, IdempotentWebPushChannel::class))->toBeTrue();
 });
 
@@ -218,7 +233,7 @@ it('goes stale two hours past its bucket, or at the end of its day when that com
     $user = subscribedUser();
     $briefing = briefingFor($user);
 
-    expect(new MorningBriefingNotification($briefing)->staleAfter?->toDateTimeString())->toBe('2026-05-24 08:00:00');
+    expect(new MorningBriefingNotification($briefing)->staleAfter?->toDateTimeString())->toBe('2026-05-24 07:00:00');
 
     $lateRunner = subscribedUser();
     foreach (range(1, 5) as $day) {

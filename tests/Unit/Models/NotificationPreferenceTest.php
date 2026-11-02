@@ -33,3 +33,20 @@ it('is reachable as a hasOne from the user', function (): void {
     expect($user->notificationPreference)->toBeInstanceOf(NotificationPreference::class)
         ->and($user->notificationPreference?->notifications_enabled)->toBeFalse();
 });
+
+it('casts the briefing push switch to a boolean and its send time to an integer minute', function (): void {
+    $preference = NotificationPreference::factory()->make([
+        'briefing_push_enabled' => 0,
+        'briefing_push_minute' => '330',
+    ]);
+
+    expect($preference->briefing_push_enabled)->toBeFalse()
+        ->and($preference->briefing_push_minute)->toBe(330);
+});
+
+it('defaults to the briefing push on at the automatic time', function (): void {
+    $preference = NotificationPreference::query()->create(['user_id' => User::factory()->create()->id]);
+
+    expect($preference->refresh()->briefing_push_enabled)->toBeTrue()
+        ->and($preference->briefing_push_minute)->toBeNull();
+});

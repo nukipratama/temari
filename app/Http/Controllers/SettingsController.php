@@ -118,11 +118,11 @@ class SettingsController extends Controller
     }
 
     /**
-     * Both preference axes: the channel-neutral master switch, and the
-     * per-channel mutes. A missing row means all-on, so an untouched account
-     * defaults to true everywhere.
+     * Both preference axes: the channel-neutral master switch with the
+     * briefing push's own switch and send time under it, and the per-channel
+     * mutes. A missing row means all-on at the automatic send time.
      *
-     * @return array{notifications_enabled: bool, telegram_enabled: bool, push_enabled: bool}
+     * @return array{notifications_enabled: bool, briefing_push_enabled: bool, briefing_push_minute: int|null, telegram_enabled: bool, push_enabled: bool}
      */
     private function resolveNotificationPrefs(User $user): array
     {
@@ -130,6 +130,8 @@ class SettingsController extends Controller
         if ($preference === null) {
             return [
                 'notifications_enabled' => true,
+                'briefing_push_enabled' => true,
+                'briefing_push_minute' => null,
                 'telegram_enabled' => true,
                 'push_enabled' => true,
             ];
@@ -137,6 +139,8 @@ class SettingsController extends Controller
 
         return [
             'notifications_enabled' => $preference->notifications_enabled,
+            'briefing_push_enabled' => $preference->briefing_push_enabled,
+            'briefing_push_minute' => $preference->briefing_push_minute,
             'telegram_enabled' => $preference->telegram_enabled,
             'push_enabled' => $preference->push_enabled,
         ];
