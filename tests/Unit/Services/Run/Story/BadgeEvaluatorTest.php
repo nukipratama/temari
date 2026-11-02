@@ -41,9 +41,12 @@ it('awards no badges for a plain mid-morning run', function (): void {
     expect(badgesFor(badgeDetail(['weather_temp_c' => 25])))->toBe([]);
 });
 
-it('awards heat_tamer at 31C and above', function (): void {
-    expect(badgesFor(badgeDetail(['weather_temp_c' => 31])))->toContain('heat_tamer');
-});
+it('awards heat_tamer once the heat index reaches 90 °F, humidity included', function (int $humidityPct, bool $awarded): void {
+    expect(in_array('heat_tamer', badgesFor(badgeDetail(['weather_temp_c' => 31, 'weather_humidity_pct' => $humidityPct])), true))->toBe($awarded);
+})->with([
+    '31 °C at 40 % reads 87.6 °F' => [40, false],
+    '31 °C at 55 % reads 92.6 °F' => [55, true],
+]);
 
 it('awards rain_warrior when rain was detected', function (): void {
     expect(badgesFor(badgeDetail(['weather_temp_c' => 25, 'weather_rain_detected' => true])))

@@ -174,6 +174,7 @@ class RunController extends Controller
     private function detailPayload(ActivityDetail $detail): array
     {
         $payload = Arr::only($detail->toArray(), self::DETAIL_FIELDS);
+        $payload['ran_hot'] = $detail->ranHot();
         $summary = $payload['stream_summary'] ?? null;
 
         if (is_array($summary)) {

@@ -118,6 +118,18 @@ it('paceSecPerKm computes pace on elapsed time and returns null for a zero-dista
         ->and($zeroDistance->paceSecPerKm())->toBeNull();
 });
 
+it('ranHot is true from the NWS heat index Extreme Caution band, humidity included', function (?int $tempC, ?int $humidity, bool $expected): void {
+    $detail = ActivityDetail::factory()->make(['activity_id' => 1, 'weather_temp_c' => $tempC, 'weather_humidity_pct' => $humidity]);
+
+    expect($detail->ranHot())->toBe($expected);
+})->with([
+    'humid 30 °C feels past 90 °F' => [30, 70, true],
+    'dry 31 °C stays under 90 °F' => [31, 30, false],
+    'a humid tropical morning' => [26, 90, false],
+    'no reading' => [null, null, false],
+    'temperature without humidity' => [33, null, false],
+]);
+
 it('laps falls back to an empty array when the column is null', function (): void {
     $withLaps = ActivityDetail::factory()->make(['activity_id' => 1, 'laps' => [['lap_index' => 1]]]);
     $withoutLaps = ActivityDetail::factory()->make(['activity_id' => 1, 'laps' => null]);

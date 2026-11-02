@@ -18,7 +18,7 @@ it('returns no claims for a run with no notable stream data', function (): void 
 // ── decoupling ───────────────────────────────────────────────────────
 
 it('blames the heat rather than the aerobic base when a hot run decouples', function (): void {
-    $hot = detailWith(['stream_summary' => ['drift_metric_version' => 2, 'steady_effort_decoupling_pct' => 14.2], 'weather_temp_c' => 33]);
+    $hot = detailWith(['stream_summary' => ['drift_metric_version' => 2, 'steady_effort_decoupling_pct' => 14.2], 'weather_temp_c' => 33, 'weather_humidity_pct' => 60]);
     $mild = detailWith(['stream_summary' => ['drift_metric_version' => 2, 'steady_effort_decoupling_pct' => 14.2], 'weather_temp_c' => 24]);
 
     expect(RuleBasedRunInsights::claims($hot)[0])

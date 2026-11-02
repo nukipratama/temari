@@ -3,7 +3,7 @@ title: Weather Integration
 description: How a run's start-time weather (temp / humidity / rain / wind) is fetched from Open-Meteo, cached, stored on the activity detail, and surfaced across run detail, dashboard, and AI narration
 tags: [architecture, weather]
 status: living
-reviewed: 2026-10-09
+reviewed: 2026-11-02
 code_refs:
   - app/Services/Weather/OpenMeteoClient.php
   - app/Services/Weather/WeatherSnapshot.php
@@ -46,9 +46,11 @@ It's written during ingest by [ActivityPipeline::lookupWeather](app/Services/Run
 
 All consumers read the stored columns; none call Open-Meteo.
 
-- **[[run-detail]]** — [MapWeatherPanel](resources/js/components/run/MapWeatherPanel.tsx) renders the temp / humidity / wind / location block beside the route map, on both mobile and desktop, and [VitalsCard](resources/js/components/run/VitalsCard.tsx) reads the stored temperature to explain a hot run's heart-rate drift. The dashboard's last-run weather chip went with the port to the prototype's mini card, which draws no chip (see [[dashboard]]).
+- **[[run-detail]]** — [MapWeatherPanel](resources/js/components/run/MapWeatherPanel.tsx) renders the temp / humidity / wind / location block beside the route map, on both mobile and desktop, and [VitalsCard](resources/js/components/run/VitalsCard.tsx) reads the server's `ran_hot` flag to explain a hot run's heart-rate drift. The dashboard's last-run weather chip went with the port to the prototype's mini card, which draws no chip (see [[dashboard]]).
 - **[[ai-pipeline|AI narration]]** — temp and rain flow into [ActivityNarrationContext](app/Services/AI/Context/ActivityNarrationContext.php) so Temari's run commentary can mention the conditions.
 - **Past You, badges, mood and Q&A** — [PastYouMatcher](app/Services/Run/Story/PastYouMatcher.php) matches past runs on temperature, [BadgeEvaluator](app/Services/Run/Story/BadgeEvaluator.php) awards the heat and rain badges from the stored weather, [Temari](app/Services/Run/Story/Temari.php) weighs hot weather in a run's mood, and the card facts and the run Q&A answers ([RuleBasedRunAnswer](app/Services/AI/RunQuestion/RuleBasedRunAnswer.php)) quote it.
+
+**What counts as a hot run.** Every heat check (the heat badge, mood, rule-based narration and insights, the run Q&A seed and answer, VitalsCard) goes through one predicate, [`ActivityDetail::ranHot()`](app/Models/ActivityDetail.php). A run is hot when the US National Weather Service heat index of its stored temperature and humidity reaches 90 °F (32.2 °C). That is where the NWS "Extreme Caution" band starts: heat stroke, cramps or exhaustion become possible with prolonged exposure and/or physical activity ([NWS heat index](https://www.weather.gov/ama/heatindex)). [HeatIndex](app/Services/Weather/HeatIndex.php) implements the NWS Rothfusz regression with its adjustments ([NWS equation](https://www.wpc.ncep.noaa.gov/html/heatindex_equation.shtml)). The rule replaced "air temperature ≥ 31 °C", which ignored humidity and, on integer storage, fired from 30.5 °C. Open-Meteo's own `apparent_temperature` (Steadman's apparent temperature, not the NWS index) was measured and rejected: on the owner's 36 runs it read about 3.3 °C above Strava's feels-like and would have flagged 26 of them, mornings included, against 12 for the heat index. Decision: #2345.
 
 ## Notes / gotchas
 

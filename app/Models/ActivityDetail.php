@@ -7,6 +7,7 @@ namespace App\Models;
 use App\Actions\Run\Story\ResolveLastRunStartAction;
 use App\Services\Run\Story\PastYouTrendBuilder;
 use App\Services\Run\Metrics\PaceCalculator;
+use App\Services\Weather\HeatIndex;
 use Database\Factories\ActivityDetailFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Scope;
@@ -204,6 +205,13 @@ class ActivityDetail extends Model
     public function paceSecPerKm(): ?float
     {
         return PaceCalculator::secPerKm($this->distance, $this->elapsed_time);
+    }
+
+    public function ranHot(): bool
+    {
+        return $this->weather_temp_c !== null
+            && $this->weather_humidity_pct !== null
+            && HeatIndex::fahrenheit($this->weather_temp_c, $this->weather_humidity_pct) >= HeatIndex::HOT_RUN_FAHRENHEIT;
     }
 
     /**

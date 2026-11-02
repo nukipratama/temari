@@ -46,7 +46,6 @@ export const PERFORMANCE_EVIDENCE_KIND_VALUES = ['race', 'test'] as const;
 export type Mood = 'blazing' | 'easy' | 'wobbly' | 'gassed' | 'overloaded' | 'chill';
 export const MOOD_VALUES = ['blazing', 'easy', 'wobbly', 'gassed', 'overloaded', 'chill'] as const;
 
-export const HOT_RUN_TEMP_C = 31;
 export const INBOX_PER_PAGE = 20;
 export const FEED_WEEKS_PER_PAGE = 2;
 export const MIN_QUESTION_LENGTH = 3;
