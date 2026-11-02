@@ -14,6 +14,7 @@ import {
     ChangeRow,
     DeltaTag,
 } from '@/components/plan/DeltaPair';
+import QualityOverrideAction from '@/components/plan/QualityOverrideAction';
 import SessionBarGraph from '@/components/plan/SessionBarGraph';
 import { Icon } from '@/components/ui/Icon';
 import { cn } from '@/lib/cn';
@@ -178,6 +179,7 @@ export function hasDayDetail(day: EditablePlanDay): boolean {
         Boolean(day.credit_note) ||
         Boolean(day.result_note) ||
         day.activities.length > 0 ||
+        day.override !== null ||
         move ||
         skip ||
         restore
@@ -403,6 +405,12 @@ export default function DayDetail({
                 closesAtGoalPace={day.closes_at_goal_pace}
             />
             {day.activities.length > 0 && <RunList runs={day.activities} />}
+            {day.override !== null && (
+                <QualityOverrideAction
+                    sessionId={day.id}
+                    override={day.override}
+                />
+            )}
             {(canMove || canSkip || canUnskip) && (
                 <div className="mt-3">
                     {picking ? (

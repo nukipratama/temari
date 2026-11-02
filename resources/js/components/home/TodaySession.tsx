@@ -13,6 +13,7 @@ import {
     type TodayIntervalsIcu,
 } from '@/components/home/IntervalsIcuStatus';
 import { AskedRanResult, ChangeRow } from '@/components/plan/DeltaPair';
+import QualityOverrideAction from '@/components/plan/QualityOverrideAction';
 import AnalysisStatus from '@/components/temari/AnalysisStatus';
 import { renderNarration } from '@/components/temari/Citation';
 import MascotWatermark from '@/components/temari/MascotWatermark';
@@ -302,10 +303,13 @@ export default function TodaySession({
     restDayEasePace = null,
     intervalsIcu = null,
     drawnAnchors = new Set<string>(),
+    weekOverride = null,
 }: Readonly<{
     briefing: BriefingResult;
     /** Today's row of `weekPlan.days`, null when no plan covers today. */
     today?: WeekPlanDay | null;
+    /** Another day of the week offering its dropped session back. */
+    weekOverride?: WeekPlanDay | null;
     /** Deferred; only ever set alongside a rest-day `today`. */
     restDayEasePace?: RestDayEasePace | null;
     /** Null when intervals.icu is not connected or has not seen today yet. */
@@ -324,6 +328,7 @@ export default function TodaySession({
                 !(voice.status === 'done' && voice.content === null)));
     const pose: MascotPose =
         today?.session_type === 'rest' ? 'sleepy' : briefing.mood;
+    const overrideDay = today?.override ? today : weekOverride;
 
     return (
         <section
@@ -347,6 +352,12 @@ export default function TodaySession({
                         intervalsIcu={intervalsIcu}
                     />
                 ))}
+            {overrideDay?.override && (
+                <QualityOverrideAction
+                    sessionId={overrideDay.id}
+                    override={overrideDay.override}
+                />
+            )}
             {showsVoice && (
                 <div className="mt-3">
                     <AnalysisStatus

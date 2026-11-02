@@ -7,6 +7,7 @@ import type {
     Mood,
     NotificationKind,
     PlannedSessionStatus,
+    PlanOverrideKind,
     Rarity,
 } from './generated';
 
@@ -658,7 +659,26 @@ export interface WeekPlanDay {
     }[];
     /** This athlete has already flagged this day as wrong. */
     flagged?: boolean;
+    /** The week's one "i'm ready" override on this day, from
+     *  `QualityOverride::forDay()`: offered, or taken and undoable until a
+     *  run lands. Null on every other day. */
+    override: PlanDayOverride | null;
 }
+
+export type PlanDayOverride =
+    | {
+          kind: PlanOverrideKind;
+          state: 'offered';
+          label: string;
+          /** The plan's own reason: the clamp note or the adaptation detail. */
+          reason: string;
+      }
+    | {
+          kind: PlanOverrideKind;
+          state: 'taken';
+          note: string;
+          undoable: boolean;
+      };
 
 /** `CurrentWeekPlanBuilder::forUser()` — Home's compact pull of the current
  *  week's plan, null once a user has no plan yet. */
