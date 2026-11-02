@@ -344,12 +344,13 @@ it('picks squished mood on hot-weather easy runs', function (): void {
         ->toBe(Mood::Wobbly);
 });
 
-it('flags exactly 31°C as hot weather (wobbly)', function (): void {
+it('flags a 31°C run at 55% humidity (92.6 °F heat index) as hot weather (wobbly)', function (): void {
     $activity = Activity::factory()->create();
     $detail = ActivityDetail::factory()->for($activity)->create([
         'distance' => 8_000,
         'stream_summary' => ['time_in_zone_pct' => ['Z2' => 95]],
         'weather_temp_c' => 31,
+        'weather_humidity_pct' => 55,
         'weather_rain_detected' => false,
     ]);
 
@@ -357,12 +358,13 @@ it('flags exactly 31°C as hot weather (wobbly)', function (): void {
         ->toBe(Mood::Wobbly);
 });
 
-it('does not flag 30°C as hot weather', function (): void {
+it('does not flag a dry 30°C (85 °F heat index) as hot weather', function (): void {
     $activity = Activity::factory()->create();
     $detail = ActivityDetail::factory()->for($activity)->create([
         'distance' => 8_000,
         'stream_summary' => ['time_in_zone_pct' => ['Z2' => 95]],
         'weather_temp_c' => 30,
+        'weather_humidity_pct' => 40,
         'weather_rain_detected' => false,
     ]);
 

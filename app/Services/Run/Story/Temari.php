@@ -23,7 +23,6 @@ use App\Services\Run\Plan\EffectiveSession;
 use App\Services\Run\Plan\FastFinishLongRun;
 use App\Services\Run\Plan\PlannedSessionTypes;
 use Illuminate\Support\Carbon;
-use App\Services\Weather\WeatherSnapshot;
 
 class Temari
 {
@@ -116,7 +115,7 @@ class Temari
         $summary = StreamSummary::fromArray($detail->streamSummary());
         $hardShare = $summary->hardZoneShare();
         $decoupling = $summary->steadyEffortDecouplingPct();
-        $hotWeather = (int) ($detail->weather_temp_c ?? 0) >= WeatherSnapshot::HOT_RUN_TEMP_C;
+        $hotWeather = $detail->ranHot();
         $negativeSplit = $summary->negativeSplit() === true;
         $hardSession = $hardShare >= 80.0;
         $intendedHard = SessionIntent::isIntendedHard($detail);

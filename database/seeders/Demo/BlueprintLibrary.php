@@ -463,7 +463,7 @@ class BlueprintLibrary
 
         $startHour = $rng->getInt(0, 99) < 70 ? 6 : 17;
         $minute = $rng->getInt(0, 50);
-        $temp = $rng->getInt(24, 31);
+        $temp = $startHour === 6 ? $rng->getInt(24, 27) : $rng->getInt(28, 31);
         $rain = $rng->getInt(0, 99) < 15;
         $humidity = $rain ? $rng->getInt(85, 95) : $rng->getInt(65, 85);
 

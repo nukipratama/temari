@@ -27,7 +27,6 @@ use App\Models\Feedback;
 use App\Models\RaceGoal;
 use App\Services\Run\FeedFilters;
 use App\Services\Run\Metrics\DecouplingBands;
-use App\Services\Weather\WeatherSnapshot;
 use Illuminate\Console\Command;
 
 /**
@@ -65,7 +64,6 @@ final class GenerateTypeScriptEnumsCommand extends Command
      * @var array<string, int|float>
      */
     private const array SCALARS = [
-        'HOT_RUN_TEMP_C' => WeatherSnapshot::HOT_RUN_TEMP_C,
         'INBOX_PER_PAGE' => InboxController::PER_PAGE,
         'FEED_WEEKS_PER_PAGE' => FeedFilters::WEEKS_PER_PAGE,
         'MIN_QUESTION_LENGTH' => RunQuestion::MIN_QUESTION_LENGTH,

@@ -617,6 +617,7 @@ it('reads the weather with the rain flag carrying whether it was observed or for
     expect(new WeatherTool($a, $d->refresh())->handle([]))->toMatchArray([
         'weather_temp_c' => 32,
         'weather_humidity_pct' => 80,
+        'ran_hot' => true,
         'weather_rain' => true,
         'weather_rain_source' => 'forecast',
         'weather_wind_speed_kmh' => 28,

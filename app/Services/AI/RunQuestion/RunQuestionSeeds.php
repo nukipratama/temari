@@ -6,7 +6,6 @@ namespace App\Services\AI\RunQuestion;
 
 use App\Models\ActivityDetail;
 use App\Services\Run\Metrics\StreamSummary;
-use App\Services\Weather\WeatherSnapshot;
 
 /**
  * Which questions this run is worth asking, read off the run's own numbers.
@@ -68,7 +67,7 @@ final class RunQuestionSeeds
             RunQuestionTopic::CadenceDrop => ($summary->cadenceDropSpm() ?? 0.0) >= self::CADENCE_DROP_SPM_FLOOR,
             RunQuestionTopic::SlowestSplit => count($summary->perKm() ?? []) >= self::MIN_SPLITS,
             RunQuestionTopic::HardZones => $summary->hardZoneShare() >= self::HARD_ZONE_PCT_FLOOR,
-            RunQuestionTopic::Heat => ($detail->weather_temp_c ?? 0) >= WeatherSnapshot::HOT_RUN_TEMP_C,
+            RunQuestionTopic::Heat => $detail->ranHot(),
             RunQuestionTopic::Climb => ($summary->maxGradePct() ?? 0.0) >= self::STEEP_GRADE_PCT,
             RunQuestionTopic::Baseline => true,
         };

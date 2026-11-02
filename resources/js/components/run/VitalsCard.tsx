@@ -8,7 +8,7 @@ import { type IconComponent } from '@/components/ui/Icon';
 import StatTile from '@/components/ui/StatTile';
 import { showsDecoupling, showsGrade } from '@/lib/anchors';
 import { cn } from '@/lib/cn';
-import { DECOUPLING_HIGH_PCT, HOT_RUN_TEMP_C } from '@/types/generated';
+import { DECOUPLING_HIGH_PCT } from '@/types/generated';
 
 /** The bar's span, wide enough to hold a resting and a maximal reading. */
 const HR_SCALE_MIN = 100;
@@ -40,9 +40,7 @@ function decouplingNote(
     // Only applies to a positive drift, mirroring the backend's rule
     // (RuleBasedRunInsights decoupling > DecouplingBands::HIGH) — a large negative
     // decoupling isn't HR drift at all, so heat can't explain it away.
-    const wasHot =
-        detail.weather_temp_c != null &&
-        detail.weather_temp_c >= HOT_RUN_TEMP_C;
+    const wasHot = detail.ran_hot === true && detail.weather_temp_c != null;
     const high = Math.abs(decoupling) > DECOUPLING_HIGH_PCT;
 
     if (decoupling > DECOUPLING_HIGH_PCT && wasHot) {

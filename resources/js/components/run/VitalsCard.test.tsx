@@ -91,7 +91,7 @@ describe('VitalsCard', () => {
     it('warns when drift clears the threshold on a temperate run', () => {
         renderCard(
             { steady_effort_decoupling_pct: 14.4 },
-            { weather_temp_c: 22 },
+            { weather_temp_c: 22, ran_hot: false },
         );
         expect(screen.getByText('+14.4%')).toHaveClass('text-ember-ink');
         expect(
@@ -102,16 +102,27 @@ describe('VitalsCard', () => {
     it('blames the heat, not the athlete, when a hot run drifts', () => {
         renderCard(
             { steady_effort_decoupling_pct: 14.4 },
-            { weather_temp_c: 33 },
+            { weather_temp_c: 33, ran_hot: true },
         );
         expect(screen.getByText('+14.4%')).toHaveClass('text-icon-accent');
         expect(screen.getByText('normal, it was 33°C out')).toBeInTheDocument();
     });
 
+    it('takes the server heat verdict over the air temperature alone', () => {
+        renderCard(
+            { steady_effort_decoupling_pct: 14.4 },
+            { weather_temp_c: 33, ran_hot: false },
+        );
+        expect(screen.getByText('+14.4%')).toHaveClass('text-ember-ink');
+        expect(
+            screen.getByText('breathing drifted in the second half'),
+        ).toBeInTheDocument();
+    });
+
     it('does not excuse a large negative decoupling as heat', () => {
         renderCard(
             { steady_effort_decoupling_pct: -14 },
-            { weather_temp_c: 33 },
+            { weather_temp_c: 33, ran_hot: true },
         );
         expect(screen.getByText('-14.0%')).toHaveClass('text-ember-ink');
         expect(

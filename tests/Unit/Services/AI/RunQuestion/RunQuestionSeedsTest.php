@@ -84,18 +84,18 @@ it('offers the hard-zone question off the combined Z3+ share', function (): void
     expect(RunQuestionSeeds::for(runSeedDetail($summary)))->toContain(RunQuestionTopic::HardZones);
 });
 
-it('offers the heat question from the hot-run threshold up, not a degree below it', function (int $tempC, bool $offered): void {
-    expect(in_array(RunQuestionTopic::Heat, RunQuestionSeeds::for(runSeedDetail([], ['weather_temp_c' => $tempC])), true))->toBe($offered);
+it('offers the heat question once the heat index reaches 90 °F, humidity included', function (int $humidityPct, bool $offered): void {
+    expect(in_array(RunQuestionTopic::Heat, RunQuestionSeeds::for(runSeedDetail([], ['weather_temp_c' => 31, 'weather_humidity_pct' => $humidityPct])), true))->toBe($offered);
 })->with([
-    '30 degrees' => [30, false],
-    '31 degrees' => [31, true],
+    '31 °C at 40 % reads 87.6 °F' => [40, false],
+    '31 °C at 55 % reads 92.6 °F' => [55, true],
 ]);
 
 it('offers the heat question only on a hot run', function (): void {
     expect(RunQuestionSeeds::for(runSeedDetail([], ['weather_temp_c' => 26])))
         ->not->toContain(RunQuestionTopic::Heat);
 
-    expect(RunQuestionSeeds::for(runSeedDetail([], ['weather_temp_c' => 33])))
+    expect(RunQuestionSeeds::for(runSeedDetail([], ['weather_temp_c' => 33, 'weather_humidity_pct' => 60])))
         ->toContain(RunQuestionTopic::Heat);
 });
 
@@ -109,7 +109,7 @@ it('caps the suggestions so they stay suggestions', function (): void {
         'per_km' => [['km' => 1, 'pace' => '5:30'], ['km' => 2, 'pace' => '5:40'], ['km' => 3, 'pace' => '5:50']],
         'time_in_zone_pct' => ['Z3' => 40.0],
         'max_grade_pct' => 9.0,
-    ], ['weather_temp_c' => 33]);
+    ], ['weather_temp_c' => 33, 'weather_humidity_pct' => 60]);
 
     expect(RunQuestionSeeds::for($everything))->toHaveCount(4);
 });
@@ -138,7 +138,7 @@ it('gives every topic a question written the way a user types', function (): voi
 it('offers at most two seeds nobody asked yet as follow-ups, punctuation and case aside', function (): void {
     $detail = runSeedDetail(
         ['drift_metric_version' => 2, 'steady_effort_hr_drift_bpm' => 7.0],
-        ['weather_temp_c' => 33],
+        ['weather_temp_c' => 33, 'weather_humidity_pct' => 60],
     );
 
     expect(RunQuestionSeeds::unasked($detail, ['Why did my heart rate drift up']))

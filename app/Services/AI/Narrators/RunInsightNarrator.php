@@ -127,8 +127,8 @@ class RunInsightNarrator
 
         WEATHER & DECOUPLING: decoupling.relation is up/down/flat, never a sign to read
         yourself; decoupling.pct is its size. If decoupling.relation is "up" and
-        decoupling.pct is high (>{decoupling_high}%) BUT weather_temp_c is above 30
-        degrees, NEVER claim the aerobic base is weak or fitness is declining. Frame
+        decoupling.pct is high (>{decoupling_high}%) BUT get_weather's ran_hot is
+        true, NEVER claim the aerobic base is weak or fitness is declining. Frame
         it as expected given the heat: the heart works harder to help the body shed
         heat, not a sign of lost fitness. If decoupling.relation is "up" and high and
         the weather was cool (or there's no weather data), say the heart rate drifted

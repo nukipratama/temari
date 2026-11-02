@@ -3,7 +3,7 @@ title: Run detail (single activity)
 description: One run, fully unpacked — a headline hero, a "Past You" match, the story + adaptive claims voice card, the Q&A panel, and the breakdown (vitals, splits, laps)
 tags: [feature, runs]
 status: living
-reviewed: 2026-10-09
+reviewed: 2026-11-02
 code_refs:
   - resources/js/pages/Runs/Show.tsx
   - app/Http/Controllers/RunController.php
@@ -213,11 +213,10 @@ cadence / steepest grade / flat pace as three tiles, then decoupling as a marker
 on a leaf→citrus→ember gradient with a plain-language line under it. Grade and
 flat pace appear only on a run that actually climbed (≥3%), so a flat GPS run
 does not show a noisy 0%; a corrupt JSON reading never renders as `NaN`. High
-drift is toned as a warning **unless** the run was at or above
-`WeatherSnapshot::HOT_RUN_TEMP_C` (31°C), the one hot-run threshold the backend
-also uses and `typescript:enums` generates into the frontend, which mirrors the
-backend's own rule — heat explains an upward drift, and cannot explain a
-negative one. Relative effort is **not** here: it was cut, and the prototype's
+drift is toned as a warning **unless** the run was hot. That verdict is
+`ActivityDetail::ranHot()`, sent as the payload's `ran_hot` flag so the
+frontend never re-implements it (see [[weather-integration]] for the rule).
+Heat explains an upward drift, and cannot explain a negative one. Relative effort is **not** here: it was cut, and the prototype's
 vitals card draws these five readings instead.
 
 [SplitsChart](../../resources/js/components/run/SplitsChart.tsx) reads
