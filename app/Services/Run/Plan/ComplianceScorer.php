@@ -14,6 +14,7 @@ use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\ActivityStream;
 use App\Models\PlannedSession;
+use App\Models\PlanAdaptation;
 use App\Models\RecommendationRevision;
 use App\Models\User;
 use App\Services\Run\Metrics\ReadinessCeiling;
@@ -85,6 +86,7 @@ final readonly class ComplianceScorer
         $declaredAfterRunDates = [];
         $runsByDate = $this->runsByDate($user, $first->date, $rangeEnd);
         $shownByActivity = $this->recommendationHistory->beforeRuns($user->id, array_merge(...array_values($runsByDate)));
+        $overriddenAt = self::overriddenAtByDate($user, $rows);
         foreach ($rows as $row) {
             $date = $row->date->toDateString();
             $anchor = collect($runsByDate[$date] ?? [])->sortByDesc('distance')->first();
@@ -92,6 +94,9 @@ final readonly class ComplianceScorer
                 $declaredAfterRunDates[$date] = true;
             }
             $recommendation = $anchor === null || $row->made_up_on !== null || isset($declaredAfterRunDates[$date]) ? null : ($shownByActivity[$anchor->id] ?? null);
+            if ($recommendation !== null && isset($overriddenAt[$date]) && $recommendation->getRawOriginal('shown_at') < $overriddenAt[$date]) {
+                $recommendation = null;
+            }
             if ($recommendation !== null) {
                 $recommendationsByDate[$date] = $recommendation;
                 $snapshot = clone $row;
@@ -143,6 +148,28 @@ final readonly class ComplianceScorer
         }
 
         return $graded;
+    }
+
+    /**
+     * @param  Collection<int, PlannedSession>  $rows
+     * @return array<string, string>  Y-m-d => when the athlete overrode that day, UTC
+     */
+    private static function overriddenAtByDate(User $user, Collection $rows): array
+    {
+        $byDate = [];
+        $adaptations = PlanAdaptation::query()
+            ->where('user_id', $user->id)
+            ->whereIn('override_date', $rows->map(static fn (PlannedSession $row): string => $row->date->toDateString())->all())
+            ->whereNotNull('overridden_at')
+            ->get(['override_date', 'overridden_at']);
+        foreach ($adaptations as $adaptation) {
+            $at = $adaptation->getRawOriginal('overridden_at');
+            if ($adaptation->override_date !== null && is_string($at)) {
+                $byDate[$adaptation->override_date->toDateString()] = $at;
+            }
+        }
+
+        return $byDate;
     }
 
     /**

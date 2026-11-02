@@ -162,6 +162,7 @@ const weekPlan: WeekPlan = {
             actual_km: null,
             credited_km: null,
             activities: [],
+            override: null,
         },
     ],
 };
@@ -401,6 +402,31 @@ describe('Home', () => {
 
         expect(
             screen.getByText(/your easy runs after a rest day go/),
+        ).toBeInTheDocument();
+    });
+
+    it("offers the week's dropped session back on Today from the day it lands on", () => {
+        setMockPage({ auth: { user: makeUser() }, today: '2026-06-08' });
+        const today = defined(weekPlan.days[0]);
+        const offer = {
+            kind: 'weekly_drop',
+            state: 'offered',
+            label: "bring back wednesday's tempo",
+            reason: 'one less quality session.',
+        } as const;
+
+        renderHome(trend(), {
+            ...weekPlan,
+            days: [
+                today,
+                { ...today, id: 3, date: '2026-06-10', override: offer },
+            ],
+        });
+
+        expect(
+            screen.getByRole('button', {
+                name: "bring back wednesday's tempo",
+            }),
         ).toBeInTheDocument();
     });
 

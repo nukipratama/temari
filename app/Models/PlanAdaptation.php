@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Enums\AdaptationReason;
+use App\Enums\PlanOverrideKind;
 use App\Models\AI\Analysis;
 use App\Actions\Run\Plan\ResolveWeekAdaptationAction;
 use Database\Factories\PlanAdaptationFactory;
@@ -21,7 +22,9 @@ use Override;
  * ({@see \App\Services\Run\Plan\PlanAdapter}). Written once per
  * regeneration, keyed `unique(user_id, week_start)`, so the Plan tab can
  * explain a deload that a later readiness recovery would otherwise make
- * look unmotivated.
+ * look unmotivated. The week's one athlete override (`override_*`) is the
+ * only part written outside regeneration, by
+ * {@see \App\Services\Run\Plan\QualityOverrideService}.
  *
  * @property int $id
  * @property int $user_id
@@ -34,6 +37,10 @@ use Override;
  * @property float|null $volume_floor_km
  * @property bool $increases_held
  * @property array{distance_m: int, moved_to: string|null}|null $deferred_time_trial
+ * @property array{date: string, session_type: string, time_trial: bool}|null $restorable_quality
+ * @property PlanOverrideKind|null $override_kind
+ * @property Carbon|null $override_date
+ * @property Carbon|null $overridden_at
  * @property-read User $user
  */
 #[Fillable([
@@ -47,6 +54,10 @@ use Override;
     'volume_floor_km',
     'increases_held',
     'deferred_time_trial',
+    'restorable_quality',
+    'override_kind',
+    'override_date',
+    'overridden_at',
 ])]
 class PlanAdaptation extends Model
 {
@@ -80,6 +91,11 @@ class PlanAdaptation extends Model
         return $this->morphMany(Analysis::class, 'subject');
     }
 
+    public function overrides(PlanOverrideKind $kind, Carbon $date): bool
+    {
+        return $this->override_kind === $kind && $this->override_date?->isSameDay($date) === true;
+    }
+
     /** @return array<string, string> */
     #[Override]
     protected function casts(): array
@@ -95,6 +111,10 @@ class PlanAdaptation extends Model
             'volume_floor_km' => 'float',
             'increases_held' => 'boolean',
             'deferred_time_trial' => 'array',
+            'restorable_quality' => 'array',
+            'override_kind' => PlanOverrideKind::class,
+            'override_date' => 'date:Y-m-d',
+            'overridden_at' => 'datetime',
         ];
     }
 }

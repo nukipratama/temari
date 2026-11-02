@@ -58,6 +58,7 @@ function day(overrides: Partial<EditablePlanDay> = {}): EditablePlanDay {
         actions: { move: false, skip: false, restore: false },
         move_targets: [],
         made_up_on: null,
+        override: null,
         ...overrides,
     };
 }
@@ -1334,6 +1335,22 @@ describe('hasDayDetail', () => {
         expect(hasDayDetail(REST)).toBe(false);
     });
 
+    it('has detail for an unsized day the week offers its dropped session back on', () => {
+        expect(
+            hasDayDetail(
+                day({
+                    segments: [],
+                    override: {
+                        kind: 'weekly_drop',
+                        state: 'offered',
+                        label: "bring back thursday's tempo",
+                        reason: 'one less quality session.',
+                    },
+                }),
+            ),
+        ).toBe(true);
+    });
+
     it('has detail for a day carrying safety advice even with no segments', () => {
         expect(
             hasDayDetail(
@@ -1344,5 +1361,27 @@ describe('hasDayDetail', () => {
                 }),
             ),
         ).toBe(true);
+    });
+});
+
+describe('DayDetail override', () => {
+    it('shows the day the athlete chose to run as written, with its undo', () => {
+        renderRow({
+            day: day({
+                override: {
+                    kind: 'readiness_ease',
+                    state: 'taken',
+                    note: 'you chose to run this one as written.',
+                    undoable: true,
+                },
+            }),
+        });
+
+        expect(
+            screen.getByText('you chose to run this one as written.'),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByRole('button', { name: 'ease it again' }),
+        ).toBeInTheDocument();
     });
 });

@@ -72,6 +72,7 @@ function day(overrides: Partial<WeekPlanDay> = {}): WeekPlanDay {
         actual_km: null,
         credited_km: null,
         activities: [],
+        override: null,
         ...overrides,
     };
 }
@@ -296,6 +297,50 @@ describe('TodaySession', () => {
             container.querySelector('section')?.children ?? [],
         ).filter((child) => child.tagName.toLowerCase() !== 'svg');
         expect(blocks).toHaveLength(1);
+    });
+
+    it("offers today's own override under the prescription", () => {
+        render(
+            <TodaySession
+                briefing={briefing('Easy 6k.')}
+                today={day({
+                    session_type: 'easy',
+                    override: {
+                        kind: 'readiness_ease',
+                        state: 'offered',
+                        label: "i'm ready",
+                        reason: 'quality can wait.',
+                    },
+                })}
+            />,
+        );
+
+        expect(
+            screen.getByRole('button', { name: "i'm ready" }),
+        ).toBeInTheDocument();
+    });
+
+    it("offers the week's dropped session back by name from another day", () => {
+        render(
+            <TodaySession
+                briefing={briefing('Easy 6k.')}
+                today={day()}
+                weekOverride={day({
+                    id: 9,
+                    date: '2026-06-14',
+                    override: {
+                        kind: 'weekly_drop',
+                        state: 'offered',
+                        label: "bring back sunday's tempo",
+                        reason: 'one less quality session.',
+                    },
+                })}
+            />,
+        );
+
+        expect(
+            screen.getByRole('button', { name: "bring back sunday's tempo" }),
+        ).toBeInTheDocument();
     });
 
     it('swaps the prescription and the voice for the skip and its restore on a skipped today', () => {

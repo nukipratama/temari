@@ -317,7 +317,9 @@ final class PlanPageAssembler
         // Readiness clamp: TODAY's row only — a future day's readiness isn't
         // knowable today, so clamping never reaches past this one row.
         $todaySession = $sessions->first(fn (PlannedSession $s): bool => $s->date->isSameDay($today));
-        $clamp = ($todaySession !== null && ! $loadPending)
+        $currentWeekAdaptation = ($this->weekAdaptation)($user->id, $currentWeekKey);
+        $overrideWeek = QualityOverride::openWeek($user, $currentWeekAdaptation, $race);
+        $clamp = ($todaySession !== null && ! $loadPending && ! QualityOverride::holdsEase($currentWeekAdaptation, $today, $ceiling))
             ? ReadinessClamp::apply(
                 IntensityPrescription::runsAs($todaySession),
                 $todaySession->phase,
@@ -390,6 +392,7 @@ final class PlanPageAssembler
                     $user->runnerProfile?->easyHrCapBpm(),
                     includeRecommendationToken: $s->date->toDateString() === $tokenDate,
                     easySlowEndSecPerKm: $easySlowEnd,
+                    overrideWeek: $overrideWeek,
                 ), ...$this->editRules($s, $fallbackVerdicts[$s->date->toDateString()]['status'] ?? $s->status, $ruleRowsByDate, $ranDates, $today), 'made_up_on' => $s->made_up_on?->toDateString()])->all(),
             ];
         }

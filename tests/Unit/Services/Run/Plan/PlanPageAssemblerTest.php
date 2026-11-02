@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Enums\AdaptationReason;
 use App\Enums\IngestState;
 use App\Enums\PlannedSessionStatus;
+use App\Enums\PlanOverrideKind;
 use App\Enums\RaceOutcome;
 use App\Models\AI\Analysis;
 use App\Models\Activity;
@@ -22,6 +23,9 @@ use App\Services\Run\Plan\ClampNarrationContext;
 use App\Services\Run\Plan\Periodizer;
 use App\Services\Run\Plan\PlanPageAssembler;
 use App\Services\Run\Plan\PlanRenderer;
+use App\Services\Run\Plan\QualityOverride;
+use App\Services\Run\Plan\ReadinessClamp;
+use App\Services\Run\Metrics\ReadinessCeiling;
 use App\Services\Run\Plan\RaceAmbitionAssessor;
 use App\Services\Run\Plan\SessionEditRules;
 use App\Services\Run\Plan\TrainingBaseline;
@@ -743,4 +747,58 @@ it('sizes the prescription to date from the plan window it already read', functi
     planPageAssembler()->weeks($user, Carbon::today());
 
     expect($currentWeekReads)->toBe(0);
+});
+
+it('offers today\'s eased interval back, then shows it as written once the athlete is ready', function (): void {
+    $user = assemblerAthlete();
+    seedDemandingRunYesterday($user);
+    PlannedSession::factory()->for($user)->create(['date' => Carbon::today()->toDateString(), 'session_type' => SessionType::Interval]);
+    $week = PlanAdaptation::factory()->for($user)->create(['week_start' => '2026-08-10']);
+
+    $offered = assemblerCurrentDays(planPageAssembler(), $user)[0];
+
+    expect($offered['session_type'])->toBe('easy')
+        ->and(data_get($offered, 'override.kind'))->toBe('readiness_ease')
+        ->and(data_get($offered, 'override.state'))->toBe('offered')
+        ->and(data_get($offered, 'override.label'))->toBe("i'm ready")
+        ->and(data_get($offered, 'override.reason'))->toBe(ReadinessClamp::noteFor(SessionType::Interval, ReadinessCeiling::ModerateOk, ['demanding_session_within_24h']));
+
+    $week->update(['override_kind' => PlanOverrideKind::ReadinessEase, 'override_date' => Carbon::today()->toDateString(), 'overridden_at' => Carbon::now('UTC')]);
+    $taken = assemblerCurrentDays(freshAssembler(), $user)[0];
+    $token = Crypt::decryptString(is_string($taken['recommendation_token']) ? $taken['recommendation_token'] : '');
+
+    expect($taken['session_type'])->toBe('interval')
+        ->and($taken['eased_from'])->toBeNull()
+        ->and($taken['advice_note'])->toBeNull()
+        ->and($taken['override'])->toBe(['kind' => 'readiness_ease', 'state' => 'taken', 'note' => QualityOverride::TAKEN_NOTE, 'undoable' => true])
+        ->and(data_get(json_decode($token, true, flags: JSON_THROW_ON_ERROR), 'effective.session_type'))->toBe('interval');
+});
+
+it('offers no override to the demo athlete', function (): void {
+    $user = assemblerAthlete();
+    $user->update(['is_demo' => true]);
+    seedDemandingRunYesterday($user);
+    PlannedSession::factory()->for($user)->create(['date' => Carbon::today()->toDateString(), 'session_type' => SessionType::Interval]);
+    PlanAdaptation::factory()->for($user)->create(['week_start' => '2026-08-10']);
+
+    expect(assemblerCurrentDays(planPageAssembler(), $user)[0]['override'])->toBeNull();
+});
+
+it('eases today again under a taken readiness override once the ceiling drops below moderate', function (): void {
+    $user = assemblerAthlete();
+    seedDemandingRunYesterday($user);
+    PlannedSession::factory()->for($user)->create(['date' => Carbon::today()->toDateString(), 'session_type' => SessionType::Interval]);
+    PlanAdaptation::factory()->for($user)->create([
+        'week_start' => '2026-08-10',
+        'override_kind' => PlanOverrideKind::ReadinessEase,
+        'override_date' => Carbon::today()->toDateString(),
+        'overridden_at' => Carbon::now('UTC'),
+    ]);
+    seedShortRunToday($user);
+
+    $day = assemblerCurrentDays(planPageAssembler(), $user)[0];
+
+    expect($day['session_type'])->toBe('easy')
+        ->and(data_get($day, 'eased_from.session_type'))->toBe('interval')
+        ->and(data_get($day, 'override.state'))->toBe('taken');
 });

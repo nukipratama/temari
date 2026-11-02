@@ -17,6 +17,8 @@ use App\Models\PlannedSession;
 use App\Models\RaceGoal;
 use App\Models\Season;
 use App\Models\User;
+use App\Models\WeeklySnapshot;
+use App\Enums\PlanPhase;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisOrigin;
 use Illuminate\Http\Client\Request;
@@ -703,4 +705,47 @@ function pushedJobs(string $job): Collection
     return $queue->pushed($job)->values()->map(
         fn (mixed $pushed) => $pushed instanceof $job ? $pushed : throw new InvalidArgumentException("Pushed job is not a {$job}."),
     );
+}
+
+/**
+ * Tuesday 2026-09-15 of a 10K block's Build week, three weeks before race week: two easy days of
+ * last week ran over the heart-rate cap, so the plan drops this week's one quality session.
+ */
+function seedRanTooHardWeek(User $user): void
+{
+    Carbon::setTestNow('2026-09-15 08:00:00');
+    foreach (range(0, 3) as $i) {
+        WeeklySnapshot::factory()->for($user)->create([
+            'week_ending' => Carbon::today()->subWeeks($i)->toDateString(),
+            'runs' => 4,
+            'distance_km' => 30.0,
+        ]);
+    }
+    RaceGoal::factory()->for($user)->create(['race_date' => '2026-10-11', 'distance_m' => 10_000, 'completed_at' => null]);
+    foreach (['2026-09-08', '2026-09-10'] as $date) {
+        PlannedSession::factory()->for($user)->create([
+            'date' => $date,
+            'phase' => PlanPhase::Build,
+            'session_type' => SessionType::Easy,
+            'status' => PlannedSessionStatus::Done,
+            'compliance_score' => 100,
+            'distance_score' => 100,
+        ]);
+        ActivityDetail::factory()->for(Activity::factory()->for($user))->create([
+            'start_date_local' => Carbon::parse($date.' 06:00:00'),
+            'moving_time' => 3000,
+            'stream_summary' => ['easy_cap_bpm' => 150, 'over_easy_cap_sec' => 720],
+        ]);
+    }
+}
+
+/** A 100 m run this morning: too short to credit the day, but it caps today's readiness at easy only. */
+function seedShortRunToday(User $user): void
+{
+    ActivityDetail::factory()->for(Activity::factory()->for($user))->create([
+        'start_date_local' => Carbon::today()->setTime(6, 0),
+        'distance' => 100,
+        'elapsed_time' => 40,
+        'moving_time' => 40,
+    ]);
 }

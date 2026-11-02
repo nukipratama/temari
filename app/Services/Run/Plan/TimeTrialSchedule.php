@@ -108,10 +108,7 @@ final class TimeTrialSchedule
             return false;
         }
 
-        $raceDate = $this->inputs->raceDate;
-
-        return !$raceDate instanceof Carbon
-            || (int) $weekStart->diffInWeeks($raceDate->copy()->startOfWeek(Carbon::MONDAY)) > self::TRIAL_FREE_WEEKS_BEFORE_RACE;
+        return ! PreRaceWindow::contains($weekStart, $this->inputs->raceDate);
     }
 
     private function cycleHasTrial(string $due): bool

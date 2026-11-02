@@ -15,6 +15,7 @@ use App\Enums\IntervalsIcuSyncStatus;
 use App\Enums\Mood;
 use App\Enums\NotificationKind;
 use App\Enums\PerformanceEvidenceKind;
+use App\Enums\PlanOverrideKind;
 use App\Enums\PlannedSessionStatus;
 use App\Enums\PrCategory;
 use App\Enums\Rarity;
@@ -58,6 +59,7 @@ final class GenerateTypeScriptEnumsCommand extends Command
         AnchorKind::class,
         PerformanceEvidenceKind::class,
         Mood::class,
+        PlanOverrideKind::class,
     ];
 
     /**

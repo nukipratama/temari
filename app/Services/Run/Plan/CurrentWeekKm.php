@@ -6,6 +6,8 @@ namespace App\Services\Run\Plan;
 
 use App\Actions\Run\Plan\ResolveActiveRaceAction;
 use App\Actions\Run\Plan\ResolvePlannedSessionsAction;
+use App\Actions\Run\Plan\ResolveWeekAdaptationAction;
+use App\Models\PlanAdaptation;
 use App\Enums\PlannedSessionStatus;
 use App\Enums\PlanPhase;
 use App\Enums\SessionType;
@@ -39,11 +41,12 @@ final readonly class CurrentWeekKm
         private ResolveActiveRaceAction $activeRace,
         private ResolvePlannedSessionsAction $plannedSessions,
         private PlanBriefingContext $briefing,
+        private ResolveWeekAdaptationAction $weekAdaptation,
     ) {
     }
 
     /**
-     * @return array{sessions: Collection<int, PlannedSession>, phase: PlanPhase, multiplier: float, baseline: array{sessions_per_week: int, weekly_volume_km: float, long_run_km: float, long_run_cap_km: float, long_run_progression_cap_km: float, self_scaled: bool}, paces: array{easy: int, marathon: int, threshold: int, interval: int}|null, easy_slow_end_sec_per_km: int|null, briefing: BriefingContext, race: RaceGoal|null, race_distance_m: float|null, primary_easy_date: string|null, today_session: PlannedSession|null, clamp: array{session_type: SessionType, segments: list<SessionSegment>, core_km: float, note: string, quality_dose?: array{hard_minutes: int, original_hard_minutes: int, pace_band: string, pace_sec_per_km: int|null}|null}|null, scale_by_date: array<string, float>, activity_by_date: array<string, array{km: float, meters: float, runs: list<array{id: int, km: float, seconds: int|null, started_at: string, avg_hr: int|null}>}>, statuses: array<string, PlannedSessionStatus>, fallback_verdicts: array<string, array{status: PlannedSessionStatus, score: int|null, ran_anyway: bool}>, km_by_date: array<string, float>, type_by_date: array<string, SessionType>, total_km: float, eased_from_total_km: float|null}|null
+     * @return array{sessions: Collection<int, PlannedSession>, phase: PlanPhase, multiplier: float, baseline: array{sessions_per_week: int, weekly_volume_km: float, long_run_km: float, long_run_cap_km: float, long_run_progression_cap_km: float, self_scaled: bool}, paces: array{easy: int, marathon: int, threshold: int, interval: int}|null, easy_slow_end_sec_per_km: int|null, briefing: BriefingContext, race: RaceGoal|null, race_distance_m: float|null, primary_easy_date: string|null, today_session: PlannedSession|null, adaptation: PlanAdaptation|null, clamp: array{session_type: SessionType, segments: list<SessionSegment>, core_km: float, note: string, quality_dose?: array{hard_minutes: int, original_hard_minutes: int, pace_band: string, pace_sec_per_km: int|null}|null}|null, scale_by_date: array<string, float>, activity_by_date: array<string, array{km: float, meters: float, runs: list<array{id: int, km: float, seconds: int|null, started_at: string, avg_hr: int|null}>}>, statuses: array<string, PlannedSessionStatus>, fallback_verdicts: array<string, array{status: PlannedSessionStatus, score: int|null, ran_anyway: bool}>, km_by_date: array<string, float>, type_by_date: array<string, SessionType>, total_km: float, eased_from_total_km: float|null}|null
      */
     public function forUser(User $user, Carbon $today): ?array
     {
@@ -121,7 +124,8 @@ final readonly class CurrentWeekKm
         )->all();
 
         $todaySession = $currentWeekSessions->first(fn (PlannedSession $s): bool => $s->date->isSameDay($today));
-        $clamp = ($todaySession !== null && ! $loadPending)
+        $adaptation = ($this->weekAdaptation)($user->id, $currentWeekKey);
+        $clamp = ($todaySession !== null && ! $loadPending && ! QualityOverride::holdsEase($adaptation, $today, $ceiling))
             ? ReadinessClamp::apply(
                 IntensityPrescription::runsAs($todaySession),
                 $todaySession->phase,
@@ -200,6 +204,7 @@ final readonly class CurrentWeekKm
             'race_distance_m' => $raceDistanceM,
             'primary_easy_date' => $primaryEasyDate,
             'today_session' => $todaySession,
+            'adaptation' => $adaptation,
             'clamp' => $clamp,
             'scale_by_date' => $weekProjection['scale_by_date'],
             'activity_by_date' => $weekProjection['activity_by_date'],

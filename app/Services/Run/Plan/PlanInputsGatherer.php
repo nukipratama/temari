@@ -9,6 +9,7 @@ use App\Actions\Run\Plan\ResolveActiveRaceAction;
 use App\Actions\Run\Plan\ResolveRecentLongestRunAction;
 use App\Enums\IntentVerdict;
 use App\Enums\PaceBand;
+use App\Enums\PlanOverrideKind;
 use App\Enums\PlanPhase;
 use App\Enums\PlannedSessionStatus;
 use App\Enums\RaceChangeKind;
@@ -16,6 +17,7 @@ use App\Enums\RaceOutcome;
 use App\Enums\SessionType;
 use App\Models\ActivityDetail;
 use App\Models\PerformanceEvidence;
+use App\Models\PlanAdaptation;
 use App\Models\PlannedSession;
 use App\Models\RaceGoal;
 use App\Models\RaceGoalChange;
@@ -133,6 +135,11 @@ final readonly class PlanInputsGatherer
             longestRunSoFarKm: $this->longestRunSoFarKm($user, $today, $season->starts_at, $baseline),
             lastFastFinishDate: $this->lastFastFinishDate($user, $today),
             supportedTenKTimeSec: $this->supportedTimeSec($estimate, 10_000),
+            qualityRestored: PlanAdaptation::query()
+                ->where('user_id', $user->id)
+                ->where('week_start', $currentWeekStart->toDateString())
+                ->where('override_kind', PlanOverrideKind::WeeklyDrop)
+                ->exists(),
         );
     }
 

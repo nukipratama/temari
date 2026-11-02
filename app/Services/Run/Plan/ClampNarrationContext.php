@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Run\Plan;
 
+use App\Actions\Run\Plan\ResolveWeekAdaptationAction;
 use App\Enums\SessionType;
 use App\Models\Activity;
 use App\Models\PlannedSession;
@@ -24,8 +25,10 @@ use Illuminate\Support\Carbon;
  */
 final readonly class ClampNarrationContext
 {
-    public function __construct(private TrainingLoad $trainingLoad)
-    {
+    public function __construct(
+        private TrainingLoad $trainingLoad,
+        private ResolveWeekAdaptationAction $weekAdaptation,
+    ) {
     }
 
     /**
@@ -60,6 +63,9 @@ final readonly class ClampNarrationContext
             $decisionSource = 'live';
         }
         $ceiling = ReadinessCeiling::from($assessment['ceiling']);
+        if (QualityOverride::holdsEase(($this->weekAdaptation)($userId, $date->copy()->startOfWeek(Carbon::MONDAY)->toDateString()), $date, $ceiling)) {
+            return null;
+        }
         if ($ceiling === ReadinessCeiling::ModerateOk
             && ($session->session_type === SessionType::Race || IntensityPrescription::fromSession($session)?->isEasy() === false)) {
             return null;

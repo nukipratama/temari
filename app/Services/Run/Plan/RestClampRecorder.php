@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Run\Plan;
 
+use App\Actions\Run\Plan\ResolveWeekAdaptationAction;
 use App\Enums\SessionType;
 use App\Enums\PlannedSessionStatus;
 use App\Models\PlannedSession;
@@ -36,6 +37,7 @@ final readonly class RestClampRecorder
         private VdotEstimator $vdotEstimator,
         private TrainingPaceCalculator $paceCalculator,
         private HydrationBacklog $hydrationBacklog,
+        private ResolveWeekAdaptationAction $weekAdaptation,
     ) {
     }
 
@@ -69,7 +71,7 @@ final readonly class RestClampRecorder
         return $multiplierByWeek[$currentWeekStart->toDateString()] ?? 1.0;
     }
 
-    public function record(User $user, Carbon $today): bool
+    public function record(User $user, Carbon $today, bool $notify = true): bool
     {
         $session = PlannedSession::query()
             ->where('user_id', $user->id)
@@ -95,6 +97,11 @@ final readonly class RestClampRecorder
         }
 
         $ceiling = ReadinessCeiling::from($context->readinessCeiling);
+        if (QualityOverride::holdsEase(($this->weekAdaptation)($user->id, $today->copy()->startOfWeek(Carbon::MONDAY)->toDateString()), $today, $ceiling)) {
+            $session->fill(['clamped_km' => null, 'eased_pace_sec_per_km' => null, 'readiness_assessment' => null]);
+
+            return $session->isDirty() && $session->save();
+        }
         $baselineData = $this->baseline->forUser($user, $today);
         $prescription = IntensityPrescription::fromSession($session);
         $paces = $prescription instanceof IntensityPrescription ? $this->paceCalculator->fromVdotResult($this->vdotEstimator->estimate($user, $today)) : null;
@@ -159,7 +166,7 @@ final readonly class RestClampRecorder
         $newSessionType = $adjustment['clamped_km'] !== null ? SessionType::Easy : $session->session_type;
         $session->update($attributes);
 
-        if ($note !== null && ($oldSessionType !== $newSessionType || $oldClampedKm != $adjustment['clamped_km'] || $oldDose != Arr::get($assessment, 'adjustment.quality_dose'))) {
+        if ($notify && $note !== null && ($oldSessionType !== $newSessionType || $oldClampedKm != $adjustment['clamped_km'] || $oldDose != Arr::get($assessment, 'adjustment.quality_dose'))) {
             $this->tell($user, $today, $note);
         }
 

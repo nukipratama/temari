@@ -62,6 +62,10 @@ export default function Home({
     const todayIso = useTodayIso();
     const todayPlan =
         weekPlan?.days.find((day) => day.date === todayIso) ?? null;
+    const weekOverride =
+        weekPlan?.days.find(
+            (day) => day.date !== todayIso && day.override?.state === 'offered',
+        ) ?? null;
     const judged =
         pastYouTrend !== null && pastYouTrend.verdict !== 'not_enough_history'
             ? pastYouTrend.verdict
@@ -86,6 +90,7 @@ export default function Home({
                         <TodaySession
                             briefing={briefing}
                             today={todayPlan}
+                            weekOverride={weekOverride}
                             restDayEasePace={restDayEasePace}
                             intervalsIcu={intervalsIcu}
                             drawnAnchors={drawnHomeAnchors(weekPlan, todayIso)}

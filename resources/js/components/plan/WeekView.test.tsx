@@ -71,6 +71,7 @@ function day(overrides: Partial<EditablePlanDay> = {}): EditablePlanDay {
         actual_km: null,
         credited_km: null,
         activities: [],
+        override: null,
         flagged: false,
         actions: { move: false, skip: false, restore: false },
         move_targets: [],

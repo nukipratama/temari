@@ -67,6 +67,7 @@
     "weeks[].days[].id",
     "weeks[].days[].made_up_on",
     "weeks[].days[].move_targets",
+    "weeks[].days[].override",
     "weeks[].days[].pace_eased_from",
     "weeks[].days[].phase",
     "weeks[].days[].pinned",

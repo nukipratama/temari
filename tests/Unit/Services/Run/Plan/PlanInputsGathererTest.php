@@ -6,10 +6,13 @@ use App\Enums\ExperienceLevel;
 use App\Enums\FallOffTilt;
 use App\Enums\IntentVerdict;
 use App\Enums\PaceBand;
+use App\Enums\AdaptationReason;
+use App\Enums\PlanOverrideKind;
 use App\Enums\PlanPhase;
 use App\Enums\PlannedSessionStatus;
 use App\Enums\RaceAmbitionState;
 use App\Enums\SessionType;
+use App\Models\PlanAdaptation;
 use App\Models\PlannedSession;
 use App\Models\PerformanceEvidence;
 use App\Models\PersonalRecord;
@@ -567,3 +570,21 @@ it('counts the season\'s longest prescribed long run, sized as the plan sizes it
         ->toBe(SegmentGenerator::coreKmFor(SessionType::Long, false, $baseline['long_run_km'], 1.2, $baseline['long_run_cap_km'], null, $baseline['long_run_progression_cap_km']))
         ->toBeGreaterThan(0.0);
 });
+
+it('restores the dropped quality session only while this week holds the athlete\'s weekly-drop override', function (?PlanOverrideKind $kind, string $weekStart, bool $restored): void {
+    $user = gathererAthlete();
+    PlanAdaptation::factory()->for($user)->create([
+        'week_start' => $weekStart,
+        'reason' => AdaptationReason::RanTooHard,
+        'quality_delta' => -1,
+        'override_kind' => $kind,
+        'override_date' => $kind instanceof PlanOverrideKind ? '2026-09-09' : null,
+    ]);
+
+    expect(planInputsGatherer()->forUser($user, Carbon::today())->qualityRestored)->toBe($restored);
+})->with([
+    'weekly drop this week' => [PlanOverrideKind::WeeklyDrop, '2026-09-07', true],
+    'readiness ease this week' => [PlanOverrideKind::ReadinessEase, '2026-09-07', false],
+    'no override' => [null, '2026-09-07', false],
+    'weekly drop last week' => [PlanOverrideKind::WeeklyDrop, '2026-08-31', false],
+]);
