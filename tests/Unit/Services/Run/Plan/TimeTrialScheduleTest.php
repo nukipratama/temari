@@ -65,11 +65,22 @@ it('counts a season with no race forward from its third week, then every six', f
     expect(TimeTrialSchedule::dueWeeks(trialScheduleInputs(race: false)))->toBe(['2026-08-17', '2026-09-28']);
 });
 
-it('never offers a trial in the last three weeks before the race', function (): void {
+it('offers a retry three weeks before the race, and never a trial in the last two', function (): void {
     $schedule = new TimeTrialSchedule(trialScheduleInputs(trials: [['date' => '2026-11-17', 'retry' => false, 'skipped' => true]]));
+    $late = new TimeTrialSchedule(trialScheduleInputs(trials: [['date' => '2026-11-24', 'retry' => false, 'skipped' => true]]));
 
     expect(offeredWeeks($schedule, ['2026-11-23', '2026-11-30', '2026-12-07', '2026-12-14']))
-        ->toBe(['2026-11-23' => 'none', '2026-11-30' => 'none', '2026-12-07' => 'none', '2026-12-14' => 'none']);
+        ->toBe(['2026-11-23' => 'retry', '2026-11-30' => 'none', '2026-12-07' => 'none', '2026-12-14' => 'none'])
+        ->and(offeredWeeks($late, ['2026-11-30', '2026-12-07', '2026-12-14']))
+        ->toBe(['2026-11-30' => 'none', '2026-12-07' => 'none', '2026-12-14' => 'none']);
+});
+
+it('moves a trial whose due week could not hold it on to three weeks before the race', function (): void {
+    $schedule = new TimeTrialSchedule(trialScheduleInputs());
+    $schedule->forWeek(Carbon::parse('2026-11-16'), PlanPhase::Build);
+
+    expect($schedule->forWeek(Carbon::parse('2026-11-23'), PlanPhase::Build)?->retry)->toBeFalse()
+        ->and($schedule->forWeek(Carbon::parse('2026-11-30'), PlanPhase::Build))->toBeNull();
 });
 
 it('offers one trial per cycle, in its due week', function (): void {
@@ -137,11 +148,11 @@ it('offers a skipped trial once more the following week, and never a second time
         ->and(offeredWeeks($run, ['2026-08-31']))->toBe(['2026-08-31' => 'none']);
 });
 
-it('drops the retry when the following week is a deload, inside the last three weeks, or covered by fresh evidence', function (PlanInputs $inputs, string $week, bool $deload): void {
+it('drops the retry when the following week is a deload, inside the last two weeks, or covered by fresh evidence', function (PlanInputs $inputs, string $week, bool $deload): void {
     expect(new TimeTrialSchedule($inputs)->forWeek(Carbon::parse($week), $deload ? PlanPhase::Deload : PlanPhase::Build))->toBeNull();
 })->with([
     'deload' => [fn (): PlanInputs => trialScheduleInputs(trials: [['date' => '2026-08-25', 'retry' => false, 'skipped' => true]]), '2026-08-31', true],
-    'taper' => [fn (): PlanInputs => trialScheduleInputs(trials: [['date' => '2026-11-17', 'retry' => false, 'skipped' => true]]), '2026-11-23', false],
+    'last two weeks' => [fn (): PlanInputs => trialScheduleInputs(trials: [['date' => '2026-11-24', 'retry' => false, 'skipped' => true]]), '2026-11-30', false],
     'fresh evidence' => [fn (): PlanInputs => trialScheduleInputs(trials: [['date' => '2026-08-25', 'retry' => false, 'skipped' => true]], evidence: ['2026-08-27']), '2026-08-31', false],
 ]);
 
