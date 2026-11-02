@@ -43,6 +43,8 @@ final readonly class CurrentWeekPlanBuilder
         $clamp = $week['clamp'];
         $resolvedStatuses = $week['statuses'];
 
+        $overrideWeek = QualityOverride::openWeek($user, $week['adaptation'], $race);
+
         $clampVoice = EffectiveSession::clampVoiceNeeded($clamp, $week['today_session'])
             ? $this->clampVoiceReader->clampVoiceFor($user, $today, $week['briefing']->historyLoading ? null : $week['briefing']->readinessAssessment)
             : null;
@@ -68,6 +70,7 @@ final readonly class CurrentWeekPlanBuilder
             $user->runnerProfile?->easyHrCapBpm(),
             includeRecommendationToken: $s->date->isSameDay($today),
             easySlowEndSecPerKm: $week['easy_slow_end_sec_per_km'],
+            overrideWeek: $overrideWeek,
         ))->values()->all();
 
         // A rest day asks for nothing and always scores Done, so counting it

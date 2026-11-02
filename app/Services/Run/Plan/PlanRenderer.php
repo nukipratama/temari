@@ -13,9 +13,11 @@ use App\Enums\SegmentKey;
 use App\Enums\SessionType;
 use App\Enums\PlanPhase;
 use App\Enums\PlannedSessionStatus;
+use App\Models\PlanAdaptation;
 use App\Models\PlannedSession;
 use App\Services\Run\Metrics\DurationFormatter;
 use App\Services\Run\Metrics\PaceFormatter;
+use App\Services\Run\Metrics\ReadinessCeiling;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use LogicException;
@@ -229,6 +231,7 @@ final class PlanRenderer
         ?int $easyHrCapBpm = null,
         bool $includeRecommendationToken = true,
         ?int $easySlowEndSecPerKm = null,
+        ?PlanAdaptation $overrideWeek = null,
     ): array {
         $isToday = $s->date->isSameDay($today);
         $volumeScale = $volumeScaleByDate[$s->date->toDateString()] ?? 1.0;
@@ -278,6 +281,12 @@ final class PlanRenderer
             'reason' => $shownClamp['note'] ?? ($effective->isEased() ? ReadinessClamp::noteFor($s->session_type, $effective->impliedCeiling(), $readinessReasons) : $s->prescription_reason),
             'readiness_assessment' => $effective->isEased() ? $s->readiness_assessment : $currentReadinessAssessment,
         ]) : null;
+        $easeAssessment = match (true) {
+            $headlinesEase => $s->readiness_assessment,
+            $headlinesAdvice => $currentReadinessAssessment,
+            default => null,
+        };
+        $easeCeiling = is_string($easeAssessment['ceiling'] ?? null) ? ReadinessCeiling::tryFrom($easeAssessment['ceiling']) : null;
         $goalPace = self::goalPaceKindOf($s, $sessionType);
         $steppingStone = $goalPace !== null && GoalPaceWork::isSteppingStone($s->prescription_race_context);
         $closesAtGoalPace = $goalPace !== null && GoalPaceWork::finalPaceOf($s->prescription_race_context) !== null;
@@ -338,6 +347,7 @@ final class PlanRenderer
                 $activity['runs'] ?? [],
             ),
             'flagged' => app(ResolveFlaggedSubjectsAction::class)(FeedbackSubject::PlanDay, $s->id),
+            'override' => QualityOverride::forDay($s, $today, $status, ($activity['runs'] ?? []) !== [], $overrideWeek, $easeAssessment === null ? null : $shownClamp['note'] ?? null, $easeCeiling),
         ];
     }
 

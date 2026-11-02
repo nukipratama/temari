@@ -69,7 +69,8 @@
                     "started_at": "18:00"
                 }
             ],
-            "flagged": false
+            "flagged": false,
+            "override": null
         },
         {
             "id": 2,
@@ -132,7 +133,8 @@
                     "started_at": "12:00"
                 }
             ],
-            "flagged": false
+            "flagged": false,
+            "override": null
         },
         {
             "id": 3,
@@ -376,7 +378,8 @@
             "actual_km": null,
             "credited_km": null,
             "activities": [],
-            "flagged": false
+            "flagged": false,
+            "override": null
         },
         {
             "id": 4,
@@ -413,7 +416,8 @@
             "actual_km": null,
             "credited_km": null,
             "activities": [],
-            "flagged": false
+            "flagged": false,
+            "override": null
         },
         {
             "id": 5,
@@ -460,7 +464,8 @@
             "actual_km": null,
             "credited_km": null,
             "activities": [],
-            "flagged": false
+            "flagged": false,
+            "override": null
         },
         {
             "id": 6,
@@ -507,7 +512,8 @@
             "actual_km": null,
             "credited_km": null,
             "activities": [],
-            "flagged": false
+            "flagged": false,
+            "override": null
         },
         {
             "id": 7,
@@ -544,7 +550,8 @@
             "actual_km": null,
             "credited_km": null,
             "activities": [],
-            "flagged": false
+            "flagged": false,
+            "override": null
         }
     ]
 }

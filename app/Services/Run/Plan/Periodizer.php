@@ -505,7 +505,7 @@ final readonly class Periodizer
             if ($date > $weekEnd) {
                 break;
             }
-            if ($row['session_type']->isQuality() && ! ($dropped[$date]['session_type'] ?? SessionType::Rest)->isQuality()) {
+            if (QualityOverride::isWorkout($row['session_type']) && ! QualityOverride::isWorkout($dropped[$date]['session_type'] ?? SessionType::Rest)) {
                 return ['date' => $date, 'session_type' => $row['session_type']->value];
             }
         }

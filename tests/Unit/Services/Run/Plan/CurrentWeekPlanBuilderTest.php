@@ -2,13 +2,16 @@
 
 declare(strict_types=1);
 
+use App\Enums\AdaptationReason;
 use App\Enums\IngestState;
+use App\Enums\PlanOverrideKind;
 use App\Enums\PlanPhase;
 use App\Enums\PlannedSessionStatus;
 use App\Enums\SessionType;
 use App\Models\AI\Analysis;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
+use App\Models\PlanAdaptation;
 use App\Models\PlannedSession;
 use App\Models\RaceGoal;
 use App\Models\Season;
@@ -20,6 +23,7 @@ use App\Services\Run\Metrics\ReadinessCeiling;
 use App\Services\Run\Plan\ClampNarrationContext;
 use App\Services\Run\Plan\CurrentWeekPlanBuilder;
 use App\Services\Run\Plan\PlanPageAssembler;
+use App\Services\Run\Plan\Periodizer;
 use App\Services\Run\Plan\PlanRenderer;
 use App\Services\Run\Plan\SegmentGenerator;
 use App\Services\Run\Plan\TrainingBaseline;
@@ -795,5 +799,43 @@ it('reads the current week\'s planned sessions once on home', function (): void 
 
     expect($sessionReads)->toBe(1);
 
+    Carbon::setTestNow();
+});
+
+it('shows Home today\'s interval as written once the athlete overrides the readiness ease', function (): void {
+    Carbon::setTestNow('2026-08-12 08:00:00');
+    $user = User::factory()->create();
+    seedDemandingRunYesterday($user);
+    PlannedSession::factory()->for($user)->create(['date' => '2026-08-12', 'session_type' => SessionType::Interval]);
+    $week = PlanAdaptation::factory()->for($user)->create(['week_start' => '2026-08-10']);
+
+    $offered = weekPlanDay(weekPlanHome($user)['days'], '2026-08-12');
+
+    expect($offered['session_type'])->toBe('easy')
+        ->and(data_get($offered, 'override.state'))->toBe('offered');
+
+    $week->update(['override_kind' => PlanOverrideKind::ReadinessEase, 'override_date' => '2026-08-12', 'overridden_at' => Carbon::now('UTC')]);
+    $taken = weekPlanDay(weekPlanHome($user)['days'], '2026-08-12');
+
+    expect($taken['session_type'])->toBe('interval')
+        ->and($taken['eased_from'])->toBeNull()
+        ->and(data_get($taken, 'override.state'))->toBe('taken');
+    Carbon::setTestNow();
+});
+
+it('offers Home the session a ran-too-hard week dropped, on the day the week as written holds it', function (): void {
+    $user = User::factory()->create();
+    seedRanTooHardWeek($user);
+    app(Periodizer::class)->regenerate($user);
+
+    $days = weekPlanHome($user)['days'];
+
+    expect(data_get(weekPlanDay($days, '2026-09-17'), 'override'))->toBe([
+        'kind' => 'weekly_drop',
+        'state' => 'offered',
+        'label' => "bring back thursday's interval",
+        'reason' => AdaptationReason::RanTooHard->detail(100, 100, -1),
+    ])
+        ->and(array_filter(array_column($days, 'override')))->toHaveCount(1);
     Carbon::setTestNow();
 });

@@ -89,6 +89,11 @@ class PlanAdaptation extends Model
         return $this->morphMany(Analysis::class, 'subject');
     }
 
+    public function overrides(PlanOverrideKind $kind, Carbon $date): bool
+    {
+        return $this->override_kind === $kind && $this->override_date?->isSameDay($date) === true;
+    }
+
     /** @return array<string, string> */
     #[Override]
     protected function casts(): array

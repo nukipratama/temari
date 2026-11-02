@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Enums\IntentVerdict;
 use App\Enums\PaceBand;
+use App\Enums\PlanOverrideKind;
 use App\Enums\PlanPhase;
 use App\Enums\SegmentKey;
 use App\Enums\PlannedSessionStatus;
@@ -12,6 +13,7 @@ use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\ActivityStream;
 use App\Models\PersonalRecord;
+use App\Models\PlanAdaptation;
 use App\Models\PlannedSession;
 use App\Models\RecommendationRevision;
 use App\Models\RecommendationView;
@@ -980,4 +982,41 @@ it('hands the judge the run\'s raw stream, so a block the laps never marked is s
 
     expect($intent['verdict'])->toBe(IntentVerdict::Hit)
         ->and($intent['evidence'])->toMatchArray(['block_source' => 'stream', 'block_paces' => '305']);
+});
+
+it('grades a day the athlete chose to run as written against the full session, not the ease shown before they chose', function (): void {
+    $user = User::factory()->create();
+    $row = scorerDay($user, '2026-08-05', ['session_type' => SessionType::Tempo, 'prescribed_hard_minutes' => 20, 'prescribed_pace_band' => PaceBand::Threshold, 'prescribed_pace_sec_per_km' => 310]);
+    showAdvice($user, '2026-08-05', shownTempoOriginal(), shownEasyEffective());
+    PlanAdaptation::factory()->for($user)->create([
+        'week_start' => '2026-08-03',
+        'override_kind' => PlanOverrideKind::ReadinessEase,
+        'override_date' => '2026-08-05',
+        'overridden_at' => Carbon::parse('2026-08-05 01:00:00', 'UTC'),
+    ]);
+    shownRun($user, '2026-08-05', 8.0, 2800, controlledTempoSummary());
+
+    $evidence = nonNull(scorerVerdict($user, $row)['intent'])['evidence'];
+
+    expect($evidence)->not->toHaveKey('recommendation_revision_id')
+        ->and($evidence)->not->toHaveKey('eased_from');
+});
+
+it('grades an overridden day against the full session shown after the athlete chose it', function (): void {
+    $user = User::factory()->create();
+    $row = scorerDay($user, '2026-08-05', ['session_type' => SessionType::Tempo, 'prescribed_hard_minutes' => 20, 'prescribed_pace_band' => PaceBand::Threshold, 'prescribed_pace_sec_per_km' => 310]);
+    showAdvice($user, '2026-08-05', shownTempoOriginal(), shownEasyEffective());
+    $full = app(RecommendationHistory::class)->record($user->id, '2026-08-05', shownTempoOriginal(), [
+        'session_type' => 'tempo', 'distance_km' => 8.0, 'segments' => shownTempoSegments(), 'paces' => SHOWN_PACES, 'skipped' => false, 'reason' => null, 'readiness_assessment' => null,
+    ]);
+    RecommendationView::query()->create(['recommendation_revision_id' => $full->id, 'observation_id' => (string) Str::uuid(), 'shown_at' => Carbon::parse('2026-08-05 01:30:00', 'UTC')]);
+    PlanAdaptation::factory()->for($user)->create([
+        'week_start' => '2026-08-03',
+        'override_kind' => PlanOverrideKind::ReadinessEase,
+        'override_date' => '2026-08-05',
+        'overridden_at' => Carbon::parse('2026-08-05 01:00:00', 'UTC'),
+    ]);
+    shownRun($user, '2026-08-05', 8.0, 2800, controlledTempoSummary());
+
+    expect(nonNull(scorerVerdict($user, $row)['intent'])['evidence']['recommendation_revision_id'])->toBe($full->id);
 });

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services\Run\Plan;
 
+use App\Actions\Run\Plan\ResolveWeekAdaptationAction;
+use App\Enums\PlanOverrideKind;
 use App\Enums\SessionType;
 use App\Enums\PlannedSessionStatus;
 use App\Models\PlannedSession;
@@ -36,6 +38,7 @@ final readonly class RestClampRecorder
         private VdotEstimator $vdotEstimator,
         private TrainingPaceCalculator $paceCalculator,
         private HydrationBacklog $hydrationBacklog,
+        private ResolveWeekAdaptationAction $weekAdaptation,
     ) {
     }
 
@@ -69,7 +72,7 @@ final readonly class RestClampRecorder
         return $multiplierByWeek[$currentWeekStart->toDateString()] ?? 1.0;
     }
 
-    public function record(User $user, Carbon $today): bool
+    public function record(User $user, Carbon $today, bool $notify = true): bool
     {
         $session = PlannedSession::query()
             ->where('user_id', $user->id)
@@ -77,7 +80,8 @@ final readonly class RestClampRecorder
             ->first();
 
         if ($session === null || $session->pinned || $session->session_type === SessionType::Race
-            || $session->status !== PlannedSessionStatus::Planned || $session->skipped) {
+            || $session->status !== PlannedSessionStatus::Planned || $session->skipped
+            || ($this->weekAdaptation)($user->id, $today->copy()->startOfWeek(Carbon::MONDAY)->toDateString())?->overrides(PlanOverrideKind::ReadinessEase, $today) === true) {
             return false;
         }
 
@@ -159,7 +163,7 @@ final readonly class RestClampRecorder
         $newSessionType = $adjustment['clamped_km'] !== null ? SessionType::Easy : $session->session_type;
         $session->update($attributes);
 
-        if ($note !== null && ($oldSessionType !== $newSessionType || $oldClampedKm != $adjustment['clamped_km'] || $oldDose != Arr::get($assessment, 'adjustment.quality_dose'))) {
+        if ($notify && $note !== null && ($oldSessionType !== $newSessionType || $oldClampedKm != $adjustment['clamped_km'] || $oldDose != Arr::get($assessment, 'adjustment.quality_dose'))) {
             $this->tell($user, $today, $note);
         }
 

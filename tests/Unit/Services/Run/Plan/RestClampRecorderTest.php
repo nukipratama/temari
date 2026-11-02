@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 use App\Enums\IngestState;
 use App\Enums\PaceBand;
+use App\Enums\PlanOverrideKind;
 use App\Enums\PlanPhase;
 use App\Enums\SessionType;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\PersonalRecord;
+use App\Models\PlanAdaptation;
 use App\Models\PlannedSession;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
@@ -426,4 +428,29 @@ it('records no ease on a quality day already prescribed as an easy run', functio
     app(RestClampRecorder::class)->record($user, Carbon::today());
 
     expect($session->refresh()->clamped_km)->toBeNull();
+});
+
+it('never records against a day the athlete chose to run as written', function (?PlanOverrideKind $kind, bool $recorded): void {
+    $user = User::factory()->create();
+    seedDemandingRunYesterday($user);
+    $session = todaysSession($user);
+    PlanAdaptation::factory()->for($user)->create(['override_kind' => $kind, 'override_date' => $kind instanceof PlanOverrideKind ? Carbon::today()->toDateString() : null]);
+
+    expect(app(RestClampRecorder::class)->record($user, Carbon::today()))->toBe($recorded)
+        ->and($session->refresh()->clamped_km !== null)->toBe($recorded);
+})->with([
+    'readiness override today' => [PlanOverrideKind::ReadinessEase, false],
+    'weekly drop today' => [PlanOverrideKind::WeeklyDrop, true],
+    'no override' => [null, true],
+]);
+
+it('records the ease without telling the athlete when asked to stay quiet', function (): void {
+    Notification::fake();
+    $user = User::factory()->create();
+    seedDemandingRunYesterday($user);
+    $session = todaysSession($user);
+
+    expect(app(RestClampRecorder::class)->record($user, Carbon::today(), notify: false))->toBeTrue()
+        ->and($session->refresh()->clamped_km)->not->toBeNull();
+    Notification::assertNothingSent();
 });
