@@ -53,3 +53,7 @@ it('carries the same copy on telegram and web push', function (): void {
     expect($notification->toTelegram($user)->text)->toContain('An easy run ran hot')->toContain(route('plan'))
         ->and($notification->toWebPush($user, $notification))->toBeInstanceOf(WebPushMessage::class);
 });
+
+it('goes stale once the week it warns about has ended', function (): void {
+    expect(new EasyTooHardNotification('2026-11-02', EasyTooHardNotification::SET, false)->staleAfter?->toDateTimeString())->toBe('2026-11-08 23:59:59');
+});
