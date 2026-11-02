@@ -386,6 +386,19 @@ it('drops the tilt from a tilted quality day the week then keeps easy', function
         ->and([$recovering['session_type'], $recovering['fall_off_tilt']])->toBe([SessionType::Easy, null]);
 });
 
+it('lets a restore lapse once the week drops quality for another reason', function (AdaptationReason $reason, bool $lapsed, int $expected): void {
+    $inputs = planInputsWith(arcInputs(), [
+        'adaptation' => ['reason' => $reason, 'deload' => false, 'quality_delta' => -1, 'adherence_pct' => 100, 'stimulus_adherence_pct' => 100],
+        'qualityRestored' => true,
+    ]);
+
+    expect($inputs->currentWeekQualityDelta())->toBe($expected)
+        ->and($inputs->restoreLapsed())->toBe($lapsed);
+})->with([
+    'still ran too hard' => [AdaptationReason::RanTooHard, false, 0],
+    'now a missed stimulus' => [AdaptationReason::MissedStimulus, true, -1],
+]);
+
 it('lifts only a dropped quality session back for the current week once the athlete restores it', function (int $delta, bool $restored, int $expected): void {
     $inputs = planInputsWith(arcInputs(), ['adaptation' => ['reason' => AdaptationReason::RanTooHard, 'deload' => false, 'quality_delta' => $delta, 'adherence_pct' => 100, 'stimulus_adherence_pct' => 100]]);
 

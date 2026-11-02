@@ -89,7 +89,12 @@ final readonly class PlanInputs
 
     public function currentWeekQualityDelta(): int
     {
-        return $this->qualityRestored ? max(0, $this->adaptation['quality_delta']) : $this->adaptation['quality_delta'];
+        return $this->qualityRestored && ! $this->restoreLapsed() ? max(0, $this->adaptation['quality_delta']) : $this->adaptation['quality_delta'];
+    }
+
+    public function restoreLapsed(): bool
+    {
+        return $this->qualityRestored && $this->adaptation['reason'] !== AdaptationReason::RanTooHard;
     }
 
     public function withQualityRestored(bool $restored): self

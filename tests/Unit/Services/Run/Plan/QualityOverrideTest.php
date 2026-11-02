@@ -126,3 +126,15 @@ it('opens the override to everyone but the demo athlete, outside the weeks befor
     'two weeks before race week' => [false, '2026-10-04', false],
     'demo athlete' => [true, null, false],
 ]);
+
+it('keeps a taken override, its note and its undo once the week falls before race week, offering nothing new there', function (): void {
+    $user = new User()->forceFill(['is_demo' => false]);
+    $race = new RaceGoal()->forceFill(['race_date' => '2026-10-04']);
+    $week = overrideWeek(['override_kind' => PlanOverrideKind::WeeklyDrop, 'override_date' => '2026-09-17']);
+
+    $open = QualityOverride::openWeek($user, $week, $race);
+
+    expect($open)->toBe($week)
+        ->and(overrideFor(overrideDay('2026-09-17'), $open))->toBe(['kind' => 'weekly_drop', 'state' => 'taken', 'note' => QualityOverride::TAKEN_NOTE, 'undoable' => true])
+        ->and(overrideFor(overrideDay(), $open, 'quality can wait.', ReadinessCeiling::ModerateOk))->toBeNull();
+});
