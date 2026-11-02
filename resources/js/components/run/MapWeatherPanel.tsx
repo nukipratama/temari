@@ -3,6 +3,7 @@ import { Suspense } from 'react';
 
 import type { ActivityDetail } from '@/types/inertia';
 
+import WeatherRail from '@/components/run/WeatherRail';
 import { Icon } from '@/components/ui/Icon';
 import { cn } from '@/lib/cn';
 import { lazyIsland } from '@/lib/lazyIsland';
@@ -89,6 +90,15 @@ export default function MapWeatherPanel({
                                 />
                             )}
                         </div>
+                    )}
+                    {temp != null && (
+                        <WeatherRail
+                            avg={Math.round(temp)}
+                            feels={detail.weather_apparent_temp_c ?? null}
+                            dew={detail.weather_dew_point_c ?? null}
+                            peak={detail.weather_temp_max_c ?? null}
+                            className="w-full sm:order-last"
+                        />
                     )}
                     {location != null && (
                         <div

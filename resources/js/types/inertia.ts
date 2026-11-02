@@ -357,7 +357,10 @@ export interface ActivityDetail {
     location_name?: string | null;
     location_country?: string | null;
     weather_temp_c?: number | null;
+    weather_temp_max_c?: number | null;
     weather_humidity_pct?: number | null;
+    weather_dew_point_c?: number | null;
+    weather_apparent_temp_c?: number | null;
     ran_hot?: boolean;
     weather_rain_detected?: boolean | null;
     weather_wind_speed_kmh?: number | null;
