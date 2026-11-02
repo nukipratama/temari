@@ -41,6 +41,7 @@ final readonly class PlanInputs
      * @param  float  $longestRunSoFarKm  the longer of the longest run of the last 30 days and the longest long run the season has prescribed so far
      * @param  string|null  $lastFastFinishDate  Y-m-d of the latest fast-finish long run already behind the athlete
      * @param  int|null  $supportedTenKTimeSec  the time the athlete's fitness supports over 10K
+     * @param  bool  $qualityRestored  the athlete brought back the quality session this week's adaptation dropped
      */
     public function __construct(
         public int $userId,
@@ -82,7 +83,18 @@ final readonly class PlanInputs
         public float $longestRunSoFarKm = 0.0,
         public ?string $lastFastFinishDate = null,
         public ?int $supportedTenKTimeSec = null,
+        public bool $qualityRestored = false,
     ) {
+    }
+
+    public function currentWeekQualityDelta(): int
+    {
+        return $this->qualityRestored ? max(0, $this->adaptation['quality_delta']) : $this->adaptation['quality_delta'];
+    }
+
+    public function withQualityRestored(bool $restored): self
+    {
+        return clone($this, ['qualityRestored' => $restored]);
     }
 
     public function currentWeekStart(): Carbon

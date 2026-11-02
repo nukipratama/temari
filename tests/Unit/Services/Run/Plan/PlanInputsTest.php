@@ -385,3 +385,14 @@ it('drops the tilt from a tilted quality day the week then keeps easy', function
     expect([$kept['session_type'], $kept['fall_off_tilt']])->toBe([SessionType::Tempo, FallOffTilt::Endurance])
         ->and([$recovering['session_type'], $recovering['fall_off_tilt']])->toBe([SessionType::Easy, null]);
 });
+
+it('lifts only a dropped quality session back for the current week once the athlete restores it', function (int $delta, bool $restored, int $expected): void {
+    $inputs = planInputsWith(arcInputs(), ['adaptation' => ['reason' => AdaptationReason::RanTooHard, 'deload' => false, 'quality_delta' => $delta, 'adherence_pct' => 100, 'stimulus_adherence_pct' => 100]]);
+
+    expect($inputs->withQualityRestored($restored)->currentWeekQualityDelta())->toBe($expected)
+        ->and($inputs->withQualityRestored($restored)->adaptation['quality_delta'])->toBe($delta);
+})->with([
+    'dropped, restored' => [-1, true, 0],
+    'dropped, kept' => [-1, false, -1],
+    'as written, restored' => [0, true, 0],
+]);

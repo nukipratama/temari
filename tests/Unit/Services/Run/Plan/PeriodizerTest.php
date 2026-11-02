@@ -6,6 +6,7 @@ use App\Actions\Run\Plan\ResolvePlannedSessionsAction;
 use App\Enums\AdaptationReason;
 use App\Enums\FallOffTilt;
 use App\Enums\PaceBand;
+use App\Enums\PlanOverrideKind;
 use App\Enums\PlanPhase;
 use App\Enums\PlannedSessionStatus;
 use App\Enums\RaceAmbitionState;
@@ -178,7 +179,7 @@ it('generates a self-scaled cycle with its season and decision, then regenerates
     $plannedSessionInserts = array_filter($queries, fn (string $sql): bool => str_starts_with(strtolower($sql), 'insert into `planned_sessions`'));
     expect(PlannedSession::query()->where('user_id', $user->id)->count())->toBe(Periodizer::HORIZON_WEEKS * 7)
         ->and($plannedSessionInserts)->toHaveCount(1)
-        ->and(count($queries))->toBeLessThanOrEqual(26)
+        ->and(count($queries))->toBeLessThanOrEqual(27)
         ->and(PlanAdaptation::query()->where('user_id', $user->id)->count())->toBe(1);
 
     $before = PlanAdaptation::query()->where('user_id', $user->id)->firstOrFail();
@@ -914,4 +915,50 @@ it('recounts the season goal targets from the plan it just wrote', function (): 
 
     expect($runs)->toBeGreaterThan(0)
         ->and($target)->toBe(ceil($runs * 0.8));
+});
+
+it('plans a quality session a ran-too-hard week dropped back where the week as written holds it once the athlete restores it', function (): void {
+    $ranTooHard = ['reason' => AdaptationReason::RanTooHard, 'deload' => false, 'quality_delta' => -1, 'adherence_pct' => 100, 'stimulus_adherence_pct' => 100];
+    $inputs = planInputsWith(arcInputs(today: '2026-09-14', raceDay: '2026-11-29'), ['seasonStart' => Carbon::parse('2026-08-03')]);
+
+    $asWritten = weekTypes(periodizer()->rowsFor($inputs), '2026-09-14');
+    $dropped = weekTypes(periodizer()->rowsFor(planInputsWith($inputs, ['adaptation' => $ranTooHard])), '2026-09-14');
+    $restored = weekTypes(periodizer()->rowsFor(planInputsWith($inputs, ['adaptation' => $ranTooHard, 'qualityRestored' => true])), '2026-09-14');
+
+    expect($restored)->toBe($asWritten)
+        ->and($dropped)->not->toBe($asWritten);
+});
+
+it('records the day and type a ran-too-hard week dropped, and keeps the session once the athlete brings it back', function (): void {
+    $user = User::factory()->create();
+    seedRanTooHardWeek($user);
+
+    periodizer()->regenerate($user);
+    $adaptation = PlanAdaptation::query()->where('user_id', $user->id)->firstOrFail();
+
+    expect($adaptation->restorable_quality)->toBe(['date' => '2026-09-17', 'session_type' => 'interval'])
+        ->and(currentWeekQualityCount($user))->toBe(0);
+
+    $adaptation->update(['override_kind' => PlanOverrideKind::WeeklyDrop, 'override_date' => '2026-09-17', 'overridden_at' => Carbon::now('UTC')]);
+    periodizer()->regenerate($user);
+    $restored = PlannedSession::query()->where('user_id', $user->id)->where('date', '2026-09-17')->firstOrFail();
+
+    expect($restored->session_type)->toBe(SessionType::Interval)
+        ->and($restored->prescribed_hard_minutes)->toBeGreaterThan(0)
+        ->and($adaptation->refresh()->quality_delta)->toBe(-1)
+        ->and($adaptation->restorable_quality)->toBe(['date' => '2026-09-17', 'session_type' => 'interval']);
+
+    periodizer()->regenerateIfChanged($user);
+
+    expect(currentWeekQualityCount($user))->toBe(1)
+        ->and($adaptation->refresh()->override_kind)->toBe(PlanOverrideKind::WeeklyDrop);
+});
+
+it('records nothing to restore on a week that dropped no quality session', function (): void {
+    $user = User::factory()->create();
+    seedPeriodizerBaseline($user);
+
+    periodizer()->regenerate($user);
+
+    expect(PlanAdaptation::query()->where('user_id', $user->id)->firstOrFail()->restorable_quality)->toBeNull();
 });

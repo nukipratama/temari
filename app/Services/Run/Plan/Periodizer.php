@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Run\Plan;
 
+use App\Enums\AdaptationReason;
 use App\Enums\FallOffTilt;
 use App\Enums\FeedbackSubject;
 use App\Enums\IntentVerdict;
@@ -200,7 +201,7 @@ final readonly class Periodizer
                 $inputs->raceDistanceM,
                 $inputs->isSelfScaled(),
                 $inputs->today,
-                $week['week_start']->isSameDay($inputs->currentWeekStart()) ? $inputs->adaptation['quality_delta'] : 0,
+                $week['week_start']->isSameDay($inputs->currentWeekStart()) ? $inputs->currentWeekQualityDelta() : 0,
                 $inputs->runDays,
                 $inputs->longRunDay,
                 $inputs->projectedRaceSeconds,
@@ -476,11 +477,40 @@ final readonly class Periodizer
                     'volume_floor_km' => self::overriddenFloorKm($inputs, $rows),
                     'increases_held' => $inputs->increasesHeld,
                     'deferred_time_trial' => self::deferredTimeTrial($inputs, $rows),
+                    'restorable_quality' => $this->restorableQuality($inputs, $rows),
                 ],
             );
 
             $this->seasonService->recountPlannedGoals($user);
         });
+    }
+
+    /**
+     * The first day from today on that a ran-too-hard week's dropped quality session falls on when the
+     * week is planned as written, with the type it would hold there.
+     *
+     * @param  array<string, array{session_type: SessionType, ...}>  $rows
+     * @return array{date: string, session_type: string}|null
+     */
+    private function restorableQuality(PlanInputs $inputs, array $rows): ?array
+    {
+        if ($inputs->adaptation['reason'] !== AdaptationReason::RanTooHard || $inputs->adaptation['quality_delta'] >= 0) {
+            return null;
+        }
+
+        $restored = $inputs->qualityRestored ? $rows : $this->rowsFor($inputs->withQualityRestored(true));
+        $dropped = $inputs->qualityRestored ? $this->rowsFor($inputs->withQualityRestored(false)) : $rows;
+        $weekEnd = $inputs->currentWeekStart()->addDays(6)->toDateString();
+        foreach ($restored as $date => $row) {
+            if ($date > $weekEnd) {
+                break;
+            }
+            if ($row['session_type']->isQuality() && ! ($dropped[$date]['session_type'] ?? SessionType::Rest)->isQuality()) {
+                return ['date' => $date, 'session_type' => $row['session_type']->value];
+            }
+        }
+
+        return null;
     }
 
     /**
