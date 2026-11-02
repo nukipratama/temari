@@ -256,15 +256,15 @@ anything the demo did send ([[demo-notifications-are-inbox-only]]).
 
 ## The one push with no row behind it
 
-`briefing:morning-push` pushes today's already-generated briefing at the quarter hour the athlete's
-own run history says they usually start
+`briefing:morning-push` pushes today's already-generated briefing an hour before the athlete's run
+history says they usually start on that weekday, or at the time they set in Settings
 ([MorningBriefingPushCommand](../../app/Console/Commands/Notifications/MorningBriefingPushCommand.php)),
 and writes **no inbox row at all**
 ([MorningBriefingNotification](../../app/Notifications/MorningBriefingNotification.php)). It is
 the one deliberate exception to "the inbox is the record of everything Temari sent": the briefing is
 already on the dashboard, so a row of it would record nothing new, and what the push adds is the
 timing. It generates nothing either — a briefing row that is not `done` is skipped rather than
-narrated. See [[the-briefing-arrives-when-you-run]].
+narrated. See [[the-briefing-arrives-when-you-run]] and [[the-briefing-arrives-an-hour-before-you-run]].
 
 ## See also
 

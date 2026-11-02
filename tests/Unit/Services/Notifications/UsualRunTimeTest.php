@@ -12,17 +12,34 @@ use Illuminate\Support\Facades\Cache;
 
 uses(RefreshDatabase::class);
 
-/** Each run lands one day after the last one this test created, oldest first. */
+beforeEach(fn () => Carbon::setTestNow('2026-06-03 05:00:00'));
+
+afterEach(fn () => Carbon::setTestNow());
+
+/**
+ * Each run lands on a later day than the last one this test created, oldest first, never on a
+ * Wednesday, so today's weekday never has a median of its own.
+ */
 function runsStartingAt(User $user, string ...$times): void
 {
     static $day = 0;
 
     foreach ($times as $time) {
+        do {
+            $start = Carbon::parse('2026-01-01 '.$time)->addDays($day++);
+        } while ($start->isWednesday());
+
         $activity = Activity::factory()->for($user)->create();
-        ActivityDetail::factory()->for($activity)->create([
-            'start_date_local' => Carbon::parse('2026-01-01 '.$time)->addDays($day++),
-        ]);
+        ActivityDetail::factory()->for($activity)->create(['start_date_local' => $start]);
     }
+}
+
+function runOnTodaysWeekday(User $user, int $weeksAgo, string $time): void
+{
+    $activity = Activity::factory()->for($user)->create();
+    ActivityDetail::factory()->for($activity)->create([
+        'start_date_local' => Carbon::parse('2026-06-03 '.$time)->subWeeks($weeksAgo),
+    ]);
 }
 
 it('falls back to 06:00 for an athlete with too little history', function (int $runs): void {
@@ -130,4 +147,34 @@ it('keys the cache per athlete and per day', function (): void {
     new UsualRunTime()->forUser($user->id);
 
     expect(Cache::has(UsualRunTime::cacheKey($user->id, $today)))->toBeTrue();
+});
+
+it('takes the median of today\'s weekday once that weekday has enough runs', function (): void {
+    $user = User::factory()->create();
+    foreach (['05:30:00', '05:40:00', '05:45:00', '05:50:00', '06:00:00'] as $weeksAgo => $time) {
+        runOnTodaysWeekday($user, $weeksAgo + 1, $time);
+    }
+    runsStartingAt($user, ...array_fill(0, 10, '18:00:00'));
+
+    expect(new UsualRunTime()->forUser($user->id))->toBe(5 * 60 + 45);
+});
+
+it('falls back to the overall median when today\'s weekday has too few runs', function (): void {
+    $user = User::factory()->create();
+    foreach (range(1, UsualRunTime::MIN_SAMPLES - 1) as $weeksAgo) {
+        runOnTodaysWeekday($user, $weeksAgo, '05:30:00');
+    }
+    runsStartingAt($user, ...array_fill(0, 6, '18:00:00'));
+
+    expect(new UsualRunTime()->forUser($user->id))->toBe(18 * 60);
+});
+
+it('reads only the most recent runs on today\'s weekday', function (): void {
+    $user = User::factory()->create();
+    foreach (range(1, UsualRunTime::WEEKDAY_SAMPLE_SIZE) as $weeksAgo) {
+        runOnTodaysWeekday($user, $weeksAgo, '06:00:00');
+        runOnTodaysWeekday($user, $weeksAgo + UsualRunTime::WEEKDAY_SAMPLE_SIZE, '19:00:00');
+    }
+
+    expect(new UsualRunTime()->forUser($user->id))->toBe(6 * 60);
 });

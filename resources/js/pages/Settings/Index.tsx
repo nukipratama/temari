@@ -2,9 +2,11 @@ import { Head, Link, router } from '@inertiajs/react';
 import {
     Bell,
     ChevronRight,
+    Clock,
     LoaderCircle,
     LogOut,
     Send,
+    Sunrise,
     Unlink,
     UserX,
 } from 'lucide-react';
@@ -43,6 +45,7 @@ import { showToast } from '@/hooks/useToast';
 import { appLayout } from '@/layouts/appLayout';
 import { cn } from '@/lib/cn';
 import { formatDurationHMS } from '@/lib/pace';
+import { inputVariants } from '@/lib/variants';
 import { releaseDeviceSubscription } from '@/lib/webPush';
 
 import {
@@ -92,6 +95,8 @@ const INTERVALS_ICU_DEFAULT: IntervalsIcuPayload = {
 
 const PREFS_DEFAULT: NotificationPrefs = {
     notifications_enabled: true,
+    briefing_push_enabled: true,
+    briefing_push_minute: null,
     telegram_enabled: true,
     push_enabled: true,
 };
@@ -333,9 +338,13 @@ function NotificationPrefsPanel({
 }>) {
     const {
         notificationsEnabled,
+        briefingPushEnabled,
+        briefingPushMinute,
         telegramEnabled,
         pushEnabled,
         setNotificationsEnabled,
+        setBriefingPushEnabled,
+        setBriefingPushMinute,
         setTelegramEnabled,
         setPushEnabled,
         guard,
@@ -351,7 +360,9 @@ function NotificationPrefsPanel({
                     curate a list they never wanted to curate, and the streak
                     nudge had no toggle of its own at all, so it silently rode
                     along on "weekly recap". Naming everything here is what
-                    makes that coupling honest. */}
+                    makes that coupling honest. The briefing is the one
+                    exception: it goes out on a clock, not after an event, so
+                    its timing is the athlete's to tune. */}
                 <div className="flex flex-col">
                     <SettingsRow
                         icon={Bell}
@@ -364,6 +375,24 @@ function NotificationPrefsPanel({
                                 onChange={setNotificationsEnabled}
                             />
                         }
+                    />
+                    <SettingsRow
+                        icon={Sunrise}
+                        label="morning briefing"
+                        description="an hour before your usual run"
+                        control={
+                            <Toggle
+                                label="morning briefing"
+                                checked={briefingPushEnabled}
+                                onChange={setBriefingPushEnabled}
+                                disabled={!notificationsEnabled}
+                            />
+                        }
+                    />
+                    <BriefingSendTime
+                        minute={briefingPushMinute}
+                        disabled={!notificationsEnabled || !briefingPushEnabled}
+                        onChange={setBriefingPushMinute}
                     />
                 </div>
             </div>
@@ -406,6 +435,91 @@ function NotificationPrefsPanel({
                 onClose={() => setDemoModalOpen(false)}
             />
         </div>
+    );
+}
+
+const QUIET_HOURS_START_MINUTE = 22 * 60;
+
+function minuteToClock(minute: number | null): string {
+    if (minute === null) {
+        return '';
+    }
+
+    const pad = (part: number) => part.toString().padStart(2, '0');
+
+    return `${pad(Math.floor(minute / 60))}:${pad(minute % 60)}`;
+}
+
+function clockToMinute(clock: string): number | null {
+    if (clock === '') {
+        return null;
+    }
+
+    return Number(clock.slice(0, 2)) * 60 + Number(clock.slice(3, 5));
+}
+
+/**
+ * Saved when the field is left rather than on every change, since a native
+ * time field reports each completed segment as it is typed. A time inside the
+ * evening quiet hours is put back, as the server refuses it.
+ */
+function BriefingSendTime({
+    minute,
+    disabled,
+    onChange,
+}: Readonly<{
+    minute: number | null;
+    disabled: boolean;
+    onChange: (minute: number | null) => void;
+}>) {
+    const [draft, setDraft] = useState(() => minuteToClock(minute));
+
+    return (
+        <SettingsRow
+            icon={Clock}
+            label="send at"
+            description="empty = follows your runs"
+            control={
+                <span className="flex shrink-0 items-center gap-2">
+                    {draft !== '' && (
+                        <button
+                            type="button"
+                            disabled={disabled}
+                            onClick={() => {
+                                setDraft('');
+                                onChange(null);
+                            }}
+                            className="focus-ring rounded-sm font-sans text-xs text-text-2 underline-offset-2 hover:underline disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                            clear
+                        </button>
+                    )}
+                    <input
+                        type="time"
+                        step={900}
+                        aria-label="send the morning briefing at"
+                        value={draft}
+                        disabled={disabled}
+                        onChange={(event) => setDraft(event.target.value)}
+                        onBlur={() => {
+                            const next = clockToMinute(draft);
+                            if (
+                                next !== null &&
+                                next >= QUIET_HOURS_START_MINUTE
+                            ) {
+                                setDraft(minuteToClock(minute));
+                            } else if (next !== minute) {
+                                onChange(next);
+                            }
+                        }}
+                        className={cn(
+                            inputVariants({ size: 'sm' }),
+                            'w-auto font-mono tabular-nums disabled:cursor-not-allowed disabled:opacity-50',
+                        )}
+                    />
+                </span>
+            }
+        />
     );
 }
 

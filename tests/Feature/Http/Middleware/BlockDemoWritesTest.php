@@ -18,6 +18,8 @@ it('blocks a demo user from an Inertia notification-preference write with a flas
             'notifications_enabled' => false,
             'telegram_enabled' => true,
             'push_enabled' => true,
+            'briefing_push_enabled' => true,
+            'briefing_push_minute' => null,
         ])
         ->assertRedirect()
         ->assertSessionHasErrors(['demo' => 'The demo account is read-only. Nothing here can be changed.']);
@@ -43,6 +45,8 @@ it('does not block a normal user from the same notification-preference write', f
             'notifications_enabled' => false,
             'telegram_enabled' => true,
             'push_enabled' => true,
+            'briefing_push_enabled' => true,
+            'briefing_push_minute' => null,
         ])
         ->assertRedirect()
         ->assertSessionDoesntHaveErrors();

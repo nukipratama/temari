@@ -14,6 +14,8 @@ code_refs:
 
 # The briefing arrives when you usually run
 
+> **The slot and "No toggle of its own" are superseded (noted 2026-11-02) by [[the-briefing-arrives-an-hour-before-you-run]].** The push now goes out an hour before the median start of the athlete's runs on that weekday, with the overall median below as its fallback, and it has its own switch and an optional fixed send time in Settings. The sweep, the catch-up window, the per-day claim, the quiet-hours hold and "it sends, it never generates" are unchanged.
+
 **Status:** Accepted (decided 2026-09-10)
 
 > **Catch-up window, noted 2026-10-06.** Each tick sends to every athlete whose slot is at or before now, no more than 60 minutes ago, still the same local day, with no delivery claim yet, so the 00:00 slot (which runs before the 00:01 generation) and a briefing that turns `done` after its slot go out on the next tick inside the window.

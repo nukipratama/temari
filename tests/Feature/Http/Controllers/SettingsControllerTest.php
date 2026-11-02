@@ -37,6 +37,8 @@ it('exposes the telegram connect url when the bot username is configured', funct
         ->assertInertia(fn (Assert $page) => $page
             ->where('telegram.connected', false)
             ->where('notificationPrefs.notifications_enabled', true)
+            ->where('notificationPrefs.briefing_push_enabled', true)
+            ->where('notificationPrefs.briefing_push_minute', null)
             ->where('telegram.connect_url', fn (?string $url): bool => is_string($url)
                 && str_starts_with($url, 'https://t.me/temari_bot?start=')));
 });
@@ -59,6 +61,8 @@ it('reports the connection state and the channel-neutral preferences', function 
         'notifications_enabled' => false,
         'telegram_enabled' => true,
         'push_enabled' => false,
+        'briefing_push_enabled' => false,
+        'briefing_push_minute' => 5 * 60 + 15,
     ]);
 
     $this->actingAs($user)->get('/settings')
@@ -68,7 +72,9 @@ it('reports the connection state and the channel-neutral preferences', function 
             ->where('telegram.username', 'ada_runs')
             ->where('notificationPrefs.notifications_enabled', false)
             ->where('notificationPrefs.telegram_enabled', true)
-            ->where('notificationPrefs.push_enabled', false));
+            ->where('notificationPrefs.push_enabled', false)
+            ->where('notificationPrefs.briefing_push_enabled', false)
+            ->where('notificationPrefs.briefing_push_minute', 5 * 60 + 15));
 });
 
 it('hands the page the config-fallback HR-zones profile for a fresh user', function (): void {

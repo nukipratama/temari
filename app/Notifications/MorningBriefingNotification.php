@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Notifications;
 
 use App\Models\AI\Analysis;
+use App\Models\NotificationPreference;
 use App\Models\User;
 use App\Notifications\Concerns\AppendsUnreadBadge;
 use App\Notifications\Concerns\RechecksRouteAtDelivery;
@@ -13,7 +14,6 @@ use App\Notifications\Messages\PushBody;
 use App\Notifications\Messages\TelegramMessage;
 use App\Console\Commands\Notifications\MorningBriefingPushCommand;
 use App\Services\Notifications\ChannelRouter;
-use App\Services\Notifications\UsualRunTime;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Notification;
@@ -21,7 +21,8 @@ use Illuminate\Support\Carbon;
 use NotificationChannels\WebPush\WebPushMessage;
 
 /**
- * Today's briefing, pushed at the hour the athlete usually runs, by
+ * Today's briefing, pushed an hour before the athlete usually runs or at the
+ * time they chose, by
  * {@see \App\Console\Commands\Notifications\MorningBriefingPushCommand}. It
  * carries a row `ai:daily-briefing` already generated at 00:01 and generates
  * nothing itself.
@@ -52,8 +53,10 @@ class MorningBriefingNotification extends Notification implements ShouldQueue
     public function __construct(public readonly Analysis $briefing)
     {
         $day = Carbon::parse($briefing->discriminator);
-        $bucket = intdiv(app(UsualRunTime::class)->forUser($briefing->subject_id), MorningBriefingPushCommand::BUCKET_MINUTES);
-        $slot = $bucket * MorningBriefingPushCommand::BUCKET_MINUTES;
+        $slot = MorningBriefingPushCommand::slotFor(
+            $briefing->subject_id,
+            NotificationPreference::query()->firstWhere('user_id', $briefing->subject_id),
+        );
 
         $this->staleAfter = $day->copy()->addMinutes($slot + self::STALE_AFTER_MINUTES)->min($day->copy()->endOfDay());
     }
@@ -64,7 +67,7 @@ class MorningBriefingNotification extends Notification implements ShouldQueue
     public function via(User $notifiable): array
     {
         $preference = $notifiable->notificationPreference;
-        if ($preference !== null && ! $preference->notifications_enabled) {
+        if ($preference !== null && (! $preference->notifications_enabled || ! $preference->briefing_push_enabled)) {
             return [];
         }
 

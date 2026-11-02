@@ -29,8 +29,8 @@ beforeEach(fn () => Carbon::setTestNow('2026-05-24 06:05:00'));
 
 afterEach(fn () => Carbon::setTestNow());
 
-/** An athlete who runs at 06:00, subscribed to push, with today's briefing narrated. */
-function morningAthlete(string $usualStart = '06:00:00', ?AnalysisStatus $briefingStatus = AnalysisStatus::Done): User
+/** An athlete who runs at 07:00, so is pushed at 06:00, subscribed to push, with today's briefing narrated. */
+function morningAthlete(string $usualStart = '07:00:00', ?AnalysisStatus $briefingStatus = AnalysisStatus::Done): User
 {
     $user = User::factory()->create();
     $user->updatePushSubscription('https://fcm.googleapis.com/fcm/send/'.$user->id, 'p256dh-key', 'auth-token');
@@ -56,7 +56,7 @@ function morningAthlete(string $usualStart = '06:00:00', ?AnalysisStatus $briefi
     return $user;
 }
 
-it('pushes to an athlete whose usual start falls in this quarter hour or twenty minutes before the tick', function (string $now): void {
+it('pushes to an athlete whose slot, an hour before their usual start, falls in this quarter hour or twenty minutes before the tick', function (string $now): void {
     Notification::fake();
     Carbon::setTestNow($now);
 
@@ -100,16 +100,18 @@ it('leaves an athlete alone outside their own bucket', function (string $usualSt
 
     Notification::assertNothingSent();
 })->with([
-    'ninety-five minutes before' => ['04:30:00', '2026-05-24 06:05:00'],
-    'the quarter hour after' => ['06:20:00', '2026-05-24 06:05:00'],
+    'ninety-five minutes before' => ['05:30:00', '2026-05-24 06:05:00'],
+    'the quarter hour after' => ['07:20:00', '2026-05-24 06:05:00'],
     'the evening' => ['19:00:00', '2026-05-24 06:05:00'],
-    'ninety minutes after the bucket' => ['06:00:00', '2026-05-24 07:30:00'],
+    'ninety minutes after the bucket' => ['07:00:00', '2026-05-24 07:30:00'],
+    'at the usual start itself' => ['07:00:00', '2026-05-24 07:05:00'],
 ]);
 
-// Fewer than five runs is the 06:00 fallback, which this bucket happens to be,
+// Fewer than five runs is the 06:00 fallback start, pushed an hour ahead at 05:00,
 // so a new athlete is reached at a sane default rather than not at all.
-it('reaches an athlete with too little history at the 06:00 fallback', function (): void {
+it('reaches an athlete with too little history an hour before the 06:00 fallback', function (): void {
     Notification::fake();
+    Carbon::setTestNow('2026-05-24 05:05:00');
 
     $user = User::factory()->create();
     $user->updatePushSubscription('https://fcm.googleapis.com/fcm/send/abc', 'p256dh-key', 'auth-token');
@@ -130,7 +132,7 @@ it('reaches an athlete with too little history at the 06:00 fallback', function 
 it('skips an athlete whose briefing is not done, and never generates one', function (?AnalysisStatus $status): void {
     Notification::fake();
 
-    morningAthlete('06:00:00', $status);
+    morningAthlete('07:00:00', $status);
 
     $this->artisan('briefing:morning-push')
         ->expectsOutputToContain('Pushed the morning briefing to 0 athletes.')
@@ -147,7 +149,7 @@ it('skips an athlete whose briefing is not done, and never generates one', funct
 it('skips yesterday\'s briefing rather than re-pushing it', function (): void {
     Notification::fake();
 
-    $user = morningAthlete('06:00:00', null);
+    $user = morningAthlete('07:00:00', null);
     Analysis::factory()->create([
         'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
         'subject_id' => $user->id,
@@ -236,7 +238,7 @@ it('excludes the demo account, like every other kickoff', function (): void {
 it('pushes a briefing that turns done after its bucket on the next tick', function (): void {
     Notification::fake();
 
-    $user = morningAthlete('06:00:00', AnalysisStatus::Pending);
+    $user = morningAthlete('07:00:00', AnalysisStatus::Pending);
 
     $this->artisan('briefing:morning-push')->assertSuccessful();
     Notification::assertNothingSent();
@@ -261,7 +263,7 @@ it('sends once per analysis and channel however many ticks fall in the window', 
     });
     app()->instance(WebPushChannel::class, $push);
 
-    $user = morningAthlete('06:00:00', AnalysisStatus::Pending);
+    $user = morningAthlete('07:00:00', AnalysisStatus::Pending);
     TelegramConnection::factory()->for($user)->create(['chat_id' => 4242, 'revoked_at' => null]);
     $this->artisan('briefing:morning-push')->assertSuccessful();
     Analysis::query()->where('subject_id', $user->id)->update(['status' => AnalysisStatus::Done]);
@@ -322,11 +324,11 @@ it('holds a quiet-hours briefing once per channel across catch-up ticks', functi
 it('pushes only the athletes due this tick across a mixed set of slots', function (): void {
     Notification::fake();
 
-    $due = morningAthlete('06:00:00');
-    $dueNoBriefing = morningAthlete('06:00:00', null);
-    $dueAlreadyClaimed = morningAthlete('06:00:00');
-    $later = morningAthlete('09:00:00');
-    $earlier = morningAthlete('04:00:00');
+    $due = morningAthlete('07:00:00');
+    $dueNoBriefing = morningAthlete('07:00:00', null);
+    $dueAlreadyClaimed = morningAthlete('07:00:00');
+    $later = morningAthlete('10:00:00');
+    $earlier = morningAthlete('05:00:00');
     NotificationDelivery::query()->create([
         'analysis_id' => Analysis::query()->where('subject_id', $dueAlreadyClaimed->id)->value('id'),
         'channel' => 'webpush',
@@ -348,9 +350,9 @@ it('pushes only the athletes due this tick across a mixed set of slots', functio
 it('loads briefings and deliveries once however many athletes are due', function (): void {
     Notification::fake();
     foreach (range(1, 4) as $ignored) {
-        morningAthlete('06:00:00');
+        morningAthlete('07:00:00');
     }
-    morningAthlete('09:00:00');
+    morningAthlete('10:00:00');
 
     $selects = ['ai_analyses' => 0, 'notification_deliveries' => 0];
     DB::listen(function (QueryExecuted $query) use (&$selects): void {
@@ -366,4 +368,32 @@ it('loads briefings and deliveries once however many athletes are due', function
         ->assertSuccessful();
 
     expect($selects)->toBe(['ai_analyses' => 1, 'notification_deliveries' => 1]);
+});
+
+it('sends at the athlete\'s own time, quarter hour rounded down, in place of the automatic slot', function (string $now, int $sent): void {
+    Notification::fake();
+    Carbon::setTestNow($now);
+
+    $user = morningAthlete();
+    NotificationPreference::factory()->for($user)->create(['briefing_push_minute' => 5 * 60 + 10]);
+
+    $this->artisan('briefing:morning-push')
+        ->expectsOutputToContain("Pushed the morning briefing to {$sent} athletes.")
+        ->assertSuccessful();
+})->with([
+    'the chosen quarter hour' => ['2026-05-24 05:05:00', 1],
+    'the automatic slot it replaces' => ['2026-05-24 06:20:00', 0],
+]);
+
+it('skips an athlete who turned the briefing push off, with the master switch still on', function (): void {
+    Notification::fake();
+
+    $user = morningAthlete();
+    NotificationPreference::factory()->for($user)->create(['briefing_push_enabled' => false]);
+
+    $this->artisan('briefing:morning-push')
+        ->expectsOutputToContain('Pushed the morning briefing to 0 athletes.')
+        ->assertSuccessful();
+
+    Notification::assertNothingSent();
 });

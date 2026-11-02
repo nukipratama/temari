@@ -21,6 +21,8 @@ class NotificationPreferenceFactory extends Factory
         return [
             'user_id' => User::factory(),
             'notifications_enabled' => true,
+            'briefing_push_enabled' => true,
+            'briefing_push_minute' => null,
             'telegram_enabled' => true,
             'push_enabled' => true,
         ];

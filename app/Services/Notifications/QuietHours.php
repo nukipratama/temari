@@ -12,7 +12,7 @@ use Carbon\CarbonInterface;
  */
 final class QuietHours
 {
-    private const int STARTS_AT_HOUR = 22;
+    public const int STARTS_AT_HOUR = 22;
 
     private const int ENDS_AT_HOUR = 4;
 
