@@ -17,6 +17,11 @@ code_refs:
 
 **Status:** Accepted (decided 2026-11-02, issue #2351 decision 5)
 
+> **Fact update, 2026-11-02.** The catch-up now ends at 22:00: the sweep sends nothing from 22:00,
+> so a slot that misses its tick there, or an automatic slot from 22:00, is dropped rather than held
+> into the next morning. This closes the gap the send-time paragraph below leaves open for a slot
+> from 21:00. An early slot before 04:00 is still held until 04:00.
+
 Supersedes two parts of [[the-briefing-arrives-when-you-run]]: the slot (the median start of the
 last twenty runs, floored to the quarter hour) and "no toggle of its own". The fifteen-minute
 sweep, the 60-minute catch-up, the one claim per athlete per channel per day, holding a slot inside

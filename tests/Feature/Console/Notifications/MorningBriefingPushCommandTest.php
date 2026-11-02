@@ -397,3 +397,22 @@ it('skips an athlete who turned the briefing push off, with the master switch st
 
     Notification::assertNothingSent();
 });
+
+it('ends the catch-up at 22:00, dropping a slot rather than holding it into the next morning', function (string $usualStart, ?int $chosenMinute, string $now, int $sent): void {
+    Notification::fake();
+    Carbon::setTestNow($now);
+
+    $user = morningAthlete($usualStart);
+    if ($chosenMinute !== null) {
+        NotificationPreference::factory()->for($user)->create(['briefing_push_minute' => $chosenMinute]);
+    }
+
+    $this->artisan('briefing:morning-push')
+        ->expectsOutputToContain("Pushed the morning briefing to {$sent} athletes.")
+        ->assertSuccessful();
+})->with([
+    'a 21:30 slot caught up before 22:00' => ['07:00:00', 21 * 60 + 30, '2026-05-24 21:45:00', 1],
+    'a 21:30 slot caught up at 22:00' => ['07:00:00', 21 * 60 + 30, '2026-05-24 22:00:00', 0],
+    'a 21:30 slot caught up at 22:15' => ['07:00:00', 21 * 60 + 30, '2026-05-24 22:15:00', 0],
+    'an automatic 22:15 slot on its own tick' => ['23:15:00', null, '2026-05-24 22:15:00', 0],
+]);
