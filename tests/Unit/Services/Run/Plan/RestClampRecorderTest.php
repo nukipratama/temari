@@ -444,6 +444,20 @@ it('never records against a day the athlete chose to run as written', function (
     'no override' => [null, true],
 ]);
 
+it('clears an ease recorded below moderate once an overridden day is back at moderate', function (): void {
+    Notification::fake();
+    $user = User::factory()->create();
+    seedDemandingRunYesterday($user);
+    $session = todaysSession($user);
+    $session->forceFill(['clamped_km' => 4.2, 'readiness_assessment' => ['ceiling' => ReadinessCeiling::EasyOnly->value, 'reasons' => [], 'inputs' => []]])->save();
+    PlanAdaptation::factory()->for($user)->create(['override_kind' => PlanOverrideKind::ReadinessEase, 'override_date' => Carbon::today()->toDateString()]);
+
+    expect(app(RestClampRecorder::class)->record($user, Carbon::today()))->toBeTrue()
+        ->and($session->refresh()->clamped_km)->toBeNull()
+        ->and($session->refresh()->readiness_assessment)->toBeNull();
+    Notification::assertNothingSent();
+});
+
 it('records the ease without telling the athlete when asked to stay quiet', function (): void {
     Notification::fake();
     $user = User::factory()->create();

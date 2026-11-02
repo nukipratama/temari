@@ -98,7 +98,9 @@ final readonly class RestClampRecorder
 
         $ceiling = ReadinessCeiling::from($context->readinessCeiling);
         if (QualityOverride::holdsEase(($this->weekAdaptation)($user->id, $today->copy()->startOfWeek(Carbon::MONDAY)->toDateString()), $today, $ceiling)) {
-            return false;
+            $session->fill(['clamped_km' => null, 'eased_pace_sec_per_km' => null, 'readiness_assessment' => null]);
+
+            return $session->isDirty() && $session->save();
         }
         $baselineData = $this->baseline->forUser($user, $today);
         $prescription = IntensityPrescription::fromSession($session);
