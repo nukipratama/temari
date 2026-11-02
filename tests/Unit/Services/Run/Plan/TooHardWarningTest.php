@@ -86,6 +86,16 @@ it('sends a state once while its first send is still queued or held for quiet ho
     Notification::assertSentToTimes($user, EasyTooHardNotification::class, 1);
 });
 
+it('stays quiet for a clean run even when an earlier hot day this week was never warned about', function (): void {
+    $user = User::factory()->create();
+    warningEasyDay($user, WARNING_MONDAY, 800);
+    warningEasyDay($user, '2026-11-04', 300);
+
+    warnOn($user, '2026-11-04', '2026-11-04');
+
+    Notification::assertNothingSent();
+});
+
 it('stays quiet for an easy day held under the cap, a run from an earlier week, and the demo athlete', function (string $case): void {
     $user = User::factory()->create(['is_demo' => $case === 'demo']);
     warningEasyDay($user, $case === 'earlier week' ? '2026-10-28' : WARNING_MONDAY, $case === 'under the cap' ? 300 : 800);

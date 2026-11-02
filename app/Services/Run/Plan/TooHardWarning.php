@@ -28,6 +28,10 @@ final readonly class TooHardWarning
             return;
         }
 
+        if ($this->adapter->executionBetween($user, $runDate, $runDate)['ragged'] === 0) {
+            return;
+        }
+
         $execution = $this->adapter->executionBetween($user, $weekStart, $today);
         $state = match (true) {
             PlanAdapter::ranTooHard($execution['ragged'], $execution['egregious_easy']) => EasyTooHardNotification::SET,
