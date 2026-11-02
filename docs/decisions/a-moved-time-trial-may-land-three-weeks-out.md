@@ -12,7 +12,7 @@ code_refs:
 
 # A moved time trial may land three weeks before race week
 
-**Status:** Accepted (2026-11-02). Decision 1 of #2351. Supersedes the 3-week exclusion in rule 2 of [[a-time-trial-every-six-weeks]]; the rest of that decision stands.
+**Status:** Accepted (2026-11-02). Decision 1 of #2351. Supersedes the 3-week exclusion in rules 2 and 10 of [[a-time-trial-every-six-weeks]]; the rest of that decision stands.
 
 ## Context
 
