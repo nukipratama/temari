@@ -18,9 +18,12 @@ code_refs:
 **Status:** Accepted (2026-11-02). Decision 4 of #2351 and its layer-4 sub-decisions.
 
 > **Fact update, 2026-11-02 (#2351 layer 6).** A weekly-drop restore holds only while the week's
-> reason is still `RanTooHard`. The rebuild that finds another reason plans the week by that reason
-> and clears the override, refunding the week's one (`PlanInputs::restoreLapsed()`, applied in
-> [Periodizer](app/Services/Run/Plan/Periodizer.php)). A taken override keeps its note and "ease it
+> reason is still `RanTooHard`. The rebuild that finds another reason plans the week by that reason.
+> While the overridden day is today or later with no run on it, the same condition as "ease it
+> again", that rebuild also clears the override, refunding the week's one
+> (`PlanInputs::refundsOverride()`, applied in [Periodizer](app/Services/Run/Plan/Periodizer.php)).
+> Once the day has a run or has passed, the override stays: the day keeps its note and `overridden`
+> fact and is graded as the full session. A taken override keeps its note and "ease it
 > again" when a race edit moves its week into the pre-race window, which blocks only new offers
 > (`QualityOverride::openWeek()`). `QualityOverrideService::take()` checks the offer inside the plan
 > lock.

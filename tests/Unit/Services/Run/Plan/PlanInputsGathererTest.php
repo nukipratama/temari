@@ -588,3 +588,25 @@ it('restores the dropped quality session only while this week holds the athlete\
     'no override' => [null, '2026-09-07', false],
     'weekly drop last week' => [PlanOverrideKind::WeeklyDrop, '2026-08-31', false],
 ]);
+
+it('reads whether the overridden day is still open: today or later, with no run on it yet', function (string $overrideDate, bool $ran, bool $open): void {
+    Carbon::setTestNow('2026-09-09 12:00:00');
+    $user = gathererAthlete();
+    PlanAdaptation::factory()->for($user)->create([
+        'week_start' => '2026-09-07',
+        'reason' => AdaptationReason::RanTooHard,
+        'quality_delta' => -1,
+        'override_kind' => PlanOverrideKind::WeeklyDrop,
+        'override_date' => $overrideDate,
+    ]);
+    if ($ran) {
+        ActivityDetail::factory()->for(Activity::factory()->for($user))->create(['start_date_local' => Carbon::parse($overrideDate.' 07:00:00'), 'distance' => 8_000]);
+    }
+
+    expect(planInputsGatherer()->forUser($user, Carbon::today())->restoredDayOpen)->toBe($open);
+})->with([
+    'today, not run' => ['2026-09-09', false, true],
+    'today, run' => ['2026-09-09', true, false],
+    'later this week' => ['2026-09-11', false, true],
+    'already past' => ['2026-09-08', false, false],
+]);

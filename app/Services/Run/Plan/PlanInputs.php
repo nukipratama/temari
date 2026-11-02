@@ -42,6 +42,7 @@ final readonly class PlanInputs
      * @param  string|null  $lastFastFinishDate  Y-m-d of the latest fast-finish long run already behind the athlete
      * @param  int|null  $supportedTenKTimeSec  the time the athlete's fitness supports over 10K
      * @param  bool  $qualityRestored  the athlete brought back the quality session this week's adaptation dropped
+     * @param  bool  $restoredDayOpen  the overridden day is today or later and has no run yet
      */
     public function __construct(
         public int $userId,
@@ -84,6 +85,7 @@ final readonly class PlanInputs
         public ?string $lastFastFinishDate = null,
         public ?int $supportedTenKTimeSec = null,
         public bool $qualityRestored = false,
+        public bool $restoredDayOpen = false,
     ) {
     }
 
@@ -92,7 +94,12 @@ final readonly class PlanInputs
         return $this->qualityRestored && ! $this->restoreLapsed() ? max(0, $this->adaptation['quality_delta']) : $this->adaptation['quality_delta'];
     }
 
-    public function restoreLapsed(): bool
+    public function refundsOverride(): bool
+    {
+        return $this->restoreLapsed() && $this->restoredDayOpen;
+    }
+
+    private function restoreLapsed(): bool
     {
         return $this->qualityRestored && $this->adaptation['reason'] !== AdaptationReason::RanTooHard;
     }
