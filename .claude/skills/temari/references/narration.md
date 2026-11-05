@@ -17,8 +17,9 @@ Briefing and analysis narration is LLM-backed via Azure OpenAI through openai-ph
 - Put a new narrator instruction inside the prompt's existing structure block (FLOW / pick-one /
   REQUIRED STRUCTURE), never as a new top-level section, where the model ignores it.
 - Send narrators no signed numbers: pass a magnitude plus a relation word.
-- Verify narrator/prompt changes with a capped local call from the main checkout (worktrees have no
-  Azure keys): `tinker --execute` calling `generate()` inside a rolled-back transaction, then check
+- Verify narrator/prompt changes with a capped local call that the owner runs, since no checkout an
+  agent works in holds Azure keys: write the `tinker --execute` command calling `generate()` inside a
+  rolled-back transaction for the owner to run with the keys added, then check
   `narrator.ai.tool_step` in the log. Close a narration bug only after such a run shows it fixed.
 
 ### Adding a new narrated block — all 6 wires

@@ -6,7 +6,7 @@
 - Multi-slice work ships as a GitHub stack (`gh stack`): one PR per layer, merged by the owner. Read the `temari` skill's [stacked-prs reference](.claude/skills/temari/references/stacked-prs.md) before starting one.
 - Independent slices of one effort go as PRs into an `epic/*` branch cut from `main`, built from parallel worktrees, and deploy once when the epic merges into `main`. A stack stays for slices that build on each other.
 - Worktrees (`EnterWorktree`/`ExitWorktree`, `scripts/worktree create|adopt|remove|prune|info`): read the `temari` skill's [parallel-worktrees reference](.claude/skills/temari/references/parallel-worktrees.md) before creating or removing one, or starting a second Sail stack. Read a checkout's slot and ports with `scripts/worktree info [path]`, never from `.env`.
-- Never `artisan tinker <file>`, use `--execute`. Stop tests, builds, and servers when their task ends.
+- Never `artisan tinker <file>`: it runs the file, then waits in the REPL and hangs the call. Use `--execute`. Stop tests, builds, and servers when their task ends.
 - Work items, agent briefs and decisions live in GitHub issues and the [kanban board](https://github.com/users/nukipratama/projects/1), not in local files: find them with `gh issue list --label wave:*` and `gh issue view <n>`. Each settled decision is its own issue labelled `decision` (`gh issue list --label decision --state all`); an owner call still open is labelled `needs-decision`. A card moves Ready → In progress on dispatch → In review when its PR opens → Done on merge, and every PR carries `Closes #<n>`; work executed directly in-session may use one issue per stack, where lower layers say `Part of #<n>` and only the top layer carries `Closes #<n>`. `.planning/` is gitignored and holds only PR/issue body drafts and agents' `progress.md`; screenshots and throwaway scripts go to `/tmp`.
 - Long or multi-agent runs track progress with one writer per level. The main session owns the milestone checklist (checkboxes in the parent issue), ticks an item only after verifying the agent's report against real state, and files agents' new findings as backlog issues. Each agent keeps its own `.planning/progress.md` and never edits another agent's.
 - For plan/coaching policy calls (redistribution, clamps, grading), decide from established coaching practice, record the rationale in the PR or ADR, and build; ask the owner only about product, UX or infra trade-offs.
@@ -21,7 +21,7 @@
 
 ## External actions
 
-- Read production runtime state from the live container (`artisan tinker --execute`, with per-use approval), never from the repo `.env` or config files.
+- Agents never run code or dump config/env in prod, where every secret is loaded. To read prod runtime state, write the command out (`temari tinker --execute '...'`) for the owner to run, and work from the rows they paste back. Never infer prod state from the repo `.env` or config files.
 - Before an intentional local LLM-backed run, announce a hard call or spend cap. Run only the selected local job or jobs; never start a worker or queue-drain command that could consume unrelated pending work.
 - Never link another repository's issue or PR (URL or `owner/repo#n`) from temari issues, PRs or commits; name it in plain text, because GitHub posts a public backlink in that thread.
 
@@ -66,6 +66,7 @@ Narration goes through the [Analysis](app/Models/AI/Analysis.php) row model. Its
 ## Secrets
 
 - **Never read `.env` or other secret files directly** (`.env`, `*.pem`, `*.key`, `id_rsa`, `credentials.json`, `*.p12`, ...). Their values would leak into the session context, which persists. A global pre-tool hook outside this repo also enforces it; follow the rule directly regardless. **Every `config:show`/`config:get` needs the user's explicit approval** - config reads resolve env values, so no key is auto-classified as "safe" to read. For a secret value, find the key NAME in `.env.example` and ask the user.
+- **No real secret lives where an agent can run code.** The main checkout's `.env` holds only local or blank values, as a worktree's does, because any PHP an agent runs can read it. A run that needs a live key (Azure, Strava, Telegram) is owner-run: the agent writes the command, and the owner adds the key from their password manager, runs it, and blanks it again. Commenting a key out doesn't hide its value.
 
 ## Debugging
 
