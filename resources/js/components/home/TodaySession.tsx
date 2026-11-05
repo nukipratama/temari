@@ -303,13 +303,10 @@ export default function TodaySession({
     restDayEasePace = null,
     intervalsIcu = null,
     drawnAnchors = new Set<string>(),
-    weekOverride = null,
 }: Readonly<{
     briefing: BriefingResult;
     /** Today's row of `weekPlan.days`, null when no plan covers today. */
     today?: WeekPlanDay | null;
-    /** Another day of the week offering its dropped session back. */
-    weekOverride?: WeekPlanDay | null;
     /** Deferred; only ever set alongside a rest-day `today`. */
     restDayEasePace?: RestDayEasePace | null;
     /** Null when intervals.icu is not connected or has not seen today yet. */
@@ -328,7 +325,6 @@ export default function TodaySession({
                 !(voice.status === 'done' && voice.content === null)));
     const pose: MascotPose =
         today?.session_type === 'rest' ? 'sleepy' : briefing.mood;
-    const overrideDay = today?.override ? today : weekOverride;
 
     return (
         <section
@@ -352,10 +348,10 @@ export default function TodaySession({
                         intervalsIcu={intervalsIcu}
                     />
                 ))}
-            {overrideDay?.override && (
+            {today?.override?.kind === 'readiness_ease' && (
                 <QualityOverrideAction
-                    sessionId={overrideDay.id}
-                    override={overrideDay.override}
+                    sessionId={today.id}
+                    override={today.override}
                 />
             )}
             {showsVoice && (
