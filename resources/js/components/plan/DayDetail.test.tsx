@@ -1335,7 +1335,7 @@ describe('hasDayDetail', () => {
         expect(hasDayDetail(REST)).toBe(false);
     });
 
-    it('has detail for an unsized day the week offers its dropped session back on', () => {
+    it("has no detail for an unsized day whose only extra is the week card's dropped session", () => {
         expect(
             hasDayDetail(
                 day({
@@ -1348,7 +1348,7 @@ describe('hasDayDetail', () => {
                     },
                 }),
             ),
-        ).toBe(true);
+        ).toBe(false);
     });
 
     it('has detail for a day carrying safety advice even with no segments', () => {
@@ -1383,5 +1383,23 @@ describe('DayDetail override', () => {
         expect(
             screen.getByRole('button', { name: 'ease it again' }),
         ).toBeInTheDocument();
+    });
+    it("leaves the week's dropped session to the week card", () => {
+        renderRow({
+            day: day({
+                override: {
+                    kind: 'weekly_drop',
+                    state: 'offered',
+                    label: "bring back thursday's tempo",
+                    reason: 'one less quality session.',
+                },
+            }),
+        });
+
+        expect(
+            screen.queryByRole('button', {
+                name: "bring back thursday's tempo",
+            }),
+        ).not.toBeInTheDocument();
     });
 });
