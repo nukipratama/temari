@@ -179,21 +179,33 @@ function loadNavigationWorker(cachedOffline: Response | undefined) {
         await pending;
     }
 
-    async function navigate(
+    function dispatchNavigation(
+        url: string,
         preloadResponse: Promise<Response | undefined>,
-    ): Promise<Response> {
+    ): Promise<Response> | undefined {
         let responded: Promise<Response> | undefined;
         defined(listeners.fetch)({
-            request: { mode: 'navigate' },
+            request: { mode: 'navigate', url },
             preloadResponse,
             respondWith: (promise: Promise<Response>) => {
                 responded = promise;
             },
         });
-        return defined(responded);
+        return responded;
     }
 
-    return { activate, navigate, enable };
+    async function navigate(
+        preloadResponse: Promise<Response | undefined>,
+    ): Promise<Response> {
+        return defined(
+            dispatchNavigation(
+                'https://temari.test/dashboard',
+                preloadResponse,
+            ),
+        );
+    }
+
+    return { activate, navigate, dispatchNavigation, enable };
 }
 
 describe('service worker navigation', () => {
@@ -246,6 +258,32 @@ describe('service worker navigation', () => {
 
         expect(response).toBe(offline);
         vi.unstubAllGlobals();
+    });
+
+    it.each(['/devtools', '/devtools/narration'])(
+        'leaves %s to the browser so its Basic Auth prompt still shows',
+        (pathname) => {
+            const { dispatchNavigation } = loadNavigationWorker(undefined);
+
+            const responded = dispatchNavigation(
+                `https://temari.test${pathname}`,
+                Promise.resolve(undefined),
+            );
+
+            expect(responded).toBeUndefined();
+        },
+    );
+
+    it('still answers a page that only starts with the devtools name', async () => {
+        const preloaded = new Response('preloaded');
+        const { dispatchNavigation } = loadNavigationWorker(undefined);
+
+        const responded = dispatchNavigation(
+            'https://temari.test/devtoolsx',
+            Promise.resolve(preloaded),
+        );
+
+        expect(await defined(responded)).toBe(preloaded);
     });
 });
 

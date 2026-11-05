@@ -72,6 +72,12 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
+    // A 401 relayed through a worker never shows the browser's Basic Auth prompt, so devtools stays with the browser.
+    const { pathname } = new URL(event.request.url);
+    if (pathname === '/devtools' || pathname.startsWith('/devtools/')) {
+        return;
+    }
+
     event.respondWith(
         (async () => {
             try {
