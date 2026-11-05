@@ -21,7 +21,7 @@
 
 ## External actions
 
-- Agents never run code or dump config/env in prod, where every secret is loaded. To read prod runtime state, write the command out (`temari tinker --execute '...'`) for the owner to run, and work from the rows they paste back. Never infer prod state from the repo `.env` or config files.
+- Agents never run code in prod, where every secret is loaded. To read prod runtime state, write the command out (`temari tinker --execute '...'`) for the owner to run, and work from the rows they paste back. Never infer prod state from the repo `.env` or config files.
 - Before an intentional local LLM-backed run, announce a hard call or spend cap. Run only the selected local job or jobs; never start a worker or queue-drain command that could consume unrelated pending work.
 - Never link another repository's issue or PR (URL or `owner/repo#n`) from temari issues, PRs or commits; name it in plain text, because GitHub posts a public backlink in that thread.
 
@@ -65,7 +65,7 @@ Narration goes through the [Analysis](app/Models/AI/Analysis.php) row model. Its
 
 ## Secrets
 
-- **Never read `.env` or other secret files directly** (`.env`, `*.pem`, `*.key`, `id_rsa`, `credentials.json`, `*.p12`, ...). Their values would leak into the session context, which persists. A global pre-tool hook outside this repo also enforces it; follow the rule directly regardless. **Every `config:show`/`config:get` needs the user's explicit approval** - config reads resolve env values, so no key is auto-classified as "safe" to read. For a secret value, find the key NAME in `.env.example` and ask the user.
+- **Never read `.env` or other secret files directly** (`.env`, `*.pem`, `*.key`, `id_rsa`, `credentials.json`, `*.p12`, ...). Their values would leak into the session context, which persists. A global pre-tool hook outside this repo also enforces it; follow the rule directly regardless. **Agents never dump config or env, on any host**: no `config:show`/`config:get`/`config:cache`/`optimize`, `printenv`/`env`, env-revealing `docker inspect` or `compose config`, and no `config()`/`env()` reads in tinker. For non-secret settings use `artisan about`, the defaults in `config/*.php` and the key names in `.env.example`; ask the user for anything else.
 - **No real secret lives where an agent can run code.** The main checkout's `.env` holds only local or blank values, as a worktree's does, because any PHP an agent runs can read it. A run that needs a live key (Azure, Strava, Telegram) is owner-run: the agent writes the command, and the owner adds the key from their password manager, runs it, and blanks it again. Commenting a key out doesn't hide its value.
 
 ## Debugging
