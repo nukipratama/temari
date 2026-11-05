@@ -405,7 +405,7 @@ describe('Home', () => {
         ).toBeInTheDocument();
     });
 
-    it("offers the week's dropped session back on Today from the day it lands on", () => {
+    it("leaves the week's dropped session to the plan page", () => {
         setMockPage({ auth: { user: makeUser() }, today: '2026-06-08' });
         const today = defined(weekPlan.days[0]);
         const offer = {
@@ -424,10 +424,10 @@ describe('Home', () => {
         });
 
         expect(
-            screen.getByRole('button', {
+            screen.queryByRole('button', {
                 name: "bring back wednesday's tempo",
             }),
-        ).toBeInTheDocument();
+        ).not.toBeInTheDocument();
     });
 
     it('renders no effort picker on Today, even when the props name a run', () => {

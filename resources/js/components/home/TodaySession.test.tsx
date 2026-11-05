@@ -320,14 +320,12 @@ describe('TodaySession', () => {
         ).toBeInTheDocument();
     });
 
-    it("offers the week's dropped session back by name from another day", () => {
+    it("leaves today's dropped session to the plan page", () => {
         render(
             <TodaySession
                 briefing={briefing('Easy 6k.')}
-                today={day()}
-                weekOverride={day({
-                    id: 9,
-                    date: '2026-06-14',
+                today={day({
+                    session_type: 'easy',
                     override: {
                         kind: 'weekly_drop',
                         state: 'offered',
@@ -339,8 +337,8 @@ describe('TodaySession', () => {
         );
 
         expect(
-            screen.getByRole('button', { name: "bring back sunday's tempo" }),
-        ).toBeInTheDocument();
+            screen.queryByRole('button', { name: "bring back sunday's tempo" }),
+        ).not.toBeInTheDocument();
     });
 
     it('swaps the prescription and the voice for the skip and its restore on a skipped today', () => {
