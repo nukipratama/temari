@@ -384,6 +384,73 @@ describe('WeekView', () => {
         ).toBeTruthy();
     });
 
+    it("offers the week's dropped session back on the adaptation note", () => {
+        renderWeek({
+            focus: {
+                headline: 'one less quality session',
+                detail: 'you ran last week harder than it was written.',
+            },
+            days: WEEK.map((d, i) =>
+                i === 3
+                    ? {
+                          ...d,
+                          override: {
+                              kind: 'weekly_drop',
+                              state: 'offered',
+                              label: "bring back thursday's tempo",
+                              reason: 'one less quality session.',
+                          },
+                      }
+                    : d,
+            ),
+        });
+
+        const note = screen.getByText('one less quality session');
+        const offer = screen.getByRole('button', {
+            name: "bring back thursday's tempo",
+        });
+        expect(
+            offer.compareDocumentPosition(screen.getByRole('tablist')) &
+                Node.DOCUMENT_POSITION_FOLLOWING,
+        ).toBeTruthy();
+        expect(
+            note.compareDocumentPosition(offer) &
+                Node.DOCUMENT_POSITION_FOLLOWING,
+        ).toBeTruthy();
+    });
+
+    it('keeps a taken weekly drop and its undo on the adaptation note', () => {
+        renderWeek({
+            focus: {
+                headline: 'one less quality session',
+                detail: 'you ran last week harder than it was written.',
+            },
+            days: WEEK.map((d, i) =>
+                i === 3
+                    ? {
+                          ...d,
+                          override: {
+                              kind: 'weekly_drop',
+                              state: 'taken',
+                              note: 'you chose to run this one as written.',
+                              undoable: true,
+                          },
+                      }
+                    : d,
+            ),
+        });
+
+        expect(
+            screen.getByText('you ran last week harder than it was written.'),
+        ).toBeVisible();
+        expect(
+            screen.getByText('you chose to run this one as written.'),
+        ).toBeVisible();
+        expect(
+            screen.getByRole('button', { name: 'ease it again' }),
+        ).toBeVisible();
+    });
+
     it("shows the run's asked and ran result and its activity link", () => {
         renderWeek({ focusDay: '2026-06-15' });
 
