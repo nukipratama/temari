@@ -29,6 +29,10 @@ class OpenMeteoClient
 
     private const int TIMEOUT_SECONDS = 5;
 
+    private const int CONNECTION_ATTEMPTS = 2;
+
+    private const int RETRY_SLEEP_MILLISECONDS = 1_000;
+
     private const int FORECAST_CACHE_TTL = 21_600;
 
     private const int ARCHIVE_CACHE_TTL = 2_592_000;
@@ -369,6 +373,12 @@ class OpenMeteoClient
     private function request(): PendingRequest
     {
         return Http::timeout(self::TIMEOUT_SECONDS)
+            ->retry(
+                self::CONNECTION_ATTEMPTS,
+                self::RETRY_SLEEP_MILLISECONDS,
+                static fn (Throwable $e): bool => $e instanceof ConnectionException,
+                throw: false,
+            )
             ->acceptJson();
     }
 }

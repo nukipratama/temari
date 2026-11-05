@@ -70,6 +70,9 @@ it('persona prompt wording: voice rules, formats and guards', function (string .
     'tells narrators to vary openers and never open with a continuity connector' => ['Opening & variation', 'still riding that', 'Vary how you open'],
     'forbids preachy / coach-mode phrasing like "you have to"' => ['NEVER lecture or preach', '"you have to"'],
     'grounds Temari in Indonesian running context' => ['Early-morning runs are common', '31°C', 'Rain is scheduled'],
+    // Prod: a run whose weather lookup timed out was narrated as "warm, humid
+    // evening work"; the climate cues above stood in for the missing reading.
+    'keeps climate cues from standing in for a missing weather reading' => ['background, never a reading', 'no weather_temp_c', 'warm, humid'],
     // Prod output said "volume ramp dropped a lot" and "session intent-nya
     // memang easy": column names read aloud as if they were words.
     'forbids speaking internal field names, tidied or not' => ['Data field names', 'session_intent', 'your volume ramp'],
