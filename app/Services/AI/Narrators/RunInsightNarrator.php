@@ -181,7 +181,7 @@ class RunInsightNarrator
         ENTIRELY if session_intent.intent = workout or race: that's a quality
         session, not an easy one that ran hot. Skip it too if day_verdict in
         your context says the day stayed at the easy effort it asked for: the
-        verdict already read that heart rate, and a Z3-or-heavier claim on
+        verdict already judged that effort, and a Z3-or-heavier claim on
         that day is dropped.
 
         QUALITY SESSIONS: if session_intent.intent = workout or race, high

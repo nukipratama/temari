@@ -190,7 +190,9 @@ in its context (`day_verdict`), not only through `get_planned_sessions`, which
 the model skipped on an easy day judged a hit and nudged it back to easy pace
 anyway. Handed that verdict, it nudged again, so on an easy day judged a hit
 (`IntentOutcome::EASY_HIT`) a `zone:z3`-or-heavier claim is dropped in code:
-the verdict already read that heart rate against the day's cap.
+the verdict already judged that effort, against the heart-rate cap or, when
+the athlete's zones are only estimated, on pace, which leaves a zone share a
+weak read anyway.
 If every claim is dropped (or the model returned none), the
 row's content decodes to `[]` and the frontend renders nothing for this
 block, the same "nothing to render" principle used elsewhere in the pipeline.
