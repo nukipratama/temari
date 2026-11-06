@@ -22,7 +22,7 @@
 ## External actions
 
 - Agents run code in prod, where every secret is loaded, only as one inline `ssh homelab "docker exec temari-prod-app-1 php artisan tinker --execute '...'"` whose full code is in the command, after the owner approves that exact command in chat. Never hide prod code behind a script, file, stdin or encoding, and never read config or env there. Never infer prod state from the repo `.env` or config files.
-- Before an intentional local LLM-backed run, announce a hard call or spend cap. Run only the selected local job or jobs; never start a worker or queue-drain command that could consume unrelated pending work.
+- Before an intentional LLM-backed run, local or an approved prod tinker, announce a hard call or spend cap. Run only the selected job or jobs; never start a worker or queue-drain command that could consume unrelated pending work.
 - Never link another repository's issue or PR (URL or `owner/repo#n`) from temari issues, PRs or commits; name it in plain text, because GitHub posts a public backlink in that thread.
 
 ## Stack notes
