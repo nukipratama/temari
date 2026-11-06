@@ -309,8 +309,8 @@ class RunInsightNarrator
                 continue;
             }
 
-            $delta = is_string($claim['delta'] ?? null) ? $claim['delta'] : null;
-            if (! self::splitGapHolds($anchor, $delta, $summary)) {
+            $delta = self::checkedSplitDelta($anchor, is_string($claim['delta'] ?? null) ? $claim['delta'] : null, $summary);
+            if ($delta === false) {
                 continue;
             }
 
@@ -325,13 +325,16 @@ class RunInsightNarrator
         return $resolved;
     }
 
-    /** A split claim's "m:ss vs km N" gap must match the two splits it names, to the second. */
-    private static function splitGapHolds(string $anchor, ?string $delta, StreamSummary $summary): bool
+    /**
+     * A split claim's "m:ss vs km N" gap must match the two splits it names, to the second, or the
+     * claim is dropped (false); its sign is set from the splits, + when this km was slower.
+     */
+    private static function checkedSplitDelta(string $anchor, ?string $delta, StreamSummary $summary): string|false|null
     {
         if ($delta === null
             || preg_match('/^split:(\d+)$/', $anchor, $split) !== 1
             || preg_match('/^[+-]?(\d+):(\d{2}) vs km (\d+)$/', trim($delta), $gap) !== 1) {
-            return true;
+            return $delta;
         }
 
         $paces = [];
@@ -345,8 +348,11 @@ class RunInsightNarrator
         $from = $paces[(int) $split[1]] ?? null;
         $to = $paces[(int) $gap[3]] ?? null;
 
-        return $from !== null && $to !== null
-            && abs($from - $to) === ((int) $gap[1]) * 60 + (int) $gap[2];
+        if ($from === null || $to === null || abs($from - $to) !== ((int) $gap[1]) * 60 + (int) $gap[2]) {
+            return false;
+        }
+
+        return ($from > $to ? '+' : ($from < $to ? '-' : '')).$gap[1].':'.$gap[2].' vs km '.$gap[3];
     }
 
     /**

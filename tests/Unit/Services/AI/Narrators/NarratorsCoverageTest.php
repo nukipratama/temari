@@ -370,7 +370,7 @@ it('RunInsightNarrator hands over no verdict for a day not judged yet', function
 });
 
 // Prod: one run's km 6 was narrated as 46 seconds and then 1:00 off km 4, from the same splits.
-it('RunInsightNarrator drops a split claim whose gap to another km is not what the splits say', function (?string $delta, int $kept): void {
+it('RunInsightNarrator drops a split claim whose gap to another km is not what the splits say', function (?string $delta, ?string $stored): void {
     ['activity' => $a, 'detail' => $d] = postRunFixture();
     $d->update(['stream_summary' => ['per_km' => [
         ['km' => 1, 'pace' => '7:10'], ['km' => 2, 'pace' => '7:05'], ['km' => 3, 'pace' => '7:08'],
@@ -380,14 +380,18 @@ it('RunInsightNarrator drops a split claim whose gap to another km is not what t
         ['anchor' => 'split:6', 'text' => 'km 6 was the slowest.', 'value' => '7:47', 'delta' => $delta],
     ]], JSON_THROW_ON_ERROR));
 
-    expect(runInsightNarrator($caller)->generate($a, $d->refresh())['claims'])->toHaveCount($kept);
+    $claims = runInsightNarrator($caller)->generate($a, $d->refresh())['claims'];
+
+    expect($stored === 'dropped' ? $claims : array_column($claims, 'delta'))->toBe($stored === 'dropped' ? [] : [$stored]);
 })->with([
-    'the right gap' => ['-0:46 vs km 4', 1],
-    'the right gap, unsigned' => ['0:46 vs km 4', 1],
-    'a wrong gap' => ['-1:00 vs km 4', 0],
-    'a km the run never recorded' => ['-0:30 vs km 9', 0],
-    'no comparison' => [null, 1],
-    'a comparison to something other than a km' => ['+0:12 vs 28d avg', 1],
+    'the right gap' => ['+0:46 vs km 4', '+0:46 vs km 4'],
+    // Prod wrote "-0:46 vs km 4" for this slower km; the chip shows the delta verbatim.
+    'the right gap with the sign flipped' => ['-0:46 vs km 4', '+0:46 vs km 4'],
+    'the right gap, unsigned' => ['0:46 vs km 4', '+0:46 vs km 4'],
+    'a wrong gap' => ['-1:00 vs km 4', 'dropped'],
+    'a km the run never recorded' => ['-0:30 vs km 9', 'dropped'],
+    'no comparison' => [null, null],
+    'a comparison to something other than a km' => ['+0:12 vs 28d avg', '+0:12 vs 28d avg'],
 ]);
 
 // ── RunInsightNarrator anchor falsifiability ───────────────────────────
