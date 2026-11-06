@@ -28,6 +28,7 @@ use App\Services\AI\Narrators\Concerns\ReadsPreviousActivityNarrative;
 use App\Services\AI\StructuredChatCaller;
 use App\Services\Run\Metrics\DecimalFormatter;
 use App\Services\Run\Metrics\DecouplingBands;
+use App\Services\Run\Metrics\PaceFormatter;
 use App\Services\Run\Metrics\RelativeEffort;
 use App\Services\Run\Metrics\StreamSummary;
 use App\Services\Run\Metrics\TrainingLoad;
@@ -335,9 +336,9 @@ class RunInsightNarrator
 
         $paces = [];
         foreach ($summary->perKm() ?? [] as $row) {
-            $parts = explode(':', is_string($row['pace'] ?? null) ? $row['pace'] : '');
-            if (is_numeric($row['km'] ?? null) && count($parts) === 2) {
-                $paces[(int) $row['km']] = ((int) $parts[0]) * 60 + (int) $parts[1];
+            $pace = PaceFormatter::parse(is_string($row['pace'] ?? null) ? $row['pace'] : '');
+            if (is_numeric($row['km'] ?? null) && $pace !== null) {
+                $paces[(int) $row['km']] = (int) $pace;
             }
         }
 
