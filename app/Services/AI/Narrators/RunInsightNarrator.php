@@ -178,7 +178,8 @@ class RunInsightNarrator
         ENTIRELY if session_intent.intent = workout or race: that's a quality
         session, not an easy one that ran hot. Skip it too if
         get_planned_sessions says the day stayed at the easy effort it asked
-        for: the verdict already read that heart rate.
+        for: the verdict already read that heart rate. Call get_planned_sessions
+        before any such nudge; if you never called it, give no nudge.
 
         QUALITY SESSIONS: if session_intent.intent = workout or race, high
         HR, lots of Z3-Z4, and rising decoupling are EXPECTED and exactly the
