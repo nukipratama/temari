@@ -179,7 +179,13 @@ splits), `zone:<z1..z5>` (an HR zone this run actually recorded), or
 persisting, `RunInsightNarrator` checks each claim's anchor against the run's
 own `StreamSummary`/`ActivityDetail` and drops any claim that does not
 resolve — an LLM cannot narrate a split, zone, or metric the run does not
-actually have. If every claim is dropped (or the model returned none), the
+actually have. A `split:<n>` claim whose `delta` reads `m:ss vs km <k>` is
+also dropped unless that gap matches the two splits to the second
+(`RunInsightNarrator::splitGapHolds()`), because the model did that subtraction
+itself and gave one run's km 6 two different gaps to km 4 on two narrations.
+The day's judged verdict reaches the insight in its context (`day_verdict`),
+not only through `get_planned_sessions`, which the model skipped on an easy
+day judged a hit and nudged it back to easy pace anyway. If every claim is dropped (or the model returned none), the
 row's content decodes to `[]` and the frontend renders nothing for this
 block, the same "nothing to render" principle used elsewhere in the pipeline.
 The demo-seed/no-Azure fallback ([RuleBasedRunInsights](../../app/Services/AI/RuleBased/RuleBasedRunInsights.php))

@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Services\Run\Plan\IntentOutcome;
 use App\Models\AI\Analysis;
 use App\Services\AI\StructuredChatCaller;
 use App\Exceptions\AI\UnavailableException;
@@ -345,6 +346,49 @@ it('RunInsightNarrator does not fatal when the stream summary is null, and rende
     // outcome as an all-invalid model response.
     expect($payload['claims'])->toBe([]);
 });
+
+// Prod: the insight skipped get_planned_sessions twice and nudged a day judged easy.
+it('RunInsightNarrator hands the day\'s judged verdict over up front', function (): void {
+    ['activity' => $a, 'detail' => $d] = postRunFixture();
+    $evidence = ['basis' => 'heart_rate', 'stimulus_family' => 'easy', 'effective_type' => 'easy'];
+    PlannedSession::factory()->for($a->user)->create([
+        'date' => Carbon::today()->toDateString(),
+        'status' => 'done',
+        'intent_verdict' => 'hit',
+        'intent_evidence' => $evidence,
+    ]);
+
+    expect(runInsightNarrator(fakeCaller('{"claims":[]}'))->context($a, $d->refresh())['day_verdict'])
+        ->toBe(IntentOutcome::outcome(IntentVerdict::Hit, $evidence));
+});
+
+it('RunInsightNarrator hands over no verdict for a day not judged yet', function (): void {
+    ['activity' => $a, 'detail' => $d] = postRunFixture();
+    PlannedSession::factory()->for($a->user)->create(['date' => Carbon::today()->toDateString(), 'intent_verdict' => null]);
+
+    expect(runInsightNarrator(fakeCaller('{"claims":[]}'))->context($a, $d->refresh()))->not->toHaveKey('day_verdict');
+});
+
+// Prod: one run's km 6 was narrated as 46 seconds and then 1:00 off km 4, from the same splits.
+it('RunInsightNarrator drops a split claim whose gap to another km is not what the splits say', function (?string $delta, int $kept): void {
+    ['activity' => $a, 'detail' => $d] = postRunFixture();
+    $d->update(['stream_summary' => ['per_km' => [
+        ['km' => 1, 'pace' => '7:10'], ['km' => 2, 'pace' => '7:05'], ['km' => 3, 'pace' => '7:08'],
+        ['km' => 4, 'pace' => '7:01'], ['km' => 5, 'pace' => '7:20'], ['km' => 6, 'pace' => '7:47'],
+    ]]]);
+    $caller = fakeCaller(json_encode(['claims' => [
+        ['anchor' => 'split:6', 'text' => 'km 6 was the slowest.', 'value' => '7:47', 'delta' => $delta],
+    ]], JSON_THROW_ON_ERROR));
+
+    expect(runInsightNarrator($caller)->generate($a, $d->refresh())['claims'])->toHaveCount($kept);
+})->with([
+    'the right gap' => ['-0:46 vs km 4', 1],
+    'the right gap, unsigned' => ['0:46 vs km 4', 1],
+    'a wrong gap' => ['-1:00 vs km 4', 0],
+    'a km the run never recorded' => ['-0:30 vs km 9', 0],
+    'no comparison' => [null, 1],
+    'a comparison to something other than a km' => ['+0:12 vs 28d avg', 1],
+]);
 
 // ── RunInsightNarrator anchor falsifiability ───────────────────────────
 
@@ -816,15 +860,14 @@ it('RunInsightNarrator leaves whether the effort matched the ask to the verdict,
 
 it('RunInsightNarrator keeps the grey-zone nudge off an easy day the verdict says stayed easy', function (): void {
     expect(narratorPrompt(RunInsightNarrator::class))
-        ->toContain('says the day stayed at the easy effort it asked')
+        ->toContain('says the day stayed at the easy effort it asked for')
         ->toContain('Skip it too if');
 });
 
-// Prod: an easy day judged a hit got the nudge anyway; the insight never called get_planned_sessions.
-it('RunInsightNarrator gives the grey-zone nudge only after reading the day\'s verdict', function (): void {
+it('RunInsightNarrator reads the grey-zone skip from the verdict it is handed', function (): void {
     expect(narratorPrompt(RunInsightNarrator::class))
-        ->toContain('before any such nudge')
-        ->toContain('never called it, give no nudge');
+        ->toContain('Skip it too if day_verdict in')
+        ->toContain('never that the');
 });
 
 it('BriefingMascotVoiceNarrator re-asks a post-run block that labels the intent', function (): void {
