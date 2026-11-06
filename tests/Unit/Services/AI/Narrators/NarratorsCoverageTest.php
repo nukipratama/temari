@@ -820,6 +820,13 @@ it('RunInsightNarrator keeps the grey-zone nudge off an easy day the verdict say
         ->toContain('Skip it too if');
 });
 
+// Prod: an easy day judged a hit got the nudge anyway; the insight never called get_planned_sessions.
+it('RunInsightNarrator gives the grey-zone nudge only after reading the day\'s verdict', function (): void {
+    expect(narratorPrompt(RunInsightNarrator::class))
+        ->toContain('before any such nudge')
+        ->toContain('never called it, give no nudge');
+});
+
 it('BriefingMascotVoiceNarrator re-asks a post-run block that labels the intent', function (): void {
     $user = User::factory()->create();
     $activity = Activity::factory()->for($user)->create();

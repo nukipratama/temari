@@ -21,8 +21,8 @@
 
 ## External actions
 
-- Agents never run code in prod, where every secret is loaded. To read prod runtime state, write the command out (`temari tinker --execute '...'`) for the owner to run, and work from the rows they paste back. Never infer prod state from the repo `.env` or config files.
-- Before an intentional local LLM-backed run, announce a hard call or spend cap. Run only the selected local job or jobs; never start a worker or queue-drain command that could consume unrelated pending work.
+- Agents run code in prod, where every secret is loaded, only as one inline `ssh homelab "docker exec temari-prod-app-1 php artisan tinker --execute '...'"` whose full code is in the command, after the owner approves that exact command in chat. Never hide prod code behind a script, file, stdin or encoding, and never read config or env there. Never infer prod state from the repo `.env` or config files.
+- Before an intentional LLM-backed run, local or an approved prod tinker, announce a hard call or spend cap. Run only the selected job or jobs; never start a worker or queue-drain command that could consume unrelated pending work.
 - Never link another repository's issue or PR (URL or `owner/repo#n`) from temari issues, PRs or commits; name it in plain text, because GitHub posts a public backlink in that thread.
 
 ## Stack notes
@@ -66,7 +66,7 @@ Narration goes through the [Analysis](app/Models/AI/Analysis.php) row model. Its
 ## Secrets
 
 - **Never read `.env` or other secret files directly** (`.env`, `*.pem`, `*.key`, `id_rsa`, `credentials.json`, `*.p12`, ...). Their values would leak into the session context, which persists. A global pre-tool hook outside this repo also enforces it; follow the rule directly regardless. **Agents never dump config or env, on any host**: no `config:show`/`config:get`/`config:cache`/`optimize`, `printenv`/`env` or `compose config`, and no `config()`/`env()` reads in tinker. For non-secret settings use `artisan about`, the defaults in `config/*.php` and the key names in `.env.example`; ask the owner for anything else.
-- **No real secret lives where an agent can run code.** The main checkout's `.env` holds only local or blank values, as a worktree's does, because any PHP an agent runs can read it. A run that needs a live key (Azure, Strava, Telegram) is owner-run: the agent writes the command, and the owner adds the key from their password manager, runs it, and blanks it again. Commenting a key out doesn't hide its value.
+- **No real secret lives where an agent can run code.** The main checkout's `.env` holds only local or blank values, as a worktree's does, because any PHP an agent runs can read it. A run that needs a live key (Azure, Strava, Telegram) is owner-run: the agent writes the command, and the owner adds the key from their password manager, runs it, and blanks it again. Commenting a key out doesn't hide its value. The one exception is prod, where every secret is loaded: an agent runs code there only as the owner-approved inline tinker under External actions.
 
 ## Debugging
 

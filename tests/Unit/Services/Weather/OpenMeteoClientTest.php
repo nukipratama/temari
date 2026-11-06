@@ -10,9 +10,11 @@ use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Sleep;
 
 beforeEach(function (): void {
     Cache::flush();
+    Sleep::fake();
     CarbonImmutable::setTestNow('2026-05-11 12:00:00');
 });
 
@@ -247,6 +249,39 @@ it('reports a timeout as Open-Meteo unavailable without the coordinate its error
             ->and(str_contains($e->getMessage(), '98.7654321'))->toBeFalse()
             ->and($e->getPrevious())->toBeNull();
     }
+});
+
+it('retries a timeout so one dropped connection still yields weather', function (): void {
+    $calls = 0;
+    Http::fake(['api.open-meteo.com/*' => function () use (&$calls) {
+        if (++$calls === 1) {
+            throw new ConnectionException('cURL error 28: Connection timed out after 5000 milliseconds');
+        }
+
+        return Http::response([
+            'hourly' => [
+                'time' => ['2026-05-10T06:00', '2026-05-10T07:00'],
+                'temperature_2m' => [27.0, 28.0],
+                'relative_humidity_2m' => [80, 75],
+                'precipitation' => [0, 0],
+            ],
+        ]);
+    }]);
+
+    $snap = new OpenMeteoClient()->fetchForActivity(-6.2, 106.8, CarbonImmutable::parse('2026-05-10 06:00:00'), 0);
+
+    expect($snap)->toBeInstanceOf(WeatherSnapshot::class)
+        ->and($snap?->tempC)->toBe(27)
+        ->and($calls)->toBe(2);
+});
+
+it('does not retry a rate limit', function (): void {
+    Http::fake(['api.open-meteo.com/*' => Http::response(['error' => 'rate limited'], 429)]);
+
+    expect(fn () => new OpenMeteoClient()->fetchForActivity(-6.2, 106.8, CarbonImmutable::parse('2026-05-10 06:00:00'), 0))
+        ->toThrow(OpenMeteoUnavailableException::class);
+
+    Http::assertSentCount(1);
 });
 
 it('returns null when the response shape is missing hourly', function (): void {
