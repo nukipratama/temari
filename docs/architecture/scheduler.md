@@ -1,9 +1,9 @@
 ---
 title: Scheduler hygiene — overlap safety, single-host, ordering, cadence
-description: Every Schedule::command entry is overlap-safe and single-host by an unstated one-container invariant; entries due in the same minute run serially, so strava:sync runs at :07; every run lands in an append-only run log; the Monday window's hard dependencies are chained and retry hourly until they succeed; the numeric derivation behind four previously-qualitative cadences; and measured local runtimes next to each lock TTL
+description: Every Schedule::command entry is overlap-safe and single-host by an unstated one-container invariant; entries due in the same minute run serially, so strava:sync runs at :07; every run lands in an append-only run log; the Monday window's hard dependencies are chained and retry hourly until they succeed; the numeric derivation behind four previously-qualitative cadences; and 30 days of production runtimes next to each lock TTL
 tags: [architecture, scheduler]
 status: living
-reviewed: 2026-10-09
+reviewed: 2026-11-06
 code_refs:
   - routes/console.php
   - app/Console/Commands/Notifications/RecoverStaleNotificationDeliveriesCommand.php
@@ -25,8 +25,8 @@ code_refs:
 [routes/console.php](../../routes/console.php) registers every scheduled command. This note covers
 six things: why every event carries both `withoutOverlapping()` and `onOneServer()`, the order
 entries run in within one minute's tick, the per-run log every entry writes, how the Monday window's entries are chained and caught up after a miss,
-the numeric basis for four cadences that were previously justified only qualitatively, and a
-measured-locally runtime next to each lock TTL.
+the numeric basis for four cadences that were previously justified only qualitatively, and 30
+days of production runtimes next to each lock TTL.
 
 ## Overlap safety and single-host
 
@@ -51,65 +51,61 @@ needs a store every scheduler container can reach, which `redis` is in prod.
 
 ### Lock TTL and onOneServer, per command
 
-The "measured locally" column is one `time ./vendor/bin/sail artisan <command>` run per command
-against this worktree's `demo:seed` data (**1 user, 127 activities**), Azure unconfigured so every
-AI command takes its dispatch-only/paused path rather than calling an LLM. Every command finished
-in ~1-2 seconds, which is dominated by `artisan`'s own PHP/framework bootstrap, not by the
-command's own query — at this user count the per-user loops these TTLs guard against are
-essentially invisible. See "Reading the local measurements" below for why the TTLs stay as-is
-despite that.
+The production column is `ScheduledTaskRunLog::stats()` read on 2026-11-06, covering the run log
+from 2026-10-06 to 2026-11-06: runs, then the p50 / p95 / max runtime of successful runs. Across
+every entry in that window there were no failed runs and no killed runs, and the only skips are the
+closed-gate ticks of the gated entries. See "Reading the production numbers" below for what they
+say about each TTL.
 
-| command | cadence | withoutOverlapping | onOneServer | why this TTL | measured locally on seeded data (1 user, 127 activities) |
+| command | cadence | withoutOverlapping | onOneServer | why this TTL | production, 2026-10-06 to 2026-11-06: runs, p50 / p95 / max |
 |---|---|---|---|---|---|
-| `notifications:recover-deliveries` | every 5 minutes | 10 | yes | one indexed scan of stale pending claims; Telegram claims become terminal, while web-push retries stay discoverable until a worker claims a new version | not measured — added with fenced notification recovery |
-| `notifications:release-held` | every 5 minutes | 10 | yes | a no-op inside quiet hours (22:00-04:00); outside them, queues each held row in id order, one small transaction per row. A row whose payload can no longer be restored (it fails to unserialize, or unserializes into something other than a Notification) is logged and dropped, a failure to dispatch a restored one leaves its row held for the next tick, and either makes the run exit non-zero. Every five minutes rather than once at 04:00, so a deploy across 04:00 delays the release by one tick ([[quiet-hours-hold-every-notification]]) | not measured — added with quiet hours |
-| `schedule:heartbeat` | every minute | — (deliberate) | yes | one idempotent `SETEX`; a lock would cost more than the write itself | ~1.1s, but exits on `redis unreachable` — `.env.example` ships `REDIS_HOST=127.0.0.1`/`CACHE_STORE=database` for local dev, so the real Redis `SETEX` path cannot be exercised in this worktree at all |
-| `ai:daily-briefing` | daily 00:01 | 30 | yes | per-user dispatch loop over active (7d) users; 30 min is generous headroom before the next day's run | ~1.9s — dispatched for 0 active users (the seeded demo user is excluded from AI kickoff billing) |
-| `demo:daily-refresh` | daily 00:13 | 10 | yes | single demo user, one synthetic run + rule-based fill | ~2.2s — the one command that actually touches the seeded user (rule-based refresh, no LLM) |
-| `plan:close-finished-races` | daily 00:04, retried hourly at :04 until it succeeds that day | 10 | yes | one bulk `UPDATE ... WHERE race_date < today` | ~1.5s — closed 0 races |
-| `plan:score-compliance` | daily 00:09, retried hourly at :09 until it succeeds that day | 20 | yes | bounded by `--limit=500` users, one scoring pass each | ~1.3s — scored 0 planned rows |
-| `ai:weekly-recap` | Mon 00:16 | 30 | yes | per-user dispatch loop, same shape as `ai:daily-briefing` | ~1.5s — 0 snapshots (demo excluded) |
-| `ai:weekly-profile` | Mon 00:21 | 20 | yes | per-active-user dispatch loop, lighter than the recap (one row type) | ~1.4s — 0 active users (demo excluded) |
-| `plan:regenerate` | Mon 00:26, retried every Monday hour at :26 until one run succeeds that week | 45 | yes | heaviest entry: `Periodizer::regenerate()` per user | ~1.4s — regenerated for the 1 seeded user |
-| `strava:sync-zones` | monthly 00:10 | 55 (unchanged) | yes | already guarded pre-DF-1 | ~1.7s — no eligible connection (the seeded demo `StravaConnection` carries a synthetic token, not a real Strava one, and is excluded) |
-| `ai:trend-read 7d` | daily 06:00 | 20 | yes | one narrator pass across active users | ~1.2-1.4s — 0 active users (demo excluded) |
-| `ai:self-heal` | hourly | 55 (unchanged) | yes | already guarded pre-DF-1 | ~1.3s — skipped, generation paused (Azure unset) |
-| `ai:catch-up` | hourly | 55 (unchanged) | yes | already guarded pre-DF-1 | ~1.5s — created 0 missing kickoff rows |
-| `ai:spend-digest` | daily 21:00 | 10 | yes | one grouped read of today's `ai_token_usages` rows, then one Telegram push to every admin | not measured — added with the spend digest |
-| `exceptions:digest` | daily 21:00 | 10 | yes | pulls the exception ledger once and pushes only when a fingerprint is new; silent on a quiet day | not measured — added with the exception digest |
-| `queue:prune-failed` | daily 02:20 | 15 | yes | one `DELETE` on `failed_jobs` | ~1.6s — 0 entries deleted |
-| `analytics:prune` | daily 02:25 | 15 | yes | six chunked `DELETE`s (1,000 rows per statement, repeated until a short chunk) — five on the `analytics` connection, one on `analysis_versions` | ~1.7s — 0 rows pruned |
-| `model:prune TelegramUpdateReceipt` | daily 02:30 | 15 | yes | delete Telegram update receipts older than 7 days | not measured — added with durable Telegram update dedupe |
-| `model:prune TelegramLinkTokenUse` | daily 02:31 | 15 | yes | delete spent link-token claims after token expiry | not measured — added with durable Telegram link claims |
-| `notifications:prune-push-subscriptions` | daily 02:35 | 15 | yes | one `SELECT DISTINCT` and one `DELETE` on `push_subscriptions` for rows unseen for 60 days | not measured — added with unseen push-subscription pruning |
-| `strava:sync` / `strava:ingest` / `strava:hydrate-backlog` | see `routes/console.php` | 55/10/14 (unchanged) | yes | already guarded pre-DF-1 | ~1.3-1.4s each — no real Strava connection to poll/drain against locally (needs live Strava credentials); cannot be meaningfully measured in this worktree |
-| `geo:backfill-locations` / `weather:correct-forecast` / `weather:backfill` | see `routes/console.php` | 55/55/55 (unchanged) | yes | already guarded pre-DF-1 | ~1.3s each — 0 rows to backfill; `weather:*` additionally need a live Open-Meteo call to exercise the fetch path |
-| `trend:snapshot-daily` | daily 03:45 | 55 (unchanged) | yes | queues durable closed-date recovery in 365-day chunks; `--days=N` remains the focused mode | scheduled recovery advances each user's cursor through yesterday; ingest repairs backdated ranges; each row also records the supported race time for the race active that day ([[supported-time-history-from-daily-trend-snapshots]]) |
-| `race:remind` | hourly 18:00-21:00, every tick after the first send a no-op | 15 | yes | one race-goal sweep, same shape and cost as `streak:remind` | not measured — added after this pass; the sweep is one indexed `race_date` query plus one notify per athlete racing tomorrow |
-| `race:ask-outcome` | hourly 09:00-21:00, every tick after the first ask a no-op | 15 | yes | one indexed sweep of races dated yesterday with a pending outcome, one notify each | not measured — added with CR-06; same shape and cost as `race:remind` |
-| `plan:settle-time-trials` | daily 09:05 | 15 | yes | one indexed sweep of the last week's unsettled time-trial rows for non-demo athletes, at most one evidence write or one notify each; a settled row is never selected again | not measured — added with the time trials |
-| `fitness:notify-improvement` | daily 10:00 | 30 | yes | one estimate per non-demo athlete with a run analysed since their `users.fitness_checked_at` stamp (never-checked athletes included; a rise held back by the weekly interval is not stamped), plus on Mondays every athlete not checked in the last 7 days, so a rise that matures over rest weeks is still noted; each due athlete is selected once per run, and the stamp keeps a same-day re-run from checking them again. A new or cancelled race goal checks the athlete at once through the queued `CheckFitnessImprovementJob`, so a run before the next scan is not folded into the new distance's baseline. Each estimate is compared against their last noted VDOT, one notify for each improvement of at least 0.5 a week apart; the first run only records baselines; one athlete's failure is reported and alerted once at the end, the rest are still checked | not measured — added with the supported-race-time model; the estimate reads each athlete's runs once |
-| `briefing:morning-push` | every 15 min | 14 | yes | one sweep, an hour before each athlete's usual start or at their chosen time, that keeps only the athletes due this tick, then loads their briefings and deliveries in one query each; sends only, generates nothing | not measured — added after this pass; the median is cached per athlete per day (`UsualRunTime`), so only the first tick to see a given athlete that day pays the indexed read, every later tick that day is a cache hit |
-| `intervals-icu:sync` | every 15 min | 14 | yes | one indexed read of working intervals.icu connections, one queued job per athlete; the HTTP calls run on the queue, not in the tick | not measured — added with the intervals.icu sync |
-| `streak:remind` | Sat 18:00 | 15 | yes | one push-eligibility sweep; one athlete's failure is reported and alerted once at the end, the rest still get their nudge | ~2.0s — dispatched to 0 users |
-| `streak:settle` | hourly | 20 | yes | queues chronological per-user settlement for the athletes still behind or marked dirty; one query when nobody is | queues one settlement job per athlete behind |
-| `schedule:monday-check` | Mon 06:00 | 10 | yes | one indexed count plus the chain flags, at most one alert per week | not measured — added with the Monday catch-up |
-| `horizon:snapshot` | every 5 minutes | 4 | yes | one Redis snapshot of Horizon's per-queue and per-job metrics for its Metrics tab, trimmed by `horizon.metrics.trim_snapshots` | not measured — added with the long-wait alert |
-| `schedule:check-late` | every 5 minutes | 4 | yes | one heartbeat-table read plus the chain flags, at most one alert per entry per incident | not measured — added with the late sweep |
-| `RetryOrphanedStravaGrantReleasesJob` (queued job) | daily 02:40 | 30 | yes | retries the Strava release of grants whose local connection is gone or revoked, one call per orphaned grant | not measured — the scheduler only queues it |
+| `notifications:recover-deliveries` | every 5 minutes | 10 | yes | one indexed scan of stale pending claims; Telegram claims become terminal, while web-push retries stay discoverable until a worker claims a new version | 8,620 runs, 0.67 / 0.91 / 1.17s |
+| `notifications:release-held` | every 5 minutes | 10 | yes | a no-op inside quiet hours (22:00-04:00); outside them, queues each held row in id order, one small transaction per row. A row whose payload can no longer be restored (it fails to unserialize, or unserializes into something other than a Notification) is logged and dropped, a failure to dispatch a restored one leaves its row held for the next tick, and either makes the run exit non-zero. Every five minutes rather than once at 04:00, so a deploy across 04:00 delays the release by one tick ([[quiet-hours-hold-every-notification]]) | 8,620 runs, 0.66 / 0.92 / 1.26s |
+| `schedule:heartbeat` | every minute | — (deliberate) | yes | one idempotent `SETEX`; a lock would cost more than the write itself | not logged — the heartbeat stays out of the run log |
+| `ai:daily-briefing` | daily 00:01 | 30 | yes | per-user dispatch loop over active (7d) users; 30 min is generous headroom before the next day's run | 30 runs, 1.03 / 1.36 / 1.46s |
+| `demo:daily-refresh` | daily 00:13 | 10 | yes | single demo user, one synthetic run + rule-based fill | 30 runs, 3.01 / 3.56 / 3.65s |
+| `plan:close-finished-races` | daily 00:04, retried hourly at :04 until it succeeds that day | 10 | yes | one bulk `UPDATE ... WHERE race_date < today` | 30 runs, 0.67 / 0.97 / 0.98s (688 gate skips) |
+| `plan:score-compliance` | daily 00:09, retried hourly at :09 until it succeeds that day | 20 | yes | bounded by `--limit=500` users, one scoring pass each | 30 runs, 1.07 / 1.49 / 1.62s (688 gate skips) |
+| `ai:weekly-recap` | Mon 00:16 | 30 | yes | per-user dispatch loop, same shape as `ai:daily-briefing` | 4 runs, 0.81 / 0.98 / 0.98s |
+| `ai:weekly-profile` | Mon 00:21 | 20 | yes | per-active-user dispatch loop, lighter than the recap (one row type) | 4 runs, 0.61 / 1.07 / 1.07s |
+| `plan:regenerate` | Mon 00:26, retried every Monday hour at :26 until one run succeeds that week | 45 | yes | heaviest entry: `Periodizer::regenerate()` per user | 4 runs, 1.61 / 1.78 / 1.78s (92 gate skips) |
+| `strava:sync-zones` | monthly 00:10 | 55 (unchanged) | yes | already guarded pre-DF-1 | 1 run, 1.69 / 1.69 / 1.69s |
+| `ai:trend-read 7d` | daily 06:00 | 20 | yes | one narrator pass across active users | 30 runs, 0.92 / 1.26 / 1.37s |
+| `ai:self-heal` | hourly | 55 (unchanged) | yes | already guarded pre-DF-1 | 717 runs, 0.72 / 1.01 / 1.27s |
+| `ai:catch-up` | hourly | 55 (unchanged) | yes | already guarded pre-DF-1 | 717 runs, 0.97 / 1.29 / 2.02s |
+| `ai:spend-digest` | daily 21:00 | 10 | yes | one grouped read of today's `ai_token_usages` rows, then one Telegram push to every admin | 30 runs, 0.72 / 0.96 / 1.00s |
+| `exceptions:digest` | daily 21:00 | 10 | yes | pulls the exception ledger once and pushes only when a fingerprint is new; silent on a quiet day | 30 runs, 0.58 / 0.87 / 0.95s |
+| `queue:prune-failed` | daily 02:20 | 15 | yes | one `DELETE` on `failed_jobs` | 30 runs, 0.70 / 0.97 / 1.00s |
+| `analytics:prune` | daily 02:25 | 15 | yes | six chunked `DELETE`s (1,000 rows per statement, repeated until a short chunk) — five on the `analytics` connection, one on `analysis_versions` | 30 runs, 0.63 / 0.87 / 0.95s |
+| `model:prune TelegramUpdateReceipt` | daily 02:30 | 15 | yes | delete Telegram update receipts older than 7 days | 30 runs, 0.63 / 0.88 / 0.97s |
+| `model:prune TelegramLinkTokenUse` | daily 02:31 | 15 | yes | delete spent link-token claims after token expiry | 30 runs, 0.78 / 0.90 / 0.96s |
+| `notifications:prune-push-subscriptions` | daily 02:35 | 15 | yes | one `SELECT DISTINCT` and one `DELETE` on `push_subscriptions` for rows unseen for 60 days | 30 runs, 0.68 / 0.96 / 0.97s |
+| `strava:sync` / `strava:ingest` / `strava:hydrate-backlog` | see `routes/console.php` | 55/10/14 (unchanged) | yes | already guarded pre-DF-1 | `strava:sync` 718 runs, 15.52 / 17.76 / 22.88s; `strava:ingest` 8,620 runs, 0.69 / 0.97 / 1.16s; `strava:hydrate-backlog` 2,872 runs, 0.69 / 0.97 / 1.10s |
+| `geo:backfill-locations` / `weather:correct-forecast` / `weather:backfill` | see `routes/console.php` | 55/55/55 (unchanged) | yes | already guarded pre-DF-1 | `geo:backfill-locations` 717 runs, 0.73 / 0.99 / 1.24s; `weather:correct-forecast` 29 runs, 1.55 / 2.07 / 2.23s; `weather:backfill` 30 runs, 0.66 / 1.01 / 3.20s |
+| `trend:snapshot-daily` | daily 03:45 | 55 (unchanged) | yes | queues durable closed-date recovery in 365-day chunks; `--days=N` remains the focused mode | 30 runs, 0.73 / 0.97 / 0.99s |
+| `race:remind` | hourly 18:00-21:00, every tick after the first send a no-op | 15 | yes | one race-goal sweep, same shape and cost as `streak:remind` | 117 runs, 0.70 / 0.97 / 1.05s |
+| `race:ask-outcome` | hourly 09:00-21:00, every tick after the first ask a no-op | 15 | yes | one indexed sweep of races dated yesterday with a pending outcome, one notify each | 368 runs, 0.69 / 0.96 / 1.19s |
+| `plan:settle-time-trials` | daily 09:05 | 15 | yes | one indexed sweep of the last week's unsettled time-trial rows for non-demo athletes, at most one evidence write or one notify each; a settled row is never selected again | 30 runs, 0.76 / 0.97 / 0.99s |
+| `fitness:notify-improvement` | daily 10:00 | 30 | yes | one estimate per non-demo athlete with a run analysed since their `users.fitness_checked_at` stamp (never-checked athletes included; a rise held back by the weekly interval is not stamped), plus on Mondays every athlete not checked in the last 7 days, so a rise that matures over rest weeks is still noted; each due athlete is selected once per run, and the stamp keeps a same-day re-run from checking them again. A new or cancelled race goal checks the athlete at once through the queued `CheckFitnessImprovementJob`, so a run before the next scan is not folded into the new distance's baseline. Each estimate is compared against their last noted VDOT, one notify for each improvement of at least 0.5 a week apart; the first run only records baselines; one athlete's failure is reported and alerted once at the end, the rest are still checked | 29 runs, 0.77 / 1.09 / 1.13s |
+| `briefing:morning-push` | every 15 min | 14 | yes | one sweep, an hour before each athlete's usual start or at their chosen time, that keeps only the athletes due this tick, then loads their briefings and deliveries in one query each; sends only, generates nothing | 2,872 runs, 0.69 / 0.97 / 1.26s |
+| `intervals-icu:sync` | every 15 min | 14 | yes | one indexed read of working intervals.icu connections, one queued job per athlete; the HTTP calls run on the queue, not in the tick | 1,991 runs, 0.68 / 0.97 / 1.20s |
+| `streak:remind` | Sat 18:00 | 15 | yes | one push-eligibility sweep; one athlete's failure is reported and alerted once at the end, the rest still get their nudge | 4 runs, 0.70 / 0.82 / 0.82s |
+| `streak:settle` | hourly | 20 | yes | queues chronological per-user settlement for the athletes still behind or marked dirty; one query when nobody is | 717 runs, 0.68 / 0.91 / 1.20s |
+| `schedule:monday-check` | Mon 06:00 | 10 | yes | one indexed count plus the chain flags, at most one alert per week | 4 runs, 0.88 / 1.05 / 1.05s |
+| `horizon:snapshot` | every 5 minutes | 4 | yes | one Redis snapshot of Horizon's per-queue and per-job metrics for its Metrics tab, trimmed by `horizon.metrics.trim_snapshots` | 8,091 runs, 0.68 / 0.95 / 1.29s |
+| `schedule:check-late` | every 5 minutes | 4 | yes | one heartbeat-table read plus the chain flags, at most one alert per entry per incident | 8,620 runs, 0.69 / 0.96 / 1.99s |
+| `RetryOrphanedStravaGrantReleasesJob` (queued job) | daily 02:40 | 30 | yes | retries the Strava release of grants whose local connection is gone or revoked, one call per orphaned grant | 30 runs, 0.05 / 0.13 / 0.17s |
 
 Values marked "unchanged" already had `withoutOverlapping()` before this pass and keep their
 existing TTL; only `onOneServer()` was added to those.
 
-**Reading the local measurements.** Every TTL stays as originally sized (a handful of DB writes vs.
-a per-user loop, with headroom against the command's own cadence) rather than being tightened to
-match these sub-2-second runs: the measurements above are essentially `artisan` bootstrap overhead
-against a single-user, single-connection dataset, not a load test. The commands whose TTL exists
-specifically to guard a *per-user* loop (`ai:daily-briefing`, `ai:weekly-recap`,
-`plan:score-compliance`, `plan:regenerate`, the `ai:trend-read` family) scale with athlete count —
-at 1 user their real cost is invisible, and the TTL's headroom is what protects against that loop
-taking materially longer once the athlete base grows. Nothing measured here contradicts an existing
-TTL; it simply confirms none of them are already too tight at today's scale.
+**Reading the production numbers.** Every entry except two finishes within about 2 seconds at
+p95, which is mostly `artisan`'s own bootstrap. `demo:daily-refresh` (3.7s max) and `strava:sync`
+(22.9s max, polling Strava inline once per athlete) are the slowest, and both stay far inside their
+10- and 55-minute locks. No p95 comes near its `withoutOverlapping()` lifetime, so every TTL stays as
+sized. Per-user loops such as `ai:daily-briefing`, `ai:weekly-recap`, `plan:score-compliance`,
+`plan:regenerate`, `ai:trend-read 7d` and `strava:sync` grow with the athlete count, so their TTL
+headroom is what covers a larger athlete base.
 
 ## Tick order
 
