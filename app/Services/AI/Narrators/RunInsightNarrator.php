@@ -181,9 +181,8 @@ class RunInsightNarrator
         ENTIRELY if session_intent.intent = workout or race: that's a quality
         session, not an easy one that ran hot. Skip it too if day_verdict in
         your context says the day stayed at the easy effort it asked for: the
-        verdict already read that heart rate, so a Z3 claim on that day says
-        the heart rate ran high while the effort stayed easy, never that the
-        run was too hard.
+        verdict already judged that effort, and a Z3-or-heavier claim on
+        that day is dropped.
 
         QUALITY SESSIONS: if session_intent.intent = workout or race, high
         HR, lots of Z3-Z4, and rising decoupling are EXPECTED and exactly the
@@ -260,10 +259,11 @@ class RunInsightNarrator
      */
     public function generate(Activity $activity, ActivityDetail $detail, ?int $deadlineSeconds = null): array
     {
+        $context = $this->context($activity, $detail);
         $decoded = $this->caller->call(
             kind: 'run_insight',
             systemPrompt: self::systemPrompt()."\n\n".NarratorContinuity::RULE,
-            context: $this->context($activity, $detail),
+            context: $context,
             schemaName: 'TemariRunInsight',
             requiredKeys: ['claims'],
             options: new ChatCallOptions(
@@ -278,7 +278,7 @@ class RunInsightNarrator
 
         $claims = is_array($decoded['claims']) ? $decoded['claims'] : [];
 
-        return ['claims' => $this->resolveClaims($claims, $detail)];
+        return ['claims' => $this->resolveClaims($claims, $detail, ($context['day_verdict'] ?? null) === IntentOutcome::EASY_HIT)];
     }
 
     /**
@@ -289,7 +289,7 @@ class RunInsightNarrator
      * @param  array<mixed>  $claims  Raw, untrusted model output.
      * @return list<array{anchor: string, text: string, value: string|null, delta: string|null}>
      */
-    private function resolveClaims(array $claims, ActivityDetail $detail): array
+    private function resolveClaims(array $claims, ActivityDetail $detail, bool $easyDayHit): array
     {
         $summary = StreamSummary::fromArray($detail->streamSummary());
         $resolved = [];
@@ -306,6 +306,10 @@ class RunInsightNarrator
             $anchor = $claim['anchor'] ?? null;
             $text = $claim['text'] ?? null;
             if (! is_string($anchor) || ! is_string($text) || $text === '' || ! $this->anchorResolver->resolves($anchor, $summary)) {
+                continue;
+            }
+
+            if ($easyDayHit && preg_match('/^zone:z[3-5]$/', $anchor) === 1) {
                 continue;
             }
 

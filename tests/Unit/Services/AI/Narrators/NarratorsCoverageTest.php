@@ -369,6 +369,30 @@ it('RunInsightNarrator hands over no verdict for a day not judged yet', function
     expect(runInsightNarrator(fakeCaller('{"claims":[]}'))->context($a, $d->refresh()))->not->toHaveKey('day_verdict');
 });
 
+// Prod: handed day_verdict, the insight still nudged an easy day judged a hit toward easy pace.
+it('RunInsightNarrator drops a Z3-or-heavier claim on an easy day judged a hit', function (string $verdict, array $evidence, string $anchor, bool $kept): void {
+    ['activity' => $a, 'detail' => $d] = postRunFixture();
+    $d->update(['stream_summary' => ['time_in_zone_pct' => ['Z2' => 30, 'Z3' => 60, 'Z4' => 8, 'Z5' => 2]]]);
+    PlannedSession::factory()->for($a->user)->create([
+        'date' => Carbon::today()->toDateString(),
+        'status' => 'done',
+        'intent_verdict' => $verdict,
+        'intent_evidence' => $evidence,
+    ]);
+    $caller = fakeCaller(json_encode(['claims' => [
+        ['anchor' => $anchor, 'text' => 'Most of the run sat in this zone.', 'value' => '60%', 'delta' => null],
+    ]], JSON_THROW_ON_ERROR));
+
+    expect(runInsightNarrator($caller)->generate($a, $d->refresh())['claims'])->toHaveCount($kept ? 1 : 0);
+})->with([
+    'Z3 on an easy hit' => ['hit', ['ceiling_pace_sec' => 443, 'basis' => 'heart_rate'], 'zone:z3', false],
+    'Z4 on an easy hit' => ['hit', ['ceiling_pace_sec' => 443, 'basis' => 'heart_rate'], 'zone:z4', false],
+    'Z5 on an easy hit' => ['hit', ['ceiling_pace_sec' => 443, 'basis' => 'heart_rate'], 'zone:z5', false],
+    'Z2 on an easy hit' => ['hit', ['ceiling_pace_sec' => 443, 'basis' => 'heart_rate'], 'zone:z2', true],
+    'Z3 on an easy day run too hard' => ['too_hard', ['ceiling_pace_sec' => 443, 'basis' => 'heart_rate'], 'zone:z3', true],
+    'Z3 on a marathon-effort hit' => ['hit', ['ceiling_pace_sec' => 380, 'limit' => 'marathon'], 'zone:z3', true],
+]);
+
 // Prod: one run's km 6 was narrated as 46 seconds and then 1:00 off km 4, from the same splits.
 it('RunInsightNarrator drops a split claim whose gap to another km is not what the splits say', function (?string $delta, ?string $stored): void {
     ['activity' => $a, 'detail' => $d] = postRunFixture();
@@ -871,7 +895,7 @@ it('RunInsightNarrator keeps the grey-zone nudge off an easy day the verdict say
 it('RunInsightNarrator reads the grey-zone skip from the verdict it is handed', function (): void {
     expect(narratorPrompt(RunInsightNarrator::class))
         ->toContain('Skip it too if day_verdict in')
-        ->toContain('never that the');
+        ->toContain('that day is dropped.');
 });
 
 it('BriefingMascotVoiceNarrator re-asks a post-run block that labels the intent', function (): void {

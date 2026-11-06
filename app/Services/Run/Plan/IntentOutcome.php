@@ -18,6 +18,8 @@ final class IntentOutcome
     /** The smallest gap between moving and effort-adjusted pace worth naming. */
     public const int EFFORT_ADJUSTED_MIN_GAP_SEC = 5;
 
+    public const string EASY_HIT = 'it stayed at the easy effort the day asked for';
+
     private const string STEADY = 'steady';
 
     private const string BLOCK = 'block';
@@ -41,7 +43,7 @@ final class IntentOutcome
             IntentVerdict::Hit => match ($family) {
                 self::STEADY => self::marathonLimit($evidence)
                     ? 'it held no harder than the marathon effort the day asked for'
-                    : 'it stayed at the easy effort the day asked for',
+                    : self::EASY_HIT,
                 self::BLOCK => 'the hard block got done at the effort it asked for',
                 self::REPS => 'the reps got done at the effort they asked for',
                 default => 'the session did the job it was written for',
