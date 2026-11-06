@@ -7,6 +7,7 @@ namespace App\Services\AI\Narrators;
 use App\Actions\Run\Metrics\ResolveRunBaselineAction;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
+use App\Models\PlannedSession;
 use App\Services\AI\Agent\AgentToolbox;
 use App\Services\AI\Agent\Tools\EffortContextTool;
 use App\Services\AI\Agent\Tools\HrZonesTool;
@@ -27,11 +28,13 @@ use App\Services\AI\Narrators\Concerns\ReadsPreviousActivityNarrative;
 use App\Services\AI\StructuredChatCaller;
 use App\Services\Run\Metrics\DecimalFormatter;
 use App\Services\Run\Metrics\DecouplingBands;
+use App\Services\Run\Metrics\PaceFormatter;
 use App\Services\Run\Metrics\RelativeEffort;
 use App\Services\Run\Metrics\StreamSummary;
 use App\Services\Run\Metrics\TrainingLoad;
 use App\Services\Run\Metrics\TrainingPaceCalculator;
 use App\Services\Run\Metrics\VdotEstimator;
+use App\Services\Run\Plan\IntentOutcome;
 use App\Services\Run\Plan\TrainingBaseline;
 use Illuminate\Support\Carbon;
 
@@ -176,10 +179,11 @@ class RunInsightNarrator
         nudge toward the easy pace is fair (convert easy_pace_sec from
         get_training_paces to minutes:seconds per km if you have it). SKIP
         ENTIRELY if session_intent.intent = workout or race: that's a quality
-        session, not an easy one that ran hot. Skip it too if
-        get_planned_sessions says the day stayed at the easy effort it asked
-        for: the verdict already read that heart rate. Call get_planned_sessions
-        before any such nudge; if you never called it, give no nudge.
+        session, not an easy one that ran hot. Skip it too if day_verdict in
+        your context says the day stayed at the easy effort it asked for: the
+        verdict already read that heart rate, so a Z3 claim on that day says
+        the heart rate ran high while the effort stayed easy, never that the
+        run was too hard.
 
         QUALITY SESSIONS: if session_intent.intent = workout or race, high
         HR, lots of Z3-Z4, and rising decoupling are EXPECTED and exactly the
@@ -305,11 +309,16 @@ class RunInsightNarrator
                 continue;
             }
 
+            $delta = self::checkedSplitDelta($anchor, is_string($claim['delta'] ?? null) ? $claim['delta'] : null, $summary);
+            if ($delta === false) {
+                continue;
+            }
+
             $resolved[] = [
                 'anchor' => $anchor,
                 'text' => $text,
                 'value' => is_string($claim['value'] ?? null) ? $claim['value'] : null,
-                'delta' => is_string($claim['delta'] ?? null) ? $claim['delta'] : null,
+                'delta' => $delta,
             ];
         }
 
@@ -317,10 +326,40 @@ class RunInsightNarrator
     }
 
     /**
+     * A split claim's "m:ss vs km N" gap must match the two splits it names, to the second, or the
+     * claim is dropped (false); its sign is set from the splits, + when this km was slower.
+     */
+    private static function checkedSplitDelta(string $anchor, ?string $delta, StreamSummary $summary): string|false|null
+    {
+        if ($delta === null
+            || preg_match('/^split:(\d+)$/', $anchor, $split) !== 1
+            || preg_match('/^[+-]?(\d+):(\d{2}) vs km (\d+)$/', trim($delta), $gap) !== 1) {
+            return $delta;
+        }
+
+        $paces = [];
+        foreach ($summary->perKm() ?? [] as $row) {
+            $pace = PaceFormatter::parse(is_string($row['pace'] ?? null) ? $row['pace'] : '');
+            if (is_numeric($row['km'] ?? null) && $pace !== null) {
+                $paces[(int) $row['km']] = (int) $pace;
+            }
+        }
+
+        $from = $paces[(int) $split[1]] ?? null;
+        $to = $paces[(int) $gap[3]] ?? null;
+
+        if ($from === null || $to === null || abs($from - $to) !== ((int) $gap[1]) * 60 + (int) $gap[2]) {
+            return false;
+        }
+
+        return ($from > $to ? '+' : ($from < $to ? '-' : '')).$gap[1].':'.$gap[2].' vs km '.$gap[3];
+    }
+
+    /**
      * The run's numbers are not passed in — the model reads them through
-     * {@see self::toolbox()}. What stays here is the one thing a tool must not
-     * serve: the previous run's narrative, which the content-filter retry has
-     * to be able to strip from the prompt.
+     * {@see self::toolbox()}. What stays here is the previous run's narrative,
+     * which the content-filter retry has to be able to strip from the prompt,
+     * and the day's judged verdict, which the model skipped fetching.
      *
      * @return array<string, mixed>
      */
@@ -332,7 +371,29 @@ class RunInsightNarrator
             AnalysisType::RunInsight,
         );
 
-        return NarratorContinuity::fields($prevNarrative);
+        $verdict = $this->dayVerdict($activity, $detail);
+
+        return [
+            ...NarratorContinuity::fields($prevNarrative),
+            ...($verdict === null ? [] : ['day_verdict' => $verdict]),
+        ];
+    }
+
+    private function dayVerdict(Activity $activity, ActivityDetail $detail): ?string
+    {
+        if ($detail->start_date_local === null) {
+            return null;
+        }
+
+        $session = PlannedSession::query()
+            ->where('user_id', $activity->user_id)
+            ->whereDate('date', $detail->start_date_local->toDateString())
+            ->whereNotNull('intent_verdict')
+            ->first();
+
+        return $session?->intent_verdict === null
+            ? null
+            : IntentOutcome::outcome($session->intent_verdict, $session->intent_evidence ?? []);
     }
 
     /**
