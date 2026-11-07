@@ -25,7 +25,7 @@ Every row is something Temari already sent; nothing is written here, and nothing
 
 ## The kinds
 
-Thirteen, each with its own row treatment ([NotificationKind](../../app/Enums/NotificationKind.php)).
+Fourteen, each with its own row treatment ([NotificationKind](../../app/Enums/NotificationKind.php)).
 Where a row goes is the router's call ([[inbox-is-an-always-on-channel]]), never the kind's.
 
 | kind | what fires it | channels | opens |
@@ -42,6 +42,7 @@ Where a row goes is the router's call ([[inbox-is-an-always-on-channel]]), never
 | `fitness_improved` | 10:00 daily, when the supported VDOT has risen at least 0.5 above the last noted one, at most once a week ([[supported-race-time-from-recent-efforts]]) | inbox · Telegram · push | the race page |
 | `time_trial` | 09:05 daily, once per finished time trial whose run on the day missed the trial's gate ([[a-time-trial-every-six-weeks]]) | inbox · Telegram · push | the dashboard, where the athlete says whether the run was all-out |
 | `easy_too_hard` | an ingested run from the current week, once per week per state: when one more hot easy day would cost next week a quality session, and when it does ([[plan-periodizer]], "A week run harder than it was written") | inbox · Telegram · push | the plan |
+| `plan_change` | a background rebuild (ingest reconciliation or a pace re-estimate) changing a session still ahead this week: its type, hard minutes or pace band, once per session ([[plan-periodizer]], "A changed session says so") | inbox · Telegram · push | the plan |
 | `test` | the "send test notification" button | inbox · Telegram · push | the dashboard |
 
 **`plan_clamp` is the one inbox-only kind.** A step-down used to exist only while the plan page
@@ -88,7 +89,7 @@ athlete answers. The demo account and athletes with the master switch off are ne
 only surface that admitted a dead grant was the empty-runs hero, a screen an athlete with runs on
 the dashboard never sees, so their history just stopped growing with no page saying why.
 `notifications_enabled` names what it covers in its own Settings description (the story, the recaps,
-the morning briefing, the fitness-improved word, the time-trial check, the hot-easy-run warning, the race heads-up and outcome
+the morning briefing, the fitness-improved word, the time-trial check, the hot-easy-run warning, the plan-change word, the race heads-up and outcome
 check-in, the nudge), all of it content Temari initiates; this is the app reporting that something
 the athlete wired up broke. The per-channel mutes still apply, because those answer *where* rather than
 *whether*.
@@ -152,6 +153,7 @@ released by quiet hours therefore gets its full TTL. The app clock (WIB) defines
 | race tomorrow | 06:00 on race day | none |
 | streak reminder | Sunday 23:59 | `streak` |
 | post-run, weekly and monthly recaps, race outcome | 3 days | none |
+| plan change | end of the changed session's day | none |
 | Strava disconnected | 7 days | none |
 | test | 5 minutes | none |
 

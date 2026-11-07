@@ -74,6 +74,7 @@ final readonly class Periodizer
     public function __construct(
         private PlanInputsGatherer $gatherer,
         private SeasonService $seasonService,
+        private PlanChangeNotice $planChangeNotice,
     ) {
     }
 
@@ -81,9 +82,13 @@ final readonly class Periodizer
         User $user,
         ?Carbon $today = null,
         int $lockWaitSeconds = self::REGENERATION_LOCK_WAIT_SECONDS,
+        bool $announceChanges = false,
     ): void {
-        $this->withRegenerationLock($user, function () use ($user, $today): void {
+        $this->withRegenerationLock($user, function () use ($user, $today, $announceChanges): void {
+            $today ??= Carbon::today();
+            $baseline = $announceChanges ? $this->planChangeNotice->baseline($user, $today) : [];
             $this->regenerateWithinLock($user, $today);
+            $this->planChangeNotice->announce($user, $baseline, $today);
         }, $lockWaitSeconds);
     }
 
@@ -96,27 +101,36 @@ final readonly class Periodizer
     {
         return $this->withRegenerationLock($user, function () use ($user, $today): bool {
             $today ??= Carbon::today();
-            $inputs = $this->gatherer->forUser($user, $today);
-            $adaptation = PlanAdaptation::query()
-                ->where('user_id', $user->id)
-                ->where('week_start', $inputs->currentWeekStart()->toDateString())
-                ->first();
+            $baseline = $this->planChangeNotice->baseline($user, $today);
+            $changed = $this->reconcileOrPersist($user, $today);
+            $this->planChangeNotice->announce($user, $baseline, $today);
 
-            if ($adaptation !== null && self::adaptationMatches($adaptation, $inputs)) {
-                return $this->reconcileCurrentWeekWorkload($inputs);
-            }
-
-            // Ingest reconciliation can only move safety in one direction inside
-            // an open week. A newly healthy reading must not erase a deload or
-            // restore quality that an earlier settled verdict removed.
-            if ($adaptation !== null && self::wouldRelaxSafety($adaptation, $inputs)) {
-                return $this->reconcileCurrentWeekWorkload($inputs);
-            }
-
-            $this->persist($user, $inputs);
-
-            return true;
+            return $changed;
         });
+    }
+
+    private function reconcileOrPersist(User $user, Carbon $today): bool
+    {
+        $inputs = $this->gatherer->forUser($user, $today);
+        $adaptation = PlanAdaptation::query()
+            ->where('user_id', $user->id)
+            ->where('week_start', $inputs->currentWeekStart()->toDateString())
+            ->first();
+
+        if ($adaptation !== null && self::adaptationMatches($adaptation, $inputs)) {
+            return $this->reconcileCurrentWeekWorkload($inputs);
+        }
+
+        // Ingest reconciliation can only move safety in one direction inside
+        // an open week. A newly healthy reading must not erase a deload or
+        // restore quality that an earlier settled verdict removed.
+        if ($adaptation !== null && self::wouldRelaxSafety($adaptation, $inputs)) {
+            return $this->reconcileCurrentWeekWorkload($inputs);
+        }
+
+        $this->persist($user, $inputs);
+
+        return true;
     }
 
     private function reconcileCurrentWeekWorkload(PlanInputs $inputs): bool

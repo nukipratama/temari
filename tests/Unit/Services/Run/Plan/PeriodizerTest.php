@@ -23,6 +23,7 @@ use App\Models\SeasonGoal;
 use App\Models\TrainingPreference;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
+use App\Notifications\PlanChangedNotification;
 use App\Services\Run\Metrics\RiegelProjector;
 use App\Services\Run\Metrics\VdotEstimator;
 use App\Services\Run\Plan\CurrentWeekPlanBuilder;
@@ -39,6 +40,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Notification;
 
 uses(RefreshDatabase::class);
 
@@ -1050,3 +1052,34 @@ it('hands back a budget bring-back only when the whole plan would read the same 
     'the cap would trim another day without it' => [25, false],
     'the cap no longer bites' => [500, true],
 ]);
+
+it('announces a current-week session that ingest reconciliation trims', function (): void {
+    Notification::fake();
+    $user = User::factory()->create();
+    seedPeriodizerBaseline($user);
+    periodizer()->regenerate($user, Carbon::today());
+    $quality = PlannedSession::query()->where('user_id', $user->id)
+        ->whereBetween('date', [Carbon::today()->toDateString(), Carbon::today()->endOfWeek()->toDateString()])
+        ->whereIn('session_type', [SessionType::Tempo, SessionType::Interval])
+        ->where('prescribed_hard_minutes', '>', 0)
+        ->firstOrFail();
+    $quality->update(['prescribed_hard_minutes' => $quality->prescribed_hard_minutes + 10]);
+
+    periodizer()->regenerateIfChanged($user, Carbon::today());
+
+    Notification::assertSentTo($user, PlanChangedNotification::class, static fn (PlanChangedNotification $n): bool => $n->date === $quality->date->toDateString());
+});
+
+it('announces nothing for a rebuild that leaves the week as it was, or one the athlete asked for', function (): void {
+    Notification::fake();
+    $user = User::factory()->create();
+    seedPeriodizerBaseline($user);
+    periodizer()->regenerate($user, Carbon::today());
+
+    periodizer()->regenerateIfChanged($user, Carbon::today());
+    periodizer()->regenerate($user, Carbon::today(), announceChanges: true);
+    PlannedSession::query()->where('user_id', $user->id)->update(['prescribed_hard_minutes' => 99]);
+    periodizer()->regenerate($user, Carbon::today());
+
+    Notification::assertNothingSent();
+});

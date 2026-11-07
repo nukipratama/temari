@@ -40,6 +40,7 @@ use App\Jobs\Telegram\SendTelegramLinkWelcomeJob;
 use App\Notifications\AnalysisReadyNotification;
 use App\Notifications\DayClampedNotification;
 use App\Notifications\EasyTooHardNotification;
+use App\Notifications\PlanChangedNotification;
 use App\Notifications\FitnessImprovedNotification;
 use App\Notifications\IntervalsIcuDisconnectedNotification;
 use App\Notifications\MorningBriefingNotification;
@@ -151,6 +152,7 @@ $expectedRetryPolicies = [
     AnalysisReadyNotification::class => [3, '30,120', null, null, null],
     DayClampedNotification::class => [3, '30,120', null, null, null],
     EasyTooHardNotification::class => [3, '30,120', null, null, null],
+    PlanChangedNotification::class => [3, '30,120', null, null, null],
     FitnessImprovedNotification::class => [3, '30,120', null, null, null],
     IntervalsIcuDisconnectedNotification::class => [3, '30,120', null, null, null],
     MorningBriefingNotification::class => [3, '30,120', null, null, null],
