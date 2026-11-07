@@ -123,6 +123,7 @@ class PlannedSession extends Model
         'prescribed_pace_sec_per_km',
         'prescription_reason',
         'prescription_race_context',
+        'prescription_budget',
         'fall_off_tilt',
         'race_distance_m',
     ];

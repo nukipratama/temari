@@ -325,6 +325,9 @@ it('moves a generated quality prescription with its whole workout', function ():
         ->where('user_id', $user->id)
         ->whereDate('date', $movable['move_targets'][0])
         ->firstOrFail();
+    $budget = ['cap_minutes' => 40, 'left_minutes' => 12, 'needed_minutes' => 20];
+    $quality->update(['prescription_budget' => $budget]);
+    $rest->update(['prescription_budget' => null]);
     $qualityWorkout = $quality->only(PlannedSession::WORKOUT_TRANSFER_FIELDS);
     $restWorkout = $rest->only(PlannedSession::WORKOUT_TRANSFER_FIELDS);
 
@@ -334,6 +337,8 @@ it('moves a generated quality prescription with its whole workout', function ():
 
     expect($quality->refresh()->only(PlannedSession::WORKOUT_TRANSFER_FIELDS))->toBe($restWorkout)
         ->and($rest->refresh()->only(PlannedSession::WORKOUT_TRANSFER_FIELDS))->toBe($qualityWorkout)
+        ->and($rest->prescription_budget)->toBe($budget)
+        ->and($quality->prescription_budget)->toBeNull()
         ->and($quality->refresh()->pinned)->toBeTrue()
         ->and($rest->refresh()->pinned)->toBeTrue();
 });
