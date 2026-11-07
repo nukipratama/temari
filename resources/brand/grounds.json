@@ -217,6 +217,9 @@
                 ],
                 "resources/js/components/narration/athlete/VersionDiff.tsx": [
                     "paper"
+                ],
+                "resources/js/components/plan/HardMinuteWallet.tsx": [
+                    "paper"
                 ]
             },
             "text": [
