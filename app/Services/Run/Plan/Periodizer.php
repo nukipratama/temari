@@ -686,17 +686,22 @@ final readonly class Periodizer
         $fullRows = [];
         foreach ($rows as $date => &$row) {
             $prescription = $prescriptions[$date];
-            if (isset($budgets[$date])) {
-                $fullRows[$date] = [...$row, ...$untrimmed[$date]->toArray()];
-            }
             $fits = static fn (IntensityPrescription $candidate): bool => array_any(
                 SegmentGenerator::forPrescription($row['session_type'], $row['phase'], $kmByDate[$date], $inputs->paces, $candidate),
                 static fn (SessionSegment $segment): bool => in_array($segment->key, [SegmentKey::Main, SegmentKey::Interval], true) && $segment->paceLabel !== PaceBand::Easy,
             );
+            $fitted = static function (IntensityPrescription $candidate) use ($resolve, $fits, $date): IntensityPrescription {
+                while (! $candidate->isEasy() && ! $fits($candidate)) {
+                    $candidate = $resolve($date, $candidate->hardMinutes - 1);
+                }
+
+                return $candidate;
+            };
+            if (isset($budgets[$date])) {
+                $fullRows[$date] = [...$row, ...$fitted($untrimmed[$date])->toArray()];
+            }
             if (($date === $goalPaceDate || isset($broughtBack[$date])) && ! $prescription->isEasy() && ! $fits($prescription)) {
-                do {
-                    $prescription = $resolve($date, $prescription->hardMinutes - 1);
-                } while (! $prescription->isEasy() && ! $fits($prescription));
+                $prescription = $fitted($prescription);
                 if (! $prescription->isEasy()) {
                     $prescription = new IntensityPrescription($prescription->hardMinutes, $prescription->paceBand, $prescription->paceSecPerKm, 'bounded by the distance this day holds', $prescription->raceContext);
                 }
