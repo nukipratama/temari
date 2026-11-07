@@ -1077,7 +1077,6 @@ it('announces nothing for a rebuild that leaves the week as it was, or one the a
     periodizer()->regenerate($user, Carbon::today());
 
     periodizer()->regenerateIfChanged($user, Carbon::today());
-    periodizer()->regenerate($user, Carbon::today(), announceChanges: true);
     PlannedSession::query()->where('user_id', $user->id)->update(['prescribed_hard_minutes' => 99]);
     periodizer()->regenerate($user, Carbon::today());
 

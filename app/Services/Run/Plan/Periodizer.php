@@ -82,13 +82,9 @@ final readonly class Periodizer
         User $user,
         ?Carbon $today = null,
         int $lockWaitSeconds = self::REGENERATION_LOCK_WAIT_SECONDS,
-        bool $announceChanges = false,
     ): void {
-        $this->withRegenerationLock($user, function () use ($user, $today, $announceChanges): void {
-            $today ??= Carbon::today();
-            $baseline = $announceChanges ? $this->planChangeNotice->baseline($user, $today) : [];
+        $this->withRegenerationLock($user, function () use ($user, $today): void {
             $this->regenerateWithinLock($user, $today);
-            $this->planChangeNotice->announce($user, $baseline, $today);
         }, $lockWaitSeconds);
     }
 

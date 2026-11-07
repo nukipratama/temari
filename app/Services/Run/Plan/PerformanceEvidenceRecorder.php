@@ -142,7 +142,7 @@ final readonly class PerformanceEvidenceRecorder
         }
 
         try {
-            $this->periodizer->regenerate($user, Carbon::today(), Periodizer::REQUEST_LOCK_WAIT_SECONDS, announceChanges: true);
+            $this->periodizer->regenerate($user, Carbon::today(), Periodizer::REQUEST_LOCK_WAIT_SECONDS);
         } catch (LockTimeoutException) {
             return false;
         }

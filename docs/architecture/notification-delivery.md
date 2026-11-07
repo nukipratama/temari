@@ -56,7 +56,7 @@ The notification classes live in `app/Notifications/`. What differs between them
 | [RaceOutcomeNotification](app/Notifications/RaceOutcomeNotification.php) | `race:ask-outcome`, hourly 09:00–21:00 | inbox + outbound | yes | — | — |
 | [TimeTrialNotification](app/Notifications/TimeTrialNotification.php) | `plan:settle-time-trials`, 09:05 | inbox + outbound | yes | — | — |
 | [EasyTooHardNotification](app/Notifications/EasyTooHardNotification.php) | `TooHardWarning::warn()` from `DispatchPostRunAnalysis`, for a run in the current week | inbox + outbound | yes | — | end of the week it warns about |
-| [PlanChangedNotification](app/Notifications/PlanChangedNotification.php) | `PlanChangeNotice::announce()` after `Periodizer::regenerateIfChanged()`, or `regenerate(announceChanges: true)` from `PerformanceEvidenceRecorder` | inbox + outbound | yes | — | end of the changed session's day |
+| [PlanChangedNotification](app/Notifications/PlanChangedNotification.php) | `PlanChangeNotice::announce()` after ingest's `Periodizer::regenerateIfChanged()` | inbox + outbound | yes | — | end of the changed session's day |
 | [FitnessImprovedNotification](app/Notifications/FitnessImprovedNotification.php) | `fitness:notify-improvement`, 10:00 | inbox + outbound | yes | — | — |
 | [StravaDisconnectedNotification](app/Notifications/StravaDisconnectedNotification.php) | [`StravaConnection::markRevoked()`](app/Models/StravaConnection.php), except on account deletion | inbox + outbound | no | — | — |
 | [IntervalsIcuDisconnectedNotification](app/Notifications/IntervalsIcuDisconnectedNotification.php) | [`IntervalsIcuSync`](app/Services/IntervalsIcu/IntervalsIcuSync.php), once when a sync first meets a 401/403 | inbox + outbound | no | — | — |

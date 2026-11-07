@@ -42,7 +42,7 @@ Where a row goes is the router's call ([[inbox-is-an-always-on-channel]]), never
 | `fitness_improved` | 10:00 daily, when the supported VDOT has risen at least 0.5 above the last noted one, at most once a week ([[supported-race-time-from-recent-efforts]]) | inbox · Telegram · push | the race page |
 | `time_trial` | 09:05 daily, once per finished time trial whose run on the day missed the trial's gate ([[a-time-trial-every-six-weeks]]) | inbox · Telegram · push | the dashboard, where the athlete says whether the run was all-out |
 | `easy_too_hard` | an ingested run from the current week, once per week per state: when one more hot easy day would cost next week a quality session, and when it does ([[plan-periodizer]], "A week run harder than it was written") | inbox · Telegram · push | the plan |
-| `plan_change` | a background rebuild (ingest reconciliation or a pace re-estimate) changing a session still ahead this week: its type, hard minutes or pace band, once per session ([[plan-periodizer]], "A changed session says so") | inbox · Telegram · push | the plan |
+| `plan_change` | ingest's background rebuild changing a session still ahead this week: its type, hard minutes or pace band, once per session ([[plan-periodizer]], "A changed session says so") | inbox · Telegram · push | the plan |
 | `test` | the "send test notification" button | inbox · Telegram · push | the dashboard |
 
 **`plan_clamp` is the one inbox-only kind.** A step-down used to exist only while the plan page
