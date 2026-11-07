@@ -110,6 +110,49 @@ final readonly class StreamSummary
     }
 
     /**
+     * Each km's seconds split three ways: easy, heart rate in Z3 or above at a
+     * grade-adjusted pace no faster than the easy ceiling, and hard, counted the
+     * way {@see self::hardMinutes()} counts them. Null until every km row carries
+     * its high-heart-rate histogram.
+     *
+     * @return list<array{km: int, easy_sec: int, high_hr_easy_pace_sec: int, hard_sec: int}>|null
+     */
+    public function hardSecondsByKm(?int $easyCeilingSecPerKm): ?array
+    {
+        $rows = $this->perKm();
+        if ($rows === null || $rows === []) {
+            return null;
+        }
+
+        $byKm = [];
+        foreach ($rows as $row) {
+            $byPace = $row['high_hr_sec_by_gap_pace'] ?? null;
+            if (! is_array($byPace) || ! is_numeric($row['km'] ?? null) || ! is_numeric($row['elapsed_sec'] ?? null)) {
+                return null;
+            }
+
+            $hard = 0;
+            $highHeartRate = 0;
+            foreach ($byPace as $pace => $sec) {
+                $seconds = is_numeric($sec) ? (int) $sec : 0;
+                $highHeartRate += $seconds;
+                if ($easyCeilingSecPerKm === null || (int) $pace < $easyCeilingSecPerKm) {
+                    $hard += $seconds;
+                }
+            }
+
+            $byKm[] = [
+                'km' => (int) $row['km'],
+                'easy_sec' => max(0, (int) $row['elapsed_sec'] - $highHeartRate),
+                'high_hr_easy_pace_sec' => $highHeartRate - $hard,
+                'hard_sec' => $hard,
+            ];
+        }
+
+        return $byKm;
+    }
+
+    /**
      * Combined share of moving time spent in Z4 and Z5.
      *
      * Distinct from {@see self::hardZoneShare()}: Z3 starts around 80% of max HR, so a Z3-inclusive

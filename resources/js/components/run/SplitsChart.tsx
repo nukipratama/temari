@@ -1,11 +1,18 @@
 import { Star } from 'lucide-react';
-import { useLayoutEffect, useRef, useState } from 'react';
+import { Suspense, useLayoutEffect, useRef, useState } from 'react';
 
-import type { StreamSummaryPartial, StreamSummaryPerKm } from '@/types/inertia';
+import type {
+    HardSecondsKm,
+    RunHardMinutes,
+    StreamSummaryPartial,
+    StreamSummaryPerKm,
+} from '@/types/inertia';
 
 import Eyebrow from '@/components/ui/Eyebrow';
 import { Icon } from '@/components/ui/Icon';
 import { cn } from '@/lib/cn';
+import { formatHardMinutes } from '@/lib/hardMinutes';
+import { lazyIsland } from '@/lib/lazyIsland';
 import { formatKm, formatPace } from '@/lib/pace';
 import { computeBarWidth, paceScale, paceSecOf } from '@/lib/splits';
 
@@ -31,20 +38,74 @@ interface Bar {
     fastest: boolean;
     /** The trailing sub-km remainder, drawn dashed and outside the ranking. */
     partial: boolean;
+    cost: HardSecondsKm | null;
+}
+
+const HardMinuteHeatLine = lazyIsland(
+    () => import('@/components/run/HardMinuteHeatLine'),
+);
+
+const HIGH_HR_EASY_PACE_FILL =
+    'bg-leaf/40 bg-[repeating-linear-gradient(135deg,var(--color-stone)_0_2px,transparent_2px_6px)]';
+
+function LegendSwatch({
+    fill,
+    children,
+}: Readonly<{ fill: string; children: string }>) {
+    return (
+        <span className="flex items-center gap-1 text-label-micro text-text-3">
+            <i aria-hidden className={cn('size-2.5 rounded-full', fill)} />
+            {children}
+        </span>
+    );
+}
+
+/** A km's bar, stacked easy → high HR at easy pace → hard from the ground up. */
+function CostFill({ cost }: Readonly<{ cost: HardSecondsKm }>) {
+    const total =
+        cost.easy_sec + cost.high_hr_easy_pace_sec + cost.hard_sec || 1;
+    const segments = [
+        { key: 'hard', sec: cost.hard_sec, fill: 'bg-ember' },
+        {
+            key: 'high-hr-easy-pace',
+            sec: cost.high_hr_easy_pace_sec,
+            fill: HIGH_HR_EASY_PACE_FILL,
+        },
+        { key: 'easy', sec: cost.easy_sec, fill: 'bg-leaf' },
+    ];
+
+    return segments.map(
+        (segment) =>
+            segment.sec > 0 && (
+                <span
+                    key={segment.key}
+                    className={cn('block w-full', segment.fill)}
+                    style={{ height: `${(segment.sec / total) * 100}%` }}
+                />
+            ),
+    );
 }
 
 /**
  * Per-km splits as a bar chart — taller bar, faster km — with heart rate
  * traced over it as a dashed line and a tap-to-read tooltip, the way the
- * prototype's `SplitsChartCard` draws them.
+ * prototype's `SplitsChartCard` draws them. Given the run's hard minutes, the
+ * header states what the run spent from the week's budget and each bar is
+ * coloured by what its seconds cost.
  */
 export default function SplitsChart({
     rows,
     partial,
+    hardMinutes = null,
+    feelsLikeC = null,
+    dewPointC = null,
     className,
 }: Readonly<{
     rows: StreamSummaryPerKm[];
     partial?: StreamSummaryPartial | null;
+    hardMinutes?: RunHardMinutes | null;
+    feelsLikeC?: number | null;
+    dewPointC?: number | null;
     className?: string;
 }>) {
     const chartRef = useRef<HTMLDivElement>(null);
@@ -67,6 +128,11 @@ export default function SplitsChart({
             ? (rows.find((r) => paceSecOf(r) === fastest) ?? null)
             : null;
 
+    const costByKm = new Map(
+        (hardMinutes?.per_km ?? []).map((cost) => [cost.km, cost]),
+    );
+    const costed = costByKm.size > 0;
+
     const bars: Bar[] = rows.map((row, i) => ({
         key: row.km != null ? `km-${row.km}` : `row-${i}`,
         tick: `${row.km ?? '?'}`,
@@ -75,6 +141,7 @@ export default function SplitsChart({
         cadence: row.avg_cadence_spm ?? null,
         fastest: fastest != null && paceSecOf(row) === fastest,
         partial: false,
+        cost: costByKm.get(row.km) ?? null,
     }));
     if (partial) {
         bars.push({
@@ -85,6 +152,7 @@ export default function SplitsChart({
             cadence: partial.avg_cadence_spm ?? null,
             fastest: false,
             partial: true,
+            cost: null,
         });
     }
 
@@ -122,21 +190,48 @@ export default function SplitsChart({
 
     return (
         <section className={className}>
-            <Eyebrow as="h2" token="small" tone="ink-2">
-                Splits per km
-            </Eyebrow>
+            <div className="flex flex-wrap items-baseline justify-between gap-x-3">
+                <Eyebrow as="h2" token="small" tone="ink-2">
+                    Splits per km
+                </Eyebrow>
+                {hardMinutes && (
+                    <span
+                        className={cn(
+                            'font-mono text-xs tabular-nums',
+                            hardMinutes.minutes > 0
+                                ? 'text-ember-ink'
+                                : 'text-foreground',
+                        )}
+                    >
+                        {formatHardMinutes(hardMinutes.minutes)} hard min
+                        {hardMinutes.cap_minutes != null &&
+                            ` · of ${hardMinutes.cap_minutes} this week`}
+                    </span>
+                )}
+            </div>
             <p className="mb-1.5 mt-0.5 font-sans text-xs text-text-3">
-                taller bar, faster km · dashed line tracks heart rate — tap a
-                bar for its pace.
+                {costed
+                    ? 'taller bar, faster km · colour is what each minute cost · dashed line tracks heart rate. tap a bar for its pace.'
+                    : 'taller bar, faster km · dashed line tracks heart rate — tap a bar for its pace.'}
             </p>
-            <div className="mb-2.5 flex items-center gap-3">
-                <span className="flex items-center gap-1 text-label-micro text-text-3">
-                    <i
-                        aria-hidden
-                        className="h-[3px] w-3 rounded-full bg-horizon"
-                    />
-                    Pace
-                </span>
+            <div className="mb-2.5 flex flex-wrap items-center gap-x-3 gap-y-1">
+                {costed ? (
+                    <>
+                        <LegendSwatch fill="bg-leaf">easy</LegendSwatch>
+                        <LegendSwatch fill={HIGH_HR_EASY_PACE_FILL}>
+                            high HR, easy pace
+                        </LegendSwatch>
+                        <LegendSwatch fill="bg-ember">hard</LegendSwatch>
+                    </>
+                ) : (
+                    <span className="flex items-center gap-1 text-label-micro text-text-3">
+                        <i
+                            aria-hidden
+                            className="h-[3px] w-3 rounded-full bg-horizon"
+                        />
+                        Pace
+                    </span>
+                )}
                 <span className="flex items-center gap-1 text-label-micro text-text-3">
                     <i
                         aria-hidden
@@ -195,16 +290,20 @@ export default function SplitsChart({
                             )}
                             <div
                                 className={cn(
-                                    'w-full rounded-t-xs transition-opacity',
+                                    'flex w-full flex-col overflow-hidden rounded-t-xs transition-opacity',
                                     bar.partial
                                         ? 'border border-dashed border-border-strong'
-                                        : bar.fastest
-                                          ? 'bg-horizon'
-                                          : 'bg-muted',
+                                        : bar.cost
+                                          ? null
+                                          : bar.fastest && !costed
+                                            ? 'bg-horizon'
+                                            : 'bg-muted',
                                     tip && tip.key !== bar.key && 'opacity-40',
                                 )}
                                 style={{ height: barHeight(bar) }}
-                            />
+                            >
+                                {bar.cost && <CostFill cost={bar.cost} />}
+                            </div>
                             <span className="font-mono text-xs tabular-nums text-text-3">
                                 {bar.tick}
                             </span>
@@ -212,6 +311,16 @@ export default function SplitsChart({
                     ))}
                 </div>
             </div>
+
+            {hardMinutes && (
+                <Suspense fallback={null}>
+                    <HardMinuteHeatLine
+                        hardMinutes={hardMinutes}
+                        feelsLikeC={feelsLikeC}
+                        dewPointC={dewPointC}
+                    />
+                </Suspense>
+            )}
 
             {fastestRow?.pace != null && fastest != null && (
                 <div className="mt-4 flex items-center justify-between gap-3 rounded-sm bg-muted px-3 py-2.5">

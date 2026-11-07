@@ -121,4 +121,62 @@ describe('SplitsChart', () => {
         expect(screen.getByText('0.8')).toBeInTheDocument();
         expect(screen.queryByText(/fastest/)).not.toBeInTheDocument();
     });
+
+    it('colours each km by what its seconds cost and states the run’s spend', () => {
+        const { container } = render(
+            <SplitsChart
+                rows={rows}
+                hardMinutes={{
+                    minutes: 12.4,
+                    hr_only_minutes: 12.4,
+                    cap_minutes: null,
+                    easy_ceiling_sec_per_km: 330,
+                    per_km: [
+                        {
+                            km: 1,
+                            easy_sec: 310,
+                            high_hr_easy_pace_sec: 0,
+                            hard_sec: 0,
+                        },
+                        {
+                            km: 2,
+                            easy_sec: 80,
+                            high_hr_easy_pace_sec: 0,
+                            hard_sec: 200,
+                        },
+                    ],
+                }}
+            />,
+        );
+
+        expect(screen.getByText('12.4 hard min')).toHaveClass('text-ember-ink');
+        expect(screen.getByText('high HR, easy pace')).toBeInTheDocument();
+        expect(screen.queryByText('Pace')).not.toBeInTheDocument();
+        expect(
+            container.querySelectorAll('[class*="bg-ember"][style]'),
+        ).toHaveLength(1);
+        expect(
+            container.querySelectorAll('[class*="bg-leaf"][style]'),
+        ).toHaveLength(2);
+    });
+
+    it('keeps the pace colouring until the run’s splits carry their costs', () => {
+        render(
+            <SplitsChart
+                rows={rows}
+                hardMinutes={{
+                    minutes: 0,
+                    hr_only_minutes: 0,
+                    cap_minutes: 60,
+                    easy_ceiling_sec_per_km: 330,
+                    per_km: null,
+                }}
+            />,
+        );
+
+        expect(screen.getByText('0 hard min · of 60 this week')).toHaveClass(
+            'text-foreground',
+        );
+        expect(screen.getByText('Pace')).toBeInTheDocument();
+    });
 });

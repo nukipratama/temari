@@ -1230,3 +1230,32 @@ it('reports no pace breakdown without a velocity stream or a zone 3', function (
         ->and(streamAnalysis()->highHeartRateByPace($paced, ['Z1' => ['lo' => 100, 'hi' => 999]]))->toBe([])
         ->and(streamAnalysis()->compute($paced, defaultZones(), null, 170))->toHaveKey('high_hr_sec_by_gap_pace');
 });
+
+it('files each km\'s Z3-or-above seconds by pace, empty for a km that stayed under Z3', function (): void {
+    $streams = easyCapStreams(601, static fn (int $t): int => $t < 400 ? 150 : 165, static fn (int $t): float => 2.5);
+    $streams['distance'] = ['data' => array_map(static fn (int $t): float => $t * 2.5, range(0, 600))];
+
+    expect(streamAnalysis()->highHeartRateByKm($streams, defaultZones()))
+        ->toBe([1 => [], 2 => [400 => 200]]);
+});
+
+it('reports no per-km breakdown without a distance stream or a zone 3', function (): void {
+    $streams = easyCapStreams(300, static fn (int $t): int => 165, static fn (int $t): float => 3.0);
+
+    expect(streamAnalysis()->highHeartRateByKm($streams, defaultZones()))->toBe([])
+        ->and(streamAnalysis()->highHeartRateByKm(
+            [...$streams, 'distance' => ['data' => range(0, 299)]],
+            ['Z1' => ['lo' => 100, 'hi' => 999]],
+        ))->toBe([]);
+});
+
+it('carries each km\'s high-heart-rate histogram on its split row', function (): void {
+    [$streams, $splits] = buildCadenceTestRun();
+    $streams['heartrate'] = ['data' => array_map(static fn (int $t): int => $t < 360 ? 150 : 165, range(0, 1080))];
+
+    $summary = streamAnalysis()->compute($streams, defaultZones(), $splits, 170);
+
+    expect(data_get($summary, 'per_km.0.high_hr_sec_by_gap_pace'))->toBe([])
+        ->and(data_get($summary, 'per_km.1.high_hr_sec_by_gap_pace'))->toBe([360 => 360])
+        ->and(data_get($summary, 'per_km.2.high_hr_sec_by_gap_pace'))->toBe([360 => 360]);
+});

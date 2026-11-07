@@ -15,6 +15,7 @@ use App\Models\User;
 use App\Services\AI\AnalysisType;
 use App\Services\Run\Ingest\DetailHydrator;
 use App\Services\Run\Metrics\PrBibResolver;
+use App\Services\Run\Metrics\RunHardMinutes;
 use App\Services\Run\Metrics\RunEffort;
 use App\Services\Run\Story\Card\CardFacts;
 use App\Services\Run\Story\CardPresenter;
@@ -78,9 +79,9 @@ class RunController extends Controller
 
     private const array UNREAD_STREAM_SUMMARY_KEYS = ['steady_effort_hr_drift_bpm', 'drift_metric_version', 'high_hr_sec_by_gap_pace'];
 
-    private const array UNREAD_PER_KM_KEYS = ['distance_m', 'elapsed_sec'];
+    private const array UNREAD_PER_KM_KEYS = ['distance_m', 'elapsed_sec', 'high_hr_sec_by_gap_pace'];
 
-    public function show(Request $request, Activity $activity, PastYouMatcher $matcher, CardPresenter $cards, DetailHydrator $hydrator, PastYouDuelBuilder $duelBuilder, PrBibResolver $prBib): Response
+    public function show(Request $request, Activity $activity, PastYouMatcher $matcher, CardPresenter $cards, DetailHydrator $hydrator, PastYouDuelBuilder $duelBuilder, PrBibResolver $prBib, RunHardMinutes $hardMinutes): Response
     {
         /** @var User $user */
         $user = $request->user();
@@ -168,6 +169,7 @@ class RunController extends Controller
                 return $match;
             },
             'prBib' => fn (): ?array => $prBib->resolve($activity, $detail),
+            'hardMinutes' => fn (): ?array => $hardMinutes->for($user, $detail),
         ]);
     }
 
