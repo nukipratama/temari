@@ -1557,6 +1557,12 @@ describe('hardBudgetNote', () => {
         ],
         ['today already ran', budget(0, 0), planDay({ status: 'done' }), []],
         ['today was skipped', budget(0, 0), planDay({ skipped: true }), []],
+        [
+            'today is a rest day',
+            budget(0, 0),
+            planDay({ session_type: 'rest' }),
+            [],
+        ],
     ])('stays quiet with %s', (_, hardBudget, day, extra) => {
         expect(
             hardBudgetNote(

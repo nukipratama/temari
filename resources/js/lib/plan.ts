@@ -889,7 +889,7 @@ function listed(items: string[]): string {
  * Today's line in the advice-note slot when the week's hard minutes are
  * nearly gone: what is left, what the days ahead still need, and that today
  * stays easy. Null when there is room to spare, when today is itself a booked
- * hard session, or when today is done or skipped.
+ * hard session or a rest day, or when today is done or skipped.
  */
 export function hardBudgetNote(
     weekPlan: Pick<WeekPlan, 'hard_budget' | 'hard_bookings' | 'days'>,
@@ -901,6 +901,7 @@ export function hardBudgetNote(
         budget === null ||
         today?.status !== 'planned' ||
         today.skipped ||
+        today.session_type === 'rest' ||
         weekPlan.hard_bookings.some((booking) => booking.date === todayIso)
     ) {
         return null;
