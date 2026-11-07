@@ -448,7 +448,7 @@ it('stamps an unlocked week with 30% of its planned minutes as its cap', functio
         ->and($withoutPaces['2026-09-21']['week_hard_cap_minutes'] ?? null)->toBeNull();
 });
 
-it('gives a brought-back session its full dose outside the locked cap, without trimming the rest of the week for it', function (): void {
+it('gives a brought-back session its full dose outside the locked cap, leaving every other day\'s dose as the capped week had it', function (): void {
     $base = planInputsWith(arcInputs(today: '2026-09-21'), [
         'paces' => ['easy' => 360, 'marathon' => 300, 'threshold' => 270, 'interval' => 240],
         'longRunBaselineKm' => 12.0,
@@ -464,7 +464,7 @@ it('gives a brought-back session its full dose outside the locked cap, without t
 
     expect($rows[$trimmedDate]['prescribed_hard_minutes'])->toBe($free[$trimmedDate]['prescribed_hard_minutes'])
         ->and($rows[$trimmedDate]['prescription_budget'] ?? null)->toBeNull()
-        ->and($others($rows))->toBeGreaterThanOrEqual($others($locked));
+        ->and($others($rows))->toBe($others($locked));
 });
 
 it('withholds the budget note, and so the bring-back, from a session the hard-day spacing would demote at full dose', function (): void {

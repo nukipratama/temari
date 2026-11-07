@@ -163,11 +163,18 @@ it('refuses rather than failing once a rebuild that lands while it waits replace
         ->and($week->refresh()->override_kind)->toBeNull();
 });
 
-it('brings back a session the hard-minute budget trimmed, over the cap, and trims it again on undo', function (): void {
+/**
+ * @return array{user: User, trimmed: PlannedSession, day: Closure(): PlannedSession, week: Closure(): PlanAdaptation}
+ */
+function budgetTrimmedWeek(): array
+{
     Carbon::setTestNow('2026-08-10 06:00:00');
     $user = User::factory()->create();
     foreach (range(0, 3) as $i) {
         WeeklySnapshot::factory()->for($user)->create(['week_ending' => Carbon::today()->subWeeks($i)->toDateString(), 'runs' => 4, 'distance_km' => 30.0]);
+    }
+    foreach ([2, 4, 5, 7, 9, 11, 12, 14, 16, 18, 19, 21, 23, 25, 26, 28] as $daysAgo) {
+        ActivityDetail::factory()->for(Activity::factory()->for($user))->create(['start_date_local' => Carbon::today()->subDays($daysAgo)->setTime(6, 0), 'distance' => 7_500, 'moving_time' => 2_475]);
     }
     TrainingPreference::factory()->for($user)->create(['sessions_per_week' => 4]);
     seedConfirmedEffort($user, 10_000, 2700, Carbon::today());
@@ -175,7 +182,17 @@ it('brings back a session the hard-minute budget trimmed, over the cap, and trim
     PlanAdaptation::query()->where('user_id', $user->id)->update(['hard_cap_minutes' => 1]);
     app(Periodizer::class)->regenerate($user, Carbon::today());
     $trimmed = PlannedSession::query()->where('user_id', $user->id)->whereNotNull('prescription_budget')->orderBy('date')->firstOrFail();
-    $day = static fn (): PlannedSession => PlannedSession::query()->where('user_id', $user->id)->whereDate('date', $trimmed->date)->firstOrFail();
+
+    return [
+        'user' => $user,
+        'trimmed' => $trimmed,
+        'day' => static fn (): PlannedSession => PlannedSession::query()->where('user_id', $user->id)->whereDate('date', $trimmed->date)->firstOrFail(),
+        'week' => static fn (): PlanAdaptation => PlanAdaptation::query()->where('user_id', $user->id)->firstOrFail(),
+    ];
+}
+
+it('brings back a session the hard-minute budget trimmed, over the cap, and trims it again on undo', function (): void {
+    ['user' => $user, 'trimmed' => $trimmed, 'day' => $day] = budgetTrimmedWeek();
 
     expect(overrideService()->take($user, $trimmed, Carbon::today()))->toBe(PlanOverrideKind::BudgetDrop)
         ->and($day()->prescription_budget)->toBeNull()
@@ -185,4 +202,39 @@ it('brings back a session the hard-minute budget trimmed, over the cap, and trim
 
     expect($day()->prescription_budget)->not->toBeNull()
         ->and(PlanAdaptation::query()->where('user_id', $user->id)->firstOrFail()->override_kind)->toBeNull();
+});
+
+it('offers no bring-back on a day the uncapped plan would run easy anyway, because its full dose does not fit', function (): void {
+    Carbon::setTestNow('2026-08-10 06:00:00');
+    $user = User::factory()->create();
+    foreach (range(0, 3) as $i) {
+        WeeklySnapshot::factory()->for($user)->create(['week_ending' => Carbon::today()->subWeeks($i)->toDateString(), 'runs' => 4, 'distance_km' => 30.0]);
+    }
+    TrainingPreference::factory()->for($user)->create(['sessions_per_week' => 4]);
+    seedConfirmedEffort($user, 10_000, 2700, Carbon::today());
+    app(Periodizer::class)->regenerate($user, Carbon::today());
+    $uncapped = PlannedSession::query()->where('user_id', $user->id)->whereDate('date', '2026-08-13')->firstOrFail();
+    PlanAdaptation::query()->where('user_id', $user->id)->update(['hard_cap_minutes' => 1]);
+    app(Periodizer::class)->regenerate($user, Carbon::today());
+
+    expect($uncapped->prescription_reason)->toBe('easy because the outing cannot safely fit the minimum quality structure')
+        ->and(PlannedSession::query()->where('user_id', $user->id)->whereNotNull('prescription_budget')->exists())->toBeFalse();
+});
+
+it('hands a budget bring-back back once a rebuild no longer trims its day, and keeps it while the trim stands', function (): void {
+    ['user' => $user, 'trimmed' => $trimmed, 'day' => $day, 'week' => $week] = budgetTrimmedWeek();
+    overrideService()->take($user, $trimmed, Carbon::today());
+    $fullDose = $day()->prescribed_hard_minutes;
+
+    app(Periodizer::class)->regenerate($user, Carbon::today());
+
+    expect($week()->override_kind)->toBe(PlanOverrideKind::BudgetDrop);
+
+    PlanAdaptation::query()->where('user_id', $user->id)->update(['hard_cap_minutes' => 500]);
+    app(Periodizer::class)->regenerate($user, Carbon::today());
+
+    expect($week()->override_kind)->toBeNull()
+        ->and($week()->override_date)->toBeNull()
+        ->and($day()->prescription_budget)->toBeNull()
+        ->and($day()->prescribed_hard_minutes)->toBe($fullDose);
 });

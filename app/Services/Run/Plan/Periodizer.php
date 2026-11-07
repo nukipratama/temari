@@ -367,6 +367,7 @@ final readonly class Periodizer
 
     private function persist(User $user, PlanInputs $inputs): void
     {
+        $inputs = $this->refundingUnneededBudgetOverride($inputs);
         $rows = $this->rowsFor($inputs);
 
         DB::transaction(function () use ($user, $inputs, $rows): void {
@@ -374,7 +375,7 @@ final readonly class Periodizer
             $current = $this->sessionsInHorizon($inputs);
 
             if ($this->containsNewFixedSession($inputs, $current)) {
-                $inputs = $this->gatherer->forUser($user, $inputs->today);
+                $inputs = $this->refundingUnneededBudgetOverride($this->gatherer->forUser($user, $inputs->today));
                 $rows = $this->rowsFor($inputs);
                 $reran = true;
                 $current = $this->sessionsInHorizon($inputs);
@@ -417,7 +418,7 @@ final readonly class Periodizer
 
             $current = $this->sessionsInHorizon($inputs);
             if (! $reran && $this->containsNewFixedSession($inputs, $current)) {
-                $inputs = $this->gatherer->forUser($user, $inputs->today);
+                $inputs = $this->refundingUnneededBudgetOverride($this->gatherer->forUser($user, $inputs->today));
                 $rows = $this->rowsFor($inputs);
                 $current = $this->sessionsInHorizon($inputs);
             }
@@ -490,6 +491,22 @@ final readonly class Periodizer
 
             $this->seasonService->recountPlannedGoals($user);
         });
+    }
+
+    public function refundingUnneededBudgetOverride(PlanInputs $inputs): PlanInputs
+    {
+        if ($inputs->budgetOverrideDate === null || ! $inputs->restoredDayOpen) {
+            return $inputs;
+        }
+
+        $refunded = $inputs->withBudgetOverrideRefunded();
+        $kept = $this->rowsFor($inputs);
+        $without = $this->rowsFor($refunded);
+        $changed = array_any($kept, static fn (array $row, string $date): bool => ! isset($without[$date])
+            || $row['session_type'] !== $without[$date]['session_type']
+            || $row['prescribed_hard_minutes'] !== $without[$date]['prescribed_hard_minutes']);
+
+        return isset($kept[$inputs->budgetOverrideDate]) && ! $changed ? $refunded : $inputs;
     }
 
     /** @param array<string, array{week_hard_cap_minutes?: int|null, ...}> $rows */
@@ -698,9 +715,10 @@ final readonly class Periodizer
                 return $candidate;
             };
             if (isset($budgets[$date])) {
-                $fullRows[$date] = [...$row, ...$fitted($untrimmed[$date])->toArray()];
+                $full = $date === $goalPaceDate ? $fitted($untrimmed[$date]) : $untrimmed[$date];
+                $fullRows[$date] = [...$row, ...($fits($full) ? $full : new IntensityPrescription(0, null, null, null))->toArray()];
             }
-            if (($date === $goalPaceDate || isset($broughtBack[$date])) && ! $prescription->isEasy() && ! $fits($prescription)) {
+            if ($date === $goalPaceDate && ! $prescription->isEasy() && ! $fits($prescription)) {
                 $prescription = $fitted($prescription);
                 if (! $prescription->isEasy()) {
                     $prescription = new IntensityPrescription($prescription->hardMinutes, $prescription->paceBand, $prescription->paceSecPerKm, 'bounded by the distance this day holds', $prescription->raceContext);
@@ -730,7 +748,7 @@ final readonly class Periodizer
             $withFinish[$longDate] = [...$rows[$longDate], ...$fastFinish->prescription($kmByDate[$longDate])->toArray()];
             $asPrescriptions = array_map(self::prescriptionOfRow(...), $withFinish);
             $ceiling = $this->hardCeiling($withFinish, $kmByDate, $asPrescriptions, $inputs, $weekStart, $workloadSessions);
-            $booked = array_sum(array_column($withFinish, 'prescribed_hard_minutes'));
+            $booked = array_sum(array_column(array_diff_key($withFinish, $broughtBack), 'prescribed_hard_minutes'));
             if ($ceiling === null || $booked <= $ceiling || isset($broughtBack[$longDate])) {
                 $rows = $withFinish;
             } else {
