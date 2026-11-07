@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Notifications;
 
+use App\Actions\Run\Plan\ResolveActiveRaceAction;
 use App\Enums\NotificationKind;
 use App\Enums\PlannedSessionStatus;
+use App\Enums\PlanOverrideKind;
 use App\Enums\SessionType;
 use App\Models\PlanAdaptation;
 use App\Models\PlannedSession;
@@ -18,6 +20,7 @@ use App\Notifications\Messages\TelegramMessage;
 use App\Services\Notifications\ChannelRouter;
 use App\Services\Run\Plan\Periodizer;
 use App\Services\Run\Plan\PlanChangeNotice;
+use App\Services\Run\Plan\QualityOverride;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Notification;
@@ -88,7 +91,7 @@ class PlanChangedNotification extends Notification implements ShouldQueue
         $session = $this->sessionFor($notifiable) ?? throw new LogicException('shouldSend gates every send on the session.');
 
         return new TelegramMessage(
-            text: self::title($this->date, $this->was, $session)."\n\n".self::body($session, self::bringBackOffered($session))."\n\nOpen Temari: ".route('plan'),
+            text: self::title($this->date, $this->was, $session)."\n\n".self::body($session, self::bringBackOffered($notifiable, $session))."\n\nOpen Temari: ".route('plan'),
         );
     }
 
@@ -98,7 +101,7 @@ class PlanChangedNotification extends Notification implements ShouldQueue
 
         return new WebPushMessage()
             ->title(self::title($this->date, $this->was, $session))
-            ->body(self::body($session, self::bringBackOffered($session)))
+            ->body(self::body($session, self::bringBackOffered($notifiable, $session)))
             ->icon('/icon-192.png')
             ->data($this->withUnreadBadge(['url' => route('plan')], $notifiable))
             ->options(['TTL' => $this->secondsUntil(Carbon::parse($this->date)->endOfDay())]);
@@ -111,7 +114,7 @@ class PlanChangedNotification extends Notification implements ShouldQueue
         return new InboxMessage(
             kind: NotificationKind::PlanChange,
             title: self::title($this->date, $this->was, $session),
-            body: self::body($session, self::bringBackOffered($session)),
+            body: self::body($session, self::bringBackOffered($notifiable, $session)),
             payload: ['url' => route('plan')],
             dedupeKey: self::dedupeKeyFor($this->date),
         );
@@ -136,13 +139,22 @@ class PlanChangedNotification extends Notification implements ShouldQueue
         };
     }
 
-    private static function bringBackOffered(PlannedSession $session): bool
+    private static function bringBackOffered(User $user, PlannedSession $session): bool
     {
-        return $session->prescription_budget !== null && ! $session->skipped && PlanAdaptation::query()
-            ->where('user_id', $session->user_id)
-            ->where('week_start', $session->date->copy()->startOfWeek(Carbon::MONDAY)->toDateString())
-            ->whereNull('override_kind')
-            ->exists();
+        if ($session->prescription_budget === null || $session->skipped) {
+            return false;
+        }
+
+        $week = QualityOverride::openWeek(
+            $user,
+            PlanAdaptation::query()
+                ->where('user_id', $user->id)
+                ->where('week_start', $session->date->copy()->startOfWeek(Carbon::MONDAY)->toDateString())
+                ->first(),
+            app(ResolveActiveRaceAction::class)($user->id),
+        );
+
+        return $week instanceof PlanAdaptation && ! $week->override_kind instanceof PlanOverrideKind;
     }
 
     private static function body(PlannedSession $session, bool $bringBackOffered): string

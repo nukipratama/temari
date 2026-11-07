@@ -10,6 +10,7 @@ use App\Models\InboxNotification;
 use App\Models\NotificationPreference;
 use App\Models\PlanAdaptation;
 use App\Models\PlannedSession;
+use App\Models\RaceGoal;
 use App\Models\User;
 use App\Notifications\Channels\IdempotentWebPushChannel;
 use App\Notifications\Channels\InAppChannel;
@@ -137,8 +138,11 @@ it('skips a change that reverted before sending, and frees the session for a lat
     Notification::assertSentToTimes($user, PlanChangedNotification::class, 2);
 });
 
-it('leaves out the bring-back line once the plan no longer offers one', function (array $week, array $day): void {
+it('leaves out the bring-back line once the plan no longer offers one', function (array $week, array $day, ?string $raceDate = null): void {
     $user = User::factory()->create();
+    if ($raceDate !== null) {
+        RaceGoal::factory()->for($user)->create(['race_date' => $raceDate]);
+    }
     PlanAdaptation::factory()->for($user)->create(['week_start' => '2026-11-02', ...$week]);
     changedSession($user, ['prescribed_hard_minutes' => 0, 'prescribed_pace_band' => null, 'prescription_reason' => Periodizer::BUDGET_SPENT_REASON, 'prescription_budget' => ['cap_minutes' => 60, 'left_minutes' => 4, 'needed_minutes' => 25], ...$day]);
 
@@ -146,6 +150,7 @@ it('leaves out the bring-back line once the plan no longer offers one', function
 })->with([
     'override already taken this week' => [['override_kind' => 'weekly_drop', 'override_date' => '2026-11-04'], []],
     'day skipped' => [[], ['skipped' => true]],
+    'race inside the pre-race window' => [[], [], '2026-11-15'],
 ]);
 
 it('says nothing about a day that has passed by the time it is released', function (): void {
