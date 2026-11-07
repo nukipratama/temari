@@ -18,6 +18,7 @@ use App\Services\AI\NarrationOrigin;
 use App\Services\AI\RunQuestion\RuleBasedRunAnswer;
 use App\Services\AI\RunQuestion\RunQuestionSeeds;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Queue\Attributes\Timeout;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Queue\Attributes\Backoff;
 use Illuminate\Queue\Attributes\Queue;
@@ -39,6 +40,7 @@ use Throwable;
 #[Backoff(self::BACKOFF_SECONDS)]
 #[Queue(AnalyzeBaseJob::QUEUE)]
 #[Tries(self::TRIES)]
+#[Timeout(360)]
 class AnswerRunQuestionJob implements ShouldQueue
 {
     use Queueable;

@@ -56,6 +56,7 @@ use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Notification;
 use Illuminate\Notifications\SendQueuedNotifications;
+use Illuminate\Queue\Attributes\Queue as QueueAttribute;
 use Illuminate\Queue\Attributes\UniqueFor;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\File;
@@ -114,41 +115,41 @@ function resolvedRetryPolicy(string $class): array
 
 /** @var array<class-string, list<mixed>> $expectedRetryPolicies [maxTries, backoff, timeout, maxExceptions, uniqueFor] */
 $expectedRetryPolicies = [
-    AnalyzeActivityJob::class => [3, '10,60', null, null, null],
-    AnalyzeBriefingMascotVoiceJob::class => [3, '10,60', null, null, null],
-    AnalyzeCardFlavorJob::class => [3, '10,60', null, null, null],
-    AnalyzeMonthlyRecapJob::class => [3, '10,60', null, null, null],
-    AnalyzePlanClampVoiceJob::class => [3, '10,60', null, null, null],
-    AnalyzeProfileVoiceJob::class => [3, '10,60', null, null, null],
-    AnalyzeTrendReadJob::class => [3, '10,60', null, null, null],
-    AnalyzeWeeklyRecapJob::class => [3, '10,60', null, null, null],
-    AnswerRunQuestionJob::class => [3, '10,60', null, null, null],
-    FlushDeadLetterAlertJob::class => [null, null, null, null, null],
-    KickoffRecapsJob::class => [null, null, null, null, null],
-    NarrateOnReturnJob::class => [null, null, null, null, null],
-    RecheckEffortScoreNarrationJob::class => [null, null, null, null, null],
-    SendMaintainerAlertJob::class => [null, null, null, null, null],
-    SettleStreakWeeksJob::class => [3, '30,120', null, null, 3600],
-    ResolveActivityLocationJob::class => [null, null, null, null, 1200],
-    SyncIntervalsIcuWorkoutJob::class => [1, null, null, null, 900],
-    RetryStaleWebPushNotificationJob::class => [3, '30,120', null, null, null],
-    CheckFitnessImprovementJob::class => [3, '30,120', null, null, 3600],
-    RebuildTrendSnapshotsJob::class => [3, '30,120', null, null, 3600],
+    AnalyzeActivityJob::class => [3, '10,60', 360, null, null],
+    AnalyzeBriefingMascotVoiceJob::class => [3, '10,60', 360, null, null],
+    AnalyzeCardFlavorJob::class => [3, '10,60', 360, null, null],
+    AnalyzeMonthlyRecapJob::class => [3, '10,60', 360, null, null],
+    AnalyzePlanClampVoiceJob::class => [3, '10,60', 360, null, null],
+    AnalyzeProfileVoiceJob::class => [3, '10,60', 360, null, null],
+    AnalyzeTrendReadJob::class => [3, '10,60', 360, null, null],
+    AnalyzeWeeklyRecapJob::class => [3, '10,60', 360, null, null],
+    AnswerRunQuestionJob::class => [3, '10,60', 360, null, null],
+    FlushDeadLetterAlertJob::class => [3, null, 60, null, null],
+    KickoffRecapsJob::class => [3, null, 60, null, null],
+    NarrateOnReturnJob::class => [3, null, 60, null, null],
+    RecheckEffortScoreNarrationJob::class => [3, null, 60, null, null],
+    SendMaintainerAlertJob::class => [3, null, 60, null, null],
+    SettleStreakWeeksJob::class => [3, '30,120', 60, null, 3600],
+    ResolveActivityLocationJob::class => [null, null, 60, null, 1200],
+    SyncIntervalsIcuWorkoutJob::class => [1, null, 60, null, 900],
+    RetryStaleWebPushNotificationJob::class => [3, '30,120', 60, null, null],
+    CheckFitnessImprovementJob::class => [3, '30,120', 60, null, 3600],
+    RebuildTrendSnapshotsJob::class => [3, '30,120', 60, null, 3600],
     RecalibrateTrainingHistoryJob::class => [null, '30,120', 120, 3, 3600],
-    ReconcilePlanJob::class => [10, '30,120', null, 3, 3600],
-    ReconcileScheduledTrendSnapshotsJob::class => [3, '30,120', null, null, 3600],
+    ReconcilePlanJob::class => [10, '30,120', 60, 3, 3600],
+    ReconcileScheduledTrendSnapshotsJob::class => [3, '30,120', 60, null, 3600],
     RegeneratePlanJob::class => [null, '30,120', 120, null, 3600],
-    RollWeeklySnapshotsForwardJob::class => [3, '30,120', null, null, 900],
-    CleanupDeletedActivityJob::class => [null, '60,300,900,3600', null, null, null],
-    HydrateBacklogForUserJob::class => [null, null, null, null, null],
-    IngestActivityJob::class => [null, null, null, 3, 21600],
-    ResyncActivityJob::class => [null, null, null, 3, 21600],
-    RetryOrphanedStravaGrantReleasesJob::class => [null, null, null, null, null],
-    SyncActivitiesJob::class => [3, '30,120', null, null, null],
-    SyncZonesJob::class => [3, '30,120', null, null, null],
-    VerifyStravaRevocationJob::class => [3, '30,120', null, null, null],
-    HandleTelegramUpdateJob::class => [3, '30,120', null, null, null],
-    SendTelegramLinkWelcomeJob::class => [3, '30,120', null, null, null],
+    RollWeeklySnapshotsForwardJob::class => [3, '30,120', 60, null, 900],
+    CleanupDeletedActivityJob::class => [null, '60,300,900,3600', 60, null, null],
+    HydrateBacklogForUserJob::class => [3, null, 60, null, null],
+    IngestActivityJob::class => [null, null, 60, 3, 21600],
+    ResyncActivityJob::class => [null, null, 60, 3, 21600],
+    RetryOrphanedStravaGrantReleasesJob::class => [3, null, 60, null, null],
+    SyncActivitiesJob::class => [3, '30,120', 60, null, null],
+    SyncZonesJob::class => [3, '30,120', 60, null, null],
+    VerifyStravaRevocationJob::class => [3, '30,120', 60, null, null],
+    HandleTelegramUpdateJob::class => [3, '30,120', 60, null, null],
+    SendTelegramLinkWelcomeJob::class => [3, '30,120', 60, null, null],
     AnalysisReadyNotification::class => [3, '30,120', null, null, null],
     DayClampedNotification::class => [3, '30,120', null, null, null],
     EasyTooHardNotification::class => [3, '30,120', null, null, null],
@@ -178,3 +179,43 @@ it('resolves the pinned retry policy the way the queue does', function (string $
     array_keys($expectedRetryPolicies),
     $expectedRetryPolicies,
 ));
+
+it('bounds every queued job by a timeout and a tries or retry window', function (): void {
+    $retryAfter = config()->integer('queue.connections.redis.retry_after');
+    $aiWorkerTimeout = config()->integer('horizon.defaults.supervisor-ai.timeout');
+    $violations = [];
+
+    foreach (queuedClassesUnder('Jobs') as $class) {
+        [$tries, , $timeout] = resolvedRetryPolicy($class);
+
+        if ($tries === null && ! method_exists($class, 'retryUntil')) {
+            $violations[] = "{$class} needs #[Tries] or retryUntil().";
+        }
+
+        if (! is_int($timeout) || $timeout < 1) {
+            $violations[] = "{$class} needs a positive #[Timeout].";
+
+            continue;
+        }
+
+        if ($timeout >= $retryAfter) {
+            $violations[] = "{$class} timeout ({$timeout}) must stay below queue.connections.redis.retry_after ({$retryAfter}).";
+        }
+
+        $queue = 'default';
+        for ($reflection = new ReflectionClass($class); $reflection !== false; $reflection = $reflection->getParentClass()) {
+            $attribute = $reflection->getAttributes(QueueAttribute::class)[0] ?? null;
+            if ($attribute !== null) {
+                $declared = $attribute->newInstance()->queue;
+                $queue = is_string($declared) ? $declared : $queue;
+                break;
+            }
+        }
+
+        if ($queue === 'ai' && $timeout > $aiWorkerTimeout) {
+            $violations[] = "{$class} timeout ({$timeout}) must not exceed supervisor-ai timeout ({$aiWorkerTimeout}).";
+        }
+    }
+
+    expect($violations)->toBe([]);
+});

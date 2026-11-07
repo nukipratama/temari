@@ -12,6 +12,7 @@ use App\Services\Strava\Exceptions\StravaConnectionRevokedException;
 use App\Services\Strava\Exceptions\StravaTokenRefreshFailedException;
 use App\Services\Strava\StravaClient;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Queue\Attributes\Timeout;
 use Illuminate\Queue\Attributes\Backoff;
 use Illuminate\Queue\Attributes\Tries;
 use Illuminate\Foundation\Queue\Queueable;
@@ -29,6 +30,7 @@ use Laravel\Pulse\Facades\Pulse;
  */
 #[Backoff([30, 120])]
 #[Tries(3)]
+#[Timeout(60)]
 class VerifyStravaRevocationJob implements ShouldQueue
 {
     use Queueable;

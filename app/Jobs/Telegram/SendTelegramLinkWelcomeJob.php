@@ -7,12 +7,14 @@ namespace App\Jobs\Telegram;
 use App\Services\Telegram\TelegramClient;
 use App\Services\Telegram\TelegramReplies;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Queue\Attributes\Timeout;
 use Illuminate\Queue\Attributes\Backoff;
 use Illuminate\Queue\Attributes\Tries;
 use Illuminate\Foundation\Queue\Queueable;
 
 #[Backoff([30, 120])]
 #[Tries(3)]
+#[Timeout(60)]
 class SendTelegramLinkWelcomeJob implements ShouldQueue
 {
     use Queueable;

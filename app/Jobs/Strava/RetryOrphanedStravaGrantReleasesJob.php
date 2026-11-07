@@ -8,7 +8,11 @@ use App\Services\Ops\MaintainerAlerter;
 use Illuminate\Foundation\Queue\Queueable;
 use App\Services\Strava\StravaGrantReleaseService;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Queue\Attributes\Tries;
+use Illuminate\Queue\Attributes\Timeout;
 
+#[Timeout(60)]
+#[Tries(3)]
 final class RetryOrphanedStravaGrantReleasesJob implements ShouldQueue
 {
     use Queueable;
