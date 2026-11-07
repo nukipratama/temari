@@ -760,7 +760,6 @@ describe('prescriptionWhy', () => {
             prescriptionWhy(
                 planDay({
                     prescription_reason: 'resolved coaching prescription',
-                    prescription_budget: null,
                 }),
             ),
         ).toBeNull();
@@ -793,6 +792,19 @@ describe('prescriptionWhy', () => {
                 }),
             ),
         ).toBe('kept easy. too close to another hard day.');
+    });
+
+    it("says a day was kept easy because the week's hard minutes are spent", () => {
+        expect(
+            prescriptionWhy(
+                planDay({
+                    session_type: 'easy',
+                    segments: easyBlock,
+                    prescription_reason:
+                        'easy because the weekly hard-minute budget is spent',
+                }),
+            ),
+        ).toBe("kept easy. this week's hard minutes are already spent.");
     });
 });
 

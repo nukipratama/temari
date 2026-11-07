@@ -584,7 +584,6 @@ describe('DayHeadline and DayDetail', () => {
                     },
                 ],
                 prescription_reason: 'easy volume',
-                prescription_budget: null,
             }),
         });
 
