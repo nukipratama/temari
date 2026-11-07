@@ -212,8 +212,8 @@ it('bounds every queued job by a timeout and a tries or retry window', function 
             }
         }
 
-        if ($queue === 'ai' && $timeout > $aiWorkerTimeout) {
-            $violations[] = "{$class} timeout ({$timeout}) must not exceed supervisor-ai timeout ({$aiWorkerTimeout}).";
+        if ($queue === 'ai' && $timeout !== $aiWorkerTimeout) {
+            $violations[] = "{$class} timeout ({$timeout}) must equal supervisor-ai timeout ({$aiWorkerTimeout}).";
         }
     }
 
