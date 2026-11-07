@@ -611,6 +611,25 @@ it('reads whether the overridden day is still open: today or later, with no run 
     'already past' => ['2026-09-08', false, false],
 ]);
 
+it('reads whether a budget bring-back\'s day is still open', function (bool $ran, bool $open): void {
+    Carbon::setTestNow('2026-09-09 12:00:00');
+    $user = gathererAthlete();
+    PlanAdaptation::factory()->for($user)->create([
+        'week_start' => '2026-09-07',
+        'hard_cap_minutes' => 60,
+        'override_kind' => PlanOverrideKind::BudgetDrop,
+        'override_date' => '2026-09-09',
+    ]);
+    if ($ran) {
+        ActivityDetail::factory()->for(Activity::factory()->for($user))->create(['start_date_local' => Carbon::parse('2026-09-09 07:00:00'), 'distance' => 8_000]);
+    }
+
+    expect(planInputsGatherer()->forUser($user, Carbon::today())->restoredDayOpen)->toBe($open);
+})->with([
+    'not run' => [false, true],
+    'run' => [true, false],
+]);
+
 it('reads this week\'s locked hard-minute cap and the day the athlete brought back over it', function (PlanOverrideKind $kind, ?string $broughtBack): void {
     Carbon::setTestNow('2026-09-09 12:00:00');
     $user = gathererAthlete();

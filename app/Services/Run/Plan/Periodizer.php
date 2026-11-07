@@ -367,6 +367,7 @@ final readonly class Periodizer
 
     private function persist(User $user, PlanInputs $inputs): void
     {
+        $inputs = $this->refundingUnneededBudgetOverride($inputs);
         $rows = $this->rowsFor($inputs);
 
         DB::transaction(function () use ($user, $inputs, $rows): void {
@@ -374,7 +375,7 @@ final readonly class Periodizer
             $current = $this->sessionsInHorizon($inputs);
 
             if ($this->containsNewFixedSession($inputs, $current)) {
-                $inputs = $this->gatherer->forUser($user, $inputs->today);
+                $inputs = $this->refundingUnneededBudgetOverride($this->gatherer->forUser($user, $inputs->today));
                 $rows = $this->rowsFor($inputs);
                 $reran = true;
                 $current = $this->sessionsInHorizon($inputs);
@@ -417,7 +418,7 @@ final readonly class Periodizer
 
             $current = $this->sessionsInHorizon($inputs);
             if (! $reran && $this->containsNewFixedSession($inputs, $current)) {
-                $inputs = $this->gatherer->forUser($user, $inputs->today);
+                $inputs = $this->refundingUnneededBudgetOverride($this->gatherer->forUser($user, $inputs->today));
                 $rows = $this->rowsFor($inputs);
                 $current = $this->sessionsInHorizon($inputs);
             }
@@ -490,6 +491,21 @@ final readonly class Periodizer
 
             $this->seasonService->recountPlannedGoals($user);
         });
+    }
+
+    private function refundingUnneededBudgetOverride(PlanInputs $inputs): PlanInputs
+    {
+        if ($inputs->budgetOverrideDate === null || ! $inputs->restoredDayOpen) {
+            return $inputs;
+        }
+
+        $refunded = $inputs->withBudgetOverrideRefunded();
+        $kept = $this->rowsFor($inputs)[$inputs->budgetOverrideDate] ?? null;
+        $without = $this->rowsFor($refunded)[$inputs->budgetOverrideDate] ?? null;
+
+        return $kept !== null && $without !== null
+            && $kept['session_type'] === $without['session_type']
+            && $kept['prescribed_hard_minutes'] === $without['prescribed_hard_minutes'] ? $refunded : $inputs;
     }
 
     /** @param array<string, array{week_hard_cap_minutes?: int|null, ...}> $rows */
@@ -698,9 +714,10 @@ final readonly class Periodizer
                 return $candidate;
             };
             if (isset($budgets[$date])) {
-                $fullRows[$date] = [...$row, ...$fitted($untrimmed[$date])->toArray()];
+                $full = $date === $goalPaceDate ? $fitted($untrimmed[$date]) : $untrimmed[$date];
+                $fullRows[$date] = [...$row, ...($fits($full) ? $full : new IntensityPrescription(0, null, null, null))->toArray()];
             }
-            if (($date === $goalPaceDate || isset($broughtBack[$date])) && ! $prescription->isEasy() && ! $fits($prescription)) {
+            if ($date === $goalPaceDate && ! $prescription->isEasy() && ! $fits($prescription)) {
                 $prescription = $fitted($prescription);
                 if (! $prescription->isEasy()) {
                     $prescription = new IntensityPrescription($prescription->hardMinutes, $prescription->paceBand, $prescription->paceSecPerKm, 'bounded by the distance this day holds', $prescription->raceContext);

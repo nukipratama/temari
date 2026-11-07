@@ -43,6 +43,7 @@ final readonly class PlanInputs
      * @param  int|null  $supportedTenKTimeSec  the time the athlete's fitness supports over 10K
      * @param  bool  $qualityRestored  the athlete brought back the quality session this week's adaptation dropped
      * @param  bool  $restoredDayOpen  the overridden day is today or later and has no run yet
+     * @param  bool  $budgetOverrideRefunded  the week no longer trims the day the athlete brought back over its hard-minute budget
      */
     public function __construct(
         public int $userId,
@@ -88,6 +89,7 @@ final readonly class PlanInputs
         public bool $restoredDayOpen = false,
         public ?int $lockedHardCapMinutes = null,
         public ?string $budgetOverrideDate = null,
+        public bool $budgetOverrideRefunded = false,
     ) {
     }
 
@@ -98,7 +100,7 @@ final readonly class PlanInputs
 
     public function refundsOverride(): bool
     {
-        return $this->restoreLapsed() && $this->restoredDayOpen;
+        return ($this->restoreLapsed() && $this->restoredDayOpen) || $this->budgetOverrideRefunded;
     }
 
     private function restoreLapsed(): bool
@@ -109,6 +111,11 @@ final readonly class PlanInputs
     public function withQualityRestored(bool $restored): self
     {
         return clone($this, ['qualityRestored' => $restored]);
+    }
+
+    public function withBudgetOverrideRefunded(): self
+    {
+        return clone($this, ['budgetOverrideDate' => null, 'budgetOverrideRefunded' => true]);
     }
 
     public function currentWeekStart(): Carbon
