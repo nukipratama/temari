@@ -704,8 +704,6 @@ export type PlanDayOverride =
           undoable: boolean;
       };
 
-/** `CurrentWeekPlanBuilder::forUser()` — Home's compact pull of the current
- *  week's plan, null once a user has no plan yet. */
 export interface HardBudget {
     cap_minutes: number;
     spent_minutes: number;
@@ -720,6 +718,8 @@ export interface HardBooking {
     minutes: number;
 }
 
+/** `CurrentWeekPlanBuilder::forUser()` — Home's compact pull of the current
+ *  week's plan, null once a user has no plan yet. */
 export interface WeekPlan {
     /** Training (non-rest) days this week actually holds, not the baseline's
      *  weekly target — a plan that began mid-week has fewer. */
