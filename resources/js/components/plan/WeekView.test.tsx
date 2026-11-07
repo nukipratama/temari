@@ -169,6 +169,24 @@ describe('WeekView', () => {
         clearNavigationMemory();
     });
 
+    it('opens with the hard-minute wallet when the week carries one, and not otherwise', () => {
+        const { rerender } = renderWeek();
+        expect(
+            screen.queryByText('hard min this week'),
+        ).not.toBeInTheDocument();
+
+        rerender({
+            hardBudget: {
+                cap_minutes: 60,
+                spent_minutes: 29,
+                booked_minutes: 15,
+                left_minutes: 16,
+            },
+        });
+
+        expect(screen.getByText('hard min this week')).toBeInTheDocument();
+    });
+
     it('heads the week with its number, dates, target, sessions and adherence', () => {
         renderWeek();
 

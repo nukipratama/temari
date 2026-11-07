@@ -20,6 +20,7 @@ import { Icon } from '@/components/ui/Icon';
 import { cn } from '@/lib/cn';
 import { formatDurationHMS } from '@/lib/pace';
 import {
+    budgetChange,
     dayStatusGlyph,
     deltaDirection,
     easedFromDelta,
@@ -121,6 +122,7 @@ function dayChanges(day: PlanDay) {
     const trimmed = adjustedFrom !== null && adjustedFrom > day.distance_km;
 
     return {
+        budgetDelta: budgetChange(day),
         sessionDelta: day.eased_from
             ? easedFromDelta(day.eased_from, day)
             : null,
@@ -159,12 +161,14 @@ function dayPoint(day: PlanDay) {
  * only there, never in the headline.
  */
 export function hasDayDetail(day: EditablePlanDay): boolean {
-    const { sessionDelta, paceDelta, weekFitDelta } = dayChanges(day);
+    const { budgetDelta, sessionDelta, paceDelta, weekFitDelta } =
+        dayChanges(day);
     const { purpose, doseWhy, tiltWhy, hint } = dayPoint(day);
     const { move, skip, restore } = day.actions;
 
     return (
         day.segments.some((s) => (s.minutes ?? 0) > 0) ||
+        budgetDelta !== null ||
         sessionDelta !== null ||
         paceDelta !== null ||
         weekFitDelta !== null ||
@@ -195,7 +199,8 @@ export function DayHeadline({ day }: Readonly<{ day: PlanDay }>) {
     const judged = judgedDayResult(day);
     const pace = judged === null ? targetLabel(day) : null;
     const isRest = day.session_type === 'rest';
-    const { sessionDelta, paceDelta, weekFitDelta } = dayChanges(day);
+    const { budgetDelta, sessionDelta, paceDelta, weekFitDelta } =
+        dayChanges(day);
     // A day excused before it passes is still `planned` server-side until
     // plan:score-compliance runs the next morning; the headline says "skipped" now.
     let status: string = day.skipped ? 'skip' : day.status;
@@ -207,6 +212,7 @@ export function DayHeadline({ day }: Readonly<{ day: PlanDay }>) {
     const tags = Array.from(
         new Set(
             [
+                budgetDelta !== null ? 'budget full' : null,
                 sessionDelta !== null || paceDelta !== null ? 'eased' : null,
                 weekFitDelta?.tag ?? null,
             ].filter((tag): tag is string => tag !== null),
@@ -283,7 +289,8 @@ export default function DayDetail({
 }>) {
     const [picking, setPicking] = useState(false);
 
-    const { sessionDelta, paceDelta, weekFitDelta } = dayChanges(day);
+    const { budgetDelta, sessionDelta, paceDelta, weekFitDelta } =
+        dayChanges(day);
     const { purpose, doseWhy, tiltWhy, hint } = dayPoint(day);
     const { move: canMove, skip: canSkip, restore: canUnskip } = day.actions;
     const showsPoint =
@@ -294,8 +301,23 @@ export default function DayDetail({
 
     return (
         <>
+            {budgetDelta && (
+                <>
+                    <ChangeRow
+                        label={budgetDelta.label}
+                        from={budgetDelta.from}
+                        to={budgetDelta.to}
+                        direction="down"
+                        tag="budget full"
+                    />
+                    <p className="mt-1 text-xs text-text-2">
+                        {budgetDelta.why}
+                    </p>
+                </>
+            )}
             {sessionDelta?.typeFrom != null && (
                 <ChangeRow
+                    className={budgetDelta ? 'mt-2' : undefined}
                     label="type"
                     from={sessionDelta.typeFrom}
                     to={sessionDelta.typeTo}
@@ -320,7 +342,7 @@ export default function DayDetail({
             )}
             {paceDelta && (
                 <ChangeRow
-                    className={sessionDelta ? 'mt-2' : undefined}
+                    className={budgetDelta || sessionDelta ? 'mt-2' : undefined}
                     label="pace"
                     from={paceDelta.from}
                     to={paceDelta.to}
@@ -335,7 +357,11 @@ export default function DayDetail({
             )}
             {weekFitDelta && (
                 <ChangeRow
-                    className={sessionDelta || paceDelta ? 'mt-2' : undefined}
+                    className={
+                        budgetDelta || sessionDelta || paceDelta
+                            ? 'mt-2'
+                            : undefined
+                    }
                     label="km"
                     from={weekFitDelta.from}
                     to={weekFitDelta.to}
@@ -347,7 +373,7 @@ export default function DayDetail({
             {showsPoint && (
                 <div
                     className={cn(
-                        sessionDelta || paceDelta || weekFitDelta
+                        budgetDelta || sessionDelta || paceDelta || weekFitDelta
                             ? 'mt-2'
                             : undefined,
                     )}

@@ -41,6 +41,13 @@ export default {
                         direction="down"
                         tag="trimmed"
                     />
+                    <ChangeRow
+                        label="finish"
+                        from="15 min"
+                        to="easy"
+                        direction="down"
+                        tag="budget full"
+                    />
                 </div>
             ),
         },
