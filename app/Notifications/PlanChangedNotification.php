@@ -11,6 +11,7 @@ use App\Models\PlannedSession;
 use App\Models\User;
 use App\Notifications\Concerns\AppendsUnreadBadge;
 use App\Notifications\Concerns\RechecksRouteAtDelivery;
+use App\Notifications\Concerns\SetsWebPushExpiry;
 use App\Notifications\Messages\InboxMessage;
 use App\Notifications\Messages\TelegramMessage;
 use App\Services\Notifications\ChannelRouter;
@@ -30,6 +31,7 @@ class PlanChangedNotification extends Notification implements ShouldQueue
     use RechecksRouteAtDelivery {
         shouldSend as routeStillAllows;
     }
+    use SetsWebPushExpiry;
 
     public int $tries = 3;
 
@@ -94,7 +96,7 @@ class PlanChangedNotification extends Notification implements ShouldQueue
             ->body(self::body($session))
             ->icon('/icon-192.png')
             ->data($this->withUnreadBadge(['url' => route('plan')], $notifiable))
-            ->options(['TTL' => max(1, (int) now()->diffInSeconds($this->staleAfter))]);
+            ->options(['TTL' => $this->secondsUntil(Carbon::parse($this->date)->endOfDay())]);
     }
 
     public function toInbox(User $notifiable): InboxMessage
