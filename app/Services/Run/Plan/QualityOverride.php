@@ -75,6 +75,17 @@ final class QualityOverride
             return ['kind' => PlanOverrideKind::ReadinessEase->value, 'state' => 'offered', 'label' => "i'm ready", 'reason' => $easeNote];
         }
 
+        $budget = $day->prescription_budget;
+        if ($budget !== null) {
+            $cost = $budget['needed_minutes'] - $budget['left_minutes'];
+
+            return [
+                'kind' => PlanOverrideKind::BudgetDrop->value,
+                'state' => 'offered',
+                'label' => $cost > 0 ? "bring it back · {$cost} hard min over this week's cap" : 'bring it back',
+                'reason' => "this week has {$budget['left_minutes']} of its {$budget['cap_minutes']} hard minutes left, and this needs {$budget['needed_minutes']}.",
+            ];
+        }
         $restorable = $week->restorable_quality;
         if ($restorable !== null && $restorable['date'] === $day->date->toDateString()
             && $week->reason === AdaptationReason::RanTooHard && $week->quality_delta < 0 && ! self::isWorkout($day->session_type)) {

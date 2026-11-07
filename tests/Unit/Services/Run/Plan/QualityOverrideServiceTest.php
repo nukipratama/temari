@@ -8,7 +8,9 @@ use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\PlanAdaptation;
 use App\Models\PlannedSession;
+use App\Models\TrainingPreference;
 use App\Models\User;
+use App\Models\WeeklySnapshot;
 use App\Notifications\DayClampedNotification;
 use App\Services\Run\Plan\Periodizer;
 use App\Services\Run\Plan\QualityOverrideService;
@@ -159,4 +161,28 @@ it('refuses rather than failing once a rebuild that lands while it waits replace
 
     expect(overrideRefusal(fn () => overrideService()->take($user, $session, Carbon::today())))->not->toBeNull()
         ->and($week->refresh()->override_kind)->toBeNull();
+});
+
+it('brings back a session the hard-minute budget trimmed, over the cap, and trims it again on undo', function (): void {
+    Carbon::setTestNow('2026-08-10 06:00:00');
+    $user = User::factory()->create();
+    foreach (range(0, 3) as $i) {
+        WeeklySnapshot::factory()->for($user)->create(['week_ending' => Carbon::today()->subWeeks($i)->toDateString(), 'runs' => 4, 'distance_km' => 30.0]);
+    }
+    TrainingPreference::factory()->for($user)->create(['sessions_per_week' => 4]);
+    seedConfirmedEffort($user, 10_000, 2700, Carbon::today());
+    app(Periodizer::class)->regenerate($user, Carbon::today());
+    PlanAdaptation::query()->where('user_id', $user->id)->update(['hard_cap_minutes' => 1]);
+    app(Periodizer::class)->regenerate($user, Carbon::today());
+    $trimmed = PlannedSession::query()->where('user_id', $user->id)->whereNotNull('prescription_budget')->orderBy('date')->firstOrFail();
+    $day = static fn (): PlannedSession => PlannedSession::query()->where('user_id', $user->id)->whereDate('date', $trimmed->date)->firstOrFail();
+
+    expect(overrideService()->take($user, $trimmed, Carbon::today()))->toBe(PlanOverrideKind::BudgetDrop)
+        ->and($day()->prescription_budget)->toBeNull()
+        ->and($day()->prescribed_hard_minutes)->toBeGreaterThan(0);
+
+    overrideService()->undo($user, $day(), Carbon::today());
+
+    expect($day()->prescription_budget)->not->toBeNull()
+        ->and(PlanAdaptation::query()->where('user_id', $user->id)->firstOrFail()->override_kind)->toBeNull();
 });

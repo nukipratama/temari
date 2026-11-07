@@ -184,6 +184,7 @@ export function hasDayDetail(day: EditablePlanDay): boolean {
         Boolean(day.result_note) ||
         day.activities.length > 0 ||
         day.override?.kind === 'readiness_ease' ||
+        day.override?.kind === 'budget_drop' ||
         move ||
         skip ||
         restore
@@ -314,6 +315,12 @@ export default function DayDetail({
                         {budgetDelta.why}
                     </p>
                 </>
+            )}
+            {day.override?.kind === 'budget_drop' && (
+                <QualityOverrideAction
+                    sessionId={day.id}
+                    override={day.override}
+                />
             )}
             {sessionDelta?.typeFrom != null && (
                 <ChangeRow

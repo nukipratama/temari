@@ -651,9 +651,10 @@ final readonly class Periodizer
         // Without VDOT there is no trustworthy time denominator. Keep the
         // phase/day caps, but do not invent a weekly percentage ceiling.
         $untrimmed = $prescriptions;
+        $broughtBack = isset($rows[(string) $inputs->budgetOverrideDate]) ? [(string) $inputs->budgetOverrideDate => true] : [];
         $hardCeiling = $unknownDemandingMinutes ? 0 : $this->hardCeiling($rows, $kmByDate, $prescriptions, $inputs, $weekStart, $workloadSessions);
-        while ($hardCeiling !== null && array_sum(array_map(static fn (IntensityPrescription $p): int => $p->hardMinutes, $prescriptions)) > $hardCeiling) {
-            $adjustable = array_diff_key($prescriptions, [(string) $trialDate => true]);
+        while ($hardCeiling !== null && self::hardMinutesOf(array_diff_key($prescriptions, $broughtBack)) > $hardCeiling) {
+            $adjustable = array_diff_key($prescriptions, [(string) $trialDate => true], $broughtBack);
             $hardMinutes = array_map(static fn (IntensityPrescription $p): int => $p->hardMinutes, $adjustable);
             $largestHardMinutes = $hardMinutes === [] ? 0 : max($hardMinutes);
             $date = array_find_key($adjustable, static fn (IntensityPrescription $candidate): bool => $candidate->hardMinutes === $largestHardMinutes);
@@ -661,7 +662,7 @@ final readonly class Periodizer
                 break;
             }
             $current = $prescriptions[$date];
-            $over = array_sum(array_map(static fn (IntensityPrescription $p): int => $p->hardMinutes, $prescriptions)) - $hardCeiling;
+            $over = self::hardMinutesOf(array_diff_key($prescriptions, $broughtBack)) - $hardCeiling;
             $prescriptions[$date] = $resolve($date, max(0, $current->hardMinutes - $over));
             if ($prescriptions[$date]->hardMinutes === $current->hardMinutes) {
                 break;
@@ -677,7 +678,7 @@ final readonly class Periodizer
         if ($budget !== null && $hardCeiling !== null) {
             foreach ($prescriptions as $date => $prescription) {
                 if ($prescription->hardMinutes < $untrimmed[$date]->hardMinutes) {
-                    $budgets[$date] = self::budgetNote($budget, $hardCeiling - self::hardMinutesOf($prescriptions) + $prescription->hardMinutes, $untrimmed[$date]->hardMinutes);
+                    $budgets[$date] = self::budgetNote($budget, $hardCeiling - self::hardMinutesOf(array_diff_key($prescriptions, $broughtBack)) + $prescription->hardMinutes, $untrimmed[$date]->hardMinutes);
                 }
             }
         }
@@ -688,7 +689,7 @@ final readonly class Periodizer
                 SegmentGenerator::forPrescription($row['session_type'], $row['phase'], $kmByDate[$date], $inputs->paces, $candidate),
                 static fn (SessionSegment $segment): bool => in_array($segment->key, [SegmentKey::Main, SegmentKey::Interval], true) && $segment->paceLabel !== PaceBand::Easy,
             );
-            if ($date === $goalPaceDate && ! $prescription->isEasy() && ! $fits($prescription)) {
+            if (($date === $goalPaceDate || isset($broughtBack[$date])) && ! $prescription->isEasy() && ! $fits($prescription)) {
                 do {
                     $prescription = $resolve($date, $prescription->hardMinutes - 1);
                 } while (! $prescription->isEasy() && ! $fits($prescription));
@@ -721,7 +722,7 @@ final readonly class Periodizer
             $asPrescriptions = array_map(self::prescriptionOfRow(...), $withFinish);
             $ceiling = $this->hardCeiling($withFinish, $kmByDate, $asPrescriptions, $inputs, $weekStart, $workloadSessions);
             $booked = array_sum(array_column($withFinish, 'prescribed_hard_minutes'));
-            if ($ceiling === null || $booked <= $ceiling) {
+            if ($ceiling === null || $booked <= $ceiling || isset($broughtBack[$longDate])) {
                 $rows = $withFinish;
             } else {
                 $finishMinutes = $withFinish[$longDate]['prescribed_hard_minutes'];

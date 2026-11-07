@@ -8,4 +8,5 @@ enum PlanOverrideKind: string
 {
     case ReadinessEase = 'readiness_ease';
     case WeeklyDrop = 'weekly_drop';
+    case BudgetDrop = 'budget_drop';
 }

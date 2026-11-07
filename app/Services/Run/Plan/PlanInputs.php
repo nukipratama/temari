@@ -87,6 +87,7 @@ final readonly class PlanInputs
         public bool $qualityRestored = false,
         public bool $restoredDayOpen = false,
         public ?int $lockedHardCapMinutes = null,
+        public ?string $budgetOverrideDate = null,
     ) {
     }
 

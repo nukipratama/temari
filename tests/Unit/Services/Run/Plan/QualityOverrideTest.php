@@ -138,3 +138,23 @@ it('keeps a taken override, its note and its undo once the week falls before rac
         ->and(overrideFor(overrideDay('2026-09-17'), $open))->toBe(['kind' => 'weekly_drop', 'state' => 'taken', 'note' => QualityOverride::TAKEN_NOTE, 'undoable' => true])
         ->and(overrideFor(overrideDay(), $open, 'quality can wait.', ReadinessCeiling::ModerateOk))->toBeNull();
 });
+
+it('offers a session the hard-minute budget took back, stating how far over the cap it puts the week', function (): void {
+    $day = overrideDay('2026-09-20', SessionType::Long, ['prescription_budget' => ['cap_minutes' => 60, 'left_minutes' => 0, 'needed_minutes' => 15]]);
+
+    expect(overrideFor($day, overrideWeek(['reason' => AdaptationReason::Steady, 'quality_delta' => 0, 'restorable_quality' => null])))->toBe([
+        'kind' => 'budget_drop',
+        'state' => 'offered',
+        'label' => "bring it back · 15 hard min over this week's cap",
+        'reason' => 'this week has 0 of its 60 hard minutes left, and this needs 15.',
+    ]);
+});
+
+it('offers no budget bring-back on a day already run or gone', function (string $date, bool $ran): void {
+    $day = overrideDay($date, SessionType::Long, ['prescription_budget' => ['cap_minutes' => 60, 'left_minutes' => 5, 'needed_minutes' => 15]]);
+
+    expect(overrideFor($day, ran: $ran))->toBeNull();
+})->with([
+    'yesterday' => ['2026-09-14', false],
+    'already ran' => ['2026-09-15', true],
+]);

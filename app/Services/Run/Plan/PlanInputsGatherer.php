@@ -139,6 +139,7 @@ final readonly class PlanInputsGatherer
             qualityRestored: $restoredDay instanceof Carbon,
             restoredDayOpen: $restoredDay instanceof Carbon && ! $restoredDay->lt($today) && $this->sessionMatcher->activityByDate($user, $restoredDay, $restoredDay) === [],
             lockedHardCapMinutes: $currentWeekAdaptation?->hard_cap_minutes,
+            budgetOverrideDate: $currentWeekAdaptation?->override_kind === PlanOverrideKind::BudgetDrop ? $currentWeekAdaptation->override_date?->toDateString() : null,
         );
     }
 
