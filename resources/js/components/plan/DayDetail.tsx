@@ -342,7 +342,7 @@ export default function DayDetail({
             )}
             {paceDelta && (
                 <ChangeRow
-                    className={sessionDelta ? 'mt-2' : undefined}
+                    className={budgetDelta || sessionDelta ? 'mt-2' : undefined}
                     label="pace"
                     from={paceDelta.from}
                     to={paceDelta.to}
@@ -357,7 +357,11 @@ export default function DayDetail({
             )}
             {weekFitDelta && (
                 <ChangeRow
-                    className={sessionDelta || paceDelta ? 'mt-2' : undefined}
+                    className={
+                        budgetDelta || sessionDelta || paceDelta
+                            ? 'mt-2'
+                            : undefined
+                    }
                     label="km"
                     from={weekFitDelta.from}
                     to={weekFitDelta.to}
