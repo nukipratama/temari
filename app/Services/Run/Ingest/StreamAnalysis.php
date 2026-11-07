@@ -71,6 +71,9 @@ class StreamAnalysis
 
     public const int EASY_CAP_MARGIN_BPM = 5;
 
+    /** Slower than any easy ceiling: where stopped and walking high-heart-rate seconds are filed. */
+    private const int SLOWEST_PACE_SEC = 1200;
+
     /** Best-effort window durations in seconds → label suffix. */
     public const array BEST_EFFORT_WINDOWS = [
         30 => '30s',
@@ -118,6 +121,7 @@ class StreamAnalysis
             $this->elevation($altitude),
             $this->timeInZones($intervals, $heartrate, $hrZones),
             $this->easyCapOverage($streams, $hrZones),
+            $this->highHeartRateByPace($streams, $hrZones),
             $this->stoppedTime($intervals, $velocity),
             $this->cadenceDistribution($intervals, $cadence, $optimalCadenceSpm),
             $this->grade($grade, $gradeCost, $seconds, $intervals, $velocity),
@@ -545,6 +549,47 @@ class StreamAnalysis
         }
 
         return $plausible === 0 ? [] : ['easy_cap_bpm' => (int) $cap, 'over_easy_cap_sec' => (int) round($over)];
+    }
+
+    /**
+     * Seconds at or above the bottom of Z3, keyed by the whole-second grade-adjusted
+     * pace (sec/km) they were run at, so a reader can count only the high heart rate
+     * that came with pace faster than its easy ceiling. A stopped sample keys at
+     * {@see self::SLOWEST_PACE_SEC}. Empty without heart-rate and velocity streams.
+     *
+     * @param  array<string, mixed>  $streams  raw Strava streams dict
+     * @param  array<string, array{lo: int, hi: int}>  $hrZones
+     * @return array{high_hr_sec_by_gap_pace?: array<int, int>}
+     */
+    public function highHeartRateByPace(array $streams, array $hrZones): array
+    {
+        $floor = $hrZones[self::EASY_CAP_ZONE]['lo'] ?? null;
+        $intervals = self::intervals(self::floats($this->data($streams, 'time')));
+        $heartrate = self::floats($this->data($streams, 'heartrate'));
+        $velocity = self::floats($this->data($streams, 'velocity_smooth'));
+        $grade = self::floats($this->data($streams, 'grade_smooth'));
+        $n = min(count($intervals), count($heartrate), count($velocity));
+        if ($floor === null || $n < 1) {
+            return [];
+        }
+
+        $byPace = [];
+        for ($i = 0; $i < $n; $i++) {
+            if ($heartrate[$i] < $floor || $heartrate[$i] > self::HR_PLAUSIBLE_MAX_BPM) {
+                continue;
+            }
+            $flatVelocity = $velocity[$i] * (isset($grade[$i]) ? $this->gradeCostFactor($grade[$i] / 100) : 1.0);
+            $pace = $velocity[$i] < self::STOP_VELOCITY_MS
+                ? self::SLOWEST_PACE_SEC
+                : min(self::SLOWEST_PACE_SEC, (int) floor(1000 / $flatVelocity));
+            $byPace[$pace] = ($byPace[$pace] ?? 0.0) + $intervals[$i];
+        }
+        ksort($byPace);
+
+        return ['high_hr_sec_by_gap_pace' => array_filter(
+            array_map(static fn (float $seconds): int => (int) round($seconds), $byPace),
+            static fn (int $seconds): bool => $seconds > 0,
+        )];
     }
 
     /**

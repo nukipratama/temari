@@ -1200,3 +1200,33 @@ it('publishes no heart-rate-against-pace reading at all on genuinely steep terra
     expect($summary)->not->toHaveKey('decoupling_pct')
         ->and($summary)->not->toHaveKey('hr_drift_bpm');
 });
+
+it('files Z3-or-above seconds by the grade-adjusted pace they were run at', function (): void {
+    $streams = easyCapStreams(
+        601,
+        static fn (int $t): int => $t < 200 ? 150 : 165,
+        static fn (int $t): float => $t >= 500 ? 0.0 : ($t >= 400 ? 4.0 : 2.5),
+    );
+    $streams['grade_smooth'] = ['data' => array_fill(0, 601, 0.0)];
+
+    expect(streamAnalysis()->highHeartRateByPace($streams, defaultZones()))
+        ->toBe(['high_hr_sec_by_gap_pace' => [250 => 100, 400 => 200, 1200 => 100]]);
+});
+
+it('reads an uphill stretch at the flat pace its effort was worth', function (): void {
+    $streams = easyCapStreams(301, static fn (int $t): int => 165, static fn (int $t): float => 2.5);
+    $streams['grade_smooth'] = ['data' => array_fill(0, 301, 8.0)];
+
+    $byPace = arrayOf(data_get(streamAnalysis()->highHeartRateByPace($streams, defaultZones()), 'high_hr_sec_by_gap_pace'));
+
+    expect(array_key_first($byPace))->toBeLessThan(400);
+});
+
+it('reports no pace breakdown without a velocity stream or a zone 3', function (): void {
+    $treadmill = easyCapStreams(300, static fn (int $t): int => 165);
+    $paced = easyCapStreams(300, static fn (int $t): int => 165, static fn (int $t): float => 3.0);
+
+    expect(streamAnalysis()->highHeartRateByPace($treadmill, defaultZones()))->toBe([])
+        ->and(streamAnalysis()->highHeartRateByPace($paced, ['Z1' => ['lo' => 100, 'hi' => 999]]))->toBe([])
+        ->and(streamAnalysis()->compute($paced, defaultZones(), null, 170))->toHaveKey('high_hr_sec_by_gap_pace');
+});

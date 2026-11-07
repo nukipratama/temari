@@ -187,3 +187,28 @@ it('reads the time over the easy cap only beside the cap it was measured against
         ->and(StreamSummary::fromArray(['over_easy_cap_sec' => 420])->overEasyCapSec())->toBeNull()
         ->and(StreamSummary::fromArray([])->easyCapBpm())->toBeNull();
 });
+
+it('counts a hard minute only where Z3-or-above heart rate came with pace faster than the easy ceiling', function (array $byPace, float $expected): void {
+    $summary = StreamSummary::fromArray([
+        'time_in_zone_min' => ['Z1' => 0, 'Z2' => 10, 'Z3' => 30, 'Z4' => 1.5, 'Z5' => 0],
+        'high_hr_sec_by_gap_pace' => $byPace,
+    ]);
+
+    expect($summary->hardMinutes(330))->toBe($expected);
+})->with([
+    'a hot easy run: high heart rate at easy pace' => [[420 => 1500, 425 => 390], 0.0],
+    'a tempo: high heart rate at tempo pace' => [[290 => 1200, 295 => 600, 420 => 90], 30.0],
+    'the ceiling pace itself is easy' => [[329 => 60, 330 => 600], 1.0],
+]);
+
+it('lets heart rate alone decide without a pace stream or an easy ceiling', function (): void {
+    $treadmill = StreamSummary::fromArray(['time_in_zone_min' => ['Z2' => 10, 'Z3' => 30, 'Z4' => 1.5]]);
+    $paced = StreamSummary::fromArray([
+        'time_in_zone_min' => ['Z2' => 10, 'Z3' => 30, 'Z4' => 1.5],
+        'high_hr_sec_by_gap_pace' => [420 => 1890],
+    ]);
+
+    expect($treadmill->hardMinutes(330))->toBe(31.5)
+        ->and($paced->hardMinutes(null))->toBe(31.5)
+        ->and(StreamSummary::fromArray([])->hardMinutes(330))->toBeNull();
+});

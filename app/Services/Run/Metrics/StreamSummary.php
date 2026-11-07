@@ -83,6 +83,33 @@ final readonly class StreamSummary
     }
 
     /**
+     * Minutes with heart rate in Z3 or above at a grade-adjusted pace faster than
+     * the easy ceiling. Heart rate alone decides when the run has no pace stream or
+     * no ceiling is known; null when the run carries no zone breakdown.
+     */
+    public function hardMinutes(?int $easyCeilingSecPerKm): ?float
+    {
+        $zoneMinutes = $this->zoneMinutes();
+        if ($zoneMinutes === null) {
+            return null;
+        }
+
+        $byPace = $this->array('high_hr_sec_by_gap_pace');
+        if ($byPace === null || $easyCeilingSecPerKm === null) {
+            return round((float) ($zoneMinutes['Z3'] ?? 0) + (float) ($zoneMinutes['Z4'] ?? 0) + (float) ($zoneMinutes['Z5'] ?? 0), 1);
+        }
+
+        $seconds = 0.0;
+        foreach ($byPace as $pace => $sec) {
+            if ((int) $pace < $easyCeilingSecPerKm && is_numeric($sec)) {
+                $seconds += (float) $sec;
+            }
+        }
+
+        return round($seconds / 60, 1);
+    }
+
+    /**
      * Combined share of moving time spent in Z4 and Z5.
      *
      * Distinct from {@see self::hardZoneShare()}: Z3 starts around 80% of max HR, so a Z3-inclusive
