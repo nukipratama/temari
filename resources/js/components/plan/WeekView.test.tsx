@@ -362,7 +362,7 @@ describe('WeekView', () => {
         ).toBeInTheDocument();
     });
 
-    it('leaves a past rest day out of how the week has gone', () => {
+    it('leaves a rest day graded done out of how the week has gone', () => {
         renderWeek({
             days: WEEK.map((d) =>
                 d.session_type === 'rest' ? { ...d, status: 'done' } : d,
