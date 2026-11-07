@@ -466,3 +466,17 @@ it('gives a brought-back session its full dose outside the locked cap, without t
         ->and($rows[$trimmedDate]['prescription_budget'] ?? null)->toBeNull()
         ->and($others($rows))->toBeGreaterThanOrEqual($others($locked));
 });
+
+it('withholds the budget note, and so the bring-back, from a session the hard-day spacing would demote at full dose', function (): void {
+    $base = planInputsWith(arcInputs(today: '2026-10-07'), [
+        'paces' => ['easy' => 360, 'marathon' => 300, 'threshold' => 270, 'interval' => 240],
+        'longRunBaselineKm' => 12.0,
+        'actualSessions' => [['date' => '2026-10-07', 'duration_minutes' => 60, 'hard_minutes' => 40.0, 'demanding' => true]],
+    ]);
+    $unlocked = app(Periodizer::class)->rowsFor($base);
+    $locked = app(Periodizer::class)->rowsFor(planInputsWith($base, ['lockedHardCapMinutes' => 10]));
+
+    expect($unlocked['2026-10-08']['prescription_reason'])->toBe('easy to preserve recovery between hard days')
+        ->and($locked['2026-10-08']['prescribed_hard_minutes'])->toBe(0)
+        ->and($locked['2026-10-08']['prescription_budget'] ?? null)->toBeNull();
+});

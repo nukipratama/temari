@@ -683,8 +683,12 @@ final readonly class Periodizer
             }
         }
 
+        $fullRows = [];
         foreach ($rows as $date => &$row) {
             $prescription = $prescriptions[$date];
+            if (isset($budgets[$date])) {
+                $fullRows[$date] = [...$row, ...$untrimmed[$date]->toArray()];
+            }
             $fits = static fn (IntensityPrescription $candidate): bool => array_any(
                 SegmentGenerator::forPrescription($row['session_type'], $row['phase'], $kmByDate[$date], $inputs->paces, $candidate),
                 static fn (SessionSegment $segment): bool => in_array($segment->key, [SegmentKey::Main, SegmentKey::Interval], true) && $segment->paceLabel !== PaceBand::Easy,
@@ -727,6 +731,7 @@ final readonly class Periodizer
             } else {
                 $finishMinutes = $withFinish[$longDate]['prescribed_hard_minutes'];
                 $finishBudget = $this->hardBudget($withFinish, $kmByDate, $asPrescriptions, $inputs, $weekStart, $workloadSessions);
+                $fullRows[$longDate] = $withFinish[$longDate];
                 $rows[$longDate]['prescription_reason'] = self::NO_FAST_FINISH_REASON;
                 $rows[$longDate]['prescription_budget'] = $finishBudget === null ? null : self::budgetNote($finishBudget, $ceiling - $booked + $finishMinutes, $finishMinutes);
             }
@@ -736,7 +741,21 @@ final readonly class Periodizer
         $weekCap = $weekBudget === null ? null : (int) floor($weekBudget['cap']);
         $rows = array_map(static fn (array $row): array => [...$row, 'week_hard_cap_minutes' => $weekCap], $rows);
 
-        return self::capQualityAroundWeeklyHardDays($rows, $workloadSessions + $priorRows, $weekStart);
+        $fixed = $workloadSessions + $priorRows;
+        $capped = self::capQualityAroundWeeklyHardDays($rows, $fixed, $weekStart);
+        foreach ($fullRows as $date => $full) {
+            if (($capped[$date]['prescription_budget'] ?? null) === null) {
+                continue;
+            }
+            $broughtBackWeek = self::capQualityAroundWeeklyHardDays([...$rows, $date => [...$rows[$date], ...$full]], $fixed, $weekStart);
+            $displaces = array_any($capped, static fn (array $row, string $other): bool => $other !== $date
+                && $broughtBackWeek[$other]['prescribed_hard_minutes'] !== $row['prescribed_hard_minutes']);
+            if ($broughtBackWeek[$date]['prescribed_hard_minutes'] === 0 || $displaces) {
+                $capped[$date]['prescription_budget'] = null;
+            }
+        }
+
+        return $capped;
     }
 
     /** @param array{prescribed_hard_minutes: int, prescribed_pace_band: PaceBand|null, prescribed_pace_sec_per_km: int|null, prescription_reason: string|null, prescription_race_context: array<string, int|float|string>|null, ...} $row */
