@@ -24,13 +24,29 @@ final class RecommendationHistory
         return RecommendationRevision::query()->firstOrCreate([
             'user_id' => $userId,
             'date' => $date,
-            'fingerprint' => hash('sha256', json_encode([$policyVersion, $original, $effective], JSON_THROW_ON_ERROR)),
+            'fingerprint' => hash('sha256', json_encode([$policyVersion, $original, self::withoutReadinessInputs($effective)], JSON_THROW_ON_ERROR)),
         ], [
             'policy_version' => $policyVersion,
             'original' => $original,
             'effective' => $effective,
             'created_at' => Carbon::now('UTC'),
         ]);
+    }
+
+    /**
+     * The readiness inputs carry hour counters that grow while the verdict
+     * stands, so only the verdict tells one shown advice from another.
+     *
+     * @param  array<string, mixed>  $effective
+     * @return array<string, mixed>
+     */
+    private static function withoutReadinessInputs(array $effective): array
+    {
+        if (is_array($effective['readiness_assessment'] ?? null)) {
+            unset($effective['readiness_assessment']['inputs']);
+        }
+
+        return $effective;
     }
 
     /** @param array<string, mixed> $original

@@ -110,3 +110,17 @@ it('reads back the advice a token carries and rejects one it did not sign', func
     ])
         ->and(fn () => $history->advice('not-a-token'))->toThrow(DecryptException::class);
 });
+
+it('records one revision while only the readiness inputs move, and a new one when its verdict changes', function (): void {
+    $session = PlannedSession::factory()->create();
+    $history = app(RecommendationHistory::class);
+    $shown = fn (string $ceiling, int $hoursSinceRun): RecommendationRevision => $history->record($session->user_id, $session->date->toDateString(), ['session_type' => 'easy'], [
+        'session_type' => 'easy',
+        'readiness_assessment' => ['ceiling' => $ceiling, 'reasons' => [], 'inputs' => ['recovery_hours_since_any_run' => $hoursSinceRun]],
+    ]);
+    $first = $shown('quality_ok', 20);
+
+    expect($shown('quality_ok', 21)->id)->toBe($first->id)
+        ->and($shown('easy_only', 21)->id)->not->toBe($first->id)
+        ->and(data_get($first->refresh()->effective, 'readiness_assessment.inputs'))->toBe(['recovery_hours_since_any_run' => 20]);
+});
