@@ -789,6 +789,22 @@ describe('budgetChange', () => {
         );
     });
 
+    it('leaves a trimmed session alone once readiness eased it to easy', () => {
+        expect(
+            budgetChange(
+                planDay({
+                    session_type: 'easy',
+                    prescription_budget: budget,
+                    eased_from: {
+                        session_type: 'tempo',
+                        distance_km: 9,
+                        voice: null,
+                    },
+                }),
+            ),
+        ).toBeNull();
+    });
+
     it('hides the generic dose reason once the budget row explains the day', () => {
         expect(
             prescriptionWhy(

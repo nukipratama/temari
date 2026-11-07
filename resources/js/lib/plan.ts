@@ -553,6 +553,9 @@ const KEPT_EASY_WHY: Record<string, string> = {
         "kept easy. the day's too short to fit a proper quality set.",
 };
 
+const BUDGET_SPENT_REASON =
+    'easy because the weekly hard-minute budget is spent';
+
 const NO_FAST_FINISH_REASON =
     'no fast finish because the weekly hard-minute budget is spent';
 
@@ -582,17 +585,21 @@ export function budgetChange(day: PlanDay): BudgetChange | null {
         };
     }
 
+    if (day.prescription_reason === BUDGET_SPENT_REASON) {
+        return {
+            label: 'work',
+            from: `${budget.needed_minutes} hard min`,
+            to: 'easy',
+            why: `${spent}, so this one stays easy.`,
+        };
+    }
+
     const work = day.segments
         .filter((s) => s.zone > 'Z2')
         .reduce((sum, s) => sum + (s.minutes ?? 0), 0);
 
     return work === 0
-        ? {
-              label: 'work',
-              from: `${budget.needed_minutes} hard min`,
-              to: 'easy',
-              why: `${spent}, so this one stays easy.`,
-          }
+        ? null
         : {
               label: 'work',
               from: `${budget.needed_minutes} min`,
