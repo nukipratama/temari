@@ -32,6 +32,10 @@ afterEach(fn () => Carbon::setTestNow());
 /** @param array<string, mixed> $attributes */
 function changedSession(User $user, array $attributes): PlannedSession
 {
+    if (! PlanAdaptation::query()->where('user_id', $user->id)->exists()) {
+        PlanAdaptation::factory()->for($user)->create(['week_start' => '2026-11-02']);
+    }
+
     return PlannedSession::factory()->for($user)->create([
         'date' => CHANGED_DAY,
         'phase' => PlanPhase::Build,
@@ -131,6 +135,25 @@ it('skips a change that reverted before sending, and frees the session for a lat
     $notice->announce($user, $baseline, Carbon::today());
 
     Notification::assertSentToTimes($user, PlanChangedNotification::class, 2);
+});
+
+it('leaves out the bring-back line once the plan no longer offers one', function (array $week, array $day): void {
+    $user = User::factory()->create();
+    PlanAdaptation::factory()->for($user)->create(['week_start' => '2026-11-02', ...$week]);
+    changedSession($user, ['prescribed_hard_minutes' => 0, 'prescribed_pace_band' => null, 'prescription_reason' => Periodizer::BUDGET_SPENT_REASON, 'prescription_budget' => ['cap_minutes' => 60, 'left_minutes' => 4, 'needed_minutes' => 25], ...$day]);
+
+    expect(new PlanChangedNotification(CHANGED_DAY, CHANGED_WAS)->toInbox($user)->body)->toBe("This week's hard-minute budget is spent.");
+})->with([
+    'override already taken this week' => [['override_kind' => 'weekly_drop', 'override_date' => '2026-11-04'], []],
+    'day skipped' => [[], ['skipped' => true]],
+]);
+
+it('says nothing about a day that has passed by the time it is released', function (): void {
+    $user = User::factory()->create();
+    changedSession($user, ['prescribed_hard_minutes' => 0]);
+    Carbon::setTestNow(Carbon::parse(CHANGED_DAY)->addDay()->setTime(4, 0));
+
+    expect(new PlanChangedNotification(CHANGED_DAY, CHANGED_WAS)->shouldSend($user, InAppChannel::class))->toBeFalse();
 });
 
 it('skips a session the athlete has since run or pinned', function (array $attributes): void {
