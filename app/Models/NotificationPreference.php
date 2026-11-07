@@ -17,7 +17,7 @@ use Override;
  * **What** gets sent — `notifications_enabled` — is one channel-neutral master
  * switch over everything Temari initiates: the post-run story, the weekly and
  * monthly recaps, the morning briefing push, the fitness-improved word, the
- * time-trial check, the hot-easy-run warning, the race-day-tomorrow reminder, the race outcome check-in and
+ * time-trial check, the hot-easy-run warning, the plan-change word, the race-day-tomorrow reminder, the race outcome check-in and
  * the streak-at-risk nudge. The same switch gates Telegram and web push alike.
  *
  * The morning briefing push also has its own switch, `briefing_push_enabled`,
