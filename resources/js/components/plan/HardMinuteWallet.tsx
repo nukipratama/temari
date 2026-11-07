@@ -62,7 +62,7 @@ export default function HardMinuteWallet({
                     style={{ width: width(spent) }}
                 />
                 <span
-                    className="h-full bg-ember/25"
+                    className="h-full bg-ember/18"
                     style={{ width: width(booked) }}
                 />
                 {used > cap && (
@@ -75,7 +75,7 @@ export default function HardMinuteWallet({
             <p className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 text-label-micro text-text-2">
                 <LegendItem dot="bg-ember">{spent} spent</LegendItem>
                 {booked > 0 && (
-                    <LegendItem dot="bg-ember/25">{booked} booked</LegendItem>
+                    <LegendItem dot="bg-ember/18">{booked} booked</LegendItem>
                 )}
                 <LegendItem
                     dot={
