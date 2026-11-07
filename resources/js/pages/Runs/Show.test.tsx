@@ -516,7 +516,7 @@ describe('Runs/Show', () => {
         ).toBeInTheDocument();
     });
 
-    it('heads the splits with what the run spent from the week and the heat behind its high heart rate', () => {
+    it('heads the splits with what the run spent from the week and the heat behind its high heart rate', async () => {
         renderShow({
             detail: {
                 ...detail,
@@ -549,7 +549,7 @@ describe('Runs/Show', () => {
             screen.getByText('0 hard min · of 60 this week'),
         ).toBeInTheDocument();
         expect(
-            screen.getByText(
+            await screen.findByText(
                 'by HR alone 31.5 · 33° feels-like · dew point 24° · counted as easy',
             ),
         ).toBeInTheDocument();
