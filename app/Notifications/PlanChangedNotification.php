@@ -116,12 +116,14 @@ class PlanChangedNotification extends Notification implements ShouldQueue
         $day = Carbon::parse($date)->format('l');
         $was = self::label(SessionType::from($decision['session_type']));
         $minutes = $session->prescribed_hard_minutes ?? 0;
+        $lostHardMinutes = $decision['hard_minutes'] > 0 && $minutes === 0;
 
         return match (true) {
             $session->session_type === SessionType::Rest => "{$day} is now a rest day",
-            $decision['hard_minutes'] > 0 && $minutes === 0 && $session->prescription_reason === Periodizer::NO_FAST_FINISH_REASON => "{$day}'s long run no longer has a fast finish",
-            $decision['hard_minutes'] > 0 && $minutes === 0 => "{$day}'s {$was} is now an easy run",
+            $lostHardMinutes && $session->prescription_reason === Periodizer::NO_FAST_FINISH_REASON => "{$day}'s long run no longer has a fast finish",
+            $lostHardMinutes && $session->session_type !== SessionType::Long => "{$day}'s {$was} is now an easy run",
             $session->session_type->value !== $decision['session_type'] => "{$day}'s {$was} is now ".self::withArticle(self::label($session->session_type)),
+            $lostHardMinutes => "{$day}'s long run is now at easy pace",
             $minutes !== $decision['hard_minutes'] => "{$day}'s {$was} is now {$minutes} hard minutes",
             default => "{$day}'s {$was} is now at {$session->prescribed_pace_band?->value} pace",
         };

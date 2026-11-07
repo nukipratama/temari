@@ -102,6 +102,16 @@ it('says a long run lost its fast finish', function (): void {
         ->and($message->body)->toBe("This week's hard-minute budget is spent.");
 });
 
+it('keeps calling a long run a long run when it loses its hard minutes for another reason', function (): void {
+    $user = User::factory()->create();
+    changedSession($user, ['session_type' => SessionType::Long, 'prescribed_hard_minutes' => 0, 'prescribed_pace_band' => null, 'prescription_reason' => 'easy because the weekly hard-day budget is already full']);
+
+    $message = new PlanChangedNotification(CHANGED_DAY, ['session_type' => 'long', 'hard_minutes' => 30, 'pace_band' => 'marathon'])->toInbox($user);
+
+    expect($message->title)->toBe("Thursday's long run is now at easy pace")
+        ->and($message->body)->toBe('Easy because the weekly hard-day budget is already full.');
+});
+
 it('skips a change that reverted before sending, and frees the session for a later change', function (): void {
     Notification::fake();
     $user = User::factory()->create();
