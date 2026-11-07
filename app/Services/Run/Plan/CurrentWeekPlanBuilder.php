@@ -24,11 +24,12 @@ final readonly class CurrentWeekPlanBuilder
         private CurrentWeekKm $currentWeekKm,
         private ClampVoiceReader $clampVoiceReader,
         private RaceAmbitionAssessor $ambition,
+        private WeekHardBudget $weekHardBudget,
     ) {
     }
 
     /**
-     * @return array{sessions_this_week: int, phase: string, planned_km_this_week: float, planned_km_eased_from: float|null, credited_this_week: int, days: array<int, array<string, mixed>>}|null
+     * @return array{sessions_this_week: int, phase: string, planned_km_this_week: float, planned_km_eased_from: float|null, credited_this_week: int, hard_budget: array{cap_minutes: int, spent_minutes: int, booked_minutes: int, left_minutes: int}|null, hard_bookings: list<array{date: string, minutes: int}>, days: array<int, array<string, mixed>>}|null
      */
     public function forUser(User $user, Carbon $today): ?array
     {
@@ -83,6 +84,9 @@ final readonly class CurrentWeekPlanBuilder
             ->map(fn (PlannedSession $s): string => $s->date->toDateString())
             ->all();
 
+        $ranDates = array_map(strval(...), array_keys($week['activity_by_date']));
+        $bookings = WeekHardBudget::bookings($currentWeekSessions, $today, $ranDates);
+
         return [
             'sessions_this_week' => count($trainingDates),
             'phase' => $week['phase']->value,
@@ -92,6 +96,12 @@ final readonly class CurrentWeekPlanBuilder
                 array_intersect_key($resolvedStatuses, array_flip($trainingDates)),
                 static fn (PlannedSessionStatus $status): bool => $status->isCredited(),
             )),
+            'hard_budget' => $this->weekHardBudget->of($user, $today, $week['adaptation'], $currentWeekSessions, $ranDates),
+            'hard_bookings' => array_map(
+                static fn (string $date, int $minutes): array => ['date' => $date, 'minutes' => $minutes],
+                array_keys($bookings),
+                $bookings,
+            ),
             'days' => $days,
         ];
     }

@@ -28,6 +28,7 @@ import PageContainer from '@/components/ui/PageContainer';
 import { appLayout } from '@/layouts/appLayout';
 import { drawnHomeAnchors } from '@/lib/anchors';
 import { useTodayIso } from '@/lib/pace';
+import { hardBudgetNote } from '@/lib/plan';
 
 interface HomeProps {
     briefing: BriefingResult;
@@ -88,6 +89,11 @@ export default function Home({
                             today={todayPlan}
                             restDayEasePace={restDayEasePace}
                             intervalsIcu={intervalsIcu}
+                            budgetNote={
+                                weekPlan === null
+                                    ? null
+                                    : hardBudgetNote(weekPlan, todayIso)
+                            }
                             drawnAnchors={drawnHomeAnchors(weekPlan, todayIso)}
                         />
 

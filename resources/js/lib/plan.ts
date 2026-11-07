@@ -14,11 +14,13 @@ import {
 
 import type { IconComponent } from '@/components/ui/Icon';
 import type {
+    HardBudget,
     PlanDayEasedFrom,
     PaceRange,
     PlanDayPaceEasedFrom,
     PlanSessionSegment,
     SharedProps,
+    WeekPlan,
     WeekPlanDay,
 } from '@/types/inertia';
 
@@ -44,13 +46,7 @@ export interface PlanWeek {
     days: EditablePlanDay[];
 }
 
-export interface HardBudget {
-    cap_minutes: number;
-    spent_minutes: number;
-    booked_minutes: number;
-    /** Negative when the week is over its cap. */
-    left_minutes: number;
-}
+export type { HardBudget };
 
 export interface SeasonSummaryWeek {
     week_start: string;
@@ -878,6 +874,72 @@ const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 export function weekdayLabel(iso: string): string {
     const date = parseNaiveLocalDate(iso);
     return date === null ? '' : (WEEKDAYS[date.getDay()] ?? '');
+}
+
+/** Below this much headroom over the booked sessions, Today names what the budget still has to cover. */
+const HARD_BUDGET_HEADROOM_MINUTES = 10;
+
+function listed(items: string[]): string {
+    return items.length < 2
+        ? (items[0] ?? '')
+        : `${items.slice(0, -1).join(', ')} and ${items.at(-1)}`;
+}
+
+/**
+ * Today's line in the advice-note slot when the week's hard minutes are
+ * nearly gone: what is left, what the days ahead still need, and that today
+ * stays easy. Null when there is room to spare, when today is itself a booked
+ * hard session or a rest day, or when today is done or skipped.
+ */
+export function hardBudgetNote(
+    weekPlan: Pick<WeekPlan, 'hard_budget' | 'hard_bookings' | 'days'>,
+    todayIso: string,
+): string | null {
+    const budget = weekPlan.hard_budget;
+    const today = weekPlan.days.find((day) => day.date === todayIso);
+    if (
+        budget === null ||
+        today?.status !== 'planned' ||
+        today.skipped ||
+        today.session_type === 'rest' ||
+        weekPlan.hard_bookings.some((booking) => booking.date === todayIso)
+    ) {
+        return null;
+    }
+
+    const remaining = budget.left_minutes + budget.booked_minutes;
+    const ahead = weekPlan.hard_bookings.filter(
+        (booking) => booking.date > todayIso,
+    );
+    const needed = ahead.reduce((sum, booking) => sum + booking.minutes, 0);
+    if (remaining >= needed + HARD_BUDGET_HEADROOM_MINUTES) {
+        return null;
+    }
+
+    const left =
+        remaining > 0
+            ? `${remaining} hard min left this week`
+            : `this week's ${budget.cap_minutes} hard min are spent`;
+    if (ahead.length === 0) {
+        return `${left}, so today stays easy.`;
+    }
+
+    const sessions = ahead.map((booking) => {
+        const day = weekPlan.days.find((d) => d.date === booking.date);
+        const weekday =
+            parseNaiveLocalDate(booking.date)
+                ?.toLocaleDateString('en-US', { weekday: 'long' })
+                .toLowerCase() ?? booking.date;
+        const label =
+            day === undefined
+                ? 'session'
+                : day.fast_finish !== null
+                  ? 'finish'
+                  : sessionLabel(day);
+        return `${weekday}'s ${label}`;
+    });
+
+    return `${left}. ${listed(sessions)} ${ahead.length === 1 ? 'needs' : 'need'} ${needed}, so today stays easy.`;
 }
 
 /** Whether a plan edit applied, rather than coming back as a flashed refusal. */

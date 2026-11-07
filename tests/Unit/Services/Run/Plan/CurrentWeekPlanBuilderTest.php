@@ -63,7 +63,7 @@ function weekPlanShownReadiness(array $day): array
     return arrayOf(data_get(json_decode($payload, true, flags: JSON_THROW_ON_ERROR), 'effective.readiness_assessment'));
 }
 
-/** @return array{sessions_this_week: int, phase: string, planned_km_this_week: float, planned_km_eased_from: float|null, credited_this_week: int, days: array<int, array<string, mixed>>} */
+/** @return array{sessions_this_week: int, phase: string, planned_km_this_week: float, planned_km_eased_from: float|null, credited_this_week: int, hard_budget: array{cap_minutes: int, spent_minutes: int, booked_minutes: int, left_minutes: int}|null, hard_bookings: list<array{date: string, minutes: int}>, days: array<int, array<string, mixed>>} */
 function weekPlanHome(User $user): array
 {
     return nonNull(app(CurrentWeekPlanBuilder::class)->forUser($user, Carbon::today()));
@@ -852,5 +852,21 @@ it('eases Home\'s today again under a taken readiness override once the ceiling 
 
     expect($day['session_type'])->toBe('easy')
         ->and(data_get($day, 'override.state'))->toBe('taken');
+    Carbon::setTestNow();
+});
+
+it('carries the week\'s hard-minute wallet and what each day ahead has booked from it', function (): void {
+    Carbon::setTestNow('2026-08-12'); // a Wednesday
+    $user = User::factory()->create();
+    seedWeekOfSessions($user, Carbon::today()->startOfWeek(Carbon::MONDAY));
+    PlannedSession::query()->where('user_id', $user->id)->whereDate('date', '2026-08-16')->update(['prescribed_hard_minutes' => 15]);
+    PlannedSession::query()->where('user_id', $user->id)->whereDate('date', '2026-08-10')->update(['prescribed_hard_minutes' => 20]);
+    PlanAdaptation::factory()->for($user)->create(['week_start' => '2026-08-10', 'hard_cap_minutes' => 30]);
+
+    $result = weekPlanHome($user);
+
+    expect($result['hard_budget'])->toBe(['cap_minutes' => 30, 'spent_minutes' => 0, 'booked_minutes' => 15, 'left_minutes' => 15])
+        ->and($result['hard_bookings'])->toBe([['date' => '2026-08-16', 'minutes' => 15]]);
+
     Carbon::setTestNow();
 });

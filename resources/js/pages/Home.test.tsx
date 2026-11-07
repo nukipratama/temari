@@ -117,6 +117,8 @@ const weekPlan: WeekPlan = {
     planned_km_this_week: 32,
     planned_km_eased_from: null,
     credited_this_week: 2,
+    hard_budget: null,
+    hard_bookings: [],
     days: [
         {
             id: 1,
@@ -380,6 +382,38 @@ describe('Home', () => {
 
         expect(screen.queryByText(/You vs Past You/)).not.toBeInTheDocument();
         expect(screen.queryByText('no plan yet.')).not.toBeInTheDocument();
+    });
+
+    it("warns in today's advice slot when the week's hard minutes are nearly gone", () => {
+        setMockPage({ auth: { user: makeUser() }, today: '2026-06-08' });
+
+        render(
+            <Home
+                briefing={briefing}
+                snapshot={snapshot}
+                hasRuns
+                pastYouTrend={trend()}
+                weekPlan={{
+                    ...weekPlan,
+                    days: [
+                        {
+                            ...defined(weekPlan.days[0]),
+                            status: 'planned',
+                        },
+                    ],
+                    hard_budget: {
+                        cap_minutes: 60,
+                        spent_minutes: 51,
+                        booked_minutes: 0,
+                        left_minutes: 9,
+                    },
+                }}
+            />,
+        );
+
+        expect(
+            screen.getByText('9 hard min left this week, so today stays easy.'),
+        ).toBeInTheDocument();
     });
 
     it("passes restDayEasePace through to today's session on a rest day", () => {
