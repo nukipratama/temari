@@ -362,6 +362,18 @@ describe('WeekView', () => {
         ).toBeInTheDocument();
     });
 
+    it('leaves a rest day graded done out of how the week has gone', () => {
+        renderWeek({
+            days: WEEK.map((d) =>
+                d.session_type === 'rest' ? { ...d, status: 'done' } : d,
+            ),
+        });
+
+        expect(
+            screen.getByText('1 done · 1 missed so far'),
+        ).toBeInTheDocument();
+    });
+
     it('says nothing about progress before any day is graded', () => {
         renderWeek({ days: [defined(WEEK[2]), defined(WEEK[3])] });
 

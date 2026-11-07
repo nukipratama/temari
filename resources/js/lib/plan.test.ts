@@ -115,17 +115,33 @@ describe('complianceTally', () => {
     it('counts each graded verdict in a fixed order and leaves the rest out', () => {
         expect(
             complianceTally([
-                { status: 'missed' },
-                { status: 'done' },
-                { status: 'planned' },
-                { status: 'missed' },
-                { status: 'skip' },
+                { session_type: 'easy', status: 'missed' },
+                { session_type: 'easy', status: 'done' },
+                { session_type: 'easy', status: 'planned' },
+                { session_type: 'tempo', status: 'missed' },
+                { session_type: 'easy', status: 'skip' },
             ]),
         ).toBe('1 done · 2 missed');
     });
 
+    it('leaves out past rest days', () => {
+        expect(
+            complianceTally([
+                { session_type: 'rest', status: 'done' },
+                { session_type: 'easy', status: 'done' },
+                { session_type: 'rest', status: 'done' },
+                { session_type: 'tempo', status: 'done' },
+                { session_type: 'rest', status: 'done' },
+                { session_type: 'long', status: 'done' },
+                { session_type: 'easy', status: 'planned' },
+            ]),
+        ).toBe('3 done');
+    });
+
     it('is empty before any day is graded', () => {
-        expect(complianceTally([{ status: 'planned' }])).toBe('');
+        expect(
+            complianceTally([{ session_type: 'easy', status: 'planned' }]),
+        ).toBe('');
     });
 });
 
