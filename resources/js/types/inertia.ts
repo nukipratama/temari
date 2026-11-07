@@ -587,6 +587,12 @@ export interface WeekPlanDay {
     prescribed_km: number | null;
     /** Deterministic explanation of why this hard-work dose was selected. */
     prescription_reason: string | null;
+    /** What the weekly hard-minute budget had for this day when it trimmed the session or dropped its fast finish. */
+    prescription_budget: {
+        cap_minutes: number;
+        left_minutes: number;
+        needed_minutes: number;
+    } | null;
     /** Which way the athlete's own fall-off moved this session, set only
      *  while the session shown is the one the tilt shaped. */
     fall_off_tilt: 'endurance' | 'speed' | null;

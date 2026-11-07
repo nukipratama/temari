@@ -36,6 +36,7 @@ use Override;
  * @property int $stimulus_adherence_pct
  * @property float|null $volume_floor_km
  * @property bool $increases_held
+ * @property int|null $hard_cap_minutes
  * @property array{distance_m: int, moved_to: string|null}|null $deferred_time_trial
  * @property array{date: string, session_type: string, time_trial: bool}|null $restorable_quality
  * @property PlanOverrideKind|null $override_kind
@@ -53,6 +54,7 @@ use Override;
     'stimulus_adherence_pct',
     'volume_floor_km',
     'increases_held',
+    'hard_cap_minutes',
     'deferred_time_trial',
     'restorable_quality',
     'override_kind',
@@ -110,6 +112,7 @@ class PlanAdaptation extends Model
             'stimulus_adherence_pct' => 'integer',
             'volume_floor_km' => 'float',
             'increases_held' => 'boolean',
+            'hard_cap_minutes' => 'integer',
             'deferred_time_trial' => 'array',
             'restorable_quality' => 'array',
             'override_kind' => PlanOverrideKind::class,

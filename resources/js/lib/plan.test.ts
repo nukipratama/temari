@@ -173,7 +173,13 @@ describe('withSessionSkipped', () => {
             ...overrides,
         }) as EditablePlanDay;
     const weeks = (days: EditablePlanDay[]): PlanWeek[] => [
-        { week_start: '2026-06-15', phase: 'base', type: 'current', days },
+        {
+            week_start: '2026-06-15',
+            phase: 'base',
+            type: 'current',
+            hard_budget: null,
+            days,
+        },
     ];
 
     it('skips the one day, pins it and swaps its skip action for restore', () => {
@@ -394,6 +400,7 @@ function planDay(overrides: Partial<PlanDay> = {}): PlanDay {
         ran_anyway: false,
         prescribed_km: null,
         prescription_reason: null,
+        prescription_budget: null,
         fall_off_tilt: null,
         goal_pace: null,
         stepping_stone: false,
@@ -753,6 +760,7 @@ describe('prescriptionWhy', () => {
             prescriptionWhy(
                 planDay({
                     prescription_reason: 'resolved coaching prescription',
+                    prescription_budget: null,
                 }),
             ),
         ).toBeNull();

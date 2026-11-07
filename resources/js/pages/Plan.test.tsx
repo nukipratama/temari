@@ -71,6 +71,7 @@ function day(overrides: Partial<EditablePlanDay> = {}): EditablePlanDay {
         ran_anyway: false,
         prescribed_km: null,
         prescription_reason: null,
+        prescription_budget: null,
         fall_off_tilt: null,
         goal_pace: null,
         stepping_stone: false,
@@ -124,6 +125,7 @@ const BASE_PROPS: ComponentProps<typeof Plan> = {
             week_start: '2026-06-15',
             phase: 'base',
             type: 'current',
+            hard_budget: null,
             days: [
                 day({
                     id: 1,
@@ -708,6 +710,7 @@ describe('Plan', () => {
                         week_start: '2026-06-01',
                         phase: 'base',
                         type: 'history',
+                        hard_budget: null,
                         days: [day({ id: 9, date: '2026-06-02' })],
                     },
                 },

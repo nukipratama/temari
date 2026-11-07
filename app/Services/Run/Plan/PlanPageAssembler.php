@@ -15,6 +15,7 @@ use App\Models\Season;
 use App\Models\User;
 use App\Services\Gamification\SeasonPayloadBuilder;
 use App\Services\Run\Metrics\ReadinessCeiling;
+use App\Services\Run\Metrics\RecentTrainingStress;
 use App\Services\Run\Metrics\TrainingPaceCalculator;
 use App\Services\Run\Metrics\VdotEstimator;
 use Illuminate\Support\Carbon;
@@ -64,6 +65,7 @@ final class PlanPageAssembler
         private readonly CurrentWeekVolumeProjector $volumeProjector,
         private readonly RaceAmbitionAssessor $ambition,
         private readonly RaceOutcomeMatcher $outcomeMatcher,
+        private readonly RecentTrainingStress $trainingStress,
     ) {
     }
 
@@ -278,7 +280,7 @@ final class PlanPageAssembler
     }
 
     /**
-     * @return list<array{week_start: int|string, phase: string, type: string, days: array<int, array<string, mixed>>}>
+     * @return list<array{week_start: int|string, phase: string, type: string, hard_budget: array{cap_minutes: int, spent_minutes: int, booked_minutes: int, left_minutes: int}|null, days: array<int, array<string, mixed>>}>
      */
     private function weeksBetween(User $user, Carbon $today, Carbon $rangeStart, Carbon $rangeEnd, ?string $tokenDate = null): array
     {
@@ -371,6 +373,7 @@ final class PlanPageAssembler
                 'week_start' => $weekStartKey,
                 'phase' => $weekPhase->value,
                 'type' => $weekStartKey < $currentWeekKey ? 'history' : ($weekStartKey === $currentWeekKey ? 'current' : 'lookahead'),
+                'hard_budget' => $weekStartKey === $currentWeekKey ? $this->hardBudget($user, $today, $currentWeekAdaptation, $weekSessions, $ranDates) : null,
                 'days' => $weekSessions->map(fn (PlannedSession $s): array => [...PlanRenderer::dayPayload(
                     $s,
                     $today,
@@ -398,6 +401,32 @@ final class PlanPageAssembler
         }
 
         return $weeks;
+    }
+
+    /**
+     * The current week's hard-minute wallet against the cap locked at its first regeneration:
+     * minutes already run, minutes still booked on the days ahead, and what is left.
+     *
+     * @param  Collection<int, PlannedSession>  $weekSessions
+     * @param  list<string>  $ranDates
+     * @return array{cap_minutes: int, spent_minutes: int, booked_minutes: int, left_minutes: int}|null
+     */
+    private function hardBudget(User $user, Carbon $today, ?PlanAdaptation $adaptation, Collection $weekSessions, array $ranDates): ?array
+    {
+        $cap = $adaptation?->hard_cap_minutes;
+        if ($cap === null) {
+            return null;
+        }
+
+        $weekStart = $this->currentWeekStart($today);
+        $actuals = PlanInputsGatherer::budgetActuals($this->trainingStress->forUser($user, $today, (int) $weekStart->diffInDays($today) + 1)['sessions']);
+        $spent = (int) round(array_sum(array_map(static fn (array $actual): float => $actual['hard_minutes'] ?? 0.0, $actuals)));
+        $booked = (int) $weekSessions
+            ->filter(fn (PlannedSession $s): bool => ! $s->date->lt($today) && ! $s->skipped
+                && $s->status === PlannedSessionStatus::Planned && ! in_array($s->date->toDateString(), $ranDates, true))
+            ->sum(fn (PlannedSession $s): int => $s->prescribed_hard_minutes ?? 0);
+
+        return ['cap_minutes' => $cap, 'spent_minutes' => $spent, 'booked_minutes' => $booked, 'left_minutes' => $cap - $spent - $booked];
     }
 
     /**

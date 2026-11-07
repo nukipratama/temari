@@ -411,3 +411,39 @@ it('lifts only a dropped quality session back for the current week once the athl
     'dropped, kept' => [-1, false, -1],
     'as written, restored' => [0, true, 0],
 ]);
+
+it('holds the current week to its locked hard-minute cap and records what a trimmed session needed', function (): void {
+    $base = planInputsWith(arcInputs(today: '2026-09-21'), [
+        'paces' => ['easy' => 360, 'marathon' => 300, 'threshold' => 270, 'interval' => 240],
+        'longRunBaselineKm' => 12.0,
+    ]);
+    $free = app(Periodizer::class)->rowsFor($base);
+    $currentWeek = static fn (array $rows): array => array_filter($rows, static fn (string $date): bool => $date <= '2026-09-27', ARRAY_FILTER_USE_KEY);
+    $freeHard = array_sum(array_column($currentWeek($free), 'prescribed_hard_minutes'));
+    $lock = intdiv($freeHard, 2);
+
+    $rows = app(Periodizer::class)->rowsFor(planInputsWith($base, ['lockedHardCapMinutes' => $lock]));
+    $trimmed = array_filter($currentWeek($rows), static fn (array $row): bool => ($row['prescription_budget'] ?? null) !== null);
+
+    expect($freeHard)->toBeGreaterThan(0)
+        ->and(array_sum(array_column($currentWeek($rows), 'prescribed_hard_minutes')))->toBeLessThanOrEqual($lock)
+        ->and(array_unique(array_column($currentWeek($rows), 'week_hard_cap_minutes')))->toBe([$lock])
+        ->and($rows['2026-09-28']['week_hard_cap_minutes'] ?? null)->toBe($free['2026-09-28']['week_hard_cap_minutes'] ?? null)
+        ->and($trimmed)->not->toBe([]);
+    foreach ($trimmed as $date => $row) {
+        expect(data_get($row, 'prescription_budget.cap_minutes'))->toBe($lock)
+            ->and(data_get($row, 'prescription_budget.needed_minutes'))->toBe($free[$date]['prescribed_hard_minutes'])
+            ->and(data_get($row, 'prescription_budget.left_minutes'))->toBeGreaterThanOrEqual($row['prescribed_hard_minutes']);
+    }
+});
+
+it('stamps an unlocked week with 30% of its planned minutes as its cap', function (): void {
+    $rows = app(Periodizer::class)->rowsFor(planInputsWith(arcInputs(today: '2026-09-21'), [
+        'paces' => ['easy' => 360, 'marathon' => 300, 'threshold' => 270, 'interval' => 240],
+        'longRunBaselineKm' => 12.0,
+    ]));
+    $withoutPaces = app(Periodizer::class)->rowsFor(arcInputs(today: '2026-09-21'));
+
+    expect($rows['2026-09-21']['week_hard_cap_minutes'] ?? null)->toBeInt()->toBeGreaterThan(0)
+        ->and($withoutPaces['2026-09-21']['week_hard_cap_minutes'] ?? null)->toBeNull();
+});

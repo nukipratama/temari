@@ -39,7 +39,17 @@ export interface PlanWeek {
     week_start: string;
     phase: string;
     type: 'history' | 'current' | 'lookahead';
+    /** The current week's hard minutes against the cap locked at its first regeneration; null on other weeks and before a cap is locked. */
+    hard_budget: HardBudget | null;
     days: EditablePlanDay[];
+}
+
+export interface HardBudget {
+    cap_minutes: number;
+    spent_minutes: number;
+    booked_minutes: number;
+    /** Negative when the week is over its cap. */
+    left_minutes: number;
 }
 
 export interface SeasonSummaryWeek {

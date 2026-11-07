@@ -34,6 +34,7 @@ function day(overrides: Partial<EditablePlanDay> = {}): EditablePlanDay {
         ran_anyway: false,
         prescribed_km: null,
         prescription_reason: null,
+        prescription_budget: null,
         fall_off_tilt: null,
         goal_pace: null,
         stepping_stone: false,
@@ -583,6 +584,7 @@ describe('DayHeadline and DayDetail', () => {
                     },
                 ],
                 prescription_reason: 'easy volume',
+                prescription_budget: null,
             }),
         });
 
