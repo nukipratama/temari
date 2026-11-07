@@ -2,7 +2,6 @@ import { Link } from '@inertiajs/react';
 import {
     Bell,
     Calendar,
-    CalendarClock,
     CalendarDays,
     Flag,
     Flame,
@@ -61,7 +60,7 @@ const KIND_ICON: Record<NotificationKind, IconComponent> = {
     fitness_improved: TrendingUp,
     time_trial: Timer,
     easy_too_hard: HeartPulse,
-    plan_change: CalendarClock,
+    plan_change: CalendarDays,
     test: Bell,
 };
 
