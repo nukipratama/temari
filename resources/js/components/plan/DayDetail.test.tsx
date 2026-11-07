@@ -112,6 +112,33 @@ function renderRow(overrides: Partial<Parameters<typeof DayDetail>[0]> = {}) {
 const headline = () => screen.getByTestId('headline');
 
 describe('DayHeadline and DayDetail', () => {
+    it('offers the budget-dropped fast finish back, stating its cost', () => {
+        renderRow({
+            day: day({
+                session_type: 'long',
+                prescription_reason:
+                    'no fast finish because the weekly hard-minute budget is spent',
+                prescription_budget: {
+                    cap_minutes: 60,
+                    left_minutes: 0,
+                    needed_minutes: 15,
+                },
+                override: {
+                    kind: 'budget_drop',
+                    state: 'offered',
+                    label: "bring it back · 15 hard min over this week's cap",
+                    reason: 'this week has 0 of its 60 hard minutes left, and this needs 15.',
+                },
+            }),
+        });
+
+        expect(
+            screen.getByRole('button', {
+                name: "bring it back · 15 hard min over this week's cap",
+            }),
+        ).toBeInTheDocument();
+    });
+
     it('strikes a fast finish the weekly budget dropped and gives the numbers', () => {
         renderRow({
             day: day({

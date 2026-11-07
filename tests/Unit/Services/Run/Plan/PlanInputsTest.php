@@ -447,3 +447,49 @@ it('stamps an unlocked week with 30% of its planned minutes as its cap', functio
     expect($rows['2026-09-21']['week_hard_cap_minutes'] ?? null)->toBeInt()->toBeGreaterThan(0)
         ->and($withoutPaces['2026-09-21']['week_hard_cap_minutes'] ?? null)->toBeNull();
 });
+
+it('gives a brought-back session its full dose outside the locked cap, without trimming the rest of the week for it', function (): void {
+    $base = planInputsWith(arcInputs(today: '2026-09-21'), [
+        'paces' => ['easy' => 360, 'marathon' => 300, 'threshold' => 270, 'interval' => 240],
+        'longRunBaselineKm' => 12.0,
+    ]);
+    $free = app(Periodizer::class)->rowsFor($base);
+    $currentWeek = static fn (array $rows): array => array_filter($rows, static fn (string $date): bool => $date <= '2026-09-27', ARRAY_FILTER_USE_KEY);
+    $lock = intdiv(array_sum(array_column($currentWeek($free), 'prescribed_hard_minutes')), 2);
+    $locked = app(Periodizer::class)->rowsFor(planInputsWith($base, ['lockedHardCapMinutes' => $lock]));
+    $trimmedDate = (string) nonNull(array_key_first(array_filter($currentWeek($locked), static fn (array $row): bool => ($row['prescription_budget'] ?? null) !== null)));
+
+    $rows = app(Periodizer::class)->rowsFor(planInputsWith($base, ['lockedHardCapMinutes' => $lock, 'budgetOverrideDate' => $trimmedDate]));
+    $others = static fn (array $rows): int => array_sum(array_column(array_diff_key($currentWeek($rows), [$trimmedDate => true]), 'prescribed_hard_minutes'));
+
+    expect($rows[$trimmedDate]['prescribed_hard_minutes'])->toBe($free[$trimmedDate]['prescribed_hard_minutes'])
+        ->and($rows[$trimmedDate]['prescription_budget'] ?? null)->toBeNull()
+        ->and($others($rows))->toBeGreaterThanOrEqual($others($locked));
+});
+
+it('withholds the budget note, and so the bring-back, from a session the hard-day spacing would demote at full dose', function (): void {
+    $base = planInputsWith(arcInputs(today: '2026-10-07'), [
+        'paces' => ['easy' => 360, 'marathon' => 300, 'threshold' => 270, 'interval' => 240],
+        'longRunBaselineKm' => 12.0,
+        'actualSessions' => [['date' => '2026-10-07', 'duration_minutes' => 60, 'hard_minutes' => 40.0, 'demanding' => true]],
+    ]);
+    $unlocked = app(Periodizer::class)->rowsFor($base);
+    $locked = app(Periodizer::class)->rowsFor(planInputsWith($base, ['lockedHardCapMinutes' => 10]));
+
+    expect($unlocked['2026-10-08']['prescription_reason'])->toBe('easy to preserve recovery between hard days')
+        ->and($locked['2026-10-08']['prescribed_hard_minutes'])->toBe(0)
+        ->and($locked['2026-10-08']['prescription_budget'] ?? null)->toBeNull();
+});
+
+it('withholds the budget note, and so the bring-back, from a session whose full dose the day\'s distance cannot hold', function (): void {
+    $base = planInputsWith(arcInputs(today: '2026-09-07'), [
+        'paces' => ['easy' => 360, 'marathon' => 300, 'threshold' => 270, 'interval' => 240],
+        'longRunBaselineKm' => 8.0,
+    ]);
+    $unlocked = app(Periodizer::class)->rowsFor($base);
+    $locked = app(Periodizer::class)->rowsFor(planInputsWith($base, ['lockedHardCapMinutes' => 0]));
+
+    expect($unlocked['2026-09-10']['prescription_reason'])->toBe('easy because the outing cannot safely fit the minimum quality structure')
+        ->and($locked['2026-09-10']['prescribed_hard_minutes'])->toBe(0)
+        ->and($locked['2026-09-10']['prescription_budget'] ?? null)->toBeNull();
+});

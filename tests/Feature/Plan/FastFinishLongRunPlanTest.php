@@ -219,3 +219,23 @@ it('drops a fast finish the week\'s hard-minute budget cannot pay for, and recor
         ->and($rows[$finishDate]['prescription_reason'])->toBe(Periodizer::NO_FAST_FINISH_REASON)
         ->and($rows[$finishDate]['prescription_budget'] ?? null)->toBe(['cap_minutes' => 60, 'left_minutes' => 5, 'needed_minutes' => $finishMinutes]);
 });
+
+it('keeps a fast finish the athlete brought back over the week\'s spent budget', function (): void {
+    $tuesday = Carbon::parse('2026-09-08');
+    do {
+        $tuesday->addWeek();
+        $base = fastFinishInputs(today: $tuesday->toDateString(), longestSoFarKm: 40.0);
+        $finishDate = array_find_key(fastFinishes(fastFinishPlan($base)), static fn (array $row, string $date): bool => $date <= $tuesday->copy()->addDays(5)->toDateString());
+    } while ($finishDate === null && $tuesday->lt(Carbon::parse(FAST_FINISH_RACE_DAY)));
+    $finishDate = nonNull($finishDate);
+    $spent = planInputsWith($base, [
+        'lockedHardCapMinutes' => 60,
+        'actualSessions' => [['date' => $tuesday->copy()->subDay()->toDateString(), 'duration_minutes' => 60, 'hard_minutes' => 55.0, 'demanding' => false]],
+    ]);
+
+    $rows = fastFinishPlan(planInputsWith($spent, ['budgetOverrideDate' => $finishDate]));
+
+    expect(fastFinishes(fastFinishPlan($spent)))->not->toHaveKey($finishDate)
+        ->and(fastFinishes($rows))->toHaveKey($finishDate)
+        ->and($rows[$finishDate]['prescription_budget'] ?? null)->toBeNull();
+});
