@@ -275,3 +275,27 @@ it('does not count ordinary easy runs as demanding or include runs outside the s
         ->and($profile['sessions'][0]['demanding'])->toBeFalse()
         ->and($profile['last_demanding_hours'])->toBeNull();
 });
+
+it('counts high heart rate at an easy pace as easy, and paced high heart rate as hard', function (): void {
+    $asOf = Carbon::parse('2026-10-01 08:00');
+    Carbon::setTestNow($asOf);
+    $user = User::factory()->create();
+    seedConfirmedEffort($user, 5000, 1200, Carbon::parse('2026-09-01'));
+    $marathonPace = nonNull(app(TrainingPaceCalculator::class)->fromVdotResult(
+        app(VdotEstimator::class)->estimate($user, $asOf),
+    ))['marathon'];
+    $zones = ['Z1' => 0, 'Z2' => 10, 'Z3' => 31.5, 'Z4' => 0, 'Z5' => 0];
+    recentStressRun($user, '2026-09-29 07:00', [
+        'elapsed_time' => 2500,
+        'stream_summary' => ['time_in_zone_min' => $zones, 'high_hr_sec_by_gap_pace' => [$marathonPace + 60 => 1890]],
+    ]);
+    recentStressRun($user, '2026-09-30 07:00', [
+        'elapsed_time' => 2500,
+        'stream_summary' => ['time_in_zone_min' => $zones, 'high_hr_sec_by_gap_pace' => [$marathonPace - 40 => 1800, $marathonPace + 60 => 90]],
+    ]);
+
+    $sessions = app(RecentTrainingStress::class)->forUser($user, $asOf)['sessions'];
+
+    expect($sessions[0]['non_easy_minutes'])->toBe(0.0)
+        ->and($sessions[1]['non_easy_minutes'])->toBe(30.0);
+});

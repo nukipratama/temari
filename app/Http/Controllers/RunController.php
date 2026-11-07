@@ -76,7 +76,7 @@ class RunController extends Controller
         'stream_summary',
     ];
 
-    private const array UNREAD_STREAM_SUMMARY_KEYS = ['steady_effort_hr_drift_bpm', 'drift_metric_version'];
+    private const array UNREAD_STREAM_SUMMARY_KEYS = ['steady_effort_hr_drift_bpm', 'drift_metric_version', 'high_hr_sec_by_gap_pace'];
 
     private const array UNREAD_PER_KM_KEYS = ['distance_m', 'elapsed_sec'];
 

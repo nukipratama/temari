@@ -77,20 +77,20 @@ final readonly class RecentTrainingStress
                 'activity_details.stream_summary',
                 'activity_details.has_heartrate',
             ]);
-        $needsThresholdPace = $activities->contains(function (ActivityDetail $detail): bool {
+        $needsPaces = $activities->contains(function (ActivityDetail $detail): bool {
             $summary = StreamSummary::fromArray($detail->streamSummary());
 
-            return $summary->zoneMinutes() === null
-                && (self::paceSecondsPerKm($summary->gapPace()) !== null
-                    || self::hasLapPaceEvidence($summary->laps()));
+            return $summary->zoneMinutes() !== null
+                || self::paceSecondsPerKm($summary->gapPace()) !== null
+                || self::hasLapPaceEvidence($summary->laps());
         });
-        $thresholdPace = $needsThresholdPace
-            ? ($this->paceCalculator->fromVdotResult(
-                $this->vdotEstimator->estimate($user, $asOf),
-            )['threshold'] ?? null)
+        $paces = $needsPaces
+            ? $this->paceCalculator->fromVdotResult($this->vdotEstimator->estimate($user, $asOf))
             : null;
+        $thresholdPace = $paces['threshold'] ?? null;
+        $easyCeilingPace = $paces['marathon'] ?? null;
 
-        $sessions = $activities->map(function (ActivityDetail $detail) use ($activities, $now, $thresholdPace): array {
+        $sessions = $activities->map(function (ActivityDetail $detail) use ($activities, $now, $thresholdPace, $easyCeilingPace): array {
             $summary = StreamSummary::fromArray($detail->streamSummary());
             $zoneMinutes = $summary->zoneMinutes();
             $thresholdMinutes = $zoneMinutes === null
@@ -151,7 +151,7 @@ final readonly class RecentTrainingStress
                 'personal_typical_duration_minutes' => $typicalDuration === null ? null : round($typicalDuration / 60, 1),
                 'trimp' => $detail->trimp_edwards,
                 'threshold_minutes' => $thresholdMinutes === null ? null : round($thresholdMinutes, 1),
-                'non_easy_minutes' => $zoneMinutes === null ? null : round((float) ($zoneMinutes['Z3'] ?? 0) + $thresholdMinutes, 1),
+                'non_easy_minutes' => $summary->hardMinutes($easyCeilingPace),
                 'threshold_pace_sec_per_km' => $thresholdPace,
                 'lap_threshold_minutes' => $lapThresholdMinutes === null ? null : round($lapThresholdMinutes, 1),
                 'gap_pace_sec_per_km' => $gapPace,
