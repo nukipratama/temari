@@ -1,7 +1,7 @@
 import type { RunHardMinutes } from '@/types/inertia';
 
+import { formatHardMinutes } from '@/lib/hardMinutes';
 import { formatPace } from '@/lib/pace';
-import { formatHardMinutes } from '@/lib/plan';
 
 const MIN_EASED_MINUTES = 1;
 

@@ -1,5 +1,5 @@
 import { Star } from 'lucide-react';
-import { useLayoutEffect, useRef, useState } from 'react';
+import { Suspense, useLayoutEffect, useRef, useState } from 'react';
 
 import type {
     HardSecondsKm,
@@ -8,12 +8,12 @@ import type {
     StreamSummaryPerKm,
 } from '@/types/inertia';
 
-import HardMinuteHeatLine from '@/components/run/HardMinuteHeatLine';
 import Eyebrow from '@/components/ui/Eyebrow';
 import { Icon } from '@/components/ui/Icon';
 import { cn } from '@/lib/cn';
+import { formatHardMinutes } from '@/lib/hardMinutes';
+import { lazyIsland } from '@/lib/lazyIsland';
 import { formatKm, formatPace } from '@/lib/pace';
-import { formatHardMinutes } from '@/lib/plan';
 import { computeBarWidth, paceScale, paceSecOf } from '@/lib/splits';
 
 const CHART_HEIGHT = 116;
@@ -40,6 +40,10 @@ interface Bar {
     partial: boolean;
     cost: HardSecondsKm | null;
 }
+
+const HardMinuteHeatLine = lazyIsland(
+    () => import('@/components/run/HardMinuteHeatLine'),
+);
 
 const HIGH_HR_EASY_PACE_FILL =
     'bg-leaf/40 bg-[repeating-linear-gradient(135deg,var(--color-stone)_0_2px,transparent_2px_6px)]';
@@ -309,11 +313,13 @@ export default function SplitsChart({
             </div>
 
             {hardMinutes && (
-                <HardMinuteHeatLine
-                    hardMinutes={hardMinutes}
-                    feelsLikeC={feelsLikeC}
-                    dewPointC={dewPointC}
-                />
+                <Suspense fallback={null}>
+                    <HardMinuteHeatLine
+                        hardMinutes={hardMinutes}
+                        feelsLikeC={feelsLikeC}
+                        dewPointC={dewPointC}
+                    />
+                </Suspense>
             )}
 
             {fastestRow?.pace != null && fastest != null && (

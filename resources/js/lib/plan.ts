@@ -48,11 +48,6 @@ export interface PlanWeek {
 
 export type { HardBudget };
 
-/** Hard minutes as the budget shows them: whole numbers bare, otherwise one decimal. */
-export function formatHardMinutes(minutes: number): string {
-    return Number.isInteger(minutes) ? `${minutes}` : minutes.toFixed(1);
-}
-
 export interface SeasonSummaryWeek {
     week_start: string;
     phase: string;

@@ -21,7 +21,6 @@ import {
     easedFromDelta,
     fallOffTiltWhy,
     fastFinishPaceLabel,
-    formatHardMinutes,
     hardBudgetNote,
     isRaceWeek,
     nextPhaseOf,
@@ -1469,14 +1468,6 @@ describe('targetLabel with pace ranges', () => {
 
     it('shows the bare pace while no window is known', () => {
         expect(targetLabel(planDay())).toBe('6:00/km');
-    });
-});
-
-describe('formatHardMinutes', () => {
-    it('shows whole minutes bare and the rest to one decimal', () => {
-        expect(formatHardMinutes(0)).toBe('0');
-        expect(formatHardMinutes(31.5)).toBe('31.5');
-        expect(formatHardMinutes(27.66)).toBe('27.7');
     });
 });
 
