@@ -185,6 +185,7 @@ export function hasDayDetail(day: EditablePlanDay): boolean {
         day.activities.length > 0 ||
         day.override?.kind === 'readiness_ease' ||
         day.override?.kind === 'budget_drop' ||
+        day.override?.kind === 'hard_day_drop' ||
         move ||
         skip ||
         restore
@@ -438,7 +439,8 @@ export default function DayDetail({
                 closesAtGoalPace={day.closes_at_goal_pace}
             />
             {day.activities.length > 0 && <RunList runs={day.activities} />}
-            {day.override?.kind === 'readiness_ease' && (
+            {(day.override?.kind === 'readiness_ease' ||
+                day.override?.kind === 'hard_day_drop') && (
                 <QualityOverrideAction
                     sessionId={day.id}
                     override={day.override}

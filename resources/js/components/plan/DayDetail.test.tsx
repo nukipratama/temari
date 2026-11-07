@@ -139,6 +139,43 @@ describe('DayHeadline and DayDetail', () => {
         ).toBeInTheDocument();
     });
 
+    it('says why the hard-day count dropped a fast finish and offers it back as a third hard day', () => {
+        renderRow({
+            day: day({
+                session_type: 'long',
+                segments: [
+                    {
+                        key: 'main',
+                        minutes: 70,
+                        zone: 'Z2',
+                        pace_label: 'easy',
+                        km: 12.6,
+                        pace_sec_per_km: 400,
+                    },
+                ],
+                prescription_reason:
+                    'no fast finish because the week already has two hard days',
+                override: {
+                    kind: 'hard_day_drop',
+                    state: 'offered',
+                    label: 'bring it back · a third hard day this week',
+                    reason: 'this week already has two hard days, so the plan made this one easy.',
+                },
+            }),
+        });
+
+        expect(
+            screen.getByText(
+                'no fast finish. the week already has its hard days.',
+            ),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByRole('button', {
+                name: 'bring it back · a third hard day this week',
+            }),
+        ).toBeInTheDocument();
+    });
+
     it('strikes a fast finish the weekly budget dropped and gives the numbers', () => {
         renderRow({
             day: day({

@@ -43,7 +43,7 @@ final readonly class PlanInputs
      * @param  int|null  $supportedTenKTimeSec  the time the athlete's fitness supports over 10K
      * @param  bool  $qualityRestored  the athlete brought back the quality session this week's adaptation dropped
      * @param  bool  $restoredDayOpen  the overridden day is today or later and has no run yet
-     * @param  bool  $budgetOverrideRefunded  the plan reads the same without the day the athlete brought back over its hard-minute budget
+     * @param  bool  $bringBackRefunded  the plan reads the same without the day the athlete brought back over its hard-minute budget or hard-day count
      */
     public function __construct(
         public int $userId,
@@ -89,8 +89,14 @@ final readonly class PlanInputs
         public bool $restoredDayOpen = false,
         public ?int $lockedHardCapMinutes = null,
         public ?string $budgetOverrideDate = null,
-        public bool $budgetOverrideRefunded = false,
+        public ?string $hardDayOverrideDate = null,
+        public bool $bringBackRefunded = false,
     ) {
+    }
+
+    public function bringBackDate(): ?string
+    {
+        return $this->budgetOverrideDate ?? $this->hardDayOverrideDate;
     }
 
     public function currentWeekQualityDelta(): int
@@ -100,7 +106,7 @@ final readonly class PlanInputs
 
     public function refundsOverride(): bool
     {
-        return ($this->restoreLapsed() && $this->restoredDayOpen) || $this->budgetOverrideRefunded;
+        return ($this->restoreLapsed() && $this->restoredDayOpen) || $this->bringBackRefunded;
     }
 
     private function restoreLapsed(): bool
@@ -113,9 +119,9 @@ final readonly class PlanInputs
         return clone($this, ['qualityRestored' => $restored]);
     }
 
-    public function withBudgetOverrideRefunded(): self
+    public function withBringBackRefunded(): self
     {
-        return clone($this, ['budgetOverrideDate' => null, 'budgetOverrideRefunded' => true]);
+        return clone($this, ['budgetOverrideDate' => null, 'hardDayOverrideDate' => null, 'bringBackRefunded' => true]);
     }
 
     public function currentWeekStart(): Carbon

@@ -18,9 +18,10 @@ use Illuminate\Support\Carbon;
 /**
  * The athlete's one "i'm ready" override a week: today's quality session the readiness clamp eased
  * at a {@see ReadinessCeiling::ModerateOk} ceiling, the quality session a ran-too-hard week
- * dropped, back on its natural day, or a session the weekly hard-minute cap trimmed. See
- * `docs/decisions/an-athlete-can-override-an-eased-quality-session.md` and
- * `docs/decisions/a-budget-dropped-session-can-be-brought-back.md`.
+ * dropped, back on its natural day, a session the weekly hard-minute cap trimmed, or one the weekly
+ * hard-day count made easy. See `docs/decisions/an-athlete-can-override-an-eased-quality-session.md`,
+ * `docs/decisions/a-budget-dropped-session-can-be-brought-back.md` and
+ * `docs/decisions/a-hard-day-dropped-session-can-be-brought-back.md`.
  */
 final class QualityOverride
 {
@@ -86,6 +87,14 @@ final class QualityOverride
                 'state' => 'offered',
                 'label' => $cost > 0 ? "bring it back · {$cost} hard min over this week's cap" : 'bring it back',
                 'reason' => "this week has {$budget['left_minutes']} of its {$budget['cap_minutes']} hard minutes left, and this needs {$budget['needed_minutes']}.",
+            ];
+        }
+        if ($day->hard_day_restorable) {
+            return [
+                'kind' => PlanOverrideKind::HardDayDrop->value,
+                'state' => 'offered',
+                'label' => 'bring it back · a third hard day this week',
+                'reason' => 'this week already has two hard days, so the plan made this one easy.',
             ];
         }
         $restorable = $week->restorable_quality;

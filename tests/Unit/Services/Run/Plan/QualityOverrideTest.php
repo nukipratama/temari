@@ -158,3 +158,24 @@ it('offers no budget bring-back on a day already run or gone', function (string 
     'yesterday' => ['2026-09-14', false],
     'already ran' => ['2026-09-15', true],
 ]);
+
+it('offers a session the weekly hard-day count made easy back as a third hard day', function (): void {
+    $day = overrideDay('2026-09-20', SessionType::Long, ['hard_day_restorable' => true]);
+
+    expect(overrideFor($day, overrideWeek(['reason' => AdaptationReason::Steady, 'quality_delta' => 0, 'restorable_quality' => null])))->toBe([
+        'kind' => 'hard_day_drop',
+        'state' => 'offered',
+        'label' => 'bring it back · a third hard day this week',
+        'reason' => 'this week already has two hard days, so the plan made this one easy.',
+    ]);
+});
+
+it('offers no hard-day bring-back on a day already run or gone, or once the week\'s override is taken', function (string $date, bool $ran, ?PlanOverrideKind $taken): void {
+    $day = overrideDay($date, SessionType::Long, ['hard_day_restorable' => true]);
+
+    expect(overrideFor($day, overrideWeek(['override_kind' => $taken, 'override_date' => $taken instanceof PlanOverrideKind ? '2026-09-18' : null]), ran: $ran))->toBeNull();
+})->with([
+    'yesterday' => ['2026-09-14', false, null],
+    'already ran' => ['2026-09-15', true, null],
+    'override taken' => ['2026-09-20', false, PlanOverrideKind::BudgetDrop],
+]);

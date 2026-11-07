@@ -52,7 +52,7 @@ class RebuildSplitsCommand extends Command
         $activities = $this->scopedActivities()
             ->whereHas('stream')
             ->with(['detail', 'stream', 'user'])
-            ->lazyById();
+            ->lazyById(50);
 
         foreach ($activities as $activity) {
             $pipeline->recomputeSummary($activity, rebuildAggregates: false);

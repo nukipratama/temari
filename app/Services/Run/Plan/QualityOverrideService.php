@@ -55,9 +55,11 @@ final readonly class QualityOverrideService
 
             $this->periodizer->regenerateWithinLock($user, $today);
             $restored = PlannedSession::query()->where('user_id', $user->id)->where('date', $session->date->toDateString())->first();
-            $brought = $restored !== null && ($kind === PlanOverrideKind::BudgetDrop
-                ? $restored->prescription_budget === null && ($restored->prescribed_hard_minutes ?? 0) > 0
-                : QualityOverride::isWorkout($restored->session_type));
+            $brought = $restored !== null && match ($kind) {
+                PlanOverrideKind::BudgetDrop => $restored->prescription_budget === null && ($restored->prescribed_hard_minutes ?? 0) > 0,
+                PlanOverrideKind::HardDayDrop => ! $restored->hard_day_restorable && ($restored->prescribed_hard_minutes ?? 0) > 0,
+                default => QualityOverride::isWorkout($restored->session_type),
+            };
             if (! $brought) {
                 throw self::refusal("this day can't be overridden.");
             }
