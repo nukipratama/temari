@@ -100,10 +100,12 @@ function TodayPrescription({
     day,
     restDayEasePace,
     intervalsIcu,
+    budgetNote,
 }: Readonly<{
     day: WeekPlanDay;
     restDayEasePace: RestDayEasePace | null;
     intervalsIcu: TodayIntervalsIcu | null;
+    budgetNote: string | null;
 }>) {
     const judged = judgedDayResult(day);
     const pace = judged === null ? targetLabel(day) : null;
@@ -247,6 +249,11 @@ function TodayPrescription({
                     {day.advice_note}
                 </p>
             )}
+            {budgetNote !== null && (
+                <p className="mt-2 border-l-2 border-border-strong pl-3 text-sm leading-relaxed text-text-2">
+                    {budgetNote}
+                </p>
+            )}
         </div>
     );
 }
@@ -302,6 +309,7 @@ export default function TodaySession({
     today = null,
     restDayEasePace = null,
     intervalsIcu = null,
+    budgetNote = null,
     drawnAnchors = new Set<string>(),
 }: Readonly<{
     briefing: BriefingResult;
@@ -311,6 +319,8 @@ export default function TodaySession({
     restDayEasePace?: RestDayEasePace | null;
     /** Null when intervals.icu is not connected or has not seen today yet. */
     intervalsIcu?: TodayIntervalsIcu | null;
+    /** From {@link hardBudgetNote}: the week's hard minutes are nearly gone. */
+    budgetNote?: string | null;
     /** From {@link drawnHomeAnchors} — which citations this page can honour. */
     drawnAnchors?: ReadonlySet<string>;
 }>) {
@@ -346,6 +356,7 @@ export default function TodaySession({
                         day={today}
                         restDayEasePace={restDayEasePace}
                         intervalsIcu={intervalsIcu}
+                        budgetNote={budgetNote}
                     />
                 ))}
             {today?.override?.kind === 'readiness_ease' && (

@@ -706,6 +706,20 @@ export type PlanDayOverride =
 
 /** `CurrentWeekPlanBuilder::forUser()` — Home's compact pull of the current
  *  week's plan, null once a user has no plan yet. */
+export interface HardBudget {
+    cap_minutes: number;
+    spent_minutes: number;
+    booked_minutes: number;
+    /** Negative when the week is over its cap. */
+    left_minutes: number;
+}
+
+/** Hard minutes still booked on a day from today on. */
+export interface HardBooking {
+    date: string;
+    minutes: number;
+}
+
 export interface WeekPlan {
     /** Training (non-rest) days this week actually holds, not the baseline's
      *  weekly target — a plan that began mid-week has fewer. */
@@ -715,6 +729,9 @@ export interface WeekPlan {
     /** The week's total before a recorded ease took km off it, null when none did. */
     planned_km_eased_from: number | null;
     credited_this_week: number;
+    /** Null before the week's cap is locked. */
+    hard_budget: HardBudget | null;
+    hard_bookings: HardBooking[];
     days: WeekPlanDay[];
 }
 

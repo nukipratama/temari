@@ -89,6 +89,8 @@ function weekOf(
         planned_km_this_week: 32,
         planned_km_eased_from: null,
         credited_this_week: 2,
+        hard_budget: null,
+        hard_bookings: [],
         days,
         ...overrides,
     };

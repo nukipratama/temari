@@ -22,6 +22,7 @@ import {
     fallOffTiltWhy,
     fastFinishPaceLabel,
     formatHardMinutes,
+    hardBudgetNote,
     isRaceWeek,
     nextPhaseOf,
     planEditLanded,
@@ -1476,5 +1477,99 @@ describe('formatHardMinutes', () => {
         expect(formatHardMinutes(0)).toBe('0');
         expect(formatHardMinutes(31.5)).toBe('31.5');
         expect(formatHardMinutes(27.66)).toBe('27.7');
+    });
+});
+
+describe('hardBudgetNote', () => {
+    const today = '2026-06-12';
+    const sundayFinish = planDay({
+        id: 3,
+        date: '2026-06-14',
+        session_type: 'long',
+        fast_finish: { pace_kind: '10k', pace_source: 'goal' },
+    });
+    const saturdayTempo = planDay({
+        id: 2,
+        date: '2026-06-13',
+        session_type: 'tempo',
+    });
+    const budget = (left: number, booked: number) => ({
+        cap_minutes: 60,
+        spent_minutes: 60 - left - booked,
+        booked_minutes: booked,
+        left_minutes: left,
+    });
+
+    it('names what the days ahead still need when little is left', () => {
+        expect(
+            hardBudgetNote(
+                {
+                    hard_budget: budget(1, 15),
+                    hard_bookings: [{ date: '2026-06-14', minutes: 15 }],
+                    days: [planDay(), sundayFinish],
+                },
+                today,
+            ),
+        ).toBe(
+            "16 hard min left this week. sunday's finish needs 15, so today stays easy.",
+        );
+    });
+
+    it('lists several sessions ahead and says when the budget is gone', () => {
+        expect(
+            hardBudgetNote(
+                {
+                    hard_budget: budget(-25, 25),
+                    hard_bookings: [
+                        { date: '2026-06-13', minutes: 10 },
+                        { date: '2026-06-14', minutes: 15 },
+                    ],
+                    days: [planDay(), saturdayTempo, sundayFinish],
+                },
+                today,
+            ),
+        ).toBe(
+            "this week's 60 hard min are spent. saturday's tempo and sunday's finish need 25, so today stays easy.",
+        );
+    });
+
+    it('still says so with nothing booked ahead', () => {
+        expect(
+            hardBudgetNote(
+                {
+                    hard_budget: budget(6, 0),
+                    hard_bookings: [],
+                    days: [planDay()],
+                },
+                today,
+            ),
+        ).toBe('6 hard min left this week, so today stays easy.');
+    });
+
+    it.each([
+        ['ten minutes of headroom', budget(10, 15), planDay(), []],
+        ['no locked cap', null, planDay(), []],
+        [
+            'today is itself the booked session',
+            budget(0, 15),
+            planDay({ session_type: 'tempo' }),
+            [{ date: today, minutes: 15 }],
+        ],
+        ['today already ran', budget(0, 0), planDay({ status: 'done' }), []],
+        ['today was skipped', budget(0, 0), planDay({ skipped: true }), []],
+    ])('stays quiet with %s', (_, hardBudget, day, extra) => {
+        expect(
+            hardBudgetNote(
+                {
+                    hard_budget: hardBudget,
+                    hard_bookings: [
+                        ...extra,
+                        { date: '2026-06-14', minutes: 15 },
+                    ],
+                    days: [day, sundayFinish],
+                },
+                today,
+            ),
+        ).toBeNull();
     });
 });
