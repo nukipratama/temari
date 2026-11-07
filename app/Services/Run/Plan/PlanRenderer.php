@@ -311,6 +311,7 @@ final class PlanRenderer
             'prescribed_km' => $s->prescribed_km,
             'ran_anyway' => $ranAnyway ?? $s->ran_anyway,
             'prescription_reason' => $s->prescription_reason,
+            'prescription_budget' => $s->prescription_budget,
             'fall_off_tilt' => $fallOffTilt?->value,
             'goal_pace' => $goalPace,
             'stepping_stone' => $steppingStone,

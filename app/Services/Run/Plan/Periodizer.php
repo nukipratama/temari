@@ -64,6 +64,10 @@ final readonly class Periodizer
      */
     public const int HORIZON_WEEKS = 12;
 
+    public const string BUDGET_SPENT_REASON = 'easy because the weekly hard-minute budget is spent';
+
+    public const string NO_FAST_FINISH_REASON = 'no fast finish because the weekly hard-minute budget is spent';
+
     /** The usual weekly ramp guideline, matching the long run's 1.1x progression cap. */
     private const float RESUME_WEEKLY_GROWTH = 1.10;
 
@@ -136,7 +140,7 @@ final readonly class Periodizer
                 }
                 $session->update(array_intersect_key($row, array_flip([
                     'session_type', 'prescribed_hard_minutes', 'prescribed_pace_band',
-                    'prescribed_pace_sec_per_km', 'prescription_reason', 'prescription_race_context', 'fall_off_tilt',
+                    'prescribed_pace_sec_per_km', 'prescription_reason', 'prescription_race_context', 'prescription_budget', 'fall_off_tilt',
                 ])));
                 $changed = true;
             }
@@ -442,6 +446,7 @@ final readonly class Periodizer
                     'prescribed_pace_sec_per_km' => $row['prescribed_pace_sec_per_km'],
                     'prescription_reason' => $row['prescription_reason'],
                     'prescription_race_context' => $row['prescription_race_context'],
+                    'prescription_budget' => $row['prescription_budget'] ?? null,
                     'fall_off_tilt' => $row['fall_off_tilt'],
                     'pinned' => false,
                     'status' => PlannedSessionStatus::Planned,
@@ -476,6 +481,7 @@ final readonly class Periodizer
                     'stimulus_adherence_pct' => $inputs->adaptation['stimulus_adherence_pct'],
                     'volume_floor_km' => self::overriddenFloorKm($inputs, $rows),
                     'increases_held' => $inputs->increasesHeld,
+                    'hard_cap_minutes' => $inputs->lockedHardCapMinutes ?? self::currentWeekHardCap($inputs, $rows),
                     'deferred_time_trial' => self::deferredTimeTrial($inputs, $rows),
                     'restorable_quality' => $this->restorableQuality($inputs, $rows),
                     ...($inputs->refundsOverride() ? ['override_kind' => null, 'override_date' => null, 'overridden_at' => null] : []),
@@ -484,6 +490,15 @@ final readonly class Periodizer
 
             $this->seasonService->recountPlannedGoals($user);
         });
+    }
+
+    /** @param array<string, array{week_hard_cap_minutes?: int|null, ...}> $rows */
+    private static function currentWeekHardCap(PlanInputs $inputs, array $rows): ?int
+    {
+        $weekEnd = $inputs->currentWeekStart()->addDays(6)->toDateString();
+        $row = array_find($rows, static fn (array $row, string $date): bool => $date <= $weekEnd && isset($row['week_hard_cap_minutes']));
+
+        return $row['week_hard_cap_minutes'] ?? null;
     }
 
     /**
@@ -635,6 +650,7 @@ final readonly class Periodizer
 
         // Without VDOT there is no trustworthy time denominator. Keep the
         // phase/day caps, but do not invent a weekly percentage ceiling.
+        $untrimmed = $prescriptions;
         $hardCeiling = $unknownDemandingMinutes ? 0 : $this->hardCeiling($rows, $kmByDate, $prescriptions, $inputs, $weekStart, $workloadSessions);
         while ($hardCeiling !== null && array_sum(array_map(static fn (IntensityPrescription $p): int => $p->hardMinutes, $prescriptions)) > $hardCeiling) {
             $adjustable = array_diff_key($prescriptions, [(string) $trialDate => true]);
@@ -650,8 +666,20 @@ final readonly class Periodizer
             if ($prescriptions[$date]->hardMinutes === $current->hardMinutes) {
                 break;
             }
+            if ($prescriptions[$date]->isEasy()) {
+                $prescriptions[$date] = new IntensityPrescription(0, null, null, self::BUDGET_SPENT_REASON, $prescriptions[$date]->raceContext);
+            }
 
             $hardCeiling = $unknownDemandingMinutes ? 0 : $this->hardCeiling($rows, $kmByDate, $prescriptions, $inputs, $weekStart, $workloadSessions);
+        }
+        $budgets = [];
+        $budget = $unknownDemandingMinutes ? null : $this->hardBudget($rows, $kmByDate, $prescriptions, $inputs, $weekStart, $workloadSessions);
+        if ($budget !== null && $hardCeiling !== null) {
+            foreach ($prescriptions as $date => $prescription) {
+                if ($prescription->hardMinutes < $untrimmed[$date]->hardMinutes) {
+                    $budgets[$date] = self::budgetNote($budget, $hardCeiling - self::hardMinutesOf($prescriptions) + $prescription->hardMinutes, $untrimmed[$date]->hardMinutes);
+                }
+            }
         }
 
         foreach ($rows as $date => &$row) {
@@ -680,7 +708,7 @@ final readonly class Periodizer
             if (in_array($date, [$goalPaceDate, $trialDate], true) && ! $prescription->isEasy()) {
                 unset($row['fall_off_tilt']);
             }
-            $row = [...$row, ...$prescription->toArray()];
+            $row = [...$row, ...$prescription->toArray(), 'prescription_budget' => $prescription === $prescriptions[$date] ? $budgets[$date] ?? null : null];
         }
         unset($row);
 
@@ -690,14 +718,45 @@ final readonly class Periodizer
             && (!$inputs->recovery instanceof PostRaceRecovery || ! $inputs->recovery->excludesQualityOn($longDate))) {
             $withFinish = $rows;
             $withFinish[$longDate] = [...$rows[$longDate], ...$fastFinish->prescription($kmByDate[$longDate])->toArray()];
-            $asPrescriptions = array_map(static fn (array $row): IntensityPrescription => new IntensityPrescription($row['prescribed_hard_minutes'], $row['prescribed_pace_band'], $row['prescribed_pace_sec_per_km'], $row['prescription_reason'], $row['prescription_race_context']), $withFinish);
+            $asPrescriptions = array_map(self::prescriptionOfRow(...), $withFinish);
             $ceiling = $this->hardCeiling($withFinish, $kmByDate, $asPrescriptions, $inputs, $weekStart, $workloadSessions);
-            if ($ceiling === null || array_sum(array_column($withFinish, 'prescribed_hard_minutes')) <= $ceiling) {
+            $booked = array_sum(array_column($withFinish, 'prescribed_hard_minutes'));
+            if ($ceiling === null || $booked <= $ceiling) {
                 $rows = $withFinish;
+            } else {
+                $finishMinutes = $withFinish[$longDate]['prescribed_hard_minutes'];
+                $finishBudget = $this->hardBudget($withFinish, $kmByDate, $asPrescriptions, $inputs, $weekStart, $workloadSessions);
+                $rows[$longDate]['prescription_reason'] = self::NO_FAST_FINISH_REASON;
+                $rows[$longDate]['prescription_budget'] = $finishBudget === null ? null : self::budgetNote($finishBudget, $ceiling - $booked + $finishMinutes, $finishMinutes);
             }
         }
 
+        $weekBudget = $this->hardBudget($rows, $kmByDate, array_map(self::prescriptionOfRow(...), $rows), $inputs, $weekStart, $workloadSessions);
+        $weekCap = $weekBudget === null ? null : (int) floor($weekBudget['cap']);
+        $rows = array_map(static fn (array $row): array => [...$row, 'week_hard_cap_minutes' => $weekCap], $rows);
+
         return self::capQualityAroundWeeklyHardDays($rows, $workloadSessions + $priorRows, $weekStart);
+    }
+
+    /** @param array{prescribed_hard_minutes: int, prescribed_pace_band: PaceBand|null, prescribed_pace_sec_per_km: int|null, prescription_reason: string|null, prescription_race_context: array<string, int|float|string>|null, ...} $row */
+    private static function prescriptionOfRow(array $row): IntensityPrescription
+    {
+        return new IntensityPrescription($row['prescribed_hard_minutes'], $row['prescribed_pace_band'], $row['prescribed_pace_sec_per_km'], $row['prescription_reason'], $row['prescription_race_context']);
+    }
+
+    /** @param array<string, IntensityPrescription> $prescriptions */
+    private static function hardMinutesOf(array $prescriptions): int
+    {
+        return array_sum(array_map(static fn (IntensityPrescription $p): int => $p->hardMinutes, $prescriptions));
+    }
+
+    /**
+     * @param  array{cap: float, spent: float}  $budget
+     * @return array{cap_minutes: int, left_minutes: int, needed_minutes: int}
+     */
+    private static function budgetNote(array $budget, int $leftMinutes, int $neededMinutes): array
+    {
+        return ['cap_minutes' => (int) floor($budget['cap']), 'left_minutes' => max(0, $leftMinutes), 'needed_minutes' => $neededMinutes];
     }
 
     /**
@@ -760,6 +819,7 @@ final readonly class Periodizer
                     'prescribed_pace_sec_per_km' => null,
                     'prescription_reason' => $tooCloseToHardDay ? 'easy to preserve recovery between hard days' : 'easy because the weekly hard-day budget is already full',
                     'prescription_race_context' => null,
+                    'prescription_budget' => null,
                 ];
                 $generatedHardLongDates = array_values(array_diff($generatedHardLongDates, [$date]));
             }
@@ -804,6 +864,7 @@ final readonly class Periodizer
                     ? 'easy to preserve recovery between hard days'
                     : 'easy because the weekly hard-day budget is already full',
                 'prescription_race_context' => null,
+                'prescription_budget' => null,
             ];
         }
 
@@ -860,6 +921,19 @@ final readonly class Periodizer
      */
     private function hardCeiling(array $rows, array $kmByDate, array $prescriptions, PlanInputs $inputs, Carbon $weekStart, array $workloadSessions): ?int
     {
+        $budget = $this->hardBudget($rows, $kmByDate, $prescriptions, $inputs, $weekStart, $workloadSessions);
+
+        return $budget === null ? null : max(0, (int) floor($budget['cap'] - $budget['spent']));
+    }
+
+    /** @param array<string, array{session_type: SessionType, phase: PlanPhase, ...}> $rows
+     *  @param array<string, float> $kmByDate
+     *  @param array<string, IntensityPrescription> $prescriptions
+     *  @param array<string, array{session_type: SessionType, prescribed_hard_minutes: int, prescribed_pace_band: PaceBand|null, hard_minutes?: float|null, duration_minutes?: float, demanding?: bool}> $workloadSessions
+     *  @return array{cap: float, spent: float}|null
+     */
+    private function hardBudget(array $rows, array $kmByDate, array $prescriptions, PlanInputs $inputs, Carbon $weekStart, array $workloadSessions): ?array
+    {
         if ($inputs->paces === null) {
             return null;
         }
@@ -891,7 +965,9 @@ final readonly class Periodizer
             $totalMinutes += $session['duration_minutes'] ?? 0;
         }
 
-        return max(0, (int) floor($totalMinutes * 0.3 - $spentHardMinutes));
+        $locked = $weekStart->toDateString() === $inputs->currentWeekStart()->toDateString() ? $inputs->lockedHardCapMinutes : null;
+
+        return ['cap' => $locked ?? $totalMinutes * 0.3, 'spent' => $spentHardMinutes];
     }
 
     /** @return array<string, array{session_type: SessionType, prescribed_hard_minutes: int, prescribed_pace_band: PaceBand|null, hard_minutes?: float|null, duration_minutes?: float, demanding?: bool}> */

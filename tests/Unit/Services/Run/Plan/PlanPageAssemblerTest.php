@@ -802,3 +802,23 @@ it('eases today again under a taken readiness override once the ceiling drops be
         ->and(data_get($day, 'eased_from.session_type'))->toBe('interval')
         ->and(data_get($day, 'override.state'))->toBe('taken');
 });
+
+it('shows the current week\'s hard-minute wallet against its locked cap, and none on other weeks', function (): void {
+    Carbon::setTestNow('2026-08-12 09:00:00');
+    $user = assemblerAthlete();
+    app(Periodizer::class)->regenerate($user, Carbon::today());
+    PlanAdaptation::query()->where('user_id', $user->id)->where('week_start', '2026-08-10')->update(['hard_cap_minutes' => 60]);
+    PlannedSession::query()->where('user_id', $user->id)->whereBetween('date', ['2026-08-10', '2026-08-16'])->update(['prescribed_hard_minutes' => 0]);
+    PlannedSession::query()->where('user_id', $user->id)->whereDate('date', '2026-08-14')->update(['prescribed_hard_minutes' => 20]);
+    PlannedSession::query()->where('user_id', $user->id)->whereDate('date', '2026-08-15')->update(['prescribed_hard_minutes' => 10, 'skipped' => true]);
+    ActivityDetail::factory()->for(Activity::factory()->for($user)->analyzed()->create())->create([
+        'start_date_local' => '2026-08-11 07:00:00',
+        'elapsed_time' => 3000,
+        'stream_summary' => ['time_in_zone_min' => ['Z1' => 0, 'Z2' => 35, 'Z3' => 15, 'Z4' => 0, 'Z5' => 0]],
+    ]);
+
+    $weeks = collect(planPageAssembler()->weeks($user, Carbon::today()));
+
+    expect(nonNull($weeks->firstWhere('type', 'current'))['hard_budget'])->toBe(['cap_minutes' => 60, 'spent_minutes' => 15, 'booked_minutes' => 20, 'left_minutes' => 25])
+        ->and($weeks->where('type', '!=', 'current')->pluck('hard_budget')->filter()->all())->toBe([]);
+});

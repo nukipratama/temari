@@ -52,6 +52,7 @@ function day(overrides: Partial<WeekPlanDay> = {}): WeekPlanDay {
         ran_anyway: false,
         prescribed_km: null,
         prescription_reason: null,
+        prescription_budget: null,
         fall_off_tilt: null,
         goal_pace: null,
         stepping_stone: false,

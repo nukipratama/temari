@@ -105,6 +105,7 @@
     "weekPlan.days[].phase",
     "weekPlan.days[].pinned",
     "weekPlan.days[].prescribed_km",
+    "weekPlan.days[].prescription_budget",
     "weekPlan.days[].prescription_reason",
     "weekPlan.days[].purpose",
     "weekPlan.days[].race_long",

@@ -41,6 +41,7 @@ function day(overrides: Partial<EditablePlanDay> = {}): EditablePlanDay {
         ran_anyway: false,
         prescribed_km: null,
         prescription_reason: null,
+        prescription_budget: null,
         fall_off_tilt: null,
         goal_pace: null,
         stepping_stone: false,
@@ -83,6 +84,7 @@ const DETAIL: Record<string, PlanWeek> = {
         week_start: '2026-06-08',
         phase: 'base',
         type: 'history',
+        hard_budget: null,
         days: [
             day({ id: 11, date: '2026-06-08', status: 'done', actual_km: 6 }),
             day({ id: 12, date: '2026-06-09', status: 'missed' }),
@@ -92,6 +94,7 @@ const DETAIL: Record<string, PlanWeek> = {
         week_start: '2026-06-15',
         phase: 'base',
         type: 'current',
+        hard_budget: null,
         days: [
             day({ id: 21, date: '2026-06-16' }),
             day({ id: 22, date: '2026-06-17' }),
@@ -101,6 +104,7 @@ const DETAIL: Record<string, PlanWeek> = {
         week_start: '2026-06-22',
         phase: 'build',
         type: 'lookahead',
+        hard_budget: null,
         days: [
             day({
                 id: 31,
@@ -220,6 +224,7 @@ describe('SeasonTimeline', () => {
             week_start: '2026-06-01',
             phase: 'base',
             type: 'history',
+            hard_budget: null,
             days: [day({ id: 1, date: '2026-06-02', status: 'done' })],
         };
         const onLoadWeek = vi.fn(() => Promise.resolve(true));

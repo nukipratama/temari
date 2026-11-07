@@ -163,6 +163,7 @@ it('renders every block week without a trial or an eased taper day at its predic
     $easedTaperWeeks = $weeksHolding(fn (PlannedSession $s): bool => $s->phase === PlanPhase::Taper && in_array($s->prescription_reason, [
         'easy because the outing cannot safely fit the minimum quality structure',
         'easy because the week has no safe room for meaningful quality',
+        Periodizer::BUDGET_SPENT_REASON,
     ], true));
     $predicted = collect(app(SeasonSummaryBuilder::class)->plannedWeeks($user, $season))
         ->filter(fn (array $week): bool => $week['zone'] === PhaseSchedule::ZONE_BLOCK)

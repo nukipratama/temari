@@ -189,7 +189,13 @@ describe('withSessionSkipped', () => {
             ...overrides,
         }) as EditablePlanDay;
     const weeks = (days: EditablePlanDay[]): PlanWeek[] => [
-        { week_start: '2026-06-15', phase: 'base', type: 'current', days },
+        {
+            week_start: '2026-06-15',
+            phase: 'base',
+            type: 'current',
+            hard_budget: null,
+            days,
+        },
     ];
 
     it('skips the one day, pins it and swaps its skip action for restore', () => {
@@ -410,6 +416,7 @@ function planDay(overrides: Partial<PlanDay> = {}): PlanDay {
         ran_anyway: false,
         prescribed_km: null,
         prescription_reason: null,
+        prescription_budget: null,
         fall_off_tilt: null,
         goal_pace: null,
         stepping_stone: false,
@@ -801,6 +808,19 @@ describe('prescriptionWhy', () => {
                 }),
             ),
         ).toBe('kept easy. too close to another hard day.');
+    });
+
+    it("says a day was kept easy because the week's hard minutes are spent", () => {
+        expect(
+            prescriptionWhy(
+                planDay({
+                    session_type: 'easy',
+                    segments: easyBlock,
+                    prescription_reason:
+                        'easy because the weekly hard-minute budget is spent',
+                }),
+            ),
+        ).toBe("kept easy. this week's hard minutes are already spent.");
     });
 });
 

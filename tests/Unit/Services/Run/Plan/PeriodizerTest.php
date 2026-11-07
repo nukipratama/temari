@@ -1010,3 +1010,24 @@ it('records nothing to restore on a week that dropped no quality session', funct
 
     expect(PlanAdaptation::query()->where('user_id', $user->id)->firstOrFail()->restorable_quality)->toBeNull();
 });
+
+it('locks the current week\'s hard-minute cap at its first regeneration and holds it through the week', function (): void {
+    Carbon::setTestNow('2026-08-10 06:00:00');
+    $user = User::factory()->create();
+    seedPeriodizerBaseline($user);
+    TrainingPreference::factory()->for($user)->create(['sessions_per_week' => 4]);
+    PersonalRecord::factory()->for($user)->create(['category' => '10km', 'value_sec' => 2700, 'set_at' => Carbon::today()]);
+    seedConfirmedEffort($user, 10_000, 2700, Carbon::today());
+    $adaptation = static fn (): PlanAdaptation => PlanAdaptation::query()->where('user_id', $user->id)->where('week_start', '2026-08-10')->firstOrFail();
+
+    periodizer()->regenerate($user, Carbon::today());
+    $locked = $adaptation()->hard_cap_minutes;
+    $adaptation()->update(['hard_cap_minutes' => 7]);
+    Carbon::setTestNow('2026-08-12 06:00:00');
+    periodizer()->regenerate($user, Carbon::today());
+
+    $weekHard = PlannedSession::query()->where('user_id', $user->id)->whereBetween('date', ['2026-08-12', '2026-08-16'])->sum('prescribed_hard_minutes');
+    expect($locked)->toBeInt()->toBeGreaterThan(7)
+        ->and($adaptation()->hard_cap_minutes)->toBe(7)
+        ->and((int) $weekHard)->toBeLessThanOrEqual(7);
+});

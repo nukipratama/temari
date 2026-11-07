@@ -82,18 +82,12 @@ final readonly class PlanInputsGatherer
         $estimate = $this->vdotEstimator->estimate($user, $today);
         $paces = $this->paceCalculator->fromVdotResult($estimate);
         ['pinned' => $pinnedDates, 'settled' => $settledDates, 'fixed' => $fixedSessions] = $this->fixedPlanDaysIn($user, $currentWeekStart->copy()->subWeek(), $today, $horizonEnd, $baseline, $paces);
-        $actualSessions = array_map(static fn (array $session): array => [
-            'date' => $session['date'],
-            'duration_minutes' => $session['duration_minutes'],
-            'hard_minutes' => $session['non_easy_minutes'] ?? $session['lap_threshold_minutes'] ?? $session['gap_threshold_minutes'],
-            'demanding' => $session['demanding'] || ($session['non_easy_minutes'] ?? 0) >= 10,
-        ], $this->trainingStress->forUser($user, $today, 14)['sessions']);
-        $restoredDay = PlanAdaptation::query()
+        $actualSessions = self::budgetActuals($this->trainingStress->forUser($user, $today, 14)['sessions']);
+        $currentWeekAdaptation = PlanAdaptation::query()
             ->where('user_id', $user->id)
             ->where('week_start', $currentWeekStart->toDateString())
-            ->where('override_kind', PlanOverrideKind::WeeklyDrop)
-            ->first(['override_date'])
-            ?->override_date;
+            ->first(['override_kind', 'override_date', 'hard_cap_minutes']);
+        $restoredDay = $currentWeekAdaptation?->override_kind === PlanOverrideKind::WeeklyDrop ? $currentWeekAdaptation->override_date : null;
         $weeks = ($this->trailingWeeks)($user->id, $currentWeekStart->copy()->subDay()->toDateString(), 6)
             ->filter(static fn (WeeklySnapshot $week): bool => $week->week_ending->gte($currentWeekStart->copy()->subWeeks(6)));
 
@@ -144,7 +138,24 @@ final readonly class PlanInputsGatherer
             supportedTenKTimeSec: $this->supportedTimeSec($estimate, 10_000),
             qualityRestored: $restoredDay instanceof Carbon,
             restoredDayOpen: $restoredDay instanceof Carbon && ! $restoredDay->lt($today) && $this->sessionMatcher->activityByDate($user, $restoredDay, $restoredDay) === [],
+            lockedHardCapMinutes: $currentWeekAdaptation?->hard_cap_minutes,
         );
+    }
+
+    /**
+     * The runs the weekly hard-minute budget has spent, read the way the periodizer reads them.
+     *
+     * @param  list<array{date: string, duration_minutes: int|null, non_easy_minutes: float|null, lap_threshold_minutes: float|null, gap_threshold_minutes: float|null, demanding: bool, ...}>  $sessions
+     * @return list<array{date: string, duration_minutes: int|null, hard_minutes: float|null, demanding: bool}>
+     */
+    public static function budgetActuals(array $sessions): array
+    {
+        return array_map(static fn (array $session): array => [
+            'date' => $session['date'],
+            'duration_minutes' => $session['duration_minutes'],
+            'hard_minutes' => $session['non_easy_minutes'] ?? $session['lap_threshold_minutes'] ?? $session['gap_threshold_minutes'],
+            'demanding' => $session['demanding'] || ($session['non_easy_minutes'] ?? 0) >= 10,
+        ], $sessions);
     }
 
     private function postRaceRecovery(User $user, Carbon $today): ?PostRaceRecovery

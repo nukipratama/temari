@@ -26,6 +26,7 @@ function detail(weekStart: string, scores: (number | null)[]): PlanWeek {
         week_start: weekStart,
         phase: 'base',
         type: 'history',
+        hard_budget: null,
         days: scores.map(
             (score, index) =>
                 ({

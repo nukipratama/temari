@@ -65,6 +65,7 @@ use Override;
  * @property int|null $prescribed_pace_sec_per_km
  * @property string|null $prescription_reason
  * @property array<string, int|float|string>|null $prescription_race_context
+ * @property array{cap_minutes: int, left_minutes: int, needed_minutes: int}|null $prescription_budget
  * @property FallOffTilt|null $fall_off_tilt
  * @property TimeTrialOutcome|null $time_trial_outcome
  * @property bool $pinned
@@ -90,6 +91,7 @@ use Override;
     'prescribed_pace_sec_per_km',
     'prescription_reason',
     'prescription_race_context',
+    'prescription_budget',
     'fall_off_tilt',
     'time_trial_outcome',
     'pinned',
@@ -121,6 +123,7 @@ class PlannedSession extends Model
         'prescribed_pace_sec_per_km',
         'prescription_reason',
         'prescription_race_context',
+        'prescription_budget',
         'fall_off_tilt',
         'race_distance_m',
     ];
@@ -183,6 +186,7 @@ class PlannedSession extends Model
             'prescribed_pace_sec_per_km' => 'integer',
             'prescription_reason' => 'string',
             'prescription_race_context' => 'array',
+            'prescription_budget' => 'array',
             'fall_off_tilt' => FallOffTilt::class,
             'time_trial_outcome' => TimeTrialOutcome::class,
             'pinned' => 'boolean',

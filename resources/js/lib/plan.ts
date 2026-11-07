@@ -39,7 +39,17 @@ export interface PlanWeek {
     week_start: string;
     phase: string;
     type: 'history' | 'current' | 'lookahead';
+    /** The current week's hard minutes against the cap locked at its first regeneration; null on other weeks and before a cap is locked. */
+    hard_budget: HardBudget | null;
     days: EditablePlanDay[];
+}
+
+export interface HardBudget {
+    cap_minutes: number;
+    spent_minutes: number;
+    booked_minutes: number;
+    /** Negative when the week is over its cap. */
+    left_minutes: number;
 }
 
 export interface SeasonSummaryWeek {
@@ -538,6 +548,8 @@ const DOSE_WHY: Record<string, string> = {
 const KEPT_EASY_WHY: Record<string, string> = {
     'easy because the week has no safe room for meaningful quality':
         'kept easy. the week has no safe room for real quality.',
+    'easy because the weekly hard-minute budget is spent':
+        "kept easy. this week's hard minutes are already spent.",
     'easy because the weekly hard-day budget is already full':
         'kept easy. the week already has its hard days.',
     'easy to preserve recovery between hard days':
