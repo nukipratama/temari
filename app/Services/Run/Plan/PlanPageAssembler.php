@@ -221,8 +221,8 @@ final class PlanPageAssembler
         }
         $weekStart = $day->copy()->startOfWeek(Carbon::MONDAY);
         $weeks = $weekStart->gte($rangeStart)
-            ? $this->weeksBetween($user, $today, $rangeStart, $rangeEnd, $date)
-            : $this->weeksBetween($user, $today, $weekStart, $weekStart->copy()->addDays(6), $date);
+            ? $this->weeksBetween($user, $today, $rangeStart, $rangeEnd, $date, withHardBudget: false)
+            : $this->weeksBetween($user, $today, $weekStart, $weekStart->copy()->addDays(6), $date, withHardBudget: false);
 
         foreach ($weeks as $week) {
             foreach ($week['days'] as $planDay) {
@@ -281,7 +281,7 @@ final class PlanPageAssembler
     /**
      * @return list<array{week_start: int|string, phase: string, type: string, hard_budget: array{cap_minutes: int, spent_minutes: int, booked_minutes: int, left_minutes: int}|null, days: array<int, array<string, mixed>>}>
      */
-    private function weeksBetween(User $user, Carbon $today, Carbon $rangeStart, Carbon $rangeEnd, ?string $tokenDate = null): array
+    private function weeksBetween(User $user, Carbon $today, Carbon $rangeStart, Carbon $rangeEnd, ?string $tokenDate = null, bool $withHardBudget = true): array
     {
         $currentWeekStart = $this->currentWeekStart($today);
 
@@ -372,7 +372,7 @@ final class PlanPageAssembler
                 'week_start' => $weekStartKey,
                 'phase' => $weekPhase->value,
                 'type' => $weekStartKey < $currentWeekKey ? 'history' : ($weekStartKey === $currentWeekKey ? 'current' : 'lookahead'),
-                'hard_budget' => $weekStartKey === $currentWeekKey ? $this->weekHardBudget->of($user, $today, $currentWeekAdaptation, $weekSessions, $ranDates) : null,
+                'hard_budget' => $withHardBudget && $weekStartKey === $currentWeekKey ? $this->weekHardBudget->of($user, $today, $currentWeekAdaptation, $weekSessions, $ranDates) : null,
                 'days' => $weekSessions->map(fn (PlannedSession $s): array => [...PlanRenderer::dayPayload(
                     $s,
                     $today,

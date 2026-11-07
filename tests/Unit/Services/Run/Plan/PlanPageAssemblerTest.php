@@ -822,3 +822,26 @@ it('shows the current week\'s hard-minute wallet against its locked cap, and non
     expect(nonNull($weeks->firstWhere('type', 'current'))['hard_budget'])->toBe(['cap_minutes' => 60, 'spent_minutes' => 15, 'booked_minutes' => 20, 'left_minutes' => 25])
         ->and($weeks->where('type', '!=', 'current')->pluck('hard_budget')->filter()->all())->toBe([]);
 });
+
+it('builds the hard-minute wallet for the page but not for a recommendation token', function (): void {
+    Carbon::setTestNow('2026-08-12 09:00:00');
+    $user = assemblerAthlete();
+    app(Periodizer::class)->regenerate($user, Carbon::today());
+    PlanAdaptation::query()->where('user_id', $user->id)->where('week_start', '2026-08-10')->update(['hard_cap_minutes' => 60]);
+    $weekStart = Carbon::parse('2026-08-10');
+    $walletReads = 0;
+    DB::listen(function (QueryExecuted $query) use (&$walletReads, $weekStart): void {
+        $since = $query->bindings[1] ?? null;
+        if (str_contains($query->sql, 'has_heartrate') && $since instanceof DateTimeInterface && $weekStart->equalTo($since)) {
+            $walletReads++;
+        }
+    });
+
+    planPageAssembler()->recommendationToken($user, Carbon::today(), Carbon::today()->toDateString());
+    $tokenReads = $walletReads;
+    $weeks = collect(planPageAssembler()->weeks($user, Carbon::today()));
+
+    expect($tokenReads)->toBe(0)
+        ->and($walletReads)->toBe(1)
+        ->and(nonNull($weeks->firstWhere('type', 'current'))['hard_budget'])->not->toBeNull();
+});
