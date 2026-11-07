@@ -68,6 +68,14 @@ final readonly class Periodizer
 
     public const string NO_FAST_FINISH_REASON = 'no fast finish because the weekly hard-minute budget is spent';
 
+    public const string HARD_DAYS_FULL_REASON = 'easy because the weekly hard-day budget is already full';
+
+    public const string HARD_DAY_SPACING_REASON = 'easy to preserve recovery between hard days';
+
+    public const string NO_FAST_FINISH_HARD_DAYS_REASON = 'no fast finish because the week already has two hard days';
+
+    public const string NO_FAST_FINISH_SPACING_REASON = 'no fast finish to preserve recovery between hard days';
+
     /** The usual weekly ramp guideline, matching the long run's 1.1x progression cap. */
     private const float RESUME_WEEKLY_GROWTH = 1.10;
 
@@ -140,7 +148,7 @@ final readonly class Periodizer
                 }
                 $session->update(array_intersect_key($row, array_flip([
                     'session_type', 'prescribed_hard_minutes', 'prescribed_pace_band',
-                    'prescribed_pace_sec_per_km', 'prescription_reason', 'prescription_race_context', 'prescription_budget', 'fall_off_tilt',
+                    'prescribed_pace_sec_per_km', 'prescription_reason', 'prescription_race_context', 'prescription_budget', 'hard_day_restorable', 'fall_off_tilt',
                 ])));
                 $changed = true;
             }
@@ -367,7 +375,7 @@ final readonly class Periodizer
 
     private function persist(User $user, PlanInputs $inputs): void
     {
-        $inputs = $this->refundingUnneededBudgetOverride($inputs);
+        $inputs = $this->refundingUnneededBringBack($inputs);
         $rows = $this->rowsFor($inputs);
 
         DB::transaction(function () use ($user, $inputs, $rows): void {
@@ -375,7 +383,7 @@ final readonly class Periodizer
             $current = $this->sessionsInHorizon($inputs);
 
             if ($this->containsNewFixedSession($inputs, $current)) {
-                $inputs = $this->refundingUnneededBudgetOverride($this->gatherer->forUser($user, $inputs->today));
+                $inputs = $this->refundingUnneededBringBack($this->gatherer->forUser($user, $inputs->today));
                 $rows = $this->rowsFor($inputs);
                 $reran = true;
                 $current = $this->sessionsInHorizon($inputs);
@@ -418,7 +426,7 @@ final readonly class Periodizer
 
             $current = $this->sessionsInHorizon($inputs);
             if (! $reran && $this->containsNewFixedSession($inputs, $current)) {
-                $inputs = $this->refundingUnneededBudgetOverride($this->gatherer->forUser($user, $inputs->today));
+                $inputs = $this->refundingUnneededBringBack($this->gatherer->forUser($user, $inputs->today));
                 $rows = $this->rowsFor($inputs);
                 $current = $this->sessionsInHorizon($inputs);
             }
@@ -448,6 +456,7 @@ final readonly class Periodizer
                     'prescription_reason' => $row['prescription_reason'],
                     'prescription_race_context' => $row['prescription_race_context'],
                     'prescription_budget' => $row['prescription_budget'] ?? null,
+                    'hard_day_restorable' => $row['hard_day_restorable'] ?? false,
                     'fall_off_tilt' => $row['fall_off_tilt'],
                     'pinned' => false,
                     'status' => PlannedSessionStatus::Planned,
@@ -493,20 +502,21 @@ final readonly class Periodizer
         });
     }
 
-    public function refundingUnneededBudgetOverride(PlanInputs $inputs): PlanInputs
+    public function refundingUnneededBringBack(PlanInputs $inputs): PlanInputs
     {
-        if ($inputs->budgetOverrideDate === null || ! $inputs->restoredDayOpen) {
+        $date = $inputs->bringBackDate();
+        if ($date === null || ! $inputs->restoredDayOpen) {
             return $inputs;
         }
 
-        $refunded = $inputs->withBudgetOverrideRefunded();
+        $refunded = $inputs->withBringBackRefunded();
         $kept = $this->rowsFor($inputs);
         $without = $this->rowsFor($refunded);
         $changed = array_any($kept, static fn (array $row, string $date): bool => ! isset($without[$date])
             || $row['session_type'] !== $without[$date]['session_type']
             || $row['prescribed_hard_minutes'] !== $without[$date]['prescribed_hard_minutes']);
 
-        return isset($kept[$inputs->budgetOverrideDate]) && ! $changed ? $refunded : $inputs;
+        return isset($kept[$date]) && ! $changed ? $refunded : $inputs;
     }
 
     /** @param array<string, array{week_hard_cap_minutes?: int|null, ...}> $rows */
@@ -765,20 +775,40 @@ final readonly class Periodizer
         $rows = array_map(static fn (array $row): array => [...$row, 'week_hard_cap_minutes' => $weekCap], $rows);
 
         $fixed = $workloadSessions + $priorRows;
-        $capped = self::capQualityAroundWeeklyHardDays($rows, $fixed, $weekStart);
+        $hardDayOverride = isset($rows[(string) $inputs->hardDayOverrideDate]) ? $inputs->hardDayOverrideDate : null;
+        $capped = self::capQualityAroundWeeklyHardDays($rows, $fixed, $weekStart, $hardDayOverride);
         foreach ($fullRows as $date => $full) {
             if (($capped[$date]['prescription_budget'] ?? null) === null) {
                 continue;
             }
-            $broughtBackWeek = self::capQualityAroundWeeklyHardDays([...$rows, $date => [...$rows[$date], ...$full]], $fixed, $weekStart);
-            $displaces = array_any($capped, static fn (array $row, string $other): bool => $other !== $date
-                && $broughtBackWeek[$other]['prescribed_hard_minutes'] !== $row['prescribed_hard_minutes']);
-            if ($broughtBackWeek[$date]['prescribed_hard_minutes'] === 0 || $displaces) {
+            $broughtBackWeek = self::capQualityAroundWeeklyHardDays([...$rows, $date => [...$rows[$date], ...$full]], $fixed, $weekStart, $hardDayOverride);
+            if ($broughtBackWeek[$date]['prescribed_hard_minutes'] === 0 || self::displacesAnother($broughtBackWeek, $capped, $date)) {
                 $capped[$date]['prescription_budget'] = null;
             }
         }
 
+        foreach ($capped as $date => &$row) {
+            $row['hard_day_restorable'] = false;
+            if ($hardDayOverride !== null || ! in_array($row['prescription_reason'], [self::HARD_DAYS_FULL_REASON, self::NO_FAST_FINISH_HARD_DAYS_REASON], true)) {
+                continue;
+            }
+            $broughtBackWeek = self::capQualityAroundWeeklyHardDays($rows, $fixed, $weekStart, $date);
+            $row['hard_day_restorable'] = $broughtBackWeek[$date]['prescribed_hard_minutes'] === $rows[$date]['prescribed_hard_minutes']
+                && ! self::displacesAnother($broughtBackWeek, $capped, $date);
+        }
+        unset($row);
+
         return $capped;
+    }
+
+    /**
+     * @param  array<string, array{prescribed_hard_minutes: int, ...}>  $broughtBackWeek
+     * @param  array<string, array{prescribed_hard_minutes: int, ...}>  $week
+     */
+    private static function displacesAnother(array $broughtBackWeek, array $week, string $date): bool
+    {
+        return array_any($week, static fn (array $row, string $other): bool => $other !== $date
+            && $broughtBackWeek[$other]['prescribed_hard_minutes'] !== $row['prescribed_hard_minutes']);
     }
 
     /** @param array{prescribed_hard_minutes: int, prescribed_pace_band: PaceBand|null, prescribed_pace_sec_per_km: int|null, prescription_reason: string|null, prescription_race_context: array<string, int|float|string>|null, ...} $row */
@@ -822,7 +852,7 @@ final readonly class Periodizer
      * @param array<string, array{session_type: SessionType, prescribed_hard_minutes: int, prescribed_pace_band: PaceBand|null, hard_minutes?: float|null, duration_minutes?: float, demanding?: bool, ...}> $fixedSessions
      * @return array<string, array{phase: PlanPhase, session_type: SessionType, prescribed_hard_minutes: int, prescribed_pace_band: PaceBand|null, prescribed_pace_sec_per_km: int|null, prescription_reason: string|null, prescription_race_context: array<string, int|float|string>|null, ...}>
      */
-    private static function capQualityAroundWeeklyHardDays(array $rows, array $fixedSessions, Carbon $weekStart): array
+    private static function capQualityAroundWeeklyHardDays(array $rows, array $fixedSessions, Carbon $weekStart, ?string $countExempt = null): array
     {
         $weekStartDate = $weekStart->toDateString();
         $weekEndDate = $weekStart->copy()->addDays(6)->toDateString();
@@ -854,13 +884,13 @@ final readonly class Periodizer
             && $row['prescribed_hard_minutes'] > 0));
         foreach ($generatedHardLongDates as $date) {
             $tooCloseToHardDay = array_any($longOffsets, static fn (string $other): bool => $other !== $date && self::daysApart($date, $other) < 2);
-            if (count($fixedHardOffsets) >= 2 || $tooCloseToHardDay) {
+            if ((count($fixedHardOffsets) >= 2 && $date !== $countExempt) || $tooCloseToHardDay) {
                 $rows[$date] = [
                     ...$rows[$date],
                     'prescribed_hard_minutes' => 0,
                     'prescribed_pace_band' => null,
                     'prescribed_pace_sec_per_km' => null,
-                    'prescription_reason' => $tooCloseToHardDay ? 'easy to preserve recovery between hard days' : 'easy because the weekly hard-day budget is already full',
+                    'prescription_reason' => $tooCloseToHardDay ? self::HARD_DAY_SPACING_REASON : self::HARD_DAYS_FULL_REASON,
                     'prescription_race_context' => null,
                     'prescription_budget' => null,
                 ];
@@ -881,8 +911,11 @@ final readonly class Periodizer
         $isTrial = static fn (string $date): bool => TimeTrial::isTrial($rows[$date]['prescription_race_context']);
         usort($qualityDates, static fn (string $left, string $right): int =>
             ($isTrial($right) <=> $isTrial($left)) ?: ($recoveryByDate[$right] <=> $recoveryByDate[$left]) ?: strcmp($right, $left));
+        if (in_array($countExempt, $qualityDates, true)) {
+            $qualityDates = [...array_diff($qualityDates, [$countExempt]), $countExempt];
+        }
 
-        $qualityLimit = max(0, 2 - count($fixedHardOffsets) - count($generatedHardLongDates));
+        $qualityLimit = max(0, 2 - count($fixedHardOffsets) - count(array_diff($generatedHardLongDates, [$countExempt])));
         $keptHardOffsets = [];
         $keptQualityCount = 0;
         foreach ($qualityDates as $date) {
@@ -890,8 +923,8 @@ final readonly class Periodizer
                 [...$protectedOffsets, ...$keptHardOffsets],
                 static fn (string $hardDate): bool => self::daysApart($date, $hardDate) < 2,
             );
-            if ($keptQualityCount < $qualityLimit && ! $tooCloseToHardDay) {
-                $keptQualityCount++;
+            if (($date === $countExempt || $keptQualityCount < $qualityLimit) && ! $tooCloseToHardDay) {
+                $keptQualityCount += $date === $countExempt ? 0 : 1;
                 $keptHardOffsets[] = $date;
 
                 continue;
@@ -903,9 +936,7 @@ final readonly class Periodizer
                 'prescribed_hard_minutes' => 0,
                 'prescribed_pace_band' => null,
                 'prescribed_pace_sec_per_km' => null,
-                'prescription_reason' => $tooCloseToHardDay
-                    ? 'easy to preserve recovery between hard days'
-                    : 'easy because the weekly hard-day budget is already full',
+                'prescription_reason' => $tooCloseToHardDay ? self::HARD_DAY_SPACING_REASON : self::HARD_DAYS_FULL_REASON,
                 'prescription_race_context' => null,
                 'prescription_budget' => null,
             ];
@@ -917,7 +948,7 @@ final readonly class Periodizer
                 continue;
             }
             $tooCloseToHardDay = array_any($hardDates, static fn (string $hardDate): bool => self::daysApart($date, $hardDate) < 2);
-            if (count($hardDates) < 2 && ! $tooCloseToHardDay) {
+            if (($date === $countExempt || count(array_diff($hardDates, [$countExempt])) < 2) && ! $tooCloseToHardDay) {
                 $hardDates[] = $date;
 
                 continue;
@@ -928,7 +959,7 @@ final readonly class Periodizer
                 'prescribed_hard_minutes' => 0,
                 'prescribed_pace_band' => null,
                 'prescribed_pace_sec_per_km' => null,
-                'prescription_reason' => null,
+                'prescription_reason' => $tooCloseToHardDay ? self::NO_FAST_FINISH_SPACING_REASON : self::NO_FAST_FINISH_HARD_DAYS_REASON,
                 'prescription_race_context' => null,
             ];
         }

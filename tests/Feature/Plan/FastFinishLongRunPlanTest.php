@@ -262,3 +262,60 @@ it('keeps the week\'s fast finish when the athlete brings back a session the bud
         ->and($rows[$qualityDate]['prescribed_hard_minutes'])->toBe($plan[$qualityDate]['prescribed_hard_minutes'])
         ->and(fastFinishes($rows))->toHaveKey($finishDate);
 });
+
+/** @return array{0: PlanInputs, 1: string, 2: Carbon} a Thursday whose week plans a fast finish on its weekend, with the inputs planned from it */
+function weekendFastFinishWeek(): array
+{
+    $thursday = Carbon::parse('2026-09-10');
+    do {
+        $thursday->addWeek();
+        $base = fastFinishInputs(today: $thursday->toDateString(), longestSoFarKm: 40.0);
+        $finishDate = array_find_key(fastFinishes(fastFinishPlan($base)), static fn (array $row, string $date): bool => $date >= $thursday->copy()->addDays(2)->toDateString() && $date <= $thursday->copy()->addDays(3)->toDateString());
+    } while ($finishDate === null && $thursday->lt(Carbon::parse(FAST_FINISH_RACE_DAY)));
+
+    return [$base, (string) nonNull($finishDate), $thursday];
+}
+
+/**
+ * @param  array<string, array{session_type: SessionType, prescribed_hard_minutes: int, ...}>  $rows
+ * @return array<string, array{0: SessionType, 1: int}>
+ */
+function doses(array $rows, string $except): array
+{
+    return array_map(static fn (array $row): array => [$row['session_type'], $row['prescribed_hard_minutes']], array_diff_key($rows, [$except => true]));
+}
+
+it('names the two hard days a dropped fast finish lost to, and marks it as one the athlete can bring back', function (): void {
+    [$base, $finishDate, $thursday] = weekendFastFinishWeek();
+    $twoHardDays = planInputsWith($base, ['actualSessions' => [
+        ['date' => $thursday->copy()->subDays(3)->toDateString(), 'duration_minutes' => 60, 'hard_minutes' => 2.0, 'demanding' => true],
+        ['date' => $thursday->copy()->subDays(2)->toDateString(), 'duration_minutes' => 60, 'hard_minutes' => 2.0, 'demanding' => true],
+    ]]);
+
+    $dropped = fastFinishPlan($twoHardDays);
+    $brought = fastFinishPlan(planInputsWith($twoHardDays, ['hardDayOverrideDate' => $finishDate]));
+
+    expect(fastFinishes($dropped))->not->toHaveKey($finishDate)
+        ->and($dropped[$finishDate]['prescription_reason'])->toBe(Periodizer::NO_FAST_FINISH_HARD_DAYS_REASON)
+        ->and($dropped[$finishDate]['hard_day_restorable'] ?? null)->toBeTrue()
+        ->and(fastFinishes($brought))->toHaveKey($finishDate)
+        ->and($brought[$finishDate]['hard_day_restorable'] ?? null)->toBeFalse()
+        ->and(doses($brought, $finishDate))->toBe(doses($dropped, $finishDate));
+});
+
+it('says a fast finish too close to a hard day was dropped for recovery, and never offers it back', function (): void {
+    [$base, $finishDate] = weekendFastFinishWeek();
+    $dayBefore = Carbon::parse($finishDate)->subDay();
+    $hardEve = planInputsWith($base, [
+        'today' => $dayBefore,
+        'actualSessions' => [['date' => $dayBefore->toDateString(), 'duration_minutes' => 60, 'hard_minutes' => 2.0, 'demanding' => true]],
+    ]);
+
+    $rows = fastFinishPlan($hardEve);
+    $brought = fastFinishPlan(planInputsWith($hardEve, ['hardDayOverrideDate' => $finishDate]));
+
+    expect(fastFinishes($rows))->not->toHaveKey($finishDate)
+        ->and($rows[$finishDate]['prescription_reason'])->toBe(Periodizer::NO_FAST_FINISH_SPACING_REASON)
+        ->and($rows[$finishDate]['hard_day_restorable'] ?? null)->toBeFalse()
+        ->and(fastFinishes($brought))->not->toHaveKey($finishDate);
+});

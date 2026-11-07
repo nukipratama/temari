@@ -611,13 +611,13 @@ it('reads whether the overridden day is still open: today or later, with no run 
     'already past' => ['2026-09-08', false, false],
 ]);
 
-it('reads whether a budget bring-back\'s day is still open', function (bool $ran, bool $open): void {
+it('reads whether a budget or hard-day bring-back\'s day is still open', function (PlanOverrideKind $kind, bool $ran, bool $open): void {
     Carbon::setTestNow('2026-09-09 12:00:00');
     $user = gathererAthlete();
     PlanAdaptation::factory()->for($user)->create([
         'week_start' => '2026-09-07',
         'hard_cap_minutes' => 60,
-        'override_kind' => PlanOverrideKind::BudgetDrop,
+        'override_kind' => $kind,
         'override_date' => '2026-09-09',
     ]);
     if ($ran) {
@@ -625,12 +625,12 @@ it('reads whether a budget bring-back\'s day is still open', function (bool $ran
     }
 
     expect(planInputsGatherer()->forUser($user, Carbon::today())->restoredDayOpen)->toBe($open);
-})->with([
+})->with([PlanOverrideKind::BudgetDrop, PlanOverrideKind::HardDayDrop])->with([
     'not run' => [false, true],
     'run' => [true, false],
 ]);
 
-it('reads this week\'s locked hard-minute cap and the day the athlete brought back over it', function (PlanOverrideKind $kind, ?string $broughtBack): void {
+it('reads this week\'s locked hard-minute cap and the day the athlete brought back over it', function (PlanOverrideKind $kind, ?string $overBudget, ?string $overHardDays): void {
     Carbon::setTestNow('2026-09-09 12:00:00');
     $user = gathererAthlete();
     PlanAdaptation::factory()->for($user)->create([
@@ -643,8 +643,10 @@ it('reads this week\'s locked hard-minute cap and the day the athlete brought ba
     $inputs = planInputsGatherer()->forUser($user, Carbon::today());
 
     expect($inputs->lockedHardCapMinutes)->toBe(60)
-        ->and($inputs->budgetOverrideDate)->toBe($broughtBack);
+        ->and($inputs->budgetOverrideDate)->toBe($overBudget)
+        ->and($inputs->hardDayOverrideDate)->toBe($overHardDays);
 })->with([
-    'budget drop' => [PlanOverrideKind::BudgetDrop, '2026-09-12'],
-    'weekly drop' => [PlanOverrideKind::WeeklyDrop, null],
+    'budget drop' => [PlanOverrideKind::BudgetDrop, '2026-09-12', null],
+    'hard-day drop' => [PlanOverrideKind::HardDayDrop, null, '2026-09-12'],
+    'weekly drop' => [PlanOverrideKind::WeeklyDrop, null, null],
 ]);

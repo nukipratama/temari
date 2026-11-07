@@ -632,6 +632,32 @@ it('caps future quality around a settled tempo and a race-pace Long in the curre
         ->and($rows['2026-09-06']['prescribed_hard_minutes'])->toBeGreaterThan(0);
 });
 
+it('marks a tempo the weekly hard-day count dropped as one the athlete can bring back, and brings it back without moving another day', function (): void {
+    $overrides = [
+        'sessionsPerWeek' => 6,
+        'projectedRaceSeconds' => 12_000.0,
+        'raceGoalTimeSec' => 12_000,
+        'raceDistanceM' => 42_195.0,
+        'volumeFloorKm' => 60.0,
+        'longRunBaselineKm' => 30.0,
+        'longRunCapKm' => 30.0,
+        'longRunProgressionCapKm' => 11.0,
+        'raceAmbitionState' => RaceAmbitionState::Unknown,
+        'fixedSessions' => ['2026-09-01' => ['session_type' => SessionType::Tempo, 'prescribed_hard_minutes' => 20, 'prescribed_pace_band' => PaceBand::Threshold, 'hard_minutes' => null]],
+        'actualSessions' => [['date' => '2026-09-01', 'duration_minutes' => 60, 'hard_minutes' => 20.0, 'demanding' => true]],
+    ];
+    $dropped = periodizerRows('2026-09-03', '2026-09-28', $overrides);
+    $brought = periodizerRows('2026-09-03', '2026-09-28', [...$overrides, 'hardDayOverrideDate' => '2026-09-03']);
+    $dose = static fn (array $rows): array => array_map(static fn (array $row): array => [$row['session_type'], $row['prescribed_hard_minutes']], array_diff_key($rows, ['2026-09-03' => true]));
+
+    expect($dropped['2026-09-03']['prescription_reason'])->toBe(Periodizer::HARD_DAYS_FULL_REASON)
+        ->and($dropped['2026-09-03']['hard_day_restorable'] ?? null)->toBeTrue()
+        ->and($brought['2026-09-03']['session_type'])->toBeIn([SessionType::Tempo, SessionType::Interval])
+        ->and($brought['2026-09-03']['prescribed_hard_minutes'])->toBeGreaterThan(0)
+        ->and($brought['2026-09-03']['hard_day_restorable'] ?? null)->toBeFalse()
+        ->and($dose($brought))->toBe($dose($dropped));
+});
+
 it('reserves unknown pinned quality without inventing a remaining hard-minute allowance', function (): void {
     $rows = periodizerRows('2026-08-10', '2026-10-05', [
         'sessionsPerWeek' => 6, 'projectedRaceSeconds' => 10_800.0, 'raceGoalTimeSec' => 10_800, 'raceDistanceM' => 42_195.0, 'volumeFloorKm' => 60.0, 'longRunBaselineKm' => 28.0, 'longRunCapKm' => 30.0, 'longRunProgressionCapKm' => 5.3, 'raceAmbitionState' => RaceAmbitionState::Unknown,
@@ -1044,8 +1070,8 @@ it('hands back a budget bring-back only when the whole plan would read the same 
         'restoredDayOpen' => true,
     ]);
 
-    expect(periodizer()->rowsFor($inputs)['2026-09-24']['prescribed_hard_minutes'])->toBe(periodizer()->rowsFor($inputs->withBudgetOverrideRefunded())['2026-09-24']['prescribed_hard_minutes'])
-        ->and(periodizer()->refundingUnneededBudgetOverride($inputs)->budgetOverrideRefunded)->toBe($refunded);
+    expect(periodizer()->rowsFor($inputs)['2026-09-24']['prescribed_hard_minutes'])->toBe(periodizer()->rowsFor($inputs->withBringBackRefunded())['2026-09-24']['prescribed_hard_minutes'])
+        ->and(periodizer()->refundingUnneededBringBack($inputs)->bringBackRefunded)->toBe($refunded);
 })->with([
     'the cap would trim another day without it' => [25, false],
     'the cap no longer bites' => [500, true],

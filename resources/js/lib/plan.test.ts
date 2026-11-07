@@ -901,6 +901,27 @@ describe('prescriptionWhy', () => {
             ),
         ).toBe("kept easy. this week's hard minutes are already spent.");
     });
+
+    it.each([
+        [
+            'no fast finish because the week already has two hard days',
+            'no fast finish. the week already has its hard days.',
+        ],
+        [
+            'no fast finish to preserve recovery between hard days',
+            'no fast finish. too close to another hard day.',
+        ],
+    ])('says why a long run lost its fast finish: %s', (reason, why) => {
+        expect(
+            prescriptionWhy(
+                planDay({
+                    session_type: 'long',
+                    segments: easyBlock,
+                    prescription_reason: reason,
+                }),
+            ),
+        ).toBe(why);
+    });
 });
 
 describe('dayStatusGlyph', () => {
