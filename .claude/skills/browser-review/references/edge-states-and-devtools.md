@@ -19,8 +19,8 @@ failed Analysis exists. Vendor component internals on an operator page, recorded
 ### The operator console (`/devtools`, `/devtools/design`, `/devtools/narration`, `/pulse`)
 
 **All four are swept by default, and locally they need no password.**
-[EnsureDevtoolsAccess](../../../../app/Http/Middleware/EnsureDevtoolsAccess.php) returns early when
-the app is not in production, so an unauthenticated request to `/devtools/design` answers **200**.
+[EnsureDevtoolsAccess](../../../../app/Http/Middleware/EnsureDevtoolsAccess.php) returns early in
+the `local` environment, so an unauthenticated request to `/devtools/design` answers **200**.
 `/pulse` is a vendor route `route:list --except-vendor` never reports, so it is appended by hand.
 
 This skill used to gate all four on `DEVTOOLS_PASSWORD` being set, which kept `/devtools/design`

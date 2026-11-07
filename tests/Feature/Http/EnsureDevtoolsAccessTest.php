@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 use App\Http\Middleware\EnsureDevtoolsAccess;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\RateLimiter;
 use Symfony\Component\HttpFoundation\Response;
 
 function runDevtoolsMiddleware(?string $password): Response
@@ -18,7 +17,6 @@ function runDevtoolsMiddleware(?string $password): Response
 }
 
 beforeEach(function (): void {
-    RateLimiter::clear('devtools-auth:127.0.0.1');
     config(['devtools.password' => 'secret']);
     app()->detectEnvironment(fn (): string => 'production');
 });
@@ -98,7 +96,6 @@ it('keeps the lockout per address', function (): void {
     $response = new EnsureDevtoolsAccess()->handle($request, fn (): Response => response('ok'));
 
     expect($response->getContent())->toBe('ok');
-    RateLimiter::clear('devtools-auth:203.0.113.9');
 });
 
 it('ships no devtools password in the example env, so a copied env fails closed in production', function (): void {
