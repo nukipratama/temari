@@ -322,6 +322,14 @@
             ],
             "graphic": true
         },
+        "leaf/0.4": {
+            "over": {
+                "resources/js/components/run/SplitsChart.tsx": [
+                    "paper"
+                ]
+            },
+            "text": []
+        },
         "leaf/0.18": {
             "over": {
                 "resources/js/components/ui/Chip.test.tsx": [

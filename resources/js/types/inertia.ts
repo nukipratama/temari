@@ -266,6 +266,24 @@ export interface StreamSummaryPerKm {
     avg_cadence_spm?: number | null;
 }
 
+/** One km's seconds split by what they cost from the week's hard-minute budget. */
+export interface HardSecondsKm {
+    km: number;
+    easy_sec: number;
+    high_hr_easy_pace_sec: number;
+    hard_sec: number;
+}
+
+/** What a run spent from its week's hard-minute budget, and which minutes counted. */
+export interface RunHardMinutes {
+    minutes: number;
+    hr_only_minutes: number;
+    cap_minutes: number | null;
+    easy_ceiling_sec_per_km: number | null;
+    /** Null until the run's splits carry their per-km high-heart-rate histogram. */
+    per_km: HardSecondsKm[] | null;
+}
+
 /** One lap as the watch recorded it — whatever distance the lap button (or the
  *  auto-split) made it, never bucketed into kilometres. Absent for runs Strava
  *  shipped no usable laps for. */

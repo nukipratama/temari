@@ -139,7 +139,10 @@ class StreamAnalysis
 
         $perKm = KmSplitBuilder::perKm($laps, $latlng, $time, $heartrate, $splitsMetric, $deviceDistanceM);
         if ($perKm !== []) {
-            $summary['per_km'] = $this->attachStreamCadenceToRows($perKm, $cadenceByKm);
+            $summary['per_km'] = $this->attachHighHeartRateToRows(
+                $this->attachStreamCadenceToRows($perKm, $cadenceByKm),
+                $this->highHeartRateByKm($streams, $hrZones),
+            );
         }
 
         $lapRows = KmSplitBuilder::laps($laps);
@@ -563,6 +566,45 @@ class StreamAnalysis
      */
     public function highHeartRateByPace(array $streams, array $hrZones): array
     {
+        $samples = $this->highHeartRateSamples($streams, $hrZones);
+
+        return $samples === null ? [] : ['high_hr_sec_by_gap_pace' => self::paceHistogram($samples)];
+    }
+
+    /**
+     * The same histogram as {@see self::highHeartRateByPace()}, one per kilometre of the
+     * distance stream, keyed by 1-based km. Every km the distance stream reaches gets a
+     * histogram, empty when none of its seconds sat in Z3 or above.
+     *
+     * @param  array<string, mixed>  $streams  raw Strava streams dict
+     * @param  array<string, array{lo: int, hi: int}>  $hrZones
+     * @return array<int, array<int, int>>
+     */
+    public function highHeartRateByKm(array $streams, array $hrZones): array
+    {
+        $samples = $this->highHeartRateSamples($streams, $hrZones);
+        $distance = self::floats($this->data($streams, 'distance'));
+        if ($samples === null || $distance === []) {
+            return [];
+        }
+
+        $byKm = array_fill_keys(range(1, (int) floor(max($distance) / 1000) + 1), []);
+        foreach ($samples as $sample) {
+            if (isset($distance[$sample['index']])) {
+                $byKm[(int) floor($distance[$sample['index']] / 1000) + 1][] = $sample;
+            }
+        }
+
+        return array_map(self::paceHistogram(...), $byKm);
+    }
+
+    /**
+     * @param  array<string, mixed>  $streams
+     * @param  array<string, array{lo: int, hi: int}>  $hrZones
+     * @return list<array{index: int, pace: int, seconds: float}>|null
+     */
+    private function highHeartRateSamples(array $streams, array $hrZones): ?array
+    {
         $floor = $hrZones[self::EASY_CAP_ZONE]['lo'] ?? null;
         $intervals = self::intervals(self::floats($this->data($streams, 'time')));
         $heartrate = self::floats($this->data($streams, 'heartrate'));
@@ -570,10 +612,10 @@ class StreamAnalysis
         $grade = self::floats($this->data($streams, 'grade_smooth'));
         $n = min(count($intervals), count($heartrate), count($velocity));
         if ($floor === null || $n < 1) {
-            return [];
+            return null;
         }
 
-        $byPace = [];
+        $samples = [];
         for ($i = 0; $i < $n; $i++) {
             if ($heartrate[$i] < $floor || $heartrate[$i] > self::HR_PLAUSIBLE_MAX_BPM) {
                 continue;
@@ -582,14 +624,28 @@ class StreamAnalysis
             $pace = $velocity[$i] < self::STOP_VELOCITY_MS
                 ? self::SLOWEST_PACE_SEC
                 : min(self::SLOWEST_PACE_SEC, (int) floor(1000 / $flatVelocity));
-            $byPace[$pace] = ($byPace[$pace] ?? 0.0) + $intervals[$i];
+            $samples[] = ['index' => $i, 'pace' => $pace, 'seconds' => $intervals[$i]];
+        }
+
+        return $samples;
+    }
+
+    /**
+     * @param  list<array{index: int, pace: int, seconds: float}>  $samples
+     * @return array<int, int>
+     */
+    private static function paceHistogram(array $samples): array
+    {
+        $byPace = [];
+        foreach ($samples as $sample) {
+            $byPace[$sample['pace']] = ($byPace[$sample['pace']] ?? 0.0) + $sample['seconds'];
         }
         ksort($byPace);
 
-        return ['high_hr_sec_by_gap_pace' => array_filter(
+        return array_filter(
             array_map(static fn (float $seconds): int => (int) round($seconds), $byPace),
             static fn (int $seconds): bool => $seconds > 0,
-        )];
+        );
     }
 
     /**
@@ -1121,6 +1177,25 @@ class StreamAnalysis
             $km = Numeric::int($row['km'] ?? 0);
             if (isset($cadenceByKm[$km])) {
                 $rows[$i]['avg_cadence_spm'] = $cadenceByKm[$km];
+            }
+        }
+
+        return $rows;
+    }
+
+    /**
+     * Decorate `per_km` rows with their km's `high_hr_sec_by_gap_pace` histogram.
+     *
+     * @param  array<int, array<string, mixed>>  $rows
+     * @param  array<int, array<int, int>>  $highHeartRateByKm
+     * @return array<int, array<string, mixed>>
+     */
+    private function attachHighHeartRateToRows(array $rows, array $highHeartRateByKm): array
+    {
+        foreach ($rows as $i => $row) {
+            $km = Numeric::int($row['km'] ?? 0);
+            if (isset($highHeartRateByKm[$km])) {
+                $rows[$i]['high_hr_sec_by_gap_pace'] = $highHeartRateByKm[$km];
             }
         }
 

@@ -6,6 +6,7 @@ import type {
     ActivityDetail,
     AnalysisPayload,
     Mood,
+    RunHardMinutes,
     StoryLine,
 } from '@/types/inertia';
 
@@ -51,6 +52,7 @@ interface ShowProps {
     isChainHead: boolean;
     pastYou: PastYouMatch | null;
     prBib: PrBib | null;
+    hardMinutes: RunHardMinutes | null;
 }
 
 export default function RunsShow({
@@ -65,6 +67,7 @@ export default function RunsShow({
     isChainHead,
     pastYou,
     prBib,
+    hardMinutes,
 }: Readonly<ShowProps>) {
     const [shareOpen, setShareOpen] = useState(false);
     const [shareAsked, setShareAsked] = useState(false);
@@ -188,6 +191,13 @@ export default function RunsShow({
                                 <SplitsChart
                                     rows={perKm}
                                     partial={partialSplit}
+                                    hardMinutes={hardMinutes}
+                                    feelsLikeC={
+                                        detail.weather_apparent_temp_c ?? null
+                                    }
+                                    dewPointC={
+                                        detail.weather_dew_point_c ?? null
+                                    }
                                 />
                             )}
 

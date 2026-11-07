@@ -21,6 +21,8 @@ code_refs:
   - resources/js/components/run/WeatherRail.tsx
   - resources/js/components/run/VitalsCard.tsx
   - resources/js/components/run/SplitsChart.tsx
+  - resources/js/components/run/HardMinuteHeatLine.tsx
+  - app/Services/Run/Metrics/RunHardMinutes.php
   - resources/js/components/run/LapsCarousel.tsx
   - resources/js/components/run/RouteMap.tsx
   - resources/js/components/temari/AnalysisStatus.tsx
@@ -257,6 +259,21 @@ remainder is appended as a dashed, unranked bar. Bar heights reuse
 `computeBarWidth` from [lib/splits.ts](../../resources/js/lib/splits.ts) rather
 than a raw min→max stretch, so a run whose kms are seconds apart still reads as
 consistent instead of as a dramatic swing.
+
+The chart's header states what the run spent from its week's hard-minute budget
+("11.8 hard min · of 60 this week"), from the `hardMinutes` prop that
+`RunHardMinutes` in [RunHardMinutes.php](../../app/Services/Run/Metrics/RunHardMinutes.php)
+builds with the budget's own easy ceiling (marathon pace, as of the end of the
+run's week or today) and the cap the week locked. Each bar is then stacked from
+the ground up as easy (leaf), high HR at easy pace (leaf with a stone hatch) and
+hard (ember), from the per-km `high_hr_sec_by_gap_pace` histogram that
+`StreamAnalysis::highHeartRateByKm` writes onto each `per_km` row. Runs analysed
+before that histogram existed keep the plain pace colouring until the owner runs
+`run:rebuild-splits`. When at least a minute of high heart rate came at an easy
+pace, [HardMinuteHeatLine](../../resources/js/components/run/HardMinuteHeatLine.tsx)
+gives the heat context: the heart-rate-only count ("by HR alone 31.5"), the
+run's feels-like and dew point, and the easy ceiling the pace stayed under. See
+[[plan-periodizer]] for how the budget counts a hard minute.
 
 [LapsCarousel](../../resources/js/components/run/LapsCarousel.tsx) closes it:
 the watch's own laps as side-scrolling cards, the fastest picked out. Native

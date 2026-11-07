@@ -455,3 +455,23 @@ it('ships the stored effort score on any run, with or without heart rate', funct
 
     Carbon::setTestNow();
 });
+
+it('ships what the run spent from its week\'s hard-minute budget', function (): void {
+    $user = User::factory()->create();
+    $activity = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($activity)->create([
+        'stream_summary' => [
+            'time_in_zone_min' => ['Z2' => 10, 'Z3' => 31.5],
+            'high_hr_sec_by_gap_pace' => [1200 => 1890],
+            'per_km' => [['km' => 1, 'pace' => '7:00', 'elapsed_sec' => 420, 'high_hr_sec_by_gap_pace' => [1200 => 300]]],
+        ],
+    ]);
+
+    $this->actingAs($user)->get("/activities/{$activity->id}")
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('hardMinutes.hr_only_minutes', 31.5)
+            ->where('hardMinutes.cap_minutes', null)
+            ->where('hardMinutes.per_km.0.km', 1)
+            ->missing('detail.stream_summary.per_km.0.high_hr_sec_by_gap_pace'));
+});

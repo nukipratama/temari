@@ -212,3 +212,29 @@ it('lets heart rate alone decide without a pace stream or an easy ceiling', func
         ->and($paced->hardMinutes(null))->toBe(31.5)
         ->and(StreamSummary::fromArray([])->hardMinutes(330))->toBeNull();
 });
+
+it('splits each km into easy, high heart rate at easy pace, and hard seconds', function (): void {
+    $summary = StreamSummary::fromArray(['per_km' => [
+        ['km' => 1, 'pace' => '7:00', 'elapsed_sec' => 420, 'high_hr_sec_by_gap_pace' => []],
+        ['km' => 2, 'pace' => '5:30', 'elapsed_sec' => 330, 'high_hr_sec_by_gap_pace' => [300 => 200, 400 => 100]],
+    ]]);
+
+    expect($summary->hardSecondsByKm(330))->toBe([
+        ['km' => 1, 'easy_sec' => 420, 'high_hr_easy_pace_sec' => 0, 'hard_sec' => 0],
+        ['km' => 2, 'easy_sec' => 30, 'high_hr_easy_pace_sec' => 100, 'hard_sec' => 200],
+    ])
+        ->and($summary->hardSecondsByKm(null))->toBe([
+            ['km' => 1, 'easy_sec' => 420, 'high_hr_easy_pace_sec' => 0, 'hard_sec' => 0],
+            ['km' => 2, 'easy_sec' => 30, 'high_hr_easy_pace_sec' => 0, 'hard_sec' => 300],
+        ]);
+});
+
+it('reads no per-km breakdown until every split carries its histogram', function (): void {
+    $partly = StreamSummary::fromArray(['per_km' => [
+        ['km' => 1, 'pace' => '7:00', 'elapsed_sec' => 420, 'high_hr_sec_by_gap_pace' => []],
+        ['km' => 2, 'pace' => '7:00', 'elapsed_sec' => 420],
+    ]]);
+
+    expect($partly->hardSecondsByKm(330))->toBeNull()
+        ->and(StreamSummary::fromArray([])->hardSecondsByKm(330))->toBeNull();
+});

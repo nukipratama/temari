@@ -166,6 +166,7 @@ function renderShow(
             isChainHead
             pastYou={null}
             prBib={null}
+            hardMinutes={null}
             {...overrides}
         />,
     );
@@ -512,6 +513,45 @@ describe('Runs/Show', () => {
         });
         expect(
             screen.getByRole('heading', { name: 'run' }),
+        ).toBeInTheDocument();
+    });
+
+    it('heads the splits with what the run spent from the week and the heat behind its high heart rate', () => {
+        renderShow({
+            detail: {
+                ...detail,
+                weather_apparent_temp_c: 33,
+                weather_dew_point_c: 24,
+            },
+            hardMinutes: {
+                minutes: 0,
+                hr_only_minutes: 31.5,
+                cap_minutes: 60,
+                easy_ceiling_sec_per_km: 405,
+                per_km: [
+                    {
+                        km: 1,
+                        easy_sec: 360,
+                        high_hr_easy_pace_sec: 0,
+                        hard_sec: 0,
+                    },
+                    {
+                        km: 2,
+                        easy_sec: 45,
+                        high_hr_easy_pace_sec: 300,
+                        hard_sec: 0,
+                    },
+                ],
+            },
+        });
+
+        expect(
+            screen.getByText('0 hard min · of 60 this week'),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByText(
+                'by HR alone 31.5 · 33° feels-like · dew point 24° · counted as easy',
+            ),
         ).toBeInTheDocument();
     });
 });
