@@ -112,6 +112,29 @@ function renderRow(overrides: Partial<Parameters<typeof DayDetail>[0]> = {}) {
 const headline = () => screen.getByTestId('headline');
 
 describe('DayHeadline and DayDetail', () => {
+    it('strikes a fast finish the weekly budget dropped and gives the numbers', () => {
+        renderRow({
+            day: day({
+                session_type: 'long',
+                prescription_reason:
+                    'no fast finish because the weekly hard-minute budget is spent',
+                prescription_budget: {
+                    cap_minutes: 60,
+                    left_minutes: 0,
+                    needed_minutes: 15,
+                },
+            }),
+        });
+
+        expect(within(headline()).getByText('budget full')).toBeInTheDocument();
+        expect(screen.getByText('15 min')).toHaveClass('line-through');
+        expect(
+            screen.getByText(
+                "60 of this week's 60 hard min are spent or booked. the 15-min fast finish doesn't fit.",
+            ),
+        ).toBeInTheDocument();
+    });
+
     it('brings a skipped session back through the caller', () => {
         const { onUnskip } = renderRow({
             day: day({

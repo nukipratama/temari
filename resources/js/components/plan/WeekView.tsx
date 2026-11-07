@@ -1,13 +1,19 @@
 import { ArrowLeft } from 'lucide-react';
 import { useEffect, useId, useRef, useState } from 'react';
 
-import type { EditablePlanDay, PlanDay, SeasonSummaryWeek } from '@/lib/plan';
+import type {
+    EditablePlanDay,
+    HardBudget,
+    PlanDay,
+    SeasonSummaryWeek,
+} from '@/lib/plan';
 
 import DayDetail, {
     DayHeadline,
     hasDayDetail,
 } from '@/components/plan/DayDetail';
 import { DeltaPair } from '@/components/plan/DeltaPair';
+import HardMinuteWallet from '@/components/plan/HardMinuteWallet';
 import QualityOverrideAction from '@/components/plan/QualityOverrideAction';
 import WeekStrip from '@/components/plan/WeekStrip';
 import FlagWrong from '@/components/temari/FlagWrong';
@@ -78,6 +84,7 @@ export default function WeekView({
     days,
     today,
     raceDate = null,
+    hardBudget = null,
     focus,
     focusDay = null,
     selectedDay = null,
@@ -92,6 +99,8 @@ export default function WeekView({
     today: string;
     /** The goal race's date, so the week holding it can say so. */
     raceDate?: string | null;
+    /** This week's hard minutes against its locked cap; the current week only. */
+    hardBudget?: HardBudget | null;
     /** The periodizer's adaptation verdict for this week, where one exists. */
     focus: { headline: string; detail: string } | null;
     /** The day the visitor arrived asking for, from `/plan?day=`. */
@@ -138,6 +147,11 @@ export default function WeekView({
                         <Icon icon={ArrowLeft} className="size-3" aria-hidden />
                         back to this week
                     </PillButton>
+                </div>
+            )}
+            {hardBudget && (
+                <div className="mb-4 border-b border-dashed border-border pb-4">
+                    <HardMinuteWallet budget={hardBudget} />
                 </div>
             )}
             <div className="flex items-center gap-3">

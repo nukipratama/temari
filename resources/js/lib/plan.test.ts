@@ -27,6 +27,7 @@ import {
     judgedDayResult,
     paceEaseDelta,
     paceLabel,
+    budgetChange,
     prescriptionWhy,
     raceLongPaceLabel,
     sessionHint,
@@ -737,6 +738,67 @@ describe('sessionShape', () => {
 
     it('says nothing for a single block the headline already covers', () => {
         expect(sessionShape([seg('main', 'Z2', 50, 7.3)])).toBeNull();
+    });
+});
+
+describe('budgetChange', () => {
+    const budget = { cap_minutes: 60, left_minutes: 12, needed_minutes: 20 };
+    const work = [
+        {
+            key: 'main' as const,
+            minutes: 12,
+            zone: 'Z4',
+            pace_label: 'threshold' as const,
+            km: 2.6,
+            pace_sec_per_km: 270,
+        },
+    ];
+
+    it('leaves a day the budget never touched alone', () => {
+        expect(budgetChange(planDay())).toBeNull();
+    });
+
+    it('reads a trimmed session from what it needed to what it got', () => {
+        expect(
+            budgetChange(
+                planDay({
+                    session_type: 'tempo',
+                    segments: work,
+                    prescription_budget: budget,
+                }),
+            ),
+        ).toEqual({
+            label: 'work',
+            from: '20 min',
+            to: '12 min',
+            why: "48 of this week's 60 hard min are spent or booked, which leaves 12 for this one.",
+        });
+    });
+
+    it('reads a session the budget turned easy', () => {
+        expect(
+            budgetChange(
+                planDay({
+                    prescription_reason:
+                        'easy because the weekly hard-minute budget is spent',
+                    prescription_budget: { ...budget, left_minutes: 4 },
+                }),
+            )?.why,
+        ).toBe(
+            "56 of this week's 60 hard min are spent or booked, so this one stays easy.",
+        );
+    });
+
+    it('hides the generic dose reason once the budget row explains the day', () => {
+        expect(
+            prescriptionWhy(
+                planDay({
+                    prescription_reason:
+                        'easy because the weekly hard-minute budget is spent',
+                    prescription_budget: budget,
+                }),
+            ),
+        ).toBeNull();
     });
 });
 

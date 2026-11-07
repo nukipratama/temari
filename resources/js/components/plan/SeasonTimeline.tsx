@@ -104,6 +104,9 @@ export default function SeasonTimeline({
                     days={detailByWeekStart[shown.week_start]?.days ?? []}
                     today={today}
                     raceDate={raceDate}
+                    hardBudget={
+                        detailByWeekStart[shown.week_start]?.hard_budget ?? null
+                    }
                     focus={shown === current ? weekFocus : null}
                     focusDay={pendingFocusDay}
                     selectedDay={selectedDay}

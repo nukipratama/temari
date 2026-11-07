@@ -553,9 +553,61 @@ const KEPT_EASY_WHY: Record<string, string> = {
         "kept easy. the day's too short to fit a proper quality set.",
 };
 
+const NO_FAST_FINISH_REASON =
+    'no fast finish because the weekly hard-minute budget is spent';
+
+/** What the weekly hard-minute budget took off a day: the change row and the reason with its numbers. */
+export interface BudgetChange {
+    label: string;
+    from: string;
+    to: string;
+    why: string;
+}
+
+/** The hard-minute change the weekly budget made to a day, or null when the budget left it alone. */
+export function budgetChange(day: PlanDay): BudgetChange | null {
+    const budget = day.prescription_budget;
+    if (budget === null) {
+        return null;
+    }
+
+    const used = budget.cap_minutes - budget.left_minutes;
+    const spent = `${used} of this week's ${budget.cap_minutes} hard min are spent or booked`;
+    if (day.prescription_reason === NO_FAST_FINISH_REASON) {
+        return {
+            label: 'finish',
+            from: `${budget.needed_minutes} min`,
+            to: 'easy',
+            why: `${spent}. the ${budget.needed_minutes}-min fast finish doesn't fit.`,
+        };
+    }
+
+    const work = day.segments
+        .filter((s) => s.zone > 'Z2')
+        .reduce((sum, s) => sum + (s.minutes ?? 0), 0);
+
+    return work === 0
+        ? {
+              label: 'work',
+              from: `${budget.needed_minutes} hard min`,
+              to: 'easy',
+              why: `${spent}, so this one stays easy.`,
+          }
+        : {
+              label: 'work',
+              from: `${budget.needed_minutes} min`,
+              to: `${Math.round(work)} min`,
+              why: `${spent}, which leaves ${budget.left_minutes} for this one.`,
+          };
+}
+
 /** The engine's reason for today's dose, only when the day's segments still bear it out. */
 export function prescriptionWhy(day: PlanDay): string | null {
-    if (day.prescription_reason === null || day.eased_from) {
+    if (
+        day.prescription_reason === null ||
+        day.eased_from ||
+        day.prescription_budget !== null
+    ) {
         return null;
     }
 
