@@ -88,7 +88,7 @@ final readonly class PlanInputsGatherer
             ->where('week_start', $currentWeekStart->toDateString())
             ->first(['override_kind', 'override_date', 'hard_cap_minutes']);
         $restoredDay = $currentWeekAdaptation?->override_kind === PlanOverrideKind::WeeklyDrop ? $currentWeekAdaptation->override_date : null;
-        $refundableDay = in_array($currentWeekAdaptation?->override_kind, [PlanOverrideKind::WeeklyDrop, PlanOverrideKind::BudgetDrop], true) ? $currentWeekAdaptation->override_date : null;
+        $refundableDay = in_array($currentWeekAdaptation?->override_kind, [PlanOverrideKind::WeeklyDrop, PlanOverrideKind::BudgetDrop, PlanOverrideKind::HardDayDrop], true) ? $currentWeekAdaptation->override_date : null;
         $weeks = ($this->trailingWeeks)($user->id, $currentWeekStart->copy()->subDay()->toDateString(), 6)
             ->filter(static fn (WeeklySnapshot $week): bool => $week->week_ending->gte($currentWeekStart->copy()->subWeeks(6)));
 
@@ -141,6 +141,7 @@ final readonly class PlanInputsGatherer
             restoredDayOpen: $refundableDay instanceof Carbon && ! $refundableDay->lt($today) && $this->sessionMatcher->activityByDate($user, $refundableDay, $refundableDay) === [],
             lockedHardCapMinutes: $currentWeekAdaptation?->hard_cap_minutes,
             budgetOverrideDate: $currentWeekAdaptation?->override_kind === PlanOverrideKind::BudgetDrop ? $currentWeekAdaptation->override_date?->toDateString() : null,
+            hardDayOverrideDate: $currentWeekAdaptation?->override_kind === PlanOverrideKind::HardDayDrop ? $currentWeekAdaptation->override_date?->toDateString() : null,
         );
     }
 

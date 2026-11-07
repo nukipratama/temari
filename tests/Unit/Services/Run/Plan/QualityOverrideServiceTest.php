@@ -238,3 +238,65 @@ it('hands a budget bring-back back once a rebuild no longer trims its day, and k
         ->and($day()->prescription_budget)->toBeNull()
         ->and($day()->prescribed_hard_minutes)->toBe($fullDose);
 });
+
+/**
+ * Pinned tempos on Monday and Tuesday fill the week's two hard days, so the count makes Thursday's quality easy.
+ *
+ * @return array{user: User, dropped: PlannedSession, day: Closure(): PlannedSession, week: Closure(): PlanAdaptation}
+ */
+function hardDayDroppedWeek(): array
+{
+    Carbon::setTestNow('2026-08-10 06:00:00');
+    $user = User::factory()->create();
+    foreach (range(0, 3) as $i) {
+        WeeklySnapshot::factory()->for($user)->create(['week_ending' => Carbon::today()->subWeeks($i)->toDateString(), 'runs' => 4, 'distance_km' => 30.0]);
+    }
+    foreach ([2, 4, 5, 7, 9, 11, 12, 14, 16, 18, 19, 21, 23, 25, 26, 28] as $daysAgo) {
+        ActivityDetail::factory()->for(Activity::factory()->for($user))->create(['start_date_local' => Carbon::today()->subDays($daysAgo)->setTime(6, 0), 'distance' => 7_500, 'moving_time' => 2_475]);
+    }
+    TrainingPreference::factory()->for($user)->create(['sessions_per_week' => 4]);
+    seedConfirmedEffort($user, 10_000, 2700, Carbon::today());
+    foreach (['2026-08-10', '2026-08-11'] as $date) {
+        PlannedSession::factory()->for($user)->create(['date' => $date, 'session_type' => SessionType::Tempo, 'prescribed_hard_minutes' => 5, 'pinned' => true]);
+    }
+    app(Periodizer::class)->regenerate($user, Carbon::today());
+    $dropped = PlannedSession::query()->where('user_id', $user->id)->where('hard_day_restorable', true)->orderBy('date')->firstOrFail();
+
+    return [
+        'user' => $user,
+        'dropped' => $dropped,
+        'day' => static fn (): PlannedSession => PlannedSession::query()->where('user_id', $user->id)->whereDate('date', $dropped->date)->firstOrFail(),
+        'week' => static fn (): PlanAdaptation => PlanAdaptation::query()->where('user_id', $user->id)->firstOrFail(),
+    ];
+}
+
+it('brings back a session the weekly hard-day count made easy, and makes it easy again on undo', function (): void {
+    ['user' => $user, 'dropped' => $dropped, 'day' => $day, 'week' => $week] = hardDayDroppedWeek();
+
+    expect(overrideService()->take($user, $dropped, Carbon::today()))->toBe(PlanOverrideKind::HardDayDrop)
+        ->and($day()->hard_day_restorable)->toBeFalse()
+        ->and($day()->prescribed_hard_minutes)->toBeGreaterThan(0);
+
+    overrideService()->undo($user, $day(), Carbon::today());
+
+    expect($day()->hard_day_restorable)->toBeTrue()
+        ->and($day()->prescribed_hard_minutes)->toBe(0)
+        ->and($week()->override_kind)->toBeNull();
+});
+
+it('hands a hard-day bring-back back once the week no longer has two other hard days, and keeps it while it does', function (): void {
+    ['user' => $user, 'dropped' => $dropped, 'day' => $day, 'week' => $week] = hardDayDroppedWeek();
+    overrideService()->take($user, $dropped, Carbon::today());
+    $dose = $day()->prescribed_hard_minutes;
+
+    app(Periodizer::class)->regenerate($user, Carbon::today());
+
+    expect($week()->override_kind)->toBe(PlanOverrideKind::HardDayDrop);
+
+    PlannedSession::query()->where('user_id', $user->id)->whereDate('date', '2026-08-11')->delete();
+    app(Periodizer::class)->regenerate($user, Carbon::today());
+
+    expect($week()->override_kind)->toBeNull()
+        ->and($day()->hard_day_restorable)->toBeFalse()
+        ->and($day()->prescribed_hard_minutes)->toBe($dose);
+});

@@ -550,6 +550,10 @@ const KEPT_EASY_WHY: Record<string, string> = {
         'kept easy. the week already has its hard days.',
     'easy to preserve recovery between hard days':
         'kept easy. too close to another hard day.',
+    'no fast finish because the week already has two hard days':
+        'no fast finish. the week already has its hard days.',
+    'no fast finish to preserve recovery between hard days':
+        'no fast finish. too close to another hard day.',
     'easy because the outing cannot safely fit the minimum quality structure':
         "kept easy. the day's too short to fit a proper quality set.",
 };
