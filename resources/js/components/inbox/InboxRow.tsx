@@ -43,6 +43,7 @@ const KIND_LABEL: Record<NotificationKind, string> = {
     fitness_improved: 'Race',
     time_trial: 'Plan',
     easy_too_hard: 'Plan',
+    plan_change: 'Plan',
     test: 'Test',
 };
 
@@ -59,6 +60,7 @@ const KIND_ICON: Record<NotificationKind, IconComponent> = {
     fitness_improved: TrendingUp,
     time_trial: Timer,
     easy_too_hard: HeartPulse,
+    plan_change: CalendarDays,
     test: Bell,
 };
 
@@ -75,6 +77,7 @@ const KIND_TONE: Record<NotificationKind, Tone> = {
     fitness_improved: 'accent',
     time_trial: 'accent',
     easy_too_hard: 'neutral',
+    plan_change: 'neutral',
     test: 'neutral',
 };
 

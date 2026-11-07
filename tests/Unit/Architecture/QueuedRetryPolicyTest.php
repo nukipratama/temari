@@ -43,6 +43,7 @@ use App\Notifications\EasyTooHardNotification;
 use App\Notifications\FitnessImprovedNotification;
 use App\Notifications\IntervalsIcuDisconnectedNotification;
 use App\Notifications\MorningBriefingNotification;
+use App\Notifications\PlanChangedNotification;
 use App\Notifications\RaceOutcomeNotification;
 use App\Notifications\RaceTomorrowNotification;
 use App\Notifications\StravaDisconnectedNotification;
@@ -154,6 +155,7 @@ $expectedRetryPolicies = [
     FitnessImprovedNotification::class => [3, '30,120', null, null, null],
     IntervalsIcuDisconnectedNotification::class => [3, '30,120', null, null, null],
     MorningBriefingNotification::class => [3, '30,120', null, null, null],
+    PlanChangedNotification::class => [3, '30,120', null, null, null],
     RaceOutcomeNotification::class => [3, '30,120', null, null, null],
     RaceTomorrowNotification::class => [3, '30,120', null, null, null],
     StravaDisconnectedNotification::class => [3, '30,120', null, null, null],
