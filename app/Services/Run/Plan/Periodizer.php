@@ -748,7 +748,7 @@ final readonly class Periodizer
             $withFinish[$longDate] = [...$rows[$longDate], ...$fastFinish->prescription($kmByDate[$longDate])->toArray()];
             $asPrescriptions = array_map(self::prescriptionOfRow(...), $withFinish);
             $ceiling = $this->hardCeiling($withFinish, $kmByDate, $asPrescriptions, $inputs, $weekStart, $workloadSessions);
-            $booked = array_sum(array_column($withFinish, 'prescribed_hard_minutes'));
+            $booked = array_sum(array_column(array_diff_key($withFinish, $broughtBack), 'prescribed_hard_minutes'));
             if ($ceiling === null || $booked <= $ceiling || isset($broughtBack[$longDate])) {
                 $rows = $withFinish;
             } else {

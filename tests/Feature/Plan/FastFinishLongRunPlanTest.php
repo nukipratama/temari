@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Enums\AdaptationReason;
 use App\Enums\FallOffTilt;
+use App\Enums\IntentVerdict;
 use App\Enums\PaceBand;
 use App\Enums\PlanPhase;
 use App\Enums\RaceAmbitionState;
@@ -238,4 +239,26 @@ it('keeps a fast finish the athlete brought back over the week\'s spent budget',
     expect(fastFinishes(fastFinishPlan($spent)))->not->toHaveKey($finishDate)
         ->and(fastFinishes($rows))->toHaveKey($finishDate)
         ->and($rows[$finishDate]['prescription_budget'] ?? null)->toBeNull();
+});
+
+it('keeps the week\'s fast finish when the athlete brings back a session the budget trimmed, since nothing else pays for it', function (): void {
+    $tuesday = Carbon::parse('2026-09-08');
+    do {
+        $tuesday->addWeek();
+        $base = planInputsWith(fastFinishInputs(today: $tuesday->toDateString(), longestSoFarKm: 40.0), ['longRunBaselineKm' => 10.0, 'recentPrescriptions' => array_fill_keys(['interval', 'tempo', 'goal_pace'], ['verdict' => IntentVerdict::Hit, 'hard_minutes' => 40])]);
+        $plan = fastFinishPlan($base);
+        $weekEnd = $tuesday->copy()->addDays(5)->toDateString();
+        $finishDate = array_find_key(fastFinishes($plan), static fn (array $row, string $date): bool => $date <= $weekEnd);
+        $qualityDate = array_find_key($plan, static fn (array $row, string $date): bool => $date >= $tuesday->toDateString() && $date <= $weekEnd
+            && in_array($row['session_type'], [SessionType::Tempo, SessionType::Interval], true) && $row['prescribed_hard_minutes'] > 0);
+    } while (($finishDate === null || $qualityDate === null) && $tuesday->lt(Carbon::parse(FAST_FINISH_RACE_DAY)));
+    $finishDate = nonNull($finishDate);
+    $qualityDate = (string) nonNull($qualityDate);
+    $locked = planInputsWith($base, ['lockedHardCapMinutes' => $plan[$finishDate]['prescribed_hard_minutes']]);
+
+    $rows = fastFinishPlan(planInputsWith($locked, ['budgetOverrideDate' => $qualityDate]));
+
+    expect(fastFinishPlan($locked)[$qualityDate]['prescription_budget'] ?? null)->not->toBeNull()
+        ->and($rows[$qualityDate]['prescribed_hard_minutes'])->toBe($plan[$qualityDate]['prescribed_hard_minutes'])
+        ->and(fastFinishes($rows))->toHaveKey($finishDate);
 });
