@@ -59,6 +59,7 @@
 	@vite path /build/*
 	handle @vite {
 		header Cache-Control "public, max-age=31536000, immutable"
+		header X-Content-Type-Options "nosniff"
 		file_server
 	}
 
@@ -68,6 +69,7 @@
 	@static path /favicon.ico /favicon.svg /robots.txt /apple-touch-icon.png /icon-192.png /icon-512.png /icon-maskable-512.png /offline.html
 	handle @static {
 		header Cache-Control "public, max-age=604800"
+		header X-Content-Type-Options "nosniff"
 		file_server
 	}
 
@@ -77,6 +79,7 @@
 	handle @sw {
 		header Cache-Control "no-cache"
 		header Content-Type "text/javascript"
+		header X-Content-Type-Options "nosniff"
 		file_server
 	}
 
@@ -86,11 +89,12 @@
 	handle @manifest {
 		header Cache-Control "public, max-age=604800"
 		header Content-Type "application/manifest+json"
+		header X-Content-Type-Options "nosniff"
 		file_server
 	}
 
 	# Ops dashboards (/devtools/*) authorize inside Laravel via HTTP Basic Auth
-	# against a shared devtools password whenever APP_ENV is production;
+	# against a shared devtools password in every environment except local;
 	# Cloudflare Access fronts the edge too.
 
 	# Horizon (Vue) and Pulse (Alpine) compile template expressions via

@@ -39,11 +39,9 @@ it('lets the vendor dashboards through with the correct devtools password', func
         ->assertSuccessful();
 });
 
-it('throttles repeated wrong-password guesses at 60 per minute', function (): void {
+it('throttles repeated requests at 60 per minute', function (): void {
     foreach (range(1, 60) as $i) {
-        $this->withHeaders(['Authorization' => 'Basic '.base64_encode("devtools:wrong-{$i}")])
-            ->get('/devtools')
-            ->assertUnauthorized();
+        $this->get('/devtools')->assertUnauthorized();
     }
 
     $this->withHeaders(['Authorization' => 'Basic '.base64_encode('devtools:secret')])
@@ -51,7 +49,7 @@ it('throttles repeated wrong-password guesses at 60 per minute', function (): vo
         ->assertStatus(429);
 });
 
-it('needs no password at all outside production', function (): void {
+it('needs no password at all in the local environment', function (): void {
     app()->detectEnvironment(fn (): string => 'local');
     config(['devtools.password' => null]);
 
