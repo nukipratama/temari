@@ -1031,3 +1031,22 @@ it('locks the current week\'s hard-minute cap at its first regeneration and hold
         ->and($adaptation()->hard_cap_minutes)->toBe(7)
         ->and((int) $weekHard)->toBeLessThanOrEqual(7);
 });
+
+it('hands back a budget bring-back only when the whole plan would read the same without it', function (int $lock, bool $refunded): void {
+    $inputs = planInputsWith(arcInputs(today: '2026-09-21'), [
+        'sessionsPerWeek' => 5,
+        'runDays' => null,
+        'longRunDay' => null,
+        'paces' => ['easy' => 360, 'marathon' => 300, 'threshold' => 270, 'interval' => 240],
+        'longRunBaselineKm' => 12.0,
+        'lockedHardCapMinutes' => $lock,
+        'budgetOverrideDate' => '2026-09-24',
+        'restoredDayOpen' => true,
+    ]);
+
+    expect(periodizer()->rowsFor($inputs)['2026-09-24']['prescribed_hard_minutes'])->toBe(periodizer()->rowsFor($inputs->withBudgetOverrideRefunded())['2026-09-24']['prescribed_hard_minutes'])
+        ->and(periodizer()->refundingUnneededBudgetOverride($inputs)->budgetOverrideRefunded)->toBe($refunded);
+})->with([
+    'the cap would trim another day without it' => [25, false],
+    'the cap no longer bites' => [500, true],
+]);

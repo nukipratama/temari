@@ -43,7 +43,7 @@ final readonly class PlanInputs
      * @param  int|null  $supportedTenKTimeSec  the time the athlete's fitness supports over 10K
      * @param  bool  $qualityRestored  the athlete brought back the quality session this week's adaptation dropped
      * @param  bool  $restoredDayOpen  the overridden day is today or later and has no run yet
-     * @param  bool  $budgetOverrideRefunded  the week no longer trims the day the athlete brought back over its hard-minute budget
+     * @param  bool  $budgetOverrideRefunded  the plan reads the same without the day the athlete brought back over its hard-minute budget
      */
     public function __construct(
         public int $userId,

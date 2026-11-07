@@ -493,19 +493,20 @@ final readonly class Periodizer
         });
     }
 
-    private function refundingUnneededBudgetOverride(PlanInputs $inputs): PlanInputs
+    public function refundingUnneededBudgetOverride(PlanInputs $inputs): PlanInputs
     {
         if ($inputs->budgetOverrideDate === null || ! $inputs->restoredDayOpen) {
             return $inputs;
         }
 
         $refunded = $inputs->withBudgetOverrideRefunded();
-        $kept = $this->rowsFor($inputs)[$inputs->budgetOverrideDate] ?? null;
-        $without = $this->rowsFor($refunded)[$inputs->budgetOverrideDate] ?? null;
+        $kept = $this->rowsFor($inputs);
+        $without = $this->rowsFor($refunded);
+        $changed = array_any($kept, static fn (array $row, string $date): bool => ! isset($without[$date])
+            || $row['session_type'] !== $without[$date]['session_type']
+            || $row['prescribed_hard_minutes'] !== $without[$date]['prescribed_hard_minutes']);
 
-        return $kept !== null && $without !== null
-            && $kept['session_type'] === $without['session_type']
-            && $kept['prescribed_hard_minutes'] === $without['prescribed_hard_minutes'] ? $refunded : $inputs;
+        return isset($kept[$inputs->budgetOverrideDate]) && ! $changed ? $refunded : $inputs;
     }
 
     /** @param array<string, array{week_hard_cap_minutes?: int|null, ...}> $rows */
