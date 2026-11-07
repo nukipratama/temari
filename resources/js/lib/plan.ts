@@ -189,13 +189,18 @@ export function computeAdherence(
 
 const TALLIED_STATUSES = ['done', 'partial', 'missed', 'overreached'] as const;
 
-/** How a week's graded days have gone so far, e.g. `1 done · 2 missed`; empty before any day is graded. */
+/**
+ * How a week's graded sessions have gone so far, e.g. `1 done · 2 missed`;
+ * empty before any is graded. Rest days stay out: the backend marks every
+ * past one `done`, run on or not.
+ */
 export function complianceTally(
-    days: ReadonlyArray<{ status: string }>,
+    days: ReadonlyArray<{ session_type: string; status: string }>,
 ): string {
+    const sessions = days.filter((d) => d.session_type !== 'rest');
     return TALLIED_STATUSES.map((status) => ({
         status,
-        count: days.filter((d) => d.status === status).length,
+        count: sessions.filter((d) => d.status === status).length,
     }))
         .filter(({ count }) => count > 0)
         .map(({ status, count }) => `${count} ${status}`)
