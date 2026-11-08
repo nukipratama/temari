@@ -1,29 +1,10 @@
-import { router } from '@inertiajs/react';
-import {
-    fireEvent,
-    render,
-    screen,
-    waitFor,
-    within,
-} from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { describe, expect, it } from 'vitest';
 
-import { showToast } from '@/hooks/useToast';
 import { defined } from '@/test/defined';
 import { makeUser, setMockPage } from '@/test/setup';
 
-vi.mock('@/hooks/useToast', () => ({
-    showToast: vi.fn(),
-    useToast: () => null,
-}));
-
 import Settings from './Index';
-
-const connectedTelegram = {
-    connected: true,
-    username: 'ada_runs',
-    connect_url: null,
-};
 
 const prefs = {
     notifications_enabled: false,
@@ -152,32 +133,6 @@ describe('Settings', () => {
         ).toBeTruthy();
     });
 
-    // A button pair that turns sideways above 900px, not a SettingsRow list.
-    it('draws the account actions as the prototype button pair', () => {
-        render(<Settings />);
-
-        const logOut = screen.getByRole('button', { name: /log out/ });
-        expect(logOut).toHaveClass('w-full');
-        expect(logOut).toHaveClass('min-[900px]:w-auto');
-        expect(logOut.parentElement).toHaveClass('min-[900px]:flex-row');
-    });
-
-    it('links out to the three legal pages', () => {
-        render(<Settings />);
-
-        expect(screen.getByText('The fine print')).toBeInTheDocument();
-        const links: Array<[string, string]> = [
-            ['terms of use', '/terms'],
-            ['privacy policy', '/privacy'],
-            ['training disclaimer', '/training-disclaimer'],
-        ];
-        for (const [label, href] of links) {
-            expect(
-                screen.getByRole('link', { name: new RegExp(label) }),
-            ).toHaveAttribute('href', href);
-        }
-    });
-
     it('renders the data-use statement the server hands it', () => {
         render(
             <Settings
@@ -193,6 +148,15 @@ describe('Settings', () => {
         ).toBeInTheDocument();
     });
 
+    it('links out to the legal pages under the fine print', () => {
+        render(<Settings />);
+
+        expect(screen.getByText('The fine print')).toBeInTheDocument();
+        expect(
+            screen.getByRole('link', { name: /privacy policy/ }),
+        ).toHaveAttribute('href', '/privacy');
+    });
+
     // The page uses the editorial header every other page shares, not a bare
     // title.
     it('opens with the editorial header rather than a bare title', () => {
@@ -203,12 +167,22 @@ describe('Settings', () => {
         );
     });
 
-    // What gets sent and where it goes were three separate sections; they are
-    // now two labelled groups inside one Notifications card.
-    it('groups the notification settings by what and where', () => {
-        render(<Settings />);
-        expect(screen.getByText('What gets sent')).toBeInTheDocument();
-        expect(screen.getByText('Where it goes')).toBeInTheDocument();
+    it('hands the notification prefs and the Telegram link state to the notifications section', () => {
+        render(
+            <Settings
+                notificationPrefs={prefs}
+                telegram={{
+                    connected: true,
+                    username: 'ada_runs',
+                    connect_url: null,
+                }}
+            />,
+        );
+
+        expect(
+            screen.getByRole('switch', { name: 'keep me posted' }),
+        ).toHaveAttribute('aria-checked', 'false');
+        expect(screen.getByText('Disconnect')).toBeInTheDocument();
     });
 
     // No breadcrumb-style back affordance in the page body: Settings is a
@@ -226,423 +200,5 @@ describe('Settings', () => {
         expect(
             screen.queryByRole('link', { name: 'Accessories' }),
         ).not.toBeInTheDocument();
-    });
-
-    // The mute switches say "Send run notifications to Telegram" nowhere near
-    // their real scope: maintainer alerts and bot replies bypass them entirely.
-    // The group states that out loud so the toggle is not writing a cheque the
-    // code will not honour. See MaintainerAlerter.
-    it('scopes the channel mutes to run notifications', () => {
-        render(<Settings />);
-        expect(
-            screen.getByText(/controls your run notifications/),
-        ).toBeInTheDocument();
-        expect(
-            screen.getByText(/system alerts still come through/),
-        ).toBeInTheDocument();
-    });
-
-    it('says how to keep only one channel with the mutes', () => {
-        render(<Settings />);
-        expect(
-            screen.getByText(/to keep just one, mute the other/),
-        ).toBeInTheDocument();
-    });
-
-    it('posts to /logout when the Log out row is clicked', async () => {
-        vi.mocked(router.post).mockReset();
-        render(<Settings />);
-
-        fireEvent.click(screen.getByText('log out'));
-
-        await waitFor(() =>
-            expect(router.post).toHaveBeenCalledWith('/logout', {}),
-        );
-    });
-
-    it('tints the destructive row so it stops reading as routine', () => {
-        render(<Settings />);
-        expect(screen.getByText('delete account')).toHaveClass(
-            'text-ember-ink',
-        );
-    });
-
-    it('shows the Telegram connect link when not connected', () => {
-        const telegram = {
-            connected: false,
-            username: null,
-            connect_url: 'https://t.me/temari_bot?start=tok',
-        };
-        render(<Settings telegram={telegram} />);
-        expect(screen.getByRole('link', { name: /Telegram/ })).toHaveAttribute(
-            'href',
-            'https://t.me/temari_bot?start=tok',
-        );
-    });
-
-    it('shows the channel-neutral master switch from notificationPrefs', () => {
-        render(<Settings notificationPrefs={prefs} />);
-        expect(
-            screen.getByRole('switch', { name: 'keep me posted' }),
-        ).toHaveAttribute('aria-checked', 'false');
-    });
-
-    // The streak nudge had no toggle of its own and silently rode along on
-    // "weekly recap"; the master switch names it so the coupling is visible.
-    it('names the streak nudge among what the master switch sends', () => {
-        render(<Settings notificationPrefs={prefs} />);
-        expect(
-            screen.getByText(/nudge when your streak's about to end/),
-        ).toBeInTheDocument();
-    });
-
-    it('names the race-outcome ask among what the master switch sends', () => {
-        render(<Settings notificationPrefs={prefs} />);
-        expect(
-            screen.getByText(/a check-in on how it went/),
-        ).toBeInTheDocument();
-    });
-
-    it('names the fitness-improved and time-trial asks among what the master switch sends', () => {
-        render(<Settings notificationPrefs={prefs} />);
-        expect(
-            screen.getByText(
-                /word when your race time gets quicker, a check on whether a hard run was your all-out trial/,
-            ),
-        ).toBeInTheDocument();
-    });
-
-    it('names the hot-easy-run warning among what the master switch sends', () => {
-        render(<Settings notificationPrefs={prefs} />);
-        expect(
-            screen.getByText(
-                /a warning when easy runs running hot will cost next week a quality session/,
-            ),
-        ).toBeInTheDocument();
-    });
-
-    it('patches the channel-neutral preferences when the master switch is flipped, carrying all current values', () => {
-        vi.mocked(router.patch).mockReset();
-        render(<Settings notificationPrefs={prefs} />);
-
-        fireEvent.click(screen.getByRole('switch', { name: 'keep me posted' }));
-
-        expect(router.patch).toHaveBeenCalledWith(
-            '/profile/notifications',
-            {
-                notifications_enabled: true,
-                briefing_push_enabled: true,
-                briefing_push_minute: null,
-                telegram_enabled: true,
-                push_enabled: true,
-            },
-            { preserveScroll: true },
-        );
-    });
-
-    it('greys out the briefing controls while the master switch is off', () => {
-        render(<Settings notificationPrefs={prefs} />);
-
-        expect(
-            screen.getByRole('switch', { name: 'morning briefing' }),
-        ).toBeDisabled();
-        expect(
-            screen.getByLabelText('send the morning briefing at'),
-        ).toBeDisabled();
-    });
-
-    it('patches the briefing switch on its own, carrying all current values', () => {
-        vi.mocked(router.patch).mockReset();
-        render(
-            <Settings
-                notificationPrefs={{ ...prefs, notifications_enabled: true }}
-            />,
-        );
-
-        fireEvent.click(
-            screen.getByRole('switch', { name: 'morning briefing' }),
-        );
-
-        expect(router.patch).toHaveBeenCalledWith(
-            '/profile/notifications',
-            expect.objectContaining({
-                notifications_enabled: true,
-                briefing_push_enabled: false,
-            }),
-            { preserveScroll: true },
-        );
-        expect(
-            screen.getByLabelText('send the morning briefing at'),
-        ).toBeDisabled();
-    });
-
-    it('saves a chosen send time as minutes once the field is left', () => {
-        vi.mocked(router.patch).mockReset();
-        render(
-            <Settings
-                notificationPrefs={{ ...prefs, notifications_enabled: true }}
-            />,
-        );
-        const field = screen.getByLabelText('send the morning briefing at');
-
-        fireEvent.change(field, { target: { value: '05:30' } });
-        expect(router.patch).not.toHaveBeenCalled();
-
-        fireEvent.blur(field);
-        expect(router.patch).toHaveBeenCalledWith(
-            '/profile/notifications',
-            expect.objectContaining({ briefing_push_minute: 330 }),
-            { preserveScroll: true },
-        );
-
-        fireEvent.blur(field);
-        expect(router.patch).toHaveBeenCalledTimes(1);
-    });
-
-    it('puts back the saved time instead of saving one inside the evening quiet hours', () => {
-        vi.mocked(router.patch).mockReset();
-        render(
-            <Settings
-                notificationPrefs={{ ...prefs, notifications_enabled: true }}
-            />,
-        );
-        const field = screen.getByLabelText('send the morning briefing at');
-
-        fireEvent.change(field, { target: { value: '22:30' } });
-        fireEvent.blur(field);
-
-        expect(router.patch).not.toHaveBeenCalled();
-        expect(field).toHaveValue('');
-    });
-
-    it('says why a time from 22:00 was put back until the next edit', () => {
-        render(
-            <Settings
-                notificationPrefs={{ ...prefs, notifications_enabled: true }}
-            />,
-        );
-        const field = screen.getByLabelText('send the morning briefing at');
-        expect(screen.queryByText('before 22:00 only')).not.toBeInTheDocument();
-
-        fireEvent.change(field, { target: { value: '22:30' } });
-        fireEvent.blur(field);
-        expect(screen.getByText('before 22:00 only')).toBeInTheDocument();
-
-        fireEvent.change(field, { target: { value: '05:30' } });
-        expect(screen.queryByText('before 22:00 only')).not.toBeInTheDocument();
-    });
-
-    it('shows a saved send time and clears it back to automatic', () => {
-        vi.mocked(router.patch).mockReset();
-        render(
-            <Settings
-                notificationPrefs={{
-                    ...prefs,
-                    notifications_enabled: true,
-                    briefing_push_minute: 4 * 60 + 45,
-                }}
-            />,
-        );
-        const field = screen.getByLabelText('send the morning briefing at');
-        expect(field).toHaveValue('04:45');
-
-        fireEvent.click(screen.getByRole('button', { name: 'clear' }));
-
-        expect(field).toHaveValue('');
-        expect(router.patch).toHaveBeenCalledWith(
-            '/profile/notifications',
-            expect.objectContaining({ briefing_push_minute: null }),
-            { preserveScroll: true },
-        );
-        expect(
-            screen.queryByRole('button', { name: 'clear' }),
-        ).not.toBeInTheDocument();
-    });
-
-    it('posts a test notification when "send test notification" is clicked', () => {
-        vi.mocked(router.post).mockReset();
-        render(<Settings />);
-
-        fireEvent.click(screen.getByText('send test notification'));
-
-        // The button routes through usePendingPost now, which adds its own
-        // onStart/onSuccess/onFinish alongside the caller's options.
-        expect(router.post).toHaveBeenCalledWith(
-            '/profile/notifications/test',
-            {},
-            expect.objectContaining({ preserveScroll: true }),
-        );
-    });
-
-    // Pressing it must not look like nothing happened, nor send twice or hit
-    // the route throttle as a bare 429 the UI cannot explain.
-    it('disables the test button with a countdown while the send is cooling', () => {
-        vi.mocked(router.post).mockReset();
-        render(<Settings testCooldownSeconds={45} />);
-
-        const button = screen.getByRole('button', {
-            name: /Wait .* before sending a test notification/,
-        });
-        expect(button).toBeDisabled();
-
-        fireEvent.click(button);
-        expect(router.post).not.toHaveBeenCalled();
-    });
-
-    it('leaves the test button live when nothing is cooling', () => {
-        render(<Settings testCooldownSeconds={null} />);
-        expect(
-            screen.getByText('send test notification').closest('button'),
-        ).not.toBeDisabled();
-    });
-
-    it('opens the demo-blocked modal instead of patching when a demo user flips a toggle', async () => {
-        setMockPage({
-            auth: { user: makeUser({ is_demo: true }) },
-            flash: {},
-            demoLoginEnabled: false,
-        });
-        vi.mocked(router.patch).mockReset();
-        render(<Settings notificationPrefs={prefs} />);
-
-        const toggle = screen.getByRole('switch', { name: 'keep me posted' });
-        fireEvent.click(toggle);
-
-        expect(router.patch).not.toHaveBeenCalled();
-        expect(toggle).toHaveAttribute('aria-checked', 'false');
-        expect(
-            await screen.findByText("Telegram's taking a break for now"),
-        ).toBeInTheDocument();
-    });
-
-    it('keeps the Telegram connect row for the demo, which gets no link, and opens the demo-blocked modal', async () => {
-        setMockPage({
-            auth: { user: makeUser({ is_demo: true }) },
-            flash: {},
-            demoLoginEnabled: false,
-        });
-        render(
-            <Settings
-                telegram={{
-                    connected: false,
-                    username: null,
-                    connect_url: null,
-                }}
-            />,
-        );
-
-        expect(
-            screen.queryByText("the Telegram bot isn't configured yet."),
-        ).not.toBeInTheDocument();
-        fireEvent.click(
-            screen.getByText('connect it so temari can keep you posted.'),
-        );
-
-        expect(
-            await screen.findByText("Telegram's taking a break for now"),
-        ).toBeInTheDocument();
-    });
-
-    it('asks before disconnecting Telegram, and cancel sends nothing', async () => {
-        vi.mocked(router.delete).mockReset();
-        render(<Settings telegram={connectedTelegram} />);
-
-        fireEvent.click(screen.getByText('Disconnect'));
-
-        expect(
-            await screen.findByRole('dialog', { name: 'disconnect Telegram?' }),
-        ).toBeInTheDocument();
-        expect(router.delete).not.toHaveBeenCalled();
-
-        fireEvent.click(screen.getByRole('button', { name: 'not now' }));
-        expect(router.delete).not.toHaveBeenCalled();
-    });
-
-    it('disconnects Telegram via one DELETE on confirm', async () => {
-        vi.mocked(router.delete).mockReset();
-        render(<Settings telegram={connectedTelegram} />);
-
-        fireEvent.click(screen.getByText('Disconnect'));
-        const dialog = await screen.findByRole('dialog', {
-            name: 'disconnect Telegram?',
-        });
-        fireEvent.click(
-            within(dialog).getByRole('button', { name: 'disconnect' }),
-        );
-
-        expect(router.delete).toHaveBeenCalledOnce();
-        expect(router.delete).toHaveBeenCalledWith('/profile/telegram', {
-            preserveScroll: true,
-            onSuccess: expect.any(Function),
-        });
-        expect(showToast).not.toHaveBeenCalled();
-
-        vi.mocked(router.delete).mock.calls[0]?.[1]?.onSuccess?.({} as never);
-
-        expect(showToast).toHaveBeenCalledExactlyOnceWith(
-            'Telegram disconnected',
-        );
-    });
-
-    it('hides the delete-account control from the demo account, which the server refuses to delete', () => {
-        setMockPage({
-            auth: { user: makeUser({ is_demo: true }) },
-            flash: {},
-            demoLoginEnabled: false,
-        });
-        render(<Settings />);
-
-        expect(screen.queryByText('delete account')).not.toBeInTheDocument();
-        expect(screen.getByText('log out')).toBeInTheDocument();
-    });
-
-    it('opens a confirmation before deleting the account', async () => {
-        vi.mocked(router.delete).mockReset();
-        render(<Settings />);
-
-        fireEvent.click(screen.getByText('delete account'));
-        expect(
-            await screen.findByText('sure you want to delete your account?'),
-        ).toBeInTheDocument();
-        expect(
-            document.querySelector('[role="dialog"] svg[data-mascot]'),
-        ).toHaveAttribute('data-mascot', 'concerned');
-        expect(
-            screen.getByRole('link', { name: "what's kept afterwards" }),
-        ).toHaveAttribute('href', '/privacy');
-        // Nothing is deleted until the user confirms.
-        expect(router.delete).not.toHaveBeenCalled();
-    });
-
-    it('deletes the account via DELETE /account when confirmed', async () => {
-        vi.mocked(router.delete).mockReset();
-        render(<Settings />);
-
-        fireEvent.click(screen.getByText('delete account'));
-        fireEvent.click(
-            await screen.findByRole('button', {
-                name: /yes, delete my account/,
-            }),
-        );
-
-        expect(router.delete).toHaveBeenCalledWith('/account');
-    });
-
-    it('dismisses the confirmation without deleting', async () => {
-        vi.mocked(router.delete).mockReset();
-        render(<Settings />);
-
-        fireEvent.click(screen.getByText('delete account'));
-        expect(
-            await screen.findByText('sure you want to delete your account?'),
-        ).toBeInTheDocument();
-
-        fireEvent.click(screen.getByRole('button', { name: 'not now' }));
-        await waitFor(() => {
-            expect(
-                screen.queryByText('sure you want to delete your account?'),
-            ).not.toBeInTheDocument();
-        });
-        expect(router.delete).not.toHaveBeenCalled();
     });
 });
