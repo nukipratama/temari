@@ -11,12 +11,14 @@ use App\Models\User;
 use App\Services\Run\Trend\TrendSnapshotRepairService;
 use Illuminate\Contracts\Queue\ShouldBeUniqueUntilProcessing;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Queue\Attributes\Timeout;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Queue\Middleware\WithoutOverlapping;
 
 #[Backoff([30, 120])]
 #[Tries(3)]
 #[UniqueFor(3600)]
+#[Timeout(60)]
 final class RebuildTrendSnapshotsJob implements ShouldBeUniqueUntilProcessing, ShouldQueue
 {
     use Queueable;

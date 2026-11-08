@@ -30,7 +30,7 @@ class DemoAuthController extends Controller
             redirect()->setIntendedUrl(url($from));
         }
 
-        Auth::login($user, remember: true);
+        Auth::login($user);
 
         return redirect()->intended(route('dashboard'));
     }

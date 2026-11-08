@@ -149,7 +149,7 @@
         },
         "cream-deep/0.3": {
             "over": {
-                "resources/js/pages/Settings/Index.tsx": [
+                "resources/js/components/settings/AccountActions.tsx": [
                     "paper"
                 ],
                 "resources/js/components/settings/HrZonesDisclosure.tsx": [

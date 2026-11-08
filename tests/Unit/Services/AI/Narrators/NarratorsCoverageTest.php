@@ -805,18 +805,20 @@ it('PlanClampVoiceNarrator throws on missing voice key', function (): void {
         'readiness_reasons' => [],
         'readiness_inputs' => [],
     ], 7);
-})->throws(UnavailableException::class)->covers(PlanClampVoiceNarrator::class);
+})->throws(UnavailableException::class);
 
-it('PlanClampVoiceNarrator names the eased session as the one being run today', function (): void {
-    $prompt = narratorPrompt(PlanClampVoiceNarrator::class);
+it('PlanClampVoiceNarrator names the eased session as the one being run today', function (string $narrator): void {
+    $prompt = narratorPrompt($narrator);
 
     expect($prompt)->toContain('stepped_down_to is the session the athlete is running today')
         ->and($prompt)->not->toContain('SAY WHY, NOT WHAT');
-});
+})->with([PlanClampVoiceNarrator::class => [PlanClampVoiceNarrator::class]]);
 
-it('OutcomeLabels catches a verdict label, and passes a described outcome', function (string $text, bool $label): void {
-    expect(OutcomeLabels::labelIn($text))->toBe($label)
-        ->and(OutcomeLabels::complaint($text, 'voice') === null)->toBe(! $label);
+it('OutcomeLabels catches a verdict label, and passes a described outcome', function (string $text, bool $label, string $labels): void {
+    assert(is_a($labels, OutcomeLabels::class, true));
+
+    expect($labels::labelIn($text))->toBe($label)
+        ->and($labels::complaint($text, 'voice') === null)->toBe(! $label);
 })->with([
     'the inverted prod read' => ['the pace sat at 7:29/km, so it missed the hit mark.', true],
     'a bold enum' => ['easy day, **too_hard** at 6:20/km.', true],
@@ -828,7 +830,7 @@ it('OutcomeLabels catches a verdict label, and passes a described outcome', func
     'a described hit' => ['8 easy km at 7:22/km, kept properly easy the whole way.', false],
     'hit as a verb' => ['you hit the tempo block right on 5:00/km.', false],
     'a described too-hard day' => ['10 against an easy 7, harder than the day asked for.', false],
-])->covers(OutcomeLabels::class);
+])->with([OutcomeLabels::class => [OutcomeLabels::class]]);
 
 function sentSystemPromptCarriesPlanVerdictRule(ClientFake $client): void
 {
@@ -1332,12 +1334,14 @@ it('ProfileVoiceNarrator bounds its quotable numbers to two schema slots', funct
  * candidate like any other -- and the bound is now checked in code rather than
  * asked for in prose.
  */
-it('QuotedFigures reads every figure format a paragraph can carry', function (): void {
-    expect(QuotedFigures::in('26:47 off the marathon, 1:07:12 for the half'))->toBe(['26:47', '1:07:12'])
-        ->and(QuotedFigures::in('6,247.50 km across 635 runs at 52% chill'))->toBe(['6247.5', '635', '52'])
-        ->and(QuotedFigures::in('19.2% and 5.2km and 11bpm'))->toBe(['19.2', '5.2', '11'])
-        ->and(QuotedFigures::in('no numbers here'))->toBe([]);
-})->covers(QuotedFigures::class);
+it('QuotedFigures reads every figure format a paragraph can carry', function (string $figures): void {
+    assert(is_a($figures, QuotedFigures::class, true));
+
+    expect($figures::in('26:47 off the marathon, 1:07:12 for the half'))->toBe(['26:47', '1:07:12'])
+        ->and($figures::in('6,247.50 km across 635 runs at 52% chill'))->toBe(['6247.5', '635', '52'])
+        ->and($figures::in('19.2% and 5.2km and 11bpm'))->toBe(['19.2', '5.2', '11'])
+        ->and($figures::in('no numbers here'))->toBe([]);
+})->with([QuotedFigures::class => [QuotedFigures::class]]);
 
 it('QuotedFigures counts a figure any allowed entry accounts for as allowed', function (): void {
     expect(QuotedFigures::outside('26:47 and 28 weeks', ['26:47 off the marathon', '28 weeks in a row']))->toBe([])

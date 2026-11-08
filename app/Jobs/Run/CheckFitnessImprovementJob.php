@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Services\Run\Metrics\FitnessImprovementChecker;
 use Illuminate\Contracts\Queue\ShouldBeUniqueUntilProcessing;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Queue\Attributes\Timeout;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Queue\Attributes\Backoff;
 use Illuminate\Queue\Attributes\Tries;
@@ -17,6 +18,7 @@ use Illuminate\Support\Carbon;
 #[Backoff([30, 120])]
 #[Tries(3)]
 #[UniqueFor(3600)]
+#[Timeout(60)]
 final class CheckFitnessImprovementJob implements ShouldBeUniqueUntilProcessing, ShouldQueue
 {
     use Queueable;

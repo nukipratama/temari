@@ -20,6 +20,8 @@ use App\Services\AI\NarrationOrigin;
 use App\Services\AI\RecapHydrationReadiness;
 use App\Services\AI\RecapPeriod;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Queue\Attributes\Tries;
+use Illuminate\Queue\Attributes\Timeout;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Carbon;
@@ -39,6 +41,8 @@ use Illuminate\Support\Carbon;
  *
  * @see docs/decisions/narration-spends-only-on-active-athletes.md
  */
+#[Timeout(60)]
+#[Tries(3)]
 class NarrateOnReturnJob implements ShouldQueue
 {
     use Queueable;

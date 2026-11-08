@@ -19,6 +19,8 @@ use App\Services\AI\NarrationOrigin;
 use App\Services\Run\Plan\Periodizer;
 use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Queue\Attributes\Tries;
+use Illuminate\Queue\Attributes\Timeout;
 use Illuminate\Foundation\Queue\Queueable;
 
 /**
@@ -34,6 +36,8 @@ use Illuminate\Foundation\Queue\Queueable;
  * is re-sized against the landed history if onboarding already wrote a plan, and
  * where today's briefing is re-requested so it reads the runs.
  */
+#[Timeout(60)]
+#[Tries(3)]
 class KickoffRecapsJob implements ShouldQueue
 {
     use Queueable;

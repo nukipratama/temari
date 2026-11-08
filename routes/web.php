@@ -105,7 +105,7 @@ Route::middleware(['auth'])->group(function (): void {
     // Reachable regardless of onboarding status: the wizard itself, and
     // logout (a user stuck mid-wizard must still be able to sign out).
     Route::get('/onboarding', [OnboardingController::class, 'show'])->name('onboarding.show');
-    Route::post('/onboarding', [OnboardingController::class, 'store'])->middleware('throttle:10,1,plan-regenerate')->name('onboarding.store');
+    Route::post('/onboarding', [OnboardingController::class, 'store'])->middleware(['throttle:10,1,plan-regenerate', 'block-demo-writes'])->name('onboarding.store');
 
     Route::post('/logout', [StravaAuthController::class, 'logout'])
         ->name('auth.logout');
@@ -125,10 +125,10 @@ Route::middleware(['auth', 'onboarded'])->group(function (): void {
         ->middleware('inertia-etag')
         ->name('activities.show');
     Route::patch('/activities/{activity}/effort', [PerceivedEffortController::class, 'update'])
-        ->middleware('throttle:30,1,effort')
+        ->middleware(['throttle:30,1,effort', 'block-demo-writes'])
         ->name('activities.effort.update');
     Route::delete('/activities/{activity}/effort', [PerceivedEffortController::class, 'destroy'])
-        ->middleware('throttle:30,1,effort')
+        ->middleware(['throttle:30,1,effort', 'block-demo-writes'])
         ->name('activities.effort.destroy');
 
     Route::get('/trends', TrendsController::class)->name('trends');
@@ -146,11 +146,11 @@ Route::middleware(['auth', 'onboarded'])->group(function (): void {
         ->middleware('throttle:120,1,recommendations-token')
         ->name('plan.days.recommendation');
     Route::post('/plan/recommendations/shown', RecommendationViewController::class)
-        ->middleware('throttle:120,1,recommendations-shown')
+        ->middleware(['throttle:120,1,recommendations-shown', 'block-demo-writes'])
         ->name('plan.recommendations.shown');
-    Route::post('/plan/regenerate', [PlanController::class, 'regenerate'])->middleware('throttle:10,1,plan-regenerate')->name('plan.regenerate');
+    Route::post('/plan/regenerate', [PlanController::class, 'regenerate'])->middleware(['throttle:10,1,plan-regenerate', 'block-demo-writes'])->name('plan.regenerate');
     Route::patch('/plan/sessions/{plannedSession}', [PlanController::class, 'update'])
-        ->middleware('throttle:20,1,plan-edit')
+        ->middleware(['throttle:20,1,plan-edit', 'block-demo-writes'])
         ->name('plan.sessions.update');
     Route::post('/plan/sessions/{plannedSession}/override', [PlanOverrideController::class, 'store'])
         ->middleware(['throttle:20,1,plan-edit', 'block-demo-writes'])
@@ -175,12 +175,9 @@ Route::middleware(['auth', 'onboarded'])->group(function (): void {
 
     Route::get('/profile', ProfileController::class)->name('profile');
 
-    // The demo is otherwise a fully-interactive shared sandbox (drift resets on
-    // demo:seed). block-demo-writes guards the writes that reach outside it: a visitor
-    // could disconnect the shared bot, spam real messages via the send/test endpoints,
-    // or touch race, feedback, time trial, intervals.icu, zone resync and Strava sync state.
-    // The guard is behaviourally generic (it blocks any demo mutation), so it also
-    // covers the channel-neutral preference + test writes.
+    // The demo account is read-only: block-demo-writes is on every mutating route a
+    // demo session can reach, bar logout, account deletion (refused in its controller),
+    // and the analysis trigger and run questions (answered rule-based without billing).
     Route::patch('/profile/notifications', NotificationPreferenceController::class)->middleware('block-demo-writes')->name('notifications.preferences.update');
     Route::delete('/profile/telegram', [TelegramConnectionController::class, 'destroy'])->middleware('block-demo-writes')->name('telegram.disconnect');
     Route::post('/profile/notifications/test', NotificationTestController::class)->middleware(['throttle:6,1,notification-test', 'block-demo-writes'])->name('notifications.test');
@@ -198,10 +195,10 @@ Route::middleware(['auth', 'onboarded'])->group(function (): void {
 
     Route::delete('/account', [AccountController::class, 'destroy'])->name('account.destroy');
 
-    Route::patch('/settings/zones', [RunnerZonesController::class, 'update'])->name('settings.zones.update');
-    Route::delete('/settings/zones', [RunnerZonesController::class, 'resetToDefault'])->name('settings.zones.reset');
+    Route::patch('/settings/zones', [RunnerZonesController::class, 'update'])->middleware('block-demo-writes')->name('settings.zones.update');
+    Route::delete('/settings/zones', [RunnerZonesController::class, 'resetToDefault'])->middleware('block-demo-writes')->name('settings.zones.reset');
     Route::post('/settings/zones/resync-strava', [RunnerZonesController::class, 'resyncFromStrava'])->middleware(['throttle:strava-sync', 'block-demo-writes'])->name('settings.zones.resync');
-    Route::patch('/settings/training-preferences', [TrainingPreferencesController::class, 'update'])->middleware('throttle:10,1,plan-regenerate')->name('settings.training-preferences.update');
+    Route::patch('/settings/training-preferences', [TrainingPreferencesController::class, 'update'])->middleware(['throttle:10,1,plan-regenerate', 'block-demo-writes'])->name('settings.training-preferences.update');
     Route::post('/settings/intervals-icu', [IntervalsIcuConnectionController::class, 'store'])->middleware(['throttle:6,1,intervals-icu-connect', 'block-demo-writes'])->name('intervals-icu.connect');
     Route::delete('/settings/intervals-icu', [IntervalsIcuConnectionController::class, 'destroy'])->middleware('block-demo-writes')->name('intervals-icu.disconnect');
 
@@ -211,12 +208,15 @@ Route::middleware(['auth', 'onboarded'])->group(function (): void {
 
     Route::post('/api/notifications/{notification}/read', NotificationReadController::class)
         ->whereNumber('notification')
+        ->middleware('block-demo-writes')
         ->name('api.notifications.read');
 
     Route::post('/api/notifications/read-all', NotificationReadAllController::class)
+        ->middleware('block-demo-writes')
         ->name('api.notifications.read-all');
 
     Route::post('/api/record-stamps', RecordStampController::class)
+        ->middleware('block-demo-writes')
         ->name('api.record-stamps.store');
 
     Route::get('/api/analyses/{type}/{subjectId}', [AnalysisController::class, 'show'])
@@ -237,9 +237,8 @@ Route::middleware(['auth', 'onboarded'])->group(function (): void {
 
 });
 
-// Gated in production by HTTP Basic Auth against a shared devtools password,
-// independent of any Strava session, and open everywhere else — see
-// EnsureDevtoolsAccess. Throttled like the other
+// Gated outside the local environment by HTTP Basic Auth against a shared devtools
+// password, independent of any Strava session — see EnsureDevtoolsAccess. Throttled like the other
 // public POSTs (60/min/IP) so a wrong password can't be broute-forced at
 // line speed; generous enough to not trip Pulse's live-polling requests.
 Route::middleware(['throttle:60,1,devtools', 'devtools'])->group(function (): void {

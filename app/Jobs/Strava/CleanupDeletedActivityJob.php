@@ -15,6 +15,7 @@ use App\Services\Strava\Exceptions\StravaTokenRefreshFailedException;
 use App\Services\Strava\StravaClient;
 use DateTimeInterface;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Queue\Attributes\Timeout;
 use Illuminate\Queue\Attributes\Backoff;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Http\Client\RequestException;
@@ -28,6 +29,7 @@ use App\Services\AI\NarrationOrigin;
  * itself still acks fast.
  */
 #[Backoff([60, 300, 900, 3600])]
+#[Timeout(60)]
 class CleanupDeletedActivityJob implements ShouldQueue
 {
     use Queueable;

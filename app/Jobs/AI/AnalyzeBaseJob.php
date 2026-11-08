@@ -14,6 +14,7 @@ use App\Services\AI\AnalysisSubjectMap;
 use App\Services\AI\NarrationOrigin;
 use App\Services\AI\AnalysisStatus;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Queue\Attributes\Timeout;
 use Illuminate\Queue\Attributes\Backoff;
 use Illuminate\Queue\Attributes\Queue;
 use Illuminate\Queue\Attributes\Tries;
@@ -23,6 +24,7 @@ use Throwable;
 #[Backoff(self::BACKOFF_SECONDS)]
 #[Queue(self::QUEUE)]
 #[Tries(self::TRIES)]
+#[Timeout(360)]
 abstract class AnalyzeBaseJob implements ShouldQueue
 {
     use Queueable;

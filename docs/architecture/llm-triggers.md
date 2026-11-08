@@ -235,11 +235,11 @@ narrate them once the window closes, which is why a pending recap row is not a b
   onto or off today, plain or make-up, keeps the current briefing and bills nothing, so it can
   describe the old day until a Reread, a run or a later move re-narrates it. The 00:01 briefing and
   every other system narration open no cooldown, so a move right after one still re-briefs, at most
-  one extra narration per move. The demo athlete is skipped.
+  one extra narration per move. The demo athlete never reaches this route: `block-demo-writes` refuses the edit.
 - **`PlanController::update`, on a skip or restore of today**: a skip requests nothing and leaves
   the stored briefing as it was. A restore requests today's `briefing_mascot_voice` once, without
   `invalidate`, so it narrates only when today has no briefing yet; a narrated one shows again
-  unchanged. The demo athlete is skipped. **No trigger generates a briefing for a skipped day:**
+  unchanged. The demo athlete never reaches this route either. **No trigger generates a briefing for a skipped day:**
   [`AnalysisDispatcher`](../../app/Services/AI/AnalysisDispatcher.php)'s `dispatchRow()` hands back the
   existing row untouched, staging none, when the athlete's session on the briefing's date is skipped,
   before any pause check or cost-ceiling fill, so the kickoff, post-run, catch-up, self-heal and

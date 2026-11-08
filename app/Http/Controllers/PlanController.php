@@ -167,9 +167,6 @@ class PlanController extends Controller
 
         $movedOntoOrOffToday = $occupant !== null && ($session->date->isSameDay($today) || $occupant->date->isSameDay($today));
         $restoredToday = $session->date->isSameDay($today) && $session->wasChanged('skipped') && ! $session->skipped;
-        if ($user->is_demo) {
-            return back();
-        }
 
         if ($movedOntoOrOffToday) {
             $analysisService->rebriefAfterPlanEdit($user, $today->toDateString());
