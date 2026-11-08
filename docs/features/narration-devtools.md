@@ -13,6 +13,7 @@ code_refs:
   - resources/js/pages/Narration/types.ts
   - app/Http/Controllers/NarrationOverviewController.php
   - app/Services/AI/TokenUsageReport.php
+  - app/Services/AI/TokenUsageQuery.php
   - app/Services/AI/CeilingOverride.php
   - app/Services/AI/AnalysisOrigin.php
   - resources/js/components/narration/UsageFilters.tsx
@@ -75,7 +76,7 @@ The kind, origin and from/to date controls ([UsageFilters](../../resources/js/co
 
 ## Server side
 
-[NarrationOverviewController::show](../../app/Http/Controllers/NarrationOverviewController.php) validates the optional `range` / `from` / `to` / `kind` / `origin` / `athlete` filters and resolves the relative range token to concrete dates on every request, so a preset link never goes stale. It delegates to [TokenUsageReport](../../app/Services/AI/TokenUsageReport.php): `build()` for the totals and the breakdowns, `dailyCostByKind()` for the stacked series, and `athletes()` for the athlete rows. Cost is never stored — every figure is computed from the token columns against the per-deployment price map by [LlmCostCalculator](../../app/Services/AI/LlmCostCalculator.php), which is why each aggregate groups by `model` first and rolls up afterwards.
+[NarrationOverviewController::show](../../app/Http/Controllers/NarrationOverviewController.php) validates the optional `range` / `from` / `to` / `kind` / `origin` / `athlete` filters and resolves the relative range token to concrete dates on every request, so a preset link never goes stale. It delegates to [TokenUsageReport](../../app/Services/AI/TokenUsageReport.php): `build()` for the totals and the breakdowns, `dailyCostByKind()` for the stacked series, and `athletes()` for the athlete rows. The report only costs, rolls up and labels; every read behind it lives in [TokenUsageQuery](../../app/Services/AI/TokenUsageQuery.php). Cost is never stored — every figure is computed from the token columns against the per-deployment price map by [LlmCostCalculator](../../app/Services/AI/LlmCostCalculator.php), which is why each aggregate groups by `model` first and rolls up afterwards.
 
 The metering rows (`ai_token_usages`) live on the separate `analytics` connection, not the app database — see [[analytics-db]]. Spend, narration rows and athlete identity therefore sit on different connections and are stitched in PHP rather than joined in SQL. Each usage row also carries the `analysis_id` it paid for and the run's `tool_calls` trace, and the operator actions on this page are audited to `devtools_actions` on the same connection — see [[narration-analytics-are-joinable]].
 
