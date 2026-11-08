@@ -1,9 +1,9 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import { setMockPage } from '@/test/setup';
+import { makeUser, setMockPage } from '@/test/setup';
 
-import ErrorBanner from './ErrorBanner';
+import ErrorBanner, { DEMO_READ_ONLY_BLOCKED } from './ErrorBanner';
 
 const base = {
     auth: { user: null },
@@ -77,6 +77,87 @@ describe('ErrorBanner', () => {
         rerender(<ErrorBanner />);
 
         expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    });
+});
+
+describe('ErrorBanner demo read-only block', () => {
+    const readOnly = {
+        demo: 'The demo account is read-only. Nothing here can be changed.',
+    };
+
+    it('opens the demo modal instead of a banner when a demo user is refused a write', async () => {
+        setMockPage({
+            ...base,
+            auth: { user: makeUser({ is_demo: true }) },
+            errors: readOnly,
+        });
+        render(<ErrorBanner />);
+
+        expect(await screen.findByRole('dialog')).toBeInTheDocument();
+        expect(
+            screen.getByText(DEMO_READ_ONLY_BLOCKED.title),
+        ).toBeInTheDocument();
+        expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    });
+
+    it('closes the modal on not now and reopens it for the next refusal', async () => {
+        setMockPage({
+            ...base,
+            auth: { user: makeUser({ is_demo: true }) },
+            errors: readOnly,
+        });
+        const { rerender } = render(<ErrorBanner />);
+        await screen.findByRole('dialog');
+        fireEvent.click(screen.getByRole('button', { name: 'not now' }));
+        await waitFor(() =>
+            expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+        );
+
+        setMockPage({
+            ...base,
+            auth: { user: makeUser({ is_demo: true }) },
+            errors: { ...readOnly },
+        });
+        rerender(<ErrorBanner />);
+
+        expect(await screen.findByRole('dialog')).toBeInTheDocument();
+    });
+
+    it('keeps the plain banner for a signed-out visitor holding a demo error', () => {
+        setMockPage({
+            ...base,
+            errors: { demo: 'Demo user not seeded yet.' },
+        });
+        render(<ErrorBanner />);
+
+        expect(screen.getByRole('alert')).toHaveTextContent(
+            'Demo user not seeded yet.',
+        );
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+
+    it('keeps the banner for a regular user with a demo-keyed error', () => {
+        setMockPage({
+            ...base,
+            auth: { user: makeUser({ is_demo: false }) },
+            errors: readOnly,
+        });
+        render(<ErrorBanner />);
+
+        expect(screen.getByRole('alert')).toBeInTheDocument();
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+
+    it('shows no modal for a demo user whose errors carry no demo key', () => {
+        setMockPage({
+            ...base,
+            auth: { user: makeUser({ is_demo: true }) },
+            errors: { strava: 'Failed.' },
+        });
+        render(<ErrorBanner />);
+
+        expect(screen.getByRole('alert')).toHaveTextContent('Failed.');
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     });
 });
 
