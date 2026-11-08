@@ -76,7 +76,7 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        $exceptions->dontFlash(['api_key']);
+        $exceptions->dontFlash(['api_key', 'access_token', 'refresh_token']);
 
         $exceptions->report(function (Throwable $e): void {
             NewExceptionLedger::recordServer($e);

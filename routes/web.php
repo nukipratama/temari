@@ -237,9 +237,8 @@ Route::middleware(['auth', 'onboarded'])->group(function (): void {
 
 });
 
-// Gated in production by HTTP Basic Auth against a shared devtools password,
-// independent of any Strava session, and open everywhere else — see
-// EnsureDevtoolsAccess. Throttled like the other
+// Gated outside the local environment by HTTP Basic Auth against a shared devtools
+// password, independent of any Strava session — see EnsureDevtoolsAccess. Throttled like the other
 // public POSTs (60/min/IP) so a wrong password can't be broute-forced at
 // line speed; generous enough to not trip Pulse's live-polling requests.
 Route::middleware(['throttle:60,1,devtools', 'devtools'])->group(function (): void {

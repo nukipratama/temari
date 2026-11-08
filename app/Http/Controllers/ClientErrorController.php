@@ -25,15 +25,18 @@ class ClientErrorController extends Controller
         /** @var array{message: string, stack?: string|null, url?: string|null, componentStack?: string|null} $validated */
         $validated = $request->validated();
 
+        $message = (string) self::clean($validated['message']);
+        $stack = self::clean($validated['stack'] ?? null);
+
         Log::channel('client-errors')->warning('client-error', [
-            'message' => $validated['message'],
-            'url' => $validated['url'] ?? $request->headers->get('referer'),
-            'component_stack' => self::trace($validated['componentStack'] ?? null),
-            'stack' => self::trace($validated['stack'] ?? null),
+            'message' => $message,
+            'url' => self::clean($validated['url'] ?? $request->headers->get('referer')),
+            'component_stack' => self::trace(self::clean($validated['componentStack'] ?? null)),
+            'stack' => self::trace($stack),
             'user_id' => $request->user()?->id,
         ]);
 
-        NewExceptionLedger::recordBrowser($validated['message'], $validated['stack'] ?? null, guest: $request->user() === null);
+        NewExceptionLedger::recordBrowser($message, $stack, guest: $request->user() === null);
 
         return response()->noContent();
     }
@@ -46,5 +49,10 @@ class ClientErrorController extends Controller
     private static function trace(?string $value): ?string
     {
         return $value === null ? null : Str::limit($value, self::MAX_TRACE_CHARS);
+    }
+
+    private static function clean(?string $value): ?string
+    {
+        return $value === null ? null : preg_replace('/[\x00-\x1F\x7F]/', '', $value);
     }
 }
