@@ -17,7 +17,7 @@ code_refs:
   - resources/js/components/temari/AnalysisStatus.tsx
   - resources/js/components/plan/WeekView.tsx
   - routes/web.php
-  - app/Services/AI/AnalysisService.php
+  - app/Services/AI/AnalysisRowState.php
   - app/Http/Controllers/DevtoolsFeedbackController.php
   - resources/js/pages/DevtoolsFeedback.tsx
 ---
