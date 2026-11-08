@@ -660,10 +660,10 @@ function planWeekRows(User $user, array $types, array $attributesByDate = []): a
     return $rows;
 }
 
-it('briefs today only when a restore brings today\'s session back', function (string $date, bool $wasSkipped, bool $skipped, bool $demo, bool $rebriefs): void {
+it('briefs today only when a restore brings today\'s session back', function (string $date, bool $wasSkipped, bool $skipped, bool $rebriefs): void {
     Carbon::setTestNow('2026-08-12 08:00:00');
     Bus::fake();
-    $user = User::factory()->create(['is_demo' => $demo]);
+    $user = User::factory()->create();
     $rows = planWeekRows($user, ['2026-08-12' => 'easy', '2026-08-14' => 'easy'], [
         $date => ['skipped' => $wasSkipped],
     ]);
@@ -674,11 +674,10 @@ it('briefs today only when a restore brings today\'s session back', function (st
 
     expect(Analysis::query()->where('analysis_type', AnalysisType::BriefingMascotVoice)->where('discriminator', '2026-08-12')->exists())->toBe($rebriefs);
 })->with([
-    'skip today' => ['2026-08-12', false, true, false, false],
-    'restore today' => ['2026-08-12', true, false, false, true],
-    'skip today again' => ['2026-08-12', true, true, false, false],
-    'skip a later day' => ['2026-08-14', false, true, false, false],
-    'demo restores today' => ['2026-08-12', true, false, true, false],
+    'skip today' => ['2026-08-12', false, true, false],
+    'restore today' => ['2026-08-12', true, false, true],
+    'skip today again' => ['2026-08-12', true, true, false],
+    'skip a later day' => ['2026-08-14', false, true, false],
 ]);
 
 it('briefs today once on a restore when no briefing was narrated', function (): void {
@@ -694,10 +693,10 @@ it('briefs today once on a restore when no briefing was narrated', function (): 
     Bus::assertDispatchedTimes(AnalyzeBriefingMascotVoiceJob::class, 1);
 });
 
-it('rebriefs today when a plain move takes a session off today or onto it', function (string $from, string $to, bool $rebriefs, bool $demo): void {
+it('rebriefs today when a plain move takes a session off today or onto it', function (string $from, string $to, bool $rebriefs): void {
     Carbon::setTestNow('2026-08-12 08:00:00');
     Bus::fake();
-    $user = User::factory()->create(['is_demo' => $demo]);
+    $user = User::factory()->create();
     $rows = planWeekRows($user, [
         '2026-08-12' => $from === '2026-08-12' ? 'easy' : 'rest',
         '2026-08-13' => 'rest',
@@ -711,10 +710,9 @@ it('rebriefs today when a plain move takes a session off today or onto it', func
 
     expect(Analysis::query()->where('analysis_type', AnalysisType::BriefingMascotVoice)->where('discriminator', '2026-08-12')->exists())->toBe($rebriefs);
 })->with([
-    'today away' => ['2026-08-12', '2026-08-13', true, false],
-    'onto today' => ['2026-08-14', '2026-08-12', true, false],
-    'between later days' => ['2026-08-14', '2026-08-15', false, false],
-    'demo, today away' => ['2026-08-12', '2026-08-13', false, true],
+    'today away' => ['2026-08-12', '2026-08-13', true],
+    'onto today' => ['2026-08-14', '2026-08-12', true],
+    'between later days' => ['2026-08-14', '2026-08-15', false],
 ]);
 
 it('refuses to skip or restore a past day', function (bool $skipped): void {
@@ -904,22 +902,6 @@ it('restores today without invalidating a briefing already narrated', function (
     }
 
     expect($rows['2026-08-12']->refresh()->skipped)->toBeFalse();
-});
-
-it('queues nothing for the demo athlete however often today is toggled', function (): void {
-    Carbon::setTestNow('2026-08-12 08:00:00');
-    Bus::fake();
-    $user = User::factory()->create(['is_demo' => true]);
-    $rows = planWeekRows($user, ['2026-08-12' => 'easy']);
-
-    foreach ([true, false, true] as $skipped) {
-        $this->actingAs($user)
-            ->patch("/plan/sessions/{$rows['2026-08-12']->id}", ['skipped' => $skipped])
-            ->assertSessionHasNoErrors();
-    }
-
-    Bus::assertNotDispatched(AnalyzeBriefingMascotVoiceJob::class);
-    expect(Analysis::query()->where('analysis_type', AnalysisType::BriefingMascotVoice)->exists())->toBeFalse();
 });
 
 it('rebriefs a narrated today on a move onto or off it only once its Reread cooldown has run out', function (string $from, string $to, bool $cooling): void {
