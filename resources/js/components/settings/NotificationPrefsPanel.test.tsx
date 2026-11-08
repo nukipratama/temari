@@ -2,6 +2,7 @@ import { router } from '@inertiajs/react';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
+import { type NotificationPrefs } from '@/pages/Settings/useNotificationPrefs';
 import { makeUser, setMockPage } from '@/test/setup';
 
 import NotificationPrefsPanel from './NotificationPrefsPanel';
@@ -12,7 +13,7 @@ const telegram = {
     connect_url: null,
 };
 
-const prefs = {
+const prefs: NotificationPrefs = {
     notifications_enabled: false,
     briefing_push_enabled: true,
     briefing_push_minute: null,
@@ -21,7 +22,7 @@ const prefs = {
 };
 
 function renderPanel(
-    overrides: Partial<typeof prefs> = {},
+    overrides: Partial<NotificationPrefs> = {},
     testCooldownSeconds: number | null = null,
 ) {
     return render(
@@ -173,6 +174,22 @@ describe('NotificationPrefsPanel', () => {
 
         fireEvent.blur(field);
         expect(router.patch).toHaveBeenCalledTimes(1);
+    });
+
+    it('patches the send time back to automatic when it is cleared', () => {
+        vi.mocked(router.patch).mockReset();
+        renderPanel({
+            notifications_enabled: true,
+            briefing_push_minute: 4 * 60 + 45,
+        });
+
+        fireEvent.click(screen.getByRole('button', { name: 'clear' }));
+
+        expect(router.patch).toHaveBeenCalledWith(
+            '/profile/notifications',
+            expect.objectContaining({ briefing_push_minute: null }),
+            { preserveScroll: true },
+        );
     });
 
     it('passes the cooldown on to the test button', () => {

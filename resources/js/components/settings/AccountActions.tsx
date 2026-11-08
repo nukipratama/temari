@@ -7,11 +7,6 @@ import { Icon } from '@/components/ui/Icon';
 import { useDemoGuard } from '@/hooks/useDemoGuard';
 import { releaseDeviceSubscription } from '@/lib/webPush';
 
-/**
- * The prototype's `AccountActions`: a button pair, not a settings list — a
- * bordered full-width "Log out" that becomes an auto-width row item above
- * 900px, and a bare destructive "Delete account" beneath it.
- */
 async function signOut(): Promise<void> {
     const endpoint = await releaseDeviceSubscription();
 
@@ -21,6 +16,11 @@ async function signOut(): Promise<void> {
     );
 }
 
+/**
+ * The prototype's `AccountActions`: a button pair, not a settings list — a
+ * bordered full-width "Log out" that becomes an auto-width row item above
+ * 900px, and a bare destructive "Delete account" beneath it.
+ */
 export default function AccountActions() {
     const [confirmOpen, setConfirmOpen] = useState(false);
     const { isDemo } = useDemoGuard();
