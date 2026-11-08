@@ -268,7 +268,7 @@ the settled streak is the weekly profile voice (`LifetimeStatsTool` → `Profile
 the gate sits there, per athlete: an automatic profile-voice request (the weekly kickoff, the ingest
 cascade, `ai:self-heal`, the settle-early replay) for an athlete who is not settled through the
 latest closed week, or whose settled history is marked dirty, stays `Pending`
-([AnalysisService::dispatchRow()](../../app/Services/AI/AnalysisService.php)), and `ai:self-heal`
+([AnalysisDispatcher::dispatchRow()](../../app/Services/AI/AnalysisDispatcher.php)), and `ai:self-heal`
 narrates it on the first sweep after that athlete's settlement lands, which the hourly `streak:settle`
 keeps to about two hours at most for a new or dirty athlete (one settle tick, then the next
 self-heal sweep). One athlete behind holds back

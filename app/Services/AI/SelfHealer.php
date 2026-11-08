@@ -46,6 +46,7 @@ class SelfHealer
 
     public function __construct(
         private readonly AnalysisService $service,
+        private readonly AnalysisRowState $rowState,
         private readonly ChainResolver $chains,
         private readonly BackfillAgeGate $ages,
         private readonly RecapHydrationReadiness $readiness,
@@ -176,7 +177,7 @@ class SelfHealer
         $stale = Analysis::query()->staleInFlight($threshold)->get();
 
         foreach ($stale as $row) {
-            $this->service->revertToPending($row);
+            $this->rowState->revertToPending($row);
         }
 
         return $stale->count();

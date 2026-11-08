@@ -24,7 +24,7 @@ use Throwable;
 /**
  * AI narration pipeline health, on the /pulse dashboard: a live status snapshot
  * of the ai_analyses rows, the most recent failures with their stored error,
- * and the failure-rate trend recorded in AnalysisService::markFailed().
+ * and the failure-rate trend recorded in AnalysisRowState::markFailed().
  *
  * Not lazy: it sits at the top of the dashboard (always in the initial
  * viewport) and its queries are cheap, so deferring buys nothing.

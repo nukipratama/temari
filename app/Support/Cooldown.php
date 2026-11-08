@@ -21,7 +21,7 @@ final readonly class Cooldown
 {
     /**
      * Default window: the per-block AI re-narration guard ("Reread"),
-     * started from AnalysisService::markDone(). This one is a **cost** guard —
+     * started from AnalysisRowState::markDone(). This one is a **cost** guard —
      * every re-fire is a paid LLM call — so it stays long. See the
      * per-block-manual-retry decision note before shortening it.
      */

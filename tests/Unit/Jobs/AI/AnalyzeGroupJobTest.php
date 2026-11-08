@@ -6,6 +6,7 @@ use App\Jobs\AI\AnalyzeActivityJob;
 use App\Models\Activity;
 use App\Models\AI\Analysis;
 use App\Models\User;
+use App\Services\AI\AnalysisRowState;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -40,7 +41,7 @@ it('does not run a same-generation duplicate while its rows are Processing', fun
     }
 
     $job = new AnalyzeActivityJob($activity->id, null, $token);
-    $job->handle(app(AnalysisService::class));
+    $job->handle(app(AnalysisService::class), app(AnalysisRowState::class));
 
     $rows = Analysis::query()
         ->where('subject_type', Activity::class)

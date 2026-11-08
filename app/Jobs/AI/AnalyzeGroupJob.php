@@ -9,6 +9,7 @@ use App\Exceptions\AI\RejectedOutputException;
 use App\Exceptions\AI\UnavailableException;
 use App\Models\AI\Analysis;
 use App\Services\AI\AnalysisOrigin;
+use App\Services\AI\AnalysisRowState;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
@@ -36,7 +37,7 @@ abstract class AnalyzeGroupJob extends AnalyzeBaseJob
      * Whether each pending row (by AnalysisType value) was an early-pass row
      * at the moment generation started, captured before markProcessing so a
      * row that straddles the drain finishing mid-generation is still caught
-     * by {@see AnalysisService::markDone()}'s `$startedEarly`.
+     * by {@see AnalysisRowState::markDone()}'s `$startedEarly`.
      *
      * @var array<string, bool>
      */
@@ -50,12 +51,12 @@ abstract class AnalyzeGroupJob extends AnalyzeBaseJob
         parent::__construct($generationToken);
     }
 
-    final public function handle(AnalysisService $service): void
+    final public function handle(AnalysisService $service, AnalysisRowState $rowState): void
     {
         $this->onGroupHandleStarted();
         $this->applyOrigin();
 
-        $rows = $service->upsertGroupRows(
+        $rows = $rowState->upsertGroupRows(
             static::subjectType(),
             $this->subjectId,
             $this->discriminator,
@@ -76,19 +77,19 @@ abstract class AnalyzeGroupJob extends AnalyzeBaseJob
             return;
         }
 
-        if ($this->haltForSpentRetryBudget($service, $pending)) {
+        if ($this->haltForSpentRetryBudget($rowState, $pending)) {
             return;
         }
 
-        if ($this->haltForPausedGeneration($service, $pending)) {
+        if ($this->haltForPausedGeneration($service, $rowState, $pending)) {
             return;
         }
 
         $this->startedEarlyByType = $pending->mapWithKeys(
-            fn (Analysis $row): array => [$row->analysis_type->value => $service->isEarlyPassRow($row)],
+            fn (Analysis $row): array => [$row->analysis_type->value => $rowState->isEarlyPassRow($row)],
         )->all();
 
-        if (! $service->markGroupProcessing(
+        if (! $rowState->markGroupProcessing(
             $pending,
             $this->generationToken,
             allowProcessing: $this->attempts() > 1,
@@ -105,7 +106,7 @@ abstract class AnalyzeGroupJob extends AnalyzeBaseJob
         } catch (UnavailableException $e) {
             // The atomic claim already charged these rows, so a missing subject
             // still consumes its bounded self-heal retry budget.
-            $this->failPending($pending, $service, $e->getMessage());
+            $this->failPending($pending, $rowState, $e->getMessage());
 
             return;
         }
@@ -118,11 +119,11 @@ abstract class AnalyzeGroupJob extends AnalyzeBaseJob
 
         try {
             $fingerprint = $this->fingerprintFor($subject);
-            $persistGenerated = function (AnalysisType $type, string $content) use ($pending, $service, $fingerprint): void {
+            $persistGenerated = function (AnalysisType $type, string $content) use ($pending, $rowState, $fingerprint): void {
                 $key = $type->value;
                 $row = $pending->get($key);
 
-                if (! $row instanceof Analysis || ! $service->markDone(
+                if (! $row instanceof Analysis || ! $rowState->markDone(
                     $row,
                     $content,
                     ServedBy::Llm,
@@ -136,7 +137,7 @@ abstract class AnalyzeGroupJob extends AnalyzeBaseJob
 
             if ($this->finalizePending(
                 $pending,
-                $service,
+                $rowState,
                 $this->generateAll($subject, $persistGenerated),
                 ServedBy::Llm,
                 $fingerprint,
@@ -151,7 +152,7 @@ abstract class AnalyzeGroupJob extends AnalyzeBaseJob
             $reason = $e instanceof ContentFilterException ? AnalysisOrigin::ContentFilter : AnalysisOrigin::RejectedOutput;
             if ($this->finalizePending(
                 $pending,
-                $service,
+                $rowState,
                 $this->ruleBasedPayload($pending),
                 ServedBy::RuleBased,
                 $fingerprint,
@@ -167,10 +168,10 @@ abstract class AnalyzeGroupJob extends AnalyzeBaseJob
             $this->settleFailure(
                 $e,
                 $pending,
-                markFailed: fn () => $this->failPending($pending, $service, $e->getMessage()),
-                markRequeued: fn () => $pending->each(function (Analysis $row) use ($service): void {
+                markFailed: fn () => $this->failPending($pending, $rowState, $e->getMessage()),
+                markRequeued: fn () => $pending->each(function (Analysis $row) use ($rowState): void {
                     if ($row->status !== AnalysisStatus::Done) {
-                        $service->markQueued($row, $this->generationToken);
+                        $rowState->markQueued($row, $this->generationToken);
                     }
                 }),
             );
@@ -184,9 +185,9 @@ abstract class AnalyzeGroupJob extends AnalyzeBaseJob
      */
     public function failed(Throwable $e): void
     {
-        $service = app(AnalysisService::class);
+        $rowState = app(AnalysisRowState::class);
 
-        $pending = $service->upsertGroupRows(
+        $pending = $rowState->upsertGroupRows(
             static::subjectType(),
             $this->subjectId,
             $this->discriminator,
@@ -195,15 +196,15 @@ abstract class AnalyzeGroupJob extends AnalyzeBaseJob
             && $row->status !== AnalysisStatus::Done
             && $row->status !== AnalysisStatus::Failed);
 
-        $this->failPending($pending, $service, $e->getMessage());
+        $this->failPending($pending, $rowState, $e->getMessage());
     }
 
     /** @param Collection<string, Analysis> $pending */
-    private function failPending(Collection $pending, AnalysisService $service, string $reason): void
+    private function failPending(Collection $pending, AnalysisRowState $rowState, string $reason): void
     {
         foreach ($pending as $row) {
             if ($row->status !== AnalysisStatus::Done) {
-                $service->markFailed($row, $reason, $this->generationToken);
+                $rowState->markFailed($row, $reason, $this->generationToken);
             }
         }
     }
@@ -242,21 +243,21 @@ abstract class AnalyzeGroupJob extends AnalyzeBaseJob
      */
     private function finalizePending(
         Collection $pending,
-        AnalysisService $service,
+        AnalysisRowState $rowState,
         array $payload,
         ServedBy $servedBy,
         ?string $fingerprint = null,
         ?AnalysisOrigin $ruleBasedReason = null,
     ): bool {
         try {
-            return DB::transaction(function () use ($pending, $payload, $service, $fingerprint, $servedBy, $ruleBasedReason): bool {
+            return DB::transaction(function () use ($pending, $payload, $rowState, $fingerprint, $servedBy, $ruleBasedReason): bool {
                 foreach ($payload as $key => $content) {
                     $row = $pending->get($key);
                     if (! $row instanceof Analysis || $row->status === AnalysisStatus::Done) {
                         continue;
                     }
 
-                    if (! $service->markDone(
+                    if (! $rowState->markDone(
                         $row,
                         $content,
                         $servedBy,
