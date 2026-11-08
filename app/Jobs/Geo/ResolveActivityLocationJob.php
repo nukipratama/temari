@@ -11,9 +11,11 @@ use App\Services\Geo\Exceptions\NominatimRateSlotUnavailableException;
 use DateTimeInterface;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Queue\Attributes\Timeout;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Carbon;
 
+#[Timeout(60)]
 class ResolveActivityLocationJob implements ShouldBeUnique, ShouldQueue
 {
     use Queueable;

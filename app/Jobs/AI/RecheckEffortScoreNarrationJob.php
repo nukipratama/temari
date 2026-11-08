@@ -9,6 +9,8 @@ use App\Models\Activity;
 use App\Services\AI\AnalysisOrigin;
 use App\Services\AI\NarrationOrigin;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Queue\Attributes\Tries;
+use Illuminate\Queue\Attributes\Timeout;
 use Illuminate\Foundation\Queue\Queueable;
 
 /**
@@ -16,6 +18,8 @@ use Illuminate\Foundation\Queue\Queueable;
  * score lands while the run's speech is still being written, so the speech that
  * then lands without the score is re-narrated. It never schedules another.
  */
+#[Timeout(60)]
+#[Tries(3)]
 class RecheckEffortScoreNarrationJob implements ShouldQueue
 {
     use Queueable;

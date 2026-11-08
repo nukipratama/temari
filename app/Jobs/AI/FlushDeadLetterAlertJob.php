@@ -6,6 +6,8 @@ namespace App\Jobs\AI;
 
 use App\Services\Ops\MaintainerAlerter;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Queue\Attributes\Tries;
+use Illuminate\Queue\Attributes\Timeout;
 use Illuminate\Foundation\Queue\Queueable;
 
 /**
@@ -14,6 +16,8 @@ use Illuminate\Foundation\Queue\Queueable;
  * — the delay is what gives later dead-letters in the same window a chance to
  * land before the flush reads the count.
  */
+#[Timeout(60)]
+#[Tries(3)]
 class FlushDeadLetterAlertJob implements ShouldQueue
 {
     use Queueable;

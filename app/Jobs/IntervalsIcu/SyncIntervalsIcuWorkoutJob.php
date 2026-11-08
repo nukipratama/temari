@@ -8,6 +8,7 @@ use App\Models\IntervalsIcuConnection;
 use App\Services\IntervalsIcu\IntervalsIcuSync;
 use Illuminate\Contracts\Queue\ShouldBeUniqueUntilProcessing;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Queue\Attributes\Timeout;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Queue\Attributes\Tries;
 use Illuminate\Queue\Attributes\UniqueFor;
@@ -16,6 +17,7 @@ use Illuminate\Support\Carbon;
 
 #[Tries(1)]
 #[UniqueFor(900)]
+#[Timeout(60)]
 final class SyncIntervalsIcuWorkoutJob implements ShouldBeUniqueUntilProcessing, ShouldQueue
 {
     use Queueable;
