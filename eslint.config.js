@@ -19,6 +19,13 @@ export default defineConfig(
             perfectionist,
         },
         rules: {
+            'jsx-a11y/control-has-associated-label': [
+                'error',
+                {
+                    controlComponents: ['PillButton', 'ToggleGroupItem'],
+                    ignoreElements: ['input', 'textarea'],
+                },
+            ],
             'perfectionist/sort-imports': [
                 'error',
                 {
