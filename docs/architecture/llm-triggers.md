@@ -226,7 +226,8 @@ narrate them once the window closes, which is why a pending recap row is not a b
   day and the day it emptied (`post_run_speech`, `run_insight`) and their `card_flavor` with
   `invalidate: true`, and re-requests
   today's `briefing_mascot_voice` through `AnalysisService::rebriefAfterPlanEdit()` when the make-up
-  lands on today or takes today's session away. The demo athlete gets no re-request. See
+  lands on today or takes today's session away. The demo athlete never reaches this route:
+  `block-demo-writes` refuses the edit. See
   [[a-make-up-is-graded-against-the-moved-session]].
 - **`PlanController::update`, on a plain move onto or off today**: re-requests today's
   `briefing_mascot_voice` through `AnalysisService::rebriefAfterPlanEdit()`, with `invalidate: true`,
@@ -235,7 +236,7 @@ narrate them once the window closes, which is why a pending recap row is not a b
   onto or off today, plain or make-up, keeps the current briefing and bills nothing, so it can
   describe the old day until a Reread, a run or a later move re-narrates it. The 00:01 briefing and
   every other system narration open no cooldown, so a move right after one still re-briefs, at most
-  one extra narration per move. The demo athlete never reaches this route: `block-demo-writes` refuses the edit.
+  one extra narration per move. The demo athlete never reaches this route either.
 - **`PlanController::update`, on a skip or restore of today**: a skip requests nothing and leaves
   the stored briefing as it was. A restore requests today's `briefing_mascot_voice` once, without
   `invalidate`, so it narrates only when today has no briefing yet; a narrated one shows again
