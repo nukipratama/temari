@@ -558,7 +558,7 @@ it('markDone reaches the inbox alone when Telegram is unconfigured', function ()
     );
 });
 
-it('requestRuleBased fills a row rule-based with no reason, without dispatching or cooling, and refills it in place rather than minting a second one', function (): void {
+it('serveRuleBased fills a row rule-based with no reason, without dispatching or cooling, and refills it in place rather than minting a second one', function (): void {
     $snap = WeeklySnapshot::factory()->create();
     $first = analysisRowState()->serveRuleBased(WeeklySnapshot::class, $snap->id, AnalysisType::WeeklyRecap);
 
@@ -577,7 +577,7 @@ it('requestRuleBased fills a row rule-based with no reason, without dispatching 
     Bus::assertNotDispatched(AnalyzeWeeklyRecapJob::class);
 });
 
-it('requestRuleBased with refillDone:false leaves an already-Done row untouched', function (): void {
+it('serveRuleBased with refillDone:false leaves an already-Done row untouched', function (): void {
     $snap = WeeklySnapshot::factory()->create();
     Analysis::factory()->done('original recap, already billed')->create([
         'subject_type' => WeeklySnapshot::class,
